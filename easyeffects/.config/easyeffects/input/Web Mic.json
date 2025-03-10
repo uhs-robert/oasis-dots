@@ -1,0 +1,27 @@
+{
+    "input": {
+        "blocklist": [],
+        "echo_canceller#0": {
+            "bypass": false,
+            "filter-length": 100,
+            "input-gain": 0.0,
+            "near-end-suppression": -70,
+            "output-gain": 0.0,
+            "residual-echo-suppression": -70
+        },
+        "plugins_order": [
+            "echo_canceller#0",
+            "rnnoise#0"
+        ],
+        "rnnoise#0": {
+            "bypass": false,
+            "enable-vad": true,
+            "input-gain": 0.0,
+            "model-name": "",
+            "output-gain": 0.0,
+            "release": 20.0,
+            "vad-thres": 50.0,
+            "wet": 0.0
+        }
+    }
+}

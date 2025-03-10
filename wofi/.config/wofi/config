@@ -1,0 +1,10 @@
+# https://man.archlinux.org/man/wofi.5.en
+height=93%  # Set height (can be a % or px)
+width=50%  # Set width (can be a % or px)
+hide_scroll=true
+allow_images=true
+location=top
+prompt=Search...
+normal_window=false
+insensitive=true
+columns=2

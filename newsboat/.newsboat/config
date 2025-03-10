@@ -1,0 +1,57 @@
+# Refresh feeds every 10 minutes
+browser "firefox %u"
+
+# General settings
+reload-time 10  # Refresh feeds every 10 minutes
+prepopulate-query-feeds yes
+show-read-articles no
+show-read-feeds no
+auto-reload yes
+
+# Theme
+color background default default
+color listnormal white black
+color listfocus black yellow bold
+color listfocus_unread black yellow bold
+color listnormal_unread cyan default bold
+color info white black
+color article white black
+
+# 📌 Highlights for Better Readability
+highlight article "^(Title):.*$" cyan default
+highlight article "https?://[^ ]+" red default
+highlight article "\\[image\\ [0-9]+\\]" green default
+highlight article "(Author):.*$" magenta default
+highlight article "(Date):.*$" yellow default
+highlight article "\\b(Linux|Fedora|Neovim|Privacy|Security)\\b" blue default
+
+feedlist-format "%?T?║ %4i %n %8u ⏵ %8T 📰 %t &╠═══════════════════════════════════════════════════════════════ %t?"
+highlight feedlist "[║│]" blue color0
+highlight feedlist "╠═.*" blue color0
+highlight feedlist "📰" cyan default bold
+highlight feedlist "⏵" cyan default bold
+
+# Bindings
+bind-key h quit
+bind-key j down
+bind-key k up
+bind-key l open
+bind-key H prev-feed
+bind-key L next-feed
+bind-key g home
+bind-key G end
+bind-key SPACE macro-prefix 
+bind-key b bookmark 
+bind-key ^F pagedown 
+bind-key ^B pageup 
+bind-key ^H toggle-show-read-feeds
+
+# Macros
+macro 3 set browser "setsid --fork mpv --profile=360p %u > /dev/null 2>&1"; open-in-browser; set browser "xdg-open %u";
+macro 7 set browser "setsid --fork mpv --profile=720p %u > /dev/null 2>&1"; open-in-browser; set browser "xdg-open %u";
+
+# Save articles with "S"
+macro S set browser "echo %u >> ~/saved-articles.txt"; open-in-browser ; set browser "firefox %u"
+
+# Read articles in the terminal
+macro P set browser "pandoc -f html -t plain %u | less"; open-in-browser ; set browser "firefox %u"
