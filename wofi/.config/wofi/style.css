@@ -2,7 +2,6 @@
 @define-color red  #ff5555;
 @define-color blue  #0A7ACE;
 @define-color text  #d1e3fb;
-@define-color base  #000000;
 
 * {
   font-family: "FiraCode Nerd Font", monospace;
@@ -15,7 +14,7 @@
   padding: 10px;
   border: 2px solid @green;
   border-radius: 8px;
-  background-color: @base;
+  background-color: rgba(0, 0, 0, 0.5);
 }
 
 /* Inner Box */
@@ -23,7 +22,7 @@
   margin: 5px;
   padding: 10px;
   border: none;
-  background-color: @base;
+  background-color: rgba(0, 0, 0, 0.5);
 }
 
 /* Outer Box */
@@ -31,7 +30,7 @@
   margin: 5px;
   padding: 10px;
   border: none;
-  background-color: @base;
+  background-color: rgba(0, 0, 0, 0.5);
 }
 
 /* Scroll */
@@ -39,7 +38,7 @@
   margin: 0px;
   padding: 10px;
   border: none;
-  background-color: @base;
+  background-color: rgba(0, 0, 0, 0.5);
 }
 
 /* Input */
@@ -49,7 +48,7 @@
   border: none;
   border-radius: 8px 8px 0px 0px;
   color: @white;
-  background-color: rgba(40, 40, 40, 0.5);
+  background-color: rgba(20, 20, 20, 0.9);
 }
 
 #input image {
@@ -69,7 +68,7 @@
 }
 
 #entry {
-  background-color: @base;
+  background-color: rgba(0, 0, 0, 0.5);
 }
 
 #entry arrow {
