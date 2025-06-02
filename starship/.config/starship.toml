@@ -1,37 +1,20 @@
 "$schema" = 'https://starship.rs/config-schema.json'
 
 format = """
-[](blue)\
-$os\
-$username\
-$sudo\
-[](fg:blue bg:none)\
-$hostname\
-$localip\
-[](fg:green bg:none)\
-$directory\
-[](fg:green bg:none)\
-$git_branch\
-$git_status\
-$status\
+[╭](lightgray)[](blue)$os$username$sudo[](fg:blue)\
+$hostname$localip\
+[](fg:green)$directory[](fg:green)\
+$git_branch$git_status\
 $cmd_duration\
+$status\
 $fill\
-[](fg:orange bg:none)\
-$c\
-$rust\
-$golang\
-$nodejs\
-$lua\
-$php\
-$java\
-$kotlin\
-$haskell\
-$python\
-$docker_context\
-$conda\
-$time\
-[ ](fg:gray bg:none)\
-$line_break$character"""
+$c$rust$golang$nodejs$lua$php$java$kotlin$haskell$python\
+$docker_context$conda\
+[](fg:gray bg:none)$time[](fg:gray bg:none)\
+$line_break\
+[╰─](fg:lightgray)$character\
+"""
+
 palette = 'vscode_black'
 [palettes.vscode_black]
 white = '#eeeeee'
@@ -45,6 +28,13 @@ orange = '#d16923'
 purple = '#5723d1'
 red = '#D13D23'
 yellow = '#f5f543'
+
+#Shapes
+# [](fg:orange)
+# [](fg:orange)
+# [─](fg:lightgray)
+# [](fg:green)
+# [](fg:green)\
 
 [os]
 disabled = false
@@ -129,61 +119,61 @@ style = "bg:purple"
 format = '[[($all_status $ahead_behind)](fg:white bg:purple)]($style)[](fg:purple bg:none)'
 
 [nodejs]
-symbol = ""
+symbol = '󰎙 Node'
 style = "bg:orange"
-format = '[[ $symbol( $version) ](fg:white bg:orange)]($style)'
+format = '[](fg:orange)[[ $symbol( $version) ](fg:white bg:orange)]($style)[](fg:orange)[─](fg:lightgray)'
 
 [lua]
 style = "bg:purple"
 
 [c]
-symbol = " "
+symbol = " C"
 style = "bg:orange"
-format = '[[ $symbol( $version) ](fg:white bg:orange)]($style)'
+format = '[](fg:orange)[[ $symbol( $version) ](fg:white bg:orange)]($style)[](fg:orange)[─](fg:lightgray)'
 
 [rust]
-symbol = ""
+symbol = " Rust"
 style = "bg:orange"
-format = '[[ $symbol( $version) ](fg:white bg:orange)]($style)'
+format = '[](fg:orange)[[ $symbol( $version) ](fg:white bg:orange)]($style)[](fg:orange)[─](fg:lightgray)'
 
 [golang]
-symbol = ""
+symbol = " Go"
 style = "bg:orange"
-format = '[[ $symbol( $version) ](fg:white bg:orange)]($style)'
+format = '[](fg:orange)[[ $symbol( $version) ](fg:white bg:orange)]($style)[](fg:orange)[─](fg:lightgray)'
 
 [php]
-symbol = ""
+symbol = " Php"
 style = "bg:orange"
-format = '[[ $symbol( $version) ](fg:white bg:orange)]($style)'
+format = '[](fg:orange)[[ $symbol( $version) ](fg:white bg:orange)]($style)[](fg:orange)[─](fg:lightgray)'
 
 [java]
-symbol = ""
+symbol = ' Java'
 style = "bg:orange"
-format = '[[ $symbol( $version) ](fg:white bg:orange)]($style)'
+format = '[](fg:orange)[[ $symbol( $version) ](fg:white bg:orange)]($style)[](fg:orange)[─](fg:lightgray)'
 
 [kotlin]
-symbol = ""
+symbol = " Kotlin"
 style = "bg:orange"
-format = '[[ $symbol( $version) ](fg:white bg:orange)]($style)'
+format = '[](fg:orange)[[ $symbol( $version) ](fg:white bg:orange)]($style)[](fg:orange)[─](fg:lightgray)'
 
 [haskell]
-symbol = ""
+symbol = " Haskell"
 style = "bg:orange"
-format = '[[ $symbol( $version) ](fg:white bg:orange)]($style)'
+format = '[](fg:orange)[[ $symbol( $version) ](fg:white bg:orange)]($style)[](fg:orange)[─](fg:lightgray)'
 
 [python]
-symbol = ""
+symbol = ' Python'
 style = "bg:orange"
-format = '[[ $symbol( $version) ](fg:white bg:orange)]($style)'
+format = '[](fg:orange)[[ $symbol( $version) ](fg:white bg:orange)]($style)[](fg:orange)[─](fg:lightgray)'
 
 [docker_context]
 symbol = ""
 style = "bg:lightgray"
-format = '[[ $symbol( $context) ](fg:white bg:red)]($style)'
+format = '[](fg:red)[[ $symbol( $context) ](fg:white bg:red)]($style)[](fg:red)[─](fg:lightgray)'
 
 [conda]
 style = "bg:lightgray"
-format = '[[ $symbol( $environment) ](fg:white bg:red)]($style)'
+format = '[](fg:red)[[ $symbol( $environment) ](fg:white bg:red)]($style)[](fg:red)[─](fg:lightgray)'
 
 [time]
 disabled = false
@@ -196,14 +186,15 @@ symbol = " "
 
 [cmd_duration]
 style = "fg:yellow bg:none"
-format = '[]($style)[ $duration ]($style inverted)[]($style)'
+format = '[]($style)[ 󱐋 $duration ]($style inverted)[]($style)'
 min_time = 500
 disabled = false
 
 [status]
-format = '[$symbol]($style)'
-style = 'fg:sudo bg:prim'
-symbol = '  '
+style = "fg:red bg:none"
+disabled = false
+format = '[─](fg:lightgray bg:none)[](fg:red bg:none)[$symbol ](fg:white bg:red)[]($style)'
+symbol = '   Error'
 
 [line_break]
 disabled = false
