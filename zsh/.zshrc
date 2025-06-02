@@ -86,6 +86,7 @@ plugins=(
   zsh-autocomplete
   zsh-autosuggestions
   zsh-syntax-highlighting
+  zsh-vi-mode
 )
 
 source $ZSH/oh-my-zsh.sh
@@ -131,3 +132,31 @@ if [[ -o interactive ]]; then
   fi
 fi
 . "/home/USER/.deno/env"
+
+# pnpm
+export PNPM_HOME="/home/USER/.local/share/pnpm"
+case ":$PATH:" in
+  *":$PNPM_HOME:"*) ;;
+  *) export PATH="$PNPM_HOME:$PATH" ;;
+esac
+# pnpm end
+
+# yazi
+function y() {
+	local tmp="$(mktemp -t "yazi-cwd.XXXXXX")" cwd
+	yazi "$@" --cwd-file="$tmp"
+	if cwd="$(command cat -- "$tmp")" && [ -n "$cwd" ] && [ "$cwd" != "$PWD" ]; then
+		builtin cd -- "$cwd"
+	fi
+	rm -f -- "$tmp"
+}
+# yazi end
+
+# Zoxide
+eval "$(zoxide init zsh)"
+# Zoxide end
+export PATH="$HOME/go/bin:$PATH"
+export PATH="$HOME/.cargo/bin:$PATH"
+export PATH="$HOME/.cargo/bin:$PATH"
+alias t="task"
+export PATH="$HOME/.local/bin:$PATH"
