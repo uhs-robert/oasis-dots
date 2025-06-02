@@ -242,7 +242,7 @@
   "theme.bar.menus.feinttext": "#3e4451",
   "theme.bar.menus.dimtext": "#abb2bf",
   "theme.bar.menus.text": "#61afef",
-  "theme.bar.menus.border.color": "#62a0ea",
+  "theme.bar.menus.border.color": "#f9f06b",
   "theme.bar.menus.cards": "#0c0c0c",
   "theme.bar.menus.background": "#1a5fb4",
   "theme.bar.buttons.modules.power.icon_background": "#e06c75",
@@ -356,7 +356,7 @@
   "theme.bar.buttons.systray.border": "#4b5263",
   "theme.bar.buttons.bluetooth.border": "#61afef",
   "theme.bar.buttons.network.border": "#c678dd",
-  "theme.bar.buttons.volume.border": "#e06c75",
+  "theme.bar.buttons.volume.border": "#f66151",
   "theme.bar.buttons.media.border": "#3584e4",
   "theme.bar.buttons.windowtitle.border": "#ffa348",
   "theme.bar.buttons.workspaces.border": "#1a5fb4",
@@ -416,7 +416,7 @@
   "theme.bar.border.width": "0.15em",
   "bar.launcher.autoDetectIcon": false,
   "theme.bar.buttons.workspaces.enableBorder": false,
-  "menus.clock.weather.key": "da0c025c28144796817152653252602",
+  "menus.clock.weather.key": "85d4c72dc12e4cc7b14143621251203",
   "menus.clock.weather.unit": "imperial",
   "menus.dashboard.stats.enable_gpu": true,
   "menus.dashboard.shortcuts.left.shortcut1.command": "firefox",
@@ -439,9 +439,9 @@
   "theme.bar.border.location": "none",
   "scalingPriority": "both",
   "theme.bar.transparent": true,
-  "theme.bar.opacity": 100,
+  "theme.bar.opacity": 70,
   "theme.bar.buttons.opacity": 100,
-  "theme.bar.buttons.background_opacity": 100,
+  "theme.bar.buttons.background_opacity": 70,
   "theme.bar.buttons.monochrome": false,
   "theme.notification.scaling": 80,
   "wallpaper.pywal": false,
@@ -450,7 +450,7 @@
   "theme.matugen_settings.mode": "dark",
   "theme.matugen_settings.scheme_type": "tonal-spot",
   "bar.layouts": {
-    "2": {
+    "1": {
       "left": [
         "dashboard",
         "windowtitle",
@@ -545,5 +545,7 @@
   "notifications.autoDismiss": true,
   "notifications.displayedTotal": 10,
   "theme.bar.menus.menu.notifications.height": "58em",
-  "theme.font.style": "normal"
+  "theme.font.style": "normal",
+  "theme.bar.buttons.background_hover_opacity": 100,
+  "menus.clock.weather.location": "Chesapeake"
 }
