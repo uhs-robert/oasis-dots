@@ -30,7 +30,7 @@
   "theme.bar.border.width": "0.15em",
   "bar.launcher.autoDetectIcon": false,
   "theme.bar.buttons.workspaces.enableBorder": false,
-  "menus.clock.weather.key": "da0c025c28144796817152653252602",
+  "menus.clock.weather.key": "85d4c72dc12e4cc7b14143621251203",
   "menus.clock.weather.unit": "imperial",
   "menus.dashboard.stats.enable_gpu": true,
   "menus.dashboard.shortcuts.left.shortcut1.command": "firefox",
@@ -65,26 +65,13 @@
   "theme.matugen_settings.scheme_type": "tonal-spot",
   "bar.layouts": {
     "1": {
-      "left": [
-        "windowtitle"
-      ],
-      "middle": [
-        "workspaces"
-      ],
-      "right": [
-        "clock"
-      ]
+      "left": ["windowtitle"],
+      "middle": ["workspaces"],
+      "right": ["clock"]
     },
     "*": {
-      "left": [
-        "dashboard",
-        "windowtitle",
-        "media",
-        "cava"
-      ],
-      "middle": [
-        "workspaces"
-      ],
+      "left": ["dashboard", "windowtitle", "media", "cava"],
+      "middle": ["workspaces"],
       "right": [
         "systray",
         "volume",
@@ -128,3 +115,4 @@
   "menus.dashboard.directories.right.directory1.label": "󰉍 Downloads",
   "menus.dashboard.directories.left.directory3.label": "󱧶 Documents"
 }
+
