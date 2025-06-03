@@ -11,7 +11,7 @@ $fill\
 $c$rust$golang$nodejs$lua$php$java$kotlin$haskell$python\
 $docker_context$conda\
 [](fg:gray bg:none)$time[](fg:gray bg:none)\
-$line_break\
+[ ](fg: none bg: none)$line_break\
 [╰─](fg:lightgray)$character\
 """
 
