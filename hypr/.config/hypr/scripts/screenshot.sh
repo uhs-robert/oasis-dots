@@ -1,45 +1,117 @@
 #!/usr/bin/env bash
 
-# Screenshot utility for Hyprland using Satty and hyprpicker
-# Modes:
-#   r | --region  = select area → open in Satty
-#   s | --screen  = full screen → open in Satty
-#   p | --pixel   = pick color with hyprpicker
+# Screenshot/Recording utility for Hyprland using Satty, Hyprshot, and hyprpicker
 
 set -e
 
-require_input() {
-  local input
-  input="$("$@")" || exit 1
-  [[ -z $input ]] && exit 1
-  echo "$input"
+### CONFIG ###
+MENU="wofi --dmenu --prompt 'Take Screenshot or Record?'"
+RECORDER="wf-recorder"
+SCREENSHOT_DIR="${XDG_PICTURES_DIR:-$HOME/Pictures}/Screenshots"
+RECORDING_DIR="${XDG_VIDEOS_DIR:-$HOME/Videos}/Recordings"
+mkdir -p "$SCREENSHOT_DIR" "$RECORDING_DIR"
+
+NOTIFY=$(pidof mako || pidof dunst || pidof swaync || true)
+timestamp() { date +'%Y-%m-%d_%Hh%Mm%Ss'; }
+
+notify() {
+  if [[ -n "$NOTIFY" ]]; then
+    notify-send "$@"
+  else
+    echo "NOTIFY: $*"
+  fi
 }
 
-timestamp() {
-  date +%Y-%m-%d_%H-%M-%S
+# Lazy geometry helpers
+get_focused() {
+  hyprctl activewindow -j | jq -r '.at,.size | join(" ")' | awk '{printf "%s,%s %sx%s", $1,$2,$3,$4}'
+}
+get_outputs() {
+  hyprctl monitors -j | jq -r '.[] | "\(.x),\(.y) \(.width)x\(.height)"'
+}
+get_windows() {
+  hyprctl clients -j | jq -r '.[] | select(.at and .size) | "\(.at[0]),\(.at[1]) \(.size[0])x\(.size[1])"'
 }
 
-SCREENSHOT_DIR=~/Pictures/Screenshots
-mkdir -p "$SCREENSHOT_DIR"
-OUTPUT_FILE="$SCREENSHOT_DIR/satty-ss-$(timestamp).png"
+handle_screenshot() {
+  local mode="$1"
+  local extra_args=("${@:2}")
+  local filename="$SCREENSHOT_DIR/screenshot-$(timestamp).png"
+  hyprshot -m "$mode" "${extra_args[@]}" --raw | satty -f - -o "$filename"
+  notify "Screenshot Saved" "$filename"
+  wl-copy <"$filename"
+}
 
-case "$1" in
-r | --region)
-  grim -g "$(slurp -b '#000000b0' -c '#00000000')" - | satty --filename - --output-filename "$OUTPUT_FILE"
-  ;;
+handle_recording() {
+  local region="$1"
+  local filename="$RECORDING_DIR/recording-$(timestamp).mp4"
+  $RECORDER -g "$region" -f "$filename"
+  notify "Recording Complete" "$filename"
+  wl-copy <"$filename"
+}
 
-s | --screen)
-  grim -t ppm - | satty --filename - --output-filename "$OUTPUT_FILE"
-  ;;
+# Stop recorder if already running
+if REC_PID=$(pidof "$RECORDER" 2>/dev/null); then
+  kill -SIGINT "$REC_PID"
+  notify "Screen recorder stopped"
+  exit 0
+fi
 
+# Choose action
+CHOICE="$1"
+if [[ -z "$CHOICE" ]]; then
+  CHOICE=$(
+    cat <<EOF | $MENU
+📸 Screenshot Region    (Super + I)
+📸 Screenshot Screen
+📸 Screenshot Window    (Super + Shift + I)
+📸 Screenshot Focused
+🎨 Pick Pixel Color     (Super + P)
+EOF
+  )
+  case "$CHOICE" in
+  "📸 Screenshot Region    (Super + I)") CHOICE="--region" ;;
+  "📸 Screenshot Screen") CHOICE="--screen" ;;
+  "📸 Screenshot Window    (Super + Shift + I)") CHOICE="--window" ;;
+  "📸 Screenshot Focused") CHOICE="--focused" ;;
+  "🎨 Pick Pixel Color     (Super + P)") CHOICE="--pixel" ;;
+  *)
+    notify "Cancelled" "No valid option selected"
+    exit 1
+    ;;
+  esac
+fi
+
+# Main logic
+case "$CHOICE" in
+r | --region) handle_screenshot "region" ;;
+s | --screen) handle_screenshot "output" ;;
+w | --window) handle_screenshot "window" ;;
+f | --focused) handle_screenshot "window" -m active ;;
 p | --pixel)
-  color="$(require_input hyprpicker -a)"
-  wl-copy "$color"
-  notify-send 'Copied to Clipboard' "$color"
+  COLOR="$(hyprpicker -a || exit 1)"
+  wl-copy "$COLOR"
+  notify "Picked Color" "$COLOR"
+  ;;
+
+--record-region)
+  handle_recording "$(slurp)"
+  ;;
+
+--record-window)
+  handle_recording "$(get_windows | slurp -r)"
+  ;;
+
+--record-output)
+  handle_recording "$(get_outputs | slurp -r)"
+  ;;
+
+--record-focused)
+  handle_recording "$(get_focused)"
   ;;
 
 *)
-  echo "Usage: $0 [r|s|p|--region|--screen|--pixel]" >&2
+  notify "Cancelled" "Unknown action"
   exit 1
   ;;
 esac
