@@ -94,21 +94,13 @@ p | --pixel)
   notify "Picked Color" "$COLOR"
   ;;
 
---record-region)
-  handle_recording "$(slurp)"
-  ;;
+--record-region) handle_recording "$(slurp)" ;;
 
---record-window)
-  handle_recording "$(get_windows | slurp -r)"
-  ;;
+--record-window) handle_recording "$(get_windows | slurp -r)" ;;
 
---record-output)
-  handle_recording "$(get_outputs | slurp -r)"
-  ;;
+--record-output) handle_recording "$(get_outputs | slurp -r)" ;;
 
---record-focused)
-  handle_recording "$(get_focused)"
-  ;;
+--record-focused) handle_recording "$(get_focused)" ;;
 
 *)
   notify "Cancelled" "Unknown action"
