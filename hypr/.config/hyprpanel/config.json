@@ -547,5 +547,8 @@
   "theme.bar.menus.menu.notifications.height": "58em",
   "theme.font.style": "normal",
   "theme.bar.buttons.background_hover_opacity": 100,
-  "menus.clock.weather.location": "Chesapeake"
+  "menus.clock.weather.location": "Chesapeake",
+  "bar.customModules.storage.paths": [
+    "/"
+  ]
 }
