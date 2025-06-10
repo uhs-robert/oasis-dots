@@ -2,10 +2,19 @@
 
 # Define workspace → monitor description mapping
 declare -A WORKSPACE_MAP=(
-  [1]="BOE 0x0C8E"                                       # Laptop
+  [1]="BOE 0x0C8E" # Laptop
+  [5]="BOE 0x0C8E" # Laptop
+
   [2]="GIGA-BYTE TECHNOLOGY CO. LTD. G27QC A 0x00000D48" # Center
-  [3]="HP Inc. HP Z22n G2 6CM8411J1Z"                    # Left
-  [4]="HP Inc. HP Z22n G2 6CM8411J22"                    # Vertical right
+  [6]="GIGA-BYTE TECHNOLOGY CO. LTD. G27QC A 0x00000D48" # Center
+
+  [3]="HP Inc. HP Z22n G2 6CM8411J1Z" # Left
+  [7]="HP Inc. HP Z22n G2 6CM8411J1Z" # Left
+
+  [4]="HP Inc. HP Z22n G2 6CM8411J22" # Vertical right
+  [8]="HP Inc. HP Z22n G2 6CM8411J22" # Vertical right
+
+  [9]="GIGA-BYTE TECHNOLOGY CO. LTD. G27QC A 0x00000D48" # Extra one on center maybe
 )
 
 assign_workspaces() {
