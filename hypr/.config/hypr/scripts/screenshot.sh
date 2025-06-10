@@ -5,7 +5,7 @@
 set -e
 
 ### CONFIG ###
-MENU="wofi --dmenu --prompt 'Take Screenshot or Record?'"
+MENU=(wofi --dmenu --columns 1 --width 50% --prompt "Take Screenshot or Record?")
 RECORDER="wf-recorder"
 SCREENSHOT_DIR="${XDG_PICTURES_DIR:-$HOME/Pictures}/Screenshots"
 RECORDING_DIR="${XDG_VIDEOS_DIR:-$HOME/Videos}/Recordings"
@@ -61,8 +61,9 @@ fi
 CHOICE="$1"
 if [[ -z "$CHOICE" ]]; then
   CHOICE=$(
-    cat <<EOF | $MENU
+    cat <<EOF | "${MENU[@]}"
 📸 Screenshot Region    (Super + I)
+📸 Screenshot Frozen Region
 📸 Screenshot Screen
 📸 Screenshot Window    (Super + Shift + I)
 📸 Screenshot Focused
@@ -71,6 +72,7 @@ EOF
   )
   case "$CHOICE" in
   "📸 Screenshot Region    (Super + I)") CHOICE="--region" ;;
+  "📸 Screenshot Frozen Region") CHOICE="--freeze" ;;
   "📸 Screenshot Screen") CHOICE="--screen" ;;
   "📸 Screenshot Window    (Super + Shift + I)") CHOICE="--window" ;;
   "📸 Screenshot Focused") CHOICE="--focused" ;;
@@ -85,6 +87,7 @@ fi
 # Main logic
 case "$CHOICE" in
 r | --region) handle_screenshot "region" ;;
+z | --freeze) handle_screenshot "region" "--freeze" ;;
 s | --screen) handle_screenshot "output" ;;
 w | --window) handle_screenshot "window" ;;
 f | --focused) handle_screenshot "window" -m active ;;
