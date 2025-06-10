@@ -36,7 +36,9 @@ get_windows() {
 handle_screenshot() {
   local mode="$1"
   local extra_args=("${@:2}")
-  local filename="$SCREENSHOT_DIR/screenshot-$(timestamp).png"
+  local ts filename
+  ts="$(timestamp)"
+  filename="$SCREENSHOT_DIR/screenshot-$ts.png"
   hyprshot -m "$mode" "${extra_args[@]}" --raw | satty -f - -o "$filename"
   notify "Screenshot Saved" "$filename"
   wl-copy <"$filename"
@@ -44,7 +46,9 @@ handle_screenshot() {
 
 handle_recording() {
   local region="$1"
-  local filename="$RECORDING_DIR/recording-$(timestamp).mp4"
+  local ts filename
+  ts="$(timestamp)"
+  filename="$RECORDING_DIR/recording-$ts.mp4"
   $RECORDER -g "$region" -f "$filename"
   notify "Recording Complete" "$filename"
   wl-copy <"$filename"
