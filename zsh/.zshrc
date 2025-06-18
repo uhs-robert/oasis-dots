@@ -111,6 +111,7 @@ zstyle ':completion:*' list-colors ''
 
 # Add custom script directory to PATH
 export PATH="$PATH:/home/USER/Documents/github-uphill/bash-scripts/scripts/"
+export PATH="$HOME/.config/hypr/scripts:$PATH"
 export PATH="$HOME/.tmuxifier/bin:$PATH"
 export PATH="$(npm root -g)/.bin:$PATH"
 
