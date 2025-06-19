@@ -1,15 +1,33 @@
 #!/bin/bash
 
 # Configuration
-INTERVAL_MINUTES=15
-INTERVAL=$((INTERVAL_MINUTES * 60))
 WALLPAPER_DIR="$HOME/Pictures/Wallpapers/Pixel Art"
+DEFAULT_INTERVAL_MINUTES=15
+if [[ "$1" =~ ^[0-9]+$ ]]; then
+  INTERVAL_MINUTES="$1"
+else
+  INTERVAL_MINUTES="$DEFAULT_INTERVAL_MINUTES"
+fi
+INTERVAL=$((INTERVAL_MINUTES * 60))
+
+# Ensure only one instance is running
+terminate_other_instances() {
+  SCRIPT_PID=$(pgrep -fx "$0")
+
+  if [[ $(pgrep -fc "$0") -gt 1 ]]; then
+    echo "Another instance is already running (PID: $SCRIPT_PID), killing it..."
+    pkill -fx "$0"
+    sleep 1
+  fi
+}
 
 # Ensure Hyprpaper is running
-if ! pgrep -x "hyprpaper" >/dev/null; then
-  hyprpaper &
-  sleep 1 # Allow time for initialization
-fi
+launch_hyprpaper() {
+  if ! pgrep -x "hyprpaper" >/dev/null; then
+    hyprpaper &
+    sleep 1
+  fi
+}
 
 # Function to get a new random wallpaper
 get_random_wallpaper() {
@@ -18,6 +36,10 @@ get_random_wallpaper() {
 
 # Function to apply wallpapers
 apply_wallpapers() {
+  if ! find "$WALLPAPER_DIR" -type f | grep -q .; then
+    echo "No wallpapers found in $WALLPAPER_DIR. Exiting."
+    exit 1
+  fi
   mapfile -t MONITORS < <(hyprctl monitors | awk '/Monitor/ {print $2}')
 
   for MONITOR in "${MONITORS[@]}"; do
@@ -37,11 +59,18 @@ apply_wallpapers() {
   done
 }
 
-# Apply wallpapers initially
-apply_wallpapers
-
 # Rotate wallpapers every X minutes
-while true; do
-  sleep "$INTERVAL"
-  apply_wallpapers
-done
+rotate_wallpapers() {
+  while true; do
+    apply_wallpapers || echo "Wallpaper application failed, retrying..."
+    sleep "$INTERVAL"
+  done
+}
+
+main() {
+  terminate_other_instances
+  launch_hyprpaper
+  rotate_wallpapers
+}
+
+main
