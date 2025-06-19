@@ -1,21 +1,55 @@
 #!/bin/bash
 
-# Configuration
-WALLPAPER_DIR="$HOME/Pictures/Wallpapers/Pixel Art"
+# Defaults
+DEFAULT_WALLPAPER_DIR="$HOME/Pictures/Wallpapers/Pixel Art"
 DEFAULT_INTERVAL_MINUTES=15
-if [[ "$1" =~ ^[0-9]+$ ]]; then
-  INTERVAL_MINUTES="$1"
-else
-  INTERVAL_MINUTES="$DEFAULT_INTERVAL_MINUTES"
-fi
-INTERVAL=$((INTERVAL_MINUTES * 60))
+SCRIPT_NAME=$(basename "$0")
+
+# Parse named arguments
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+  --interval | -i)
+    INTERVAL_MINUTES="$2"
+    shift 2
+    ;;
+  --dir | -d)
+    WALLPAPER_DIR="$2"
+    shift 2
+    ;;
+  --once | -o)
+    RUN_ONCE=1
+    shift
+    ;;
+  --verbose | -v)
+    VERBOSE=1
+    shift
+    ;;
+  --help | -h)
+    echo "Usage: $SCRIPT_NAME [--interval|-i MINUTES] [--dir|-d DIR] [--verbose|-v] [--once|-o]"
+    exit 0
+    ;;
+  *)
+    echo "Unknown argument: $1"
+    exit 1
+    ;;
+  esac
+done
+
+# Configuration
+INTERVAL_MINUTES="${INTERVAL_MINUTES:-$DEFAULT_INTERVAL_MINUTES}"
+WALLPAPER_DIR="${WALLPAPER_DIR:-$DEFAULT_WALLPAPER_DIR}"
+INTERVAL_SECONDS=$((INTERVAL_MINUTES * 60))
+
+# Log function using system logger
+log() {
+  [[ -n "$VERBOSE" ]] && logger -t "$SCRIPT_NAME" "$1"
+}
 
 # Ensure only one instance is running
 terminate_other_instances() {
   SCRIPT_PID=$(pgrep -fx "$0")
-
   if [[ $(pgrep -fc "$0") -gt 1 ]]; then
-    echo "Another instance is already running (PID: $SCRIPT_PID), killing it..."
+    log "Another instance is already running (PID: $SCRIPT_PID), killing it..."
     pkill -fx "$0"
     sleep 1
   fi
@@ -24,6 +58,7 @@ terminate_other_instances() {
 # Ensure Hyprpaper is running
 launch_hyprpaper() {
   if ! pgrep -x "hyprpaper" >/dev/null; then
+    log "Launching hyprpaper..."
     hyprpaper &
     sleep 1
   fi
@@ -37,7 +72,7 @@ get_random_wallpaper() {
 # Function to apply wallpapers
 apply_wallpapers() {
   if ! find "$WALLPAPER_DIR" -type f | grep -q .; then
-    echo "No wallpapers found in $WALLPAPER_DIR. Exiting."
+    log "No wallpapers found in $WALLPAPER_DIR. Exiting."
     exit 1
   fi
   mapfile -t MONITORS < <(hyprctl monitors | awk '/Monitor/ {print $2}')
@@ -46,15 +81,15 @@ apply_wallpapers() {
     WALLPAPER=$(get_random_wallpaper)
 
     if [[ -f "$WALLPAPER" ]]; then
-      echo "Preloading wallpaper: $WALLPAPER"
+      log "Preloading wallpaper: $WALLPAPER"
       hyprctl hyprpaper preload "$WALLPAPER"
-      sleep 0.15 # Allow preload to complete
+      sleep 0.15
 
-      echo "Setting wallpaper on $MONITOR: $WALLPAPER"
+      log "Setting wallpaper on $MONITOR: $WALLPAPER"
       hyprctl hyprpaper wallpaper "$MONITOR,$WALLPAPER"
       hyprctl hyprpaper unload unused
     else
-      echo "Error: No valid wallpapers found in $WALLPAPER_DIR!"
+      log "Error: No valid wallpapers found in $WALLPAPER_DIR!"
     fi
   done
 }
@@ -62,14 +97,19 @@ apply_wallpapers() {
 # Rotate wallpapers every X minutes
 rotate_wallpapers() {
   while true; do
-    apply_wallpapers || echo "Wallpaper application failed, retrying..."
-    sleep "$INTERVAL"
+    apply_wallpapers || log "Wallpaper application failed, retrying..."
+    sleep "$INTERVAL_SECONDS"
   done
 }
 
 main() {
   terminate_other_instances
   launch_hyprpaper
+  if [[ -n "$RUN_ONCE" ]]; then
+    log "Running only once..."
+    apply_wallpapers
+    exit 0
+  fi
   rotate_wallpapers
 }
 
