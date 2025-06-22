@@ -39,7 +39,7 @@
   "menus.dashboard.shortcuts.left.shortcut3.tooltip": "Slack",
   "menus.dashboard.shortcuts.left.shortcut3.icon": "󰒱",
   "menus.dashboard.shortcuts.left.shortcut1.icon": "󰈹",
-  "menus.dashboard.shortcuts.left.shortcut2.command": "flatpak run org.mozilla.Thunderbird",
+  "menus.dashboard.shortcuts.left.shortcut2.command": "flatpak run eu.betterbird.Betterbird",
   "bar.customModules.cpuTemp.leftClick": "",
   "menus.power.lowBatteryNotification": true,
   "menus.power.lowBatteryThreshold": 30,
@@ -115,4 +115,3 @@
   "menus.dashboard.directories.right.directory1.label": "󰉍 Downloads",
   "menus.dashboard.directories.left.directory3.label": "󱧶 Documents"
 }
-
