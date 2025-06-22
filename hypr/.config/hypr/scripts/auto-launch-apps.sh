@@ -27,14 +27,14 @@ trap clean_up EXIT
 declare -A SETUPS
 SETUPS["🌐 Browsing"]="2:firefox|3:firefox|6:firefox|1:kitty -e yazi|4:kitty -e tmuxifier load-session config"
 SETUPS["🧱 Client"]="1:flatpak run eu.betterbird.Betterbird|2:firefox|3:firefox|6:firefox|4:kitty -e tmuxifier load-session client-dev|5:slack"
-SETUPS["🛠 Config"]="1:flatpak run eu.betterbird.Betterbird|2:firefox|3:firefox|4:kitty -e tmuxifier load-session config"
+SETUPS["🛠 Config"]="1:flatpak run eu.betterbird.Betterbird|2:firefox|3:firefox|6:firefox|4:kitty -e tmuxifier load-session config"
 SETUPS["🗂 Files"]="3:dolphin|4:kitty -e yazi"
 SETUPS["🧩 Game Mods"]="2:steam|3:kitty -d ~/Downloads/ yazi|4:kitty -d ~/.steam/steam/steamapps/ yazi"
 SETUPS["🎮 Game"]="2:steam"
 SETUPS["📅 Meeting"]="5:firefox https://calendar.google.com/|7:firefox"
 SETUPS["📊 System Monitor"]="3:kitty -e journalctl -f|4:kitty -e btop"
 SETUPS["🛡️ DNF Update"]="2:kitty -e sysup|3:kitty -e journalctl -f"
-SETUPS["💼 Work"]="1:flatpak run eu.betterbird.Betterbird|2:firefox|3:firefox|4:kitty -e tmuxifier load-session uphill|5:slack"
+SETUPS["💼 Work"]="1:flatpak run eu.betterbird.Betterbird|2:firefox|3:firefox|6:firefox|4:kitty -e tmuxifier load-session uphill|5:slack"
 
 # Log to journal and echo
 log() {
