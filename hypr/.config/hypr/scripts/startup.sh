@@ -8,6 +8,8 @@ IS_DISPLAY_READY=false
 IS_MONITOR_READY=false
 IS_FLATPAK_READY=false
 
+# Directories
+
 # Log to journal and echo
 log() {
   echo "$1"
@@ -92,7 +94,8 @@ monitor_dependent() {
     }
 
     after() {
-      # log "[Monitors] After hook..."
+      log "[Monitors] After hook..."
+      ~/.config/hypr/theme/hypr-wallpaper.sh &
       :
     }
 
