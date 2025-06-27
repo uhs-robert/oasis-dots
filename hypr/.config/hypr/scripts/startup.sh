@@ -95,7 +95,7 @@ monitor_dependent() {
 
     after() {
       log "[Monitors] After hook..."
-      ~/.config/hypr/theme/hypr-wallpaper.sh &
+      ~/.config/hypr/scripts/hypr-wallpaper.sh &
       :
     }
 
