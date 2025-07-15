@@ -54,6 +54,24 @@ handle_recording() {
   wl-copy <"$filename"
 }
 
+handle_text_ocr() {
+  local tmpfile ocr_text
+  tmpfile=$(mktemp /tmp/clipocr-XXXXXX.png)
+
+  # Hyprshot region select, output to tmpfile via tee
+  hyprshot -m region --raw | tee "$tmpfile" >/dev/null
+
+  # OCR
+  if ocr_text=$(tesseract "$tmpfile" - 2>/dev/null); then
+    echo "$ocr_text" | wl-copy
+    notify-send "OCR Complete" "Text copied to clipboard"
+  else
+    notify-send "OCR Failed" "Tesseract failed to process image"
+  fi
+
+  rm -f "$tmpfile"
+}
+
 # Stop recorder if already running
 if REC_PID=$(pidof "$RECORDER" 2>/dev/null); then
   kill -SIGINT "$REC_PID"
@@ -72,6 +90,7 @@ if [[ -z "$CHOICE" ]]; then
 📸 Screenshot Window    (Super + Shift + I)
 📸 Screenshot Focused
 🎨 Pick Pixel Color     (Super + P)
+📄 OCR Text from Region (Super + T)
 EOF
   )
   case "$CHOICE" in
@@ -81,6 +100,7 @@ EOF
   "📸 Screenshot Window    (Super + Shift + I)") CHOICE="--window" ;;
   "📸 Screenshot Focused") CHOICE="--focused" ;;
   "🎨 Pick Pixel Color     (Super + P)") CHOICE="--pixel" ;;
+  "📄 OCR Text from Region (Super + T)") CHOICE="--text" ;;
   *)
     notify "Cancelled" "No valid option selected"
     exit 1
@@ -95,6 +115,7 @@ z | --freeze) handle_screenshot "region" "--freeze" ;;
 s | --screen) handle_screenshot "output" ;;
 w | --window) handle_screenshot "window" ;;
 f | --focused) handle_screenshot "window" -m active ;;
+t | --text) handle_text_ocr ;;
 p | --pixel)
   COLOR="$(hyprpicker -a || exit 1)"
   wl-copy "$COLOR"
