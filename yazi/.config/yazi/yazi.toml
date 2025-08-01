@@ -1,0 +1,34 @@
+[opener]
+edit = [{ run = '$EDITOR "$@"', block = true, desc = "NeoVim", for = "unix" }]
+open = [
+  { run = 'xdg-open "$@"', desc = "Open" },
+  { run = '$EDITOR "$@"', block = true, desc = "NeoVim", for = "unix" },
+]
+
+[plugin]
+prepend_preloaders = [
+  # Do not preload files in mounted locations:
+  # Environment variable won't work here.
+  # Using absolute path instead.
+  { name = "/run/user/1000/gvfs/**/*", run = "noop" },
+
+  # For mounted location for hard disk/drive
+  { name = "/run/media/USER/**/*", run = "noop" },
+  #... the rest of preloaders
+]
+prepend_previewers = [
+  # Allow to preview folder.
+  { name = "*/", run = "folder", sync = true },
+  # Do not previewing files in mounted locations (uncomment to except text file):
+  # { mime = "{text/*,application/x-subrip}", run = "code" },
+  # Using absolute path.
+  { name = "/run/user/1000/gvfs/**/*", run = "noop" },
+
+  # For mounted hard disk.
+  { name = "/run/media/USER/**/*", run = "noop" },
+  #... the rest of previewers
+]
+prepend_fetchers = [
+  { id = "git", name = "*", run = "git" },
+  { id = "git", name = "*/", run = "git" },
+]

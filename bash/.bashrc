@@ -39,3 +39,7 @@ if [[ $- == *i* ]]; then
   fastfetch
 fi
 . "/home/USER/.deno/env"
+# Added by LM Studio CLI (lms)
+export PATH="$PATH:/home/USER/.lmstudio/bin"
+# End of LM Studio CLI section
+

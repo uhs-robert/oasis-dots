@@ -1,0 +1,72 @@
+[mgr]
+prepend_keymap = [
+  # Utils
+  { on = "?", run = "help", desc = "Open help" },
+  { on = "!", run = 'shell "$SHELL" --block', desc = "Open shell here" },
+  { on = [
+    "c",
+    "m",
+  ], run = "plugin chmod", desc = "Chmod on selected files" },
+
+  # Go to...
+  { on = [
+    "g",
+    "r",
+  ], run = 'shell -- ya emit cd "$(git rev-parse --show-toplevel)"', desc = "Go to git root" },
+  { on = "T", run = "plugin toggle-pane max-preview", desc = "Maximize or restore the preview pane" },
+  { on = [
+    "g",
+    "l",
+  ], run = "plugin lazygit", desc = "run lazygit" },
+  { on = [
+    "g",
+    "t",
+  ], run = "cd /tmp", desc = "Go to /tmp" },
+  { on = [
+    "g",
+    "u",
+  ], run = "cd ~/Documents/github-uphill/", desc = "Go to /github-uphill" },
+  { on = [
+    "g",
+    "x",
+  ], run = "cd ~/dotfiles/", desc = "Go to dotfiles" },
+  { on = [
+    "g",
+    "y",
+  ], run = "cd ~/.config/yazi/", desc = "Go to yazi config" },
+  { on = [
+    "g",
+    "p",
+  ], run = "cd ~/Pictures/", desc = "Go to Pictures" },
+  { on = [
+    "g",
+    "v",
+  ], run = "cd ~/Videos/", desc = "Go to Videos" },
+
+  # SSHFS Plugin
+  { on = [
+    "M",
+    "a",
+  ], run = "plugin sshfs -- add", desc = "Add SSH alias" },
+  { on = [
+    "M",
+    "r",
+  ], run = "plugin sshfs -- remove", desc = "Remove SSH alias" },
+  { on = [
+    "M",
+    "m",
+  ], run = "plugin sshfs -- mount --jump", desc = "Mount & jump" },
+  { on = [
+    "M",
+    "u",
+  ], run = "plugin sshfs -- unmount", desc = "Unmount SSHFS" },
+  { on = [
+    "M",
+    "c",
+  ], run = "cd ~/.ssh/", desc = "Go to ssh config" },
+  { on = [
+    "g",
+    "m",
+  ], run = "plugin sshfs -- jump", desc = "Jump to mount" },
+
+]

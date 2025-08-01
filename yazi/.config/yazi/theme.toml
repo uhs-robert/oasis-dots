@@ -1,0 +1,5 @@
+[flavor]
+dark = "catppuccin-frappe"
+
+[mgr]
+border_style = { fg = "green" }
