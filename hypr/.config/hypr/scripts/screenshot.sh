@@ -22,6 +22,12 @@ notify() {
   fi
 }
 
+# Stop recorder if already running
+if REC_PID=$(pidof "$RECORDER" 2>/dev/null); then
+  kill -SIGINT "$REC_PID"
+  exit 0
+fi
+
 # Lazy geometry helpers
 get_focused() {
   hyprctl activewindow -j | jq -r '.at,.size | join(" ")' | awk '{printf "%s,%s %sx%s", $1,$2,$3,$4}'
@@ -40,7 +46,6 @@ handle_screenshot() {
   ts="$(timestamp)"
   filename="$SCREENSHOT_DIR/screenshot-$ts.png"
   hyprshot -m "$mode" "${extra_args[@]}" --raw | satty -f - -o "$filename"
-  notify "Screenshot Saved" "$filename"
   wl-copy <"$filename"
 }
 
@@ -49,8 +54,9 @@ handle_recording() {
   local ts filename
   ts="$(timestamp)"
   filename="$RECORDING_DIR/recording-$ts.mp4"
+  notify-send "Recording begin" "Open the recorder again to stop."
   $RECORDER -g "$region" -f "$filename"
-  notify "Recording Complete" "$filename"
+  notify-send "Recording Saved!" "$filename"
   wl-copy <"$filename"
 }
 
@@ -75,7 +81,7 @@ handle_text_ocr() {
 # Stop recorder if already running
 if REC_PID=$(pidof "$RECORDER" 2>/dev/null); then
   kill -SIGINT "$REC_PID"
-  notify "Screen recorder stopped"
+  notify-send "Screen recorder stopped"
   exit 0
 fi
 
@@ -84,23 +90,31 @@ CHOICE="$1"
 if [[ -z "$CHOICE" ]]; then
   CHOICE=$(
     cat <<EOF | "${MENU[@]}"
-📸 Screenshot Region    (Super + I)
+📸 Screenshot Region     (Super + I)
 📸 Screenshot Frozen Region
 📸 Screenshot Screen
-📸 Screenshot Window    (Super + Shift + I)
+📸 Screenshot Window     (Super + Shift + I)
 📸 Screenshot Focused
-🎨 Pick Pixel Color     (Super + P)
-📄 OCR Text from Region (Super + T)
+📹 Record Region         (Super + Alt + I)
+📹 Record Window
+📹 Record Screen
+📹 Record Focused
+🎨 Pick Pixel Color      (Super + P)
+📄 OCR Text from Region  (Super + T)
 EOF
   )
   case "$CHOICE" in
-  "📸 Screenshot Region    (Super + I)") CHOICE="--region" ;;
+  "📸 Screenshot Region     (Super + I)") CHOICE="--region" ;;
   "📸 Screenshot Frozen Region") CHOICE="--freeze" ;;
   "📸 Screenshot Screen") CHOICE="--screen" ;;
-  "📸 Screenshot Window    (Super + Shift + I)") CHOICE="--window" ;;
+  "📸 Screenshot Window     (Super + Shift + I)") CHOICE="--window" ;;
   "📸 Screenshot Focused") CHOICE="--focused" ;;
-  "🎨 Pick Pixel Color     (Super + P)") CHOICE="--pixel" ;;
-  "📄 OCR Text from Region (Super + T)") CHOICE="--text" ;;
+  "📹 Record Region         (Super + Alt + I)") CHOICE="--record-region" ;;
+  "📹 Record Window") CHOICE="--record-window" ;;
+  "📹 Record Screen") CHOICE="--record-screen" ;;
+  "📹 Record Focused") CHOICE="--record-focused" ;;
+  "🎨 Pick Pixel Color      (Super + P)") CHOICE="--pixel" ;;
+  "📄 OCR Text from Region  (Super + T)") CHOICE="--text" ;;
   *)
     notify "Cancelled" "No valid option selected"
     exit 1
@@ -119,19 +133,16 @@ t | --text) handle_text_ocr ;;
 p | --pixel)
   COLOR="$(hyprpicker -a || exit 1)"
   wl-copy "$COLOR"
-  notify "Picked Color" "$COLOR"
+  notify-send "Picked Color" "$COLOR"
   ;;
 
 --record-region) handle_recording "$(slurp)" ;;
-
 --record-window) handle_recording "$(get_windows | slurp -r)" ;;
-
---record-output) handle_recording "$(get_outputs | slurp -r)" ;;
-
+--record-screen) handle_recording "$(get_outputs | slurp -r)" ;;
 --record-focused) handle_recording "$(get_focused)" ;;
 
 *)
-  notify "Cancelled" "Unknown action"
+  notify-send "Cancelled" "Unknown action"
   exit 1
   ;;
 esac
