@@ -30,7 +30,7 @@ local SORT_FOLDERS = {
 	-- By Name Case sensitive
 	dotfiles = SORT_OPTIONS.by_name_case_sensitive,
 	[".config"] = SORT_OPTIONS.by_name_case_sensitive,
-	share = SORT_OPTIONS.by_name_case_sensitive,
+	[".local/share"] = SORT_OPTIONS.by_name_case_sensitive,
 	[".scripts"] = SORT_OPTIONS.by_name_case_sensitive,
 	-- Media
 	Videos = SORT_OPTIONS.natural,
@@ -38,6 +38,10 @@ local SORT_FOLDERS = {
 	Wallpapers = SORT_OPTIONS.natural,
 	Fonts = SORT_OPTIONS.natural,
 	Music = SORT_OPTIONS.natural,
+	-- Docs
+	Documents = SORT_OPTIONS.by_mtime,
+	Notes = SORT_OPTIONS.by_mtime,
+	Zettlekasten = SORT_OPTIONS.by_mtime,
 }
 
 -- Apply sorting rules based on the current directory
