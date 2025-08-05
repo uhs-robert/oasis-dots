@@ -1,0 +1,5 @@
+^plugin/packer_compiled.lua$
+^lua/lazy-lock.json$
+^swap/
+^undo/
+^view/

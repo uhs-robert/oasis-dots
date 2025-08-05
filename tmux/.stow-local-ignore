@@ -1,0 +1,5 @@
+^.tmux.conf.local$
+^.*\.bak$
+^.*~$
+^layouts/local/
+^lib/local/

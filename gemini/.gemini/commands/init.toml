@@ -1,0 +1,5 @@
+# In: ~/.gemini/commands/init.toml
+
+description = "Analyze the current project directory and create a GEMINI.md file."
+
+prompt = "Create a GEMINI.md file for this project."

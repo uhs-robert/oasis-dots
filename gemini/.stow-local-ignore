@@ -1,0 +1,7 @@
+^.*\.log$
+^.*\.bak$
+^.*~$
+^oauth_creds$
+^google_accounts$
+^installation_id$
+^tmp/
