@@ -1,0 +1,91 @@
+# private keys or credentials
+*.pem
+*.key
+*.crt
+*.p12
+*.asc
+*.gpg
+*.kdbx
+*.ovpn
+*.pfx
+*.enc
+
+# SSH keys
+id_rsa
+id_rsa.*
+id_ed25519
+id_ed25519.*
+
+# GPG
+secring.*
+private-keys-v1.d/
+
+# Auth tokens / secrets / passwords
+*.env
+.env.*
+*.secret
+*.secrets
+*.token
+*.bak
+*credentials*
+*.auth
+*.vault
+*.private
+
+# Editor/IDE backups and metadata
+*~
+*.swp
+*.swo
+*.swn
+*.tmp
+*.bak
+*.orig
+*.save
+
+# VSCode & JetBrains junk
+.vscode/
+.idea/
+*.code-workspace
+
+# OS/system cache
+.DS_Store
+Thumbs.db
+
+# Git & submodule artifacts
+.git/
+.gitmodules
+
+# Logs
+*.log
+*tmp
+
+*/.oh-my-zsh
+
+# Node/npm/python/misc runtime junk
+node_modules/
+__pycache__/
+*.pyc
+*.egg-info/
+*.lock
+
+# Security: prevent hidden files in .ssh, .gnupg etc
+.ssh/*
+.gnupg/
+.aws/
+.gcloud/
+.netrc
+.bash_history
+.zsh_history
+
+# prevent dotfile symlink targets
+/etc/*
+/var/*
+/home/*
+/tmp/*
+
+# ai junk
+*/.claude/projects/*
+*/.claude/todos/*
+*/.claude/shell-snapshots/*
+*/.claude/statsig/*
+*/.gemini/
