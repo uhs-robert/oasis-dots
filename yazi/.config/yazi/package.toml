@@ -35,18 +35,18 @@ hash = "6a6d24880ce7666048fb81ad758c48d3"
 
 [[plugin.deps]]
 use = "boydaihungst/gvfs"
-rev = "a45a705"
-hash = "a82224b47d44536fc549bddef32448ec"
+rev = "baf6790"
+hash = "192e425e1c86bdd5792912a2208fde2d"
 
 [[plugin.deps]]
 use = "uhs-robert/sshfs"
-rev = "3f821e1"
-hash = "67d646cc89b4576393a11779e00822af"
+rev = "614016a"
+hash = "83facc3a0e617cee070a0ec549995c6a"
 
 [[flavor.deps]]
 use = "yazi-rs/flavors:catppuccin-frappe"
-rev = "d3fd3a5"
-hash = "d659c6fde5148fb5c066518d7fdecddc"
+rev = "9cd2ac4"
+hash = "c769a6c541ae74b33a041ae1f00dcb40"
 
 [[flavor.deps]]
 use = "tkapias/moonfly"
@@ -55,8 +55,8 @@ hash = "f1c75db953010661073c665c237c5722"
 
 [[flavor.deps]]
 use = "yazi-rs/flavors:dracula"
-rev = "d3fd3a5"
-hash = "7b9ff01a0070cc9176e0c683329aeb26"
+rev = "9cd2ac4"
+hash = "c0bfefbff165007a76c0933ed0432e3f"
 
 [[flavor.deps]]
 use = "BennyOe/tokyo-night"

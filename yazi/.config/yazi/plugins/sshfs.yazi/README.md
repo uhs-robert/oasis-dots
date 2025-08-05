@@ -34,15 +34,13 @@ M a  → Add a new custom SSH host
 M r  → Remove a custom SSH host
 ```
 
-
-https://github.com/user-attachments/assets/949c4814-26c0-4ffd-bed5-71581522ed3e
-
+<https://github.com/user-attachments/assets/b7ef109a-0941-4879-b15a-a343262f0967>
 
 ## Why SSHFS?
 
 - **Works anywhere you have SSH access.** No VPN, NFS or Samba needed – only port 22.
 - **Treat remote files like local ones.** Run `vim`, `nvim`, `sed`, preview images / videos directly, etc.
-- **User‑space, unprivileged.** No root required; mounts live under `~/.cache/sshfs`.
+- **User‑space, unprivileged.** No root required; mounts live under your chosen mount directory or the default (`~/mnt`).
 - **Bandwidth‑friendly.** SSH compression and reconnect options are enabled by default.
 - **Quick Loading and Operations.** Load / edit files quickly without any lag and use all the tools from your local machine.
 
@@ -50,10 +48,12 @@ Perfect for tweaking configs, deploying sites, inspecting logs, or just grabbing
 
 ## What it does under the hood
 
-This plugin serves as a wrapper for the `sshfs` command, integrating it seamlessly with Yazi. It automatically reads hosts from your `~/.ssh/config` file. Additionally, it maintains a separate list of custom hosts in `~/.config/yazi/plugins/sshfs.yazi/sshfs.list`. The core `sshfs` command used is:
+This plugin serves as a wrapper for the `sshfs` command, integrating it seamlessly with Yazi. It automatically reads hosts from your `~/.ssh/config` file. Additionally, it maintains a separate list of custom hosts in `~/.config/yazi/sshfs.list`.
+
+The core default `sshfs` command used is as follows (you may tweak these options and the mount directory with your setup settings):
 
 ```sh
-sshfs user@host: ~/.cache/sshfs/alias -o reconnect,compression=yes,ServerAliveInterval=15,ServerAliveCountMax=3
+sshfs user@host: ~/mnt/alias -o reconnect,compression=yes,ServerAliveInterval=15,ServerAliveCountMax=3
 ```
 
 ## Features
@@ -61,7 +61,7 @@ sshfs user@host: ~/.cache/sshfs/alias -o reconnect,compression=yes,ServerAliveIn
 - **One‑key mounting** – remembers your SSH hosts and reads from your `ssh_config`.
 - **Jump/Return workflow** – quickly copy files between local & remote.
 - Uses `sshfs` directly.
-- Mount‑points live under `~/.cache/sshfs`, keeping them isolated from your regular file hierarchy.
+- Mount‑points live under your chosen mount directory (default: `~/mnt`), keeping them isolated from your regular file hierarchy.
 
 ## Requirements
 
@@ -100,7 +100,7 @@ prepend_keymap = [
 ]
 ```
 
-Not required, but I would highly encourage adding this one too. This plugin pulls from your `ssh_config` so being able to quickly edit it is quite handy.
+Not required, but I would highly encourage adding this one too. This plugin pulls from your `ssh_config`, so being able to quickly edit it is quite handy.
 
 ```toml
 [mgr]
@@ -112,11 +112,50 @@ prepend_keymap = [
 ]
 ```
 
+## Configuration
+
+To configure the plugin, you can pass a table to the `setup()` function in your `init.lua`.
+
+To run with default settings, use this:
+
+```lua
+require("sshfs"):setup()
+```
+
+Otherwise, you may configure your settings as follows (default settings displayed):
+
+```lua
+require("sshfs"):setup({
+  -- Mount directory
+  mount_dir = "~/mnt"
+
+  -- Enable or disable compression.
+  compression = true,
+
+  -- Interval to send keep-alive messages to the server.
+  server_alive_interval = 15,
+
+  -- Number of keep-alive messages to send before disconnecting.
+  server_alive_count_max = 3,
+
+  -- Enable or disable directory caching.
+  dir_cache = false,
+
+  -- Directory cache timeout in seconds.
+  -- Only applies if dir_cache is enabled.
+  dcache_timeout = 300,
+
+  -- Maximum size of the directory cache.
+  -- Only applies if dir_cache is enabled.
+  dcache_max_size = 10000,
+})
+```
+
 ## Usage
 
-- **Mount (`M m``):** Choose a host and select a remote directory (`~` or `/`). This works for hosts from your`~/.ssh/config` and any custom hosts you've added.
-- **Add host (`M a`):** Enter a custom host (`user@host`) to save it for future mounts.
-- **Remove host (`M r`):** Select and remove any added custom hosts.
+- **Mount (`M m`):** Choose a host and select a remote directory (`~` or `/`). This works for hosts from your`~/.ssh/config` and any custom hosts you've added.
+- **Add host (`M a`):** Enter a custom host (`user@host`) for Yazi-only use (useful for quick testing or temp setups). For persistent, system-wide access, updating your `.ssh/config` is recommended.
+- **Remove host (`M r`):** Select and remove any Yazi-only hosts that you've added.
 - **Jump to mount (`g m`):** Jump to any active mount from another tab or location.
 - **Unmount (`M u`):** Choose an active mount to unmount it.
 
@@ -124,8 +163,3 @@ prepend_keymap = [
 
 - If key authentication fails, the plugin will prompt for a password up to 3 times before giving up.
 - SSH keys vastly speed up repeated mounts (no password prompt), leverage your `ssh_config` rather than manually adding hosts to make this as easy as possible.
-- You can edit the mount flags in `main.lua` to enable caching:
-
-  ```lua
-  sshfs ... -o cache=yes,cache_timeout=300,compression=no ...
-  ```

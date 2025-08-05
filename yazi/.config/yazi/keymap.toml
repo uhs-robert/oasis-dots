@@ -42,6 +42,10 @@ prepend_keymap = [
     "g",
     "v",
   ], run = "cd ~/Videos/", desc = "Go to Videos" },
+  { on = [
+    "g",
+    "n",
+  ], run = "cd ~/Documents/Notes/", desc = "Go to Notes" },
 
   # SSHFS Plugin
   { on = [

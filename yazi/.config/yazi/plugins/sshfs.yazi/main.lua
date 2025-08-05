@@ -84,19 +84,25 @@ ya = ya or {}
 ---@field message string
 
 --=========== Plugin Settings =================================================
-local isDebugEnabled = true
+local isDebugEnabled = false
 local M = {}
 local PLUGIN_NAME = "sshfs"
 local USER_ID = ya.uid()
-local is_initialized = false
+local XDG_RUNTIME_DIR = os.getenv("XDG_RUNTIME_DIR") or ("/run/user/" .. USER_ID)
 
 --=========== Paths ===========================================================
 local HOME = os.getenv("HOME")
-local PLUGIN_DIR = HOME .. "/.config/yazi/plugins/sshfs.yazi"
-local ROOT = HOME .. "/.cache/sshfs" -- mountpoints live here
-local SAVE = PLUGIN_DIR .. "/sshfs.list" -- list of remembered aliases
 local SSH_CONFIG = HOME .. "/.ssh/config"
-local XDG_RUNTIME_DIR = os.getenv("XDG_RUNTIME_DIR") or ("/run/user/" .. USER_ID)
+local YAZI_DIR = HOME .. "/.config/yazi"
+local SAVE_LIST = YAZI_DIR .. "/sshfs.list" -- list of remembered aliases
+-- local MOUNT_DIR = HOME .. "/mnt" -- mountpoints live here
+
+--=========== Plugin State ===========================================================
+---@enum
+local STATE_KEY = {
+	SSH_OPTIONS = "SSH_OPTIONS",
+	MOUNT_DIR = "MOUNT_DIR",
+}
 
 --=========== Host Cache ======================================================
 local host_cache = {
@@ -107,7 +113,6 @@ local host_cache = {
 
 --================= Notify / Logger ===========================================
 local Notify = {}
-
 ---@param level "info"|"warn"|"error"|nil
 ---@param s string
 ---@param ... any
@@ -233,6 +238,14 @@ local function run_command(cmd, args, input, is_silent)
 end
 
 --========= Sync helpers =======================================================
+local set_state = ya.sync(function(state, key, value)
+	state[key] = value
+end)
+
+local get_state = ya.sync(function(state, key)
+	return state[key]
+end)
+
 ---Append a single line to a text file, creating the parent dir if needed.
 ---@param path string
 ---@param line string
@@ -409,7 +422,7 @@ end
 ---@return boolean
 local function is_host_cache_valid()
 	local ssh_config_mtime = get_file_mtime(SSH_CONFIG)
-	local save_file_mtime = get_file_mtime(SAVE)
+	local save_file_mtime = get_file_mtime(SAVE_LIST)
 
 	return (
 		host_cache.hosts ~= nil
@@ -421,7 +434,7 @@ end
 ---Update host cache with current file modification times
 local function update_host_cache(hosts)
 	local ssh_config_mtime = get_file_mtime(SSH_CONFIG)
-	local save_file_mtime = get_file_mtime(SAVE)
+	local save_file_mtime = get_file_mtime(SAVE_LIST)
 
 	host_cache.hosts = hosts
 	host_cache.ssh_config_mtime = ssh_config_mtime
@@ -435,7 +448,7 @@ local function get_all_hosts()
 		return host_cache.hosts
 	end
 
-	local hosts = unique(list_extend(read_lines(SAVE), read_ssh_config_hosts()))
+	local hosts = unique(list_extend(read_lines(SAVE_LIST), read_ssh_config_hosts()))
 	update_host_cache(hosts)
 	return hosts
 end
@@ -463,8 +476,9 @@ end
 ---Check if a mount point is actively mounted
 ---@param path string
 ---@param url Url
+---@param mount_dir string
 ---@return boolean
-local function is_mount_active(path, url)
+local function is_mount_active(path, url, mount_dir)
 	if not is_dir(url) then
 		return false
 	end
@@ -475,7 +489,7 @@ local function is_mount_active(path, url)
 		return not is_dir_empty(url)
 	end
 
-	local mounts = parse_sshfs_mounts(output.stdout, ROOT)
+	local mounts = parse_sshfs_mounts(output.stdout, mount_dir)
 	for _, mounted_path in ipairs(mounts) do
 		if mounted_path == path then
 			return true
@@ -486,30 +500,31 @@ local function is_mount_active(path, url)
 end
 
 ---Lists all active mount points
+---@param mount_dir string
 ---@return { alias: string, path: string }[]
-local function list_mounts()
+local function list_mounts(mount_dir)
 	local mounts = {}
 
 	local mountErr, output = run_command("mount", nil, nil, true) --silent
 	if mountErr or not output then
 		debug("Failed to get mount info in list_mounts(), falling back to directory scan")
-		local files, err = fs.read_dir(Url(ROOT), { resolve = false })
+		local files, err = fs.read_dir(Url(mount_dir), { resolve = false })
 		if not files then
-			debug("No files in ROOT dir: %s", tostring(err))
+			debug("No files in mount_dir dir: %s", tostring(err))
 			return mounts
 		end
 
 		for i, file in ipairs(files) do
 			local url = file.url
 			local path = tostring(url)
-			if is_dir(url) and is_mount_active(path, url) then
+			if is_dir(url) and is_mount_active(path, url, mount_dir) then
 				local alias = file.name
 				debug("Active mount #%d: %s", i, url)
 				mounts[#mounts + 1] = { alias = alias, path = path }
 			end
 		end
 	else
-		for _, path in ipairs(parse_sshfs_mounts(output.stdout, ROOT)) do
+		for _, path in ipairs(parse_sshfs_mounts(output.stdout, mount_dir)) do
 			local alias = path:match("([^/]+)$")
 			if alias then
 				debug("Active mount: %s", path)
@@ -536,7 +551,7 @@ local function remove_mountpoint(mp)
 		local command, args = cmd[1], cmd[2]
 		local err, _ = run_command(command, args, nil, true) -- silent
 		if not err then
-			fs.remove("dir", Url(mp)) -- clean up the empty dir
+			fs.remove("dir_clean", Url(mp)) -- clean the empty dir
 			return true
 		end
 	end
@@ -545,19 +560,49 @@ local function remove_mountpoint(mp)
 end
 
 --======== Mount functions ============================================
+---Get sshfs user config options
+---@param type "key"|"password"
+local function getConfigForSSHFS(type)
+	local ssh_options = get_state(STATE_KEY.SSH_OPTIONS)
+	if not ssh_options then
+		return {}
+	end
+	-- General options
+	local options = {
+		"reconnect",
+		string.format("compression=%s", ssh_options.compression and "yes" or "no"),
+		string.format("ServerAliveInterval=%d", ssh_options.server_alive_interval),
+		string.format("ServerAliveCountMax=%d", ssh_options.server_alive_count_max),
+	}
+
+	-- Handle cache options
+	if ssh_options.dir_cache then
+		for _, opt in ipairs({
+			"dir_cache=yes",
+			string.format("dcache_timeout=%d", ssh_options.dcache_timeout),
+			string.format("dcache_max_size=%d", ssh_options.dcache_max_size),
+		}) do
+			table.insert(options, opt)
+		end
+	end
+
+	-- Handle key vs password auth
+	if type == "key" then
+		table.insert(options, "BatchMode=yes")
+	else
+		table.insert(options, "password_stdin")
+	end
+
+	return options
+end
+
 ---Tries sshfs via key authentication
 ---@param alias string
 ---@param mountPoint string
 ---@param mount_to_root boolean
 local function try_key_auth(alias, mountPoint, mount_to_root)
 	mount_to_root = mount_to_root or false
-	local options = {
-		"BatchMode=yes",
-		"reconnect",
-		"compression=yes",
-		"ServerAliveInterval=15",
-		"ServerAliveCountMax=3",
-	}
+	local options = getConfigForSSHFS("key")
 	local remote_path = alias .. ":" .. (mount_to_root and "/" or "")
 	local args = {
 		remote_path,
@@ -577,13 +622,7 @@ end
 local function try_password_auth(alias, mountPoint, mount_to_root, max_attempts)
 	mount_to_root = mount_to_root or false
 	max_attempts = max_attempts or 3
-	local options = {
-		"password_stdin",
-		"reconnect",
-		"compression=yes",
-		"ServerAliveInterval=15",
-		"ServerAliveCountMax=3",
-	}
+	local options = getConfigForSSHFS("password")
 	local remote_path = alias .. ":" .. (mount_to_root and "/" or "")
 
 	for attempt = 1, max_attempts do
@@ -599,7 +638,7 @@ local function try_password_auth(alias, mountPoint, mount_to_root, max_attempts)
 			table.concat(options, ","),
 		}
 
-		local err, _ = run_command("sshfs", args, pw .. "\n")
+		local err, _ = run_command("sshfs", args, pw .. "\n", true) --silent
 		if err then
 			Notify.error("sshfs: authentication failed")
 		else
@@ -625,14 +664,14 @@ end
 ---@param alias string
 ---@param jump boolean
 local function add_mountpoint(alias, jump)
-	debug("Adding mountpoint: `%s`", alias)
-	ensure_dir(Url(ROOT))
-	local mountPoint = ("%s/%s"):format(ROOT, alias)
+	local mount_dir = get_state(STATE_KEY.MOUNT_DIR)
+	ensure_dir(Url(mount_dir))
+	local mountPoint = ("%s/%s"):format(mount_dir, alias)
 	local mountUrl = Url(mountPoint)
 	ensure_dir(mountUrl)
 
 	-- If already exists, jump to it
-	if is_mount_active(mountPoint, mountUrl) then
+	if is_mount_active(mountPoint, mountUrl, mount_dir) then
 		return finalize_mount(alias, mountPoint, jump)
 	end
 
@@ -659,6 +698,9 @@ local function add_mountpoint(alias, jump)
 	else
 		debug("Aborted: " .. (reason or "user cancelled"))
 	end
+
+	-- error or abort clean up
+	fs.remove("dir_clean", mountUrl) -- clean empty dir
 end
 
 --=========== api actions =================================================
@@ -670,7 +712,7 @@ local function cmd_add_alias()
 		Notify.error("Host must be a valid SSH host string")
 		return
 	end
-	append_line(SAVE, alias)
+	append_line(SAVE_LIST, alias)
 	debug("Saved host alias `%s`", alias)
 
 	-- Update cache
@@ -687,13 +729,13 @@ local function cmd_add_alias()
 			table.insert(host_cache.hosts, alias)
 		end
 		-- Update the save file mtime
-		host_cache.save_file_mtime = get_file_mtime(SAVE)
+		host_cache.save_file_mtime = get_file_mtime(SAVE_LIST)
 	end
 end
 
 local function cmd_remove_alias()
 	-- Choose from saved aliases
-	local saved_aliases = read_lines(SAVE)
+	local saved_aliases = read_lines(SAVE_LIST)
 	local alias = choose("Remove which?", saved_aliases)
 	if not alias then
 		return
@@ -705,8 +747,8 @@ local function cmd_remove_alias()
 			table.insert(updated, line)
 		end
 	end
-	-- Overwrite the SAVE file with updated lines
-	local file, err = io.open(SAVE, "w")
+	-- Overwrite the SAVE_LIST file with updated lines
+	local file, err = io.open(SAVE_LIST, "w")
 	if not file then
 		Notify.error("Failed to open save file: %s", tostring(err))
 		return
@@ -727,7 +769,7 @@ local function cmd_remove_alias()
 		end
 		host_cache.hosts = new_hosts
 		-- Update the save file mtime
-		host_cache.save_file_mtime = get_file_mtime(SAVE)
+		host_cache.save_file_mtime = get_file_mtime(SAVE_LIST)
 	end
 
 	Notify.info(("Alias “%s” removed from saved list"):format(alias))
@@ -746,7 +788,8 @@ end
 
 local function cmd_jump()
 	-- Get active mounts
-	local mounts = list_mounts()
+	local mount_dir = get_state(STATE_KEY.MOUNT_DIR)
+	local mounts = list_mounts(mount_dir)
 	if #mounts == 0 then
 		return Notify.warn("No active mounts to jump to")
 	end
@@ -768,8 +811,9 @@ local function cmd_jump()
 end
 
 local function cmd_unmount()
-	-- get mounted dirs
-	local mounts = list_mounts()
+	-- Get active mounts
+	local mount_dir = get_state(STATE_KEY.MOUNT_DIR)
+	local mounts = list_mounts(mount_dir)
 	if #mounts == 0 then
 		Notify.warn("No SSHFS mounts are active")
 		return
@@ -806,7 +850,8 @@ local function cmd_unmount()
 	end
 end
 
---=========== public entry ================================================
+--=========== init requirements ================================================
+---Verify all dependencies
 local function check_dependencies()
 	local err, _ = run_command("command", { "-v", "sshfs" })
 	if err then
@@ -816,12 +861,15 @@ local function check_dependencies()
 	return true
 end
 
-local function check_has_root()
-	return ensure_dir(Url(ROOT))
+---Verify mount dir exists
+local function check_has_MOUNT_DIR()
+	local mount_dir = get_state(STATE_KEY.MOUNT_DIR)
+	return ensure_dir(Url(mount_dir))
 end
 
+---Verify sshfs.list exists
 local function check_has_sshfs_list()
-	local url = Url(SAVE)
+	local url = Url(SAVE_LIST)
 	local cha, _ = fs.cha(url)
 	if cha then
 		return true
@@ -833,27 +881,68 @@ local function check_has_sshfs_list()
 	return false
 end
 
-function M:setup()
-	debug("SSHFS Setup Complete")
-end
-
----@param job {args: string[], args: {jump: boolean?, eject: boolean?, force: boolean?}}
-function M:entry(job)
-	if not is_initialized then
+---Initialize the plugin, verify all dependencies
+local function init()
+	local initialized = get_state("is_initialized")
+	if not initialized then
 		if not check_dependencies() then
-			return Notify.error("Missing sshfs dependency, please install sshfs and try again...")
+			Notify.error("Missing sshfs dependency, please install sshfs and try again...")
+			return false
 		end
-		if not check_has_root() then
-			return Notify.error("Unable to create the Root Directory")
+		if not check_has_MOUNT_DIR() then
+			Notify.error("Could not create mount directory")
+			return false
 		end
 		if not check_has_sshfs_list() then
-			return Notify.error("Unable to create the sshfs.list file in plugin directory")
+			Notify.error("Could not create sshfs.list")
+			return false
 		end
-		is_initialized = true
+		initialized = true
+		set_state("is_initialized", true)
+	end
+	return initialized
+end
+
+--=========== Plugin start =================================================
+-- Default configuration
+local default_config = {
+	mount_dir = HOME .. "/mnt",
+	compression = true,
+	server_alive_interval = 15,
+	server_alive_count_max = 3,
+	dir_cache = false,
+	dcache_timeout = 300,
+	dcache_max_size = 10000,
+}
+
+---Merges user‑provided ssh configuration options into the defaults.
+---@param user_config table|nil
+local function set_ssh_config(user_config)
+	local ssh_options = {}
+	for k, v in pairs(default_config) do
+		ssh_options[k] = v
+	end
+	for k, v in pairs(user_config or {}) do
+		if ssh_options[k] ~= nil and type(ssh_options[k]) == type(v) then
+			ssh_options[k] = v
+		end
+	end
+	set_state(STATE_KEY.SSH_OPTIONS, ssh_options)
+	set_state(STATE_KEY.MOUNT_DIR, ssh_options.mount_dir)
+end
+
+---Setup
+function M:setup(cfg)
+	set_ssh_config(cfg)
+end
+
+---Entry
+function M:entry(job)
+	if not init() then
+		return
 	end
 
 	local action = job.args[1]
-	debug("SSHFS plugin invoked: action = `%s`", action)
 	if action == "add" then
 		cmd_add_alias()
 	elseif action == "remove" then
@@ -867,8 +956,6 @@ function M:entry(job)
 	else
 		Notify.error("Unknown action")
 	end
-
-	debug("Finished running action: `%s`", action)
 end
 
 return M
