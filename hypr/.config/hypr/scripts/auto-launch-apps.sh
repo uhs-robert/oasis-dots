@@ -27,7 +27,7 @@ trap clean_up EXIT
 declare -A APPS
 
 # Firefox: triple workspace default
-FIREFOX_TRIPLE_WS=("3:firefox" "2:firefox" "6:firefox")
+FIREFOX_TRIPLE_WS=("3:firefox" "6:firefox" "2:firefox")
 APPS["Firefox"]=$(
   IFS='|'
   echo "${FIREFOX_TRIPLE_WS[*]}"
