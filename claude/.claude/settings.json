@@ -1,0 +1,6 @@
+{
+  "includeCoAuthoredBy": false,
+  "permissions": {
+    "allow": ["Read(~/.zshrc)"]
+  }
+}
