@@ -58,8 +58,7 @@ Thumbs.db
 # Logs
 *.log
 *tmp
-
-*/.oh-my-zsh
+zsh/.oh-my-zsh/
 
 # Node/npm/python/misc runtime junk
 node_modules/
