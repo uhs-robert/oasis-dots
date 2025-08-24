@@ -1,5 +1,6 @@
 -- Folder Rules
 
+-- General sort configurations settings
 SORT_OPTIONS = {
 	default = { "alphabetical", reverse = false, dir_first = true },
 	by_mtime = { "mtime", reverse = true, dir_first = false },
@@ -23,6 +24,7 @@ local SORT_FOLDERS = {
 	Backups = SORT_OPTIONS.by_mtime,
 	-- By Mtime Dir First
 	Projects = SORT_OPTIONS.by_mtime_dir_first,
+	["github-uphill"] = SORT_OPTIONS.by_mtime_dir_first,
 	Code = SORT_OPTIONS.by_mtime_dir_first,
 	Repos = SORT_OPTIONS.by_mtime_dir_first,
 	Clients = SORT_OPTIONS.by_mtime_dir_first,
@@ -39,8 +41,10 @@ local SORT_FOLDERS = {
 	Fonts = SORT_OPTIONS.natural,
 	Music = SORT_OPTIONS.natural,
 	-- Docs
-	Documents = SORT_OPTIONS.by_mtime,
+	-- Documents = SORT_OPTIONS.by_mtime,
 	Notes = SORT_OPTIONS.by_mtime,
+	["Notes/personal"] = SORT_OPTIONS.by_mtime,
+	["Notes/work"] = SORT_OPTIONS.by_mtime,
 	Zettlekasten = SORT_OPTIONS.by_mtime,
 }
 

@@ -1,5 +1,6 @@
+# theme.toml
 [flavor]
-dark = "catppuccin-frappe"
+dark = "oasis"
 
-[mgr]
-border_style = { fg = "green" }
+# [mgr]
+# border_style = { fg = "green" }

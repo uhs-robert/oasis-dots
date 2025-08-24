@@ -23,7 +23,21 @@ th.git.modified_sign = "M"
 th.git.deleted_sign = "D"
 
 -- SSHFS
-require("sshfs"):setup()
+require("sshfs"):setup({
+	enable_custom_hosts = false,
+	sshfs_options = {
+		"reconnect",
+		"compression=yes",
+		"cache_timeout=300",
+		"ConnectTimeout=10",
+		"dir_cache=no",
+		"dcache_timeout=600",
+	},
+})
+
+require("restore"):setup()
+
+require("recycle-bin"):setup()
 
 -- Show symlink in status bar
 Status:children_add(function(self)

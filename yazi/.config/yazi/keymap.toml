@@ -3,10 +3,6 @@ prepend_keymap = [
   # Utils
   { on = "?", run = "help", desc = "Open help" },
   { on = "!", run = 'shell "$SHELL" --block', desc = "Open shell here" },
-  { on = [
-    "c",
-    "m",
-  ], run = "plugin chmod", desc = "Chmod on selected files" },
 
   # Go to...
   { on = [
@@ -20,8 +16,12 @@ prepend_keymap = [
   ], run = "plugin lazygit", desc = "run lazygit" },
   { on = [
     "g",
-    "t",
+    "/",
   ], run = "cd /tmp", desc = "Go to /tmp" },
+  { on = [
+    "g",
+    "D",
+  ], run = "cd /home/USER/.local/state/yazi", desc = "Go to Yazi debug log" },
   { on = [
     "g",
     "u",
@@ -69,8 +69,86 @@ prepend_keymap = [
     "c",
   ], run = "cd ~/.ssh/", desc = "Go to ssh config" },
   { on = [
+    "M",
+    "h",
+  ], run = "plugin sshfs -- home", desc = "Go to mount directory" },
+  { on = [
     "g",
     "m",
   ], run = "plugin sshfs -- jump", desc = "Jump to mount" },
+
+  # Ch Mod
+  { on = [
+    "c",
+    "m",
+  ], run = "plugin chmod", desc = "Chmod on selected files" },
+
+  # Compress
+  { on = [
+    "c",
+    "a",
+    "a",
+  ], run = "plugin compress", desc = "Archive selected files" },
+  { on = [
+    "c",
+    "a",
+    "p",
+  ], run = "plugin compress -p", desc = "Archive selected files (password)" },
+  { on = [
+    "c",
+    "a",
+    "h",
+  ], run = "plugin compress -ph", desc = "Archive selected files (password+header)" },
+  { on = [
+    "c",
+    "a",
+    "l",
+  ], run = "plugin compress -l", desc = "Archive selected files (compression level)" },
+  { on = [
+    "c",
+    "a",
+    "u",
+  ], run = "plugin compress -phl", desc = "Archive selected files (password+header+level)" },
+
+  # Archive Mounting
+  { on = [
+    "m",
+    "a",
+  ], run = "plugin archivemount mount", desc = "Mount selected archive" },
+  { on = [
+    "m",
+    "u",
+  ], run = "plugin archivemount unmount", desc = "Unmount and save changes to original archive" },
+
+  # Restore
+  { on = [
+    "u",
+  ], run = "plugin restore", desc = "Restore last deleted files/folders" },
+
+  # Trash
+  { on = [
+    "g",
+    "t",
+  ], run = "plugin recycle-bin open", desc = "Go to Trash" },
+  { on = [
+    "R",
+    "o",
+  ], run = "plugin recycle-bin open", desc = "Open Trash" },
+  { on = [
+    "R",
+    "e",
+  ], run = "plugin recycle-bin empty", desc = "Empty Trash" },
+  { on = [
+    "R",
+    "d",
+  ], run = "plugin recycle-bin delete", desc = "Delete from Trash" },
+  { on = [
+    "R",
+    "D",
+  ], run = "plugin recycle-bin emptyDays", desc = "Empty by days deleted" },
+  { on = [
+    "R",
+    "r",
+  ], run = "plugin recycle-bin restore", desc = "Restore from Trash" },
 
 ]

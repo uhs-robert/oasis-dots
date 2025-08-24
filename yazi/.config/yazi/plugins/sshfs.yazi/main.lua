@@ -1,88 +1,6 @@
 -- ~/.config/yazi/plugins/sshfs/main.lua
 -- SSHFS integration for Yazi
 
----@diagnostic disable: lowercase-global, undefined-global
-
--- Aliases
----@alias Stdio "PIPED" | "NULL" | "INHERIT"
----@alias Origin
----| "top-left"
----| "top-center"
----| "top-right"
----| "bottom-left"
----| "bottom-center"
----| "bottom-right"
----| "center"
----| "hovered"
-
--- Url object
----@class Url
----@field name string?
----@field stem string?
----@field frag string?
----@field parent Url?
----@field is_regular boolean
----@field is_search boolean
----@field is_archive boolean
----@field is_absolute boolean
----@field has_root boolean
----@field join fun(self: Url, another: Url | string): Url
----@field starts_with fun(self: Url, another: Url | string): boolean
----@field ends_with fun(self: Url, another: Url | string): boolean
----@field strip_prefix fun(self: Url, another: Url | string): Url
----@field __eq fun(self: Url, another: Url): boolean
----@field __tostring fun(self: Url): string
----@field __concat fun(self: Url, another: string): Url
----@field path fun(self: Url): string
-
--- Pos object
----@class Pos
----@field [1] Origin
----@field x integer? @X-offset relative to the origin (default: 0)
----@field y integer? @Y-offset relative to the origin (default: 0)
----@field w integer? @Width of the position (default: 0)
----@field h integer? @Height of the position (default: 0)
-
--- Ya global
----@class Ya
----@field uid fun(): integer
----@field notify fun(opts: { title: string, content: string, timeout: number, level: "info"|"warn"|"error"|nil }): nil
----@field dbg fun(... : any): nil
----@field err fun(... : any): nil
----@field sync fun(fn: fun(...: any): any): fun(...: any): any
----@field which fun(opts: { cands: { on: string|string[], desc: string? }[], silent: boolean? }): number?
----@field emit fun(cmd: string, args: { [integer|string]: nil | boolean | number | string | Url }): nil
----@field input fun(opts: { title: string, value: string?, obscure: boolean?, position: Pos, realtime: boolean?, debounce: number? }) : string? | integer
-
----@type Ya
-ya = ya or {}
-
--- Command object
----@class Command
----@field arg fun(self: Command, arg: string): Command
----@field stdin fun(self: Command, mode: Stdio): Command
----@field stdout fun(self: Command, mode: Stdio): Command
----@field stderr fun(self: Command, mode: Stdio): Command
----@field env fun(self: Command, key: string, value: string): Command
----@field spawn fun(self: Command): Child, Error?
----@type fun(cmd: string): Command
-
--- Child object
----@class Child
----@field write_all fun(self: Child, input: string): boolean, Error?
----@field flush fun(self: Child): boolean, Error?
----@field wait_with_output fun(self: Child): Output?, Error?
-
--- Output from command
----@class Output
----@field stdout string
----@field stderr string
----@field status { code: number, success: boolean }
-
--- Error object
----@class Error
----@field message string
-
 --=========== Plugin Settings =================================================
 local isDebugEnabled = false
 local M = {}
@@ -95,13 +13,12 @@ local HOME = os.getenv("HOME")
 local SSH_CONFIG = HOME .. "/.ssh/config"
 local YAZI_DIR = HOME .. "/.config/yazi"
 local SAVE_LIST = YAZI_DIR .. "/sshfs.list" -- list of remembered aliases
--- local MOUNT_DIR = HOME .. "/mnt" -- mountpoints live here
 
 --=========== Plugin State ===========================================================
 ---@enum
 local STATE_KEY = {
-	SSH_OPTIONS = "SSH_OPTIONS",
-	MOUNT_DIR = "MOUNT_DIR",
+	CONFIG = "CONFIG",
+	HAS_FZF = "HAS_FZF",
 }
 
 --=========== Host Cache ======================================================
@@ -112,6 +29,11 @@ local host_cache = {
 }
 
 --================= Notify / Logger ===========================================
+local TIMEOUTS = {
+	error = 8,
+	warn = 8,
+	info = 3,
+}
 local Notify = {}
 ---@param level "info"|"warn"|"error"|nil
 ---@param s string
@@ -122,7 +44,7 @@ function Notify._send(level, s, ...)
 	local entry = {
 		title = PLUGIN_NAME,
 		content = content,
-		timeout = 3,
+		timeout = TIMEOUTS[level] or 3,
 		level = level,
 	}
 	ya.notify(entry)
@@ -159,7 +81,7 @@ end
 ---@param args? string[]
 ---@param input? string  -- optional stdin input (e.g., password)
 ---@param is_silent? boolean
----@return Error|true|nil, Output|nil
+---@return string|nil, Output|nil
 local function run_command(cmd, args, input, is_silent)
 	debug("Executing command: " .. cmd .. (args and #args > 0 and (" " .. table.concat(args, " ")) or ""))
 	local msgPrefix = "Command: " .. cmd .. " - "
@@ -187,7 +109,7 @@ local function run_command(cmd, args, input, is_silent)
 		if not is_silent then
 			Notify.error(msgPrefix .. "Failed to start. Error: %s", tostring(cmd_err))
 		end
-		return cmd_err, nil
+		return cmd_err and tostring(cmd_err), nil
 	end
 
 	-- Send stdin input if available
@@ -197,7 +119,7 @@ local function run_command(cmd, args, input, is_silent)
 			if not is_silent then
 				Notify.error(msgPrefix .. "Failed to write, stdin: %s", tostring(err))
 			end
-			return err, nil
+			return err and tostring(err), nil
 		end
 
 		local flushed, flush_err = child:flush()
@@ -205,7 +127,7 @@ local function run_command(cmd, args, input, is_silent)
 			if not is_silent then
 				Notify.error(msgPrefix .. "Failed to flush, stdin: %s", tostring(flush_err))
 			end
-			return flush_err, nil
+			return flush_err and tostring(flush_err), nil
 		end
 	end
 
@@ -215,7 +137,7 @@ local function run_command(cmd, args, input, is_silent)
 		if not is_silent then
 			Notify.error(msgPrefix .. "Failed to get output, error: %s", tostring(out_err))
 		end
-		return out_err, nil
+		return out_err and tostring(out_err), nil
 	end
 
 	-- Log outputs
@@ -231,7 +153,10 @@ local function run_command(cmd, args, input, is_silent)
 		if not is_silent then
 			debug(msgPrefix .. "stderr: %s", output.stderr)
 		end
-		return true, nil
+		-- Only treat stderr as error if command actually failed
+		if output.status and not output.status.success then
+			return output.stderr, output
+		end
 	end
 
 	return nil, output
@@ -319,20 +244,33 @@ local function unique(list)
 	return out
 end
 
----Present a simple which‑key style selector and return the chosen item.
----@param title string
----@param items string[]
----@return string|nil
-local function choose(title, items)
-	if #items == 0 then
-		return nil
+--- Deep merge two tables: overrides take precedence
+---@param defaults table
+---@param overrides table|nil
+---@return table
+local function deep_merge(defaults, overrides)
+	if type(overrides) ~= "table" then
+		return defaults
 	end
-	local candidates = {}
-	for index, item in ipairs(items) do
-		candidates[#candidates + 1] = { on = tostring(index), desc = item }
+
+	local result = {}
+
+	for k, v in pairs(defaults) do
+		if type(v) == "table" and type(overrides[k]) == "table" then
+			result[k] = deep_merge(v, overrides[k])
+		else
+			result[k] = overrides[k] ~= nil and overrides[k] or v
+		end
 	end
-	local idx = ya.which({ title = title, cands = candidates })
-	return idx and items[idx]
+
+	-- Include any keys in overrides not in defaults
+	for k, v in pairs(overrides) do
+		if result[k] == nil then
+			result[k] = v
+		end
+	end
+
+	return result
 end
 
 ---Show an input box.
@@ -356,6 +294,154 @@ local function prompt(title, is_password, value)
 	return input_value
 end
 
+---Present a simple which‑key style selector and return the chosen item (Max: 36 options).
+---@param title string
+---@param items string[]
+---@return string|nil
+local function choose_which(title, items)
+	local keys = "1234567890abcdefghijklmnopqrstuvwxyz"
+	local candidates = {}
+	for i, item in ipairs(items) do
+		if i > #keys then
+			break
+		end
+		candidates[#candidates + 1] = { on = keys:sub(i, i), desc = item }
+	end
+
+	local idx = ya.which({ title = title, cands = candidates })
+	return idx and items[idx]
+end
+
+---@param title string
+---@param items string[]
+---@return string|nil
+local function choose_with_fzf(title, items)
+	local permit = ya.hide()
+	local result = nil
+
+	local items_str = table.concat(items, "\n")
+	local args = {
+		"--prompt",
+		title .. "> ",
+		"--height",
+		"100%",
+		"--layout",
+		"reverse",
+		"--border",
+	}
+
+	local cmd = Command("fzf")
+	for _, arg in ipairs(args) do
+		cmd:arg(arg)
+	end
+
+	local child, err = cmd:stdin(Command.PIPED):stdout(Command.PIPED):stderr(Command.PIPED):spawn()
+	if not child then
+		Notify.error("Failed to start `fzf`: %s", tostring(err))
+		permit:drop()
+		return nil
+	end
+
+	child:write_all(items_str)
+	child:flush()
+
+	local output, wait_err = child:wait_with_output()
+	if not output then
+		Notify.error("Cannot read `fzf` output: %s", tostring(wait_err))
+	else
+		if output.status.success and output.status.code ~= 130 and output.stdout ~= "" then
+			result = output.stdout:match("^(.-)\n?$")
+		elseif output.status.code ~= 130 then
+			Notify.error("`fzf` exited with error code %s. Stderr: %s", output.status.code, output.stderr)
+		end
+	end
+
+	permit:drop()
+	return result
+end
+
+local choose
+
+---Shows a filterable list for the user to choose from.
+---@param title string
+---@param items string[]
+---@param config table|nil Optional config to avoid state retrieval
+---@return string|nil
+local function choose_filtered(title, items, config)
+	local query = prompt(title .. " (filter)")
+	if query == nil then
+		return nil
+	end
+
+	local filtered_items = {}
+	if query == "" then
+		filtered_items = items
+	else
+		query = query:lower()
+		for _, item in ipairs(items) do
+			if item:lower():find(query, 1, true) then
+				table.insert(filtered_items, item)
+			end
+		end
+	end
+
+	if #filtered_items == 0 then
+		Notify.warn("No items match your filter.")
+		return nil
+	end
+
+	-- After filtering, restart the choose decision matrix
+	return choose(title, filtered_items, config)
+end
+
+---@param count integer
+---@param max integer
+---@param preferred "auto"|"fzf"
+---@return "fzf"|"menu"|"filter"
+local function get_picker(count, max, preferred)
+	local has_fzf = get_state(STATE_KEY.HAS_FZF)
+	if preferred == "fzf" then
+		return has_fzf and "fzf" or "filter"
+	else
+		if count > max then
+			return has_fzf and "fzf" or "filter"
+		else
+			return "menu"
+		end
+	end
+end
+
+---Present a prompt to choose from a picker
+---@param title string
+---@param items string[]
+---@param config table|nil Optional config to avoid state retrieval
+---@return string|nil
+choose = function(title, items, config)
+	config = config or get_state(STATE_KEY.CONFIG)
+	local picker = config.ui.picker or "auto"
+	local max = config.ui.menu_max or 15
+
+	debug("Picker: %s, max: %d", picker, max)
+
+	if #items == 0 then
+		return nil
+	elseif #items == 1 then
+		return items[1]
+	end
+
+	local mode = get_picker(#items, max, picker)
+
+	debug("Mode: %s", mode)
+
+	if mode == "fzf" then
+		return choose_with_fzf(title, items)
+	elseif mode == "menu" then
+		return choose_which(title, items)
+	elseif mode == "filter" then
+		return choose_filtered(title, items, config)
+	end
+end
+
 --============== File helpers ====================================
 ---Check if a path exists and is a directory
 ---@param url Url
@@ -370,7 +456,7 @@ end
 ---@return boolean
 local function is_dir_empty(url)
 	local files, _ = fs.read_dir(url, { limit = 1 })
-	return files and #files == 0
+	return type(files) == "table" and #files == 0
 end
 
 --- Make directory path if the directory does not yet exist.
@@ -432,6 +518,7 @@ local function is_host_cache_valid()
 end
 
 ---Update host cache with current file modification times
+---@param hosts string[]
 local function update_host_cache(hosts)
 	local ssh_config_mtime = get_file_mtime(SSH_CONFIG)
 	local save_file_mtime = get_file_mtime(SAVE_LIST)
@@ -448,7 +535,22 @@ local function get_all_hosts()
 		return host_cache.hosts
 	end
 
-	local hosts = unique(list_extend(read_lines(SAVE_LIST), read_ssh_config_hosts()))
+	local ssh_config_hosts = read_ssh_config_hosts()
+	local hosts
+
+	-- Check if custom hosts file exists
+	local url = Url(SAVE_LIST)
+	local cha, _ = fs.cha(url)
+
+	if cha then
+		-- Custom hosts file exists - combine SSH config and saved hosts
+		local saved_hosts = read_lines(SAVE_LIST)
+		hosts = unique(list_extend(saved_hosts, ssh_config_hosts))
+	else
+		-- No custom hosts file - only use SSH config
+		hosts = ssh_config_hosts
+	end
+
 	update_host_cache(hosts)
 	return hosts
 end
@@ -562,91 +664,152 @@ end
 --======== Mount functions ============================================
 ---Get sshfs user config options
 ---@param type "key"|"password"
-local function getConfigForSSHFS(type)
-	local ssh_options = get_state(STATE_KEY.SSH_OPTIONS)
-	if not ssh_options then
+---@param config table|nil Optional config to avoid state retrieval
+local function getConfigForSSHFS(type, config)
+	config = config or get_state(STATE_KEY.CONFIG)
+	if not config then
 		return {}
 	end
-	-- General options
-	local options = {
-		"reconnect",
-		string.format("compression=%s", ssh_options.compression and "yes" or "no"),
-		string.format("ServerAliveInterval=%d", ssh_options.server_alive_interval),
-		string.format("ServerAliveCountMax=%d", ssh_options.server_alive_count_max),
-	}
 
-	-- Handle cache options
-	if ssh_options.dir_cache then
-		for _, opt in ipairs({
-			"dir_cache=yes",
-			string.format("dcache_timeout=%d", ssh_options.dcache_timeout),
-			string.format("dcache_max_size=%d", ssh_options.dcache_max_size),
-		}) do
-			table.insert(options, opt)
-		end
-	end
+	local options = {}
 
-	-- Handle key vs password auth
+	-- Handle key vs password auth (essential for sshfs functionality)
 	if type == "key" then
 		table.insert(options, "BatchMode=yes")
 	else
 		table.insert(options, "password_stdin")
 	end
 
+	-- Use sshfs options
+	if config.sshfs_options and #config.sshfs_options > 0 then
+		for _, sshfs_opt in ipairs(config.sshfs_options) do
+			table.insert(options, sshfs_opt)
+		end
+	end
+
 	return options
 end
 
----Tries sshfs via key authentication
+---Tries sshfs via key authentication (detached from process tree)
 ---@param alias string
 ---@param mountPoint string
 ---@param mount_to_root boolean
-local function try_key_auth(alias, mountPoint, mount_to_root)
+---@param config table|nil Optional config to avoid state retrieval
+---@return string|nil err_msg, boolean success
+local function try_key_auth(alias, mountPoint, mount_to_root, config)
 	mount_to_root = mount_to_root or false
-	local options = getConfigForSSHFS("key")
+	local options = getConfigForSSHFS("key", config)
+
 	local remote_path = alias .. ":" .. (mount_to_root and "/" or "")
-	local args = {
-		remote_path,
-		mountPoint,
-		"-o",
-		table.concat(options, ","),
-	}
-	return run_command("sshfs", args, nil, true) --silent
+	local options_str = table.concat(options, ",")
+	
+	-- Create session-independent SSHFS command to prevent signal propagation from Yazi's editor management
+	local sshfs_cmd = string.format(
+		"setsid sshfs '%s' '%s' -o %s </dev/null >/dev/null 2>&1 &",
+		remote_path, mountPoint, options_str
+	)
+	
+	debug("Executing detached SSHFS command: %s", sshfs_cmd)
+	local err, output = run_command("sh", {"-c", sshfs_cmd}, nil, true) --silent
+	
+	-- Since we're running in a new session, we need to verify the mount separately
+	-- Wait longer for the session and mount to establish
+	os.execute("sleep 2")
+	
+	-- Check if mount was successful by verifying it's active (with retry)
+	local mount_url = Url(mountPoint)
+	local mount_dir = config and config.mount_dir or (HOME .. "/mnt")
+	
+	-- Retry mount verification up to 3 times
+	for i = 1, 3 do
+		local is_mounted = is_mount_active(mountPoint, mount_url, mount_dir)
+		if is_mounted then
+			return nil, true
+		end
+		if i < 3 then
+			os.execute("sleep 1")
+		end
+	end
+
+	return "Key authentication failed or mount not established", false
 end
 
----Tries sshfs via password input, with retries allowed
+---Tries sshfs via password input, with retries allowed (detached from process tree)
 ---@param alias string
 ---@param mountPoint string
 ---@param mount_to_root boolean
----@param max_attempts? integer
+---@param config table|nil Optional config to avoid state retrieval
 ---@return boolean? result, string? reason
-local function try_password_auth(alias, mountPoint, mount_to_root, max_attempts)
+local function try_password_auth(alias, mountPoint, mount_to_root, config)
 	mount_to_root = mount_to_root or false
-	max_attempts = max_attempts or 3
-	local options = getConfigForSSHFS("password")
+	config = config or get_state(STATE_KEY.CONFIG)
+	local max_attempts = (config and config.password_attempts) or 3
+	local options = getConfigForSSHFS("password", config)
 	local remote_path = alias .. ":" .. (mount_to_root and "/" or "")
+	local options_str = table.concat(options, ",")
 
+	debug("Attempting password authentication for %s with options: %s", alias, options_str)
+
+	local last_err
 	for attempt = 1, max_attempts do
 		local pw = prompt(("Password for %s (%d/%d):"):format(alias, attempt, max_attempts), true)
 		if not pw or pw == "" then
 			return nil, "User aborted"
 		end
+		
+		-- Create a temporary script to handle password input with detached execution
+		local temp_script = string.format("/tmp/sshfs_mount_%s_%d.sh", alias:gsub("[^%w]", "_"), os.time())
+		local script_content = string.format([[#!/bin/bash
+echo '%s' | setsid sshfs '%s' '%s' -o %s </dev/null >/dev/null 2>&1 &
+]], pw:gsub("'", "'\"'\"'"), remote_path, mountPoint, options_str)
 
-		local args = {
-			remote_path,
-			mountPoint,
-			"-o",
-			table.concat(options, ","),
-		}
-
-		local err, _ = run_command("sshfs", args, pw .. "\n", true) --silent
-		if err then
-			Notify.error("sshfs: authentication failed")
-		else
-			return true
+		-- Write the temporary script
+		local script_file = io.open(temp_script, "w")
+		if not script_file then
+			last_err = "Failed to create temporary authentication script"
+			goto continue
 		end
+		script_file:write(script_content)
+		script_file:close()
+
+		-- Make script executable and run it
+		local chmod_err, _ = run_command("chmod", {"+x", temp_script}, nil, true)
+		if chmod_err then
+			os.remove(temp_script)
+			last_err = "Failed to make script executable"
+			goto continue
+		end
+
+		local err, _ = run_command("sh", {"-c", temp_script}, nil, true) --silent
+		
+		-- Clean up the temporary script immediately
+		os.remove(temp_script)
+		
+		-- Wait longer for session and mount to establish
+		os.execute("sleep 2")
+		
+		-- Verify mount success with retry logic
+		local mount_url = Url(mountPoint)
+		local mount_dir = config and config.mount_dir or (HOME .. "/mnt")
+		
+		-- Retry mount verification up to 3 times
+		for i = 1, 3 do
+			local is_mounted = is_mount_active(mountPoint, mount_url, mount_dir)
+			if is_mounted then
+				return true, nil
+			end
+			if i < 3 then
+				os.execute("sleep 1")
+			end
+		end
+		
+		last_err = "Password authentication failed or mount not established"
+		::continue::
+		-- Continue to next attempt if we haven't reached max_attempts
 	end
 
-	return false, "Authentication failed"
+	-- All attempts failed
+	return false, last_err
 end
 
 ---Handles exit conditions after mount is done
@@ -654,7 +817,7 @@ end
 ---@param mountPoint string
 ---@param jump boolean
 local function finalize_mount(alias, mountPoint, jump)
-	Notify.info(("Mounted “%s”"):format(alias))
+	Notify.info(("Mounted %s"):format(alias))
 	if jump then
 		ya.emit("cd", { mountPoint, raw = true })
 	end
@@ -664,7 +827,8 @@ end
 ---@param alias string
 ---@param jump boolean
 local function add_mountpoint(alias, jump)
-	local mount_dir = get_state(STATE_KEY.MOUNT_DIR)
+	local config = get_state(STATE_KEY.CONFIG)
+	local mount_dir = config.mount_dir
 	ensure_dir(Url(mount_dir))
 	local mountPoint = ("%s/%s"):format(mount_dir, alias)
 	local mountUrl = Url(mountPoint)
@@ -684,19 +848,20 @@ local function add_mountpoint(alias, jump)
 		},
 	}) == 2
 
-	-- Try key authentication then try password if it fails
-	local err, _ = try_key_auth(alias, mountPoint, mount_to_root)
-	if not err then
+	-- Try key authentication, then try password authentication as fallback
+	local err_key_auth, key_success = try_key_auth(alias, mountPoint, mount_to_root, config)
+	if key_success then
 		return finalize_mount(alias, mountPoint, jump)
 	end
 
-	local ok, reason = try_password_auth(alias, mountPoint, mount_to_root)
+	-- Key auth failed → always try password authentication as fallback
+	local ok, pass_err = try_password_auth(alias, mountPoint, mount_to_root, config)
 	if ok then
 		return finalize_mount(alias, mountPoint, jump)
 	elseif ok == false then
-		Notify.error("Failed: " .. (reason or "unknown"))
+		Notify.error("Authentication failed: " .. (pass_err or "unknown"))
 	else
-		debug("Aborted: " .. (reason or "user cancelled"))
+		-- User cancelled password prompt
 	end
 
 	-- error or abort clean up
@@ -734,12 +899,23 @@ local function cmd_add_alias()
 end
 
 local function cmd_remove_alias()
+	-- Check if custom hosts file exists
+	local url = Url(SAVE_LIST)
+	local cha, _ = fs.cha(url)
+
+	if not cha then
+		Notify.warn("No custom hosts to remove")
+		return
+	end
+
 	-- Choose from saved aliases
+	local config = get_state(STATE_KEY.CONFIG)
 	local saved_aliases = read_lines(SAVE_LIST)
-	local alias = choose("Remove which?", saved_aliases)
+	local alias = choose("Remove which?", saved_aliases, config)
 	if not alias then
 		return
 	end
+
 	-- Filter out the chosen alias
 	local updated = {}
 	for _, line in ipairs(saved_aliases) do
@@ -747,16 +923,23 @@ local function cmd_remove_alias()
 			table.insert(updated, line)
 		end
 	end
-	-- Overwrite the SAVE_LIST file with updated lines
-	local file, err = io.open(SAVE_LIST, "w")
-	if not file then
-		Notify.error("Failed to open save file: %s", tostring(err))
-		return
+
+	-- If no hosts remain, delete the file
+	if #updated == 0 then
+		fs.remove("file", url)
+		debug("Deleted empty custom hosts file")
+	else
+		-- Overwrite the save list file with updated lines
+		local file, err = io.open(SAVE_LIST, "w")
+		if not file then
+			Notify.error("Failed to open save file: %s", tostring(err))
+			return
+		end
+		for _, line in ipairs(updated) do
+			file:write(line, "\n")
+		end
+		file:close()
 	end
-	for _, line in ipairs(updated) do
-		file:write(line, "\n")
-	end
-	file:close()
 
 	-- Update cache
 	if host_cache.hosts then
@@ -776,11 +959,12 @@ local function cmd_remove_alias()
 end
 
 local function cmd_mount(args)
+	local config = get_state(STATE_KEY.CONFIG)
 	-- Get alias_list
 	local jump = args.jump == true
 	local alias_list = get_all_hosts()
 	-- Choose alias to mount then add it
-	local chosen_alias = (#alias_list == 1) and alias_list[1] or choose("Mount which host?", alias_list)
+	local chosen_alias = (#alias_list == 1) and alias_list[1] or choose("Mount which host?", alias_list, config)
 	if chosen_alias then
 		add_mountpoint(chosen_alias, jump)
 	end
@@ -788,7 +972,8 @@ end
 
 local function cmd_jump()
 	-- Get active mounts
-	local mount_dir = get_state(STATE_KEY.MOUNT_DIR)
+	local config = get_state(STATE_KEY.CONFIG)
+	local mount_dir = config.mount_dir
 	local mounts = list_mounts(mount_dir)
 	if #mounts == 0 then
 		return Notify.warn("No active mounts to jump to")
@@ -798,7 +983,7 @@ local function cmd_jump()
 	for _, m in ipairs(mounts) do
 		labels[#labels + 1] = m.alias
 	end
-	local choice = (#labels == 1) and labels[1] or choose("Jump to mount", labels)
+	local choice = (#labels == 1) and labels[1] or choose("Jump to mount", labels, config)
 	-- Jump to directory
 	if not choice then
 		return
@@ -812,7 +997,8 @@ end
 
 local function cmd_unmount()
 	-- Get active mounts
-	local mount_dir = get_state(STATE_KEY.MOUNT_DIR)
+	local config = get_state(STATE_KEY.CONFIG)
+	local mount_dir = config.mount_dir
 	local mounts = list_mounts(mount_dir)
 	if #mounts == 0 then
 		Notify.warn("No SSHFS mounts are active")
@@ -823,7 +1009,7 @@ local function cmd_unmount()
 	for _, m in ipairs(mounts) do
 		aliases[#aliases + 1] = m.alias
 	end
-	local alias = (#aliases == 1) and aliases[1] or choose("Unmount which?", aliases)
+	local alias = (#aliases == 1) and aliases[1] or choose("Unmount which?", aliases, config)
 	if not alias then
 		return
 	end
@@ -850,35 +1036,35 @@ local function cmd_unmount()
 	end
 end
 
+local function cmd_open_mount_dir()
+	local config = get_state(STATE_KEY.CONFIG)
+	local mount_dir = config.mount_dir
+	ya.emit("cd", { mount_dir, raw = true })
+end
+
 --=========== init requirements ================================================
+
 ---Verify all dependencies
 local function check_dependencies()
-	local err, _ = run_command("command", { "-v", "sshfs" })
-	if err then
-		Notify.error("sshfs is not installed or not in PATH")
+	-- Check for sshfs
+	local sshfs_err, _ = run_command("sshfs", { "--version" }, nil, true)
+	if sshfs_err then
+		local path = os.getenv("PATH") or "(unset)"
+		Notify.error("sshfs not found. Is it installed and in PATH? PATH=" .. path)
 		return false
 	end
+
+	-- Check for fzf (optional dependency)
+	local fzf_err, _ = run_command("fzf", { "--version" }, nil, true)
+	set_state(STATE_KEY.HAS_FZF, not fzf_err)
 	return true
 end
 
 ---Verify mount dir exists
-local function check_has_MOUNT_DIR()
-	local mount_dir = get_state(STATE_KEY.MOUNT_DIR)
+local function check_has_mount_directory()
+	local config = get_state(STATE_KEY.CONFIG)
+	local mount_dir = config.mount_dir
 	return ensure_dir(Url(mount_dir))
-end
-
----Verify sshfs.list exists
-local function check_has_sshfs_list()
-	local url = Url(SAVE_LIST)
-	local cha, _ = fs.cha(url)
-	if cha then
-		return true
-	end
-	local ok, _ = fs.write(url, "")
-	if ok then
-		return true
-	end
-	return false
 end
 
 ---Initialize the plugin, verify all dependencies
@@ -889,12 +1075,8 @@ local function init()
 			Notify.error("Missing sshfs dependency, please install sshfs and try again...")
 			return false
 		end
-		if not check_has_MOUNT_DIR() then
+		if not check_has_mount_directory() then
 			Notify.error("Could not create mount directory")
-			return false
-		end
-		if not check_has_sshfs_list() then
-			Notify.error("Could not create sshfs.list")
 			return false
 		end
 		initialized = true
@@ -907,33 +1089,31 @@ end
 -- Default configuration
 local default_config = {
 	mount_dir = HOME .. "/mnt",
-	compression = true,
-	server_alive_interval = 15,
-	server_alive_count_max = 3,
-	dir_cache = false,
-	dcache_timeout = 300,
-	dcache_max_size = 10000,
+	password_attempts = 3, -- Number of password attempts before giving up
+	-- Default sshfs options
+	sshfs_options = {
+		"reconnect",
+		"ConnectTimeout=5",
+		"compression=yes",
+		"ServerAliveInterval=15",
+		"ServerAliveCountMax=3",
+	},
+	ui = {
+		menu_max = 15, -- can go up to 36
+		picker = "auto",
+	},
 }
 
----Merges user‑provided ssh configuration options into the defaults.
+---Merges user‑provided configuration options into the defaults.
 ---@param user_config table|nil
-local function set_ssh_config(user_config)
-	local ssh_options = {}
-	for k, v in pairs(default_config) do
-		ssh_options[k] = v
-	end
-	for k, v in pairs(user_config or {}) do
-		if ssh_options[k] ~= nil and type(ssh_options[k]) == type(v) then
-			ssh_options[k] = v
-		end
-	end
-	set_state(STATE_KEY.SSH_OPTIONS, ssh_options)
-	set_state(STATE_KEY.MOUNT_DIR, ssh_options.mount_dir)
+local function set_plugin_config(user_config)
+	local config = deep_merge(default_config, user_config or {})
+	set_state(STATE_KEY.CONFIG, config)
 end
 
 ---Setup
 function M:setup(cfg)
-	set_ssh_config(cfg)
+	set_plugin_config(cfg)
 end
 
 ---Entry
@@ -953,6 +1133,8 @@ function M:entry(job)
 		cmd_jump()
 	elseif action == "unmount" then
 		cmd_unmount()
+	elseif action == "home" then
+		cmd_open_mount_dir()
 	else
 		Notify.error("Unknown action")
 	end

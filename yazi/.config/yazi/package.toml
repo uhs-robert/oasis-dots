@@ -1,16 +1,16 @@
 [[plugin.deps]]
 use = "yazi-rs/plugins:full-border"
-rev = "de53d90"
+rev = "e95c7b3"
 hash = "3996fc74044bc44144b323686f887e1"
 
 [[plugin.deps]]
 use = "yazi-rs/plugins:toggle-pane"
-rev = "de53d90"
+rev = "e95c7b3"
 hash = "d6f60c24d8c0cf57a855bf46115b2502"
 
 [[plugin.deps]]
 use = "yazi-rs/plugins:git"
-rev = "de53d90"
+rev = "e95c7b3"
 hash = "63b6c222bf2103b3023389dde5e2ecfe"
 
 [[plugin.deps]]
@@ -20,13 +20,13 @@ hash = "e02a788e5b8ae0fb47fd0193dda589cc"
 
 [[plugin.deps]]
 use = "yazi-rs/plugins:chmod"
-rev = "de53d90"
+rev = "e95c7b3"
 hash = "1adc12c2b2b025411ab61eb8f0879574"
 
 [[plugin.deps]]
 use = "Lil-Dank/lazygit"
-rev = "7a08a09"
-hash = "a1fa2b3e1826c3a34804ea8c548e9f80"
+rev = "8f37dc5"
+hash = "ee71543790f0ce3951161045a3787abd"
 
 [[plugin.deps]]
 use = "dawsers/fuse-archive"
@@ -34,14 +34,34 @@ rev = "a58327c"
 hash = "6a6d24880ce7666048fb81ad758c48d3"
 
 [[plugin.deps]]
-use = "boydaihungst/gvfs"
-rev = "baf6790"
-hash = "192e425e1c86bdd5792912a2208fde2d"
+use = "uhs-robert/sshfs"
+rev = "5010171"
+hash = "4a57605c3e788f9913f98c8b43f4b1de"
 
 [[plugin.deps]]
-use = "uhs-robert/sshfs"
-rev = "614016a"
-hash = "83facc3a0e617cee070a0ec549995c6a"
+use = "yazi-rs/plugins:types"
+rev = "e95c7b3"
+hash = "1e047e1b13b5e3fc6ab1f5d0d04a14e2"
+
+[[plugin.deps]]
+use = "KKV9/compress"
+rev = "9fc8fe0"
+hash = "2ad086899bf368fba211a33d8f68c39d"
+
+[[plugin.deps]]
+use = "AnirudhG07/archivemount"
+rev = "3d353c4"
+hash = "28caf2541e627582e75add7a9f98a32a"
+
+[[plugin.deps]]
+use = "boydaihungst/restore"
+rev = "84f1921"
+hash = "355f163cb374b5c9514aee2b64121678"
+
+[[plugin.deps]]
+use = "uhs-robert/recycle-bin"
+rev = "52f6fe0"
+hash = "4b2fcf9d577d28703f4073e7e13c5183"
 
 [[flavor.deps]]
 use = "yazi-rs/flavors:catppuccin-frappe"

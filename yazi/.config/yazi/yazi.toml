@@ -3,6 +3,7 @@ edit = [{ run = '$EDITOR "$@"', block = true, desc = "NeoVim", for = "unix" }]
 open = [
   { run = 'xdg-open "$@"', desc = "Open" },
   { run = '$EDITOR "$@"', block = true, desc = "NeoVim", for = "unix" },
+  { run = 'vim "$@"', block = true, desc = "Vim", for = "unix" },
 ]
 
 [plugin]
@@ -14,6 +15,7 @@ prepend_preloaders = [
 
   # For mounted location for hard disk/drive
   { name = "/run/media/USER/**/*", run = "noop" },
+  { name = "~/mnt/*", run = "noop" },
   #... the rest of preloaders
 ]
 prepend_previewers = [
@@ -23,6 +25,7 @@ prepend_previewers = [
   # { mime = "{text/*,application/x-subrip}", run = "code" },
   # Using absolute path.
   { name = "/run/user/1000/gvfs/**/*", run = "noop" },
+  { name = "~/mnt/*", run = "noop" },
 
   # For mounted hard disk.
   { name = "/run/media/USER/**/*", run = "noop" },
