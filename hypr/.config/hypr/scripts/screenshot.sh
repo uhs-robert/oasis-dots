@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# screenshot.sh
 
 # Screenshot/Recording utility for Hyprland using Satty, Hyprshot, and hyprpicker
 
@@ -133,7 +134,7 @@ t | --text) handle_text_ocr ;;
 p | --pixel)
   COLOR="$(hyprpicker -a || exit 1)"
   wl-copy "$COLOR"
-  notify-send "Picked Color" "$COLOR"
+  echo "Picked Color" "$COLOR"
   ;;
 
 --record-region) handle_recording "$(slurp)" ;;

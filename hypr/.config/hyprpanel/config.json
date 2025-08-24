@@ -314,7 +314,7 @@
   "theme.bar.buttons.workspaces.active": "#ffa348",
   "theme.bar.buttons.workspaces.occupied": "#3584e4",
   "theme.bar.buttons.workspaces.available": "#9a9996",
-  "theme.bar.buttons.workspaces.hover": "#ff7800",
+  "theme.bar.buttons.workspaces.hover": "#ffbe6f",
   "theme.bar.buttons.workspaces.background": "#000000",
   "theme.bar.buttons.dashboard.icon": "#99c1f1",
   "theme.bar.buttons.dashboard.background": "#000000",
