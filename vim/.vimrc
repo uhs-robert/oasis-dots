@@ -341,16 +341,16 @@ endif
 
 " Backup theme
 if !exists('g:colors_name')
-  augroup OverrideDesert
-    autocmd!
-    autocmd ColorScheme desert ++nested call s:DesertNight()
-  augroup END
+  " augroup OverrideDesert
+    " autocmd!
+    " autocmd ColorScheme desert ++nested call s:DesertNight()
+  " augroup END
 
   function! s:DesertNight() abort
     " General
-    hi Normal           guibg=#000000 guifg=#e0e0e0 ctermbg=NONE ctermfg=250
+    hi Normal           guibg=#000000 guifg=#e6e6e6 ctermbg=NONE ctermfg=250
     hi LineNr           guifg=#5A544A ctermbg=NONE
-    hi CursorLineNr     guifg=#e0e0e0 ctermfg=231 guibg=#000000
+    hi CursorLineNr     guifg=#e6e6e6 ctermfg=231 guibg=#000000
     hi CursorLineFold   guibg=#000000 ctermbg=16
     hi SignColumn       guibg=#000000 ctermbg=NONE
     hi FoldColumn       guibg=#000000 ctermbg=NONE
@@ -362,7 +362,7 @@ if !exists('g:colors_name')
 
     hi Comment          guifg=#6DCEEB gui=italic
 
-    hi Constant         guifg=#FFA0A0 gui=NONE term=NONE cterm=NONE 
+    hi Constant         guifg=#FFA0A0 gui=NONE term=NONE cterm=NONE
     " hi String         guifg=#CE9178
     " hi Character      guifg=#CE9178
     " hi Number         guifg=#DCDCAA
@@ -371,7 +371,7 @@ if !exists('g:colors_name')
 
     " hi Identifier     guifg=#9CDCFE
     " hi Function       guifg=#4FC1FF
-    
+
     hi Statement        guifg=#F0E88C gui=NONE term=NONE cterm=NONE
     " hi Conditional    guifg=#569CD6
     " hi Repeat         guifg=#569CD6
@@ -385,7 +385,7 @@ if !exists('g:colors_name')
     " hi Define         guifg=#F44747
     " hi Macro          guifg=#F44747
     " hi PreCondit      guifg=#F44747
-    
+
     " Types / storage
     hi Type             guifg=#4EC9B0
     " hi StorageClass   guifg=#4EC9B0
@@ -413,8 +413,8 @@ if !exists('g:colors_name')
     hi VisualNOS        guibg=#264F78 guifg=#f0e68c
 
     " PopUp
-    hi Pmenu            guibg=#252526
-    hi PmenuSel         guifg=#252526 guibg=#6DCEEB
+    hi Pmenu            guibg=#0A0A0B
+    hi PmenuSel         guibg=#000000 guifg=#6DCEEB
   endfunction
   silent! colorscheme desert
 endif
@@ -521,8 +521,8 @@ augroup StatusLineModeColors
         hi User1 guibg=#CD853F guifg=#000000 ctermbg=208 ctermfg=0
         hi User5      guibg=#3E3C3B guifg=#CD853F ctermbg=237 ctermfg=208
       elseif a:mode ==# 'replace'
-        hi User1 guibg=#FF0000 guifg=#FFFFFF ctermbg=203 ctermfg=15
-        hi User5      guibg=#3E3C3B guifg=#FF0000 ctermbg=237 ctermfg=203
+        hi User1 guibg=#CD5C5C guifg=#FFFFFF ctermbg=167 ctermfg=15
+        hi User5      guibg=#3E3C3B guifg=#CD5C5C ctermbg=237 ctermfg=167
       elseif a:mode ==# 'cmdline'
         hi User1 guibg=#F0E68C guifg=#000000 ctermbg=213 ctermfg=0
         hi User5      guibg=#3E3C3B guifg=#F0E68C ctermbg=237 ctermfg=213

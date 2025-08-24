@@ -1,0 +1,177 @@
+# flavor.toml
+# yazi/.config/yazi/flavors/oasis.yazi/flavor.toml
+# Oasis Midnight — Catppuccin-simple layout mapped to your desert palette
+
+# : Manager {{{
+
+[mgr]
+cwd = { fg = "#4AC8FF" } # theme.accent
+
+# Hovered
+hovered = { reversed = true }
+preview_hovered = { underline = true }
+
+# Find
+find_keyword = { fg = "#FF9F41", bold = true, italic = true, underline = true }
+find_position = { fg = "#CD5C5C", bg = "reset", bold = true, italic = true }    # theme.primary (indianred)
+
+# Marker
+marker_copied = { fg = "#6BBF59", bg = "#6BBF59" }
+marker_cut = { fg = "#A23B3B", bg = "#A23B3B" }
+marker_marked = { fg = "#87CEEB", bg = "#87CEEB" }
+marker_selected = { fg = "#FF9F41", bg = "#FF9F41" }
+
+# Count
+count_copied = { fg = "#000000", bg = "#6BBF59" }
+count_cut = { fg = "#000000", bg = "#A23B3B" }
+count_selected = { fg = "#000000", bg = "#FF9F41" }
+
+# Border
+border_symbol = "│"
+border_style = { fg = "#514742" } # fg.dim (canyonShadow)
+
+# : }}}
+
+
+# : Tabs {{{
+
+[tabs]
+active = { fg = "#000000", bg = "#F0E68C", bold = true } # active = ember
+inactive = { fg = "#7C6A5B", bg = "#1A1A1A" }            # muted on surface
+
+# : }}}
+
+
+# : Mode {{{
+
+[mode]
+normal_main = { fg = "#000000", bg = "#F0E68C", bold = true } # accent
+normal_alt = { fg = "#F0E68C", bg = "#1A1A1A" }               # accent on surface
+
+# Select mode
+select_main = { fg = "#000000", bg = "#FF9F41", bold = true } # khaki
+select_alt = { fg = "#FF9F41", bg = "#1A1A1A" }
+
+# Unset mode
+unset_main = { fg = "#000000", bg = "#CD5C5C", bold = true } # indianred
+unset_alt = { fg = "#CD5C5C", bg = "#1A1A1A" }
+
+# : }}}
+
+
+# : Status bar {{{
+
+[status]
+# Permissions
+perm_sep = { fg = "#514742" }   # dim separator
+perm_type = { fg = "#87CEEB" }  # skyBlue
+perm_read = { fg = "#F0E68C" }  # khaki
+perm_write = { fg = "#CD5C5C" } # red
+perm_exec = { fg = "#35b56e" }  # cactus green
+
+# Progress
+progress_label = { fg = "#f6f0e1", bold = true }     # lightSand
+progress_normal = { fg = "#87CEEB", bg = "#1A1A1A" } # sky on surface
+progress_error = { fg = "#CD5C5C", bg = "#1A1A1A" }  # red on surface
+
+# : }}}
+
+
+# : Pick {{{
+
+[pick]
+border = { fg = "#4AC8FF" }              # accent
+active = { fg = "#FF9F41", bold = true } # parameter violet
+inactive = {}
+
+# : }}}
+
+
+# : Input {{{
+
+[input]
+border = { fg = "#4AC8FF" }    # accent
+title = {}
+value = {}
+selected = { reversed = true }
+
+# : }}}
+
+
+# : Completion {{{
+
+[cmp]
+border = { fg = "#4AC8FF" } # accent
+
+# : }}}
+
+
+# : Tasks {{{
+
+[tasks]
+border = { fg = "#4AC8FF" }                    # accent
+title = {}
+hovered = { fg = "#FF9F41", underline = true } # parameter violet
+
+# : }}}
+
+
+# : Which {{{
+
+[which]
+mask = { bg = "#1A1A1A" }            # surface
+cand = { fg = "#FF9F41" }            # builtinVar cyan
+rest = { fg = "#f6f0e1" }            # main fg
+desc = { fg = "#87CEEB" }            # violet
+separator = "  "
+separator_style = { fg = "#7C6A5B" } # muted sand
+
+# : }}}
+
+
+# : Help {{{
+
+[help]
+on = { fg = "#FF9F41" }                     # cyan
+run = { fg = "#87CEEB" }                    # violet
+hovered = { reversed = true, bold = true }
+footer = { fg = "#1A1A1A", bg = "#f6f0e1" } # surface on sand
+
+# : }}}
+
+
+# : Notify {{{
+
+[notify]
+title_info = { fg = "#48B4E0" }  # type blue
+title_warn = { fg = "#FF9F41" }  # ember (secondary)
+title_error = { fg = "#CD5C5C" } # primary red
+
+# : }}}
+
+
+# : File-specific styles {{{
+
+[filetype]
+rules = [
+  # Images
+  { mime = "image/*", fg = "#87CEEB" }, # skyBlue
+
+  # Media
+  { mime = "{audio,video}/*", fg = "#F0E68C" }, # khaki
+
+  # Archives
+  { mime = "application/{zip,rar,7z*,tar,gzip,xz,zstd,bzip*,lzma,compress,archive,cpio,arj,xar,ms-cab*}", fg = "#B499FF" }, # violet
+
+  # Documents
+  { mime = "application/{pdf,doc,rtf}", fg = "#6BBF59" }, # add green
+
+  # Fallback
+  { url = "*", fg = "#f6f0e1" },  # lightSand
+  { url = "*/", fg = "#87CEEB" }, # skyBlue
+
+  # TODO fallback names to match above
+  { name = "*", fg = "#f6f0e1" },
+  { name = "*/", fg = "#87CEEB" },
+]
+# : }}}
