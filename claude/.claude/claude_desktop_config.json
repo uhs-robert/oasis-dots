@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "serena": {
+      "command": "uv",
+      "args": [
+        "run",
+        "--directory",
+        "/home/USER/Documents/github-uphill/mcp-servers/serena",
+        "serena",
+        "start-mcp-server"
+      ]
+    }
+  }
+}
+
