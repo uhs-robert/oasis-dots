@@ -116,6 +116,9 @@ __pycache__/
 **/.gemini/google_accounts.json
 **/.gemini/installation_id
 **/.gemini/tmp/
+CLAUDE.md
+GEMINI.md
+AGENTS.md
 
 # ────────────────────────────────────────────────
 # 🧼 Oh-My-Zsh bloat
