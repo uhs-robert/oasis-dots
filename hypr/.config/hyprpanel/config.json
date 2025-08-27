@@ -1,7 +1,7 @@
 {
   "bar.customModules.updates.pollingInterval": 1440000,
-  "theme.font.name": "FiraMono Nerd Font",
-  "theme.font.label": "FiraMono Nerd Font",
+  "theme.font.name": "ProFont IIx Nerd Font",
+  "theme.font.label": "ProFont IIx Nerd Font",
   "menus.transition": "crossfade",
   "theme.bar.menus.enableShadow": true,
   "theme.bar.scaling": 58,

@@ -6,154 +6,61 @@ prepend_keymap = [
   { on = "!", run = 'shell "$SHELL" --block', desc = "Open shell here" },
 
   # Go to...
-  { on = [
-    "g",
-    "r",
-  ], run = 'shell -- ya emit cd "$(git rev-parse --show-toplevel)"', desc = "Go to git root" },
+  { on = [ "g", "r", ], run = 'shell -- ya emit cd "$(git rev-parse --show-toplevel)"', desc = "Go to git root" },
   { on = "T", run = "plugin toggle-pane max-preview", desc = "Maximize or restore the preview pane" },
-  { on = [
-    "g",
-    "l",
-  ], run = "plugin lazygit", desc = "run lazygit" },
-  { on = [
-    "g",
-    "T",
-  ], run = "cd /tmp", desc = "Go to /tmp" },
-  { on = [
-    "g",
-    "/",
-  ], run = "cd /", desc = "Go to /" },
-  { on = [
-    "g",
-    "D",
-  ], run = "cd /home/USER/.local/state/yazi", desc = "Go to Yazi debug log" },
-  { on = [
-    "g",
-    "u",
-  ], run = "cd ~/Documents/github-uphill/", desc = "Go to /github-uphill" },
-  { on = [
-    "g",
-    "x",
-  ], run = "cd ~/dotfiles/", desc = "Go to dotfiles" },
-  { on = [
-    "g",
-    "y",
-  ], run = "cd ~/.config/yazi/", desc = "Go to yazi config" },
-  { on = [
-    "g",
-    "p",
-  ], run = "cd ~/Pictures/", desc = "Go to Pictures" },
-  { on = [
-    "g",
-    "v",
-  ], run = "cd ~/Videos/", desc = "Go to Videos" },
-  { on = [
-    "g",
-    "n",
-  ], run = "cd ~/Documents/Notes/", desc = "Go to Notes" },
+  { on = [ "g", "l", ], run = "plugin lazygit", desc = "run lazygit" },
+  { on = [ "g", "T", ], run = "cd /tmp", desc = "Go to /tmp" },
+  { on = [ "g", "/", ], run = "cd /", desc = "Go to /" },
+  { on = [ "g", "D", ], run = "cd /home/USER/.local/state/yazi", desc = "Go to Yazi debug log" },
+  { on = [ "g", "u", ], run = "cd ~/Documents/github-uphill/", desc = "Go to /github-uphill" },
+  { on = [ "g", "x", ], run = "cd ~/dotfiles/", desc = "Go to dotfiles" },
+  { on = [ "g", "y", ], run = "cd ~/.config/yazi/", desc = "Go to yazi config" },
+  { on = [ "g", "p", ], run = "cd ~/Pictures/", desc = "Go to Pictures" },
+  { on = [ "g", "v", ], run = "cd ~/Videos/", desc = "Go to Videos" },
+  { on = [ "g", "n", ], run = "cd ~/Documents/Notes/", desc = "Go to Notes" },
 
   # SSHFS Plugin
-  { on = [
-    "M",
-    "a",
-  ], run = "plugin sshfs -- add", desc = "Add SSH alias" },
-  { on = [
-    "M",
-    "r",
-  ], run = "plugin sshfs -- remove", desc = "Remove SSH alias" },
-  { on = [
-    "M",
-    "m",
-  ], run = "plugin sshfs -- mount --jump", desc = "Mount & jump" },
-  { on = [
-    "M",
-    "u",
-  ], run = "plugin sshfs -- unmount", desc = "Unmount SSHFS" },
-  { on = [
-    "M",
-    "c",
-  ], run = "cd ~/.ssh/", desc = "Go to ssh config" },
-  { on = [
-    "M",
-    "h",
-  ], run = "plugin sshfs -- home", desc = "Go to mount directory" },
-  { on = [
-    "g",
-    "m",
-  ], run = "plugin sshfs -- jump", desc = "Jump to mount" },
+  { on = [ "M", "a", ], run = "plugin sshfs -- add", desc = "Add SSH alias" },
+  { on = [ "M", "r", ], run = "plugin sshfs -- remove", desc = "Remove SSH alias" },
+  { on = [ "M", "m", ], run = "plugin sshfs -- mount --jump", desc = "Mount & jump" },
+  { on = [ "M", "u", ], run = "plugin sshfs -- unmount", desc = "Unmount SSHFS" },
+  { on = [ "M", "c", ], run = "cd ~/.ssh/", desc = "Go to ssh config" },
+  { on = [ "M", "h", ], run = "plugin sshfs -- home", desc = "Go to mount directory" },
+  { on = [ "g", "m", ], run = "plugin sshfs -- jump", desc = "Jump to mount" },
 
   # Ch Mod
-  { on = [
-    "c",
-    "m",
-  ], run = "plugin chmod", desc = "Chmod on selected files" },
+  { on = [ "c", "m", ], run = "plugin chmod", desc = "Chmod on selected files" },
 
   # Compress
-  { on = [
-    "c",
-    "a",
-    "a",
-  ], run = "plugin compress", desc = "Archive selected files" },
-  { on = [
-    "c",
-    "a",
-    "p",
-  ], run = "plugin compress -p", desc = "Archive selected files (password)" },
-  { on = [
-    "c",
-    "a",
-    "h",
-  ], run = "plugin compress -ph", desc = "Archive selected files (password+header)" },
-  { on = [
-    "c",
-    "a",
-    "l",
-  ], run = "plugin compress -l", desc = "Archive selected files (compression level)" },
-  { on = [
-    "c",
-    "a",
-    "u",
-  ], run = "plugin compress -phl", desc = "Archive selected files (password+header+level)" },
+  { on = [ "c", "a", "a", ], run = "plugin compress", desc = "Archive selected files" },
+  { on = [ "c", "a", "p", ], run = "plugin compress -p", desc = "Archive selected files (password)" },
+  { on = [ "c", "a", "h", ], run = "plugin compress -ph", desc = "Archive selected files (password+header)" },
+  { on = [ "c", "a", "l", ], run = "plugin compress -l", desc = "Archive selected files (compression level)" },
+  { on = [ "c", "a", "u", ], run = "plugin compress -phl", desc = "Archive selected files (password+header+level)" },
 
   # Archive Mounting
-  { on = [
-    "m",
-    "a",
-  ], run = "plugin archivemount mount", desc = "Mount selected archive" },
-  { on = [
-    "m",
-    "u",
-  ], run = "plugin archivemount unmount", desc = "Unmount and save changes to original archive" },
+  { on = [ "m", "a", ], run = "plugin archivemount mount", desc = "Mount selected archive" },
+  { on = [ "m", "u", ], run = "plugin archivemount unmount", desc = "Unmount and save changes to original archive" },
 
   # Restore
-  { on = [
-    "u",
-  ], run = "plugin restore", desc = "Restore last deleted files/folders" },
+  { on = [ "u", ], run = "plugin restore", desc = "Restore last deleted files/folders" },
 
   # Trash
-  { on = [
-    "g",
-    "t",
-  ], run = "plugin recycle-bin open", desc = "Go to Trash" },
-  { on = [
-    "R",
-    "o",
-  ], run = "plugin recycle-bin open", desc = "Open Trash" },
-  { on = [
-    "R",
-    "e",
-  ], run = "plugin recycle-bin empty", desc = "Empty Trash" },
-  { on = [
-    "R",
-    "d",
-  ], run = "plugin recycle-bin delete", desc = "Delete from Trash" },
-  { on = [
-    "R",
-    "D",
-  ], run = "plugin recycle-bin emptyDays", desc = "Empty by days deleted" },
-  { on = [
-    "R",
-    "r",
-  ], run = "plugin recycle-bin restore", desc = "Restore from Trash" },
+  { on = [ "g", "t", ], run = "plugin recycle-bin open", desc = "Go to Trash" },
+  { on = [ "R", "o", ], run = "plugin recycle-bin open", desc = "Open Trash" },
+  { on = [ "R", "e", ], run = "plugin recycle-bin empty", desc = "Empty Trash" },
+  { on = [ "R", "d", ], run = "plugin recycle-bin delete", desc = "Delete from Trash" },
+  { on = [ "R", "D", ], run = "plugin recycle-bin emptyDays", desc = "Empty by days deleted" },
+  { on = [ "R", "r", ], run = "plugin recycle-bin restore", desc = "Restore from Trash" },
 
+  # Sudo
+  { on = [ "A", "p", "p", ], run = "plugin sudo -- paste", desc = "sudo paste" },
+  { on = [ "A", "P", ], run = "plugin sudo -- paste --force", desc = "sudo paste" },
+  { on = [ "A", "r", ], run = "plugin sudo -- rename", desc = "sudo rename" },
+  { on = [ "A", "p", "l", ], run = "plugin sudo -- link", desc = "sudo link" },
+  { on = [ "A", "p", "r", ], run = "plugin sudo -- link --relative", desc = "sudo link relative path" },
+  { on = [ "A", "p", "L", ], run = "plugin sudo -- hardlink", desc = "sudo hardlink" },
+  { on = [ "A", "a", ], run = "plugin sudo -- create", desc = "sudo create" }, 
+  { on = [ "A", "d", ], run = "plugin sudo -- remove", desc = "sudo trash" },
+  { on = [ "A", "D", ], run = "plugin sudo -- remove --permanently", desc = "sudo delete" },
 ]

@@ -1,6 +1,3 @@
 # theme.toml
 [flavor]
 dark = "oasis"
-
-# [mgr]
-# border_style = { fg = "green" }

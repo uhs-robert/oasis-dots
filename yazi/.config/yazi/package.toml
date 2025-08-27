@@ -63,6 +63,11 @@ use = "uhs-robert/recycle-bin"
 rev = "52f6fe0"
 hash = "4b2fcf9d577d28703f4073e7e13c5183"
 
+[[plugin.deps]]
+use = "TD-Sky/sudo"
+rev = "af70636"
+hash = "a94dcbe9266512806c677138e8591ddb"
+
 [[flavor.deps]]
 use = "yazi-rs/flavors:catppuccin-frappe"
 rev = "9cd2ac4"
