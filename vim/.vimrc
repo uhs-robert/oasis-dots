@@ -736,7 +736,7 @@ vnoremap gc :call ToggleComment()<CR>
 "TODO: Finish and test this section to add fzf to which key
 " ===================== Modular FZF (reuses your launchers) ===================
 let g:FzfPickerStyle   = get(g:, 'FzfPickerStyle', 'bottom')   " popup|bottom|tab
-let g:FzfSplitHeight   = get(g:, 'FzfSplitHeight', 12)
+let g:FzfSplitHeight   = get(g:, 'FzfSplitHeight', float2nr(&lines * 0.75))
 let g:FzfPreviewSide   = get(g:, 'FzfPreviewSide', 'right')
 let g:FzfPreviewSize   = get(g:, 'FzfPreviewSize', '60%')
 let g:FzfPreviewBorder = get(g:, 'FzfPreviewBorder', 1)
@@ -871,46 +871,6 @@ function! s:_build_files_spec(action_fmt) abort
         \ }
 endfunction
 
-" buffers: we show [mark][mod] name, but output ONLY bufnr to tmp
-function! s:_write_buflist(path) abort
-  let L = []
-  let cur = bufnr('%')
-  for b in range(1, bufnr('$'))
-    if !buflisted(b) | continue | endif
-    let name  = bufname(b)
-    let short = empty(name) ? '[No Name]' : fnamemodify(name, ':t')
-    let full  = empty(name) ? '' : fnamemodify(name, ':p')
-    let mod   = getbufvar(b, '&modified') ? '+' : ' '
-    let mark  = (b == cur ? '%' : ' ')
-    let label = printf('%s%s  %s', mark, mod, short)
-    call add(L, printf('%d\t%s\t%s', b, label, full))
-  endfor
-  call writefile(L, a:path)
-endfunction
-
-function! s:_build_buffers_spec(action_fmt) abort
-  let list = tempname()
-  let tmp  = tempname()
-  call s:_write_buflist(list)
-  if executable('bat')
-    let preview_body = 'bat --style=numbers --color=always --line-range=:300 --pager=never -- "$3"'
-  else
-    let preview_body = 'sed -n 1,300p -- "$3" 2>/dev/null || head -n 300 -- "$3"'
-  endif
-  let preview = printf('sh -c ''[ -n "$3" ] && (%s) || echo "[No Name buffer]"''', preview_body)
-  let pv = printf('--preview-window=%s,%s%s',
-        \ g:FzfPreviewSide, g:FzfPreviewSize, g:FzfPreviewBorder ? ',border' : '')
-  let core = printf('cat %s | fzf --delimiter=''\t'' --with-nth=2.. --preview %s %s | cut -f1 > %s',
-        \ shellescape(list), shellescape(preview), pv, shellescape(tmp))
-  return {
-        \ 'tmp': tmp,
-        \ 'argv': ['sh','-c', core],
-        \ 'tmux': 'sh -c ' . shellescape(substitute(core, '\vfzf ', 'fzf-tmux -p 80%,60% ', '')),
-        \ 'system': 'sh -c ' . shellescape(core),
-        \ 'action': a:action_fmt,
-        \ 'is_file': 0,
-        \ }
-endfunction
 
 " ---- One public runner that picks the right launcher ------------------------
 function! s:_fzf_run(spec) abort
@@ -918,12 +878,15 @@ function! s:_fzf_run(spec) abort
   if get(g:, 'FzfDebug', 0)
     echo "FZF Command: " . string(a:spec.argv)
     echo "System Command: " . a:spec.system
+    echo "SSH Connection: " . (exists('$SSH_CONNECTION') ? 'YES' : 'NO')
     echo "Press any key to continue..."
     call getchar()
   endif
   
-  " Default to system mode for reliability, unless explicitly disabled
-  if !get(g:, 'FzfUseTerminal', 0)
+  " Auto-detect: Use terminal mode in SSH, system mode locally
+  let use_terminal = exists('$SSH_CONNECTION') || get(g:, 'FzfUseTerminal', 0)
+  
+  if !use_terminal
     call s:_fzf_system(a:spec)
     return
   endif
@@ -947,10 +910,54 @@ function! s:FzfFiles() abort
   call s:_fzf_run(s:_build_files_spec('tabedit %s'))
 endfunction
 
-" Fuzzy switch to an OPEN BUFFER
-function! s:FzfBuffers() abort
-  call s:_fzf_run(s:_build_buffers_spec('buffer %s'))
+" Simple buffer switcher with numbered/lettered list
+function! s:BufferSwitcher() abort
+  let buffers = []
+  let cur = bufnr('%')
+  
+  " Collect all listed buffers
+  for b in range(1, bufnr('$'))
+    if !buflisted(b) | continue | endif
+    let name = bufname(b)
+    if empty(name)
+      let display = printf('[Buffer %d - Unnamed]', b)
+    else
+      let display = fnamemodify(name, ':t')
+    endif
+    let mod = getbufvar(b, '&modified') ? '+' : ' '
+    let mark = (b == cur ? '%' : ' ')
+    call add(buffers, {'bufnr': b, 'display': printf('%s%s %s', mark, mod, display)})
+  endfor
+  
+  if empty(buffers)
+    echo "No buffers available"
+    return
+  endif
+  
+  " Display numbered list
+  echo "=== Buffer List ==="
+  let keys = '0123456789abcdefghijklmnopqrstuvwxyz'
+  for i in range(len(buffers))
+    if i >= len(keys) | break | endif
+    let key = keys[i]
+    echo printf("[%s] %s", key, buffers[i].display)
+  endfor
+  echo "==================="
+  
+  " Get user input
+  echo "Enter buffer key (0-9, a-z): "
+  let choice = nr2char(getchar())
+  redraw!
+  
+  " Find the buffer
+  let idx = stridx(keys, choice)
+  if idx >= 0 && idx < len(buffers)
+    execute 'buffer ' . buffers[idx].bufnr
+  else
+    echo "Invalid selection: " . choice
+  endif
 endfunction
+
 
 " Debug version - simple fzf without preview
 function! s:FzfFilesSimple() abort
@@ -968,15 +975,14 @@ function! s:FzfFilesSimple() abort
   endif
 endfunction
 
-" Add test command
+" Add test commands
 command! FzfTest call s:FzfFilesSimple()
+command! BufList ls
 " ============================================================================
 
 " Example menu hooks (unchanged style) ---------------------------------------
 " Files menu additions:
 "   ['T', s:Cmd('tabedit (fzf)',  'call <SID>FzfFiles()')],
-" Buffers menu additions:
-"   ['F', s:Cmd('Fuzzy switch',   'call <SID>FzfBuffers()')],
 
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 " ### Which Key Mappings
@@ -1176,7 +1182,7 @@ function! s:WinMenu() abort
     \ ['w', s:Cmd('Other window',      'wincmd w')],
     \ ['c', s:Cmd('Close window',     'wincmd c')],
     \ ['-', s:Cmd('Split horizontal',  'wincmd s')],
-    \ ['|', s:Cmd('Split vertical',    'wincmd v')],
+    \ ['v', s:Cmd('Split vertical',    'wincmd v')],
     \ ['h', s:Cmd('Go left',           'wincmd h')],
     \ ['j', s:Cmd('Go down',           'wincmd j')],
     \ ['k', s:Cmd('Go up',             'wincmd k')],
@@ -1217,15 +1223,13 @@ endfunction
 
 function! s:BufMenu() abort
   let spec = [
-    \ ['b', s:Cmd('List buffers',       'ls')],
+    \ ['b', s:Cmd('Switch buffers',     'call <SID>BufferSwitcher()')],
     \ ['l', s:Cmd('Next buffer',        'bnext')],
     \ ['h', s:Cmd('Prev buffer',        'bprevious')],
     \ ['a', s:Cmd('Alternate buffer',   'buffer #')],
-    \ ['c', s:Cmd('Close buffer',       'bd')],
-    \ ['d', s:Cmd('Delete all buffers', 'bwipeout')],
+    \ ['d', s:Cmd('Close buffer',       'bd')],
+    \ ['D', s:Cmd('Delete all buffers', 'bwipeout')],
     \ ['o', s:Cmd('Only this buffer',   'execute "%bd | e# | bd #"')],
-    \ ['p', s:Cmd('Pick by number :b ', 'call <SID>TypeCmd("b ")')],
-    \ ['/', s:Cmd('Find buffers (fzf)', 'call <SID>FzfBuffers()')],
     \ ]
   call s:Which('Buffers', s:BuildMenu(spec))
 endfunction
