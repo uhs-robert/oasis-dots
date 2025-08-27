@@ -254,7 +254,7 @@
   "theme.bar.buttons.modules.weather.background": "#080808",
   "theme.bar.buttons.modules.updates.icon_background": "#CD5C5C",
   "theme.bar.buttons.modules.updates.icon": "#080808",
-  "theme.bar.buttons.modules.updates.text": "#CD5C5C",
+  "theme.bar.buttons.modules.updates.text": "#ffa0a0",
   "theme.bar.buttons.modules.updates.background": "#080808",
   "theme.bar.buttons.modules.kbLayout.icon_background": "#4AC8FF",
   "theme.bar.buttons.modules.kbLayout.icon": "#080808",
