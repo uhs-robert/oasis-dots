@@ -1,3 +1,4 @@
+# keymap.toml
 [mgr]
 prepend_keymap = [
   # Utils
@@ -16,8 +17,12 @@ prepend_keymap = [
   ], run = "plugin lazygit", desc = "run lazygit" },
   { on = [
     "g",
-    "/",
+    "T",
   ], run = "cd /tmp", desc = "Go to /tmp" },
+  { on = [
+    "g",
+    "/",
+  ], run = "cd /", desc = "Go to /" },
   { on = [
     "g",
     "D",

@@ -451,13 +451,30 @@
   "theme.matugen_settings.scheme_type": "tonal-spot",
   "bar.layouts": {
     "1": {
-      "left": ["dashboard", "windowtitle", "cputemp"],
-      "middle": ["workspaces"],
-      "right": ["weather", "updates", "clock", "notifications"]
+      "left": [
+        "dashboard",
+        "windowtitle",
+        "cputemp"
+      ],
+      "middle": [
+        "workspaces"
+      ],
+      "right": [
+        "weather",
+        "updates",
+        "clock",
+        "notifications"
+      ]
     },
     "*": {
-      "left": ["dashboard", "windowtitle", "cava"],
-      "middle": ["workspaces"],
+      "left": [
+        "dashboard",
+        "windowtitle",
+        "cava"
+      ],
+      "middle": [
+        "workspaces"
+      ],
       "right": [
         "systray",
         "volume",
@@ -531,7 +548,9 @@
   "theme.font.style": "normal",
   "theme.bar.buttons.background_hover_opacity": 100,
   "menus.clock.weather.location": "Chesapeake",
-  "bar.customModules.storage.paths": ["/"],
+  "bar.customModules.storage.paths": [
+    "/"
+  ],
   "bar.customModules.updates.updateTooltipCommand": "/usr/share/hyprpanel/scripts/checkUpdates.sh -fedora -tooltip",
   "bar.customModules.updates.updateCommand": "/usr/share/hyprpanel/scripts/checkUpdates.sh -fedora",
   "tear": false,
@@ -583,4 +602,3 @@
   "menus.clock.time.military": true,
   "theme.bar.menus.monochrome": false
 }
-
