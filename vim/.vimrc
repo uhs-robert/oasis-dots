@@ -740,6 +740,8 @@ let g:FzfSplitHeight   = get(g:, 'FzfSplitHeight', 12)
 let g:FzfPreviewSide   = get(g:, 'FzfPreviewSide', 'right')
 let g:FzfPreviewSize   = get(g:, 'FzfPreviewSize', '60%')
 let g:FzfPreviewBorder = get(g:, 'FzfPreviewBorder', 1)
+let g:FzfDebug         = get(g:, 'FzfDebug', 0)              " 1 to enable debug output
+let g:FzfUseTerminal   = get(g:, 'FzfUseTerminal', 0)        " 1 to use terminal mode (default: system mode)
 
 " ---- State for exit_cb ------------------------------------------------------
 let s:fzf_job2state = {}  " key -> [buf, tmp, action_fmt, is_file]
@@ -781,7 +783,8 @@ endfunction
 " ---- Generic launchers (reused by all pickers) ------------------------------
 function! s:_fzf_tmux_popup(spec) abort
   " spec: {'tmux': 'sh -c "... > tmp"', 'tmp': tmp, 'action': fmt, 'is_file': 1/0}
-  silent execute '!'.a:spec.tmux
+  " Use system() instead of :! to avoid command line interpretation issues
+  let result = system(a:spec.tmux)
   redraw!
   if filereadable(a:spec.tmp)
     let lines = readfile(a:spec.tmp)
@@ -819,7 +822,8 @@ function! s:_fzf_tab(spec) abort
 endfunction
 
 function! s:_fzf_system(spec) abort
-  silent execute '!'.a:spec.system
+  " Use system() instead of :! to avoid Vim's command line interpretation issues
+  let result = system(a:spec.system)
   redraw!
   if filereadable(a:spec.tmp)
     let lines = readfile(a:spec.tmp)
@@ -903,13 +907,27 @@ function! s:_build_buffers_spec(action_fmt) abort
         \ 'argv': ['sh','-c', core],
         \ 'tmux': 'sh -c ' . shellescape(substitute(core, '\vfzf ', 'fzf-tmux -p 80%,60% ', '')),
         \ 'system': 'sh -c ' . shellescape(core),
-        \ 'action': a:action_fmt,   " e.g. 'buffer %s'
+        \ 'action': a:action_fmt,
         \ 'is_file': 0,
         \ }
 endfunction
 
 " ---- One public runner that picks the right launcher ------------------------
 function! s:_fzf_run(spec) abort
+  " Debug: show the command that will be executed
+  if get(g:, 'FzfDebug', 0)
+    echo "FZF Command: " . string(a:spec.argv)
+    echo "System Command: " . a:spec.system
+    echo "Press any key to continue..."
+    call getchar()
+  endif
+  
+  " Default to system mode for reliability, unless explicitly disabled
+  if !get(g:, 'FzfUseTerminal', 0)
+    call s:_fzf_system(a:spec)
+    return
+  endif
+  
   if get(g:, 'FzfPickerStyle', 'bottom') ==# 'popup' && exists('$TMUX') && executable('fzf-tmux')
     call s:_fzf_tmux_popup(a:spec)
   elseif has('terminal') && exists('*term_start')
@@ -933,6 +951,25 @@ endfunction
 function! s:FzfBuffers() abort
   call s:_fzf_run(s:_build_buffers_spec('buffer %s'))
 endfunction
+
+" Debug version - simple fzf without preview
+function! s:FzfFilesSimple() abort
+  let tmp = tempname()
+  let cmd = 'find . -type f | fzf > ' . shellescape(tmp)
+  silent execute '!' . cmd
+  redraw!
+  if filereadable(tmp)
+    let lines = readfile(tmp)
+    call delete(tmp)
+    if !empty(lines) && !empty(trim(lines[0]))
+      let sel = trim(lines[0])
+      execute 'tabedit ' . fnameescape(sel)
+    endif
+  endif
+endfunction
+
+" Add test command
+command! FzfTest call s:FzfFilesSimple()
 " ============================================================================
 
 " Example menu hooks (unchanged style) ---------------------------------------
