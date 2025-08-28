@@ -450,7 +450,7 @@
   "theme.matugen_settings.mode": "dark",
   "theme.matugen_settings.scheme_type": "tonal-spot",
   "bar.layouts": {
-    "1": {
+    "2": {
       "left": [
         "dashboard",
         "windowtitle",
