@@ -1,0 +1,106 @@
+---
+allowed-tools: Bash(gh:*), Bash(find:*), Bash(git log:*), Bash(cat:*), Bash(head:*), Bash(git diff:*), Bash(git branch:*), Bash(npm:*), Bash(pnpm:*), Bash(yarn:*), Bash(cargo:*), Bash(go:*), Bash(python:*), Bash(ruff:*), Bash(eslint:*), Bash(tsc:*), TodoWrite, Read, Edit, MultiEdit, Grep, Glob
+description: Analyze and fix GitHub issues by understanding the problem, searching codebase, and implementing solutions
+---
+
+## Context
+
+- Current branch: !`git branch --show-current`
+- Recent commits: !`git log -n 5 --oneline`
+
+## Your Task
+
+The issue number will be provided as the first argument, optionally followed by additional context (e.g., `/fix-github-issue 7 I suspect this is related to the authentication middleware`).
+
+**Additional Context**: If provided after the issue number, use this context to guide your analysis. This may include:
+- Your suspected root cause or proposed solution
+- Specific areas of the codebase to focus on  
+- Troubleshooting steps you've already tried
+- Preferred implementation approach
+
+Execute the following workflow to systematically fix the GitHub issue:
+
+### Phase 1: Issue Analysis
+
+1. **Retrieve Issue Details**: Use `gh issue view` to get complete issue information
+2. **Parse Problem Statement**: Extract the core problem, expected behavior, and steps to reproduce
+3. **Consider Additional Context**: If provided, incorporate the user's suspected cause, preferred approach, or focus areas
+4. **Identify Issue Category**: Determine if it's a bug, feature request, performance issue, etc.
+
+### Phase 2: Codebase Investigation
+
+1. **Search Relevant Files**: Use Grep/Glob to find files related to the issue keywords
+2. **Examine Current Implementation**: Read relevant source files to understand existing code
+3. **Identify Root Cause**: Locate the specific code causing the issue
+
+### Phase 3: Solution Planning
+
+1. **Create TODO List**: Use TodoWrite to break down the fix into specific steps
+2. **Propose Solution**: Present your analysis and proposed changes to the user
+3. **STOP AND WAIT**: Do NOT proceed with implementation until the user explicitly approves the plan
+
+### Phase 4: Implementation (Only After User Approval)
+
+1. **Execute Changes**: Implement the agreed-upon solution
+2. **Test Changes**: Verify the fix works as expected
+3. **Run Quality Checks**: Execute linting, type checking, and tests
+4. **Validate Fix**: Ensure the original issue is resolved
+
+## Guidelines
+
+- **Be Thorough**: Examine the issue description carefully for all requirements
+- **Search Systematically**: Use multiple search terms related to the issue
+- **Explain Your Reasoning**: Document why you believe you've found the root cause
+- **MANDATORY APPROVAL**: Always create a TODO list and present your plan, then STOP and wait for explicit user approval before implementing ANY changes
+- **Quality Assurance**: Run all relevant checks (lint, typecheck, tests) before finishing
+- **Consider Edge Cases**: Think about potential side effects of your changes
+
+## Workflow Steps
+
+```bash
+# 1. Get issue details
+gh issue view @ARGS
+
+# 2. Search for relevant code
+grep -r "keyword1\|keyword2" --include="*.js" --include="*.ts" --include="*.py" .
+
+# 3. Find related files
+find . -name "*relevant*" -type f
+
+# 4. After implementing changes, run quality checks
+npm run lint    # or equivalent for your project
+npm run typecheck  # if applicable
+npm test       # if tests exist
+```
+
+## Expected Output Format
+
+**Issue Analysis:**
+
+- Issue #123: [Title]
+- Problem: [Brief description of the issue]
+- Root Cause: [Specific code/logic causing the problem]
+
+**Proposed Solution:**
+
+- [Detailed explanation of the fix approach]
+- Files to modify: [List of files]
+- Changes needed: [High-level overview]
+
+**Implementation Plan:**
+
+- [ ] Task 1: [Specific action]
+- [ ] Task 2: [Specific action]
+- [ ] Task 3: [Quality checks]
+
+## Notes
+
+- Always use `gh issue view [ISSUE_NUMBER]` first to get issue context
+- Usage: `/fix-github-issue [ISSUE_NUMBER] [optional context]`
+  - Example: `/fix-github-issue 123`
+  - Example: `/fix-github-issue 123 I suspect this is in the auth module and needs a null check`
+- If no issue number is provided, ask the user to specify it
+- **CRITICAL**: After analysis and planning, always ask "Do you approve this plan?" and wait for confirmation
+- Do not make ANY file changes until the user explicitly approves your proposed solution
+- Consider both the immediate fix and any potential improvements
+- Document any assumptions you make about the intended behavior
