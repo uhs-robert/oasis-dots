@@ -29,24 +29,19 @@ rev = "8f37dc5"
 hash = "ee71543790f0ce3951161045a3787abd"
 
 [[plugin.deps]]
-use = "dawsers/fuse-archive"
-rev = "a58327c"
-hash = "6a6d24880ce7666048fb81ad758c48d3"
-
-[[plugin.deps]]
 use = "uhs-robert/sshfs"
-rev = "5010171"
-hash = "4a57605c3e788f9913f98c8b43f4b1de"
+rev = "25e8bb0"
+hash = "6ab2128fbbaa3928caa1dbf997293708"
 
 [[plugin.deps]]
 use = "yazi-rs/plugins:types"
-rev = "e95c7b3"
+rev = "d7588f6"
 hash = "1e047e1b13b5e3fc6ab1f5d0d04a14e2"
 
 [[plugin.deps]]
 use = "KKV9/compress"
-rev = "9fc8fe0"
-hash = "2ad086899bf368fba211a33d8f68c39d"
+rev = "c264639"
+hash = "e17c11b605d989568a1d1741ca17c584"
 
 [[plugin.deps]]
 use = "AnirudhG07/archivemount"
@@ -55,13 +50,13 @@ hash = "28caf2541e627582e75add7a9f98a32a"
 
 [[plugin.deps]]
 use = "boydaihungst/restore"
-rev = "84f1921"
-hash = "355f163cb374b5c9514aee2b64121678"
+rev = "dc40509"
+hash = "e7e377f9b1bbaca4a2e5d9ec9709ac4d"
 
 [[plugin.deps]]
 use = "uhs-robert/recycle-bin"
-rev = "52f6fe0"
-hash = "4b2fcf9d577d28703f4073e7e13c5183"
+rev = "d47fda8"
+hash = "c125cd51a36efd6248103eb8215c7717"
 
 [[plugin.deps]]
 use = "TD-Sky/sudo"

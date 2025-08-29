@@ -9,13 +9,13 @@ A fast, minimal **Recycle Bin** for the [Yazi](https://github.com/sxyazi/yazi) t
 
 Browse, restore, or permanently delete trashed files without leaving your terminal. Includes age-based cleanup and bulk actions.
 
-https://github.com/user-attachments/assets/1f7ab9b2-33e3-4262-94c5-b27ad9dc142e
+<https://github.com/user-attachments/assets/1f7ab9b2-33e3-4262-94c5-b27ad9dc142e>
 
 > [!NOTE]
 >
-> **Linux Only**
+> **Cross-Platform Support**
 >
-> This plugin currently supports Linux only.
+> This plugin supports Linux and macOS systems.
 
 ## 🧠 What it does under the hood
 
@@ -32,10 +32,10 @@ This plugin serves as a wrapper for the [trash-cli](https://github.com/andreafra
 
 ## 📋 Requirements
 
-| Software  | Minimum     | Notes                                   |
-| --------- | ----------- | --------------------------------------- |
-| Yazi      | `>=25.5.31` | untested on 25.6+                       |
-| trash-cli | any         | `sudo dnf/apt/pacman install trash-cli` |
+| Software  | Minimum     | Notes                                              |
+| --------- | ----------- | -------------------------------------------------- |
+| Yazi      | `>=25.5.31` | untested on 25.6+                                  |
+| trash-cli | any         | **Linux**: `sudo dnf/apt/pacman install trash-cli`<br>**macOS**: `brew install trash-cli` |
 
 The plugin uses the following trash-cli commands: `trash-list`, `trash-empty`, `trash-restore`, and `trash-rm`.
 
@@ -45,7 +45,7 @@ Install the plugin via Yazi's package manager:
 
 ```sh
 # via Yazi’s package manager
-ya pack -a uhs-robert/recycle-bin
+ya pkg add uhs-robert/recycle-bin
 ```
 
 Then add the following to your `~/.config/yazi/init.lua` to enable the plugin with default settings:
@@ -56,14 +56,17 @@ require("recycle-bin"):setup()
 
 ## ⚙️ Configuration
 
-To customize plugin behavior, you may pass a config table to `setup()` (default settings are displayed):
+The plugin automatically discovers your system's trash directories using `trash-list --trash-dirs`. If you need to customize the behavior, you can pass a config table to `setup()`:
 
 ```lua
 require("recycle-bin"):setup({
-  -- Trash directory
-  trash_dir = "~/.local/share/Trash/",
+  -- Optional: Override automatic trash directory discovery
+  -- trash_dir = "~/.local/share/Trash/",  -- Uncomment to use specific directory
 })
 ```
+
+> [!NOTE]
+> The plugin supports multiple trash directories and will prompt you to choose which one to use if multiple are found.
 
 ## 🎹 Key Mapping
 
@@ -121,7 +124,7 @@ prepend_keymap = [
 5. **Empty by age**: Press `RD` to empty trash items older than specified days (defaults to 30 days)
 
 > [!TIP]
-> Use Yazi's visual selection (`v` or `V`) or toggle selection (press `Space` on files) to select multiple files from the Trash before restoring or deleting
+> Use Yazi's visual selection (`v` or `V` followed by `ESC` to select items) or toggle select (press `Space` on individual files) to select multiple files from the Trash before restoring or deleting
 >
 > The plugin will show a confirmation dialog for destructive operations
 
@@ -137,11 +140,25 @@ prepend_keymap = [
 
 **"Trash directory not found" error:**
 
-- The default trash directory is `~/.local/share/Trash/`
-- Create it manually if it doesn't exist: `mkdir -p ~/.local/share/Trash/{files,info}`
-- Or customize the path in your configuration
+- The plugin automatically discovers trash directories using `trash-list --trash-dirs`
+- If no directories are found, create the standard location:
+  - **Linux**: `mkdir -p ~/.local/share/Trash/{files,info}`
+  - **macOS**: `mkdir -p ~/.Trash`
+- You can also specify a custom path in your configuration
 
 **"No files selected" warning:**
 
 - Make sure you have files selected in Yazi before running restore/delete operations
 - Use `Space` to select files or `v`/`V` for visual selection mode
+
+## 💡 Recommendations
+
+### Companion Plugin
+
+For an even better trash management experience, pair this plugin with:
+
+**[restore.yazi](https://github.com/boydaihungst/restore.yazi)** - Undo your delete history by your latest deleted files/folders
+
+This companion plugin adds an "undo" feature that lets you press `u` to instantly restore the last deleted file. You can keep hitting `u` repeatedly to step through your entire delete history, making accidental deletions a thing of the past.
+
+**Perfect combination:** Use `restore.yazi` for quick single-file undos and `recycle-bin.yazi` for comprehensive trash management and bulk operations.

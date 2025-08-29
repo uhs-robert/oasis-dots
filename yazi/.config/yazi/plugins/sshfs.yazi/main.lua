@@ -690,51 +690,33 @@ local function getConfigForSSHFS(type, config)
 	return options
 end
 
----Tries sshfs via key authentication (detached from process tree)
+---Tries sshfs via key authentication
 ---@param alias string
 ---@param mountPoint string
 ---@param mount_to_root boolean
 ---@param config table|nil Optional config to avoid state retrieval
----@return string|nil err_msg, boolean success
+---@return string|nil err_msg, Output|nil output
 local function try_key_auth(alias, mountPoint, mount_to_root, config)
 	mount_to_root = mount_to_root or false
 	local options = getConfigForSSHFS("key", config)
 
 	local remote_path = alias .. ":" .. (mount_to_root and "/" or "")
-	local options_str = table.concat(options, ",")
-	
-	-- Create session-independent SSHFS command to prevent signal propagation from Yazi's editor management
-	local sshfs_cmd = string.format(
-		"setsid sshfs '%s' '%s' -o %s </dev/null >/dev/null 2>&1 &",
-		remote_path, mountPoint, options_str
-	)
-	
-	debug("Executing detached SSHFS command: %s", sshfs_cmd)
-	local err, output = run_command("sh", {"-c", sshfs_cmd}, nil, true) --silent
-	
-	-- Since we're running in a new session, we need to verify the mount separately
-	-- Wait longer for the session and mount to establish
-	os.execute("sleep 2")
-	
-	-- Check if mount was successful by verifying it's active (with retry)
-	local mount_url = Url(mountPoint)
-	local mount_dir = config and config.mount_dir or (HOME .. "/mnt")
-	
-	-- Retry mount verification up to 3 times
-	for i = 1, 3 do
-		local is_mounted = is_mount_active(mountPoint, mount_url, mount_dir)
-		if is_mounted then
-			return nil, true
-		end
-		if i < 3 then
-			os.execute("sleep 1")
-		end
+	local args = {
+		remote_path,
+		mountPoint,
+		"-o",
+		table.concat(options, ","),
+	}
+
+	local err, output = run_command("sshfs", args, nil, true) --silent
+	if output and output.status and output.status.success then
+		return nil, output
 	end
 
-	return "Key authentication failed or mount not established", false
+	return err, output
 end
 
----Tries sshfs via password input, with retries allowed (detached from process tree)
+---Tries sshfs via password input, with retries allowed
 ---@param alias string
 ---@param mountPoint string
 ---@param mount_to_root boolean
@@ -746,9 +728,14 @@ local function try_password_auth(alias, mountPoint, mount_to_root, config)
 	local max_attempts = (config and config.password_attempts) or 3
 	local options = getConfigForSSHFS("password", config)
 	local remote_path = alias .. ":" .. (mount_to_root and "/" or "")
-	local options_str = table.concat(options, ",")
+	local args = {
+		remote_path,
+		mountPoint,
+		"-o",
+		table.concat(options, ","),
+	}
 
-	debug("Attempting password authentication for %s with options: %s", alias, options_str)
+	debug("Attempting password authentication for %s with options: %s", alias, table.concat(options, ","))
 
 	local last_err
 	for attempt = 1, max_attempts do
@@ -756,55 +743,11 @@ local function try_password_auth(alias, mountPoint, mount_to_root, config)
 		if not pw or pw == "" then
 			return nil, "User aborted"
 		end
-		
-		-- Create a temporary script to handle password input with detached execution
-		local temp_script = string.format("/tmp/sshfs_mount_%s_%d.sh", alias:gsub("[^%w]", "_"), os.time())
-		local script_content = string.format([[#!/bin/bash
-echo '%s' | setsid sshfs '%s' '%s' -o %s </dev/null >/dev/null 2>&1 &
-]], pw:gsub("'", "'\"'\"'"), remote_path, mountPoint, options_str)
-
-		-- Write the temporary script
-		local script_file = io.open(temp_script, "w")
-		if not script_file then
-			last_err = "Failed to create temporary authentication script"
-			goto continue
+		local err, _ = run_command("sshfs", args, pw .. "\n", true) --silent
+		if not err then
+			return true, nil
 		end
-		script_file:write(script_content)
-		script_file:close()
-
-		-- Make script executable and run it
-		local chmod_err, _ = run_command("chmod", {"+x", temp_script}, nil, true)
-		if chmod_err then
-			os.remove(temp_script)
-			last_err = "Failed to make script executable"
-			goto continue
-		end
-
-		local err, _ = run_command("sh", {"-c", temp_script}, nil, true) --silent
-		
-		-- Clean up the temporary script immediately
-		os.remove(temp_script)
-		
-		-- Wait longer for session and mount to establish
-		os.execute("sleep 2")
-		
-		-- Verify mount success with retry logic
-		local mount_url = Url(mountPoint)
-		local mount_dir = config and config.mount_dir or (HOME .. "/mnt")
-		
-		-- Retry mount verification up to 3 times
-		for i = 1, 3 do
-			local is_mounted = is_mount_active(mountPoint, mount_url, mount_dir)
-			if is_mounted then
-				return true, nil
-			end
-			if i < 3 then
-				os.execute("sleep 1")
-			end
-		end
-		
-		last_err = "Password authentication failed or mount not established"
-		::continue::
+		last_err = err
 		-- Continue to next attempt if we haven't reached max_attempts
 	end
 
@@ -849,8 +792,8 @@ local function add_mountpoint(alias, jump)
 	}) == 2
 
 	-- Try key authentication, then try password authentication as fallback
-	local err_key_auth, key_success = try_key_auth(alias, mountPoint, mount_to_root, config)
-	if key_success then
+	local err_key_auth = try_key_auth(alias, mountPoint, mount_to_root, config)
+	if not err_key_auth then
 		return finalize_mount(alias, mountPoint, jump)
 	end
 

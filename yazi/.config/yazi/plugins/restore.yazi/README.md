@@ -24,12 +24,6 @@
 ### Linux
 
 ```sh
-git clone https://github.com/boydaihungst/restore.yazi ~/.config/yazi/plugins/restore.yazi
-```
-
-or
-
-```sh
 ya pkg add boydaihungst/restore
 ```
 
@@ -42,12 +36,12 @@ ya pkg add boydaihungst/restore
 > To resolve this, you may need to run the "restore" command multiple times until all desired files are recovered. For instance, to restore 10,000 files, you might have to execute the command up to 10 times.
 
 1. Key binding
-
-   - Add this to your `keymap.toml` (replace `keymap` with `prepend_keymap` if you don't want to replace all other keys. [Read more about keymap](https://yazi-rs.github.io/docs/configuration/keymap)):
+   - Add this to your `keymap.toml`. Make it doesn't override other keymaps.
+     [Read more about keymap](https://yazi-rs.github.io/docs/configuration/keymap):
 
      ```toml
      [mgr]
-       keymap = [
+       prepend_keymap = [
          { on = "u", run = "plugin restore", desc = "Restore last deleted files/folders" },
          # or use "d + u" like me
          { on = ["d", "u"], run = "plugin restore", desc = "Restore last deleted files/folders" },
@@ -58,44 +52,47 @@ ya pkg add boydaihungst/restore
          # - Restore multiple trashed files separated by comma, also support range:
          #      What file to restore [0..3]: 0-2, 3
 
-         # Remove --overwrite if you don't want to overwrite existed files and this will abort restoring when there is existed file.
-         { on = [ "d", "U" ], run = "shell --block -- clear && trash-restore --overwrite", desc = "Restore deleted file (Interactive)" },
-         # ... Other keymaps
+         # This will throw error when there is existed file/folder
+         { on = [ "d", "U" ], run = "plugin restore -- --interactive", desc = "Restore deleted files/folders (Interactive)" },
+         # Or auto overwrite existed file/folder
+         { on = [ "d", "U" ], run = "plugin restore -- --interactive --interactive-overwrite", desc = "Restore deleted files/folders (Interactive overwrite)" },
        ]
      ```
 
 2. Configuration (Optional)
-
    - Default:
 
      ```lua
      require("restore"):setup({
-         -- Set the position for confirm and overwrite dialogs.
-         -- don't forget to set height: `h = xx`
+         -- Set the position for confirm and overwrite prompts.
+         -- Don't forget to set height: `h = xx`
          -- https://yazi-rs.github.io/docs/plugins/utils/#ya.input
          position = { "center", w = 70, h = 40 }, -- Optional
 
-         -- Show confirm dialog before restore.
-         -- NOTE: even if set this to false, overwrite dialog still pop up
+         -- Show confirm prompt before restore.
+         -- NOTE: even if set this to false, overwrite prompt still pop up
          show_confirm = true,  -- Optional
 
-         -- colors for confirm and overwrite dialogs
+         -- Suppress success notification when all files or folder are restored.
+         suppress_success_notification = true,  -- Optional
+
+         -- colors for confirm and overwrite prompts
          theme = { -- Optional
            -- Default using style from your flavor or theme.lua -> [confirm] -> title.
            -- If you edit flavor or theme.lua you can add more style than just color.
            -- Example in theme.lua -> [confirm]: title = { fg = "blue", bg = "green"  }
-           title = "blue", -- Optional. This valid has higher priority than flavor/theme.lua
+           title = "blue", -- Optional. This value has higher priority than flavor/theme.lua
 
            -- Default using style from your flavor or theme.lua -> [confirm] -> content
            -- Sample logic as title above
-           header = "green", -- Optional. This valid has higher priority than flavor/theme.lua
+           header = "green", -- Optional. This value has higher priority than flavor/theme.lua
 
-           -- header color for overwrite dialog
+           -- header color for overwrite prompt
            -- Default using color "yellow"
            header_warning = "yellow", -- Optional
            -- Default using style from your flavor or theme.lua -> [confirm] -> list
            -- Sample logic as title and header above
-           list_item = { odd = "blue", even = "blue" }, -- Optional. This valid has higher priority than flavor/theme.lua
+           list_item = { odd = "blue", even = "blue" }, -- Optional. This value has higher priority than flavor/theme.lua
          },
      })
      ```
