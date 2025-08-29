@@ -1,4 +1,5 @@
 #!/bin/bash
+# hypr/.config/hypr/scripts/assign-workspaces.sh
 
 # Define monitor description variables
 LAPTOP="BOE 0x0C8E"
@@ -9,13 +10,13 @@ VERTICAL="HP Inc. HP Z22n G2 6CM8411J22"
 # Define workspace → monitor description mapping using variables
 declare -A WORKSPACE_MAP=(
   [1]="$LAPTOP"
-  [2]="$CENTER"
-  [3]="$LEFT"
+  [2]="$LEFT"
+  [3]="$CENTER"
   [4]="$VERTICAL"
   [5]="$LAPTOP"
   [6]="$LAPTOP"
-  [7]="$CENTER"
-  [8]="$LEFT"
+  [7]="$LEFT"
+  [8]="$CENTER"
   [9]="$CENTER"
 )
 
