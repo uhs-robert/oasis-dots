@@ -39,8 +39,8 @@ prepend_keymap = [
   { on = [ "c", "a", "u", ], run = "plugin compress -phl", desc = "Archive selected files (password+header+level)" },
 
   # Archive Mounting
-  { on = [ "m", "a", ], run = "plugin archivemount mount", desc = "Mount selected archive" },
-  { on = [ "m", "u", ], run = "plugin archivemount unmount", desc = "Unmount and save changes to original archive" },
+  # { on = [ "m", "a", ], run = "plugin archivemount mount", desc = "Mount selected archive" },
+  # { on = [ "m", "u", ], run = "plugin archivemount unmount", desc = "Unmount and save changes to original archive" },
 
   # Restore
   { on = [ "u", ], run = "plugin restore", desc = "Restore last deleted files/folders" },

@@ -1,3 +1,4 @@
+-- init.lua
 -- Plugins
 -- Full border around the window
 require("full-border"):setup({
@@ -6,10 +7,10 @@ require("full-border"):setup({
 })
 
 -- Fuse Archive
-require("fuse-archive"):setup({
-	smart_enter = true,
-	mount_dir = "/tmp",
-})
+-- require("fuse-archive"):setup({
+-- 	smart_enter = true,
+-- 	mount_dir = "/tmp",
+-- })
 
 -- Folder Rules
 require("folder-rules"):setup()
