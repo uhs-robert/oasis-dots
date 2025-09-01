@@ -156,10 +156,22 @@ function y() {
 # Zoxide
 eval "$(zoxide init zsh)"
 # Zoxide end
+
+# Lsd
+alias ls='lsd'
+alias l='ls -l'
+alias la='ls -a'
+alias lla='ls -la'
+alias lt='ls --tree'
+# Lsd end
+
+# Taskwarrior
+alias t="task"
+# Taskwarrior end
+
 export PATH="$HOME/go/bin:$PATH"
 export PATH="$HOME/.cargo/bin:$PATH"
 export PATH="$HOME/.cargo/bin:$PATH"
-alias t="task"
 export PATH="$HOME/.local/bin:$PATH"
 
 # Added by LM Studio CLI (lms)
