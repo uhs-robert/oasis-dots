@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# auto-launch-apps.sh
 # hypr/.config/hypr/scripts/auto-launch-apps.sh
 
 # ─── Globals ────────────────────────────────────────────────────────────────
@@ -66,7 +67,7 @@ APPS["Btop"]="4:kitty -e btop"
 
 declare -A SETUPS
 SETUPS["🌐 Browsing"]="${APPS["Firefox"]}|$(tmuxifier config)"
-SETUPS["🧱 Client"]="${APPS["Email"]}|${APPS["Firefox"]}|$(tmuxifier client-dev)|$(tmuxifier config 3)|${APPS["Slack"]}"
+SETUPS["🧱 Client"]="${APPS["Email"]}|${APPS["Firefox"]}|$(tmuxifier client-dev)|$(tmuxifier config 7)|${APPS["Slack"]}"
 SETUPS["🛠 Config"]="${APPS["Email"]}|${APPS["Firefox"]}|$(tmuxifier config)"
 SETUPS["🗂 Files"]="${APPS["Dolphin"]}|${APPS["Yazi"]}"
 SETUPS["🧩 Game Mods"]="2:steam|3:kitty -d ~/Downloads/ yazi|4:kitty -d ~/.steam/steam/steamapps/ yazi"
@@ -74,7 +75,7 @@ SETUPS["🎮 Game"]="2:steam"
 SETUPS["📅 Meeting"]="5:firefox https://calendar.google.com/|7:firefox"
 SETUPS["📊 System Monitor"]="${APPS["Journal"]}|${APPS["Btop"]}"
 SETUPS["🛡️ DNF Update"]="2:kitty -e sysup|${APPS["Journal"]}"
-SETUPS["💼 Work"]="${APPS["Email"]}|${APPS["Firefox"]}|$(tmuxifier uphill)|$(tmuxifier config 3)|${APPS["Slack"]}"
+SETUPS["💼 Work"]="${APPS["Email"]}|${APPS["Firefox"]}|$(tmuxifier uphill)|$(tmuxifier config 7)|${APPS["Slack"]}"
 
 # Log to journal and echo
 log() {
