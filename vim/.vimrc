@@ -1293,6 +1293,14 @@ function! s:UIMenu() abort
   call s:Which('UI toggles', s:BuildMenu(spec))
 endfunction
 
+function! s:CodeMenu() abort
+  let spec = [
+    \ ['j', s:Cmd('Pretty-print JSON (jq .)',   'set filetype=json | %!jq .')],
+    \ ['J', s:Cmd('Compact JSON (jq -c .)',    'set filetype=json | %!jq -c .')],
+    \ ]
+  call s:Which('Code', s:BuildMenu(spec))
+endfunction
+
 function! s:QuitMenu() abort
   let spec = [
     \ ['q', s:Cmd('Quit all!',        'qall!')],
@@ -1303,11 +1311,11 @@ endfunction
 
 function! s:QuickfixMenu() abort
   let spec = [
-    \ ['o', s:Cmd('Open quickfix',     'copen')],
+    \ ['o', s:Cmd('Open quickfix',      'copen')],
     \ ['c', s:Cmd('Close quickfix',    'cclose')],
-    \ ['n', s:Cmd('Next quickfix',     'cnext')],
-    \ ['p', s:Cmd('Prev quickfix',     'cprev')],
-    \ ['l', s:Cmd('Open loclist',      'lopen')],
+    \ ['n', s:Cmd('Next quickfix',      'cnext')],
+    \ ['p', s:Cmd('Prev quickfix',      'cprev')],
+    \ ['l', s:Cmd('Open loclist',       'lopen')],
     \ ['x', s:Cmd('Close loclist',     'lclose')],
     \ ]
   call s:Which('Quickfix/Loclist', s:BuildMenu(spec))
@@ -1320,15 +1328,16 @@ function! s:LeaderRoot() abort
   let s:stack  = ['LeaderRoot']
 
   let spec = [
-    \ ['b', s:Go('+Buffers', 'BufMenu')],
-    \ ['e', s:Cmd('Explorer', 'Lexplore')],
-    \ ['f', s:Go('+Files',   'FileMenu')],
-    \ ['g', s:Go('+Git',     'GitMenu')],
-    \ ['q', s:Go('+Quit',    'QuitMenu')],
-    \ ['s', s:Go('+Search',  'SearchMenu')],
-    \ ['t', s:Go('+Tabs',    'TabMenu')],
-    \ ['u', s:Go('+UI',      'UIMenu')],
-    \ ['w', s:Go('+Windows', 'WinMenu')],
+    \ ['b', s:Go('+Buffers',       'BufMenu')],
+    \ ['c', s:Go('+Code',         'CodeMenu')],
+    \ ['e', s:Cmd('Explorer',     'Lexplore')],
+    \ ['f', s:Go('+Files',        'FileMenu')],
+    \ ['g', s:Go('+Git',           'GitMenu')],
+    \ ['q', s:Go('+Quit',         'QuitMenu')],
+    \ ['s', s:Go('+Search',     'SearchMenu')],
+    \ ['t', s:Go('+Tabs',          'TabMenu')],
+    \ ['u', s:Go('+UI',             'UIMenu')],
+    \ ['w', s:Go('+Windows',       'WinMenu')],
     \ ['x', s:Go('+Quickfix', 'QuickfixMenu')],
     \ ]
 
