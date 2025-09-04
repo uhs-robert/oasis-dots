@@ -15,9 +15,9 @@ declare -A WORKSPACE_MAP=(
   [4]="$VERTICAL"
   [5]="$LAPTOP"
   [6]="$LAPTOP"
-  [7]="$LEFT"
-  [8]="$CENTER"
-  [9]="$CENTER"
+  [7]="$CENTER"
+  [8]="$LEFT"
+  [9]="$VERTICAL"
 )
 
 # Log to journal and echo
