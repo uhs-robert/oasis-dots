@@ -1,12 +1,12 @@
 ---
-allowed-tools: Bash(git log:*), Bash(git show:*), Bash(git diff:*), Bash(git diff --cached:*), Bash(git status:*), Bash(find:*), Bash(cat:*), Bash(grep:*), Bash(ls:*), Write(daily-report.md)
+allowed-tools: Bash(git log:*), Bash(git show:*), Bash(git diff:*), Bash(git diff --cached:*), Bash(git status:*), Bash(find:*), Bash(cat:*), Bash(grep:*), Bash(ls:*), Write(session-report.md)
 description: Generate concise development activity reports in chronological order with proper markdown formatting. Optional argument: description of work done (defaults to timeframe if not provided)
 ---
 
 ## Context
 
-- Recent commits by time: !`git log --since="${TIMEFRAME:-24 hours ago}" --oneline --reverse`
-- Detailed commit info: !`git log --since="${TIMEFRAME:-24 hours ago}" --stat --reverse`
+- Recent commits by time: !`git log --since="${TIMEFRAME:-$(stat -c %y session-report.md 2>/dev/null || echo '24 hours ago')}" --oneline --reverse`
+- Detailed commit info: !`git log --since="${TIMEFRAME:-$(stat -c %y session-report.md 2>/dev/null || echo '24 hours ago')}" --stat --reverse`
 - Current branch status: !`git status --short`
 - Staged changes: !`git diff --cached --name-only`
 - File sizes for new assets: !`ls -lah` (when relevant)
@@ -20,13 +20,13 @@ The command accepts an optional argument string that may include:
 
 ### Processing Logic
 
-- If no timeframe is specified in arguments, default to "24 hours ago"
+- If no timeframe is specified in arguments, default to "since the last session-report.md was modified" otherwise if session-report.md does not exist, fallback to "24 hours ago".
 - If no description is provided, infer work description from git commit history analysis
 - Arguments can contain both timeframe and description
 
 ### Timeframe Options
 
-- Default: "24 hours ago"
+- Default: "since last session-report.md modification (or 24 hours ago if none exists)"
 - Alternative: "today", "yesterday", "3 days ago", "1 week ago"
 - Custom: Any git-compatible time format
 
@@ -40,7 +40,7 @@ The command accepts an optional argument string that may include:
 3. **Group related changes** into logical sections
 4. **Create meaningful section titles** that describe the work accomplished
 5. **Format output** for easy copy/paste into spreadsheet (title + markdown)
-6. **Always create/overwrite daily-report.md** - Replace any existing daily-report.md file with the new report
+6. **Always create/overwrite session-report.md** - Replace any existing session-report.md file with the new report
 
 ## Analysis Guidelines
 
@@ -61,7 +61,7 @@ The command accepts an optional argument string that may include:
 
 ## Output Format
 
-**Always overwrite/create `daily-report.md`** with this structure:
+**Always overwrite/create `session-report.md`** with this structure:
 
 ```
 [Descriptive Title About Work Accomplished]
