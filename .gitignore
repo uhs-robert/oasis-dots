@@ -111,6 +111,7 @@ __pycache__/
 **/.claude/todos/
 **/.claude/shell-snapshots/
 **/.claude/statsig/
+**/.claude/config/notification_states.json
 **/.claude/.credentials.json
 **/.gemini/oauth_creds.json
 **/.gemini/google_accounts.json
