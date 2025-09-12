@@ -5,8 +5,14 @@ description: Generate concise development activity reports in chronological orde
 
 ## Context
 
-- Recent commits by time: !`git log --since="${TIMEFRAME:-$(stat -c %y session-report.md 2>/dev/null || echo '24 hours ago')}" --oneline --reverse`
-- Detailed commit info: !`git log --since="${TIMEFRAME:-$(stat -c %y session-report.md 2>/dev/null || echo '24 hours ago')}" --stat --reverse`
+The agent calling this tool should first determine the TIMEFRAME.
+
+1. Try to get the modification date of 'session-report.md'.
+2. If it doesn't exist, or if no specific timeframe is given, use a default like "24 hours ago".
+3. Then, pass that value in the TIMEFRAME variable.
+
+- Recent commits by time: !`git log --since="${TIMEFRAME:-24 hours ago}" --oneline --reverse`
+- Detailed commit info: !`git log --since="${TIMEFRAME:-24 hours ago}" --stat --reverse`
 - Current branch status: !`git status --short`
 - Staged changes: !`git diff --cached --name-only`
 - File sizes for new assets: !`ls -lah` (when relevant)
