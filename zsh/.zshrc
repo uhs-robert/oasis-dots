@@ -178,3 +178,4 @@ export PATH="$HOME/.local/bin:$PATH"
 export PATH="$PATH:/home/USER/.lmstudio/bin"
 # End of LM Studio CLI section
 
+export PATH=$PATH:$HOME/.local/bin
