@@ -55,8 +55,8 @@ hash = "e7e377f9b1bbaca4a2e5d9ec9709ac4d"
 
 [[plugin.deps]]
 use = "uhs-robert/recycle-bin"
-rev = "d47fda8"
-hash = "c125cd51a36efd6248103eb8215c7717"
+rev = "728c0af"
+hash = "6e6a68328ace9b6369ce16b35116894a"
 
 [[plugin.deps]]
 use = "TD-Sky/sudo"
@@ -65,8 +65,8 @@ hash = "a94dcbe9266512806c677138e8591ddb"
 
 [[flavor.deps]]
 use = "yazi-rs/flavors:catppuccin-frappe"
-rev = "9cd2ac4"
-hash = "c769a6c541ae74b33a041ae1f00dcb40"
+rev = "3e6da98"
+hash = "f9a1b9936072893ab27de5738988b710"
 
 [[flavor.deps]]
 use = "tkapias/moonfly"
@@ -75,8 +75,8 @@ hash = "f1c75db953010661073c665c237c5722"
 
 [[flavor.deps]]
 use = "yazi-rs/flavors:dracula"
-rev = "9cd2ac4"
-hash = "c0bfefbff165007a76c0933ed0432e3f"
+rev = "3e6da98"
+hash = "eefb18cb038121aed2b6eeaacea5a63e"
 
 [[flavor.deps]]
 use = "BennyOe/tokyo-night"
