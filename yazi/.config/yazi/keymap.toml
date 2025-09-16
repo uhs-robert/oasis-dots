@@ -20,14 +20,12 @@ prepend_keymap = [
   { on = [ "g", "v", ], run = "cd ~/Videos/", desc = "Go to Videos" },
   { on = [ "g", "n", ], run = "cd ~/Documents/Notes/", desc = "Go to Notes" },
 
-  # SSHFS Plugin
-  { on = [ "M", "a", ], run = "plugin sshfs -- add", desc = "Add SSH alias" },
-  { on = [ "M", "r", ], run = "plugin sshfs -- remove", desc = "Remove SSH alias" },
-  { on = [ "M", "m", ], run = "plugin sshfs -- mount --jump", desc = "Mount & jump" },
-  { on = [ "M", "u", ], run = "plugin sshfs -- unmount", desc = "Unmount SSHFS" },
-  { on = [ "M", "c", ], run = "cd ~/.ssh/", desc = "Go to ssh config" },
-  { on = [ "M", "h", ], run = "plugin sshfs -- home", desc = "Go to mount directory" },
-  { on = [ "g", "m", ], run = "plugin sshfs -- jump", desc = "Jump to mount" },
+  # Mount Options
+  { on = [ "M", "m", ], run = "plugin mount", desc = "Open Mount Options" },
+  { on = [ "M", "s", ], run = "plugin sshfs -- menu", desc = "Open SSHFS Options" },
+  # { on = [ "M" ], run = "plugin sshfs -- menu", desc = "Open SSHFS Options" },
+  { on = [ "g", "m", ], run = "cd /run/media/$USER/", desc = "Go to media folders (usb)" },
+  { on = [ "g", "M", ], run = "plugin sshfs -- jump", desc = "Jump to mount" },
 
   # Ch Mod
   { on = [ "c", "m", ], run = "plugin chmod", desc = "Chmod on selected files" },
@@ -48,11 +46,8 @@ prepend_keymap = [
 
   # Trash
   { on = [ "g", "t", ], run = "plugin recycle-bin open", desc = "Go to Trash" },
-  { on = [ "R", "o", ], run = "plugin recycle-bin open", desc = "Open Trash" },
-  { on = [ "R", "e", ], run = "plugin recycle-bin empty", desc = "Empty Trash" },
-  { on = [ "R", "d", ], run = "plugin recycle-bin delete", desc = "Delete from Trash" },
-  { on = [ "R", "D", ], run = "plugin recycle-bin emptyDays", desc = "Empty by days deleted" },
-  { on = [ "R", "r", ], run = "plugin recycle-bin restore", desc = "Restore from Trash" },
+  # { on = [ "R", "b", ], run = "plugin recycle-bin", desc = "Open Recycle Bin Menu" },
+  { on = [ "R" ], run = "plugin recycle-bin", desc = "Open Recycle Bin Menu" },
 
   # Sudo
   { on = [ "A", "p", "p", ], run = "plugin sudo -- paste", desc = "sudo paste" },
