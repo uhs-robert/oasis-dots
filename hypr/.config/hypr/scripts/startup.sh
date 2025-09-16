@@ -1,14 +1,17 @@
 #!/usr/bin/env bash
+# hypr/.config/hypr/scripts/startup.sh
 
-# Globals
+# ========== CONFIG ========== #
+
 TIMEOUT=30
 WAIT_SECONDS=1
 RUN_TIME=0
 IS_DISPLAY_READY=false
 IS_MONITOR_READY=false
 IS_FLATPAK_READY=false
+EXPECTED_MONITOR_COUNT=4
 
-# Directories
+# ========== UTLITY ========== #
 
 # Log to journal and echo
 log() {
@@ -16,6 +19,9 @@ log() {
   logger -t hypr-startup "$1"
 }
 
+# ========== LOGIC ========== #
+
+# Graphic dependent startup
 graphic_dependent() {
   is_ready() {
     while ! hyprctl activewindow &>/dev/null; do
@@ -60,12 +66,13 @@ graphic_dependent() {
   run_tasks
 }
 
+# Monitor dependent startup
 monitor_dependent() {
   is_ready() {
-    local expected=4
+    local EXPECTED_MONITOR_COUNT=4
     while ((RUN_TIME < TIMEOUT)); do
       MONITOR_COUNT=$(hyprctl monitors -j | jq length)
-      if ((MONITOR_COUNT >= expected)); then
+      if ((MONITOR_COUNT >= EXPECTED_MONITOR_COUNT)); then
         IS_MONITOR_READY=true
         log "[Monitors] Is ready - # Monitors detected: $MONITOR_COUNT"
         sleep $WAIT_SECONDS
@@ -113,6 +120,7 @@ monitor_dependent() {
   run_tasks
 }
 
+# Application dependent startup
 application_dependent() {
   is_ready() {
     while ((RUN_TIME < TIMEOUT)); do
@@ -163,10 +171,12 @@ application_dependent() {
   run_tasks
 }
 
+# ========== MAIN ========== #
 main() {
   graphic_dependent
   monitor_dependent
   application_dependent
 }
 
+# ========== START ========== #
 main
