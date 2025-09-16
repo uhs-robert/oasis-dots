@@ -1,16 +1,16 @@
 [[plugin.deps]]
 use = "yazi-rs/plugins:full-border"
-rev = "d7588f6"
+rev = "d1c8baa"
 hash = "3996fc74044bc44144b323686f887e1"
 
 [[plugin.deps]]
 use = "yazi-rs/plugins:toggle-pane"
-rev = "d7588f6"
-hash = "d6f60c24d8c0cf57a855bf46115b2502"
+rev = "d1c8baa"
+hash = "8a7c58225816a163a6e8730c0adafbc8"
 
 [[plugin.deps]]
 use = "yazi-rs/plugins:git"
-rev = "d7588f6"
+rev = "d1c8baa"
 hash = "63b6c222bf2103b3023389dde5e2ecfe"
 
 [[plugin.deps]]
@@ -20,8 +20,8 @@ hash = "e02a788e5b8ae0fb47fd0193dda589cc"
 
 [[plugin.deps]]
 use = "yazi-rs/plugins:chmod"
-rev = "d7588f6"
-hash = "1adc12c2b2b025411ab61eb8f0879574"
+rev = "d1c8baa"
+hash = "8ad3e90b079190b4905f24a44f4ca06b"
 
 [[plugin.deps]]
 use = "Lil-Dank/lazygit"
@@ -30,12 +30,12 @@ hash = "ee71543790f0ce3951161045a3787abd"
 
 [[plugin.deps]]
 use = "uhs-robert/sshfs"
-rev = "25e8bb0"
-hash = "6ab2128fbbaa3928caa1dbf997293708"
+rev = "1a466c8"
+hash = "216b0497421e49b7fda5f07d20435400"
 
 [[plugin.deps]]
 use = "yazi-rs/plugins:types"
-rev = "d7588f6"
+rev = "d1c8baa"
 hash = "1e047e1b13b5e3fc6ab1f5d0d04a14e2"
 
 [[plugin.deps]]
@@ -55,17 +55,22 @@ hash = "e7e377f9b1bbaca4a2e5d9ec9709ac4d"
 
 [[plugin.deps]]
 use = "uhs-robert/recycle-bin"
-rev = "728c0af"
-hash = "6e6a68328ace9b6369ce16b35116894a"
+rev = "e4dd598"
+hash = "f14a951bf376d7fe73033c4a48aa5fa4"
 
 [[plugin.deps]]
 use = "TD-Sky/sudo"
 rev = "af70636"
 hash = "a94dcbe9266512806c677138e8591ddb"
 
+[[plugin.deps]]
+use = "yazi-rs/plugins:mount"
+rev = "d1c8baa"
+hash = "435a2af56ecfb3d05755fd5e24977d8b"
+
 [[flavor.deps]]
 use = "yazi-rs/flavors:catppuccin-frappe"
-rev = "3e6da98"
+rev = "4296a38"
 hash = "f9a1b9936072893ab27de5738988b710"
 
 [[flavor.deps]]
@@ -75,7 +80,7 @@ hash = "f1c75db953010661073c665c237c5722"
 
 [[flavor.deps]]
 use = "yazi-rs/flavors:dracula"
-rev = "3e6da98"
+rev = "4296a38"
 hash = "eefb18cb038121aed2b6eeaacea5a63e"
 
 [[flavor.deps]]

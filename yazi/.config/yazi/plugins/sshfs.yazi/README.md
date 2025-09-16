@@ -13,19 +13,18 @@ Mount any host from your `~/.ssh/config`, or add custom hosts, and browse remote
 
 > [!NOTE]
 >
-> **Linux Only (for now!)**
+> **Linux/Mac Only (for now!)**
 >
-> This plugin currently supports Linux only.
+> This plugin currently only supports Linux/Mac.
 > If you're interested in helping add support for other platforms, check out the open issues:
 >
-> - [Add macOS support](https://github.com/uhs-robert/sshfs.yazi/issues/3)
 > - [Add Windows support](https://github.com/uhs-robert/sshfs.yazi/issues/4)
 >
 > If you have some Lua experience (or want to learn), I’d be happy to walk you through integration and testing. Pull requests are welcome!
 
 ## 🤔 Why SSHFS?
 
-- **Works anywhere you have SSH access.** No VPN, NFS or Samba needed – only port 22.
+- **Works anywhere you have SSH access.** Nothing extra is needed – only port 22.
 - **Treat remote files like local ones.** Run `vim`, `nvim`, `sed`, preview images / videos directly, etc.
 - **User‑space, unprivileged.** No root required; mounts live under your chosen mount directory or the default (`~/mnt`).
 - **Bandwidth‑friendly.** SSH compression, connection timeout, and reconnect options are enabled by default.
@@ -59,12 +58,35 @@ sshfs user@host: ~/mnt/alias -o reconnect,compression=yes,ServerAliveInterval=15
 | fusermount | from FUSE     | Usually pre-installed on Linux      |
 | SSH config | working hosts | Hosts come from `~/.ssh/config`     |
 
+> [!NOTE]
+> For Mac users, see the macOS setup steps below.
+
+---
+
+### 🍏 macOS Setup
+
+To use **sshfs.yazi** on macOS, follow these steps:
+
+1. **Install macFUSE**
+   Download and install macFUSE from the official site:
+   [https://macfuse.github.io/](https://macfuse.github.io/)
+
+2. **Install SSHFS for macFUSE**
+   Use the official SSHFS releases compatible with macFUSE:
+   [https://github.com/macfuse/macfuse/wiki/File-Systems-%E2%80%90-SSHFS](https://github.com/macfuse/macfuse/wiki/File-Systems-%E2%80%90-SSHFS)
+
+3. **Install Yazi**
+   On macOS via Homebrew:
+
+   ```sh
+   brew install yazi
+   ```
+
 ## 📦 Installation
 
 Install the plugin via Yazi's package manager:
 
 ```sh
-# via Yazi’s package manager
 ya pkg add uhs-robert/sshfs
 ```
 
@@ -74,9 +96,84 @@ Then add the following to your `~/.config/yazi/init.lua` to enable the plugin wi
 require("sshfs"):setup()
 ```
 
+## 🎹 Key Mapping
+
+### 🗝️ Recommended: Preset
+
+Add this to your `~/.config/yazi/keymap.toml` for a conflict-free approach that works well with other plugins:
+
+```toml
+[mgr]
+prepend_keymap = [
+  { on = ["M","s"], run = "plugin sshfs -- menu",            desc = "Open SSHFS options" },
+]
+```
+
+The `M s` menu provides access to all SSHFS functions:
+
+- `m` → Mount & jump
+- `u` → Unmount
+- `j` → Jump to mount
+- `a` → Add host
+- `r` → Remove host
+- `h` → Go to mount home
+- `c` → Open ~/.ssh/config
+
+> [!TIP]
+> `sshfs.yazi` uses the [array form for keymaps](https://yazi-rs.github.io/docs/configuration/keymap).
+> You must pick **only one style** per file; mixing with `[[mgr.prepend_keymap]]` will fail.
+>
+> **Also note:** some plugins (e.g., `mount.yazi`) bind a bare key like `on = "M"`,
+> which blocks all `M <key>` chords (including `M s`). Change those to chords
+> (e.g. `["M","m"]`) or choose a different prefix.
+
+---
+
+### 🛠️ Alternative: Custom direct keybinds
+
+If you prefer direct keybinds, you may also set your own using our API. Here are the available options from the default preset:
+
+```toml
+[mgr]
+prepend_keymap = [
+  { on = ["M","m"], run = "plugin sshfs -- mount --jump",    desc = "Mount & jump" },
+  { on = ["M","u"], run = "plugin sshfs -- unmount",         desc = "Unmount SSHFS" },
+  { on = ["M","j"], run = "plugin sshfs -- jump",            desc = "Jump to mount" },
+  { on = ["M","a"], run = "plugin sshfs -- add",             desc = "Add SSH host" },
+  { on = ["M","r"], run = "plugin sshfs -- remove",          desc = "Remove SSH host" },
+  { on = ["M","h"], run = "plugin sshfs -- home",            desc = "Go to mount home" },
+  { on = ["M","c"], run = "cd ~/.ssh/",                      desc = "Go to ssh config" },
+]
+```
+
+> [!IMPORTANT]
+> If you choose to use direct keybinds, you will be responsible for managing and handling any conflicts yourself.
+
+## 🚀 Usage
+
+### 📝 Example using the recommended preset
+
+- **SSHFS Menu (`M s`):** Opens an interactive menu with all SSHFS options
+  - **Mount (`M m`):** Choose a host and select a remote directory (`~` or `/`). This works for hosts from your `~/.ssh/config` and any custom hosts you've added.
+  - **Unmount (`M u`):** Choose an active mount to unmount it.
+  - **Jump to mount (`M j`):** Jump to any active mount from another tab or location
+  - **Add host (`M a`):** Enter a custom host (`user@host`) for Yazi-only use (useful for quick testing or temp setups). For persistent, system-wide access, updating your `.ssh/config` is recommended.
+  - **Remove host (`M r`):** Select and remove any Yazi-only hosts that you've added.
+  - **Jump to mount home directory (`M h`):** Jump to the mount home directory.
+
+## 💡 Tips and Performance
+
+- If key authentication fails, the plugin will prompt for a password up to 3 times before giving up.
+- SSH keys vastly speed up repeated mounts (no password prompt), leverage your `ssh_config` rather than manually adding hosts to make this as easy as possible.
+
 ## ⚙️ Configuration
 
-To customize plugin behavior, you may pass a config table to `setup()` (default settings are displayed):
+> [!WARNING]
+> This section is intended for power users only.
+> Skip this if you only want to run the default settings.
+> Keep reading for advanced SSHFS customization and plugin configuration options.
+
+To customize plugin behavior, you may pass a config table to `setup()` (default settings are displayed for optional configuration):
 
 ```lua
 require("sshfs"):setup({
@@ -120,7 +217,9 @@ All sshfs options are specified in the `sshfs_options` array. You can learn more
 
 In addition, sshfs also supports a variety of options from [sftp](https://man7.org/linux/man-pages/man1/sftp.1.html) and [ssh_config](https://man7.org/linux/man-pages/man5/ssh_config.5.html).
 
-### Advanced Configuration Examples
+---
+
+### 📝 Advanced Configuration Examples
 
 Here are some common sshfs option combinations:
 
@@ -157,38 +256,3 @@ require("sshfs"):setup({
   },
 })
 ```
-
-## 🎹 Key Mapping
-
-Add the following to your `~/.config/yazi/keymap.toml`. You can customize keybindings to your preference.
-
-```toml
-[mgr]
-prepend_keymap = [
-  { on = ["M","m"], run = "plugin sshfs -- mount --jump",    desc = "Mount & jump" },
-  { on = ["M","u"], run = "plugin sshfs -- unmount",         desc = "Unmount SSHFS" },
-  { on = ["M","a"], run = "plugin sshfs -- add",             desc = "Add SSH host" },
-  { on = ["M","r"], run = "plugin sshfs -- remove",          desc = "Remove SSH host" },
-  { on = ["M","h"], run = "plugin sshfs -- home",            desc = "Go to mount home" },
-  { on = ["M","c"], run = "cd ~/.ssh/",                      desc = "Go to ssh config" },
-  { on = ["g","m"], run = "plugin sshfs -- jump",            desc = "Jump to mount" },
-]
-```
-
-## 🚀 Usage
-
-- **Mount (`M m`):** Choose a host and select a remote directory (`~` or `/`). This works for hosts from your`~/.ssh/config` and any custom hosts you've added.
-- **Unmount (`M u`):** Choose an active mount to unmount it.
-- **Add host (`M a`):** Enter a custom host (`user@host`) for Yazi-only use (useful for quick testing or temp setups). For persistent, system-wide access, updating your `.ssh/config` is recommended.
-- **Remove host (`M r`):** Select and remove any Yazi-only hosts that you've added.
-- **Jump to mount (`g m`):** Jump to any active mount from another tab or location.
-- **Jump to mount home directory (`M h`):** Jump to the mount home directory.
-
-## 💡 Tips and Performance
-
-- If key authentication fails, the plugin will prompt for a password up to 3 times before giving up.
-- SSH keys vastly speed up repeated mounts (no password prompt), leverage your `ssh_config` rather than manually adding hosts to make this as easy as possible.
-
-## 📜 License
-
-This plugin is released under the MIT license. Please see the [LICENSE](https://github.com/uhs-robert/sshfs.yazi?tab=MIT-1-ov-file) file for details.
