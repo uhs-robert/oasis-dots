@@ -120,6 +120,9 @@ if [[ -f "$HOME/Documents/github-uphill/bash-scripts/scripts/functions.sh" ]]; t
   source "$HOME/Documents/github-uphill/bash-scripts/scripts/functions.sh"
 fi
 
+# Hyprland aliases
+alias logout=hyprctl dispatch exit
+
 # Load user-specific scripts from ~/.bashrc.d
 for rc in ~/.bashrc.d/*(.N); do source "$rc"; done
 
