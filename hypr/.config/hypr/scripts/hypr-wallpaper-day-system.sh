@@ -1,5 +1,5 @@
 #!/bin/bash
-# hypr-wallpaper_time_of_day.sh
+# hypr/.config/hypr/scripts/hypr-wallpaper-day-system.sh
 
 # --- Defaults ---------------------------------------------------------------
 DEFAULT_WALLPAPER_DIR="$HOME/Pictures/Wallpapers/Pixel Art"
@@ -172,7 +172,7 @@ resolve_wallpaper_dir() {
   esac
 
   # Fallback chain: period dir -> default dir -> Pixel Art default
-  if [[ -d "$dir" ]] && find -L "$dir" -type f \( -iname '*.png' -o -iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.webp' -o -iname '*.bmp' \) | grep -q .; then
+  if [[ -d "$dir" ]] && find_wallpaper_files "$dir" | grep -q .; then
     echo "$dir"
   elif [[ -n "$DEFAULT_WALLPAPER_DIR" ]] && [[ -d "$DEFAULT_WALLPAPER_DIR" ]]; then
     echo "$DEFAULT_WALLPAPER_DIR"
@@ -183,10 +183,32 @@ resolve_wallpaper_dir() {
 }
 
 # --- Selection helpers ------------------------------------------------------
-get_random_wallpaper() {
+find_wallpaper_files() {
   local dir="$1"
-  find -L "$dir" -type f \( -iname '*.png' -o -iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.webp' -o -iname '*.bmp' \) |
-    shuf -n 1
+  find -L "$dir" -type f \( -iname '*.png' -o -iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.webp' -o -iname '*.bmp' \)
+}
+
+get_unique_wallpapers() {
+  local dir="$1"
+  local count="$2"
+  local available_wallpapers wallpaper_count
+
+  mapfile -t available_wallpapers < <(find_wallpaper_files "$dir")
+  wallpaper_count=${#available_wallpapers[@]}
+
+  if [[ $wallpaper_count -eq 0 ]]; then
+    return 1
+  fi
+
+  if [[ $wallpaper_count -ge $count ]]; then
+    # Enough wallpapers for unique selection
+    printf '%s\n' "${available_wallpapers[@]}" | shuf | head -n "$count"
+  else
+    # Not enough wallpapers - repeat as needed, but still randomized
+    for ((i = 0; i < count; i++)); do
+      echo "${available_wallpapers[$((i % wallpaper_count))]}"
+    done | shuf
+  fi
 }
 
 # --- Apply to monitors ------------------------------------------------------
@@ -196,16 +218,24 @@ apply_wallpapers() {
   local period
   period=$(current_period)
 
-  if ! find -L "$dir" -type f \( -iname '*.png' -o -iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.webp' -o -iname '*.bmp' \) | grep -q .; then
+  if ! find_wallpaper_files "$dir" | grep -q .; then
     log "No wallpapers found in $dir (period: $period). Exiting."
     return 1
   fi
 
   mapfile -t MONITORS < <(hyprctl monitors | awk '/Monitor/ {print $2}')
+  local monitor_count=${#MONITORS[@]}
+
+  # Get unique wallpapers for all monitors at once
+  mapfile -t WALLPAPERS < <(get_unique_wallpapers "$dir" "$monitor_count")
+
   log "Period: $period → Directory: $dir"
-  for MONITOR in "${MONITORS[@]}"; do
-    local WALLPAPER
-    WALLPAPER=$(get_random_wallpaper "$dir")
+  log "Found ${#WALLPAPERS[@]} unique wallpapers for $monitor_count monitors"
+
+  for i in "${!MONITORS[@]}"; do
+    local MONITOR="${MONITORS[$i]}"
+    local WALLPAPER="${WALLPAPERS[$i]}"
+
     if [[ -f "$WALLPAPER" ]]; then
       log "Preloading wallpaper: $WALLPAPER"
       hyprctl hyprpaper preload "$WALLPAPER"
@@ -214,7 +244,7 @@ apply_wallpapers() {
       hyprctl hyprpaper wallpaper "$MONITOR,$WALLPAPER"
       hyprctl hyprpaper unload unused
     else
-      log "Error: Unable to pick a wallpaper from $dir"
+      log "Error: Unable to pick a wallpaper from $dir for monitor $MONITOR"
     fi
   done
 }
