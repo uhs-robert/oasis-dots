@@ -15,8 +15,7 @@ declare -A MONITOR_MAP=(
   ["CENTER"]=3
 )
 
-# Runtime discovery and tracking
-declare -A MONITOR_INDEX_MAP    # description -> index (populated at runtime)
+# Runtime tracking
 declare -A MONITOR_CURRENT_WS   # track current workspace per monitor name
 declare -A WORKSPACE_USAGE      # track number of apps assigned to each workspace
 if [[ "$1" == "--startup" ]]; then
@@ -93,24 +92,6 @@ SETUPS["💼 Work"]="${APPS["Email"]}|${APPS["Firefox"]}|$(tmuxifier uphill)|$(t
 log() {
   echo "$1" >&2
   logger -t hypr-launcher "$1"
-}
-
-# Discover monitors and build index mapping
-discover_monitors() {
-  log "Discovering monitors..."
-  MONITOR_INDEX_MAP=()
-
-  # Get monitor info: description|id|name
-  mapfile -t MONITORS < <(hyprctl monitors -j | jq -r '.[] | select(.disabled==false) | "\(.description)|\(.id)|\(.name)"')
-
-  for entry in "${MONITORS[@]}"; do
-    local desc="${entry%%|*}"
-    local id_name="${entry#*|}"
-    local id="${id_name%%|*}"
-
-    MONITOR_INDEX_MAP["$desc"]="$id"
-    log "Found monitor: '$desc' with index $id"
-  done
 }
 
 # Get workspace range for a monitor name
@@ -364,9 +345,6 @@ launch_selector() {
   [[ -z "$CHOICE" ]] && exit 0
 
   log "User selected $CHOICE"
-
-  # Discover monitors and initialize tracking
-  discover_monitors
 
   # Parse and resolve monitor assignments
   parse_pairs "$CHOICE"
