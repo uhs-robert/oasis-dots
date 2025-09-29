@@ -449,17 +449,21 @@ check_location_refresh() {
 
 update_sun_based_periods() {
   if [[ "$LOCATION_ENABLED" -eq 1 && -n "$SUNRISE_HOUR" && -n "$SUNSET_HOUR" ]]; then
-    # Adjust periods based on precise sunrise/sunset times - evening ends 30min after sunset
-    START_MORNING=$(echo "$SUNRISE_HOUR - 0.5" | bc -l 2>/dev/null || echo "$((${SUNRISE_HOUR%%.*} - 1))")  # Morning starts 30min before sunrise
-    START_DAY=$(echo "$SUNRISE_HOUR + 4.5" | bc -l 2>/dev/null || echo "$((${SUNRISE_HOUR%%.*} + 4))")      # Morning lasts 5h total (matches static)
-    START_EVENING=$(echo "$SUNSET_HOUR - 2.5" | bc -l 2>/dev/null || echo "$((${SUNSET_HOUR%%.*} - 3))")   # Evening starts 2.5h before sunset
+    # Adjust periods based on precise sunrise/sunset times
+    ## Morning: 4.5 hours
+    ## Day: Variable
+    ## Evening: 3 Hours
+    ## Night: Variable
+    START_MORNING=$(echo "$SUNRISE_HOUR - 0.5" | bc -l 2>/dev/null || echo "$((${SUNRISE_HOUR%%.*} - 1))") # Morning starts 30min before sunrise
+    START_DAY=$(echo "$SUNRISE_HOUR + 4" | bc -l 2>/dev/null || echo "$((${SUNRISE_HOUR%%.*} + 4))")       # Longer morning
+    START_EVENING=$(echo "$SUNSET_HOUR - 2.5" | bc -l 2>/dev/null || echo "$((${SUNSET_HOUR%%.*} - 3))")   # Evening before sunset
     START_NIGHT=$(echo "$SUNSET_HOUR + 0.5" | bc -l 2>/dev/null || echo "$((${SUNSET_HOUR%%.*} + 1))")     # Night starts 30min after sunset
 
     # Ensure bounds are reasonable (handle decimal wrap-around)
     if (($(echo "$START_MORNING < 0" | bc -l 2>/dev/null || echo 0))); then
       START_MORNING="0"
     fi
-    if (($(echo "$START_DAY > 23.75" | bc -l 2>/dev/null || echo 0))); then  # 23:45
+    if (($(echo "$START_DAY > 23.75" | bc -l 2>/dev/null || echo 0))); then # 23:45
       START_DAY="23.75"
     fi
     if (($(echo "$START_EVENING > 23.75" | bc -l 2>/dev/null || echo 0))); then
