@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-# auto-launch-apps.sh
 # hypr/.config/hypr/scripts/auto-launch-apps.sh
 
 # ─── Globals ────────────────────────────────────────────────────────────────
@@ -19,6 +18,7 @@ clean_up() {
   if [[ "$IS_STARTUP" == true ]]; then
     wait_for_windows
     bash "$(dirname "$0")/assign-workspaces.sh" --assign
+    hyprctl dispatch focusmonitor 0
     hyprctl dispatch workspace 1
   fi
 }
