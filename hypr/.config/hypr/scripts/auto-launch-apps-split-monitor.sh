@@ -135,6 +135,26 @@ workspace_has_windows() {
   [[ "${window_count:-0}" -gt 0 ]]
 }
 
+# Find the workspace with the least windows in a range
+find_least_used_workspace() {
+  local start_ws="$1"
+  local end_ws="$2"
+
+  local least_used_ws="$start_ws"
+  local min_windows=$(hyprctl workspaces -j | jq -r ".[] | select(.id==$start_ws) | .windows // 0")
+
+  for ws in $(seq $((start_ws + 1)) $end_ws); do
+    local window_count=$(hyprctl workspaces -j | jq -r ".[] | select(.id==$ws) | .windows // 0")
+    if [[ $window_count -lt $min_windows ]]; then
+      min_windows="$window_count"
+      least_used_ws="$ws"
+    fi
+  done
+
+  log "Least used workspace in range $start_ws-$end_ws: $least_used_ws ($min_windows windows)"
+  echo "$least_used_ws"
+}
+
 # Get next available workspace on a monitor
 get_next_workspace() {
   local monitor_name="$1"
@@ -157,10 +177,10 @@ get_next_workspace() {
         fi
         current_ws=$((current_ws + 1))
       done
-      # If all workspaces have windows, wrap to start
+      # If all workspaces have windows, find the least-used one
       if [[ $current_ws -gt $end_ws ]]; then
-        current_ws="$start_ws"
-        log "All workspaces on $monitor_name have windows, wrapping to $current_ws"
+        current_ws=$(find_least_used_workspace "$start_ws" "$end_ws")
+        log "All workspaces on $monitor_name have windows, using least-used: $current_ws"
       fi
     elif workspace_has_windows "$current_ws" || [[ "${WORKSPACE_USAGE[$current_ws]:-0}" -gt 0 ]]; then
       # Current workspace has windows OR we've already assigned something to it in this run
