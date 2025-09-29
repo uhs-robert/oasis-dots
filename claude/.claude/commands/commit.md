@@ -12,7 +12,7 @@ description: Create a conventional commit from current changes
 
 ## Task
 
-1. If no files are staged, stage all modified/new files (`git add`)
+1. Commit only staged files. If no files are staged and user did not specify which files to commit, ask the user if they would like to stage all modified/new files for commit (`git add`)
 2. Analyze the diff and recent history
 3. If multiple distinct logical changes exist, recommend splitting commits
 4. For each commit:
