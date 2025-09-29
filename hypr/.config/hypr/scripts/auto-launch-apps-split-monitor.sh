@@ -149,10 +149,10 @@ get_next_workspace() {
   if [[ "$force_increment" == "true" ]]; then
     # For + syntax: find first available workspace or increment from current
     if [[ -z "${MONITOR_CURRENT_WS[$monitor_name]}" ]]; then
-      # First assignment for this monitor - find first empty workspace
+      # First assignment for this monitor - find first empty workspace with no pending usage
       current_ws="$start_ws"
       while [[ $current_ws -le $end_ws ]]; do
-        if ! workspace_has_windows "$current_ws"; then
+        if ! workspace_has_windows "$current_ws" && [[ "${WORKSPACE_USAGE[$current_ws]:-0}" -eq 0 ]]; then
           log "Found empty workspace $current_ws on monitor $monitor_name"
           break
         fi
