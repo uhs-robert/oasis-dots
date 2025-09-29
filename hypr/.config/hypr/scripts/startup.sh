@@ -40,7 +40,7 @@ graphic_dependent() {
 
     ready() {
       log "[Display] Main hook..."
-      ~/.config/hypr/scripts/assign-workspaces.sh --watch &
+      # ~/.config/hypr/scripts/assign-workspaces.sh --watch &
     }
 
     not_ready() {
@@ -92,12 +92,13 @@ monitor_dependent() {
 
     ready() {
       # log "[Monitors] Main hook..."
+      hyprpm reload -n &
       :
     }
 
     not_ready() {
       log "[Monitors] Warning - Error hook..."
-      ~/.config/hypr/scripts/assign-workspaces.sh --assign
+      # ~/.config/hypr/scripts/assign-workspaces.sh --assign
     }
 
     after() {
@@ -146,7 +147,7 @@ application_dependent() {
 
     ready() {
       log "[Flatpak] Main hook..."
-      ~/.config/hypr/scripts/auto-launch-apps.sh --startup
+      ~/.config/hypr/scripts/auto-launch-apps-split-monitor.sh --startup
     }
 
     not_ready() {
