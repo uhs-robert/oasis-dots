@@ -1,4 +1,4 @@
-// Load with --load-config examples/2.jsonc
+// Load examlpes with --load-config examples/2.jsonc
 // Note that you must replace the image path to an existing image to display it.
 
 {
@@ -33,12 +33,17 @@
       "keyColor": "red",
       "key": " ",
       "keyWidth": 24,
-      "outputColor": "red",
+      "outputColor": "green",
     },
     {
       "type": "custom",
       "format": "└─────────────────────────────────────────────────────────────┘",
       "outputColor": "light_yellow",
+    },
+    {
+      "type": "custom",
+      "format": "   Even when severely wounded the true victor never gives up.",
+      "outputColor": "blue",
     },
     {
       "type": "custom",
@@ -53,7 +58,7 @@
     },
     {
       "type": "os",
-      "key": " ├", // Just get your distro's logo off nerdfonts.com
+      "key": " ├", // You can get your distro's logo from nerdfonts.com
       "keyColor": "light_yellow",
       "format": "{6}{?6} {?}{10}{?10} {?}{8}{?8} {?}{11}",
     },
@@ -96,14 +101,14 @@
     },
     {
       "type": "terminal",
-      "key": " ├",
+      "key": " └",
       "keyColor": "yellow",
     },
-    {
-      "type": "wallpaper",
-      "key": " └󰸉",
-      "keyColor": "yellow",
-    },
+    // {
+    //   "type": "wallpaper",
+    //   "key": " └󰸉",
+    //   "keyColor": "yellow",
+    // },
     "break",
     {
       "type": "host",
@@ -136,16 +141,15 @@
       "keyColor": "blue",
     },
     {
-      "type": "uptime",
-      "key": " ├󰅐",
+      "type": "display",
+      "key": " ├󰍹",
       "keyColor": "blue",
     },
     {
-      "type": "display",
-      "key": " └󰍹",
+      "type": "uptime",
+      "key": " └󰅐",
       "keyColor": "blue",
     },
-
     "break",
     {
       "type": "wifi",
