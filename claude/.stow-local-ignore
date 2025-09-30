@@ -6,3 +6,4 @@
 ^shell-snapshots/
 ^projects/
 ^\.credentials\.json$
+^\history\.jsonl$
