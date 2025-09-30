@@ -351,7 +351,7 @@
   "theme.bar.buttons.modules.cpu.border": "#CD5C5C",
   "theme.bar.buttons.modules.ram.border": "#F8C471",
   "theme.bar.buttons.notifications.border": "#cea7ff",
-  "theme.bar.buttons.clock.border": "#8dcd7e",
+  "theme.bar.buttons.clock.border": "#2e2620",
   "theme.bar.buttons.battery.border": "#F8C471",
   "theme.bar.buttons.systray.border": "#2E2620",
   "theme.bar.buttons.bluetooth.border": "#87ceeb",
@@ -582,10 +582,10 @@
   "theme.bar.buttons.network.enableBorder": false,
   "theme.bar.buttons.clock.enableBorder": false,
   "bar.clock.showTime": true,
-  "bar.clock.showIcon": false,
+  "bar.clock.showIcon": true,
   "bar.media.truncation_size": 15,
   "theme.bar.buttons.notifications.enableBorder": false,
-  "bar.notifications.show_total": false,
+  "bar.notifications.show_total": true,
   "bar.notifications.hideCountWhenZero": true,
   "notifications.position": "top right",
   "theme.notification.enableShadow": false,
@@ -631,5 +631,6 @@
   "theme.bar.buttons.modules.hypridle.spacing": "0.75em",
   "theme.bar.buttons.workspaces.pill.height": "4em",
   "theme.bar.menus.border.size": "0.13em",
-  "bar.clock.format": "%a %b %d | %H:%M:%S"
+  "bar.clock.format": "%a %b %d | %H:%M:%S",
+  "bar.battery.scrollUp": "hyprpanel brightness +5"
 }
