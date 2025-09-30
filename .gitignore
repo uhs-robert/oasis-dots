@@ -84,6 +84,7 @@ node_modules/
 __pycache__/
 *.pyc
 *.egg-info/
+**/package.toml
 
 # ────────────────────────────────────────────────
 # ⚠️ Security: Hidden sensitive config
