@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<interface>
+  <!-- Waybar requires a GtkMenu with id="menu" -->
+  <object class="GtkMenu" id="menu">
+
+    <!-- Lock -->
+    <child>
+      <object class="GtkMenuItem" id="lock">
+        <child>
+          <object class="GtkLabel" id="lock_lbl">
+            <property name="use-markup">true</property>
+            <property name="xalign">0</property>
+            <!-- icon colored, text neutral -->
+            <property name="label">&lt;span foreground="#e0b15a"&gt;󰌾&lt;/span&gt;  Lock</property>
+          </object>
+        </child>
+      </object>
+    </child>
+
+    <!-- Suspend -->
+    <child>
+      <object class="GtkMenuItem" id="suspend">
+        <child>
+          <object class="GtkLabel" id="suspend_lbl">
+            <property name="use-markup">true</property>
+            <property name="xalign">0</property>
+            <property name="label">&lt;span foreground="#5fb3a1"&gt;󰒲&lt;/span&gt;  Suspend</property>
+          </object>
+        </child>
+      </object>
+    </child>
+
+    <!-- Logout -->
+    <child>
+      <object class="GtkMenuItem" id="logout">
+        <child>
+          <object class="GtkLabel" id="logout_lbl">
+            <property name="use-markup">true</property>
+            <property name="xalign">0</property>
+            <property name="label">&lt;span foreground="#8aa1ff"&gt;󰍃&lt;/span&gt;  Logout</property>
+          </object>
+        </child>
+      </object>
+    </child>
+
+    <child>
+      <object class="GtkSeparatorMenuItem" id="sep1"/>
+    </child>
+
+    <!-- Reboot -->
+    <child>
+      <object class="GtkMenuItem" id="reboot">
+        <child>
+          <object class="GtkLabel" id="reboot_lbl">
+            <property name="use-markup">true</property>
+            <property name="xalign">0</property>
+            <property name="label">&lt;span foreground="#f0a500"&gt;󰜉&lt;/span&gt;  Reboot</property>
+          </object>
+        </child>
+      </object>
+    </child>
+
+    <!-- Poweroff -->
+    <child>
+      <object class="GtkMenuItem" id="poweroff">
+        <child>
+          <object class="GtkLabel" id="poweroff_lbl">
+            <property name="use-markup">true</property>
+            <property name="xalign">0</property>
+            <property name="label">&lt;span foreground="#e66b6b"&gt;󰐥&lt;/span&gt;  Power Off</property>
+          </object>
+        </child>
+      </object>
+    </child>
+
+  </object>
+</interface>
+
