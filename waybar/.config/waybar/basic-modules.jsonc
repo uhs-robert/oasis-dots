@@ -417,7 +417,7 @@
     "menu": "on-click",
     "menu-file": "~/.config/waybar/custom_modules/power_menu.xml",
     "menu-actions": {
-      "lock": "loginctl lock-session || hyprctl dispatch dpms off",
+      "lock": "hyprlock",
       "suspend": "systemctl suspend",
       "logout": "hyprctl dispatch exit",
       "reboot": "systemctl reboot",
