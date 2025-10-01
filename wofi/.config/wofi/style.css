@@ -1,18 +1,20 @@
-@define-color green  #23d18b;
+/* style.css */
+@define-color blue  #1CA1FF;
+@define-color lightblue  skyblue;
 @define-color red  #ff5555;
-@define-color blue  #0A7ACE;
-@define-color text  #d1e3fb;
+@define-color orange  #FF9F41;
+@define-color text  #D9E6FA;
 
 * {
-  font-family: "FiraCode Nerd Font", monospace;
-  font-size: 16px;
+  font-family: "ProFont IIx Nerd Font", monospace;
+  font-size: 14px;
 }
 
 /* Window */
 #window {
   margin: 10px;
   padding: 10px;
-  border: 2px solid @green;
+  border: 2px solid @blue;
   border-radius: 8px;
   background-color: rgba(0, 0, 0, 0.5);
 }
@@ -47,13 +49,13 @@
   padding: 10px;
   border: none;
   border-radius: 8px 8px 0px 0px;
-  color: @white;
+  color: @text;
   background-color: rgba(20, 20, 20, 0.9);
 }
 
 #input image {
   border: none;
-  color: @green;
+  color: @blue;
 }
 
 #input * {
@@ -73,20 +75,20 @@
 
 #entry arrow {
   border: none;
-  color: @blue;
+  color: @orange;
 }
 
 /* Selected Entry */
 #entry:selected {
-  border: 0.11em solid @blue;
+  border: 0.11em solid @orange;
 }
 
 #entry:selected #text {
-  color: @green;
+  color: @lightblue;
 }
 
 #entry:drop(active) {
-  background-color: @blue!important;
+  background-color: @orange!important;
 }
 
 #img {

@@ -1,0 +1,49 @@
+/* powermenu.css */
+
+window {
+  margin: 0;
+  background-color: rgba(26, 40, 63, 0.92);
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+#input {
+  margin: 12px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.06);
+  color: #e6e6e6;
+  font-size: 16px;
+}
+
+#outer-box {
+  margin: 12px;
+}
+#scroll {
+  margin: 8px 4px;
+}
+
+#entry {
+  padding: 18px 6px;
+  margin: 6px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+#entry:selected {
+  background: rgba(255, 159, 65, 0.4);
+  border: 1px solid rgba(255, 159, 65, 0.45);
+}
+
+#text {
+  font-family: "ProFont IIx Nerd Font", "Noto Sans", sans-serif;
+  font-size: 56px; /* BIG ICONS */
+  color: #e8e8e8;
+}
+
+/* put label on a new line, smaller text */
+#entry #text {
+  letter-spacing: 0.5px;
+}
