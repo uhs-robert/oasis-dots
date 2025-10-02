@@ -420,15 +420,14 @@
   },
 
   "custom/updates": {
-    "exec": "UPDATES_TTL_MIN=30 UPDATES_ICON= python3 ~/.config/waybar/scripts/fedora_updates.py",
+    "exec": "UPDATES_TTL_MIN=30 python3 ~/.config/waybar/scripts/fedora_updates.py",
     "return-type": "json",
     "interval": 1800, // in seconds = 30min
-    "format": "{text}",
+    "format": "<span size='11000' color='khaki'> </span>{text}",
     "tooltip": false,
     "hide-empty-text": true,
-    "on-click": "sysup",
-    // "on-click": "kitty -e bash -lc 'sudo dnf5 upgrade -y || sudo dnf upgrade -y'",
-    "on-click-right": "kitty -e bash -lc 'sudo dnf5 upgrade --refresh -y || sudo dnf upgrade --refresh -y'",
+    "on-click": "bash -lc 'kitty -e bash -lc \"sysup\"; rm -f \"$XDG_RUNTIME_DIR/fedora_updates.cache.json\"; pkill -RTMIN+8 waybar'",
+    "on-click-right": "bash -lc 'kitty -e bash -lc \"sudo dnf5 upgrade --refresh -y || sudo dnf upgrade --refresh -y\"; rm -f \"$XDG_RUNTIME_DIR/fedora_updates.cache.json\"; pkill -RTMIN+8 waybar'",
   },
 
   "custom/weather": {

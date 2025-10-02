@@ -134,6 +134,11 @@ window#waybar {
   margin-right: 8px;
 }
 
+#custom-updates {
+  color: darkkhaki;
+  margin-left: 1em;
+}
+
 #custom-leftArrow,
 #custom-rightArrow {
   color: khaki;

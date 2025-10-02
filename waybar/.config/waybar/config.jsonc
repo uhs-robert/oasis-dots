@@ -21,6 +21,7 @@
       "group/hardware",
       "network",
       "bluetooth",
+      "custom/updates",
       "custom/notifications",
     ],
   },

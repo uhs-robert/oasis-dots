@@ -1,3 +1,4 @@
+# fedora_updates.py
 # waybar/.config/waybar/scripts/fedora_updates.py
 
 #!/usr/bin/env python3
@@ -15,7 +16,6 @@ TTL_MIN = int(os.environ.get("UPDATES_TTL_MIN", "30"))  # refresh cache every N 
 SHOW_ZERO = (
     os.environ.get("UPDATES_SHOW_ZERO", "0") == "1"
 )  # show "0" instead of hiding
-ICON = os.environ.get("UPDATES_ICON", "")  # Nerd Font wrench
 
 RUNTIME_DIR = os.environ.get("XDG_RUNTIME_DIR", f"/run/user/{os.getuid()}")
 CACHE = Path(RUNTIME_DIR) / "fedora_updates.cache.json"
@@ -99,6 +99,14 @@ def write_cache(payload):
         pass
 
 
+def clear_cache():
+    try:
+        if CACHE.exists():
+            CACHE.unlink()
+    except Exception:
+        pass
+
+
 def main():
     # try cache first
     cached = read_cache()
@@ -122,7 +130,7 @@ def main():
         payload = {"text": "", "class": "updates-0"}
     else:
         payload = {
-            "text": f"{ICON} {count}",
+            "text": f"{count}",
             "class": f"updates-{count and 'has' or '0'}",
         }
 
