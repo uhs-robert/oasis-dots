@@ -208,19 +208,18 @@
   "clock": {
     "interval": 1,
     "format": "<span color='#6BBF59' size='11000'>󰸗 </span>{:%a %b %d | %H:%M:%S}",
-    // "tooltip-format": "<big>{:%Y %B}</big>\n<tt><small>{calendar}</small></tt>"
-    "tooltip-format": "\n<span size='9pt' font='WenQuanYi Zen Hei Mono'>{calendar}</span>",
+    "tooltip-format": "\n<span font='ProFont IIx Nerd Font Mono  12'><tt>{calendar}</tt></span>",
     "calendar": {
       "mode": "year",
       "mode-mon-col": 3,
-      "weeks-pos": "right",
+      "weeks-pos": "left",
       "on-scroll": 1,
       "format": {
-        "months": "<span color='#ffead3'><b>{}</b></span>",
-        "days": "<span color='#ecc6d9'><b>{}</b></span>",
-        "weeks": "<span color='#99ffdd'><b>W{}</b></span>",
-        "weekdays": "<span color='#ffcc66'><b>{}</b></span>",
-        "today": "<span color='#ff6699'><b><u>{}</u></b></span>",
+        "months": "<span color='#ff9f41'><b>{}</b></span>",
+        "days": "<span color='#D9E6FA'><b>{}</b></span>",
+        "weeks": "<span color='skyblue'><b>W{}</b></span>",
+        "weekdays": "<span color='khaki'><b>{}</b></span>",
+        "today": "<span color='indianred'><b><u>{}</u></b></span>",
       },
     },
     "actions": {
@@ -316,7 +315,6 @@
     "exec-if": "which swaync-client",
     "exec": "swaync-client -swb",
     "on-click": "swaync-client -t -sw",
-    // "on-click": "hyprpanel t notificationsmenu",
     "on-click-right": "swaync-client -d -sw",
     "escape": true,
   },

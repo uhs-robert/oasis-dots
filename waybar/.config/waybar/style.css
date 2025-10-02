@@ -13,6 +13,14 @@ window#waybar {
   all: unset;
 }
 
+tooltip {
+  border-radius: 10px;
+  background: #1a283f;
+  color: #ece6d8;
+  border: 1px solid rgba(120, 130, 155, 0.25);
+  box-shadow: 0 6px 30px rgba(0, 0, 0, 0.45);
+}
+
 .modules-left {
   padding: 0px;
   margin: 5px 0px 0px 5px;
@@ -231,10 +239,6 @@ window#waybar {
 #clock {
   color: #8dcd7e;
 }
-
-/* #clock.date { */
-/*   color: #6bbf59; */
-/* } */
 
 #pulseaudio {
   color: #ffa0a0;
