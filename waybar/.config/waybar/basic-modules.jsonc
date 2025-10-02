@@ -71,6 +71,31 @@
     "modules": ["pulseaudio", "pulseaudio/slider"],
   },
 
+  "pulseaudio": {
+    "format": "<span size='11000' color='#FF8080'>{icon} </span> {volume}%",
+    "tooltip-format": "{icon}   {desc} // {volume}%",
+    "scroll-step": 5,
+    "format-muted": "",
+    "format-icons": {
+      "headphone": "",
+      "hands-free": "",
+      "headset": "",
+      "phone": "",
+      "portable": "",
+      "car": "",
+      "default": ["", "", ""],
+    },
+    // "on-click": "hyprpanel t audiomenu",
+  },
+
+  "pulseaudio/slider": {
+    "min": 5,
+    "max": 100,
+    "rotate": 0,
+    "device": "pulseaudio",
+    "scroll-step": 1,
+  },
+
   "group/network": {
     "orientation": "horizontal",
     "format": "ifname",
@@ -272,31 +297,6 @@
     "format-icons": ["", "", "", "", ""],
     "tooltip-format": "{time}",
     // "on-click": "hyprpanel t energymenu",
-  },
-
-  "pulseaudio": {
-    "format": "<span size='11000' color='#FF8080'>{icon} </span> {volume}%",
-    "tooltip-format": "{icon}   {desc} // {volume}%",
-    "scroll-step": 5,
-    "format-muted": "",
-    "format-icons": {
-      "headphone": "",
-      "hands-free": "",
-      "headset": "",
-      "phone": "",
-      "portable": "",
-      "car": "",
-      "default": ["", "", ""],
-    },
-    // "on-click": "hyprpanel t audiomenu",
-  },
-
-  "pulseaudio/slider": {
-    "min": 5,
-    "max": 100,
-    "rotate": 0,
-    "device": "pulseaudio",
-    "scroll-step": 1,
   },
 
   "custom/notifications": {
