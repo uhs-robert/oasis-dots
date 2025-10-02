@@ -86,6 +86,9 @@
       "default": ["", "", ""],
     },
     // "on-click": "hyprpanel t audiomenu",
+    "on-click": "pavucontrol",
+    "on-click-right": "wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle",
+    "on-click-middle": "easyeffects",
   },
 
   "pulseaudio/slider": {
@@ -273,7 +276,7 @@
     "format-off": "BT-off",
     "format-disabled": "󰂲",
     "format-connected-battery": "<span size='11000' color='#5BB0FA'>󰂯 </span>Connected ({num_connections})",
-    "format-alt": "{device_alias} <span size='11000' color='#5BB0FA'>󰂯</span>",
+    "format-alt": "<span size='11000' color='#5BB0FA'>󰂯</span> {device_alias}",
     "tooltip-format": "{controller_alias}\t{controller_address}\n\n{num_connections} connected",
     "tooltip-format-connected": "{controller_alias}\t{controller_address}\n\n{num_connections} connected\n\n{device_enumerate}",
     "tooltip-format-enumerate-connected": "{device_alias}\n{device_address}",
