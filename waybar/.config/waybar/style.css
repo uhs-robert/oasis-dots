@@ -3,7 +3,7 @@
 @import "./themes/oasis-lagoon.css";
 
 * {
-  font-family: "ProFont IIx Nerd Font", "Noto Sans", sans-serif;
+  font-family: "ProFont IIx Nerd Font", "JetBrainsMono Nerd Font", monospace;
   font-size: 12px;
   min-height: 0;
   font-weight: 400;
