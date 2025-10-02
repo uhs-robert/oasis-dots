@@ -71,34 +71,6 @@
     "modules": ["pulseaudio", "pulseaudio/slider"],
   },
 
-  "pulseaudio": {
-    "format": "<span size='11000' color='#FF8080'>{icon} </span> {volume}%",
-    "tooltip-format": "{icon}   {desc} // {volume}%",
-    "scroll-step": 5,
-    "format-muted": "",
-    "format-icons": {
-      "headphone": "",
-      "hands-free": "",
-      "headset": "",
-      "phone": "",
-      "portable": "",
-      "car": "",
-      "default": ["", "", ""],
-    },
-    // "on-click": "hyprpanel t audiomenu",
-    "on-click": "pavucontrol",
-    "on-click-right": "wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle",
-    "on-click-middle": "easyeffects",
-  },
-
-  "pulseaudio/slider": {
-    "min": 5,
-    "max": 100,
-    "rotate": 0,
-    "device": "pulseaudio",
-    "scroll-step": 1,
-  },
-
   "group/network": {
     "orientation": "horizontal",
     "format": "ifname",
@@ -236,18 +208,19 @@
   "clock": {
     "interval": 1,
     "format": "<span color='#6BBF59' size='11000'>󰸗 </span>{:%a %b %d | %H:%M:%S}",
-    "tooltip-format": "\n<span font='ProFont IIx Nerd Font Mono  12'><tt>{calendar}</tt></span>",
+    // "tooltip-format": "<big>{:%Y %B}</big>\n<tt><small>{calendar}</small></tt>"
+    "tooltip-format": "\n<span size='9pt' font='WenQuanYi Zen Hei Mono'>{calendar}</span>",
     "calendar": {
       "mode": "year",
       "mode-mon-col": 3,
-      "weeks-pos": "left",
+      "weeks-pos": "right",
       "on-scroll": 1,
       "format": {
-        "months": "<span color='#ff9f41'><b>{}</b></span>",
-        "days": "<span color='#D9E6FA'><b>{}</b></span>",
-        "weeks": "<span color='skyblue'><b>W{}</b></span>",
-        "weekdays": "<span color='khaki'><b>{}</b></span>",
-        "today": "<span color='indianred'><b><u>{}</u></b></span>",
+        "months": "<span color='#ffead3'><b>{}</b></span>",
+        "days": "<span color='#ecc6d9'><b>{}</b></span>",
+        "weeks": "<span color='#99ffdd'><b>W{}</b></span>",
+        "weekdays": "<span color='#ffcc66'><b>{}</b></span>",
+        "today": "<span color='#ff6699'><b><u>{}</u></b></span>",
       },
     },
     "actions": {
@@ -276,7 +249,7 @@
     "format-off": "BT-off",
     "format-disabled": "󰂲",
     "format-connected-battery": "<span size='11000' color='#5BB0FA'>󰂯 </span>Connected ({num_connections})",
-    "format-alt": "<span size='11000' color='#5BB0FA'>󰂯</span> {device_alias}",
+    "format-alt": "{device_alias} <span size='11000' color='#5BB0FA'>󰂯</span>",
     "tooltip-format": "{controller_alias}\t{controller_address}\n\n{num_connections} connected",
     "tooltip-format-connected": "{controller_alias}\t{controller_address}\n\n{num_connections} connected\n\n{device_enumerate}",
     "tooltip-format-enumerate-connected": "{device_alias}\n{device_address}",
@@ -302,6 +275,31 @@
     // "on-click": "hyprpanel t energymenu",
   },
 
+  "pulseaudio": {
+    "format": "<span size='11000' color='#FF8080'>{icon} </span> {volume}%",
+    "tooltip-format": "{icon}   {desc} // {volume}%",
+    "scroll-step": 5,
+    "format-muted": "",
+    "format-icons": {
+      "headphone": "",
+      "hands-free": "",
+      "headset": "",
+      "phone": "",
+      "portable": "",
+      "car": "",
+      "default": ["", "", ""],
+    },
+    // "on-click": "hyprpanel t audiomenu",
+  },
+
+  "pulseaudio/slider": {
+    "min": 5,
+    "max": 100,
+    "rotate": 0,
+    "device": "pulseaudio",
+    "scroll-step": 1,
+  },
+
   "custom/notifications": {
     "tooltip": true,
     "tooltip-format": "View notifications",
@@ -318,6 +316,7 @@
     "exec-if": "which swaync-client",
     "exec": "swaync-client -swb",
     "on-click": "swaync-client -t -sw",
+    // "on-click": "hyprpanel t notificationsmenu",
     "on-click-right": "swaync-client -d -sw",
     "escape": true,
   },
@@ -421,14 +420,15 @@
   },
 
   "custom/updates": {
-    "exec": "UPDATES_TTL_MIN=30 python3 ~/.config/waybar/scripts/fedora_updates.py",
+    "exec": "UPDATES_TTL_MIN=30 UPDATES_ICON= python3 ~/.config/waybar/scripts/fedora_updates.py",
     "return-type": "json",
     "interval": 1800, // in seconds = 30min
-    "format": "<span size='11000' color='khaki'> </span>{text}",
+    "format": "{text}",
     "tooltip": false,
     "hide-empty-text": true,
-    "on-click": "bash -lc 'kitty -e bash -lc \"sysup\"; rm -f \"$XDG_RUNTIME_DIR/fedora_updates.cache.json\"; pkill -RTMIN+8 waybar'",
-    "on-click-right": "bash -lc 'kitty -e bash -lc \"sudo dnf5 upgrade --refresh -y || sudo dnf upgrade --refresh -y\"; rm -f \"$XDG_RUNTIME_DIR/fedora_updates.cache.json\"; pkill -RTMIN+8 waybar'",
+    "on-click": "sysup",
+    // "on-click": "kitty -e bash -lc 'sudo dnf5 upgrade -y || sudo dnf upgrade -y'",
+    "on-click-right": "kitty -e bash -lc 'sudo dnf5 upgrade --refresh -y || sudo dnf upgrade --refresh -y'",
   },
 
   "custom/weather": {
