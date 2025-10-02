@@ -6,7 +6,7 @@
     "position": "top",
     "modules-left": ["custom/startmenu", "hyprland/workspaces"],
     "modules-center": ["clock", "custom/weather"],
-    "modules-right": ["temperature", "cpu", "memory", "custom/notifications"],
+    "modules-right": ["temperature", "cpu", "memory", "custom/notifications"]
   },
   // All the others
   {
@@ -18,11 +18,11 @@
     "modules-right": [
       "group/tray",
       "group/audio",
-      "group/hardware",
+      "group/battery",
       "network",
       "bluetooth",
       "custom/updates",
-      "custom/notifications",
-    ],
-  },
+      "custom/notifications"
+    ]
+  }
 ]
