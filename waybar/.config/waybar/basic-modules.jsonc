@@ -65,7 +65,7 @@
     "drawer": {
       "transition-duration": 600,
       "transition-left-to-right": false,
-      "click-to-reveal": true,
+      "click-to-reveal": false,
       "children-class": "group-audio",
     },
     "modules": ["pulseaudio", "pulseaudio/slider"],
@@ -230,6 +230,7 @@
       "on-scroll-up": "shift_up",
       "on-scroll-down": "shift_down",
     },
+    // "on-click": "hyprpanel t calendarmenu",
   },
 
   "network": {
@@ -239,6 +240,7 @@
     "format-linked": "{ifname} (No IP) ",
     "format-disconnected": "<span size='11000' foreground='#47A99B'>󰤭 </span>Disconnected",
     "tooltip-format-wifi": "{essid}, {signalStrength}%",
+    // "on-click": "hyprpanel t networkmenu",
     "on-click": "nm-connection-editor",
   },
 
@@ -253,6 +255,7 @@
     "tooltip-format-enumerate-connected": "{device_alias}\n{device_address}",
     "tooltip-format-enumerate-connected-battery": "{device_alias}\n{device_address}\n{device_battery_percentage}%",
     "on-click-right": "blueman-manager",
+    // "on-click": "hyprpanel t bluetoothmenu",
   },
 
   "battery": {
@@ -269,6 +272,7 @@
     "format-full": "<span size='11000' foreground='#FF9F41'>󱟢 </span>{capacity}%",
     "format-icons": ["", "", "", "", ""],
     "tooltip-format": "{time}",
+    // "on-click": "hyprpanel t energymenu",
   },
 
   "pulseaudio": {
@@ -285,6 +289,7 @@
       "car": "",
       "default": ["", "", ""],
     },
+    // "on-click": "hyprpanel t audiomenu",
   },
 
   "pulseaudio/slider": {
@@ -311,6 +316,7 @@
     "exec-if": "which swaync-client",
     "exec": "swaync-client -swb",
     "on-click": "swaync-client -t -sw",
+    // "on-click": "hyprpanel t notificationsmenu",
     "on-click-right": "swaync-client -d -sw",
     "escape": true,
   },
@@ -335,12 +341,31 @@
     "on-click": "hyprshot -m region -o ~/Pictures/Screenshots",
   },
 
-  "custom/applauncher": {
+  "custom/startmenu": {
     "format": "<span size='15000'>󰣇</span>",
     "tooltip": true,
     "tooltip-format": "Launch an application",
-    "on-click": "wofi --show drun",
-    "on-click-right": "~/.config/waybar/scripts/power_menu.sh",
+    // "on-click": "hyprpanel t dashboardmenu",
+    // "on-click": "wofi --show drun",
+    "menu": "on-click",
+    "menu-file": "/home/USER/.config/waybar/custom_modules/start_menu.xml",
+    "menu-actions": {
+      "allapps": "wofi --show drun",
+      "web": "hyprctl dispatch exec firefox",
+      "code": "kitty -e nvim",
+      "files": "kitty -e yazi",
+      "media": "mpv --player-operation-mode=pseudo-gui",
+      "term": "hyprctl dispatch exec kitty",
+      "settings": "systemsettings || gnome-control-center || true",
+
+      "sep1": "true",
+
+      "lock": "~/.config/waybar/scripts/confirm-action.sh --title Lock --glyph '󰌾' --color '#cdd6f4' --exec 'hyprlock'",
+      "logout": "~/.config/waybar/scripts/confirm-action.sh --title Logout --glyph '󰍃' --color '#89dceb' --exec 'hyprctl dispatch exit'",
+      "reboot": "~/.config/waybar/scripts/confirm-action.sh --title Reboot --glyph '󰜉' --color '#f9e2af' --exec 'systemctl reboot'",
+      "power": "~/.config/waybar/scripts/confirm-action.sh --title Power\\ Off --glyph '󰐥' --color '#f38ba8' --exec 'systemctl poweroff'",
+    },
+    "on-click-right": "wofi --show drun",
   },
 
   "wlr/taskbar": {
@@ -388,6 +413,7 @@
     "hide-empty-text": true,
     "format": "<span size='12000' color='#309DC9'> </span>{text}",
     "tooltip": false,
+    // "on-click": "hyprpanel t mediamenu",
     "on-click": "playerctl play-pause",
     "on-click-middle": "playerctl previous",
     "on-click-right": "playerctl next",
@@ -409,6 +435,7 @@
     "interval": 600, // in seconds is 10 minutes
     "exec": "python -O ~/.config/waybar/scripts/weather-api/get_weather_api.py",
     "markup": "pango",
+    // "on-click": "hyprpanel t calendarmenu",
   },
 
   "custom/power": {
@@ -423,5 +450,11 @@
       "reboot": "systemctl reboot",
       "poweroff": "systemctl poweroff",
     },
+  },
+
+  "custom/cc": {
+    "format": "",
+    "tooltip": false,
+    "on-click": "ags toggle controlCenter",
   },
 }

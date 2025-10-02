@@ -4,7 +4,7 @@
     "output": "HP Inc. HP Z22n G2 6CM8411J22",
     "include": ["basic-modules.jsonc"],
     "position": "top",
-    "modules-left": ["custom/applauncher", "hyprland/workspaces"],
+    "modules-left": ["custom/startmenu", "hyprland/workspaces"],
     "modules-center": ["clock", "custom/weather"],
     "modules-right": ["temperature", "cpu", "memory", "custom/notifications"],
   },
@@ -13,11 +13,7 @@
     "output": "!HP Inc. HP Z22n G2 6CM8411J22",
     "include": ["basic-modules.jsonc"],
     "position": "top",
-    "modules-left": [
-      "custom/applauncher",
-      "hyprland/workspaces",
-      "custom/cava",
-    ],
+    "modules-left": ["custom/startmenu", "hyprland/workspaces", "custom/cava"],
     "modules-center": ["clock", "custom/weather"],
     "modules-right": [
       "group/tray",
@@ -26,7 +22,6 @@
       "network",
       "bluetooth",
       "custom/notifications",
-      "custom/power",
     ],
   },
 ]

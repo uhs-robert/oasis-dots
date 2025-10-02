@@ -34,7 +34,7 @@ window#waybar {
   background: #101825;
 }
 
-#custom-applauncher {
+#custom-startmenu {
   margin: 0;
   padding: 2px 10px 2px 8px;
   color: #101825;
@@ -299,6 +299,7 @@ window#waybar {
   animation-direction: alternate;
 }
 
+/* GTK Menu Styles */
 menu {
   background: #1a283f;
   color: #b5e8e0;
@@ -311,4 +312,13 @@ menuitem label {
 }
 menuitem {
   border-radius: 15px;
+}
+menu separator {
+  min-height: 1px;
+  margin: 6px 8px; /* inset from edges */
+  background: rgba(255, 255, 255, 0.12);
+}
+menuitem.separator {
+  padding: 0;
+  background: transparent;
 }
