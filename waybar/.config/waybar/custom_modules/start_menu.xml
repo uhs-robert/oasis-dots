@@ -1,0 +1,147 @@
+
+<?xml version="1.0" encoding="UTF-8"?>
+<interface>
+  <object class="GtkMenu" id="menu">
+
+    <!-- Top: All apps opens your launcher -->
+    <child>
+      <object class="GtkMenuItem" id="allapps">
+        <child>
+          <object class="GtkLabel">
+            <property name="use-markup">true</property>
+            <property name="xalign">0</property>
+            <property name="label">&lt;span foreground="#6BBF59"&gt;󰣇&lt;/span&gt;  All Apps…</property>
+          </object>
+        </child>
+      </object>
+    </child>
+
+    <child><object class="GtkSeparatorMenuItem" id="sep0"/></child>
+
+    <!-- Quick launchers -->
+    <child>
+      <object class="GtkMenuItem" id="web">
+        <child>
+          <object class="GtkLabel">
+            <property name="use-markup">true</property>
+            <property name="xalign">0</property>
+            <property name="label">&lt;span foreground="#7aa2f7"&gt;󰖟&lt;/span&gt;  Web (Firefox)</property>
+          </object>
+        </child>
+      </object>
+    </child>
+
+    <child>
+      <object class="GtkMenuItem" id="code">
+        <child>
+          <object class="GtkLabel">
+            <property name="use-markup">true</property>
+            <property name="xalign">0</property>
+            <property name="label">&lt;span foreground="#cba6f7"&gt;󰙨&lt;/span&gt;  Code (Neovim)</property>
+          </object>
+        </child>
+      </object>
+    </child>
+
+    <child>
+      <object class="GtkMenuItem" id="files">
+        <child>
+          <object class="GtkLabel">
+            <property name="use-markup">true</property>
+            <property name="xalign">0</property>
+            <property name="label">&lt;span foreground="#94e2d5"&gt;󰝰&lt;/span&gt;  Files (Yazi)</property>
+          </object>
+        </child>
+      </object>
+    </child>
+
+    <child>
+      <object class="GtkMenuItem" id="media">
+        <child>
+          <object class="GtkLabel">
+            <property name="use-markup">true</property>
+            <property name="xalign">0</property>
+            <property name="label">&lt;span foreground="#fab387"&gt;󰺄&lt;/span&gt;  Media (MPV)</property>
+          </object>
+        </child>
+      </object>
+    </child>
+
+    <child>
+      <object class="GtkMenuItem" id="term">
+        <child>
+          <object class="GtkLabel">
+            <property name="use-markup">true</property>
+            <property name="xalign">0</property>
+            <property name="label">&lt;span foreground="#a6e3a1"&gt;&lt;/span&gt;  Terminal (Kitty)</property>
+          </object>
+        </child>
+      </object>
+    </child>
+
+    <child>
+      <object class="GtkMenuItem" id="settings">
+        <child>
+          <object class="GtkLabel">
+            <property name="use-markup">true</property>
+            <property name="xalign">0</property>
+            <property name="label">&lt;span foreground="#89b4fa"&gt;󰒓&lt;/span&gt;  Settings</property>
+          </object>
+        </child>
+      </object>
+    </child>
+
+    <child><object class="GtkSeparatorMenuItem" id="sep1"/></child>
+
+    <!-- Session -->
+
+    <child>
+      <object class="GtkMenuItem" id="lock">
+        <child>
+          <object class="GtkLabel">
+            <property name="use-markup">true</property>
+            <property name="xalign">0</property>
+            <property name="label">&lt;span foreground="#cdd6f4"&gt;󰌾&lt;/span&gt;  Lock</property>
+          </object>
+        </child>
+      </object>
+    </child>
+
+    <child>
+      <object class="GtkMenuItem" id="logout">
+        <child>
+          <object class="GtkLabel">
+            <property name="use-markup">true</property>
+            <property name="xalign">0</property>
+            <property name="label">&lt;span foreground="#89dceb"&gt;󰍃&lt;/span&gt;  Logout</property>
+          </object>
+        </child>
+      </object>
+    </child>
+
+    <child>
+      <object class="GtkMenuItem" id="reboot">
+        <child>
+          <object class="GtkLabel">
+            <property name="use-markup">true</property>
+            <property name="xalign">0</property>
+            <property name="label">&lt;span foreground="#f9e2af"&gt;󰜉&lt;/span&gt;  Reboot</property>
+          </object>
+        </child>
+      </object>
+    </child>
+
+    <child>
+      <object class="GtkMenuItem" id="power">
+        <child>
+          <object class="GtkLabel">
+            <property name="use-markup">true</property>
+            <property name="xalign">0</property>
+            <property name="label">&lt;span foreground="#f38ba8"&gt;󰐥&lt;/span&gt;  Power Off</property>
+          </object>
+        </child>
+      </object>
+    </child>
+
+  </object>
+</interface>
