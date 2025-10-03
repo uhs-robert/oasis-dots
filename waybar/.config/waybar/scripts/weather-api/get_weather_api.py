@@ -1,11 +1,9 @@
 # waybar/.config/waybar/scripts/weather-api/get_weather_api.py
-# get_weather_api.py
 """Small script to generate weather data."""
 
 import json
 import os
 import time
-
 import requests
 
 
@@ -52,9 +50,9 @@ class Weather:
 
             # display weather
             if icon_pos == "left":
-                print(f"{icon}  {int(round(temp))}{unit}")
+                print(f"{icon} {int(round(temp))}{unit}")
             else:
-                print(f"{int(round(temp))}{unit} {icon} ")
+                print(f"{int(round(temp))}{unit} {icon}")
         except requests.ConnectionError:
             self.error_handling()
         except json.JSONDecodeError:
