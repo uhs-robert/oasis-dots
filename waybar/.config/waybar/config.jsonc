@@ -1,3 +1,4 @@
+// [CONFIG]
 [
   // Vertical Monitor
   {
@@ -5,7 +6,7 @@
     "include": ["basic-modules.jsonc"],
     "position": "top",
     "modules-left": ["custom/startmenu", "hyprland/workspaces"],
-    // "modules-center": ["clock", "custom/weather"],
+    "modules-center": ["clock", "custom/weather"],
     "modules-right": ["temperature", "cpu", "memory", "custom/notifications"]
   },
   // All the others
@@ -13,8 +14,8 @@
     "output": "!HP Inc. HP Z22n G2 6CM8411J22",
     "include": ["basic-modules.jsonc"],
     "position": "top",
-    // "modules-left": ["custom/startmenu", "hyprland/workspaces", "custom/cava"],
-    "modules-left": ["custom/startmenu", "hyprland/workspaces"],
+    "modules-left": ["custom/startmenu", "hyprland/workspaces", "custom/cava"],
+    // "modules-left": ["custom/startmenu", "hyprland/workspaces"],
     "modules-center": ["clock", "custom/weather"],
     "modules-right": [
       "group/tray",
@@ -27,3 +28,77 @@
     ]
   }
 ]
+
+// [DEBUGGING CONFIGS]
+// {
+//   "output": "eDP-2",
+//   "position": "top",
+//   "modules-left": [
+//     "clock",
+//     "hyprland/workspaces",
+//     "network",
+//     "memory",
+//     "battery",
+//     "bluetooth"
+//   ],
+//   "custom/helloworld": {
+//     "format": "Hello world"
+//   }
+// }
+
+// {
+//   "output": "eDP-2",
+//   "position": "top",
+//   "modules-left": ["custom/helloworld"],
+//   "custom/helloworld": {
+//     "exec": "printf '󰣇'",
+//     "return-type": "text",
+//     "signal": 8,
+//     "tooltip": false
+//   }
+// }
+//
+// {
+//   "position": "top",
+//   "modules-left": ["custom/testjson"],
+//   "custom/testjson": {
+//     "exec": "sh -c 'printf \"{\\\"text\\\":\\\"hello\\\"}\\n\"; sleep 99999'",
+//     "return-type": "json",
+//     "interval": 0,
+//     "format": "{text}",
+//     "tooltip": false
+//   }
+// }
+
+// {
+//   "layer": "top",
+//   "position": "top",
+//   "modules-left": ["custom/cava"],
+//   "custom/cava": {
+//     "exec": "python3 -u ~/.config/waybar/scripts/cava_waybar.py",
+//     "return-type": "json",
+//     "format": "{text}",
+//     "escape": true,
+//     "tooltip": false
+//   }
+// }
+
+// "custom/notifications": {
+//   "tooltip": true,
+//   "tooltip-format": "View notifications",
+//   "format": "<span size='11000'>{icon}</span>",
+//   "format-icons": {
+//     "notification": "󱅫 ",
+//     "none": " ",
+//     "inhibited-notification": "󰵙 ",
+//     "dnd-notification": "󰅸 ",
+//     "dnd-none": " ",
+//     "dnd-inhibited-notification": "󰺁 "
+//   },
+//   "return-type": "json",
+//   "exec-if": "which swaync-client",
+//   "exec": "swaync-client -swb",
+//   "on-click": "swaync-client -t -sw",
+//   "on-click-right": "swaync-client -d -sw",
+//   "escape": true
+// },
