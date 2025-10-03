@@ -2,6 +2,13 @@
 /* waybar/.config/waybar/style.css */
 @import "./themes/oasis-lagoon.css";
 
+/*
+* Globals
+*/
+window#waybar {
+  all: unset;
+}
+
 * {
   font-family: "ProFont IIx Nerd Font", "JetBrainsMono Nerd Font", monospace;
   font-size: 12px;
@@ -9,73 +16,97 @@
   font-weight: 400;
 }
 
-window#waybar {
-  all: unset;
-}
-
 tooltip {
   border-radius: 10px;
   background: #1a283f;
-  color: #ece6d8;
-  border: 1px solid rgba(120, 130, 155, 0.25);
+  color: #d9e6fa;
+  border: 1px solid #22385c;
   box-shadow: 0 6px 30px rgba(0, 0, 0, 0.45);
 }
 
-.modules-left {
-  padding: 0px;
-  margin: 5px 0px 0px 5px;
-  border-radius: 8px;
-  background: #101825;
-}
-
-.modules-center {
-  padding: 0px;
-  margin: 5px 0px 0px 0px;
-  border-radius: 8px;
-  background: #101825;
-}
-
+/* Module containers */
+.modules-left,
+.modules-center,
 .modules-right {
-  padding: 0px;
-  margin: 5px 5px 0px 0px;
-  border-radius: 8px;
-  background: #101825;
+  margin-top: 5px;
+  padding: 0;
+  background: transparent;
 }
 
+/* Module Widgets - Pill Design */
+.modules-left > widget > *,
+.modules-center > widget > *,
+.modules-right > widget > * {
+  background: #101825;
+  padding: 0px 8px 0px 8px; /* per-child padding */
+  /* Border Settings */
+  border: 1px solid #1a283f;
+  border-left: none;
+  border-right: none;
+}
+
+/* Round only the ends + give outer breathing room */
+.modules-left > widget:first-child > *,
+.modules-center > widget:first-child > *,
+.modules-right > widget:first-child > * {
+  margin-left: 5px;
+  border-top-left-radius: 8px;
+  border-bottom-left-radius: 8px;
+  /* Border Settings */
+  border: 1px solid #1a283f;
+  border-right: none;
+}
+.modules-left > widget:last-child > *,
+.modules-center > widget:last-child > *,
+.modules-right > widget:last-child > * {
+  margin-right: 5px;
+  border-top-right-radius: 8px;
+  border-bottom-right-radius: 8px;
+  /* Border Settings */
+  border: 1px solid #1a283f;
+  border-left: none;
+}
+
+/*
+* Custom Modules
+*/
 #custom-startmenu {
-  margin: 0;
   padding: 2px 10px 2px 8px;
   color: #101825;
   background-color: indianred;
-  border-radius: 8px;
+  border-radius: 8px 0px 0px 8px;
 }
 
+/*
+* Workspaces
+*/
 #workspaces {
-  /* padding: 5px 0px 5px 0px; */
-  padding: 1px 10px 1px 0px;
+  padding: 0px 5px 0px 5px;
 }
 
 #workspaces button {
-  /* background-color: transparent; */
   border: none;
   color: khaki;
   box-shadow: none;
   text-shadow: none;
   padding: 0px;
   border-radius: 0;
-  padding-left: 3px;
-  padding-right: 3px;
 }
 
-#workspaces .workspace-label {
-  padding-left: 1px;
+/* #workspaces .workspace-label { */
+/**/
+/* } */
+
+/* Non-taskbar Icon Container */
+#workspaces button.empty .workspace-label {
   border-top: 1px solid transparent;
+  padding: 0px 5px 0px 5px;
 }
 
+/* Taskbar Icon Container */
 #workspaces .taskbar-window {
   border-top: 1px solid transparent;
-  padding-left: 5px;
-  padding-right: 5px;
+  padding: 0px 4px 0px 4px;
 }
 
 #workspaces button.visible .taskbar-window,
@@ -84,16 +115,17 @@ tooltip {
 }
 
 #workspaces .taskbar-window.active {
-  background-color: rgba(255, 159, 65, 0.15);
+  background-color: rgba(240, 230, 140, 0.15);
 }
 
-#workspaces .taskbar-window image {
-  margin-top: 1px;
-}
+/* #workspaces .taskbar-window image { */
+/*   margin-top: 1px; */
+/* } */
 
 #workspaces button:hover,
 #workspaces .taskbar-window:hover,
-#workspaces .taskbar-window image:hover {
+#workspaces .taskbar-window image:hover,
+#workspaces .taskbar:hover {
   background-color: rgba(240, 230, 140, 0.15);
   color: #101825;
 }
@@ -102,88 +134,24 @@ tooltip {
   color: #f0e68c;
 }
 #workspaces button.empty.active {
-  /* color: #101825; */
-  background-color: rgba(255, 159, 65, 0.15);
+  background-color: rgba(240, 230, 140, 0.15);
 }
-/* #workspaces button.urgent { */
-/*   background-color: indianred; */
-/* } */
-/* #workspaces button { */
-/*   padding: 0px 5px 0px 5px; */
-/*   color: darkkhaki; */
-/*   border: none; */
-/*   transition: all 0.1s ease; */
-/* } */
-/* #workspaces button.active { */
-/*   background: #ff9f41; */
-/*   color: #101825; */
-/* } */
-/* #workspaces button.active:hover { */
-/*   background: khaki; */
-/*   color: indianred; */
-/* } */
-/* #workspaces button.empty:hover { */
-/*   color: #101825; */
-/*   background-color: #f0e68c; */
-/* } */
-
-/* #workspaces button.urgent { */
-/*   background-color: indianred; */
-/* } */
 
 #custom-cava {
   color: skyblue;
-  margin-right: 1em;
 }
 
 #custom-weather {
   color: #f8c471;
-  margin-left: 1em;
-  margin-right: 8px;
 }
 
 #custom-updates {
   color: darkkhaki;
-  margin-left: 1em;
 }
 
 #custom-leftArrow,
 #custom-rightArrow {
   color: khaki;
-}
-
-#custom-rightArrow {
-  margin-right: 8px;
-}
-
-#pulseaudio,
-#power-profiles-daemon,
-#clock,
-#battery,
-#cpu,
-#memory,
-#disk,
-#temperature,
-#backlight,
-#wireplumber,
-#tray,
-#network,
-#mode,
-#custom-notifications,
-#custom-colorpicker,
-#custom-screenshot,
-/* #custom-rightArrow, */
-/* #custom-leftArrow, */
-#custom-divider,
-#wlr-taskbar,
-#mpris,
-#scratchpad {
-  margin-top: 2px;
-  margin-bottom: 2px;
-  margin-left: 4px;
-  margin-right: 4px;
-  padding-left: 4px;
-  padding-right: 4px;
 }
 
 .group-tools {
@@ -192,8 +160,8 @@ tooltip {
 }
 
 .group-hardware {
-  color: olivedrab;
-  border-bottom: 2px solid olivedrab;
+  color: #ff9f41;
+  border-bottom: 2px solid #ff9f41;
 }
 
 .group-audio {
@@ -217,11 +185,11 @@ tooltip {
 }
 
 #mpris.playing {
-  color: skyblue; /* Green when playing */
+  color: skyblue;
 }
 
 #mpris.paused {
-  color: peru; /* Yellow when paused */
+  color: peru;
 }
 
 #cpu {
@@ -265,16 +233,6 @@ tooltip {
   color: #f8c471;
 }
 
-/* If workspaces is the leftmost module, omit left margin */
-/* .modules-left > widget:first-child > #workspaces { */
-/*   margin-left: 0; */
-/* } */
-
-/* If workspaces is the rightmost module, omit right margin */
-.modules-right > widget:last-child > #workspaces {
-  margin-right: 0;
-}
-
 #backlight-slider slider,
 #pulseaudio-slider slider {
   background: #a1bdce;
@@ -289,7 +247,7 @@ tooltip {
   min-height: 10px;
   margin-bottom: -4px;
   border-radius: 8px;
-  background: #343434;
+  background: #333333;
 }
 
 #backlight-slider highlight,
@@ -308,16 +266,17 @@ tooltip {
   animation-direction: alternate;
 }
 
-/* GTK Menu Styles */
+/*
+* GTK Menu Styles
+*/
 menu {
   background: #1a283f;
-  color: #b5e8e0;
+  color: #d9e6fa;
 }
 menu,
 menuitem,
 menuitem label {
-  font-family: "ProFont IIx Nerd Font", "Noto Sans", sans-serif;
-  font-size: 12pt;
+  font-size: 14px;
 }
 menuitem {
   border-radius: 15px;
@@ -325,7 +284,7 @@ menuitem {
 menu separator {
   min-height: 1px;
   margin: 6px 8px; /* inset from edges */
-  background: rgba(255, 255, 255, 0.12);
+  background: #22385c;
 }
 menuitem.separator {
   padding: 0;
