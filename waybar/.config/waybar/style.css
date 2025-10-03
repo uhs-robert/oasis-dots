@@ -1,6 +1,5 @@
-/* style.css */
 /* waybar/.config/waybar/style.css */
-@import "./themes/oasis-lagoon.css";
+/* @import "./themes/oasis-lagoon.css"; */
 
 /*
 * Globals
@@ -21,7 +20,7 @@ tooltip {
   background: #1a283f;
   color: #d9e6fa;
   border: 1px solid #22385c;
-  box-shadow: 0 6px 30px rgba(0, 0, 0, 0.45);
+  box-shadow: 0 6px 30px rgba(0, 0, 0, 0.35);
 }
 
 /* Module containers */
@@ -39,10 +38,7 @@ tooltip {
 .modules-right > widget > * {
   background: #101825;
   padding: 0px 8px 0px 8px; /* per-child padding */
-  /* Border Settings */
-  border: 1px solid #1a283f;
-  border-left: none;
-  border-right: none;
+  border: none;
 }
 
 /* Round only the ends + give outer breathing room */
@@ -50,21 +46,15 @@ tooltip {
 .modules-center > widget:first-child > *,
 .modules-right > widget:first-child > * {
   margin-left: 5px;
-  border-top-left-radius: 8px;
-  border-bottom-left-radius: 8px;
-  /* Border Settings */
-  border: 1px solid #1a283f;
-  border-right: none;
+  border-top-left-radius: 6px;
+  border-bottom-left-radius: 6px;
 }
 .modules-left > widget:last-child > *,
 .modules-center > widget:last-child > *,
 .modules-right > widget:last-child > * {
   margin-right: 5px;
-  border-top-right-radius: 8px;
-  border-bottom-right-radius: 8px;
-  /* Border Settings */
-  border: 1px solid #1a283f;
-  border-left: none;
+  border-top-right-radius: 6px;
+  border-bottom-right-radius: 6px;
 }
 
 /*
@@ -123,9 +113,7 @@ tooltip {
 /* } */
 
 #workspaces button:hover,
-#workspaces .taskbar-window:hover,
-#workspaces .taskbar-window image:hover,
-#workspaces .taskbar:hover {
+#workspaces .taskbar-window:hover {
   background-color: rgba(240, 230, 140, 0.15);
   color: #101825;
 }
@@ -246,24 +234,14 @@ tooltip {
   min-width: 90px;
   min-height: 10px;
   margin-bottom: -4px;
-  border-radius: 8px;
+  border-radius: 6px;
   background: #333333;
 }
 
 #backlight-slider highlight,
 #pulseaudio-slider highlight {
-  border-radius: 8px;
+  border-radius: 6px;
   background-color: #2096c0;
-}
-
-#mpris {
-  color: white;
-  animation: repeat;
-  animation-name: blink;
-  animation-duration: 3s;
-  animation-timing-function: linear;
-  animation-iteration-count: infinite;
-  animation-direction: alternate;
 }
 
 /*
