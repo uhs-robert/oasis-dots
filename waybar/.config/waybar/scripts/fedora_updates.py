@@ -1,4 +1,3 @@
-# fedora_updates.py
 # waybar/.config/waybar/scripts/fedora_updates.py
 
 #!/usr/bin/env python3

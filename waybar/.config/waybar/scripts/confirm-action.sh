@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-# confirm-action.sh
 # waybar/.config/waybar/scripts/confirm-action.sh
 # Minimal yes/no dialog, then run a command on Yes.
 # Works with zenity (preferred) or kdialog; no-op if neither exists.
