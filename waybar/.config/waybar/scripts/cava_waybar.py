@@ -12,6 +12,7 @@ import tempfile
 import signal
 import json
 import time
+import ctypes
 
 # ── Env knobs ───────────────────────────────────────────────────────────────
 BARS = int(os.environ.get("CAVA_BARS", "40"))
@@ -35,7 +36,7 @@ FOLLOW_INT = float(
     os.environ.get("CAVA_FOLLOWER_INTERVAL", "1")
 )  # follower print period (s)
 
-# Runtime dir for user (Wayland/Fedora-friendly)
+# Runtime dir for user
 RUNTIME_DIR = os.environ.get("XDG_RUNTIME_DIR") or f"/run/user/{os.getuid()}"
 SINK_PATH = os.environ.get("CAVA_SINK", f"{RUNTIME_DIR}/cava_waybar.json")
 LOCK_PATH = os.environ.get("CAVA_LOCK", f"{RUNTIME_DIR}/cava_waybar.lock")
@@ -64,6 +65,15 @@ STOP = False
 def _stop(*_a):
     global STOP
     STOP = True
+
+
+# global signal setup
+signal.signal(signal.SIGINT, _stop)
+signal.signal(signal.SIGTERM, _stop)
+try:
+    signal.signal(signal.SIGPIPE, _stop)  # exit if Waybar closes our pipe
+except Exception:
+    pass
 
 
 def wrap_token(tok: str) -> str:
@@ -138,11 +148,30 @@ def is_media_active():
     return _last_active
 
 
-def producer(lock_file):
-    """Run CAVA, emit at capped FPS, write sink atomically, also stream to stdout."""
-    signal.signal(signal.SIGINT, _stop)
-    signal.signal(signal.SIGTERM, _stop)
+def install_parent_death_sig(sig=signal.SIGTERM):
+    """
+    Ask the kernel to send us (or our child, when used in preexec_fn)
+    SIGTERM if our parent (Waybar) dies. Linux-only.
+    """
+    try:
+        libc = ctypes.CDLL("libc.so.6")
+        PR_SET_PDEATHSIG = 1
+        libc.prctl(PR_SET_PDEATHSIG, int(sig))
+    except Exception:
+        pass
 
+
+def safe_write_line(obj) -> bool:
+    """Write one JSON line to stdout; return False if the pipe is gone."""
+    try:
+        sys.stdout.write(json.dumps(obj) + "\n")
+        sys.stdout.flush()
+        return True
+    except BrokenPipeError:
+        return False
+
+
+def producer(lock_file):
     cava_conf = f"""
 [general]
 bars = {BARS}
@@ -162,7 +191,10 @@ bit_format = {BIT_FORMAT}
         conf.write(cava_conf)
         conf.flush()
         proc = subprocess.Popen(
-            ["cava", "-p", conf.name], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL
+            ["cava", "-p", conf.name],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+            preexec_fn=install_parent_death_sig,  # make child die when we do
         )
 
         out = proc.stdout
@@ -173,7 +205,6 @@ bit_format = {BIT_FORMAT}
         chunk = BYTESIZE * BARS
         fmt = BYTETYPE * BARS
 
-        # Ensure sink exists early to help followers
         try:
             atomic_write(SINK_PATH, json.dumps({"text": "", "class": CLASS_NAME}))
         except Exception:
@@ -193,47 +224,45 @@ bit_format = {BIT_FORMAT}
             tokens = [val_to_token(v) for v in vals]
             text = GAP.join(tokens)
 
-            if is_media_active():
-                payload = {"text": text, "class": CLASS_NAME}
-            else:
-                payload = {"text": "", "class": CLASS_NAME}  # hide when not playing
+            payload = {"text": text if is_media_active() else "", "class": CLASS_NAME}
 
             try:
                 atomic_write(SINK_PATH, json.dumps(payload))
             except Exception:
                 pass
 
-            sys.stdout.write(json.dumps(payload) + "\n")
-            sys.stdout.flush()
+            if not safe_write_line(payload):  # Waybar closed pipe
+                break
 
+        # Terminate AFTER the loop
         try:
             proc.terminate()
+            proc.wait(timeout=1.0)
         except Exception:
-            pass
+            try:
+                proc.kill()
+            except Exception:
+                pass
 
-    # keep lock_file open until exit so we retain the lock
     return 0
 
 
 def follower():
-    """Emit ONLY when the sink file changes; no periodic prints."""
-    signal.signal(signal.SIGINT, _stop)
-    signal.signal(signal.SIGTERM, _stop)
-
     last_mtime = 0.0
     last_payload = None
-    sleep_s = max(0.002, 0.5 / max(FPS, 1))  # poll ~2x producer FPS, cheap CPU
+    sleep_s = max(0.002, 0.5 / max(FPS, 1))  # poll ~2x producer FPS
 
-    # Print one line immediately so Waybar shows something on startup
+    # Always print one line immediately
     try:
         with open(SINK_PATH, "r") as f:
             line = f.readline().strip()
-            if line:
-                last_payload = json.loads(line)
+            last_payload = (
+                json.loads(line) if line else {"text": "", "class": CLASS_NAME}
+            )
     except Exception:
         last_payload = {"text": "", "class": CLASS_NAME}
-    sys.stdout.write(json.dumps(last_payload) + "\n")
-    sys.stdout.flush()
+    if not safe_write_line(last_payload):
+        return 0
 
     while not STOP:
         try:
@@ -242,23 +271,20 @@ def follower():
                 last_mtime = st.st_mtime
                 with open(SINK_PATH, "r") as f:
                     line = f.readline().strip()
-                    if line:
-                        payload = json.loads(line)
-                        # Only emit if content actually changed (guards tiny mtime skews)
-                        if payload != last_payload:
-                            last_payload = payload
-                            if is_media_active():
-                                sys.stdout.write(json.dumps(payload) + "\n")
-                            else:
-                                sys.stdout.write(
-                                    json.dumps({"text": "", "class": CLASS_NAME}) + "\n"
-                                )
-                            sys.stdout.flush()
+                if line:
+                    payload = json.loads(line)
+                    if payload != last_payload:
+                        last_payload = payload
+                        out = (
+                            payload
+                            if is_media_active()
+                            else {"text": "", "class": CLASS_NAME}
+                        )
+                        if not safe_write_line(out):
+                            break
         except FileNotFoundError:
-            # Producer not up yet; keep previous frame, do not spam
             pass
         except Exception:
-            # Ignore partial/invalid reads for this tick
             pass
 
         time.sleep(sleep_s)
@@ -267,6 +293,7 @@ def follower():
 
 
 def main():
+    install_parent_death_sig()  # if Waybar (our parent) dies, we get SIGTERM
     # Decide role
     lock_file = try_lock(LOCK_PATH)
     if lock_file is not None:
