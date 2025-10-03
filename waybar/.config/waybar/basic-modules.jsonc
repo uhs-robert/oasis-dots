@@ -1,18 +1,24 @@
 {
   "custom/leftArrow": {
     "format": "",
-    "tooltip": false
+    "tooltip": false,
+    //TODO: Remove return-type/signal after performance bug is fixed
+    "return-type": "json",
+    "signal": 8
   },
 
   "custom/rightArrow": {
     "format": "",
-    "tooltip": false
+    "tooltip": false,
+    //TODO: Remove return-type/signal after performance bug is fixed
+    "return-type": "json",
+    "signal": 8
   },
 
   "group/tray": {
     "orientation": "horizontal",
     "drawer": {
-      "transition-duration": 600,
+      "transition-duration": 200,
       "transition-left-to-right": false,
       "click-to-reveal": false,
       "children-class": "group-tray"
@@ -23,7 +29,7 @@
   "group/taskbar": {
     "orientation": "horizontal",
     "drawer": {
-      "transition-duration": 600,
+      "transition-duration": 400,
       "transition-left-to-right": true,
       "click-to-reveal": false,
       "children-class": "group-tools"
@@ -34,7 +40,7 @@
   "group/tools": {
     "orientation": "horizontal",
     "drawer": {
-      "transition-duration": 600,
+      "transition-duration": 400,
       "transition-left-to-right": true,
       "click-to-reveal": false,
       "children-class": "group-tools"
@@ -45,18 +51,18 @@
   "group/battery": {
     "orientation": "horizontal",
     "drawer": {
-      "transition-duration": 600,
+      "transition-duration": 400,
       "transition-left-to-right": false,
       "click-to-reveal": false,
       "children-class": "group-hardware"
     },
-    "modules": ["battery", "power-profiles-daemon", "backlight/slider"]
+    "modules": ["battery", "backlight/slider", "power-profiles-daemon"]
   },
 
   "group/hardware": {
     "orientation": "horizontal",
     "drawer": {
-      "transition-duration": 600,
+      "transition-duration": 400,
       "transition-left-to-right": false,
       "click-to-reveal": false,
       "children-class": "group-hardware"
@@ -74,7 +80,7 @@
   "group/audio": {
     "orientation": "horizontal",
     "drawer": {
-      "transition-duration": 600,
+      "transition-duration": 400,
       "transition-left-to-right": false,
       "click-to-reveal": false,
       "children-class": "group-audio"
@@ -114,7 +120,7 @@
     "orientation": "horizontal",
     "format": "ifname",
     "drawer": {
-      "transition-duration": 600,
+      "transition-duration": 400,
       "transition-left-to-right": false,
       "click-to-reveal": false,
       "children-class": "group-network"
@@ -175,7 +181,7 @@
   },
 
   "power-profiles-daemon": {
-    "format": "<span size='11000'>{icon}</span>",
+    "format": "<span size='11000'>{icon} </span>",
     "tooltip-format": "Power profile: {profile}\nDriver: {driver}",
     "tooltip": true,
     "format-icons": {
@@ -301,12 +307,18 @@
     "format": "<span size='11000'>󰻜 </span>",
     "tooltip": true,
     "tooltip-format": "Take a screenshot",
-    "on-click": "hyprshot -m region -o ~/Pictures/Screenshots"
+    "on-click": "hyprshot -m region -o ~/Pictures/Screenshots",
+    //TODO: Remove return-type/signal after performance bug is fixed
+    "return-type": "json",
+    "signal": 8
   },
 
   "custom/startmenu": {
     "format": "<span size='15000'>󰣇</span>",
     "tooltip": false,
+    //TODO: Remove return-type/signal after performance bug is fixed
+    "return-type": "json",
+    "signal": 8,
     // "on-click": "hyprpanel t dashboardmenu",
     "menu": "on-click",
     "menu-file": "/home/USER/.config/waybar/custom_modules/start_menu.xml",
@@ -349,12 +361,10 @@
   },
 
   "custom/cava": {
-    "exec": "CAVA_BARS=10 CAVA_STYLE=blocks python3 -u ~/.config/waybar/scripts/cava_waybar.py 2>/dev/null",
+    "exec": "CAVA_BARS=10 CAVA_STYLE=blocks python3 ~/.config/waybar/scripts/cava_waybar.py 2>/dev/null",
     "return-type": "json",
-    "interval": 1,
-    "restart-interval": 0,
-    "escape": true,
-    "hide-empty-text": true,
+    "escape": false,
+    "hide-empty-text": false,
     "format": "<span size='12000' color='#309DC9'> </span>{text}",
     "tooltip": false,
     // "on-click": "hyprpanel t mediamenu",
