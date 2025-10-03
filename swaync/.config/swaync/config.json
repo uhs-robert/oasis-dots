@@ -1,4 +1,5 @@
 {
+  "$schema": "/etc/xdg/swaync/configSchema.json",
   "positionX": "right",
   "positionY": "top",
   "layer": "overlay",
@@ -12,12 +13,13 @@
   "notification-2fa-action": true,
   "notification-inline-replies": false,
   "notification-icon-size": 64,
-  "notification-body-image-height": 60,
-  "notification-body-image-width": 100,
+  "notification-body-image-height": 100,
+  "notification-body-image-width": 200,
   "timeout": 8,
   "timeout-low": 5,
   "timeout-critical": 0,
   "fit-to-screen": true,
+  "relative-timestamps": true,
   "control-center-width": 500,
   "control-center-height": 600,
   "notification-window-width": 500,
@@ -26,107 +28,77 @@
   "transition-time": 200,
   "hide-on-clear": false,
   "hide-on-action": true,
-  "script-fail-notify": false,
-
-  // TODO: why aren't these widgets loading?
-  "widgets": [
-    "mpris",
-    "title",
-    "notifications",
-    "volume",
-    "backlight",
-    "buttons-grid",
-  ],
+  "script-fail-notify": true,
+  "widgets": ["title", "dnd", "notifications", "mpris", "buttons-grid"],
   "widget-config": {
     "title": {
-      "text": "Notification Center",
+      "text": "Notifications",
       "clear-all-button": true,
-      "button-text": "󰆴",
+      "button-text": ""
     },
-
+    "dnd": {
+      "text": "Do Not Disturb"
+    },
     "label": {
       "max-lines": 1,
-      "text": "Notification Center!",
+      "text": "Notification Center"
     },
-
     "mpris": {
-      "image-size": 80,
-      "image-radius": 0,
+      "image-size": 96,
+      "image-radius": 12
     },
-
     "volume": {
-      "label": "󰕾 ",
+      "label": "󰕾"
     },
-
     "backlight": {
-      "label": "󰃟 ",
+      "label": "󰃟",
+      "device": "amdgpu_bl2"
     },
-
     "buttons-grid": {
       "actions": [
         {
           "label": "󰝟",
           "command": "pactl set-sink-mute @DEFAULT_SINK@ toggle",
-          "type": "toggle",
+          "type": "toggle"
         },
 
         {
           "label": "󰍭",
           "command": "pactl set-source-mute @DEFAULT_SOURCE@ toggle",
-          "type": "toggle",
+          "type": "toggle"
         },
 
         {
-          "label": "",
-          "command": "nm-connection-editor",
+          "label": "󰖩",
+          "command": "nm-connection-editor"
         },
 
         {
           "label": "",
-          "command": "blueman-manager",
+          "command": "blueman-manager"
         },
 
         {
           "label": "󰤄",
           "command": "pgrep -x hyprsunset && hyprsunset -i || hyprsunset -t 4500",
-          "type": "toggle",
-        },
-
-        {
-          "label": "󰀟",
-          "command": "wdisplays",
-        },
-
-        {
-          "label": "󰈙",
-          "command": "dolphin home/USER/Documents/",
-        },
-
-        {
-          "label": "",
-          "command": "kitty nvim ~/.config/hypr/hyprland.conf",
-        },
-
-        {
-          "label": "",
-          "command": "kitty btop",
+          "type": "toggle"
         },
 
         {
           "label": "",
-          "command": "hyprlock",
+          "command": "hyprlock"
         },
 
         {
           "label": "",
-          "command": "reboot",
+          "command": "reboot"
         },
 
         {
           "label": "",
-          "command": "shutdown now",
-        },
-      ],
-    },
-  },
+          "command": "shutdown now"
+        }
+      ]
+    }
+  }
 }
