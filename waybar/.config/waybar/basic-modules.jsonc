@@ -1,12 +1,12 @@
 {
   "custom/leftArrow": {
     "format": "",
-    "tooltip": false,
+    "tooltip": false
   },
 
   "custom/rightArrow": {
     "format": "",
-    "tooltip": false,
+    "tooltip": false
   },
 
   "group/tray": {
@@ -15,9 +15,9 @@
       "transition-duration": 600,
       "transition-left-to-right": false,
       "click-to-reveal": false,
-      "children-class": "group-tray",
+      "children-class": "group-tray"
     },
-    "modules": ["custom/leftArrow", "tray"],
+    "modules": ["custom/leftArrow", "tray"]
   },
 
   "group/taskbar": {
@@ -26,9 +26,9 @@
       "transition-duration": 600,
       "transition-left-to-right": true,
       "click-to-reveal": false,
-      "children-class": "group-tools",
+      "children-class": "group-tools"
     },
-    "modules": ["custom/rightArrow", "wlr/taskbar"],
+    "modules": ["custom/rightArrow", "wlr/taskbar"]
   },
 
   "group/tools": {
@@ -37,9 +37,20 @@
       "transition-duration": 600,
       "transition-left-to-right": true,
       "click-to-reveal": false,
-      "children-class": "group-tools",
+      "children-class": "group-tools"
     },
-    "modules": ["custom/rightArrow", "custom/colorpicker", "custom/screenshot"],
+    "modules": ["custom/rightArrow", "custom/colorpicker", "custom/screenshot"]
+  },
+
+  "group/battery": {
+    "orientation": "horizontal",
+    "drawer": {
+      "transition-duration": 600,
+      "transition-left-to-right": false,
+      "click-to-reveal": false,
+      "children-class": "group-hardware"
+    },
+    "modules": ["battery", "power-profiles-daemon", "backlight/slider"]
   },
 
   "group/hardware": {
@@ -48,7 +59,7 @@
       "transition-duration": 600,
       "transition-left-to-right": false,
       "click-to-reveal": false,
-      "children-class": "group-hardware",
+      "children-class": "group-hardware"
     },
     "modules": [
       "battery",
@@ -56,8 +67,8 @@
       "cpu",
       "memory",
       "temperature",
-      "backlight/slider",
-    ],
+      "backlight/slider"
+    ]
   },
 
   "group/audio": {
@@ -66,213 +77,9 @@
       "transition-duration": 600,
       "transition-left-to-right": false,
       "click-to-reveal": false,
-      "children-class": "group-audio",
+      "children-class": "group-audio"
     },
-    "modules": ["pulseaudio", "pulseaudio/slider"],
-  },
-
-  "group/network": {
-    "orientation": "horizontal",
-    "format": "ifname",
-    "drawer": {
-      "transition-duration": 600,
-      "transition-left-to-right": false,
-      "click-to-reveal": false,
-      "children-class": "group-network",
-    },
-    "modules": ["network", "bluetooth"],
-  },
-
-  // "hyprland/workspaces": {
-  //   "format": "<span size='11000'>{icon}</span>",
-  //   "format-icons": {
-  //     "urgent": "",
-  //     "active": "󰣏", // focused workspace on current monitor
-  //     "visible": "󰣏", // focused workspace on other monitors
-  //     "default": "󰣏",
-  //     "empty": "󱀝", // persistent (created by this plugin)
-  //   },
-  //   // "persistent-workspaces": {
-  //   //   "*": [ 1,2,3,4,5 ]
-  //   // },
-  //   "all-outputs": false,
-  //   "workspace-taskbar": {
-  //     "enable": true,
-  //     "update-active-window": true,
-  //   },
-  // },
-
-  // "hyprland/workspaces": {
-  //   "format": "{icon}{windows}",
-  //   "format-window-separator": " ",
-  //   "window-rewrite-default": "",
-  //   "window-rewrite": {
-  //     "title<.*youtube.*>": "", // Windows whose titles contain "youtube"
-  //     "class<firefox>": "", // Windows whose classes are "firefox"
-  //     "class<firefox> title<.*github.*>": "", // Windows whose class is "firefox" and title contains "github". Note that "class" always comes first.
-  //     "kitty": "", // Windows that contain "foot" in either class or title. For optimization reasons, it will only match against a title if at least one other window explicitly matches against a title.
-  //     "code": "󰨞",
-  //   },
-  //   "format-icons": {
-  //     //   "urgent": "",
-  //     // "active": "󰣏", // focused workspace on current monitor
-  //     // "visible": "󰣏", // focused workspace on other monitors
-  //     "default": "󰣏",
-  //     "empty": "󱀝", // persistent (created by this plugin)
-  //   },
-  // },
-
-  // Workspaces: Show window icons and empty icons
-  "hyprland/workspaces": {
-    "format": "<span size='11000'>{icon}</span>{windows}",
-    "format-window-separator": "",
-    "workspace-taskbar": {
-      "enable": true,
-      "update-active-window": true,
-      "format": "{icon}",
-      "icon-size": 16,
-      "on-click-window": "~/.config/waybar/scripts/focus-window.sh {address} {button}",
-    },
-    "format-icons": {
-      //   "urgent": "",
-      //   "active": "󰣏", // focused workspace on current monitor
-      //   "visible": "󰣏", // focused workspace on other monitors
-      "default": "",
-      "empty": "󱀝",
-    },
-  },
-
-  //
-  // "hyprland/workspaces": {
-  //   "format": "{name}",
-  //   // "format-window-separator": "",
-  //   // "workspace-taskbar": {
-  //   //   "enable": true,
-  //   //   "update-active-window": true,
-  //   //   "format": "{icon}",
-  //   //   "icon-size": 16,
-  //   //   "on-click-window": "~/.config/waybar/scripts/focus-window.sh {address} {button}",
-  //   // },
-  //   // "format-icons": {
-  //   //   //   "urgent": "",
-  //   //   //   "active": "󰣏", // focused workspace on current monitor
-  //   //   //   "visible": "󰣏", // focused workspace on other monitors
-  //   //   "default": "󰣏",
-  //   //   "empty": "󱀝", // persistent (created by this plugin)
-  //   // },
-  // },
-
-  "power-profiles-daemon": {
-    "format": "<span size='11000'>{icon}</span>",
-    "tooltip-format": "Power profile: {profile}\nDriver: {driver}",
-    "tooltip": true,
-    "format-icons": {
-      "default": "⚡",
-      "performance": "⚡",
-      "balanced": "🔋",
-      "power-saver": "🌱",
-    },
-  },
-
-  "cpu": {
-    "format": "<span size='11000' foreground='#fab387'> </span>{usage}%",
-    "interval": 2,
-    "tooltip": true,
-    "tooltip-format": "CPU Usage: {usage}%",
-    "on-click": "kitty btop",
-  },
-
-  "memory": {
-    "format": "<span size='11000' foreground='#b4befe'> </span>{percentage}%",
-    "interval": 2,
-    "tooltip": true,
-    "tooltip-format": "RAM Usage: {used:0.1f}gb / {total:0.1f}gb",
-    "on-click": "kitty btop",
-  },
-
-  "temperature": {
-    // "thermal-zone": 2,
-    // "hwmon-path": "/sys/class/hwmon/hwmon2/temp1_input",
-    "critical-threshold": 80,
-    "format-critical": "<span size='11000' color='indianred'></span> <span color='#FFA0A0'>{temperatureC}° C</span>",
-    "format": "<span size='11000' color='#1CA1FF'></span> {temperatureC}° C",
-  },
-
-  "backlight/slider": {
-    "min": 0,
-    "max": 100,
-    "orientation": "horizontal",
-    "device": "intel_backlight",
-  },
-
-  "clock": {
-    "interval": 1,
-    "format": "<span color='#6BBF59' size='11000'>󰸗 </span>{:%a %b %d | %H:%M:%S}",
-    // "tooltip-format": "<big>{:%Y %B}</big>\n<tt><small>{calendar}</small></tt>"
-    "tooltip-format": "\n<span size='9pt' font='WenQuanYi Zen Hei Mono'>{calendar}</span>",
-    "calendar": {
-      "mode": "year",
-      "mode-mon-col": 3,
-      "weeks-pos": "right",
-      "on-scroll": 1,
-      "format": {
-        "months": "<span color='#ffead3'><b>{}</b></span>",
-        "days": "<span color='#ecc6d9'><b>{}</b></span>",
-        "weeks": "<span color='#99ffdd'><b>W{}</b></span>",
-        "weekdays": "<span color='#ffcc66'><b>{}</b></span>",
-        "today": "<span color='#ff6699'><b><u>{}</u></b></span>",
-      },
-    },
-    "actions": {
-      "on-click-right": "mode",
-      "on-click-forward": "tz_up",
-      "on-click-backward": "tz_down",
-      "on-scroll-up": "shift_up",
-      "on-scroll-down": "shift_down",
-    },
-    // "on-click": "hyprpanel t calendarmenu",
-  },
-
-  "network": {
-    "format-wifi": "<span size='11000' foreground='#47A99B'>{icon} </span>{essid:.7}",
-    "format-icons": ["󰤯", "󰤟", "󰤢", "󰤥", "󰤨"],
-    "format-ethernet": "<span size='11000' foreground='#47A99B'>󰤭 </span> Disconnected",
-    "format-linked": "{ifname} (No IP) ",
-    "format-disconnected": "<span size='11000' foreground='#47A99B'>󰤭 </span>Disconnected",
-    "tooltip-format-wifi": "{essid}, {signalStrength}%",
-    // "on-click": "hyprpanel t networkmenu",
-    "on-click": "nm-connection-editor",
-  },
-
-  "bluetooth": {
-    "format-on": "<span size='11000' color='#5BB0FA'>󰂯 On</span>",
-    "format-off": "BT-off",
-    "format-disabled": "󰂲",
-    "format-connected-battery": "<span size='11000' color='#5BB0FA'>󰂯 </span>Connected ({num_connections})",
-    "format-alt": "{device_alias} <span size='11000' color='#5BB0FA'>󰂯</span>",
-    "tooltip-format": "{controller_alias}\t{controller_address}\n\n{num_connections} connected",
-    "tooltip-format-connected": "{controller_alias}\t{controller_address}\n\n{num_connections} connected\n\n{device_enumerate}",
-    "tooltip-format-enumerate-connected": "{device_alias}\n{device_address}",
-    "tooltip-format-enumerate-connected-battery": "{device_alias}\n{device_address}\n{device_battery_percentage}%",
-    "on-click-right": "blueman-manager",
-    // "on-click": "hyprpanel t bluetoothmenu",
-  },
-
-  "battery": {
-    "states": {
-      "warning": 30,
-      "critical": 15,
-    },
-    "format": "<span size='11000' foreground='#FF9F41'>{icon} </span> {capacity}%",
-    "format-warning": "<span size='11000' foreground='#FF9F41'>{icon} </span> {capacity}%",
-    "format-critical": "<span size='11000' foreground='#CD5C5C'>{icon} </span> {capacity}%",
-    "format-charging": "<span size='11000' foreground='#FF9F41'> </span>{capacity}%",
-    "format-plugged": "<span size='11000' foreground='#FF9F41'> </span>{capacity}%",
-    "format-alt": "<span size='11000' foreground='#FF9F41'>{icon} </span> {time}",
-    "format-full": "<span size='11000' foreground='#FF9F41'>󱟢 </span>{capacity}%",
-    "format-icons": ["", "", "", "", ""],
-    "tooltip-format": "{time}",
-    // "on-click": "hyprpanel t energymenu",
+    "modules": ["pulseaudio", "pulseaudio/slider"]
   },
 
   "pulseaudio": {
@@ -287,9 +94,12 @@
       "phone": "",
       "portable": "",
       "car": "",
-      "default": ["", "", ""],
+      "default": ["", "", ""]
     },
     // "on-click": "hyprpanel t audiomenu",
+    "on-click": "pavucontrol",
+    "on-click-right": "wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle",
+    "on-click-middle": "easyeffects"
   },
 
   "pulseaudio/slider": {
@@ -297,56 +107,207 @@
     "max": 100,
     "rotate": 0,
     "device": "pulseaudio",
-    "scroll-step": 1,
+    "scroll-step": 1
   },
 
-  "custom/notifications": {
-    "tooltip": true,
-    "tooltip-format": "View notifications",
-    "format": "<span size='11000'>{icon}</span>",
-    "format-icons": {
-      "notification": "󱅫 ",
-      "none": " ",
-      "inhibited-notification": "󰵙 ",
-      "dnd-notification": "󰅸 ",
-      "dnd-none": " ",
-      "dnd-inhibited-notification": "󰺁 ",
+  "group/network": {
+    "orientation": "horizontal",
+    "format": "ifname",
+    "drawer": {
+      "transition-duration": 600,
+      "transition-left-to-right": false,
+      "click-to-reveal": false,
+      "children-class": "group-network"
     },
-    "return-type": "json",
-    "exec-if": "which swaync-client",
-    "exec": "swaync-client -swb",
-    "on-click": "swaync-client -t -sw",
-    // "on-click": "hyprpanel t notificationsmenu",
-    "on-click-right": "swaync-client -d -sw",
-    "escape": true,
+    "modules": ["network", "bluetooth"]
+  },
+
+  // Workspaces: Show generic icons
+  // "hyprland/workspaces": {
+  //   "format": "<span size='11000'>{icon}</span>",
+  //   "format-icons": {
+  //     "urgent": "",
+  //     "active": "󰣏", // focused workspace on current monitor
+  //     "visible": "󰣏", // focused workspace on other monitors
+  //     "default": "󰣏",
+  //     "empty": "󱀝",
+  //   },
+  //   "all-outputs": false,
+  //   "workspace-taskbar": {
+  //     "enable": true,
+  //     "update-active-window": true,
+  //   },
+  // },
+
+  // Workspaces: Show user-defined icons
+  // "hyprland/workspaces": {
+  //   "format": "{icon}{windows}",
+  //   "format-window-separator": " ",
+  //   "window-rewrite-default": "",
+  //   "window-rewrite": {
+  //     "title<.*youtube.*>": "", // Windows whose titles contain "youtube"
+  //     "class<firefox>": "", // Windows whose classes are "firefox"
+  //     "class<firefox> title<.*github.*>": "", // Windows whose class is "firefox" and title contains "github". Note that "class" always comes first.
+  //     "kitty": "", // Windows that contain "kitty" in either class or title. For optimization reasons, it will only match against a title if at least one other window explicitly matches against a title.
+  //     "code": "󰨞",
+  //   },
+  //   "format-icons": {
+  //     "default": "",
+  //     "empty": "󱀝",
+  //   },
+  // },
+
+  // Workspaces: Show taskbard icons and empty icons
+  "hyprland/workspaces": {
+    "format": "<span size='11000'>{icon}</span>{windows}",
+    "format-window-separator": "",
+    "workspace-taskbar": {
+      "enable": true,
+      "update-active-window": true,
+      "format": "{icon}",
+      "icon-size": 16,
+      "on-click-window": "~/.config/waybar/scripts/focus-window.sh {address} {button}"
+    },
+    "format-icons": {
+      "default": "",
+      "empty": "󱀝"
+    }
+  },
+
+  "power-profiles-daemon": {
+    "format": "<span size='11000'>{icon}</span>",
+    "tooltip-format": "Power profile: {profile}\nDriver: {driver}",
+    "tooltip": true,
+    "format-icons": {
+      "default": "⚡",
+      "performance": "⚡",
+      "balanced": "🔋",
+      "power-saver": "🌱"
+    }
+  },
+
+  "cpu": {
+    "format": "<span size='11000' foreground='#fab387'> </span>{usage}%",
+    "interval": 10,
+    "tooltip": true,
+    "tooltip-format": "CPU Usage: {usage}%",
+    "on-click": "kitty btop"
+  },
+
+  "memory": {
+    "format": "<span size='11000' foreground='#b4befe'> </span>{percentage}%",
+    "interval": 30,
+    "tooltip": true,
+    "tooltip-format": "RAM Usage: {used:0.1f}gb / {total:0.1f}gb",
+    "on-click": "kitty btop"
+  },
+
+  "temperature": {
+    "format": "<span size='11000' color='#1CA1FF'></span> {temperatureC}° C",
+    "format-critical": "<span size='11000' color='indianred'></span> <span color='#FFA0A0'>{temperatureC}° C</span>",
+    "critical-threshold": 80,
+    "interval": 10
+  },
+
+  "backlight/slider": {
+    "min": 0,
+    "max": 100,
+    "orientation": "horizontal"
+  },
+
+  "clock": {
+    "interval": 1,
+    "format": "<span color='#6BBF59' size='11000'>󰸗 </span>{:%a %b %d | %H:%M:%S}",
+    "tooltip-format": "\n<span font='ProFont IIx Nerd Font Mono  12'><tt>{calendar}</tt></span>",
+    "calendar": {
+      "mode": "year",
+      "mode-mon-col": 3,
+      "weeks-pos": "left",
+      "on-scroll": 1,
+      "format": {
+        "months": "<span color='#ff9f41'><b>{}</b></span>",
+        "days": "<span color='#D9E6FA'><b>{}</b></span>",
+        "weeks": "<span color='skyblue'><b>W{}</b></span>",
+        "weekdays": "<span color='khaki'><b>{}</b></span>",
+        "today": "<span color='indianred'><b><u>{}</u></b></span>"
+      }
+    },
+    "actions": {
+      "on-click-right": "mode",
+      "on-click-forward": "tz_up",
+      "on-click-backward": "tz_down",
+      "on-scroll-up": "shift_up",
+      "on-scroll-down": "shift_down"
+    }
+    // "on-click": "hyprpanel t calendarmenu",
+  },
+
+  "network": {
+    "format-wifi": "<span size='11000' foreground='#47A99B'>{icon} </span>{essid:.7}",
+    "format-icons": ["󰤯", "󰤟", "󰤢", "󰤥", "󰤨"],
+    "format-ethernet": "<span size='11000' foreground='#47A99B'>󰤭 </span> Disconnected",
+    "format-linked": "{ifname} (No IP) ",
+    "format-disconnected": "<span size='11000' foreground='#47A99B'>󰤭 </span>Disconnected",
+    "tooltip-format-wifi": "{essid}, {signalStrength}%",
+    // "on-click": "hyprpanel t networkmenu",
+    "on-click": "nm-connection-editor"
+  },
+
+  "bluetooth": {
+    "format-on": "<span size='11000' color='#5BB0FA'>󰂯 On</span>",
+    "format-off": "BT-off",
+    "format-disabled": "󰂲",
+    "format-connected-battery": "<span size='11000' color='#5BB0FA'>󰂯 </span>Connected ({num_connections})",
+    "format-alt": "<span size='11000' color='#5BB0FA'>󰂯</span> {device_alias}",
+    "tooltip-format": "{controller_alias}\t{controller_address}\n\n{num_connections} connected",
+    "tooltip-format-connected": "{controller_alias}\t{controller_address}\n\n{num_connections} connected\n\n{device_enumerate}",
+    "tooltip-format-enumerate-connected": "{device_alias}\n{device_address}",
+    "tooltip-format-enumerate-connected-battery": "{device_alias}\n{device_address}\n{device_battery_percentage}%",
+    "on-click-right": "blueman-manager"
+    // "on-click": "hyprpanel t bluetoothmenu",
+  },
+
+  "battery": {
+    "states": {
+      "warning": 50,
+      "critical": 20
+    },
+    "format": "<span size='11000' foreground='#FF9F41'>{icon} </span> {capacity}%",
+    "format-warning": "<span size='11000' foreground='#FF9F41'>{icon} </span> {capacity}%",
+    "format-critical": "<span size='11000' foreground='#CD5C5C'>{icon} </span> {capacity}%",
+    "format-charging": "<span size='11000' foreground='#FF9F41'> </span>{capacity}%",
+    "format-plugged": "<span size='11000' foreground='#FF9F41'> </span>{capacity}%",
+    "format-alt": "<span size='11000' foreground='#FF9F41'>{icon} </span> {time}",
+    "format-full": "<span size='11000' foreground='#FF9F41'>󱟢 </span>{capacity}%",
+    "format-icons": ["", "", "", "", ""],
+    "tooltip-format": "{time}"
+    // "on-click": "hyprpanel t energymenu",
   },
 
   "tray": {
     "icon-size": 16,
     "spacing": 10,
-    "hide-empty-text": true,
+    "hide-empty-text": true
   },
 
   "custom/colorpicker": {
     "format": "<span size='11000'> </span>",
     "tooltip": true,
     "tooltip-format": "Select a color",
-    "on-click": "hyprpicker",
+    "on-click": "hyprpicker"
   },
 
   "custom/screenshot": {
     "format": "<span size='11000'>󰻜 </span>",
     "tooltip": true,
     "tooltip-format": "Take a screenshot",
-    "on-click": "hyprshot -m region -o ~/Pictures/Screenshots",
+    "on-click": "hyprshot -m region -o ~/Pictures/Screenshots"
   },
 
   "custom/startmenu": {
     "format": "<span size='15000'>󰣇</span>",
-    "tooltip": true,
-    "tooltip-format": "Launch an application",
+    "tooltip": false,
     // "on-click": "hyprpanel t dashboardmenu",
-    // "on-click": "wofi --show drun",
     "menu": "on-click",
     "menu-file": "/home/USER/.config/waybar/custom_modules/start_menu.xml",
     "menu-actions": {
@@ -363,26 +324,9 @@
       "lock": "~/.config/waybar/scripts/confirm-action.sh --title Lock --glyph '󰌾' --color '#cdd6f4' --exec 'hyprlock'",
       "logout": "~/.config/waybar/scripts/confirm-action.sh --title Logout --glyph '󰍃' --color '#89dceb' --exec 'hyprctl dispatch exit'",
       "reboot": "~/.config/waybar/scripts/confirm-action.sh --title Reboot --glyph '󰜉' --color '#f9e2af' --exec 'systemctl reboot'",
-      "power": "~/.config/waybar/scripts/confirm-action.sh --title Power\\ Off --glyph '󰐥' --color '#f38ba8' --exec 'systemctl poweroff'",
+      "power": "~/.config/waybar/scripts/confirm-action.sh --title Power\\ Off --glyph '󰐥' --color '#f38ba8' --exec 'systemctl poweroff'"
     },
-    "on-click-right": "wofi --show drun",
-  },
-
-  "wlr/taskbar": {
-    "format": "{icon}",
-    "icon-size": 14,
-    "icon-theme": "Numix-Circle",
-    "tooltip-format": "{title}",
-    "on-click": "activate",
-    "on-click-middle": "close",
-    "ignore-list": ["Kitty"],
-    "app_ids-mapping": {
-      "firefoxdeveloperedition": "firefox-developer-edition",
-    },
-    "rewrite": {
-      "Firefox Web Browser": "Firefox",
-      "Foot Server": "Terminal",
-    },
+    "on-click-right": "wofi --show drun"
   },
 
   "mpris": {
@@ -392,23 +336,23 @@
     "player-icons": {
       "default": "▶",
       "mpv": "🎵",
-      "spotify": "",
+      "spotify": ""
     },
     "status-icons": {
-      "paused": "⏸",
+      "paused": "⏸"
     },
     "on-click": "playerctl play-pause",
     "on-click-middle": "playerctl previous",
     "on-click-right": "playerctl next",
-    "tooltip-format": "{player} ({status})\n{title}\n{artist} - {album}\n[{position} / {length}]",
+    "tooltip-format": "{player} ({status})\n{title}\n{artist} - {album}\n[{position} / {length}]"
     // "ignored-players": ["firefox"]
   },
 
   "custom/cava": {
-    "exec": "CAVA_BARS=10 CAVA_STYLE=blocks python3 ~/.config/waybar/scripts/cava_waybar.py",
+    "exec": "CAVA_BARS=10 CAVA_STYLE=blocks python3 -u ~/.config/waybar/scripts/cava_waybar.py 2>/dev/null",
     "return-type": "json",
-    "interval": 0,
-    "restart-interval": 1,
+    "interval": 1,
+    "restart-interval": 0,
     "escape": true,
     "hide-empty-text": true,
     "format": "<span size='12000' color='#309DC9'> </span>{text}",
@@ -416,45 +360,44 @@
     // "on-click": "hyprpanel t mediamenu",
     "on-click": "playerctl play-pause",
     "on-click-middle": "playerctl previous",
-    "on-click-right": "playerctl next",
+    "on-click-right": "playerctl next"
   },
 
   "custom/updates": {
-    "exec": "UPDATES_TTL_MIN=30 UPDATES_ICON= python3 ~/.config/waybar/scripts/fedora_updates.py",
+    "exec": "UPDATES_TTL_MIN=30 python3 ~/.config/waybar/scripts/fedora_updates.py",
     "return-type": "json",
-    "interval": 1800, // in seconds = 30min
-    "format": "{text}",
+    "interval": 900, // in seconds = 15min
+    "format": "<span size='11000' color='khaki'> </span>{text}",
     "tooltip": false,
     "hide-empty-text": true,
-    "on-click": "sysup",
-    // "on-click": "kitty -e bash -lc 'sudo dnf5 upgrade -y || sudo dnf upgrade -y'",
-    "on-click-right": "kitty -e bash -lc 'sudo dnf5 upgrade --refresh -y || sudo dnf upgrade --refresh -y'",
+    "on-click": "bash -lc 'kitty -e bash -lc \"sysup\"; rm -f \"$XDG_RUNTIME_DIR/fedora_updates.cache.json\"; pkill -RTMIN+8 waybar'",
+    "on-click-right": "bash -lc 'kitty -e bash -lc \"sudo dnf5 upgrade --refresh -y || sudo dnf upgrade --refresh -y\"; rm -f \"$XDG_RUNTIME_DIR/fedora_updates.cache.json\"; pkill -RTMIN+8 waybar'"
+  },
+
+  "custom/notifications": {
+    "tooltip": true,
+    "tooltip-format": "View notifications",
+    "format": "<span size='11000'>{icon}</span>",
+    "format-icons": {
+      "notification": "󱅫 ",
+      "none": " ",
+      "inhibited-notification": "󰵙 ",
+      "dnd-notification": "󰅸 ",
+      "dnd-none": " ",
+      "dnd-inhibited-notification": "󰺁 "
+    },
+    "return-type": "json",
+    "exec-if": "which swaync-client",
+    "exec": "swaync-client -swb",
+    "on-click": "swaync-client -t -sw",
+    "on-click-right": "swaync-client -d -sw",
+    "escape": true
   },
 
   "custom/weather": {
-    "interval": 600, // in seconds is 10 minutes
+    "interval": 900, // in seconds = 15 minutes
     "exec": "python -O ~/.config/waybar/scripts/weather-api/get_weather_api.py",
-    "markup": "pango",
+    "markup": "pango"
     // "on-click": "hyprpanel t calendarmenu",
-  },
-
-  "custom/power": {
-    "format": "⏻ ",
-    "tooltip": false,
-    "menu": "on-click",
-    "menu-file": "~/.config/waybar/custom_modules/power_menu.xml",
-    "menu-actions": {
-      "lock": "hyprlock",
-      "suspend": "systemctl suspend",
-      "logout": "hyprctl dispatch exit",
-      "reboot": "systemctl reboot",
-      "poweroff": "systemctl poweroff",
-    },
-  },
-
-  "custom/cc": {
-    "format": "",
-    "tooltip": false,
-    "on-click": "ags toggle controlCenter",
-  },
+  }
 }
