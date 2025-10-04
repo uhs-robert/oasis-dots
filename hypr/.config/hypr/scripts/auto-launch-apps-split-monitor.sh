@@ -15,9 +15,9 @@ declare -A MONITOR_MAP=(
   ["CENTER"]=3
 )
 
-# Runtime tracking
-declare -A MONITOR_CURRENT_WS # track current workspace per monitor name
-declare -A WORKSPACE_USAGE    # track number of apps assigned to each workspace
+# Runtime tracking (use global scope to persist across function calls)
+declare -gA MONITOR_CURRENT_WS # track current workspace per monitor name
+declare -gA WORKSPACE_USAGE    # track number of apps assigned to each workspace
 if [[ "$1" == "--startup" ]]; then
   IS_STARTUP=true
 else
@@ -137,6 +137,7 @@ find_least_used_workspace() {
 }
 
 # Get next available workspace on a monitor
+# Sets the global variable NEXT_WORKSPACE with the result
 get_next_workspace() {
   local monitor_name="$1"
   local force_increment="${2:-false}"
@@ -147,33 +148,19 @@ get_next_workspace() {
   local current_ws="${MONITOR_CURRENT_WS[$monitor_name]:-$start_ws}"
 
   if [[ "$force_increment" == "true" ]]; then
-    # For + syntax: find first available workspace or increment from current
+    # For + syntax: always increment to next workspace after first use
     if [[ -z "${MONITOR_CURRENT_WS[$monitor_name]}" ]]; then
-      # First assignment for this monitor - find first empty workspace with no pending usage
+      # First assignment for this monitor - use first workspace in range
       current_ws="$start_ws"
-      while [[ $current_ws -le $end_ws ]]; do
-        if ! workspace_has_windows "$current_ws" && [[ "${WORKSPACE_USAGE[$current_ws]:-0}" -eq 0 ]]; then
-          log "Found empty workspace $current_ws on monitor $monitor_name"
-          break
-        fi
-        current_ws=$((current_ws + 1))
-      done
-      # If all workspaces have windows, find the least-used one
-      if [[ $current_ws -gt $end_ws ]]; then
-        current_ws=$(find_least_used_workspace "$start_ws" "$end_ws")
-        log "All workspaces on $monitor_name have windows, using least-used: $current_ws"
-      fi
-    elif workspace_has_windows "$current_ws" || [[ "${WORKSPACE_USAGE[$current_ws]:-0}" -gt 0 ]]; then
-      # Current workspace has windows OR we've already assigned something to it in this run
+      log "First assignment on monitor $monitor_name, using workspace $current_ws"
+    else
+      # Subsequent assignments - always increment
       local prev_ws="$current_ws"
       current_ws=$((current_ws + 1))
       if [[ $current_ws -gt $end_ws ]]; then
         current_ws=$start_ws # Wrap around
       fi
-      log "Workspace $prev_ws has windows or assignments, incrementing to $current_ws"
-    else
-      # Current workspace is empty and unused, reuse it
-      log "Workspace $current_ws is empty and unused, reusing it"
+      log "Incrementing from workspace $prev_ws to $current_ws on monitor $monitor_name"
     fi
   else
     # Non-increment behavior (though all our setups now use +)
@@ -182,12 +169,14 @@ get_next_workspace() {
     fi
   fi
 
-  # Update tracking
+  # Update tracking (global state persists because we're not in command substitution)
   MONITOR_CURRENT_WS["$monitor_name"]="$current_ws"
   WORKSPACE_USAGE["$current_ws"]=$((${WORKSPACE_USAGE[$current_ws]:-0} + 1))
 
   log "Assigned workspace $current_ws on monitor $monitor_name (usage: ${WORKSPACE_USAGE[$current_ws]})"
-  echo "$current_ws"
+
+  # Return via global variable instead of echo to avoid subshell issues
+  NEXT_WORKSPACE="$current_ws"
 }
 
 # Prompt to select a setup session, optionally on workspace 1 (for startup)
@@ -226,12 +215,11 @@ resolve_monitor_assignments() {
     fi
 
     # Get workspace for this monitor
-    local ws
-    ws=$(get_next_workspace "$monitor_part" "$force_increment")
-    if [[ $? -eq 0 && -n "$ws" ]]; then
-      WORKSPACES+=("$ws")
-      [[ "$cmd" == "firefox" ]] && FIREFOX_WORKSPACES+=("$ws")
-      log "Resolved $pair -> workspace $ws"
+    get_next_workspace "$monitor_part" "$force_increment"
+    if [[ $? -eq 0 && -n "$NEXT_WORKSPACE" ]]; then
+      WORKSPACES+=("$NEXT_WORKSPACE")
+      [[ "$cmd" == "firefox" ]] && FIREFOX_WORKSPACES+=("$NEXT_WORKSPACE")
+      log "Resolved $pair -> workspace $NEXT_WORKSPACE"
     else
       log "Warning: Failed to resolve monitor assignment: $pair"
     fi
