@@ -244,6 +244,16 @@ tooltip {
   background-color: #2096c0;
 }
 
+#mpris {
+  color: white;
+  animation: repeat;
+  animation-name: blink;
+  animation-duration: 3s;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+  animation-direction: alternate;
+}
+
 /*
 * GTK Menu Styles
 */
