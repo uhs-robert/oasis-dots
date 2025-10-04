@@ -364,13 +364,14 @@
     "exec": "CAVA_BARS=10 CAVA_STYLE=blocks python3 ~/.config/waybar/scripts/cava_waybar.py 2>/dev/null",
     "return-type": "json",
     "escape": false,
-    "hide-empty-text": false,
+    "hide-empty-text": true,
     "format": "<span size='12000' color='#309DC9'> </span>{text}",
     "tooltip": false,
     // "on-click": "hyprpanel t mediamenu",
+    //
     "on-click": "playerctl play-pause",
     "on-click-middle": "playerctl previous",
-    "on-click-right": "playerctl next"
+    "on-click-right": "swaync-client -t -sw"
   },
 
   "custom/updates": {
