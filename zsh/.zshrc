@@ -94,26 +94,42 @@ source $ZSH/oh-my-zsh.sh
 
 # Preferred editor for local and remote sessions
 if [[ -n $SSH_CONNECTION ]]; then
-  export EDITOR='nvim' #swap to vim if needed
+  export EDITOR='nvim' # swap to vim if needed
 else
   export EDITOR='nvim'
 fi
+
+export VISUAL="$EDITOR"
+export GIT_EDITOR="$EDITOR"
+export SUDO_EDITOR="$EDITOR"
+export MANPAGER='nvim +Man!'
+export BAT_THEME="gruvbox-dark"
+export PAGER="bat --style=number --color=always --paging=always"
 
 # Auto completion
 unsetopt BEEP
 
 # Install fzf if available
 [ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
+export FZF_DEFAULT_OPTS="--height=80% --layout=reverse --border --preview 'bat --style=numbers --color=always {} || sed -n \"1,200p\" -- {}' --preview-window=right:60%:border-left --bind=ctrl-p:toggle-preview"
+export FZF_DEFAULT_COMMAND='fd --type f --hidden --follow --exclude .git'
+f(){ "${EDITOR:-nvim}" -- "$(fzf)"; }
 
 # Disable auto-pagination (prevents big dumps)
 zstyle ':completion:*' list-colors ''
 
-# Add custom script directory to PATH
+# Add user script directories to PATH
 export PATH="$PATH:/home/USER/Documents/github-uphill/bash-scripts/scripts/"
 export PATH="$HOME/.config/hypr/scripts:$PATH"
 export PATH="$HOME/.tmuxifier/bin:$PATH"
+
+# Add language directories to PATH
 export PATH="$(npm root -g)/.bin:$PATH"
 export PATH="$HOME/.npm-global/bin:$PATH"
+export PATH="$HOME/go/bin:$PATH"
+export PATH="$HOME/.cargo/bin:$PATH"
+export PATH="$HOME/.local/bin:$PATH"
+export PATH="$PATH:/home/USER/.lmstudio/bin"
 
 # Load aliases & functions from GitHub-controlled script
 if [[ -f "$HOME/Documents/github-uphill/bash-scripts/scripts/functions.sh" ]]; then
@@ -128,7 +144,7 @@ for rc in ~/.bashrc.d/*(.N); do source "$rc"; done
 
 eval "$(tmuxifier init -)"
 
-# Check if running inside Hyprland and if the terminal is floating
+# Only show fastfetch if not a floating terminal
 if [[ -o interactive ]]; then
   is_floating=$(hyprctl activewindow -j | jq -r '.floating')
   if [[ "$is_floating" == "false" || -z "$is_floating" ]]; then
@@ -171,14 +187,3 @@ alias lt='ls --tree'
 # Taskwarrior
 alias t="task"
 # Taskwarrior end
-
-export PATH="$HOME/go/bin:$PATH"
-export PATH="$HOME/.cargo/bin:$PATH"
-export PATH="$HOME/.cargo/bin:$PATH"
-export PATH="$HOME/.local/bin:$PATH"
-
-# Added by LM Studio CLI (lms)
-export PATH="$PATH:/home/USER/.lmstudio/bin"
-# End of LM Studio CLI section
-
-export PATH=$PATH:$HOME/.local/bin
