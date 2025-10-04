@@ -15,7 +15,12 @@
     "output": "!HP Inc. HP Z22n G2 6CM8411J22",
     "include": ["basic-modules.jsonc"],
     "position": "top",
-    "modules-left": ["custom/startmenu", "hyprland/workspaces", "custom/cava"],
+    "modules-left": [
+      "custom/startmenu",
+      "hyprland/workspaces",
+      "custom/cava"
+      // "mpris" // TODO: Add back in when functional
+    ],
     // "modules-left": ["custom/startmenu", "hyprland/workspaces"],
     "modules-center": ["clock", "custom/weather"],
     "modules-right": [
@@ -73,22 +78,13 @@
 //   }
 // }
 
-// "custom/notifications": {
-//   "tooltip": true,
-//   "tooltip-format": "View notifications",
-//   "format": "<span size='11000'>{icon}</span>",
-//   "format-icons": {
-//     "notification": "󱅫 ",
-//     "none": " ",
-//     "inhibited-notification": "󰵙 ",
-//     "dnd-notification": "󰅸 ",
-//     "dnd-none": " ",
-//     "dnd-inhibited-notification": "󰺁 "
-//   },
-//   "return-type": "json",
-//   "exec-if": "which swaync-client",
-//   "exec": "swaync-client -swb",
-//   "on-click": "swaync-client -t -sw",
-//   "on-click-right": "swaync-client -d -sw",
-//   "escape": true
-// },
+// {
+//   "position": "top",
+//   "modules-left": ["mpris"],
+//   "mpris": {
+//     "format": "{player_icon} {title} - {artist}",
+//     "format-paused": "{player_icon} {title} - {artist}",
+//     "max-length": 60,
+//     "tooltip": true
+//   }
+// }
