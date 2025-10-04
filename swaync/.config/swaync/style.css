@@ -1,4 +1,3 @@
-/* style.css */
 /* swaync/.config/swaync/style.css */
 
 @define-color bg_core #101825;
@@ -28,123 +27,6 @@
   all: unset;
   font-family: "ProFont IIx Nerd Font";
   transition: background-color 0.15s ease-in-out;
-}
-
-/*
-* Floating Notifications
-*/
-.floating-notifications.background .notification-row {
-  padding: 12px;
-}
-
-.floating-notifications.background .notification-row .notification-background {
-  border-radius: 8px;
-  background-color: @bg_core;
-  color: @fg_core;
-  border: 1px solid @primary;
-}
-
-.floating-notifications.background
-  .notification-row
-  .notification-background
-  .notification {
-  padding: 8px;
-  border-radius: 8px;
-}
-
-.floating-notifications.background
-  .notification-row
-  .notification-background
-  .notification.critical {
-  border: 1px solid @red;
-}
-
-.floating-notifications.background
-  .notification-row
-  .notification-background
-  .notification
-  .notification-content
-  .summary {
-  margin: 8px;
-  color: @fg_core;
-  font-weight: bold;
-}
-
-.floating-notifications.background
-  .notification-row
-  .notification-background
-  .notification
-  .notification-content
-  .body {
-  margin: 8px;
-  color: @teal;
-}
-
-.floating-notifications.background
-  .notification-row
-  .notification-background
-  .notification
-  > *:last-child
-  > * {
-  min-height: 3rem;
-}
-
-.floating-notifications.background
-  .notification-row
-  .notification-background
-  .notification
-  > *:last-child
-  > *
-  .notification-action {
-  border-radius: 8px;
-  color: @fg_core;
-  background-color: @bg_mantle;
-  border: 1px solid @primary;
-}
-
-.floating-notifications.background
-  .notification-row
-  .notification-background
-  .notification
-  > *:last-child
-  > *
-  .notification-action:hover {
-  background-color: @bg_mantle;
-}
-
-.floating-notifications.background
-  .notification-row
-  .notification-background
-  .notification
-  > *:last-child
-  > *
-  .notification-action:active {
-  background-color: @primary;
-}
-
-.floating-notifications.background
-  .notification-row
-  .notification-background
-  .close-button {
-  margin: 8px;
-  padding: 4px;
-  border-radius: 8px;
-  color: @fg_core;
-  background-color: @red;
-}
-
-.floating-notifications.background
-  .notification-row
-  .notification-background
-  .close-button:hover {
-  color: @bg_core;
-}
-
-.floating-notifications.background
-  .notification-row
-  .notification-background
-  .close-button:active {
-  background-color: @lightred;
 }
 
 /*
@@ -226,117 +108,9 @@
   margin: 4px;
 }
 
-/* Notifications */
-.control-center .notification-row .notification-background {
-  border-radius: 8px;
-  margin: 8px 0;
-  background-color: @bg_mantle;
-  color: @tfg_core;
-  border: 1px solid @primary;
-}
-
-.control-center .notification-row .notification-background .notification {
-  padding: 8px;
-  border-radius: 8px;
-}
-
-.control-center
-  .notification-row
-  .notification-background
-  .notification.critical {
-  border: 1px solid @red;
-}
-
-.control-center
-  .notification-row
-  .notification-background
-  .notification
-  .notification-content {
-  color: @fg_core;
-}
-
-.control-center
-  .notification-row
-  .notification-background
-  .notification
-  .notification-content
-  .summary {
-  margin: 8px;
-  color: @fg_core;
-  font-weight: bold;
-}
-
-.control-center
-  .notification-row
-  .notification-background
-  .notification
-  .notification-content
-  .body {
-  margin: 8px;
-  color: @teal;
-}
-
-.control-center
-  .notification-row
-  .notification-background
-  .notification
-  > *:last-child
-  > * {
-  min-height: 3rem;
-}
-
-.control-center
-  .notification-row
-  .notification-background
-  .notification
-  > *:last-child
-  > *
-  .notification-action {
-  border-radius: 8px;
-  color: @fg_core;
-  background-color: @bg_surface;
-  border: 1px solid @primary;
-}
-
-.control-center
-  .notification-row
-  .notification-background
-  .notification
-  > *:last-child
-  > *
-  .notification-action:hover {
-  background-color: @bg_mantle;
-}
-
-.control-center
-  .notification-row
-  .notification-background
-  .notification
-  > *:last-child
-  > *
-  .notification-action:active {
-  background-color: @primary;
-}
-
-.control-center .notification-row .notification-background .close-button {
-  margin: 8px;
-  padding: 4px;
-  border-radius: 8px;
-  color: @fg_core;
-  background-color: @red;
-}
-
-.control-center .notification-row .notification-background .close-button:hover {
-  color: @bg_core;
-}
-
-.control-center
-  .notification-row
-  .notification-background
-  .close-button:active {
-  background-color: @lightred;
-}
-
+/*
+* Progress Bars
+*/
 progressbar,
 progress,
 trough {
@@ -352,13 +126,16 @@ trough {
   background-color: @teal;
 }
 
-/* trough { */
-/*   background-color: @bg_surface; */
-/* } */
-/**/
-/* .control-center trough { */
-/*   background-color: @primary; */
-/* } */
+/*
+* Troughs
+*/
+trough {
+  background-color: @bg_surface;
+}
+
+.control-center trough {
+  background-color: @primary;
+}
 
 /*
 * Volume and Backlight widgets
@@ -495,4 +272,235 @@ trough {
 
 .widget-mpris > box > button:disabled {
   /* Change player side buttons insensitive */
+}
+
+/*
+* Notifications (Control Center)
+*/
+.control-center .notification-row .notification-background {
+  border-radius: 8px;
+  margin: 8px 0;
+  background-color: @bg_mantle;
+  color: @tfg_core;
+  border: 1px solid @primary;
+}
+
+.control-center .notification-row .notification-background .notification {
+  padding: 8px;
+  border-radius: 8px;
+}
+
+.control-center
+  .notification-row
+  .notification-background
+  .notification.critical {
+  border: 1px solid @red;
+}
+
+.control-center
+  .notification-row
+  .notification-background
+  .notification
+  .notification-content {
+  color: @fg_core;
+}
+
+.control-center
+  .notification-row
+  .notification-background
+  .notification
+  .notification-content
+  .summary {
+  margin: 8px;
+  color: @fg_core;
+  font-weight: bold;
+}
+
+.control-center
+  .notification-row
+  .notification-background
+  .notification
+  .notification-content
+  .body {
+  margin: 8px;
+  color: @teal;
+}
+
+.control-center
+  .notification-row
+  .notification-background
+  .notification
+  > *:last-child
+  > * {
+  min-height: 3rem;
+}
+
+.control-center
+  .notification-row
+  .notification-background
+  .notification
+  > *:last-child
+  > *
+  .notification-action {
+  padding: 4px;
+  border-radius: 8px;
+  color: @fg_core;
+  background-color: @bg_surface;
+  border: 1px solid @primary;
+}
+
+.control-center
+  .notification-row
+  .notification-background
+  .notification
+  > *:last-child
+  > *
+  .notification-action:hover {
+  background-color: @bg_mantle;
+}
+
+.control-center
+  .notification-row
+  .notification-background
+  .notification
+  > *:last-child
+  > *
+  .notification-action:active {
+  background-color: @primary;
+}
+
+.control-center .notification-row .notification-background .close-button {
+  margin: 8px;
+  padding: 4px;
+  border-radius: 8px;
+  color: @fg_core;
+  background-color: @red;
+}
+
+.control-center .notification-row .notification-background .close-button:hover {
+  color: @bg_core;
+}
+
+.control-center
+  .notification-row
+  .notification-background
+  .close-button:active {
+  background-color: @lightred;
+}
+
+/*
+* Notifications (Floating)
+*/
+.floating-notifications.background .notification-row {
+  padding: 12px;
+}
+
+.floating-notifications.background .notification-row .notification-background {
+  border-radius: 8px;
+  background-color: @bg_core;
+  color: @fg_core;
+  border: 1px solid @primary;
+}
+
+.floating-notifications.background
+  .notification-row
+  .notification-background
+  .notification {
+  padding: 8px;
+  border-radius: 8px;
+}
+
+.floating-notifications.background
+  .notification-row
+  .notification-background
+  .notification.critical {
+  border: 1px solid @red;
+}
+
+.floating-notifications.background
+  .notification-row
+  .notification-background
+  .notification
+  .notification-content
+  .summary {
+  margin: 8px;
+  color: @fg_core;
+  font-weight: bold;
+}
+
+.floating-notifications.background
+  .notification-row
+  .notification-background
+  .notification
+  .notification-content
+  .body {
+  margin: 8px;
+  color: @teal;
+}
+
+.floating-notifications.background
+  .notification-row
+  .notification-background
+  .notification
+  > *:last-child
+  > * {
+  min-height: 3rem;
+}
+
+.floating-notifications.background
+  .notification-row
+  .notification-background
+  .notification
+  > *:last-child
+  > *
+  .notification-action {
+  border-radius: 8px;
+  color: @fg_core;
+  background-color: @bg_mantle;
+  border: 1px solid @primary;
+}
+
+.floating-notifications.background
+  .notification-row
+  .notification-background
+  .notification
+  > *:last-child
+  > *
+  .notification-action:hover {
+  background-color: @bg_mantle;
+}
+
+.floating-notifications.background
+  .notification-row
+  .notification-background
+  .notification
+  > *:last-child
+  > *
+  .notification-action:active {
+  background-color: @primary;
+}
+
+.floating-notifications.background
+  .notification-row
+  .notification-background
+  .close-button {
+  margin: 8px;
+  padding: 4px;
+  border-radius: 8px;
+  color: @fg_core;
+  background-color: @red;
+}
+
+.floating-notifications.background
+  .notification-row
+  .notification-background
+  .close-button:hover {
+  color: @bg_core;
+}
+
+.floating-notifications.background
+  .notification-row
+  .notification-background
+  .close-button:active {
+  background-color: @lightred;
 }
