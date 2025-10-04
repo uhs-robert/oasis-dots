@@ -223,8 +223,9 @@
 
   "clock": {
     "interval": 1,
-    "format": "<span color='#6BBF59' size='11000'>󰸗 </span>{:%a %b %d | %H:%M:%S}",
+    "format": "<span color='#6BBF59' size='11000'>󰸗 </span>{:%a %b %d | %H:%M:%S %Z}",
     "tooltip-format": "\n<span font='ProFont IIx Nerd Font Mono  12'><tt>{calendar}</tt></span>",
+    "timezones": ["America/New_York", "America/Los_Angeles", "America/Denver"],
     "calendar": {
       "mode": "year",
       "mode-mon-col": 3,
@@ -238,6 +239,7 @@
         "today": "<span color='indianred'><b><u>{}</u></b></span>"
       }
     },
+    "on-click": "hyprctl dispatch exec '[float;move onscreen cursor -50% 20px;size 60% 96%] kitty --class=calcure --title=Calcure -e calcure'",
     "actions": {
       "on-click-right": "mode",
       "on-click-forward": "tz_up",
