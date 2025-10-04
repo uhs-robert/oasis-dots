@@ -1,15 +1,15 @@
 /* style.css */
 /* swaync/.config/swaync/style.css */
-/* swaync/primaryconfig/swaync/style.css */
 
 @define-color bg_core #101825;
+@define-color bg_shadow #0F1522;
 @define-color bg_mantle #1a283f;
+@define-color bg_crust #203557;
 @define-color bg_surface #22385c;
-@define-color bg_button #203557;
 @define-color fg_core #d9e6fa;
 
 @define-color mpris-album-art-overlay rgba(0, 0, 0, 0.55);
-@define-color mpris-button-hover rgba(0, 0, 0, 0.50);
+@define-color mpris-crust-hover rgba(0, 0, 0, 0.50);
 
 @define-color primary #1ca1ff;
 @define-color secondary #ff9f41;
@@ -21,12 +21,18 @@
 @define-color darkorange #e67451;
 @define-color yellow #F0E68C;
 
+/*
+* Globals
+*/
 * {
   all: unset;
   font-family: "ProFont IIx Nerd Font";
-  transition: 0.2s;
+  transition: background-color 0.15s ease-in-out;
 }
 
+/*
+* Floating Notifications
+*/
 .floating-notifications.background .notification-row {
   padding: 12px;
 }
@@ -141,44 +147,91 @@
   background-color: @lightred;
 }
 
+/*
+* Control Center
+*/
 .control-center {
   border-radius: 8px;
-  margin: 12px;
+  margin: 8px;
   background-color: @bg_core;
   color: @fg_core;
   padding: 12px;
   border: 1px solid @primary;
 }
 
+/* Notification Center Title */
 .control-center .widget-title {
   color: @primary;
+  background-color: @bg_mantle;
+  padding: 0.5em;
   font-weight: bold;
+  font-size: 1.3rem;
+  border-radius: 10px;
+  margin-bottom: 8px;
 }
 
-/* Clear All Button */
+/* Clear All button*/
 .control-center .widget-title button {
   font-weight: normal;
   border-radius: 8px;
-  color: @red;
+  color: @darkorange;
   min-width: 2em;
-  background-color: @bg_mantle;
-  border: 1px solid @primary;
+  background-color: @bg_shadow;
+  border: 1px solid @bg_core;
+  border-radius: 10px;
   padding: 8px;
 }
-
 .control-center .widget-title button:hover {
-  background-color: @bg_mantle;
+  background: @darkorange;
+  color: @bg_core;
 }
-
 .control-center .widget-title button:active {
-  background-color: @primary;
+  background-color: @bg_crust;
+  color: @bg_core;
 }
 
+/*
+* Do Not Disturb
+*/
+.control-center-dnd {
+  margin: 6px;
+  border-radius: 8px;
+}
+
+.control-center-dnd slider {
+  background: @bg_mantle;
+  border-radius: 8px;
+}
+
+.widget-dnd {
+  background-color: @bg_mantle;
+  color: @secondary;
+  border-radius: 8px;
+  padding-left: 8px;
+}
+
+.widget-dnd > switch {
+  border-radius: 8px;
+  background: @bg_shadow;
+  border: 1px solid @bg_core;
+}
+
+.widget-dnd > switch:checked slider {
+  background: @darkorange;
+}
+
+.widget-dnd > switch slider {
+  background: @primary;
+  border-radius: 8px;
+  margin: 4px;
+}
+
+/* Notifications */
 .control-center .notification-row .notification-background {
   border-radius: 8px;
   margin: 8px 0;
   background-color: @bg_mantle;
-  color: @fg_core;
+  color: @tfg_core;
   border: 1px solid @primary;
 }
 
@@ -307,36 +360,6 @@ trough {
 /*   background-color: @primary; */
 /* } */
 
-.control-center-dnd {
-  margin: 12px 0;
-  border-radius: 8px;
-}
-
-.control-center-dnd slider {
-  background: @bg_mantle;
-  border-radius: 8px;
-}
-
-.widget-dnd {
-  color: @secondary;
-}
-
-.widget-dnd > switch {
-  border-radius: 8px;
-  background: @bg_mantle;
-  border: 1px solid @primary;
-}
-
-.widget-dnd > switch:checked slider {
-  background: @darkorange;
-}
-
-.widget-dnd > switch slider {
-  background: @primary;
-  border-radius: 8px;
-  margin: 4px;
-}
-
 /*
 * Volume and Backlight widgets
 */
@@ -395,20 +418,20 @@ trough {
 }
 
 /*
-* Button Grid 
+* Button Grid
 */
 .widget-buttons-grid {
-  margin: 8px;
-  padding: 12px;
+  padding: 4px;
+  border-radius: 10px;
   background: @bg_mantle;
 }
 
 .widget-buttons-grid > flowbox > flowboxchild > button {
-  font-size: 1.5rem;
-  min-width: 35px;
+  font-size: 1.1rem;
+  min-width: 45px;
   margin: 8px;
-  padding: 20px;
-  border-radius: 4px;
+  padding: 10px;
+  border-radius: 10px;
   background: @bg_surface;
   color: @fg_core;
   transition: background-color 0.15s ease-in-out;
@@ -422,6 +445,7 @@ trough {
 .widget-buttons-grid > flowbox > flowboxchild > button.toggle:checked {
   background: @darkorange;
   color: @bg_core;
+  border-radius: 8px;
 }
 
 /*

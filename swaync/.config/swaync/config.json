@@ -61,21 +61,22 @@
           "command": "pactl set-sink-mute @DEFAULT_SINK@ toggle",
           "type": "toggle"
         },
-
         {
           "label": "󰍭",
           "command": "pactl set-source-mute @DEFAULT_SOURCE@ toggle",
           "type": "toggle"
         },
-
         {
           "label": "󰖩",
           "command": "nm-connection-editor"
         },
-
         {
           "label": "",
           "command": "blueman-manager"
+        },
+        {
+          "label": "",
+          "command": "bash -lc '~/.config/hypr/scripts/screenshot.sh'"
         },
 
         {
@@ -83,17 +84,18 @@
           "command": "pgrep -x hyprsunset && hyprsunset -i || hyprsunset -t 4500",
           "type": "toggle"
         },
-
         {
           "label": "",
           "command": "hyprlock"
         },
-
+        {
+          "label": "",
+          "command": "hyprctl dispatch exit"
+        },
         {
           "label": "",
           "command": "reboot"
         },
-
         {
           "label": "",
           "command": "shutdown now"
