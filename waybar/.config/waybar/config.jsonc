@@ -6,7 +6,8 @@
     "include": ["basic-modules.jsonc"],
     "position": "top",
     "modules-left": ["custom/startmenu", "hyprland/workspaces"],
-    "modules-center": ["clock", "custom/weather"],
+    "modules-center": ["clock"],
+    //"modules-center": ["clock", "custom/weather"],
     "modules-right": ["temperature", "cpu", "memory", "custom/notifications"]
   },
   // All the others
@@ -30,6 +31,7 @@
 ]
 
 // [DEBUGGING CONFIGS]
+
 // {
 //   "output": "eDP-2",
 //   "position": "top",
@@ -54,18 +56,6 @@
 //     "exec": "printf '󰣇'",
 //     "return-type": "text",
 //     "signal": 8,
-//     "tooltip": false
-//   }
-// }
-//
-// {
-//   "position": "top",
-//   "modules-left": ["custom/testjson"],
-//   "custom/testjson": {
-//     "exec": "sh -c 'printf \"{\\\"text\\\":\\\"hello\\\"}\\n\"; sleep 99999'",
-//     "return-type": "json",
-//     "interval": 0,
-//     "format": "{text}",
 //     "tooltip": false
 //   }
 // }
