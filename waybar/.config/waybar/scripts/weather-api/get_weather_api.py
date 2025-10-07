@@ -30,8 +30,7 @@ from typing import Any, Dict, List, Tuple
 import requests
 
 # ─── Constants ──────────────────────────────────────────────────────────────
-ICON_COLOR: str = "#42A5F5"
-ICON_COLOR_ALT: str = "#FB9D44"
+COLOR_PRIMARY: str = "#42A5F5"
 ICON_SIZE: str = "14000"  # pango units; ~14pt
 ICON_SIZE_LG: str = "18000"
 ICON_SIZE_SM: str = "12000"
@@ -40,6 +39,18 @@ POP_ICON_HIGH: str = ""
 POP_ICON_LOW: str = ""
 SUNRISE_ICON: str = ""
 SUNSET_ICON: str = "󰖚"
+THERMO_COLD = ""
+THERMO_NEUTRAL = ""
+THERMO_WARM = ""
+THERMO_HOT = ""
+COLOR_COLD = "skyblue"
+COLOR_NEUTRAL = COLOR_PRIMARY
+COLOR_WARM = "khaki"
+COLOR_HOT = "indianred"
+COLOR_POP_LOW = "#EAD7FF"
+COLOR_POP_MED = "#CFA7FF"
+COLOR_POP_HIGH = "#BC85FF"
+COLOR_POP_VHIGH = "#A855F7"
 HOUR_TABLE_HEADER_TEXT: str = (
     f"{'Hour':<4} │ {'Temp':>5} │ {'PoP':>3} │ {'Precip':>7} │ Cond"
 )
@@ -109,6 +120,50 @@ def icon_for_pop(pop: int) -> str:
     return POP_ICON_HIGH if pop >= POP_ALERT_THRESHOLD else POP_ICON_LOW
 
 
+def _is_celsius_unit(unit: str) -> bool:
+    return str(unit).strip().startswith("°C")
+
+
+def thermometer_for_temp(temp: float, unit: str) -> tuple[str, str]:
+    """
+    Return (glyph, color) based on temp and unit.
+    Bands:
+      °F:  <41=cold, 41–67=neutral, 68–81=warm, ≥82=hot
+      °C:  <5=cold,  5–19=neutral, 20–27=warm,  ≥28=hot
+    """
+    if _is_celsius_unit(unit):
+        if temp < 5:
+            return THERMO_COLD, COLOR_COLD
+        if temp < 20:
+            return THERMO_NEUTRAL, COLOR_NEUTRAL
+        if temp < 28:
+            return THERMO_WARM, COLOR_WARM
+        return THERMO_HOT, COLOR_HOT
+    else:
+        if temp < 41:
+            return THERMO_COLD, COLOR_COLD
+        if temp < 68:
+            return THERMO_NEUTRAL, COLOR_NEUTRAL
+        if temp < 82:
+            return THERMO_WARM, COLOR_WARM
+        return THERMO_HOT, COLOR_HOT
+
+
+def color_for_temp(val: float, unit: str) -> str:
+    return thermometer_for_temp(val, unit)[1]
+
+
+def pop_color(pop: int) -> str:
+    pop = max(0, min(100, int(pop)))
+    if pop < 30:
+        return COLOR_POP_LOW  # 0–29
+    if pop < 60:
+        return COLOR_POP_MED  # 30–59
+    if pop < 80:
+        return COLOR_POP_HIGH  # 60–79
+    return COLOR_POP_VHIGH  # 80–100
+
+
 # ─── Icons ──────────────────────────────────────────────────────────────────
 def load_icon_map(script_path: str) -> List[Dict[str, Any]]:
     try:
@@ -159,7 +214,7 @@ def map_condition_icon(icon_map: List[Dict[str, Any]], text: str, is_day: bool) 
     return ""
 
 
-def style_icon(glyph: str, color: str = ICON_COLOR, size: str = ICON_SIZE) -> str:
+def style_icon(glyph: str, color: str = COLOR_PRIMARY, size: str = ICON_SIZE) -> str:
     return f"<span foreground='{color}' size='{size}'>{glyph} </span>"
 
 
@@ -258,12 +313,19 @@ def make_hour_table(next_hours, unit, precip_unit, icon_map) -> str:
     header = f"<span weight='bold'>{HOUR_TABLE_HEADER_TEXT}</span>"
     rows = []
     for h in next_hours:
-        temp_col = f"{int(round(h['temp']))}{unit}".rjust(5)
-        pop_col = f"{int(h['pop'])}%".rjust(3)
+        # build padded text first so spans don't affect width
+        temp_txt = f"{int(round(h['temp']))}{unit}".rjust(5)
+        temp_col = (
+            f"<span foreground='{color_for_temp(h['temp'], unit)}'>{temp_txt}</span>"
+        )
+
+        pop_txt = f"{int(h['pop'])}%".rjust(3)
+        pop_col = f"<span foreground='{pop_color(h['pop'])}'>{pop_txt}</span>"
         precip_col = f"{h['precip']:.1f} {precip_unit}".rjust(7)
         glyph = map_condition_icon(icon_map, str(h["cond"]), bool(h.get("is_day", 1)))
-        icon_html = style_icon(glyph, ICON_COLOR, ICON_SIZE_LG) if glyph else ""
+        icon_html = style_icon(glyph, COLOR_PRIMARY, ICON_SIZE_SM) if glyph else ""
         cond_cell = f"{icon_html} {html.escape(str(h['cond']))}".strip()
+
         rows.append(
             f"{fmt_h(h['dt']):<4} │ {temp_col} │ {pop_col} │ {precip_col} │ {cond_cell}"
         )
@@ -279,19 +341,30 @@ def make_day_table(days, unit, precip_unit, icon_map) -> str:
     header = f"<span weight='bold'>{DAY_TABLE_HEADER_TEXT}</span>"
     out_rows = []
     for d in days:
-        hi = int(round(d["max"]))
-        lo = int(round(d["min"]))
+        hi_val = round(d["max"])
+        lo_val = round(d["min"])
+
+        # build padded strings before wrapping in spans
+        hi_txt = f"{int(hi_val):>3}{unit}"
+        lo_txt = f"{int(lo_val):>3}{unit}"
+
+        hi_col = f"<span foreground='{color_for_temp(d['max'], unit)}'>{hi_txt}</span>"
+        lo_col = f"<span foreground='{color_for_temp(d['min'], unit)}'>{lo_txt}</span>"
+
         pop = max(0, min(100, int(d["pop"])))
+        pop_txt = f"{pop:>3}%"
+        pop_col = f"<span foreground='{pop_color(pop)}'>{pop_txt}</span>"
         precip = float(d["precip"])
         cond_txt = str(d["cond"])
         glyph = map_condition_icon(icon_map, cond_txt, True)
-        icon_html = style_icon(glyph, ICON_COLOR, ICON_SIZE_LG) if glyph else ""
+        icon_html = style_icon(glyph, COLOR_PRIMARY, ICON_SIZE_SM) if glyph else ""
         cond_cell = f"{icon_html} {html.escape(cond_txt)}".strip()
+
         row = (
             f"{fmt_dow(d['date']):<9} │ "
-            f"{hi:>3}{unit} │ "
-            f"{lo:>3}{unit} │ "
-            f"{pop:>3}% │ "
+            f"{hi_col} │ "
+            f"{lo_col} │ "
+            f"{pop_col} │ "
             f"{precip:>5.1f} {precip_unit} │ "
             f"{cond_cell}"
         )
@@ -325,10 +398,10 @@ def build_text_and_tooltip(
     cond_icon_raw = map_condition_icon(icon_map, cond, bool(is_day)) or fallback_icon
     cond_icon = style_icon(cond_icon_raw)
 
-    # main text with big icon
-    big_icon = style_icon(cond_icon_raw)
-    left = f"{big_icon} {int(round(temp))}{unit}"
-    right = f"{int(round(temp))}{unit} {big_icon}"
+    # main text with waybar icon
+    waybar_icon = style_icon(cond_icon_raw, COLOR_PRIMARY, ICON_SIZE_SM)
+    left = f"{waybar_icon} {int(round(temp))}{unit}"
+    right = f"{int(round(temp))}{unit} {waybar_icon}"
     text = left if (icon_pos or "left") == "left" else right
 
     # tables
@@ -341,11 +414,20 @@ def build_text_and_tooltip(
         f"{html.escape(str(loc.get('region', '')))} "
         f"{html.escape(str(loc.get('country', '')))}</b>"
     )
-    current_line = f"{cond_icon} {html.escape(cond)} {int(round(temp))}{unit} (feels {int(round(feels))}{unit})"
+    thermo_glyph, thermo_color = thermometer_for_temp(temp, unit)
+    thermo_icon = style_icon(thermo_glyph, thermo_color)
+    current_line = (
+        f"{cond_icon} {html.escape(cond)} | "
+        f"{thermo_icon}{int(round(temp))}{unit} "
+        f"(feels {int(round(feels))}{unit})"
+    )
     now_pop = int(next_hours[0]["pop"]) if next_hours else 0
+    pop_icon_html = style_icon(icon_for_pop(now_pop), pop_color(now_pop))
+    now_pop_col = f"<span foreground='{pop_color(now_pop)}'>{now_pop}%</span>"
+    now_line = (
+        f"{pop_icon_html} PoP {now_pop_col}, Precip {precip_amt:.1f}{precip_unit}"
+    )
 
-    pop_icon_html = style_icon(icon_for_pop(now_pop))
-    now_line = f"{pop_icon_html} PoP {now_pop}%, Precip {precip_amt:.1f}{precip_unit}"
     astro_line = ""
     if sunrise or sunset:
         astro_line = f"{style_icon(SUNRISE_ICON)} Sunrise {html.escape(sunrise or '—')} | {style_icon(SUNSET_ICON)} Sunset {html.escape(sunset or '—')}"
@@ -354,8 +436,8 @@ def build_text_and_tooltip(
         f"{location_line}\n\n"
         f"{current_line}\n"
         f"{astro_line}\n{now_line}\n\n"
-        f"<b>{style_icon('', ICON_COLOR, ICON_SIZE_SM)} Next {len(next_hours)} hours</b>\n\n{next_hours_table}\n\n"
-        f"<b>{style_icon('󰨳', ICON_COLOR, ICON_SIZE_SM)} Next Few Days</b>\n\n{days_table}"
+        f"<b>{style_icon('', COLOR_PRIMARY, ICON_SIZE_SM)} Next {len(next_hours)} hours</b>\n\n{next_hours_table}\n\n"
+        f"<b>{style_icon('󰨳', COLOR_PRIMARY, ICON_SIZE_SM)} Next Few Days</b>\n\n{days_table}"
     )
 
     return text, tooltip
