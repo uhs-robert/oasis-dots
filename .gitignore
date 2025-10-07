@@ -118,6 +118,7 @@ __pycache__/
 **/.claude/statsig/
 **/.claude/config/notification_states.json
 **/.claude/.credentials.json
+**/.claude/debug
 **/.gemini/oauth_creds.json
 **/.gemini/google_accounts.json
 **/.gemini/installation_id
