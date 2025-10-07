@@ -30,11 +30,11 @@
     "modules-center": ["clock", "custom/weather"],
     "modules-right": [
       "group/systemtray",
+      "custom/updates",
       "group/volume",
       "group/power",
       "network",
       "bluetooth",
-      "custom/updates",
       "custom/notifications"
     ]
   }

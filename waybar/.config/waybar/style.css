@@ -128,10 +128,6 @@ tooltip {
   margin-left: -8px;
 }
 
-#custom-updates {
-  color: darkkhaki;
-}
-
 #custom-leftArrow,
 #custom-rightArrow {
   color: @primary;
