@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# cava_waybar.py
 # waybar/.config/waybar/scripts/cava_waybar.py
 # CAVA → Waybar single-producer + lightweight followers.
 # - First instance to grab the lock runs CAVA and writes a shared JSON sink.
@@ -18,7 +19,7 @@ import ctypes
 BARS = int(os.environ.get("CAVA_BARS", "40"))
 BIT_FORMAT = os.environ.get("CAVA_BIT", "16bit")  # "8bit" | "16bit"
 SENS = int(os.environ.get("CAVA_SENS", "150"))
-CHANNELS = os.environ.get("CAVA_CHANNELS", "stereo")  # "mono" | "stereo"
+CHANNELS = os.environ.get("CAVA_CHANNELS", "mono")  # "mono" | "stereo"
 METHOD = os.environ.get("CAVA_INPUT", "pulse")
 CLASS_NAME = os.environ.get("CAVA_CLASS", "cava")
 COLOR_HEX = os.environ.get("CAVA_COLOR", "#2E2620")
@@ -174,6 +175,10 @@ def safe_write_line(obj) -> bool:
 def producer(lock_file):
     cava_conf = f"""
 [general]
+mode = normal
+framerate = 25
+lower_cutoff_freq = 50
+higher_cutoff_freq = 12000
 bars = {BARS}
 sensitivity = {SENS}
 channels = {CHANNELS}
@@ -185,6 +190,15 @@ method = {METHOD}
 method = raw
 raw_target = /dev/stdout
 bit_format = {BIT_FORMAT}
+channels = {CHANNELS}
+mono_option = average
+
+[smoothing]
+noise_reduction = 35
+integral = 90
+gravity = 95
+ignore = 2
+monstercat = 1.5
 """.strip()
 
     with tempfile.NamedTemporaryFile(mode="w", delete=True) as conf:
