@@ -1,26 +1,20 @@
 {
   "custom/leftArrow": {
     "format": "",
-    "tooltip": false,
-    //TODO: Remove return-type/signal after performance bug is fixed
-    "return-type": "json",
-    "signal": 8
+    "tooltip": false
   },
 
   "custom/rightArrow": {
     "format": "",
-    "tooltip": false,
-    //TODO: Remove return-type/signal after performance bug is fixed
-    "return-type": "json",
-    "signal": 8
+    "tooltip": false
   },
 
-  "group/tray": {
+  "group/systemtray": {
     "orientation": "horizontal",
     "drawer": {
       "transition-duration": 200,
       "transition-left-to-right": false,
-      "click-to-reveal": false,
+      "click-to-reveal": true,
       "children-class": "group-tray"
     },
     "modules": ["custom/leftArrow", "tray"]
@@ -48,7 +42,7 @@
     "modules": ["custom/rightArrow", "custom/colorpicker", "custom/screenshot"]
   },
 
-  "group/battery": {
+  "group/power": {
     "orientation": "horizontal",
     "drawer": {
       "transition-duration": 400,
@@ -61,23 +55,10 @@
 
   "group/hardware": {
     "orientation": "horizontal",
-    "drawer": {
-      "transition-duration": 400,
-      "transition-left-to-right": false,
-      "click-to-reveal": false,
-      "children-class": "group-hardware"
-    },
-    "modules": [
-      "battery",
-      "power-profiles-daemon",
-      "cpu",
-      "memory",
-      "temperature",
-      "backlight/slider"
-    ]
+    "modules": ["cpu", "memory", "temperature"]
   },
 
-  "group/audio": {
+  "group/volume": {
     "orientation": "horizontal",
     "drawer": {
       "transition-duration": 400,
@@ -89,7 +70,7 @@
   },
 
   "pulseaudio": {
-    "format": "<span size='11000' color='#FF8080'>{icon} </span> {volume}%",
+    "format": "<span size='11000' color='#42A5F5'>{icon} </span> {volume}%",
     "tooltip-format": "{icon}   {desc} // {volume}%",
     "scroll-step": 5,
     "format-muted": "",
@@ -116,52 +97,10 @@
     "scroll-step": 1
   },
 
-  "group/network": {
+  "group/system": {
     "orientation": "horizontal",
-    "format": "ifname",
-    "drawer": {
-      "transition-duration": 400,
-      "transition-left-to-right": false,
-      "click-to-reveal": false,
-      "children-class": "group-network"
-    },
-    "modules": ["network", "bluetooth"]
+    "modules": ["network", "bluetooth", "custom/updates"]
   },
-
-  // Workspaces: Show generic icons
-  // "hyprland/workspaces": {
-  //   "format": "<span size='11000'>{icon}</span>",
-  //   "format-icons": {
-  //     "urgent": "",
-  //     "active": "󰣏", // focused workspace on current monitor
-  //     "visible": "󰣏", // focused workspace on other monitors
-  //     "default": "󰣏",
-  //     "empty": "󱀝",
-  //   },
-  //   "all-outputs": false,
-  //   "workspace-taskbar": {
-  //     "enable": true,
-  //     "update-active-window": true,
-  //   },
-  // },
-
-  // Workspaces: Show user-defined icons
-  // "hyprland/workspaces": {
-  //   "format": "{icon}{windows}",
-  //   "format-window-separator": " ",
-  //   "window-rewrite-default": "",
-  //   "window-rewrite": {
-  //     "title<.*youtube.*>": "", // Windows whose titles contain "youtube"
-  //     "class<firefox>": "", // Windows whose classes are "firefox"
-  //     "class<firefox> title<.*github.*>": "", // Windows whose class is "firefox" and title contains "github". Note that "class" always comes first.
-  //     "kitty": "", // Windows that contain "kitty" in either class or title. For optimization reasons, it will only match against a title if at least one other window explicitly matches against a title.
-  //     "code": "󰨞",
-  //   },
-  //   "format-icons": {
-  //     "default": "",
-  //     "empty": "󱀝",
-  //   },
-  // },
 
   // Workspaces: Show taskbard icons and empty icons
   "hyprland/workspaces": {
@@ -171,13 +110,22 @@
       "enable": true,
       "update-active-window": true,
       "format": "{icon}",
-      "icon-size": 16,
+      "icon-size": 19,
       "on-click-window": "~/.config/waybar/scripts/focus-window.sh {address} {button}"
     },
     "format-icons": {
       "default": "",
-      "empty": "󱀝"
+      "empty": ""
     }
+  },
+
+  "hyprland/window": {
+    "format": "{title}",
+    "max-length": 15,
+    "separate-outputs": false,
+    "hide-empty-text": true
+    // "icon": true,
+    // "icon-size": 16,
   },
 
   "power-profiles-daemon": {
@@ -193,7 +141,7 @@
   },
 
   "cpu": {
-    "format": "<span size='11000' foreground='#fab387'> </span>{usage}%",
+    "format": "<span size='11000' foreground='#42A5F5'> </span>{usage}%",
     "interval": 10,
     "tooltip": true,
     "tooltip-format": "CPU Usage: {usage}%",
@@ -201,7 +149,7 @@
   },
 
   "memory": {
-    "format": "<span size='11000' foreground='#b4befe'> </span>{percentage}%",
+    "format": "<span size='11000' foreground='#42A5F5'> </span>{percentage}%",
     "interval": 30,
     "tooltip": true,
     "tooltip-format": "RAM Usage: {used:0.1f}gb / {total:0.1f}gb",
@@ -209,7 +157,7 @@
   },
 
   "temperature": {
-    "format": "<span size='11000' color='#1CA1FF'></span> {temperatureC}° C",
+    "format": "<span size='11000' color='#42A5F5'></span> {temperatureC}° C",
     "format-critical": "<span size='11000' color='indianred'></span> <span color='#FFA0A0'>{temperatureC}° C</span>",
     "critical-threshold": 80,
     "interval": 10
@@ -223,11 +171,11 @@
 
   "clock": {
     "interval": 1,
-    "format": "<span color='#6BBF59' size='11000'>󰸗 </span>{:%a %b %d | %H:%M:%S %Z}",
+    "format": "<span size='12000' color='#42A5F5'></span>  {:%H:%M:%S %Z 󰧞 %a %b %d}",
     "tooltip-format": "\n<span font='ProFont IIx Nerd Font Mono  12'><tt>{calendar}</tt></span>",
     "timezones": ["America/New_York", "America/Los_Angeles", "America/Denver"],
     "calendar": {
-      "mode": "year",
+      "mode": "month",
       "mode-mon-col": 3,
       "weeks-pos": "left",
       "on-scroll": 1,
@@ -251,28 +199,27 @@
   },
 
   "network": {
-    "format-wifi": "<span size='11000' foreground='#47A99B'>{icon} </span>{essid:.7}",
+    "format-wifi": "<span size='11000' foreground='#42A5F5'>{icon}</span>",
     "format-icons": ["󰤯", "󰤟", "󰤢", "󰤥", "󰤨"],
-    "format-ethernet": "<span size='11000' foreground='#47A99B'>󰤭 </span> Disconnected",
+    "format-ethernet": "<span size='11000' foreground='#42A5F5'>󰈀</span>",
     "format-linked": "{ifname} (No IP) ",
-    "format-disconnected": "<span size='11000' foreground='#47A99B'>󰤭 </span>Disconnected",
+    "format-disconnected": "<span size='11000' foreground='#1A283F'>󰤭</span>",
     "tooltip-format-wifi": "{essid}, {signalStrength}%",
-    // "on-click": "hyprpanel t networkmenu",
-    "on-click": "nm-connection-editor"
+    "on-click": "kitty -e impala",
+    "on-click-right": "nm-connection-editor"
   },
 
   "bluetooth": {
-    "format-on": "<span size='11000' color='#5BB0FA'>󰂯 On</span>",
+    "format-on": "<span size='11000' color='#42A5F5'>󰂯</span>",
     "format-off": "BT-off",
     "format-disabled": "󰂲",
-    "format-connected-battery": "<span size='11000' color='#5BB0FA'>󰂯 </span>Connected ({num_connections})",
-    "format-alt": "<span size='11000' color='#5BB0FA'>󰂯</span> {device_alias}",
+    "format-connected-battery": "<span size='11000' color='#42A5F5'>󰂯</span>",
     "tooltip-format": "{controller_alias}\t{controller_address}\n\n{num_connections} connected",
     "tooltip-format-connected": "{controller_alias}\t{controller_address}\n\n{num_connections} connected\n\n{device_enumerate}",
     "tooltip-format-enumerate-connected": "{device_alias}\n{device_address}",
     "tooltip-format-enumerate-connected-battery": "{device_alias}\n{device_address}\n{device_battery_percentage}%",
+    "on-click": "kitty -e bluetui",
     "on-click-right": "blueman-manager"
-    // "on-click": "hyprpanel t bluetoothmenu",
   },
 
   "battery": {
@@ -280,15 +227,15 @@
       "warning": 50,
       "critical": 20
     },
-    "format": "<span size='11000' foreground='#FF9F41'>{icon} </span> {capacity}%",
+    "format": "<span size='11000' foreground='#42A5F5'>{icon} </span> {capacity}%",
     "format-warning": "<span size='11000' foreground='#FF9F41'>{icon} </span> {capacity}%",
     "format-critical": "<span size='11000' foreground='#CD5C5C'>{icon} </span> {capacity}%",
-    "format-charging": "<span size='11000' foreground='#FF9F41'> </span>{capacity}%",
-    "format-plugged": "<span size='11000' foreground='#FF9F41'> </span>{capacity}%",
-    "format-alt": "<span size='11000' foreground='#FF9F41'>{icon} </span> {time}",
-    "format-full": "<span size='11000' foreground='#FF9F41'>󱟢 </span>{capacity}%",
+    "format-charging": "<span size='11000' foreground='#42A5F5'> </span>{capacity}%",
+    "format-plugged": "<span size='11000' foreground='#42A5F5'> </span>{capacity}%",
+    "format-full": "<span size='11000' foreground='#42A5F5'>󱟢 </span>{capacity}%",
     "format-icons": ["", "", "", "", ""],
-    "tooltip-format": "{time}"
+    "tooltip-format": "{time}",
+    "on-click": ""
     // "on-click": "hyprpanel t energymenu",
   },
 
@@ -309,18 +256,12 @@
     "format": "<span size='11000'>󰻜 </span>",
     "tooltip": true,
     "tooltip-format": "Take a screenshot",
-    "on-click": "hyprshot -m region -o ~/Pictures/Screenshots",
-    //TODO: Remove return-type/signal after performance bug is fixed
-    "return-type": "json",
-    "signal": 8
+    "on-click": "hyprshot -m region -o ~/Pictures/Screenshots"
   },
 
   "custom/startmenu": {
     "format": "<span size='15000'>󰣇</span>",
     "tooltip": false,
-    //TODO: Remove return-type/signal after performance bug is fixed
-    "return-type": "json",
-    "signal": 8,
     // "on-click": "hyprpanel t dashboardmenu",
     "menu": "on-click",
     "menu-file": "/home/USER/.config/waybar/custom_modules/start_menu.xml",
@@ -344,16 +285,17 @@
   },
 
   "mpris": {
-    "format": "<span size='11000'>{player_icon}</span> {dynamic:.7}",
-    "format-paused": "<span size='11000'>{status_icon}</span> <i>{dynamic}</i>",
-    "max-length": 35,
+    "format": "<span size='12000' color='#42A5F5'> {status_icon}</span>  {dynamic}",
+    "format-paused": "<span size='12000' color='peru'> {status_icon}</span>  {dynamic}",
+    "max-length": 28,
     "player-icons": {
-      "default": "▶",
+      "default": "",
       "mpv": "🎵",
       "spotify": ""
     },
     "status-icons": {
-      "paused": "⏸"
+      "paused": "",
+      "playing": ""
     },
     "on-click": "playerctl play-pause",
     "on-click-middle": "playerctl previous",
@@ -363,14 +305,13 @@
   },
 
   "custom/cava": {
-    "exec": "CAVA_BARS=10 CAVA_STYLE=blocks python3 ~/.config/waybar/scripts/cava_waybar.py 2>/dev/null",
+    "exec": "CAVA_BARS=6 CAVA_STYLE=blocks CAVA_GAP=$'\\u202F' python3 ~/.config/waybar/scripts/cava_waybar.py 2>/dev/null",
     "return-type": "json",
     "escape": false,
     "hide-empty-text": true,
-    "format": "<span size='12000' color='#309DC9'> </span>{text}",
+    "format": "{text}",
     "tooltip": false,
     // "on-click": "hyprpanel t mediamenu",
-    //
     "on-click": "playerctl play-pause",
     "on-click-middle": "playerctl previous",
     "on-click-right": "swaync-client -t -sw"
@@ -380,7 +321,7 @@
     "exec": "UPDATES_TTL_MIN=30 python3 ~/.config/waybar/scripts/fedora_updates.py",
     "return-type": "json",
     "interval": 900, // in seconds = 15min
-    "format": "<span size='11000' color='khaki'> </span>{text}",
+    "format": "<span size='12000' color='peru'> </span>{text}",
     "tooltip": false,
     "hide-empty-text": true,
     "on-click": "bash -lc 'kitty -e bash -lc \"sysup\"; rm -f \"$XDG_RUNTIME_DIR/fedora_updates.cache.json\"; pkill -RTMIN+8 waybar'",
@@ -390,14 +331,14 @@
   "custom/notifications": {
     "tooltip": true,
     "tooltip-format": "View notifications",
-    "format": "<span size='11000'>{icon}</span>",
+    "format": "<span size='12000'>{icon}</span>",
     "format-icons": {
-      "notification": "󱅫 ",
-      "none": " ",
-      "inhibited-notification": "󰵙 ",
-      "dnd-notification": "󰅸 ",
+      "notification": "󰅸 ",
+      "none": "󰂜 ",
+      "inhibited-notification": "󰺁 ",
+      "dnd-notification": " ",
       "dnd-none": " ",
-      "dnd-inhibited-notification": "󰺁 "
+      "dnd-inhibited-notification": "󱏪 "
     },
     "return-type": "json",
     "exec-if": "which swaync-client",
@@ -410,7 +351,9 @@
   "custom/weather": {
     "interval": 900, // in seconds = 15 minutes
     "exec": "python -O ~/.config/waybar/scripts/weather-api/get_weather_api.py",
-    "markup": "pango"
+    "return-type": "json",
+    "markup": true,
+    "tooltip": true
     // "on-click": "hyprpanel t calendarmenu",
   }
 }

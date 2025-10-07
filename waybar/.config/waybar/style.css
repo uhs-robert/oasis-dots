@@ -1,6 +1,8 @@
 /* waybar/.config/waybar/style.css */
 /* @import "./themes/oasis-lagoon.css"; */
 
+@define-color primary #42a5f5;
+
 /*
 * Globals
 */
@@ -10,7 +12,8 @@ window#waybar {
 
 * {
   font-family: "ProFont IIx Nerd Font", "JetBrainsMono Nerd Font", monospace;
-  font-size: 12px;
+  font-size: 0.95rem;
+  color: #d9e6fa;
   min-height: 0;
   font-weight: 400;
 }
@@ -36,8 +39,8 @@ tooltip {
 .modules-left > widget > *,
 .modules-center > widget > *,
 .modules-right > widget > * {
-  background: #101825;
-  padding: 0px 8px 0px 8px; /* per-child padding */
+  background: #101418;
+  padding: 0px 8px 0px 8px;
   border: none;
 }
 
@@ -71,21 +74,21 @@ tooltip {
 * Workspaces
 */
 #workspaces {
-  padding: 0px 5px 0px 5px;
+  padding: 4px 0px 4px 8px;
+  background-color: #101418;
+  border-top-right-radius: 8px;
+  border-bottom-right-radius: 8px;
 }
 
 #workspaces button {
   border: none;
-  color: khaki;
   box-shadow: none;
   text-shadow: none;
-  padding: 0px;
-  border-radius: 0;
+  padding: 0px 6px 0px 6px;
+  margin-right: 8px;
+  border-radius: 20px;
+  background-color: #1a283f;
 }
-
-/* #workspaces .workspace-label { */
-/**/
-/* } */
 
 /* Non-taskbar Icon Container */
 #workspaces button.empty .workspace-label {
@@ -96,41 +99,33 @@ tooltip {
 /* Taskbar Icon Container */
 #workspaces .taskbar-window {
   border-top: 1px solid transparent;
+  background-color: transparent;
   padding: 0px 4px 0px 4px;
+  border-radius: 8px;
 }
-
-#workspaces button.visible .taskbar-window,
-#workspaces button.visible .workspace-label {
-  border-color: khaki;
-}
-
-#workspaces .taskbar-window.active {
-  background-color: rgba(240, 230, 140, 0.15);
-}
-
-/* #workspaces .taskbar-window image { */
-/*   margin-top: 1px; */
-/* } */
 
 #workspaces button:hover,
-#workspaces .taskbar-window:hover {
-  background-color: rgba(240, 230, 140, 0.15);
+.taskbar-window:hover {
+  background-color: rgba(66, 165, 245, 0.35);
   color: #101825;
 }
 
 #workspaces button.empty {
   color: #f0e68c;
 }
-#workspaces button.empty.active {
-  background-color: rgba(240, 230, 140, 0.15);
+
+#workspaces button.visible {
+  background-color: @primary;
+  padding: 0px 11px 0px 11px;
 }
 
+/*
+* Customs
+*/
 #custom-cava {
-  color: skyblue;
-}
-
-#custom-weather {
-  color: #f8c471;
+  color: @primary;
+  font-size: 8px;
+  margin-left: -8px;
 }
 
 #custom-updates {
@@ -139,86 +134,25 @@ tooltip {
 
 #custom-leftArrow,
 #custom-rightArrow {
-  color: khaki;
+  color: @primary;
 }
 
-.group-tools {
-  color: deepskyblue;
-  border-bottom: 2px solid deepskyblue;
-}
-
-.group-hardware {
-  color: #ff9f41;
-  border-bottom: 2px solid #ff9f41;
-}
-
-.group-audio {
-  color: #ffa0a0;
-  border-bottom: 2px solid #ffa0a0;
+.group-volume {
+  border-bottom: 2px solid @primary;
   margin: 0;
   padding: 0;
 }
 
-.group-network {
-  color: #96d4cb;
-  border-bottom: 2px solid #96d4cb;
+.group-power {
+  border-bottom: 2px solid @primary;
 }
 
-#power-profiles-daemon {
-  color: olivedrab;
+#custom-notifications:hover {
+  color: @primary;
 }
 
-#custom-notifications {
-  color: #cea7ff;
-}
-
-#mpris.playing {
-  color: skyblue;
-}
-
-#mpris.paused {
-  color: peru;
-}
-
-#cpu {
-  color: #7bbdb3;
-}
-
-#memory {
-  color: #bdb76b;
-}
-
-#temperature {
-  color: #84c8e5;
-}
-
-#clock {
-  color: #8dcd7e;
-}
-
-#pulseaudio {
-  color: #ffa0a0;
-}
-
-#network {
-  color: #96d4cb;
-}
-
-#bluetooth {
-  color: #87ceeb;
-}
-
-#idle_inhibitor {
-  margin-right: 12px;
-  color: #7cb342;
-}
-
-#idle_inhibitor.activated {
-  color: indianred;
-}
-
-#battery {
-  color: #f8c471;
+#tray {
+  margin-right: 6px;
 }
 
 #backlight-slider slider,
@@ -230,28 +164,22 @@ tooltip {
 
 #backlight-slider trough,
 #pulseaudio-slider trough {
-  margin-top: -3px;
   min-width: 90px;
-  min-height: 10px;
-  margin-bottom: -4px;
+  min-height: 4px;
   border-radius: 6px;
   background: #333333;
 }
 
 #backlight-slider highlight,
 #pulseaudio-slider highlight {
-  border-radius: 6px;
+  border-radius: 8px;
   background-color: #2096c0;
 }
 
 #mpris {
-  color: white;
-  animation: repeat;
-  animation-name: blink;
-  animation-duration: 3s;
-  animation-timing-function: linear;
-  animation-iteration-count: infinite;
-  animation-direction: alternate;
+  margin-left: 5px;
+  border-top-left-radius: 8px;
+  border-bottom-left-radius: 8px;
 }
 
 /*

@@ -5,7 +5,11 @@
     "output": "HP Inc. HP Z22n G2 6CM8411J22",
     "include": ["basic-modules.jsonc"],
     "position": "top",
-    "modules-left": ["custom/startmenu", "hyprland/workspaces"],
+    "modules-left": [
+      "custom/startmenu",
+      "hyprland/workspaces"
+      // "hyprland/window"
+    ],
     "modules-center": ["clock"],
     //"modules-center": ["clock", "custom/weather"],
     "modules-right": ["temperature", "cpu", "memory", "custom/notifications"]
@@ -18,15 +22,16 @@
     "modules-left": [
       "custom/startmenu",
       "hyprland/workspaces",
+      "mpris",
       "custom/cava"
-      // "mpris" // TODO: Add back in when functional
+      // "hyprland/window"
     ],
     // "modules-left": ["custom/startmenu", "hyprland/workspaces"],
     "modules-center": ["clock", "custom/weather"],
     "modules-right": [
-      "group/tray",
-      "group/audio",
-      "group/battery",
+      "group/systemtray",
+      "group/volume",
+      "group/power",
       "network",
       "bluetooth",
       "custom/updates",
