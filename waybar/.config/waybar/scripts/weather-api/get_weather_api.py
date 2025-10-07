@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# get_weather_api.py
 # waybar/.config/waybar/scripts/weather-api/get_weather_api.py
 # -*- coding: utf-8 -*-
 """
@@ -32,8 +31,10 @@ import requests
 
 # ─── Constants ──────────────────────────────────────────────────────────────
 ICON_COLOR: str = "#42A5F5"
+ICON_COLOR_ALT: str = "#FB9D44"
 ICON_SIZE: str = "14000"  # pango units; ~14pt
-ICON_SIZE_SM: str = "18000"  # smaller for table rows
+ICON_SIZE_LG: str = "18000"
+ICON_SIZE_SM: str = "12000"
 POP_ALERT_THRESHOLD: int = 60
 POP_ICON_HIGH: str = ""
 POP_ICON_LOW: str = ""
@@ -261,7 +262,7 @@ def make_hour_table(next_hours, unit, precip_unit, icon_map) -> str:
         pop_col = f"{int(h['pop'])}%".rjust(3)
         precip_col = f"{h['precip']:.1f} {precip_unit}".rjust(7)
         glyph = map_condition_icon(icon_map, str(h["cond"]), bool(h.get("is_day", 1)))
-        icon_html = style_icon(glyph, ICON_COLOR, ICON_SIZE_SM) if glyph else ""
+        icon_html = style_icon(glyph, ICON_COLOR, ICON_SIZE_LG) if glyph else ""
         cond_cell = f"{icon_html} {html.escape(str(h['cond']))}".strip()
         rows.append(
             f"{fmt_h(h['dt']):<4} │ {temp_col} │ {pop_col} │ {precip_col} │ {cond_cell}"
@@ -284,7 +285,7 @@ def make_day_table(days, unit, precip_unit, icon_map) -> str:
         precip = float(d["precip"])
         cond_txt = str(d["cond"])
         glyph = map_condition_icon(icon_map, cond_txt, True)
-        icon_html = style_icon(glyph, ICON_COLOR, ICON_SIZE_SM) if glyph else ""
+        icon_html = style_icon(glyph, ICON_COLOR, ICON_SIZE_LG) if glyph else ""
         cond_cell = f"{icon_html} {html.escape(cond_txt)}".strip()
         row = (
             f"{fmt_dow(d['date']):<9} │ "
@@ -347,14 +348,14 @@ def build_text_and_tooltip(
     now_line = f"{pop_icon_html} PoP {now_pop}%, Precip {precip_amt:.1f}{precip_unit}"
     astro_line = ""
     if sunrise or sunset:
-        astro_line = f"{style_icon(SUNRISE_ICON)} Sunrise {html.escape(sunrise or '—')}, {style_icon(SUNSET_ICON)} Sunset {html.escape(sunset or '—')}"
+        astro_line = f"{style_icon(SUNRISE_ICON)} Sunrise {html.escape(sunrise or '—')} | {style_icon(SUNSET_ICON)} Sunset {html.escape(sunset or '—')}"
 
     tooltip = (
         f"{location_line}\n\n"
         f"{current_line}\n"
         f"{astro_line}\n{now_line}\n\n"
-        f"<b>Next {len(next_hours)} hours</b>\n\n{next_hours_table}\n\n"
-        f"<b>Next Few Days</b>\n\n{days_table}"
+        f"<b>{style_icon('', ICON_COLOR, ICON_SIZE_SM)} Next {len(next_hours)} hours</b>\n\n{next_hours_table}\n\n"
+        f"<b>{style_icon('󰨳', ICON_COLOR, ICON_SIZE_SM)} Next Few Days</b>\n\n{days_table}"
     )
 
     return text, tooltip
