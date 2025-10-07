@@ -285,8 +285,8 @@
   },
 
   "mpris": {
-    "format": "<span size='12000' color='#42A5F5'> {status_icon}</span>  {dynamic}",
-    "format-paused": "<span size='12000' color='peru'> {status_icon}</span>  {dynamic}",
+    "format": "<span size='12000' color='#42A5F5'>{status_icon}</span>  {dynamic}",
+    "format-paused": "<span size='12000' color='peru'>{status_icon}</span>  {dynamic}",
     "max-length": 28,
     "player-icons": {
       "default": "",
