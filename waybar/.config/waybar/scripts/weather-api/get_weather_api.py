@@ -34,6 +34,11 @@ import requests
 ICON_COLOR: str = "#42A5F5"
 ICON_SIZE: str = "14000"  # pango units; ~14pt
 ICON_SIZE_SM: str = "18000"  # smaller for table rows
+POP_ALERT_THRESHOLD: int = 60
+POP_ICON_HIGH: str = ""
+POP_ICON_LOW: str = ""
+SUNRISE_ICON: str = ""
+SUNSET_ICON: str = "󰖚"
 HOUR_TABLE_HEADER_TEXT: str = (
     f"{'Hour':<4} │ {'Temp':>5} │ {'PoP':>3} │ {'Precip':>7} │ Cond"
 )
@@ -76,6 +81,31 @@ def fmt_h(dt: datetime) -> str:
 def fmt_dow(datestr: str) -> str:
     # e.g., 'Mon 10/06'
     return datetime.strptime(datestr, "%Y-%m-%d").strftime("%a %m/%d")
+
+
+def _fmt_astro_24h(t: str) -> str:
+    """WeatherAPI astro times come as '07:01 AM' local. Return '07:01' (24h)."""
+    try:
+        return datetime.strptime(t.strip(), "%I:%M %p").strftime("%H:%M")
+    except Exception:
+        return t.strip()
+
+
+def get_sun_times(blob: Dict[str, Any], now_local: datetime) -> Tuple[str, str]:
+    """Find today's sunrise/sunset from forecastday[].astro."""
+    fc = safe(blob, "forecast", {}).get("forecastday", [])
+    today = now_local.strftime("%Y-%m-%d")
+    for d in fc:
+        if str(safe(d, "date", "")) == today:
+            astro = safe(d, "astro", {})
+            sr = _fmt_astro_24h(str(safe(astro, "sunrise", "")))
+            ss = _fmt_astro_24h(str(safe(astro, "sunset", "")))
+            return sr, ss
+    return "", ""
+
+
+def icon_for_pop(pop: int) -> str:
+    return POP_ICON_HIGH if pop >= POP_ALERT_THRESHOLD else POP_ICON_LOW
 
 
 # ─── Icons ──────────────────────────────────────────────────────────────────
@@ -287,6 +317,8 @@ def build_text_and_tooltip(
     icon_map: List[Dict[str, Any]],
     icon_pos: str,
     fallback_icon: str,
+    sunrise: str,
+    sunset: str,
 ) -> Tuple[str, str]:
     # icon for current condition
     cond_icon_raw = map_condition_icon(icon_map, cond, bool(is_day)) or fallback_icon
@@ -303,17 +335,26 @@ def build_text_and_tooltip(
     days_table = make_day_table(days, unit, precip_unit, icon_map)
 
     # header lines (no bullets)
-    location_line = f"<b>{html.escape(str(loc.get('name', 'Local')))}, {html.escape(str(loc.get('region', '')))} {html.escape(str(loc.get('country', '')))}</b>"
+    location_line = (
+        f"<b>{html.escape(str(loc.get('name', 'Local')))}, "
+        f"{html.escape(str(loc.get('region', '')))} "
+        f"{html.escape(str(loc.get('country', '')))}</b>"
+    )
     current_line = f"{cond_icon} {html.escape(cond)} {int(round(temp))}{unit} (feels {int(round(feels))}{unit})"
     now_pop = int(next_hours[0]["pop"]) if next_hours else 0
-    now_line = f"PoP {now_pop}%, Precip {precip_amt:.1f}{precip_unit}"
+
+    pop_icon_html = style_icon(icon_for_pop(now_pop))
+    now_line = f"{pop_icon_html} PoP {now_pop}%, Precip {precip_amt:.1f}{precip_unit}"
+    astro_line = ""
+    if sunrise or sunset:
+        astro_line = f"{style_icon(SUNRISE_ICON)} Sunrise {html.escape(sunrise or '—')}, {style_icon(SUNSET_ICON)} Sunset {html.escape(sunset or '—')}"
 
     tooltip = (
         f"{location_line}\n\n"
         f"{current_line}\n"
-        f"{now_line}\n\n"
-        f"<b>Next {len(next_hours)} hours</b>\n{next_hours_table}\n\n"
-        f"<b>Next Few Days</b>\n{days_table}"
+        f"{astro_line}\n{now_line}\n\n"
+        f"<b>Next {len(next_hours)} hours</b>\n\n{next_hours_table}\n\n"
+        f"<b>Next Few Days</b>\n\n{days_table}"
     )
 
     return text, tooltip
@@ -325,7 +366,7 @@ def main() -> None:
     try:
         cfg = load_config(script_path)
         unit_c: bool = safe(cfg, "unit", "Celsius") == "Celsius"
-        hours_ahead: int = int(safe(cfg, "hours_ahead", 6) or 6)
+        hours_ahead: int = int(safe(cfg, "hours_ahead", 12) or 12)
         icon_pos: str = str(safe(cfg, "icon-position", "left") or "left")
         unit: str = "°C" if unit_c else "°F"
         precip_unit: str = "mm" if unit_c else "in"
@@ -335,6 +376,7 @@ def main() -> None:
         cur = extract_current(blob, unit_c)
         next_hours = build_next_hours(blob, unit_c, cur["now_local"], hours_ahead)
         days = build_next_days(blob, unit_c, 7)
+        sunrise, sunset = get_sun_times(blob, cur["now_local"])
 
         # icons
         icon_map = load_icon_map(script_path)
@@ -356,6 +398,8 @@ def main() -> None:
             icon_map=icon_map,
             icon_pos=icon_pos,
             fallback_icon=fallback_icon,
+            sunrise=sunrise,
+            sunset=sunset,
         )
 
         provider_note = (
@@ -366,7 +410,7 @@ def main() -> None:
 
         out = {
             "text": text,
-            "tooltip": tooltip + provider_note,
+            "tooltip": tooltip,  # + provider_note
             "alt": cur["cond"],
             "class": [
                 "weather",
