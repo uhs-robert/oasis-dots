@@ -10,8 +10,8 @@
     "code": 1003,
     "day": "Partly cloudy",
     "night": "Partly cloudy",
-    "icon": "杖",
-    "icon-night": ""
+    "icon": "󰖕",
+    "icon-night": "󰼱"
   },
   {
     "code": 1006,
@@ -24,7 +24,7 @@
     "code": 1009,
     "day": "Overcast",
     "night": "Overcast",
-    "icon": "",
+    "icon": "󰖕",
     "icon-night": ""
   },
   {
