@@ -92,7 +92,6 @@ monitor_dependent() {
 
     ready() {
       # log "[Monitors] Main hook..."
-      hyprpm reload -n &
       :
     }
 
@@ -105,6 +104,8 @@ monitor_dependent() {
       log "[Monitors] After hook..."
       ~/.config/hypr/scripts/hypr-wallpaper-day-system.sh &
       hyprctl setcursor Breeze 24 & # Mouse cursor
+      hyprpm reload -n &
+      ~/.config/hypr/plugins/hypr-plugins.conf &
       :
     }
 
