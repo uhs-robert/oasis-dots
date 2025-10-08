@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# get_weather_api.py
 # waybar/.config/waybar/scripts/weather-api/get_weather_api.py
 # -*- coding: utf-8 -*-
 """
@@ -52,10 +53,13 @@ COLOR_POP_MED = "#CFA7FF"
 COLOR_POP_HIGH = "#BC85FF"
 COLOR_POP_VHIGH = "#A855F7"
 HOUR_TABLE_HEADER_TEXT: str = (
-    f"{'Hour':<4} │ {'Temp':>5} │ {'PoP':>3} │ {'Precip':>7} │ Cond"
+    f"{'Hr':<4} │ {'Temp':>5} │ {'PoP':>3} │ {'Precip':>7} │ Cond"
 )
 DAY_TABLE_HEADER_TEXT: str = (
-    f"{'Day':<9} │ {'Hi':>5} │ {'Lo':>5} │ {'PoP':>4} │ {'Precip':>8} │ Cond"
+    f"{'Day':<9} │ {'Hi':>5} │ {'Lo':>5} │ {'PoP':>4} │ {'Precip':>7} │ Cond"
+)
+DETAIL3H_HEADER_TEXT: str = (
+    f"{'Date':<9} │ {'Hr':>2} │ {'Temp':>5} │ {'PoP':>4} │ {'Precip':>7} │ Cond"
 )
 
 
@@ -308,6 +312,46 @@ def build_next_days(
     return days
 
 
+def build_next_3days_detailed(
+    blob: Dict[str, Any], unit_c: bool, now_local: datetime, num_days: int = 3
+) -> List[Dict[str, Any]]:
+    fc = blob["forecast"]["forecastday"]
+    today = now_local.strftime("%Y-%m-%d")
+
+    rows: List[Dict[str, Any]] = []
+    picked = 0
+    for d in fc:
+        date_str = str(d["date"])
+        if date_str <= today:
+            continue  # skip today and any past
+        # take this day
+        picked += 1
+        for h in d["hour"]:
+            # dt is local time per WeatherAPI
+            dt = datetime.fromtimestamp(to_int(h["time_epoch"]))
+            if dt.hour % 3 != 0:
+                continue  # downsample to 3h grid
+            rows.append(
+                {
+                    "date": date_str,
+                    "dt": dt,
+                    "temp": to_float(h["temp_c"] if unit_c else h["temp_f"]),
+                    "pop": to_int(h.get("chance_of_rain")),
+                    "precip": to_float(
+                        h.get("precip_mm") if unit_c else h.get("precip_in")
+                    ),
+                    "cond": str(h["condition"]["text"]),
+                    "is_day": 1 if to_int(h.get("is_day"), 1) == 1 else 0,
+                }
+            )
+        if picked >= num_days:
+            break
+
+    # stable ordering: by date, then time
+    rows.sort(key=lambda r: (r["date"], r["dt"]))
+    return rows
+
+
 # ─── Tables & Tooltip ───────────────────────────────────────────────────────
 def make_hour_table(next_hours, unit, precip_unit, icon_map) -> str:
     header = f"<span weight='bold'>{HOUR_TABLE_HEADER_TEXT}</span>"
@@ -354,7 +398,7 @@ def make_day_table(days, unit, precip_unit, icon_map) -> str:
         pop = max(0, min(100, int(d["pop"])))
         pop_txt = f"{pop:>3}%"
         pop_col = f"<span foreground='{pop_color(pop)}'>{pop_txt}</span>"
-        precip = float(d["precip"])
+        precip_col = f"{d['precip']:.1f} {precip_unit}".rjust(7)
         cond_txt = str(d["cond"])
         glyph = map_condition_icon(icon_map, cond_txt, True)
         icon_html = style_icon(glyph, COLOR_PRIMARY, ICON_SIZE_SM) if glyph else ""
@@ -365,7 +409,7 @@ def make_day_table(days, unit, precip_unit, icon_map) -> str:
             f"{hi_col} │ "
             f"{lo_col} │ "
             f"{pop_col} │ "
-            f"{precip:>5.1f} {precip_unit} │ "
+            f"{precip_col} │ "
             f"{cond_cell}"
         )
         out_rows.append(row)
@@ -374,6 +418,40 @@ def make_day_table(days, unit, precip_unit, icon_map) -> str:
         f"<span font_family='monospace'>{header}\n" + "\n".join(out_rows) + "</span>"
         if out_rows
         else "No daily data"
+    )
+
+
+def make_3h_table(
+    rows: List[Dict[str, Any]], unit: str, precip_unit: str, icon_map
+) -> str:
+    header = f"<span weight='bold'>{DETAIL3H_HEADER_TEXT}</span>"
+    out = []
+    for r in rows:
+        # Temp (pad then color)
+        temp_txt = f"{int(round(r['temp']))}{unit}".rjust(5)
+        temp_col = (
+            f"<span foreground='{color_for_temp(r['temp'], unit)}'>{temp_txt}</span>"
+        )
+
+        # PoP (pad then color)
+        pop_val = max(0, min(100, int(r["pop"])))
+        pop_txt = f"{pop_val:>3}%"
+        pop_col = f"<span foreground='{pop_color(pop_val)}'>{pop_txt}</span>"
+
+        precip_col = f"{float(r['precip']):.1f} {precip_unit}".rjust(7)
+
+        glyph = map_condition_icon(icon_map, str(r["cond"]), bool(r.get("is_day", 1)))
+        icon_html = style_icon(glyph, COLOR_PRIMARY, ICON_SIZE_SM) if glyph else ""
+        cond_cell = f"{icon_html} {html.escape(str(r['cond']))}".strip()
+
+        out.append(
+            f"{fmt_dow(r['date']):<9} │ {fmt_h(r['dt']):>2} │ {temp_col} │ {pop_col} │ {precip_col} │ {cond_cell}"
+        )
+
+    return (
+        f"<span font_family='monospace'>{header}\n" + "\n".join(out) + "</span>"
+        if out
+        else "No 3-hour detail"
     )
 
 
@@ -393,6 +471,7 @@ def build_text_and_tooltip(
     fallback_icon: str,
     sunrise: str,
     sunset: str,
+    next_3days_detailed: List[Dict[str, Any]],
 ) -> Tuple[str, str]:
     # icon for current condition
     cond_icon_raw = map_condition_icon(icon_map, cond, bool(is_day)) or fallback_icon
@@ -407,6 +486,7 @@ def build_text_and_tooltip(
     # tables
     next_hours_table = make_hour_table(next_hours, unit, precip_unit, icon_map)
     days_table = make_day_table(days, unit, precip_unit, icon_map)
+    three_hour_table = make_3h_table(next_3days_detailed, unit, precip_unit, icon_map)
 
     # header lines (no bullets)
     location_line = (
@@ -437,7 +517,8 @@ def build_text_and_tooltip(
         f"{current_line}\n"
         f"{astro_line}\n{now_line}\n\n"
         f"<b>{style_icon('', COLOR_PRIMARY, ICON_SIZE_SM)} Next {len(next_hours)} hours</b>\n\n{next_hours_table}\n\n"
-        f"<b>{style_icon('󰨳', COLOR_PRIMARY, ICON_SIZE_SM)} Next Few Days</b>\n\n{days_table}"
+        f"<b>{style_icon('󰨳', COLOR_PRIMARY, ICON_SIZE_SM)} Next Few Days</b>\n\n{days_table}\n\n"
+        f"<b>{style_icon('󰃰', COLOR_PRIMARY, ICON_SIZE_SM)} Next 2 Days (every 3 hours)</b>\n\n{three_hour_table}"
     )
 
     return text, tooltip
@@ -449,7 +530,7 @@ def main() -> None:
     try:
         cfg = load_config(script_path)
         unit_c: bool = safe(cfg, "unit", "Celsius") == "Celsius"
-        hours_ahead: int = int(safe(cfg, "hours_ahead", 12) or 12)
+        hours_ahead: int = int(safe(cfg, "hours_ahead", 24) or 24)
         icon_pos: str = str(safe(cfg, "icon-position", "left") or "left")
         unit: str = "°C" if unit_c else "°F"
         precip_unit: str = "mm" if unit_c else "in"
@@ -459,6 +540,9 @@ def main() -> None:
         cur = extract_current(blob, unit_c)
         next_hours = build_next_hours(blob, unit_c, cur["now_local"], hours_ahead)
         days = build_next_days(blob, unit_c, 7)
+        next_3days_detailed = build_next_3days_detailed(
+            blob, unit_c, cur["now_local"], num_days=3
+        )
         sunrise, sunset = get_sun_times(blob, cur["now_local"])
 
         # icons
@@ -483,6 +567,7 @@ def main() -> None:
             fallback_icon=fallback_icon,
             sunrise=sunrise,
             sunset=sunset,
+            next_3days_detailed=next_3days_detailed,
         )
 
         provider_note = (
