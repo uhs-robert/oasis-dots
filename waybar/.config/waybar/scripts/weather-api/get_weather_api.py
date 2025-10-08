@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# get_weather_api.py
 # waybar/.config/waybar/scripts/weather-api/get_weather_api.py
 # -*- coding: utf-8 -*-
 """
@@ -21,6 +20,7 @@ Config file (same dir): weather_settings.json
 
 from __future__ import annotations
 
+import sys
 import html
 import json
 import os
@@ -52,8 +52,11 @@ COLOR_POP_LOW = "#EAD7FF"
 COLOR_POP_MED = "#CFA7FF"
 COLOR_POP_HIGH = "#BC85FF"
 COLOR_POP_VHIGH = "#A855F7"
+COLOR_DIVIDER = "#2B3B57"
+DIVIDER_CHAR = "─"
+DIVIDER_LEN = 74
 HOUR_TABLE_HEADER_TEXT: str = (
-    f"{'Hr':<4} │ {'Temp':>5} │ {'PoP':>3} │ {'Precip':>7} │ Cond"
+    f"{'Hr':<4} │ {'Temp':>5} │ {'PoP':>4} │ {'Precip':>7} │ Cond"
 )
 DAY_TABLE_HEADER_TEXT: str = (
     f"{'Day':<9} │ {'Hi':>5} │ {'Lo':>5} │ {'PoP':>4} │ {'Precip':>7} │ Cond"
@@ -61,6 +64,7 @@ DAY_TABLE_HEADER_TEXT: str = (
 DETAIL3H_HEADER_TEXT: str = (
     f"{'Date':<9} │ {'Hr':>2} │ {'Temp':>5} │ {'PoP':>4} │ {'Precip':>7} │ Cond"
 )
+ASTRO3D_HEADER_TEXT: str = f"{'Date':<9} │ {'Rise':>5} │ {'Set':>5}"
 
 
 # ─── Utilities ──────────────────────────────────────────────────────────────
@@ -71,6 +75,13 @@ def safe(d: Dict[str, Any], k: str, default: Any = None) -> Any:
 def load_json(path: str) -> Any:
     with open(path, "r", encoding="utf-8") as f:
         return json.load(f)
+
+
+def divider(
+    length: int = DIVIDER_LEN, char: str = DIVIDER_CHAR, color: str = COLOR_DIVIDER
+) -> str:
+    line = char * max(1, length)
+    return f"<span font_family='monospace' foreground='{color}'>{line}</span>"
 
 
 def to_int(val: Any, default: int = 0) -> int:
@@ -166,6 +177,68 @@ def pop_color(pop: int) -> str:
     if pop < 80:
         return COLOR_POP_HIGH  # 60–79
     return COLOR_POP_VHIGH  # 80–100
+
+
+def _mode_file() -> str:
+    state_home = os.environ.get("XDG_STATE_HOME", os.path.expanduser("~/.local/state"))
+    d = os.path.join(state_home, "waybar")
+    os.makedirs(d, exist_ok=True)
+    return os.path.join(d, "weather_mode")
+
+
+def get_mode() -> str:
+    try:
+        with open(_mode_file(), "r", encoding="utf-8") as f:
+            m = f.read().strip()
+            return m if m in {"default", "weekview"} else "default"
+    except Exception:
+        return "default"
+
+
+def set_mode(m: str) -> None:
+    with open(_mode_file(), "w", encoding="utf-8") as f:
+        f.write(m)
+
+
+def cycle_mode(direction: str = "next") -> None:
+    modes = ["default", "weekview"]
+    cur = get_mode()
+    i = modes.index(cur) if cur in modes else 0
+    if direction == "prev":
+        i = (i - 1) % len(modes)
+    else:  # next/toggle
+        i = (i + 1) % len(modes)
+    set_mode(modes[i])
+
+
+def build_astro_by_date(blob: Dict[str, Any]) -> Dict[str, Tuple[str, str]]:
+    """Map 'YYYY-MM-DD' -> (sunrise_24h, sunset_24h) for all forecast days."""
+    out: Dict[str, Tuple[str, str]] = {}
+    for d in safe(safe(blob, "forecast", {}), "forecastday", []):
+        date_str = str(safe(d, "date", ""))
+        astro = safe(d, "astro", {})
+        sr = _fmt_astro_24h(str(safe(astro, "sunrise", "")))
+        ss = _fmt_astro_24h(str(safe(astro, "sunset", "")))
+        out[date_str] = (sr, ss)
+    return out
+
+
+def make_astro3d_table(
+    rows: List[Dict[str, Any]], astro_by_date: Dict[str, Tuple[str, str]]
+) -> str:
+    """Build a compact table for sunrise/sunset for the dates present in rows."""
+    header = f"<span weight='bold'>{ASTRO3D_HEADER_TEXT}</span>"
+    dates = sorted({str(r["date"]) for r in rows})
+    lines = []
+    for date in dates:
+        sr, ss = astro_by_date.get(date, ("", ""))
+        sr, ss = (sr or "—")[:5], (ss or "—")[:5]
+        lines.append(f"{fmt_dow(date):<9} │ {sr:>5} │ {ss:>5}")
+    return (
+        f"<span font_family='monospace'>{header}\n" + "\n".join(lines) + "</span>"
+        if lines
+        else "No sunrise/sunset data"
+    )
 
 
 # ─── Icons ──────────────────────────────────────────────────────────────────
@@ -363,7 +436,7 @@ def make_hour_table(next_hours, unit, precip_unit, icon_map) -> str:
             f"<span foreground='{color_for_temp(h['temp'], unit)}'>{temp_txt}</span>"
         )
 
-        pop_txt = f"{int(h['pop'])}%".rjust(3)
+        pop_txt = f"{int(h['pop'])}%".rjust(4)
         pop_col = f"<span foreground='{pop_color(h['pop'])}'>{pop_txt}</span>"
         precip_col = f"{h['precip']:.1f} {precip_unit}".rjust(7)
         glyph = map_condition_icon(icon_map, str(h["cond"]), bool(h.get("is_day", 1)))
@@ -455,6 +528,111 @@ def make_3h_table(
     )
 
 
+def build_header_block(
+    loc: Dict[str, Any],
+    cond: str,
+    temp: float,
+    feels: float,
+    unit: str,
+    icon_map: List[Dict[str, Any]],
+    is_day: int,
+    fallback_icon: str,
+    sunrise: str | None = None,
+    sunset: str | None = None,
+    now_pop: int | None = None,
+    precip_amt: float | None = None,
+    precip_unit: str = "",
+) -> str:
+    """Returns the exact same top block used by all tooltips."""
+    location_line = (
+        f"<b>{html.escape(str(loc.get('name', 'Local')))}, "
+        f"{html.escape(str(loc.get('region', '')))} "
+        f"{html.escape(str(loc.get('country', '')))}</b>"
+    )
+
+    # current conditions + colored thermometer
+    tglyph, tcolor = thermometer_for_temp(temp, unit)
+    current_line = (
+        f"{style_icon(map_condition_icon(icon_map, cond, bool(is_day)) or fallback_icon)} "
+        f"{html.escape(cond)} | {style_icon(tglyph, tcolor)}{int(round(temp))}{unit} "
+        f"(feels {int(round(feels))}{unit})"
+    )
+
+    # optional sunrise/sunset
+    astro_line = ""
+    if sunrise or sunset:
+        astro_line = (
+            f"{style_icon(SUNRISE_ICON)} Sunrise {html.escape(sunrise or '—')} | "
+            f"{style_icon(SUNSET_ICON)} Sunset {html.escape(sunset or '—')}"
+        )
+
+    # optional “now” precip / PoP (colored)
+    now_line = ""
+    if now_pop is not None and precip_amt is not None and precip_unit:
+        pop_icon_html = style_icon(icon_for_pop(now_pop), pop_color(now_pop))
+        now_pop_col = f"<span foreground='{pop_color(now_pop)}'>{int(now_pop)}%</span>"
+        now_line = (
+            f"{pop_icon_html} PoP {now_pop_col}, Precip {precip_amt:.1f}{precip_unit}"
+        )
+
+    parts = [location_line, "", current_line]
+    if astro_line:
+        parts.append(astro_line)
+    if now_line:
+        parts.append(now_line)
+    parts.append(f"\n{divider()}\n")
+    return "\n".join(parts)
+
+
+def build_week_view_tooltip(
+    loc: Dict[str, Any],
+    cond: str,
+    temp: float,
+    feels: float,
+    unit: str,
+    icon_map: List[Dict[str, Any]],
+    is_day: int,
+    fallback_icon: str,
+    three_hour_rows: List[Dict[str, Any]],
+    precip_unit: str,
+    sunrise: str | None = None,
+    sunset: str | None = None,
+    now_pop: int | None = None,
+    precip_amt: float | None = None,
+    astro_by_date: Dict[str, Tuple[str, str]] | None = None,  # ← NEW
+) -> str:
+    header_block = build_header_block(
+        loc=loc,
+        cond=cond,
+        temp=temp,
+        feels=feels,
+        unit=unit,
+        icon_map=icon_map,
+        is_day=is_day,
+        fallback_icon=fallback_icon,
+        sunrise=sunrise,
+        sunset=sunset,
+        now_pop=now_pop,
+        precip_amt=precip_amt,
+        precip_unit=precip_unit,
+    )
+
+    astro_table = make_astro3d_table(three_hour_rows, astro_by_date or {})
+    astro_header = f"<b>{style_icon(SUNRISE_ICON, COLOR_PRIMARY, ICON_SIZE_SM)} Week Sunrise / Sunset</b>"
+
+    detail_header = (
+        f"<b>{style_icon('󰨳', COLOR_PRIMARY, ICON_SIZE_SM)} Week Details</b>"
+    )
+    detail_table = make_3h_table(three_hour_rows, unit, precip_unit, icon_map)
+
+    return (
+        f"{header_block}\n"
+        f"{astro_header}\n\n{astro_table}\n\n{divider()}\n\n"
+        f"{detail_header}\n\n"
+        f"{detail_table}"
+    )
+
+
 def build_text_and_tooltip(
     loc: Dict[str, Any],
     cond: str,
@@ -471,11 +649,9 @@ def build_text_and_tooltip(
     fallback_icon: str,
     sunrise: str,
     sunset: str,
-    next_3days_detailed: List[Dict[str, Any]],
 ) -> Tuple[str, str]:
     # icon for current condition
     cond_icon_raw = map_condition_icon(icon_map, cond, bool(is_day)) or fallback_icon
-    cond_icon = style_icon(cond_icon_raw)
 
     # main text with waybar icon
     waybar_icon = style_icon(cond_icon_raw, COLOR_PRIMARY, ICON_SIZE_SM)
@@ -485,40 +661,28 @@ def build_text_and_tooltip(
 
     # tables
     next_hours_table = make_hour_table(next_hours, unit, precip_unit, icon_map)
-    days_table = make_day_table(days, unit, precip_unit, icon_map)
-    three_hour_table = make_3h_table(next_3days_detailed, unit, precip_unit, icon_map)
+    next_days_overview_table = make_day_table(days, unit, precip_unit, icon_map)
 
-    # header lines (no bullets)
-    location_line = (
-        f"<b>{html.escape(str(loc.get('name', 'Local')))}, "
-        f"{html.escape(str(loc.get('region', '')))} "
-        f"{html.escape(str(loc.get('country', '')))}</b>"
+    header_block = build_header_block(
+        loc=loc,
+        cond=cond,
+        temp=temp,
+        feels=feels,
+        unit=unit,
+        icon_map=icon_map,
+        is_day=is_day,
+        fallback_icon=fallback_icon,
+        sunrise=sunrise,
+        sunset=sunset,
+        now_pop=int(next_hours[0]["pop"]) if next_hours else None,
+        precip_amt=precip_amt,
+        precip_unit=precip_unit,
     )
-    thermo_glyph, thermo_color = thermometer_for_temp(temp, unit)
-    thermo_icon = style_icon(thermo_glyph, thermo_color)
-    current_line = (
-        f"{cond_icon} {html.escape(cond)} | "
-        f"{thermo_icon}{int(round(temp))}{unit} "
-        f"(feels {int(round(feels))}{unit})"
-    )
-    now_pop = int(next_hours[0]["pop"]) if next_hours else 0
-    pop_icon_html = style_icon(icon_for_pop(now_pop), pop_color(now_pop))
-    now_pop_col = f"<span foreground='{pop_color(now_pop)}'>{now_pop}%</span>"
-    now_line = (
-        f"{pop_icon_html} PoP {now_pop_col}, Precip {precip_amt:.1f}{precip_unit}"
-    )
-
-    astro_line = ""
-    if sunrise or sunset:
-        astro_line = f"{style_icon(SUNRISE_ICON)} Sunrise {html.escape(sunrise or '—')} | {style_icon(SUNSET_ICON)} Sunset {html.escape(sunset or '—')}"
 
     tooltip = (
-        f"{location_line}\n\n"
-        f"{current_line}\n"
-        f"{astro_line}\n{now_line}\n\n"
-        f"<b>{style_icon('', COLOR_PRIMARY, ICON_SIZE_SM)} Next {len(next_hours)} hours</b>\n\n{next_hours_table}\n\n"
-        f"<b>{style_icon('󰨳', COLOR_PRIMARY, ICON_SIZE_SM)} Next Few Days</b>\n\n{days_table}\n\n"
-        f"<b>{style_icon('󰃰', COLOR_PRIMARY, ICON_SIZE_SM)} Next 2 Days (every 3 hours)</b>\n\n{three_hour_table}"
+        f"{header_block}\n"
+        f"<b>{style_icon('', COLOR_PRIMARY, ICON_SIZE_SM)} Next {len(next_hours)} hours</b>\n\n{next_hours_table}\n\n{divider()}\n\n"
+        f"<b>{style_icon('󰨳', COLOR_PRIMARY, ICON_SIZE_SM)} Week Overview</b>\n\n{next_days_overview_table}"
     )
 
     return text, tooltip
@@ -526,9 +690,24 @@ def build_text_and_tooltip(
 
 # ─── Main runner ────────────────────────────────────────────────────────────
 def main() -> None:
+    # quick mode ops (no network)
+    if len(sys.argv) > 1:
+        a = sys.argv[1]
+        if a in ("--next", "--toggle"):
+            cycle_mode("next")
+            return
+        if a == "--prev":
+            cycle_mode("prev")
+            return
+        if a == "--set" and len(sys.argv) > 2:
+            set_mode(sys.argv[2])
+            return
+
     script_path = os.path.dirname(os.path.realpath(__file__))
+
     try:
         cfg = load_config(script_path)
+        mode = get_mode()
         unit_c: bool = safe(cfg, "unit", "Celsius") == "Celsius"
         hours_ahead: int = int(safe(cfg, "hours_ahead", 24) or 24)
         icon_pos: str = str(safe(cfg, "icon-position", "left") or "left")
@@ -537,6 +716,7 @@ def main() -> None:
 
         # data
         blob = fetch_weatherapi_forecast(str(cfg["key"]), str(cfg["parameters"]))
+        astro_by_date = build_astro_by_date(blob)
         cur = extract_current(blob, unit_c)
         next_hours = build_next_hours(blob, unit_c, cur["now_local"], hours_ahead)
         days = build_next_days(blob, unit_c, 7)
@@ -551,7 +731,8 @@ def main() -> None:
             map_condition_icon(icon_map, cur["cond"], bool(cur["is_day"])) or ""
         )
 
-        text, tooltip = build_text_and_tooltip(
+        # Default tooltip (compact)
+        text_default, tooltip_default = build_text_and_tooltip(
             loc=cur["loc"],
             cond=cur["cond"],
             temp=cur["temp"],
@@ -567,14 +748,45 @@ def main() -> None:
             fallback_icon=fallback_icon,
             sunrise=sunrise,
             sunset=sunset,
-            next_3days_detailed=next_3days_detailed,
         )
 
-        provider_note = (
-            ""
-            if len(days) >= 7
-            else "\n\n<i>(Only 3 days returned by WeatherAPI free plan)</i>"
+        # Detail tooltip (3-hour view)
+        tooltip_week_view = build_week_view_tooltip(
+            loc=cur["loc"],
+            cond=cur["cond"],
+            temp=cur["temp"],
+            feels=cur["feels"],
+            unit=unit,
+            icon_map=icon_map,
+            is_day=cur["is_day"],
+            fallback_icon=fallback_icon,
+            three_hour_rows=next_3days_detailed,
+            precip_unit=precip_unit,
+            sunrise=sunrise,
+            sunset=sunset,
+            now_pop=int(next_hours[0]["pop"]) if next_hours else None,
+            precip_amt=cur["precip_amt"],
+            astro_by_date=astro_by_date,
         )
+
+        text = text_default
+        tooltip = tooltip_week_view if mode == "weekview" else tooltip_default
+
+        classes = [
+            "weather",
+            "mode-weekview" if mode == "weekview" else "mode-default",
+            "pop-high"
+            if (next_hours and int(next_hours[0]["pop"]) >= 60)
+            else "pop-low",
+        ]
+
+        out = {"text": text, "tooltip": tooltip, "alt": cur["cond"], "class": classes}
+
+        # provider_note = (
+        #     ""
+        #     if len(days) >= 7
+        #     else "\n\n<i>(Only 3 days returned by WeatherAPI free plan)</i>"
+        # )
 
         out = {
             "text": text,

@@ -353,7 +353,11 @@
     "exec": "python -O ~/.config/waybar/scripts/weather-api/get_weather_api.py",
     "return-type": "json",
     "markup": true,
-    "tooltip": true
+    "tooltip": true,
+    "on-scroll-up": "~/.config/waybar/scripts/weather-api/get_weather_api.py --next  && pkill -RTMIN+5 waybar",
+    "on-scroll-down": "~/.config/waybar/scripts/weather-api/get_weather_api.py --prev  && pkill -RTMIN+5 waybar",
+    "on-click": "~/.config/waybar/scripts/weather-api/get_weather_api.py --toggle && pkill -RTMIN+5 waybar",
+    "on-click-right": "~/.config/waybar/scripts/weather-api/get_weather_api.py --toggle && pkill -RTMIN+5 waybar"
     // "on-click": "hyprpanel t calendarmenu",
   }
 }
