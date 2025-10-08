@@ -20,9 +20,9 @@ window#waybar {
 
 tooltip {
   border-radius: 10px;
-  background: #1a283f;
+  background: #14181c;
   color: #d9e6fa;
-  border: 1px solid #22385c;
+  border: 1px solid #1a283f;
   box-shadow: 0 6px 30px rgba(0, 0, 0, 0.35);
 }
 
