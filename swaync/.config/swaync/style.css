@@ -1,11 +1,12 @@
 /* swaync/.config/swaync/style.css */
 
-@define-color bg_core #101825;
-@define-color bg_shadow #0F1522;
-@define-color bg_mantle #1a283f;
-@define-color bg_crust #203557;
-@define-color bg_surface #22385c;
+@define-color bg_core #101418;
+@define-color bg_shadow #0C1014;
+@define-color bg_mantle #14181C;
+@define-color bg_crust #101922;
+@define-color bg_surface #1C242C;
 @define-color fg_core #d9e6fa;
+@define-color border #1a283f;
 
 @define-color mpris-album-art-overlay rgba(0, 0, 0, 0.55);
 @define-color mpris-crust-hover rgba(0, 0, 0, 0.50);
@@ -38,7 +39,7 @@
   background-color: @bg_core;
   color: @fg_core;
   padding: 12px;
-  border: 1px solid @primary;
+  border: 1px solid @border;
 }
 
 /* Notification Center Title */
