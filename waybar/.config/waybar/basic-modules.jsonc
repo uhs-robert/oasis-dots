@@ -266,7 +266,7 @@
     "menu": "on-click",
     "menu-file": "/home/USER/.config/waybar/custom_modules/start_menu.xml",
     "menu-actions": {
-      "allapps": "wofi --show drun",
+      "allapps": "~/.config/waybar/scripts/app-launcher.sh",
       "web": "hyprctl dispatch exec firefox",
       "code": "kitty -e nvim",
       "files": "kitty -e yazi",

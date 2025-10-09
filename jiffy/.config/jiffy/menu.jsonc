@@ -1,0 +1,29 @@
+{
+  "Power Menu": [
+    {
+      "name": "Shutdown",
+      "exec": "shutdown -P now",
+      "description": "System shutdown.",
+    },
+    {
+      "name": "Sleep",
+      "exec": "shutdown -H now",
+      "description": "System sleep.",
+    },
+    {
+      "name": "Reboot",
+      "exec": "shutdown -r now",
+      "description": "System reboot.",
+    },
+    {
+      "name": "Logout",
+      "exec": "hyprctl dispatch exit",
+      "description": "Log out.",
+    },
+    {
+      "name": "Lock",
+      "exec": "hyprlock",
+      "description": "Lock system.",
+    },
+  ],
+}
