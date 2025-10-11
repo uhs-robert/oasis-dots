@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
-# screenshot.sh
+# hypr/.config/hypr/scripts/screenshot.sh
 
 # Screenshot/Recording utility for Hyprland using Satty, Hyprshot, and hyprpicker
 
 set -e
 
 ### CONFIG ###
-MENU=(wofi --dmenu --columns 1 --width 50% --prompt "Take Screenshot or Record?")
+MENU=(rofi -dmenu --columns 1 --width 50% --prompt "Take Screenshot or Record?")
 RECORDER="wf-recorder"
 SCREENSHOT_DIR="${XDG_PICTURES_DIR:-$HOME/Pictures}/Screenshots"
 RECORDING_DIR="${XDG_VIDEOS_DIR:-$HOME/Videos}/Recordings"

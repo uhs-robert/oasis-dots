@@ -1,0 +1,16 @@
+/**
+ *
+ * Author : Robert Hill (uhs-robert)
+ * Github : @uhs-robert
+ *
+ * Colors
+ **/
+
+* {
+    background:     #101418FF;
+    background-alt: #1C242CFF;
+    foreground:     #DEE4F0FF;
+    selected:       #42A5F5FF;
+    active:         #F0E68CFF;
+    urgent:         #cd5c5cFF;
+}

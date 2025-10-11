@@ -1,0 +1,12 @@
+/**
+ *
+ * Author : Robert Hill (uhs-robert)
+ * Github : @uhs-robert
+ *
+ * Fonts
+ *
+ **/
+
+* {
+    font: "ProFont IIx Nerd Font 10";
+}

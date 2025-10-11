@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# hypr/.config/hypr/scripts/keybind-help-launcher.sh
 
 HYPRCONF="$HOME/.config/hypr/hyprland.conf"
 KEYMAP_DIR="$HOME/.config/hypr/keymaps"
@@ -29,7 +30,7 @@ mapfile -t OPTIONS < <(
 )
 
 # Prompt the user
-CHOICE=$(printf "%s\n" "${OPTIONS[@]}" | wofi --dmenu -p "Run keybind command")
+CHOICE=$(printf "%s\n" "${OPTIONS[@]}" | rofi -dmenu -p "Run keybind command")
 [[ -z "$CHOICE" ]] && exit 0
 
 # Extract command after the arrow
