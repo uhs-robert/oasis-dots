@@ -1,6 +1,14 @@
 {
-  "selectedAuthType": "oauth-personal",
-  "vimMode": true,
-  "preferredEditor": "neovim",
-  "theme": "GitHub"
+  "general": {
+    "preferredEditor": "neovim",
+    "vimMode": true
+  },
+  "security": {
+    "auth": {
+      "selectedType": "oauth-personal"
+    }
+  },
+  "ui": {
+    "theme": "Ayu"
+  }
 }
