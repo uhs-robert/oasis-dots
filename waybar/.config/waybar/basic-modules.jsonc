@@ -266,7 +266,7 @@
     "menu": "on-click",
     "menu-file": "/home/USER/.config/waybar/custom_modules/start_menu.xml",
     "menu-actions": {
-      "allapps": "~/.config/waybar/scripts/app-launcher.sh",
+      "allapps": "~/.config/rofi/launchers/type-1/launcher.sh",
       "web": "hyprctl dispatch exec firefox",
       "code": "kitty -e nvim",
       "files": "kitty -e yazi",

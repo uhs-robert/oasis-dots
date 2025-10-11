@@ -10,9 +10,15 @@
       "hyprland/workspaces"
       // "hyprland/window"
     ],
-    "modules-center": ["clock"],
-    //"modules-center": ["clock", "custom/weather"],
-    "modules-right": ["temperature", "cpu", "memory", "custom/notifications"]
+    // "modules-center": ["clock"],
+    "modules-center": ["clock", "custom/weather"],
+    "modules-right": [
+      "custom/updates",
+      "temperature",
+      "cpu",
+      "memory",
+      "custom/notifications"
+    ]
   },
   // All the others
   {
@@ -22,9 +28,9 @@
     "modules-left": [
       "custom/startmenu",
       "hyprland/workspaces",
+      // "hyprland/window"
       "mpris",
       "custom/cava"
-      // "hyprland/window"
     ],
     // "modules-left": ["custom/startmenu", "hyprland/workspaces"],
     "modules-center": ["clock", "custom/weather"],
