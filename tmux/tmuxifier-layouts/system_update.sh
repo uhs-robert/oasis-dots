@@ -9,7 +9,7 @@ fi
 
 # Create session with specified name if it does not already exist. If no
 # argument is given, session name will be based on layout file name.
-if initialize_session "uphill"; then
+if initialize_session "UPDATE"; then
   new_window ""
   run_cmd "cd $session_root"
   run_cmd "sysup"

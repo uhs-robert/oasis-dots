@@ -10,7 +10,7 @@ fi
 
 # Create session with specified name if it does not already exist. If no
 # argument is given, session name will be based on layout file name.
-if initialize_session "config"; then
+if initialize_session "CONFIG"; then
   new_window ""
   run_cmd "cd $session_root"
   run_cmd "yazi"
