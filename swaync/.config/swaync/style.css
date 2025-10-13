@@ -1,3 +1,4 @@
+/* style.css */
 /* swaync/.config/swaync/style.css */
 
 @define-color bg_core #101418;
@@ -124,7 +125,7 @@ trough {
 
 .notification.low progress,
 .notification.normal progress {
-  background-color: @teal;
+  background-color: @primary;
 }
 
 /*
@@ -279,16 +280,16 @@ trough {
 * Notifications (Control Center)
 */
 .control-center .notification-row .notification-background {
-  border-radius: 8px;
+  border-radius: 4px;
   margin: 8px 0;
   background-color: @bg_mantle;
   color: @tfg_core;
-  border: 1px solid @primary;
+  border: 1px solid @yellow;
 }
 
 .control-center .notification-row .notification-background .notification {
   padding: 8px;
-  border-radius: 8px;
+  border-radius: 4px;
 }
 
 .control-center
@@ -323,8 +324,8 @@ trough {
   .notification
   .notification-content
   .body {
-  margin: 8px;
-  color: @teal;
+  margin: 4px;
+  color: @primary;
 }
 
 .control-center
@@ -344,6 +345,7 @@ trough {
   > *
   .notification-action {
   padding: 4px;
+  margin: 4px;
   border-radius: 8px;
   color: @fg_core;
   background-color: @bg_surface;
@@ -397,10 +399,10 @@ trough {
 }
 
 .floating-notifications.background .notification-row .notification-background {
-  border-radius: 8px;
+  border-radius: 4px;
   background-color: @bg_core;
   color: @fg_core;
-  border: 1px solid @primary;
+  border: 1px solid @yellow;
 }
 
 .floating-notifications.background
@@ -408,7 +410,7 @@ trough {
   .notification-background
   .notification {
   padding: 8px;
-  border-radius: 8px;
+  border-radius: 4px;
 }
 
 .floating-notifications.background
@@ -436,7 +438,7 @@ trough {
   .notification-content
   .body {
   margin: 8px;
-  color: @teal;
+  color: @primary;
 }
 
 .floating-notifications.background
@@ -455,7 +457,9 @@ trough {
   > *:last-child
   > *
   .notification-action {
-  border-radius: 8px;
+  border-radius: 4px;
+  margin: 4px;
+  padding: 4px;
   color: @fg_core;
   background-color: @bg_mantle;
   border: 1px solid @primary;
