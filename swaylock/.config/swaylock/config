@@ -2,7 +2,7 @@ daemonize
 show-failed-attempts
 clock
 screenshot
-effect-pixelate=6
+effect-pixelate=8
 effect-vignette=0.25:0.6
 font=GohuFont 11 Nerd Font
 indicator
