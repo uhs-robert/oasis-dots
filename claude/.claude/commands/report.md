@@ -7,12 +7,12 @@ description: Generate concise development activity reports in chronological orde
 
 The agent calling this tool should first determine the TIMEFRAME.
 
-1. Try to get the modification date of 'session-report.md'.
-2. If it doesn't exist, or if no specific timeframe is given, use a default like "24 hours ago".
-3. Then, pass that value in the TIMEFRAME variable.
+1. Get the modification date of `session-report.md`; this is the default TIMEFRAME.
+2. If `session-report.md` does not exist AND the user did not provide a specific timeframe then the default TIMEFRAME should instead be "24 hours ago".
 
-- Recent commits by time: !`git log --since="${TIMEFRAME:-24 hours ago}" --oneline --reverse`
-- Detailed commit info: !`git log --since="${TIMEFRAME:-24 hours ago}" --stat --reverse`
+- Get modification date: `stat -c %y session-report.md`
+- Recent commits by time: !`git log --since="${TIMEFRAME}" --oneline --reverse`
+- Detailed commit info: !`git log --since="${TIMEFRAME}" --stat --reverse`
 - Current branch status: !`git status --short`
 - Staged changes: !`git diff --cached --name-only`
 - File sizes for new assets: !`ls -lah` (when relevant)
@@ -70,16 +70,21 @@ The command accepts an optional argument string that may include:
 **Always overwrite/create `session-report.md`** with this structure:
 
 ```
-[Descriptive Title About Work Accomplished]
+[Descriptive Summary Title About Work Accomplished]
 
 ## [Section Name]
+
+[Optional: context paragraph for complex changes]
 
 - [Concise bullet point description]
 - [Another change description]
 
 ## [Another Section]
 
-[Optional context paragraph for complex changes]
+[Optional: context paragraph for complex changes]
+
+- [Concise bullet point description]
+- [Another change description]
 
 ### [Subsection if needed]
 
@@ -88,7 +93,7 @@ The command accepts an optional argument string that may include:
 
 ## Impact
 
-[Brief summary of overall changes and their purpose]
+[Optional: Brief summary of overall changes and their purpose if applicable]
 ```
 
 ## Formatting Requirements
@@ -103,8 +108,8 @@ The command accepts an optional argument string that may include:
 
 ## Examples
 
-Good section title: "PDF Generation System Enhancement"
+Good section title: "End-of-Month Job Fix: Duplicate Record Prevention"
 Bad section title: "Bug Fixes"
 
-Good bullet: "Added MaterialIcons-TranscriptPDF.ttf font (1.8KB) for PDF optimization"
+Good bullet: "Added MaterialIcons-TranscriptPDF.ttf font (1.8KB) for PDF size optimization"
 Bad bullet: "Added font file"
