@@ -350,14 +350,14 @@
 
   "custom/weather": {
     "interval": 900, // in seconds = 15 minutes
-    "exec": "python -O ~/.config/waybar/scripts/weather-api/get_weather_api.py",
+    "exec": "~/.config/waybar/scripts/weather-api/get_weather.rb",
     "return-type": "json",
     "markup": true,
     "tooltip": true,
-    "on-scroll-up": "~/.config/waybar/scripts/weather-api/get_weather_api.py --next  && pkill -RTMIN+5 waybar",
-    "on-scroll-down": "~/.config/waybar/scripts/weather-api/get_weather_api.py --prev  && pkill -RTMIN+5 waybar",
-    "on-click": "~/.config/waybar/scripts/weather-api/get_weather_api.py --toggle && pkill -RTMIN+5 waybar",
-    "on-click-right": "~/.config/waybar/scripts/weather-api/get_weather_api.py --toggle && pkill -RTMIN+5 waybar"
+    "on-scroll-up": "~/.config/waybar/scripts/weather-api/get_weather.rb --next  && pkill -RTMIN+5 waybar",
+    "on-scroll-down": "~/.config/waybar/scripts/weather-api/get_weather.rb --prev  && pkill -RTMIN+5 waybar",
+    "on-click": "~/.config/waybar/scripts/weather-api/get_weather.rb --toggle && pkill -RTMIN+5 waybar",
+    "on-click-right": "~/.config/waybar/scripts/weather-api/get_weather.rb --toggle && pkill -RTMIN+5 waybar"
     // "on-click": "hyprpanel t calendarmenu",
   }
 }
