@@ -305,7 +305,7 @@
   },
 
   "custom/cava": {
-    "exec": "CAVA_BARS=6 CAVA_STYLE=blocks CAVA_GAP=$'\\u202F' python3 ~/.config/waybar/scripts/cava_waybar.py 2>/dev/null",
+    "exec": "CAVA_BARS=6 CAVA_STYLE=blocks CAVA_GAP=$'\\u202F' exec ~/.config/waybar/scripts/cava_waybar.rb",
     "return-type": "json",
     "escape": false,
     "hide-empty-text": true,
@@ -318,7 +318,7 @@
   },
 
   "custom/updates": {
-    "exec": "UPDATES_TTL_MIN=30 python3 ~/.config/waybar/scripts/fedora_updates.py",
+    "exec": "UPDATES_TTL_MIN=30 exec ~/.config/waybar/scripts/fedora_updates.rb",
     "return-type": "json",
     "interval": 900, // in seconds = 15min
     "format": "<span size='12000' color='peru'> </span>{text}",
@@ -350,7 +350,7 @@
 
   "custom/weather": {
     "interval": 900, // in seconds = 15 minutes
-    "exec": "~/.config/waybar/scripts/weather-api/get_weather.rb",
+    "exec": "exec ~/.config/waybar/scripts/weather-api/get_weather.rb",
     "return-type": "json",
     "markup": true,
     "tooltip": true,
