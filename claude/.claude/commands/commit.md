@@ -8,7 +8,7 @@ description: Create a conventional commit from current changes
 - Status: !`git status`
 - Branch: !`git branch --show-current`
 - Recent: !`git log --oneline -10`
-- Diff: !`git diff HEAD`
+- Staged diff: !`git diff --cached`
 
 ## Task
 
