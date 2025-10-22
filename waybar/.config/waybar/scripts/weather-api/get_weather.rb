@@ -30,6 +30,7 @@ COLOR_PRIMARY = '#42A5F5'
 ICON_SIZE = '14000' # pango units; ~14pt
 ICON_SIZE_LG = '18000'
 ICON_SIZE_SM = '12000'
+SEASONAL_BIAS = ENV.fetch('SEASONAL_BIAS', '1') == '1'
 
 POP_ALERT_THRESHOLD = 60
 POP_ICON_HIGH = ''
@@ -46,18 +47,6 @@ COLOR_COLD = 'skyblue'
 COLOR_NEUTRAL = COLOR_PRIMARY
 COLOR_WARM = 'khaki'
 COLOR_HOT = 'indianred'
-THERMO_BANDS = {
-  c: [
-    [5,  THERMO_COLD,    COLOR_COLD],
-    [20, THERMO_NEUTRAL, COLOR_NEUTRAL],
-    [28, THERMO_WARM,    COLOR_WARM]
-  ],
-  f: [
-    [41, THERMO_COLD,    COLOR_COLD],
-    [68, THERMO_NEUTRAL, COLOR_NEUTRAL],
-    [82, THERMO_WARM,    COLOR_WARM]
-  ]
-}.freeze
 
 COLOR_POP_LOW = '#EAD7FF'
 COLOR_POP_MED = '#CFA7FF'
@@ -88,28 +77,53 @@ def divider(length = DIVIDER_LEN, char = DIVIDER_CHAR, color = COLOR_DIVIDER)
 end
 
 def to_int(val, default = 0)
-  Integer(val)
-rescue ArgumentError, TypeError
-  begin
-    Integer(Float(val))
-  rescue ArgumentError, TypeError
+  Integer(val, exception: false) ||
+    Float(val, exception: false)&.to_i ||
     default
-  end
 end
 
 def to_float(val, default = 0.0)
-  Float(val)
-rescue ArgumentError, TypeError
-  default
+  Float(val, exception: false) || default
 end
 
-def fmt_h(datetime)
+def fmt_hour(datetime)
   datetime.strftime('%H')
 end
 
-def fmt_dow(datestr)
+def fmt_day_of_week(datestr)
   # e.g., 'Mon 10/06'
   Time.strptime(datestr, '%Y-%m-%d').strftime('%a %m/%d')
+end
+
+def seasonal_cold_limit_c(month = Time.now.month)
+  return 10 if (5..9).cover?(month)
+  return 8 if [3, 4, 10].include?(month)
+
+  5
+end
+
+def seasonal_cold_limit_f(month = Time.now.month)
+  ((seasonal_cold_limit_c(month) * 9.0 / 5.0) + 32).round
+end
+
+def thermo_bands(unit)
+  if celsius_unit?(unit)
+    cold = SEASONAL_BIAS ? seasonal_cold_limit_c : 5
+    [
+      [cold, THERMO_COLD,    COLOR_COLD],
+      [20,  THERMO_NEUTRAL,  COLOR_NEUTRAL],
+      [28,  THERMO_WARM,     COLOR_WARM],
+      [Float::INFINITY, THERMO_HOT, COLOR_HOT]
+    ]
+  else
+    cold = SEASONAL_BIAS ? seasonal_cold_limit_f : 41
+    [
+      [cold, THERMO_COLD,    COLOR_COLD],
+      [68,  THERMO_NEUTRAL,  COLOR_NEUTRAL],
+      [82,  THERMO_WARM,     COLOR_WARM],
+      [Float::INFINITY, THERMO_HOT, COLOR_HOT]
+    ]
+  end
 end
 
 def fmt_astro_24h(time_str)
@@ -143,8 +157,8 @@ def celsius_unit?(unit)
 end
 
 def thermometer_for_temp(temp, unit)
-  bands = celsius_unit?(unit) ? THERMO_BANDS[:c] : THERMO_BANDS[:f]
-  _, glyph, color = bands.find { |limit, _, _| temp < limit } || [nil, THERMO_HOT, COLOR_HOT]
+  bands = thermo_bands(unit)
+  _, glyph, color = bands.find { |limit, _, _| temp < limit }
   [glyph, color]
 end
 
@@ -208,7 +222,7 @@ def make_astro3d_table(rows, astro_by_date)
     sr, ss = astro_by_date.fetch(date, ['', ''])
     sr = (sr.empty? ? '—' : sr)[0, 5]
     ss = (ss.empty? ? '—' : ss)[0, 5]
-    format('%-9s │ %5s │ %5s', fmt_dow(date), sr, ss)
+    format('%-9s │ %5s │ %5s', fmt_day_of_week(date), sr, ss)
   end
 
   return 'No sunrise/sunset data' if lines.empty?
@@ -411,7 +425,7 @@ def make_hour_table(next_hours, unit, precip_unit, icon_map)
     cond_cell = "#{icon_html} #{CGI.escapeHTML(h['cond'].to_s)}".strip
 
     rows << format('%-4s │ %s │ %s │ %s │ %s',
-                   fmt_h(h['dt']), temp_col, pop_col, precip_col, cond_cell)
+                   fmt_hour(h['dt']), temp_col, pop_col, precip_col, cond_cell)
   end
 
   return 'No hourly data' if rows.empty?
@@ -445,7 +459,7 @@ def make_day_table(days, unit, precip_unit, icon_map)
     cond_cell = "#{icon_html} #{CGI.escapeHTML(cond_txt)}".strip
 
     row = format('%-9s │ %s │ %s │ %s │ %s │ %s',
-                 fmt_dow(d['date']), hi_col, lo_col, pop_col, precip_col, cond_cell)
+                 fmt_day_of_week(d['date']), hi_col, lo_col, pop_col, precip_col, cond_cell)
     out_rows << row
   end
 
@@ -473,7 +487,7 @@ def make_3h_table(rows, unit, precip_unit, icon_map)
     cond_cell = "#{icon_html} #{CGI.escapeHTML(r['cond'].to_s)}".strip
 
     out << format('%-9s │ %2s │ %s │ %s │ %s │ %s',
-                  fmt_dow(r['date']), fmt_h(r['dt']), temp_col, pop_col, precip_col, cond_cell)
+                  fmt_day_of_week(r['date']), fmt_hour(r['dt']), temp_col, pop_col, precip_col, cond_cell)
   end
 
   return 'No 3-hour detail' if out.empty?
@@ -490,7 +504,7 @@ def build_header_block(loc:, cond:, temp:, feels:, unit:, icon_map:, is_day:, fa
                          CGI.escapeHTML(loc['country'].to_s || ''))
 
   # current conditions + colored thermometer
-  tglyph, tcolor = thermometer_for_temp(temp, unit)
+  tglyph, tcolor = thermometer_for_temp(feels, unit)
   current_line = format('%s %s | %s%d%s (feels %d%s)',
                         style_icon(map_condition_icon(icon_map, cond, is_day != 0) || fallback_icon),
                         CGI.escapeHTML(cond),
