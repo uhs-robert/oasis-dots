@@ -11,3 +11,4 @@ fi
 export PATH="$PATH:/home/USER/.lmstudio/bin"
 # End of LM Studio CLI section
 . "$HOME/.cargo/env"
+eval "$(~/.rbenv/bin/rbenv init -)"
