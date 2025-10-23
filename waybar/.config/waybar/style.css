@@ -1,4 +1,3 @@
-/* style.css */
 /* waybar/.config/waybar/style.css */
 /* @import "./themes/oasis-lagoon.css"; */
 
@@ -16,8 +15,10 @@ window#waybar {
 }
 
 * {
-  font-family: "ProFont IIx Nerd Font", "JetBrainsMono Nerd Font", monospace;
-  font-size: 0.95rem;
+  font-family:
+    "IosevkaTerm Nerd Font", "ProFont IIx Nerd Font", "JetBrainsMono Nerd Font",
+    monospace;
+  font-size: 1rem;
   color: #d9e6fa;
   min-height: 0;
   font-weight: 400;
