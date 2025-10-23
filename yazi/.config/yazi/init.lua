@@ -26,6 +26,8 @@ th.git.deleted_sign = "D"
 -- SSHFS
 require("sshfs"):setup({
 	enable_custom_hosts = false,
+	-- mount_dir = os.getenv("HOME") .. "/mnt",
+	-- default_mount_point = "root",
 	sshfs_options = {
 		"reconnect",
 		"compression=yes",
