@@ -178,10 +178,13 @@ To customize plugin behavior, you may pass a config table to `setup()` (default 
 ```lua
 require("sshfs"):setup({
   -- Mount directory
-  mount_dir = "~/mnt",
+  mount_dir = os.getenv("HOME") .. "/mnt",
 
   -- Password authentication attempts before giving up
   password_attempts = 3,
+
+  -- Default mount point: Go to home, root, or always ask where to go
+  default_mount_point = "auto" -- home | root | auto
 
   -- SSHFS mount options (array of strings)
   -- These options are passed directly to the sshfs command
