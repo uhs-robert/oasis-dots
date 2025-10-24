@@ -123,7 +123,7 @@ tooltip {
 }
 
 #workspaces button.empty {
-  color: #f0e68c;
+  color: yellow;
 }
 
 #workspaces button.visible {
@@ -162,7 +162,12 @@ tooltip {
   color: @primary;
 }
 
-#custom-notifications:hover {
+#custom-notifications:hover,
+#network:hover label, /* ISSUE: Does nothing */
+#bluetooth:hover, /* ISSUE: Does nothing */
+#custom-leftArrow:hover,
+#custom-rightArrow:hover,
+#custom-startmenu:hover {
   color: @yellow;
 }
 
