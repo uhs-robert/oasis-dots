@@ -336,9 +336,9 @@
       "notification": "󰅸 ",
       "none": "󰂜 ",
       "inhibited-notification": "󰺁 ",
-      "dnd-notification": " ",
-      "dnd-none": " ",
-      "dnd-inhibited-notification": "󱏪 "
+      "dnd-notification": "<span color='indianred'></span> ",
+      "dnd-none": "<span color='indianred'></span> ",
+      "dnd-inhibited-notification": "<span color='indianred'>󱏪</span> "
     },
     "return-type": "json",
     "exec-if": "which swaync-client",
