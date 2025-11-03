@@ -1,4 +1,4 @@
-# layouts/system_update.sh
+# tmux/tmuxifier-layouts/system_update.sh
 # Set a custom session root path. Default is `$HOME`.
 # Must be called before `initialize_session`.
 session_root "$HOME"
