@@ -1,6 +1,9 @@
 {
   "includeCoAuthoredBy": false,
   "permissions": {
-    "allow": ["Read(~/.zshrc)"]
-  }
+    "allow": [
+      "Read(~/.zshrc)"
+    ]
+  },
+  "alwaysThinkingEnabled": false
 }
