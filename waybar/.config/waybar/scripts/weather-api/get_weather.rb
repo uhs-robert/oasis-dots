@@ -567,7 +567,7 @@ def build_text_and_tooltip(loc:, cond:, temp:, feels:, precip_amt:, is_day:, nex
 
   # main text with waybar icon
   waybar_icon = style_icon(cond_icon_raw, COLOR_PRIMARY, ICON_SIZE_SM)
-  left = "#{waybar_icon} #{temp.round}#{unit}"
+  left = "#{waybar_icon}#{temp.round}#{unit}"
   right = "#{temp.round}#{unit} #{waybar_icon}"
   text = (icon_pos || 'left') == 'left' ? left : right
 

@@ -157,8 +157,8 @@
   },
 
   "temperature": {
-    "format": "<span size='11000' color='#42A5F5'></span> {temperatureC}° C",
-    "format-critical": "<span size='11000' color='indianred'></span> <span color='#FFA0A0'>{temperatureC}° C</span>",
+    "format": "<span size='11000' color='#42A5F5'></span> {temperatureC}°C",
+    "format-critical": "<span size='11000' color='indianred'></span> <span color='#FFA0A0'>{temperatureC}°C</span>",
     "critical-threshold": 80,
     "interval": 10
   },
@@ -171,7 +171,7 @@
 
   "clock": {
     "interval": 1,
-    "format": "<span size='12000' color='#42A5F5'></span>  {:%H:%M:%S %Z 󰧞 %a %b %d}",
+    "format": "<span size='12000' color='#42A5F5'> </span> {:%H:%M:%S %Z 󰧞 %a %b %d}",
     "tooltip-format": "\n<span font='Maple Mono NF 12'><tt>{calendar}</tt></span>",
     "timezones": ["America/New_York", "America/Los_Angeles", "America/Denver"],
     "calendar": {
