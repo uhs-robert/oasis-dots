@@ -1,7 +1,7 @@
 {
   "bar.customModules.updates.pollingInterval": 1440000,
-  "theme.font.name": "ProFont IIx Nerd Font",
-  "theme.font.label": "ProFont IIx Nerd Font",
+  "theme.font.name": "Maple Mono NF",
+  "theme.font.label": "Maple Mono NF",
   "menus.transition": "crossfade",
   "theme.bar.menus.enableShadow": true,
   "theme.bar.scaling": 75,
