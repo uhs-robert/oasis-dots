@@ -187,11 +187,12 @@
         "today": "<span color='indianred'><b><u>{}</u></b></span>"
       }
     },
-    "on-click": "hyprctl dispatch exec '[float;move onscreen cursor -50% 20px;size 60% 96%] kitty --class=calcure --title=Calcure -e calcure'",
+    // "on-click": "hyprctl dispatch exec '[float;move onscreen cursor -50% 20px;size 60% 96%] kitty --class=calcure --title=Calcure -e calcure'",
     "actions": {
       "on-click-right": "mode",
       "on-click-forward": "tz_up",
       "on-click-backward": "tz_down",
+      "on-click-middle": "tz_up",
       "on-scroll-up": "shift_up",
       "on-scroll-down": "shift_down"
     }
