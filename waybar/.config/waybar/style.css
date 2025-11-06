@@ -16,7 +16,7 @@ window#waybar {
 
 * {
   font-family: "Maple Mono NF", "JetBrainsMono Nerd Font", monospace;
-  font-size: 1rem;
+  font-size: 0.85rem;
   color: #d9e6fa;
   min-height: 0;
   font-weight: 400;
