@@ -173,7 +173,7 @@
     "interval": 1,
     "format": "<span size='12000' color='#42A5F5'> </span> {:%H:%M:%S %Z 󰧞 %a %b %d}",
     "tooltip-format": "\n<span font='Maple Mono NF 12'><tt>{calendar}</tt></span>",
-    "timezones": ["America/New_York", "America/Los_Angeles", "America/Denver"],
+    "timezones": ["America/New_York", "America/Denver", "America/Los_Angeles"],
     "calendar": {
       "mode": "month",
       "mode-mon-col": 3,
@@ -189,10 +189,10 @@
     },
     // "on-click": "hyprctl dispatch exec '[float;move onscreen cursor -50% 20px;size 60% 96%] kitty --class=calcure --title=Calcure -e calcure'",
     "actions": {
+      "on-click-middle": "tz_up",
       "on-click-right": "mode",
       "on-click-forward": "tz_up",
       "on-click-backward": "tz_down",
-      "on-click-middle": "tz_up",
       "on-scroll-up": "shift_up",
       "on-scroll-down": "shift_down"
     }
