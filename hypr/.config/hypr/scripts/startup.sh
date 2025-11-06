@@ -103,7 +103,7 @@ monitor_dependent() {
     after() {
       log "[Monitors] After hook..."
       ~/.config/hypr/scripts/hypr-wallpaper-day-system.sh &
-      hyprctl setcursor Breeze 24 & # Mouse cursor
+      # hyprctl setcursor breeze-dark 24 & # Mouse cursor
       hyprpm reload -n &
       ~/.config/hypr/plugins/hypr-plugins.conf &
       :
