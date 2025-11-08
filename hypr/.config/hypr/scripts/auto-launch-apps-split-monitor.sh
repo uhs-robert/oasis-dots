@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# hypr/scripts/auto-launch-apps-split-monitor.sh
+# hypr/.config/hypr/scripts/auto-launch-apps-split-monitor.sh
 
 # ─── Globals ────────────────────────────────────────────────────────────────
 PAIRS=()
@@ -46,7 +46,7 @@ APPS["Firefox"]=$(
 )
 
 ## Email client
-APPS["Email"]="LAPTOP+:flatpak run eu.betterbird.Betterbird"
+APPS["Email"]="LEFT+:flatpak run eu.betterbird.Betterbird"
 
 ## Terminal sessions
 ### tmuxifier: load a tmuxifier session on a monitor (default monitor=RIGHT)
