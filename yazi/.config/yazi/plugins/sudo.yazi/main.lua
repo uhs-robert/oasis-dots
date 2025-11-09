@@ -9,6 +9,15 @@ function string:is_path()
     return self == "." or self == ".." or i and i ~= #self
 end
 
+function string:file_name()
+    local file_name = self:match(".*/(.*)")
+    if file_name ~= nil then
+        return file_name
+    else
+        return self
+    end
+end
+
 local function list_map(self, f)
     local i = nil
     return function()
@@ -64,6 +73,23 @@ local get_state = ya.sync(function(_, cmd)
             kind = cmd,
             value = {
                 hovered = tostring(cx.active.current.hovered.url),
+            },
+        }
+    elseif cmd == "chmod" then
+        local selected = {}
+
+        if #cx.active.selected ~= 0 then
+            for _, url in pairs(cx.active.selected) do
+                table.insert(selected, tostring(url))
+            end
+        else
+            table.insert(selected, tostring(cx.active.current.hovered.url))
+        end
+
+        return {
+            kind = cmd,
+            value = {
+                selected = selected,
             },
         }
     else
@@ -136,7 +162,7 @@ end
 local function sudo_create()
     local name, event = ya.input({
         title = "sudo create:",
-        position = { "top-center", y = 2, w = 40 },
+        pos = { "top-center", y = 2, w = 40 },
     })
 
     -- Input and confirm
@@ -157,7 +183,8 @@ end
 local function sudo_rename(value)
     local new_name, event = ya.input({
         title = "sudo rename:",
-        position = { "top-center", y = 2, w = 40 },
+        pos = { "top-center", y = 2, w = 40 },
+        value = value.hovered:file_name(),
     })
 
     -- Input and confirm
@@ -178,6 +205,20 @@ local function sudo_remove(value)
     extend_iter(args, list_map(value.selected, ya.quote))
 
     execute(args)
+end
+
+local function sudo_chmod(value)
+    local mode, event = ya.input({
+        title = "sudo chmod:",
+        pos = { "top-center", y = 2, w = 40 },
+    })
+
+    if event == 1 then
+        local args = sudo_cmd()
+        extend_list(args, { "chmod", mode })
+        extend_iter(args, list_map(value.selected, ya.quote))
+        execute(args)
+    end
 end
 
 return {
@@ -202,6 +243,8 @@ return {
             sudo_remove(state.value)
         elseif state.kind == "rename" then
             sudo_rename(state.value)
+        elseif state.kind == "chmod" then
+            sudo_chmod(state.value)
         end
     end,
 }
