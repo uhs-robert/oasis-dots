@@ -1302,6 +1302,15 @@ function! s:CodeMenu() abort
   call s:Which('Code', s:BuildMenu(spec))
 endfunction
 
+function! s:LogMenu() abort
+  let spec = [
+    \ ['j', s:Cmd('Pretty-print JSON (jq -s .)',   'set filetype=json | %!jq -s .')],
+    \ ['J', s:Cmd('Compact JSON (jq -c .)',    'set filetype=json | %!jq -c .')],
+    \ ['/', s:Cmd('Query JSON (slurp)', 'set filetype=json | call feedkeys(":%!jq -s ''.[] | select()''\<Left>\<Left>")')],
+    \ ['?', s:Cmd('Query JSON (line)',  'set filetype=json | call feedkeys(":%!jq ''select()''\<Left>\<Left>")')], 
+  call s:Which('Code', s:BuildMenu(spec))
+endfunction
+
 function! s:QuitMenu() abort
   let spec = [
     \ ['q', s:Cmd('Quit all!',        'qall!')],
@@ -1332,6 +1341,7 @@ function! s:LeaderRoot() abort
     \ ['0', s:Cmd('Open .vimrc',   'edit $HOME/.vimrc')],
     \ ['b', s:Go('+Buffers',       'BufMenu')],
     \ ['c', s:Go('+Code',         'CodeMenu')],
+    \ ['l', s:Go('+Log',           'LogMenu')],
     \ ['e', s:Cmd('Explorer',     'Lexplore')],
     \ ['f', s:Go('+Files',        'FileMenu')],
     \ ['g', s:Go('+Git',           'GitMenu')],
