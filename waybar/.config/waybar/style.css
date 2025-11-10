@@ -121,7 +121,7 @@ tooltip {
 }
 
 #workspaces button.empty {
-  color: yellow;
+  color: @yellow;
 }
 
 #workspaces button.visible {
