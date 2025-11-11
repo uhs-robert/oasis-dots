@@ -2,20 +2,23 @@
 # waybar/.config/waybar/scripts/weather-api/get_weather.rb
 # frozen_string_literal: true
 
-# Waybar weather (WeatherAPI.com)
+# Waybar weather (Open-Meteo.com)
 # - Text: current temp + icon (colored via <span>)
-# - Tooltip: current details + next N hours table + up to 7-day table
-# - Uses your weather_icons.json mapping for the condition glyph
+# - Tooltip: current details + next N hours table + up to 16-day table
+# - Uses weather_icons.json mapping for WMO condition glyphs
 # - Emits Waybar JSON (set return-type=json, markup=true)
 #
 # Config file (same dir): weather_settings.json
 # {
-#   "key": "YOUR_WEATHERAPI_KEY",
-#   "parameters": "40.71,-74.01",      // "lat,lon" or "City"
+#   "latitude": "auto",                 // or specific latitude (e.g., 40.71)
+#   "longitude": "auto",                // or specific longitude (e.g., -74.01)
 #   "unit": "Fahrenheit",               // or "Celsius"
 #   "icon-position": "left",            // or "right"
-#   "hours_ahead": 6                    // # of hourly rows to show
+#   "hours_ahead": 24,                  // # of hourly rows to show
+#   "forecast_days": 16                 // # of days to fetch (max 16)
 # }
+#
+# Note: Set latitude/longitude to "auto" to detect location via IP geolocation
 
 require 'json'
 require 'set'
@@ -62,6 +65,38 @@ DAY_TABLE_HEADER_TEXT = format('%-9s │ %5s │ %5s │ %4s │ %7s │ Cond', 
 DETAIL3H_HEADER_TEXT = format('%-9s │ %2s │ %5s │ %4s │ %7s │ Cond', 'Date', 'Hr', 'Temp', 'PoP', 'Precip')
 ASTRO3D_HEADER_TEXT = format('%-9s │ %5s │ %5s', 'Date', 'Rise', 'Set')
 
+# WMO Weather code descriptions
+WMO_CODE_DESCRIPTIONS = {
+  0 => 'Clear sky',
+  1 => 'Mainly clear',
+  2 => 'Partly cloudy',
+  3 => 'Overcast',
+  45 => 'Fog',
+  48 => 'Depositing rime fog',
+  51 => 'Light drizzle',
+  53 => 'Moderate drizzle',
+  55 => 'Dense drizzle',
+  56 => 'Light freezing drizzle',
+  57 => 'Dense freezing drizzle',
+  61 => 'Slight rain',
+  63 => 'Moderate rain',
+  65 => 'Heavy rain',
+  66 => 'Light freezing rain',
+  67 => 'Heavy freezing rain',
+  71 => 'Slight snow fall',
+  73 => 'Moderate snow fall',
+  75 => 'Heavy snow fall',
+  77 => 'Snow grains',
+  80 => 'Slight rain showers',
+  81 => 'Moderate rain showers',
+  82 => 'Violent rain showers',
+  85 => 'Slight snow showers',
+  86 => 'Heavy snow showers',
+  95 => 'Thunderstorm',
+  96 => 'Thunderstorm with slight hail',
+  99 => 'Thunderstorm with heavy hail'
+}.freeze
+
 # ─── Utilities ──────────────────────────────────────────────────────────────
 def safe(hash, key, default = nil)
   hash.key?(key) ? hash[key] : default
@@ -76,14 +111,21 @@ def divider(length = DIVIDER_LEN, char = DIVIDER_CHAR, color = COLOR_DIVIDER)
   "<span font_family='monospace' foreground='#{color}'>#{line}</span>"
 end
 
-def to_int(val, default = 0)
-  Integer(val, exception: false) ||
-    Float(val, exception: false)&.to_i ||
-    default
+def parse_int(val, default = 0)
+  return default if val.nil? || val == ''
+  return val.to_i if val.is_a?(Numeric)
+  return val.to_i if val.to_s.match?(/\A-?\d+\z/)
+  return val.to_f.to_i if val.to_s.match?(/\A-?\d+\.?\d*\z/)
+
+  default
 end
 
-def to_float(val, default = 0.0)
-  Float(val, exception: false) || default
+def parse_float(val, default = 0.0)
+  return default if val.nil? || val == ''
+  return val.to_f if val.is_a?(Numeric)
+  return val.to_f if val.to_s.match?(/\A-?\d+\.?\d*\z/)
+
+  default
 end
 
 def fmt_hour(datetime)
@@ -126,32 +168,6 @@ def thermo_bands(unit)
   end
 end
 
-def fmt_astro_24h(time_str)
-  # WeatherAPI astro times come as '07:01 AM' local. Return '07:01' (24h).
-  Time.strptime(time_str.strip, '%I:%M %p').strftime('%H:%M')
-rescue ArgumentError
-  time_str.strip
-end
-
-def get_sun_times(blob, now_local)
-  # Find today's sunrise/sunset from forecastday[].astro.
-  fc = safe(safe(blob, 'forecast', {}), 'forecastday', [])
-  today = now_local.strftime('%Y-%m-%d')
-  fc.each do |d|
-    next unless safe(d, 'date', '').to_s == today
-
-    astro = safe(d, 'astro', {})
-    sr = fmt_astro_24h(safe(astro, 'sunrise', '').to_s)
-    ss = fmt_astro_24h(safe(astro, 'sunset', '').to_s)
-    return [sr, ss]
-  end
-  ['', '']
-end
-
-def icon_for_pop(pop)
-  pop >= POP_ALERT_THRESHOLD ? POP_ICON_HIGH : POP_ICON_LOW
-end
-
 def celsius_unit?(unit)
   unit.to_s.strip.start_with?('°C')
 end
@@ -173,6 +189,14 @@ def pop_color(pop)
   return COLOR_POP_HIGH if pop < 80   # 60–79
 
   COLOR_POP_VHIGH # 80–100
+end
+
+def icon_for_pop(pop)
+  pop >= POP_ALERT_THRESHOLD ? POP_ICON_HIGH : POP_ICON_LOW
+end
+
+def wmo_code_description(code)
+  WMO_CODE_DESCRIPTIONS[code.to_i] || 'Unknown'
 end
 
 def mode_file
@@ -201,35 +225,6 @@ def cycle_mode(direction = 'next')
   set_mode(modes[i])
 end
 
-def build_astro_by_date(blob)
-  # Map 'YYYY-MM-DD' -> [sunrise_24h, sunset_24h] for all forecast days.
-  out = {}
-  safe(safe(blob, 'forecast', {}), 'forecastday', []).each do |d|
-    date_str = safe(d, 'date', '').to_s
-    astro = safe(d, 'astro', {})
-    sr = fmt_astro_24h(safe(astro, 'sunrise', '').to_s)
-    ss = fmt_astro_24h(safe(astro, 'sunset', '').to_s)
-    out[date_str] = [sr, ss]
-  end
-  out
-end
-
-def make_astro3d_table(rows, astro_by_date)
-  # Build a compact table for sunrise/sunset for the dates present in rows.
-  header = "<span weight='bold'>#{ASTRO3D_HEADER_TEXT}</span>"
-  dates = rows.map { |r| r['date'].to_s }.uniq.sort
-  lines = dates.map do |date|
-    sr, ss = astro_by_date.fetch(date, ['', ''])
-    sr = (sr.empty? ? '—' : sr)[0, 5]
-    ss = (ss.empty? ? '—' : ss)[0, 5]
-    format('%-9s │ %5s │ %5s', fmt_day_of_week(date), sr, ss)
-  end
-
-  return 'No sunrise/sunset data' if lines.empty?
-
-  "<span font_family='monospace'>#{header}\n#{lines.join("\n")}</span>"
-end
-
 # ─── Icons ──────────────────────────────────────────────────────────────────
 def load_icon_map(script_path)
   data = load_json(File.join(script_path, 'weather_icons.json'))
@@ -249,33 +244,14 @@ def to_set(val)
   Set[norm(val)]
 end
 
-def map_condition_icon(icon_map, text, is_day)
-  t = norm(text)
+def map_condition_icon(icon_map, code, is_day)
+  code = code.to_i
 
-  # exact day/night bucket match
+  # Find exact code match
   icon_map.each do |item|
-    day_set = to_set(item['day'])
-    night_set = to_set(item['night'])
-    return item['icon'] || '' if is_day && day_set.include?(t)
-    return item['icon-night'] || '' if !is_day && night_set.include?(t)
-  end
+    next unless item['code'].to_i == code
 
-  # fallback: any match regardless of bucket
-  icon_map.each do |item|
-    if [norm(item['day']), norm(item['night'])].include?(t)
-      return is_day ? (item['icon'] || '') : (item['icon-night'] || '')
-    end
-  end
-
-  # final synonym fallback
-  if t == 'clear' && !is_day
-    icon_map.each do |item|
-      return item['icon-night'] || item['icon'] || '' if norm(item['day']) == 'sunny'
-    end
-  elsif t == 'sunny' && is_day
-    icon_map.each do |item|
-      return item['icon'] || '' if norm(item['day']) == 'sunny'
-    end
+    return is_day ? (item['icon'] || '') : (item['icon-night'] || '')
   end
 
   ''
@@ -286,6 +262,24 @@ def style_icon(glyph, color = COLOR_PRIMARY, size = ICON_SIZE)
 end
 
 # ─── Data fetch / parse ─────────────────────────────────────────────────────
+def fetch_location_from_ip
+  # Use ip-api.com for free IP geolocation (no API key required)
+  # Rate limit: 45 requests/minute
+  url = URI('http://ip-api.com/json/?fields=lat,lon,city,regionName,country')
+
+  response = Net::HTTP.get_response(url)
+  raise "IP geolocation error: #{response.code}" unless response.is_a?(Net::HTTPSuccess)
+
+  data = JSON.parse(response.body)
+  raise 'Unexpected response from ip-api.com' unless data.is_a?(Hash)
+
+  {
+    'lat' => parse_float(data['lat']),
+    'lon' => parse_float(data['lon']),
+    'location_name' => "#{data['city']}, #{data['regionName']}, #{data['country']}"
+  }
+end
+
 def load_config(script_path)
   cfg_path = File.join(script_path, 'weather_settings.json')
   data = load_json(cfg_path)
@@ -294,58 +288,74 @@ def load_config(script_path)
   data
 end
 
-def fetch_weatherapi_forecast(key, query)
-  url = URI('http://api.weatherapi.com/v1/forecast.json')
-  params = { key: key, q: query, days: 7, aqi: 'no', alerts: 'no' }
+def fetch_openmeteo_forecast(lat, lon, unit_c, forecast_days = 16)
+  url = URI('https://api.open-meteo.com/v1/forecast')
+
+  params = {
+    latitude: lat,
+    longitude: lon,
+    current: 'temperature_2m,apparent_temperature,is_day,precipitation,weather_code',
+    hourly: 'temperature_2m,precipitation_probability,precipitation,weather_code,is_day',
+    daily: 'weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,precipitation_probability_max,sunrise,sunset',
+    temperature_unit: unit_c ? 'celsius' : 'fahrenheit',
+    precipitation_unit: unit_c ? 'mm' : 'inch',
+    timezone: 'auto',
+    forecast_days: forecast_days
+  }
   url.query = URI.encode_www_form(params)
 
   response = Net::HTTP.get_response(url)
   raise "HTTP Error: #{response.code}" unless response.is_a?(Net::HTTPSuccess)
 
   data = JSON.parse(response.body)
-  raise 'Unexpected response from WeatherAPI' unless data.is_a?(Hash)
+  raise 'Unexpected response from Open-Meteo' unless data.is_a?(Hash)
 
   data
 end
 
-def extract_current(blob, unit_c)
-  loc = blob['location']
+def extract_current(blob, _unit, location_name = nil)
   cur = blob['current']
-  cond = cur['condition']['text'].to_s
-  temp = to_float(unit_c ? cur['temp_c'] : cur['temp_f'])
-  feels = to_float(unit_c ? cur['feelslike_c'] : cur['feelslike_f'])
-  precip_amt = to_float(unit_c ? cur['precip_mm'] : cur['precip_in'])
-  is_day = to_int(cur['is_day'], 1) == 1 ? 1 : 0
-  # naive local time (matches our hourly timestamps below)
-  now_local = Time.strptime(loc['localtime'].to_s, '%Y-%m-%d %H:%M')
+  timezone = blob['timezone']
+
+  # Parse current time in the location's timezone
+  now_local = Time.parse(cur['time'])
 
   {
-    'loc' => loc,
-    'cond' => cond,
-    'temp' => temp,
-    'feels' => feels,
-    'precip_amt' => precip_amt,
-    'is_day' => is_day,
+    'timezone' => timezone,
+    'location_name' => location_name,
+    'cond' => wmo_code_description(cur['weather_code']),
+    'code' => cur['weather_code'].to_i,
+    'temp' => parse_float(cur['temperature_2m']),
+    'feels' => parse_float(cur['apparent_temperature']),
+    'precip_amt' => parse_float(cur['precipitation']),
+    'is_day' => parse_int(cur['is_day'], 1),
     'now_local' => now_local
   }
 end
 
-def build_next_hours(blob, unit_c, now_local, limit)
-  fc = blob['forecast']['forecastday']
+def build_next_hours(blob, now_local, limit)
+  hourly = blob['hourly']
+  times = hourly['time']
+  temps = hourly['temperature_2m']
+  pops = hourly['precipitation_probability']
+  precips = hourly['precipitation']
+  codes = hourly['weather_code']
+  is_days = hourly['is_day']
+
   hours_list = []
 
-  fc[0..1].each do |d| # up to ~48 hours
-    d['hour'].each do |h|
-      dt = Time.at(to_int(h['time_epoch']))
-      hours_list << {
-        'dt' => dt,
-        'pop' => to_int(h['chance_of_rain']),
-        'precip' => to_float(unit_c ? h['precip_mm'] : h['precip_in']),
-        'temp' => to_float(unit_c ? h['temp_c'] : h['temp_f']),
-        'cond' => h['condition']['text'].to_s,
-        'is_day' => to_int(h['is_day'], 1) == 1 ? 1 : 0
-      }
-    end
+  times.each_with_index do |time_str, i|
+    dt = Time.parse(time_str)
+
+    hours_list << {
+      'dt' => dt,
+      'temp' => parse_float(temps[i]),
+      'pop' => parse_int(pops[i]),
+      'precip' => parse_float(precips[i]),
+      'cond' => wmo_code_description(codes[i]),
+      'code' => codes[i].to_i,
+      'is_day' => parse_int(is_days[i], 1)
+    }
   end
 
   next_hours = hours_list.select { |h| h['dt'] >= now_local }[0, [0, limit].max]
@@ -353,57 +363,118 @@ def build_next_hours(blob, unit_c, now_local, limit)
   next_hours
 end
 
-def build_next_days(blob, unit_c, max_days = 7)
-  fc = blob['forecast']['forecastday']
+def build_next_days(blob, max_days = 16)
+  daily = blob['daily']
+  dates = daily['time']
+  max_temps = daily['temperature_2m_max']
+  min_temps = daily['temperature_2m_min']
+  codes = daily['weather_code']
+  precips = daily['precipitation_sum']
+  pops = daily['precipitation_probability_max']
+  sunrises = daily['sunrise']
+  sunsets = daily['sunset']
+
   days = []
 
-  fc[0...max_days].each do |d|
-    day = d['day']
+  dates[0...max_days].each_with_index do |date_str, i|
     days << {
-      'date' => d['date'].to_s,
-      'pop' => to_int(day['daily_chance_of_rain']),
-      'max' => to_float(unit_c ? day['maxtemp_c'] : day['maxtemp_f']),
-      'min' => to_float(unit_c ? day['mintemp_c'] : day['mintemp_f']),
-      'cond' => day['condition']['text'].to_s,
-      'precip' => to_float(unit_c ? day['totalprecip_mm'] : day['totalprecip_in'])
+      'date' => date_str,
+      'max' => parse_float(max_temps[i]),
+      'min' => parse_float(min_temps[i]),
+      'cond' => wmo_code_description(codes[i]),
+      'code' => codes[i].to_i,
+      'precip' => parse_float(precips[i]),
+      'pop' => parse_int(pops[i]),
+      'sunrise' => sunrises[i],
+      'sunset' => sunsets[i]
     }
   end
 
   days
 end
 
-def build_next_3days_detailed(blob, unit_c, now_local, num_days = 3)
-  fc = blob['forecast']['forecastday']
+def build_next_3days_detailed(blob, now_local, num_days = 3)
+  hourly = blob['hourly']
+  times = hourly['time']
+  temps = hourly['temperature_2m']
+  pops = hourly['precipitation_probability']
+  precips = hourly['precipitation']
+  codes = hourly['weather_code']
+  is_days = hourly['is_day']
+
   today = now_local.strftime('%Y-%m-%d')
 
   rows = []
-  picked = 0
+  picked_dates = Set.new
 
-  fc.each do |d|
-    date_str = d['date'].to_s
-    next if date_str <= today # skip today and any past
+  times.each_with_index do |time_str, i|
+    dt = Time.parse(time_str)
+    date_str = dt.strftime('%Y-%m-%d')
 
-    picked += 1
-    d['hour'].each do |h|
-      dt = Time.at(to_int(h['time_epoch']))
-      next unless (dt.hour % 3).zero? # downsample to 3h grid
+    # Skip today and past dates
+    next if date_str <= today
 
-      rows << {
-        'date' => date_str,
-        'dt' => dt,
-        'temp' => to_float(unit_c ? h['temp_c'] : h['temp_f']),
-        'pop' => to_int(h['chance_of_rain']),
-        'precip' => to_float(unit_c ? h['precip_mm'] : h['precip_in']),
-        'cond' => h['condition']['text'].to_s,
-        'is_day' => to_int(h['is_day'], 1) == 1 ? 1 : 0
-      }
-    end
+    # Only process 3-hour intervals
+    next unless (dt.hour % 3).zero?
 
-    break if picked >= num_days
+    picked_dates << date_str
+
+    # Stop when we have enough days
+    break if picked_dates.size > num_days
+
+    rows << {
+      'date' => date_str,
+      'dt' => dt,
+      'temp' => parse_float(temps[i]),
+      'pop' => parse_int(pops[i]),
+      'precip' => parse_float(precips[i]),
+      'cond' => wmo_code_description(codes[i]),
+      'code' => codes[i].to_i,
+      'is_day' => parse_int(is_days[i], 1)
+    }
   end
 
-  # stable ordering: by date, then time
   rows.sort_by { |r| [r['date'], r['dt']] }
+end
+
+def build_astro_by_date(days)
+  # Map 'YYYY-MM-DD' -> [sunrise_24h, sunset_24h]
+  out = {}
+  days.each do |d|
+    date_str = d['date']
+    sr = d['sunrise'] ? Time.parse(d['sunrise']).strftime('%H:%M') : ''
+    ss = d['sunset'] ? Time.parse(d['sunset']).strftime('%H:%M') : ''
+    out[date_str] = [sr, ss]
+  end
+  out
+end
+
+def get_sun_times(days, now_local)
+  today = now_local.strftime('%Y-%m-%d')
+  days.each do |d|
+    next unless d['date'] == today
+
+    sr = d['sunrise'] ? Time.parse(d['sunrise']).strftime('%H:%M') : ''
+    ss = d['sunset'] ? Time.parse(d['sunset']).strftime('%H:%M') : ''
+    return [sr, ss]
+  end
+  ['', '']
+end
+
+def make_astro3d_table(rows, astro_by_date)
+  # Build a compact table for sunrise/sunset for the dates present in rows.
+  header = "<span weight='bold'>#{ASTRO3D_HEADER_TEXT}</span>"
+  dates = rows.map { |r| r['date'].to_s }.uniq.sort
+  lines = dates.map do |date|
+    sr, ss = astro_by_date.fetch(date, ['', ''])
+    sr = (sr.empty? ? '—' : sr)[0, 5]
+    ss = (ss.empty? ? '—' : ss)[0, 5]
+    format('%-9s │ %5s │ %5s', fmt_day_of_week(date), sr, ss)
+  end
+
+  return 'No sunrise/sunset data' if lines.empty?
+
+  "<span font_family='monospace'>#{header}\n#{lines.join("\n")}</span>"
 end
 
 # ─── Tables & Tooltip ───────────────────────────────────────────────────────
@@ -420,7 +491,7 @@ def make_hour_table(next_hours, unit, precip_unit, icon_map)
 
     precip_col = format('%<val>.1f %<unit>s', val: h['precip'], unit: precip_unit).rjust(7)
 
-    glyph = map_condition_icon(icon_map, h['cond'].to_s, h['is_day'] != 0)
+    glyph = map_condition_icon(icon_map, h['code'], h['is_day'] != 0)
     icon_html = glyph.empty? ? '' : style_icon(glyph, COLOR_PRIMARY, ICON_SIZE_SM)
     cond_cell = "#{icon_html} #{CGI.escapeHTML(h['cond'].to_s)}".strip
 
@@ -454,7 +525,7 @@ def make_day_table(days, unit, precip_unit, icon_map)
     precip_col = format('%<val>.1f %<unit>s', val: d['precip'], unit: precip_unit).rjust(7)
 
     cond_txt = d['cond'].to_s
-    glyph = map_condition_icon(icon_map, cond_txt, true)
+    glyph = map_condition_icon(icon_map, d['code'], true)
     icon_html = glyph.empty? ? '' : style_icon(glyph, COLOR_PRIMARY, ICON_SIZE_SM)
     cond_cell = "#{icon_html} #{CGI.escapeHTML(cond_txt)}".strip
 
@@ -482,7 +553,7 @@ def make_3h_table(rows, unit, precip_unit, icon_map)
 
     precip_col = format('%<val>.1f %<unit>s', val: r['precip'], unit: precip_unit).rjust(7)
 
-    glyph = map_condition_icon(icon_map, r['cond'].to_s, r['is_day'] != 0)
+    glyph = map_condition_icon(icon_map, r['code'], r['is_day'] != 0)
     icon_html = glyph.empty? ? '' : style_icon(glyph, COLOR_PRIMARY, ICON_SIZE_SM)
     cond_cell = "#{icon_html} #{CGI.escapeHTML(r['cond'].to_s)}".strip
 
@@ -495,18 +566,16 @@ def make_3h_table(rows, unit, precip_unit, icon_map)
   "<span font_family='monospace'>#{header}\n#{out.join("\n")}</span>"
 end
 
-def build_header_block(loc:, cond:, temp:, feels:, unit:, icon_map:, is_day:, fallback_icon:,
-                       sunrise: nil, sunset: nil, now_pop: nil, precip_amt: nil, precip_unit: '')
+def build_header_block(timezone:, cond:, temp:, feels:, unit:, icon_map:, code:, is_day:, fallback_icon:,
+                       sunrise: nil, sunset: nil, now_pop: nil, precip_amt: nil, precip_unit: '', location_name: nil)
   # Returns the exact same top block used by all tooltips.
-  location_line = format('<b>%s, %s %s</b>',
-                         CGI.escapeHTML(loc['name'].to_s || 'Local'),
-                         CGI.escapeHTML(loc['region'].to_s || ''),
-                         CGI.escapeHTML(loc['country'].to_s || ''))
+  display_location = location_name || timezone || 'Local'
+  location_line = format('<b>%s</b>', CGI.escapeHTML(display_location))
 
   # current conditions + colored thermometer
   tglyph, tcolor = thermometer_for_temp(feels, unit)
   current_line = format('%s %s | %s%d%s (feels %d%s)',
-                        style_icon(map_condition_icon(icon_map, cond, is_day != 0) || fallback_icon),
+                        style_icon(map_condition_icon(icon_map, code, is_day != 0) || fallback_icon),
                         CGI.escapeHTML(cond),
                         style_icon(tglyph, tcolor),
                         temp.round,
@@ -540,14 +609,14 @@ def build_header_block(loc:, cond:, temp:, feels:, unit:, icon_map:, is_day:, fa
   parts.join("\n")
 end
 
-def build_week_view_tooltip(loc:, cond:, temp:, feels:, unit:, icon_map:, is_day:, fallback_icon:,
+def build_week_view_tooltip(timezone:, cond:, temp:, feels:, unit:, icon_map:, code:, is_day:, fallback_icon:,
                             three_hour_rows:, precip_unit:, sunrise: nil, sunset: nil,
-                            now_pop: nil, precip_amt: nil, astro_by_date: nil)
+                            now_pop: nil, precip_amt: nil, astro_by_date: nil, location_name: nil)
   header_block = build_header_block(
-    loc: loc, cond: cond, temp: temp, feels: feels, unit: unit,
-    icon_map: icon_map, is_day: is_day, fallback_icon: fallback_icon,
+    timezone: timezone, cond: cond, temp: temp, feels: feels, unit: unit,
+    icon_map: icon_map, code: code, is_day: is_day, fallback_icon: fallback_icon,
     sunrise: sunrise, sunset: sunset, now_pop: now_pop,
-    precip_amt: precip_amt, precip_unit: precip_unit
+    precip_amt: precip_amt, precip_unit: precip_unit, location_name: location_name
   )
 
   astro_table = make_astro3d_table(three_hour_rows, astro_by_date || {})
@@ -559,11 +628,11 @@ def build_week_view_tooltip(loc:, cond:, temp:, feels:, unit:, icon_map:, is_day
   "#{header_block}\n#{astro_header}\n\n#{astro_table}\n\n#{divider}\n\n#{detail_header}\n\n#{detail_table}"
 end
 
-def build_text_and_tooltip(loc:, cond:, temp:, feels:, precip_amt:, is_day:, next_hours:,
+def build_text_and_tooltip(timezone:, cond:, temp:, feels:, precip_amt:, code:, is_day:, next_hours:,
                            days:, unit:, precip_unit:, icon_map:, icon_pos:, fallback_icon:,
-                           sunrise:, sunset:)
+                           sunrise:, sunset:, location_name: nil, forecast_days: 16)
   # icon for current condition
-  cond_icon_raw = map_condition_icon(icon_map, cond, is_day != 0) || fallback_icon
+  cond_icon_raw = map_condition_icon(icon_map, code, is_day != 0) || fallback_icon
 
   # main text with waybar icon
   waybar_icon = style_icon(cond_icon_raw, COLOR_PRIMARY, ICON_SIZE_SM)
@@ -576,18 +645,18 @@ def build_text_and_tooltip(loc:, cond:, temp:, feels:, precip_amt:, is_day:, nex
   next_days_overview_table = make_day_table(days, unit, precip_unit, icon_map)
 
   header_block = build_header_block(
-    loc: loc, cond: cond, temp: temp, feels: feels, unit: unit,
-    icon_map: icon_map, is_day: is_day, fallback_icon: fallback_icon,
+    timezone: timezone, cond: cond, temp: temp, feels: feels, unit: unit,
+    icon_map: icon_map, code: code, is_day: is_day, fallback_icon: fallback_icon,
     sunrise: sunrise, sunset: sunset,
     now_pop: next_hours.empty? ? nil : next_hours[0]['pop'].to_i,
-    precip_amt: precip_amt, precip_unit: precip_unit
+    precip_amt: precip_amt, precip_unit: precip_unit, location_name: location_name
   )
 
   tooltip = "#{header_block}\n" \
             "<b>#{style_icon('', COLOR_PRIMARY, ICON_SIZE_SM)} Next #{next_hours.length} hours</b>\n\n" \
             "#{next_hours_table}\n\n#{divider}\n\n" \
-            "<b>#{style_icon('󰨳', COLOR_PRIMARY, ICON_SIZE_SM)} Week Overview</b>\n\n#{next_days_overview_table}"
-
+            "<b>#{style_icon('󰨳', COLOR_PRIMARY,
+                             ICON_SIZE_SM)} Next #{forecast_days} Days</b>\n\n#{next_days_overview_table}"
   [text, tooltip]
 end
 
@@ -613,41 +682,63 @@ def main
   begin
     cfg = load_config(script_path)
     mode = get_mode
+
+    # Parse config
     unit_c = safe(cfg, 'unit', 'Celsius') == 'Celsius'
     hours_ahead = (safe(cfg, 'hours_ahead', 24) || 24).to_i
+    forecast_days = (safe(cfg, 'forecast_days', 16) || 16).to_i
     icon_pos = (safe(cfg, 'icon-position', 'left') || 'left').to_s
     unit = unit_c ? '°C' : '°F'
     precip_unit = unit_c ? 'mm' : 'in'
 
+    # Detect location
+    lat_cfg = cfg['latitude'].to_s.strip.downcase
+    lon_cfg = cfg['longitude'].to_s.strip.downcase
+    location_name = nil
+
+    if lat_cfg == 'auto' || lon_cfg == 'auto'
+      # Fetch location from IP
+      geo_data = fetch_location_from_ip
+      lat = geo_data['lat']
+      lon = geo_data['lon']
+      location_name = geo_data['location_name']
+    else
+      # Use hardcoded coordinates
+      lat = parse_float(cfg['latitude'])
+      lon = parse_float(cfg['longitude'])
+    end
+
     # data
-    blob = fetch_weatherapi_forecast(cfg['key'].to_s, cfg['parameters'].to_s)
-    astro_by_date = build_astro_by_date(blob)
-    cur = extract_current(blob, unit_c)
-    next_hours = build_next_hours(blob, unit_c, cur['now_local'], hours_ahead)
-    days = build_next_days(blob, unit_c, 7)
-    next_3days_detailed = build_next_3days_detailed(blob, unit_c, cur['now_local'], 3)
-    sunrise, sunset = get_sun_times(blob, cur['now_local'])
+    blob = fetch_openmeteo_forecast(lat, lon, unit_c, forecast_days)
+    cur = extract_current(blob, unit, location_name)
+    next_hours = build_next_hours(blob, cur['now_local'], hours_ahead)
+    days = build_next_days(blob, forecast_days)
+    next_3days_detailed = build_next_3days_detailed(blob, cur['now_local'], 3)
+    sunrise, sunset = get_sun_times(days, cur['now_local'])
+    astro_by_date = build_astro_by_date(days)
 
     # icons
     icon_map = load_icon_map(script_path)
-    fallback_icon = map_condition_icon(icon_map, cur['cond'], cur['is_day'] != 0) || ''
+    fallback_icon = map_condition_icon(icon_map, cur['code'], cur['is_day'] != 0) || ''
 
     # Default tooltip (compact)
     text_default, tooltip_default = build_text_and_tooltip(
-      loc: cur['loc'], cond: cur['cond'], temp: cur['temp'], feels: cur['feels'],
-      precip_amt: cur['precip_amt'], is_day: cur['is_day'], next_hours: next_hours,
+      timezone: cur['timezone'], cond: cur['cond'], temp: cur['temp'], feels: cur['feels'],
+      precip_amt: cur['precip_amt'], code: cur['code'], is_day: cur['is_day'], next_hours: next_hours,
       days: days, unit: unit, precip_unit: precip_unit, icon_map: icon_map,
-      icon_pos: icon_pos, fallback_icon: fallback_icon, sunrise: sunrise, sunset: sunset
+      icon_pos: icon_pos, fallback_icon: fallback_icon, sunrise: sunrise, sunset: sunset,
+      location_name: cur['location_name'], forecast_days: forecast_days
     )
 
     # Detail tooltip (3-hour view)
     tooltip_week_view = build_week_view_tooltip(
-      loc: cur['loc'], cond: cur['cond'], temp: cur['temp'], feels: cur['feels'],
-      unit: unit, icon_map: icon_map, is_day: cur['is_day'], fallback_icon: fallback_icon,
+      timezone: cur['timezone'], cond: cur['cond'], temp: cur['temp'], feels: cur['feels'],
+      unit: unit, icon_map: icon_map, code: cur['code'], is_day: cur['is_day'], fallback_icon: fallback_icon,
       three_hour_rows: next_3days_detailed, precip_unit: precip_unit,
       sunrise: sunrise, sunset: sunset,
       now_pop: next_hours.empty? ? nil : next_hours[0]['pop'].to_i,
-      precip_amt: cur['precip_amt'], astro_by_date: astro_by_date
+      precip_amt: cur['precip_amt'], astro_by_date: astro_by_date,
+      location_name: cur['location_name']
     )
 
     text = text_default
@@ -667,11 +758,11 @@ def main
     }
 
     puts JSON.generate(out)
-  rescue Net::HTTPError, SocketError, Timeout::Error
+  rescue Net::HTTPError, SocketError, Timeout::Error => e
     sleep 2
-    puts JSON.generate(text: '…', tooltip: 'network error; retrying')
+    puts JSON.generate(text: '…', tooltip: "network error: #{e.message}")
   rescue JSON::ParserError, KeyError, StandardError => e
-    puts JSON.generate(text: '', tooltip: "parse error: #{e.message}")
+    puts JSON.generate(text: '', tooltip: "parse error: #{e.message}\n#{e.backtrace.first(5).join("\n")}")
   end
 end
 
