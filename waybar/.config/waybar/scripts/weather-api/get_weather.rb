@@ -8,7 +8,7 @@
 # - Uses weather_icons.json mapping for WMO condition glyphs
 # - Emits Waybar JSON (set return-type=json, markup=true)
 #
-# Config file (same dir): weather_settings.json
+# Config file (same dir): weather_settings.jsonc
 # {
 #   "latitude": "auto",                 // or specific latitude (e.g., 40.71)
 #   "longitude": "auto",                // or specific longitude (e.g., -74.01)
@@ -103,7 +103,10 @@ def safe(hash, key, default = nil)
 end
 
 def load_json(path)
-  JSON.parse(File.read(path, encoding: 'utf-8'))
+  file_content = File.read(path, encoding: 'utf-8')
+  # Basic JSONC support: remove single-line comments
+  content_no_comments = file_content.gsub(%r{//.*$}, '')
+  JSON.parse(content_no_comments)
 end
 
 def divider(length = DIVIDER_LEN, char = DIVIDER_CHAR, color = COLOR_DIVIDER)
@@ -281,9 +284,9 @@ def fetch_location_from_ip
 end
 
 def load_config(script_path)
-  cfg_path = File.join(script_path, 'weather_settings.json')
+  cfg_path = File.join(script_path, 'weather_settings.jsonc')
   data = load_json(cfg_path)
-  raise 'weather_settings.json must be a JSON object' unless data.is_a?(Hash)
+  raise 'weather_settings.jsonc must be a JSON object' unless data.is_a?(Hash)
 
   data
 end

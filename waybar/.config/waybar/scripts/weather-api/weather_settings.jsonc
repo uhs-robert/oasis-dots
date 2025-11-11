@@ -1,0 +1,8 @@
+{
+  "latitude": "auto",         // e.g., 40.71 or "auto" to detect from IP address
+  "longitude": "auto",        // e.g., -74.01 or "auto" to detect from IP address
+  "unit": "Fahrenheit",       // "Fahrenheit" or "Celsius"
+  "icon-position": "left",    // "left" or "right".
+  "hours_ahead": 24,          // Number of hours to show in hourly tooltip
+  "forecast_days": 10         // Number of days for forecast (max 16)
+}
