@@ -1,0 +1,64 @@
+description = "Create or update the project README.md file"
+
+prompt = """
+## Overview
+
+This command checks for the presence of `README.md` in the root directory.
+
+- If no README exists, it generates one from project context.
+- If a README exists, it reviews it for accuracy and completeness.
+- Optionally, the user may provide a number to limit updates to the last N commits:
+
+## Inputs
+
+- `$ARGUMENTS` – optional commit limit (defaults to full project history)
+
+## Project Context
+
+- README exists: !`ls README.md || echo "<missing>"`
+- Current branch: !`git branch --show-current`
+- File tree: !`find . -maxdepth 1 -type f -print`
+- Subdirectories: !`find . -maxdepth 1 -type d -not -name ".git"`
+- Representative files: !`find . -type f -not -path "*/.git/*" | head -n 20`
+
+### If README.md exists
+
+- Contents: !`cat README.md`
+- Recent commits: !`git log -n ${ARGUMENTS:-100} --oneline`
+- Code changes: !`git diff HEAD~${ARGUMENTS:-20}`
+
+## Task
+
+### If README.md is missing
+
+Generate a full `README.md` including:
+
+1. **Project Title** — Inferred from repo/folder
+2. **Description** — Purpose and functionality
+3. **Installation** — Step-by-step setup
+4. **Usage** — Code snippets, CLI/API examples
+5. **Features** — Bullet list of key functionality
+
+### If README.md exists
+
+1. Summarize current content
+2. Identify missing or outdated sections: new features not documented, changed installation steps or usage, poor formatting or structure
+3. Suggest or apply improvements
+4. Summarize proposed updates
+
+## Guidelines
+
+- Use valid Markdown with proper headings (`#`, `##`, etc.)
+- All commands/code must be fenced and copy-pasteable
+- Avoid duplicating content already present unless outdated
+- Preserve any custom sections (badges, shields, changelogs)
+- Only include commit-scoped changes if `$ARGUMENTS` is passed
+
+## Output
+
+Return:
+
+- Full proposed README content
+- A diff summary of updates
+- A brief rationale for each change
+"""

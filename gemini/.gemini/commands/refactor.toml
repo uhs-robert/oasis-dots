@@ -1,0 +1,42 @@
+description = "Refactor code to improve readability, structure, or maintainability without changing behavior"
+
+prompt = """
+## Context
+
+- Current branch: !`git branch --show-current`
+- Recent commits: !`git log -n 10 --oneline`
+
+### If @filename(s) provided
+
+- Show full content: !`cat @ARGS`
+
+### If @filename:line-range is provided (e.g., @src/index.ts:20-50)
+
+- Extract relevant section: !`sed -n '20,50p' src/index.ts`
+
+### If no file is passed
+
+- Show recently changed files: !`git show --name-only --pretty="" HEAD~10..HEAD`
+- Show full diffs: !`git diff HEAD~10`
+
+## Your Task
+
+1. Refactor the given file(s) or line range(s) without altering behavior
+2. Improve readability, structure, and clarity
+3. Remove dead code or duplication where safe
+4. Apply consistent naming, modularization, or formatting conventions
+5. Explain each major change in a short summary block
+
+## Guidelines
+
+- Do not introduce side effects
+- Avoid unnecessary rewrites
+- Show refactored code with before/after when useful
+- Add brief rationale for each change
+
+## Output Format
+
+- File or section being refactored
+- Summary of changes
+- Refactored code
+"""
