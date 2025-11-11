@@ -3,14 +3,14 @@
     "code": 0,
     "day": "Clear sky",
     "night": "Clear sky",
-    "icon": "滛",
+    "icon": "󰖙",
     "icon-night": "󰖔"
   },
   {
     "code": 1,
     "day": "Mainly clear",
     "night": "Mainly clear",
-    "icon": "滛",
+    "icon": "󰖙",
     "icon-night": "󰖔"
   },
   {
@@ -25,13 +25,13 @@
     "day": "Overcast",
     "night": "Overcast",
     "icon": "󰖕",
-    "icon-night": ""
+    "icon-night": "󰼱"
   },
   {
     "code": 45,
     "day": "Fog",
     "night": "Fog",
-    "icon": "敖",
+    "icon": "",
     "icon-night": ""
   },
   {
@@ -45,29 +45,29 @@
     "code": 51,
     "day": "Light drizzle",
     "night": "Light drizzle",
-    "icon": "",
-    "icon-night": ""
+    "icon": "",
+    "icon-night": ""
   },
   {
     "code": 53,
     "day": "Moderate drizzle",
     "night": "Moderate drizzle",
-    "icon": "",
-    "icon-night": ""
+    "icon": "",
+    "icon-night": ""
   },
   {
     "code": 55,
     "day": "Dense drizzle",
     "night": "Dense drizzle",
-    "icon": "",
-    "icon-night": ""
+    "icon": "",
+    "icon-night": ""
   },
   {
     "code": 56,
     "day": "Light freezing drizzle",
     "night": "Light freezing drizzle",
-    "icon": "ﭽ",
-    "icon-night": "ﭽ"
+    "icon": "",
+    "icon-night": ""
   },
   {
     "code": 57,
@@ -80,64 +80,64 @@
     "code": 61,
     "day": "Slight rain",
     "night": "Slight rain",
-    "icon": "",
-    "icon-night": ""
+    "icon": "",
+    "icon-night": ""
   },
   {
     "code": 63,
     "day": "Moderate rain",
     "night": "Moderate rain",
-    "icon": "",
-    "icon-night": ""
+    "icon": "󰖗",
+    "icon-night": "󰖗"
   },
   {
     "code": 65,
     "day": "Heavy rain",
     "night": "Heavy rain",
     "icon": "",
-    "icon-night": ""
+    "icon-night": ""
   },
   {
     "code": 66,
     "day": "Light freezing rain",
     "night": "Light freezing rain",
-    "icon": "ﭽ",
-    "icon-night": "ﭽ"
+    "icon": "󰼵",
+    "icon-night": "󰙿"
   },
   {
     "code": 67,
     "day": "Heavy freezing rain",
     "night": "Heavy freezing rain",
-    "icon": "ﭽ",
-    "icon-night": "ﭽ"
+    "icon": "󰙿",
+    "icon-night": "󰙿"
   },
   {
     "code": 71,
     "day": "Slight snow fall",
     "night": "Slight snow fall",
-    "icon": "",
-    "icon-night": ""
+    "icon": "󰼴",
+    "icon-night": ""
   },
   {
     "code": 73,
     "day": "Moderate snow fall",
     "night": "Moderate snow fall",
-    "icon": "",
+    "icon": "󰼴",
     "icon-night": ""
   },
   {
     "code": 75,
     "day": "Heavy snow fall",
     "night": "Heavy snow fall",
-    "icon": "",
-    "icon-night": ""
+    "icon": "󰼶",
+    "icon-night": "󰼶"
   },
   {
     "code": 77,
     "day": "Snow grains",
     "night": "Snow grains",
-    "icon": "",
-    "icon-night": ""
+    "icon": "󰖘",
+    "icon-night": "󰖘"
   },
   {
     "code": 80,
