@@ -60,7 +60,7 @@ Execute the following workflow to systematically fix the GitHub issue:
 gh issue view @ARGS
 
 # 2. Search for relevant code
-grep -r "keyword1\|keyword2" --include="*.js" --include="*.ts" --include="*.py" .
+grep -r "keyword1\\|keyword2" --include="*.js" --include="*.ts" --include="*.py" .
 
 # 3. Find related files
 find . -name "*relevant*" -type f
