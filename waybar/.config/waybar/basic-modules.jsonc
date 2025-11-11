@@ -366,14 +366,14 @@
 
   "custom/weather": {
     "interval": 900, // in seconds = 15 minutes
-    "exec": "exec ~/.config/waybar/scripts/weather-api/get_weather.rb",
+    "exec": "exec ~/.config/waybar/scripts/weather/get_weather.rb",
     "return-type": "json",
     "markup": true,
     "tooltip": true,
-    "on-scroll-up": "~/.config/waybar/scripts/weather-api/get_weather.rb --next  && pkill -RTMIN+5 waybar",
-    "on-scroll-down": "~/.config/waybar/scripts/weather-api/get_weather.rb --prev  && pkill -RTMIN+5 waybar",
-    "on-click": "~/.config/waybar/scripts/weather-api/get_weather.rb --toggle && pkill -RTMIN+5 waybar",
-    "on-click-right": "~/.config/waybar/scripts/weather-api/get_weather.rb --toggle && pkill -RTMIN+5 waybar"
+    "on-scroll-up": "~/.config/waybar/scripts/weather/get_weather.rb --next  && pkill -RTMIN+5 waybar",
+    "on-scroll-down": "~/.config/waybar/scripts/weather/get_weather.rb --prev  && pkill -RTMIN+5 waybar",
+    "on-click": "~/.config/waybar/scripts/weather/get_weather.rb --toggle && pkill -RTMIN+5 waybar",
+    "on-click-right": "~/.config/waybar/scripts/weather/get_weather.rb --toggle && pkill -RTMIN+5 waybar"
     // "on-click": "hyprpanel t calendarmenu",
   }
 }
