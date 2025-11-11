@@ -40,7 +40,6 @@ Generate a full `README.md` including:
 3. **Installation** — Step-by-step setup
 4. **Usage** — Code snippets, CLI/API examples
 5. **Features** — Bullet list of key functionality
-6. _(Optional)_ — License, Contributing, Roadmap
 
 ### If README.md exists
 
