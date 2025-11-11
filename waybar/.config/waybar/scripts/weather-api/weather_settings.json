@@ -1,0 +1,8 @@
+{
+  "latitude": "auto",
+  "longitude": "auto",
+  "unit": "Fahrenheit",
+  "icon-position": "left",
+  "hours_ahead": 24,
+  "forecast_days": 10
+}
