@@ -57,12 +57,48 @@ module Utils
       default
     end
 
-    # Formats a Time/DateTime object into a 2-digit hour (e.g., "08", "23").
-    def fmt_hour(datetime)
-      datetime.strftime('%H')
+    # Formats a Time/DateTime object into a formatted hour string.
+    #
+    # @param datetime [Time] The Time or DateTime object to format.
+    # @param time_format [String, nil] Optional time format override ('24h' for military, '12h' for AM/PM).
+    #   If nil, uses Config.time_format.
+    # @param hour_display [String, nil] Optional hour display mode ('icons', 'number', 'both').
+    #   If nil, uses Config.hour_display.
+    # @return [String] Formatted hour string.
+    def fmt_hour(datetime, time_format = nil, hour_display = nil)
+      format = time_format || Config.time_format
+      display_mode = hour_display || Config.hour_display
+
+      number_str = if format == '12h'
+                     datetime.strftime('%I %P') # e.g., "03 pm", "12 am"
+                   else
+                     datetime.strftime('%H') # e.g., "03", "15"
+                   end
+
+      icon_str = Icons.get_clock_icon(datetime.hour)
+
+      case display_mode
+      when 'icons'
+        if icon_str
+          # Icons mode: icon + am/pm only
+          styled_icon = Icons.style_icon(icon_str, Config.colors['primary'], Config.pongo_size[:small]).rstrip
+          am_pm = datetime.strftime('%P')
+          "#{styled_icon} #{am_pm}"
+        else
+          number_str
+        end
+      when 'both'
+        if icon_str
+          styled_icon = Icons.style_icon(icon_str, Config.colors['primary'], Config.pongo_size[:small]).rstrip
+          "#{styled_icon} #{number_str}"
+        else
+          number_str
+        end
+      else
+        number_str
+      end
     end
 
-    # Formats a date string (e.g., "2025-11-20") into "Day MM/DD".
     def fmt_day_of_week(datestr)
       # e.g., 'Mon 10/06'
       Time.strptime(datestr, '%Y-%m-%d').strftime('%a %m/%d')
@@ -85,15 +121,19 @@ module Config
       'pop_vhigh' => '#A855F7',
       'divider' => '#2B3B57'
     },
-    icon_type: 'nerd_font', # 'nerd_font' | 'emoji'
+    icon_type: 'nerd', # 'nerd' | 'emoji'
     icon_position: 'left', # 'left' | 'right'
     font_size: 14, # in px
     unit: 'Celsius', # 'Celsius' | 'Fahrenheit'
-    hours_ahead: 24, # max 24
-    forecast_days: 10, # max 16
+    hourly_number_of_hours: 24, # max 24
+    daily_number_of_days: 10, # max 16
     latitude: 'auto', # or float
     longitude: 'auto', # or float
     refresh_interval: 900, # seconds between API calls
+    time_format: '24h', # '24h' or '12h'
+    hour_display: 'number', # 'icons' | 'number' | 'both'
+    color_weather_icons: false, # enable weather-specific icon colors
+    weather_colors: {}, # weather-specific icon colors
     pongo_size: {}
   }
 
@@ -102,11 +142,13 @@ module Config
     'icon_position' => :icon_position,
     'font_size' => :font_size,
     'unit' => :unit,
-    'hours_ahead' => :hours_ahead,
-    'forecast_days' => :forecast_days,
+    'hourly_number_of_hours' => :hourly_number_of_hours,
+    'daily_number_of_days' => :daily_number_of_days,
     'latitude' => :latitude,
     'longitude' => :longitude,
-    'refresh_interval' => :refresh_interval
+    'refresh_interval' => :refresh_interval,
+    'time_format' => :time_format,
+    'hour_display' => :hour_display
   }.freeze
 
   class << self
@@ -120,6 +162,14 @@ module Config
         @settings[:colors].merge!(user_config['colors'])
       end
 
+      # Merge weather_colors settings
+      if user_config.key?('weather_colors') && user_config['weather_colors'].is_a?(Hash)
+        @settings[:weather_colors].merge!(user_config['weather_colors'])
+      end
+
+      # Load color_weather_icons boolean
+      @settings[:color_weather_icons] = user_config['color_weather_icons'] if user_config.key?('color_weather_icons')
+
       # Handle font size calculations
       self.set_font_size = user_config['font_size'] if user_config.key?('font_size')
 
@@ -127,6 +177,11 @@ module Config
       SETTING_KEY_MAP.each do |config_key, settings_key|
         @settings[settings_key] = user_config[config_key] if user_config.key?(config_key)
       end
+
+      # Enforce maximum limit for hourly_number_of_hours
+      return unless @settings[:hourly_number_of_hours]
+
+      @settings[:hourly_number_of_hours] = [[1, @settings[:hourly_number_of_hours].to_i].max, 24].min
     end
 
     def colors
@@ -137,8 +192,28 @@ module Config
       @settings[:pongo_size]
     end
 
-    def icon_set
+    def icon_type
       @settings[:icon_type]
+    end
+
+    def time_format
+      @settings[:time_format]
+    end
+
+    def hour_display
+      @settings[:hour_display]
+    end
+
+    def unit_c?
+      @settings[:unit] == 'Celsius'
+    end
+
+    def unit
+      unit_c? ? '°C' : '°F'
+    end
+
+    def precip_unit
+      unit_c? ? 'mm' : 'in'
     end
 
     def set_color(key, value)
@@ -173,25 +248,113 @@ module Config
   update_pongo_sizes
 end
 
+# Handles Icon storage, mapping, and styling
+module Icons
+  class << self
+    def init(icon_type)
+      @icon_map = load_icon_map(__dir__)
+      all_ui_icons = Utils.load_json(File.join(__dir__, 'ui_icons.json'))
+      @ui_icons = all_ui_icons[icon_type] || all_ui_icons['nerd']
+    end
+
+    def get_ui(key)
+      keys = key.split('.')
+      keys.reduce(@ui_icons) { |acc, k| acc&.[](k) }
+    end
+
+    def get_clock_icon(hour)
+      # Map hour (0-23) to clock face (1-12)
+      clock_hour = hour % 12
+      clock_hour = 12 if clock_hour == 0
+      get_ui("hour.#{clock_hour}")
+    end
+
+    def weather_icon(code, is_day)
+      code = code.to_i
+      icon_type = Config.icon_type
+
+      @icon_map.each do |item|
+        next unless item['code'].to_i == code
+
+        icon_key = is_day ? "icon-#{icon_type}" : "icon-#{icon_type}-night"
+        fallback_key = is_day ? "icon-#{icon_type}" : "icon-#{icon_type}"
+
+        return item[icon_key] || item[fallback_key] || ''
+      end
+
+      ''
+    end
+
+    def weather_color(code, is_day)
+      return Config.colors['primary'] unless Config.settings[:color_weather_icons]
+
+      # Map WMO codes to weather color keys
+      code = code.to_i
+      color_key = case code
+                  when 0, 1
+                    is_day ? 'clear_day' : 'clear_night'
+                  when 2
+                    is_day ? 'partly_cloudy_day' : 'partly_cloudy_night'
+                  when 3
+                    'overcast'
+                  when 45, 48
+                    'fog'
+                  when 51, 53
+                    'drizzle'
+                  when 55, 56
+                    'drizzle'
+                  when 57
+                    'freezing_rain'
+                  when 61
+                    'rain'
+                  when 63
+                    'rain'
+                  when 65, 82
+                    'heavy_rain'
+                  when 66, 67
+                    'freezing_rain'
+                  when 71, 73
+                    'snow'
+                  when 75, 77
+                    'heavy_snow'
+                  when 80, 81
+                    'rain'
+                  when 85
+                    'snow'
+                  when 86
+                    'heavy_snow'
+                  when 95, 96, 99
+                    'thunderstorm'
+                  else
+                    nil
+                  end
+
+      # Return the color or fall back to primary
+      color_key ? Config.settings[:weather_colors][color_key] || Config.colors['primary'] : Config.colors['primary']
+    end
+
+    def style_icon(glyph, color = Config.colors['primary'], size = Config.pongo_size[:medium])
+      "<span foreground='#{color}' size='#{size}'>#{glyph} </span>"
+    end
+
+    private
+
+    def load_icon_map(script_path)
+      data = Utils.load_json(File.join(script_path, 'weather_icons.json'))
+      data.is_a?(Array) ? data : []
+    rescue StandardError
+      []
+    end
+  end
+end
+
 # Parses temperature into glyphs and colors
 module Temperature
   SEASONAL_BIAS = ENV.fetch('SEASONAL_BIAS', '1') == '1'
-
-  THERMOMETER_ICON = {
-    COLD: '',
-    NEUTRAL: '',
-    WARM: '',
-    HOT: ''
-  }.freeze
-
   SUMMER_MONTHS = (5..9).freeze
   SHOULDER_MONTHS = [3, 4, 10].freeze
   DEFAULT_COLD_C = 5
   DEFAULT_COLD_F = 41
-  COLD_BAND    = [THERMOMETER_ICON[:COLD], Config.colors['cold']].freeze
-  NEUTRAL_BAND = [THERMOMETER_ICON[:NEUTRAL], Config.colors['neutral']].freeze
-  WARM_BAND    = [THERMOMETER_ICON[:WARM], Config.colors['warm']].freeze
-  HOT_BAND     = [THERMOMETER_ICON[:HOT], Config.colors['hot']].freeze
 
   class << self
     def init(unit:, bias:, month: Time.now.month)
@@ -199,6 +362,31 @@ module Temperature
       @seasonal_bias_enabled = bias
       @current_month = month
       @temperature_bands = build_temperature_bands
+    end
+
+    def thermometer_icon
+      {
+        COLD: Icons.get_ui('thermometer.cold'),
+        NEUTRAL: Icons.get_ui('thermometer.neutral'),
+        WARM: Icons.get_ui('thermometer.warm'),
+        HOT: Icons.get_ui('thermometer.hot')
+      }
+    end
+
+    def cold_band
+      [thermometer_icon[:COLD], Config.colors['cold']]
+    end
+
+    def neutral_band
+      [thermometer_icon[:NEUTRAL], Config.colors['neutral']]
+    end
+
+    def warm_band
+      [thermometer_icon[:WARM], Config.colors['warm']]
+    end
+
+    def hot_band
+      [thermometer_icon[:HOT], Config.colors['hot']]
     end
 
     def glyph_and_color(temp)
@@ -231,10 +419,10 @@ module Temperature
       cold, neutral, warm = temperature_limits
 
       [
-        [cold, *COLD_BAND],
-        [neutral, *NEUTRAL_BAND],
-        [warm,    *WARM_BAND],
-        [Float::INFINITY, *HOT_BAND]
+        [cold, *Temperature.cold_band],
+        [neutral, *Temperature.neutral_band],
+        [warm,    *Temperature.warm_band],
+        [Float::INFINITY, *Temperature.hot_band]
       ]
     end
 
@@ -282,12 +470,14 @@ end
 module Precipitation
   POP_ALERT_THRESHOLD = 60
 
-  PRECIPITATION_ICON = {
-    LOW: '',
-    HIGH: ''
-  }.freeze
-
   class << self
+    def precipitation_icon
+      {
+        LOW: Icons.get_ui('precipitation.low'),
+        HIGH: Icons.get_ui('precipitation.high')
+      }
+    end
+
     def color(pop)
       pop = [[0, pop.to_i].max, 100].min
       return Config.colors['pop_low'] if pop < 30   # 0–29
@@ -298,7 +488,7 @@ module Precipitation
     end
 
     def icon(pop)
-      pop >= POP_ALERT_THRESHOLD ? PRECIPITATION_ICON[:HIGH] : PRECIPITATION_ICON[:LOW]
+      pop >= POP_ALERT_THRESHOLD ? Precipitation.precipitation_icon[:HIGH] : Precipitation.precipitation_icon[:LOW]
     end
   end
 end
@@ -410,7 +600,7 @@ module CacheManager
 
       File.write(cache_file_path, JSON.generate(cache_data), encoding: 'utf-8')
     rescue StandardError => e
-      # Silently fail - caching is not critical
+      # Silently fail, caching is not critical
       warn "Cache write failed: #{e.message}" if ENV['DEBUG']
     end
 
@@ -420,12 +610,14 @@ module CacheManager
     # @return [Boolean] True if settings match
     def settings_match?(settings)
       cache = load_cache
-      return false unless cache && cache['settings']
+      return false unless cache && cache['settings'] && cache['units']
 
       cached_settings = cache['settings']
+      cached_units = cache['units']
       settings[:latitude].to_s == cached_settings['latitude'].to_s &&
         settings[:longitude].to_s == cached_settings['longitude'].to_s &&
-        settings[:unit].to_s == cached_settings['unit'].to_s
+        settings[:unit].to_s == cached_settings['unit'].to_s &&
+        Config.time_format.to_s == cached_units['time_format'].to_s
     end
 
     private
@@ -456,7 +648,6 @@ module ForecastData
     #   # => {lat: 51.5074, lon: -0.1278, location_name: nil}
     def resolve_location(settings)
       if settings[:latitude].to_s == 'auto' || settings[:longitude].to_s == 'auto'
-        # Auto-detect location from IP
         geo_data = fetch_location_from_ip
         {
           lat: geo_data['lat'],
@@ -464,7 +655,6 @@ module ForecastData
           location_name: geo_data['location_name']
         }
       else
-        # Use configured coordinates
         {
           lat: Utils.parse_float(settings[:latitude]),
           lon: Utils.parse_float(settings[:longitude]),
@@ -497,11 +687,11 @@ module ForecastData
     # @param lat [Float] Latitude coordinate
     # @param lon [Float] Longitude coordinate
     # @param unit_c [Boolean] True for Celsius, false for Fahrenheit
-    # @param forecast_days [Integer] Number of days to forecast (max 16)
+    # @param daily_number_of_days [Integer] Number of days to forecast (max 16)
     # @return [Hash] Parsed API response with current, hourly, and daily data
     # @raise [Net::HTTPError] If API request fails
     # @raise [JSON::ParserError] If response is not valid JSON
-    def fetch_openmeteo_forecast(lat, lon, unit_c, forecast_days = 16)
+    def fetch_openmeteo_forecast(lat, lon, unit_c, daily_number_of_days = 16)
       url = URI('https://api.open-meteo.com/v1/forecast')
 
       params = {
@@ -513,7 +703,7 @@ module ForecastData
         temperature_unit: unit_c ? 'celsius' : 'fahrenheit',
         precipitation_unit: unit_c ? 'mm' : 'inch',
         timezone: 'auto',
-        forecast_days: forecast_days
+        daily_number_of_days: daily_number_of_days
       }
       url.query = URI.encode_www_form(params)
 
@@ -530,8 +720,6 @@ module ForecastData
     def extract_current(blob, _unit, location_name = nil)
       cur = blob['current']
       timezone = blob['timezone']
-
-      # Parse current time in the location's timezone
       now_local = Time.parse(cur['time'])
 
       {
@@ -628,15 +816,13 @@ module ForecastData
         dt = Time.parse(time_str)
         date_str = dt.strftime('%Y-%m-%d')
 
-        # Skip today and past dates
+        # Skip before today
         next if date_str <= today
 
         # Only process 3-hour intervals
         next unless (dt.hour % 3).zero?
 
         picked_dates << date_str
-
-        # Stop when we have enough days
         break if picked_dates.size > num_days
 
         rows << {
@@ -687,24 +873,10 @@ module TooltipBuilder
   DIVIDER_CHAR = '─'
   DIVIDER_LEN = 74
 
-  SUN_ICON = {
-    RISE: '',
-    SET: '󰖚'
-  }.freeze
-
-  # Table headers
-  HOUR_TABLE_HEADER_TEXT = format(
-    '%<hr>-4s │ %<temp>5s │ %<pop>4s │ %<precip>7s │ Cond',
-    hr: 'Hr', temp: 'Temp', pop: 'PoP', precip: 'Precip'
-  )
+  # Table headers (static width tables only)
   DAY_TABLE_HEADER_TEXT = format(
     '%-<day>9s │ %<hi>5s │ %<lo>5s │ %<pop>4s │ %<precip>7s │ Cond',
     day: 'Day', hi: 'Hi', lo: 'Lo', pop: 'PoP', precip: 'Precip'
-  )
-
-  DETAIL3H_HEADER_TEXT = format(
-    '%-<date>9s │ %<hr>2s │ %<temp>5s │ %<pop>4s │ %<precip>7s │ Cond',
-    date: 'Date', hr: 'Hr', temp: 'Temp', pop: 'PoP', precip: 'Precip'
   )
 
   ASTRO3D_HEADER_TEXT = format(
@@ -713,51 +885,72 @@ module TooltipBuilder
   )
 
   class << self
-    # --- NEW: This method's ONLY job is to build the waybar text ---
-    def build_text(cond:, temp:, code:, is_day:, icon_pos:, fallback_icon:, unit:)
-      # icon for current condition
-      cond_icon_raw = Icons.weather_icon(code, is_day != 0) || fallback_icon
+    def sun_icon
+      {
+        RISE: Icons.get_ui('sun.rise'),
+        SET: Icons.get_ui('sun.set')
+      }
+    end
 
-      # main text with waybar icon
-      waybar_icon = Icons.style_icon(cond_icon_raw, Config.colors['primary'], Config.pongo_size[:small])
-      left = "#{waybar_icon}#{temp.round}#{unit}"
-      right = "#{temp.round}#{unit} #{waybar_icon}"
+    # Calculates the appropriate column width for the hour column based on display settings.
+    #
+    # @return [Integer] Column width in characters
+    def calculate_hour_column_width
+      hour_display = Config.hour_display
+      time_format = Config.time_format
+      icon_type = Config.icon_type
+
+      case hour_display
+      when 'icons'
+        icon_width = icon_type == 'emoji' ? 3 : 2
+        icon_width + 3
+      when 'both'
+        icon_width = icon_type == 'emoji' ? 3 : 2
+        number_width = time_format == '12h' ? 6 : 3
+        icon_width + number_width
+      else
+        time_format == '12h' ? 6 : 3
+      end
+    end
+
+    # Build the waybar status text
+    def build_waybar_status(cond:, temp:, code:, is_day:, icon_pos:, fallback_icon:)
+      cond_icon_raw = Icons.weather_icon(code, is_day != 0) || fallback_icon
+      waybar_icon = Icons.style_icon(cond_icon_raw, Icons.weather_color(code, is_day != 0), Config.pongo_size[:small])
+      left = "#{waybar_icon}#{temp.round}#{Config.unit}"
+      right = "#{temp.round}#{Config.unit} #{waybar_icon}"
       (icon_pos || 'left') == 'left' ? left : right
     end
 
     def build_text_and_tooltip(timezone:, cond:, temp:, feels:, precip_amt:, code:, is_day:, next_hours:,
-                               days:, unit:, precip_unit:, icon_pos:, fallback_icon:,
-                               sunrise:, sunset:, location_name: nil, forecast_days: 16)
-      # 1. Call the new method to get the text
-      text = build_text(
+                               days:, icon_pos:, fallback_icon:,
+                               sunrise:, sunset:, location_name: nil, daily_number_of_days: 16)
+      text = build_waybar_status(
         cond: cond, temp: temp, code: code, is_day: is_day,
-        icon_pos: icon_pos, fallback_icon: fallback_icon, unit: unit
+        icon_pos: icon_pos, fallback_icon: fallback_icon
       )
 
-      # 2. Build the tooltip (all this logic is the same as before)
-      next_hours_table = make_hour_table(next_hours, unit, precip_unit)
-      next_days_overview_table = make_day_table(days, unit, precip_unit)
+      next_hours_table = make_hour_table(next_hours)
+      next_days_overview_table = make_day_table(days)
 
       header_block = build_header_block(
-        timezone: timezone, cond: cond, temp: temp, feels: feels, unit: unit,
+        timezone: timezone, cond: cond, temp: temp, feels: feels,
         code: code, is_day: is_day, fallback_icon: fallback_icon,
         sunrise: sunrise, sunset: sunset,
         now_pop: next_hours.empty? ? nil : next_hours[0]['pop'].to_i,
-        precip_amt: precip_amt, precip_unit: precip_unit, location_name: location_name
+        precip_amt: precip_amt, location_name: location_name
       )
 
       tooltip = "#{header_block}\n" \
-                "<b>#{Icons.style_icon('', Config.colors['primary'],
-                                       Config.pongo_size[:small])} Next #{next_hours.length} hours</b>\n\n" \
+                "<b>#{Icons.style_icon(Icons.get_ui('clock'), Config.colors['primary'],
+                                       Config.pongo_size[:small])} Hourly</b>\n\n" \
                 "#{next_hours_table}\n\n#{divider}\n\n" \
-                "<b>#{Icons.style_icon('󰨳', Config.colors['primary'],
-                                       Config.pongo_size[:small])} Next #{forecast_days} Days</b>\n\n#{next_days_overview_table}"
+                "<b>#{Icons.style_icon(Icons.get_ui('calendar'), Config.colors['primary'],
+                                       Config.pongo_size[:small])} Daily</b>\n\n#{next_days_overview_table}"
 
-      # 3. Return both
       [text, tooltip]
     end
 
-    # Creates a divider line for tooltip formatting
     def divider(length = DIVIDER_LEN, char = DIVIDER_CHAR, color = Config.colors['divider'])
       line = char * [1, length].max
       "<span font_family='monospace' foreground='#{color}'>#{line}</span>"
@@ -780,24 +973,34 @@ module TooltipBuilder
     end
 
     # Builds hourly forecast table
-    def make_hour_table(next_hours, unit, precip_unit)
-      header = "<span weight='bold'>#{HOUR_TABLE_HEADER_TEXT}</span>"
+    def make_hour_table(next_hours)
+      hr_col_width = calculate_hour_column_width
+      hour_table_header_text = format(
+        "%<hr>-#{hr_col_width}s │ %<temp>5s │ %<pop>4s │ %<precip>7s │ Cond",
+        hr: 'Hr', temp: 'Temp', pop: 'PoP', precip: 'Precip'
+      )
+      header = "<span weight='bold'>#{hour_table_header_text}</span>"
       rows = []
 
       next_hours.each do |h|
-        temp_txt = "#{h['temp'].round}#{unit}".rjust(5)
+        temp_txt = "#{h['temp'].round}#{Config.unit}".rjust(5)
         temp_col = "<span foreground='#{Temperature.color(h['temp'])}'>#{temp_txt}</span>"
 
         pop_txt = "#{h['pop'].to_i}%".rjust(4)
         pop_col = "<span foreground='#{Precipitation.color(h['pop'])}'>#{pop_txt}</span>"
 
-        precip_col = format('%<val>.1f %<unit>s', val: h['precip'], unit: precip_unit).rjust(7)
+        precip_col = format('%<val>.1f %<unit>s', val: h['precip'], unit: Config.precip_unit).rjust(7)
 
         glyph = Icons.weather_icon(h['code'], h['is_day'] != 0)
-        icon_html = glyph.empty? ? '' : Icons.style_icon(glyph, Config.colors['primary'], Config.pongo_size[:small])
+        icon_html = if glyph.empty?
+                      ''
+                    else
+                      Icons.style_icon(glyph, Icons.weather_color(h['code'], h['is_day'] != 0),
+                                       Config.pongo_size[:small])
+                    end
         cond_cell = "#{icon_html} #{CGI.escapeHTML(h['cond'].to_s)}".strip
 
-        rows << format('%-4s │ %s │ %s │ %s │ %s',
+        rows << format("%-#{hr_col_width}s │ %s │ %s │ %s │ %s",
                        Utils.fmt_hour(h['dt']), temp_col, pop_col, precip_col, cond_cell)
       end
 
@@ -807,7 +1010,7 @@ module TooltipBuilder
     end
 
     # Builds daily forecast table
-    def make_day_table(days, unit, precip_unit)
+    def make_day_table(days)
       header = "<span weight='bold'>#{DAY_TABLE_HEADER_TEXT}</span>"
       out_rows = []
 
@@ -815,8 +1018,8 @@ module TooltipBuilder
         hi_val = d['max'].round
         lo_val = d['min'].round
 
-        hi_txt = format('%3d%s', hi_val, unit)
-        lo_txt = format('%3d%s', lo_val, unit)
+        hi_txt = format('%3d%s', hi_val, Config.unit)
+        lo_txt = format('%3d%s', lo_val, Config.unit)
 
         hi_col = "<span foreground='#{Temperature.color(d['max'])}'>#{hi_txt}</span>"
         lo_col = "<span foreground='#{Temperature.color(d['min'])}'>#{lo_txt}</span>"
@@ -825,11 +1028,16 @@ module TooltipBuilder
         pop_txt = format('%3d%%', pop)
         pop_col = "<span foreground='#{Precipitation.color(pop)}'>#{pop_txt}</span>"
 
-        precip_col = format('%<val>.1f %<unit>s', val: d['precip'], unit: precip_unit).rjust(7)
+        precip_col = format('%<val>.1f %<unit>s', val: d['precip'], unit: Config.precip_unit).rjust(7)
 
         cond_txt = d['cond'].to_s
         glyph = Icons.weather_icon(d['code'], true)
-        icon_html = glyph.empty? ? '' : Icons.style_icon(glyph, Config.colors['primary'], Config.pongo_size[:small])
+        icon_html = if glyph.empty?
+                      ''
+                    else
+                      Icons.style_icon(glyph, Icons.weather_color(d['code'], true),
+                                       Config.pongo_size[:small])
+                    end
         cond_cell = "#{icon_html} #{CGI.escapeHTML(cond_txt)}".strip
 
         row = format('%-9s │ %s │ %s │ %s │ %s │ %s',
@@ -843,25 +1051,35 @@ module TooltipBuilder
     end
 
     # Builds 3-hour interval forecast table
-    def make_3h_table(rows, unit, precip_unit)
-      header = "<span weight='bold'>#{DETAIL3H_HEADER_TEXT}</span>"
+    def make_3h_table(rows)
+      hr_col_width = calculate_hour_column_width
+      detail3h_header_text = format(
+        "%-<date>9s │ %<hr>#{hr_col_width}s │ %<temp>5s │ %<pop>4s │ %<precip>7s │ Cond",
+        date: 'Date', hr: 'Hr', temp: 'Temp', pop: 'PoP', precip: 'Precip'
+      )
+      header = "<span weight='bold'>#{detail3h_header_text}</span>"
       out = []
 
       rows.each do |r|
-        temp_txt = "#{r['temp'].round}#{unit}".rjust(5)
+        temp_txt = "#{r['temp'].round}#{Config.unit}".rjust(5)
         temp_col = "<span foreground='#{Temperature.color(r['temp'])}'>#{temp_txt}</span>"
 
         pop_val = [[0, r['pop'].to_i].max, 100].min
         pop_txt = format('%3d%%', pop_val)
         pop_col = "<span foreground='#{Precipitation.color(pop_val)}'>#{pop_txt}</span>"
 
-        precip_col = format('%<val>.1f %<unit>s', val: r['precip'], unit: precip_unit).rjust(7)
+        precip_col = format('%<val>.1f %<unit>s', val: r['precip'], unit: Config.precip_unit).rjust(7)
 
         glyph = Icons.weather_icon(r['code'], r['is_day'] != 0)
-        icon_html = glyph.empty? ? '' : Icons.style_icon(glyph, Config.colors['primary'], Config.pongo_size[:small])
+        icon_html = if glyph.empty?
+                      ''
+                    else
+                      Icons.style_icon(glyph, Icons.weather_color(r['code'], r['is_day'] != 0),
+                                       Config.pongo_size[:small])
+                    end
         cond_cell = "#{icon_html} #{CGI.escapeHTML(r['cond'].to_s)}".strip
 
-        out << format('%-9s │ %2s │ %s │ %s │ %s │ %s',
+        out << format("%-9s │ %#{hr_col_width}s │ %s │ %s │ %s │ %s",
                       Utils.fmt_day_of_week(r['date']), Utils.fmt_hour(r['dt']), temp_col, pop_col, precip_col, cond_cell)
       end
 
@@ -871,40 +1089,38 @@ module TooltipBuilder
     end
 
     # Builds the common header block for tooltips
-    def build_header_block(timezone:, cond:, temp:, feels:, unit:, code:, is_day:, fallback_icon:,
-                           sunrise: nil, sunset: nil, now_pop: nil, precip_amt: nil, precip_unit: '', location_name: nil)
-      # Returns the exact same top block used by all tooltips.
+    def build_header_block(timezone:, cond:, temp:, feels:, code:, is_day:, fallback_icon:,
+                           sunrise: nil, sunset: nil, now_pop: nil, precip_amt: nil, location_name: nil)
       display_location = location_name || timezone || 'Local'
       location_line = format('<b>%s</b>', CGI.escapeHTML(display_location))
-
-      # current conditions + colored thermometer
       tglyph, tcolor = Temperature.glyph_and_color(feels)
       current_line = format('%s %s | %s%d%s (feels %d%s)',
-                            Icons.style_icon(Icons.weather_icon(code, is_day != 0) || fallback_icon),
+                            Icons.style_icon(Icons.weather_icon(code, is_day != 0) || fallback_icon,
+                                             Icons.weather_color(code, is_day != 0)),
                             CGI.escapeHTML(cond),
                             Icons.style_icon(tglyph, tcolor),
                             temp.round,
-                            unit,
+                            Config.unit,
                             feels.round,
-                            unit)
+                            Config.unit)
 
       # optional sunrise/sunset
       astro_line = ''
       if sunrise || sunset
         astro_line = format('%s Sunrise %s | %s Sunset %s',
-                            Icons.style_icon(SUN_ICON[:RISE]),
+                            Icons.style_icon(TooltipBuilder.sun_icon[:RISE]),
                             CGI.escapeHTML(sunrise || '—'),
-                            Icons.style_icon(SUN_ICON[:SET]),
+                            Icons.style_icon(TooltipBuilder.sun_icon[:SET]),
                             CGI.escapeHTML(sunset || '—'))
       end
 
       # optional "now" precip / PoP (colored)
       now_line = ''
-      if now_pop && precip_amt && !precip_unit.empty?
+      if now_pop && precip_amt
         pop_icon_html = Icons.style_icon(Precipitation.icon(now_pop), Precipitation.color(now_pop))
         now_pop_col = "<span foreground='#{Precipitation.color(now_pop)}'>#{now_pop.to_i}%</span>"
         now_line = format('%s PoP %s, Precip %.1f%s',
-                          pop_icon_html, now_pop_col, precip_amt, precip_unit)
+                          pop_icon_html, now_pop_col, precip_amt, Config.precip_unit)
       end
 
       parts = [location_line, '', current_line]
@@ -915,59 +1131,25 @@ module TooltipBuilder
     end
 
     # Builds week view tooltip with detailed 3-hour forecast
-    def build_week_view_tooltip(timezone:, cond:, temp:, feels:, unit:, code:, is_day:, fallback_icon:,
-                                three_hour_rows:, precip_unit:, sunrise: nil, sunset: nil,
+    def build_week_view_tooltip(timezone:, cond:, temp:, feels:, code:, is_day:, fallback_icon:,
+                                three_hour_rows:, sunrise: nil, sunset: nil,
                                 now_pop: nil, precip_amt: nil, astro_by_date: nil, location_name: nil)
       header_block = build_header_block(
-        timezone: timezone, cond: cond, temp: temp, feels: feels, unit: unit,
+        timezone: timezone, cond: cond, temp: temp, feels: feels,
         code: code, is_day: is_day, fallback_icon: fallback_icon,
         sunrise: sunrise, sunset: sunset, now_pop: now_pop,
-        precip_amt: precip_amt, precip_unit: precip_unit, location_name: location_name
+        precip_amt: precip_amt, location_name: location_name
       )
 
       astro_table = make_astro3d_table(three_hour_rows, astro_by_date || {})
-      astro_header = "<b>#{Icons.style_icon(SUN_ICON[:RISE], Config.colors['primary'],
-                                            Config.pongo_size[:small])} Week Sunrise / Sunset</b>"
+      astro_header = "<b>#{Icons.style_icon(Icons.get_ui('sun.rise'), Config.colors['primary'],
+                                            Config.pongo_size[:small])} Sunrise / Sunset</b>"
 
-      detail_header = "<b>#{Icons.style_icon('󰨳', Config.colors['primary'],
-                                             Config.pongo_size[:small])} Week Details</b>"
-      detail_table = make_3h_table(three_hour_rows, unit, precip_unit)
+      detail_header = "<b>#{Icons.style_icon(Icons.get_ui('calendar'), Config.colors['primary'],
+                                             Config.pongo_size[:small])} 3 Day Snapshot</b>"
+      detail_table = make_3h_table(three_hour_rows)
 
       "#{header_block}\n#{astro_header}\n\n#{astro_table}\n\n#{divider}\n\n#{detail_header}\n\n#{detail_table}"
-    end
-  end
-end
-
-# Handles Icons in terms of mapping via weather_code or styling icon
-module Icons
-  class << self
-    def init
-      @icon_map = load_icon_map(__dir__)
-    end
-
-    def weather_icon(code, is_day)
-      code = code.to_i
-
-      @icon_map.each do |item|
-        next unless item['code'].to_i == code
-
-        return is_day ? (item['icon'] || '') : (item['icon-night'] || '')
-      end
-
-      ''
-    end
-
-    def style_icon(glyph, color = Config.colors['primary'], size = Config.pongo_size[:medium])
-      "<span foreground='#{color}' size='#{size}'>#{glyph} </span>"
-    end
-
-    private
-
-    def load_icon_map(script_path)
-      data = Utils.load_json(File.join(script_path, 'weather_icons.json'))
-      data.is_a?(Array) ? data : []
-    rescue StandardError
-      []
     end
   end
 end
@@ -981,27 +1163,23 @@ module ViewBuilder
     # @param mode [String] Display mode (WeatherMode::DEFAULT or WeatherMode::WEEKVIEW)
     # @param weather_data [Hash] Weather data including :cur, :days, :next_hours, etc.
     # @param settings [Hash] Configuration settings
-    # @param unit [String] Temperature unit ('°C' or '°F')
-    # @param precip_unit [String] Precipitation unit ('mm' or 'in')
     # @return [Array<String, String>] Text and tooltip strings for waybar display
-    def build(mode, weather_data, settings, unit, precip_unit)
+    def build(mode, weather_data, settings)
       builder = mode == WeatherMode::WEEKVIEW ? WeekViewBuilder : DefaultViewBuilder
-      builder.build(weather_data, settings, unit, precip_unit)
+      builder.build(weather_data, settings)
     end
   end
 end
 
-# Default view builder strategy - shows current conditions, hourly forecast, and daily overview.
+# Default view builder - shows current conditions, hourly forecast, and daily overview.
 module DefaultViewBuilder
   class << self
     # Builds the default view with hourly and daily forecast tables.
     #
     # @param weather_data [Hash] Weather data hash
     # @param settings [Hash] Configuration settings
-    # @param unit [String] Temperature unit
-    # @param precip_unit [String] Precipitation unit
     # @return [Array<String, String>] Text and tooltip
-    def build(weather_data, settings, unit, precip_unit)
+    def build(weather_data, settings)
       cur = weather_data[:cur]
       days = weather_data[:days]
       next_hours = weather_data[:next_hours]
@@ -1012,25 +1190,23 @@ module DefaultViewBuilder
       TooltipBuilder.build_text_and_tooltip(
         timezone: cur['timezone'], cond: cur['cond'], temp: cur['temp'], feels: cur['feels'],
         precip_amt: cur['precip_amt'], code: cur['code'], is_day: cur['is_day'], next_hours: next_hours,
-        days: days, unit: unit, precip_unit: precip_unit,
+        days: days,
         icon_pos: settings[:icon_position], fallback_icon: fallback_icon, sunrise: sunrise, sunset: sunset,
-        location_name: cur['location_name'], forecast_days: settings[:forecast_days]
+        location_name: cur['location_name'], daily_number_of_days: settings[:daily_number_of_days]
       )
     end
   end
 end
 
-# Week view builder strategy - shows detailed 3-hour interval forecast and sunrise/sunset times.
+# Week view builder - shows detailed 3-hour interval forecast and sunrise/sunset times.
 module WeekViewBuilder
   class << self
     # Builds the week view with 3-hour intervals and astronomy data.
     #
     # @param weather_data [Hash] Weather data hash
     # @param settings [Hash] Configuration settings
-    # @param unit [String] Temperature unit
-    # @param precip_unit [String] Precipitation unit
     # @return [Array<String, String>] Text and tooltip
-    def build(weather_data, settings, unit, precip_unit)
+    def build(weather_data, settings)
       cur = weather_data[:cur]
       next_hours = weather_data[:next_hours]
       sunrise = weather_data[:sunrise]
@@ -1042,15 +1218,15 @@ module WeekViewBuilder
       next_3days = ForecastData.build_next_3days_detailed(blob, cur['now_local'], 3)
       astro_by_date = ForecastData.build_astro_by_date(days)
 
-      text = TooltipBuilder.build_text(
+      text = TooltipBuilder.build_waybar_status(
         cond: cur['cond'], temp: cur['temp'], code: cur['code'], is_day: cur['is_day'],
-        icon_pos: settings[:icon_position], fallback_icon: fallback_icon, unit: unit
+        icon_pos: settings[:icon_position], fallback_icon: fallback_icon
       )
 
       tooltip = TooltipBuilder.build_week_view_tooltip(
         timezone: cur['timezone'], cond: cur['cond'], temp: cur['temp'], feels: cur['feels'],
-        unit: unit, code: cur['code'], is_day: cur['is_day'], fallback_icon: fallback_icon,
-        three_hour_rows: next_3days, precip_unit: precip_unit,
+        code: cur['code'], is_day: cur['is_day'], fallback_icon: fallback_icon,
+        three_hour_rows: next_3days,
         sunrise: sunrise, sunset: sunset,
         now_pop: next_hours.empty? ? nil : next_hours[0]['pop'].to_i,
         precip_amt: cur['precip_amt'], astro_by_date: astro_by_date,
@@ -1127,27 +1303,21 @@ end
 # Initialize configuration modules
 private def initialize_app_config(settings)
   Config.init
-  Icons.init
-
-  unit_c = settings[:unit] == 'Celsius'
-  unit = unit_c ? '°C' : '°F'
-  precip_unit = unit_c ? 'mm' : 'in'
+  Icons.init(settings[:icon_type])
 
   Temperature.init(
-    unit: unit,
+    unit: Config.unit,
     bias: Temperature::SEASONAL_BIAS,
     month: Time.now.month
   )
-
-  { unit_c: unit_c, unit: unit, precip_unit: precip_unit }
 end
 
 # Fetch and build all weather data structures
-private def fetch_weather_data(lat, lon, settings, unit_c, location_name, unit)
-  blob = ForecastData.fetch_openmeteo_forecast(lat, lon, unit_c, settings[:forecast_days])
-  cur = ForecastData.extract_current(blob, unit, location_name)
-  days = ForecastData.build_next_days(blob, settings[:forecast_days])
-  next_hours = ForecastData.build_next_hours(blob, cur['now_local'], settings[:hours_ahead])
+private def fetch_weather_data(lat, lon, settings, location_name)
+  blob = ForecastData.fetch_openmeteo_forecast(lat, lon, Config.unit_c?, settings[:daily_number_of_days])
+  cur = ForecastData.extract_current(blob, Config.unit, location_name)
+  days = ForecastData.build_next_days(blob, settings[:daily_number_of_days])
+  next_hours = ForecastData.build_next_hours(blob, cur['now_local'], settings[:hourly_number_of_hours])
   sunrise, sunset = ForecastData.get_sun_times(days, cur['now_local'])
   fallback_icon = Icons.weather_icon(cur['code'], cur['is_day'] != 0) || ''
 
@@ -1155,9 +1325,9 @@ private def fetch_weather_data(lat, lon, settings, unit_c, location_name, unit)
     fallback_icon: fallback_icon }
 end
 
-# Generate text and tooltip based on mode (using Strategy pattern)
-private def generate_output(mode, weather_data, settings, unit, precip_unit)
-  ViewBuilder.build(mode, weather_data, settings, unit, precip_unit)
+# Generate text and tooltip based on mode
+private def generate_output(mode, weather_data, settings)
+  ViewBuilder.build(mode, weather_data, settings)
 end
 
 # Recursively converts hash string keys to symbols, handling nested structures
@@ -1195,11 +1365,11 @@ private def symbolize_weather_data(data)
   result
 end
 
-# Main application logic orchestrator
+# Main application logic
 private def run_weather_update(force_refresh: false)
   settings = Config.settings
   mode = WeatherMode.get
-  units = initialize_app_config(settings)
+  initialize_app_config(settings)
 
   # Check cache freshness and settings match
   refresh_interval = settings[:refresh_interval] || 900
@@ -1210,27 +1380,25 @@ private def run_weather_update(force_refresh: false)
   if use_cache
     # Load from cache
     cache = CacheManager.load_cache
-    location = symbolize_keys(cache['location'])
+    symbolize_keys(cache['location'])
     weather_data = symbolize_weather_data(cache['weather_data'])
-    # Update units from cache to ensure consistency
-    units = symbolize_keys(cache['units'])
   else
     # Fetch fresh data from API
     location = ForecastData.resolve_location(settings)
     weather_data = fetch_weather_data(
-      location[:lat], location[:lon], settings,
-      units[:unit_c], location[:location_name], units[:unit]
+      location[:lat], location[:lon], settings, location[:location_name]
     )
     # Save to cache
     CacheManager.save_cache(
       location: location,
       weather_data: weather_data,
-      units: units,
+      units: { unit_c: Config.unit_c?, unit: Config.unit, precip_unit: Config.precip_unit,
+               time_format: Config.time_format },
       settings: settings
     )
   end
 
-  text, tooltip = generate_output(mode, weather_data, settings, units[:unit], units[:precip_unit])
+  text, tooltip = generate_output(mode, weather_data, settings)
   classes = [
     'weather',
     mode == WeatherMode::WEEKVIEW ? 'mode-weekview' : 'mode-default',
