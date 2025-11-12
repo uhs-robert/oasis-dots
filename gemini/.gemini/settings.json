@@ -9,6 +9,16 @@
     }
   },
   "ui": {
-    "theme": "Ayu"
+    "theme": "Ayu",
+    "showLineNumbers": true,
+    "useFullWidth": true
+  },
+  "output": {
+    "format": "text"
+  },
+  "tools": {
+    "shell": {
+      "showColor": true
+    }
   }
 }
