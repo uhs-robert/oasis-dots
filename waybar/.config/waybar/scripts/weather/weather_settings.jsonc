@@ -1,8 +1,21 @@
 {
   "latitude": "auto",         // e.g., 40.71 or "auto" to detect from IP address
   "longitude": "auto",        // e.g., -74.01 or "auto" to detect from IP address
+  "refresh_interval": 900,    // Seconds between API calls (900 = 15 min). View toggles use cache.
   "unit": "Fahrenheit",       // "Fahrenheit" or "Celsius"
-  "icon-position": "left",    // "left" or "right".
+  "icon_position": "left",    // "left" or "right".
   "hours_ahead": 24,          // Number of hours to show in hourly tooltip
-  "forecast_days": 10         // Number of days for forecast (max 16)
+  "forecast_days": 10,        // Number of days for forecast (max 16)
+  "colors": {
+    "primary": "#42A5F5",     // Icon default
+    "cold": "skyblue",        // Temp cold
+    "neutral": "#42A5F5",     // Temp neutral
+    "warm": "khaki",          // Temp warm
+    "hot": "indianred",       // Temp hot
+    "pop_low": "#EAD7FF",     // Precipitation low
+    "pop_med": "#CFA7FF",     // Precipitation low
+    "pop_high": "#BC85FF",    // Precipitation low
+    "pop_vhigh": "#A855F7",   // Precipitation low
+    "divider": "#2B3B57"      // Dividers
+  }
 }
