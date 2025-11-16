@@ -16,6 +16,7 @@ prompt = """
 4. For each commit:
    - Use **conventional commit** format
    - Keep first line ≤ 72 chars, imperative mood
+   - Add detailed message after first line for changes made
    - Group related changes (code/docs/tests/etc)
 
 ## Format
@@ -54,4 +55,5 @@ Types:
 - Staged files = commit scope
 - Nothing staged = auto-stage all
 - Suggest multi-commit splits if appropriate
+- Include detailed message of changes after title
 """
