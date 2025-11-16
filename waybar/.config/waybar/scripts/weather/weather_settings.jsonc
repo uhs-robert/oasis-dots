@@ -6,9 +6,11 @@
   "hour_display": "number",               // "icons", "number", or "both"
   "hourly_number_of_hours": 12,           // Number of hours to show in hourly tooltip (max 24)
   "daily_number_of_days": 10,             // Number of days for forecast (max 16)
+  "snapshot_number_of_days": 2,           // Number of days for week view snapshot (max 3)
   "refresh_interval": 900,                // Seconds between API calls (900 = 15 min). View toggles use cache.
   "icon_type": "nerd",                    // "nerd" or "emoji"
   "icon_position": "left",                // "left" or "right".
+  "font_size": 14,                        // Base font size in px
   "colors": {
     "primary": "#42A5F5",                 // Nerd icon default color
     "cold": "skyblue",                    // Temp cold
@@ -24,9 +26,9 @@
   "color_weather_icons": true,            // Enable weather-specific icon colors for nerd fonts (false = use primary color)
   "weather_colors": {
     "clear_day": "#FFAC33",               // ☀️
-    "clear_night": "#FAC629",             // 🌙
+    "clear_night": "#5B6FD3",             // 🌙
     "partly_cloudy_day": "#D89C4C",       // ⛅
-    "partly_cloudy_night": "#A88E3A",     // ☁️
+    "partly_cloudy_night": "#4554A8",     // ☁️
     "overcast": "#B0B0B0",                // ☁️
     "fog": "#D3D3D3",                     // 🌫️
     "drizzle": "#87CEEB",                 // 💧
