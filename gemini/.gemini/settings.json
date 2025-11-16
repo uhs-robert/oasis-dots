@@ -11,7 +11,8 @@
   "ui": {
     "theme": "Ayu",
     "showLineNumbers": true,
-    "useFullWidth": true
+    "useFullWidth": true,
+    "showStatusInTitle": false
   },
   "output": {
     "format": "text"
