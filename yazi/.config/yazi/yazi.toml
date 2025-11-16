@@ -1,9 +1,21 @@
+# yazi/.config/yazi/yazi.toml
 [opener]
 edit = [{ run = '$EDITOR "$@"', block = true, desc = "NeoVim", for = "unix" }]
+gimp-edit = [{ run = 'gimp "$@"', block = true, desc = "Gimp", for = "unix" }]
+video = [{ run = 'vlc "$@"', orphan = true, desc = "VLC", for = "unix" }]
+pdf = [{ run = 'okular "$@"', orphan = true, desc = "Okular", for = "unix" }]
 open = [
   { run = 'xdg-open "$@"', desc = "Open" },
   { run = '$EDITOR "$@"', block = true, desc = "NeoVim", for = "unix" },
   { run = 'vim "$@"', block = true, desc = "Vim", for = "unix" },
+  { run = 'gimp "$@"', block = true, desc = "Gimp", for = "unix" },
+]
+
+[open]
+prepend_rules = [
+  { mime = "image/*", use = "gimp-edit" },
+  { mime = "video/*", use = "video" },
+  { mime = "application/pdf", use = "pdf" },
 ]
 
 [plugin]
