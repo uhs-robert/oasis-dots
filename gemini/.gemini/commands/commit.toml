@@ -42,6 +42,7 @@ Types:
 - **Split by concern**: Different files, concerns, or change types
 - **Be atomic**: One purpose per commit
 - **Preview carefully**: Ensure message matches diff
+- **Use Single Quotes Instead of Backticks**: It is not possible to use back ticks. Only use single quotes (i.e., updated 'cursor_search.fg')
 
 ## Good Examples
 
