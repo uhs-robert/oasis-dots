@@ -39,8 +39,8 @@
     "code": 45,
     "day": "Fog",
     "night": "Fog",
-    "icon-nerd": "",
-    "icon-nerd-night": "",
+    "icon-nerd": "󰖑",
+    "icon-nerd-night": "󰖑",
     "icon-emoji": "🌫️",
     "icon-emoji-night": "🌫️"
   },
@@ -49,7 +49,7 @@
     "day": "Depositing rime fog",
     "night": "Depositing rime fog",
     "icon-nerd": "",
-    "icon-nerd-night": "",
+    "icon-nerd-night": "󰖑",
     "icon-emoji": "🌫️",
     "icon-emoji-night": "🌫️"
   },
@@ -75,8 +75,8 @@
     "code": 55,
     "day": "Dense drizzle",
     "night": "Dense drizzle",
-    "icon-nerd": "",
-    "icon-nerd-night": "",
+    "icon-nerd": "",
+    "icon-nerd-night": "",
     "icon-emoji": "💦",
     "icon-emoji-night": "💦"
   },
@@ -102,8 +102,8 @@
     "code": 61,
     "day": "Slight rain",
     "night": "Slight rain",
-    "icon-nerd": "",
-    "icon-nerd-night": "",
+    "icon-nerd": "",
+    "icon-nerd-night": "",
     "icon-emoji": "🌧️",
     "icon-emoji-night": "🌧️"
   },
@@ -120,8 +120,8 @@
     "code": 65,
     "day": "Heavy rain",
     "night": "Heavy rain",
-    "icon-nerd": "",
-    "icon-nerd-night": "",
+    "icon-nerd": "󰖖",
+    "icon-nerd-night": "󰖖",
     "icon-emoji": "💦",
     "icon-emoji-night": "💦"
   },
