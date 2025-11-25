@@ -20,6 +20,11 @@ prompt = """
    - Group related changes (code/docs/tests/etc)
    - Do not add optional scope to commits (i.e. always prefer `feat:` to `feat(example):`
    - For breaking changes, add a `!` like (i.e, `feat!:`) and a `BREAKING CHANGE:` footer
+   - **When referencing code, variables, or file paths within the commit message or body, you MUST use single quotes (') and NEVER backticks (`).**
+
+## CRITICAL COMMIT MESSAGE RULES
+  - **ABSOLUTELY NO BACKTICKS (` `) ARE ALLOWED IN ANY PART OF THE COMMIT MESSAGE.**
+  - ALWAYS use single quotes (') for any inline code, file names, or literal strings within the commit message title or body.
 
 ## Format
 
@@ -43,16 +48,22 @@ Types:
 - **Be atomic**: One purpose per commit
 - **Preview carefully**: Ensure message matches diff
 - **Use Single Quotes Instead of Backticks**: It is not possible to use back ticks. Only use single quotes (i.e., updated 'cursor_search.fg')
-- **Use `git status`**: Do not add `--porcelain` to `git status` because it doesn't show staged changes. Use `git status`.
+- **Use `git status`**: Never add `--porcelain` to `git status` because it doesn't show staged changes. Use `git status` for accuracy.
 
 ## Good Examples
 
-- `feat: add user auth system`
+- `feat: add user auth system to 'run_login'`
 - `fix: resolve CI failure in deploy script`
 - `docs: update API section for new endpoint`
-- `refactor: simplify loop logic in parser`
-- `style: reformat table layout with Tailwind`
+- `refactor: simplify 'loop_logic' in './parser'`
+- `style: reformat table layout with Tailwind classes`
 - `chore: upgrade dependencies to latest versions`
+
+---
+** DO NOT DO THIS (INCORRECT BACKTICK USAGE):**
+- `feat: add suser auth system to `run_login``
+- `refactor: simplify `loop_logic` in `./parser``
+---
 
 ## Notes
 
