@@ -9,7 +9,7 @@
     }
   },
   "ui": {
-    "theme": "Ayu",
+    "theme": "/home/USER/.gemini/theme/oasis_lagoon.json",
     "showLineNumbers": true,
     "useFullWidth": true,
     "showStatusInTitle": false
