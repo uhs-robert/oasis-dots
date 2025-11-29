@@ -1,9 +1,10 @@
 {
   "includeCoAuthoredBy": false,
   "permissions": {
-    "allow": ["Read(~/.zshrc)"]
+    "allow": [
+      "Read(~/.zshrc)"
+    ]
   },
-  "alwaysThinkingEnabled": true,
   "hooks": {
     "PreToolUse": [
       {
@@ -16,5 +17,6 @@
         ]
       }
     ]
-  }
+  },
+  "alwaysThinkingEnabled": true
 }
