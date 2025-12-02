@@ -1,0 +1,47 @@
+---
+allowed-tools: Bash(find:*), Bash(cat:*), Bash(head:*), Bash(git log:*), Bash(git branch:*), Bash(ls:*), Bash(tree:*), Bash(grep:*), Bash(stat:*)
+description: Summarize the purpose, structure, and architecture of this project or specific files
+---
+
+## Context
+
+- Current branch: !`git branch --show-current`
+- Recent commits: !`git log -n 10 --oneline`
+
+### If @filename(s) provided
+
+- Show each file's contents or excerpts: !`cat @ARGS`
+- List file sizes and metadata: !`stat @ARGS`
+
+### If no file is referenced
+
+- Top-level structure: !`tree -L 2 -I 'node_modules|.git|dist|build'`
+- Key project files: !`find . -type f -not -path "*/.git/*" | head -n 50`
+- Package hints: !`ls -1 | grep -Ei 'package.json|pyproject.toml|requirements.txt|Makefile|Dockerfile'`
+
+## Your Task
+
+1. Summarize the project’s purpose and primary functionality
+2. List the main components or folders and their responsibilities
+3. Highlight key technologies used (inferred from config files)
+4. Identify any notable patterns, naming conventions, or architectural choices
+
+If files were passed:
+
+- Summarize each file’s intent, structure, and role in the project
+- Highlight any complex functions, exports, or interesting logic
+
+## Output Format
+
+- Project Name (if inferable)
+- Description
+- Stack / Tooling
+- Folder Overview
+- Key Files
+- Notable Patterns or Structure
+
+If files are provided:
+
+- Filename
+- Purpose
+- Top-level symbols or structure (functions, classes, exports)

@@ -1,0 +1,21 @@
+model = "gpt-5.1-codex-max"
+[projects."/home/USER/dotfiles"]
+trust_level = "trusted"
+
+[projects."/home/USER/dotfiles/tmux/.tmuxifier"]
+trust_level = "trusted"
+
+[projects."/home/USER/Documents/github-uphill/client-app-server"]
+trust_level = "trusted"
+
+[projects."/home/USER"]
+trust_level = "trusted"
+
+[projects."/home/USER/Documents/github-uphill/oasis.nvim"]
+trust_level = "trusted"
+
+[projects."/home/USER/Documents/github-uphill"]
+trust_level = "untrusted"
+
+[notice]
+"hide_gpt-5.1-codex-max_migration_prompt" = true

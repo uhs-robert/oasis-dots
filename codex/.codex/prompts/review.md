@@ -1,0 +1,37 @@
+---
+allowed-tools: Bash(git log:*), Bash(git diff:*), Bash(git show:*), Bash(git branch:*), Bash(find:*), Bash(cat:*)
+description: Review recent code changes or specific files for correctness, structure, and quality
+---
+
+## Context
+
+- Current branch: !`git branch --show-current`
+- Recent commits: !`git log -n 10 --oneline`
+
+### If @filename(s) provided
+
+- Show contents: !`cat @ARGS`
+- Show diffs if recently changed: !`git diff HEAD~10 -- @ARGS`
+
+### If no files are provided
+
+- Show diffs for last 20 commits: !`git diff HEAD~20`
+- Highlight newly added or modified files: !`git show --name-only --pretty="" HEAD~20..HEAD`
+
+## Your Task
+
+1. Review the selected code (entire diff or specific files)
+2. Identify bugs, logic errors, or unclear patterns
+3. Suggest improvements in structure, naming, or reuse
+4. Highlight security, performance, or scalability issues if present
+5. Evaluate test coverage and note missing cases
+
+## Output Format
+
+For each change or file:
+
+- Line or section reference (if applicable)
+- Concern (e.g. logic, style, perf, security)
+- Suggested improvement or fix
+
+Be concise and constructive. Only surface meaningful feedback.
