@@ -101,7 +101,7 @@ fi
 
 export VISUAL="$EDITOR"
 export GIT_EDITOR="$EDITOR"
-export SUDO_EDITOR="$EDITOR"
+export SUDO_EDITOR="env SUDOEDIT=1 $EDITOR"
 export MANPAGER='nvim +Man!'
 export BAT_THEME="gruvbox-dark"
 export PAGER="bat --style=number --color=always --paging=always"
