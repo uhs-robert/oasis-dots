@@ -19,6 +19,7 @@ description: Create a conventional commit from current changes
    - Use **conventional commit** format
    - Keep first line ≤ 72 chars, imperative mood
    - Group related changes (code/docs/tests/etc)
+   - Add detailed message body after first line for changes made
 
 ## Format
 
