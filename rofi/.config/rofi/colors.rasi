@@ -3,16 +3,9 @@
  * Author : Robert Hill (uhs-robert)
  * Github : @uhs-robert
  *
- * Colors
- *
- * Available Colors Schemes
- *
- * adapta    catppuccin    everforest    navy       paper
- * arc       cyberpunk     gruvbox       nord       solarized
- * black     dracula       lovelace      onedark    yousai
+ * Colors - Using lua-theme generated colors
  *
  **/
 
-/* Import color-scheme from `colors` directory */
-
-@import "~/.config/rofi/colors/oasis.rasi"
+/* LUA-THEME: Import generated colors */
+@import "/home/USER/dotfiles/hypr/.config/hypr/lua-theme/output/rofi-theme.rasi"

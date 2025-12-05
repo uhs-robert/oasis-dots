@@ -1,11 +1,7 @@
 /* waybar/.config/waybar/style.css */
-/* @import "./themes/oasis-lagoon.css"; */
 
-@define-color bg_core #101418;
-@define-color bg_mantle #14181c;
-@define-color primary #42a5f5;
-@define-color secondary #FEA147;
-@define-color yellow #F0E68C;
+/* LUA-THEME: Import generated theme colors */
+@import "/home/USER/dotfiles/hypr/.config/hypr/lua-theme/output/waybar-theme.css";
 
 /*
 * Globals
@@ -17,16 +13,16 @@ window#waybar {
 * {
   font-family: "Maple Mono NF", "JetBrainsMono Nerd Font", monospace;
   font-size: 0.95rem;
-  color: #d9e6fa;
+  color: @fg_core;
   min-height: 0;
   font-weight: 400;
 }
 
 tooltip {
   border-radius: 10px;
-  background: #14181c;
-  color: #d9e6fa;
-  border: 1px solid #1a283f;
+  background: @bg_core;
+  color: @fg_core;
+  border: 1px solid @bg_mantle;
   box-shadow: 0 6px 30px rgba(0, 0, 0, 0.35);
 }
 
@@ -43,7 +39,7 @@ tooltip {
 .modules-left > widget > *,
 .modules-center > widget > *,
 .modules-right > widget > * {
-  background: #101418;
+  background: @bg_core;
   padding: 0px 8px 0px 8px;
   border: none;
 }
@@ -70,7 +66,7 @@ tooltip {
 #custom-startmenu {
   padding: 2px 05px 2px 8px;
   color: @primary;
-  background-color: #101418;
+  background-color: @bg_core;
   border-radius: 8px 0px 0px 8px;
 }
 
@@ -79,7 +75,7 @@ tooltip {
 */
 #workspaces {
   padding: 4px 0px 4px 8px;
-  background-color: #101418;
+  background-color: @bg_core;
   margin-right: 5px;
   border-top-right-radius: 8px;
   border-bottom-right-radius: 8px;
@@ -97,7 +93,7 @@ tooltip {
   padding: 0px 6px 0px 6px;
   margin-right: 8px;
   border-radius: 20px;
-  background-color: #1a283f;
+  background-color: @bg_mantle;
 }
 
 /* Non-taskbar Icon Container */
@@ -116,8 +112,8 @@ tooltip {
 
 #workspaces button:hover,
 .taskbar-window:hover {
-  background-color: rgba(66, 165, 245, 0.35);
-  color: #101825;
+  background-color: @bg_surface;
+  color: @bg_core;
 }
 
 #workspaces button.empty {
@@ -203,8 +199,8 @@ tooltip {
 * GTK Menu Styles
 */
 menu {
-  background: #14181c;
-  color: #d9e6fa;
+  background: @bg_core;
+  color: @fg_core;
 }
 menu,
 menuitem,
@@ -217,7 +213,7 @@ menuitem {
 menu separator {
   min-height: 1px;
   margin: 6px 8px; /* inset from edges */
-  background: #22385c;
+  background: @bg_surface;
 }
 menuitem.separator {
   padding: 0;
