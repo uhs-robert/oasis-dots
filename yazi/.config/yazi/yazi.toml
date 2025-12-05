@@ -3,7 +3,10 @@
 edit = [
   { run = '/usr/bin/nvim "$@"', block = true, desc = "NeoVim", for = "unix" },
 ]
-gimp-edit = [{ run = 'gimp "$@"', block = true, desc = "Gimp", for = "unix" }]
+image-edit = [
+  { run = 'gimp "$@"', block = true, desc = "Gimp", for = "unix" },
+  { run = 'inkscape "$@"', block = true, desc = "Inkscape", for = "unix" },
+]
 video = [{ run = 'vlc "$@"', orphan = true, desc = "VLC", for = "unix" }]
 pdf = [{ run = 'okular "$@"', orphan = true, desc = "Okular", for = "unix" }]
 open = [
@@ -11,11 +14,12 @@ open = [
   { run = '/usr/bin/nvim "$@"', block = true, desc = "NeoVim", for = "unix" },
   { run = 'vim "$@"', block = true, desc = "Vim", for = "unix" },
   { run = 'gimp "$@"', block = true, desc = "Gimp", for = "unix" },
+  { run = 'inkscape "$@"', block = true, desc = "Inkscape", for = "unix" },
 ]
 
 [open]
 prepend_rules = [
-  { mime = "image/*", use = "gimp-edit" },
+  { mime = "image/*", use = "image-edit" },
   { mime = "video/*", use = "video" },
   { mime = "application/pdf", use = "pdf" },
 ]
