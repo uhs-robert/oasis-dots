@@ -9,7 +9,7 @@ Logger.levels = {
 	DEBUG = "debug",
 	INFO = "info",
 	WARN = "warn",
-	ERROR = "error"
+	ERROR = "error",
 }
 
 -- Format a log message with timestamp
@@ -24,7 +24,7 @@ local function write_to_journal(tag, level, message)
 		debug = "debug",
 		info = "info",
 		warn = "warning",
-		error = "err"
+		error = "err",
 	})[level] or "info"
 
 	-- Use logger command to write to systemd journal

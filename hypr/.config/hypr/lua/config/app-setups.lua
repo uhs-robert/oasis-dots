@@ -11,7 +11,7 @@ local function tmuxifier(session, monitor)
 	return {
 		monitor = monitor,
 		increment = true,
-		cmd = string.format("kitty -e tmuxifier load-session %s", session)
+		cmd = string.format("kitty -e tmuxifier load-session %s", session),
 	}
 end
 
@@ -21,7 +21,7 @@ local function tmux_session(name, monitor)
 	return {
 		monitor = monitor,
 		increment = true,
-		cmd = string.format("kitty -e tmux new -A -s %s", name)
+		cmd = string.format("kitty -e tmux new -A -s %s", name),
 	}
 end
 
@@ -32,36 +32,36 @@ Config.apps = {
 	firefox_triple = {
 		{ monitor = "CENTER", increment = true, cmd = "firefox" },
 		{ monitor = "PRIMARY", increment = true, cmd = "firefox" },
-		{ monitor = "LEFT", increment = true, cmd = "firefox" }
+		{ monitor = "LEFT", increment = true, cmd = "firefox" },
 	},
 
 	-- Email client
 	email = {
-		{ monitor = "LEFT", increment = true, cmd = "flatpak run eu.betterbird.Betterbird" }
+		{ monitor = "LEFT", increment = true, cmd = "flatpak run eu.betterbird.Betterbird" },
 	},
 
 	-- Slack
 	slack = {
-		{ monitor = "PRIMARY", increment = true, cmd = "slack" }
+		{ monitor = "PRIMARY", increment = true, cmd = "slack" },
 	},
 
 	-- File managers
 	yazi = {
-		{ monitor = "RIGHT", increment = true, cmd = "kitty -e yazi" }
+		{ monitor = "RIGHT", increment = true, cmd = "kitty -e yazi" },
 	},
 
 	dolphin = {
-		{ monitor = "CENTER", increment = true, cmd = "dolphin" }
+		{ monitor = "CENTER", increment = true, cmd = "dolphin" },
 	},
 
 	-- Monitoring tools
 	journal = {
-		{ monitor = "CENTER", increment = true, cmd = "kitty -e journalctl -f" }
+		{ monitor = "CENTER", increment = true, cmd = "kitty -e journalctl -f" },
 	},
 
 	btop = {
-		{ monitor = "RIGHT", increment = true, cmd = "kitty -e btop" }
-	}
+		{ monitor = "RIGHT", increment = true, cmd = "kitty -e btop" },
+	},
 }
 
 -- ========== SETUP DEFINITIONS ========== --
@@ -69,7 +69,7 @@ Config.apps = {
 Config.setups = {
 	["🌐 Browsing"] = {
 		Config.apps.firefox_triple,
-		tmuxifier("config")
+		tmuxifier("config"),
 	},
 
 	["🧱 Client"] = {
@@ -77,43 +77,43 @@ Config.setups = {
 		tmuxifier("client-dev"),
 		tmuxifier("config", "CENTER"),
 		Config.apps.slack,
-		Config.apps.email
+		Config.apps.email,
 	},
 
 	["🛠 Config"] = {
 		Config.apps.firefox_triple,
 		tmuxifier("config"),
-		Config.apps.email
+		Config.apps.email,
 	},
 
 	["🗂 Files"] = {
 		Config.apps.dolphin,
-		Config.apps.yazi
+		Config.apps.yazi,
 	},
 
 	["🧩 Game Mods"] = {
 		{ monitor = "LEFT", increment = true, cmd = "steam" },
 		{ monitor = "CENTER", increment = true, cmd = "kitty -d ~/Downloads/ yazi" },
-		{ monitor = "RIGHT", increment = true, cmd = "kitty -d ~/.steam/steam/steamapps/ yazi" }
+		{ monitor = "RIGHT", increment = true, cmd = "kitty -d ~/.steam/steam/steamapps/ yazi" },
 	},
 
 	["🎮 Game"] = {
-		{ monitor = "LEFT", increment = true, cmd = "steam" }
+		{ monitor = "LEFT", increment = true, cmd = "steam" },
 	},
 
 	["📅 Meeting"] = {
 		{ monitor = "PRIMARY", increment = true, cmd = "firefox https://calendar.google.com/" },
-		{ monitor = "CENTER", increment = true, cmd = "firefox" }
+		{ monitor = "CENTER", increment = true, cmd = "firefox" },
 	},
 
 	["📊 System Monitor"] = {
 		Config.apps.journal,
-		Config.apps.btop
+		Config.apps.btop,
 	},
 
-	["🛡️ DNF Update"] = {
+	["🛡️ System Update"] = {
 		{ monitor = "LEFT", increment = true, cmd = "kitty -e sysup" },
-		Config.apps.journal
+		Config.apps.journal,
 	},
 
 	["💼 Work"] = {
@@ -121,8 +121,8 @@ Config.setups = {
 		tmuxifier("uphill"),
 		tmuxifier("config", "CENTER"),
 		Config.apps.slack,
-		Config.apps.email
-	}
+		Config.apps.email,
+	},
 }
 
 return Config

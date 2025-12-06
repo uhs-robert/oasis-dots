@@ -20,7 +20,7 @@ end
 local function is_pid_running(pid)
 	-- Use kill -0 to check if process exists
 	local result = os.execute(string.format("kill -0 %d 2>/dev/null", pid))
-	return result == 0 or result == true  -- Lua 5.1 vs 5.2+ compatibility
+	return result == 0 or result == true -- Lua 5.1 vs 5.2+ compatibility
 end
 
 -- Read PID from file
@@ -137,7 +137,7 @@ function Process.wait_for_window_count(expected_count, timeout)
 			return false
 		end
 
-		local count_str = Hyprctl.query_json(clients_json, '. | length')
+		local count_str = Hyprctl.query_json(clients_json, ". | length")
 		local count = tonumber(count_str) or 0
 
 		if count >= expected_count then
