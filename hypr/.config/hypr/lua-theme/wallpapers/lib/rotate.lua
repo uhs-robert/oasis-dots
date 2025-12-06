@@ -1,15 +1,15 @@
--- hypr/.config/hypr/lua-theme/wallpapers/day_system/main.lua
+-- hypr/.config/hypr/lua-theme/wallpapers/lib/rotate.lua
 -- Orchestrator: CLI parsing, config merge, locking, loop, hyprpaper start
 
 local script_dir = (debug.getinfo(1, "S").source:sub(2):match("(.*/)") or "./")
 local default_config = dofile(script_dir .. "../config.lua")
 
-local schedule = require("wallpapers.day_system.schedule")
-local wallpaper = require("wallpapers.day_system.wallpaper")
+local Solar = require("wallpapers.lib.solar")
+local Apply = require("wallpapers.lib.apply")
 
 local unpack = table.unpack or unpack
 
-local M = {}
+local Rotate = {}
 
 -- -------- utilities --------
 local function log(msg, cfg)
@@ -188,49 +188,52 @@ end
 
 -- -------- locking --------
 local function pid_alive(pid)
-  if not pid then return false end
-  local r = os.execute(string.format("kill -0 %s >/dev/null 2>&1", pid))
-  return r == true or r == 0
+	if not pid then
+		return false
+	end
+	local r = os.execute(string.format("kill -0 %s >/dev/null 2>&1", pid))
+	return r == true or r == 0
 end
 
 local function acquire_lock(path)
-  -- Lua 5.1 lacks "x" mode; do a simple existence check then create.
-  local existing = io.open(path, "r")
-  if existing then
-    local pid = existing:read("*l")
-    existing:close()
-    if pid and pid_alive(pid) then
-      return nil, "locked"
-    else
-      -- stale lock, try to overwrite
-      os.remove(path)
-    end
-  end
+	-- Lua 5.1 lacks "x" mode; do a simple existence check then create.
+	local existing = io.open(path, "r")
+	if existing then
+		local pid = existing:read("*l")
+		existing:close()
+		if pid and pid_alive(pid) then
+			return nil, "locked"
+		else
+			-- stale lock, try to overwrite
+			os.remove(path)
+		end
+	end
 
-  local f, err = io.open(path, "w")
-  if not f then
-    return nil, err or "locked"
-  end
-  f:write(tostring(os.getpid and os.getpid() or io.popen("echo $$"):read("*l")))
-  f:close()
-  local function cleanup()
-    os.remove(path)
-  end
-  return cleanup
+	local f, err = io.open(path, "w")
+	if not f then
+		return nil, err or "locked"
+	end
+	f:write(tostring(os.getpid and os.getpid() or io.popen("echo $$"):read("*l")))
+	f:close()
+	local function cleanup()
+		os.remove(path)
+	end
+	return cleanup
 end
 
 -- -------- hyprpaper --------
 local function ensure_hyprpaper(cfg, util)
 	if os.execute("pgrep -x hyprpaper >/dev/null 2>&1") ~= 0 then
 		util.log("Starting hyprpaper...", cfg)
-		local cmd = util.signature and string.format("HYPRLAND_INSTANCE_SIGNATURE=%s hyprpaper", util.signature) or "hyprpaper"
+		local cmd = util.signature and string.format("HYPRLAND_INSTANCE_SIGNATURE=%s hyprpaper", util.signature)
+			or "hyprpaper"
 		os.execute(cmd .. " >/dev/null 2>&1 &")
 		util.sleep(1)
 	end
 end
 
 -- -------- run --------
-function M.run(opts)
+function Rotate.start(opts)
 	opts = opts or {}
 	local cli, overrides = parse_args(opts.argv or arg)
 	if cli.help then
@@ -263,8 +266,8 @@ function M.run(opts)
 	local state = {}
 	local last_loc_refresh = os.time()
 
-	schedule.determine_location(cfg, state, util)
-	schedule.update_sun_periods(cfg, state, util)
+	Solar.get_location(cfg, state, util)
+	Solar.update_periods(cfg, state, util)
 
 	local function maybe_refresh()
 		if not cfg.location_enabled then
@@ -273,14 +276,14 @@ function M.run(opts)
 		local now = os.time()
 		if now - last_loc_refresh >= cfg.refresh_interval_seconds then
 			last_loc_refresh = now
-			schedule.determine_location(cfg, state, util)
-			schedule.update_sun_periods(cfg, state, util)
+			Solar.get_location(cfg, state, util)
+			Solar.update_periods(cfg, state, util)
 		end
 	end
 
 	local function cycle()
 		maybe_refresh()
-		local ok = wallpaper.apply_wallpapers(cfg, util)
+		local ok = Apply.to_monitors(cfg, util)
 		if not ok then
 			util.log("Wallpaper application failed; will retry.", cfg)
 		end
@@ -299,11 +302,11 @@ function M.run(opts)
 end
 
 -- CLI entry
-function M.main_cli(argv)
-	local ok = M.run({ argv = argv })
+function Rotate.main_cli(argv)
+	local ok = Rotate.start({ argv = argv })
 	if not ok then
 		os.exit(1)
 	end
 end
 
-return M
+return Rotate

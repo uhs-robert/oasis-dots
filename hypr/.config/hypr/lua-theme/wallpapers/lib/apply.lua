@@ -1,7 +1,7 @@
--- hypr/.config/hypr/lua-theme/wallpapers/day_system/wallpaper.lua
+-- hypr/.config/hypr/lua-theme/wallpapers/lib/apply.lua
 -- Period resolution, file selection, and hyprpaper application
 
-local M = {}
+local Apply = {}
 
 local function list_images(dir, util)
 	-- Use -print0 to safely handle spaces/newlines
@@ -150,7 +150,7 @@ local function monitors(cfg, util)
 	return mons
 end
 
-function M.apply_wallpapers(cfg, util)
+function Apply.to_monitors(cfg, util)
 	local period = current_period(cfg)
 	local dir = resolve_dir(cfg, period, util)
 	if not dir then
@@ -202,9 +202,13 @@ function M.apply_wallpapers(cfg, util)
 					util.log(string.format("hyprpaper preload failed (rc=%s) for %s", tostring(rc1), img), cfg)
 				end
 				util.sleep(0.15)
-				local rc2 = os.execute(string.format("%shyprctl hyprpaper wallpaper '%s,%s' >/dev/null 2>&1", base, mon, img))
+				local rc2 =
+					os.execute(string.format("%shyprctl hyprpaper wallpaper '%s,%s' >/dev/null 2>&1", base, mon, img))
 				if rc2 ~= 0 and rc2 ~= true then
-					util.log(string.format("hyprpaper wallpaper failed (rc=%s) for %s on %s", tostring(rc2), img, mon), cfg)
+					util.log(
+						string.format("hyprpaper wallpaper failed (rc=%s) for %s on %s", tostring(rc2), img, mon),
+						cfg
+					)
 				end
 			end
 		end
@@ -214,4 +218,8 @@ function M.apply_wallpapers(cfg, util)
 	return true
 end
 
-return M
+function Apply.list_images(dir, util)
+	return list_images(dir, util)
+end
+
+return Apply

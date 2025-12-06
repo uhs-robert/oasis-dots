@@ -1,9 +1,9 @@
--- hypr/.config/hypr/lua-theme/wallpapers/day_system/schedule.lua
+-- hypr/.config/hypr/lua-theme/wallpapers/lib/solar.lua
 -- Coordinates + sunrise/sunset + period boundary calculation
 
 local unpack = table.unpack or unpack
 
-local M = {}
+local Solar = {}
 
 local function round_down_quarter(minute)
 	return math.floor(minute / 15) * 15
@@ -112,7 +112,7 @@ local function sun_times_sunwait(lat, lon, cfg, util)
 	return sunrise_decimal, sunset_decimal
 end
 
-function M.determine_location(cfg, state, util)
+function Solar.get_location(cfg, state, util)
 	if
 		cfg.manual_lat
 		and cfg.manual_lon
@@ -139,7 +139,7 @@ function M.determine_location(cfg, state, util)
 	return cfg.location_enabled
 end
 
-function M.update_sun_periods(cfg, state, util)
+function Solar.update_periods(cfg, state, util)
 	if not cfg.location_enabled or not state.lat or not state.lon then
 		return
 	end
@@ -172,4 +172,4 @@ function M.update_sun_periods(cfg, state, util)
 	end
 end
 
-return M
+return Solar
