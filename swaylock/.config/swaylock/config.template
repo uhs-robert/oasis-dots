@@ -16,33 +16,33 @@ indicator-radius=200
 indicator-thickness=20
 
 # Base Colors
-color=101825
-bs-hl-color=FFA247
-line-color=1A283F
-ring-color=1CA0FD
-inside-color=22385C
-key-hl-color=F0E68C
+color={{BG_CORE}}
+bs-hl-color={{ORANGE}}
+line-color={{BG_MANTLE}}
+ring-color={{PRIMARY}}
+inside-color={{BG_SURFACE}}
+key-hl-color={{YELLOW}}
 separator-color=00000000
-text-color=D9E6FA
+text-color={{FG_CORE}}
 text-caps-lock-color=""
 
 # Verification State (typing password)
-line-ver-color=22385C
-inside-ver-color=22385C
-ring-ver-color=53D390
-text-ver-color=53D390
+line-ver-color={{BG_SURFACE}}
+inside-ver-color={{BG_SURFACE}}
+ring-ver-color={{GREEN}}
+text-ver-color={{GREEN}}
 
 # Wrong Password State
-line-wrong-color=22385C
-inside-wrong-color=22385C
-ring-wrong-color=D06666
-text-wrong-color=D06666
+line-wrong-color={{BG_SURFACE}}
+inside-wrong-color={{BG_SURFACE}}
+ring-wrong-color={{RED}}
+text-wrong-color={{RED}}
 
 # Clear State (password cleared)
-line-clear-color=22385C
-inside-clear-color=22385C
-ring-clear-color=F0E68C
-text-clear-color=F0E68C
+line-clear-color={{BG_SURFACE}}
+inside-clear-color={{BG_SURFACE}}
+ring-clear-color={{YELLOW}}
+text-clear-color={{YELLOW}}
 
 # Grace Period
 grace=2
