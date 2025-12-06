@@ -5,16 +5,15 @@
 local home = os.getenv("HOME") or ""
 
 return {
-	-- Rotation cadence
-	interval_minutes = 1,
+	interval_minutes = 15, -- Rotation cadence
+	default_wallpaper_dir = home .. "/Pictures/Wallpapers/Pixel Art", -- Default directories (per period)
 
-	-- Default directories (per period)
-	default_wallpaper_dir = home .. "/Pictures/Wallpapers/Pixel Art",
+	-- Specify directories to use based on time of day
 	dirs = {
-		morning = home .. "/Pictures/Wallpapers/Pixel Art/Morning", -- DIR_MORNING
-		day = home .. "/Pictures/Wallpapers/Pixel Art/Day", -- DIR_DAY
-		evening = home .. "/Pictures/Wallpapers/Pixel Art/Evening", -- DIR_EVENING
-		night = home .. "/Pictures/Wallpapers/Pixel Art/Night", -- DIR_NIGHT
+		morning = home .. "/Pictures/Wallpapers/Pixel Art/Morning",
+		day = home .. "/Pictures/Wallpapers/Pixel Art/Day",
+		evening = home .. "/Pictures/Wallpapers/Pixel Art/Evening",
+		night = home .. "/Pictures/Wallpapers/Pixel Art/Night",
 	},
 
 	-- Static period start hours (24h integers). Overridden when location is enabled.
