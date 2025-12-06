@@ -2,6 +2,7 @@
 -- Rofi theme generator
 
 local Utils = require("lib.utils")
+local Palette = require("lib.palette")
 local BaseGenerator = require("lib.generators.base")
 
 local RofiGenerator = setmetatable({}, { __index = BaseGenerator })
@@ -30,12 +31,12 @@ function RofiGenerator:generate(palette, output_dir, palette_name)
     urgent:         %s;
 }
 ]],
-		Utils.ensure_hex(palette.bg_core) .. "FF",
-		Utils.ensure_hex(palette.bg_surface) .. "FF",
-		Utils.ensure_hex(palette.fg_core) .. "FF",
-		Utils.ensure_hex(palette.theme_primary) .. "FF",
-		Utils.ensure_hex(palette.yellow) .. "FF",
-		Utils.ensure_hex(palette.error) .. "FF"
+		Palette.ensure_hex(palette.bg_core) .. "FF",
+		Palette.ensure_hex(palette.bg_surface) .. "FF",
+		Palette.ensure_hex(palette.fg_core) .. "FF",
+		Palette.ensure_hex(palette.theme_primary) .. "FF",
+		Palette.ensure_hex(palette.yellow) .. "FF",
+		Palette.ensure_hex(palette.error) .. "FF"
 	)
 
 	local output_path = output_dir .. "/rofi-theme.rasi"

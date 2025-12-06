@@ -1,6 +1,9 @@
 -- hypr/.config/hypr/theme/lib/generators/base.lua
 -- Base generator class that all app generators extend
 
+-- Load shared utilities from lua/lib/utils.lua
+local home = os.getenv("HOME")
+package.path = home .. "/.config/hypr/lua/?.lua;" .. package.path
 local Utils = require("lib.utils")
 
 local BaseGenerator = {}

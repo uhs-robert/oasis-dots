@@ -2,6 +2,7 @@
 -- Waybar CSS theme generator
 
 local Utils = require("lib.utils")
+local Palette = require("lib.palette")
 local BaseGenerator = require("lib.generators.base")
 
 local WaybarGenerator = setmetatable({}, { __index = BaseGenerator })
@@ -51,28 +52,28 @@ function WaybarGenerator:generate(palette, output_dir, palette_name)
 @define-color cyan %s;
 @define-color magenta %s;
 ]],
-		Utils.ensure_hex(palette.bg_core),
-		Utils.ensure_hex(palette.bg_mantle),
-		Utils.ensure_hex(palette.bg_shadow),
-		Utils.ensure_hex(palette.bg_surface),
-		Utils.ensure_hex(palette.fg_core),
-		Utils.ensure_hex(palette.fg_strong),
-		Utils.ensure_hex(palette.fg_muted),
-		Utils.ensure_hex(palette.fg_dim),
-		Utils.ensure_hex(palette.theme_primary),
-		Utils.ensure_hex(palette.theme_secondary),
-		Utils.ensure_hex(palette.theme_accent),
-		Utils.ensure_hex(palette.yellow),
-		Utils.ensure_hex(palette.error),
-		Utils.ensure_hex(palette.warning),
-		Utils.ensure_hex(palette.info),
-		Utils.ensure_hex(palette.hint),
-		Utils.ensure_hex(palette.ok),
-		Utils.ensure_hex(palette.red),
-		Utils.ensure_hex(palette.green),
-		Utils.ensure_hex(palette.blue),
-		Utils.ensure_hex(palette.cyan),
-		Utils.ensure_hex(palette.magenta)
+		Palette.ensure_hex(palette.bg_core),
+		Palette.ensure_hex(palette.bg_mantle),
+		Palette.ensure_hex(palette.bg_shadow),
+		Palette.ensure_hex(palette.bg_surface),
+		Palette.ensure_hex(palette.fg_core),
+		Palette.ensure_hex(palette.fg_strong),
+		Palette.ensure_hex(palette.fg_muted),
+		Palette.ensure_hex(palette.fg_dim),
+		Palette.ensure_hex(palette.theme_primary),
+		Palette.ensure_hex(palette.theme_secondary),
+		Palette.ensure_hex(palette.theme_accent),
+		Palette.ensure_hex(palette.yellow),
+		Palette.ensure_hex(palette.error),
+		Palette.ensure_hex(palette.warning),
+		Palette.ensure_hex(palette.info),
+		Palette.ensure_hex(palette.hint),
+		Palette.ensure_hex(palette.ok),
+		Palette.ensure_hex(palette.red),
+		Palette.ensure_hex(palette.green),
+		Palette.ensure_hex(palette.blue),
+		Palette.ensure_hex(palette.cyan),
+		Palette.ensure_hex(palette.magenta)
 	)
 
 	local output_path = output_dir .. "/waybar-theme.css"

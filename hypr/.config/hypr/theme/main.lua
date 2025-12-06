@@ -5,9 +5,10 @@
 
 local home = os.getenv("HOME")
 local config_dir = home .. "/.config/hypr/theme"
+local lua_dir = home .. "/.config/hypr/lua"
 
--- Add lib directory to package path
-package.path = config_dir .. "/?.lua;" .. package.path
+-- Add lib directories to package path (lua first for shared utils)
+package.path = lua_dir .. "/?.lua;" .. config_dir .. "/?.lua;" .. package.path
 
 -- Load modules
 local Theme = require("lib.theme")

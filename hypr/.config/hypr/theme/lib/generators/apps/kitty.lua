@@ -2,6 +2,7 @@
 -- Kitty terminal theme generator
 
 local Utils = require("lib.utils")
+local Palette = require("lib.palette")
 local BaseGenerator = require("lib.generators.base")
 
 local KittyGenerator = setmetatable({}, { __index = BaseGenerator })
@@ -119,40 +120,40 @@ inactive_tab_background  %s
 		theme_filename,
 		palette_name,
 		-- ANSI colors 0-7
-		Utils.ensure_hex(palette.color0 or palette.black),
-		Utils.ensure_hex(palette.color1 or palette.red),
-		Utils.ensure_hex(palette.color2 or palette.green),
-		Utils.ensure_hex(palette.color3 or palette.yellow),
-		Utils.ensure_hex(palette.color4 or palette.blue),
-		Utils.ensure_hex(palette.color5 or palette.magenta),
-		Utils.ensure_hex(palette.color6 or palette.cyan),
-		Utils.ensure_hex(palette.color7 or palette.white),
+		Palette.ensure_hex(palette.color0 or palette.black),
+		Palette.ensure_hex(palette.color1 or palette.red),
+		Palette.ensure_hex(palette.color2 or palette.green),
+		Palette.ensure_hex(palette.color3 or palette.yellow),
+		Palette.ensure_hex(palette.color4 or palette.blue),
+		Palette.ensure_hex(palette.color5 or palette.magenta),
+		Palette.ensure_hex(palette.color6 or palette.cyan),
+		Palette.ensure_hex(palette.color7 or palette.white),
 		-- ANSI bright colors 8-15
-		Utils.ensure_hex(palette.color8 or palette.bright_black),
-		Utils.ensure_hex(palette.color9 or palette.bright_red),
-		Utils.ensure_hex(palette.color10 or palette.bright_green),
-		Utils.ensure_hex(palette.color11 or palette.bright_yellow),
-		Utils.ensure_hex(palette.color12 or palette.bright_blue),
-		Utils.ensure_hex(palette.color13 or palette.bright_magenta),
-		Utils.ensure_hex(palette.color14 or palette.bright_cyan),
-		Utils.ensure_hex(palette.color15 or palette.bright_white),
+		Palette.ensure_hex(palette.color8 or palette.bright_black),
+		Palette.ensure_hex(palette.color9 or palette.bright_red),
+		Palette.ensure_hex(palette.color10 or palette.bright_green),
+		Palette.ensure_hex(palette.color11 or palette.bright_yellow),
+		Palette.ensure_hex(palette.color12 or palette.bright_blue),
+		Palette.ensure_hex(palette.color13 or palette.bright_magenta),
+		Palette.ensure_hex(palette.color14 or palette.bright_cyan),
+		Palette.ensure_hex(palette.color15 or palette.bright_white),
 		-- Core colors
-		Utils.ensure_hex(palette.fg_core),
-		Utils.ensure_hex(palette.bg_core),
+		Palette.ensure_hex(palette.fg_core),
+		Palette.ensure_hex(palette.bg_core),
 		-- Selection
-		Utils.ensure_hex(palette.bg_surface),
-		Utils.ensure_hex(palette.fg_core),
+		Palette.ensure_hex(palette.bg_surface),
+		Palette.ensure_hex(palette.fg_core),
 		-- Cursor
-		Utils.ensure_hex(palette.yellow),
-		Utils.ensure_hex(palette.bg_core),
+		Palette.ensure_hex(palette.yellow),
+		Palette.ensure_hex(palette.bg_core),
 		-- Borders
-		Utils.ensure_hex(palette.theme_primary),
-		Utils.ensure_hex(palette.bg_mantle),
+		Palette.ensure_hex(palette.theme_primary),
+		Palette.ensure_hex(palette.bg_mantle),
 		-- Tabs
-		Utils.ensure_hex(palette.bg_core),
-		Utils.ensure_hex(palette.yellow),
-		Utils.ensure_hex(palette.fg_muted),
-		Utils.ensure_hex(palette.bg_mantle)
+		Palette.ensure_hex(palette.bg_core),
+		Palette.ensure_hex(palette.yellow),
+		Palette.ensure_hex(palette.fg_muted),
+		Palette.ensure_hex(palette.bg_mantle)
 	)
 end
 

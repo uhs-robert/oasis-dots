@@ -1,8 +1,13 @@
 -- hypr/.config/hypr/theme/lib/theme.lua
 -- Theme management and switching
 
-local Utils = require("lib.utils")
+local Palette = require("lib.palette")
 local Generators = require("lib.generators.init")
+
+-- Load shared utilities from lua/lib/utils.lua
+local home = os.getenv("HOME")
+package.path = home .. "/.config/hypr/lua/?.lua;" .. package.path
+local Utils = require("lib.utils")
 
 local Theme = {}
 
@@ -56,7 +61,7 @@ function Theme.apply(config)
 
 	-- Load palette
 	print("\n→ Loading palette: " .. palette_name)
-	local palette = Utils.load_palette(palette_dir, palette_name)
+	local palette = Palette.load(palette_dir, palette_name)
 
 	if not palette then
 		print("✗ Failed to load palette")

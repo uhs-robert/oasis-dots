@@ -2,6 +2,7 @@
 -- Yazi file manager theme generator
 
 local Utils = require("lib.utils")
+local Palette = require("lib.palette")
 local BaseGenerator = require("lib.generators.base")
 
 local YaziGenerator = setmetatable({}, { __index = BaseGenerator })

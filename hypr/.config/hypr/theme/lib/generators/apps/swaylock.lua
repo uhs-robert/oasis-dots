@@ -1,8 +1,13 @@
 -- hypr/.config/hypr/theme/lib/generators/apps/swaylock.lua
 -- Swaylock theme generator
 
-local Utils = require("lib.utils")
+local Palette = require("lib.palette")
 local BaseGenerator = require("lib.generators.base")
+
+-- Load shared utilities from lua/lib/utils.lua
+local home = os.getenv("HOME")
+package.path = home .. "/.config/hypr/lua/?.lua;" .. package.path
+local Utils = require("lib.utils")
 
 local SwaylockGenerator = setmetatable({}, { __index = BaseGenerator })
 SwaylockGenerator.__index = SwaylockGenerator
@@ -15,7 +20,7 @@ end
 
 -- Helper to convert hex color to swaylock format (RRGGBB without #)
 local function to_swaylock_color(hex)
-	local clean = Utils.ensure_hex(hex):gsub("#", "")
+	local clean = Palette.ensure_hex(hex):gsub("#", "")
 	return clean
 end
 
