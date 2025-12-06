@@ -266,11 +266,14 @@ function Rotate.start(opts)
 	local state = {}
 	local last_loc_refresh = os.time()
 
-	Solar.get_location(cfg, state, util)
-	Solar.update_periods(cfg, state, util)
+	-- Initialize solar calculations only if time-of-day is enabled
+	if cfg.time_of_day_enabled then
+		Solar.get_location(cfg, state, util)
+		Solar.update_periods(cfg, state, util)
+	end
 
 	local function maybe_refresh()
-		if not cfg.location_enabled then
+		if not cfg.time_of_day_enabled or not cfg.location_enabled then
 			return
 		end
 		local now = os.time()
@@ -289,12 +292,14 @@ function Rotate.start(opts)
 		end
 	end
 
-	if opts.once or cli.once then
+	-- Apply once and exit if rotation is disabled or --once flag is used
+	if not cfg.rotation_enabled or opts.once or cli.once then
 		cycle()
 		cleanup_lock()
 		return true
 	end
 
+	-- Rotation loop
 	while true do
 		cycle()
 		util.sleep(cfg.interval_seconds)

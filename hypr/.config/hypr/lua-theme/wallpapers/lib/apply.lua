@@ -151,8 +151,18 @@ local function monitors(cfg, util)
 end
 
 function Apply.to_monitors(cfg, util)
-	local period = current_period(cfg)
-	local dir = resolve_dir(cfg, period, util)
+	local period, dir
+
+	-- Use time-of-day periods only if enabled
+	if cfg.time_of_day_enabled then
+		period = current_period(cfg)
+		dir = resolve_dir(cfg, period, util)
+	else
+		-- Skip time-of-day logic, use default directory directly
+		period = "default"
+		dir = cfg.force_dir or cfg.default_wallpaper_dir
+	end
+
 	if not dir then
 		util.log("No directory resolved for period " .. period, cfg)
 		return false
