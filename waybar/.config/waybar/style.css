@@ -200,7 +200,7 @@ tooltip {
 * GTK Menu Styles
 */
 menu {
-  background: @bg_core;
+  background: @bg_mantle;
   color: @fg_core;
 }
 menu,
