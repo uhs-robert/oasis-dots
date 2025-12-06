@@ -89,9 +89,9 @@ select_session() {
   if [[ "$IS_STARTUP" == true ]]; then
     hyprctl dispatch workspace 1
     sleep 0.1
-    selected=$(printf "%s\n" "${!SETUPS[@]}" | ROFI_MONITOR=0 rofi -dmenu --columns 1 -p "Select session")
+    selected=$(printf "%s\n" "${!SETUPS[@]}" | ROFI_MONITOR=0 rofi -i -dmenu --columns 1 -p "Select session")
   else
-    selected=$(printf "%s\n" "${!SETUPS[@]}" | rofi -dmenu --columns 1 -p "Select session")
+    selected=$(printf "%s\n" "${!SETUPS[@]}" | rofi -dmenu -i --columns 1 -p "Select session")
   fi
   echo "$selected"
 }
@@ -196,9 +196,9 @@ launch_selector() {
   if [[ "$IS_STARTUP" == true ]]; then
     hyprctl dispatch workspace 1
     sleep 0.1
-    CHOICE=$(printf "%s\n" "${!SETUPS[@]}" | ROFI_MONITOR=0 rofi -dmenu --columns 1 -p "Select session")
+    CHOICE=$(printf "%s\n" "${!SETUPS[@]}" | ROFI_MONITOR=0 rofi -i -dmenu --columns 1 -p "Select session")
   else
-    CHOICE=$(printf "%s\n" "${!SETUPS[@]}" | rofi -dmenu --columns 1 -p "Select session")
+    CHOICE=$(printf "%s\n" "${!SETUPS[@]}" | rofi -i -dmenu --columns 1 -p "Select session")
   fi
   [[ -z "$CHOICE" ]] && exit 0
 
