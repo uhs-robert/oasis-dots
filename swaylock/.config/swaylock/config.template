@@ -20,7 +20,7 @@ color={{BG_CORE}}
 bs-hl-color={{ORANGE}}
 line-color={{BG_MANTLE}}
 ring-color={{PRIMARY}}
-inside-color={{BG_SURFACE}}
+inside-color={{BG_CORE}}
 key-hl-color={{YELLOW}}
 separator-color=00000000
 text-color={{FG_CORE}}
@@ -28,19 +28,19 @@ text-caps-lock-color=""
 
 # Verification State (typing password)
 line-ver-color={{BG_SURFACE}}
-inside-ver-color={{BG_SURFACE}}
+inside-ver-color={{BG_CORE}}
 ring-ver-color={{GREEN}}
 text-ver-color={{GREEN}}
 
 # Wrong Password State
 line-wrong-color={{BG_SURFACE}}
-inside-wrong-color={{BG_SURFACE}}
+inside-wrong-color={{BG_CORE}}
 ring-wrong-color={{RED}}
 text-wrong-color={{RED}}
 
 # Clear State (password cleared)
 line-clear-color={{BG_SURFACE}}
-inside-clear-color={{BG_SURFACE}}
+inside-clear-color={{BG_CORE}}
 ring-clear-color={{YELLOW}}
 text-clear-color={{YELLOW}}
 

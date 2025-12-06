@@ -20,7 +20,7 @@ color=101825
 bs-hl-color=FFA247
 line-color=1A283F
 ring-color=1CA0FD
-inside-color=22385C
+inside-color=101825
 key-hl-color=F0E68C
 separator-color=00000000
 text-color=D9E6FA
@@ -28,19 +28,19 @@ text-caps-lock-color=""
 
 # Verification State (typing password)
 line-ver-color=22385C
-inside-ver-color=22385C
+inside-ver-color=101825
 ring-ver-color=53D390
 text-ver-color=53D390
 
 # Wrong Password State
 line-wrong-color=22385C
-inside-wrong-color=22385C
+inside-wrong-color=101825
 ring-wrong-color=D06666
 text-wrong-color=D06666
 
 # Clear State (password cleared)
 line-clear-color=22385C
-inside-clear-color=22385C
+inside-clear-color=101825
 ring-clear-color=F0E68C
 text-clear-color=F0E68C
 
