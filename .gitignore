@@ -119,10 +119,15 @@ __pycache__/
 **/.claude/.credentials.json
 **/.claude/debug
 **/.claude/file-history
+**/.gemini/state.json
 **/.gemini/oauth_creds.json
 **/.gemini/google_accounts.json
 **/.gemini/installation_id
 **/.gemini/tmp/
+**/.codex/sessions/
+**/.codex/config.toml
+**/.codex/history.jsonl
+**/.codex/version.json
 CLAUDE.md
 GEMINI.md
 AGENTS.md
