@@ -16,6 +16,7 @@ window#waybar {
   color: @fg_core;
   min-height: 0;
   font-weight: 400;
+  transition: all 0.3s cubic-bezier(0.25, 1, 0.5, 1);
 }
 
 tooltip {
