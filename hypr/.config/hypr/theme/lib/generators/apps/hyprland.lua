@@ -1,4 +1,4 @@
--- hypr/.config/hypr/theme/lib/generators/hyprland.lua
+-- hypr/.config/hypr/theme/lib/generators/apps/hyprland.lua
 -- Hyprland theme generator (template-based)
 
 local Palette = require("lib.palette")
@@ -82,7 +82,7 @@ function HyprlandGenerator:generate(palette, output_dir, palette_name)
 		content = content:gsub(escaped, value)
 	end
 
-	local output_path = output_dir .. "/hyprtheme.conf"
+	local output_path = home .. "/.config/hypr/theme/hyprtheme.conf"
 	return self:write_output(output_path, content)
 end
 
