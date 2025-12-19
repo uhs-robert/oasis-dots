@@ -23,12 +23,6 @@ notify() {
   fi
 }
 
-# Stop recorder if already running
-if REC_PID=$(pidof "$RECORDER" 2>/dev/null); then
-  kill -SIGINT "$REC_PID"
-  exit 0
-fi
-
 # Lazy geometry helpers
 get_focused() {
   hyprctl activewindow -j | jq -r '.at,.size | join(" ")' | awk '{printf "%s,%s %sx%s", $1,$2,$3,$4}'
@@ -82,7 +76,6 @@ handle_text_ocr() {
 # Stop recorder if already running
 if REC_PID=$(pidof "$RECORDER" 2>/dev/null); then
   kill -SIGINT "$REC_PID"
-  notify-send "Screen recorder stopped"
   exit 0
 fi
 
