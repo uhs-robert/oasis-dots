@@ -21,6 +21,15 @@ log() {
 
 # ========== LOGIC ========== #
 
+# Load plugins
+load_plugins() {
+  for plugin_conf in ~/.config/hypr/plugins/*.conf; do
+    if [ -f "$plugin_conf" ]; then
+      hyprctl keyword source "$plugin_conf"
+    fi
+  done
+}
+
 # Graphic dependent startup
 graphic_dependent() {
   is_ready() {
@@ -40,7 +49,6 @@ graphic_dependent() {
 
     ready() {
       log "[Display] Main hook..."
-      # ~/.config/hypr/lua/assign-workspaces.lua --watch &
     }
 
     not_ready() {
@@ -97,7 +105,6 @@ monitor_dependent() {
 
     not_ready() {
       log "[Monitors] Warning - Error hook..."
-      # ~/.config/hypr/lua/assign-workspaces.lua --assign
     }
 
     after() {
@@ -105,7 +112,7 @@ monitor_dependent() {
       ~/.config/hypr/theme/wallpapers/wallpaper.lua &
       # hyprctl setcursor breeze-dark 24 & # Mouse cursor
       hyprpm reload -n &
-      ~/.config/hypr/plugins/hypr-plugins.conf &
+      ~/.config/hypr/config/plugins.conf &
       :
     }
 
@@ -176,6 +183,7 @@ application_dependent() {
 
 # ========== MAIN ========== #
 main() {
+  load_plugins
   graphic_dependent
   monitor_dependent
   application_dependent
