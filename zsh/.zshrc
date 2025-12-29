@@ -103,7 +103,7 @@ export VISUAL="$EDITOR"
 export GIT_EDITOR="$EDITOR"
 export SUDO_EDITOR="env SUDOEDIT=1 $EDITOR"
 export MANPAGER='nvim +Man!'
-export BAT_THEME="gruvbox-dark"
+export BAT_THEME="oasis_lagoon_dark"
 export PAGER="bat --style=number --color=always --paging=always"
 
 # Auto completion
