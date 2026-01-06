@@ -17,9 +17,9 @@ indicator-thickness=20
 
 # Base Colors
 color=101825
-bs-hl-color=FFA247
+bs-hl-color=F8B471
 line-color=1A283F
-ring-color=1CA0FD
+ring-color=58B8FD
 inside-color=101825
 key-hl-color=F0E68C
 separator-color=00000000
