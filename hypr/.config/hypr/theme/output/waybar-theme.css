@@ -15,17 +15,17 @@
 @define-color fg_dim #665D55;
 
 /* Accents */
-@define-color primary #1CA0FD;
-@define-color secondary #FFA247;
+@define-color primary #58B8FD;
+@define-color secondary #F8B471;
 @define-color accent #FFA0A0;
 @define-color yellow #F0E68C;
 
 /* Status Colors */
 @define-color error #FFA0A0;
-@define-color warning #EEEE00;
+@define-color warning #F0E68C;
 @define-color info #87CEEB;
 @define-color hint #8FD1C7;
-@define-color ok #00FF7F;
+@define-color ok #96EA7F;
 
 /* ANSI Colors (for reference) */
 @define-color red #D06666;
