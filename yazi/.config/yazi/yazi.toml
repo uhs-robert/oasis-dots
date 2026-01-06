@@ -7,6 +7,9 @@ image-edit = [
   { run = 'gimp "$@"', block = true, desc = "Gimp", for = "unix" },
   { run = 'inkscape "$@"', block = true, desc = "Inkscape", for = "unix" },
 ]
+install-rpm = [
+  { run = "sh -lc 'sudo dnf -y install \"$1\"' -- \"$@\"", block = true, desc = "DNF Install (sudo)", for = "unix" },
+]
 video = [{ run = 'vlc "$@"', orphan = true, desc = "VLC", for = "unix" }]
 pdf = [{ run = 'okular "$@"', orphan = true, desc = "Okular", for = "unix" }]
 open = [
@@ -19,6 +22,7 @@ open = [
 
 [open]
 prepend_rules = [
+  { url = "*.rpm", use = "install-rpm" },
   { mime = "image/*", use = "image-edit" },
   { mime = "video/*", use = "video" },
   { mime = "application/pdf", use = "pdf" },
