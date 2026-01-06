@@ -1,0 +1,16 @@
+{
+  "version": 2,
+  "plugins": {
+    "lua-lsp@claude-plugins-official": [
+      {
+        "scope": "user",
+        "installPath": "/home/USER/.claude/plugins/cache/claude-plugins-official/lua-lsp/1.0.0",
+        "version": "1.0.0",
+        "installedAt": "2025-12-29T14:13:54.754Z",
+        "lastUpdated": "2025-12-29T14:13:54.754Z",
+        "gitCommitSha": "a3607ef9c6189616d6d1c69c0a22b94581dc1e54",
+        "isLocal": true
+      }
+    ]
+  }
+}
