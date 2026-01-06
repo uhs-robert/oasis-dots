@@ -12,9 +12,9 @@
   "icon_position": "left",                // "left" or "right".
   "font_size": 14,                        // Base font size in px
   "colors": {
-    "primary": "#42A5F5",                 // Nerd icon default color
+    "primary": "#1CA0FD",                 // Nerd icon default color
     "cold": "skyblue",                    // Temp cold
-    "neutral": "#42A5F5",                 // Temp neutral
+    "neutral": "#1CA0FD",                 // Temp neutral
     "warm": "khaki",                      // Temp warm
     "hot": "indianred",                   // Temp hot
     "pop_low": "#EAD7FF",                 // Precipitation low

@@ -110,9 +110,9 @@ end
 module Config
   @settings = {
     colors: {
-      'primary' => '#42A5F5',
+      'primary' => '#1CA0FD',
       'cold' => 'skyblue',
-      'neutral' => '#42A5F5',
+      'neutral' => '#1CA0FD',
       'warm' => 'khaki',
       'hot' => 'indianred',
       'pop_low' => '#EAD7FF',

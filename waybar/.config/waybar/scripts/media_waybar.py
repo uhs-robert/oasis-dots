@@ -338,7 +338,7 @@ def render_payload(bars_text: str):
     )
 
     # Transport icons
-    pause_icon = "<span size='12000' color='#42A5F5'></span>"
+    pause_icon = "<span size='12000' color='#1CA0FD'></span>"
     play_icon = "<span size='12000' color='peru'></span>"
     playpause_icon = (
         pause_icon if meta.get("status", "").lower() == "playing" else play_icon
@@ -359,7 +359,7 @@ def render_payload(bars_text: str):
     visible_title = _pango_escape(visible_title)
     title_text = _pango_escape(title_text)
     bars_text = _pango_escape(bars_text)
-    bars_text = f"<span size='7000' color='#42A5F5'>{bars_text}</span>"
+    bars_text = f"<span size='7000' color='#1CA0FD'>{bars_text}</span>"
 
     left = f"{playpause_icon}"
     parts = []

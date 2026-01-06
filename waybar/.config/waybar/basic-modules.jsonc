@@ -86,7 +86,7 @@
   },
 
   "pulseaudio": {
-    "format": "<span size='11000' color='#1CA0FD'>{icon} </span> {volume}%",
+    "format": "<span size='11000' color='#58B8FD'>{icon} </span> {volume}%",
     "tooltip-format": "{icon}   {desc} // {volume}%",
     "scroll-step": 5,
     "format-muted": "",
@@ -157,7 +157,7 @@
   },
 
   "cpu": {
-    "format": "<span size='11000' foreground='#1CA0FD'> </span>{usage}%",
+    "format": "<span size='11000' foreground='#58B8FD'> </span>{usage}%",
     "interval": 10,
     "tooltip": true,
     "tooltip-format": "CPU Usage: {usage}%",
@@ -165,7 +165,7 @@
   },
 
   "memory": {
-    "format": "<span size='11000' foreground='#1CA0FD'> </span>{percentage}%",
+    "format": "<span size='11000' foreground='#58B8FD'> </span>{percentage}%",
     "interval": 30,
     "tooltip": true,
     "tooltip-format": "RAM Usage: {used:0.1f}gb / {total:0.1f}gb",
@@ -173,7 +173,7 @@
   },
 
   "temperature": {
-    "format": "<span size='11000' color='#1CA0FD'></span> {temperatureC}°C",
+    "format": "<span size='11000' color='#58B8FD'></span> {temperatureC}°C",
     "format-critical": "<span size='11000' color='#FFA0A0'></span> <span color='#FFA0A0'>{temperatureC}°C</span>",
     "critical-threshold": 80,
     "interval": 10
@@ -187,7 +187,7 @@
 
   "clock": {
     "interval": 1,
-    "format": "<span size='12000' color='#1CA0FD'> </span> {:%H:%M:%S %Z 󰧞 %a %b %d}",
+    "format": "<span size='12000' color='#58B8FD'> </span> {:%H:%M:%S %Z 󰧞 %a %b %d}",
     "tooltip-format": "\n<span font='Maple Mono NF 12'><tt>{calendar}</tt></span>",
     "timezones": ["America/New_York", "America/Denver", "America/Los_Angeles"],
     "calendar": {
@@ -196,11 +196,11 @@
       "weeks-pos": "left",
       "on-scroll": 1,
       "format": {
-        "months": "<span color='#1CA0FD'><b>{}</b></span>",
+        "months": "<span color='#58B8FD'><b>{}</b></span>",
         "days": "<span color='#D9E6FA'><b>{}</b></span>",
         "weeks": "<span color='#87CEEB'><b>W{}</b></span>",
         "weekdays": "<span color='#F0E68C'><b>{}</b></span>",
-        "today": "<span color='#FFA247'><b><u>{}</u></b></span>"
+        "today": "<span color='#F8B471'><b><u>{}</u></b></span>"
       }
     },
     // "on-click": "hyprctl dispatch exec '[float;move onscreen cursor -50% 20px;size 60% 96%] kitty --class=calcure --title=Calcure -e calcure'",
@@ -216,9 +216,9 @@
   },
 
   "network": {
-    "format-wifi": "<span size='11000' foreground='#1CA0FD'>{icon}</span>",
+    "format-wifi": "<span size='11000' foreground='#58B8FD'>{icon}</span>",
     "format-icons": ["󰤯", "󰤟", "󰤢", "󰤥", "󰤨"],
-    "format-ethernet": "<span size='11000' foreground='#1CA0FD'>󰈀</span>",
+    "format-ethernet": "<span size='11000' foreground='#58B8FD'>󰈀</span>",
     "format-linked": "{ifname} (No IP) ",
     "format-disconnected": "<span size='11000' foreground='#1A283F'>󰤭</span>",
     "tooltip-format-wifi": "{essid}, {signalStrength}%",
@@ -227,10 +227,10 @@
   },
 
   "bluetooth": {
-    "format-on": "<span size='11000' color='#1CA0FD'>󰂯</span>",
+    "format-on": "<span size='11000' color='#58B8FD'>󰂯</span>",
     "format-off": "BT-off",
     "format-disabled": "󰂲",
-    "format-connected-battery": "<span size='11000' color='#1CA0FD'>󰂯</span>",
+    "format-connected-battery": "<span size='11000' color='#58B8FD'>󰂯</span>",
     "tooltip-format": "{controller_alias}\t{controller_address}\n\n{num_connections} connected",
     "tooltip-format-connected": "{controller_alias}\t{controller_address}\n\n{num_connections} connected\n\n{device_enumerate}",
     "tooltip-format-enumerate-connected": "{device_alias}\n{device_address}",
@@ -244,12 +244,12 @@
       "warning": 50,
       "critical": 20
     },
-    "format": "<span size='11000' foreground='#1CA0FD'>{icon} </span> {capacity}%",
-    "format-warning": "<span size='11000' foreground='#EEEE00'>{icon} </span> {capacity}%",
+    "format": "<span size='11000' foreground='#58B8FD'>{icon} </span> {capacity}%",
+    "format-warning": "<span size='11000' foreground='#F0E68C'>{icon} </span> {capacity}%",
     "format-critical": "<span size='11000' foreground='#FFA0A0'>{icon} </span> {capacity}%",
-    "format-charging": "<span size='11000' foreground='#1CA0FD'> </span>{capacity}%",
-    "format-plugged": "<span size='11000' foreground='#1CA0FD'> </span>{capacity}%",
-    "format-full": "<span size='11000' foreground='#1CA0FD'>󱟢 </span>{capacity}%",
+    "format-charging": "<span size='11000' foreground='#58B8FD'> </span>{capacity}%",
+    "format-plugged": "<span size='11000' foreground='#58B8FD'> </span>{capacity}%",
+    "format-full": "<span size='11000' foreground='#58B8FD'>󱟢 </span>{capacity}%",
     "format-icons": ["", "", "", "", ""],
     "tooltip-format": "{time}",
     "on-click": ""
@@ -295,15 +295,15 @@
 
       "lock": "~/.config/waybar/scripts/confirm-action.sh --title Lock --glyph '󰌾' --color '#D9E6FA' --exec 'hyprlock'",
       "logout": "~/.config/waybar/scripts/confirm-action.sh --title Logout --glyph '󰍃' --color '#87CEEB' --exec 'hyprctl dispatch exit'",
-      "reboot": "~/.config/waybar/scripts/confirm-action.sh --title Reboot --glyph '󰜉' --color '#EEEE00' --exec 'systemctl reboot'",
+      "reboot": "~/.config/waybar/scripts/confirm-action.sh --title Reboot --glyph '󰜉' --color '#F0E68C' --exec 'systemctl reboot'",
       "power": "~/.config/waybar/scripts/confirm-action.sh --title Power\\ Off --glyph '󰐥' --color '#FFA0A0' --exec 'systemctl poweroff'"
     },
     "on-click-right": "wofi --show drun"
   },
 
   "mpris": {
-    "format": "<span size='12000' color='#1CA0FD'>{status_icon}</span>  {dynamic}",
-    "format-paused": "<span size='12000' color='#FFA247'>{status_icon}</span>  {dynamic}",
+    "format": "<span size='12000' color='#58B8FD'>{status_icon}</span>  {dynamic}",
+    "format-paused": "<span size='12000' color='#F8B471'>{status_icon}</span>  {dynamic}",
     "max-length": 28,
     "player-icons": {
       "default": "",
@@ -338,7 +338,7 @@
     "exec": "UPDATES_TTL_MIN=30 exec ~/.config/waybar/scripts/fedora_updates.rb",
     "return-type": "json",
     "interval": 900, // in seconds = 15min
-    "format": "<span size='12000' color='#FFA247'> </span>{text}",
+    "format": "<span size='12000' color='#F8B471'> </span>{text}",
     "tooltip": false,
     "hide-empty-text": true,
     "on-click": "bash -lc 'kitty -e bash -lc \"sysup\"; rm -f \"$XDG_RUNTIME_DIR/fedora_updates.cache.json\"; pkill -RTMIN+8 waybar'",
