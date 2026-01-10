@@ -1,5 +1,5 @@
 {
+  "preferredEditor": "neovim",
   "theme": "GitHub",
-  "selectedAuthType": "openai",
-  "preferredEditor": "neovim"
+  "selectedAuthType": "qwen-oauth"
 }
