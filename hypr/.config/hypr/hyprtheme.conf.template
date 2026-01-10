@@ -38,7 +38,7 @@ general {
 
 decoration {
   rounding = 8
-  active_opacity = 0.98
+  active_opacity = 1
   inactive_opacity = 0.5
   dim_inactive = true
   dim_strength = 0.2
