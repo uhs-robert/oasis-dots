@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "lastComputedDate": "2026-01-05",
+  "lastComputedDate": "2026-01-08",
   "dailyActivity": [
     {
       "date": "2025-11-12",
@@ -277,6 +277,24 @@
       "messageCount": 213,
       "sessionCount": 11,
       "toolCallCount": 52
+    },
+    {
+      "date": "2026-01-06",
+      "messageCount": 379,
+      "sessionCount": 16,
+      "toolCallCount": 111
+    },
+    {
+      "date": "2026-01-07",
+      "messageCount": 62,
+      "sessionCount": 3,
+      "toolCallCount": 15
+    },
+    {
+      "date": "2026-01-08",
+      "messageCount": 811,
+      "sessionCount": 13,
+      "toolCallCount": 211
     }
   ],
   "dailyModelTokens": [
@@ -555,21 +573,39 @@
       "tokensByModel": {
         "claude-sonnet-4-5-20250929": 13085
       }
+    },
+    {
+      "date": "2026-01-06",
+      "tokensByModel": {
+        "claude-sonnet-4-5-20250929": 15269
+      }
+    },
+    {
+      "date": "2026-01-07",
+      "tokensByModel": {
+        "claude-sonnet-4-5-20250929": 31648
+      }
+    },
+    {
+      "date": "2026-01-08",
+      "tokensByModel": {
+        "claude-sonnet-4-5-20250929": 118628
+      }
     }
   ],
   "modelUsage": {
     "claude-sonnet-4-5-20250929": {
-      "inputTokens": 599417,
-      "outputTokens": 5563485,
-      "cacheReadInputTokens": 926386731,
-      "cacheCreationInputTokens": 115755022,
+      "inputTokens": 645983,
+      "outputTokens": 5682464,
+      "cacheReadInputTokens": 953694922,
+      "cacheCreationInputTokens": 122466111,
       "webSearchRequests": 0,
       "costUSD": 0,
       "contextWindow": 0
     }
   },
-  "totalSessions": 479,
-  "totalMessages": 29379,
+  "totalSessions": 511,
+  "totalMessages": 30631,
   "longestSession": {
     "sessionId": "95636fcf-93d0-4cd5-86c6-6744c85fd426",
     "duration": 27229180,
@@ -580,19 +616,19 @@
   "hourCounts": {
     "0": 1,
     "6": 2,
-    "7": 6,
-    "8": 36,
-    "9": 29,
-    "10": 24,
-    "11": 37,
-    "12": 29,
-    "13": 34,
+    "7": 9,
+    "8": 37,
+    "9": 35,
+    "10": 25,
+    "11": 38,
+    "12": 30,
+    "13": 37,
     "14": 28,
-    "15": 39,
-    "16": 30,
-    "17": 48,
-    "18": 25,
-    "19": 43,
+    "15": 44,
+    "16": 33,
+    "17": 50,
+    "18": 29,
+    "19": 45,
     "20": 31,
     "21": 17,
     "22": 14,
