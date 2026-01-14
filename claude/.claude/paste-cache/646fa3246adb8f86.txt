@@ -1,0 +1,18 @@
+@echasnovski
+echasnovski
+2 days ago
+
+    Any feedback is welcome, especially if you have any thoughts on the complexity note you mentioned 😉
+
+I've only closely looked at integrations. To my eye most, of this is more complex that it (vast majority of the time) needs to be.
+
+All that is usually needed from the color scheme is after :colorscheme oasis everything just works. I find it hard to imagine user (or other plugin author) ever needing Plugin.list() or Plugin.refresh().
+
+Another topic is get_plugin_highlights() having to go through multiple require() calls and construction of multiple tables to then later be moved into another table. This is not only complex but has a heavy toll on performance: each require() needs time to find the module and construction of many tables also takes (smaller, but still) time. This is especially important since color scheme is something that is sourced during startup, so every 0.1ms count.
+
+And of course using "automatic" detection will fail for lazy loaded plugins (unless there is a smart tracking that some plugin is loaded, but that is error prone due to different plugin managers). In my mind, having such optimizations is there only for users who wish to go extra mile for ultra fast startup time. Setting highlight groups for plugins that are not (yet) used is bad only in a sense of extra time to set them and "polluting" all highlight groups. But that is usually fine (at least for me).
+
+The eventual design is of course up to you. My approach would have been to:
+
+    Minimize the number of "layers" that applying color scheme goes through. Ideally it should be only two: 1) generate palette; 2) create highlight groups without creating extra table to store those highlights.
+    For power users, provide a way to opt-out from not used plugins. This also can be an opt-in, but I find it frustrating to have to enable color scheme support for every used plugin.

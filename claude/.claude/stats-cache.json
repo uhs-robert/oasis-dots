@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "lastComputedDate": "2026-01-08",
+  "lastComputedDate": "2026-01-13",
   "dailyActivity": [
     {
       "date": "2025-11-12",
@@ -295,6 +295,30 @@
       "messageCount": 811,
       "sessionCount": 13,
       "toolCallCount": 211
+    },
+    {
+      "date": "2026-01-09",
+      "messageCount": 433,
+      "sessionCount": 17,
+      "toolCallCount": 105
+    },
+    {
+      "date": "2026-01-11",
+      "messageCount": 15,
+      "sessionCount": 1,
+      "toolCallCount": 5
+    },
+    {
+      "date": "2026-01-12",
+      "messageCount": 237,
+      "sessionCount": 7,
+      "toolCallCount": 69
+    },
+    {
+      "date": "2026-01-13",
+      "messageCount": 104,
+      "sessionCount": 2,
+      "toolCallCount": 28
     }
   ],
   "dailyModelTokens": [
@@ -591,21 +615,46 @@
       "tokensByModel": {
         "claude-sonnet-4-5-20250929": 118628
       }
+    },
+    {
+      "date": "2026-01-09",
+      "tokensByModel": {
+        "claude-sonnet-4-5-20250929": 32467
+      }
+    },
+    {
+      "date": "2026-01-11",
+      "tokensByModel": {
+        "claude-sonnet-4-5-20250929": 3123
+      }
+    },
+    {
+      "date": "2026-01-12",
+      "tokensByModel": {
+        "claude-sonnet-4-5-20250929": 19706
+      }
+    },
+    {
+      "date": "2026-01-13",
+      "tokensByModel": {
+        "claude-sonnet-4-5-20250929": 33342
+      }
     }
   ],
   "modelUsage": {
     "claude-sonnet-4-5-20250929": {
-      "inputTokens": 645983,
-      "outputTokens": 5682464,
-      "cacheReadInputTokens": 953694922,
-      "cacheCreationInputTokens": 122466111,
+      "inputTokens": 662703,
+      "outputTokens": 5754382,
+      "cacheReadInputTokens": 972450788,
+      "cacheCreationInputTokens": 126556219,
       "webSearchRequests": 0,
       "costUSD": 0,
-      "contextWindow": 0
+      "contextWindow": 0,
+      "maxOutputTokens": 0
     }
   },
-  "totalSessions": 511,
-  "totalMessages": 30631,
+  "totalSessions": 538,
+  "totalMessages": 31420,
   "longestSession": {
     "sessionId": "95636fcf-93d0-4cd5-86c6-6744c85fd426",
     "duration": 27229180,
@@ -614,24 +663,24 @@
   },
   "firstSessionDate": "2025-11-12T16:26:59.374Z",
   "hourCounts": {
-    "0": 1,
+    "0": 2,
     "6": 2,
     "7": 9,
     "8": 37,
     "9": 35,
     "10": 25,
     "11": 38,
-    "12": 30,
-    "13": 37,
-    "14": 28,
-    "15": 44,
-    "16": 33,
-    "17": 50,
-    "18": 29,
-    "19": 45,
+    "12": 31,
+    "13": 38,
+    "14": 31,
+    "15": 46,
+    "16": 36,
+    "17": 54,
+    "18": 31,
+    "19": 46,
     "20": 31,
-    "21": 17,
-    "22": 14,
+    "21": 21,
+    "22": 19,
     "23": 6
   }
 }
