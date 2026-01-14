@@ -84,31 +84,31 @@ CHOICE="$1"
 if [[ -z "$CHOICE" ]]; then
   CHOICE=$(
     cat <<EOF | "${MENU[@]}"
-📸 Screenshot Region     (Super + I)
+📸 Screenshot Region
 📸 Screenshot Frozen Region
 📸 Screenshot Screen
-📸 Screenshot Window     (Super + Shift + I)
+📸 Screenshot Window
 📸 Screenshot Focused
-📹 Record Region         (Super + Alt + I)
+📹 Record Region
 📹 Record Window
 📹 Record Screen
 📹 Record Focused
-🎨 Pick Pixel Color      (Super + P)
-📄 OCR Text from Region  (Super + T)
+🎨 Pick Pixel Color
+📄 OCR Text from Region
 EOF
   )
   case "$CHOICE" in
-  "📸 Screenshot Region     (Super + I)") CHOICE="--region" ;;
+  "📸 Screenshot Region") CHOICE="--region" ;;
   "📸 Screenshot Frozen Region") CHOICE="--freeze" ;;
   "📸 Screenshot Screen") CHOICE="--screen" ;;
-  "📸 Screenshot Window     (Super + Shift + I)") CHOICE="--window" ;;
+  "📸 Screenshot Window") CHOICE="--window" ;;
   "📸 Screenshot Focused") CHOICE="--focused" ;;
-  "📹 Record Region         (Super + Alt + I)") CHOICE="--record-region" ;;
+  "📹 Record Region") CHOICE="--record-region" ;;
   "📹 Record Window") CHOICE="--record-window" ;;
   "📹 Record Screen") CHOICE="--record-screen" ;;
   "📹 Record Focused") CHOICE="--record-focused" ;;
-  "🎨 Pick Pixel Color      (Super + P)") CHOICE="--pixel" ;;
-  "📄 OCR Text from Region  (Super + T)") CHOICE="--text" ;;
+  "🎨 Pick Pixel Color") CHOICE="--pixel" ;;
+  "📄 OCR Text from Region") CHOICE="--text" ;;
   *)
     notify "Cancelled" "No valid option selected"
     exit 1
