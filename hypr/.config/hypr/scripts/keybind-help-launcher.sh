@@ -2,7 +2,7 @@
 # hypr/.config/hypr/scripts/keybind-help-launcher.sh
 
 HYPRCONF="$HOME/.config/hypr/hyprland.conf"
-KEYMAP_DIR="$HOME/.config/hypr/keymaps"
+KEYMAP_DIR="$HOME/.config/hypr/config/"
 KEYMAP=$(grep "^\$KEYMAP" "$HYPRCONF" | awk -F= '{print $2}' | xargs)
 KEYMAP_FILE="$KEYMAP_DIR/$KEYMAP.conf"
 
@@ -14,19 +14,19 @@ fi
 
 # Extract keybinds with 'exec'
 mapfile -t OPTIONS < <(
-  grep '^bind' "$KEYMAP_FILE" | while IFS= read -r line; do
+  grep '^bindd' "$KEYMAP_FILE" | while IFS= read -r line; do
     mod=$(echo "$line" | cut -d',' -f1 | cut -d= -f2 | xargs)
     key=$(echo "$line" | cut -d',' -f2 | xargs)
-    action=$(echo "$line" | cut -d',' -f4- | xargs)
+    description=$(echo "$line" | cut -d',' -f3 | xargs)
+    dispatcher=$(echo "$line" | cut -d',' -f4 | xargs)
+    command=$(echo "$line" | cut -d',' -f5- | xargs)
 
-    # Only include lines that use 'exec,'
-    [[ "$action" != exec,* ]] && continue
+    # Only include lines that use 'exec'
+    [[ "$dispatcher" != "exec" ]] && continue
 
-    # Strip `exec,` prefix and format
-    command="${action#exec,}"
     mod_readable=$(echo "$mod" | sed "s/\$leader/SUPER/g" | tr '[:lower:]' '[:upper:]')
-    printf "%-20s → %s\n" "$mod_readable+$key" "$command"
-  done
+    printf "%-35s %-20s → %s\n" "$description" "$mod_readable+$key" "$command"
+  done | sort
 )
 
 # Prompt the user
