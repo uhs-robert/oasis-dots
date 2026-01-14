@@ -119,6 +119,8 @@ __pycache__/
 **/.claude/.credentials.json
 **/.claude/debug
 **/.claude/file-history
+**/.claude/plugins
+**/.claude/plugins/known_marketplaces.json
 **/.gemini/state.json
 **/.gemini/oauth_creds.json
 **/.gemini/google_accounts.json
