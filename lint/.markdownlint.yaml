@@ -1,0 +1,42 @@
+# By default, enable all rules provided by the linter
+default: true
+
+# Unordered list style
+# Disabled this because the TOC was giving me warnings for using other symbols
+# MD004: false
+
+# Unordered list indentation
+# I disable this because for some documents I use 4 space indenting, like
+# markdown files that I need to upload to confluence
+# https://github.com/DavidAnson/markdownlint/blob/main/doc/md007.md
+# MD007: false
+
+# # Hard tabs
+# # https://github.com/DavidAnson/markdownlint/blob/main/doc/md010.md
+# # This rule is triggered by any lines that contain hard tab characters instead
+# # of using spaces for indentation. To fix this, replace any hard tab characters
+# # with spaces instead
+MD010:
+  code_blocks: false
+
+# Line length
+# I disabled this because autoformatting takes care of the line length for me,
+# so it's not necessary, also if I have a really long markdown link with {:target="\_blank"}
+# at the end, it will trigger it, and haven't looked into how to fix that
+# https://github.com/DavidAnson/markdownlint/blob/main/doc/md013.md
+MD013: false
+# MD013:
+#   code_blocks: false
+#   headings: false
+#   tables: false
+
+# Spaces after list markers
+# Disabled this because of confluence formatting
+# https://github.com/DavidAnson/markdownlint/blob/main/doc/md030.md
+# MD030: false
+
+# Inline HTML
+MD033: false
+
+# First line H1
+MD041: false
