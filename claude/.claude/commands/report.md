@@ -11,10 +11,10 @@ The agent calling this tool should first determine the TIMEFRAME.
 2. If `session-report.md` does not exist AND the user did not provide a specific timeframe then the default TIMEFRAME should instead be "24 hours ago".
 
 - Get modification date: `stat -c %y session-report.md`
-- Recent commits by time: !`git log --since="${TIMEFRAME}" --oneline --reverse`
-- Detailed commit info: !`git log --since="${TIMEFRAME}" --stat --reverse`
-- Current branch status: !`git status --short`
-- Staged changes: !`git diff --cached --name-only`
+- Recent commits by time: `git log --since="${TIMEFRAME}" --oneline --reverse`
+- Detailed commit info: `git log --since="${TIMEFRAME}" --stat --reverse`
+- Current branch status: `git status --short`
+- Staged changes: `git diff --cached --name-only`
 - File sizes for new assets: !`ls -lah` (when relevant)
 
 ### Arguments
