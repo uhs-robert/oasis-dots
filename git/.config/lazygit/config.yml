@@ -72,27 +72,27 @@ gui:
   # See https://github.com/jesseduffield/lazygit/blob/master/docs/Config.md#color-attributes
   theme:
     activeBorderColor:
-      - "#FFA247"
+      - "#F9A05E"
       - bold
     inactiveBorderColor:
-      - "#3DB5FF"
+      - "#58B8FD"
     optionsTextColor:
       - "#F0E68C"
     selectedLineBgColor:
-      - "#1A283F"
+      - "#22385C"
     cherryPickedCommitBgColor:
       - "#22385C"
     cherryPickedCommitFgColor:
-      - "#3DB5FF"
+      - "#58B8FD"
     unstagedChangesColor:
-      - "#D06666"
+      - "#FF7979"
     defaultFgColor:
       - "#D9E6FA"
     searchingActiveBorderColor:
       - "#F0E68C"
 
   authorColors:
-    "*": "#FFA247"
+    "*": "#F8B471"
 
   # Config relating to the commit length indicator
   commitLength:
