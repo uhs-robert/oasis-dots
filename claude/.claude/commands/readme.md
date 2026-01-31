@@ -1,6 +1,7 @@
 ---
 allowed-tools: Bash(ls:README.md), Bash(git log:*), Bash(git diff:*), Bash(git show:*), Bash(find:*), Bash(cat:*), Bash(head:*), Bash(git branch:*)
 description: Create or update the project README.md file
+model: claude-haiku-4-5
 ---
 
 ## Overview

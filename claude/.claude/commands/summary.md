@@ -1,6 +1,7 @@
 ---
 allowed-tools: Bash(find:*), Bash(cat:*), Bash(head:*), Bash(git log:*), Bash(git branch:*), Bash(ls:*), Bash(tree:*), Bash(grep:*), Bash(stat:*)
 description: Summarize the purpose, structure, and architecture of this project or specific files
+model: claude-haiku-4-5
 ---
 
 ## Context

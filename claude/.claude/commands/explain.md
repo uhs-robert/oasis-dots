@@ -1,6 +1,7 @@
 ---
 allowed-tools: Bash(cat:*), Bash(head:*), Bash(grep:*), Bash(git log:*), Bash(git diff:*), Bash(find:*), Bash(git branch:*), Bash(sed:*)
 description: Explain the purpose, logic, and behavior of selected code files or line ranges
+model: claude-haiku-4-5
 ---
 
 ## Context
