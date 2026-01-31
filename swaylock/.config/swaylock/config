@@ -35,8 +35,8 @@ text-ver-color=53D390
 # Wrong Password State
 line-wrong-color=22385C
 inside-wrong-color=101825
-ring-wrong-color=D06666
-text-wrong-color=D06666
+ring-wrong-color=FF7979
+text-wrong-color=FF7979
 
 # Clear State (password cleared)
 line-clear-color=22385C

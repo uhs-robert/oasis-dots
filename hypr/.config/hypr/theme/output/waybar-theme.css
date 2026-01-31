@@ -11,8 +11,8 @@
 /* Foregrounds */
 @define-color fg_core #D9E6FA;
 @define-color fg_strong #D0E2F0;
-@define-color fg_muted #30556d;
-@define-color fg_dim #665D55;
+@define-color fg_muted #3B6A87;
+@define-color fg_dim #877363;
 
 /* Accents */
 @define-color primary #58B8FD;
@@ -28,8 +28,8 @@
 @define-color ok #96EA7F;
 
 /* ANSI Colors (for reference) */
-@define-color red #D06666;
+@define-color red #FF7979;
 @define-color green #53D390;
-@define-color blue #519BFF;
-@define-color cyan #5ABAAE;
-@define-color magenta #C28EFF;
+@define-color blue #81C0FF;
+@define-color cyan #68C0B6;
+@define-color magenta #C695FF;
