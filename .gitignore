@@ -130,6 +130,8 @@ __pycache__/
 **/.codex/config.toml
 **/.codex/history.jsonl
 **/.codex/version.json
+**/.codex/auth.json
+**/.codex/models_cache.json
 CLAUDE.md
 GEMINI.md
 AGENTS.md
