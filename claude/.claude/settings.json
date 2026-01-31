@@ -18,8 +18,9 @@
       }
     ]
   },
-  "alwaysThinkingEnabled": true,
   "enabledPlugins": {
     "lua-lsp@claude-plugins-official": true
-  }
+  },
+  "alwaysThinkingEnabled": true,
+  "model": "sonnet"
 }
