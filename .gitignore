@@ -121,6 +121,9 @@ __pycache__/
 **/.claude/file-history
 **/.claude/plugins
 **/.claude/plugins/known_marketplaces.json
+**/.claude/cache/
+**/.claude/stats-cache.json
+**/.claude/paste-cache/
 **/.gemini/state.json
 **/.gemini/oauth_creds.json
 **/.gemini/google_accounts.json
