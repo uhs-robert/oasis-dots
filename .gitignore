@@ -110,8 +110,8 @@ __pycache__/
 # ────────────────────────────────────────────────
 # 🤖 AI assistant artifacts (Claude, Gemini, etc.)
 # ────────────────────────────────────────────────
+**/.stow-local-ignore
 claude/**
-!claude/.stow-local-ignore
 !claude/.claude/
 !claude/.claude/_agents/
 !claude/.claude/_agents/**
@@ -121,11 +121,13 @@ claude/**
 !claude/.claude/commands/**
 !claude/.claude/AGENTS.md
 !claude/.claude/settings.json
-**/.gemini/state.json
-**/.gemini/oauth_creds.json
-**/.gemini/google_accounts.json
-**/.gemini/installation_id
-**/.gemini/tmp/
+gemini/**
+!gemini/.gemini/
+!gemini/.gemini/commands/
+!gemini/.gemini/commands/**
+!gemini/.gemini/theme/
+!gemini/.gemini/theme/**
+!gemini/.gemini/settings.json
 codex/**
 !codex/.codex/
 !codex/.codex/prompts/
