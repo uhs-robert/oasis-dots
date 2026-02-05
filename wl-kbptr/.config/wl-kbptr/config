@@ -1,0 +1,79 @@
+# wl-kbptr can be configured with a configuration file.
+# The file location can be passed with the -c parameter.
+# Otherwise the `$XDG_CONFIG_HOME/wl-kbptr/config` file will
+# be loaded if it exits. Below is the default configuration.
+
+[general]
+home_row_keys=
+modes=floating,click
+cancellation_status_code=0
+
+[mode_tile]
+label_color=#D9E6FAFF
+label_select_color=#58B8FDFF
+unselectable_bg_color=#2226
+selectable_bg_color=#22385C59
+selectable_border_color=#3AACFD40
+label_font_family=sans-serif
+label_font_size=14 50% 100
+label_symbols=abcdefghijklmnopqrstuvwxyz
+
+
+# 100% opacity = FF  (fully opaque - no transparency)
+# 95% opacity  = F2
+# 90% opacity  = E6
+# 85% opacity  = D9
+# 80% opacity  = CC
+# 75% opacity  = BF
+# 70% opacity  = B3
+# 65% opacity  = A6
+# 60% opacity  = 99
+# 55% opacity  = 8C
+# 50% opacity  = 80  (half transparent)
+# 45% opacity  = 73
+# 40% opacity  = 66
+# 35% opacity  = 59
+# 30% opacity  = 4D
+# 25% opacity  = 40
+# 20% opacity  = 33
+# 15% opacity  = 26
+# 10% opacity  = 1A
+# 5% opacity   = 0D
+# 0% opacity   = 00  (fully transparent - invisible)
+
+[mode_floating]
+source=detect
+label_color=#D9E6FAFF
+label_select_color=#58B8FDFF
+unselectable_bg_color=#2226
+selectable_bg_color=#22385C99
+selectable_border_color=#3AACFD80
+label_font_family=sans-serif
+label_font_size=14 50% 100
+label_symbols=abcdefghijklmnopqrstuvwxyz
+
+[mode_bisect]
+label_color=#D9E6FAFF
+label_font_size=20
+label_font_family=sans-serif
+label_padding=12
+pointer_size=20
+pointer_color=#e22d
+unselectable_bg_color=#2226
+even_area_bg_color=#0304
+even_area_border_color=#0408
+odd_area_bg_color=#0034
+odd_area_border_color=#0048
+history_border_color=#3339
+
+[mode_split]
+pointer_size=20
+pointer_color=#e22d
+bg_color=#2226
+area_bg_color=#11111188
+vertical_color=#8888ffcc
+horizontal_color=#008800cc
+history_border_color=#3339
+
+[mode_click]
+button=left
