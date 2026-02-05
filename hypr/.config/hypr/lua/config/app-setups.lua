@@ -37,7 +37,7 @@ Config.apps = {
 
 	-- Email client
 	email = {
-		{ monitor = "LEFT", increment = true, cmd = "flatpak run eu.betterbird.Betterbird" },
+		{ monitor = "PRIMARY", increment = false, cmd = "flatpak run eu.betterbird.Betterbird" },
 	},
 
 	-- Slack
@@ -118,8 +118,8 @@ Config.setups = {
 
 	["💼 Work"] = {
 		Config.apps.firefox_triple,
-		tmuxifier("uphill"),
-		tmuxifier("config", "CENTER"),
+		tmuxifier("uphill", "CENTER"),
+		tmuxifier("config", "RIGHT"),
 		Config.apps.slack,
 		Config.apps.email,
 	},
