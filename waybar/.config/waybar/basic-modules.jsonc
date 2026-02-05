@@ -144,6 +144,12 @@
     // "icon-size": 16,
   },
 
+  "hyprland/submap": {
+    "format": "<span size='11000' foreground='#F8B471'> </span>{}",
+    "max-length": 15,
+    "tooltip": false
+  },
+
   "power-profiles-daemon": {
     "format": "<span size='11000'>{icon} </span>",
     "tooltip-format": "Power profile: {profile}\nDriver: {driver}",

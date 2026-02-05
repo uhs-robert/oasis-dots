@@ -36,6 +36,7 @@
     "modules-center": ["clock", "custom/weather"],
     "modules-right": [
       "group/systemtray",
+      "hyprland/submap",
       "custom/updates",
       "group/volume",
       "group/power",
