@@ -144,6 +144,12 @@
     // "icon-size": 16,
   },
 
+  "hyprland/submap": {
+    "format": "<span size='11000' foreground='#F8B471'> </span>{}",
+    "max-length": 15,
+    "tooltip": false
+  },
+
   "power-profiles-daemon": {
     "format": "<span size='11000'>{icon} </span>",
     "tooltip-format": "Power profile: {profile}\nDriver: {driver}",
@@ -293,7 +299,7 @@
 
       "sep1": "true",
 
-      "lock": "~/.config/waybar/scripts/confirm-action.sh --title Lock --glyph '󰌾' --color '{{fg_core}}' --exec 'hyprlock'",
+      "lock": "~/.config/waybar/scripts/confirm-action.sh --title Lock --glyph '󰌾' --color '{{fg_core}}' --exec 'swaylock'",
       "logout": "~/.config/waybar/scripts/confirm-action.sh --title Logout --glyph '󰍃' --color '{{info}}' --exec 'hyprctl dispatch exit'",
       "reboot": "~/.config/waybar/scripts/confirm-action.sh --title Reboot --glyph '󰜉' --color '{{warning}}' --exec 'systemctl reboot'",
       "power": "~/.config/waybar/scripts/confirm-action.sh --title Power\\ Off --glyph '󰐥' --color '{{error}}' --exec 'systemctl poweroff'"
