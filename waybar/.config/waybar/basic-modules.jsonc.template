@@ -146,7 +146,7 @@
 
   "hyprland/submap": {
     "format": "<span size='11000' foreground='#F8B471'> </span>{}",
-    "max-length": 15,
+    "max-length": 20,
     "tooltip": false,
     "on-click": "hyprctl dispatch submap reset"
   },
