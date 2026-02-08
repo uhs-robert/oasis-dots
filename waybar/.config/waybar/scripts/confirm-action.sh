@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # waybar/.config/waybar/scripts/confirm-action.sh
 # Minimal yes/no dialog, then run a command on Yes.
-# Works with zenity (preferred) or kdialog; no-op if neither exists.
+# Works with kdialog (preferred) or zenity; no-op if neither exists.
 
 set -euo pipefail
 
@@ -126,12 +126,12 @@ focus_monitor_under_cursor() {
   [[ -n "$mon" ]] && hyprctl dispatch focusmonitor "$mon" >/dev/null 2>&1 || true
 }
 
-if command -v zenity >/dev/null 2>&1; then
-  focus_monitor_under_cursor || true
-  if confirm_with_zenity; then eval "$EXEC_CMD"; fi
-elif command -v kdialog >/dev/null 2>&1; then
+if command -v kdialog >/dev/null 2>&1; then
   focus_monitor_under_cursor || true
   if confirm_with_kdialog; then eval "$EXEC_CMD"; fi
+elif command -v zenity >/dev/null 2>&1; then
+  focus_monitor_under_cursor || true
+  if confirm_with_zenity; then eval "$EXEC_CMD"; fi
 else
   # No GUI prompt available — fail gracefully
   command -v notify-send >/dev/null 2>&1 && notify-send "$TITLE" "No dialog program found" -u low
