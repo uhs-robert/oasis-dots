@@ -1,6 +1,6 @@
 [submodule "neovim/.config/nvim"]
 	path = neovim/.config/nvim
 	url = git@github.com:uhs-robert/nvim-config.git
-[submodule "hypr/.config/hypr/HyprVim"]
-	path = hypr/.config/hypr/HyprVim
-	url = git@github.com:uhs-robert/HyprVim.git
+[submodule "hypr/.config/hypr/hyprvim"]
+	path = hypr/.config/hypr/hyprvim
+	url = git@github.com:uhs-robert/hyprvim.git
