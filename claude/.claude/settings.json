@@ -5,6 +5,7 @@
       "Read(~/.zshrc)"
     ]
   },
+  "model": "sonnet",
   "hooks": {
     "PreToolUse": [
       {
@@ -21,6 +22,5 @@
   "enabledPlugins": {
     "lua-lsp@claude-plugins-official": true
   },
-  "alwaysThinkingEnabled": true,
-  "model": "sonnet"
+  "alwaysThinkingEnabled": true
 }
