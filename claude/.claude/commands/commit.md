@@ -19,6 +19,7 @@ model: claude-haiku-4-5
 4. For each commit:
    - Use **conventional commit** format
    - Keep first line ≤ 72 chars, imperative mood
+   - Include list of changes after second line
    - Group related changes (code/docs/tests/etc)
 
 ## Format
