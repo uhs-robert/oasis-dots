@@ -1,24 +1,9 @@
 {
   "includeCoAuthoredBy": false,
   "permissions": {
-    "allow": [
-      "Read(~/.zshrc)"
-    ]
+    "allow": ["Read(~/.zshrc)"]
   },
   "model": "sonnet",
-  "hooks": {
-    "PreToolUse": [
-      {
-        "matcher": "Task",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "jq -e '.tool_input.subagent_type == \"Explore\"' >/dev/null && { echo \"ERROR: Explore subagent is disabled in this environment\" >&2; exit 2; } || exit 0"
-          }
-        ]
-      }
-    ]
-  },
   "enabledPlugins": {
     "lua-lsp@claude-plugins-official": true
   },
