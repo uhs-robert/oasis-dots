@@ -190,7 +190,7 @@ alias t="task"
 
 # IntelliShell
 export INTELLI_HOME="/home/USER/.local/share/intelli-shell"
-# export INTELLI_SEARCH_HOTKEY='^@'
+export INTELLI_SEARCH_HOTKEY='^F'
 # export INTELLI_VARIABLE_HOTKEY='^l'
 # export INTELLI_BOOKMARK_HOTKEY='^b'
 # export INTELLI_FIX_HOTKEY='^x'
