@@ -38,8 +38,8 @@
     "modules-right": [
       "group/systemtray",
       "hyprland/submap",
-      "custom/voxtype",
       "custom/updates",
+      "custom/voxtype",
       "group/volume",
       "group/power",
       "network",
