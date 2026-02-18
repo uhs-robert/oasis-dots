@@ -110,7 +110,6 @@ monitor_dependent() {
     after() {
       log "[Monitors] After hook..."
       ~/.config/hypr/theme/wallpapers/wallpaper.lua &
-      # hyprctl setcursor breeze-dark 24 & # Mouse cursor
       hyprpm reload -n &
       ~/.config/hypr/config/plugins.conf &
       :
