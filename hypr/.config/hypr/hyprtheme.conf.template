@@ -44,14 +44,14 @@ decoration {
   dim_strength = 0.2
 
   shadow {
-    enabled = true
+    enabled = false # disable on laptop for battery
     range = 4
     render_power = 3
     color = $bg_shadow
   }
 
   blur {
-    enabled = true
+    enabled = false # disable on laptop for battery
     size = 3
     passes = 1
     vibrancy = 0.1696
