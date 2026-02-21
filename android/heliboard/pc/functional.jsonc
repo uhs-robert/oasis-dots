@@ -1,0 +1,29 @@
+[
+  [
+    { "label": "shift", "width": 0.15 },
+    { "type": "placeholder" },
+    { "label": "delete", "width": 0.15 },
+  ],
+  [
+    { "label": "symbol_alpha", "width": 0.15 },
+    { "label": "CTRL", "type": "function", "width": 0.13, "code": -1 },
+    {
+      "$": "keyboard_state_selector",
+      "languageKeyEnabled": {
+        "$": "keyboard_state_selector",
+        "alphabet": { "label": "language_switch" },
+      },
+    },
+    {
+      "$": "keyboard_state_selector",
+      "emojiKeyEnabled": {
+        "$": "keyboard_state_selector",
+        "alphabet": { "label": "emoji" },
+      },
+    },
+    { "$": "keyboard_state_selector", "symbols": { "label": "numpad" } },
+    { "label": "space" },
+    { "label": "ALT", "type": "function", "width": 0.13, "code": -3 },
+    { "label": "action", "width": 0.15 },
+  ],
+]

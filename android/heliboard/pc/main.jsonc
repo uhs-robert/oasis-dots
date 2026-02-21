@@ -1,0 +1,250 @@
+[
+  [
+    {
+      "label": "left",
+      "type": "function",
+      "width": 0.15,
+    },
+    {
+      "label": "down",
+      "type": "function",
+      "width": 0.15,
+    },
+    {
+      "label": "up",
+      "type": "function",
+      "width": 0.15,
+    },
+    {
+      "label": "right",
+      "type": "function",
+      "width": 0.15,
+    },
+    {
+      "label": "META",
+      "type": "function",
+      "width": 0.15,
+      "code": -10012,
+    },
+    {
+      "label": "FN",
+      "type": "function",
+      "width": 0.15,
+      "code": -5,
+    },
+    {
+      "label": "select_word",
+      "type": "function",
+      "width": 0.15,
+      "popup": {
+        "relevant": [
+          { "type": "placeholder" },
+          { "label": "!noPanelAutoPopupKey!" },
+          { "label": "select_all" },
+        ],
+      },
+    },
+    {
+      "label": "clipboard",
+      "type": "function",
+      "width": 0.15,
+      "popup": {
+        "relevant": [
+          { "type": "placeholder" },
+          { "label": "!noPanelAutoPopupKey!" },
+          { "label": "paste" },
+        ],
+      },
+    },
+  ],
+  [
+    { "label": "tab", "width": 0.12, "type": "function" },
+    {
+      "label": "q",
+      "type": "normal",
+      "popup": {
+        "main": { "label": "1" },
+        "relevant": [{ "label": "F1", "code": -10028 }],
+      },
+    },
+    {
+      "label": "w",
+      "type": "normal",
+      "popup": {
+        "main": { "label": "2" },
+        "relevant": [{ "label": "F2", "code": -10029 }],
+      },
+    },
+    {
+      "label": "e",
+      "type": "normal",
+      "popup": {
+        "main": { "label": "3" },
+        "relevant": [{ "label": "F3", "code": -10030 }],
+      },
+    },
+    {
+      "label": "r",
+      "type": "normal",
+      "popup": {
+        "main": { "label": "4" },
+        "relevant": [{ "label": "F4", "code": -10031 }, { "label": "redo" }],
+      },
+    },
+    {
+      "label": "t",
+      "type": "normal",
+      "popup": {
+        "main": { "label": "5" },
+        "relevant": [{ "label": "F5", "code": -10032 }],
+      },
+    },
+    {
+      "label": "y",
+      "type": "normal",
+      "popup": {
+        "main": { "label": "6" },
+        "relevant": [
+          { "label": "!autoColumnOrder!2" },
+          { "label": "F6", "code": -10033 },
+          { "label": "copy" },
+        ],
+      },
+    },
+    {
+      "label": "u",
+      "type": "normal",
+      "popup": {
+        "main": { "label": "7" },
+        "relevant": [
+          { "label": "!autoColumnOrder!2" },
+          { "label": "F7", "code": -10034 },
+          { "label": "undo" },
+        ],
+      },
+    },
+    {
+      "label": "i",
+      "type": "normal",
+      "popup": {
+        "main": { "label": "8" },
+        "relevant": [{ "label": "F8", "code": -10035 }],
+      },
+    },
+    {
+      "label": "o",
+      "type": "normal",
+      "popup": {
+        "main": { "label": "9" },
+        "relevant": [
+          { "label": "!autoColumnOrder!2" },
+          { "label": "F9", "code": -10036 },
+        ],
+      },
+    },
+    {
+      "label": "p",
+      "type": "normal",
+      "popup": {
+        "main": { "label": "0" },
+        "relevant": [{ "label": "F10", "code": -10037 }, { "label": "paste" }],
+      },
+    },
+  ],
+  [
+    {
+      "label": "ESC",
+      "code": -10017,
+      "type": "function",
+      "width": 0.13,
+      "groupId": -1,
+      "popup": {
+        "relevant": [{ "label": "!noPanelAutoPopupKey!" }],
+      },
+    },
+    {
+      "label": "a",
+      "type": "normal",
+      "popup": {
+        "main": { "label": "@" },
+        "relevant": [
+          { "label": "!autoColumnOrder!2" },
+          { "label": "select_all" },
+        ],
+      },
+    },
+    { "label": "s", "popup": { "main": { "label": "#" } } },
+    { "label": "d", "popup": { "main": { "label": "$" } } },
+    { "label": "f", "popup": { "main": { "label": "_" } } },
+    { "label": "g", "popup": { "main": { "label": "&" } } },
+    { "label": "h", "popup": { "main": { "label": "-" } } },
+    { "label": "j", "popup": { "main": { "label": "+" } } },
+    {
+      "label": "k",
+      "popup": {
+        "main": { "label": "(" },
+        "relevant": [
+          { "label": "!autoColumnOrder!2" },
+          { "label": "[" },
+          { "label": "{" },
+          { "label": "<" },
+        ],
+      },
+    },
+    {
+      "label": "l",
+      "popup": {
+        "main": { "label": ")" },
+        "relevant": [
+          { "label": "!autoColumnOrder!2" },
+          { "label": "]" },
+          { "label": "}" },
+          { "label": ">" },
+        ],
+      },
+    },
+  ],
+  [
+    { "label": "z", "popup": { "main": { "label": "*" } } },
+    {
+      "label": "x",
+      "popup": {
+        "main": { "label": "\"" },
+        "relevant": [{ "label": "!autoColumnOrder!2" }, { "label": "cut" }],
+      },
+    },
+    {
+      "label": "c",
+      "popup": {
+        "main": { "label": "/" },
+        "relevant": [{ "label": "!autoColumnOrder!2" }, { "label": "copy" }],
+      },
+    },
+    {
+      "label": "v",
+      "popup": {
+        "main": { "label": ":" },
+        "relevant": [{ "label": "!autoColumnOrder!2" }, { "label": "paste" }],
+      },
+    },
+    { "label": "b", "popup": { "main": { "label": ";" } } },
+    {
+      "label": "n",
+      "popup": { "main": { "label": "!" }, "relevant": [{ "label": "¡" }] },
+    },
+    {
+      "label": "m",
+      "popup": {
+        "main": { "label": "?" },
+        "relevant": [{ "label": "¿" }],
+      },
+    },
+    {
+      "label": "period",
+      "type": "normal",
+      "popup": {
+        "main": { "label": "\"" },
+      },
+    },
+  ],
+]

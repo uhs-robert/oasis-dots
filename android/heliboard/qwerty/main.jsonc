@@ -1,0 +1,232 @@
+[
+  [
+    {
+      "label": "word_left",
+      "type": "function",
+      "width": 0.15,
+      "popup": {
+        "relevant": [
+          { "type": "placeholder" },
+          { "label": "!noPanelAutoPopupKey!" },
+          { "label": "full_left" },
+        ],
+      },
+    },
+    {
+      "label": "down",
+      "type": "function",
+      "width": 0.15,
+      "popup": {
+        "relevant": [
+          { "type": "placeholder" },
+          { "label": "!noPanelAutoPopupKey!" },
+          { "label": "page_down" },
+        ],
+      },
+    },
+    {
+      "label": "up",
+      "type": "function",
+      "width": 0.15,
+      "popup": {
+        "relevant": [
+          { "type": "placeholder" },
+          { "label": "!noPanelAutoPopupKey!" },
+          { "label": "page_up" },
+        ],
+      },
+    },
+    {
+      "label": "word_right",
+      "type": "function",
+      "width": 0.15,
+      "popup": {
+        "relevant": [
+          { "type": "placeholder" },
+          { "label": "!noPanelAutoPopupKey!" },
+          { "label": "full_right" },
+        ],
+      },
+    },
+    {
+      "label": "undo",
+      "type": "function",
+      "width": 0.15,
+      "popup": {
+        "relevant": [
+          { "type": "placeholder" },
+          { "label": "!noPanelAutoPopupKey!" },
+          { "label": "redo" },
+        ],
+      },
+    },
+    {
+      "label": "select_word",
+      "type": "function",
+      "width": 0.15,
+      "popup": {
+        "relevant": [
+          { "type": "placeholder" },
+          { "label": "!noPanelAutoPopupKey!" },
+          { "label": "select_all" },
+        ],
+      },
+    },
+    {
+      "label": "copy",
+      "type": "function",
+      "width": 0.15,
+      "popup": {
+        "relevant": [
+          { "type": "placeholder" },
+          { "label": "!noPanelAutoPopupKey!" },
+          { "label": "cut" },
+        ],
+      },
+    },
+    {
+      "label": "clipboard",
+      "type": "function",
+      "width": 0.15,
+      "popup": {
+        "relevant": [
+          { "type": "placeholder" },
+          { "label": "!noPanelAutoPopupKey!" },
+          { "label": "paste" },
+        ],
+      },
+    },
+  ],
+  [
+    { "label": "q", "type": "normal", "popup": { "main": { "label": "1" } } },
+    { "label": "w", "type": "normal", "popup": { "main": { "label": "2" } } },
+    { "label": "e", "type": "normal", "popup": { "main": { "label": "3" } } },
+    {
+      "label": "r",
+      "type": "normal",
+      "popup": {
+        "main": { "label": "4" },
+        "relevant": [{ "label": "redo" }],
+      },
+    },
+    { "label": "t", "type": "normal", "popup": { "main": { "label": "5" } } },
+    {
+      "label": "y",
+      "type": "normal",
+      "popup": {
+        "main": { "label": "6" },
+        "relevant": [{ "label": "!autoColumnOrder!2" }, { "label": "copy" }],
+      },
+    },
+    {
+      "label": "u",
+      "type": "normal",
+      "popup": {
+        "main": { "label": "7" },
+        "relevant": [{ "label": "!autoColumnOrder!2" }, { "label": "undo" }],
+      },
+    },
+    { "label": "i", "type": "normal", "popup": { "main": { "label": "8" } } },
+    {
+      "label": "o",
+      "type": "normal",
+      "popup": {
+        "main": { "label": "9" },
+        "relevant": [{ "label": "!autoColumnOrder!2" }],
+      },
+    },
+    {
+      "label": "p",
+      "type": "normal",
+      "popup": {
+        "main": { "label": "0" },
+        "relevant": [{ "label": "paste" }],
+      },
+    },
+  ],
+  [
+    {
+      "label": "a",
+      "type": "normal",
+      "popup": {
+        "main": { "label": "@" },
+        "relevant": [
+          { "label": "!autoColumnOrder!2" },
+          { "label": "select_all" },
+        ],
+      },
+    },
+    { "label": "s", "popup": { "main": { "label": "#" } } },
+    { "label": "d", "popup": { "main": { "label": "$" } } },
+    { "label": "f", "popup": { "main": { "label": "_" } } },
+    { "label": "g", "popup": { "main": { "label": "&" } } },
+    { "label": "h", "popup": { "main": { "label": "-" } } },
+    { "label": "j", "popup": { "main": { "label": "+" } } },
+    {
+      "label": "k",
+      "popup": {
+        "main": { "label": "(" },
+        "relevant": [
+          { "label": "!autoColumnOrder!2" },
+          { "label": "[" },
+          { "label": "{" },
+          { "label": "<" },
+        ],
+      },
+    },
+    {
+      "label": "l",
+      "popup": {
+        "main": { "label": ")" },
+        "relevant": [
+          { "label": "!autoColumnOrder!2" },
+          { "label": "]" },
+          { "label": "}" },
+          { "label": ">" },
+        ],
+      },
+    },
+    {
+      "label": "'",
+      "popup": {
+        "main": { "label": "\"" },
+      },
+    },
+  ],
+  [
+    { "label": "z", "popup": { "main": { "label": "*" } } },
+    {
+      "label": "x",
+      "popup": {
+        "main": { "label": "\"" },
+        "relevant": [{ "label": "!autoColumnOrder!2" }, { "label": "cut" }],
+      },
+    },
+    {
+      "label": "c",
+      "popup": {
+        "main": { "label": "/" },
+        "relevant": [{ "label": "!autoColumnOrder!2" }, { "label": "copy" }],
+      },
+    },
+    {
+      "label": "v",
+      "popup": {
+        "main": { "label": ":" },
+        "relevant": [{ "label": "!autoColumnOrder!2" }, { "label": "paste" }],
+      },
+    },
+    { "label": "b", "popup": { "main": { "label": ";" } } },
+    {
+      "label": "n",
+      "popup": { "main": { "label": "!" }, "relevant": [{ "label": "¡" }] },
+    },
+    {
+      "label": "m",
+      "popup": {
+        "main": { "label": "?" },
+        "relevant": [{ "label": "¿" }],
+      },
+    },
+  ],
+]
