@@ -6,7 +6,54 @@
   ],
   [
     { "label": "symbol_alpha", "width": 0.15 },
-    { "label": "CTRL", "type": "function", "width": 0.13, "code": -1 },
+    {
+      "$": "variation_selector",
+      "default": {
+        "label": ",",
+        "type": "function",
+        "width": 0.1,
+        "popup": {
+          "relevant": [
+            { "label": "!autoColumnOrder!3" },
+            { "label": "emoji" },
+            { "label": "clipboard" },
+            { "label": "settings" },
+            { "label": "language_switch" },
+          ],
+        },
+      },
+      "email": {
+        "label": "@",
+        "groupId": 1,
+        "width": 0.1,
+        "type": "function",
+        "popup": {
+          "relevant": [
+            { "label": "!autoColumnOrder!3" },
+            { "label": "emoji" },
+            { "label": "clipboard" },
+            { "label": "settings" },
+            { "label": "language_switch" },
+          ],
+        },
+      },
+      "uri": {
+        "label": "/",
+        "groupId": 1,
+        "width": 0.1,
+        "type": "function",
+        "popup": {
+          "relevant": [
+            { "label": "!autoColumnOrder!3" },
+            { "label": "emoji" },
+            { "label": "clipboard" },
+            { "label": "settings" },
+            { "label": "language_switch" },
+          ],
+        },
+      },
+    },
+    { "label": "CTRL", "type": "function", "width": 0.1, "code": -1 },
     {
       "$": "keyboard_state_selector",
       "languageKeyEnabled": {
@@ -23,7 +70,33 @@
     },
     { "$": "keyboard_state_selector", "symbols": { "label": "numpad" } },
     { "label": "space" },
-    { "label": "ALT", "type": "function", "width": 0.13, "code": -3 },
+    { "label": "ALT", "type": "function", "width": 0.1, "code": -3 },
+    {
+      "label": ".",
+      "width": 0.1,
+      "type": "function",
+      "popup": {
+        "relevant": [
+          { "label": "!autoColumnOrder!4" },
+          { "label": "'" },
+          { "label": "?" },
+          { "label": "!" },
+          { "label": "&" },
+          { "label": "%" },
+          { "label": "=" },
+          { "label": "|" },
+          { "label": ";" },
+          { "label": "@" },
+          { "label": "," },
+          { "label": ":" },
+          { "label": "-" },
+          { "label": "\"" },
+          { "label": "+" },
+          { "label": "(" },
+          { "label": ")" },
+        ],
+      },
+    },
     { "label": "action", "width": 0.15 },
   ],
 ]

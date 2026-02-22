@@ -20,17 +20,12 @@
       "type": "function",
       "width": 0.15,
     },
+    { "label": "tab", "width": 0.15, "type": "function" },
     {
       "label": "META",
       "type": "function",
       "width": 0.15,
       "code": -10012,
-    },
-    {
-      "label": "FN",
-      "type": "function",
-      "width": 0.15,
-      "code": -5,
     },
     {
       "label": "select_word",
@@ -58,7 +53,6 @@
     },
   ],
   [
-    { "label": "tab", "width": 0.12, "type": "function" },
     {
       "label": "q",
       "type": "normal",
@@ -72,7 +66,11 @@
       "type": "normal",
       "popup": {
         "main": { "label": "2" },
-        "relevant": [{ "label": "F2", "code": -10029 }],
+        "relevant": [
+          { "label": "!autoColumnOrder!3" },
+          { "label": "word_right" },
+          { "label": "F2", "code": -10029 },
+        ],
       },
     },
     {
@@ -80,7 +78,11 @@
       "type": "normal",
       "popup": {
         "main": { "label": "3" },
-        "relevant": [{ "label": "F3", "code": -10030 }],
+        "relevant": [
+          { "label": "!autoColumnOrder!3" },
+          { "label": "word_right" },
+          { "label": "F3", "code": -10030 },
+        ],
       },
     },
     {
@@ -88,7 +90,11 @@
       "type": "normal",
       "popup": {
         "main": { "label": "4" },
-        "relevant": [{ "label": "F4", "code": -10031 }, { "label": "redo" }],
+        "relevant": [
+          { "label": "!autoColumnOrder!3" },
+          { "label": "redo" },
+          { "label": "F4", "code": -10031 },
+        ],
       },
     },
     {
@@ -105,9 +111,9 @@
       "popup": {
         "main": { "label": "6" },
         "relevant": [
-          { "label": "!autoColumnOrder!2" },
-          { "label": "F6", "code": -10033 },
+          { "label": "!autoColumnOrder!3" },
           { "label": "copy" },
+          { "label": "F6", "code": -10033 },
         ],
       },
     },
@@ -117,9 +123,9 @@
       "popup": {
         "main": { "label": "7" },
         "relevant": [
-          { "label": "!autoColumnOrder!2" },
-          { "label": "F7", "code": -10034 },
+          { "label": "!autoColumnOrder!3" },
           { "label": "undo" },
+          { "label": "F7", "code": -10034 },
         ],
       },
     },
@@ -137,7 +143,7 @@
       "popup": {
         "main": { "label": "9" },
         "relevant": [
-          { "label": "!autoColumnOrder!2" },
+          { "label": "!autoColumnOrder!3" },
           { "label": "F9", "code": -10036 },
         ],
       },
@@ -147,36 +153,49 @@
       "type": "normal",
       "popup": {
         "main": { "label": "0" },
-        "relevant": [{ "label": "F10", "code": -10037 }, { "label": "paste" }],
+        "relevant": [
+          { "label": "!autoColumnOrder!2" },
+          { "label": "paste" },
+          { "label": "F10", "code": -10037 },
+        ],
       },
     },
   ],
   [
-    {
-      "label": "ESC",
-      "code": -10017,
-      "type": "function",
-      "width": 0.13,
-      "groupId": -1,
-      "popup": {
-        "relevant": [{ "label": "!noPanelAutoPopupKey!" }],
-      },
-    },
     {
       "label": "a",
       "type": "normal",
       "popup": {
         "main": { "label": "@" },
         "relevant": [
-          { "label": "!autoColumnOrder!2" },
+          { "label": "!autoColumnOrder!3" },
           { "label": "select_all" },
         ],
       },
     },
     { "label": "s", "popup": { "main": { "label": "#" } } },
-    { "label": "d", "popup": { "main": { "label": "$" } } },
+    {
+      "label": "d",
+      "popup": {
+        "main": { "label": "$" },
+        "relevant": [
+          { "label": "!autoColumnOrder!3" },
+          { "label": "DEL", "code": -7 },
+        ],
+      },
+    },
     { "label": "f", "popup": { "main": { "label": "_" } } },
-    { "label": "g", "popup": { "main": { "label": "&" } } },
+    {
+      "label": "g",
+      "popup": {
+        "main": { "label": "&" },
+        "relevant": [
+          { "label": "!autoColumnOrder!3" },
+          { "label": "page_start" },
+          { "label": "page_end" },
+        ],
+      },
+    },
     { "label": "h", "popup": { "main": { "label": "-" } } },
     { "label": "j", "popup": { "main": { "label": "+" } } },
     {
@@ -184,7 +203,7 @@
       "popup": {
         "main": { "label": "(" },
         "relevant": [
-          { "label": "!autoColumnOrder!2" },
+          { "label": "!autoColumnOrder!3" },
           { "label": "[" },
           { "label": "{" },
           { "label": "<" },
@@ -203,6 +222,16 @@
         ],
       },
     },
+    {
+      "label": "ESC",
+      "code": -10017,
+      "type": "function",
+      "width": 0.1,
+      "groupId": -1,
+      "popup": {
+        "relevant": [{ "label": "!noPanelAutoPopupKey!" }],
+      },
+    },
   ],
   [
     { "label": "z", "popup": { "main": { "label": "*" } } },
@@ -210,24 +239,43 @@
       "label": "x",
       "popup": {
         "main": { "label": "\"" },
-        "relevant": [{ "label": "!autoColumnOrder!2" }, { "label": "cut" }],
+        "relevant": [
+          { "label": "!autoColumnOrder!3" },
+          { "label": "cut" },
+          { "label": "'" },
+          { "label": "`" },
+        ],
       },
     },
     {
       "label": "c",
       "popup": {
         "main": { "label": "/" },
-        "relevant": [{ "label": "!autoColumnOrder!2" }, { "label": "copy" }],
+        "relevant": [
+          { "label": "!autoColumnOrder!3" },
+          { "label": "copy" },
+          { "label": "\\" },
+        ],
       },
     },
     {
       "label": "v",
       "popup": {
         "main": { "label": ":" },
-        "relevant": [{ "label": "!autoColumnOrder!2" }, { "label": "paste" }],
+        "relevant": [{ "label": "!autoColumnOrder!3" }, { "label": "paste" }],
       },
     },
-    { "label": "b", "popup": { "main": { "label": ";" } } },
+    {
+      "label": "b",
+      "popup": {
+        "main": { "label": ";" },
+        "relevant": [
+          { "label": "!autoColumnOrder!3" },
+          { "label": " |!code/-1" },
+          { "label": "word_left" },
+        ],
+      },
+    },
     {
       "label": "n",
       "popup": { "main": { "label": "!" }, "relevant": [{ "label": "¡" }] },
@@ -237,13 +285,6 @@
       "popup": {
         "main": { "label": "?" },
         "relevant": [{ "label": "¿" }],
-      },
-    },
-    {
-      "label": "period",
-      "type": "normal",
-      "popup": {
-        "main": { "label": "\"" },
       },
     },
   ],

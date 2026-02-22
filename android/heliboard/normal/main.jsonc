@@ -213,7 +213,11 @@
       "label": "c",
       "popup": {
         "main": { "label": "/" },
-        "relevant": [{ "label": "!autoColumnOrder!3" }, { "label": "copy" }],
+        "relevant": [
+          { "label": "!autoColumnOrder!3" },
+          { "label": "copy" },
+          { "label": "\\" },
+        ],
       },
     },
     {
