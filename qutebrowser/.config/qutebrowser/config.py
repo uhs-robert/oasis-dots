@@ -124,6 +124,17 @@ config.bind("<Ctrl+k>", "scroll-px 0 -200")
 config.bind("<Ctrl-E>", "config-cycle tabs.show always never")
 config.bind("<Ctrl+Shift+i>", "devtools")
 
+
+## -- Z --
+config.bind("zb", "jseval -q document.activeElement && document.activeElement.blur()")
+config.bind(
+    "zv",
+    r"""jseval -q (function () {
+  const v = document.querySelector('video');
+  if (v) { v.play(); v.focus?.(); }
+})()""",
+)
+
 ## -- Leader --
 config.bind(f"{LEADER}{LEADER}", f"cmd-set-text -s :open {DEFAULT_SEARCH} ")
 config.bind(f"{LEADER}F", "cmd-set-text -s :open -t ")  # open in new tab
@@ -171,6 +182,13 @@ config.bind(";;", "hint scroll normal")
 
 ## -- Devloper Tools --
 config.bind(f"{LEADER}ws", "jseval -q --world main Logger.switch()")
+config.bind(
+    "<Space>ti", "jseval -q --world main window.show_knack_id?.api?.toggleIds?.()"
+)
+config.bind(
+    "<Space>th",
+    "jseval -q --world main window.show_knack_id?.api?.toggleShowHidden?.()",
+)
 
 # --- File handler ---
 config.set("fileselect.handler", "external")
@@ -203,6 +221,7 @@ c.url.searchengines = {
     "flathub": "https://flathub.org/apps/search?q={}",
     "google": "https://www.google.com/search?q={}",
     "github": "https://github.com/search?q={}",
+    "greasyfork": "https://greasyfork.org/en/scripts?q={}",
     "image": "https://www.google.com/search?tbm=isch&q={}",
     "lastyear": "https://www.google.com/search?hl=en&tbo=1&tbs=qdr:y&q={}",
     "lastmonth": "https://www.google.com/search?hl=en&tbo=1&tbs=qdr:m&q={}",
@@ -228,3 +247,29 @@ c.url.searchengines = {
     "wolframalpha": "https://www.wolframalpha.com/input/?i={}",
     "youtube": "https://www.youtube.com/results?search_query={}",
 }
+
+# --- Adblocking ---
+c.content.blocking.enabled = True
+
+## Uncomment this if you install python-adblock
+# c.content.blocking.method = 'adblock'
+
+## Use UBlock Origin Adblocking Lists
+# c.content.blocking.adblock.lists = [
+#         "https://github.com/uBlockOrigin/uAssets/raw/master/filters/legacy.txt",
+#         "https://github.com/uBlockOrigin/uAssets/raw/master/filters/filters.txt",
+#         "https://github.com/uBlockOrigin/uAssets/raw/master/filters/filters-2020.txt",
+#         "https://github.com/uBlockOrigin/uAssets/raw/master/filters/filters-2021.txt",
+#         "https://github.com/uBlockOrigin/uAssets/raw/master/filters/filters-2022.txt",
+#         "https://github.com/uBlockOrigin/uAssets/raw/master/filters/filters-2023.txt",
+#         "https://github.com/uBlockOrigin/uAssets/raw/master/filters/filters-2024.txt",
+#         "https://github.com/uBlockOrigin/uAssets/raw/master/filters/badware.txt",
+#         "https://github.com/uBlockOrigin/uAssets/raw/master/filters/privacy.txt",
+#         "https://github.com/uBlockOrigin/uAssets/raw/master/filters/badlists.txt",
+#         "https://github.com/uBlockOrigin/uAssets/raw/master/filters/annoyances.txt",
+#         "https://github.com/uBlockOrigin/uAssets/raw/master/filters/annoyances-cookies.txt",
+#         "https://github.com/uBlockOrigin/uAssets/raw/master/filters/annoyances-others.txt",
+#         "https://github.com/uBlockOrigin/uAssets/raw/master/filters/badlists.txt",
+#         "https://github.com/uBlockOrigin/uAssets/raw/master/filters/quick-fixes.txt",
+#         "https://github.com/uBlockOrigin/uAssets/raw/master/filters/resource-abuse.txt",
+#         "https://github.com/uBlockOrigin/uAssets/raw/master/filters/unbreak.txt"]
