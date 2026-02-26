@@ -41,6 +41,7 @@ LAGOON_CSS = "~/.config/qutebrowser/solarized-everything-css/css/oasis_lagoon/oa
 GRUVBOX_CSS = (
     "~/.config/qutebrowser/solarized-everything-css/css/gruvbox/gruvbox-all-sites.css"
 )
+HINT_FOLLOW = "unique-match"
 
 # --- Config ---
 config.load_autoconfig(True)
@@ -69,6 +70,7 @@ config.set(
     False,
     "file:///home/USER/.local/share/qutebrowser/userscripts/*",
 )
+config.set("hints.auto_follow", f"{HINT_FOLLOW}")
 
 # --- Editor ---
 c.editor.command = [
@@ -139,6 +141,19 @@ c.hints.selectors["video"] = [
 config.bind(";v", "hint video normal")
 config.bind(";;", "hint focusbox normal")
 
+#### Double Click Mode
+RESET_HINT_FOLLOW = f"set hints.auto_follow {HINT_FOLLOW}"
+ENABLE_DBL_CLICK = "set hints.auto_follow never"
+config.bind(";D;", f"{ENABLE_DBL_CLICK} ;; hint --rapid focusbox tab-bg")
+config.bind(";Df", f"{ENABLE_DBL_CLICK} ;; hint --rapid all tab-bg")
+config.bind(";Ds", f"{ENABLE_DBL_CLICK} ;; hint --rapid scroll tab-bg")
+config.bind("<Return>", "cmd-repeat 2 hint-follow", mode="hint")  # Double click
+config.bind(
+    "<Ctrl+Return>",
+    f"cmd-repeat 2 hint-follow ;; mode-leave ;; {RESET_HINT_FOLLOW}",
+    mode="hint",
+)
+config.bind("<Escape>", f"mode-leave ;; {RESET_HINT_FOLLOW}", mode="hint")
 
 # --- Keybindings ---
 ## -- Go --
