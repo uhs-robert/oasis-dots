@@ -427,7 +427,7 @@ const createSearchElements = (handleSearchFunction, width = "15em") => {
   popupMenu.appendChild(createSeperator());
   const csvExportOption = createOption({
     text: "Export Knack Data to CSV",
-    onCLick: false,
+    onClick: false,
   });
   csvExportOption.onclick = () => {
     Knack.renderModal(htmlExport);
@@ -1048,31 +1048,43 @@ const addSearchBar = (elQuery) => {
   container.appendChild(searchContainer);
 };
 
-const observer = new MutationObserver((mutationsList, observer) => {
-  for (let mutation of mutationsList) {
-    if (mutation.type === "childList") {
-      mutation.addedNodes.forEach((node) => {
-        if (node.nodeType === Node.ELEMENT_NODE) {
-          const targetElement = node.matches("#knack-body header")
-            ? node
-            : node.querySelector("#pages-nav .title");
-          if (targetElement) {
-            targetElement.querySelector("#builder-search-container")
-              ? observer.disconnect()
-              : addSearchBar(
-                  "#knack-body header .kn-container .knHeader__content",
-                );
-          }
-        }
-      });
-    }
-  }
-});
+(function bootstrap() {
+  const $ = window.jQuery || window.$;
+  if (!window.Knack || !$) return setTimeout(bootstrap, 200);
 
-observer.observe(document.body, {
-  childList: true,
-  subtree: true,
-});
+  // make $ available if you reference it everywhere
+  window.$ = $;
+
+  init();
+})();
+
+function init() {
+  const observer = new MutationObserver((mutationsList, observer) => {
+    for (let mutation of mutationsList) {
+      if (mutation.type === "childList") {
+        mutation.addedNodes.forEach((node) => {
+          if (node.nodeType === Node.ELEMENT_NODE) {
+            const targetElement = node.matches("#knack-body header")
+              ? node
+              : node.querySelector("#pages-nav .title");
+            if (targetElement) {
+              targetElement.querySelector("#builder-search-container")
+                ? observer.disconnect()
+                : addSearchBar(
+                    "#knack-body header .kn-container .knHeader__content",
+                  );
+            }
+          }
+        });
+      }
+    }
+  });
+
+  observer.observe(document.body, {
+    childList: true,
+    subtree: true,
+  });
+}
 
 // CSV Export Functions
 const findNestedProperties = (obj, path) => {
