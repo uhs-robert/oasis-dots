@@ -158,6 +158,7 @@ config.bind("<Escape>", f"mode-leave ;; {RESET_HINT_FOLLOW}", mode="hint")
 # --- Keybindings ---
 ## -- Go --
 config.bind("gT", ":open -t translate.google.com/translate?sl=auto&tl=en-US&u={url}")
+config.bind("gm", "cmd-set-text -s :tab-move ")
 config.bind(
     ";<Space>i", "hint images run :open -t https://tineye.com/search?url={hint-url}"
 )
@@ -178,6 +179,10 @@ config.bind("se", "config-edit")
 config.bind("sc", "clear-messages")
 config.bind("sr", "config-source")
 config.bind("sR", "restart")
+config.bind("sth", "set tabs.position left")
+config.bind("stj", "set tabs.position bottom")
+config.bind("stk", "set tabs.position top")
+config.bind("stl", "set tabs.position right")
 
 ## -- Window/Dev --
 config.bind("wd", "cmd-set-text -s :download-open")
@@ -230,10 +235,10 @@ for mode in ["true", "false"]:
 ## -- Devloper Tools --
 config.bind(f"{LEADER}ws", "jseval -q --world main Logger.switch()")
 config.bind(
-    "<Space>ti", "jseval -q --world main window.show_knack_id?.api?.toggleIds?.()"
+    f"{LEADER}wi", "jseval -q --world main window.show_knack_id?.api?.toggleIds?.()"
 )
 config.bind(
-    "<Space>th",
+    f"{LEADER}wh",
     "jseval -q --world main window.show_knack_id?.api?.toggleShowHidden?.()",
 )
 
