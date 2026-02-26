@@ -5,7 +5,6 @@
 // @match        *://*.knack.com/*
 // @exclude      *://builder.knack.com/*
 // @grant       none
-// @require  https://ajax.googleapis.com/ajax/libs/jquery/1.7.2/jquery.min.js
 // @version     1.0
 // @author      Robert Hill
 // @description 2/22/2024, 4:50:53 PM
@@ -15,13 +14,97 @@
  * SETTINGS
  *
  */
-if (!window.show_knack_id) {
-  window.show_knack_id = {
-    isEnabled: false,
-    isNextGen: false,
-    intervals: new Map(),
-  };
-}
+window.show_knack_id = window.show_knack_id || {};
+window.show_knack_id.isEnabled ??= false;
+window.show_knack_id.isNextGen ??= false;
+window.show_knack_id.intervals ??= new Map();
+
+window.show_knack_id.api = window.show_knack_id.api || {};
+window.show_knack_id.showHiddenEnabled ??= false;
+
+(function bootstrap() {
+  const $ = window.jQuery || window.$;
+  if (!$) return setTimeout(bootstrap, 200);
+
+  // If you want to be extra strict:
+  // if (!window.Knack) return setTimeout(bootstrap, 200);
+
+  // expose $ if you rely on it everywhere
+  window.$ = $;
+
+  // now run your original script entry
+  main();
+})();
+
+// Public console API (callable from qute :jseval --world main ...)
+window.show_knack_id.api = window.show_knack_id.api || {};
+
+window.show_knack_id.api.setIdsVisible = (on) => {
+  window.show_knack_id.isEnabled = !!on;
+  const $ = window.jQuery || window.$;
+  if ($) {
+    on ? $(".show-live-id").show() : $(".show-live-id").hide();
+  } else {
+    document.querySelectorAll(".show-live-id").forEach((el) => {
+      el.style.display = on ? "inherit" : "none";
+    });
+  }
+};
+
+window.show_knack_id.api.toggleIds = () => {
+  window.show_knack_id.api.setIdsVisible(!window.show_knack_id.isEnabled);
+};
+
+// "Show hidden elements"
+window.show_knack_id.api.setShowHidden = (on) => {
+  const excludeClasses = ["overlay"];
+  const excludeTags = new Set(["HEAD", "SCRIPT", "STYLE"]);
+  const excludeIds = ["kn-loading-spinner", "fancybox-loading", "kn-popover"];
+
+  const show = !!on;
+
+  document.querySelectorAll("*").forEach((el) => {
+    if (excludeTags.has(el.tagName)) return;
+    if (excludeClasses.some((c) => el.classList.contains(c))) return;
+    if (excludeIds.includes(el.id)) return;
+    if (el.id && el.id.includes("fancybox")) return;
+
+    const isHidden =
+      getComputedStyle(el).display === "none" ||
+      el.classList.contains("show-hidden");
+
+    if (!isHidden) return;
+
+    show ? el.classList.add("show-hidden") : el.classList.remove("show-hidden");
+  });
+
+  window.show_knack_id.showHiddenEnabled = show;
+};
+
+window.show_knack_id.api.toggleShowHidden = () => {
+  window.show_knack_id.api.setShowHidden(
+    !window.show_knack_id.showHiddenEnabled,
+  );
+};
+
+// Serialize the already-defined API functions into the page world via an injected <script>.
+(function exportApiToPageWorld() {
+  const { api } = window.show_knack_id;
+  const methods = ["setIdsVisible", "toggleIds", "setShowHidden", "toggleShowHidden"];
+  const assignments = methods
+    .map((m) => `window.show_knack_id.api.${m} = ${api[m].toString()};`)
+    .join("\n      ");
+  const src = `(function(){
+      window.show_knack_id = window.show_knack_id || {};
+      window.show_knack_id.api = window.show_knack_id.api || {};
+      window.show_knack_id.showHiddenEnabled ??= false;
+      ${assignments}
+    })();`;
+  const s = document.createElement("script");
+  s.textContent = src;
+  (document.head || document.documentElement).appendChild(s);
+  s.remove();
+})();
 
 /*
  * INTERVAL MANAGER
@@ -176,6 +259,37 @@ const addIdToElement = (key, obj) => {
 };
 
 /**
+ * Adds ID labels to field elements based on view type
+ * @param {Object} view - View object from Knack
+ */
+const addToFields = (view) => {
+  switch (view.type) {
+    case "table":
+    case "search":
+      addIdToFields("th", view.key);
+      break;
+    case "details":
+    case "list":
+      addIdToFields(".kn-detail", view.key);
+      break;
+    case "form":
+      addIdToFields(".kn-input", view.key, view.type);
+      break;
+  }
+};
+
+/**
+ * Binds the #showIDsCheckbox toggle to show/hide all .show-live-id elements
+ */
+const bindToggleCheckbox = () => {
+  $("#showIDsCheckbox").on("change", function (_e) {
+    const isChecked = $(this).is(":checked");
+    window.show_knack_id.isEnabled = isChecked;
+    isChecked ? $(".show-live-id").show() : $(".show-live-id").hide();
+  });
+};
+
+/**
  * Sets up render event handlers for next-generation Knack apps (apps.knack.com).
  * Currently a placeholder for future implementation.
  */
@@ -227,26 +341,6 @@ const addNextGenRenderEvents = () => {
     // addToFields(view);
   };
 
-  /**
-   * Adds ID labels to field elements based on view type
-   * @param {Object} view - View object from Knack
-   */
-  const addToFields = (view) => {
-    switch (view.type) {
-      case "table":
-      case "search":
-        addIdToFields("th", view.key);
-        break;
-      case "details":
-      case "list":
-        addIdToFields(".kn-detail", view.key);
-        break;
-      case "form":
-        addIdToFields(".kn-input", view.key, view.type);
-        break;
-    }
-  };
-
   // SCENE RENDER
   Knack.on("page:render", (page) => {
     // console.debug({ page });
@@ -260,16 +354,7 @@ const addNextGenRenderEvents = () => {
   });
 
   // Toggle IDs
-  $("#showIDsCheckbox").on("change", function (_e) {
-    const isChecked = $(this).is(":checked");
-    if (isChecked) {
-      window.show_knack_id.isEnabled = true;
-      $(".show-live-id").show();
-    } else {
-      window.show_knack_id.isEnabled = false;
-      $(".show-live-id").hide();
-    }
-  });
+  bindToggleCheckbox();
 };
 
 /**
@@ -320,26 +405,6 @@ const addLegacyRenderEvents = () => {
     addIdToElement(key, obj);
   };
 
-  /**
-   * Adds ID labels to field elements based on view type
-   * @param {Object} view - View object from Knack
-   */
-  const addToFields = (view) => {
-    switch (view.type) {
-      case "table":
-      case "search":
-        addIdToFields("th", view.key);
-        break;
-      case "details":
-      case "list":
-        addIdToFields(".kn-detail", view.key);
-        break;
-      case "form":
-        addIdToFields(".kn-input", view.key, view.type);
-        break;
-    }
-  };
-
   // SCENE RENDER
   $(document).on("knack-scene-render.any", (_e, scene) => {
     addToScenes(scene);
@@ -351,16 +416,7 @@ const addLegacyRenderEvents = () => {
   });
 
   // Toggle IDs
-  $("#showIDsCheckbox").on("change", function (_e) {
-    const isChecked = $(this).is(":checked");
-    if (isChecked) {
-      window.show_knack_id.isEnabled = true;
-      $(".show-live-id").show();
-    } else {
-      window.show_knack_id.isEnabled = false;
-      $(".show-live-id").hide();
-    }
-  });
+  bindToggleCheckbox();
 };
 
 /**
@@ -373,5 +429,3 @@ const main = () => {
   if (isNextGen) window.show_knack_id.isEnabled = true;
   waitTillKnackReady();
 };
-
-main();
