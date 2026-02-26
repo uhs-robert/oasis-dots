@@ -29,7 +29,7 @@ LEADER = "<Space>"
 BW = "spawn --userscript qute-bitwarden --auto-lock 86400"
 FIREFOX = "spawn --detach firefox"
 DEFAULT_SEARCH = "duck"
-LAGOOON_CSS = "~/.config/qutebrowser/solarized-everything-css/css/oasis_lagoon/oasis_lagoon-all-sites.css"
+LAGOON_CSS = "~/.config/qutebrowser/solarized-everything-css/css/oasis_lagoon/oasis_lagoon-all-sites.css"
 GRUVBOX_CSS = (
     "~/.config/qutebrowser/solarized-everything-css/css/gruvbox/gruvbox-all-sites.css"
 )
@@ -168,6 +168,9 @@ c.hints.selectors["scroll"] = [
 
 ### - Binds -
 config.bind(";;", "hint scroll normal")
+
+## -- Devloper Tools --
+config.bind(f"{LEADER}ws", "jseval -q --world main Logger.switch()")
 
 # --- File handler ---
 config.set("fileselect.handler", "external")
