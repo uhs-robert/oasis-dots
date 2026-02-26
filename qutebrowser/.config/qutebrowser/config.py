@@ -76,7 +76,7 @@ c.editor.command = [
     "{file}",
 ]
 
-# Basics
+# --- Basics ---
 c.auto_save.session = True
 c.hints.chars = "asdfghjklqwertyuiopzxcvbnm"
 c.content.autoplay = False
@@ -95,8 +95,8 @@ c.qt.args = ["blink-settings=preferredColorScheme=1"]
 # c.spellcheck.languages = ["en-US"]
 
 
-# Keybindings
-## Delete
+# --- Keybindings ---
+## -- Delete --
 config.unbind("d")
 config.bind("dd", "tab-close")
 config.bind("db", "cmd-set-text -s :quickmark-del ")
@@ -105,18 +105,18 @@ config.bind("dD", "cmd-set-text -s :download-delete ")
 config.bind("dc", "cmd-set-text -s :download-clear")
 config.bind("ds", "cmd-set-text -s :session-delete")
 
-## Session
+## -- Session --
 config.bind("sg", "greasemonkey-reload")
 config.bind("su", "adblock-update")
 config.bind("se", "config-edit")
 config.bind("sc", "clear-messages")
 config.bind("sr", "restart")
 
-## Window/Dev
+## -- Window/Dev --
 config.bind("wd", "cmd-set-text -s :download-open")
 config.bind("wj", "cmd-set-text -s :jseval")
 
-## Ctrl
+## -- Ctrl --
 config.bind("<Ctrl+c>", "fake-key <Escape>")  # Send escape
 config.bind("<Ctrl+Return>", "fake-key <Return>")  # Send escape
 config.bind("<Ctrl+j>", "scroll-px 0 200")
@@ -124,7 +124,7 @@ config.bind("<Ctrl+k>", "scroll-px 0 -200")
 config.bind("<Ctrl-E>", "config-cycle tabs.show always never")
 config.bind("<Ctrl+Shift+i>", "devtools")
 
-## Leader
+## -- Leader --
 config.bind(f"{LEADER}{LEADER}", f"cmd-set-text -s :open {DEFAULT_SEARCH} ")
 config.bind(f"{LEADER}F", "cmd-set-text -s :open -t ")  # open in new tab
 config.bind(f"{LEADER}r", "reload")
@@ -132,18 +132,18 @@ config.bind(f"{LEADER}q", "quit")
 config.bind(f"{LEADER}F", f"{FIREFOX} --new-tab {{url}}")  # Reopen in FF
 config.bind(f"{LEADER}f", f"hint links {FIREFOX} --new-tab {{hint - url}}")  # Hint FF
 
-## Login management
+## -- Login management --
 config.bind(f"{LEADER}ll", BW)
 config.bind(f"{LEADER}lu", f"{BW} --username-only")
 config.bind(f"{LEADER}lp", f"{BW} --password-only")
 config.bind(f"{LEADER}lt", f"{BW} --totp")
 config.bind(f"{LEADER}lT", f"{BW} --totp-only")
 
-## MPV workflow (official FAQ pattern)
+## -- MPV workflow (official FAQ pattern) --
 config.bind(f"{LEADER}m", "ispawn mpv {url}")
 config.bind(f"{LEADER}M", "hint links spawn mpv {hint-url}")
 
-## Toggles
+## -- Toggles --
 config.bind(f"{LEADER}tn", f'config-cycle content.user_stylesheets {LAGOON_CSS} ""')
 config.bind(f"{LEADER}tN", f'config-cycle content.user_stylesheets {GRUVBOX_CSS} ""')
 config.bind("td", "config-cycle colors.webpage.darkmode.enabled true false ;; reload")
@@ -154,8 +154,8 @@ for mode in ["true", "false"]:
         "config-cycle -u {url} colors.webpage.darkmode.enabled true false ;; reload",
     )
 
-## Hints
-### Scroll (Targets scrollable elements, useful to escape inputs for scrolling)
+## -- Hints --
+### - Scroll (Targets scrollable elements, useful to escape inputs for scrolling) -
 c.hints.selectors["scroll"] = [
     '[style*="overflow: auto"]',
     '[style*="overflow:auto"]',
@@ -166,10 +166,8 @@ c.hints.selectors["scroll"] = [
     ".scrollable",
 ]
 
-### Binds
+### - Binds -
 config.bind(";;", "hint scroll normal")
-
-## Toggle Dark Mode
 
 # --- File handler ---
 config.set("fileselect.handler", "external")
@@ -182,7 +180,7 @@ config.set(
     ["env", "GTK_THEME=Breeze-Dark:dark", "zenity", "--file-selection", "--multiple"],
 )
 
-# Custom Search Engines
+# --- Custom Search Engines ---
 c.url.searchengines = {
     "DEFAULT": "https://duckduckgo.com/?q={}",
     "1337": "https://1337x.to/search/{}/1/",
