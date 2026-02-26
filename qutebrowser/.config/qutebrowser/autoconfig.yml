@@ -9,11 +9,6 @@ settings:
   bindings.commands:
     global:
       normal:
-        ',F': spawn --detach firefox --new-tab {url}
-        ',M': hint links spawn mpv {hint-url}
-        ',f': hint links spawn --detach firefox --new-tab {hint-url}
-        ',h': cmd-set-text -s :help
-        ',m': spawn mpv {url}
         ;s: hint scroll normal
         <Ctrl+Return>: fake-key <Return>
         <Ctrl+c>: fake-key <Escape>

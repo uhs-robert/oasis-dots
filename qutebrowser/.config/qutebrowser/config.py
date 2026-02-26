@@ -1,5 +1,4 @@
 # qutebrowser/.config/qutebrowser/config.py
-# config.py
 ########################################################################
 #                                                                      #
 #     ██████╗ ██╗   ██╗████████╗███████╗                               #
@@ -28,6 +27,15 @@ oasis_lagoon.setup(c, "lagoon", True)
 LEADER = "<Space>"
 BW = "spawn --userscript qute-bitwarden --auto-lock 86400"
 FIREFOX = "spawn --detach firefox"
+YAZI = [
+    "kitty",
+    "--title",
+    "qute-yazi",
+    "-e",
+    "yazi",
+    "--chooser-file",
+    "{}",
+]
 DEFAULT_SEARCH = "duck"
 LAGOON_CSS = "~/.config/qutebrowser/solarized-everything-css/css/oasis_lagoon/oasis_lagoon-all-sites.css"
 GRUVBOX_CSS = (
@@ -72,7 +80,6 @@ c.editor.command = [
     "-e",
     "nvim",
     "+call cursor({line}, {column})",
-    "+startinsert",
     "{file}",
 ]
 
@@ -94,8 +101,52 @@ c.fonts.messages.warning = '11pt "ProFont IIx Nerd Font Mono"'
 c.qt.args = ["blink-settings=preferredColorScheme=1"]
 # c.spellcheck.languages = ["en-US"]
 
+## -- Hints --
+### - Scroll -
+c.hints.selectors["scroll"] = [
+    '[style*="overflow: auto"]',
+    '[style*="overflow:auto"]',
+    '[style*="overflow: scroll"]',
+    '[style*="overflow:scroll"]',
+    '[class*="scroll"]',
+    ".scroll",
+    ".scrollable",
+]
+
+### - Focusable containers -
+c.hints.selectors["focusbox"] = [
+    "main",
+    "article",
+    "section",
+    '[role="main"]',
+    '[role="article"]',
+    '[role="region"]',
+    "[tabindex]",
+    '[contenteditable="true"]',
+]
+
+### - Videos -
+c.hints.selectors["video"] = [
+    "video",
+    '[role="application"] video',
+    ".html5-video-player",
+    "#movie_player",
+    'iframe[src*="youtube.com/embed"]',
+    'iframe[src*="player.vimeo.com"]',
+]
+
+### - Binds -
+config.bind(";v", "hint video normal")
+config.bind(";;", "hint focusbox normal")
+
 
 # --- Keybindings ---
+## -- Go --
+config.bind("gT", ":open -t translate.google.com/translate?sl=auto&tl=en-US&u={url}")
+config.bind(
+    ";<Space>i", "hint images run :open -t https://tineye.com/search?url={hint-url}"
+)
+
 ## -- Delete --
 config.unbind("d")
 config.bind("dd", "tab-close")
@@ -110,7 +161,8 @@ config.bind("sg", "greasemonkey-reload")
 config.bind("su", "adblock-update")
 config.bind("se", "config-edit")
 config.bind("sc", "clear-messages")
-config.bind("sr", "restart")
+config.bind("sr", "config-source")
+config.bind("sR", "restart")
 
 ## -- Window/Dev --
 config.bind("wd", "cmd-set-text -s :download-open")
@@ -127,13 +179,7 @@ config.bind("<Ctrl+Shift+i>", "devtools")
 
 ## -- Z --
 config.bind("zb", "jseval -q document.activeElement && document.activeElement.blur()")
-config.bind(
-    "zv",
-    r"""jseval -q (function () {
-  const v = document.querySelector('video');
-  if (v) { v.play(); v.focus?.(); }
-})()""",
-)
+config.bind("zz", "jseval -q document.querySelector('body').click()")
 
 ## -- Leader --
 config.bind(f"{LEADER}{LEADER}", f"cmd-set-text -s :open {DEFAULT_SEARCH} ")
@@ -165,20 +211,6 @@ for mode in ["true", "false"]:
         "config-cycle -u {url} colors.webpage.darkmode.enabled true false ;; reload",
     )
 
-## -- Hints --
-### - Scroll (Targets scrollable elements, useful to escape inputs for scrolling) -
-c.hints.selectors["scroll"] = [
-    '[style*="overflow: auto"]',
-    '[style*="overflow:auto"]',
-    '[style*="overflow: scroll"]',
-    '[style*="overflow:scroll"]',
-    '[class*="scroll"]',
-    ".scroll",
-    ".scrollable",
-]
-
-### - Binds -
-config.bind(";;", "hint scroll normal")
 
 ## -- Devloper Tools --
 config.bind(f"{LEADER}ws", "jseval -q --world main Logger.switch()")
@@ -192,14 +224,9 @@ config.bind(
 
 # --- File handler ---
 config.set("fileselect.handler", "external")
-config.set(
-    "fileselect.single_file.command",
-    ["env", "GTK_THEME=Breeze-Dark:dark", "zenity", "--file-selection"],
-)
-config.set(
-    "fileselect.multiple_files.command",
-    ["env", "GTK_THEME=Breeze-Dark:dark", "zenity", "--file-selection", "--multiple"],
-)
+c.fileselect.single_file.command = YAZI
+c.fileselect.multiple_files.command = YAZI
+c.fileselect.folder.command = YAZI
 
 # --- Custom Search Engines ---
 c.url.searchengines = {
