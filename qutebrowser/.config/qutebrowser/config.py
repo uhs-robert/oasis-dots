@@ -72,6 +72,16 @@ config.set(
 )
 config.set("hints.auto_follow", f"{HINT_FOLLOW}")
 
+# --- ISSUE: SUPRESS TRUSTEDHTML ERRORS ---
+c.content.javascript.log_message.excludes.update(
+    {
+        "userscript:_qute_js": [
+            "*requires 'TrustedHTML' assignment*",
+            "*Failed to set the 'innerHTML' property*requires 'TrustedHTML' assignment*",
+        ],
+    }
+)
+
 # --- Editor ---
 c.editor.command = [
     "kitty",
