@@ -113,11 +113,11 @@ def setup(c, theme, samecolorrows=False):
 
     # statusbar {{{
     ## Background color of the statusbar.
-    c.colors.statusbar.normal.bg = palette["surface"]
-    c.colors.statusbar.insert.bg = palette["surface"]
-    c.colors.statusbar.command.bg = palette["surface"]
-    c.colors.statusbar.caret.bg = palette["surface"]
-    c.colors.statusbar.caret.selection.bg = palette["surface"]
+    c.colors.statusbar.normal.bg = palette["mantle"]
+    c.colors.statusbar.insert.bg = palette["mantle"]
+    c.colors.statusbar.command.bg = palette["mantle"]
+    c.colors.statusbar.caret.bg = palette["mantle"]
+    c.colors.statusbar.caret.selection.bg = palette["mantle"]
 
     ## Background color of the progress bar.
     c.colors.statusbar.progress.bg = palette["surface"]
