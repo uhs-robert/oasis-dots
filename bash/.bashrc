@@ -12,7 +12,7 @@ fi
 export PATH
 
 # Add custom script directory to PATH
-export PATH="$PATH:/home/USER/Documents/github-uphill/bash-scripts/scripts/"
+export PATH="$PATH:$HOME/Documents/github-uphill/bash-scripts/scripts/"
 
 # Load aliases & functions from GitHub-controlled script
 if [ -f "$HOME/Documents/github-uphill/bash-scripts/scripts/functions.sh" ]; then
@@ -38,9 +38,9 @@ eval "$(starship init bash)"
 if [[ $- == *i* ]]; then
   fastfetch
 fi
-. "/home/USER/.deno/env"
+. "$HOME/.deno/env"
 # Added by LM Studio CLI (lms)
-export PATH="$PATH:/home/USER/.lmstudio/bin"
+export PATH="$PATH:$HOME/.lmstudio/bin"
 # End of LM Studio CLI section
 
 . "$HOME/.cargo/env"

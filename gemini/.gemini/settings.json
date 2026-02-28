@@ -9,7 +9,7 @@
     }
   },
   "ui": {
-    "theme": "/home/USER/.gemini/theme/oasis_desert_dark.json",
+    "theme": "~/.gemini/theme/oasis_desert_dark.json",
     "showLineNumbers": true,
     "useFullWidth": true,
     "showStatusInTitle": false,

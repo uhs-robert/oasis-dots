@@ -8,4 +8,4 @@
  **/
 
 /* LUA-THEME: Import generated colors */
-@import "/home/USER/dotfiles/hypr/.config/hypr/theme/output/rofi-theme.rasi"
+@import "~/.config/hypr/theme/output/rofi-theme.rasi"

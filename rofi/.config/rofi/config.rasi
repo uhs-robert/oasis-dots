@@ -182,4 +182,4 @@ configuration {
 */
 }
 
-  @theme "/home/USER/.config/rofi/themes/oasis-menu.rasi"
+  @theme "~/.config/rofi/themes/oasis-menu.rasi"

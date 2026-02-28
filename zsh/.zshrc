@@ -1,5 +1,5 @@
 # Add deno completions to search path
-if [[ ":$FPATH:" != *":/home/USER/.zsh/completions:"* ]]; then export FPATH="/home/USER/.zsh/completions:$FPATH"; fi
+if [[ ":$FPATH:" != *":$HOME/.zsh/completions:"* ]]; then export FPATH="$HOME/.zsh/completions:$FPATH"; fi
 # If you come from bash you might have to change your $PATH.
 # export PATH=$HOME/bin:$HOME/.local/bin:/usr/local/bin:$PATH
 
@@ -119,7 +119,7 @@ f(){ "${EDITOR:-nvim}" -- "$(fzf)"; }
 zstyle ':completion:*' list-colors ''
 
 # Add user script directories to PATH
-export PATH="$PATH:/home/USER/Documents/github-uphill/bash-scripts/scripts/"
+export PATH="$PATH:$HOME/Documents/github-uphill/bash-scripts/scripts/"
 export PATH="$HOME/.config/hypr/scripts:$PATH"
 export PATH="$HOME/.tmuxifier/bin:$PATH"
 
@@ -129,7 +129,7 @@ export PATH="$HOME/.npm-global/bin:$PATH"
 export PATH="$HOME/go/bin:$PATH"
 export PATH="$HOME/.cargo/bin:$PATH"
 export PATH="$HOME/.local/bin:$PATH"
-export PATH="$PATH:/home/USER/.lmstudio/bin"
+export PATH="$PATH:$HOME/.lmstudio/bin"
 
 # Load aliases & functions from GitHub-controlled script
 if [[ -f "$HOME/Documents/github-uphill/bash-scripts/scripts/functions.sh" ]]; then
@@ -151,10 +151,10 @@ if [[ -o interactive ]]; then
     fastfetch
   fi
 fi
-. "/home/USER/.deno/env"
+. "$HOME/.deno/env"
 
 # pnpm
-export PNPM_HOME="/home/USER/.local/share/pnpm"
+export PNPM_HOME="$HOME/.local/share/pnpm"
 case ":$PATH:" in
   *":$PNPM_HOME:"*) ;;
   *) export PATH="$PNPM_HOME:$PATH" ;;
@@ -189,7 +189,7 @@ alias t="task"
 # Taskwarrior end
 
 # IntelliShell
-export INTELLI_HOME="/home/USER/.local/share/intelli-shell"
+export INTELLI_HOME="$HOME/.local/share/intelli-shell"
 export INTELLI_SEARCH_HOTKEY='^F'
 # export INTELLI_VARIABLE_HOTKEY='^l'
 # export INTELLI_BOOKMARK_HOTKEY='^b'

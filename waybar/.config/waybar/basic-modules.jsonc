@@ -296,7 +296,7 @@
     "tooltip": false,
     // "on-click": "hyprpanel t dashboardmenu",
     "menu": "on-click",
-    "menu-file": "/home/USER/.config/waybar/custom_modules/start_menu.xml",
+    "menu-file": "~/.config/waybar/custom_modules/start_menu.xml",
     "menu-actions": {
       "allapps": "~/.config/rofi/launchers/type-1/launcher.sh",
       "web": "hyprctl dispatch exec firefox",

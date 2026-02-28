@@ -20,6 +20,7 @@
 # pyright: reportUndefinedVariable=false
 
 import oasis_lagoon
+from pathlib import Path
 
 oasis_lagoon.setup(c, "lagoon", True)
 
@@ -43,6 +44,7 @@ GRUVBOX_CSS = (
     "~/.config/qutebrowser/solarized-everything-css/css/gruvbox/gruvbox-all-sites.css"
 )
 HINT_FOLLOW = "unique-match"
+USER_SCRIPT_GLOB = f"file://{Path.home()}/.local/share/qutebrowser/userscripts/*"
 
 # --- Config ---
 config.load_autoconfig(True)
@@ -64,12 +66,12 @@ config.set("content.javascript.clipboard", "access")
 config.set(
     "content.local_content_can_access_remote_urls",
     True,
-    "file:///home/USER/.local/share/qutebrowser/userscripts/*",
+    USER_SCRIPT_GLOB,
 )
 config.set(
     "content.local_content_can_access_file_urls",
     False,
-    "file:///home/USER/.local/share/qutebrowser/userscripts/*",
+    USER_SCRIPT_GLOB,
 )
 config.set("hints.auto_follow", f"{HINT_FOLLOW}")
 

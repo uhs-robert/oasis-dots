@@ -6,9 +6,9 @@ if [ -f ~/.bashrc ]; then
 fi
 
 # User specific environment and startup programs
-. "/home/USER/.deno/env"
+. "$HOME/.deno/env"
 # Added by LM Studio CLI (lms)
-export PATH="$PATH:/home/USER/.lmstudio/bin"
+export PATH="$PATH:$HOME/.lmstudio/bin"
 # End of LM Studio CLI section
 . "$HOME/.cargo/env"
 eval "$(~/.rbenv/bin/rbenv init -)"
