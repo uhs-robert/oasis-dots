@@ -47,7 +47,7 @@ HINT_FOLLOW = "unique-match"
 USER_SCRIPT_GLOB = f"file://{Path.home()}/.local/share/qutebrowser/userscripts/*"
 
 # --- Config ---
-config.load_autoconfig(True)
+config.load_autoconfig(False)
 config.set("content.cookies.accept", "all", "chrome-devtools://*")
 config.set("content.cookies.accept", "all", "devtools://*")
 config.set("content.headers.accept_language", "", "https://matchmaker.krunker.io/*")
@@ -100,20 +100,24 @@ c.editor.command = [
 
 # --- Basics ---
 c.auto_save.session = True
-c.hints.chars = "asdfghjklqwertyuiopzxcvbnm"
 c.content.autoplay = False
+c.colors.webpage.darkmode.enabled = True
+c.colors.webpage.darkmode.threshold.background = 180
+c.colors.webpage.darkmode.threshold.foreground = 80
+c.colors.webpage.preferred_color_scheme = "dark"
 c.downloads.location.directory = "~/Downloads"
-c.tabs.position = "top"
-c.statusbar.show = "in-mode"
-c.tabs.show = "multiple"
+c.fonts.debug_console = '11pt "ProFont IIx Nerd Font Mono"'
 c.fonts.default_family = "Maple Mono NF"
 c.fonts.default_size = "11pt"
-c.fonts.statusbar = '11pt "ProFont IIx Nerd Font Mono"'
-c.fonts.debug_console = '11pt "ProFont IIx Nerd Font Mono"'
 c.fonts.messages.error = '11pt "ProFont IIx Nerd Font Mono"'
 c.fonts.messages.info = '11pt "ProFont IIx Nerd Font Mono"'
 c.fonts.messages.warning = '11pt "ProFont IIx Nerd Font Mono"'
+c.fonts.statusbar = '11pt "ProFont IIx Nerd Font Mono"'
+c.hints.chars = "asdfghjklqwertyuiopzxcvbnm"
 c.qt.args = ["blink-settings=preferredColorScheme=1"]
+c.statusbar.show = "in-mode"
+c.tabs.position = "top"
+c.tabs.show = "multiple"
 # c.spellcheck.languages = ["en-US"]
 
 ## -- Hints --

@@ -86,7 +86,7 @@ def setup(c, theme, samecolorrows=False):
     # keyhints {{{
     c.colors.keyhint.bg = palette["mantle"]
     c.colors.keyhint.fg = palette["fg_core"]
-    c.colors.keyhint.suffix.fg = palette["fg_core"]
+    c.colors.keyhint.suffix.fg = palette["match"]
     # }}}
 
     # messages {{{
@@ -177,7 +177,7 @@ def setup(c, theme, samecolorrows=False):
     # ## Background color of selected tabs.
     c.colors.tabs.selected.even.bg = palette["primary"]
     c.colors.tabs.selected.even.fg = palette["core"]
-    c.colors.tabs.selected.odd.bg = palette["primary"]
+    c.colors.tabs.selected.odd.bg = palette["strong_primary"]
     c.colors.tabs.selected.odd.fg = palette["core"]
     # }}}
 
@@ -188,7 +188,7 @@ def setup(c, theme, samecolorrows=False):
     c.colors.tabs.pinned.odd.fg = palette["secondary"]
     c.colors.tabs.pinned.selected.even.bg = palette["primary"]
     c.colors.tabs.pinned.selected.even.fg = palette["core"]
-    c.colors.tabs.pinned.selected.odd.bg = palette["primary"]
+    c.colors.tabs.pinned.selected.odd.bg = palette["strong_primary"]
     c.colors.tabs.pinned.selected.odd.fg = palette["core"]
     # }}}
 
