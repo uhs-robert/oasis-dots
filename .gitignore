@@ -80,6 +80,8 @@ Thumbs.db
 newsboat/.newsboat/cache.db
 newsboat/.newsboat/history.cmdline
 newsboat/.newsboat/history.search
+qwen/.qwen/installation_id
+qutebrowser/.config/qutebrowser/autoconfig.yml
 qutebrowser/.config/qutebrowser/bookmarks/
 qutebrowser/.config/qutebrowser/quickmarks
 *.lock
