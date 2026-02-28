@@ -78,6 +78,8 @@ Thumbs.db
 *.cache
 *.sqlite3
 newsboat/.newsboat/cache.db
+newsboat/.newsboat/history.cmdline
+newsboat/.newsboat/history.search
 qutebrowser/.config/qutebrowser/bookmarks/
 qutebrowser/.config/qutebrowser/quickmarks
 *.lock
