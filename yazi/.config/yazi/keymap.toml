@@ -1,4 +1,4 @@
-# keymap.toml
+# yazi/.config/yazi/keymap.toml
 [mgr]
 prepend_keymap = [
   # Utils
@@ -15,6 +15,7 @@ prepend_keymap = [
   { on = [ "g", "D", ], run = "cd ~/Documents/", desc = "Go to Documents" },
   { on = [ "g", "u", ], run = "cd ~/Documents/github-uphill/", desc = "Go to /github-uphill" },
   { on = [ "g", "x", ], run = "cd ~/dotfiles/", desc = "Go to dotfiles" },
+  { on = [ "g", "X", ], run = "cd ~/dotfiles-private/", desc = "Go to private dotfiles" },
   { on = [ "g", "y", ], run = "cd ~/.config/yazi/", desc = "Go to yazi config" },
   { on = [ "g", "p", ], run = "cd ~/Pictures/", desc = "Go to Pictures" },
   { on = [ "g", "v", ], run = "cd ~/Videos/", desc = "Go to Videos" },
