@@ -4,8 +4,8 @@
 
 ## Layouts
 
-- `qwerty/` — Standard QWERTY layout
-- `pc/` — PC-style layout
+- `normal/` — Standard QWERTY layout
+- `termux/` — PC-style layout
 
 ## Usage
 
