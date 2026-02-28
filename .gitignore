@@ -77,6 +77,7 @@ Thumbs.db
 *tmp
 *.cache
 *.sqlite3
+newsboat/.newsboat/cache.db
 *.lock
 
 # ────────────────────────────────────────────────
