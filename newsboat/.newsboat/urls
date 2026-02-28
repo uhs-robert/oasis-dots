@@ -8,15 +8,12 @@ https://lists.fedoraproject.org/archives/list/package-announce@lists.fedoraproje
 "query:KDE:tags # \"KDE\""
 https://kde.org/announcements/feed.xml "KDE"
 https://planet.kde.org/rss20.xml "KDE"
-https://www.omgubuntu.co.uk/feed "KDE"
 https://www.phoronix.com/rss.php "Linux"
 https://distrowatch.com/news/dwrss.php "Linux"
-https://www.gamingonlinux.com/article_rss.php "Linux Gaming"
 
 # 🔐 Cybersecurity & Privacy
 "query:Security:tags # \"Security\""
 https://krebsonsecurity.com/feed/ "Security"
-https://threatpost.com/feed/ "Security"
 https://feeds.feedburner.com/TheHackersNews "Security"
 "query:Privacy:tags # \"Privacy\""
 https://www.privacyguides.org/feed/ "Privacy"
@@ -29,30 +26,16 @@ https://www.gamingonlinux.com/article_rss.php "Gaming"
 
 # ⚡ Tech & Dev News
 "query:Tech:tags # \"Tech\""
-http://feeds.arstechnica.com/arstechnica/index "Tech"
 https://news.ycombinator.com/rss "Tech"
-https://www.theverge.com/rss/index.xml "Tech"
-https://www.wired.com/feed/rss "Tech"
 https://techcrunch.com/feed/ "Tech"
 "query:Dev:tags # \"Dev\""
-https://dev.to/feed "Dev"
+# https://dev.to/feed "Dev"
 https://www.smashingmagazine.com/feed/ "Dev"
-https://www.codeproject.com/WebServices/ArticleRSS.aspx "Dev"
-
 
 # 🔍 Unbiased & Investigative Journalism
 "query:News:tags # \"News\""
 http://feeds.bbci.co.uk/news/world/rss.xml "News"
 https://www.reuters.com/rssFeed/worldNews "News"
-https://rsshub.app/apnews/topics/ap-top-news "News"
-https://feeds.npr.org/1001/rss.xml "News"
-https://www.pbs.org/newshour/feeds/rss/headlines "News"
-"query:Fact-Check:tags # \"Fact-Check\""
-https://rsshub.app/apnews/topics/ap-fact-check "Fact-Check"
-https://www.factcheck.org/feed/ "Fact-Check"
-"query:Investigative:tags # \"Investigative\""
-https://www.propublica.org/feeds/articles.xml "Investigative"
-https://rsshub.app/apnews/topics/ap-investigations "Investigative"
 
 # 🛠️ Neovim & Vim
 "query:Neovim:tags # \"Neovim\""
@@ -69,8 +52,8 @@ http://gdata.youtube.com/feeds/base/users/mercenarytao7930/newsubscriptionvideos
 
 # Entertainment
 "query:Entertainment:tags # \"Entertainment\""
-https://feedly.com/i/subscription/feed%2Fhttp%3A%2F%2Fxkcd.com%2Frss.xml "Comics"
-https://feedly.com/i/subscription/feed%2Fhttp%3A%2F%2Fwww.theonion.com%2Fcontent%2Ffeeds%2Fdaily "Fake News"
+https://xkcd.com/rss.xml "Comics"
+https://www.theonion.com/content/feeds/daily "Fake News"
 
 # Reddit
 "query:Reddit:tags # \"Reddit\""

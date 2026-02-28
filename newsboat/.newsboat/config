@@ -1,5 +1,5 @@
 # Refresh feeds every 10 minutes
-browser "firefox %u"
+browser "qutebrowser %u"
 
 # General settings
 reload-time 10  # Refresh feeds every 10 minutes
@@ -11,8 +11,8 @@ auto-reload yes
 # Theme
 color background default default
 color listnormal white black
-color listfocus black yellow bold
-color listfocus_unread black yellow bold
+color listfocus black blue bold
+color listfocus_unread black blue bold
 color listnormal_unread cyan default bold
 color info white black
 color article white black
@@ -40,10 +40,10 @@ bind-key H prev-feed
 bind-key L next-feed
 bind-key g home
 bind-key G end
-bind-key SPACE macro-prefix 
-bind-key b bookmark 
-bind-key ^F pagedown 
-bind-key ^B pageup 
+bind-key SPACE toggle-article-read
+bind-key b bookmark
+bind-key ^D pagedown
+bind-key ^U pageup
 bind-key ^H toggle-show-read-feeds
 
 # Macros
