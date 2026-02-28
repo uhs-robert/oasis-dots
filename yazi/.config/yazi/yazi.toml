@@ -36,7 +36,7 @@ prepend_preloaders = [
   { name = "/run/user/1000/gvfs/**/*", run = "noop" },
 
   # For mounted location for hard disk/drive
-  { name = "/run/media/USER/**/*", run = "noop" },
+  { name = "/run/media/*/**/*", run = "noop" },
   { name = "~/mnt/*", run = "noop" },
   #... the rest of preloaders
 ]
@@ -50,7 +50,7 @@ prepend_previewers = [
   { name = "~/mnt/*", run = "noop" },
 
   # For mounted hard disk.
-  { name = "/run/media/USER/**/*", run = "noop" },
+  { name = "/run/media/*/**/*", run = "noop" },
   #... the rest of previewers
 ]
 prepend_fetchers = [
