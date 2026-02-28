@@ -31,6 +31,8 @@ https://techcrunch.com/feed/ "Tech"
 "query:Dev:tags # \"Dev\""
 # https://dev.to/feed "Dev"
 https://www.smashingmagazine.com/feed/ "Dev"
+https://queue.acm.org/rss/feeds/queuecontent.xml "Tech"
+https://martinfowler.com/bliki/bliki.atom "Tech"
 
 # 🔍 Unbiased & Investigative Journalism
 "query:News:tags # \"News\""
