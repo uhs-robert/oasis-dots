@@ -183,3 +183,47 @@ bind ` gobble 1 markjump
 
 " Site Quirks
 bind --mode=browser <A-,> escapehatch
+
+" Search Completions
+set searchurls.1337 https://1337x.to/search/%s/1/
+set searchurls.arch https://wiki.archlinux.org/index.php?search=%s
+set searchurls.amazon https://www.amazon.com/s?k=%s
+set searchurls.brave https://search.brave.com/search?q=%s
+set searchurls.gpt https://chatgpt.com/?q=%s
+set searchurls.calendar https://calendar.google.com/calendar/u/0/r/search?q=%s
+set searchurls.commons https://ccsearch.creativecommons.org/?search_fields=title&search_fields=creator&search_fields=tags&search=%s
+set searchurls.crates https://crates.io/search?q=%s
+set searchurls.duck https://duckduckgo.com/?q=%s
+set searchurls.define http://www.merriam-webster.com/dictionary/%s
+set searchurls.sitedown https://www.isitdownrightnow.com/%s
+set searchurls.drive https://drive.google.com/drive/search?q=%s
+set searchurls.gmail https://mail.google.com/mail/u/0/#search/%s
+set searchurls.fedora https://packages.fedoraproject.org/search?query=%s
+set searchurls.flathub https://flathub.org/apps/search?q=%s
+set searchurls.google https://www.google.com/search?q=%s
+set searchurls.github https://github.com/search?q=%s
+set searchurls.greasyfork https://greasyfork.org/en/scripts?q=%s
+set searchurls.image https://www.google.com/search?tbm=isch&q=%s
+set searchurls.lastyear https://www.google.com/search?hl=en&tbo=1&tbs=qdr:y&q=%s
+set searchurls.lastmonth https://www.google.com/search?hl=en&tbo=1&tbs=qdr:m&q=%s
+set searchurls.lastweek https://www.google.com/search?hl=en&tbo=1&tbs=qdr:w&q=%s
+set searchurls.lastday https://www.google.com/search?hl=en&tbo=1&tbs=qdr:d&q=%s
+set searchurls.lasthour https://www.google.com/search?hl=en&tbo=1&tbs=qdr:h&q=%s
+set searchurls.maps http//maps.google.com/maps?f=q&source=s_q&hl=en&q=from+my+home+address+to+%s
+set searchurls.hackernews https://www.hnsearch.com/search#request/submissions&q=%s
+set searchurls.imdb https://www.imdb.com/find?s=all&q=%s
+set searchurls.mdn https://developer.mozilla.org/en-US/search?q=%s
+set searchurls.npm https://www.npmjs.com/search?q=%s
+set searchurls.proton https://www.protondb.com/search?q=%s
+set searchurls.reddit https://www.reddit.com/search/?q=%s
+set searchurls.redditgoogle https://www.google.com/search?q=site:reddit.com+%s
+set searchurls.rubygems https://rubygems.org/search?query=%s
+set searchurls.this javascript:location='https://www.google.com/search?num=100&q=site:'+escape(location.hostname)+'+%s
+set searchurls.stackoverflow https://stackoverflow.com/search?q=%s
+set searchurls.steam https://store.steampowered.com/search?term=%s
+set searchurls.synonym https://www.thesaurus.com/browse/%s
+set searchurls.translate https://translate.google.com/?sl=auto&tl=en&text=%s
+set searchurls.urbandictionary https://www.urbandictionary.com/define.php?term=%s
+set searchurls.wikipedia https://www.wikipedia.org/w/index.php?search=%s
+set searchurls.wolframalpha https://www.wolframalpha.com/input/?i=%s
+set searchurls.youtube https://www.youtube.com/results?search_query=%s
