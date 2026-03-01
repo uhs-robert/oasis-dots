@@ -27,17 +27,17 @@ bind <A-p> pin
 bind <A-m> mute toggle
 bind <F1> help
 bind o fillcmdline open
-bind O current_url open
+bind O fillcmdline tabopen
 bind w fillcmdline winopen
 bind W current_url winopen
 bind t fillcmdline tabopen
+bind T fillcmdline tab
 bind ]] followpage next
 bind [[ followpage prev
 bind [c urlincrement -1
 bind ]c urlincrement 1
 bind <C-x> urlincrement -1
 bind <C-a> urlincrement 1
-bind T current_url tabopen
 bind yy clipboard yank
 bind ys clipboard yankshort
 bind yq text2qr --timeout 5
@@ -59,6 +59,8 @@ bind h scrollpx -50
 bind l scrollpx 50
 bind G scrollto 100
 bind gg scrollto 0
+bind go current_url open
+bind gO current_url tabopen
 bind <C-u> scrollpage -0.5
 bind <C-d> scrollpage 0.5
 bind <C-f> scrollpage 1
@@ -97,11 +99,13 @@ bind gu urlparent
 bind gU urlroot
 bind gf viewsource
 bind : fillcmdline_notrail
-bind s fillcmdline open search
-bind S fillcmdline tabopen search
+bind ,, fillcmdline open search
+bind ,< fillcmdline tabopen search
+bind ,r source
 bind M gobble 1 quickmark
-bind B fillcmdline taball
-bind b fillcmdline tab
+" bind B fillcmdline taball
+bind b fillcmdline bmarks
+bind B fillcmdline bmarks -t
 bind ZZ qall
 bind f hint
 bind F hint -b

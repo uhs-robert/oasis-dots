@@ -25,7 +25,7 @@ from pathlib import Path
 oasis_lagoon.setup(c, "lagoon", True)
 
 # --- Globals ---
-LEADER = "<Space>"
+LEADER = ","
 BW = "spawn --userscript qute-bitwarden --auto-lock 86400"
 FIREFOX = "spawn --detach firefox"
 YAZI = [
@@ -187,6 +187,7 @@ config.bind("db", "cmd-set-text -s :quickmark-del ")
 config.bind("dB", "cmd-set-text -s :bookmark-del ")
 config.bind("dD", "cmd-set-text -s :download-delete ")
 config.bind("dc", "cmd-set-text -s :download-clear")
+config.bind("dc", "cmd-set-text -s :download-cancel")
 config.bind("ds", "cmd-set-text -s :session-delete")
 
 ## -- Session --
@@ -205,6 +206,16 @@ config.bind("stl", "set tabs.position right")
 config.bind("wd", "cmd-set-text -s :download-open")
 config.bind("wj", "cmd-set-text -s :jseval")
 
+## -- Add --
+config.unbind("ad")
+config.bind("a", "quickmark-save")
+config.bind("A", "bookmark-add")
+
+## -- Marks/Bookmarks --
+config.bind("m", "mode-enter set_mark")
+config.unbind("`")
+config.bind("`", "mode-enter jump_mark")
+
 ## -- Ctrl --
 config.bind("<Ctrl+c>", "fake-key <Escape>")  # Send escape
 config.bind("<Ctrl+Return>", "fake-key <Return>")  # Send escape
@@ -212,7 +223,6 @@ config.bind("<Ctrl+j>", "scroll-px 0 200")
 config.bind("<Ctrl+k>", "scroll-px 0 -200")
 config.bind("<Ctrl-E>", "config-cycle tabs.show always never")
 config.bind("<Ctrl+Shift+i>", "devtools")
-
 
 ## -- Z --
 config.bind("zb", "jseval -q document.activeElement && document.activeElement.blur()")
@@ -248,7 +258,6 @@ for mode in ["true", "false"]:
         "tD",
         "config-cycle -u {url} colors.webpage.darkmode.enabled true false ;; reload",
     )
-
 
 ## -- Devloper Tools --
 config.bind(f"{LEADER}ws", "jseval -q --world main Logger.switch()")
