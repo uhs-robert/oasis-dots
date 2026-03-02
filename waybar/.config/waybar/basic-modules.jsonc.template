@@ -300,7 +300,7 @@
 
       "sep1": "true",
 
-      "lock": "~/.config/waybar/scripts/confirm-action.sh --title Lock --glyph '󰌾' --color '{{fg_core}}' --exec 'swaylock'",
+      "lock": "~/.config/waybar/scripts/confirm-action.sh --title Lock --glyph '󰌾' --color '{{fg_core}}' --exec '~/.config/hypr/scripts/hyprlock-shot.sh'",
       "logout": "~/.config/waybar/scripts/confirm-action.sh --title Logout --glyph '󰍃' --color '{{info}}' --exec 'hyprctl dispatch exit'",
       "reboot": "~/.config/waybar/scripts/confirm-action.sh --title Reboot --glyph '󰜉' --color '{{warning}}' --exec 'systemctl reboot'",
       "power": "~/.config/waybar/scripts/confirm-action.sh --title Power\\ Off --glyph '󰐥' --color '{{error}}' --exec 'systemctl poweroff'"
