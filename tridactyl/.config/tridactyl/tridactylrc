@@ -85,7 +85,6 @@ bind u undo
 bind U undo window
 bind r reload
 bind R reloadhard
-bind x stop
 bind gi focusinput
 bind g? rot13
 bind g! jumble
@@ -189,6 +188,13 @@ bind --mode=ex <A-ArrowUp>   ex.prev_completion
 
 " Browser maps
 bind --mode=browser <A-,> escapehatch
+
+" X-ecutables
+unbind x
+bind xx stop
+bind xs js window.wrappedJSObject?.Logger.switch()
+bind xi js window.wrappedJSObject?.show_knack_id?.api?.toggleIds?.()
+bind xh js window.wrappedJSObject?.show_knack_id?.api?.toggleShowHidden?.()
 
 " Search Ranking
 set searchurlweight 100000

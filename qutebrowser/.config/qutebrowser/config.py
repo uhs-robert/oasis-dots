@@ -204,7 +204,7 @@ config.bind("stj", "set tabs.position bottom")
 config.bind("stk", "set tabs.position top")
 config.bind("stl", "set tabs.position right")
 
-## -- Window/Dev --
+## -- Window --
 config.bind("wd", "cmd-set-text -s :download-open")
 config.bind("wj", "cmd-set-text -s :jseval")
 
@@ -225,6 +225,14 @@ config.bind("<Ctrl+j>", "scroll-px 0 200")
 config.bind("<Ctrl+k>", "scroll-px 0 -200")
 config.bind("<Ctrl-E>", "config-cycle tabs.show always never")
 config.bind("<Ctrl+Shift+i>", "devtools")
+
+## -- X-ecutables --
+config.bind("xx", "stop")
+config.bind("xs", "jseval -q --world main Logger.switch()")
+config.bind("xi", "jseval -q --world main window.show_knack_id?.api?.toggleIds?.()")
+config.bind(
+    "xh", "jseval -q --world main window.show_knack_id?.api?.toggleShowHidden?.()"
+)
 
 ## -- Z --
 config.bind("zb", "jseval -q document.activeElement && document.activeElement.blur()")
@@ -260,16 +268,6 @@ for mode in ["true", "false"]:
         "tD",
         "config-cycle -u {url} colors.webpage.darkmode.enabled true false ;; reload",
     )
-
-## -- Devloper Tools --
-config.bind(f"{LEADER}ws", "jseval -q --world main Logger.switch()")
-config.bind(
-    f"{LEADER}wi", "jseval -q --world main window.show_knack_id?.api?.toggleIds?.()"
-)
-config.bind(
-    f"{LEADER}wh",
-    "jseval -q --world main window.show_knack_id?.api?.toggleShowHidden?.()",
-)
 
 # --- File handler ---
 config.set("fileselect.handler", "external")
