@@ -183,6 +183,8 @@ config.bind(
 ## -- Delete --
 config.unbind("d")
 config.bind("dd", "tab-close")
+config.bind("dL", "tab-only --prev")
+config.bind("dH", "tab-only --next")
 config.bind("db", "cmd-set-text -s :quickmark-del ")
 config.bind("dB", "cmd-set-text -s :bookmark-del ")
 config.bind("dD", "cmd-set-text -s :download-delete ")

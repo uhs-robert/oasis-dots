@@ -74,6 +74,8 @@ bind <C-o> jumpprev
 bind <C-i> jumpnext
 unbind --mode=normal d
 bind dd tabclose
+bind dL tabclosealltoright
+bind dH tabclosealltoleft
 bind D js tri.excmds.composite('tabprev;', 'tabclose #')
 bind gx0 tabclosealltoleft
 bind gx$ tabclosealltoright
@@ -181,8 +183,16 @@ bind . repeat
 bind m gobble 1 markadd
 bind ` gobble 1 markjump
 
-" Site Quirks
+" Ex maps
+bind --mode=ex <A-ArrowDown> ex.next_completion
+bind --mode=ex <A-ArrowUp>   ex.prev_completion
+
+" Browser maps
 bind --mode=browser <A-,> escapehatch
+
+" Search Ranking
+set searchurlweight 100000
+set bmarkweight 10000
 
 " Search Completions
 set searchurls.1337 https://1337x.to/search/%s/1/
