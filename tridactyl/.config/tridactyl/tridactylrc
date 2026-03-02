@@ -136,9 +136,11 @@ bind D js tri.excmds.composite('tabprev;', 'tabclose #')
 "" -- X-ECUTABLES --
 unbind x
 bind xx stop
-bind xs js (function(){const s=document.createElement('script');s.textContent='Logger?.switch?.()';(document.documentElement?document.documentElement:document.head).appendChild(s);s.remove();})()
-bind xi js window.wrappedJSObject?.show_knack_id?.api?.toggleIds?.()
 bind xh js window.wrappedJSObject?.show_knack_id?.api?.toggleShowHidden?.()
+bind xi js window.wrappedJSObject?.show_knack_id?.api?.toggleIds?.()
+bind xo js (()=>{const s=document.getSelection()?.toString()??'';const q=prompt('Search:',s);if(q!=null)window.wrappedJSObject?.knack_search?.open?.(q);})()
+bind xs js (function(){const s=document.createElement('script');s.textContent='Logger?.switch?.()';(document.documentElement?document.documentElement:document.head).appendChild(s);s.remove();})()
+bind --mode=visual xv js window.wrappedJSObject?.knack_search?.open?.(document.getSelection()?.toString().trim() ?? '')
 
 "" -- ZOOM --
 bind zi zoom 0.1 true

@@ -977,15 +977,6 @@ const addSearchBar = (elQuery) => {
               : null;
     window.open(builderUrl, "_blank");
   };
-  const getIdPrefix = (str) => {
-    const prefixes = ["view_", "scene_", "object_", "field_"];
-    for (const prefix of prefixes) {
-      if (str.startsWith(prefix)) {
-        return prefix.slice(0, -1);
-      }
-    }
-    return false;
-  };
   const searchKnack = () => {
     const defaultButtonText = disableSearchButton(searchButton);
     const searchTerm = searchInput.value.trim().toLowerCase();
@@ -1557,6 +1548,81 @@ const extractEmails = (builderUrl = getBuilderBaseUrl()) => {
   );
   return results;
 };
+
+const getIdPrefix = (str) => {
+  const prefixes = ["view_", "scene_", "object_", "field_"];
+  for (const prefix of prefixes) {
+    if (str.startsWith(prefix)) {
+      return prefix.slice(0, -1);
+    }
+  }
+  return false;
+};
+
+const openInBuilder = (key) => {
+  const type = getIdPrefix(key);
+  if (!type) return console.error(`[knack.open] Unknown ID prefix for: ${key}. Expected scene_N, view_N, object_N, or field_N`);
+
+  const matches = filterKnackModels(type, [{ property: "key", operator: "is", value: key }], false);
+  if (!matches?.length) return console.error(`[knack.open] No ${type} found with key: ${key}`);
+
+  const attr = matches[0];
+  let path;
+  switch (type) {
+    case "scene":
+      path = { sceneKey: attr.key };
+      break;
+    case "view":
+      path = { sceneKey: attr.scene.key, viewKey: attr.key, type: attr.type };
+      break;
+    case "object":
+      path = { objectKey: attr.key };
+      break;
+    case "field":
+      path = { objectKey: attr.object_key, fieldKey: attr.key };
+      break;
+  }
+
+  const url = getBuilderPath({ path, type });
+  if (url) {
+    console.info(`[knack.open] Opening ${type} ${key} in builder: ${url}`);
+    window.open(url, "_blank");
+  }
+};
+
+// Serialize openInBuilder and its dependencies into the page world via an injected <script>.
+(function exportApiToPageWorld() {
+  const operatorsSrc =
+    '{\n' +
+    Object.entries(operators)
+      .map(([k, fn]) => `  ${JSON.stringify(k)}: ${fn.toString()}`)
+      .join(',\n') +
+    '\n}';
+
+  const fns = [
+    ['getIdPrefix', getIdPrefix],
+    ['getBuilderBaseUrl', getBuilderBaseUrl],
+    ['getBuilderPath', getBuilderPath],
+    ['filterKnackModels', filterKnackModels],
+    ['openInBuilder', openInBuilder],
+  ];
+
+  const fnSrc = fns
+    .map(([name, fn]) => `const ${name} = ${fn.toString()};`)
+    .join('\n  ');
+
+  const src = `(function(){
+  window.knack_search = window.knack_search || {};
+  const operators = ${operatorsSrc};
+  ${fnSrc}
+  window.knack_search.open = openInBuilder;
+})();`;
+
+  const s = document.createElement('script');
+  s.textContent = src;
+  (document.head || document.documentElement).appendChild(s);
+  s.remove();
+})();
 
 const extractRecordRules = (builderUrl = getBuilderBaseUrl()) => {
   const scenes = Knack.scenes.models;

@@ -62,6 +62,7 @@ config.set("content.javascript.enabled", True, "chrome-devtools://*")
 config.set("content.javascript.enabled", True, "devtools://*")
 config.set("content.javascript.enabled", True, "chrome://*/*")
 config.set("content.javascript.enabled", True, "qute://*/*")
+config.set("content.javascript.can_open_tabs_automatically", True, "*://*.knack.com/*")
 config.set("content.javascript.clipboard", "access")
 config.set(
     "content.local_content_can_access_remote_urls",
@@ -227,12 +228,21 @@ config.bind("<Ctrl-E>", "config-cycle tabs.show always never")
 config.bind("<Ctrl+Shift+i>", "devtools")
 
 ## -- X-ecutables --
-config.bind("xx", "stop")
-config.bind("xs", "jseval -q --world main Logger.switch()")
-config.bind("xi", "jseval -q --world main window.show_knack_id?.api?.toggleIds?.()")
 config.bind(
     "xh", "jseval -q --world main window.show_knack_id?.api?.toggleShowHidden?.()"
 )
+config.bind("xi", "jseval -q --world main window.show_knack_id?.api?.toggleIds?.()")
+config.bind(
+    "xo",
+    'jseval -q --world main (()=>{const s=window.getSelection()?.toString()||"";const q=prompt("Search:",s);if(q!=null)window.knack_search?.open?.(q);})()',
+)
+config.bind("xs", "jseval -q --world main Logger.switch()")
+config.bind(
+    "xv",
+    'jseval -q --world main window.knack_search?.open?.(window.getSelection()?.toString() || "")',
+    mode="caret",
+)
+config.bind("xx", "stop")
 
 ## -- Z --
 config.bind("zb", "jseval -q document.activeElement && document.activeElement.blur()")
