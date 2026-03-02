@@ -192,7 +192,7 @@ bind --mode=browser <A-,> escapehatch
 " X-ecutables
 unbind x
 bind xx stop
-bind xs js window.wrappedJSObject?.Logger.switch()
+bind xs js (function(){const s=document.createElement('script');s.textContent='Logger?.switch?.()';(document.documentElement?document.documentElement:document.head).appendChild(s);s.remove();})()
 bind xi js window.wrappedJSObject?.show_knack_id?.api?.toggleIds?.()
 bind xh js window.wrappedJSObject?.show_knack_id?.api?.toggleShowHidden?.()
 
