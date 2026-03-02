@@ -1,5 +1,5 @@
 " vim: set filetype=tridactyl
-" General Settings
+" --- GENERAL SETTINGS ---
 set update.lastchecktime 1772206549053
 set update.nag true
 set update.nagwait 7
@@ -16,8 +16,8 @@ set modeindicatorshowkeys true
 set tabopencontaineraware true
 set containerindicator false
 
-" Binds
-" -- MOVEMENT --
+" --- BINDS ---
+"" -- MOVEMENT --
 bind h scrollpx -50
 bind j scrollline 10
 bind k scrollline -10
@@ -29,7 +29,7 @@ bind L forward
 bind $ scrollto 100 x
 bind ^ scrollto 0 x
 
-" -- BASIC --
+"" -- BASIC --
 bind a current_url bmark
 bind A bmark
 bind b fillcmdline bmarks
@@ -62,7 +62,7 @@ bind ]] followpage next
 bind ]c urlincrement 1
 bind ` gobble 1 markjump
 
-" -- MODE SWITCH --
+"" -- MODE SWITCH --
 bind --mode=browser <A-,> escapehatch
 bind <S-Insert> mode ignore
 bind <AC-Escape> mode ignore
@@ -71,11 +71,11 @@ bind <S-Escape> mode ignore
 bind <Escape> composite mode normal ; hidecmdline
 bind <C-[> composite mode normal ; hidecmdline
 
-" -- ALT --
+"" -- ALT --
 bind <A-p> pin
 bind <A-m> mute toggle
 
-" -- CTRL --
+"" -- CTRL --
 bind <C-u> scrollpage -0.5
 bind <C-d> scrollpage 0.5
 bind <C-f> scrollpage 1
@@ -90,10 +90,10 @@ unbind --mode=normal <C-y>
 unbind --mode=normal <C-e>
 " bind <C-e> scrollline 10
 
-" -- F-Keys --
+"" -- F-KEYS --
 bind <F1> help
 
-" -- YANK --
+"" -- YANK --
 bind yc clipboard yankcanon
 bind ym clipboard yankmd
 bind yo clipboard yankorg
@@ -102,7 +102,7 @@ bind ys clipboard yankshort
 bind yt clipboard yanktitle
 bind yy clipboard yank
 
-" -- GO --
+"" -- GO --
 bind G scrollto 100
 bind ga tabaudio
 bind gg scrollto 0
@@ -126,100 +126,106 @@ bind g; changelistjump -1
 bind g? rot13
 bind g^ tabfirst
 
-" -- DELETE --
+"" -- DELETE --
 unbind --mode=normal d
 bind dd tabclose
 bind dL tabclosealltoright
 bind dH tabclosealltoleft
 bind D js tri.excmds.composite('tabprev;', 'tabclose #')
 
-" X-ecutables
+"" -- X-ECUTABLES --
 unbind x
 bind xx stop
 bind xs js (function(){const s=document.createElement('script');s.textContent='Logger?.switch?.()';(document.documentElement?document.documentElement:document.head).appendChild(s);s.remove();})()
 bind xi js window.wrappedJSObject?.show_knack_id?.api?.toggleIds?.()
 bind xh js window.wrappedJSObject?.show_knack_id?.api?.toggleShowHidden?.()
 
-" -- Zoom --
+"" -- ZOOM --
 bind zi zoom 0.1 true
+bind zI zoom 3
 bind zo zoom -0.1 true
+bind zO zoom -3
 bind zm zoom 0.5 true
-bind zr zoom -0.5 true
 bind zM zoom 0.5 true
+bind zr zoom -0.5 true
 bind zR zoom -0.5 true
 bind zz zoom 1
-bind zI zoom 3
 bind zO zoom 0.3
 bind ZZ qall
 
-" -- HINTS --
+"" -- HINTS --
+""" - MOUSE -
 bind ;x hint -F e => { const pos = tri.dom.getAbsoluteCentre(e); tri.excmds.exclaim_quiet("xdotool mousemove --sync " + window.devicePixelRatio * pos.x + " " + window.devicePixelRatio * pos.y + "; xdotool click 1")}
 bind ;X hint -F e => { const pos = tri.dom.getAbsoluteCentre(e); tri.excmds.exclaim_quiet("xdotool mousemove --sync " + window.devicePixelRatio * pos.x + " " + window.devicePixelRatio * pos.y + "; xdotool keydown ctrl+shift; xdotool click 1; xdotool keyup ctrl+shift")}
 bind ;c hint -F e => { const pos = tri.dom.getAbsoluteCentre(e); tri.excmds.exclaim_quiet("xdotool mousemove --sync " + window.devicePixelRatio * pos.x + " " + window.devicePixelRatio * pos.y + "; xdotool click 3")}
 bind ;: hint -F e => { const pos = tri.dom.getAbsoluteCentre(e); tri.excmds.exclaim_quiet("xdotool mousemove --sync " + window.devicePixelRatio * pos.x + " " + window.devicePixelRatio * pos.y)}
-bind ;i hint -i
+
+""" - REGULAR -
+bind ;a hint -a
+bind ;A hint -A
 bind ;b hint -b
+bind ;d hint -W tabopen --discard
+" bind ;h hint -h
+bind ;i hint -i
 " bind ;o hint
 bind ;I hint -I
 bind ;k hint -k
 bind ;K hint -K
-bind ;y hint -y
-bind ;Y hint -cF img i => tri.excmds.yankimage(tri.urlutils.getAbsoluteURL(i.src))
+bind ;m hint -JFc img i => tri.excmds.open('https://lens.google.com/uploadbyurl?url='+i.src)
+bind ;M hint -JFc img i => tri.excmds.tabopen('https://lens.google.com/uploadbyurl?url='+i.src)
+bind ;O hint -W fillcmdline_notrail open 
 bind ;p hint -p
-" bind ;h hint -h
 bind ;P hint -P
 bind ;r hint -r
 bind ;s hint -s
 bind ;S hint -S
-bind ;a hint -a
-bind ;A hint -A
-bind ;; hint -; *
-bind ;# hint -#
+bind ;t hint -W tabopen
+bind ;T hint -W fillcmdline_notrail tabopen 
 bind ;v hint -W mpvsafe
 bind ;V hint -V
 bind ;w hint -w
-bind ;t hint -W tabopen
-bind ;O hint -W fillcmdline_notrail open 
 bind ;W hint -W fillcmdline_notrail winopen 
-bind ;T hint -W fillcmdline_notrail tabopen 
-bind ;d hint -W tabopen --discard
-bind ;gd hint -qW tabopen --discard
+bind ;y hint -y
+bind ;Y hint -cF img i => tri.excmds.yankimage(tri.urlutils.getAbsoluteURL(i.src))
+bind ;; hint -; *
+bind ;# hint -#
 bind ;z hint -z
-bind ;m hint -JFc img i => tri.excmds.open('https://lens.google.com/uploadbyurl?url='+i.src)
-bind ;M hint -JFc img i => tri.excmds.tabopen('https://lens.google.com/uploadbyurl?url='+i.src)
+
+""" - Quiet (;g) -
+bind ;ga hint -qa
+bind ;gA hint -qA
+bind ;gb hint -qb
+bind ;gd hint -qW tabopen --discard
+bind ;gf hint -q
+bind ;gF hint -qb
 bind ;gi hint -qi
 bind ;gI hint -qI
 bind ;gk hint -qk
-bind ;gy hint -qy
 bind ;gp hint -qp
 bind ;gP hint -qP
 bind ;gr hint -qr
 bind ;gs hint -qs
 bind ;gS hint -qS
-bind ;ga hint -qa
-bind ;gA hint -qA
-bind ;g; hint -q;
-bind ;g# hint -q#
 bind ;gv hint -qW mpvsafe
 bind ;gw hint -qw
-bind ;gb hint -qb
-bind ;gF hint -qb
-bind ;gf hint -q
+bind ;gy hint -qy
+bind ;g; hint -q;
+bind ;g# hint -q#
 
-" -- LEADER --
+"" -- LEADER --
 bind ,, fillcmdline open search
 bind ,< fillcmdline tabopen search
 bind ,r source
 
-" -- Ex maps --
+"" -- Ex maps --
 bind --mode=ex <A-ArrowDown> ex.next_completion
 bind --mode=ex <A-ArrowUp>   ex.prev_completion
 
-"  --- Search Ranking ---
+" --- Search Ranking ---
 set searchurlweight 100000
 set bmarkweight 10000
 
-" Search Completions
+" --- Search Completions ---
 set searchurls.1337 https://1337x.to/search/%s/1/
 set searchurls.arch https://wiki.archlinux.org/index.php?search=%s
 set searchurls.amazon https://www.amazon.com/s?k=%s
