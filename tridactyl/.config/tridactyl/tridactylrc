@@ -17,100 +17,146 @@ set tabopencontaineraware true
 set containerindicator false
 
 " Binds
+" -- MOVEMENT --
+bind h scrollpx -50
+bind j scrollline 10
+bind k scrollline -10
+bind l scrollpx 50
+bind H back
 bind J tabnext
 bind K tabprev
-bind ;x hint -F e => { const pos = tri.dom.getAbsoluteCentre(e); tri.excmds.exclaim_quiet("xdotool mousemove --sync " + window.devicePixelRatio * pos.x + " " + window.devicePixelRatio * pos.y + "; xdotool click 1")}
-bind ;c hint -F e => { const pos = tri.dom.getAbsoluteCentre(e); tri.excmds.exclaim_quiet("xdotool mousemove --sync " + window.devicePixelRatio * pos.x + " " + window.devicePixelRatio * pos.y + "; xdotool click 3")}
-bind ;: hint -F e => { const pos = tri.dom.getAbsoluteCentre(e); tri.excmds.exclaim_quiet("xdotool mousemove --sync " + window.devicePixelRatio * pos.x + " " + window.devicePixelRatio * pos.y)}
-bind ;X hint -F e => { const pos = tri.dom.getAbsoluteCentre(e); tri.excmds.exclaim_quiet("xdotool mousemove --sync " + window.devicePixelRatio * pos.x + " " + window.devicePixelRatio * pos.y + "; xdotool keydown ctrl+shift; xdotool click 1; xdotool keyup ctrl+shift")}
-bind <A-p> pin
-bind <A-m> mute toggle
-bind <F1> help
+bind L forward
+bind $ scrollto 100 x
+bind ^ scrollto 0 x
+
+" -- BASIC --
+bind a current_url bmark
+bind A bmark
+bind b fillcmdline bmarks
+bind B fillcmdline bmarks -t
+bind f hint
+bind F hint -b
+bind m gobble 1 markadd
+bind M gobble 1 quickmark
 bind o fillcmdline open
 bind O fillcmdline tabopen
-bind w fillcmdline winopen
-bind W current_url winopen
-bind t fillcmdline tabopen
-bind T fillcmdline tab
-bind ]] followpage next
-bind [[ followpage prev
-bind [c urlincrement -1
-bind ]c urlincrement 1
-bind <C-x> urlincrement -1
-bind <C-a> urlincrement 1
-bind yy clipboard yank
-bind ys clipboard yankshort
-bind yq text2qr --timeout 5
-bind yc clipboard yankcanon
-bind ym clipboard yankmd
-bind yo clipboard yankorg
-bind yt clipboard yanktitle
-bind gh home
-bind gH home true
 bind p clipboard open
 bind P clipboard tabopen
-bind j scrollline 10
-unbind --mode=normal <C-e>
-" bind <C-e> scrollline 10
-bind k scrollline -10
-unbind --mode=normal <C-y>
-" bind <C-y> scrollline -10
-bind h scrollpx -50
-bind l scrollpx 50
-bind G scrollto 100
-bind gg scrollto 0
-bind go current_url open
-bind gO current_url tabopen
+bind r reload
+bind R reloadhard
+bind t fillcmdline tabopen
+bind T fillcmdline tab
+bind u undo
+bind U undo window
+bind v hint -h
+bind V mode visual
+bind w fillcmdline winopen
+bind W current_url winopen
+bind . repeat
+bind : fillcmdline_notrail
+bind << tabmove -1
+bind >> tabmove +1
+bind [[ followpage prev
+bind [c urlincrement -1
+bind ]] followpage next
+bind ]c urlincrement 1
+bind ` gobble 1 markjump
+
+" -- MODE SWITCH --
+bind --mode=browser <A-,> escapehatch
+bind <S-Insert> mode ignore
+bind <AC-Escape> mode ignore
+bind <AC-`> mode ignore
+bind <S-Escape> mode ignore
+bind <Escape> composite mode normal ; hidecmdline
+bind <C-[> composite mode normal ; hidecmdline
+
+" -- ALT --
+bind <A-p> pin
+bind <A-m> mute toggle
+
+" -- CTRL --
 bind <C-u> scrollpage -0.5
 bind <C-d> scrollpage 0.5
 bind <C-f> scrollpage 1
 bind <C-b> scrollpage -1
 bind <C-v> nmode ignore 1 mode normal
-bind $ scrollto 100 x
-bind ^ scrollto 0 x
-bind H back
-bind L forward
 bind <C-o> jumpprev
 bind <C-i> jumpnext
+bind <C-x> urlincrement -1
+bind <C-a> urlincrement 1
+unbind --mode=normal <C-y>
+" bind <C-y> scrollline -10
+unbind --mode=normal <C-e>
+" bind <C-e> scrollline 10
+
+" -- F-Keys --
+bind <F1> help
+
+" -- YANK --
+bind yc clipboard yankcanon
+bind ym clipboard yankmd
+bind yo clipboard yankorg
+bind yq text2qr --timeout 5
+bind ys clipboard yankshort
+bind yt clipboard yanktitle
+bind yy clipboard yank
+
+" -- GO --
+bind G scrollto 100
+bind ga tabaudio
+bind gg scrollto 0
+bind gf viewsource
+bind gF hint -qb
+bind gh home
+bind gH home true
+bind gi focusinput
+bind go current_url open
+bind gO current_url tabopen
+bind gt tabnext_gt
+bind gT tabprev
+bind gu urlparent
+bind gU urlroot
+bind gx0 tabclosealltoleft
+bind gx$ tabclosealltoright
+bind g! jumble
+bind g$ tablast
+bind g0 tabfirst
+bind g; changelistjump -1
+bind g? rot13
+bind g^ tabfirst
+
+" -- DELETE --
 unbind --mode=normal d
 bind dd tabclose
 bind dL tabclosealltoright
 bind dH tabclosealltoleft
 bind D js tri.excmds.composite('tabprev;', 'tabclose #')
-bind gx0 tabclosealltoleft
-bind gx$ tabclosealltoright
-bind << tabmove -1
-bind >> tabmove +1
-bind u undo
-bind U undo window
-bind r reload
-bind R reloadhard
-bind gi focusinput
-bind g? rot13
-bind g! jumble
-bind g; changelistjump -1
-bind gt tabnext_gt
-bind gT tabprev
-bind g^ tabfirst
-bind g0 tabfirst
-bind g$ tablast
-bind ga tabaudio
-" bind gr reader --old
-bind gu urlparent
-bind gU urlroot
-bind gf viewsource
-bind : fillcmdline_notrail
-bind ,, fillcmdline open search
-bind ,< fillcmdline tabopen search
-bind ,r source
-bind M gobble 1 quickmark
-" bind B fillcmdline taball
-bind b fillcmdline bmarks
-bind B fillcmdline bmarks -t
+
+" X-ecutables
+unbind x
+bind xx stop
+bind xs js (function(){const s=document.createElement('script');s.textContent='Logger?.switch?.()';(document.documentElement?document.documentElement:document.head).appendChild(s);s.remove();})()
+bind xi js window.wrappedJSObject?.show_knack_id?.api?.toggleIds?.()
+bind xh js window.wrappedJSObject?.show_knack_id?.api?.toggleShowHidden?.()
+
+" -- Zoom --
+bind zi zoom 0.1 true
+bind zo zoom -0.1 true
+bind zm zoom 0.5 true
+bind zr zoom -0.5 true
+bind zM zoom 0.5 true
+bind zR zoom -0.5 true
+bind zz zoom 1
+bind zI zoom 3
+bind zO zoom 0.3
 bind ZZ qall
-bind f hint
-bind F hint -b
-bind gF hint -qb
+
+" -- HINTS --
+bind ;x hint -F e => { const pos = tri.dom.getAbsoluteCentre(e); tri.excmds.exclaim_quiet("xdotool mousemove --sync " + window.devicePixelRatio * pos.x + " " + window.devicePixelRatio * pos.y + "; xdotool click 1")}
+bind ;X hint -F e => { const pos = tri.dom.getAbsoluteCentre(e); tri.excmds.exclaim_quiet("xdotool mousemove --sync " + window.devicePixelRatio * pos.x + " " + window.devicePixelRatio * pos.y + "; xdotool keydown ctrl+shift; xdotool click 1; xdotool keyup ctrl+shift")}
+bind ;c hint -F e => { const pos = tri.dom.getAbsoluteCentre(e); tri.excmds.exclaim_quiet("xdotool mousemove --sync " + window.devicePixelRatio * pos.x + " " + window.devicePixelRatio * pos.y + "; xdotool click 3")}
+bind ;: hint -F e => { const pos = tri.dom.getAbsoluteCentre(e); tri.excmds.exclaim_quiet("xdotool mousemove --sync " + window.devicePixelRatio * pos.x + " " + window.devicePixelRatio * pos.y)}
 bind ;i hint -i
 bind ;b hint -b
 " bind ;o hint
@@ -121,8 +167,6 @@ bind ;y hint -y
 bind ;Y hint -cF img i => tri.excmds.yankimage(tri.urlutils.getAbsoluteURL(i.src))
 bind ;p hint -p
 " bind ;h hint -h
-bind v hint -h
-bind V mode visual
 bind ;P hint -P
 bind ;r hint -r
 bind ;s hint -s
@@ -161,42 +205,17 @@ bind ;gw hint -qw
 bind ;gb hint -qb
 bind ;gF hint -qb
 bind ;gf hint -q
-bind <S-Insert> mode ignore
-bind <AC-Escape> mode ignore
-bind <AC-`> mode ignore
-bind <S-Escape> mode ignore
-bind <Escape> composite mode normal ; hidecmdline
-bind <C-[> composite mode normal ; hidecmdline
-bind a current_url bmark
-bind A bmark
-bind zi zoom 0.1 true
-bind zo zoom -0.1 true
-bind zm zoom 0.5 true
-bind zr zoom -0.5 true
-bind zM zoom 0.5 true
-bind zR zoom -0.5 true
-bind zz zoom 1
-bind zI zoom 3
-bind zO zoom 0.3
-bind . repeat
-bind m gobble 1 markadd
-bind ` gobble 1 markjump
 
-" Ex maps
+" -- LEADER --
+bind ,, fillcmdline open search
+bind ,< fillcmdline tabopen search
+bind ,r source
+
+" -- Ex maps --
 bind --mode=ex <A-ArrowDown> ex.next_completion
 bind --mode=ex <A-ArrowUp>   ex.prev_completion
 
-" Browser maps
-bind --mode=browser <A-,> escapehatch
-
-" X-ecutables
-unbind x
-bind xx stop
-bind xs js (function(){const s=document.createElement('script');s.textContent='Logger?.switch?.()';(document.documentElement?document.documentElement:document.head).appendChild(s);s.remove();})()
-bind xi js window.wrappedJSObject?.show_knack_id?.api?.toggleIds?.()
-bind xh js window.wrappedJSObject?.show_knack_id?.api?.toggleShowHidden?.()
-
-" Search Ranking
+"  --- Search Ranking ---
 set searchurlweight 100000
 set bmarkweight 10000
 
