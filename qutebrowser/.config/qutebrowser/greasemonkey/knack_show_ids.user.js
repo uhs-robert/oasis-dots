@@ -22,19 +22,15 @@ window.show_knack_id.intervals ??= new Map();
 window.show_knack_id.api = window.show_knack_id.api || {};
 window.show_knack_id.showHiddenEnabled ??= false;
 
-(function bootstrap() {
+function init() {
   const $ = window.jQuery || window.$;
-  if (!$) return setTimeout(bootstrap, 200);
+  if (!$ || !window.Knack) return setTimeout(init, 200);
 
-  // If you want to be extra strict:
-  // if (!window.Knack) return setTimeout(bootstrap, 200);
-
-  // expose $ if you rely on it everywhere
   window.$ = $;
-
-  // now run your original script entry
   main();
-})();
+}
+
+const getJQuery = () => window.jQuery || window.$;
 
 // Public console API (callable from qute :jseval --world main ...)
 window.show_knack_id.api = window.show_knack_id.api || {};
@@ -90,7 +86,12 @@ window.show_knack_id.api.toggleShowHidden = () => {
 // Serialize the already-defined API functions into the page world via an injected <script>.
 (function exportApiToPageWorld() {
   const { api } = window.show_knack_id;
-  const methods = ["setIdsVisible", "toggleIds", "setShowHidden", "toggleShowHidden"];
+  const methods = [
+    "setIdsVisible",
+    "toggleIds",
+    "setShowHidden",
+    "toggleShowHidden",
+  ];
   const assignments = methods
     .map((m) => `window.show_knack_id.api.${m} = ${api[m].toString()};`)
     .join("\n      ");
@@ -144,6 +145,8 @@ const Intervals = {
  * @param {string} [type] - Optional type of the view (e.g., 'form')
  */
 const addIdToFields = (selector, key, type) => {
+  const $ = getJQuery();
+  if (!$) return;
   const targetElements = $(`#${key} ${selector}`);
   const processElement = (el) => {
     const hasId = !!el.querySelector(`.show-live-id`);
@@ -203,6 +206,8 @@ const waitTillKnackReady = () => {
  * @param {Object} obj - The scene or view object data to be logged on double-click
  */
 const addIdToElement = (key, obj) => {
+  const $ = getJQuery();
+  if (!$) return;
   const { isNextGen, isEnabled } = window.show_knack_id;
   const isScene = key.includes("scene");
   const targetID = !isNextGen && isScene ? `kn-${key}` : key;
@@ -282,11 +287,15 @@ const addToFields = (view) => {
  * Binds the #showIDsCheckbox toggle to show/hide all .show-live-id elements
  */
 const bindToggleCheckbox = () => {
-  $("#showIDsCheckbox").on("change", function (_e) {
-    const isChecked = $(this).is(":checked");
-    window.show_knack_id.isEnabled = isChecked;
-    isChecked ? $(".show-live-id").show() : $(".show-live-id").hide();
-  });
+  const $ = getJQuery();
+  if (!$) return;
+  $("#showIDsCheckbox")
+    .off("change.show-knack-id")
+    .on("change.show-knack-id", function (_e) {
+      const isChecked = $(this).is(":checked");
+      window.show_knack_id.isEnabled = isChecked;
+      isChecked ? $(".show-live-id").show() : $(".show-live-id").hide();
+    });
 };
 
 /**
@@ -363,6 +372,8 @@ const addNextGenRenderEvents = () => {
  * Includes handlers for tables, details, lists, forms, and a toggle checkbox.
  */
 const addLegacyRenderEvents = () => {
+  const $ = getJQuery();
+  if (!$) return;
   window.show_knack_id.curr_scene = [];
 
   /**
@@ -429,3 +440,5 @@ const main = () => {
   if (isNextGen) window.show_knack_id.isEnabled = true;
   waitTillKnackReady();
 };
+
+init();
