@@ -1,4 +1,4 @@
-/* ~/.config/tridactyl/themes/oasis_lagoon.css */
+/* tridactyl/.config/tridactyl/themes/oasis_lagoon.css */
 
 :root {
   --oasis-theme-accent: #ffa0a0;
@@ -38,7 +38,7 @@
   --oasis-terminal-yellow: #f0e68c;
 
   --code-font-family:
-    "ProFont IIx Nerd Font Mono", ui-monospace, "SFMono-Regular", Menlo, Monaco,
+    "ProFont IIx Nerd Font Mono", monospace, "SFMono-Regular", Menlo, Monaco,
     Consolas, "Liberation Mono", "Courier New", monospace;
   --tridactyl-cmplt-font-family: var(--code-font-family);
   --tridactyl-status-font-family: var(--code-font-family);
