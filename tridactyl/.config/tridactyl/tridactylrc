@@ -164,16 +164,20 @@ bind --mode=visual xv js window.wrappedJSObject?.knack_search?.open?.(document.g
 
 "" -- ZOOM --
 bind zi zoom 0.1 true
+bind z+ zoom 0.1 true
 bind zI zoom 3
 bind zo zoom -0.1 true
+bind z- zoom -0.1 true
 bind zO zoom -3
 bind zm zoom 0.5 true
 bind zM zoom 0.5 true
 bind zr zoom -0.5 true
 bind zR zoom -0.5 true
 bind zz zoom 1
+bind z= zoom 1
 bind zO zoom 0.3
 bind ZZ qall
+bind zb js document?.activeElement?.blur()
 
 "" -- HINTS --
 """ - MOUSE -
