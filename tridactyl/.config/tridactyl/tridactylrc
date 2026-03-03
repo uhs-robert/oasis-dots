@@ -106,6 +106,22 @@ bind ys clipboard yankshort
 bind yt clipboard yanktitle
 bind yy clipboard yank
 
+"" -- CONTAINERS --
+bind ca composite js document.location.href | tabopenwait -b -c Ana ; tabclose
+bind cA current_url tabopen -c Ana
+bind cc composite js document.location.href | tabopenwait -b -c Client ; tabclose
+bind cC current_url tabopen -c Client
+bind cd composite js document.location.href | tabopenwait -b -c; tabclose
+bind cD current_url tabopen -c
+bind cn composite js document.location.href | tabopenwait -b -c No ; tabclose
+bind cN current_url tabopen -c No
+bind cp composite js document.location.href | tabopenwait -b -c Personal ; tabclose
+bind cP current_url tabopen -c Personal
+bind cr composite js document.location.href | tabopenwait -b -c Research ; tabclose
+bind cR current_url tabopen -c Research
+bind cw composite js document.location.href | tabopenwait -b -c UHS ; tabclose
+bind cW current_url tabopen -c UHS
+
 "" -- GO --
 bind G scrollto 100
 bind ga tabaudio
