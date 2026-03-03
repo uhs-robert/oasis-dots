@@ -27,11 +27,8 @@ https://www.gamingonlinux.com/article_rss.php "Gaming"
 # ⚡ Tech & Dev News
 "query:Tech:tags # \"Tech\""
 https://news.ycombinator.com/rss "Tech"
-https://techcrunch.com/feed/ "Tech"
 "query:Dev:tags # \"Dev\""
 # https://dev.to/feed "Dev"
-https://www.smashingmagazine.com/feed/ "Dev"
-https://queue.acm.org/rss/feeds/queuecontent.xml "Tech"
 https://martinfowler.com/bliki/bliki.atom "Tech"
 
 # 🔍 Unbiased & Investigative Journalism
