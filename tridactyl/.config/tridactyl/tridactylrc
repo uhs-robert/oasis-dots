@@ -16,6 +16,10 @@ set modeindicatorshowkeys true
 set tabopencontaineraware true
 set containerindicator false
 
+" --- COMMANDS ---
+command this js -d@ (function(){var q=JS_ARGS.join(' ');var h=location.hostname;var u='https://www.google.com/search?num=100&q='+encodeURIComponent('site:'+h+' '+q);location.href=u;})()@
+command tabthis js -d@ (function(){var q=JS_ARGS.join(' ');var h=location.hostname;var u='https://www.google.com/search?num=100&q='+encodeURIComponent('site:'+h+' '+q);tri.excmds.tabopen(u);})()@
+
 " --- BINDS ---
 "" -- MOVEMENT --
 bind h scrollpx -50
@@ -261,7 +265,6 @@ set searchurls.proton https://www.protondb.com/search?q=%s
 set searchurls.reddit https://www.reddit.com/search/?q=%s
 set searchurls.redditgoogle https://www.google.com/search?q=site:reddit.com+%s
 set searchurls.rubygems https://rubygems.org/search?query=%s
-set searchurls.this javascript:location='https://www.google.com/search?num=100&q=site:'+escape(location.hostname)+'+%s
 set searchurls.stackoverflow https://stackoverflow.com/search?q=%s
 set searchurls.steam https://store.steampowered.com/search?term=%s
 set searchurls.synonym https://www.thesaurus.com/browse/%s
