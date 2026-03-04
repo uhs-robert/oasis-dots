@@ -13,7 +13,9 @@
     // "modules-center": ["clock"],
     "modules-center": ["clock", "custom/weather"],
     "modules-right": [
+      "group/systemtray",
       "custom/updates",
+      "hyprland/submap",
       // "custom/voxtype",
       "temperature",
       "cpu",
