@@ -30,6 +30,7 @@ https://news.ycombinator.com/rss "Tech"
 "query:Dev:tags # \"Dev\""
 # https://dev.to/feed "Dev"
 https://martinfowler.com/bliki/bliki.atom "Tech"
+https://xn--gckvb8fzb.com/index.xml "Tech"
 
 # 🔍 Unbiased & Investigative Journalism
 "query:News:tags # \"News\""
