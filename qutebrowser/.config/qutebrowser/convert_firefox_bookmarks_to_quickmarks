@@ -1,0 +1,48 @@
+#!/usr/bin/env python3
+"""
+Firefox Bookmarks HTML → Qutebrowser Quickmarks Converter
+
+Strips the Netscape bookmark HTML export format down to qutebrowser's `name URL`
+quickmarks format. Skips browser-internal URLs (place:, moz-extension:).
+
+Usage:
+    python3 convert_firefox_bookmarks_to_quickmarks <input.html> [output]
+
+    If output is omitted, overwrites the input file in place.
+
+Example:
+    python3 convert_firefox_bookmarks_to_quickmarks bookmarks.html quickmarks_new
+"""
+
+import html
+import re
+import sys
+from pathlib import Path
+
+
+def convert(input_path: Path, output_path: Path) -> int:
+    content = input_path.read_text(encoding="utf-8")
+    pattern = r'<DT><A HREF="([^"]+)"[^>]*>([^<]+)</A>'
+    matches = re.findall(pattern, content)
+
+    lines = []
+    for url, title in matches:
+        if url.startswith(("place:", "moz-extension:")):
+            continue
+        title = html.unescape(" ".join(title.split()))
+        lines.append(f"{title} {url}")
+
+    output_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    return len(lines)
+
+
+if __name__ == "__main__":
+    if len(sys.argv) < 2:
+        print(__doc__)
+        sys.exit(1)
+
+    input_file = Path(sys.argv[1])
+    output_file = Path(sys.argv[2]) if len(sys.argv) > 2 else input_file
+
+    count = convert(input_file, output_file)
+    print(f"Wrote {count} bookmarks to {output_file}")
