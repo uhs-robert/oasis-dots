@@ -17,6 +17,7 @@ prepopulate-query-feeds yes
 show-read-articles no
 show-read-feeds no
 auto-reload yes
+cleanup-on-quit yes
 
 # -- THEME --
 color background default default
@@ -41,20 +42,23 @@ highlight feedlist "╠═.*" blue color0
 highlight feedlist "📰" cyan default bold
 highlight feedlist "⏵" cyan default bold
 
-bind-key h quit
-bind-key j down
-bind-key k up
-bind-key l open
-bind-key H prev-feed
-bind-key L next-feed
-bind-key g home
-bind-key G end
-bind-key SPACE toggle-article-read
-bind-key b bookmark
-bind-key ^D pagedown
-bind-key ^U pageup
-bind-key ^H toggle-show-read-feeds
 # -- BINDINGS --
+bind h feedlist,help,articlelist,article,urlview quit
+bind j everywhere down
+bind k everywhere up
+bind l everywhere open
+bind H everywhere prev-feed
+bind L everywhere next-feed
+bind gg everywhere home
+bind G everywhere end
+# bind n everywhere next-unread
+bind N everywhere prev-unread
+bind <SPACE> everywhere toggle-article-read
+bind <C-r> everywhere mark-feed-read
+bind b everywhere bookmark
+bind <C-d> everywhere pagedown
+bind <C-u> everywhere pageup
+bind <C-a> everywhere toggle-show-read-feeds
 
 #  --- MACROS ---
 macro 3 set browser "setsid --fork mpv --profile=360p %u > /dev/null 2>&1"; open-in-browser; set browser "xdg-open %u";
