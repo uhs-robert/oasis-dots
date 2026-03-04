@@ -121,6 +121,14 @@ c.tabs.position = "top"
 c.tabs.show = "multiple"
 # c.spellcheck.languages = ["en-US"]
 
+# --- Aliases ---
+c.aliases["this"] = (
+    "cmd-set-text -s :open https://www.google.com/search?num=100&q=site:{url:host}+"
+)
+c.aliases["tabthis"] = (
+    "cmd-set-text -s :open -t https://www.google.com/search?num=100&q=site:{url:host}+"
+)
+
 ## -- Hints --
 ### - Scroll -
 c.hints.selectors["scroll"] = [
