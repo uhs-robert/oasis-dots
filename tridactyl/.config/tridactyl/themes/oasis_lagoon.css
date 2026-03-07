@@ -1,6 +1,14 @@
 /* tridactyl/.config/tridactyl/themes/oasis_lagoon.css */
 
+/* ────────────────────────────────────────────────────────────────────────── */
+/* !-- OASIS: LAGOON DARK
+/* ────────────────────────────────────────────────────────────────────────── */
+
 :root {
+  /* NOTE: CUSTOMIZE YOUR FONT FAMILY */
+  --code-font-family:
+    "ProFont IIx Nerd Font Mono", ui-monospace, "SFMono-Regular", Menlo, Monaco,
+    Consolas, "Liberation Mono", "Courier New", monospace;
   --oasis-theme-accent: #ffa0a0;
   --oasis-theme-cursor: #f0e68c;
   --oasis-theme-label: #f9a05e;
@@ -37,9 +45,6 @@
   --oasis-terminal-white: #dddbd5;
   --oasis-terminal-yellow: #f0e68c;
 
-  --code-font-family:
-    "ProFont IIx Nerd Font Mono", ui-monospace, "SFMono-Regular", Menlo, Monaco,
-    Consolas, "Liberation Mono", "Courier New", monospace;
   --tridactyl-cmplt-font-family: var(--code-font-family);
   --tridactyl-status-font-family: var(--code-font-family);
   --tridactyl-cmdl-font-family: var(--code-font-family);
@@ -59,6 +64,7 @@
   --tridactyl-of-bg: var(--oasis-bg-surface);
 }
 
+/* NOTE: You can type `:help` in tridactly to see the html for CSS styling */
 #completion {
   border-color: var(--oasis-ui-border);
 }
