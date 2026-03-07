@@ -189,14 +189,19 @@ bind ;: hint -F e => { const pos = tri.dom.getAbsoluteCentre(e); tri.excmds.excl
 """ - REGULAR -
 bind ;a hint -a
 bind ;A hint -A
-bind ;b hint -b
+bind ;b hint -Jc a:not([href]),button,input[type=button],input[type=submit],input[type=reset],[role=button]
+bind ;B hint -b
 bind ;d hint -W tabopen --discard
+bind ;f fillcmdline hint -f
+bind ;/ fillcmdline hint -f
 " bind ;h hint -h
-bind ;i hint -i
+" bind ;i hint -i
+bind ;i hint -Jc input:not([type=hidden]),textarea,select,[contenteditable=true]
 " bind ;o hint
 bind ;I hint -I
 bind ;k hint -k
 bind ;K hint -K
+bind ;l hint -Jc a[href]
 bind ;m hint -JFc img i => tri.excmds.open('https://lens.google.com/uploadbyurl?url='+i.src)
 bind ;M hint -JFc img i => tri.excmds.tabopen('https://lens.google.com/uploadbyurl?url='+i.src)
 bind ;O hint -W fillcmdline_notrail open 
@@ -207,7 +212,8 @@ bind ;s hint -s
 bind ;S hint -S
 bind ;t hint -W tabopen
 bind ;T hint -W fillcmdline_notrail tabopen 
-bind ;v hint -W mpvsafe
+" bind ;v hint -W mpvsafe
+bind ;v hint -h
 bind ;V hint -V
 bind ;w hint -w
 bind ;W hint -W fillcmdline_notrail winopen 
