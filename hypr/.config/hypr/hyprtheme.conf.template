@@ -61,9 +61,15 @@ decoration {
 animations {
   enabled = true
   bezier = overshot, 0.13, 0.99, 0.29, 1.1
+
   animation = workspaces, 1, 6, overshot, slide
-  animation = windows,1,4,overshot,slide
-  animation = layers,1,5,default,default
+  animation = windows, 1, 4, overshot, slide
+
+  # animation = layers, 1, 3, overshot, slide bottom
+  # animation = layersIn, 1, 3, overshot, slide bottom
+  # animation = layersOut, 1, 3, overshot, slide bottom
+
+  animation = layers, 1, 3, default, default
 }
 
 # Layer rules
