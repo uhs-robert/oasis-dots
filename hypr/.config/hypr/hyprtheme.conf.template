@@ -82,7 +82,7 @@ layerrule = animation slide left, match:namespace dashboardmenu
 
 # Dwindle layout
 dwindle {
-  force_split = 2,
+  force_split = 2
   pseudotile = true
   preserve_split = true
   smart_split = false
