@@ -8,13 +8,13 @@ def setup(c, theme, samecolorrows=False):
 
     # flavours {{{
     palette = {
-        "magenta": "#C28EFF",
-        "red": "#F78181",
+        "magenta": "#C695FF",
+        "red": "#FF7979",
         "bright_red": "#FFA0A0",
         "yellow": "#F0E68C",
         "bright_yellow": "#F8B471",
-        "green": "#53D390",
-        "bright_green": "#96EA7F",
+        "green": "#8FED88",
+        "bright_green": "#B2F3AD",
         "teal": "#68C0B6",
         "blue": "#58B8FD",
         "bright_blue": "#87CEEB",
