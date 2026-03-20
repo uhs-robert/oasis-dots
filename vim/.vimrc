@@ -221,6 +221,9 @@ set ffs=unix,dos,mac
 set cursorline
 set cursorlineopt=number
 
+" Set font
+set guifont=Maple\ Mono:h12
+
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 " ## Files, backups and undo
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
@@ -339,86 +342,88 @@ if exists('+termguicolors')
   set termguicolors
 endif
 
-" Backup theme
-if !exists('g:colors_name')
-  augroup OverrideDesert
-    autocmd!
-    autocmd ColorScheme desert ++nested call s:DesertNight()
-  augroup END
+" Desert Night Theme
+function! s:DesertNight() abort
+  " General
+  hi Normal           guibg=#262626 guifg=#F7EDE1 ctermbg=NONE ctermfg=250
+  hi LineNr           guifg=#7C6A5B ctermbg=NONE
+  hi CursorLineNr     guifg=#FFA34D ctermfg=231 guibg=#262626
+  hi CursorLineFold   guibg=#262626 ctermbg=16
+  hi SignColumn       guibg=#262626 ctermbg=NONE
+  hi FoldColumn       guibg=#262626 ctermbg=NONE
+  " hi Search           guifg=#F0E68C guibg=#264F78
+  " hi StatusLine       guifg=#7C6A5B guibg=#264F78
+  " hi StatusLineNC     guifg=#7C6A5B guibg=#264F78
+  hi StatusLineTerm   guifg=NONE guibg=NONE gui=NONE term=NONE
+  " hi StatusLineTermNC guifg=#7C6A5B guibg=#264F78
 
-  function! s:DesertNight() abort
-    " General
-    hi Normal           guibg=#0F1724 guifg=#F5E6DC ctermbg=NONE ctermfg=250
-    hi LineNr           guifg=#7C6A5B ctermbg=NONE
-    hi CursorLineNr     guifg=#ffa852 ctermfg=231 guibg=#0F1724
-    hi CursorLineFold   guibg=#0F1724 ctermbg=16
-    hi SignColumn       guibg=#0F1724 ctermbg=NONE
-    hi FoldColumn       guibg=#0F1724 ctermbg=NONE
-    hi Search           guifg=#F0E68C guibg=#264F78
-    hi StatusLine       guifg=#7C6A5B guibg=#264F78
-    hi StatusLineNC     guifg=#7C6A5B guibg=#264F78
-    hi StatusLineTerm   guifg=NONE guibg=NONE gui=NONE term=NONE
-    hi StatusLineTermNC guifg=#7C6A5B guibg=#264F78
+  hi Comment          guifg=#87CEEB gui=italic term=italic cterm=italic
 
-    hi Comment          guifg=#96816e gui=italic
+  hi Constant         guifg=#FFA34D gui=NONE term=NONE cterm=NONE
+  hi String           guifg=#ffa0a0
+  hi Character        guifg=#ffa0a0
+  hi Number           guifg=#FFA34D
+  hi Float            guifg=#ffa34d
+  hi Boolean          guifg=#ffa34d
 
-    hi Constant         guifg=#8FD1C7 gui=NONE term=NONE cterm=NONE
-    hi String           guifg=#30bc73
-    hi Character      guifg=#30bc73
-    " hi Number         guifg=#DCDCAA
-    " hi Float          guifg=#DCDCAA
-    " hi Boolean        guifg=#D16969
+  " hi Identifier       guifg=#87CEEB
+  " hi Function         guifg=#F8C471
 
-    hi Identifier       guifg=#87CEEB
-    hi Function         guifg=#F8C471
+  hi Statement        guifg=#F0E88C gui=NONE term=NONE cterm=NONE
+  hi Conditional      guifg=#BDB76B
+  hi Repeat           guifg=#BDB76B
+  " hi Label          guifg=#646695
+  " hi Operator         guifg=#ffa0a0
+  " hi Keyword          guifg=#E3963E
+  " hi Exception        guifg=#CD5C5C
 
-    hi Statement        guifg=#F0E88C gui=NONE term=NONE cterm=NONE
-    " hi Conditional    guifg=#569CD6
-    " hi Repeat         guifg=#569CD6
-    " hi Label          guifg=#646695
-    hi Operator         guifg=#ffa0a0
-    hi Keyword          guifg=#E3963E
-    hi Exception        guifg=#CD5C5C
+  hi PreProc          guifg=#F7997D
+  " hi Include        guifg=#F44747
+  " hi Define         guifg=#F44747
+  " hi Macro          guifg=#F44747
+  " hi PreCondit      guifg=#F44747
 
-    hi PreProc          guifg=#E0C4A8
-    " hi Include        guifg=#F44747
-    " hi Define         guifg=#F44747
-    " hi Macro          guifg=#F44747
-    " hi PreCondit      guifg=#F44747
+  " Types / storage
+  hi Type             guifg=#8FD1C7
+  " hi StorageClass   guifg=#8FD1C7
+  " hi Structure      guifg=#8FD1C7
+  hi Typedef        guifg=#68B0B6
 
-    " Types / storage
-    hi Type             guifg=#4AC8FF
-    " hi StorageClass   guifg=#4EC9B0
-    " hi Structure      guifg=#4EC9B0
-    " hi Typedef        guifg=#4EC9B0
-
-    hi Special          guifg=#ffa852
-    " hi SpecialChar    guifg=#4EC9B0
-    " hi Tag            guifg=#4EC9B0
-    " hi Delimiter      guifg=#4EC9B0
-    " hi SpecialComment guifg=#4EC9B0
-    " hi Debug          guifg=#4EC9B0
+  hi Special          guifg=#FFD7AD
+  " hi SpecialChar    guifg=#4EC9B0
+  " hi Tag            guifg=#4EC9B0
+  " hi Delimiter      guifg=#4EC9B0
+  " hi SpecialComment guifg=#4EC9B0
+  " hi Debug          guifg=#4EC9B0
 
 
-    " hi Error            guifg=
-    hi Todo             guifg=#0F1724 guibg=#cd853f
+  " hi Error            guifg=
+  hi Todo             guifg=#262626 guibg=#cd853f
 
-    " Tabline
-    hi TabLine          guifg=#F5E6DC guibg=#22385C
-    hi TabLineFill      guifg=#F5E6DC guibg=#22385C
-    hi TabLineSel       guifg=#0F1724 guibg=#f0e68c
+  " Tabline
+  hi TabLine          guifg=#F7EDE1 guibg=#404040
+  hi TabLineFill      guifg=#F7EDE1 guibg=#404040
+  hi TabLineSel       guifg=#262626 guibg=#f0e68c
 
-    " Visual selection
-    hi Visual           guibg=#2B4A46 guifg=NONE
-    hi! link WildMenu Visual
-    hi VisualNOS        guibg=#2B4A46 guifg=#f0e68c
+  " Visual selection
+  hi Visual           guibg=#433F38 guifg=NONE
+  hi! link WildMenu Visual
+  hi VisualNOS        guibg=#433F38 guifg=#f0e68c
 
-    " PopUp
-    hi Pmenu            guibg=#1A283F
-    hi PmenuSel         guibg=#0F1724 guifg=#f0e68c
-  endfunction
-  silent! colorscheme desert
-endif
+  " PopUp
+  hi Pmenu            guibg=#2E2E2E
+  hi PmenuSel         guibg=#262626 guifg=#f0e68c
+endfunction
+
+function! s:EnableDesertNight() abort
+  colorscheme desert
+  call s:DesertNight()
+  let g:colors_name = 'desert-night'
+endfunction
+
+command! DesertNight call s:EnableDesertNight()
+
+call s:EnableDesertNight()
 
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 " ## Plugin Replacements
@@ -482,10 +487,10 @@ set statusline+=%5*\ %3p%%\ %02l/%L\                     " Percentage of Doc, Li
 set statusline+=%1*\ %n\                                 " Buffer number
 
 " Static highlight group colors
-hi User2 guibg=#1A283F guifg=#F5E6DC ctermbg=236 ctermfg=15
-hi User3 guibg=#22385C guifg=#F5E6DC ctermbg=235 ctermfg=15
-hi User4 guibg=#22385C guifg=#1A283F ctermbg=235 ctermfg=235
-hi User5 guibg=#22385C guifg=#F581F3 ctermbg=235 ctermfg=213
+hi User2 guibg=#2E2E2E guifg=#F7EDE1 ctermbg=236 ctermfg=15
+hi User3 guibg=#404040 guifg=#F7EDE1 ctermbg=235 ctermfg=15
+hi User4 guibg=#404040 guifg=#2E2E2E ctermbg=235 ctermfg=235
+hi User5 guibg=#404040 guifg=#F581F3 ctermbg=235 ctermfg=213
 
 
 " Mode-based statusline color changes
@@ -516,23 +521,23 @@ augroup StatusLineModeColors
       if s:last_mode ==# a:mode | return | endif
 
       if a:mode ==# 'insert'
-        hi User1 guibg=#30bc73 guifg=#101825 ctermbg=71  ctermfg=15
-        hi User5      guibg=#1A283F guifg=#30bc73 ctermbg=237 ctermfg=71
+        hi User1 guibg=#FFA0A0 guifg=#101825 ctermbg=71  ctermfg=15
+        hi User5      guibg=#2E2E2E guifg=#FFA0A0 ctermbg=237 ctermfg=71
       elseif a:mode ==# 'visual'
-        hi User1 guibg=#FFB148 guifg=#101825 ctermbg=208 ctermfg=0
-        hi User5      guibg=#1A283F guifg=#FFB148 ctermbg=237 ctermfg=208
+        hi User1 guibg=#F8B471 guifg=#101825 ctermbg=208 ctermfg=0
+        hi User5      guibg=#2E2E2E guifg=#F8B471 ctermbg=237 ctermfg=208
       elseif a:mode ==# 'replace'
-        hi User1 guibg=#8FD1C7 guifg=#101825 ctermbg=167 ctermfg=15
-        hi User5      guibg=#1A283F guifg=#8FD1C7 ctermbg=237 ctermfg=167
+        hi User1 guibg=#FF7979 guifg=#101825 ctermbg=167 ctermfg=15
+        hi User5      guibg=#2E2E2E guifg=#FF7979 ctermbg=237 ctermfg=167
       elseif a:mode ==# 'cmdline'
-        hi User1 guibg=#87CEEB guifg=#101825 ctermbg=213 ctermfg=0
-        hi User5      guibg=#1A283F guifg=#87CEEB ctermbg=237 ctermfg=213
+        hi User1 guibg=#8FED88 guifg=#101825 ctermbg=213 ctermfg=0
+        hi User5      guibg=#2E2E2E guifg=#8FED88 ctermbg=237 ctermfg=213
       elseif a:mode ==# 'terminal'
-        hi User1 guibg=#87CEEB guifg=#101825 ctermbg=217 ctermfg=16
-        hi User5      guibg=#1A283F guifg=#87CEEB ctermbg=237 ctermfg=217
+        hi User1 guibg=#8FD1C7 guifg=#101825 ctermbg=217 ctermfg=16
+        hi User5      guibg=#2E2E2E guifg=#8FD1C7 ctermbg=237 ctermfg=217
       else " normal
         hi User1 guibg=#F0E68C guifg=#101825 ctermbg=33  ctermfg=15
-        hi User5      guibg=#1A283F guifg=#F0E68C ctermbg=237 ctermfg=33
+        hi User5      guibg=#2E2E2E guifg=#F0E68C ctermbg=237 ctermfg=33
       endif
 
       let s:last_mode = a:mode
@@ -585,7 +590,7 @@ augroup END
 
 " --- Colors ---
 highlight IndentGuides     guifg=#555555 ctermfg=240
-highlight IndentActive     guifg=#08436C ctermfg=220
+highlight IndentActive     guifg=#BDB76B ctermfg=220
 highlight! link SpecialKey  IndentGuides
 highlight! link Whitespace  IndentGuides
 highlight! link NonText     IndentGuides
@@ -593,7 +598,7 @@ highlight! link NonText     IndentGuides
 augroup IndentGuideColors
   autocmd!
   autocmd ColorScheme * highlight IndentGuides guifg=#555555 ctermfg=240
-  autocmd ColorScheme * highlight IndentActive guifg=#08436C ctermfg=220
+  autocmd ColorScheme * highlight IndentActive guifg=#BDB76B ctermfg=220
   autocmd ColorScheme * highlight! link SpecialKey  IndentGuides
   autocmd ColorScheme * highlight! link Whitespace  IndentGuides
   autocmd ColorScheme * highlight! link NonText     IndentGuides
