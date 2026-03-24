@@ -121,6 +121,7 @@ Config.setups = {
 		tmuxifier("uphill", "CENTER"),
 		tmuxifier("config", "RIGHT"),
 		Config.apps.email,
+		tmuxifier("music", "PRIMARY"),
 		Config.apps.slack,
 	},
 }
