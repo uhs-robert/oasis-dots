@@ -149,6 +149,42 @@ name = "Radio Schizoid - Progressive Psy"
 url = "http://schizoid.in/schizoid-prog.pls"
 
 # ──────────────────────────────────────────────────────────────────────────── #
+# !-- Synthwave / Retrowave
+# !-- Synthetic wave based music.
+# ──────────────────────────────────────────────────────────────────────────── #
+[[station]]
+name = "Nightride FM"
+url = "https://stream.nightride.fm/nightride.mp3"
+
+[[station]]
+name = "Chillsynth FM"
+url = "https://stream.nightride.fm/chillsynth.mp3"
+
+[[station]]
+name = "Datawave FM"
+url = "https://stream.nightride.fm/datawave.mp3"
+
+[[station]]
+name = "Spacesynth FM"
+url = "https://stream.nightride.fm/spacesynth.mp3"
+
+[[station]]
+name = "Darksynth FM"
+url = "https://stream.nightride.fm/darksynth.mp3"
+
+[[station]]
+name = "Horrorsynth FM"
+url = "https://stream.nightride.fm/horrorsynth.mp3"
+
+[[station]]
+name = "Nightride FM - EBSM"
+url = "https://stream.nightride.fm/ebsm.mp3"
+
+[[station]]
+name = "Nightride FM - Archive"
+url = "https://stream.nightride.fm/archive.mp3"
+
+# ──────────────────────────────────────────────────────────────────────────── #
 # !-- Progressive / Psychedelic / Journey Music
 # !-- Long-form, exploratory, melodic movement. Prog rock, psych rock,
 # !-- and “traveling” music that feels more active than ambient.
@@ -167,13 +203,11 @@ url = "http://www.deliciousagony.com/listen.pls"
 
 [[station]]
 name = "Prog Palace Radio: The Armory"
-url = "https://listen.streemlion.com/ProgPalace"
-# url = "https://cheetah.streemlion.com:4775"
+url = "https://cheetah.streemlion.com:4775/stream"
 
 [[station]]
 name = "Prog Palace Radio: The Courtyard"
-# url = "https://listen.streemlion.com/The-Courtyard"
-url = "https://cheetah.streemlion.com:5045"
+url = "https://puma.streemlion.com:5045/stream"
 
 # ──────────────────────────────────────────────────────────────────────────── #
 # !-- Jazz Fusion / Smart Background
