@@ -22,7 +22,7 @@ $status\
 $fill\
 $c$rust$golang$nodejs$lua$php$java$kotlin$haskell$python\
 $docker_context$conda\
-[](fg:stone bg:none)$time[](fg:stone bg:none)\
+[](fg:strong_primary bg:none)$time[](fg:strong_primary bg:none)\
 [ ](fg: none bg: none)$line_break\
 [╰─](fg:bright_black)$character\
 """
@@ -30,22 +30,31 @@ $docker_context$conda\
 # ──────────────────────────────────────────────────────────────────────────── #
 # !-- Palette
 # ──────────────────────────────────────────────────────────────────────────── #
-palette = 'oasis'
-[palettes.oasis]
-white = '#FFF7D7'
-black = '#101825'
-stone = '#4D4A42'
-bright_black = '#877363'
-bright_blue = '#87CEEB'
-bright_cyan = '#8FD1C7'
-green = '#7FCF78'
-bright_green = "#A3E39A"
-yellow = '#F0E68C'
-bright_yellow = '#F8B471'
-magenta = '#C695FF'
-red = '#FF7979'
-bright_red = '#FFA0A0'
+palette = "oasis_night_dark"
 
+[palettes.oasis_night_dark]
+# Accent
+primary = '#F0E68C'
+strong_primary = '#5D8BBB'
+
+# ANSI colors (0-7)
+black = '#040E25'
+red = '#FF7979'
+green = '#7FCF78'
+blue = '#81C0FF'
+purple = '#C695FF'
+cyan = '#68C0B6'
+white = '#FFF7D7'
+
+# Bright ANSI colors (8-15)
+bright_black = '#536B83'
+bright_red = '#FFA0A0'
+bright_green = '#A3E39A'
+bright_yellow = '#F8B471'
+bright_blue = '#87CEEB'
+bright_purple = '#D2ADFF'
+bright_cyan = '#8FD1C7'
+bright_white = '#F7F4E9'
 
 # ──────────────────────────────────────────────────────────────────────────── #
 # !-- General
@@ -180,6 +189,7 @@ truncation_length = 2
 truncation_symbol = "…/"
 truncate_to_repo = true
 repo_root_format = '[  ](fg:black bg:bright_yellow)[$read_only]($read_only_style)[$before_root_path]($style)[$repo_root]($style)[$path ]($style)'
+repo_root_style = 'fg:black bold bg:bright_yellow'
 
 [directory.substitutions]
 ".config" = ". "
@@ -274,5 +284,5 @@ format = '[](fg:red)[[ $symbol( $environment) ](fg:black bg:red)]($style)[
 [time]
 disabled = false
 time_format = " %I:%M%P"
-style = "bg:stone"
-format = '[[  $time ](fg:white bg:stone)]($style)'
+style = "bg:strong_primary"
+format = '[[  $time ](fg:black bg:strong_primary)]($style)'
