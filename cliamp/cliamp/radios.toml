@@ -1,0 +1,105 @@
+# radios.toml
+
+# ════════════════════════════════════════════════════════════════════════════ #
+# !- Radio Stations
+# ════════════════════════════════════════════════════════════════════════════ #
+
+# ──────────────────────────────────────────────────────────────────────────── #
+# !-- Video Game / Game Music
+# !-- Soundtracks, remixes, and game-adjacent electronic music.
+# ──────────────────────────────────────────────────────────────────────────── #
+[[station]]
+name = "Rainwave Game"
+url = "https://rainwave.cc/tune_in/1.mp3.m3u"
+
+[[station]]
+name = "Rainwave OCR"
+url = "https://rainwave.cc/tune_in/2.mp3.m3u"
+
+[[station]]
+name = "Rainwave Covers"
+url = "https://rainwave.cc/tune_in/3.mp3.m3u"
+
+[[station]]
+name = "Rainwave Chiptune"
+url = "https://rainwave.cc/tune_in/4.mp3.m3u"
+
+[[station]]
+name = "Rainwave All"
+url = "https://rainwave.cc/tune_in/5.mp3.m3u"
+
+# ──────────────────────────────────────────────────────────────────────────── #
+# !-- Indie Rock / Alt Pop
+# !-- Guitar-driven modern rock and melodic alternative pop.
+# ──────────────────────────────────────────────────────────────────────────── #
+[[station]]
+name = "SomaFM Indie Pop"
+url = "https://ice.somafm.com/indiepop"
+
+[[station]]
+name = "SomaFM PopTron"
+url = "https://ice.somafm.com/poptron"
+
+# ──────────────────────────────────────────────────────────────────────────── #
+# !-- Downtempo / Lofi / Instrumental Beats
+# !-- Chill beat-driven music for coding, reading, and background work.
+# ──────────────────────────────────────────────────────────────────────────── #
+[[station]]
+name = "SomaFM Fluid"
+url = "https://ice.somafm.com/fluid"
+
+[[station]]
+name = "SomaFM Groove Salad"
+url = "https://ice.somafm.com/groovesalad"
+
+[[station]]
+name = "SomaFM Groove Salad Classic"
+url = "https://ice.somafm.com/gsclassic"
+
+[[station]]
+name = "SomaFM Beat Blender"
+url = "https://ice.somafm.com/beatblender"
+
+# ──────────────────────────────────────────────────────────────────────────── #
+# !-- Ambient / Space / Atmospheric
+# !-- Slow, immersive, low-distraction soundscapes.
+# ──────────────────────────────────────────────────────────────────────────── #
+[[station]]
+name = "SomaFM Drone Zone"
+url = "https://ice.somafm.com/dronezone"
+
+[[station]]
+name = "SomaFM Deep Space One"
+url = "https://ice.somafm.com/deepspaceone"
+
+[[station]]
+name = "SomaFM Space Station Soma"
+url = "https://ice.somafm.com/spacestation"
+
+[[station]]
+name = "SomaFM Mission Control"
+url = "https://ice.somafm.com/missioncontrol"
+
+# ──────────────────────────────────────────────────────────────────────────── #
+# !-- Lounge / Cinematic / Stylish Background
+# !-- Suave, retro, jazzy, or soundtrack-like music with personality.
+# ──────────────────────────────────────────────────────────────────────────── #
+[[station]]
+name = "SomaFM Secret Agent"
+url = "https://ice.somafm.com/secretagent"
+
+[[station]]
+name = "SomaFM Illinois Street Lounge"
+url = "https://ice.somafm.com/illstreet"
+
+# ──────────────────────────────────────────────────────────────────────────── #
+# !-- Progressive / Psychedelic / Journey Music
+# !-- More melodic movement, long-form flow, and “traveling” energy.
+# ──────────────────────────────────────────────────────────────────────────── #
+[[station]]
+name = "SomaFM The Trip"
+url = "https://ice.somafm.com/thetrip"
+
+[[station]]
+name = "MOROW"
+url = "https://stream.morow.com/morow_med.mp3"
