@@ -1,37 +1,38 @@
-# qutebrowser/.config/qutebrowser/oasis_lagoon.py
-# oasis_lagoon.py
+# qutebrowser/.config/qutebrowser/oasis_night_dark.py
+# Oasis Night Dark
+# Author: uhs-robert
 # vim:fileencoding=utf-8:foldmethod=marker
 
 
-def setup(c, theme, samecolorrows=False):
+def setup(c, samecolorrows=True):
     palette = {}
 
     # flavours {{{
     palette = {
-        "magenta": "#C695FF",
-        "red": "#FF7979",
-        "bright_red": "#FFA0A0",
-        "yellow": "#F0E68C",
-        "bright_yellow": "#F8B471",
-        "green": "#8FED88",
-        "bright_green": "#B2F3AD",
-        "teal": "#68C0B6",
-        "blue": "#58B8FD",
-        "bright_blue": "#87CEEB",
-        "search": "#5A3824",
-        "core": "#101825",
-        "mantle": "#1A283F",
-        "shadow": "#0F1522",
-        "surface": "#22385C",
-        "fg_core": "#D9E6FA",
-        "fg_dim": "#877363",
-        "fg_muted": "#3B6A87",
-        "light_primary": "#94D0FE",
-        "primary": "#58B8FD",
-        "strong_primary": "#1CA0FD",
-        "secondary": "#F8B471",
-        "accent": "#FFA0A0",
-        "match": "#F9A05E",
+        "magenta":        "#C695FF",
+        "red":            "#FF7979",
+        "bright_red":     "#FFA0A0",
+        "yellow":         "#F0E68C",
+        "bright_yellow":  "#F8B471",
+        "green":          "#7FCF78",
+        "bright_green":   "#A3E39A",
+        "teal":           "#68C0B6",
+        "blue":           "#81C0FF",
+        "bright_blue":    "#87CEEB",
+        "search":         "#4D4A42",
+        "core":           "#041324",
+        "mantle":         "#0D1D33",
+        "shadow":         "#030D1A",
+        "surface":        "#162945",
+        "fg_core":        "#E8F1FF",
+        "fg_dim":         "#74808F",
+        "fg_muted":       "#536B83",
+        "light_primary":  "#B0C8DE",
+        "primary":        "#7FA3C9",
+        "strong_primary": "#5D8BBB",
+        "secondary":      "#D6CE7C",
+        "accent":         "#FFA0A0",
+        "match":          "#CDC673",
     }
     # }}}
 
@@ -44,7 +45,7 @@ def setup(c, theme, samecolorrows=False):
     c.colors.completion.category.fg = palette["primary"]
     if samecolorrows:
         c.colors.completion.even.bg = palette["core"]
-        c.colors.completion.odd.bg = c.colors.completion.even.bg
+        c.colors.completion.odd.bg = palette["core"]
     else:
         c.colors.completion.even.bg = palette["core"]
         c.colors.completion.odd.bg = palette["shadow"]
@@ -168,10 +169,10 @@ def setup(c, theme, samecolorrows=False):
 
     ## Color gradient interpolation system for the tab indicator.
     ## Valid values:
-    ##	 - rgb: Interpolate in the RGB color system.
-    ##	 - hsv: Interpolate in the HSV color system.
-    ##	 - hsl: Interpolate in the HSL color system.
-    ##	 - none: Don't show a gradient.
+    ## - rgb: Interpolate in the RGB color system.
+    ## - hsv: Interpolate in the HSV color system.
+    ## - hsl: Interpolate in the HSL color system.
+    ## - none: Don't show a gradient.
     c.colors.tabs.indicator.system = "none"
 
     # ## Background color of selected tabs.

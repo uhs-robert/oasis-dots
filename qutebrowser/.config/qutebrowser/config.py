@@ -19,10 +19,10 @@
 # flake8: noqa: F821
 # pyright: reportUndefinedVariable=false
 
-import oasis_lagoon
 from pathlib import Path
+import oasis_night_dark
 
-oasis_lagoon.setup(c, "lagoon", True)
+oasis_night_dark.setup(c, samecolorrows=True)
 
 # --- Globals ---
 LEADER = ","
