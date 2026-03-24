@@ -1,4 +1,4 @@
-# radios.toml
+# cliamp/cliamp/radios.toml
 
 # ════════════════════════════════════════════════════════════════════════════ #
 # !- Radio Stations
@@ -6,7 +6,7 @@
 
 # ──────────────────────────────────────────────────────────────────────────── #
 # !-- Video Game / Game Music
-# !-- Soundtracks, remixes, and game-adjacent electronic music.
+# !-- Soundtracks, remixes, VGM radio, and game-adjacent listening.
 # ──────────────────────────────────────────────────────────────────────────── #
 [[station]]
 name = "Rainwave Game"
@@ -28,9 +28,17 @@ url = "https://rainwave.cc/tune_in/4.mp3.m3u"
 name = "Rainwave All"
 url = "https://rainwave.cc/tune_in/5.mp3.m3u"
 
+[[station]]
+name = "Arcade Radio"
+url = "https://server10.reliastream.com/proxy/arcaderadio?mp=/stream2"
+
+[[station]]
+name = "CVGM"
+url = "http://radio.cvgm.net:8000/cvgm64.ogg"
+
 # ──────────────────────────────────────────────────────────────────────────── #
 # !-- Indie Rock / Alt Pop
-# !-- Guitar-driven modern rock and melodic alternative pop.
+# !-- Guitar-driven modern rock, melodic alternative, and accessible pop.
 # ──────────────────────────────────────────────────────────────────────────── #
 [[station]]
 name = "SomaFM Indie Pop"
@@ -60,9 +68,21 @@ url = "https://ice.somafm.com/gsclassic"
 name = "SomaFM Beat Blender"
 url = "https://ice.somafm.com/beatblender"
 
+# [[station]]
+# name = "FreeCodeCamp Radio"
+# url = "https://coderadio.freecodecamp.org/"
+
+[[station]]
+name = "Moon Phase Chill"
+url = "https://dc1.serverse.com/proxy/dnutqhxl/stream2"
+
+[[station]]
+name = "Moon Phase Ambient"
+url = "https://cp12.serverse.com/proxy/moonphase/stream"
+
 # ──────────────────────────────────────────────────────────────────────────── #
 # !-- Ambient / Space / Atmospheric
-# !-- Slow, immersive, low-distraction soundscapes.
+# !-- Slow, immersive, low-distraction soundscapes for deep focus.
 # ──────────────────────────────────────────────────────────────────────────── #
 [[station]]
 name = "SomaFM Drone Zone"
@@ -80,9 +100,25 @@ url = "https://ice.somafm.com/spacestation"
 name = "SomaFM Mission Control"
 url = "https://ice.somafm.com/missioncontrol"
 
+[[station]]
+name = "Ambient Sleeping Pill"
+url = "https://s.stereoscenic.com/asp-h.m3u"
+
+[[station]]
+name = "Ambient Sleeping Pill Modern"
+url = "https://s.stereoscenic.com/mod-h.m3u"
+
+[[station]]
+name = "Ambient Sleeping Pill AM"
+url = "https://s.stereoscenic.com/ama-h.m3u"
+
+[[station]]
+name = "Echoes of Bluemars - Cryosleep"
+url = "http://streams.echoesofbluemars.org:8000/cryosleep.m3u"
+
 # ──────────────────────────────────────────────────────────────────────────── #
 # !-- Lounge / Cinematic / Stylish Background
-# !-- Suave, retro, jazzy, or soundtrack-like music with personality.
+# !-- Suave, retro, jazzy, soundtrack-like, and personality-heavy listening.
 # ──────────────────────────────────────────────────────────────────────────── #
 [[station]]
 name = "SomaFM Secret Agent"
@@ -93,8 +129,29 @@ name = "SomaFM Illinois Street Lounge"
 url = "https://ice.somafm.com/illstreet"
 
 # ──────────────────────────────────────────────────────────────────────────── #
+# !-- Psychedelic Chill / Psychill
+# !-- Psychedelic ambient and chillout that stays good for background work.
+# ──────────────────────────────────────────────────────────────────────────── #
+[[station]]
+name = "Radio Schizoid - Chillout"
+url = "http://schizoid.in/schizoid-chill.pls"
+
+[[station]]
+name = "Radio Schizoid - PsyTrance"
+url = "http://schizoid.in/schizoid-psy.pls"
+
+[[station]]
+name = "Radio Schizoid - Dub Techno"
+url = "http://schizoid.in/schizoid-dub.pls"
+
+[[station]]
+name = "Radio Schizoid - Progressive Psy"
+url = "http://schizoid.in/schizoid-prog.pls"
+
+# ──────────────────────────────────────────────────────────────────────────── #
 # !-- Progressive / Psychedelic / Journey Music
-# !-- More melodic movement, long-form flow, and “traveling” energy.
+# !-- Long-form, exploratory, melodic movement. Prog rock, psych rock,
+# !-- and “traveling” music that feels more active than ambient.
 # ──────────────────────────────────────────────────────────────────────────── #
 [[station]]
 name = "SomaFM The Trip"
@@ -103,3 +160,31 @@ url = "https://ice.somafm.com/thetrip"
 [[station]]
 name = "MOROW"
 url = "https://stream.morow.com/morow_med.mp3"
+
+[[station]]
+name = "Delicious Agony"
+url = "http://www.deliciousagony.com/listen.pls"
+
+[[station]]
+name = "Prog Palace Radio: The Armory"
+url = "https://listen.streemlion.com/ProgPalace"
+# url = "https://cheetah.streemlion.com:4775"
+
+[[station]]
+name = "Prog Palace Radio: The Courtyard"
+# url = "https://listen.streemlion.com/The-Courtyard"
+url = "https://cheetah.streemlion.com:5045"
+
+# ──────────────────────────────────────────────────────────────────────────── #
+# !-- Jazz Fusion / Smart Background
+# !-- Fusion, jazz-rock, and musically dense instrumental listening.
+# !-- Best match for the Jean-Luc Ponty lane.
+# ──────────────────────────────────────────────────────────────────────────── #
+[[station]]
+name = "iFusion Radio"
+url = "https://listen.radioking.com/radio/523747/stream/582004"
+
+[[station]]
+name = "Latin Instrumentals"
+url = "http://s3.voscast.com:10038"
+# url = "http://www.beautifulinstrumentals.com/"
