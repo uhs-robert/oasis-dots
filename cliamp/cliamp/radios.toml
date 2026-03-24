@@ -29,6 +29,10 @@ name = "Rainwave All"
 url = "https://rainwave.cc/tune_in/5.mp3.m3u"
 
 [[station]]
+name = "Rainwave Chill"
+url = "https://rainwave.cc/tune_in/6.mp3.m3u"
+
+[[station]]
 name = "Arcade Radio"
 url = "https://server10.reliastream.com/proxy/arcaderadio?mp=/stream2"
 
