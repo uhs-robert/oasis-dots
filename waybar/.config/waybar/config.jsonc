@@ -32,7 +32,8 @@
       "custom/startmenu",
       "hyprland/workspaces",
       // "hyprland/window"
-      "mpris",
+      // "mpris#cliamp",
+      "mpris#firefox",
       "custom/cava"
     ],
     // "modules-left": ["custom/startmenu", "hyprland/workspaces"],

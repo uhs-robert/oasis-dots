@@ -333,7 +333,27 @@
     "on-click-middle": "playerctl previous",
     "on-click-right": "playerctl next",
     "tooltip-format": "{player} ({status})\n{title}\n{artist} - {album}\n[{position} / {length}]"
-    // "ignored-players": ["firefox"]
+  },
+
+  "mpris#cliamp": {
+    "player": "cliamp",
+    "format": "<span size='12000' color='#7FA3C9'>{status_icon}</span>  {dynamic}",
+    "format-paused": "<span size='12000' color='#D6CE7C'>{status_icon}</span>  {dynamic}",
+    "format-stopped": "",
+    "max-length": 28,
+    "player-icons": {
+      "default": "",
+      "mpv": "🎵",
+      "spotify": ""
+    },
+    "status-icons": {
+      "paused": "",
+      "playing": "",
+      "stopped": ""
+    },
+    "on-click": "playerctl -p cliamp play-pause",
+    "tooltip-format": "{player} ({status})\n{title}\n{artist} - {album}\n[{position} / {length}]",
+    "ignored-players": ["firefox"]
   },
 
   "custom/cava": {
