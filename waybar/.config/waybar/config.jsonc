@@ -1,18 +1,28 @@
 // [CONFIG]
+
 [
-  // Vertical Monitor
+  // ────────────────────────────────────────────────────────────────────────── //
+  // !-- Vertical Monitor
+  // ────────────────────────────────────────────────────────────────────────── //
   {
     "output": "HP Inc. HP Z22n G2 6CM8411J22",
     "include": ["basic-modules.jsonc"],
     "position": "top",
     "modules-left": [
       "custom/startmenu",
-      "hyprland/workspaces"
+      "hyprland/workspaces",
       // "hyprland/window"
+      "custom/seperator-right"
     ],
     // "modules-center": ["clock"],
-    "modules-center": ["clock", "custom/weather"],
+    "modules-center": [
+      "custom/seperator-left",
+      "clock",
+      "custom/weather",
+      "custom/seperator-right"
+    ],
     "modules-right": [
+      "custom/seperator-left",
       "group/systemtray",
       "custom/updates",
       "hyprland/submap",
@@ -23,9 +33,12 @@
       "custom/notifications"
     ]
   },
-  // All the others
+
+  // ────────────────────────────────────────────────────────────────────────── //
+  // !-- Laptop
+  // ────────────────────────────────────────────────────────────────────────── //
   {
-    "output": "!HP Inc. HP Z22n G2 6CM8411J22",
+    "output": "eDP-2",
     "include": ["basic-modules.jsonc"],
     "position": "top",
     "modules-left": [
@@ -33,12 +46,56 @@
       "hyprland/workspaces",
       // "hyprland/window"
       // "mpris#cliamp",
-      "mpris#firefox",
-      "custom/cava"
+      // "mpris#firefox",
+      "custom/cava",
+      "custom/seperator-right"
     ],
     // "modules-left": ["custom/startmenu", "hyprland/workspaces"],
-    "modules-center": ["clock", "custom/weather"],
+    "modules-center": [
+      "custom/seperator-left",
+      "clock",
+      "custom/weather",
+      "custom/seperator-right"
+    ],
     "modules-right": [
+      "custom/seperator-left",
+      "group/systemtray",
+      "hyprland/submap",
+      "custom/updates",
+      "custom/voxtype",
+      "group/volume",
+      "group/power",
+      "network",
+      "bluetooth",
+      "custom/notifications"
+    ]
+  },
+
+  // ────────────────────────────────────────────────────────────────────────── //
+  // !-- All the others
+  // ────────────────────────────────────────────────────────────────────────── //
+  {
+    "output": ["!HP Inc. HP Z22n G2 6CM8411J22", "!eDP-2", "*"],
+    "include": ["basic-modules.jsonc"],
+    "position": "top",
+    "modules-left": [
+      "custom/startmenu",
+      "hyprland/workspaces",
+      // "hyprland/window"
+      "mpris#cliamp",
+      // "mpris#firefox",
+      "custom/cava",
+      "custom/seperator-right"
+    ],
+    // "modules-left": ["custom/startmenu", "hyprland/workspaces"],
+    "modules-center": [
+      "custom/seperator-left",
+      "clock",
+      "custom/weather",
+      "custom/seperator-right"
+    ],
+    "modules-right": [
+      "custom/seperator-left",
       "group/systemtray",
       "hyprland/submap",
       "custom/updates",
@@ -52,8 +109,9 @@
   }
 ]
 
-// [DEBUGGING CONFIGS]
-
+// ────────────────────────────────────────────────────────────────────────── //
+// !-- [DEBUGGING CONFIGS]
+// ────────────────────────────────────────────────────────────────────────── //
 // {
 //   "output": "eDP-2",
 //   "position": "top",

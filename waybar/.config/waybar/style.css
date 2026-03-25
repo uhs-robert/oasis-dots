@@ -27,39 +27,59 @@ tooltip {
   box-shadow: 0 6px 30px rgba(0, 0, 0, 0.35);
 }
 
+#custom-seperator-right,
+#custom-seperator-left {
+  color: @bg_core;
+  padding: 0;
+  margin-top: -1;
+  min-width: 0;
+  font-size: 22px;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+}
+
 /* Module containers */
 .modules-left,
 .modules-center,
 .modules-right {
-  margin-top: 5px;
+  /* margin-top: 5px; */
   padding: 0;
   background: transparent;
 }
 
-/* Module Widgets - Pill Design */
+/* Module Widgets */
 .modules-left > widget > *,
 .modules-center > widget > *,
 .modules-right > widget > * {
   background: @bg_core;
   padding: 0px 8px 0px 8px;
-  border: none;
+}
+
+/* Center Module Widgets */
+.modules-center > widget > * {
+  background: @bg_mantle;
+}
+.modules-center #custom-seperator-right,
+.modules-center #custom-seperator-left {
+  color: @bg_mantle;
 }
 
 /* Round only the ends + give outer breathing room */
-.modules-left > widget:first-child > *,
-.modules-center > widget:first-child > *,
-.modules-right > widget:first-child > * {
-  margin-left: 5px;
-  border-top-left-radius: 6px;
-  border-bottom-left-radius: 6px;
-}
-.modules-left > widget:last-child > *,
-.modules-center > widget:last-child > *,
-.modules-right > widget:last-child > * {
-  margin-right: 5px;
-  border-top-right-radius: 6px;
-  border-bottom-right-radius: 6px;
-}
+/* .modules-left > widget:first-child > *, */
+/* .modules-center > widget:first-child > *, */
+/* .modules-right > widget:first-child > * { */
+/*   margin-left: 5px; */
+/*   border-top-left-radius: 6px; */
+/*   border-bottom-left-radius: 6px; */
+/* } */
+/* .modules-left > widget:last-child > *, */
+/* .modules-center > widget:last-child > *, */
+/* .modules-right > widget:last-child > * { */
+/*   margin-right: 5px; */
+/*   border-top-right-radius: 6px; */
+/*   border-bottom-right-radius: 6px; */
+/* } */
 
 /*
 * Custom Modules
@@ -68,7 +88,7 @@ tooltip {
   padding: 2px 05px 2px 8px;
   color: @primary;
   background-color: @bg_core;
-  border-radius: 8px 0px 0px 8px;
+  /* border-radius: 8px 0px 0px 8px; */
 }
 
 /*
@@ -77,9 +97,9 @@ tooltip {
 #workspaces {
   padding: 4px 0px 4px 8px;
   background-color: @bg_core;
-  margin-right: 5px;
-  border-top-right-radius: 8px;
-  border-bottom-right-radius: 8px;
+  /* margin-right: 5px; */
+  /* border-top-right-radius: 8px; */
+  /* border-bottom-right-radius: 8px; */
 }
 
 #window {
@@ -132,10 +152,10 @@ tooltip {
 #custom-cava {
   color: @primary;
   font-size: 8px;
-  margin-left: -8px;
+  /* margin-left: -8px; */
   /* margin-right: 5px; */
-  border-top-right-radius: 8px;
-  border-bottom-right-radius: 8px;
+  /* border-top-right-radius: 8px; */
+  /* border-bottom-right-radius: 8px; */
 }
 
 #custom-leftArrow,
@@ -192,8 +212,8 @@ tooltip {
 }
 
 #mpris {
-  border-top-left-radius: 8px;
-  border-bottom-left-radius: 8px;
+  /* border-top-left-radius: 8px; */
+  /* border-bottom-left-radius: 8px; */
 }
 
 /*

@@ -1,5 +1,13 @@
 // vim: set ft=jsonc:
 {
+  "custom/seperator-right": {
+    "format": "",
+    "tooltip": false
+  },
+  "custom/seperator-left": {
+    "format": "",
+    "tooltip": false
+  },
   "custom/leftArrow": {
     "format": "",
     "tooltip": false
