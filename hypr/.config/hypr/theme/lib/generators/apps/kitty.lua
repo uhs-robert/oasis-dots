@@ -28,7 +28,7 @@ function KittyGenerator:generate(palette, output_dir, palette_name)
 	if theme_file then
 		theme_file:close()
 		print("✓ Kitty: Using existing theme: " .. theme_filename)
-		self:setup_auto_conf(kitty_config_dir, kitty_themes_dir, theme_filename, palette_name)
+		self:setup_auto_conf(kitty_config_dir, kitty_themes_dir, theme_filename, palette_name, home)
 		Utils.write_file(output_dir .. "/kitty-theme-name.txt", theme_filename)
 		return true
 	end
@@ -39,7 +39,7 @@ function KittyGenerator:generate(palette, output_dir, palette_name)
 	local generated_path = kitty_themes_dir .. "/" .. theme_filename
 
 	if Utils.write_file(generated_path, content) then
-		self:setup_auto_conf(kitty_config_dir, kitty_themes_dir, theme_filename, palette_name)
+		self:setup_auto_conf(kitty_config_dir, kitty_themes_dir, theme_filename, palette_name, home)
 		Utils.write_file(output_dir .. "/kitty-theme-name.txt", theme_filename)
 		return true
 	end
@@ -47,9 +47,9 @@ function KittyGenerator:generate(palette, output_dir, palette_name)
 	return false
 end
 
-function KittyGenerator:setup_auto_conf(kitty_config_dir, kitty_themes_dir, theme_filename, palette_name)
+function KittyGenerator:setup_auto_conf(kitty_config_dir, kitty_themes_dir, theme_filename, palette_name, home)
 	-- Create dark-theme.auto.conf
-	local auto_conf_content = string.format("include %s/%s\n", kitty_themes_dir, theme_filename)
+	local auto_conf_content = string.format("include %s/%s\n", kitty_themes_dir:gsub("^" .. home, "~"), theme_filename)
 	Utils.write_file(kitty_config_dir .. "/dark-theme.auto.conf", auto_conf_content)
 
 	-- If this is a dark theme, search for corresponding light theme
@@ -63,7 +63,7 @@ function KittyGenerator:setup_auto_conf(kitty_config_dir, kitty_themes_dir, them
 
 		if light_theme_path and light_theme_path ~= "" then
 			local light_filename = light_theme_path:match("([^/]+)$")
-			local light_auto_conf = string.format("include %s/%s\n", kitty_themes_dir, light_filename)
+			local light_auto_conf = string.format("include %s/%s\n", kitty_themes_dir:gsub("^" .. home, "~"), light_filename)
 			Utils.write_file(kitty_config_dir .. "/light-theme.auto.conf", light_auto_conf)
 			print("✓ Kitty: Using light theme: " .. light_filename)
 		end
