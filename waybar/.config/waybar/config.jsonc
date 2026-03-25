@@ -46,7 +46,7 @@
       "hyprland/workspaces",
       // "hyprland/window"
       // "mpris#cliamp",
-      // "mpris#firefox",
+      // "mpris",
       "custom/cava",
       "custom/seperator-right"
     ],
@@ -83,7 +83,7 @@
       "hyprland/workspaces",
       // "hyprland/window"
       "mpris#cliamp",
-      // "mpris#firefox",
+      // "mpris",
       "custom/cava",
       "custom/seperator-right"
     ],
