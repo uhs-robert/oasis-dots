@@ -243,7 +243,7 @@
     "format-icons": ["󰤯", "󰤟", "󰤢", "󰤥", "󰤨"],
     "format-ethernet": "<span size='11000' foreground='#7FA3C9'>󰈀</span>",
     "format-linked": "{ifname} (No IP) ",
-    "format-disconnected": "<span size='11000' foreground='#0D1D33'>󰤭</span>",
+    "format-disconnected": "<span size='11000' foreground='#0A1730'>󰤭</span>",
     "tooltip-format-wifi": "{essid}, {signalStrength}%",
     "on-click": "kitty -e impala",
     "on-click-right": "nm-connection-editor"
