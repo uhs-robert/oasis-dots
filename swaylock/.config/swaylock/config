@@ -18,7 +18,7 @@ indicator-thickness=20
 # Base Colors
 color=040E25
 bs-hl-color=F8B471
-line-color=0A1730
+line-color=0B1832
 ring-color=7FA3C9
 inside-color=040E25
 key-hl-color=F0E68C
@@ -27,19 +27,19 @@ text-color=E8F1FF
 text-caps-lock-color=""
 
 # Verification State (typing password)
-line-ver-color=11203D
+line-ver-color=122444
 inside-ver-color=040E25
 ring-ver-color=7FCF78
 text-ver-color=7FCF78
 
 # Wrong Password State
-line-wrong-color=11203D
+line-wrong-color=122444
 inside-wrong-color=040E25
 ring-wrong-color=FF7979
 text-wrong-color=FF7979
 
 # Clear State (password cleared)
-line-clear-color=11203D
+line-clear-color=122444
 inside-clear-color=040E25
 ring-clear-color=F0E68C
 text-clear-color=F0E68C

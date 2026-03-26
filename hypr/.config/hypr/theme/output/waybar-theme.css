@@ -4,9 +4,9 @@
 
 /* Backgrounds */
 @define-color bg_core #040E25;
-@define-color bg_mantle #0A1730;
-@define-color bg_shadow #030D1A;
-@define-color bg_surface #11203D;
+@define-color bg_mantle #0B1832;
+@define-color bg_shadow #020A19;
+@define-color bg_surface #122444;
 
 /* Foregrounds */
 @define-color fg_core #E8F1FF;
