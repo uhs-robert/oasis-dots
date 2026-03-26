@@ -210,7 +210,8 @@
 
   "clock": {
     "interval": 1,
-    "format": "<span size='12000' color='{{primary}}'> </span> {:%H:%M:%S %Z 󰧞 %a %b %d}",
+    // "format": "<span size='12000' color='{{primary}}'> </span> {:%H:%M:%S %Z 󰧞 %a %b %d}",
+    "format": "{:%H:%M:%S %Z <span size='12000' color='{{primary}}'>|</span> %a %b %d}",
     "tooltip-format": "\n<span font='Maple Mono NF 12'><tt>{calendar}</tt></span>",
     "timezones": ["America/New_York", "America/Denver", "America/Los_Angeles"],
     "calendar": {

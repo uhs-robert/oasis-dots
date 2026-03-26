@@ -210,7 +210,8 @@
 
   "clock": {
     "interval": 1,
-    "format": "<span size='12000' color='#7FA3C9'> </span> {:%H:%M:%S %Z 󰧞 %a %b %d}",
+    // "format": "<span size='12000' color='#7FA3C9'> </span> {:%H:%M:%S %Z 󰧞 %a %b %d}",
+    "format": "{:%H:%M:%S %Z <span size='12000' color='#7FA3C9'>|</span> %a %b %d}",
     "tooltip-format": "\n<span font='Maple Mono NF 12'><tt>{calendar}</tt></span>",
     "timezones": ["America/New_York", "America/Denver", "America/Los_Angeles"],
     "calendar": {
@@ -243,7 +244,7 @@
     "format-icons": ["󰤯", "󰤟", "󰤢", "󰤥", "󰤨"],
     "format-ethernet": "<span size='11000' foreground='#7FA3C9'>󰈀</span>",
     "format-linked": "{ifname} (No IP) ",
-    "format-disconnected": "<span size='11000' foreground='#0A1730'>󰤭</span>",
+    "format-disconnected": "<span size='11000' foreground='#0B1832'>󰤭</span>",
     "tooltip-format-wifi": "{essid}, {signalStrength}%",
     "on-click": "kitty -e impala",
     "on-click-right": "nm-connection-editor"
@@ -347,7 +348,6 @@
     "player": "cliamp",
     "format": "<span size='12000' color='#7FA3C9'>{status_icon}</span>  {dynamic}",
     "format-paused": "<span size='12000' color='#D6CE7C'>{status_icon}</span>  {dynamic}",
-    "format-stopped": "",
     "max-length": 28,
     "player-icons": {
       "default": "",
@@ -356,8 +356,7 @@
     },
     "status-icons": {
       "paused": "",
-      "playing": "",
-      "stopped": ""
+      "playing": ""
     },
     "on-click": "playerctl -p cliamp play-pause",
     "tooltip-format": "{player} ({status})\n{title}\n{artist} - {album}\n[{position} / {length}]",

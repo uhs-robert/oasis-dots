@@ -18,7 +18,6 @@
     "modules-center": [
       "custom/seperator-left",
       "clock",
-      "custom/weather",
       "custom/seperator-right"
     ],
     "modules-right": [
@@ -45,7 +44,7 @@
       "custom/startmenu",
       "hyprland/workspaces",
       // "hyprland/window"
-      // "mpris#cliamp",
+      "mpris#cliamp",
       // "mpris",
       "custom/cava",
       "custom/seperator-right"
@@ -54,7 +53,6 @@
     "modules-center": [
       "custom/seperator-left",
       "clock",
-      "custom/weather",
       "custom/seperator-right"
     ],
     "modules-right": [
@@ -62,9 +60,10 @@
       "group/systemtray",
       "hyprland/submap",
       "custom/updates",
-      "custom/voxtype",
+      "custom/weather",
       "group/volume",
       "group/power",
+      "custom/voxtype",
       "network",
       "bluetooth",
       "custom/notifications"
@@ -91,7 +90,6 @@
     "modules-center": [
       "custom/seperator-left",
       "clock",
-      "custom/weather",
       "custom/seperator-right"
     ],
     "modules-right": [
@@ -99,9 +97,10 @@
       "group/systemtray",
       "hyprland/submap",
       "custom/updates",
-      "custom/voxtype",
+      "custom/weather",
       "group/volume",
       "group/power",
+      "custom/voxtype",
       "network",
       "bluetooth",
       "custom/notifications"
