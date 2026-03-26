@@ -7,41 +7,44 @@
 def setup(c, samecolorrows=True):
     palette = {}
 
+    # fmt: off
     # flavours {{{
     palette = {
-        "magenta":        "#C695FF",
-        "red":            "#FF7979",
-        "bright_red":     "#FFA0A0",
-        "yellow":         "#F0E68C",
-        "bright_yellow":  "#F8B471",
-        "green":          "#7FCF78",
-        "bright_green":   "#A3E39A",
-        "teal":           "#68C0B6",
-        "blue":           "#81C0FF",
-        "bright_blue":    "#87CEEB",
-        "search":         "#4D4A42",
-        "core":           "#041324",
-        "mantle":         "#0D1D33",
-        "shadow":         "#030D1A",
-        "surface":        "#162945",
-        "fg_core":        "#E8F1FF",
-        "fg_dim":         "#74808F",
-        "fg_muted":       "#536B83",
-        "light_primary":  "#B0C8DE",
-        "primary":        "#7FA3C9",
-        "strong_primary": "#5D8BBB",
-        "secondary":      "#D6CE7C",
-        "accent":         "#FFA0A0",
-        "match":          "#CDC673",
+        "magenta":              "#C695FF",
+        "red":                  "#FF7979",
+        "bright_red":           "#FFA0A0",
+        "yellow":               "#F0E68C",
+        "bright_yellow":        "#F8B471",
+        "green":                "#7FCF78",
+        "bright_green":         "#A3E39A",
+        "teal":                 "#68C0B6",
+        "blue":                 "#81C0FF",
+        "bright_blue":          "#87CEEB",
+        "search":               "#4D4A42",
+        "core":                 "#101418",
+        "mantle":               "#18202A",
+        "shadow":               "#0C1014",
+        "surface":              "#223040",
+        "fg_core":              "#F7F4F2",
+        "fg_dim":               "#7D7267",
+        "fg_muted":             "#4E6578",
+        "light_primary":        "#B0C8DE",
+        "primary":              "#7FA3C9",
+        "strong_primary":       "#5D8BBB",
+        "secondary":            "#D6CE7C",
+        "strong_secondary":     "#BDB76B",
+        "accent":               "#FFA0A0",
+        "match":                "#81C0FF",
     }
     # }}}
+    # fmt: on
 
     c.colors.webpage.bg = palette["core"]
 
     # completion {{{
     c.colors.completion.category.bg = palette["mantle"]
     c.colors.completion.category.border.bottom = palette["core"]
-    c.colors.completion.category.border.top = palette["strong_primary"]
+    c.colors.completion.category.border.top = palette["fg_muted"]
     c.colors.completion.category.fg = palette["primary"]
     if samecolorrows:
         c.colors.completion.even.bg = palette["core"]
@@ -61,7 +64,7 @@ def setup(c, samecolorrows=True):
 
     ## Color of the scrollbar in completion view
     c.colors.completion.scrollbar.bg = palette["mantle"]
-    c.colors.completion.scrollbar.fg = palette["strong_primary"]
+    c.colors.completion.scrollbar.fg = palette["strong_secondary"]
     # }}}
 
     # downloads {{{
@@ -78,7 +81,7 @@ def setup(c, samecolorrows=True):
     # }}}
 
     # hints {{{
-    c.colors.hints.bg = palette["primary"]
+    c.colors.hints.bg = palette["strong_secondary"]
     c.colors.hints.fg = palette["core"]
     c.hints.border = "1px solid " + palette["core"]
     c.colors.hints.match.fg = palette["fg_muted"]
@@ -159,10 +162,10 @@ def setup(c, samecolorrows=True):
 
     # tabs {{{
     c.colors.tabs.bar.bg = palette["core"]
-    c.colors.tabs.even.bg = palette["mantle"]
-    c.colors.tabs.even.fg = palette["primary"]
-    c.colors.tabs.odd.bg = palette["mantle"]
-    c.colors.tabs.odd.fg = palette["primary"]
+    c.colors.tabs.even.bg = palette["core"]
+    c.colors.tabs.even.fg = palette["blue"]
+    c.colors.tabs.odd.bg = palette["core"]
+    c.colors.tabs.odd.fg = palette["blue"]
 
     ## Color for the tab indicator on errors.
     c.colors.tabs.indicator.error = palette["red"]
@@ -176,18 +179,18 @@ def setup(c, samecolorrows=True):
     c.colors.tabs.indicator.system = "none"
 
     # ## Background color of selected tabs.
-    c.colors.tabs.selected.even.bg = palette["primary"]
+    c.colors.tabs.selected.even.bg = palette["strong_secondary"]
     c.colors.tabs.selected.even.fg = palette["core"]
-    c.colors.tabs.selected.odd.bg = palette["strong_primary"]
+    c.colors.tabs.selected.odd.bg = palette["strong_secondary"]
     c.colors.tabs.selected.odd.fg = palette["core"]
     # }}}
 
     # pinned tabs {{{
     c.colors.tabs.pinned.even.bg = palette["mantle"]
-    c.colors.tabs.pinned.even.fg = palette["secondary"]
+    c.colors.tabs.pinned.even.fg = palette["yellow"]
     c.colors.tabs.pinned.odd.bg = palette["mantle"]
-    c.colors.tabs.pinned.odd.fg = palette["secondary"]
-    c.colors.tabs.pinned.selected.even.bg = palette["primary"]
+    c.colors.tabs.pinned.odd.fg = palette["yellow"]
+    c.colors.tabs.pinned.selected.even.bg = palette["strong_primary"]
     c.colors.tabs.pinned.selected.even.fg = palette["core"]
     c.colors.tabs.pinned.selected.odd.bg = palette["strong_primary"]
     c.colors.tabs.pinned.selected.odd.fg = palette["core"]

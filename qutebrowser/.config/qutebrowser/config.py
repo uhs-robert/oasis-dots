@@ -39,6 +39,7 @@ YAZI = [
 ]
 DEFAULT_SEARCH = "duck"
 LAGOON_CSS = "~/.config/qutebrowser/solarized-everything-css/css/oasis_lagoon/oasis_lagoon-all-sites.css"
+MIDNIGHT_CSS = "~/.config/qutebrowser/solarized-everything-css/css/oasis_midnight/oasis_midnight-all-sites.css"
 DESERT_CSS = "~/.config/qutebrowser/solarized-everything-css/css/oasis_desert/oasis_desert-all-sites.css"
 GRUVBOX_CSS = (
     "~/.config/qutebrowser/solarized-everything-css/css/gruvbox/gruvbox-all-sites.css"
@@ -278,6 +279,7 @@ config.bind(f"{LEADER}M", "hint links spawn mpv {hint-url}")
 ## -- Toggles --
 config.bind(f"{LEADER}tl", f'config-cycle content.user_stylesheets {LAGOON_CSS} ""')
 config.bind(f"{LEADER}tg", f'config-cycle content.user_stylesheets {GRUVBOX_CSS} ""')
+config.bind(f"{LEADER}tm", f'config-cycle content.user_stylesheets {MIDNIGHT_CSS} ""')
 config.bind(f"{LEADER}td", f'config-cycle content.user_stylesheets {DESERT_CSS} ""')
 config.bind("td", "config-cycle colors.webpage.darkmode.enabled true false ;; reload")
 for mode in ["true", "false"]:
