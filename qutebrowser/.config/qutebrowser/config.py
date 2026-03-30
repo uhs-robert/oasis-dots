@@ -329,6 +329,8 @@ c.url.searchengines = {
     "hackernews": "https://www.hnsearch.com/search#request/submissions&q={}",
     "imdb": "https://www.imdb.com/find?s=all&q={}",
     "mdn": "https://developer.mozilla.org/en-US/search?q={}",
+    "nexusmods": "https://www.nexusmods.com/games?keyword={}&sort=approved",
+    "gamebanana": "https://gamebanana.com/search?_sModelName=Game&_sOrder=best_match&_sSearchString={}",
     "npm": "https://www.npmjs.com/search?q={}",
     "proton": "https://www.protondb.com/search?q={}",
     "reddit": "https://www.reddit.com/search/?q={}",

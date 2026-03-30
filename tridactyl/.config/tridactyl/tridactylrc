@@ -283,6 +283,8 @@ set searchurls.lastweek https://www.google.com/search?hl=en&tbo=1&tbs=qdr:w&q=%s
 set searchurls.lastday https://www.google.com/search?hl=en&tbo=1&tbs=qdr:d&q=%s
 set searchurls.lasthour https://www.google.com/search?hl=en&tbo=1&tbs=qdr:h&q=%s
 set searchurls.maps http//maps.google.com/maps?f=q&source=s_q&hl=en&q=from+my+home+address+to+%s
+set searchurls.nexusmods https://www.nexusmods.com/games?keyword=%s&sort=approved
+set searchurls.gamebanana https://gamebanana.com/search?_sModelName=Game&_sOrder=best_match&_sSearchString=%s
 set searchurls.hackernews https://www.hnsearch.com/search#request/submissions&q=%s
 set searchurls.imdb https://www.imdb.com/find?s=all&q=%s
 set searchurls.mdn https://developer.mozilla.org/en-US/search?q=%s
