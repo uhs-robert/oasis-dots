@@ -268,8 +268,10 @@ config.bind(f"{LEADER}f", f"hint links {FIREFOX} --new-tab {{hint - url}}")  # H
 
 ## -- Login management --
 config.bind(f"{LEADER}ll", BW)
+config.bind("<Ctrl-Shift-l>", BW)
 config.bind(f"{LEADER}lu", f"{BW} --username-only")
 config.bind(f"{LEADER}lp", f"{BW} --password-only")
+config.bind("<Ctrl-Shift-p>", f"{BW} --password-only")
 config.bind(f"{LEADER}lt", f"{BW} --totp")
 config.bind(f"{LEADER}lT", f"{BW} --totp-only")
 
