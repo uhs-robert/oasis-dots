@@ -120,6 +120,7 @@ c.qt.args = ["blink-settings=preferredColorScheme=1"]
 c.statusbar.show = "in-mode"
 c.tabs.position = "top"
 c.tabs.show = "multiple"
+c.qt.force_software_rendering = "chromium"
 # c.spellcheck.languages = ["en-US"]
 
 # --- Aliases ---
