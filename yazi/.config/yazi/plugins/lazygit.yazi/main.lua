@@ -9,8 +9,8 @@ return {
                 timeout = 5,
             })
         else
+            local output, err_code = Command("lazygit"):stdout(Command.PIPED):stderr(Command.PIPED):spawn()
             permit = ui.hide and ui.hide() or ya.hide()
-            local output, err_code = Command("lazygit"):stdin(Command.INHERIT):stdout(Command.INHERIT):stderr(Command.PIPED):spawn()
             if output and not err_code then
                 output, err_code = output:wait_with_output()
             end
