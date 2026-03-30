@@ -1,11 +1,10 @@
 /* waybar/.config/waybar/style.css */
 
 /* LUA-THEME: Import generated theme colors */
-@import "../hypr/theme/output/waybar-theme.css";
+/* @import "../hypr/theme/output/waybar-theme.css"; */
+@import "./waybar-theme-manual.css";
 
-/*
-* Globals
-*/
+/* Globals */
 window#waybar {
   all: unset;
 }

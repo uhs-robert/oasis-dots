@@ -1,0 +1,33 @@
+/* waybar/.config/waybar/waybar-theme-manual.css */
+
+/* Backgrounds */
+@define-color bg_core #101418;
+@define-color bg_mantle #18202A;
+@define-color bg_shadow #0C1014;
+@define-color bg_surface #223040;
+
+/* Foregrounds */
+@define-color fg_core #F7F4F2;
+@define-color fg_strong #FFE0CC;
+@define-color fg_muted #4E6578;
+@define-color fg_dim #7D7267;
+
+/* Accents */
+@define-color primary #7FA3C9;
+@define-color secondary #FF7979;
+@define-color accent #7FCF78;
+@define-color yellow #F0E68C;
+
+/* Status Colors */
+@define-color error #FFA0A0;
+@define-color warning #F0E68C;
+@define-color info #81C0FF;
+@define-color hint #8FD1C7;
+@define-color ok #A3E39A;
+
+/* ANSI Colors (for reference) */
+@define-color red #FF7979;
+@define-color green #7FCF78;
+@define-color blue #81C0FF;
+@define-color cyan #68C0B6;
+@define-color magenta #C695FF;
