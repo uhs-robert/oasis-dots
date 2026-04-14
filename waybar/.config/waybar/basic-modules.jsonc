@@ -373,7 +373,7 @@
     // "on-click": "hyprpanel t mediamenu",
     "on-click": "playerctl play-pause",
     "on-click-middle": "playerctl previous",
-    "on-click-right": "swaync-client -t -sw"
+    "on-click-right": "~/.config/hypr/scripts/focus-media-player.sh"
   },
 
   "custom/updates": {
