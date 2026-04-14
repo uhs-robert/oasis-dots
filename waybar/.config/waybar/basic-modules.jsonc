@@ -340,7 +340,7 @@
     },
     "on-click": "playerctl play-pause",
     "on-click-middle": "playerctl previous",
-    "on-click-right": "playerctl next",
+    "on-click-right": "~/.config/hypr/scripts/focus-media-player.sh",
     "tooltip-format": "{player} ({status})\n{title}\n{artist} - {album}\n[{position} / {length}]"
   },
 
