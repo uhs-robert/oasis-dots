@@ -1,11 +1,26 @@
 {
   "includeCoAuthoredBy": false,
   "permissions": {
-    "allow": ["Read(~/.zshrc)"]
+    "allow": [
+      "Read(~/.zshrc)"
+    ]
   },
   "model": "sonnet",
   "enabledPlugins": {
-    "lua-lsp@claude-plugins-official": true
+    "lua-lsp@claude-plugins-official": true,
+    "caveman@caveman": true
   },
-  "alwaysThinkingEnabled": true
+  "extraKnownMarketplaces": {
+    "caveman": {
+      "source": {
+        "source": "github",
+        "repo": "JuliusBrussee/caveman"
+      }
+    }
+  },
+  "alwaysThinkingEnabled": true,
+  "statusLine": {
+    "type": "command",
+    "command": "bash \"/home/roberth/dotfiles/claude/.claude/plugins/cache/caveman/caveman/24e6ee9ea827/hooks/caveman-statusline.sh\""
+  }
 }
