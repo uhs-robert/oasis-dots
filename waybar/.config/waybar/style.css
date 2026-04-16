@@ -113,7 +113,7 @@ tooltip {
   padding: 0px 6px 0px 6px;
   margin-right: 8px;
   border-radius: 20px;
-  background-color: @bg_mantle;
+  background-color: @bg_surface;
 }
 
 /* Non-taskbar Icon Container */

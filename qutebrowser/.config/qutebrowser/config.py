@@ -20,9 +20,9 @@
 # pyright: reportUndefinedVariable=false
 
 from pathlib import Path
-import oasis_night_dark
+import oasis_moonlight_dark
 
-oasis_night_dark.setup(c, samecolorrows=True)
+oasis_moonlight_dark.setup(c, samecolorrows=True)
 
 # --- Globals ---
 LEADER = ","

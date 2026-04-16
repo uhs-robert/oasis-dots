@@ -1,10 +1,10 @@
 /* waybar/.config/waybar/waybar-theme-manual.css */
 
 /* Backgrounds */
-@define-color bg_core #101418;
-@define-color bg_mantle #18202A;
-@define-color bg_shadow #0C1014;
-@define-color bg_surface #223040;
+@define-color bg_core #070C13;
+@define-color bg_mantle #0F1520;
+@define-color bg_shadow #020304;
+@define-color bg_surface #1A2330;
 
 /* Foregrounds */
 @define-color fg_core #F7F4F2;
