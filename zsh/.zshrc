@@ -120,6 +120,7 @@ zstyle ':completion:*' list-colors ''
 
 # Add user script directories to PATH
 export PATH="$PATH:$HOME/Documents/github-uphill/bash-scripts/scripts/"
+export PATH="$PATH:$HOME/Documents/github-uphill/bash-scripts/ruby/"
 export PATH="$HOME/.config/hypr/scripts:$PATH"
 export PATH="$HOME/.tmuxifier/bin:$PATH"
 

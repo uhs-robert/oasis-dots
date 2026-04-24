@@ -13,6 +13,7 @@ export PATH
 
 # Add custom script directory to PATH
 export PATH="$PATH:$HOME/Documents/github-uphill/bash-scripts/scripts/"
+export PATH="$PATH:$HOME/Documents/github-uphill/bash-scripts/ruby/"
 
 # Load aliases & functions from GitHub-controlled script
 if [ -f "$HOME/Documents/github-uphill/bash-scripts/scripts/functions.sh" ]; then
