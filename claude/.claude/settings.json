@@ -6,6 +6,10 @@
     ]
   },
   "model": "sonnet",
+  "statusLine": {
+    "type": "command",
+    "command": "bash \"/home/roberth/dotfiles/claude/.claude/plugins/cache/caveman/caveman/24e6ee9ea827/hooks/caveman-statusline.sh\""
+  },
   "enabledPlugins": {
     "lua-lsp@claude-plugins-official": true,
     "caveman@caveman": true
@@ -19,8 +23,8 @@
     }
   },
   "alwaysThinkingEnabled": true,
-  "statusLine": {
-    "type": "command",
-    "command": "bash \"/home/roberth/dotfiles/claude/.claude/plugins/cache/caveman/caveman/24e6ee9ea827/hooks/caveman-statusline.sh\""
-  }
+  "theme": "dark-ansi",
+  "editorMode": "vim",
+  "preferredNotifChannel": "kitty",
+  "autoCompactEnabled": false
 }
