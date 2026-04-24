@@ -1,7 +1,12 @@
 {
   "general": {
     "preferredEditor": "neovim",
-    "vimMode": true
+    "vimMode": true,
+    "sessionRetention": {
+      "enabled": true,
+      "maxAge": "30d",
+      "warningAcknowledged": true
+    }
   },
   "security": {
     "auth": {
