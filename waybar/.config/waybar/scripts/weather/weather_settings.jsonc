@@ -12,31 +12,33 @@
   "icon_position": "left",                // "left" or "right".
   "font_size": 14,                        // Base font size in px
   "colors": {
-    "primary": "#1CA0FD",                 // Nerd icon default color
-    "cold": "skyblue",                    // Temp cold
-    "neutral": "#1CA0FD",                 // Temp neutral
-    "warm": "khaki",                      // Temp warm
-    "hot": "indianred",                   // Temp hot
+    "primary": "#5D8BBB",                 // Nerd icon default color
+    "very_cold": "#36A5CA",               // Temp very cold
+    "cold": "#6DCEEB",                    // Temp cold
+    "chilly": "#BEEEB8",                  // Temp chilly
+    "neutral": "#7FCF78",                 // Temp neutral
+    "warm": "#F0E68C",                    // Temp warm
+    "hot": "#FF7979",                     // Temp hot
     "pop_low": "#EAD7FF",                 // Precipitation low
     "pop_med": "#CFA7FF",                 // Precipitation medium
     "pop_high": "#BC85FF",                // Precipitation high
     "pop_vhigh": "#A855F7",               // Precipitation very high
-    "divider": "#2B3B57"                  // Dividers
+    "divider": "#24364D"                  // Dividers
   },
   "color_weather_icons": true,            // Enable weather-specific icon colors for nerd fonts (false = use primary color)
   "weather_colors": {
-    "clear_day": "#FFAC33",               // ☀️
-    "clear_night": "#5B6FD3",             // 🌙
-    "partly_cloudy_day": "#D89C4C",       // ⛅
-    "partly_cloudy_night": "#4554A8",     // ☁️
-    "overcast": "#B0B0B0",                // ☁️
-    "fog": "#D3D3D3",                     // 🌫️
-    "drizzle": "#87CEEB",                 // 💧
-    "rain": "#4A90E2",                    // 🌧️
-    "heavy_rain": "#1E90FF",              // 💦
-    "freezing_rain": "#00CED1",           // 🌧️❄️
-    "snow": "#87CEEB",                    // 🌨️
-    "heavy_snow": "#B0E0E6",              // ❄️
-    "thunderstorm": "#9370DB"             // ⛈️
+    "clear_day": "#F8B471",               // ☀️
+    "clear_night": "#736FDF",             // 🌙
+    "partly_cloudy_day": "#FFC78F",       // ⛅
+    "partly_cloudy_night": "#8D8DE7",     // ☁️
+    "overcast": "#C2BFA5",                // ☁️
+    "fog": "#D3D8DF",                     // 🌫️
+    "drizzle": "#7FA3C9",                 // 💧
+    "rain": "#71B8FF",                    // 🌧️
+    "heavy_rain": "#47A3FF",              // 💦
+    "freezing_rain": "#4FC0E0",           // 🌧️❄️
+    "snow": "#6DCEEB",                    // 🌨️
+    "heavy_snow": "#36A5CA",              // ❄️
+    "thunderstorm": "#BDB76B"             // ⛈️
   }
 }

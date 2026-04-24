@@ -110,16 +110,18 @@ end
 module Config
   @settings = {
     colors: {
-      'primary' => '#1CA0FD',
-      'cold' => 'skyblue',
-      'neutral' => '#1CA0FD',
-      'warm' => 'khaki',
-      'hot' => 'indianred',
+      'primary' => '#5D8BBB',
+      'very_cold' => '#36A5CA',
+      'cold' => '#6DCEEB',
+      'chilly' => '#BEEEB8',
+      'neutral' => '#7FCF78',
+      'warm' => '#F0E68C',
+      'hot' => '#FF7979',
       'pop_low' => '#EAD7FF',
       'pop_med' => '#CFA7FF',
       'pop_high' => '#BC85FF',
       'pop_vhigh' => '#A855F7',
-      'divider' => '#2B3B57'
+      'divider' => '#24364D'
     },
     icon_type: 'nerd', # 'nerd' | 'emoji'
     icon_position: 'left', # 'left' | 'right'
@@ -358,8 +360,10 @@ module Temperature
   SEASONAL_BIAS = ENV.fetch('SEASONAL_BIAS', '1') == '1'
   SUMMER_MONTHS = (5..9).freeze
   SHOULDER_MONTHS = [3, 4, 10].freeze
-  DEFAULT_COLD_C = 5
-  DEFAULT_COLD_F = 41
+  DEFAULT_VERY_COLD_C = 5
+  DEFAULT_VERY_COLD_F = 41
+  COLD_C = 18
+  COLD_F = 65
 
   class << self
     def init(unit:, bias:, month: Time.now.month)
@@ -371,15 +375,25 @@ module Temperature
 
     def thermometer_icon
       {
+        VERY_COLD: Icons.get_ui('thermometer.very_cold'),
         COLD: Icons.get_ui('thermometer.cold'),
+        CHILLY: Icons.get_ui('thermometer.chilly'),
         NEUTRAL: Icons.get_ui('thermometer.neutral'),
         WARM: Icons.get_ui('thermometer.warm'),
         HOT: Icons.get_ui('thermometer.hot')
       }
     end
 
+    def very_cold_band
+      [thermometer_icon[:VERY_COLD], Config.colors['very_cold']]
+    end
+
     def cold_band
       [thermometer_icon[:COLD], Config.colors['cold']]
+    end
+
+    def chilly_band
+      [thermometer_icon[:CHILLY], Config.colors['chilly']]
     end
 
     def neutral_band
@@ -421,47 +435,49 @@ module Temperature
     private
 
     def build_temperature_bands
-      cold, neutral, warm = temperature_limits
+      very_cold, cold, chilly, neutral, warm = temperature_limits
 
       [
-        [cold, *Temperature.cold_band],
-        [neutral, *Temperature.neutral_band],
-        [warm,    *Temperature.warm_band],
+        [very_cold, *Temperature.very_cold_band],
+        [cold,      *Temperature.cold_band],
+        [chilly,    *Temperature.chilly_band],
+        [neutral,   *Temperature.neutral_band],
+        [warm,      *Temperature.warm_band],
         [Float::INFINITY, *Temperature.hot_band]
       ]
     end
 
     def temperature_limits
-      cold_limit = calculate_cold_limit
+      very_cold_limit = calculate_very_cold_limit
 
       if celsius?
-        [cold_limit, 20, 28]
+        [very_cold_limit, COLD_C, 19, 24, 29]
       else
-        [cold_limit, 68, 82]
+        [very_cold_limit, COLD_F, 66, 76, 85]
       end
     end
 
-    def calculate_cold_limit
+    def calculate_very_cold_limit
       unless @seasonal_bias_enabled
-        return celsius? ? DEFAULT_COLD_C : DEFAULT_COLD_F
+        return celsius? ? DEFAULT_VERY_COLD_C : DEFAULT_VERY_COLD_F
       end
 
       if celsius?
-        calculate_seasonal_celsius_cold_limit
+        calculate_seasonal_celsius_very_cold_limit
       else
-        calculate_seasonal_fahrenheit_cold_limit
+        calculate_seasonal_fahrenheit_very_cold_limit
       end
     end
 
-    def calculate_seasonal_celsius_cold_limit
+    def calculate_seasonal_celsius_very_cold_limit
       return 10 if SUMMER_MONTHS.cover?(@current_month)
       return 8 if SHOULDER_MONTHS.include?(@current_month)
 
-      DEFAULT_COLD_C
+      DEFAULT_VERY_COLD_C
     end
 
-    def calculate_seasonal_fahrenheit_cold_limit
-      celsius_limit = calculate_seasonal_celsius_cold_limit
+    def calculate_seasonal_fahrenheit_very_cold_limit
+      celsius_limit = calculate_seasonal_celsius_very_cold_limit
       ((celsius_limit * 9.0 / 5.0) + 32).round
     end
 

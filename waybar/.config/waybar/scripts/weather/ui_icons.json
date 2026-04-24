@@ -1,7 +1,9 @@
 {
   "nerd": {
     "thermometer": {
+      "very_cold": "",
       "cold": "",
+      "chilly": "",
       "neutral": "",
       "warm": "",
       "hot": ""
@@ -44,7 +46,9 @@
   },
   "emoji": {
     "thermometer": {
+      "very_cold": "☃️",
       "cold": "🥶",
+      "chilly": "🧣",
       "neutral": "😊",
       "warm": "🥵",
       "hot": "🔥"
