@@ -2,16 +2,5 @@
 
 /usr/bin/setvtrgb /etc/vtrgb-oasis
 
-exec /usr/bin/tuigreet \
-  --time \
-  --remember \
-  --remember-user-session \
-  --user-menu \
-  --asterisks \
-  --greeting 'Welcome to the Oasis' \
-  --theme 'border=yellow;text=white;prompt=green;time=cyan;greet=cyan;action=cyan;button=yellow;container=black;input=red' \
-  --sessions /usr/share/wayland-sessions:/usr/share/xsessions \
-  --kb-command 1 \
-  --kb-sessions 2 \
-  --kb-power 12 \
-  --cmd "sh -c 'clear; exec /usr/bin/start-hyprland >/tmp/hyprland-greetd.log 2>&1'"
+# Uses fork: https://github.com/NotAShelf/tuigreet
+exec /usr/local/bin/tuigreet --config /etc/tuigreet/config.toml

@@ -1,0 +1,56 @@
+# /etc/tuigreet/config.toml
+[display]
+show_time = true
+time_format = "%I:%M:%S %p"
+greeting = "Welcome to the Oasis"
+align_greeting = "center"
+issue = false
+
+[layout]
+width = 80
+window_padding = 1
+container_padding = 1
+prompt_padding = 1
+
+[layout.widgets]
+time_position = "top"
+status_position = "bottom"
+
+[remember]
+username = true
+session = false
+user_session = true
+
+[user_menu]
+enabled = true
+min_uid = 1000
+max_uid = 60000
+
+[secret]
+mode = "characters"
+characters = "*"
+
+[keybindings]
+command = 1
+sessions = 2
+power = 12
+
+[session]
+sessions_dirs = ["/usr/share/wayland-sessions", "/usr/share/xsessions"]
+command = "sh -c 'clear; exec /usr/bin/start-hyprland >/tmp/hyprland-greetd.log 2>&1'"
+
+[theme]
+container = "black"
+text = "white"
+title = "red"
+border = "yellow"
+time = "cyan"
+greet = "cyan"
+action = "cyan"
+prompt = "green"
+input = "red"
+button = "yellow"
+
+[[outputs]]
+connector = "eDP-1"
+primary = true
