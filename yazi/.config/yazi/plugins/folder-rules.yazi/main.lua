@@ -24,7 +24,7 @@ local SORT_FOLDERS = {
 	Backups = SORT_OPTIONS.by_mtime,
 	-- By Mtime Dir First
 	Projects = SORT_OPTIONS.by_mtime_dir_first,
-	["github-uphill"] = SORT_OPTIONS.by_mtime_dir_first,
+	["Development"] = SORT_OPTIONS.by_mtime_dir_first,
 	Code = SORT_OPTIONS.by_mtime_dir_first,
 	Repos = SORT_OPTIONS.by_mtime_dir_first,
 	Clients = SORT_OPTIONS.by_mtime_dir_first,

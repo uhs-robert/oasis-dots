@@ -119,8 +119,8 @@ f(){ "${EDITOR:-nvim}" -- "$(fzf)"; }
 zstyle ':completion:*' list-colors ''
 
 # Add user script directories to PATH
-export PATH="$PATH:$HOME/Documents/github-uphill/bash-scripts/scripts/"
-export PATH="$PATH:$HOME/Documents/github-uphill/bash-scripts/ruby/"
+export PATH="$PATH:$HOME/Development/bash-scripts/scripts/"
+export PATH="$PATH:$HOME/Development/bash-scripts/ruby/"
 export PATH="$HOME/.config/hypr/scripts:$PATH"
 export PATH="$HOME/.tmuxifier/bin:$PATH"
 
@@ -133,8 +133,8 @@ export PATH="$HOME/.local/bin:$PATH"
 export PATH="$PATH:$HOME/.lmstudio/bin"
 
 # Load aliases & functions from GitHub-controlled script
-if [[ -f "$HOME/Documents/github-uphill/bash-scripts/scripts/functions.sh" ]]; then
-  source "$HOME/Documents/github-uphill/bash-scripts/scripts/functions.sh"
+if [[ -f "$HOME/Development/bash-scripts/scripts/functions.sh" ]]; then
+  source "$HOME/Development/bash-scripts/scripts/functions.sh"
 fi
 
 # Hyprland aliases

@@ -12,12 +12,12 @@ fi
 export PATH
 
 # Add custom script directory to PATH
-export PATH="$PATH:$HOME/Documents/github-uphill/bash-scripts/scripts/"
-export PATH="$PATH:$HOME/Documents/github-uphill/bash-scripts/ruby/"
+export PATH="$PATH:$HOME/Development/bash-scripts/scripts/"
+export PATH="$PATH:$HOME/Development/bash-scripts/ruby/"
 
 # Load aliases & functions from GitHub-controlled script
-if [ -f "$HOME/Documents/github-uphill/bash-scripts/scripts/functions.sh" ]; then
-  source "$HOME/Documents/github-uphill/bash-scripts/scripts/functions.sh"
+if [ -f "$HOME/Development/bash-scripts/scripts/functions.sh" ]; then
+  source "$HOME/Development/bash-scripts/scripts/functions.sh"
 fi
 
 # Uncomment the following line if you don't like systemctl's auto-paging feature:
