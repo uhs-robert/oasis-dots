@@ -1,0 +1,14 @@
+#!/usr/bin/env sh
+
+/usr/bin/setvtrgb /etc/vtrgb-oasis
+
+exec /usr/bin/tuigreet \
+  --time \
+  --remember \
+  --remember-user-session \
+  --user-menu \
+  --asterisks \
+  --greeting 'Welcome to the Oasis' \
+  --theme 'border=yellow;text=white;prompt=green;time=yellow;action=red;button=yellow;container=black;input=white' \
+  --sessions /usr/share/wayland-sessions:/usr/share/xsessions \
+  --cmd "sh -c 'clear; exec /usr/bin/start-hyprland >/tmp/hyprland-greetd.log 2>&1'"
