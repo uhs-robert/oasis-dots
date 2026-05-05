@@ -1,8 +1,13 @@
 # yazi/.config/yazi/yazi.toml
 [opener]
+csv = [
+  { run = 'nless "$@"', block = true, desc = "Nless", for = "unix" },
+  { run = '/usr/bin/nvim "$@"', block = true, desc = "NeoVim", for = "unix" },
+]
 edit = [
   { run = '/usr/bin/nvim "$@"', block = true, desc = "NeoVim", for = "unix" },
   { run = 'vim "$@"', block = true, desc = "Vim", for = "unix" },
+  { run = 'nless "$@"', block = true, desc = "Nless", for = "unix" },
 ]
 image-edit = [
   { run = 'gimp "$@"', block = true, desc = "Gimp", for = "unix" },
@@ -23,6 +28,8 @@ open = [
 
 [open]
 prepend_rules = [
+  { name = "*.csv", use = "csv" },
+  { mime = "text/csv", use = "csv" },
   { url = "*.rpm", use = "install-rpm" },
   { mime = "image/*", use = "image-edit" },
   { mime = "video/*", use = "video" },
