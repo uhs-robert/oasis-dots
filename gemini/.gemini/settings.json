@@ -14,7 +14,7 @@
     }
   },
   "ui": {
-    "theme": "~/.gemini/theme/oasis_desert_dark.json",
+    "theme": "ANSI",
     "showLineNumbers": true,
     "useFullWidth": true,
     "showStatusInTitle": false,
