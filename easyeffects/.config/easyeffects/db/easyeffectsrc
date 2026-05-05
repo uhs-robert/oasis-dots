@@ -8,7 +8,7 @@ inputDevice=alsa_input.pci-0000_07_00.6.analog-stereo
 mostUsedPresets=Harman,Klipsch Stereo
 outputDevice=alsa_output.usb-0c76_USB_Audio-00.pro-output-0
 plugins=equalizer#0,stereo_tools#0,bass_enhancer#0
-usedPresets=Harman:18,Klipsch Stereo:6
+usedPresets=Harman:18,Klipsch Stereo:7
 visiblePage=pluginsPage
 visiblePlugin=equalizer#0
 
