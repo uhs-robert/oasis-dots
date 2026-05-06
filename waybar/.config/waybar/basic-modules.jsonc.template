@@ -44,7 +44,8 @@
       "stopped": ""
     },
     "tooltip": true,
-    "on-click": "systemctl --user restart voxtype"
+    "on-click": "~/.config/hypr/scripts/voxtype-with-media-pause.sh",
+    "on-click-right": "systemctl --user restart voxtype"
   },
 
   "group/systemtray": {
