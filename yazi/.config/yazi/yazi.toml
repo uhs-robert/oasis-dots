@@ -28,7 +28,7 @@ open = [
 
 [open]
 prepend_rules = [
-  { name = "*.csv", use = "csv" },
+  { url = "*.csv", use = "csv" },
   { mime = "text/csv", use = "csv" },
   { url = "*.rpm", use = "install-rpm" },
   { mime = "image/*", use = "image-edit" },
@@ -41,27 +41,27 @@ prepend_preloaders = [
   # Do not preload files in mounted locations:
   # Environment variable won't work here.
   # Using absolute path instead.
-  { name = "/run/user/1000/gvfs/**/*", run = "noop" },
+  { url = "/run/user/1000/gvfs/**/*", run = "noop" },
 
   # For mounted location for hard disk/drive
-  { name = "/run/media/*/**/*", run = "noop" },
-  { name = "~/mnt/*", run = "noop" },
+  { url = "/run/media/*/**/*", run = "noop" },
+  { url = "~/mnt/*", run = "noop" },
   #... the rest of preloaders
 ]
 prepend_previewers = [
   # Allow to preview folder.
-  { name = "*/", run = "folder", sync = true },
+  { url = "*/", run = "folder", sync = true },
   # Do not previewing files in mounted locations (uncomment to except text file):
   # { mime = "{text/*,application/x-subrip}", run = "code" },
   # Using absolute path.
-  { name = "/run/user/1000/gvfs/**/*", run = "noop" },
-  { name = "~/mnt/*", run = "noop" },
+  { url = "/run/user/1000/gvfs/**/*", run = "noop" },
+  { url = "~/mnt/*", run = "noop" },
 
   # For mounted hard disk.
-  { name = "/run/media/*/**/*", run = "noop" },
+  { url = "/run/media/*/**/*", run = "noop" },
   #... the rest of previewers
 ]
 prepend_fetchers = [
-  { id = "git", name = "*", run = "git" },
-  { id = "git", name = "*/", run = "git" },
+  { group = "git", url = "*", run = "git" },
+  { group = "git", url = "*/", run = "git" },
 ]
