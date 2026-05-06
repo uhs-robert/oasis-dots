@@ -1,5 +1,5 @@
 -- init.lua
----@diagnostic disable: undefined-global
+---@diagnostic disable: undefined-global, redundant-parameter
 
 -- Plugins
 -- Full border around the window
