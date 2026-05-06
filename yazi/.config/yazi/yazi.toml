@@ -65,3 +65,6 @@ prepend_fetchers = [
   { group = "git", url = "*", run = "git" },
   { group = "git", url = "*/", run = "git" },
 ]
+
+[mgr]
+linemode = "steam_appid"

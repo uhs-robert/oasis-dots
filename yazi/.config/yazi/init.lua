@@ -1,4 +1,6 @@
 -- init.lua
+---@diagnostic disable: undefined-global
+
 -- Plugins
 -- Full border around the window
 require("full-border"):setup({
@@ -37,6 +39,12 @@ require("sshfs"):setup({
 		"dcache_timeout=600",
 	},
 })
+
+local steam_appid = require("steam-appid")
+
+function Linemode:steam_appid()
+	return steam_appid.linemode(self)
+end
 
 require("restore"):setup()
 
