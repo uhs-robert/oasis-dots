@@ -15,6 +15,7 @@ mkdir -p "$SCREENSHOT_DIR" "$RECORDING_DIR"
 NOTIFY=$(pidof mako || pidof dunst || pidof swaync || true)
 timestamp() { date +'%Y-%m-%d_%Hh%Mm%Ss'; }
 
+# Send a desktop notification if a notification daemon is running, otherwise print to stdout.
 notify() {
   if [[ -n "$NOTIFY" ]]; then
     notify-send "$@"
@@ -23,28 +24,78 @@ notify() {
   fi
 }
 
-# Lazy geometry helpers
+# Assert a command exists; notify and exit if missing.
+need() {
+  command -v "$1" >/dev/null 2>&1 || {
+    notify "Screenshot Failed" "Missing command: $1"
+    exit 1
+  }
+}
+
+# Return true if a command exists, false otherwise. Non-fatal alternative to need().
+want() {
+  command -v "$1" >/dev/null 2>&1
+}
+
+# Report presence of all hard and soft dependencies to stdout.
+check_deps() {
+  local hard_deps=(hyprshot wl-copy wf-recorder hyprpicker tesseract slurp jq)
+  local soft_deps=(satty)
+  local ok=true
+  for dep in "${hard_deps[@]}"; do
+    if want "$dep"; then
+      echo "  [ok] $dep"
+    else
+      echo "  [missing] $dep"
+      ok=false
+    fi
+  done
+  for dep in "${soft_deps[@]}"; do
+    if want "$dep"; then
+      echo "  [ok] $dep (optional)"
+    else
+      echo "  [missing] $dep (optional)"
+    fi
+  done
+  $ok && echo "All required dependencies satisfied." || echo "Some required dependencies are missing."
+}
+
+need wl-copy
+
+# Geometry helpers — return region strings for use with slurp/wf-recorder.
+# get_focused: returns the geometry of the active window.
 get_focused() {
   hyprctl activewindow -j | jq -r '.at,.size | join(" ")' | awk '{printf "%s,%s %sx%s", $1,$2,$3,$4}'
 }
+# get_outputs: returns geometry of all monitors, one per line.
 get_outputs() {
   hyprctl monitors -j | jq -r '.[] | "\(.x),\(.y) \(.width)x\(.height)"'
 }
+# get_windows: returns geometry of all open windows, one per line.
 get_windows() {
   hyprctl clients -j | jq -r '.[] | select(.at and .size) | "\(.at[0]),\(.at[1]) \(.size[0])x\(.size[1])"'
 }
 
+# Capture a screenshot via hyprshot, annotate with satty if available, save to SCREENSHOT_DIR, and copy to clipboard.
 handle_screenshot() {
+  need hyprshot
   local mode="$1"
   local extra_args=("${@:2}")
   local ts filename
   ts="$(timestamp)"
   filename="$SCREENSHOT_DIR/screenshot-$ts.png"
-  hyprshot -m "$mode" "${extra_args[@]}" --raw | satty -f - -o "$filename"
+  if want satty; then
+    hyprshot -m "$mode" "${extra_args[@]}" --raw | satty -f - -o "$filename"
+  else
+    hyprshot -m "$mode" "${extra_args[@]}" --raw >"$filename"
+  fi
   wl-copy <"$filename"
 }
 
+# Record a screen region with wf-recorder, save to RECORDING_DIR, and copy to clipboard.
 handle_recording() {
+  need wf-recorder
+  need jq
   local region="$1"
   local ts filename
   ts="$(timestamp)"
@@ -55,7 +106,10 @@ handle_recording() {
   wl-copy <"$filename"
 }
 
+# Capture a region screenshot, run tesseract OCR on it, and copy the extracted text to clipboard.
 handle_text_ocr() {
+  need hyprshot
+  need tesseract
   local tmpfile ocr_text
   tmpfile=$(mktemp /tmp/clipocr-XXXXXX.png)
 
@@ -72,6 +126,29 @@ handle_text_ocr() {
 
   rm -f "$tmpfile"
 }
+
+# Help / dependency check
+if [[ "$1" == "-h" || "$1" == "--help" ]]; then
+  echo "Usage: $(basename "$0") [option]"
+  echo ""
+  echo "Options:"
+  echo "  -h, --help            Show this help and check all dependencies"
+  echo "  r, --region           Screenshot region"
+  echo "  z, --freeze           Screenshot frozen region"
+  echo "  s, --screen           Screenshot screen"
+  echo "  w, --window           Screenshot window"
+  echo "  f, --focused          Screenshot focused window"
+  echo "  t, --text             OCR text from region"
+  echo "  p, --pixel            Pick pixel color"
+  echo "  --record-region       Record region"
+  echo "  --record-window       Record window"
+  echo "  --record-screen       Record screen"
+  echo "  --record-focused      Record focused window"
+  echo ""
+  echo "Dependencies:"
+  check_deps
+  exit 0
+fi
 
 # Stop recorder if already running
 if REC_PID=$(pidof "$RECORDER" 2>/dev/null); then
@@ -125,14 +202,15 @@ w | --window) handle_screenshot "window" ;;
 f | --focused) handle_screenshot "window" -m active ;;
 t | --text) handle_text_ocr ;;
 p | --pixel)
+  need hyprpicker
   COLOR="$(hyprpicker -a || exit 1)"
   wl-copy "$COLOR"
   echo "Picked Color" "$COLOR"
   ;;
 
---record-region) handle_recording "$(slurp)" ;;
---record-window) handle_recording "$(get_windows | slurp -r)" ;;
---record-screen) handle_recording "$(get_outputs | slurp -r)" ;;
+--record-region) need slurp; handle_recording "$(slurp)" ;;
+--record-window) need slurp; handle_recording "$(get_windows | slurp -r)" ;;
+--record-screen) need slurp; handle_recording "$(get_outputs | slurp -r)" ;;
 --record-focused) handle_recording "$(get_focused)" ;;
 
 *)
