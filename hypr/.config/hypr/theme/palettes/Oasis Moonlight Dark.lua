@@ -1,0 +1,1 @@
+../../../../../../Development/oasis.nvim/extras/lua-theme/themes/dark/Oasis Moonlight Dark.lua

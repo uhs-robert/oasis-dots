@@ -1,1 +1,1 @@
-../../../../../../Documents/github-uphill/oasis.nvim/extras/lua-theme/themes/dark/Oasis Abyss Dark.lua
+../../../../../../Development/oasis.nvim/extras/lua-theme/themes/dark/Oasis Abyss Dark.lua

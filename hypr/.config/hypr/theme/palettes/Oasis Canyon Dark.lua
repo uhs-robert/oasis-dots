@@ -1,1 +1,1 @@
-../../../../../../Documents/github-uphill/oasis.nvim/extras/lua-theme/themes/dark/Oasis Canyon Dark.lua
+../../../../../../Development/oasis.nvim/extras/lua-theme/themes/dark/Oasis Canyon Dark.lua
