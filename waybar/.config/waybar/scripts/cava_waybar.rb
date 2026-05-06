@@ -147,8 +147,9 @@ def install_parent_death_sig
   )
   pr_set_pdeathsig = 1
   prctl.call(pr_set_pdeathsig, Signal.list['TERM'], 0, 0, 0)
-rescue StandardError
-  # Not critical, silently ignore
+rescue Exception # rubocop:disable Lint/RescueException
+  # Not critical — fiddle is a default gem in Ruby 3.4+ and may be unavailable
+  # with --disable=gems in lean environments (e.g. Waybar's exec env)
 end
 
 def safe_write_line(obj)
