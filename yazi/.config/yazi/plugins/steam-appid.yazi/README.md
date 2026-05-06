@@ -45,7 +45,7 @@ Game names are cached in memory for the session, so repeated lookups don't hit d
 ## Installation
 
 ```sh
-ya pack -a uhs-robert/steam-appid
+ya pkg add uhs-robert/steam-appid
 ```
 
 ## Setup

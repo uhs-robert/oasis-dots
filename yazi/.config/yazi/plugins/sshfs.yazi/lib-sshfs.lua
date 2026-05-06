@@ -165,9 +165,15 @@ function SSHFS.mount(entry, opts)
           remote_path = normalized
         end
       elseif chosen ~= "~ (home)" then
-        remote_path = chosen
+        local normalized = normalize_remote_path(chosen)
+        if normalized == "/" then
+          mount_to_root = true
+        else
+          remote_path = normalized
+        end
       end
     end
+    mount_to_root = mount_to_root or false
   end
 
   -- Build mount point directory name (remote path now known)
