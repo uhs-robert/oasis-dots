@@ -40,7 +40,7 @@ zstyle ':omz:update' mode auto      # update automatically without asking
 # DISABLE_LS_COLORS="true"
 
 # Uncomment the following line to disable auto-setting terminal title.
-# DISABLE_AUTO_TITLE="true"
+DISABLE_AUTO_TITLE="true"
 
 ENABLE_CORRECTION="true"
 
@@ -80,7 +80,7 @@ plugins=(
   nvm
   starship
   sudo
-  vi-mode
+  # vi-mode
   z
   zsh-autocomplete
   zsh-autosuggestions
@@ -184,13 +184,9 @@ alias lla='ls -la'
 alias lt='ls --tree'
 # Lsd end
 
-# Taskwarrior
-alias t="task"
-# Taskwarrior end
-
 # IntelliShell
 export INTELLI_HOME="$HOME/.local/share/intelli-shell"
-export INTELLI_SEARCH_HOTKEY='^F'
+# export INTELLI_SEARCH_HOTKEY='^f'
 # export INTELLI_VARIABLE_HOTKEY='^l'
 # export INTELLI_BOOKMARK_HOTKEY='^b'
 # export INTELLI_FIX_HOTKEY='^x'
