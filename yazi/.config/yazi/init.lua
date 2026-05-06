@@ -38,6 +38,24 @@ require("sshfs"):setup({
 		"dir_cache=no",
 		"dcache_timeout=600",
 	},
+	global_paths = {
+		"~/.config",
+		"/var/www",
+		-- "/srv",
+		-- "/opt"
+		"/var/log",
+		"/etc",
+		-- "/tmp",
+		-- "/usr/local",
+		-- "/data",
+		-- "/var/lib",
+	},
+	host_paths = {
+		-- Optionally define default mount paths for specific hosts
+		["whatbox"] = {
+			"~/files",
+		},
+	},
 })
 
 local steam_appid = require("steam-appid")
