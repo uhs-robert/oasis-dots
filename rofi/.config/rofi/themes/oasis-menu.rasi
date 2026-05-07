@@ -9,12 +9,15 @@
 
 /*****----- Configuration -----*****/
 configuration {
-	modi:                       "drun,run,window,ssh,filebrowser";
+	// modi:                       "drun,run,window,ssh,filebrowser";
+
+    modi: "drun,hyprwindow:/home/roberth/.config/hypr/scripts/rofi-hyprwindow.sh";
     show-icons:                 true;
     display-drun:               " Apps";
     display-run:                " Run";
     display-filebrowser:        " Files";
     display-window:             " Windows";
+    display-hyprwindow:            " Windows";
     display-ssh:                " SSH";
     drun-display-format:        "{name}";
     window-format:              "{w} · {c} · {t}";

@@ -9,7 +9,7 @@
 
 configuration {
 	/*---------- General setting ----------*/
-	modi: "drun,window,run,ssh,filebrowser";
+  modi: "drun,window,run,ssh,filebrowser,hyprwindow:home/roberth/.config/hypr/scripts/rofi-hyprwindow.sh";
 	case-sensitive: false;
 	cycle: true;
 	filter: "";
@@ -82,6 +82,7 @@ configuration {
 	display-combi: "Combi";
 	display-keys: "Keys";
 	display-filebrowser: "Files";
+  display-hyprwindow: "Windows";
 
 	/*---------- Misc setting ----------*/
 	terminal: "rofi-sensible-terminal";
