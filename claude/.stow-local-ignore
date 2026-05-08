@@ -1,9 +1,0 @@
-^.*\.log$
-^.*\.bak$
-^.*~$
-^statsig/
-^todos/
-^shell-snapshots/
-^projects/
-^\.credentials\.json$
-^\history\.jsonl$
