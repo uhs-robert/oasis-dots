@@ -253,7 +253,7 @@
     "format-linked": "{ifname} (No IP) ",
     "format-disconnected": "<span size='11000' foreground='{{bg_mantle}}'>󰤭</span>",
     "tooltip-format-wifi": "{essid}, {signalStrength}%",
-    "on-click": "kitty -e impala",
+    "on-click": "exec ~/.config/hypr/scripts/nmtui.sh",
     "on-click-right": "nm-connection-editor"
   },
 

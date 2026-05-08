@@ -106,6 +106,9 @@ export MANPAGER='nvim +Man!'
 export BAT_THEME="oasis_moonlight_dark"
 export PAGER="bat --style=numbers --color=always --paging=always"
 
+# For nmtui
+export NEWT_COLORS='root=,black window=white,black border=brown,black title=red,black textbox=white,black label=white,black entry=red,black disentry=gray,black button=black,cyan actbutton=black,cyan compactbutton=green,black listbox=white,black actlistbox=red,black sellistbox=white,green actsellistbox=black,cyan checkbox=white,black actcheckbox=black,cyan emptyscale=gray,black fullscale=black,green helpline=green,black roottext=green,black'
+
 # Auto completion
 unsetopt BEEP
 
