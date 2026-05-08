@@ -26,5 +26,6 @@
   "theme": "dark-ansi",
   "editorMode": "vim",
   "preferredNotifChannel": "kitty",
-  "autoCompactEnabled": false
+  "autoCompactEnabled": false,
+  "effortLevel": "medium"
 }
