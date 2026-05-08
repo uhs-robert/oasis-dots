@@ -29,4 +29,5 @@ fi
 # Copy layout to active and reload
 cp "$selected_layout" "$ACTIVE_LAYOUT"
 notify-send "Hyprland Monitor Layout" "Switched to: $layout"
+sleep 1
 hyprctl reload
