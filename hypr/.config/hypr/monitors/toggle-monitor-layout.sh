@@ -1,19 +1,32 @@
 #!/usr/bin/env bash
-# monitors/toggle-monitor-layout.sh
+# ~/.config/hypr/scripts/toggle-monitor-layout.sh
+
+set -euo pipefail
 
 CONFIG_DIR="$HOME/.config/hypr"
-MAIN_CONF="$CONFIG_DIR/hyprland.conf"
+MONITOR_DIR="$CONFIG_DIR/monitors"
+LAYOUT_DIR="$MONITOR_DIR/layouts"
+ACTIVE_LAYOUT="$MONITOR_DIR/active.conf"
 
-# Get all available configs
-layouts=$(find "$CONFIG_DIR/monitors" -type f -name "monitors-*.conf" | sed -E 's|.*/monitors-(.*)\.conf|\1|' | sort)
+# Get all layouts
+layouts="$(
+  find "$LAYOUT_DIR" -type f -name "monitors-*.conf" |
+    sed -E 's|.*/monitors-(.*)\.conf|\1|' |
+    sort
+)"
 
 # Ask user which one to load
-layout=$(printf "%s\n" "$layouts" | rofi -dmenu -p "Choose monitor layout")
+layout="$(printf "%s\n" "$layouts" | rofi -dmenu -p "Choose monitor layout")"
+[[ -z "$layout" ]] && exit 0
 
-[[ -z "$layout" ]] && exit 1
+# Handle missing layouts
+selected_layout="$LAYOUT_DIR/monitors-$layout.conf"
+if [[ ! -f "$selected_layout" ]]; then
+  notify-send "Hyprland Monitor Layout" "Missing layout: $selected_layout"
+  exit 1
+fi
 
-# Replace the variable assignment line
-sed -i "s|^\$MONITOR_CONFIG = .*|\$MONITOR_CONFIG = $layout|" "$MAIN_CONF"
-
+# Copy layout to active and reload
+cp "$selected_layout" "$ACTIVE_LAYOUT"
 notify-send "Hyprland Monitor Layout" "Switched to: $layout"
 hyprctl reload

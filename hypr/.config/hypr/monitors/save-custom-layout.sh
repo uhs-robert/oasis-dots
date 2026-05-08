@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # File to save the current layout
-SAVE_PATH="$HOME/.config/hypr/monitors/monitors-custom.conf"
+SAVE_PATH="$HOME/.config/hypr/monitors/layouts/monitors-custom.conf"
 
 echo "# Auto-generated monitor config" >"$SAVE_PATH"
 
