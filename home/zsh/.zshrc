@@ -104,7 +104,7 @@ export GIT_EDITOR="$EDITOR"
 export SUDO_EDITOR="env SUDOEDIT=1 $EDITOR"
 export MANPAGER='nvim +Man!'
 export BAT_THEME="oasis_moonlight_dark"
-export PAGER="bat --style=number --color=always --paging=always"
+export PAGER="bat --style=numbers --color=always --paging=always"
 
 # Auto completion
 unsetopt BEEP
