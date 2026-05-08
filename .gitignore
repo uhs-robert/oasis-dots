@@ -77,13 +77,13 @@ Thumbs.db
 *tmp
 *.cache
 *.sqlite3
-newsboat/.newsboat/cache.db
-newsboat/.newsboat/history.cmdline
-newsboat/.newsboat/history.search
-qwen/.qwen/installation_id
-qutebrowser/.config/qutebrowser/autoconfig.yml
-qutebrowser/.config/qutebrowser/bookmarks/
-qutebrowser/.config/qutebrowser/quickmarks
+home/newsboat/.newsboat/cache.db
+home/newsboat/.newsboat/history.cmdline
+home/newsboat/.newsboat/history.search
+home/qwen/.qwen/installation_id
+home/qutebrowser/.config/qutebrowser/autoconfig.yml
+home/qutebrowser/.config/qutebrowser/bookmarks/
+home/qutebrowser/.config/qutebrowser/quickmarks
 *.lock
 
 # ────────────────────────────────────────────────
@@ -106,41 +106,34 @@ __pycache__/
 .bash_history
 .zsh_history
 
-# ────────────────────────────────────────────────
-# 🧱 Prevent absolute path symlink accidents
-# ────────────────────────────────────────────────
-/etc/*
-/var/*
-/home/*
-/tmp/*
 
 # ────────────────────────────────────────────────
 # 🤖 AI assistant artifacts (Claude, Gemini, etc.)
 # ────────────────────────────────────────────────
 **/.stow-local-ignore
-claude/**
-!claude/.claude/
-!claude/.claude/_agents/
-!claude/.claude/_agents/**
-!claude/.claude/agents/
-!claude/.claude/agents/**
-!claude/.claude/commands/
-!claude/.claude/commands/**
-!claude/.claude/AGENTS.md
-!claude/.claude/settings.json
-gemini/**
-!gemini/.gemini/
-!gemini/.gemini/commands/
-!gemini/.gemini/commands/**
-!gemini/.gemini/theme/
-!gemini/.gemini/theme/**
-!gemini/.gemini/settings.json
-codex/**
-!codex/.codex/
-!codex/.codex/prompts/
-!codex/.codex/prompts/**
-!codex/.codex/skills/
-!codex/.codex/skills/**
+home/claude/**
+!home/claude/.claude/
+!home/claude/.claude/_agents/
+!home/claude/.claude/_agents/**
+!home/claude/.claude/agents/
+!home/claude/.claude/agents/**
+!home/claude/.claude/commands/
+!home/claude/.claude/commands/**
+!home/claude/.claude/AGENTS.md
+!home/claude/.claude/settings.json
+home/gemini/**
+!home/gemini/.gemini/
+!home/gemini/.gemini/commands/
+!home/gemini/.gemini/commands/**
+!home/gemini/.gemini/theme/
+!home/gemini/.gemini/theme/**
+!home/gemini/.gemini/settings.json
+home/codex/**
+!home/codex/.codex/
+!home/codex/.codex/prompts/
+!home/codex/.codex/prompts/**
+!home/codex/.codex/skills/
+!home/codex/.codex/skills/**
 **/.codex/skills/.**
 CLAUDE.md
 GEMINI.md
@@ -149,7 +142,7 @@ AGENTS.md
 # ────────────────────────────────────────────────
 # 🧼 Oh-My-Zsh bloat
 # ────────────────────────────────────────────────
-zsh/.oh-my-zsh/
+home/zsh/.oh-my-zsh/
 
 # ────────────────────────────────────────────────
 # 🧒 Child Git Repositories
