@@ -17,7 +17,7 @@ configuration {
     display-run:                " Run";
     display-filebrowser:        " Files";
     display-window:             " Windows";
-    display-hyprwindow:            " Windows";
+    display-hyprwindow:         " Windows";
     display-ssh:                " SSH";
     drun-display-format:        "{name}";
     window-format:              "{w} · {c} · {t}";
