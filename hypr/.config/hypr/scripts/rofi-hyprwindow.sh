@@ -4,9 +4,22 @@
 #
 # Two modes driven by whether rofi passes a selection back:
 #   No args  — print rows to stdout; rofi displays them as the menu.
-#   $1 set   — rofi is calling back with the chosen row; focus that window.
+#   $1 set   — rofi is calling back with the chosen row; act on that window.
+#
+# Action modes (set via ROFI_HYPRWINDOW_MODE or -m/--move flag):
+#   focus (default) — focus the selected window.
+#   move            — move the active window to the selected window's workspace.
+#
+# Usage from a keybinding:
+#   rofi-hyprwindow.sh           # focus mode (rofi calls this as a script)
+#   rofi-hyprwindow.sh -m        # move mode  (script self-relaunches rofi)
+#   rofi-hyprwindow.sh --move    # same
 
 set -u
+
+MODE="${ROFI_HYPRWINDOW_MODE:-focus}"
+
+log() { logger -t "rofi-hyprwindow" "$*"; }
 
 # Fetch all open windows sorted by workspace > class > title.
 get_clients() {
@@ -18,6 +31,7 @@ get_clients() {
 # Each row: "<index>  <Class>  <title>\0icon\x1f<icon>\x1finfo\x1f<addr>…"
 # \0 separates display text from rofi metadata; \x1f separates key/value pairs.
 render_rows() {
+  [[ "$MODE" == move* ]] && printf '\x00prompt\x1fMove window to\n'
   jq -r '
     # Build a single "key\x1fvalue" rofi metadata pair.
     def rofi_option($key; $value):
@@ -87,6 +101,27 @@ extract_index() {
   sed -E 's/^([0-9]+).*/\1/' <<<"$1"
 }
 
+# Move the window captured before rofi opened to the workspace of target address.
+move_to_workspace() {
+  local target_addr="$1"
+  local source_addr="${ROFI_HYPRWINDOW_SOURCE:-}"
+
+  [ -z "$target_addr" ] && return 1
+  [ -z "$source_addr" ] && { log "move_to_workspace: ROFI_HYPRWINDOW_SOURCE not set"; return 1; }
+
+  local workspace_id
+  workspace_id="$(jq -r --arg addr "$target_addr" \
+    '.[] | select(.address == $addr) | .workspace.id // empty' <<<"$clients")"
+
+  log "move_to_workspace: source=$source_addr target=$target_addr workspace=$workspace_id"
+
+  [ -z "$workspace_id" ] && { log "move_to_workspace: no workspace found for target"; return 1; }
+
+  local dispatch="movetoworkspacesilent"
+  [[ "$MODE" == "move" ]] && dispatch="movetoworkspace"
+  hyprctl dispatch "$dispatch" "$workspace_id,address:$source_addr" >/dev/null
+}
+
 # Focus a window by address, detached with a small delay so rofi closes first.
 focus_addr() {
   local addr="$1"
@@ -111,10 +146,28 @@ handle_selection() {
     addr="$(get_addr_by_index "$index")"
   fi
 
-  focus_addr "$addr"
+  log "handle_selection: MODE=$MODE ROFI_RETV=${ROFI_RETV:-unset} addr=$addr"
+
+  if [[ "$MODE" == move* ]]; then
+    move_to_workspace "$addr"
+  else
+    focus_addr "$addr"
+  fi
 }
 
 main() {
+  # When called directly with -m/--move, capture the active window now (before
+  # rofi steals focus), then relaunch rofi with both env vars set.
+  if [[ -z "${ROFI_RETV:-}" ]] && [[ "${1:-}" == "-m" || "${1:-}" == "--move" || "${1:-}" == "--move-silent" ]]; then
+    local mode="move-silent"
+    [[ "${1:-}" == "--move" || "${1:-}" == "-m" ]] && mode="move"
+    local source_addr
+    source_addr="$(hyprctl activewindow -j | jq -r '.address // empty')"
+    log "launching rofi in $mode mode, source=$source_addr"
+    exec env ROFI_HYPRWINDOW_MODE="$mode" ROFI_HYPRWINDOW_SOURCE="$source_addr" \
+      rofi -i -show hyprwindow
+  fi
+
   clients="$(get_clients)"
 
   if [ -n "${1:-}" ]; then
