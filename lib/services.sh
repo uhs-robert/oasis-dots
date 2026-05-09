@@ -78,6 +78,22 @@ install_dev_tools() {
   done
 }
 
+detect_primary_connector() {
+  local connected=()
+  for f in /sys/class/drm/*/status; do
+    [[ "$(cat "$f" 2>/dev/null)" == "connected" ]] || continue
+    local name
+    name=$(basename "$(dirname "$f")")
+    name="${name#card?-}"
+    connected+=("$name")
+  done
+  case ${#connected[@]} in
+  0) echo "eDP-1" ;;
+  1) echo "${connected[0]}" ;;
+  *) printf '%s\n' "${connected[@]}" | fzf --prompt="Primary display for greeter> " --no-info ;;
+  esac
+}
+
 # Optionally installs greetd + tuigreet, deploys their configs, and enables the greetd service.
 install_greetd() {
   confirm "Install greetd + tuigreet (display manager)?" || return
@@ -98,9 +114,17 @@ install_greetd() {
   esac
 
   cd "$DOTFILES_DIR"
+  local connector
+  connector=$(detect_primary_connector)
+  info "Setting greeter primary display: $connector"
+  local tmp
+  tmp=$(mktemp --suffix=.toml)
+  sed "s/connector = \"eDP-1\"/connector = \"$connector\"/" \
+    system/etc/tuigreet/config.toml > "$tmp"
   sudo install -Dm644 system/etc/greetd/config.toml       /etc/greetd/config.toml
-  sudo install -Dm644 system/etc/tuigreet/config.toml     /etc/tuigreet/config.toml
+  sudo install -Dm644 "$tmp"                               /etc/tuigreet/config.toml
   sudo install -Dm755 system/usr/local/bin/tuigreet-oasis /usr/local/bin/tuigreet-oasis
+  rm -f "$tmp"
   success "greetd/tuigreet config installed"
 
   sudo systemctl enable greetd
