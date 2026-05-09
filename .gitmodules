@@ -4,3 +4,6 @@
 [submodule "hypr/.config/hypr/hyprvim"]
 	path = home/hypr/.config/hypr/hyprvim
 	url = git@github.com:uhs-robert/hyprvim.git
+[submodule "qutebrowser/.config/qutebrowser/solarized-everything-css"]
+	path = home/qutebrowser/.config/qutebrowser/solarized-everything-css
+	url = https://github.com/uhs-robert/solarized-everything-css.git
