@@ -4,6 +4,11 @@ Personal dotfiles managed with [GNU Stow](https://www.gnu.org/software/stow/). P
 
 ## Install
 
+> [!WARNING]
+> This install script is still under development. Still testing it out.
+>
+> Use at your own risk. I'd wait till this banner is removed personally.
+
 ```bash
 ./install.sh        # full install (Fedora or Arch)
 ./install.sh -m     # minimal (skip optional components)
