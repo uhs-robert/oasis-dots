@@ -111,7 +111,8 @@ install_system_files() {
   info "Installing system config files..."
   cd "$DOTFILES_DIR"
   sudo install -Dm644 system/etc/vtrgb-oasis /etc/vtrgb-oasis
-  success "vtrgb-oasis installed"
+  sudo install -Dm644 system/etc/keyd/default.conf /etc/keyd/default.conf
+  success "System config files installed"
 }
 
 set_default_shell() {
