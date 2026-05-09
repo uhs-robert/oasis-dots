@@ -59,6 +59,13 @@ template_user_configs() {
     sed -i "s|$src_home|$HOME|g" "$f"
     success "Templated $(basename "$(dirname "$f")")/$(basename "$f")"
   done
+
+  local active="$HOME/.config/hypr/monitors/active.conf"
+  local default_layout="$HOME/.config/hypr/monitors/layouts/monitors-default.conf"
+  if [[ -L "$active" && -f "$default_layout" ]]; then
+    cp --remove-destination "$default_layout" "$active"
+    success "Set default monitor layout (run toggle-monitor-layout.sh to switch)"
+  fi
 }
 
 bootstrap_neovim() {
