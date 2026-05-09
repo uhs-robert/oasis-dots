@@ -46,6 +46,21 @@ bootstrap_tmuxifier() {
   success "tmuxifier installed"
 }
 
+template_user_configs() {
+  local src_home="/home/roberth"
+  [[ "$HOME" == "$src_home" ]] && return
+  info "Replacing hardcoded home paths in user configs..."
+  local files=(
+    "$HOME/.codex/config.toml"
+    "$HOME/.config/yazi/keymap.toml"
+  )
+  for f in "${files[@]}"; do
+    [[ -f "$f" ]] || continue
+    sed -i "s|$src_home|$HOME|g" "$f"
+    success "Templated $(basename "$(dirname "$f")")/$(basename "$f")"
+  done
+}
+
 bootstrap_neovim() {
   info "Bootstrapping Neovim plugins..."
   if ! command -v nvim &>/dev/null; then
