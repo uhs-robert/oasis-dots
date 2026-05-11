@@ -28,7 +28,15 @@
   <a href="./NEWS.md">✨ What's New / 🚨 Breaking Changes</a>
 </p>
 
-## How it works
+## 🎮 No More AppID Lookups
+
+Steam stores game data in folders and files by numeric AppID like `1091500/`, etc. These IDs are meaningless at a glance.
+
+When modding, you often need to navigate `steamapps/compatdata/` or the main `steamapps/` folder to inspect/edit game files.
+
+**This plugin resolves those IDs to game names inline so you don't have to cross-reference IDs against a database or SteamDB.**
+
+## ⚙️ How it works
 
 The plugin reads `appmanifest_<id>.acf` files from your `steamapps` directory and displays the `name` field inline. It activates for:
 
@@ -37,18 +45,22 @@ The plugin reads `appmanifest_<id>.acf` files from your `steamapps` directory an
 
 Game names are cached in memory for the session, so repeated lookups don't hit disk.
 
-## Requirements
+## 📋 Requirements
 
-- [Yazi](https://github.com/sxyazi/yazi) 0.25+
-- Steam installed with at least one `steamapps` directory
+| Dependency                             | Requirement                        |
+| -------------------------------------- | ---------------------------------- |
+| [Yazi](https://github.com/sxyazi/yazi) | 0.25+                              |
+| Steam                                  | at least one `steamapps` directory |
 
-## Installation
+## 📦 Installation & Setup
+
+#### 1. Install the plugin
 
 ```sh
 ya pkg add uhs-robert/steam-appid
 ```
 
-## Setup
+#### 2. Register the linemode
 
 Add the following to your `~/.config/yazi/init.lua`:
 
@@ -61,14 +73,16 @@ function Linemode:steam_appid()
 end
 ```
 
-Enable the linemode in your `~/.config/yazi/yazi.toml`:
+#### 3. Enable the linemode
+
+Add the following to your `~/.config/yazi/yazi.toml`:
 
 ```toml
 [mgr]
 linemode = "steam_appid"
 ```
 
-## Configuration
+## 🛠️ Configuration
 
 All options are optional. Defaults shown below.
 
@@ -77,7 +91,7 @@ All options are optional. Defaults shown below.
 | `steamapps_paths` | `string[]` | `~/.local/share/Steam/steamapps` | Paths to search for `appmanifest_*.acf` files. Add extra entries for additional Steam libraries. |
 | `icon`            | `string`   | Nerd font `Steam` icon           | Icon prepended to the game name. Set to `""` to disable.                                         |
 
-### Handling Multiple Steam libraries
+### Handling Multiple Steam Libraries
 
 ```lua
 steam_appid.setup({
