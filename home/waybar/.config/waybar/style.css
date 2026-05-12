@@ -2,7 +2,7 @@
 
 /* LUA-THEME: Import generated theme colors */
 /* @import "../hypr/theme/output/waybar-theme.css"; */
-@import "./waybar-theme-manual.css";
+@import "./theme-colors.css";
 
 /* Globals */
 window#waybar {

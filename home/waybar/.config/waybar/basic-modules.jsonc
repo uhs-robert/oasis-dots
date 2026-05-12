@@ -150,12 +150,15 @@
       "update-active-window": true,
       "format": "{icon}",
       "icon-size": 19,
-      "on-click-window": "~/.config/waybar/scripts/focus-window.sh {address} {button}"
+      "on-click-window": "~/.config/waybar/scripts/hypr-focus-workspaces.lua {address} {button}"
     },
+    "on-scroll-up": "hyprctl dispatch 'hl.dsp.focus({ workspace = \"e-1\" })'",
+    "on-scroll-down": "hyprctl dispatch 'hl.dsp.focus({ workspace = \"e+1\" })'",
     "format-icons": {
       "default": "",
       "empty": ""
-    }
+    },
+    "all-outputs": false
   },
 
   "hyprland/window": {
@@ -231,7 +234,7 @@
         "days": "<span color='#E8F1FF'><b>{}</b></span>",
         "weeks": "<span color='#81C0FF'><b>W{}</b></span>",
         "weekdays": "<span color='#F0E68C'><b>{}</b></span>",
-        "today": "<span color='#D6CE7C'><b><u>{}</u></b></span>"
+        "today": "<span color='#FFA0A0'><b><u>{}</u></b></span>"
       }
     },
     // "on-click": "hyprctl dispatch exec '[float;move onscreen cursor -50% 20px;size 60% 96%] kitty --class=calcure --title=Calcure -e calcure'",
