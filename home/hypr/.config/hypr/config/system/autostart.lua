@@ -20,7 +20,7 @@ local function run()
   hl.exec_cmd("gsettings set org.gnome.desktop.interface gtk-theme 'Breeze-Dark'") -- GTK3 apps
   hl.exec_cmd("gsettings set org.gnome.desktop.interface color-scheme 'prefer-dark'") -- GTK4 apps
   -- hl.exec_cmd("hyprpm reload")                                                            -- Load plugins
-  hl.exec_cmd("lua ~/.config/hypr/wallpaper/init.lua")
+  hl.exec_cmd("lua ~/.config/hypr/mods/wallpaper/init.lua")
   hl.exec_cmd("voxtype setup systemd")
 end
 
