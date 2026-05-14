@@ -3,74 +3,84 @@
 
 --- @class AppEntry
 --- @field monitor integer 1-based monitor index
+--- @field ws integer|nil workspace offset within the monitor (default: 1)
 --- @field cmd string shell command to launch
---- @field next boolean|nil advance this monitor's workspace counter after launching
+--- @field class string|nil window class for dynamic workspace rule (mutually exclusive with title)
+--- @field title string|nil window title for dynamic workspace rule (mutually exclusive with class)
 
 local M = {}
 
 --- @param session string tmuxifier session name
 --- @param monitor integer|nil monitor index (default: 4 = RIGHT)
+--- @param ws integer|nil workspace offset within the monitor (default: 1)
 --- @return AppEntry
-local function tmuxifier(session, monitor)
-  return { monitor = monitor or 4, cmd = "kitty -e tmuxifier load-session " .. session, next = true }
+local function tmuxifier(session, monitor, ws)
+  return { monitor = monitor or 4, ws = ws or 1, cmd = "kitty -e tmuxifier load-session " .. session }
+end
+
+--- @param monitor integer|nil monitor index (default: 1)
+--- @param ws integer|nil workspace offset within the monitor (default: 2)
+--- @return AppEntry
+local function betterbird(monitor, ws)
+  return { monitor = monitor or 1, ws = ws or 2, cmd = "flatpak run eu.betterbird.Betterbird", class = "eu.betterbird.Betterbird" }
 end
 
 M.setups = {
   ["🌐 Browsing"] = {
-    { monitor = 3, cmd = "firefox --new-window", next = true },
+    { monitor = 3, ws = 1, cmd = "firefox --new-window" },
     tmuxifier("config"),
   },
 
   ["🧱 Client"] = {
-    { monitor = 3, cmd = "firefox --new-window", next = true },
+    { monitor = 3, ws = 1, cmd = "firefox --new-window" },
     tmuxifier("client-dev"),
-    tmuxifier("config", 3),
-    { monitor = 1, cmd = "flatpak run eu.betterbird.Betterbird" },
-    { monitor = 1, cmd = "slack" },
+    tmuxifier("config", 3, 2),
+    betterbird(),
+    { monitor = 1, ws = 1, cmd = "slack", class = "Slack" },
   },
 
   ["🛠 Config"] = {
-    { monitor = 3, cmd = "firefox --new-window", next = true },
+    { monitor = 3, ws = 1, cmd = "firefox --new-window" },
     tmuxifier("config"),
-    { monitor = 1, cmd = "flatpak run eu.betterbird.Betterbird" },
+    betterbird(),
   },
 
   ["🗂 Files"] = {
-    { monitor = 3, cmd = "dolphin", next = true },
-    { monitor = 4, cmd = "kitty -e yazi", next = true },
+    { monitor = 3, ws = 1, cmd = "dolphin" },
+    { monitor = 4, ws = 1, cmd = "kitty -e yazi" },
   },
 
   ["🧩 Game Mods"] = {
-    { monitor = 2, cmd = "steam", next = true },
-    { monitor = 3, cmd = "kitty -d ~/Downloads/ -e yazi", next = true },
-    { monitor = 4, cmd = "kitty -d ~/.steam/steam/steamapps/ -e yazi", next = true },
+    { monitor = 2, ws = 1, cmd = "steam" },
+    { monitor = 3, ws = 1, cmd = "kitty -d ~/Downloads/ -e yazi" },
+    { monitor = 4, ws = 1, cmd = "kitty -d ~/.steam/steam/steamapps/ -e yazi" },
   },
 
   ["🎮 Game"] = {
-    { monitor = 2, cmd = "steam", next = true },
+    { monitor = 2, ws = 1, cmd = "steam" },
   },
 
   ["📅 Meeting"] = {
-    { monitor = 3, cmd = "firefox --new-window", next = true },
-    { monitor = 1, cmd = "firefox --new-window https://calendar.google.com/", next = true },
+    { monitor = 3, ws = 1, cmd = "firefox --new-window" },
+    { monitor = 1, ws = 1, cmd = "firefox --new-window https://calendar.google.com/" },
   },
 
   ["📊 System Monitor"] = {
-    { monitor = 3, cmd = "kitty -e journalctl -f", next = true },
-    { monitor = 4, cmd = "kitty -e btop", next = true },
+    { monitor = 3, ws = 1, cmd = "kitty -e journalctl -f" },
+    { monitor = 4, ws = 1, cmd = "kitty -e btop" },
   },
 
   ["🛡️ System Update"] = {
-    { monitor = 2, cmd = "kitty -e sysup", next = true },
-    { monitor = 3, cmd = "kitty -e journalctl -f", next = true },
+    { monitor = 2, ws = 1, cmd = "kitty -e sysup" },
+    { monitor = 3, ws = 1, cmd = "kitty -e journalctl -f" },
   },
 
   ["💼 Work"] = {
-    { monitor = 3, cmd = "firefox --new-window", next = true },
-    tmuxifier("uphill", 3),
+    { monitor = 3, ws = 1, cmd = "firefox --new-window" },
+    tmuxifier("uphill", 3, 2),
     tmuxifier("config"),
-    { monitor = 1, cmd = "flatpak run eu.betterbird.Betterbird" },
-    { monitor = 1, cmd = "slack" },
+    betterbird(),
+    { monitor = 1, ws = 2, cmd = "slack", class = "Slack" },
   },
 }
 

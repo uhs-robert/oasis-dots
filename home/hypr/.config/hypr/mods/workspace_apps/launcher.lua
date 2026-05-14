@@ -5,11 +5,6 @@
 local script_dir = debug.getinfo(1, "S").source:sub(2):match("(.*/)") or "./"
 package.path = script_dir .. "?.lua;" .. package.path
 
---- @class AppEntry
---- @field monitor integer 1-based monitor index
---- @field cmd string shell command to launch
---- @field next boolean|nil advance this monitor's workspace counter after launching
-
 local setups = require("setups")
 local WS_PER_MONITOR = tonumber(arg[1]) or 5
 
@@ -34,6 +29,7 @@ local function pick(items, prompt)
   f:write(table.concat(keys, "\n"))
   f:close()
   local handle = io.popen(string.format("cat %q | rofi -i -dmenu -p %q", tmp, prompt))
+  if not handle then return end
   local choice = handle:read("*l")
   handle:close()
   os.remove(tmp)
@@ -54,16 +50,20 @@ local function launch(cmd, workspace)
   )
 end
 
---- Runs a setup: launches each app on the specified monitor workspace.
---- Monitors start at offset 1. next=true advances the offset after launching.
+--- Runs a setup: launches each app on its specified monitor workspace.
+--- Apps with a `class` field trigger a dynamic workspace rule in the Hyprland context
+--- that disables itself once the window appears.
 --- @param apps AppEntry[]
 local function run(apps)
-  local offsets = {}
   for _, app in ipairs(apps) do
     local m = assert(app.monitor, "app entry missing monitor index")
-    offsets[m] = offsets[m] or 1
-    launch(app.cmd, ws(m, offsets[m]))
-    if app.next then offsets[m] = offsets[m] + 1 end
+    local workspace = ws(m, app.ws or 1)
+    local match_key = app.class and "class" or app.title and "title"
+    if match_key then
+      local safe = (app.class or app.title):gsub('"', '\\"')
+      os.execute(string.format("hyprctl eval 'enable_workspace_rule(\"%s\", \"%s\", %d)'", match_key, safe, workspace))
+    end
+    launch(app.cmd, workspace)
   end
 end
 
