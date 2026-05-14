@@ -14,7 +14,9 @@ local utils = require("lib.utils")
 --- @class Config.App
 --- @field term string Terminal emulator command (default: "kitty")
 --- @field file_manager string File manager command (default: "dolphin")
---- @field menu string App menu command (default: "rofi -name rofiMenu")
+--- @field menu string Menu binary (default: "rofi")
+--- @field menu_cmd string Full app-launcher invocation (default: "rofi -name rofiMenu")
+--- @field dmenu_cmd string Full dmenu-picker invocation (default: "rofi -name rofiDmenu -i -dmenu")
 --- @field display_manager string Display/monitor manager command (default: "wdisplays")
 
 --- @class Config.Monitor
@@ -58,7 +60,9 @@ Config.defaults = {
   app = {
     term = "kitty",
     file_manager = "dolphin",
-    menu = "rofi -name rofiMenu",
+    menu = "rofi",
+    menu_cmd = "rofi -name rofiMenu",
+    dmenu_cmd = "rofi -name rofiDmenu -i -dmenu",
     display_manager = "wdisplays",
   },
   monitors = {}, --- @type Config.Monitor[]

@@ -3,7 +3,7 @@
 local HOME = os.getenv("HOME")
 local utils = require("lib.utils")
 
---- Writes theme-colors.css to ~/.config/waybar/ and restarts waybar + swaync.
+--- Writes theme-colors.css to ~/.config/waybar/.
 --- @param c table Palette color table from theme.colors.*
 return function(c)
   local css = string.format(
@@ -66,8 +66,4 @@ return function(c)
   )
 
   utils.write_file(HOME .. "/.config/waybar/theme-colors.css", css)
-  hl.dsp.exec_cmd(
-    "pkill waybar; waybar -c ~/.config/waybar/config.jsonc -s ~/.config/waybar/style.css > /dev/null 2>&1 &"
-  )
-  hl.dsp.exec_cmd("pkill swaync; swaync &")
 end

@@ -25,7 +25,7 @@ hl.define_submap(SUBMAP.system.name, function()
     Bind.run("SHIFT + W", "killall swaync swaync-client waybar; swaync & ~/clones/Waybar/build/waybar -c ~/.config/waybar/config.jsonc -s ~/.config/waybar/style.css &", "Restart Waybar (Github)")
     Bind.run("H",         "hyprctl reload",                                               "Reload Hyprland")
     Bind.run("SHIFT + H", "hyprpm reload -n",                                             "Reload Hyprpm Plugins")
-    Bind.run("T",         "~/.config/hypr/theme/main.lua --menu",                         "Theme Switch")
+    Bind.run("T",         "~/.config/hypr/theme/switch.lua '" .. Config.app.dmenu_cmd .. "'", "Theme Switch")
     -- Bind.run("D",      "$DISPLAY_MANAGER",                                             "Display Manager") -- TODO: port $DISPLAY_MANAGER
     Bind.run("K",         "hyprctl kill",                                                 "Kill Application (Click)")
 
