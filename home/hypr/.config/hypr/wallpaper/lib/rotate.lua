@@ -209,6 +209,16 @@ end
 
 -- -------- locking --------
 
+--- Return the PID of the current process via /proc/self/status.
+--- @return string|nil
+local function self_pid()
+  local f = io.open("/proc/self/status", "r")
+  if not f then return nil end
+  local content = f:read("*all")
+  f:close()
+  return content:match("Pid:%s*(%d+)")
+end
+
 --- Return true if process `pid` is still alive (via `kill -0`).
 --- @param pid string|nil
 --- @return boolean
@@ -239,7 +249,7 @@ local function acquire_lock(path)
 
   local f, err = io.open(path, "w")
   if not f then return nil, err or "locked" end
-  f:write(tostring(run_cmd("echo $$") or ""))
+  f:write(tostring(self_pid() or ""))
   f:close()
   local function cleanup()
     os.remove(path)
@@ -253,7 +263,8 @@ end
 --- @param cfg table wallpaper config (used for logging)
 --- @param util table shared utility object
 local function ensure_hyprpaper(cfg, util)
-  if os.execute("pgrep -x hyprpaper >/dev/null 2>&1") ~= 0 then
+  local r = os.execute("pgrep -x hyprpaper >/dev/null 2>&1")
+  if r ~= true and r ~= 0 then
     util.log("Starting hyprpaper...", cfg)
     local cmd = util.signature and string.format("HYPRLAND_INSTANCE_SIGNATURE=%s hyprpaper", util.signature)
       or "hyprpaper"

@@ -1,1 +1,0 @@
-../../../../../../Development/oasis.nvim/extras/lua-theme/themes/dark/Oasis Night Dark.lua
