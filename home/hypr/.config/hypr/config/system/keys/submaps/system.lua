@@ -5,6 +5,7 @@ local Bind = require("lib.submap_bind")
 local SUBMAP = require("config.system.keys.submap").map
 
 local TERM = Config.app.term
+local EDITOR = Config.app.editor or "nvim"
 
 --- System
 hl.define_submap(SUBMAP.system.name, function()
@@ -12,7 +13,7 @@ hl.define_submap(SUBMAP.system.name, function()
 
     -- !--- Shortcuts ---
     -- stylua: ignore start
-    Bind.run("SLASH",     TERM .. " -e nvim ~/.config/hypr/config/keys.conf",          "Edit Keybinds")
+    Bind.run("SLASH",     TERM .. " -e " .. EDITOR .. " ~/.config/hypr/config/system/keys/init.lua",  "Edit Keybinds")
     Bind.run("SPACE",     TERM .. " -e btop",                                             "Task Manager")
     Bind.run("M",         "~/.config/hypr/monitors/scripts/toggle-monitor-layout.sh",     "Monitor Layout")
     Bind.run("I",         "~/.config/hypr/scripts/nmtui.sh",                              "Internet Network Manager")

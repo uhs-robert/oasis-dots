@@ -7,6 +7,7 @@ local Workspaces = require("lib.workspaces")
 
 local MENU = Config.app.menu
 local TERM = Config.app.term
+local EDITOR = Config.app.editor or "nvim"
 
 --- Applications
 hl.define_submap(SUBMAP.applications.name, function()
@@ -21,12 +22,12 @@ hl.define_submap(SUBMAP.applications.name, function()
   Bind.run("C", "qalculate-gtk", "Calculator")
   Bind.run("D", "deluge", "Deluge")
   Bind.run("SHIFT + D", TERM .. " -e aria2tui", "Aria2tui")
+  Bind.run("E", TERM .. " -e " .. EDITOR, "Editor")
   Bind.run("F", "firefox", "Firefox")
   Bind.run("G", "gimp", "Gimp")
   Bind.run("I", "inkscape", "Inkscape")
   Bind.run("K", "kate", "Kate")
   Bind.focus_or_launch("M", { program = "betterbird", class = email, cmd = "flatpak run " .. email }, "Mail")
-  Bind.run("N", TERM .. " -e nvim", "NeoVim")
   Bind.run("SHIFT + N", TERM .. " -e newsboat", "Newsboat")
   Bind.run("P", "flatpak run com.vysp3r.ProtonPlus", "ProtonPlus")
   Bind.run("Q", "qutebrowser", "QuteBrowser")

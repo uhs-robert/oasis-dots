@@ -14,6 +14,7 @@ local utils = require("lib.utils")
 --- @class Config.App
 --- @field term string Terminal emulator command (default: "kitty")
 --- @field file_manager string File manager command (default: "dolphin")
+--- @field editor string Editor command (default: "nvim")
 --- @field menu string Menu binary (default: "rofi")
 --- @field menu_cmd string Full app-launcher invocation (default: "rofi -name rofiMenu")
 --- @field dmenu_cmd string Full dmenu-picker invocation (default: "rofi -name rofiDmenu -i -dmenu")
@@ -60,6 +61,7 @@ Config.defaults = {
   app = {
     term = "kitty",
     file_manager = "dolphin",
+    editor = "nvim",
     menu = "rofi",
     menu_cmd = "rofi -name rofiMenu",
     dmenu_cmd = "rofi -name rofiDmenu -i -dmenu",
