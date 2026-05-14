@@ -10,21 +10,19 @@
 
 local M = {}
 
---- @param session string tmuxifier session name
---- @param monitor integer|nil monitor index (default: 4 = RIGHT)
---- @param ws integer|nil workspace offset within the monitor (default: 1)
+--- @param opts { session: string, monitor: integer|nil, ws: integer|nil }
 --- @return AppEntry
-local function tmuxifier(session, monitor, ws)
-  return { monitor = monitor or 4, ws = ws or 1, cmd = "kitty -e tmuxifier load-session " .. session }
+local function tmuxifier(opts)
+  return { monitor = opts.monitor or 4, ws = opts.ws or 1, cmd = "kitty -e tmuxifier load-session " .. opts.session }
 end
 
---- @param monitor integer|nil monitor index (default: 1)
---- @param ws integer|nil workspace offset within the monitor (default: 2)
+--- @param opts { monitor: integer|nil, ws: integer|nil }|nil
 --- @return AppEntry
-local function betterbird(monitor, ws)
+local function betterbird(opts)
+  opts = opts or {}
   return {
-    monitor = monitor or 1,
-    ws = ws or 2,
+    monitor = opts.monitor or 1,
+    ws = opts.ws or 2,
     cmd = "flatpak run eu.betterbird.Betterbird",
     class = "eu.betterbird.Betterbird",
   }
@@ -33,20 +31,20 @@ end
 M.setups = {
   ["🌐 Browsing"] = {
     { monitor = 3, ws = 1, cmd = "firefox --new-window" },
-    tmuxifier("config"),
+    tmuxifier({ session = "config" }),
   },
 
   ["🧱 Client"] = {
     { monitor = 3, ws = 1, cmd = "firefox --new-window" },
-    tmuxifier("client-dev"),
-    tmuxifier("config", 3, 2),
+    tmuxifier({ session = "client-dev" }),
+    tmuxifier({ session = "config", monitor = 3, ws = 2 }),
     betterbird(),
     { monitor = 1, ws = 1, cmd = "slack", class = "Slack" },
   },
 
   ["🛠 Config"] = {
     { monitor = 3, ws = 1, cmd = "firefox --new-window" },
-    tmuxifier("config"),
+    tmuxifier({ session = "config" }),
     betterbird(),
   },
 
@@ -82,8 +80,8 @@ M.setups = {
 
   ["💼 Work"] = {
     { monitor = 3, ws = 1, cmd = "firefox --new-window" },
-    tmuxifier("uphill", 3, 2),
-    tmuxifier("config"),
+    tmuxifier({ session = "uphill", monitor = 3, ws = 2 }),
+    tmuxifier({ session = "config" }),
     betterbird(),
     { monitor = 1, ws = 2, cmd = "slack", class = "Slack" },
     { monitor = 2, ws = 1, cmd = "qutebrowser" },
