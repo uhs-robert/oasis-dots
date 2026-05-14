@@ -15,7 +15,8 @@ local run_script = Utils.run_script
 
 local LEADER = Config.leader .. " " -- Add space now
 local TERM = Config.app.term
-local FILES = Config.app.file_manager
+local FILES = Config.app.gui_file_manager
+local TUI_FILES = Config.app.tui_file_manager
 local MENU = Config.app.menu
 
 local DIR_INPUT = {
@@ -207,6 +208,7 @@ local set_shortcuts = function()
   hl.bind(LEADER .. "+ SHIFT + RETURN", hl.dsp.exec_cmd(MENU .. " -i -show run"), { description = "Run Script" })
   hl.bind(LEADER .. "+ CTRL + RETURN", hl.dsp.exec_cmd(MENU .. " -i -show ssh"), { description = "SSH Select" })
   hl.bind(LEADER .. "+ E", hl.dsp.exec_cmd(FILES), { description = "File Manager" })
+  hl.bind(LEADER .. "+ SHIFT + E", hl.dsp.exec_cmd(TERM .. " -e " .. TUI_FILES), { description = "TUI File Manager" })
   hl.bind("CTRL + SHIFT + ESCAPE", hl.dsp.exec_cmd(TERM .. " -e btop"), { description = "Task Manager" })
   hl.bind(
     LEADER .. "+ N",
