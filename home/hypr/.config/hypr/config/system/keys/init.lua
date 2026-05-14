@@ -8,257 +8,155 @@
 --    ╚═╝  ╚═╝╚══════╝   ╚═╝   ╚═════╝ ╚═╝╚═╝  ╚═══╝╚═════╝ ╚══════╝
 --
 
-local Config = require("config")
-local Utils = require("lib.utils")
-local Workspaces = require("lib.workspaces")
-local run_script = Utils.run_script
+local Config = require("config") --- @class Config
+local Workspaces = require("lib.workspaces") --- @class Workspaces
+local Bind = require("lib.bind") --- @class Bind
+local Scripts = require("lib.scripts") --- @class Scripts
 
-local LEADER = Config.leader .. " " -- Add space now
 local TERM = Config.app.term
 local FILES = Config.app.gui_file_manager
 local TUI_FILES = Config.app.tui_file_manager
 local MENU = Config.app.menu
 
-local DIR_INPUT = {
-  { vim = "H", arrow = "Left", dir = "l", label = "Left" },
-  { vim = "L", arrow = "Right", dir = "r", label = "Right" },
-  { vim = "K", arrow = "Up", dir = "u", label = "Up" },
-  { vim = "J", arrow = "Down", dir = "d", label = "Down" },
-}
-
--- Bind a dispatcher for every direction. desc_prefix .. d.label fills the description.
--- vim_mode gates hjkl; arrow keys always register.
-local function bind_dir_inputs(mods, make_dsp, desc_prefix, opts)
-  for _, d in ipairs(DIR_INPUT) do
-    local flags = {}
-    for k, v in pairs(opts or {}) do
-      flags[k] = v
-    end
-    flags.description = desc_prefix .. d.label
-    if Config.vim_mode then hl.bind(mods .. " + " .. d.vim, make_dsp(d), flags) end
-    hl.bind(mods .. " + " .. d.arrow, make_dsp(d), flags)
-  end
-end
-
 -- ──────────────────────────────────────────────────────────────────────────── #
--- !-- Flag References
+-- !-- General Keybinds
+--     Registers core window/workspace/monitor focus and movement binds.
 -- ──────────────────────────────────────────────────────────────────────────── #
--- Flag                 | Description
--- locked (l)           | Will also work when an input inhibitor (e.g. a lockscreen) is active.
--- release (r)          | Will trigger on release of a key.
--- click (c)            | Will trigger on release of a key or button as long as the mouse cursor stays inside binds:drag_threshold.
--- drag (g)             | Will trigger on release of a key or button as long as the mouse cursor moves outside binds:drag_threshold.
--- long_press (o)       | Will trigger on long press of a key.
--- repeating (e)        | Will repeat when held.
--- non_consuming (n)    | Key/mouse events will be passed to the active window in addition to triggering the dispatcher.
--- auto_consuming       | Key/mouse events will be passed to the active window if the dispatcher doesn’t succeed.
--- mouse (m)            | See the dedicated Mouse Binds section.
--- transparent (t)      | Cannot be shadowed by other binds.
--- ignore_mods (i)      | Will ignore modifiers.
--- separate (s)         | Will arbitrarily combine keys between each mod/key, see Keysym combos.
--- description (d)      | Will allow you to write a description for your bind.
--- bypass (p)           | Bypasses the app’s requests to inhibit keybinds.
--- submap_universal (u) | Will be active no matter the submap.
--- devices              | Allow binds to be set per device. See Per-Device Binds
+local set_general_keys = function()
+  -- stylua: ignore start
 
--- ──────────────────────────────────────────────────────────────────────────── #
--- !-- Basic Navigation
--- ──────────────────────────────────────────────────────────────────────────── #
+  -- !--- General actions
+  Bind.leader("ESCAPE", hl.dsp.submap("reset"), { desc = "Reset Submaps", submap_universal = true })
+  Bind.leader("C", hl.dsp.window.close(), { desc = "Close Window" })
+  Bind.leader("F", hl.dsp.window.fullscreen({ action = "toggle" }), { desc = "Toggle Fullscreen" })
 
-local set_basic_navigation = function()
-  hl.bind(LEADER .. "+ ESCAPE", hl.dsp.submap("reset"), { desc = "Reset Submaps", submap_universal = true })
-  hl.bind(LEADER .. "+ C", hl.dsp.window.close(), { desc = "Close Window" })
-  hl.bind(LEADER .. "+ F", hl.dsp.window.fullscreen({ action = "toggle" }), { desc = "Toggle Fullscreen" })
-  hl.bind(LEADER .. "+ T", hl.dsp.exec_cmd(Config.app.menu .. " -i -show hyprwindow"), { desc = "Find window by name" })
-  hl.bind(
-    LEADER .. "+ SHIFT + T",
-    hl.dsp.exec_cmd("~/.config/hypr/scripts/rofi-hyprwindow.sh --move"),
-    { desc = "Move window next to another window" }
-  )
-  hl.bind(
-    LEADER .. "+ CTRL + SHIFT + T",
-    hl.dsp.exec_cmd("~/.config/hypr/scripts/rofi-hyprwindow.sh --move-silent"),
-    { desc = "Move window silently next to another window" }
-  )
+  -- !--- Workspace Navigation (Basic)
+  Bind.leader_dir("", function(d) return hl.dsp.focus({ direction = d.dir }) end, "Focus ", { submap_universal = true })
+  Bind.leader("TAB", hl.dsp.focus({ workspace = "previous" }), { desc = "Go to Last Active WS" })
 
-  -- !--- Focus Movement
-  bind_dir_inputs(
-    LEADER,
-    function(d) return hl.dsp.focus({ direction = d.dir }) end,
-    "Focus ",
-    { submap_universal = true }
-  )
-  hl.bind(LEADER .. "+ TAB", hl.dsp.focus({ workspace = "previous" }), { description = "Go to Last Active WS" })
+  -- !--- Scratchpad
+  Bind.leader("S", hl.dsp.workspace.toggle_special("scratchpad"), { desc = "Toggle Scratchpad", submap_universal = true })
+  Bind.leader("S", hl.dsp.window.move({ workspace = "special:scratchpad" }), { desc = "Move Window to Scratchpad", submap_universal = true })
 
   -- !--- Monitor Navigation
   local get_monitor_selector = Workspaces.get_monitor_selector
   for i, entry in ipairs(Config.monitors) do
     local sel = get_monitor_selector(entry)
     if sel then
-      hl.bind(LEADER .. "+ CTRL + " .. i, hl.dsp.focus({ monitor = sel }), { description = "Focus Monitor " .. i })
-      hl.bind(
-        LEADER .. "+ CTRL + SHIFT + " .. i,
-        hl.dsp.window.move({ monitor = sel, follow = true }),
-        { description = "Move to Monitor " .. i }
-      )
+      Bind.leader("CTRL + " .. i, hl.dsp.focus({ monitor = sel }), { desc = "Focus Monitor " .. i })
+      Bind.leader("CTRL + SHIFT + " .. i, hl.dsp.window.move({ monitor = sel, follow = true }), { desc = "Move to Monitor " .. i })
     end
   end
+  Bind.leader_dir( "SHIFT", function(d) return hl.dsp.window.move({ direction = d.dir }) end, "Move Window ", { submap_universal = true })
+end
 
-  -- !--- Move Windows to Monitor
-  bind_dir_inputs(
-    LEADER .. "+ SHIFT",
-    function(d) return hl.dsp.window.move({ direction = d.dir }) end,
-    "Move Window ",
-    { submap_universal = true }
-  )
+-- ──────────────────────────────────────────────────────────────────────────── #
+-- !-- Workspace Navigation (Advanced)
+--     Digit/cycle binds; persistent (relative to monitor) or default navigation
+-- ──────────────────────────────────────────────────────────────────────────── #
 
-  -- !--- Workspace Navigation
-  local PERSISTENT_WS = Config.persistent_workspaces
+--- Registers workspace binds for simple global workspaces (1-9, cycle prev/next).
+local set_default_ws_navigation = function()
+  -- Bind workspaces 1-9 to LEADER + digits, move with LEADER + SHIFT
+  for i = 1, 9 do
+    local key = i % 10
+    Bind.leader("" .. key, hl.dsp.focus({ workspace = i }), { submap_universal = true, desc = "Go to Workspace " .. i })
+    Bind.leader("SHIFT + " .. key, hl.dsp.window.move({ workspace = i }), { desc = "Move to Workspace " .. i })
+  end
+
+  -- Cycle through workspaces globally via LEADER + CTRL Left/Right, use Up/Down to move them
+  local ws = {
+    l = { hl.dsp.focus({ workspace = "e-1" }), { repeating = true, desc = "Prev WS" } },
+    r = { hl.dsp.focus({ workspace = "e+1" }), { repeating = true, desc = "Next WS" } },
+    d = { hl.dsp.window.move({ workspace = "e-1" }), { desc = "Move window to prev WS" } },
+    u = { hl.dsp.window.move({ workspace = "e+1" }), { desc = "Move window to next WS" } },
+  }
+  Bind.leader_dir("CTRL", function(d) return ws[d.dir][1] end, nil, function(d) return ws[d.dir][2] end)
+end
+
+--- Registers workspace binds for monitor-pinned persistent workspaces (via `Config.persistent_workspaces`).
+local set_persistent_ws_navigation = function()
   local get_ws_id = Workspaces.get_ws_id
   local cycle_local_ws = Workspaces.cycle_local_ws
   local move_window_local_ws = Workspaces.move_window_local_ws
 
-  -- Focus/Move Windows
-  for i = 1, PERSISTENT_WS do
+  -- Bind local monitor-pinned workspaces to LEADER + digits, move with LEADER + SHIFT
+  for i = 1, Config.persistent_workspaces do
     local key = i % 10
-
-    hl.bind(
-      LEADER .. "+ " .. key,
-      function() hl.dispatch(hl.dsp.focus({ workspace = get_ws_id(i) })) end,
-      { submap_universal = true, description = "Go to Workspace " .. i }
-    )
-
-    hl.bind(
-      LEADER .. "+ SHIFT + " .. key,
-      function() hl.dispatch(hl.dsp.window.move({ workspace = get_ws_id(i) })) end,
-      { description = "Move to Workspace " .. i }
-    )
+    -- stylua: ignore start
+    Bind.leader("" .. key,         hl.dsp.focus({ workspace = get_ws_id(i) }),       { submap_universal = true, desc = "Go to Workspace " .. i })
+    Bind.leader("SHIFT + " .. key, hl.dsp.window.move({ workspace = get_ws_id(i) }), { desc = "Move to Workspace " .. i })
   end
 
-  -- Persistent workspace binds to move windows/workspaces relative to the active monitor
-  if PERSISTENT_WS then
-    hl.bind(
-      LEADER .. "+ CTRL + L",
-      function() cycle_local_ws("next") end,
-      { repeating = true, description = "Next WS on Monitor" }
-    )
-    hl.bind(
-      LEADER .. "+ CTRL + H",
-      function() cycle_local_ws("prev") end,
-      { repeating = true, description = "Prev WS on Monitor" }
-    )
-    hl.bind(
-      LEADER .. "+ CTRL + K",
-      function() move_window_local_ws("next") end,
-      { description = "Move window to next WS" }
-    )
-    hl.bind(
-      LEADER .. "+ CTRL + J",
-      function() move_window_local_ws("prev") end,
-      { description = "Move window to prev WS" }
-    )
-  end
-
-  -- !--- Scratchpad
-  hl.bind(
-    LEADER .. "+ S",
-    hl.dsp.workspace.toggle_special("scratchpad"),
-    { description = "Toggle Scratchpad", submap_universal = true }
-  )
-  hl.bind(
-    LEADER .. "+ SHIFT + S",
-    hl.dsp.window.move({ workspace = "special:scratchpad" }),
-    { description = "Move Window to Scratchpad", submap_universal = true }
-  )
+  -- Cycle through workspaces locally via LEADER + CTRL Left/Right, Use Up/Down to move them
+  local ws = {
+    l = { function() cycle_local_ws("prev") end, { repeating = true, desc = "Prev WS on Monitor" } },
+    r = { function() cycle_local_ws("next") end, { repeating = true, desc = "Next WS on Monitor" } },
+    d = { function() move_window_local_ws("prev") end, { desc = "Move window to prev WS" } },
+    u = { function() move_window_local_ws("next") end, { desc = "Move window to next WS" } },
+  }
+  Bind.leader_dir("CTRL", function(d) return ws[d.dir][1] end, nil, function(d) return ws[d.dir][2] end)
 end
-
--- !--- Marks
--- TODO: Setup later when mark works
--- bindd = LEADER, M, +Mark, exec, $HYPRVIM_WHICH_KEY --delay=0; $HYPRVIM_MARKS after reset && hyprctl dispatch submap SET-MARK
--- bindd = LEADER+CTRL, M, +Delete Mark, exec, $HYPRVIM_WHICH_KEY --delay=0; $HYPRVIM_MARKS after reset && hyprctl dispatch submap DELETE-MARK
--- bindd = LEADER, APOSTROPHE, +Jump, exec, $HYPRVIM_WHICH_KEY --delay=0; $HYPRVIM_MARKS after reset && hyprctl dispatch submap JUMP-MARK
--- bindd = LEADER, GRAVE, +Jump Exit, exec, $HYPRVIM_WHICH_KEY --delay=0; $HYPRVIM_MARKS after reset && hyprctl dispatch submap JUMP-MARK
--- bindd = LEADER+SHIFT, M, List Marks, exec, $HYPRVIM_MARKS list
 
 -- ──────────────────────────────────────────────────────────────────────────── #
 -- !-- Mouse Controls
+--     Registers mouse binds: scroll to cycle workspaces, drag/resize windows
 -- ──────────────────────────────────────────────────────────────────────────── #
 local set_mouse_controls = function()
   -- !--- Scroll Through Workspaces
-  hl.bind(LEADER .. "+ mouse_down", hl.dsp.focus({ workspace = "e+1" }))
-  hl.bind(LEADER .. "+ mouse_up", hl.dsp.focus({ workspace = "e-1" }))
+  Bind.leader("mouse_down", hl.dsp.focus({ workspace = "e+1" }))
+  Bind.leader("mouse_up", hl.dsp.focus({ workspace = "e-1" }))
 
   -- !--- Move/Resize Windows with Mouse
-  hl.bind(LEADER .. "+ mouse:272", hl.dsp.window.drag(), { mouse = true })
-  hl.bind(LEADER .. "+ mouse:273", hl.dsp.window.resize(), { mouse = true })
+  Bind.leader("mouse:272", hl.dsp.window.drag(), { mouse = true })
+  Bind.leader("mouse:273", hl.dsp.window.resize(), { mouse = true })
 end
 
 -- ──────────────────────────────────────────────────────────────────────────── #
 -- !-- Utility Shortcuts
+--     Registers quick-launch binds: terminal, file manager, menu, editor, etc
 -- ──────────────────────────────────────────────────────────────────────────── #
-
 local set_shortcuts = function()
-  -- hl.bind(
-  --   LEADER .. "+ SHIFT + SEMICOLON",
-  --   hl.dsp.exec_cmd("$HYPRVIM_COMMAND after reset && $HYPRVIM_COMMAND prompt"),
-  --   { description = "+Command" }
-  -- )
-  -- bindd = LEADER, SLASH, Launch Application, exec, $MENU -i -show drun
-  hl.bind(LEADER .. "+ RETURN", hl.dsp.exec_cmd(TERM), { description = "Terminal" })
-  hl.bind(LEADER .. "+ SHIFT + RETURN", hl.dsp.exec_cmd(MENU .. " -i -show run"), { description = "Run Script" })
-  hl.bind(LEADER .. "+ CTRL + RETURN", hl.dsp.exec_cmd(MENU .. " -i -show ssh"), { description = "SSH Select" })
-  hl.bind(LEADER .. "+ E", hl.dsp.exec_cmd(FILES), { description = "File Manager" })
-  hl.bind(LEADER .. "+ SHIFT + E", hl.dsp.exec_cmd(TERM .. " -e " .. TUI_FILES), { description = "TUI File Manager" })
-  hl.bind("CTRL + SHIFT + ESCAPE", hl.dsp.exec_cmd(TERM .. " -e btop"), { description = "Task Manager" })
-  hl.bind(
-    LEADER .. "+ N",
-    function()
-      local Editor = require("hyprvim.vim.commands.editor")
-      Editor.open({ ext = "md", insert_mode = true })
-    end,
-    -- hl.dsp.exec_cmd("wtype -M ctrl -k c -m ctrl && sleep 0.05 && $HYPRVIM_OPEN_VIM --copy-selected"),
-    { description = "Edit Selection in NeoVim" }
-  )
-  hl.bind(LEADER .. "+ Y", hl.dsp.exec_cmd(TERM .. " -e yazi"), { description = "Yazi" })
-  hl.bind(
-    LEADER .. "+ O",
-    hl.dsp.exec_cmd("hyprctl dispatch submap reset; " .. MENU .. " -i -show drun"),
-    { description = "Application Launcher" }
-  )
+  -- stylua: ignore start
+  Bind.leader("RETURN", hl.dsp.exec_cmd(TERM), { desc = "Terminal" })
+  Bind.leader("SHIFT + RETURN", hl.dsp.exec_cmd(MENU .. " -i -show run"), { desc = "Run Script" })
+  Bind.leader("CTRL + RETURN", hl.dsp.exec_cmd(MENU .. " -i -show ssh"), { desc = "SSH Select" })
+  Bind.leader("E", hl.dsp.exec_cmd(FILES), { desc = "File Manager" })
+  Bind.leader("SHIFT + E", hl.dsp.exec_cmd(TERM .. " -e " .. TUI_FILES), { desc = "TUI File Manager" })
+  Bind.leader("N", function() require("hyprvim.vim.commands.editor").open({ ext = "md", insert_mode = true }) end, { desc = "Edit Selection in Vim" })
+  Bind.leader("Y", hl.dsp.exec_cmd(TERM .. " -e yazi"), { desc = "Yazi" })
+  Bind.leader_cmd("O", MENU .. " -i -show drun", { desc = "Open Application" })
+  hl.bind("CTRL + SHIFT + ESCAPE", hl.dsp.exec_cmd(TERM .. " -e btop"), { desc = "Task Manager" })
 end
 
 -- ──────────────────────────────────────────────────────────────────────────── #
 -- !-- Tools
+--     Registers tool binds: screenshot, color picker, speech-to-text, etc
 -- ──────────────────────────────────────────────────────────────────────────── #
-
 local set_tools = function()
-  hl.bind("Print", hl.dsp.exec_cmd(run_script("screenshot.sh", "hypr")), { description = "Print Options" })
-  hl.bind(
-    LEADER .. "+ P",
-    hl.dsp.exec_cmd(run_script("screenshot.sh --pixel", "hypr")),
-    { description = "Color Picker" }
-  )
-  hl.bind(
-    "CTRL + Period",
-    hl.dsp.exec_cmd(run_script("voxtype-with-media-pause.sh", "hypr")),
-    { description = "Speech to Text" }
-  )
-  hl.bind(
-    "CTRL + ALT + A",
-    hl.dsp.exec_cmd(run_script("voxtype-with-media-pause.sh", "hypr")),
-    { description = "Speech to Text" }
-  )
-  hl.bind(
-    LEADER .. "+ CTRL + V",
-    hl.dsp.exec_cmd(
-      "cliphist list | " .. MENU .. " -i -dmenu -p 'Search clipboard history...' | cliphist decode | wl-copy"
-    ),
-    { description = "Clipboard History" }
-  )
+  -- stylua: ignore start
+
+  -- !--- Screenshot / Color Picker
+  Bind.cmd("Print", Scripts.screenshot, { desc = "Print Options" })
+  Bind.leader("P", hl.dsp.exec_cmd(Scripts.screenshot .. " --pixel"), { desc = "Color Picker" })
+
+  -- !--- Speech to text
+  Bind.cmd("CTRL + PERIOD", Scripts.voxtype, { desc = "Speech to Text" })
+  Bind.cmd("CTRL + ALT + A", Scripts.voxtype, { desc = "Speech to Text" })
+
+  -- !--- Clipboard search
+  local cmd_search_clipboard = "cliphist list | " .. MENU .. " -i -dmenu -p 'Search clipboard history...' | cliphist decode | wl-copy"
+  Bind.leader_cmd("CTRL + V", cmd_search_clipboard, { desc = "Clipboard History" })
+
+  -- !--- Window Finder / Mover via Menu
+  Bind.leader_cmd("T", Config.app.menu .. " -i -show hyprwindow", { desc = "Find window by name" })
+  Bind.leader_cmd("SHIFT + T", Scripts.window_selector .. " --move", { desc = "Move window to another window" })
+  Bind.leader_cmd( "CTRL + SHIFT + T", Scripts.window_selector .. " --move-silent", { desc = "Silently move window to another window" })
 end
 
 -- ──────────────────────────────────────────────────────────────────────────── #
 -- !-- Volume / Media / Brightness
+--     Registers volume, brightness, playerctl, and hardware media key binds.
 -- ──────────────────────────────────────────────────────────────────────────── #
 local set_media_controls = function()
   -- !--- Volume and Brightness
@@ -271,36 +169,14 @@ local set_media_controls = function()
   hl.bind("XF86MonBrightnessDown", hl.dsp.exec_cmd("brightnessctl s 10%-"), rlu)
 
   -- !--- Media Controls
-  hl.bind(
-    LEADER .. "+ ALT + H",
-    hl.dsp.exec_cmd("playerctl previous"),
-    { description = "Previous Track", submap_universal = true, locked = true }
-  )
-  hl.bind(
-    LEADER .. "+ ALT + L",
-    hl.dsp.exec_cmd("playerctl next"),
-    { description = "Next Track", submap_universal = true, locked = true }
-  )
-  hl.bind(
-    LEADER .. "+ ALT + J",
-    hl.dsp.exec_cmd("wpctl set-volume -l 1 @DEFAULT_AUDIO_SINK@ 5%-"),
-    { description = "Volume Down", repeating = true, submap_universal = true, locked = true }
-  )
-  hl.bind(
-    LEADER .. "+ ALT + K",
-    hl.dsp.exec_cmd("wpctl set-volume -l 1 @DEFAULT_AUDIO_SINK@ 5%+"),
-    { description = "Volume Up", repeating = true, submap_universal = true, locked = true }
-  )
-  hl.bind(
-    LEADER .. "+ ALT + SPACE",
-    hl.dsp.exec_cmd("playerctl play-pause"),
-    { description = "Play/Pause Media", submap_universal = true, locked = true }
-  )
-  hl.bind(
-    LEADER .. "+ ALT + M",
-    hl.dsp.exec_cmd(run_script("focus-media-player.sh", "hypr")),
-    { description = "Focus Media Window", submap_universal = true, locked = true }
-  )
+  -- stylua: ignore start
+  local function set_pctl_opt(description) return { desc = description, submap_universal = true, locked = true } end
+  local function set_vol_opt(description) return { desc = description, repeating = true, submap_universal = true, locked = true } end
+  Bind.leader("ALT + H", hl.dsp.exec_cmd("playerctl previous"), set_pctl_opt("Previous Track"))
+  Bind.leader("ALT + L", hl.dsp.exec_cmd("playerctl next"), set_pctl_opt("Next Track"))
+  Bind.leader("ALT + J", hl.dsp.exec_cmd("wpctl set-volume -l 1 @DEFAULT_AUDIO_SINK@ 5%-"), set_vol_opt("Volume Down"))
+  Bind.leader("ALT + K", hl.dsp.exec_cmd("wpctl set-volume -l 1 @DEFAULT_AUDIO_SINK@ 5%+"), set_vol_opt("Volume Up"))
+  Bind.leader("ALT + SPACE", hl.dsp.exec_cmd("playerctl play-pause"), set_pctl_opt("Play/Pause Media"))
 
   -- !--- Media Keys
   hl.bind("XF86AudioNext", hl.dsp.exec_cmd("playerctl next"), { locked = true, submap_universal = true })
@@ -309,12 +185,34 @@ local set_media_controls = function()
   hl.bind("XF86AudioPrev", hl.dsp.exec_cmd("playerctl previous"), { locked = true, submap_universal = true })
 end
 
+-- ──────────────────────────────────────────────────────────────────────────── #
+-- !-- HyprVim Shortcuts
+--     Placeholder for HyprVim command/mark binds (pending HyprVim completion).
+-- ──────────────────────────────────────────────────────────────────────────── #
+local set_hyprvim_shortcuts = function()
+  --TODO: Resolve once HyprVim is done
+  -- Bind.leader_cmd("SHIFT + SEMICOLON", "$HYPRVIM_COMMAND after reset && $HYPRVIM_COMMAND prompt", { desc = "+Command" })
+  -- !--- Marks
+  -- bindd = LEADER, M, +Mark, exec, $HYPRVIM_WHICH_KEY --delay=0; $HYPRVIM_MARKS after reset && hyprctl dispatch submap SET-MARK
+  -- bindd = LEADER+CTRL, M, +Delete Mark, exec, $HYPRVIM_WHICH_KEY --delay=0; $HYPRVIM_MARKS after reset && hyprctl dispatch submap DELETE-MARK
+  -- bindd = LEADER, APOSTROPHE, +Jump, exec, $HYPRVIM_WHICH_KEY --delay=0; $HYPRVIM_MARKS after reset && hyprctl dispatch submap JUMP-MARK
+  -- bindd = LEADER, GRAVE, +Jump Exit, exec, $HYPRVIM_WHICH_KEY --delay=0; $HYPRVIM_MARKS after reset && hyprctl dispatch submap JUMP-MARK
+  -- bindd = LEADER+SHIFT, M, List Marks, exec, $HYPRVIM_MARKS list
+end
+
+-- ──────────────────────────────────────────────────────────────────────────── #
+-- !-- Init
+--     Registers all binds
+-- ──────────────────────────────────────────────────────────────────────────── #
 local init = function()
-  set_basic_navigation()
-  set_mouse_controls()
+  local set_ws_navigation = Config.persistent_workspaces and set_persistent_ws_navigation or set_default_ws_navigation
+  set_general_keys()
+  set_ws_navigation()
   set_shortcuts()
   set_tools()
   set_media_controls()
+  set_mouse_controls()
+  set_hyprvim_shortcuts()
   require("config.system.keys.submap").setup()
 end
 
