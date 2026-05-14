@@ -50,6 +50,7 @@ Config.defaults = {
   vim_mode = true,
   use_uwsm = false,
   drm_devices = nil,
+  is_laptop = nil,
   nvidia = {
     enable = false,
     backend = "nvidia-drm",
@@ -72,12 +73,60 @@ Config.defaults = {
   monitors = {}, --- @type Config.Monitor[]
 }
 
-Config.update = function(overrides)
+--- Detects laptop by checking live monitors for an eDP- panel.
+--- Returns nil when the hl API is unavailable (e.g. during unit tests).
+--- @return boolean|nil
+local function detect_is_laptop()
+  for _, mon in ipairs(hl.get_monitors()) do
+    if mon.name:sub(1, 4) == "eDP-" then return true end
+  end
+
+  return false
+end
+
+--- Resolves monitors to a list, calling the factory function when provided.
+--- @param monitors Config.Monitor[]|fun(is_laptop: boolean|nil): Config.Monitor[]
+--- @param is_laptop boolean|nil
+--- @return Config.Monitor[]
+local function resolve_monitors(monitors, is_laptop)
+  if type(monitors) == "function" then return monitors(is_laptop) end
+
+  return monitors
+end
+
+--- Fills in menu_cmd and dmenu_cmd defaults derived from app.menu when absent.
+--- @param app Config.App
+local function fill_menu_cmds(app)
+  local m = app.menu
+  if not app.menu_cmd then app.menu_cmd = m .. " -name rofiMenu" end
+  if not app.dmenu_cmd then app.dmenu_cmd = m .. " -name rofiDmenu -i -dmenu" end
+end
+
+--- Derives fields that are dependent upon other config values.
+--- @param cfg table
+local function derive(cfg)
+  if cfg.is_laptop == nil then cfg.is_laptop = detect_is_laptop() end
+  cfg.monitors = resolve_monitors(cfg.monitors, cfg.is_laptop)
+  fill_menu_cmds(cfg.app)
+end
+
+--- Deep-merges a partial config patch onto the live config and re-derives dependent fields.
+--- @param patch table
+--- @return Config
+Config.update = function(patch)
+  utils.deep_extend(Config, patch)
+  derive(Config)
+
+  return Config
+end
+
+--- Resets to defaults, applies overrides, and writes the result onto this module table.
+--- @param overrides table|nil
+--- @return Config
+Config.merge = function(overrides)
   local merged = utils.deep_extend({}, Config.defaults)
   if overrides then utils.deep_extend(merged, overrides) end
-  local m = merged.app.menu
-  if not merged.app.menu_cmd then merged.app.menu_cmd = m .. " -name rofiMenu" end
-  if not merged.app.dmenu_cmd then merged.app.dmenu_cmd = m .. " -name rofiDmenu -i -dmenu" end
+  derive(merged)
   for k, v in pairs(merged) do
     Config[k] = v
   end
@@ -91,7 +140,7 @@ end
 --- @param overrides table|nil
 --- @return Config
 Config.setup = function(overrides)
-  Config = Config.update(overrides)
+  Config = Config.merge(overrides)
   hl.on("hyprland.start", require("config.system.autostart"))
   require("config.system.env")
   require("config.system.general")
