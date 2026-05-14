@@ -41,6 +41,7 @@ local utils = require("lib.utils")
 --- @field cursor Config.Cursor
 --- @field app Config.App
 --- @field monitors Config.Monitor[] Ordered list of monitors; position in list maps to jump index 1–9
+--- @field devices HL.DeviceSpec[] Per-device configs applied via hl.device() on startup (default: {})
 local Config = {}
 
 Config.defaults = {
@@ -72,6 +73,7 @@ Config.defaults = {
     display_manager = "wdisplays",
   },
   monitors = {}, --- @type Config.Monitor[]
+  devices = {}, --- @type HL.DeviceSpec[]
 }
 
 --- Detects laptop by checking live monitors for an eDP- panel.
@@ -145,7 +147,7 @@ Config.setup = function(overrides)
   hl.on("hyprland.start", require("config.system.autostart"))
   require("config.system.env")
   require("config.system.general")
-  -- require("config.system.devices") -- TODO: Implement config for devices to pass here and add device specific settings
+  for _, device in ipairs(Config.devices) do hl.device(device) end
   require("config.system.rules")
   require("config.system.monitors")
   require("config.system.keys")
