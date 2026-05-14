@@ -22,7 +22,12 @@ end
 --- @param ws integer|nil workspace offset within the monitor (default: 2)
 --- @return AppEntry
 local function betterbird(monitor, ws)
-  return { monitor = monitor or 1, ws = ws or 2, cmd = "flatpak run eu.betterbird.Betterbird", class = "eu.betterbird.Betterbird" }
+  return {
+    monitor = monitor or 1,
+    ws = ws or 2,
+    cmd = "flatpak run eu.betterbird.Betterbird",
+    class = "eu.betterbird.Betterbird",
+  }
 end
 
 M.setups = {
@@ -81,6 +86,7 @@ M.setups = {
     tmuxifier("config"),
     betterbird(),
     { monitor = 1, ws = 2, cmd = "slack", class = "Slack" },
+    { monitor = 2, ws = 1, cmd = "qutebrowser" },
   },
 }
 
