@@ -1,6 +1,9 @@
 -- home/hypr/.config/hypr/config/system/general.lua
 local Config = require("config")
 
+local IS_LAPTOP = Config.is_laptop
+local ENABLE_NVIDIA = Config.nvidia.enable
+
 -- https://wiki.hypr.land/Configuring/Basics/Variables/
 hl.config({
   general = {
@@ -19,12 +22,12 @@ hl.config({
     dim_inactive = true,
     dim_strength = 0.2,
     shadow = {
-      enabled = false, -- TODO: If laptop, disable
+      enabled = not IS_LAPTOP,
       range = 4,
       render_power = 3,
     },
     blur = {
-      enabled = false, -- TODO: If laptop, disable
+      enabled = not IS_LAPTOP,
       size = 3,
       passes = 1,
       vibrancy = 0.1696,
@@ -43,7 +46,7 @@ hl.config({
   },
 
   cursor = {
-    no_hardware_cursors = Config.nvidia.enable and 1 or 2,
+    no_hardware_cursors = ENABLE_NVIDIA and 1 or 2,
     inactive_timeout = 2,
     hide_on_key_press = true,
     enable_hyprcursor = true,

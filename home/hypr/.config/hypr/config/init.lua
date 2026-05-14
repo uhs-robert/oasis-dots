@@ -36,6 +36,7 @@ local utils = require("lib.utils")
 --- @field vim_mode boolean Use H/J/K/L as directional inputs in keybinds (default: true)
 --- @field use_uwsm boolean Enable uwsm session management (default: false)
 --- @field drm_devices string|nil DRM device path(s) for WLR_DRM_DEVICES; nil = unset (default: nil)
+--- @field is_laptop boolean|nil Whether the system running is a laptop or desktop (default: nil)
 --- @field nvidia Config.Nvidia
 --- @field cursor Config.Cursor
 --- @field app Config.App
