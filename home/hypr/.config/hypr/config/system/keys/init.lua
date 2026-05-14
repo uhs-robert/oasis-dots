@@ -1,4 +1,4 @@
--- home/hypr/.config/hypr/keys/init.lua
+-- home/hypr/.config/hypr/config/system/keys/init.lua
 --
 --    ██╗  ██╗███████╗██╗   ██╗██████╗ ██╗███╗   ██╗██████╗ ███████╗
 --    ██║ ██╔╝██╔════╝╚██╗ ██╔╝██╔══██╗██║████╗  ██║██╔══██╗██╔════╝
@@ -68,19 +68,15 @@ local set_basic_navigation = function()
   hl.bind(LEADER .. "+ ESCAPE", hl.dsp.submap("reset"), { desc = "Reset Submaps", submap_universal = true })
   hl.bind(LEADER .. "+ C", hl.dsp.window.close(), { desc = "Close Window" })
   hl.bind(LEADER .. "+ F", hl.dsp.window.fullscreen({ action = "toggle" }), { desc = "Toggle Fullscreen" })
-  hl.bind(
-    LEADER .. "+ T",
-    hl.dsp.exec_cmd("hyprctl dispatch submap reset; $MENU -i -show hyprwindow"),
-    { desc = "Find window by name" }
-  )
+  hl.bind(LEADER .. "+ T", hl.dsp.exec_cmd(Config.app.menu .. " -i -show hyprwindow"), { desc = "Find window by name" })
   hl.bind(
     LEADER .. "+ SHIFT + T",
-    hl.dsp.exec_cmd("hyprctl dispatch submap reset; ~/.config/hypr/scripts/rofi-hyprwindow.sh --move"),
+    hl.dsp.exec_cmd("~/.config/hypr/scripts/rofi-hyprwindow.sh --move"),
     { desc = "Move window next to another window" }
   )
   hl.bind(
     LEADER .. "+ CTRL + SHIFT + T",
-    hl.dsp.exec_cmd("hyprctl dispatch submap reset; ~/.config/hypr/scripts/rofi-hyprwindow.sh --move-silent"),
+    hl.dsp.exec_cmd("~/.config/hypr/scripts/rofi-hyprwindow.sh --move-silent"),
     { desc = "Move window silently next to another window" }
   )
 
