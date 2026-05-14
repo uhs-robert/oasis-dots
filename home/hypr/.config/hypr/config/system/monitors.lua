@@ -62,21 +62,13 @@ end
 --- regardless of how many monitors are connected.
 local function init_workspaces()
   local monitors = hl.get_monitors()
-  local workspaces = hl.get_workspaces()
-
   for i, entry in ipairs(MONITOR_ORDER) do
     local output = get_monitor_output(entry, monitors)
     if output then
       local start_ws = (i - 1) * PERSISTENT_WS + 1
       local end_ws = i * PERSISTENT_WS
-      local count = 0
-      for _, ws in ipairs(workspaces) do
-        if ws.id >= start_ws and ws.id <= end_ws and ws.ispersistent then count = count + 1 end
-      end
-      if count < PERSISTENT_WS then
-        for n = start_ws, end_ws do
-          hl.workspace_rule({ workspace = tostring(n), monitor = output, persistent = true })
-        end
+      for n = start_ws, end_ws do
+        hl.workspace_rule({ workspace = tostring(n), monitor = output, persistent = true })
       end
     end
   end
