@@ -65,8 +65,8 @@ Config.defaults = {
     gui_file_manager = "dolphin",
     tui_file_manager = "yazi",
     menu = "rofi",
-    menu_cmd = "rofi -name rofiMenu",
-    dmenu_cmd = "rofi -name rofiDmenu -i -dmenu",
+    menu_cmd = nil,
+    dmenu_cmd = nil,
     display_manager = "wdisplays",
   },
   monitors = {}, --- @type Config.Monitor[]
@@ -75,6 +75,9 @@ Config.defaults = {
 Config.update = function(overrides)
   local merged = utils.deep_extend({}, Config.defaults)
   if overrides then utils.deep_extend(merged, overrides) end
+  local m = merged.app.menu
+  if not merged.app.menu_cmd then merged.app.menu_cmd = m .. " -name rofiMenu" end
+  if not merged.app.dmenu_cmd then merged.app.dmenu_cmd = m .. " -name rofiDmenu -i -dmenu" end
   for k, v in pairs(merged) do
     Config[k] = v
   end
