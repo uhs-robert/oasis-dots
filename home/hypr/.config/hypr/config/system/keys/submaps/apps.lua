@@ -63,8 +63,11 @@ hl.define_submap(SUBMAP.go.name, function()
   -- stylua: ignore end
 
   -- !--- Monitors ---
-  for i = 1, 4 do
-    Bind.run(tostring(i), "~/.config/hypr/monitors/scripts/focus-monitor.sh " .. i, "Monitor " .. i) -- TODO: port to lua
+  for i, entry in ipairs(Config.monitors) do
+    local sel = entry.description and ("desc:" .. entry.description) or entry.name
+    if sel then
+      Bind.exec(tostring(i), function() hl.dispatch(hl.dsp.focus({ monitor = sel })) end, "Monitor " .. i)
+    end
   end
 
   Bind.set_escape(SUBMAP.go)
