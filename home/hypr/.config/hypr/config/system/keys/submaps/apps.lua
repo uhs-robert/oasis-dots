@@ -3,6 +3,7 @@
 local Config = require("config")
 local Bind = require("lib.submap_bind")
 local SUBMAP = require("config.system.keys.submap").map
+local Workspaces = require("lib.workspaces")
 
 local MENU = Config.app.menu
 local TERM = Config.app.term
@@ -64,10 +65,8 @@ hl.define_submap(SUBMAP.go.name, function()
 
   -- !--- Monitors ---
   for i, entry in ipairs(Config.monitors) do
-    local sel = entry.description and ("desc:" .. entry.description) or entry.name
-    if sel then
-      Bind.exec(tostring(i), function() hl.dispatch(hl.dsp.focus({ monitor = sel })) end, "Monitor " .. i)
-    end
+    local sel = Workspaces.get_monitor_selector(entry)
+    if sel then Bind.exec(tostring(i), function() hl.dispatch(hl.dsp.focus({ monitor = sel })) end, "Monitor " .. i) end
   end
 
   Bind.set_escape(SUBMAP.go)
