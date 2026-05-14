@@ -1,6 +1,9 @@
 -- home/hypr/.config/hypr/config/init.lua
 
 local utils = require("lib.utils")
+local scripts = {
+  wallpaper = "~/.config/hypr/mods/wallpaper/init.lua",
+}
 
 --- @class Config.Nvidia
 --- @field enable boolean Enable NVIDIA-specific fixes and env vars (default: false)
@@ -86,7 +89,7 @@ end
 Config.setup = function(overrides)
   Config = Config.update(overrides)
   hl.on("hyprland.start", require("config.system.autostart"))
-  hl.on("monitor.added", function(mon) hl.exec_cmd("lua ~/.config/hypr/wallpaper/init.lua --monitor " .. mon.name) end)
+  hl.on("monitor.added", function(mon) hl.exec_cmd("lua " .. scripts.wallpaper .. " --monitor " .. mon.name) end)
   require("config.system.env")
   require("config.system.general")
   -- require("config.system.devices") -- TODO: Implement config for devices to pass here and add device specific settings
