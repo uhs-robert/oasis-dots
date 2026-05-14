@@ -30,7 +30,7 @@ hl.define_submap(SUBMAP.system.name, function()
     Bind.run("K",         "hyprctl kill",                                                 "Kill Application (Click)")
 
     -- !--- With confirmation ---
-    Bind.run("L", CONFIRM .. " --title Lock      --glyph '󰌾' --exec '~/.config/hypr/mods/hyprlockshot/init.lua'", "Lock Computer")
+    Bind.run("L", CONFIRM .. " --title Lock      --glyph '󰌾' --exec '~/.config/hypr/scripts/hyprlock-screenshot.lua'", "Lock Computer")
     Bind.run(
       "E",
       CONFIRM .. [[ --title Logout --glyph '󰍃' --exec 'command -v hyprshutdown >/dev/null 2>&1 && hyprshutdown || hyprctl dispatch "hl.dsp.exit()"' ]],
