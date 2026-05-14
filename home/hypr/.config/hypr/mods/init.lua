@@ -7,6 +7,9 @@ local function enable_wallpaper_rotation()
 end
 
 --- Enable all mods. Add calls here to register additional mods.
-local function init() enable_wallpaper_rotation() end
+local function init()
+  enable_wallpaper_rotation()
+  require("mods.workspace_apps")
+end
 
 init()

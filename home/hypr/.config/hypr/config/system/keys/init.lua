@@ -223,11 +223,6 @@ local set_shortcuts = function()
     hl.dsp.exec_cmd("hyprctl dispatch submap reset; " .. MENU .. " -i -show drun"),
     { description = "Application Launcher" }
   )
-  hl.bind(
-    LEADER .. "+ SHIFT + O",
-    hl.dsp.exec_cmd("~/.config/hypr/lua/auto-launch-apps.lua"),
-    { description = "Open App Autolauncher" }
-  )
 end
 
 -- ──────────────────────────────────────────────────────────────────────────── #
