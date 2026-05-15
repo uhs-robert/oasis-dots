@@ -68,8 +68,11 @@ hl.define_submap(SUBMAP.windows.name, function()
 
   -- !--- Move window to workspace ---
   for i = 1, Config.persistent_workspaces or 9 do
-    local ws = Config.persistent_workspaces and Workspaces.get_ws_id(i) or i
-    hl.bind("SHIFT + " .. i, hl.dsp.window.move({ workspace = ws }), { description = "Move to WS " .. i })
+    local key = i % 10
+    local dsp = Config.persistent_workspaces
+        and function() hl.dispatch(hl.dsp.window.move({ workspace = Workspaces.get_ws_id(i) })) end
+        or hl.dsp.window.move({ workspace = i })
+    hl.bind("SHIFT + " .. key, dsp, { description = "Move to WS " .. i })
   end
 
   -- !--- Modes ---

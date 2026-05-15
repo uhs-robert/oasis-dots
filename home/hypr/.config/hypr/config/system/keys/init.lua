@@ -84,8 +84,8 @@ local set_persistent_ws_navigation = function()
   for i = 1, Config.persistent_workspaces do
     local key = i % 10
     -- stylua: ignore start
-    Bind.leader("" .. key,         hl.dsp.focus({ workspace = get_ws_id(i) }),       { submap_universal = true, desc = "Go to Workspace " .. i })
-    Bind.leader("SHIFT + " .. key, hl.dsp.window.move({ workspace = get_ws_id(i) }), { desc = "Move to Workspace " .. i })
+    Bind.leader("" .. key,         function() hl.dispatch(hl.dsp.focus({ workspace = get_ws_id(i) })) end,       { submap_universal = true, desc = "Go to Workspace " .. i })
+    Bind.leader("SHIFT + " .. key, function() hl.dispatch(hl.dsp.window.move({ workspace = get_ws_id(i) })) end, { desc = "Move to Workspace " .. i })
   end
 
   -- Cycle through workspaces locally via LEADER + CTRL Left/Right, Use Up/Down to move them
