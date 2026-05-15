@@ -113,6 +113,13 @@ local function derive(cfg)
   fill_menu_cmds(cfg.app)
 end
 
+--- @param devices HL.DeviceSpec[]
+local function set_device_settings(devices)
+  for _, device in ipairs(devices) do
+    hl.device(device)
+  end
+end
+
 --- Deep-merges a partial config patch onto the live config and re-derives dependent fields.
 --- @param patch table
 --- @return Config
@@ -147,9 +154,7 @@ Config.setup = function(overrides)
   hl.on("hyprland.start", require("config.system.autostart"))
   require("config.system.env")
   require("config.system.general")
-  for _, device in ipairs(Config.devices) do
-    hl.device(device)
-  end
+  set_device_settings(Config.devices)
   require("config.system.rules")
   require("config.system.monitors")
   require("config.system.keys")
