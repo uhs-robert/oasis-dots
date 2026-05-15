@@ -6,5 +6,5 @@ local script_dir = (debug.getinfo(1, "S").source:sub(2):match("(.*/)") or "./")
 local root = script_dir .. ".."
 package.path = root .. "/?.lua;" .. root .. "/?/init.lua;" .. package.path
 
-local Rotate = require("wallpaper.lib.rotate")
+local Rotate = require("wallpaper.lib.rotate") ---@class Rotate
 Rotate.init(arg)

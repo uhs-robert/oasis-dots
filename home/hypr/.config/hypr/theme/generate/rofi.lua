@@ -1,7 +1,7 @@
 -- home/hypr/.config/hypr/theme/generate/rofi.lua
 
 local HOME = os.getenv("HOME")
-local utils = require("lib.utils")
+local utils = require("lib.utils") ---@class utils
 
 --- Writes colors.rasi to ~/.config/rofi/.
 --- @param c table Palette color table from theme.colors.*

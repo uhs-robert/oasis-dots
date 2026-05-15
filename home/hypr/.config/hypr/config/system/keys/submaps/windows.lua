@@ -1,7 +1,7 @@
 -- home/hypr/.config/hypr/config/system/keys/submaps/windows.lua
 
-local Config = require("config")
-local SubBind = require("lib.submap_bind")
+local Config = require("config") ---@class Config
+local SubBind = require("lib.submap_bind") ---@class SubBind
 local SUBMAP = require("config.system.keys.submap").map
 
 local MENU = Config.app.menu

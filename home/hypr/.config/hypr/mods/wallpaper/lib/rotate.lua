@@ -4,8 +4,8 @@
 local script_dir = (debug.getinfo(1, "S").source:sub(2):match("(.*/)") or "./")
 local default_config = dofile(script_dir .. "../config.lua")
 
-local Solar = require("wallpaper.lib.solar")
-local Apply = require("wallpaper.lib.apply")
+local Solar = require("wallpaper.lib.solar") ---@class Solar
+local Apply = require("wallpaper.lib.apply") ---@class Apply
 
 --- @class Rotate
 --- @field start fun(opts?: { argv?: string[], lock_path?: string, once?: boolean, start_hyprpaper?: boolean }): boolean, string|nil Main entry point; parses args, loads config, runs one cycle or the rotation loop

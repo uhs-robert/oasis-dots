@@ -8,7 +8,7 @@
 --    ╚═╝  ╚═╝   ╚═╝   ╚═╝     ╚═╝  ╚═╝╚══════╝╚═╝  ╚═╝╚═╝  ╚═══╝╚═════╝
 --
 
-local Config = require("config")
+local Config = require("config") ---@class Config
 
 --- @type Config.Monitor[]
 -- stylua: ignore start

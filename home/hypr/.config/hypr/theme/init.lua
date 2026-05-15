@@ -1,7 +1,7 @@
 -- home/hypr/.config/hypr/theme/init.lua
 
-local Config = require("config")
-local Generate = require("theme.generate")
+local Config = require("config") ---@class Config
+local Generate = require("theme.generate") ---@class Generate
 
 -- Restore last theme selected via switch.lua if the state file exists.
 local state = io.open(os.getenv("HOME") .. "/.config/hypr/theme/.current_theme", "r")

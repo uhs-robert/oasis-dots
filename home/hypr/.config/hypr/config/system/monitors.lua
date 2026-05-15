@@ -1,6 +1,6 @@
 -- home/hypr/.config/hypr/config/system/monitors.lua
 
-local Config = require("config")
+local Config = require("config") ---@class Config
 local PERSISTENT_WS = Config.persistent_workspaces
 --- @type { description?: string, name?: string, id?: integer, mode?: string, position?: string, scale?: number, transform?: integer }[]
 local MONITOR_ORDER = Config.monitors

@@ -1,6 +1,6 @@
 -- home/hypr/.config/hypr/config/system/keys/submap.lua
 
-local Config = require("config")
+local Config = require("config") ---@class Config
 local LEADER = Config.leader
 
 --- @param keys string Key or key combo to prefix with the leader modifier

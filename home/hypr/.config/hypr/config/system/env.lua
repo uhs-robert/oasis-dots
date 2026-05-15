@@ -1,7 +1,7 @@
 -- home/hypr/.config/hypr/config/system/env.lua
 --- Sets Wayland, Qt, cursor, and XDG environment variables. Conditionally applies NVIDIA-specific vars.
 
-local Config = require("config")
+local Config = require("config") ---@class Config
 local HOME = os.getenv("HOME")
 
 --- Iterates over env_settings and registers each key/value pair via hl.env().

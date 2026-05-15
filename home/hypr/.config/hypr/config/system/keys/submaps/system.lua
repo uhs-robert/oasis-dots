@@ -1,6 +1,6 @@
 -- home/hypr/.config/hypr/config/system/keys/submaps/system.lua
 
-local Config = require("config")
+local Config = require("config") ---@class Config
 local SubBind = require("lib.submap_bind") ---@class SubBind
 local SUBMAP = require("config.system.keys.submap").map
 

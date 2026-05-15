@@ -1,6 +1,6 @@
 -- home/hypr/.config/hypr/config/system/keys/submaps/resize_move.lua
 
-local SubBind = require("lib.submap_bind")
+local SubBind = require("lib.submap_bind") ---@class SubBind
 local SUBMAP = require("config.system.keys.submap").map
 
 --- Bind HJKL at four speed tiers with repeat.

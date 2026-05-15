@@ -1,6 +1,6 @@
 -- home/hypr/.config/hypr/lib/workspaces.lua
 
-local Config = require("config")
+local Config = require("config") ---@class Config
 local MIN_WS = Config.persistent_workspaces
 local ORDER = Config.monitors
 

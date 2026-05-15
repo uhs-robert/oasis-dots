@@ -1,6 +1,6 @@
 -- home/hypr/.config/hypr/lib/submap_bind.lua
 
-local Window = require("lib.window")
+local Window = require("lib.window") ---@class Window
 
 --- @class SubBind
 --- @field run fun(key: string, cmd: string, desc: string) Bind a key that resets the active submap then runs a shell command
