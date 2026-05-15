@@ -25,8 +25,8 @@ end
 local function betterbird(opts)
   opts = opts or {}
   return {
-    monitor = opts.monitor or 1,
-    ws = opts.ws or 2,
+    monitor = opts.monitor or 4,
+    ws = opts.ws or 1,
     cmd = "flatpak run eu.betterbird.Betterbird",
     class = "eu.betterbird.Betterbird",
   }
@@ -35,20 +35,20 @@ end
 M.setups = {
   ["🌐 Browsing"] = {
     { monitor = 3, ws = 1, cmd = "firefox --new-window" },
-    tmuxifier({ session = "config" }),
+    tmuxifier({ session = "config", monitor = 4, ws = 2 }),
   },
 
   ["🧱 Client"] = {
     { monitor = 3, ws = 1, cmd = "firefox --new-window" },
     tmuxifier({ session = "client-dev" }),
-    tmuxifier({ session = "config", monitor = 3, ws = 2 }),
+    tmuxifier({ session = "config", monitor = 4, ws = 2 }),
     betterbird(),
     { monitor = 1, ws = 1, cmd = "slack", class = "Slack" },
   },
 
   ["🛠 Config"] = {
     { monitor = 3, ws = 1, cmd = "firefox --new-window" },
-    tmuxifier({ session = "config" }),
+    tmuxifier({ session = "config", monitor = 4, ws = 2 }),
     betterbird(),
   },
 
@@ -85,7 +85,7 @@ M.setups = {
   ["💼 Work"] = {
     { monitor = 3, ws = 1, cmd = "firefox --new-window" },
     tmuxifier({ session = "uphill", monitor = 3, ws = 2 }),
-    tmuxifier({ session = "config" }),
+    tmuxifier({ session = "config", monitor = 4, ws = 2 }),
     betterbird(),
     { monitor = 1, ws = 2, cmd = "slack", class = "Slack" },
     { monitor = 2, ws = 1, cmd = "qutebrowser" },
