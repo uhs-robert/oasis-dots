@@ -107,7 +107,10 @@ move_to_workspace() {
   local source_addr="${ROFI_HYPRWINDOW_SOURCE:-}"
 
   [ -z "$target_addr" ] && return 1
-  [ -z "$source_addr" ] && { log "move_to_workspace: ROFI_HYPRWINDOW_SOURCE not set"; return 1; }
+  [ -z "$source_addr" ] && {
+    log "move_to_workspace: ROFI_HYPRWINDOW_SOURCE not set"
+    return 1
+  }
 
   local workspace_id
   workspace_id="$(jq -r --arg addr "$target_addr" \
@@ -115,11 +118,15 @@ move_to_workspace() {
 
   log "move_to_workspace: source=$source_addr target=$target_addr workspace=$workspace_id"
 
-  [ -z "$workspace_id" ] && { log "move_to_workspace: no workspace found for target"; return 1; }
+  [ -z "$workspace_id" ] && {
+    log "move_to_workspace: no workspace found for target"
+    return 1
+  }
 
-  local dispatch="movetoworkspacesilent"
-  [[ "$MODE" == "move" ]] && dispatch="movetoworkspace"
-  hyprctl dispatch "$dispatch" "$workspace_id,address:$source_addr" >/dev/null
+  local follow="false"
+  [[ "$MODE" == "move" ]] && follow="true"
+  hyprctl dispatch "hl.dsp.focus({window='address:$source_addr'})" >/dev/null
+  hyprctl dispatch "hl.dsp.window.move({workspace=$workspace_id, follow=$follow})" >/dev/null
 }
 
 # Focus a window by address, detached with a small delay so rofi closes first.
@@ -128,10 +135,11 @@ focus_addr() {
 
   [ -z "$addr" ] && return 1
 
-  nohup bash -c '
+  nohup bash -c "
     sleep 0.08
-    hyprctl --batch "dispatch focuswindow address:'"$addr"'; dispatch alterzorder top,address:'"$addr"'" >/dev/null 2>&1
-  ' >/dev/null 2>&1 &
+    hyprctl dispatch \"hl.dsp.focus({window='address:$addr'})\" >/dev/null 2>&1
+    hyprctl dispatch \"hl.dsp.window.alter_zorder({mode='top', window='address:$addr'})\" >/dev/null 2>&1
+  " >/dev/null 2>&1 &
 }
 
 # Called on rofi callback: resolve address via $ROFI_INFO (preferred) or
