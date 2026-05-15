@@ -86,6 +86,19 @@ local function detect_is_laptop()
     if mon.name:sub(1, 4) == "eDP-" then return true end
   end
 
+  -- hl.get_monitors() may return empty at initial startup before Hyprland is ready;
+  -- fall back to kernel DRM connector list
+  local drm = io.popen("ls /sys/class/drm/ 2>/dev/null")
+  if drm then
+    for entry in drm:lines() do
+      if entry:match("^card%d+%-eDP") then
+        drm:close()
+        return true
+      end
+    end
+    drm:close()
+  end
+
   return false
 end
 
