@@ -147,7 +147,9 @@ Config.setup = function(overrides)
   hl.on("hyprland.start", require("config.system.autostart"))
   require("config.system.env")
   require("config.system.general")
-  for _, device in ipairs(Config.devices) do hl.device(device) end
+  for _, device in ipairs(Config.devices) do
+    hl.device(device)
+  end
   require("config.system.rules")
   require("config.system.monitors")
   require("config.system.keys")
