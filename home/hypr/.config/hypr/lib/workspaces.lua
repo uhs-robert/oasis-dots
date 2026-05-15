@@ -12,22 +12,21 @@ local WORKSPACES = {}
 --- @return integer
 local function get_order_idx(mon)
   for i, entry in ipairs(ORDER) do
-    if (entry.description and mon.description == entry.description)
+    if
+      (entry.description and mon.description == entry.description)
       or (entry.name and mon.name == entry.name)
       or (entry.id and mon.id == entry.id)
     then
       return i
     end
   end
-  return mon.id + 1
+  return #ORDER + mon.id + 1
 end
 
 --- Returns start/end global workspace IDs for the given ORDER index.
 --- @param idx integer
 --- @return integer, integer
-local function ws_range(idx)
-  return (idx - 1) * MIN_WS + 1, idx * MIN_WS
-end
+local function ws_range(idx) return (idx - 1) * MIN_WS + 1, idx * MIN_WS end
 
 --- Returns the global workspace ID for local slot `n` on the active monitor.
 --- Uses ORDER index for stable ranges regardless of monitor connection order.
@@ -37,6 +36,7 @@ end
 function WORKSPACES.get_ws_id(n)
   if not MIN_WS then return n end
   local mon = hl.get_active_monitor()
+  if not mon then return n end
   return (get_order_idx(mon) - 1) * MIN_WS + n
 end
 
@@ -45,6 +45,7 @@ end
 function WORKSPACES.cycle_local_ws(dir)
   if not MIN_WS then return end
   local mon = hl.get_active_monitor()
+  if not mon then return end
   local start_ws, end_ws = ws_range(get_order_idx(mon))
   local next_ws = hl.get_active_workspace().id + (dir == "next" and 1 or -1)
   if next_ws > end_ws then next_ws = start_ws end
@@ -58,6 +59,7 @@ end
 function WORKSPACES.move_window_local_ws(dir)
   if not MIN_WS then return end
   local mon = hl.get_active_monitor()
+  if not mon then return end
   local start_ws, end_ws = ws_range(get_order_idx(mon))
   local target = hl.get_active_workspace().id + (dir == "next" and 1 or -1)
   if target > end_ws then target = start_ws end

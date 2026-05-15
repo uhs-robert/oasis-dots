@@ -22,7 +22,9 @@ local Utils = require("lib.utils") ---@class Utils
 --- @field display_manager string Display/monitor manager command (default: "wdisplays")
 
 --- @class Config.Monitor
---- @field description string Monitor description string as reported by Hyprland
+--- @field id integer|nil Monitor id as reported by Hyprland
+--- @field name string|nil Monitor name as reported by Hyprland
+--- @field description string|nil Monitor description string as reported by Hyprland
 --- @field mode string Resolution and refresh rate, e.g. "2560x1440@144"
 --- @field position string Position in the virtual desktop, e.g. "1920x0"
 --- @field scale number DPI scale factor

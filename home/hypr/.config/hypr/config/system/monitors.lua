@@ -104,17 +104,6 @@ local function on_monitor_removed(mon)
   if PERSISTENT_WS then init_workspaces() end
 end
 
---- Focuses the first workspace on each monitor so all start in a clean state.
---- Iterates in reverse so focus lands on ORDER[1] / workspace 1 at the end.
---- Only called at startup, not on hotplug events.
-local function init_workspace_focus()
-  local monitors = hl.get_monitors()
-  for i = #MONITOR_ORDER, 1, -1 do
-    local output = get_monitor_output(MONITOR_ORDER[i], monitors)
-    if output then hl.dispatch(hl.dsp.focus({ workspace = (i - 1) * PERSISTENT_WS + 1 })) end
-  end
-end
-
 init_monitors()
 if PERSISTENT_WS then init_workspaces() end
 
