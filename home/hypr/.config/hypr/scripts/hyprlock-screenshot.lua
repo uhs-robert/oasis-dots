@@ -1,5 +1,5 @@
 #!/usr/bin/env lua
--- home/hypr/.config/hypr/mods/hyprlockshot/init.lua
+-- home/hypr/.config/hypr/scripts/hyprlock-screenshot.lua
 
 local cache_dir = (os.getenv("XDG_CACHE_HOME") or (os.getenv("HOME") .. "/.cache")) .. "/hyprlock"
 os.execute("mkdir -p " .. cache_dir)

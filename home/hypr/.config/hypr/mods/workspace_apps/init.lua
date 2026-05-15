@@ -1,4 +1,4 @@
--- mods/workspace_apps/init.lua
+-- home/hypr/.config/hypr/mods/workspace_apps/init.lua
 local Config = require("config")
 
 --- @type table<string, HL.WindowRule>

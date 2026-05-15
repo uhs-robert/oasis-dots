@@ -1,4 +1,6 @@
 -- home/hypr/.config/hypr/config/system/general.lua
+--- Applies global Hyprland options: layout, decoration, input, cursor, animations, and misc.
+
 local Config = require("config")
 
 local IS_LAPTOP = Config.is_laptop

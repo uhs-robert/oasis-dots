@@ -1,3 +1,4 @@
+-- home/hypr/.config/hypr/mods/workspace_apps/setups.lua
 -- Workspace app launcher setup definitions.
 -- Monitor indices follow Config.monitors order in hyprland.lua:
 
@@ -7,6 +8,9 @@
 --- @field cmd string shell command to launch
 --- @field class string|nil window class for dynamic workspace rule (mutually exclusive with title)
 --- @field title string|nil window title for dynamic workspace rule (mutually exclusive with class)
+
+--- @class Setups
+--- @field setups table<string, AppEntry[]> Named session presets; keys are display names, values are ordered app entry lists
 
 local M = {}
 

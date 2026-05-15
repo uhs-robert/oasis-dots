@@ -1,6 +1,16 @@
--- home/hypr/.config/hypr/new/lib/submap_bind.lua
+-- home/hypr/.config/hypr/lib/submap_bind.lua
+
 local Window = require("lib.window")
 
+--- @class SubmapBind
+--- @field run fun(key: string, cmd: string, desc: string) Bind a key that resets the active submap then runs a shell command
+--- @field exec fun(key: string, fn: fun(), desc: string) Bind a key that resets the active submap then calls a Hyprland API function
+--- @field focus_or_launch fun(key: string, opts: { program: string, class?: string, title?: string, exclude_title?: string, cmd?: string }, desc: string) Bind a key that focuses an existing window or launches the app, resetting the active submap
+--- @field run_swap_submap fun(key: string, cmd: string, submap_name: string, desc: string) Bind a key that runs a shell command then enters a named submap
+--- @field run_then fun(key: string, cmd: string, fn: fun(), desc: string) Bind a key that runs a shell command, calls a Lua callback, then resets the submap
+--- @field reset fun() Reset to the default submap (exits any active submap)
+--- @field bind fun(sm: SubmapEntry, fn?: fun()) Bind a submap entry key, optionally overriding the default activation action
+--- @field set_escape fun(sm?: SubmapEntry) Register exit and catchall binds for a submap
 local SubmapBind = {}
 
 --- Bind a key that resets the active submap then runs a shell command.

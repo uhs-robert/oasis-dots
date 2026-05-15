@@ -1,4 +1,4 @@
--- home/hypr/.config/hypr/wallpaper/lib/rotate.lua
+-- home/hypr/.config/hypr/mods/wallpaper/lib/rotate.lua
 -- Orchestrator: CLI parsing, config merge, locking, loop, hyprpaper start
 
 local script_dir = (debug.getinfo(1, "S").source:sub(2):match("(.*/)") or "./")
@@ -7,6 +7,9 @@ local default_config = dofile(script_dir .. "../config.lua")
 local Solar = require("wallpaper.lib.solar")
 local Apply = require("wallpaper.lib.apply")
 
+--- @class Rotate
+--- @field start fun(opts?: { argv?: string[], lock_path?: string, once?: boolean, start_hyprpaper?: boolean }): boolean, string|nil Main entry point; parses args, loads config, runs one cycle or the rotation loop
+--- @field init fun(argv?: string[]) CLI entry point; calls start() and exits 1 on failure
 local Rotate = {}
 
 --- Write `msg` to stderr when `cfg.verbose` is set.

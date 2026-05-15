@@ -1,4 +1,4 @@
--- home/hypr/.config/hypr/keys/submaps/tools.lua
+-- home/hypr/.config/hypr/config/system/keys/submaps/tools.lua
 
 local Bind = require("lib.submap_bind")
 local SUBMAP = require("config.system.keys.submap").map

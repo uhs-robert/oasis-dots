@@ -1,6 +1,9 @@
--- home/hypr/.config/hypr/wallpaper/lib/apply.lua
+-- home/hypr/.config/hypr/mods/wallpaper/lib/apply.lua
 -- Period resolution, file selection, and hyprpaper application
 
+--- @class Apply
+--- @field to_monitors fun(cfg: table, util: table): boolean Apply wallpapers to all active monitors (or cfg.target_monitor if set); returns true on success
+--- @field list_images fun(dir: string): string[] Public wrapper around list_images for external callers
 local Apply = {}
 
 --- Find all image files under `dir` (recursive, follows symlinks).

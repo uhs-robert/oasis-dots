@@ -1,3 +1,5 @@
+-- home/hypr/.config/hypr/mods/init.lua
+
 --- Apply wallpaper to a monitor when it is added.
 local function enable_wallpaper_rotation()
   hl.on(

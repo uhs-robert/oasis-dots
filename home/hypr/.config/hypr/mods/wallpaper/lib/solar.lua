@@ -1,6 +1,9 @@
--- home/hypr/.config/hypr/wallpaper/lib/solar.lua
+-- home/hypr/.config/hypr/mods/wallpaper/lib/solar.lua
 -- Coordinates + sunrise/sunset + period boundary calculation
 
+--- @class Solar
+--- @field get_location fun(cfg: table, state: table, util: table): boolean Resolve and store coordinates in state.lat/state.lon; returns true if a definitive location was found
+--- @field update_periods fun(cfg: table, state: table, util: table) Fetch sunrise/sunset and update cfg.start_hours boundaries
 local Solar = {}
 
 --- Round `minute` down to the nearest 15-minute boundary.

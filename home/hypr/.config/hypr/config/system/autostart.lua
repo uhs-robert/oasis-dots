@@ -1,6 +1,9 @@
 -- home/hypr/.config/hypr/config/system/autostart.lua
 
 -- stylua: ignore
+--- Runs all autostart commands on Hyprland session start.
+--- Called via `hl.on("hyprland.start", ...)` from config/init.lua.
+--- @return nil
 local function run()
   hl.exec_cmd(
     "dbus-update-activation-environment --systemd WAYLAND_DISPLAY XDG_CURRENT_DESKTOP XDG_SESSION_TYPE XDG_SESSION_DESKTOP DESKTOP_SESSION GTK_THEME PATH"

@@ -4,6 +4,7 @@
 local Config = require("config")
 local HOME = os.getenv("HOME")
 
+--- Iterates over env_settings and registers each key/value pair via hl.env().
 --- @param env_settings table<string, string|number>
 local set_env = function(env_settings)
   for key, value in pairs(env_settings) do
@@ -48,6 +49,7 @@ local nvidia_env = {
   __NV_PRIME_RENDER_OFFLOAD = "1",
 }
 
+--- Registers all environment variables; nvidia_env is added only when NVIDIA is enabled.
 local function init()
   set_env(env)
   if Config.nvidia.enable then set_env(nvidia_env) end

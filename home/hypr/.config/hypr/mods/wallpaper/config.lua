@@ -1,4 +1,4 @@
--- home/hypr/.config/hypr/wallpaper/config.lua
+-- home/hypr/.config/hypr/mods/wallpaper/config.lua
 -- Configuration for the wallpaper system.
 -- Adjust paths to your own collections. Leave values as nil to use defaults.
 

@@ -1,4 +1,4 @@
--- home/hypr/.config/hypr/wallpaper/init.lua
+-- home/hypr/.config/hypr/mods/wallpaper/init.lua
 -- CLI entry point for the wallpaper system
 
 -- Ensure theme root is in package.path

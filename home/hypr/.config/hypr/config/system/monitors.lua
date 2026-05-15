@@ -1,5 +1,4 @@
 -- home/hypr/.config/hypr/config/system/monitors.lua
--- home/hypr/.config/hypr/new/hyprland/monitors.lua
 
 local Config = require("config")
 local PERSISTENT_WS = Config.persistent_workspaces

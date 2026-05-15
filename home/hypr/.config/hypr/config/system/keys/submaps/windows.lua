@@ -1,5 +1,4 @@
 -- home/hypr/.config/hypr/config/system/keys/submaps/windows.lua
--- home/hypr/.config/hypr/keys/submaps/windows.lua
 
 local Config = require("config")
 local Bind = require("lib.submap_bind")

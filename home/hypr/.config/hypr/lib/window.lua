@@ -1,6 +1,8 @@
--- home/hypr/.config/hypr/new/lib/window.lua
+-- home/hypr/.config/hypr/lib/window.lua
 -- Focus-or-launch: find an existing Hyprland window or open the app.
 
+--- @class Window
+--- @field focus_or_launch fun(opts: { program: string, class?: string, title?: string, exclude_title?: string, cmd?: string }) Focus an existing window matching opts, or launch the app if none found
 local Window = {}
 
 --- Return the address of the first client matching the given criteria.
