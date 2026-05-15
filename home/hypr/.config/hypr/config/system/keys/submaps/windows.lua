@@ -72,7 +72,10 @@ hl.define_submap(SUBMAP.windows.name, function()
   -- !--- Actions ---
   SubBind.exec("C", function() hl.dispatch(hl.dsp.window.kill()) end, "Close window")
   hl.bind("RETURN", hl.dsp.exec_cmd("hyprctl dispatch pass activewindow"), { description = "Confirm selection" })
-  -- stylua: ignore end
 
+  -- !--- WhichKey ---
+  hl.bind("SHIFT + SLASH", function() require("hyprvim.whichkey").toggle() end)
+
+  -- !--- Exit ---
   SubBind.bind_exits({ swallow_mispress = true })
 end)

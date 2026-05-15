@@ -49,6 +49,9 @@ hl.define_submap(SUBMAP.resize.name, function()
   SubBind.swap_to(SUBMAP.move, { key = "M" })
   SubBind.swap_to(SUBMAP.windows, { key = "W" })
 
+  -- !--- WhichKey ---
+  hl.bind("SHIFT + SLASH", function() require("hyprvim.whichkey").toggle() end)
+
   SubBind.bind_exits({ swallow_mispress = true })
 end)
 
@@ -60,6 +63,9 @@ hl.define_submap(SUBMAP.move.name, function()
   -- !--- Switch to other submaps ---
   SubBind.swap_to(SUBMAP.resize, { key = "R" })
   SubBind.swap_to(SUBMAP.windows, { key = "W" })
+
+  -- !--- WhichKey ---
+  hl.bind("SHIFT + SLASH", function() require("hyprvim.whichkey").toggle() end)
 
   SubBind.bind_exits({ swallow_mispress = true })
 end)

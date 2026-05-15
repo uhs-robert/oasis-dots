@@ -38,7 +38,7 @@ local function init()
 
   require("hyprvim").setup({
     keys = { leader = "SUPER", activate = "SPACE", exit = "ESCAPE" },
-    which_key = { auto_show = { disabled = { "NORMAL", "VISUAL", "V-LINE", "Cursor" } },
+    which_key = { auto_show = { disabled = { "NORMAL", "VISUAL", "V-LINE", "Cursor", "Windows", "Resize", "Move" } },
     },
   })
 end
