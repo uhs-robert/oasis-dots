@@ -15,7 +15,7 @@ hl.define_submap(SUBMAP.go.name, function()
   SubBind.exec("TAB", function() hl.dispatch(hl.dsp.focus({ workspace = "previous" })) end, "Last workspace")
   SubBind.run("A",   MENU .. " -i -show drun",       "App launcher")
   SubBind.run("W",   MENU .. " -i -show hyprwindow", "Window")
-  SubBind.run("P",   Scripts.rofi_tmux,              "Project") -- TODO: Move to rofi dir
+  SubBind.run("P",   Scripts.rofi_tmux,              "Project")
   SubBind.exec("Y", function() hl.dispatch(hl.dsp.focus({ window = "title:(?i).*youtube.*" })) end, "Youtube")
 
   -- !--- Apps ---
@@ -35,7 +35,9 @@ hl.define_submap(SUBMAP.go.name, function()
   -- !--- Monitors ---
   for i, entry in ipairs(Config.monitors) do
     local sel = Workspaces.get_monitor_selector(entry)
-    if sel then SubBind.exec(tostring(i), function() hl.dispatch(hl.dsp.focus({ monitor = sel })) end, "Monitor " .. i) end
+    if sel then
+      SubBind.exec(tostring(i), function() hl.dispatch(hl.dsp.focus({ monitor = sel })) end, "Monitor " .. i)
+    end
   end
 
   SubBind.bind_exits({ swallow_mispress = true })
