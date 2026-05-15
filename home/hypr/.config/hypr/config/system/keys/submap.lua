@@ -40,12 +40,19 @@ Submaps.map = {
     end,
   },
 }
-for _, sm in ipairs(Submaps.map) do
-  Submaps.map[sm.name:lower()] = sm
-  hl.bind(sm.key, sm.fn or hl.dsp.submap(sm.name), { description = "+" .. sm.name })
+
+--- Populates name-keyed aliases on `Submaps.map` and registers each entry's keybind.
+--- Must run before any submap module is loaded so alias lookups (e.g. `Submaps.map.cursor`) resolve.
+--- @return nil
+local function create_map_aliases()
+  for _, sm in ipairs(Submaps.map) do
+    Submaps.map[sm.name:lower()] = sm
+    hl.bind(sm.key, sm.fn or hl.dsp.submap(sm.name), { description = "+" .. sm.name })
+  end
 end
 
 Submaps.setup = function()
+  create_map_aliases()
   require("config.system.keys.submaps.apps")
   require("config.system.keys.submaps.go")
   require("config.system.keys.submaps.system")
