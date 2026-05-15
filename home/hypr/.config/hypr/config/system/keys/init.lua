@@ -23,34 +23,43 @@ local MENU = Config.app.menu
 --     Registers core window/workspace/monitor focus and movement binds.
 -- ──────────────────────────────────────────────────────────────────────────── #
 local set_general_keys = function()
-  -- stylua: ignore start
+  local function universal(description) return { submap_universal = true, desc = description } end
 
-  -- !--- General actions
-  Bind.leader("ESCAPE", hl.dsp.submap("reset"), { desc = "Reset Submaps", submap_universal = true })
+  -- !--- Submap Global Escape
+  Bind.leader("ESCAPE", hl.dsp.submap("reset"), universal("Reset Submaps"))
+
+  -- !--- Workspace
   Bind.leader("C", hl.dsp.window.close(), { desc = "Close Window" })
   Bind.leader("F", hl.dsp.window.fullscreen({ action = "toggle" }), { desc = "Toggle Fullscreen" })
-
-  -- !--- Workspace Navigation (Basic)
   Bind.leader_dir("", function(d) return hl.dsp.focus({ direction = d.dir }) end, "Focus ", { submap_universal = true })
   Bind.leader("TAB", hl.dsp.focus({ workspace = "previous" }), { desc = "Go to Last Active WS" })
 
   -- !--- Scratchpad
-  Bind.leader("S", hl.dsp.workspace.toggle_special("scratchpad"), { desc = "Toggle Scratchpad", submap_universal = true })
-  Bind.leader("SHIFT + S", hl.dsp.window.move({ workspace = "special:scratchpad" }), { desc = "Move Window to Scratchpad", submap_universal = true })
+  local scratchpad = { name = "scratchpad", ws = "scratchpad:special" }
+  Bind.leader("S", hl.dsp.workspace.toggle_special(scratchpad.name), universal("Toggle Scratchpad"))
+  Bind.leader("SHIFT + S", hl.dsp.window.move({ workspace = scratchpad.ws }), universal("Move to Scratchpad"))
 
   -- !--- Monitor Navigation
   for i = 1, math.max(#Config.monitors, 10) do
     local slot, key = i, i % 10
+    -- CTRL {1-9 and 0} to focus monitors
     Bind.leader("CTRL + " .. key, function()
       local sel = Workspaces.get_monitor_for_slot(slot)
       if sel then hl.dispatch(hl.dsp.focus({ monitor = sel })) end
     end, { desc = "Focus Monitor " .. i })
+    -- CTRL + SHIFT {1-9 and 0} to send window to monitors
     Bind.leader("CTRL + SHIFT + " .. key, function()
       local sel = Workspaces.get_monitor_for_slot(slot)
       if sel then hl.dispatch(hl.dsp.window.move({ monitor = sel, follow = true })) end
     end, { desc = "Move to Monitor " .. i })
   end
-  Bind.leader_dir( "SHIFT", function(d) return hl.dsp.window.move({ direction = d.dir }) end, "Move Window ", { submap_universal = true })
+  -- Directional inputs to send window to monitors
+  Bind.leader_dir(
+    "SHIFT",
+    function(d) return hl.dsp.window.move({ direction = d.dir }) end,
+    "Move Window ",
+    { submap_universal = true }
+  )
 end
 
 -- ──────────────────────────────────────────────────────────────────────────── #
@@ -60,14 +69,15 @@ end
 
 --- Registers workspace binds for simple global workspaces (1-9, cycle prev/next).
 local set_default_ws_navigation = function()
-  -- Bind workspaces 1-10 to LEADER + digits, move with LEADER + SHIFT
   for i = 1, 10 do
     local key = i % 10
+    -- {1-9 and 0} to go to workspace
     Bind.leader("" .. key, hl.dsp.focus({ workspace = i }), { submap_universal = true, desc = "Go to Workspace " .. i })
+    -- SHIFT + {1-9 and 0} to move window to workspace
     Bind.leader("SHIFT + " .. key, hl.dsp.window.move({ workspace = i }), { desc = "Move to Workspace " .. i })
   end
 
-  -- Cycle through workspaces globally via LEADER + CTRL Left/Right, use Up/Down to move them
+  -- CTRL + Left/Right to cycle prev/next workspace, Up/Down to move window
   local ws = {
     l = { hl.dsp.focus({ workspace = "e-1" }), { repeating = true, desc = "Prev WS" } },
     r = { hl.dsp.focus({ workspace = "e+1" }), { repeating = true, desc = "Next WS" } },
@@ -83,15 +93,23 @@ local set_persistent_ws_navigation = function()
   local cycle_local_ws = Workspaces.cycle_local_ws
   local move_window_local_ws = Workspaces.move_window_local_ws
 
-  -- Bind local monitor-pinned workspaces to LEADER + digits, move with LEADER + SHIFT
   for i = 1, Config.persistent_workspaces do
     local key = i % 10
-    -- stylua: ignore start
-    Bind.leader("" .. key,         function() hl.dispatch(hl.dsp.focus({ workspace = get_ws_id(i) })) end,       { submap_universal = true, desc = "Go to Workspace " .. i })
-    Bind.leader("SHIFT + " .. key, function() hl.dispatch(hl.dsp.window.move({ workspace = get_ws_id(i) })) end, { desc = "Move to Workspace " .. i })
+    -- {1-9 and 0} to go to monitor-local workspace
+    Bind.leader(
+      "" .. key,
+      function() hl.dispatch(hl.dsp.focus({ workspace = get_ws_id(i) })) end,
+      { submap_universal = true, desc = "Go to Workspace " .. i }
+    )
+    -- SHIFT + {1-9 and 0} to move window to monitor-local workspace
+    Bind.leader(
+      "SHIFT + " .. key,
+      function() hl.dispatch(hl.dsp.window.move({ workspace = get_ws_id(i) })) end,
+      { desc = "Move to Workspace " .. i }
+    )
   end
 
-  -- Cycle through workspaces locally via LEADER + CTRL Left/Right, Use Up/Down to move them
+  -- CTRL + Left/Right to cycle prev/next workspace on monitor, Up/Down to move window
   local ws = {
     l = { function() cycle_local_ws("prev") end, { repeating = true, desc = "Prev WS on Monitor" } },
     r = { function() cycle_local_ws("next") end, { repeating = true, desc = "Next WS on Monitor" } },
@@ -137,8 +155,6 @@ end
 --     Registers tool binds: screenshot, color picker, speech-to-text, etc
 -- ──────────────────────────────────────────────────────────────────────────── #
 local set_tools = function()
-  -- stylua: ignore start
-
   -- !--- Screenshot / Color Picker
   Bind.cmd("Print", Scripts.screenshot, { desc = "Print Options" })
   Bind.leader("P", hl.dsp.exec_cmd(Scripts.screenshot .. " --pixel"), { desc = "Color Picker" })
@@ -148,13 +164,15 @@ local set_tools = function()
   Bind.cmd("CTRL + ALT + A", Scripts.voxtype, { desc = "Speech to Text" })
 
   -- !--- Clipboard search
-  local cmd_search_clipboard = "cliphist list | " .. MENU .. " -i -dmenu -p 'Search clipboard history...' | cliphist decode | wl-copy"
+  local cmd_search_clipboard = "cliphist list | "
+    .. MENU
+    .. " -i -dmenu -p 'Search clipboard history...' | cliphist decode | wl-copy"
   Bind.leader_cmd("CTRL + V", cmd_search_clipboard, { desc = "Clipboard History" })
 
   -- !--- Window Finder / Mover via Menu
-  Bind.leader_cmd("T", Config.app.menu .. " -i -show hyprwindow", { desc = "Find window by name" })
-  Bind.leader_cmd("SHIFT + T", Scripts.window_selector .. " --move", { desc = "Move window to another window" })
-  Bind.leader_cmd( "CTRL + SHIFT + T", Scripts.window_selector .. " --move-silent", { desc = "Silently move window to another window" })
+  Bind.leader_cmd("T", Config.app.menu .. " -i -show hyprwindow", { desc = "Find window" })
+  Bind.leader_cmd("SHIFT + T", Scripts.window_selector .. " --move", { desc = "Move to window" })
+  Bind.leader_cmd("CTRL + SHIFT + T", Scripts.window_selector .. " --move-silent", { desc = "Silent move to window" })
 end
 
 -- ──────────────────────────────────────────────────────────────────────────── #
@@ -210,8 +228,8 @@ end
 local init = function()
   local set_ws_navigation = Config.persistent_workspaces and set_persistent_ws_navigation or set_default_ws_navigation
   set_general_keys()
-  set_ws_navigation()
   set_shortcuts()
+  set_ws_navigation()
   set_tools()
   set_media_controls()
   set_mouse_controls()
