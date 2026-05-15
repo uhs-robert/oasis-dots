@@ -26,7 +26,7 @@ end
 
 --- Bind a key that resets the active submap then calls a Hyprland API function.
 --- @param key string
---- @param fn fun()
+--- @param fn fun()|HL.Dispatcher
 --- @param desc string
 SubBind.exec = function(key, fn, desc)
   hl.bind(key, function()

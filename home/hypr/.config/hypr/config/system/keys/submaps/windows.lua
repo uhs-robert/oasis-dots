@@ -2,9 +2,17 @@
 
 local Config = require("config") ---@class Config
 local SubBind = require("lib.submap_bind") ---@class SubBind
+local Workspaces = require("lib.workspaces") ---@class Workspaces
 local SUBMAP = require("config.system.keys.submap").map
 
 local MENU = Config.app.menu
+
+local DIR_INPUTS = {
+  { key = "H", arrow = "Left", dir = "l", label = "Left" },
+  { key = "J", arrow = "Down", dir = "d", label = "Down" },
+  { key = "K", arrow = "Up", dir = "u", label = "Up" },
+  { key = "L", arrow = "Right", dir = "r", label = "Right" },
+}
 
 hl.define_submap(SUBMAP.windows.name, function()
   -- !--- Switch to other submaps ---
@@ -17,60 +25,63 @@ hl.define_submap(SUBMAP.windows.name, function()
   -- !--- Shortcuts ---
   SubBind.run("O", MENU .. " -i -show window", "Search windows")
 
-    -- !--- Focus movement ---
-    -- stylua: ignore start
-    -- TODO: Use focus from ../init.lua
-    hl.bind("H",     hl.dsp.exec_cmd("hyprctl dispatch movefocus l"), { description = "Focus Left" })
-    hl.bind("L",     hl.dsp.exec_cmd("hyprctl dispatch movefocus r"), { description = "Focus Right" })
-    hl.bind("K",     hl.dsp.exec_cmd("hyprctl dispatch movefocus u"), { description = "Focus Up" })
-    hl.bind("J",     hl.dsp.exec_cmd("hyprctl dispatch movefocus d"), { description = "Focus Down" })
-    hl.bind("Left",  hl.dsp.exec_cmd("hyprctl dispatch movefocus l"), { description = "Focus Left" })
-    hl.bind("Right", hl.dsp.exec_cmd("hyprctl dispatch movefocus r"), { description = "Focus Right" })
-    hl.bind("Up",    hl.dsp.exec_cmd("hyprctl dispatch movefocus u"), { description = "Focus Up" })
-    hl.bind("Down",  hl.dsp.exec_cmd("hyprctl dispatch movefocus d"), { description = "Focus Down" })
-    SubBind.exec("TAB", function() hl.dispatch(hl.dsp.focus({ workspace = "previous" })) end, "Last workspace")
+  -- !--- Focus movement ---
+  for _, d in ipairs(DIR_INPUTS) do
+    hl.bind(d.key, hl.dsp.focus({ direction = d.dir }), { description = "Focus " .. d.label })
+    hl.bind(d.arrow, hl.dsp.focus({ direction = d.dir }), { description = "Focus " .. d.label })
+  end
+  SubBind.exec("TAB", function() hl.dispatch(hl.dsp.focus({ workspace = "previous" })) end, "Last workspace")
 
-    -- !--- Monitor navigation ---
-    -- TODO: Use monitor count and focus script ../init.lua
-    for i = 1, 4 do
-      hl.bind(tostring(i), hl.dsp.exec_cmd("hyprctl dispatch focusmonitor " .. (i - 1)), { description = "Monitor " .. i })
-    end
+  -- !--- Monitor navigation ---
+  for i, entry in ipairs(Config.monitors) do
+    local sel = Workspaces.get_monitor_selector(entry)
+    if sel then hl.bind(tostring(i), hl.dsp.focus({ monitor = sel }), { description = "Monitor " .. i }) end
+  end
 
-    -- !--- Move windows ---
-    -- TODO: Use movewindow from ../init.lua
-    hl.bind("SHIFT + H",     hl.dsp.exec_cmd("hyprctl dispatch movewindow l"), { description = "Move Left" })
-    hl.bind("SHIFT + L",     hl.dsp.exec_cmd("hyprctl dispatch movewindow r"), { description = "Move Right" })
-    hl.bind("SHIFT + K",     hl.dsp.exec_cmd("hyprctl dispatch movewindow u"), { description = "Move Up" })
-    hl.bind("SHIFT + J",     hl.dsp.exec_cmd("hyprctl dispatch movewindow d"), { description = "Move Down" })
-    hl.bind("SHIFT + Left",  hl.dsp.exec_cmd("hyprctl dispatch movewindow l"), { description = "Move Left" })
-    hl.bind("SHIFT + Right", hl.dsp.exec_cmd("hyprctl dispatch movewindow r"), { description = "Move Right" })
-    hl.bind("SHIFT + Up",    hl.dsp.exec_cmd("hyprctl dispatch movewindow u"), { description = "Move Up" })
-    hl.bind("SHIFT + Down",  hl.dsp.exec_cmd("hyprctl dispatch movewindow d"), { description = "Move Down" })
+  -- !--- Move windows ---
+  for _, d in ipairs(DIR_INPUTS) do
+    hl.bind("SHIFT + " .. d.key, hl.dsp.window.move({ direction = d.dir }), { description = "Move " .. d.label })
+    hl.bind("SHIFT + " .. d.arrow, hl.dsp.window.move({ direction = d.dir }), { description = "Move " .. d.label })
+  end
 
-    -- !--- Workspace navigation (split-monitor plugin) ---
-    -- TODO: Use local function here from ../init.lua
-    hl.bind("CTRL + H",     hl.dsp.exec_cmd("hyprctl dispatch split-cycleworkspaces prev"), { description = "Prev Workspace" })
-    hl.bind("CTRL + L",     hl.dsp.exec_cmd("hyprctl dispatch split-cycleworkspaces next"), { description = "Next Workspace" })
-    hl.bind("CTRL + K",     hl.dsp.exec_cmd("hyprctl dispatch split-movetoworkspace 1"),    { description = "WS Up" })
-    hl.bind("CTRL + J",     hl.dsp.exec_cmd("hyprctl dispatch split-movetoworkspace -1"),   { description = "WS Down" })
-    hl.bind("CTRL + Left",  hl.dsp.exec_cmd("hyprctl dispatch split-cycleworkspaces prev"), { description = "Prev Workspace" })
-    hl.bind("CTRL + Right", hl.dsp.exec_cmd("hyprctl dispatch split-cycleworkspaces next"), { description = "Next Workspace" })
-    hl.bind("CTRL + Up",    hl.dsp.exec_cmd("hyprctl dispatch split-movetoworkspace 1"),    { description = "WS Up" })
-    hl.bind("CTRL + Down",  hl.dsp.exec_cmd("hyprctl dispatch split-movetoworkspace -1"),   { description = "WS Down" })
+  -- !--- Workspace navigation ---
+  local ws_dsp
+  if Config.persistent_workspaces then
+    ws_dsp = {
+      l = { function() Workspaces.cycle_local_ws("prev") end, "Prev Workspace" },
+      d = { function() Workspaces.move_window_local_ws("prev") end, "Move to Prev WS" },
+      u = { function() Workspaces.move_window_local_ws("next") end, "Move to Next WS" },
+      r = { function() Workspaces.cycle_local_ws("next") end, "Next Workspace" },
+    }
+  else
+    ws_dsp = {
+      l = { hl.dsp.focus({ workspace = "e-1" }), "Prev Workspace" },
+      d = { hl.dsp.window.move({ workspace = "e-1" }), "Move to Prev WS" },
+      u = { hl.dsp.window.move({ workspace = "e+1" }), "Move to Next WS" },
+      r = { hl.dsp.focus({ workspace = "e+1" }), "Next Workspace" },
+    }
+  end
+  for _, d in ipairs(DIR_INPUTS) do
+    hl.bind("CTRL + " .. d.key, ws_dsp[d.dir][1], { description = ws_dsp[d.dir][2] })
+    hl.bind("CTRL + " .. d.arrow, ws_dsp[d.dir][1], { description = ws_dsp[d.dir][2] })
+  end
 
-    -- !--- Move window to workspace ---
-    for i = 1, 4 do
-      hl.bind("SHIFT + " .. i, hl.dsp.exec_cmd("hyprctl dispatch split-movetoworkspace " .. i), { description = "Move to WS " .. i })
-    end
+  -- !--- Move window to workspace ---
+  for i = 1, Config.persistent_workspaces or 9 do
+    local ws = Config.persistent_workspaces and Workspaces.get_ws_id(i) or i
+    hl.bind("SHIFT + " .. i, hl.dsp.window.move({ workspace = ws }), { description = "Move to WS " .. i })
+  end
 
   -- !--- Modes ---
-  hl.bind("F",      hl.dsp.exec_cmd("hyprctl dispatch togglefloating"), { description = "Toggle Floating" })
-  hl.bind("P",      hl.dsp.exec_cmd("hyprctl dispatch pseudo"), { description = "Toggle Pseudo (dwindle)" })
-  hl.bind("S",      hl.dsp.exec_cmd("hyprctl dispatch togglesplit"), { description = "Toggle Split (dwindle)" })
-  hl.bind("MINUS",  hl.dsp.exec_cmd("hyprctl dispatch togglesplit"), { description = "Toggle Split (dwindle)" })
+  -- stylua: ignore start
+  hl.bind("F",     hl.dsp.exec_cmd("hyprctl dispatch togglefloating"), { description = "Toggle Floating" })
+  hl.bind("P",     hl.dsp.exec_cmd("hyprctl dispatch pseudo"),         { description = "Toggle Pseudo (dwindle)" })
+  hl.bind("S",     hl.dsp.exec_cmd("hyprctl dispatch togglesplit"),    { description = "Toggle Split (dwindle)" })
+  hl.bind("MINUS", hl.dsp.exec_cmd("hyprctl dispatch togglesplit"),    { description = "Toggle Split (dwindle)" })
+  -- stylua: ignore end
 
   -- !--- Actions ---
-  SubBind.exec("C", function() hl.dispatch(hl.dsp.window.kill()) end, "Close window")
+  SubBind.exec("C", hl.dsp.window.kill(), "Close window")
   hl.bind("RETURN", hl.dsp.exec_cmd("hyprctl dispatch pass activewindow"), { description = "Confirm selection" })
 
   -- !--- WhichKey ---
