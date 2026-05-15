@@ -36,7 +36,7 @@ local set_general_keys = function()
   Bind.leader("TAB", hl.dsp.focus({ workspace = "previous" }), { desc = "Go to Last Active WS" })
 
   -- !--- Scratchpad
-  local scratchpad = { name = "scratchpad", ws = "scratchpad:special" }
+  local scratchpad = { name = "scratchpad", ws = "special:scratchpad" }
   Bind.leader("S", hl.dsp.workspace.toggle_special(scratchpad.name), universal("Toggle Scratchpad"))
   Bind.leader("SHIFT + S", hl.dsp.window.move({ workspace = scratchpad.ws }), universal("Move to Scratchpad"))
 
