@@ -56,8 +56,8 @@ local set_window_rules = function()
   hl.window_rule({ name = "fix-dropdown-opacity", match = { float = true }, opacity = "1.0 1.0 override" })
 
   -- Browsers
-  hl.window_rule({ match = { class = "^(org\\.mozilla\\.firefox)$" }, opacity = "1.0 override 0.85 override" })
-  hl.window_rule({ match = { class = "^(org\\.qutebrowser\\.qutebrowser)$" }, opacity = "1.0 override 0.85 override" })
+  hl.window_rule({ name = "firefox-opacity",     match = { class = "^(org\\.mozilla\\.firefox)$" },          opacity = "1.0 override 0.85 override" })
+  hl.window_rule({ name = "qutebrowser-opacity", match = { class = "^(org\\.qutebrowser\\.qutebrowser)$" },  opacity = "1.0 override 0.85 override" })
 
   -- Rofi
   hl.window_rule({ match = { title = "^(rofiMenu)$" }, opacity = "1.0 1.0 override" })
@@ -72,11 +72,22 @@ local set_window_rules = function()
   })
 end
 
+--- Toggles browser opacity when a screenshare session starts or stops.
+--- Browsers dim when inactive by default; override to full opacity during capture.
+local set_screenshare_handler = function()
+  hl.on("screenshare.state", function(active, _type, _name)
+    local opacity = active and "1.0 1.0 override" or "1.0 override 0.85 override"
+    hl.window_rule({ name = "firefox-opacity",     match = { class = "^(org\\.mozilla\\.firefox)$" },         opacity = opacity })
+    hl.window_rule({ name = "qutebrowser-opacity", match = { class = "^(org\\.qutebrowser\\.qutebrowser)$" }, opacity = opacity })
+  end)
+end
+
 local function init()
   set_animations()
   set_layer_rules()
   set_workspace_rules()
   set_window_rules()
+  set_screenshare_handler()
 end
 
 init()

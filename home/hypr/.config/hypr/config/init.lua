@@ -145,7 +145,6 @@ end
 Config.setup = function(overrides)
   Config = Config.merge(overrides)
   hl.on("hyprland.start", require("config.system.autostart"))
-  -- TODO: hl.on("screenshare.state", require("config.screenshare")) -- Add ability to toggle on/off the opacity for windows
   require("config.system.env")
   require("config.system.general")
   for _, device in ipairs(Config.devices) do
