@@ -81,4 +81,38 @@ function WORKSPACES.get_monitor_selector(entry)
   end
 end
 
+--- Returns the monitor name currently occupying slot `slot` in ORDER.
+--- Known monitors fill their configured slot; unknown connected monitors
+--- fill empty slots in insertion order (as reported by hl.get_monitors()).
+--- @param slot integer 1-based ORDER slot index
+--- @return string|nil monitor name, or nil if the slot has no monitor
+function WORKSPACES.get_monitor_for_slot(slot)
+  local monitors = hl.get_monitors()
+  local filled = {} --- @type table<integer, string> slot -> monitor name
+  local unknowns = {} --- @type string[]
+
+  for _, mon in ipairs(monitors) do
+    local idx = get_order_idx(mon)
+    if idx <= #ORDER then
+      filled[idx] = mon.name
+    else
+      table.insert(unknowns, mon.name)
+    end
+  end
+
+  if filled[slot] then return filled[slot] end
+
+  -- count how many unknowns are consumed filling empty ORDER slots before `slot`
+  local unknown_consumed = 0
+  for i = 1, math.min(slot, #ORDER) do
+    if not filled[i] then
+      unknown_consumed = unknown_consumed + 1
+      if i == slot then return unknowns[unknown_consumed] end
+    end
+  end
+
+  -- slot is beyond ORDER; assign remaining unknowns sequentially
+  return unknowns[unknown_consumed + (slot - #ORDER)]
+end
+
 return WORKSPACES

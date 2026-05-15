@@ -33,9 +33,12 @@ hl.define_submap(SUBMAP.windows.name, function()
   SubBind.exec("TAB", function() hl.dispatch(hl.dsp.focus({ workspace = "previous" })) end, "Last workspace")
 
   -- !--- Monitor navigation ---
-  for i, entry in ipairs(Config.monitors) do
-    local sel = Workspaces.get_monitor_selector(entry)
-    if sel then hl.bind(tostring(i), hl.dsp.focus({ monitor = sel }), { description = "Monitor " .. i }) end
+  for i = 1, math.max(#Config.monitors, 10) do
+    local slot, key = i, i % 10
+    hl.bind(tostring(key), function()
+      local sel = Workspaces.get_monitor_for_slot(slot)
+      if sel then hl.dispatch(hl.dsp.focus({ monitor = sel })) end
+    end, { description = "Monitor " .. i })
   end
 
   -- !--- Move windows ---
@@ -67,11 +70,11 @@ hl.define_submap(SUBMAP.windows.name, function()
   end
 
   -- !--- Move window to workspace ---
-  for i = 1, Config.persistent_workspaces or 9 do
+  for i = 1, Config.persistent_workspaces or 10 do
     local key = i % 10
     local dsp = Config.persistent_workspaces
         and function() hl.dispatch(hl.dsp.window.move({ workspace = Workspaces.get_ws_id(i) })) end
-        or hl.dsp.window.move({ workspace = i })
+      or hl.dsp.window.move({ workspace = i })
     hl.bind("SHIFT + " .. key, dsp, { description = "Move to WS " .. i })
   end
 

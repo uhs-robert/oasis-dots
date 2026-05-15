@@ -39,13 +39,16 @@ local set_general_keys = function()
   Bind.leader("S", hl.dsp.window.move({ workspace = "special:scratchpad" }), { desc = "Move Window to Scratchpad", submap_universal = true })
 
   -- !--- Monitor Navigation
-  local get_monitor_selector = Workspaces.get_monitor_selector
-  for i, entry in ipairs(Config.monitors) do
-    local sel = get_monitor_selector(entry)
-    if sel then
-      Bind.leader("CTRL + " .. i, hl.dsp.focus({ monitor = sel }), { desc = "Focus Monitor " .. i })
-      Bind.leader("CTRL + SHIFT + " .. i, hl.dsp.window.move({ monitor = sel, follow = true }), { desc = "Move to Monitor " .. i })
-    end
+  for i = 1, math.max(#Config.monitors, 10) do
+    local slot, key = i, i % 10
+    Bind.leader("CTRL + " .. key, function()
+      local sel = Workspaces.get_monitor_for_slot(slot)
+      if sel then hl.dispatch(hl.dsp.focus({ monitor = sel })) end
+    end, { desc = "Focus Monitor " .. i })
+    Bind.leader("CTRL + SHIFT + " .. key, function()
+      local sel = Workspaces.get_monitor_for_slot(slot)
+      if sel then hl.dispatch(hl.dsp.window.move({ monitor = sel, follow = true })) end
+    end, { desc = "Move to Monitor " .. i })
   end
   Bind.leader_dir( "SHIFT", function(d) return hl.dsp.window.move({ direction = d.dir }) end, "Move Window ", { submap_universal = true })
 end
@@ -57,8 +60,8 @@ end
 
 --- Registers workspace binds for simple global workspaces (1-9, cycle prev/next).
 local set_default_ws_navigation = function()
-  -- Bind workspaces 1-9 to LEADER + digits, move with LEADER + SHIFT
-  for i = 1, 9 do
+  -- Bind workspaces 1-10 to LEADER + digits, move with LEADER + SHIFT
+  for i = 1, 10 do
     local key = i % 10
     Bind.leader("" .. key, hl.dsp.focus({ workspace = i }), { submap_universal = true, desc = "Go to Workspace " .. i })
     Bind.leader("SHIFT + " .. key, hl.dsp.window.move({ workspace = i }), { desc = "Move to Workspace " .. i })
