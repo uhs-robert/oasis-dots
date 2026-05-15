@@ -59,6 +59,8 @@ end
 
 --- Assigns persistent workspace rules using MONITOR_ORDER index so ranges stay stable
 --- regardless of how many monitors are connected.
+--- Unknown monitors (not in MONITOR_ORDER) get ranges beyond the known list so they
+--- never collide with a known monitor's workspace range.
 local function init_workspaces()
   local monitors = hl.get_monitors()
   for i, entry in ipairs(MONITOR_ORDER) do
@@ -71,6 +73,16 @@ local function init_workspaces()
       end
     end
   end
+  for _, mon in ipairs(monitors) do
+    local idx = get_monitor_order_index(mon)
+    if idx > #MONITOR_ORDER then
+      local start_ws = (idx - 1) * PERSISTENT_WS + 1
+      local end_ws = idx * PERSISTENT_WS
+      for n = start_ws, end_ws do
+        hl.workspace_rule({ workspace = tostring(n), monitor = mon.name, persistent = true })
+      end
+    end
+  end
 end
 
 --- Moves workspaces from a disconnected monitor to the first remaining monitor.
@@ -80,10 +92,11 @@ local function on_monitor_removed(mon)
   local remaining = hl.get_monitors()
   local fallback = remaining[1]
 
-  if PERSISTENT_WS and fallback and removed_idx <= #MONITOR_ORDER then
-    for n = 1, PERSISTENT_WS do
-      local ws_id = (removed_idx - 1) * PERSISTENT_WS + n
-      hl.dispatch(hl.dsp.workspace.move({ workspace = ws_id, monitor = fallback.name }))
+  if PERSISTENT_WS and fallback then
+    local start_ws = (removed_idx - 1) * PERSISTENT_WS + 1
+    local end_ws = removed_idx * PERSISTENT_WS
+    for n = start_ws, end_ws do
+      hl.dispatch(hl.dsp.workspace.move({ workspace = n, monitor = fallback.name }))
     end
   end
 
@@ -106,13 +119,12 @@ init_monitors()
 if PERSISTENT_WS then init_workspaces() end
 
 -- EVENTS
-hl.on("monitor.added", function()
+hl.on("monitor.added", function(mon)
   if PERSISTENT_WS then
     init_workspaces()
-    if #hl.get_monitors() >= #MONITOR_ORDER then
-      init_monitors()
-      init_workspace_focus()
-    end
+    init_monitors()
+    local idx = get_monitor_order_index(mon)
+    hl.dispatch(hl.dsp.focus({ workspace = (idx - 1) * PERSISTENT_WS + 1 }))
   end
 end)
 hl.on("monitor.removed", on_monitor_removed)
