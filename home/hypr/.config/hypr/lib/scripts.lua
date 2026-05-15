@@ -14,6 +14,7 @@ local Scripts = {
   hyprlock              = HYPR    .. "hyprlock-screenshot.lua",
   rofi_tmux             = HYPR    .. "rofi-tmux.sh",
   window_selector       = HYPR    .. "rofi-hyprwindow.sh",
+  keybind_help          = HYPR    .. "keybind-help.lua",
   toggle_monitor_layout = MONITOR .. "toggle-monitor-layout.sh",
   confirm_action        = WAYBAR  .. "confirm-action.sh",
   toggle_mpris_mode     = WAYBAR  .. "toggle_mpris_mode.rb",

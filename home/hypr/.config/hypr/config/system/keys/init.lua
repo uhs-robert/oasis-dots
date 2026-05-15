@@ -25,8 +25,9 @@ local MENU = Config.app.menu
 local set_general_keys = function()
   local function universal(description) return { submap_universal = true, desc = description } end
 
-  -- !--- Submap Global Escape
+  -- !--- Global Helpers
   Bind.leader("ESCAPE", hl.dsp.submap("reset"), universal("Reset Submaps"))
+  Bind.leader_cmd("SLASH", Scripts.keybind_help, universal("Keybind Help"))
 
   -- !--- Workspace
   Bind.leader("C", hl.dsp.window.close(), { desc = "Close Window" })
