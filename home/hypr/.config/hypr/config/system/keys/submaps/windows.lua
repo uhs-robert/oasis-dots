@@ -1,21 +1,21 @@
 -- home/hypr/.config/hypr/config/system/keys/submaps/windows.lua
 
 local Config = require("config")
-local Bind = require("lib.submap_bind")
+local SubBind = require("lib.submap_bind")
 local SUBMAP = require("config.system.keys.submap").map
 
 local MENU = Config.app.menu
 
 hl.define_submap(SUBMAP.windows.name, function()
   -- !--- Switch to other submaps ---
-  Bind.bind(SUBMAP.cursor, SUBMAP.cursor.fn)
-  Bind.bind(SUBMAP.resize)
-  Bind.bind(SUBMAP.screenshot)
-  Bind.bind(SUBMAP.system)
-  Bind.bind(SUBMAP.move)
+  SubBind.swap_to(SUBMAP.cursor, SUBMAP.cursor.fn)
+  SubBind.swap_to(SUBMAP.resize)
+  SubBind.swap_to(SUBMAP.screenshot)
+  SubBind.swap_to(SUBMAP.system)
+  SubBind.swap_to(SUBMAP.move)
 
   -- !--- Shortcuts ---
-  Bind.run("O", MENU .. " -i -show window", "Search windows")
+  SubBind.run("O", MENU .. " -i -show window", "Search windows")
 
     -- !--- Focus movement ---
     -- stylua: ignore start
@@ -28,7 +28,7 @@ hl.define_submap(SUBMAP.windows.name, function()
     hl.bind("Right", hl.dsp.exec_cmd("hyprctl dispatch movefocus r"), { description = "Focus Right" })
     hl.bind("Up",    hl.dsp.exec_cmd("hyprctl dispatch movefocus u"), { description = "Focus Up" })
     hl.bind("Down",  hl.dsp.exec_cmd("hyprctl dispatch movefocus d"), { description = "Focus Down" })
-    Bind.exec("TAB", function() hl.dispatch(hl.dsp.focus({ workspace = "previous" })) end, "Last workspace")
+    SubBind.exec("TAB", function() hl.dispatch(hl.dsp.focus({ workspace = "previous" })) end, "Last workspace")
 
     -- !--- Monitor navigation ---
     -- TODO: Use monitor count and focus script ../init.lua
@@ -70,9 +70,9 @@ hl.define_submap(SUBMAP.windows.name, function()
   hl.bind("MINUS",  hl.dsp.exec_cmd("hyprctl dispatch togglesplit"), { description = "Toggle Split (dwindle)" })
 
   -- !--- Actions ---
-  Bind.exec("C", function() hl.dispatch(hl.dsp.window.kill()) end, "Close window")
+  SubBind.exec("C", function() hl.dispatch(hl.dsp.window.kill()) end, "Close window")
   hl.bind("RETURN", hl.dsp.exec_cmd("hyprctl dispatch pass activewindow"), { description = "Confirm selection" })
   -- stylua: ignore end
 
-  Bind.set_escape(SUBMAP.windows)
+  SubBind.bind_exits({ swallow_mispress = true })
 end)

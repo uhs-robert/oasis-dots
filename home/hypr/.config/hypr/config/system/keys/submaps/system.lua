@@ -1,7 +1,7 @@
 -- home/hypr/.config/hypr/config/system/keys/submaps/system.lua
 
 local Config = require("config")
-local Bind = require("lib.submap_bind")
+local SubBind = require("lib.submap_bind") ---@class SubBind
 local SUBMAP = require("config.system.keys.submap").map
 
 local TERM = Config.app.term
@@ -13,36 +13,36 @@ hl.define_submap(SUBMAP.system.name, function()
 
     -- !--- Shortcuts ---
     -- stylua: ignore start
-    Bind.run("SLASH",     TERM .. " -e " .. EDITOR .. " ~/.config/hypr/config/system/keys/init.lua",  "Edit Keybinds")
-    Bind.run("SPACE",     TERM .. " -e btop",                                             "Task Manager")
-    Bind.run("M",         "~/.config/hypr/monitors/scripts/toggle-monitor-layout.sh",     "Monitor Layout")
-    Bind.run("I",         "~/.config/hypr/scripts/nmtui.sh",                              "Internet Network Manager")
-    Bind.run("SHIFT + M", "~/.config/waybar/scripts/toggle_mpris_mode.rb",                "Toggle Waybar Mpris Mode")
-    Bind.run("N",         "swaync-client -t -sw",                                         "Notification Center")
-    Bind.run("U",         TERM .. " -e sysup",                                            "Update System")
+    SubBind.run("SLASH",     TERM .. " -e " .. EDITOR .. " ~/.config/hypr/config/system/keys/init.lua",  "Edit Keybinds")
+    SubBind.run("SPACE",     TERM .. " -e btop",                                             "Task Manager")
+    SubBind.run("M",         "~/.config/hypr/monitors/scripts/toggle-monitor-layout.sh",     "Monitor Layout")
+    SubBind.run("I",         "~/.config/hypr/scripts/nmtui.sh",                              "Internet Network Manager")
+    SubBind.run("SHIFT + M", "~/.config/waybar/scripts/toggle_mpris_mode.rb",                "Toggle Waybar Mpris Mode")
+    SubBind.run("N",         "swaync-client -t -sw",                                         "Notification Center")
+    SubBind.run("U",         TERM .. " -e sysup",                                            "Update System")
 
     -- !--- Quick reloads ---
-    Bind.run("W",         "killall swaync swaync-client waybar; swaync & waybar &",       "Restart Waybar")
-    Bind.run("SHIFT + W", "killall swaync swaync-client waybar; swaync & ~/clones/Waybar/build/waybar -c ~/.config/waybar/config.jsonc -s ~/.config/waybar/style.css &", "Restart Waybar (Github)")
-    Bind.run("H",         "hyprctl reload",                                               "Reload Hyprland")
-    Bind.run("SHIFT + H", "hyprpm reload -n",                                             "Reload Hyprpm Plugins")
-    Bind.run("T",         "~/.config/hypr/theme/switch.lua '" .. Config.app.dmenu_cmd .. "'", "Theme Switch")
-    Bind.run("D",         Config.app.display_manager,                                     "Display Manager")
-    Bind.run("K",         "hyprctl kill",                                                 "Kill Application (Click)")
+    SubBind.run("W",         "killall swaync swaync-client waybar; swaync & waybar &",       "Restart Waybar")
+    SubBind.run("SHIFT + W", "killall swaync swaync-client waybar; swaync & ~/clones/Waybar/build/waybar -c ~/.config/waybar/config.jsonc -s ~/.config/waybar/style.css &", "Restart Waybar (Github)")
+    SubBind.run("H",         "hyprctl reload",                                               "Reload Hyprland")
+    SubBind.run("SHIFT + H", "hyprpm reload -n",                                             "Reload Hyprpm Plugins")
+    SubBind.run("T",         "~/.config/hypr/theme/switch.lua '" .. Config.app.dmenu_cmd .. "'", "Theme Switch")
+    SubBind.run("D",         Config.app.display_manager,                                     "Display Manager")
+    SubBind.run("K",         "hyprctl kill",                                                 "Kill Application (Click)")
 
     -- !--- With confirmation ---
-    Bind.run("L", CONFIRM .. " --title Lock      --glyph '󰌾' --exec '~/.config/hypr/scripts/hyprlock-screenshot.lua'", "Lock Computer")
-    Bind.run(
+    SubBind.run("L", CONFIRM .. " --title Lock      --glyph '󰌾' --exec '~/.config/hypr/scripts/hyprlock-screenshot.lua'", "Lock Computer")
+    SubBind.run(
       "E",
       CONFIRM .. [[ --title Logout --glyph '󰍃' --exec 'command -v hyprshutdown >/dev/null 2>&1 && hyprshutdown || hyprctl dispatch "hl.dsp.exit()"' ]],
       "Exit Hyprland"
     )
-    Bind.run("R", CONFIRM .. " --title Reboot    --glyph '󰜉' --exec 'systemctl reboot'",                       "Reboot Computer")
-    Bind.run("P", CONFIRM .. " --title Power\\ Off --glyph '󰐥' --exec 'systemctl poweroff'",                   "Power Off")
+    SubBind.run("R", CONFIRM .. " --title Reboot    --glyph '󰜉' --exec 'systemctl reboot'",                       "Reboot Computer")
+    SubBind.run("P", CONFIRM .. " --title Power\\ Off --glyph '󰐥' --exec 'systemctl poweroff'",                   "Power Off")
   -- stylua: ignore end
 
   -- !--- Switch to other submaps ---
-  Bind.bind(SUBMAP.cursor, SUBMAP.cursor.fn)
+  SubBind.swap_to(SUBMAP.cursor, SUBMAP.cursor.fn)
 
-  Bind.set_escape(SUBMAP.system)
+  SubBind.bind_exits({ swallow_mispress = true })
 end)

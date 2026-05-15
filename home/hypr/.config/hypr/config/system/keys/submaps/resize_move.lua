@@ -1,6 +1,6 @@
 -- home/hypr/.config/hypr/config/system/keys/submaps/resize_move.lua
 
-local Bind = require("lib.submap_bind")
+local SubBind = require("lib.submap_bind")
 local SUBMAP = require("config.system.keys.submap").map
 
 --- Bind HJKL at four speed tiers with repeat.
@@ -47,10 +47,10 @@ hl.define_submap(SUBMAP.resize.name, function()
   hl.bind("S", hl.dsp.layout("togglesplit"), { description = "Toggle Split (dwindle)" })
 
   -- !--- Switch to other submaps ---
-  Bind.bind(SUBMAP.move)
-  Bind.bind(SUBMAP.windows)
+  SubBind.swap_to(SUBMAP.move)
+  SubBind.swap_to(SUBMAP.windows)
 
-  Bind.set_escape(SUBMAP.resize)
+  SubBind.bind_exits({ swallow_mispress = true })
 end)
 
 --- Move
@@ -60,8 +60,8 @@ hl.define_submap(SUBMAP.move.name, function()
   hl.bind("EQUAL", reset_float, { description = "Reset Position" })
 
   -- !--- Switch to other submaps ---
-  Bind.bind(SUBMAP.resize)
-  Bind.bind(SUBMAP.windows)
+  SubBind.swap_to(SUBMAP.resize)
+  SubBind.swap_to(SUBMAP.windows)
 
-  Bind.set_escape(SUBMAP.move)
+  SubBind.bind_exits({ swallow_mispress = true })
 end)
