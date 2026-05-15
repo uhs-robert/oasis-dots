@@ -1,7 +1,7 @@
 -- home/hypr/.config/hypr/theme/generate/conf.lua
 
 local HOME = os.getenv("HOME")
-local utils = require("lib.utils") ---@class utils
+local Utils = require("lib.utils") ---@class Utils
 
 --- Writes theme.conf to ~/.config/hypr/ with all palette colors as rgb/rgba variables.
 --- @param c table Palette color table from theme.colors.*
@@ -16,5 +16,5 @@ return function(c)
   end
   table.sort(lines)
 
-  utils.write_file(HOME .. "/.config/hypr/theme.conf", table.concat(lines, "\n") .. "\n")
+  Utils.write_file(HOME .. "/.config/hypr/theme.conf", table.concat(lines, "\n") .. "\n")
 end

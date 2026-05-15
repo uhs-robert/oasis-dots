@@ -1,6 +1,6 @@
 -- home/hypr/.config/hypr/config/init.lua
 
-local utils = require("lib.utils") ---@class utils
+local Utils = require("lib.utils") ---@class Utils
 
 --- @class Config.Nvidia
 --- @field enable boolean Enable NVIDIA-specific fixes and env vars (default: false)
@@ -117,7 +117,7 @@ end
 --- @param patch table
 --- @return Config
 Config.update = function(patch)
-  utils.deep_extend(Config, patch)
+  Utils.deep_extend(Config, patch)
   derive(Config)
 
   return Config
@@ -127,8 +127,8 @@ end
 --- @param overrides table|nil
 --- @return Config
 Config.merge = function(overrides)
-  local merged = utils.deep_extend({}, Config.defaults)
-  if overrides then utils.deep_extend(merged, overrides) end
+  local merged = Utils.deep_extend({}, Config.defaults)
+  if overrides then Utils.deep_extend(merged, overrides) end
   derive(merged)
   for k, v in pairs(merged) do
     Config[k] = v

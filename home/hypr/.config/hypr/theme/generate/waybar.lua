@@ -1,7 +1,7 @@
 -- home/hypr/.config/hypr/theme/generate/waybar.lua
 
 local HOME = os.getenv("HOME")
-local utils = require("lib.utils") ---@class utils
+local Utils = require("lib.utils") ---@class Utils
 
 --- Writes theme-colors.css to ~/.config/waybar/.
 --- @param c table Palette color table from theme.colors.*
@@ -65,5 +65,5 @@ return function(c)
     c.magenta
   )
 
-  utils.write_file(HOME .. "/.config/waybar/theme-colors.css", css)
+  Utils.write_file(HOME .. "/.config/waybar/theme-colors.css", css)
 end

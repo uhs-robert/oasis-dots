@@ -1,7 +1,6 @@
 -- home/hypr/.config/hypr/lib/utils.lua
 
 --- @class Utils
-
 local Utils = {}
 
 --- Returns true if t is a sequence (array-like: all integer keys 1..n).
