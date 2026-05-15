@@ -85,6 +85,23 @@ local function init_persistent_workspaces()
   end
 end
 
+--- Focuses the first persistent workspace assigned to the given monitor.
+--- @param mon HL.Monitor The monitor whose first workspace to focus
+local function focus_first_ws(mon)
+  local idx = get_monitor_order_index(mon)
+  hl.dispatch(hl.dsp.focus({ workspace = (idx - 1) * PERSISTENT_WS + 1 }))
+end
+
+--- Applies monitor mode/position settings and persistent workspace rules.
+--- @param mon? HL.Monitor The monitor that was removed
+local function apply_layout(mon)
+  init_monitors()
+  if PERSISTENT_WS then
+    init_persistent_workspaces()
+    if mon then focus_first_ws(mon) end
+  end
+end
+
 --- Moves workspaces from a disconnected monitor to the first remaining monitor.
 --- @param mon HL.Monitor The monitor that was removed
 local function on_monitor_removed(mon)
@@ -100,22 +117,14 @@ local function on_monitor_removed(mon)
     end
   end
 
-  init_monitors()
-  if PERSISTENT_WS then init_persistent_workspaces() end
-end
-
---- Applies mode/position settings and persistent workspace rules for a newly connected monitor.
-local function on_monitor_added()
-  init_monitors()
-  if PERSISTENT_WS then init_persistent_workspaces() end
+  apply_layout()
 end
 
 --- Applies monitor settings, assigns persistent workspaces, and registers hotplug event handlers.
 local function init()
-  init_monitors()
-  if PERSISTENT_WS then init_persistent_workspaces() end
-
-  hl.on("monitor.added", on_monitor_added)
+  apply_layout()
+  hl.on("hyprland.start", apply_layout)
+  hl.on("monitor.added", apply_layout)
   hl.on("monitor.removed", on_monitor_removed)
 end
 
