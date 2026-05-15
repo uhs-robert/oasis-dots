@@ -5,16 +5,6 @@ local WAYBAR = "~/.config/waybar/scripts/"
 local MONITOR = "~/.config/hypr/monitors/scripts/"
 
 --- @class Scripts
---- @field screenshot string
---- @field voxtype string
---- @field focus_media_player string
---- @field nmtui string
---- @field hyprlock string
---- @field rofi_tmux string
---- @field window_selector string
---- @field toggle_monitor_layout string
---- @field confirm_action string
---- @field toggle_mpris_mode string
 local Scripts = {
   -- stylua: ignore start
   screenshot            = HYPR    .. "screenshot.sh",

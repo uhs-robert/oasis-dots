@@ -5,10 +5,6 @@ local MIN_WS = Config.persistent_workspaces
 local ORDER = Config.monitors
 
 --- @class Workspaces
---- @field get_ws_id fun(n: integer): integer Returns the global workspace ID for local slot n on the active monitor
---- @field cycle_local_ws fun(dir: "next"|"prev") Cycles to the next or previous workspace on the active monitor, wrapping at the boundary
---- @field move_window_local_ws fun(dir: "next"|"prev") Moves the active window to the next or previous workspace on the active monitor
---- @field get_monitor_selector fun(entry: { description?: string, name?: string, id?: integer }): string|nil Resolves a monitor selector string from a monitor ORDER entry
 local WORKSPACES = {}
 
 --- Returns the ORDER index for the given monitor, falling back to mon.id+1.

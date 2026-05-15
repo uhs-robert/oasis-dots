@@ -3,14 +3,6 @@
 local Window = require("lib.window") ---@class Window
 
 --- @class SubBind
---- @field run fun(key: string, cmd: string, desc: string) Bind a key that resets the active submap then runs a shell command
---- @field exec fun(key: string, fn: fun(), desc: string) Bind a key that resets the active submap then calls a Hyprland API function
---- @field focus_or_launch fun(key: string, opts: { program: string, class?: string, title?: string, exclude_title?: string, cmd?: string }, desc: string) Bind a key that focuses an existing window or launches the app, resetting the active submap
---- @field run_then_swap_to fun(key: string, cmd: string, submap_name: string, desc: string) Bind a key that runs a shell command then enters a named submap
---- @field run_then_fn fun(key: string, cmd: string, fn: fun(), desc: string) Bind a key that runs a shell command, calls a Lua callback, then resets the submap
---- @field reset fun() Reset to the default submap (exits any active submap)
---- @field swap_to fun(sm: SubmapEntry, opts?: { key?: string, fn?: fun() }) Bind a submap entry key, optionally overriding the key or activation action
---- @field bind_exits fun(opts?: { swallow_mispress?: boolean }) Bind Escape/BackSpace to exit; swallow_mispress=true swallows unbound keys
 local SubBind = {}
 
 --- Bind a key that resets the active submap then runs a shell command.

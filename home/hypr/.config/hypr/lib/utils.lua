@@ -1,8 +1,6 @@
 -- home/hypr/.config/hypr/lib/utils.lua
 
 --- @class Utils
---- @field deep_extend fun(target: table, ...: table): table Deep-merges one or more source tables into target; arrays are replaced
---- @field write_file fun(path: string, content: string): boolean Writes content to a file; returns true on success
 
 local Utils = {}
 
