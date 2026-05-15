@@ -4,23 +4,30 @@ local SubBind = require("lib.submap_bind") ---@class SubBind
 local SUBMAP = require("config.system.keys.submap").map
 local CURSOR = SUBMAP.cursor
 
+--- Restores cursor config to saved defaults before submap entry
+--- @param defaults { timeout: number, hide: boolean }
 local restore_cursor_config = function(defaults)
   hl.config({ cursor = { inactive_timeout = defaults.timeout, hide_on_key_press = defaults.hide } })
 end
 
+--- Returns a function that restores cursor config and switches to another submap
+--- @param name string Submap name to switch to
+--- @return fun()
 local function swap_submap(name)
-  restore_cursor_config(CURSOR.defaults)
-  hl.dispatch(hl.dsp.submap(name))
+  return function()
+    restore_cursor_config(CURSOR.defaults)
+    hl.dispatch(hl.dsp.submap(name))
+  end
 end
 
---- Cursor
+--- Cursor submap: keyboard-driven cursor movement, clicking, and scrolling
 hl.define_submap(CURSOR.name, function()
   -- !--- Switch to other submaps ---
   -- stylua: ignore start
-  SubBind.swap_to(SUBMAP.windows,    function() swap_submap(SUBMAP.windows.name) end)
-  SubBind.swap_to(SUBMAP.resize,     function() swap_submap(SUBMAP.resize.name) end)
-  SubBind.swap_to(SUBMAP.screenshot, function() swap_submap(SUBMAP.screenshot.name) end)
-  SubBind.swap_to(SUBMAP.system,     function() swap_submap(SUBMAP.system.name) end)
+  SubBind.swap_to(SUBMAP.windows,    { fn = swap_submap(SUBMAP.windows.name) } )
+  SubBind.swap_to(SUBMAP.resize,     { fn = swap_submap(SUBMAP.resize.name) } )
+  SubBind.swap_to(SUBMAP.screenshot, { fn = swap_submap(SUBMAP.screenshot.name) } )
+  SubBind.swap_to(SUBMAP.system,     { fn = swap_submap(SUBMAP.system.name) } )
   -- stylua: ignore end
 
   -- !--- Floating Mode: Cursor click/move (vimium style) ---
@@ -115,11 +122,16 @@ hl.define_submap(CURSOR.name, function()
     { description = "Page Down" }
   )
 
+  -- !--- WhichKey ---
+  hl.bind("SHIFT + SLASH", function() require("hyprvim.whichkey").toggle() end)
+
   -- !--- Exit ---
-  hl.bind("Escape", function()
+  local function handle_escape()
     restore_cursor_config(CURSOR.defaults)
     hl.dispatch(hl.dsp.exec_cmd("pkill wl-kbptr"))
     hl.dispatch(hl.dsp.submap("reset"))
-  end)
-  hl.bind("catchall", hl.dsp.submap(CURSOR.name))
+  end
+  hl.bind("Escape", handle_escape)
+  hl.bind("BackSpace", handle_escape)
+  hl.bind("catchall", hl.dsp.no_op(), { release = true, ignore_mods = true })
 end)
