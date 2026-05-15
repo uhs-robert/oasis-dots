@@ -7,7 +7,6 @@ local SUBMAP = require("config.system.keys.submap").map
 --- @param action fun(opts: {x: number, y: number})
 --- @param desc string Description prefix
 local function set_speed_dir_binds(action, desc)
-  -- FIX: Invalid size
   local DIRS = {
     { key = "H", x = -1, y = 0, label = "Left" },
     { key = "J", x = 0, y = 1, label = "Down" },
@@ -24,7 +23,7 @@ local function set_speed_dir_binds(action, desc)
     for _, d in ipairs(DIRS) do
       hl.bind(
         speed.mod .. d.key,
-        action({ x = d.x * speed.step, y = d.y * speed.step }),
+        action({ x = d.x * speed.step, y = d.y * speed.step, relative = true }),
         { repeating = true, description = desc .. " " .. d.label .. speed.suffix }
       )
     end
@@ -55,7 +54,6 @@ end)
 
 --- Move
 hl.define_submap(SUBMAP.move.name, function()
-  -- FIX: Does nothing
   set_speed_dir_binds(hl.dsp.window.move, SUBMAP.move.name)
   hl.bind("EQUAL", reset_float, { description = "Reset Position" })
 
