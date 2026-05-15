@@ -107,8 +107,8 @@ end
 -- ──────────────────────────────────────────────────────────────────────────── #
 local set_mouse_controls = function()
   -- !--- Scroll Through Workspaces
-  Bind.leader("mouse_down", hl.dsp.focus({ workspace = "e+1" }))
-  Bind.leader("mouse_up", hl.dsp.focus({ workspace = "e-1" }))
+  Bind.leader("mouse_down", hl.dsp.focus({ workspace = "e+1", repeating = true }))
+  Bind.leader("mouse_up", hl.dsp.focus({ workspace = "e-1", repeating = true }))
 
   -- !--- Move/Resize Windows with Mouse
   Bind.leader("mouse:272", hl.dsp.window.drag(), { mouse = true })
