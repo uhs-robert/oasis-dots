@@ -36,7 +36,7 @@ hl.define_submap(SUBMAP.system.name, function()
 
   -- !--- With confirmation ---
   SubBind.run("L", Scripts.confirm_action .. " --title Lock --glyph '󰌾' --exec '" .. Scripts.hyprlock .. "'",    "Lock Computer")
-  SubBind.run("E", Scripts.confirm_action .. "--title Logout --glyph '󰍃' --exec '" .. CMD.logout .. "'",         "Exit Hyprland")
+  SubBind.run("E", Scripts.confirm_action .. " --title Logout --glyph '󰍃' --exec '" .. CMD.logout .. "'",        "Exit Hyprland")
   SubBind.run("R", Scripts.confirm_action .. " --title Reboot    --glyph '󰜉' --exec '" .. CMD.reboot .. "'",     "Reboot Computer")
   SubBind.run("P", Scripts.confirm_action .. " --title Power\\ Off --glyph '󰐥' --exec '" .. CMD.poweroff .. "'", "Power Off")
   -- stylua: ignore end
