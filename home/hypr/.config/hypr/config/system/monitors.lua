@@ -61,7 +61,7 @@ end
 --- regardless of how many monitors are connected.
 --- Unknown monitors (not in MONITOR_ORDER) get ranges beyond the known list so they
 --- never collide with a known monitor's workspace range.
-local function init_workspaces()
+local function init_persistent_workspaces()
   local monitors = hl.get_monitors()
   for i, entry in ipairs(MONITOR_ORDER) do
     local output = get_monitor_output(entry, monitors)
@@ -101,19 +101,22 @@ local function on_monitor_removed(mon)
   end
 
   init_monitors()
-  if PERSISTENT_WS then init_workspaces() end
+  if PERSISTENT_WS then init_persistent_workspaces() end
 end
 
-init_monitors()
-if PERSISTENT_WS then init_workspaces() end
+--- Applies mode/position settings and persistent workspace rules for a newly connected monitor.
+local function on_monitor_added()
+  init_monitors()
+  if PERSISTENT_WS then init_persistent_workspaces() end
+end
 
--- EVENTS
-hl.on("monitor.added", function(mon)
-  if PERSISTENT_WS then
-    init_workspaces()
-    init_monitors()
-    local idx = get_monitor_order_index(mon)
-    hl.dispatch(hl.dsp.focus({ workspace = (idx - 1) * PERSISTENT_WS + 1 }))
-  end
-end)
-hl.on("monitor.removed", on_monitor_removed)
+--- Applies monitor settings, assigns persistent workspaces, and registers hotplug event handlers.
+local function init()
+  init_monitors()
+  if PERSISTENT_WS then init_persistent_workspaces() end
+
+  hl.on("monitor.added", on_monitor_added)
+  hl.on("monitor.removed", on_monitor_removed)
+end
+
+init()
