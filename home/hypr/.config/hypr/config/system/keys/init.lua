@@ -36,7 +36,7 @@ local set_general_keys = function()
 
   -- !--- Scratchpad
   Bind.leader("S", hl.dsp.workspace.toggle_special("scratchpad"), { desc = "Toggle Scratchpad", submap_universal = true })
-  Bind.leader("S", hl.dsp.window.move({ workspace = "special:scratchpad" }), { desc = "Move Window to Scratchpad", submap_universal = true })
+  Bind.leader("SHIFT + S", hl.dsp.window.move({ workspace = "special:scratchpad" }), { desc = "Move Window to Scratchpad", submap_universal = true })
 
   -- !--- Monitor Navigation
   for i = 1, math.max(#Config.monitors, 10) do
