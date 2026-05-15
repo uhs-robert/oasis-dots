@@ -9,7 +9,7 @@ local Window = require("lib.window") ---@class Window
 --- @field run_then_swap_to fun(key: string, cmd: string, submap_name: string, desc: string) Bind a key that runs a shell command then enters a named submap
 --- @field run_then_fn fun(key: string, cmd: string, fn: fun(), desc: string) Bind a key that runs a shell command, calls a Lua callback, then resets the submap
 --- @field reset fun() Reset to the default submap (exits any active submap)
---- @field swap_to fun(sm: SubmapEntry, fn?: fun()) Bind a submap entry key, optionally overriding the default activation action
+--- @field swap_to fun(sm: SubmapEntry, opts?: { key?: string, fn?: fun() }) Bind a submap entry key, optionally overriding the key or activation action
 --- @field bind_exits fun(opts?: { swallow_mispress?: boolean }) Bind Escape/BackSpace to exit; swallow_mispress=true swallows unbound keys
 local SubBind = {}
 
@@ -71,10 +71,14 @@ SubBind.run_then_fn = function(key, cmd, fn, desc)
   end, { description = desc })
 end
 
---- Bind a submap entry key, optionally overriding the default activation action.
+--- Bind a submap entry key, optionally overriding the key or activation action.
 --- @param sm SubmapEntry
---- @param fn fun()|nil Override action; if nil, activates the submap by name
-SubBind.swap_to = function(sm, fn) hl.bind(sm.key, fn or hl.dsp.submap(sm.name), { description = "+" .. sm.name }) end
+--- @param opts? { key?: string, fn?: fun() }
+SubBind.swap_to = function(sm, opts)
+  local key = (opts and opts.key) or sm.key
+  local action = (opts and opts.fn) or hl.dsp.submap(sm.name)
+  hl.bind(key, action, { description = "+" .. sm.name })
+end
 
 --- Bind Escape and BackSpace to reset the submap, plus a catchall policy.
 --- By default unbound keys also exit; swallow_mispress=true swallows them instead.

@@ -41,8 +41,5 @@ hl.define_submap(SUBMAP.system.name, function()
     SubBind.run("P", CONFIRM .. " --title Power\\ Off --glyph '󰐥' --exec 'systemctl poweroff'",                   "Power Off")
   -- stylua: ignore end
 
-  -- !--- Switch to other submaps ---
-  SubBind.swap_to(SUBMAP.cursor, SUBMAP.cursor.fn)
-
   SubBind.bind_exits({ swallow_mispress = true })
 end)

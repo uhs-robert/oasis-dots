@@ -46,8 +46,8 @@ hl.define_submap(SUBMAP.resize.name, function()
   hl.bind("S", hl.dsp.layout("togglesplit"), { description = "Toggle Split (dwindle)" })
 
   -- !--- Switch to other submaps ---
-  SubBind.swap_to(SUBMAP.move)
-  SubBind.swap_to(SUBMAP.windows)
+  SubBind.swap_to(SUBMAP.move, { key = "M" })
+  SubBind.swap_to(SUBMAP.windows, { key = "W" })
 
   SubBind.bind_exits({ swallow_mispress = true })
 end)
@@ -58,8 +58,8 @@ hl.define_submap(SUBMAP.move.name, function()
   hl.bind("EQUAL", reset_float, { description = "Reset Position" })
 
   -- !--- Switch to other submaps ---
-  SubBind.swap_to(SUBMAP.resize)
-  SubBind.swap_to(SUBMAP.windows)
+  SubBind.swap_to(SUBMAP.resize, { key = "R" })
+  SubBind.swap_to(SUBMAP.windows, { key = "W" })
 
   SubBind.bind_exits({ swallow_mispress = true })
 end)

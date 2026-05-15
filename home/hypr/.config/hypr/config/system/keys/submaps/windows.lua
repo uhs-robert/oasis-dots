@@ -8,11 +8,11 @@ local MENU = Config.app.menu
 
 hl.define_submap(SUBMAP.windows.name, function()
   -- !--- Switch to other submaps ---
-  SubBind.swap_to(SUBMAP.cursor, SUBMAP.cursor.fn)
-  SubBind.swap_to(SUBMAP.resize)
-  SubBind.swap_to(SUBMAP.screenshot)
-  SubBind.swap_to(SUBMAP.system)
-  SubBind.swap_to(SUBMAP.move)
+  SubBind.swap_to(SUBMAP.cursor, { key = "X", fn = SUBMAP.cursor.fn })
+  SubBind.swap_to(SUBMAP.resize, { key = "R" })
+  SubBind.swap_to(SUBMAP.screenshot, { key = "I" })
+  SubBind.swap_to(SUBMAP.system, { key = "Q" })
+  SubBind.swap_to(SUBMAP.move, { key = "M" })
 
   -- !--- Shortcuts ---
   SubBind.run("O", MENU .. " -i -show window", "Search windows")
