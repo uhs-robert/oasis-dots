@@ -48,7 +48,14 @@ local set_window_rules = function()
   })
   hl.window_rule({
     name = "float-class",
-    match = { class = "^(float)$" },
+    match = { class = "^(float|org.kde.dolphin|qalculate-gtk)$" },
+    float = true,
+    size = "(monitor_w*0.8) (monitor_h*0.8)",
+    dim_around = true,
+  })
+  hl.window_rule({
+    name = "float-title",
+    match = { title = "^(ProtonPlus)$" },
     float = true,
     size = "(monitor_w*0.8) (monitor_h*0.8)",
     dim_around = true,
@@ -56,8 +63,16 @@ local set_window_rules = function()
   hl.window_rule({ name = "fix-dropdown-opacity", match = { float = true }, opacity = "1.0 1.0 override" })
 
   -- Browsers
-  hl.window_rule({ name = "firefox-opacity",     match = { class = "^(org\\.mozilla\\.firefox)$" },          opacity = "1.0 override 0.85 override" })
-  hl.window_rule({ name = "qutebrowser-opacity", match = { class = "^(org\\.qutebrowser\\.qutebrowser)$" },  opacity = "1.0 override 0.85 override" })
+  hl.window_rule({
+    name = "firefox-opacity",
+    match = { class = "^(org\\.mozilla\\.firefox)$" },
+    opacity = "1.0 override 0.85 override",
+  })
+  hl.window_rule({
+    name = "qutebrowser-opacity",
+    match = { class = "^(org\\.qutebrowser\\.qutebrowser)$" },
+    opacity = "1.0 override 0.85 override",
+  })
 
   -- Rofi
   hl.window_rule({ match = { title = "^(rofiMenu)$" }, opacity = "1.0 1.0 override" })
@@ -77,8 +92,16 @@ end
 local set_screenshare_handler = function()
   hl.on("screenshare.state", function(active, _type, _name)
     local opacity = active and "1.0 1.0 override" or "1.0 override 0.85 override"
-    hl.window_rule({ name = "firefox-opacity",     match = { class = "^(org\\.mozilla\\.firefox)$" },         opacity = opacity })
-    hl.window_rule({ name = "qutebrowser-opacity", match = { class = "^(org\\.qutebrowser\\.qutebrowser)$" }, opacity = opacity })
+    hl.window_rule({
+      name = "firefox-opacity",
+      match = { class = "^(org\\.mozilla\\.firefox)$" },
+      opacity = opacity,
+    })
+    hl.window_rule({
+      name = "qutebrowser-opacity",
+      match = { class = "^(org\\.qutebrowser\\.qutebrowser)$" },
+      opacity = opacity,
+    })
   end)
 end
 
