@@ -22,17 +22,13 @@ local Submap = {
 --- @field name      string                                          Hyprland submap name
 --- @field desc?     string                                          Label shown when entering
 --- @field enter?    string|string[]                                 Key(s) that trigger entry (global)
---- @field group?    string                                          Whichkey group for the entry bind
---- @field escape?   "reset"|"previous"|false|fun(ctx: SubmapContext) Exit behaviour; defaults to "reset"
+--- @field escape?   "reset"|"previous"|string|false|fun(ctx: SubmapContext) Exit behaviour; defaults to "reset". A submap name string switches to that submap.
 --- @field catchall? "stay"|"reset"|false|fun(ctx: SubmapContext)    Unbound-key behaviour; defaults to false. "stay" swallows unbound keys. "reset" is oneshot — wraps all bound actions to auto-exit and resets on unbound keys.
 --- @field on_enter? fun(ctx: SubmapContext)                         Called after entering this submap
 --- @field on_exit?  fun(ctx: SubmapContext)                         Called before leaving this submap
 --- @field binds?    table[]|fun(): table[]                          Rows passed to Bind.keys inside the submap, or a function returning them
 
 --- @class SubmapHandle
---- @field name  string
---- @field desc  string|nil
---- @field spec  SubmapSpec
 --- @field enter fun()   Switch into this submap
 --- @field exit  fun()   Exit according to spec.escape
 --- @field setup fun()   Register all binds with Hyprland (call once at startup)
@@ -54,14 +50,24 @@ local function context(extra)
   return ctx
 end
 
+--- Fire the on_exit hook for a spec if present.
+--- @param spec SubmapSpec|nil
+--- @param from string
+--- @param to   string
+local function fire_exit(spec, from, to)
+  if spec and spec.on_exit then spec.on_exit(context({ from = from, to = to })) end
+end
+
+--- Resolve the escape policy for a spec, defaulting to "reset".
 --- @param spec SubmapSpec
---- @return "reset"|"previous"|false|fun(ctx: SubmapContext)
+--- @return "reset"|"previous"|string|false|fun(ctx: SubmapContext)
 local function normalize_escape(spec)
   if spec.escape == nil then return "reset" end
 
   return spec.escape
 end
 
+--- Resolve the catchall policy for a spec, defaulting to false (disabled).
 --- @param spec SubmapSpec
 --- @return "stay"|"reset"|false|fun(ctx: SubmapContext)
 local function normalize_catchall(spec)
@@ -78,12 +84,8 @@ function Submap.enter(name)
   if not next_spec then return end
 
   local prev_name = Submap.current
-  local prev_spec = Submap.registry[prev_name]
 
-  if prev_spec and prev_spec.on_exit then prev_spec.on_exit(context({
-    from = prev_name,
-    to = name,
-  })) end
+  fire_exit(Submap.registry[prev_name], prev_name, name)
 
   Submap.previous = prev_name
   Submap.current = name
@@ -102,12 +104,8 @@ end
 --- Return to the global (reset) submap, firing the current submap's exit hook.
 function Submap.reset()
   local prev_name = Submap.current
-  local prev_spec = Submap.registry[prev_name]
 
-  if prev_spec and prev_spec.on_exit then prev_spec.on_exit(context({
-    from = prev_name,
-    to = "reset",
-  })) end
+  fire_exit(Submap.registry[prev_name], prev_name, "reset")
 
   Submap.previous = prev_name
   Submap.current = "reset"
@@ -130,6 +128,8 @@ function Submap.exit(spec)
     return Submap.reset()
   end
 
+  if type(escape) == "string" then return Submap.enter(escape) end
+
   if type(escape) == "function" then return escape(context({
     spec = spec,
   })) end
@@ -137,22 +137,57 @@ function Submap.exit(spec)
   return Submap.reset()
 end
 
---- Handle an unbound keypress according to spec.catchall policy.
---- @param spec SubmapSpec
---- @param key  string
-function Submap.handle_catchall(spec, key)
-  local catchall = normalize_catchall(spec)
+--- Evaluate a binds value, calling it if it is a function.
+--- @param binds table[]|fun(): table[]|nil
+--- @return table[]|nil
+local function resolve_binds(binds)
+  if type(binds) == "function" then return binds() end
+  return binds
+end
 
-  if catchall == false then return end
+--- Invoke an action: calls it directly if it is a function, otherwise dispatches it as a HL dispatcher.
+--- @param action HL.Dispatcher|function
+local function run(action)
+  if type(action) == "function" then return action() end
 
-  if catchall == "stay" then return end
+  return hl.dispatch(action)
+end
 
-  if catchall == "reset" then return Submap.reset() end
+--- Wrap bind rows so every action calls exit_fn after firing, implementing oneshot behaviour.
+--- @param rows    table[]
+--- @param exit_fn fun()
+--- @return table[]
+local function wrap_oneshot(rows, exit_fn)
+  local wrapped = {}
 
-  if type(catchall) == "function" then return catchall(context({
-    key = key,
-    spec = spec,
-  })) end
+  for _, row in ipairs(rows) do
+    table.insert(wrapped, {
+      row[1],
+      function()
+        run(row[2])
+        exit_fn()
+      end,
+      row[3],
+      row[4],
+    })
+  end
+
+  return wrapped
+end
+
+--- Register the catchall bind for a submap.
+--- @param catchall "stay"|"reset"|false|fun(ctx: SubmapContext)
+--- @param exit_fn  fun()
+--- @param spec     SubmapSpec
+local function bind_catchall(catchall, exit_fn, spec)
+  local opts = { release = true, ignore_mods = true }
+  if catchall == "stay" then
+    hl.bind("catchall", hl.dsp.no_op(), opts)
+  elseif catchall == "reset" then
+    hl.bind("catchall", exit_fn, opts)
+  elseif type(catchall) == "function" then
+    hl.bind("catchall", function() catchall(context({ spec = spec })) end, opts)
+  end
 end
 
 --- Declare a submap and return a handle with enter/exit/setup methods.
@@ -162,66 +197,29 @@ end
 function Submap.define(spec)
   Submap.registry[spec.name] = spec
 
-  --- @type SubmapHandle
-  local M = {
-    name = spec.name,
-    desc = spec.desc,
-    spec = spec,
-  }
+  local M = {}
 
   function M.enter() Submap.enter(spec.name) end
 
   function M.exit() Submap.exit(spec) end
 
   function M.setup()
-    if spec.enter then
-      Bind.key(spec.enter, M.enter, spec.desc or ("+" .. spec.name), {
-        group = spec.group or "submaps",
-      })
-    end
+    if spec.enter then Bind.key(spec.enter, M.enter, spec.desc or ("+" .. spec.name)) end
 
     hl.define_submap(spec.name, function()
       local catchall = normalize_catchall(spec)
-      local raw_binds = type(spec.binds) == "function" and spec.binds() or spec.binds
-
-      -- "reset" = oneshot: wrap every bound action to exit after firing
-      local binds = raw_binds
-      if catchall == "reset" then
-        binds = {}
-        for _, row in ipairs(raw_binds or {}) do
-          local action = row[2]
-          table.insert(binds, {
-            row[1],
-            function() if type(action) == "function" then action() else hl.dispatch(action) end M.exit() end,
-            row[3],
-            row[4],
-          })
-        end
-      end
+      local raw_binds = resolve_binds(spec.binds)
+      local binds = catchall == "reset" and wrap_oneshot(raw_binds or {}, M.exit) or raw_binds
 
       Bind.keys(binds or {})
 
-      if normalize_escape(spec) ~= false then
-        Bind.key("ESCAPE", M.exit, "Exit " .. spec.name, {
-          group = spec.name,
-        })
-      end
+      if normalize_escape(spec) ~= false then Bind.key("ESCAPE", M.exit, "Exit " .. spec.name) end
 
-      local catchall_opts = { release = true, ignore_mods = true }
-      if catchall == "stay" then
-        hl.bind("catchall", hl.dsp.no_op(), catchall_opts)
-      elseif catchall == "reset" then
-        hl.bind("catchall", function() M.exit() end, catchall_opts)
-      elseif type(catchall) == "function" then
-        hl.bind("catchall", function() catchall(context({ spec = spec })) end, catchall_opts)
-      end
+      bind_catchall(catchall, M.exit, spec)
     end)
   end
 
   return M
 end
-
---- @return table<string, SubmapSpec>
-function Submap.get_registry() return Submap.registry end
 
 return Submap
