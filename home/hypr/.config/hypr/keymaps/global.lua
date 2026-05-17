@@ -103,10 +103,10 @@ end
 -- ──────────────────────────────────────────────────────────────────────────── #
 local set_mouse_controls = function()
   -- stylua: ignore start
-  Bind.leader_key("mouse_down", Workspace.scroll_next(), { hidden = true })
-  Bind.leader_key("mouse_up",   Workspace.scroll_prev(), { hidden = true })
-  Bind.leader_key("mouse:272",  Window.drag(),        { mouse = true })
-  Bind.leader_key("mouse:273",  Window.resize_mouse(), { mouse = true })
+  Bind.leader_key("mouse_down", Workspace.scroll_next())
+  Bind.leader_key("mouse_up",   Workspace.scroll_prev())
+  Bind.leader_key("mouse:272",  Window.drag())
+  Bind.leader_key("mouse:273",  Window.resize_mouse())
 end
 
 -- ──────────────────────────────────────────────────────────────────────────── #

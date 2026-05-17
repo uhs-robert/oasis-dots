@@ -1,5 +1,11 @@
 --- Cursor actions: pointer movement, scrolling, clicking, key dispatch via wlrctl/hyprctl.
 
+--- @class DirActions
+--- @field left  function
+--- @field right function
+--- @field up    function
+--- @field down  function
+
 --- @class CursorActions
 local Cursor = {}
 

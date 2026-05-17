@@ -199,9 +199,7 @@ function Submap.define(spec)
         end
       end
 
-      Bind.keys(spec.name, binds or {}, {
-        group = spec.name,
-      })
+      Bind.keys(binds or {})
 
       if normalize_escape(spec) ~= false then
         Bind.key("ESCAPE", M.exit, "Exit " .. spec.name, {
