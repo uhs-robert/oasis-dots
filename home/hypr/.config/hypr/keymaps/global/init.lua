@@ -7,7 +7,6 @@
 --    ██║  ██╗███████╗   ██║   ██████╔╝██║██║ ╚████║██████╔╝███████║
 --    ╚═╝  ╚═╝╚══════╝   ╚═╝   ╚═════╝ ╚═╝╚═╝  ╚═══╝╚═════╝ ╚══════╝
 --
--- Each section is a separate require() so errors in one don't abort the others.
 
 require("keymaps.global.general")
 require("keymaps.global.workspace")

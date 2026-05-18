@@ -166,13 +166,13 @@ end
 --- @return Config
 Config.setup = function(overrides)
   Config = Config.merge(overrides)
-  hl.on("hyprland.start", require("config.system.autostart"))
-  require("config.system.env")
+  hl.on("hyprland.start", require("config.autostart"))
+  require("config.env")
   require("keymaps")
-  require("config.system.general")
+  require("config.general")
   set_device_settings(Config.devices)
-  require("config.system.rules")
-  require("config.system.monitors")
+  require("config.rules")
+  require("config.monitors")
   require("theme")
   require("mods")
 
