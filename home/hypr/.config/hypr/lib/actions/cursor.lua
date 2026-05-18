@@ -71,8 +71,7 @@ end
 --- @param key string  Key name, e.g. "LEFT", "prior", "next"
 --- @return fun()
 function Cursor.send_key(key)
-    hl.dispatch(hl.dsp.exec_cmd("hyprctl dispatch sendshortcut , " .. key .. ", activewindow"))
-  end
+  return function() hl.dispatch(hl.dsp.send_shortcut({ mods = "", key = key })) end
 end
 
 return Cursor
