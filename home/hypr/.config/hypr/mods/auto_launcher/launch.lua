@@ -6,7 +6,7 @@
 local script_dir = debug.getinfo(1, "S").source:sub(2):match("(.*/)") or "./"
 package.path = script_dir .. "?.lua;" .. package.path
 
-local setups = require("setups") ---@class setups
+local setups = require("sessions") ---@type Sessions
 local WS_PER_MONITOR = tonumber(arg[1]) or 5
 
 --- Returns the absolute workspace number for a monitor at a given offset.
@@ -68,5 +68,5 @@ local function run(apps)
   end
 end
 
-local choice = pick(setups.setups, "Session")
-if choice then run(setups.setups[choice]) end
+local choice = pick(setups.sessions, "Session")
+if choice then run(setups.sessions[choice]) end

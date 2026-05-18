@@ -1,5 +1,5 @@
--- home/hypr/.config/hypr/mods/auto_launcher/setups.lua
--- Workspace app launcher setup definitions.
+-- home/hypr/.config/hypr/mods/auto_launcher/sessions.lua
+-- Workspace app launcher session definitions.
 -- Monitor indices follow Config.monitors order in hyprland.lua:
 
 --- @class AppEntry
@@ -9,8 +9,8 @@
 --- @field class string|nil window class for dynamic workspace rule (mutually exclusive with title)
 --- @field title string|nil window title for dynamic workspace rule (mutually exclusive with class)
 
---- @class Setups
---- @field setups table<string, AppEntry[]> Named session presets; keys are display names, values are ordered app entry lists
+--- @class Sessions
+--- @field sessions table<string, AppEntry[]> Named session presets; keys are display names, values are ordered app entry lists
 
 local M = {}
 
@@ -32,7 +32,7 @@ local function betterbird(opts)
   }
 end
 
-M.setups = {
+M.sessions = {
   ["🌐 Browsing"] = {
     { monitor = 3, ws = 1, cmd = "firefox --new-window" },
     tmuxifier({ session = "config", monitor = 4, ws = 2 }),
