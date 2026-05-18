@@ -78,14 +78,20 @@ function Bind.leader_cmd(keys, cmd, desc, opts) Bind.leader_key(keys, hl.dsp.exe
 --- @param f      function
 --- @param desc   string|HL.BindOptions|nil
 --- @param opts   HL.BindOptions|nil
-function Bind.fn(keys, f, desc, opts) Bind.key(keys, f, desc, opts) end
+function Bind.fn(keys, f, desc, opts, ...)
+  local args = { ... }
+  Bind.key(keys, function() f(table.unpack(args)) end, desc, opts)
+end
 
 --- Like Bind.fn but prepends Bind.leader.
 --- @param keys   string|string[]
 --- @param f      function
 --- @param desc   string|HL.BindOptions|nil
 --- @param opts   HL.BindOptions|nil
-function Bind.leader_fn(keys, f, desc, opts) Bind.leader_key(keys, f, desc, opts) end
+function Bind.leader_fn(keys, f, desc, opts, ...)
+  local args = { ... }
+  Bind.leader_key(keys, function() f(table.unpack(args)) end, desc, opts)
+end
 
 --- Register multiple binds from a row table.
 --- Each row is { keys, action, desc, opts? } where opts is a HL.BindOptions table.
