@@ -2,6 +2,7 @@
 --- Supports single-tier binds from a DirActions set, or multi-tier
 --- speed binds from an at(amount) factory.
 
+--- @class Direction
 local Direction = {}
 
 --- @class SpeedTier
@@ -12,9 +13,9 @@ local Direction = {}
 --- Default speed tiers. Override per-call via the tiers parameter.
 --- @type SpeedTier[]
 Direction.tiers = {
-  { mod = "",             amount = 10,  suffix = "" },
-  { mod = "SHIFT",        amount = 100, suffix = " (Fast)" },
-  { mod = "CTRL",         amount = 1,   suffix = " (Pixel)" },
+  { mod = "", amount = 10, suffix = "" },
+  { mod = "SHIFT", amount = 100, suffix = " (Fast)" },
+  { mod = "CTRL", amount = 1, suffix = " (Pixel)" },
   { mod = "CTRL + SHIFT", amount = 300, suffix = " (Ultra Fast)" },
 }
 
@@ -34,9 +35,9 @@ function Direction.binds(actions, desc_prefix, mod, opts, desc_suffix)
   end
 
   return {
-    row("H", "LEFT",  actions.left,  "Left"),
-    row("J", "DOWN",  actions.down,  "Down"),
-    row("K", "UP",    actions.up,    "Up"),
+    row("H", "LEFT", actions.left, "Left"),
+    row("J", "DOWN", actions.down, "Down"),
+    row("K", "UP", actions.up, "Up"),
     row("L", "RIGHT", actions.right, "Right"),
   }
 end

@@ -1,47 +1,45 @@
---- Applications submap — entered with SUPER+A.
---- Each bind launches or focuses an app then exits (oneshot via catchall = "reset").
---- ESCAPE exits without action.
---- @see modes.apps.actions
-local Config = require("config")
-local Apps   = require("lib.actions.apps")
-local Submap = require("lib.key.submap")
+--- Applications submap
+--- Each bind launches or focuses an app then exits
 
-local MENU   = Config.app.menu
-local TERM   = Config.app.term
+local Config = require("config") --- @class Config
+local Apps = require("lib.actions.apps") --- @class Apps
+local Scripts = require("lib.scripts") --- @class Scripts
+local Submap = require("lib.key.submap") --- @class Submap
+
+local MENU = Config.app.menu
+local TERM = Config.app.term
 local EDITOR = Config.app.editor or "nvim"
 
 return Submap.define({
-  name  = "Applications",
-  desc  = "+Applications",
+  name = "Applications",
+  desc = "+Applications",
   enter = Config.leader .. " + A",
 
-  escape   = "reset",
+  escape = "reset",
   catchall = "reset",
 
+  -- stylua: ignore
   binds = {
-    { "SPACE",       Apps.run(MENU .. " -i -show hyprwindow"),                                               "Find Window" },
-    { "SLASH",       Apps.run(MENU .. " -i -show drun"),                                                     "Search Applications" },
-
-    { "B",           Apps.run("bottles"),                                                                     "Bottles" },
-    { "C",           Apps.run("qalculate-gtk"),                                                               "Calculator" },
-    { "D",           Apps.run("deluge"),                                                                      "Deluge" },
-    { "SHIFT + D",   Apps.run(TERM .. " -e aria2tui"),                                                       "Aria2tui" },
-    { "E",           Apps.run(TERM .. " -e " .. EDITOR),                                                     "Editor" },
-    { "F",           Apps.run("firefox"),                                                                     "Firefox" },
-    { "G",           Apps.run("gimp"),                                                                        "Gimp" },
-    { "I",           Apps.run("inkscape"),                                                                    "Inkscape" },
-    { "K",           Apps.run("kate"),                                                                        "Kate" },
-    { "M",           Apps.focus_or_launch({ program = "betterbird", class = "eu.betterbird.Betterbird",
-                       cmd = "flatpak run eu.betterbird.Betterbird" }),                                       "Mail" },
-    { "SHIFT + N",   Apps.run(TERM .. " -e newsboat"),                                                       "Newsboat" },
-    { "P",           Apps.run("flatpak run com.vysp3r.ProtonPlus"),                                          "ProtonPlus" },
-    { "Q",           Apps.run("qutebrowser"),                                                                 "QuteBrowser" },
-    { "R",           Apps.focus_or_launch({ program = "cliamp", title = "cliamp",
-                       cmd = TERM .. " -e cliamp" }),                                                         "Radio (Cliamp)" },
-    { "S",           Apps.focus_or_launch({ program = "slack", class = "Slack" }),                           "Slack" },
-    { "SHIFT + S",   Apps.run("steam"),                                                                       "Steam" },
-    { "V",           Apps.run("code"),                                                                        "VS Code" },
-    { "W",           Apps.run("libreoffice --writer"),                                                        "LibreOffice Writer" },
-    { "X",           Apps.run("libreoffice --calc"),                                                          "LibreOffice Calc" },
+    { "SPACE",     Apps.open(MENU .. " -i -show hyprwindow"),       "Find Window" },
+    { "SLASH",     Apps.open(MENU .. " -i -show drun"),             "Search Applications" },
+    { "B",         Apps.open("bottles"),                            "Bottles" },
+    { "C",         Apps.open("qalculate-gtk"),                      "Calculator" },
+    { "D",         Apps.open("deluge"),                             "Deluge" },
+    { "SHIFT + D", Apps.open(TERM .. " -e aria2tui"),               "Aria2tui" },
+    { "E",         Apps.open(TERM .. " -e " .. EDITOR),             "Editor" },
+    { "F",         Apps.open("firefox"),                            "Firefox" },
+    { "G",         Apps.open("gimp"),                               "Gimp" },
+    { "I",         Apps.open("inkscape"),                           "Inkscape" },
+    { "K",         Apps.open("kate"),                               "Kate" },
+    { "M",         Apps.focus_or_launch(Apps.focus.betterbird),     "Mail" },
+    { "SHIFT + N", Apps.open(TERM .. " -e newsboat"),               "Newsboat" },
+    { "P",         Apps.open("flatpak run com.vysp3r.ProtonPlus"),  "ProtonPlus" },
+    { "Q",         Apps.open("qutebrowser"),                        "QuteBrowser" },
+    { "R",         Apps.focus_or_launch(Apps.focus.cliamp),         "Radio (Cliamp)" },
+    { "S",         Apps.focus_or_launch(Apps.focus.slack),          "Slack" },
+    { "SHIFT + S", Apps.open("steam"),                              "Steam" },
+    { "V",         Apps.open("code"),                               "VS Code" },
+    { "W",         Apps.open("libreoffice --writer"),               "LibreOffice Writer" },
+    { "X",         Apps.open("libreoffice --calc"),                 "LibreOffice Calc" },
   },
 })

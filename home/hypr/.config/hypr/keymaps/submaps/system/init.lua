@@ -1,47 +1,57 @@
---- System submap — entered with SUPER+Q.
---- Each bind runs a system command then exits (oneshot via catchall = "reset").
---- ESCAPE exits without action.
-local Config  = require("config")
-local Scripts = require("lib.scripts")
-local Submap  = require("lib.key.submap")
-local Apps    = require("lib.actions.apps")
+--- System submap
+--- Each bind runs a system command
 
-local TERM   = Config.app.term
+local Config = require("config") --- @class Config
+local Scripts = require("lib.scripts") --- @class Scripts
+local Submap = require("lib.key.submap") --- @class Submap
+local Cmd = require("lib.actions.cmd") ---@class Cmd
+
+local TERM = Config.app.term
 local EDITOR = Config.app.editor or "nvim"
 
 local CMD = {
-  logout   = 'command -v hyprshutdown >/dev/null 2>&1 && hyprshutdown || hyprctl dispatch "hl.dsp.exit()"',
-  reboot   = "systemctl reboot",
+  logout = 'command -v hyprshutdown >/dev/null 2>&1 && hyprshutdown || hyprctl dispatch "hl.dsp.exit()"',
+  reboot = "systemctl reboot",
   poweroff = "systemctl poweroff",
+  restart_waybar = "killall swaync swaync-client waybar; swaync & waybar &",
+  restart_waybar_git = "killall swaync swaync-client waybar; swaync & ~/clones/Waybar/build/waybar -c ~/.config/waybar/config.jsonc -s ~/.config/waybar/style.css &",
+  edit_keymaps = TERM .. " -e " .. EDITOR .. " ~/.config/hypr/keymaps/global.lua",
+  theme_switch = "~/.config/hypr/theme/switch.lua '" .. Config.app.dmenu_cmd .. "'",
+}
+
+local POWER = {
+  logout = Scripts.confirm_action .. " --title Logout    --glyph '󰍃' --exec '" .. CMD.logout .. "'",
+  lock = Scripts.confirm_action .. " --title Lock      --glyph '󰌾' --exec '" .. Scripts.hyprlock .. "'",
+  reboot = Scripts.confirm_action .. " --title Reboot    --glyph '󰜉' --exec '" .. CMD.reboot .. "'",
+  off = Scripts.confirm_action .. " --title Power Off --glyph '󰐥' --exec '" .. CMD.poweroff .. "'",
 }
 
 return Submap.define({
-  name  = "System",
-  desc  = "+System",
+  name = "System",
+  desc = "+System",
   enter = Config.leader .. " + Q",
 
-  escape   = "reset",
+  escape = "reset",
   catchall = "reset",
 
   -- stylua: ignore start
   binds = {
-    { "SLASH",     Apps.run(TERM .. " -e " .. EDITOR .. " ~/.config/hypr/keymaps/global.lua"),                                                                    "Edit Keybinds" },
-    { "SPACE",     Apps.run(TERM .. " -e btop"),                                                                                                                   "Task Manager" },
-    { "D",         Apps.run(Config.app.display_manager),                                                                                                           "Display Manager" },
-    { "H",         Apps.run("hyprctl reload"),                                                                                                                     "Reload Hyprland" },
-    { "SHIFT + H", Apps.run("hyprpm reload -n"),                                                                                                                   "Reload Hyprpm Plugins" },
-    { "I",         Apps.run(Scripts.nmtui),                                                                                                                        "Internet (nmtui)" },
-    { "K",         Apps.run("hyprctl kill"),                                                                                                                       "Kill App (Click)" },
-    { "L",         Apps.run(Scripts.confirm_action .. " --title Lock      --glyph '󰌾' --exec '" .. Scripts.hyprlock .. "'"),                                       "Lock" },
-    { "SHIFT + M", Apps.run(Scripts.toggle_mpris_mode),                                                                                                            "Toggle Mpris Mode" },
-    { "N",         Apps.run("swaync-client -t -sw"),                                                                                                               "Notification Center" },
-    { "E",         Apps.run(Scripts.confirm_action .. " --title Logout    --glyph '󰍃' --exec '" .. CMD.logout .. "'"),                                             "Logout" },
-    { "R",         Apps.run(Scripts.confirm_action .. " --title Reboot    --glyph '󰜉' --exec '" .. CMD.reboot .. "'"),                                             "Reboot" },
-    { "P",         Apps.run(Scripts.confirm_action .. " --title Power Off --glyph '󰐥' --exec '" .. CMD.poweroff .. "'"),                                           "Power Off" },
-    { "T",         Apps.run("~/.config/hypr/theme/switch.lua '" .. Config.app.dmenu_cmd .. "'"),                                                                  "Theme Switch" },
-    { "U",         Apps.run(TERM .. " -e sysup"),                                                                                                                  "Update System" },
-    { "W",         Apps.run("killall swaync swaync-client waybar; swaync & waybar &"),                                                                             "Restart Waybar" },
-    { "SHIFT + W", Apps.run("killall swaync swaync-client waybar; swaync & ~/clones/Waybar/build/waybar -c ~/.config/waybar/config.jsonc -s ~/.config/waybar/style.css &"), "Restart Waybar (Github)" },
+    { "SLASH",     Cmd.run(CMD.edit_keymaps),           "Edit Keymaps" },
+    { "SPACE",     Cmd.term("btop"),                    "Task Manager" },
+    { "D",         Cmd.run(Config.app.display_manager), "Display Manager" },
+    { "E",         Cmd.run(POWER.logout),               "Logout" },
+    { "H",         Cmd.run("hyprctl reload"),           "Reload Hyprland" },
+    { "SHIFT + H", Cmd.run("hyprpm reload -n"),         "Reload Hyprpm Plugins" },
+    { "I",         Cmd.run(Scripts.nmtui),              "Internet (nmtui)" },
+    { "K",         Cmd.run("hyprctl kill"),             "Kill App (Click)" },
+    { "L",         Cmd.run(POWER.lock),                 "Lock" },
+    { "N",         Cmd.run("swaync-client -t -sw"),     "Notification Center" },
+    { "SHIFT + M", Cmd.run(Scripts.toggle_mpris_mode),  "Toggle Mpris Mode" },
+    { "R",         Cmd.run(POWER.reboot),               "Reboot" },
+    { "P",         Cmd.run(POWER.off),                  "Power Off" },
+    { "T",         Cmd.run(CMD.theme_switch),           "Theme Switch" },
+    { "U",         Cmd.term("sysup"),                   "Update System" },
+    { "W",         Cmd.run(CMD.restart_waybar),         "Restart Waybar" },
+    { "SHIFT + W", Cmd.run(CMD.restart_waybar_git),     "Restart Waybar (Github)" },
   },
-  -- stylua: ignore end
 })

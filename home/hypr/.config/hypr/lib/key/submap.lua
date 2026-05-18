@@ -3,6 +3,7 @@
 --- Use Submap.define() to declare a submap; call .setup() on the result to register binds.
 local Bind = require("lib.key.bind")
 
+--- @class Submap
 local Submap = {
   --- @type table<string, SubmapSpec>
   registry = {},
