@@ -8,7 +8,7 @@ local Direction = require("lib.key.direction")
 local Resize = require("lib.actions.resize")
 local Submap = require("lib.key.submap")
 
-return Submap.define({
+Submap.define({
   name = "Resize",
   desc = "+Resize",
   enter = Config.leader .. " + R",
@@ -33,4 +33,4 @@ return Submap.define({
     for _, key in ipairs(Direction.speed_binds(Resize.at, "Resize")) do keys[#keys + 1] = key end
     return keys
   end,
-})
+}).setup()

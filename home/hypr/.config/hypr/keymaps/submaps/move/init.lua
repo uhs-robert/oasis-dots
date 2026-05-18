@@ -8,7 +8,7 @@ local Direction = require("lib.key.direction")
 local Move      = require("lib.actions.move")
 local Submap    = require("lib.key.submap")
 
-return Submap.define({
+Submap.define({
   name = "Move",
   desc = "+Move",
   enter = Config.leader .. " + M",
@@ -27,4 +27,4 @@ return Submap.define({
   binds = function()
     return Direction.speed_binds(Move.at, "Move")
   end,
-})
+}).setup()

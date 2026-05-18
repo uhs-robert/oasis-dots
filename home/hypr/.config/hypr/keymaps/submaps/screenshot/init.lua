@@ -11,7 +11,7 @@ local Apps = require("lib.actions.apps") ---@class Apps
 --- @return fun()
 local screenshot = function(arg) return Apps.open(Scripts.screenshot .. (arg and " --" .. arg or "")) end
 
-return Submap.define({
+Submap.define({
   name = "Screenshot",
   desc = "+Screenshot",
   enter = Config.leader .. " + I",
@@ -32,4 +32,4 @@ return Submap.define({
     { "T",         screenshot("text"),           "OCR Text in Region" },
     { "P",         screenshot("pixel"),          "Color Picker" },
   },
-})
+}).setup()

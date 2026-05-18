@@ -121,4 +121,4 @@ local cursor_mode = Submap.define({
   end,
 })
 
-return cursor_mode
+cursor_mode.setup()

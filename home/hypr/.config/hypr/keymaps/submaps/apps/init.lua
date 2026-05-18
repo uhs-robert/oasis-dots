@@ -10,7 +10,7 @@ local MENU = Config.app.menu
 local TERM = Config.app.term
 local EDITOR = Config.app.editor or "nvim"
 
-return Submap.define({
+Submap.define({
   name = "Applications",
   desc = "+Applications",
   enter = Config.leader .. " + A",
@@ -42,4 +42,4 @@ return Submap.define({
     { "W",         Apps.open("libreoffice --writer"),               "LibreOffice Writer" },
     { "X",         Apps.open("libreoffice --calc"),                 "LibreOffice Calc" },
   },
-})
+}).setup()

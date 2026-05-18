@@ -19,7 +19,7 @@ local function exec(fn)
   end
 end
 
-return Submap.define({
+Submap.define({
   name = "Windows",
   desc = "+Windows",
   enter = Config.leader .. " + W",
@@ -100,4 +100,4 @@ return Submap.define({
 
     return keys
   end,
-})
+}).setup()

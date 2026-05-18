@@ -10,7 +10,7 @@ local Workspaces = require("lib.workspaces") --- @class Workspaces
 
 local MENU = Config.app.menu
 
-return Submap.define({
+Submap.define({
   name = "Go",
   desc = "+Go",
   enter = Config.leader .. " + G",
@@ -48,4 +48,4 @@ return Submap.define({
 
     return rows
   end,
-})
+}).setup()

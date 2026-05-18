@@ -26,7 +26,7 @@ local POWER = {
   off = Scripts.confirm_action .. " --title Power Off --glyph '󰐥' --exec '" .. CMD.poweroff .. "'",
 }
 
-return Submap.define({
+Submap.define({
   name = "System",
   desc = "+System",
   enter = Config.leader .. " + Q",
@@ -54,4 +54,4 @@ return Submap.define({
     { "W",         Cmd.run(CMD.restart_waybar),         "Restart Waybar" },
     { "SHIFT + W", Cmd.run(CMD.restart_waybar_git),     "Restart Waybar (Github)" },
   },
-})
+}).setup()
