@@ -1,7 +1,7 @@
 --- Submap lifecycle manager built on top of hl.define_submap / hl.dsp.submap.
 --- Tracks current/previous submap state and fires on_enter/on_exit hooks.
 --- Use Submap.define() to declare a submap; call .setup() on the result to register binds.
-local Bind = require("lib.key.bind")
+local Bind = require("lib.key.bind") ---@class BindLib
 
 --- @class Submap
 local Submap = {
@@ -145,6 +145,17 @@ function Submap.switch(name)
   return function() Submap.enter(name) end
 end
 
+--- Go back to the previous submap, or reset if there is none.
+function Submap.back()
+  local prev = Submap.previous
+  if prev and prev ~= "reset" then
+    Submap.enter(prev)
+    Submap.previous = nil
+    return
+  end
+  return Submap.reset()
+end
+
 --- Evaluate a binds value, calling it if it is a function.
 --- @param binds table[]|fun(): table[]|nil
 --- @return table[]|nil
@@ -212,6 +223,8 @@ function Submap.define(spec)
 
   function M.exit() Submap.exit(spec) end
 
+  function M.back() Submap.back() end
+
   function M.setup()
     if spec.enter then Bind.key(spec.enter, M.enter, spec.desc or ("+" .. spec.name)) end
 
@@ -222,7 +235,11 @@ function Submap.define(spec)
 
       Bind.keys(binds or {})
 
-      if normalize_escape(spec) ~= false then Bind.key("ESCAPE", M.exit, "Exit " .. spec.name) end
+      if normalize_escape(spec) ~= false then
+        Bind.key("ESCAPE", M.exit, "Exit " .. spec.name)
+        local back_opts = catchall == "reset" and { release = true } or nil
+        Bind.key("BackSpace", M.back, (Submap.previous and "Back to " .. Submap.previous or "Exit " .. spec.name), back_opts)
+      end
 
       bind_catchall(catchall, M.exit, spec)
     end)
