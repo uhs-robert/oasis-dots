@@ -1,5 +1,5 @@
 #!/usr/bin/env lua
--- home/hypr/.config/hypr/mods/workspace_apps/launcher.lua
+-- home/hypr/.config/hypr/mods/auto_launcher/launcher.lua
 -- Workspace app launcher subprocess. Shows a rofi session picker and launches the chosen setup.
 -- Usage: launcher.lua [ws_per_monitor]
 

@@ -1,4 +1,4 @@
--- home/hypr/.config/hypr/mods/workspace_apps/setups.lua
+-- home/hypr/.config/hypr/mods/auto_launcher/setups.lua
 -- Workspace app launcher setup definitions.
 -- Monitor indices follow Config.monitors order in hyprland.lua:
 
