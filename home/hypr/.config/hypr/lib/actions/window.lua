@@ -1,13 +1,13 @@
 --- Window management actions: focus direction, move direction, close, fullscreen, scratchpad, monitors.
 
-local Config = require("config")
 local Workspaces = require("lib.workspaces")
 
 --- @class WindowActions
 local Window = {}
 
-local SCRATCHPAD_NAME = "scratchpad"
-local SCRATCHPAD_WS   = "special:scratchpad"
+local SPECIAL_WS = {
+  scratchpad = "special:scratchpad",
+}
 
 --- @return fun()
 function Window.close()
@@ -31,14 +31,16 @@ function Window.move_dir(dir)
   return function() hl.dispatch(hl.dsp.window.move({ direction = dir })) end
 end
 
+--- @param name string  Key into SPECIAL_WS (e.g. "scratchpad")
 --- @return fun()
-function Window.toggle_scratchpad()
-  return function() hl.dispatch(hl.dsp.workspace.toggle_special(SCRATCHPAD_NAME)) end
+function Window.toggle_special(name)
+  return function() hl.dispatch(hl.dsp.workspace.toggle_special(name)) end
 end
 
+--- @param name string  Key into SPECIAL_WS (e.g. "scratchpad")
 --- @return fun()
-function Window.move_to_scratchpad()
-  return function() hl.dispatch(hl.dsp.window.move({ workspace = SCRATCHPAD_WS })) end
+function Window.move_to_special(name)
+  return function() hl.dispatch(hl.dsp.window.move({ workspace = SPECIAL_WS[name] })) end
 end
 
 --- Focus the monitor in the given slot (1-based index into Config.monitors).

@@ -44,8 +44,8 @@ local set_general_keys = function()
   Bind.leader_key({ "J", "DOWN" },  Window.focus_dir("d"), "Focus Down",  { submap_universal = true })
 
   -- !--- Scratchpad
-  Bind.leader_key("S",         Window.toggle_scratchpad(), universal("Toggle Scratchpad"))
-  Bind.leader_key("SHIFT + S", Window.move_to_scratchpad(), universal("Move to Scratchpad"))
+  Bind.leader_key("S",         Window.toggle_special("scratchpad"), universal("Toggle Scratchpad"))
+  Bind.leader_key("SHIFT + S", Window.move_to_special("scratchpad"), universal("Move to Scratchpad"))
 
   -- !--- Monitor Navigation
   for i = 1, math.max(#Config.monitors, 10) do
