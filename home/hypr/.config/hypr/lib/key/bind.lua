@@ -73,6 +73,20 @@ function Bind.cmd(keys, cmd, desc, opts) Bind.key(keys, hl.dsp.exec_cmd(cmd), de
 --- @param opts HL.BindOptions|nil
 function Bind.leader_cmd(keys, cmd, desc, opts) Bind.leader_key(keys, hl.dsp.exec_cmd(cmd), desc, opts) end
 
+--- Register a key bound to a plain Lua function (no dispatcher needed).
+--- @param keys   string|string[]
+--- @param f      function
+--- @param desc   string|HL.BindOptions|nil
+--- @param opts   HL.BindOptions|nil
+function Bind.fn(keys, f, desc, opts) Bind.key(keys, f, desc, opts) end
+
+--- Like Bind.fn but prepends Bind.leader.
+--- @param keys   string|string[]
+--- @param f      function
+--- @param desc   string|HL.BindOptions|nil
+--- @param opts   HL.BindOptions|nil
+function Bind.leader_fn(keys, f, desc, opts) Bind.leader_key(keys, f, desc, opts) end
+
 --- Register multiple binds from a row table.
 --- Each row is { keys, action, desc, opts? } where opts is a HL.BindOptions table.
 --- @param rows     { [1]: string|string[], [2]: any, [3]: string, [4]: HL.BindOptions|nil }[]

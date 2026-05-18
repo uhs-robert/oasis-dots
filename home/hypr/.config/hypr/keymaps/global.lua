@@ -29,8 +29,8 @@ local set_general_keys = function()
   local function universal(description) return { submap_universal = true, desc = description } end
 
   -- !--- Global Helpers
-  Bind.leader_key("ESCAPE",    function() hl.dispatch(hl.dsp.submap("reset")) end, universal("Reset Submaps"))
-  Bind.leader_cmd("SLASH",     Scripts.keybind_help,                               universal("Keybind Help"))
+  Bind.leader_key("ESCAPE",    hl.dsp.submap("reset"), universal("Reset Submaps"))
+  Bind.leader_cmd("SLASH",     Scripts.keybind_help,   universal("Keybind Help"))
 
   -- !--- Window
   Bind.leader_key("C",         Window.close(),             { desc = "Close Window" })
@@ -114,16 +114,18 @@ end
 --     Registers quick-launch binds: terminal, file manager, menu, editor, etc
 -- ──────────────────────────────────────────────────────────────────────────── #
 local set_shortcuts = function()
+  local open_in_vim = function() require("hyprvim.vim.commands.editor").open({ insert_mode = true }) end
+
   -- stylua: ignore start
-  Bind.leader_cmd("RETURN",           TERM,                                    { desc = "Terminal" })
-  Bind.leader_cmd("SHIFT + RETURN",   MENU .. " -i -show run",                 { desc = "Run Script" })
-  Bind.leader_cmd("CTRL + RETURN",    MENU .. " -i -show ssh",                 { desc = "SSH Select" })
-  Bind.leader_cmd("E",                FILES,                                   { desc = "File Manager" })
-  Bind.leader_cmd("SHIFT + E",        TERM .. " -e " .. TUI_FILES,             { desc = "TUI File Manager" })
-  Bind.leader_key("N",                function() require("hyprvim.vim.commands.editor").open({ insert_mode = false }) end, { desc = "Edit Selection in Vim" })
-  Bind.leader_cmd("Y",                TERM .. " -e yazi",                      { desc = "Yazi" })
-  Bind.leader_cmd("O",                MENU .. " -i -show drun",                { desc = "Open Application" })
-  Bind.cmd("CTRL + SHIFT + ESCAPE",   TERM .. " -e btop",                      { desc = "Task Manager" })
+  Bind.leader_cmd("RETURN",           TERM,                           { desc = "Terminal" })
+  Bind.leader_cmd("SHIFT + RETURN",   MENU .. " -i -show run",        { desc = "Run Script" })
+  Bind.leader_cmd("CTRL + RETURN",    MENU .. " -i -show ssh",        { desc = "SSH Select" })
+  Bind.leader_cmd("E",                FILES,                          { desc = "File Manager" })
+  Bind.leader_cmd("SHIFT + E",        TERM .. " -e " .. TUI_FILES,    { desc = "TUI File Manager" })
+  Bind.leader_fn("N",                 open_in_vim,                    { desc = "Edit Selection in Vim" })
+  Bind.leader_cmd("Y",                TERM .. " -e yazi",             { desc = "Yazi" })
+  Bind.leader_cmd("O",                MENU .. " -i -show drun",       { desc = "Open Application" })
+  Bind.cmd("CTRL + SHIFT + ESCAPE",   TERM .. " -e btop",             { desc = "Task Manager" })
   -- stylua: ignore end
 end
 
