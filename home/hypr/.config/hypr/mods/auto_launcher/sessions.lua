@@ -43,7 +43,7 @@ M.sessions = {
     tmuxifier({ session = "client-dev" }),
     tmuxifier({ session = "config", monitor = 4, ws = 2 }),
     betterbird(),
-    { monitor = 1, ws = 1, cmd = "slack", class = "Slack" },
+    { monitor = 4, ws = 1, cmd = "slack", class = "Slack" },
   },
 
   ["🛠 Config"] = {
@@ -87,7 +87,7 @@ M.sessions = {
     tmuxifier({ session = "uphill", monitor = 3, ws = 2 }),
     tmuxifier({ session = "config", monitor = 4, ws = 2 }),
     betterbird(),
-    { monitor = 1, ws = 2, cmd = "slack", class = "Slack" },
+    { monitor = 4, ws = 1, cmd = "slack", class = "Slack" },
     { monitor = 2, ws = 1, cmd = "qutebrowser" },
   },
 }
