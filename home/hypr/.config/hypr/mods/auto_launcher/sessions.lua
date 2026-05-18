@@ -8,6 +8,9 @@
 --- @field cmd string shell command to launch
 --- @field class string|nil window class for dynamic workspace rule (mutually exclusive with title)
 --- @field title string|nil window title for dynamic workspace rule (mutually exclusive with class)
+--- @field size {integer, integer}|nil window size as {w, h} (e.g. {1280, 720})
+--- @field pos {integer, integer}|nil window position as {x, y} (e.g. {100, 200})
+--- @field delay integer|nil milliseconds to wait before launching
 
 --- @class Sessions
 --- @field sessions table<string, AppEntry[]> Named session presets; keys are display names, values are ordered app entry lists
@@ -39,17 +42,17 @@ M.sessions = {
   },
 
   ["🧱 Client"] = {
+    betterbird(),
     { monitor = 3, ws = 1, cmd = "firefox --new-window" },
     tmuxifier({ session = "client-dev" }),
     tmuxifier({ session = "config", monitor = 4, ws = 2 }),
-    betterbird(),
-    { monitor = 4, ws = 1, cmd = "slack", class = "Slack" },
+    { monitor = 4, ws = 1, cmd = "slack", class = "Slack", size = { 1064, 461 } },
   },
 
   ["🛠 Config"] = {
+    betterbird(),
     { monitor = 3, ws = 1, cmd = "firefox --new-window" },
     tmuxifier({ session = "config", monitor = 4, ws = 2 }),
-    betterbird(),
   },
 
   ["🗂 Files"] = {
@@ -83,12 +86,12 @@ M.sessions = {
   },
 
   ["💼 Work"] = {
+    betterbird(),
+    { monitor = 2, ws = 1, cmd = "qutebrowser" },
     { monitor = 3, ws = 1, cmd = "firefox --new-window" },
     tmuxifier({ session = "uphill", monitor = 3, ws = 2 }),
     tmuxifier({ session = "config", monitor = 4, ws = 2 }),
-    betterbird(),
-    { monitor = 4, ws = 1, cmd = "slack", class = "Slack" },
-    { monitor = 2, ws = 1, cmd = "qutebrowser" },
+    { monitor = 4, ws = 1, cmd = "slack", class = "Slack", size = { 1064, 461 }, delay = 5000 },
   },
 }
 
