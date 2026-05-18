@@ -27,8 +27,10 @@ return Submap.define({
   end,
 
   binds = function()
-    local rows = Direction.speed_binds(Resize.at, "Resize")
-    table.insert(rows, { "EQUAL", Resize.reset, "Reset Size" })
-    return rows
+    local keys = {
+      { "EQUAL", Resize.reset, "Reset Size" },
+    }
+    for _, key in ipairs(Direction.speed_binds(Resize.at, "Resize")) do keys[#keys + 1] = key end
+    return keys
   end,
 })

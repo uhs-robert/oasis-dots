@@ -138,11 +138,19 @@ function Submap.exit(spec)
   return Submap.reset()
 end
 
+--- Return a function that switches to another submap by name.
+--- @param name string
+--- @return fun()
+function Submap.switch(name)
+  return function() Submap.enter(name) end
+end
+
 --- Evaluate a binds value, calling it if it is a function.
 --- @param binds table[]|fun(): table[]|nil
 --- @return table[]|nil
 local function resolve_binds(binds)
   if type(binds) == "function" then return binds() end
+
   return binds
 end
 
