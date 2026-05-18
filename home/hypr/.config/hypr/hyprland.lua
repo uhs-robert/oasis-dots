@@ -42,6 +42,5 @@ local function init()
     },
   })
 end
--- stylua: ignore end
 
 init()
