@@ -6,8 +6,10 @@ local Submap = require("lib.key.submap") ---@class Submap
 local Apps = require("lib.actions.apps") ---@class Apps
 local Window = require("lib.actions.window") ---@class WindowActions
 local Workspace = require("lib.actions.workspace") ---@class WorkspaceActions
+local Utils = require("lib.utils") ---@class Utils
 
 local MENU = Config.app.menu
+local lazy = Utils.lazy
 
 --- Wrap an action to exit the submap before firing.
 --- @param fn fun()
@@ -74,7 +76,7 @@ Submap.define({
       { "S",             Window.layout_toggle(),                               "Toggle Split" },
       { "MINUS",         Window.layout_toggle(),                               "Toggle Split" },
       { "RETURN",        Window.pass_to_active(),                              "Confirm Selection" },
-      { "SHIFT + SLASH", function() require("hyprvim.whichkey").toggle() end,  "WhichKey" },
+      { "SHIFT + SLASH", lazy("hyprvim.whichkey").toggle, "WhichKey" },
     }
     -- stylua: ignore end
 

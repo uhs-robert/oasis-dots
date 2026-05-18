@@ -1,6 +1,6 @@
-local Bind = require("lib.key.bind")
-local Scripts = require("lib.scripts")
-local Config = require("config")
+local Bind = require("lib.key.bind") ---@class BindLib
+local Scripts = require("lib.scripts") ---@class Scripts
+local Config = require("config") ---@class Config
 
 local MENU = Config.app.menu
 -- stylua: ignore start

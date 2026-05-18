@@ -1,5 +1,5 @@
-local Bind = require("lib.key.bind")
-local Media = require("lib.actions.media")
+local Bind = require("lib.key.bind") ---@class BindLib
+local Media = require("lib.actions.media") ---@class MediaActions
 -- stylua: ignore start
 
 local OPTS = {

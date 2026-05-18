@@ -1,6 +1,6 @@
-local Bind = require("lib.key.bind")
-local Config = require("config")
-local Workspace = require("lib.actions.workspace")
+local Bind = require("lib.key.bind") ---@class BindLib
+local Config = require("config") ---@class Config
+local Workspace = require("lib.actions.workspace") ---@class WorkspaceActions
 -- stylua: ignore start
 
 --- Bind monitor-local workspace keys using `Config.persistent_workspaces` slot count.

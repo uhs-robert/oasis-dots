@@ -1,5 +1,6 @@
 --- Go submap
 --- Each bind navigates to a window, workspace, or monitor
+
 local Config = require("config") --- @class Config
 local Apps = require("lib.actions.apps") --- @class Apps
 local Scripts = require("lib.scripts") --- @class Scripts

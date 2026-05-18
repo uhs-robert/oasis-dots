@@ -1,5 +1,4 @@
---- Loads all submap keymap modules.
---- Each require() is an isolated scope — errors in one don't abort others.
+--- Submap keybinds
 
 require("keymaps.submaps.apps")
 require("keymaps.submaps.go")

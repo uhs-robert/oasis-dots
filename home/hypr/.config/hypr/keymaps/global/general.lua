@@ -1,7 +1,7 @@
-local Bind = require("lib.key.bind")
-local Config = require("config")
-local Window = require("lib.actions.window")
-local Workspace = require("lib.actions.workspace")
+local Bind = require("lib.key.bind") ---@class BindLib
+local Config = require("config") ---@class Config
+local Window = require("lib.actions.window") ---@class WindowActions
+local Workspace = require("lib.actions.workspace") ---@class WorkspaceActions
 
 local function universal(description) return { submap_universal = true, desc = description } end
 -- stylua: ignore start

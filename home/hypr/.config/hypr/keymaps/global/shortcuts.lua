@@ -1,5 +1,5 @@
-local Bind = require("lib.key.bind")
-local Config = require("config")
+local Bind = require("lib.key.bind") ---@class BindLib
+local Config = require("config") ---@class Config
 
 local TERM = Config.app.term
 local FILES = Config.app.gui_file_manager
