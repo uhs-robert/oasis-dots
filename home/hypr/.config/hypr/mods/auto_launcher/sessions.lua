@@ -20,7 +20,7 @@ local M = {}
 --- @param opts { session: string, monitor: integer|nil, ws: integer|nil }
 --- @return AppEntry
 local function tmuxifier(opts)
-  return { monitor = opts.monitor or 4, ws = opts.ws or 1, cmd = "kitty -e tmuxifier load-session " .. opts.session }
+  return { monitor = opts.monitor or 3, ws = opts.ws or 2, cmd = "kitty -e tmuxifier load-session " .. opts.session }
 end
 
 --- @param opts { monitor: integer|nil, ws: integer|nil }|nil
@@ -38,21 +38,21 @@ end
 M.sessions = {
   ["🌐 Browsing"] = {
     { monitor = 3, ws = 1, cmd = "firefox --new-window" },
-    tmuxifier({ session = "config", monitor = 4, ws = 2 }),
+    tmuxifier({ session = "config" }),
   },
 
   ["🧱 Client"] = {
     betterbird(),
     { monitor = 3, ws = 1, cmd = "firefox --new-window" },
     tmuxifier({ session = "client-dev" }),
-    tmuxifier({ session = "config", monitor = 4, ws = 2 }),
+    tmuxifier({ session = "config", ws = 3 }),
     { monitor = 4, ws = 1, cmd = "slack", class = "Slack", size = { 1064, 461 } },
   },
 
   ["🛠 Config"] = {
     betterbird(),
     { monitor = 3, ws = 1, cmd = "firefox --new-window" },
-    tmuxifier({ session = "config", monitor = 4, ws = 2 }),
+    tmuxifier({ session = "config" }),
   },
 
   ["🗂 Files"] = {
@@ -89,8 +89,8 @@ M.sessions = {
     betterbird(),
     { monitor = 2, ws = 1, cmd = "qutebrowser" },
     { monitor = 3, ws = 1, cmd = "firefox --new-window" },
-    tmuxifier({ session = "uphill", monitor = 3, ws = 2 }),
-    tmuxifier({ session = "config", monitor = 4, ws = 2 }),
+    tmuxifier({ session = "uphill" }),
+    tmuxifier({ session = "config", ws = 3 }),
     { monitor = 4, ws = 1, cmd = "slack", class = "Slack", size = { 1064, 461 }, delay = 5000 },
   },
 }
