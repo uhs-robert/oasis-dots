@@ -11,7 +11,7 @@ local TERM = Config.app.term
 local Apps = {}
 
 -- stylua: ignore
-Apps.focus = {
+Apps.map = {
   betterbird  = { program = "betterbird",  class  = "eu.betterbird.Betterbird",      cmd = "flatpak run eu.betterbird.Betterbird" },
   cliamp      = { program = "cliamp",      title  = "cliamp",                        cmd = TERM .. " -e cliamp" },
   dolphin     = { program = "dolphin",     class  = "org.kde.dolphin" },

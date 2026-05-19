@@ -9,6 +9,7 @@ local Submap = require("lib.key.submap") --- @class Submap
 local MENU = Config.app.menu
 local TERM = Config.app.term
 local EDITOR = Config.app.editor or "nvim"
+local APP = Apps.map
 
 Submap.define({
   name = "Applications",
@@ -31,12 +32,12 @@ Submap.define({
     { "G",         Apps.open("gimp"),                               "Gimp" },
     { "I",         Apps.open("inkscape"),                           "Inkscape" },
     { "K",         Apps.open("kate"),                               "Kate" },
-    { "M",         Apps.focus_or_launch(Apps.focus.betterbird),     "Mail" },
+    { "M",         Apps.focus_or_launch(APP.betterbird),            "Mail" },
     { "SHIFT + N", Apps.open(TERM .. " -e newsboat"),               "Newsboat" },
     { "P",         Apps.open("flatpak run com.vysp3r.ProtonPlus"),  "ProtonPlus" },
     { "Q",         Apps.open("qutebrowser"),                        "QuteBrowser" },
-    { "R",         Apps.focus_or_launch(Apps.focus.cliamp),         "Radio (Cliamp)" },
-    { "S",         Apps.focus_or_launch(Apps.focus.slack),          "Slack" },
+    { "R",         Apps.focus_or_launch(APP.cliamp),                "Radio (Cliamp)" },
+    { "S",         Apps.focus_or_launch(APP.slack),                 "Slack" },
     { "SHIFT + S", Apps.open("steam"),                              "Steam" },
     { "V",         Apps.open("code"),                               "VS Code" },
     { "W",         Apps.open("libreoffice --writer"),               "LibreOffice Writer" },
