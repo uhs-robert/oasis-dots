@@ -3,32 +3,34 @@ local Config = require("config") ---@class Config
 local Window = require("lib.actions.window") ---@class WindowActions
 local Workspace = require("lib.actions.workspace") ---@class WorkspaceActions
 
-local function universal(description) return { submap_universal = true, desc = description } end
 -- stylua: ignore start
+local OPTS = {
+  universal = function(description) return { submap_universal = true, desc = description } end,
+}
 
 -- Utility
-Bind.leader_key("ESCAPE", hl.dsp.submap("reset"), universal("Reset Submaps"))
-Bind.leader_cmd("SLASH",  require("lib.scripts").keybind_help, universal("Keybind Help"))
+Bind.leader_key("ESCAPE", hl.dsp.submap("reset"), OPTS.universal("Reset Submaps"))
+Bind.leader_cmd("SLASH",  require("lib.scripts").keybind_help, OPTS.universal("Keybind Help"))
 
 -- Window Actions
-Bind.leader_key("C",   Window.close(),             { desc = "Close Window" })
-Bind.leader_key("F",   Window.fullscreen_toggle(), { desc = "Toggle Fullscreen" })
-Bind.leader_key("TAB", Workspace.focus_last(),     { desc = "Go to Last Active WS" })
+Bind.leader_key("C",   Window.close(),             "Close Window")
+Bind.leader_key("F",   Window.fullscreen_toggle(), "Toggle Fullscreen")
+Bind.leader_key("TAB", Workspace.focus_last(),     "Go to Last Active WS")
 
 -- Window Focus/Movement
-Bind.leader_key({ "H", "LEFT" },  Window.focus_dir("l"), "Focus Left",  { submap_universal = true })
-Bind.leader_key({ "L", "RIGHT" }, Window.focus_dir("r"), "Focus Right", { submap_universal = true })
-Bind.leader_key({ "K", "UP" },    Window.focus_dir("u"), "Focus Up",    { submap_universal = true })
-Bind.leader_key({ "J", "DOWN" },  Window.focus_dir("d"), "Focus Down",  { submap_universal = true })
+Bind.leader_key({ "H", "LEFT" },  Window.focus_dir("l"), OPTS.universal("Focus Left"))
+Bind.leader_key({ "J", "DOWN" },  Window.focus_dir("d"), OPTS.universal("Focus Down"))
+Bind.leader_key({ "K", "UP" },    Window.focus_dir("u"), OPTS.universal("Focus Up"))
+Bind.leader_key({ "L", "RIGHT" }, Window.focus_dir("r"), OPTS.universal("Focus Right"))
 
-Bind.leader_key({ "SHIFT + H", "SHIFT + LEFT" },  Window.move_dir("l"), "Move Window Left",  { submap_universal = true })
-Bind.leader_key({ "SHIFT + L", "SHIFT + RIGHT" }, Window.move_dir("r"), "Move Window Right", { submap_universal = true })
-Bind.leader_key({ "SHIFT + K", "SHIFT + UP" },    Window.move_dir("u"), "Move Window Up",    { submap_universal = true })
-Bind.leader_key({ "SHIFT + J", "SHIFT + DOWN" },  Window.move_dir("d"), "Move Window Down",  { submap_universal = true })
+Bind.leader_key({ "SHIFT + H", "SHIFT + LEFT" },  Window.move_dir("l"), OPTS.universal("Move Window Left"))
+Bind.leader_key({ "SHIFT + J", "SHIFT + DOWN" },  Window.move_dir("d"), OPTS.universal("Move Window Down"))
+Bind.leader_key({ "SHIFT + K", "SHIFT + UP" },    Window.move_dir("u"), OPTS.universal("Move Window Up"))
+Bind.leader_key({ "SHIFT + L", "SHIFT + RIGHT" }, Window.move_dir("r"), OPTS.universal("Move Window Right"))
 
 -- Window Special
-Bind.leader_key("S",         Window.toggle_special("scratchpad"),  universal("Toggle Scratchpad"))
-Bind.leader_key("SHIFT + S", Window.move_to_special("scratchpad"), universal("Move to Scratchpad"))
+Bind.leader_key("S",         Window.toggle_special("scratchpad"),  OPTS.universal("Toggle Scratchpad"))
+Bind.leader_key("SHIFT + S", Window.move_to_special("scratchpad"), OPTS.universal("Move to Scratchpad"))
 
 -- Monitor Focus/Movement
 for i = 1, math.max(#Config.monitors, 10) do
