@@ -28,12 +28,7 @@ function Lazy.load(mod)
 
   entry.proxy = setmetatable(proxy, {
     __index = function(t, key)
-      local val = resolve(entry)[key]
-
-      if type(val) ~= "function" then return val end
-
       local fn = function(...) return resolve(entry)[key](...) end
-
       rawset(t, key, fn)
       return fn
     end,
