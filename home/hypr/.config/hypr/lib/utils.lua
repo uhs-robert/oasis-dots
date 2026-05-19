@@ -46,9 +46,20 @@ end
 --- @param mod string  Module path passed to require
 --- @return table
 Utils.lazy = function(mod)
-  return setmetatable({}, {
-    __index = function(_, method)
-      return function(...) require(mod)[method](...) end
+  local loaded
+  local proxy = {}
+
+  local function get()
+    loaded = loaded or require(mod)
+    return loaded
+  end
+
+  return setmetatable(proxy, {
+    __index = function(t, method)
+      local fn = function(...) return get()[method](...) end
+
+      rawset(t, method, fn)
+      return fn
     end,
   })
 end
