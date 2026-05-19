@@ -14,24 +14,22 @@ Move.amount = 10
 --- @field up    fun()
 --- @field down  fun()
 
-function Move.left()  hl.dispatch(hl.dsp.window.move({ x = -Move.amount, y = 0,            relative = true })) end
-function Move.right() hl.dispatch(hl.dsp.window.move({ x = Move.amount,  y = 0,            relative = true })) end
-function Move.up()    hl.dispatch(hl.dsp.window.move({ x = 0,            y = -Move.amount, relative = true })) end
-function Move.down()  hl.dispatch(hl.dsp.window.move({ x = 0,            y = Move.amount,  relative = true })) end
-
---- @param amount number
-function Move.set_amount(amount) Move.amount = amount end
-
 --- Return a MoveActions set that moves by `amount` pixels.
 --- @param amount number
 --- @return MoveActions
-function Move.at(amount)
+Move.at = function(amount)
   return {
-    left  = function() hl.dispatch(hl.dsp.window.move({ x = -amount, y = 0,       relative = true })) end,
-    right = function() hl.dispatch(hl.dsp.window.move({ x = amount,  y = 0,       relative = true })) end,
-    up    = function() hl.dispatch(hl.dsp.window.move({ x = 0,       y = -amount, relative = true })) end,
-    down  = function() hl.dispatch(hl.dsp.window.move({ x = 0,       y = amount,  relative = true })) end,
+    left = function() hl.dispatch(hl.dsp.window.move({ x = -amount, y = 0, relative = true })) end,
+    right = function() hl.dispatch(hl.dsp.window.move({ x = amount, y = 0, relative = true })) end,
+    up = function() hl.dispatch(hl.dsp.window.move({ x = 0, y = -amount, relative = true })) end,
+    down = function() hl.dispatch(hl.dsp.window.move({ x = 0, y = amount, relative = true })) end,
   }
 end
+
+local DEFAULTS = Move.at(Move.amount)
+Move.left = DEFAULTS.left
+Move.right = DEFAULTS.right
+Move.up = DEFAULTS.up
+Move.down = DEFAULTS.down
 
 return Move

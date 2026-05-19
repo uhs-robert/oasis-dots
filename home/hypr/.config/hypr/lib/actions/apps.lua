@@ -31,12 +31,12 @@ Apps.map = {
 --- Return an action that runs a shell command.
 --- @param app_command string
 --- @return fun()
-function Apps.open(app_command) return Cmd.run(app_command) end
+Apps.open = function(app_command) return Cmd.run(app_command) end
 
 --- Return an action that focuses an existing window or launches the app.
 --- @param opts { program: string, class?: string, title?: string, exclude_title?: string, cmd?: string }
 --- @return fun()
-function Apps.focus_or_launch(opts)
+Apps.focus_or_launch = function(opts)
   return function() Window.focus_or_launch(opts) end
 end
 

@@ -13,15 +13,14 @@ local Menu = {}
 --- Return an action that opens the menu in the given show mode.
 --- @param mode string
 --- @return fun()
-function Menu.show(mode) return Cmd.run(MENU .. " -i -show " .. mode) end
+Menu.show = function(mode) return Cmd.run(MENU .. " -i -show " .. mode) end
 
--- stylua: ignore start
-function Menu.drun()       return Menu.show("drun") end
-function Menu.run()        return Menu.show("run") end
-function Menu.ssh()        return Menu.show("ssh") end
-function Menu.window()     return Menu.show("window") end
-function Menu.hyprwindow() return Menu.show("hyprwindow") end
--- stylua: ignore end
+-- Basic Action
+Menu.drun = function() return Menu.show("drun") end
+Menu.run = function() return Menu.show("run") end
+Menu.ssh = function() return Menu.show("ssh") end
+Menu.window = function() return Menu.show("window") end
+Menu.hyprwindow = function() return Menu.show("hyprwindow") end
 
 --- Return an action that opens the tmux session picker.
 --- @return fun()

@@ -1,6 +1,6 @@
 --- Resize actions for the Resize submap.
---- Use Resize.speeds for pre-built directional action sets at common step sizes,
---- or Resize.at(n) to create a custom set.
+--- Use Resize.at(n) to create a directional action set at a custom step size.
+
 --- @class Resize
 local Resize = {}
 
@@ -14,30 +14,26 @@ Resize.amount = 10
 --- @field up    fun()
 --- @field down  fun()
 
-
-function Resize.left()  hl.dispatch(hl.dsp.window.resize({ x = -Resize.amount, y = 0,             relative = true })) end
-function Resize.right() hl.dispatch(hl.dsp.window.resize({ x = Resize.amount,  y = 0,             relative = true })) end
-function Resize.up()    hl.dispatch(hl.dsp.window.resize({ x = 0,              y = -Resize.amount, relative = true })) end
-function Resize.down()  hl.dispatch(hl.dsp.window.resize({ x = 0,              y = Resize.amount,  relative = true })) end
-
---- @param amount number
-function Resize.set_amount(amount) Resize.amount = amount end
-
 --- Return a ResizeActions set that moves by `amount` pixels.
 --- @param amount number
 --- @return ResizeActions
-function Resize.at(amount)
+Resize.at = function(amount)
   return {
-    left  = function() hl.dispatch(hl.dsp.window.resize({ x = -amount, y = 0,       relative = true })) end,
-    right = function() hl.dispatch(hl.dsp.window.resize({ x = amount,  y = 0,       relative = true })) end,
-    up    = function() hl.dispatch(hl.dsp.window.resize({ x = 0,       y = -amount, relative = true })) end,
-    down  = function() hl.dispatch(hl.dsp.window.resize({ x = 0,       y = amount,  relative = true })) end,
+    left = function() hl.dispatch(hl.dsp.window.resize({ x = -amount, y = 0, relative = true })) end,
+    right = function() hl.dispatch(hl.dsp.window.resize({ x = amount, y = 0, relative = true })) end,
+    up = function() hl.dispatch(hl.dsp.window.resize({ x = 0, y = -amount, relative = true })) end,
+    down = function() hl.dispatch(hl.dsp.window.resize({ x = 0, y = amount, relative = true })) end,
   }
 end
 
+local DEFAULTS = Resize.at(Resize.amount)
+Resize.left = DEFAULTS.left
+Resize.right = DEFAULTS.right
+Resize.up = DEFAULTS.up
+Resize.down = DEFAULTS.down
 
 --- Reset window size by toggling float twice (forces layout recalculation).
-function Resize.reset()
+Resize.reset = function()
   hl.dispatch(hl.dsp.window.float({ action = "toggle" }))
   hl.dispatch(hl.dsp.window.float({ action = "toggle" }))
 end
