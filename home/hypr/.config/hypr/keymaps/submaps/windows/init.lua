@@ -62,20 +62,20 @@ Submap.define({
 
     -- stylua: ignore start
     local keys = {
-      { "R",             function() Submap.enter("Resize") end,                "+Resize" },
-      { "M",             function() Submap.enter("Move") end,                  "+Move" },
-      { "I",             function() Submap.enter("Screenshot") end,            "+Screenshot" },
-      { "Q",             function() Submap.enter("System") end,                "+System" },
-      { "X",             function() Submap.enter("Cursor") end,                "+Cursor" },
-      { "TAB",           Workspace.focus_last(),                               "Last Workspace" },
-      { "O",             exec(Apps.open(MENU .. " -i -show window")),          "Search Windows" },
-      { "C",             Window.kill(),                                        "Close Window" },
-      { "F",             Window.float_toggle(),                                "Toggle Floating" },
-      { "P",             Window.pseudo_toggle(),                               "Toggle Pseudo" },
-      { "S",             Window.layout_toggle(),                               "Toggle Split" },
-      { "MINUS",         Window.layout_toggle(),                               "Toggle Split" },
-      { "RETURN",        Window.pass_to_active(),                              "Confirm Selection" },
-      { "SHIFT + SLASH", Lazy.load("hyprvim.whichkey").toggle, "WhichKey" },
+      { "R",             Submap.switch("Resize"),       "+Resize" },
+      { "M",             Submap.switch("Move"),         "+Move" },
+      { "I",             Submap.switch("Screenshot"),   "+Screenshot" },
+      { "Q",             Submap.switch("System"),       "+System" },
+      { "X",             Submap.switch("Cursor"),       "+Cursor" },
+      { "TAB",           Workspace.focus_last(),                      "Last Workspace" },
+      { "O",             exec(Apps.open(MENU .. " -i -show window")), "Search Windows" },
+      { "C",             Window.kill(),                               "Close Window" },
+      { "F",             Window.float_toggle(),                       "Toggle Floating" },
+      { "P",             Window.pseudo_toggle(),                      "Toggle Pseudo" },
+      { "S",             Window.layout_toggle(),                      "Toggle Split" },
+      { "MINUS",         Window.layout_toggle(),                      "Toggle Split" },
+      { "RETURN",        Window.pass_to_active(),                     "Confirm Selection" },
+      { "SHIFT + SLASH", Lazy.load("hyprvim.whichkey").toggle,        "WhichKey" },
     }
     -- stylua: ignore end
 
