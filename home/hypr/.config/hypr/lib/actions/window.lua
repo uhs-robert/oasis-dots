@@ -1,6 +1,7 @@
 --- Window management actions: focus direction, move direction, close, fullscreen, scratchpad, monitors.
 
-local Workspaces = require("lib.workspaces")
+local Workspaces = require("lib.workspaces") --- @class Workspaces
+local Hypr = require("lib.hypr") --- @class HyprLib
 
 --- @class WindowActions
 local Window = {}
@@ -9,43 +10,18 @@ local SPECIAL_WS = {
   scratchpad = "special:scratchpad",
 }
 
---- @return fun()
-function Window.close()
-  return function() hl.dispatch(hl.dsp.window.close()) end
-end
-
---- @return fun()
-function Window.fullscreen_toggle()
-  return function() hl.dispatch(hl.dsp.window.fullscreen({ action = "toggle" })) end
-end
-
---- @param dir string  Direction code: "l", "r", "u", "d"
---- @return fun()
-function Window.focus_dir(dir)
-  return function() hl.dispatch(hl.dsp.focus({ direction = dir })) end
-end
-
---- @param dir string  Direction code: "l", "r", "u", "d"
---- @return fun()
-function Window.move_dir(dir)
-  return function() hl.dispatch(hl.dsp.window.move({ direction = dir })) end
-end
-
---- @param name string  Key into SPECIAL_WS (e.g. "scratchpad")
---- @return fun()
-function Window.toggle_special(name)
-  return function() hl.dispatch(hl.dsp.workspace.toggle_special(name)) end
-end
-
---- @param name string  Key into SPECIAL_WS (e.g. "scratchpad")
---- @return fun()
-function Window.move_to_special(name)
-  return function() hl.dispatch(hl.dsp.window.move({ workspace = SPECIAL_WS[name] })) end
-end
+function Window.close() return Hypr.dispatch(hl.dsp.window.close()) end
+function Window.kill() return Hypr.dispatch(hl.dsp.window.kill()) end
+function Window.fullscreen_toggle() return Hypr.dispatch(hl.dsp.window.fullscreen({ action = "toggle" })) end
+function Window.float_toggle() return Hypr.dispatch(hl.dsp.window.float({ action = "toggle" })) end
+function Window.pseudo_toggle() return Hypr.dispatch(hl.dsp.window.pseudo()) end
+function Window.layout_toggle() return Hypr.dispatch(hl.dsp.layout("togglesplit")) end
+function Window.pass_to_active() return Hypr.dispatch(hl.dsp.pass({ window = "active" })) end
+function Window.drag() return Hypr.dispatch(hl.dsp.window.drag()) end
+function Window.resize_mouse() return Hypr.dispatch(hl.dsp.window.resize()) end
 
 --- Focus the monitor in the given slot (1-based index into Config.monitors).
 --- @param slot integer
---- @return fun()
 function Window.focus_monitor(slot)
   return function()
     local sel = Workspaces.get_monitor_for_slot(slot)
@@ -53,9 +29,20 @@ function Window.focus_monitor(slot)
   end
 end
 
+--- @param dir string  Direction code: "l", "d", "u", "r"
+function Window.focus_dir(dir) return Hypr.dispatch(hl.dsp.focus({ direction = dir })) end
+
+--- @param dir string  Direction code: "l", "d", "u", "r"
+function Window.move_dir(dir) return Hypr.dispatch(hl.dsp.window.move({ direction = dir })) end
+
+--- @param name string  Key into SPECIAL_WS (e.g. "scratchpad")
+function Window.toggle_special(name) return Hypr.dispatch(hl.dsp.workspace.toggle_special(name)) end
+
+--- @param name string  Key into SPECIAL_WS (e.g. "scratchpad")
+function Window.move_to_special(name) return Hypr.dispatch(hl.dsp.window.move({ workspace = SPECIAL_WS[name] })) end
+
 --- Move the active window to the monitor in the given slot.
 --- @param slot integer
---- @return fun()
 function Window.move_to_monitor(slot)
   return function()
     local sel = Workspaces.get_monitor_for_slot(slot)
@@ -63,48 +50,8 @@ function Window.move_to_monitor(slot)
   end
 end
 
---- Forcefully kill the active window (no graceful close).
---- @return fun()
-function Window.kill()
-  return function() hl.dispatch(hl.dsp.window.kill()) end
-end
-
---- @return fun()
-function Window.float_toggle()
-  return function() hl.dispatch(hl.dsp.window.float({ action = "toggle" })) end
-end
-
---- @return fun()
-function Window.pseudo_toggle()
-  return function() hl.dispatch(hl.dsp.window.pseudo()) end
-end
-
---- @return fun()
-function Window.layout_toggle()
-  return function() hl.dispatch(hl.dsp.layout("togglesplit")) end
-end
-
 --- Focus a window matching arbitrary hl.dsp.focus opts (e.g. { window = "title:..." }).
 --- @param opts table
---- @return fun()
-function Window.focus_by(opts)
-  return function() hl.dispatch(hl.dsp.focus(opts)) end
-end
-
---- Pass the active key event through to the active window.
---- @return fun()
-function Window.pass_to_active()
-  return function() hl.dispatch(hl.dsp.exec_cmd("hyprctl dispatch pass activewindow")) end
-end
-
---- @return fun()
-function Window.drag()
-  return function() hl.dispatch(hl.dsp.window.drag()) end
-end
-
---- @return fun()
-function Window.resize_mouse()
-  return function() hl.dispatch(hl.dsp.window.resize()) end
-end
+function Window.focus_by(opts) return Hypr.dispatch(hl.dsp.focus(opts)) end
 
 return Window
