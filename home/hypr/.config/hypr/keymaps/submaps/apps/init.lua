@@ -3,10 +3,9 @@
 
 local Config = require("config") --- @class Config
 local Apps = require("lib.actions.apps") --- @class Apps
-local Scripts = require("lib.scripts") --- @class Scripts
+local Menu = require("lib.actions.menu") --- @class Menu
 local Submap = require("lib.key.submap") --- @class Submap
 
-local MENU = Config.app.menu
 local TERM = Config.app.term
 local EDITOR = Config.app.editor or "nvim"
 local APP = Apps.map
@@ -21,8 +20,8 @@ Submap.define({
 
   -- stylua: ignore
   binds = {
-    { "SPACE",     Apps.open(MENU .. " -i -show hyprwindow"), "Find Window" },
-    { "SLASH",     Apps.open(MENU .. " -i -show drun"),       "Search Applications" },
+    { "SPACE",     Menu.hyprwindow(),                         "Find Window" },
+    { "SLASH",     Menu.drun(),                               "Search Applications" },
     { "B",         Apps.open("bottles"),                      "Bottles" },
     { "C",         Apps.open("qalculate-gtk"),                "Calculator" },
     { "D",         Apps.open("deluge"),                       "Deluge" },

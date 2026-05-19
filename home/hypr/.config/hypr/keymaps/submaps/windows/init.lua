@@ -3,12 +3,10 @@
 local Config = require("config") ---@class Config
 local Direction = require("lib.key.direction") ---@class Direction
 local Submap = require("lib.key.submap") ---@class Submap
-local Apps = require("lib.actions.apps") ---@class Apps
+local Menu = require("lib.actions.menu") ---@class Menu
 local Window = require("lib.actions.window") ---@class WindowActions
 local Workspace = require("lib.actions.workspace") ---@class WorkspaceActions
 local Lazy = require("lib.lazy") ---@type Lazy
-
-local MENU = Config.app.menu
 
 --- Wrap an action to exit the submap before firing.
 --- @param fn fun()
@@ -68,7 +66,7 @@ Submap.define({
       { "Q",             Submap.switch("System"),       "+System" },
       { "X",             Submap.switch("Cursor"),       "+Cursor" },
       { "TAB",           Workspace.focus_last(),                      "Last Workspace" },
-      { "O",             exec(Apps.open(MENU .. " -i -show window")), "Search Windows" },
+      { "O",             exec(Menu.window()),                         "Search Windows" },
       { "C",             Window.kill(),                               "Close Window" },
       { "F",             Window.float_toggle(),                       "Toggle Floating" },
       { "P",             Window.pseudo_toggle(),                      "Toggle Pseudo" },
