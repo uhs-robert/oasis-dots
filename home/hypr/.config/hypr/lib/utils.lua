@@ -41,27 +41,4 @@ Utils.write_file = function(path, content)
   return true
 end
 
---- Return a proxy table where any field access produces a deferred function.
---- Avoids eager require for modules loaded after setup (e.g. hyprvim plugins).
---- @param mod string  Module path passed to require
---- @return table
-Utils.lazy = function(mod)
-  local loaded
-  local proxy = {}
-
-  local function get()
-    loaded = loaded or require(mod)
-    return loaded
-  end
-
-  return setmetatable(proxy, {
-    __index = function(t, method)
-      local fn = function(...) return get()[method](...) end
-
-      rawset(t, method, fn)
-      return fn
-    end,
-  })
-end
-
 return Utils

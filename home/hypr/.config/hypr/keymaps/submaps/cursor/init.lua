@@ -5,7 +5,7 @@ local Config = require("config") ---@class Config
 local Direction = require("lib.key.direction") ---@class Direction
 local Submap = require("lib.key.submap") ---@class Submap
 local Cursor = require("lib.actions.cursor") ---@class CursorActions
-local Utils = require("lib.utils") ---@class Utils
+local Lazy = require("lib.lazy") ---@type Lazy
 
 --- Saved cursor config, populated on_enter and restored on_exit.
 --- @type { hide: boolean, timeout: number }
@@ -26,8 +26,6 @@ local function oneshot(fn)
     Submap.reset()
   end
 end
-
-local lazy = Utils.lazy
 
 --- Build scroll bind rows for a modifier tier.
 --- @param mod string
@@ -95,7 +93,7 @@ local cursor_mode = Submap.define({
       { "I",              Submap.switch("Screenshot"),  "+Screenshot" },
       { "Q",              Submap.switch("System"),      "+System" },
       -- WhichKey
-      { "SHIFT + SLASH",  lazy("hyprvim.whichkey").toggle, "WhichKey" },
+      { "SHIFT + SLASH",  Lazy.load("hyprvim.whichkey").toggle, "WhichKey" },
     }
     -- stylua: ignore end
 
