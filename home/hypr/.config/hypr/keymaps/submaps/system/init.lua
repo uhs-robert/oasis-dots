@@ -23,7 +23,7 @@ local POWER = {
   logout = Scripts.confirm_action .. " --title Logout    --glyph '󰍃' --exec '" .. CMD.logout .. "'",
   lock = Scripts.confirm_action .. " --title Lock      --glyph '󰌾' --exec '" .. Scripts.hyprlock .. "'",
   reboot = Scripts.confirm_action .. " --title Reboot    --glyph '󰜉' --exec '" .. CMD.reboot .. "'",
-  off = Scripts.confirm_action .. " --title Power Off --glyph '󰐥' --exec '" .. CMD.poweroff .. "'",
+  off = Scripts.confirm_action .. " --title 'Power Off' --glyph '󰐥' --exec '" .. CMD.poweroff .. "'",
 }
 
 Submap.define({
