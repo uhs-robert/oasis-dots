@@ -26,22 +26,22 @@ Submap.define({
   binds = function()
     local rows = {
       -- stylua: ignore start
-      { "TAB",       Workspace.focus_last(),                    "Last Workspace" },
-      { "A",         Menu.drun(),                               "Apps Launcher" },
-      { "B",         Apps.focus_or_launch(APP.firefox),         "Browser" },
-      { "C",         Apps.focus_or_launch(APP.tmux_config),     "Tmuxifier Config" },
-      { "SHIFT + C", Apps.focus_or_launch(APP.tmux_client),      "Tmuxifier Client" },
-      { "F",         Apps.focus_or_launch(APP.yazi),            "Files" },
-      { "SHIFT + F", Apps.focus_or_launch(APP.dolphin),         "Dolphin" },
-      { "H",         Apps.focus_or_launch(APP.hyprconfig),      "Hypr Config" },
-      { "M",         Apps.focus_or_launch(APP.betterbird),      "Mail" },
-      { "P",         Menu.tmux(),                               "Project" },
-      { "Q",         Apps.focus_or_launch(APP.qutebrowser),     "QuteBrowser" },
-      { "S",         Apps.focus_or_launch(APP.slack),           "Slack" },
-      { "T",         Apps.focus_or_launch(APP.terminal),        "Terminal" },
-      { "U",         Apps.focus_or_launch(APP.tmux_uphill),     "Tmuxifier UpHill" },
-      { "W",         Menu.hyprwindow(),                         "Window" },
-      { "Y",         Window.focus_by(SELECTORS.youtube),        "Youtube" },
+      { "TAB",       Workspace.focus_last(),                "Last Workspace" },
+      { "A",         Menu.drun(),                           "Apps Launcher" },
+      { "B",         Apps.focus_or_launch(APP.firefox),     "Browser" },
+      { "C",         Apps.focus_or_launch(APP.tmux_config), "Tmuxifier Config" },
+      { "SHIFT + C", Apps.focus_or_launch(APP.tmux_client),  "Tmuxifier Client" },
+      { "F",         Apps.focus_or_launch(APP.yazi),        "Files" },
+      { "SHIFT + F", Apps.focus_or_launch(APP.dolphin),     "Dolphin" },
+      { "H",         Apps.focus_or_launch(APP.hyprconfig),  "Hypr Config" },
+      { "M",         Apps.focus_or_launch(APP.betterbird),  "Mail" },
+      { "P",         Menu.tmux(),                           "Project" },
+      { "Q",         Apps.focus_or_launch(APP.qutebrowser), "QuteBrowser" },
+      { "S",         Apps.focus_or_launch(APP.slack),       "Slack" },
+      { "T",         Apps.focus_or_launch(APP.terminal),    "Terminal" },
+      { "U",         Apps.focus_or_launch(APP.tmux_uphill), "Tmuxifier UpHill" },
+      { "W",         Menu.hyprwindow(),                     "Window" },
+      { "Y",         Window.focus_by(SELECTORS.youtube),    "Youtube" },
       -- stylua: ignore end
     }
 
