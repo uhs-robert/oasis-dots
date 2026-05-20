@@ -48,6 +48,14 @@ install_pipx_packages() {
   done < <(read_pkgs pipx.ini)
 }
 
+print_manual_installs() {
+  local file="$PKG_DIR/$DISTRO.ini"
+  [[ -f "$file" ]] || return
+  local notes
+  notes=$(awk '/^\[MANUAL\]/{found=1; next} /^\[/{found=0} found && /^#/{print}' "$file")
+  [[ -z "$notes" ]] || { echo ""; warn "Manual installs required:"; echo "$notes"; }
+}
+
 install_luarocks_packages() {
   if ! command -v luarocks &>/dev/null; then
     warn "luarocks not found, skipping"

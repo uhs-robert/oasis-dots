@@ -121,6 +121,8 @@ main() {
     setup_voxtype
   fi
 
+  print_manual_installs
+
   echo ""
   success "Done!"
   warn "Start Hyprland and run: hyprctl reload"
