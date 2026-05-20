@@ -7,8 +7,8 @@ local Utils = require("lib.utils") ---@class Utils
 --- @field backend string GBM backend name, e.g. "nvidia-drm" or "nvidia-open" (default: "nvidia-drm")
 
 --- @class Config.Cursor
---- @field theme string Xcursor theme name (default: "breeze_cursors")
---- @field hypr_theme string Hyprcursor theme name (default: "breeze-dark")
+--- @field theme string Xcursor theme name (default: "xcursor-bibata-original-classic")
+--- @field hypr_theme string Hyprcursor theme name (default: "hyprcursor-bibata-original-classic")
 --- @field size integer Cursor size in pixels (default: 24)
 
 --- @class Config.App
@@ -56,12 +56,12 @@ Config.defaults = {
   drm_devices = nil,
   is_laptop = nil,
   nvidia = {
-    enable = false,
-    backend = "nvidia-drm",
+    enable = nil,
+    backend = nil,
   },
   cursor = {
-    theme = "breeze_cursors",
-    hypr_theme = "breeze-dark",
+    theme = "xcursor-bibata-original-classic",
+    hypr_theme = "hyprcursor-bibata-original-classic",
     size = 24,
   },
   app = {
@@ -77,6 +77,25 @@ Config.defaults = {
   monitors = {}, --- @type Config.Monitor[]
   devices = {}, --- @type HL.DeviceSpec[]
 }
+
+--- @return boolean
+local function detect_nvidia()
+  local f = io.open("/dev/nvidia0", "r")
+  if f then f:close(); return true end
+  local m = io.open("/sys/module/nvidia/version", "r")
+  if m then m:close(); return true end
+  return false
+end
+
+--- @return string
+local function detect_nvidia_backend()
+  local f = io.open("/proc/driver/nvidia/version", "r")
+  if f then
+    local v = f:read("*a"); f:close()
+    if v:match("Open") then return "nvidia-open" end
+  end
+  return "nvidia-drm"
+end
 
 --- Detects laptop by checking live monitors for an eDP- panel.
 --- Returns nil when the hl API is unavailable (e.g. during unit tests).
@@ -124,6 +143,13 @@ end
 --- @param cfg table
 local function derive(cfg)
   if cfg.is_laptop == nil then cfg.is_laptop = detect_is_laptop() end
+  if cfg.nvidia.enable == nil then
+    cfg.nvidia.enable = detect_nvidia()
+    if cfg.nvidia.enable and cfg.nvidia.backend == nil then
+      cfg.nvidia.backend = detect_nvidia_backend()
+    end
+  end
+  if cfg.nvidia.backend == nil then cfg.nvidia.backend = "nvidia-drm" end
   cfg.monitors = resolve_monitors(cfg.monitors, cfg.is_laptop)
   fill_menu_cmds(cfg.app)
 end

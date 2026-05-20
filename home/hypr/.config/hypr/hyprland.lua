@@ -32,7 +32,6 @@ local MONITORS_DESKTOP = {
 local function init()
   Config.setup({
     drm_devices = "/dev/dri/card1:/dev/dri/card2 Hyprland",
-    nvidia = { enable = true },
     monitors = function(is_laptop) return is_laptop and MONITORS_LAPTOP or MONITORS_DESKTOP end,
   })
 
