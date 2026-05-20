@@ -13,6 +13,7 @@ local APP = Apps.map
 
 local SELECTORS = {
   youtube = { window = "title:(?i).*youtube.*" },
+  meeting = { window = "title:(?i).*Meet.*" },
 }
 
 Submap.define({
@@ -35,6 +36,7 @@ Submap.define({
       { "SHIFT + F", Apps.focus_or_launch(APP.dolphin),     "Dolphin" },
       { "H",         Apps.focus_or_launch(APP.hyprconfig),  "Hypr Config" },
       { "M",         Apps.focus_or_launch(APP.betterbird),  "Mail" },
+      { "SHIFT + M", Window.focus_by(SELECTORS.meeting),    "Meeting" },
       { "P",         Menu.tmux(),                           "Project" },
       { "Q",         Apps.focus_or_launch(APP.qutebrowser), "QuteBrowser" },
       { "S",         Apps.focus_or_launch(APP.slack),       "Slack" },
