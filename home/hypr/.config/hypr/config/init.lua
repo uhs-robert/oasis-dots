@@ -200,7 +200,7 @@ Config.setup = function(overrides)
   require("config.rules")
   require("config.monitors")
   require("theme")
-  require("mods")
+  require("extensions")
 
   return Config
 end
