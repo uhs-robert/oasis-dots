@@ -1,4 +1,4 @@
--- home/hypr/.config/hypr/mods/wallpaper/lib/rotate.lua
+-- home/hypr/.config/hypr/extensions/wallpaper/lib/rotate.lua
 -- Orchestrator: CLI parsing, config merge, locking, loop, hyprpaper start
 
 local script_dir = (debug.getinfo(1, "S").source:sub(2):match("(.*/)") or "./")

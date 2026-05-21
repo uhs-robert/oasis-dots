@@ -1,4 +1,4 @@
--- home/hypr/.config/hypr/mods/wallpaper/lib/apply.lua
+-- home/hypr/.config/hypr/extensions/wallpaper/lib/apply.lua
 -- Period resolution, file selection, and hyprpaper application
 
 --- @class Apply

@@ -1,4 +1,4 @@
--- home/hypr/.config/hypr/mods/auto_launcher/init.lua
+-- home/hypr/.config/hypr/extensions/auto_launcher/init.lua
 local Config = require("config") ---@class Config
 
 --- @type table<string, HL.WindowRule>
@@ -26,6 +26,6 @@ end
 
 hl.bind(
   Config.leader .. " + SHIFT + O",
-  hl.dsp.exec_cmd("lua ~/.config/hypr/mods/auto_launcher/launch.lua " .. Config.ws_per_monitor),
+  hl.dsp.exec_cmd("lua ~/.config/hypr/extensions/auto_launcher/launch.lua " .. Config.ws_per_monitor),
   { description = "Workspace App Launcher" }
 )

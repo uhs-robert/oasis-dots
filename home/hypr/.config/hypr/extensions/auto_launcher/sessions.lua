@@ -1,4 +1,4 @@
--- home/hypr/.config/hypr/mods/auto_launcher/sessions.lua
+-- home/hypr/.config/hypr/extensions/auto_launcher/sessions.lua
 -- Workspace app launcher session definitions.
 -- Monitor indices follow Config.monitors order in hyprland.lua:
 
