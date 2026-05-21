@@ -66,6 +66,20 @@ HIST_STAMPS="mm/dd/yyyy"
 # Would you like to use another custom folder than $ZSH/custom?
 # ZSH_CUSTOM=/path/to/new-custom-folder
 
+# Fastfetch
+ff() {
+  fastfetch
+}
+
+# Show fastfetch immediately on startup if not a floating terminal
+if [[ -o interactive && -n "$HYPRLAND_INSTANCE_SIGNATURE" ]]; then
+  is_floating=$(hyprctl activewindow -j 2>/dev/null | jq -r '.floating // empty')
+
+  if [[ "$is_floating" != "true" ]]; then
+    fastfetch
+  fi
+fi
+
 # zsh-vi-mode: keep normal blinking terminal cursor
 function zvm_config() {
   ZVM_NORMAL_MODE_CURSOR=$ZVM_CURSOR_BLINKING_BLOCK
@@ -168,18 +182,6 @@ for rc in ~/.bashrc.d/*(.N); do source "$rc"; done
 eval "$(tmuxifier init -)"
 
 
-# Fastfetch
-ff() {
-  fastfetch
-}
-
-# Only show fastfetch if not a floating terminal
-if [[ -o interactive ]]; then
-  is_floating=$(hyprctl activewindow -j | jq -r '.floating')
-  if [[ "$is_floating" == "false" || -z "$is_floating" ]]; then
-    fastfetch
-  fi
-fi
 . "$HOME/.deno/env"
 
 # pnpm
