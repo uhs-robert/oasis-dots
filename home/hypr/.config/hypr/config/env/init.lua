@@ -17,6 +17,7 @@ local env = {
   PATH = table.concat({
     HOME .. "/.cargo/bin",
     HOME .. "/.local/bin",
+    HOME .. "/.tmuxifier/bin",
     HOME .. "/.config/hypr/scripts",
     "/usr/local/bin",
     "/usr/bin",

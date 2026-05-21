@@ -15,12 +15,13 @@
 --- @class Sessions
 --- @field sessions table<string, AppEntry[]> Named session presets; keys are display names, values are ordered app entry lists
 
+local TERM = os.getenv("TERMINAL") or "foot"
 local M = {}
 
 --- @param opts { session: string, monitor: integer|nil, ws: integer|nil }
 --- @return AppEntry
 local function tmuxifier(opts)
-  return { monitor = opts.monitor or 3, ws = opts.ws or 2, cmd = "kitty -e tmuxifier load-session " .. opts.session }
+  return { monitor = opts.monitor or 3, ws = opts.ws or 2, cmd = TERM .. " -e tmuxifier load-session " .. opts.session }
 end
 
 --- @param opts { monitor: integer|nil, ws: integer|nil }|nil
@@ -57,13 +58,13 @@ M.sessions = {
 
   ["🗂 Files"] = {
     { monitor = 3, ws = 1, cmd = "dolphin" },
-    { monitor = 4, ws = 1, cmd = "kitty -e yazi" },
+    { monitor = 4, ws = 1, cmd = TERM .. " -e yazi" },
   },
 
   ["🧩 Game Mods"] = {
     { monitor = 2, ws = 1, cmd = "steam" },
-    { monitor = 3, ws = 1, cmd = "kitty -d ~/Downloads/ -e yazi" },
-    { monitor = 4, ws = 1, cmd = "kitty -d ~/.steam/steam/steamapps/ -e yazi" },
+    { monitor = 3, ws = 1, cmd = TERM .. " -e sh -c 'cd ~/Downloads && exec yazi'" },
+    { monitor = 4, ws = 1, cmd = TERM .. " -e sh -c 'cd ~/.steam/steam/steamapps && exec yazi'" },
   },
 
   ["🎮 Game"] = {
@@ -76,13 +77,13 @@ M.sessions = {
   },
 
   ["📊 System Monitor"] = {
-    { monitor = 3, ws = 1, cmd = "kitty -e journalctl -f" },
-    { monitor = 4, ws = 1, cmd = "kitty -e btop" },
+    { monitor = 3, ws = 1, cmd = TERM .. " -e journalctl -f" },
+    { monitor = 4, ws = 1, cmd = TERM .. " -e btop" },
   },
 
   ["🛡️ System Update"] = {
-    { monitor = 2, ws = 1, cmd = "kitty -e sysup" },
-    { monitor = 3, ws = 1, cmd = "kitty -e journalctl -f" },
+    { monitor = 2, ws = 1, cmd = TERM .. " -e sysup" },
+    { monitor = 3, ws = 1, cmd = TERM .. " -e journalctl -f" },
   },
 
   ["💼 Work"] = {
