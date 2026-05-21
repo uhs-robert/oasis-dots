@@ -80,13 +80,18 @@ Config.defaults = {
 
 --- @return string|nil
 local function detect_term()
-  local candidates = { "foot", "alacritty", "kitty", "ghostty", "wezterm", "xterm", "konsole" }
+  local candidates = { "foot", "alacritty", "kitty", "wezterm", "ghostty", "xterm", "konsole" }
   local dirs = {}
-  for dir in (os.getenv("PATH") or ""):gmatch("[^:]+") do dirs[#dirs + 1] = dir end
+  for dir in (os.getenv("PATH") or ""):gmatch("[^:]+") do
+    dirs[#dirs + 1] = dir
+  end
   for _, term in ipairs(candidates) do
     for _, dir in ipairs(dirs) do
       local f = io.open(dir .. "/" .. term, "r")
-      if f then f:close(); return term end
+      if f then
+        f:close()
+        return term
+      end
     end
   end
 end
