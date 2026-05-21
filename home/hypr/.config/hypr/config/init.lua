@@ -12,7 +12,7 @@ local Utils = require("lib.utils") ---@class Utils
 --- @field size integer Cursor size in pixels (default: 24)
 
 --- @class Config.App
---- @field term string Terminal emulator command (default: "kitty")
+--- @field term string Terminal emulator command (default: auto-detected)
 --- @field editor string Editor command (default: "nvim")
 --- @field gui_file_manager string GUI file manager command (default: "dolphin")
 --- @field tui_file_manager string TUI file manager command (default: "yazi")
@@ -65,7 +65,7 @@ Config.defaults = {
     size = 24,
   },
   app = {
-    term = "kitty",
+    term = nil,
     editor = "nvim",
     gui_file_manager = "dolphin",
     tui_file_manager = "yazi",
@@ -78,12 +78,31 @@ Config.defaults = {
   devices = {}, --- @type HL.DeviceSpec[]
 }
 
+--- @return string|nil
+local function detect_term()
+  local candidates = { "foot", "alacritty", "kitty", "ghostty", "wezterm", "xterm", "konsole" }
+  local dirs = {}
+  for dir in (os.getenv("PATH") or ""):gmatch("[^:]+") do dirs[#dirs + 1] = dir end
+  for _, term in ipairs(candidates) do
+    for _, dir in ipairs(dirs) do
+      local f = io.open(dir .. "/" .. term, "r")
+      if f then f:close(); return term end
+    end
+  end
+end
+
 --- @return boolean
 local function detect_nvidia()
   local f = io.open("/dev/nvidia0", "r")
-  if f then f:close(); return true end
+  if f then
+    f:close()
+    return true
+  end
   local m = io.open("/sys/module/nvidia/version", "r")
-  if m then m:close(); return true end
+  if m then
+    m:close()
+    return true
+  end
   return false
 end
 
@@ -91,7 +110,8 @@ end
 local function detect_nvidia_backend()
   local f = io.open("/proc/driver/nvidia/version", "r")
   if f then
-    local v = f:read("*a"); f:close()
+    local v = f:read("*a")
+    f:close()
     if v:match("Open") then return "nvidia-open" end
   end
   return "nvidia-drm"
@@ -142,12 +162,11 @@ end
 --- Derives fields that are dependent upon other config values.
 --- @param cfg table
 local function derive(cfg)
+  if cfg.app.term == nil then cfg.app.term = detect_term() end
   if cfg.is_laptop == nil then cfg.is_laptop = detect_is_laptop() end
   if cfg.nvidia.enable == nil then
     cfg.nvidia.enable = detect_nvidia()
-    if cfg.nvidia.enable and cfg.nvidia.backend == nil then
-      cfg.nvidia.backend = detect_nvidia_backend()
-    end
+    if cfg.nvidia.enable and cfg.nvidia.backend == nil then cfg.nvidia.backend = detect_nvidia_backend() end
   end
   if cfg.nvidia.backend == nil then cfg.nvidia.backend = "nvidia-drm" end
   cfg.monitors = resolve_monitors(cfg.monitors, cfg.is_laptop)
