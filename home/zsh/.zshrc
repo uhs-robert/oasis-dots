@@ -66,6 +66,13 @@ HIST_STAMPS="mm/dd/yyyy"
 # Would you like to use another custom folder than $ZSH/custom?
 # ZSH_CUSTOM=/path/to/new-custom-folder
 
+# zsh-vi-mode: keep normal blinking terminal cursor
+function zvm_config() {
+  ZVM_NORMAL_MODE_CURSOR=$ZVM_CURSOR_BLINKING_BLOCK
+  ZVM_INSERT_MODE_CURSOR=$ZVM_CURSOR_BLINKING_BEAM
+  ZVM_OPPEND_MODE_CURSOR=$ZVM_CURSOR_BLINKING_BLOCK
+}
+
 # Which plugins would you like to load?
 plugins=(
   colored-man-pages
@@ -98,6 +105,18 @@ if [[ -n $SSH_CONNECTION ]]; then
 else
   export EDITOR='nvim'
 fi
+
+# SSH: use common remote terminfo instead of foot
+ssh() {
+  case "$TERM" in
+    foot|foot-extra)
+      TERM=xterm-256color command ssh "$@"
+      ;;
+    *)
+      command ssh "$@"
+      ;;
+  esac
+}
 
 export VISUAL="$EDITOR"
 export GIT_EDITOR="$EDITOR"
