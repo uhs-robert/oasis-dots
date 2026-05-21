@@ -167,6 +167,12 @@ for rc in ~/.bashrc.d/*(.N); do source "$rc"; done
 
 eval "$(tmuxifier init -)"
 
+
+# Fastfetch
+ff() {
+  fastfetch
+}
+
 # Only show fastfetch if not a floating terminal
 if [[ -o interactive ]]; then
   is_floating=$(hyprctl activewindow -j | jq -r '.floating')
