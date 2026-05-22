@@ -248,20 +248,13 @@ function Apply.to_monitors(cfg, util)
       else
         f:close()
         local base = util.signature and ("HYPRLAND_INSTANCE_SIGNATURE=" .. util.signature .. " ") or ""
-        local rc1 = os.execute(string.format("%shyprctl hyprpaper preload '%s' >/dev/null 2>&1", base, img))
-        if rc1 ~= 0 and rc1 ~= true then
-          util.log(string.format("hyprpaper preload failed (rc=%s) for %s", tostring(rc1), img), cfg)
-        end
-        util.sleep(0.15)
-        local rc2 = os.execute(string.format("%shyprctl hyprpaper wallpaper '%s,%s' >/dev/null 2>&1", base, mon, img))
-        if rc2 ~= 0 and rc2 ~= true then
-          util.log(string.format("hyprpaper wallpaper failed (rc=%s) for %s on %s", tostring(rc2), img, mon), cfg)
+        local rc = os.execute(string.format("%shyprctl hyprpaper wallpaper '%s, %s' >/dev/null 2>&1", base, mon, img))
+        if rc ~= 0 and rc ~= true then
+          util.log(string.format("hyprpaper wallpaper failed (rc=%s) for %s on %s", tostring(rc), img, mon), cfg)
         end
       end
     end
   end
-  local base = util.signature and ("HYPRLAND_INSTANCE_SIGNATURE=" .. util.signature .. " ") or ""
-  os.execute(string.format("%shyprctl hyprpaper unload unused >/dev/null 2>&1", base))
   return true
 end
 

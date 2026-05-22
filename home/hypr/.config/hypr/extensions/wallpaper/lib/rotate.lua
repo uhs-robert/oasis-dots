@@ -338,6 +338,7 @@ function Rotate.start(opts)
     maybe_refresh()
     local ok = Apply.to_monitors(cfg, util)
     if not ok then util.log("Wallpaper application failed; will retry.", cfg) end
+    return ok
   end
 
   if one_shot then
@@ -345,10 +346,21 @@ function Rotate.start(opts)
     return true
   end
 
-  -- Rotation loop
+  -- Startup: retry with short delays if hyprpaper isn't ready yet
+  if not cycle() then
+    local startup_retries = 5
+    local startup_delay_s = 3
+    for i = 1, startup_retries do
+      util.log(string.format("Startup retry %d/%d in %ds...", i, startup_retries, startup_delay_s), cfg)
+      util.sleep(startup_delay_s)
+      if cycle() then break end
+    end
+  end
+
+  -- Rotation loop (startup already did the first cycle)
   while true do
-    cycle()
     util.sleep(cfg.interval_seconds)
+    cycle()
   end
 end
 
