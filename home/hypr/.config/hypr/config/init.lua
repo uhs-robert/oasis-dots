@@ -66,6 +66,7 @@ Config.defaults = {
   },
   app = {
     term = nil,
+    term_cmd = nil,
     editor = "nvim",
     gui_file_manager = "dolphin",
     tui_file_manager = "yazi",
@@ -80,7 +81,7 @@ Config.defaults = {
 
 --- @return string|nil
 local function detect_term()
-  local candidates = { "foot", "alacritty", "kitty", "wezterm", "ghostty", "xterm", "konsole" }
+  local candidates = { "kitty", "foot", "ghostty", "wezterm", "alacritty", "xterm", "konsole" }
   local dirs = {}
   for dir in (os.getenv("PATH") or ""):gmatch("[^:]+") do
     dirs[#dirs + 1] = dir
@@ -94,6 +95,22 @@ local function detect_term()
       end
     end
   end
+end
+
+local TERM_CMDS = {
+  ghostty = "ghostty +new-window",
+  foot = "foot",
+  alacritty = "alacritty",
+  kitty = "kitty --single-instance",
+  wezterm = "wezterm start",
+  xterm = "xterm",
+  konsole = "konsole",
+}
+
+--- @return string|nil
+local function detect_term_cmd(term)
+  if term == nil then return nil end
+  return TERM_CMDS[term] or term
 end
 
 --- @return boolean
@@ -168,6 +185,7 @@ end
 --- @param cfg table
 local function derive(cfg)
   if cfg.app.term == nil then cfg.app.term = detect_term() end
+  if cfg.app.term_cmd == nil then cfg.app.term_cmd = detect_term_cmd(cfg.app.term) end
   if cfg.is_laptop == nil then cfg.is_laptop = detect_is_laptop() end
   if cfg.nvidia.enable == nil then
     cfg.nvidia.enable = detect_nvidia()

@@ -6,7 +6,7 @@ local Scripts = require("lib.scripts") --- @class Scripts
 local Submap = require("lib.key.submap") --- @class Submap
 local Cmd = require("lib.actions.cmd") ---@class Cmd
 
-local TERM = Config.app.term
+local TERM_CMD = Config.app.term_cmd
 local TUI_FILES = Config.app.tui_file_manager
 
 local CMD = {
@@ -15,7 +15,7 @@ local CMD = {
   poweroff = "systemctl poweroff",
   restart_waybar = "killall swaync swaync-client waybar; swaync & waybar &",
   restart_waybar_git = "killall swaync swaync-client waybar; swaync & ~/clones/Waybar/build/waybar -c ~/.config/waybar/config.jsonc -s ~/.config/waybar/style.css &",
-  edit_keymaps = TERM .. " -e " .. TUI_FILES .. " ~/.config/hypr/keymaps/",
+  edit_keymaps = TERM_CMD .. " -e " .. TUI_FILES .. " ~/.config/hypr/keymaps/",
   theme_switch = "~/.config/hypr/theme/switch.lua '" .. Config.app.dmenu_cmd .. "'",
 }
 

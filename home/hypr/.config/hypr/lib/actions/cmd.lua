@@ -3,7 +3,7 @@
 
 local Config = require("config") ---@class Config
 
-local TERM = Config.app.term
+local TERM_CMD = Config.app.term_cmd
 
 --- @class Cmd
 local Cmd = {}
@@ -15,9 +15,13 @@ Cmd.run = function(cmd)
   return function() hl.dispatch(hl.dsp.exec_cmd(cmd)) end
 end
 
+--- Return an action that opens a new terminal window.
+--- @return fun()
+Cmd.open_term = function() return Cmd.run(TERM_CMD) end
+
 --- Return an action that runs a command in the configured terminal.
 --- @param command string
 --- @return fun()
-Cmd.term = function(command) return Cmd.run(TERM .. " -e " .. command) end
+Cmd.term = function(command) return Cmd.run(TERM_CMD .. " -e " .. command) end
 
 return Cmd

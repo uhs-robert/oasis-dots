@@ -123,11 +123,11 @@ fi
 # SSH: use common remote terminfo instead of foot
 ssh() {
   case "$TERM" in
-    foot|foot-extra)
-      TERM=xterm-256color command ssh "$@"
+    kitty)
+      command ssh "$@"
       ;;
     *)
-      command ssh "$@"
+      TERM=xterm-256color command ssh "$@"
       ;;
   esac
 }
