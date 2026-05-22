@@ -51,17 +51,12 @@ prepend_keymap = [
 
   # Trash
   { on = [ "g", "t", ], run = "plugin recycle-bin open", desc = "Go to Trash" },
-  # { on = [ "R", "b", ], run = "plugin recycle-bin", desc = "Open Recycle Bin Menu" },
   { on = [ "R" ], run = "plugin recycle-bin", desc = "Open Recycle Bin Menu" },
 
-  # Sudo
-  { on = [ "A", "p", "p", ], run = "plugin sudo -- paste", desc = "sudo paste" },
-  { on = [ "A", "P", ], run = "plugin sudo -- paste --force", desc = "sudo paste" },
-  { on = [ "A", "r", ], run = "plugin sudo -- rename", desc = "sudo rename" },
-  { on = [ "A", "p", "l", ], run = "plugin sudo -- link", desc = "sudo link" },
-  { on = [ "A", "p", "r", ], run = "plugin sudo -- link --relative", desc = "sudo link relative path" },
-  { on = [ "A", "p", "L", ], run = "plugin sudo -- hardlink", desc = "sudo hardlink" },
-  { on = [ "A", "a", ], run = "plugin sudo -- create", desc = "sudo create" }, 
-  { on = [ "A", "d", ], run = "plugin sudo -- remove", desc = "sudo trash" },
-  { on = [ "A", "D", ], run = "plugin sudo -- remove --permanently", desc = "sudo delete" },
+  # Admin
+  { on = ["A", "o"], run = "shell --block -- sudoedit %h", desc = "Sudoedit File"},
+  { on = ["A", "y"], run = "shell --block -- sudo yazi %d", desc = "Sudo Yazi"},
+  { on = ["A", "x"], run = "shell --block -- sudo chmod +x %h", desc = "Sudo chmod +x" },
+  { on = ["A", "m"], run = 'shell --block -- printf "chmod: "; read mode; sudo chmod "$mode" %h', desc = "Sudo chmod" },
+  { on = ["A", "c"], run = 'shell --block -- ls -l %h; printf "owner[:group]: "; read owner; [ -n "$owner" ] && sudo chown "$owner" %h', desc = "Sudo chown" },
 ]
