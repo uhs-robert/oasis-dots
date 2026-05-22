@@ -13,30 +13,32 @@
 --- @field delay integer|nil milliseconds to wait before launching
 
 --- @class Sessions
---- @field sessions table<string, AppEntry[]> Named session presets; keys are display names, values are ordered app entry lists
+--- @field get_sessions fun(term: string): table<string, AppEntry[]> Returns named session presets for the given terminal command
 
-local TERM = os.getenv("TERMINAL") or "foot"
 local M = {}
 
---- @param opts { session: string, monitor: integer|nil, ws: integer|nil }
---- @return AppEntry
-local function tmuxifier(opts)
-  return { monitor = opts.monitor or 3, ws = opts.ws or 2, cmd = TERM .. " -e tmuxifier load-session " .. opts.session }
-end
+--- @param term string Terminal emulator command (e.g. "kitty --single-instance")
+--- @return table<string, AppEntry[]>
+function M.get_sessions(term)
+  --- @param opts { session: string, monitor: integer|nil, ws: integer|nil }
+  --- @return AppEntry
+  local function tmuxifier(opts)
+    return { monitor = opts.monitor or 3, ws = opts.ws or 2, cmd = term .. " -e tmuxifier load-session " .. opts.session }
+  end
 
---- @param opts { monitor: integer|nil, ws: integer|nil }|nil
---- @return AppEntry
-local function betterbird(opts)
-  opts = opts or {}
+  --- @param opts { monitor: integer|nil, ws: integer|nil }|nil
+  --- @return AppEntry
+  local function betterbird(opts)
+    opts = opts or {}
+    return {
+      monitor = opts.monitor or 4,
+      ws = opts.ws or 1,
+      cmd = "flatpak run eu.betterbird.Betterbird",
+      class = "eu.betterbird.Betterbird",
+    }
+  end
+
   return {
-    monitor = opts.monitor or 4,
-    ws = opts.ws or 1,
-    cmd = "flatpak run eu.betterbird.Betterbird",
-    class = "eu.betterbird.Betterbird",
-  }
-end
-
-M.sessions = {
   ["🌐 Browsing"] = {
     { monitor = 3, ws = 1, cmd = "firefox --new-window" },
     tmuxifier({ session = "config" }),
@@ -58,13 +60,13 @@ M.sessions = {
 
   ["🗂 Files"] = {
     { monitor = 3, ws = 1, cmd = "dolphin" },
-    { monitor = 4, ws = 1, cmd = TERM .. " -e yazi" },
+    { monitor = 4, ws = 1, cmd = term .. " -e yazi" },
   },
 
   ["🧩 Game Mods"] = {
     { monitor = 2, ws = 1, cmd = "steam" },
-    { monitor = 3, ws = 1, cmd = TERM .. " -e sh -c 'cd ~/Downloads && exec yazi'" },
-    { monitor = 4, ws = 1, cmd = TERM .. " -e sh -c 'cd ~/.steam/steam/steamapps && exec yazi'" },
+    { monitor = 3, ws = 1, cmd = term .. " -e sh -c 'cd ~/Downloads && exec yazi'" },
+    { monitor = 4, ws = 1, cmd = term .. " -e sh -c 'cd ~/.steam/steam/steamapps && exec yazi'" },
   },
 
   ["🎮 Game"] = {
@@ -77,13 +79,13 @@ M.sessions = {
   },
 
   ["📊 System Monitor"] = {
-    { monitor = 3, ws = 1, cmd = TERM .. " -e journalctl -f" },
-    { monitor = 4, ws = 1, cmd = TERM .. " -e btop" },
+    { monitor = 3, ws = 1, cmd = term .. " -e journalctl -f" },
+    { monitor = 4, ws = 1, cmd = term .. " -e btop" },
   },
 
   ["🛡️ System Update"] = {
-    { monitor = 2, ws = 1, cmd = TERM .. " -e sysup" },
-    { monitor = 3, ws = 1, cmd = TERM .. " -e journalctl -f" },
+    { monitor = 2, ws = 1, cmd = term .. " -e sysup" },
+    { monitor = 3, ws = 1, cmd = term .. " -e journalctl -f" },
   },
 
   ["💼 Work"] = {
@@ -94,6 +96,7 @@ M.sessions = {
     tmuxifier({ session = "config", ws = 3 }),
     { monitor = 4, ws = 1, cmd = "slack", class = "Slack", size = { 1064, 461 }, delay = 5000 },
   },
-}
+  }
+end
 
 return M

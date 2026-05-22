@@ -8,6 +8,7 @@ package.path = script_dir .. "?.lua;" .. package.path
 
 local setups = require("sessions") ---@type Sessions
 local WS_PER_MONITOR = tonumber(arg[1]) or 5
+local TERM_CMD = arg[2] or os.getenv("TERMINAL") or "foot"
 
 --- Returns the absolute workspace number for a monitor at a given offset.
 --- @param monitor integer 1-based monitor index (matches Config.monitors order)
@@ -134,5 +135,6 @@ local function run(apps)
   end
 end
 
-local choice = pick(setups.sessions, "Session")
-if choice then run(setups.sessions[choice]) end
+local sessions = setups.get_sessions(TERM_CMD)
+local choice = pick(sessions, "Session")
+if choice then run(sessions[choice]) end
