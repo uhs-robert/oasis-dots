@@ -1,5 +1,8 @@
 -- home/hypr/.config/hypr/config/system/autostart.lua
 
+local Config = require("config")
+local TERM = Config.app.term
+
 -- stylua: ignore
 --- Runs all autostart commands on Hyprland session start.
 --- Called via `hl.on("hyprland.start", ...)` from config/init.lua.
@@ -12,6 +15,7 @@ local function run()
   hl.exec_cmd("systemctl --user start gnome-keyring-daemon.socket")
   hl.exec_cmd("gnome-keyring-daemon --start --components=secrets,ssh")
   hl.exec_cmd("dbus-update-activation-environment --systemd GNOME_KEYRING_CONTROL SSH_AUTH_SOCK")
+  if (TERM == 'foot') then hl.exec_cmd('foot --server') end
   hl.exec_cmd("swaync")
   hl.exec_cmd("hypridle")
   hl.exec_cmd("waybar")

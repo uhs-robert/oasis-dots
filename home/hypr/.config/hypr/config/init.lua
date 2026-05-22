@@ -99,7 +99,7 @@ end
 
 local TERM_CMDS = {
   ghostty = "ghostty +new-window",
-  foot = "foot",
+  foot = "footclient",
   alacritty = "alacritty",
   kitty = "kitty --single-instance",
   wezterm = "wezterm start",
