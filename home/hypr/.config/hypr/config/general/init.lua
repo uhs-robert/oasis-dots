@@ -18,7 +18,7 @@ hl.config({
   },
 
   decoration = {
-    rounding = 8,
+    rounding = 0,
     active_opacity = 1,
     inactive_opacity = 0.5,
     dim_inactive = true,
