@@ -1,0 +1,2 @@
+#!/bin/sh
+exec kitty --single-instance "$@"

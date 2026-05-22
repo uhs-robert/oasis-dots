@@ -13,17 +13,16 @@
 --- @field delay integer|nil milliseconds to wait before launching
 
 --- @class Sessions
---- @field get_sessions fun(term: string): table<string, AppEntry[]> Returns named session presets for the given terminal command
+--- @field get_sessions fun(): table<string, AppEntry[]> Returns named session presets
 
 local M = {}
 
---- @param term string Terminal emulator command (e.g. "kitty --single-instance")
 --- @return table<string, AppEntry[]>
-function M.get_sessions(term)
+function M.get_sessions()
   --- @param opts { session: string, monitor: integer|nil, ws: integer|nil }
   --- @return AppEntry
   local function tmuxifier(opts)
-    return { monitor = opts.monitor or 3, ws = opts.ws or 2, cmd = term .. " -e tmuxifier load-session " .. opts.session }
+    return { monitor = opts.monitor or 3, ws = opts.ws or 2, cmd = "term -e tmuxifier load-session " .. opts.session }
   end
 
   --- @param opts { monitor: integer|nil, ws: integer|nil }|nil
@@ -60,13 +59,13 @@ function M.get_sessions(term)
 
   ["🗂 Files"] = {
     { monitor = 3, ws = 1, cmd = "dolphin" },
-    { monitor = 4, ws = 1, cmd = term .. " -e yazi" },
+    { monitor = 4, ws = 1, cmd = "term -e yazi" },
   },
 
   ["🧩 Game Mods"] = {
     { monitor = 2, ws = 1, cmd = "steam" },
-    { monitor = 3, ws = 1, cmd = term .. " -e sh -c 'cd ~/Downloads && exec yazi'" },
-    { monitor = 4, ws = 1, cmd = term .. " -e sh -c 'cd ~/.steam/steam/steamapps && exec yazi'" },
+    { monitor = 3, ws = 1, cmd = "term -e sh -c 'cd ~/Downloads && exec yazi'" },
+    { monitor = 4, ws = 1, cmd = "term -e sh -c 'cd ~/.steam/steam/steamapps && exec yazi'" },
   },
 
   ["🎮 Game"] = {
@@ -79,13 +78,13 @@ function M.get_sessions(term)
   },
 
   ["📊 System Monitor"] = {
-    { monitor = 3, ws = 1, cmd = term .. " -e journalctl -f" },
-    { monitor = 4, ws = 1, cmd = term .. " -e btop" },
+    { monitor = 3, ws = 1, cmd = "term -e journalctl -f" },
+    { monitor = 4, ws = 1, cmd = "term -e btop" },
   },
 
   ["🛡️ System Update"] = {
-    { monitor = 2, ws = 1, cmd = term .. " -e sysup" },
-    { monitor = 3, ws = 1, cmd = term .. " -e journalctl -f" },
+    { monitor = 2, ws = 1, cmd = "term -e sysup" },
+    { monitor = 3, ws = 1, cmd = "term -e journalctl -f" },
   },
 
   ["💼 Work"] = {

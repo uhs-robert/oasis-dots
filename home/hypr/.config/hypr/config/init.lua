@@ -181,11 +181,25 @@ local function fill_menu_cmds(app)
   if not app.dmenu_cmd then app.dmenu_cmd = m .. " -name rofiDmenu -i -dmenu" end
 end
 
+--- Writes a thin wrapper script so any subprocess can call `term -e cmd`
+--- without knowing the emulator's flags.
+--- @param term_cmd string
+local function write_term_wrapper(term_cmd)
+  local home = os.getenv("HOME")
+  local path = home .. "/.config/hypr/scripts/term"
+  local f = io.open(path, "w")
+  if not f then return end
+  f:write("#!/bin/sh\nexec " .. term_cmd .. ' "$@"\n')
+  f:close()
+  os.execute("chmod +x " .. path)
+end
+
 --- Derives fields that are dependent upon other config values.
 --- @param cfg table
 local function derive(cfg)
   if cfg.app.term == nil then cfg.app.term = detect_term() end
   if cfg.app.term_cmd == nil then cfg.app.term_cmd = detect_term_cmd(cfg.app.term) end
+  write_term_wrapper(cfg.app.term_cmd)
   if cfg.is_laptop == nil then cfg.is_laptop = detect_is_laptop() end
   if cfg.nvidia.enable == nil then
     cfg.nvidia.enable = detect_nvidia()

@@ -26,12 +26,6 @@ end
 
 hl.bind(
   Config.leader .. " + SHIFT + O",
-  hl.dsp.exec_cmd(
-    string.format(
-      "lua ~/.config/hypr/extensions/auto_launcher/launch.lua %d '%s'",
-      Config.ws_per_monitor,
-      Config.app.term_cmd
-    )
-  ),
+  hl.dsp.exec_cmd("lua ~/.config/hypr/extensions/auto_launcher/launch.lua " .. Config.ws_per_monitor),
   { description = "Workspace App Launcher" }
 )
