@@ -25,6 +25,11 @@ th.git.deleted = ui.Style():fg("red"):bold()
 th.git.modified_sign = "M"
 th.git.deleted_sign = "D"
 
+-- Relative Motion
+require("relative-motions"):setup({
+	show_numbers = "relative",
+})
+
 -- SSHFS
 require("sshfs"):setup({
 	enable_custom_hosts = false,

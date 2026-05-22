@@ -4,7 +4,21 @@ prepend_keymap = [
   # Utils
   { on = "?", run = "help", desc = "Open help" },
   { on = "!", run = 'shell "$SHELL" --block', desc = "Open shell here" },
-  { on = "=", run = "plugin toggle-pane max-preview", desc = "Maximize or restore the preview pane" },
+
+  # Toggles
+  { on = ["T", "f"], run = "plugin toggle-pane max-preview", desc = "Maximize or restore the preview pane" },
+  { on = ["T", "p"], run = "plugin toggle-pane min-preview", desc = "Toggle the preview pane" },
+
+  # Relative motions
+  { on = "1", run = "plugin relative-motions 1", desc = "Move in relative steps" },
+  { on = "2", run = "plugin relative-motions 2", desc = "Move in relative steps" },
+  { on = "3", run = "plugin relative-motions 3", desc = "Move in relative steps" },
+  { on = "4", run = "plugin relative-motions 4", desc = "Move in relative steps" },
+  { on = "5", run = "plugin relative-motions 5", desc = "Move in relative steps" },
+  { on = "6", run = "plugin relative-motions 6", desc = "Move in relative steps" },
+  { on = "7", run = "plugin relative-motions 7", desc = "Move in relative steps" },
+  { on = "8", run = "plugin relative-motions 8", desc = "Move in relative steps" },
+  { on = "9", run = "plugin relative-motions 9", desc = "Move in relative steps" },
 
   # Go to...
   { on = [ "g", "/", ], run = "cd /", desc = "Go to /" },
@@ -31,11 +45,11 @@ prepend_keymap = [
   { on = ["i", "d"], run = "shell -- dolphin .", desc = "Open in Dolphin" },
   { on = ["i", "i"], run = 'shell --block -- stat %h; echo; file %h; echo; read -n 1 -s -r -p "Press any key..."', desc = "Inspect file" },
 
-  # Mount Options
+  # Mount
   { on = [ "M", "m", ], run = "plugin mount", desc = "Open Mount Options" },
   { on = [ "M", "s", ], run = "plugin sshfs -- menu", desc = "Open SSHFS Options" },
 
-  # Ch Mod
+  # Change
   { on = [ "c", "m", ], run = "plugin chmod", desc = "Chmod on selected files" },
 
   # Restore

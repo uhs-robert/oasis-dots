@@ -1,4 +1,7 @@
---- @since 25.5.28
+--- @since 25.5.31
+
+local PackageName = "relative-motions"
+local M = {}
 -- stylua: ignore
 local MOTIONS_AND_OP_KEYS = {
 	{ on = "0" }, { on = "1" }, { on = "2" }, { on = "3" }, { on = "4" },
@@ -9,7 +12,7 @@ local MOTIONS_AND_OP_KEYS = {
 	{ on = "t" }, { on = "L" }, { on = "H" }, { on = "w" },
 	{ on = "W" }, { on = "<" }, { on = ">" }, { on = "~" },
 	-- movement
-	{ on = "g" }, { on = "j" }, { on = "k" }, { on = "h" }, { on = "l" }, { on = "<Down>" }, { on = "<Up>" }, { on = "<Left>" }, { on = "<Right>" }
+	{ on = "g" }, { on = "j" }, { on = "k" }, { on = "<Down>" }, { on = "<Up>" }
 }
 
 -- stylua: ignore
@@ -17,7 +20,7 @@ local MOTION_KEYS = {
 	{ on = "0" }, { on = "1" }, { on = "2" }, { on = "3" }, { on = "4" },
 	{ on = "5" }, { on = "6" }, { on = "7" }, { on = "8" }, { on = "9" },
 	-- movement
-	{ on = "g" }, { on = "j" }, { on = "k" }, { on = "h" }, { on = "l" }, { on = "<Down>" }, { on = "<Up>" }, { on = "<Left>" }, { on = "<Right>" }
+	{ on = "g" }, { on = "j" }, { on = "k" }
 }
 
 -- stylua: ignore
@@ -27,48 +30,33 @@ local DIRECTION_KEYS = {
 	{ on = "t" }
 }
 
-local SHOW_NUMBERS_ABSOLUTE = 0
-local SHOW_NUMBERS_RELATIVE = 1
-local SHOW_NUMBERS_RELATIVE_ABSOLUTE = 2
-
-local ENTER_MODE_FIRST = 0
-local ENTER_MODE_CACHE = 1
-local ENTER_MODE_CACHE_OR_FIRST = 2
-
 -----------------------------------------------
 ----------------- R E N D E R -----------------
 -----------------------------------------------
 
+local function warn(s, ...)
+	ya.notify { title = PackageName, content = string.format(s, ...), timeout = 5, level = "warn" }
+end
+
 local render_motion_setup = ya.sync(function(_)
-	if ui.render then
-		ui.render()
-	else
-		ya.render()
-	end
+	(ui.render or ya.render)()
 
 	Status.motion = function() return ui.Span("") end
 
 	Status.children_redraw = function(self, side)
 		local lines = {}
 		if side == self.RIGHT then
-			lines[1] = self:motion(self)
+			lines[1] = self:motion()
 		end
 		for _, c in ipairs(side == self.RIGHT and self._right or self._left) do
 			lines[#lines + 1] = (type(c[1]) == "string" and self[c[1]] or c[1])(self)
 		end
 		return ui.Line(lines)
 	end
-
-	-- TODO: check why it doesn't work line this
-	-- Status:children_add(function() return ui.Span("") end, 1000, Status.RIGHT)
 end)
 
 local render_motion = ya.sync(function(_, motion_num, motion_cmd)
-	if ui.render then
-		ui.render()
-	else
-		ya.render()
-	end
+	(ui.render or ya.render)()
 
 	Status.motion = function(self)
 		if not motion_num then
@@ -79,70 +67,124 @@ local render_motion = ya.sync(function(_, motion_num, motion_cmd)
 
 		local motion_span
 		if not motion_cmd then
-			motion_span = ui.Span(string.format("  %3d ", motion_num))
+			motion_span = ui.Span(string.format(" %d ", motion_num)):style(style.main)
 		else
-			motion_span = ui.Span(string.format(" %3d%s ", motion_num, motion_cmd))
+			motion_span = ui.Span(string.format(" %d%s ", motion_num, motion_cmd)):style(style.main)
 		end
-
-		local status_config = th.status
-		local separator_open = status_config.sep_right.open
-		local separator_close = status_config.sep_right.close
-
-		-- TODO: REMOVE THIS IN NEXT RELEASE
-		local bg_style
-		if type(style.main.bg) == "function" then
-			bg_style = style.main:bg()
-		else
-			bg_style = style.main.bg
-		end
-
 		return ui.Line {
-			ui.Span(separator_open):fg(bg_style),
-			motion_span:style(style.main),
-			ui.Span(separator_close):fg(bg_style),
+			-- TODO: Remove type... == string check
+			ui.Span(th.status.sep_right.open):fg(type(style.main.bg) == "string" and style.main.bg or style.main:bg()),
+			motion_span,
+			ui.Span(th.status.sep_right.close)
+				:fg(type(style.main.bg) == "string" and style.main.bg or style.main:bg())
+				:bg(type(style.alt.bg) == "string" and style.alt.bg or style.alt:bg()),
 			ui.Span(" "),
 		}
 	end
 end)
 
-local render_numbers = ya.sync(function(_, mode)
-	if ui.render then
-		ui.render()
-	else
-		ya.render()
-	end
+---@enum render_mode
+local RENDER_MODE = {
+	SHOW_NUMBERS_ABSOLUTE = 0,
+	SHOW_NUMBERS_RELATIVE = 1,
+	SHOW_NUMBERS_RELATIVE_ABSOLUTE = 2,
+}
+--- Render line numbers based on RENDER_MODE
+--- @param mode render_mode
+--- @param styles {hovered: {fg: any, bg: any}, normal: {fg: any, bg: any}}
+--- @param resizable_entity_children_ids table<number, number> input list of entity children which are resizable e.g: {4, 6} id=4 is filname and find highlight, id=6 is symlink. You have to override those `Entity:method` to be able to make this work
+--- @return nil
+local render_numbers = ya.sync(function(state, mode, styles, resizable_entity_children_ids)
+	(ui.render or ya.render)()
 
-	Entity.number = function(_, index, total, file, hovered)
+	local smart_truncate_entity_plugin_ok, smart_truncate_entity_plugin = pcall(require, "smart-truncate")
+
+	Entity.number = function(_, index, file, hovered, last_index)
 		local idx
-		if mode == SHOW_NUMBERS_RELATIVE then
+		local offset = 1
+		if mode == RENDER_MODE.SHOW_NUMBERS_RELATIVE then
 			idx = math.abs(hovered - index)
-		elseif mode == SHOW_NUMBERS_ABSOLUTE then
+			offset = idx >= 100 and 2 or offset
+		elseif mode == RENDER_MODE.SHOW_NUMBERS_ABSOLUTE then
 			idx = file.idx
-		else -- SHOW_NUMBERS_RELATIVE_ABSOLUTE
+			offset = string.len(last_index)
+		else -- RENDER_MODE.SHOW_NUMBERS_RELATIVE_ABSOLUTE
 			if hovered == index then
 				idx = file.idx
 			else
 				idx = math.abs(hovered - index)
 			end
+			offset = string.len(last_index)
 		end
 
-		local num_format = "%" .. #tostring(total) .. "d"
-
-		-- emulate vim's hovered offset
 		if hovered == index then
-			return ui.Span(string.format(num_format .. " ", idx))
+			return ui.Span(string.format("%" .. tostring(offset + 1) .. "d ", idx))
+				:style(styles and styles.hovered or ui.Style())
 		else
-			return ui.Span(string.format(" " .. num_format, idx))
+			return ui.Span(string.format("%" .. tostring(offset + 1) .. "d ", idx))
+				:style(styles and styles.normal or ui.Style())
 		end
 	end
 
-	Current.redraw = function(self)
-		local files = self._folder.window
-		if #files == 0 then
-			return self:empty()
+	Parent.redraw = function(parent_self)
+		if not parent_self._folder then
+			return {}
 		end
 
+		local entities, linemodes = {}, {}
+		local parent_tab_window_w = parent_self._area.w
+		for _, f in ipairs(parent_self._folder.window) do
+			local entity = Entity:new(f)
+			local linemode_rendered = Linemode:new(f):redraw()
+			local linemode_char_length = linemode_rendered:align(ui.Align.RIGHT):width()
+			if resizable_entity_children_ids then
+				if smart_truncate_entity_plugin_ok then
+					if not smart_truncate_entity_plugin:is_setup_loaded() then
+						if not state.warned_smart_truncate_missing then
+							state.warned_smart_truncate_missing = true
+							warn(
+								"smart-truncate plugin is installed, but your forgot to call its setup function \nor you could set smart_truncate = false in setup function"
+							)
+						end
+					else
+						smart_truncate_entity_plugin:smart_truncate_entity(entity, parent_tab_window_w - linemode_char_length)
+					end
+				else
+					if not state.warned_smart_truncate_missing then
+						state.warned_smart_truncate_missing = true
+						warn(
+							"smart-truncate plugin is not installed, please install it to use smart truncate feature \nor set smart_truncate = false in setup function"
+						)
+						return
+					end
+				end
+			end
+
+			entities[#entities + 1] = ui.Line({ entity:redraw() }):style(entity:style())
+			linemodes[#linemodes + 1] = linemode_rendered
+
+			-- fallback to default render behaviour
+			if state.warned_smart_truncate_missing or not resizable_entity_children_ids then
+				local max = math.max(0, parent_self._area.w - linemodes[#linemodes]:width())
+				entities[#entities]:truncate { max = max, ellipsis = entity:ellipsis(max) }
+			end
+		end
+
+		return {
+			ui.List(entities):area(parent_self._area),
+			ui.Text(linemodes):area(parent_self._area):align(ui.Align.RIGHT),
+		}
+	end
+
+	Current.redraw = function(current_self)
+		local files = current_self._folder.window
+		if #files == 0 then
+			return current_self:empty()
+		end
+
+		local last_entity_index = #current_self._folder.files
 		local hovered_index
+		local current_tab_window_w = current_self._area.w
 		for i, f in ipairs(files) do
 			if f.is_hovered then
 				hovered_index = i
@@ -152,16 +194,50 @@ local render_numbers = ya.sync(function(_, mode)
 
 		local entities, linemodes = {}, {}
 		for i, f in ipairs(files) do
-			linemodes[#linemodes + 1] = Linemode:new(f):redraw()
-
+			local line_number_component = ui.Line(Entity:number(i, f, hovered_index, last_entity_index))
 			local entity = Entity:new(f)
-			entities[#entities + 1] = ui.Line({ Entity:number(i, #self._folder.files, f, hovered_index), entity:redraw() })
-				:style(entity:style())
+			local linemode_rendered = Linemode:new(f):redraw()
+			local linemode_char_length = linemode_rendered:align(ui.Align.RIGHT):width()
+			-- smart truncate
+			if resizable_entity_children_ids then
+				if smart_truncate_entity_plugin_ok then
+					if not smart_truncate_entity_plugin:is_setup_loaded() then
+						if not state.warned_smart_truncate_missing then
+							state.warned_smart_truncate_missing = true
+							warn(
+								"smart-truncate plugin is installed, but your forgot to call its setup function \nor you could set smart_truncate = false in setup function"
+							)
+						end
+					else
+						smart_truncate_entity_plugin:smart_truncate_entity(
+							entity,
+							current_tab_window_w - line_number_component:width() - linemode_char_length
+						)
+					end
+				else
+					if not state.warned_smart_truncate_missing then
+						state.warned_smart_truncate_missing = true
+						warn(
+							"smart-truncate plugin is not installed, please install it to use smart truncate feature \nor set smart_truncate = false in setup function"
+						)
+						return
+					end
+				end
+			end
+
+			entities[#entities + 1] = ui.Line({ line_number_component, entity:redraw() }):style(entity:style())
+			linemodes[#linemodes + 1] = linemode_rendered
+
+			-- fallback to default render behaviour
+			if state.warned_smart_truncate_missing or not resizable_entity_children_ids then
+				local max = math.max(0, current_self._area.w - linemodes[#linemodes]:width())
+				entities[#entities]:truncate { max = max, ellipsis = entity:ellipsis(max) }
+			end
 		end
 
 		return {
-			ui.List(entities):area(self._area),
-			ui.Text(linemodes):area(self._area):align(ui.Align.RIGHT),
+			ui.List(entities):area(current_self._area),
+			ui.Text(linemodes):area(current_self._area):align(ui.Align.RIGHT),
 		}
 	end
 end)
@@ -179,10 +255,6 @@ local function normal_direction(dir)
 		return "j"
 	elseif dir == "<Up>" then
 		return "k"
-	elseif dir == "<Left>" then
-		return "h"
-	elseif dir == "<Right>" then
-		return "l"
 	end
 	return dir
 end
@@ -239,168 +311,138 @@ end
 
 local get_active_tab = ya.sync(function(_) return cx.tabs.idx end)
 
-local get_cache_or_first_dir = ya.sync(function(state)
-	if state._enter_mode == ENTER_MODE_CACHE then
-		return nil
-	elseif state._enter_mode == ENTER_MODE_CACHE_OR_FIRST then
-		local hovered_file = cx.active.current.hovered
-
-		if hovered_file ~= nil and hovered_file.cha.is_dir then
-			return cx.active.current.cursor
-		end
-	end
-
-	local files = cx.active.current.files
-	local index = 1
-
-	for i = 1, #files do
-		if files[i].cha.is_dir then
-			index = i
-			break
-		end
-	end
-
-	return index - 1
-end)
 -----------------------------------------------
 ---------- E N T R Y   /   S E T U P ----------
 -----------------------------------------------
 
-return {
-	entry = function(_, job)
-		local initial_value
+function M:setup(args)
+	local state = self
+	if not args then
+		return
+	end
 
-		local args = job.args
-		-- this is checking if the argument is a valid number
-		if #args > 0 then
-			initial_value = tostring(tonumber(args[1]))
-			if initial_value == "nil" then
-				return
-			end
+	-- initialize state variables
+	state._only_motions = args["only_motions"] or false
+
+	if args["show_motion"] then
+		render_motion_setup()
+	end
+
+	local custom_line_numbers_styles = args["line_numbers_styles"] or {}
+	-- Default are filename/highlight (4) and symlink (6)
+	-- Default = true equal { 4, 6 }
+	-- 4 and 6 ids is get from this Entity._children
+	-- https://github.com/sxyazi/yazi/blob/main/yazi-plugin/preset/components/entity.lua
+	---@type boolean
+	local smart_truncate = args["smart_truncate"]
+	local resizable_entity_children_ids = { 4, 6 }
+	if not smart_truncate then
+		resizable_entity_children_ids = nil
+	end
+
+	if args["show_numbers"] == "absolute" then
+		render_numbers(RENDER_MODE.SHOW_NUMBERS_ABSOLUTE, custom_line_numbers_styles, resizable_entity_children_ids)
+	elseif args["show_numbers"] == "relative" then
+		render_numbers(RENDER_MODE.SHOW_NUMBERS_RELATIVE, custom_line_numbers_styles, resizable_entity_children_ids)
+	elseif args["show_numbers"] == "relative_absolute" then
+		render_numbers(
+			RENDER_MODE.SHOW_NUMBERS_RELATIVE_ABSOLUTE,
+			custom_line_numbers_styles,
+			resizable_entity_children_ids
+		)
+	end
+end
+
+function M:entry(job)
+	local initial_value
+
+	-- this is checking if the argument is a valid number
+	if job.args then
+		initial_value = tostring(tonumber(job.args[1]))
+		if initial_value == "nil" then
+			return
 		end
+	end
 
-		local lines, cmd, direction = get_cmd(initial_value, get_keys())
-		if not lines or not cmd then
-			-- command was cancelled
+	local lines, cmd, direction = get_cmd(initial_value, get_keys())
+	if not lines or not cmd then
+		-- command was cancelled
+		render_clear()
+		return
+	end
+
+	if cmd == "g" then
+		if direction == "g" then
+			ya.emit("arrow", { "top" })
+			ya.emit("arrow", { lines - 1 })
+			render_clear()
+			return
+		elseif direction == "j" then
+			cmd = "j"
+		elseif direction == "k" then
+			cmd = "k"
+		elseif direction == "t" then
+			ya.emit("tab_switch", { lines - 1 })
+			render_clear()
+			return
+		else
+			-- no valid direction
 			render_clear()
 			return
 		end
+	end
 
-		if cmd == "g" then
-			if direction == "g" then
-				ya.mgr_emit("arrow", { "top" })
-				ya.mgr_emit("arrow", { lines - 1 })
-				render_clear()
-				return
-			elseif direction == "j" then
-				cmd = "j"
-			elseif direction == "k" then
-				cmd = "k"
-			elseif direction == "t" then
-				ya.mgr_emit("tab_switch", { lines - 1 })
-				render_clear()
-				return
-			else
-				-- no valid direction
-				render_clear()
-				return
-			end
-		end
-
-		if cmd == "j" then
-			ya.mgr_emit("arrow", { lines })
-		elseif cmd == "k" then
-			ya.mgr_emit("arrow", { -lines })
-		elseif cmd == "h" then
+	if cmd == "j" then
+		ya.emit("arrow", { lines })
+	elseif cmd == "k" then
+		ya.emit("arrow", { -lines })
+	elseif is_tab_command(cmd) then
+		if cmd == "t" then
 			for _ = 1, lines do
-				ya.mgr_emit("leave", {})
+				ya.emit("tab_create", {})
 			end
-		elseif cmd == "l" then
-			for _ = 1, lines do
-				ya.mgr_emit("enter", {})
-				local file_idx = get_cache_or_first_dir()
-				if file_idx then
-					ya.mgr_emit("arrow", { "top" })
-					ya.mgr_emit("arrow", { file_idx })
-				end
+		elseif cmd == "H" then
+			ya.emit("tab_switch", { -lines, relative = true })
+		elseif cmd == "L" then
+			ya.emit("tab_switch", { lines, relative = true })
+		elseif cmd == "w" then
+			ya.emit("tab_close", { lines - 1 })
+		elseif cmd == "W" then
+			local curr_tab = get_active_tab()
+			local del_tab = curr_tab + lines - 1
+			for _ = curr_tab, del_tab do
+				ya.emit("tab_close", { curr_tab - 1 })
 			end
-		elseif is_tab_command(cmd) then
-			if cmd == "t" then
-				for _ = 1, lines do
-					ya.mgr_emit("tab_create", {})
-				end
-			elseif cmd == "H" then
-				ya.mgr_emit("tab_switch", { -lines, relative = true })
-			elseif cmd == "L" then
-				ya.mgr_emit("tab_switch", { lines, relative = true })
-			elseif cmd == "w" then
-				ya.mgr_emit("tab_close", { lines - 1 })
-			elseif cmd == "W" then
-				local curr_tab = get_active_tab()
-				local del_tab = curr_tab + lines - 1
-				for _ = curr_tab, del_tab do
-					ya.mgr_emit("tab_close", { curr_tab - 1 })
-				end
-				ya.mgr_emit("tab_switch", { curr_tab - 1 })
-			elseif cmd == "<" then
-				ya.mgr_emit("tab_swap", { -lines })
-			elseif cmd == ">" then
-				ya.mgr_emit("tab_swap", { lines })
-			elseif cmd == "~" then
-				local jump = lines - get_active_tab()
-				ya.mgr_emit("tab_swap", { jump })
-			end
+			ya.emit("tab_switch", { curr_tab - 1 })
+		elseif cmd == "<" then
+			ya.emit("tab_swap", { -lines })
+		elseif cmd == ">" then
+			ya.emit("tab_swap", { lines })
+		elseif cmd == "~" then
+			local jump = lines - get_active_tab()
+			ya.emit("tab_swap", { jump })
+		end
+	else
+		ya.emit("visual_mode", {})
+		-- invert direction when user specifies it
+		if direction == "k" then
+			ya.emit("arrow", { -lines })
+		elseif direction == "j" then
+			ya.emit("arrow", { lines })
 		else
-			ya.mgr_emit("visual_mode", {})
-			-- invert direction when user specifies it
-			if direction == "k" then
-				ya.mgr_emit("arrow", { -lines })
-			elseif direction == "j" then
-				ya.mgr_emit("arrow", { lines })
-			else
-				ya.mgr_emit("arrow", { lines - 1 })
-			end
-			ya.mgr_emit("escape", {})
-
-			if cmd == "d" then
-				ya.mgr_emit("remove", {})
-			elseif cmd == "y" then
-				ya.mgr_emit("yank", {})
-			elseif cmd == "x" then
-				ya.mgr_emit("yank", { cut = true })
-			end
+			ya.emit("arrow", { lines - 1 })
 		end
+		ya.emit("escape", {})
 
-		render_clear()
-	end,
-	setup = function(state, args)
-		if not args then
-			return
+		if cmd == "d" then
+			ya.emit("remove", {})
+		elseif cmd == "y" then
+			ya.emit("yank", {})
+		elseif cmd == "x" then
+			ya.emit("yank", { cut = true })
 		end
+	end
 
-		-- initialize state variables
-		state._only_motions = args["only_motions"] or false
-
-		if args["show_motion"] then
-			render_motion_setup()
-		end
-
-		if args["enter_mode"] == "cache" then
-			state._enter_mode = ENTER_MODE_CACHE
-		elseif args["enter_mode"] == "first" then
-			state._enter_mode = ENTER_MODE_FIRST
-		elseif args["enter_mode"] == "cache_or_first" then
-			state._enter_mode = ENTER_MODE_CACHE_OR_FIRST
-		else
-			state._enter_mode = ENTER_MODE_CACHE_OR_FIRST
-		end
-
-		if args["show_numbers"] == "absolute" then
-			render_numbers(SHOW_NUMBERS_ABSOLUTE)
-		elseif args["show_numbers"] == "relative" then
-			render_numbers(SHOW_NUMBERS_RELATIVE)
-		elseif args["show_numbers"] == "relative_absolute" then
-			render_numbers(SHOW_NUMBERS_RELATIVE_ABSOLUTE)
-		end
-	end,
-}
+	render_clear()
+end
+return M
