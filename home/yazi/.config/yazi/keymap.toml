@@ -4,20 +4,22 @@ prepend_keymap = [
   # Utils
   { on = "?", run = "help", desc = "Open help" },
   { on = "!", run = 'shell "$SHELL" --block', desc = "Open shell here" },
-  { on = "T", run = "plugin toggle-pane max-preview", desc = "Maximize or restore the preview pane" },
+  { on = "=", run = "plugin toggle-pane max-preview", desc = "Maximize or restore the preview pane" },
 
   # Go to...
   { on = [ "g", "/", ], run = "cd /", desc = "Go to /" },
   { on = [ "g", "D", ], run = "cd /home/roberth/Documents/", desc = "Go to Documents" },
   { on = [ "g", "H", ], run = "cd /home/roberth/.config/hypr/", desc = "Go to ~/.config/hypr" },
   { on = [ "g", "L", ], run = "cd /home/roberth/.local/", desc = "Go to ~/.local" },
+  { on = [ "g", "M", ], run = "plugin sshfs -- jump", desc = "Jump to mount" },
   { on = [ "g", "S", ], run = "cd /home/roberth/.local/share/Steam/steamapps/compatdata/", desc = "Go to Steam Data" },
   { on = [ "g", "T", ], run = "cd /tmp", desc = "Go to /tmp" },
   { on = [ "g", "X", ], run = "cd /home/roberth/dotfiles-private/", desc = "Go to private dotfiles" },
   { on = [ "g", "l", ], run = "shell 'yazi-lazygit-cd' --block --confirm=false", desc = "Lazygit" },
+  { on = [ "g", "m", ], run = "cd /run/media/$USER/", desc = "Go to media (usb)" },
   { on = [ "g", "n", ], run = "cd /home/roberth/Documents/Notes/", desc = "Go to Notes" },
   { on = [ "g", "p", ], run = "cd /home/roberth/Pictures/", desc = "Go to Pictures" },
-  { on = [ "g", "r", ], run = 'shell -- ya emit cd "$(git rev-parse --show-toplevel)"', desc = "Go to git root" },
+  { on = [ "g", "r" ], run = 'shell -- ya emit cd "$(git rev-parse --show-toplevel 2>/dev/null || pwd)"', desc = "Go to git root" },
   { on = [ "g", "s", ], run = "cd /home/roberth/.local/share/Steam/steamapps/common/", desc = "Go to Steam Apps" },
   { on = [ "g", "u", ], run = "cd /home/roberth/Development/", desc = "Go to Development" },
   { on = [ "g", "v", ], run = "cd /home/roberth/Videos/", desc = "Go to Videos" },
@@ -25,26 +27,16 @@ prepend_keymap = [
   { on = [ "g", "y", ], run = "cd /home/roberth/.config/yazi/", desc = "Go to yazi config" },
   { on = [ "g", "z", ], run = "cd /home/roberth/.local/state/yazi", desc = "Go to Yazi debug log" },
 
+  # In...
+  { on = ["i", "d"], run = "shell -- dolphin .", desc = "Open in Dolphin" },
+  { on = ["i", "i"], run = 'shell --block -- stat %h; echo; file %h; echo; read -n 1 -s -r -p "Press any key..."', desc = "Inspect file" },
+
   # Mount Options
   { on = [ "M", "m", ], run = "plugin mount", desc = "Open Mount Options" },
   { on = [ "M", "s", ], run = "plugin sshfs -- menu", desc = "Open SSHFS Options" },
-  # { on = [ "M" ], run = "plugin sshfs -- menu", desc = "Open SSHFS Options" },
-  { on = [ "g", "m", ], run = "cd /run/media/$USER/", desc = "Go to media (usb)" },
-  { on = [ "g", "M", ], run = "plugin sshfs -- jump", desc = "Jump to mount" },
 
   # Ch Mod
   { on = [ "c", "m", ], run = "plugin chmod", desc = "Chmod on selected files" },
-
-  # Compress
-  { on = [ "c", "a", "a", ], run = "plugin compress", desc = "Archive selected files" },
-  { on = [ "c", "a", "p", ], run = "plugin compress -p", desc = "Archive selected files (password)" },
-  { on = [ "c", "a", "h", ], run = "plugin compress -ph", desc = "Archive selected files (password+header)" },
-  { on = [ "c", "a", "l", ], run = "plugin compress -l", desc = "Archive selected files (compression level)" },
-  { on = [ "c", "a", "u", ], run = "plugin compress -phl", desc = "Archive selected files (password+header+level)" },
-
-  # Archive Mounting
-  # { on = [ "m", "a", ], run = "plugin archivemount mount", desc = "Mount selected archive" },
-  # { on = [ "m", "u", ], run = "plugin archivemount unmount", desc = "Unmount and save changes to original archive" },
 
   # Restore
   { on = [ "u", ], run = "plugin restore", desc = "Restore last deleted files/folders" },
@@ -56,7 +48,11 @@ prepend_keymap = [
   # Admin
   { on = ["A", "o"], run = "shell --block -- sudoedit %h", desc = "Sudoedit File"},
   { on = ["A", "y"], run = "shell --block -- sudo yazi %d", desc = "Sudo Yazi"},
-  { on = ["A", "x"], run = "shell --block -- sudo chmod +x %h", desc = "Sudo chmod +x" },
+  { on = ["A", "x"], run = "shell -- sudo chmod +x %h", desc = "Sudo chmod +x" },
   { on = ["A", "m"], run = 'shell --block -- printf "chmod: "; read mode; sudo chmod "$mode" %h', desc = "Sudo chmod" },
   { on = ["A", "c"], run = 'shell --block -- ls -l %h; printf "owner[:group]: "; read owner; [ -n "$owner" ] && sudo chown "$owner" %h', desc = "Sudo chown" },
+
+  # Zip Archive...
+  { on = ["z", "u"], run = "shell --block -- 7z x %h", desc = "Unzip archive" },
+  { on = ["z", "z"], run = 'shell -- file=%h; dir="$(dirname "$file")"; base="$(basename "$file")"; tar -czf "$base.tar.gz" -C "$dir" "$base"', desc = "Compress tar.gz" },
 ]
