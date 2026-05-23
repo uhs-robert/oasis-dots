@@ -77,3 +77,23 @@ bootstrap_neovim() {
   nvim --headless "+Lazy! sync" +qa 2>/dev/null || true
   success "Neovim plugins synced"
 }
+
+setup_root_symlinks() {
+  info "Setting up root symlinks..."
+  sudo mkdir -p /root/.config/yazi
+
+  sudo ln -sf "$HOME/.zshrc"       /root/.zshrc
+  sudo ln -sf "$HOME/.oh-my-zsh"   /root/.oh-my-zsh
+  sudo ln -sf "$HOME/.config/nvim" /root/.config/nvim
+
+  for item in flavors plugins keymap.toml yazi.toml; do
+    sudo ln -sf "$HOME/.config/yazi/$item" "/root/.config/yazi/$item"
+  done
+
+  sudo tee /root/.config/yazi/theme.toml > /dev/null <<'EOF'
+[flavor]
+dark = "oasis-sol-dark"
+EOF
+
+  success "Root symlinks set"
+}

@@ -110,6 +110,7 @@ main() {
   fi
 
   template_user_configs
+  setup_root_symlinks
   bootstrap_neovim
   install_greetd
   [[ $OPT_SYSTEM_FILES -eq 1 ]] && install_system_files
