@@ -12,7 +12,8 @@ local Utils = require("lib.utils") ---@class Utils
 --- @field size integer Cursor size in pixels (default: 24)
 
 --- @class Config.App
---- @field term string Terminal emulator command (default: auto-detected)
+--- @field term string Terminal emulator (default: auto-detected)
+--- @field term_cmd string Terminal emulator command (default: auto-detected)
 --- @field editor string Editor command (default: "nvim")
 --- @field gui_file_manager string GUI file manager command (default: "dolphin")
 --- @field tui_file_manager string TUI file manager command (default: "yazi")
