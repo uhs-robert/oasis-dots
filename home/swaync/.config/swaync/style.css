@@ -1,21 +1,13 @@
+@import "theme-colors.css";
+
 :root {
+  --cc-bg: var(--bg-mantle);
   --border-radius: 22px;
-  --cc-bg: #0f1520;
-  --bg-crust: #0a1018;
-  --bg-mantle: #0f1520;
-  --strong-primary: #5d8bbb;
-  --primary: #7fa3c9;
-  --muted: #69809d;
-  --dim: #4e6578;
-  --secondary: #f0e68c;
-  --accent: #ffa0a0;
-  --red: #ff7979;
   --border-size: 2px;
-  --border-primary: solid var(--strong-primary) var(--border-size);
-  --border-muted: solid var(--muted) calc(var(--border-size) / 2);
-  --border-dim: solid var(--dim) calc(var(--border-size) / 2);
-  --widget-background: #070c13;
-  --noti-bg-alpha: 0.6;
+  --border-primary: solid var(--fg-muted) var(--border-size);
+  --border-muted: solid var(--fg-muted) calc(var(--border-size) / 2);
+  --border-dim: solid var(--bg-surface) calc(var(--border-size) / 2);
+  --noti-bg-alpha: 0.9;
 
   --padding: calc(var(--border-radius) / 2);
 }
@@ -25,9 +17,8 @@
 */
 .control-center {
   font-family: "JetBrains Mono", monospace;
-  border-radius: 0;
-  border: var(--border-primary);
   border-radius: 6px;
+  border: var(--border-primary);
 }
 
 .control-center .widget-title {
@@ -41,15 +32,22 @@
 /* Clear All button*/
 .control-center .widget-title button {
   color: var(--red);
-  background-color: var(--bg-crust);
+  background-color: var(--bg-core);
   border: var(--border-muted);
   border-radius: 0px;
   min-width: 2em;
+  /* padding: 4px; */
 }
+
+.control-center .widget-title button label {
+  padding: 4px 4px 4px 0px;
+}
+
 .control-center .widget-title button:hover {
   background: var(--red);
   color: var(--bg-mantle);
 }
+
 .control-center .widget-title button:active {
   background-color: var(--bg-mantle);
   color: var(--secondary);
@@ -61,7 +59,7 @@
 .widgets > .widget {
   border: var(--border-dim);
   border-radius: 0px;
-  background: var(--bg-crust);
+  background: var(--bg-core);
   padding: var(--padding);
 }
 
@@ -71,7 +69,7 @@
 
 .widget-mpris > carouselindicatordots,
 .widget-mpris > box > button {
-  background: var(--widget-background);
+  background: var(--bg-shadow);
   border-radius: 0;
   padding: calc(var(--border-radius) / 2);
 }
@@ -85,7 +83,7 @@
 
 .widget-dnd > switch {
   border-radius: 0px;
-  background: var(--bg-crust);
+  background: var(--bg-core);
   border: var(--border-muted);
 }
 
@@ -94,9 +92,14 @@
 }
 
 .widget-dnd > switch slider {
-  background: var(--strong-primary);
+  background: var(--primary);
   border-radius: 0px;
   margin: 3px;
+  border: none;
+}
+
+.widget-dnd > switch:hover {
+  border-color: var(--secondary);
 }
 
 /*
@@ -105,7 +108,7 @@
 .notification-group {
   background: transparent;
   border-radius: var(--border-radius);
-  padding: 8px;
+  padding: 0px;
 }
 
 .notification {
@@ -113,6 +116,10 @@
   border: var(--border-muted);
   border-radius: 6px;
   padding: var(--padding);
+}
+
+.notification-row:hover .notification {
+  border-color: var(--secondary);
 }
 
 .notification-default-action,
@@ -123,31 +130,31 @@
 }
 
 .notification .summary {
-  color: var(--primary);
+  color: var(--fg-strong);
   font-weight: bold;
 }
 
 .notification .body {
-  color: var(--muted);
+  color: var(--fg-muted);
 }
 
 .notification .time {
-  color: var(--muted);
+  color: var(--fg-muted);
 }
 
 .notification-action {
-  color: var(--primary);
-  background: var(--bg-crust);
+  color: var(--fg-strong);
+  background: var(--bg-core);
   border: var(--border-muted);
   border-radius: 0;
 }
 .notification-action:hover {
-  background: var(--strong-primary);
+  background: var(--primary);
   color: var(--bg-mantle);
 }
 
 .close-button {
-  color: var(--muted);
+  color: var(--fg-muted);
   background: transparent;
   border: none;
 }
@@ -158,6 +165,10 @@
 
 .notification.critical {
   border: var(--border-size) solid var(--red);
+}
+
+.floating-notifications .notification {
+  background: color-mix(in srgb, var(--bg-mantle) 90%, transparent);
 }
 
 /*
@@ -182,7 +193,7 @@
 }
 .widget-mpris-player {
   box-shadow: none;
-  border: var(--border);
+  border: var(--border-muted);
   margin: 0 var(--padding);
   border-radius: 0;
 }
