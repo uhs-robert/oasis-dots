@@ -15,10 +15,15 @@ end
 -- See https://wiki.hypr.land/Configuring/Advanced-and-Cool/Environment-variables/
 local env = {
   PATH = table.concat({
-    HOME .. "/.cargo/bin",
     HOME .. "/.local/bin",
+    HOME .. "/.cargo/bin",
+    HOME .. "/go/bin",
+    HOME .. "/.npm-global/bin",
     HOME .. "/.tmuxifier/bin",
+    HOME .. "/.lmstudio/bin",
     HOME .. "/.config/hypr/scripts",
+    HOME .. "/Development/bash-scripts/scripts",
+    HOME .. "/Development/bash-scripts/ruby",
     "/usr/local/bin",
     "/usr/bin",
     "/bin",
