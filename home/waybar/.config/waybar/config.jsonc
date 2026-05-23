@@ -11,10 +11,8 @@
     "modules-left": [
       "custom/startmenu",
       "hyprland/workspaces",
-      // "hyprland/window"
       "custom/seperator-right"
     ],
-    // "modules-center": ["clock"],
     "modules-center": [
       "custom/seperator-left",
       "clock",
@@ -43,13 +41,11 @@
     "modules-left": [
       "custom/startmenu",
       "hyprland/workspaces",
-      // "hyprland/window"
       // "mpris#cliamp",
       "mpris#cliamp",
       "custom/cava",
       "custom/seperator-right"
     ],
-    // "modules-left": ["custom/startmenu", "hyprland/workspaces"],
     "modules-center": [
       "custom/seperator-left",
       "clock",
@@ -80,13 +76,11 @@
     "modules-left": [
       "custom/startmenu",
       "hyprland/workspaces",
-      // "hyprland/window"
       // "mpris#cliamp",
       "mpris#cliamp",
       "custom/cava",
       "custom/seperator-right"
     ],
-    // "modules-left": ["custom/startmenu", "hyprland/workspaces"],
     "modules-center": [
       "custom/seperator-left",
       "clock",
