@@ -41,8 +41,8 @@
     "modules-left": [
       "custom/startmenu",
       "hyprland/workspaces",
-      // "mpris#cliamp",
       "mpris#cliamp",
+      // "mpris",
       "custom/cava",
       "custom/seperator-right"
     ],
@@ -76,8 +76,8 @@
     "modules-left": [
       "custom/startmenu",
       "hyprland/workspaces",
-      // "mpris#cliamp",
       "mpris#cliamp",
+      // "mpris",
       "custom/cava",
       "custom/seperator-right"
     ],
