@@ -313,26 +313,17 @@
   "custom/startmenu": {
     "format": "<span size='15000'>󰣇</span>",
     "tooltip": false,
-    // "on-click": "hyprpanel t dashboardmenu",
     "menu": "on-click",
     "menu-file": "~/.config/waybar/custom_modules/start_menu.xml",
     "menu-actions": {
-      "allapps": "~/.config/rofi/launchers/type-1/launcher.sh",
-      "web": "hyprctl dispatch exec firefox",
-      "code": "kitty -e nvim",
-      "files": "kitty -e yazi",
-      "media": "mpv --player-operation-mode=pseudo-gui",
-      "term": "hyprctl dispatch exec kitty",
-      "settings": "systemsettings || gnome-control-center || true",
-
+      "apps": "rofi -show drun",
       "sep1": "true",
-
-      "lock": "~/.config/waybar/scripts/confirm-action.sh --title Lock --glyph '󰌾' --color '#E8F1FF' --exec '~/.config/hypr/scripts/hyprlock-shot.sh'",
-      "logout": "~/.config/waybar/scripts/confirm-action.sh --title Logout --glyph '󰍃' --color '#81C0FF' --exec 'hyprctl dispatch exit'",
-      "reboot": "~/.config/waybar/scripts/confirm-action.sh --title Reboot --glyph '󰜉' --color '#F0E68C' --exec 'systemctl reboot'",
-      "power": "~/.config/waybar/scripts/confirm-action.sh --title Power\\ Off --glyph '󰐥' --color '#FFA0A0' --exec 'systemctl poweroff'"
+      "lock": "~/.config/waybar/scripts/confirm-action.sh --title Lock      --glyph '󰌾' --color '#E8F1FF' --exec '~/.config/hypr/scripts/hyprlock-screenshot.lua'",
+      "logout": "~/.config/waybar/scripts/confirm-action.sh --title Logout    --glyph '󰍃' --color '#81C0FF' --exec 'command -v hyprshutdown >/dev/null 2>&1 && hyprshutdown || hyprctl dispatch exit'",
+      "reboot": "~/.config/waybar/scripts/confirm-action.sh --title Reboot    --glyph '󰜉' --color '#F0E68C' --exec 'systemctl reboot'",
+      "power": "~/.config/waybar/scripts/confirm-action.sh --title 'Power Off' --glyph '󰐥' --color '#FFA0A0' --exec 'systemctl poweroff'"
     },
-    "on-click-right": "wofi --show drun"
+    "on-click-right": "~/.config/hypr/theme/switch.lua"
   },
 
   "mpris": {
