@@ -12,7 +12,7 @@ fi
 if initialize_session "System Update"; then
   new_window ""
   run_cmd "cd $session_root"
-  run_cmd "sysup"
+  run_cmd "topgrade"
   split_v 33
   run cmd "cd $session_root" 1
   run cmd "journalctl -f"

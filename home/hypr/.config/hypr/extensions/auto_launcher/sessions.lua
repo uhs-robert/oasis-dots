@@ -38,63 +38,63 @@ function M.get_sessions()
   end
 
   return {
-  ["🌐 Browsing"] = {
-    { monitor = 3, ws = 1, cmd = "firefox --new-window" },
-    tmuxifier({ session = "config" }),
-  },
+    ["🌐 Browsing"] = {
+      { monitor = 3, ws = 1, cmd = "firefox --new-window" },
+      tmuxifier({ session = "config" }),
+    },
 
-  ["🧱 Client"] = {
-    betterbird(),
-    { monitor = 3, ws = 1, cmd = "firefox --new-window" },
-    tmuxifier({ session = "client-dev" }),
-    tmuxifier({ session = "config", ws = 3 }),
-    { monitor = 4, ws = 1, cmd = "slack", class = "Slack", size = { 1064, 461 } },
-  },
+    ["🧱 Client"] = {
+      betterbird(),
+      { monitor = 3, ws = 1, cmd = "firefox --new-window" },
+      tmuxifier({ session = "client-dev" }),
+      tmuxifier({ session = "config", ws = 3 }),
+      { monitor = 4, ws = 1, cmd = "slack", class = "Slack", size = { 1064, 461 } },
+    },
 
-  ["🛠 Config"] = {
-    betterbird(),
-    { monitor = 3, ws = 1, cmd = "firefox --new-window" },
-    tmuxifier({ session = "config" }),
-  },
+    ["🛠 Config"] = {
+      betterbird(),
+      { monitor = 3, ws = 1, cmd = "firefox --new-window" },
+      tmuxifier({ session = "config" }),
+    },
 
-  ["🗂 Files"] = {
-    { monitor = 3, ws = 1, cmd = "dolphin" },
-    { monitor = 4, ws = 1, cmd = "term -e yazi" },
-  },
+    ["🗂 Files"] = {
+      { monitor = 3, ws = 1, cmd = "dolphin" },
+      { monitor = 4, ws = 1, cmd = "term -e yazi" },
+    },
 
-  ["🧩 Game Mods"] = {
-    { monitor = 2, ws = 1, cmd = "steam" },
-    { monitor = 3, ws = 1, cmd = "term -e sh -c 'cd ~/Downloads && exec yazi'" },
-    { monitor = 4, ws = 1, cmd = "term -e sh -c 'cd ~/.steam/steam/steamapps && exec yazi'" },
-  },
+    ["🧩 Game Mods"] = {
+      { monitor = 2, ws = 1, cmd = "steam" },
+      { monitor = 3, ws = 1, cmd = "term -e sh -c 'cd ~/Downloads && exec yazi'" },
+      { monitor = 4, ws = 1, cmd = "term -e sh -c 'cd ~/.steam/steam/steamapps && exec yazi'" },
+    },
 
-  ["🎮 Game"] = {
-    { monitor = 2, ws = 1, cmd = "steam" },
-  },
+    ["🎮 Game"] = {
+      { monitor = 2, ws = 1, cmd = "steam" },
+    },
 
-  ["📅 Meeting"] = {
-    { monitor = 3, ws = 1, cmd = "firefox --new-window" },
-    { monitor = 1, ws = 1, cmd = "firefox --new-window https://calendar.google.com/" },
-  },
+    ["📅 Meeting"] = {
+      { monitor = 3, ws = 1, cmd = "firefox --new-window" },
+      { monitor = 1, ws = 1, cmd = "firefox --new-window https://calendar.google.com/" },
+    },
 
-  ["📊 System Monitor"] = {
-    { monitor = 3, ws = 1, cmd = "term -e journalctl -f" },
-    { monitor = 4, ws = 1, cmd = "term -e btop" },
-  },
+    ["📊 System Monitor"] = {
+      { monitor = 3, ws = 1, cmd = "term -e journalctl -f" },
+      { monitor = 4, ws = 1, cmd = "term -e btop" },
+    },
 
-  ["🛡️ System Update"] = {
-    { monitor = 2, ws = 1, cmd = "term -e sysup" },
-    { monitor = 3, ws = 1, cmd = "term -e journalctl -f" },
-  },
+    ["🛡️ System Update"] = {
+      { monitor = 2, ws = 1, cmd = "term -e topgrade" },
+      { monitor = 3, ws = 1, cmd = "term -e journalctl -f" },
+    },
 
-  ["💼 Work"] = {
-    betterbird(),
-    { monitor = 2, ws = 1, cmd = "qutebrowser" },
-    { monitor = 3, ws = 1, cmd = "firefox --new-window" },
-    tmuxifier({ session = "uphill" }),
-    tmuxifier({ session = "config", ws = 3 }),
-    { monitor = 4, ws = 1, cmd = "slack", class = "Slack", size = { 1064, 461 }, delay = 5000 },
-  },
+    ["💼 Work"] = {
+      betterbird(),
+      { monitor = 2, ws = 1, cmd = "qutebrowser" },
+      { monitor = 3, ws = 1, cmd = "firefox --new-window" },
+      tmuxifier({ session = "uphill" }),
+      tmuxifier({ session = "config", ws = 3 }),
+      { monitor = 4, ws = 1, cmd = "slack", class = "Slack", size = { 1064, 461 }, delay = 5000 },
+    },
   }
 end
 

@@ -384,7 +384,7 @@
     "format": "<span size='12000' color='#D6CE7C'> </span>{text}",
     "tooltip": false,
     "hide-empty-text": true,
-    "on-click": "bash -lc 'kitty -e bash -lc \"sysup\"; rm -f \"$XDG_RUNTIME_DIR/fedora_updates.cache.json\"; pkill -RTMIN+8 waybar'",
+    "on-click": "bash -lc 'kitty -e bash -lc \"topgrade\"; rm -f \"$XDG_RUNTIME_DIR/fedora_updates.cache.json\"; pkill -RTMIN+8 waybar'",
     "on-click-right": "bash -lc 'kitty -e bash -lc \"sudo dnf5 upgrade --refresh -y || sudo dnf upgrade --refresh -y\"; rm -f \"$XDG_RUNTIME_DIR/fedora_updates.cache.json\"; pkill -RTMIN+8 waybar'"
   },
 

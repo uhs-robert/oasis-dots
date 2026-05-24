@@ -50,7 +50,7 @@ Submap.define({
     { "R",         Cmd.run(POWER.reboot),               "Reboot" },
     { "P",         Cmd.run(POWER.off),                  "Power Off" },
     { "T",         Cmd.run(CMD.theme_switch),           "Theme Switch" },
-    { "U",         Cmd.term("sysup"),                   "Update System" },
+    { "U",         Cmd.term("topgrade"),                "Update System" },
     { "W",         Cmd.run(CMD.restart_waybar),         "Restart Waybar" },
     { "SHIFT + W", Cmd.run(CMD.restart_waybar_git),     "Restart Waybar (Github)" },
   },
