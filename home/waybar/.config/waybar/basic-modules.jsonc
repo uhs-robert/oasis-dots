@@ -254,7 +254,8 @@
     "format-linked": "{ifname} (No IP) ",
     "format-disconnected": "<span size='11000' foreground='#0B1832'>󰤭</span>",
     "tooltip-format-wifi": "{essid}, {signalStrength}%",
-    "on-click": "hyprctl eval 'waybar_float(\"~/.config/hypr/scripts/nmtui.sh --waybar\", 700, \"waybar-nmtui\")'",
+    "on-click": "hyprctl eval 'waybar_float(\"~/.config/hypr/scripts/nmtui.sh --connect --waybar\", 700, \"waybar-nmtui\")'",
+    "on-click-middle": "hyprctl eval 'waybar_float(\"~/.config/hypr/scripts/nmtui.sh --waybar\", 700, \"waybar-nmtui\")'",
     "on-click-right": "nm-connection-editor"
   },
 
