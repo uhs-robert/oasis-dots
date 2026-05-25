@@ -122,10 +122,9 @@
       "car": "",
       "default": ["", "", ""]
     },
-    // "on-click": "hyprpanel t audiomenu",
-    "on-click": "pavucontrol",
+    "on-click": "hyprctl eval 'waybar_float(\"pavucontrol\", 700, \"org.pulseaudio.pavucontrol\")'",
     "on-click-right": "wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle",
-    "on-click-middle": "easyeffects"
+    "on-click-middle": "hyprctl eval 'waybar_float(\"easyeffects\", 900, \"com.github.wwmm.easyeffects\")'"
   },
 
   "pulseaudio/slider": {
@@ -246,7 +245,6 @@
       "on-scroll-up": "shift_up",
       "on-scroll-down": "shift_down"
     }
-    // "on-click": "hyprpanel t calendarmenu",
   },
 
   "network": {
@@ -256,7 +254,7 @@
     "format-linked": "{ifname} (No IP) ",
     "format-disconnected": "<span size='11000' foreground='#0B1832'>󰤭</span>",
     "tooltip-format-wifi": "{essid}, {signalStrength}%",
-    "on-click": "exec ~/.config/hypr/scripts/nmtui.sh",
+    "on-click": "hyprctl eval 'waybar_float(\"~/.config/hypr/scripts/nmtui.sh --waybar\", 700, \"waybar-nmtui\")'",
     "on-click-right": "nm-connection-editor"
   },
 
@@ -269,8 +267,8 @@
     "tooltip-format-connected": "{controller_alias}\t{controller_address}\n\n{num_connections} connected\n\n{device_enumerate}",
     "tooltip-format-enumerate-connected": "{device_alias}\n{device_address}",
     "tooltip-format-enumerate-connected-battery": "{device_alias}\n{device_address}\n{device_battery_percentage}%",
-    "on-click": "kitty -e bluetui",
-    "on-click-right": "blueman-manager"
+    "on-click": "hyprctl eval 'waybar_float(\"foot --app-id waybar-bluetooth -e bluetui\", 700, \"waybar-bluetooth\")'",
+    "on-click-right": "hyprctl eval 'waybar_float(\"blueman-manager\", 600, \"blueman-manager\")'"
   },
 
   "battery": {
@@ -287,7 +285,6 @@
     "format-icons": ["", "", "", "", ""],
     "tooltip-format": "{time}",
     "on-click": ""
-    // "on-click": "hyprpanel t energymenu",
   },
 
   "tray": {
@@ -371,7 +368,6 @@
     "hide-empty-text": true,
     "format": "{text}",
     "tooltip": false,
-    // "on-click": "hyprpanel t mediamenu",
     "on-click": "playerctl play-pause",
     "on-click-middle": "playerctl previous",
     "on-click-right": "~/.config/hypr/scripts/focus-media-player.sh"
@@ -418,6 +414,5 @@
     "on-scroll-down": "~/.config/waybar/scripts/weather/get_weather.rb --prev",
     "on-click": "~/.config/waybar/scripts/weather/get_weather.rb --toggle",
     "on-click-right": "~/.config/waybar/scripts/weather/get_weather.rb --toggle"
-    // "on-click": "hyprpanel t calendarmenu",
   }
 }

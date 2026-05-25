@@ -12,6 +12,7 @@ end
 local function init()
   enable_wallpaper_rotation()
   require("extensions.auto_launcher")
+  require("extensions.waybar_floats")
 end
 
 init()
