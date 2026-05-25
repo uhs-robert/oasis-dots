@@ -77,9 +77,16 @@
     },
     {
       "type": "shell",
-      "key": " └  Shell",
+      "key": " ├  Shell",
       "keyColor": "light_yellow",
       "keyWidth": 16,
+    },
+    {
+      "type": "command",
+      "key": " └󰃭  Age",
+      "keyColor": "light_yellow",
+      "keyWidth": 16,
+      "text": "birth_install=$(stat -c %W /); current=$(date +%s); days_difference=$(( (current - birth_install) / 86400 )); echo $days_difference days",
     },
     "break",
 
