@@ -29,6 +29,7 @@ prepend_keymap = [
   { on = [ "g", "S", ], run = "cd /home/roberth/.local/share/Steam/steamapps/compatdata/", desc = "Go to Steam Data" },
   { on = [ "g", "T", ], run = "cd /tmp", desc = "Go to /tmp" },
   { on = [ "g", "X", ], run = "cd /home/roberth/dotfiles-private/", desc = "Go to private dotfiles" },
+  { on = [ "g", "f", ], run = "cd ~/.local/share/fonts/", desc = "Go to fonts" },
   { on = [ "g", "l", ], run = "shell 'yazi-lazygit-cd' --block --confirm=false", desc = "Lazygit" },
   { on = [ "g", "m", ], run = "cd /run/media/$USER/", desc = "Go to media (usb)" },
   { on = [ "g", "n", ], run = "cd /home/roberth/Documents/Notes/", desc = "Go to Notes" },
