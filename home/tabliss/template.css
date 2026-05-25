@@ -1,0 +1,203 @@
+/*** GENERAL ***/
+.Colour.fullscreen {
+  background-color: #0a1018 !important;
+}
+
+a,
+.Links .LinkText {
+  color: #8fd1c7 !important;
+}
+
+.Overlay a,
+.Overlay:hover svg {
+  color: #7fa3c9 !important;
+}
+
+hr {
+  border-top: 2px solid #4e6578 !important;
+}
+
+button {
+  border-radius: 2em;
+  cursor: pointer;
+  display: inline-block;
+  padding: 0.5em 1em;
+  text-decoration: none;
+  font-weight: 500;
+  background-color: #b0c8de;
+  color: #0f1520;
+  border: 1px solid #5d8bbb;
+  border-radius: 4px;
+  transition: background-color 0.25s ease-out;
+}
+
+button:hover {
+  background-color: #0f1520;
+  color: #b0c8de;
+}
+
+select {
+  color: #f7f4f2 !important;
+  background-color: #1a2330 !important;
+  border-color: #5d8bbb !important;
+}
+
+select.primary {
+  border: 2px solid #7fa3c9 !important;
+}
+
+input {
+  color: #f7f4f2 !important;
+  background-color: #1a2330 !important;
+  border-color: #5d8bbb !important;
+}
+
+label {
+  color: #f0e68c;
+}
+
+textarea {
+  background-color: #0f1520;
+  color: #f7f4f2 !important;
+  border: 1px solid #5d8bbb !important;
+}
+
+p {
+  color: #f7f4f2;
+}
+
+.info {
+  color: #ffa0a0;
+}
+
+/*** Overlay for Settings ***/
+.Overlay:hover {
+  background-color: #1a2330;
+}
+
+/* Loading Icon */
+.Overlay span i {
+  color: #f0e68c;
+}
+
+/*** Settings ***/
+.Settings h1 svg {
+  fill: #5d8bbb !important;
+}
+
+.Settings .plane {
+  background-color: #0f1520;
+  width: 370px;
+}
+
+.Settings h1,
+.Settings h2,
+.Settings h3,
+.Settings h4,
+.Settings h5,
+.Settings h6 {
+  color: #f7f4f2;
+}
+
+.Settings .Widget {
+  background-color: #1a2330;
+}
+
+.Settings .Widget select,
+.Settings .Widget input {
+  background-color: #0f1520 !important;
+}
+
+.Settings .Widget hr {
+  border: 1px solid #4e6578 !important;
+}
+
+.Settings .Widget .button--icon {
+  background-color: #0f1520;
+  color: #7fa3c9;
+}
+
+.Settings .Widget .button--icon:hover {
+  background-color: #7fa3c9 !important;
+  color: #0f1520 !important;
+}
+
+.Settings .Widget .button--primary {
+  background-color: #7fa3c9 !important;
+  color: #0f1520 !important;
+}
+
+.Settings .Widget .button--primary:hover {
+  background-color: #0f1520 !important;
+  color: #7fa3c9 !important;
+}
+
+/*** WEATHER ***/
+.Weather {
+  color: #69809d !important;
+}
+
+.Weather .temperature {
+  color: #b0c8de;
+}
+
+.Weather dt {
+  color: #7fa3c9;
+}
+
+/*** IP INFO ***/
+.IpInfo {
+  color: #69809d;
+}
+
+/*** CLOCK ***/
+/* Main */
+.Time {
+  color: #85a8cc !important;
+}
+/* Outer */
+.Time.Analogue .theme-stroke {
+  stroke: #1670ad; /* Delimiter */
+}
+/* Middle */
+.Time.Analogue .theme-fill {
+  fill: #1a2330;
+}
+
+/* Time */
+.Time.Analogue line.hours {
+  stroke: #b0c8de;
+}
+.Time.Analogue line.minutes {
+  stroke: #b0c8de;
+}
+.Time.Analogue line.seconds {
+  stroke: #f0e68c; /* Secondary */
+}
+
+/*** QUICK LINKS ***/
+.Links {
+  column-gap: 0.25em;
+}
+
+.Links a {
+  padding: 0.25em 0.5em;
+  background: #0f1520;
+  border-radius: 4px;
+  text-align: center;
+}
+
+.Links i {
+  display: inline-block;
+}
+
+/*** Icons ***/
+.Links a i,
+.Weather i {
+  color: #f0e68c;
+}
+
+/*** Quotes ***/
+.Quote {
+  color: #69809d;
+}
