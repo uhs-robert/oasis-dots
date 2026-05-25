@@ -105,6 +105,9 @@
 /*
 * Notifications
 */
+.control-center scrolledwindow {
+  min-height: 500px;
+}
 .notification-group {
   background: transparent;
   border-radius: var(--border-radius);
