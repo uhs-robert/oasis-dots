@@ -164,7 +164,7 @@ export PATH="$HOME/.tmuxifier/bin:$PATH"
 export PATH="$(npm root -g)/.bin:$PATH"
 export PATH="$HOME/.npm-global/bin:$PATH"
 export PATH="$HOME/go/bin:$PATH"
-export PATH="$HOME/.cargo/bin:$PATH"
+# export PATH="$HOME/.cargo/bin:$PATH"
 export PATH="$HOME/.local/bin:$PATH"
 export PATH="$PATH:$HOME/.lmstudio/bin"
 
@@ -181,8 +181,6 @@ for rc in ~/.bashrc.d/*(.N); do source "$rc"; done
 
 eval "$(tmuxifier init -)"
 
-
-. "$HOME/.deno/env"
 
 # pnpm
 export PNPM_HOME="$HOME/.local/share/pnpm"
@@ -224,6 +222,6 @@ export INTELLI_HOME="$HOME/.local/share/intelli-shell"
 # alias is="intelli-shell"
 export PATH="$INTELLI_HOME/bin:$PATH"
 eval "$(intelli-shell init zsh)"
-export PATH="$HOME/.cargo/bin:$PATH"
-. "$HOME/.cargo/env"
-eval "$(~/.rbenv/bin/rbenv init -)"
+# export PATH="$HOME/.cargo/bin:$PATH"
+# . "$HOME/.cargo/env"
+# eval "$(~/.rbenv/bin/rbenv init -)"
