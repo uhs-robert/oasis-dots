@@ -34,7 +34,7 @@ disable = ["firmware", "snap", "containers", "hyprpm"]
 # first = ["chezmoi"]
 
 # Run these steps after all others
-last = ["flatpak"]
+# last = ["flatpak"]
 
 # Ignore failures for these steps
 ignore_failures = ["pip3"]
@@ -133,7 +133,7 @@ cleanup = true
 # Commands to run after anything
 [post_commands]
 # "Emacs Snapshot" = "rm -rf ~/.emacs.d/elpa.bak && cp -rl ~/.emacs.d/elpa ~/.emacs.d/elpa.bak"
-"Fedora Nvidia Post Kernel Upgrades" = "~/Development/bash-scripts/scripts/topgrade-kernel-post"
+# "Fedora Nvidia Post Kernel Upgrades" = "~/Development/bash-scripts/scripts/topgrade-kernel-post"
 # "Rebuild akmods" = "sudo akmods --force"
 # "Regenerate initramfs" = "sudo dracut --regenerate-all --force --add bluetooth"
 
@@ -206,13 +206,13 @@ enable_pip_review = true ###disabled by default
 # Arch Package Manager to use.
 # Allowed values:
 #   autodetect, aura, garuda_update, pacman, pamac, paru, pikaur, shelly, trizen, yay
-# arch_package_manager = "paru"
+arch_package_manager = "paru"
 
 # Arguments to pass yay (or paru) when updating packages
-# yay_arguments = "--nodevel"
+yay_arguments = "--nodevel"
 
 # Arguments to pass dnf when updating packages
-dnf_arguments = "--refresh"
+# dnf_arguments = "--refresh"
 
 # aura_aur_arguments = "-kx"
 
