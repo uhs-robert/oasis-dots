@@ -58,7 +58,7 @@ function M.get_sessions()
     },
 
     ["🗂 Files"] = {
-      { monitor = 3, ws = 1, cmd = "dolphin" },
+      { monitor = 3, ws = 1, cmd = "thunar" },
       { monitor = 4, ws = 1, cmd = "term -e yazi" },
     },
 

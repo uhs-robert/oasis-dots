@@ -33,7 +33,7 @@ Submap.define({
       { "C",         Apps.focus_or_launch(APP.tmux_config), "Tmuxifier Config" },
       { "SHIFT + C", Apps.focus_or_launch(APP.tmux_client),  "Tmuxifier Client" },
       { "F",         Apps.focus_or_launch(APP.yazi),        "Files" },
-      { "SHIFT + F", Apps.focus_or_launch(APP.dolphin),     "Dolphin" },
+      { "SHIFT + F", Apps.focus_or_launch(APP.thunar),      "Thunar" },
       { "H",         Apps.focus_or_launch(APP.hyprconfig),  "Hypr Config" },
       { "M",         Apps.focus_or_launch(APP.betterbird),  "Mail" },
       { "SHIFT + M", Window.focus_by(SELECTORS.meeting),    "Meeting" },

@@ -5,7 +5,7 @@ local Config = require("config") ---@class Config
 local Cmd = require("lib.actions.cmd") ---@class Cmd
 local Window = require("lib.window") ---@class Window
 
-local TERM     = Config.app.term
+local TERM = Config.app.term
 local TERM_CMD = Config.app.term_cmd
 
 --- @class Apps
@@ -13,9 +13,9 @@ local Apps = {}
 
 -- stylua: ignore
 Apps.map = {
-  betterbird  = { program = "betterbird",  class = "eu.betterbird.Betterbird",      cmd = "flatpak run eu.betterbird.Betterbird" },
+  betterbird  = { program = "betterbird",  class = "eu.betterbird.Betterbird",      cmd = "betterbird" },
   cliamp      = { program = "cliamp",      title = "cliamp",                        cmd = TERM_CMD .. " -e cliamp" },
-  dolphin     = { program = "dolphin",     class = "org.kde.dolphin" },
+  thunar      = { program = "thunar",      class = "thunar" },
   firefox     = { program = "firefox",     class = "org.mozilla.firefox" },
   hyprconfig  = { program = TERM,          class = "hyprconfig",                    cmd = TERM_CMD .. " --class hyprconfig -e yazi ~/.config/hypr" },
   protonplus  = { program = "protonplus",  class = "com.vysp3r.ProtonPlus",         cmd = "flatpak run com.vysp3r.ProtonPlus" },

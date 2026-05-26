@@ -48,7 +48,7 @@ local set_window_rules = function()
   })
   hl.window_rule({
     name = "float-class",
-    match = { class = "^(float|org.kde.dolphin|qalculate-gtk)$" },
+    match = { class = "^(float|thunar|qalculate-gtk)$" },
     float = true,
     size = "(monitor_w*0.8) (monitor_h*0.8)",
     dim_around = true,
