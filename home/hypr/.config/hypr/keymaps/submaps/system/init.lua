@@ -48,6 +48,7 @@ Submap.define({
     { "N",         Cmd.run("swaync-client -t -sw"),     "Notification Center" },
     { "SHIFT + M", Cmd.run(Scripts.toggle_mpris_mode),  "Toggle Mpris Mode" },
     { "R",         Cmd.run(POWER.reboot),               "Reboot" },
+    { "SHIFT + R", require("config.autostart"),         "Replay Autostart" },
     { "P",         Cmd.run(POWER.off),                  "Power Off" },
     { "T",         Cmd.run(CMD.theme_switch),           "Theme Switch" },
     { "U",         Cmd.term("topgrade"),                "Update System" },
