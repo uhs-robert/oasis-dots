@@ -137,7 +137,7 @@
 
   "group/system": {
     "orientation": "horizontal",
-    "modules": ["network", "bluetooth", "custom/updates"]
+    "modules": ["network", "bluetooth", "custom/arch-updates"]
   },
 
   // Workspaces: Show taskbard icons and empty icons
@@ -374,15 +374,26 @@
     "on-click-right": "~/.config/hypr/scripts/focus-media-player.sh"
   },
 
-  "custom/updates": {
+  "custom/fedora-updates": {
     "exec": "UPDATES_TTL_MIN=30 exec ~/.config/waybar/scripts/fedora_updates.rb",
     "return-type": "json",
     "interval": 900, // in seconds = 15min
     "format": "<span size='12000' color='#D6CE7C'> </span>{text}",
     "tooltip": false,
     "hide-empty-text": true,
-    "on-click": "bash -lc 'kitty -e bash -lc \"topgrade\"; rm -f \"$XDG_RUNTIME_DIR/fedora_updates.cache.json\"; pkill -RTMIN+8 waybar'",
-    "on-click-right": "bash -lc 'kitty -e bash -lc \"sudo dnf5 upgrade --refresh -y || sudo dnf upgrade --refresh -y\"; rm -f \"$XDG_RUNTIME_DIR/fedora_updates.cache.json\"; pkill -RTMIN+8 waybar'"
+    "on-click": "zsh -lc 'foot zsh -lc \"topgrade\"; rm -f \"$XDG_RUNTIME_DIR/fedora_updates.cache.json\"; pkill -RTMIN+8 waybar'",
+    "on-click-right": "zsh -lc 'foot zsh -lc \"sudo dnf5 upgrade --refresh -y || sudo dnf upgrade --refresh -y\"; rm -f \"$XDG_RUNTIME_DIR/fedora_updates.cache.json\"; pkill -RTMIN+8 waybar'"
+  },
+
+  "custom/arch-updates": {
+    "exec": "UPDATES_TTL_MIN=30 exec ~/.config/waybar/scripts/arch_updates.rb",
+    "return-type": "json",
+    "interval": 900, // in seconds = 15min
+    "format": "<span size='12000' color='#D6CE7C'>{}</span>",
+    "tooltip": true,
+    "hide-empty-text": true,
+    "on-click": "zsh -lc 'foot zsh -lc \"topgrade\"; rm -f \"$XDG_RUNTIME_DIR/arch_updates.cache.json\"; pkill -RTMIN+8 waybar'",
+    "on-click-right": "zsh -lc 'rm -f \"$XDG_RUNTIME_DIR/arch_updates.cache.json\"; pkill -RTMIN+8 waybar'"
   },
 
   "custom/notifications": {
