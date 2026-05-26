@@ -63,7 +63,7 @@ install_luarocks_packages() {
   fi
   info "Installing LuaRocks packages..."
   while IFS= read -r rock; do
-    luarocks install --local "$rock"
+    luarocks install --local "$rock" || warn "Failed to install luarock: $rock"
   done < <(read_pkgs luarocks.ini)
   success "LuaRocks packages installed"
 }

@@ -38,7 +38,7 @@ bootstrap_omz() {
 
 bootstrap_tmuxifier() {
   info "Bootstrapping tmuxifier..."
-  if [[ -d "$HOME/.tmuxifier" ]]; then
+  if [[ -d "$HOME/.tmuxifier" ]] || [[ -L "$HOME/.tmuxifier" ]] || [[ -e "$HOME/.tmuxifier" ]]; then
     warn "tmuxifier already present, skipping"
     return
   fi

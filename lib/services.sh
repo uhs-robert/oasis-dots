@@ -96,7 +96,7 @@ detect_primary_connector() {
 
 # Optionally installs greetd + tuigreet, deploys their configs, and enables the greetd service.
 install_greetd() {
-  confirm "Install greetd + tuigreet (display manager)?" || return
+  confirm "Install greetd + tuigreet (display manager)?" || return 0
 
   info "Installing greetd and tuigreet..."
   case "$DISTRO" in
@@ -105,11 +105,7 @@ install_greetd() {
     ;;
   arch)
     sudo pacman -S --needed --noconfirm greetd
-    if command -v paru &>/dev/null; then
-      paru -S --needed --noconfirm tuigreet
-    else
-      warn "paru not available, install tuigreet manually from AUR"
-    fi
+    sudo pacman -S --needed --noconfirm greetd-tuigreet
     ;;
   esac
 
@@ -174,7 +170,7 @@ install_xone() {
   esac
   local tmp
   tmp=$(mktemp -d)
-  git clone https://github.com/medusalix/xone "$tmp/xone"
+  git clone --recurse-submodules --branch v0.3 https://github.com/medusalix/xone "$tmp/xone"
   sudo bash "$tmp/xone/install.sh" --release
   rm -rf "$tmp"
   success "xone installed"
@@ -182,7 +178,7 @@ install_xone() {
 
 # Prompts for native vs Flatpak Steam; optionally installs xone afterwards.
 install_steam() {
-  confirm "Install Steam?" || return
+  confirm "Install Steam?" || return 0
 
   printf '\e[35m[?] \e[0mnative or flatpak? [native/flatpak] '
   read -r method
@@ -222,11 +218,11 @@ install_steam() {
   esac
   success "Steam installed"
 
-  confirm "Install xone (Xbox controller driver)?" && install_xone
+  confirm "Install xone (Xbox controller driver)?" && install_xone || true
 }
 
 install_nvidia() {
-  confirm "Install Nvidia drivers?" || return
+  confirm "Install Nvidia drivers?" || return 0
   info "Installing Nvidia drivers..."
   case "$DISTRO" in
   fedora)
@@ -264,7 +260,7 @@ setup_voxtype() {
     sudo usermod -aG input "$USER"
     warn "Added $USER to input group, takes effect on next login"
   fi
-  voxtype setup model --download --model base.en --quiet --no-post-install
+  voxtype setup model
   if systemctl --user show-environment &>/dev/null; then
     systemctl --user is-enabled voxtype &>/dev/null || systemctl --user enable --now voxtype
   else
