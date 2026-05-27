@@ -10,6 +10,7 @@
 # ("idle", "recording", "transcribing") to this file whenever it changes.
 # Required for `voxtype record toggle` and `voxtype status` commands.
 state_file = "auto"
+engine = "whisper"
 
 [hotkey]
 # Key to hold for push-to-talk
@@ -82,6 +83,10 @@ language = "en"
 
 # Translate non-English speech to English
 translate = false
+mode = "local"
+flash_attention = false
+on_demand_loading = false
+gpu_isolation = false
 
 # Number of CPU threads for inference (omit for auto-detection)
 # threads = 4
@@ -158,6 +163,9 @@ fallback_to_clipboard = true
 # Delay between typed characters in milliseconds
 # 0 = fastest possible, increase if characters are dropped
 type_delay_ms = 0
+auto_submit = false
+shift_enter_newlines = true
+pre_type_delay_ms = 0
 
 # Automatically submit (send Enter key) after outputting transcribed text
 # Useful for chat applications, command lines, or forms where you want
@@ -229,6 +237,36 @@ on_transcription = false
 #     - "arrows"    - Media player style (▶ ● ↻ ■)
 #     - "text"      - Plain text ([MIC] [REC] [...] [OFF])
 icon_theme = "nerd-font"
+
+[text]
+spoken_punctuation = false
+smart_auto_submit = false
+
+[text.replacements]
+github = "GitHub"
+hyperland = "Hyprland"
+"box type" = "voxtype"
+2e = "TUI"
+gooey = "GUI"
+"gooey's" = "GUI's"
+twoies = "TUI's"
+M-SEG = "ACME"
+NAC = "Knack"
+gooies = "GUI's"
+hypervim = "HyprVim"
+neovin = "NeoVim"
+"lazy get" = "LazyGit"
+".file" = "dotfile"
+".files" = "dotfiles"
+
+[meeting]
+enabled = false
+
+[meeting.diarization]
+enabled = false
+
+[meeting.audio]
+source = "mic"
 #
 # Per-state icon overrides (optional, takes precedence over theme)
 # [status.icons]
