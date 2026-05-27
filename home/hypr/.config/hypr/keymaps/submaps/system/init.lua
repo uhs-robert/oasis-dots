@@ -17,6 +17,7 @@ local CMD = {
   restart_waybar_git = "killall swaync swaync-client waybar; swaync & ~/clones/Waybar/build/waybar -c ~/.config/waybar/config.jsonc -s ~/.config/waybar/style.css &",
   edit_keymaps = TERM_CMD .. " -e " .. TUI_FILES .. " ~/.config/hypr/keymaps/",
   theme_switch = "~/.config/hypr/theme/switch.lua '" .. Config.app.dmenu_cmd .. "'",
+  restart_voxtype = "systemctl --user restart voxtype",
 }
 
 local POWER = {
@@ -52,6 +53,8 @@ Submap.define({
     { "P",         Cmd.run(POWER.off),                  "Power Off" },
     { "T",         Cmd.run(CMD.theme_switch),           "Theme Switch" },
     { "U",         Cmd.term("topgrade"),                "Update System" },
+    { "V",         Cmd.term("voxtype configure"),       "Voxtype Settings" },
+    { "SHIFT + V", Cmd.term(CMD.restart_voxtype),       "Voxtype Settings" },
     { "W",         Cmd.run(CMD.restart_waybar),         "Restart Waybar" },
     { "SHIFT + W", Cmd.run(CMD.restart_waybar_git),     "Restart Waybar (Github)" },
   },
