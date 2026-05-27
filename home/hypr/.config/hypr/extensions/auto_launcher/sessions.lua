@@ -32,7 +32,7 @@ function M.get_sessions()
     return {
       monitor = opts.monitor or 4,
       ws = opts.ws or 1,
-      cmd = "flatpak run eu.betterbird.Betterbird",
+      cmd = "betterbird",
       class = "eu.betterbird.Betterbird",
     }
   end
