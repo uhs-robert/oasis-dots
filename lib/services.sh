@@ -1,19 +1,26 @@
 #!/usr/bin/env bash
 # Miscellaneous install steps: repos, dev tools, system files, services, and optional hardware.
 
+_clone_section() {
+  local section="$1" subdir="$2"
+  local dir="$GITHUB_DIR/$subdir"
+  mkdir -p "$dir"
+  while IFS= read -r repo; do
+    local dest="$dir/$repo"
+    if [[ -d "$dest" ]]; then
+      warn "$subdir/$repo already exists, skipping"
+    else
+      git clone "git@github.com:$GITHUB_ORG/$repo.git" "$dest" &&
+        success "Cloned $subdir/$repo" ||
+        warn "Failed to clone $subdir/$repo (private repo? clone manually)"
+    fi
+  done < <(read_ini_section repos.ini "$section")
+}
+
 clone_repos() {
   info "Cloning external repos → $GITHUB_DIR"
-  mkdir -p "$GITHUB_DIR"
-  while IFS= read -r repo; do
-    local dest="$GITHUB_DIR/$repo"
-    if [[ -d "$dest" ]]; then
-      warn "$repo already exists, skipping"
-    else
-      git clone "https://github.com/$GITHUB_ORG/$repo" "$dest" &&
-        success "Cloned $repo" ||
-        warn "Failed to clone $repo (private repo? clone manually)"
-    fi
-  done < <(read_pkgs repos.ini)
+  _clone_section TOOLS tools
+  _clone_section PERSONAL personal
 }
 
 install_devtool_nodejs() {
