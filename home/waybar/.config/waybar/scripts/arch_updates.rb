@@ -78,7 +78,7 @@ end
 def build_text_parts(pacman, aur)
   parts = []
   parts << "󰮯 #{pacman}" if pacman.positive?
-  parts << " #{aur}" if aur.positive?
+  parts << "󰏗 #{aur}" if aur.positive?
   parts = ['󰮯 0'] if parts.empty? && SHOW_ZERO
   parts
 end
