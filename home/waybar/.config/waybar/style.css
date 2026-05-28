@@ -1,7 +1,6 @@
 /* waybar/.config/waybar/style.css */
 
 /* LUA-THEME: Import generated theme colors */
-/* @import "../hypr/theme/output/waybar-theme.css"; */
 @import "./theme-colors.css";
 
 /* Globals */
@@ -64,30 +63,18 @@ tooltip {
   color: @bg_mantle;
 }
 
-/* Round only the ends + give outer breathing room */
-/* .modules-left > widget:first-child > *, */
-/* .modules-center > widget:first-child > *, */
-/* .modules-right > widget:first-child > * { */
-/*   margin-left: 5px; */
-/*   border-top-left-radius: 6px; */
-/*   border-bottom-left-radius: 6px; */
-/* } */
-/* .modules-left > widget:last-child > *, */
-/* .modules-center > widget:last-child > *, */
-/* .modules-right > widget:last-child > * { */
-/*   margin-right: 5px; */
-/*   border-top-right-radius: 6px; */
-/*   border-bottom-right-radius: 6px; */
-/* } */
-
 /*
 * Custom Modules
 */
 #custom-startmenu {
-  padding: 2px 05px 2px 8px;
+  padding: 0px;
   color: @primary;
   background-color: @bg_core;
-  /* border-radius: 8px 0px 0px 8px; */
+  min-width: 34px;
+  background-image: url("/usr/share/icons/Papirus/24x24/apps/start-here-archlinux.svg");
+  background-repeat: no-repeat;
+  background-position: 6px center;
+  background-size: 26px 26px;
 }
 
 /*
@@ -96,9 +83,6 @@ tooltip {
 #workspaces {
   padding: 4px 0px 4px 8px;
   background-color: @bg_core;
-  /* margin-right: 5px; */
-  /* border-top-right-radius: 8px; */
-  /* border-bottom-right-radius: 8px; */
 }
 
 #window {
@@ -151,10 +135,6 @@ tooltip {
 #custom-cava {
   color: @primary;
   font-size: 8px;
-  /* margin-left: -8px; */
-  /* margin-right: 5px; */
-  /* border-top-right-radius: 8px; */
-  /* border-bottom-right-radius: 8px; */
 }
 
 #custom-leftArrow,

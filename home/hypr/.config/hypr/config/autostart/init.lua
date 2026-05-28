@@ -23,6 +23,7 @@ local function run()
   hl.exec_cmd("udiskie")
   hl.exec_cmd("wl-paste --type text --watch cliphist store") -- Stores text data
   hl.exec_cmd("wl-paste --type image --watch cliphist store") -- Stores image data
+  -- hl.exec_cmd("gsettings set org.gnome.desktop.interface icon-theme 'Papirus-Dark'") -- Icon theme
   -- hl.exec_cmd("gsettings set org.gnome.desktop.interface gtk-theme 'Breeze-Dark'") -- GTK3 apps
   -- hl.exec_cmd("gsettings set org.gnome.desktop.interface color-scheme 'prefer-dark'") -- GTK4 apps
   -- hl.exec_cmd("hyprpm reload")                                                            -- Load plugins

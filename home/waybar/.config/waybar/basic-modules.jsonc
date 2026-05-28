@@ -309,7 +309,8 @@
   },
 
   "custom/startmenu": {
-    "format": "<span size='15000'>󰣇</span>",
+    // "format": "<span size='15000'>󰣇</span>",
+    "format": " ",
     "tooltip": false,
     "menu": "on-click",
     "menu-file": "~/.config/waybar/custom_modules/start_menu.xml",
