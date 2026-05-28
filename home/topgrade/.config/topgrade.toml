@@ -275,12 +275,7 @@ yay_arguments = "--nodevel"
 max_concurrency = 5
 
 # Additional git repositories to pull or fetch
-repos = [
-  "~/clones/*/",
-  "~/dotfiles",
-  "~/Development/external/",
-  "~/Development/forks/",
-]
+repos = ["~/dotfiles", "~/Development/external/", "~/Development/forks/"]
 
 # Set to `false` to skip pulling/fetching the predefined git repos
 # pull_predefined = false
