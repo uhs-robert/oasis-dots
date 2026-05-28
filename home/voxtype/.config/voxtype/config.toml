@@ -260,6 +260,7 @@ neovin = "NeoVim"
 ".files" = "dotfiles"
 "a you are" = "AUR"
 "top grade" = "topgrade"
+Hackman = "pacman"
 
 [meeting]
 enabled = false
