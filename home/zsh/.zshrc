@@ -155,8 +155,7 @@ f(){ "${EDITOR:-nvim}" -- "$(fzf)"; }
 zstyle ':completion:*' list-colors ''
 
 # Add user script directories to PATH
-export PATH="$PATH:$HOME/Development/bash-scripts/scripts/"
-export PATH="$PATH:$HOME/Development/bash-scripts/ruby/"
+export PATH="$PATH:$HOME/Development/tools/rob-bin/bin/"
 export PATH="$HOME/.config/hypr/scripts:$PATH"
 export PATH="$HOME/.tmuxifier/bin:$PATH"
 
@@ -169,18 +168,14 @@ export PATH="$HOME/.local/bin:$PATH"
 export PATH="$PATH:$HOME/.lmstudio/bin"
 
 # Load aliases & functions from GitHub-controlled script
-if [[ -f "$HOME/Development/bash-scripts/scripts/functions.sh" ]]; then
-  source "$HOME/Development/bash-scripts/scripts/functions.sh"
+if [[ -f "$HOME/Development/tools/rob-bin/lib/functions.sh" ]]; then
+  source "$HOME/Development/tools/rob-bin/lib/functions.sh"
 fi
-
-# Hyprland aliases
-alias logout=hyprctl dispatch exit
 
 # Load user-specific scripts from ~/.bashrc.d
 for rc in ~/.bashrc.d/*(.N); do source "$rc"; done
 
 eval "$(tmuxifier init -)"
-
 
 # pnpm
 export PNPM_HOME="$HOME/.local/share/pnpm"

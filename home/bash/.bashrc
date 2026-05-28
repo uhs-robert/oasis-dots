@@ -12,12 +12,11 @@ fi
 export PATH
 
 # Add custom script directory to PATH
-export PATH="$PATH:$HOME/Development/bash-scripts/scripts/"
-export PATH="$PATH:$HOME/Development/bash-scripts/ruby/"
+export PATH="$PATH:$HOME/Development/tools/rob-bin/bin/"
 
 # Load aliases & functions from GitHub-controlled script
-if [ -f "$HOME/Development/bash-scripts/scripts/functions.sh" ]; then
-  source "$HOME/Development/bash-scripts/scripts/functions.sh"
+if [ -f "$HOME/Development/tools/rob-bin/lib/functions.sh" ]; then
+  source "$HOME/Development/tools/rob-bin/lib/functions.sh"
 fi
 
 # Uncomment the following line if you don't like systemctl's auto-paging feature:
@@ -32,16 +31,8 @@ if [ -d ~/.bashrc.d ]; then
   done
 fi
 
-. "$HOME/.asdf/asdf.sh"
-
 unset rc
 eval "$(starship init bash)"
 if [[ $- == *i* ]]; then
   fastfetch
 fi
-. "$HOME/.deno/env"
-# Added by LM Studio CLI (lms)
-export PATH="$PATH:$HOME/.lmstudio/bin"
-# End of LM Studio CLI section
-
-. "$HOME/.cargo/env"

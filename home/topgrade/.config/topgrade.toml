@@ -278,7 +278,8 @@ max_concurrency = 5
 repos = [
   "~/clones/*/",
   "~/dotfiles",
-  # "~/Development/*/"
+  "~/Development/external/",
+  "~/Development/forks/",
 ]
 
 # Set to `false` to skip pulling/fetching the predefined git repos
