@@ -1,1 +1,1 @@
-../../../../../../../Development/oasis.nvim/extras/lua-theme/themes/dark/oasis_mirage.lua
+../../../../../../../Development/personal/oasis.nvim/extras/lua-theme/themes/dark/oasis_mirage.lua
