@@ -1,5 +1,8 @@
 # yazi/.config/yazi/yazi.toml
 [opener]
+run = [
+  { desc = "Run executable", run = "bash -lc '\"$1\"; echo; read -rp \"Press Enter to return to Yazi...\"' bash \"$1\"", block = true, orphan = false },
+]
 csv = [
   { run = 'nless "$@"', block = true, desc = "Nless", for = "unix" },
   { run = '/usr/bin/nvim "$@"', block = true, desc = "NeoVim", for = "unix" },
@@ -34,6 +37,12 @@ prepend_rules = [
   { mime = "image/*", use = "image-edit" },
   { mime = "video/*", use = "video" },
   { mime = "application/pdf", use = "pdf" },
+
+  { url = "*", use = [
+    "edit",
+    "open",
+    "run",
+  ] },
 ]
 
 [plugin]
