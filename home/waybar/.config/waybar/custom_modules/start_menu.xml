@@ -9,7 +9,7 @@
           <object class="GtkLabel">
             <property name="use-markup">true</property>
             <property name="xalign">0</property>
-            <property name="label">&lt;span foreground="#6BBF59"&gt;󰣇&lt;/span&gt;  Applications</property>
+            <property name="label">&lt;span size="12288" foreground="#6BBF59"&gt;󰣇&lt;/span&gt;  Apps</property>
           </object>
         </child>
       </object>
@@ -25,7 +25,7 @@
           <object class="GtkLabel">
             <property name="use-markup">true</property>
             <property name="xalign">0</property>
-            <property name="label">&lt;span foreground="#cdd6f4"&gt;󰌾&lt;/span&gt;  Lock</property>
+            <property name="label">&lt;span size="12288" foreground="#cdd6f4"&gt;󰌾&lt;/span&gt;  Lock</property>
           </object>
         </child>
       </object>
@@ -37,7 +37,7 @@
           <object class="GtkLabel">
             <property name="use-markup">true</property>
             <property name="xalign">0</property>
-            <property name="label">&lt;span foreground="#89dceb"&gt;󰍃&lt;/span&gt;  Logout</property>
+            <property name="label">&lt;span size="12288" foreground="#89dceb"&gt;󰍃&lt;/span&gt;  Logout</property>
           </object>
         </child>
       </object>
@@ -49,7 +49,7 @@
           <object class="GtkLabel">
             <property name="use-markup">true</property>
             <property name="xalign">0</property>
-            <property name="label">&lt;span foreground="#f9e2af"&gt;󰜉&lt;/span&gt;  Reboot</property>
+            <property name="label">&lt;span size="12288" foreground="#f9e2af"&gt;󰜉&lt;/span&gt;  Reboot</property>
           </object>
         </child>
       </object>
@@ -61,7 +61,7 @@
           <object class="GtkLabel">
             <property name="use-markup">true</property>
             <property name="xalign">0</property>
-            <property name="label">&lt;span foreground="#f38ba8"&gt;󰐥&lt;/span&gt;  Power Off</property>
+            <property name="label">&lt;span size="12288" foreground="#f38ba8"&gt;󰐥&lt;/span&gt;  Power Off</property>
           </object>
         </child>
       </object>
