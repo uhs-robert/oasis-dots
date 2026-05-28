@@ -83,7 +83,7 @@ run_in_tmux = true
 # tmux_session_mode = "attach_if_not_in_session"
 
 # Cleanup temporary or old files (default: false)
-cleanup = true
+# cleanup = false
 
 # Send a notification for every step (default: false)
 # notify_each_step = false
@@ -142,6 +142,8 @@ cleanup = true
 [commands]
 # "Python Environment" = "~/dev/.env/bin/pip install -i https://pypi.python.org/simple -U --upgrade-strategy eager jupyter"
 # "Custom command using interactive shell (unix)" = "-i vim_upgrade"
+"Prune pacman cache" = "sudo paccache -rk2 && sudo paccache -ruk0"
+"Prune paru cache" = "paru -Sc --noconfirm"
 
 
 [python]
