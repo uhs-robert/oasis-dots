@@ -12,7 +12,8 @@
   },
   "enabledPlugins": {
     "lua-lsp@claude-plugins-official": true,
-    "caveman@caveman": true
+    "caveman@caveman": true,
+    "ruby-lsp@claude-plugins-official": true
   },
   "extraKnownMarketplaces": {
     "caveman": {
@@ -23,9 +24,9 @@
     }
   },
   "alwaysThinkingEnabled": true,
+  "effortLevel": "medium",
   "theme": "dark-ansi",
   "editorMode": "vim",
   "preferredNotifChannel": "kitty",
-  "autoCompactEnabled": false,
-  "effortLevel": "medium"
+  "autoCompactEnabled": false
 }
