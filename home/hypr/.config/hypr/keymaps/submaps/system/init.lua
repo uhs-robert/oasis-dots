@@ -54,7 +54,7 @@ Submap.define({
     { "T",         Cmd.run(CMD.theme_switch),           "Theme Switch" },
     { "U",         Cmd.term("topgrade"),                "Update System" },
     { "V",         Cmd.term("voxtype configure"),       "Voxtype Settings" },
-    { "SHIFT + V", Cmd.term(CMD.restart_voxtype),       "Voxtype Settings" },
+    { "SHIFT + V", Cmd.term(CMD.restart_voxtype),       "Voxtype Restart" },
     { "W",         Cmd.run(CMD.restart_waybar),         "Restart Waybar" },
     { "SHIFT + W", Cmd.run(CMD.restart_waybar_git),     "Restart Waybar (Github)" },
   },

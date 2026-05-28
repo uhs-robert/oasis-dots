@@ -258,6 +258,8 @@ neovin = "NeoVim"
 "lazy get" = "LazyGit"
 ".file" = "dotfile"
 ".files" = "dotfiles"
+"a you are" = "AUR"
+"top grade" = "topgrade"
 
 [meeting]
 enabled = false
