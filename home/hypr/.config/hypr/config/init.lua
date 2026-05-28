@@ -82,7 +82,7 @@ Config.defaults = {
 
 --- @return string|nil
 local function detect_term()
-  local candidates = { "foot", "kitty", "ghostty", "wezterm", "alacritty", "xterm", "konsole" }
+  local candidates = { "kitty", "foot", "ghostty", "wezterm", "alacritty", "xterm", "konsole" }
   local dirs = {}
   for dir in (os.getenv("PATH") or ""):gmatch("[^:]+") do
     dirs[#dirs + 1] = dir
