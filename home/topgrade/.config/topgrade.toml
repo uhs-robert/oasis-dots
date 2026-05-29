@@ -143,7 +143,7 @@ run_in_tmux = true
 # "Python Environment" = "~/dev/.env/bin/pip install -i https://pypi.python.org/simple -U --upgrade-strategy eager jupyter"
 # "Custom command using interactive shell (unix)" = "-i vim_upgrade"
 "Prune pacman cache" = "sudo paccache -rk2 && sudo paccache -ruk0"
-"Prune paru cache" = "paru -Sc --noconfirm"
+# "Prune paru cache" = "paru -Sc"
 
 
 [python]
