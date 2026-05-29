@@ -261,6 +261,7 @@ neovin = "NeoVim"
 "a you are" = "AUR"
 "top grade" = "topgrade"
 Hackman = "pacman"
+hyperfem = "HyprVim"
 
 [meeting]
 enabled = false
