@@ -26,7 +26,7 @@ GAP = ENV.fetch('CAVA_GAP', "\u200a") # " ", "│", "·", etc.
 BORDER = ENV.fetch('CAVA_BORDER', 'none') # none|pipe|bracket
 MARKUP = ENV.fetch('CAVA_MARKUP', '0') == '1' # pango span color
 
-FPS = ENV.fetch('CAVA_FPS', '12').to_i # producer emit cap
+FPS = ENV.fetch('CAVA_FPS', '30').to_i # producer emit cap
 FOLLOW_INT = ENV.fetch('CAVA_FOLLOWER_INTERVAL', '1').to_f # follower print period (s)
 
 # Runtime dir for user
@@ -58,14 +58,20 @@ else
   MAXV = 255
 end
 
-# Global stop flag
-$stop = false
+# Shared mutable state for signal handlers and worker methods.
+module State
+  @stop = false
+  @last_check = 0.0
+  @last_active = false
+  class << self
+    attr_accessor :stop, :last_check, :last_active
+  end
+end
 
-# Signal handlers
-trap('INT') { $stop = true }
-trap('TERM') { $stop = true }
+trap('INT') { State.stop = true }
+trap('TERM') { State.stop = true }
 begin
-  trap('PIPE') { $stop = true }
+  trap('PIPE') { State.stop = true }
 rescue StandardError
   nil
 end
@@ -112,25 +118,21 @@ rescue Errno::EWOULDBLOCK
   nil
 end
 
-# Cache the probe a bit to avoid spamming playerctl
-$last_check = 0.0
-$last_active = false
-
 def media_active?
   now = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-  return $last_active if now - $last_check < 0.3
+  return State.last_active if now - State.last_check < 0.3
 
-  $last_check = now
+  State.last_check = now
 
   begin
     output = `playerctl -a status 2>/dev/null`
     states = output.lines.map(&:strip).map(&:downcase).reject(&:empty?)
-    $last_active = states.any? { |s| %w[playing paused].include?(s) }
+    State.last_active = states.any? { |s| %w[playing paused].include?(s) }
   rescue StandardError
-    $last_active = false
+    State.last_active = false
   end
 
-  $last_active
+  State.last_active
 end
 
 def install_parent_death_sig
@@ -207,7 +209,7 @@ def producer(_lock_file)
         nil
       end
 
-      until $stop
+      until State.stop
         buf = pipe.read(chunk_size)
         break if buf.nil? || buf.bytesize < chunk_size
 
@@ -245,7 +247,7 @@ end
 # ── Follower: reads from sink and prints to Waybar ─────────────────────────
 
 def follower
-  last_mtime = 0.0
+  last_mtime = nil
   last_payload = nil
   sleep_s = [0.002, 0.5 / [FPS, 1].max].max
 
@@ -263,12 +265,12 @@ def follower
 
   return 0 unless safe_write_line(last_payload)
 
-  until $stop
+  until State.stop
     begin
       if File.exist?(SINK_PATH)
         st = File.stat(SINK_PATH)
-        if st.mtime.to_f != last_mtime
-          last_mtime = st.mtime.to_f
+        if st.mtime != last_mtime
+          last_mtime = st.mtime
           line = File.read(SINK_PATH).strip
 
           unless line.empty?
