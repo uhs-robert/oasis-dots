@@ -18,7 +18,7 @@ Apps.map = {
   thunar      = { program = "thunar",      class = "thunar" },
   firefox     = { program = "firefox",     class = "firefox" },
   hyprconfig  = { program = TERM,          class = "hyprconfig",                    cmd = TERM_CMD .. " --class hyprconfig -e yazi ~/.config/hypr" },
-  protonplus  = { program = "protonplus",  class = "com.vysp3r.ProtonPlus",         cmd = "flatpak run com.vysp3r.ProtonPlus" },
+  protonplus  = { program = "protonplus",  class = "protonplus",                    cmd = "protonplus" },
   qutebrowser = { program = "qutebrowser", class = "org.qutebrowser.qutebrowser" },
   slack       = { program = "slack",       class = "Slack" },
   steam       = { program = "steam",       class = "Steam",                         cmd = "steam"},
