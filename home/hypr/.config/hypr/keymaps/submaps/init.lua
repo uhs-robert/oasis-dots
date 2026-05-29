@@ -3,6 +3,7 @@
 require("keymaps.submaps.apps")
 require("keymaps.submaps.go")
 require("keymaps.submaps.system")
+require("keymaps.submaps.swaync")
 require("keymaps.submaps.screenshot")
 require("keymaps.submaps.windows")
 require("keymaps.submaps.cursor")
