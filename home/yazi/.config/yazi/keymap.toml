@@ -45,6 +45,9 @@ prepend_keymap = [
   # In...
   { on = ["i", "d"], run = "shell -- dolphin .", desc = "Open in Dolphin" },
   { on = ["i", "i"], run = 'shell --block -- stat %h; echo; file %h; echo; read -n 1 -s -r -p "Press any key..."', desc = "Inspect file" },
+  { on = ["i", "r"], run = "shell --block -- %h", desc = "Run executable" },
+  { on = ["i", "R"], run = "shell --orphan -- %h", desc = "Run executable detached" },
+
 
   # Mount
   { on = [ "M", "m", ], run = "plugin mount", desc = "Open Mount Options" },
