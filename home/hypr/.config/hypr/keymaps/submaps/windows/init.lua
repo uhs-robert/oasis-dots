@@ -58,7 +58,7 @@ Submap.define({
       }
     end
 
-    local wk_toggle = function() Lazy.load("lua.plugins.hyprvim").whichkey.toggle() end
+    local wk_toggle = function() require("lua.plugins.hyprvim").whichkey.toggle() end
 
     -- stylua: ignore start
     local keys = {
