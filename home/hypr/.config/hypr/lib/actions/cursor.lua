@@ -1,6 +1,7 @@
 --- Cursor actions: pointer movement, scrolling, clicking, key dispatch via wlrctl/hyprctl.
 
 local Hypr = require("lib.hypr") --- @class HyprLib
+local Submap = require("lib.key.submap") ---@class Submap
 
 --- @class DirActions
 --- @field left  function
@@ -48,11 +49,24 @@ Cursor.scroll = function(step)
 end
 
 --- Run a wl-kbptr mode.
---- @param mode string  Key into KBPTR_CMDS
+--- opts.exit = false: exit submap raw, run wl-kbptr, return to Cursor when done (default).
+--- opts.exit = true:  run wl-kbptr then exit submap via Submap.reset().
+--- @param mode string
+--- @param opts? { exit: boolean }
 --- @return fun()
-Cursor.kbptr = function(mode)
+Cursor.kbptr = function(mode, opts)
   local cmd = assert(KBPTR_CMDS[mode], "unknown kbptr mode: " .. mode)
-  return Hypr.exec(cmd)
+  if opts and opts.exit then
+    return function()
+      Submap.reset()
+      Hypr.cmd_then_dispatch(cmd, 'hl.dsp.submap("reset")')()
+    end
+  end
+
+  return function()
+    hl.dispatch(hl.dsp.submap("reset"))
+    Hypr.cmd_then_dispatch(cmd, 'hl.dsp.submap("Cursor")')()
+  end
 end
 
 --- Send a key shortcut to the active window via hyprctl sendshortcut.

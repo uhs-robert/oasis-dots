@@ -20,4 +20,13 @@ function Hypr.exec(cmd) return Hypr.dispatch(hl.dsp.exec_cmd(cmd)) end
 --- @return fun()
 function Hypr.send(key) return Hypr.dispatch(hl.dsp.send_shortcut({ mods = "", key = key })) end
 
+--- Run cmd, then dispatch a Lua expr via hyprctl once it exits.
+--- This acts as a shell --block which allows a shell command to be awaited.
+--- @param cmd string            Shell command to run
+--- @param dispatch_expr string  hl.dsp.* Lua expression, e.g. 'hl.dsp.submap("Cursor")'
+--- @return fun()
+function Hypr.cmd_then_dispatch(cmd, dispatch_expr)
+  return function() hl.dispatch(hl.dsp.exec_cmd(cmd .. " ; hyprctl dispatch '" .. dispatch_expr .. "'")) end
+end
+
 return Hypr

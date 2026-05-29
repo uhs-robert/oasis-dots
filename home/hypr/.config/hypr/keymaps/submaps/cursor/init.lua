@@ -5,7 +5,6 @@ local Config = require("config") ---@class Config
 local Direction = require("lib.key.direction") ---@class Direction
 local Submap = require("lib.key.submap") ---@class Submap
 local Cursor = require("lib.actions.cursor") ---@class CursorActions
-local Lazy = require("lib.lazy") ---@type Lazy
 
 --- Saved cursor config, populated on_enter and restored on_exit.
 --- @type { hide: boolean, timeout: number }
@@ -64,12 +63,12 @@ local cursor_mode = Submap.define({
     -- stylua: ignore start
     local keys = {
       -- wl-kbptr modes
-      { "F",         Cursor.kbptr("floating_click"),          "Floating Click" },
-      { "CTRL + F",  oneshot(Cursor.kbptr("floating_click")), "Floating Click (Exit)" },
-      { "SHIFT + F", Cursor.kbptr("floating_move"),           "Floating Move" },
-      { "T",         Cursor.kbptr("tile_click"),              "Tiling Click" },
-      { "CTRL + T",  oneshot(Cursor.kbptr("tile_click")),     "Tiling Click (Exit)" },
-      { "SHIFT + T", Cursor.kbptr("tile_move"),               "Tiling Move" },
+      { "F",              Cursor.kbptr("floating_click"),                   "Floating Click" },
+      { "CTRL + F",       Cursor.kbptr("floating_click", { exit = true }),  "Floating Click (Exit)" },
+      { "SHIFT + F",      Cursor.kbptr("floating_move"),                    "Floating Move" },
+      { "T",              Cursor.kbptr("tile_click"),                       "Tiling Click" },
+      { "CTRL + T",       Cursor.kbptr("tile_click",     { exit = true }),  "Tiling Click (Exit)" },
+      { "SHIFT + T",      Cursor.kbptr("tile_move"),                        "Tiling Move" },
       -- Clicks
       { "SPACE",          Cursor.click_left(),             "Left Click" },
       { "A",              Cursor.click_left(),             "Left Click" },
