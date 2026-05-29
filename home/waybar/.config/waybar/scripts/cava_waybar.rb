@@ -101,21 +101,29 @@ def atomic_write(path, text)
   File.rename(tmp, path)
 end
 
+def claim_lock(file)
+  file.write(Process.pid.to_s)
+  file.flush
+  file
+end
+
 def try_lock(path)
   FileUtils.mkdir_p(File.dirname(path))
   file = File.open(path, File::CREAT | File::WRONLY, 0o644)
+  return claim_lock(file) if file.flock(File::LOCK_EX | File::LOCK_NB)
 
-  if file.flock(File::LOCK_EX | File::LOCK_NB)
-    file.write(Process.pid.to_s)
-    file.flush
-    file
-  else
-    file.close
-    nil
-  end
+  file.close
+  nil
 rescue Errno::EWOULDBLOCK
   file&.close
   nil
+end
+
+def probe_playerctl
+  output = `playerctl -a status 2>/dev/null`
+  output.lines.map(&:strip).map(&:downcase).reject(&:empty?)
+rescue StandardError
+  []
 end
 
 def media_active?
@@ -123,16 +131,7 @@ def media_active?
   return State.last_active if now - State.last_check < 0.3
 
   State.last_check = now
-
-  begin
-    output = `playerctl -a status 2>/dev/null`
-    states = output.lines.map(&:strip).map(&:downcase).reject(&:empty?)
-    State.last_active = states.any? { |s| %w[playing paused].include?(s) }
-  rescue StandardError
-    State.last_active = false
-  end
-
-  State.last_active
+  State.last_active = probe_playerctl.any? { |s| %w[playing paused].include?(s) }
 end
 
 def install_parent_death_sig
@@ -164,134 +163,133 @@ end
 
 # ── Producer: runs CAVA and writes to sink ─────────────────────────────────
 
-def producer(_lock_file)
-  cava_conf = <<~CONF
-    [general]
-    mode = normal
-    framerate = 25
-    lower_cutoff_freq = 50
-    higher_cutoff_freq = 12000
-    bars = #{BARS}
-    sensitivity = #{SENS}
-    channels = #{CHANNELS}
+CAVA_CONF = <<~CONF
+  [general]
+  mode = normal
+  framerate = 25
+  lower_cutoff_freq = 50
+  higher_cutoff_freq = 12000
+  bars = #{BARS}
+  sensitivity = #{SENS}
+  channels = #{CHANNELS}
 
-    [input]
-    method = #{METHOD}
+  [input]
+  method = #{METHOD}
 
-    [output]
-    method = raw
-    raw_target = /dev/stdout
-    bit_format = #{BIT_FORMAT}
-    channels = #{CHANNELS}
-    mono_option = average
+  [output]
+  method = raw
+  raw_target = /dev/stdout
+  bit_format = #{BIT_FORMAT}
+  channels = #{CHANNELS}
+  mono_option = average
 
-    [smoothing]
-    noise_reduction = 35
-    integral = 90
-    gravity = 95
-    ignore = 2
-    monstercat = 1.5
-  CONF
+  [smoothing]
+  noise_reduction = 35
+  integral = 90
+  gravity = 95
+  ignore = 2
+  monstercat = 1.5
+CONF
 
-  Tempfile.create(['cava', '.conf']) do |conf|
-    conf.write(cava_conf)
-    conf.flush
+def init_sink
+  atomic_write(SINK_PATH, JSON.generate({ text: '', class: CLASS_NAME }))
+rescue StandardError
+  nil
+end
 
-    # Spawn CAVA process
-    IO.popen(['cava', '-p', conf.path], 'rb', err: '/dev/null') do |pipe|
-      last_emit = 0.0
-      chunk_size = BYTESIZE * BARS
+def build_payload(buf)
+  vals = buf.unpack("#{BYTETYPE}#{BARS}")
+  text = vals.map { |v| val_to_token(v) }.join(GAP)
+  { text: media_active? ? text : '', class: CLASS_NAME }
+end
 
-      # Initialize sink
-      begin
-        atomic_write(SINK_PATH, JSON.generate({ text: '', class: CLASS_NAME }))
-      rescue StandardError
-        nil
-      end
-
-      until State.stop
-        buf = pipe.read(chunk_size)
-        break if buf.nil? || buf.bytesize < chunk_size
-
-        now = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-        next if now - last_emit < (1.0 / [FPS, 1].max)
-
-        last_emit = now
-
-        # Unpack values based on bit format
-        vals = buf.unpack("#{BYTETYPE}#{BARS}")
-        tokens = vals.map { |v| val_to_token(v) }
-        text = tokens.join(GAP)
-
-        payload = {
-          text: media_active? ? text : '',
-          class: CLASS_NAME
-        }
-
-        begin
-          atomic_write(SINK_PATH, JSON.generate(payload))
-        rescue StandardError
-          nil
-        end
-
-        break unless safe_write_line(payload) # Waybar closed pipe
-      end
-
-      # Process cleanup handled by IO.popen block exit
-    end
+def emit_frame(buf)
+  payload = build_payload(buf)
+  begin
+    atomic_write(SINK_PATH, JSON.generate(payload))
+  rescue StandardError
+    nil
   end
+  safe_write_line(payload)
+end
 
+def tick_due?(last_emit)
+  Process.clock_gettime(Process::CLOCK_MONOTONIC) - last_emit >= (1.0 / [FPS, 1].max)
+end
+
+def cava_read_loop(pipe)
+  last_emit = 0.0
+  chunk_size = BYTESIZE * BARS
+  init_sink
+  until State.stop
+    buf = pipe.read(chunk_size)
+    break if buf.nil? || buf.bytesize < chunk_size
+    next unless tick_due?(last_emit)
+
+    last_emit = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+    break unless emit_frame(buf)
+  end
+end
+
+def run_cava(conf_path)
+  IO.popen(['cava', '-p', conf_path], 'rb', err: '/dev/null') do |pipe|
+    cava_read_loop(pipe)
+  end
+end
+
+def producer(_lock_file)
+  Tempfile.create(['cava', '.conf']) do |conf|
+    conf.write(CAVA_CONF)
+    conf.flush
+    run_cava(conf.path)
+  end
   0
 end
 
 # ── Follower: reads from sink and prints to Waybar ─────────────────────────
 
+def read_sink
+  return { text: '', class: CLASS_NAME } unless File.exist?(SINK_PATH)
+
+  line = File.read(SINK_PATH).strip
+  line.empty? ? { text: '', class: CLASS_NAME } : JSON.parse(line, symbolize_names: true)
+rescue StandardError
+  { text: '', class: CLASS_NAME }
+end
+
+def check_sink_changed(last_mtime)
+  return [last_mtime, nil] unless File.exist?(SINK_PATH)
+
+  st = File.stat(SINK_PATH)
+  return [last_mtime, nil] if st.mtime == last_mtime
+
+  line = File.read(SINK_PATH).strip
+  payload = line.empty? ? nil : JSON.parse(line, symbolize_names: true)
+  [st.mtime, payload]
+rescue StandardError
+  [last_mtime, nil]
+end
+
+def follower_tick(last_mtime, last_payload)
+  new_mtime, payload = check_sink_changed(last_mtime)
+  return [new_mtime, last_payload, true] if payload.nil? || payload == last_payload
+
+  out = media_active? ? payload : { text: '', class: CLASS_NAME }
+  [new_mtime, payload, safe_write_line(out)]
+end
+
 def follower
-  last_mtime = nil
-  last_payload = nil
   sleep_s = [0.002, 0.5 / [FPS, 1].max].max
-
-  # Always print one line immediately
-  begin
-    last_payload = if File.exist?(SINK_PATH)
-                     line = File.read(SINK_PATH).strip
-                     line.empty? ? { text: '', class: CLASS_NAME } : JSON.parse(line, symbolize_names: true)
-                   else
-                     { text: '', class: CLASS_NAME }
-                   end
-  rescue StandardError
-    last_payload = { text: '', class: CLASS_NAME }
-  end
-
+  last_payload = read_sink
   return 0 unless safe_write_line(last_payload)
 
+  last_mtime = nil
   until State.stop
-    begin
-      if File.exist?(SINK_PATH)
-        st = File.stat(SINK_PATH)
-        if st.mtime != last_mtime
-          last_mtime = st.mtime
-          line = File.read(SINK_PATH).strip
-
-          unless line.empty?
-            payload = JSON.parse(line, symbolize_names: true)
-            if payload != last_payload
-              last_payload = payload
-              out = media_active? ? payload : { text: '', class: CLASS_NAME }
-              break unless safe_write_line(out)
-            end
-          end
-        end
-      end
-    rescue Errno::ENOENT
-      # File doesn't exist yet, ignore
-    rescue StandardError
-      # Ignore other errors
-    end
+    last_mtime, last_payload, ok = follower_tick(last_mtime, last_payload)
+    break unless ok
 
     sleep sleep_s
   end
-
   0
 end
 
