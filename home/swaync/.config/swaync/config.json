@@ -26,7 +26,7 @@
   "timeout-critical": 0,
   "notification-window-width": 500,
   "notification-window-height": -1,
-  "keyboard-shortcuts": true,
+  "keyboard-shortcuts": false,
   "image-visibility": "always",
   "transition-time": 200,
   "hide-on-clear": true,
