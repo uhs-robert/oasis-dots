@@ -46,7 +46,6 @@ Submap.define({
     { "I",         Cmd.run(Scripts.nmtui),              "Internet (nmtui)" },
     { "K",         Cmd.run("hyprctl kill"),             "Kill App (Click)" },
     { "L",         Cmd.run(POWER.lock),                 "Lock" },
-    -- { "N",         Cmd.run("swaync-client -t -sw"),     "Notification Center" },
     { "N",         Submap.switch("Notifications"),      "Notification Center", { keep = true } },
     { "SHIFT + M", Cmd.run(Scripts.toggle_mpris_mode),  "Toggle Mpris Mode" },
     { "R",         Cmd.run(POWER.reboot),               "Reboot" },
