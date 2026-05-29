@@ -1,6 +1,7 @@
 -- home/hypr/.config/hypr/extensions/auto_launcher/launcher.lua
 local Config = require("config") ---@class Config
 local Sessions = require("extensions.auto_launcher.sessions") ---@class Sessions
+local Prompt = require("lib.prompt") ---@class Prompt
 
 --- @type table<string, HL.WindowRule>
 local RULES = {}
@@ -95,24 +96,21 @@ local function run(apps)
   end
 end
 
---- Called via `hyprctl eval` after rofi writes a choice to /tmp/hypr-session-choice.
-function launch_session() ---@diagnostic disable-line: lowercase-global
-  local f = io.open("/tmp/hypr-session-choice", "r")
-  if not f then return end
-  local choice = f:read("*l")
-  f:close()
-  local apps = choice and SESSIONS[choice]
-  if apps then run(apps) end
-end
-
---- Write sorted session names to a file for rofi to consume.
 local names = {}
 for k in pairs(SESSIONS) do
   names[#names + 1] = k
 end
 table.sort(names)
-local f = io.open("/tmp/hypr-sessions", "w")
-if f then
-  f:write(table.concat(names, "\n"))
-  f:close()
+
+--- @class Launcher
+local Launcher = {}
+
+---Open a session picker via preferred menu launcher and launch the chosen session.
+function Launcher.show_picker()
+  Prompt.select("Session", names, function(choice)
+    local apps = choice and SESSIONS[choice]
+    if apps then run(apps) end
+  end)
 end
+
+return Launcher
