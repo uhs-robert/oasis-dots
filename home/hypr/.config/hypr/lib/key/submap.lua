@@ -173,6 +173,31 @@ local function run(action)
   return hl.dispatch(action)
 end
 
+--- Wrap individual bind rows that have opts.oneshot = true, marking them keep=true to prevent double-wrap.
+--- @param rows    table[]
+--- @param exit_fn fun()
+--- @return table[]
+local function apply_individual_oneshots(rows, exit_fn)
+  local result = {}
+  for _, row in ipairs(rows) do
+    local opts = row[4]
+    if type(opts) == "table" and opts.oneshot then
+      table.insert(result, {
+        row[1],
+        function()
+          run(row[2])
+          exit_fn()
+        end,
+        row[3],
+        { keep = true },
+      })
+    else
+      table.insert(result, row)
+    end
+  end
+  return result
+end
+
 --- Wrap bind rows so every action calls exit_fn after firing, implementing oneshot behaviour.
 --- @param rows    table[]
 --- @param exit_fn fun()
@@ -181,15 +206,20 @@ local function wrap_oneshot(rows, exit_fn)
   local wrapped = {}
 
   for _, row in ipairs(rows) do
-    table.insert(wrapped, {
-      row[1],
-      function()
-        run(row[2])
-        exit_fn()
-      end,
-      row[3],
-      row[4],
-    })
+    local opts = row[4]
+    if type(opts) == "table" and opts.keep then
+      table.insert(wrapped, row)
+    else
+      table.insert(wrapped, {
+        row[1],
+        function()
+          run(row[2])
+          exit_fn()
+        end,
+        row[3],
+        opts,
+      })
+    end
   end
 
   return wrapped
@@ -230,15 +260,20 @@ function Submap.define(spec)
 
     hl.define_submap(spec.name, function()
       local catchall = normalize_catchall(spec)
-      local raw_binds = resolve_binds(spec.binds)
-      local binds = catchall == "reset" and wrap_oneshot(raw_binds or {}, M.exit) or raw_binds
+      local raw_binds = apply_individual_oneshots(resolve_binds(spec.binds) or {}, M.exit)
+      local binds = catchall == "reset" and wrap_oneshot(raw_binds, M.exit) or raw_binds
 
       Bind.keys(binds or {})
 
       if normalize_escape(spec) ~= false then
         Bind.key("ESCAPE", M.exit, "Exit " .. spec.name)
         local back_opts = catchall == "reset" and { release = true } or nil
-        Bind.key("BackSpace", M.back, (Submap.previous and "Back to " .. Submap.previous or "Exit " .. spec.name), back_opts)
+        Bind.key(
+          "BackSpace",
+          M.back,
+          (Submap.previous and "Back to " .. Submap.previous or "Exit " .. spec.name),
+          back_opts
+        )
       end
 
       bind_catchall(catchall, M.exit, spec)
