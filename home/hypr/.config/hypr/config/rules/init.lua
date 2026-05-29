@@ -7,6 +7,7 @@ local set_animations = function()
   hl.curve("quick", { type = "bezier", points = { { 0.15, 0.85 }, { 0.25, 1.0 } } })
   hl.curve("overshot", { type = "bezier", points = { { 0.05, 0.9 }, { 0.1, 1.08 } } })
   hl.curve("linearish", { type = "bezier", points = { { 0.3, 0.0 }, { 0.7, 1.0 } } })
+  hl.curve("easeOutQuint", { type = "bezier", points = { { 0.23, 1 }, { 0.32, 1 } } })
 
   -- WINDOWS
   hl.animation({ leaf = "windows", enabled = true, speed = 4, bezier = "smooth", style = "popin 95%" })
@@ -18,15 +19,17 @@ local set_animations = function()
   hl.animation({ leaf = "workspaces", enabled = true, speed = 5, bezier = "smooth", style = "slidefade 20%" })
   hl.animation({ leaf = "specialWorkspace", enabled = true, speed = 3, bezier = "smooth", style = "slidefadevert 5%" })
 
+  -- LAYERS
+  -- hl.animation({ leaf = "layers", enabled = true, speed = 3, bezier = "quick", style = "fade" })
+
   -- MISC
-  hl.animation({ leaf = "fade", enabled = true, speed = 3, bezier = "linearish" })
-  hl.animation({ leaf = "layers", enabled = true, speed = 3, bezier = "quick", style = "fade" })
+  -- hl.animation({ leaf = "fade", enabled = true, speed = 3, bezier = "linearish" })
 end
 
 --- Applies animation layer rules for shell surfaces (waybar, rofi, notifications, etc.).
 local set_layer_rules = function()
   -- https://wiki.hypr.land/Configuring/Basics/Window-Rules/#layer-rules
-  hl.layer_rule({ match = { namespace = "waybar" }, animation = "fade" })
+  hl.layer_rule({ match = { namespace = "waybar" }, animation = "slide top" })
   hl.layer_rule({ match = { namespace = "rofi" }, animation = "popin" })
   hl.layer_rule({ match = { namespace = "hyprpaper" }, animation = "fade" })
   hl.layer_rule({ match = { namespace = "selection" }, animation = "fade" })

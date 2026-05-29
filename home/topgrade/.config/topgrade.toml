@@ -136,6 +136,7 @@ run_in_tmux = true
 # "Fedora Nvidia Post Kernel Upgrades" = "~/Development/bash-scripts/scripts/topgrade-kernel-post"
 # "Rebuild akmods" = "sudo akmods --force"
 # "Regenerate initramfs" = "sudo dracut --regenerate-all --force --add bluetooth"
+"Refresh waybar updates" = "rm -f \"${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/arch_updates.cache.json\"; pkill -SIGINT waybar || true; sleep 0.4; nohup waybar > /dev/null 2>&1 &"
 
 
 # Custom commands
