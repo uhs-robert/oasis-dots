@@ -57,5 +57,6 @@ Submap.define({
     { "SHIFT + V", Cmd.term(CMD.restart_voxtype),       "Voxtype Restart" },
     { "W",         Cmd.run(CMD.restart_waybar),         "Restart Waybar" },
     { "SHIFT + W", Cmd.run(CMD.restart_waybar_git),     "Restart Waybar (Github)" },
+    { "X",         Cmd.run("hyprctl seterror disable"), "Disabled Hypr Errors" },
   },
 }).setup()
