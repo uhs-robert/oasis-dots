@@ -48,7 +48,12 @@ def count_aur_updates
   result = run(['paru', '-Qua'])
   return nil unless result[:status]&.success?
 
-  result[:stdout].lines.count { |l| !l.strip.empty? }
+  result[:stdout].lines.count do |l|
+    next false if l.strip.empty?
+
+    pkgname = l.split.first.to_s
+    pkgname !~ /-(?:git|svn|hg|bzr|cvs)$/
+  end
 end
 
 def read_cache
