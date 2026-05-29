@@ -20,7 +20,7 @@ local set_animations = function()
   hl.animation({ leaf = "specialWorkspace", enabled = true, speed = 3, bezier = "smooth", style = "slidefadevert 5%" })
 
   -- LAYERS
-  -- hl.animation({ leaf = "layers", enabled = true, speed = 3, bezier = "quick", style = "fade" })
+  hl.animation({ leaf = "layers", enabled = true, speed = 3, bezier = "quick", style = "fade" })
 
   -- MISC
   -- hl.animation({ leaf = "fade", enabled = true, speed = 3, bezier = "linearish" })
