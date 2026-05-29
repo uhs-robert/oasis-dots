@@ -51,10 +51,7 @@ install_devtool_bun() {
 install_devtool_go() {
   if command -v go &>/dev/null; then warn "go already present, skipping"; return; fi
   info "Installing Go..."
-  case "$DISTRO" in
-  fedora) sudo dnf install -y golang ;;
-  arch)   sudo pacman -S --needed --noconfirm go ;;
-  esac
+  sudo pacman -S --needed --noconfirm go
   success "Go installed"
 }
 
@@ -106,15 +103,8 @@ install_greetd() {
   confirm "Install greetd + tuigreet (display manager)?" || return 0
 
   info "Installing greetd and tuigreet..."
-  case "$DISTRO" in
-  fedora)
-    sudo dnf install -y greetd tuigreet
-    ;;
-  arch)
-    sudo pacman -S --needed --noconfirm greetd
-    sudo pacman -S --needed --noconfirm greetd-tuigreet
-    ;;
-  esac
+  sudo pacman -S --needed --noconfirm greetd
+  sudo pacman -S --needed --noconfirm greetd-tuigreet
 
   cd "$DOTFILES_DIR"
   local connector
@@ -171,10 +161,7 @@ enable_keyd() {
 # Builds and installs the xone Xbox controller kernel module from source.
 install_xone() {
   info "Installing xone..."
-  case "$DISTRO" in
-  fedora) sudo dnf install -y dkms kernel-devel cabextract ;;
-  arch) sudo pacman -S --needed --noconfirm dkms linux-headers cabextract ;;
-  esac
+  sudo pacman -S --needed --noconfirm dkms linux-headers cabextract
   local tmp
   tmp=$(mktemp -d)
   git clone --recurse-submodules --branch v0.3 https://github.com/medusalix/xone "$tmp/xone"
@@ -193,34 +180,18 @@ install_steam() {
   case "$method" in
   flatpak)
     if ! command -v flatpak &>/dev/null; then
-      case "$DISTRO" in
-      fedora) sudo dnf install -y flatpak ;;
-      arch) sudo pacman -S --needed --noconfirm flatpak ;;
-      esac
+      sudo pacman -S --needed --noconfirm flatpak
     fi
     flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
-    if [[ "$DISTRO" != arch ]]; then
-      mapfile -t gaming_apps < <(read_flatpak_section GAMING)
-      install_flatpak_section "gaming" "${gaming_apps[@]}"
-    fi
     flatpak install -y flathub com.valvesoftware.Steam
     ;;
   *)
     info "Installing Steam (native)..."
-    case "$DISTRO" in
-    fedora)
-      sudo dnf install -y \
-        "https://mirrors.rpmfusion.org/nonfree/fedora/rpmfusion-nonfree-release-$(rpm -E %fedora).noarch.rpm"
-      sudo dnf install -y steam
-      ;;
-    arch)
-      if ! grep -q '^\[multilib\]' /etc/pacman.conf; then
-        info "Enabling multilib repo..."
-        sudo sed -i 's/^#\(\[multilib\]\)/\1/; /^\[multilib\]/{n;s/^#//}' /etc/pacman.conf
-      fi
-      sudo pacman -Syu --needed --noconfirm steam
-      ;;
-    esac
+    if ! grep -q '^\[multilib\]' /etc/pacman.conf; then
+      info "Enabling multilib repo..."
+      sudo sed -i 's/^#\(\[multilib\]\)/\1/; /^\[multilib\]/{n;s/^#//}' /etc/pacman.conf
+    fi
+    sudo pacman -Syu --needed --noconfirm steam
     ;;
   esac
   success "Steam installed"
@@ -231,35 +202,18 @@ install_steam() {
 install_nvidia() {
   confirm "Install Nvidia drivers?" || return 0
   info "Installing Nvidia drivers..."
-  case "$DISTRO" in
-  fedora)
-    sudo dnf install -y \
-      "https://mirrors.rpmfusion.org/free/fedora/rpmfusion-free-release-$(rpm -E %fedora).noarch.rpm" \
-      "https://mirrors.rpmfusion.org/nonfree/fedora/rpmfusion-nonfree-release-$(rpm -E %fedora).noarch.rpm"
-    sudo dnf install -y \
-      akmod-nvidia \
-      xorg-x11-drv-nvidia-cuda \
-      libva-nvidia-driver \
-      nvidia-settings
-    ;;
-  arch)
-    sudo pacman -S --needed --noconfirm nvidia-utils libva-nvidia-driver nvidia-settings
-    if confirm "Use nvidia-dkms instead of nvidia (for zen/lts/custom kernels)?"; then
-      sudo pacman -S --needed --noconfirm nvidia-dkms linux-headers
-    else
-      sudo pacman -S --needed --noconfirm nvidia
-    fi
-    ;;
-  esac
+  sudo pacman -S --needed --noconfirm nvidia-utils libva-nvidia-driver nvidia-settings
+  if confirm "Use nvidia-dkms instead of nvidia (for zen/lts/custom kernels)?"; then
+    sudo pacman -S --needed --noconfirm nvidia-dkms linux-headers
+  else
+    sudo pacman -S --needed --noconfirm nvidia
+  fi
   success "Nvidia drivers installed (reboot required)"
 }
 
 setup_voxtype() {
   if ! command -v voxtype &>/dev/null; then
-    case "$DISTRO" in
-    arch) warn "voxtype should have been installed via AUR, check paru output above" ;;
-    fedora) warn "voxtype not in Fedora repos, download the RPM from https://voxtype.io and re-run" ;;
-    esac
+    warn "voxtype should have been installed via AUR, check paru output above"
     return
   fi
   info "Configuring voxtype..."

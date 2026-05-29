@@ -17,8 +17,8 @@ Usage: uninstall.sh [OPTIONS]
 
 Removes the Oasis dotfiles installation. Unstows all packages (removes symlinks
 from ~), optionally removes installed system files, disables services, and
-reverts the default shell. Does not remove system packages, Flatpaks, or
-Cargo/Rust as those should be removed manually.
+reverts the default shell. Does not remove system packages or Cargo/Rust
+as those should be removed manually.
 
 Options:
   --no-system-files    Skip removal of system files (/etc/greetd, etc.)
@@ -121,14 +121,8 @@ print_manual_steps() {
  !  The following were NOT removed, uninstall manually if desired:
 
     System packages
-      Fedora : sudo dnf remove <pkg>
-      Arch   : sudo pacman -Rs <pkg>
-      List installed from this repo: see packages/fedora.ini or packages/arch.ini
-
-    Flatpak apps
-      flatpak uninstall --all
-      flatpak uninstall --unused   # remove leftover runtimes
-      List installed: flatpak list
+      Arch : sudo pacman -Rs <pkg>
+      List installed from this repo: see packages/arch.ini
 
     Cargo packages
       cargo uninstall <pkg>

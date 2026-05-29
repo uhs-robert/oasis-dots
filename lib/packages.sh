@@ -21,19 +21,13 @@ ensure_cmd() {
   done
   [[ ${#missing[@]} -eq 0 ]] && return
   info "Bootstrapping missing commands: ${missing[*]}"
-  case "$DISTRO" in
-  fedora) sudo dnf install -y "${missing[@]}" ;;
-  arch)   sudo pacman -S --needed --noconfirm "${missing[@]}" ;;
-  esac
+  sudo pacman -S --needed --noconfirm "${missing[@]}"
 }
 
 install_packages() {
   info "Installing system packages..."
   mapfile -t pkgs < <(read_pkgs "$DISTRO.ini")
-  case "$DISTRO" in
-  fedora) sudo dnf install -y "${pkgs[@]}" ;;
-  arch)   sudo pacman -S --needed --noconfirm "${pkgs[@]}" ;;
-  esac
+  sudo pacman -S --needed --noconfirm "${pkgs[@]}"
   success "System packages installed"
 }
 

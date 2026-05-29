@@ -15,7 +15,6 @@ bootstrap_paru() {
 }
 
 install_aur_packages() {
-  [[ "$DISTRO" != arch ]] && return
   bootstrap_paru
   info "Installing AUR packages..."
   mapfile -t pkgs < <(read_pkgs arch-aur.ini)
