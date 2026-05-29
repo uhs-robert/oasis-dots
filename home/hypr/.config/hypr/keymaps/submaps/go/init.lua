@@ -40,6 +40,7 @@ Submap.define({
       { "P",         Menu.tmux(),                           "Project" },
       { "Q",         Apps.focus_or_launch(APP.qutebrowser), "QuteBrowser" },
       { "S",         Apps.focus_or_launch(APP.slack),       "Slack" },
+      { "SHIFT + S", Apps.focus_or_launch(APP.steam),       "Steam" },
       { "T",         Apps.focus_or_launch(APP.terminal),    "Terminal" },
       { "U",         Apps.focus_or_launch(APP.tmux_uphill), "Tmuxifier UpHill" },
       { "W",         Menu.hyprwindow(),                     "Window" },
