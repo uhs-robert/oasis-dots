@@ -16,7 +16,7 @@ Apps.map = {
   betterbird  = { program = "betterbird",  class = "eu.betterbird.Betterbird",      cmd = "betterbird" },
   cliamp      = { program = "cliamp",      title = "cliamp",                        cmd = TERM_CMD .. " -e cliamp" },
   thunar      = { program = "thunar",      class = "thunar" },
-  firefox     = { program = "firefox",     class = "org.mozilla.firefox" },
+  firefox     = { program = "firefox",     class = "firefox" },
   hyprconfig  = { program = TERM,          class = "hyprconfig",                    cmd = TERM_CMD .. " --class hyprconfig -e yazi ~/.config/hypr" },
   protonplus  = { program = "protonplus",  class = "com.vysp3r.ProtonPlus",         cmd = "flatpak run com.vysp3r.ProtonPlus" },
   qutebrowser = { program = "qutebrowser", class = "org.qutebrowser.qutebrowser" },
