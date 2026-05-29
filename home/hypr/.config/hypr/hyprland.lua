@@ -35,11 +35,12 @@ local function init()
     monitors = function(is_laptop) return is_laptop and MONITORS_LAPTOP or MONITORS_DESKTOP end,
   })
 
-  require("hyprvim").setup({
+  require("lua.plugins.hyprvim").setup({
     keys = { leader = "SUPER", activate = "SPACE", exit = "ESCAPE" },
     which_key = { auto_show = { disabled = { "NORMAL", "INSERT", "VISUAL", "V-LINE", "Cursor", "Windows", "Resize", "Move" } },
     },
   })
+
 end
 
 init()

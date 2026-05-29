@@ -93,7 +93,7 @@ local cursor_mode = Submap.define({
       { "I",              Submap.switch("Screenshot"),  "+Screenshot" },
       { "Q",              Submap.switch("System"),      "+System" },
       -- WhichKey
-      { "SHIFT + SLASH",  Lazy.load("hyprvim.whichkey").toggle, "WhichKey" },
+      { "SHIFT + SLASH",  function() Lazy.load("lua.plugins.hyprvim.whichkey").toggle() end, "WhichKey" },
     }
     -- stylua: ignore end
 

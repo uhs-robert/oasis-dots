@@ -6,7 +6,7 @@ local Menu = require("lib.actions.menu") ---@class Menu
 local FILES = Config.app.gui_file_manager
 local TUI_FILES = Config.app.tui_file_manager
 
-local edit_in_vim = function() require("hyprvim.vim.commands.editor").open({ insert_mode = true }) end
+local edit_in_vim = function() require("lua.plugins.hyprvim").editor.open({ insert_mode = true }) end
 -- stylua: ignore start
 
 -- Leader Commands
