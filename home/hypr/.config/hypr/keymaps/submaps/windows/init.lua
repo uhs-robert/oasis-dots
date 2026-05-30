@@ -6,7 +6,6 @@ local Submap = require("lib.key.submap") ---@class Submap
 local Menu = require("lib.actions.menu") ---@class Menu
 local Window = require("lib.actions.window") ---@class WindowActions
 local Workspace = require("lib.actions.workspace") ---@class WorkspaceActions
-local Lazy = require("lib.lazy") ---@type Lazy
 
 --- Wrap an action to exit the submap before firing.
 --- @param fn fun()

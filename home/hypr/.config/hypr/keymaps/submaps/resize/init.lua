@@ -17,6 +17,7 @@ Submap.define({
   binds = function()
     local keys = {
       { "EQUAL", Resize.reset, "Reset Size" },
+      { "SHIFT + SLASH", function() require("lua.plugins.hyprvim").whichkey.toggle() end, "WhichKey" },
     }
     for _, key in ipairs(Direction.speed_binds(Resize.at, "Resize")) do
       keys[#keys + 1] = key
