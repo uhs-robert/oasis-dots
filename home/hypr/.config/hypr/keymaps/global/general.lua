@@ -9,7 +9,6 @@ local OPTS = {
 }
 
 -- Utility
-Bind.leader_key("ESCAPE", hl.dsp.submap("reset"), OPTS.universal("Reset Submaps"))
 Bind.leader_cmd("SLASH",  require("lib.scripts").keybind_help, OPTS.universal("Keybind Help"))
 
 -- Window Actions
