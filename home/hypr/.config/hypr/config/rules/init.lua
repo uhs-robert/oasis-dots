@@ -30,6 +30,7 @@ end
 local set_layer_rules = function()
   -- https://wiki.hypr.land/Configuring/Basics/Window-Rules/#layer-rules
   hl.layer_rule({ match = { namespace = "waybar" }, animation = "slide top" })
+  hl.layer_rule({ match = { title = "startmenu" }, no_anim = true })
   hl.layer_rule({ match = { namespace = "rofi" }, animation = "popin" })
   hl.layer_rule({ match = { namespace = "hyprpaper" }, animation = "fade" })
   hl.layer_rule({ match = { namespace = "selection" }, animation = "fade" })
