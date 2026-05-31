@@ -211,6 +211,16 @@ install_nvidia() {
   success "Nvidia drivers installed (reboot required)"
 }
 
+_detect_gpu_vendor() {
+  if lspci 2>/dev/null | grep -qiE 'amd|radeon'; then
+    echo "amd"
+  elif lspci 2>/dev/null | grep -qi 'nvidia'; then
+    echo "nvidia"
+  elif lspci 2>/dev/null | grep -qi 'intel.*vga\|vga.*intel'; then
+    echo "intel"
+  fi
+}
+
 setup_voxtype() {
   if ! command -v voxtype &>/dev/null; then
     warn "voxtype should have been installed via AUR, check paru output above"
@@ -221,8 +231,27 @@ setup_voxtype() {
     sudo usermod -aG input "$USER"
     warn "Added $USER to input group, takes effect on next login"
   fi
+
+  local gpu_conf="$HOME/.config/systemd/user/voxtype.service.d/gpu.conf"
+  if [[ -L "$gpu_conf" ]]; then
+    warn "gpu.conf is a dotfiles symlink, skipping GPU detection"
+  elif command -v lspci &>/dev/null; then
+    local vendor
+    vendor=$(_detect_gpu_vendor)
+    if [[ -n "$vendor" ]]; then
+      mkdir -p "$(dirname "$gpu_conf")"
+      printf '[Service]\nEnvironment="VOXTYPE_GPU_DEVICE=0"\nEnvironment="VOXTYPE_VULKAN_DEVICE=%s"\n' "$vendor" > "$gpu_conf"
+      success "voxtype GPU drop-in written: $vendor"
+    else
+      warn "Could not detect GPU vendor, skipping gpu.conf"
+    fi
+  else
+    warn "lspci not available, skipping gpu.conf"
+  fi
+
   voxtype setup model
   if systemctl --user show-environment &>/dev/null; then
+    systemctl --user daemon-reload
     systemctl --user is-enabled voxtype &>/dev/null || systemctl --user enable --now voxtype
   else
     warn "User systemd not available, enable voxtype after login: systemctl --user enable --now voxtype"
