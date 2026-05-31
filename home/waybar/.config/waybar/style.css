@@ -208,7 +208,7 @@ menuitem label {
   font-size: 14px;
 }
 menuitem {
-  border-radius: 15px;
+  border-radius: 0px;
 }
 menu separator {
   min-height: 1px;
