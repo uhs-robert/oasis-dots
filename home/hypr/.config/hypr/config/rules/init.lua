@@ -1,5 +1,9 @@
 -- home/hypr/.config/hypr/config/system/rules.lua
 
+--- @class Rules
+--- @field layer_rules table<string, any> Registry of named layer-rule handles (supports set_enabled/is_enabled).
+local Rules = {}
+
 --- Registers bezier curves and animation definitions for windows, workspaces, fade, and layers.
 local set_animations = function()
   -- https://wiki.hypr.land/Configuring/Advanced-and-Cool/Animations/
@@ -23,19 +27,35 @@ local set_animations = function()
   hl.animation({ leaf = "layers", enabled = true, speed = 3, bezier = "quick", style = "fade" })
 
   -- MISC
-  -- hl.animation({ leaf = "fade", enabled = true, speed = 3, bezier = "linearish" })
+  hl.animation({ leaf = "fade", enabled = true, speed = 3, bezier = "linearish" })
 end
 
 --- Applies animation layer rules for shell surfaces (waybar, rofi, notifications, etc.).
+--- Returns a registry table mapping rule name -> rule handle (supports set_enabled / is_enabled).
+--- @return table<string, any>
 local set_layer_rules = function()
   -- https://wiki.hypr.land/Configuring/Basics/Window-Rules/#layer-rules
-  hl.layer_rule({ match = { namespace = "waybar" }, animation = "slide top" })
-  hl.layer_rule({ match = { title = "startmenu" }, no_anim = true })
-  hl.layer_rule({ match = { namespace = "rofi" }, animation = "popin" })
-  hl.layer_rule({ match = { namespace = "hyprpaper" }, animation = "fade" })
-  hl.layer_rule({ match = { namespace = "selection" }, animation = "fade" })
-  hl.layer_rule({ match = { namespace = "notificationsmenu" }, animation = "slide right" })
-  hl.layer_rule({ match = { namespace = "dashboardmenu" }, animation = "slide left" })
+  local rules = {}
+  local function register(spec)
+    local handle = hl.layer_rule(spec)
+    rules[spec.name] = handle
+
+    return handle
+  end
+
+  -- stylua: ignore start
+  register({ name = "waybar",            match = { namespace = "waybar" },            animation = "slide top" })
+  register({ name = "rofi",              match = { namespace = "rofi" },              animation = "popin" })
+  register({ name = "hyprpaper",         match = { namespace = "hyprpaper" },         animation = "fade" })
+  register({ name = "selection",         match = { namespace = "selection" },         animation = "fade" })
+  register({ name = "notificationsmenu", match = { namespace = "notificationsmenu" }, animation = "slide right" })
+  register({ name = "dashboardmenu",     match = { namespace = "dashboardmenu" },     animation = "slide left" })
+  register({ name = "no_animation",      match = { namespace = ".*"},                 no_anim = true})
+  -- stylua: ignore end
+
+  rules.no_animation:set_enabled(false)
+
+  return rules
 end
 
 --- Applies workspace rules.
@@ -109,12 +129,72 @@ local set_screenshare_handler = function()
   end)
 end
 
+--- @param name string
+--- @return any|nil
+function Rules.get(name) return Rules.layer_rules[name] end
+
+--- @param name string
+function Rules.enable(name)
+  local r = Rules.layer_rules[name]
+  if r then r:set_enabled(true) end
+
+  return hl.dsp.no_op()
+end
+
+--- @param name string
+function Rules.disable(name)
+  local r = Rules.layer_rules[name]
+  if r then r:set_enabled(false) end
+
+  return hl.dsp.no_op()
+end
+
+--- @param name string
+function Rules.toggle(name)
+  local r = Rules.layer_rules[name]
+  if r then r:set_enabled(not r:is_enabled()) end
+
+  return hl.dsp.no_op()
+end
+
+--- @param name string
+--- @param cmd string
+function Rules.exec_without_layer_rule(name, cmd)
+  local rule = Rules.layer_rules[name]
+  if rule then rule:set_enabled(false) end
+
+  return hl.dsp.exec_cmd(string.format([[sh -c '%s; hyprctl dispatch "LayerRules.enable('\''%s'\'')"']], cmd, name))
+end
+
+--- @param cmd string
+--- @return any
+function Rules.exec_without_layer_animations(cmd)
+  local name = "no_animation"
+  local rule = Rules.layer_rules[name]
+  if rule then rule:set_enabled(true) end
+
+  return hl.dsp.exec_cmd(
+    string.format([[sh -c '%s; status=$?; hyprctl dispatch "LayerRules.disable('\''%s'\'')"; exit $status']], cmd, name)
+  )
+end
+
+-- Global functions which are accessible externally via `hyprctl dispatch "LayerRules"`
+_G.LayerRules = {
+  enable = function(name) return Rules.enable(name) end,
+  disable = function(name) return Rules.disable(name) end,
+  toggle = function(name) return Rules.toggle(name) end,
+  exec_without = function(name, cmd) return Rules.exec_without_layer_rule(name, cmd) end,
+  exec_without_animation = function(cmd) return Rules.exec_without_layer_animations(cmd) end,
+}
+
 local function init()
   set_animations()
-  set_layer_rules()
+  Rules.layer_rules = set_layer_rules()
   set_workspace_rules()
   set_window_rules()
   set_screenshare_handler()
 end
 
 init()
+
+return Rules
