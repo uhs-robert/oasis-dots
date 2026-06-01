@@ -1,0 +1,3 @@
+# Ignore bogus media-key input interface from JMTek USB Audio adapter.
+# Audio output still works; only the HID/input side is ignored by libinput/Hyprland.
+ACTION=="add|change", SUBSYSTEM=="input", ATTRS{idVendor}=="0c76", ATTRS{idProduct}=="1707", ENV{LIBINPUT_IGNORE_DEVICE}="1"
