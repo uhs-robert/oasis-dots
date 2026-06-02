@@ -9,17 +9,7 @@
 
 /*****----- Configuration -----*****/
 configuration {
-	// modi:                       "drun,run,window,ssh,filebrowser";
-
-    modi: "drun,window,run,ssh,filebrowser,hyprwindow:/home/roberth/.config/hypr/scripts/rofi-hyprwindow.sh,hyprwindow-move:env ROFI_HYPRWINDOW_MODE=move /home/roberth/.config/hypr/scripts/rofi-hyprwindow.sh";
-    show-icons:                 true;
-    display-drun:               " Apps";
-    display-run:                " Run";
-    display-filebrowser:        " Files";
-    display-window:             " Windows";
-    display-hyprwindow:         " Windows";
-    display-ssh:                " SSH";
-    drun-display-format:        "{name}";
+    modi: "drun,hyprwindow:/home/roberth/.config/hypr/scripts/rofi-hyprwindow.sh,run,ssh";
     window-format:              "{w} · {c} · {t}";
 }
 

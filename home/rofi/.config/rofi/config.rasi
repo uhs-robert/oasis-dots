@@ -9,7 +9,7 @@
 
 configuration {
 	/*---------- General setting ----------*/
-  modi: "drun,window,run,ssh,filebrowser,hyprwindow:home/roberth/.config/hypr/scripts/rofi-hyprwindow.sh";
+  modi: "drun,hyprwindow:/home/roberth/.config/hypr/scripts/rofi-hyprwindow.sh,run,ssh";
 	case-sensitive: false;
 	cycle: true;
 	filter: "";
@@ -74,15 +74,15 @@ configuration {
 	max-history-size: 25;
 
 	/*---------- Display setting ----------*/
-	display-window: "Windows";
-	display-windowcd: "Window CD";
-	display-run: "Run";
-	display-ssh: "SSH";
-	display-drun: "Apps";
-	display-combi: "Combi";
-	display-keys: "Keys";
-	display-filebrowser: "Files";
-  display-hyprwindow: "Windows";
+  display-drun:               " Apps";
+  display-run:                " Run";
+  display-filebrowser:        " Files";
+  display-window:             " Windows";
+  display-windowcd:           " CD Window";
+  display-hyprwindow:         " Windows";
+  display-ssh:                " SSH";
+	display-combi:              "Combi";
+	display-keys:               "Keys";
 
 	/*---------- Misc setting ----------*/
 	terminal: "rofi-sensible-terminal";
@@ -183,4 +183,4 @@ configuration {
 */
 }
 
-  @theme "~/.config/rofi/themes/oasis-menu.rasi"
+@theme "~/.config/rofi/themes/oasis-bottom.rasi"

@@ -315,7 +315,7 @@
     "menu": "on-click",
     "menu-file": "~/.config/waybar/custom_modules/start_menu.xml",
     "menu-actions": {
-      "apps": "hyprctl dispatch \"LayerRules.exec_without_animation('rofi -show drun -theme ~/.config/rofi/startmenu.rasi')\"",
+      "apps": "hyprctl dispatch \"LayerRules.exec_without_animation('rofi -show drun -theme ~/.config/rofi/themes/oasis-start.rasi')\"",
       "sep1": "true",
       "lock": "~/.config/waybar/scripts/confirm-action.sh --title Lock      --glyph '󰌾' --color '#E8F1FF' --exec '~/.config/hypr/scripts/hyprlock-screenshot.lua'",
       "logout": "~/.config/waybar/scripts/confirm-action.sh --title Logout    --glyph '󰍃' --color '#81C0FF' --exec 'command -v hyprshutdown >/dev/null 2>&1 && hyprshutdown || hyprctl dispatch exit'",

@@ -25,9 +25,13 @@ local set_animations = function()
 
   -- LAYERS
   hl.animation({ leaf = "layers", enabled = true, speed = 3, bezier = "quick", style = "fade" })
+  hl.animation({ leaf = "layersIn", enabled = true, speed = 3, bezier = "quick" })
+  hl.animation({ leaf = "layersOut", enabled = true, speed = 3, bezier = "quick" })
+  hl.animation({ leaf = "fadeLayersIn", enabled = true, speed = 1, bezier = "quick" })
+  hl.animation({ leaf = "fadeLayersOut", enabled = true, speed = 3, bezier = "linearish" })
 
-  -- MISC
-  hl.animation({ leaf = "fade", enabled = true, speed = 3, bezier = "linearish" })
+  -- FADE
+  hl.animation({ leaf = "fade", enabled = true, speed = 4, bezier = "smooth" })
 end
 
 --- Applies animation layer rules for shell surfaces (waybar, rofi, notifications, etc.).
@@ -45,11 +49,13 @@ local set_layer_rules = function()
 
   -- stylua: ignore start
   register({ name = "waybar",            match = { namespace = "waybar" },            animation = "slide top" })
-  register({ name = "rofi",              match = { namespace = "rofi" },              animation = "popin" })
+  register({ name = "rofi",              match = { namespace = "rofi" },              animation = "slide" })
   register({ name = "hyprpaper",         match = { namespace = "hyprpaper" },         animation = "fade" })
   register({ name = "selection",         match = { namespace = "selection" },         animation = "fade" })
   register({ name = "notificationsmenu", match = { namespace = "notificationsmenu" }, animation = "slide right" })
   register({ name = "dashboardmenu",     match = { namespace = "dashboardmenu" },     animation = "slide left" })
+
+  -- Conditionally enabled
   register({ name = "no_animation",      match = { namespace = ".*"},                 no_anim = true})
   -- stylua: ignore end
 
@@ -166,6 +172,19 @@ function Rules.exec_without_layer_rule(name, cmd)
   return hl.dsp.exec_cmd(string.format([[sh -c '%s; hyprctl dispatch "LayerRules.enable('\''%s'\'')"']], cmd, name))
 end
 
+--- Enables a named rule, runs cmd, then disables the rule after cmd exits.
+--- @param name string
+--- @param cmd string
+--- @return any
+function Rules.exec_with_layer_rule(name, cmd)
+  local rule = Rules.layer_rules[name]
+  if rule then rule:set_enabled(true) end
+
+  return hl.dsp.exec_cmd(
+    string.format([[sh -c '%s; status=$?; hyprctl dispatch "LayerRules.disable('\''%s'\'')"; exit $status']], cmd, name)
+  )
+end
+
 --- @param cmd string
 --- @return any
 function Rules.exec_without_layer_animations(cmd)
@@ -183,6 +202,7 @@ _G.LayerRules = {
   enable = function(name) return Rules.enable(name) end,
   disable = function(name) return Rules.disable(name) end,
   toggle = function(name) return Rules.toggle(name) end,
+  exec_with = function(name, cmd) return Rules.exec_with_layer_rule(name, cmd) end,
   exec_without = function(name, cmd) return Rules.exec_without_layer_rule(name, cmd) end,
   exec_without_animation = function(cmd) return Rules.exec_without_layer_animations(cmd) end,
 }

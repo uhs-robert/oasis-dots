@@ -1,0 +1,104 @@
+/*****----- Configuration -----*****/
+configuration {
+  disable-history: true;
+}
+
+/*****----- Global Properties -----*****/
+@import                          "../colors.rasi"
+@import                          "../fonts.rasi"
+
+* {
+  font: "JetBrainsMono Nerd Font 11";
+
+  bg: #0A1018;
+  bg-alt: #0F1520;
+  bg-selected: #1A2330;
+
+  fg: #F7F4F2;
+  fg-strong: #E8F1FF;
+  fg-muted: #4E6578;
+  fg-dim: #74808F;
+
+  accent: #7FA3C9;
+  accent-secondary: #F0E68C;
+  accent-warm: #FFA0A0;
+
+  border: #4E6578;
+}
+
+window {
+  location: south;
+  anchor: south;
+
+  x-offset: 0px;
+  y-offset: 0px;
+
+  width: 100%;
+  height: 40%;
+
+  background-color: @bg;
+  border: 1px 0px 0px 0px;
+  border-color: @border;
+  border-radius: 0px;
+}
+
+mainbox {
+  padding: 10px 16px;
+  spacing: 8px;
+  background-color: transparent;
+  orientation: vertical;
+  children: [ inputbar, listview ];
+}
+
+inputbar {
+  padding: 8px 12px;
+  spacing: 8px;
+
+  background-color: @bg-alt;
+  border-radius: 0px;
+
+  children: [ prompt, entry ];
+}
+
+prompt {
+  text-color: @accent;
+  background-color: transparent;
+}
+
+entry {
+  text-color: @fg;
+  background-color: transparent;
+  placeholder: "";
+  placeholder-color: @fg-muted;
+}
+
+listview {
+  lines: 8;
+  columns: 4;
+  fixed-height: true;
+  spacing: 2px;
+  scrollbar: false;
+  background-color: transparent;
+}
+
+element {
+  padding: 7px 10px;
+  border-radius: 0px;
+  background-color: transparent;
+  text-color: @fg;
+}
+
+element selected {
+  background-color: @bg-selected;
+  text-color: @accent-secondary;
+}
+
+element-text {
+  background-color: transparent;
+  text-color: inherit;
+}
+
+element-icon {
+  size: 22px;
+  background-color: transparent;
+}
