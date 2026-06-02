@@ -20,7 +20,26 @@ set containerindicator false
 set jsurls.site async (q) => `https://www.google.com/search?num=100&q=${encodeURIComponent('site:'+(new URL((await tri.webext.activeTab()).url)).hostname+' '+q)}`
 command this open site
 command tabthis tabopen site
-command winthis winopen site
+
+set jsurls.repo async (q) => { const u = new URL((await tri.webext.activeTab()).url); const p = u.pathname.split('/').filter(Boolean); return `https://github.com/${p[0]}/${p[1]}/search?q=${encodeURIComponent(q)}&type=code`; }
+command repo open repo
+command tabrepo tabopen repo
+
+set jsurls.subreddit async (q) => { const u = new URL((await tri.webext.activeTab()).url); const m = u.pathname.match(/\/r\/([^/]+)/); return `https://www.reddit.com/r/${m ? m[1] : 'all'}/search/?q=${encodeURIComponent(q)}&restrict_sr=1`; }
+command subreddit open subreddit
+command tabsubreddit tabopen subreddit
+
+set jsurls.archive async () => `https://web.archive.org/web/${(await tri.webext.activeTab()).url}`
+command archive open archive
+command tabarchive tabopen archive
+
+set jsurls.isdown async () => `https://www.isitdownrightnow.com/${(new URL((await tri.webext.activeTab()).url)).hostname}.html`
+command isdown open isdown
+command tabisdown tabopen isdown
+
+set jsurls.translate async () => `https://translate.google.com/translate?sl=auto&tl=en&u=${encodeURIComponent((await tri.webext.activeTab()).url)}`
+command translate open translate
+command tabtranslate tabopen translate
 
 " --- BINDS ---
 "" -- MOVEMENT --
@@ -276,6 +295,7 @@ set searchurls.gmail https://mail.google.com/mail/u/0/#search/%s
 set searchurls.fedora https://packages.fedoraproject.org/search?query=%s
 set searchurls.flathub https://flathub.org/apps/search?q=%s
 set searchurls.google https://www.google.com/search?q=%s
+set searchurls.gh https://github.com/search?q=%s&type=code
 set searchurls.github https://github.com/search?q=%s
 set searchurls.greasyfork https://greasyfork.org/en/scripts?q=%s
 set searchurls.image https://www.google.com/search?tbm=isch&q=%s
