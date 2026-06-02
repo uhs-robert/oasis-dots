@@ -17,8 +17,10 @@ set tabopencontaineraware true
 set containerindicator false
 
 " --- COMMANDS ---
-command this js -d@ (function(){var q=JS_ARGS.join(' ');var h=location.hostname;var u='https://www.google.com/search?num=100&q='+encodeURIComponent('site:'+h+' '+q);location.href=u;})()@
-command tabthis js -d@ (function(){var q=JS_ARGS.join(' ');var h=location.hostname;var u='https://www.google.com/search?num=100&q='+encodeURIComponent('site:'+h+' '+q);tri.excmds.tabopen(u);})()@
+set jsurls.site async (q) => `https://www.google.com/search?num=100&q=${encodeURIComponent('site:'+(new URL((await tri.webext.activeTab()).url)).hostname+' '+q)}`
+command this open site
+command tabthis tabopen site
+command winthis winopen site
 
 " --- BINDS ---
 "" -- MOVEMENT --
