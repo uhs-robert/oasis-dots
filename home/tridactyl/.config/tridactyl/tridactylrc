@@ -295,25 +295,25 @@ bind ;# yank_anchor
 bind ;z scroll_top
 
 """ - Quick (;q) -
-bind ;qa save_as_linked_resource -q
-bind ;qA save_as_linked_image -q
-bind ;qb hint_background -q
-bind ;qd open_discard_quick
-bind ;qf hint -q
-bind ;qF hint_background -q
-bind ;qi hint_image -q
-bind ;qI image_in_new_tab -q
-bind ;qk delete_element -q
-bind ;qp copy_text -q
-bind ;qP copy_title -q
-bind ;qr read_element -q
-bind ;qs save_linked -q
-bind ;qS save_linked_image -q
-bind ;qv mpv_quick
-bind ;qw hint_window -q
-bind ;qy yank_link -q
-bind ;q; scroll_focus -q
-bind ;q# yank_anchor -q
+bind ;ga save_as_linked_resource -q
+bind ;gA save_as_linked_image -q
+bind ;gb hint_background -q
+bind ;gd open_discard_quick
+bind ;gf hint -q
+bind ;gF hint_background -q
+bind ;gi hint_image -q
+bind ;gI image_in_new_tab -q
+bind ;gk delete_element -q
+bind ;gp copy_text -q
+bind ;gP copy_title -q
+bind ;gr read_element -q
+bind ;gs save_linked -q
+bind ;gS save_linked_image -q
+bind ;gv mpv_quick
+bind ;gw hint_window -q
+bind ;gy yank_link -q
+bind ;g; scroll_focus -q
+bind ;g# yank_anchor -q
 
 "" -- LEADER --
 bind ,, fillcmdline open search
