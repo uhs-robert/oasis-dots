@@ -15,6 +15,7 @@ set bmarkfoldersearch false
 set modeindicatorshowkeys true
 set tabopencontaineraware true
 set containerindicator false
+set whichkey enable
 
 " --- COMMANDS ---
 set jsurls.site async (q) => `https://www.google.com/search?num=100&q=${encodeURIComponent('site:'+(new URL((await tri.webext.activeTab()).url)).hostname+' '+q)}`
