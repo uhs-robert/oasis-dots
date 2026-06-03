@@ -55,8 +55,6 @@ bind $ scrollto 100 x
 bind ^ scrollto 0 x
 
 "" -- BASIC --
-bind a current_url bmark
-bind A bmark
 bind b fillcmdline bmarks
 bind B fillcmdline bmarks -t
 bind f hint
@@ -127,6 +125,11 @@ bind ys clipboard yankshort
 bind yt clipboard yanktitle
 bind yy clipboard yank
 
+"" -- ADD --
+unbind --mode=normal a
+bind ab current_url bmark
+bind aa bmark
+
 "" -- CONTAINERS --
 bind ca composite js document.location.href | tabopenwait -b -c Ana ; tabclose
 bind cA current_url tabopen -c Ana
@@ -148,7 +151,6 @@ bind G scrollto 100
 bind ga tabaudio
 bind gg scrollto 0
 bind gf viewsource
-bind gF hint -qb
 bind gh home
 bind gH home true
 bind gi focusinput
@@ -164,7 +166,7 @@ bind g! jumble
 bind g$ tablast
 bind g0 tabfirst
 bind g; changelistjump -1
-bind g? rot13
+bind g? whichkey show
 bind g^ tabfirst
 
 "" -- DELETE --
@@ -175,13 +177,19 @@ bind dH tabclosealltoleft
 bind D js tri.excmds.composite('tabprev;', 'tabclose #')
 
 "" -- X-ECUTABLES --
+command knack_toggle_hidden js window.wrappedJSObject?.show_knack_id?.api?.toggleShowHidden?.()
+command knack_toggle_ids js window.wrappedJSObject?.show_knack_id?.api?.toggleIds?.()
+command knack_search_prompt js (()=>{const s=document.getSelection()?.toString()??'';const q=prompt('Search:',s);if(q!=null)window.wrappedJSObject?.knack_search?.open?.(q);})()
+command logger_switch js (function(){const s=document.createElement('script');s.textContent='Logger?.switch?.()';(document.documentElement?document.documentElement:document.head).appendChild(s);s.remove();})()
+command knack_search_selection js window.wrappedJSObject?.knack_search?.open?.(document.getSelection()?.toString().trim() ?? '')
+
 unbind x
 bind xx stop
-bind xh js window.wrappedJSObject?.show_knack_id?.api?.toggleShowHidden?.()
-bind xi js window.wrappedJSObject?.show_knack_id?.api?.toggleIds?.()
-bind xo js (()=>{const s=document.getSelection()?.toString()??'';const q=prompt('Search:',s);if(q!=null)window.wrappedJSObject?.knack_search?.open?.(q);})()
-bind xs js (function(){const s=document.createElement('script');s.textContent='Logger?.switch?.()';(document.documentElement?document.documentElement:document.head).appendChild(s);s.remove();})()
-bind --mode=visual xv js window.wrappedJSObject?.knack_search?.open?.(document.getSelection()?.toString().trim() ?? '')
+bind xh knack_toggle_hidden
+bind xi knack_toggle_ids
+bind xo knack_search_prompt
+bind xs logger_switch
+bind --mode=visual xv knack_search_selection
 
 "" -- ZOOM --
 bind zi zoom 0.1 true
@@ -198,72 +206,114 @@ bind zz zoom 1
 bind z= zoom 1
 bind zO zoom 0.3
 bind ZZ qall
-bind zb js document?.activeElement?.blur()
+command blur_active js document?.activeElement?.blur()
+bind zb blur_active
 
 "" -- HINTS --
+""" ALIASES
 """ - MOUSE -
-bind ;x hint -F e => { const pos = tri.dom.getAbsoluteCentre(e); tri.excmds.exclaim_quiet("xdotool mousemove --sync " + window.devicePixelRatio * pos.x + " " + window.devicePixelRatio * pos.y + "; xdotool click 1")}
-bind ;X hint -F e => { const pos = tri.dom.getAbsoluteCentre(e); tri.excmds.exclaim_quiet("xdotool mousemove --sync " + window.devicePixelRatio * pos.x + " " + window.devicePixelRatio * pos.y + "; xdotool keydown ctrl+shift; xdotool click 1; xdotool keyup ctrl+shift")}
-bind ;c hint -F e => { const pos = tri.dom.getAbsoluteCentre(e); tri.excmds.exclaim_quiet("xdotool mousemove --sync " + window.devicePixelRatio * pos.x + " " + window.devicePixelRatio * pos.y + "; xdotool click 3")}
-bind ;: hint -F e => { const pos = tri.dom.getAbsoluteCentre(e); tri.excmds.exclaim_quiet("xdotool mousemove --sync " + window.devicePixelRatio * pos.x + " " + window.devicePixelRatio * pos.y)}
+command mouse_click hint -F e => { const pos = tri.dom.getAbsoluteCentre(e); tri.excmds.exclaim_quiet("xdotool mousemove --sync " + window.devicePixelRatio * pos.x + " " + window.devicePixelRatio * pos.y + "; xdotool click 1")}
+command mouse_shift_click hint -F e => { const pos = tri.dom.getAbsoluteCentre(e); tri.excmds.exclaim_quiet("xdotool mousemove --sync " + window.devicePixelRatio * pos.x + " " + window.devicePixelRatio * pos.y + "; xdotool keydown ctrl+shift; xdotool click 1; xdotool keyup ctrl+shift")}
+command mouse_right_click hint -F e => { const pos = tri.dom.getAbsoluteCentre(e); tri.excmds.exclaim_quiet("xdotool mousemove --sync " + window.devicePixelRatio * pos.x + " " + window.devicePixelRatio * pos.y + "; xdotool click 3")}
+command mouse_move hint -F e => { const pos = tri.dom.getAbsoluteCentre(e); tri.excmds.exclaim_quiet("xdotool mousemove --sync " + window.devicePixelRatio * pos.x + " " + window.devicePixelRatio * pos.y)}
 
 """ - REGULAR -
-bind ;a hint -a
-bind ;A hint -A
-bind ;b hint -Jc a:not([href]),button,input[type=button],input[type=submit],input[type=reset],[role=button]
-bind ;B hint -b
-bind ;d hint -W tabopen --discard
-bind ;f fillcmdline hint -f
-bind ;/ fillcmdline hint -f
-" bind ;h hint -h
-" bind ;i hint -i
-bind ;i hint -Jc input:not([type=hidden]),textarea,select,[contenteditable=true]
-" bind ;o hint
-bind ;I hint -I
-bind ;k hint -k
-bind ;K hint -K
-bind ;l hint -Jc a[href]
-bind ;m hint -JFc img i => tri.excmds.open('https://lens.google.com/uploadbyurl?url='+i.src)
-bind ;M hint -JFc img i => tri.excmds.tabopen('https://lens.google.com/uploadbyurl?url='+i.src)
-bind ;O hint -W fillcmdline_notrail open 
-bind ;p hint -p
-bind ;P hint -P
-bind ;r hint -r
-bind ;s hint -s
-bind ;S hint -S
-bind ;t hint -W tabopen
-bind ;T hint -W fillcmdline_notrail tabopen 
-" bind ;v hint -W mpvsafe
-bind ;v hint -h
-bind ;V hint -V
-bind ;w hint -w
-bind ;W hint -W fillcmdline_notrail winopen 
-bind ;y hint -y
-bind ;Y hint -cF img i => tri.excmds.yankimage(tri.urlutils.getAbsoluteURL(i.src))
-bind ;; hint -; *
-bind ;# hint -#
-bind ;z hint -z
+command save_as_linked_resource hint -a
+command save_as_linked_image hint -A
+command hint_clickable hint -Jc a:not([href]),button,input[type=button],input[type=submit],input[type=reset],[role=button]
+command hint_background hint -b
+command open_discard hint -W tabopen --discard
+command hint_find fillcmdline hint -f
+command hint_input hint -Jc input:not([type=hidden]),textarea,select,[contenteditable=true]
+command hint_image hint -i
+command image_in_new_tab hint -I
+command delete_element hint -k
+command hide_element hint -K
+command hint_links hint -Jc a[href]
+command lens_image hint -JFc img i => tri.excmds.open('https://lens.google.com/uploadbyurl?url='+i.src)
+command lens_image_tab hint -JFc img i => tri.excmds.tabopen('https://lens.google.com/uploadbyurl?url='+i.src)
+command hint_open_cmd hint -W fillcmdline_notrail open
+command copy_text hint -p
+command copy_title hint -P
+command read_element hint -r
+command save_linked hint -s
+command save_linked_image hint -S
+command hint_tabopen hint -W tabopen
+command hint_tabopen_cmd hint -W fillcmdline_notrail tabopen
+command select_region hint -h
+command hint_invisible hint -V
+command hint_window hint -w
+command hint_winopen_cmd hint -W fillcmdline_notrail winopen
+command yank_link hint -y
+command yank_image hint -cF img i => tri.excmds.yankimage(tri.urlutils.getAbsoluteURL(i.src))
+command scroll_focus hint -; *
+command yank_anchor hint -#
+command scroll_top hint -z
 
-""" - Quiet (;g) -
-bind ;ga hint -qa
-bind ;gA hint -qA
-bind ;gb hint -qb
-bind ;gd hint -qW tabopen --discard
-bind ;gf hint -q
-bind ;gF hint -qb
-bind ;gi hint -qi
-bind ;gI hint -qI
-bind ;gk hint -qk
-bind ;gp hint -qp
-bind ;gP hint -qP
-bind ;gr hint -qr
-bind ;gs hint -qs
-bind ;gS hint -qS
-bind ;gv hint -qW mpvsafe
-bind ;gw hint -qw
-bind ;gy hint -qy
-bind ;g; hint -q;
-bind ;g# hint -q#
+""" - QUICK (separate: -W consumes rest of line, -F callbacks need flag before) -
+command open_discard_quick hint -qW tabopen --discard
+command hint_tabopen_quick hint -qW tabopen
+command mpv_quick hint -qW mpvsafe
+
+""" - MOUSE -
+bind ;x mouse_click
+bind ;X mouse_shift_click
+bind ;c mouse_right_click
+bind ;: mouse_move
+
+""" - REGULAR -
+bind ;a save_as_linked_resource
+bind ;A save_as_linked_image
+bind ;b hint_clickable
+bind ;B hint_background
+bind ;d open_discard
+bind ;f hint_find
+bind ;/ hint_find
+bind ;i hint_input
+bind ;I image_in_new_tab
+bind ;k delete_element
+bind ;K hide_element
+bind ;l hint_links
+bind ;m lens_image
+bind ;M lens_image_tab
+bind ;O hint_open_cmd
+bind ;p copy_text
+bind ;P copy_title
+bind ;r read_element
+bind ;s save_linked
+bind ;S save_linked_image
+bind ;t hint_tabopen
+bind ;T hint_tabopen_cmd
+bind ;v select_region
+bind ;V hint_invisible
+bind ;w hint_window
+bind ;W hint_winopen_cmd
+bind ;y yank_link
+bind ;Y yank_image
+bind ;; scroll_focus
+bind ;# yank_anchor
+bind ;z scroll_top
+
+""" - Quick (;q) -
+bind ;qa save_as_linked_resource -q
+bind ;qA save_as_linked_image -q
+bind ;qb hint_background -q
+bind ;qd open_discard_quick
+bind ;qf hint -q
+bind ;qF hint_background -q
+bind ;qi hint_image -q
+bind ;qI image_in_new_tab -q
+bind ;qk delete_element -q
+bind ;qp copy_text -q
+bind ;qP copy_title -q
+bind ;qr read_element -q
+bind ;qs save_linked -q
+bind ;qS save_linked_image -q
+bind ;qv mpv_quick
+bind ;qw hint_window -q
+bind ;qy yank_link -q
+bind ;q; scroll_focus -q
+bind ;q# yank_anchor -q
 
 "" -- LEADER --
 bind ,, fillcmdline open search
