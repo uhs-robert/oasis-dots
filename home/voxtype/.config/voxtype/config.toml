@@ -202,6 +202,7 @@ on_recording_stop = false
 
 # Show notification with transcribed text after transcription completes
 on_transcription = false
+show_engine_icon = false
 
 # [text]
 # Text processing options (word replacements, spoken punctuation)
@@ -262,6 +263,15 @@ neovin = "NeoVim"
 "top grade" = "topgrade"
 Hackman = "pacman"
 hyperfem = "HyprVim"
+"Cute browser" = "Qutebrowser"
+"cute browser" = "Qutebrowser"
+"Qt browser" = "Qutebrowser"
+"Witch Key" = "Which Key"
+tridecal = "Tridactyl"
+"Try Dactyl" = "Tridactyl"
+Tri-Dactyl = "Tridactyl"
+tridectal = "Tridactyl"
+"witch key" = "Which Key"
 
 [meeting]
 enabled = false
@@ -271,6 +281,19 @@ enabled = false
 
 [meeting.audio]
 source = "mic"
+
+[osd]
+enabled = true
+frontend = "gtk4"
+position = "bottom-center"
+width_px = 400
+height_px = 48
+margin_px = 24
+top_margin = 0.85
+opacity = 0.95
+waveform_window_secs = 3.0
+peak_decay_db_per_sec = 6.0
+waveform_gain = 10.0
 #
 # Per-state icon overrides (optional, takes precedence over theme)
 # [status.icons]
