@@ -36,7 +36,8 @@
   border: var(--border-muted);
   border-radius: 0px;
   min-width: 2em;
-  /* padding: 4px; */
+  font-size: 22px;
+  padding: 0px 0px 0px 4px;
 }
 
 .control-center .widget-title button label {
