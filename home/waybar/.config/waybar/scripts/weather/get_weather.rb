@@ -1593,28 +1593,44 @@ private def run_weather_update(force_refresh: false)
               CacheManager.fresh?(refresh_interval) &&
               CacheManager.settings_match?(settings)
 
+  stale = false
   if use_cache
     # Load from cache
     cache = CacheManager.load_cache
     symbolize_keys(cache['location'])
     weather_data = symbolize_weather_data(cache['weather_data'])
   else
-    # Fetch fresh data from API
-    location = ForecastData.resolve_location(settings)
-    weather_data = fetch_weather_data(
-      location[:lat], location[:lon], settings, location[:location_name]
-    )
-    # Save to cache
-    CacheManager.save_cache(
-      location: location,
-      weather_data: weather_data,
-      units: { unit_c: Config.unit_c?, unit: Config.unit, precip_unit: Config.precip_unit,
-               time_format: Config.time_format },
-      settings: settings
-    )
+    begin
+      # Fetch fresh data from API
+      location = ForecastData.resolve_location(settings)
+      weather_data = fetch_weather_data(
+        location[:lat], location[:lon], settings, location[:location_name]
+      )
+      # Save to cache
+      CacheManager.save_cache(
+        location: location,
+        weather_data: weather_data,
+        units: { unit_c: Config.unit_c?, unit: Config.unit, precip_unit: Config.precip_unit,
+                 time_format: Config.time_format },
+        settings: settings
+      )
+    rescue StandardError => fetch_err
+      # Fall back to stale cache if available
+      cache = CacheManager.load_cache
+      raise fetch_err unless cache && cache['weather_data']
+
+      weather_data = symbolize_weather_data(cache['weather_data'])
+      stale = true
+    end
   end
 
   text, tooltip = generate_output(mode, weather_data, settings)
+
+  if stale
+    text = "#{text} <span foreground='#{Config.colors['warm']}' size='#{Config.pongo_size[:small]}'>⚠</span>"
+    tooltip = "<span foreground='#{Config.colors['warm']}'> Stale cache — API unavailable</span>\n\n#{tooltip}"
+  end
+
   classes = [
     'weather',
     mode == WeatherMode::WEEKVIEW ? 'mode-weekview' : 'mode-default',
