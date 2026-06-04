@@ -24,6 +24,7 @@ Submap.define({
     { "SLASH",     Menu.drun(),                          "Search Applications" },
     { "B",         Apps.open("bottles"),                 "Bottles" },
     { "C",         Apps.open("qalculate-gtk"),           "Calculator" },
+    { "D",         Apps.open("discord"),                 "Discord" },
     { "SHIFT + D", Cmd.term("aria2tui"),                 "Aria2tui" },
     { "E",         Cmd.term(EDITOR),                     "Editor" },
     { "F",         Apps.open("firefox"),                 "Firefox" },
