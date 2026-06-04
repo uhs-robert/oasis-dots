@@ -17,6 +17,51 @@ local function exec(fn)
   end
 end
 
+--- selected windows: set of addresses { [addr] = true }.
+--- Cleared on submap exit.
+local SELECTED = {}
+
+--- Return address of the currently focused window, or nil.
+local function get_active_address()
+  local w = hl.get_active_window()
+
+  return w and w.address or nil
+end
+
+--- Toggle select on the focused window.
+local function select_toggle()
+  local addr = get_active_address()
+  if not addr then return end
+
+  if SELECTED[addr] then
+    SELECTED[addr] = nil
+  else
+    SELECTED[addr] = true
+  end
+end
+
+--- Wrap fn so it applies to all selected windows.
+--- If no SELECTED, runs fn() on the focused window as normal.
+--- Restores focus to the original window after iterating.
+--- @param fn fun()
+--- @return fun()
+local function for_selected(fn)
+  return function()
+    local any = next(SELECTED)
+    if not any then
+      fn()
+      return
+    end
+
+    local original = get_active_address()
+    for addr in pairs(SELECTED) do
+      hl.dispatch(hl.dsp.focus({ window = "address:" .. addr }))
+      fn()
+    end
+    if original then hl.dispatch(hl.dsp.focus({ window = "address:" .. original })) end
+  end
+end
+
 Submap.define({
   name = "Windows",
   desc = "+Windows",
@@ -24,6 +69,12 @@ Submap.define({
 
   escape = "reset",
   catchall = "stay",
+
+  on_exit = function()
+    for addr in pairs(SELECTED) do
+      SELECTED[addr] = nil
+    end
+  end,
 
   binds = function()
     local focus_actions = {
@@ -34,25 +85,25 @@ Submap.define({
     }
 
     local move_actions = {
-      left = Window.move_dir("l"),
-      down = Window.move_dir("d"),
-      up = Window.move_dir("u"),
-      right = Window.move_dir("r"),
+      left = for_selected(Window.move_dir("l")),
+      down = for_selected(Window.move_dir("d")),
+      up = for_selected(Window.move_dir("u")),
+      right = for_selected(Window.move_dir("r")),
     }
 
     local ws_actions
     if Config.persistent_workspaces then
       ws_actions = {
         left = Workspace.cycle_local("prev"),
-        down = Workspace.move_window_local("prev"),
-        up = Workspace.move_window_local("next"),
+        down = for_selected(Workspace.move_window_local("prev")),
+        up = for_selected(Workspace.move_window_local("next")),
         right = Workspace.cycle_local("next"),
       }
     else
       ws_actions = {
         left = Workspace.cycle_prev(),
-        down = Workspace.move_prev(),
-        up = Workspace.move_next(),
+        down = for_selected(Workspace.move_prev()),
+        up = for_selected(Workspace.move_next()),
         right = Workspace.cycle_next(),
       }
     end
@@ -61,20 +112,21 @@ Submap.define({
 
     -- stylua: ignore start
     local keys = {
-      { "R",             Submap.switch("Resize"),     "+Resize" },
-      { "M",             Submap.switch("Move"),       "+Move" },
-      { "I",             Submap.switch("Screenshot"), "+Screenshot" },
-      { "Q",             Submap.switch("System"),     "+System" },
-      { "X",             Submap.switch("Cursor"),     "+Cursor" },
-      { "TAB",           Workspace.focus_last(),      "Last Workspace" },
-      { "O",             exec(Menu.window()),         "Search Windows" },
-      { "C",             Window.kill(),               "Close Window" },
-      { "F",             Window.float_toggle(),       "Toggle Floating" },
-      { "P",             Window.pseudo_toggle(),      "Toggle Pseudo" },
-      { "S",             Window.layout_toggle(),      "Toggle Split" },
-      { "MINUS",         Window.layout_toggle(),      "Toggle Split" },
-      { "RETURN",        Window.pass_to_active(),     "Confirm Selection" },
-      { "SHIFT + SLASH", wk_toggle,                   "WhichKey" },
+      { "R",             Submap.switch("Resize"),              "+Resize" },
+      { "M",             Submap.switch("Move"),                "+Move" },
+      { "I",             Submap.switch("Screenshot"),          "+Screenshot" },
+      { "Q",             Submap.switch("System"),              "+System" },
+      { "X",             Submap.switch("Cursor"),              "+Cursor" },
+      { "TAB",           Workspace.focus_last(),               "Last Workspace" },
+      { "O",             exec(Menu.window()),                  "Search Windows" },
+      { "C",             for_selected(Window.kill()),          "Close Window" },
+      { "F",             for_selected(Window.float_toggle()),  "Toggle Floating" },
+      { "P",             for_selected(Window.pseudo_toggle()), "Toggle Pseudo" },
+      { "S",             for_selected(Window.layout_toggle()), "Toggle Split" },
+      { "MINUS",         for_selected(Window.layout_toggle()), "Toggle Split" },
+      { "RETURN",        Window.pass_to_active(),              "Confirm Selection" },
+      { "SHIFT + SLASH", wk_toggle,                            "WhichKey" },
+      { "SPACE",         select_toggle,                        "Select Window" },
     }
     -- stylua: ignore end
 
@@ -91,7 +143,7 @@ Submap.define({
     for i = 1, Config.persistent_workspaces or 10 do
       local k = tostring(i % 10)
       local action = Config.persistent_workspaces and Workspace.move_local(i) or Workspace.move(i)
-      keys[#keys + 1] = { "SHIFT + " .. k, action, "Move to WS " .. i }
+      keys[#keys + 1] = { "SHIFT + " .. k, for_selected(action), "Move to WS " .. i }
     end
 
     for i = 1, math.max(#Config.monitors, 10) do
