@@ -17,9 +17,10 @@ local function exec(fn)
   end
 end
 
---- selected windows: set of addresses { [addr] = true }.
+--- Selected windows: { [addr] = { active, inactive } }, stores original border colors
 --- Cleared on submap exit.
 local SELECTED = {}
+local SELECTION_COLOR = "rgba(ffaa00ff)"
 
 --- Return address of the currently focused window, or nil.
 local function get_active_address()
@@ -28,15 +29,33 @@ local function get_active_address()
   return w and w.address or nil
 end
 
---- Toggle select on the focused window.
+--- Return the theme's { active, inactive } border colors.
+--- TODO: Convert to Tags/Window Rules when https://github.com/hyprwm/Hyprland/discussions/14030 is resolved.
+local function get_theme_borders()
+  local ok, Theme = pcall(require, "theme")
+  local c = ok and Theme.colors or {}
+
+  return { active = c.theme_primary, inactive = c.bg_mantle }
+end
+
+--- Override active + inactive border color for a window by address.
+local function set_border(addr, active, inactive)
+  hl.dispatch(hl.dsp.window.set_prop({ window = "address:" .. addr, prop = "active_border_color", value = active }))
+  hl.dispatch(hl.dsp.window.set_prop({ window = "address:" .. addr, prop = "inactive_border_color", value = inactive }))
+end
+
+--- Toggle select on the focused window, highlighting its border.
 local function select_toggle()
   local addr = get_active_address()
   if not addr then return end
 
   if SELECTED[addr] then
+    local original = SELECTED[addr]
     SELECTED[addr] = nil
+    set_border(addr, original.active, original.inactive)
   else
-    SELECTED[addr] = true
+    SELECTED[addr] = get_theme_borders()
+    set_border(addr, SELECTION_COLOR, SELECTION_COLOR)
   end
 end
 
@@ -71,7 +90,8 @@ Submap.define({
   catchall = "stay",
 
   on_exit = function()
-    for addr in pairs(SELECTED) do
+    for addr, original in pairs(SELECTED) do
+      set_border(addr, original.active, original.inactive)
       SELECTED[addr] = nil
     end
   end,
