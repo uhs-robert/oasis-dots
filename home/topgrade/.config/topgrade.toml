@@ -128,6 +128,7 @@ run_in_tmux = true
 # Commands to run before anything
 [pre_commands]
 # "Emacs Snapshot" = "rm -rf ~/.emacs.d/elpa.bak && cp -rl ~/.emacs.d/elpa ~/.emacs.d/elpa.bak"
+"Check Arch News" = "arch_news_check"
 
 
 # Commands to run after anything
