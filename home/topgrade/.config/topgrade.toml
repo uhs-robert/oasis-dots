@@ -223,7 +223,7 @@ yay_arguments = "--nodevel"
 # aura_pacman_arguments = ""
 # garuda_update_arguments = ""
 
-# show_arch_news = true
+show_arch_news = false
 
 # trizen_arguments = "--devel"
 
