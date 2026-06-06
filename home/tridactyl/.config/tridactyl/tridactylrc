@@ -1,4 +1,6 @@
 " vim: set filetype=tridactyl
+" run this to reset state: sanitise tridactyllocal
+
 " --- GENERAL SETTINGS ---
 set update.lastchecktime 1772206549053
 set update.nag true
@@ -66,7 +68,6 @@ bind o fillcmdline open
 bind O fillcmdline tabopen
 bind p clipboard open
 bind P clipboard tabopen
-bind r reload
 bind R reloadhard
 bind t fillcmdline tabopen
 bind T fillcmdline tab
@@ -83,6 +84,12 @@ bind [c urlincrement -1
 bind ]] followpage next
 bind ]c urlincrement 1
 bind ` gobble 1 markjump
+
+"" -- RELOAD --
+unbind --mode=normal r
+bind rr reload
+bind rh reloadhard
+bind ri isdown
 
 "" -- WINDOW --
 unbind --mode=normal w
@@ -386,3 +393,91 @@ set searchurls.urbandictionary https://www.urbandictionary.com/define.php?term=%
 set searchurls.wikipedia https://www.wikipedia.org/w/index.php?search=%s
 set searchurls.wolframalpha https://www.wolframalpha.com/input/?i=%s
 set searchurls.youtube https://www.youtube.com/results?search_query=%s
+
+"" -- SEARCH KEYS --
+unbind --mode=normal s
+unbind --mode=normal S
+bind sa fillcmdline open arch
+bind Sa fillcmdline tabopen arch
+bind sb fillcmdline open brave
+bind Sb fillcmdline tabopen brave
+bind sc fillcmdline open crates
+bind Sc fillcmdline tabopen crates
+bind sf fillcmdline open flathub
+bind Sf fillcmdline tabopen flathub
+bind sG fillcmdline open gh
+bind SG fillcmdline tabopen gh
+bind sh fillcmdline open hackernews
+bind Sh fillcmdline tabopen hackernews
+bind si fillcmdline open imdb
+bind Si fillcmdline tabopen imdb
+bind sm fillcmdline open mdn
+bind Sm fillcmdline tabopen mdn
+bind sn fillcmdline open npm
+bind Sn fillcmdline tabopen npm
+bind so fillcmdline open stackoverflow
+bind So fillcmdline tabopen stackoverflow
+bind sq fillcmdline open gpt
+bind Sq fillcmdline tabopen gpt
+bind sr fillcmdline open reddit
+bind Sr fillcmdline tabopen reddit
+bind ss fillcmdline search
+bind Ss fillcmdline tabopen search
+bind st fillcmdline open translate
+bind St fillcmdline tabopen translate
+bind sw fillcmdline open wikipedia
+bind Sw fillcmdline tabopen wikipedia
+bind sy fillcmdline open youtube
+bind Sy fillcmdline tabopen youtube
+bind sz fillcmdline open wolframalpha
+bind Sz fillcmdline tabopen wolframalpha
+
+"" -- SEARCH: GOOGLE --
+bind sgg fillcmdline open google
+bind Sgg fillcmdline tabopen google
+bind sgc fillcmdline open calendar
+bind Sgc fillcmdline tabopen calendar
+bind sgd fillcmdline open drive
+bind Sgd fillcmdline tabopen drive
+bind sge fillcmdline open gmail
+bind Sge fillcmdline tabopen gmail
+bind sgi fillcmdline open image
+bind Sgi fillcmdline tabopen image
+bind sgm fillcmdline open maps
+bind Sgm fillcmdline tabopen maps
+bind sgr fillcmdline open redditgoogle
+bind Sgr fillcmdline tabopen redditgoogle
+bind sgth fillcmdline open lasthour
+bind Sgth fillcmdline tabopen lasthour
+bind sgtd fillcmdline open lastday
+bind Sgtd fillcmdline tabopen lastday
+bind sgtw fillcmdline open lastweek
+bind Sgtw fillcmdline tabopen lastweek
+bind sgtm fillcmdline open lastmonth
+bind Sgtm fillcmdline tabopen lastmonth
+bind sgty fillcmdline open lastyear
+bind Sgty fillcmdline tabopen lastyear
+
+"" -- SEARCH: DICTIONARY --
+bind sdd fillcmdline open duck
+bind Sdd fillcmdline tabopen duck
+bind sde fillcmdline open define
+bind Sde fillcmdline tabopen define
+bind sdu fillcmdline open urbandictionary
+bind Sdu fillcmdline tabopen urbandictionary
+bind sdy fillcmdline open synonym
+bind Sdy fillcmdline tabopen synonym
+
+"" -- SEARCH: ECOMMERCE --
+bind sea fillcmdline open amazon
+bind Sea fillcmdline tabopen amazon
+
+"" -- SEARCH: GAMING --
+bind spb fillcmdline open gamebanana
+bind Spb fillcmdline tabopen gamebanana
+bind spn fillcmdline open nexusmods
+bind Spn fillcmdline tabopen nexusmods
+bind spp fillcmdline open proton
+bind Spp fillcmdline tabopen proton
+bind sps fillcmdline open steam
+bind Sps fillcmdline tabopen steam
