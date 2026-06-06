@@ -7,12 +7,12 @@ set update.lastnaggedversion 1.14.0
 set update.checkintervalsecs 86400
 set configversion 2.0
 set theme oasis_moonlight_dark
-" set newtab https://web.tabliss.io/
+set newtab https://web.tabliss.io/
 set allowautofocus true
 set smoothscroll false
 set scrollduration 100
 set bmarkfoldersearch false
-set modeindicatorshowkeys true
+set modeindicatorshowkeys false
 set tabopencontaineraware true
 set containerindicator false
 set whichkey enable
@@ -74,8 +74,6 @@ bind u undo
 bind U undo window
 bind v hint -h
 bind V mode visual
-bind w fillcmdline winopen
-bind W current_url winopen
 bind . repeat
 bind : fillcmdline_notrail
 bind << tabmove -1
@@ -85,6 +83,20 @@ bind [c urlincrement -1
 bind ]] followpage next
 bind ]c urlincrement 1
 bind ` gobble 1 markjump
+
+"" -- WINDOW --
+unbind --mode=normal w
+bind W current_url winopen
+bind wa fillcmdline tabattach
+bind wc winclose
+bind wd tabdetach
+bind wh hint -w
+bind wi exclaim_quiet hyprctl dispatch 'hl.dsp.send_shortcut({ mods = "", key = "F12" })'
+bind wn winopen
+bind wo fillcmdline winopen
+bind wp winopen -private
+bind wu undo window
+bind ww current_url winopen
 
 "" -- MODE SWITCH --
 bind --mode=browser <A-,> escapehatch
