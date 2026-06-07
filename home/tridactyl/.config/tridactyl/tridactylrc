@@ -69,7 +69,6 @@ bind O fillcmdline tabopen
 bind p clipboard open
 bind P clipboard tabopen
 bind R reloadhard
-bind t fillcmdline tabopen
 bind T fillcmdline tab
 bind u undo
 bind U undo window
@@ -104,6 +103,18 @@ bind wo fillcmdline winopen
 bind wp winopen -private
 bind wu undo window
 bind ww current_url winopen
+
+"" -- TABS --
+unbind --mode=normal t
+bind tt fillcmdline tabopen
+bind tT fillcmdline tab
+bind td tabduplicate
+bind tm fillcmdline tabmove
+bind tn tabnext
+bind tp tabprev
+bind ta tabaudio
+bind tf tabfirst
+bind tl tablast
 
 "" -- MODE SWITCH --
 bind --mode=browser <A-,> escapehatch
