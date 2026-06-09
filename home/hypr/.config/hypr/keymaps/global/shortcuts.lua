@@ -19,7 +19,6 @@ Bind.leader_fn("SHIFT + E",      Cmd.term(TUI_FILES), "TUI File Manager")
 Bind.leader_fn("O",              Menu.drun(),         "Open Application")
 Bind.leader_fn("N",              edit_in_vim,         "Edit Selection in Vim")
 Bind.leader_fn("Y",              Cmd.term("yazi"),    "Yazi")
-Bind.leader_fn("SEMICOLON",      Cursor.kbptr("floating_click", { exit = true }), "Floating Click (Exit)")
 
 -- Commands
 Bind.fn("CTRL + SHIFT + ESCAPE", Cmd.term("btop"),    "Task Manager")
