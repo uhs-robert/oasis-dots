@@ -95,7 +95,8 @@ unbind --mode=normal w
 bind W current_url winopen
 bind wa fillcmdline tabattach
 bind wc winclose
-bind wd tabdetach
+bind wd tabduplicate
+bind wD tabdetach
 bind wh hint -w
 bind wi exclaim_quiet hyprctl dispatch 'hl.dsp.send_shortcut({ mods = "", key = "F12" })'
 bind wn winopen
