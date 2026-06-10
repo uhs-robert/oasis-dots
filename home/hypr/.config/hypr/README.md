@@ -1,6 +1,6 @@
 # Hyprland Config
 
-A Lua-driven Hyprland setup for a fully keyboard-driven workflow. Vim-modal navigation via [HyprVim](https://github.com/uhs-robert/hyprvim) with dedicated submaps for window management, workspace navigation, app launching, resize, move, screenshot, system controls, and virtual cursor emulation (wl-kbptr). Also includes a color theme system, workspace session launcher, and time-of-day wallpaper rotation.
+A Lua-driven Hyprland setup for a fully keyboard-driven workflow. Vim-modal navigation via [HyprVim](https://github.com/uhs-robert/hyprvim) with whichkey for keybind discovery. Includes dedicated submaps for window/workspace management, application navigation, virtual cursor emulation (`wlrctl` and `wl-kbptr`), and more. Also includes a color theme switcher, custom workspace session launcher, and a time-of-day wallpaper rotation system.
 
 ## What's in here
 
@@ -62,7 +62,7 @@ Provides `normal`/`insert`/`visual` modes (and more) with window navigation, wor
 Press `SUPER + /` to open a rofi picker showing all active keybinds for the current mode.
 
 > [!TIP]
-> All binds are defined in `keymaps/`, one file per submap.
+> All binds are defined in `hypr/keymaps/`, one file per submap.
 >
 > The whichkey from HyprVim also displays keybinds when entering any submap.
 
