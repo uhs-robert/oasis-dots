@@ -123,7 +123,7 @@ local function rofi_select(binds, prompt)
   return tonumber(idx_str)
 end
 
---- Entry point. Reads active submap and shows filtered binds in rofi. Read only help list.
+--- Entry point. Reads active submap, shows filtered binds in rofi, dispatches selection.
 local run = function()
   local active_submap = get_active_submap()
   local binds = get_binds(active_submap)
@@ -133,7 +133,7 @@ local run = function()
   if not idx then os.exit(0) end
 
   local selected = binds[idx + 1]
-  if selected then os.execute("hyprctl dispatch __lua " .. selected.arg) end
+  if selected then os.execute("hyprctl eval 'debug.getregistry()[" .. selected.arg .. "]()'") end
 end
 
 run()
