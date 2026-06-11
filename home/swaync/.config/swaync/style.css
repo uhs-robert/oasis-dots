@@ -12,17 +12,24 @@
   --padding: calc(var(--border-radius) / 2);
 }
 
+* {
+  font-family: "Maple Mono NF", "JetBrainsMono Nerd Font", monospace;
+}
+
 /*
 * Control Center
 */
 .control-center {
-  font-family: "JetBrains Mono", monospace;
   border-radius: 6px;
   border: var(--border-primary);
 }
 
 .control-center .widget-title {
   color: var(--primary);
+}
+
+.control-center .widget-title label {
+  font-size: 18px;
 }
 
 .control-center-list-placeholder {
@@ -36,12 +43,12 @@
   border: var(--border-muted);
   border-radius: 0px;
   min-width: 2em;
-  font-size: 22px;
-  padding: 0px 0px 0px 4px;
+  font-size: 24px;
+  padding: 0px 5px 0px 5px;
 }
 
 .control-center .widget-title button label {
-  padding: 4px 4px 4px 0px;
+  padding: 4px 2px 4px 0px;
 }
 
 .control-center .widget-title button:hover {
@@ -80,6 +87,7 @@
 */
 .widget-dnd > label {
   color: var(--primary);
+  font-size: 18px;
 }
 
 .widget-dnd > switch {
