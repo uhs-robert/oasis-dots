@@ -16,7 +16,6 @@ local function run()
   os.execute("gnome-keyring-daemon --start --components=secrets,ssh")
   os.execute("dbus-update-activation-environment --systemd GNOME_KEYRING_CONTROL SSH_AUTH_SOCK")
   if (TERM == 'foot') then hl.exec_cmd('foot --server') end
-  hl.exec_cmd("swaync")
   hl.exec_cmd("hypridle")
   hl.exec_cmd("waybar")
   hl.exec_cmd("easyeffects --gapplication-service")
