@@ -161,6 +161,7 @@ export PATH="$HOME/.tmuxifier/bin:$PATH"
 # Add language directories to PATH
 export PATH="$(npm root -g)/.bin:$PATH"
 export PATH="$HOME/.npm-global/bin:$PATH"
+export PATH="$HOME/.local/share/npm/bin:$PATH"
 export PATH="$HOME/go/bin:$PATH"
 # export PATH="$HOME/.cargo/bin:$PATH"
 export PATH="$HOME/.local/bin:$PATH"
