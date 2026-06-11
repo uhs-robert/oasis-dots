@@ -1,0 +1,6 @@
+--theme="oasis_moonlight_dark"
+--style="full"
+--paging=auto
+--wrap=never
+--italic-text=always
+--pager="less -RF --mouse"
