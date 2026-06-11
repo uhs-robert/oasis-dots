@@ -242,7 +242,7 @@ module Config
         small: (current_size - 2) * 1000,
         medium: current_size * 1000,
         large: (current_size + 2) * 1000,
-        xlarge: (current_size + 18) * 1000
+        xlarge: (current_size + 17) * 1000
       }
     end
 
