@@ -28,7 +28,5 @@ Bind.leader_cmd("SHIFT + T",        select_window("move"),           "Move to an
 Bind.leader_cmd("CTRL + SHIFT + T", select_window("move-silent"),    "Silent move to another window")
 
 -- HyprVim Utilities
-local function open_hyprvim_term()
-  require("lua.plugins.hyprvim").command.prompt()
-end
+local function open_hyprvim_term() require("lua.plugins.hyprvim").command.prompt() end
 Bind.leader_fn("SHIFT + SEMICOLON", open_hyprvim_term, "HyprVim Terminal")
