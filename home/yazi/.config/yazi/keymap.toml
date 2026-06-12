@@ -23,6 +23,7 @@ prepend_keymap = [
   # Go to...
   { on = [ "g", "/", ], run = "cd /", desc = "Go to /" },
   { on = [ "g", "D", ], run = "cd /home/roberth/Documents/", desc = "Go to Documents" },
+  { on = [ "g", "G", ], run = "cd /data/Games/Steam/steamapps/common/", desc = "Go to Steam Games" },
   { on = [ "g", "H", ], run = "cd /home/roberth/.config/hypr/", desc = "Go to ~/.config/hypr" },
   { on = [ "g", "L", ], run = "cd /home/roberth/.local/", desc = "Go to ~/.local" },
   { on = [ "g", "M", ], run = "plugin sshfs -- jump", desc = "Jump to mount" },
@@ -30,6 +31,7 @@ prepend_keymap = [
   { on = [ "g", "T", ], run = "cd /tmp", desc = "Go to /tmp" },
   { on = [ "g", "X", ], run = "cd /home/roberth/dotfiles-private/", desc = "Go to private dotfiles" },
   { on = [ "g", "F", ], run = "cd ~/.local/share/fonts/", desc = "Go to fonts" },
+  { on = [ "g", "f", ], run = "cd /data/", desc = "Go to Media Files" },
   { on = [ "g", "l", ], run = "shell 'yazi-lazygit-cd' --block --confirm=false", desc = "Lazygit" },
   { on = [ "g", "m", ], run = "cd /run/media/$USER/", desc = "Go to media (usb)" },
   { on = [ "g", "n", ], run = "cd /home/roberth/Documents/Notes/", desc = "Go to Notes" },
