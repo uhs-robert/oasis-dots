@@ -1,7 +1,7 @@
 ---
 name: report
 allowed-tools: Bash(git log:*), Bash(git show:*), Bash(git diff:*), Bash(git diff --cached:*), Bash(git status:*), Bash(find:*), Bash(cat:*), Bash(grep:*), Bash(ls:*), Write(session-report.md)
-description: Generate concise development activity reports in chronological order with proper markdown formatting. Optional argument: description of work done (defaults to timeframe if not provided)
+description: "Generate concise development activity reports in chronological order with proper markdown formatting. Optional argument: description of work done (defaults to timeframe if not provided)"
 ---
 
 ## Context
