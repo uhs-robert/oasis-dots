@@ -11,11 +11,11 @@ visiblePlugin=speex#0
 mostUsedPresets=Klipsch Stereo
 outputDevice=alsa_output.usb-0c76_USB_Audio-00.analog-stereo
 plugins=equalizer#0,stereo_tools#0,bass_enhancer#0
-usedPresets=Klipsch Stereo:7
+usedPresets=Klipsch Stereo:19
 visiblePage=pluginsPage
 visiblePlugin=equalizer#0
 
 [Window]
-height=691
+height=954
 visiblePipeWirePage=testSignalsPage
-width=1266
+width=1584
