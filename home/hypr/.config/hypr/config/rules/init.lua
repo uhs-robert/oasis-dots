@@ -27,7 +27,7 @@ local set_animations = function()
   hl.animation({ leaf = "layers", enabled = true, speed = 3, bezier = "quick", style = "fade" })
   hl.animation({ leaf = "layersIn", enabled = true, speed = 3, bezier = "quick" })
   hl.animation({ leaf = "layersOut", enabled = true, speed = 3, bezier = "quick" })
-  hl.animation({ leaf = "fadeLayersIn", enabled = true, speed = 5, bezier = "smooth" })
+  hl.animation({ leaf = "fadeLayersIn", enabled = true, speed = 3, bezier = "linearish" })
   hl.animation({ leaf = "fadeLayersOut", enabled = true, speed = 3, bezier = "linearish" })
 
   -- FADE
