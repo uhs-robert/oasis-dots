@@ -207,13 +207,7 @@ function Apply.to_monitors(cfg, util)
       return true
     end
 
-    -- Skip monitors that already have a wallpaper set (e.g. rotation loop beat us to it)
-    local active = hyprctl("hyprpaper listactive", util) or ""
-    if active:find(cfg.target_monitor .. ":", 1, true) then
-      util.log("Monitor " .. cfg.target_monitor .. " already has wallpaper; skipping", cfg)
-      return true
-    end
-
+    -- Always (re)apply the current period to this monitor.
     mons = { cfg.target_monitor }
   end
 
@@ -262,8 +256,6 @@ end
 --- Public wrapper around `list_images` for external callers.
 --- @param dir string directory to scan
 --- @return string[] image file paths
-function Apply.list_images(dir)
-  return list_images(dir)
-end
+function Apply.list_images(dir) return list_images(dir) end
 
 return Apply
