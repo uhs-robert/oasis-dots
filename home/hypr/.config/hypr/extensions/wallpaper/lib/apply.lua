@@ -2,7 +2,7 @@
 -- Period resolution, file selection, and hyprpaper application
 
 --- @class Apply
---- @field to_monitors fun(cfg: table, util: table): boolean Apply wallpapers to all active monitors (or cfg.target_monitor if set); returns true on success
+--- @field to_monitors fun(cfg: table, util: table, opts?: { exclude?: table<string, boolean>, reserved?: table<string, boolean> }): boolean, table<string, string> Apply wallpapers to all active monitors (or cfg.target_monitor if set); returns ok plus a map of monitor name to the wallpaper path applied
 --- @field list_images fun(dir: string): string[] Public wrapper around list_images for external callers
 local Apply = {}
 
@@ -36,12 +36,23 @@ local function shuffle(t)
 end
 
 --- Pick `count` wallpapers from `dir`, cycling if fewer files exist.
+--- Paths in `reserved` (already live on other monitors) are avoided as long as
+--- enough distinct files remain; otherwise the full pool is used as a fallback.
 --- @param dir string directory to pick from
 --- @param count integer number of wallpapers needed
+--- @param reserved table<string, boolean>|nil paths to avoid reusing
 --- @return string[] selected file paths (may be empty if dir has none)
-local function pick_wallpapers(dir, count)
+local function pick_wallpapers(dir, count, reserved)
   local files = list_images(dir)
   if #files == 0 then return {} end
+  if reserved then
+    local avail = {}
+    for _, f in ipairs(files) do
+      if not reserved[f] then table.insert(avail, f) end
+    end
+    -- Only honor reservations if the remaining pool can still fill every monitor.
+    if #avail >= count then files = avail end
+  end
   shuffle(files)
   local out = {}
   for i = 1, count do
@@ -169,8 +180,10 @@ end
 --- picks one image per monitor, preloads via hyprpaper, then sets each.
 --- @param cfg table wallpaper config
 --- @param util table shared utility object
---- @return boolean true on success, false if nothing could be applied
-function Apply.to_monitors(cfg, util)
+--- @param opts table|nil `{ exclude?, reserved? }`; monitors in `exclude` are skipped (startup settle, avoids re-randomizing covered monitors); paths in `reserved` are avoided when picking (keeps live wallpapers off other monitors)
+--- @return boolean ok true on success, false if nothing could be applied
+--- @return table<string, string> applied map of monitor name to the wallpaper path set this call
+function Apply.to_monitors(cfg, util, opts)
   local period, dir
 
   -- Use time-of-day periods only if enabled
@@ -185,13 +198,13 @@ function Apply.to_monitors(cfg, util)
 
   if not dir then
     util.log("No directory resolved for period " .. period, cfg)
-    return false
+    return false, {}
   end
 
   local mons = monitors(cfg, util)
   if #mons == 0 then
     util.log("No monitors found via hyprctl monitors", cfg)
-    return false
+    return false, {}
   end
 
   if cfg.target_monitor then
@@ -204,17 +217,28 @@ function Apply.to_monitors(cfg, util)
     end
     if not found then
       util.log("Target monitor " .. cfg.target_monitor .. " not in active monitor list; skipping", cfg)
-      return true
+      return true, {}
     end
 
     -- Always (re)apply the current period to this monitor.
     mons = { cfg.target_monitor }
   end
 
-  local picks = pick_wallpapers(dir, #mons)
+  -- Drop already-covered monitors (startup settle re-runs to catch late monitors
+  -- without re-randomizing the ones already set).
+  if opts and opts.exclude then
+    local filtered = {}
+    for _, name in ipairs(mons) do
+      if not opts.exclude[name] then table.insert(filtered, name) end
+    end
+    mons = filtered
+    if #mons == 0 then return true, {} end
+  end
+
+  local picks = pick_wallpapers(dir, #mons, opts and opts.reserved or nil)
   if #picks == 0 then
     util.log("No wallpapers found in " .. dir .. " (period " .. period .. ")", cfg)
-    return false
+    return false, {}
   end
 
   util.log(string.format("Period %s -> dir %s; monitors=%d; wallpapers=%d", period, dir, #mons, #picks), cfg)
@@ -224,6 +248,7 @@ function Apply.to_monitors(cfg, util)
     end
   end
 
+  local applied = {}
   for i, mon in ipairs(mons) do
     local img = picks[i]
     if img then
@@ -246,11 +271,13 @@ function Apply.to_monitors(cfg, util)
         local rc = os.execute(string.format("%shyprctl hyprpaper wallpaper '%s, %s' >/dev/null 2>&1", base, mon, img))
         if rc ~= 0 and rc ~= true then
           util.log(string.format("hyprpaper wallpaper failed (rc=%s) for %s on %s", tostring(rc), img, mon), cfg)
+        else
+          applied[mon] = img
         end
       end
     end
   end
-  return true
+  return true, applied
 end
 
 --- Public wrapper around `list_images` for external callers.

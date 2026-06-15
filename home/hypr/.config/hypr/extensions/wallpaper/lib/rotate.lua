@@ -78,9 +78,7 @@ end
 
 --- Sleep for `seconds` (fractional seconds supported).
 --- @param seconds number
-local function sleep(seconds)
-  os.execute(string.format("sleep %.3f", seconds))
-end
+local function sleep(seconds) os.execute(string.format("sleep %.3f", seconds)) end
 
 --- Parse `argv` into a CLI options table and a config-override table.
 --- Returns `{ help = true }` as the first value when `--help` is passed.
@@ -254,9 +252,7 @@ local function acquire_lock(path)
   if not f then return nil, err or "locked" end
   f:write(tostring(self_pid() or ""))
   f:close()
-  local function cleanup()
-    os.remove(path)
-  end
+  local function cleanup() os.remove(path) end
   return cleanup
 end
 
@@ -334,33 +330,74 @@ function Rotate.start(opts)
     end
   end
 
-  local function cycle()
+  -- Authoritative monitor -> wallpaper-path map. Drives global de-dup: a partial
+  -- (settle/hotplug) update reserves the paths already live on other monitors so
+  -- no two monitors ever share a wallpaper.
+  local APPLIED_WALLPAPERS = {}
+
+  local function covered_set()
+    local set = {}
+    for mon in pairs(APPLIED_WALLPAPERS) do
+      set[mon] = true
+    end
+    return set
+  end
+
+  local function reserved_set()
+    local set = {}
+    for _, path in pairs(APPLIED_WALLPAPERS) do
+      set[path] = true
+    end
+    return set
+  end
+
+  --- @param mode "full"|"settle" full re-randomizes every monitor (distinct set);
+  --- settle only fills monitors not yet in `APPLIED_WALLPAPERS`, avoiding live wallpapers.
+  local function cycle(mode)
     maybe_refresh()
-    local ok = Apply.to_monitors(cfg, util)
+    local cycle_opts
+    if mode == "settle" then cycle_opts = { exclude = covered_set(), reserved = reserved_set() } end
+    local ok, applied = Apply.to_monitors(cfg, util, cycle_opts)
     if not ok then util.log("Wallpaper application failed; will retry.", cfg) end
+    if mode == "settle" then
+      for mon, path in pairs(applied) do
+        APPLIED_WALLPAPERS[mon] = path
+      end
+    else
+      APPLIED_WALLPAPERS = applied -- full refresh replaces the map
+    end
     return ok
   end
 
   if one_shot then
-    cycle()
+    cycle("full")
     return true
   end
 
   -- Startup: retry with short delays if hyprpaper isn't ready yet
-  if not cycle() then
+  if not cycle("full") then
     local startup_retries = 5
     local startup_delay_s = 3
     for i = 1, startup_retries do
       util.log(string.format("Startup retry %d/%d in %ds...", i, startup_retries, startup_delay_s), cfg)
       util.sleep(startup_delay_s)
-      if cycle() then break end
+      if cycle("full") then break end
     end
+  end
+
+  -- Settle: catch monitors that come up a beat late. Each pass only fills the
+  -- still-uncovered monitors and reserves the wallpapers already on the others.
+  local settle_cycles = 5
+  local settle_delay_s = 3
+  for _ = 1, settle_cycles do
+    util.sleep(settle_delay_s)
+    cycle("settle")
   end
 
   -- Rotation loop (startup already did the first cycle)
   while true do
     util.sleep(cfg.interval_seconds)
-    cycle()
+    cycle("full")
   end
 end
 
