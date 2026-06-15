@@ -85,8 +85,9 @@ local function sun_times_open_meteo(lat, lon, cfg, util)
   )
   local json = util.run_cmd("curl -s --max-time 4 '" .. url .. "' 2>/dev/null")
   if not json then return nil end
-  local sunrise = json:match('"sunrise"%s*:%s*%["([^"]+)"%]')
-  local sunset = json:match('"sunset"%s*:%s*%["([^"]+)"%]')
+  -- Open-Meteo returns a multi-day array (default 7 days); grab the first entry.
+  local sunrise = json:match('"sunrise"%s*:%s*%[%s*"([^"]+)"')
+  local sunset = json:match('"sunset"%s*:%s*%[%s*"([^"]+)"')
   if not sunrise or not sunset then return nil end
   local sh, sm = sunrise:match("T(%d%d):(%d%d)")
   local eh, em = sunset:match("T(%d%d):(%d%d)")
