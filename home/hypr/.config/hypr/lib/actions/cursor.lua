@@ -13,8 +13,10 @@ local Submap = require("lib.key.submap") ---@class Submap
 local KBPTR_CMDS = {
   floating_click = "wl-kbptr -o modes=floating,click -o mode_floating.source=detect",
   floating_move = "wl-kbptr -o modes=floating -o mode_floating.source=detect",
+  floating_r_click = "wl-kbptr -o modes=floating -o mode_floating.source=detect ; wlrctl pointer click right",
   tile_click = "wl-kbptr -o modes=tile,click",
   tile_move = "wl-kbptr -o modes=tile",
+  tile_r_click = "wl-kbptr -o modes=tile ; wlrctl pointer click right",
 }
 
 --- @class CursorActions

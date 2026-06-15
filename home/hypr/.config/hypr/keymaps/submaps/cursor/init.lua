@@ -70,8 +70,10 @@ local cursor_mode = Submap.define({
     -- stylua: ignore start
     local keys = {
       -- quick_click
-      { "SEMICOLON",          Cursor.kbptr("floating_click", { exit = true }),  "Floating Click (Exit)" },
-      { "SHIFT + SEMICOLON",  Cursor.kbptr("tile_click", { exit = true }),      "Tile Click (Exit)" },
+      { "SEMICOLON",          Cursor.kbptr("floating_click", { exit = true }),    "Floating Click (Exit)" },
+      { "SHIFT + SEMICOLON",  Cursor.kbptr("tile_click", { exit = true }),        "Tile Click (Exit)" },
+      { "APOSTROPHE",         Cursor.kbptr("floating_r_click", { exit = false }), "Floating Right Click"} ,
+      { "SHIFT + APOSTROPHE", Cursor.kbptr("tile_r_click", { exit = false }),     "Tile Right Click"} ,
       -- wl-kbptr modes
       { "F",              Cursor.kbptr("floating_click"),                   "Floating Click" },
       { "CTRL + F",       Cursor.kbptr("floating_click", { exit = true }),  "Floating Click (Exit)" },
@@ -79,6 +81,9 @@ local cursor_mode = Submap.define({
       { "T",              Cursor.kbptr("tile_click"),                       "Tiling Click" },
       { "CTRL + T",       Cursor.kbptr("tile_click",     { exit = true }),  "Tiling Click (Exit)" },
       { "SHIFT + T",      Cursor.kbptr("tile_move"),                        "Tiling Move" },
+      -- wl-kbptr right click
+      { "ALT + F",        Cursor.kbptr("floating_r_click", { exit = false }), "Floating Right Click" },
+      { "ALT + T",        Cursor.kbptr("tile_r_click", { exit = false }),     "Tile Right Click" },
       -- Clicks
       { "SPACE",          Cursor.click_left(),             "Left Click" },
       { "A",              Cursor.click_left(),             "Left Click" },
@@ -128,10 +133,11 @@ local cursor_mode = Submap.define({
   end,
 })
 
+local SUB_QUICK = Config.leader .. " + SEMICOLON"
 local quick_click = Submap.define({
   name = "Quick Click",
   desc = "+Quick Click",
-  enter = Config.leader .. " + SEMICOLON",
+  enter = SUB_QUICK,
   escape = "reset",
   catchall = "stay",
   on_enter = enter_cursor,
@@ -141,8 +147,12 @@ local quick_click = Submap.define({
     -- stylua: ignore start
     local keys = {
       -- quick_click
-      { "SEMICOLON",          Cursor.kbptr("floating_click", { exit = true }),  "Floating Click (Exit)" },
-      { "SHIFT + SEMICOLON",  Cursor.kbptr("tile_click", { exit = true }),      "Tile Click (Exit)" },
+      { "SEMICOLON",          Cursor.kbptr("floating_click", { exit = true }),    "Floating Click (Exit)" },
+      { "APOSTROPHE",         Cursor.kbptr("floating_r_click", { exit = false }), "Floating Right Click" },
+      { "SHIFT + SEMICOLON",  Cursor.kbptr("tile_click", { exit = true }),        "Tile Click (Exit)" },
+      -- quicker_click
+      { Config.leader .. " + SEMICOLON",  Cursor.kbptr("floating_click", { exit = true })},
+      { Config.leader .. " + APOSTROPHE", Cursor.kbptr("floating_r_click", { exit = false })},
       -- wl-kbptr modes
       { "F",                  to_cursor(Cursor.kbptr("floating_click")),        "Floating Click" },
       { "SHIFT + F",          to_cursor(Cursor.kbptr("floating_move")),         "Floating Move" },
