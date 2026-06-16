@@ -70,29 +70,28 @@ local cursor_mode = Submap.define({
     -- stylua: ignore start
     local keys = {
       -- quick_click
-      { "SEMICOLON",          Cursor.kbptr("floating_click", { exit = true }),    "Floating Click (Exit)" },
-      { "SHIFT + SEMICOLON",  Cursor.kbptr("tile_click", { exit = true }),        "Tile Click (Exit)" },
+      { "SEMICOLON",          Cursor.kbptr("floating_click",   { exit = true }),  "Floating Click (Exit)" },
+      { "SUPER + SEMICOLON",  Cursor.kbptr("floating_click",   { exit = true })},
+      { "SHIFT + SEMICOLON",  Cursor.kbptr("tile_click",       { exit = true }),  "Tiling Click (Exit)" },
       { "APOSTROPHE",         Cursor.kbptr("floating_r_click", { exit = false }), "Floating Right Click"} ,
-      { "SHIFT + APOSTROPHE", Cursor.kbptr("tile_r_click", { exit = false }),     "Tile Right Click"} ,
-      -- wl-kbptr modes
-      { "F",              Cursor.kbptr("floating_click"),                   "Floating Click" },
-      { "CTRL + F",       Cursor.kbptr("floating_click", { exit = true }),  "Floating Click (Exit)" },
-      { "SHIFT + F",      Cursor.kbptr("floating_move"),                    "Floating Move" },
-      { "T",              Cursor.kbptr("tile_click"),                       "Tiling Click" },
-      { "CTRL + T",       Cursor.kbptr("tile_click",     { exit = true }),  "Tiling Click (Exit)" },
-      { "SHIFT + T",      Cursor.kbptr("tile_move"),                        "Tiling Move" },
-      -- wl-kbptr right click
-      { "ALT + F",        Cursor.kbptr("floating_r_click", { exit = false }), "Floating Right Click" },
-      { "ALT + T",        Cursor.kbptr("tile_r_click", { exit = false }),     "Tile Right Click" },
-      -- Clicks
-      { "SPACE",          Cursor.click_left(),             "Left Click" },
+      { "SHIFT + APOSTROPHE", Cursor.kbptr("tile_r_click",     { exit = false }), "Tiling Right Click"} ,
+      -- wl-kbptr modes (bare=left, SHIFT=right, CTRL=move)
+      { "F",              Cursor.kbptr("floating_click"),                      "Floating Click" },
+      { "SHIFT + F",      Cursor.kbptr("floating_r_click", { exit = false }),  "Floating Right Click" },
+      { "CTRL + F",       Cursor.kbptr("floating_move"),                       "Floating Move" },
+      { "T",              Cursor.kbptr("tile_click"),                          "Tiling Click" },
+      { "SHIFT + T",      Cursor.kbptr("tile_r_click",     { exit = false }),  "Tiling Right Click" },
+      { "CTRL + T",       Cursor.kbptr("tile_move"),                           "Tiling Move" },
+      -- Space Clicks
+      { "SPACE",          Cursor.click_left(),    "Left Click" },
+      { "SHIFT + SPACE",  Cursor.click_right(),   "Right Click" },
+      { "CTRL + SPACE",   Cursor.click_middle(),  "Middle Click" },
+      -- A,S,D Clicks (CTRL=exit after)
       { "A",              Cursor.click_left(),             "Left Click" },
       { "CTRL + A",       oneshot(Cursor.click_left()),    "Left Click (Exit)" },
       { "S",              Cursor.click_middle(),           "Middle Click" },
       { "CTRL + S",       oneshot(Cursor.click_middle()),  "Middle Click (Exit)" },
       { "D",              Cursor.click_right(),            "Right Click" },
-      { "CTRL + SPACE",   Cursor.click_right(),            "Right Click" },
-      { "SHIFT + SPACE",  Cursor.click_middle(),           "Middle Click" },
       -- PageUp/PageDown
       { "CTRL + U",       Cursor.send_key("prior"), "Page Up" },
       { "CTRL + D",       Cursor.send_key("next"),  "Page Down" },
@@ -154,10 +153,12 @@ local quick_click = Submap.define({
       { Config.leader .. " + SEMICOLON",  Cursor.kbptr("floating_click", { exit = true })},
       { Config.leader .. " + APOSTROPHE", Cursor.kbptr("floating_r_click", { exit = false })},
       -- wl-kbptr modes
-      { "F",                  to_cursor(Cursor.kbptr("floating_click")),        "Floating Click" },
-      { "SHIFT + F",          to_cursor(Cursor.kbptr("floating_move")),         "Floating Move" },
-      { "T",                  to_cursor(Cursor.kbptr("tile_click")),            "Tiling Click" },
-      { "SHIFT + T",          to_cursor(Cursor.kbptr("tile_move")),             "Tiling Move" },
+      { "F",                  to_cursor(Cursor.kbptr("floating_click")),                      "Floating Click" },
+      { "SHIFT + F",          to_cursor(Cursor.kbptr("floating_r_click", { exit = false })), "Floating Right Click" },
+      { "CTRL + F",           to_cursor(Cursor.kbptr("floating_move")),                      "Floating Move" },
+      { "T",                  to_cursor(Cursor.kbptr("tile_click")),                         "Tiling Click" },
+      { "SHIFT + T",          to_cursor(Cursor.kbptr("tile_r_click", { exit = false })),     "Tile Right Click" },
+      { "CTRL + T",           to_cursor(Cursor.kbptr("tile_move")),                          "Tiling Move" },
       -- WhichKey
       { "SHIFT + SLASH",  function() require("lua.plugins.hyprvim").whichkey.toggle() end, "WhichKey" },
     }
