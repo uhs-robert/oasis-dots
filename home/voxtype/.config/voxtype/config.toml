@@ -272,6 +272,7 @@ tridecal = "Tridactyl"
 Tri-Dactyl = "Tridactyl"
 tridectal = "Tridactyl"
 "witch key" = "Which Key"
+Cowindly = "Calendly"
 
 [meeting]
 enabled = false
