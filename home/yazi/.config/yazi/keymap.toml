@@ -22,6 +22,7 @@ prepend_keymap = [
 
   # Go to...
   { on = [ "g", "/", ], run = "cd /", desc = "Go to /" },
+  { on = [ "g", "C", ], run = "cd /home/roberth/Documents/Clients/", desc = "Go to Clients" },
   { on = [ "g", "D", ], run = "cd /home/roberth/Documents/", desc = "Go to Documents" },
   { on = [ "g", "G", ], run = "cd /data/Games/Steam/steamapps/common/", desc = "Go to Steam Games" },
   { on = [ "g", "H", ], run = "cd /home/roberth/.config/hypr/", desc = "Go to ~/.config/hypr" },
