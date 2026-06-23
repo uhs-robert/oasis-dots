@@ -17,7 +17,7 @@ install-rpm = [
   { run = "sh -lc 'sudo dnf -y install \"$1\"' -- \"$@\"", block = true, desc = "DNF Install (sudo)", for = "unix" },
 ]
 video = [{ run = 'vlc "$@"', orphan = true, desc = "VLC", for = "unix" }]
-pdf = [{ run = 'okular "$@"', orphan = true, desc = "Okular", for = "unix" }]
+pdf = [{ run = 'zathura "$@"', orphan = true, desc = "Zathura", for = "unix" }]
 open = [
   { run = 'xdg-open "$@"', desc = "Open" },
   { run = '/usr/bin/nvim "$@"', block = true, desc = "NeoVim", for = "unix" },

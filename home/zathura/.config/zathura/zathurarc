@@ -1,0 +1,40 @@
+# UI
+set statusbar-home-tilde true
+set window-title-basename true
+set statusbar-h-padding 8
+set statusbar-v-padding 4
+set page-padding 8
+
+# Open behavior
+set adjust-open width
+set zoom-step 10
+set scroll-step 80
+set scroll-page-aware true
+set smooth-scroll true
+
+# Search
+set search-hadjust true
+set incremental-search true
+
+# Clipboard / selection
+set selection-clipboard clipboard
+set selection-notification false
+
+# Database / history
+set database sqlite
+set save-position true
+set synctex false
+
+# Recolor / dark-ish reading mode
+set recolor false
+set recolor-keephue true
+set recolor-lightcolor "#1e1e2e"
+set recolor-darkcolor "#cdd6f4"
+
+# Completion
+set completion-bg "#1e1e2e"
+set completion-fg "#cdd6f4"
+set completion-highlight-bg "#313244"
+set completion-highlight-fg "#cdd6f4"
+set completion-group-bg "#181825"
+set completion-group-fg "#89b4fa"
