@@ -3,11 +3,13 @@
 csv = [
   { run = 'nless "$@"', block = true, desc = "Nless", for = "unix" },
   { run = '/usr/bin/nvim "$@"', block = true, desc = "NeoVim", for = "unix" },
+  { run = 'libreoffice --calc "$@"', block = false, desc = "Libreoffice", for = "unix" },
 ]
 edit = [
   { run = '/usr/bin/nvim "$@"', block = true, desc = "NeoVim", for = "unix" },
   { run = 'vim "$@"', block = true, desc = "Vim", for = "unix" },
   { run = 'nless "$@"', block = true, desc = "Nless", for = "unix" },
+  { run = 'libreoffice --calc "$@"', block = false, desc = "Libreoffice", for = "unix" },
 ]
 image-edit = [
   { run = 'gimp "$@"', block = true, desc = "Gimp", for = "unix" },
