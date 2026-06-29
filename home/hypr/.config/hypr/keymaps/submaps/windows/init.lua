@@ -136,7 +136,7 @@ Submap.define({
       { "M",             Submap.switch("Move"),                "+Move" },
       { "I",             Submap.switch("Screenshot"),          "+Screenshot" },
       { "Q",             Submap.switch("System"),              "+System" },
-      { "X",             Submap.switch("Cursor"),              "+Cursor" },
+      { "C",             Submap.switch("Cursor"),              "+Cursor" },
       { "TAB",           Workspace.focus_last(),               "Last Workspace" },
       { "O",             exec(Menu.window()),                  "Search Windows" },
       { "C",             for_selected(Window.kill()),          "Close Window" },

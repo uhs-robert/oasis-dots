@@ -60,7 +60,7 @@ end
 local cursor_mode = Submap.define({
   name = "Cursor",
   desc = "+Cursor",
-  enter = Config.leader .. " + X",
+  enter = Config.leader .. " + C",
   escape = "reset",
   catchall = "stay",
   on_enter = enter_cursor,
