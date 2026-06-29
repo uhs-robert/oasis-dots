@@ -12,7 +12,7 @@ local OPTS = {
 Bind.leader_cmd("SLASH",  require("lib.scripts").keybind_help, OPTS.universal("Keybind Help"))
 
 -- Window Actions
--- Bind.leader_key("X",   Window.close(),             "Close Window")
+Bind.leader_key("X",   Window.close(),             "Close Window")
 Bind.leader_key("F",   Window.fullscreen_toggle(), "Toggle Fullscreen")
 Bind.leader_key("TAB", Workspace.focus_last(),     "Go to Last Active WS")
 
