@@ -14,6 +14,7 @@ local CMD = {
   reboot = "systemctl reboot",
   poweroff = "systemctl poweroff",
   restart_waybar = "killall swaync swaync-client; pkill -SIGINT waybar; sleep 0.4; swaync & waybar &",
+  toggle_waybar = "pkill -SIGUSR1 waybar",
   restart_waybar_git = "killall swaync swaync-client; pkill -SIGINT waybar; sleep 0.4; swaync & ~/clones/Waybar/build/waybar -c ~/.config/waybar/config.jsonc -s ~/.config/waybar/style.css &",
   edit_keymaps = TERM_CMD .. " -e " .. TUI_FILES .. " ~/.config/hypr/keymaps/",
   theme_switch = "~/.config/hypr/theme/switch.lua '" .. Config.app.dmenu_cmd .. "'",
@@ -39,6 +40,7 @@ Submap.define({
   binds = {
     { "SLASH",     Cmd.run(CMD.edit_keymaps),           "Edit Keymaps" },
     { "SPACE",     Cmd.term("btop"),                    "Task Manager" },
+    { "B",         Cmd.run(CMD.toggle_waybar),          "Toggle Waybar" },
     { "D",         Cmd.run(Config.app.display_manager), "Display Manager" },
     { "E",         Cmd.run(POWER.logout),               "Logout" },
     { "H",         Cmd.run("hyprctl reload"),           "Reload Hyprland" },
