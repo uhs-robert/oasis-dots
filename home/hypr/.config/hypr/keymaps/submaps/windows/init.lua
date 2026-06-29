@@ -138,6 +138,8 @@ Submap.define({
       { "Q",             Submap.switch("System"),              "+System" },
       { "C",             Submap.switch("Cursor"),              "+Cursor" },
       { "TAB",           Workspace.focus_last(),               "Last Workspace" },
+      { "BRACKETLEFT",   Window.cycle_float("prev"),           "Prev Float" },
+      { "BRACKETRIGHT",  Window.cycle_float("next"),           "Next Float" },
       { "O",             exec(Menu.window()),                  "Search Windows" },
       { "C",             for_selected(Window.kill()),          "Close Window" },
       { "F",             for_selected(Window.float_toggle()),  "Toggle Floating" },

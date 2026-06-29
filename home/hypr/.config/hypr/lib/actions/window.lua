@@ -54,4 +54,31 @@ end
 --- @param opts table
 Window.focus_by = function(opts) return Hypr.dispatch(hl.dsp.focus(opts)) end
 
+--- Cycle focus through floating windows on the active workspace.
+--- @param dir "next"|"prev"
+--- @return fun()
+Window.cycle_float = function(dir)
+  return function()
+    local ws = hl.get_active_workspace()
+    if not ws then return end
+    local active = hl.get_active_window()
+    local floats = {}
+    for _, w in ipairs(hl.get_windows() or {}) do
+      if w.floating and w.workspace and w.workspace.id == ws.id then floats[#floats + 1] = w end
+    end
+    if #floats == 0 then return end
+    local idx = 0
+    if active then
+      for i, w in ipairs(floats) do
+        if w.address == active.address then
+          idx = i
+          break
+        end
+      end
+    end
+    local next_idx = dir == "prev" and ((idx - 2) % #floats + 1) or (idx % #floats + 1)
+    hl.dispatch(hl.dsp.focus({ window = "address:" .. floats[next_idx].address }))
+  end
+end
+
 return Window

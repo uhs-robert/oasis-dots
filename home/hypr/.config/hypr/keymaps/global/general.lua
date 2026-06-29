@@ -27,6 +27,10 @@ Bind.leader_key({ "SHIFT + J", "SHIFT + DOWN" },  Window.move_dir("d"), OPTS.uni
 Bind.leader_key({ "SHIFT + K", "SHIFT + UP" },    Window.move_dir("u"), OPTS.universal("Move Window Up"))
 Bind.leader_key({ "SHIFT + L", "SHIFT + RIGHT" }, Window.move_dir("r"), OPTS.universal("Move Window Right"))
 
+-- Float Cycle
+Bind.leader_key("BRACKETLEFT",  Window.cycle_float("prev"), "Prev Float")
+Bind.leader_key("BRACKETRIGHT", Window.cycle_float("next"), "Next Float")
+
 -- Window Special
 Bind.leader_key("S",         Window.toggle_special("scratchpad"),  OPTS.universal("Toggle Scratchpad"))
 Bind.leader_key("SHIFT + S", Window.move_to_special("scratchpad"), OPTS.universal("Move to Scratchpad"))
