@@ -217,7 +217,5 @@ export INTELLI_SEARCH_HOTKEY='^G'
 # export INTELLI_SKIP_ESC_BIND=0
 # alias is="intelli-shell"
 export PATH="$INTELLI_HOME/bin:$PATH"
+[[ -f ~/.config/secrets/intellishell.env ]] && source ~/.config/secrets/intellishell.env
 eval "$(intelli-shell init zsh)"
-# export PATH="$HOME/.cargo/bin:$PATH"
-# . "$HOME/.cargo/env"
-# eval "$(~/.rbenv/bin/rbenv init -)"
