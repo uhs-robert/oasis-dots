@@ -210,7 +210,7 @@ alias lt='ls --tree'
 
 # IntelliShell
 export INTELLI_HOME="$HOME/.local/share/intelli-shell"
-# export INTELLI_SEARCH_HOTKEY='^f'
+export INTELLI_SEARCH_HOTKEY='^G'
 # export INTELLI_VARIABLE_HOTKEY='^l'
 # export INTELLI_BOOKMARK_HOTKEY='^b'
 # export INTELLI_FIX_HOTKEY='^x'
