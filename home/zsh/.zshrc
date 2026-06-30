@@ -209,6 +209,24 @@ alias lla='ls -la'
 alias lt='ls --tree'
 # Lsd end
 
+# Just
+alias j='just'
+
+jg() {
+  just --justfile "$HOME/.config/just/justfile" \
+       --working-directory "$HOME" \
+       "$@"
+}
+
+_jg() {
+  local -a recipes
+  recipes=(${=$(jg --summary 2>/dev/null)})
+  compadd -- "${recipes[@]}"
+}
+
+compdef _jg jg
+# Just End
+
 # IntelliShell
 export INTELLI_HOME="$HOME/.local/share/intelli-shell"
 export INTELLI_SEARCH_HOTKEY='^G'

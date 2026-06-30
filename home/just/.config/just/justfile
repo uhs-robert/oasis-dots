@@ -1,0 +1,76 @@
+# ~/.config/just/justfile
+
+global := env_var("HOME") / ".config/just/justfile"
+
+default:
+    @just --justfile {{global}} --working-directory ~ --list
+
+config:
+    nvim ~/.config/just/justfile
+
+# System
+update:
+    topgrade
+
+arch-news:
+    arch_news_check
+
+orphans:
+    paru -Qtdq
+
+orphans-remove:
+    paru -Qtdq | paru -Rns -
+
+clean:
+    sudo pacman -Sc
+
+# Hyprland / Waybar
+waybar-reload:
+    pkill waybar || true
+    waybar & disown
+
+swaync-reload:
+    swaync-client -R
+    swaync-client -rs
+
+reload:
+    hyprctl reload
+
+# System inspection
+ports:
+    ss -tulpn
+
+disk:
+    dust ~
+
+journal:
+    journalctl -p 3 -xb
+
+failed:
+    systemctl --failed
+
+# Dot file management
+stow name:
+    stow -t ~ {{name}}
+
+unstow name:
+    stow -D -t ~ {{name}}
+
+dots:
+    cd ~/dotfiles && nvim .
+
+zsh:
+    cd ~ && nvim ./.zshrc
+
+# Search
+todo:
+    @file="$(rg --files-with-matches 'TODO|FIXME|HACK' ~/Development | sort -u | fzf)"; \
+    [ -z "$file" ] && exit 0; \
+    yazi "$(dirname "$file")"
+
+repos:
+    fd -H '^\.git$' ~/Development -t d | sed 's|/.git$||' | fzf
+
+# Backups
+backup-docs:
+    rclone sync ~/Documents remote:Documents
