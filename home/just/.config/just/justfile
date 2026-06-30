@@ -5,10 +5,26 @@ global := env_var("HOME") / ".config/just/justfile"
 default:
     @just --justfile {{global}} --working-directory ~ --list
 
+
+# Shortcuts
+
 config:
     nvim ~/.config/just/justfile
 
+nvim:
+    cd ~/.config/nvim && yazi .
+
+yazi:
+    cd ~/.config/yazi && yazi .
+
+hypr:
+    cd ~/.config/hypr && yazi .
+
+ssh:
+    cd ~/.ssh && yazi .
+
 # System
+
 update:
     topgrade
 
@@ -25,6 +41,7 @@ clean:
     sudo pacman -Sc
 
 # Hyprland / Waybar
+
 waybar-reload:
     pkill waybar || true
     waybar & disown
@@ -36,7 +53,11 @@ swaync-reload:
 reload:
     hyprctl reload
 
-# System inspection
+# Diagnostics
+
+ip:
+    ip -brief addr
+
 ports:
     ss -tulpn
 
@@ -50,6 +71,7 @@ failed:
     systemctl --failed
 
 # Dot file management
+
 stow name:
     stow -t ~ {{name}}
 
@@ -57,20 +79,29 @@ unstow name:
     stow -D -t ~ {{name}}
 
 dots:
-    cd ~/dotfiles && nvim .
+    cd ~/dotfiles/home/ && yazi .
 
 zsh:
     cd ~ && nvim ./.zshrc
 
 # Search
+
 todo:
-    @file="$(rg --files-with-matches 'TODO|FIXME|HACK' ~/Development | sort -u | fzf)"; \
-    [ -z "$file" ] && exit 0; \
-    yazi "$(dirname "$file")"
+    @result="$(rg --line-number --column --no-heading 'TODO|FIXME|HACK' ~/Development | \
+      fzf --delimiter ':' \
+          --preview 'bat --style=numbers --color=always --highlight-line {2} {1}' \
+          --preview-window=right:60%)"; \
+    [ -z "$result" ] && exit 0; \
+    file="$(echo "$result" | cut -d: -f1)"; \
+    line="$(echo "$result" | cut -d: -f2)"; \
+    nvim "+$line" "$file"
 
 repos:
-    fd -H '^\.git$' ~/Development -t d | sed 's|/.git$||' | fzf
+    @dir="$(fd -H '^\.git$' ~/Development -t d | sed 's|/.git$||' | fzf)"; \
+    [ -z "$dir" ] && exit 0; \
+    yazi "$dir"
 
 # Backups
+
 backup-docs:
     rclone sync ~/Documents remote:Documents
