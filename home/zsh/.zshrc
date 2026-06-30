@@ -172,6 +172,7 @@ export PATH="$PATH:$HOME/.lmstudio/bin"
 if [[ -f "$HOME/Development/tools/rob-bin/lib/functions.sh" ]]; then
   source "$HOME/Development/tools/rob-bin/lib/functions.sh"
 fi
+alias src='source ~/.zshrc'
 
 # Load user-specific scripts from ~/.bashrc.d
 for rc in ~/.bashrc.d/*(.N); do source "$rc"; done
