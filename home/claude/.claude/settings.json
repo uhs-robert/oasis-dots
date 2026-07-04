@@ -28,5 +28,6 @@
   "theme": "dark-ansi",
   "editorMode": "vim",
   "preferredNotifChannel": "kitty",
-  "autoCompactEnabled": false
+  "autoCompactEnabled": false,
+  "agentPushNotifEnabled": true
 }
