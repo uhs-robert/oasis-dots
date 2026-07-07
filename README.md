@@ -23,3 +23,15 @@ If you don't want to install the full dotfiles then you may also manually stow t
 stow -d home <package>     # deploy a package
 stow -d home -D <package>  # remove a package
 ```
+
+## Justfile
+
+Common tasks are wrapped in a `justfile` (run with [`just`](https://github.com/casey/just)). With `just`, you can just run:
+
+```bash
+just                  # list recipes
+just stow <package>   # symlink one package
+just unstow <package> # remove one package's symlinks
+just install          # run install.sh
+just uninstall        # run uninstall.sh
+```
