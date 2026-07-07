@@ -42,14 +42,16 @@ command = "sh -c 'clear; exec /usr/bin/start-hyprland >/tmp/hyprland-greetd.log 
 [theme]
 container = "black"
 text = "white"
-title = "red"
-border = "yellow"
-time = "green"
-greet = "green"
-action = "green"
-prompt = "cyan"
-input = "red"
-button = "yellow"
+title = "blue"
+border = "lightblue"
+time = "lightblue"
+greet = "lightblue"
+action = "yellow"
+prompt = "yellow"
+button = "blue"
+
+# Plain readable input
+input = "white"
 
 [[outputs]]
 connector = "eDP-1"
