@@ -31,6 +31,7 @@
   "m r": "cmd:cmd_markAsRead",
   "m u": "cmd:cmd_markAsUnread",
   "m j": "cmd:cmd_markAsJunk",
+  "m s": "cmd:cmd_markAsFlagged",
   "g f": "window.gTabmail.currentAbout3Pane.folderTree.focus();",
   "g i": "window.gTabmail.currentAbout3Pane.threadTree.table.body.focus();",
   "g m": "window.gTabmail.currentAboutMessage.getMessagePaneBrowser().focus();",
