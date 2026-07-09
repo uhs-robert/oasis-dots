@@ -26,6 +26,11 @@
       "type": "title",
       "key": " ",
       "keyColor": "blue",
+      "color": {
+        "user": "light_blue",
+        "at": "white",
+        "host": "light_blue",
+      },
       "keyWidth": 21,
     },
     {
@@ -53,8 +58,8 @@
     {
       "type": "os",
       "key": " 󰣇 OS",
-      "keyColor": "cyan",
-      "outputColor": "cyan",
+      "keyColor": "yellow",
+      "outputColor": "yellow",
       "format": "{2}",
     },
     {
@@ -99,8 +104,8 @@
     {
       "type": "wm",
       "key": "  DE/WM",
-      "keyColor": "cyan",
-      "outputColor": "cyan",
+      "keyColor": "yellow",
+      "outputColor": "yellow",
     },
     {
       "type": "lm",
@@ -134,8 +139,8 @@
     {
       "type": "host",
       "key": " 󰌢 PC",
-      "keyColor": "cyan",
-      "outputColor": "cyan",
+      "keyColor": "yellow",
+      "outputColor": "yellow",
     },
     {
       "type": "cpu",
@@ -204,8 +209,8 @@
     {
       "type": "custom",
       "key": " 󰾰 I/O",
-      "keyColor": "cyan",
-      "outputColor": "cyan",
+      "keyColor": "yellow",
+      "outputColor": "yellow",
       "format": "Network / Audio / Input",
     },
     {
