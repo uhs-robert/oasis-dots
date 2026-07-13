@@ -216,10 +216,11 @@ command logger_switch js (function(){const s=document.createElement('script');s.
 command knack_search_selection js window.wrappedJSObject?.knack_search?.open?.(document.getSelection()?.toString().trim() ?? '')
 
 unbind x
-bind xx stop
+bind xx tabclose
 bind xh knack_toggle_hidden
 bind xi knack_toggle_ids
 bind xo knack_search_prompt
+bind xp stop
 bind xs logger_switch
 bind --mode=visual xv knack_search_selection
 
