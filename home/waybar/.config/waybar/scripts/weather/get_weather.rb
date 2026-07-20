@@ -275,7 +275,7 @@ module Icons
     def get_clock_icon(hour)
       # Map hour (0-23) to clock face (1-12)
       clock_hour = hour % 12
-      clock_hour = 12 if clock_hour == 0
+      clock_hour = 12 if clock_hour.zero?
       get_ui("hour.#{clock_hour}")
     end
 
@@ -1113,9 +1113,9 @@ module TooltipBuilder
       box_w  = 69
       sun_ic = Icons.style_icon(Icons.get_ui('sun.rise'), color, sz[:large])
       title_label = " #{sun_ic}<b>Sunrise &amp; Moon</b> "
-      top  = '┌' + title_label + '─' * [box_w - 19, 0].max + '┐'
-      hsep = '├' + '─' * box_w + '┤'
-      bot  = '└' + '─' * box_w + '┘'
+      top  = "┌#{title_label}#{'─' * [box_w - 19, 0].max}┐"
+      hsep = "├#{'─' * box_w}┤"
+      bot  = "└#{'─' * box_w}┘"
 
       header_txt = format(' %<date>-9s │ %<rise>5s │ %<set>5s │ %<day>7s │ %<ngt>7s │ Moon Phase',
                           date: 'Date', rise: 'Rise', set: 'Set', day: 'Day', ngt: 'Night')
@@ -1177,9 +1177,9 @@ module TooltipBuilder
       box_w       = hr_col_width + 48
       clock_icon  = Icons.style_icon(Icons.get_ui('clock'), Config.colors['primary'], Config.pongo_size[:large])
       title_label = " #{clock_icon}<b>Hourly</b> "
-      top   = '┌' + title_label + '─' * [box_w - 11, 0].max + '┐'
-      hsep  = '├' + '─' * box_w + '┤'
-      bot   = '└' + '─' * box_w + '┘'
+      top   = "┌#{title_label}#{'─' * [box_w - 11, 0].max}┐"
+      hsep  = "├#{'─' * box_w}┤"
+      bot   = "└#{'─' * box_w}┘"
 
       header_txt = format(
         "%<hr>-#{hr_col_width}s │ %<temp>5s │ %<pop>4s │ %<precip>7s │ Cond",
@@ -1195,7 +1195,7 @@ module TooltipBuilder
         if cur_date && row_date != cur_date
           label = h['dt'].strftime('%a %m/%d')
           pad   = box_w - label.length - 4
-          rows << "├─ #{label} " + '─' * [pad, 0].max + '┤'
+          rows << "├─ #{label} #{'─' * [pad, 0].max}┤"
         end
         cur_date = row_date
 
@@ -1232,10 +1232,10 @@ module TooltipBuilder
       inner_w = col_w * n + n - 1
       cal_icon = Icons.style_icon(Icons.get_ui('calendar'), Config.colors['primary'], Config.pongo_size[:large])
       title_label = " #{cal_icon}<b>Daily</b> "
-      top = '┌' + title_label + '─' * [inner_w - 10, 0].max + '┐'
-      col_top = '├' + ([bar] * n).join('┬') + '┤'
-      mid   = '├' + ([bar] * n).join('┼') + '┤'
-      bot   = '└' + ([bar] * n).join('┴') + '┘'
+      top = "┌#{title_label}#{'─' * [inner_w - 10, 0].max}┐"
+      col_top = "├#{([bar] * n).join('┬')}┤"
+      mid   = "├#{([bar] * n).join('┼')}┤"
+      bot   = "└#{([bar] * n).join('┴')}┘"
       sep   = '│'
 
       cell  = ->(txt) { txt.to_s.center(col_w) }
@@ -1281,9 +1281,9 @@ module TooltipBuilder
       box_w       = hr_col_width + 51
       cal_icon    = Icons.style_icon(Icons.get_ui('calendar'), Config.colors['primary'], Config.pongo_size[:large])
       title_label = " #{cal_icon}<b>Snapshot</b> "
-      top  = '┌' + title_label + '─' * [box_w - 13, 0].max + '┐'
-      hsep = '├' + '─' * box_w + '┤'
-      bot  = '└' + '─' * box_w + '┘'
+      top  = "┌#{title_label}#{'─' * [box_w - 13, 0].max}┐"
+      hsep = "├#{'─' * box_w}┤"
+      bot  = "└#{'─' * box_w}┘"
 
       header_txt = format(
         "%<hr>-#{hr_col_width}s │ %<temp>5s │ %<pop>4s │ %<precip>7s │ Cond",
@@ -1298,7 +1298,7 @@ module TooltipBuilder
         if row_date != cur_date
           label = Time.strptime(row_date, '%Y-%m-%d').strftime('%a %m/%d')
           pad   = box_w - label.length - 3
-          out << "├─ #{label} " + '─' * [pad, 0].max + '┤'
+          out << "├─ #{label} #{'─' * [pad, 0].max}┤"
           cur_date = row_date
         end
 
@@ -1541,7 +1541,7 @@ def main
   end
 end
 
-private def handle_cli_args(args)
+def handle_cli_args(args)
   arg = args[0]
   if %w[--next --toggle].include?(arg)
     WeatherMode.cycle
@@ -1555,7 +1555,7 @@ private def handle_cli_args(args)
 end
 
 # Initialize configuration modules
-private def initialize_app_config(settings)
+def initialize_app_config(settings)
   Config.init
   Icons.init(settings[:icon_type])
 
@@ -1567,7 +1567,7 @@ private def initialize_app_config(settings)
 end
 
 # Fetch and build all weather data structures
-private def fetch_weather_data(lat, lon, settings, location_name)
+def fetch_weather_data(lat, lon, settings, location_name)
   blob = ForecastData.fetch_openmeteo_forecast(lat, lon, Config.unit_c?, settings[:daily_number_of_days])
   cur = ForecastData.extract_current(blob, Config.unit, location_name)
   days = ForecastData.build_next_days(blob, settings[:daily_number_of_days])
@@ -1581,12 +1581,12 @@ private def fetch_weather_data(lat, lon, settings, location_name)
 end
 
 # Generate text and tooltip based on mode
-private def generate_output(mode, weather_data, settings)
+def generate_output(mode, weather_data, settings)
   ViewBuilder.build(mode, weather_data, settings)
 end
 
 # Recursively converts hash string keys to symbols, handling nested structures
-private def symbolize_keys(obj)
+def symbolize_keys(obj)
   case obj
   when Hash
     obj.transform_keys(&:to_sym).transform_values { |v| symbolize_keys(v) }
@@ -1600,7 +1600,7 @@ end
 # Converts cached weather data structure to use symbol keys
 # Note: Only symbolize top-level keys; keep nested structures with string keys
 # as the existing code expects string keys for accessing nested data
-private def symbolize_weather_data(data)
+def symbolize_weather_data(data)
   return data unless data.is_a?(Hash)
 
   result = data.transform_keys(&:to_sym)
@@ -1621,7 +1621,7 @@ private def symbolize_weather_data(data)
 end
 
 # Main application logic
-private def run_weather_update(force_refresh: false)
+def run_weather_update(force_refresh: false)
   settings = Config.settings
   mode = WeatherMode.get
   initialize_app_config(settings)
