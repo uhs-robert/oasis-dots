@@ -26,25 +26,25 @@ Workspace.focus = function(n) return focus(n) end
 --- @param n integer
 Workspace.move = function(n) return move_win(n) end
 
--- "r" selectors below are per-monitor workspace selectors, including empty
+-- "m" selectors below are per-monitor workspace selectors
 -- See: https://wiki.hypr.land/Configuring/Basics/Dispatchers/#workspace-selectors
 
 --- Focus the monitor-local workspace at slot (persistent workspace mode).
 --- @param slot integer
-Workspace.focus_local = function(slot) return focus("r~" .. slot) end
+Workspace.focus_local = function(slot) return focus("m~" .. slot) end
 
 --- Move active window to the monitor-local workspace at slot.
 --- @param slot integer
-Workspace.move_local = function(slot) return move_win("r~" .. slot) end
+Workspace.move_local = function(slot) return move_win("m~" .. slot) end
 
 --- Cycle to the previous or next workspace on the active monitor.
 --- @param dir "prev"|"next"
 --- @return fun()
-Workspace.cycle_local = function(dir) return focus(dir == "next" and "r+1" or "r-1") end
+Workspace.cycle_local = function(dir) return focus(dir == "next" and "m+1" or "m-1") end
 
 --- Move the active window to the previous or next workspace on the active monitor.
 --- @param dir "prev"|"next"
 --- @return fun()
-Workspace.move_window_local = function(dir) return move_win(dir == "next" and "r+1" or "r-1") end
+Workspace.move_window_local = function(dir) return move_win(dir == "next" and "m+1" or "m-1") end
 
 return Workspace
