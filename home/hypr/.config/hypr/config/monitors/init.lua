@@ -2,7 +2,7 @@
 
 local Config = require("config") ---@class Config
 local PERSISTENT_WS = Config.persistent_workspaces
---- @type { description?: string, name?: string, id?: integer, mode?: string, position?: string, scale?: number, transform?: integer }[]
+--- @type { description?: string, name?: string, id?: integer, mode?: string, position?: string, scale?: number, transform?: integer, primary?: boolean }[]
 local MONITOR_ORDER = Config.monitors
 
 --- @param mon HL.Monitor
@@ -92,10 +92,27 @@ local function focus_first_ws(mon)
   hl.dispatch(hl.dsp.focus({ workspace = (idx - 1) * PERSISTENT_WS + 1 }))
 end
 
+--- Sets the X primary output to whichever MONITOR_ORDER entry has `primary = true`, if connected.
+--- xrandr's primary flag isn't exposed via hl.monitor(), so this shells out directly.
+local function set_primary_monitor()
+  local monitors = hl.get_monitors()
+  for _, entry in ipairs(MONITOR_ORDER) do
+    if entry.primary then
+      for _, mon in ipairs(monitors) do
+        if is_monitor_match(mon, entry) then
+          hl.exec_cmd("xrandr --output " .. mon.name .. " --primary")
+          return
+        end
+      end
+    end
+  end
+end
+
 --- Applies monitor mode/position settings and persistent workspace rules.
 --- @param mon? HL.Monitor The monitor that was removed
 local function apply_layout(mon)
   init_monitors()
+  set_primary_monitor()
   if PERSISTENT_WS then
     init_persistent_workspaces()
     if mon then focus_first_ws(mon) end

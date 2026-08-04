@@ -28,7 +28,6 @@ local function run()
   -- hl.exec_cmd("hyprpm reload")                                                            -- Load plugins
   hl.exec_cmd("lua ~/.config/hypr/extensions/wallpaper/init.lua")
   hl.exec_cmd("voxtype setup systemd")
-  hl.exec_cmd("xrandr --output HDMI-A-1 --primary 2>/dev/null || true")
 end
 
 return run
