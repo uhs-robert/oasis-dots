@@ -115,6 +115,16 @@ local set_window_rules = function()
     stay_focused = true,
     size = "(monitor_w*0.7) (monitor_h*0.7)",
   })
+
+  -- Steam Games
+  hl.window_rule({
+    name = "focus-steam-games",
+    match = {
+      class = "^steam_app_[0-9]+$",
+    },
+    focus_on_activate = true,
+    fullscreen = true,
+  })
 end
 
 --- Toggles browser opacity when a screenshare session starts or stops.
