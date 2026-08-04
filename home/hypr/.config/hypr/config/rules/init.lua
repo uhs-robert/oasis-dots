@@ -118,7 +118,7 @@ local set_window_rules = function()
 
   -- Steam Games
   hl.window_rule({
-    name = "focus-steam-games",
+    name = "steam-games",
     match = {
       class = "^steam_app_[0-9]+$",
     },
