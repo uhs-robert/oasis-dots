@@ -14,8 +14,8 @@ label_select_color=#58B8FDFF
 unselectable_bg_color=#2226
 selectable_bg_color=#22385C59
 selectable_border_color=#3AACFD40
-label_font_family=sans-serif
-label_font_size=14 50% 100
+label_font_family=JetBrainsMono Nerd Font
+label_font_size=18 50% 100
 label_symbols=abcdefghijklmnopqrstuvwxyz
 
 
@@ -43,13 +43,13 @@ label_symbols=abcdefghijklmnopqrstuvwxyz
 
 [mode_floating]
 source=detect
-label_color=#D9E6FAFF
+label_color=#F0E68CFF
 label_select_color=#58B8FDFF
 unselectable_bg_color=#2226
-selectable_bg_color=#22385C99
+selectable_bg_color=#22385CCC
 selectable_border_color=#3AACFD80
-label_font_family=sans-serif
-label_font_size=14 50% 100
+label_font_family=JetBrainsMono Nerd Font
+label_font_size=18 50% 100
 label_symbols=abcdefghijklmnopqrstuvwxyz
 
 [mode_bisect]
