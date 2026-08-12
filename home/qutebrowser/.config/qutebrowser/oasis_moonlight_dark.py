@@ -24,7 +24,7 @@ def setup(c, samecolorrows=True):
         "mantle":         "#0F1520",
         "shadow":         "#020304",
         "surface":        "#1A2330",
-        "fg_core":        "#F7F4F2",
+        "fg_core":        "#F5F5DC",
         "fg_dim":         "#74808F",
         "fg_muted":       "#4E6578",
         "light_primary":  "#B0C8DE",
@@ -126,7 +126,7 @@ def setup(c, samecolorrows=True):
 
     ## Foreground color of the statusbar.
     c.colors.statusbar.normal.fg = palette["fg_core"]
-    c.colors.statusbar.insert.fg = palette["green"]
+    c.colors.statusbar.insert.fg = palette["bright_red"]
     c.colors.statusbar.command.fg = palette["light_primary"]
     c.colors.statusbar.passthrough.fg = palette["bright_yellow"]
     c.colors.statusbar.caret.fg = palette["bright_yellow"]
