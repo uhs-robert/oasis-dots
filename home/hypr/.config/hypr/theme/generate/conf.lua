@@ -11,8 +11,9 @@ return function(c)
 
   local lines = {}
   for key, hex in pairs(c) do
-    table.insert(lines, string.format("$%s = %s", key, rgb(hex)))
-    table.insert(lines, string.format("$%s_faded = %s", key, rgba(hex, "99")))
+    local upper_key = key:upper()
+    table.insert(lines, string.format("$%s = %s", upper_key, rgb(hex)))
+    table.insert(lines, string.format("$%s_FADED = %s", upper_key, rgba(hex, "99")))
   end
   table.sort(lines)
 
