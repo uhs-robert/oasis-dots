@@ -7,8 +7,8 @@
 @define-color bg_surface #1E2A38;
 
 /* Foregrounds */
-@define-color fg_core   #F7F4F2;
-@define-color fg_strong #E8F1FF;
+@define-color fg_core   #F5F5DC;
+@define-color fg_strong #FFFFF0;
 @define-color fg_muted  #4E6578;
 @define-color fg_dim    #74808F;
 
