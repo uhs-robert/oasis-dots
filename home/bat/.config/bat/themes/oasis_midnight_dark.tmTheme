@@ -17,7 +17,7 @@
 				<key>foreground</key>
 				<string>#F7F4F2</string>
 				<key>caret</key>
-				<string>#D6CE7C</string>
+				<string>#D8CF7F</string>
 				<key>lineHighlight</key>
 				<string>#1E2A38</string>
 				<key>selection</key>
@@ -984,7 +984,7 @@
 			<key>settings</key>
 			<dict>
 				<key>foreground</key>
-				<string>#D6CE7C</string>
+				<string>#D8CF7F</string>
 				<key>fontStyle</key>
 				<string>bold</string>
 			</dict>
@@ -1023,7 +1023,7 @@
 			<key>settings</key>
 			<dict>
 				<key>foreground</key>
-				<string>#D6CE7C</string>
+				<string>#D8CF7F</string>
 				<key>fontStyle</key>
 				<string>underline</string>
 			</dict>

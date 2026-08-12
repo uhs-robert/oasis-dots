@@ -31,7 +31,7 @@ def setup(c, samecolorrows=True):
         "light_primary":        "#B0C8DE",
         "primary":              "#7FA3C9",
         "strong_primary":       "#5D8BBB",
-        "secondary":            "#D6CE7C",
+        "secondary":            "#D8CF7F",
         "strong_secondary":     "#BDB76B",
         "accent":               "#FFA0A0",
         "match":                "#81C0FF",

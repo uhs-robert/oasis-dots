@@ -345,7 +345,7 @@ endif
 " Desert Night Theme
 function! s:DesertNight() abort
   " General
-  hi Normal           guibg=#262626 guifg=#F7EDE1 ctermbg=NONE ctermfg=250
+  hi Normal           guibg=#262626 guifg=#F5F5DC ctermbg=NONE ctermfg=250
   hi LineNr           guifg=#7C6A5B ctermbg=NONE
   hi CursorLineNr     guifg=#FFA34D ctermfg=231 guibg=#262626
   hi CursorLineFold   guibg=#262626 ctermbg=16
@@ -401,8 +401,8 @@ function! s:DesertNight() abort
   hi Todo             guifg=#262626 guibg=#cd853f
 
   " Tabline
-  hi TabLine          guifg=#F7EDE1 guibg=#404040
-  hi TabLineFill      guifg=#F7EDE1 guibg=#404040
+  hi TabLine          guifg=#F5F5DC guibg=#404040
+  hi TabLineFill      guifg=#F5F5DC guibg=#404040
   hi TabLineSel       guifg=#262626 guibg=#f0e68c
 
   " Visual selection
@@ -487,8 +487,8 @@ set statusline+=%5*\ %3p%%\ %02l/%L\                     " Percentage of Doc, Li
 set statusline+=%1*\ %n\                                 " Buffer number
 
 " Static highlight group colors
-hi User2 guibg=#2E2E2E guifg=#F7EDE1 ctermbg=236 ctermfg=15
-hi User3 guibg=#404040 guifg=#F7EDE1 ctermbg=235 ctermfg=15
+hi User2 guibg=#2E2E2E guifg=#F5F5DC ctermbg=236 ctermfg=15
+hi User3 guibg=#404040 guifg=#F5F5DC ctermbg=235 ctermfg=15
 hi User4 guibg=#404040 guifg=#2E2E2E ctermbg=235 ctermfg=235
 hi User5 guibg=#404040 guifg=#F581F3 ctermbg=235 ctermfg=213
 

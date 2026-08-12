@@ -57,7 +57,7 @@ clipboard-read = allow
 clipboard-write = allow
 copy-on-select = false
 cursor-color = #F0E68C
-cursor-text = #070C13
+cursor-text = #0C0E13
 
 # font-family = "Terminess Nerd Font""
 font-family = "Maple Mono NF"

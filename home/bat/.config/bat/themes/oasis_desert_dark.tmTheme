@@ -15,7 +15,7 @@
 				<key>background</key>
 				<string>#262626</string>
 				<key>foreground</key>
-				<string>#F7EDE1</string>
+				<string>#F5F5DC</string>
 				<key>caret</key>
 				<string>#F0E68C</string>
 				<key>lineHighlight</key>
@@ -23,7 +23,7 @@
 				<key>selection</key>
 				<string>#433F38</string>
 				<key>selectionForeground</key>
-				<string>#F7EDE1</string>
+				<string>#F5F5DC</string>
 				<key>findHighlight</key>
 				<string>#A1C254</string>
 				<key>findHighlightForeground</key>
@@ -85,7 +85,7 @@
 			<key>settings</key>
 			<dict>
 				<key>foreground</key>
-				<string>#F7EDE1</string>
+				<string>#F5F5DC</string>
 			</dict>
 		</dict>
 		<dict>
@@ -232,7 +232,7 @@
 			<key>settings</key>
 			<dict>
 				<key>foreground</key>
-				<string>#D6CE7C</string>
+				<string>#D8CF7F</string>
 			</dict>
 		</dict>
 		<dict>
@@ -466,7 +466,7 @@
 			<key>settings</key>
 			<dict>
 				<key>foreground</key>
-				<string>#D6CE7C</string>
+				<string>#D8CF7F</string>
 			</dict>
 		</dict>
 		<dict>
@@ -489,7 +489,7 @@
 			<key>settings</key>
 			<dict>
 				<key>foreground</key>
-				<string>#F7EDE1</string>
+				<string>#F5F5DC</string>
 			</dict>
 		</dict>
 		<!-- Rust -->
@@ -665,7 +665,7 @@
 			<key>settings</key>
 			<dict>
 				<key>foreground</key>
-				<string>#F7EDE1</string>
+				<string>#F5F5DC</string>
 			</dict>
 		</dict>
 		<dict>
@@ -720,7 +720,7 @@
 			<key>settings</key>
 			<dict>
 				<key>foreground</key>
-				<string>#F7EDE1</string>
+				<string>#F5F5DC</string>
 			</dict>
 		</dict>
 		<dict>
@@ -826,7 +826,7 @@
 			<key>settings</key>
 			<dict>
 				<key>foreground</key>
-				<string>#F7EDE1</string>
+				<string>#F5F5DC</string>
 			</dict>
 		</dict>
 		<!-- JSON -->
@@ -1060,7 +1060,7 @@
 			<key>settings</key>
 			<dict>
 				<key>foreground</key>
-				<string>#F7EDE1</string>
+				<string>#F5F5DC</string>
 			</dict>
 		</dict>
 		<!-- Typst -->

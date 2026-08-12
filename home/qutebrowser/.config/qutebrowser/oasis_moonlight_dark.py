@@ -20,7 +20,7 @@ def setup(c, samecolorrows=True):
         "blue":           "#81C0FF",
         "bright_blue":    "#87CEEB",
         "search":         "#4D4A42",
-        "core":           "#070C13",
+        "core":           "#0C0E13",
         "mantle":         "#0F1520",
         "shadow":         "#020304",
         "surface":        "#1A2330",

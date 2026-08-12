@@ -309,7 +309,7 @@
 			<key>settings</key>
 			<dict>
 				<key>foreground</key>
-				<string>#D6CE7C</string>
+				<string>#D8CF7F</string>
 			</dict>
 		</dict>
 		<dict>
@@ -654,7 +654,7 @@
 			<key>settings</key>
 			<dict>
 				<key>foreground</key>
-				<string>#D6CE7C</string>
+				<string>#D8CF7F</string>
 			</dict>
 		</dict>
 		<dict>
@@ -742,7 +742,7 @@
 			<key>settings</key>
 			<dict>
 				<key>foreground</key>
-				<string>#D6CE7C</string>
+				<string>#D8CF7F</string>
 			</dict>
 		</dict>
 		<!-- Shell -->
@@ -883,7 +883,7 @@
 			<key>settings</key>
 			<dict>
 				<key>foreground</key>
-				<string>#D6CE7C</string>
+				<string>#D8CF7F</string>
 			</dict>
 		</dict>
 		<dict>

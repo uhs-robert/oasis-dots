@@ -327,7 +327,7 @@
 
   "mpris": {
     "format": "<span size='12000' color='#7FA3C9'>{status_icon}</span>  {dynamic}",
-    "format-paused": "<span size='12000' color='#D6CE7C'>{status_icon}</span>  {dynamic}",
+    "format-paused": "<span size='12000' color='#D8CF7F'>{status_icon}</span>  {dynamic}",
     "max-length": 28,
     "player-icons": {
       "default": "",
@@ -347,7 +347,7 @@
   "mpris#cliamp": {
     "player": "cliamp",
     "format": "<span size='12000' color='#7FA3C9'>{status_icon}</span>  {dynamic}",
-    "format-paused": "<span size='12000' color='#D6CE7C'>{status_icon}</span>  {dynamic}",
+    "format-paused": "<span size='12000' color='#D8CF7F'>{status_icon}</span>  {dynamic}",
     "max-length": 28,
     "player-icons": {
       "default": "",
@@ -379,7 +379,7 @@
     "exec": "UPDATES_TTL_MIN=30 exec ~/.config/waybar/scripts/fedora_updates.rb",
     "return-type": "json",
     "interval": 900, // in seconds = 15min
-    "format": "<span size='12000' color='#D6CE7C'> </span>{text}",
+    "format": "<span size='12000' color='#D8CF7F'> </span>{text}",
     "tooltip": false,
     "hide-empty-text": true,
     "on-click": "zsh -lc 'foot zsh -lc \"topgrade\"; rm -f \"$XDG_RUNTIME_DIR/fedora_updates.cache.json\"; pkill -RTMIN+8 waybar'",
@@ -390,7 +390,7 @@
     "exec": "UPDATES_TTL_MIN=30 exec ~/.config/waybar/scripts/arch_updates.rb",
     "return-type": "json",
     "interval": 900, // in seconds = 15min
-    "format": "<span size='12000' color='#D6CE7C'>{}</span>",
+    "format": "<span size='12000' color='#D8CF7F'>{}</span>",
     "tooltip": true,
     "hide-empty-text": true,
     "on-click": "zsh -lc 'foot zsh -lc \"topgrade\"; rm -f \"$XDG_RUNTIME_DIR/arch_updates.cache.json\"; pkill -RTMIN+8 waybar'",
