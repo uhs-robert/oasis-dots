@@ -93,8 +93,8 @@ local function pango_escape(s) return (s:gsub("&", "&amp;"):gsub("<", "&lt;"):gs
 --- @param prompt string
 --- @return integer|nil
 local function rofi_select(binds, prompt)
-  local accent = get_theme_color("accent")
-  local secondary = get_theme_color("secondary")
+  local theme_accent = get_theme_color("accent")
+  local theme_primary = get_theme_color("primary")
 
   local max_chord = 0
   for _, b in ipairs(binds) do
@@ -103,10 +103,10 @@ local function rofi_select(binds, prompt)
 
   local labels = {}
   for _, b in ipairs(binds) do
-    local chord = string.format('<span foreground="%s">%s</span>', secondary, pango_escape(b.chord))
+    local chord = string.format('<span foreground="%s">%s</span>', theme_primary, pango_escape(b.chord))
       .. string.rep(" ", max_chord - #b.chord + 4)
     local desc = pango_escape(b.desc)
-    if b.desc:sub(1, 1) == "+" then desc = string.format('<span foreground="%s">%s</span>', accent, desc) end
+    if b.desc:sub(1, 1) == "+" then desc = string.format('<span foreground="%s">%s</span>', theme_accent, desc) end
     table.insert(labels, chord .. desc)
   end
 
