@@ -18,7 +18,7 @@ local MOD_BITS = {
 --- @return string
 local function get_theme_color(name)
   local theme_conf = (os.getenv("HOME") or "") .. "/.config/hypr/theme.conf"
-  local h = io.popen("grep '^\\$theme_" .. name .. " ' " .. theme_conf)
+  local h = io.popen("grep -i '^\\$theme_" .. name .. " ' " .. theme_conf)
   local line = h and h:read("l")
   if h then h:close() end
   local hex = line and line:match("rgb%((%x+)%)")
