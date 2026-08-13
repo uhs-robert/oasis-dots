@@ -7,23 +7,11 @@ configuration {
   disable-history: true;
 }
 
+@import                          "../colors.rasi"
+@import                          "../fonts.rasi"
+
 * {
   font: "JetBrainsMono Nerd Font 11";
-
-  bg: #0F1520;
-  bg-alt: #0A1018;
-  bg-selected: #1A2330;
-
-  fg: #F7F4F2;
-  fg-strong: #E8F1FF;
-  fg-muted: #4E6578;
-  fg-dim: #74808F;
-
-  accent: #7FA3C9;
-  accent-secondary: #F0E68C;
-  accent-warm: #FFA0A0;
-
-  border: #4E6578;
 }
 
 window {
@@ -36,9 +24,9 @@ window {
   width: 390px;
   height: 720px;
 
-  background-color: @bg;
+  background-color: @bg-surface;
   border: 1px;
-  border-color: @border;
+  border-color: @fg-muted;
   border-radius: 6px;
 }
 
@@ -52,19 +40,19 @@ inputbar {
   padding: 10px 12px;
   spacing: 8px;
 
-  background-color: @bg-alt;
+  background-color: @bg-core;
   border-radius: 0px;
 
   children: [ prompt, entry ];
 }
 
 prompt {
-  text-color: @accent;
+  text-color: @theme-primary;
   background-color: transparent;
 }
 
 entry {
-  text-color: @fg;
+  text-color: @fg-core;
   background-color: transparent;
   placeholder: "Search apps...";
   placeholder-color: @fg-muted;
@@ -83,12 +71,12 @@ element {
   padding: 7px 10px;
   border-radius: 0px;
   background-color: transparent;
-  text-color: @fg;
+  text-color: @fg-core;
 }
 
 element selected {
-  background-color: @bg-selected;
-  text-color: @accent-secondary;
+  background-color: @bg-mantle;
+  text-color: @theme-secondary;
 }
 
 element-text {

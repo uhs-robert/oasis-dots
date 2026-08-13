@@ -18,29 +18,29 @@ configuration {
 @import                          "../fonts.rasi"
 
 * {
-    border-colour:               var(selected);
-    handle-colour:               var(selected);
-    background-colour:           var(background);
-    foreground-colour:           var(foreground);
-    alternate-background:        var(background-alt);
-    normal-background:           var(background);
-    normal-foreground:           var(foreground);
-    urgent-background:           var(urgent);
-    urgent-foreground:           var(background);
-    active-background:           var(active);
-    active-foreground:           var(background);
-    selected-normal-background:  var(selected);
-    selected-normal-foreground:  var(background);
-    selected-urgent-background:  var(active);
-    selected-urgent-foreground:  var(background);
-    selected-active-background:  var(urgent);
-    selected-active-foreground:  var(background);
-    alternate-normal-background: var(background);
-    alternate-normal-foreground: var(foreground);
-    alternate-urgent-background: var(urgent);
-    alternate-urgent-foreground: var(background);
-    alternate-active-background: var(active);
-    alternate-active-foreground: var(background);
+    border-colour:               var(theme-primary);
+    handle-colour:               var(theme-primary);
+    background-colour:           var(bg-core);
+    foreground-colour:           var(fg-core);
+    alternate-background:        var(bg-surface);
+    normal-background:           var(bg-core);
+    normal-foreground:           var(fg-core);
+    urgent-background:           var(error);
+    urgent-foreground:           var(bg-core);
+    active-background:           var(yellow);
+    active-foreground:           var(bg-core);
+    selected-normal-background:  var(theme-primary);
+    selected-normal-foreground:  var(bg-core);
+    selected-urgent-background:  var(yellow);
+    selected-urgent-foreground:  var(bg-core);
+    selected-active-background:  var(error);
+    selected-active-foreground:  var(bg-core);
+    alternate-normal-background: var(bg-core);
+    alternate-normal-foreground: var(fg-core);
+    alternate-urgent-background: var(error);
+    alternate-urgent-foreground: var(bg-core);
+    alternate-active-background: var(yellow);
+    alternate-active-foreground: var(bg-core);
 }
 
 /*****----- Main Window -----*****/
