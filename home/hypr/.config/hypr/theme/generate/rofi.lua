@@ -12,6 +12,7 @@ return function(c)
 * {
     /* Backgrounds */
     bg-core:    %sFF;
+    bg-crust:   %sFF;
     bg-mantle:  %sFF;
     bg-shadow:  %sFF;
     bg-surface: %sFF;
@@ -54,6 +55,7 @@ return function(c)
 }
 ]],
     c.bg_core,
+    c.bg_crust,
     c.bg_mantle,
     c.bg_shadow,
     c.bg_surface,

@@ -3,6 +3,7 @@
 * {
     /* Backgrounds */
     bg-core:    #0C0E13FF;
+    bg-crust:   #070A0EFF;
     bg-mantle:  #141C24FF;
     bg-shadow:  #05070AFF;
     bg-surface: #1E2A38FF;

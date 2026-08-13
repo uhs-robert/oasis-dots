@@ -24,7 +24,7 @@ window {
   width: 390px;
   height: 720px;
 
-  background-color: @bg-surface;
+  background-color: @bg-crust;
   border: 1px;
   border-color: @fg-muted;
   border-radius: 6px;
@@ -40,7 +40,7 @@ inputbar {
   padding: 10px 12px;
   spacing: 8px;
 
-  background-color: @bg-core;
+  background-color: @bg-mantle;
   border-radius: 0px;
 
   children: [ prompt, entry ];
@@ -75,7 +75,7 @@ element {
 }
 
 element selected {
-  background-color: @bg-mantle;
+  background-color: @bg-surface;
   text-color: @theme-secondary;
 }
 
