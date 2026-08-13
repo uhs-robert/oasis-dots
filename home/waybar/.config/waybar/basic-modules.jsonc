@@ -170,7 +170,7 @@
   },
 
   "hyprland/submap": {
-    "format": "<span size='11000' foreground='#F8B471'> </span>{}",
+    "format": "<span size='11000' foreground='#F0E68C'> </span>{}",
     "max-length": 20,
     "tooltip": false,
     "on-click": "hyprctl dispatch \"hl.dsp.submap('reset')\""
@@ -206,7 +206,7 @@
 
   "temperature": {
     "format": "<span size='11000' color='#7FA3C9'></span> {temperatureC}°C",
-    "format-critical": "<span size='11000' color='#FFA0A0'></span> <span color='#FFA0A0'>{temperatureC}°C</span>",
+    "format-critical": "<span size='11000' color='#FF7979'></span> <span color='#FF7979'>{temperatureC}°C</span>",
     "critical-threshold": 80,
     "interval": 10
   },
@@ -230,7 +230,7 @@
       "on-scroll": 1,
       "format": {
         "months": "<span color='#7FA3C9'><b>{}</b></span>",
-        "days": "<span color='#E8F1FF'><b>{}</b></span>",
+        "days": "<span color='#F5F5DC'><b>{}</b></span>",
         "weeks": "<span color='#81C0FF'><b>W{}</b></span>",
         "weekdays": "<span color='#F0E68C'><b>{}</b></span>",
         "today": "<span color='#FFA0A0'><b><u>{}</u></b></span>"
@@ -279,7 +279,7 @@
     },
     "format": "<span size='11000' foreground='#7FA3C9'>{icon} </span> {capacity}%",
     "format-warning": "<span size='11000' foreground='#F0E68C'>{icon} </span> {capacity}%",
-    "format-critical": "<span size='11000' foreground='#FFA0A0'>{icon} </span> {capacity}%",
+    "format-critical": "<span size='11000' foreground='#FF7979'>{icon} </span> {capacity}%",
     "format-charging": "<span size='11000' foreground='#7FA3C9'> </span>{capacity}%",
     "format-plugged": "<span size='11000' foreground='#7FA3C9'> </span>{capacity}%",
     "format-full": "<span size='11000' foreground='#7FA3C9'>󱟢 </span>{capacity}%",
@@ -317,10 +317,10 @@
     "menu-actions": {
       "apps": "hyprctl dispatch \"LayerRules.exec_without_animation('rofi -show drun -theme ~/.config/rofi/themes/oasis-start.rasi')\"",
       "sep1": "true",
-      "lock": "~/.config/waybar/scripts/confirm-action.sh --title Lock      --glyph '󰌾' --color '#E8F1FF' --exec '~/.config/hypr/scripts/hyprlock-screenshot.lua'",
+      "lock": "~/.config/waybar/scripts/confirm-action.sh --title Lock      --glyph '󰌾' --color '#F5F5DC' --exec '~/.config/hypr/scripts/hyprlock-screenshot.lua'",
       "logout": "~/.config/waybar/scripts/confirm-action.sh --title Logout    --glyph '󰍃' --color '#81C0FF' --exec 'command -v hyprshutdown >/dev/null 2>&1 && hyprshutdown || hyprctl dispatch exit'",
       "reboot": "~/.config/waybar/scripts/confirm-action.sh --title Reboot    --glyph '󰜉' --color '#F0E68C' --exec 'systemctl reboot'",
-      "power": "~/.config/waybar/scripts/confirm-action.sh --title 'Power Off' --glyph '󰐥' --color '#FFA0A0' --exec 'systemctl poweroff'"
+      "power": "~/.config/waybar/scripts/confirm-action.sh --title 'Power Off' --glyph '󰐥' --color '#FF7979' --exec 'systemctl poweroff'"
     },
     "on-click-right": "~/.config/hypr/theme/switch.lua"
   },
@@ -405,9 +405,9 @@
       "notification": "󰅸 ",
       "none": "󰂜 ",
       "inhibited-notification": "󰺁 ",
-      "dnd-notification": "<span color='#FFA0A0'></span> ",
-      "dnd-none": "<span color='#FFA0A0'></span> ",
-      "dnd-inhibited-notification": "<span color='#FFA0A0'>󱏪</span> "
+      "dnd-notification": "<span color='#FF7979'></span> ",
+      "dnd-none": "<span color='#FF7979'></span> ",
+      "dnd-inhibited-notification": "<span color='#FF7979'>󱏪</span> "
     },
     "return-type": "json",
     "exec-if": "which swaync-client",
