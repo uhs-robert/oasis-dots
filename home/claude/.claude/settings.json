@@ -3,7 +3,8 @@
   "permissions": {
     "allow": [
       "Read(~/.zshrc)"
-    ]
+    ],
+    "defaultMode": "default"
   },
   "model": "sonnet",
   "statusLine": {
@@ -25,6 +26,7 @@
   },
   "alwaysThinkingEnabled": true,
   "effortLevel": "medium",
+  "promptSuggestionEnabled": false,
   "theme": "dark-ansi",
   "editorMode": "vim",
   "preferredNotifChannel": "kitty",
