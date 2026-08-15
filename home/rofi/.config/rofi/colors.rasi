@@ -23,7 +23,7 @@
     error:   #FFA0A0FF;
     warning: #F0E68CFF;
     info:    #81C0FFFF;
-    hint:    #8FD1C7FF;
+    hint:    #8AD3BEFF;
     ok:      #A3E39AFF;
 
     /* ANSI semantic colors */
@@ -33,7 +33,7 @@
     yellow:         #F0E68CFF;
     blue:           #81C0FFFF;
     magenta:        #C695FFFF;
-    cyan:           #68C0B6FF;
+    cyan:           #69C3AAFF;
     white:          #F5F5DCFF;
     bright-black:   #4E6578FF;
     bright-red:     #FFA0A0FF;
@@ -41,6 +41,6 @@
     bright-yellow:  #F8B471FF;
     bright-blue:    #87CEEBFF;
     bright-magenta: #D2ADFFFF;
-    bright-cyan:    #8FD1C7FF;
+    bright-cyan:    #8AD3BEFF;
     bright-white:   #FFFFF0FF;
 }

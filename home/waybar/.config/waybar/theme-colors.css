@@ -22,12 +22,12 @@
 @define-color error   #FFA0A0;
 @define-color warning #F0E68C;
 @define-color info    #81C0FF;
-@define-color hint    #8FD1C7;
+@define-color hint    #8AD3BE;
 @define-color ok      #A3E39A;
 
 /* ANSI */
 @define-color red     #FF7979;
 @define-color green   #7FCF78;
 @define-color blue    #81C0FF;
-@define-color cyan    #68C0B6;
+@define-color cyan    #69C3AA;
 @define-color magenta #C695FF;
