@@ -45,8 +45,6 @@ prepend_rules = [
 [plugin]
 prepend_preloaders = [
   # Do not preload files in mounted locations:
-  # Environment variable won't work here.
-  # Using absolute path instead.
   { url = "/run/user/1000/gvfs/**/*", run = "noop" },
 
   # For mounted location for hard disk/drive
@@ -57,15 +55,14 @@ prepend_preloaders = [
 prepend_previewers = [
   # Allow to preview folder.
   { url = "*/", run = "folder", sync = true },
-  # Do not previewing files in mounted locations (uncomment to except text file):
+
+  # Do not preview files in mounted locations (uncomment to except text file):
   # { mime = "{text/*,application/x-subrip}", run = "code" },
-  # Using absolute path.
   { url = "/run/user/1000/gvfs/**/*", run = "noop" },
   { url = "~/mnt/*", run = "noop" },
 
   # For mounted hard disk.
   { url = "/run/media/*/**/*", run = "noop" },
-  #... the rest of previewers
 ]
 prepend_fetchers = [
   { group = "git", url = "*", run = "git" },
