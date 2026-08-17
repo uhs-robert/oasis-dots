@@ -1,0 +1,17 @@
+#!/bin/sh
+
+file="$1"
+line="${2:-}"
+
+if [ -n "$NVIM" ]; then
+  goto_line=""
+  [ -n "$line" ] && goto_line=":${line}<CR>"
+  nvim --server "$NVIM" --remote-send \
+    "<C-\><C-N>:close<CR>:edit $(printf '%s' "$file")<CR>${goto_line}"
+else
+  if [ -n "$line" ]; then
+    nvim "+${line}" "$file"
+  else
+    nvim "$file"
+  fi
+fi

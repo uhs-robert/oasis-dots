@@ -28,5 +28,8 @@ update:
   method: never
 os:
   editPreset: "nvim"
+  edit: "~/.config/lazygit/lazygit-edit {{filename}}"
+  editAtLine: "~/.config/lazygit/lazygit-edit {{filename}} {{line}}"
+  editAtLineAndWait: "~/.config/lazygit/lazygit-edit {{filename}} {{line}}"
 disableStartupPopups: true
 notARepository: skip
