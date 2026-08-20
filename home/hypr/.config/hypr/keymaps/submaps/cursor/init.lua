@@ -100,11 +100,6 @@ local cursor_mode = Submap.define({
       { "ALT + J",        Cursor.send_key("DOWN"),  "Arrow Down",  { repeating = true } },
       { "ALT + K",        Cursor.send_key("UP"),    "Arrow Up",    { repeating = true } },
       { "ALT + L",        Cursor.send_key("RIGHT"), "Arrow Right", { repeating = true } },
-      -- Submap switches
-      { "W",              Submap.switch("Windows"),     "+Windows" },
-      { "R",              Submap.switch("Resize"),      "+Resize" },
-      { "I",              Submap.switch("Screenshot"),  "+Screenshot" },
-      { "Q",              Submap.switch("System"),      "+System" },
       -- WhichKey
       { "SHIFT + SLASH",  function() require("lua.plugins.hyprvim").whichkey.toggle() end, "WhichKey" },
     }
