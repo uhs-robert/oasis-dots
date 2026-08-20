@@ -61,4 +61,48 @@ function Direction.speed_binds(fn, desc_prefix, tiers)
   return rows
 end
 
+--- Build diagonal (omni-direction) bind rows for a single DirActions set.
+--- Chords two direction keys (e.g. "H+K") to move both axes at once. Chord
+--- order matters ("H+K" fires, "K+H" doesn't), so both orderings are bound.
+--- @param actions     DirActions
+--- @param desc_prefix string
+--- @param mod         string|nil          Optional modifier prefix, e.g. "SHIFT"
+--- @param opts        HL.BindOptions|nil  Per-row opts merged into each row's [4]
+--- @param desc_suffix string|nil          Optional suffix appended to each description
+--- @return table[]
+function Direction.omni(actions, desc_prefix, mod, opts, desc_suffix)
+  local p = (mod and mod ~= "") and (mod .. " + ") or ""
+  local s = desc_suffix or ""
+
+  local function row(k1, k2, action, dir)
+    return { { p .. k1, p .. k2 }, action, desc_prefix .. " " .. dir .. s, opts }
+  end
+
+  return {
+    row("H+K", "K+H", actions.nw, "Up-Left"),
+    row("L+K", "K+L", actions.ne, "Up-Right"),
+    row("H+J", "J+H", actions.sw, "Down-Left"),
+    row("L+J", "J+L", actions.se, "Down-Right"),
+  }
+end
+
+--- Build diagonal bind rows for all speed tiers using an at(amount) factory.
+--- `fn` receives an amount and returns a DirActions.
+--- @param fn          fun(amount: number): DirActions
+--- @param desc_prefix string
+--- @param tiers       SpeedTier[]|nil  Defaults to Direction.tiers
+--- @return table[]
+function Direction.omni_binds(fn, desc_prefix, tiers)
+  tiers = tiers or Direction.tiers
+
+  local rows = {}
+
+  for _, tier in ipairs(tiers) do
+    local tier_rows = Direction.omni(fn(tier.amount), desc_prefix, tier.mod, { repeating = true }, tier.suffix)
+    table.move(tier_rows, 1, #tier_rows, #rows + 1, rows)
+  end
+
+  return rows
+end
+
 return Direction

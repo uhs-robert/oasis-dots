@@ -8,6 +8,10 @@ local Submap = require("lib.key.submap") ---@class Submap
 --- @field right function
 --- @field up    function
 --- @field down  function
+--- @field nw    function
+--- @field ne    function
+--- @field sw    function
+--- @field se    function
 
 --- wl-kbptr mode commands by name.
 local KBPTR_CMDS = {
@@ -26,8 +30,8 @@ local Cursor = {
   click_middle = function() return Hypr.exec("wlrctl pointer click middle") end,
 }
 
---- Cursor movement factory for Direction.speed_binds.
---- @param amount number  Pixels to move per trigger
+--- Cursor movement factory for Direction.speed_binds / Direction.omni_binds.
+--- @param amount number  Pixels to move per axis per trigger
 --- @return DirActions
 Cursor.move = function(amount)
   return {
@@ -35,6 +39,10 @@ Cursor.move = function(amount)
     right = Hypr.exec("wlrctl pointer move " .. amount .. " 0"),
     up = Hypr.exec("wlrctl pointer move 0 -" .. amount),
     down = Hypr.exec("wlrctl pointer move 0 " .. amount),
+    nw = Hypr.exec("wlrctl pointer move -" .. amount .. " -" .. amount),
+    ne = Hypr.exec("wlrctl pointer move " .. amount .. " -" .. amount),
+    sw = Hypr.exec("wlrctl pointer move -" .. amount .. " " .. amount),
+    se = Hypr.exec("wlrctl pointer move " .. amount .. " " .. amount),
   }
 end
 

@@ -117,6 +117,13 @@ local cursor_mode = Submap.define({
       keys[#keys + 1] = key
     end
 
+    -- Diagonal (omni-direction) speed tiers (H+K/L+K/H+J/L+J) with repeating
+    for _, key in ipairs(Direction.omni_binds(Cursor.move, "Cursor")) do
+      key[4] = key[4] or {}
+      key[4].repeating = true
+      keys[#keys + 1] = key
+    end
+
     -- Scroll tiers (E/Y/COMMA/PERIOD)
     for _, key in ipairs(scroll_binds("", 10, "")) do
       keys[#keys + 1] = key
