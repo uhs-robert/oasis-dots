@@ -19,6 +19,11 @@ require("folder-rules"):setup()
 
 -- Git integration
 require("git"):setup()
+require("githead"):setup({
+	branch_prefix = "on",
+	branch_symbol = " ",
+	branch_borders = "()",
+})
 
 -- Relative Motion
 require("relative-motions"):setup({
