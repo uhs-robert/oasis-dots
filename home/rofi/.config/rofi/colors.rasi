@@ -12,7 +12,7 @@
     fg-core:   #F5F5DCFF;
     fg-strong: #FFFFF0FF;
     fg-muted:  #4E6578FF;
-    fg-dim:    #74808FFF;
+    fg-dim:    #717A84FF;
 
     /* Accents */
     theme-primary:   #7FA3C9FF;
