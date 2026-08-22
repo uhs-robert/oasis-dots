@@ -90,6 +90,6 @@ Header:children_add(function()
 end, 500, Header.LEFT)
 
 -- Hide preview in NVIM
-if os.getenv("NVIM") then
-	require("toggle-pane"):entry("min-preview")
-end
+-- if os.getenv("NVIM") then
+-- 	require("toggle-pane"):entry("min-preview")
+-- end
