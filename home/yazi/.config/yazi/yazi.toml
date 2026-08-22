@@ -27,9 +27,7 @@ video = [
   { run = 'kdenlive %s', orphan = true, desc = "Kdenlive", for = "unix" },
 ]
 pdf = [{ run = 'zathura %s', orphan = true, desc = "Zathura", for = "unix" }]
-just-open = [
-  { run = 'xdg-open %s', desc = "Open"}
-]
+just-open = [{ run = 'xdg-open %s', desc = "Open" }]
 open = [
   { run = 'xdg-open %s', desc = "Open" },
   { run = '/usr/bin/nvim %s', block = true, desc = "NeoVim", for = "unix" },
@@ -40,7 +38,11 @@ open = [
 
 [open]
 prepend_rules = [
-	{ mime = "trash/**", use = ["just-open", "trash","trash-empty"] },
+  { mime = "trash/**", use = [
+    "just-open",
+    "trash",
+    "trash-empty",
+  ] },
   { url = "*.csv", use = "csv" },
   { mime = "text/csv", use = "csv" },
   { url = "*.rpm", use = "install-rpm" },
