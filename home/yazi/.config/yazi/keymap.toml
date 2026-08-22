@@ -62,10 +62,6 @@ prepend_keymap = [
   # Restore
   { on = [ "u", ], run = "plugin restore", desc = "Restore last deleted files/folders" },
 
-  # Trash
-  { on = [ "g", "t", ], run = "plugin recycle-bin open", desc = "Go to Trash" },
-  { on = [ "R" ], run = "plugin recycle-bin", desc = "Open Recycle Bin Menu" },
-
   # Admin
   { on = ["A", "o"], run = "shell --block -- sudoedit %h", desc = "Sudoedit File"},
   { on = ["A", "y"], run = "shell --block -- sudo yazi %d", desc = "Sudo Yazi"},

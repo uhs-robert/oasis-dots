@@ -71,8 +71,6 @@ end
 
 require("restore"):setup()
 
-require("recycle-bin"):setup()
-
 -- Show symlink in status bar
 Status:children_add(function(self)
 	local h = self._current.hovered

@@ -1,5 +1,8 @@
 # yazi/.config/yazi/yazi.toml
 [opener]
+trash-empty = [
+  { run = 'printf "Delete trash older than how many days? "; read age; trash-empty "$age"; printf "\nPress Enter to return to Yazi..."; read _', block = true, desc = "Empty trash by age" },
+]
 csv = [
   { run = 'nless "$@"', block = true, desc = "Nless", for = "unix" },
   { run = '/usr/bin/nvim "$@"', block = true, desc = "NeoVim", for = "unix" },
@@ -22,6 +25,8 @@ install-rpm = [
 video = [
   { run = 'vlc "$@"', orphan = true, desc = "VLC", for = "unix" },
   { run = 'kdenlive "$@"', orphan = true, desc = "Kdenlive", for = "unix" },
+just-open = [
+  { run = 'xdg-open %s', desc = "Open"}
 ]
 pdf = [{ run = 'zathura "$@"', orphan = true, desc = "Zathura", for = "unix" }]
 open = [
@@ -34,6 +39,7 @@ open = [
 
 [open]
 prepend_rules = [
+	{ mime = "trash/**", use = ["just-open", "trash","trash-empty"] },
   { url = "*.csv", use = "csv" },
   { mime = "text/csv", use = "csv" },
   { url = "*.rpm", use = "install-rpm" },
