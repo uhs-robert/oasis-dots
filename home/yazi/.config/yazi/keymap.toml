@@ -4,6 +4,8 @@ prepend_keymap = [
   # Utils
   { on = "?", run = "help", desc = "Open help" },
   { on = "!", run = 'shell "$SHELL" --block', desc = "Open shell here" },
+  { on = "+", run = 'plugin zoom 1', desc = "Zoom in hovered file" },
+  { on = "-", run = 'plugin zoom -1', desc = "Zoom out hovered file" },
 
   # Toggles
   { on = ["T", "f"], run = "plugin toggle-pane max-preview", desc = "Maximize or restore the preview pane" },
