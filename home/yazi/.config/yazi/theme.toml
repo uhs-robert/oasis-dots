@@ -1,3 +1,9 @@
 # yazi/.config/yazi/theme.toml
 [flavor]
 dark = "oasis-moonlight-dark"
+
+# [git]
+# unstaged = { fg = "blue" }
+# deleted = { fg = "red", bold = true }
+# unstaged_sign = "M"
+# deleted_sign = "D"

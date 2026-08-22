@@ -19,11 +19,6 @@ require("folder-rules"):setup()
 
 -- Git integration
 require("git"):setup()
-th.git = th.git or {}
-th.git.modified = ui.Style():fg("blue")
-th.git.deleted = ui.Style():fg("red"):bold()
-th.git.modified_sign = "M"
-th.git.deleted_sign = "D"
 
 -- Relative Motion
 require("relative-motions"):setup({
