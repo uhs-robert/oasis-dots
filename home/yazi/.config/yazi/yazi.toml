@@ -4,37 +4,38 @@ trash-empty = [
   { run = 'printf "Delete trash older than how many days? "; read age; trash-empty "$age"; printf "\nPress Enter to return to Yazi..."; read _', block = true, desc = "Empty trash by age" },
 ]
 csv = [
-  { run = 'nless "$@"', block = true, desc = "Nless", for = "unix" },
-  { run = '/usr/bin/nvim "$@"', block = true, desc = "NeoVim", for = "unix" },
-  { run = 'libreoffice --calc "$@"', block = false, desc = "Libreoffice", for = "unix" },
+  { run = 'nless %s', block = true, desc = "Nless", for = "unix" },
+  { run = '/usr/bin/nvim %s', block = true, desc = "NeoVim", for = "unix" },
+  { run = 'libreoffice --calc %s', block = false, desc = "Libreoffice", for = "unix" },
 ]
 edit = [
-  { run = '/usr/bin/nvim "$@"', block = true, desc = "NeoVim", for = "unix" },
-  { run = 'vim "$@"', block = true, desc = "Vim", for = "unix" },
-  { run = 'nless "$@"', block = true, desc = "Nless", for = "unix" },
-  { run = 'libreoffice --calc "$@"', block = false, desc = "Libreoffice", for = "unix" },
+  { run = '/usr/bin/nvim %s', block = true, desc = "NeoVim", for = "unix" },
+  { run = 'vim %s', block = true, desc = "Vim", for = "unix" },
+  { run = 'nless %s', block = true, desc = "Nless", for = "unix" },
+  { run = 'libreoffice --calc %s', block = false, desc = "Libreoffice", for = "unix" },
 ]
 image-edit = [
-  { run = 'gimp "$@"', block = true, desc = "Gimp", for = "unix" },
-  { run = 'inkscape "$@"', block = true, desc = "Inkscape", for = "unix" },
-  { run = '/usr/bin/nvim "$@"', block = true, desc = "NeoVim", for = "unix" },
+  { run = 'gimp %s', block = true, desc = "Gimp", for = "unix" },
+  { run = 'inkscape %s', block = true, desc = "Inkscape", for = "unix" },
+  { run = '/usr/bin/nvim %s', block = true, desc = "NeoVim", for = "unix" },
 ]
 install-rpm = [
   { run = "sh -lc 'sudo dnf -y install \"$1\"' -- \"$@\"", block = true, desc = "DNF Install (sudo)", for = "unix" },
 ]
 video = [
-  { run = 'vlc "$@"', orphan = true, desc = "VLC", for = "unix" },
-  { run = 'kdenlive "$@"', orphan = true, desc = "Kdenlive", for = "unix" },
+  { run = 'vlc %s', orphan = true, desc = "VLC", for = "unix" },
+  { run = 'kdenlive %s', orphan = true, desc = "Kdenlive", for = "unix" },
+]
+pdf = [{ run = 'zathura %s', orphan = true, desc = "Zathura", for = "unix" }]
 just-open = [
   { run = 'xdg-open %s', desc = "Open"}
 ]
-pdf = [{ run = 'zathura "$@"', orphan = true, desc = "Zathura", for = "unix" }]
 open = [
-  { run = 'xdg-open "$@"', desc = "Open" },
-  { run = '/usr/bin/nvim "$@"', block = true, desc = "NeoVim", for = "unix" },
-  { run = 'vim "$@"', block = true, desc = "Vim", for = "unix" },
-  { run = 'gimp "$@"', block = true, desc = "Gimp", for = "unix" },
-  { run = 'inkscape "$@"', block = true, desc = "Inkscape", for = "unix" },
+  { run = 'xdg-open %s', desc = "Open" },
+  { run = '/usr/bin/nvim %s', block = true, desc = "NeoVim", for = "unix" },
+  { run = 'vim %s', block = true, desc = "Vim", for = "unix" },
+  { run = 'gimp %s', block = true, desc = "Gimp", for = "unix" },
+  { run = 'inkscape %s', block = true, desc = "Inkscape", for = "unix" },
 ]
 
 [open]
@@ -71,6 +72,10 @@ prepend_previewers = [
   { url = "/run/media/*/**/*", run = "noop" },
 ]
 prepend_fetchers = [
+  { group = "git", url = "/run/user/1000/gvfs/**/*", run = "noop" },
+  { group = "git", url = "/run/media/*/**/*", run = "noop" },
+  { group = "git", url = "~/mnt/*", run = "noop" },
+
   { group = "git", url = "*", run = "git" },
   { group = "git", url = "*/", run = "git" },
 ]
