@@ -33,7 +33,22 @@ characters = "*"
 [keybindings]
 command = 1
 sessions = 2
+background = 4
 power = 12
+
+[background]
+kind = "matrix" # "none"|"matrix"|"doom"
+fps = 30
+
+[background.matrix]
+head_color = "#CBEEF9"
+bright_color = "#87CEEB"
+dim_color = "#1A3D5C"
+min_length = 6
+max_length = 18
+min_speed = 0.30         # rows per frame
+max_speed = 1.10
+mutate_chance = 0.02     # per-cell glyph shimmer probability
 
 [session]
 sessions_dirs = ["/usr/share/wayland-sessions", "/usr/share/xsessions"]
