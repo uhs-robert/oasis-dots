@@ -2,5 +2,4 @@
 
 /usr/bin/setvtrgb /etc/vtrgb-oasis
 
-# Uses fork: https://github.com/NotAShelf/tuigreet
 exec /usr/bin/tuigreet --config /etc/tuigreet/config.toml
