@@ -2,4 +2,6 @@
 
 /usr/bin/setvtrgb /etc/vtrgb-oasis
 
-exec /usr/bin/tuigreet --config /etc/tuigreet/config.toml
+exec /usr/bin/tuigreet \
+  --config /etc/tuigreet/config.toml \
+  --debug /tmp/tuigreet.log
