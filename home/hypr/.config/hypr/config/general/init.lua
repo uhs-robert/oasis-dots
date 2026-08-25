@@ -63,7 +63,7 @@ hl.config({
   },
 
   quirks = {
-    prefer_hdr = false,
+    prefer_hdr = 0,
   },
 
   misc = {
