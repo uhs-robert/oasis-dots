@@ -3,12 +3,15 @@
 file="$1"
 line="${2:-}"
 
-if [ -n "$NVIM" ]; then
+if [ -n "$NVIM" ] && nvim --server "$NVIM" --remote-expr '1' >/dev/null 2>&1; then
   goto_line=""
   [ -n "$line" ] && goto_line=":${line}<CR>"
+
   nvim --server "$NVIM" --remote-send \
     "<C-\><C-N>:close<CR>:edit $(printf '%s' "$file")<CR>${goto_line}"
 else
+  unset NVIM
+
   if [ -n "$line" ]; then
     nvim "+${line}" "$file"
   else
