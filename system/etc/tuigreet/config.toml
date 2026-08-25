@@ -22,7 +22,7 @@ session = false
 user_session = true
 
 [user_menu]
-enabled = true
+enabled = false # TODO: Pending Fix https://github.com/tuigreet/tuigreet/issues/216
 min_uid = 1000
 max_uid = 60000
 
