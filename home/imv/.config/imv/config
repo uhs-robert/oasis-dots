@@ -1,9 +1,39 @@
+# vim: ft=config
+# default keys are in `man imv`
+
+# [OPTIONS]
+[options]
+background = 0C0E13
+overlay_font = ProFont IIx Nerd Font Mono:14
+
 [binds]
+# [NAVIGATION]
 j = next
 k = prev
-gg = goto 1
-G = goto -1
 
+# [ZOOM]
 + = zoom 1
-= = zoom 1
+= = reset
 - = zoom -1
+0 = zoom actual
+f = fullscreen
+
+# [PAN]
+h = pan 50 0
+l = pan -50 0
+<C-j> = pan 0 -50
+<C-k> = pan 0 50
+
+# [ROTATION]
+r = rotate by 90
+R = rotate by -90
+# c = center
+
+# [MISC]
+q = quit
+d = overlay
+i = overlay
+t = slideshow +1
+T = slideshow -1
+# p = print to stdout
+# SPACE = toggle_playing
