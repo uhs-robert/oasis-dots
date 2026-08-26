@@ -1,0 +1,9 @@
+[binds]
+j = next
+k = prev
+gg = goto 1
+G = goto -1
+
++ = zoom 1
+= = zoom 1
+- = zoom -1

@@ -14,7 +14,8 @@ edit = [
   { run = 'nless %s', block = true, desc = "Nless", for = "unix" },
   { run = 'libreoffice --calc %s', block = false, desc = "Libreoffice", for = "unix" },
 ]
-image-edit = [
+image = [
+  { run = 'imv-dir %s', block = true, desc = "Imv", for = "unix" },
   { run = 'gimp %s', block = true, desc = "Gimp", for = "unix" },
   { run = 'inkscape %s', block = true, desc = "Inkscape", for = "unix" },
   { run = '/usr/bin/nvim %s', block = true, desc = "NeoVim", for = "unix" },
@@ -46,7 +47,7 @@ prepend_rules = [
   { url = "*.csv", use = "csv" },
   { mime = "text/csv", use = "csv" },
   { url = "*.rpm", use = "install-rpm" },
-  { mime = "image/*", use = "image-edit" },
+  { mime = "image/*", use = "image" },
   { mime = "video/*", use = "video" },
   { mime = "application/pdf", use = "pdf" },
 ]
