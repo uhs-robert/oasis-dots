@@ -21,8 +21,26 @@ require("folder-rules"):setup()
 require("git"):setup()
 require("githead"):setup({
 	branch_prefix = "on",
-	branch_symbol = " ",
 	branch_borders = "()",
+	branch_symbol = " ",
+	branch_color = "blue",
+	remote_branch_color = "cyan",
+
+	tag_symbol = "󰓼 ",
+	tag_color = "magenta",
+	commit_symbol = " ",
+	commit_color = "bright magenta",
+	stashes_symbol = " ",
+	stashes_color = "red",
+	state_symbol = "󱐋 ",
+	state_color = "bright yellow",
+
+	staged_symbol = " ",
+	staged_color = "green",
+	unstaged_symbol = " ",
+	unstaged_color = "yellow",
+	untracked_color = "bright blue",
+	untracked_symbol = " ",
 })
 
 -- Relative Motion
