@@ -250,10 +250,9 @@ bind zb blur_active
 "" -- HINTS --
 """ ALIASES
 """ - MOUSE -
-command mouse_click hint -F e => { const pos = tri.dom.getAbsoluteCentre(e); tri.excmds.exclaim_quiet("xdotool mousemove --sync " + window.devicePixelRatio * pos.x + " " + window.devicePixelRatio * pos.y + "; xdotool click 1")}
-command mouse_shift_click hint -F e => { const pos = tri.dom.getAbsoluteCentre(e); tri.excmds.exclaim_quiet("xdotool mousemove --sync " + window.devicePixelRatio * pos.x + " " + window.devicePixelRatio * pos.y + "; xdotool keydown ctrl+shift; xdotool click 1; xdotool keyup ctrl+shift")}
-command mouse_right_click hint -F e => { const pos = tri.dom.getAbsoluteCentre(e); tri.excmds.exclaim_quiet("xdotool mousemove --sync " + window.devicePixelRatio * pos.x + " " + window.devicePixelRatio * pos.y + "; xdotool click 3")}
-command mouse_move hint -F e => { const pos = tri.dom.getAbsoluteCentre(e); tri.excmds.exclaim_quiet("xdotool mousemove --sync " + window.devicePixelRatio * pos.x + " " + window.devicePixelRatio * pos.y)}
+command mouse_click hint -F e => { const pos = tri.dom.getAbsoluteCentre(e); const dx = Math.round(pos.x); const dy = Math.round(pos.y); tri.excmds.exclaim_quiet("WX=$(hyprctl activewindow -j | jq '.at[0] + " + dx + "'); WY=$(hyprctl activewindow -j | jq '.at[1] + " + dy + "'); wlrctl pointer move -99999 -99999; wlrctl pointer move $WX $WY; wlrctl pointer click left")}
+command mouse_right_click hint -F e => { const pos = tri.dom.getAbsoluteCentre(e); const dx = Math.round(pos.x); const dy = Math.round(pos.y); tri.excmds.exclaim_quiet("WX=$(hyprctl activewindow -j | jq '.at[0] + " + dx + "'); WY=$(hyprctl activewindow -j | jq '.at[1] + " + dy + "'); wlrctl pointer move -99999 -99999; wlrctl pointer move $WX $WY; wlrctl pointer click right")}
+command mouse_move hint -F e => { const pos = tri.dom.getAbsoluteCentre(e); const dx = Math.round(pos.x); const dy = Math.round(pos.y); tri.excmds.exclaim_quiet("WX=$(hyprctl activewindow -j | jq '.at[0] + " + dx + "'); WY=$(hyprctl activewindow -j | jq '.at[1] + " + dy + "'); wlrctl pointer move -99999 -99999; wlrctl pointer move $WX $WY")}
 
 command select_clickable hint -Jc a:not([href]),button,input[type=button],input[type=submit],input[type=reset],[role=button]
 command hint_input hint -Jc input:not([type=hidden]),textarea,select,[contenteditable=true]
