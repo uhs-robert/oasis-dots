@@ -1,5 +1,10 @@
 " vim: set filetype=tridactyl
-" run this to reset state: sanitise tridactyllocal
+
+"-----------------------------------------
+" run this to reset state:
+"
+" sanitise tridactyllocal tridactylsync
+"-----------------------------------------
 
 " --- GENERAL SETTINGS ---
 set update.lastchecktime 1772206549053
@@ -250,103 +255,19 @@ command mouse_shift_click hint -F e => { const pos = tri.dom.getAbsoluteCentre(e
 command mouse_right_click hint -F e => { const pos = tri.dom.getAbsoluteCentre(e); tri.excmds.exclaim_quiet("xdotool mousemove --sync " + window.devicePixelRatio * pos.x + " " + window.devicePixelRatio * pos.y + "; xdotool click 3")}
 command mouse_move hint -F e => { const pos = tri.dom.getAbsoluteCentre(e); tri.excmds.exclaim_quiet("xdotool mousemove --sync " + window.devicePixelRatio * pos.x + " " + window.devicePixelRatio * pos.y)}
 
-""" - REGULAR -
-command save_as_linked_resource hint -a
-command save_as_linked_image hint -A
-command hint_clickable hint -Jc a:not([href]),button,input[type=button],input[type=submit],input[type=reset],[role=button]
-command hint_background hint -b
-command open_discard hint -W tabopen --discard
-command hint_find fillcmdline hint -f
+command select_clickable hint -Jc a:not([href]),button,input[type=button],input[type=submit],input[type=reset],[role=button]
 command hint_input hint -Jc input:not([type=hidden]),textarea,select,[contenteditable=true]
-command hint_image hint -i
-command image_in_new_tab hint -I
-command delete_element hint -k
-command hide_element hint -K
 command hint_links hint -Jc a[href]
-command lens_image hint -JFc img i => tri.excmds.open('https://lens.google.com/uploadbyurl?url='+i.src)
-command lens_image_tab hint -JFc img i => tri.excmds.tabopen('https://lens.google.com/uploadbyurl?url='+i.src)
-command hint_open_cmd hint -W fillcmdline_notrail open
-command copy_text hint -p
-command copy_title hint -P
-command read_element hint -r
-command save_linked hint -s
-command save_linked_image hint -S
-command hint_tabopen hint -W tabopen
-command hint_tabopen_cmd hint -W fillcmdline_notrail tabopen
-command select_region hint -h
-command hint_invisible hint -V
-command hint_window hint -w
-command hint_winopen_cmd hint -W fillcmdline_notrail winopen
-command yank_link hint -y
-command yank_image hint -cF img i => tri.excmds.yankimage(tri.urlutils.getAbsoluteURL(i.src))
-command scroll_focus hint -; *
-command yank_anchor hint -#
-command scroll_top hint -z
-
-""" - QUICK (separate: -W consumes rest of line, -F callbacks need flag before) -
-command open_discard_quick hint -qW tabopen --discard
-command hint_tabopen_quick hint -qW tabopen
-command mpv_quick hint -qW mpvsafe
-
-""" - MOUSE -
-bind ;x mouse_click
-bind ;X mouse_shift_click
-bind ;c mouse_right_click
-bind ;: mouse_move
 
 """ - REGULAR -
-bind ;a save_as_linked_resource
-bind ;A save_as_linked_image
-bind ;b hint_clickable
-bind ;B hint_background
-bind ;d open_discard
-bind ;f hint_find
-bind ;/ hint_find
+bind ;b select_clickable
+bind ;B hint -b
+bind ;c mouse_right_click
+bind ;f fillcmdline hint -f
 bind ;i hint_input
-bind ;I image_in_new_tab
-bind ;k delete_element
-bind ;K hide_element
 bind ;l hint_links
-bind ;m lens_image
-bind ;M lens_image_tab
-bind ;O hint_open_cmd
-bind ;p copy_text
-bind ;P copy_title
-bind ;r read_element
-bind ;s save_linked
-bind ;S save_linked_image
-bind ;t hint_tabopen
-bind ;T hint_tabopen_cmd
-bind ;v select_region
-bind ;V hint_invisible
-bind ;w hint_window
-bind ;W hint_winopen_cmd
-bind ;y yank_link
-bind ;Y yank_image
-bind ;; scroll_focus
-bind ;# yank_anchor
-bind ;z scroll_top
-
-""" - Quick (;q) -
-bind ;ga save_as_linked_resource -q
-bind ;gA save_as_linked_image -q
-bind ;gb hint_background -q
-bind ;gd open_discard_quick
-bind ;gf hint -q
-bind ;gF hint_background -q
-bind ;gi hint_image -q
-bind ;gI image_in_new_tab -q
-bind ;gk delete_element -q
-bind ;gp copy_text -q
-bind ;gP copy_title -q
-bind ;gr read_element -q
-bind ;gs save_linked -q
-bind ;gS save_linked_image -q
-bind ;gv mpv_quick
-bind ;gw hint_window -q
-bind ;gy yank_link -q
-bind ;g; scroll_focus -q
-bind ;g# yank_anchor -q
+bind ;x mouse_click
+bind ;: mouse_move
 
 "" -- LEADER --
 bind ,, fillcmdline open search
