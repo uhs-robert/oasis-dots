@@ -22,6 +22,7 @@ set bmarkfoldersearch false
 set modeindicatorshowkeys false
 set tabopencontaineraware true
 set containerindicator false
+set themeprivacy true
 set whichkey enable
 
 " --- COMMANDS ---
