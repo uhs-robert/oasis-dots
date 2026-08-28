@@ -116,6 +116,17 @@ local set_window_rules = function()
     size = "(monitor_w*0.7) (monitor_h*0.7)",
   })
 
+  -- bottom-half-screen: generic terminal dropdown, slides up from bottom. Any command
+  -- launched with `--class bottom-half-screen` gets this treatment.
+  hl.window_rule({
+    name = "bottom-half-screen",
+    match = { class = "^bottom-half-screen$" },
+    float = true,
+    size = "(monitor_w) (monitor_h * 0.6)",
+    move = "0 (monitor_h * 0.4)",
+    animation = "slide bottom",
+  })
+
   -- Steam Games
   hl.window_rule({
     name = "steam-games",
