@@ -24,7 +24,7 @@ Submap.define({
     { "SLASH",     Menu.drun(),                          "Search Applications" },
     { "A",         Cmd.term("aria2tui"),                 "Aria2tui" },
     { "B",         Apps.open("bottles"),                 "Bottles" },
-    { "C",         Cmd.bottom_terminal("qalc"),          "Qalc" },
+    { "C",         Cmd.bottom_terminal("qalc"),          "Calculate (qalc)" },
     { "SHIFT + C", Apps.open("qalculate-gtk"),           "Calculator" },
     { "D",         Apps.open("discord"),                 "Discord" },
     { "SHIFT + D", Cmd.bottom_terminal("doggo", true),   "DNS (doggo)" },
