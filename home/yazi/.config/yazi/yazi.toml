@@ -6,6 +6,7 @@ trash-empty = [
 json = [
   { run = '/usr/bin/nvim %s', block = true, desc = "NeoVim", for = "unix" },
   { run = 'jless %s', block = true, desc = "Jless", for = "unix" },
+  { run = 'jnv %s', block = true, desc = "Jnv", for = "unix" },
   { run = 'nless %s', block = true, desc = "Nless", for = "unix" },
 ]
 csv = [
