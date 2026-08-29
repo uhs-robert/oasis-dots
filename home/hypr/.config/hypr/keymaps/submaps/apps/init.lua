@@ -33,6 +33,7 @@ Submap.define({
     { "G",         Apps.open("gimp"),                    "Gimp" },
     { "H",         Cmd.bottom_terminal("xh", true),      "HTTP (xh)" },
     { "I",         Apps.open("inkscape"),                "Inkscape" },
+    { "J",         Cmd.bottom_terminal("lazyjournal"),   "Journal (lazyjournal)" },
     -- { "K",         Apps.open("kate"),                    "Kate" },
     { "M",         Apps.focus_or_launch(APP.betterbird), "Mail" },
     -- { "SHIFT + N", Cmd.term("newsboat"),                  "Newsboat" },
