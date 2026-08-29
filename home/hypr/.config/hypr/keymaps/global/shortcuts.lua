@@ -11,14 +11,15 @@ local edit_in_vim = function() require("lua.plugins.hyprvim").editor.open({ inse
 -- stylua: ignore start
 
 -- Leader Commands
-Bind.leader_fn("RETURN",         Cmd.open_term(),     "Terminal")
-Bind.leader_fn("SHIFT + RETURN", Menu.run(),          "Run Script")
-Bind.leader_fn("CTRL + RETURN",  Menu.ssh(),          "SSH Select")
-Bind.leader_cmd("E",             FILES,               "File Manager")
-Bind.leader_fn("SHIFT + E",      Cmd.term(TUI_FILES), "TUI File Manager")
-Bind.leader_fn("O",              Menu.drun(),         "Open Application")
-Bind.leader_fn("N",              edit_in_vim,         "Edit Selection in Vim")
-Bind.leader_fn("Y",              Cmd.term("yazi"),    "Yazi")
+Bind.leader_fn("RETURN",         Cmd.open_term(),         "Terminal")
+Bind.leader_fn("SHIFT + RETURN", Cmd.bottom_terminal(),   "Bottom Terminal")
+Bind.leader_fn("CTRL + RETURN",  Menu.ssh(),              "SSH Select")
+Bind.leader_fn("ALT + RETURN",   Menu.run(),              "Run Script")
+Bind.leader_cmd("E",             FILES,                   "File Manager")
+Bind.leader_fn("SHIFT + E",      Cmd.term(TUI_FILES),     "TUI File Manager")
+Bind.leader_fn("O",              Menu.drun(),             "Open Application")
+Bind.leader_fn("N",              edit_in_vim,             "Edit Selection in Vim")
+Bind.leader_fn("Y",              Cmd.term("yazi"),        "Yazi")
 
 -- Commands
 Bind.fn("CTRL + SHIFT + ESCAPE", Cmd.term("btop"),    "Task Manager")
