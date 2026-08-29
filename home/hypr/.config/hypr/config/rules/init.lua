@@ -122,8 +122,10 @@ local set_window_rules = function()
     name = "bottom-half-screen",
     match = { class = "^bottom-half-screen$" },
     float = true,
-    size = "(monitor_w) (monitor_h * 0.6)",
-    move = "0 (monitor_h * 0.4)",
+    pin = true,
+    stay_focused = true,
+    size = "(monitor_w-4) (monitor_h*0.6)",
+    move = "2 (monitor_h*0.4)",
     animation = "slide bottom",
   })
 
