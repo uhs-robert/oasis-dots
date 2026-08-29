@@ -28,10 +28,18 @@ Cmd.term = function(command) return Cmd.run(TERM_CMD .. " -e " .. command) end
 --- (see config/rules window_rule "bottom-half-screen").
 --- If no command given, just opens the terminal with that class.
 --- @param command string|nil
+--- @param prefill boolean|nil If true, load command into the shell prompt instead of running it.
 --- @return fun()
-Cmd.bottom_terminal = function(command)
+Cmd.bottom_terminal = function(command, prefill)
   local cmd = TERM_CMD .. " --class bottom-half-screen"
-  if command then cmd = cmd .. " -e " .. command end
+  if command then
+    if prefill then
+      local escaped = command:gsub("'", "'\\''")
+      cmd = cmd .. " & sleep 1; wtype -- '" .. escaped .. "'"
+    else
+      cmd = cmd .. " -e " .. command
+    end
+  end
   return Cmd.run(cmd)
 end
 
