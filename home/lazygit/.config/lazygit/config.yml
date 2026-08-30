@@ -37,5 +37,10 @@ os:
   edit: "~/.config/lazygit/lazygit-edit {{filename}}"
   editAtLine: "~/.config/lazygit/lazygit-edit {{filename}} {{line}}"
   editAtLineAndWait: "~/.config/lazygit/lazygit-edit {{filename}} {{line}}"
+customCommands:
+  - key: '<ctrl+g>'
+    context: files
+    command: 'mergiraf solve {{ .SelectedFile.Name | quote }}'
+    description: 'Resolve with Mergiraf'
 disableStartupPopups: true
 notARepository: skip
