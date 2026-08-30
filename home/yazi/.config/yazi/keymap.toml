@@ -48,6 +48,7 @@ prepend_keymap = [
   { on = [ "g", "z", ], run = "cd /home/roberth/.local/state/yazi", desc = "Go to Yazi debug log" },
 
   # In...
+  { on = ["i", "d"], run = "shell --block -- gdu .", desc = "Disk usage" },
   { on = ["i", "e"], run = "shell -- thunar .", desc = "Open in GUI Explorer" },
   { on = ["i", "i"], run = 'shell --block -- stat %h; echo; file %h; echo; read -n 1 -s -r -p "Press any key..."', desc = "Inspect file" },
   { on = ["i", "r"], run = "shell --block -- %h", desc = "Run executable" },
