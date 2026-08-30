@@ -25,6 +25,7 @@ Bind.leader_cmd("CTRL + V", cmd_search_clipboard, "Clipboard History")
 local function select_window(action) return Scripts.window_selector .. " --" .. action end
 Bind.leader_fn("T",                 Menu.hyprwindow(),               "Find window")
 Bind.fn("ALT + TAB",                Menu.hyprwindow(),               "Find window")
+Bind.leader_cmd("TAB",              "hyprctl dispatch focuscurrentorlast", "Previous window")
 Bind.leader_cmd("SHIFT + T",        select_window("move"),           "Move to another window")
 Bind.leader_cmd("CTRL + SHIFT + T", select_window("move-silent"),    "Silent move to another window")
 
