@@ -42,5 +42,9 @@ customCommands:
     context: files
     command: 'mergiraf solve {{ .SelectedFile.Name | quote }}'
     description: 'Resolve with Mergiraf'
+  - key: '<ctrl+t>'
+    context: files
+    command: 'git mergetool --no-prompt -- {{ .SelectedFile.Name | quote }}'
+    description: 'Open merge tool'
 disableStartupPopups: true
 notARepository: skip
