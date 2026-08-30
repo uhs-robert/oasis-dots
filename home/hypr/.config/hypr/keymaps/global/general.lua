@@ -1,7 +1,6 @@
 local Bind = require("lib.key.bind") ---@class BindLib
 local Config = require("config") ---@class Config
 local Window = require("lib.actions.window") ---@class WindowActions
-local Workspace = require("lib.actions.workspace") ---@class WorkspaceActions
 
 -- stylua: ignore start
 local OPTS = {
@@ -14,7 +13,7 @@ Bind.leader_cmd("SLASH",  require("lib.scripts").keybind_help, OPTS.universal("K
 -- Window Actions
 Bind.leader_key("X",   Window.close(),             "Close Window")
 Bind.leader_key("F",   Window.fullscreen_toggle(), "Toggle Fullscreen")
-Bind.leader_key("TAB", Workspace.focus_last(),     "Go to Last Active WS")
+Bind.leader_key("TAB", Window.focus_last(),        "Previous Window")
 
 -- Window Focus/Movement
 Bind.leader_key({ "H", "LEFT" },  Window.focus_dir("l"), OPTS.universal("Focus Left"))
