@@ -23,6 +23,7 @@ Apps.map = {
   slack       = { program = "slack",       class = "Slack" },
   steam       = { program = "steam",       class = "steam",                         cmd = "steam"},
   terminal    = { program = TERM,          exclude_title = "Tmux" },
+  tmux_ai     = { program = TERM,          title = "Tmux AI",                       cmd = TERM_CMD .. " -e tmuxifier load-session ai" },
   tmux_config = { program = TERM,          title = "Tmux Config",                   cmd = TERM_CMD .. " -e tmuxifier load-session config" },
   tmux_client  = { program = TERM,          title = "Tmux Client App",       cmd = TERM_CMD .. " -e tmuxifier load-session client-dev" },
   tmux_uphill = { program = TERM,          title = "Tmux UpHill",                   cmd = TERM_CMD .. " -e tmuxifier load-session uphill" },
