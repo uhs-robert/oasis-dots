@@ -44,7 +44,7 @@ customCommands:
     description: 'Resolve with Mergiraf'
   - key: '<ctrl+t>'
     context: files
-    command: 'git mergetool --no-prompt -- {{ .SelectedFile.Name | quote }}'
-    description: 'Open merge tool'
+    command: 'git mergetool --no-prompt --tool=nvimdiff -- {{ .SelectedFile.Name | quote }}'
+    description: 'Open Neovim merge tool'
 disableStartupPopups: true
 notARepository: skip
