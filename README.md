@@ -24,6 +24,19 @@ stow -d home <package>     # deploy a package
 stow -d home -D <package>  # remove a package
 ```
 
+## Yazi packages
+
+Yazi plugins managed by `ya pkg` use `~/.config/yazi/package.toml` as the reproducible package manifest. Keep that file tracked in this repository and let `ya pkg` manage package state rather than manually editing package-managed plugin files.
+
+```bash
+ya pkg add <package>     # add a plugin and update package.toml
+ya pkg delete <package>  # remove a plugin and update package.toml
+ya pkg upgrade           # update installed packages and package.toml
+ya pkg install           # restore packages recorded in package.toml
+```
+
+After changing Yazi packages, commit the resulting `home/yazi/.config/yazi/package.toml` change. Package-managed plugin directories under `home/yazi/.config/yazi/plugins/` are generated state and are ignored; only local plugins are tracked there. Do not hand-author package metadata or copy upstream plugin files as a substitute for running `ya pkg`.
+
 ## Justfile
 
 Common tasks are wrapped in a `justfile` (run with [`just`](https://github.com/casey/just)). With `just`, you can just run:

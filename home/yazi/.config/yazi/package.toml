@@ -1,0 +1,72 @@
+[[plugin.deps]]
+use = "yazi-rs/plugins:git"
+rev = "c591a36"
+hash = "5bb0bfab901d3601c370eafdd66edd31"
+
+[[plugin.deps]]
+use = "AnirudhG07/archivemount"
+rev = "f5c5c5c"
+hash = "89487f3b53bdf605e990a9575ec244d5"
+
+[[plugin.deps]]
+use = "yazi-rs/plugins:chmod"
+rev = "c591a36"
+hash = "87472b05a8c420100f6a2b9cde1e7746"
+
+[[plugin.deps]]
+use = "yazi-rs/plugins:full-border"
+rev = "c591a36"
+hash = "f281261ff04ad7ec867c3f802a50835f"
+
+[[plugin.deps]]
+use = "yazi-rs/plugins:mount"
+rev = "c591a36"
+hash = "b95f898e6dc60b52edbc415952e14395"
+
+[[plugin.deps]]
+use = "boydaihungst/relative-motions"
+rev = "d720b1c"
+hash = "cb389a36241ada4893796d89dd5da7a0"
+
+[[plugin.deps]]
+use = "boydaihungst/restore"
+rev = "7bfcfcb"
+hash = "bbb1569978e6d2b3e8343c6ca08a4ea6"
+
+[[plugin.deps]]
+use = "uhs-robert/sshfs"
+rev = "a8b8903"
+hash = "8c1b36103121a66b37308afaf7124575"
+
+[[plugin.deps]]
+use = "uhs-robert/steam-appid"
+rev = "ee790da"
+hash = "fb6835e919415864adcb5012534a2022"
+
+[[plugin.deps]]
+use = "yazi-rs/plugins:toggle-pane"
+rev = "c591a36"
+hash = "5b2fbef7d1513ce38ff72623a071a5e"
+
+[[plugin.deps]]
+use = "yazi-rs/plugins:types"
+rev = "c591a36"
+hash = "ff056b5acd05d915dc3a3936cb0cfd3e"
+
+[[plugin.deps]]
+use = "yazi-rs/plugins:zoom"
+rev = "c591a36"
+hash = "e8e279463ee99c940e6945a14cf4aa9e"
+
+[[plugin.deps]]
+use = "llanosrocas/githead"
+rev = "317d09f"
+hash = "41dc37a724b2afd21da4f1ea6c1182d8"
+
+[[plugin.deps]]
+use = "yazi-rs/plugins:vcs-files"
+rev = "c591a36"
+hash = "853240b2454c93a93fd03fc9fd7e06e8"
+
+[flavor]
+deps = []

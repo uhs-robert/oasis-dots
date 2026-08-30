@@ -94,6 +94,14 @@ __pycache__/
 *.pyc
 *.egg-info/
 **/package.toml
+!home/yazi/.config/yazi/package.toml
+
+# Yazi package-managed plugins are restored from package.toml.
+home/yazi/.config/yazi/plugins/*
+!home/yazi/.config/yazi/plugins/folder-rules.yazi/
+!home/yazi/.config/yazi/plugins/folder-rules.yazi/**
+!home/yazi/.config/yazi/plugins/lazygit.yazi/
+!home/yazi/.config/yazi/plugins/lazygit.yazi/**
 
 # ────────────────────────────────────────────────
 # ⚠️ Security: Hidden sensitive config
