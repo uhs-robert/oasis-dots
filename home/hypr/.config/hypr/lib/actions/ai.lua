@@ -15,7 +15,7 @@ local SESSION_FILE = AI_VOICE_DIR .. "/session"
 local AI_CLASS = "ai-workspace"
 local AI_WORKSPACE = "agents"
 local AI_TMUXIFIER_SESSION = "ai"
-local AI_TMUX_TARGET = "AI:Claude"
+local AI_TMUX_SESSION = "AI"
 
 --- @param value string
 --- @return string
@@ -109,8 +109,8 @@ function AI.send_text(text)
     string.format(
       "printf %%s %s | tmux load-buffer -b ai-voice - && tmux paste-buffer -p -d -b ai-voice -t %s && tmux send-keys -t %s Enter",
       shell_quote(text),
-      shell_quote(AI_TMUX_TARGET),
-      shell_quote(AI_TMUX_TARGET)
+      shell_quote(AI_TMUX_SESSION),
+      shell_quote(AI_TMUX_SESSION)
     )
   )
 
@@ -145,7 +145,7 @@ local function finish_recording()
       shell_quote(session.transcript_path),
       shell_quote(session.prefix),
       shell_quote(session.mode),
-      shell_quote(AI_TMUX_TARGET)
+      shell_quote(AI_TMUX_SESSION)
     )
   )
 
