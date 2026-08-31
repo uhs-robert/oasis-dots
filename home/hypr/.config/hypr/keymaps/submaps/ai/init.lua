@@ -1,7 +1,7 @@
 --- AI command submap
 --- Tool keys toggle VoxType recording on/off.
 --- Bare keys submit the prompt. Ctrl variants prefill without submitting.
---- The submap stays active until `.` or Escape exits it.
+--- Escape exits the submap.
 
 local AI = require("lib.actions.ai") --- @class AI
 local Config = require("config") --- @class Config
@@ -26,7 +26,7 @@ Submap.define({
 
   -- stylua: ignore
   binds = {
-    { "PERIOD",     Submap.reset,                                                  "Exit AI" },
+    { "PERIOD",     function() AI.toggle("", true) end,             "Talk to Agent" },
     { "X",          function() AI.send_text("/clear") end,          "Clear" },
     { "BACKSPACE",  AI.cancel,                                      "Cancel Recording" },
 
