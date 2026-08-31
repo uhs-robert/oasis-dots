@@ -1,0 +1,65 @@
+#!/usr/bin/env bash
+# Launches Yazi as root with a keymap regenerated from the primary user's config.
+#
+# The stowed user keymap uses "~" and "$USER", which resolve to /root when Yazi
+# runs as root. This script rewrites those to the primary user's home and name
+# on every launch, so root's keymap never drifts from the user's.
+#
+# The primary user is read back off the yazi.toml symlink that install.sh points
+# at the user's config, so there is no username configured anywhere.
+#
+# Usage:
+#   yazi-root [yazi args...]   regenerate the root keymap, then launch Yazi
+#   yazi-root --sync-only      regenerate the root keymap and exit
+set -euo pipefail
+
+# /root is mode 700, so every path below needs root to even stat. Re-exec
+# under sudo rather than sprinkling sudo over the individual commands.
+if [[ $EUID -ne 0 ]]; then
+  exec sudo -- "$0" "$@"
+fi
+
+readonly root_config_dir="/root/.config/yazi"
+readonly root_keymap="$root_config_dir/keymap.toml"
+readonly link="$root_config_dir/yazi.toml"
+
+if [[ ! -L "$link" ]]; then
+  echo "yazi-root: $link is not a symlink to a user config, run install.sh first" >&2
+  exit 1
+fi
+
+src_dir="$(dirname "$(readlink -f "$link")")"
+if [[ ! -d "$src_dir" ]]; then
+  echo "yazi-root: $link is broken, run install.sh first" >&2
+  exit 1
+fi
+
+primary_user="$(stat -c %U "$src_dir")"
+primary_home="$(getent passwd "$primary_user" | cut -d: -f6)"
+if [[ -z "$primary_home" ]]; then
+  echo "yazi-root: no home directory for user '$primary_user'" >&2
+  exit 1
+fi
+
+src_keymap="$src_dir/keymap.toml"
+if [[ -f "$src_keymap" ]]; then
+  # Write via a temp file and mv, so an earlier install's keymap.toml symlink is
+  # replaced rather than followed, which would rewrite the user's own keymap.
+  tmp_keymap="$(mktemp "$root_config_dir/.keymap.toml.XXXXXX")"
+  trap 'rm -f "$tmp_keymap"' EXIT
+  # shellcheck disable=SC2016  # $USER is a literal in the keymap, not expanded here
+  sed \
+    -e "s|cd ~/|cd $primary_home/|g" \
+    -e 's|/run/media/$USER/|/run/media/'"$primary_user"'/|g' \
+    "$src_keymap" >"$tmp_keymap"
+  chmod 644 "$tmp_keymap"
+  mv -f "$tmp_keymap" "$root_keymap"
+else
+  echo "yazi-root: $src_keymap not found, leaving root keymap as-is" >&2
+fi
+
+if [[ "${1:-}" == "--sync-only" ]]; then
+  exit 0
+fi
+
+exec yazi "$@"

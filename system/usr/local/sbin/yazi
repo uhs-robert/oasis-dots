@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+# Makes plain "sudo yazi" regenerate root's keymap before launching.
+#
+# sudo ignores the caller's PATH and uses secure_path, which starts with
+# /usr/local/sbin, so this shim wins for "sudo yazi". A normal user's PATH has
+# no sbin entries, so their own "yazi" still runs /usr/bin/yazi directly.
+set -euo pipefail
+
+readonly real_yazi="/usr/bin/yazi"
+readonly sync_helper="/usr/local/bin/yazi-root"
+
+if [[ -x "$sync_helper" ]]; then
+  "$sync_helper" --sync-only || echo "yazi: keymap sync failed, launching anyway" >&2
+else
+  echo "yazi: $sync_helper missing, root keymap may be stale" >&2
+fi
+
+exec "$real_yazi" "$@"

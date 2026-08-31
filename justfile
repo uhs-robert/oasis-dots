@@ -47,6 +47,10 @@ install *ARGS:
 uninstall *ARGS:
     ./uninstall.sh {{ARGS}}
 
+# Regenerate root's Yazi keymap from the current user keymap (needs sudo)
+sync-root-yazi:
+    ./system/usr/local/bin/yazi-root --sync-only
+
 # Shellcheck install.sh, uninstall.sh, and lib/*.sh
 lint:
     shellcheck install.sh uninstall.sh lib/*.sh
