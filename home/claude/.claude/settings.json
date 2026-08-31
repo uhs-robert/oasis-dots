@@ -14,7 +14,7 @@
   "enabledPlugins": {
     "lua-lsp@claude-plugins-official": true,
     "caveman@caveman": true,
-    "ruby-lsp@claude-plugins-official": true
+    "ruby-lsp@claude-plugins-official": false
   },
   "extraKnownMarketplaces": {
     "caveman": {
