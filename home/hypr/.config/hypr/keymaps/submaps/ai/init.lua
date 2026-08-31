@@ -26,20 +26,20 @@ Submap.define({
 
   -- stylua: ignore
   binds = {
-    { "PERIOD",     function() AI.toggle("", true) end,             "Talk to Agent" },
+    { "PERIOD",     function() AI.toggle("", false) end,            "Talk to Agent (Prefill)" },
     { "X",          function() AI.send_text("/clear") end,          "Clear" },
     { "BACKSPACE",  AI.cancel,                                      "Cancel Recording" },
 
-    { "G",          function() AI.toggle("use gog to", true) end,                  "Gog" },
-    { "CTRL + G",   function() AI.toggle("use gog to", false) end,                 "Gog (Prefill)" },
+    { "G",          function() AI.toggle("use gog to", false) end,                 "Gog (Prefill)" },
+    { "CTRL + G",   function() AI.toggle("use gog to", true) end,                  "Gog" },
 
-    { "H",          function() AI.toggle("use gh to", true) end,                   "GitHub" },
-    { "CTRL + H",   function() AI.toggle("use gh to", false) end,                  "GitHub (Prefill)" },
+    { "H",          function() AI.toggle("use gh to", false) end,                  "GitHub (Prefill)" },
+    { "CTRL + H",   function() AI.toggle("use gh to", true) end,                   "GitHub" },
 
-    { "B",          function() AI.toggle("use agent-browser to", true) end,        "Browser" },
-    { "CTRL + B",   function() AI.toggle("use agent-browser to", false) end,       "Browser (Prefill)" },
+    { "B",          function() AI.toggle("use agent-browser to", false) end,       "Browser (Prefill)" },
+    { "CTRL + B",   function() AI.toggle("use agent-browser to", true) end,        "Browser" },
 
-    { "S",          function() AI.toggle("use the shell and available system tools to", true) end,  "System" },
-    { "CTRL + S",   function() AI.toggle("use the shell and available system tools to", false) end, "System (Prefill)" },
+    { "S",          function() AI.toggle("use the shell and available system tools to", false) end, "System (Prefill)" },
+    { "CTRL + S",   function() AI.toggle("use the shell and available system tools to", true) end,  "System" },
   },
 }).setup()
