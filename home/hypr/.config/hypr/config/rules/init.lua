@@ -138,6 +138,13 @@ local set_window_rules = function()
     focus_on_activate = true,
     fullscreen = true,
   })
+
+  -- AI workspace
+  hl.window_rule({
+    name = "ai-workspace",
+    match = { class = "^(ai-workspace)$" },
+    workspace = "special:agents silent",
+  })
 end
 
 --- Toggles browser opacity when a screenshare session starts or stops.

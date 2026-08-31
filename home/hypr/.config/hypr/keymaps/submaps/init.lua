@@ -1,6 +1,7 @@
 --- Submap keybinds
 
 require("keymaps.submaps.apps")
+require("keymaps.submaps.ai")
 require("keymaps.submaps.go")
 require("keymaps.submaps.system")
 require("keymaps.submaps.delete")

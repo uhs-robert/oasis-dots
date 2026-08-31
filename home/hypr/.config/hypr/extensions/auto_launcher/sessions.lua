@@ -89,7 +89,6 @@ function M.get_sessions()
 
     ["💼 Work"] = {
       betterbird(),
-      tmuxifier({ session = "ai", monitor = 4, ws = 2 }),
       { monitor = 2, ws = 1, cmd = "qutebrowser" },
       { monitor = 3, ws = 1, cmd = "firefox --new-window" },
       tmuxifier({ session = "uphill" }),

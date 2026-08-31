@@ -18,6 +18,7 @@ local Window = {
 
 local SPECIAL_WS = {
   scratchpad = "special:scratchpad",
+  ai = "special:agents",
 }
 
 --- Focus the monitor in the given slot (1-based index into Config.monitors).
