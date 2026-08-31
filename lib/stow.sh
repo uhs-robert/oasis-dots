@@ -3,7 +3,7 @@
 
 # Symlinks one or more packages from home/ into ~; warns on conflicts.
 do_stow() {
-  cd "$DOTFILES_DIR"
+  cd "$DOTFILES_DIR" || return 1
   for pkg in "$@"; do
     if [[ ! -d "home/$pkg" ]]; then
       warn "Package '$pkg' not found, skipping"
@@ -20,6 +20,7 @@ do_stow() {
 prompt_optional() {
   echo ""
   info "Optional stow packages (Tab to select, Enter to confirm):"
+  # shellcheck disable=SC2034  # consumed by install.sh
   mapfile -t SELECTED_OPTIONAL < <(
     read_ini_section stow.ini OPTIONAL | fzf --multi --prompt="packages> " --no-info
   )
@@ -82,15 +83,15 @@ setup_root_symlinks() {
   info "Setting up root symlinks..."
   sudo mkdir -p /root/.config/yazi
 
-  sudo ln -sf "$HOME/.zshrc"       /root/.zshrc
-  sudo ln -sf "$HOME/.oh-my-zsh"   /root/.oh-my-zsh
+  sudo ln -sf "$HOME/.zshrc" /root/.zshrc
+  sudo ln -sf "$HOME/.oh-my-zsh" /root/.oh-my-zsh
   sudo ln -sf "$HOME/.config/nvim" /root/.config/nvim
 
   for item in flavors plugins keymap.toml yazi.toml; do
     sudo ln -sf "$HOME/.config/yazi/$item" "/root/.config/yazi/$item"
   done
 
-  sudo tee /root/.config/yazi/theme.toml > /dev/null <<'EOF'
+  sudo tee /root/.config/yazi/theme.toml >/dev/null <<'EOF'
 [flavor]
 dark = "oasis-sol-dark"
 EOF

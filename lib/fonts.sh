@@ -37,7 +37,10 @@ _install_maple_mono_nf() {
   info "Fetching MapleMono NF release..."
   local version
   version=$(_latest_tag "$_MAPLE_API")
-  [[ -z "$version" ]] && { warn "Could not fetch MapleMono NF version"; return 1; }
+  [[ -z "$version" ]] && {
+    warn "Could not fetch MapleMono NF version"
+    return 1
+  }
   mkdir -p "$dest"
   local tmp
   tmp=$(mktemp -d)

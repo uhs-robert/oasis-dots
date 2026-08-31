@@ -9,18 +9,14 @@ local Solar = {}
 --- Round `minute` down to the nearest 15-minute boundary.
 --- @param minute integer
 --- @return integer
-local function round_down_quarter(minute)
-  return math.floor(minute / 15) * 15
-end
+local function round_down_quarter(minute) return math.floor(minute / 15) * 15 end
 
 --- Return true if `x` is a number within [`minv`, `maxv`].
 --- @param x any
 --- @param minv number
 --- @param maxv number
 --- @return boolean
-local function valid_coord(x, minv, maxv)
-  return x and x >= minv and x <= maxv
-end
+local function valid_coord(x, minv, maxv) return x and x >= minv and x <= maxv end
 
 --- Return approximate (lat, lon) derived from the system timezone.
 --- Falls back to New York (40.0, -74.0) for unknown zones.

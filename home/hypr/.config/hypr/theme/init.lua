@@ -30,7 +30,6 @@ Theme.apply = function()
   Generate.all(c)
 end
 
-
 Theme.load()
 Theme.apply()
 

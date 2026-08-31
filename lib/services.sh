@@ -10,9 +10,11 @@ _clone_section() {
     if [[ -d "$dest" ]]; then
       warn "$subdir/$repo already exists, skipping"
     else
-      git clone "git@github.com:$GITHUB_ORG/$repo.git" "$dest" &&
-        success "Cloned $subdir/$repo" ||
+      if git clone "git@github.com:$GITHUB_ORG/$repo.git" "$dest"; then
+        success "Cloned $subdir/$repo"
+      else
         warn "Failed to clone $subdir/$repo (private repo? clone manually)"
+      fi
     fi
   done < <(read_ini_section repos.ini "$section")
 }
@@ -24,7 +26,10 @@ clone_repos() {
 }
 
 install_devtool_nodejs() {
-  if command -v fnm &>/dev/null; then warn "fnm already present, skipping"; return; fi
+  if command -v fnm &>/dev/null; then
+    warn "fnm already present, skipping"
+    return
+  fi
   info "Installing fnm (node version manager)..."
   if command -v cargo &>/dev/null; then
     cargo install fnm
@@ -35,28 +40,40 @@ install_devtool_nodejs() {
 }
 
 install_devtool_pnpm() {
-  if command -v pnpm &>/dev/null; then warn "pnpm already present, skipping"; return; fi
+  if command -v pnpm &>/dev/null; then
+    warn "pnpm already present, skipping"
+    return
+  fi
   info "Installing pnpm..."
   curl -fsSL https://get.pnpm.io/install.sh | sh -
   success "pnpm installed"
 }
 
 install_devtool_bun() {
-  if command -v bun &>/dev/null; then warn "bun already present, skipping"; return; fi
+  if command -v bun &>/dev/null; then
+    warn "bun already present, skipping"
+    return
+  fi
   info "Installing bun..."
   curl -fsSL https://bun.sh/install | bash
   success "bun installed"
 }
 
 install_devtool_go() {
-  if command -v go &>/dev/null; then warn "go already present, skipping"; return; fi
+  if command -v go &>/dev/null; then
+    warn "go already present, skipping"
+    return
+  fi
   info "Installing Go..."
   sudo pacman -S --needed --noconfirm go
   success "Go installed"
 }
 
 install_devtool_deno() {
-  if command -v deno &>/dev/null; then warn "deno already present, skipping"; return; fi
+  if command -v deno &>/dev/null; then
+    warn "deno already present, skipping"
+    return
+  fi
   info "Installing deno..."
   curl -fsSL https://deno.land/install.sh | sh
   success "deno installed"
@@ -73,11 +90,11 @@ install_dev_tools() {
   for tool in "${selected[@]}"; do
     case "$tool" in
     nodejs) install_devtool_nodejs ;;
-    pnpm)   install_devtool_pnpm ;;
-    bun)    install_devtool_bun ;;
-    go)     install_devtool_go ;;
-    deno)   install_devtool_deno ;;
-    *)      warn "Unknown dev tool: $tool, skipping" ;;
+    pnpm) install_devtool_pnpm ;;
+    bun) install_devtool_bun ;;
+    go) install_devtool_go ;;
+    deno) install_devtool_deno ;;
+    *) warn "Unknown dev tool: $tool, skipping" ;;
     esac
   done
 }
@@ -106,16 +123,16 @@ install_greetd() {
   sudo pacman -S --needed --noconfirm greetd
   sudo pacman -S --needed --noconfirm greetd-tuigreet
 
-  cd "$DOTFILES_DIR"
+  cd "$DOTFILES_DIR" || return 1
   local connector
   connector=$(detect_primary_connector)
   info "Setting greeter primary display: $connector"
   local tmp
   tmp=$(mktemp --suffix=.toml)
   sed "s/connector = \"eDP-1\"/connector = \"$connector\"/" \
-    system/etc/tuigreet/config.toml > "$tmp"
-  sudo install -Dm644 system/etc/greetd/config.toml       /etc/greetd/config.toml
-  sudo install -Dm644 "$tmp"                               /etc/tuigreet/config.toml
+    system/etc/tuigreet/config.toml >"$tmp"
+  sudo install -Dm644 system/etc/greetd/config.toml /etc/greetd/config.toml
+  sudo install -Dm644 "$tmp" /etc/tuigreet/config.toml
   sudo install -Dm755 system/usr/local/bin/tuigreet-oasis /usr/local/bin/tuigreet-oasis
   rm -f "$tmp"
   success "greetd/tuigreet config installed"
@@ -126,7 +143,7 @@ install_greetd() {
 
 install_system_files() {
   info "Installing system config files..."
-  cd "$DOTFILES_DIR"
+  cd "$DOTFILES_DIR" || return 1
   sudo install -Dm644 system/etc/vtrgb-oasis /etc/vtrgb-oasis
   sudo install -Dm644 system/etc/keyd/default.conf /etc/keyd/default.conf
   success "System config files installed"
@@ -240,7 +257,7 @@ setup_voxtype() {
     vendor=$(_detect_gpu_vendor)
     if [[ -n "$vendor" ]]; then
       mkdir -p "$(dirname "$gpu_conf")"
-      printf '[Service]\nEnvironment="VOXTYPE_GPU_DEVICE=0"\nEnvironment="VOXTYPE_VULKAN_DEVICE=%s"\n' "$vendor" > "$gpu_conf"
+      printf '[Service]\nEnvironment="VOXTYPE_GPU_DEVICE=0"\nEnvironment="VOXTYPE_VULKAN_DEVICE=%s"\n' "$vendor" >"$gpu_conf"
       success "voxtype GPU drop-in written: $vendor"
     else
       warn "Could not detect GPU vendor, skipping gpu.conf"

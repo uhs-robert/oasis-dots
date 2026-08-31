@@ -74,9 +74,7 @@ function Direction.omni(actions, desc_prefix, mod, opts, desc_suffix)
   local p = (mod and mod ~= "") and (mod .. " + ") or ""
   local s = desc_suffix or ""
 
-  local function row(k1, k2, action, dir)
-    return { { p .. k1, p .. k2 }, action, desc_prefix .. " " .. dir .. s, opts }
-  end
+  local function row(k1, k2, action, dir) return { { p .. k1, p .. k2 }, action, desc_prefix .. " " .. dir .. s, opts } end
 
   return {
     row("H+K", "K+H", actions.nw, "Up-Left"),

@@ -38,7 +38,11 @@ install_pipx_packages() {
   fi
   info "Installing pipx packages..."
   while IFS= read -r pkg; do
-    pipx install "$pkg" && success "Installed $pkg" || warn "Failed to install $pkg"
+    if pipx install "$pkg"; then
+      success "Installed $pkg"
+    else
+      warn "Failed to install $pkg"
+    fi
   done < <(read_pkgs pipx.ini)
 }
 
@@ -47,7 +51,11 @@ print_manual_installs() {
   [[ -f "$file" ]] || return
   local notes
   notes=$(awk '/^\[MANUAL\]/{found=1; next} /^\[/{found=0} found && /^#/{print}' "$file")
-  [[ -z "$notes" ]] || { echo ""; warn "Manual installs required:"; echo "$notes"; }
+  [[ -z "$notes" ]] || {
+    echo ""
+    warn "Manual installs required:"
+    echo "$notes"
+  }
 }
 
 install_luarocks_packages() {

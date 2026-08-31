@@ -14,4 +14,3 @@ bootstrap_rust() {
   source "$HOME/.cargo/env"
   success "Rust installed"
 }
-
