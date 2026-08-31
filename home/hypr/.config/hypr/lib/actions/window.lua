@@ -44,8 +44,13 @@ Window.focus_dir = function(dir) return Hypr.dispatch(hl.dsp.focus({ direction =
 --- @param dir string  Direction code: "l", "d", "u", "r"
 Window.move_dir = function(dir) return Hypr.dispatch(hl.dsp.window.move({ direction = dir })) end
 
+--- Move the active window into the group in the given direction if group.
 --- @param dir string  Direction code: "l", "d", "u", "r"
 Window.group_move_in = function(dir) return Hypr.dispatch(hl.dsp.window.move({ into_group = dir })) end
+
+--- Move the active window into the group in the given direction or create.
+--- @param dir string  Direction code: "l", "d", "u", "r"
+Window.group_move_or_create = function(dir) return Hypr.dispatch(hl.dsp.window.move({ into_or_create_group = dir })) end
 
 --- @param name string  Key into SPECIAL_WS (e.g. "scratchpad")
 Window.toggle_special = function(name) return Hypr.dispatch(hl.dsp.workspace.toggle_special(name)) end
