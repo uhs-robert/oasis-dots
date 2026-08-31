@@ -8,8 +8,8 @@
 --- @field cmd string shell command to launch
 --- @field class string|nil window class for dynamic workspace rule (mutually exclusive with title)
 --- @field title string|nil window title for dynamic workspace rule (mutually exclusive with class)
---- @field size {integer, integer}|nil window size as {w, h} (e.g. {1280, 720})
---- @field pos {integer, integer}|nil window position as {x, y} (e.g. {100, 200})
+--- @field size [integer, integer]|nil window size as {w, h} (e.g. {1280, 720})
+--- @field pos [integer, integer]|nil window position as {x, y} (e.g. {100, 200})
 --- @field delay integer|nil milliseconds to wait before launching
 
 --- @class Sessions

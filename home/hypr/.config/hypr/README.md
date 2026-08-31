@@ -33,17 +33,21 @@ mv home/hypr/.config/hypr ~/.config/hypr
 
 #### 2. Update your config settings
 
-Edit `hyprland.lua` to set your monitors and any configuration overrides:
+Machine hardware (monitors, DRM devices) lives in `config/machines/`, not `hyprland.lua`. Copy `config/machines/default.lua` to `config/machines/<hostname>.lua` and set your own monitors and DRM devices:
 
 ```lua
--- hyprland.lua
-Config.setup({
+-- config/machines/<hostname>.lua
+return {
   drm_devices = "/dev/dri/card1:/dev/dri/card2 Hyprland",
-  monitors = {
-    { description = "My Monitor", mode = "2560x1440@144", position = "0x0", scale = 1 },
-  },
-})
+  monitors = function()
+    return {
+      { description = "My Monitor", mode = "2560x1440@144", position = "0x0", scale = 1 },
+    }
+  end,
+}
 ```
+
+The loader picks this up automatically by hostname; see `config/machines/README.md` for details. Anything in `config/machines/` other than `default.lua`, `init.lua`, and its README is gitignored, so your profile stays local.
 
 > [!TIP]
 > All available options and their defaults are documented in `config/init.lua`.

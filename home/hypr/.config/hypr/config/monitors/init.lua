@@ -41,6 +41,8 @@ local function get_monitor_output(entry, monitors)
 end
 
 --- Applies hl.monitor() settings for all MONITOR_ORDER entries that have mode defined.
+--- Unknown monitors (not in MONITOR_ORDER) get preferred mode/auto position/scale 1
+--- so a newly plugged-in display still comes up usable instead of unconfigured.
 local function init_monitors()
   local monitors = hl.get_monitors()
   for _, entry in ipairs(MONITOR_ORDER) do
@@ -53,6 +55,19 @@ local function init_monitors()
         scale = tostring(entry.scale or 1),
         transform = entry.transform,
       })
+    end
+  end
+
+  for _, mon in ipairs(monitors) do
+    local known = false
+    for _, entry in ipairs(MONITOR_ORDER) do
+      if is_monitor_match(mon, entry) then
+        known = true
+        break
+      end
+    end
+    if not known then
+      hl.monitor({ output = mon.name, mode = "preferred", position = "auto", scale = "1" })
     end
   end
 end
