@@ -1,0 +1,64 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SESSION="AI"
+
+usage() {
+  cat <<'EOF'
+Usage: ai-tmux <command> [args]
+
+Commands:
+  status                     Print target availability as JSON
+  capture <claude|codex>     Print recent pane output
+  send <claude|codex> [--submit]
+                             Read text from stdin and paste it safely
+EOF
+}
+
+target_for() {
+  case "${1:-}" in
+    claude) printf '%s' "$SESSION:Claude" ;;
+    codex) printf '%s' "$SESSION:Codex" ;;
+    *) return 2 ;;
+  esac
+}
+
+has_target() {
+  tmux list-windows -t "$SESSION" -F '#W' 2>/dev/null | grep -Fxq "$1"
+}
+
+status() {
+  local running=false claude=false codex=false
+  tmux has-session -t "$SESSION" 2>/dev/null && running=true
+  [[ "$running" == true ]] && has_target Claude && claude=true
+  [[ "$running" == true ]] && has_target Codex && codex=true
+  printf '{"session":"%s","running":%s,"targets":{"claude":%s,"codex":%s}}\n' \
+    "$SESSION" "$running" "$claude" "$codex"
+}
+
+capture() {
+  local target
+  target="$(target_for "$1")" || { echo "unknown target: $1" >&2; exit 2; }
+  tmux capture-pane -p -J -S -200 -t "$target"
+}
+
+send() {
+  local name="$1" submit=false target payload
+  shift
+  [[ "${1:-}" == "--submit" ]] && submit=true
+  target="$(target_for "$name")" || { echo "unknown target: $name" >&2; exit 2; }
+  payload="$(cat)"
+  [[ -n "$payload" ]] || { echo "refusing empty payload" >&2; exit 2; }
+  tmux has-session -t "$SESSION" 2>/dev/null || { echo "AI tmux session is not running" >&2; exit 3; }
+  printf '%s' "$payload" | tmux load-buffer -
+  tmux paste-buffer -d -t "$target"
+  [[ "$submit" == true ]] && tmux send-keys -t "$target" Enter
+}
+
+case "${1:-}" in
+  status) status ;;
+  capture) [[ $# -eq 2 ]] || { usage >&2; exit 2; }; capture "$2" ;;
+  send) [[ $# -ge 2 ]] || { usage >&2; exit 2; }; shift; send "$@" ;;
+  -h|--help|help|'') usage ;;
+  *) usage >&2; exit 2 ;;
+esac
