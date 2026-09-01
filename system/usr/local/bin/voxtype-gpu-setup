@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+# Restores the Vulkan GPU backend after voxtype is installed or upgraded.
+# AUR package upgrades reset voxtype to its CPU backend; invoked as root by
+# the voxtype-gpu-setup.hook pacman hook, so no sudo is needed here.
+set -euo pipefail
+
+exec voxtype setup gpu --enable

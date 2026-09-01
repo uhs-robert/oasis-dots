@@ -146,6 +146,8 @@ install_system_files() {
   cd "$DOTFILES_DIR" || return 1
   sudo install -Dm644 system/etc/vtrgb-oasis /etc/vtrgb-oasis
   sudo install -Dm644 system/etc/keyd/default.conf /etc/keyd/default.conf
+  sudo install -Dm644 system/etc/pacman.d/hooks/voxtype-gpu-setup.hook /etc/pacman.d/hooks/voxtype-gpu-setup.hook
+  sudo install -Dm755 system/usr/local/bin/voxtype-gpu-setup /usr/local/bin/voxtype-gpu-setup
   success "System config files installed"
 }
 
