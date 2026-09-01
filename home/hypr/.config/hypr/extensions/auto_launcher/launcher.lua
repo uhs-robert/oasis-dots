@@ -37,9 +37,22 @@ local function launch(app, workspace)
   hl.dispatch(hl.dsp.exec_cmd(app.cmd, { workspace = workspace, no_initial_focus = true }))
 end
 
---- Polls for the app's window and applies size/position once it appears.
+--- @return table<string, boolean> set of every currently-open window address
+local function snapshot_addresses()
+  local addrs = {}
+  for _, w in ipairs(hl.get_windows() or {}) do
+    addrs[w.address] = true
+  end
+  return addrs
+end
+
+--- Polls for the app's new window, moves it to the target workspace, and applies size/position.
+--- Backstop for single-instance apps, whose server-owned pid the exec rule can't bind to.
 --- @param app AppEntry
-local function resize_when_ready(app)
+--- @param workspace integer
+--- @param before table<string, boolean> window addresses that existed before this app launched
+--- @param claimed table<string, boolean> addresses already claimed by another poller in this run()
+local function place_when_ready(app, workspace, before, claimed)
   local match_val = app.class or app.title
   if not match_val then return end
   local match_key = app.class and "class" or "title"
@@ -48,9 +61,11 @@ local function resize_when_ready(app)
   t = hl.timer(function()
     attempts = attempts + 1
     for _, w in ipairs(hl.get_windows() or {}) do
-      if w[match_key] == match_val then
+      if w[match_key] == match_val and not before[w.address] and not claimed[w.address] then
+        claimed[w.address] = true
         t:set_enabled(false)
         local window = "address:" .. w.address
+        hl.dispatch(hl.dsp.window.move({ window = window, workspace = workspace, follow = false }))
         if app.size then
           hl.dispatch(hl.dsp.window.resize({
             window = window,
@@ -70,13 +85,15 @@ local function resize_when_ready(app)
         return
       end
     end
-    if attempts >= 30 then t:set_enabled(false) end
-  end, { timeout = 500, type = "repeat" })
+    if attempts >= 60 then t:set_enabled(false) end
+  end, { timeout = 250, type = "repeat" })
 end
 
---- Runs a session: launches each app on its workspace, applying rules and resize as needed.
+--- Runs a session: launches each app on its workspace, applying rules and placement as needed.
 --- @param apps AppEntry[]
 local function run(apps)
+  -- Shared so two same-class launches can't both claim the same window address.
+  local claimed = {}
   for _, app in ipairs(apps) do
     local workspace = ws(assert(app.monitor, "app entry missing monitor index"), app.ws or 1)
     local match_val = app.class or app.title
@@ -84,8 +101,9 @@ local function run(apps)
 
     local function do_launch()
       if match_val then enable_workspace_rule(match_key, match_val, workspace) end
+      local before = snapshot_addresses()
       launch(app, workspace)
-      if (app.size or app.pos) and match_val then resize_when_ready(app) end
+      if match_val then place_when_ready(app, workspace, before, claimed) end
     end
 
     if app.delay then

@@ -20,7 +20,7 @@ Apps.map = {
   hyprconfig  = { program = TERM,          class = "hyprconfig",                    cmd = TERM_CMD .. " --class hyprconfig -e yazi ~/.config/hypr" },
   protonplus  = { program = "protonplus",  class = "protonplus",                    cmd = "protonplus" },
   qutebrowser = { program = "qutebrowser", class = "org.qutebrowser.qutebrowser" },
-  slack       = { program = "slack",       class = "Slack" },
+  slack       = { program = "slack",       class = "slack" },
   steam       = { program = "steam",       class = "steam",                         cmd = "steam"},
   terminal    = { program = TERM,          exclude_title = "Tmux" },
   tmux_ai     = { program = TERM,          title = "Tmux AI",                       cmd = TERM_CMD .. " -e tmuxifier load-session ai" },
