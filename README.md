@@ -50,6 +50,19 @@ just uninstall        # run uninstall.sh
 just sync-root-yazi   # regenerate root's Yazi keymap from the user's
 ```
 
+## Betterbird / tbkeys
+
+Vim-style keybindings for Betterbird, provided by the tbkeys add-on. Two files matter:
+
+- `home/thunderbird/tbkeys/keys.json` - the keymap, one line per binding.
+- `home/thunderbird/.config/tbkeys/helpers.js` - the code the bindings call. Stowed to `~/.config/tbkeys/` by the `thunderbird` package, and loaded automatically each time Betterbird starts.
+
+After editing `helpers.js`, restart Betterbird.
+
+After editing `keys.json`, paste its contents into the add-on's options page (Add-ons Manager, tbkeys, Options). That file is a tracked copy, not something the add-on reads from disk. The same is true of `quicktext.json`.
+
+Betterbird upgrades wipe the startup file that loads `helpers.js`, so `install.sh` sets up a pacman hook that puts it back automatically. Nothing to do after an upgrade.
+
 ## Root Yazi
 
 The user Yazi keymap uses `~` and `$USER`, which resolve to `/root` when Yazi runs as root, so root gets a rewritten copy at `/root/.config/yazi/keymap.toml` rather than a symlink. Launch root Yazi with `yazi-root` (installed to `/usr/local/bin` by `install.sh`): it regenerates that copy from the current user keymap on every launch, so the two never drift. It finds the user config by resolving the `yazi.toml` symlink in `/root/.config/yazi`, so no username is configured anywhere. To refresh the copy without launching Yazi, run `yazi-root --sync-only` or `just sync-root-yazi`.

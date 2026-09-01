@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+# Restores the tbkeys autoconfig files after betterbird-bin is installed or upgraded.
+# Package upgrades replace the whole /opt/betterbird tree; invoked as root by
+# the betterbird-autoconfig.hook pacman hook, so no sudo is needed here.
+set -euo pipefail
+
+install_dir=/opt/betterbird
+source_dir=/usr/local/share/betterbird-autoconfig
+
+[[ -d "$install_dir" ]] || exit 0
+[[ -d "$source_dir" ]] || exit 0
+
+install -Dm644 "$source_dir/autoconfig.js" "$install_dir/defaults/pref/autoconfig.js"
+install -Dm644 "$source_dir/betterbird.cfg" "$install_dir/betterbird.cfg"

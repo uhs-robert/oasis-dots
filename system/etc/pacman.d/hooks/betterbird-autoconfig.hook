@@ -1,0 +1,10 @@
+[Trigger]
+Operation = Install
+Operation = Upgrade
+Type = Package
+Target = betterbird-bin
+
+[Action]
+Description = Restoring Betterbird tbkeys autoconfig
+When = PostTransaction
+Exec = /usr/local/bin/betterbird-autoconfig-setup
