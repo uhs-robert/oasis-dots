@@ -5,6 +5,9 @@
 
   const tk = {};
   const PROJECTS_FOLDER = "Projects";
+  const MARK_PREF = "tbkeys.folder_marks";
+  // Excludes d, f, g, m, z: chord leaders elsewhere in keys.json.
+  const MARK_LETTERS = "abcehijklnopqrstuvwxy";
 
   // -- window/tree accessors --------------------------------------------
 
@@ -45,11 +48,45 @@
     tk.show_folder(tk.lookup_folder(url));
   };
 
+  const JUMP_LIST_MAX = 100;
+  tk.jump_back_stack = [];
+  tk.jump_forward_stack = [];
+  tk.jumping = false;
+
   /**
    * @param {Object} folder - folder to switch the current tab to, or null to no-op
    */
   tk.show_folder = (folder) => {
-    if (folder) window.gTabmail?.currentAbout3Pane?.displayFolder?.(folder);
+    if (!folder) return;
+    const pane = window.gTabmail?.currentAbout3Pane;
+    if (!pane) return;
+    const current_uri = pane.gFolder?.URI;
+    if (!tk.jumping && current_uri && current_uri !== folder.URI) {
+      tk.jump_back_stack.push(current_uri);
+      if (tk.jump_back_stack.length > JUMP_LIST_MAX) tk.jump_back_stack.shift();
+      tk.jump_forward_stack = [];
+    }
+    pane.displayFolder?.(folder);
+  };
+
+  /**
+   * Moves the current folder URI onto `to` and jumps to `uri` without recording new jump-list history.
+   * @param {string} uri - folder URI to jump to
+   * @param {string[]} to - the stack (back or forward) to push the current folder onto
+   */
+  tk.jump_to = (uri, to) => {
+    const pane = window.gTabmail?.currentAbout3Pane;
+    const current_uri = pane?.gFolder?.URI;
+    const was_jumping = tk.jumping;
+    tk.jumping = true;
+    try {
+      tk.display_folder(uri);
+    } finally {
+      tk.jumping = was_jumping;
+    }
+    if (!current_uri || pane?.gFolder?.URI === current_uri) return;
+    to.push(current_uri);
+    if (to.length > JUMP_LIST_MAX) to.shift();
   };
 
   /**
@@ -70,6 +107,64 @@
       }
     }
     return partial;
+  };
+
+  // -- folder marks ---------------------------------------------------------
+
+  /**
+   * @returns {Object} letter to folder URI map, parsed from a single JSON pref
+   */
+  tk.load_marks = () => {
+    try {
+      const raw = window.Services?.prefs?.getStringPref?.(MARK_PREF, "{}");
+      const parsed = JSON.parse(raw);
+      return parsed && typeof parsed === "object" ? parsed : {};
+    } catch (e) {
+      return {};
+    }
+  };
+
+  /**
+   * @param {Object} marks - letter to folder URI map to persist
+   */
+  tk.save_marks = (marks) => {
+    window.Services?.prefs?.setStringPref?.(MARK_PREF, JSON.stringify(marks));
+  };
+
+  /**
+   * @param {string} letter - mark letter to set on the currently displayed folder
+   */
+  tk.set_mark = (letter) => {
+    tk.reset_count();
+    const uri = window.gTabmail?.currentAbout3Pane?.gFolder?.URI;
+    if (!uri) return;
+    const marks = tk.load_marks();
+    marks[letter] = uri;
+    tk.save_marks(marks);
+  };
+
+  /**
+   * Jumps to the folder stored under `letter`, reporting an unset mark or a folder that no longer exists.
+   * @param {string} letter - mark letter to jump to
+   */
+  tk.jump_to_mark = (letter) => {
+    tk.reset_count();
+    const uri = tk.load_marks()[letter];
+    if (typeof uri !== "string" || !uri) {
+      window.alert(`Mark "${letter}" is not set`);
+      return;
+    }
+    let folder = null;
+    try {
+      folder = tk.lookup_folder(uri);
+    } catch (e) {
+      folder = null;
+    }
+    if (!folder) {
+      window.alert(`Mark "${letter}" points to a folder that no longer exists`);
+      return;
+    }
+    tk.show_folder(folder);
   };
 
   /**
@@ -429,6 +524,11 @@
     window[`tk_digit_${i}`] = tk.digit(i);
   }
 
+  for (const letter of MARK_LETTERS) {
+    window[`tk_mark_set_${letter}`] = () => tk.set_mark(letter);
+    window[`tk_mark_jump_${letter}`] = () => tk.jump_to_mark(letter);
+  }
+
   window.tk_toggle_visual = () => {
     const was_visual = window.vim === "visual";
     window.vim = was_visual ? "normal" : "visual";
@@ -554,6 +654,36 @@
     tk.display_folder("mailbox://nobody@smart%20mailboxes/Sent");
   window.tk_goto_projects = () =>
     tk.show_folder(tk.find_folder_by_name(PROJECTS_FOLDER));
+  window.tk_goto_folder = () => {
+    tk.reset_count();
+    const name = window.prompt("Go to folder:");
+    if (!name) return;
+    const folder = tk.find_folder_by_name(name);
+    if (!folder) {
+      window.alert(`No folder matching "${name}"`);
+      return;
+    }
+    tk.show_folder(folder);
+  };
+
+  window.tk_jump_back = () => {
+    const n = tk.peek_count();
+    tk.reset_count();
+    for (let i = 0; i < n; i++) {
+      const uri = tk.jump_back_stack.pop();
+      if (!uri) return;
+      tk.jump_to(uri, tk.jump_forward_stack);
+    }
+  };
+  window.tk_jump_forward = () => {
+    const n = tk.peek_count();
+    tk.reset_count();
+    for (let i = 0; i < n; i++) {
+      const uri = tk.jump_forward_stack.pop();
+      if (!uri) return;
+      tk.jump_to(uri, tk.jump_back_stack);
+    }
+  };
 
   window.tk_collapse_all = () => {
     const e = tk.get_focused_element();
