@@ -68,7 +68,7 @@
   "q": "tbkeys:closeMessageAndRefresh",
   "u": "cmd:cmd_undo",
   "/": "func:tk_folder_search",
-  "?": "func:tk_quickmove_goto",
+  "?": "unset",
   "n": "func:tk_search_next",
   "N": "func:tk_search_prev",
   ";": "cmd:cmd_openConversation",
