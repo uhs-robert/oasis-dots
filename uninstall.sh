@@ -65,15 +65,26 @@ unstow_packages() {
 }
 
 # Prompts to remove system files installed by install_system_files/install_greetd.
+# Hooks are listed before the scripts they Exec=, so a partial run never leaves
+# a pacman hook pointing at a removed script.
 remove_system_files() {
   [[ $OPT_SYSTEM_FILES -eq 0 ]] && return
-  confirm "Remove installed system files (/etc/greetd, /etc/tuigreet, /etc/vtrgb-oasis, /usr/local/bin/tuigreet-oasis)?" || return
+  confirm "Remove installed system files (/etc/greetd, /etc/tuigreet, /etc/vtrgb-oasis, /etc/keyd, pacman hooks, betterbird autoconfig, etc.)?" || return
 
   local files=(
     /etc/greetd/config.toml
     /etc/tuigreet/config.toml
     /usr/local/bin/tuigreet-oasis
     /etc/vtrgb-oasis
+    /etc/keyd/default.conf
+    /etc/pacman.d/hooks/voxtype-gpu-setup.hook
+    /usr/local/bin/voxtype-gpu-setup
+    /etc/pacman.d/hooks/betterbird-autoconfig.hook
+    /usr/local/bin/betterbird-autoconfig-setup
+    /usr/local/share/betterbird-autoconfig/autoconfig.js
+    /usr/local/share/betterbird-autoconfig/betterbird.cfg
+    /opt/betterbird/defaults/pref/autoconfig.js
+    /opt/betterbird/betterbird.cfg
   )
   for f in "${files[@]}"; do
     if [[ -f "$f" ]]; then
@@ -82,6 +93,48 @@ remove_system_files() {
       warn "$f not found, skipping"
     fi
   done
+  sudo rmdir /usr/local/share/betterbird-autoconfig 2>/dev/null || true
+}
+
+# Prompts to remove the /root symlinks and generated files created by setup_root_symlinks.
+# /root is mode 700, so runs under sudo rather than as the invoking user.
+remove_root_symlinks() {
+  [[ $OPT_SYSTEM_FILES -eq 0 ]] && return
+  confirm "Remove root symlinks and yazi-root files (/root/.zshrc, /root/.oh-my-zsh, /root/.config/nvim, /root/.config/yazi, /usr/local/bin/yazi-root, /usr/local/sbin/yazi)?" || return
+
+  local links=(
+    /root/.zshrc
+    /root/.oh-my-zsh
+    /root/.config/nvim
+    /root/.config/yazi/flavors
+    /root/.config/yazi/plugins
+    /root/.config/yazi/yazi.toml
+  )
+  for f in "${links[@]}"; do
+    if sudo test -L "$f"; then
+      sudo rm -f "$f" && success "Removed $f"
+    else
+      warn "$f not found or not a symlink, skipping"
+    fi
+  done
+
+  local root_files=(
+    /root/.config/yazi/theme.toml
+    /root/.config/yazi/keymap.toml
+    /usr/local/bin/yazi-root
+    /usr/local/sbin/yazi
+  )
+  for f in "${root_files[@]}"; do
+    if sudo test -f "$f"; then
+      sudo rm -f "$f" && success "Removed $f"
+    else
+      warn "$f not found or not a regular file, skipping"
+    fi
+  done
+
+  if sudo test -d /root/.config/yazi && [[ -z "$(sudo find /root/.config/yazi -mindepth 1 -print -quit 2>/dev/null)" ]]; then
+    sudo rmdir /root/.config/yazi && success "Removed empty /root/.config/yazi"
+  fi
 }
 
 # Prompts to disable greetd, keyd, and voxtype if they are currently enabled.
@@ -156,8 +209,9 @@ main() {
   require_cmd sudo stow
 
   unstow_packages
-  remove_system_files
   disable_services
+  remove_system_files
+  remove_root_symlinks
   revert_shell
   print_manual_steps
 
