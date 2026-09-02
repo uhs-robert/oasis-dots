@@ -14,9 +14,24 @@
   "use strict";
 
   tk.PROJECTS_FOLDER = "Projects";
+  tk.TBKEYS_ADDON_ID = "tbkeys@addons.thunderbird.net";
   tk.MARK_PREF = "tbkeys.folder_marks";
   // Excludes d, f, g, m, z: chord leaders elsewhere in keys.json.
   tk.MARK_LETTERS = "abcehijklnopqrstuvwxy";
+
+  // Must match MODULE_MANIFEST in betterbird.cfg; :reload depends on the two agreeing.
+  tk.MODULE_MANIFEST = [
+    "core.js",
+    "selection.js",
+    "folders.js",
+    "motions.js",
+    "navigation.js",
+    "actions.js",
+    "search.js",
+    "command.js",
+    "ui.js",
+    "whichkey.js",
+  ];
 
   // -- window/tree accessors --------------------------------------------
 

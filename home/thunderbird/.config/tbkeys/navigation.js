@@ -71,6 +71,48 @@
     }
   };
 
+  // -- sort -----------------------------------------------------------------
+
+  tk.SORT_COLUMNS = {
+    date: "dateCol",
+    subject: "subjectCol",
+    sender: "senderCol",
+    recipient: "recipientCol",
+    received: "receivedCol",
+    size: "sizeCol",
+    tags: "tagsCol",
+    account: "accountCol",
+    priority: "priorityCol",
+    status: "statusCol",
+    location: "locationCol",
+    unread: "unreadButtonColHeader",
+    starred: "flaggedCol",
+    attachment: "attachmentCol",
+    junk: "junkStatusCol",
+  };
+
+  /**
+   * @param {string} name - key into tk.SORT_COLUMNS
+   * @returns {string} error message on failure, undefined on success
+   */
+  tk.sort_by = (name) => {
+    if (!Object.hasOwn(tk.SORT_COLUMNS, name)) return `Unknown sort "${name}"`;
+    const column_id = tk.SORT_COLUMNS[name];
+    const controller = window.gTabmail?.currentAbout3Pane?.sortController;
+    if (!controller) return "No thread pane to sort";
+    if (!controller.sortThreadPane(column_id))
+      return `Column "${name}" is not in the current view`;
+  };
+
+  /**
+   * @returns {string} error message on failure, undefined on success
+   */
+  tk.sort_reverse = () => {
+    const controller = window.gTabmail?.currentAbout3Pane?.sortController;
+    if (!controller) return "No thread pane to sort";
+    controller.reverseSortThreadPane();
+  };
+
   // -- flat tk_* functions for keys.json "func:" bindings ------------------
 
   window.tk_focus_folder_tree = () =>
@@ -79,6 +121,17 @@
     window.gTabmail?.currentAbout3Pane?.threadTree?.table?.body?.focus?.();
   window.tk_focus_message_pane = () =>
     window.gTabmail?.currentAboutMessage?.getMessagePaneBrowser?.()?.focus?.();
+
+  window.tk_goto_extensions = () => {
+    tk.reset_count();
+    window.openAddonsMgr?.("addons://list/extension");
+  };
+  // The detail view splits its param on "/", so this lands on tbkeys' own
+  // options pane rather than its card.
+  window.tk_goto_config = () => {
+    tk.reset_count();
+    window.openAddonsMgr?.(`addons://detail/${tk.TBKEYS_ADDON_ID}/preferences`);
+  };
 
   window.tk_next_tab = () =>
     window.document
@@ -89,10 +142,25 @@
       .getElementById("tabmail-tabs")
       ?.advanceSelectedTab?.(1, true);
 
-  window.tk_toggle_starred_filter = () =>
+  window.tk_toggle_starred_filter = () => {
+    tk.reset_count();
     window.gTabmail?.currentAbout3Pane?.document
       ?.getElementById("qfb-starred")
       ?.click();
+  };
+
+  for (const name of Object.keys(tk.SORT_COLUMNS)) {
+    window[`tk_sort_${name}`] = () => {
+      tk.reset_count();
+      const error = tk.sort_by(name);
+      if (error) window.alert(error);
+    };
+  }
+  window.tk_sort_reverse = () => {
+    tk.reset_count();
+    const error = tk.sort_reverse();
+    if (error) window.alert(error);
+  };
 
   window.tk_next_unread_thread = () =>
     tk.step_matching(1, (hdr) => hdr && !hdr.isRead);
@@ -104,7 +172,8 @@
   window.tk_prev_thread_root = () =>
     tk.step_matching(-1, (hdr, idx, view) => view.isContainer(idx));
 
-  window.tk_next_starred = () => tk.run_navigation_command("cmd_nextFlaggedMsg");
+  window.tk_next_starred = () =>
+    tk.run_navigation_command("cmd_nextFlaggedMsg");
   window.tk_prev_starred = () =>
     tk.run_navigation_command("cmd_previousFlaggedMsg");
   window.tk_next_unread_any_folder = () =>

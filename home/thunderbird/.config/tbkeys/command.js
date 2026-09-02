@@ -40,11 +40,39 @@
     return Object.hasOwn(tk.commands, key) ? tk.commands[key] : undefined;
   };
 
+  /**
+   * Narrows the thread pane to one tag through the quick filter bar, which is
+   * shown so the filter is visible and dismissable rather than silently on.
+   * @param {string} name - tag display name, resolved exact-then-substring
+   * @returns {string} error message on failure, undefined on success
+   */
+  const filter_by_tag = (name) => {
+    if (!name) return "filter tag <name>";
+    const tag = find_tag_by_name(name);
+    if (!tag) return `No tag matching "${name}"`;
+    const bar = window.gTabmail?.currentAbout3Pane?.quickFilterBar;
+    if (!bar?.filterer) return "No quick filter bar";
+    bar._showFilterBar?.(true);
+    bar.filterer.setFilterValue("tags", { tags: { [tag.key]: true } });
+    bar.reflectFiltererState?.();
+    bar.updateSearch?.();
+  };
+
+  // The view filter and the quick filter bar are separate constraints, so
+  // "all" has to drop both or a tag or starred filter survives it.
+  const filter_all = () => {
+    tk.reset_count();
+    window.goDoCommand("cmd_viewAllMsgs");
+    window.gTabmail?.currentAbout3Pane?.quickFilterBar?._resetFilterState?.();
+  };
+
   // Shared with filter's complete(), so run and completion never drift apart.
+  // Each takes the full argument list, since "tag" carries a name after it.
   const FILTERS = {
     unread: () => window.goDoCommand("cmd_viewUnreadMsgs"),
-    all: () => window.goDoCommand("cmd_viewAllMsgs"),
+    all: () => filter_all(),
     starred: () => window.tk_toggle_starred_filter(),
+    tag: (args) => filter_by_tag(args.slice(1).join(" ")),
   };
 
   // Shared with focus's complete(), so run and completion never drift apart.
@@ -66,6 +94,83 @@
   const complete_folder_names = () => {
     folder_names ??= tk.all_folders().map((f) => f.name);
     return folder_names;
+  };
+
+  // Shared with mark's complete(), so run and completion never drift apart.
+  const MARKS = {
+    read: () => window.tk_mark_read(),
+    unread: () => window.tk_mark_unread(),
+    starred: () => window.tk_mark_flagged(),
+    junk: () => window.tk_mark_junk_toggle(),
+  };
+
+  const all_tags = () =>
+    (window.MailServices?.tags?.getAllTags?.() ?? []).filter((t) => t.tag);
+
+  let tag_names = null;
+
+  /**
+   * Cached for one command-line session, as complete_folder_names is: both
+   * cross into XPCOM on every keystroke otherwise.
+   * @returns {string[]} every tag's display name
+   */
+  const complete_tag_names = () => {
+    tag_names ??= all_tags().map((t) => t.tag);
+    return tag_names;
+  };
+
+  /**
+   * Searches every tag for one named `name`, preferring an exact match over a substring one.
+   * @param {string} name - tag display name, matched case-insensitively
+   * @returns {Object} the first matching tag, or null if none matches
+   */
+  const find_tag_by_name = (name) => {
+    const target = name.toLowerCase();
+    let partial = null;
+    for (const tag of all_tags()) {
+      const tag_name = tag.tag.toLowerCase();
+      if (tag_name === target) return tag;
+      if (!partial && tag_name.includes(target)) partial = tag;
+    }
+    return partial;
+  };
+
+  // Candidates carry their 1-based position so committing one is also how the
+  // number is learned; run_tab strips it back off.
+  const complete_tab_titles = () =>
+    (window.gTabmail?.tabInfo ?? []).map((t, i) => `${i + 1}: ${t.title}`);
+
+  /**
+   * Searches open tabs for one titled `name`, preferring an exact match over a substring one.
+   * @param {string} name - tab title, matched case-insensitively
+   * @returns {number} index of the first matching tab, or -1 if none matches
+   */
+  const find_tab_index_by_title = (name) => {
+    const target = name.toLowerCase();
+    const tabs = window.gTabmail?.tabInfo ?? [];
+    let partial = -1;
+    for (let i = 0; i < tabs.length; i++) {
+      const title = (tabs[i].title ?? "").toLowerCase();
+      if (title === target) return i;
+      if (partial === -1 && title.includes(target)) partial = i;
+    }
+    return partial;
+  };
+
+  /**
+   * Resolves a ":tab" argument, which is either a 1-based position, as the
+   * completion menu labels them, or a title.
+   * @param {string} name - raw argument, without the command name
+   * @returns {number} index into gTabmail.tabInfo, or -1 if none matches
+   */
+  const resolve_tab_index = (name) => {
+    const count = (window.gTabmail?.tabInfo ?? []).length;
+    const numbered = name.match(/^(\d+)(?::.*)?$/);
+    if (numbered) {
+      const idx = Number(numbered[1]) - 1;
+      return idx >= 0 && idx < count ? idx : -1;
+    }
+    return find_tab_index_by_title(name);
   };
 
   tk.commands = {
@@ -111,15 +216,16 @@
       },
     },
     filter: {
-      usage: "filter <unread|all|starred>",
+      usage: "filter <unread|all|starred|tag <name>>",
       description: "Apply a message view filter",
-      complete: () => Object.keys(FILTERS),
+      complete: ({ args }) =>
+        args[0] === "tag" ? complete_tag_names() : Object.keys(FILTERS),
       run: ({ args }) => {
         if (!args.length) return tk.commands.filter.usage;
         const fn = Object.hasOwn(FILTERS, args[0]) ? FILTERS[args[0]] : null;
         if (!fn)
           return `Unknown filter "${args[0]}" (valid: ${Object.keys(FILTERS).join(", ")})`;
-        fn();
+        return fn(args);
       },
     },
     open: {
@@ -133,6 +239,105 @@
         const folder = tk.find_folder_by_name(name);
         if (!folder) return `No folder matching "${name}"`;
         tk.show_folder(folder);
+      },
+    },
+    mark: {
+      usage: "mark <read|unread|starred|junk>",
+      description: "Mark the current message or visual selection",
+      complete: () => Object.keys(MARKS),
+      run: ({ args }) => {
+        if (!args.length) return tk.commands.mark.usage;
+        const fn = Object.hasOwn(MARKS, args[0]) ? MARKS[args[0]] : null;
+        if (!fn)
+          return `Unknown mark "${args[0]}" (valid: ${Object.keys(MARKS).join(", ")})`;
+        fn();
+      },
+    },
+    sort: {
+      usage: "sort <name|reverse>",
+      description: "Sort the thread pane by column, or reverse direction",
+      complete: () => [...Object.keys(tk.SORT_COLUMNS), "reverse"],
+      run: ({ args }) => {
+        if (!args.length) return tk.commands.sort.usage;
+        if (args[0] === "reverse") return tk.sort_reverse();
+        if (!Object.hasOwn(tk.SORT_COLUMNS, args[0]))
+          return `Unknown sort "${args[0]}" (valid: ${Object.keys(tk.SORT_COLUMNS).join(", ")}, reverse)`;
+        return tk.sort_by(args[0]);
+      },
+    },
+    tag: {
+      usage: "tag <name>",
+      description:
+        "Toggle a tag on the current message or visual selection, resolved exact-then-substring",
+      complete_rest: true,
+      complete: () => complete_tag_names(),
+      run: ({ args }) => {
+        const name = args.join(" ");
+        if (!name) return tk.commands.tag.usage;
+        const tag = find_tag_by_name(name);
+        if (!tag) return `No tag matching "${name}"`;
+        const controller =
+          window.gTabmail?.currentAbout3Pane?.commandController;
+        if (!controller) return "No message pane to tag";
+        const tt = tk.get_thread_tree();
+        const range = tk.resolve_action_range(tt);
+        if (!range.anchor_hdr) return "No message to tag";
+        const keywords = range.anchor_hdr
+          .getStringProperty("keywords")
+          .split(" ");
+        controller._toggleMessageTag(tag.key, !keywords.includes(tag.key));
+        if (range.is_visual) tk.finish_visual_action(tt, range.cursor_index);
+      },
+    },
+    tab: {
+      usage: "tab [number|title]",
+      description:
+        "Switch to an open tab by number or title; with no argument, lists open tabs; an ambiguous title resolves to the first match",
+      complete_rest: true,
+      complete: () => complete_tab_titles(),
+      run: ({ args }) => {
+        const name = args.join(" ");
+        if (!name) return;
+        const idx = resolve_tab_index(name);
+        if (idx === -1) return `No tab matching "${name}"`;
+        window.gTabmail.switchToTab(idx);
+      },
+    },
+    reload: {
+      usage: "reload",
+      description: "Reload every tbkeys module into this window",
+      run: ({ args }) => {
+        if (args.length) return tk.commands.reload.usage;
+        const manifest = tk.MODULE_MANIFEST;
+        if (!Array.isArray(manifest) || !manifest.length)
+          return "No module manifest to reload";
+        try {
+          const dir = window.Services?.dirsvc?.get(
+            "Home",
+            window.Components?.interfaces?.nsIFile,
+          );
+          if (!dir) return "Cannot resolve tbkeys directory";
+          dir.append(".config");
+          dir.append("tbkeys");
+          const files = manifest.map((name) => {
+            const file = dir.clone();
+            file.append(name);
+            return file;
+          });
+          const missing = files
+            .filter((file) => !file.exists())
+            .map((file) => file.path);
+          if (missing.length)
+            return `tbkeys reload: not loaded, missing ${missing.join(", ")}`;
+          for (const file of files) {
+            window.Services.scriptloader.loadSubScriptWithOptions(
+              window.Services.io.newFileURI(file).spec,
+              { target: window, allowUnsafeURL: true, ignoreCache: true },
+            );
+          }
+        } catch (e) {
+          return `tbkeys reload failed: ${e}`;
+        }
       },
     },
     help: {
@@ -384,6 +589,7 @@
   tk.close_command_bar = () => {
     tk.command_completion = null;
     folder_names = null;
+    tag_names = null;
     window.document.getElementById("tbkeys-command-bar")?.remove();
   };
 
@@ -519,16 +725,31 @@
 
   // -- flat tk_* functions for keys.json "func:" bindings ------------------
 
-  window.tk_command_line = () => {
+  /**
+   * Opens the command line, optionally prefilled, with the caret at the end
+   * and the menu already showing what `text` completes to.
+   * @param {string} [text] - initial input, without the leading ":"
+   */
+  tk.open_command_line = (text = "") => {
     tk.reset_count();
     tk.command_mode_prior = window.vim ?? "normal";
     tk.ensure_command_bar();
     const input = window.document.getElementById("tbkeys-command-input");
-    input.value = "";
-    tk.refresh_completion("");
+    input.value = text;
+    tk.refresh_completion(text);
     input.onkeydown = tk.command_input_keydown;
     input.oninput = tk.command_input_input;
     input.onfocusout = tk.command_input_focusout;
     input.focus();
+    input.setSelectionRange(text.length, text.length);
   };
+
+  window.tk_command_line = () => tk.open_command_line();
+  window.tk_tab_picker = () => tk.open_command_line("tab ");
+  window.tk_folder_picker = () => tk.open_command_line("open ");
+  window.tk_move_picker = () => tk.open_command_line("move ");
+  window.tk_tag_picker = () => tk.open_command_line("tag ");
+  window.tk_sort_picker = () => tk.open_command_line("sort ");
+  window.tk_filter_picker = () => tk.open_command_line("filter ");
+  window.tk_filter_all = filter_all;
 })(window.tk);

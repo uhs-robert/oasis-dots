@@ -247,18 +247,6 @@
     tk.display_folder("mailbox://nobody@smart%20mailboxes/Sent");
   window.tk_goto_projects = () =>
     tk.show_folder(tk.find_folder_by_name(tk.PROJECTS_FOLDER));
-  window.tk_goto_folder = () => {
-    tk.reset_count();
-    const name = window.prompt("Go to folder:");
-    if (!name) return;
-    const folder = tk.find_folder_by_name(name);
-    if (!folder) {
-      window.alert(`No folder matching "${name}"`);
-      return;
-    }
-    tk.show_folder(folder);
-  };
-
   window.tk_jump_back = () => {
     const n = tk.peek_count();
     tk.reset_count();
