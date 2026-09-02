@@ -126,6 +126,8 @@ home/claude/**
 !home/claude/.claude/agents/**
 !home/claude/.claude/commands/
 !home/claude/.claude/commands/**
+!home/claude/.claude/skills/
+!home/claude/.claude/skills/**
 !home/claude/.claude/AGENTS.md
 !home/claude/.claude/settings.json
 home/gemini/**
