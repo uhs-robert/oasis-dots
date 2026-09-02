@@ -187,11 +187,13 @@
     window.document?.documentElement?.getAttribute("windowtype") ===
     "mail:3pane";
 
-  const WHICHKEY_BG = "#0C0E13";
-  const WHICHKEY_HEADER_COLOR = "#8A93A0";
-  const WHICHKEY_KEY_COLOR = "#D8CF7F";
-  const WHICHKEY_GROUP_COLOR = "#FFA0A0";
-  const WHICHKEY_LABEL_COLOR = "#B0C8DE";
+  tk.whichkey_colors = {
+    bg: "#0C0E13",
+    header: "#8A93A0",
+    key: "#D8CF7F",
+    group: "#FFA0A0",
+    label: "#B0C8DE",
+  };
 
   /**
    * @returns {Element} the injected which-key panel, creating it if absent
@@ -204,7 +206,7 @@
     el.id = "tbkeys-whichkey";
     el.style.cssText =
       "position:fixed; right:12px; bottom:32px; z-index:2147483647; " +
-      `background:${WHICHKEY_BG}; border:1px solid #333; ` +
+      `background:${tk.whichkey_colors.bg}; border:1px solid #333; ` +
       "font:12px monospace; padding:6px 10px; " +
       "pointer-events:none; display:none;";
     (doc.body ?? doc.documentElement).appendChild(el);
@@ -226,7 +228,7 @@
 
   /**
    * @param {Document} doc - owner document to create the row in
-   * @param {string} key - key character(s), always colored WHICHKEY_KEY_COLOR
+   * @param {string} key - key character(s), always colored tk.whichkey_colors.key
    * @param {string} label - description, colored `label_color`
    * @param {string} label_color - CSS color for the label half
    * @returns {Element} a which-key row with the key and label colored separately
@@ -235,7 +237,7 @@
     const row = doc.createElement("div");
     const key_span = doc.createElement("span");
     key_span.textContent = `  ${key}  `;
-    key_span.style.color = WHICHKEY_KEY_COLOR;
+    key_span.style.color = tk.whichkey_colors.key;
     const label_span = doc.createElement("span");
     label_span.textContent = label;
     label_span.style.color = label_color;
@@ -256,7 +258,7 @@
     const doc = el.ownerDocument;
     el.textContent = "";
     el.appendChild(
-      tk.whichkey_text_row(doc, path.join(" "), WHICHKEY_HEADER_COLOR),
+      tk.whichkey_text_row(doc, path.join(" "), tk.whichkey_colors.header),
     );
     for (const [key, node] of Object.entries(children)) {
       const is_group = !!node.children;
@@ -266,7 +268,7 @@
           doc,
           key,
           label,
-          is_group ? WHICHKEY_GROUP_COLOR : WHICHKEY_LABEL_COLOR,
+          is_group ? tk.whichkey_colors.group : tk.whichkey_colors.label,
         ),
       );
     }
@@ -282,7 +284,11 @@
     const doc = el.ownerDocument;
     el.textContent = "";
     el.appendChild(
-      tk.whichkey_text_row(doc, "? -- all commands --", WHICHKEY_HEADER_COLOR),
+      tk.whichkey_text_row(
+        doc,
+        "? -- all commands --",
+        tk.whichkey_colors.header,
+      ),
     );
     for (const key of Object.keys(tk.whichkey_trie.children ?? {})) {
       el.appendChild(
@@ -290,13 +296,13 @@
           doc,
           key,
           `+${tk.whichkey_group_labels[key] ?? "..."}`,
-          WHICHKEY_GROUP_COLOR,
+          tk.whichkey_colors.group,
         ),
       );
     }
     for (const [key, label] of WHICHKEY_SINGLES) {
       el.appendChild(
-        tk.whichkey_entry_row(doc, key, label, WHICHKEY_LABEL_COLOR),
+        tk.whichkey_entry_row(doc, key, label, tk.whichkey_colors.label),
       );
     }
     el.style.display = "block";

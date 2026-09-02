@@ -62,6 +62,19 @@
   };
 
   /**
+   * @returns {Object[]} every folder descending from every account's root folder
+   */
+  tk.all_folders = () => {
+    const folders = [];
+    for (const account of window.MailServices?.accounts?.accounts ?? []) {
+      const root = account.incomingServer?.rootFolder;
+      if (!root) continue;
+      for (const folder of root.descendants) folders.push(folder);
+    }
+    return folders;
+  };
+
+  /**
    * Searches every account for a folder named `name`, preferring an exact match over a substring one.
    * @param {string} name - folder name, matched case-insensitively
    * @returns {Object} the first matching folder, or null if none matches
@@ -69,14 +82,10 @@
   tk.find_folder_by_name = (name) => {
     const target = name.toLowerCase();
     let partial = null;
-    for (const account of window.MailServices?.accounts?.accounts ?? []) {
-      const root = account.incomingServer?.rootFolder;
-      if (!root) continue;
-      for (const folder of root.descendants) {
-        const folder_name = folder.name.toLowerCase();
-        if (folder_name === target) return folder;
-        if (!partial && folder_name.includes(target)) partial = folder;
-      }
+    for (const folder of tk.all_folders()) {
+      const folder_name = folder.name.toLowerCase();
+      if (folder_name === target) return folder;
+      if (!partial && folder_name.includes(target)) partial = folder;
     }
     return partial;
   };
@@ -100,7 +109,10 @@
    * @param {Object} marks - letter to folder URI map to persist
    */
   tk.save_marks = (marks) => {
-    window.Services?.prefs?.setStringPref?.(tk.MARK_PREF, JSON.stringify(marks));
+    window.Services?.prefs?.setStringPref?.(
+      tk.MARK_PREF,
+      JSON.stringify(marks),
+    );
   };
 
   /**
