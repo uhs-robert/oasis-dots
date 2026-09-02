@@ -112,6 +112,7 @@
     ["n", "Next search match"],
     ["N", "Previous search match"],
     [";", "Open conversation"],
+    [":", "Command line"],
     ["G", "Go to bottom"],
     [".", "Repeat last action"],
     ["0-9", "Count prefix"],

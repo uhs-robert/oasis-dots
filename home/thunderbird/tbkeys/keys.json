@@ -72,6 +72,7 @@
   "n": "func:tk_search_next",
   "N": "func:tk_search_prev",
   ";": "cmd:cmd_openConversation",
+  ":": "func:tk_command_line",
   "alt+h": "func:tk_focus_thread_tree",
   "alt+l": "func:tk_focus_message_pane",
   "ctrl+h": "tbkeys:closeMessageAndRefresh",

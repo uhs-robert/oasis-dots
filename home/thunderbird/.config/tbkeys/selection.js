@@ -64,6 +64,16 @@
   };
 
   /**
+   * Leaves visual mode and drops the recorded anchor/end without touching the tree selection, for a context change that makes those row indices meaningless.
+   */
+  tk.exit_visual = () => {
+    window.vim = "normal";
+    window.visualAnchor = undefined;
+    window.visualEnd = undefined;
+    tk.repaint_mode();
+  };
+
+  /**
    * Exits visual mode and collapses the tree selection to a single row after an action ran over a range.
    * @param {Element} tt - the thread tree
    * @param {number} cursor_index - row to select, clamped to the surviving row count

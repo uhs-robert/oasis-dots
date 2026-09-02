@@ -6,6 +6,7 @@
 
   window.tk?.whichkey_teardown?.();
   window.tk?.ui_teardown?.();
+  window.tk?.command_teardown?.();
   window.tk = {};
 })();
 

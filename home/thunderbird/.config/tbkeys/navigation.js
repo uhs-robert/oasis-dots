@@ -18,10 +18,7 @@
     const folder_after =
       window.gTabmail?.currentAbout3Pane?.gFolder?.URI ?? null;
     if (folder_before !== folder_after) {
-      window.vim = "normal";
-      window.visualAnchor = undefined;
-      window.visualEnd = undefined;
-      tk.repaint_mode();
+      tk.exit_visual();
       return;
     }
     if (typeof tt?.currentIndex !== "number" || tt.currentIndex < 0) return;

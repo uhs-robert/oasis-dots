@@ -58,15 +58,22 @@
     const is_junk = range.anchor_hdr.getStringProperty("junkscore") === "100";
     tk.run_view_command(tt, is_junk ? "unjunk" : "junk");
   });
-  window.tk_move_to_projects = m_chord((tt, range) => {
-    const folder = tk.find_folder_by_name(tk.PROJECTS_FOLDER);
-    if (!folder) return;
-    tt?.view?.doCommandWithFolder?.(
-      window.Ci.nsMsgViewCommandType.moveMessages,
-      folder,
-    );
-    return range.top_index;
-  });
+  /**
+   * @param {Object} folder - folder to move the current message or visual selection into; a no-op when null
+   * @returns {Function} m_chord handler that performs the move
+   */
+  tk.move_to_folder = (folder) =>
+    m_chord((tt, range) => {
+      if (!folder) return;
+      tt?.view?.doCommandWithFolder?.(
+        window.Ci.nsMsgViewCommandType.moveMessages,
+        folder,
+      );
+      return range.top_index;
+    });
+
+  window.tk_move_to_projects = () =>
+    tk.move_to_folder(tk.find_folder_by_name(tk.PROJECTS_FOLDER))();
 
   window.tk_delete = act_over_range("cmd_delete");
   window.tk_archive = act_over_range("cmd_archive");

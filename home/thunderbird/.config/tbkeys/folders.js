@@ -30,12 +30,15 @@
     const pane = window.gTabmail?.currentAbout3Pane;
     if (!pane) return;
     const current_uri = pane.gFolder?.URI;
-    if (!tk.jumping && current_uri && current_uri !== folder.URI) {
+    const changed = !!current_uri && current_uri !== folder.URI;
+    if (!tk.jumping && changed) {
       tk.jump_back_stack.push(current_uri);
       if (tk.jump_back_stack.length > JUMP_LIST_MAX) tk.jump_back_stack.shift();
       tk.jump_forward_stack = [];
     }
     pane.displayFolder?.(folder);
+    // Anchor/end name rows in the folder being left, so they cannot survive it.
+    if (changed && tk.is_visual()) tk.exit_visual();
   };
 
   /**
