@@ -203,6 +203,45 @@
   tk.peek_count = () => (tk.has_count() ? window.count : 1);
   tk.reset_count = () => {
     window.count = undefined;
+    tk.repaint_mode();
+  };
+
+  /**
+   * @returns {Element} the injected mode/count indicator, or null where the mail status bar is absent (e.g. compose windows)
+   */
+  tk.ensure_mode_indicator = () => {
+    const doc = window.document;
+    const host =
+      doc?.getElementById("statusTextBox") ?? doc?.getElementById("status-bar");
+    if (!host) return null;
+    let el = doc.getElementById("tbkeys-mode-indicator");
+    if (el) return el;
+    el = doc.createXULElement
+      ? doc.createXULElement("label")
+      : doc.createElement("label");
+    el.id = "tbkeys-mode-indicator";
+    el.className = "statusbarpanel";
+    el.setAttribute("crop", "end");
+    host.insertBefore(el, host.firstChild);
+    return el;
+  };
+
+  // Known gap: the pending chord (e.g. "m" awaiting "r") is not shown - it
+  // lives inside Mousetrap's internal buffer and isn't exposed to us.
+  /**
+   * Repaints the mode/count indicator from window.vim and window.count; a no-op where the status bar is absent.
+   */
+  tk.repaint_mode = () => {
+    const el = tk.ensure_mode_indicator();
+    if (!el) return;
+    const parts = [tk.is_visual() ? "-- VISUAL --" : "-- NORMAL --"];
+    if (tk.has_count()) parts.push(String(window.count));
+    const text = parts.join(" ");
+    if (el.namespaceURI?.includes("there.is.only.xul")) {
+      el.setAttribute("value", text);
+    } else {
+      el.textContent = text;
+    }
   };
 
   /**
@@ -240,6 +279,7 @@
         : n === 0
           ? window.count
           : n;
+    tk.repaint_mode();
   };
 
   // -- message read-state toggling ----------------------------------------
@@ -430,6 +470,7 @@
       window.vim = "normal";
       window.visualAnchor = undefined;
       window.visualEnd = undefined;
+      tk.repaint_mode();
       return;
     }
     if (typeof tt?.currentIndex !== "number" || tt.currentIndex < 0) return;
@@ -542,12 +583,14 @@
       window.visualAnchor = undefined;
       window.visualEnd = undefined;
     }
+    tk.repaint_mode();
   };
 
   window.tk_escape = () => {
     const was_visual = window.vim === "visual";
     window.vim = "normal";
     window.count = 0;
+    tk.repaint_mode();
     if (was_visual) {
       const tt = tk.get_thread_tree();
       const end =
@@ -1020,4 +1063,5 @@
     "tk_mark_unread",
     "tk_mark_flagged",
   ].forEach(tk.record_action);
+  tk.repaint_mode();
 })();
