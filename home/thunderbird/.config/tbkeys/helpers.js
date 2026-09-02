@@ -95,16 +95,43 @@
   tk.is_visual = () => window.vim === "visual";
 
   /**
-   * @returns {number} the pending count prefix, or 1 if none is set
+   * @returns {boolean} true when a count prefix is actually pending, as opposed to peek_count's default of 1
    */
-  tk.peek_count = () =>
+  tk.has_count = () =>
     typeof window.count === "number" &&
     Number.isFinite(window.count) &&
-    window.count > 0
-      ? window.count
-      : 1;
+    window.count > 0;
+
+  /**
+   * @returns {number} the pending count prefix, or 1 if none is set
+   */
+  tk.peek_count = () => (tk.has_count() ? window.count : 1);
   tk.reset_count = () => {
     window.count = undefined;
+  };
+
+  /**
+   * @param {string} cmd - goDoCommand command id
+   * @param {number} n - number of times to run it
+   */
+  tk.repeat_command = (cmd, n) => {
+    for (let i = 0; i < n; i++) window.goDoCommand(cmd);
+  };
+
+  // -- last-action recording for . -----------------------------------------
+
+  tk.last_action = null;
+
+  /**
+   * Wraps window[name] so invoking it records itself (and the count it saw) as the last action, for . to replay; delegates to the original with no behavior change.
+   * @param {string} name - name of a window.tk_* function to wrap in place
+   */
+  tk.record_action = (name) => {
+    const original = window[name];
+    window[name] = (...args) => {
+      tk.last_action = { name, count: tk.peek_count() };
+      return original(...args);
+    };
   };
 
   /**
@@ -268,6 +295,69 @@
     return true;
   };
 
+  // -- viewport repositioning -----------------------------------------------
+
+  /**
+   * Scrolls the tree so the current row lands at the given viewport position, without touching selection or currentIndex.
+   * @param {Element} tt - the thread tree
+   * @param {"top"|"center"|"bottom"} position - target position within the viewport
+   */
+  tk.reposition_row = (tt, position) => {
+    const row_height = tt?._rowElementClass?.ROW_HEIGHT;
+    if (!tt || typeof tt.currentIndex !== "number" || tt.currentIndex < 0)
+      return;
+    if (!row_height || typeof tt.scrollTo !== "function") return;
+    const visible_height = tt.clientHeight;
+    const top_of_row = row_height * tt.currentIndex;
+    let target;
+    if (position === "top") target = top_of_row;
+    else if (position === "bottom")
+      target = top_of_row + row_height - visible_height;
+    else target = top_of_row + row_height / 2 - visible_height / 2;
+    tt.scrollTo({ top: target, behavior: "instant" });
+  };
+
+  // -- unread thread navigation ----------------------------------------------
+
+  /**
+   * Selects the count'th next/previous row with an unread header, stopping at the folder's edge without wrapping or crossing folders; extends the visual selection like j/k when in visual mode.
+   * @param {number} direction - 1 for next, -1 for previous
+   */
+  tk.step_unread = (direction) => {
+    const tt = tk.get_thread_tree();
+    const view = tt?.view;
+    if (!tt || !view) {
+      tk.reset_count();
+      return;
+    }
+    const is_visual = tk.is_visual();
+    const row_count = view.rowCount;
+    const start =
+      is_visual && typeof window.visualEnd === "number"
+        ? window.visualEnd
+        : tt.currentIndex;
+    let idx = start;
+    let found = start;
+    for (let remaining = tk.peek_count(); remaining > 0; remaining--) {
+      for (idx += direction; idx >= 0 && idx < row_count; idx += direction) {
+        const hdr = view.getMsgHdrAt(idx);
+        if (hdr && !hdr.isRead) break;
+      }
+      if (idx < 0 || idx >= row_count) break;
+      found = idx;
+    }
+    tk.reset_count();
+    if (found === start) return;
+    if (is_visual) {
+      const anchor =
+        typeof window.visualAnchor === "number" ? window.visualAnchor : start;
+      tt._selectRange(anchor, found, false);
+      window.visualEnd = found;
+    } else {
+      tt._selectSingle(found);
+    }
+  };
+
   window.tk = tk;
 
   // -- flat tk_* functions for keys.json "func:" bindings ------------------
@@ -374,19 +464,35 @@
     const tt = tk.get_thread_tree();
     const hdr = tk.get_current_hdr(tt);
     tk.toggle_read_state(hdr);
-    window.goDoCommand("cmd_markAsRead");
+    const n = tk.peek_count();
+    tk.reset_count();
+    tk.repeat_command("cmd_markAsRead", n);
   };
   window.tk_mark_unread = () => {
     const tt = tk.get_thread_tree();
     const hdr = tk.get_current_hdr(tt);
     tk.toggle_read_state(hdr);
-    window.goDoCommand("cmd_markAsUnread");
+    const n = tk.peek_count();
+    tk.reset_count();
+    tk.repeat_command("cmd_markAsUnread", n);
   };
   window.tk_mark_flagged = () => {
     const tt = tk.get_thread_tree();
     const hdr = tk.get_current_hdr(tt);
     tk.toggle_read_state(hdr);
-    window.goDoCommand("cmd_markAsFlagged");
+    const n = tk.peek_count();
+    tk.reset_count();
+    tk.repeat_command("cmd_markAsFlagged", n);
+  };
+  window.tk_delete = () => {
+    const n = tk.peek_count();
+    tk.reset_count();
+    tk.repeat_command("cmd_delete", n);
+  };
+  window.tk_archive = () => {
+    const n = tk.peek_count();
+    tk.reset_count();
+    tk.repeat_command("cmd_archive", n);
   };
   window.tk_mark_junk_toggle = () => {
     const tt = tk.get_thread_tree();
@@ -439,6 +545,12 @@
     if (e.id === "folderTree") tk.expand_folder_tree(e);
   };
 
+  window.tk_scroll_top = () => tk.reposition_row(tk.get_thread_tree(), "top");
+  window.tk_scroll_center = () =>
+    tk.reposition_row(tk.get_thread_tree(), "center");
+  window.tk_scroll_bottom = () =>
+    tk.reposition_row(tk.get_thread_tree(), "bottom");
+
   window.tk_folder_search = () => {
     const focused = tk.get_focused_element();
     if (focused?.id !== "folderTree") {
@@ -477,6 +589,9 @@
       ft.scrollToIndex?.(matches[0]);
     }
   };
+
+  window.tk_next_unread_thread = () => tk.step_unread(1);
+  window.tk_prev_unread_thread = () => tk.step_unread(-1);
 
   window.tk_search_next = () => {
     if (!tk.folder_search_step(1)) window.goDoCommand("cmd_findAgain");
@@ -652,16 +767,19 @@
     const is_visual = tk.is_visual();
     const e = tk.get_focused_element();
     if (!e) return;
+    const n = tk.peek_count();
     if (e.id === "threadTree") {
+      const last = (e.view?.rowCount ?? 1) - 1;
+      const target = Math.min(Math.max(n - 1, 0), Math.max(last, 0));
       if (is_visual) {
         const anchor =
           typeof window.visualAnchor === "number"
             ? window.visualAnchor
             : e.currentIndex;
-        e._selectRange(anchor, 0, false);
-        window.visualEnd = 0;
+        e._selectRange(anchor, target, false);
+        window.visualEnd = target;
       } else {
-        e._selectSingle(0);
+        e._selectSingle(target);
       }
     } else if (e.id === "folderTree") {
       e.handleEvent(
@@ -671,23 +789,29 @@
         }),
       );
     }
+    tk.reset_count();
   };
 
   window.tk_goto_bottom = () => {
     const is_visual = tk.is_visual();
     const e = tk.get_focused_element();
     if (!e) return;
+    const has_count = tk.has_count();
+    const n = tk.peek_count();
     if (e.id === "threadTree") {
       const last = (e.view?.rowCount ?? 1) - 1;
+      const target = has_count
+        ? Math.min(Math.max(n - 1, 0), Math.max(last, 0))
+        : last;
       if (is_visual) {
         const anchor =
           typeof window.visualAnchor === "number"
             ? window.visualAnchor
             : e.currentIndex;
-        e._selectRange(anchor, last, false);
-        window.visualEnd = last;
+        e._selectRange(anchor, target, false);
+        window.visualEnd = target;
       } else {
-        e._selectSingle(last);
+        e._selectSingle(target);
       }
     } else if (e.id === "folderTree") {
       e.handleEvent(
@@ -697,5 +821,24 @@
         }),
       );
     }
+    tk.reset_count();
   };
+
+  window.tk_repeat_last = () => {
+    const last = tk.last_action;
+    if (!last || typeof window[last.name] !== "function") {
+      tk.reset_count();
+      return;
+    }
+    if (!tk.has_count()) window.count = last.count;
+    window[last.name]();
+  };
+
+  [
+    "tk_delete",
+    "tk_archive",
+    "tk_mark_read",
+    "tk_mark_unread",
+    "tk_mark_flagged",
+  ].forEach(tk.record_action);
 })();
