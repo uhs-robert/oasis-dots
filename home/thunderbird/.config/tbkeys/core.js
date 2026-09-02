@@ -5,6 +5,7 @@
   "use strict";
 
   window.tk?.whichkey_teardown?.();
+  window.tk?.ui_teardown?.();
   window.tk = {};
 })();
 
@@ -86,16 +87,21 @@
   // -- last-action recording for . -----------------------------------------
 
   tk.last_action = null;
+  tk.effective_count = null;
 
   /**
-   * Wraps window[name] so invoking it records itself (and the count it saw) as the last action, for . to replay; delegates to the original with no behavior change.
+   * Wraps window[name] so invoking it records itself as the last action, for . to replay; delegates to the original with no behavior change. Records the count the action actually consumed, which a visual-mode range caps at 1, rather than the count that was merely pending when it started.
    * @param {string} name - name of a window.tk_* function to wrap in place
    */
   tk.record_action = (name) => {
     const original = window[name];
     window[name] = (...args) => {
       tk.last_action = { name, count: tk.peek_count() };
-      return original(...args);
+      tk.effective_count = null;
+      const result = original(...args);
+      if (typeof tk.effective_count === "number")
+        tk.last_action.count = tk.effective_count;
+      return result;
     };
   };
 
@@ -113,7 +119,7 @@
     tk.repaint_mode();
   };
 
-  // -- message read-state toggling ----------------------------------------
+  // -- message state commands ---------------------------------------------
 
   /**
    * @param {Element} tt - the thread tree
@@ -122,11 +128,38 @@
   tk.get_current_hdr = (tt) => tt?.view?.getMsgHdrAt?.(tt.currentIndex);
 
   /**
-   * @param {Object} hdr - message header to toggle, or undefined/null to no-op
+   * Runs an nsMsgViewCommandType command over the view's whole current selection. These name the state to reach rather than toggling, so a command that fires more than once still lands where it was aimed.
+   * @param {Element} tt - the thread tree
+   * @param {string} name - nsMsgViewCommandType member name
    */
-  tk.toggle_read_state = (hdr) => {
-    if (hdr)
-      window.goDoCommand(hdr.isRead ? "cmd_markAsUnread" : "cmd_markAsRead");
+  tk.run_view_command = (tt, name) => {
+    const cmd = window.Ci?.nsMsgViewCommandType?.[name];
+    if (cmd !== undefined) tt?.view?.doCommand?.(cmd);
+  };
+
+  tk.read_snapshot = null;
+
+  /**
+   * Records the read state of every selected message as a chord opens. Suppressing the leader key should stop Thunderbird flipping it at all, so this only matters wherever preventDefault fails to reach the native shortcut.
+   */
+  tk.snapshot_read_state = () => {
+    const hdrs = tk.get_thread_tree()?.view?.getSelectedMsgHdrs?.() ?? [];
+    tk.read_snapshot = hdrs.length
+      ? hdrs.map((hdr) => ({ hdr, is_read: hdr.isRead }))
+      : null;
+  };
+
+  /**
+   * Restores the read state sampled when the chord opened, then clears it. Writes each header back through its own folder rather than issuing one selection-wide command, so a selection that has since changed, or was never uniform, still lands on exactly what was sampled.
+   */
+  tk.restore_read_state = () => {
+    const snapshot = tk.read_snapshot;
+    tk.read_snapshot = null;
+    if (!snapshot) return;
+    for (const { hdr, is_read } of snapshot) {
+      if (hdr.isRead !== is_read)
+        hdr.folder?.markMessagesRead?.([hdr], is_read);
+    }
   };
 
   // -- flat tk_* functions for keys.json "func:" bindings ------------------

@@ -1,7 +1,8 @@
-// Passive which-key overlay for pending chord prefixes: chord trie/metadata,
-// delay/timer state, and transient rendering. Visualization only - never
-// touches Mousetrap or tbkeys keyboard dispatch. Loaded last, so it also
-// fires the initial repaint once every module has populated window.tk.
+// Which-key overlay for pending chord prefixes: chord trie/metadata, delay/
+// timer state, and transient rendering. Never touches Mousetrap or tbkeys
+// dispatch; its one non-passive act is suppressing a chord leader's native
+// Thunderbird shortcut, which tbkeys itself cannot swallow. Loaded last, so
+// it also fires the initial repaint once every module has populated window.tk.
 (function (tk) {
   "use strict";
 
@@ -73,6 +74,7 @@
   tk.whichkey_path = [];
   tk.whichkey_timer = null;
   tk.whichkey_full_shown = false;
+  tk.suppress_keypress = null;
 
   // Group labels for the "?" full command list, shown as "+Label" per
   // leader key; only leaders that actually have children in the trie above.
@@ -129,27 +131,60 @@
     ["shift+l", "Focus thread tree"],
   ];
 
+  // Mirrors the tag list in tbkeys' own stopCallback: several of these are
+  // custom elements whose shadow DOM retargets events to the host.
   const WHICHKEY_TEXT_TAGS = new Set([
     "input",
     "textarea",
     "select",
+    "textbox",
     "html:input",
     "html:textarea",
+    "search-bar",
     "search-textbox",
     "xul:search-textbox",
+    "global-search-bar",
     "moz-input-search",
-    "browser",
+    "account-hub-container",
+    "imconversation",
   ]);
+
+  // Held apart from the text tags: a browser is opaque to us rather than a
+  // text field, and everything in the 3-pane sits inside one.
+  const WHICHKEY_OPAQUE_TAGS = new Set(["browser"]);
+
+  /**
+   * @param {Element} el - element to check
+   * @returns {boolean} true if the element or an ancestor takes typed text
+   */
+  tk.is_text_input = (el) => {
+    for (let node = el; node; node = node.parentElement) {
+      if (node.isContentEditable) return true;
+      if (WHICHKEY_TEXT_TAGS.has(node.tagName?.toLowerCase?.() ?? ""))
+        return true;
+    }
+    return false;
+  };
 
   /**
    * @param {Element} el - event target to check
-   * @returns {boolean} true if key events there should be left alone (text entry)
+   * @returns {boolean} true if key events there should be left alone
    */
   tk.is_whichkey_text_target = (el) => {
-    if (!el) return false;
-    if (el.isContentEditable) return true;
-    return WHICHKEY_TEXT_TAGS.has(el.tagName?.toLowerCase?.() ?? "");
+    if (tk.is_text_input(el)) return true;
+    for (let node = el; node; node = node.parentElement) {
+      if (WHICHKEY_OPAQUE_TAGS.has(node.tagName?.toLowerCase?.() ?? ""))
+        return true;
+    }
+    return false;
   };
+
+  /**
+   * @returns {boolean} true in the 3-pane mail window, false in compose windows
+   */
+  tk.is_mail_window = () =>
+    window.document?.documentElement?.getAttribute("windowtype") ===
+    "mail:3pane";
 
   const WHICHKEY_BG = "#0C0E13";
   const WHICHKEY_HEADER_COLOR = "#8A93A0";
@@ -283,12 +318,22 @@
   };
 
   /**
-   * Passive capture-phase keydown observer that mirrors chord progress into
-   * the which-key panel without touching default behavior, Mousetrap, or
-   * tbkeys - it only ever reads window.event state it does not own.
+   * Abandons a chord without running one: drops the read-state sample too, so a later chord cannot consume it. Completing a chord goes through hide_whichkey instead, leaving the sample for the action to restore from.
+   */
+  tk.abort_chord = () => {
+    tk.read_snapshot = null;
+    tk.suppress_keypress = null;
+    tk.hide_whichkey();
+  };
+
+  /**
+   * Capture-phase keydown observer that mirrors chord progress into the
+   * which-key panel and suppresses a chord leader's native Thunderbird
+   * shortcut. Never touches Mousetrap or tbkeys state it does not own.
    * @param {KeyboardEvent} e
    */
   tk.whichkey_handler = (e) => {
+    tk.sync_insert_mode?.();
     if (
       e.ctrlKey ||
       e.altKey ||
@@ -296,17 +341,17 @@
       tk.is_whichkey_text_target(e.target)
     ) {
       if (tk.whichkey_node !== tk.whichkey_trie || tk.whichkey_full_shown)
-        tk.hide_whichkey();
+        tk.abort_chord();
       return;
     }
     if (e.key === "Escape") {
-      tk.hide_whichkey();
+      tk.abort_chord();
       return;
     }
     if (tk.whichkey_full_shown) {
       // Any key dismisses the full list rather than falling through to
       // chord tracking - it's a reference view, not a chord in progress.
-      tk.hide_whichkey();
+      tk.abort_chord();
       return;
     }
     if (e.key === "?" && tk.whichkey_node === tk.whichkey_trie) {
@@ -318,7 +363,7 @@
     const next = tk.whichkey_node.children?.[e.key];
     if (!next) {
       if (tk.whichkey_node !== tk.whichkey_trie || tk.whichkey_full_shown)
-        tk.hide_whichkey();
+        tk.abort_chord();
       return;
     }
     tk.whichkey_path.push(e.key);
@@ -326,22 +371,46 @@
     tk.whichkey_full_shown = false;
     if (tk.whichkey_timer) window.clearTimeout(tk.whichkey_timer);
     if (next.children) {
+      // Cancelling on keydown would take the keypress with it, and Mousetrap
+      // needs that keypress to start a plain-character sequence.
+      if (tk.is_mail_window()) {
+        tk.suppress_keypress = e.key;
+        // m is the only leader whose native shortcut writes read state, and
+        // only an m chord ever restores, so a wider sample could only go stale.
+        if (tk.whichkey_path.length === 1 && e.key === "m")
+          tk.snapshot_read_state();
+      }
       tk.render_whichkey(tk.whichkey_path, next.children);
       // Matches Mousetrap's own 1000ms sequence-reset delay so the overlay
       // never outlives the pending chord it is describing.
-      tk.whichkey_timer = window.setTimeout(tk.hide_whichkey, 1000);
+      tk.whichkey_timer = window.setTimeout(tk.abort_chord, 1000);
     } else {
       tk.hide_whichkey();
     }
   };
 
-  window.addEventListener("keydown", tk.whichkey_handler, {
+  /**
+   * Cancels the native shortcut for a leader key that whichkey_handler has just seen open a chord. Runs on keypress so the event still reaches Mousetrap, which preventDefault does not block and which needs the keypress to start a plain-character sequence.
+   * @param {KeyboardEvent} e
+   */
+  tk.whichkey_keypress_handler = (e) => {
+    const key = tk.suppress_keypress;
+    tk.suppress_keypress = null;
+    if (key !== e.key || e.ctrlKey || e.altKey || e.metaKey) return;
+    if (tk.is_whichkey_text_target(e.target)) return;
+    e.preventDefault();
+  };
+
+  window.addEventListener("keydown", tk.whichkey_handler, { capture: true });
+  window.addEventListener("keypress", tk.whichkey_keypress_handler, {
     capture: true,
-    passive: true,
   });
 
   tk.whichkey_teardown = () => {
     window.removeEventListener("keydown", tk.whichkey_handler, {
+      capture: true,
+    });
+    window.removeEventListener("keypress", tk.whichkey_keypress_handler, {
       capture: true,
     });
     window.removeEventListener("unload", tk.whichkey_teardown);
