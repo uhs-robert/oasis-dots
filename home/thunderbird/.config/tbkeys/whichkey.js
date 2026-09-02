@@ -206,11 +206,12 @@
     "mail:3pane";
 
   tk.whichkey_colors = {
-    bg: "#0C0E13",
-    header: "#8A93A0",
-    key: "#D8CF7F",
-    group: "#FFA0A0",
-    label: "#B0C8DE",
+    bg: "var(--layout-background-0)",
+    header: "var(--color-gray-40)",
+    key: "var(--color-yellow-50)",
+    group: "var(--color-red-50)",
+    label: "var(--color-blue-30)",
+    border: "var(--color-gray-40)",
   };
 
   /**
@@ -224,7 +225,7 @@
     el.id = "tbkeys-whichkey";
     el.style.cssText =
       "position:fixed; right:12px; bottom:32px; z-index:2147483647; " +
-      `background:${tk.whichkey_colors.bg}; border:1px solid #333; ` +
+      `background:${tk.whichkey_colors.bg}; border:1px solid ${tk.whichkey_colors.border}; ` +
       "font:12px monospace; padding:6px 10px; " +
       "pointer-events:none; display:none;";
     (doc.body ?? doc.documentElement).appendChild(el);

@@ -9,6 +9,12 @@
     insert: "-- INSERT --",
   };
 
+  const MODE_COLORS = {
+    normal: "var(--color-yellow-50)",
+    insert: "var(--color-red-50)",
+    visual: "var(--color-orange-50)",
+  };
+
   const QUICK_FILTER_ID = "qfb-qs-textbox";
 
   /**
@@ -46,6 +52,7 @@
       const pos = matches.length ? (window.folderSearchIndex ?? 0) + 1 : 0;
       parts.push(`/${tk.search_term} [${pos}/${matches.length}]`);
     }
+    el.style.color = MODE_COLORS[window.vim] ?? MODE_COLORS.normal;
     const text = parts.join(" ");
     if (el.namespaceURI?.includes("there.is.only.xul")) {
       el.setAttribute("value", text);
