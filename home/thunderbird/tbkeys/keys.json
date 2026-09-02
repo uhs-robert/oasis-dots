@@ -55,7 +55,7 @@
   "g o": "func:tk_folder_picker",
   "g e": "func:tk_goto_extensions",
   "g c": "func:tk_goto_config",
-  "f u": "cmd:cmd_viewUnreadMsgs",
+  "f u": "func:tk_filter_unread",
   "f a": "func:tk_filter_all",
   "f s": "func:tk_toggle_starred_filter",
   "f f": "func:tk_filter_picker",

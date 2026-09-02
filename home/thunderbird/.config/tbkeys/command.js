@@ -58,19 +58,11 @@
     bar.updateSearch?.();
   };
 
-  // The view filter and the quick filter bar are separate constraints, so
-  // "all" has to drop both or a tag or starred filter survives it.
-  const filter_all = () => {
-    tk.reset_count();
-    window.goDoCommand("cmd_viewAllMsgs");
-    window.gTabmail?.currentAbout3Pane?.quickFilterBar?._resetFilterState?.();
-  };
-
   // Shared with filter's complete(), so run and completion never drift apart.
   // Each takes the full argument list, since "tag" carries a name after it.
   const FILTERS = {
-    unread: () => window.goDoCommand("cmd_viewUnreadMsgs"),
-    all: () => filter_all(),
+    unread: () => tk.filter_unread(),
+    all: () => tk.filter_all(),
     starred: () => window.tk_toggle_starred_filter(),
     tag: (args) => filter_by_tag(args.slice(1).join(" ")),
   };
@@ -751,5 +743,4 @@
   window.tk_tag_picker = () => tk.open_command_line("tag ");
   window.tk_sort_picker = () => tk.open_command_line("sort ");
   window.tk_filter_picker = () => tk.open_command_line("filter ");
-  window.tk_filter_all = filter_all;
 })(window.tk);

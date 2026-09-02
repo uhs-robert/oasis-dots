@@ -149,6 +149,55 @@
       ?.click();
   };
 
+  // View commands are handled by about:3pane, not the top-level chrome
+  // window. The unread view command is disabled for virtual folders, so use
+  // the Quick Filter Bar's equivalent there (including unified folders).
+  const current_pane = () => window.gTabmail?.currentAbout3Pane;
+  const is_virtual_folder = (pane) =>
+    !!(
+      pane?.gFolder?.flags &
+      (window.Ci?.nsMsgFolderFlags?.Virtual ?? 0)
+    );
+
+  const apply_quick_filter = (pane, name, value) => {
+    const bar = pane?.quickFilterBar;
+    if (!bar?.filterer) return "No quick filter bar";
+    bar._showFilterBar?.(true);
+    bar.filterer.setFilterValue(name, value);
+    bar.reflectFiltererState?.();
+    bar.updateSearch?.();
+  };
+
+  tk.filter_unread = () => {
+    tk.reset_count();
+    const pane = current_pane();
+    if (!pane) return "No message pane to filter";
+    if (is_virtual_folder(pane))
+      return apply_quick_filter(pane, "unread", true);
+    const controller = pane.commandController;
+    if (!controller) return "No message pane command controller";
+    controller.doCommand("cmd_viewUnreadMsgs");
+  };
+
+  tk.filter_all = () => {
+    tk.reset_count();
+    const pane = current_pane();
+    if (!pane) return "No message pane to filter";
+    const controller = pane?.commandController;
+    if (!controller) return "No message pane command controller";
+    controller.doCommand("cmd_viewAllMsgs");
+    pane.quickFilterBar?._resetFilterState?.();
+  };
+
+  window.tk_filter_unread = () => {
+    const error = tk.filter_unread();
+    if (error) window.alert(error);
+  };
+  window.tk_filter_all = () => {
+    const error = tk.filter_all();
+    if (error) window.alert(error);
+  };
+
   for (const name of Object.keys(tk.SORT_COLUMNS)) {
     window[`tk_sort_${name}`] = () => {
       tk.reset_count();
