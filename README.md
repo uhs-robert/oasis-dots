@@ -57,7 +57,7 @@ Vim-style keybindings for Betterbird, provided by the tbkeys add-on. Two locatio
 - `home/thunderbird/tbkeys/keys.json` - the keymap, one line per binding.
 - `home/thunderbird/.config/tbkeys/*.js` - the code the bindings call, split into cohesive feature modules. Stowed to `~/.config/tbkeys/` by the `thunderbird` package, and loaded automatically each time Betterbird starts.
 
-`system/opt/betterbird/betterbird.cfg` resolves `~/.config/tbkeys/` once per window and loads the modules through `Services.scriptloader.loadSubScriptWithOptions` in a fixed dependency order: `core.js`, `selection.js`, `folders.js`, `motions.js`, `navigation.js`, `actions.js`, `search.js`, `command.js`, `ui.js`, `whichkey.js`. A missing or failing module logs which file it was rather than a generic error, and loading stops there for that window.
+`system/opt/betterbird/betterbird.cfg` resolves `~/.config/tbkeys/` once per window and loads the modules through `Services.scriptloader.loadSubScriptWithOptions` in a fixed dependency order: `core.js`, `selection.js`, `folders.js`, `motions.js`, `navigation.js`, `actions.js`, `yank.js`, `search.js`, `command.js`, `ui.js`, `whichkey.js`. A missing or failing module logs which file it was rather than a generic error, and loading stops there for that window.
 
 Each module is `(function (tk) { "use strict"; ... })(window.tk);`, populating the shared `window.tk` namespace rather than using ES modules, imports, a bundler, or a build step. `core.js` is the exception: it first runs the teardown hooks the previous load left behind (`whichkey_teardown`, `ui_teardown`, `command_teardown`) so a reload doesn't leak listeners or injected elements, then creates a fresh `window.tk = {}` before populating it, so a reload never carries stale functions from a previous version.
 
@@ -69,9 +69,10 @@ Module responsibilities, following a one-way dependency direction (later modules
 - `motions.js` - `h/j/k/l`, `gg`/`G`, paging, viewport repositioning (`zz`/`zt`/`zb`), and the thread/folder fold commands (`zM`/`zR`).
 - `navigation.js` - higher-level stepping (unread/thread/starred/attachment), focus switching, and tab navigation.
 - `actions.js` - message mutations (read/unread/flag/junk/delete/archive/move) and `.` repeat-last-action.
+- `yank.js` - non-mutating message metadata/content yanks and privileged clipboard writes.
 - `search.js` - incremental folder search (state, input, highlighting, matching, accept/cancel/step) and `tk_escape`, since escape is mostly search cleanup.
 - `command.js` - the Vim-style `:` command line: input UI, parser, and a declarative command registry (`archive`, `move`, `filter`, `open`) that calls into the existing folder/action helpers rather than duplicating them.
-- `ui.js` - the persistent mode/count/status indicator. Kept small on purpose; feature-specific UI lives with its feature instead.
+- `ui.js` - the persistent mode/count/status indicator and lightweight transient feedback.
 - `whichkey.js` - the passive which-key overlay: chord trie, timers, and transient rendering. Loaded last, and fires the initial `tk.repaint_mode()` once every module is in place. Visualization only - it never touches Mousetrap or tbkeys keyboard dispatch.
 
 New behavior belongs in the module matching its responsibility above; a feature spanning several (e.g. an operator acting over a range) should consume the existing `selection.js`/`motions.js`/`actions.js` primitives rather than reimplementing them.

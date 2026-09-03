@@ -27,6 +27,7 @@
     "motions.js",
     "navigation.js",
     "actions.js",
+    "yank.js",
     "search.js",
     "command.js",
     "ui.js",

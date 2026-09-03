@@ -61,6 +61,20 @@
     }
   };
 
+  let status_timer = null;
+  tk.show_status = (message) => {
+    const el = tk.ensure_mode_indicator();
+    if (!el) return;
+    if (status_timer) window.clearTimeout(status_timer);
+    if (el.namespaceURI?.includes("there.is.only.xul"))
+      el.setAttribute("value", message);
+    else el.textContent = message;
+    status_timer = window.setTimeout(() => {
+      status_timer = null;
+      tk.repaint_mode();
+    }, 1800);
+  };
+
   // -- insert mode ----------------------------------------------------------
 
   tk.mode_before_insert = null;
@@ -127,6 +141,7 @@
   });
 
   tk.ui_teardown = () => {
+    if (status_timer) window.clearTimeout(status_timer);
     window.removeEventListener("focusin", tk.focus_handler, { capture: true });
     window.removeEventListener("focusout", tk.focus_handler, { capture: true });
     window.removeEventListener("keydown", tk.quick_filter_enter_handler, {
