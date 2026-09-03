@@ -550,7 +550,7 @@
     bar.style.cssText =
       "position:fixed; left:0; right:0; bottom:0; z-index:2147483647; " +
       "display:flex; flex-direction:column; align-items:stretch; " +
-      `background:${tk.whichkey_colors.bg}; border-top:1px solid ${tk.whichkey_colors.border}; ` +
+      `background:${tk.whichkey_colors.bg}; outline:1px solid ${tk.whichkey_colors.border}; ` +
       `font:12px monospace; color:${tk.whichkey_colors.label};`;
 
     const menu = doc.createElement("div");
@@ -558,8 +558,12 @@
     menu.style.cssText = "display:none; pointer-events:none; padding:2px 8px;";
 
     const row = doc.createElement("div");
+    const thread_tree = tk.get_thread_tree();
+    const thread_bg = thread_tree
+      ? window.getComputedStyle(thread_tree).backgroundColor
+      : tk.whichkey_colors.bg;
     row.style.cssText =
-      "display:flex; align-items:center; gap:4px; padding:4px 8px;";
+      `display:flex; align-items:center; gap:4px; padding:4px 8px; background:${thread_bg};`;
     const label = doc.createElement("span");
     label.textContent = ":";
     const input = doc.createElement("input");
@@ -567,8 +571,8 @@
     input.type = "text";
     input.setAttribute("aria-label", "tbkeys command");
     input.style.cssText =
-      `flex:1; font:inherit; background:${tk.whichkey_colors.bg}; color:${tk.whichkey_colors.label}; ` +
-      `border:1px solid ${tk.whichkey_colors.border}; padding:2px 4px;`;
+      `flex:1; font:inherit; background:${thread_bg}; color:${tk.whichkey_colors.label}; ` +
+      `border:0; outline:0; padding:2px 4px;`;
     row.appendChild(label);
     row.appendChild(input);
 
