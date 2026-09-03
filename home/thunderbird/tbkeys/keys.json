@@ -78,7 +78,7 @@
   "c": "func:MsgNewMessage",
   "q": "tbkeys:closeMessageAndRefresh",
   "u": "cmd:cmd_undo",
-  "/": "func:tk_folder_search",
+  "/": "func:tk_search",
   "?": "unset",
   "n": "func:tk_search_next",
   "N": "func:tk_search_prev",

@@ -132,7 +132,7 @@
     ["c", "New message"],
     ["q", "Close message / refresh"],
     ["u", "Undo"],
-    ["/", "Search"],
+    ["/", "Search focused pane"],
     ["n", "Next search match"],
     ["N", "Previous search match"],
     [";", "Open conversation"],

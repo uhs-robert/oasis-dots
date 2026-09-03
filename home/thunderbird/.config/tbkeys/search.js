@@ -7,6 +7,115 @@
   tk.folder_search_active = false;
   tk.folder_search_origin_uri = null;
   tk.search_term = "";
+  tk.active_search_kind = null;
+  tk.thread_search = null;
+  tk.message_search_active = false;
+
+  const quick_filter_input = () =>
+    tk.get_inbox_doc()?.getElementById("qfb-qs-textbox") ?? null;
+
+  const emit_input = (input) => {
+    input?.dispatchEvent(
+      new input.ownerDocument.defaultView.Event("input", { bubbles: true }),
+    );
+    input?.dispatchEvent(
+      new input.ownerDocument.defaultView.Event("change", { bubbles: true }),
+    );
+  };
+
+  const replace_search_context = () => {
+    if (tk.active_search_kind === "thread") tk.cancel_thread_search?.();
+    if (tk.active_search_kind === "message") {
+      window.goDoCommand("cmd_findClose");
+      tk.message_search_active = false;
+    }
+    if (tk.folder_search_active || window.folderSearchMatches?.length) {
+      const doc = tk.get_inbox_doc();
+      doc?.getElementById("tbkeys-search-input")?.remove();
+      if (doc) tk.clear_search_highlights?.(doc);
+      tk.folder_search_active = false;
+      tk.search_term = "";
+      window.folderSearchMatches = undefined;
+      window.folderSearchIndex = undefined;
+      tk.folder_search_origin_uri = null;
+    }
+    tk.active_search_kind = null;
+  };
+
+  /**
+   * Resolves the pane which owns the current focus. Message-pane focus is
+   * represented by the browser in about:3pane, or by the content document
+   * when focus has crossed into the displayed message.
+   * @returns {"folder"|"thread"|"message"|null}
+   */
+  tk.focused_search_pane = () => {
+    const focused = tk.get_focused_element();
+    if (focused?.id === "folderTree") return "folder";
+    if (focused?.id === "threadTree") return "thread";
+    const about3pane = window.gTabmail?.currentAbout3Pane;
+    const browser = window.gTabmail?.currentAboutMessage?.getMessagePaneBrowser?.();
+    const active = about3pane?.document?.activeElement;
+    if (browser && (active === browser || browser.contains?.(active)))
+      return "message";
+    if (browser?.contentDocument?.hasFocus?.()) return "message";
+    return null;
+  };
+
+  tk.start_thread_search = () => {
+    replace_search_context();
+    const bar = window.gTabmail?.currentAbout3Pane?.quickFilterBar;
+    if (!bar) {
+      tk.show_status?.("SEARCH: Quick Filter Bar unavailable");
+      return;
+    }
+    const was_hidden = bar.collapsed === true;
+    bar._showFilterBar?.(true);
+    const input = quick_filter_input();
+    if (!input) {
+      if (was_hidden) bar._showFilterBar?.(false);
+      tk.show_status?.("SEARCH: Quick Filter input unavailable");
+      return;
+    }
+    tk.thread_search = { input, original_value: input.value, was_hidden };
+    const on_keydown = (event) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        event.stopPropagation();
+        window.tk_escape();
+      } else if (event.key === "Enter") {
+        event.preventDefault();
+        event.stopPropagation();
+        input.removeEventListener("keydown", on_keydown, true);
+        tk.active_search_kind = "thread";
+        input.blur();
+        tk.repaint_mode();
+      }
+    };
+    tk.thread_search.on_keydown = on_keydown;
+    input.addEventListener("keydown", on_keydown, true);
+    tk.active_search_kind = "thread";
+    input.focus();
+    input.select?.();
+    input.value = "";
+    emit_input(input);
+    tk.repaint_mode();
+  };
+
+  tk.start_message_search = () => {
+    replace_search_context();
+    const browser = window.gTabmail?.currentAboutMessage?.getMessagePaneBrowser?.();
+    if (!browser) {
+      tk.show_status?.("SEARCH: message pane unavailable");
+      return;
+    }
+    tk.active_search_kind = "message";
+    tk.message_search_active = true;
+    browser.focus?.();
+    // cmd_find is Thunderbird's native find-in-message path. It owns the
+    // find bar and therefore preserves the displayed message's find state.
+    window.goDoCommand("cmd_find");
+    tk.repaint_mode();
+  };
 
   /**
    * @param {Document} fdoc - the folder tree's owner document
@@ -118,6 +227,7 @@
    * Opens the incremental folder search: expands the tree once (no per-keystroke collapse) and focuses a text input above it.
    */
   tk.start_folder_search = () => {
+    replace_search_context();
     const ft = tk.get_folder_tree();
     if (!ft) return;
     const fdoc = ft.ownerDocument;
@@ -126,6 +236,7 @@
     tk.clear_search_highlights(fdoc);
     tk.expand_folder_tree(ft);
     tk.folder_search_active = true;
+    tk.active_search_kind = "folder";
     const input = tk.ensure_folder_search_input(ft);
     input.value = "";
     input.oninput = () => tk.render_folder_search(ft, input.value);
@@ -189,9 +300,46 @@
     return true;
   };
 
+  tk.search = () => {
+    const pane = tk.focused_search_pane();
+    if (pane === "folder") return tk.start_folder_search();
+    if (pane === "thread") return tk.start_thread_search();
+    if (pane === "message") return tk.start_message_search();
+    tk.show_status?.("SEARCH: focus a folder, thread, or message pane");
+  };
+
+  tk.cancel_thread_search = () => {
+    const session = tk.thread_search;
+    if (!session) return false;
+    session.input.removeEventListener("keydown", session.on_keydown, true);
+    session.input.value = session.original_value;
+    emit_input(session.input);
+    if (session.was_hidden)
+      window.gTabmail?.currentAbout3Pane?.quickFilterBar?._showFilterBar?.(false);
+    tk.thread_search = null;
+    tk.active_search_kind = null;
+    tk.repaint_mode();
+    return true;
+  };
+
   // -- flat tk_* functions for keys.json "func:" bindings ------------------
 
   window.tk_escape = () => {
+    if (tk.active_search_kind === "thread") {
+      window.vim = "normal";
+      window.count = 0;
+      tk.cancel_thread_search();
+      return;
+    }
+    if (tk.active_search_kind === "message") {
+      window.vim = "normal";
+      window.count = 0;
+      window.goDoCommand("cmd_findClose");
+      tk.message_search_active = false;
+      tk.active_search_kind = null;
+      tk.repaint_mode();
+      return;
+    }
     const was_visual = window.vim === "visual";
     window.vim = "normal";
     window.count = 0;
@@ -244,22 +392,29 @@
       }
     }
     tk.folder_search_origin_uri = null;
+    if (had_search) tk.active_search_kind = null;
     tk.repaint_mode();
   };
 
-  window.tk_folder_search = () => {
-    const focused = tk.get_focused_element();
-    if (focused?.id !== "folderTree") {
-      window.goDoCommand("cmd_toggleQuickFilterBar");
-      return;
-    }
-    tk.start_folder_search();
-  };
+  window.tk_search = () => tk.search();
+  window.tk_folder_search = () => tk.start_folder_search();
 
   window.tk_search_next = () => {
-    if (!tk.folder_search_step(1)) window.goDoCommand("cmd_findAgain");
+    if (tk.folder_search_step(1)) return;
+    if (tk.active_search_kind === "thread") return;
+    if (
+      tk.active_search_kind === "message" &&
+      tk.focused_search_pane() === "message"
+    )
+      window.goDoCommand("cmd_findAgain");
   };
   window.tk_search_prev = () => {
-    if (!tk.folder_search_step(-1)) window.goDoCommand("cmd_findPrevious");
+    if (tk.folder_search_step(-1)) return;
+    if (tk.active_search_kind === "thread") return;
+    if (
+      tk.active_search_kind === "message" &&
+      tk.focused_search_pane() === "message"
+    )
+      window.goDoCommand("cmd_findPrevious");
   };
 })(window.tk);
