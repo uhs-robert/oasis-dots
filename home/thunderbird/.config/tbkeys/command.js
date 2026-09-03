@@ -74,6 +74,12 @@
     message: () => window.tk_focus_message_pane(),
   };
 
+  const ADDONS = {
+    themes: () => window.tk_goto_themes(),
+    extensions: () => window.tk_goto_extensions(),
+    config: () => window.tk_goto_config(),
+  };
+
   // Folder names may contain spaces, so move/open treat everything after the
   // command name as one token rather than splitting args on whitespace.
   let folder_names = null;
@@ -295,28 +301,17 @@
         window.gTabmail.switchToTab(idx);
       },
     },
-    themes: {
-      usage: "themes",
-      description: "Open Thunderbird themes",
+    addons: {
+      usage: "addons <themes|extensions|config>",
+      description: "Open Thunderbird themes, extensions, or configuration",
+      complete: () => Object.keys(ADDONS),
       run: ({ args }) => {
-        if (args.length) return tk.commands.themes.usage;
-        window.tk_goto_themes();
-      },
-    },
-    extensions: {
-      usage: "extensions",
-      description: "Open Thunderbird extensions",
-      run: ({ args }) => {
-        if (args.length) return tk.commands.extensions.usage;
-        window.tk_goto_extensions();
-      },
-    },
-    config: {
-      usage: "config",
-      description: "Open tbkeys configuration",
-      run: ({ args }) => {
-        if (args.length) return tk.commands.config.usage;
-        window.tk_goto_config();
+        if (!args.length) return tk.commands.addons.usage;
+        const fn = Object.hasOwn(ADDONS, args[0]) ? ADDONS[args[0]] : null;
+        if (!fn)
+          return `Unknown add-on page "${args[0]}" (valid: ${Object.keys(ADDONS).join(", ")})`;
+        if (args.length > 1) return tk.commands.addons.usage;
+        fn();
       },
     },
     inbox: {
