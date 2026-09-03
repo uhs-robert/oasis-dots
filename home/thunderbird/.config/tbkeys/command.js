@@ -284,7 +284,6 @@
           .getStringProperty("keywords")
           .split(" ");
         controller._toggleMessageTag(tag.key, !keywords.includes(tag.key));
-        if (range.is_visual) tk.finish_visual_action(tt, range.cursor_index);
       },
     },
     tab: {

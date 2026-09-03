@@ -18,8 +18,6 @@
       tk.effective_count = times;
       let cursor;
       for (let i = 0; i < times; i++) cursor = apply(tt, range);
-      if (range.is_visual)
-        tk.finish_visual_action(tt, cursor ?? range.cursor_index);
     };
 
   const act_over_range = (cmd) => () => {
@@ -27,7 +25,6 @@
     const range = tk.resolve_action_range(tt);
     if (range.is_visual) {
       window.goDoCommand(cmd);
-      tk.finish_visual_action(tt, range.top_index);
       return;
     }
     tk.repeat_command(cmd, range.count);

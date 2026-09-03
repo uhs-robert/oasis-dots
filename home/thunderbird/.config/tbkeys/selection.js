@@ -73,26 +73,6 @@
     tk.repaint_mode();
   };
 
-  /**
-   * Exits visual mode and collapses the tree selection to a single row after an action ran over a range.
-   * @param {Element} tt - the thread tree
-   * @param {number} cursor_index - row to select, clamped to the surviving row count
-   */
-  tk.finish_visual_action = (tt, cursor_index) => {
-    window.vim = "normal";
-    window.visualAnchor = undefined;
-    window.visualEnd = undefined;
-    const last = (tt?.view?.rowCount ?? 0) - 1;
-    if (tt && last >= 0) {
-      const target =
-        typeof cursor_index === "number" && cursor_index >= 0
-          ? cursor_index
-          : last;
-      tt._selectSingle(Math.min(target, last));
-    }
-    tk.repaint_mode();
-  };
-
   // -- flat tk_* functions for keys.json "func:" bindings ------------------
 
   window.tk_toggle_visual = () => {
