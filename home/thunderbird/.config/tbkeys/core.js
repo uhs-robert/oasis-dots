@@ -8,6 +8,7 @@
   window.tk?.ui_teardown?.();
   window.tk?.command_teardown?.();
   window.tk?.editor_teardown?.();
+  window.tk?.hints_teardown?.();
   window.tk = {};
 })();
 
@@ -33,6 +34,7 @@
     "search.js",
     "command.js",
     "ui.js",
+    "hints.js",
     "whichkey.js",
   ];
 
