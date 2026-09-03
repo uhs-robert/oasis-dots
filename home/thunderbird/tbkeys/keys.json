@@ -54,6 +54,7 @@
   "g p": "func:tk_goto_projects",
   "g o": "func:tk_folder_picker",
   "g e": "func:tk_goto_extensions",
+  "g T": "func:tk_goto_themes",
   "g c": "func:tk_goto_config",
   "f u": "func:tk_filter_unread",
   "f a": "func:tk_filter_all",

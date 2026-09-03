@@ -237,8 +237,16 @@
 
   // -- flat tk_* functions for keys.json "func:" bindings ------------------
 
-  window.tk_goto_inbox = () =>
+  window.tk_goto_inbox = () => {
+    const tabmail = window.gTabmail;
+    const tabs = tabmail?.tabInfo ?? [];
+    const mail_tab_idx = tabs.findIndex(
+      (tab) => tab.mode?.name === "mail3PaneTab",
+    );
+    if (mail_tab_idx !== -1 && tabs[mail_tab_idx] !== tabmail.currentTabInfo)
+      tabmail.switchToTab(mail_tab_idx);
     tk.display_folder("mailbox://nobody@smart%20mailboxes/Inbox");
+  };
   window.tk_goto_trash = () =>
     tk.display_folder("mailbox://nobody@smart%20mailboxes/Trash");
   window.tk_goto_drafts = () =>

@@ -19,6 +19,7 @@
     ["g p", "Go to projects"],
     ["g o", "Pick a folder"],
     ["g e", "Open extensions"],
+    ["g T", "Open themes"],
     ["g c", "Open tbkeys config"],
     ["m R", "Mark all read"],
     ["m r", "Mark read"],

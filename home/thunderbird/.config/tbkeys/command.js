@@ -295,6 +295,38 @@
         window.gTabmail.switchToTab(idx);
       },
     },
+    themes: {
+      usage: "themes",
+      description: "Open Thunderbird themes",
+      run: ({ args }) => {
+        if (args.length) return tk.commands.themes.usage;
+        window.tk_goto_themes();
+      },
+    },
+    extensions: {
+      usage: "extensions",
+      description: "Open Thunderbird extensions",
+      run: ({ args }) => {
+        if (args.length) return tk.commands.extensions.usage;
+        window.tk_goto_extensions();
+      },
+    },
+    config: {
+      usage: "config",
+      description: "Open tbkeys configuration",
+      run: ({ args }) => {
+        if (args.length) return tk.commands.config.usage;
+        window.tk_goto_config();
+      },
+    },
+    inbox: {
+      usage: "inbox",
+      description: "Go to the inbox",
+      run: ({ args }) => {
+        if (args.length) return tk.commands.inbox.usage;
+        window.tk_goto_inbox();
+      },
+    },
     reload: {
       usage: "reload",
       description: "Reload every tbkeys module into this window",

@@ -126,6 +126,10 @@
     tk.reset_count();
     window.openAddonsMgr?.("addons://list/extension");
   };
+  window.tk_goto_themes = () => {
+    tk.reset_count();
+    window.openAddonsMgr?.("addons://list/theme");
+  };
   // The detail view splits its param on "/", so this lands on tbkeys' own
   // options pane rather than its card.
   window.tk_goto_config = () => {
