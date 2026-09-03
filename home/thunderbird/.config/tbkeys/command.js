@@ -560,6 +560,79 @@
     install_command_help_dismiss();
   };
 
+  // -- command history --------------------------------------------------------
+
+  // core.js replaces window.tk on :reload, so keep this state on the window
+  // itself. It is intentionally session-only: a Betterbird restart starts
+  // with an empty command history.
+  const COMMAND_HISTORY_LIMIT = 100;
+  const command_history =
+    window.__tbkeys_command_history ??
+    (window.__tbkeys_command_history = {
+      entries: [],
+      index: null,
+      draft: "",
+    });
+
+  /**
+   * Records an Enter-submitted command, collapsing adjacent duplicates.
+   * @param {string} text - raw command-line input, without the leading ":"
+   */
+  tk.record_command_history = (text) => {
+    const command = (text ?? "").trim();
+    if (!command) return;
+    const entries = command_history.entries;
+    if (entries[entries.length - 1] !== command) entries.push(command);
+    if (entries.length > COMMAND_HISTORY_LIMIT)
+      entries.splice(0, entries.length - COMMAND_HISTORY_LIMIT);
+    command_history.index = null;
+    command_history.draft = "";
+  };
+
+  /**
+   * Resets navigation state for a newly opened command line.
+   */
+  tk.reset_command_history_navigation = () => {
+    command_history.index = null;
+    command_history.draft = "";
+  };
+
+  /**
+   * Replaces the command input with the requested history entry and returns
+   * false when the requested direction cannot move through history.
+   * @param {number} direction - -1 for Up, +1 for Down
+   * @returns {boolean} whether the input value changed
+   */
+  tk.cycle_command_history = (direction) => {
+    const input = window.document.getElementById("tbkeys-command-input");
+    const entries = command_history.entries;
+    if (!input || !entries.length) return false;
+
+    if (direction < 0) {
+      if (command_history.index === 0) return false;
+      if (command_history.index === null) command_history.draft = input.value;
+      command_history.index =
+        command_history.index === null
+          ? entries.length - 1
+          : Math.max(0, command_history.index - 1);
+      input.value = entries[command_history.index];
+    } else {
+      if (command_history.index === null) return false;
+      if (command_history.index < entries.length - 1) {
+        command_history.index += 1;
+        input.value = entries[command_history.index];
+      } else {
+        input.value = command_history.draft;
+        command_history.index = null;
+        command_history.draft = "";
+      }
+    }
+
+    input.setSelectionRange(input.value.length, input.value.length);
+    tk.refresh_completion(input.value);
+    return true;
+  };
+
   // -- input UI ---------------------------------------------------------------
 
   tk.command_mode_prior = null;
@@ -589,8 +662,7 @@
     const thread_bg = thread_tree
       ? window.getComputedStyle(thread_tree).backgroundColor
       : tk.whichkey_colors.bg;
-    row.style.cssText =
-      `display:flex; align-items:center; gap:4px; padding:4px 8px; background:${thread_bg};`;
+    row.style.cssText = `display:flex; align-items:center; gap:4px; padding:4px 8px; background:${thread_bg};`;
     const label = doc.createElement("span");
     label.textContent = ":";
     const input = doc.createElement("input");
@@ -698,7 +770,13 @@
    * @param {KeyboardEvent} e
    */
   tk.command_input_keydown = (e) => {
-    if (e.key === "Tab") {
+    if (e.key === "ArrowUp") {
+      e.preventDefault();
+      tk.cycle_command_history(-1);
+    } else if (e.key === "ArrowDown") {
+      e.preventDefault();
+      tk.cycle_command_history(1);
+    } else if (e.key === "Tab") {
       e.preventDefault();
       tk.cycle_completion(e.shiftKey ? -1 : 1);
     } else if (e.key === "Enter") {
@@ -727,7 +805,10 @@
     window.tk_focus_thread_tree();
     tk.sync_insert_mode();
     tk.repaint_mode();
-    if (execute) tk.execute_command_text(text);
+    if (execute) {
+      tk.record_command_history(text);
+      tk.execute_command_text(text);
+    }
   };
 
   /**
@@ -755,6 +836,7 @@
    */
   tk.open_command_line = (text = "") => {
     tk.reset_count();
+    tk.reset_command_history_navigation();
     tk.command_mode_prior = window.vim ?? "normal";
     tk.ensure_command_bar();
     const input = window.document.getElementById("tbkeys-command-input");
