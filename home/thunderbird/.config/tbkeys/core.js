@@ -7,6 +7,7 @@
   window.tk?.whichkey_teardown?.();
   window.tk?.ui_teardown?.();
   window.tk?.command_teardown?.();
+  window.tk?.editor_teardown?.();
   window.tk = {};
 })();
 
@@ -28,6 +29,7 @@
     "navigation.js",
     "actions.js",
     "yank.js",
+    "editor.js",
     "search.js",
     "command.js",
     "ui.js",

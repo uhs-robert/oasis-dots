@@ -18,15 +18,27 @@
   const QUICK_FILTER_ID = "qfb-qs-textbox";
 
   /**
-   * @returns {Element} the injected mode/count indicator, or null where the mail status bar is absent (e.g. compose windows)
+   * @returns {Element} the injected mode/count indicator, or null where no suitable host exists
    */
   tk.ensure_mode_indicator = () => {
     const doc = window.document;
     const host =
       doc?.getElementById("statusTextBox") ?? doc?.getElementById("status-bar");
-    if (!host) return null;
     let el = doc.getElementById("tbkeys-mode-indicator");
     if (el) return el;
+    if (!host) {
+      if (doc.documentElement?.getAttribute("windowtype") !== "msgcompose")
+        return null;
+      el = doc.createXULElement
+        ? doc.createXULElement("label")
+        : doc.createElement("label");
+      el.id = "tbkeys-mode-indicator";
+      el.style.cssText =
+        "position:fixed; right:12px; bottom:12px; z-index:2147483647; " +
+        "font:14px monospace; padding:4px 8px; background:var(--layout-background-0);";
+      (doc.body ?? doc.documentElement).appendChild(el);
+      return el;
+    }
     el = doc.createXULElement
       ? doc.createXULElement("label")
       : doc.createElement("label");
@@ -84,6 +96,7 @@
    */
   tk.is_text_focus = () =>
     !!(
+      tk.is_compose_body_focus?.() ||
       tk.is_text_input?.(window.document?.activeElement) ||
       tk.is_text_input?.(tk.get_inbox_doc()?.activeElement)
     );
@@ -94,6 +107,10 @@
   tk.sync_insert_mode = () => {
     const in_text = tk.is_text_focus();
     if (in_text) {
+      if (window.__tbkeys_one_command_normal) {
+        tk.repaint_mode();
+        return;
+      }
       if (window.vim === "insert") return;
       tk.mode_before_insert = window.vim ?? "normal";
       window.vim = "insert";

@@ -322,6 +322,14 @@
         window.tk_goto_inbox();
       },
     },
+    edit: {
+      usage: "edit",
+      description: "Edit the current compose body in Neovim",
+      run: ({ args }) => {
+        if (args.length) return tk.commands.edit.usage;
+        window.tk_edit_compose_external?.();
+      },
+    },
     reload: {
       usage: "reload",
       description: "Reload every tbkeys module into this window",
