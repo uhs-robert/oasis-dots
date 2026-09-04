@@ -10,6 +10,7 @@
   // stay human-written instead of derived from tk_* function names.
   const WHICHKEY_ENTRIES = [
     ["g f", "Focus folder tree"],
+    ["g e", "Focus email thread"],
     ["g g", "Go to top"],
     ["g i", "Go to inbox"],
     ["g t", "Go to trash"],
@@ -18,7 +19,7 @@
     ["g s", "Go to sent"],
     ["g p", "Go to projects"],
     ["g o", "Pick a folder"],
-    ["g e", "Open extensions"],
+    ["g x", "Open extensions"],
     ["g T", "Open themes"],
     ["g c", "Open tbkeys config"],
     ["m R", "Mark all read"],
