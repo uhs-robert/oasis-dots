@@ -37,7 +37,6 @@
         "ctrl+u": "scroll:halfPageUp",
         "ctrl+b": "scroll:fullPageUp",
         "ctrl+f": "scroll:fullPageDown",
-        "ctrl+d": "scroll:halfPageDown",
         "ctrl+shift+-": "chat:undo",
         "ctrl+shift+_": "chat:undo",
         "ctrl+x ctrl+e": "chat:externalEditor",
