@@ -1,51 +1,47 @@
 ---
-name: report
-description: Generate concise development activity reports in chronological order with proper markdown formatting. Optional argument: description of work done (defaults to timeframe if not provided). Use when the user asks for a session report, activity report, or /report.
-argument-hint: "[timeframe] [description]"
+name: pr-report
+description: Generate concise development activity reports from a given GitHub pull request, in chronological order with proper markdown formatting. Requires a PR number or URL argument, plus an optional work description. Use when the user asks for a PR report, pull request report, or /pr-report.
+argument-hint: "<pr-number-or-url> [description]"
 arguments:
 * args
 ---
 
-# Report
+# PR Report
 
-Argument string (optional): `$args` — may include a timeframe and/or a work description.
+Argument string: `$args` — must include a PR number or URL, and may include a work description.
 
 ## Context
 
-Determine the TIMEFRAME first.
+Determine the PR from `$args` (number, `#123`, or full URL).
 
-1. Get the modification date of `session-report.md`; this is the default TIMEFRAME.
-2. If `session-report.md` does not exist AND the user did not provide a specific timeframe then the default TIMEFRAME should instead be "24 hours ago".
-
-- Get modification date: `stat -c %y session-report.md`
-- Recent commits by time: `git log --since="${TIMEFRAME}" --oneline --reverse`
-- Detailed commit info: `git log --since="${TIMEFRAME}" --stat --reverse`
-- Current branch status: `git status --short`
-- Staged changes: `git diff --cached --name-only`
+- PR metadata: `gh pr view <pr> --json title,body,commits,files,additions,deletions`
+- Commit list on PR (chronological): `gh pr view <pr> --json commits --jq '.commits[] | .messageHeadline'`
+- Full diff: `gh pr diff <pr>`
+- Changed files with stats: `gh pr diff <pr> --name-only` and `git diff --stat <base>...<head>` when working in a local clone
 - File sizes for new assets: `ls -lah` (when relevant)
 
 ### Arguments
 
-`$args` may include:
+`$args` must include:
 
-1. **Timeframe**: A git-compatible time format (e.g., "24 hours ago", "today", "yesterday", "3 days ago", "1 week ago")
-2. **Work Description**: A brief description of the work accomplished (e.g., "PDF optimization and font improvements")
+1. **PR reference**: a PR number, `#number`, or PR URL
+2. **Work Description** (optional): a brief description of the work accomplished (e.g., "PDF optimization and font improvements")
 
 ### Processing Logic
 
-- If no timeframe is specified in arguments, default to "since the last session-report.md was modified" otherwise if session-report.md does not exist, fallback to "24 hours ago".
-- If no description is provided, infer work description from git commit history analysis.
-- Arguments can contain both timeframe and description.
+- If no description is provided, infer work description from the PR title, body, and commit history analysis.
+- Treat the PR's commits as the chronological record, not repo-wide git log.
 
-### Timeframe Options
+### Output Location
 
-- Default: "since last session-report.md modification (or 24 hours ago if none exists)"
-- Alternative: "today", "yesterday", "3 days ago", "1 week ago"
-- Custom: Any git-compatible time format
+- Get current repo (if any): `git remote get-url origin`.
+- Get PR's repo: `gh pr view <pr> --json url` (or from the PR URL directly).
+- Current repo matches PR's repo: save as `pr-report.md` at repo root (`git rev-parse --show-toplevel`).
+- No match, or not in a git repo: save as `~/Notes/work/pr-report.md` (create `~/Notes/work` if missing).
 
 ## Your Task
 
-1. **Get commit history** in chronological order (oldest to newest)
+1. **Get the PR's commit history** in chronological order (oldest to newest)
 2. **Analyze each commit** for:
    - Type of change (feat, fix, refactor, style, perf, chore)
    - Files affected and significance
@@ -53,7 +49,7 @@ Determine the TIMEFRAME first.
 3. **Group related changes** into logical sections
 4. **Create meaningful section titles** that describe the work accomplished
 5. **Format output** for easy copy/paste into spreadsheet (title + markdown)
-6. **Always create/overwrite session-report.md** - Replace any existing session-report.md file with the new report
+6. **Always create/overwrite pr-report.md** at the resolved output location (see Output Location) - Replace any existing pr-report.md file with the new report
 
 ## Analysis Guidelines
 
@@ -74,7 +70,7 @@ Determine the TIMEFRAME first.
 
 ## Output Format
 
-**Always overwrite/create `session-report.md`** with this structure:
+**Always overwrite/create `pr-report.md`** at the resolved output location with this structure:
 
 ```
 [Descriptive Summary Title About Work Accomplished]
