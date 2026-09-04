@@ -166,16 +166,21 @@ style = "bg:yellow fg:black"
 [hostname]
 disabled = false
 ssh_only = true
-style = "fg:black bold bg:red"
+style = "fg:black bold bg:purple"
 ssh_symbol = '🌐'
 #trim_at = '.companyname.com'
-format = '[](fg:red bg:none)[ $ssh_symbol $hostname]($style)'
+#
+# WITHOUT LOCAL IP, USE BELOW FORMAT
+format = '[](fg:purple bg:none)[ $ssh_symbol $hostname ]($style)(fg:black bg:purple)[](fg:purple bg:none)'
+#
+# WITH LOCAL IP, USE BELOW FORMAT
+# format = '[](fg:purple bg:none)[ $ssh_symbol $hostname]($style)'
 
 [localip]
-disabled = false
+disabled = true
 ssh_only = true
-style = "fg:black bold bg:red"
-format = '[ $localipv4 ](fg:black bg:red)[](fg:red bg:none)'
+style = "fg:black bold bg:purple"
+format = '[ $localipv4 ](fg:black bg:purple)[](fg:purple bg:none)'
 
 # ──────────────────────────────────────────────────────────────────────────── #
 # !-- Directories
