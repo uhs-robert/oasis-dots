@@ -177,7 +177,7 @@ alias src='source ~/.zshrc'
 # Load user-specific scripts from ~/.bashrc.d
 for rc in ~/.bashrc.d/*(.N); do source "$rc"; done
 
-eval "$(tmuxifier init -)"
+command -v tmuxifier >/dev/null && eval "$(tmuxifier init -)"
 
 # pnpm
 export PNPM_HOME="$HOME/.local/share/pnpm"
@@ -198,7 +198,7 @@ function y() {
 # yazi end
 
 # Zoxide
-eval "$(zoxide init zsh)"
+command -v zoxide >/dev/null && eval "$(zoxide init zsh)"
 # Zoxide end
 
 # Lsd
@@ -237,4 +237,4 @@ export INTELLI_SEARCH_HOTKEY='^G'
 # alias is="intelli-shell"
 export PATH="$INTELLI_HOME/bin:$PATH"
 [[ -f ~/.config/secrets/intellishell.env ]] && source ~/.config/secrets/intellishell.env
-eval "$(intelli-shell init zsh)"
+command -v intelli-shell >/dev/null && eval "$(intelli-shell init zsh)"
