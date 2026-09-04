@@ -166,7 +166,7 @@ style = "bg:yellow fg:black"
 [hostname]
 disabled = false
 ssh_only = true
-style = "fg:white bold bg:black"
+style = "fg:black bold bg:red"
 ssh_symbol = '🌐'
 #trim_at = '.companyname.com'
 format = '[](fg:red bg:none)[ $ssh_symbol $hostname]($style)'
