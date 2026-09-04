@@ -1,11 +1,18 @@
 ---
-allowed-tools: Bash(git log:*), Bash(git show:*), Bash(git diff:*), Bash(git diff --cached:*), Bash(git status:*), Bash(find:*), Bash(cat:*), Bash(grep:*), Bash(ls:*), Write(session-report.md)
-description: Generate concise development activity reports in chronological order with proper markdown formatting. Optional argument: description of work done (defaults to timeframe if not provided)
+name: report
+description: Generate concise development activity reports in chronological order with proper markdown formatting. Optional argument: description of work done (defaults to timeframe if not provided). Use when the user asks for a session report, activity report, or /report.
+argument-hint: "[timeframe] [description]"
+arguments:
+* args
 ---
+
+# Report
+
+Argument string (optional): `$args` — may include a timeframe and/or a work description.
 
 ## Context
 
-The agent calling this tool should first determine the TIMEFRAME.
+Determine the TIMEFRAME first.
 
 1. Get the modification date of `session-report.md`; this is the default TIMEFRAME.
 2. If `session-report.md` does not exist AND the user did not provide a specific timeframe then the default TIMEFRAME should instead be "24 hours ago".
@@ -15,11 +22,11 @@ The agent calling this tool should first determine the TIMEFRAME.
 - Detailed commit info: `git log --since="${TIMEFRAME}" --stat --reverse`
 - Current branch status: `git status --short`
 - Staged changes: `git diff --cached --name-only`
-- File sizes for new assets: !`ls -lah` (when relevant)
+- File sizes for new assets: `ls -lah` (when relevant)
 
 ### Arguments
 
-The command accepts an optional argument string that may include:
+`$args` may include:
 
 1. **Timeframe**: A git-compatible time format (e.g., "24 hours ago", "today", "yesterday", "3 days ago", "1 week ago")
 2. **Work Description**: A brief description of the work accomplished (e.g., "PDF optimization and font improvements")
@@ -27,8 +34,8 @@ The command accepts an optional argument string that may include:
 ### Processing Logic
 
 - If no timeframe is specified in arguments, default to "since the last session-report.md was modified" otherwise if session-report.md does not exist, fallback to "24 hours ago".
-- If no description is provided, infer work description from git commit history analysis
-- Arguments can contain both timeframe and description
+- If no description is provided, infer work description from git commit history analysis.
+- Arguments can contain both timeframe and description.
 
 ### Timeframe Options
 
