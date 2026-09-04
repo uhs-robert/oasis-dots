@@ -37,7 +37,7 @@ Determine the PR from `$args` (number, `#123`, or full URL).
 - Get current repo (if any): `git remote get-url origin`.
 - Get PR's repo: `gh pr view <pr> --json url` (or from the PR URL directly).
 - Current repo matches PR's repo: save as `pr-report.md` at repo root (`git rev-parse --show-toplevel`).
-- No match, or not in a git repo: save as `~/Notes/work/pr-report.md` (create `~/Notes/work` if missing).
+- No match, or not in a git repo: save as `~/Documents/Notes/work/pr-report.md` (create `~/Documents/Notes/work` if missing).
 
 ## Your Task
 
