@@ -209,6 +209,13 @@ alias lla='ls -la'
 alias lt='ls --tree'
 # Lsd end
 
+# Worktool
+if [[ -n ${SSH_CONNECTION:-} || -n ${SSH_CLIENT:-} ]]; then
+	alias ns='worktool'
+else
+	alias ns='ssh worktool'
+fi
+
 # Just
 alias j='just'
 
