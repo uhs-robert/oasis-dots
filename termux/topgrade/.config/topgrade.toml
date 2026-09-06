@@ -1,0 +1,15 @@
+[misc]
+only = ["custom_commands", "git_repos"]
+
+[commands]
+"Termux packages" = "pkg update -y && pkg upgrade -y"
+"LazyVim plugins" = "nvim --headless '+Lazy! sync' +qa"
+"Yazi packages" = "ya pkg upgrade"
+"Termux font" = "bash ~/.local/bin/termux-update-font"
+
+[git]
+pull_predefined = false
+# Git's --ff-only leaves divergent local work for manual resolution.
+arguments = "--ff-only"
+# Limit discovery to checkout directories and Zsh plugins, avoiding ~/storage.
+repos = ["~/dotfiles", "~/Development/**/.git/..", "~/.local/share/zsh/plugins/*"]

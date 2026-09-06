@@ -92,3 +92,7 @@ Betterbird upgrades wipe the startup file that loads these modules, so `install.
 The user Yazi keymap uses `~` and `$USER`, which resolve to `/root` when Yazi runs as root, so root gets a rewritten copy at `/root/.config/yazi/keymap.toml` rather than a symlink. Launch root Yazi with `yazi-root` (installed to `/usr/local/bin` by `install.sh`): it regenerates that copy from the current user keymap on every launch, so the two never drift. It finds the user config by resolving the `yazi.toml` symlink in `/root/.config/yazi`, so no username is configured anywhere. To refresh the copy without launching Yazi, run `yazi-root --sync-only` or `just sync-root-yazi`.
 
 Plain `sudo yazi` stays in sync too, via a shim at `/usr/local/sbin/yazi` that runs the same regeneration before exec'ing the real binary. `sudo` ignores the caller's `PATH` in favour of `secure_path`, which starts with `/usr/local/sbin`, while a normal user's `PATH` has no `sbin` entries, so the shim applies to `sudo yazi` only, and your own `yazi` still runs `/usr/bin/yazi` directly.
+
+## Termux
+
+For a standalone mobile SSH setup, see [termux/README.md](termux/README.md). It uses its own installer and Stow packages, independent of the desktop setup.

@@ -1,0 +1,32 @@
+[[plugin.deps]]
+use = "yazi-rs/plugins:git"
+rev = "4dc7f1b"
+hash = "5bb0bfab901d3601c370eafdd66edd31"
+
+[[plugin.deps]]
+use = "yazi-rs/plugins:vcs-files"
+rev = "4dc7f1b"
+hash = "853240b2454c93a93fd03fc9fd7e06e8"
+
+[[plugin.deps]]
+use = "yazi-rs/plugins:chmod"
+rev = "4dc7f1b"
+hash = "87472b05a8c420100f6a2b9cde1e7746"
+
+[[plugin.deps]]
+use = "yazi-rs/plugins:toggle-pane"
+rev = "4dc7f1b"
+hash = "5b2fbef7d1513ce38ff72623a071a5e"
+
+[[plugin.deps]]
+use = "yazi-rs/plugins:zoom"
+rev = "4dc7f1b"
+hash = "e8e279463ee99c940e6945a14cf4aa9e"
+
+[[plugin.deps]]
+use = "boydaihungst/relative-motions"
+rev = "d720b1c"
+hash = "cb389a36241ada4893796d89dd5da7a0"
+
+[flavor]
+deps = []

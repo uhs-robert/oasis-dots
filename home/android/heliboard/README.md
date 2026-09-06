@@ -5,7 +5,7 @@
 ## Layouts
 
 - `normal/` — Standard QWERTY layout
-- `termux/` — PC-style layout
+- [Termux PC-style layout](../../../termux/termux/.termux/heliboard/) — bundled with the standalone Termux environment
 
 ## Usage
 

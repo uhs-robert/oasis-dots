@@ -1,0 +1,32 @@
+#!/data/data/com.termux/files/usr/bin/bash
+set -euo pipefail
+
+destination="$HOME/.termux/font.ttf"
+url="https://raw.githubusercontent.com/ryanoasis/nerd-fonts/master/patched-fonts/ProFont/profontiix/ProFontIIxNerdFont-Regular.ttf"
+mkdir -p -- "$(dirname -- "$destination")"
+[[ ! -d "$destination" ]] || { printf 'Font destination is a directory: %s\n' "$destination" >&2; exit 1; }
+
+# Stage on the same filesystem; failed downloads never replace the current font.
+temporary=$(mktemp "$HOME/.termux/.font.XXXXXX")
+trap 'rm -f -- "$temporary"' EXIT
+curl --fail --location --silent --show-error --retry 2 --connect-timeout 15 --max-time 120 \
+    --output "$temporary" "$url"
+# ProFontIIx uses the TrueType sfnt header. Reject empty/error-page responses.
+signature=$(od -An -tx1 -N4 "$temporary" | tr -d ' \n')
+[[ "$signature" == 00010000 && $(wc -c < "$temporary") -gt 12 ]] || {
+    printf 'Downloaded ProFontIIx file is not a TrueType font.\n' >&2
+    exit 1
+}
+if cmp -s -- "$temporary" "$destination"; then
+    printf 'ProFontIIx Nerd Font is already current.\n'
+    exit 0
+fi
+# Keep the first replaced font for recovery. Never write through an existing link.
+backup="$destination.bak"
+if [[ -f "$destination" && ! -e "$backup" && ! -L "$backup" ]]; then
+    cp -pL -- "$destination" "$backup"
+fi
+chmod 644 "$temporary"
+mv -fT -- "$temporary" "$destination"
+termux-reload-settings
+printf 'Updated ProFontIIx Nerd Font.\n'

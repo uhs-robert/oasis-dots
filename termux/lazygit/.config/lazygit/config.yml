@@ -1,0 +1,13 @@
+git:
+  diffRenderers:
+    - type: extDiff
+      command: difft --color=always --background=dark --display=inline --context={{diffContext}}
+    - type: rawGit
+      name: default
+gui:
+  showRandomTip: false
+  showCommandLog: false
+os:
+  editPreset: nvim
+update:
+  method: never

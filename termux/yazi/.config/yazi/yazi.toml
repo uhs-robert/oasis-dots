@@ -1,0 +1,15 @@
+[mgr]
+ratio = [0, 1, 1]
+show_hidden = false
+
+[opener]
+edit = [{ run = 'nvim %s', block = true, desc = "Neovim" }]
+
+[open]
+rules = [{ url = "*", use = "edit" }]
+
+[plugin]
+prepend_fetchers = [
+  { group = "git", url = "*", run = "git" },
+  { group = "git", url = "*/", run = "git" },
+]

@@ -1,0 +1,12 @@
+vim.opt.clipboard = ""
+vim.opt.relativenumber = true
+vim.opt.wrap = false
+vim.opt.scrolloff = 4
+vim.opt.tabstop = 2
+vim.opt.shiftwidth = 2
+vim.opt.expandtab = true
+vim.opt.foldmethod = "indent"
+vim.opt.foldexpr = "0"
+vim.opt.spell = false
+vim.g.autoformat = false
+vim.g.lazyvim_blink_main = false
