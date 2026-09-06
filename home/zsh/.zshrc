@@ -103,8 +103,8 @@ plugins=(
   sudo
   # vi-mode
   z
-  zsh-autocomplete
   zsh-autosuggestions
+  fzf-tab
   zsh-syntax-highlighting
   zsh-vi-mode
 )
