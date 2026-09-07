@@ -1,0 +1,2 @@
+[commands]
+"MapleMono Nerd Font" = "bash ~/.local/bin/update-maple-font"

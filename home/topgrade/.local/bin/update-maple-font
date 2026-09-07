@@ -1,0 +1,60 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+fonts_dir="/usr/local/share/fonts"
+destination="$fonts_dir/MapleMono-NF"
+legacy_destination="${XDG_DATA_HOME:-$HOME/.local/share}/fonts/MapleMono-NF"
+api="https://api.github.com/repos/subframe7536/maple-font/releases/latest"
+base="https://github.com/subframe7536/maple-font/releases/download"
+
+version=$(curl --fail --location --silent --show-error --retry 2 \
+    --connect-timeout 15 --max-time 120 "$api" | jq -er '.tag_name')
+url="$base/$version/MapleMono-NF.zip"
+
+temporary=$(mktemp -d)
+trap 'rm -rf -- "$temporary"' EXIT
+
+archive="$temporary/MapleMono-NF.zip"
+staged="$temporary/font"
+mkdir -- "$staged"
+
+curl --fail --location --silent --show-error --retry 2 \
+    --connect-timeout 15 --max-time 120 --output "$archive" "$url"
+unzip -q "$archive" -d "$staged"
+rm -- "$archive"
+
+find "$staged" -type f \( -name '*.ttf' -o -name '*.otf' \) -print -quit | grep -q . || {
+    printf 'MapleMono NF archive contains no font files.\n' >&2
+    exit 1
+}
+
+sudo mkdir -p -- "$fonts_dir"
+
+if [[ -d "$destination" ]] && diff -qr "$staged" "$destination" >/dev/null 2>&1; then
+    if [[ -e "$legacy_destination" ]]; then
+        rm -rf -- "$legacy_destination"
+        fc-cache -f
+        printf 'MapleMono NF %s is current; removed legacy user-local copy.\n' "$version"
+    else
+        printf 'MapleMono NF %s is already current.\n' "$version"
+    fi
+    exit 0
+fi
+
+backup="$fonts_dir/.MapleMono-NF.previous"
+sudo rm -rf -- "$backup"
+if [[ -e "$destination" ]]; then
+    sudo mv -- "$destination" "$backup"
+fi
+
+if ! sudo cp -a -- "$staged" "$destination"; then
+    sudo rm -rf -- "$destination"
+    [[ ! -e "$backup" ]] || sudo mv -- "$backup" "$destination"
+    exit 1
+fi
+
+sudo rm -rf -- "$backup"
+rm -rf -- "$legacy_destination"
+sudo fc-cache -f "$fonts_dir"
+fc-cache -f
+printf 'Updated MapleMono NF to %s.\n' "$version"
