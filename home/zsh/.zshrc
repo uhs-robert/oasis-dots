@@ -63,6 +63,8 @@ COMPLETION_WAITING_DOTS="true"
 # see 'man strftime' for details.
 HIST_STAMPS="mm/dd/yyyy"
 
+ZSH_AUTOSUGGEST_STRATEGY=(history completion)
+
 # Would you like to use another custom folder than $ZSH/custom?
 # ZSH_CUSTOM=/path/to/new-custom-folder
 
@@ -98,10 +100,9 @@ plugins=(
   history-substring-search
   starship
   sudo
-  # vi-mode
-  z
   zsh-autosuggestions
-  zsh-syntax-highlighting
+  # zsh-syntax-highlighting
+  fast-syntax-highlighting
   zsh-vi-mode
 )
 
