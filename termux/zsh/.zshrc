@@ -23,11 +23,12 @@ _ssh_hosts() {
     hosts=("${(@f)$(termux_ssh_hosts)}")
     _wanted hosts expl 'SSH host' compadd "$@" -a hosts
 }
-source "$HOME/.local/share/zsh/plugins/fzf-tab/fzf-tab.plugin.zsh"
+source "$HOME/.antidote/antidote.zsh"
+antidote load "$HOME/.zsh_plugins.txt"
 if [[ -r "$PREFIX/share/zsh-autosuggestions/zsh-autosuggestions.zsh" ]]; then
     source "$PREFIX/share/zsh-autosuggestions/zsh-autosuggestions.zsh"
 else
-    source "$HOME/.local/share/zsh/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh"
+    antidote bundle zsh-users/zsh-autosuggestions
 fi
 
 s() {

@@ -80,7 +80,6 @@ main() {
   install_dev_tools
   clone_repos
   install_fonts
-  bootstrap_omz
   bootstrap_tmuxifier
 
   info "Stowing core packages..."

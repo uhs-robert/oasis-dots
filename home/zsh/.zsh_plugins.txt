@@ -1,0 +1,12 @@
+# antidote bundle file - see `antidote help`
+ohmyzsh/ohmyzsh path:plugins/colored-man-pages
+ohmyzsh/ohmyzsh path:plugins/colorize
+ohmyzsh/ohmyzsh path:plugins/dotenv
+ohmyzsh/ohmyzsh path:plugins/extract
+ohmyzsh/ohmyzsh path:plugins/fzf
+ohmyzsh/ohmyzsh path:plugins/sudo
+zsh-users/zsh-history-substring-search
+Aloxaf/fzf-tab
+zsh-users/zsh-autosuggestions
+zdharma-continuum/fast-syntax-highlighting
+jeffreytse/zsh-vi-mode

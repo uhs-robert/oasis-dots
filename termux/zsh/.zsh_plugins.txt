@@ -1,0 +1,2 @@
+# antidote bundle file - see `antidote help`
+Aloxaf/fzf-tab

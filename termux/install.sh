@@ -25,20 +25,10 @@ stow "${stow_args[@]}" --simulate "${stow_packages[@]}" ||
 stow "${stow_args[@]}" "${stow_packages[@]}"
 bash "$HOME/.local/bin/termux-update-font"
 
-clone_plugin() {
-    local name=$1 url=$2 destination="$HOME/.local/share/zsh/plugins/$1"
-    if exists "$destination"; then
-        [[ -d "$destination/.git" ]] || fail "$destination exists but is not a Git checkout."
-        [[ $(git -C "$destination" remote get-url origin) == "$url" ]] ||
-            fail "$destination has a different origin; leaving it untouched."
-    else
-        mkdir -p -- "$(dirname -- "$destination")"
-        git clone --depth 1 -- "$url" "$destination"
-    fi
-}
-clone_plugin fzf-tab https://github.com/Aloxaf/fzf-tab.git
-if [[ ! -f "$PREFIX/share/zsh-autosuggestions/zsh-autosuggestions.zsh" ]]; then
-    clone_plugin zsh-autosuggestions https://github.com/zsh-users/zsh-autosuggestions.git
+if exists "$HOME/.antidote"; then
+    [[ -d "$HOME/.antidote/.git" ]] || fail "$HOME/.antidote exists but is not a Git checkout."
+else
+    git clone --depth 1 -- https://github.com/mattmc3/antidote.git "$HOME/.antidote"
 fi
 
 # Mutable manifests stay local instead of writing through a Stow symlink.

@@ -26,17 +26,6 @@ prompt_optional() {
   )
 }
 
-bootstrap_omz() {
-  info "Bootstrapping Oh My Zsh..."
-  if [[ -d "$HOME/.oh-my-zsh" ]]; then
-    warn "Oh My Zsh already present, skipping"
-    return
-  fi
-  RUNZSH=no KEEP_ZSHRC=yes \
-    sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
-  success "Oh My Zsh installed"
-}
-
 bootstrap_tmuxifier() {
   info "Bootstrapping tmuxifier..."
   if [[ -d "$HOME/.tmuxifier" ]] || [[ -L "$HOME/.tmuxifier" ]] || [[ -e "$HOME/.tmuxifier" ]]; then
@@ -71,7 +60,7 @@ setup_root_symlinks() {
   sudo mkdir -p /root/.config/yazi
 
   sudo ln -sf "$HOME/.zshrc" /root/.zshrc
-  sudo ln -sf "$HOME/.oh-my-zsh" /root/.oh-my-zsh
+  sudo ln -sf "$HOME/.zsh_plugins.txt" /root/.zsh_plugins.txt
   sudo ln -sf "$HOME/.config/nvim" /root/.config/nvim
 
   for item in flavors plugins yazi.toml; do
