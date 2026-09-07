@@ -9,7 +9,6 @@ local Scripts = {
   -- stylua: ignore start
   screenshot            = HYPR    .. "screenshot.sh",
   voxtype               = HYPR    .. "voxtype-with-media-pause.sh",
-  ai_send               = HYPR    .. "ai-send.sh",
   focus_media_player    = HYPR    .. "focus-media-player.sh",
   nmtui                 = HYPR    .. "nmtui.sh",
   hyprlock              = HYPR    .. "hyprlock-screenshot.lua",

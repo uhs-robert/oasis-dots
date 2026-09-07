@@ -29,7 +29,6 @@ Submap.define({
       -- stylua: ignore start
       { "TAB",       Workspace.focus_last(),                "Last Workspace" },
       { "A",         Menu.drun(),                           "Apps Launcher" },
-      { "SHIFT + A", Apps.focus_or_launch(APP.tmux_ai),     "Tmuxifier AI" },
       { "B",         Apps.focus_or_launch(APP.firefox),     "Browser" },
       { "C",         Apps.focus_or_launch(APP.tmux_config), "Tmuxifier Config" },
       { "SHIFT + C", Apps.focus_or_launch(APP.tmux_client),  "Tmuxifier Client" },

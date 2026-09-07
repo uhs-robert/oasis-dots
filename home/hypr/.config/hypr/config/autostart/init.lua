@@ -1,6 +1,5 @@
 -- home/hypr/.config/hypr/config/system/autostart.lua
 
-local AI = require("lib.actions.ai")
 local Config = require("config")
 local TERM = Config.app.term
 
@@ -29,7 +28,6 @@ local function run()
   -- hl.exec_cmd("hyprpm reload")                                                            -- Load plugins
   hl.exec_cmd("lua ~/.config/hypr/extensions/wallpaper/init.lua")
   hl.exec_cmd("voxtype setup systemd")
-  AI.launch()
 end
 
 return run
