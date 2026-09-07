@@ -1,11 +1,13 @@
 {
-  "includeCoAuthoredBy": false,
   "attribution": {
     "commit": "",
     "pr": ""
   },
+  "includeCoAuthoredBy": false,
   "permissions": {
-    "allow": ["Read(~/.zshrc)"],
+    "allow": [
+      "Read(~/.zshrc)"
+    ],
     "defaultMode": "default"
   },
   "model": "sonnet",
