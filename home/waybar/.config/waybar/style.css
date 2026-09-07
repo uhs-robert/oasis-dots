@@ -152,6 +152,11 @@ tooltip {
   border-bottom: 2px solid @primary;
 }
 
+#battery.charging,
+#battery.plugged {
+  background-color: @bg_core;
+}
+
 #custom-notifications {
   color: @primary;
 }
