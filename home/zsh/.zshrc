@@ -89,22 +89,18 @@ function zvm_config() {
 
 # Which plugins would you like to load?
 plugins=(
+  fzf-tab
   colored-man-pages
   colorize
-  dnf
+  dotenv
   extract
   fzf
-  git
   history-substring-search
-  node
-  npm
-  nvm
   starship
   sudo
   # vi-mode
   z
   zsh-autosuggestions
-  fzf-tab
   zsh-syntax-highlighting
   zsh-vi-mode
 )
