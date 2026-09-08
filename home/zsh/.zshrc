@@ -1,5 +1,6 @@
 # Add deno completions to search path
 if [[ ":$FPATH:" != *":$HOME/.zsh/completions:"* ]]; then export FPATH="$HOME/.zsh/completions:$FPATH"; fi
+worktool completion zsh > "${fpath[1]}/_worktool"
 # If you come from bash you might have to change your $PATH.
 # export PATH=$HOME/bin:$HOME/.local/bin:/usr/local/bin:$PATH
 
@@ -181,6 +182,7 @@ if [[ -n ${SSH_CONNECTION:-} || -n ${SSH_CLIENT:-} ]]; then
 else
 	alias ns='ssh worktool'
 fi
+
 
 # Just
 alias j='just'
