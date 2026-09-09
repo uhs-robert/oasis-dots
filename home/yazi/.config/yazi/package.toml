@@ -25,13 +25,13 @@ hash = "b95f898e6dc60b52edbc415952e14395"
 
 [[plugin.deps]]
 use = "boydaihungst/relative-motions"
-rev = "d720b1c"
-hash = "cb389a36241ada4893796d89dd5da7a0"
+rev = "8f69d78"
+hash = "10b77b13edb2357f023193233e9afe81"
 
 [[plugin.deps]]
 use = "boydaihungst/restore"
-rev = "7bfcfcb"
-hash = "bbb1569978e6d2b3e8343c6ca08a4ea6"
+rev = "864dd05"
+hash = "3070b579618c4831f5d7ca4293c1c275"
 
 [[plugin.deps]]
 use = "uhs-robert/sshfs"
