@@ -6,12 +6,10 @@
   },
   "includeCoAuthoredBy": false,
   "permissions": {
-    "allow": [
-      "Read(~/.zshrc)"
-    ],
+    "allow": ["Read(~/.zshrc)"],
     "defaultMode": "default"
   },
-  "model": "sonnet",
+  "model": "opus",
   "statusLine": {
     "type": "command",
     "command": "bash \"/home/roberth/dotfiles/claude/.claude/plugins/cache/caveman/caveman/24e6ee9ea827/hooks/caveman-statusline.sh\""
@@ -37,5 +35,6 @@
   "editorMode": "vim",
   "preferredNotifChannel": "kitty",
   "autoCompactEnabled": false,
-  "agentPushNotifEnabled": true
+  "agentPushNotifEnabled": true,
+  "tui": "fullscreen"
 }
