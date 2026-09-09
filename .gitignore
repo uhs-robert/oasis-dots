@@ -152,6 +152,8 @@ home/codex/**
 CLAUDE.md
 GEMINI.md
 AGENTS.md
+!/CLAUDE.md
+!/AGENTS.md
 
 # ────────────────────────────────────────────────
 # 🧒 Child Git Repositories
