@@ -135,6 +135,8 @@ home/claude/**
 !home/claude/.claude/AGENTS.md
 !home/claude/.claude/settings.json
 !home/claude/.claude/keybindings.json
+!home/claude/.claude/statusline-command.sh
+!home/claude/.claude/pr-context.sh
 home/gemini/**
 !home/gemini/.gemini/
 !home/gemini/.gemini/commands/

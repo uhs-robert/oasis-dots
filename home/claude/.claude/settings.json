@@ -6,13 +6,15 @@
   },
   "includeCoAuthoredBy": false,
   "permissions": {
-    "allow": ["Read(~/.zshrc)"],
+    "allow": [
+      "Read(~/.zshrc)"
+    ],
     "defaultMode": "default"
   },
   "model": "opus",
   "statusLine": {
     "type": "command",
-    "command": "bash \"/home/roberth/dotfiles/claude/.claude/plugins/cache/caveman/caveman/24e6ee9ea827/hooks/caveman-statusline.sh\""
+    "command": "bash ~/.claude/statusline-command.sh"
   },
   "enabledPlugins": {
     "lua-lsp@claude-plugins-official": true,
