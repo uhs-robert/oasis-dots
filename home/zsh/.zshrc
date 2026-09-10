@@ -130,7 +130,12 @@ export PATH="$(npm root -g)/.bin:$PATH"
 export PATH="$HOME/.npm-global/bin:$PATH"
 export PATH="$HOME/.local/share/npm/bin:$PATH"
 export PATH="$HOME/go/bin:$PATH"
-export PATH="$HOME/.local/share/gem/ruby/3.4.0/bin:$PATH"
+# Ruby user gem executables. Globs every installed version and skips silently
+# when Ruby is absent, so this file stays portable across machines.
+for _gem_bin in "$HOME"/.local/share/gem/ruby/*/bin(N/) "$HOME"/.gem/ruby/*/bin(N/); do
+  export PATH="$_gem_bin:$PATH"
+done
+unset _gem_bin
 # export PATH="$HOME/.cargo/bin:$PATH"
 export PATH="$HOME/.local/bin:$PATH"
 export PATH="$PATH:$HOME/.lmstudio/bin"
