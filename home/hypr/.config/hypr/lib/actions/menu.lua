@@ -66,7 +66,8 @@ end
 --- @return fun()
 function Menu.zoxide()
   local picker = DMENU_CMD .. " -theme-str 'listview { columns: 1; }' -p 'Directory'"
-  local open = TERM_CMD .. " --class " .. FILE_MANAGER .. " -e " .. FILE_MANAGER .. " {}"
+  local shell = [[zsh -i -c 'cd "{}" && y; exec zsh -i']]
+  local open = TERM_CMD .. " --class " .. FILE_MANAGER .. " -e " .. shell
   return Cmd.run("zoxide query -l | " .. picker .. " | xargs -r -I{} " .. open)
 end
 
