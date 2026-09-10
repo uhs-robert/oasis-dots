@@ -8,6 +8,7 @@ local Scripts = require("lib.scripts") --- @class Scripts
 local Submap = require("lib.key.submap") --- @class Submap
 local Window = require("lib.actions.window") --- @class WindowActions
 local Workspace = require("lib.actions.workspace") --- @class WorkspaceActions
+local Launcher = require("extensions.auto_launcher.launcher") ---@class Launcher
 
 local KEEP = { keep = true }
 
@@ -28,6 +29,7 @@ Submap.define({
       { "SPACE",         Menu.zoxide(),                                   "Directory" },
       { "SLASH",         Cmd.run(Scripts.keybind_help),                   "Keybind Help" },
       { "O",             Menu.drun(),                                     "Open Application" },
+      { "SHIFT +O",      Launcher.show_picker,                            "Session Launcher" },
       { "T",             Menu.hyprwindow(),                               "Find Window" },
       { "V",             Menu.clipboard(),                                "Clipboard" },
       { "P",             Menu.bitwarden(),                                "Passwords" },

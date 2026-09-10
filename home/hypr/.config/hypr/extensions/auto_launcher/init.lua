@@ -2,4 +2,4 @@
 local Config = require("config") ---@class Config
 local Launcher = require("extensions.auto_launcher.launcher") ---@class Launcher
 
-hl.bind(Config.leader .. " + SHIFT + O", Launcher.show_picker, { description = "Workspace App Launcher" })
+hl.bind(Config.leader .. " + SHIFT + O", Launcher.show_picker, { description = "Session Launcher" })
