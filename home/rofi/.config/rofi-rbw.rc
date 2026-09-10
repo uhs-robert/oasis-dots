@@ -1,0 +1,4 @@
+display-fields = [name_with_folder]
+keybindings = Alt+m::menu,Alt+c:copy:password
+selector-args = -name rofiDmenu -theme-str 'listview { columns: 1; } mainbox { children: [ inputbar, message, listview ]; } message { padding: 6px 12px; border: 0; background-color: @bg-crust; } textbox { text-color: @fg-dim; background-color: transparent; }'
+clear-after = 30

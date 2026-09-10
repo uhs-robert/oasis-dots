@@ -1,9 +1,6 @@
 local Bind = require("lib.key.bind") ---@class BindLib
 local Scripts = require("lib.scripts") ---@class Scripts
-local Config = require("config") ---@class Config
 local Menu = require("lib.actions.menu") ---@class Menu
-
-local MENU = Config.app.menu
 
 -- Screenshot
 -- stylua: ignore start
@@ -15,11 +12,14 @@ Bind.leader_cmd("P", screenshot("pixel"),  "Color Picker")
 Bind.cmd("CTRL + PERIOD",  Scripts.voxtype, "Speech to Text")
 Bind.cmd("CTRL + ALT + A", Scripts.voxtype, "Speech to Text")
 
--- Clipboard History Lookup
-local cmd_search_clipboard = "cliphist list | "
-  .. MENU
-  .. " -i -dmenu -p 'Search clipboard history...' | cliphist decode | wl-copy"
-Bind.leader_cmd("CTRL + V", cmd_search_clipboard, "Clipboard History")
+-- Clipboard History
+Bind.leader_fn("CTRL + V",         Menu.clipboard(),        "Clipboard History")
+Bind.leader_fn("CTRL + SHIFT + V", Menu.clipboard_delete(), "Delete Clipboard Entry")
+
+-- Pickers
+Bind.leader_fn("CTRL + D", Menu.zoxide(),    "Jump to Directory")
+Bind.leader_fn("CTRL + E", Menu.emoji(),     "Emoji Picker")
+Bind.leader_fn("CTRL + P", Menu.bitwarden(), "Passwords")
 
 -- Window Selector / Move
 local function select_window(action) return Scripts.window_selector .. " --" .. action end

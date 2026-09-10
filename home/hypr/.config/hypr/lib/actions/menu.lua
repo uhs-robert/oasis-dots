@@ -7,6 +7,9 @@ local Rules = require("config.rules") ---@class Rules
 local Scripts = require("lib.scripts") ---@class Scripts
 
 local MENU = Config.app.menu
+local DMENU_CMD = Config.app.dmenu_cmd
+local TERM_CMD = Config.app.term_cmd
+local FILE_MANAGER = Config.app.tui_file_manager
 local THEME_DIR = "~/.config/" .. MENU .. "/themes/"
 
 --- @class Menu
@@ -44,5 +47,35 @@ Menu.hyprwindow = function() return Menu.show("hyprwindow") end
 --- Return an action that opens the tmux session picker.
 --- @return fun()
 function Menu.tmux() return Cmd.run(Scripts.rofi_tmux) end
+
+--- Return an action that picks a clipboard history entry and copies it back.
+--- @return fun()
+function Menu.clipboard()
+  local picker = DMENU_CMD .. " -p 'Clipboard'"
+  return Cmd.run("cliphist list | " .. picker .. " | cliphist decode | wl-copy")
+end
+
+--- Return an action that deletes a single clipboard history entry.
+--- @return fun()
+function Menu.clipboard_delete()
+  local picker = DMENU_CMD .. " -p 'Delete from clipboard'"
+  return Cmd.run("cliphist list | " .. picker .. " | cliphist delete")
+end
+
+--- Return an action that jumps to a zoxide directory in the file manager.
+--- @return fun()
+function Menu.zoxide()
+  local picker = DMENU_CMD .. " -theme-str 'listview { columns: 1; }' -p 'Directory'"
+  local open = TERM_CMD .. " --class " .. FILE_MANAGER .. " -e " .. FILE_MANAGER .. " {}"
+  return Cmd.run("zoxide query -l | " .. picker .. " | xargs -r -I{} " .. open)
+end
+
+--- Return an action that picks an emoji and types it into the focused window.
+--- @return fun()
+function Menu.emoji() return Cmd.run("rofimoji --action type --selector-args '-name rofiDmenu'") end
+
+--- Return an action that picks a Bitwarden entry (see ~/.config/rofi-rbw.rc).
+--- @return fun()
+function Menu.bitwarden() return Cmd.run("rofi-rbw") end
 
 return Menu
