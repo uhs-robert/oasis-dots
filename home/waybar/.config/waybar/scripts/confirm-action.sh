@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # waybar/.config/waybar/scripts/confirm-action.sh
 # Minimal yes/no dialog, then run a command on Yes.
-# Works with kdialog (preferred) or zenity; no-op if neither exists.
+# Uses rofi, falling back to kdialog or zenity; no-op if none exist.
 
 set -euo pipefail
 
@@ -72,7 +72,7 @@ done
 _lower() { tr '[:upper:]' '[:lower:]'; }
 VERB="$(printf '%s' "$TITLE" | _lower)"
 
-# Build dialog text; include a colored glyph if provided (zenity supports Pango)
+# Build dialog text; include a colored glyph if provided (rofi and zenity support Pango)
 if [[ -n "$GLYPH" ]]; then
   if [[ -n "$COLOR" ]]; then
     PROMPT="<span foreground='$COLOR'>$GLYPH</span>  Are you sure you want to ${VERB}?"
@@ -82,6 +82,17 @@ if [[ -n "$GLYPH" ]]; then
 else
   PROMPT="Are you sure you want to ${VERB}?"
 fi
+
+confirm_with_rofi() {
+  local choice status=0
+  hyprctl dispatch "LayerRules.enable('rofi_popin')" >/dev/null 2>&1 || true
+  # kb-custom-1 exits 10, kb-custom-2 exits 11
+  choice="$(printf 'Yes\nNo\n' | rofi -dmenu -i -no-custom -markup -selected-row 1 \
+    -kb-custom-1 y -kb-custom-2 n \
+    -p "$TITLE" -mesg "$PROMPT" -theme ~/.config/rofi/themes/oasis-confirm.rasi)" || status=$?
+  hyprctl dispatch "LayerRules.disable('rofi_popin')" >/dev/null 2>&1 || true
+  [[ $status -eq 10 || ($status -eq 0 && "$choice" == "Yes") ]]
+}
 
 confirm_with_zenity() {
   local args=(--question --title="$TITLE" --text="$PROMPT" --width=340 --ok-label="Yes" --cancel-label="No")
@@ -126,7 +137,10 @@ focus_monitor_under_cursor() {
   [[ -n "$mon" ]] && hyprctl dispatch focusmonitor "$mon" >/dev/null 2>&1 || true
 }
 
-if command -v kdialog >/dev/null 2>&1; then
+if command -v rofi >/dev/null 2>&1; then
+  focus_monitor_under_cursor || true
+  if confirm_with_rofi; then eval "$EXEC_CMD"; fi
+elif command -v kdialog >/dev/null 2>&1; then
   focus_monitor_under_cursor || true
   if confirm_with_kdialog; then eval "$EXEC_CMD"; fi
 elif command -v zenity >/dev/null 2>&1; then

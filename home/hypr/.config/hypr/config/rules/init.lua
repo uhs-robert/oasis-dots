@@ -56,9 +56,11 @@ local set_layer_rules = function()
   register({ name = "dashboardmenu",     match = { namespace = "dashboardmenu" },     animation = "slide left" })
 
   -- Conditionally enabled
+  register({ name = "rofi_popin",        match = { namespace = "rofi" },              animation = "popin 80%" })
   register({ name = "no_animation",      match = { namespace = ".*"},                 no_anim = true})
   -- stylua: ignore end
 
+  rules.rofi_popin:set_enabled(false)
   rules.no_animation:set_enabled(false)
 
   return rules
