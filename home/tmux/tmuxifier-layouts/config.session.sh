@@ -17,7 +17,7 @@ if initialize_session "$session_name"; then
   tmux set-option -t "$session_name" set-titles-string "Tmux $session_name"
   new_window ""
   run_cmd "cd $session_root"
-  run_cmd "yazi"
+  run_cmd "y"
   new_window ""
   run_cmd "cd $session_root"
   select_window 1
