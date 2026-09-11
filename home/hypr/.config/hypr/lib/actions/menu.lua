@@ -62,12 +62,14 @@ function Menu.clipboard_delete()
   return Cmd.run("cliphist list | " .. picker .. " | cliphist delete")
 end
 
---- Return an action that jumps to a zoxide directory in the file manager.
+--- Return an action that opens a zoxide directory in the file manager, or in `app` when given.
+--- @param app? string
 --- @return fun()
-function Menu.zoxide()
+function Menu.zoxide(app)
   local picker = DMENU_CMD .. " -theme-str 'listview { columns: 1; }' -p 'Directory'"
-  local shell = [[zsh -i -c 'cd "{}" && y; exec zsh -i']]
-  local open = TERM_CMD .. " --class " .. FILE_MANAGER .. " -e " .. shell
+  local shell = [[zsh -i -c 'cd "{}" && ]] .. (app or "y") .. [[; exec zsh -i']]
+  local class = app and "" or (" --class " .. FILE_MANAGER)
+  local open = TERM_CMD .. class .. " -e " .. shell
   return Cmd.run("zoxide query -l | " .. picker .. " | xargs -r -I{} " .. open)
 end
 

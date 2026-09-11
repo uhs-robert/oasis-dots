@@ -27,6 +27,7 @@ Submap.define({
       -- stylua: ignore start
       -- Pickers
       { "SPACE",         Menu.zoxide(),                                   "Directory" },
+      { "SHIFT + SPACE", Menu.zoxide("claude"),                           "Claude in Directory" },
       { "SLASH",         Cmd.run(Scripts.keybind_help),                   "Keybind Help" },
       { "O",             Menu.drun(),                                     "Open Application" },
       { "SHIFT +O",      Launcher.show_picker,                            "Session Launcher" },
