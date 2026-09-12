@@ -78,7 +78,8 @@ backend = "local"
 # .en models are English-only but faster and more accurate for English
 # large-v3-turbo is faster than large-v3 with minimal accuracy loss (recommended for GPU)
 # Or provide absolute path to a custom .bin model file
-model = "base.en"
+model = "large-v3-turbo"
+secondary_model = "base.en"
 
 # Language for transcription
 # Options:
@@ -93,9 +94,10 @@ language = "en"
 # Translate non-English speech to English
 translate = false
 mode = "local"
-flash_attention = false
+flash_attention = true
 on_demand_loading = false
 gpu_isolation = false
+initial_prompt = "Working in Arch Linux on Hyprland with Neovim, tmux, yazi, and Qutebrowser. Ran `pacman -Syu` and `paru -S` from the AUR, then `systemctl --user restart waybar`. Checked `git rebase -i main`, `docker compose up -d`, `rg --hidden`, `fd -e ts`, and `chmod +x ./scripts/deploy.sh`. Voxtype pipes to ydotool. Also using LazyGit, Tridactyl, Which Key, topgrade, Claude Code, Ollama, Zellij, kitty, fzf, zoxide, ripgrep, jq, systemd, Wayland, GTK4, Rust, TypeScript, Python, Kubernetes, Postgres, Redis, Nginx, SSH, and JSON. Sometimes I just talk through an idea out loud, thinking about what to build next and why it matters."
 
 # Number of CPU threads for inference (omit for auto-detection)
 # threads = 4
