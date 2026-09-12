@@ -73,9 +73,14 @@ function Menu.zoxide(app)
   return Cmd.run("zoxide query -l | " .. picker .. " | xargs -r -I{} " .. open)
 end
 
---- Return an action that picks an emoji and types it into the focused window.
+--- Return an action that picks a character and types it into the focused window.
+--- @param files? string|string[] rofimoji file set(s), e.g. "nerd_font" (default: emoji)
 --- @return fun()
-function Menu.emoji() return Cmd.run("rofimoji --action type --selector-args '-name rofiDmenu'") end
+function Menu.emoji(files)
+  local list = type(files) == "table" and files or { files }
+  local files_arg = files and (" --files " .. table.concat(list, " ")) or ""
+  return Cmd.run("rofimoji --action type" .. files_arg .. " --selector-args '-name rofiDmenu'")
+end
 
 --- Return an action that picks a Bitwarden entry (see ~/.config/rofi-rbw.rc).
 --- @return fun()

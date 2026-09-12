@@ -36,6 +36,9 @@ Submap.define({
       { "P",             Menu.bitwarden(),                                "Passwords" },
       { "SHIFT + P",     Menu.tmux(),                                     "Project" },
       { "E",             Menu.emoji(),                                    "Emoji" },
+      { "SHIFT + E",     Menu.emoji("nerd_font"),                         "Nerd Font" },
+      { "CTRL + E",      Menu.emoji("gitmoji"),                           "Gitmoji" },
+      { "ALT + E",       Menu.emoji("fontawesome"),                       "Font Awesome" },
       { "S",             Menu.ssh(),                                      "Open SSH" },
 
       -- Windows
