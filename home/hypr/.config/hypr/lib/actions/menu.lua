@@ -18,6 +18,7 @@ local Menu = {}
 --- @class Menu.ShowOpts
 --- @field theme? string Filename (without path) of the rofi theme in the themes dir.
 --- @field layer_rule? string Layer rule name to enable for the duration.
+--- @field args? string Extra arguments appended to the menu invocation.
 
 --- Return an action that opens the menu in the given show mode.
 --- @param mode string The mode for the menu
@@ -27,7 +28,7 @@ Menu.show = function(mode, opts)
   opts = opts or {}
   local theme, rule = opts.theme, opts.layer_rule
   local theme_arg = theme and (" -theme " .. THEME_DIR .. theme) or ""
-  local cmd = MENU .. " -i -show " .. mode .. theme_arg
+  local cmd = MENU .. " -i -show " .. mode .. theme_arg .. (opts.args and (" " .. opts.args) or "")
   return function()
     if rule then
       hl.dispatch(Rules.exec_with_layer_rule(rule, cmd))
@@ -43,6 +44,13 @@ Menu.run = function() return Menu.show("run") end
 Menu.ssh = function() return Menu.show("ssh") end
 Menu.window = function() return Menu.show("window") end
 Menu.hyprwindow = function() return Menu.show("hyprwindow") end
+
+--- Return an action that picks a $PATH executable and runs it in a terminal.
+--- @return fun()
+function Menu.cli()
+  local inner = [==[zsh -c \"export NO_FASTFETCH=1; exec zsh -i -c '{cmd}; exec zsh -i'\"]==]
+  return Menu.show("run", { args = '-run-command "' .. TERM_CMD .. " -e " .. inner .. '"' })
+end
 
 --- Return an action that opens the tmux session picker.
 --- @return fun()
