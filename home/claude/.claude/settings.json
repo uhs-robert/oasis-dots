@@ -32,11 +32,12 @@
   "alwaysThinkingEnabled": true,
   "effortLevel": "medium",
   "promptSuggestionEnabled": false,
+  "tui": "fullscreen",
   "skipDangerousModePermissionPrompt": true,
   "theme": "dark-ansi",
   "editorMode": "vim",
   "preferredNotifChannel": "kitty",
   "autoCompactEnabled": false,
   "agentPushNotifEnabled": true,
-  "tui": "fullscreen"
+  "remoteControlAtStartup": true
 }
