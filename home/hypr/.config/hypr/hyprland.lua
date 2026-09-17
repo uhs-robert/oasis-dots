@@ -17,7 +17,7 @@ local function init()
   Config.setup(Machines.merge(Default))
 
   require("lua.plugins.hyprvim").setup({
-    keys = { leader = "SUPER", activate = "V", exit = "ESCAPE" },
+    -- keys = { leader = "SUPER", activate = "V", exit = "ESCAPE" },
     which_key = {
       auto_show = { disabled = { "NORMAL", "INSERT", "VISUAL", "V-LINE", "Cursor", "Windows", "Resize", "Move" } },
     },
