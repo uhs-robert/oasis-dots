@@ -65,13 +65,13 @@ function M.get_sessions()
 
   return {
     ["🌐 Browsing"] = {
-      { monitor = 3, ws = 1, cmd = "firefox --new-window", class = "firefox" },
+      { monitor = 3, ws = 1, cmd = "firefox --new-window", class = "org.mozilla.firefox" },
       tmuxifier({ session = "config" }),
     },
 
     ["🧱 Client"] = {
       betterbird(),
-      { monitor = 3, ws = 1, cmd = "firefox --new-window", class = "firefox" },
+      { monitor = 3, ws = 1, cmd = "firefox --new-window", class = "org.mozilla.firefox" },
       tmuxifier({ session = "client-dev" }),
       tmuxifier({ session = "config", ws = 3 }),
       { monitor = 4, ws = 1, cmd = "slack", class = "slack", size = { 1064, 461 } },
@@ -79,7 +79,7 @@ function M.get_sessions()
 
     ["🛠 Config"] = {
       betterbird(),
-      { monitor = 3, ws = 1, cmd = "firefox --new-window", class = "firefox" },
+      { monitor = 3, ws = 1, cmd = "firefox --new-window", class = "org.mozilla.firefox" },
       tmuxifier({ session = "config" }),
     },
 
@@ -109,13 +109,13 @@ function M.get_sessions()
     },
 
     ["📅 Meeting"] = {
-      { monitor = 3, ws = 1, cmd = "firefox --new-window", class = "firefox" },
-      -- Delayed so the blank window above is already snapshotted out; both match "firefox".
+      { monitor = 3, ws = 1, cmd = "firefox --new-window", class = "org.mozilla.firefox" },
+      -- Delayed so the blank window above is already snapshotted out; both match the same class.
       {
         monitor = 1,
         ws = 1,
         cmd = "firefox --new-window https://calendar.google.com/",
-        class = "firefox",
+        class = "org.mozilla.firefox",
         delay = 2000,
       },
     },
@@ -133,7 +133,7 @@ function M.get_sessions()
     ["💼 Work"] = {
       betterbird(),
       { monitor = 2, ws = 1, cmd = "qutebrowser", class = "org.qutebrowser.qutebrowser" },
-      { monitor = 3, ws = 1, cmd = "firefox --new-window", class = "firefox" },
+      { monitor = 3, ws = 1, cmd = "firefox --new-window", class = "org.mozilla.firefox" },
       tmuxifier({ session = "uphill" }),
       tmuxifier({ session = "config", ws = 3 }),
       { monitor = 4, ws = 1, cmd = "slack", class = "slack", size = { 1064, 461 }, delay = 5000 },

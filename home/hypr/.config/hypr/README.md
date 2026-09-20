@@ -85,7 +85,7 @@ The `persistent_workspaces` option pins that many workspaces per monitor so they
 M.sessions = {
   ["Work"] = {
     { monitor = 1, ws = 1, cmd = "kitty", class = "kitty" },
-    { monitor = 2, ws = 1, cmd = "firefox", class = "firefox" },
+    { monitor = 2, ws = 1, cmd = "firefox", class = "org.mozilla.firefox" },
   },
 }
 ```

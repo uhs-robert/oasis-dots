@@ -69,8 +69,8 @@ local function place_when_ready(app, workspace, before, claimed)
         if app.size then
           hl.dispatch(hl.dsp.window.resize({
             window = window,
-            x = w.size.x - app.size[1],
-            y = w.size.y - app.size[2],
+            x = app.size[1] - w.size.x,
+            y = app.size[2] - w.size.y,
             relative = true,
           }))
         end
