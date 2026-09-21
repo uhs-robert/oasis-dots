@@ -7,16 +7,6 @@ local Menu = require("lib.actions.menu") ---@class Menu
 local Window = require("lib.actions.window") ---@class WindowActions
 local Workspace = require("lib.actions.workspace") ---@class WorkspaceActions
 
---- Wrap an action to exit the submap before firing.
---- @param fn fun()
---- @return fun()
-local function exec(fn)
-  return function()
-    Submap.reset()
-    fn()
-  end
-end
-
 --- Selected windows: { [addr] = { active, inactive } }, stores original border colors
 --- Cleared on submap exit.
 local SELECTED = {}
@@ -134,7 +124,7 @@ Submap.define({
     local keys = {
       { "BRACKETLEFT",   Window.cycle_float("prev"),           "Prev Float" },
       { "BRACKETRIGHT",  Window.cycle_float("next"),           "Next Float" },
-      { "C",             for_selected(Window.kill()),          "Close Window" },
+      { "X",             for_selected(Window.kill()),          "Close Window" },
       { "F",             for_selected(Window.float_toggle()),  "Toggle Floating" },
       { "P",             for_selected(Window.pseudo_toggle()), "Toggle Pseudo" },
       { "MINUS",         for_selected(Window.layout_toggle()), "Toggle Split" },
