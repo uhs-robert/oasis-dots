@@ -23,6 +23,18 @@ clone_repos() {
   info "Cloning external repos → $GITHUB_DIR"
   _clone_section TOOLS tools
   _clone_section PERSONAL personal
+  link_keeptabs
+}
+
+# keeptabs ships its own Makefile; link rather than copy so the checkout stays live.
+link_keeptabs() {
+  local dir="$GITHUB_DIR/personal/keeptabs"
+  [[ -f "$dir/Makefile" ]] || return 0
+  if make -s -C "$dir" link; then
+    success "Linked keeptabs into ~/.local"
+  else
+    warn "Failed to link keeptabs"
+  fi
 }
 
 install_devtool_nodejs() {
