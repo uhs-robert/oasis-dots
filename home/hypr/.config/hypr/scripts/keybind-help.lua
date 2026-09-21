@@ -123,9 +123,10 @@ local function rofi_select(binds, prompt)
   return tonumber(idx_str)
 end
 
---- Entry point. Reads active submap, shows filtered binds in rofi, dispatches selection.
+--- Entry point. Reads active submap, shows filtered binds in rofi, resets submaps, dispatches selection.
 local run = function()
   local active_submap = get_active_submap()
+  os.execute("hyprctl eval 'hl.dispatch(hl.dsp.submap(\"reset\"))'")
   local binds = get_binds(active_submap)
   local prompt = active_submap ~= "" and ("Keybinds [" .. active_submap .. "]") or "Keybinds"
   local idx = rofi_select(binds, prompt)
