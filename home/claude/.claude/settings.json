@@ -73,7 +73,7 @@
   "skipDangerousModePermissionPrompt": true,
   "theme": "dark-ansi",
   "editorMode": "vim",
-  "preferredNotifChannel": "kitty",
+  "preferredNotifChannel": "notifications_disabled",
   "autoCompactEnabled": false,
   "agentPushNotifEnabled": true,
   "remoteControlAtStartup": true,
