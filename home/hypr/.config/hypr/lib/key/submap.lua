@@ -153,7 +153,9 @@ function Submap.back()
     Submap.previous = nil
     return
   end
-  return Submap.reset()
+  Submap.reset()
+  -- Delay past the listener's reset teardown, which would close the HUD.
+  hl.timer(function() require("lua.plugins.hyprvim").whichkey.toggle() end, { timeout = 150, type = "oneshot" })
 end
 
 --- Evaluate a binds value, calling it if it is a function.
