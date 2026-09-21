@@ -21,6 +21,15 @@ Direction.tiers = {
   { mod = "CTRL + SHIFT", amount = 300, suffix = " (Ultra Fast)" },
 }
 
+--- Order a letter/arrow key pair by Config.vim_mode.
+--- @param letter string
+--- @param arrow  string
+--- @return string shown, string hidden
+function Direction.keys(letter, arrow)
+  if Config.vim_mode then return letter, arrow end
+  return arrow, letter
+end
+
 --- Build bind rows for a single DirActions set.
 --- @param actions     DirActions
 --- @param desc_prefix string
@@ -35,10 +44,7 @@ function Direction.binds(actions, desc_prefix, mod, opts, desc_suffix)
   local rows = {}
 
   local function add(letter, arrow, action, dir)
-    local shown, hidden = letter, arrow
-    if not Config.vim_mode then
-      shown, hidden = arrow, letter
-    end
+    local shown, hidden = Direction.keys(letter, arrow)
 
     -- Hidden key omits desc so WhichKey skips it.
     rows[#rows + 1] = { p .. shown, action, desc_prefix .. " " .. dir .. s, opts }
