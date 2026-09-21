@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-# Record an agent session's state and location for rofi-claude.sh and Waybar.
-# Usage: session-status.sh <idle|running|waiting|done|tool-failure|end> [agent]
+# keeptabs: record an agent session's state and location for keeptabs-pick and keeptabs-waybar.
+# Usage: keeptabs-hook <idle|running|waiting|done|tool-failure|end> [agent]
 
 state="$1"
 agent="${2:-claude}"
-dir="${XDG_RUNTIME_DIR:-/tmp}/claude-status"
-lib="$HOME/.config/hypr/scripts/claude-lib.sh"
+dir="${XDG_RUNTIME_DIR:-/tmp}/keeptabs"
+lib="$HOME/.local/share/keeptabs/lib.sh"
 mkdir -p "$dir"
 
 input="$(cat)"
@@ -17,7 +17,7 @@ file="$dir/$id.json"
 # Wake the Waybar loops so they redraw now; a read-write open never blocks on a FIFO.
 wake_waybar() {
   local fifo
-  for fifo in "${XDG_RUNTIME_DIR:-/tmp}"/claude-status-waybar/wake-*; do
+  for fifo in "${XDG_RUNTIME_DIR:-/tmp}"/keeptabs-waybar/wake-*; do
     [[ -p "$fifo" ]] && printf '\n' 1<>"$fifo"
   done
 }

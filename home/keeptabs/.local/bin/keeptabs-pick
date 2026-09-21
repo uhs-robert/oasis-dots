@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 # Pick a running agent session (Claude Code, Codex) and focus its window, tmux pane, and nvim terminal.
-# State files are written by ~/.claude/hooks/session-status.sh.
+# keeptabs: state files are written by keeptabs-hook.
 
 set -uo pipefail
 
-DIR="${XDG_RUNTIME_DIR:-/tmp}/claude-status"
+DIR="${XDG_RUNTIME_DIR:-/tmp}/keeptabs"
 
-# shellcheck source=claude-lib.sh
-source "${BASH_SOURCE[0]%/*}/claude-lib.sh"
+# shellcheck source=/dev/null
+source "$HOME/.local/share/keeptabs/lib.sh"
 
 sessions() {
   local f pid comm
@@ -71,7 +71,7 @@ focus_window() {
 focus_nvim() {
   [[ -S "$nvim" ]] || return 0
   local pids lua
-  pids="$(ancestors "$claude_pid" | paste -sd,)"
+  pids="$(ancestors "$agent_pid" | paste -sd,)"
   lua='(function(p) local s = {} for _, v in ipairs(p) do s[v] = true end'
   lua+=' for _, b in ipairs(vim.api.nvim_list_bufs()) do'
   lua+=' if vim.bo[b].buftype == "terminal" and s[select(2, pcall(vim.fn.jobpid, vim.bo[b].channel))] then'
@@ -121,14 +121,14 @@ rofi_args=(-name rofiDmenu -i -dmenu -markup-rows -p Agents -format i)
 index="$(printf '%s' "$rows" | rofi "${rofi_args[@]}")"
 [[ "$index" =~ ^[0-9]+$ ]] || exit 0
 
-IFS=$'\x1f' read -r id state claude_pid socket pane nvim < <(field "$index" id state pid tmux_socket tmux_pane nvim)
+IFS=$'\x1f' read -r id state agent_pid socket pane nvim agent < <(field "$index" id state pid tmux_socket tmux_pane nvim agent)
 
 # Jumping to a finished session counts as seeing it, so it drops from done to idle.
 if [[ "$state" == "done" ]]; then
-  printf '{"session_id":"%s"}' "$id" | CLAUDE_PID="$claude_pid" bash ~/.claude/hooks/session-status.sh idle
+  printf '{"session_id":"%s"}' "$id" | AGENT_PID="$agent_pid" ~/.local/bin/keeptabs-hook idle "${agent:-claude}"
 fi
 
-anchor="$claude_pid"
+anchor="$agent_pid"
 if [[ -n "$pane" ]]; then
   focus_tmux || exit 0
 fi

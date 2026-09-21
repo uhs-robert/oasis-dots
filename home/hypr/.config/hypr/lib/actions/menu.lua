@@ -56,9 +56,9 @@ end
 --- @return fun()
 function Menu.tmux() return Cmd.run(Scripts.rofi_tmux) end
 
---- Return an action that opens the Claude Code session picker.
+--- Return an action that opens the keeptabs agent session picker.
 --- @return fun()
-function Menu.claude() return Cmd.run(Scripts.rofi_claude) end
+function Menu.agents() return Cmd.run("~/.local/bin/keeptabs-pick") end
 
 --- Return an action that picks a clipboard history entry and copies it back.
 --- @return fun()

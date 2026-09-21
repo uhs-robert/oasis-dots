@@ -83,7 +83,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash ~/.claude/hooks/session-status.sh idle"
+            "command": "~/.local/bin/keeptabs-hook idle claude"
           }
         ]
       }
@@ -93,7 +93,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash ~/.claude/hooks/session-status.sh running"
+            "command": "~/.local/bin/keeptabs-hook running claude"
           }
         ]
       }
@@ -104,7 +104,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash ~/.claude/hooks/session-status.sh waiting"
+            "command": "~/.local/bin/keeptabs-hook waiting claude"
           }
         ]
       }
@@ -114,7 +114,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash ~/.claude/hooks/session-status.sh running"
+            "command": "~/.local/bin/keeptabs-hook running claude"
           }
         ]
       }
@@ -124,7 +124,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash ~/.claude/hooks/session-status.sh tool-failure"
+            "command": "~/.local/bin/keeptabs-hook tool-failure claude"
           }
         ]
       }
@@ -135,7 +135,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash ~/.claude/hooks/session-status.sh waiting"
+            "command": "~/.local/bin/keeptabs-hook waiting claude"
           }
         ]
       }
@@ -145,7 +145,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash ~/.claude/hooks/session-status.sh waiting"
+            "command": "~/.local/bin/keeptabs-hook waiting claude"
           }
         ]
       }
@@ -155,7 +155,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash ~/.claude/hooks/session-status.sh done"
+            "command": "~/.local/bin/keeptabs-hook done claude"
           }
         ]
       }
@@ -165,7 +165,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash ~/.claude/hooks/session-status.sh done"
+            "command": "~/.local/bin/keeptabs-hook done claude"
           }
         ]
       }
@@ -175,7 +175,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash ~/.claude/hooks/session-status.sh end"
+            "command": "~/.local/bin/keeptabs-hook end claude"
           }
         ]
       }

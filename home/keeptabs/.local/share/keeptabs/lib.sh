@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Shared helpers for rofi-claude.sh, the Claude status hook, and the Waybar module.
+# keeptabs: shared helpers for keeptabs-hook, keeptabs-pick, and keeptabs-waybar.
 
 # Print a pid and each of its parents up to init.
 ancestors() {

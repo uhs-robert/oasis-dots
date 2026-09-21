@@ -19,7 +19,7 @@ Bind.leader_cmd("E",             FILES,                   "File Manager")
 Bind.leader_fn("SHIFT + E",      Cmd.term(TUI_FILES),     "TUI File Manager")
 Bind.leader_fn("O",              Menu.drun(),             "Open Application")
 Bind.leader_fn("CTRL + O",       Menu.cli(),              "Run CLI Tool")
-Bind.leader_fn("CTRL + A",       Menu.claude(),           "Claude Sessions")
+Bind.leader_fn("CTRL + A",       Menu.agents(),           "Agent Sessions")
 Bind.leader_fn("N",              edit_in_vim,             "Edit Selection in Vim")
 Bind.leader_fn("Y",              Cmd.term("yazi"),        "Yazi")
 

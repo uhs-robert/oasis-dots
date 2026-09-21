@@ -28,7 +28,7 @@ Submap.define({
     local rows = {
       -- stylua: ignore start
       { "TAB",       Workspace.focus_last(),                "Last Workspace" },
-      { "A",         Menu.claude(),                         "Claude Sessions" },
+      { "A",         Menu.agents(),                         "Agent Sessions" },
       { "B",         Apps.focus_or_launch(APP.firefox),     "Browser" },
       { "C",         Apps.focus_or_launch(APP.tmux_config), "Tmuxifier Config" },
       { "SHIFT + C", Apps.focus_or_launch(APP.tmux_client),  "Tmuxifier Client" },

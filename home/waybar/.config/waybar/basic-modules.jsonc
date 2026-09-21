@@ -386,12 +386,12 @@
     "on-click-right": "zsh -lc 'foot zsh -lc \"sudo dnf5 upgrade --refresh -y || sudo dnf upgrade --refresh -y\"; rm -f \"$XDG_RUNTIME_DIR/fedora_updates.cache.json\"; pkill -RTMIN+8 waybar'"
   },
 
-  "custom/claude": {
-    "exec": "~/.config/waybar/scripts/claude-status.sh",
+  "custom/keeptabs": {
+    "exec": "~/.local/bin/keeptabs-waybar",
     "return-type": "json",
     "tooltip": true,
     "hide-empty-text": true,
-    "on-click": "~/.config/hypr/scripts/rofi-claude.sh"
+    "on-click": "~/.local/bin/keeptabs-pick"
   },
 
   "custom/arch-updates": {

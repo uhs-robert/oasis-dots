@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
-# Waybar module: counts Claude Code sessions by state from ~/.claude/hooks/session-status.sh.
+# keeptabs: Waybar module that counts agent sessions by state from keeptabs-hook.
 # Runs continuously; one instance, elected by flock, also marks interrupted sessions done and
 # sessions the user is looking at idle.
 
-DIR="${XDG_RUNTIME_DIR:-/tmp}/claude-status"
-MARKS="${XDG_RUNTIME_DIR:-/tmp}/claude-status-waybar"
-HOOK="$HOME/.claude/hooks/session-status.sh"
+DIR="${XDG_RUNTIME_DIR:-/tmp}/keeptabs"
+MARKS="${XDG_RUNTIME_DIR:-/tmp}/keeptabs-waybar"
+HOOK="$HOME/.local/bin/keeptabs-hook"
 CLAUDE_SESSIONS="$HOME/.claude/sessions"
-LIB="$HOME/.config/hypr/scripts/claude-lib.sh"
+LIB="$HOME/.local/share/keeptabs/lib.sh"
 FOCUS_EVERY_US=2000000
 TICK_BUSY=0.5
 TICK_IDLE=2
@@ -44,7 +44,7 @@ load() {
 
 # Re-run the hook for a session so it records a new state.
 set_state() {
-  printf '{"session_id":"%s"}' "${ids[$1]}" | AGENT_PID="${pids[$1]}" bash "$HOOK" "$2" "${agents[$1]}"
+  printf '{"session_id":"%s"}' "${ids[$1]}" | AGENT_PID="${pids[$1]}" "$HOOK" "$2" "${agents[$1]}"
 }
 
 # Claude records its own busy/waiting/idle status; idle while we still show busy means interrupted.
