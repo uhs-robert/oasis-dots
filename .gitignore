@@ -130,6 +130,8 @@ home/claude/**
 !home/claude/.claude/agents/**
 !home/claude/.claude/commands/
 !home/claude/.claude/commands/**
+!home/claude/.claude/hooks/
+!home/claude/.claude/hooks/**
 !home/claude/.claude/skills/
 !home/claude/.claude/skills/**
 home/claude/.claude/skills/synced/
@@ -151,6 +153,7 @@ home/codex/**
 !home/codex/.codex/prompts/**
 !home/codex/.codex/skills/
 !home/codex/.codex/skills/**
+!home/codex/.codex/hooks.json
 **/.codex/skills/.**
 CLAUDE.md
 GEMINI.md

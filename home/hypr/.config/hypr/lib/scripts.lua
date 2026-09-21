@@ -13,6 +13,7 @@ local Scripts = {
   nmtui                 = HYPR    .. "nmtui.sh",
   hyprlock              = HYPR    .. "hyprlock-screenshot.lua",
   rofi_tmux             = HYPR    .. "rofi-tmux.sh",
+  rofi_claude           = HYPR    .. "rofi-claude.sh",
   window_selector       = HYPR    .. "rofi-hyprwindow.sh",
   keybind_help          = HYPR    .. "keybind-help.lua",
   toggle_monitor_layout = MONITOR .. "toggle-monitor-layout.sh",

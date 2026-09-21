@@ -56,6 +56,10 @@ end
 --- @return fun()
 function Menu.tmux() return Cmd.run(Scripts.rofi_tmux) end
 
+--- Return an action that opens the Claude Code session picker.
+--- @return fun()
+function Menu.claude() return Cmd.run(Scripts.rofi_claude) end
+
 --- Return an action that picks a clipboard history entry and copies it back.
 --- @return fun()
 function Menu.clipboard()

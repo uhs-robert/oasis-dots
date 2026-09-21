@@ -32,6 +32,7 @@ Submap.define({
       { "O",             Menu.drun(),                                     "Open Application" },
       { "SHIFT + O",     Launcher.show_picker,                            "Session Launcher" },
       { "CTRL + O",      Menu.cli(),                                      "Run CLI Tool" },
+      { "CTRL + A",      Menu.claude(),                                   "Claude Sessions" },
       { "T",             Menu.hyprwindow(),                               "Find Window" },
       { "V",             Menu.clipboard(),                                "Clipboard" },
       { "P",             Menu.bitwarden(),                                "Passwords" },

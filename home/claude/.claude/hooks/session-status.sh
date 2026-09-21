@@ -1,0 +1,96 @@
+#!/usr/bin/env bash
+# Record an agent session's state and location for rofi-claude.sh and Waybar.
+# Usage: session-status.sh <idle|running|waiting|done|tool-failure|end> [agent]
+
+state="$1"
+agent="${2:-claude}"
+dir="${XDG_RUNTIME_DIR:-/tmp}/claude-status"
+lib="$HOME/.config/hypr/scripts/claude-lib.sh"
+mkdir -p "$dir"
+
+input="$(cat)"
+IFS=$'\x1f' read -r id event interrupt < <(jq -r \
+  '[.session_id, .hook_event_name, .is_interrupt] | map(. // "" | tostring) | join("\u001f")' <<<"$input")
+[[ -z "$id" ]] && exit 0
+file="$dir/$id.json"
+
+# Wake the Waybar loops so they redraw now; a read-write open never blocks on a FIFO.
+wake_waybar() {
+  local fifo
+  for fifo in "${XDG_RUNTIME_DIR:-/tmp}"/claude-status-waybar/wake-*; do
+    [[ -p "$fifo" ]] && printf '\n' 1<>"$fifo"
+  done
+}
+
+# Print the session's title as the agent names it.
+title_of() {
+  local transcript="$1" index="$HOME/.codex/session_index.jsonl"
+  case "$agent" in
+  claude)
+    [[ -f "$transcript" ]] || return 0
+    { tac "$transcript" | grep -m 1 '"type":"custom-title"' ||
+      tac "$transcript" | grep -m 1 '"type":"ai-title"'; } | jq -r '.customTitle // .aiTitle // empty'
+    ;;
+  codex)
+    [[ -f "$index" ]] || return 0
+    tac "$index" | grep -m 1 -F "\"id\":\"$id\"" | jq -r '.thread_name // empty'
+    ;;
+  esac
+}
+
+if [[ "$state" == end ]]; then
+  rm -f "$file"
+  wake_waybar
+  exit 0
+fi
+
+if [[ "$state" == tool-failure ]]; then
+  state=running
+  [[ "$interrupt" == true ]] && state="done"
+fi
+
+# A new prompt always restarts the clock, even when the session already looked busy.
+if [[ "$event" != UserPromptSubmit && "$(jq -r .state "$file" 2>/dev/null)" == "$state" ]]; then
+  exit 0
+fi
+
+pid="${AGENT_PID:-}"
+[[ -z "$pid" && "$agent" == claude ]] && pid="${CLAUDE_PID:-}"
+if [[ -z "$pid" ]]; then
+  pid=$PPID
+  while [[ "$pid" -gt 1 && "$(cat "/proc/$pid/comm" 2>/dev/null)" != "$agent" ]]; do
+    pid="$(awk '/^PPid:/ {print $2}' "/proc/$pid/status" 2>/dev/null || echo 1)"
+  done
+fi
+comm="$(cat "/proc/$pid/comm" 2>/dev/null)"
+
+# Hooks do not inherit NVIM, so read location vars from the agent process.
+env_of() { tr '\0' '\n' <"/proc/$pid/environ" 2>/dev/null | sed -n "s/^$1=//p"; }
+tmux_socket="$(env_of TMUX)"
+tmux_socket="${tmux_socket%%,*}"
+tmux_pane="$(env_of TMUX_PANE)"
+nvim="$(env_of NVIM)"
+
+# A session that finishes while the user is looking at it has already been seen.
+if [[ "$state" == "done" && -r "$lib" ]]; then
+  # shellcheck source=/dev/null
+  source "$lib"
+  session_focused "$pid" "$tmux_socket" "$tmux_pane" "$nvim" && state=idle
+fi
+
+old="$(cat "$file" 2>/dev/null)"
+transcript="$(jq -r '.transcript_path // empty' <<<"$input")"
+[[ -z "$transcript" ]] && transcript="$(jq -r '.transcript // empty' <<<"${old:-null}")"
+
+jq -n --arg id "$id" --arg agent "$agent" --arg state "$state" --argjson pid "${pid:-0}" \
+  --arg comm "$comm" --arg title "$(title_of "$transcript")" --arg transcript "$transcript" \
+  --arg tmux "$tmux_socket" --arg pane "$tmux_pane" --arg nvim "$nvim" \
+  --argjson input "$input" --argjson old "${old:-null}" \
+  '{id: $id, agent: $agent, state: $state, since: now | floor, pid: $pid, comm: $comm,
+    title: (if $title == "" then $old.title else $title end),
+    cwd: ($ENV.CLAUDE_PROJECT_DIR // $input.cwd // $old.cwd), transcript: $transcript,
+    tmux_socket: $tmux, tmux_pane: $pane, nvim: $nvim}' \
+  >"$file.tmp" && mv "$file.tmp" "$file"
+wake_waybar
+
+exit 0

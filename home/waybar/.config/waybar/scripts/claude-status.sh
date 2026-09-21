@@ -1,0 +1,175 @@
+#!/usr/bin/env bash
+# Waybar module: counts Claude Code sessions by state from ~/.claude/hooks/session-status.sh.
+# Runs continuously; one instance, elected by flock, also marks interrupted sessions done and
+# sessions the user is looking at idle.
+
+DIR="${XDG_RUNTIME_DIR:-/tmp}/claude-status"
+MARKS="${XDG_RUNTIME_DIR:-/tmp}/claude-status-waybar"
+HOOK="$HOME/.claude/hooks/session-status.sh"
+CLAUDE_SESSIONS="$HOME/.claude/sessions"
+LIB="$HOME/.config/hypr/scripts/claude-lib.sh"
+FOCUS_EVERY_US=2000000
+TICK_BUSY=0.5
+TICK_IDLE=2
+LOW_BATTERY=20
+ELECT_EVERY=20
+
+mkdir -p "$DIR" "$MARKS"
+STAMP="$MARKS/render-$$"
+# The hook writes a byte here after each state change, cutting the sleep short.
+WAKE="$MARKS/wake-$$"
+trap 'rm -f "$STAMP" "$WAKE"' EXIT
+mkfifo "$WAKE"
+exec {wake_fd}<>"$WAKE"
+exec {lock_fd}>"$MARKS/watcher.lock"
+# shellcheck source=/dev/null
+[[ -r "$LIB" ]] && source "$LIB"
+
+ids=() pids=() states=() sinces=() names=() titles=() agents=() sockets=() panes=() nvims=()
+
+load() {
+  : >"$STAMP"
+  ids=() pids=() states=() sinces=() names=() titles=() agents=() sockets=() panes=() nvims=()
+  compgen -G "$DIR/*.json" >/dev/null || return 0
+  local id pid state since cwd title agent comm socket pane nvim live
+  while IFS=$'\x1f' read -r id pid state since cwd title agent comm socket pane nvim; do
+    live=""
+    read -r live <"/proc/$pid/comm" 2>/dev/null
+    [[ "$live" == "${comm:-claude}" ]] || continue
+    ids+=("$id") pids+=("$pid") states+=("$state") sinces+=("$since") names+=("${cwd##*/}")
+    titles+=("$title") agents+=("${agent:-claude}") sockets+=("$socket") panes+=("$pane") nvims+=("$nvim")
+  done < <(jq -r '[.id, .pid, .state, .since, .cwd, .title, .agent, .comm, .tmux_socket, .tmux_pane, .nvim]
+    | map(. // "" | tostring) | join("\u001f")' "$DIR"/*.json 2>/dev/null)
+}
+
+# Re-run the hook for a session so it records a new state.
+set_state() {
+  printf '{"session_id":"%s"}' "${ids[$1]}" | AGENT_PID="${pids[$1]}" bash "$HOOK" "$2" "${agents[$1]}"
+}
+
+# Claude records its own busy/waiting/idle status; idle while we still show busy means interrupted.
+watch_interrupts() {
+  local i file seen content status at
+  for i in "${!ids[@]}"; do
+    [[ "${states[i]}" == running && "${agents[i]}" == claude ]] || continue
+    file="$CLAUDE_SESSIONS/${pids[i]}.json"
+    seen="$MARKS/seen-${ids[i]}"
+    [[ -f "$file" ]] || continue
+    [[ -e "$seen" && ! "$file" -nt "$seen" ]] && continue
+    : >"$seen"
+    content=""
+    read -rd '' content <"$file"
+    [[ "$content" =~ \"status\":\"([a-z]+)\" ]] || continue
+    status="${BASH_REMATCH[1]}"
+    [[ "$content" =~ \"statusUpdatedAt\":([0-9]+) ]] || continue
+    at="${BASH_REMATCH[1]}"
+    if [[ "$status" == idle ]] && ((at >= sinces[i] * 1000)); then
+      set_state "$i" "done"
+    fi
+  done
+}
+
+# A done session the user switches to has been seen, so it drops to idle.
+last_focus_check=0
+watch_focus() {
+  local i now="${EPOCHREALTIME/./}"
+  ((now - last_focus_check >= FOCUS_EVERY_US)) || return 0
+  last_focus_check=$now
+  declare -F session_focused >/dev/null || return 0
+  for i in "${!ids[@]}"; do
+    [[ "${states[i]}" == "done" ]] || continue
+    session_focused "${pids[i]}" "${sockets[i]}" "${panes[i]}" "${nvims[i]}" && set_state "$i" idle
+  done
+}
+
+# Freeze the busy animation when discharging at or below LOW_BATTERY percent.
+low_battery() {
+  local bat status capacity
+  for bat in /sys/class/power_supply/BAT*; do
+    [[ -r "$bat/status" ]] || continue
+    read -r status <"$bat/status"
+    read -r capacity <"$bat/capacity"
+    [[ "$status" == Discharging ]] && ((capacity <= LOW_BATTERY)) && return 0
+  done
+  return 1
+}
+
+# Escape for pango markup inside a JSON string.
+escape_json() {
+  local amp='&amp;' lt='&lt;' gt='&gt;' bs=$'\\' quote='"'
+  local s="${1//&/"$amp"}"
+  s="${s//</"$lt"}"
+  s="${s//>/"$gt"}"
+  s="${s//"$bs"/"$bs$bs"}"
+  printf -v "$2" '%s' "${s//"$quote"/"$bs$quote"}"
+}
+
+render() {
+  local frame="$1" wait=0 done=0 running=0 i state class text tooltip="" parts=() name
+  animating=0
+  if ((${#ids[@]} == 0)); then
+    out='{"text":""}'
+    return
+  fi
+  for i in "${!ids[@]}"; do
+    state="${states[i]}"
+    case "$state" in
+    waiting) ((wait++)) ;;
+    done) ((done++)) ;;
+    running) ((running++)) ;;
+    esac
+    escape_json "${titles[i]:-Untitled} (${names[i]})" name
+    tooltip+="${tooltip:+\\n}${state^^}\\t$name"
+  done
+
+  ((wait)) && parts+=("<span color=\\\"#FFA0A0\\\">󱚟 $wait</span>")
+  ((done)) && parts+=("<span color=\\\"#A3E39A\\\">󱜙 $done</span>")
+  if ((running)); then
+    if low_battery; then frame=0; else animating=1; fi
+    # Zero-width struts at both rise extremes keep the line height fixed, so only the icon moves.
+    local strut='<span rise=\"-1024\">​</span><span rise=\"1024\">​</span>' icon=󰚩 rise=-1024
+    ((frame)) && icon=󱚣 rise=1024
+    parts+=("<span color=\\\"#7FA3C9\\\">$strut<span rise=\\\"$rise\\\">$icon</span> $running</span>")
+  fi
+
+  text="󱙺 "
+  if ((${#parts[@]})); then
+    printf -v text '%s  ' "${parts[@]}"
+    text="${text%  }"
+  fi
+  class=idle
+  if ((wait)); then class=waiting; elif ((done)); then class="done"; elif ((running)); then class=running; fi
+  out="{\"text\":\"$text\",\"class\":\"$class\",\"tooltip\":\"$tooltip\"}"
+}
+
+frame=0
+tick=0
+watcher=0
+last=""
+while true; do
+  changed=0
+  [[ ! -e "$STAMP" || "$DIR" -nt "$STAMP" ]] && changed=1
+  for pid in "${pids[@]}"; do
+    [[ -e "/proc/$pid" ]] || changed=1
+  done
+  ((changed)) && load
+
+  if ((!watcher && tick % ELECT_EVERY == 0)) && flock -n "$lock_fd"; then
+    watcher=1
+  fi
+  if ((watcher)); then
+    watch_interrupts
+    watch_focus
+  fi
+
+  render "$frame"
+  if [[ "$out" != "$last" ]]; then
+    printf '%s\n' "$out"
+    last="$out"
+  fi
+
+  frame=$((1 - frame))
+  tick=$((tick + 1))
+  if ((animating)); then tick_s=$TICK_BUSY; else tick_s=$TICK_IDLE; fi
+  read -rt "$tick_s" -u "$wake_fd"
+done

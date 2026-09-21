@@ -226,8 +226,30 @@ menuitem.separator {
 }
 
 /*
+* AI Notifications
+*/
+#custom-claude {
+  padding: 0 8px;
+  color: @fg_dim;
+}
+
+#custom-claude.running {
+  color: @primary;
+}
+
+#custom-claude.done {
+  color: @ok;
+}
+
+#custom-claude.waiting {
+  color: @accent;
+  animation: pulse 1s ease-in-out infinite;
+}
+
+/*
 * VoxType
 */
+
 #custom-voxtype {
   padding: 0 8px;
 }
