@@ -8,10 +8,10 @@ button=$2
 
 if [ $button -eq 1 ]; then
   # Left click: focus window
-  hyprctl keyword cursor:no_warps true
-  hyprctl dispatch focuswindow address:$address
-  hyprctl keyword cursor:no_warps false
+  hyprctl eval "hl.config({ cursor = { no_warps = true } })"
+  hyprctl dispatch "hl.dsp.focus({ window = 'address:$address' })"
+  hyprctl eval "hl.config({ cursor = { no_warps = false } })"
 elif [ $button -eq 2 ]; then
   # Middle click: close window
-  hyprctl dispatch closewindow address:$address
+  hyprctl dispatch "hl.dsp.window.close({ window = 'address:$address' })"
 fi

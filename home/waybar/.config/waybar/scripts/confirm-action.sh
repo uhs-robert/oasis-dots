@@ -21,7 +21,7 @@ Usage:
      --exec '<command to run if confirmed>'
 
 Examples:
-  $0 --title Logout --glyph '󰍃' --color '#89dceb' --exec 'hyprctl dispatch exit'
+  $0 --title Logout --glyph '󰍃' --color '#89dceb' --exec 'hyprctl dispatch "hl.dsp.exit()"'
   $0 --title Reboot --glyph '󰜉' --color '#f9e2af' --exec 'systemctl reboot'
   $0 --title Power\ Off --glyph '󰐥' --color '#f38ba8' --exec 'systemctl poweroff'
   $0 --title Lock --glyph '󰌾' --color '#cdd6f4' --exec 'loginctl lock-session'
@@ -134,7 +134,7 @@ focus_monitor_under_cursor() {
   # fallback: focused monitor
   [[ -z "$mon" ]] && mon="$(jq -r '.[] | select(.focused==true) | .name' <<<"$monitors" | head -n1)"
 
-  [[ -n "$mon" ]] && hyprctl dispatch focusmonitor "$mon" >/dev/null 2>&1 || true
+  [[ -n "$mon" ]] && hyprctl dispatch "hl.dsp.focus({ monitor = '$mon' })" >/dev/null 2>&1 || true
 }
 
 if command -v rofi >/dev/null 2>&1; then

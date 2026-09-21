@@ -6,4 +6,4 @@
 title=$(playerctl metadata --format '{{title}}' 2>/dev/null) || exit 1
 title=$(echo "$title" | tr -s ' ')
 addr=$(hyprctl clients -j | jq -r --arg t "$title" '.[] | select(.title | gsub("\\s+"; " ") | contains($t)) | .address' | head -1)
-[ -n "$addr" ] && hyprctl dispatch focuswindow "address:$addr"
+[ -n "$addr" ] && hyprctl dispatch "hl.dsp.focus({ window = 'address:$addr' })"
