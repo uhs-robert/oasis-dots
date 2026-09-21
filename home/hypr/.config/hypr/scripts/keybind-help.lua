@@ -2,7 +2,7 @@
 -- home/hypr/.config/hypr/scripts/keybind-help.lua
 --
 -- Shows keybinds for the active Hyprland submap in rofi and dispatches the selection.
--- Binds without a description are excluded. submap_universal binds always appear.
+-- Binds without a description are excluded.
 
 --- Modifier bitmask -> display name, evaluated highest bit first.
 --- @type { mask: integer, name: string }[]
@@ -55,23 +55,22 @@ local function get_active_submap()
 end
 
 --- Fetch all binds with descriptions from Hyprland, filtered to the active submap.
---- submap_universal binds are always included regardless of active submap.
 --- @param active_submap string
 --- @return { arg: string, chord: string, desc: string }[]
 local function get_binds(active_submap)
   local h = io.popen([[
     hyprctl binds -j | jq -r '
       .[] | select(.has_description == true) |
-      [.arg, (.modmask | tostring), .key, .submap, .submap_universal, .description] | @tsv
+      [.arg, (.modmask | tostring), .key, .submap, .description] | @tsv
     '
   ]])
   if not h then return {} end
 
   local binds = {}
   for line in h:lines() do
-    local arg, mask_s, key, submap, universal, desc =
-      line:match("^([^\t]+)\t([^\t]+)\t([^\t]+)\t([^\t]*)\t([^\t]*)\t(.+)$")
-    if arg and (submap == active_submap or universal == "true") then
+    local arg, mask_s, key, submap, desc =
+      line:match("^([^\t]+)\t([^\t]+)\t([^\t]+)\t([^\t]*)\t(.+)$")
+    if arg and submap == active_submap then
       local mods = modmask_to_str(tonumber(mask_s) or 0)
       local chord = mods ~= "" and (mods .. "+" .. key) or key
       table.insert(binds, { arg = arg, chord = chord, desc = desc })
