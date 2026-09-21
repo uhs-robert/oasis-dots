@@ -132,19 +132,11 @@ Submap.define({
 
     -- stylua: ignore start
     local keys = {
-      { "R",             Submap.switch("Resize"),              "+Resize" },
-      { "M",             Submap.switch("Move"),                "+Move" },
-      { "I",             Submap.switch("Screenshot"),          "+Screenshot" },
-      { "Q",             Submap.switch("System"),              "+System" },
-      { "C",             Submap.switch("Cursor"),              "+Cursor" },
-      { "TAB",           Workspace.focus_last(),               "Last Workspace" },
       { "BRACKETLEFT",   Window.cycle_float("prev"),           "Prev Float" },
       { "BRACKETRIGHT",  Window.cycle_float("next"),           "Next Float" },
-      { "O",             exec(Menu.window()),                  "Search Windows" },
       { "C",             for_selected(Window.kill()),          "Close Window" },
       { "F",             for_selected(Window.float_toggle()),  "Toggle Floating" },
       { "P",             for_selected(Window.pseudo_toggle()), "Toggle Pseudo" },
-      { "S",             for_selected(Window.layout_toggle()), "Toggle Split" },
       { "MINUS",         for_selected(Window.layout_toggle()), "Toggle Split" },
       { "RETURN",        Window.pass_to_active(),              "Confirm Selection" },
       { "SHIFT + SLASH", wk_toggle,                            "WhichKey" },
@@ -168,7 +160,7 @@ Submap.define({
       keys[#keys + 1] = { "SHIFT + " .. k, for_selected(action), "Move to WS " .. i }
     end
 
-    for i = 1, math.max(#Config.monitors, 10) do
+    for i = 1, math.min(#Config.monitors, 10) do
       keys[#keys + 1] = { tostring(i % 10), Window.focus_monitor(i), "Monitor " .. i }
     end
 
