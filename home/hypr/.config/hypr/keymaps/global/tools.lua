@@ -17,7 +17,7 @@ Bind.leader_fn("CTRL + V",         Menu.clipboard(),        "Clipboard History")
 Bind.leader_fn("CTRL + SHIFT + V", Menu.clipboard_delete(), "Delete Clipboard Entry")
 
 -- Pickers
-Bind.leader_fn("CTRL + D", Menu.zoxide(),    "Jump to Directory")
+Bind.leader_fn("CTRL + SPACE", Menu.zoxide(),    "Jump to Directory")
 Bind.leader_fn("CTRL + E", Menu.emoji(),     "Emoji Picker")
 Bind.leader_fn("CTRL + P", Menu.bitwarden(), "Passwords")
 
