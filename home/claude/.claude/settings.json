@@ -4,12 +4,50 @@
     "pr": "",
     "sessionUrl": false
   },
-  "includeCoAuthoredBy": false,
   "permissions": {
     "allow": [
+      "Bash(cat:*)",
+      "Bash(gh issue list:*)",
+      "Bash(gh issue view:*)",
+      "Bash(gh pr checks:*)",
+      "Bash(gh pr diff:*)",
+      "Bash(gh pr list:*)",
+      "Bash(gh pr view:*)",
+      "Bash(git branch:*)",
+      "Bash(git diff:*)",
+      "Bash(git fetch:*)",
+      "Bash(git log:*)",
+      "Bash(git show:*)",
+      "Bash(git status:*)",
+      "Bash(git worktree list:*)",
+      "Bash(grep:*)",
+      "Bash(head:*)",
+      "Bash(jq:*)",
+      "Bash(ls:*)",
+      "Bash(rg:*)",
+      "Bash(sed -n:*)",
+      "Bash(tail:*)",
+      "Bash(wc:*)",
       "Read(~/.zshrc)"
     ],
-    "defaultMode": "default"
+    "defaultMode": "default",
+    "deny": [
+      "Bash(git push --force:*)",
+      "Bash(git push -f:*)",
+      "Bash(git reset --hard:*)",
+      "Bash(rm -rf /:*)",
+      "Bash(rm -rf ~:*)",
+      "Read(**/*.pem)",
+      "Read(**/.env*)",
+      "Read(**/config/credentials/*.key)",
+      "Read(**/config/master.key)",
+      "Read(**/id_*)",
+      "Read(~/.aws/**)",
+      "Read(~/.claude/.credentials.json)",
+      "Read(~/.config/gh/hosts.yml)",
+      "Read(~/.gnupg/**)",
+      "Read(~/.ssh/**)"
+    ]
   },
   "model": "opus",
   "statusLine": {
@@ -18,8 +56,7 @@
   },
   "enabledPlugins": {
     "lua-lsp@claude-plugins-official": true,
-    "caveman@caveman": true,
-    "ruby-lsp@claude-plugins-official": false
+    "caveman@caveman": true
   },
   "extraKnownMarketplaces": {
     "caveman": {
