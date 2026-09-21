@@ -2,6 +2,8 @@
 --- Supports single-tier binds from a DirActions set, or multi-tier
 --- speed binds from an at(amount) factory.
 
+local Config = require("config")
+
 --- @class Direction
 local Direction = {}
 
@@ -30,16 +32,25 @@ function Direction.binds(actions, desc_prefix, mod, opts, desc_suffix)
   local p = (mod and mod ~= "") and (mod .. " + ") or ""
   local s = desc_suffix or ""
 
-  local function row(letter, arrow, action, dir)
-    return { { p .. letter, p .. arrow }, action, desc_prefix .. " " .. dir .. s, opts }
+  local rows = {}
+
+  local function add(letter, arrow, action, dir)
+    local shown, hidden = letter, arrow
+    if not Config.vim_mode then
+      shown, hidden = arrow, letter
+    end
+
+    -- Hidden key omits desc so WhichKey skips it.
+    rows[#rows + 1] = { p .. shown, action, desc_prefix .. " " .. dir .. s, opts }
+    rows[#rows + 1] = { p .. hidden, action, nil, opts }
   end
 
-  return {
-    row("H", "LEFT", actions.left, "Left"),
-    row("J", "DOWN", actions.down, "Down"),
-    row("K", "UP", actions.up, "Up"),
-    row("L", "RIGHT", actions.right, "Right"),
-  }
+  add("H", "LEFT", actions.left, "Left")
+  add("J", "DOWN", actions.down, "Down")
+  add("K", "UP", actions.up, "Up")
+  add("L", "RIGHT", actions.right, "Right")
+
+  return rows
 end
 
 --- Build bind rows for all speed tiers using an at(amount) factory.
