@@ -132,6 +132,7 @@ home/claude/**
 !home/claude/.claude/commands/**
 !home/claude/.claude/skills/
 !home/claude/.claude/skills/**
+home/claude/.claude/skills/synced/
 !home/claude/.claude/AGENTS.md
 !home/claude/.claude/settings.json
 !home/claude/.claude/keybindings.json
