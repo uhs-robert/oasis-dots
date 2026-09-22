@@ -28,6 +28,7 @@ MARKUP = ENV.fetch('CAVA_MARKUP', '0') == '1' # pango span color
 
 FPS = ENV.fetch('CAVA_FPS', '30').to_i # producer emit cap
 FOLLOW_INT = ENV.fetch('CAVA_FOLLOWER_INTERVAL', '1').to_f # follower print period (s)
+POWER_CHECK_INT = ENV.fetch('CAVA_POWER_INTERVAL', '2').to_f # AC poll period (s)
 
 # Runtime dir for user
 RUNTIME_DIR = ENV['XDG_RUNTIME_DIR'] || "/run/user/#{Process.uid}"
@@ -134,6 +135,21 @@ def media_active?
   State.last_active = probe_playerctl.any? { |s| %w[playing paused].include?(s) }
 end
 
+def monotonic
+  Process.clock_gettime(Process::CLOCK_MONOTONIC)
+end
+
+def read_sysfs(path)
+  File.read(path).strip
+rescue StandardError
+  ''
+end
+
+def on_battery?
+  mains = Dir.glob('/sys/class/power_supply/*').select { |dir| read_sysfs("#{dir}/type") == 'Mains' }
+  !mains.empty? && mains.none? { |dir| read_sysfs("#{dir}/online") == '1' }
+end
+
 def install_parent_death_sig
   # Linux-specific: ask kernel to send SIGTERM if parent dies
   # This is done via prctl(PR_SET_PDEATHSIG)
@@ -217,18 +233,33 @@ def tick_due?(last_emit)
   Process.clock_gettime(Process::CLOCK_MONOTONIC) - last_emit >= (1.0 / [FPS, 1].max)
 end
 
+def power_lost?(last_check)
+  return [last_check, false] if monotonic - last_check < POWER_CHECK_INT
+
+  [monotonic, on_battery?]
+end
+
+def handle_frame(buf, clock)
+  clock[:power], lost = power_lost?(clock[:power])
+  return :battery if lost
+  return nil unless tick_due?(clock[:emit])
+
+  clock[:emit] = monotonic
+  emit_frame(buf) ? nil : :done
+end
+
 def cava_read_loop(pipe)
-  last_emit = 0.0
+  clock = { emit: 0.0, power: monotonic }
   chunk_size = BYTESIZE * BARS
   init_sink
   until State.stop
     buf = pipe.read(chunk_size)
-    break if buf.nil? || buf.bytesize < chunk_size
-    next unless tick_due?(last_emit)
+    return :done if buf.nil? || buf.bytesize < chunk_size
 
-    last_emit = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-    break unless emit_frame(buf)
+    result = handle_frame(buf, clock)
+    return result if result
   end
+  :done
 end
 
 def run_cava(conf_path)
@@ -237,11 +268,22 @@ def run_cava(conf_path)
   end
 end
 
+def wait_for_ac
+  init_sink
+  return false unless safe_write_line({ text: '', class: CLASS_NAME })
+
+  sleep POWER_CHECK_INT while !State.stop && on_battery?
+  !State.stop
+end
+
 def producer(_lock_file)
   Tempfile.create(['cava', '.conf']) do |conf|
     conf.write(CAVA_CONF)
     conf.flush
-    run_cava(conf.path)
+    loop do
+      break unless wait_for_ac
+      break unless run_cava(conf.path) == :battery
+    end
   end
   0
 end
