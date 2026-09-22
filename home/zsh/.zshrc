@@ -20,6 +20,7 @@ setopt INC_APPEND_HISTORY
 setopt AUTO_CD
 setopt CORRECT
 setopt PROMPT_SUBST
+setopt INTERACTIVE_COMMENTS
 
 ZSH_AUTOSUGGEST_STRATEGY=(history completion)
 
