@@ -67,9 +67,14 @@ install_nvim_config() {
   local spec="${NVIM_CONFIG_REPO:-$GITHUB_ORG/neovim}"
   local dest target="$HOME/.config/nvim"
   dest="$REPOS_DIR/$(basename "$spec" .git)"
-  if [[ -e "$target" || -L "$target" ]]; then
+  if [[ -e "$target" ]]; then
     warn "$target already exists, skipping Neovim config"
     return
+  fi
+  # A dangling link is left over from an older layout, never a config worth keeping.
+  if [[ -L "$target" ]]; then
+    rm -f "$target"
+    warn "Replaced dangling $target"
   fi
   ensure_repo "$spec" personal
   [[ -d "$dest" ]] || return 0
