@@ -1,1 +1,1 @@
-../../../../../Development/personal/oasis.nvim/extras/qutebrowser/themes/dark/oasis_moonlight_dark.py
+../../../../repos/oasis.nvim/extras/qutebrowser/themes/dark/oasis_moonlight_dark.py

@@ -121,7 +121,7 @@ f(){ "${EDITOR:-nvim}" -- "$(fzf)"; }
 zstyle ':completion:*' list-colors ''
 
 # Add user script directories to PATH
-export PATH="$PATH:$HOME/Development/tools/rob-bin/bin/"
+export PATH="$PATH:$HOME/.local/share/dotfiles/repos/rob-bin/bin/"
 export PATH="$HOME/.config/hypr/scripts:$PATH"
 export PATH="$HOME/.tmuxifier/bin:$PATH"
 
@@ -141,8 +141,8 @@ export PATH="$HOME/.local/bin:$PATH"
 export PATH="$PATH:$HOME/.lmstudio/bin"
 
 # Load aliases & functions from GitHub-controlled script
-if [[ -f "$HOME/Development/tools/rob-bin/lib/functions.sh" ]]; then
-  source "$HOME/Development/tools/rob-bin/lib/functions.sh"
+if [[ -f "$HOME/.local/share/dotfiles/repos/rob-bin/lib/functions.sh" ]]; then
+  source "$HOME/.local/share/dotfiles/repos/rob-bin/lib/functions.sh"
 fi
 alias src='source ~/.zshrc'
 

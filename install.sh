@@ -10,6 +10,7 @@ source "$DOTFILES_DIR/lib/arch.sh"
 source "$DOTFILES_DIR/lib/rust.sh"
 source "$DOTFILES_DIR/lib/stow.sh"
 source "$DOTFILES_DIR/lib/services.sh"
+source "$DOTFILES_DIR/lib/repos.sh"
 source "$DOTFILES_DIR/lib/fonts.sh"
 
 OPT_AUR=1
@@ -17,6 +18,7 @@ OPT_CARGO=1
 OPT_SYSTEM_FILES=1
 OPT_SERVICES=1
 OPT_YES=0
+OPT_DEV=0
 
 usage() {
   cat <<EOF
@@ -33,6 +35,7 @@ Options:
   --no-cargo           Skip Rust/rustup install
   --no-system-files    Skip system file installation (/etc/greetd, etc.)
   --no-services        Skip service setup (shell, keyd, Steam, Nvidia, voxtype)
+  --dev                Clone repos into $GITHUB_DIR for editing and link them
   -y, --yes            Auto-confirm all prompts
   -h, --help           Show this help message
 EOF
@@ -55,6 +58,7 @@ parse_args() {
     --no-cargo) OPT_CARGO=0 ;;
     --no-system-files) OPT_SYSTEM_FILES=0 ;;
     --no-services) OPT_SERVICES=0 ;;
+    --dev) OPT_DEV=1 ;;
     -y | --yes) OPT_YES=1 ;;
     *) die "Unknown flag: $1" ;;
     esac

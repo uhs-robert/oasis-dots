@@ -22,7 +22,7 @@ local env = {
     HOME .. "/.tmuxifier/bin",
     HOME .. "/.lmstudio/bin",
     HOME .. "/.config/hypr/scripts",
-    HOME .. "/Development/tools/rob-bin/bin",
+    HOME .. "/.local/share/dotfiles/repos/rob-bin/bin",
     "/usr/local/bin",
     "/usr/bin",
     "/bin",

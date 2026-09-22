@@ -60,6 +60,8 @@ Provides `normal`/`insert`/`visual` modes (and more) with window navigation, wor
 
 > [!NOTE]
 > See the [HyprVim repo](https://github.com/uhs-robert/hyprvim) for full documentation. Whichkey requires `eww`.
+>
+> `lua/plugins/hyprvim` is a symlink into the dotfiles `repos/` directory, which the installer fills with a HyprVim clone.
 
 ## Keybinds
 

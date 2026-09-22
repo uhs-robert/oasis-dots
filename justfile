@@ -58,3 +58,23 @@ lint:
 # Validate formatting, package manifests, and whitespace; run optional tooling when available
 check:
     sh ./lib/check.sh
+
+# Clone or link external repos into repos/ without a full install; pass --dev to use ~/Development
+repos *ARGS:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    DOTFILES_DIR="$PWD"
+    for lib in output distro packages repos stow; do source "lib/$lib.sh"; done
+    OPT_DEV=0
+    [[ " {{ARGS}} " == *" --dev "* ]] && OPT_DEV=1
+    clone_repos
+    install_nvim_config
+
+# Pull repos/ checkouts cloned for this machine; linked dev checkouts are skipped
+update-repos:
+    #!/usr/bin/env bash
+    for dir in repos/*/; do
+      [[ -L "${dir%/}" ]] && continue
+      echo "==> ${dir%/}"
+      git -C "$dir" pull --ff-only
+    done

@@ -192,9 +192,9 @@ print_manual_steps() {
     tmuxifier
       rm -rf ~/.tmuxifier
 
-    Cloned repos (~/Development)
-      rm -rf ~/Development
-      Review contents first, may include work you want to keep.
+    Cloned repos (repos/ in the dotfiles checkout, plus ~/Development for --dev installs)
+      rm -rf ~/.local/share/dotfiles ~/Development
+      Review ~/Development first, may include work you want to keep.
 
 EOF
 }

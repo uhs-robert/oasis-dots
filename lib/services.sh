@@ -1,41 +1,5 @@
 #!/usr/bin/env bash
-# Miscellaneous install steps: repos, dev tools, system files, services, and optional hardware.
-
-_clone_section() {
-  local section="$1" subdir="$2"
-  local dir="$GITHUB_DIR/$subdir"
-  mkdir -p "$dir"
-  while IFS= read -r repo; do
-    local dest="$dir/$repo"
-    if [[ -d "$dest" ]]; then
-      warn "$subdir/$repo already exists, skipping"
-    else
-      if git clone "git@github.com:$GITHUB_ORG/$repo.git" "$dest"; then
-        success "Cloned $subdir/$repo"
-      else
-        warn "Failed to clone $subdir/$repo (private repo? clone manually)"
-      fi
-    fi
-  done < <(read_ini_section repos.ini "$section")
-}
-
-clone_repos() {
-  info "Cloning external repos → $GITHUB_DIR"
-  _clone_section TOOLS tools
-  _clone_section PERSONAL personal
-  link_keeptabs
-}
-
-# keeptabs ships its own Makefile; link rather than copy so the checkout stays live.
-link_keeptabs() {
-  local dir="$GITHUB_DIR/personal/keeptabs"
-  [[ -f "$dir/Makefile" ]] || return 0
-  if make -s -C "$dir" link; then
-    success "Linked keeptabs into ~/.local"
-  else
-    warn "Failed to link keeptabs"
-  fi
-}
+# Miscellaneous install steps: dev tools, system files, services, and optional hardware.
 
 install_devtool_nodejs() {
   if command -v fnm &>/dev/null; then

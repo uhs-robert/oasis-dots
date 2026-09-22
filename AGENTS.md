@@ -26,6 +26,8 @@ just stow-optional    # packages under [OPTIONAL]
 just system-diff      # dry-run rsync of system/ into / (no sudo)
 just system-apply     # apply system/ into / (sudo)
 just sync-root-yazi   # regenerate root's Yazi keymap
+just repos [--dev]    # set up repos/ without a full install
+just update-repos     # pull non-linked clones in repos/
 ./install.sh -m       # minimal install, skips AUR/rust/system files/services
 ```
 
@@ -35,7 +37,7 @@ Formatting scope is deliberately narrow — whitespace and stylua checks only co
 
 ## Installer architecture
 
-`install.sh` is a thin orchestrator: parse flags, then call functions sourced from `lib/`. Each lib file owns one concern — `packages.sh` (manifest reading + pacman/pipx/luarocks), `arch.sh` (paru/AUR), `rust.sh`, `fonts.sh`, `stow.sh` (stowing + tmuxifier/neovim/root-symlink bootstrap), `services.sh` (greetd, keyd, Steam, Nvidia, voxtype, dev runtimes), `distro.sh`, `output.sh` (`info`/`warn`/`success`/`die`).
+`install.sh` is a thin orchestrator: parse flags, then call functions sourced from `lib/`. Each lib file owns one concern — `packages.sh` (manifest reading + pacman/pipx/luarocks), `arch.sh` (paru/AUR), `rust.sh`, `fonts.sh`, `stow.sh` (stowing + tmuxifier/neovim/root-symlink bootstrap), `repos.sh` (external repos in `repos/`), `services.sh` (greetd, keyd, Steam, Nvidia, voxtype, dev runtimes), `distro.sh`, `output.sh` (`info`/`warn`/`success`/`die`).
 
 New install behavior belongs in the matching lib function, not inline in `install.sh`.
 
@@ -67,9 +69,11 @@ Plugins are managed by `ya pkg`, with `home/yazi/.config/yazi/package.toml` as t
 
 ## External repos
 
-This repo has no submodules. Personal projects in `repos.ini` are cloned into `~/Development/personal/` and changes there belong in their own repos. qutebrowser's `config.py` reads stylesheets from the `deserted-everything-css` checkout.
+This repo has no submodules. `lib/repos.sh` sets up every repo in `repos.ini` (`owner/name` entries) plus the Neovim config under the gitignored `repos/` directory. By default each is cloned there over HTTPS. With `./install.sh --dev`, or when `$GITHUB_DIR/<section>/<name>` already exists, the checkout lives under `$GITHUB_DIR` and `repos/<name>` is a symlink to it, so there is only ever one copy. `just update-repos` pulls the non-linked clones.
 
-The Neovim config is not tracked here. `install_nvim_config` in `lib/stow.sh` clones `$NVIM_CONFIG_REPO` (default `uhs-robert/nvim-config`) into `~/Development/personal/` and symlinks it to `~/.config/nvim`, leaving any existing `~/.config/nvim` untouched.
+Tracked files must reach external repos only through `repos/`: theme files are relative symlinks into `repos/oasis.nvim/extras`, and `hyprvim` and `deserted-everything-css` are symlinks into `repos/`. Runtime configs that cannot find the dotfiles checkout (shell rc files, Hyprland env) use `~/.local/share/dotfiles/repos`, which the installer links to `repos/`. Never hardcode `~/Development`.
+
+`install_nvim_config` links `~/.config/nvim` to `repos/<name>` for `$NVIM_CONFIG_REPO` (default `uhs-robert/nvim-config`, also accepts a git URL), leaving any existing `~/.config/nvim` untouched.
 
 ## Gitignore
 

@@ -12,11 +12,11 @@ fi
 export PATH
 
 # Add custom script directory to PATH
-export PATH="$PATH:$HOME/Development/tools/rob-bin/bin/"
+export PATH="$PATH:$HOME/.local/share/dotfiles/repos/rob-bin/bin/"
 
 # Load aliases & functions from GitHub-controlled script
-if [ -f "$HOME/Development/tools/rob-bin/lib/functions.sh" ]; then
-  source "$HOME/Development/tools/rob-bin/lib/functions.sh"
+if [ -f "$HOME/.local/share/dotfiles/repos/rob-bin/lib/functions.sh" ]; then
+  source "$HOME/.local/share/dotfiles/repos/rob-bin/lib/functions.sh"
 fi
 
 # Uncomment the following line if you don't like systemctl's auto-paging feature:

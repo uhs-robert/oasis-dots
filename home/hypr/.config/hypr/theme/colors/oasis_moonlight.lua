@@ -1,1 +1,1 @@
-../../../../../../../Development/personal/oasis.nvim/extras/lua-theme/themes/dark/oasis_moonlight.lua
+../../../../../../repos/oasis.nvim/extras/lua-theme/themes/dark/oasis_moonlight.lua

@@ -13,11 +13,30 @@ Personal dotfiles managed with [GNU Stow](https://www.gnu.org/software/stow/). P
 
 Installs system packages, AUR packages, fonts, and dev tools, then stows dotfiles into `~/`. Prompts for optional components (greetd, Steam, Nvidia, dev runtimes).
 
-Flags: `--no-aur`, `--no-cargo`, `--no-system-files`, `--no-services`.
+Flags: `--no-aur`, `--no-cargo`, `--no-system-files`, `--no-services`, `--dev`.
+
+## External Repos
+
+Some configs live in their own repositories, listed in `packages/repos.ini`: Oasis themes (`oasis.nvim`), HyprVim, keeptabs, rob-bin, the qutebrowser site styles, and the Neovim config. The installer clones them into `repos/` inside this checkout (gitignored) and the dotfiles reference them from there, so nothing depends on where you keep your code.
+
+```bash
+./install.sh           # clone read-only copies into repos/ over HTTPS
+./install.sh --dev     # clone into ~/Development over SSH and link repos/ to them, for editing
+just repos             # set up repos/ only, without the full install (accepts --dev)
+just update-repos      # pull the copies in repos/ (linked dev clones are skipped)
+```
+
+A repo that already exists under `~/Development/<section>/<name>` is always linked rather than cloned again. `~/.local/share/dotfiles/repos` points at `repos/` for shell and Hyprland configs that need a fixed path.
+
+To use your own Neovim config, set `NVIM_CONFIG_REPO` to `owner/name` or a git URL before installing. An existing `~/.config/nvim` is never replaced.
+
+```bash
+NVIM_CONFIG_REPO=you/nvim ./install.sh
+```
 
 ## Partial Install (Manual Stow)
 
-If you don't want to install the full dotfiles then you may also manually stow the individual packages that you want.
+If you don't want to install the full dotfiles then you may also manually stow the individual packages that you want. Theme files, HyprVim and the qutebrowser styles are symlinks into `repos/`, so run `just repos` first to set those up (see [External Repos](#external-repos)).
 
 ```bash
 stow -d home <package>     # deploy a package
@@ -48,6 +67,7 @@ just unstow <package> # remove one package's symlinks
 just install          # run install.sh
 just uninstall        # run uninstall.sh
 just sync-root-yazi   # regenerate root's Yazi keymap from the user's
+just update-repos     # pull the external repos cloned into repos/
 ```
 
 ## Betterbird / tbkeys

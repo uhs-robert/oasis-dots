@@ -1,1 +1,1 @@
-../../../../../../../Development/personal/oasis.nvim/extras/lua-theme/themes/dark/oasis_night.lua
+../../../../../../repos/oasis.nvim/extras/lua-theme/themes/dark/oasis_night.lua
