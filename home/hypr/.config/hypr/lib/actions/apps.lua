@@ -11,8 +11,15 @@ local TERM_CMD = Config.app.term_cmd
 --- @param name string
 --- @return boolean
 local function has_cmd(name)
-  local status = os.execute("command -v " .. name .. " >/dev/null 2>&1")
-  return status == true or status == 0
+  -- Hyprland reaps children, so os.execute never reports an exit status here.
+  for dir in (os.getenv("PATH") or ""):gmatch("[^:]+") do
+    local f = io.open(dir .. "/" .. name, "r")
+    if f then
+      f:close()
+      return true
+    end
+  end
+  return false
 end
 
 -- Hybrid GPU laptops default apps to the iGPU; route Steam through the dGPU so games inherit it.
