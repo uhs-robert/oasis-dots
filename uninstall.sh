@@ -64,6 +64,28 @@ unstow_packages() {
   done
 }
 
+# Prompts to remove the links made by clone_repos and install_nvim_config; the clones in repos/ stay.
+remove_repo_links() {
+  confirm "Remove repo links (~/.local/share/dotfiles/repos, ~/.config/nvim, keeptabs in ~/.local)?" || return
+
+  if [[ -f "$REPOS_DIR/keeptabs/Makefile" ]] && make -s -C "$REPOS_DIR/keeptabs" uninstall; then
+    success "Removed keeptabs from ~/.local"
+  fi
+
+  local nvim="$HOME/.config/nvim" repos
+  repos="$(readlink -f "$REPOS_DIR" 2>/dev/null || true)"
+  if [[ -L "$nvim" && -n "$repos" && "$(readlink -f "$nvim" 2>/dev/null)" == "$repos"/* ]]; then
+    rm -f "$nvim" && success "Removed $nvim"
+  else
+    warn "$nvim is not a link into repos/, skipping"
+  fi
+
+  if [[ -L "$REPOS_LINK" ]]; then
+    rm -f "$REPOS_LINK" && success "Removed $REPOS_LINK"
+    rmdir "$(dirname "$REPOS_LINK")" 2>/dev/null || true
+  fi
+}
+
 # Prompts to remove system files installed by install_system_files/install_greetd.
 # Hooks are listed before the scripts they Exec=, so a partial run never leaves
 # a pacman hook pointing at a removed script.
@@ -193,8 +215,8 @@ print_manual_steps() {
       rm -rf ~/.tmuxifier
 
     Cloned repos (repos/ in the dotfiles checkout, plus ~/Development for --dev installs)
-      rm -rf ~/.local/share/dotfiles ~/Development
-      Review ~/Development first, may include work you want to keep.
+      rm -rf ~/dotfiles/repos ~/Development
+      Review both first, may include work you want to keep.
 
 EOF
 }
@@ -209,6 +231,7 @@ main() {
   require_cmd sudo stow
 
   unstow_packages
+  remove_repo_links
   disable_services
   remove_system_files
   remove_root_symlinks
