@@ -76,5 +76,9 @@ update-repos:
     for dir in repos/*/; do
       [[ -L "${dir%/}" ]] && continue
       echo "==> ${dir%/}"
-      git -C "$dir" pull --ff-only
+      if git -C "$dir" symbolic-ref -q HEAD >/dev/null; then
+        git -C "$dir" pull --ff-only
+      else
+        echo "skip: not on a branch (pinned to $(git -C "$dir" describe --tags --always))"
+      fi
     done
