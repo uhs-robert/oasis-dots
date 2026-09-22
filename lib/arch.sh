@@ -18,6 +18,9 @@ install_aur_packages() {
   bootstrap_paru
   info "Installing AUR packages..."
   mapfile -t pkgs < <(read_pkgs arch-aur.ini)
-  paru -S --needed --noconfirm "${pkgs[@]}"
-  success "AUR packages installed"
+  if paru -S --needed --noconfirm "${pkgs[@]}"; then
+    success "AUR packages installed"
+  else
+    warn "Some AUR packages failed to build; continuing"
+  fi
 }
