@@ -40,6 +40,7 @@ Submap.define({
   binds = {
     { "SLASH",     Cmd.run(CMD.edit_keymaps),           "Edit Keymaps" },
     { "SPACE",     Cmd.term("btop"),                    "Task Manager" },
+    { "A",         Cmd.term("abtop"),                   "AI Manager" },
     { "B",         Cmd.run(CMD.toggle_waybar),          "Toggle Waybar" },
     { "D",         Cmd.run(Config.app.display_manager), "Display Manager" },
     { "E",         Cmd.run(POWER.logout),               "Logout" },
