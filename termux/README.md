@@ -12,6 +12,8 @@ pkg update -y && pkg install -y git && git clone https://github.com/uhs-robert/d
 
 Already have the repo? Just run `bash ~/dotfiles/termux/install.sh` again.
 
+The installer also clones the Oasis themes into `termux/repos/oasis.nvim`, as a shallow sparse checkout of the `extras/yazi` and `extras/termux` folders only (about 8 MB). The yazi flavour and the Termux colours are symlinks into it, so rerunning the installer updates them.
+
 Follow the prompts. When it's done, run `exec zsh`.
 
 Add your SSH hosts in `~/.ssh/config` (`v ~/.ssh/config`), then copy your key to each server:

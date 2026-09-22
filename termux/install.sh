@@ -17,6 +17,17 @@ if apt-cache show zsh-autosuggestions >/dev/null 2>&1; then
     pkg install -y zsh-autosuggestions
 fi
 
+# Oasis themes live in their own repo; a sparse shallow clone keeps it small on a phone.
+oasis="$platform_dir/repos/oasis.nvim"
+if [[ -d "$oasis/.git" ]]; then
+    git -C "$oasis" pull --ff-only -q || printf 'Warning: could not update %s\n' "$oasis" >&2
+else
+    git clone -q --depth 1 --filter=blob:none --sparse -- \
+        https://github.com/uhs-robert/oasis.nvim.git "$oasis"
+    git -C "$oasis" sparse-checkout set extras/yazi extras/termux ||
+        printf 'Warning: could not sparse-checkout %s\n' "$oasis" >&2
+fi
+
 stow_packages=(zsh ssh neovim yazi lazygit topgrade termux)
 stow_args=(--dir="$platform_dir" --target="$HOME" --no-folding)
 # Check the whole deployment before linking any package. Never use --adopt.

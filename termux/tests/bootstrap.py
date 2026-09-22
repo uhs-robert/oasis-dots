@@ -25,7 +25,8 @@ def executable(path, body):
 with tempfile.TemporaryDirectory(prefix='termux test ') as temporary:
     root = Path(temporary)
     checkout = root / 'checkout' / 'termux'
-    shutil.copytree(SOURCE, checkout)
+    # Keep symlinks as links, and let the installer clone repos/ itself (git is mocked).
+    shutil.copytree(SOURCE, checkout, symlinks=True, ignore=shutil.ignore_patterns('repos'))
     prefix = root / 'prefix'
     bins = prefix / 'bin'
     bins.mkdir(parents=True)
@@ -88,6 +89,8 @@ fi
     assert (fresh / '.zshrc').is_symlink()
     assert (fresh / '.termux/heliboard/main.jsonc').exists()
     assert (fresh / '.termux/colors.properties').is_symlink()
+    assert (checkout / 'repos/oasis.nvim/.git').exists()
+    assert (fresh / '.config/yazi/flavors/oasis-night-dark.yazi').is_symlink()
     assert (fresh / '.termux/font.ttf').read_bytes().startswith(b'\x00\x01\x00\x00')
     assert not (fresh / '.termux/font.ttf').is_symlink()
     assert not (checkout / 'zsh/.local').exists()

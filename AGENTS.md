@@ -8,7 +8,7 @@ Personal Arch Linux dotfiles deployed with GNU Stow. Three deployment targets, e
 
 - `home/<package>/` — Stow packages symlinked into `~`. Directory layout under a package mirrors `$HOME` exactly (`home/kitty/.config/kitty/` becomes `~/.config/kitty/`).
 - `system/` — files rsynced into `/` (`/etc`, `/opt`, `/usr/local/bin`). Not stowed; copied.
-- `termux/` — standalone mobile SSH setup with its own `install.sh` and Stow packages. Independent of the desktop install; do not mix its packages with `home/`.
+- `termux/` — standalone mobile SSH setup with its own `install.sh` and Stow packages. Independent of the desktop install; do not mix its packages with `home/`. Its installer keeps its own sparse `oasis.nvim` clone in `termux/repos/`, which the yazi flavour and Termux colours symlink into.
 
 `.stowrc` pins `--dir=home --target=~`, so a bare `stow <package>` from the repo root works.
 
