@@ -29,6 +29,7 @@ just sync-root-yazi   # regenerate root's Yazi keymap
 just repos [--dev]    # set up repos/ without a full install
 just update-repos     # pull non-linked clones in repos/
 ./install.sh -m       # minimal install, skips AUR/rust/system files/services
+./install.sh --server # headless install, no desktop packages/configs/services
 ```
 
 `just check` runs `lib/check.sh`: shellcheck, `shfmt -i 2`, `stylua` on `home/hypr/.config/hypr`, duplicate-package detection, and trailing-whitespace scan. Optional tools are skipped when absent rather than failing. There is no single-test runner; the checks are all-or-nothing and report every failure in one pass.
@@ -46,7 +47,7 @@ New install behavior belongs in the matching lib function, not inline in `instal
 `packages/*.ini` are the single source of truth for what gets installed. Plain lines are entries; `#`, blanks, and `[SECTION]` headers are skipped. `read_pkgs` reads a whole file, `read_ini_section <file> <SECTION>` reads one section.
 
 - `arch.ini` / `arch-aur.ini` / `pipx.ini` / `luarocks.ini` / `devtools.ini` — package names.
-- `stow.ini` — dotfile package names (`[CORE]` auto-stowed, `[OPTIONAL]` fzf-selected).
+- `stow.ini` — dotfile package names (`[CORE]` auto-stowed, `[OPTIONAL]` fzf-selected, `[SERVER]` used instead of `[CORE]` under `--server`).
 - `repos.ini` — git repositories to clone.
 
 `lib/check-packages.sh` fails on a name appearing in two manifests, excluding `stow.ini` and `repos.ini` (those namespace directories and repos, not packages). Adding a package means editing the manifest, not the installer.

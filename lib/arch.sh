@@ -17,7 +17,7 @@ bootstrap_paru() {
 install_aur_packages() {
   bootstrap_paru
   info "Installing AUR packages..."
-  mapfile -t pkgs < <(read_pkgs arch-aur.ini)
+  mapfile -t pkgs < <(read_manifest arch-aur.ini SHELL CLI)
   if paru -S --needed --noconfirm "${pkgs[@]}"; then
     success "AUR packages installed"
   else

@@ -24,9 +24,23 @@ ensure_cmd() {
   sudo pacman -S --needed --noconfirm "${missing[@]}"
 }
 
+# Reads a whole manifest, or only the sections in "$@" when --server is set.
+read_manifest() {
+  local file="$1"
+  shift
+  if [[ "${OPT_SERVER:-0}" -eq 1 ]]; then
+    local section
+    for section in "$@"; do
+      read_ini_section "$file" "$section"
+    done
+  else
+    read_pkgs "$file"
+  fi
+}
+
 install_packages() {
   info "Installing system packages..."
-  mapfile -t pkgs < <(read_pkgs "$DISTRO.ini")
+  mapfile -t pkgs < <(read_manifest "$DISTRO.ini" CORE SYSTEM CLI DEV)
   sudo pacman -S --needed --noconfirm "${pkgs[@]}"
   success "System packages installed"
 }

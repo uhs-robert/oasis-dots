@@ -7,13 +7,16 @@ Personal dotfiles managed with [GNU Stow](https://www.gnu.org/software/stow/). P
 ```bash
 ./install.sh        # full install (Arch only)
 ./install.sh -m     # minimal (skip optional components)
+./install.sh --server # headless: shell/CLI/dev packages and configs only
 ./install.sh -y     # auto-confirm all prompts
 ./uninstall.sh      # remove symlinks
 ```
 
 Installs system packages, AUR packages, fonts, and dev tools, then stows dotfiles into `~/`. Prompts for optional components (greetd, Steam, Nvidia, dev runtimes).
 
-Flags: `--no-aur`, `--no-cargo`, `--no-system-files`, `--no-services`, `--dev`.
+Flags: `--no-aur`, `--no-cargo`, `--no-system-files`, `--no-services`, `--dev`, `--server`.
+
+`--server` is for headless machines: it installs the `[CORE] [SYSTEM] [CLI] [DEV]` sections of `packages/arch.ini` plus `[SHELL] [CLI]` from `packages/arch-aur.ini`, stows the `[SERVER]` list from `packages/stow.ini`, and skips fonts, Rust, greetd, and the desktop services.
 
 ## External Repos
 
