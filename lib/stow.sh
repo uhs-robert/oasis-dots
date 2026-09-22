@@ -47,7 +47,7 @@ template_user_configs() {
 
 # Set NVIM_CONFIG_REPO to owner/name or a git URL to use a different config; an existing ~/.config/nvim is kept.
 install_nvim_config() {
-  local spec="${NVIM_CONFIG_REPO:-$GITHUB_ORG/nvim-config}"
+  local spec="${NVIM_CONFIG_REPO:-$GITHUB_ORG/neovim}"
   local dest target="$HOME/.config/nvim"
   dest="$REPOS_DIR/$(basename "$spec" .git)"
   if [[ -e "$target" || -L "$target" ]]; then

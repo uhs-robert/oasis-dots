@@ -73,7 +73,7 @@ This repo has no submodules. `lib/repos.sh` sets up every repo in `repos.ini` (`
 
 Tracked files must reach external repos only through `repos/`: theme files are relative symlinks into `repos/oasis.nvim/extras`, and `hyprvim` and `deserted-everything-css` are symlinks into `repos/`. Runtime configs that cannot find the dotfiles checkout (shell rc files, Hyprland env) use `~/.local/share/dotfiles/repos`, which the installer links to `repos/`. Never hardcode `~/Development`.
 
-`install_nvim_config` links `~/.config/nvim` to `repos/<name>` for `$NVIM_CONFIG_REPO` (default `uhs-robert/nvim-config`, also accepts a git URL), leaving any existing `~/.config/nvim` untouched.
+`install_nvim_config` links `~/.config/nvim` to `repos/<name>` for `$NVIM_CONFIG_REPO` (default `uhs-robert/neovim`, also accepts a git URL), leaving any existing `~/.config/nvim` untouched.
 
 ## Gitignore
 
