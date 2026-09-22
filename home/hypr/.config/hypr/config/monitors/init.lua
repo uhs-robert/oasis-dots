@@ -66,9 +66,7 @@ local function init_monitors()
         break
       end
     end
-    if not known then
-      hl.monitor({ output = mon.name, mode = "preferred", position = "auto", scale = "1" })
-    end
+    if not known then hl.monitor({ output = mon.name, mode = "preferred", position = "auto", scale = "1" }) end
   end
 end
 

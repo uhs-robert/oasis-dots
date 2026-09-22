@@ -68,8 +68,7 @@ local function get_binds(active_submap)
 
   local binds = {}
   for line in h:lines() do
-    local arg, mask_s, key, submap, desc =
-      line:match("^([^\t]+)\t([^\t]+)\t([^\t]+)\t([^\t]*)\t(.+)$")
+    local arg, mask_s, key, submap, desc = line:match("^([^\t]+)\t([^\t]+)\t([^\t]+)\t([^\t]*)\t(.+)$")
     if arg and submap == active_submap then
       local mods = modmask_to_str(tonumber(mask_s) or 0)
       local chord = mods ~= "" and (mods .. "+" .. key) or key

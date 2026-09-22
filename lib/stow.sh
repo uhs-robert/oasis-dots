@@ -79,7 +79,7 @@ setup_root_symlinks() {
     warn "Yazi keymap not found, skipping root keymap generation"
   fi
 
-  sudo tee /root/.config/yazi/theme.toml > /dev/null <<'EOF'
+  sudo tee /root/.config/yazi/theme.toml >/dev/null <<'EOF'
 [flavor]
 dark = "oasis-sol-dark"
 EOF
