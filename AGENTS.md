@@ -65,9 +65,9 @@ An `[MANUAL]` section's comment lines in `arch.ini` are printed as post-install 
 
 Plugins are managed by `ya pkg`, with `home/yazi/.config/yazi/package.toml` as the manifest. Package-managed plugin directories are gitignored; only local plugins (`folder-rules.yazi`, `lazygit.yazi`) are tracked. Never hand-edit package metadata or copy upstream plugin files — run `ya pkg add/delete/upgrade` and commit the resulting `package.toml`.
 
-## Submodules
+## External repos
 
-`home/qutebrowser/.config/qutebrowser/deserted-everything-css` is a git submodule with an SSH remote. Changes there belong in the upstream repo; this repo only records the pointer.
+This repo has no submodules. Personal projects in `repos.ini` are cloned into `~/Development/personal/` and changes there belong in their own repos. qutebrowser's `config.py` reads stylesheets from the `deserted-everything-css` checkout.
 
 The Neovim config is not tracked here. `install_nvim_config` in `lib/stow.sh` clones `$NVIM_CONFIG_REPO` (default `uhs-robert/nvim-config`) into `~/Development/personal/` and symlinks it to `~/.config/nvim`, leaving any existing `~/.config/nvim` untouched.
 

@@ -38,12 +38,11 @@ YAZI = [
     "{}",
 ]
 DEFAULT_SEARCH = "duck"
-LAGOON_CSS = "~/.config/qutebrowser/deserted-everything-css/css/oasis_lagoon/oasis_lagoon-all-sites.css"
-MIDNIGHT_CSS = "~/.config/qutebrowser/deserted-everything-css/css/oasis_midnight/oasis_midnight-all-sites.css"
-DESERT_CSS = "~/.config/qutebrowser/deserted-everything-css/css/oasis_desert/oasis_desert-all-sites.css"
-GRUVBOX_CSS = (
-    "~/.config/qutebrowser/deserted-everything-css/css/gruvbox/gruvbox-all-sites.css"
-)
+CSS_DIR = "~/Development/personal/deserted-everything-css/css"
+LAGOON_CSS = f"{CSS_DIR}/oasis_lagoon/oasis_lagoon-all-sites.css"
+MIDNIGHT_CSS = f"{CSS_DIR}/oasis_midnight/oasis_midnight-all-sites.css"
+DESERT_CSS = f"{CSS_DIR}/oasis_desert/oasis_desert-all-sites.css"
+GRUVBOX_CSS = f"{CSS_DIR}/gruvbox/gruvbox-all-sites.css"
 HINT_FOLLOW = "unique-match"
 USER_SCRIPT_GLOB = f"file://{Path.home()}/.local/share/qutebrowser/userscripts/*"
 
