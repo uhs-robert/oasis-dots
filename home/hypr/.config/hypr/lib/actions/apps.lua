@@ -8,8 +8,21 @@ local Window = require("lib.window") ---@class Window
 local TERM = Config.app.term
 local TERM_CMD = Config.app.term_cmd
 
+--- @param name string
+--- @return boolean
+local function has_cmd(name)
+  local status = os.execute("command -v " .. name .. " >/dev/null 2>&1")
+  return status == true or status == 0
+end
+
+-- Hybrid GPU laptops default apps to the iGPU; route Steam through the dGPU so games inherit it.
+local STEAM_PRIME = Config.nvidia.hybrid and has_cmd("prime-run")
+local STEAM_CMD = STEAM_PRIME and "prime-run steam" or "steam"
+
 --- @class Apps
 local Apps = {}
+
+Apps.steam_prime = STEAM_PRIME
 
 -- stylua: ignore
 Apps.map = {
@@ -21,7 +34,7 @@ Apps.map = {
   protonplus  = { program = "protonplus",  class = "protonplus",                    cmd = "protonplus" },
   qutebrowser = { program = "qutebrowser", class = "org.qutebrowser.qutebrowser" },
   slack       = { program = "slack",       class = "slack" },
-  steam       = { program = "steam",       class = "steam",                         cmd = "steam"},
+  steam       = { program = "steam",       class = "steam",                         cmd = STEAM_CMD },
   terminal    = { program = TERM,          exclude_title = "Tmux" },
   tmux_config = { program = TERM,          title = "Tmux Config",                   cmd = TERM_CMD .. " -e tmuxifier load-session config" },
   tmux_client  = { program = TERM,          title = "Tmux Client App",       cmd = TERM_CMD .. " -e tmuxifier load-session client-dev" },

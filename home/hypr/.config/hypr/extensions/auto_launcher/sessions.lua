@@ -3,6 +3,7 @@
 -- Monitor indices follow Config.monitors order in hyprland.lua:
 
 local Config = require("config") ---@class Config
+local Apps = require("lib.actions.apps") ---@class Apps
 
 --- @class AppEntry
 --- @field monitor integer 1-based monitor index
@@ -89,7 +90,7 @@ function M.get_sessions()
     },
 
     ["🧩 Game Mods"] = {
-      { monitor = 2, ws = 1, cmd = "steam", class = "steam" },
+      { monitor = 2, ws = 1, cmd = Apps.map.steam.cmd, class = "steam" },
       term_entry({
         monitor = 3,
         ws = 1,
@@ -105,7 +106,7 @@ function M.get_sessions()
     },
 
     ["🎮 Game"] = {
-      { monitor = 2, ws = 1, cmd = "steam", class = "steam" },
+      { monitor = 2, ws = 1, cmd = Apps.map.steam.cmd, class = "steam" },
     },
 
     ["📅 Meeting"] = {
