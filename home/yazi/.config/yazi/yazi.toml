@@ -34,7 +34,7 @@ video = [
   { run = 'kdenlive %s', orphan = true, desc = "Kdenlive", for = "unix" },
 ]
 pdf = [
-  { run = 'tdf -w 0C0E13 -b F5F5DC %s', block = true, desc = "tdf", for = "unix" },
+  { run = 'tdf -w 1E2A38 -b F5F5DC %s', block = true, desc = "tdf", for = "unix" },
   { run = 'zathura %s', orphan = true, desc = "Zathura", for = "unix" },
 ]
 just-open = [{ run = 'xdg-open %s', desc = "Open" }]
