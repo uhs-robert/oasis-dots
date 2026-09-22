@@ -48,6 +48,12 @@ stow -d home <package>     # deploy a package
 stow -d home -D <package>  # remove a package
 ```
 
+The `git` package reads your `[user]` block from `~/.config/git/identity`, which is gitignored so each machine can use its own address. `./install.sh` prompts for it when missing; to write it by hand:
+
+```bash
+printf '[user]\n\tname = NAME\n\temail = EMAIL\n' > ~/.config/git/identity
+```
+
 ## Yazi packages
 
 Yazi plugins managed by `ya pkg` use `~/.config/yazi/package.toml` as the reproducible package manifest. Keep that file tracked in this repository and let `ya pkg` manage package state rather than manually editing package-managed plugin files.
