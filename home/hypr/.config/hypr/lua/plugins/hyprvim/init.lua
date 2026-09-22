@@ -1,5 +1,5 @@
 -- Bootstrap hyprvim
-local path = os.getenv("HOME") .. "/.local/share/hyprland/lua/plugins/hyprvim/init.lua"
+local path = os.getenv("HOME") .. "/Development/personal/hyprvim/init.lua"
 
 local chunk, err = loadfile(path)
 
