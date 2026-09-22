@@ -113,6 +113,7 @@ main() {
     do_stow "${SELECTED_OPTIONAL[@]}"
   fi
 
+  setup_git_identity
   template_user_configs
   install_nvim_config
   setup_root_symlinks

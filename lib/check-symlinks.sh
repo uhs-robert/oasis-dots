@@ -21,6 +21,10 @@ git ls-files -s | sed -n 's/^120000 [^	]*	//p' | {
     case "$target" in
     /*)
       resolved=$target
+      # A unit in a .wants/ directory only exists when its package is installed.
+      case "$link" in
+      *.target.wants/*) continue ;;
+      esac
       # Absolute links (systemd units, wallpapers) are machine-specific by nature; only flag misses.
       [ -e "$resolved" ] || report 'broken symlink' "$link -> $target"
       continue

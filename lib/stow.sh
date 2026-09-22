@@ -36,6 +36,23 @@ bootstrap_tmuxifier() {
   success "tmuxifier installed"
 }
 
+# Writes ~/.config/git/identity when absent; the tracked git config includes it.
+setup_git_identity() {
+  local file="$HOME/.config/git/identity" name email
+  [[ -e "$file" ]] && return
+  if [[ $OPT_YES -eq 1 ]]; then
+    warn "No git identity at $file, set user.name and user.email there"
+    return
+  fi
+  read -rp "Git user.name (blank to skip): " name
+  [[ -n "$name" ]] || return
+  read -rp "Git user.email: " email
+  [[ -n "$email" ]] || return
+  mkdir -p "$(dirname "$file")"
+  printf '[user]\n\tname = %s\n\temail = %s\n' "$name" "$email" >"$file"
+  success "Wrote git identity to $file"
+}
+
 template_user_configs() {
   local active="$HOME/.config/hypr/monitors/active.conf"
   local default_layout="$HOME/.config/hypr/monitors/layouts/monitors-default.conf"
