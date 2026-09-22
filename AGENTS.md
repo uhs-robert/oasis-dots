@@ -54,6 +54,10 @@ New install behavior belongs in the matching lib function, not inline in `instal
 
 An `[MANUAL]` section's comment lines in `arch.ini` are printed as post-install notes.
 
+## Git config
+
+`home/git/.config/git/config` is tracked and ends up at `~/.config/git/config`. It includes `identity`, a gitignored file holding only `[user]`; `setup_git_identity` writes it on install when absent and never overwrites one. Keep name and email out of the tracked config, the repo is public.
+
 ## Hyprland config
 
 `home/hypr/.config/hypr/` is Lua, not `hyprland.conf`. `hyprland.lua` is the entrypoint; it merges machine config (`config/machines/`) and loads the `hyprvim` plugin (Vim-modal window management with a which-key overlay). Subsystems live in `config/`, `keymaps/`, `extensions/`, `lib/`, `scripts/`, `theme/`. This tree is stylua-checked.
