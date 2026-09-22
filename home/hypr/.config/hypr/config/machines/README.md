@@ -19,3 +19,5 @@ return {
 The loader uses `$HOSTNAME` first and falls back to `/etc/hostname`. Profiles are keyed by the short hostname (everything before the first `.`), and profile names must contain only `A-Z`, `a-z`, `0-9`, `_`, or `-`. Invalid hostnames and missing hostname profiles are ignored. Hostname-profile values take precedence over `default.lua`, so host-specific differences can be represented without duplicating the full configuration.
 
 Hostname profiles (`<hostname>.lua`) are personal to the machine they describe, so this directory's `.gitignore` untracks any file added here other than `default.lua`, `init.lua`, and this README. Copy `default.lua` to get started; your copy stays local and won't show up in `git status`.
+
+The `shell` field selects the desktop shell that owns the status bar and notifications. Set to `"waybar"` (default) to run Waybar and swaync, or `"quickshell"` to run the quickshell daemon (`qs`) instead. This is normally flipped in a hostname-specific profile by returning `{ shell = "quickshell" }` and then logging out and back in to apply the new shell.

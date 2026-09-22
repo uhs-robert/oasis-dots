@@ -17,7 +17,7 @@ local CMD = {
   toggle_waybar = "pkill -SIGUSR1 waybar",
   restart_waybar_git = "killall swaync swaync-client; pkill -SIGINT waybar; sleep 0.4; swaync & ~/clones/Waybar/build/waybar -c ~/.config/waybar/config.jsonc -s ~/.config/waybar/style.css &",
   edit_keymaps = TERM_CMD .. " -e " .. TUI_FILES .. " ~/.config/hypr/keymaps/",
-  theme_switch = "~/.config/hypr/theme/switch.lua '" .. Config.app.dmenu_cmd .. "'",
+  theme_switch = "~/.config/hypr/theme/switch.lua '" .. Config.app.dmenu_cmd .. "' " .. Config.shell,
   restart_voxtype = "systemctl --user restart voxtype",
 }
 

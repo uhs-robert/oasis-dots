@@ -17,7 +17,11 @@ local function run()
   os.execute("dbus-update-activation-environment --systemd GNOME_KEYRING_CONTROL SSH_AUTH_SOCK")
   if (TERM == 'foot') then hl.exec_cmd('foot --server') end
   hl.exec_cmd("hypridle")
-  hl.exec_cmd("waybar")
+  if Config.shell == "quickshell" then
+    hl.exec_cmd("qs -n")
+  else
+    hl.exec_cmd("waybar")
+  end
   hl.exec_cmd("easyeffects --gapplication-service")
   hl.exec_cmd("udiskie")
   hl.exec_cmd("wl-paste --type text --watch cliphist store") -- Stores text data
