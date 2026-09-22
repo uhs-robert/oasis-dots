@@ -34,7 +34,7 @@ _install_maple_mono_nf() {
   if curl -fsSL "$url" -o "$tmp/MapleMono-NF.zip" && unzip -q "$tmp/MapleMono-NF.zip" -d "$staged"; then
     sudo mkdir -p "$_SYSTEM_FONTS_DIR"
     sudo rm -rf "$dest"
-    sudo cp -a "$staged" "$dest"
+    sudo cp -r --no-preserve=ownership "$staged" "$dest"
     sudo fc-cache -f "$_SYSTEM_FONTS_DIR"
     fc-cache -f
     success "MapleMono NF installed system-wide"

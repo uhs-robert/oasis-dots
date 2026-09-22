@@ -5,11 +5,11 @@ default:
 
 # Show pending changes between system/ and / (dry run, no sudo)
 system-diff:
-    rsync -av --dry-run system/ /
+    rsync -rlptv --omit-dir-times --chown=root:root --dry-run system/ /
 
 # Copy system/ into / for real, e.g. /etc, /usr/local/bin (needs sudo)
 system-apply:
-    sudo rsync -av system/ /
+    sudo rsync -rlptv --omit-dir-times --chown=root:root system/ /
 
 # Symlink one package from home/ into ~
 stow name:
