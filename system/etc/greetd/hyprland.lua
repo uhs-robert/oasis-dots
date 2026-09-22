@@ -83,6 +83,9 @@ hl.config({
 	cursor = {
 		invisible = true,
 	},
+	xwayland = {
+		enabled = false,
+	},
 	ecosystem = {
 		no_donation_nag = true,
 		no_update_news = true,
