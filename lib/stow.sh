@@ -75,12 +75,12 @@ setup_root_symlinks() {
   info "Setting up root symlinks..."
   sudo mkdir -p /root/.config/yazi
 
-  sudo ln -sf "$HOME/.zshrc" /root/.zshrc
-  sudo ln -sf "$HOME/.zsh_plugins.txt" /root/.zsh_plugins.txt
-  sudo ln -sf "$HOME/.config/nvim" /root/.config/nvim
+  sudo ln -sfn "$HOME/.zshrc" /root/.zshrc
+  sudo ln -sfn "$HOME/.zsh_plugins.txt" /root/.zsh_plugins.txt
+  sudo ln -sfn "$HOME/.config/nvim" /root/.config/nvim
 
   for item in flavors plugins yazi.toml; do
-    sudo ln -sf "$HOME/.config/yazi/$item" "/root/.config/yazi/$item"
+    sudo ln -sfn "$HOME/.config/yazi/$item" "/root/.config/yazi/$item"
   done
 
   # Launcher that keeps root's Yazi keymap in sync with the user's, plus a shim
