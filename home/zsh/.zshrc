@@ -195,6 +195,9 @@ else
 fi
 
 
+# tdf, oasis moonlight dark
+alias tdf='tdf -w 0C0E13 -b F5F5DC'
+
 # Just
 alias j='just'
 

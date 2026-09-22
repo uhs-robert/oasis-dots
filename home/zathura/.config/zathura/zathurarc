@@ -25,16 +25,54 @@ set database sqlite
 set save-position true
 set synctex false
 
-# Recolor / dark-ish reading mode
-set recolor false
+# Colors: generated theme from repos/oasis.nvim, swap the link to change palette
+include theme.zathurarc
 set recolor-keephue true
-set recolor-lightcolor "#1e1e2e"
-set recolor-darkcolor "#cdd6f4"
 
-# Completion
-set completion-bg "#1e1e2e"
-set completion-fg "#cdd6f4"
-set completion-highlight-bg "#313244"
-set completion-highlight-fg "#cdd6f4"
-set completion-group-bg "#181825"
-set completion-group-fg "#89b4fa"
+# Keybindings, defaults commented out... with some overrides
+# Scrolling
+# map j scroll down
+# map k scroll up
+# map h scroll left
+# map l scroll right
+# map <C-d> scroll half-down
+# map <C-u> scroll half-up
+# map H scroll page-top
+# map L scroll page-bottom
+
+# Pages
+# map J navigate next
+# map K navigate previous
+# map <PageDown> navigate next
+# map <PageUp> navigate previous
+# map gg goto top
+# map G goto bottom
+# map <C-o> jumplist backward
+# map <C-i> jumplist forward
+
+# Zoom and layout
+# map + zoom in
+# map - zoom out
+# map = zoom default
+map = adjust_window best-fit
+# map a adjust_window best-fit
+map a zoom default
+# map s adjust_window width
+# map d toggle_page_mode
+# map r rotate rotate-cw
+# map <C-r> recolor
+map i recolor
+
+# View
+# map <Tab> toggle_index
+# map <F5> toggle_fullscreen
+# map <F11> toggle_fullscreen
+# map b toggle_statusbar
+# map R reload
+# map n search forward
+# map N search backward
+# map q quit
+
+# Marks
+# map m mark_add
+# map ' mark_evaluate
