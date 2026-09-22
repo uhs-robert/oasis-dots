@@ -16,14 +16,10 @@ local Default = require("config.machines.default")
 local function init()
   Config.setup(Machines.merge(Default))
 
-  -- A linked dev checkout must stay on its branch, so skip tag-based updates there.
-  local link = io.popen('readlink "$HOME/.local/share/dotfiles/repos/hyprvim"')
-  local dev_checkout = link and (link:read("l") or "") ~= ""
-  if link then link:close() end
-
   require("lua.plugins.hyprvim").setup({
     -- keys = { leader = "SUPER", activate = "V", exit = "ESCAPE" },
-    updates = { channel = dev_checkout and "off" or "stable" },
+    -- The clone tracks main and is pulled by `just update-repos` (run by topgrade).
+    updates = { channel = "off" },
     which_key = {
       auto_show = { disabled = { "NORMAL", "INSERT", "VISUAL", "V-LINE", "Cursor" } },
     },
