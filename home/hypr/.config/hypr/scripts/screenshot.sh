@@ -12,22 +12,12 @@ SCREENSHOT_DIR="${XDG_PICTURES_DIR:-$HOME/Pictures}/Screenshots"
 RECORDING_DIR="${XDG_VIDEOS_DIR:-$HOME/Videos}/Recordings"
 mkdir -p "$SCREENSHOT_DIR" "$RECORDING_DIR"
 
-NOTIFY=$(pidof mako || pidof dunst || pidof swaync || true)
 timestamp() { date +'%Y-%m-%d_%Hh%Mm%Ss'; }
-
-# Send a desktop notification if a notification daemon is running, otherwise print to stdout.
-notify() {
-  if [[ -n "$NOTIFY" ]]; then
-    notify-send "$@"
-  else
-    echo "NOTIFY: $*"
-  fi
-}
 
 # Assert a command exists; notify and exit if missing.
 need() {
   command -v "$1" >/dev/null 2>&1 || {
-    notify "Screenshot Failed" "Missing command: $1"
+    notify-send "Screenshot Failed" "Missing command: $1"
     exit 1
   }
 }
@@ -187,7 +177,7 @@ EOF
   "🎨 Pick Pixel Color") CHOICE="--pixel" ;;
   "📄 OCR Text from Region") CHOICE="--text" ;;
   *)
-    notify "Cancelled" "No valid option selected"
+    notify-send "Cancelled" "No valid option selected"
     exit 1
     ;;
   esac
