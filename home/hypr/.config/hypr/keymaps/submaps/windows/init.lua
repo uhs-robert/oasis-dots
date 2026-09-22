@@ -122,6 +122,9 @@ Submap.define({
 
     -- stylua: ignore start
     local keys = {
+      { "R",             Submap.switch("Resize"),              "+Resize" },
+      { "M",             Submap.switch("Move"),                "+Move" },
+      { "C",             Submap.switch("Cursor"),              "+Cursor" },
       { "BRACKETLEFT",   Window.cycle_float("prev"),           "Prev Float" },
       { "BRACKETRIGHT",  Window.cycle_float("next"),           "Next Float" },
       { "X",             for_selected(Window.kill()),          "Close Window" },
