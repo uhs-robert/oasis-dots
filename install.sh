@@ -101,6 +101,7 @@ main() {
   fi
 
   template_user_configs
+  install_nvim_config
   setup_root_symlinks
   bootstrap_neovim
   install_greetd

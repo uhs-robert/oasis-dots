@@ -45,6 +45,24 @@ template_user_configs() {
   fi
 }
 
+# Set NVIM_CONFIG_REPO to any git URL to use a different config; an existing ~/.config/nvim is kept.
+install_nvim_config() {
+  local repo="${NVIM_CONFIG_REPO:-git@github.com:$GITHUB_ORG/nvim-config.git}"
+  local dest target="$HOME/.config/nvim"
+  dest="$GITHUB_DIR/personal/$(basename "$repo" .git)"
+  if [[ -e "$target" || -L "$target" ]]; then
+    warn "$target already exists, skipping Neovim config"
+    return
+  fi
+  if [[ ! -d "$dest" ]] && ! git clone "$repo" "$dest"; then
+    warn "Failed to clone $repo"
+    return
+  fi
+  mkdir -p "$HOME/.config"
+  ln -s "$dest" "$target"
+  success "Linked $dest → $target"
+}
+
 bootstrap_neovim() {
   info "Bootstrapping Neovim plugins..."
   if ! command -v nvim &>/dev/null; then

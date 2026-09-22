@@ -67,7 +67,9 @@ Plugins are managed by `ya pkg`, with `home/yazi/.config/yazi/package.toml` as t
 
 ## Submodules
 
-`home/neovim/.config/nvim` and `home/qutebrowser/.config/qutebrowser/deserted-everything-css` are git submodules with SSH remotes. Changes there belong in the upstream repo; this repo only records the pointer.
+`home/qutebrowser/.config/qutebrowser/deserted-everything-css` is a git submodule with an SSH remote. Changes there belong in the upstream repo; this repo only records the pointer.
+
+The Neovim config is not tracked here. `install_nvim_config` in `lib/stow.sh` clones `$NVIM_CONFIG_REPO` (default `uhs-robert/nvim-config`) into `~/Development/personal/` and symlinks it to `~/.config/nvim`, leaving any existing `~/.config/nvim` untouched.
 
 ## Gitignore
 
