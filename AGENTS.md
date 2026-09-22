@@ -32,7 +32,7 @@ just update-repos     # pull non-linked clones in repos/
 ./install.sh --server # headless install, no desktop packages/configs/services
 ```
 
-`just check` runs `lib/check.sh`: shellcheck, `shfmt -i 2`, `stylua` on `home/hypr/.config/hypr`, duplicate-package detection, and trailing-whitespace scan. Optional tools are skipped when absent rather than failing. There is no single-test runner; the checks are all-or-nothing and report every failure in one pass.
+`just check` runs `lib/check.sh`: shellcheck, `shfmt -i 2`, `stylua` on `home/hypr/.config/hypr`, duplicate-package detection, tracked-symlink validation, and trailing-whitespace scan. Optional tools are skipped when absent rather than failing. There is no single-test runner; the checks are all-or-nothing and report every failure in one pass.
 
 Formatting scope is deliberately narrow — whitespace and stylua checks only cover `install.sh`, `uninstall.sh`, `justfile`, `lib/`, `packages/`, and `home/hypr/`. Everything else under `home/` is vendored or hand-maintained upstream config; do not reformat it.
 
@@ -71,6 +71,8 @@ Plugins are managed by `ya pkg`, with `home/yazi/.config/yazi/package.toml` as t
 ## External repos
 
 This repo has no submodules. `lib/repos.sh` sets up every repo in `repos.ini` (`owner/name` entries) plus the Neovim config under the gitignored `repos/` directory. By default each is cloned there over HTTPS. With `./install.sh --dev`, or when `$GITHUB_DIR/<section>/<name>` already exists, the checkout lives under `$GITHUB_DIR` and `repos/<name>` is a symlink to it, so there is only ever one copy. `just update-repos` pulls the non-linked clones.
+
+`lib/check-symlinks.sh` fails on a tracked symlink that dangles or points outside the repo; links into a `repos/` clone that is not set up yet are skipped.
 
 Tracked files must reach external repos only through `repos/`: theme files are relative symlinks into `repos/oasis.nvim/extras`, and `hyprvim` and `deserted-everything-css` are symlinks into `repos/`. Runtime configs that cannot find the dotfiles checkout (shell rc files, Hyprland env) use `~/.local/share/dotfiles/repos`, which the installer links to `repos/`. Never hardcode `~/Development`.
 
