@@ -5,6 +5,7 @@ local Utils = require("lib.utils") ---@class Utils
 --- @class Config.Nvidia
 --- @field enable boolean Enable NVIDIA-specific fixes and env vars (default: false)
 --- @field backend string GBM backend name, e.g. "nvidia-drm" or "nvidia-open" (default: "nvidia-drm")
+--- @field hybrid boolean|nil True when the connected internal panel is driven by a non-NVIDIA GPU (default: auto-detected)
 
 --- @class Config.Cursor
 --- @field theme string Xcursor theme name (default: "xcursor-bibata-original-classic")
@@ -39,7 +40,7 @@ local Utils = require("lib.utils") ---@class Utils
 --- @field vim_mode boolean Use H/J/K/L as directional inputs in keybinds (default: true)
 --- @field use_uwsm boolean Enable uwsm session management (default: false)
 --- @field shell "waybar"|"quickshell" Desktop shell that owns the bar and notifications (default: "waybar")
---- @field drm_devices string|nil DRM device path(s) for WLR_DRM_DEVICES; nil = unset (default: nil)
+--- @field drm_devices string|nil DRM device path(s) for AQ_DRM_DEVICES; nil = unset (default: nil)
 --- @field is_laptop boolean|nil Whether the system running is a laptop or desktop (default: nil)
 --- @field nvidia Config.Nvidia
 --- @field cursor Config.Cursor
@@ -61,6 +62,7 @@ Config.defaults = {
   nvidia = {
     enable = nil,
     backend = nil,
+    hybrid = nil,
   },
   cursor = {
     theme = "xcursor-bibata-original-classic",
@@ -142,6 +144,40 @@ local function detect_nvidia_backend()
   return "nvidia-drm"
 end
 
+--- Detects hybrid GPU: true if a connected eDP- connector is driven by a non-NVIDIA GPU.
+--- @return boolean
+local function detect_hybrid()
+  local edp_connectors = io.popen("ls -d /sys/class/drm/card*-eDP-* 2>/dev/null")
+  if not edp_connectors then return false end
+
+  local found_connected = false
+  for conn_path in edp_connectors:lines() do
+    local status_file = io.open(conn_path .. "/status", "r")
+    if status_file then
+      local status = status_file:read("*l") or ""
+      status_file:close()
+      if status == "connected" then
+        found_connected = true
+        local card_name = conn_path:match(".*/(.-)%-eDP%-")
+        if card_name then
+          local driver_link = io.popen("readlink -f /sys/class/drm/" .. card_name .. "/device/driver 2>/dev/null")
+          if driver_link then
+            local driver_path = driver_link:read("*l") or ""
+            driver_link:close()
+            local driver_name = driver_path:match(".*/([^/]+)$") or ""
+            if driver_name ~= "nvidia" then
+              edp_connectors:close()
+              return true
+            end
+          end
+        end
+      end
+    end
+  end
+  edp_connectors:close()
+  return false
+end
+
 --- Detects laptop by checking live monitors for an eDP- panel.
 --- Returns nil when the hl API is unavailable (e.g. during unit tests).
 --- @return boolean|nil
@@ -209,6 +245,7 @@ local function derive(cfg)
     if cfg.nvidia.enable and cfg.nvidia.backend == nil then cfg.nvidia.backend = detect_nvidia_backend() end
   end
   if cfg.nvidia.backend == nil then cfg.nvidia.backend = "nvidia-drm" end
+  if cfg.nvidia.hybrid == nil then cfg.nvidia.hybrid = cfg.nvidia.enable and detect_hybrid() or false end
   cfg.monitors = resolve_monitors(cfg.monitors, cfg.is_laptop)
   fill_menu_cmds(cfg.app)
 end

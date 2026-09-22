@@ -17,6 +17,5 @@ local MONITORS_DESKTOP = {
 }
 
 return {
-  drm_devices = "/dev/dri/card1:/dev/dri/card2 Hyprland",
   monitors = function(is_laptop) return is_laptop and MONITORS_LAPTOP or MONITORS_DESKTOP end,
 }

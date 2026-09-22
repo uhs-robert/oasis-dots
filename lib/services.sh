@@ -207,12 +207,10 @@ install_steam() {
 install_nvidia() {
   confirm "Install Nvidia drivers?" || return 0
   info "Installing Nvidia drivers..."
-  sudo pacman -S --needed --noconfirm nvidia-utils libva-nvidia-driver nvidia-settings
-  if confirm "Use nvidia-dkms instead of nvidia (for zen/lts/custom kernels)?"; then
-    sudo pacman -S --needed --noconfirm nvidia-dkms linux-headers
-  else
-    sudo pacman -S --needed --noconfirm nvidia
-  fi
+  local kernel_section=MODULE
+  confirm "Use nvidia-dkms instead of nvidia (for zen/lts/custom kernels)?" && kernel_section=DKMS
+  mapfile -t pkgs < <(read_ini_section nvidia.ini USERSPACE && read_ini_section nvidia.ini "$kernel_section")
+  sudo pacman -S --needed --noconfirm "${pkgs[@]}"
   success "Nvidia drivers installed (reboot required)"
 }
 

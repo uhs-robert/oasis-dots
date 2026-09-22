@@ -1,5 +1,5 @@
 -- home/hypr/.config/hypr/config/system/env.lua
---- Sets Wayland, Qt, cursor, and XDG environment variables. Conditionally applies NVIDIA-specific vars.
+--- Sets Wayland, Qt, cursor, and XDG environment variables. Conditionally applies NVIDIA-specific and PRIME offload vars.
 
 local Config = require("config") ---@class Config
 local HOME = os.getenv("HOME")
@@ -40,24 +40,29 @@ local env = {
   XDG_SESSION_DESKTOP = "Hyprland",
   TERMINAL = Config.app.term,
 }
-if Config.drm_devices then env.WLR_DRM_DEVICES = Config.drm_devices end
+if Config.drm_devices then env.AQ_DRM_DEVICES = Config.drm_devices end
 
 -- See https://wiki.hypr.land/Configuring/Advanced-and-Cool/Environment-variables/#nvidia-specific
 local nvidia_env = {
+  __GL_GSYNC_ALLOWED = "1",
+  __GL_VRR_ALLOWED = "0",
+}
+
+local offload_env = {
   GBM_BACKEND = Config.nvidia.backend,
   __GLX_VENDOR_LIBRARY_NAME = "nvidia",
   LIBVA_DRIVER_NAME = "nvidia",
-  __GL_GSYNC_ALLOWED = "1",
-  __GL_VRR_ALLOWED = "0",
-
   __VK_LAYER_NV_optimus = "NVIDIA_only",
   __NV_PRIME_RENDER_OFFLOAD = "1",
 }
 
---- Registers all environment variables; nvidia_env is added only when NVIDIA is enabled.
+--- Registers all environment variables; nvidia_env is added when NVIDIA is enabled, offload_env when not hybrid.
 local function init()
   set_env(env)
-  if Config.nvidia.enable then set_env(nvidia_env) end
+  if Config.nvidia.enable then
+    set_env(nvidia_env)
+    if not Config.nvidia.hybrid then set_env(offload_env) end
+  end
 end
 
 init()

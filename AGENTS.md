@@ -47,6 +47,7 @@ New install behavior belongs in the matching lib function, not inline in `instal
 `packages/*.ini` are the single source of truth for what gets installed. Plain lines are entries; `#`, blanks, and `[SECTION]` headers are skipped. `read_pkgs` reads a whole file, `read_ini_section <file> <SECTION>` reads one section.
 
 - `arch.ini` / `arch-aur.ini` / `pipx.ini` / `luarocks.ini` / `devtools.ini` — package names.
+- `nvidia.ini` — Nvidia driver packages, read by `install_nvidia` only after its prompt (`[USERSPACE]` plus `[DKMS]` or `[MODULE]`).
 - `stow.ini` — dotfile package names (`[CORE]` auto-stowed, `[OPTIONAL]` fzf-selected, `[SERVER]` used instead of `[CORE]` under `--server`).
 - `repos.ini` — git repositories to clone.
 
