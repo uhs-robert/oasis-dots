@@ -28,6 +28,7 @@ set synctex false
 # Colors: generated theme from repos/oasis.nvim, swap the link to change palette
 include theme.zathurarc
 set recolor-keephue true
+set recolor true
 
 # Keybindings, defaults commented out... with some overrides
 # Scrolling
