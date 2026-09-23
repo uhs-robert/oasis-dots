@@ -2,6 +2,7 @@
 --- Each bind navigates to a window, workspace, or monitor
 
 local Config = require("config") --- @class Config
+local Cmd = require("lib.actions.cmd") ---@class Cmd
 local Apps = require("lib.actions.apps") --- @class Apps
 local Menu = require("lib.actions.menu") --- @class Menu
 local Submap = require("lib.key.submap") --- @class Submap
@@ -10,6 +11,8 @@ local Workspace = require("lib.actions.workspace") --- @class WorkspaceActions
 local Workspaces = require("lib.workspaces") --- @class Workspaces
 
 local APP = Apps.map
+
+local function popup(name) return Cmd.run("qs ipc call popup open " .. name) end
 
 local SELECTORS = {
   youtube = { window = "title:(?i).*youtube.*" },
@@ -28,7 +31,6 @@ Submap.define({
     local rows = {
       -- stylua: ignore start
       { "TAB",       Workspace.focus_last(),                "Last Workspace" },
-      { "A",         Menu.agents(),                         "Agent Sessions" },
       { "B",         Apps.focus_or_launch(APP.firefox),     "Browser" },
       { "C",         Apps.focus_or_launch(APP.tmux_config), "Tmuxifier Config" },
       { "SHIFT + C", Apps.focus_or_launch(APP.tmux_client),  "Tmuxifier Client" },
@@ -47,6 +49,12 @@ Submap.define({
       { "Y",         Window.focus_by(SELECTORS.youtube),    "Youtube" },
       -- stylua: ignore end
     }
+
+    if Config.shell == "quickshell" then
+      table.insert(rows, { "A", popup("keeptabs"), "Agent Sessions" })
+    else
+      table.insert(rows, { "A", Menu.agents(), "Agent Sessions" })
+    end
 
     for i, entry in ipairs(Config.monitors) do
       local sel = Workspaces.get_monitor_selector(entry)
