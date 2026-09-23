@@ -59,6 +59,16 @@ Item {
             font.family: Theme.font_family
             font.pixelSize: Theme.font_size
         }
+
+        // A failed check with no counts would otherwise leave an empty, clickable gap.
+        Text {
+            Layout.alignment: Qt.AlignVCenter
+            visible: root.official_count === 0 && root.aur_count === 0 && UpdatesState.error !== ""
+            text: "󰮯 !"
+            color: Theme.warning
+            font.family: Theme.font_family
+            font.pixelSize: Theme.font_size
+        }
     }
 
     HoverHandler {
