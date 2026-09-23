@@ -15,17 +15,17 @@ Submap.define({
 
   -- stylua: ignore
   binds = {
-    { "S", popup("start"),         "Start Menu" },
+    { "A", popup("keeptabs"),      "Agents" },
+    { "B", popup("bluetooth"),     "Bluetooth" },
     { "C", popup("clock"),         "Calendar" },
-    { "V", popup("volume"),        "Volume" },
-    { "B", popup("battery"),       "Battery and Brightness" },
-    { "N", popup("network"),       "Network" },
-    { "U", popup("bluetooth"),     "Bluetooth" },
-    { "Y", popup("system"),        "System" },
+    { "I", popup("network"),       "Network and Internet" },
+    { "N", popup("notifications"), "Notifications" },
+    { "P", popup("battery"),       "Power and Brightness" },
+    { "Q", popup("system"),        "System" },
+    { "S", popup("start"),         "Start Menu" },
     { "T", popup("tray"),          "Tray" },
-    { "K", popup("keeptabs"),      "Agents" },
+    { "U", popup("updates"),       "Updates" },
+    { "V", popup("volume"),        "Volume" },
     { "W", popup("weather"),       "Weather" },
-    { "P", popup("updates"),       "Updates" },
-    { "O", popup("notifications"), "Notifications" },
   },
 }).setup()
