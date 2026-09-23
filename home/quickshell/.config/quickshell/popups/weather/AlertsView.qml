@@ -16,10 +16,20 @@ Item {
     readonly property var alerts: WeatherState.alerts
     readonly property var selected: root.alerts[Math.max(0, Math.min(root.alerts.length - 1, root.alert_cursor))]
 
+    readonly property var weekday_names: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
+
     function fmt_time(iso) {
         if (!iso) return "—";
         const d = new Date(iso);
-        return WeatherState.fmt_location_time(d);
+        const shifted = new Date(d.getTime() + WeatherState.utc_offset * 1000);
+        const day = shifted.toISOString().substr(0, 10) === WeatherState.location_date_str() ? "" : root.weekday_names[shifted.getUTCDay()] + " ";
+        return day + WeatherState.fmt_location_time(d);
+    }
+
+    // NWS hard-wraps prose near 70 columns; only join a line that continues in lowercase,
+    // so tables, lists and headings keep their breaks.
+    function unwrap(text) {
+        return (text || "").replace(/-\n(?=[a-z])/g, "-").replace(/([^\n])\n(?=[a-z])/g, "$1 ");
     }
 
     function scroll_detail(dir) {
@@ -31,7 +41,8 @@ Item {
         spacing: 14
 
         ColumnLayout {
-            Layout.preferredWidth: 200
+            Layout.preferredWidth: 220
+            Layout.maximumWidth: 220
             Layout.fillHeight: true
             spacing: 2
 
@@ -94,12 +105,15 @@ Item {
                     }
                 }
             }
+
+            Item { Layout.fillHeight: true }
         }
 
         Flickable {
             id: detail_flick
             Layout.fillWidth: true
             Layout.fillHeight: true
+            Layout.minimumWidth: 200
             clip: true
             contentWidth: width
             contentHeight: detail_col.implicitHeight
@@ -122,6 +136,7 @@ Item {
 
                 Text {
                     Layout.fillWidth: true
+                    elide: Text.ElideRight
                     text: root.selected ? root.fmt_time(root.selected.onset) + " – " + root.fmt_time(root.selected.ends) + "  ·  " + root.selected.area : ""
                     color: Theme.fg_muted
                     font.family: Theme.font_family
@@ -132,7 +147,7 @@ Item {
                     Layout.fillWidth: true
                     Layout.topMargin: 6
                     wrapMode: Text.WordWrap
-                    text: root.selected ? root.selected.description : ""
+                    text: root.selected ? root.unwrap(root.selected.description) : ""
                     color: Theme.fg_core
                     font.family: Theme.font_family
                     font.pixelSize: Theme.popup_font_size - 2
@@ -143,7 +158,7 @@ Item {
                     Layout.topMargin: 6
                     visible: !!root.selected && root.selected.instruction !== ""
                     wrapMode: Text.WordWrap
-                    text: root.selected ? "What to do: " + root.selected.instruction : ""
+                    text: root.selected ? "What to do: " + root.unwrap(root.selected.instruction) : ""
                     color: Theme.fg_core
                     font.family: Theme.font_family
                     font.pixelSize: Theme.popup_font_size - 2
