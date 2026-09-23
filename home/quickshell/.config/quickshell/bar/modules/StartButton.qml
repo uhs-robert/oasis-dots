@@ -30,7 +30,7 @@ Item {
     // Load the SVG file directly: the icon provider returns a small raster that blurs when scaled.
     Image {
         id: icon
-        readonly property int implicitSize: root.compact ? 22 : 26
+        readonly property int implicitSize: root.compact ? 26 : 30
         readonly property real dpr: QsWindow.window ? QsWindow.window.devicePixelRatio : 1
 
         anchors.centerIn: parent
