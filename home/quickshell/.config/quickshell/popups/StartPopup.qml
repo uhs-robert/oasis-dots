@@ -10,8 +10,8 @@ Popup {
     id: root
 
     popup_name: "start"
-    implicitWidth: 180
-    implicitHeight: confirm ? 60 : 180
+    preferred_width: 180
+    implicitHeight: content.implicitHeight + 24
 
     readonly property var actions: ["Apps", "Lock", "Logout", "Reboot", "Power Off"]
     readonly property var glyphs: ["󰣇", "󰌾", "󰍃", "󰜉", "󰐥"]
@@ -49,8 +49,11 @@ Popup {
 
     Item {
         id: content
-        anchors.fill: parent
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.top: parent.top
         anchors.margins: 12
+        implicitHeight: root.confirm ? confirm_row.implicitHeight : actions_col.implicitHeight
         focus: true
 
         Keys.onPressed: event => {
@@ -77,7 +80,10 @@ Popup {
         }
 
         ColumnLayout {
-            anchors.fill: parent
+            id: actions_col
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.top: parent.top
             spacing: 4
             visible: !root.confirm
 
@@ -124,7 +130,9 @@ Popup {
         }
 
         RowLayout {
-            anchors.centerIn: parent
+            id: confirm_row
+            anchors.horizontalCenter: parent.horizontalCenter
+            anchors.top: parent.top
             visible: root.confirm
             spacing: 12
 

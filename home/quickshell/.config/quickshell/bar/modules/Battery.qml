@@ -1,15 +1,22 @@
 // home/quickshell/.config/quickshell/bar/modules/Battery.qml
 import QtQuick
+import QtQuick.Layouts
 import Quickshell.Services.UPower
 import "../../theme"
 import "../../services"
+import "../../components"
 
 Item {
     id: root
 
     property bool compact: false
+    property string screen_name: ""
     property Item island: null
     property color island_color: Theme.bg_core
+
+    WheelStepper {
+        id: wheel_stepper
+    }
 
     readonly property var device: UPower.displayDevice
     readonly property bool has_battery: !!device && device.ready && device.isLaptopBattery
@@ -53,7 +60,8 @@ Item {
         return Math.round(percent) + "%";
     }
 
-    Component.onCompleted: Popups.register_default("battery", root.island, root.island_color)
+    onIslandChanged: if (root.island) Popups.register_default("battery", root.island, root.island_color, root.screen_name)
+    Component.onDestruction: Popups.unregister("battery", root.screen_name, root.island)
 
     Rectangle {
         anchors.fill: parent
@@ -63,18 +71,20 @@ Item {
         opacity: hover_handler.hovered ? 0.5 : 0
     }
 
-    Row {
+    RowLayout {
         id: row
         spacing: 6
 
         Text {
+            Layout.alignment: Qt.AlignVCenter
             text: root.glyph
             color: root.glyph_color
             font.family: Theme.font_family
-            font.pixelSize: Theme.font_size
+            font.pixelSize: Theme.glyph_size
         }
 
         Text {
+            Layout.alignment: Qt.AlignVCenter
             text: Math.round(root.percent) + "%"
             color: Theme.fg_core
             font.family: Theme.font_family
@@ -92,7 +102,11 @@ Item {
 
     MouseArea {
         anchors.fill: parent
-        onClicked: Popups.toggle("battery", root.island, root.island_color)
-        onWheel: wheel => Backlight.bump(wheel.angleDelta.y > 0 ? 1 : -1)
+        onClicked: Popups.toggle("battery", root.island, root.island_color, root.screen_name)
+        onWheel: wheel => {
+            const notches = wheel_stepper.consume(wheel.angleDelta.y || wheel.pixelDelta.y);
+            if (notches === 0) return;
+            Backlight.set_percent(wheel_stepper.snap_by(Backlight.percent, notches, 1, 100));
+        }
     }
 }

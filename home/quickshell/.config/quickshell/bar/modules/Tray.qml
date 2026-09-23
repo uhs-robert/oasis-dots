@@ -1,64 +1,75 @@
 // home/quickshell/.config/quickshell/bar/modules/Tray.qml
 import QtQuick
+import QtQuick.Layouts
 import Quickshell
 import Quickshell.Services.SystemTray
-import Quickshell.Widgets
+import "../../theme"
 import "../../services"
 
-Row {
+Item {
     id: root
 
-    spacing: 10
-    visible: SystemTray.items.values.length > 0
+    property bool compact: false
+    property string screen_name: ""
+    property Item island: null
+    property color island_color: Theme.bg_core
 
-    Repeater {
-        model: SystemTray.items.values
+    readonly property int count: SystemTray.items.values.length
+    readonly property bool needs_attention: SystemTray.items.values.some(i => i.status === Status.NeedsAttention)
+    readonly property string tooltip_text: root.count + " tray app" + (root.count === 1 ? "" : "s")
 
-        Item {
-            id: icon_root
-            required property var modelData
+    visible: root.count > 0
+    implicitWidth: root.visible ? row.implicitWidth : 0
+    implicitHeight: row.implicitHeight
 
-            width: 16
-            height: 16
+    onIslandChanged: if (root.island) Popups.register_default("tray", root.island, root.island_color, root.screen_name)
+    Component.onDestruction: Popups.unregister("tray", root.screen_name, root.island)
 
-            IconImage {
-                anchors.fill: parent
-                implicitSize: 16
-                source: icon_root.modelData.icon
-            }
+    Rectangle {
+        anchors.fill: parent
+        anchors.margins: -4
+        radius: 4
+        color: Theme.bg_surface
+        opacity: hover_handler.hovered ? 0.5 : 0
+    }
 
-            QsMenuAnchor {
-                id: menu_anchor
-                anchor.item: icon_root
-                anchor.edges: Edges.Bottom
-                anchor.gravity: Edges.Bottom
-                menu: icon_root.modelData.menu
-            }
+    RowLayout {
+        id: row
+        spacing: 2
 
-            MouseArea {
-                anchors.fill: parent
-                acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton
-                onClicked: mouse => {
-                    if (mouse.button === Qt.RightButton) {
-                        if (menu_anchor.visible) menu_anchor.close(); else menu_anchor.open();
-                    } else if (mouse.button === Qt.MiddleButton) {
-                        icon_root.modelData.secondaryActivate();
-                    } else if (icon_root.modelData.onlyMenu) {
-                        if (menu_anchor.visible) menu_anchor.close(); else menu_anchor.open();
-                    } else {
-                        icon_root.modelData.activate();
-                    }
-                }
-                onWheel: wheel => icon_root.modelData.scroll(wheel.angleDelta.y, false)
-            }
+        Text {
+            Layout.alignment: Qt.AlignVCenter
+            text: ""
+            color: Theme.theme_primary
+            font.family: Theme.font_family
+            font.pixelSize: Theme.glyph_size
+            rotation: Popups.open_name === "tray" ? -90 : 0
 
-            HoverHandler {
-                onHoveredChanged: {
-                    const label = icon_root.modelData.tooltipTitle || icon_root.modelData.title;
-                    if (hovered && label) Tooltip.show(icon_root, label);
-                    else Tooltip.hide();
-                }
+            Behavior on rotation {
+                NumberAnimation { duration: 180; easing.type: Easing.InOutCubic }
             }
         }
+
+        Rectangle {
+            Layout.alignment: Qt.AlignTop
+            visible: root.needs_attention
+            implicitWidth: 5
+            implicitHeight: 5
+            radius: 2.5
+            color: Theme.theme_accent
+        }
+    }
+
+    HoverHandler {
+        id: hover_handler
+        onHoveredChanged: {
+            if (hovered) Tooltip.show(root, root.tooltip_text);
+            else Tooltip.hide();
+        }
+    }
+
+    MouseArea {
+        anchors.fill: parent
+        onClicked: Popups.toggle("tray", root.island, root.island_color, root.screen_name)
     }
 }

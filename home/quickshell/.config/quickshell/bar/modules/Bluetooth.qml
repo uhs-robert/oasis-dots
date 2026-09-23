@@ -9,6 +9,7 @@ Item {
     id: root
 
     property bool compact: false
+    property string screen_name: ""
     property Item island: null
     property color island_color: Theme.bg_core
 
@@ -41,7 +42,8 @@ Item {
         return lines.join("\n");
     }
 
-    Component.onCompleted: Popups.register_default("bluetooth", root.island, root.island_color)
+    onIslandChanged: if (root.island) Popups.register_default("bluetooth", root.island, root.island_color, root.screen_name)
+    Component.onDestruction: Popups.unregister("bluetooth", root.screen_name, root.island)
 
     Rectangle {
         anchors.fill: parent
@@ -59,7 +61,7 @@ Item {
             text: root.glyph
             color: root.glyph_color
             font.family: Theme.font_family
-            font.pixelSize: Theme.font_size
+            font.pixelSize: Theme.glyph_size
         }
     }
 
@@ -78,7 +80,7 @@ Item {
             if (mouse.button === Qt.RightButton) {
                 Quickshell.execDetached(["blueman-manager"]);
             } else {
-                Popups.toggle("bluetooth", root.island, root.island_color);
+                Popups.toggle("bluetooth", root.island, root.island_color, root.screen_name);
             }
         }
     }

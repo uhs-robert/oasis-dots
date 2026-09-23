@@ -10,8 +10,8 @@ Popup {
     id: root
 
     popup_name: "bluetooth"
-    implicitWidth: 260
-    implicitHeight: 40 + (root.devices.length > 0 ? root.devices.length * 26 : 22) + 24
+    preferred_width: 260
+    implicitHeight: content.implicitHeight + 24
 
     readonly property var adapter: QsBt.Bluetooth.defaultAdapter
     readonly property bool has_adapter: !!adapter
@@ -29,8 +29,11 @@ Popup {
 
     Item {
         id: content
-        anchors.fill: parent
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.top: parent.top
         anchors.margins: 12
+        implicitHeight: main_column.implicitHeight
         focus: true
 
         Keys.onPressed: event => {
@@ -51,7 +54,10 @@ Popup {
         }
 
         ColumnLayout {
-            anchors.fill: parent
+            id: main_column
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.top: parent.top
             spacing: 4
 
             RowLayout {

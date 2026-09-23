@@ -11,10 +11,12 @@ Popup {
     id: root
 
     popup_name: "battery"
-    implicitWidth: 260
-    implicitHeight: 20 + 20 + (root.time_label !== "" ? 18 : 0) + (root.rate > 0 ? 18 : 0) + 10
-        + 26 + (Backlight.has_kbd ? 26 : 0)
-        + (root.ppd_available ? root.profiles.length * 26 : 22) + 24
+
+    WheelStepper {
+        id: stepper
+    }
+    preferred_width: 260
+    implicitHeight: content.implicitHeight + 24
 
     readonly property var device: UPower.displayDevice
     readonly property bool has_battery: !!device && device.ready
@@ -87,8 +89,11 @@ Popup {
 
     Item {
         id: content
-        anchors.fill: parent
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.top: parent.top
         anchors.margins: 12
+        implicitHeight: main_column.implicitHeight
         focus: true
 
         Keys.onPressed: event => {
@@ -100,12 +105,12 @@ Popup {
                 root.selected = Math.max(0, root.selected - 1);
                 event.accepted = true;
             } else if (event.key === Qt.Key_L) {
-                if (row && row.kind === "brightness") Backlight.bump(1);
-                else if (row && row.kind === "kbd") Backlight.kbd_bump(1);
+                if (row && row.kind === "brightness") Backlight.set_percent(stepper.snap(Backlight.percent, 1, 1, 100));
+                else if (row && row.kind === "kbd") Backlight.kbd_set_percent(stepper.snap(Backlight.kbd_percent, 1, 0, 100));
                 event.accepted = true;
             } else if (event.key === Qt.Key_H) {
-                if (row && row.kind === "brightness") Backlight.bump(-1);
-                else if (row && row.kind === "kbd") Backlight.kbd_bump(-1);
+                if (row && row.kind === "brightness") Backlight.set_percent(stepper.snap(Backlight.percent, -1, 1, 100));
+                else if (row && row.kind === "kbd") Backlight.kbd_set_percent(stepper.snap(Backlight.kbd_percent, -1, 0, 100));
                 event.accepted = true;
             } else if ((event.key === Qt.Key_Return || event.key === Qt.Key_Enter) && row && row.kind === "profile") {
                 PowerProfiles.profile = root.profiles[row.index].value;
@@ -114,7 +119,10 @@ Popup {
         }
 
         ColumnLayout {
-            anchors.fill: parent
+            id: main_column
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.top: parent.top
             spacing: 4
 
             Text {

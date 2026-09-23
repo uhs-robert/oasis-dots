@@ -11,8 +11,13 @@ Popup {
     id: root
 
     popup_name: "volume"
-    implicitWidth: 320
-    implicitHeight: 24 + rows.length * 28 + (streams.length === 0 ? 22 : 0)
+
+    WheelStepper {
+        id: stepper
+    }
+    preferred_width: 320
+    readonly property int max_visible_rows: 10
+    implicitHeight: content.implicitHeight + 24
 
     readonly property var output_devices: Pipewire.nodes.values.filter(n => n.isSink && !n.isStream && n.audio)
     readonly property var input_devices: Pipewire.nodes.values.filter(n => !n.isSink && !n.isStream && n.audio)
@@ -53,6 +58,12 @@ Popup {
         node.audio.volume = Math.max(0, Math.min(1, node.audio.volume + delta));
     }
 
+    function adjust_snap(node, direction) {
+        if (!node || !node.ready || !node.audio) return;
+        const pct = stepper.snap(Math.round(node.audio.volume * 100), direction, 0, 100);
+        node.audio.volume = pct / 100;
+    }
+
     function toggle_mute(node) {
         if (!node || !node.audio) return;
         node.audio.muted = !node.audio.muted;
@@ -65,23 +76,28 @@ Popup {
 
     Item {
         id: content
-        anchors.fill: parent
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.top: parent.top
         anchors.margins: 12
+        implicitHeight: main_column.implicitHeight
         focus: true
 
         Keys.onPressed: event => {
             const row = root.rows[root.selected];
             if (event.key === Qt.Key_J) {
                 root.selected = Math.min(root.rows.length - 1, root.selected + 1);
+                rows_list.positionViewAtIndex(root.selected, ListView.Contain);
                 event.accepted = true;
             } else if (event.key === Qt.Key_K) {
                 root.selected = Math.max(0, root.selected - 1);
+                rows_list.positionViewAtIndex(root.selected, ListView.Contain);
                 event.accepted = true;
             } else if (event.key === Qt.Key_L && row && root.is_slider_row(row.type)) {
-                root.adjust(row.node, 0.05);
+                root.adjust_snap(row.node, 1);
                 event.accepted = true;
             } else if (event.key === Qt.Key_H && row && root.is_slider_row(row.type)) {
-                root.adjust(row.node, -0.05);
+                root.adjust_snap(row.node, -1);
                 event.accepted = true;
             } else if (event.key === Qt.Key_M && row) {
                 root.toggle_mute(row.node);
@@ -93,24 +109,32 @@ Popup {
         }
 
         ColumnLayout {
-            id: rows_col
-            anchors.fill: parent
+            id: main_column
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.top: parent.top
             spacing: 2
 
-            Repeater {
+            ListView {
+                id: rows_list
+                Layout.fillWidth: true
+                Layout.preferredHeight: Math.min(contentHeight, root.max_visible_rows * 26)
+                clip: true
+                spacing: 2
                 model: root.rows
+                currentIndex: root.selected
 
-                ColumnLayout {
+                delegate: Column {
                     id: row_wrap
                     required property var modelData
                     required property int index
 
-                    Layout.fillWidth: true
+                    width: rows_list.width
                     spacing: 2
 
                     Text {
                         visible: row_wrap.index === 0 || root.section_of(root.rows[row_wrap.index - 1].type) !== root.section_of(row_wrap.modelData.type)
-                        Layout.topMargin: row_wrap.index === 0 ? 0 : 6
+                        topPadding: row_wrap.index === 0 ? 0 : 6
                         text: root.section_of(row_wrap.modelData.type)
                         color: Theme.fg_muted
                         font.family: Theme.font_family
@@ -118,8 +142,8 @@ Popup {
                     }
 
                     Rectangle {
-                        Layout.fillWidth: true
-                        height: root.is_slider_row(row_wrap.modelData.type) ? 22 : 22
+                        width: row_wrap.width
+                        height: 22
                         radius: 4
                         color: row_wrap.index === root.selected ? Theme.bg_surface : "transparent"
 

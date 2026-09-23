@@ -1,16 +1,23 @@
 // home/quickshell/.config/quickshell/bar/modules/Volume.qml
 import QtQuick
+import QtQuick.Layouts
 import Quickshell
 import Quickshell.Services.Pipewire
 import "../../theme"
 import "../../services"
+import "../../components"
 
 Item {
     id: root
 
     property bool compact: false
+    property string screen_name: ""
     property Item island: null
     property color island_color: Theme.bg_core
+
+    WheelStepper {
+        id: wheel_stepper
+    }
 
     implicitWidth: row.implicitWidth
     implicitHeight: row.implicitHeight
@@ -36,7 +43,8 @@ Item {
         return label + " // " + Math.round(root.volume * 100) + "%";
     }
 
-    Component.onCompleted: Popups.register_default("volume", root.island, root.island_color)
+    onIslandChanged: if (root.island) Popups.register_default("volume", root.island, root.island_color, root.screen_name)
+    Component.onDestruction: Popups.unregister("volume", root.screen_name, root.island)
 
     Rectangle {
         anchors.fill: parent
@@ -46,19 +54,21 @@ Item {
         opacity: hover_handler.hovered ? 0.5 : 0
     }
 
-    Row {
+    RowLayout {
         id: row
         spacing: 6
 
         Text {
+            Layout.alignment: Qt.AlignVCenter
             text: root.glyph
             color: Theme.theme_primary
             opacity: root.muted ? 0.5 : 1
             font.family: Theme.font_family
-            font.pixelSize: Theme.font_size
+            font.pixelSize: Theme.glyph_size
         }
 
         Text {
+            Layout.alignment: Qt.AlignVCenter
             visible: !root.compact
             text: Math.round(root.volume * 100) + "%"
             color: Theme.fg_core
@@ -82,13 +92,15 @@ Item {
             if (mouse.button === Qt.RightButton) {
                 if (root.sink && root.sink.audio) root.sink.audio.muted = !root.sink.audio.muted;
             } else {
-                Popups.toggle("volume", root.island, root.island_color);
+                Popups.toggle("volume", root.island, root.island_color, root.screen_name);
             }
         }
         onWheel: wheel => {
             if (!root.sink || !root.sink.ready || !root.sink.audio) return;
-            const step = wheel.angleDelta.y > 0 ? 0.05 : -0.05;
-            root.sink.audio.volume = Math.max(0, Math.min(1, root.sink.audio.volume + step));
+            const notches = wheel_stepper.consume(wheel.angleDelta.y || wheel.pixelDelta.y);
+            if (notches === 0) return;
+            const pct = wheel_stepper.snap_by(Math.round(root.sink.audio.volume * 100), notches, 0, 100);
+            root.sink.audio.volume = pct / 100;
         }
     }
 }

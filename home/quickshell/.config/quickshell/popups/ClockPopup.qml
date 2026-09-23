@@ -9,8 +9,8 @@ Popup {
     id: root
 
     popup_name: "clock"
-    implicitWidth: 260
-    implicitHeight: 284
+    preferred_width: 320
+    implicitHeight: content.implicitHeight + 24
 
     property date today: new Date()
     property int view_year: today.getFullYear()
@@ -79,10 +79,36 @@ Popup {
     readonly property var weeks: build_weeks()
     readonly property var weekday_headers: ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"]
 
+    readonly property var flat_cells: {
+        const cells = [];
+        cells.push({ kind: "corner", text: "" });
+        for (const h of weekday_headers) cells.push({ kind: "header", text: h });
+        for (const week of weeks) {
+            cells.push({ kind: "weeknum", text: String(week.week_num) });
+            for (const day of week.days) {
+                cells.push({
+                    kind: "day",
+                    text: String(day.getDate()),
+                    in_month: day.getMonth() === view_month,
+                    is_today: is_same_day(day, today)
+                });
+            }
+        }
+        return cells;
+    }
+
+    // Equal-width columns need the exact available width, not a guess, so the grid never clips.
+    readonly property real grid_column_spacing: 4
+    readonly property real available_cell_width: (content.width - grid_column_spacing * 7) / 8
+    readonly property int grid_font_size: available_cell_width < 20 ? Theme.popup_font_size - 2 : Theme.popup_font_size - 1
+
     Item {
         id: content
-        anchors.fill: parent
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.top: parent.top
         anchors.margins: 12
+        implicitHeight: main_column.implicitHeight
         focus: true
 
         Keys.onPressed: event => {
@@ -120,7 +146,10 @@ Popup {
         }
 
         ColumnLayout {
-            anchors.fill: parent
+            id: main_column
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.top: parent.top
             spacing: 8
 
             Text {
@@ -160,66 +189,28 @@ Popup {
                 }
             }
 
-            RowLayout {
-                Layout.alignment: Qt.AlignHCenter
-                spacing: 4
-
-                Text {
-                    Layout.preferredWidth: 22
-                    text: ""
-                }
+            GridLayout {
+                id: grid
+                Layout.fillWidth: true
+                columns: 8
+                rowSpacing: 4
+                columnSpacing: root.grid_column_spacing
 
                 Repeater {
-                    model: root.weekday_headers
+                    model: root.flat_cells
 
                     Text {
-                        required property string modelData
+                        required property var modelData
 
-                        Layout.preferredWidth: 24
+                        Layout.fillWidth: true
+                        Layout.preferredWidth: 0
                         horizontalAlignment: Text.AlignHCenter
-                        text: modelData
-                        color: Theme.fg_muted
+                        elide: Text.ElideNone
+                        text: modelData.text
                         font.family: Theme.font_family
-                        font.pixelSize: Theme.popup_font_size - 2
-                    }
-                }
-            }
-
-            Repeater {
-                model: root.weeks
-
-                RowLayout {
-                    required property var modelData
-
-                    Layout.alignment: Qt.AlignHCenter
-                    spacing: 4
-
-                    Text {
-                        Layout.preferredWidth: 22
-                        horizontalAlignment: Text.AlignHCenter
-                        text: parent.modelData.week_num
-                        color: Theme.fg_dim
-                        font.family: Theme.font_family
-                        font.pixelSize: Theme.popup_font_size - 2
-                    }
-
-                    Repeater {
-                        model: parent.modelData.days
-
-                        Text {
-                            required property date modelData
-
-                            readonly property bool in_month: modelData.getMonth() === root.view_month
-                            readonly property bool is_today: root.is_same_day(modelData, root.today)
-
-                            Layout.preferredWidth: 24
-                            horizontalAlignment: Text.AlignHCenter
-                            text: modelData.getDate()
-                            color: is_today ? Theme.theme_accent : (in_month ? Theme.fg_core : Theme.fg_muted)
-                            font.family: Theme.font_family
-                            font.pixelSize: Theme.popup_font_size - 1
-                            font.underline: is_today
-                        }
+                        font.pixelSize: modelData.kind === "header" || modelData.kind === "weeknum" ? root.grid_font_size - 1 : root.grid_font_size
+                        color: modelData.kind === "header" ? Theme.fg_muted : modelData.kind === "weeknum" ? Theme.fg_dim : modelData.is_today ? Theme.theme_accent : (modelData.in_month ? Theme.fg_core : Theme.fg_muted)
+                        font.underline: modelData.kind === "day" && modelData.is_today === true
                     }
                 }
             }

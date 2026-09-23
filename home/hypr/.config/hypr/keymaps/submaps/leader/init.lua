@@ -70,6 +70,8 @@ Submap.define({
       -- stylua: ignore end
     }
 
+    if Config.shell == "quickshell" then table.insert(rows, { "B", Submap.switch("Bar"), "+Bar", KEEP }) end
+
     return rows
   end,
 }).setup()

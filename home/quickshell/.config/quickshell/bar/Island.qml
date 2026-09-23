@@ -24,7 +24,7 @@ Item {
 
         x: cap_left ? root.cap_width : 0
         height: root.height
-        width: layout.implicitWidth + 16
+        width: Math.ceil(layout.implicitWidth) + 16
         color: root.bg_color
 
         // Declared before the layout so module MouseAreas stack above it.
@@ -41,9 +41,10 @@ Item {
         }
     }
 
+    // Caps overlap the body by 1px so fractional scaling (1.6 on the laptop) leaves no seam.
     Shape {
         visible: root.cap_left
-        width: root.cap_width
+        width: root.cap_width + 1
         height: root.height
         preferredRendererType: Shape.CurveRenderer
 
@@ -52,7 +53,8 @@ Item {
             fillColor: root.bg_color
             startX: 0
             startY: 0
-            PathLine { x: root.cap_width; y: 0 }
+            PathLine { x: root.cap_width + 1; y: 0 }
+            PathLine { x: root.cap_width + 1; y: root.height }
             PathLine { x: root.cap_width; y: root.height }
             PathLine { x: 0; y: 0 }
         }
@@ -60,8 +62,8 @@ Item {
 
     Shape {
         visible: root.cap_right
-        x: root.width - root.cap_width
-        width: root.cap_width
+        x: root.width - root.cap_width - 1
+        width: root.cap_width + 1
         height: root.height
         preferredRendererType: Shape.CurveRenderer
 
@@ -70,7 +72,8 @@ Item {
             fillColor: root.bg_color
             startX: 0
             startY: 0
-            PathLine { x: root.cap_width; y: 0 }
+            PathLine { x: root.cap_width + 1; y: 0 }
+            PathLine { x: 1; y: root.height }
             PathLine { x: 0; y: root.height }
             PathLine { x: 0; y: 0 }
         }

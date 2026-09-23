@@ -9,6 +9,7 @@ PanelWindow {
     id: root
 
     property real line_width: 260
+    property bool bar_present: true
     property string shown_name: ""
     property color shown_color: Theme.theme_secondary
     property real line_progress: 0
@@ -29,6 +30,7 @@ PanelWindow {
         target: SubmapState
 
         function onSubmap_nameChanged() {
+            if (!root.bar_present) return;
             if (SubmapState.active) {
                 root.shown_name = SubmapState.submap_name;
                 root.shown_color = SubmapState.submap_color;

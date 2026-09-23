@@ -10,26 +10,23 @@ import "./services"
 ShellRoot {
     id: root
 
-    // First external (non-eDP) screen if one is connected, else the eDP screen.
-    function pick_screens(screens) {
-        const external = screens.filter(s => s.name.indexOf("eDP") !== 0);
-        if (external.length > 0) return [external[0]];
-        return screens.filter(s => s.name.indexOf("eDP") === 0);
-    }
-
     Variants {
-        model: root.pick_screens(Quickshell.screens)
+        model: Quickshell.screens
 
         delegate: Component {
             Scope {
                 id: screen_scope
                 required property var modelData
 
+                readonly property var rule: BarConfig.rule_for(screen_scope.modelData)
+                readonly property bool has_bar: screen_scope.rule !== null && screen_scope.rule.bar !== false
+
                 PanelWindow {
+                    visible: screen_scope.has_bar
                     screen: screen_scope.modelData
                     color: "transparent"
                     implicitHeight: 30
-                    exclusiveZone: implicitHeight
+                    exclusiveZone: screen_scope.has_bar ? implicitHeight : 0
 
                     anchors {
                         top: true
@@ -41,12 +38,14 @@ ShellRoot {
                         id: bar
                         anchors.fill: parent
                         screen_name: screen_scope.modelData.name
+                        rule: screen_scope.rule
                     }
                 }
 
                 SubmapTab {
                     screen: screen_scope.modelData
                     line_width: bar.center_width
+                    bar_present: screen_scope.has_bar
                 }
             }
         }
@@ -57,6 +56,9 @@ ShellRoot {
     VolumePopup {}
     BatteryPopup {}
     BluetoothPopup {}
+    SystemPopup {}
+    TrayPopup {}
+    NetworkPopup {}
     PopupIpc {}
     BrightnessIpc {}
     BarTooltip {}

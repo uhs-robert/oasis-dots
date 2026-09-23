@@ -1,7 +1,6 @@
 // home/quickshell/.config/quickshell/bar/modules/StartButton.qml
 import QtQuick
 import Quickshell
-import Quickshell.Widgets
 import "../../theme"
 import "../../services"
 
@@ -9,6 +8,7 @@ Item {
     id: root
 
     property bool compact: false
+    property string screen_name: ""
     property Item island: null
     property color island_color: "transparent"
 
@@ -27,14 +27,24 @@ Item {
         id: hover_handler
     }
 
-    IconImage {
+    // Load the SVG file directly: the icon provider returns a small raster that blurs when scaled.
+    Image {
         id: icon
+        readonly property int implicitSize: root.compact ? 22 : 26
+        readonly property real dpr: QsWindow.window ? QsWindow.window.devicePixelRatio : 1
+
         anchors.centerIn: parent
-        implicitSize: root.compact ? 22 : 26
-        source: Quickshell.iconPath("start-here-archlinux", "start-here")
+        width: implicitSize
+        height: implicitSize
+        sourceSize.width: Math.ceil(implicitSize * dpr)
+        sourceSize.height: Math.ceil(implicitSize * dpr)
+        source: status === Image.Error ? Quickshell.iconPath("start-here-archlinux", "start-here") : "file:///usr/share/icons/Papirus/64x64/apps/start-here-archlinux.svg"
+        smooth: true
+        mipmap: true
     }
 
-    Component.onCompleted: Popups.register_default("start", root.island, root.island_color)
+    onIslandChanged: if (root.island) Popups.register_default("start", root.island, root.island_color, root.screen_name)
+    Component.onDestruction: Popups.unregister("start", root.screen_name, root.island)
 
     MouseArea {
         anchors.fill: parent
@@ -43,7 +53,7 @@ Item {
             if (mouse.button === Qt.RightButton) {
                 Quickshell.execDetached(["sh", "-c", "~/.config/hypr/theme/switch.lua"]);
             } else {
-                Popups.toggle("start", root.island, root.island_color);
+                Popups.toggle("start", root.island, root.island_color, root.screen_name);
             }
         }
     }
