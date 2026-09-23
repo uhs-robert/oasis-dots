@@ -3,6 +3,7 @@ local Config = require("config") ---@class Config
 local Cmd = require("lib.actions.cmd") ---@class Cmd
 local Menu = require("lib.actions.menu") ---@class Menu
 local Cursor = require("lib.actions.cursor") ---@class CursorActions
+local Submap = require("lib.key.submap") ---@class Submap
 
 local FILES = Config.app.gui_file_manager
 local TUI_FILES = Config.app.tui_file_manager
@@ -22,6 +23,8 @@ Bind.leader_fn("CTRL + O",       Menu.cli(),              "Run CLI Tool")
 Bind.leader_fn("CTRL + A",       Menu.agents(),           "Agent Sessions")
 Bind.leader_fn("N",              edit_in_vim,             "Edit Selection in Vim")
 Bind.leader_fn("Y",              Cmd.term("yazi"),        "Yazi")
+
+if Config.shell == "quickshell" then Bind.leader_fn("B", Submap.switch("Bar"), "+Bar", {keep=true} ) end
 
 -- Commands
 Bind.fn("CTRL + SHIFT + ESCAPE", Cmd.term("btop"),    "Task Manager")
