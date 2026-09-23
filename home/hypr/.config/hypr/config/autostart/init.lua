@@ -18,8 +18,11 @@ local function run()
   if (TERM == 'foot') then hl.exec_cmd('foot --server') end
   hl.exec_cmd("hypridle")
   if Config.shell == "quickshell" then
+    -- Masked before qs starts: D-Bus activation would otherwise respawn swaync on the first notification.
+    os.execute("systemctl --user mask --runtime --now swaync.service")
     hl.exec_cmd("qs -n")
   else
+    os.execute("systemctl --user unmask --runtime swaync.service")
     hl.exec_cmd("waybar")
   end
   hl.exec_cmd("easyeffects --gapplication-service")

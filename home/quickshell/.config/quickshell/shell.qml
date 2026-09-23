@@ -62,7 +62,10 @@ ShellRoot {
     KeeptabsPopup {}
     WeatherPopup {}
     UpdatesPopup {}
+    NotificationsPopup {}
     PopupIpc {}
     BrightnessIpc {}
+    NotificationsIpc {}
     BarTooltip {}
+    NotificationToasts {}
 }

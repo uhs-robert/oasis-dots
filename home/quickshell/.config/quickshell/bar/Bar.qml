@@ -69,7 +69,7 @@ Item {
     Component { id: keeptabs_component; Keeptabs { compact: root.compact; screen_name: root.screen_name } }
     Component { id: updates_component; Updates { compact: root.compact; screen_name: root.screen_name } }
     Component { id: voxtype_component; Voxtype { compact: root.compact } }
-    Component { id: notifications_component; Placeholder { glyph: "\u{f009a}"; tooltip_text: "Notifications (coming soon)" } }
+    Component { id: notifications_component; Notifications { compact: root.compact; screen_name: root.screen_name } }
 
     Island {
         id: left_island

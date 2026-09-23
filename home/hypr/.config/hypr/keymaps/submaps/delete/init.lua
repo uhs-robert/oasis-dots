@@ -6,6 +6,9 @@ local Submap = require("lib.key.submap") --- @class Submap
 local Cmd = require("lib.actions.cmd") ---@class Cmd
 local Window = require("lib.actions.window") ---@class WindowActions
 
+local CLEAR_NOTIFICATIONS = Config.shell == "quickshell" and "qs ipc call notifications clear_all"
+  or "swaync-client --close-all"
+
 -- stylua: ignore start
 local CLASSES = {
   browsers  = { "firefox", "qutebrowser", "chromium", "brave-browser", "vivaldi", "opera", "chrome" },
@@ -82,7 +85,7 @@ Submap.define({
     { "F",          close_by_class(CLASSES.files),        "Close File Managers"      },
     { "G",          close_by_class(CLASSES.games),        "Close Games"              },
     { "M",          close_by_class(CLASSES.mail),         "Close Mail"               },
-    { "N",          Cmd.run("swaync-client --close-all"), "Clear Notifications"      },
+    { "N",          Cmd.run(CLEAR_NOTIFICATIONS),         "Clear Notifications"      },
     { "O",          close_workspace_windows(false, true), "Close Others on WS"       },
     { "SHIFT + O",  close_workspace_windows(true, true),  "Kill Others on WS"        },
     { "P",          close_by_class(CLASSES.media),        "Close Media Players"      },
