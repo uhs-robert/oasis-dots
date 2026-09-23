@@ -13,6 +13,10 @@ Item {
     property color island_color: Theme.bg_core
 
     readonly property bool shown: KeeptabsState.available
+    readonly property string tooltip_text: {
+        const usage = ClaudeUsageState.rows.map(r => r.label + ": " + r.percent + "%").join("\n");
+        return KeeptabsState.tooltip.replace(/\t/g, "  ") + (usage ? "\n\n" + usage : "");
+    }
     visible: shown
     implicitWidth: shown ? row.implicitWidth : 0
     implicitHeight: row.implicitHeight
@@ -52,7 +56,7 @@ Item {
     HoverHandler {
         id: hover_handler
         onHoveredChanged: {
-            if (hovered) Tooltip.show(root, KeeptabsState.tooltip.replace(/\t/g, "  "));
+            if (hovered) Tooltip.show(root, root.tooltip_text);
             else Tooltip.hide();
         }
     }
