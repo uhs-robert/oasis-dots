@@ -42,7 +42,10 @@ function Machines.load()
   local module = "config.machines." .. name
   if not module_path(module) then return {} end
 
-  return require(module)
+  -- Lua 5.4's require also returns the loader data (the file path), which deep_extend would treat as a second source.
+  local profile = require(module)
+  if type(profile) ~= "table" then error(module .. " must return a table, got " .. type(profile)) end
+  return profile
 end
 
 --- Merge shared session values with the current machine profile.
