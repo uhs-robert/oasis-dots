@@ -46,7 +46,7 @@ device = "default"
 sample_rate = 16000
 
 # Maximum recording duration in seconds (safety limit)
-max_duration_secs = 60
+max_duration_secs = 120
 pause_media = false
 duck_media = false
 duck_media_volume_percent = 34
@@ -296,7 +296,7 @@ source = "mic"
 
 [osd]
 enabled = true
-frontend = "gtk4"
+frontend = "quickshell"
 position = "bottom-center"
 width_px = 400
 height_px = 48
@@ -307,7 +307,8 @@ waveform_window_secs = 3.0
 peak_decay_db_per_sec = 6.0
 waveform_gain = 10.0
 style = "default"
-layout = "compact"
+layout = "wide"
+palette = "custom"
 
 [vad]
 enabled = false
