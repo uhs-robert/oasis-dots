@@ -42,6 +42,7 @@ Rectangle {
         }
 
         Rectangle {
+            visible: root.key_hint !== ""
             implicitWidth: key_label.implicitWidth + 8
             implicitHeight: 16
             radius: 3

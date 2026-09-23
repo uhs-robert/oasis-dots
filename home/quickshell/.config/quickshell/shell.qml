@@ -62,6 +62,7 @@ ShellRoot {
     KeeptabsPopup {}
     WeatherPopup {}
     UpdatesPopup {}
+    MediaPopup {}
     NotificationsPopup {}
     PopupIpc {}
     BrightnessIpc {}

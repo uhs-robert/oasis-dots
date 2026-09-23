@@ -19,6 +19,7 @@ Submap.define({
     { "B", popup("bluetooth"),     "Bluetooth" },
     { "C", popup("clock"),         "Calendar" },
     { "I", popup("network"),       "Network and Internet" },
+    { "M", popup("media"),         "Media" },
     { "N", popup("notifications"), "Notifications" },
     { "P", popup("battery"),       "Power and Brightness" },
     { "Q", popup("system"),        "System" },
