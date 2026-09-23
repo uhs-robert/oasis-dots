@@ -38,7 +38,10 @@ Singleton {
                 out.push({ text: text, color: top.color, rise: top.rise });
             }
         }
-        return out;
+        // keeptabs pads the idle glyph with a trailing space for Waybar; drop edge whitespace.
+        if (out.length) out[0].text = out[0].text.replace(/^\s+/, "");
+        if (out.length) out[out.length - 1].text = out[out.length - 1].text.replace(/\s+$/, "");
+        return out.filter(r => r.text !== "");
     }
 
     Process {
