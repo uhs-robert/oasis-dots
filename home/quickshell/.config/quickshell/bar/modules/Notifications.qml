@@ -46,7 +46,7 @@ Item {
             Text {
                 id: glyph
                 text: NotificationState.dnd ? "\u{f009b}" : "\u{f009a}"
-                color: NotificationState.dnd ? Theme.fg_dim : Theme.fg_core
+                color: NotificationState.dnd ? Theme.fg_dim : Theme.theme_primary
                 font.family: Theme.font_family
                 font.pixelSize: Theme.glyph_size
             }
