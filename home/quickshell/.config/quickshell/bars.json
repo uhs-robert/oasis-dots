@@ -4,13 +4,13 @@
     "compact": false,
     "left": ["start", "workspaces"],
     "center": ["clock"],
-    "right": ["tray", "keeptabs", "system", "network", "bluetooth", "notifications"]
+    "right": ["tray", "keeptabs", "system", "network", "bluetooth", "voxtype", "notifications"]
   },
   {
     "match": "*",
     "compact": false,
     "left": ["start", "workspaces"],
     "center": ["clock"],
-    "right": ["tray", "keeptabs", "weather", "volume", "battery", "system", "network", "bluetooth", "notifications"]
+    "right": ["tray", "keeptabs", "weather", "volume", "battery", "system", "network", "bluetooth", "voxtype", "notifications"]
   }
 ]

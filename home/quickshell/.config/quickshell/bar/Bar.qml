@@ -24,6 +24,7 @@ Item {
         network: network_component,
         weather: weather_component,
         keeptabs: keeptabs_component,
+        voxtype: voxtype_component,
         notifications: notifications_component
     })
 
@@ -64,7 +65,8 @@ Item {
     Component { id: system_component; System { compact: root.compact; screen_name: root.screen_name } }
     Component { id: network_component; Network { screen_name: root.screen_name } }
     Component { id: weather_component; Placeholder { glyph: "\u{f0f31}"; label: "--\u00b0"; tooltip_text: "Weather (coming soon)" } }
-    Component { id: keeptabs_component; Placeholder { glyph: "\u{f06a9}"; label: "--"; tooltip_text: "Keeptabs (coming soon)" } }
+    Component { id: keeptabs_component; Keeptabs { compact: root.compact } }
+    Component { id: voxtype_component; Voxtype { compact: root.compact } }
     Component { id: notifications_component; Placeholder { glyph: "\u{f009a}"; tooltip_text: "Notifications (coming soon)" } }
 
     Island {
@@ -83,6 +85,8 @@ Item {
             Loader {
                 required property var modelData
                 sourceComponent: modelData.component
+                // A module that hides itself must also leave the RowLayout, or its spacing remains.
+                visible: !item || item.visible
                 onLoaded: root.wire_module(item, modelData, left_island)
             }
         }
@@ -105,6 +109,8 @@ Item {
             Loader {
                 required property var modelData
                 sourceComponent: modelData.component
+                // A module that hides itself must also leave the RowLayout, or its spacing remains.
+                visible: !item || item.visible
                 onLoaded: root.wire_module(item, modelData, center_island)
             }
         }
@@ -126,6 +132,8 @@ Item {
             Loader {
                 required property var modelData
                 sourceComponent: modelData.component
+                // A module that hides itself must also leave the RowLayout, or its spacing remains.
+                visible: !item || item.visible
                 onLoaded: root.wire_module(item, modelData, right_island)
             }
         }
