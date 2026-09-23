@@ -1,0 +1,202 @@
+// home/quickshell/.config/quickshell/popups/VolumePopup.qml
+import QtQuick
+import QtQuick.Layouts
+import Quickshell
+import Quickshell.Services.Pipewire
+import "../components"
+import "../theme"
+import "../services"
+
+Popup {
+    id: root
+
+    popup_name: "volume"
+    implicitWidth: 320
+    implicitHeight: 24 + rows.length * 28 + (streams.length === 0 ? 22 : 0)
+
+    readonly property var output_devices: Pipewire.nodes.values.filter(n => n.isSink && !n.isStream && n.audio)
+    readonly property var input_devices: Pipewire.nodes.values.filter(n => !n.isSink && !n.isStream && n.audio)
+    readonly property var streams: Pipewire.nodes.values.filter(n => n.isStream && n.isSink)
+
+    readonly property var rows: {
+        const list = [];
+        for (const d of output_devices) list.push({ type: "sink_device", node: d });
+        if (Pipewire.defaultAudioSink) list.push({ type: "sink_slider", node: Pipewire.defaultAudioSink });
+        for (const d of input_devices) list.push({ type: "source_device", node: d });
+        if (Pipewire.defaultAudioSource) list.push({ type: "source_slider", node: Pipewire.defaultAudioSource });
+        for (const s of streams) list.push({ type: "stream", node: s });
+        return list;
+    }
+
+    function section_of(type) {
+        if (type === "sink_device" || type === "sink_slider") return "Output";
+        if (type === "source_device" || type === "source_slider") return "Input";
+        return "Apps";
+    }
+
+    function is_slider_row(type) {
+        return type !== "sink_device" && type !== "source_device";
+    }
+
+    property int selected: 0
+    onRowsChanged: if (selected >= rows.length) selected = Math.max(0, rows.length - 1);
+
+    readonly property bool is_open: Popups.open_name === "volume"
+    onIs_openChanged: if (is_open) selected = 0
+
+    PwObjectTracker {
+        objects: [Pipewire.defaultAudioSink, Pipewire.defaultAudioSource].filter(o => o).concat(root.streams)
+    }
+
+    function adjust(node, delta) {
+        if (!node || !node.ready || !node.audio) return;
+        node.audio.volume = Math.max(0, Math.min(1, node.audio.volume + delta));
+    }
+
+    function toggle_mute(node) {
+        if (!node || !node.audio) return;
+        node.audio.muted = !node.audio.muted;
+    }
+
+    function set_default(row) {
+        if (row.type === "sink_device") Pipewire.preferredDefaultAudioSink = row.node;
+        else if (row.type === "source_device") Pipewire.preferredDefaultAudioSource = row.node;
+    }
+
+    Item {
+        id: content
+        anchors.fill: parent
+        anchors.margins: 12
+        focus: true
+
+        Keys.onPressed: event => {
+            const row = root.rows[root.selected];
+            if (event.key === Qt.Key_J) {
+                root.selected = Math.min(root.rows.length - 1, root.selected + 1);
+                event.accepted = true;
+            } else if (event.key === Qt.Key_K) {
+                root.selected = Math.max(0, root.selected - 1);
+                event.accepted = true;
+            } else if (event.key === Qt.Key_L && row && root.is_slider_row(row.type)) {
+                root.adjust(row.node, 0.05);
+                event.accepted = true;
+            } else if (event.key === Qt.Key_H && row && root.is_slider_row(row.type)) {
+                root.adjust(row.node, -0.05);
+                event.accepted = true;
+            } else if (event.key === Qt.Key_M && row) {
+                root.toggle_mute(row.node);
+                event.accepted = true;
+            } else if ((event.key === Qt.Key_Return || event.key === Qt.Key_Enter) && row && !root.is_slider_row(row.type)) {
+                root.set_default(row);
+                event.accepted = true;
+            }
+        }
+
+        ColumnLayout {
+            id: rows_col
+            anchors.fill: parent
+            spacing: 2
+
+            Repeater {
+                model: root.rows
+
+                ColumnLayout {
+                    id: row_wrap
+                    required property var modelData
+                    required property int index
+
+                    Layout.fillWidth: true
+                    spacing: 2
+
+                    Text {
+                        visible: row_wrap.index === 0 || root.section_of(root.rows[row_wrap.index - 1].type) !== root.section_of(row_wrap.modelData.type)
+                        Layout.topMargin: row_wrap.index === 0 ? 0 : 6
+                        text: root.section_of(row_wrap.modelData.type)
+                        color: Theme.fg_muted
+                        font.family: Theme.font_family
+                        font.pixelSize: Theme.popup_font_size - 3
+                    }
+
+                    Rectangle {
+                        Layout.fillWidth: true
+                        height: root.is_slider_row(row_wrap.modelData.type) ? 22 : 22
+                        radius: 4
+                        color: row_wrap.index === root.selected ? Theme.bg_surface : "transparent"
+
+                        RowLayout {
+                            visible: !root.is_slider_row(row_wrap.modelData.type)
+                            anchors.fill: parent
+                            anchors.leftMargin: 6
+                            anchors.rightMargin: 6
+                            spacing: 6
+
+                            Text {
+                                Layout.fillWidth: true
+                                elide: Text.ElideRight
+                                text: row_wrap.modelData.node.description || row_wrap.modelData.node.name
+                                color: (row_wrap.modelData.node === Pipewire.defaultAudioSink || row_wrap.modelData.node === Pipewire.defaultAudioSource) ? Theme.theme_secondary : Theme.fg_core
+                                font.family: Theme.font_family
+                                font.pixelSize: Theme.popup_font_size - 1
+                            }
+                        }
+
+                        MouseArea {
+                            anchors.fill: parent
+                            enabled: !root.is_slider_row(row_wrap.modelData.type)
+                            onClicked: {
+                                root.selected = row_wrap.index;
+                                root.set_default(row_wrap.modelData);
+                            }
+                        }
+
+                        RowLayout {
+                            visible: root.is_slider_row(row_wrap.modelData.type)
+                            anchors.fill: parent
+                            anchors.leftMargin: 6
+                            anchors.rightMargin: 6
+                            spacing: 6
+
+                            Text {
+                                Layout.preferredWidth: 90
+                                elide: Text.ElideRight
+                                text: row_wrap.modelData.type === "stream" ? (row_wrap.modelData.node.properties["application.name"] || row_wrap.modelData.node.name) : (row_wrap.modelData.node.description || row_wrap.modelData.node.name)
+                                color: Theme.fg_core
+                                font.family: Theme.font_family
+                                font.pixelSize: Theme.popup_font_size - 1
+                            }
+
+                            Slider {
+                                Layout.fillWidth: true
+                                value: row_wrap.modelData.node.audio ? row_wrap.modelData.node.audio.volume : 0
+                                onMoved: v => {
+                                    if (row_wrap.modelData.node.audio) row_wrap.modelData.node.audio.volume = v;
+                                }
+                            }
+
+                            Text {
+                                text: row_wrap.modelData.node.audio && row_wrap.modelData.node.audio.muted ? "" : ""
+                                color: Theme.theme_primary
+                                font.family: Theme.font_family
+                                font.pixelSize: Theme.popup_font_size - 1
+
+                                MouseArea {
+                                    anchors.fill: parent
+                                    onClicked: root.toggle_mute(row_wrap.modelData.node)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            Text {
+                visible: root.streams.length === 0
+                Layout.topMargin: 6
+                text: "No apps playing"
+                color: Theme.fg_dim
+                font.family: Theme.font_family
+                font.pixelSize: Theme.popup_font_size - 2
+            }
+        }
+    }
+}

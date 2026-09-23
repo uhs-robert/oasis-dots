@@ -125,6 +125,7 @@ main() {
     install_greetd
     set_default_shell
     enable_keyd
+    enable_power_profiles
     install_steam
     install_nvidia
     setup_voxtype

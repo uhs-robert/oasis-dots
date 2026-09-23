@@ -54,6 +54,7 @@ local set_layer_rules = function()
   register({ name = "selection",         match = { namespace = "selection" },         animation = "fade" })
   register({ name = "notificationsmenu", match = { namespace = "notificationsmenu" }, animation = "slide right" })
   register({ name = "dashboardmenu",     match = { namespace = "dashboardmenu" },     animation = "slide left" })
+  register({ name = "quickshell_submap", match = { namespace = "quickshell-submap" }, no_anim = true })
 
   -- Conditionally enabled
   register({ name = "rofi_popin",        match = { namespace = "rofi" },              animation = "popin 80%" })

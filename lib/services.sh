@@ -163,6 +163,20 @@ enable_keyd() {
   success "keyd enabled"
 }
 
+enable_power_profiles() {
+  if ! command -v powerprofilesctl &>/dev/null; then
+    warn "power-profiles-daemon not installed, skipping"
+    return
+  fi
+  if systemctl is-enabled power-profiles-daemon &>/dev/null; then
+    warn "power-profiles-daemon already enabled, skipping"
+    return
+  fi
+  info "Enabling power-profiles-daemon..."
+  sudo systemctl enable --now power-profiles-daemon
+  success "power-profiles-daemon enabled"
+}
+
 # Builds and installs the xone Xbox controller kernel module from source.
 install_xone() {
   info "Installing xone..."

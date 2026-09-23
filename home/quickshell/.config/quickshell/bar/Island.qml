@@ -11,6 +11,7 @@ Item {
     property bool cap_right: false
     default property alias content: layout.children
 
+    readonly property alias body_item: body
     readonly property int cap_width: height / 2
 
     signal clicked
@@ -26,15 +27,17 @@ Item {
         width: layout.implicitWidth + 16
         color: root.bg_color
 
-        RowLayout {
-            id: layout
-            anchors.centerIn: parent
-            spacing: 8
-        }
-
+        // Declared before the layout so module MouseAreas stack above it.
         MouseArea {
             anchors.fill: parent
             onClicked: root.clicked()
+        }
+
+        RowLayout {
+            id: layout
+            x: 8
+            height: parent.height
+            spacing: 16
         }
     }
 

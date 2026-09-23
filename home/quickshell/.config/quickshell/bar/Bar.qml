@@ -2,9 +2,14 @@
 import QtQuick
 import "../theme"
 import "../services"
+import "modules"
 
 Item {
     id: root
+
+    property string screen_name: ""
+    readonly property bool compact: screen_name.indexOf("eDP") === 0
+    readonly property real center_width: center_island.body_item.width
 
     Island {
         id: left_island
@@ -13,11 +18,15 @@ Item {
         bg_color: Theme.bg_core
         cap_right: true
 
-        Text {
-            text: "left"
-            color: Theme.fg_core
-            font.family: Theme.font_family
-            font.pixelSize: Theme.font_size
+        StartButton {
+            compact: root.compact
+            island: left_island.body_item
+            island_color: left_island.bg_color
+        }
+
+        Workspaces {
+            screen_name: root.screen_name
+            compact: root.compact
         }
     }
 
@@ -29,14 +38,11 @@ Item {
         cap_left: true
         cap_right: true
 
-        Component.onCompleted: Popups.register_default("test", center_island)
-        onClicked: Popups.toggle("test", center_island)
+        Component.onCompleted: Popups.register_default("clock", center_island.body_item, center_island.bg_color)
+        onClicked: Popups.toggle("clock", center_island.body_item, center_island.bg_color)
 
-        Text {
-            text: "center"
-            color: Theme.fg_core
-            font.family: Theme.font_family
-            font.pixelSize: Theme.font_size
+        Clock {
+            compact: root.compact
         }
     }
 
@@ -47,11 +53,28 @@ Item {
         bg_color: Theme.bg_core
         cap_left: true
 
-        Text {
-            text: "right"
-            color: Theme.fg_core
-            font.family: Theme.font_family
-            font.pixelSize: Theme.font_size
+        Tray {}
+
+        Volume {
+            compact: root.compact
+            island: right_island.body_item
+            island_color: right_island.bg_color
+        }
+
+        Battery {
+            compact: root.compact
+            island: right_island.body_item
+            island_color: right_island.bg_color
+        }
+
+        Hardware {
+            compact: root.compact
+        }
+
+        Bluetooth {
+            compact: root.compact
+            island: right_island.body_item
+            island_color: right_island.bg_color
         }
     }
 }
