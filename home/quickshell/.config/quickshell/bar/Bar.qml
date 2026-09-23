@@ -10,6 +10,7 @@ Item {
     property string screen_name: ""
     property var rule: null
     readonly property bool compact: BarConfig.compact_for(root.rule, root.screen_name)
+    readonly property int bar_height: BarConfig.height_for(root.rule)
     readonly property real center_width: center_island.body_item.width
     readonly property bool has_center: root.center_entries.length > 0
 
@@ -75,6 +76,7 @@ Item {
     Component { id: media_component; Media { compact: root.compact; screen_name: root.screen_name } }
 
     Island {
+        height: root.bar_height
         id: left_island
         anchors.left: parent.left
         anchors.verticalCenter: parent.verticalCenter
@@ -98,6 +100,7 @@ Item {
     }
 
     Island {
+        height: root.bar_height
         id: center_island
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.verticalCenter: parent.verticalCenter
@@ -132,6 +135,7 @@ Item {
     }
 
     Island {
+        height: root.bar_height
         id: right_island
         anchors.right: parent.right
         anchors.verticalCenter: parent.verticalCenter

@@ -82,6 +82,12 @@ Singleton {
         return null;
     }
 
+    readonly property int default_height: 34
+
+    function height_for(rule) {
+        return rule && rule.height > 0 ? rule.height : root.default_height;
+    }
+
     function compact_for(rule, screen_name) {
         if (rule && rule.compact !== undefined) return rule.compact;
         return screen_name.indexOf("eDP") === 0;

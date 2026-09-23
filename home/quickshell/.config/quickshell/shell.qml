@@ -25,7 +25,7 @@ ShellRoot {
                     visible: screen_scope.has_bar
                     screen: screen_scope.modelData
                     color: "transparent"
-                    implicitHeight: 30
+                    implicitHeight: BarConfig.height_for(screen_scope.rule)
                     exclusiveZone: screen_scope.has_bar ? implicitHeight : 0
 
                     anchors {

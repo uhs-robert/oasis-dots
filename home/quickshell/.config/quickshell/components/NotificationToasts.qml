@@ -29,7 +29,7 @@ PanelWindow {
 
     anchors.top: true
     anchors.right: true
-    margins.top: 38
+    margins.top: BarConfig.height_for(BarConfig.rule_for(root.screen)) + 8
     margins.right: 8
 
     implicitWidth: 400

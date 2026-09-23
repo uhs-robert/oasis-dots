@@ -38,36 +38,62 @@ Item {
         opacity: hover_handler.hovered ? 0.5 : 0
     }
 
-    RowLayout {
-        id: row
-        spacing: 8
+    // A glyph with its count as a small badge at the top right, like the keeptabs module.
+    component BadgedGlyph: Item {
+        id: badged
+        property string glyph: ""
+        property string count: ""
+        property color tint: Theme.yellow
+
+        implicitWidth: glyph_text.implicitWidth + count_text.implicitWidth * 0.6
+        implicitHeight: glyph_text.implicitHeight
 
         Text {
-            Layout.alignment: Qt.AlignVCenter
-            visible: root.official_count > 0
-            text: "󰮯 " + root.official_count
-            color: Theme.yellow
+            id: glyph_text
+            text: badged.glyph
+            color: badged.tint
             font.family: Theme.font_family
-            font.pixelSize: Theme.font_size
+            font.pixelSize: Theme.glyph_size
         }
 
         Text {
+            id: count_text
+            x: glyph_text.implicitWidth - implicitWidth * 0.4
+            y: -3
+            text: badged.count
+            color: badged.tint
+            font.family: Theme.font_family
+            font.pixelSize: Theme.font_size - 3
+            font.bold: true
+        }
+    }
+
+    RowLayout {
+        id: row
+        anchors.verticalCenter: parent.verticalCenter
+        spacing: 10
+
+        BadgedGlyph {
+            Layout.alignment: Qt.AlignVCenter
+            visible: root.official_count > 0
+            glyph: "󰮯"
+            count: String(root.official_count)
+        }
+
+        BadgedGlyph {
             Layout.alignment: Qt.AlignVCenter
             visible: root.aur_count > 0
-            text: "󰏗 " + root.aur_count
-            color: Theme.yellow
-            font.family: Theme.font_family
-            font.pixelSize: Theme.font_size
+            glyph: "󰏗"
+            count: String(root.aur_count)
         }
 
         // A failed check with no counts would otherwise leave an empty, clickable gap.
-        Text {
+        BadgedGlyph {
             Layout.alignment: Qt.AlignVCenter
             visible: root.official_count === 0 && root.aur_count === 0 && UpdatesState.error !== ""
-            text: "󰮯 !"
-            color: Theme.warning
-            font.family: Theme.font_family
-            font.pixelSize: Theme.font_size
+            glyph: "󰮯"
+            count: "!"
+            tint: Theme.warning
         }
     }
 

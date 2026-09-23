@@ -78,7 +78,7 @@ Singleton {
 
     property string font_family: "Maple Mono NF"
     property int font_size: 13
-    property int glyph_size: 16
+    property int glyph_size: 19
     property int popup_font_size: 15
 
     FileView {
