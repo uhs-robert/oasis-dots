@@ -49,6 +49,27 @@ local function select_toggle()
   end
 end
 
+--- Swap the focused window with the one selected window, then clear the selection.
+local function swap_selected()
+  local active = get_active_address()
+  local target, count = nil, 0
+  for addr in pairs(SELECTED) do
+    if addr ~= active then
+      target, count = addr, count + 1
+    end
+  end
+  if not active or count ~= 1 then
+    hl.notification.create({ text = "Swap needs exactly one selected window", timeout = 2000 })
+    return
+  end
+
+  hl.dispatch(hl.dsp.window.swap({ target = "address:" .. target }))
+  for addr, original in pairs(SELECTED) do
+    set_border(addr, original.active, original.inactive)
+    SELECTED[addr] = nil
+  end
+end
+
 --- Wrap fn so it applies to all selected windows.
 --- If no SELECTED, runs fn() on the focused window as normal.
 --- Restores focus to the original window after iterating.
@@ -134,6 +155,7 @@ Submap.define({
       { "RETURN",        Window.pass_to_active(),              "Confirm Selection" },
       { "SHIFT + SLASH", wk_toggle,                            "WhichKey" },
       { "SPACE",         select_toggle,                        "Select Window" },
+      { "S",             swap_selected,                        "Swap with Selected" },
     }
     -- stylua: ignore end
 
