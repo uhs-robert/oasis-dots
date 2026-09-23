@@ -79,4 +79,13 @@ Singleton {
         if (open_name === name) close();
         else open(name, anchor_item, color, screen_name);
     }
+
+    // Keybind workspace switches never touch the scrim, so close here too.
+    Connections {
+        target: Hyprland
+        enabled: root.open_name !== ""
+        function onRawEvent(event) {
+            if (event.name === "workspacev2") root.close();
+        }
+    }
 }

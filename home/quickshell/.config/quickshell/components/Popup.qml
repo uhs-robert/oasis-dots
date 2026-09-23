@@ -1,7 +1,6 @@
 // home/quickshell/.config/quickshell/components/Popup.qml
 import QtQuick
 import Quickshell
-import Quickshell.Hyprland
 import Quickshell.Wayland
 import "../theme"
 import "../services"
@@ -11,7 +10,7 @@ PanelWindow {
 
     property string popup_name: ""
     property real preferred_width: 260
-    // Set while a native menu from this popup is open, so the focus grab doesn't close us.
+    // Set while a native menu from this popup is open; focus returns to the popup when it closes.
     property bool suspend_grab: false
 
     // Never narrower than the island's bottom edge (its body, between the slants).
@@ -42,8 +41,8 @@ PanelWindow {
     color: "transparent"
     visible: false
     WlrLayershell.namespace: "quickshell-popup"
-    WlrLayershell.layer: WlrLayer.Top
-    WlrLayershell.keyboardFocus: root.wanted && !root.suspend_grab ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.OnDemand
+    WlrLayershell.layer: WlrLayer.Overlay
+    WlrLayershell.keyboardFocus: WlrKeyboardFocus.OnDemand
 
     readonly property int line_height: 3
     property real line_progress: 0
@@ -58,9 +57,6 @@ PanelWindow {
             visible = true;
             open_anim.restart();
             content_scope.forceActiveFocus();
-            grab_ready = false;
-            grab_retries = 0;
-            grab_delay.restart();
         } else if (visible) {
             open_anim.stop();
             close_anim.restart();
@@ -134,39 +130,6 @@ PanelWindow {
                     }
                 }
             }
-        }
-    }
-
-    // Armed a beat after opening: on a quick reopen Hyprland hasn't moved keyboard focus back yet and clears a grab taken at once.
-    property bool grab_ready: false
-    property int grab_retries: 0
-    property double grab_armed_ms: 0
-    Timer {
-        id: grab_delay
-        interval: 60
-        onTriggered: {
-            root.grab_armed_ms = Date.now();
-            root.grab_ready = true;
-        }
-    }
-
-    // A clear right after arming means focus hadn't returned yet, so re-arm instead of closing.
-    function grab_cleared() {
-        if (root.wanted && root.grab_retries < 2 && Date.now() - root.grab_armed_ms < 300) {
-            root.grab_retries += 1;
-            root.grab_ready = false;
-            grab_delay.restart();
-            return;
-        }
-        Popups.close();
-    }
-
-    Loader {
-        active: root.visible && root.wanted && root.grab_ready && !root.suspend_grab
-        sourceComponent: HyprlandFocusGrab {
-            active: true
-            windows: [root]
-            onCleared: root.grab_cleared()
         }
     }
 

@@ -42,6 +42,10 @@ ShellRoot {
                     }
                 }
 
+                PopupScrim {
+                    screen: screen_scope.modelData
+                }
+
                 SubmapTab {
                     screen: screen_scope.modelData
                     line_width: bar.center_width
