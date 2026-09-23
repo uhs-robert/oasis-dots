@@ -1,5 +1,6 @@
 // home/quickshell/.config/quickshell/bar/Bar.qml
 import QtQuick
+import QtQuick.Layouts
 import "../theme"
 import "../services"
 import "modules"
@@ -94,6 +95,8 @@ Item {
                 sourceComponent: modelData.component
                 // Reads the module's own `shown`, not `visible`: a hidden Loader would report its child hidden too.
                 visible: !item || item.shown === undefined || item.shown
+                // Keeps the start button close to the workspace pills it launches into.
+                Layout.rightMargin: modelData.base === "start" ? -8 : 0
                 onLoaded: root.wire_module(item, modelData, left_island)
             }
         }
