@@ -10,7 +10,7 @@ Popup {
     id: root
 
     popup_name: "updates"
-    preferred_width: 420
+    preferred_width: 520
     implicitHeight: content.implicitHeight + 24
 
     readonly property int content_height: 320
@@ -168,6 +168,7 @@ Popup {
 
                             Text {
                                 Layout.fillWidth: true
+                                Layout.minimumWidth: 0
                                 elide: Text.ElideRight
                                 text: update_row.modelData.name
                                 color: Theme.fg_core
@@ -175,24 +176,15 @@ Popup {
                                 font.pixelSize: Theme.popup_font_size - 2
                             }
 
-                            Row {
-                                Layout.maximumWidth: row_list.width * 0.5
-                                spacing: 4
-
-                                Text {
-                                    elide: Text.ElideLeft
-                                    text: update_row.modelData.old + " →"
-                                    color: Theme.fg_muted
-                                    font.family: Theme.font_family
-                                    font.pixelSize: Theme.popup_font_size - 3
-                                }
-
-                                Text {
-                                    text: update_row.modelData.new
-                                    color: Theme.yellow
-                                    font.family: Theme.font_family
-                                    font.pixelSize: Theme.popup_font_size - 3
-                                }
+                            // One elided Text so long versions shrink from the left and keep the new version visible.
+                            Text {
+                                Layout.maximumWidth: row_list.width * 0.6
+                                elide: Text.ElideLeft
+                                textFormat: Text.StyledText
+                                text: update_row.modelData.old + " → <font color=\"" + Theme.yellow + "\">" + update_row.modelData.new + "</font>"
+                                color: Theme.fg_muted
+                                font.family: Theme.font_family
+                                font.pixelSize: Theme.popup_font_size - 3
                             }
                         }
 
@@ -249,7 +241,10 @@ Popup {
             }
 
             Text {
-                text: "Tab views · j/k move · gg/G first/last · r refresh · u/Enter upgrade · q close"
+                Layout.fillWidth: true
+                Layout.minimumWidth: 0
+                elide: Text.ElideRight
+                text: "Tab views · j/k move · gg/G ends · r refresh · u upgrade · q close"
                 color: Theme.fg_dim
                 font.family: Theme.font_family
                 font.pixelSize: Theme.popup_font_size - 4
