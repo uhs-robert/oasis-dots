@@ -16,16 +16,12 @@ Popup {
     implicitHeight: content.implicitHeight + 24
 
     readonly property int content_height: 460
-    readonly property var tab_names: ["All", "Apps", "Critical"]
+    tabs: ["All", "Apps", "Critical"]
+    // The sub-view is the tab's sort order; Popup keeps each tab's choice across tab switches.
+    sub_views: root.current_tab === 1 ? ["Latest activity", "By name"] : ["Newest first", "Oldest first"]
+    jumps_enabled: true
 
-    // 0/1/2: independent per tab so switching tabs keeps each one's chosen order.
-    property int order_all: 0
-    property int order_apps: 0
-    property int order_critical: 0
-
-    property int current_tab: 0
     property int selected: 0
-    property double last_g_ms: 0
 
     readonly property bool is_open: Popups.open_name === "notifications"
     onIs_openChanged: if (is_open) {
@@ -33,20 +29,8 @@ Popup {
         NotificationState.mark_read();
     }
     onCurrent_tabChanged: root.selected = 0
-
-    function set_tab(i) {
-        root.current_tab = Math.max(0, Math.min(root.tab_names.length - 1, i));
-    }
-
-    function step_tab(delta) {
-        root.current_tab = (root.current_tab + delta + root.tab_names.length) % root.tab_names.length;
-    }
-
-    function step_order() {
-        if (root.current_tab === 0) root.order_all = root.order_all === 0 ? 1 : 0;
-        else if (root.current_tab === 1) root.order_apps = root.order_apps === 0 ? 1 : 0;
-        else root.order_critical = root.order_critical === 0 ? 1 : 0;
-    }
+    onJump_first: root.go_first()
+    onJump_last: root.go_last()
 
     function day_label(ms) {
         const d = new Date(ms);
@@ -62,7 +46,7 @@ Popup {
     // --- Rows: a flat, typed list the ListView renders directly (day/app headers mixed with entries) ---
 
     function build_all_rows() {
-        const entries = root.order_all === 0 ? NotificationState.history.slice() : NotificationState.history.slice().reverse();
+        const entries = root.current_sub === 0 ? NotificationState.history.slice() : NotificationState.history.slice().reverse();
         const rows = [];
         let last_label = null;
         for (const e of entries) {
@@ -86,7 +70,7 @@ Popup {
         }
         const group_list = Object.values(groups);
         for (const g of group_list) g.entries.sort((a, b) => b.time - a.time);
-        if (root.order_apps === 0) group_list.sort((a, b) => (b.entries[0] ? b.entries[0].time : 0) - (a.entries[0] ? a.entries[0].time : 0));
+        if (root.current_sub === 0) group_list.sort((a, b) => (b.entries[0] ? b.entries[0].time : 0) - (a.entries[0] ? a.entries[0].time : 0));
         else group_list.sort((a, b) => a.name.localeCompare(b.name));
 
         const rows = [];
@@ -99,7 +83,7 @@ Popup {
 
     function build_critical_rows() {
         const critical = NotificationState.history.filter(e => e.notification && e.notification.urgency === NotificationUrgency.Critical);
-        const entries = root.order_critical === 0 ? critical : critical.reverse();
+        const entries = root.current_sub === 0 ? critical : critical.reverse();
         return entries.map(e => ({ type: "entry", entry: e }));
     }
 
@@ -149,35 +133,11 @@ Popup {
     }
 
     function handle_key(event) {
-        if (event.key === Qt.Key_Backtab || (event.key === Qt.Key_Tab && (event.modifiers & Qt.ShiftModifier))) {
-            root.step_order();
-            event.accepted = true;
-        } else if (event.key === Qt.Key_Tab) {
-            root.step_order();
-            event.accepted = true;
-        } else if (event.key >= Qt.Key_1 && event.key <= Qt.Key_1 + root.tab_names.length - 1) {
-            root.set_tab(event.key - Qt.Key_1);
-            event.accepted = true;
-        } else if (event.key === Qt.Key_BracketLeft) {
-            root.step_tab(-1);
-            event.accepted = true;
-        } else if (event.key === Qt.Key_BracketRight) {
-            root.step_tab(1);
-            event.accepted = true;
-        } else if (event.key === Qt.Key_J) {
+        if (event.key === Qt.Key_J) {
             root.move_selected(1);
             event.accepted = true;
         } else if (event.key === Qt.Key_K) {
             root.move_selected(-1);
-            event.accepted = true;
-        } else if (event.key === Qt.Key_G) {
-            if (event.modifiers & Qt.ShiftModifier) {
-                root.go_last();
-            } else {
-                const now_ms = Date.now();
-                if (now_ms - root.last_g_ms < 500) { root.go_first(); root.last_g_ms = 0; }
-                else root.last_g_ms = now_ms;
-            }
             event.accepted = true;
         } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
             root.invoke_selected();
@@ -205,8 +165,6 @@ Popup {
         focus: true
 
         Keys.onPressed: event => root.handle_key(event)
-        Keys.onTabPressed: event => root.handle_key(event)
-        Keys.onBacktabPressed: event => root.handle_key(event)
 
         ColumnLayout {
             id: main_column
@@ -278,7 +236,7 @@ Popup {
                 spacing: 4
 
                 Repeater {
-                    model: root.tab_names
+                    model: root.tabs
 
                     Rectangle {
                         id: tab_chip
@@ -417,14 +375,13 @@ Popup {
                     spacing: 4
 
                     Repeater {
-                        model: root.current_tab === 1 ? ["Latest activity", "By name"] : ["Newest first", "Oldest first"]
+                        model: root.sub_views
 
                         Rectangle {
                             id: sub_chip
                             required property string modelData
                             required property int index
-                            readonly property int current_order: root.current_tab === 0 ? root.order_all : root.current_tab === 1 ? root.order_apps : root.order_critical
-                            readonly property bool active: sub_chip.index === sub_chip.current_order
+                            readonly property bool active: sub_chip.index === root.current_sub
 
                             implicitWidth: sub_label.implicitWidth + 20
                             implicitHeight: 24
@@ -443,7 +400,7 @@ Popup {
 
                             MouseArea {
                                 anchors.fill: parent
-                                onClicked: root.step_order()
+                                onClicked: root.step_sub(1)
                             }
                         }
                     }

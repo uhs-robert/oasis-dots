@@ -17,11 +17,10 @@ Popup {
     property var sessions: []
     property int selected: 0
     property bool stale: false
-    property double last_g_ms: 0
     readonly property int content_height: 300
 
-    readonly property var tab_names: ["Agents", "Usage"]
-    property int current_tab: 0
+    tabs: ["Agents", "Usage"]
+    jumps_enabled: root.current_tab === 0
 
     readonly property bool is_open: Popups.open_name === "keeptabs"
     onIs_openChanged: if (is_open) {
@@ -31,6 +30,8 @@ Popup {
     }
     onSessionsChanged: selected = Math.max(0, Math.min(selected, sessions.length - 1));
     onCurrent_tabChanged: if (root.current_tab === 1) ClaudeUsageState.refresh(false);
+    onJump_first: root.go_first()
+    onJump_last: root.go_last()
 
     function refresh() {
         if (!root.is_open) return;
@@ -95,14 +96,6 @@ Popup {
         Popups.close();
     }
 
-    function set_tab(i) {
-        root.current_tab = Math.max(0, Math.min(root.tab_names.length - 1, i));
-    }
-
-    function step_tab(delta) {
-        root.current_tab = (root.current_tab + delta + root.tab_names.length) % root.tab_names.length;
-    }
-
     function move_selected(delta) {
         if (root.sessions.length === 0) return;
         root.selected = (root.selected + delta + root.sessions.length) % root.sessions.length;
@@ -122,19 +115,7 @@ Popup {
     }
 
     function handle_key(event) {
-        if (event.key === Qt.Key_BracketLeft) {
-            root.step_tab(-1);
-            event.accepted = true;
-        } else if (event.key === Qt.Key_BracketRight) {
-            root.step_tab(1);
-            event.accepted = true;
-        } else if (event.key === Qt.Key_1) {
-            root.set_tab(0);
-            event.accepted = true;
-        } else if (event.key === Qt.Key_2) {
-            root.set_tab(1);
-            event.accepted = true;
-        } else if (root.current_tab === 1 && event.key === Qt.Key_R) {
+        if (root.current_tab === 1 && event.key === Qt.Key_R) {
             ClaudeUsageState.refresh(true);
             event.accepted = true;
         } else if (root.current_tab === 0 && event.key === Qt.Key_J) {
@@ -142,15 +123,6 @@ Popup {
             event.accepted = true;
         } else if (root.current_tab === 0 && event.key === Qt.Key_K) {
             root.move_selected(-1);
-            event.accepted = true;
-        } else if (root.current_tab === 0 && event.key === Qt.Key_G) {
-            if (event.modifiers & Qt.ShiftModifier) {
-                root.go_last();
-            } else {
-                const now_ms = Date.now();
-                if (now_ms - root.last_g_ms < 500) { root.go_first(); root.last_g_ms = 0; }
-                else root.last_g_ms = now_ms;
-            }
             event.accepted = true;
         } else if (root.current_tab === 0 && (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) && root.sessions[root.selected]) {
             root.focus_session(root.sessions[root.selected].id);
@@ -182,7 +154,7 @@ Popup {
                 spacing: 4
 
                 Repeater {
-                    model: root.tab_names
+                    model: root.tabs
 
                     Rectangle {
                         id: tab_chip

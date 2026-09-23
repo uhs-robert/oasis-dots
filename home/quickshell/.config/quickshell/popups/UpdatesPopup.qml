@@ -14,12 +14,11 @@ Popup {
     implicitHeight: content.implicitHeight + 24
 
     readonly property int content_height: 320
-    readonly property var sub_names: ["Official (" + UpdatesState.official.length + ")", "AUR (" + UpdatesState.aur.length + ")"]
+    sub_views: ["Official (" + UpdatesState.official.length + ")", "AUR (" + UpdatesState.aur.length + ")"]
+    jumps_enabled: true
     readonly property var current_list: root.current_sub === 0 ? UpdatesState.official : UpdatesState.aur
 
-    property int current_sub: 0
     property int selected: 0
-    property double last_g_ms: 0
 
     readonly property bool is_open: Popups.open_name === "updates"
     onIs_openChanged: if (is_open) {
@@ -28,11 +27,9 @@ Popup {
     }
 
     onCurrent_listChanged: root.selected = Math.max(0, Math.min(root.selected, root.current_list.length - 1))
-
-    function step_sub(delta) {
-        root.current_sub = (root.current_sub + delta + root.sub_names.length) % root.sub_names.length;
-        root.selected = 0;
-    }
+    onCurrent_subChanged: root.selected = 0
+    onJump_first: root.go_first()
+    onJump_last: root.go_last()
 
     function move_selected(delta) {
         if (root.current_list.length === 0) return;
@@ -56,26 +53,11 @@ Popup {
     }
 
     function handle_key(event) {
-        if (event.key === Qt.Key_Backtab || (event.key === Qt.Key_Tab && (event.modifiers & Qt.ShiftModifier))) {
-            root.step_sub(-1);
-            event.accepted = true;
-        } else if (event.key === Qt.Key_Tab) {
-            root.step_sub(1);
-            event.accepted = true;
-        } else if (event.key === Qt.Key_J) {
+        if (event.key === Qt.Key_J) {
             root.move_selected(1);
             event.accepted = true;
         } else if (event.key === Qt.Key_K) {
             root.move_selected(-1);
-            event.accepted = true;
-        } else if (event.key === Qt.Key_G) {
-            if (event.modifiers & Qt.ShiftModifier) {
-                root.go_last();
-            } else {
-                const now_ms = Date.now();
-                if (now_ms - root.last_g_ms < 500) { root.go_first(); root.last_g_ms = 0; }
-                else root.last_g_ms = now_ms;
-            }
             event.accepted = true;
         } else if (event.key === Qt.Key_R) {
             UpdatesState.refresh();
@@ -96,8 +78,6 @@ Popup {
         focus: true
 
         Keys.onPressed: event => root.handle_key(event)
-        Keys.onTabPressed: event => root.handle_key(event)
-        Keys.onBacktabPressed: event => root.handle_key(event)
 
         ColumnLayout {
             id: main_column
@@ -205,7 +185,7 @@ Popup {
                     spacing: 4
 
                     Repeater {
-                        model: root.sub_names
+                        model: root.sub_views
 
                         Rectangle {
                             id: sub_chip

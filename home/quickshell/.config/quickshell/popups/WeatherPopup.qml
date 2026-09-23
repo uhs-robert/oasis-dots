@@ -16,45 +16,32 @@ Popup {
 
     readonly property var base_tab_names: ["Daily", "Hourly", "Precipitation", "Sun & Moon", "Air"]
     readonly property bool has_alerts: WeatherState.alerts.length > 0
-    readonly property var tab_names: root.has_alerts ? root.base_tab_names.concat(["Alerts"]) : root.base_tab_names
+    tabs: root.has_alerts ? root.base_tab_names.concat(["Alerts"]) : root.base_tab_names
     readonly property bool on_alerts_tab: root.has_alerts && root.current_tab === 5
 
     readonly property var daily_sub_names: ["Temp & Precip", "Wind", "UV", "Sunshine"]
     readonly property var hourly_sub_names: ["Temperature", "Precipitation", "Wind", "UV", "Humidity"]
+    sub_views: root.current_tab === 0 ? root.daily_sub_names : root.current_tab === 1 ? root.hourly_sub_names : []
+    jumps_enabled: true
 
     // None of this is reset on close: the popup lives for the whole qs session, only visibility toggles.
-    property int current_tab: 0
     property int daily_sub: 0
     property int hourly_sub: 0
     property int day_cursor: 0
     property int hour_cursor: 0
     property int alert_cursor: 0
-    property double last_g_ms: 0
 
     readonly property int content_height: 400
 
-    onTab_namesChanged: if (root.current_tab >= root.tab_names.length) root.current_tab = 0;
+    onCurrent_subChanged: {
+        if (root.current_tab === 0) root.daily_sub = root.current_sub;
+        else if (root.current_tab === 1) root.hourly_sub = root.current_sub;
+    }
+    onJump_first: root.go_now()
+    onJump_last: root.go_end()
 
     readonly property bool is_open: Popups.open_name === "weather"
     onIs_openChanged: if (is_open) { WeatherState.refresh_if_due(); root.go_now(); }
-
-    function set_tab(i) {
-        root.current_tab = Math.max(0, Math.min(root.tab_names.length - 1, i));
-    }
-
-    function step_tab(delta) {
-        root.current_tab = (root.current_tab + delta + root.tab_names.length) % root.tab_names.length;
-    }
-
-    function set_current_sub(i) {
-        if (root.current_tab === 0) root.daily_sub = Math.max(0, Math.min(root.daily_sub_names.length - 1, i));
-        else if (root.current_tab === 1) root.hourly_sub = Math.max(0, Math.min(root.hourly_sub_names.length - 1, i));
-    }
-
-    function step_current_sub(delta) {
-        if (root.current_tab === 0) root.daily_sub = (root.daily_sub + delta + root.daily_sub_names.length) % root.daily_sub_names.length;
-        else if (root.current_tab === 1) root.hourly_sub = (root.hourly_sub + delta + root.hourly_sub_names.length) % root.hourly_sub_names.length;
-    }
 
     function move_day_cursor(dir, jump) {
         const n = Math.max(1, WeatherState.days.length);
@@ -138,40 +125,15 @@ Popup {
         return iso ? WeatherState.fmt_location_time(new Date(iso)) : "—";
     }
 
-    // --- Single key handler: every popup shortcut is dispatched from here ---
     function handle_key(event) {
-        if (event.key === Qt.Key_Backtab || (event.key === Qt.Key_Tab && (event.modifiers & Qt.ShiftModifier))) {
-            if (root.current_tab === 0 || root.current_tab === 1) root.step_current_sub(-1);
-            event.accepted = true;
-        } else if (event.key === Qt.Key_Tab) {
-            if (root.current_tab === 0 || root.current_tab === 1) root.step_current_sub(1);
-            event.accepted = true;
-        } else if (event.key >= Qt.Key_1 && event.key < Qt.Key_1 + root.tab_names.length) {
-            root.set_tab(event.key - Qt.Key_1);
-            event.accepted = true;
-        } else if (event.key === Qt.Key_A && root.has_alerts) {
-            root.set_tab(root.tab_names.length - 1);
-            event.accepted = true;
-        } else if (event.key === Qt.Key_BracketLeft) {
-            root.step_tab(-1);
-            event.accepted = true;
-        } else if (event.key === Qt.Key_BracketRight) {
-            root.step_tab(1);
+        if (event.key === Qt.Key_A && root.has_alerts) {
+            root.set_tab(root.tabs.length - 1);
             event.accepted = true;
         } else if (event.key === Qt.Key_R) {
             WeatherState.refresh(true);
             event.accepted = true;
         } else if ((event.key === Qt.Key_Return || event.key === Qt.Key_Enter) && root.current_tab === 0) {
             root.jump_to_hour_for_selected_day();
-            event.accepted = true;
-        } else if (event.key === Qt.Key_G) {
-            if (event.modifiers & Qt.ShiftModifier) {
-                root.go_end();
-            } else {
-                const now_ms = Date.now();
-                if (now_ms - root.last_g_ms < 500) { root.go_now(); root.last_g_ms = 0; }
-                else root.last_g_ms = now_ms;
-            }
             event.accepted = true;
         } else if (event.key === Qt.Key_H) {
             root.move_time(-1, !!(event.modifiers & Qt.ShiftModifier));
@@ -198,8 +160,6 @@ Popup {
         focus: true
 
         Keys.onPressed: event => root.handle_key(event)
-        Keys.onTabPressed: event => root.handle_key(event)
-        Keys.onBacktabPressed: event => root.handle_key(event)
 
         ColumnLayout {
             id: main_column
@@ -307,7 +267,7 @@ Popup {
 
                 MouseArea {
                     anchors.fill: parent
-                    onClicked: root.set_tab(root.tab_names.length - 1)
+                    onClicked: root.set_tab(root.tabs.length - 1)
                 }
             }
 
@@ -317,7 +277,7 @@ Popup {
                 spacing: 4
 
                 Repeater {
-                    model: root.tab_names
+                    model: root.tabs
 
                     Rectangle {
                         id: tab_chip
@@ -407,13 +367,13 @@ Popup {
                     visible: root.current_tab === 0 || root.current_tab === 1
 
                     Repeater {
-                        model: root.current_tab === 0 ? root.daily_sub_names : root.current_tab === 1 ? root.hourly_sub_names : []
+                        model: root.sub_views
 
                         Rectangle {
                             id: sub_chip
                             required property string modelData
                             required property int index
-                            readonly property bool active: sub_chip.index === (root.current_tab === 0 ? root.daily_sub : root.hourly_sub)
+                            readonly property bool active: sub_chip.index === root.current_sub
 
                             implicitWidth: sub_label.implicitWidth + 20
                             implicitHeight: 24
@@ -430,7 +390,7 @@ Popup {
                                 font.pixelSize: Theme.popup_font_size - 3
                             }
 
-                            MouseArea { anchors.fill: parent; onClicked: root.set_current_sub(sub_chip.index) }
+                            MouseArea { anchors.fill: parent; onClicked: root.current_sub = sub_chip.index }
                         }
                     }
                 }
