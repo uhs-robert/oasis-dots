@@ -24,5 +24,6 @@ Submap.define({
     { "Y", popup("system"),    "System" },
     { "T", popup("tray"),      "Tray" },
     { "K", popup("keeptabs"),  "Agents" },
+    { "W", popup("weather"),   "Weather" },
   },
 }).setup()

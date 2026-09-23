@@ -64,7 +64,7 @@ Item {
     Component { id: bluetooth_component; Bluetooth { compact: root.compact; screen_name: root.screen_name } }
     Component { id: system_component; System { compact: root.compact; screen_name: root.screen_name } }
     Component { id: network_component; Network { screen_name: root.screen_name } }
-    Component { id: weather_component; Placeholder { glyph: "\u{f0f31}"; label: "--\u00b0"; tooltip_text: "Weather (coming soon)" } }
+    Component { id: weather_component; Weather { compact: root.compact; screen_name: root.screen_name } }
     Component { id: keeptabs_component; Keeptabs { compact: root.compact; screen_name: root.screen_name } }
     Component { id: voxtype_component; Voxtype { compact: root.compact } }
     Component { id: notifications_component; Placeholder { glyph: "\u{f009a}"; tooltip_text: "Notifications (coming soon)" } }

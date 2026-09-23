@@ -60,6 +60,7 @@ ShellRoot {
     TrayPopup {}
     NetworkPopup {}
     KeeptabsPopup {}
+    WeatherPopup {}
     PopupIpc {}
     BrightnessIpc {}
     BarTooltip {}
