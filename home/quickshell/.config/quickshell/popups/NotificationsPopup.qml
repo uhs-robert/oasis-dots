@@ -143,7 +143,9 @@ Popup {
 
     function invoke_selected() {
         const sel = root.entry_rows[root.selected];
-        if (sel) NotificationState.invoke_default(sel.entry);
+        if (!sel) return;
+        NotificationState.invoke_default(sel.entry);
+        Popups.close();
     }
 
     function handle_key(event) {
@@ -396,7 +398,10 @@ Popup {
                             entry: row_item.modelData.type === "entry" ? row_item.modelData.entry : null
                             selected: !!(row_item.modelData.type === "entry" && root.entry_rows[root.selected] && root.entry_rows[root.selected].entry === row_item.modelData.entry)
                             onSelect_requested: root.select_entry(row_item.modelData.entry)
-                            onInvoke_requested: NotificationState.invoke_default(row_item.modelData.entry)
+                            onInvoke_requested: {
+                                NotificationState.invoke_default(row_item.modelData.entry);
+                                Popups.close();
+                            }
                         }
                     }
                 }

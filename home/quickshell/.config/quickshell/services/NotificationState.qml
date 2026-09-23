@@ -161,9 +161,21 @@ Singleton {
     }
 
     function invoke_default(entry) {
-        const action = root.find_default_action(entry.notification);
+        const n = entry.notification;
+        const action = root.find_default_action(n);
+        if (n) root.focus_app(n.desktopEntry, n.appName);
         if (action) root.invoke_action(entry, action);
         else root.hide_toast(entry);
+    }
+
+    // Apps can't raise themselves without an activation token, so focus the sender's most recent window by class.
+    function focus_app(desktop_entry, app_name) {
+        const filter = '([$d, $n] | map(ascii_downcase | select(. != ""))) as $keys'
+            + ' | [.[] | select(.class | ascii_downcase as $c | any($keys[]; . as $k | $c == $k or ($c | endswith("." + $k)) or ($c | contains($k))))]'
+            + ' | sort_by(.focusHistoryID) | .[0].address // empty';
+        const script = 'a=$(hyprctl clients -j | jq -r --arg d "$1" --arg n "$2" "$3"); [ -n "$a" ] || exit 0; '
+            + 'hyprctl dispatch "hl.dsp.focus({ window = \'address:$a\' })" >/dev/null 2>&1 || hyprctl dispatch focuswindow "address:$a" >/dev/null';
+        Quickshell.execDetached(["sh", "-c", script, "sh", desktop_entry || "", app_name || "", filter]);
     }
 
     // Per spec an invoked action closes the notification unless the app marked it resident.
