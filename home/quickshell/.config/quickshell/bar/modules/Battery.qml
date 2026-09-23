@@ -25,7 +25,8 @@ Item {
     readonly property bool charging: state === UPowerDeviceState.Charging || state === UPowerDeviceState.PendingCharge
     readonly property var level_glyphs: ["", "", "", "", ""]
 
-    visible: has_battery
+    readonly property bool shown: has_battery
+    visible: shown
     implicitWidth: has_battery ? row.implicitWidth : 0
     implicitHeight: row.implicitHeight
 

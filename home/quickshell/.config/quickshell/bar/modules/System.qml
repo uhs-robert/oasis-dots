@@ -32,8 +32,9 @@ Item {
     readonly property string tooltip_text: "CPU " + SysStats.cpu_percent + "%  RAM " + SysStats.mem_percent + "%"
         + (SysStats.has_temp ? "  Temp " + SysStats.temp_c + "°C" : "")
 
-    visible: !root.compact && (!root.show_temp || SysStats.has_temp)
-    implicitWidth: root.visible ? row.implicitWidth : 0
+    readonly property bool shown: !root.compact && (!root.show_temp || SysStats.has_temp)
+    visible: shown
+    implicitWidth: root.shown ? row.implicitWidth : 0
     implicitHeight: row.implicitHeight
     opacity: root.dim ? 0.4 : 1
 

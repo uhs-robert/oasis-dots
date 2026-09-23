@@ -18,8 +18,9 @@ Item {
     readonly property bool needs_attention: SystemTray.items.values.some(i => i.status === Status.NeedsAttention)
     readonly property string tooltip_text: root.count + " tray app" + (root.count === 1 ? "" : "s")
 
-    visible: root.count > 0
-    implicitWidth: root.visible ? row.implicitWidth : 0
+    readonly property bool shown: root.count > 0
+    visible: shown
+    implicitWidth: root.shown ? row.implicitWidth : 0
     implicitHeight: row.implicitHeight
 
     onIslandChanged: if (root.island) Popups.register_default("tray", root.island, root.island_color, root.screen_name)

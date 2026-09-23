@@ -85,8 +85,8 @@ Item {
             Loader {
                 required property var modelData
                 sourceComponent: modelData.component
-                // A module that hides itself must also leave the RowLayout, or its spacing remains.
-                visible: !item || item.visible
+                // Reads the module's own `shown`, not `visible`: a hidden Loader would report its child hidden too.
+                visible: !item || item.shown === undefined || item.shown
                 onLoaded: root.wire_module(item, modelData, left_island)
             }
         }
@@ -109,8 +109,8 @@ Item {
             Loader {
                 required property var modelData
                 sourceComponent: modelData.component
-                // A module that hides itself must also leave the RowLayout, or its spacing remains.
-                visible: !item || item.visible
+                // Reads the module's own `shown`, not `visible`: a hidden Loader would report its child hidden too.
+                visible: !item || item.shown === undefined || item.shown
                 onLoaded: root.wire_module(item, modelData, center_island)
             }
         }
@@ -132,8 +132,8 @@ Item {
             Loader {
                 required property var modelData
                 sourceComponent: modelData.component
-                // A module that hides itself must also leave the RowLayout, or its spacing remains.
-                visible: !item || item.visible
+                // Reads the module's own `shown`, not `visible`: a hidden Loader would report its child hidden too.
+                visible: !item || item.shown === undefined || item.shown
                 onLoaded: root.wire_module(item, modelData, right_island)
             }
         }

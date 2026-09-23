@@ -19,7 +19,8 @@ Item {
     readonly property var connected_devices: has_adapter ? adapter.devices.values.filter(d => d.connected) : []
     readonly property bool any_connected: connected_devices.length > 0
 
-    visible: has_adapter
+    readonly property bool shown: has_adapter
+    visible: shown
     implicitWidth: has_adapter ? row.implicitWidth : 0
     implicitHeight: row.implicitHeight
 

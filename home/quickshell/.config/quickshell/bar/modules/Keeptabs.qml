@@ -9,8 +9,9 @@ Item {
 
     property bool compact: false
 
-    visible: KeeptabsState.available
-    implicitWidth: visible ? row.implicitWidth : 0
+    readonly property bool shown: KeeptabsState.available
+    visible: shown
+    implicitWidth: shown ? row.implicitWidth : 0
     implicitHeight: row.implicitHeight
 
     Rectangle {
