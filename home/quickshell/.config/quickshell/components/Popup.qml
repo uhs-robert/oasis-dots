@@ -43,7 +43,7 @@ PanelWindow {
     visible: false
     WlrLayershell.namespace: "quickshell-popup"
     WlrLayershell.layer: WlrLayer.Top
-    WlrLayershell.keyboardFocus: WlrKeyboardFocus.OnDemand
+    WlrLayershell.keyboardFocus: root.wanted && !root.suspend_grab ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.OnDemand
 
     readonly property int line_height: 3
     property real line_progress: 0

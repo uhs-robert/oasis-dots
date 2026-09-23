@@ -24,6 +24,7 @@ Item {
         network: network_component,
         weather: weather_component,
         keeptabs: keeptabs_component,
+        updates: updates_component,
         voxtype: voxtype_component,
         notifications: notifications_component
     })
@@ -66,6 +67,7 @@ Item {
     Component { id: network_component; Network { screen_name: root.screen_name } }
     Component { id: weather_component; Weather { compact: root.compact; screen_name: root.screen_name } }
     Component { id: keeptabs_component; Keeptabs { compact: root.compact; screen_name: root.screen_name } }
+    Component { id: updates_component; Updates { compact: root.compact; screen_name: root.screen_name } }
     Component { id: voxtype_component; Voxtype { compact: root.compact } }
     Component { id: notifications_component; Placeholder { glyph: "\u{f009a}"; tooltip_text: "Notifications (coming soon)" } }
 

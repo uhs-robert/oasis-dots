@@ -17,8 +17,8 @@ Item {
     implicitWidth: shown ? row.implicitWidth : 0
     implicitHeight: row.implicitHeight
 
-    onIslandChanged: if (root.island) Popups.register_default("keeptabs", root.island, root.island_color, root.screen_name)
-    Component.onDestruction: Popups.unregister("keeptabs", root.screen_name, root.island)
+    onIslandChanged: if (root.island) Popups.register_default("keeptabs", root.island, root.island_color, root.screen_name, root)
+    Component.onDestruction: Popups.unregister("keeptabs", root.screen_name, root)
 
     Rectangle {
         anchors.fill: parent

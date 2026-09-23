@@ -17,9 +17,10 @@ Singleton {
     property var default_anchors: ({})
 
     // Lets a module register the item/color its popup anchors to when opened without a click (IPC).
-    function register_default(name, item, color, screen_name) {
+    // `owner` is the registering module; it defaults to the anchor item (the clock has no module).
+    function register_default(name, item, color, screen_name, owner) {
         if (!default_anchors[screen_name]) default_anchors[screen_name] = {};
-        default_anchors[screen_name][name] = { item: item, color: color };
+        default_anchors[screen_name][name] = { item: item, color: color, owner: owner || item };
     }
 
     // Called when a bar is destroyed so a popup never anchors to a deleted item.
@@ -28,11 +29,11 @@ Singleton {
         delete default_anchors[screen_name];
     }
 
-    // Removes a module's own entry only if it still points at that module's item, so a
-    // reload that already replaced the entry with a fresh module never gets clobbered.
-    function unregister(name, screen_name, item) {
+    // Removes an entry only if its owner registered it: a rebuilt module shares the island
+    // item with the one being destroyed, so matching on the item would drop the new entry.
+    function unregister(name, screen_name, owner) {
         const entry = default_anchors[screen_name] && default_anchors[screen_name][name];
-        if (!entry || entry.item !== item) return;
+        if (!entry || entry.owner !== owner) return;
         delete default_anchors[screen_name][name];
         if (open_screen_name === screen_name && open_name === name) close();
     }

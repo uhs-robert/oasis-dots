@@ -31,8 +31,8 @@ Item {
         return lines.join("\n");
     }
 
-    onIslandChanged: if (root.island) Popups.register_default("weather", root.island, root.island_color, root.screen_name)
-    Component.onDestruction: Popups.unregister("weather", root.screen_name, root.island)
+    onIslandChanged: if (root.island) Popups.register_default("weather", root.island, root.island_color, root.screen_name, root)
+    Component.onDestruction: Popups.unregister("weather", root.screen_name, root)
 
     Rectangle {
         anchors.fill: parent

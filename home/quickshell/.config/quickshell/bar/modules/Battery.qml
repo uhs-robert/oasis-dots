@@ -61,8 +61,8 @@ Item {
         return Math.round(percent) + "%";
     }
 
-    onIslandChanged: if (root.island) Popups.register_default("battery", root.island, root.island_color, root.screen_name)
-    Component.onDestruction: Popups.unregister("battery", root.screen_name, root.island)
+    onIslandChanged: if (root.island) Popups.register_default("battery", root.island, root.island_color, root.screen_name, root)
+    Component.onDestruction: Popups.unregister("battery", root.screen_name, root)
 
     Rectangle {
         anchors.fill: parent

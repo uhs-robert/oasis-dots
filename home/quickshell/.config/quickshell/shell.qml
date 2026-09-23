@@ -61,6 +61,7 @@ ShellRoot {
     NetworkPopup {}
     KeeptabsPopup {}
     WeatherPopup {}
+    UpdatesPopup {}
     PopupIpc {}
     BrightnessIpc {}
     BarTooltip {}

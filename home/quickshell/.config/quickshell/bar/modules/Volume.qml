@@ -43,8 +43,8 @@ Item {
         return label + " // " + Math.round(root.volume * 100) + "%";
     }
 
-    onIslandChanged: if (root.island) Popups.register_default("volume", root.island, root.island_color, root.screen_name)
-    Component.onDestruction: Popups.unregister("volume", root.screen_name, root.island)
+    onIslandChanged: if (root.island) Popups.register_default("volume", root.island, root.island_color, root.screen_name, root)
+    Component.onDestruction: Popups.unregister("volume", root.screen_name, root)
 
     Rectangle {
         anchors.fill: parent
