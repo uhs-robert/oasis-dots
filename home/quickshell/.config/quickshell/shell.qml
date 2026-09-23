@@ -59,6 +59,7 @@ ShellRoot {
     SystemPopup {}
     TrayPopup {}
     NetworkPopup {}
+    KeeptabsPopup {}
     PopupIpc {}
     BrightnessIpc {}
     BarTooltip {}

@@ -23,5 +23,6 @@ Submap.define({
     { "U", popup("bluetooth"), "Bluetooth" },
     { "Y", popup("system"),    "System" },
     { "T", popup("tray"),      "Tray" },
+    { "K", popup("keeptabs"),  "Agents" },
   },
 }).setup()

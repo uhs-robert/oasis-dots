@@ -8,11 +8,17 @@ Item {
     id: root
 
     property bool compact: false
+    property string screen_name: ""
+    property Item island: null
+    property color island_color: Theme.bg_core
 
     readonly property bool shown: KeeptabsState.available
     visible: shown
     implicitWidth: shown ? row.implicitWidth : 0
     implicitHeight: row.implicitHeight
+
+    onIslandChanged: if (root.island) Popups.register_default("keeptabs", root.island, root.island_color, root.screen_name)
+    Component.onDestruction: Popups.unregister("keeptabs", root.screen_name, root.island)
 
     Rectangle {
         anchors.fill: parent
@@ -53,6 +59,6 @@ Item {
 
     MouseArea {
         anchors.fill: parent
-        onClicked: Quickshell.execDetached(["sh", "-c", "exec ~/.local/bin/keeptabs-pick"])
+        onClicked: Popups.toggle("keeptabs", root.island, root.island_color, root.screen_name)
     }
 }
