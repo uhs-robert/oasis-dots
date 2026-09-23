@@ -64,13 +64,17 @@ Submap.define({
       { "C",             Submap.switch("Cursor"),                         "+Cursor",        KEEP },
       { "D",             Submap.switch("Delete"),                         "+Delete",        KEEP },
       { "I",             Submap.switch("Screenshot"),                     "+Screenshot",    KEEP },
-      { "SHIFT + N",     Submap.switch("Notifications"),                  "+Notifications", KEEP },
       { "Q",             Submap.switch("System"),                         "+System",        KEEP },
       { "APOSTROPHE",    Submap.switch("Marks"),                          "+Marks",         KEEP },
       -- stylua: ignore end
     }
 
-    if Config.shell == "quickshell" then table.insert(rows, { "B", Submap.switch("Bar"), "+Bar", KEEP }) end
+    if Config.shell == "quickshell" then
+      table.insert(rows, { "B", Submap.switch("Bar"), "+Bar", KEEP })
+      table.insert(rows, { "SHIFT + N", Cmd.run("qs ipc call popup open notifications"), "Notifications" })
+    else
+      table.insert(rows, { "SHIFT + N", Submap.switch("Notifications"), "+Notifications", KEEP })
+    end
 
     return rows
   end,
