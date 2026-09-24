@@ -24,7 +24,9 @@ Item {
             text: root.glyph
             color: Theme.theme_primary
             opacity: 0.6
-            font.family: Theme.font_family
+            font.family: Style.bar_font_family
+            style: Style.bar_text_style
+            styleColor: Style.bar_glow_color
             font.pixelSize: Theme.glyph_size
         }
 
@@ -33,7 +35,9 @@ Item {
             visible: root.label !== ""
             text: root.label
             color: Theme.fg_dim
-            font.family: Theme.font_family
+            font.family: Style.bar_font_family
+            style: Style.bar_text_style
+            styleColor: Style.bar_glow_color
             font.pixelSize: Theme.font_size
         }
     }

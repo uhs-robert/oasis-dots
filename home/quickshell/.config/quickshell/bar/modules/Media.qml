@@ -45,8 +45,8 @@ Item {
     Rectangle {
         anchors.fill: parent
         anchors.margins: -4
-        radius: 4
-        color: Theme.bg_surface
+        radius: Style.bar_radius(4)
+        color: Style.bar_hover_bg
         opacity: hover_handler.hovered ? 0.5 : 0
     }
 
@@ -59,7 +59,9 @@ Item {
             text: "\u{f001}"
             color: Theme.theme_primary
             opacity: root.player && root.player.isPlaying ? 1 : 0.5
-            font.family: Theme.font_family
+            font.family: Style.bar_font_family
+            style: Style.bar_text_style
+            styleColor: Style.bar_glow_color
             font.pixelSize: Theme.glyph_size
         }
 
@@ -69,8 +71,10 @@ Item {
             elide: Text.ElideRight
             visible: !root.compact
             text: root.label_text
-            color: Theme.fg_core
-            font.family: Theme.font_family
+            color: Style.bar_fg
+            font.family: Style.bar_font_family
+            style: Style.bar_text_style
+            styleColor: Style.bar_glow_color
             font.pixelSize: Theme.font_size
         }
     }

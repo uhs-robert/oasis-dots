@@ -81,7 +81,10 @@ Item {
         id: left_island
         anchors.left: parent.left
         anchors.verticalCenter: parent.verticalCenter
-        bg_color: Theme.bg_core
+        bg_color: Style.bar_side_bg
+        border_width: Style.bar_border_width
+        border_color: Style.bar_border_color
+        scanline_color: Style.bar_scanline_color
         cap_right: true
         visible: root.left_entries.length > 0
 
@@ -107,7 +110,10 @@ Item {
         id: center_island
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.verticalCenter: parent.verticalCenter
-        bg_color: Theme.bg_mantle
+        bg_color: Style.bar_center_bg
+        border_width: Style.bar_border_width
+        border_color: Style.bar_border_color
+        scanline_color: Style.bar_scanline_color
         cap_left: true
         cap_right: true
         visible: root.center_entries.length > 0
@@ -142,7 +148,10 @@ Item {
         id: right_island
         anchors.right: parent.right
         anchors.verticalCenter: parent.verticalCenter
-        bg_color: Theme.bg_core
+        bg_color: Style.bar_side_bg
+        border_width: Style.bar_border_width
+        border_color: Style.bar_border_color
+        scanline_color: Style.bar_scanline_color
         cap_left: true
         visible: root.right_entries.length > 0
 

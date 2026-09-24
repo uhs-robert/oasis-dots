@@ -72,7 +72,9 @@ Item {
             Layout.alignment: Qt.AlignVCenter
             text: root.net_glyph
             color: root.net_connected ? Theme.theme_primary : Theme.fg_dim
-            font.family: Theme.font_family
+            font.family: Style.bar_font_family
+            style: Style.bar_text_style
+            styleColor: Style.bar_glow_color
             font.pixelSize: Theme.glyph_size
         }
     }

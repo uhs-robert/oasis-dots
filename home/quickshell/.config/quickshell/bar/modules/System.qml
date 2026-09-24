@@ -21,7 +21,7 @@ Item {
     readonly property string glyph: root.show_temp ? "" : (root.show_mem ? "" : "")
     readonly property bool hot: root.show_temp && SysStats.temp_c >= 80
     readonly property color temp_color: root.hot ? Theme.theme_label : Theme.theme_primary
-    readonly property color value_color: root.show_temp ? root.temp_color : Theme.fg_core
+    readonly property color value_color: root.show_temp ? root.temp_color : Style.bar_fg
 
     readonly property string value_text: {
         if (root.show_temp) return SysStats.temp_c + "°C";
@@ -49,7 +49,9 @@ Item {
             Layout.alignment: Qt.AlignVCenter
             text: root.glyph
             color: root.show_temp ? root.value_color : Theme.theme_primary
-            font.family: Theme.font_family
+            font.family: Style.bar_font_family
+            style: Style.bar_text_style
+            styleColor: Style.bar_glow_color
             font.pixelSize: Theme.glyph_size
         }
 
@@ -57,7 +59,9 @@ Item {
             Layout.alignment: Qt.AlignVCenter
             text: root.value_text
             color: root.value_color
-            font.family: Theme.font_family
+            font.family: Style.bar_font_family
+            style: Style.bar_text_style
+            styleColor: Style.bar_glow_color
             font.pixelSize: Theme.font_size
         }
     }

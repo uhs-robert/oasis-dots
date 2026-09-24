@@ -76,21 +76,42 @@ PanelWindow {
 
         Rectangle {
             id: tab
+            // Styles with a clear title show the submap color on the text instead of the fill.
+            readonly property bool filled: !Style.show_title || Style.title_bg.a > 0
+
             y: -height * (1 - root.tab_progress)
             width: label.implicitWidth + 20
-            height: label.implicitHeight + 2
-            bottomLeftRadius: 6
-            bottomRightRadius: 6
-            color: root.shown_color
+            height: label.implicitHeight + (Style.show_title ? 4 : 2)
+            bottomLeftRadius: Style.radius(6)
+            bottomRightRadius: Style.radius(6)
+            color: tab.filled ? root.shown_color : Style.frame_color
+            border.width: Style.show_title ? Style.frame_border_width : 0
+            border.color: Style.frame_border_color
 
             Text {
                 id: label
                 anchors.centerIn: parent
-                text: root.shown_name
-                color: Theme.bg_core
-                font.family: Theme.font_family
-                font.pixelSize: Theme.font_size
+                text: Style.show_title ? Style.title_prefix + root.shown_name.toUpperCase() + Style.title_suffix : root.shown_name
+                color: tab.filled ? Theme.bg_core : root.shown_color
+                font.family: Style.font_family
+                font.pixelSize: Style.show_title ? Style.font_size - 2 : Theme.font_size
                 font.bold: true
+                font.letterSpacing: Style.show_title ? 2 : 0
+                style: Style.glow ? Text.Outline : Text.Normal
+                styleColor: Qt.alpha(root.shown_color, 0.35)
+            }
+
+            // Static scanlines; nothing animates them.
+            Repeater {
+                model: Style.scanlines ? Math.ceil(tab.height / 3) : 0
+
+                Rectangle {
+                    required property int index
+                    y: index * 3
+                    width: tab.width
+                    height: 1
+                    color: Qt.alpha(root.shown_color, 0.08)
+                }
             }
         }
     }

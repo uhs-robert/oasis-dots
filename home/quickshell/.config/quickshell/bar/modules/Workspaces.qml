@@ -85,7 +85,7 @@ Item {
                 height: root.pill_height
                 width: is_empty ? height : icons.implicitWidth + (modelData.active ? 22 : 12)
                 radius: height / 2
-                color: modelData.active ? Theme.theme_primary : Theme.bg_surface
+                color: modelData.active ? Style.bar_workspace_active : Style.bar_workspace_idle
 
                 Behavior on width {
                     NumberAnimation { duration: 280; easing.type: Easing.InOutCubic }

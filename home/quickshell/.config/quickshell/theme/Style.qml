@@ -72,7 +72,23 @@ Singleton {
             scanline_color: "transparent",
             glow: false,
             glow_color: "transparent",
-            glow_tint: 0
+            glow_tint: 0,
+            bar_font_family: "JetBrainsMono Nerd Font",
+            bar_side_bg: Theme.bg_crust,
+            bar_center_bg: Theme.bg_crust,
+            bar_fg: Theme.fg_core,
+            bar_border_width: 1,
+            bar_border_color: Theme.fg_muted,
+            bar_rounded: false,
+            bar_workspace_active: Theme.theme_secondary,
+            bar_workspace_idle: Theme.bg_surface,
+            bar_hover_bg: Theme.bg_surface,
+            bar_glow_color: "transparent",
+            bar_scanline_color: "transparent",
+            bar_tip_bg: Theme.bg_crust,
+            bar_tip_fg: Theme.fg_core,
+            bar_tip_border_width: 1,
+            bar_tip_border_color: Theme.fg_muted
         };
         return {
             "default": {
@@ -134,7 +150,23 @@ Singleton {
                 scanline_color: "transparent",
                 glow: false,
                 glow_color: "transparent",
-                glow_tint: 0
+                glow_tint: 0,
+                bar_font_family: Theme.font_family,
+                bar_side_bg: Theme.bg_core,
+                bar_center_bg: Theme.bg_mantle,
+                bar_fg: Theme.fg_core,
+                bar_border_width: 1,
+                bar_border_color: Qt.alpha(Theme.ui_border, 0.5),
+                bar_rounded: true,
+                bar_workspace_active: Theme.theme_primary,
+                bar_workspace_idle: Theme.bg_surface,
+                bar_hover_bg: Theme.bg_surface,
+                bar_glow_color: "transparent",
+                bar_scanline_color: "transparent",
+                bar_tip_bg: Theme.ui_float_bg,
+                bar_tip_fg: Theme.ui_float_fg,
+                bar_tip_border_width: 0,
+                bar_tip_border_color: "transparent"
             },
             "terminal": terminal,
             "crt": Object.assign({}, terminal, {
@@ -164,7 +196,14 @@ Singleton {
                 scanline_color: Qt.alpha(Theme.bg_shadow, 0.3),
                 glow: true,
                 glow_color: Theme.theme_primary,
-                glow_tint: 0.25
+                glow_tint: 0.25,
+                bar_fg: Theme.theme_primary_light,
+                bar_border_color: Qt.alpha(Theme.theme_primary, 0.5),
+                bar_hover_bg: Qt.alpha(Theme.theme_primary, 0.4),
+                bar_glow_color: Qt.alpha(Theme.theme_primary, 0.3),
+                bar_scanline_color: Qt.alpha(Theme.theme_primary, 0.07),
+                bar_tip_fg: Theme.theme_primary_light,
+                bar_tip_border_color: Qt.tint(Theme.bg_crust, Qt.alpha(Theme.theme_primary, 0.35))
             })
         };
     }
@@ -233,9 +272,39 @@ Singleton {
     readonly property color glow_color: root.active.glow_color
     readonly property real glow_tint: root.active.glow_tint
 
+    // Saved with the style; off keeps the bar on the default look.
+    property bool style_bar: false
+    readonly property var plain_bar: Object.assign({}, root.styles["default"], {
+        bar_border_width: 0,
+        bar_border_color: "transparent"
+    })
+    readonly property var bar: root.style_bar ? root.active : root.plain_bar
+    readonly property string bar_font_family: root.bar.bar_font_family
+    readonly property color bar_side_bg: root.bar.bar_side_bg
+    readonly property color bar_center_bg: root.bar.bar_center_bg
+    readonly property color bar_fg: root.bar.bar_fg
+    readonly property int bar_border_width: root.bar.bar_border_width
+    readonly property color bar_border_color: root.bar.bar_border_color
+    readonly property bool bar_rounded: root.bar.bar_rounded
+    readonly property color bar_workspace_active: root.bar.bar_workspace_active
+    readonly property color bar_workspace_idle: root.bar.bar_workspace_idle
+    readonly property color bar_hover_bg: root.bar.bar_hover_bg
+    readonly property color bar_glow_color: root.bar.bar_glow_color
+    readonly property color bar_scanline_color: root.bar.bar_scanline_color
+    readonly property int bar_text_style: root.bar_glow_color.a > 0 ? Text.Outline : Text.Normal
+    readonly property color bar_tip_bg: root.bar.bar_tip_bg
+    readonly property color bar_tip_fg: root.bar.bar_tip_fg
+    readonly property int bar_tip_border_width: root.bar.bar_tip_border_width
+    readonly property color bar_tip_border_color: root.bar.bar_tip_border_color
+
     // Corner radius for a shape that is rounded by `r` in the default look.
     function radius(r) {
         return root.rounded ? r : 0;
+    }
+
+    // Corner radius for a bar shape that is rounded by `r` in the default look.
+    function bar_radius(r) {
+        return root.bar_rounded ? r : 0;
     }
 
     // A layout size that grows with the style's larger type.
@@ -250,8 +319,17 @@ Singleton {
         }
         root.name = style_name;
         root.saved_name = style_name;
-        state_file.setText(JSON.stringify({ style: style_name }));
+        root.save();
         return true;
+    }
+
+    function set_bar(on) {
+        root.style_bar = on;
+        root.save();
+    }
+
+    function save() {
+        state_file.setText(JSON.stringify({ style: root.saved_name, style_bar: root.style_bar }));
     }
 
     function preview(style_name) {
@@ -280,7 +358,9 @@ Singleton {
         blockLoading: true
         onLoaded: {
             try {
-                const saved = JSON.parse(text()).style;
+                const data = JSON.parse(text());
+                const saved = data.style;
+                root.style_bar = data.style_bar === true;
                 if (typeof saved === "string" && saved in root.styles) {
                     root.name = saved;
                     root.saved_name = saved;

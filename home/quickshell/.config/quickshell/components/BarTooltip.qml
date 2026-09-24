@@ -20,16 +20,18 @@ PopupWindow {
 
     Rectangle {
         anchors.fill: parent
-        color: Theme.ui_float_bg
-        radius: 6
+        color: Style.bar_tip_bg
+        radius: Style.bar_radius(6)
+        border.width: Style.bar_tip_border_width
+        border.color: Style.bar_tip_border_color
     }
 
     Text {
         id: label
         anchors.centerIn: parent
         text: Tooltip.text
-        color: Theme.ui_float_fg
-        font.family: Theme.font_family
+        color: Style.bar_tip_fg
+        font.family: Style.bar_font_family
         font.pixelSize: Theme.popup_font_size
         horizontalAlignment: Text.AlignHCenter
     }

@@ -10,7 +10,7 @@ Popup {
 
     popup_name: "style"
     preferred_width: 180
-    footer_hint: "j/k preview · 1-9 pick · Enter apply · q cancel"
+    footer_hint: "j/k preview · 1-9 pick · Enter apply · t style bar · q cancel"
     body_height: content.implicitHeight + 24
 
     property int selected: 0
@@ -41,7 +41,10 @@ Popup {
         focus: true
 
         Keys.onPressed: event => {
-            if (event.key === Qt.Key_J) {
+            if (event.key === Qt.Key_T) {
+                Style.set_bar(!Style.style_bar);
+                event.accepted = true;
+            } else if (event.key === Qt.Key_J) {
                 root.selected = (root.selected + 1) % Style.names.length;
                 event.accepted = true;
             } else if (event.key === Qt.Key_K) {
@@ -109,6 +112,13 @@ Popup {
                         }
                     }
                 }
+            }
+
+            ToggleRow {
+                Layout.topMargin: 6
+                label: "Style bar"
+                checked: Style.style_bar
+                onToggled: Style.set_bar(!Style.style_bar)
             }
         }
     }

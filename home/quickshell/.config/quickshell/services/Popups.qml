@@ -63,7 +63,8 @@ Singleton {
         } else {
             const found = root.find_default(name);
             open_anchor = found ? found.item : null;
-            open_color = found ? found.color : (color || Theme.bg_mantle);
+            // Anchors are island bodies, so their live color survives a bar style change.
+            open_color = found ? (found.item && found.item.color !== undefined ? found.item.color : found.color) : (color || Theme.bg_mantle);
             open_screen_name = found ? found.screen_name : "";
         }
         open_name = name;

@@ -28,6 +28,16 @@ Rectangle {
         return Theme.theme_primary;
     }
 
+    readonly property string urgency_tag: {
+        if (!root.notification) return "";
+        if (root.notification.urgency === NotificationUrgency.Critical) return " !! critical";
+        if (root.notification.urgency === NotificationUrgency.Low) return " · low";
+        return "";
+    }
+
+    readonly property int text_style: Style.glow ? Text.Outline : Text.Normal
+    readonly property color glow_color: Qt.alpha(Theme.theme_primary, 0.3)
+
     property int time_tick: 0
     readonly property string relative_time: {
         void root.time_tick;
@@ -46,10 +56,10 @@ Rectangle {
     }
 
     implicitHeight: layout.implicitHeight + 16
-    radius: 8
-    color: Theme.bg_mantle
+    radius: Style.radius(8)
+    color: Style.boxed_cards ? Style.frame_color : Theme.bg_mantle
     border.width: 1
-    border.color: Theme.ui_border
+    border.color: Style.boxed_cards ? root.accent : Theme.ui_border
     clip: true
 
     opacity: 0
@@ -88,12 +98,26 @@ Rectangle {
     }
 
     Rectangle {
+        visible: !Style.boxed_cards
         anchors.left: parent.left
         anchors.top: parent.top
         anchors.bottom: parent.bottom
         width: 3
         radius: 1.5
         color: root.accent
+    }
+
+    // Static scanlines; nothing animates them.
+    Repeater {
+        model: Style.scanlines ? Math.ceil(root.height / 3) : 0
+
+        Rectangle {
+            required property int index
+            y: index * 3
+            width: root.width
+            height: 1
+            color: Qt.alpha(Theme.theme_primary, 0.05)
+        }
     }
 
     RowLayout {
@@ -128,17 +152,21 @@ Rectangle {
                     Layout.fillWidth: true
                     Layout.minimumWidth: 0
                     elide: Text.ElideRight
-                    text: (root.notification ? root.notification.appName : "") + "  ·  " + root.relative_time
-                    color: Theme.fg_muted
-                    font.family: Theme.font_family
-                    font.pixelSize: Theme.popup_font_size - 4
+                    text: Style.boxed_cards
+                        ? "[" + (root.notification ? root.notification.appName : "") + "] " + root.relative_time + root.urgency_tag
+                        : (root.notification ? root.notification.appName : "") + "  ·  " + root.relative_time
+                    color: Style.boxed_cards ? root.accent : Theme.fg_muted
+                    font.family: Style.font_family
+                    font.pixelSize: Style.font_size - (Style.boxed_cards ? 3 : 4)
+                    style: root.text_style
+                    styleColor: root.glow_color
                 }
 
                 Text {
                     text: "×"
                     color: Theme.fg_dim
-                    font.family: Theme.font_family
-                    font.pixelSize: Theme.popup_font_size + 2
+                    font.family: Style.font_family
+                    font.pixelSize: Style.font_size + 2
 
                     MouseArea {
                         anchors.fill: parent
@@ -155,8 +183,10 @@ Rectangle {
                 text: root.notification ? root.notification.summary : ""
                 color: Theme.fg_core
                 font.bold: true
-                font.family: Theme.font_family
-                font.pixelSize: Theme.popup_font_size + 1
+                font.family: Style.font_family
+                font.pixelSize: Style.font_size + (Style.boxed_cards ? 0 : 1)
+                style: root.text_style
+                styleColor: root.glow_color
             }
 
             Text {
@@ -170,8 +200,8 @@ Rectangle {
                 textFormat: Text.StyledText
                 text: root.notification ? root.notification.body : ""
                 color: Theme.fg_muted
-                font.family: Theme.font_family
-                font.pixelSize: Theme.popup_font_size
+                font.family: Style.font_family
+                font.pixelSize: Style.font_size
             }
 
             Flow {
@@ -190,8 +220,10 @@ Rectangle {
 
                         implicitWidth: Math.min(action_label.implicitWidth + 16, layout.width)
                         implicitHeight: 22
-                        radius: 11
-                        color: Theme.bg_surface
+                        radius: Style.radius(11)
+                        color: Style.boxed_cards ? "transparent" : Theme.bg_surface
+                        border.width: Style.boxed_cards ? 1 : 0
+                        border.color: Style.key_border
 
                         Text {
                             id: action_label
@@ -201,8 +233,10 @@ Rectangle {
                             horizontalAlignment: Text.AlignHCenter
                             text: action_chip.modelData.text
                             color: Theme.theme_secondary
-                            font.family: Theme.font_family
-                            font.pixelSize: Theme.popup_font_size - 4
+                            font.family: Style.font_family
+                            font.pixelSize: Style.font_size - (Style.boxed_cards ? 3 : 4)
+                            style: root.text_style
+                            styleColor: root.glow_color
                         }
 
                         MouseArea {

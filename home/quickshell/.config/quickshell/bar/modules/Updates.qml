@@ -33,8 +33,8 @@ Item {
     Rectangle {
         anchors.fill: parent
         anchors.margins: -4
-        radius: 4
-        color: Theme.bg_surface
+        radius: Style.bar_radius(4)
+        color: Style.bar_hover_bg
         opacity: hover_handler.hovered ? 0.5 : 0
     }
 
@@ -52,7 +52,9 @@ Item {
             id: glyph_text
             text: badged.glyph
             color: badged.tint
-            font.family: Theme.font_family
+            font.family: Style.bar_font_family
+            style: Style.bar_text_style
+            styleColor: Style.bar_glow_color
             font.pixelSize: Theme.glyph_size
         }
 
@@ -62,7 +64,9 @@ Item {
             y: -3
             text: badged.count
             color: badged.tint
-            font.family: Theme.font_family
+            font.family: Style.bar_font_family
+            style: Style.bar_text_style
+            styleColor: Style.bar_glow_color
             font.pixelSize: Theme.font_size - 3
             font.bold: true
         }

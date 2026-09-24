@@ -31,8 +31,10 @@ Row {
 
     Text {
         text: root.time_text
-        color: Theme.fg_core
-        font.family: Theme.font_family
+        color: Style.bar_fg
+        font.family: Style.bar_font_family
+        style: Style.bar_text_style
+        styleColor: Style.bar_glow_color
         font.pixelSize: Theme.font_size
     }
 
@@ -40,15 +42,19 @@ Row {
         visible: !root.compact
         text: "|"
         color: Theme.theme_primary
-        font.family: Theme.font_family
+        font.family: Style.bar_font_family
+        style: Style.bar_text_style
+        styleColor: Style.bar_glow_color
         font.pixelSize: Theme.font_size
     }
 
     Text {
         visible: !root.compact
         text: root.date_text
-        color: Theme.fg_core
-        font.family: Theme.font_family
+        color: Style.bar_fg
+        font.family: Style.bar_font_family
+        style: Style.bar_text_style
+        styleColor: Style.bar_glow_color
         font.pixelSize: Theme.font_size
     }
 }

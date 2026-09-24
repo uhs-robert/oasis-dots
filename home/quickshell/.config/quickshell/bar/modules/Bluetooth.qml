@@ -29,7 +29,7 @@ Item {
     readonly property color glyph_color: {
         if (!root.has_adapter || root.blocked || !root.adapter.enabled) return Theme.fg_dim;
         if (root.any_connected) return Theme.theme_primary;
-        return Theme.fg_core;
+        return Style.bar_fg;
     }
 
     readonly property string tooltip_text: {
@@ -49,8 +49,8 @@ Item {
     Rectangle {
         anchors.fill: parent
         anchors.margins: -4
-        radius: 4
-        color: Theme.bg_surface
+        radius: Style.bar_radius(4)
+        color: Style.bar_hover_bg
         opacity: hover_handler.hovered ? 0.5 : 0
     }
 
@@ -61,7 +61,9 @@ Item {
         Text {
             text: root.glyph
             color: root.glyph_color
-            font.family: Theme.font_family
+            font.family: Style.bar_font_family
+            style: Style.bar_text_style
+            styleColor: Style.bar_glow_color
             font.pixelSize: Theme.glyph_size
         }
     }

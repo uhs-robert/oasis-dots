@@ -37,8 +37,8 @@ Item {
     Rectangle {
         anchors.fill: parent
         anchors.margins: -4
-        radius: 4
-        color: Theme.bg_surface
+        radius: Style.bar_radius(4)
+        color: Style.bar_hover_bg
         opacity: hover_handler.hovered ? 0.5 : 0
     }
 
@@ -71,7 +71,9 @@ Item {
             Layout.alignment: Qt.AlignVCenter
             text: root.has_data ? Math.round(root.current.temp) + "°" + WeatherState.unit_symbol() : "--°"
             color: root.has_data ? WeatherState.temp_color(root.current.temp) : Theme.fg_dim
-            font.family: Theme.font_family
+            font.family: Style.bar_font_family
+            style: Style.bar_text_style
+            styleColor: Style.bar_glow_color
             font.pixelSize: Theme.font_size
         }
 
@@ -80,7 +82,9 @@ Item {
             visible: WeatherState.stale
             text: "\u{f002a}"
             color: Theme.warning
-            font.family: Theme.font_family
+            font.family: Style.bar_font_family
+            style: Style.bar_text_style
+            styleColor: Style.bar_glow_color
             font.pixelSize: Theme.font_size - 2
         }
     }

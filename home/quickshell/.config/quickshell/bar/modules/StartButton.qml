@@ -18,8 +18,8 @@ Item {
     Rectangle {
         anchors.fill: parent
         anchors.margins: -6
-        radius: 4
-        color: Theme.bg_surface
+        radius: Style.bar_radius(4)
+        color: Style.bar_hover_bg
         opacity: hover_handler.hovered ? 0.5 : 0
     }
 

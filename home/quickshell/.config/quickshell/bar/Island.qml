@@ -9,6 +9,9 @@ Item {
     property color bg_color: "#232634"
     property bool cap_left: false
     property bool cap_right: false
+    property int border_width: 0
+    property color border_color: "transparent"
+    property color scanline_color: "transparent"
     default property alias content: layout.children
 
     readonly property alias body_item: body
@@ -76,6 +79,54 @@ Item {
             PathLine { x: 1; y: root.height }
             PathLine { x: 0; y: root.height }
             PathLine { x: 0; y: 0 }
+        }
+    }
+
+    // Static scanlines clipped to the slants; nothing animates them.
+    Item {
+        visible: root.scanline_color.a > 0
+        anchors.fill: parent
+
+        Repeater {
+            model: root.scanline_color.a > 0 ? Math.ceil(root.height / 3) : 0
+
+            Rectangle {
+                required property int index
+                readonly property real slant: index * 3 * root.cap_width / root.height
+
+                x: root.cap_left ? slant : 0
+                y: index * 3
+                width: root.width - x - (root.cap_right ? slant : 0)
+                height: 1
+                color: root.scanline_color
+            }
+        }
+    }
+
+    // Traces the slants and bottom edge; the sides on the screen edge stay open.
+    Shape {
+        visible: root.border_width > 0
+        anchors.fill: parent
+        preferredRendererType: Shape.CurveRenderer
+
+        ShapePath {
+            strokeWidth: root.border_width
+            strokeColor: root.border_color
+            fillColor: "transparent"
+            capStyle: ShapePath.FlatCap
+            joinStyle: ShapePath.MiterJoin
+
+            PathPolyline {
+                path: {
+                    const w = root.width, h = root.height, c = root.cap_width, i = root.border_width / 2;
+                    const pts = [];
+                    pts.push(root.cap_left ? Qt.point(i, 0) : Qt.point(0, h - i));
+                    if (root.cap_left) pts.push(Qt.point(c + i, h - i));
+                    if (root.cap_right) pts.push(Qt.point(w - c - i, h - i));
+                    pts.push(root.cap_right ? Qt.point(w - i, 0) : Qt.point(w, h - i));
+                    return pts;
+                }
+            }
         }
     }
 }
