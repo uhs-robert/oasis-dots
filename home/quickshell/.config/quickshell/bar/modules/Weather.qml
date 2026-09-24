@@ -53,7 +53,7 @@ Item {
 
             Image {
                 id: icon
-                readonly property int implicit_size: root.compact ? 20 : 24
+                readonly property int implicit_size: root.compact ? 24 : 30
                 readonly property real dpr: QsWindow.window ? QsWindow.window.devicePixelRatio : 1
 
                 visible: root.has_data
