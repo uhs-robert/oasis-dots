@@ -4,6 +4,7 @@ import QtQuick
 import Quickshell
 import "./bar"
 import "./components"
+import "./picker"
 import "./popups"
 import "./services"
 
@@ -71,7 +72,10 @@ ShellRoot {
     UpdatesPopup {}
     MediaPopup {}
     NotificationsPopup {}
+    Picker {}
+    AppsProvider {}
     PopupIpc {}
+    PickerIpc {}
     BrightnessIpc {}
     NotificationsIpc {}
     StyleIpc {}

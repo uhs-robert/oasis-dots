@@ -37,8 +37,9 @@ Popup {
 
     function choose(index) {
         selected = index;
-        if (index === 0) run(0);
-        else if (index === 1) Popups.open("style", Popups.open_anchor, Popups.open_color, Popups.open_screen_name);
+        if (index === 0) {
+            if (!Pickers.open("apps", Popups.open_anchor, Popups.open_color, Popups.open_screen_name, "start")) run(0);
+        } else if (index === 1) Popups.open("style", Popups.open_anchor, Popups.open_color, Popups.open_screen_name, "start");
         else confirm = true;
     }
 

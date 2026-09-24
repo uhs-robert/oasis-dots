@@ -12,6 +12,8 @@ Singleton {
     property var open_anchor: null
     property color open_color: Theme.bg_mantle
     property string open_screen_name: ""
+    // Popup name to reopen on Backspace, e.g. "start" for popups opened from the Start menu.
+    property string back_name: ""
 
     // screen_name -> { module_name: { item, color } }, so each bar keeps its own anchors.
     property var default_anchors: ({})
@@ -55,7 +57,7 @@ Singleton {
         return null;
     }
 
-    function open(name, anchor_item, color, screen_name) {
+    function open(name, anchor_item, color, screen_name, back_to) {
         if (anchor_item) {
             open_anchor = anchor_item;
             open_color = color || Theme.bg_mantle;
@@ -66,15 +68,24 @@ Singleton {
             // Anchors are island bodies; read the Island's color, since a shaded body is transparent.
             const island = found && found.item ? found.item.parent : null;
             open_color = found ? (island && island.bg_color !== undefined ? island.bg_color : found.color) : (color || Theme.bg_mantle);
-            open_screen_name = found ? found.screen_name : "";
+            // A popup with no module (the docked picker) opens on the screen it names.
+            open_screen_name = found ? found.screen_name : (screen_name || "");
         }
         open_name = name;
+        back_name = back_to || "";
     }
 
     function close() {
         open_name = "";
         open_anchor = null;
         open_screen_name = "";
+        back_name = "";
+    }
+
+    // Reopens the popup that opened the current one, keeping the same anchor/color/screen.
+    function back() {
+        if (root.back_name === "") return;
+        root.open(root.back_name, root.open_anchor, root.open_color, root.open_screen_name);
     }
 
     function toggle(name, anchor_item, color, screen_name) {

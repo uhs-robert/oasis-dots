@@ -26,6 +26,7 @@ Item {
         }
         if (root.has_views) e.push({ key: "Tab", desc: "views" });
         if (root.searchable) e.push({ key: "/", desc: "search" }, { key: "n/N", desc: "next/prev match" });
+        if (Popups.back_name !== "") e.push({ key: "Backspace", desc: "back to " + Popups.back_name });
         e.push({ key: "?", desc: "help" }, { key: "Esc/Backspace", desc: "back" }, { key: "q", desc: "close" });
         return e.filter(g => root.own_keys.indexOf(g.key) < 0);
     }

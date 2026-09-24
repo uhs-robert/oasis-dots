@@ -20,15 +20,24 @@ local Menu = {}
 --- @field layer_rule? string Layer rule name to enable for the duration.
 --- @field args? string Extra arguments appended to the menu invocation.
 
+--- Return the shell command that opens the menu in the given show mode.
+--- @param mode string
+--- @param opts? Menu.ShowOpts
+--- @return string
+local function show_cmd(mode, opts)
+  opts = opts or {}
+  local theme_arg = opts.theme and (" -theme " .. THEME_DIR .. opts.theme) or ""
+  return MENU .. " -i -show " .. mode .. theme_arg .. (opts.args and (" " .. opts.args) or "")
+end
+
 --- Return an action that opens the menu in the given show mode.
 --- @param mode string The mode for the menu
 --- @param opts? Menu.ShowOpts
 --- @return fun()
 Menu.show = function(mode, opts)
   opts = opts or {}
-  local theme, rule = opts.theme, opts.layer_rule
-  local theme_arg = theme and (" -theme " .. THEME_DIR .. theme) or ""
-  local cmd = MENU .. " -i -show " .. mode .. theme_arg .. (opts.args and (" " .. opts.args) or "")
+  local rule = opts.layer_rule
+  local cmd = show_cmd(mode, opts)
   return function()
     if rule then
       hl.dispatch(Rules.exec_with_layer_rule(rule, cmd))
@@ -38,8 +47,17 @@ Menu.show = function(mode, opts)
   end
 end
 
+--- Return an action that opens Quickshell's `provider` picker under the Quickshell shell, else runs `fallback`.
+--- @param provider string
+--- @param fallback string Shell command, also run when the bar is not running or lacks the picker.
+--- @return fun()
+function Menu.picker(provider, fallback)
+  if Config.shell ~= "quickshell" then return Cmd.run(fallback) end
+  return Cmd.run(Scripts.qs_picker .. " " .. provider .. " '" .. fallback:gsub("'", "'\\''") .. "'")
+end
+
 -- Basic Action
-Menu.drun = function() return Menu.show("drun") end
+Menu.drun = function() return Menu.picker("apps", show_cmd("drun")) end
 Menu.run = function() return Menu.show("run") end
 Menu.ssh = function() return Menu.show("ssh") end
 Menu.window = function() return Menu.show("window") end
