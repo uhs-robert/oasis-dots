@@ -22,6 +22,7 @@ Popup {
     readonly property bool has_alerts: WeatherState.alerts.length > 0
     tabs: root.has_alerts ? root.base_tab_names.concat(["Alerts"]) : root.base_tab_names
     readonly property bool on_alerts_tab: root.has_alerts && root.current_tab === 2
+    readonly property bool mission: Style.weather_header === "watch"
 
     readonly property var daily_sub_names: ["Temp & Precip", "Wind", "UV", "Sunshine", "Sun & Moon"]
     readonly property int sun_moon_sub: 4
@@ -200,7 +201,7 @@ Popup {
                 Layout.fillWidth: true
                 active: Style.weather_header !== ""
                 visible: active
-                sourceComponent: Style.weather_header === "spec" ? spec_header : Style.weather_header === "scope" ? scope_header : ring_header
+                sourceComponent: ({ spec: spec_header, scope: scope_header, watch: watch_header, memcard: memcard_header, battle: battle_header, mode7: mode7_header })[Style.weather_header] || ring_header
 
                 Component {
                     id: spec_header
@@ -210,6 +211,26 @@ Popup {
                 Component {
                     id: scope_header
                     ScopeHeader {}
+                }
+
+                Component {
+                    id: watch_header
+                    WatchHeader {}
+                }
+
+                Component {
+                    id: memcard_header
+                    MemCardHeader {}
+                }
+
+                Component {
+                    id: battle_header
+                    BattleHeader {}
+                }
+
+                Component {
+                    id: mode7_header
+                    Mode7Header {}
                 }
 
                 Component {
@@ -297,7 +318,7 @@ Popup {
                 Layout.preferredHeight: root.has_alerts ? 28 : 0
                 visible: root.has_alerts
                 radius: Style.pill_chips ? height / 2 : Style.radius(4)
-                readonly property color alert_color: WeatherState.alerts.length > 0 ? WeatherState.alert_color(WeatherState.alerts[0].severity) : Style.text_dim
+                readonly property color alert_color: root.mission ? Theme.theme_label : WeatherState.alerts.length > 0 ? WeatherState.alert_color(WeatherState.alerts[0].severity) : Style.text_dim
                 color: Style.boxed_cards ? Qt.alpha(alert_color, 0.1) : Theme.bg_surface
                 border.width: Style.boxed_cards ? 1 : 0
                 border.color: alert_color
@@ -327,12 +348,21 @@ Popup {
                     }
 
                     Text {
+                        visible: root.mission && main_column.width >= 340
+                        text: "MISSION CRITICAL"
+                        color: Theme.theme_label
+                        font.family: Style.title_font_family
+                        font.pixelSize: Style.font_size - 6
+                        font.letterSpacing: 1
+                    }
+
+                    Text {
                         Layout.fillWidth: true
                         elide: Text.ElideRight
-                        text: WeatherState.alerts.length > 0
-                            ? WeatherState.alerts[0].event + " · until " + root.fmt_alert_time(WeatherState.alerts[0].ends) + (WeatherState.alerts.length > 1 ? "  +" + (WeatherState.alerts.length - 1) + " more" : "")
-                            : ""
-                        color: WeatherState.alerts.length > 0 ? WeatherState.alert_color(WeatherState.alerts[0].severity) : Theme.fg_core
+                        text: WeatherState.alerts.length === 0 ? ""
+                            : root.mission ? (WeatherState.alerts.length > 1 ? "+" + (WeatherState.alerts.length - 1) + "  " : "") + "AVOID " + WeatherState.alerts[0].event.toUpperCase()
+                            : WeatherState.alerts[0].event + " · until " + root.fmt_alert_time(WeatherState.alerts[0].ends) + (WeatherState.alerts.length > 1 ? "  +" + (WeatherState.alerts.length - 1) + " more" : "")
+                        color: root.mission ? Theme.theme_label : WeatherState.alerts.length > 0 ? WeatherState.alert_color(WeatherState.alerts[0].severity) : Theme.fg_core
                         font.family: Style.font_family
                         font.pixelSize: Style.font_size - 2
                         font.bold: true

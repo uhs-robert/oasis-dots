@@ -22,6 +22,29 @@ Item {
     // Temperature ranges as 1px altitude ladders with rungs.
     readonly property bool ladder: Style.weather_header === "scope"
     readonly property bool thin_range: Style.range_line || root.ladder
+    // GoldenEye: a mission line over the columns, each lettered as an objective.
+    readonly property bool mission: Style.weather_header === "watch"
+    // PS1: each column headed by its memory card save block in place of the icon.
+    readonly property bool save_blocks: Style.weather_header === "memcard"
+    readonly property bool custom_column: root.stat_columns
+    // NES: each column in a Dragon Quest window with a cursor on the selected day.
+    readonly property bool dq: Style.weather_header === "battle"
+    // SNES: columns standing on a Mode 7 floor.
+    readonly property bool mode7: Style.weather_header === "mode7"
+    readonly property bool floor_shown: root.mode7 && root.visible && Popups.open_name === "weather"
+
+    onFloor_shownChanged: {
+        if (!floor_loader.item) return;
+        if (root.floor_shown) floor_loader.item.run();
+        else floor_loader.item.stop();
+    }
+
+    function day_label(day, i) {
+        const ddd = Qt.formatDate(new Date(day.date + "T00:00:00"), "ddd").toUpperCase();
+        if (root.mission) return String.fromCharCode(97 + i) + ") " + ddd;
+        if (root.dq) return i === 0 ? "NOW" : ddd;
+        return day.weekday;
+    }
 
     FontMetrics {
         id: label_metrics
@@ -29,10 +52,20 @@ Item {
         font.pixelSize: Style.font_size - 2
     }
 
+    FontMetrics {
+        id: small_metrics
+        font.family: Style.font_family
+        font.pixelSize: Style.font_size - 5
+    }
+
     // Columns that fit without clipping their widest label, capped at five.
     readonly property int fit_days: {
         const f = label_metrics.font;
-        const col = root.stat_columns ? 56 : Math.max(label_metrics.advanceWidth("Today"), label_metrics.advanceWidth("100%")) + 8;
+        const mission_w = root.mission ? Math.max(label_metrics.advanceWidth("a) WED"), small_metrics.advanceWidth("PROGRESS") + 8) : 0;
+        const dq_w = root.dq ? 2 * (small_metrics.advanceWidth(Style.row_cursor) + 3) : 0;
+        const col = root.stat_columns ? 56
+            : root.dq ? Math.max(label_metrics.advanceWidth("100%"), label_metrics.advanceWidth("WED") + dq_w) + 16
+            : Math.max(label_metrics.advanceWidth("Today"), label_metrics.advanceWidth("100%"), mission_w) + 8;
         return Math.max(1, Math.min(5, Math.floor((root.width + 4) / (col + 4))));
     }
     readonly property var window_days: WeatherState.days.slice(root.first_day, root.first_day + root.fit_days)
@@ -73,11 +106,30 @@ Item {
         return Math.round(t) + "°" + WeatherState.unit_symbol();
     }
 
+    Loader {
+        id: floor_loader
+        active: root.mode7
+        x: day_row.x
+        y: day_row.y + day_row.height * 0.42
+        width: day_row.width
+        height: day_row.height * 0.58
+        sourceComponent: Mode7Floor {}
+        onLoaded: if (root.floor_shown) floor_loader.item.run()
+    }
+
     ColumnLayout {
         anchors.fill: parent
         spacing: 6
 
+        Loader {
+            Layout.fillWidth: true
+            active: root.mission
+            visible: active
+            sourceComponent: MissionHeader {}
+        }
+
         RowLayout {
+            id: day_row
             Layout.fillWidth: true
             Layout.fillHeight: true
             spacing: 4
@@ -94,17 +146,50 @@ Item {
                     Layout.fillWidth: true
                     Layout.preferredWidth: 0
                     Layout.fillHeight: true
+                    transformOrigin: Item.Bottom
+                    scale: root.mode7 && day_col.day_index !== root.day_cursor ? 0.93 : 1
+
+                    Behavior on scale {
+                        NumberAnimation {
+                            duration: 120
+                        }
+                    }
+
+                    Rectangle {
+                        visible: root.mode7
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        anchors.bottom: parent.bottom
+                        anchors.bottomMargin: -5
+                        width: parent.width * 0.8
+                        height: 8
+                        radius: 4
+                        color: Qt.alpha(Theme.bg_shadow, 0.7)
+                    }
+
+                    Loader {
+                        active: root.dq
+                        anchors.fill: parent
+                        anchors.margins: 0
+                        sourceComponent: DqWindow {}
+                    }
 
                     Rectangle {
                         anchors.fill: parent
                         anchors.margins: -2
                         radius: Style.radius(4)
-                        color: Style.range_line ? "transparent" : Style.selection_brackets.a > 0 ? Style.selection_bg : Theme.bg_surface
+                        color: Style.range_line ? "transparent" : Style.selection_brackets.a > 0 || root.mission || root.mode7 ? Style.selection_bg : Theme.bg_surface
                         border.width: Style.range_line ? 1 : 0
                         border.color: Style.hairline_dim
-                        visible: day_col.day_index === root.day_cursor && !root.stat_columns
+                        visible: day_col.day_index === root.day_cursor && !root.custom_column && !root.dq
 
                         LockBrackets {}
+
+                        Rectangle {
+                            visible: root.mission
+                            width: parent.width
+                            height: 2
+                            color: Style.caret_color
+                        }
                     }
 
                     Loader {
@@ -125,10 +210,18 @@ Item {
                     }
 
                     ColumnLayout {
-                        visible: !root.stat_columns
+                        visible: !root.custom_column
                         anchors.fill: parent
-                        anchors.margins: 2
+                        anchors.margins: root.dq ? 8 : 2
                         spacing: 2
+
+                        SaveBlock {
+                            visible: root.save_blocks
+                            Layout.alignment: Qt.AlignHCenter
+                            block_size: Math.max(24, Math.min(48, day_col.width - 8))
+                            day: day_col.modelData
+                            selected: day_col.day_index === root.day_cursor
+                        }
 
                         Item {
                             Layout.fillWidth: true
@@ -309,6 +402,7 @@ Item {
 
                         Item {
                             id: icon_box
+                            visible: !root.save_blocks
                             readonly property real size: Math.max(16, Math.min(root.icon_size, day_col.width - 4))
                             Layout.alignment: Qt.AlignHCenter
                             Layout.preferredWidth: icon_box.size
@@ -330,10 +424,35 @@ Item {
                             Layout.fillWidth: true
                             horizontalAlignment: Text.AlignHCenter
                             elide: Text.ElideRight
-                            text: day_col.modelData.weekday
-                            color: day_col.day_index === root.day_cursor ? Theme.theme_secondary : Theme.fg_core
+                            id: day_name
+                            text: root.day_label(day_col.modelData, day_col.day_index)
+                            color: root.dq ? Theme.fg_strong : day_col.day_index === root.day_cursor ? Theme.theme_secondary : Theme.fg_core
                             font.family: Style.font_family
                             font.pixelSize: Style.font_size - 2
+
+                            Text {
+                                visible: root.dq && day_col.day_index === root.day_cursor && Style.caret_phase
+                                anchors.right: parent.horizontalCenter
+                                anchors.rightMargin: day_name.contentWidth / 2 + 3
+                                anchors.verticalCenter: parent.verticalCenter
+                                text: Style.row_cursor
+                                color: Style.caret_color
+                                font.family: Style.font_family
+                                font.pixelSize: Style.font_size - 5
+                            }
+                        }
+
+                        Text {
+                            visible: root.mission
+                            opacity: day_col.day_index === 0 ? 1 : 0
+                            Layout.fillWidth: true
+                            horizontalAlignment: Text.AlignHCenter
+                            wrapMode: Text.WordWrap
+                            text: "IN PROGRESS"
+                            color: Style.accent_color
+                            font.family: Style.font_family
+                            font.pixelSize: Style.font_size - 5
+                            font.letterSpacing: 1
                         }
                     }
                 }

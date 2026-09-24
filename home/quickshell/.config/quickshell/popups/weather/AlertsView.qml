@@ -15,6 +15,10 @@ Item {
     property var on_select: function (i) {}
 
     readonly property var alerts: WeatherState.alerts
+    // Alerts as red "avoid" objectives under a mission line.
+    readonly property bool objectives: Style.weather_header === "watch"
+    // Alerts as Dragon Quest encounter lines.
+    readonly property bool encounter: Style.weather_header === "battle"
     readonly property var selected: root.alerts[Math.max(0, Math.min(root.alerts.length - 1, root.alert_cursor))]
 
     readonly property var weekday_names: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
@@ -45,9 +49,16 @@ Item {
         anchors.fill: parent
         spacing: 8
 
+        Loader {
+            Layout.fillWidth: true
+            active: root.objectives
+            visible: active
+            sourceComponent: MissionHeader {}
+        }
+
         Text {
             visible: root.alerts.length === 0
-            text: "No active alerts"
+            text: root.objectives ? "NO ACTIVE ALERTS" : "No active alerts"
             color: Style.text_dim
             font.family: Style.font_family
             font.pixelSize: Style.font_size - 1
@@ -90,16 +101,38 @@ Item {
                     ColumnLayout {
                         spacing: 0
                         Layout.fillWidth: true
+                        RowLayout {
+                            visible: root.encounter
+                            Layout.fillWidth: true
+                            spacing: 4
+                            Text {
+                                Layout.fillWidth: true
+                                elide: Text.ElideRight
+                                text: alert_row.modelData.event.toUpperCase()
+                                color: alert_row.fg(alert_row.index === root.alert_cursor ? Theme.theme_secondary : Theme.fg_core)
+                                font.family: Style.font_family
+                                font.pixelSize: Style.font_size - 2
+                            }
+                            Text {
+                                text: "attacks!"
+                                color: alert_row.fg(alert_row.index === root.alert_cursor ? Theme.theme_secondary : Theme.fg_core)
+                                font.family: Style.font_family
+                                font.pixelSize: Style.font_size - 2
+                            }
+                        }
                         Text {
+                            visible: !root.encounter
                             Layout.fillWidth: true
                             elide: Text.ElideRight
-                            text: alert_row.modelData.event
-                            color: alert_row.fg(alert_row.index === root.alert_cursor ? Theme.theme_secondary : Theme.fg_core)
+                            text: root.objectives ? "OBJECTIVE: AVOID " + alert_row.modelData.event.toUpperCase() : alert_row.modelData.event
+                            color: alert_row.fg(root.objectives ? Theme.theme_label : alert_row.index === root.alert_cursor ? Theme.theme_secondary : Theme.fg_core)
                             font.family: Style.font_family
                             font.pixelSize: Style.font_size - 2
                         }
                         Text {
-                            text: alert_row.modelData.severity
+                            Layout.fillWidth: true
+                            elide: Text.ElideRight
+                            text: root.objectives ? "PRIORITY: " + alert_row.modelData.severity.toUpperCase() + (alert_row.modelData.ends ? " · UNTIL " + root.fmt_time(alert_row.modelData.ends).toUpperCase() : "") : alert_row.modelData.severity
                             color: alert_row.fg(Style.text_muted)
                             font.family: Style.font_family
                             font.pixelSize: Style.font_size - 4
@@ -162,7 +195,7 @@ Item {
                     Layout.topMargin: 6
                     visible: !!root.selected && root.selected.instruction !== ""
                     wrapMode: Text.WordWrap
-                    text: root.selected ? "What to do: " + root.unwrap(root.selected.instruction) : ""
+                    text: root.selected ? (root.objectives ? "ORDERS: " : "What to do: ") + root.unwrap(root.selected.instruction) : ""
                     color: Theme.fg_core
                     font.family: Style.font_family
                     font.pixelSize: Style.font_size - 2

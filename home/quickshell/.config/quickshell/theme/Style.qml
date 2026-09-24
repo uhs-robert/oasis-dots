@@ -434,6 +434,7 @@ Singleton {
             }),
             "nes": Object.assign({}, terminal, {
                 done_anim: "pixel",
+                weather_header: "battle",
                 text_muted: Qt.tint(Theme.fg_dim, Qt.alpha(Theme.fg_core, 0.35)),
                 text_dim: Qt.tint(Theme.fg_dim, Qt.alpha(Theme.fg_core, 0.6)),
                 // Press Start 2P draws on an 8px grid and runs 1em wide; 14 sits between its 1.5x and 2x sizes, with a wider frame.
@@ -487,6 +488,7 @@ Singleton {
             }),
             "snes": Object.assign({}, terminal, {
                 done_anim: "pixel",
+                weather_header: "mode7",
                 // Greys lifted toward primary_light so they read on the shaded window.
                 text_muted: Qt.tint(Theme.fg_dim, Qt.alpha(Theme.theme_primary_light, 0.4)),
                 text_dim: Qt.tint(Theme.fg_dim, Qt.alpha(Theme.theme_primary_light, 0.65)),
@@ -543,6 +545,7 @@ Singleton {
             }),
             "ps1": Object.assign({}, terminal, {
                 done_anim: "pixel",
+                weather_header: "memcard",
                 // Muted text brightened; the shaded, dithered frame swallows the theme greys.
                 text_muted: Qt.tint(Theme.fg_dim, Qt.alpha(Theme.fg_core, 0.35)),
                 text_dim: Qt.tint(Theme.fg_dim, Qt.alpha(Theme.fg_core, 0.6)),
@@ -627,6 +630,7 @@ Singleton {
                 meter_slant: 0.36,
                 chart_slant: 0.21,
                 chart_fill: Theme.theme_secondary,
+                weather_header: "watch",
                 title_bg: "transparent",
                 title_fg: Theme.fg_strong,
                 title_spacing: 4,
@@ -1383,7 +1387,7 @@ Singleton {
     // Start's schematic and status strip.
     readonly property color schematic: root.active.schematic
     readonly property bool status_strip: root.active.status_strip
-    // Alternate layouts: "" keeps the default; osd "ring" or "readout", weather "ring", "spec" or "scope", cards "rule" or "channel".
+    // Alternate layouts: "" keeps the default; osd "ring" or "readout", weather "ring", "spec", "scope", "watch", "memcard", "battle" or "mode7", cards "rule" or "channel".
     readonly property string osd_layout: root.active.osd_layout
     readonly property string weather_header: root.active.weather_header
     readonly property string card_layout: root.active.card_layout
