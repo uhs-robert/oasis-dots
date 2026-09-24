@@ -158,10 +158,10 @@ Popup {
             root.move_selected(-1);
             event.accepted = true;
         } else if (event.key === Qt.Key_L) {
-            root.move_action(1);
+            root.move_action(event.modifiers & Qt.ShiftModifier ? 99 : 1);
             event.accepted = true;
         } else if (event.key === Qt.Key_H) {
-            root.move_action(-1);
+            root.move_action(event.modifiers & Qt.ShiftModifier ? -99 : -1);
             event.accepted = true;
         } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
             root.invoke_selected();
@@ -408,7 +408,7 @@ Popup {
 
             MenuFooter {
                 Layout.fillWidth: true
-                text: "[ ] tabs · 1-3 select · Tab order · j/k move · gg/G first/last · h/l action · Enter open · d/x dismiss · C clear all · t toggle"
+                text: "[ ] tabs · 1-3 select · Tab order · j/k move · gg/G first/last · h/l action · H/L body/last · Enter open · d/x dismiss · C clear all · t toggle"
             }
         }
     }
