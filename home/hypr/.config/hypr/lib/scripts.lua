@@ -10,6 +10,7 @@ local Scripts = {
   screenshot            = HYPR    .. "screenshot.sh",
   voxtype               = HYPR    .. "voxtype-with-media-pause.sh",
   focus_media_player    = HYPR    .. "focus-media-player.sh",
+  focus_toast_or_float  = HYPR    .. "focus-toast-or-float.sh",
   nmtui                 = HYPR    .. "nmtui.sh",
   hyprlock              = HYPR    .. "hyprlock-screenshot.lua",
   rofi_tmux             = HYPR    .. "rofi-tmux.sh",

@@ -103,10 +103,6 @@ _G._hv_cycle_float = function(dir) Window.cycle_float(dir)() end
 --- Focus Quickshell's notification toasts, or cycle floats when none is showing.
 --- @param dir "next"|"prev"
 --- @return fun()
-Window.focus_toast_or_float = function(dir)
-  local cmd =
-    '[ "$(qs ipc call notifications focus_toast %s 2>/dev/null)" = toast ] || hyprctl dispatch \'_hv_cycle_float("%s")\''
-  return Hypr.exec(cmd:format(dir, dir))
-end
+Window.focus_toast_or_float = function(dir) return Hypr.exec(require("lib.scripts").focus_toast_or_float .. " " .. dir) end
 
 return Window
