@@ -47,7 +47,7 @@ Item {
         }
     }
 
-    height: 6
+    height: root.line ? 10 : 6
     opacity: root.active ? 1 : 0
     visible: opacity > 0
 
