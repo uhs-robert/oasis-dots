@@ -93,18 +93,18 @@ Popup {
                 Text {
                     Layout.fillWidth: true
                     text: UpdatesState.total + " update" + (UpdatesState.total === 1 ? "" : "s") + " · " + UpdatesState.official.length + " official, " + UpdatesState.aur.length + " AUR"
-                    color: Theme.fg_core
-                    font.family: Style.font_family
-                    font.pixelSize: Style.font_size
+                    color: root.st.text_fg
+                    font.family: root.st.font_family
+                    font.pixelSize: root.st.font_size
                     font.bold: true
                     elide: Text.ElideRight
                 }
 
                 Text {
                     text: UpdatesState.checking ? "Checking…" : UpdatesState.error ? UpdatesState.error : (UpdatesState.last_checked > 0 ? "Checked " + Qt.formatTime(new Date(UpdatesState.last_checked), "HH:mm") : "Never checked")
-                    color: UpdatesState.error && !UpdatesState.checking ? Theme.warning : Style.text_muted
-                    font.family: Style.font_family
-                    font.pixelSize: Style.font_size - 3
+                    color: UpdatesState.error && !UpdatesState.checking ? Theme.warning : root.st.text_muted
+                    font.family: root.st.font_family
+                    font.pixelSize: root.st.font_size - 3
                 }
             }
 
@@ -116,9 +116,9 @@ Popup {
                     anchors.centerIn: parent
                     visible: root.current_list.length === 0
                     text: UpdatesState.error ? UpdatesState.error : "Up to date"
-                    color: UpdatesState.error ? Theme.warning : Style.text_dim
-                    font.family: Style.font_family
-                    font.pixelSize: Style.font_size - 1
+                    color: UpdatesState.error ? Theme.warning : root.st.text_dim
+                    font.family: root.st.font_family
+                    font.pixelSize: root.st.font_size - 1
                 }
 
                 ListView {
@@ -142,7 +142,7 @@ Popup {
                         RowLayout {
                             anchors.fill: parent
                             anchors.leftMargin: 8 + update_row.inset
-                            anchors.rightMargin: 8
+                            anchors.rightMargin: 8 + update_row.key_space
                             spacing: 8
 
                             Text {
@@ -150,9 +150,9 @@ Popup {
                                 Layout.minimumWidth: 0
                                 elide: Text.ElideRight
                                 text: update_row.modelData.name
-                                color: update_row.fg(Theme.fg_core)
-                                font.family: Style.font_family
-                                font.pixelSize: Style.font_size - 2
+                                color: update_row.fg(root.st.text_fg)
+                                font.family: root.st.font_family
+                                font.pixelSize: root.st.font_size - 2
                             }
 
                             // One elided Text so long versions shrink from the left and keep the new version visible.
@@ -161,9 +161,9 @@ Popup {
                                 elide: Text.ElideLeft
                                 textFormat: Text.StyledText
                                 text: update_row.modelData.old + " → <font color=\"" + Theme.yellow + "\">" + update_row.modelData.new + "</font>"
-                                color: update_row.fg(Style.text_muted)
-                                font.family: Style.font_family
-                                font.pixelSize: Style.font_size - 3
+                                color: update_row.fg(root.st.text_muted)
+                                font.family: root.st.font_family
+                                font.pixelSize: root.st.font_size - 3
                             }
                         }
 
@@ -194,7 +194,7 @@ Popup {
                             base_radius: 12
                             label: sub_chip.modelData
                             active: sub_chip.index === root.current_sub
-                            font_size: Style.font_size - 3
+                            font_size: root.st.font_size - 3
                             onClicked: {
                                 root.current_sub = sub_chip.index;
                                 root.selected = 0;

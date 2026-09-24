@@ -10,6 +10,8 @@ import "./services"
 ShellRoot {
     id: root
 
+    BundledFonts {}
+
     Variants {
         model: Quickshell.screens
 

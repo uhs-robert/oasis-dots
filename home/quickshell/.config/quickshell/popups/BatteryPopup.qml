@@ -135,32 +135,32 @@ Popup {
 
             Text {
                 text: Math.round(root.percent) + "%"
-                color: Theme.fg_strong
-                font.family: Style.font_family
-                font.pixelSize: Style.font_size + 4
+                color: root.st.text_strong
+                font.family: root.st.font_family
+                font.pixelSize: root.st.font_size + 4
             }
 
             Text {
                 text: root.state_label
-                color: Style.text_muted
-                font.family: Style.font_family
-                font.pixelSize: Style.font_size - 2
+                color: root.st.text_muted
+                font.family: root.st.font_family
+                font.pixelSize: root.st.font_size - 2
             }
 
             Text {
                 visible: root.time_label !== ""
                 text: root.time_label
-                color: Style.text_muted
-                font.family: Style.font_family
-                font.pixelSize: Style.font_size - 2
+                color: root.st.text_muted
+                font.family: root.st.font_family
+                font.pixelSize: root.st.font_size - 2
             }
 
             Text {
                 visible: root.rate > 0
                 text: root.rate.toFixed(1) + " W"
-                color: Style.text_muted
-                font.family: Style.font_family
-                font.pixelSize: Style.font_size - 2
+                color: root.st.text_muted
+                font.family: root.st.font_family
+                font.pixelSize: root.st.font_size - 2
             }
 
             MenuRow {
@@ -173,14 +173,14 @@ Popup {
                 RowLayout {
                     anchors.fill: parent
                     anchors.leftMargin: 6 + brightness_row.inset
-                    anchors.rightMargin: 6
+                    anchors.rightMargin: 6 + brightness_row.key_space
                     spacing: 8
 
                     Text {
                         text: "󰃠"
-                        color: brightness_row.fg(Theme.theme_primary)
-                        font.family: Style.font_family
-                        font.pixelSize: Style.font_size
+                        color: brightness_row.fg(root.st.text_primary)
+                        font.family: root.st.font_family
+                        font.pixelSize: root.st.font_size
                     }
 
                     Slider {
@@ -193,9 +193,9 @@ Popup {
                     Text {
                         Layout.preferredWidth: 32
                         text: Backlight.percent + "%"
-                        color: brightness_row.fg(Theme.fg_core)
-                        font.family: Style.font_family
-                        font.pixelSize: Style.font_size - 1
+                        color: brightness_row.fg(root.st.text_fg)
+                        font.family: root.st.font_family
+                        font.pixelSize: root.st.font_size - 1
                     }
                 }
             }
@@ -210,14 +210,14 @@ Popup {
                 RowLayout {
                     anchors.fill: parent
                     anchors.leftMargin: 6 + kbd_row.inset
-                    anchors.rightMargin: 6
+                    anchors.rightMargin: 6 + kbd_row.key_space
                     spacing: 8
 
                     Text {
                         text: "󰌌"
-                        color: kbd_row.fg(Theme.theme_primary)
-                        font.family: Style.font_family
-                        font.pixelSize: Style.font_size
+                        color: kbd_row.fg(root.st.text_primary)
+                        font.family: root.st.font_family
+                        font.pixelSize: root.st.font_size
                     }
 
                     Slider {
@@ -230,9 +230,9 @@ Popup {
                     Text {
                         Layout.preferredWidth: 32
                         text: Backlight.kbd_percent + "%"
-                        color: kbd_row.fg(Theme.fg_core)
-                        font.family: Style.font_family
-                        font.pixelSize: Style.font_size - 1
+                        color: kbd_row.fg(root.st.text_fg)
+                        font.family: root.st.font_family
+                        font.pixelSize: root.st.font_size - 1
                     }
                 }
             }
@@ -241,9 +241,9 @@ Popup {
                 visible: !root.ppd_available
                 Layout.topMargin: 6
                 text: "power-profiles-daemon not running"
-                color: Style.text_dim
-                font.family: Style.font_family
-                font.pixelSize: Style.font_size - 3
+                color: root.st.text_dim
+                font.family: root.st.font_family
+                font.pixelSize: root.st.font_size - 3
             }
 
             Repeater {
@@ -271,9 +271,9 @@ Popup {
                         Text {
                             Layout.fillWidth: true
                             text: profile_row.modelData.label
-                            color: profile_row.fg(PowerProfiles.profile === profile_row.modelData.value ? Theme.theme_secondary : Theme.fg_core)
-                            font.family: Style.font_family
-                            font.pixelSize: Style.font_size - 1
+                            color: profile_row.fg(PowerProfiles.profile === profile_row.modelData.value ? root.st.text_accent : root.st.text_fg)
+                            font.family: root.st.font_family
+                            font.pixelSize: root.st.font_size - 1
                         }
                     }
 

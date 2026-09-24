@@ -10,7 +10,7 @@ Popup {
 
     popup_name: "style"
     preferred_width: 180
-    footer_hint: "j/k preview · 1-9 pick · Enter apply · t style bar · c cava line · q cancel"
+    footer_hint: "j/k preview · 1-9 pick · Enter apply · c cava line · q cancel"
     body_height: content.implicitHeight + 24
 
     property int selected: 0
@@ -41,10 +41,7 @@ Popup {
         focus: true
 
         Keys.onPressed: event => {
-            if (event.key === Qt.Key_T) {
-                Style.set_bar(!Style.style_bar);
-                event.accepted = true;
-            } else if (event.key === Qt.Key_C) {
+            if (event.key === Qt.Key_C) {
                 Style.set_cava_line(!Style.cava_line);
                 event.accepted = true;
             } else if (event.key === Qt.Key_J) {
@@ -94,16 +91,16 @@ Popup {
                         Text {
                             Layout.fillWidth: true
                             text: root.label(row.modelData)
-                            color: row.fg(Theme.fg_core)
-                            font.family: Style.font_family
-                            font.pixelSize: Style.font_size
+                            color: row.fg(root.st.text_fg)
+                            font.family: root.st.font_family
+                            font.pixelSize: root.st.font_size
                         }
 
                         Text {
                             text: row.modelData === Style.saved_name ? "active" : ""
                             color: row.fg(Theme.ok)
-                            font.family: Style.font_family
-                            font.pixelSize: Style.font_size - 3
+                            font.family: root.st.font_family
+                            font.pixelSize: root.st.font_size - 3
                         }
                     }
 
@@ -119,12 +116,6 @@ Popup {
 
             ToggleRow {
                 Layout.topMargin: 6
-                label: "Style bar"
-                checked: Style.style_bar
-                onToggled: Style.set_bar(!Style.style_bar)
-            }
-
-            ToggleRow {
                 label: "Cava line"
                 toggle_key: "c"
                 checked: Style.cava_line

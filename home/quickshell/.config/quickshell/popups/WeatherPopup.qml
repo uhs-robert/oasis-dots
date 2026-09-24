@@ -11,6 +11,7 @@ Popup {
     id: root
 
     popup_name: "weather"
+    size_class: "large"
     preferred_width: 760
     body_height: content.implicitHeight + 24
 
@@ -191,7 +192,7 @@ Popup {
                     Text {
                         text: WeatherState.has_data ? root.fmt_temp(WeatherState.current.temp) : "--°"
                         color: WeatherState.has_data ? WeatherState.temp_color(WeatherState.current.temp) : Style.text_dim
-                        font.family: Style.font_family
+                        font.family: Style.number_font
                         font.pixelSize: Style.font_size + 12
                         font.bold: true
                     }

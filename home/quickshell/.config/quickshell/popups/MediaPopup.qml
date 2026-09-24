@@ -13,6 +13,7 @@ Popup {
     id: root
 
     popup_name: "media"
+    size_class: "large"
     preferred_width: 520
     body_height: content.implicitHeight + 24
 

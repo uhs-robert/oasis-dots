@@ -17,7 +17,7 @@ Popup {
     readonly property var actions: ["Apps", "Style", "Lock", "Logout", "Reboot", "Power Off"]
     readonly property var keys: ["a", "s", "l", "o", "r", "p"]
     readonly property var glyphs: ["󰣇", "󰏘", "󰌾", "󰍃", "󰜉", "󰐥"]
-    readonly property var glyph_colors: [Theme.green, Theme.theme_secondary, Theme.fg_core, Theme.info, Theme.warning, Theme.theme_label]
+    readonly property var glyph_colors: [Theme.green, Theme.theme_secondary, root.st.text_fg, Theme.info, Theme.warning, Theme.theme_label]
 
     property int selected: 0
     property bool confirm: false
@@ -116,15 +116,15 @@ Popup {
                         Text {
                             text: root.glyphs[row.index]
                             color: row.fg(root.glyph_colors[row.index])
-                            font.family: Style.font_family
-                            font.pixelSize: Style.font_size
+                            font.family: root.st.font_family
+                            font.pixelSize: root.st.font_size
                         }
 
                         Text {
                             text: row.modelData
-                            color: row.fg(Theme.fg_core)
-                            font.family: Style.font_family
-                            font.pixelSize: Style.font_size
+                            color: row.fg(root.st.text_fg)
+                            font.family: root.st.font_family
+                            font.pixelSize: root.st.font_size
                         }
                     }
 
@@ -146,15 +146,15 @@ Popup {
             Text {
                 text: root.glyphs[root.selected] + " " + root.actions[root.selected] + "?"
                 color: root.glyph_colors[root.selected]
-                font.family: Style.font_family
-                font.pixelSize: Style.font_size
+                font.family: root.st.font_family
+                font.pixelSize: root.st.font_size
             }
 
             Text {
                 text: "Yes"
                 color: Theme.ok
-                font.family: Style.font_family
-                font.pixelSize: Style.font_size
+                font.family: root.st.font_family
+                font.pixelSize: root.st.font_size
 
                 MouseArea {
                     anchors.fill: parent
@@ -165,8 +165,8 @@ Popup {
             Text {
                 text: "No"
                 color: Theme.error
-                font.family: Style.font_family
-                font.pixelSize: Style.font_size
+                font.family: root.st.font_family
+                font.pixelSize: root.st.font_size
 
                 MouseArea {
                     anchors.fill: parent

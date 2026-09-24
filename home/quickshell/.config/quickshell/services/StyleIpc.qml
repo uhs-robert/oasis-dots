@@ -17,18 +17,6 @@ IpcHandler {
         return Style.name;
     }
 
-    function set_bar(on: bool): void {
-        Style.set_bar(on);
-    }
-
-    function toggle_bar(): void {
-        Style.set_bar(!Style.style_bar);
-    }
-
-    function get_bar(): bool {
-        return Style.style_bar;
-    }
-
     function toggle_cava_line(): void {
         Style.set_cava_line(!Style.cava_line);
     }

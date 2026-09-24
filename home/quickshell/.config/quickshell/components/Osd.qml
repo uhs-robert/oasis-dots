@@ -198,9 +198,21 @@ PanelWindow {
 
     TextMetrics {
         id: percent_metrics
-        font.family: Style.font_family
+        font.family: Style.number_font
         font.pixelSize: Style.font_size
+        font.bold: Style.number_font !== Style.font_family
         text: "100%"
+    }
+
+    // Fits in the slide room under the frame, so the window keeps its size.
+    Rectangle {
+        visible: Style.frame_drop > 0
+        y: frame.y + Style.frame_drop
+        width: frame.width
+        height: frame.height
+        radius: frame.radius
+        color: Theme.bg_shadow
+        opacity: frame.opacity
     }
 
     Rectangle {
@@ -208,16 +220,22 @@ PanelWindow {
 
         readonly property int pad_x: Style.px(16)
         readonly property int pad_y: Style.px(10)
-        readonly property real header_height: title_tab.visible ? title_tab.height : 0
+        readonly property real top_rule: Style.frame_top_rule ? Style.accent_height : 0
+        readonly property real bracket_pad: Style.frame_brackets.a > 0 ? 4 : 0
+        readonly property real header_height: title_tab.visible ? title_tab.height + frame.top_rule + frame.bracket_pad + Style.inset_pad : 0
 
         y: root.slide * (1 - root.reveal)
         opacity: root.reveal
-        width: Math.max(body.implicitWidth + pad_x * 2, title_tab.visible ? title_tab.width : 0)
+        width: Math.max(body.implicitWidth + pad_x * 2, title_tab.visible ? title_tab.width + Style.inset_pad * 2 : 0)
         height: header_height + body.implicitHeight + pad_y * 2
-        radius: Style.rounded ? height / 2 : Style.frame_radius
-        color: Style.frame_follows_island ? Theme.bg_core : Style.frame_color
-        border.width: Style.frame_border_width
+        radius: Style.rounded && !Style.frame_visor ? height / 2 : Style.frame_radius
+        color: Style.frame_chamfer > 0 || Style.frame_visor ? "transparent" : Style.frame_follows_island ? Theme.bg_core : Style.frame_color
+        border.width: Style.frame_visor || Style.frame_chamfer > 0 ? 0 : Style.frame_border_width
         border.color: Style.frame_border_color
+
+        VisorGlass {
+            anchors.fill: parent
+        }
 
         Shape {
             id: frame_glow
@@ -246,6 +264,16 @@ PanelWindow {
             anchors.margins: Style.frame_border_width
             top_radius: Math.max(0, frame.radius - Style.frame_border_width)
             bottom_radius: top_radius
+            chamfer: Style.frame_chamfer
+        }
+
+        CornerBrackets {
+            anchors.fill: parent
+        }
+
+        FrameInset {
+            top_radius: frame.radius
+            bottom_radius: frame.radius
         }
 
         Item {
@@ -255,11 +283,12 @@ PanelWindow {
             layer.enabled: glow_layer.layered
             opacity: glow_layer.layered ? 0 : 1
 
+
             Rectangle {
                 id: title_tab
                 visible: Style.show_title
-                x: Style.fade_fills || Style.rounded ? frame.radius : 0
-                y: Style.fade_fills ? Style.frame_border_width : 0
+                x: (Style.fade_fills || Style.rounded ? frame.radius : frame.bracket_pad * 1.5) + Style.inset_pad
+                y: (Style.fade_fills ? Style.frame_border_width : 0) + frame.top_rule + frame.bracket_pad + Style.inset_pad
                 width: Style.fade_fills ? Math.max(title_text.implicitWidth + 20, body.implicitWidth + frame.pad_x * 2 - frame.radius * 2) : title_text.implicitWidth + 20
                 height: title_text.implicitHeight + 4
                 color: Style.fade_fills ? "transparent" : Style.title_bg
@@ -276,10 +305,12 @@ PanelWindow {
                     y: (parent.height - height) / 2
                     text: Style.title_prefix + root.title + Style.title_suffix
                     color: Style.title_fg
-                    font.family: Style.font_family
+                    font.family: Style.title_font_family
                     font.pixelSize: Style.font_size - 2
-                    font.bold: true
-                    font.letterSpacing: 2
+                    font.bold: Style.title_font_family === Style.font_family
+                    font.letterSpacing: Style.title_spacing
+                    style: Style.title_glow.a > 0 ? Text.Outline : Text.Normal
+                    styleColor: Style.title_glow
                 }
             }
 
@@ -330,8 +361,9 @@ PanelWindow {
                     horizontalAlignment: Text.AlignRight
                     text: root.showing_vox ? root.elapsed : root.percent + "%"
                     color: root.showing_vox && !root.vox_recording ? Theme.warning : !root.showing_vox && root.muted ? Style.text_muted : Theme.fg_core
-                    font.family: Style.font_family
+                    font.family: Style.number_font
                     font.pixelSize: Style.font_size
+                    font.bold: Style.number_font !== Style.font_family
                 }
             }
         }
@@ -401,6 +433,14 @@ PanelWindow {
             color: Style.dither
             radius: frame.radius
             top_radius: frame.radius
+        }
+
+        Rectangle {
+            visible: Style.frame_top_rule
+            x: frame.radius
+            width: frame.width - frame.radius * 2
+            height: frame.top_rule
+            color: Style.accent_color
         }
     }
 }

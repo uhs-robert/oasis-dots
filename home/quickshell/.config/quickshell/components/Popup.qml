@@ -16,6 +16,9 @@ PanelWindow {
     property real body_height: 0
     property string title: popup_name.toUpperCase()
     property string footer_hint: ""
+    // Styles with a `small` block draw "small" popups apart from "large" ones (notifications, weather, media).
+    property string size_class: "small"
+    readonly property var st: root.size_class === "small" ? Style.small : Style
     // Set while a native menu from this popup is open; focus returns to the popup when it closes.
     property bool suspend_grab: false
 
@@ -82,8 +85,8 @@ PanelWindow {
     }
 
     // Never narrower than the island's bottom edge (its body, between the slants).
-    implicitWidth: Math.max(Style.px(preferred_width), island_width)
-    implicitHeight: body_height + header_height + footer_height
+    implicitWidth: Math.max(Style.px(preferred_width) + root.st.lcd_margin * 2, island_width, root.st.popup_min_width)
+    implicitHeight: body_height + header_height + footer_height + root.st.frame_drop
     default property alias content: content_scope.data
 
     readonly property bool wanted: Popups.open_name === root.popup_name && Popups.open_screen_name !== ""
@@ -113,11 +116,16 @@ PanelWindow {
     WlrLayershell.layer: WlrLayer.Overlay
     WlrLayershell.keyboardFocus: WlrKeyboardFocus.OnDemand
 
-    readonly property int line_height: Style.accent_height
-    readonly property bool has_title: Style.show_title && title !== ""
-    readonly property bool has_footer: Style.show_footer && footer_hint !== ""
-    readonly property real header_height: has_title ? title_tab.height : 0
-    readonly property real footer_height: has_footer ? base_footer.implicitHeight + 10 : 0
+    readonly property int line_height: root.st.accent_height
+    readonly property bool has_title: root.st.show_title && title !== ""
+    readonly property bool has_footer: root.st.show_footer && footer_hint !== ""
+    // Room kept clear of the corner brackets around the title.
+    readonly property real bracket_pad: root.st.frame_brackets.a > 0 ? 4 : 0
+    readonly property bool lcd: root.st.lcd_top.a > 0
+    readonly property real title_gap: root.st.title_rule.a > 0 ? 6 : 0
+    readonly property real engraving_height: root.st.frame_engraving !== "" ? engraving.implicitHeight + 4 : 0
+    readonly property real header_height: (has_title ? title_tab.height + bracket_pad + root.st.inset_pad + title_gap : 0) + root.st.lcd_margin * 2
+    readonly property real footer_height: (has_footer ? base_footer.implicitHeight + 10 + root.st.inset_pad : 0) + root.st.lcd_margin * 2 + engraving_height
     property real line_progress: 0
     property real drop_progress: 0
 
@@ -141,7 +149,7 @@ PanelWindow {
     Timer {
         interval: 530
         repeat: true
-        running: Style.caret_blink && root.visible && root.wanted && Power.on_ac
+        running: root.st.caret_blink && root.visible && root.wanted && Power.on_ac
         onTriggered: Style.caret_phase = !Style.caret_phase
         onRunningChanged: Style.caret_phase = true
     }
@@ -170,41 +178,57 @@ PanelWindow {
 
     Rectangle {
         id: accent_line
-        readonly property real w: (Style.accent_full_width ? root.width : root.island_width) * root.line_progress
+        readonly property real w: (root.st.accent_full_width ? root.width : root.island_width) * root.line_progress
         x: root.edge_x(w)
         width: w
         height: root.line_height
-        color: Style.accent_color
+        color: root.st.accent_color
         opacity: root.line_progress > 0 ? 1 : 0
         z: 1
     }
 
     Item {
         id: reveal
+        // Tells the components inside which token set to read (Style.for_item).
+        readonly property string size_class: root.size_class
         y: root.line_height
         width: root.width
         height: (root.height - root.line_height) * root.drop_progress
         clip: true
 
+        Rectangle {
+            visible: root.st.frame_drop > 0
+            y: root.st.frame_drop
+            width: root.width
+            height: root.height - root.line_height - root.st.frame_drop
+            color: Theme.bg_shadow
+            bottomLeftRadius: root.st.frame_radius
+            bottomRightRadius: root.st.frame_radius
+        }
+
         Item {
             width: root.width
-            height: root.height - root.line_height
+            height: root.height - root.line_height - root.st.frame_drop
 
             // Reads as the island unfolding downward: its color, joined flush under the accent line.
             Rectangle {
                 anchors.fill: parent
-                color: Style.frame_follows_island ? root.held_color : Style.frame_color
-                bottomLeftRadius: Style.frame_radius
-                bottomRightRadius: Style.frame_radius
-                border.width: Style.frame_border_width
-                border.color: Style.frame_border_color
+                color: root.st.frame_chamfer > 0 || root.st.frame_visor ? "transparent" : root.st.frame_follows_island ? root.held_color : root.st.frame_color
+                bottomLeftRadius: root.st.frame_radius
+                bottomRightRadius: root.st.frame_radius
+                border.width: root.st.frame_visor || root.st.frame_chamfer > 0 ? 0 : root.st.frame_border_width
+                border.color: root.st.frame_border_color
+            }
+
+            VisorGlass {
+                anchors.fill: parent
             }
 
             Shape {
                 id: frame_glow
-                visible: Style.frame_glow.a > 0
+                visible: root.st.frame_glow.a > 0
                 anchors.fill: parent
-                anchors.margins: Style.frame_border_width
+                anchors.margins: root.st.frame_border_width
 
                 ShapePath {
                     strokeWidth: -1
@@ -215,8 +239,8 @@ PanelWindow {
                         focalY: 0
                         centerRadius: Math.max(frame_glow.width * 0.6, Math.min(frame_glow.height, 420))
                         focalRadius: 0
-                        GradientStop { position: 0; color: Style.frame_glow }
-                        GradientStop { position: 0.72; color: Style.frame_color }
+                        GradientStop { position: 0; color: root.st.frame_glow }
+                        GradientStop { position: 0.72; color: root.st.frame_color }
                     }
                     PathRectangle { width: frame_glow.width; height: frame_glow.height }
                 }
@@ -224,44 +248,121 @@ PanelWindow {
 
             FrameShade {
                 anchors.fill: parent
-                anchors.margins: Style.frame_border_width
-                bottom_radius: Math.max(0, Style.frame_radius - Style.frame_border_width)
+                anchors.margins: root.st.frame_border_width
+                bottom_radius: Math.max(0, root.st.frame_radius - root.st.frame_border_width)
+                chamfer: root.st.frame_chamfer
+            }
+
+            CornerBrackets {
+                anchors.fill: parent
+            }
+
+            FrameInset {
+                bottom_radius: root.st.frame_radius
+            }
+
+            // The watch face: a shaded panel with static scan rows, and the engraving on the bezel below it.
+            Rectangle {
+                id: lcd_panel
+                readonly property real edge: root.st.inset_pad + root.st.lcd_margin
+                visible: root.lcd
+                x: lcd_panel.edge
+                y: lcd_panel.edge
+                width: parent.width - lcd_panel.edge * 2
+                height: parent.height - lcd_panel.edge * 2 - root.engraving_height
+                radius: 8
+                border.width: 1
+                border.color: Qt.alpha(Theme.bg_shadow, 0.6)
+                clip: true
+                gradient: Gradient {
+                    GradientStop { position: 0; color: root.st.lcd_top }
+                    GradientStop { position: 1; color: root.st.lcd_bottom }
+                }
+
+                Repeater {
+                    model: root.lcd ? Math.max(0, Math.ceil(lcd_panel.height / 3)) : 0
+
+                    Rectangle {
+                        required property int index
+                        y: index * 3
+                        width: lcd_panel.width
+                        height: 1
+                        color: root.st.lcd_scan
+                    }
+                }
+            }
+
+            Text {
+                id: engraving
+                visible: root.st.frame_engraving !== ""
+                x: lcd_panel.edge + 6
+                anchors.bottom: parent.bottom
+                anchors.bottomMargin: root.st.inset_pad + 2
+                text: root.st.frame_engraving
+                color: root.st.frame_border_color
+                font.family: Style.title_font_family
+                font.pixelSize: 9
+                font.letterSpacing: 2.5
             }
 
             // Everything drawn on the frame; styles with a glow or text shadow render it as one layer.
             Item {
                 id: glow_layer
-                readonly property bool layered: Style.glow || Style.text_shadow.a > 0
+                readonly property bool layered: root.st.glow || root.st.text_shadow.a > 0
                 anchors.fill: parent
                 layer.enabled: glow_layer.layered
                 opacity: glow_layer.layered ? 0 : 1
 
+
                 Rectangle {
                     id: title_tab
                     visible: root.has_title
-                    x: Style.fade_fills ? Style.frame_border_width : 0
-                    y: Style.fade_fills ? Style.frame_border_width : 0
-                    width: Style.fade_fills ? parent.width - Style.frame_border_width * 2 : title_text.implicitWidth + 20
+                    x: (root.st.fade_fills ? root.st.frame_border_width : root.bracket_pad * 1.5) + root.st.inset_pad + root.st.lcd_margin * 2
+                    y: (root.st.fade_fills ? root.st.frame_border_width : root.bracket_pad) + root.st.inset_pad + root.st.lcd_margin * 2
+                    width: root.st.fade_fills ? parent.width - root.st.frame_border_width * 2 : title_text.implicitWidth + 20
                     height: title_text.implicitHeight + 4
-                    color: Style.fade_fills ? "transparent" : Style.title_bg
+                    color: root.st.fade_fills ? "transparent" : root.st.title_bg
 
                     FadeFill {
-                        visible: Style.fade_fills
-                        fill: Style.title_bg
+                        visible: root.st.fade_fills
+                        fill: root.st.title_bg
                     }
 
                     Text {
                         id: title_text
-                        anchors.centerIn: Style.fade_fills ? undefined : parent
+                        anchors.centerIn: root.st.fade_fills ? undefined : parent
                         x: 10
                         y: (parent.height - height) / 2
-                        text: Style.title_prefix + root.title + (Style.caret_phase ? Style.title_suffix : " ".repeat(Style.title_suffix.length))
-                        color: Style.title_fg
-                        font.family: Style.font_family
-                        font.pixelSize: Style.font_size - 2
-                        font.bold: true
-                        font.letterSpacing: 2
+                        text: root.st.title_prefix + root.title + (Style.caret_phase ? root.st.title_suffix : " ".repeat(root.st.title_suffix.length))
+                        color: root.st.title_fg
+                        font.family: root.st.title_font_family
+                        font.pixelSize: root.st.font_size - 2
+                        font.bold: root.st.title_font_family === root.st.font_family
+                        font.letterSpacing: root.st.title_spacing
+                        style: root.st.title_glow.a > 0 ? Text.Outline : Text.Normal
+                        styleColor: root.st.title_glow
                     }
+                }
+
+                Text {
+                    visible: root.has_title && root.st.title_readout !== ""
+                    anchors.right: parent.right
+                    anchors.rightMargin: (root.lcd ? root.st.lcd_margin * 2 : 12) + root.bracket_pad + root.st.inset_pad
+                    y: title_tab.y + (title_tab.height - height) / 2
+                    text: root.st.title_readout.replace("{code}", root.title.slice(0, 3))
+                    color: root.st.title_readout_fg.a > 0 ? root.st.title_readout_fg : root.st.text_muted
+                    font.family: root.st.font_family
+                    font.pixelSize: root.st.font_size - 5
+                    font.letterSpacing: 1
+                }
+
+                Rectangle {
+                    visible: root.has_title && root.st.title_rule.a > 0
+                    x: title_tab.x
+                    y: title_tab.y + title_tab.height + 2
+                    width: parent.width - title_tab.x * 2
+                    height: 1
+                    color: root.st.title_rule
                 }
 
                 MenuFooter {
@@ -270,9 +371,9 @@ PanelWindow {
                     anchors.left: parent.left
                     anchors.right: parent.right
                     anchors.bottom: parent.bottom
-                    anchors.leftMargin: 12
-                    anchors.rightMargin: 12
-                    anchors.bottomMargin: 8
+                    anchors.leftMargin: 12 + root.st.lcd_margin
+                    anchors.rightMargin: 12 + root.st.lcd_margin
+                    anchors.bottomMargin: 8 + root.st.inset_pad + root.st.lcd_margin * 2 + root.engraving_height
                     text: root.footer_hint
                 }
 
@@ -281,6 +382,8 @@ PanelWindow {
                     anchors.fill: parent
                     anchors.topMargin: root.header_height
                     anchors.bottomMargin: root.footer_height
+                    anchors.leftMargin: root.st.lcd_margin
+                    anchors.rightMargin: root.st.lcd_margin
                     focus: true
 
                     Keys.onEscapePressed: Popups.close()
@@ -292,7 +395,7 @@ PanelWindow {
             // Loaders rebuild the effects per style; MultiEffects left hidden across a style switch stopped drawing.
             Loader {
                 anchors.fill: glow_layer
-                active: Style.glow
+                active: root.st.glow
                 sourceComponent: Item {
                     MultiEffect {
                         anchors.fill: parent
@@ -303,14 +406,14 @@ PanelWindow {
                         blurMax: 12
                         brightness: 0.2
                         colorization: 1
-                        colorizationColor: Style.glow_color
+                        colorizationColor: root.st.glow_color
                     }
 
                     MultiEffect {
                         anchors.fill: parent
                         source: glow_layer
                         autoPaddingEnabled: false
-                        colorization: Style.glow_tint
+                        colorization: root.st.glow_tint
                         colorizationColor: Theme.theme_primary_light
                     }
                 }
@@ -318,14 +421,14 @@ PanelWindow {
 
             Loader {
                 anchors.fill: glow_layer
-                active: !Style.glow && Style.text_shadow.a > 0
+                active: !root.st.glow && root.st.text_shadow.a > 0
                 sourceComponent: MultiEffect {
                     source: glow_layer
                     autoPaddingEnabled: false
                     shadowEnabled: true
                     shadowBlur: 0
                     shadowOpacity: 1
-                    shadowColor: Style.text_shadow
+                    shadowColor: root.st.text_shadow
                     shadowHorizontalOffset: 2
                     shadowVerticalOffset: 2
                 }
@@ -333,27 +436,27 @@ PanelWindow {
 
             // Static scanlines; nothing animates them.
             Item {
-                visible: Style.scanlines
+                visible: root.st.scanlines
                 anchors.fill: parent
 
                 Repeater {
-                    model: Style.scanlines ? Math.max(0, Math.ceil(parent.height / 3)) : 0
+                    model: root.st.scanlines ? Math.max(0, Math.ceil(parent.height / 3)) : 0
 
                     Rectangle {
                         required property int index
                         y: index * 3
                         width: parent.width
                         height: 1
-                        color: Style.scanline_color
+                        color: root.st.scanline_color
                     }
                 }
             }
 
             Dither {
                 anchors.fill: parent
-                anchors.margins: Style.frame_border_width
-                color: Style.dither
-                radius: Style.frame_radius
+                anchors.margins: root.st.frame_border_width
+                color: root.st.dither
+                radius: root.st.frame_radius
             }
         }
     }

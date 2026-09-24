@@ -5,6 +5,8 @@ import "../theme"
 Item {
     id: root
 
+    readonly property var st: Style.for_item(root)
+
     property real value: 0
     property bool on_selection: false
     signal moved(real value)
@@ -17,7 +19,7 @@ Item {
 
     Rectangle {
         id: track
-        visible: !Style.segmented_levels
+        visible: !root.st.segmented_levels
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.verticalCenter: parent.verticalCenter
@@ -29,12 +31,12 @@ Item {
             width: track.width * Math.max(0, Math.min(1, root.value))
             height: parent.height
             radius: parent.radius
-            color: root.on_selection && Style.selection_inverse ? Style.selection_fg : Theme.theme_primary
+            color: root.on_selection && root.st.selection_inverse ? root.st.selection_fg : Theme.theme_primary
         }
     }
 
     Meter {
-        visible: Style.segmented_levels
+        visible: root.st.segmented_levels
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.verticalCenter: parent.verticalCenter

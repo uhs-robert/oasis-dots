@@ -84,9 +84,9 @@ Popup {
                 visible: root.devices.length === 0
                 Layout.topMargin: 6
                 text: "No paired devices"
-                color: Style.text_dim
-                font.family: Style.font_family
-                font.pixelSize: Style.font_size - 2
+                color: root.st.text_dim
+                font.family: root.st.font_family
+                font.pixelSize: root.st.font_size - 2
             }
 
             Repeater {
@@ -105,31 +105,31 @@ Popup {
                     RowLayout {
                         anchors.fill: parent
                         anchors.leftMargin: 6 + device_row.inset
-                        anchors.rightMargin: 6
+                        anchors.rightMargin: 6 + device_row.key_space
                         spacing: 6
 
                         Text {
                             text: device_row.modelData.connected ? "󰂱" : "󰂯"
-                            color: device_row.fg(device_row.modelData.connected ? Theme.theme_primary : Style.text_dim)
-                            font.family: Style.font_family
-                            font.pixelSize: Style.font_size - 1
+                            color: device_row.fg(device_row.modelData.connected ? root.st.text_primary : root.st.text_dim)
+                            font.family: root.st.font_family
+                            font.pixelSize: root.st.font_size - 1
                         }
 
                         Text {
                             Layout.fillWidth: true
                             elide: Text.ElideRight
                             text: device_row.modelData.name
-                            color: device_row.fg(device_row.modelData.connected ? Theme.theme_secondary : Theme.fg_core)
-                            font.family: Style.font_family
-                            font.pixelSize: Style.font_size - 1
+                            color: device_row.fg(device_row.modelData.connected ? root.st.text_accent : root.st.text_fg)
+                            font.family: root.st.font_family
+                            font.pixelSize: root.st.font_size - 1
                         }
 
                         Text {
                             visible: root.battery_label(device_row.modelData) !== ""
                             text: root.battery_label(device_row.modelData)
-                            color: device_row.fg(Style.text_muted)
-                            font.family: Style.font_family
-                            font.pixelSize: Style.font_size - 2
+                            color: device_row.fg(root.st.text_muted)
+                            font.family: root.st.font_family
+                            font.pixelSize: root.st.font_size - 2
                         }
                     }
 

@@ -99,17 +99,17 @@ Popup {
                         Text {
                             text: stat_row.modelData.glyph
                             visible: !stat_row.is_btop
-                            color: stat_row.fg(Theme.theme_primary)
-                            font.family: Style.font_family
-                            font.pixelSize: Style.font_size
+                            color: stat_row.fg(root.st.text_primary)
+                            font.family: root.st.font_family
+                            font.pixelSize: root.st.font_size
                         }
 
                         Text {
                             Layout.preferredWidth: 40
                             text: stat_row.modelData.label
-                            color: stat_row.fg(Theme.fg_core)
-                            font.family: Style.font_family
-                            font.pixelSize: Style.font_size - 1
+                            color: stat_row.fg(root.st.text_fg)
+                            font.family: root.st.font_family
+                            font.pixelSize: root.st.font_size - 1
                         }
 
                         Meter {
@@ -124,9 +124,9 @@ Popup {
                             visible: !stat_row.is_btop
                             text: root.value_text(stat_row.modelData.kind)
                                 + (stat_row.modelData.kind === "memory" ? " (" + SysStats.mem_used_gb.toFixed(1) + "/" + SysStats.mem_total_gb.toFixed(1) + "GB)" : "")
-                            color: stat_row.fg(Style.text_muted)
-                            font.family: Style.font_family
-                            font.pixelSize: Style.font_size - 2
+                            color: stat_row.fg(root.st.text_muted)
+                            font.family: root.st.font_family
+                            font.pixelSize: root.st.font_size - 2
                         }
                     }
 

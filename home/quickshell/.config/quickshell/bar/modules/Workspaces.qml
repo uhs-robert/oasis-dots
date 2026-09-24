@@ -86,6 +86,8 @@ Item {
                 width: is_empty ? height : icons.implicitWidth + (modelData.active ? 22 : 12)
                 radius: height / 2
                 color: modelData.focused ? Style.bar_workspace_focused : modelData.active ? Style.bar_workspace_active : Style.bar_workspace_idle
+                border.width: Style.bar_workspace_ring.a > 0 ? 1 : 0
+                border.color: Style.bar_workspace_ring
 
                 Behavior on width {
                     NumberAnimation { duration: 280; easing.type: Easing.InOutCubic }

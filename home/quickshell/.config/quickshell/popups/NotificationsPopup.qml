@@ -12,6 +12,7 @@ Popup {
     id: root
 
     popup_name: "notifications"
+    size_class: "large"
     preferred_width: 640
     body_height: content.implicitHeight + 24
 

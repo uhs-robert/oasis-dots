@@ -57,12 +57,12 @@ Rectangle {
         onTriggered: root.time_tick += 1
     }
 
-    implicitHeight: layout.implicitHeight + 16
+    implicitHeight: layout.implicitHeight + 16 + Style.inset_pad * 2
     radius: Style.radius(8)
-    color: Style.boxed_cards
+    color: Style.frame_visor ? "transparent" : Style.boxed_cards
         ? (root.selected ? Qt.tint(Style.frame_color, Qt.alpha(Style.caret_color, 0.08)) : Style.frame_color)
         : (root.selected ? Theme.bg_surface : Theme.bg_mantle)
-    border.width: root.selected && !Style.boxed_cards ? 2 : 1
+    border.width: Style.frame_visor ? 0 : root.selected && !Style.boxed_cards ? 2 : 1
     border.color: root.selected ? Style.caret_color : Style.boxed_cards ? root.accent : Theme.ui_border
     clip: true
 
@@ -101,12 +101,31 @@ Rectangle {
         }
     }
 
+    VisorGlass {
+        anchors.fill: parent
+        border_color: root.selected ? Style.caret_color : Qt.alpha(root.accent, 0.5)
+    }
+
     FrameShade {
         visible: Style.boxed_cards && Style.frame_shade.a > 0
         anchors.fill: parent
         anchors.margins: root.border.width
         top_radius: Math.max(0, root.radius - root.border.width)
         bottom_radius: top_radius
+    }
+
+    CornerBrackets {
+        visible: Style.boxed_cards && Style.frame_brackets.a > 0
+        anchors.fill: parent
+        inset: 3
+        arm: 6
+    }
+
+    FrameInset {
+        visible: Style.boxed_cards && Style.frame_inset_width > 0
+        edge: root.border.width
+        top_radius: root.radius
+        bottom_radius: root.radius
     }
 
     Rectangle {
@@ -119,6 +138,15 @@ Rectangle {
         color: root.accent
     }
 
+    Rectangle {
+        visible: Style.frame_top_rule
+        x: root.border.width
+        y: root.border.width
+        width: root.width - root.border.width * 2
+        height: Style.accent_height
+        color: root.accent
+    }
+
     DashedOutline {
         visible: root.selected && Style.boxed_cards && Style.selection_outline.a > 0
         anchors.fill: parent
@@ -127,7 +155,16 @@ Rectangle {
     }
 
     Rectangle {
-        visible: root.selected && Style.selection_bar
+        visible: Style.card_edge.a > 0 && !(root.selected && Style.selection_bar)
+        x: 1
+        y: 1
+        width: 2
+        height: root.height - 2
+        color: Style.card_edge
+    }
+
+    Rectangle {
+        visible: root.selected && Style.selection_bar && !Style.frame_visor
         x: 1
         y: 1
         width: 2
@@ -137,7 +174,7 @@ Rectangle {
 
     Text {
         visible: root.selected && Style.row_cursor !== "" && Style.caret_phase
-        x: 3
+        x: 3 + Style.inset_pad
         y: layout.y + 1
         text: Style.row_cursor
         color: Style.caret_color
@@ -173,8 +210,8 @@ Rectangle {
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.top: parent.top
-        anchors.margins: 8
-        anchors.leftMargin: Style.row_cursor !== "" ? 16 : 12
+        anchors.margins: 8 + Style.inset_pad
+        anchors.leftMargin: (Style.row_cursor !== "" ? 16 : 12) + Style.inset_pad
         spacing: 8
 
         Image {
@@ -230,8 +267,8 @@ Rectangle {
                 elide: Text.ElideRight
                 text: root.notification ? root.notification.summary : ""
                 color: Theme.fg_core
-                font.bold: true
-                font.family: Style.font_family
+                font.bold: Style.title_font_family === Style.font_family
+                font.family: Style.title_font_family
                 font.pixelSize: Style.font_size + (Style.boxed_cards ? 0 : 1)
                 style: root.text_style
                 styleColor: root.glow_color
@@ -271,9 +308,9 @@ Rectangle {
                         implicitWidth: Math.min(action_label.implicitWidth + 16, layout.width)
                         implicitHeight: 22
                         radius: Style.radius(11)
-                        color: action_chip.focused ? Theme.theme_secondary : Style.boxed_cards ? "transparent" : Theme.bg_surface
+                        color: action_chip.focused ? Style.chip_pick : Style.boxed_cards ? "transparent" : Theme.bg_surface
                         border.width: Style.boxed_cards || action_chip.focused ? 1 : 0
-                        border.color: action_chip.focused ? Theme.theme_secondary : Style.key_border
+                        border.color: action_chip.focused ? Style.chip_pick : Style.chip_border.a > 0 ? Style.chip_border : Style.key_border
 
                         Text {
                             id: action_label

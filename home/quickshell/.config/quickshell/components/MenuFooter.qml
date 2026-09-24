@@ -7,14 +7,16 @@ import "../theme"
 Item {
     id: root
 
+    readonly property var st: Style.for_item(root)
+
     property string text: ""
-    property bool wrap: Style.footer_wrap
+    property bool wrap: root.st.footer_wrap
     property bool centered: false
     // Tabs that show their number already teach "1-N select".
-    readonly property string filtered_text: Style.tab_keys ? root.text.split(" · ").filter(g => !/^1-\d select$/.test(g)).join(" · ") : root.text
+    readonly property string filtered_text: root.st.tab_keys ? root.text.split(" · ").filter(g => !/^1-\d select$/.test(g)).join(" · ") : root.text
     readonly property var key_glyphs: ({ Enter: String.fromCodePoint(0xF0311), Esc: String.fromCodePoint(0xF12B7), Tab: String.fromCodePoint(0xF0312), space: String.fromCodePoint(0xF1050), Backspace: String.fromCodePoint(0xF030D) })
     readonly property string shown_text: root.filtered_text.replace(/\b(Enter|Esc|Tab|space|Backspace)\b/g, k => root.key_glyphs[k])
-    readonly property int rule_gap: Style.footer_rule ? 5 : 0
+    readonly property int rule_gap: root.st.footer_rule ? 5 : 0
 
     // Each "key desc" group; "[ ]" is the one key that contains a space.
     readonly property var groups: root.shown_text === "" ? [] : root.shown_text.split(" · ").map(g => {
@@ -28,18 +30,18 @@ Item {
     clip: !root.wrap
 
     Row {
-        visible: Style.footer_rule
+        visible: root.st.footer_rule
         width: parent.width
         spacing: 3
         clip: true
 
         Repeater {
-            model: Style.footer_rule ? Math.max(0, Math.ceil(root.width / 7)) : 0
+            model: root.st.footer_rule ? Math.max(0, Math.ceil(root.width / 7)) : 0
 
             Rectangle {
                 width: 4
                 height: 1
-                color: Style.footer_rule_color
+                color: root.st.footer_rule_color
             }
         }
     }
@@ -62,17 +64,19 @@ Item {
                     height: desc_text.implicitHeight
                     verticalAlignment: Text.AlignVCenter
                     text: parent.modelData.key
-                    color: Theme.theme_secondary
-                    font.family: Style.font_family
-                    font.pixelSize: Style.font_size - 4
+                    color: root.st.footer_key_fg
+                    font.family: root.st.font_family
+                    font.pixelSize: root.st.font_size - 4
                 }
 
                 Text {
                     id: desc_text
                     text: parent.modelData.desc + (parent.index < root.groups.length - 1 ? " · " : "")
-                    color: Style.footer_fg
-                    font.family: Style.font_family
-                    font.pixelSize: Style.font_size - 4
+                    color: root.st.footer_fg
+                    font.family: root.st.font_family
+                    font.pixelSize: root.st.font_size - 4
+                    font.capitalization: root.st.label_caps ? Font.AllUppercase : Font.MixedCase
+                    font.letterSpacing: root.st.label_spacing
                 }
             }
         }

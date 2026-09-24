@@ -71,6 +71,7 @@ Item {
                         anchors.fill: parent
                         anchors.margins: 4
                         anchors.leftMargin: 4 + alert_row.inset
+                        anchors.rightMargin: 4 + alert_row.key_space
                         spacing: 6
 
                         Rectangle {

@@ -112,9 +112,13 @@ Item {
                                 anchors.horizontalCenter: parent.horizontalCenter
                                 width: parent.width * 0.3
                                 radius: Style.radius(2)
-                                color: Theme.yellow
+                                color: Style.chart_fill
                                 y: root.inner_top_y(day_col.modelData)
                                 height: Math.max(4, root.inner_bottom_y(day_col.modelData) - root.inner_top_y(day_col.modelData))
+                                antialiasing: Style.chart_slant > 0
+                                transform: Matrix4x4 {
+                                    matrix: Qt.matrix4x4(1, -Style.chart_slant, 0, Style.chart_slant * inner_band.height / 2, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1)
+                                }
                             }
 
                             Text {

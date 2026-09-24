@@ -5,26 +5,36 @@ import "../theme"
 Rectangle {
     id: root
 
-    property string key: ""
-    // Set on a filled active tab so the badge takes the tab's text color.
-    property bool on_fill: false
+    readonly property var st: Style.for_item(root)
 
-    implicitWidth: Math.max(implicitHeight, key_text.implicitWidth + 8)
+    property string key: ""
+    // Set on a filled active tab so an outline badge takes the tab's text color; keycap badges keep theirs.
+    property bool on_fill: false
+    readonly property bool tinted: root.on_fill && root.st.key_bg.a === 0
+
+    implicitWidth: Math.max(implicitHeight, key_text.implicitWidth + 8) + root.st.slant * implicitHeight
     implicitHeight: key_text.implicitHeight + 2
     width: implicitWidth
     height: implicitHeight
     radius: Style.radius(3)
-    color: Style.key_bg
-    border.width: 1
-    border.color: root.on_fill ? Style.tab_active_fg : Style.key_border
+    color: root.st.slant > 0 ? "transparent" : root.st.key_bg
+    border.width: root.st.slant > 0 ? 0 : 1
+    border.color: root.tinted ? root.st.tab_active_fg : root.st.key_border
+
+    Slant {
+        visible: root.st.slant > 0
+        color: root.st.key_bg
+        border.width: 1
+        border.color: root.border.color
+    }
 
     Text {
         id: key_text
         anchors.centerIn: parent
         text: root.key
-        color: root.on_fill ? Style.tab_active_fg : Style.key_fg
-        font.family: Style.font_family
-        font.pixelSize: Style.font_size - 5
+        color: root.tinted ? root.st.tab_active_fg : root.st.key_fg
+        font.family: root.st.font_family
+        font.pixelSize: root.st.font_size - 5
         font.bold: true
     }
 }

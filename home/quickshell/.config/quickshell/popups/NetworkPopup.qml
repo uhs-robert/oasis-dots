@@ -254,33 +254,33 @@ Popup {
                     ? root.active_wifi_network.name + "  " + Math.round(root.active_wifi_network.signalStrength * 100) + "%"
                         + (root.wifi_ipv4 ? "  " + root.wifi_ipv4 : "")
                     : ""
-                color: Theme.theme_secondary
-                font.family: Style.font_family
-                font.pixelSize: Style.font_size - 2
+                color: root.st.text_accent
+                font.family: root.st.font_family
+                font.pixelSize: root.st.font_size - 2
             }
 
             Text {
                 visible: !!root.wired_device && root.wired_device.connected
                 text: root.wired_device ? "Wired: " + root.wired_device.name + (root.wired_ipv4 ? "  " + root.wired_ipv4 : "") : ""
-                color: Theme.theme_secondary
-                font.family: Style.font_family
-                font.pixelSize: Style.font_size - 2
+                color: root.st.text_accent
+                font.family: root.st.font_family
+                font.pixelSize: root.st.font_size - 2
             }
 
             Text {
                 visible: root.status_text !== ""
                 text: root.status_text
-                color: Style.text_muted
-                font.family: Style.font_family
-                font.pixelSize: Style.font_size - 3
+                color: root.st.text_muted
+                font.family: root.st.font_family
+                font.pixelSize: root.st.font_size - 3
             }
 
             Text {
                 visible: root.forget_confirm
                 text: "Forget " + (root.forget_target ? root.forget_target.name : "this network") + "? y/n"
                 color: Theme.error
-                font.family: Style.font_family
-                font.pixelSize: Style.font_size - 2
+                font.family: root.st.font_family
+                font.pixelSize: root.st.font_size - 2
             }
 
             ListView {
@@ -306,40 +306,40 @@ Popup {
                     RowLayout {
                         anchors.fill: parent
                         anchors.leftMargin: 6 + net_row.inset
-                        anchors.rightMargin: 6
+                        anchors.rightMargin: 6 + net_row.key_space
                         spacing: 6
 
                         Text {
                             visible: !net_row.is_advanced
                             text: root.signal_glyph(net_row.modelData.signalStrength || 0)
-                            color: net_row.fg(net_row.modelData.connected ? Theme.theme_primary : Theme.fg_core)
-                            font.family: Style.font_family
-                            font.pixelSize: Style.font_size - 1
+                            color: net_row.fg(net_row.modelData.connected ? root.st.text_primary : root.st.text_fg)
+                            font.family: root.st.font_family
+                            font.pixelSize: root.st.font_size - 1
                         }
 
                         Text {
                             Layout.fillWidth: true
                             elide: Text.ElideRight
                             text: net_row.is_advanced ? "Advanced…" : net_row.modelData.name
-                            color: net_row.fg(net_row.modelData.connected ? Theme.theme_secondary : Theme.fg_core)
-                            font.family: Style.font_family
-                            font.pixelSize: Style.font_size - 1
+                            color: net_row.fg(net_row.modelData.connected ? root.st.text_accent : root.st.text_fg)
+                            font.family: root.st.font_family
+                            font.pixelSize: root.st.font_size - 1
                         }
 
                         Text {
                             visible: !net_row.is_advanced && net_row.modelData.security !== WifiSecurityType.Open
                             text: ""
-                            color: net_row.fg(Style.text_muted)
-                            font.family: Style.font_family
-                            font.pixelSize: Style.font_size - 2
+                            color: net_row.fg(root.st.text_muted)
+                            font.family: root.st.font_family
+                            font.pixelSize: root.st.font_size - 2
                         }
 
                         Text {
                             visible: !net_row.is_advanced && net_row.modelData.known
                             text: ""
-                            color: net_row.fg(Style.text_muted)
-                            font.family: Style.font_family
-                            font.pixelSize: Style.font_size - 2
+                            color: net_row.fg(root.st.text_muted)
+                            font.family: root.st.font_family
+                            font.pixelSize: root.st.font_size - 2
                         }
                     }
 
@@ -366,9 +366,9 @@ Popup {
 
             Text {
                 text: root.password_target ? "Password for " + root.password_target.name : ""
-                color: Theme.fg_strong
-                font.family: Style.font_family
-                font.pixelSize: Style.font_size - 1
+                color: root.st.text_strong
+                font.family: root.st.font_family
+                font.pixelSize: root.st.font_size - 1
             }
 
             Rectangle {
@@ -383,9 +383,9 @@ Popup {
                     anchors.margins: 6
                     focus: root.password_mode
                     echoMode: root.password_visible ? TextInput.Normal : TextInput.Password
-                    color: Theme.fg_core
-                    font.family: Style.font_family
-                    font.pixelSize: Style.font_size - 1
+                    color: root.st.text_fg
+                    font.family: root.st.font_family
+                    font.pixelSize: root.st.font_size - 1
                     text: root.password_text
                     onTextChanged: root.password_text = text
 
@@ -412,9 +412,9 @@ Popup {
             Text {
                 visible: root.status_text !== ""
                 text: root.status_text
-                color: Style.text_muted
-                font.family: Style.font_family
-                font.pixelSize: Style.font_size - 3
+                color: root.st.text_muted
+                font.family: root.st.font_family
+                font.pixelSize: root.st.font_size - 3
             }
         }
     }

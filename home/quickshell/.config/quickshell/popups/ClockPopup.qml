@@ -103,7 +103,7 @@ Popup {
     // Equal-width columns need the exact available width, not a guess, so the grid never clips.
     readonly property real grid_column_spacing: 4
     readonly property real available_cell_width: (content.width - grid_column_spacing * 7) / 8
-    readonly property int grid_font_size: available_cell_width < 20 ? Style.font_size - 2 : Style.font_size - 1
+    readonly property int grid_font_size: available_cell_width < 20 ? root.st.font_size - 2 : root.st.font_size - 1
 
     Item {
         id: content
@@ -150,9 +150,9 @@ Popup {
                 visible: !root.has_title
                 Layout.alignment: Qt.AlignHCenter
                 text: Qt.formatDate(new Date(root.view_year, root.view_month, 1), "MMMM yyyy")
-                color: Theme.fg_core
-                font.family: Style.font_family
-                font.pixelSize: Style.font_size
+                color: root.st.text_fg
+                font.family: root.st.font_family
+                font.pixelSize: root.st.font_size
                 font.bold: true
             }
 
@@ -170,19 +170,19 @@ Popup {
                         readonly property bool is_active: index === Timezones.index
 
                         text: Timezones.abbrevs[index] || "..."
-                        color: is_active ? (Style.marker_fill ? Style.title_fg : Theme.theme_secondary) : Style.text_muted
-                        font.family: Style.font_family
-                        font.pixelSize: Style.font_size - 2
+                        color: is_active ? (root.st.marker_fill ? root.st.title_fg : root.st.text_accent) : root.st.text_muted
+                        font.family: root.st.font_family
+                        font.pixelSize: root.st.font_size - 2
                         font.bold: is_active
-                        font.underline: is_active && !Style.marker_fill
+                        font.underline: is_active && !root.st.marker_fill
 
                         Rectangle {
                             z: -1
-                            visible: zone_label.is_active && Style.marker_fill
+                            visible: zone_label.is_active && root.st.marker_fill
                             anchors.fill: parent
                             anchors.leftMargin: -4
                             anchors.rightMargin: -4
-                            color: Style.title_bg
+                            color: root.st.title_bg
                         }
 
                         MouseArea {
@@ -206,24 +206,24 @@ Popup {
                     Text {
                         id: cell
                         required property var modelData
-                        readonly property bool marked: modelData.kind === "day" && modelData.is_today === true && Style.marker_fill
+                        readonly property bool marked: modelData.kind === "day" && modelData.is_today === true && root.st.marker_fill
 
                         Layout.fillWidth: true
                         Layout.preferredWidth: 0
                         horizontalAlignment: Text.AlignHCenter
                         elide: Text.ElideNone
                         text: modelData.text
-                        font.family: Style.font_family
+                        font.family: root.st.font_family
                         font.pixelSize: modelData.kind === "header" || modelData.kind === "weeknum" ? root.grid_font_size - 1 : root.grid_font_size
-                        color: cell.marked ? Style.title_fg : modelData.kind === "header" ? Style.text_muted : modelData.kind === "weeknum" ? Style.text_dim : modelData.is_today ? Theme.theme_accent : (modelData.in_month ? Theme.fg_core : Style.text_muted)
-                        font.underline: modelData.kind === "day" && modelData.is_today === true && !Style.marker_fill
+                        color: cell.marked ? root.st.title_fg : modelData.kind === "header" ? root.st.text_muted : modelData.kind === "weeknum" ? root.st.text_dim : modelData.is_today ? Theme.theme_accent : (modelData.in_month ? root.st.text_fg : root.st.text_muted)
+                        font.underline: modelData.kind === "day" && modelData.is_today === true && !root.st.marker_fill
                         font.bold: cell.marked
 
                         Rectangle {
                             z: -1
                             visible: cell.marked
                             anchors.fill: parent
-                            color: Style.title_bg
+                            color: root.st.title_bg
                         }
                     }
                 }

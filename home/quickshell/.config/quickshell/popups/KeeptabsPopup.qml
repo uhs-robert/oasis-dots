@@ -66,15 +66,15 @@ Popup {
     function state_color(state) {
         if (state === "waiting") return Theme.error;
         if (state === "done") return Theme.ok;
-        if (state === "running") return Theme.theme_primary;
-        return Style.text_dim;
+        if (state === "running") return root.st.text_primary;
+        return root.st.text_dim;
     }
 
     // Below 60% the primary color, 60-85% a warning, above that an error.
     function context_bar_color(pct) {
         if (pct >= 85) return Theme.error;
         if (pct >= 60) return Theme.warning;
-        return Theme.theme_primary;
+        return root.st.text_primary;
     }
 
     function fmt_tokens(n) {
@@ -180,9 +180,9 @@ Popup {
                     anchors.centerIn: parent
                     visible: root.current_tab === 0 && root.sessions.length === 0
                     text: "No agent sessions"
-                    color: Style.text_dim
-                    font.family: Style.font_family
-                    font.pixelSize: Style.font_size - 2
+                    color: root.st.text_dim
+                    font.family: root.st.font_family
+                    font.pixelSize: root.st.font_size - 2
                 }
 
                 ListView {
@@ -207,7 +207,7 @@ Popup {
                         ColumnLayout {
                             anchors.fill: parent
                             anchors.leftMargin: 6 + session_row.inset
-                            anchors.rightMargin: 6
+                            anchors.rightMargin: 6 + session_row.key_space
                             anchors.topMargin: 3
                             anchors.bottomMargin: 3
                             spacing: 2
@@ -219,8 +219,8 @@ Popup {
                                 Text {
                                     text: (session_row.modelData.state || "idle").toUpperCase()
                                     color: session_row.fg(root.state_color(session_row.modelData.state))
-                                    font.family: Style.font_family
-                                    font.pixelSize: Style.font_size - 2
+                                    font.family: root.st.font_family
+                                    font.pixelSize: root.st.font_size - 2
                                     font.bold: true
                                 }
 
@@ -229,9 +229,9 @@ Popup {
                                     Layout.minimumWidth: 0
                                     elide: Text.ElideRight
                                     text: session_row.modelData.title || "Untitled"
-                                    color: session_row.fg(Theme.fg_core)
-                                    font.family: Style.font_family
-                                    font.pixelSize: Style.font_size - 1
+                                    color: session_row.fg(root.st.text_fg)
+                                    font.family: root.st.font_family
+                                    font.pixelSize: root.st.font_size - 1
                                 }
                             }
 
@@ -244,34 +244,34 @@ Popup {
                                     Layout.minimumWidth: 0
                                     elide: Text.ElideRight
                                     text: (session_row.modelData.agent || "claude") + " · " + (session_row.modelData.project || "") + " · " + (session_row.modelData.where || "") + " · " + root.age(session_row.modelData.since)
-                                    color: session_row.fg(Style.text_muted)
-                                    font.family: Style.font_family
-                                    font.pixelSize: Style.font_size - 3
+                                    color: session_row.fg(root.st.text_muted)
+                                    font.family: root.st.font_family
+                                    font.pixelSize: root.st.font_size - 3
                                 }
 
                                 Text {
                                     visible: session_row.has_context
                                     text: session_row.has_context ? session_row.modelData.context_pct + "% · " + root.fmt_tokens(session_row.modelData.context_used) + "/" + root.fmt_tokens(session_row.modelData.context_window) : ""
-                                    color: session_row.fg(Style.text_dim)
-                                    font.family: Style.font_family
-                                    font.pixelSize: Style.font_size - 4
+                                    color: session_row.fg(root.st.text_dim)
+                                    font.family: root.st.font_family
+                                    font.pixelSize: root.st.font_size - 4
                                 }
                             }
 
                             Meter {
                                 Layout.fillWidth: true
-                                visible: session_row.has_context && Style.segmented_levels
+                                visible: session_row.has_context && root.st.segmented_levels
                                 implicitHeight: 4
                                 segment_count: 40
                                 value: session_row.has_context ? session_row.modelData.context_pct / 100 : 0
-                                on_color: session_row.has_context ? root.context_bar_color(session_row.modelData.context_pct) : Style.meter_on
+                                on_color: session_row.has_context ? root.context_bar_color(session_row.modelData.context_pct) : root.st.meter_on
                                 on_selection: session_row.selected
                             }
 
                             Rectangle {
                                 Layout.fillWidth: true
                                 Layout.preferredHeight: session_row.has_context ? 3 : 0
-                                visible: session_row.has_context && !Style.segmented_levels
+                                visible: session_row.has_context && !root.st.segmented_levels
                                 radius: Style.radius(1.5)
                                 color: Theme.bg_surface
 
@@ -304,9 +304,9 @@ Popup {
                         Layout.minimumWidth: 0
                         elide: Text.ElideRight
                         text: ClaudeUsageState.loading ? "Loading…" : ClaudeUsageState.error ? ClaudeUsageState.error : (ClaudeUsageState.updated > 0 ? "Claude usage · updated " + Qt.formatTime(new Date(ClaudeUsageState.updated), "HH:mm") : "Claude usage")
-                        color: ClaudeUsageState.error && !ClaudeUsageState.loading ? Theme.warning : Style.text_muted
-                        font.family: Style.font_family
-                        font.pixelSize: Style.font_size - 2
+                        color: ClaudeUsageState.error && !ClaudeUsageState.loading ? Theme.warning : root.st.text_muted
+                        font.family: root.st.font_family
+                        font.pixelSize: root.st.font_size - 2
                         font.bold: true
                     }
 
@@ -315,9 +315,9 @@ Popup {
                         Layout.topMargin: 24
                         visible: ClaudeUsageState.rows.length === 0 && !ClaudeUsageState.loading
                         text: ClaudeUsageState.error ? "" : "No usage data yet"
-                        color: Style.text_dim
-                        font.family: Style.font_family
-                        font.pixelSize: Style.font_size - 1
+                        color: root.st.text_dim
+                        font.family: root.st.font_family
+                        font.pixelSize: root.st.font_size - 1
                     }
 
                     ListView {
@@ -351,24 +351,24 @@ Popup {
                                         Layout.minimumWidth: 0
                                         elide: Text.ElideRight
                                         text: usage_row.modelData.label
-                                        color: Theme.fg_core
+                                        color: root.st.text_fg
                                         font.bold: true
-                                        font.family: Style.font_family
-                                        font.pixelSize: Style.font_size - 1
+                                        font.family: root.st.font_family
+                                        font.pixelSize: root.st.font_size - 1
                                     }
 
                                     Text {
                                         text: usage_row.modelData.percent + "% used"
                                         color: root.context_bar_color(usage_row.modelData.percent)
                                         font.bold: true
-                                        font.family: Style.font_family
-                                        font.pixelSize: Style.font_size - 2
+                                        font.family: root.st.font_family
+                                        font.pixelSize: root.st.font_size - 2
                                     }
                                 }
 
                                 Meter {
                                     Layout.fillWidth: true
-                                    visible: Style.segmented_levels
+                                    visible: root.st.segmented_levels
                                     segment_count: 40
                                     implicitHeight: Style.px(8)
                                     value: usage_row.modelData.percent / 100
@@ -378,7 +378,7 @@ Popup {
                                 Rectangle {
                                     Layout.fillWidth: true
                                     Layout.preferredHeight: 8
-                                    visible: !Style.segmented_levels
+                                    visible: !root.st.segmented_levels
                                     radius: Style.radius(4)
                                     color: Theme.bg_surface
 
@@ -396,9 +396,9 @@ Popup {
                                     elide: Text.ElideRight
                                     visible: usage_row.modelData.resets !== ""
                                     text: "resets " + usage_row.modelData.resets
-                                    color: Style.text_dim
-                                    font.family: Style.font_family
-                                    font.pixelSize: Style.font_size - 3
+                                    color: root.st.text_dim
+                                    font.family: root.st.font_family
+                                    font.pixelSize: root.st.font_size - 3
                                 }
                             }
                         }

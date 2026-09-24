@@ -60,7 +60,7 @@ PanelWindow {
     margins.left: root.gap
     margins.right: root.gap
     implicitWidth: frame.width
-    implicitHeight: frame.height
+    implicitHeight: frame.height + Style.frame_drop
     mask: Region {}
     WlrLayershell.namespace: "quickshell-whichkey"
     WlrLayershell.layer: WlrLayer.Overlay
@@ -104,20 +104,35 @@ PanelWindow {
     }
 
     Rectangle {
+        visible: Style.frame_drop > 0
+        y: Style.frame_drop
+        width: frame.width
+        height: frame.height
+        radius: frame.radius
+        color: Theme.bg_shadow
+    }
+
+    Rectangle {
         id: frame
 
         readonly property int pad_x: Style.px(14)
         readonly property int pad_y: Style.px(8)
         readonly property real top_edge: Math.max(Style.accent_height, Style.frame_border_width)
-        readonly property real title_x: Style.fade_fills || Style.rounded ? frame.radius : 0
-        readonly property real header_height: title_tab.height
+        readonly property real title_x: Style.fade_fills || Style.rounded ? frame.radius : Style.frame_brackets.a > 0 ? 6 : 0
+        // The inner ring's room below the accent line, which already covers the border.
+        readonly property real ring_pad: Style.inset_pad > 0 ? Style.inset_pad - Style.frame_border_width : 0
+        readonly property real header_height: title_tab.height + frame.ring_pad
 
-        width: Math.max(body.implicitWidth + pad_x * 2, title_text.implicitWidth + 20 + title_x * 2)
+        width: Math.max(body.implicitWidth + pad_x * 2, title_text.implicitWidth + 20 + title_x * 2 + Style.inset_pad * 2 + (readout.visible ? readout.implicitWidth + 16 : 0))
         height: top_edge + header_height + body.implicitHeight + pad_y * 2
         radius: Style.frame_radius
-        color: Style.frame_follows_island ? Theme.bg_mantle : Style.frame_color
-        border.width: Style.frame_border_width
+        color: Style.frame_chamfer > 0 || Style.frame_visor ? "transparent" : Style.frame_follows_island ? Theme.bg_mantle : Style.frame_color
+        border.width: Style.frame_visor || Style.frame_chamfer > 0 ? 0 : Style.frame_border_width
         border.color: Style.frame_border_color
+
+        VisorGlass {
+            anchors.fill: parent
+        }
 
         Shape {
             id: frame_glow
@@ -146,6 +161,17 @@ PanelWindow {
             anchors.margins: Style.frame_border_width
             top_radius: Math.max(0, frame.radius - Style.frame_border_width)
             bottom_radius: top_radius
+            chamfer: Style.frame_chamfer
+        }
+
+        CornerBrackets {
+            anchors.fill: parent
+        }
+
+        FrameInset {
+            top_radius: frame.radius
+            bottom_radius: frame.radius
+            top_offset: frame.top_edge - Style.frame_border_width
         }
 
         Rectangle {
@@ -162,10 +188,11 @@ PanelWindow {
             layer.enabled: glow_layer.layered
             opacity: glow_layer.layered ? 0 : 1
 
+
             Rectangle {
                 id: title_tab
-                x: frame.title_x
-                y: frame.top_edge
+                x: frame.title_x + Style.inset_pad
+                y: frame.top_edge + frame.ring_pad
                 width: Style.fade_fills ? frame.width - frame.title_x * 2 : title_text.implicitWidth + 20
                 height: title_text.implicitHeight + 4
                 color: Style.show_title && !Style.fade_fills ? Style.title_bg : "transparent"
@@ -181,11 +208,26 @@ PanelWindow {
                     y: (parent.height - height) / 2
                     text: Style.title_prefix + root.title + (Style.caret_phase ? Style.title_suffix : " ".repeat(Style.title_suffix.length))
                     color: Style.show_title ? Style.title_fg : Style.accent_color
-                    font.family: Style.font_family
+                    font.family: Style.title_font_family
                     font.pixelSize: Style.font_size - 2
-                    font.bold: true
-                    font.letterSpacing: Style.show_title ? 2 : 0
+                    font.bold: Style.title_font_family === Style.font_family
+                    font.letterSpacing: Style.show_title ? Style.title_spacing : 0
+                    style: Style.title_glow.a > 0 ? Text.Outline : Text.Normal
+                    styleColor: Style.title_glow
                 }
+            }
+
+            Text {
+                id: readout
+                visible: Style.show_title && Style.title_readout !== ""
+                anchors.right: parent.right
+                anchors.rightMargin: frame.title_x + 10
+                y: title_tab.y + (title_tab.height - height) / 2
+                text: Style.title_readout.replace("{code}", root.title.slice(0, 3))
+                color: Style.title_readout_fg.a > 0 ? Style.title_readout_fg : Style.text_muted
+                font.family: Style.font_family
+                font.pixelSize: Style.font_size - 5
+                font.letterSpacing: 1
             }
 
             ColumnLayout {

@@ -181,9 +181,9 @@ Popup {
                                 Layout.fillWidth: true
                                 elide: Text.ElideRight
                                 text: row_wrap.modelData.node.description || row_wrap.modelData.node.name
-                                color: vol_row.fg((row_wrap.modelData.node === Pipewire.defaultAudioSink || row_wrap.modelData.node === Pipewire.defaultAudioSource) ? Theme.theme_secondary : Theme.fg_core)
-                                font.family: Style.font_family
-                                font.pixelSize: Style.font_size - 1
+                                color: vol_row.fg((row_wrap.modelData.node === Pipewire.defaultAudioSink || row_wrap.modelData.node === Pipewire.defaultAudioSource) ? root.st.text_accent : root.st.text_fg)
+                                font.family: root.st.font_family
+                                font.pixelSize: root.st.font_size - 1
                             }
                         }
 
@@ -207,9 +207,9 @@ Popup {
                                 Layout.preferredWidth: Style.px(90)
                                 elide: Text.ElideRight
                                 text: row_wrap.modelData.type === "stream" ? (row_wrap.modelData.node.properties["application.name"] || row_wrap.modelData.node.name) : (row_wrap.modelData.node.description || row_wrap.modelData.node.name)
-                                color: vol_row.fg(Theme.fg_core)
-                                font.family: Style.font_family
-                                font.pixelSize: Style.font_size - 1
+                                color: vol_row.fg(root.st.text_fg)
+                                font.family: root.st.font_family
+                                font.pixelSize: root.st.font_size - 1
                             }
 
                             Slider {
@@ -223,9 +223,9 @@ Popup {
 
                             Text {
                                 text: row_wrap.modelData.node.audio && row_wrap.modelData.node.audio.muted ? "" : ""
-                                color: vol_row.fg(Theme.theme_primary)
-                                font.family: Style.font_family
-                                font.pixelSize: Style.font_size - 1
+                                color: vol_row.fg(root.st.text_primary)
+                                font.family: root.st.font_family
+                                font.pixelSize: root.st.font_size - 1
 
                                 MouseArea {
                                     anchors.fill: parent
@@ -241,9 +241,9 @@ Popup {
                 visible: root.streams.length === 0
                 Layout.topMargin: 6
                 text: "No apps playing"
-                color: Style.text_dim
-                font.family: Style.font_family
-                font.pixelSize: Style.font_size - 2
+                color: root.st.text_dim
+                font.family: root.st.font_family
+                font.pixelSize: root.st.font_size - 2
             }
         }
     }

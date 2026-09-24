@@ -3,6 +3,7 @@ import QtQuick
 import QtQuick.Layouts
 import QtQuick.Shapes
 import "../components"
+import "../theme"
 
 Item {
     id: root
@@ -14,8 +15,15 @@ Item {
     property color border_color: "transparent"
     property color scanline_color: "transparent"
     property color shade_color: "transparent"
+    property bool shade_vertical: false
     property color dither_color: "transparent"
-    readonly property bool shaded: root.shade_color.a > 0
+    // An inner line following the slants and bottom edge, inset_gap in from them.
+    property real inset_gap: 0
+    property real inset_width: 0
+    property color inset_color: "transparent"
+    // Visor glass: curved bottom corners instead of slants, glass gradient into bg_color, border along sides and bottom.
+    property bool visor: false
+    readonly property bool shaded: root.shade_color.a > 0 || root.visor
     default property alias content: layout.children
 
     readonly property alias body_item: body
@@ -26,9 +34,9 @@ Item {
     height: 30
     width: body.width + (cap_left ? cap_width : 0) + (cap_right ? cap_width : 0)
 
-    // The popup style's diagonal shade and dither, behind the modules and clipped to the slants.
+    // The popup style's shade and dither, behind the modules and clipped to the slants.
     Shape {
-        visible: root.shaded
+        visible: root.shaded && !root.visor
         anchors.fill: parent
         preferredRendererType: Shape.CurveRenderer
 
@@ -36,9 +44,9 @@ Item {
             strokeWidth: -1
             // The left island mirrors the shade so its light edge faces the screen centre like the right one.
             fillGradient: LinearGradient {
-                x1: root.cap_right && !root.cap_left ? root.width : 0
+                x1: root.shade_vertical ? 0 : root.cap_right && !root.cap_left ? root.width : 0
                 y1: 0
-                x2: root.cap_right && !root.cap_left ? 0 : root.width
+                x2: root.shade_vertical ? 0 : root.cap_right && !root.cap_left ? 0 : root.width
                 y2: root.height
                 GradientStop { position: 0; color: root.shade_color }
                 GradientStop { position: 1; color: root.bg_color }
@@ -49,6 +57,44 @@ Item {
             PathLine { x: root.width - (root.cap_right ? root.cap_width : 0); y: root.height }
             PathLine { x: root.cap_left ? root.cap_width : 0; y: root.height }
             PathLine { x: 0; y: 0 }
+        }
+    }
+
+    Shape {
+        id: visor_glass
+        readonly property real rx: root.cap_width
+        readonly property real ry: root.height / 2
+
+        function edge(i, closed) {
+            const w = root.width, h = root.height, x = Math.max(0, visor_glass.rx - i), y = Math.max(0, visor_glass.ry - i);
+            let d = root.cap_left ? "M " + i + " 0 L " + i + " " + (h - i - y) + " A " + x + " " + y + " 0 0 0 " + (i + x) + " " + (h - i) : "M 0 " + (h - i);
+            d += root.cap_right ? " L " + (w - i - x) + " " + (h - i) + " A " + x + " " + y + " 0 0 0 " + (w - i) + " " + (h - i - y) + " L " + (w - i) + " 0" : " L " + w + " " + (h - i);
+            return closed ? d + " L " + w + " 0 L 0 0 Z" : d;
+        }
+
+        visible: root.visor
+        anchors.fill: parent
+        preferredRendererType: Shape.CurveRenderer
+
+        ShapePath {
+            strokeWidth: -1
+            fillGradient: LinearGradient {
+                x1: 0
+                y1: 0
+                x2: 0
+                y2: root.height
+                GradientStop { position: 0; color: Qt.alpha(Theme.ui_visual_bg, 0.75) }
+                GradientStop { position: 1; color: root.bg_color }
+            }
+            PathSvg { path: visor_glass.edge(0, true) }
+        }
+
+        ShapePath {
+            strokeWidth: root.border_width
+            strokeColor: root.border_width > 0 ? root.border_color : "transparent"
+            fillColor: "transparent"
+            capStyle: ShapePath.FlatCap
+            PathSvg { path: visor_glass.edge(root.border_width / 2, false) }
         }
     }
 
@@ -142,7 +188,7 @@ Item {
 
     // Traces the slants and bottom edge; the sides on the screen edge stay open.
     Shape {
-        visible: root.border_width > 0
+        visible: root.border_width > 0 && !root.visor
         anchors.fill: parent
         preferredRendererType: Shape.CurveRenderer
 
@@ -161,6 +207,34 @@ Item {
                     if (root.cap_left) pts.push(Qt.point(c + i, h - i));
                     if (root.cap_right) pts.push(Qt.point(w - c - i, h - i));
                     pts.push(root.cap_right ? Qt.point(w - i, 0) : Qt.point(w, h - i));
+                    return pts;
+                }
+            }
+        }
+    }
+
+    Shape {
+        visible: root.inset_width > 0 && root.inset_color.a > 0
+        anchors.fill: parent
+        preferredRendererType: Shape.CurveRenderer
+
+        ShapePath {
+            strokeWidth: root.inset_width
+            strokeColor: root.inset_color
+            fillColor: "transparent"
+            capStyle: ShapePath.FlatCap
+            joinStyle: ShapePath.MiterJoin
+
+            PathPolyline {
+                path: {
+                    const w = root.width, h = root.height, off = root.inset_gap + root.inset_width / 2;
+                    const slope = root.cap_width / h;
+                    const shift = off * Math.sqrt(1 + slope * slope);
+                    const pts = [];
+                    if (root.cap_left) pts.push(Qt.point(shift, 0), Qt.point(shift + (h - off) * slope, h - off));
+                    else pts.push(Qt.point(0, h - off));
+                    if (root.cap_right) pts.push(Qt.point(w - shift - (h - off) * slope, h - off), Qt.point(w - shift, 0));
+                    else pts.push(Qt.point(w, h - off));
                     return pts;
                 }
             }

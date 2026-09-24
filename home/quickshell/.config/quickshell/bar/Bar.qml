@@ -85,8 +85,13 @@ Item {
         border_width: Style.bar_border_width
         border_color: Style.bar_border_color
         scanline_color: Style.bar_scanline_color
-        shade_color: Style.style_bar ? Style.frame_shade : "transparent"
-        dither_color: Style.style_bar ? Qt.alpha(Style.dither, Math.min(1, Style.dither.a * 2.2)) : "transparent"
+        shade_color: Style.frame_shade
+        shade_vertical: Style.shade_vertical
+        dither_color: Qt.alpha(Style.dither, Math.min(1, Style.dither.a * 2.2))
+        inset_gap: Style.bar_inset_gap
+        inset_width: Style.bar_inset_width
+        inset_color: Style.bar_inset_color
+        visor: Style.frame_visor
         cap_right: true
         visible: root.left_entries.length > 0
 
@@ -116,8 +121,13 @@ Item {
         border_width: Style.bar_border_width
         border_color: Style.bar_border_color
         scanline_color: Style.bar_scanline_color
-        shade_color: Style.style_bar ? Style.frame_shade : "transparent"
-        dither_color: Style.style_bar ? Qt.alpha(Style.dither, Math.min(1, Style.dither.a * 2.2)) : "transparent"
+        shade_color: Style.frame_shade
+        shade_vertical: Style.shade_vertical
+        dither_color: Qt.alpha(Style.dither, Math.min(1, Style.dither.a * 2.2))
+        inset_gap: Style.bar_inset_gap
+        inset_width: Style.bar_inset_width
+        inset_color: Style.bar_inset_color
+        visor: Style.frame_visor
         cap_left: true
         cap_right: true
         visible: root.center_entries.length > 0
@@ -144,6 +154,7 @@ Item {
         anchors.bottom: parent.bottom
         anchors.leftMargin: 6
         anchors.rightMargin: 6
+        anchors.bottomMargin: center_island.inset_color.a > 0 ? center_island.inset_gap + center_island.inset_width : 0
         active: MediaState.playing && root.has_center
     }
 
@@ -156,8 +167,13 @@ Item {
         border_width: Style.bar_border_width
         border_color: Style.bar_border_color
         scanline_color: Style.bar_scanline_color
-        shade_color: Style.style_bar ? Style.frame_shade : "transparent"
-        dither_color: Style.style_bar ? Qt.alpha(Style.dither, Math.min(1, Style.dither.a * 2.2)) : "transparent"
+        shade_color: Style.frame_shade
+        shade_vertical: Style.shade_vertical
+        dither_color: Qt.alpha(Style.dither, Math.min(1, Style.dither.a * 2.2))
+        inset_gap: Style.bar_inset_gap
+        inset_width: Style.bar_inset_width
+        inset_color: Style.bar_inset_color
+        visor: Style.frame_visor
         cap_left: true
         visible: root.right_entries.length > 0
 

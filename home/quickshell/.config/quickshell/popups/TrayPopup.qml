@@ -143,9 +143,9 @@ Popup {
             Text {
                 visible: root.items.length === 0
                 text: "No tray apps"
-                color: Style.text_dim
-                font.family: Style.font_family
-                font.pixelSize: Style.font_size - 2
+                color: root.st.text_dim
+                font.family: root.st.font_family
+                font.pixelSize: root.st.font_size - 2
             }
 
             Repeater {
@@ -164,7 +164,7 @@ Popup {
                     RowLayout {
                         anchors.fill: parent
                         anchors.leftMargin: 6 + item_row.inset
-                        anchors.rightMargin: 6
+                        anchors.rightMargin: 6 + item_row.key_space
                         spacing: 8
 
                         IconImage {
@@ -176,9 +176,9 @@ Popup {
 
                         Text {
                             text: root.app_name(item_row.modelData)
-                            color: item_row.fg(Theme.fg_core)
-                            font.family: Style.font_family
-                            font.pixelSize: Style.font_size - 1
+                            color: item_row.fg(root.st.text_fg)
+                            font.family: root.st.font_family
+                            font.pixelSize: root.st.font_size - 1
                         }
 
                         Text {
@@ -187,9 +187,9 @@ Popup {
                             maximumLineCount: 1
                             wrapMode: Text.NoWrap
                             text: root.detail(item_row.modelData)
-                            color: item_row.fg(Style.text_dim)
-                            font.family: Style.font_family
-                            font.pixelSize: Style.font_size - 3
+                            color: item_row.fg(root.st.text_dim)
+                            font.family: root.st.font_family
+                            font.pixelSize: root.st.font_size - 3
                         }
                     }
 
