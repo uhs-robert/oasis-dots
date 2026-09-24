@@ -182,7 +182,7 @@ Item {
                             implicitWidth: Math.min(action_label.implicitWidth + 18, layout.width)
                             implicitHeight: 26
                             radius: Style.radius(13)
-                            color: Style.boxed_cards ? "transparent" : Theme.bg_surface
+                            color: action_chip.focused ? Theme.theme_secondary : Style.boxed_cards ? "transparent" : Theme.bg_surface
                             border.width: Style.boxed_cards || action_chip.focused ? 1 : 0
                             border.color: action_chip.focused ? Theme.theme_secondary : Style.key_border
 
@@ -194,7 +194,8 @@ Item {
                                 width: Math.min(implicitWidth, layout.width - 18)
                                 horizontalAlignment: Text.AlignHCenter
                                 text: action_chip.modelData.text
-                                color: Theme.theme_secondary
+                                color: action_chip.focused ? Theme.bg_crust : Theme.theme_secondary
+                                font.bold: action_chip.focused
                                 font.family: Style.font_family
                                 font.pixelSize: Style.font_size - 3
                             }
