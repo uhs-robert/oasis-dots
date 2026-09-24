@@ -1,5 +1,7 @@
 // home/quickshell/.config/quickshell/components/Osd.qml
 import QtQuick
+import QtQuick.Effects
+import QtQuick.Shapes
 import QtQuick.Layouts
 import Quickshell
 import Quickshell.Hyprland
@@ -161,58 +163,126 @@ PanelWindow {
         border.width: Style.frame_border_width
         border.color: Style.frame_border_color
 
-        Rectangle {
-            id: title_tab
-            visible: Style.show_title
-            width: title_text.implicitWidth + 20
-            height: title_text.implicitHeight + 4
-            color: Style.title_bg
+        Shape {
+            id: frame_glow
+            visible: Style.frame_glow.a > 0
+            anchors.fill: parent
+            anchors.margins: Style.frame_border_width
 
-            Text {
-                id: title_text
-                anchors.centerIn: parent
-                text: root.kind.toUpperCase()
-                color: Style.title_fg
-                font.family: Style.font_family
-                font.pixelSize: Style.font_size - 2
-                font.bold: true
-                font.letterSpacing: 2
+            ShapePath {
+                strokeWidth: -1
+                fillGradient: RadialGradient {
+                    centerX: frame_glow.width / 2
+                    centerY: 0
+                    focalX: frame_glow.width / 2
+                    focalY: 0
+                    centerRadius: frame_glow.width * 0.6
+                    focalRadius: 0
+                    GradientStop { position: 0; color: Style.frame_glow }
+                    GradientStop { position: 0.72; color: Style.frame_color }
+                }
+                PathRectangle { width: frame_glow.width; height: frame_glow.height }
             }
         }
 
-        RowLayout {
-            id: body
-            x: frame.pad_x
-            y: frame.header_height + frame.pad_y
-            spacing: Style.px(10)
+        Item {
+            id: glow_layer
+            anchors.fill: parent
+            layer.enabled: Style.glow
+            opacity: Style.glow ? 0 : 1
 
-            Text {
-                Layout.alignment: Qt.AlignVCenter
-                Layout.preferredWidth: Theme.glyph_size + 4
-                horizontalAlignment: Text.AlignHCenter
-                text: root.glyph
-                color: Theme.theme_primary
-                opacity: root.muted ? 0.5 : 1
-                font.family: Theme.font_family
-                font.pixelSize: Theme.glyph_size
+            Rectangle {
+                id: title_tab
+                visible: Style.show_title
+                width: title_text.implicitWidth + 20
+                height: title_text.implicitHeight + 4
+                color: Style.title_bg
+
+                Text {
+                    id: title_text
+                    anchors.centerIn: parent
+                    text: Style.title_prefix + root.kind.toUpperCase() + Style.title_suffix
+                    color: Style.title_fg
+                    font.family: Style.font_family
+                    font.pixelSize: Style.font_size - 2
+                    font.bold: true
+                    font.letterSpacing: 2
+                }
             }
 
-            Meter {
-                Layout.alignment: Qt.AlignVCenter
-                Layout.preferredWidth: Style.px(180)
-                value: root.level
-                hot_from: 0.9
-                opacity: root.muted ? 0.35 : 1
-            }
+            RowLayout {
+                id: body
+                x: frame.pad_x
+                y: frame.header_height + frame.pad_y
+                spacing: Style.px(10)
 
-            Text {
-                Layout.alignment: Qt.AlignVCenter
-                Layout.preferredWidth: percent_metrics.width
-                horizontalAlignment: Text.AlignRight
-                text: root.percent + "%"
-                color: root.muted ? Theme.fg_muted : Theme.fg_core
-                font.family: Style.font_family
-                font.pixelSize: Style.font_size
+                Text {
+                    Layout.alignment: Qt.AlignVCenter
+                    Layout.preferredWidth: Theme.glyph_size + 4
+                    horizontalAlignment: Text.AlignHCenter
+                    text: root.glyph
+                    color: Theme.theme_primary
+                    opacity: root.muted ? 0.5 : 1
+                    font.family: Theme.font_family
+                    font.pixelSize: Theme.glyph_size
+                }
+
+                Meter {
+                    Layout.alignment: Qt.AlignVCenter
+                    Layout.preferredWidth: Style.px(180)
+                    value: root.level
+                    hot_from: 0.9
+                    opacity: root.muted ? 0.35 : 1
+                }
+
+                Text {
+                    Layout.alignment: Qt.AlignVCenter
+                    Layout.preferredWidth: percent_metrics.width
+                    horizontalAlignment: Text.AlignRight
+                    text: root.percent + "%"
+                    color: root.muted ? Theme.fg_muted : Theme.fg_core
+                    font.family: Style.font_family
+                    font.pixelSize: Style.font_size
+                }
+            }
+        }
+
+        MultiEffect {
+            visible: Style.glow
+            anchors.fill: glow_layer
+            source: glow_layer
+            autoPaddingEnabled: false
+            blurEnabled: true
+            blur: 0.5
+            blurMax: 12
+            brightness: 0.2
+            colorization: 1
+            colorizationColor: Style.glow_color
+        }
+
+        MultiEffect {
+            visible: Style.glow
+            anchors.fill: glow_layer
+            source: glow_layer
+            autoPaddingEnabled: false
+            colorization: Style.glow_tint
+            colorizationColor: Theme.theme_primary_light
+        }
+
+        Item {
+            visible: Style.scanlines
+            anchors.fill: parent
+
+            Repeater {
+                model: Style.scanlines ? Math.max(0, Math.ceil(parent.height / 3)) : 0
+
+                Rectangle {
+                    required property int index
+                    y: index * 3
+                    width: parent.width
+                    height: 1
+                    color: Style.scanline_color
+                }
             }
         }
     }
