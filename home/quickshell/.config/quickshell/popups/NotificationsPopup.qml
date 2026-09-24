@@ -28,6 +28,7 @@ Popup {
     readonly property bool is_open: Popups.open_name === "notifications"
     onIs_openChanged: if (is_open) {
         root.selected = 0;
+        root.action_index = -1;
         NotificationState.mark_read();
     }
     onCurrent_tabChanged: root.selected = 0
