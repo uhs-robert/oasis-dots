@@ -146,7 +146,7 @@ Singleton {
                 footer_fg: Theme.theme_primary_strong,
                 footer_rule_color: Qt.alpha(Theme.theme_primary, 0.3),
                 meter_off: Qt.alpha(Theme.theme_primary, 0.15),
-                meter_hot: Theme.theme_secondary,
+                meter_hot: Theme.theme_label,
                 title_bg: "transparent",
                 title_fg: Theme.theme_secondary,
                 title_prefix: "> ",
