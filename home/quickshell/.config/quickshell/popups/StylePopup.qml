@@ -10,13 +10,22 @@ Popup {
 
     popup_name: "style"
     preferred_width: 180
-    footer_hint: "j/k move · Enter apply · 1-9 pick · q close"
+    footer_hint: "j/k preview · 1-9 pick · Enter apply · q cancel"
     body_height: content.implicitHeight + 24
 
     property int selected: 0
 
     readonly property bool is_open: Popups.open_name === "style"
-    onIs_openChanged: if (is_open) root.selected = Math.max(0, Style.names.indexOf(Style.name))
+    onIs_openChanged: {
+        if (is_open) root.selected = Math.max(0, Style.names.indexOf(Style.saved_name));
+        else Style.preview(Style.saved_name);
+    }
+    onSelectedChanged: if (is_open) Style.preview(Style.names[root.selected])
+
+    function apply() {
+        Style.set(Style.names[root.selected]);
+        Popups.close();
+    }
 
     function label(style_name) {
         return style_name.charAt(0).toUpperCase() + style_name.slice(1);
@@ -39,11 +48,10 @@ Popup {
                 root.selected = (root.selected - 1 + Style.names.length) % Style.names.length;
                 event.accepted = true;
             } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
-                Style.set(Style.names[root.selected]);
+                root.apply();
                 event.accepted = true;
             } else if (event.key >= Qt.Key_1 && event.key <= Qt.Key_9 && event.key - Qt.Key_1 < Style.names.length) {
                 root.selected = event.key - Qt.Key_1;
-                Style.set(Style.names[root.selected]);
                 event.accepted = true;
             }
         }
@@ -86,7 +94,7 @@ Popup {
                         }
 
                         Text {
-                            text: row.modelData === Style.name ? "active" : ""
+                            text: row.modelData === Style.saved_name ? "active" : ""
                             color: row.fg(Theme.ok)
                             font.family: Style.font_family
                             font.pixelSize: Style.font_size - 3
@@ -97,7 +105,7 @@ Popup {
                         anchors.fill: parent
                         onClicked: {
                             root.selected = row.index;
-                            Style.set(row.modelData);
+                            root.apply();
                         }
                     }
                 }

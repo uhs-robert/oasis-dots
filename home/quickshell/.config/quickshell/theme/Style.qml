@@ -8,6 +8,8 @@ Singleton {
     id: root
 
     property string name: "default"
+    // The saved choice; `name` differs from it only while the style picker previews.
+    property string saved_name: "default"
     readonly property var names: Object.keys(root.styles)
 
     readonly property var styles: {
@@ -247,8 +249,13 @@ Singleton {
             return false;
         }
         root.name = style_name;
+        root.saved_name = style_name;
         state_file.setText(JSON.stringify({ style: style_name }));
         return true;
+    }
+
+    function preview(style_name) {
+        if (style_name in root.styles) root.name = style_name;
     }
 
     function cycle() {
@@ -274,7 +281,10 @@ Singleton {
         onLoaded: {
             try {
                 const saved = JSON.parse(text()).style;
-                if (typeof saved === "string" && saved in root.styles) root.name = saved;
+                if (typeof saved === "string" && saved in root.styles) {
+                    root.name = saved;
+                    root.saved_name = saved;
+                }
             } catch (e) {
                 console.warn("Style: invalid style.json (" + e + ")");
             }
