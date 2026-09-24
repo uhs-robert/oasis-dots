@@ -407,11 +407,9 @@ Popup {
                 }
             }
 
-            Text {
-                text: "Tab: show/hide  Enter: connect  Esc: cancel"
-                color: Theme.fg_dim
-                font.family: Style.font_family
-                font.pixelSize: Style.font_size - 3
+            MenuFooter {
+                Layout.fillWidth: true
+                text: "Tab show/hide · Enter connect · Esc cancel"
             }
 
             Text {
