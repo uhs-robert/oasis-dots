@@ -119,7 +119,7 @@ Popup {
     }
 
     function select_entry(entry) {
-        const idx = root.entry_rows.findIndex(r => r.entry === entry);
+        const idx = root.entry_rows.findIndex(r => r.entry.id === entry.id);
         if (idx >= 0) root.selected = idx;
     }
 
@@ -367,7 +367,7 @@ Popup {
                             visible: row_item.modelData.type === "entry"
                             width: row_item.width
                             entry: row_item.modelData.type === "entry" ? row_item.modelData.entry : null
-                            selected: !!(row_item.modelData.type === "entry" && root.entry_rows[root.selected] && root.entry_rows[root.selected].entry === row_item.modelData.entry)
+                            selected: !!(row_item.modelData.type === "entry" && root.entry_rows[root.selected] && root.entry_rows[root.selected].entry.id === row_item.modelData.entry.id)
                             focused_action: card.selected ? root.action_index : -1
                             onSelect_requested: root.select_entry(row_item.modelData.entry)
                             onInvoke_requested: {
