@@ -12,12 +12,25 @@ Item {
     // Set on an inverse-selected row so the lit segments stay visible.
     property bool on_selection: false
     property int segment_count: 20
+    // Indeterminate: a short lit run sweeps across instead of showing value.
+    property bool busy: false
+    property real busy_pos: 0
+    readonly property int busy_span: 4
+    readonly property int busy_head: Math.floor(root.busy_pos * (root.segment_count + root.busy_span)) - root.busy_span
     property color on_color: Style.meter_on
     readonly property int gap: 2
     readonly property real segment_width: Math.max(2, (width - gap * (segment_count - 1)) / segment_count)
 
     implicitWidth: segment_count * 3 + gap * (segment_count - 1)
     implicitHeight: Style.px(10)
+
+    NumberAnimation on busy_pos {
+        running: root.busy
+        loops: Animation.Infinite
+        from: 0
+        to: 1
+        duration: 1400
+    }
 
     Row {
         spacing: root.gap
@@ -28,7 +41,9 @@ Item {
             Rectangle {
                 id: segment
                 required property int index
-                readonly property bool lit: index < Math.round(root.value * root.segment_count)
+                readonly property bool lit: root.busy
+                    ? index >= root.busy_head && index < root.busy_head + root.busy_span
+                    : index < Math.round(root.value * root.segment_count)
                 readonly property bool is_hot: root.hot || index >= Math.round(root.hot_from * root.segment_count)
 
                 width: root.segment_width

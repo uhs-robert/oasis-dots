@@ -16,7 +16,15 @@ PanelWindow {
     property string kind: "volume"
     property real level: 0
     property bool muted: false
-    property bool wanted: false
+    // A level change takes the slot for its hide timer, then voxtype gets it back.
+    property bool level_wanted: false
+    property bool vox_wanted: false
+    readonly property bool wanted: root.level_wanted || root.vox_wanted
+    // Held through the hide animation so the frame does not switch content as it fades.
+    property string content: "level"
+    property string vox_phase: "recording"
+    property real vox_started_ms: 0
+    property real now_ms: 0
     property real reveal: 0
     property string held_screen_name: ""
 
@@ -33,7 +41,18 @@ PanelWindow {
         return Math.abs(raw - snapped) <= 1 ? snapped : raw;
     }
 
+    readonly property bool showing_vox: root.content === "voxtype"
+    readonly property bool vox_recording: root.showing_vox && root.vox_phase === "recording"
+
+    readonly property string title: root.showing_vox ? root.vox_phase.toUpperCase() : root.kind.toUpperCase()
+
+    readonly property string elapsed: {
+        const secs = Math.max(0, Math.floor((root.now_ms - root.vox_started_ms) / 1000));
+        return Math.floor(secs / 60) + ":" + String(secs % 60).padStart(2, "0");
+    }
+
     readonly property string glyph: {
+        if (root.showing_vox) return root.vox_recording ? "󰍬" : "󰔟";
         if (root.kind === "brightness") return "󰃠";
         if (root.muted) return "";
         if (root.level <= 0.33) return "";
@@ -58,17 +77,41 @@ PanelWindow {
         NumberAnimation { duration: 140; easing.type: Easing.OutCubic }
     }
 
+    function hold_screen() {
+        if (root.visible) return;
+        const mon = Hyprland.focusedMonitor;
+        root.held_screen_name = mon ? mon.name : "";
+    }
+
+    function refresh() {
+        if (root.level_wanted) root.content = "level";
+        else if (root.vox_wanted) root.content = "voxtype";
+        root.reveal = root.wanted ? 1 : 0;
+    }
+
     function show(new_kind, new_level, new_muted) {
         root.kind = new_kind;
         root.level = Math.max(0, Math.min(1, new_level));
         root.muted = new_muted;
-        if (!root.visible) {
-            const mon = Hyprland.focusedMonitor;
-            root.held_screen_name = mon ? mon.name : "";
-        }
-        root.wanted = true;
-        root.reveal = 1;
+        root.hold_screen();
+        root.level_wanted = true;
+        root.refresh();
         hide_timer.restart();
+    }
+
+    function voxtype_changed() {
+        const active = VoxtypeState.recording || VoxtypeState.transcribing;
+        if (active) {
+            if (VoxtypeState.recording && (!root.vox_wanted || root.vox_phase !== "recording")) {
+                root.vox_started_ms = Date.now();
+                root.now_ms = root.vox_started_ms;
+            }
+            if (!VoxtypeState.recording && root.vox_phase === "recording") root.now_ms = Date.now();
+            root.vox_phase = VoxtypeState.recording ? "recording" : "transcribing";
+            root.hold_screen();
+        }
+        root.vox_wanted = active;
+        root.refresh();
     }
 
     function audio_changed() {
@@ -114,6 +157,11 @@ PanelWindow {
     }
 
     Connections {
+        target: VoxtypeState
+        function onStateChanged() { root.voxtype_changed(); }
+    }
+
+    Connections {
         target: Backlight
         function onHas_deviceChanged() { root.arm_brightness(); }
         function onPercentChanged() { root.brightness_changed(); }
@@ -135,9 +183,17 @@ PanelWindow {
         id: hide_timer
         interval: 1500
         onTriggered: {
-            root.wanted = false;
-            root.reveal = 0;
+            root.level_wanted = false;
+            root.refresh();
         }
+    }
+
+    Timer {
+        interval: 1000
+        triggeredOnStart: true
+        repeat: true
+        running: root.vox_recording && root.visible
+        onTriggered: root.now_ms = Date.now()
     }
 
     TextMetrics {
@@ -218,7 +274,7 @@ PanelWindow {
                     anchors.centerIn: Style.fade_fills ? undefined : parent
                     x: 10
                     y: (parent.height - height) / 2
-                    text: Style.title_prefix + root.kind.toUpperCase() + Style.title_suffix
+                    text: Style.title_prefix + root.title + Style.title_suffix
                     color: Style.title_fg
                     font.family: Style.font_family
                     font.pixelSize: Style.font_size - 2
@@ -238,26 +294,42 @@ PanelWindow {
                     Layout.preferredWidth: Theme.glyph_size + 4
                     horizontalAlignment: Text.AlignHCenter
                     text: root.glyph
-                    color: Theme.theme_primary
-                    opacity: root.muted ? 0.5 : 1
+                    color: !root.showing_vox ? Theme.theme_primary : root.vox_recording ? Theme.theme_label : Theme.warning
+                    opacity: !root.showing_vox && root.muted ? 0.5 : 1
                     font.family: Theme.font_family
                     font.pixelSize: Theme.glyph_size
                 }
 
-                Meter {
+                Item {
                     Layout.alignment: Qt.AlignVCenter
-                    Layout.preferredWidth: Style.px(180)
-                    value: root.level
-                    hot_from: 0.9
-                    opacity: root.muted ? 0.35 : 1
+                    Layout.preferredWidth: root.showing_vox ? Style.px(260) : Style.px(180)
+                    Layout.preferredHeight: root.showing_vox ? Style.px(44) : meter.implicitHeight
+
+                    Meter {
+                        id: meter
+                        visible: !root.showing_vox
+                        width: parent.width
+                        anchors.verticalCenter: parent.verticalCenter
+                        value: root.showing_vox ? 0 : root.level
+                        hot_from: root.showing_vox ? 1 : 0.9
+                        opacity: !root.showing_vox && root.muted ? 0.35 : 1
+                    }
+
+                    Waveform {
+                        id: waveform
+                        visible: root.showing_vox
+                        anchors.fill: parent
+                        frozen: !root.vox_recording
+                        running: root.showing_vox && root.visible
+                    }
                 }
 
                 Text {
                     Layout.alignment: Qt.AlignVCenter
                     Layout.preferredWidth: percent_metrics.width
                     horizontalAlignment: Text.AlignRight
-                    text: root.percent + "%"
-                    color: root.muted ? Style.text_muted : Theme.fg_core
+                    text: root.showing_vox ? root.elapsed : root.percent + "%"
+                    color: root.showing_vox && !root.vox_recording ? Theme.warning : !root.showing_vox && root.muted ? Style.text_muted : Theme.fg_core
                     font.family: Style.font_family
                     font.pixelSize: Style.font_size
                 }

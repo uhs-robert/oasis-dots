@@ -295,7 +295,7 @@ enabled = false
 source = "mic"
 
 [osd]
-enabled = true
+enabled = false
 frontend = "quickshell"
 position = "bottom-center"
 width_px = 400
