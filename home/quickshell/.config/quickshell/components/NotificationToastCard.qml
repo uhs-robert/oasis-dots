@@ -283,13 +283,13 @@ Rectangle {
             Text {
                 Layout.fillWidth: true
                 Layout.minimumWidth: 0
-                visible: root.notification && root.notification.body !== ""
+                visible: root.notification && NotificationState.clean_body(root.notification.body) !== ""
                 maximumLineCount: 4
                 wrapMode: Text.Wrap
                 elide: Text.ElideRight
                 // StyledText (unlike RichText) elides correctly and still renders <b>/<i>/etc.
                 textFormat: Text.StyledText
-                text: root.notification ? root.notification.body : ""
+                text: root.notification ? NotificationState.clean_body(root.notification.body) : ""
                 color: Style.text_muted
                 font.family: Style.font_family
                 font.pixelSize: Style.font_size

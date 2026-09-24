@@ -278,6 +278,12 @@ Singleton {
         root.history = root.history.slice();
     }
 
+    // Meeting invites open with a ~:~:~ rule; lines made only of punctuation carry nothing.
+    function clean_body(text) {
+        if (!text) return "";
+        return text.split(/<br\s*\/?>|\n/).filter(l => !/^[\s\-~:_=*#.·|]{6,}$/.test(l)).join("<br>").replace(/^(\s|<br>)+|(\s|<br>)+$/g, "");
+    }
+
     readonly property string state_dir: Quickshell.stateDir
 
     Process {
