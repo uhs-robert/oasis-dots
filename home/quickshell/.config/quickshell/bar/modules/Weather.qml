@@ -48,19 +48,23 @@ Item {
 
         Item {
             Layout.alignment: Qt.AlignVCenter
-            implicitWidth: icon.width
-            implicitHeight: icon.height
+            implicitWidth: icon.visible ? icon.implicit_size : 0
+            implicitHeight: icon.implicit_size
 
             Image {
                 id: icon
                 readonly property int implicit_size: root.compact ? 24 : 30
                 readonly property real dpr: QsWindow.window ? QsWindow.window.devicePixelRatio : 1
 
+                // The icon art has wide padding (more at night), so it draws past its slot.
+                readonly property int draw_size: Math.round(implicit_size * 1.3)
+
                 visible: root.has_data
-                width: visible ? implicit_size : 0
-                height: implicit_size
-                sourceSize.width: Math.ceil(implicit_size * dpr)
-                sourceSize.height: Math.ceil(implicit_size * dpr)
+                anchors.centerIn: parent
+                width: draw_size
+                height: draw_size
+                sourceSize.width: Math.ceil(draw_size * dpr)
+                sourceSize.height: Math.ceil(draw_size * dpr)
                 source: root.has_data ? WeatherState.icon_source(root.current.code, root.current.is_day) : ""
                 smooth: true
                 mipmap: true
