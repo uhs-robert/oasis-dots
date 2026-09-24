@@ -204,9 +204,26 @@ Item {
         if (root.has_center && !has_media) Popups.register_default("media", center_island.body_item, center_island.bg_color, root.screen_name);
     }
 
-    onLeft_entriesChanged: sync_clock_anchor()
-    onCenter_entriesChanged: sync_clock_anchor()
-    onRight_entriesChanged: sync_clock_anchor()
-    Component.onCompleted: sync_clock_anchor()
+    // Popup names in bar order for Ctrl+H/L walking; workspaces and voxtype have no popup.
+    function popup_names(entries) {
+        return entries.filter(e => e.base !== "workspaces" && e.base !== "voxtype").map(e => e.base);
+    }
+
+    function sync_popup_order() {
+        const has_media = [root.left_entries, root.center_entries, root.right_entries].some(l => l.some(e => e.base === "media"));
+        const center_names = root.popup_names(root.center_entries);
+        if (root.has_center && !has_media) center_names.push("media");
+        Popups.register_order(root.screen_name, root.popup_names(root.left_entries).concat(center_names, root.popup_names(root.right_entries)));
+    }
+
+    function sync_popups() {
+        sync_clock_anchor();
+        sync_popup_order();
+    }
+
+    onLeft_entriesChanged: sync_popups()
+    onCenter_entriesChanged: sync_popups()
+    onRight_entriesChanged: sync_popups()
+    Component.onCompleted: sync_popups()
     Component.onDestruction: Popups.unregister_screen(root.screen_name)
 }

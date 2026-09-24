@@ -18,6 +18,9 @@ Singleton {
     // screen_name -> { module_name: { item, color } }, so each bar keeps its own anchors.
     property var default_anchors: ({})
 
+    // screen_name -> ordered popup names in bar order, kept by Bar for Ctrl+H/L walking.
+    property var popup_order: ({})
+
     // Lets a module register the item/color its popup anchors to when opened without a click (IPC).
     // `owner` is the registering module; it defaults to the anchor item (the clock has no module).
     function register_default(name, item, color, screen_name, owner, back_to) {
@@ -25,10 +28,15 @@ Singleton {
         default_anchors[screen_name][name] = { item: item, color: color, owner: owner || item, back_to: back_to || "" };
     }
 
+    function register_order(screen_name, names) {
+        popup_order[screen_name] = names;
+    }
+
     // Called when a bar is destroyed so a popup never anchors to a deleted item.
     function unregister_screen(screen_name) {
         if (open_screen_name === screen_name) close();
         delete default_anchors[screen_name];
+        delete popup_order[screen_name];
     }
 
     // Removes an entry only if its owner registered it: a rebuilt module shares the island
@@ -40,21 +48,52 @@ Singleton {
         if (open_screen_name === screen_name && open_name === name) close();
     }
 
+    // Quickshell nulls a JS reference to a QObject once it's destroyed, so a plain truthy check finds stale entries.
+    function find_in_screen(screen_name, name) {
+        const entry = default_anchors[screen_name] && default_anchors[screen_name][name];
+        return entry && entry.item ? Object.assign({ screen_name: screen_name }, entry) : null;
+    }
+
     // Prefers the focused monitor's bar, falling back to any bar that has this module.
-    // Dead/destroyed items are skipped so a stale entry never gets handed out.
     function find_default(name) {
         const focused = Hyprland.focusedMonitor ? Hyprland.focusedMonitor.name : "";
-        // Quickshell nulls a JS reference to a QObject once it's destroyed, so a plain truthy check finds stale entries.
-        const is_live = entry => !!(entry && entry.item);
-        if (focused && default_anchors[focused] && is_live(default_anchors[focused][name])) {
-            return Object.assign({ screen_name: focused }, default_anchors[focused][name]);
+        if (focused) {
+            const found = root.find_in_screen(focused, name);
+            if (found) return found;
         }
         for (const screen_name in default_anchors) {
-            if (is_live(default_anchors[screen_name][name])) {
-                return Object.assign({ screen_name: screen_name }, default_anchors[screen_name][name]);
-            }
+            const found = root.find_in_screen(screen_name, name);
+            if (found) return found;
         }
         return null;
+    }
+
+    // Anchors are island bodies; read the Island's color, since a shaded body is transparent.
+    function anchor_color(found) {
+        const island = found.item ? found.item.parent : null;
+        return island && island.bg_color !== undefined ? island.bg_color : found.color;
+    }
+
+    // Steps to the next (delta 1) or previous (delta -1) module's popup in that screen's bar order, wrapping.
+    function walk(delta) {
+        const screen_name = root.open_screen_name;
+        const order = root.popup_order[screen_name] || [];
+        if (order.length === 0) return;
+        let idx = order.indexOf(root.open_name);
+        if (idx === -1) {
+            if (root.back_name === "") return;
+            idx = order.indexOf(root.back_name);
+            if (idx === -1) return;
+        }
+        const n = order.length;
+        for (let step = 1; step <= n; step++) {
+            const candidate = order[((idx + delta * step) % n + n) % n];
+            const found = root.find_in_screen(screen_name, candidate);
+            if (found) {
+                root.open(candidate, found.item, root.anchor_color(found), screen_name, found.back_to);
+                return;
+            }
+        }
     }
 
     function open(name, anchor_item, color, screen_name, back_to) {
@@ -66,9 +105,7 @@ Singleton {
         } else {
             const found = root.find_default(name);
             open_anchor = found ? found.item : null;
-            // Anchors are island bodies; read the Island's color, since a shaded body is transparent.
-            const island = found && found.item ? found.item.parent : null;
-            open_color = found ? (island && island.bg_color !== undefined ? island.bg_color : found.color) : (color || Theme.bg_mantle);
+            open_color = found ? root.anchor_color(found) : (color || Theme.bg_mantle);
             // A popup with no module (the docked picker) opens on the screen it names.
             open_screen_name = found ? found.screen_name : (screen_name || "");
             if (found && !back) back = found.back_to || "";

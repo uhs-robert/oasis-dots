@@ -137,6 +137,8 @@ PanelWindow {
             root.step_search(back ? -1 : 1);
         } else if (event.key === Qt.Key_Backspace && Popups.back_name !== "") {
             Popups.back();
+        } else if ((event.modifiers & Qt.ControlModifier) && (event.key === Qt.Key_H || event.key === Qt.Key_L)) {
+            Popups.walk(event.key === Qt.Key_L ? 1 : -1);
         } else if (event.key === Qt.Key_Q) {
             Popups.close();
         } else if (tabs.length > 0 && event.key === Qt.Key_BracketLeft) {
@@ -170,6 +172,24 @@ PanelWindow {
     // Full width along the bottom of the screen, rising from its edge; the frame loses its rounded corners.
     property bool dock_bottom: false
     readonly property real frame_radius: root.dock_bottom ? 0 : root.st.frame_radius
+    // Shortcuts fire before the focused item, so popups that bind h/l themselves still walk.
+    function walk_allowed() {
+        const f = content_scope.Window.activeFocusItem;
+        return root.wanted && !root.passive && !(f && "cursorPosition" in f);
+    }
+
+    Shortcut {
+        sequences: ["Ctrl+H"]
+        enabled: root.visible && root.walk_allowed()
+        onActivated: Popups.walk(-1)
+    }
+
+    Shortcut {
+        sequences: ["Ctrl+L"]
+        enabled: root.visible && root.walk_allowed()
+        onActivated: Popups.walk(1)
+    }
+
     // Never narrower than the island's bottom edge (its body, between the slants).
     implicitWidth: root.passive ? root.island_width : root.fit_island && root.island_width > 0 && root.side !== "center" ? root.island_width : Math.max(Style.px(preferred_width) + root.st.lcd_margin * 2, island_width, root.st.popup_min_width)
     implicitHeight: body_height + header_height + footer_height + root.st.frame_drop
