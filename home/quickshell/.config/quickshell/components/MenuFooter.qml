@@ -10,7 +10,9 @@ Item {
     property string text: ""
     property bool wrap: Style.footer_wrap
     // Tabs that show their number already teach "1-N select".
-    readonly property string shown_text: Style.tab_keys ? root.text.split(" · ").filter(g => !/^1-\d select$/.test(g)).join(" · ") : root.text
+    readonly property string filtered_text: Style.tab_keys ? root.text.split(" · ").filter(g => !/^1-\d select$/.test(g)).join(" · ") : root.text
+    readonly property var key_glyphs: ({ Enter: String.fromCodePoint(0xF0311), Esc: String.fromCodePoint(0xF12B7), Tab: String.fromCodePoint(0xF0312), space: String.fromCodePoint(0xF1050) })
+    readonly property string shown_text: root.filtered_text.replace(/\b(Enter|Esc|Tab|space)\b/g, k => root.key_glyphs[k])
     readonly property int rule_gap: Style.footer_rule ? 5 : 0
 
     Layout.minimumWidth: 0
