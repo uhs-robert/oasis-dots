@@ -75,4 +75,5 @@ ShellRoot {
     StyleIpc {}
     BarTooltip {}
     NotificationToasts {}
+    Osd {}
 }
