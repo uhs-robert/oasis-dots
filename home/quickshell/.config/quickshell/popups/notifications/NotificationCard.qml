@@ -13,6 +13,7 @@ Item {
 
     property var entry: null
     property bool selected: false
+    property int focused_action: -1
 
     signal invoke_requested()
     signal select_requested()
@@ -175,13 +176,15 @@ Item {
                         Rectangle {
                             id: action_chip
                             required property var modelData
+                            required property int index
+                            readonly property bool focused: action_chip.index === root.focused_action
 
                             implicitWidth: Math.min(action_label.implicitWidth + 18, layout.width)
                             implicitHeight: 26
                             radius: Style.radius(13)
                             color: Style.boxed_cards ? "transparent" : Theme.bg_surface
-                            border.width: Style.boxed_cards ? 1 : 0
-                            border.color: Style.key_border
+                            border.width: Style.boxed_cards || action_chip.focused ? 1 : 0
+                            border.color: action_chip.focused ? Theme.theme_secondary : Style.key_border
 
                             Text {
                                 id: action_label

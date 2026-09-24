@@ -22,6 +22,8 @@ Popup {
     jumps_enabled: true
 
     property int selected: 0
+    // -1 is the card body; 0.. are the selected card's action buttons.
+    property int action_index: -1
 
     readonly property bool is_open: Popups.open_name === "notifications"
     onIs_openChanged: if (is_open) {
@@ -29,6 +31,7 @@ Popup {
         NotificationState.mark_read();
     }
     onCurrent_tabChanged: root.selected = 0
+    onSelectedChanged: root.action_index = -1
     onJump_first: root.go_first()
     onJump_last: root.go_last()
 
@@ -125,10 +128,25 @@ Popup {
         if (sel) NotificationState.dismiss(sel.entry);
     }
 
+    function actions_of(entry) {
+        const all = entry && entry.notification && entry.notification.actions ? entry.notification.actions : [];
+        const list = [];
+        for (let i = 0; i < all.length; i++) if (all[i].identifier !== "default") list.push(all[i]);
+        return list;
+    }
+
+    function move_action(delta) {
+        const sel = root.entry_rows[root.selected];
+        const count = sel ? root.actions_of(sel.entry).length : 0;
+        root.action_index = Math.max(-1, Math.min(count - 1, root.action_index + delta));
+    }
+
     function invoke_selected() {
         const sel = root.entry_rows[root.selected];
         if (!sel) return;
-        NotificationState.invoke_default(sel.entry);
+        const actions = root.actions_of(sel.entry);
+        if (root.action_index >= 0 && root.action_index < actions.length) NotificationState.invoke_action(sel.entry, actions[root.action_index]);
+        else NotificationState.invoke_default(sel.entry);
         Popups.close();
     }
 
@@ -138,6 +156,12 @@ Popup {
             event.accepted = true;
         } else if (event.key === Qt.Key_K) {
             root.move_selected(-1);
+            event.accepted = true;
+        } else if (event.key === Qt.Key_L) {
+            root.move_action(1);
+            event.accepted = true;
+        } else if (event.key === Qt.Key_H) {
+            root.move_action(-1);
             event.accepted = true;
         } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
             root.invoke_selected();
@@ -344,6 +368,7 @@ Popup {
                             width: row_item.width
                             entry: row_item.modelData.type === "entry" ? row_item.modelData.entry : null
                             selected: !!(row_item.modelData.type === "entry" && root.entry_rows[root.selected] && root.entry_rows[root.selected].entry === row_item.modelData.entry)
+                            focused_action: card.selected ? root.action_index : -1
                             onSelect_requested: root.select_entry(row_item.modelData.entry)
                             onInvoke_requested: {
                                 NotificationState.invoke_default(row_item.modelData.entry);
@@ -383,7 +408,7 @@ Popup {
 
             MenuFooter {
                 Layout.fillWidth: true
-                text: "[ ] tabs · 1-3 select · Tab order · j/k move · gg/G first/last · Enter open · d/x dismiss · C clear all · t toggle"
+                text: "[ ] tabs · 1-3 select · Tab order · j/k move · gg/G first/last · h/l action · Enter open · d/x dismiss · C clear all · t toggle"
             }
         }
     }
