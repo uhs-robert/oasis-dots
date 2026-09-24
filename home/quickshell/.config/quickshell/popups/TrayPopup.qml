@@ -14,8 +14,9 @@ Popup {
 
     popup_name: "tray"
     preferred_width: 300
-    footer_hint: "j/k move · Enter open · m/l menu · q close"
+    footer_hint: "j/k move · gg/G first/last · Enter open · m/l menu · q close"
     body_height: content.implicitHeight + 24
+    jumps_enabled: true
 
     readonly property var items: SystemTray.items.values
 
@@ -24,6 +25,8 @@ Popup {
 
     readonly property bool is_open: Popups.open_name === "tray"
     onIs_openChanged: if (is_open) root.selected = 0
+    onJump_first: root.selected = 0
+    onJump_last: root.selected = Math.max(0, root.items.length - 1)
 
     function norm(str) {
         return (str || "").toLowerCase().replace(/[^a-z0-9]/g, "");
@@ -119,10 +122,10 @@ Popup {
         Keys.onPressed: event => {
             const item_data = root.items[root.selected];
             if (event.key === Qt.Key_J) {
-                root.selected = Math.min(root.items.length - 1, root.selected + 1);
+                root.selected = root.wrap_index(root.selected, 1, 0, root.items.length);
                 event.accepted = true;
             } else if (event.key === Qt.Key_K) {
-                root.selected = Math.max(0, root.selected - 1);
+                root.selected = root.wrap_index(root.selected, -1, 0, root.items.length);
                 event.accepted = true;
             } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
                 root.activate_row(item_data);

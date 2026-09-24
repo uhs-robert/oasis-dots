@@ -13,6 +13,9 @@ Popup {
     popup_name: "keeptabs"
     preferred_width: 340
     body_height: content.implicitHeight + 24
+    key_help: root.current_tab === 0
+        ? "[ ] tabs · 1-2 select · j/k move · gg/G first/last · Enter/click focus"
+        : "[ ] tabs · 1-2 select · r refresh"
 
     property var sessions: []
     property int selected: 0
@@ -98,7 +101,7 @@ Popup {
 
     function move_selected(delta) {
         if (root.sessions.length === 0) return;
-        root.selected = (root.selected + delta + root.sessions.length) % root.sessions.length;
+        root.selected = root.wrap_index(root.selected, delta, 0, root.sessions.length);
         session_list.positionViewAtIndex(root.selected, ListView.Contain);
     }
 
@@ -408,9 +411,7 @@ Popup {
 
             MenuFooter {
                 Layout.fillWidth: true
-                text: root.current_tab === 0
-                    ? "[ ] tabs · 1-2 select · j/k move · gg/G first/last · Enter/click focus"
-                    : "[ ] tabs · 1-2 select · r refresh"
+                text: root.help_hint
             }
         }
     }

@@ -11,8 +11,9 @@ Popup {
 
     popup_name: "start"
     preferred_width: 180
-    footer_hint: root.confirm ? "y/Enter confirm · n/Esc back" : "j/k move · Enter run · a/s/l/o/r/p pick · q close"
+    footer_hint: root.confirm ? "y/Enter confirm · n/Esc back" : "j/k move · gg/G first/last · Enter run · a/s/l/o/r/p pick · q close"
     body_height: content.implicitHeight + 24
+    jumps_enabled: !root.confirm
 
     readonly property var actions: ["Apps", "Style", "Lock", "Logout", "Reboot", "Power Off"]
     readonly property var keys: ["a", "s", "l", "o", "r", "p"]
@@ -27,6 +28,8 @@ Popup {
         selected = 0;
         confirm = false;
     }
+    onJump_first: root.selected = 0
+    onJump_last: root.selected = root.actions.length - 1
 
     function choose(index) {
         selected = index;
@@ -71,10 +74,10 @@ Popup {
                 return;
             }
             if (event.key === Qt.Key_J) {
-                root.selected = (root.selected + 1) % root.actions.length;
+                root.selected = root.wrap_index(root.selected, 1, 0, root.actions.length);
                 event.accepted = true;
             } else if (event.key === Qt.Key_K) {
-                root.selected = (root.selected - 1 + root.actions.length) % root.actions.length;
+                root.selected = root.wrap_index(root.selected, -1, 0, root.actions.length);
                 event.accepted = true;
             } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
                 root.choose(root.selected);

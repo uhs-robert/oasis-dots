@@ -16,8 +16,9 @@ Popup {
         id: stepper
     }
     preferred_width: 260
-    footer_hint: "j/k move · h/l adjust · Enter profile · s/b/p profile · q close"
+    footer_hint: "j/k move · gg/G first/last · h/l adjust · Enter profile · s/b/p profile · q close"
     body_height: content.implicitHeight + 24
+    jumps_enabled: true
 
     readonly property var device: UPower.displayDevice
     readonly property bool has_battery: !!device && device.ready
@@ -72,6 +73,8 @@ Popup {
         ppd_check_proc.running = true;
         Backlight.refresh();
     }
+    onJump_first: root.selected = 0
+    onJump_last: root.selected = Math.max(0, root.nav_rows.length - 1)
 
     // Sysfs brightness has no inotify; poll while the popup is visible.
     Timer {
@@ -100,10 +103,10 @@ Popup {
         Keys.onPressed: event => {
             const row = root.nav_rows[root.selected];
             if (event.key === Qt.Key_J) {
-                root.selected = Math.min(root.nav_rows.length - 1, root.selected + 1);
+                root.selected = root.wrap_index(root.selected, 1, 0, root.nav_rows.length);
                 event.accepted = true;
             } else if (event.key === Qt.Key_K) {
-                root.selected = Math.max(0, root.selected - 1);
+                root.selected = root.wrap_index(root.selected, -1, 0, root.nav_rows.length);
                 event.accepted = true;
             } else if (event.key === Qt.Key_L) {
                 if (row && row.kind === "brightness") Backlight.set_percent(stepper.snap(Backlight.percent, 1, 1, 100));

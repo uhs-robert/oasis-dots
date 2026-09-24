@@ -16,6 +16,10 @@ PanelWindow {
     property real body_height: 0
     property string title: popup_name.toUpperCase()
     property string footer_hint: ""
+    // The full key list behind `?`; while set, the footer shows only help_hint.
+    property string key_help: footer_hint
+    readonly property string help_hint: "? help · q close"
+    property bool help_open: false
     // Styles with a `small` block draw "small" popups apart from "large" ones (notifications, weather, media).
     property string size_class: "small"
     readonly property var st: root.size_class === "small" ? Style.small : Style
@@ -51,12 +55,33 @@ PanelWindow {
         if (sub_views.length > 0) current_sub = (current_sub + delta + sub_views.length) % sub_views.length;
     }
 
+    // Wraps a j/k list index by delta within `count` items starting at `min` (e.g. min -1 for a switch row above the list).
+    function wrap_index(i, delta, min, count) {
+        if (count <= 0) return min;
+        return ((i - min + delta) % count + count) % count + min;
+    }
+
+    function is_help_key(event) {
+        return event.key === Qt.Key_Question || event.text === "?";
+    }
+
+    function focus_active_view() {
+        if (!root.visible) return;
+        if (root.help_open) key_help_view.forceActiveFocus();
+        else content_scope.forceActiveFocus();
+    }
+
+    // Deferred so the help view's visibility has already followed help_open.
+    onHelp_openChanged: Qt.callLater(root.focus_active_view)
+
     // Runs after the popup's own handlers: keys reach it only when nothing deeper accepted them.
     function handle_shared_key(event) {
         const focus_item = content_scope.Window.activeFocusItem;
         if (focus_item && "cursorPosition" in focus_item) return;
         const back = event.key === Qt.Key_Backtab || (event.modifiers & Qt.ShiftModifier);
-        if (event.key === Qt.Key_Q) {
+        if (root.key_help !== "" && root.is_help_key(event)) {
+            help_open = true;
+        } else if (event.key === Qt.Key_Q) {
             Popups.close();
         } else if (tabs.length > 0 && event.key === Qt.Key_BracketLeft) {
             step_tab(-1);
@@ -137,6 +162,7 @@ PanelWindow {
             held_anchor = Popups.open_anchor;
             held_screen_name = Popups.open_screen_name;
             held_color = Popups.open_color;
+            help_open = false;
             visible = true;
             open_anim.restart();
             content_scope.forceActiveFocus();
@@ -170,6 +196,7 @@ PanelWindow {
             script: {
                 root.visible = false;
                 root.held_anchor = null;
+                root.help_open = false;
             }
         }
     }
@@ -396,7 +423,7 @@ PanelWindow {
                     anchors.leftMargin: 12 + root.st.lcd_margin
                     anchors.rightMargin: 12 + root.st.lcd_margin
                     anchors.bottomMargin: 8 + root.st.inset_pad + root.st.lcd_margin * 2 + root.engraving_height
-                    text: root.footer_hint
+                    text: root.key_help !== "" ? root.help_hint : root.footer_hint
                 }
 
                 FocusScope {
@@ -407,9 +434,20 @@ PanelWindow {
                     anchors.leftMargin: root.st.lcd_margin
                     anchors.rightMargin: root.st.lcd_margin
                     focus: true
+                    opacity: root.help_open ? 0 : 1
 
                     Keys.onEscapePressed: Popups.close()
                     Keys.onPressed: event => root.handle_shared_key(event)
+                }
+
+                KeyHelp {
+                    id: key_help_view
+                    anchors.fill: content_scope
+                    visible: root.help_open
+                    text: root.key_help
+                    tab_count: root.tabs.length
+                    has_views: root.sub_views.length > 0
+                    onBack: root.help_open = false
                 }
             }
 
@@ -483,5 +521,5 @@ PanelWindow {
         }
     }
 
-    onSuspend_grabChanged: if (!root.suspend_grab && root.visible) content_scope.forceActiveFocus()
+    onSuspend_grabChanged: if (!root.suspend_grab) root.focus_active_view()
 }

@@ -2,6 +2,7 @@
 import QtQuick
 import QtQuick.Layouts
 import "../theme"
+import "KeyHints.js" as KeyHints
 
 // The key hint line under a popup; some styles rule it off with a dashed line.
 Item {
@@ -14,15 +15,9 @@ Item {
     property bool centered: false
     // Tabs that show their number already teach "1-N select".
     readonly property string filtered_text: root.st.tab_keys ? root.text.split(" · ").filter(g => !/^1-\d select$/.test(g)).join(" · ") : root.text
-    readonly property var key_glyphs: ({ Enter: String.fromCodePoint(0xF0311), Esc: String.fromCodePoint(0xF12B7), Tab: String.fromCodePoint(0xF0312), space: String.fromCodePoint(0xF1050), Backspace: String.fromCodePoint(0xF030D) })
-    readonly property string shown_text: root.filtered_text.replace(/\b(Enter|Esc|Tab|space|Backspace)\b/g, k => root.key_glyphs[k])
+    readonly property string shown_text: KeyHints.with_glyphs(root.filtered_text)
     readonly property int rule_gap: root.st.footer_rule ? 5 : 0
-
-    // Each "key desc" group; "[ ]" is the one key that contains a space.
-    readonly property var groups: root.shown_text === "" ? [] : root.shown_text.split(" · ").map(g => {
-        const key = g.startsWith("[ ]") ? "[ ]" : g.split(" ")[0];
-        return { key: key, desc: g.slice(key.length).trim() };
-    })
+    readonly property var groups: KeyHints.parse(root.shown_text)
 
     Layout.minimumWidth: 0
     implicitWidth: hint.childrenRect.width

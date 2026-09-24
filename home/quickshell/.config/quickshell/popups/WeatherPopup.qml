@@ -15,6 +15,7 @@ Popup {
     preferred_width: 440
     fit_island: true
     body_height: content.implicitHeight + 24
+    key_help: "[ ] tabs · 1-" + root.tabs.length + " select · Tab view · h/l move · H/L jump · gg now · G end · r refresh" + (root.has_alerts ? " · a alerts" : "")
 
     readonly property var base_tab_names: ["Daily", "Hourly"]
     readonly property bool has_alerts: WeatherState.alerts.length > 0
@@ -95,7 +96,7 @@ Popup {
         if (jump) {
             root.alert_cursor = dir < 0 ? 0 : n - 1;
         } else if (WeatherState.alerts.length > 1) {
-            root.alert_cursor = Math.max(0, Math.min(n - 1, root.alert_cursor + dir));
+            root.alert_cursor = root.wrap_index(root.alert_cursor, dir, 0, WeatherState.alerts.length);
         } else if (alerts_view) {
             alerts_view.scroll_detail(dir);
         }
@@ -392,7 +393,7 @@ Popup {
             MenuFooter {
                 Layout.fillWidth: true
                 wrap: true
-                text: "[ ] tabs · 1-" + root.tabs.length + " select · Tab view · h/l move · H/L jump · gg now · G end · r refresh" + (root.has_alerts ? " · a alerts" : "")
+                text: root.help_hint
             }
         }
     }

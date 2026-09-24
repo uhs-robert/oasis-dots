@@ -16,10 +16,11 @@ Popup {
         id: stepper
     }
     preferred_width: 320
-    footer_hint: "j/k move · 1-9 device · h/l adjust · m mute · M mic · Enter default · q close"
+    footer_hint: "j/k move · gg/G first/last · 1-9 device · h/l adjust · m mute · M mic · Enter default · q close"
     // The list fits its rows and only scrolls past most of the screen height.
     readonly property real max_list_height: (root.screen ? root.screen.height : 1080) * 0.6
     body_height: content.implicitHeight + 24
+    jumps_enabled: true
 
     readonly property var output_devices: Pipewire.nodes.values.filter(n => n.isSink && !n.isStream && n.audio)
     readonly property var input_devices: Pipewire.nodes.values.filter(n => !n.isSink && !n.isStream && n.audio)
@@ -67,6 +68,8 @@ Popup {
 
     readonly property bool is_open: Popups.open_name === "volume"
     onIs_openChanged: if (is_open) selected = 0
+    onJump_first: root.select_row(0)
+    onJump_last: root.select_row(Math.max(0, root.rows.length - 1))
 
     PwObjectTracker {
         objects: [Pipewire.defaultAudioSink, Pipewire.defaultAudioSource].filter(o => o).concat(root.streams)
@@ -105,11 +108,11 @@ Popup {
         Keys.onPressed: event => {
             const row = root.rows[root.selected];
             if (event.key === Qt.Key_J) {
-                root.selected = Math.min(root.rows.length - 1, root.selected + 1);
+                root.selected = root.wrap_index(root.selected, 1, 0, root.rows.length);
                 rows_list.positionViewAtIndex(root.selected, ListView.Contain);
                 event.accepted = true;
             } else if (event.key === Qt.Key_K) {
-                root.selected = Math.max(0, root.selected - 1);
+                root.selected = root.wrap_index(root.selected, -1, 0, root.rows.length);
                 rows_list.positionViewAtIndex(root.selected, ListView.Contain);
                 event.accepted = true;
             } else if (event.key === Qt.Key_L && row && root.is_slider_row(row.type)) {

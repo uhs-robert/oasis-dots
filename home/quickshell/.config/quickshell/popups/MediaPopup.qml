@@ -16,6 +16,7 @@ Popup {
     size_class: "large"
     preferred_width: 520
     body_height: content.implicitHeight + 24
+    key_help: "Tab player · space play · h/l seek · H/L track · s shuffle · r loop · q close"
 
     readonly property var player: MediaState.active
     readonly property var players: MediaState.players
@@ -481,7 +482,7 @@ Popup {
             MenuFooter {
                 Layout.fillWidth: true
                 z: 1
-                text: "Tab player · space play · h/l seek · H/L track · s shuffle · r loop · q close"
+                text: root.help_hint
             }
         }
     }

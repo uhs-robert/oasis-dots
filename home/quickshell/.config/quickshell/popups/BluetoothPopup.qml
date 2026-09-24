@@ -11,8 +11,9 @@ Popup {
 
     popup_name: "bluetooth"
     preferred_width: 260
-    footer_hint: "j/k move · Enter connect · t toggle · q close"
+    footer_hint: "j/k move · gg/G first/last · Enter connect · t toggle · q close"
     body_height: content.implicitHeight + 24
+    jumps_enabled: true
 
     readonly property var adapter: QsBt.Bluetooth.defaultAdapter
     readonly property bool has_adapter: !!adapter
@@ -24,6 +25,8 @@ Popup {
 
     readonly property bool is_open: Popups.open_name === "bluetooth"
     onIs_openChanged: if (is_open) root.selected = 0;
+    onJump_first: root.selected = root.has_adapter ? -1 : 0
+    onJump_last: root.selected = Math.max(0, root.devices.length - 1)
 
     function toggle_power() {
         if (root.has_adapter) root.adapter.enabled = !root.adapter.enabled;
@@ -47,10 +50,12 @@ Popup {
                 root.toggle_power();
                 event.accepted = true;
             } else if (event.key === Qt.Key_J) {
-                root.selected = Math.max(0, Math.min(root.devices.length - 1, root.selected + 1));
+                const min = root.has_adapter ? -1 : 0;
+                root.selected = root.wrap_index(root.selected, 1, min, root.devices.length - min);
                 event.accepted = true;
             } else if (event.key === Qt.Key_K) {
-                root.selected = Math.max(root.has_adapter ? -1 : 0, root.selected - 1);
+                const min = root.has_adapter ? -1 : 0;
+                root.selected = root.wrap_index(root.selected, -1, min, root.devices.length - min);
                 event.accepted = true;
             } else if ((event.key === Qt.Key_Return || event.key === Qt.Key_Enter) && root.selected === -1) {
                 root.toggle_power();

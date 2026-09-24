@@ -10,8 +10,9 @@ Popup {
 
     popup_name: "style"
     preferred_width: 180
-    footer_hint: "j/k preview · 1-9 pick · Enter apply · c cava line · q cancel"
+    footer_hint: "j/k preview · gg/G first/last · 1-9 pick · Enter apply · c cava line · q cancel"
     body_height: content.implicitHeight + 24
+    jumps_enabled: true
 
     property int selected: 0
 
@@ -21,6 +22,8 @@ Popup {
         else Style.preview(Style.saved_name);
     }
     onSelectedChanged: if (is_open) Style.preview(Style.names[root.selected])
+    onJump_first: root.selected = 0
+    onJump_last: root.selected = Style.names.length - 1
 
     function apply() {
         Style.set(Style.names[root.selected]);
@@ -45,10 +48,10 @@ Popup {
                 Style.set_cava_line(!Style.cava_line);
                 event.accepted = true;
             } else if (event.key === Qt.Key_J) {
-                root.selected = (root.selected + 1) % Style.names.length;
+                root.selected = root.wrap_index(root.selected, 1, 0, Style.names.length);
                 event.accepted = true;
             } else if (event.key === Qt.Key_K) {
-                root.selected = (root.selected - 1 + Style.names.length) % Style.names.length;
+                root.selected = root.wrap_index(root.selected, -1, 0, Style.names.length);
                 event.accepted = true;
             } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
                 root.apply();

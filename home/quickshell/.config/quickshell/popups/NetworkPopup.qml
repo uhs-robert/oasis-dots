@@ -13,11 +13,12 @@ Popup {
 
     popup_name: "network"
     preferred_width: 320
-    footer_hint: root.password_mode ? "" : root.forget_confirm ? "y forget · n keep" : "j/k move · Enter connect · f forget · t toggle · r scan · q close"
+    footer_hint: root.password_mode ? "" : root.forget_confirm ? "y forget · n keep" : "j/k move · gg/G first/last · Enter connect · f forget · t toggle · r scan · q close"
 
     // The list fits its rows and only scrolls past most of the screen height.
     readonly property real max_list_height: (root.screen ? root.screen.height : 1080) * 0.6
     body_height: content.implicitHeight + 24
+    jumps_enabled: !root.password_mode && !root.forget_confirm
 
     readonly property var wifi_device: {
         for (const d of Networking.devices.values) if (d.type === DeviceType.Wifi) return d;
@@ -81,6 +82,11 @@ Popup {
         root.refresh_ip();
     }
     onNav_rowsChanged: if (root.selected >= root.nav_rows.length) root.selected = Math.max(0, root.nav_rows.length - 1);
+    onJump_first: root.selected = -1
+    onJump_last: {
+        root.selected = Math.max(-1, root.nav_rows.length - 1);
+        network_list.positionViewAtIndex(root.selected, ListView.Contain);
+    }
 
     function start_scan() {
         if (root.wifi_device) root.wifi_device.scannerEnabled = true;
@@ -190,6 +196,7 @@ Popup {
             if (root.password_mode) return;
 
             if (root.forget_confirm) {
+                if (root.is_help_key(event) || event.key === Qt.Key_Q) return;
                 if (event.key === Qt.Key_Y) {
                     if (root.forget_target) root.forget_target.forget();
                     root.forget_confirm = false;
@@ -204,11 +211,11 @@ Popup {
 
             const row = root.nav_rows[root.selected];
             if (event.key === Qt.Key_J) {
-                root.selected = Math.min(root.nav_rows.length - 1, root.selected + 1);
-                network_list.positionViewAtIndex(root.selected, ListView.Contain);
+                root.selected = root.wrap_index(root.selected, 1, -1, root.nav_rows.length + 1);
+                if (root.selected >= 0) network_list.positionViewAtIndex(root.selected, ListView.Contain);
                 event.accepted = true;
             } else if (event.key === Qt.Key_K) {
-                root.selected = Math.max(-1, root.selected - 1);
+                root.selected = root.wrap_index(root.selected, -1, -1, root.nav_rows.length + 1);
                 if (root.selected >= 0) network_list.positionViewAtIndex(root.selected, ListView.Contain);
                 event.accepted = true;
             } else if (event.key === Qt.Key_T) {
