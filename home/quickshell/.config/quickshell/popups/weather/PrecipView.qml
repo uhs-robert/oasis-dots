@@ -29,8 +29,8 @@ Item {
             Layout.preferredHeight: 18
             text: root.readout
             color: Theme.fg_core
-            font.family: Theme.font_family
-            font.pixelSize: Theme.popup_font_size - 2
+            font.family: Style.font_family
+            font.pixelSize: Style.font_size - 2
         }
 
         Canvas {
@@ -59,7 +59,7 @@ Item {
                 ctx.lineTo(w, margin_top + chart_h);
                 ctx.stroke();
 
-                ctx.font = (Theme.popup_font_size - 2) + "px " + Theme.font_family;
+                ctx.font = (Style.font_size - 2) + "px \"" + Style.font_family + "\"";
                 ctx.textAlign = "center";
 
                 for (let i = 0; i < rows.length; i++) {
@@ -93,6 +93,10 @@ Item {
                 function onHoursChanged() { canvas.requestPaint(); }
             }
             Connections {
+                target: Style
+                function onFont_familyChanged() { canvas.requestPaint(); }
+            }
+            Connections {
                 target: root
                 function onHour_cursorChanged() { canvas.requestPaint(); }
             }
@@ -112,8 +116,8 @@ Item {
             Layout.alignment: Qt.AlignHCenter
             text: "Bars: chance of precipitation · Numbers: amount (" + (WeatherState.settings.unit === "celsius" ? "mm" : "in") + ")"
             color: Theme.fg_dim
-            font.family: Theme.font_family
-            font.pixelSize: Theme.popup_font_size - 3
+            font.family: Style.font_family
+            font.pixelSize: Style.font_size - 3
         }
     }
 }

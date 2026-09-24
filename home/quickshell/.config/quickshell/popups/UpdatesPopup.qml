@@ -11,9 +11,9 @@ Popup {
 
     popup_name: "updates"
     preferred_width: 520
-    implicitHeight: content.implicitHeight + 24
+    body_height: content.implicitHeight + 24
 
-    readonly property int content_height: 320
+    readonly property int content_height: Style.px(320)
     sub_views: ["Official (" + UpdatesState.official.length + ")", "AUR (" + UpdatesState.aur.length + ")"]
     jumps_enabled: true
     readonly property var current_list: root.current_sub === 0 ? UpdatesState.official : UpdatesState.aur
@@ -94,8 +94,8 @@ Popup {
                     Layout.fillWidth: true
                     text: UpdatesState.total + " update" + (UpdatesState.total === 1 ? "" : "s") + " · " + UpdatesState.official.length + " official, " + UpdatesState.aur.length + " AUR"
                     color: Theme.fg_core
-                    font.family: Theme.font_family
-                    font.pixelSize: Theme.popup_font_size
+                    font.family: Style.font_family
+                    font.pixelSize: Style.font_size
                     font.bold: true
                     elide: Text.ElideRight
                 }
@@ -103,8 +103,8 @@ Popup {
                 Text {
                     text: UpdatesState.checking ? "Checking…" : UpdatesState.error ? UpdatesState.error : (UpdatesState.last_checked > 0 ? "Checked " + Qt.formatTime(new Date(UpdatesState.last_checked), "HH:mm") : "Never checked")
                     color: UpdatesState.error && !UpdatesState.checking ? Theme.warning : Theme.fg_muted
-                    font.family: Theme.font_family
-                    font.pixelSize: Theme.popup_font_size - 3
+                    font.family: Style.font_family
+                    font.pixelSize: Style.font_size - 3
                 }
             }
 
@@ -117,8 +117,8 @@ Popup {
                     visible: root.current_list.length === 0
                     text: UpdatesState.error ? UpdatesState.error : "Up to date"
                     color: UpdatesState.error ? Theme.warning : Theme.fg_dim
-                    font.family: Theme.font_family
-                    font.pixelSize: Theme.popup_font_size - 1
+                    font.family: Style.font_family
+                    font.pixelSize: Style.font_size - 1
                 }
 
                 ListView {
@@ -130,19 +130,18 @@ Popup {
                     model: root.current_list
                     currentIndex: root.selected
 
-                    delegate: Rectangle {
+                    delegate: MenuRow {
                         id: update_row
                         required property var modelData
                         required property int index
 
                         width: row_list.width
-                        height: 30
-                        radius: 4
-                        color: update_row.index === root.selected ? Theme.bg_surface : "transparent"
+                        height: Style.px(30)
+                        selected: update_row.index === root.selected
 
                         RowLayout {
                             anchors.fill: parent
-                            anchors.leftMargin: 8
+                            anchors.leftMargin: 8 + update_row.inset
                             anchors.rightMargin: 8
                             spacing: 8
 
@@ -151,9 +150,9 @@ Popup {
                                 Layout.minimumWidth: 0
                                 elide: Text.ElideRight
                                 text: update_row.modelData.name
-                                color: Theme.fg_core
-                                font.family: Theme.font_family
-                                font.pixelSize: Theme.popup_font_size - 2
+                                color: update_row.fg(Theme.fg_core)
+                                font.family: Style.font_family
+                                font.pixelSize: Style.font_size - 2
                             }
 
                             // One elided Text so long versions shrink from the left and keep the new version visible.
@@ -162,9 +161,9 @@ Popup {
                                 elide: Text.ElideLeft
                                 textFormat: Text.StyledText
                                 text: update_row.modelData.old + " → <font color=\"" + Theme.yellow + "\">" + update_row.modelData.new + "</font>"
-                                color: Theme.fg_muted
-                                font.family: Theme.font_family
-                                font.pixelSize: Theme.popup_font_size - 3
+                                color: update_row.fg(Theme.fg_muted)
+                                font.family: Style.font_family
+                                font.pixelSize: Style.font_size - 3
                             }
                         }
 
@@ -187,47 +186,27 @@ Popup {
                     Repeater {
                         model: root.sub_views
 
-                        Rectangle {
+                        MenuTab {
                             id: sub_chip
                             required property string modelData
                             required property int index
-                            readonly property bool active: sub_chip.index === root.current_sub
 
-                            implicitWidth: sub_label.implicitWidth + 20
-                            implicitHeight: 24
-                            radius: 12
-                            color: sub_chip.active ? Theme.bg_surface : "transparent"
-
-                            Text {
-                                id: sub_label
-                                anchors.centerIn: parent
-                                text: sub_chip.modelData
-                                color: sub_chip.active ? Theme.theme_secondary : Theme.fg_muted
-                                font.bold: sub_chip.active
-                                font.family: Theme.font_family
-                                font.pixelSize: Theme.popup_font_size - 3
-                            }
-
-                            MouseArea {
-                                anchors.fill: parent
-                                onClicked: {
-                                    root.current_sub = sub_chip.index;
-                                    root.selected = 0;
-                                }
+                            base_radius: 12
+                            label: sub_chip.modelData
+                            active: sub_chip.index === root.current_sub
+                            font_size: Style.font_size - 3
+                            onClicked: {
+                                root.current_sub = sub_chip.index;
+                                root.selected = 0;
                             }
                         }
                     }
                 }
             }
 
-            Text {
+            MenuFooter {
                 Layout.fillWidth: true
-                Layout.minimumWidth: 0
-                elide: Text.ElideRight
                 text: "Tab views · j/k move · gg/G ends · r refresh · u upgrade · q close"
-                color: Theme.fg_dim
-                font.family: Theme.font_family
-                font.pixelSize: Theme.popup_font_size - 4
             }
         }
     }

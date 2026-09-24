@@ -16,7 +16,8 @@ Popup {
         id: stepper
     }
     preferred_width: 260
-    implicitHeight: content.implicitHeight + 24
+    footer_hint: "j/k move · h/l adjust · Enter profile · q close"
+    body_height: content.implicitHeight + 24
 
     readonly property var device: UPower.displayDevice
     readonly property bool has_battery: !!device && device.ready
@@ -128,55 +129,56 @@ Popup {
             Text {
                 text: Math.round(root.percent) + "%"
                 color: Theme.fg_strong
-                font.family: Theme.font_family
-                font.pixelSize: Theme.popup_font_size + 4
+                font.family: Style.font_family
+                font.pixelSize: Style.font_size + 4
             }
 
             Text {
                 text: root.state_label
                 color: Theme.fg_muted
-                font.family: Theme.font_family
-                font.pixelSize: Theme.popup_font_size - 2
+                font.family: Style.font_family
+                font.pixelSize: Style.font_size - 2
             }
 
             Text {
                 visible: root.time_label !== ""
                 text: root.time_label
                 color: Theme.fg_muted
-                font.family: Theme.font_family
-                font.pixelSize: Theme.popup_font_size - 2
+                font.family: Style.font_family
+                font.pixelSize: Style.font_size - 2
             }
 
             Text {
                 visible: root.rate > 0
                 text: root.rate.toFixed(1) + " W"
                 color: Theme.fg_muted
-                font.family: Theme.font_family
-                font.pixelSize: Theme.popup_font_size - 2
+                font.family: Style.font_family
+                font.pixelSize: Style.font_size - 2
             }
 
-            Rectangle {
+            MenuRow {
+                id: brightness_row
                 Layout.fillWidth: true
                 Layout.topMargin: 6
-                height: 22
-                radius: 4
-                color: root.nav_rows[root.selected] && root.nav_rows[root.selected].kind === "brightness" ? Theme.bg_surface : "transparent"
+                height: Style.px(22)
+                selected: !!root.nav_rows[root.selected] && root.nav_rows[root.selected].kind === "brightness"
 
                 RowLayout {
                     anchors.fill: parent
-                    anchors.leftMargin: 6
+                    anchors.leftMargin: 6 + brightness_row.inset
                     anchors.rightMargin: 6
                     spacing: 8
 
                     Text {
                         text: "󰃠"
-                        color: Theme.theme_primary
-                        font.family: Theme.font_family
-                        font.pixelSize: Theme.popup_font_size
+                        color: brightness_row.fg(Theme.theme_primary)
+                        font.family: Style.font_family
+                        font.pixelSize: Style.font_size
                     }
 
                     Slider {
                         Layout.fillWidth: true
+                        on_selection: brightness_row.selected
                         value: Backlight.percent / 100
                         onMoved: v => Backlight.set_percent(Math.round(v * 100))
                     }
@@ -184,35 +186,36 @@ Popup {
                     Text {
                         Layout.preferredWidth: 32
                         text: Backlight.percent + "%"
-                        color: Theme.fg_core
-                        font.family: Theme.font_family
-                        font.pixelSize: Theme.popup_font_size - 1
+                        color: brightness_row.fg(Theme.fg_core)
+                        font.family: Style.font_family
+                        font.pixelSize: Style.font_size - 1
                     }
                 }
             }
 
-            Rectangle {
+            MenuRow {
+                id: kbd_row
                 visible: Backlight.has_kbd
                 Layout.fillWidth: true
-                height: 22
-                radius: 4
-                color: root.nav_rows[root.selected] && root.nav_rows[root.selected].kind === "kbd" ? Theme.bg_surface : "transparent"
+                height: Style.px(22)
+                selected: !!root.nav_rows[root.selected] && root.nav_rows[root.selected].kind === "kbd"
 
                 RowLayout {
                     anchors.fill: parent
-                    anchors.leftMargin: 6
+                    anchors.leftMargin: 6 + kbd_row.inset
                     anchors.rightMargin: 6
                     spacing: 8
 
                     Text {
                         text: "󰌌"
-                        color: Theme.theme_primary
-                        font.family: Theme.font_family
-                        font.pixelSize: Theme.popup_font_size
+                        color: kbd_row.fg(Theme.theme_primary)
+                        font.family: Style.font_family
+                        font.pixelSize: Style.font_size
                     }
 
                     Slider {
                         Layout.fillWidth: true
+                        on_selection: kbd_row.selected
                         value: Backlight.kbd_percent / 100
                         onMoved: v => Backlight.kbd_set_percent(Math.round(v * 100))
                     }
@@ -220,9 +223,9 @@ Popup {
                     Text {
                         Layout.preferredWidth: 32
                         text: Backlight.kbd_percent + "%"
-                        color: Theme.fg_core
-                        font.family: Theme.font_family
-                        font.pixelSize: Theme.popup_font_size - 1
+                        color: kbd_row.fg(Theme.fg_core)
+                        font.family: Style.font_family
+                        font.pixelSize: Style.font_size - 1
                     }
                 }
             }
@@ -232,14 +235,14 @@ Popup {
                 Layout.topMargin: 6
                 text: "power-profiles-daemon not running"
                 color: Theme.fg_dim
-                font.family: Theme.font_family
-                font.pixelSize: Theme.popup_font_size - 3
+                font.family: Style.font_family
+                font.pixelSize: Style.font_size - 3
             }
 
             Repeater {
                 model: root.ppd_available ? root.profiles : []
 
-                Rectangle {
+                MenuRow {
                     id: profile_row
                     required property var modelData
                     required property int index
@@ -248,22 +251,21 @@ Popup {
 
                     Layout.fillWidth: true
                     Layout.topMargin: profile_row.index === 0 ? 6 : 0
-                    height: 22
-                    radius: 4
-                    color: profile_row.nav_index === root.selected ? Theme.bg_surface : "transparent"
+                    height: Style.px(22)
+                    selected: profile_row.nav_index === root.selected
 
                     RowLayout {
                         anchors.fill: parent
-                        anchors.leftMargin: 6
+                        anchors.leftMargin: 6 + profile_row.inset
                         anchors.rightMargin: 6
                         spacing: 6
 
                         Text {
                             Layout.fillWidth: true
                             text: profile_row.modelData.label
-                            color: PowerProfiles.profile === profile_row.modelData.value ? Theme.theme_secondary : Theme.fg_core
-                            font.family: Theme.font_family
-                            font.pixelSize: Theme.popup_font_size - 1
+                            color: profile_row.fg(PowerProfiles.profile === profile_row.modelData.value ? Theme.theme_secondary : Theme.fg_core)
+                            font.family: Style.font_family
+                            font.pixelSize: Style.font_size - 1
                         }
                     }
 

@@ -89,7 +89,7 @@ Item {
         }
         ctx.globalAlpha = 1;
         ctx.fillStyle = Theme.fg_muted;
-        ctx.font = (Theme.popup_font_size - 2) + "px " + Theme.font_family;
+        ctx.font = (Style.font_size - 2) + "px \"" + Style.font_family + "\"";
         ctx.textAlign = "left";
         for (const b of root.day_boundaries) {
             ctx.fillText(b.label, b.index * root.hour_col_w + 3, 12);
@@ -179,8 +179,8 @@ Item {
             Layout.preferredHeight: root.readout_h
             text: root.readout
             color: Theme.fg_core
-            font.family: Theme.font_family
-            font.pixelSize: Theme.popup_font_size - 2
+            font.family: Style.font_family
+            font.pixelSize: Style.font_size - 2
             elide: Text.ElideRight
         }
 
@@ -207,6 +207,10 @@ Item {
                     Connections {
                         target: WeatherState
                         function onHoursChanged() { canvas.requestPaint(); }
+                    }
+                    Connections {
+                        target: Style
+                        function onFont_familyChanged() { canvas.requestPaint(); }
                     }
                     Connections {
                         target: root
@@ -237,7 +241,7 @@ Item {
                             anchors.fill: parent
                             visible: hour_col.index === root.hour_cursor
                             color: Theme.bg_surface
-                            radius: 3
+                            radius: Style.radius(3)
                         }
 
                         Image {
@@ -259,7 +263,7 @@ Item {
                             text: "▲"
                             rotation: hour_col.modelData.wind_dir
                             color: Theme.cyan
-                            font.pixelSize: Theme.popup_font_size
+                            font.pixelSize: Style.font_size
                         }
 
                         Text {
@@ -268,8 +272,8 @@ Item {
                             anchors.horizontalCenter: parent.horizontalCenter
                             text: WeatherState.format_hour(new Date(hour_col.modelData.dt))
                             color: hour_col.index === root.hour_cursor ? Theme.theme_secondary : Theme.fg_muted
-                            font.family: Theme.font_family
-                            font.pixelSize: Theme.popup_font_size - 2
+                            font.family: Style.font_family
+                            font.pixelSize: Style.font_size - 2
                         }
                     }
                 }

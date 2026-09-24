@@ -76,7 +76,7 @@ Item {
                     Rectangle {
                         anchors.fill: parent
                         anchors.margins: -2
-                        radius: 4
+                        radius: Style.radius(4)
                         color: Theme.bg_surface
                         visible: day_col.index === root.day_cursor
                     }
@@ -101,7 +101,7 @@ Item {
                                 anchors.bottom: parent.bottom
                                 anchors.horizontalCenter: parent.horizontalCenter
                                 width: parent.width * 0.55
-                                radius: 2
+                                radius: Style.radius(2)
                                 color: Theme.blue
                                 opacity: 0.35
                                 height: (Math.max(0, Math.min(100, day_col.modelData.pop)) / 100) * parent.height
@@ -111,7 +111,7 @@ Item {
                                 id: inner_band
                                 anchors.horizontalCenter: parent.horizontalCenter
                                 width: parent.width * 0.3
-                                radius: 2
+                                radius: Style.radius(2)
                                 color: Theme.yellow
                                 y: root.inner_top_y(day_col.modelData)
                                 height: Math.max(4, root.inner_bottom_y(day_col.modelData) - root.inner_top_y(day_col.modelData))
@@ -122,8 +122,8 @@ Item {
                                 y: inner_band.y - implicitHeight - 1
                                 text: Math.round(day_col.modelData.max) + "°"
                                 color: Theme.yellow
-                                font.family: Theme.font_family
-                                font.pixelSize: Theme.popup_font_size - 3
+                                font.family: Style.font_family
+                                font.pixelSize: Style.font_size - 3
                             }
 
                             Text {
@@ -131,8 +131,8 @@ Item {
                                 y: inner_band.y + inner_band.height + 1
                                 text: Math.round(day_col.modelData.min) + "°"
                                 color: Theme.yellow
-                                font.family: Theme.font_family
-                                font.pixelSize: Theme.popup_font_size - 3
+                                font.family: Style.font_family
+                                font.pixelSize: Style.font_size - 3
                             }
                         }
 
@@ -148,14 +148,14 @@ Item {
                                 text: "▲"
                                 rotation: day_col.modelData.wind_dir
                                 color: Theme.cyan
-                                font.pixelSize: Theme.popup_font_size - 3
+                                font.pixelSize: Style.font_size - 3
                             }
 
                             Rectangle {
                                 anchors.bottom: parent.bottom
                                 anchors.horizontalCenter: parent.horizontalCenter
                                 width: parent.width * 0.5
-                                radius: 2
+                                radius: Style.radius(2)
                                 color: Theme.cyan
                                 opacity: 0.5
                                 height: (day_col.modelData.wind_speed_max / root.wind_max) * (parent.height - 36)
@@ -174,8 +174,8 @@ Item {
                                 y: Math.max(16, parent.height - (day_col.modelData.wind_gusts_max / root.wind_max) * (parent.height - 36) - 18)
                                 text: Math.round(day_col.modelData.wind_speed_max)
                                 color: Theme.cyan
-                                font.family: Theme.font_family
-                                font.pixelSize: Theme.popup_font_size - 3
+                                font.family: Style.font_family
+                                font.pixelSize: Style.font_size - 3
                             }
                         }
 
@@ -189,7 +189,7 @@ Item {
                                 anchors.bottom: parent.bottom
                                 anchors.horizontalCenter: parent.horizontalCenter
                                 width: parent.width * 0.5
-                                radius: 2
+                                radius: Style.radius(2)
                                 color: WeatherState.uv_color(day_col.modelData.uv_max)
                                 opacity: 0.7
                                 height: Math.min(1, day_col.modelData.uv_max / 12) * (parent.height - 18)
@@ -200,8 +200,8 @@ Item {
                                 y: parent.height - Math.min(1, day_col.modelData.uv_max / 12) * (parent.height - 18) - 16
                                 text: day_col.modelData.uv_max.toFixed(1)
                                 color: WeatherState.uv_color(day_col.modelData.uv_max)
-                                font.family: Theme.font_family
-                                font.pixelSize: Theme.popup_font_size - 3
+                                font.family: Style.font_family
+                                font.pixelSize: Style.font_size - 3
                             }
                         }
 
@@ -215,7 +215,7 @@ Item {
                                 anchors.bottom: parent.bottom
                                 anchors.horizontalCenter: parent.horizontalCenter
                                 width: parent.width * 0.5
-                                radius: 2
+                                radius: Style.radius(2)
                                 color: Theme.yellow
                                 opacity: 0.55
                                 height: Math.min(1, day_col.modelData.sunshine_hours / 14) * (parent.height - 18)
@@ -226,8 +226,8 @@ Item {
                                 y: parent.height - Math.min(1, day_col.modelData.sunshine_hours / 14) * (parent.height - 18) - 16
                                 text: day_col.modelData.sunshine_hours.toFixed(1) + "h"
                                 color: Theme.yellow
-                                font.family: Theme.font_family
-                                font.pixelSize: Theme.popup_font_size - 3
+                                font.family: Style.font_family
+                                font.pixelSize: Style.font_size - 3
                             }
                         }
 
@@ -236,8 +236,8 @@ Item {
                             horizontalAlignment: Text.AlignHCenter
                             text: day_col.modelData.pop + "%"
                             color: Theme.blue
-                            font.family: Theme.font_family
-                            font.pixelSize: Theme.popup_font_size - 2
+                            font.family: Style.font_family
+                            font.pixelSize: Style.font_size - 2
                         }
 
                         Item {
@@ -262,8 +262,8 @@ Item {
                             horizontalAlignment: Text.AlignHCenter
                             text: day_col.modelData.weekday
                             color: day_col.index === root.day_cursor ? Theme.theme_secondary : Theme.fg_core
-                            font.family: Theme.font_family
-                            font.pixelSize: Theme.popup_font_size - 2
+                            font.family: Style.font_family
+                            font.pixelSize: Style.font_size - 2
                         }
                     }
                 }
@@ -278,8 +278,8 @@ Item {
             readonly property var selected: WeatherState.days[root.day_cursor]
             text: selected ? selected.cond + " · " + selected.precip.toFixed(2) + (WeatherState.settings.unit === "celsius" ? " mm" : " in") + " · " + (selected.sunrise || "—") + "–" + (selected.sunset || "—") : ""
             color: Theme.fg_muted
-            font.family: Theme.font_family
-            font.pixelSize: Theme.popup_font_size - 3
+            font.family: Style.font_family
+            font.pixelSize: Style.font_size - 3
         }
     }
 }

@@ -57,6 +57,7 @@ ShellRoot {
 
     ClockPopup {}
     StartPopup {}
+    StylePopup {}
     VolumePopup {}
     BatteryPopup {}
     BluetoothPopup {}
@@ -71,6 +72,7 @@ ShellRoot {
     PopupIpc {}
     BrightnessIpc {}
     NotificationsIpc {}
+    StyleIpc {}
     BarTooltip {}
     NotificationToasts {}
 }

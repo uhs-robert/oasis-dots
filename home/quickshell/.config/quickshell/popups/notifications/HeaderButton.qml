@@ -16,7 +16,7 @@ Rectangle {
 
     implicitWidth: row.implicitWidth + 28
     implicitHeight: row.implicitHeight + 16
-    radius: 8
+    radius: Style.radius(8)
     color: root.active ? Theme.theme_primary : mouse_area.pressed ? Qt.darker(Theme.bg_surface, 1.3) : mouse_area.containsMouse ? Theme.ui_visual_bg : Theme.bg_surface
     border.width: 1
     border.color: Theme.ui_border
@@ -29,35 +29,35 @@ Rectangle {
         Text {
             text: root.icon
             color: root.active ? Theme.bg_core : Theme.fg_core
-            font.family: Theme.font_family
-            font.pixelSize: Theme.popup_font_size
+            font.family: Style.font_family
+            font.pixelSize: Style.font_size
         }
 
         Text {
             text: root.label
             color: root.active ? Theme.bg_core : Theme.fg_core
             font.bold: root.active
-            font.family: Theme.font_family
-            font.pixelSize: Theme.popup_font_size - 2
+            font.family: Style.font_family
+            font.pixelSize: Style.font_size - 2
         }
 
         Rectangle {
             visible: root.key_hint !== ""
             implicitWidth: key_label.implicitWidth + 8
             implicitHeight: 16
-            radius: 3
-            color: root.active ? Theme.bg_core : Theme.bg_mantle
+            radius: Style.radius(3)
+            color: root.active ? Theme.bg_core : Style.key_bg
             border.width: 1
-            border.color: Theme.ui_border
+            border.color: root.active ? Theme.ui_border : Style.key_border
 
             Text {
                 id: key_label
                 anchors.centerIn: parent
                 text: root.key_hint
-                color: root.active ? Theme.theme_primary : Theme.fg_dim
+                color: root.active ? Theme.theme_primary : Style.key_fg
                 font.bold: true
-                font.family: Theme.font_family
-                font.pixelSize: Theme.popup_font_size - 5
+                font.family: Style.font_family
+                font.pixelSize: Style.font_size - 5
             }
         }
     }

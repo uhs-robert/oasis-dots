@@ -11,7 +11,8 @@ Popup {
 
     popup_name: "system"
     preferred_width: 340
-    implicitHeight: content.implicitHeight + 24
+    footer_hint: "j/k move · Enter select · q close"
+    body_height: content.implicitHeight + 24
 
     readonly property var stat_rows: {
         const list = [
@@ -91,7 +92,7 @@ Popup {
             Repeater {
                 model: root.stat_rows
 
-                Rectangle {
+                MenuRow {
                     id: stat_row
                     required property var modelData
                     required property int index
@@ -99,35 +100,35 @@ Popup {
                     readonly property bool is_btop: modelData.kind === "btop"
 
                     Layout.fillWidth: true
-                    height: 26
-                    radius: 4
+                    height: Style.px(26)
                     clip: true
-                    color: stat_row.index === root.selected ? Theme.bg_surface : "transparent"
+                    selected: stat_row.index === root.selected
 
                     RowLayout {
                         anchors.fill: parent
-                        anchors.leftMargin: 6
+                        anchors.leftMargin: 6 + stat_row.inset
                         anchors.rightMargin: 6
                         spacing: 8
 
                         Text {
                             text: stat_row.modelData.glyph
                             visible: !stat_row.is_btop
-                            color: Theme.theme_primary
-                            font.family: Theme.font_family
-                            font.pixelSize: Theme.popup_font_size
+                            color: stat_row.fg(Theme.theme_primary)
+                            font.family: Style.font_family
+                            font.pixelSize: Style.font_size
                         }
 
                         Text {
                             Layout.preferredWidth: 40
                             text: stat_row.modelData.label
-                            color: Theme.fg_core
-                            font.family: Theme.font_family
-                            font.pixelSize: Theme.popup_font_size - 1
+                            color: stat_row.fg(Theme.fg_core)
+                            font.family: Style.font_family
+                            font.pixelSize: Style.font_size - 1
                         }
 
                         Meter {
                             Layout.fillWidth: true
+                            on_selection: stat_row.selected
                             visible: !stat_row.is_btop
                             value: root.meter_value(stat_row.modelData.kind)
                             hot: root.meter_hot(stat_row.modelData.kind)
@@ -137,9 +138,9 @@ Popup {
                             visible: !stat_row.is_btop
                             text: root.value_text(stat_row.modelData.kind)
                                 + (stat_row.modelData.kind === "memory" ? " (" + SysStats.mem_used_gb.toFixed(1) + "/" + SysStats.mem_total_gb.toFixed(1) + "GB)" : "")
-                            color: Theme.fg_muted
-                            font.family: Theme.font_family
-                            font.pixelSize: Theme.popup_font_size - 2
+                            color: stat_row.fg(Theme.fg_muted)
+                            font.family: Style.font_family
+                            font.pixelSize: Style.font_size - 2
                         }
                     }
 

@@ -14,7 +14,7 @@ Popup {
 
     popup_name: "media"
     preferred_width: 520
-    implicitHeight: content.implicitHeight + 24
+    body_height: content.implicitHeight + 24
 
     readonly property var player: MediaState.active
     readonly property var players: MediaState.players
@@ -151,7 +151,7 @@ Popup {
                     Rectangle {
                         id: art_shadow_source
                         anchors.fill: parent
-                        radius: 12
+                        radius: Style.radius(12)
                         color: Theme.bg_shadow
                         visible: false
                         layer.enabled: true
@@ -171,7 +171,7 @@ Popup {
 
                     Rectangle {
                         anchors.fill: parent
-                        radius: 12
+                        radius: Style.radius(12)
                         color: Theme.bg_surface
                         visible: !art_image.has_art || art_image.status !== Image.Ready
                     }
@@ -181,14 +181,14 @@ Popup {
                         visible: !art_image.has_art || art_image.status !== Image.Ready
                         text: "\u{f001}"
                         color: Theme.fg_dim
-                        font.family: Theme.font_family
+                        font.family: Style.font_family
                         font.pixelSize: 48
                     }
 
                     Rectangle {
                         id: art_mask
                         anchors.fill: parent
-                        radius: 12
+                        radius: Style.radius(12)
                         visible: false
                         layer.enabled: true
                     }
@@ -226,7 +226,7 @@ Popup {
                         visible: !!root.player
                         implicitWidth: pill_label.implicitWidth + 16
                         implicitHeight: 20
-                        radius: 10
+                        radius: Style.radius(10)
                         color: Theme.bg_surface
 
                         Text {
@@ -234,8 +234,8 @@ Popup {
                             anchors.centerIn: parent
                             text: root.player ? (root.player.identity || "Player") : ""
                             color: Theme.fg_muted
-                            font.family: Theme.font_family
-                            font.pixelSize: Theme.popup_font_size - 4
+                            font.family: Style.font_family
+                            font.pixelSize: Style.font_size - 4
                         }
                     }
 
@@ -245,8 +245,8 @@ Popup {
                         elide: Text.ElideRight
                         text: root.player ? (root.player.trackTitle || "Unknown title") : "Nothing playing"
                         color: Theme.fg_core
-                        font.family: Theme.font_family
-                        font.pixelSize: Theme.popup_font_size + 5
+                        font.family: Style.font_family
+                        font.pixelSize: Style.font_size + 5
                         font.bold: true
                     }
 
@@ -257,8 +257,8 @@ Popup {
                         visible: root.player && root.player.trackArtist !== ""
                         text: root.player ? root.player.trackArtist : ""
                         color: Theme.theme_primary
-                        font.family: Theme.font_family
-                        font.pixelSize: Theme.popup_font_size
+                        font.family: Style.font_family
+                        font.pixelSize: Style.font_size
                     }
 
                     Text {
@@ -268,8 +268,8 @@ Popup {
                         visible: root.player && root.player.trackAlbum !== ""
                         text: root.player ? root.player.trackAlbum : ""
                         color: Theme.fg_dim
-                        font.family: Theme.font_family
-                        font.pixelSize: Theme.popup_font_size - 2
+                        font.family: Style.font_family
+                        font.pixelSize: Style.font_size - 2
                     }
 
                     Item { Layout.fillHeight: true }
@@ -290,7 +290,7 @@ Popup {
                             anchors.verticalCenter: parent.verticalCenter
                             width: parent.width
                             height: 6
-                            radius: 3
+                            radius: Style.radius(3)
                             color: Theme.bg_surface
                             visible: progress_item.has_length
                         }
@@ -299,7 +299,7 @@ Popup {
                             anchors.verticalCenter: parent.verticalCenter
                             width: parent.width * progress_item.ratio
                             height: 6
-                            radius: 3
+                            radius: Style.radius(3)
                             color: Theme.theme_primary
                             visible: progress_item.has_length
                         }
@@ -340,8 +340,8 @@ Popup {
                             visible: progress_item.has_length
                             text: root.player ? root.fmt_time(root.player.position) : "0:00"
                             color: Theme.fg_dim
-                            font.family: Theme.font_family
-                            font.pixelSize: Theme.popup_font_size - 4
+                            font.family: Style.font_family
+                            font.pixelSize: Style.font_size - 4
                         }
 
                         Item { Layout.fillWidth: true }
@@ -349,8 +349,8 @@ Popup {
                         Text {
                             text: progress_item.has_length ? root.fmt_time(progress_item.track_length) : "Live"
                             color: Theme.fg_dim
-                            font.family: Theme.font_family
-                            font.pixelSize: Theme.popup_font_size - 4
+                            font.family: Style.font_family
+                            font.pixelSize: Style.font_size - 4
                         }
                     }
 
@@ -426,7 +426,7 @@ Popup {
                                     Layout.fillWidth: true
                                     Layout.alignment: Qt.AlignBottom
                                     height: cava_strip.active ? Math.max(2, cava_bar.level * 18) : 2
-                                    radius: 1
+                                    radius: Style.radius(1)
                                     color: Theme.theme_primary
                                     opacity: cava_strip.active ? 0.25 : 0
 
@@ -453,44 +453,24 @@ Popup {
                     Repeater {
                         model: root.players
 
-                        Rectangle {
+                        MenuTab {
                             id: player_chip
                             required property var modelData
-                            readonly property bool active: modelData === root.player
 
-                            implicitWidth: chip_label.implicitWidth + 20
-                            implicitHeight: 24
-                            radius: 12
-                            color: player_chip.active ? Theme.bg_surface : "transparent"
-
-                            Text {
-                                id: chip_label
-                                anchors.centerIn: parent
-                                text: player_chip.modelData.identity || "Player"
-                                color: player_chip.active ? Theme.theme_secondary : Theme.fg_muted
-                                font.bold: player_chip.active
-                                font.family: Theme.font_family
-                                font.pixelSize: Theme.popup_font_size - 3
-                            }
-
-                            MouseArea {
-                                anchors.fill: parent
-                                onClicked: MediaState.select(player_chip.modelData)
-                            }
+                            base_radius: 12
+                            label: player_chip.modelData.identity || "Player"
+                            active: player_chip.modelData === root.player
+                            font_size: Style.font_size - 3
+                            onClicked: MediaState.select(player_chip.modelData)
                         }
                     }
                 }
             }
 
-            Text {
+            MenuFooter {
                 Layout.fillWidth: true
-                Layout.minimumWidth: 0
-                elide: Text.ElideRight
                 z: 1
                 text: "Tab player · space play · h/l seek · H/L track · s shuffle · r loop · q close"
-                color: Theme.fg_dim
-                font.family: Theme.font_family
-                font.pixelSize: Theme.popup_font_size - 4
             }
         }
     }

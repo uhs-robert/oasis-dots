@@ -11,11 +11,12 @@ Popup {
 
     popup_name: "start"
     preferred_width: 180
-    implicitHeight: content.implicitHeight + 24
+    footer_hint: root.confirm ? "y/Enter confirm · n/Esc back" : "j/k move · Enter run · q close"
+    body_height: content.implicitHeight + 24
 
-    readonly property var actions: ["Apps", "Lock", "Logout", "Reboot", "Power Off"]
-    readonly property var glyphs: ["󰣇", "󰌾", "󰍃", "󰜉", "󰐥"]
-    readonly property var glyph_colors: [Theme.green, Theme.fg_core, Theme.info, Theme.warning, Theme.theme_label]
+    readonly property var actions: ["Apps", "Style", "Lock", "Logout", "Reboot", "Power Off"]
+    readonly property var glyphs: ["󰣇", "󰏘", "󰌾", "󰍃", "󰜉", "󰐥"]
+    readonly property var glyph_colors: [Theme.green, Theme.theme_secondary, Theme.fg_core, Theme.info, Theme.warning, Theme.theme_label]
 
     property int selected: 0
     property bool confirm: false
@@ -29,19 +30,20 @@ Popup {
     function choose(index) {
         selected = index;
         if (index === 0) run(0);
+        else if (index === 1) Popups.open("style", Popups.open_anchor, Popups.open_color, Popups.open_screen_name);
         else confirm = true;
     }
 
     function run(index) {
         if (index === 0) {
             Quickshell.execDetached(["hyprctl", "dispatch", "LayerRules.exec_without_animation('rofi -show drun -theme ~/.config/rofi/themes/oasis-start.rasi')"]);
-        } else if (index === 1) {
-            Quickshell.execDetached(["sh", "-c", "~/.config/hypr/scripts/hyprlock-screenshot.lua"]);
         } else if (index === 2) {
-            Quickshell.execDetached(["sh", "-c", "command -v hyprshutdown >/dev/null 2>&1 && hyprshutdown || hyprctl dispatch \"hl.dsp.exit()\""]);
+            Quickshell.execDetached(["sh", "-c", "~/.config/hypr/scripts/hyprlock-screenshot.lua"]);
         } else if (index === 3) {
-            Quickshell.execDetached(["systemctl", "reboot"]);
+            Quickshell.execDetached(["sh", "-c", "command -v hyprshutdown >/dev/null 2>&1 && hyprshutdown || hyprctl dispatch \"hl.dsp.exit()\""]);
         } else if (index === 4) {
+            Quickshell.execDetached(["systemctl", "reboot"]);
+        } else if (index === 5) {
             Quickshell.execDetached(["systemctl", "poweroff"]);
         }
         Popups.close();
@@ -90,34 +92,34 @@ Popup {
             Repeater {
                 model: root.actions
 
-                Rectangle {
+                MenuRow {
                     id: row
                     required property int index
                     required property string modelData
 
                     Layout.fillWidth: true
-                    height: 28
-                    radius: 6
-                    color: index === root.selected ? Theme.bg_surface : "transparent"
+                    height: Style.px(28)
+                    base_radius: 6
+                    selected: index === root.selected
 
                     RowLayout {
                         anchors.left: parent.left
-                        anchors.leftMargin: 8
+                        anchors.leftMargin: 8 + row.inset
                         anchors.verticalCenter: parent.verticalCenter
                         spacing: 8
 
                         Text {
                             text: root.glyphs[row.index]
-                            color: root.glyph_colors[row.index]
-                            font.family: Theme.font_family
-                            font.pixelSize: Theme.popup_font_size
+                            color: row.fg(root.glyph_colors[row.index])
+                            font.family: Style.font_family
+                            font.pixelSize: Style.font_size
                         }
 
                         Text {
                             text: row.modelData
-                            color: Theme.fg_core
-                            font.family: Theme.font_family
-                            font.pixelSize: Theme.popup_font_size
+                            color: row.fg(Theme.fg_core)
+                            font.family: Style.font_family
+                            font.pixelSize: Style.font_size
                         }
                     }
 
@@ -139,15 +141,15 @@ Popup {
             Text {
                 text: root.glyphs[root.selected] + " " + root.actions[root.selected] + "?"
                 color: root.glyph_colors[root.selected]
-                font.family: Theme.font_family
-                font.pixelSize: Theme.popup_font_size
+                font.family: Style.font_family
+                font.pixelSize: Style.font_size
             }
 
             Text {
                 text: "Yes"
                 color: Theme.ok
-                font.family: Theme.font_family
-                font.pixelSize: Theme.popup_font_size
+                font.family: Style.font_family
+                font.pixelSize: Style.font_size
 
                 MouseArea {
                     anchors.fill: parent
@@ -158,8 +160,8 @@ Popup {
             Text {
                 text: "No"
                 color: Theme.error
-                font.family: Theme.font_family
-                font.pixelSize: Theme.popup_font_size
+                font.family: Style.font_family
+                font.pixelSize: Style.font_size
 
                 MouseArea {
                     anchors.fill: parent

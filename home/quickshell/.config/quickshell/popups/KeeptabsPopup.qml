@@ -12,12 +12,12 @@ Popup {
 
     popup_name: "keeptabs"
     preferred_width: 340
-    implicitHeight: content.implicitHeight + 24
+    body_height: content.implicitHeight + 24
 
     property var sessions: []
     property int selected: 0
     property bool stale: false
-    readonly property int content_height: 300
+    readonly property int content_height: Style.px(300)
 
     tabs: ["Agents", "Usage"]
     jumps_enabled: root.current_tab === 0
@@ -156,29 +156,17 @@ Popup {
                 Repeater {
                     model: root.tabs
 
-                    Rectangle {
+                    MenuTab {
                         id: tab_chip
                         required property string modelData
                         required property int index
 
                         Layout.fillWidth: true
-                        height: 26
-                        radius: 4
-                        color: tab_chip.index === root.current_tab ? Theme.bg_surface : "transparent"
-
-                        Text {
-                            anchors.centerIn: parent
-                            text: tab_chip.modelData
-                            color: tab_chip.index === root.current_tab ? Theme.theme_secondary : Theme.fg_muted
-                            font.family: Theme.font_family
-                            font.pixelSize: Theme.popup_font_size - 2
-                            font.bold: tab_chip.index === root.current_tab
-                        }
-
-                        MouseArea {
-                            anchors.fill: parent
-                            onClicked: root.set_tab(tab_chip.index)
-                        }
+                        implicitHeight: Style.px(26)
+                        label: tab_chip.modelData
+                        active: tab_chip.index === root.current_tab
+                        key: tab_chip.index < 9 ? String(tab_chip.index + 1) : ""
+                        onClicked: root.set_tab(tab_chip.index)
                     }
                 }
             }
@@ -193,8 +181,8 @@ Popup {
                     visible: root.current_tab === 0 && root.sessions.length === 0
                     text: "No agent sessions"
                     color: Theme.fg_dim
-                    font.family: Theme.font_family
-                    font.pixelSize: Theme.popup_font_size - 2
+                    font.family: Style.font_family
+                    font.pixelSize: Style.font_size - 2
                 }
 
                 ListView {
@@ -206,20 +194,19 @@ Popup {
                     model: root.sessions
                     currentIndex: root.selected
 
-                    delegate: Rectangle {
+                    delegate: MenuRow {
                         id: session_row
                         required property var modelData
                         required property int index
                         readonly property bool has_context: session_row.modelData.context_pct !== null && session_row.modelData.context_pct !== undefined
 
                         width: session_list.width
-                        height: 46
-                        radius: 4
-                        color: session_row.index === root.selected ? Theme.bg_surface : "transparent"
+                        height: Style.px(46)
+                        selected: session_row.index === root.selected
 
                         ColumnLayout {
                             anchors.fill: parent
-                            anchors.leftMargin: 6
+                            anchors.leftMargin: 6 + session_row.inset
                             anchors.rightMargin: 6
                             anchors.topMargin: 3
                             anchors.bottomMargin: 3
@@ -231,9 +218,9 @@ Popup {
 
                                 Text {
                                     text: (session_row.modelData.state || "idle").toUpperCase()
-                                    color: root.state_color(session_row.modelData.state)
-                                    font.family: Theme.font_family
-                                    font.pixelSize: Theme.popup_font_size - 2
+                                    color: session_row.fg(root.state_color(session_row.modelData.state))
+                                    font.family: Style.font_family
+                                    font.pixelSize: Style.font_size - 2
                                     font.bold: true
                                 }
 
@@ -242,9 +229,9 @@ Popup {
                                     Layout.minimumWidth: 0
                                     elide: Text.ElideRight
                                     text: session_row.modelData.title || "Untitled"
-                                    color: Theme.fg_core
-                                    font.family: Theme.font_family
-                                    font.pixelSize: Theme.popup_font_size - 1
+                                    color: session_row.fg(Theme.fg_core)
+                                    font.family: Style.font_family
+                                    font.pixelSize: Style.font_size - 1
                                 }
                             }
 
@@ -257,17 +244,17 @@ Popup {
                                     Layout.minimumWidth: 0
                                     elide: Text.ElideRight
                                     text: (session_row.modelData.agent || "claude") + " · " + (session_row.modelData.project || "") + " · " + (session_row.modelData.where || "") + " · " + root.age(session_row.modelData.since)
-                                    color: Theme.fg_muted
-                                    font.family: Theme.font_family
-                                    font.pixelSize: Theme.popup_font_size - 3
+                                    color: session_row.fg(Theme.fg_muted)
+                                    font.family: Style.font_family
+                                    font.pixelSize: Style.font_size - 3
                                 }
 
                                 Text {
                                     visible: session_row.has_context
                                     text: session_row.has_context ? session_row.modelData.context_pct + "% · " + root.fmt_tokens(session_row.modelData.context_used) + "/" + root.fmt_tokens(session_row.modelData.context_window) : ""
-                                    color: Theme.fg_dim
-                                    font.family: Theme.font_family
-                                    font.pixelSize: Theme.popup_font_size - 4
+                                    color: session_row.fg(Theme.fg_dim)
+                                    font.family: Style.font_family
+                                    font.pixelSize: Style.font_size - 4
                                 }
                             }
 
@@ -275,13 +262,13 @@ Popup {
                                 Layout.fillWidth: true
                                 Layout.preferredHeight: session_row.has_context ? 3 : 0
                                 visible: session_row.has_context
-                                radius: 1.5
+                                radius: Style.radius(1.5)
                                 color: Theme.bg_surface
 
                                 Rectangle {
                                     width: session_row.has_context ? parent.width * Math.max(0, Math.min(100, session_row.modelData.context_pct)) / 100 : 0
                                     height: parent.height
-                                    radius: 1.5
+                                    radius: Style.radius(1.5)
                                     color: session_row.has_context ? root.context_bar_color(session_row.modelData.context_pct) : "transparent"
                                 }
                             }
@@ -308,8 +295,8 @@ Popup {
                         elide: Text.ElideRight
                         text: ClaudeUsageState.loading ? "Loading…" : ClaudeUsageState.error ? ClaudeUsageState.error : (ClaudeUsageState.updated > 0 ? "Claude usage · updated " + Qt.formatTime(new Date(ClaudeUsageState.updated), "HH:mm") : "Claude usage")
                         color: ClaudeUsageState.error && !ClaudeUsageState.loading ? Theme.warning : Theme.fg_muted
-                        font.family: Theme.font_family
-                        font.pixelSize: Theme.popup_font_size - 2
+                        font.family: Style.font_family
+                        font.pixelSize: Style.font_size - 2
                         font.bold: true
                     }
 
@@ -319,8 +306,8 @@ Popup {
                         visible: ClaudeUsageState.rows.length === 0 && !ClaudeUsageState.loading
                         text: ClaudeUsageState.error ? "" : "No usage data yet"
                         color: Theme.fg_dim
-                        font.family: Theme.font_family
-                        font.pixelSize: Theme.popup_font_size - 1
+                        font.family: Style.font_family
+                        font.pixelSize: Style.font_size - 1
                     }
 
                     ListView {
@@ -337,7 +324,7 @@ Popup {
 
                             width: ListView.view.width
                             height: 56
-                            radius: 4
+                            radius: Style.radius(4)
                             color: "transparent"
 
                             ColumnLayout {
@@ -356,29 +343,29 @@ Popup {
                                         text: usage_row.modelData.label
                                         color: Theme.fg_core
                                         font.bold: true
-                                        font.family: Theme.font_family
-                                        font.pixelSize: Theme.popup_font_size - 1
+                                        font.family: Style.font_family
+                                        font.pixelSize: Style.font_size - 1
                                     }
 
                                     Text {
                                         text: usage_row.modelData.percent + "% used"
                                         color: root.context_bar_color(usage_row.modelData.percent)
                                         font.bold: true
-                                        font.family: Theme.font_family
-                                        font.pixelSize: Theme.popup_font_size - 2
+                                        font.family: Style.font_family
+                                        font.pixelSize: Style.font_size - 2
                                     }
                                 }
 
                                 Rectangle {
                                     Layout.fillWidth: true
                                     Layout.preferredHeight: 8
-                                    radius: 4
+                                    radius: Style.radius(4)
                                     color: Theme.bg_surface
 
                                     Rectangle {
                                         width: parent.width * Math.max(0, Math.min(100, usage_row.modelData.percent)) / 100
                                         height: parent.height
-                                        radius: 4
+                                        radius: Style.radius(4)
                                         color: root.context_bar_color(usage_row.modelData.percent)
                                     }
                                 }
@@ -390,8 +377,8 @@ Popup {
                                     visible: usage_row.modelData.resets !== ""
                                     text: "resets " + usage_row.modelData.resets
                                     color: Theme.fg_dim
-                                    font.family: Theme.font_family
-                                    font.pixelSize: Theme.popup_font_size - 3
+                                    font.family: Style.font_family
+                                    font.pixelSize: Style.font_size - 3
                                 }
                             }
                         }
@@ -399,16 +386,11 @@ Popup {
                 }
             }
 
-            Text {
+            MenuFooter {
                 Layout.fillWidth: true
-                Layout.minimumWidth: 0
-                elide: Text.ElideRight
                 text: root.current_tab === 0
                     ? "[ ] tabs · 1-2 select · j/k move · gg/G first/last · Enter/click focus"
                     : "[ ] tabs · 1-2 select · r refresh"
-                color: Theme.fg_dim
-                font.family: Theme.font_family
-                font.pixelSize: Theme.popup_font_size - 4
             }
         }
     }

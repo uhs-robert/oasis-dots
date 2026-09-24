@@ -109,8 +109,8 @@ Item {
                     anchors.horizontalCenter: parent.horizontalCenter
                     anchors.bottom: parent.bottom
                     anchors.bottomMargin: 20
-                    Text { anchors.horizontalCenter: parent.horizontalCenter; text: "Day length"; color: Theme.fg_muted; font.family: Theme.font_family; font.pixelSize: Theme.popup_font_size - 3 }
-                    Text { anchors.horizontalCenter: parent.horizontalCenter; text: root.day_length(); color: Theme.fg_core; font.family: Theme.font_family; font.pixelSize: Theme.popup_font_size + 2 }
+                    Text { anchors.horizontalCenter: parent.horizontalCenter; text: "Day length"; color: Theme.fg_muted; font.family: Style.font_family; font.pixelSize: Style.font_size - 3 }
+                    Text { anchors.horizontalCenter: parent.horizontalCenter; text: root.day_length(); color: Theme.fg_core; font.family: Style.font_family; font.pixelSize: Style.font_size + 2 }
                 }
             }
 
@@ -136,8 +136,8 @@ Item {
                     sourceSize.width: 112
                     sourceSize.height: 112
                 }
-                Text { Layout.alignment: Qt.AlignHCenter; text: modelData.label; color: Theme.fg_muted; font.family: Theme.font_family; font.pixelSize: Theme.popup_font_size - 3 }
-                Text { Layout.alignment: Qt.AlignHCenter; text: modelData.time || "—"; color: Theme.fg_core; font.family: Theme.font_family; font.pixelSize: Theme.popup_font_size + 4; font.bold: true }
+                Text { Layout.alignment: Qt.AlignHCenter; text: modelData.label; color: Theme.fg_muted; font.family: Style.font_family; font.pixelSize: Style.font_size - 3 }
+                Text { Layout.alignment: Qt.AlignHCenter; text: modelData.time || "—"; color: Theme.fg_core; font.family: Style.font_family; font.pixelSize: Style.font_size + 4; font.bold: true }
             }
         }
 
@@ -161,23 +161,23 @@ Item {
                 Text {
                     text: WeatherState.moon_name(root.moon_phase)
                     color: Theme.fg_core
-                    font.family: Theme.font_family
-                    font.pixelSize: Theme.popup_font_size + 2
+                    font.family: Style.font_family
+                    font.pixelSize: Style.font_size + 2
                     font.bold: true
                 }
 
                 Text {
                     text: "Moonrise " + (root.moon_times.rise || "—") + (root.moon_times.set ? "  ·  Moonset " + root.moon_times.set : "")
                     color: Theme.fg_muted
-                    font.family: Theme.font_family
-                    font.pixelSize: Theme.popup_font_size - 2
+                    font.family: Style.font_family
+                    font.pixelSize: Style.font_size - 2
                 }
 
                 Text {
                     text: "Full moon " + root.next_full
                     color: Theme.fg_dim
-                    font.family: Theme.font_family
-                    font.pixelSize: Theme.popup_font_size - 2
+                    font.family: Style.font_family
+                    font.pixelSize: Style.font_size - 2
                 }
             }
         }

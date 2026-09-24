@@ -16,8 +16,10 @@ Popup {
         id: stepper
     }
     preferred_width: 320
-    readonly property int max_visible_rows: 10
-    implicitHeight: content.implicitHeight + 24
+    footer_hint: "j/k move · h/l adjust · m mute · Enter default · q close"
+    // The list fits its rows and only scrolls past most of the screen height.
+    readonly property real max_list_height: (root.screen ? root.screen.height : 1080) * 0.6
+    body_height: content.implicitHeight + 24
 
     readonly property var output_devices: Pipewire.nodes.values.filter(n => n.isSink && !n.isStream && n.audio)
     readonly property var input_devices: Pipewire.nodes.values.filter(n => !n.isSink && !n.isStream && n.audio)
@@ -118,7 +120,7 @@ Popup {
             ListView {
                 id: rows_list
                 Layout.fillWidth: true
-                Layout.preferredHeight: Math.min(contentHeight, root.max_visible_rows * 26)
+                Layout.preferredHeight: Math.min(contentHeight, root.max_list_height)
                 clip: true
                 spacing: 2
                 model: root.rows
@@ -132,25 +134,22 @@ Popup {
                     width: rows_list.width
                     spacing: 2
 
-                    Text {
+                    MenuSection {
                         visible: row_wrap.index === 0 || root.section_of(root.rows[row_wrap.index - 1].type) !== root.section_of(row_wrap.modelData.type)
                         topPadding: row_wrap.index === 0 ? 0 : 6
-                        text: root.section_of(row_wrap.modelData.type)
-                        color: Theme.fg_muted
-                        font.family: Theme.font_family
-                        font.pixelSize: Theme.popup_font_size - 3
+                        label: root.section_of(row_wrap.modelData.type)
                     }
 
-                    Rectangle {
+                    MenuRow {
+                        id: vol_row
                         width: row_wrap.width
-                        height: 22
-                        radius: 4
-                        color: row_wrap.index === root.selected ? Theme.bg_surface : "transparent"
+                        height: Style.px(22)
+                        selected: row_wrap.index === root.selected
 
                         RowLayout {
                             visible: !root.is_slider_row(row_wrap.modelData.type)
                             anchors.fill: parent
-                            anchors.leftMargin: 6
+                            anchors.leftMargin: 6 + vol_row.inset
                             anchors.rightMargin: 6
                             spacing: 6
 
@@ -158,9 +157,9 @@ Popup {
                                 Layout.fillWidth: true
                                 elide: Text.ElideRight
                                 text: row_wrap.modelData.node.description || row_wrap.modelData.node.name
-                                color: (row_wrap.modelData.node === Pipewire.defaultAudioSink || row_wrap.modelData.node === Pipewire.defaultAudioSource) ? Theme.theme_secondary : Theme.fg_core
-                                font.family: Theme.font_family
-                                font.pixelSize: Theme.popup_font_size - 1
+                                color: vol_row.fg((row_wrap.modelData.node === Pipewire.defaultAudioSink || row_wrap.modelData.node === Pipewire.defaultAudioSource) ? Theme.theme_secondary : Theme.fg_core)
+                                font.family: Style.font_family
+                                font.pixelSize: Style.font_size - 1
                             }
                         }
 
@@ -176,21 +175,22 @@ Popup {
                         RowLayout {
                             visible: root.is_slider_row(row_wrap.modelData.type)
                             anchors.fill: parent
-                            anchors.leftMargin: 6
+                            anchors.leftMargin: 6 + vol_row.inset
                             anchors.rightMargin: 6
                             spacing: 6
 
                             Text {
-                                Layout.preferredWidth: 90
+                                Layout.preferredWidth: Style.px(90)
                                 elide: Text.ElideRight
                                 text: row_wrap.modelData.type === "stream" ? (row_wrap.modelData.node.properties["application.name"] || row_wrap.modelData.node.name) : (row_wrap.modelData.node.description || row_wrap.modelData.node.name)
-                                color: Theme.fg_core
-                                font.family: Theme.font_family
-                                font.pixelSize: Theme.popup_font_size - 1
+                                color: vol_row.fg(Theme.fg_core)
+                                font.family: Style.font_family
+                                font.pixelSize: Style.font_size - 1
                             }
 
                             Slider {
                                 Layout.fillWidth: true
+                                on_selection: vol_row.selected
                                 value: row_wrap.modelData.node.audio ? row_wrap.modelData.node.audio.volume : 0
                                 onMoved: v => {
                                     if (row_wrap.modelData.node.audio) row_wrap.modelData.node.audio.volume = v;
@@ -199,9 +199,9 @@ Popup {
 
                             Text {
                                 text: row_wrap.modelData.node.audio && row_wrap.modelData.node.audio.muted ? "" : ""
-                                color: Theme.theme_primary
-                                font.family: Theme.font_family
-                                font.pixelSize: Theme.popup_font_size - 1
+                                color: vol_row.fg(Theme.theme_primary)
+                                font.family: Style.font_family
+                                font.pixelSize: Style.font_size - 1
 
                                 MouseArea {
                                     anchors.fill: parent
@@ -218,8 +218,8 @@ Popup {
                 Layout.topMargin: 6
                 text: "No apps playing"
                 color: Theme.fg_dim
-                font.family: Theme.font_family
-                font.pixelSize: Theme.popup_font_size - 2
+                font.family: Style.font_family
+                font.pixelSize: Style.font_size - 2
             }
         }
     }

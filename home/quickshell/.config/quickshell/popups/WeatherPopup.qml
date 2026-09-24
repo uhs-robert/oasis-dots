@@ -12,7 +12,7 @@ Popup {
 
     popup_name: "weather"
     preferred_width: 760
-    implicitHeight: content.implicitHeight + 24
+    body_height: content.implicitHeight + 24
 
     readonly property var base_tab_names: ["Daily", "Hourly", "Precipitation", "Sun & Moon", "Air"]
     readonly property bool has_alerts: WeatherState.alerts.length > 0
@@ -31,7 +31,7 @@ Popup {
     property int hour_cursor: 0
     property int alert_cursor: 0
 
-    readonly property int content_height: 400
+    readonly property int content_height: Style.px(400)
 
     onCurrent_subChanged: {
         if (root.current_tab === 0) root.daily_sub = root.current_sub;
@@ -191,24 +191,24 @@ Popup {
                     Text {
                         text: WeatherState.has_data ? root.fmt_temp(WeatherState.current.temp) : "--°"
                         color: WeatherState.has_data ? WeatherState.temp_color(WeatherState.current.temp) : Theme.fg_dim
-                        font.family: Theme.font_family
-                        font.pixelSize: Theme.popup_font_size + 12
+                        font.family: Style.font_family
+                        font.pixelSize: Style.font_size + 12
                         font.bold: true
                     }
 
                     Text {
                         text: WeatherState.has_data ? WeatherState.current.cond : WeatherState.loading ? "Loading…" : "Unavailable: " + WeatherState.error
                         color: WeatherState.has_data || WeatherState.loading ? Theme.fg_core : Theme.warning
-                        font.family: Theme.font_family
-                        font.pixelSize: Theme.popup_font_size + 1
+                        font.family: Style.font_family
+                        font.pixelSize: Style.font_size + 1
                     }
 
                     Text {
                         visible: WeatherState.has_data
                         text: "Feels like " + (WeatherState.has_data ? root.fmt_temp(WeatherState.current.feels) : "")
                         color: Theme.fg_muted
-                        font.family: Theme.font_family
-                        font.pixelSize: Theme.popup_font_size - 2
+                        font.family: Style.font_family
+                        font.pixelSize: Style.font_size - 2
                     }
 
                     Text {
@@ -217,8 +217,8 @@ Popup {
                         Layout.fillWidth: true
                         text: WeatherState.location_name
                         color: Theme.fg_dim
-                        font.family: Theme.font_family
-                        font.pixelSize: Theme.popup_font_size - 2
+                        font.family: Style.font_family
+                        font.pixelSize: Style.font_size - 2
                     }
                 }
 
@@ -227,8 +227,8 @@ Popup {
                     Layout.alignment: Qt.AlignTop
                     text: "Stale data" + (WeatherState.error ? ": " + WeatherState.error : "")
                     color: Theme.warning
-                    font.family: Theme.font_family
-                    font.pixelSize: Theme.popup_font_size - 3
+                    font.family: Style.font_family
+                    font.pixelSize: Style.font_size - 3
                 }
             }
 
@@ -237,7 +237,7 @@ Popup {
                 Layout.fillWidth: true
                 Layout.preferredHeight: root.has_alerts ? 28 : 0
                 visible: root.has_alerts
-                radius: 4
+                radius: Style.radius(4)
                 color: Theme.bg_surface
 
                 RowLayout {
@@ -248,7 +248,7 @@ Popup {
                     Rectangle {
                         Layout.preferredWidth: 8
                         Layout.preferredHeight: 8
-                        radius: 4
+                        radius: Style.radius(4)
                         color: WeatherState.alerts.length > 0 ? WeatherState.alert_color(WeatherState.alerts[0].severity) : Theme.fg_dim
                     }
 
@@ -259,8 +259,8 @@ Popup {
                             ? WeatherState.alerts[0].event + " · until " + root.fmt_alert_time(WeatherState.alerts[0].ends) + (WeatherState.alerts.length > 1 ? "  +" + (WeatherState.alerts.length - 1) + " more" : "")
                             : ""
                         color: WeatherState.alerts.length > 0 ? WeatherState.alert_color(WeatherState.alerts[0].severity) : Theme.fg_core
-                        font.family: Theme.font_family
-                        font.pixelSize: Theme.popup_font_size - 2
+                        font.family: Style.font_family
+                        font.pixelSize: Style.font_size - 2
                         font.bold: true
                     }
                 }
@@ -279,29 +279,17 @@ Popup {
                 Repeater {
                     model: root.tabs
 
-                    Rectangle {
+                    MenuTab {
                         id: tab_chip
                         required property string modelData
                         required property int index
 
                         Layout.fillWidth: true
-                        height: 26
-                        radius: 4
-                        color: tab_chip.index === root.current_tab ? Theme.bg_surface : "transparent"
-
-                        Text {
-                            anchors.centerIn: parent
-                            text: tab_chip.modelData
-                            color: tab_chip.index === root.current_tab ? Theme.theme_secondary : Theme.fg_muted
-                            font.family: Theme.font_family
-                            font.pixelSize: Theme.popup_font_size - 2
-                            font.bold: tab_chip.index === root.current_tab
-                        }
-
-                        MouseArea {
-                            anchors.fill: parent
-                            onClicked: root.set_tab(tab_chip.index)
-                        }
+                        implicitHeight: Style.px(26)
+                        label: tab_chip.modelData
+                        active: tab_chip.index === root.current_tab
+                        key: tab_chip.index < 9 ? String(tab_chip.index + 1) : ""
+                        onClicked: root.set_tab(tab_chip.index)
                     }
                 }
             }
@@ -369,28 +357,16 @@ Popup {
                     Repeater {
                         model: root.sub_views
 
-                        Rectangle {
+                        MenuTab {
                             id: sub_chip
                             required property string modelData
                             required property int index
-                            readonly property bool active: sub_chip.index === root.current_sub
 
-                            implicitWidth: sub_label.implicitWidth + 20
-                            implicitHeight: 24
-                            radius: 12
-                            color: sub_chip.active ? Theme.bg_surface : "transparent"
-
-                            Text {
-                                id: sub_label
-                                anchors.centerIn: parent
-                                text: sub_chip.modelData
-                                color: sub_chip.active ? Theme.theme_secondary : Theme.fg_muted
-                                font.bold: sub_chip.active
-                                font.family: Theme.font_family
-                                font.pixelSize: Theme.popup_font_size - 3
-                            }
-
-                            MouseArea { anchors.fill: parent; onClicked: root.current_sub = sub_chip.index }
+                            base_radius: 12
+                            label: sub_chip.modelData
+                            active: sub_chip.index === root.current_sub
+                            font_size: Style.font_size - 3
+                            onClicked: root.current_sub = sub_chip.index
                         }
                     }
                 }
@@ -401,8 +377,8 @@ Popup {
                     readonly property var d: WeatherState.days[root.day_cursor]
                     text: d ? d.weekday + (d.weekday !== "Today" ? " (" + d.date.substr(5) + ")" : "") : ""
                     color: Theme.fg_muted
-                    font.family: Theme.font_family
-                    font.pixelSize: Theme.popup_font_size - 3
+                    font.family: Style.font_family
+                    font.pixelSize: Style.font_size - 3
                 }
 
                 Text {
@@ -414,23 +390,21 @@ Popup {
                         return r ? WeatherState.format_hour(new Date(r.dt)) : "";
                     }
                     color: Theme.fg_muted
-                    font.family: Theme.font_family
-                    font.pixelSize: Theme.popup_font_size - 3
+                    font.family: Style.font_family
+                    font.pixelSize: Style.font_size - 3
                 }
             }
 
             Text {
                 text: WeatherState.updated > 0 ? "Updated " + WeatherState.format_hour(new Date(WeatherState.updated)) : "Never updated"
                 color: Theme.fg_dim
-                font.family: Theme.font_family
-                font.pixelSize: Theme.popup_font_size - 4
+                font.family: Style.font_family
+                font.pixelSize: Style.font_size - 4
             }
 
-            Text {
+            MenuFooter {
+                Layout.fillWidth: true
                 text: "[ ] tabs · 1-5 select · Tab view · h/l move · H/L jump · gg now · G end · r refresh" + (root.has_alerts ? " · a alerts" : "")
-                color: Theme.fg_dim
-                font.family: Theme.font_family
-                font.pixelSize: Theme.popup_font_size - 4
             }
         }
     }

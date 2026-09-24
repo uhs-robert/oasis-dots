@@ -14,7 +14,8 @@ Popup {
 
     popup_name: "tray"
     preferred_width: 300
-    implicitHeight: content.implicitHeight + 24
+    footer_hint: "j/k move · Enter open · m/l menu · q close"
+    body_height: content.implicitHeight + 24
 
     readonly property var items: SystemTray.items.values
 
@@ -143,27 +144,26 @@ Popup {
                 visible: root.items.length === 0
                 text: "No tray apps"
                 color: Theme.fg_dim
-                font.family: Theme.font_family
-                font.pixelSize: Theme.popup_font_size - 2
+                font.family: Style.font_family
+                font.pixelSize: Style.font_size - 2
             }
 
             Repeater {
                 id: item_repeater
                 model: root.items
 
-                Rectangle {
+                MenuRow {
                     id: item_row
                     required property var modelData
                     required property int index
 
                     Layout.fillWidth: true
-                    height: 26
-                    radius: 4
-                    color: item_row.index === root.selected ? Theme.bg_surface : "transparent"
+                    height: Style.px(26)
+                    selected: item_row.index === root.selected
 
                     RowLayout {
                         anchors.fill: parent
-                        anchors.leftMargin: 6
+                        anchors.leftMargin: 6 + item_row.inset
                         anchors.rightMargin: 6
                         spacing: 8
 
@@ -176,9 +176,9 @@ Popup {
 
                         Text {
                             text: root.app_name(item_row.modelData)
-                            color: Theme.fg_core
-                            font.family: Theme.font_family
-                            font.pixelSize: Theme.popup_font_size - 1
+                            color: item_row.fg(Theme.fg_core)
+                            font.family: Style.font_family
+                            font.pixelSize: Style.font_size - 1
                         }
 
                         Text {
@@ -187,9 +187,9 @@ Popup {
                             maximumLineCount: 1
                             wrapMode: Text.NoWrap
                             text: root.detail(item_row.modelData)
-                            color: Theme.fg_dim
-                            font.family: Theme.font_family
-                            font.pixelSize: Theme.popup_font_size - 3
+                            color: item_row.fg(Theme.fg_dim)
+                            font.family: Style.font_family
+                            font.pixelSize: Style.font_size - 3
                         }
                     }
 

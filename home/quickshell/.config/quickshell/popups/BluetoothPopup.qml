@@ -11,7 +11,8 @@ Popup {
 
     popup_name: "bluetooth"
     preferred_width: 260
-    implicitHeight: content.implicitHeight + 24
+    footer_hint: "j/k move · Enter connect · p power · q close"
+    body_height: content.implicitHeight + 24
 
     readonly property var adapter: QsBt.Bluetooth.defaultAdapter
     readonly property bool has_adapter: !!adapter
@@ -68,16 +69,16 @@ Popup {
                     Layout.fillWidth: true
                     text: root.has_adapter ? root.adapter.name : "No adapter"
                     color: Theme.fg_strong
-                    font.family: Theme.font_family
-                    font.pixelSize: Theme.popup_font_size - 1
+                    font.family: Style.font_family
+                    font.pixelSize: Style.font_size - 1
                 }
 
                 Text {
                     visible: root.has_adapter
                     text: root.has_adapter && root.adapter.enabled ? "On" : "Off"
                     color: root.has_adapter && root.adapter.enabled ? Theme.theme_primary : Theme.fg_dim
-                    font.family: Theme.font_family
-                    font.pixelSize: Theme.popup_font_size - 2
+                    font.family: Style.font_family
+                    font.pixelSize: Style.font_size - 2
                 }
             }
 
@@ -86,52 +87,51 @@ Popup {
                 Layout.topMargin: 6
                 text: "No paired devices"
                 color: Theme.fg_dim
-                font.family: Theme.font_family
-                font.pixelSize: Theme.popup_font_size - 2
+                font.family: Style.font_family
+                font.pixelSize: Style.font_size - 2
             }
 
             Repeater {
                 model: root.devices
 
-                Rectangle {
+                MenuRow {
                     id: device_row
                     required property var modelData
                     required property int index
 
                     Layout.fillWidth: true
                     Layout.topMargin: device_row.index === 0 ? 6 : 0
-                    height: 22
-                    radius: 4
-                    color: device_row.index === root.selected ? Theme.bg_surface : "transparent"
+                    height: Style.px(22)
+                    selected: device_row.index === root.selected
 
                     RowLayout {
                         anchors.fill: parent
-                        anchors.leftMargin: 6
+                        anchors.leftMargin: 6 + device_row.inset
                         anchors.rightMargin: 6
                         spacing: 6
 
                         Text {
                             text: device_row.modelData.connected ? "󰂱" : "󰂯"
-                            color: device_row.modelData.connected ? Theme.theme_primary : Theme.fg_dim
-                            font.family: Theme.font_family
-                            font.pixelSize: Theme.popup_font_size - 1
+                            color: device_row.fg(device_row.modelData.connected ? Theme.theme_primary : Theme.fg_dim)
+                            font.family: Style.font_family
+                            font.pixelSize: Style.font_size - 1
                         }
 
                         Text {
                             Layout.fillWidth: true
                             elide: Text.ElideRight
                             text: device_row.modelData.name
-                            color: device_row.modelData.connected ? Theme.theme_secondary : Theme.fg_core
-                            font.family: Theme.font_family
-                            font.pixelSize: Theme.popup_font_size - 1
+                            color: device_row.fg(device_row.modelData.connected ? Theme.theme_secondary : Theme.fg_core)
+                            font.family: Style.font_family
+                            font.pixelSize: Style.font_size - 1
                         }
 
                         Text {
                             visible: root.battery_label(device_row.modelData) !== ""
                             text: root.battery_label(device_row.modelData)
-                            color: Theme.fg_muted
-                            font.family: Theme.font_family
-                            font.pixelSize: Theme.popup_font_size - 2
+                            color: device_row.fg(Theme.fg_muted)
+                            font.family: Style.font_family
+                            font.pixelSize: Style.font_size - 2
                         }
                     }
 
