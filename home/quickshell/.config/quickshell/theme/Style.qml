@@ -80,7 +80,8 @@ Singleton {
             bar_border_width: 1,
             bar_border_color: Theme.fg_muted,
             bar_rounded: false,
-            bar_workspace_active: Theme.theme_secondary,
+            bar_workspace_focused: Theme.theme_secondary,
+            bar_workspace_active: Theme.theme_primary,
             bar_workspace_idle: Theme.bg_surface,
             bar_hover_bg: Theme.bg_surface,
             bar_glow_color: "transparent",
@@ -158,7 +159,8 @@ Singleton {
                 bar_border_width: 1,
                 bar_border_color: Qt.alpha(Theme.ui_border, 0.5),
                 bar_rounded: true,
-                bar_workspace_active: Theme.theme_primary,
+                bar_workspace_focused: Theme.theme_primary,
+                bar_workspace_active: Qt.alpha(Theme.theme_primary, 0.4),
                 bar_workspace_idle: Theme.bg_surface,
                 bar_hover_bg: Theme.bg_surface,
                 bar_glow_color: "transparent",
@@ -286,6 +288,8 @@ Singleton {
     readonly property int bar_border_width: root.bar.bar_border_width
     readonly property color bar_border_color: root.bar.bar_border_color
     readonly property bool bar_rounded: root.bar.bar_rounded
+    // Focused is the workspace you are on; active is the one shown on each other monitor.
+    readonly property color bar_workspace_focused: root.bar.bar_workspace_focused
     readonly property color bar_workspace_active: root.bar.bar_workspace_active
     readonly property color bar_workspace_idle: root.bar.bar_workspace_idle
     readonly property color bar_hover_bg: root.bar.bar_hover_bg
