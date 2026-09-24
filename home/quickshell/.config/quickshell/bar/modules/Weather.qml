@@ -65,19 +65,6 @@ Item {
                 smooth: true
                 mipmap: true
             }
-
-            Rectangle {
-                visible: WeatherState.alerts.length > 0
-                width: 6
-                height: 6
-                radius: 3
-                anchors.right: icon.right
-                anchors.top: icon.top
-                anchors.margins: -1
-                color: WeatherState.alerts.length > 0 ? WeatherState.alert_color(WeatherState.alerts[0].severity) : Theme.error
-                border.color: Theme.bg_core
-                border.width: 1
-            }
         }
 
         Text {
