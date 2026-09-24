@@ -175,6 +175,7 @@ Singleton {
             bar_glow_color: "transparent",
             bar_text_raised: false,
             done_anim: "hearts",
+            wait_anim: "bubble",
             bar_scanline_color: "transparent",
             label_font_family: "",
             frame_octagon: 0,
@@ -364,6 +365,7 @@ Singleton {
                 bar_glow_color: "transparent",
                 bar_text_raised: false,
                 done_anim: "hearts",
+                wait_anim: "bubble",
                 bar_scanline_color: "transparent",
                 label_font_family: "",
                 frame_octagon: 0,
@@ -391,9 +393,11 @@ Singleton {
                 bar_ticks: "transparent"
             },
             "terminal": Object.assign({}, terminal, {
+                wait_anim: "cursor",
                 weather_header: "wttr"
             }),
             "crt": Object.assign({}, terminal, {
+                wait_anim: "pressanykey",
                 weather_header: "weatherstar",
                 text_muted: Qt.tint(Theme.fg_dim, Qt.alpha(Theme.theme_primary_light, 0.35)),
                 text_dim: Qt.tint(Theme.fg_dim, Qt.alpha(Theme.theme_primary_light, 0.6)),
@@ -436,6 +440,7 @@ Singleton {
                 bar_scanline_color: Qt.alpha(Theme.theme_primary, 0.07)
             }),
             "nes": Object.assign({}, terminal, {
+                wait_anim: "advance",
                 done_anim: "pixel",
                 weather_header: "battle",
                 text_muted: Qt.tint(Theme.fg_dim, Qt.alpha(Theme.fg_core, 0.35)),
@@ -490,6 +495,7 @@ Singleton {
                 bar_inset_color: Theme.fg_strong
             }),
             "snes": Object.assign({}, terminal, {
+                wait_anim: "hand",
                 done_anim: "pixel",
                 weather_header: "mode7",
                 // Greys lifted toward primary_light so they read on the shaded window.
@@ -547,6 +553,7 @@ Singleton {
                 bar_text_raised: true
             }),
             "ps1": Object.assign({}, terminal, {
+                wait_anim: "alert",
                 done_anim: "pixel",
                 weather_header: "memcard",
                 // Muted text brightened; the shaded, dithered frame swallows the theme greys.
@@ -595,6 +602,7 @@ Singleton {
             }),
             // Perfect Dark panels; `small` turns the small popups into the Q-branch watch LCD.
             "goldeneye": Object.assign({}, terminal, {
+                wait_anim: "transmission",
                 done_anim: "lcd",
                 text_muted: Qt.tint(Theme.fg_muted, Qt.alpha(Theme.fg_core, 0.3)),
                 text_dim: Qt.tint(Theme.fg_dim, Qt.alpha(Theme.fg_core, 0.2)),
@@ -720,6 +728,7 @@ Singleton {
                 }
             }),
             "metroid": Object.assign({}, terminal, {
+                wait_anim: "scan",
                 weather_header: "scan",
                 // Greys lifted toward primary_light so they read on the visor glass.
                 text_muted: Qt.tint(Theme.fg_dim, Qt.alpha(Theme.theme_primary_light, 0.4)),
@@ -782,6 +791,7 @@ Singleton {
                 }
             }),
             "ps2": Object.assign({}, terminal, {
+                wait_anim: "rumble",
                 weather_header: "towers",
                 done_anim: "pixel",
                 font_family: "Exo 2",
@@ -839,6 +849,7 @@ Singleton {
                 const vec_d = Qt.alpha(vec, 0.4);
                 const lock = Theme.theme_label;
                 return Object.assign({}, terminal, {
+                    wait_anim: "comms",
                     text_muted: Qt.alpha(vec, 0.55),
                     text_dim: Qt.alpha(vec, 0.7),
                     text_fg: Qt.tint(Theme.fg_core, Qt.alpha(vec, 0.72)),
@@ -937,6 +948,7 @@ Singleton {
             })(),
             // The Tet and bubble-ship displays: pale hairlines on near-black, thin caps, tick scales and ring gauges.
             "oblivion": Object.assign({}, terminal, {
+                wait_anim: "ping",
                 text_muted: Qt.alpha(Theme.fg_strong, 0.55),
                 text_dim: Qt.alpha(Theme.fg_strong, 0.7),
                 text_fg: Qt.alpha(Theme.fg_strong, 0.86),
@@ -1036,6 +1048,7 @@ Singleton {
             }),
             // Mecha hangar panels in the manner of Armored Core VI and MechWarrior 5.
             "mech": Object.assign({}, terminal, {
+                wait_anim: "orders",
                 text_fg: Qt.alpha(Theme.fg_core, 0.92),
                 text_muted: Qt.alpha(Theme.theme_primary_light, 0.66),
                 text_dim: Qt.alpha(Theme.theme_primary_light, 0.8),
@@ -1398,6 +1411,8 @@ Singleton {
     readonly property string card_layout: root.active.card_layout
     // The keeptabs done celebration: hearts, pixel (stepped) or lcd (stepped, then blinks).
     readonly property string done_anim: root.active.done_anim || "hearts"
+    // The keeptabs waiting cue: bubble, cursor, pressanykey, advance, hand, alert, rumble, transmission, scan, comms, ping or orders.
+    readonly property string wait_anim: root.active.wait_anim || "bubble"
 
     property bool cava_line: true
     readonly property var bar: root.active
