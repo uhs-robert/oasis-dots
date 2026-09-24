@@ -27,7 +27,7 @@ Submap.define({
       { "SLASH",         Menu.zoxide(),                                   "Directory" },
       { "O",             Menu.drun(),                                     "Open Application" },
       { "SHIFT + O",     Launcher.show_picker,                            "Session Launcher" },
-      { "V",             Menu.clipboard(),                                "Clipboard" },
+      { "CTRL + V",      Menu.clipboard(),                                "Clipboard" },
       { "E",             Menu.emoji(),                                    "Emoji" },
       { "SHIFT + E",     Menu.emoji("nerd_font"),                         "Nerd Font" },
       { "CTRL + E",      Menu.emoji("gitmoji"),                           "Gitmoji" },
