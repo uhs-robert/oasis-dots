@@ -207,7 +207,7 @@ Popup {
                 Text {
                     visible: !Style.show_title
                     text: NotificationState.dnd ? "\u{f009b}" : "\u{f009a}"
-                    color: NotificationState.dnd ? Theme.fg_dim : Theme.theme_primary
+                    color: NotificationState.dnd ? Style.text_dim : Theme.theme_primary
                     font.family: Style.font_family
                     font.pixelSize: 40
                 }
@@ -234,7 +234,7 @@ Popup {
                         Layout.minimumWidth: 0
                         elide: Text.ElideRight
                         text: NotificationState.unread + " unread · " + NotificationState.history.length + " total"
-                        color: Theme.fg_muted
+                        color: Style.text_muted
                         font.family: Style.font_family
                         font.pixelSize: Style.font_size - 2
                     }
@@ -295,7 +295,7 @@ Popup {
                     Text {
                         Layout.alignment: Qt.AlignHCenter
                         text: NotificationState.dnd ? "\u{f009b}" : "\u{f009a}"
-                        color: Theme.fg_dim
+                        color: Style.text_dim
                         font.family: Style.font_family
                         font.pixelSize: 48
                     }
@@ -303,7 +303,7 @@ Popup {
                     Text {
                         Layout.alignment: Qt.AlignHCenter
                         text: root.current_tab === 2 ? "Nothing critical" : "All caught up"
-                        color: Theme.fg_dim
+                        color: Style.text_dim
                         font.family: Style.font_family
                         font.pixelSize: Style.font_size
                     }
@@ -331,7 +331,7 @@ Popup {
                             width: parent.width
                             elide: Text.ElideRight
                             text: row_item.modelData.type !== "day" ? "" : Style.section_rule ? "── " + row_item.modelData.label + " " + "─".repeat(160) : row_item.modelData.label
-                            color: Theme.fg_dim
+                            color: Style.text_dim
                             font.bold: true
                             font.family: Style.font_family
                             font.pixelSize: Style.font_size - 2
@@ -356,7 +356,7 @@ Popup {
                                 Layout.minimumWidth: 0
                                 elide: Text.ElideRight
                                 text: row_item.modelData.type === "app_header" ? row_item.modelData.name + "  ·  " + row_item.modelData.count : ""
-                                color: Theme.fg_muted
+                                color: Style.text_muted
                                 font.bold: true
                                 font.family: Style.font_family
                                 font.pixelSize: Style.font_size - 1

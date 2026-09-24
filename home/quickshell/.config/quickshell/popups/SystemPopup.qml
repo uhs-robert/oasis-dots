@@ -124,7 +124,7 @@ Popup {
                             visible: !stat_row.is_btop
                             text: root.value_text(stat_row.modelData.kind)
                                 + (stat_row.modelData.kind === "memory" ? " (" + SysStats.mem_used_gb.toFixed(1) + "/" + SysStats.mem_total_gb.toFixed(1) + "GB)" : "")
-                            color: stat_row.fg(Theme.fg_muted)
+                            color: stat_row.fg(Style.text_muted)
                             font.family: Style.font_family
                             font.pixelSize: Style.font_size - 2
                         }

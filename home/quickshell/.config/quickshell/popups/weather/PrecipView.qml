@@ -52,7 +52,7 @@ Item {
                 const chart_h = h - margin_bottom - margin_top;
                 const col_w = w / rows.length;
 
-                ctx.strokeStyle = Theme.fg_muted;
+                ctx.strokeStyle = Style.text_muted;
                 ctx.lineWidth = 1;
                 ctx.beginPath();
                 ctx.moveTo(0, margin_top + chart_h);
@@ -77,10 +77,10 @@ Item {
                     ctx.fillStyle = WeatherState.pop_color(row.pop);
                     ctx.fillRect(x, y, bar_w, bar_h);
 
-                    ctx.fillStyle = Theme.fg_dim;
+                    ctx.fillStyle = Style.text_dim;
                     ctx.fillText(row.pop + "%", i * col_w + col_w / 2, y - 6 < margin_top ? margin_top : y - 6);
 
-                    ctx.fillStyle = i === root.hour_cursor ? Theme.theme_secondary : Theme.fg_muted;
+                    ctx.fillStyle = i === root.hour_cursor ? Theme.theme_secondary : Style.text_muted;
                     ctx.fillText(WeatherState.format_hour(new Date(row.dt)), i * col_w + col_w / 2, h - margin_bottom + 16);
 
                     ctx.fillStyle = Theme.blue;
@@ -115,7 +115,7 @@ Item {
         Text {
             Layout.alignment: Qt.AlignHCenter
             text: "Bars: chance of precipitation · Numbers: amount (" + (WeatherState.settings.unit === "celsius" ? "mm" : "in") + ")"
-            color: Theme.fg_dim
+            color: Style.text_dim
             font.family: Style.font_family
             font.pixelSize: Style.font_size - 3
         }

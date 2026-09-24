@@ -241,7 +241,7 @@ Popup {
                 visible: root.streams.length === 0
                 Layout.topMargin: 6
                 text: "No apps playing"
-                color: Theme.fg_dim
+                color: Style.text_dim
                 font.family: Style.font_family
                 font.pixelSize: Style.font_size - 2
             }

@@ -84,7 +84,7 @@ Popup {
                 visible: root.devices.length === 0
                 Layout.topMargin: 6
                 text: "No paired devices"
-                color: Theme.fg_dim
+                color: Style.text_dim
                 font.family: Style.font_family
                 font.pixelSize: Style.font_size - 2
             }
@@ -110,7 +110,7 @@ Popup {
 
                         Text {
                             text: device_row.modelData.connected ? "󰂱" : "󰂯"
-                            color: device_row.fg(device_row.modelData.connected ? Theme.theme_primary : Theme.fg_dim)
+                            color: device_row.fg(device_row.modelData.connected ? Theme.theme_primary : Style.text_dim)
                             font.family: Style.font_family
                             font.pixelSize: Style.font_size - 1
                         }
@@ -127,7 +127,7 @@ Popup {
                         Text {
                             visible: root.battery_label(device_row.modelData) !== ""
                             text: root.battery_label(device_row.modelData)
-                            color: device_row.fg(Theme.fg_muted)
+                            color: device_row.fg(Style.text_muted)
                             font.family: Style.font_family
                             font.pixelSize: Style.font_size - 2
                         }

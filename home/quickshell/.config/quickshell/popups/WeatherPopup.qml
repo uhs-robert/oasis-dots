@@ -190,7 +190,7 @@ Popup {
 
                     Text {
                         text: WeatherState.has_data ? root.fmt_temp(WeatherState.current.temp) : "--°"
-                        color: WeatherState.has_data ? WeatherState.temp_color(WeatherState.current.temp) : Theme.fg_dim
+                        color: WeatherState.has_data ? WeatherState.temp_color(WeatherState.current.temp) : Style.text_dim
                         font.family: Style.font_family
                         font.pixelSize: Style.font_size + 12
                         font.bold: true
@@ -206,7 +206,7 @@ Popup {
                     Text {
                         visible: WeatherState.has_data
                         text: "Feels like " + (WeatherState.has_data ? root.fmt_temp(WeatherState.current.feels) : "")
-                        color: Theme.fg_muted
+                        color: Style.text_muted
                         font.family: Style.font_family
                         font.pixelSize: Style.font_size - 2
                     }
@@ -216,7 +216,7 @@ Popup {
                         elide: Text.ElideRight
                         Layout.fillWidth: true
                         text: WeatherState.location_name
-                        color: Theme.fg_dim
+                        color: Style.text_dim
                         font.family: Style.font_family
                         font.pixelSize: Style.font_size - 2
                     }
@@ -238,7 +238,7 @@ Popup {
                 Layout.preferredHeight: root.has_alerts ? 28 : 0
                 visible: root.has_alerts
                 radius: Style.radius(4)
-                readonly property color alert_color: WeatherState.alerts.length > 0 ? WeatherState.alert_color(WeatherState.alerts[0].severity) : Theme.fg_dim
+                readonly property color alert_color: WeatherState.alerts.length > 0 ? WeatherState.alert_color(WeatherState.alerts[0].severity) : Style.text_dim
                 color: Style.boxed_cards ? Qt.alpha(alert_color, 0.1) : Theme.bg_surface
                 border.width: Style.boxed_cards ? 1 : 0
                 border.color: alert_color
@@ -252,7 +252,7 @@ Popup {
                         Layout.preferredWidth: 8
                         Layout.preferredHeight: 8
                         radius: Style.radius(4)
-                        color: WeatherState.alerts.length > 0 ? WeatherState.alert_color(WeatherState.alerts[0].severity) : Theme.fg_dim
+                        color: WeatherState.alerts.length > 0 ? WeatherState.alert_color(WeatherState.alerts[0].severity) : Style.text_dim
                     }
 
                     Text {
@@ -379,7 +379,7 @@ Popup {
                     visible: root.current_tab === 3
                     readonly property var d: WeatherState.days[root.day_cursor]
                     text: d ? d.weekday + (d.weekday !== "Today" ? " (" + d.date.substr(5) + ")" : "") : ""
-                    color: Theme.fg_muted
+                    color: Style.text_muted
                     font.family: Style.font_family
                     font.pixelSize: Style.font_size - 3
                 }
@@ -392,7 +392,7 @@ Popup {
                         const r = hrs[Math.max(0, Math.min(hrs.length - 1, root.hour_cursor))];
                         return r ? WeatherState.format_hour(new Date(r.dt)) : "";
                     }
-                    color: Theme.fg_muted
+                    color: Style.text_muted
                     font.family: Style.font_family
                     font.pixelSize: Style.font_size - 3
                 }
@@ -400,7 +400,7 @@ Popup {
 
             Text {
                 text: WeatherState.updated > 0 ? "Updated " + WeatherState.format_hour(new Date(WeatherState.updated)) : "Never updated"
-                color: Theme.fg_dim
+                color: Style.text_dim
                 font.family: Style.font_family
                 font.pixelSize: Style.font_size - 4
             }

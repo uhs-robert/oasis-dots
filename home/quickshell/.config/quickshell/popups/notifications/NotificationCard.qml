@@ -30,9 +30,9 @@ Item {
     }
 
     readonly property color accent: {
-        if (!root.notification) return Theme.fg_dim;
+        if (!root.notification) return Style.text_dim;
         if (root.notification.urgency === NotificationUrgency.Critical) return Theme.error;
-        if (root.notification.urgency === NotificationUrgency.Low) return Theme.fg_dim;
+        if (root.notification.urgency === NotificationUrgency.Low) return Style.text_dim;
         return Theme.theme_primary;
     }
 
@@ -132,7 +132,7 @@ Item {
                     text: Style.boxed_cards
                         ? "[" + (root.notification ? root.notification.appName : "") + "] " + (root.entry ? root.relative_time(root.entry.time) : "") + root.urgency_tag
                         : (root.notification ? root.notification.appName : "") + "  ·  " + (root.entry ? root.relative_time(root.entry.time) : "")
-                    color: Style.boxed_cards ? root.accent : Theme.fg_muted
+                    color: Style.boxed_cards ? root.accent : Style.text_muted
                     font.family: Style.font_family
                     font.pixelSize: Style.font_size - (Style.boxed_cards ? 3 : 1)
                 }
@@ -158,7 +158,7 @@ Item {
                     // StyledText (unlike RichText) elides correctly and still renders <b>/<i>/etc.
                     textFormat: Text.StyledText
                     text: root.notification ? root.notification.body : ""
-                    color: Theme.fg_muted
+                    color: Style.text_muted
                     font.family: Style.font_family
                     font.pixelSize: Style.font_size
                 }

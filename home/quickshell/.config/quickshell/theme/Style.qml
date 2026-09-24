@@ -14,6 +14,8 @@ Singleton {
 
     readonly property var styles: {
         const terminal = {
+            text_muted: Theme.fg_muted,
+            text_dim: Theme.fg_dim,
             font_family: "JetBrainsMono Nerd Font",
             font_size: Theme.popup_font_size + 2,
             rounded: false,
@@ -103,6 +105,8 @@ Singleton {
         };
         return {
             "default": {
+                text_muted: Theme.fg_muted,
+                text_dim: Theme.fg_dim,
                 font_family: Theme.font_family,
                 font_size: Theme.popup_font_size,
                 rounded: true,
@@ -228,6 +232,9 @@ Singleton {
                 bar_tip_border_color: Qt.tint(Theme.bg_crust, Qt.alpha(Theme.theme_primary, 0.35))
             }),
             "ps1": Object.assign({}, terminal, {
+                // Muted text brightened; the shaded, dithered frame swallows the theme greys.
+                text_muted: Qt.tint(Theme.fg_dim, Qt.alpha(Theme.fg_core, 0.35)),
+                text_dim: Qt.tint(Theme.fg_dim, Qt.alpha(Theme.fg_core, 0.6)),
                 font_family: "Terminess Nerd Font",
                 font_size: Theme.popup_font_size + 6,
                 frame_color: Theme.bg_crust,
@@ -331,6 +338,8 @@ Singleton {
 
     readonly property string font_family: root.active.font_family
     readonly property int font_size: root.active.font_size
+    readonly property color text_muted: root.active.text_muted
+    readonly property color text_dim: root.active.text_dim
     readonly property bool rounded: root.active.rounded
     readonly property bool frame_follows_island: root.active.frame_follows_island
     readonly property color frame_color: root.active.frame_color

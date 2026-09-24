@@ -257,7 +257,7 @@ PanelWindow {
                     Layout.preferredWidth: percent_metrics.width
                     horizontalAlignment: Text.AlignRight
                     text: root.percent + "%"
-                    color: root.muted ? Theme.fg_muted : Theme.fg_core
+                    color: root.muted ? Style.text_muted : Theme.fg_core
                     font.family: Style.font_family
                     font.pixelSize: Style.font_size
                 }

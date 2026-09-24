@@ -75,13 +75,13 @@ Item {
                     const w = width, h = height;
                     const cx = w / 2, cy = h - 12, r = Math.min(w / 2 - 12, h - 24);
 
-                    ctx.strokeStyle = Theme.fg_muted;
+                    ctx.strokeStyle = Style.text_muted;
                     ctx.lineWidth = 3;
                     ctx.beginPath();
                     ctx.arc(cx, cy, r, Math.PI, 0, false);
                     ctx.stroke();
 
-                    ctx.strokeStyle = Theme.fg_dim;
+                    ctx.strokeStyle = Style.text_dim;
                     ctx.lineWidth = 1;
                     ctx.beginPath();
                     ctx.moveTo(0, cy);
@@ -109,7 +109,7 @@ Item {
                     anchors.horizontalCenter: parent.horizontalCenter
                     anchors.bottom: parent.bottom
                     anchors.bottomMargin: 20
-                    Text { anchors.horizontalCenter: parent.horizontalCenter; text: "Day length"; color: Theme.fg_muted; font.family: Style.font_family; font.pixelSize: Style.font_size - 3 }
+                    Text { anchors.horizontalCenter: parent.horizontalCenter; text: "Day length"; color: Style.text_muted; font.family: Style.font_family; font.pixelSize: Style.font_size - 3 }
                     Text { anchors.horizontalCenter: parent.horizontalCenter; text: root.day_length(); color: Theme.fg_core; font.family: Style.font_family; font.pixelSize: Style.font_size + 2 }
                 }
             }
@@ -136,7 +136,7 @@ Item {
                     sourceSize.width: 112
                     sourceSize.height: 112
                 }
-                Text { Layout.alignment: Qt.AlignHCenter; text: modelData.label; color: Theme.fg_muted; font.family: Style.font_family; font.pixelSize: Style.font_size - 3 }
+                Text { Layout.alignment: Qt.AlignHCenter; text: modelData.label; color: Style.text_muted; font.family: Style.font_family; font.pixelSize: Style.font_size - 3 }
                 Text { Layout.alignment: Qt.AlignHCenter; text: modelData.time || "—"; color: Theme.fg_core; font.family: Style.font_family; font.pixelSize: Style.font_size + 4; font.bold: true }
             }
         }
@@ -168,14 +168,14 @@ Item {
 
                 Text {
                     text: "Moonrise " + (root.moon_times.rise || "—") + (root.moon_times.set ? "  ·  Moonset " + root.moon_times.set : "")
-                    color: Theme.fg_muted
+                    color: Style.text_muted
                     font.family: Style.font_family
                     font.pixelSize: Style.font_size - 2
                 }
 
                 Text {
                     text: "Full moon " + root.next_full
-                    color: Theme.fg_dim
+                    color: Style.text_dim
                     font.family: Style.font_family
                     font.pixelSize: Style.font_size - 2
                 }

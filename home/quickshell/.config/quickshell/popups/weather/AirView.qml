@@ -19,7 +19,7 @@ Item {
         anchors.centerIn: parent
         visible: !WeatherState.aq_has_data
         text: WeatherState.aq_loading ? "Loading…" : "Air quality unavailable"
-        color: Theme.fg_dim
+        color: Style.text_dim
         font.family: Style.font_family
         font.pixelSize: Style.font_size
     }
@@ -37,14 +37,14 @@ Item {
                 spacing: 0
                 Text {
                     text: WeatherState.aq_current ? WeatherState.aq_current.aqi : "--"
-                    color: WeatherState.aq_current ? WeatherState.aqi_color(WeatherState.aq_current.aqi) : Theme.fg_dim
+                    color: WeatherState.aq_current ? WeatherState.aqi_color(WeatherState.aq_current.aqi) : Style.text_dim
                     font.family: Style.font_family
                     font.pixelSize: Style.font_size + 20
                     font.bold: true
                 }
                 Text {
                     text: WeatherState.aq_current ? WeatherState.aqi_band(WeatherState.aq_current.aqi).label : ""
-                    color: WeatherState.aq_current ? WeatherState.aqi_color(WeatherState.aq_current.aqi) : Theme.fg_dim
+                    color: WeatherState.aq_current ? WeatherState.aqi_color(WeatherState.aq_current.aqi) : Style.text_dim
                     font.family: Style.font_family
                     font.pixelSize: Style.font_size
                 }
@@ -56,17 +56,17 @@ Item {
 
                 ColumnLayout {
                     spacing: 0
-                    Text { text: "PM2.5"; color: Theme.fg_muted; font.family: Style.font_family; font.pixelSize: Style.font_size - 3 }
+                    Text { text: "PM2.5"; color: Style.text_muted; font.family: Style.font_family; font.pixelSize: Style.font_size - 3 }
                     Text { text: WeatherState.aq_current ? WeatherState.aq_current.pm25.toFixed(1) : "--"; color: Theme.fg_core; font.family: Style.font_family; font.pixelSize: Style.font_size + 1 }
                 }
                 ColumnLayout {
                     spacing: 0
-                    Text { text: "PM10"; color: Theme.fg_muted; font.family: Style.font_family; font.pixelSize: Style.font_size - 3 }
+                    Text { text: "PM10"; color: Style.text_muted; font.family: Style.font_family; font.pixelSize: Style.font_size - 3 }
                     Text { text: WeatherState.aq_current ? WeatherState.aq_current.pm10.toFixed(1) : "--"; color: Theme.fg_core; font.family: Style.font_family; font.pixelSize: Style.font_size + 1 }
                 }
                 ColumnLayout {
                     spacing: 0
-                    Text { text: "Ozone"; color: Theme.fg_muted; font.family: Style.font_family; font.pixelSize: Style.font_size - 3 }
+                    Text { text: "Ozone"; color: Style.text_muted; font.family: Style.font_family; font.pixelSize: Style.font_size - 3 }
                     Text { text: WeatherState.aq_current ? WeatherState.aq_current.ozone.toFixed(1) : "--"; color: Theme.fg_core; font.family: Style.font_family; font.pixelSize: Style.font_size + 1 }
                 }
             }
@@ -119,7 +119,7 @@ Item {
                     ctx.fillRect(x, y, bar_w, bar_h);
 
                     if (i % 3 === 0) {
-                        ctx.fillStyle = Theme.fg_muted;
+                        ctx.fillStyle = Style.text_muted;
                         ctx.fillText(WeatherState.format_hour(new Date(row.dt)), i * col_w + col_w / 2, h - 4);
                     }
                 }

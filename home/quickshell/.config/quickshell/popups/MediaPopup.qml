@@ -180,7 +180,7 @@ Popup {
                         anchors.centerIn: parent
                         visible: !art_image.has_art || art_image.status !== Image.Ready
                         text: "\u{f001}"
-                        color: Theme.fg_dim
+                        color: Style.text_dim
                         font.family: Style.font_family
                         font.pixelSize: 48
                     }
@@ -233,7 +233,7 @@ Popup {
                             id: pill_label
                             anchors.centerIn: parent
                             text: root.player ? (root.player.identity || "Player") : ""
-                            color: Theme.fg_muted
+                            color: Style.text_muted
                             font.family: Style.font_family
                             font.pixelSize: Style.font_size - 4
                         }
@@ -267,7 +267,7 @@ Popup {
                         elide: Text.ElideRight
                         visible: root.player && root.player.trackAlbum !== ""
                         text: root.player ? root.player.trackAlbum : ""
-                        color: Theme.fg_dim
+                        color: Style.text_dim
                         font.family: Style.font_family
                         font.pixelSize: Style.font_size - 2
                     }
@@ -349,7 +349,7 @@ Popup {
                         Text {
                             visible: progress_item.has_length
                             text: root.player ? root.fmt_time(root.player.position) : "0:00"
-                            color: Theme.fg_dim
+                            color: Style.text_dim
                             font.family: Style.font_family
                             font.pixelSize: Style.font_size - 4
                         }
@@ -358,7 +358,7 @@ Popup {
 
                         Text {
                             text: progress_item.has_length ? root.fmt_time(progress_item.track_length) : "Live"
-                            color: Theme.fg_dim
+                            color: Style.text_dim
                             font.family: Style.font_family
                             font.pixelSize: Style.font_size - 4
                         }

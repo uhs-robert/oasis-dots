@@ -270,7 +270,7 @@ Popup {
             Text {
                 visible: root.status_text !== ""
                 text: root.status_text
-                color: Theme.fg_muted
+                color: Style.text_muted
                 font.family: Style.font_family
                 font.pixelSize: Style.font_size - 3
             }
@@ -329,7 +329,7 @@ Popup {
                         Text {
                             visible: !net_row.is_advanced && net_row.modelData.security !== WifiSecurityType.Open
                             text: ""
-                            color: net_row.fg(Theme.fg_muted)
+                            color: net_row.fg(Style.text_muted)
                             font.family: Style.font_family
                             font.pixelSize: Style.font_size - 2
                         }
@@ -337,7 +337,7 @@ Popup {
                         Text {
                             visible: !net_row.is_advanced && net_row.modelData.known
                             text: ""
-                            color: net_row.fg(Theme.fg_muted)
+                            color: net_row.fg(Style.text_muted)
                             font.family: Style.font_family
                             font.pixelSize: Style.font_size - 2
                         }
@@ -412,7 +412,7 @@ Popup {
             Text {
                 visible: root.status_text !== ""
                 text: root.status_text
-                color: Theme.fg_muted
+                color: Style.text_muted
                 font.family: Style.font_family
                 font.pixelSize: Style.font_size - 3
             }

@@ -24,9 +24,9 @@ Rectangle {
     }
 
     readonly property color accent: {
-        if (!root.notification) return Theme.fg_dim;
+        if (!root.notification) return Style.text_dim;
         if (root.notification.urgency === NotificationUrgency.Critical) return Theme.error;
-        if (root.notification.urgency === NotificationUrgency.Low) return Theme.fg_dim;
+        if (root.notification.urgency === NotificationUrgency.Low) return Style.text_dim;
         return Theme.theme_primary;
     }
 
@@ -203,7 +203,7 @@ Rectangle {
                     text: Style.boxed_cards
                         ? "[" + (root.notification ? root.notification.appName : "") + "] " + root.relative_time + root.urgency_tag
                         : (root.notification ? root.notification.appName : "") + "  ·  " + root.relative_time
-                    color: Style.boxed_cards ? root.accent : Theme.fg_muted
+                    color: Style.boxed_cards ? root.accent : Style.text_muted
                     font.family: Style.font_family
                     font.pixelSize: Style.font_size - (Style.boxed_cards ? 3 : 4)
                     style: root.text_style
@@ -212,7 +212,7 @@ Rectangle {
 
                 Text {
                     text: "×"
-                    color: Theme.fg_dim
+                    color: Style.text_dim
                     font.family: Style.font_family
                     font.pixelSize: Style.font_size + 2
 
@@ -247,7 +247,7 @@ Rectangle {
                 // StyledText (unlike RichText) elides correctly and still renders <b>/<i>/etc.
                 textFormat: Text.StyledText
                 text: root.notification ? root.notification.body : ""
-                color: Theme.fg_muted
+                color: Style.text_muted
                 font.family: Style.font_family
                 font.pixelSize: Style.font_size
             }

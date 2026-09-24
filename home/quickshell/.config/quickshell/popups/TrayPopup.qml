@@ -143,7 +143,7 @@ Popup {
             Text {
                 visible: root.items.length === 0
                 text: "No tray apps"
-                color: Theme.fg_dim
+                color: Style.text_dim
                 font.family: Style.font_family
                 font.pixelSize: Style.font_size - 2
             }
@@ -187,7 +187,7 @@ Popup {
                             maximumLineCount: 1
                             wrapMode: Text.NoWrap
                             text: root.detail(item_row.modelData)
-                            color: item_row.fg(Theme.fg_dim)
+                            color: item_row.fg(Style.text_dim)
                             font.family: Style.font_family
                             font.pixelSize: Style.font_size - 3
                         }

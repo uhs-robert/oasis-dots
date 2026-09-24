@@ -170,7 +170,7 @@ Popup {
                         readonly property bool is_active: index === Timezones.index
 
                         text: Timezones.abbrevs[index] || "..."
-                        color: is_active ? (Style.marker_fill ? Style.title_fg : Theme.theme_secondary) : Theme.fg_muted
+                        color: is_active ? (Style.marker_fill ? Style.title_fg : Theme.theme_secondary) : Style.text_muted
                         font.family: Style.font_family
                         font.pixelSize: Style.font_size - 2
                         font.bold: is_active
@@ -215,7 +215,7 @@ Popup {
                         text: modelData.text
                         font.family: Style.font_family
                         font.pixelSize: modelData.kind === "header" || modelData.kind === "weeknum" ? root.grid_font_size - 1 : root.grid_font_size
-                        color: cell.marked ? Style.title_fg : modelData.kind === "header" ? Theme.fg_muted : modelData.kind === "weeknum" ? Theme.fg_dim : modelData.is_today ? Theme.theme_accent : (modelData.in_month ? Theme.fg_core : Theme.fg_muted)
+                        color: cell.marked ? Style.title_fg : modelData.kind === "header" ? Style.text_muted : modelData.kind === "weeknum" ? Style.text_dim : modelData.is_today ? Theme.theme_accent : (modelData.in_month ? Theme.fg_core : Style.text_muted)
                         font.underline: modelData.kind === "day" && modelData.is_today === true && !Style.marker_fill
                         font.bold: cell.marked
 

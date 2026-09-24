@@ -277,7 +277,7 @@ Item {
             elide: Text.ElideRight
             readonly property var selected: WeatherState.days[root.day_cursor]
             text: selected ? selected.cond + " · " + selected.precip.toFixed(2) + (WeatherState.settings.unit === "celsius" ? " mm" : " in") + " · " + (selected.sunrise || "—") + "–" + (selected.sunset || "—") : ""
-            color: Theme.fg_muted
+            color: Style.text_muted
             font.family: Style.font_family
             font.pixelSize: Style.font_size - 3
         }

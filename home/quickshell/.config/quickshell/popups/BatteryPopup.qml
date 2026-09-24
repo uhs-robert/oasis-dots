@@ -142,7 +142,7 @@ Popup {
 
             Text {
                 text: root.state_label
-                color: Theme.fg_muted
+                color: Style.text_muted
                 font.family: Style.font_family
                 font.pixelSize: Style.font_size - 2
             }
@@ -150,7 +150,7 @@ Popup {
             Text {
                 visible: root.time_label !== ""
                 text: root.time_label
-                color: Theme.fg_muted
+                color: Style.text_muted
                 font.family: Style.font_family
                 font.pixelSize: Style.font_size - 2
             }
@@ -158,7 +158,7 @@ Popup {
             Text {
                 visible: root.rate > 0
                 text: root.rate.toFixed(1) + " W"
-                color: Theme.fg_muted
+                color: Style.text_muted
                 font.family: Style.font_family
                 font.pixelSize: Style.font_size - 2
             }
@@ -241,7 +241,7 @@ Popup {
                 visible: !root.ppd_available
                 Layout.topMargin: 6
                 text: "power-profiles-daemon not running"
-                color: Theme.fg_dim
+                color: Style.text_dim
                 font.family: Style.font_family
                 font.pixelSize: Style.font_size - 3
             }

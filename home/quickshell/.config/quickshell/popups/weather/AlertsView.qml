@@ -50,7 +50,7 @@ Item {
             Text {
                 visible: root.alerts.length === 0
                 text: "No active alerts"
-                color: Theme.fg_dim
+                color: Style.text_dim
                 font.family: Style.font_family
                 font.pixelSize: Style.font_size - 1
             }
@@ -93,7 +93,7 @@ Item {
                             }
                             Text {
                                 text: alert_row.modelData.severity
-                                color: alert_row.fg(Theme.fg_muted)
+                                color: alert_row.fg(Style.text_muted)
                                 font.family: Style.font_family
                                 font.pixelSize: Style.font_size - 4
                             }
@@ -139,7 +139,7 @@ Item {
                     Layout.fillWidth: true
                     elide: Text.ElideRight
                     text: root.selected ? root.fmt_time(root.selected.onset) + " – " + root.fmt_time(root.selected.ends) + "  ·  " + root.selected.area : ""
-                    color: Theme.fg_muted
+                    color: Style.text_muted
                     font.family: Style.font_family
                     font.pixelSize: Style.font_size - 3
                 }

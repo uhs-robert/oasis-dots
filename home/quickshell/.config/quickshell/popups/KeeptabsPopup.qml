@@ -67,7 +67,7 @@ Popup {
         if (state === "waiting") return Theme.error;
         if (state === "done") return Theme.ok;
         if (state === "running") return Theme.theme_primary;
-        return Theme.fg_dim;
+        return Style.text_dim;
     }
 
     // Below 60% the primary color, 60-85% a warning, above that an error.
@@ -180,7 +180,7 @@ Popup {
                     anchors.centerIn: parent
                     visible: root.current_tab === 0 && root.sessions.length === 0
                     text: "No agent sessions"
-                    color: Theme.fg_dim
+                    color: Style.text_dim
                     font.family: Style.font_family
                     font.pixelSize: Style.font_size - 2
                 }
@@ -244,7 +244,7 @@ Popup {
                                     Layout.minimumWidth: 0
                                     elide: Text.ElideRight
                                     text: (session_row.modelData.agent || "claude") + " · " + (session_row.modelData.project || "") + " · " + (session_row.modelData.where || "") + " · " + root.age(session_row.modelData.since)
-                                    color: session_row.fg(Theme.fg_muted)
+                                    color: session_row.fg(Style.text_muted)
                                     font.family: Style.font_family
                                     font.pixelSize: Style.font_size - 3
                                 }
@@ -252,7 +252,7 @@ Popup {
                                 Text {
                                     visible: session_row.has_context
                                     text: session_row.has_context ? session_row.modelData.context_pct + "% · " + root.fmt_tokens(session_row.modelData.context_used) + "/" + root.fmt_tokens(session_row.modelData.context_window) : ""
-                                    color: session_row.fg(Theme.fg_dim)
+                                    color: session_row.fg(Style.text_dim)
                                     font.family: Style.font_family
                                     font.pixelSize: Style.font_size - 4
                                 }
@@ -304,7 +304,7 @@ Popup {
                         Layout.minimumWidth: 0
                         elide: Text.ElideRight
                         text: ClaudeUsageState.loading ? "Loading…" : ClaudeUsageState.error ? ClaudeUsageState.error : (ClaudeUsageState.updated > 0 ? "Claude usage · updated " + Qt.formatTime(new Date(ClaudeUsageState.updated), "HH:mm") : "Claude usage")
-                        color: ClaudeUsageState.error && !ClaudeUsageState.loading ? Theme.warning : Theme.fg_muted
+                        color: ClaudeUsageState.error && !ClaudeUsageState.loading ? Theme.warning : Style.text_muted
                         font.family: Style.font_family
                         font.pixelSize: Style.font_size - 2
                         font.bold: true
@@ -315,7 +315,7 @@ Popup {
                         Layout.topMargin: 24
                         visible: ClaudeUsageState.rows.length === 0 && !ClaudeUsageState.loading
                         text: ClaudeUsageState.error ? "" : "No usage data yet"
-                        color: Theme.fg_dim
+                        color: Style.text_dim
                         font.family: Style.font_family
                         font.pixelSize: Style.font_size - 1
                     }
@@ -396,7 +396,7 @@ Popup {
                                     elide: Text.ElideRight
                                     visible: usage_row.modelData.resets !== ""
                                     text: "resets " + usage_row.modelData.resets
-                                    color: Theme.fg_dim
+                                    color: Style.text_dim
                                     font.family: Style.font_family
                                     font.pixelSize: Style.font_size - 3
                                 }

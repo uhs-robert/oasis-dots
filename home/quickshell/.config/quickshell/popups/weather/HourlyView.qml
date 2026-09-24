@@ -77,7 +77,7 @@ Item {
         const x_of = i => i * root.hour_col_w + root.hour_col_w / 2;
         const color = root.hour_colors[root.sub];
 
-        ctx.strokeStyle = Theme.fg_muted;
+        ctx.strokeStyle = Style.text_muted;
         ctx.globalAlpha = 0.25;
         ctx.lineWidth = 1;
         for (const b of root.day_boundaries) {
@@ -88,7 +88,7 @@ Item {
             ctx.stroke();
         }
         ctx.globalAlpha = 1;
-        ctx.fillStyle = Theme.fg_muted;
+        ctx.fillStyle = Style.text_muted;
         ctx.font = (Style.font_size - 2) + "px \"" + Style.font_family + "\"";
         ctx.textAlign = "left";
         for (const b of root.day_boundaries) {
@@ -111,7 +111,7 @@ Item {
         const secondary = root.sub === 0 ? hrs.map(r => r.feels) : root.sub === 2 ? hrs.map(r => r.wind_gusts) : null;
         if (secondary) {
             ctx.setLineDash([4, 3]);
-            ctx.strokeStyle = Theme.fg_muted;
+            ctx.strokeStyle = Style.text_muted;
             ctx.lineWidth = 1.5;
             ctx.beginPath();
             for (let i = 0; i < hrs.length; i++) {
@@ -271,7 +271,7 @@ Item {
                             anchors.topMargin: root.icon_row_h
                             anchors.horizontalCenter: parent.horizontalCenter
                             text: WeatherState.format_hour(new Date(hour_col.modelData.dt))
-                            color: hour_col.index === root.hour_cursor ? Theme.theme_secondary : Theme.fg_muted
+                            color: hour_col.index === root.hour_cursor ? Theme.theme_secondary : Style.text_muted
                             font.family: Style.font_family
                             font.pixelSize: Style.font_size - 2
                         }

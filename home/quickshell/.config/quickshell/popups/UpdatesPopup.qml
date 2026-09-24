@@ -102,7 +102,7 @@ Popup {
 
                 Text {
                     text: UpdatesState.checking ? "Checking…" : UpdatesState.error ? UpdatesState.error : (UpdatesState.last_checked > 0 ? "Checked " + Qt.formatTime(new Date(UpdatesState.last_checked), "HH:mm") : "Never checked")
-                    color: UpdatesState.error && !UpdatesState.checking ? Theme.warning : Theme.fg_muted
+                    color: UpdatesState.error && !UpdatesState.checking ? Theme.warning : Style.text_muted
                     font.family: Style.font_family
                     font.pixelSize: Style.font_size - 3
                 }
@@ -116,7 +116,7 @@ Popup {
                     anchors.centerIn: parent
                     visible: root.current_list.length === 0
                     text: UpdatesState.error ? UpdatesState.error : "Up to date"
-                    color: UpdatesState.error ? Theme.warning : Theme.fg_dim
+                    color: UpdatesState.error ? Theme.warning : Style.text_dim
                     font.family: Style.font_family
                     font.pixelSize: Style.font_size - 1
                 }
@@ -161,7 +161,7 @@ Popup {
                                 elide: Text.ElideLeft
                                 textFormat: Text.StyledText
                                 text: update_row.modelData.old + " → <font color=\"" + Theme.yellow + "\">" + update_row.modelData.new + "</font>"
-                                color: update_row.fg(Theme.fg_muted)
+                                color: update_row.fg(Style.text_muted)
                                 font.family: Style.font_family
                                 font.pixelSize: Style.font_size - 3
                             }
