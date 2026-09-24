@@ -84,8 +84,10 @@ PanelWindow {
         event.accepted = true;
     }
 
+    // Set by popups whose layout is fluid: from a side island they take exactly the island body's width.
+    property bool fit_island: false
     // Never narrower than the island's bottom edge (its body, between the slants).
-    implicitWidth: Math.max(Style.px(preferred_width) + root.st.lcd_margin * 2, island_width, root.st.popup_min_width)
+    implicitWidth: root.fit_island && root.island_width > 0 && root.side !== "center" ? root.island_width : Math.max(Style.px(preferred_width) + root.st.lcd_margin * 2, island_width, root.st.popup_min_width)
     implicitHeight: body_height + header_height + footer_height + root.st.frame_drop
     default property alias content: content_scope.data
 
@@ -319,7 +321,7 @@ PanelWindow {
                     visible: root.has_title
                     x: (root.st.fade_fills ? root.st.frame_border_width : root.bracket_pad * 1.5) + root.st.inset_pad + root.st.lcd_margin * 2
                     y: (root.st.fade_fills ? root.st.frame_border_width : root.bracket_pad) + root.st.inset_pad + root.st.lcd_margin * 2
-                    width: root.st.fade_fills ? parent.width - root.st.frame_border_width * 2 : title_text.implicitWidth + 20
+                    width: root.st.fade_fills ? parent.width - root.st.frame_border_width * 2 : Math.min(title_text.implicitWidth + 20, parent.width - title_tab.x * 2)
                     height: title_text.implicitHeight + 4
                     color: root.st.fade_fills ? "transparent" : root.st.title_bg
 
@@ -333,6 +335,8 @@ PanelWindow {
                         anchors.centerIn: root.st.fade_fills ? undefined : parent
                         x: 10
                         y: (parent.height - height) / 2
+                        width: Math.min(implicitWidth, parent.width - 20)
+                        elide: Text.ElideRight
                         text: root.st.title_prefix + root.title + (Style.caret_phase ? root.st.title_suffix : " ".repeat(root.st.title_suffix.length))
                         color: root.st.title_fg
                         font.family: root.st.title_font_family
@@ -345,7 +349,8 @@ PanelWindow {
                 }
 
                 Text {
-                    visible: root.has_title && root.st.title_readout !== ""
+                    // Dropped on narrow popups rather than drawn over the title.
+                    visible: root.has_title && root.st.title_readout !== "" && title_tab.x + (root.st.fade_fills ? 10 + title_text.implicitWidth : title_tab.width) + 12 <= parent.width - anchors.rightMargin - implicitWidth
                     anchors.right: parent.right
                     anchors.rightMargin: (root.lcd ? root.st.lcd_margin * 2 : 12) + root.bracket_pad + root.st.inset_pad
                     y: title_tab.y + (title_tab.height - height) / 2

@@ -122,8 +122,8 @@ Item {
 
             Image {
                 Layout.alignment: Qt.AlignTop
-                Layout.preferredWidth: 44
-                Layout.preferredHeight: 44
+                Layout.preferredWidth: root.width < 320 ? 32 : 44
+                Layout.preferredHeight: Layout.preferredWidth
                 visible: root.notification && (root.notification.image !== "" || root.notification.appIcon !== "")
                 source: root.notification ? (root.notification.image !== "" ? root.notification.image : Quickshell.iconPath(root.notification.appIcon, true)) : ""
                 fillMode: Image.PreserveAspectFit

@@ -37,85 +37,87 @@ Item {
         detail_flick.contentY = Math.max(0, Math.min(Math.max(0, detail_flick.contentHeight - detail_flick.height), detail_flick.contentY + dir * 40));
     }
 
-    RowLayout {
+    readonly property int row_h: Style.px(36)
+
+    onAlert_cursorChanged: alert_list.positionViewAtIndex(root.alert_cursor, ListView.Contain)
+
+    ColumnLayout {
         anchors.fill: parent
-        spacing: 14
+        spacing: 8
 
-        ColumnLayout {
-            Layout.preferredWidth: 220
-            Layout.maximumWidth: 220
-            Layout.fillHeight: true
+        Text {
+            visible: root.alerts.length === 0
+            text: "No active alerts"
+            color: Style.text_dim
+            font.family: Style.font_family
+            font.pixelSize: Style.font_size - 1
+        }
+
+        // At most three rows show; the rest scroll so the detail keeps most of the height.
+        ListView {
+            id: alert_list
+            Layout.fillWidth: true
+            Layout.preferredHeight: Math.min(3, root.alerts.length) * (root.row_h + spacing)
+            visible: root.alerts.length > 0
+            clip: true
             spacing: 2
+            boundsBehavior: Flickable.StopAtBounds
+            model: root.alerts
 
-            Text {
-                visible: root.alerts.length === 0
-                text: "No active alerts"
-                color: Style.text_dim
-                font.family: Style.font_family
-                font.pixelSize: Style.font_size - 1
-            }
+            delegate: MenuRow {
+                id: alert_row
+                required property var modelData
+                required property int index
 
-            Repeater {
-                model: root.alerts
+                width: ListView.view.width
+                height: root.row_h
+                selected: alert_row.index === root.alert_cursor
 
-                MenuRow {
-                    id: alert_row
-                    required property var modelData
-                    required property int index
+                RowLayout {
+                    anchors.fill: parent
+                    anchors.margins: 4
+                    anchors.leftMargin: 4 + alert_row.inset
+                    anchors.rightMargin: 4 + alert_row.key_space
+                    spacing: 6
 
-                    Layout.fillWidth: true
-                    height: Style.px(36)
-                    selected: alert_row.index === root.alert_cursor
-
-                    RowLayout {
-                        anchors.fill: parent
-                        anchors.margins: 4
-                        anchors.leftMargin: 4 + alert_row.inset
-                        anchors.rightMargin: 4 + alert_row.key_space
-                        spacing: 6
-
-                        Rectangle {
-                            Layout.preferredWidth: 6
-                            Layout.preferredHeight: 6
-                            radius: Style.radius(3)
-                            color: WeatherState.alert_color(alert_row.modelData.severity)
-                        }
-
-                        ColumnLayout {
-                            spacing: 0
-                            Layout.fillWidth: true
-                            Text {
-                                Layout.fillWidth: true
-                                elide: Text.ElideRight
-                                text: alert_row.modelData.event
-                                color: alert_row.fg(alert_row.index === root.alert_cursor ? Theme.theme_secondary : Theme.fg_core)
-                                font.family: Style.font_family
-                                font.pixelSize: Style.font_size - 2
-                            }
-                            Text {
-                                text: alert_row.modelData.severity
-                                color: alert_row.fg(Style.text_muted)
-                                font.family: Style.font_family
-                                font.pixelSize: Style.font_size - 4
-                            }
-                        }
+                    Rectangle {
+                        Layout.preferredWidth: 6
+                        Layout.preferredHeight: 6
+                        radius: Style.radius(3)
+                        color: WeatherState.alert_color(alert_row.modelData.severity)
                     }
 
-                    MouseArea {
-                        anchors.fill: parent
-                        onClicked: root.on_select(alert_row.index)
+                    ColumnLayout {
+                        spacing: 0
+                        Layout.fillWidth: true
+                        Text {
+                            Layout.fillWidth: true
+                            elide: Text.ElideRight
+                            text: alert_row.modelData.event
+                            color: alert_row.fg(alert_row.index === root.alert_cursor ? Theme.theme_secondary : Theme.fg_core)
+                            font.family: Style.font_family
+                            font.pixelSize: Style.font_size - 2
+                        }
+                        Text {
+                            text: alert_row.modelData.severity
+                            color: alert_row.fg(Style.text_muted)
+                            font.family: Style.font_family
+                            font.pixelSize: Style.font_size - 4
+                        }
                     }
                 }
-            }
 
-            Item { Layout.fillHeight: true }
+                MouseArea {
+                    anchors.fill: parent
+                    onClicked: root.on_select(alert_row.index)
+                }
+            }
         }
 
         Flickable {
             id: detail_flick
             Layout.fillWidth: true
             Layout.fillHeight: true
-            Layout.minimumWidth: 200
             clip: true
             contentWidth: width
             contentHeight: detail_col.implicitHeight
@@ -138,7 +140,7 @@ Item {
 
                 Text {
                     Layout.fillWidth: true
-                    elide: Text.ElideRight
+                    wrapMode: Text.Wrap
                     text: root.selected ? root.fmt_time(root.selected.onset) + " – " + root.fmt_time(root.selected.ends) + "  ·  " + root.selected.area : ""
                     color: Style.text_muted
                     font.family: Style.font_family

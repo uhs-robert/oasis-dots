@@ -13,13 +13,16 @@ Popup {
 
     popup_name: "notifications"
     size_class: "large"
-    preferred_width: 640
+    preferred_width: 420
+    fit_island: true
     body_height: content.implicitHeight + 24
 
     readonly property int content_height: Style.px(460)
     tabs: ["All", "Apps", "Critical"]
     // The sub-view is the tab's sort order; Popup keeps each tab's choice across tab switches.
-    sub_views: root.current_tab === 1 ? ["Latest activity", "By name"] : ["Newest first", "Oldest first"]
+    readonly property var app_sort_names: ["Latest activity", "By name"]
+    readonly property var time_sort_names: ["Newest first", "Oldest first"]
+    sub_views: root.current_tab === 1 ? root.app_sort_names : root.time_sort_names
     jumps_enabled: true
 
     property int selected: 0
@@ -199,59 +202,80 @@ Popup {
             anchors.top: parent.top
             spacing: 8
 
-            // --- Header ---
-            RowLayout {
+            // --- Header: buttons beside the title when it still fits, else on their own row (stacked if even a pair won't fit) ---
+            GridLayout {
+                id: header
+                readonly property real info_width: (bell.visible ? bell.implicitWidth + 14 : 0) + Math.max(title_text.visible ? title_text.implicitWidth : 0, count_text.implicitWidth)
+                readonly property real pair_width: dnd_button.implicitWidth + header.columnSpacing + clear_button.implicitWidth
+                readonly property bool buttons_inline: header.width >= header.info_width + header.columnSpacing + header.pair_width
+                readonly property bool buttons_pair: header.width >= header.pair_width
+
                 Layout.fillWidth: true
-                spacing: 14
+                columns: header.buttons_inline ? 3 : header.buttons_pair ? 2 : 1
+                columnSpacing: 8
+                rowSpacing: 6
 
-                // The style's title tab already names the popup.
-                Text {
-                    visible: !Style.show_title
-                    text: NotificationState.dnd ? "\u{f009b}" : "\u{f009a}"
-                    color: NotificationState.dnd ? Style.text_dim : Theme.theme_primary
-                    font.family: Style.font_family
-                    font.pixelSize: 40
-                }
-
-                ColumnLayout {
+                RowLayout {
+                    Layout.columnSpan: header.buttons_inline ? 1 : header.columns
                     Layout.fillWidth: true
-                    Layout.minimumWidth: 0
-                    spacing: 0
+                    spacing: 14
 
+                    // The style's title tab already names the popup.
                     Text {
+                        id: bell
                         visible: !Style.show_title
-                        Layout.fillWidth: true
-                        Layout.minimumWidth: 0
-                        elide: Text.ElideRight
-                        text: "Notifications"
-                        color: Theme.fg_core
-                        font.bold: true
+                        text: NotificationState.dnd ? "\u{f009b}" : "\u{f009a}"
+                        color: NotificationState.dnd ? Style.text_dim : Theme.theme_primary
                         font.family: Style.font_family
-                        font.pixelSize: Style.font_size + 6
+                        font.pixelSize: 40
                     }
 
-                    Text {
+                    ColumnLayout {
                         Layout.fillWidth: true
                         Layout.minimumWidth: 0
-                        elide: Text.ElideRight
-                        text: NotificationState.unread + " unread · " + NotificationState.history.length + " total"
-                        color: Style.text_muted
-                        font.family: Style.font_family
-                        font.pixelSize: Style.font_size - 2
+                        spacing: 0
+
+                        Text {
+                            id: title_text
+                            visible: !Style.show_title
+                            Layout.fillWidth: true
+                            Layout.minimumWidth: 0
+                            elide: Text.ElideRight
+                            text: "Notifications"
+                            color: Theme.fg_core
+                            font.bold: true
+                            font.family: Style.font_family
+                            font.pixelSize: Style.font_size + 6
+                        }
+
+                        Text {
+                            id: count_text
+                            Layout.fillWidth: true
+                            Layout.minimumWidth: 0
+                            elide: Text.ElideRight
+                            text: NotificationState.unread + " unread · " + NotificationState.history.length + " total"
+                            color: Style.text_muted
+                            font.family: Style.font_family
+                            font.pixelSize: Style.font_size - 2
+                        }
                     }
                 }
 
                 HeaderButton {
+                    id: dnd_button
                     Layout.alignment: Qt.AlignVCenter
+                    Layout.fillWidth: !header.buttons_inline
                     icon: "\u{f009b}"
-                    label: "Do not disturb"
+                    label: "DND"
                     key_hint: Style.row_keys ? "t" : "D"
                     active: NotificationState.dnd
                     onActivated: NotificationState.toggle_dnd()
                 }
 
                 HeaderButton {
+                    id: clear_button
                     Layout.alignment: Qt.AlignVCenter
+                    Layout.fillWidth: !header.buttons_inline
                     icon: "\u{f0a7a}"
                     label: "Clear all"
                     key_hint: "C"
@@ -259,28 +283,13 @@ Popup {
                 }
             }
 
-            // --- Tab row ---
-            RowLayout {
+            TabRows {
                 Layout.fillWidth: true
-                spacing: 4
-
-                Repeater {
-                    model: root.tabs
-
-                    MenuTab {
-                        id: tab_chip
-                        required property string modelData
-                        required property int index
-
-                        Layout.fillWidth: true
-                        implicitHeight: Style.px(28)
-                        label: tab_chip.modelData
-                        active: tab_chip.index === root.current_tab
-                        key: tab_chip.index < 9 ? String(tab_chip.index + 1) : ""
-                        font_size: Style.font_size - 1
-                        onClicked: root.set_tab(tab_chip.index)
-                    }
-                }
+                labels: root.tabs
+                current: root.current_tab
+                font_size: Style.font_size - 1
+                tab_height: Style.px(28)
+                onPicked: i => root.set_tab(i)
             }
 
             // --- Content: fixed height so the panel never resizes as entries change ---
@@ -381,36 +390,20 @@ Popup {
                 }
             }
 
-            // --- Sub-view pills: per-tab sort order, under the content ---
-            Item {
+            // --- Sub-view pills: per-tab sort order, under the content; a click flips the order ---
+            TabRows {
                 Layout.fillWidth: true
-                Layout.preferredHeight: 28
-
-                RowLayout {
-                    anchors.centerIn: parent
-                    spacing: 4
-
-                    Repeater {
-                        model: root.sub_views
-
-                        MenuTab {
-                            id: sub_chip
-                            required property string modelData
-                            required property int index
-
-                            base_radius: 12
-                            label: sub_chip.modelData
-                            active: sub_chip.index === root.current_sub
-                            font_size: Style.font_size - 3
-                            onClicked: root.step_sub(1)
-                        }
-                    }
-                }
+                chips: true
+                labels: root.sub_views
+                current: root.current_sub
+                reserve_labels: [root.app_sort_names, root.time_sort_names]
+                onPicked: root.step_sub(1)
             }
 
             MenuFooter {
                 Layout.fillWidth: true
-                text: "[ ] tabs · 1-3 select · Tab order · j/k move · gg/G first/last · h/l action · H/L body/last · Enter open · d/x dismiss · C clear all · t toggle"
+                wrap: true
+                text: "[ ] tabs · 1-3 select · Tab order · j/k move · gg/G first/last · h/l action · H/L body/last · Enter open · d/x dismiss · C clear all · t dnd"
             }
         }
     }

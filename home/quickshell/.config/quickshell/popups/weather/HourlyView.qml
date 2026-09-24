@@ -5,7 +5,7 @@ import Quickshell
 import "../../theme"
 import "../../services"
 
-// Full-range scrollable line chart. sub: 0 temp, 1 precip, 2 wind, 3 UV, 4 humidity.
+// Full-range scrollable line chart. sub: 0 temp, 1 precip (chance + amount), 2 wind, 3 UV, 4 humidity.
 // h/l move the hour cursor (auto-scrolling into view); H/L jump +-1 day, same hour.
 Item {
     id: root
@@ -15,12 +15,12 @@ Item {
     // Called with the clicked hour index; the popup owns hour_cursor, so clicks report up rather than assign it locally.
     property var on_select: function (i) {}
 
-    readonly property var sub_names: ["Temperature", "Precipitation", "Wind", "UV", "Humidity"]
+    readonly property var sub_names: ["Temp", "Precip", "Wind", "UV", "Humid"]
 
     readonly property int hour_col_w: 56
     readonly property int icon_row_h: 30
     readonly property int label_row_h: 18
-    readonly property int readout_h: 18
+    readonly property real readout_h: Math.max(18, readout_text.implicitHeight)
     readonly property int chart_h: root.height - root.readout_h - 8 - root.icon_row_h - root.label_row_h - 4
 
     readonly property var hour_colors: [Theme.yellow, Theme.blue, Theme.cyan, Theme.warning, Theme.bright_cyan]
@@ -46,7 +46,8 @@ Item {
 
     function scroll_to_cursor() {
         const cursor_x = root.hour_cursor * root.hour_col_w;
-        const margin = root.hour_col_w * 2;
+        // Narrow views get a smaller lead so the two margins never overlap.
+        const margin = Math.max(0, Math.min(root.hour_col_w * 2, (flick.width - root.hour_col_w) / 2));
         if (cursor_x < flick.contentX + margin) {
             flick.contentX = Math.max(0, cursor_x - margin);
         } else if (cursor_x + root.hour_col_w > flick.contentX + flick.width - margin) {
@@ -57,7 +58,7 @@ Item {
     function paint(ctx, w, h) {
         ctx.reset();
         const hrs = WeatherState.hours;
-        if (hrs.length === 0) return;
+        if (hrs.length === 0 || root.sub >= root.hour_colors.length) return;
 
         const values = hrs.map(root.value_of);
         let min_v, max_v;
@@ -72,7 +73,9 @@ Item {
         }
 
         const top_pad = 20;
-        const plot_h = h - top_pad;
+        const amount_px = Style.font_size - 3;
+        const bottom_pad = root.sub === 1 ? amount_px + 6 : 0;
+        const plot_h = h - top_pad - bottom_pad;
         const y_of = v => top_pad + plot_h - ((v - min_v) / (max_v - min_v || 1)) * plot_h;
         const x_of = i => i * root.hour_col_w + root.hour_col_w / 2;
         const color = root.hour_colors[root.sub];
@@ -97,9 +100,9 @@ Item {
 
         if (root.sub === 1) {
             ctx.beginPath();
-            ctx.moveTo(x_of(0), h);
+            ctx.moveTo(x_of(0), h - bottom_pad);
             for (let i = 0; i < hrs.length; i++) ctx.lineTo(x_of(i), y_of(hrs[i].pop));
-            ctx.lineTo(x_of(hrs.length - 1), h);
+            ctx.lineTo(x_of(hrs.length - 1), h - bottom_pad);
             ctx.closePath();
             ctx.fillStyle = Theme.blue;
             ctx.globalAlpha = 0.15;
@@ -148,6 +151,12 @@ Item {
             ctx.fillText(label, x, Math.max(12, y - 8));
         }
 
+        if (root.sub === 1) {
+            ctx.fillStyle = Theme.blue;
+            ctx.font = amount_px + "px \"" + Style.font_family + "\"";
+            for (let i = 0; i < hrs.length; i++) ctx.fillText(hrs[i].precip.toFixed(hrs[i].precip < 1 ? 2 : 1), x_of(i), h - 4);
+        }
+
         // Crosshair at the selected hour.
         if (root.hour_cursor >= 0 && root.hour_cursor < hrs.length) {
             const cx = x_of(root.hour_cursor);
@@ -176,6 +185,8 @@ Item {
         spacing: 4
 
         Text {
+            id: readout_text
+            Layout.fillWidth: true
             Layout.preferredHeight: root.readout_h
             text: root.readout
             color: Theme.fg_core

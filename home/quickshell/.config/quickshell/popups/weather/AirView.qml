@@ -4,7 +4,7 @@ import QtQuick.Layouts
 import "../../theme"
 import "../../services"
 
-// Big US AQI number, pollutant readouts, and a 24h trend. h/l move the hour cursor.
+// Hourly's Air sub-view: big US AQI number, pollutant readouts, and a 24h trend. h/l move the hour cursor.
 Item {
     id: root
 
@@ -13,7 +13,9 @@ Item {
     property var on_select: function (i) {}
 
     readonly property var slice: WeatherState.aq_hours.slice(0, 24)
-    readonly property var cursor_row: root.slice[Math.max(0, Math.min(root.slice.length - 1, root.hour_cursor))]
+    // The cursor is shared with the longer hourly range, so it is clamped to these 24 hours.
+    readonly property int cursor_index: Math.max(0, Math.min(root.slice.length - 1, root.hour_cursor))
+    readonly property var cursor_row: root.slice[root.cursor_index]
 
     Text {
         anchors.centerIn: parent
@@ -31,48 +33,57 @@ Item {
 
         RowLayout {
             Layout.fillWidth: true
-            spacing: 24
+            spacing: 14
 
-            ColumnLayout {
-                spacing: 0
-                Text {
-                    text: WeatherState.aq_current ? WeatherState.aq_current.aqi : "--"
-                    color: WeatherState.aq_current ? WeatherState.aqi_color(WeatherState.aq_current.aqi) : Style.text_dim
-                    font.family: Style.font_family
-                    font.pixelSize: Style.font_size + 20
-                    font.bold: true
-                }
-                Text {
-                    text: WeatherState.aq_current ? WeatherState.aqi_band(WeatherState.aq_current.aqi).label : ""
-                    color: WeatherState.aq_current ? WeatherState.aqi_color(WeatherState.aq_current.aqi) : Style.text_dim
-                    font.family: Style.font_family
-                    font.pixelSize: Style.font_size
-                }
+            Text {
+                text: WeatherState.aq_current ? WeatherState.aq_current.aqi : "--"
+                color: WeatherState.aq_current ? WeatherState.aqi_color(WeatherState.aq_current.aqi) : Style.text_dim
+                font.family: Style.font_family
+                font.pixelSize: Style.font_size + 20
+                font.bold: true
             }
 
-            RowLayout {
+            Text {
                 Layout.fillWidth: true
-                spacing: 20
+                wrapMode: Text.Wrap
+                maximumLineCount: 2
+                elide: Text.ElideRight
+                text: WeatherState.aq_current ? WeatherState.aqi_band(WeatherState.aq_current.aqi).label : ""
+                color: WeatherState.aq_current ? WeatherState.aqi_color(WeatherState.aq_current.aqi) : Style.text_dim
+                font.family: Style.font_family
+                font.pixelSize: Style.font_size
+            }
+        }
+
+        GridLayout {
+            id: readings
+            Layout.fillWidth: true
+            columns: Math.max(1, Math.min(3, Math.floor(readings.width / (Style.font_size * 6))))
+            columnSpacing: 8
+            rowSpacing: 4
+
+            Repeater {
+                model: [
+                    { label: "PM2.5", value: WeatherState.aq_current ? WeatherState.aq_current.pm25 : null },
+                    { label: "PM10", value: WeatherState.aq_current ? WeatherState.aq_current.pm10 : null },
+                    { label: "Ozone", value: WeatherState.aq_current ? WeatherState.aq_current.ozone : null }
+                ]
 
                 ColumnLayout {
+                    id: reading
+                    required property var modelData
+                    Layout.fillWidth: true
+                    Layout.preferredWidth: 0
                     spacing: 0
-                    Text { text: "PM2.5"; color: Style.text_muted; font.family: Style.font_family; font.pixelSize: Style.font_size - 3 }
-                    Text { text: WeatherState.aq_current ? WeatherState.aq_current.pm25.toFixed(1) : "--"; color: Theme.fg_core; font.family: Style.font_family; font.pixelSize: Style.font_size + 1 }
-                }
-                ColumnLayout {
-                    spacing: 0
-                    Text { text: "PM10"; color: Style.text_muted; font.family: Style.font_family; font.pixelSize: Style.font_size - 3 }
-                    Text { text: WeatherState.aq_current ? WeatherState.aq_current.pm10.toFixed(1) : "--"; color: Theme.fg_core; font.family: Style.font_family; font.pixelSize: Style.font_size + 1 }
-                }
-                ColumnLayout {
-                    spacing: 0
-                    Text { text: "Ozone"; color: Style.text_muted; font.family: Style.font_family; font.pixelSize: Style.font_size - 3 }
-                    Text { text: WeatherState.aq_current ? WeatherState.aq_current.ozone.toFixed(1) : "--"; color: Theme.fg_core; font.family: Style.font_family; font.pixelSize: Style.font_size + 1 }
+                    Text { Layout.fillWidth: true; elide: Text.ElideRight; text: reading.modelData.label; color: Style.text_muted; font.family: Style.font_family; font.pixelSize: Style.font_size - 3 }
+                    Text { Layout.fillWidth: true; elide: Text.ElideRight; text: reading.modelData.value !== null ? reading.modelData.value.toFixed(1) : "--"; color: Theme.fg_core; font.family: Style.font_family; font.pixelSize: Style.font_size + 1 }
                 }
             }
         }
 
         Text {
+            Layout.fillWidth: true
+            elide: Text.ElideRight
             readonly property var r: root.cursor_row
             text: r ? WeatherState.format_hour(new Date(r.dt)) + "  AQI " + r.aqi + " (" + WeatherState.aqi_band(r.aqi).label + ")" : ""
             color: Theme.fg_core
@@ -86,6 +97,8 @@ Item {
             Layout.fillHeight: true
 
             readonly property var rows: root.slice
+
+            onWidthChanged: requestPaint()
 
             onPaint: {
                 const ctx = getContext("2d");
@@ -102,6 +115,8 @@ Item {
 
                 ctx.font = (Style.font_size - 3) + "px \"" + Style.font_family + "\"";
                 ctx.textAlign = "center";
+                const label_w = ctx.measureText(WeatherState.format_hour(new Date(2000, 0, 1, 12))).width + 8;
+                const step = [3, 4, 6, 8, 12].find(n => n * col_w >= label_w) || 12;
 
                 for (let i = 0; i < rows.length; i++) {
                     const row = rows[i];
@@ -110,7 +125,7 @@ Item {
                     const x = i * col_w + (col_w - bar_w) / 2;
                     const y = top_pad + chart_h - bar_h;
 
-                    if (i === root.hour_cursor) {
+                    if (i === root.cursor_index) {
                         ctx.fillStyle = Theme.bg_surface;
                         ctx.fillRect(i * col_w, top_pad, col_w, chart_h);
                     }
@@ -118,7 +133,7 @@ Item {
                     ctx.fillStyle = WeatherState.aqi_color(row.aqi);
                     ctx.fillRect(x, y, bar_w, bar_h);
 
-                    if (i % 3 === 0) {
+                    if (i % step === 0) {
                         ctx.fillStyle = Style.text_muted;
                         ctx.fillText(WeatherState.format_hour(new Date(row.dt)), i * col_w + col_w / 2, h - 4);
                     }
@@ -135,7 +150,7 @@ Item {
             }
             Connections {
                 target: root
-                function onHour_cursorChanged() { canvas.requestPaint(); }
+                function onCursor_indexChanged() { canvas.requestPaint(); }
             }
 
             MouseArea {

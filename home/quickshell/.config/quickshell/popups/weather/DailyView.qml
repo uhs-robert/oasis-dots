@@ -5,16 +5,32 @@ import Quickshell
 import "../../theme"
 import "../../services"
 
-// One column per day. sub 0: temp band + precip chance. 1: wind. 2: UV. 3: sunshine.
+// One column per day in a window of up to five that the popup scrolls with day_cursor.
+// sub 0: temp band + precip chance. 1: wind. 2: UV. 3: sunshine.
 Item {
     id: root
 
     property int day_cursor: 0
+    property int first_day: 0
     property int sub: 0
     // Called with the clicked day index; the popup owns day_cursor, so clicks report up rather than assign it locally.
     property var on_select: function (i) {}
 
     readonly property var sub_names: ["Temp & Precip", "Wind", "UV", "Sunshine"]
+
+    FontMetrics {
+        id: label_metrics
+        font.family: Style.font_family
+        font.pixelSize: Style.font_size - 2
+    }
+
+    // Columns that fit without clipping their widest label, capped at five.
+    readonly property int fit_days: {
+        const f = label_metrics.font;
+        const col = Math.max(label_metrics.advanceWidth("Today"), label_metrics.advanceWidth("100%")) + 8;
+        return Math.max(1, Math.min(5, Math.floor((root.width + 4) / (col + 4))));
+    }
+    readonly property var window_days: WeatherState.days.slice(root.first_day, root.first_day + root.fit_days)
 
     readonly property int bar_area_h: 170
     readonly property int headroom: 18
@@ -62,12 +78,13 @@ Item {
             spacing: 4
 
             Repeater {
-                model: WeatherState.days
+                model: root.window_days
 
                 Item {
                     id: day_col
                     required property var modelData
                     required property int index
+                    readonly property int day_index: root.first_day + day_col.index
 
                     Layout.fillWidth: true
                     Layout.preferredWidth: 0
@@ -78,12 +95,12 @@ Item {
                         anchors.margins: -2
                         radius: Style.radius(4)
                         color: Theme.bg_surface
-                        visible: day_col.index === root.day_cursor
+                        visible: day_col.day_index === root.day_cursor
                     }
 
                     MouseArea {
                         anchors.fill: parent
-                        onClicked: root.on_select(day_col.index)
+                        onClicked: root.on_select(day_col.day_index)
                     }
 
                     ColumnLayout {
@@ -238,6 +255,7 @@ Item {
                         Text {
                             Layout.fillWidth: true
                             horizontalAlignment: Text.AlignHCenter
+                            elide: Text.ElideRight
                             text: day_col.modelData.pop + "%"
                             color: Theme.blue
                             font.family: Style.font_family
@@ -245,14 +263,16 @@ Item {
                         }
 
                         Item {
+                            id: icon_box
+                            readonly property real size: Math.max(16, Math.min(root.icon_size, day_col.width - 4))
                             Layout.alignment: Qt.AlignHCenter
-                            width: root.icon_size
-                            height: root.icon_size
+                            Layout.preferredWidth: icon_box.size
+                            Layout.preferredHeight: icon_box.size
 
                             Image {
                                 anchors.centerIn: parent
-                                width: root.icon_size
-                                height: root.icon_size
+                                width: icon_box.size
+                                height: icon_box.size
                                 readonly property real dpr: QsWindow.window ? QsWindow.window.devicePixelRatio : 1
                                 sourceSize.width: Math.ceil(root.icon_size * 2 * dpr)
                                 sourceSize.height: Math.ceil(root.icon_size * 2 * dpr)
@@ -264,8 +284,9 @@ Item {
                         Text {
                             Layout.fillWidth: true
                             horizontalAlignment: Text.AlignHCenter
+                            elide: Text.ElideRight
                             text: day_col.modelData.weekday
-                            color: day_col.index === root.day_cursor ? Theme.theme_secondary : Theme.fg_core
+                            color: day_col.day_index === root.day_cursor ? Theme.theme_secondary : Theme.fg_core
                             font.family: Style.font_family
                             font.pixelSize: Style.font_size - 2
                         }
@@ -274,16 +295,40 @@ Item {
             }
         }
 
-        Text {
+        // Chevrons mark days outside the window; h/l scroll to them.
+        RowLayout {
             Layout.fillWidth: true
             Layout.topMargin: 4
-            horizontalAlignment: Text.AlignHCenter
-            elide: Text.ElideRight
-            readonly property var selected: WeatherState.days[root.day_cursor]
-            text: selected ? selected.cond + " · " + selected.precip.toFixed(2) + (WeatherState.settings.unit === "celsius" ? " mm" : " in") + " · " + (selected.sunrise || "—") + "–" + (selected.sunset || "—") : ""
-            color: Style.text_muted
-            font.family: Style.font_family
-            font.pixelSize: Style.font_size - 3
+            spacing: 4
+
+            Text {
+                opacity: root.first_day > 0 ? 1 : 0
+                text: "‹"
+                color: Theme.theme_secondary
+                font.family: Style.font_family
+                font.pixelSize: Style.font_size
+            }
+
+            Text {
+                Layout.fillWidth: true
+                horizontalAlignment: Text.AlignHCenter
+                wrapMode: Text.Wrap
+                maximumLineCount: 2
+                elide: Text.ElideRight
+                readonly property var selected: WeatherState.days[root.day_cursor]
+                text: selected ? selected.cond + " · " + selected.precip.toFixed(2) + (WeatherState.settings.unit === "celsius" ? " mm" : " in") + " · " + (selected.sunrise || "—") + "–" + (selected.sunset || "—") : ""
+                color: Style.text_muted
+                font.family: Style.font_family
+                font.pixelSize: Style.font_size - 3
+            }
+
+            Text {
+                opacity: root.first_day + root.fit_days < WeatherState.days.length ? 1 : 0
+                text: "›"
+                color: Theme.theme_secondary
+                font.family: Style.font_family
+                font.pixelSize: Style.font_size
+            }
         }
     }
 }
