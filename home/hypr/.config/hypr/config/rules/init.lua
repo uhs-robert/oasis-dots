@@ -57,6 +57,7 @@ local set_layer_rules = function()
   register({ name = "quickshell_submap", match = { namespace = "quickshell-submap" }, no_anim = true })
   register({ name = "quickshell_popup",  match = { namespace = "quickshell-popup" },  no_anim = true })
   register({ name = "quickshell_osd",    match = { namespace = "quickshell-osd" },    no_anim = true })
+  register({ name = "quickshell_whichkey", match = { namespace = "quickshell-whichkey" }, no_anim = true })
 
   -- Conditionally enabled
   register({ name = "rofi_popin",        match = { namespace = "rofi" },              animation = "popin 80%" })

@@ -76,4 +76,5 @@ ShellRoot {
     BarTooltip {}
     NotificationToasts {}
     Osd {}
+    WhichKey {}
 }
