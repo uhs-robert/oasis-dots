@@ -53,10 +53,21 @@ Singleton {
             row_cursor: ">",
             segmented_levels: true,
             tab_keys: true,
+            row_keys: true,
+            boxed_cards: true,
             chip_brackets: true,
             chip_active_bg: "transparent",
             chip_active_fg: Theme.theme_primary,
-            marker_fill: true
+            marker_fill: true,
+            selection_bar: false,
+            title_prefix: "",
+            title_suffix: "",
+            frame_glow: "transparent",
+            scanlines: false,
+            scanline_color: "transparent",
+            glow: false,
+            glow_color: "transparent",
+            glow_tint: 0
         };
         return {
             "default": {
@@ -101,12 +112,52 @@ Singleton {
                 row_cursor: "",
                 segmented_levels: false,
                 tab_keys: false,
+                row_keys: false,
+                boxed_cards: false,
                 chip_brackets: false,
                 chip_active_bg: Theme.bg_surface,
                 chip_active_fg: Theme.theme_secondary,
-                marker_fill: false
+                marker_fill: false,
+                selection_bar: false,
+                title_prefix: "",
+                title_suffix: "",
+                frame_glow: "transparent",
+                scanlines: false,
+                scanline_color: "transparent",
+                glow: false,
+                glow_color: "transparent",
+                glow_tint: 0
             },
-            "terminal": terminal
+            "terminal": terminal,
+            "crt": Object.assign({}, terminal, {
+                frame_border_color: Qt.tint(Theme.bg_crust, Qt.alpha(Theme.theme_primary, 0.35)),
+                frame_glow: Theme.ui_visual_bg,
+                accent_color: Theme.theme_primary,
+                selection_bg: Qt.alpha(Theme.theme_primary, 0.14),
+                selection_outline: "transparent",
+                selection_bar: true,
+                row_cursor: "\u25b6",
+                tab_active_bg: Qt.alpha(Theme.theme_primary, 0.2),
+                tab_active_fg: Theme.theme_secondary,
+                tab_fg: Theme.theme_primary_strong,
+                key_fg: Theme.theme_secondary,
+                key_border: Qt.alpha(Theme.theme_secondary, 0.35),
+                section_fg: Theme.theme_primary_strong,
+                footer_fg: Theme.theme_primary_strong,
+                footer_rule_color: Qt.alpha(Theme.theme_primary, 0.3),
+                meter_off: Qt.alpha(Theme.theme_primary, 0.15),
+                meter_hot: Theme.theme_secondary,
+                title_bg: "transparent",
+                title_fg: Theme.theme_secondary,
+                title_prefix: "> ",
+                title_suffix: "_",
+                chip_active_fg: Theme.theme_secondary,
+                scanlines: true,
+                scanline_color: Qt.alpha(Theme.bg_shadow, 0.3),
+                glow: true,
+                glow_color: Theme.theme_primary,
+                glow_tint: 0.25
+            })
         };
     }
 
@@ -155,10 +206,21 @@ Singleton {
     readonly property string row_cursor: root.active.row_cursor
     readonly property bool segmented_levels: root.active.segmented_levels
     readonly property bool tab_keys: root.active.tab_keys
+    readonly property bool row_keys: root.active.row_keys
+    readonly property bool boxed_cards: root.active.boxed_cards
     readonly property bool chip_brackets: root.active.chip_brackets
     readonly property color chip_active_bg: root.active.chip_active_bg
     readonly property color chip_active_fg: root.active.chip_active_fg
     readonly property bool marker_fill: root.active.marker_fill
+    readonly property bool selection_bar: root.active.selection_bar
+    readonly property string title_prefix: root.active.title_prefix
+    readonly property string title_suffix: root.active.title_suffix
+    readonly property color frame_glow: root.active.frame_glow
+    readonly property bool scanlines: root.active.scanlines
+    readonly property color scanline_color: root.active.scanline_color
+    readonly property bool glow: root.active.glow
+    readonly property color glow_color: root.active.glow_color
+    readonly property real glow_tint: root.active.glow_tint
 
     // Corner radius for a shape that is rounded by `r` in the default look.
     function radius(r) {

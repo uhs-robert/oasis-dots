@@ -11,7 +11,7 @@ Popup {
 
     popup_name: "system"
     preferred_width: 340
-    footer_hint: "j/k move · Enter select · q close"
+    footer_hint: "b/Enter btop · q close"
     body_height: content.implicitHeight + 24
 
     readonly property var stat_rows: {
@@ -20,14 +20,9 @@ Popup {
             { kind: "memory", label: "RAM", glyph: "" }
         ];
         if (SysStats.has_temp) list.push({ kind: "temperature", label: "Temp", glyph: "" });
-        list.push({ kind: "btop", label: "Open btop", glyph: "" });
+        list.push({ kind: "btop", label: "Open btop", glyph: "", key: "b" });
         return list;
     }
-
-    property int selected: 0
-
-    readonly property bool is_open: Popups.open_name === "system"
-    onIs_openChanged: if (is_open) root.selected = 0
 
     function value_text(kind) {
         if (kind === "cpu") return SysStats.cpu_percent + "%";
@@ -49,15 +44,9 @@ Popup {
         return false;
     }
 
-    function activate(index) {
-        const row = root.stat_rows[index];
-        if (!row) return;
-        if (row.kind === "btop") {
-            Quickshell.execDetached(["kitty", "btop"]);
-            Popups.close();
-        } else {
-            SystemStat.set_override(Popups.open_screen_name, row.kind);
-        }
+    function open_btop() {
+        Quickshell.execDetached(["kitty", "btop"]);
+        Popups.close();
     }
 
     Item {
@@ -70,14 +59,9 @@ Popup {
         focus: true
 
         Keys.onPressed: event => {
-            if (event.key === Qt.Key_J) {
-                root.selected = Math.min(root.stat_rows.length - 1, root.selected + 1);
-                event.accepted = true;
-            } else if (event.key === Qt.Key_K) {
-                root.selected = Math.max(0, root.selected - 1);
-                event.accepted = true;
-            } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
-                root.activate(root.selected);
+            const plain = !(event.modifiers & (Qt.ShiftModifier | Qt.ControlModifier | Qt.AltModifier));
+            if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter || (plain && event.key === Qt.Key_B)) {
+                root.open_btop();
                 event.accepted = true;
             }
         }
@@ -102,12 +86,14 @@ Popup {
                     Layout.fillWidth: true
                     height: Style.px(26)
                     clip: true
-                    selected: stat_row.index === root.selected
+                    // The stats are read-only; btop is the popup's one action.
+                    selected: stat_row.is_btop
+                    key: stat_row.modelData.key || ""
 
                     RowLayout {
                         anchors.fill: parent
                         anchors.leftMargin: 6 + stat_row.inset
-                        anchors.rightMargin: 6
+                        anchors.rightMargin: 6 + stat_row.key_space
                         spacing: 8
 
                         Text {
@@ -146,10 +132,8 @@ Popup {
 
                     MouseArea {
                         anchors.fill: parent
-                        onClicked: {
-                            root.selected = stat_row.index;
-                            root.activate(stat_row.index);
-                        }
+                        enabled: stat_row.is_btop
+                        onClicked: root.open_btop()
                     }
                 }
             }

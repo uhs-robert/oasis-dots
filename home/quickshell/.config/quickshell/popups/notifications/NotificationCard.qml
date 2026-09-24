@@ -35,6 +35,13 @@ Item {
         return Theme.theme_primary;
     }
 
+    readonly property string urgency_tag: {
+        if (!root.notification) return "";
+        if (root.notification.urgency === NotificationUrgency.Critical) return " !! critical";
+        if (root.notification.urgency === NotificationUrgency.Low) return " · low";
+        return "";
+    }
+
     function relative_time(ms) {
         const diff_s = Math.max(0, Math.floor((Date.now() - ms) / 1000));
         if (diff_s < 60) return "now";
@@ -57,12 +64,24 @@ Item {
         anchors.right: parent.right
         implicitHeight: layout.implicitHeight + 20
         radius: Style.radius(8)
-        color: root.selected ? Theme.bg_surface : Theme.bg_mantle
+        color: Style.boxed_cards ? (root.selected ? Qt.alpha(Style.caret_color, 0.08) : "transparent") : root.selected ? Theme.bg_surface : Theme.bg_mantle
         border.width: 1
-        border.color: Theme.ui_border
+        border.color: !Style.boxed_cards ? Theme.ui_border : root.selected ? Style.caret_color : Qt.alpha(root.accent, 0.6)
         clip: true
 
+        Text {
+            visible: Style.boxed_cards && root.selected && Style.row_cursor !== "" && Style.caret_phase
+            x: 4
+            y: layout.y + 1
+            text: Style.row_cursor
+            color: Style.caret_color
+            font.family: Style.font_family
+            font.pixelSize: Style.font_size - 1
+            font.bold: true
+        }
+
         Rectangle {
+            visible: !Style.boxed_cards
             anchors.left: parent.left
             anchors.top: parent.top
             anchors.bottom: parent.bottom
@@ -109,10 +128,12 @@ Item {
                     Layout.fillWidth: true
                     Layout.minimumWidth: 0
                     elide: Text.ElideRight
-                    text: (root.notification ? root.notification.appName : "") + "  ·  " + (root.entry ? root.relative_time(root.entry.time) : "")
-                    color: Theme.fg_muted
+                    text: Style.boxed_cards
+                        ? "[" + (root.notification ? root.notification.appName : "") + "] " + (root.entry ? root.relative_time(root.entry.time) : "") + root.urgency_tag
+                        : (root.notification ? root.notification.appName : "") + "  ·  " + (root.entry ? root.relative_time(root.entry.time) : "")
+                    color: Style.boxed_cards ? root.accent : Theme.fg_muted
                     font.family: Style.font_family
-                    font.pixelSize: Style.font_size - 1
+                    font.pixelSize: Style.font_size - (Style.boxed_cards ? 3 : 1)
                 }
 
                 Text {
@@ -123,7 +144,7 @@ Item {
                     color: Theme.fg_core
                     font.bold: true
                     font.family: Style.font_family
-                    font.pixelSize: Style.font_size + 1
+                    font.pixelSize: Style.font_size + (Style.boxed_cards ? 0 : 1)
                 }
 
                 Text {
@@ -158,7 +179,9 @@ Item {
                             implicitWidth: Math.min(action_label.implicitWidth + 18, layout.width)
                             implicitHeight: 26
                             radius: Style.radius(13)
-                            color: Theme.bg_surface
+                            color: Style.boxed_cards ? "transparent" : Theme.bg_surface
+                            border.width: Style.boxed_cards ? 1 : 0
+                            border.color: Style.key_border
 
                             Text {
                                 id: action_label

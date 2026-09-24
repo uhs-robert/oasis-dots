@@ -1,5 +1,7 @@
 // home/quickshell/.config/quickshell/components/Popup.qml
 import QtQuick
+import QtQuick.Effects
+import QtQuick.Shapes
 import Quickshell
 import Quickshell.Wayland
 import "../theme"
@@ -198,46 +200,117 @@ PanelWindow {
                 border.color: Style.frame_border_color
             }
 
-            Rectangle {
-                id: title_tab
-                visible: root.has_title
-                width: title_text.implicitWidth + 20
-                height: title_text.implicitHeight + 4
-                color: Style.title_bg
+            Shape {
+                id: frame_glow
+                visible: Style.frame_glow.a > 0
+                anchors.fill: parent
+                anchors.margins: Style.frame_border_width
 
-                Text {
-                    id: title_text
-                    anchors.centerIn: parent
-                    text: root.title
-                    color: Style.title_fg
-                    font.family: Style.font_family
-                    font.pixelSize: Style.font_size - 2
-                    font.bold: true
-                    font.letterSpacing: 2
+                ShapePath {
+                    strokeWidth: -1
+                    fillGradient: RadialGradient {
+                        centerX: frame_glow.width / 2
+                        centerY: 0
+                        focalX: frame_glow.width / 2
+                        focalY: 0
+                        centerRadius: Math.max(frame_glow.width * 0.6, Math.min(frame_glow.height, 420))
+                        focalRadius: 0
+                        GradientStop { position: 0; color: Style.frame_glow }
+                        GradientStop { position: 0.72; color: Style.frame_color }
+                    }
+                    PathRectangle { width: frame_glow.width; height: frame_glow.height }
                 }
             }
 
-            MenuFooter {
-                id: base_footer
-                visible: root.has_footer
-                anchors.left: parent.left
-                anchors.right: parent.right
-                anchors.bottom: parent.bottom
-                anchors.leftMargin: 12
-                anchors.rightMargin: 12
-                anchors.bottomMargin: 8
-                text: root.footer_hint
+            // Everything drawn on the frame; styles with a glow render it as one layer.
+            Item {
+                id: glow_layer
+                anchors.fill: parent
+                layer.enabled: Style.glow
+                opacity: Style.glow ? 0 : 1
+
+                Rectangle {
+                    id: title_tab
+                    visible: root.has_title
+                    width: title_text.implicitWidth + 20
+                    height: title_text.implicitHeight + 4
+                    color: Style.title_bg
+
+                    Text {
+                        id: title_text
+                        anchors.centerIn: parent
+                        text: Style.title_prefix + root.title + (Style.caret_phase ? Style.title_suffix : " ".repeat(Style.title_suffix.length))
+                        color: Style.title_fg
+                        font.family: Style.font_family
+                        font.pixelSize: Style.font_size - 2
+                        font.bold: true
+                        font.letterSpacing: 2
+                    }
+                }
+
+                MenuFooter {
+                    id: base_footer
+                    visible: root.has_footer
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    anchors.bottom: parent.bottom
+                    anchors.leftMargin: 12
+                    anchors.rightMargin: 12
+                    anchors.bottomMargin: 8
+                    text: root.footer_hint
+                }
+
+                FocusScope {
+                    id: content_scope
+                    anchors.fill: parent
+                    anchors.topMargin: root.header_height
+                    anchors.bottomMargin: root.footer_height
+                    focus: true
+
+                    Keys.onEscapePressed: Popups.close()
+                    Keys.onPressed: event => root.handle_shared_key(event)
+                }
             }
 
-            FocusScope {
-                id: content_scope
-                anchors.fill: parent
-                anchors.topMargin: root.header_height
-                anchors.bottomMargin: root.footer_height
-                focus: true
+            // Phosphor bloom: a blurred copy in the glow color under a lightly tinted sharp copy.
+            MultiEffect {
+                visible: Style.glow
+                anchors.fill: glow_layer
+                source: glow_layer
+                autoPaddingEnabled: false
+                blurEnabled: true
+                blur: 0.5
+                blurMax: 12
+                brightness: 0.2
+                colorization: 1
+                colorizationColor: Style.glow_color
+            }
 
-                Keys.onEscapePressed: Popups.close()
-                Keys.onPressed: event => root.handle_shared_key(event)
+            MultiEffect {
+                visible: Style.glow
+                anchors.fill: glow_layer
+                source: glow_layer
+                autoPaddingEnabled: false
+                colorization: Style.glow_tint
+                colorizationColor: Theme.theme_primary_light
+            }
+
+            // Static scanlines; nothing animates them.
+            Item {
+                visible: Style.scanlines
+                anchors.fill: parent
+
+                Repeater {
+                    model: Style.scanlines ? Math.max(0, Math.ceil(parent.height / 3)) : 0
+
+                    Rectangle {
+                        required property int index
+                        y: index * 3
+                        width: parent.width
+                        height: 1
+                        color: Style.scanline_color
+                    }
+                }
             }
         }
     }

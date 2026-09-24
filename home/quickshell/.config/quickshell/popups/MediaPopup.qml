@@ -292,7 +292,7 @@ Popup {
                             height: 6
                             radius: Style.radius(3)
                             color: Theme.bg_surface
-                            visible: progress_item.has_length
+                            visible: progress_item.has_length && !Style.segmented_levels
                         }
 
                         Rectangle {
@@ -301,7 +301,17 @@ Popup {
                             height: 6
                             radius: Style.radius(3)
                             color: Theme.theme_primary
-                            visible: progress_item.has_length
+                            visible: progress_item.has_length && !Style.segmented_levels
+                        }
+
+                        Meter {
+                            anchors.left: parent.left
+                            anchors.right: parent.right
+                            anchors.verticalCenter: parent.verticalCenter
+                            visible: progress_item.has_length && Style.segmented_levels
+                            segment_count: 40
+                            implicitHeight: Style.px(8)
+                            value: progress_item.ratio
                         }
 
                         Rectangle {
@@ -313,7 +323,7 @@ Popup {
                             anchors.verticalCenter: parent.verticalCenter
                             x: Math.max(0, Math.min(parent.width - width, parent.width * progress_item.ratio - width / 2))
                             color: Theme.theme_primary
-                            visible: progress_item.has_length
+                            visible: progress_item.has_length && !Style.segmented_levels
                             opacity: progress_item.knob_active ? 1 : 0
                             border.width: 2
                             border.color: Theme.bg_core

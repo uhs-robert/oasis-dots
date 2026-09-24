@@ -80,6 +80,11 @@ Popup {
                     font.family: Style.font_family
                     font.pixelSize: Style.font_size - 2
                 }
+
+                KeyBadge {
+                    visible: Style.row_keys && root.has_adapter
+                    key: "p"
+                }
             }
 
             Text {

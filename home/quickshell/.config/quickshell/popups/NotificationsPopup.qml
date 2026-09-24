@@ -178,7 +178,9 @@ Popup {
                 Layout.fillWidth: true
                 spacing: 14
 
+                // The style's title tab already names the popup.
                 Text {
+                    visible: !Style.show_title
                     text: NotificationState.dnd ? "\u{f009b}" : "\u{f009a}"
                     color: NotificationState.dnd ? Theme.fg_dim : Theme.theme_primary
                     font.family: Style.font_family
@@ -191,6 +193,7 @@ Popup {
                     spacing: 0
 
                     Text {
+                        visible: !Style.show_title
                         Layout.fillWidth: true
                         Layout.minimumWidth: 0
                         elide: Text.ElideRight
@@ -302,7 +305,7 @@ Popup {
                             visible: row_item.modelData.type === "day"
                             width: parent.width
                             elide: Text.ElideRight
-                            text: row_item.modelData.type === "day" ? row_item.modelData.label : ""
+                            text: row_item.modelData.type !== "day" ? "" : Style.section_rule ? "── " + row_item.modelData.label + " " + "─".repeat(160) : row_item.modelData.label
                             color: Theme.fg_dim
                             font.bold: true
                             font.family: Style.font_family

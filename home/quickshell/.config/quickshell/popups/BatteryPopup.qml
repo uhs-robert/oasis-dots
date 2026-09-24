@@ -16,7 +16,7 @@ Popup {
         id: stepper
     }
     preferred_width: 260
-    footer_hint: "j/k move · h/l adjust · Enter profile · q close"
+    footer_hint: "j/k move · h/l adjust · Enter profile · s/b/p profile · q close"
     body_height: content.implicitHeight + 24
 
     readonly property var device: UPower.displayDevice
@@ -49,10 +49,10 @@ Popup {
 
     readonly property var profiles: {
         const list = [
-            { label: "Power Saver", value: PowerProfile.PowerSaver },
-            { label: "Balanced", value: PowerProfile.Balanced },
+            { label: "Power Saver", value: PowerProfile.PowerSaver, key: "s" },
+            { label: "Balanced", value: PowerProfile.Balanced, key: "b" },
         ];
-        if (PowerProfiles.hasPerformanceProfile) list.push({ label: "Performance", value: PowerProfile.Performance });
+        if (PowerProfiles.hasPerformanceProfile) list.push({ label: "Performance", value: PowerProfile.Performance, key: "p" });
         return list;
     }
 
@@ -116,6 +116,13 @@ Popup {
             } else if ((event.key === Qt.Key_Return || event.key === Qt.Key_Enter) && row && row.kind === "profile") {
                 PowerProfiles.profile = root.profiles[row.index].value;
                 event.accepted = true;
+            } else if (root.ppd_available && !(event.modifiers & (Qt.ShiftModifier | Qt.ControlModifier | Qt.AltModifier))) {
+                const i = root.profiles.findIndex(p => p.key === event.text);
+                if (i >= 0) {
+                    root.selected = root.nav_rows.findIndex(r => r.kind === "profile" && r.index === i);
+                    PowerProfiles.profile = root.profiles[i].value;
+                    event.accepted = true;
+                }
             }
         }
 
@@ -253,11 +260,12 @@ Popup {
                     Layout.topMargin: profile_row.index === 0 ? 6 : 0
                     height: Style.px(22)
                     selected: profile_row.nav_index === root.selected
+                    key: profile_row.modelData.key
 
                     RowLayout {
                         anchors.fill: parent
                         anchors.leftMargin: 6 + profile_row.inset
-                        anchors.rightMargin: 6
+                        anchors.rightMargin: 6 + profile_row.key_space
                         spacing: 6
 
                         Text {

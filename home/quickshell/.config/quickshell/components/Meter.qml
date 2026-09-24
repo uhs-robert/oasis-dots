@@ -11,7 +11,8 @@ Item {
     property real hot_from: 1
     // Set on an inverse-selected row so the lit segments stay visible.
     property bool on_selection: false
-    readonly property int segment_count: 20
+    property int segment_count: 20
+    property color on_color: Style.meter_on
     readonly property int gap: 2
     readonly property real segment_width: Math.max(2, (width - gap * (segment_count - 1)) / segment_count)
 
@@ -31,7 +32,7 @@ Item {
                 height: root.implicitHeight
                 radius: Style.meter_radius
                 color: index < Math.round(root.value * root.segment_count)
-                    ? (root.hot || index >= Math.round(root.hot_from * root.segment_count) ? Style.meter_hot : root.on_selection && Style.selection_inverse ? Style.selection_fg : Style.meter_on)
+                    ? (root.hot || index >= Math.round(root.hot_from * root.segment_count) ? Style.meter_hot : root.on_selection && Style.selection_inverse ? Style.selection_fg : root.on_color)
                     : root.on_selection && Style.selection_inverse ? Qt.alpha(Style.selection_fg, 0.25) : Style.meter_off
             }
         }

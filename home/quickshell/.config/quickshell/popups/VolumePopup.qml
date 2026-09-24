@@ -16,7 +16,7 @@ Popup {
         id: stepper
     }
     preferred_width: 320
-    footer_hint: "j/k move · h/l adjust · m mute · Enter default · q close"
+    footer_hint: "j/k move · 1-9 device · h/l adjust · m mute · M mic · Enter default · q close"
     // The list fits its rows and only scrolls past most of the screen height.
     readonly property real max_list_height: (root.screen ? root.screen.height : 1080) * 0.6
     body_height: content.implicitHeight + 24
@@ -33,6 +33,23 @@ Popup {
         if (Pipewire.defaultAudioSource) list.push({ type: "source_slider", node: Pipewire.defaultAudioSource });
         for (const s of streams) list.push({ type: "stream", node: s });
         return list;
+    }
+
+    // Row indices of the device rows, in the order their 1-9 keys pick them.
+    readonly property var device_indices: root.rows.map((r, i) => root.is_slider_row(r.type) ? -1 : i).filter(i => i >= 0)
+
+    function row_key(index) {
+        const row = root.rows[index];
+        if (!row) return "";
+        if (row.type === "sink_slider") return "m";
+        if (row.type === "source_slider") return "M";
+        const n = root.device_indices.indexOf(index);
+        return n >= 0 && n < 9 ? String(n + 1) : "";
+    }
+
+    function select_row(index) {
+        root.selected = index;
+        rows_list.positionViewAtIndex(index, ListView.Contain);
     }
 
     function section_of(type) {
@@ -101,8 +118,14 @@ Popup {
             } else if (event.key === Qt.Key_H && row && root.is_slider_row(row.type)) {
                 root.adjust_snap(row.node, -1);
                 event.accepted = true;
+            } else if (event.key === Qt.Key_M && (event.modifiers & Qt.ShiftModifier)) {
+                root.toggle_mute(Pipewire.defaultAudioSource);
+                event.accepted = true;
             } else if (event.key === Qt.Key_M && row) {
                 root.toggle_mute(row.node);
+                event.accepted = true;
+            } else if (event.key >= Qt.Key_1 && event.key <= Qt.Key_9 && event.key - Qt.Key_1 < root.device_indices.length) {
+                root.select_row(root.device_indices[event.key - Qt.Key_1]);
                 event.accepted = true;
             } else if ((event.key === Qt.Key_Return || event.key === Qt.Key_Enter) && row && !root.is_slider_row(row.type)) {
                 root.set_default(row);
@@ -145,12 +168,13 @@ Popup {
                         width: row_wrap.width
                         height: Style.px(22)
                         selected: row_wrap.index === root.selected
+                        key: root.row_key(row_wrap.index)
 
                         RowLayout {
                             visible: !root.is_slider_row(row_wrap.modelData.type)
                             anchors.fill: parent
                             anchors.leftMargin: 6 + vol_row.inset
-                            anchors.rightMargin: 6
+                            anchors.rightMargin: 6 + vol_row.key_space
                             spacing: 6
 
                             Text {
@@ -176,7 +200,7 @@ Popup {
                             visible: root.is_slider_row(row_wrap.modelData.type)
                             anchors.fill: parent
                             anchors.leftMargin: 6 + vol_row.inset
-                            anchors.rightMargin: 6
+                            anchors.rightMargin: 6 + vol_row.key_space
                             spacing: 6
 
                             Text {

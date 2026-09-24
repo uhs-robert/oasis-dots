@@ -258,10 +258,20 @@ Popup {
                                 }
                             }
 
+                            Meter {
+                                Layout.fillWidth: true
+                                visible: session_row.has_context && Style.segmented_levels
+                                implicitHeight: 4
+                                segment_count: 40
+                                value: session_row.has_context ? session_row.modelData.context_pct / 100 : 0
+                                on_color: session_row.has_context ? root.context_bar_color(session_row.modelData.context_pct) : Style.meter_on
+                                on_selection: session_row.selected
+                            }
+
                             Rectangle {
                                 Layout.fillWidth: true
                                 Layout.preferredHeight: session_row.has_context ? 3 : 0
-                                visible: session_row.has_context
+                                visible: session_row.has_context && !Style.segmented_levels
                                 radius: Style.radius(1.5)
                                 color: Theme.bg_surface
 
@@ -356,9 +366,19 @@ Popup {
                                     }
                                 }
 
+                                Meter {
+                                    Layout.fillWidth: true
+                                    visible: Style.segmented_levels
+                                    segment_count: 40
+                                    implicitHeight: Style.px(8)
+                                    value: usage_row.modelData.percent / 100
+                                    on_color: root.context_bar_color(usage_row.modelData.percent)
+                                }
+
                                 Rectangle {
                                     Layout.fillWidth: true
                                     Layout.preferredHeight: 8
+                                    visible: !Style.segmented_levels
                                     radius: Style.radius(4)
                                     color: Theme.bg_surface
 

@@ -10,7 +10,7 @@ Popup {
 
     popup_name: "style"
     preferred_width: 180
-    footer_hint: "j/k move · Enter apply · q close"
+    footer_hint: "j/k move · Enter apply · 1-9 pick · q close"
     body_height: content.implicitHeight + 24
 
     property int selected: 0
@@ -41,6 +41,10 @@ Popup {
             } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
                 Style.set(Style.names[root.selected]);
                 event.accepted = true;
+            } else if (event.key >= Qt.Key_1 && event.key <= Qt.Key_9 && event.key - Qt.Key_1 < Style.names.length) {
+                root.selected = event.key - Qt.Key_1;
+                Style.set(Style.names[root.selected]);
+                event.accepted = true;
             }
         }
 
@@ -63,12 +67,13 @@ Popup {
                     height: Style.px(28)
                     base_radius: 6
                     selected: index === root.selected
+                    key: row.index < 9 ? String(row.index + 1) : ""
 
                     RowLayout {
                         anchors.left: parent.left
                         anchors.leftMargin: 8 + row.inset
                         anchors.right: parent.right
-                        anchors.rightMargin: 8
+                        anchors.rightMargin: 8 + row.key_space
                         anchors.verticalCenter: parent.verticalCenter
                         spacing: 8
 

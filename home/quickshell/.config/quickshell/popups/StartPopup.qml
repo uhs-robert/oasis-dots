@@ -11,10 +11,11 @@ Popup {
 
     popup_name: "start"
     preferred_width: 180
-    footer_hint: root.confirm ? "y/Enter confirm · n/Esc back" : "j/k move · Enter run · q close"
+    footer_hint: root.confirm ? "y/Enter confirm · n/Esc back" : "j/k move · Enter run · a/s/l/o/r/p pick · q close"
     body_height: content.implicitHeight + 24
 
     readonly property var actions: ["Apps", "Style", "Lock", "Logout", "Reboot", "Power Off"]
+    readonly property var keys: ["a", "s", "l", "o", "r", "p"]
     readonly property var glyphs: ["󰣇", "󰏘", "󰌾", "󰍃", "󰜉", "󰐥"]
     readonly property var glyph_colors: [Theme.green, Theme.theme_secondary, Theme.fg_core, Theme.info, Theme.warning, Theme.theme_label]
 
@@ -78,6 +79,9 @@ Popup {
             } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
                 root.choose(root.selected);
                 event.accepted = true;
+            } else if (!(event.modifiers & (Qt.ShiftModifier | Qt.ControlModifier | Qt.AltModifier)) && root.keys.indexOf(event.text) >= 0) {
+                root.choose(root.keys.indexOf(event.text));
+                event.accepted = true;
             }
         }
 
@@ -101,6 +105,7 @@ Popup {
                     height: Style.px(28)
                     base_radius: 6
                     selected: index === root.selected
+                    key: root.keys[row.index]
 
                     RowLayout {
                         anchors.left: parent.left

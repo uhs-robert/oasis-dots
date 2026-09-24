@@ -238,7 +238,10 @@ Popup {
                 Layout.preferredHeight: root.has_alerts ? 28 : 0
                 visible: root.has_alerts
                 radius: Style.radius(4)
-                color: Theme.bg_surface
+                readonly property color alert_color: WeatherState.alerts.length > 0 ? WeatherState.alert_color(WeatherState.alerts[0].severity) : Theme.fg_dim
+                color: Style.boxed_cards ? Qt.alpha(alert_color, 0.1) : Theme.bg_surface
+                border.width: Style.boxed_cards ? 1 : 0
+                border.color: alert_color
 
                 RowLayout {
                     anchors.fill: parent
