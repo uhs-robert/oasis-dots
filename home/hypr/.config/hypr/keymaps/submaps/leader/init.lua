@@ -12,8 +12,6 @@ local Launcher = require("extensions.auto_launcher.launcher") ---@class Launcher
 
 local KEEP = { keep = true }
 
-local edit_in_vim = function() require("lua.plugins.hyprvim").editor.open({ insert_mode = true }) end
-
 Submap.define({
   name = "Leader",
   desc = "+Leader",
@@ -26,54 +24,43 @@ Submap.define({
     local rows = {
       -- stylua: ignore start
       -- Pickers
-      { "SPACE",         Menu.zoxide(),                                   "Directory" },
-      { "SHIFT + SPACE", Menu.zoxide("claude"),                           "Claude in Directory" },
-      { "SLASH",         Cmd.run(Scripts.keybind_help),                   "Keybind Help" },
+      { "SLASH",         Menu.zoxide(),                                   "Directory" },
       { "O",             Menu.drun(),                                     "Open Application" },
       { "SHIFT + O",     Launcher.show_picker,                            "Session Launcher" },
-      { "CTRL + O",      Menu.cli(),                                      "Run CLI Tool" },
-      { "CTRL + A",      Menu.agents(),                                   "Agent Sessions" },
-      { "T",             Menu.hyprwindow(),                               "Find Window" },
       { "V",             Menu.clipboard(),                                "Clipboard" },
-      { "P",             Menu.bitwarden(),                                "Passwords" },
-      { "SHIFT + P",     Menu.tmux(),                                     "Project" },
       { "E",             Menu.emoji(),                                    "Emoji" },
       { "SHIFT + E",     Menu.emoji("nerd_font"),                         "Nerd Font" },
       { "CTRL + E",      Menu.emoji("gitmoji"),                           "Gitmoji" },
       { "ALT + E",       Menu.emoji("fontawesome"),                       "Font Awesome" },
-      { "S",             Menu.ssh(),                                      "Open SSH" },
-
-      -- Windows
-      { "TAB",           Window.focus_last(),                                     "Last Window" },
 
       -- Commands
-      { "RETURN",        Cmd.open_term(),                                 "Terminal" },
-      { "SHIFT + RETURN",Cmd.bottom_terminal(),                           "Bottom Terminal" },
-      { "N",             edit_in_vim,                                     "Edit Selection in Vim" },
       { "PERIOD",        Cmd.run(Scripts.voxtype),                        "Speech to Text" },
-      { "Y",             Cmd.term("yazi"),                                "Yazi" },
 
       -- Submaps
-      { "A",             Submap.switch("Applications"),                   "+Applications",  KEEP },
-      { "G",             Submap.switch("Go"),                             "+Go",            KEEP },
-      { "SHIFT + G",     Submap.switch("Groups"),                         "+Groups",        KEEP },
-      { "W",             Submap.switch("Windows"),                        "+Windows",       KEEP },
-      { "M",             Submap.switch("Move"),                           "+Move",          KEEP },
-      { "R",             Submap.switch("Resize"),                         "+Resize",        KEEP },
-      { "Z",             Submap.switch("Zoom"),                           "+Zoom",          KEEP },
-      { "C",             Submap.switch("Cursor"),                         "+Cursor",        KEEP },
-      { "D",             Submap.switch("Delete"),                         "+Delete",        KEEP },
-      { "I",             Submap.switch("Screenshot"),                     "+Screenshot",    KEEP },
-      { "Q",             Submap.switch("System"),                         "+System",        KEEP },
-      { "APOSTROPHE",    Submap.switch("Marks"),                          "+Marks",         KEEP },
+      { "G",             Submap.switch("Groups"),                         "+Groups",        KEEP },
       -- stylua: ignore end
     }
 
+    local add_row = function(row) table.insert(rows, row) end
+
     if Config.shell == "quickshell" then
-      table.insert(rows, { "B", Submap.switch("Bar"), "+Bar", KEEP })
-      table.insert(rows, { "SHIFT + N", Cmd.run(Scripts.qs_ipc .. " call popup open notifications"), "Notifications" })
+      local function popup(name) return Cmd.run(Scripts.qs_ipc .. " call popup open " .. name) end
+      add_row({ "SPACE", popup("start"), "Start Menu" })
+      add_row({ "A", popup("keeptabs"), "Agents" })
+      add_row({ "B", popup("bluetooth"), "Bluetooth" })
+      add_row({ "C", popup("clock"), "Calendar" })
+      add_row({ "I", popup("network"), "Network and Internet" })
+      add_row({ "M", popup("media"), "Media" })
+      add_row({ "N", popup("notifications"), "Notifications" })
+      add_row({ "P", popup("battery"), "Power and Brightness" })
+      add_row({ "Q", popup("system"), "System" })
+      add_row({ "S", popup("start"), "Start Menu" })
+      add_row({ "T", popup("tray"), "Tray" })
+      add_row({ "U", popup("updates"), "Updates" })
+      add_row({ "V", popup("volume"), "Volume" })
+      add_row({ "W", popup("weather"), "Weather" })
     else
-      table.insert(rows, { "SHIFT + N", Submap.switch("Notifications"), "+Notifications", KEEP })
+      add_row({ "SHIFT + N", Submap.switch("Notifications"), "+Notifications", KEEP })
     end
 
     return rows

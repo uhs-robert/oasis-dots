@@ -196,6 +196,8 @@ Singleton {
             },
             "terminal": terminal,
             "crt": Object.assign({}, terminal, {
+                text_muted: Qt.tint(Theme.fg_dim, Qt.alpha(Theme.theme_primary_light, 0.35)),
+                text_dim: Qt.tint(Theme.fg_dim, Qt.alpha(Theme.theme_primary_light, 0.6)),
                 frame_border_color: Qt.tint(Theme.bg_crust, Qt.alpha(Theme.theme_primary, 0.35)),
                 frame_glow: Theme.ui_visual_bg,
                 accent_color: Theme.theme_primary,
