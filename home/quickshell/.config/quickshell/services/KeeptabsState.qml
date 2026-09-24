@@ -12,6 +12,18 @@ Singleton {
     property string state_class: "idle"
     property string tooltip: ""
     readonly property bool available: runs.length > 0
+    readonly property string done_glyph: String.fromCodePoint(0xF1719)
+    property int done_count: 0
+    property int running_count: 0
+    // False until the first line after (re)start, so a done state already present never celebrates.
+    property bool primed: false
+
+    // A session went from running to done since the previous line.
+    signal finished()
+
+    function count(state) {
+        return root.tooltip.split("\n").filter(l => l.indexOf(state + "\t") === 0).length;
+    }
 
     function decode(text) {
         return text.replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, "\"").replace(/&apos;|&#39;/g, "'").replace(/&amp;/g, "&");
@@ -55,12 +67,22 @@ Singleton {
                     root.runs = root.parse(data.text || "");
                     root.state_class = data.class || "idle";
                     root.tooltip = root.decode(data.tooltip || "");
+                    const done = root.count("DONE");
+                    const was_running = root.running_count;
+                    const rose = root.primed && done > root.done_count && was_running > 0;
+                    root.done_count = done;
+                    root.running_count = root.count("RUNNING");
+                    root.primed = true;
+                    if (rose) root.finished();
                 } catch (e) {
                     console.warn("keeptabs: " + e);
                 }
             }
         }
-        onExited: restart_timer.start()
+        onExited: {
+            root.primed = false;
+            restart_timer.start();
+        }
     }
 
     Timer {

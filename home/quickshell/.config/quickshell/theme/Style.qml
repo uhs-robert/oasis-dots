@@ -148,6 +148,7 @@ Singleton {
             bar_hover_bg: Theme.bg_surface,
             bar_glow_color: "transparent",
             bar_text_raised: false,
+            done_anim: "hearts",
             bar_scanline_color: "transparent"
         };
         return {
@@ -289,6 +290,7 @@ Singleton {
                 bar_hover_bg: Theme.bg_surface,
                 bar_glow_color: "transparent",
                 bar_text_raised: false,
+                done_anim: "hearts",
                 bar_scanline_color: "transparent"
             },
             "terminal": terminal,
@@ -334,6 +336,7 @@ Singleton {
                 bar_scanline_color: Qt.alpha(Theme.theme_primary, 0.07)
             }),
             "nes": Object.assign({}, terminal, {
+                done_anim: "pixel",
                 text_muted: Qt.tint(Theme.fg_dim, Qt.alpha(Theme.fg_core, 0.35)),
                 text_dim: Qt.tint(Theme.fg_dim, Qt.alpha(Theme.fg_core, 0.6)),
                 // Press Start 2P draws on an 8px grid and runs 1em wide; 14 sits between its 1.5x and 2x sizes, with a wider frame.
@@ -386,6 +389,7 @@ Singleton {
                 bar_inset_color: Theme.fg_strong
             }),
             "snes": Object.assign({}, terminal, {
+                done_anim: "pixel",
                 // Greys lifted toward primary_light so they read on the shaded window.
                 text_muted: Qt.tint(Theme.fg_dim, Qt.alpha(Theme.theme_primary_light, 0.4)),
                 text_dim: Qt.tint(Theme.fg_dim, Qt.alpha(Theme.theme_primary_light, 0.65)),
@@ -441,6 +445,7 @@ Singleton {
                 bar_text_raised: true
             }),
             "ps1": Object.assign({}, terminal, {
+                done_anim: "pixel",
                 // Muted text brightened; the shaded, dithered frame swallows the theme greys.
                 text_muted: Qt.tint(Theme.fg_dim, Qt.alpha(Theme.fg_core, 0.35)),
                 text_dim: Qt.tint(Theme.fg_dim, Qt.alpha(Theme.fg_core, 0.6)),
@@ -487,6 +492,7 @@ Singleton {
             }),
             // Perfect Dark panels; `small` turns the small popups into the Q-branch watch LCD.
             "goldeneye": Object.assign({}, terminal, {
+                done_anim: "lcd",
                 text_muted: Qt.tint(Theme.fg_muted, Qt.alpha(Theme.fg_core, 0.3)),
                 text_dim: Qt.tint(Theme.fg_dim, Qt.alpha(Theme.fg_core, 0.2)),
                 font_family: "Share Tech Mono",
@@ -722,6 +728,7 @@ Singleton {
                 }
             }),
             "ps2": Object.assign({}, terminal, {
+                done_anim: "pixel",
                 font_family: "Exo 2",
                 font_size: Theme.popup_font_size + 1,
                 rounded: true,
@@ -938,6 +945,8 @@ Singleton {
     readonly property color chart_fill: root.active.chart_fill
     // Multiplies every radius a rounded style draws.
     readonly property real corner_scale: root.active.corner_scale
+    // The keeptabs done celebration: hearts, pixel (stepped) or lcd (blinks).
+    readonly property string done_anim: root.active.done_anim || "hearts"
 
     property bool cava_line: true
     readonly property var bar: root.active

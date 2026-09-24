@@ -1,8 +1,10 @@
 // home/quickshell/.config/quickshell/bar/modules/Keeptabs.qml
+pragma ComponentBehavior: Bound
 import QtQuick
 import Quickshell
 import "../../theme"
 import "../../services"
+import "../../components"
 
 Item {
     id: root
@@ -23,6 +25,18 @@ Item {
 
     onIslandChanged: if (root.island) Popups.register_default("keeptabs", root.island, root.island_color, root.screen_name, root)
     Component.onDestruction: Popups.unregister("keeptabs", root.screen_name, root)
+
+    // The done glyph's centre and colour; delegates are rebuilt on every stream line, so they report it here.
+    property var done_anchor: null
+
+    Connections {
+        target: KeeptabsState
+        function onFinished() {
+            if (!root.groups.some(g => g.glyph === KeeptabsState.done_glyph)) return;
+            pulse_loader.active = false;
+            pulse_loader.active = true;
+        }
+    }
 
     Rectangle {
         anchors.fill: parent
@@ -59,8 +73,17 @@ Item {
                 id: group
                 required property var modelData
 
+                readonly property bool is_done: modelData.glyph === KeeptabsState.done_glyph
                 implicitWidth: glyph_text.implicitWidth + (count_text.visible ? count_text.implicitWidth * 0.6 : 0)
                 implicitHeight: glyph_text.implicitHeight
+
+                Binding {
+                    when: group.is_done
+                    restoreMode: Binding.RestoreNone
+                    target: root
+                    property: "done_anchor"
+                    value: ({ x: row.x + group.x + glyph_text.x + glyph_text.width / 2, y: row.y + group.y + glyph_text.y + glyph_text.height / 2, color: glyph_text.color })
+                }
 
                 Text {
                     id: glyph_text
@@ -72,6 +95,7 @@ Item {
                     style: Style.bar_text_style
                     styleColor: Style.bar_glow_color
                     font.pixelSize: Theme.glyph_size
+                    opacity: group.is_done && pulse_loader.active ? 0 : 1
                 }
 
                 Text {
@@ -88,6 +112,18 @@ Item {
                     font.bold: true
                 }
             }
+        }
+    }
+
+    Loader {
+        id: pulse_loader
+        active: false
+        x: root.done_anchor ? root.done_anchor.x : 0
+        y: root.done_anchor ? root.done_anchor.y : 0
+        sourceComponent: DonePulse {
+            glyph: KeeptabsState.done_glyph
+            color: root.done_anchor ? root.done_anchor.color : Theme.theme_primary
+            onFinished: pulse_loader.active = false
         }
     }
 
