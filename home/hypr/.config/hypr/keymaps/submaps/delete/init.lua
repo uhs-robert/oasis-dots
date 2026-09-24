@@ -5,8 +5,9 @@ local Config = require("config") --- @class Config
 local Submap = require("lib.key.submap") --- @class Submap
 local Cmd = require("lib.actions.cmd") ---@class Cmd
 local Window = require("lib.actions.window") ---@class WindowActions
+local Scripts = require("lib.scripts") ---@class Scripts
 
-local CLEAR_NOTIFICATIONS = Config.shell == "quickshell" and "qs ipc call notifications clear_all"
+local CLEAR_NOTIFICATIONS = Config.shell == "quickshell" and Scripts.qs_ipc .. " call notifications clear_all"
   or "swaync-client --close-all"
 
 -- stylua: ignore start

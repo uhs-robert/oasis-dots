@@ -3,8 +3,9 @@
 
 local Submap = require("lib.key.submap") ---@class Submap
 local Cmd = require("lib.actions.cmd") ---@class Cmd
+local Scripts = require("lib.scripts") ---@class Scripts
 
-local function popup(name) return Cmd.run("qs ipc call popup open " .. name) end
+local function popup(name) return Cmd.run(Scripts.qs_ipc .. " call popup open " .. name) end
 
 Submap.define({
   name = "Bar",

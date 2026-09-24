@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+# hypr/.config/hypr/scripts/qs-ipc
+# Runs `qs ipc` against the running bar, whether it was started from the stowed config or a worktree.
+pid=$(pgrep -nf '^qs -n( |$)')
+if [ -n "$pid" ]; then exec qs ipc --pid "$pid" "$@"; else exec qs ipc "$@"; fi

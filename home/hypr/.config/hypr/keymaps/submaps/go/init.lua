@@ -9,10 +9,11 @@ local Submap = require("lib.key.submap") --- @class Submap
 local Window = require("lib.actions.window") --- @class WindowActions
 local Workspace = require("lib.actions.workspace") --- @class WorkspaceActions
 local Workspaces = require("lib.workspaces") --- @class Workspaces
+local Scripts = require("lib.scripts") ---@class Scripts
 
 local APP = Apps.map
 
-local function popup(name) return Cmd.run("qs ipc call popup open " .. name) end
+local function popup(name) return Cmd.run(Scripts.qs_ipc .. " call popup open " .. name) end
 
 local SELECTORS = {
   youtube = { window = "title:(?i).*youtube.*" },

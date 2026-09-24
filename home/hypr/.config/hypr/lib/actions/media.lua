@@ -2,12 +2,13 @@
 
 local Config = require("config") --- @class Config
 local Hypr = require("lib.hypr") --- @class HyprLib
+local Scripts = require("lib.scripts") ---@class Scripts
 
 --- Runs brightnessctl, then has Quickshell re-read the backlight for its OSD.
 --- @param step string
 --- @return fun()
 local function brightness(step)
-  local refresh = Config.shell == "quickshell" and " ; qs ipc call brightness refresh" or ""
+  local refresh = Config.shell == "quickshell" and " ; " .. Scripts.qs_ipc .. " call brightness refresh" or ""
   return Hypr.exec("brightnessctl s " .. step .. refresh)
 end
 

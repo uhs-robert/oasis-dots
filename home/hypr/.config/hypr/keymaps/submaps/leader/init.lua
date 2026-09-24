@@ -71,7 +71,7 @@ Submap.define({
 
     if Config.shell == "quickshell" then
       table.insert(rows, { "B", Submap.switch("Bar"), "+Bar", KEEP })
-      table.insert(rows, { "SHIFT + N", Cmd.run("qs ipc call popup open notifications"), "Notifications" })
+      table.insert(rows, { "SHIFT + N", Cmd.run(Scripts.qs_ipc .. " call popup open notifications"), "Notifications" })
     else
       table.insert(rows, { "SHIFT + N", Submap.switch("Notifications"), "+Notifications", KEEP })
     end
