@@ -170,3 +170,6 @@ home/git/.config/git/identity
 **/.tmuxifier/
 /repos/
 /termux/repos/
+
+# Theme switcher state (per machine)
+home/hypr/.config/hypr/theme/.current_theme
