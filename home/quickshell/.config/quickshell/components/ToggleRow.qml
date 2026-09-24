@@ -11,6 +11,8 @@ MenuRow {
     property bool checked: false
     property bool show_state: true
     property string toggle_key: "t"
+    // Replaces On/Off for rows with more than two states.
+    property string state_label: ""
     // Bracketed styles pad the row like a list row; the default stays flush.
     readonly property real pad: root.st.toggle_brackets ? 6 : 0
 
@@ -37,7 +39,7 @@ MenuRow {
 
         Text {
             visible: root.show_state
-            text: root.st.toggle_brackets ? (root.checked ? "[ ON ]" : "[OFF]") : (root.checked ? "On" : "Off")
+            text: root.state_label !== "" ? (root.st.toggle_brackets ? "[" + root.state_label.toUpperCase() + "]" : root.state_label) : root.st.toggle_brackets ? (root.checked ? "[ ON ]" : "[OFF]") : (root.checked ? "On" : "Off")
             color: root.fg(root.checked ? root.st.toggle_on : root.st.toggle_off)
             font.family: root.st.font_family
             font.pixelSize: root.st.font_size - 2
