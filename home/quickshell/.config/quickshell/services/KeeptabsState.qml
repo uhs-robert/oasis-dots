@@ -17,12 +17,18 @@ Singleton {
     property int running_count: 0
     // False until the first line after (re)start, so a done state already present never celebrates.
     property bool primed: false
+    property int last_seq: -1
 
     // A session went from running to done since the previous line.
     signal finished()
 
     function count(state) {
         return root.tooltip.split("\n").filter(l => l.indexOf(state + "\t") === 0).length;
+    }
+
+    // keeptabs' class is a string, or [class, "finished"] for 3s after a finish.
+    function class_of(data) {
+        return Array.isArray(data.class) ? data.class[0] : (data.class || "idle");
     }
 
     function decode(text) {
@@ -65,11 +71,17 @@ Singleton {
                 try {
                     const data = JSON.parse(line);
                     root.runs = root.parse(data.text || "");
-                    root.state_class = data.class || "idle";
+                    root.state_class = root.class_of(data);
                     root.tooltip = root.decode(data.tooltip || "");
                     const done = root.count("DONE");
                     const was_running = root.running_count;
-                    const rose = root.primed && done > root.done_count && was_running > 0;
+                    let rose;
+                    if (typeof data.finished_seq === "number") {
+                        rose = root.primed && data.finished_seq > root.last_seq;
+                        root.last_seq = data.finished_seq;
+                    } else {
+                        rose = root.primed && done > root.done_count && was_running > 0;
+                    }
                     root.done_count = done;
                     root.running_count = root.count("RUNNING");
                     root.primed = true;
