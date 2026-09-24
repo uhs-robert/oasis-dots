@@ -19,6 +19,8 @@ Item {
     readonly property bool objectives: Style.weather_header === "watch"
     // Alerts as Dragon Quest encounter lines.
     readonly property bool encounter: Style.weather_header === "battle"
+    // Metroid: alerts as threats in the combat visor red.
+    readonly property bool threat: Style.weather_header === "scan"
     readonly property var selected: root.alerts[Math.max(0, Math.min(root.alerts.length - 1, root.alert_cursor))]
 
     readonly property var weekday_names: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
@@ -54,6 +56,17 @@ Item {
             active: root.objectives
             visible: active
             sourceComponent: MissionHeader {}
+        }
+
+        Text {
+            visible: root.threat && root.alerts.length > 0
+            Layout.fillWidth: true
+            elide: Text.ElideRight
+            text: "THREAT DETECTED" + (root.alerts.length > 1 ? " · " + root.alerts.length : "")
+            color: Theme.theme_label
+            font.family: Style.font_family
+            font.pixelSize: Style.font_size - 4
+            font.letterSpacing: 2.5
         }
 
         Text {
@@ -125,7 +138,7 @@ Item {
                             Layout.fillWidth: true
                             elide: Text.ElideRight
                             text: root.objectives ? "OBJECTIVE: AVOID " + alert_row.modelData.event.toUpperCase() : alert_row.modelData.event
-                            color: alert_row.fg(root.objectives ? Theme.theme_label : alert_row.index === root.alert_cursor ? Theme.theme_secondary : Theme.fg_core)
+                            color: alert_row.fg(root.objectives || root.threat ? Theme.theme_label : alert_row.index === root.alert_cursor ? Theme.theme_secondary : Theme.fg_core)
                             font.family: Style.font_family
                             font.pixelSize: Style.font_size - 2
                         }

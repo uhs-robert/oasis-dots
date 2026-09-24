@@ -26,12 +26,21 @@ Item {
     readonly property bool mission: Style.weather_header === "watch"
     // PS1: each column headed by its memory card save block in place of the icon.
     readonly property bool save_blocks: Style.weather_header === "memcard"
-    readonly property bool custom_column: root.stat_columns
+    // CRT: WeatherStar 4000 "Extended Forecast" panels.
+    readonly property bool ws_panels: Style.weather_header === "weatherstar" && root.sub === 0
+    // PS2: days as translucent towers on a dark floor.
+    readonly property bool tower_columns: Style.weather_header === "towers" && root.sub === 0
+    readonly property int tower_labels_h: Math.round(Style.font_size * 3.4)
+    // Metroid: scan brackets lock onto the selected day.
+    readonly property bool scan: Style.weather_header === "scan"
+    readonly property bool custom_column: root.stat_columns || root.ws_panels || root.tower_columns
     // NES: each column in a Dragon Quest window with a cursor on the selected day.
     readonly property bool dq: Style.weather_header === "battle"
     // SNES: columns standing on a Mode 7 floor.
     readonly property bool mode7: Style.weather_header === "mode7"
     readonly property bool floor_shown: root.mode7 && root.visible && Popups.open_name === "weather"
+    // Terminal: `curl wttr.in`, the window as one box-drawn table.
+    readonly property bool wttr_table: Style.weather_header === "wttr" && root.sub === 0
 
     onFloor_shownChanged: {
         if (!floor_loader.item) return;
@@ -53,6 +62,12 @@ Item {
     }
 
     FontMetrics {
+        id: table_metrics
+        font.family: Style.font_family
+        font.pixelSize: Style.font_size - 4
+    }
+
+    FontMetrics {
         id: small_metrics
         font.family: Style.font_family
         font.pixelSize: Style.font_size - 5
@@ -60,10 +75,11 @@ Item {
 
     // Columns that fit without clipping their widest label, capped at five.
     readonly property int fit_days: {
-        const f = label_metrics.font;
+        const f = [label_metrics.font, table_metrics.font];
         const mission_w = root.mission ? Math.max(label_metrics.advanceWidth("a) WED"), small_metrics.advanceWidth("PROGRESS") + 8) : 0;
         const dq_w = root.dq ? 2 * (small_metrics.advanceWidth(Style.row_cursor) + 3) : 0;
         const col = root.stat_columns ? 56
+            : Style.weather_header === "wttr" ? table_metrics.advanceWidth("─") * 8 - 4
             : root.dq ? Math.max(label_metrics.advanceWidth("100%"), label_metrics.advanceWidth("WED") + dq_w) + 16
             : Math.max(label_metrics.advanceWidth("Today"), label_metrics.advanceWidth("100%"), mission_w) + 8;
         return Math.max(1, Math.min(5, Math.floor((root.width + 4) / (col + 4))));
@@ -117,6 +133,17 @@ Item {
         onLoaded: if (root.floor_shown) floor_loader.item.run()
     }
 
+    Loader {
+        active: root.tower_columns && root.window_days.length > 0
+        x: day_row.x - 2
+        y: day_row.y + day_row.height - root.tower_labels_h - 40
+        width: day_row.width + 4
+        height: root.tower_labels_h + 40
+        sourceComponent: TowerFloor {
+            haze_h: 40
+        }
+    }
+
     ColumnLayout {
         anchors.fill: parent
         spacing: 6
@@ -128,8 +155,34 @@ Item {
             sourceComponent: MissionHeader {}
         }
 
+        Text {
+            visible: root.ws_panels && root.window_days.length > 0
+            text: "Extended Forecast"
+            color: Theme.theme_secondary
+            font.family: Style.font_family
+            font.pixelSize: Style.font_size - 3
+            style: Text.Outline
+            styleColor: Theme.bg_shadow
+        }
+
+        Loader {
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            active: root.wttr_table
+            visible: active
+            sourceComponent: WttrTable {
+                days: root.window_days
+                first_day: root.first_day
+                day_cursor: root.day_cursor
+                scale_min: root.week_temp_range.min
+                scale_max: root.week_temp_range.max
+                on_select: root.on_select
+            }
+        }
+
         RowLayout {
             id: day_row
+            visible: !root.wttr_table
             Layout.fillWidth: true
             Layout.fillHeight: true
             spacing: 4
@@ -184,6 +237,14 @@ Item {
 
                         LockBrackets {}
 
+                        Loader {
+                            active: root.scan
+                            anchors.fill: parent
+                            sourceComponent: ScanLock {
+                                shown: day_col.day_index === root.day_cursor && root.visible && Popups.open_name === "weather"
+                            }
+                        }
+
                         Rectangle {
                             visible: root.mission
                             width: parent.width
@@ -201,6 +262,27 @@ Item {
                             selected: day_col.day_index === root.day_cursor
                             scale_min: root.week_temp_range.min
                             scale_max: root.week_temp_range.max
+                        }
+                    }
+
+                    Loader {
+                        active: root.tower_columns
+                        anchors.fill: parent
+                        sourceComponent: TowerColumn {
+                            day: day_col.modelData
+                            selected: day_col.day_index === root.day_cursor
+                            scale_min: root.week_temp_range.min
+                            scale_max: root.week_temp_range.max
+                            labels_h: root.tower_labels_h
+                        }
+                    }
+
+                    Loader {
+                        active: root.ws_panels
+                        anchors.fill: parent
+                        sourceComponent: WsDayPanel {
+                            day: day_col.modelData
+                            selected: day_col.day_index === root.day_cursor
                         }
                     }
 
