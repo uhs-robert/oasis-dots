@@ -17,12 +17,39 @@ PanelWindow {
     }
     screen: root.focused_screen
 
-    readonly property var visible_toasts: NotificationState.toasts.slice(0, NotificationState.max_visible_toasts)
+    readonly property var visible_toasts: NotificationState.visible_toasts
     visible: root.visible_toasts.length > 0
 
     WlrLayershell.namespace: "quickshell-toast"
     WlrLayershell.layer: WlrLayer.Overlay
-    WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
+    WlrLayershell.keyboardFocus: NotificationState.toast_focus ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
+
+    Connections {
+        target: NotificationState
+        function onToast_focusChanged() {
+            if (NotificationState.toast_focus) column.forceActiveFocus();
+        }
+    }
+
+    Connections {
+        target: Popups
+        function onOpen_nameChanged() {
+            if (Popups.open_name !== "") NotificationState.leave_toast_focus();
+        }
+    }
+
+    function handle_key(event) {
+        const shift = event.modifiers & Qt.ShiftModifier;
+        if (event.key === Qt.Key_J) NotificationState.move_toast(1);
+        else if (event.key === Qt.Key_K) NotificationState.move_toast(-1);
+        else if (event.key === Qt.Key_L) NotificationState.move_toast_action(shift ? 99 : 1);
+        else if (event.key === Qt.Key_H) NotificationState.move_toast_action(shift ? -99 : -1);
+        else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) NotificationState.invoke_selected_toast();
+        else if (event.key === Qt.Key_D || event.key === Qt.Key_X) NotificationState.dismiss_selected_toast();
+        else if (event.key === Qt.Key_Escape || event.key === Qt.Key_Q) NotificationState.leave_toast_focus();
+        else return;
+        event.accepted = true;
+    }
 
     color: "transparent"
     exclusiveZone: 0
@@ -41,14 +68,20 @@ PanelWindow {
         id: column
         width: parent.width
         spacing: 8
+        focus: true
+
+        Keys.onPressed: event => root.handle_key(event)
 
         Repeater {
             model: root.visible_toasts
 
             NotificationToastCard {
+                id: toast_card
                 Layout.fillWidth: true
                 required property var modelData
-                entry: modelData
+                entry: toast_card.modelData
+                selected: NotificationState.toast_focus && !!toast_card.modelData && toast_card.modelData.id === NotificationState.toast_selected_id
+                focused_action: toast_card.selected ? NotificationState.toast_action : -1
             }
         }
     }

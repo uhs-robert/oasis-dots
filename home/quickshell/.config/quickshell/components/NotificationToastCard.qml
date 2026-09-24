@@ -10,6 +10,8 @@ Rectangle {
     id: root
 
     property var entry: null
+    property bool selected: false
+    property int focused_action: -1
     readonly property var notification: root.entry ? root.entry.notification : null
 
     readonly property var actions: {
@@ -57,9 +59,11 @@ Rectangle {
 
     implicitHeight: layout.implicitHeight + 16
     radius: Style.radius(8)
-    color: Style.boxed_cards ? Style.frame_color : Theme.bg_mantle
-    border.width: 1
-    border.color: Style.boxed_cards ? root.accent : Theme.ui_border
+    color: Style.boxed_cards
+        ? (root.selected ? Qt.tint(Style.frame_color, Qt.alpha(Style.caret_color, 0.08)) : Style.frame_color)
+        : (root.selected ? Theme.bg_surface : Theme.bg_mantle)
+    border.width: root.selected && !Style.boxed_cards ? 2 : 1
+    border.color: root.selected ? Style.caret_color : Style.boxed_cards ? root.accent : Theme.ui_border
     clip: true
 
     opacity: 0
@@ -107,6 +111,33 @@ Rectangle {
         color: root.accent
     }
 
+    DashedOutline {
+        visible: root.selected && Style.boxed_cards && Style.selection_outline.a > 0
+        anchors.fill: parent
+        anchors.margins: 3
+        color: Style.selection_outline
+    }
+
+    Rectangle {
+        visible: root.selected && Style.selection_bar
+        x: 1
+        y: 1
+        width: 2
+        height: root.height - 2
+        color: Style.caret_color
+    }
+
+    Text {
+        visible: root.selected && Style.row_cursor !== "" && Style.caret_phase
+        x: 3
+        y: layout.y + 1
+        text: Style.row_cursor
+        color: Style.caret_color
+        font.family: Style.font_family
+        font.pixelSize: Style.font_size - 3
+        font.bold: true
+    }
+
     // Static scanlines; nothing animates them.
     Repeater {
         model: Style.scanlines ? Math.ceil(root.height / 3) : 0
@@ -126,7 +157,7 @@ Rectangle {
         anchors.right: parent.right
         anchors.top: parent.top
         anchors.margins: 8
-        anchors.leftMargin: 12
+        anchors.leftMargin: Style.row_cursor !== "" ? 16 : 12
         spacing: 8
 
         Image {
@@ -217,13 +248,15 @@ Rectangle {
                     Rectangle {
                         id: action_chip
                         required property var modelData
+                        required property int index
+                        readonly property bool focused: action_chip.index === root.focused_action
 
                         implicitWidth: Math.min(action_label.implicitWidth + 16, layout.width)
                         implicitHeight: 22
                         radius: Style.radius(11)
-                        color: Style.boxed_cards ? "transparent" : Theme.bg_surface
-                        border.width: Style.boxed_cards ? 1 : 0
-                        border.color: Style.key_border
+                        color: action_chip.focused ? Theme.theme_secondary : Style.boxed_cards ? "transparent" : Theme.bg_surface
+                        border.width: Style.boxed_cards || action_chip.focused ? 1 : 0
+                        border.color: action_chip.focused ? Theme.theme_secondary : Style.key_border
 
                         Text {
                             id: action_label
@@ -232,10 +265,11 @@ Rectangle {
                             width: Math.min(implicitWidth, layout.width - 16)
                             horizontalAlignment: Text.AlignHCenter
                             text: action_chip.modelData.text
-                            color: Theme.theme_secondary
+                            color: action_chip.focused ? Theme.bg_crust : Theme.theme_secondary
+                            font.bold: action_chip.focused
                             font.family: Style.font_family
                             font.pixelSize: Style.font_size - (Style.boxed_cards ? 3 : 4)
-                            style: root.text_style
+                            style: action_chip.focused ? Text.Normal : root.text_style
                             styleColor: root.glow_color
                         }
 

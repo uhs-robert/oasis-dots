@@ -18,6 +18,16 @@ Singleton {
     readonly property int timeout_normal_ms: 5000
     readonly property int timeout_low_ms: 3000
     readonly property int max_visible_toasts: 5
+    readonly property var visible_toasts: root.toasts.slice(0, root.max_visible_toasts)
+
+    // Keyboard focus on the toast stack; the selection is tracked by entry id.
+    property bool toast_focus: false
+    property var toast_selected_id: null
+    property int toast_index: 0
+    // -1 is the toast body; 0.. are the selected toast's action buttons.
+    property int toast_action: -1
+
+    onToastsChanged: root.sync_toast_focus()
 
     NotificationServer {
         id: server
@@ -69,7 +79,7 @@ Singleton {
                 if (entry.timer) entry.timer.stop();
             } else if (!entry.timer) {
                 root.start_timeout(entry, entry.notification);
-            } else if (!entry.timer.running && !entry.paused) {
+            } else if (!entry.timer.running && !entry.paused && !root.toast_focus) {
                 entry.timer.restart();
             }
         });
@@ -86,7 +96,7 @@ Singleton {
             if (!root.history.includes(entry) && entry.notification) entry.notification.expire();
         });
         entry.timer = timer;
-        timer.start();
+        if (!root.toast_focus) timer.start();
     }
 
     function stop_timer(entry) {
@@ -144,7 +154,85 @@ Singleton {
 
     function resume_toast(entry) {
         entry.paused = false;
-        if (entry.timer) entry.timer.restart();
+        if (entry.timer && !root.toast_focus) entry.timer.restart();
+    }
+
+    function focus_toast(direction) {
+        if (root.visible_toasts.length === 0) return false;
+        if (!root.toast_focus) {
+            root.toast_focus = true;
+            for (const entry of root.toasts) if (entry.timer) entry.timer.stop();
+            root.select_toast(0);
+        } else {
+            root.move_toast(direction === "prev" ? -1 : 1);
+        }
+        return true;
+    }
+
+    function leave_toast_focus() {
+        if (!root.toast_focus) return;
+        root.toast_focus = false;
+        root.toast_action = -1;
+        root.sync_timers();
+    }
+
+    function select_toast(index) {
+        const list = root.toasts.slice(0, root.max_visible_toasts);
+        if (index < 0 || index >= list.length) return;
+        root.toast_index = index;
+        root.toast_selected_id = list[index].id;
+        root.toast_action = -1;
+    }
+
+    function move_toast(delta) {
+        const count = Math.min(root.toasts.length, root.max_visible_toasts);
+        root.select_toast(Math.max(0, Math.min(count - 1, root.toast_index + delta)));
+    }
+
+    function selected_toast() {
+        return root.toasts.slice(0, root.max_visible_toasts).find(e => e.id === root.toast_selected_id) || null;
+    }
+
+    function move_toast_action(delta) {
+        const entry = root.selected_toast();
+        const count = entry ? root.actions_of(entry).length : 0;
+        root.toast_action = Math.max(-1, Math.min(count - 1, root.toast_action + delta));
+    }
+
+    function invoke_selected_toast() {
+        const entry = root.selected_toast();
+        const actions = entry ? root.actions_of(entry) : [];
+        const action = actions[root.toast_action] || null;
+        root.leave_toast_focus();
+        if (!entry) return;
+        if (action) root.invoke_action(entry, action);
+        else root.invoke_default(entry);
+    }
+
+    function dismiss_selected_toast() {
+        const entry = root.selected_toast();
+        if (entry) root.dismiss(entry);
+    }
+
+    // Keeps the selection on its entry as toasts come and go, falling back to the same slot.
+    function sync_toast_focus() {
+        if (!root.toast_focus) return;
+        const list = root.toasts.slice(0, root.max_visible_toasts);
+        if (list.length === 0) {
+            root.leave_toast_focus();
+            return;
+        }
+        for (const entry of list) if (entry.timer) entry.timer.stop();
+        const idx = list.findIndex(e => e.id === root.toast_selected_id);
+        if (idx >= 0) root.toast_index = idx;
+        else root.select_toast(Math.min(root.toast_index, list.length - 1));
+    }
+
+    function actions_of(entry) {
+        const all = entry && entry.notification && entry.notification.actions ? entry.notification.actions : [];
+        const list = [];
+        for (let i = 0; i < all.length; i++) if (all[i].identifier !== "default") list.push(all[i]);
+        return list;
     }
 
     function toggle_dnd() {
