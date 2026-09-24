@@ -90,8 +90,8 @@ Item {
 
     HoverHandler {
         onHoveredChanged: {
-            if (hovered) Tooltip.show(parent, root.net_tooltip);
-            else Tooltip.hide();
+            if (hovered) Tooltip.show(root, root.net_tooltip, "network");
+            else Tooltip.hide(root);
         }
     }
 }

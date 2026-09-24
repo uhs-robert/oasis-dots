@@ -102,8 +102,8 @@ Item {
     HoverHandler {
         id: hover_handler
         onHoveredChanged: {
-            if (hovered) Tooltip.show(root, root.tooltip_text);
-            else Tooltip.hide();
+            if (hovered) Tooltip.show(root, root.tooltip_text, "battery");
+            else Tooltip.hide(root);
         }
     }
 

@@ -35,6 +35,12 @@ Item {
         return (toplevel.lastIpcObject && toplevel.lastIpcObject.class) || "";
     }
 
+    function name_of(toplevel) {
+        const cls = root.class_of(toplevel);
+        const entry = cls ? DesktopEntries.heuristicLookup(cls) : null;
+        return entry && entry.name ? entry.name : cls ? cls.split(".").pop() : "window";
+    }
+
     // Mirrors hypr-focus-workspaces.lua: focus the workspace then the window, holding cursor:no_warps.
     function focus_toplevel(ws_id, address) {
         Hyprland.dispatch("hl.dsp.focus({ workspace = '" + ws_id + "' })");
@@ -151,8 +157,8 @@ Item {
 
                             HoverHandler {
                                 onHoveredChanged: {
-                                    if (hovered) Tooltip.show(icon_item, icon_item.modelData.title);
-                                    else Tooltip.hide();
+                                    if (hovered) Tooltip.show(icon_item, icon_item.modelData.title, root.name_of(icon_item.modelData));
+                                    else Tooltip.hide(icon_item);
                                 }
                             }
                         }

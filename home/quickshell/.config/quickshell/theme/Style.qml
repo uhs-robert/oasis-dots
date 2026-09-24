@@ -148,11 +148,7 @@ Singleton {
             bar_hover_bg: Theme.bg_surface,
             bar_glow_color: "transparent",
             bar_text_raised: false,
-            bar_scanline_color: "transparent",
-            bar_tip_bg: Theme.bg_crust,
-            bar_tip_fg: Theme.fg_core,
-            bar_tip_border_width: 1,
-            bar_tip_border_color: Theme.fg_muted
+            bar_scanline_color: "transparent"
         };
         return {
             "default": {
@@ -293,11 +289,7 @@ Singleton {
                 bar_hover_bg: Theme.bg_surface,
                 bar_glow_color: "transparent",
                 bar_text_raised: false,
-                bar_scanline_color: "transparent",
-                bar_tip_bg: Theme.ui_float_bg,
-                bar_tip_fg: Theme.ui_float_fg,
-                bar_tip_border_width: 0,
-                bar_tip_border_color: "transparent"
+                bar_scanline_color: "transparent"
             },
             "terminal": terminal,
             "crt": Object.assign({}, terminal, {
@@ -339,9 +331,7 @@ Singleton {
                 bar_border_color: Qt.alpha(Theme.theme_primary, 0.5),
                 bar_hover_bg: Qt.alpha(Theme.theme_primary, 0.4),
                 bar_glow_color: Qt.alpha(Theme.theme_primary, 0.3),
-                bar_scanline_color: Qt.alpha(Theme.theme_primary, 0.07),
-                bar_tip_fg: Theme.theme_primary_light,
-                bar_tip_border_color: Qt.tint(Theme.bg_crust, Qt.alpha(Theme.theme_primary, 0.35))
+                bar_scanline_color: Qt.alpha(Theme.theme_primary, 0.07)
             }),
             "nes": Object.assign({}, terminal, {
                 text_muted: Qt.tint(Theme.fg_dim, Qt.alpha(Theme.fg_core, 0.35)),
@@ -393,10 +383,7 @@ Singleton {
                 bar_border_color: "transparent",
                 bar_inset_gap: 2,
                 bar_inset_width: 2,
-                bar_inset_color: Theme.fg_strong,
-                bar_tip_fg: Theme.fg_strong,
-                bar_tip_border_width: 2,
-                bar_tip_border_color: Theme.fg_strong
+                bar_inset_color: Theme.fg_strong
             }),
             "snes": Object.assign({}, terminal, {
                 // Greys lifted toward primary_light so they read on the shaded window.
@@ -451,9 +438,7 @@ Singleton {
                 bar_workspace_ring: Theme.theme_primary,
                 bar_hover_bg: Qt.alpha(Theme.theme_primary, 0.3),
                 bar_glow_color: Theme.bg_shadow,
-                bar_text_raised: true,
-                bar_tip_border_width: 2,
-                bar_tip_border_color: Theme.theme_primary
+                bar_text_raised: true
             }),
             "ps1": Object.assign({}, terminal, {
                 // Muted text brightened; the shaded, dithered frame swallows the theme greys.
@@ -498,9 +483,7 @@ Singleton {
                 bar_workspace_idle: Qt.alpha(Theme.fg_dim, 0.35),
                 bar_hover_bg: Qt.alpha(Theme.theme_primary, 0.35),
                 bar_glow_color: Theme.bg_shadow,
-                bar_text_raised: true,
-                bar_tip_border_width: 2,
-                bar_tip_border_color: Theme.fg_dim
+                bar_text_raised: true
             }),
             // Perfect Dark panels; `small` turns the small popups into the Q-branch watch LCD.
             "goldeneye": Object.assign({}, terminal, {
@@ -566,7 +549,6 @@ Singleton {
                 bar_clock_bg: Theme.theme_primary_light,
                 bar_clock_fg: Theme.bg_core,
                 bar_clock_font: "DSEG7 Classic",
-                bar_tip_border_color: Qt.alpha(Theme.theme_label, 0.6),
                 small: {
                     text_fg: Theme.theme_primary_light,
                     text_strong: Theme.fg_strong,
@@ -676,9 +658,7 @@ Singleton {
                 bar_border_color: Theme.theme_primary,
                 bar_workspace_idle: Theme.ui_visual_bg,
                 bar_hover_bg: Qt.alpha(Theme.theme_primary, 0.18),
-                bar_glow_color: Qt.alpha(Theme.theme_primary, 0.2),
-                bar_tip_fg: Theme.theme_primary_light,
-                bar_tip_border_color: Qt.alpha(Theme.theme_primary, 0.6)
+                bar_glow_color: Qt.alpha(Theme.theme_primary, 0.2)
             }),
             "metroid": Object.assign({}, terminal, {
                 // Greys lifted toward primary_light so they read on the visor glass.
@@ -737,8 +717,6 @@ Singleton {
                 bar_border_color: Qt.alpha(Theme.theme_primary, 0.5),
                 bar_workspace_idle: Qt.alpha(Theme.theme_primary, 0.18),
                 bar_hover_bg: Qt.alpha(Theme.theme_primary, 0.18),
-                bar_tip_fg: Theme.theme_primary_light,
-                bar_tip_border_color: Qt.alpha(Theme.theme_primary, 0.45),
                 small: {
                     title_readout: "COMBAT VISOR"
                 }
@@ -791,10 +769,7 @@ Singleton {
                 bar_border_color: "transparent",
                 bar_rounded: true,
                 bar_workspace_idle: Qt.alpha(Theme.theme_primary, 0.12),
-                bar_hover_bg: Qt.alpha(Theme.theme_primary, 0.2),
-                bar_tip_bg: Theme.bg_mantle,
-                bar_tip_fg: Theme.theme_primary_light,
-                bar_tip_border_color: Qt.alpha(Theme.theme_primary, 0.4)
+                bar_hover_bg: Qt.alpha(Theme.theme_primary, 0.2)
             })
         };
     }
@@ -994,10 +969,6 @@ Singleton {
     readonly property color bar_glow_color: root.bar.bar_glow_color
     readonly property color bar_scanline_color: root.bar.bar_scanline_color
     readonly property int bar_text_style: root.bar.bar_text_raised ? Text.Raised : root.bar_glow_color.a > 0 ? Text.Outline : Text.Normal
-    readonly property color bar_tip_bg: root.bar.bar_tip_bg
-    readonly property color bar_tip_fg: root.bar.bar_tip_fg
-    readonly property int bar_tip_border_width: root.bar.bar_tip_border_width
-    readonly property color bar_tip_border_color: root.bar.bar_tip_border_color
 
     // Corner radius for a shape that is rounded by `r` in the default look.
     function radius(r) {

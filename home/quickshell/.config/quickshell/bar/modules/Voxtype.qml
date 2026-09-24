@@ -82,8 +82,8 @@ Item {
     HoverHandler {
         id: hover_handler
         onHoveredChanged: {
-            if (hovered) Tooltip.show(root, VoxtypeState.tooltip);
-            else Tooltip.hide();
+            if (hovered) Tooltip.show(root, VoxtypeState.tooltip, "voxtype");
+            else Tooltip.hide(root);
         }
     }
 

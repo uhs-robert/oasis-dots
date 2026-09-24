@@ -75,7 +75,7 @@ ShellRoot {
     BrightnessIpc {}
     NotificationsIpc {}
     StyleIpc {}
-    BarTooltip {}
+    TooltipShelf {}
     NotificationToasts {}
     Osd {}
     WhichKey {}

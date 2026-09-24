@@ -23,6 +23,9 @@ PanelWindow {
     // Styles with a `small` block draw "small" popups apart from "large" ones (notifications, weather, media).
     property string size_class: "small"
     readonly property var st: root.size_class === "small" ? Style.small : Style
+    // A hover shelf: follows Tooltip instead of Popups, never takes focus or input, and plays faster.
+    property bool passive: false
+    readonly property real anim_scale: root.passive ? 0.6 : 1
     // Set while a native menu from this popup is open; focus returns to the popup when it closes.
     property bool suspend_grab: false
 
@@ -112,11 +115,11 @@ PanelWindow {
     // Set by popups whose layout is fluid: from a side island they take exactly the island body's width.
     property bool fit_island: false
     // Never narrower than the island's bottom edge (its body, between the slants).
-    implicitWidth: root.fit_island && root.island_width > 0 && root.side !== "center" ? root.island_width : Math.max(Style.px(preferred_width) + root.st.lcd_margin * 2, island_width, root.st.popup_min_width)
+    implicitWidth: root.passive ? root.island_width : root.fit_island && root.island_width > 0 && root.side !== "center" ? root.island_width : Math.max(Style.px(preferred_width) + root.st.lcd_margin * 2, island_width, root.st.popup_min_width)
     implicitHeight: body_height + header_height + footer_height + root.st.frame_drop
     default property alias content: content_scope.data
 
-    readonly property bool wanted: Popups.open_name === root.popup_name && Popups.open_screen_name !== ""
+    readonly property bool wanted: root.passive ? Tooltip.visible && Tooltip.island !== null && Popups.open_name === "" : Popups.open_name === root.popup_name && Popups.open_screen_name !== ""
 
     // Latched on open so the popup keeps its place and color while the close animation plays.
     property var held_anchor: null
@@ -141,7 +144,12 @@ PanelWindow {
     visible: false
     WlrLayershell.namespace: "quickshell-popup"
     WlrLayershell.layer: WlrLayer.Overlay
-    WlrLayershell.keyboardFocus: WlrKeyboardFocus.OnDemand
+    WlrLayershell.keyboardFocus: root.passive ? WlrKeyboardFocus.None : WlrKeyboardFocus.OnDemand
+    mask: root.passive ? no_input : null
+
+    Region {
+        id: no_input
+    }
 
     readonly property int line_height: root.st.accent_height
     readonly property bool has_title: root.st.show_title && title !== ""
@@ -156,8 +164,35 @@ PanelWindow {
     property real line_progress: 0
     property real drop_progress: 0
 
+    // Same island: title and text follow Tooltip in place; another island replays the drop from there.
+    function latch_tooltip() {
+        const moved = root.held_anchor !== Tooltip.island;
+        if (moved) {
+            open_anim.stop();
+            line_progress = 0;
+            drop_progress = 0;
+            if (held_screen_name !== Tooltip.screen_name) visible = false;
+        }
+        held_anchor = Tooltip.island;
+        held_screen_name = Tooltip.screen_name;
+        held_color = Tooltip.island_color;
+        visible = true;
+        if (moved || drop_progress < 1) open_anim.restart();
+    }
+
+    Connections {
+        target: Tooltip
+        enabled: root.passive
+        function onIslandChanged() {
+            if (root.wanted) root.latch_tooltip();
+        }
+    }
+
     onWantedChanged: {
-        if (wanted) {
+        if (wanted && passive) {
+            close_anim.stop();
+            latch_tooltip();
+        } else if (wanted) {
             close_anim.stop();
             held_anchor = Popups.open_anchor;
             held_screen_name = Popups.open_screen_name;
@@ -166,6 +201,13 @@ PanelWindow {
             visible = true;
             open_anim.restart();
             content_scope.forceActiveFocus();
+        } else if (visible && passive && Popups.open_name !== "") {
+            open_anim.stop();
+            close_anim.stop();
+            line_progress = 0;
+            drop_progress = 0;
+            visible = false;
+            held_anchor = null;
         } else if (visible) {
             open_anim.stop();
             close_anim.restart();
@@ -177,21 +219,21 @@ PanelWindow {
     Timer {
         interval: 530
         repeat: true
-        running: root.st.caret_blink && root.visible && root.wanted && Power.on_ac
+        running: root.st.caret_blink && !root.passive && root.visible && root.wanted && Power.on_ac
         onTriggered: Style.caret_phase = !Style.caret_phase
         onRunningChanged: Style.caret_phase = true
     }
 
     SequentialAnimation {
         id: open_anim
-        NumberAnimation { target: root; property: "line_progress"; to: 1; duration: 180; easing.type: Easing.OutCubic }
-        NumberAnimation { target: root; property: "drop_progress"; to: 1; duration: 190; easing.type: Easing.OutCubic }
+        NumberAnimation { target: root; property: "line_progress"; to: 1; duration: 180 * root.anim_scale; easing.type: Easing.OutCubic }
+        NumberAnimation { target: root; property: "drop_progress"; to: 1; duration: 190 * root.anim_scale; easing.type: Easing.OutCubic }
     }
 
     SequentialAnimation {
         id: close_anim
-        NumberAnimation { target: root; property: "drop_progress"; to: 0; duration: 120; easing.type: Easing.InCubic }
-        NumberAnimation { target: root; property: "line_progress"; to: 0; duration: 90; easing.type: Easing.InCubic }
+        NumberAnimation { target: root; property: "drop_progress"; to: 0; duration: 120 * root.anim_scale; easing.type: Easing.InCubic }
+        NumberAnimation { target: root; property: "line_progress"; to: 0; duration: 90 * root.anim_scale; easing.type: Easing.InCubic }
         ScriptAction {
             script: {
                 root.visible = false;
@@ -204,6 +246,7 @@ PanelWindow {
     // Hyprland moves pointer focus to this layer when it maps, so an unmoved re-click on the bar lands here, off the surface.
     MouseArea {
         id: outside_catch
+        enabled: !root.passive
         x: -100000
         y: -100000
         width: 200000
