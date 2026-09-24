@@ -28,6 +28,10 @@ local POWER = {
   off = Scripts.confirm_action .. " --title 'Power Off' --glyph '󰐥' --exec '" .. CMD.poweroff .. "'",
 }
 
+local NOTIFICATIONS = Config.shell == "quickshell"
+    and { "N", Cmd.run(Scripts.qs_ipc .. " call popup open notifications"), "Notification Center" }
+  or { "N", Submap.switch("Notifications"), "Notification Center", { keep = true } }
+
 Submap.define({
   name = "System",
   desc = "+System",
@@ -49,7 +53,7 @@ Submap.define({
     { "I",         Cmd.run(Scripts.nmtui),              "Internet (nmtui)" },
     { "K",         Cmd.run("hyprctl kill"),             "Kill App (Click)" },
     { "L",         Cmd.run(POWER.lock),                 "Lock" },
-    { "N",         Submap.switch("Notifications"),      "Notification Center", { keep = true } },
+    NOTIFICATIONS,
     { "SHIFT + M", Cmd.run(Scripts.toggle_mpris_mode),  "Toggle Mpris Mode" },
     { "R",         Cmd.run(POWER.reboot),               "Reboot" },
     { "SHIFT + R", require("config.autostart"),         "Replay Autostart" },

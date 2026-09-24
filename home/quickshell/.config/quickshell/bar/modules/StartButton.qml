@@ -43,8 +43,14 @@ Item {
         mipmap: true
     }
 
-    onIslandChanged: if (root.island) Popups.register_default("start", root.island, root.island_color, root.screen_name, root)
-    Component.onDestruction: Popups.unregister("start", root.screen_name, root)
+    onIslandChanged: if (root.island) {
+        Popups.register_default("start", root.island, root.island_color, root.screen_name, root);
+        Popups.register_default("style", root.island, root.island_color, root.screen_name, root, "start");
+    }
+    Component.onDestruction: {
+        Popups.unregister("start", root.screen_name, root);
+        Popups.unregister("style", root.screen_name, root);
+    }
 
     MouseArea {
         anchors.fill: parent

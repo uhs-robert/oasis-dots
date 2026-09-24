@@ -20,9 +20,9 @@ Singleton {
 
     // Lets a module register the item/color its popup anchors to when opened without a click (IPC).
     // `owner` is the registering module; it defaults to the anchor item (the clock has no module).
-    function register_default(name, item, color, screen_name, owner) {
+    function register_default(name, item, color, screen_name, owner, back_to) {
         if (!default_anchors[screen_name]) default_anchors[screen_name] = {};
-        default_anchors[screen_name][name] = { item: item, color: color, owner: owner || item };
+        default_anchors[screen_name][name] = { item: item, color: color, owner: owner || item, back_to: back_to || "" };
     }
 
     // Called when a bar is destroyed so a popup never anchors to a deleted item.
@@ -58,6 +58,7 @@ Singleton {
     }
 
     function open(name, anchor_item, color, screen_name, back_to) {
+        let back = back_to || "";
         if (anchor_item) {
             open_anchor = anchor_item;
             open_color = color || Theme.bg_mantle;
@@ -70,9 +71,10 @@ Singleton {
             open_color = found ? (island && island.bg_color !== undefined ? island.bg_color : found.color) : (color || Theme.bg_mantle);
             // A popup with no module (the docked picker) opens on the screen it names.
             open_screen_name = found ? found.screen_name : (screen_name || "");
+            if (found && !back) back = found.back_to || "";
         }
         open_name = name;
-        back_name = back_to || "";
+        back_name = back;
     }
 
     function close() {

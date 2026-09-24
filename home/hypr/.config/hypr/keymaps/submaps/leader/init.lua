@@ -54,7 +54,7 @@ Submap.define({
       add_row({ "N", popup("notifications"), "Notifications" })
       add_row({ "P", popup("battery"), "Power and Brightness" })
       add_row({ "Q", popup("system"), "System" })
-      add_row({ "S", popup("start"), "Start Menu" })
+      add_row({ "S", popup("style"), "Style" })
       add_row({ "T", popup("tray"), "Tray" })
       add_row({ "U", popup("updates"), "Updates" })
       add_row({ "V", popup("volume"), "Volume" })
