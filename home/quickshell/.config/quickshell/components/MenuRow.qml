@@ -15,11 +15,32 @@ Rectangle {
     readonly property real key_space: root.show_key ? key_badge.width + 6 : 0
 
     radius: Style.radius(root.base_radius)
-    color: root.selected ? Style.selection_bg : "transparent"
+    color: root.selected && !Style.fade_fills ? Style.selection_bg : "transparent"
+    border.width: root.selected && Style.selection_border.a > 0 ? 1 : 0
+    border.color: Style.selection_border
+
+    // A soft static halo behind the selected row.
+    Repeater {
+        model: root.selected && Style.selection_glow.a > 0 ? [2, 4, 6] : []
+
+        Rectangle {
+            required property int modelData
+            z: -1
+            anchors.fill: parent
+            anchors.margins: -modelData
+            radius: root.radius + modelData
+            color: Qt.alpha(Style.selection_glow, Style.selection_glow.a * (0.5 - modelData * 0.06))
+        }
+    }
 
     // Styles with an inverse selection repaint the row's text and glyphs in one color.
     function fg(c) {
         return root.selected && Style.selection_inverse ? Style.selection_fg : c;
+    }
+
+    FadeFill {
+        visible: root.selected && Style.fade_fills
+        fill: Style.selection_bg
     }
 
     DashedOutline {

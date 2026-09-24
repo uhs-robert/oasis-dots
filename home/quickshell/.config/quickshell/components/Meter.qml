@@ -26,14 +26,28 @@ Item {
             model: root.segment_count
 
             Rectangle {
+                id: segment
                 required property int index
+                readonly property bool lit: index < Math.round(root.value * root.segment_count)
+                readonly property bool is_hot: root.hot || index >= Math.round(root.hot_from * root.segment_count)
 
                 width: root.segment_width
                 height: root.implicitHeight
                 radius: Style.meter_radius
-                color: index < Math.round(root.value * root.segment_count)
-                    ? (root.hot || index >= Math.round(root.hot_from * root.segment_count) ? Style.meter_hot : root.on_selection && Style.selection_inverse ? Style.selection_fg : root.on_color)
+                color: segment.lit
+                    ? (segment.is_hot ? Style.meter_hot : root.on_selection && Style.selection_inverse ? Style.selection_fg : root.on_color)
                     : root.on_selection && Style.selection_inverse ? Qt.alpha(Style.selection_fg, 0.25) : Style.meter_off
+
+                // Lit segments shade down from meter_shade at the top.
+                Rectangle {
+                    visible: segment.lit && !segment.is_hot && Style.meter_shade.a > 0
+                    anchors.fill: parent
+                    radius: parent.radius
+                    gradient: Gradient {
+                        GradientStop { position: 0; color: Style.meter_shade }
+                        GradientStop { position: 0.6; color: Qt.alpha(Style.meter_shade, 0) }
+                    }
+                }
             }
         }
     }

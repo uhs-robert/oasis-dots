@@ -67,7 +67,7 @@ Item {
             font.family: Style.bar_font_family
             style: Style.bar_text_style
             styleColor: Style.bar_glow_color
-            font.pixelSize: Theme.font_size - 3
+            font.pixelSize: Style.bar_font_size - 3
             font.bold: true
         }
     }

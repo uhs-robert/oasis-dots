@@ -73,7 +73,16 @@ Singleton {
             glow: false,
             glow_color: "transparent",
             glow_tint: 0,
+            frame_shade: "transparent",
+            dither: "transparent",
+            text_shadow: "transparent",
+            fade_fills: false,
+            selection_border: "transparent",
+            selection_glow: "transparent",
+            meter_shade: "transparent",
+            corner_scale: 1,
             bar_font_family: "JetBrainsMono Nerd Font",
+            bar_font_size: Theme.font_size,
             bar_side_bg: Theme.bg_crust,
             bar_center_bg: Theme.bg_crust,
             bar_fg: Theme.fg_core,
@@ -85,6 +94,7 @@ Singleton {
             bar_workspace_idle: Theme.bg_surface,
             bar_hover_bg: Theme.bg_surface,
             bar_glow_color: "transparent",
+            bar_text_raised: false,
             bar_scanline_color: "transparent",
             bar_tip_bg: Theme.bg_crust,
             bar_tip_fg: Theme.fg_core,
@@ -152,7 +162,16 @@ Singleton {
                 glow: false,
                 glow_color: "transparent",
                 glow_tint: 0,
+                frame_shade: "transparent",
+                dither: "transparent",
+                text_shadow: "transparent",
+                fade_fills: false,
+                selection_border: "transparent",
+                selection_glow: "transparent",
+                meter_shade: "transparent",
+                corner_scale: 1,
                 bar_font_family: Theme.font_family,
+                bar_font_size: Theme.font_size,
                 bar_side_bg: Theme.bg_core,
                 bar_center_bg: Theme.bg_mantle,
                 bar_fg: Theme.fg_core,
@@ -164,6 +183,7 @@ Singleton {
                 bar_workspace_idle: Theme.bg_surface,
                 bar_hover_bg: Theme.bg_surface,
                 bar_glow_color: "transparent",
+                bar_text_raised: false,
                 bar_scanline_color: "transparent",
                 bar_tip_bg: Theme.ui_float_bg,
                 bar_tip_fg: Theme.ui_float_fg,
@@ -206,6 +226,103 @@ Singleton {
                 bar_scanline_color: Qt.alpha(Theme.theme_primary, 0.07),
                 bar_tip_fg: Theme.theme_primary_light,
                 bar_tip_border_color: Qt.tint(Theme.bg_crust, Qt.alpha(Theme.theme_primary, 0.35))
+            }),
+            "ps1": Object.assign({}, terminal, {
+                font_family: "Terminess Nerd Font",
+                font_size: Theme.popup_font_size + 6,
+                frame_color: Theme.bg_crust,
+                frame_shade: Theme.bg_mantle,
+                frame_radius: 10,
+                frame_border_width: 2,
+                frame_border_color: Theme.fg_dim,
+                accent_color: Theme.theme_primary,
+                selection_bg: Qt.alpha(Theme.theme_primary, 0.35),
+                selection_outline: "transparent",
+                fade_fills: true,
+                caret_color: Theme.theme_primary_light,
+                row_cursor: "◆",
+                tab_active_bg: Qt.alpha(Theme.theme_primary, 0.35),
+                tab_active_fg: Theme.fg_strong,
+                tab_fg: Theme.theme_primary_light,
+                key_fg: Theme.theme_secondary,
+                key_border: "transparent",
+                section_fg: Theme.theme_primary_light,
+                section_rule: false,
+                footer_fg: Theme.theme_primary_light,
+                footer_rule: false,
+                meter_shade: Theme.theme_primary_light,
+                meter_off: Theme.bg_shadow,
+                title_bg: Qt.alpha(Theme.theme_primary, 0.3),
+                title_fg: Theme.fg_strong,
+                chip_brackets: false,
+                chip_active_bg: Qt.alpha(Theme.theme_primary, 0.35),
+                chip_active_fg: Theme.fg_strong,
+                dither: Qt.alpha(Theme.bg_shadow, 0.22),
+                text_shadow: Theme.bg_shadow,
+                bar_font_family: "Terminess Nerd Font",
+                bar_font_size: Theme.font_size + 4,
+                bar_side_bg: Theme.bg_core,
+                bar_center_bg: Theme.bg_mantle,
+                bar_border_color: Theme.fg_dim,
+                bar_workspace_idle: Qt.alpha(Theme.fg_dim, 0.35),
+                bar_hover_bg: Qt.alpha(Theme.theme_primary, 0.35),
+                bar_glow_color: Theme.bg_shadow,
+                bar_text_raised: true,
+                bar_tip_border_width: 2,
+                bar_tip_border_color: Theme.fg_dim
+            }),
+            "ps2": Object.assign({}, terminal, {
+                font_family: "Montserrat",
+                font_size: Theme.popup_font_size + 1,
+                rounded: true,
+                corner_scale: 2.5,
+                frame_color: Theme.bg_mantle,
+                frame_radius: 14,
+                frame_border_width: 0,
+                frame_border_color: "transparent",
+                accent_color: Theme.theme_primary,
+                accent_height: 2,
+                selection_bg: Qt.alpha(Theme.theme_primary, 0.14),
+                selection_outline: "transparent",
+                selection_border: Qt.alpha(Theme.theme_primary_light, 0.35),
+                selection_glow: Qt.alpha(Theme.theme_primary, 0.35),
+                caret_color: Theme.theme_primary_light,
+                caret_blink: false,
+                row_cursor: "",
+                tab_active_bg: Qt.alpha(Theme.theme_primary, 0.14),
+                tab_active_fg: Theme.fg_strong,
+                tab_fg: Theme.theme_primary_light,
+                key_fg: Theme.theme_primary,
+                key_border: Qt.alpha(Theme.theme_primary, 0.4),
+                section_fg: Theme.theme_primary,
+                section_rule: false,
+                footer_fg: Theme.theme_primary_strong,
+                footer_rule: false,
+                meter_shade: Theme.theme_primary_light,
+                meter_off: Qt.alpha(Theme.theme_primary, 0.1),
+                meter_radius: 2,
+                title_bg: "transparent",
+                title_fg: Theme.fg_strong,
+                chip_brackets: false,
+                chip_active_bg: Qt.alpha(Theme.theme_primary, 0.14),
+                chip_active_fg: Theme.fg_strong,
+                toggle_brackets: false,
+                toggle_on: Theme.theme_primary,
+                toggle_off: Theme.fg_dim,
+                marker_fill: false,
+                bar_font_family: "Montserrat",
+                bar_font_size: Theme.font_size,
+                bar_side_bg: Theme.bg_mantle,
+                bar_center_bg: Theme.bg_mantle,
+                bar_fg: Theme.theme_primary_light,
+                bar_border_width: 0,
+                bar_border_color: "transparent",
+                bar_rounded: true,
+                bar_workspace_idle: Qt.alpha(Theme.theme_primary, 0.12),
+                bar_hover_bg: Qt.alpha(Theme.theme_primary, 0.2),
+                bar_tip_bg: Theme.bg_mantle,
+                bar_tip_fg: Theme.theme_primary_light,
+                bar_tip_border_color: Qt.alpha(Theme.theme_primary, 0.4)
             })
         };
     }
@@ -273,6 +390,17 @@ Singleton {
     readonly property bool glow: root.active.glow
     readonly property color glow_color: root.active.glow_color
     readonly property real glow_tint: root.active.glow_tint
+    // A diagonal shade from this color at the top left into frame_color.
+    readonly property color frame_shade: root.active.frame_shade
+    readonly property color dither: root.active.dither
+    readonly property color text_shadow: root.active.text_shadow
+    // Selection and title fills fade out to the right.
+    readonly property bool fade_fills: root.active.fade_fills
+    readonly property color selection_border: root.active.selection_border
+    readonly property color selection_glow: root.active.selection_glow
+    readonly property color meter_shade: root.active.meter_shade
+    // Multiplies every radius a rounded style draws.
+    readonly property real corner_scale: root.active.corner_scale
 
     // Saved with the style; off keeps the bar on the default look.
     property bool style_bar: false
@@ -282,6 +410,7 @@ Singleton {
     })
     readonly property var bar: root.style_bar ? root.active : root.plain_bar
     readonly property string bar_font_family: root.bar.bar_font_family
+    readonly property int bar_font_size: root.bar.bar_font_size
     readonly property color bar_side_bg: root.bar.bar_side_bg
     readonly property color bar_center_bg: root.bar.bar_center_bg
     readonly property color bar_fg: root.bar.bar_fg
@@ -295,7 +424,7 @@ Singleton {
     readonly property color bar_hover_bg: root.bar.bar_hover_bg
     readonly property color bar_glow_color: root.bar.bar_glow_color
     readonly property color bar_scanline_color: root.bar.bar_scanline_color
-    readonly property int bar_text_style: root.bar_glow_color.a > 0 ? Text.Outline : Text.Normal
+    readonly property int bar_text_style: root.bar.bar_text_raised ? Text.Raised : root.bar_glow_color.a > 0 ? Text.Outline : Text.Normal
     readonly property color bar_tip_bg: root.bar.bar_tip_bg
     readonly property color bar_tip_fg: root.bar.bar_tip_fg
     readonly property int bar_tip_border_width: root.bar.bar_tip_border_width
@@ -303,7 +432,7 @@ Singleton {
 
     // Corner radius for a shape that is rounded by `r` in the default look.
     function radius(r) {
-        return root.rounded ? r : 0;
+        return root.rounded ? r * root.corner_scale : 0;
     }
 
     // Corner radius for a bar shape that is rounded by `r` in the default look.

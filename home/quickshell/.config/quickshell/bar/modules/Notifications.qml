@@ -61,7 +61,7 @@ Item {
                 text: root.unread > 99 ? "99+" : String(root.unread)
                 color: glyph.color
                 font.family: Style.bar_font_family
-                font.pixelSize: Theme.font_size - 3
+                font.pixelSize: Style.bar_font_size - 3
                 font.bold: true
             }
         }

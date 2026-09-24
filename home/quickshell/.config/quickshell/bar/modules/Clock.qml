@@ -29,13 +29,23 @@ Row {
 
     readonly property string date_text: Qt.formatDateTime(Timezones.shift(clock.date), "ddd MMM dd")
 
+    // Proportional fonts would resize the island every tick; tabular digits and a width floor hold it still.
+    TextMetrics {
+        id: time_metrics
+        text: root.time_text.replace(/\d/g, "0")
+        font: time_label.font
+    }
+
     Text {
+        id: time_label
+        width: Math.max(implicitWidth, Math.ceil(time_metrics.advanceWidth))
         text: root.time_text
         color: Style.bar_fg
         font.family: Style.bar_font_family
+        font.features: { "tnum": 1 }
         style: Style.bar_text_style
         styleColor: Style.bar_glow_color
-        font.pixelSize: Theme.font_size
+        font.pixelSize: Style.bar_font_size
     }
 
     Text {
@@ -45,7 +55,7 @@ Row {
         font.family: Style.bar_font_family
         style: Style.bar_text_style
         styleColor: Style.bar_glow_color
-        font.pixelSize: Theme.font_size
+        font.pixelSize: Style.bar_font_size
     }
 
     Text {
@@ -55,6 +65,6 @@ Row {
         font.family: Style.bar_font_family
         style: Style.bar_text_style
         styleColor: Style.bar_glow_color
-        font.pixelSize: Theme.font_size
+        font.pixelSize: Style.bar_font_size
     }
 }

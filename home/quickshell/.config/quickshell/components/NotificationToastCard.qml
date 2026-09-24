@@ -37,8 +37,8 @@ Rectangle {
         return "";
     }
 
-    readonly property int text_style: Style.glow ? Text.Outline : Text.Normal
-    readonly property color glow_color: Qt.alpha(Theme.theme_primary, 0.3)
+    readonly property int text_style: Style.glow ? Text.Outline : Style.text_shadow.a > 0 ? Text.Raised : Text.Normal
+    readonly property color glow_color: Style.glow ? Qt.alpha(Theme.theme_primary, 0.3) : Style.text_shadow
 
     property int time_tick: 0
     readonly property string relative_time: {
@@ -101,6 +101,14 @@ Rectangle {
         }
     }
 
+    FrameShade {
+        visible: Style.boxed_cards && Style.frame_shade.a > 0
+        anchors.fill: parent
+        anchors.margins: root.border.width
+        top_radius: Math.max(0, root.radius - root.border.width)
+        bottom_radius: top_radius
+    }
+
     Rectangle {
         visible: !Style.boxed_cards
         anchors.left: parent.left
@@ -149,6 +157,15 @@ Rectangle {
             height: 1
             color: Qt.alpha(Theme.theme_primary, 0.05)
         }
+    }
+
+    Dither {
+        visible: Style.boxed_cards && Style.dither.a > 0
+        anchors.fill: parent
+        anchors.margins: root.border.width
+        color: Style.dither
+        radius: root.radius
+        top_radius: root.radius
     }
 
     RowLayout {

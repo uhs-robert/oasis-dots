@@ -94,7 +94,7 @@ PanelWindow {
                 text: Style.show_title ? Style.title_prefix + root.shown_name.toUpperCase() + Style.title_suffix : root.shown_name
                 color: tab.filled ? Theme.bg_core : root.shown_color
                 font.family: Style.font_family
-                font.pixelSize: Style.show_title ? Style.font_size - 2 : Theme.font_size
+                font.pixelSize: Style.show_title ? Style.font_size - 2 : Style.bar_font_size
                 font.bold: true
                 font.letterSpacing: Style.show_title ? 2 : 0
                 style: Style.glow ? Text.Outline : Text.Normal
