@@ -1,6 +1,7 @@
 // home/quickshell/.config/quickshell/popups/weather/SunMoonView.qml
 import QtQuick
 import QtQuick.Layouts
+import "../../components"
 import "../../theme"
 import "../../services"
 
@@ -91,7 +92,11 @@ Item {
                     Layout.preferredWidth: 0
                     implicitHeight: day_text.implicitHeight + 6
                     radius: Style.radius(4)
-                    color: day_cell.day_index === root.day_cursor ? Theme.bg_surface : "transparent"
+                    color: day_cell.day_index !== root.day_cursor ? "transparent" : Style.selection_brackets.a > 0 ? Style.selection_bg : Theme.bg_surface
+
+                    LockBrackets {
+                        shown: day_cell.day_index === root.day_cursor
+                    }
 
                     Text {
                         id: day_text

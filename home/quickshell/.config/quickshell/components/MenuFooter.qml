@@ -34,14 +34,21 @@ Item {
     implicitHeight: hint.childrenRect.height + root.rule_gap
     clip: !root.wrap
 
+    Rectangle {
+        visible: root.st.footer_rule && root.st.footer_rule_solid
+        width: parent.width
+        height: 1
+        color: root.st.footer_rule_color
+    }
+
     Row {
-        visible: root.st.footer_rule
+        visible: root.st.footer_rule && !root.st.footer_rule_solid
         width: parent.width
         spacing: 3
         clip: true
 
         Repeater {
-            model: root.st.footer_rule ? Math.max(0, Math.ceil(root.width / 7)) : 0
+            model: root.st.footer_rule && !root.st.footer_rule_solid ? Math.max(0, Math.ceil(root.width / 7)) : 0
 
             Rectangle {
                 width: 4
@@ -57,6 +64,7 @@ Item {
         x: root.centered ? Math.max(0, (root.width - childrenRect.width) / 2) : 0
         y: root.rule_gap
         width: root.wrap && !root.centered ? parent.width : 100000
+        spacing: root.st.footer_separator === "" ? 10 : 0
 
         Repeater {
             model: root.groups
@@ -67,17 +75,30 @@ Item {
                 spacing: 4
 
                 Text {
+                    id: key_text
+                    readonly property bool capped: root.st.footer_key_bg.a > 0
                     height: desc_text.implicitHeight
                     verticalAlignment: Text.AlignVCenter
+                    leftPadding: key_text.capped ? 4 : 0
+                    rightPadding: key_text.capped ? 4 : 0
                     text: parent.modelData.key
                     color: root.st.footer_key_fg
-                    font.family: root.st.font_family
+                    font.family: key_text.capped ? root.st.mono_font : root.st.font_family
                     font.pixelSize: root.st.font_size - 4
+
+                    Rectangle {
+                        visible: key_text.capped
+                        z: -1
+                        anchors.fill: parent
+                        anchors.topMargin: 1
+                        anchors.bottomMargin: 1
+                        color: root.st.footer_key_bg
+                    }
                 }
 
                 Text {
                     id: desc_text
-                    text: parent.modelData.desc + (parent.index < root.groups.length - 1 ? " · " : "")
+                    text: parent.modelData.desc + (parent.index < root.groups.length - 1 ? root.st.footer_separator : "")
                     color: root.st.footer_fg
                     font.family: root.st.font_family
                     font.pixelSize: root.st.font_size - 4
@@ -97,7 +118,7 @@ Item {
         Text {
             id: slash_text
             text: "/"
-            color: root.st.footer_key_fg
+            color: root.st.footer_key_bg.a > 0 ? root.st.footer_key_bg : root.st.footer_key_fg
             font.family: root.st.font_family
             font.pixelSize: root.st.font_size - 4
         }

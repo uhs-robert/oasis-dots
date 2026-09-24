@@ -38,6 +38,14 @@ Row {
         font: time_label.font
     }
 
+    Text {
+        visible: Style.bar_clock_brackets.a > 0
+        anchors.verticalCenter: parent.verticalCenter
+        text: "["
+        color: Style.bar_clock_brackets
+        font: time_label.font
+    }
+
     Rectangle {
         readonly property real pad: root.chip ? 5 : 0
         anchors.verticalCenter: parent.verticalCenter
@@ -100,5 +108,13 @@ Row {
         font.pixelSize: Style.bar_font_size
         font.capitalization: Style.bar_capitalization
         font.letterSpacing: Style.bar_letter_spacing
+    }
+
+    Text {
+        visible: Style.bar_clock_brackets.a > 0
+        anchors.verticalCenter: parent.verticalCenter
+        text: "]"
+        color: Style.bar_clock_brackets
+        font: time_label.font
     }
 }

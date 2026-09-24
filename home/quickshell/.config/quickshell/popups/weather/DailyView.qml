@@ -2,6 +2,7 @@
 import QtQuick
 import QtQuick.Layouts
 import Quickshell
+import "../../components"
 import "../../theme"
 import "../../services"
 
@@ -17,6 +18,10 @@ Item {
     property var on_select: function (i) {}
 
     readonly property var sub_names: ["Temp & Precip", "Wind", "UV", "Sunshine"]
+    readonly property bool stat_columns: Style.weather_header === "spec" && root.sub === 0
+    // Temperature ranges as 1px altitude ladders with rungs.
+    readonly property bool ladder: Style.weather_header === "scope"
+    readonly property bool thin_range: Style.range_line || root.ladder
 
     FontMetrics {
         id: label_metrics
@@ -27,7 +32,7 @@ Item {
     // Columns that fit without clipping their widest label, capped at five.
     readonly property int fit_days: {
         const f = label_metrics.font;
-        const col = Math.max(label_metrics.advanceWidth("Today"), label_metrics.advanceWidth("100%")) + 8;
+        const col = root.stat_columns ? 56 : Math.max(label_metrics.advanceWidth("Today"), label_metrics.advanceWidth("100%")) + 8;
         return Math.max(1, Math.min(5, Math.floor((root.width + 4) / (col + 4))));
     }
     readonly property var window_days: WeatherState.days.slice(root.first_day, root.first_day + root.fit_days)
@@ -94,8 +99,24 @@ Item {
                         anchors.fill: parent
                         anchors.margins: -2
                         radius: Style.radius(4)
-                        color: Theme.bg_surface
-                        visible: day_col.day_index === root.day_cursor
+                        color: Style.range_line ? "transparent" : Style.selection_brackets.a > 0 ? Style.selection_bg : Theme.bg_surface
+                        border.width: Style.range_line ? 1 : 0
+                        border.color: Style.hairline_dim
+                        visible: day_col.day_index === root.day_cursor && !root.stat_columns
+
+                        LockBrackets {}
+                    }
+
+                    Loader {
+                        active: root.stat_columns
+                        anchors.fill: parent
+                        sourceComponent: DayStatColumn {
+                            day: day_col.modelData
+                            day_index: day_col.day_index
+                            selected: day_col.day_index === root.day_cursor
+                            scale_min: root.week_temp_range.min
+                            scale_max: root.week_temp_range.max
+                        }
                     }
 
                     MouseArea {
@@ -104,6 +125,7 @@ Item {
                     }
 
                     ColumnLayout {
+                        visible: !root.stat_columns
                         anchors.fill: parent
                         anchors.margins: 2
                         spacing: 2
@@ -127,31 +149,54 @@ Item {
                             Rectangle {
                                 id: inner_band
                                 anchors.horizontalCenter: parent.horizontalCenter
-                                width: parent.width * 0.3
+                                width: root.thin_range ? 1 : parent.width * 0.3
                                 radius: Style.radius(2)
-                                color: Style.chart_fill
+                                color: root.ladder ? (day_col.day_index === root.day_cursor ? Style.selection_brackets : Style.text_primary) : !Style.range_line ? Style.chart_fill : day_col.day_index === root.day_cursor ? Style.text_accent : Style.text_strong
+                                border.width: Style.chart_outline.a > 0 && !root.ladder ? 1 : 0
+                                border.color: Style.chart_outline
                                 y: root.inner_top_y(day_col.modelData)
                                 height: Math.max(4, root.inner_bottom_y(day_col.modelData) - root.inner_top_y(day_col.modelData))
                                 antialiasing: Style.chart_slant > 0
                                 transform: Matrix4x4 {
                                     matrix: Qt.matrix4x4(1, -Style.chart_slant, 0, Style.chart_slant * inner_band.height / 2, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1)
                                 }
+
+                                RangeCaps {
+                                    visible: Style.range_line
+                                }
+
+                                Repeater {
+                                    id: rungs
+                                    readonly property int steps: Math.max(1, Math.round(inner_band.height / 6))
+                                    model: root.ladder ? rungs.steps + 1 : 0
+
+                                    Rectangle {
+                                        required property int index
+                                        readonly property bool major: index === 0 || index === rungs.steps
+                                        width: major ? 11 : 5
+                                        height: 1
+                                        x: (1 - width) / 2
+                                        y: Math.min(inner_band.height - 1, index * inner_band.height / rungs.steps)
+                                        color: inner_band.color
+                                        opacity: major ? 1 : 0.5
+                                    }
+                                }
                             }
 
                             Text {
                                 anchors.horizontalCenter: parent.horizontalCenter
-                                y: inner_band.y - implicitHeight - 1
+                                y: inner_band.y - implicitHeight - (root.thin_range ? 5 : 1)
                                 text: Math.round(day_col.modelData.max) + "°"
-                                color: Theme.yellow
+                                color: root.thin_range ? Style.text_strong : Theme.yellow
                                 font.family: Style.font_family
                                 font.pixelSize: Style.font_size - 3
                             }
 
                             Text {
                                 anchors.horizontalCenter: parent.horizontalCenter
-                                y: inner_band.y + inner_band.height + 1
+                                y: inner_band.y + inner_band.height + (root.thin_range ? 5 : 1)
                                 text: Math.round(day_col.modelData.min) + "°"
-                                color: Theme.yellow
+                                color: root.thin_range ? Style.text_muted : Theme.yellow
                                 font.family: Style.font_family
                                 font.pixelSize: Style.font_size - 3
                             }

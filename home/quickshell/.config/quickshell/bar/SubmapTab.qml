@@ -98,7 +98,7 @@ PanelWindow {
                 font.pixelSize: Style.show_title ? Style.font_size - 2 : Style.bar_font_size
                 font.bold: true
                 font.letterSpacing: Style.show_title ? Style.title_spacing : 0
-                style: Style.glow || Style.title_glow.a > 0 ? Text.Outline : Text.Normal
+                style: Style.glow ? Text.Outline : Text.Normal
                 styleColor: Qt.alpha(root.shown_color, 0.35)
             }
 

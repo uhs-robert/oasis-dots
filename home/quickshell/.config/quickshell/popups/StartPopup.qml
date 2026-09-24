@@ -10,7 +10,7 @@ Popup {
     id: root
 
     popup_name: "start"
-    preferred_width: 180
+    preferred_width: root.st.status_strip ? 235 : 180
     footer_hint: root.confirm ? "y/Enter confirm · n/Esc back" : "j/k move · gg/G first/last · Enter run · 1-" + root.actions.length + " pick · q close"
     body_height: content.implicitHeight + 24
     jumps_enabled: !root.confirm
@@ -64,8 +64,21 @@ Popup {
         anchors.right: parent.right
         anchors.top: parent.top
         anchors.margins: 12
-        implicitHeight: root.confirm ? confirm_row.implicitHeight : actions_col.implicitHeight
+        implicitHeight: root.confirm ? confirm_row.implicitHeight : actions_col.implicitHeight + (strip_loader.active ? strip_loader.height + 10 : 0)
         focus: true
+
+        Loader {
+            active: root.st.schematic.a > 0
+            visible: !root.confirm
+            anchors.right: parent.right
+            anchors.rightMargin: -4
+            y: -4
+            z: -1
+            width: Style.px(90)
+            sourceComponent: Schematic {
+                color: root.st.schematic
+            }
+        }
 
         Keys.onPressed: event => {
             if (root.confirm) {
@@ -114,6 +127,7 @@ Popup {
                     base_radius: 6
                     selected: index === root.selected
                     key: root.keys[row.index]
+                    slot: row.index + 1
 
                     RowLayout {
                         anchors.left: parent.left
@@ -142,6 +156,16 @@ Popup {
                     }
                 }
             }
+        }
+
+        Loader {
+            id: strip_loader
+            active: root.st.status_strip
+            visible: !root.confirm
+            x: -12
+            y: actions_col.implicitHeight + 10
+            width: parent.width + 24
+            sourceComponent: StatusStrip {}
         }
 
         RowLayout {

@@ -2,6 +2,7 @@
 import QtQuick
 import QtQuick.Layouts
 import Quickshell
+import "../../components"
 import "../../theme"
 import "../../services"
 
@@ -251,8 +252,10 @@ Item {
                         Rectangle {
                             anchors.fill: parent
                             visible: hour_col.index === root.hour_cursor
-                            color: Theme.bg_surface
+                            color: Style.selection_brackets.a > 0 ? Style.selection_bg : Theme.bg_surface
                             radius: Style.radius(3)
+
+                            LockBrackets {}
                         }
 
                         Image {

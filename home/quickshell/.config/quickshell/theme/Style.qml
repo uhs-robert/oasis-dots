@@ -32,7 +32,6 @@ Singleton {
             frame_border_color: Theme.fg_muted,
             frame_chamfer: 0,
             frame_visor: false,
-            frame_brackets: "transparent",
             frame_inset_gap: 0,
             frame_inset_width: 0,
             frame_inset_color: "transparent",
@@ -101,7 +100,6 @@ Singleton {
             title_prefix: "",
             title_suffix: "",
             title_spacing: 2,
-            title_glow: "transparent",
             title_readout: "",
             title_readout_fg: "transparent",
             title_rule: "transparent",
@@ -118,13 +116,41 @@ Singleton {
             fade_fills: false,
             selection_border: "transparent",
             selection_glow: "transparent",
-            slant: 0,
             meter_shade: "transparent",
             meter_slant: 0,
             meter_bloom: false,
             chart_slant: 0,
             chart_fill: Theme.yellow,
             corner_scale: 1,
+            mono_font: "",
+            frame_cut: 0,
+            frame_notch: 0,
+            frame_line: "transparent",
+            frame_marks: "transparent",
+            title_band: "transparent",
+            title_ids: ({}),
+            row_marker: "",
+            row_rule: "transparent",
+            selection_rule: "transparent",
+            corner_tick: "transparent",
+            key_cut: 0,
+            tab_bg: "transparent",
+            tab_cut: 0,
+            chip_bg: "transparent",
+            section_marker: "transparent",
+            meter_major: "transparent",
+            meter_height: 0,
+            footer_key_bg: "transparent",
+            footer_separator: " \u00b7 ",
+            footer_rule_solid: false,
+            slider_readout: false,
+            hazard: "transparent",
+            schematic: "transparent",
+            status_strip: false,
+            osd_layout: "",
+            card_layout: "",
+            weather_header: "",
+            bar_pill_square: false,
             bar_font_family: "JetBrainsMono Nerd Font",
             bar_font_size: Theme.font_size,
             bar_caps: false,
@@ -149,7 +175,31 @@ Singleton {
             bar_glow_color: "transparent",
             bar_text_raised: false,
             done_anim: "hearts",
-            bar_scanline_color: "transparent"
+            bar_scanline_color: "transparent",
+            label_font_family: "",
+            frame_octagon: 0,
+            frame_struts: "transparent",
+            lcd_radius: 8,
+            lcd_border: Qt.alpha(Theme.bg_shadow, 0.6),
+            lcd_brackets: "transparent",
+            selection_brackets: "transparent",
+            tab_brackets: "transparent",
+            tab_rule: "transparent",
+            title_reticle: "transparent",
+            chart_outline: "transparent",
+            bar_workspace_diamond: false,
+            bar_clock_brackets: "transparent",
+            hairline: "transparent",
+            hairline_dim: "transparent",
+            frame_ticks: "",
+            tick_ruler: false,
+            range_line: false,
+            key_round: false,
+            pill_chips: false,
+            title_index: [],
+            title_weight: 0,
+            title_trail: "transparent",
+            bar_ticks: "transparent"
         };
         return {
             "default": {
@@ -171,7 +221,6 @@ Singleton {
                 frame_border_color: "transparent",
                 frame_chamfer: 0,
                 frame_visor: false,
-                frame_brackets: "transparent",
                 frame_inset_gap: 0,
                 frame_inset_width: 0,
                 frame_inset_color: "transparent",
@@ -240,7 +289,6 @@ Singleton {
                 title_prefix: "",
                 title_suffix: "",
                 title_spacing: 2,
-                title_glow: "transparent",
                 title_readout: "",
                 title_readout_fg: "transparent",
                 title_rule: "transparent",
@@ -257,13 +305,41 @@ Singleton {
                 fade_fills: false,
                 selection_border: "transparent",
                 selection_glow: "transparent",
-                slant: 0,
                 meter_shade: "transparent",
                 meter_slant: 0,
                 meter_bloom: false,
                 chart_slant: 0,
                 chart_fill: Theme.yellow,
                 corner_scale: 1,
+                mono_font: "",
+                frame_cut: 0,
+                frame_notch: 0,
+                frame_line: "transparent",
+                frame_marks: "transparent",
+                title_band: "transparent",
+                title_ids: ({}),
+                row_marker: "",
+                row_rule: "transparent",
+                selection_rule: "transparent",
+                corner_tick: "transparent",
+                key_cut: 0,
+                tab_bg: "transparent",
+                tab_cut: 0,
+                chip_bg: "transparent",
+                section_marker: "transparent",
+                meter_major: "transparent",
+                meter_height: 0,
+                footer_key_bg: "transparent",
+                footer_separator: " \u00b7 ",
+                footer_rule_solid: false,
+                slider_readout: false,
+                hazard: "transparent",
+                schematic: "transparent",
+                status_strip: false,
+                osd_layout: "",
+                card_layout: "",
+                weather_header: "",
+                bar_pill_square: false,
                 bar_font_family: Theme.font_family,
                 bar_font_size: Theme.font_size,
                 bar_caps: false,
@@ -284,14 +360,35 @@ Singleton {
                 bar_inset_gap: 0,
                 bar_inset_width: 0,
                 bar_inset_color: "transparent",
-            bar_inset_gap: 0,
-            bar_inset_width: 0,
-            bar_inset_color: "transparent",
                 bar_hover_bg: Theme.bg_surface,
                 bar_glow_color: "transparent",
                 bar_text_raised: false,
                 done_anim: "hearts",
-                bar_scanline_color: "transparent"
+                bar_scanline_color: "transparent",
+                label_font_family: "",
+                frame_octagon: 0,
+                frame_struts: "transparent",
+                lcd_radius: 8,
+                lcd_border: Qt.alpha(Theme.bg_shadow, 0.6),
+                lcd_brackets: "transparent",
+                selection_brackets: "transparent",
+                tab_brackets: "transparent",
+                tab_rule: "transparent",
+                title_reticle: "transparent",
+                chart_outline: "transparent",
+                bar_workspace_diamond: false,
+                bar_clock_brackets: "transparent",
+                hairline: "transparent",
+                hairline_dim: "transparent",
+                frame_ticks: "",
+                tick_ruler: false,
+                range_line: false,
+                key_round: false,
+                pill_chips: false,
+                title_index: [],
+                title_weight: 0,
+                title_trail: "transparent",
+                bar_ticks: "transparent"
             },
             "terminal": terminal,
             "crt": Object.assign({}, terminal, {
@@ -615,57 +712,6 @@ Singleton {
                     toggle_off: Qt.alpha(Theme.theme_primary_light, 0.45)
                 }
             }),
-            "scifi":Object.assign({}, terminal, {
-                text_muted: Qt.tint(Theme.fg_dim, Qt.alpha(Theme.theme_primary_light, 0.35)),
-                text_dim: Qt.tint(Theme.fg_dim, Qt.alpha(Theme.theme_primary_light, 0.6)),
-                frame_color: Theme.bg_crust,
-                frame_shade: Theme.bg_mantle,
-                shade_vertical: true,
-                frame_border_width: 0,
-                frame_border_color: "transparent",
-                frame_chamfer: 14,
-                frame_brackets: Theme.theme_primary,
-                accent_color: Theme.theme_primary,
-                accent_height: 2,
-                selection_bg: Qt.alpha(Theme.theme_primary, 0.18),
-                selection_outline: "transparent",
-                slant: 0.28,
-                caret_color: Theme.theme_primary,
-                caret_blink: false,
-                row_cursor: "\u00bb",
-                tab_active_bg: Qt.alpha(Theme.theme_primary, 0.18),
-                tab_active_fg: Theme.fg_strong,
-                tab_fg: Theme.theme_primary_light,
-                key_fg: Theme.theme_primary,
-                key_border: Qt.alpha(Theme.theme_primary, 0.6),
-                section_fg: Qt.tint(Theme.fg_dim, Qt.alpha(Theme.theme_primary_light, 0.35)),
-                section_rule: false,
-                section_fade: Qt.alpha(Theme.theme_primary, 0.6),
-                label_caps: true,
-                label_spacing: 2,
-                footer_fg: Qt.tint(Theme.fg_dim, Qt.alpha(Theme.theme_primary_light, 0.35)),
-                footer_rule: false,
-                meter_off: Theme.ui_visual_bg,
-                meter_slant: 0.45,
-                meter_bloom: true,
-                title_bg: "transparent",
-                title_fg: Theme.theme_primary,
-                title_spacing: 4,
-                title_glow: Qt.alpha(Theme.theme_primary, 0.45),
-                title_readout: "SYS 07.3 \u25a0\u25a0\u25a1",
-                chip_brackets: false,
-                chip_active_bg: Qt.alpha(Theme.theme_primary, 0.18),
-                chip_active_fg: Theme.fg_strong,
-                toggle_on: Theme.theme_primary,
-                toggle_off: Qt.tint(Theme.fg_dim, Qt.alpha(Theme.theme_primary_light, 0.35)),
-                bar_caps: true,
-                bar_letter_spacing: 1,
-                bar_fg: Theme.theme_primary_light,
-                bar_border_color: Theme.theme_primary,
-                bar_workspace_idle: Theme.ui_visual_bg,
-                bar_hover_bg: Qt.alpha(Theme.theme_primary, 0.18),
-                bar_glow_color: Qt.alpha(Theme.theme_primary, 0.2)
-            }),
             "metroid": Object.assign({}, terminal, {
                 // Greys lifted toward primary_light so they read on the visor glass.
                 text_muted: Qt.tint(Theme.fg_dim, Qt.alpha(Theme.theme_primary_light, 0.4)),
@@ -777,6 +823,325 @@ Singleton {
                 bar_rounded: true,
                 bar_workspace_idle: Qt.alpha(Theme.theme_primary, 0.12),
                 bar_hover_bg: Qt.alpha(Theme.theme_primary, 0.2)
+            }),
+            // TIE Fighter cockpit: large popups in the octagonal viewport, `small` ones the targeting computer.
+            "tie": (() => {
+                const vec = Theme.ok;
+                const vec_d = Qt.alpha(vec, 0.4);
+                const lock = Theme.theme_label;
+                return Object.assign({}, terminal, {
+                    text_muted: Qt.alpha(vec, 0.55),
+                    text_dim: Qt.alpha(vec, 0.7),
+                    text_fg: Qt.tint(Theme.fg_core, Qt.alpha(vec, 0.72)),
+                    text_strong: Theme.fg_strong,
+                    text_primary: vec,
+                    text_accent: Theme.theme_secondary,
+                    font_family: "B612 Mono",
+                    font_size: Theme.popup_font_size - 1,
+                    title_font_family: "Oxanium",
+                    label_font_family: "Oxanium",
+                    number_font: "Oxanium",
+                    frame_color: Theme.bg_crust,
+                    frame_shade: Theme.bg_mantle,
+                    shade_vertical: true,
+                    frame_border_color: vec,
+                    frame_octagon: 20,
+                    frame_struts: vec,
+                    frame_pad: 12,
+                    accent_color: vec,
+                    accent_height: 0,
+                    selection_bg: Qt.alpha(lock, 0.08),
+                    selection_outline: "transparent",
+                    selection_brackets: lock,
+                    caret_color: lock,
+                    caret_blink: false,
+                    row_cursor: "\u25b8",
+                    tab_active_bg: Qt.alpha(vec, 0.09),
+                    tab_active_fg: Theme.fg_strong,
+                    tab_fg: Qt.alpha(vec, 0.55),
+                    tab_caps: true,
+                    tab_underline: vec,
+                    tab_brackets: lock,
+                    tab_rule: vec_d,
+                    key_fg: Theme.theme_secondary,
+                    key_border: Qt.alpha(Theme.theme_secondary, 0.45),
+                    section_fg: vec,
+                    section_rule: false,
+                    section_fade: vec_d,
+                    label_caps: true,
+                    label_spacing: 2.5,
+                    footer_fg: Qt.alpha(vec, 0.55),
+                    footer_rule_color: vec_d,
+                    meter_on: Qt.alpha(vec, 0.75),
+                    meter_off: Qt.alpha(vec, 0.1),
+                    meter_hot: lock,
+                    meter_bloom: true,
+                    title_bg: "transparent",
+                    title_fg: vec,
+                    title_spacing: 3.5,
+                    title_readout: "SCAN",
+                    title_readout_fg: Theme.theme_secondary,
+                    title_reticle: vec,
+                    title_trail: vec_d,
+                    chip_brackets: false,
+                    chip_active_bg: lock,
+                    chip_active_fg: Theme.bg_crust,
+                    chip_pick: lock,
+                    chip_border: vec_d,
+                    toggle_on: vec,
+                    toggle_off: Qt.alpha(vec, 0.45),
+                    scanlines: true,
+                    scanline_color: Qt.alpha(vec, 0.05),
+                    chart_fill: Qt.alpha(vec, 0.09),
+                    chart_outline: vec,
+                    weather_header: "scope",
+                    bar_font_family: "B612 Mono",
+                    bar_font_size: Theme.font_size - 1,
+                    bar_side_bg: Theme.bg_crust,
+                    bar_center_bg: Theme.bg_crust,
+                    bar_fg: vec,
+                    bar_border_color: vec,
+                    bar_workspace_focused: Theme.theme_secondary,
+                    bar_workspace_active: vec,
+                    bar_workspace_idle: "transparent",
+                    bar_workspace_ring: vec,
+                    bar_workspace_diamond: true,
+                    bar_pill_square: true,
+                    bar_clock_brackets: lock,
+                    bar_hover_bg: Qt.alpha(vec, 0.15),
+                    small: {
+                        frame_octagon: 0,
+                        frame_radius: 5,
+                        frame_border_color: Theme.bg_surface,
+                        frame_pad: 0,
+                        lcd_top: Qt.tint(Theme.bg_core, Qt.alpha(vec, 0.06)),
+                        lcd_bottom: Theme.bg_crust,
+                        lcd_scan: Qt.alpha(vec, 0.05),
+                        lcd_margin: 9,
+                        lcd_radius: 16,
+                        lcd_border: vec_d,
+                        lcd_brackets: vec,
+                        scanlines: false,
+                        title_readout: "TRGT CMP"
+                    }
+                });
+            })(),
+            // The Tet and bubble-ship displays: pale hairlines on near-black, thin caps, tick scales and ring gauges.
+            "oblivion": Object.assign({}, terminal, {
+                text_muted: Qt.alpha(Theme.fg_strong, 0.55),
+                text_dim: Qt.alpha(Theme.fg_strong, 0.7),
+                text_fg: Qt.alpha(Theme.fg_strong, 0.86),
+                text_strong: Theme.fg_strong,
+                text_primary: Theme.theme_primary_light,
+                text_accent: Theme.theme_primary_light,
+                font_family: "Jura",
+                font_size: Theme.popup_font_size + 2,
+                title_font_family: "Jura",
+                number_font: "Saira",
+                scale: 1.1,
+                frame_color: Qt.alpha(Theme.bg_crust, 0.97),
+                frame_shade: Qt.alpha(Theme.bg_core, 0.97),
+                shade_vertical: true,
+                frame_border_width: 0,
+                frame_border_color: Qt.alpha(Theme.fg_strong, 0.24),
+                frame_pad: 10,
+                accent_color: Qt.alpha(Theme.fg_strong, 0.55),
+                accent_height: 1,
+                frame_top_rule: true,
+                hairline: Qt.alpha(Theme.fg_strong, 0.55),
+                hairline_dim: Qt.alpha(Theme.fg_strong, 0.24),
+                frame_ticks: "top",
+                selection_bg: Qt.alpha(Theme.theme_primary_light, 0.14),
+                selection_outline: "transparent",
+                selection_rule: Qt.alpha(Theme.theme_primary_light, 0.6),
+                fade_fills: true,
+                caret_color: Theme.theme_primary_light,
+                caret_blink: false,
+                row_cursor: "○",
+                tab_active_bg: "transparent",
+                tab_active_fg: Theme.fg_strong,
+                tab_fg: Qt.alpha(Theme.fg_strong, 0.55),
+                tab_caps: true,
+                tab_underline: Theme.fg_strong,
+                tab_rule: Qt.alpha(Theme.fg_strong, 0.12),
+                key_fg: Theme.theme_primary_light,
+                key_border: Qt.alpha(Theme.fg_strong, 0.24),
+                key_round: true,
+                section_fg: Qt.alpha(Theme.fg_strong, 0.55),
+                section_rule: false,
+                section_fade: Qt.alpha(Theme.fg_strong, 0.18),
+                label_caps: true,
+                label_spacing: 3,
+                footer_fg: Qt.alpha(Theme.fg_strong, 0.55),
+                footer_key_fg: Theme.theme_primary_light,
+                footer_rule_color: Qt.alpha(Theme.fg_strong, 0.18),
+                meter_on: Theme.fg_strong,
+                meter_off: Qt.alpha(Theme.fg_strong, 0.1),
+                meter_hot: Theme.theme_label,
+                tick_ruler: true,
+                title_bg: "transparent",
+                title_fg: Theme.fg_strong,
+                title_spacing: 5,
+                title_weight: Font.Light,
+                title_index: ["start", "volume", "notifications", "weather", "media", "clock", "battery", "network", "bluetooth", "system", "updates", "tray", "keeptabs", "style"],
+                title_trail: Qt.alpha(Theme.fg_strong, 0.24),
+                title_readout: "TET · LINK",
+                title_readout_fg: Qt.alpha(Theme.fg_strong, 0.55),
+                chip_brackets: false,
+                chip_active_bg: Theme.fg_strong,
+                chip_active_fg: Theme.bg_crust,
+                chip_pick: Theme.fg_strong,
+                chip_border: Qt.alpha(Theme.fg_strong, 0.24),
+                pill_chips: true,
+                card_layout: "rule",
+                toggle_brackets: false,
+                toggle_on: Theme.fg_strong,
+                toggle_off: Qt.alpha(Theme.fg_strong, 0.55),
+                marker_fill: false,
+                osd_layout: "ring",
+                weather_header: "ring",
+                range_line: true,
+                bar_font_family: "Jura",
+                bar_font_size: Theme.font_size,
+                bar_letter_spacing: 1.5,
+                bar_side_bg: Qt.alpha(Theme.bg_core, 0.85),
+                bar_center_bg: Qt.alpha(Theme.bg_core, 0.85),
+                bar_fg: Qt.alpha(Theme.fg_strong, 0.86),
+                bar_clock_fg: Qt.alpha(Theme.fg_strong, 0.86),
+                bar_border_color: Qt.alpha(Theme.fg_strong, 0.24),
+                bar_workspace_focused: Theme.fg_strong,
+                bar_workspace_active: Qt.alpha(Theme.theme_secondary, 0.45),
+                bar_workspace_idle: "transparent",
+                bar_workspace_ring: Qt.alpha(Theme.fg_strong, 0.55),
+                bar_hover_bg: Qt.alpha(Theme.fg_strong, 0.08),
+                bar_ticks: Qt.alpha(Theme.fg_strong, 0.24),
+                small: {
+                    frame_ticks: "left",
+                    frame_color: Qt.alpha(Theme.bg_core, 0.96),
+                    frame_shade: "transparent",
+                    frame_border_width: 1,
+                    accent_color: Qt.alpha(Theme.fg_strong, 0.24),
+                    frame_pad: 6,
+                    title_readout: ""
+                }
+            }),
+            // Mecha hangar panels in the manner of Armored Core VI and MechWarrior 5.
+            "mech": Object.assign({}, terminal, {
+                text_fg: Qt.alpha(Theme.fg_core, 0.92),
+                text_muted: Qt.alpha(Theme.theme_primary_light, 0.66),
+                text_dim: Qt.alpha(Theme.theme_primary_light, 0.8),
+                text_primary: Theme.theme_primary_light,
+                font_family: "Barlow Condensed",
+                font_size: Theme.popup_font_size + 4,
+                title_font_family: "Barlow Condensed",
+                number_font: "Saira Stencil One",
+                mono_font: "Share Tech Mono",
+                frame_color: Theme.bg_crust,
+                frame_shade: Qt.tint(Theme.bg_core, Qt.alpha(Theme.ui_visual_bg, 0.3)),
+                shade_vertical: true,
+                frame_border_color: Qt.alpha(Theme.theme_primary_light, 0.55),
+                frame_line: Qt.alpha(Theme.theme_primary_light, 0.24),
+                frame_marks: Qt.alpha(Theme.theme_primary_light, 0.66),
+                frame_cut: 14,
+                frame_notch: 4,
+                frame_pad: 4,
+                accent_color: Theme.theme_secondary,
+                accent_height: 0,
+                selection_bg: Qt.alpha(Theme.theme_secondary, 0.17),
+                selection_outline: "transparent",
+                selection_bar: true,
+                selection_rule: Qt.alpha(Theme.theme_secondary, 0.45),
+                fade_fills: true,
+                caret_color: Theme.theme_secondary,
+                caret_blink: false,
+                row_cursor: "",
+                row_marker: "box",
+                row_rule: Qt.alpha(Theme.theme_primary_light, 0.09),
+                corner_tick: Qt.alpha(Theme.theme_primary_light, 0.24),
+                tab_bg: Qt.alpha(Theme.theme_primary_light, 0.09),
+                tab_active_bg: Qt.tint(Theme.bg_core, Qt.alpha(Theme.theme_primary_strong, 0.55)),
+                tab_active_fg: Theme.fg_strong,
+                tab_fg: Qt.alpha(Theme.theme_primary_light, 0.66),
+                tab_caps: true,
+                tab_underline: Theme.theme_secondary,
+                tab_cut: 9,
+                key_bg: Qt.alpha(Theme.theme_secondary, 0.09),
+                key_fg: Theme.theme_secondary,
+                key_border: Qt.alpha(Theme.theme_secondary, 0.45),
+                key_cut: 4,
+                section_fg: Qt.alpha(Theme.theme_primary_light, 0.66),
+                section_rule: false,
+                section_fade: Qt.alpha(Theme.theme_primary_light, 0.24),
+                section_marker: Theme.theme_secondary,
+                label_caps: true,
+                label_spacing: 2.5,
+                footer_fg: Qt.alpha(Theme.theme_primary_light, 0.66),
+                footer_key_fg: Theme.bg_crust,
+                footer_key_bg: Theme.theme_primary_light,
+                footer_separator: "",
+                footer_rule_solid: true,
+                footer_rule_color: Qt.alpha(Theme.theme_primary_light, 0.24),
+                meter_on: Theme.theme_primary_light,
+                meter_off: Qt.alpha(Theme.theme_primary_light, 0.09),
+                meter_major: Qt.alpha(Theme.theme_primary_light, 0.24),
+                meter_hot: Theme.theme_label,
+                meter_height: 7,
+                slider_readout: true,
+                chart_fill: Theme.theme_primary_light,
+                title_bg: "transparent",
+                title_fg: Theme.fg_strong,
+                title_spacing: 3,
+                title_band: Qt.tint(Theme.bg_core, Qt.alpha(Theme.theme_primary_strong, 0.55)),
+                title_readout_fg: Qt.alpha(Theme.theme_primary_light, 0.66),
+                title_ids: {
+                    start: ["01", "HANGAR"],
+                    volume: ["02", "LOADOUT"],
+                    notifications: ["03", "COMMS"],
+                    weather: ["04", "RECON"],
+                    media: ["05", "AUDIO"],
+                    battery: ["06", "POWER"],
+                    system: ["07", "DIAG"],
+                    network: ["08", "UPLINK"],
+                    bluetooth: ["09", "LINK"],
+                    tray: ["10", "AUX"],
+                    updates: ["11", "PARTS"],
+                    keeptabs: ["12", "TABS"],
+                    clock: ["13", "CHRONO"],
+                    style: ["14", "PAINT"],
+                    osd: ["OSD", "OUTPUT"],
+                    whichkey: ["KEY", "BINDS"]
+                },
+                chip_brackets: false,
+                chip_bg: Qt.alpha(Theme.theme_primary_light, 0.09),
+                chip_active_bg: Theme.theme_secondary,
+                chip_active_fg: Theme.bg_crust,
+                chip_pick: Theme.theme_secondary,
+                chip_border: Qt.alpha(Theme.theme_primary_light, 0.24),
+                toggle_brackets: false,
+                toggle_on: Theme.theme_primary_light,
+                toggle_off: Qt.alpha(Theme.theme_primary_light, 0.5),
+                hazard: Theme.theme_secondary,
+                schematic: Qt.alpha(Theme.theme_primary_light, 0.16),
+                status_strip: true,
+                osd_layout: "readout",
+                card_layout: "channel",
+                weather_header: "spec",
+                bar_font_family: "Barlow Condensed",
+                bar_font_size: Theme.font_size + 1,
+                bar_caps: true,
+                bar_letter_spacing: 1.5,
+                bar_side_bg: Theme.bg_crust,
+                bar_center_bg: Theme.bg_crust,
+                bar_fg: Theme.fg_core,
+                bar_clock_font: "Share Tech Mono",
+                bar_border_width: 2,
+                bar_border_color: Qt.alpha(Theme.theme_primary_light, 0.24),
+                bar_workspace_focused: Theme.theme_secondary,
+                bar_workspace_active: Qt.alpha(Theme.theme_primary_strong, 0.6),
+                bar_workspace_idle: Qt.alpha(Theme.theme_primary_light, 0.09),
+                bar_workspace_ring: Qt.alpha(Theme.theme_primary_light, 0.24),
+                bar_pill_square: true,
+                bar_hover_bg: Qt.alpha(Theme.theme_primary_light, 0.24)
             })
         };
     }
@@ -802,6 +1167,9 @@ Singleton {
         }
         o.title_font_family = o.title_font_family || o.font_family;
         o.number_font = o.number_font || o.font_family;
+        o.label_font_family = o.label_font_family || o.font_family;
+        o.mono_font = o.mono_font || o.font_family;
+        o.custom_frame = o.frame_octagon > 0 || o.frame_cut > 0;
         o.inset_pad = o.frame_inset_width > 0 ? o.frame_border_width + o.frame_inset_gap + o.frame_inset_width : o.frame_pad;
         return o;
     }
@@ -829,7 +1197,6 @@ Singleton {
     readonly property real frame_chamfer: root.active.frame_chamfer
     // Frames drawn as visor glass (VisorGlass) instead of a plain rectangle.
     readonly property bool frame_visor: root.active.frame_visor
-    readonly property color frame_brackets: root.active.frame_brackets
     // An inner ring frame_inset_gap inside the border; content keeps inset_pad clear of the frame edge.
     readonly property int frame_inset_gap: root.active.frame_inset_gap
     readonly property int frame_inset_width: root.active.frame_inset_width
@@ -911,7 +1278,6 @@ Singleton {
     readonly property string title_prefix: root.active.title_prefix
     readonly property string title_suffix: root.active.title_suffix
     readonly property real title_spacing: root.active.title_spacing
-    readonly property color title_glow: root.active.title_glow
     // A static system readout drawn at the right end of the title row.
     readonly property string title_readout: root.active.title_readout
     // Transparent draws the readout in text_muted; {code} in the readout becomes the title's first three letters.
@@ -933,8 +1299,6 @@ Singleton {
     readonly property bool fade_fills: root.active.fade_fills
     readonly property color selection_border: root.active.selection_border
     readonly property color selection_glow: root.active.selection_glow
-    // Leans selections, tabs and key badges into parallelograms; the shear per px of height.
-    readonly property real slant: root.active.slant
     readonly property color meter_shade: root.active.meter_shade
     // Leans meter and waveform tops right by this shear per px of height.
     readonly property real meter_slant: root.active.meter_slant
@@ -945,7 +1309,85 @@ Singleton {
     readonly property color chart_fill: root.active.chart_fill
     // Multiplies every radius a rounded style draws.
     readonly property real corner_scale: root.active.corner_scale
-    // The keeptabs done celebration: hearts, pixel (stepped) or lcd (blinks).
+    // Sections, tabs and chips; empty uses font_family.
+    readonly property string label_font_family: root.active.label_font_family || root.font_family
+    // Readouts, keys and ids; empty uses font_family.
+    readonly property string mono_font: root.active.mono_font || root.font_family
+    // Frames cut to an octagon this many px at each corner (OctagonFrame).
+    readonly property real frame_octagon: root.active.frame_octagon
+    // Diagonal struts from the octagon's cut corners and ticks at its edge midpoints.
+    readonly property color frame_struts: root.active.frame_struts
+    // Top-left and bottom-right corners cut by this many px (ChamferFrame), with frame_notch px stepped notches.
+    readonly property real frame_cut: root.active.frame_cut
+    readonly property real frame_notch: root.active.frame_notch
+    // A frame component draws the fill and border, so the base rectangle and FrameShade stay empty.
+    readonly property bool custom_frame: root.frame_octagon > 0 || root.frame_cut > 0
+    // The middle of a frame_cut border's vertical fade; its ends are frame_border_color.
+    readonly property color frame_line: root.active.frame_line
+    readonly property color frame_marks: root.active.frame_marks
+    // "top": a tick scale on the top edge, bottom rule and corner crosses; "left": a scale down the left side and a corner ring.
+    readonly property string frame_ticks: root.active.frame_ticks
+    // Major and minor tick color for frame scales, rules and ruler meters.
+    readonly property color hairline: root.active.hairline
+    readonly property color hairline_dim: root.active.hairline_dim
+    readonly property real lcd_radius: root.active.lcd_radius
+    readonly property color lcd_border: root.active.lcd_border
+    // Corner brackets at all four corners inside the LCD panel.
+    readonly property color lcd_brackets: root.active.lcd_brackets
+    // Target-lock corner brackets on selected rows, cards and days.
+    readonly property color selection_brackets: root.active.selection_brackets
+    // A 1px rule under the selected row; row_rule draws it under the others.
+    readonly property color selection_rule: root.active.selection_rule
+    readonly property color row_rule: root.active.row_rule
+    // "box" marks every row with a square, filled on the selected one; rows with a slot number show it instead.
+    readonly property string row_marker: root.active.row_marker
+    // A diagonal tick in the top-right corner of cards and the selected row.
+    readonly property color corner_tick: root.active.corner_tick
+    // Brackets around the active tab's label.
+    readonly property color tab_brackets: root.active.tab_brackets
+    // A 1px baseline under every tab.
+    readonly property color tab_rule: root.active.tab_rule
+    readonly property color tab_bg: root.active.tab_bg
+    readonly property real tab_cut: root.active.tab_cut
+    readonly property color chip_bg: root.active.chip_bg
+    // Chips, action chips, header buttons and the alert banner as outlined pills.
+    readonly property bool pill_chips: root.active.pill_chips
+    readonly property bool key_round: root.active.key_round
+    readonly property real key_cut: root.active.key_cut
+    readonly property color section_marker: root.active.section_marker
+    // A reticle glyph before popup titles.
+    readonly property color title_reticle: root.active.title_reticle
+    // Popup names numbered 01, 02, ... in front of their titles.
+    readonly property var title_index: root.active.title_index
+    // 0 keeps titles bold when they share the body font.
+    readonly property int title_weight: root.active.title_weight
+    // A rule from the title to the readout, fading out to the right.
+    readonly property color title_trail: root.active.title_trail
+    // A title strip with a tab-cut band in this color (TabHeader); title_ids maps popup names to [id, readout].
+    readonly property color title_band: root.active.title_band
+    readonly property var title_ids: root.active.title_ids
+    readonly property color chart_outline: root.active.chart_outline
+    // Daily temperature ranges as 1px lines with ring end caps.
+    readonly property bool range_line: root.active.range_line
+    readonly property bool tick_ruler: root.active.tick_ruler
+    // Every fifth unlit meter segment; meter_height 0 keeps the default height.
+    readonly property color meter_major: root.active.meter_major
+    readonly property real meter_height: root.active.meter_height
+    // Footer keys drawn as filled caps in footer_key_fg on this color.
+    readonly property color footer_key_bg: root.active.footer_key_bg
+    readonly property string footer_separator: root.active.footer_separator
+    readonly property bool footer_rule_solid: root.active.footer_rule_solid
+    readonly property bool slider_readout: root.active.slider_readout
+    // Hazard stripes on alert banners and critical cards.
+    readonly property color hazard: root.active.hazard
+    // Start's schematic and status strip.
+    readonly property color schematic: root.active.schematic
+    readonly property bool status_strip: root.active.status_strip
+    // Alternate layouts: "" keeps the default; osd "ring" or "readout", weather "ring", "spec" or "scope", cards "rule" or "channel".
+    readonly property string osd_layout: root.active.osd_layout
+    readonly property string weather_header: root.active.weather_header
+    readonly property string card_layout: root.active.card_layout
+    // The keeptabs done celebration: hearts, pixel (stepped) or lcd (stepped, then blinks).
     readonly property string done_anim: root.active.done_anim || "hearts"
 
     property bool cava_line: true
@@ -970,6 +1412,13 @@ Singleton {
     readonly property color bar_workspace_active: root.bar.bar_workspace_active
     readonly property color bar_workspace_idle: root.bar.bar_workspace_idle
     readonly property color bar_workspace_ring: root.bar.bar_workspace_ring
+    // Square-cornered workspace pills; bar_workspace_diamond also turns the empty ones into diamonds.
+    readonly property bool bar_pill_square: root.bar.bar_pill_square
+    readonly property bool bar_workspace_diamond: root.bar.bar_workspace_diamond
+    // Brackets around the bar clock's time.
+    readonly property color bar_clock_brackets: root.bar.bar_clock_brackets
+    // A tick scale rising from each island's bottom edge.
+    readonly property color bar_ticks: root.bar.bar_ticks
     // An inner line along each island's slants and bottom edge.
     readonly property int bar_inset_gap: root.bar.bar_inset_gap
     readonly property int bar_inset_width: root.bar.bar_inset_width

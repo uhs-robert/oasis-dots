@@ -15,7 +15,7 @@ Item {
     // Chamfered frames trace their border here, just outside the fill where a Rectangle border would sit.
     readonly property real stroke: root.chamfer > 0 ? root.st.frame_border_width : 0
 
-    visible: root.st.frame_shade.a > 0 || root.chamfer > 0
+    visible: (root.st.frame_shade.a > 0 || root.chamfer > 0) && !root.st.custom_frame
 
     Shape {
         visible: root.chamfer <= 0

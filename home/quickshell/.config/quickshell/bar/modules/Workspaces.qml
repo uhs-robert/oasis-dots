@@ -87,12 +87,16 @@ Item {
                 required property var modelData
 
                 readonly property bool is_empty: modelData.toplevels.values.length === 0
+                readonly property bool diamond: Style.bar_workspace_diamond && is_empty
 
                 height: root.pill_height
                 width: is_empty ? height : icons.implicitWidth + (modelData.active ? 22 : 12)
-                radius: height / 2
+                radius: Style.bar_pill_square ? 0 : height / 2
+                rotation: pill.diamond ? 45 : 0
+                scale: pill.diamond ? 0.75 : 1
+                antialiasing: pill.diamond || radius > 0
                 color: modelData.focused ? Style.bar_workspace_focused : modelData.active ? Style.bar_workspace_active : Style.bar_workspace_idle
-                border.width: Style.bar_workspace_ring.a > 0 ? 1 : 0
+                border.width: Style.bar_workspace_ring.a > 0 && !(Style.bar_workspace_diamond && !is_empty && modelData.focused) ? 1 : 0
                 border.color: Style.bar_workspace_ring
 
                 Behavior on width {

@@ -3,9 +3,9 @@ import QtQuick
 import QtQuick.Layouts
 import Quickshell
 import Quickshell.Services.Notifications
+import "../../components"
 import "../../theme"
 import "../../services"
-import "../../components"
 
 // A single notification row, shared by the All/Apps/Critical tabs. Every Text below sets
 // Layout.minimumWidth: 0 so a long unbroken summary/body can never grow the card past its width.
@@ -15,6 +15,10 @@ Item {
     property var entry: null
     property bool selected: false
     property int focused_action: -1
+    // The card's 1-based position in the list, shown by styles with channel cards.
+    property int channel: 0
+    readonly property bool channels: Style.card_layout === "channel"
+    readonly property bool critical: !!root.notification && root.notification.urgency === NotificationUrgency.Critical
 
     signal invoke_requested()
     signal select_requested()
@@ -34,7 +38,7 @@ Item {
         if (!root.notification) return Style.text_dim;
         if (root.notification.urgency === NotificationUrgency.Critical) return Theme.error;
         if (root.notification.urgency === NotificationUrgency.Low) return Style.text_dim;
-        return Theme.theme_primary;
+        return Style.text_primary;
     }
 
     readonly property string urgency_tag: {
@@ -66,10 +70,86 @@ Item {
         anchors.right: parent.right
         implicitHeight: layout.implicitHeight + 20
         radius: Style.radius(8)
-        color: Style.boxed_cards ? (root.selected ? Qt.alpha(Style.caret_color, 0.08) : "transparent") : root.selected ? Theme.bg_surface : Theme.bg_mantle
-        border.width: 1
-        border.color: !Style.boxed_cards ? Theme.ui_border : root.selected ? Style.caret_color : Qt.alpha(root.accent, 0.6)
+        color: Style.card_layout !== "" ? "transparent" : Style.boxed_cards ? (root.selected ? Qt.alpha(Style.caret_color, 0.08) : "transparent") : root.selected ? Theme.bg_surface : Theme.bg_mantle
+        border.width: Style.card_layout !== "" ? 0 : 1
+        border.color: !Style.boxed_cards ? Theme.ui_border : root.selected && Style.selection_brackets.a <= 0 ? Style.caret_color : Qt.alpha(root.accent, 0.6)
         clip: true
+
+        LockBrackets {
+            shown: root.selected
+        }
+
+        CardRule {
+            visible: Style.card_layout === "rule"
+            selected: root.selected
+        }
+
+        Loader {
+            active: root.channels
+            anchors.fill: parent
+            z: -1
+            sourceComponent: Item {
+                CutBox {
+                    anchors.fill: parent
+                    cut_tr: 10
+                    fill: root.selected ? Qt.alpha(Style.caret_color, 0.1) : Style.row_rule
+                    fill_end: "transparent"
+                    stroke: root.selected ? Style.selection_rule : Style.row_rule
+                }
+
+                CornerTick {
+                    size: 10
+                    color: root.selected ? Style.selection_rule : Style.corner_tick
+                }
+
+                Rectangle {
+                    x: 47
+                    width: 1
+                    height: parent.height
+                    color: root.selected ? Style.selection_rule : Style.frame_line
+                }
+
+                Rectangle {
+                    visible: root.selected
+                    width: 3
+                    height: parent.height
+                    color: Style.caret_color
+                }
+
+                Column {
+                    x: 0
+                    y: 8
+                    width: 48
+                    spacing: 2
+
+                    Text {
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        text: "CH-" + String(root.channel).padStart(2, "0")
+                        color: root.selected ? Style.caret_color : Style.text_primary
+                        font.family: Style.mono_font
+                        font.pixelSize: Style.font_size - 3
+                    }
+
+                    Text {
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        text: "T-" + (root.entry ? root.relative_time(root.entry.time).toUpperCase() : "")
+                        color: Style.text_muted
+                        font.family: Style.mono_font
+                        font.pixelSize: Style.font_size - 5
+                    }
+
+                    Hazard {
+                        visible: root.critical
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        width: 28
+                        height: 5
+                        stripe: Theme.theme_label
+                        tile: 6
+                        line: 2
+                    }
+                }
+            }
+        }
 
         Text {
             visible: Style.boxed_cards && root.selected && Style.row_cursor !== "" && Style.caret_phase
@@ -118,14 +198,14 @@ Item {
             anchors.right: parent.right
             anchors.top: parent.top
             anchors.margins: 10
-            anchors.leftMargin: 16
+            anchors.leftMargin: root.channels ? 58 : 16
             spacing: 10
 
             Image {
                 Layout.alignment: Qt.AlignTop
                 Layout.preferredWidth: root.width < 320 ? 32 : 44
                 Layout.preferredHeight: Layout.preferredWidth
-                visible: root.notification && (root.notification.image !== "" || root.notification.appIcon !== "")
+                visible: !root.channels && root.notification && (root.notification.image !== "" || root.notification.appIcon !== "")
                 source: root.notification ? (root.notification.image !== "" ? root.notification.image : Quickshell.iconPath(root.notification.appIcon, true)) : ""
                 fillMode: Image.PreserveAspectFit
             }
@@ -139,12 +219,27 @@ Item {
                     Layout.fillWidth: true
                     Layout.minimumWidth: 0
                     elide: Text.ElideRight
-                    label: Style.boxed_cards
+                    rightPadding: root.channels ? priority_text.implicitWidth + 8 : 0
+                    label: root.channels ? (root.notification ? root.notification.appName : "") : Style.boxed_cards
                         ? "[" + (root.notification ? root.notification.appName : "") + "] " + (root.entry ? root.relative_time(root.entry.time) : "") + root.urgency_tag
                         : (root.notification ? root.notification.appName : "") + "  ·  " + (root.entry ? root.relative_time(root.entry.time) : "")
-                    color: Style.boxed_cards ? root.accent : Style.text_muted
+                    color: root.channels ? Style.text_muted : Style.boxed_cards ? root.accent : Style.text_muted
                     font.family: Style.font_family
                     font.pixelSize: Style.font_size - (Style.boxed_cards ? 3 : 1)
+                    font.bold: root.channels
+                    font.capitalization: root.channels ? Font.AllUppercase : Font.MixedCase
+                    font.letterSpacing: root.channels ? Style.label_spacing : 0
+
+                    Text {
+                        id: priority_text
+                        visible: root.channels
+                        anchors.right: parent.right
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: "PRI " + (root.critical ? "CRITICAL" : root.notification && root.notification.urgency === NotificationUrgency.Low ? "LOW" : "NORMAL")
+                        color: root.critical ? Theme.theme_label : Style.text_muted
+                        font.family: Style.mono_font
+                        font.pixelSize: Style.font_size - 4
+                    }
                 }
 
                 RowLabel {
@@ -191,7 +286,7 @@ Item {
 
                             implicitWidth: Math.min(action_label.implicitWidth + 18, layout.width)
                             implicitHeight: 26
-                            radius: Style.radius(13)
+                            radius: Style.pill_chips ? height / 2 : Style.radius(13)
                             color: action_chip.focused ? Style.chip_pick : Style.boxed_cards ? "transparent" : Theme.bg_surface
                             border.width: Style.boxed_cards || action_chip.focused ? 1 : 0
                             border.color: action_chip.focused ? Style.chip_pick : Style.chip_border.a > 0 ? Style.chip_border : Style.key_border
@@ -206,7 +301,7 @@ Item {
                                 text: action_chip.modelData.text
                                 color: action_chip.focused ? Theme.bg_crust : Theme.theme_secondary
                                 font.bold: action_chip.focused
-                                font.family: Style.font_family
+                                font.family: Style.label_font_family
                                 font.pixelSize: Style.font_size - 3
                             }
 

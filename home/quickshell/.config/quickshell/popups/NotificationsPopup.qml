@@ -15,6 +15,7 @@ Popup {
     size_class: "large"
     preferred_width: 420
     fit_island: true
+    title_value: String(NotificationState.unread).padStart(2, "0") + "/" + String(NotificationState.history.length).padStart(2, "0")
     body_height: content.implicitHeight + 24
     key_help: "[ ] tabs · 1-3 select · Tab order · j/k move · gg/G first/last · h/l action · H/L body/last · Enter open · d/x dismiss · C clear all · t dnd"
 
@@ -388,6 +389,7 @@ Popup {
                             entry: row_item.modelData.type === "entry" ? row_item.modelData.entry : null
                             selected: !!(row_item.modelData.type === "entry" && root.entry_rows[root.selected] && root.entry_rows[root.selected].entry.id === row_item.modelData.entry.id)
                             focused_action: card.selected ? root.action_index : -1
+                            channel: root.entry_rows.indexOf(row_item.modelData) + 1
                             onSelect_requested: root.select_entry(row_item.modelData.entry)
                             onInvoke_requested: {
                                 NotificationState.invoke_default(row_item.modelData.entry);

@@ -25,7 +25,7 @@ ColumnLayout {
 
     FontMetrics {
         id: label_metrics
-        font.family: root.st.font_family
+        font.family: root.st.label_font_family
         font.pixelSize: root.font_size
         font.bold: true
         font.capitalization: root.st.tab_caps ? Font.AllUppercase : Font.MixedCase
@@ -34,18 +34,20 @@ ColumnLayout {
 
     FontMetrics {
         id: key_metrics
-        font.family: root.st.font_family
+        font.family: root.st.mono_font
         font.pixelSize: root.st.font_size - 5
-        font.bold: true
+        font.bold: root.st.mono_font === root.st.font_family
     }
 
     // Mirrors MenuTab and KeyBadge sizing so rows can be split before the tabs exist.
-    readonly property real key_space: root.st.tab_keys && !root.chips ? Math.max(key_metrics.height + 2, key_metrics.advanceWidth("9") + 8) + root.st.slant * (key_metrics.height + 2) + 6 : 0
+    readonly property real key_space: root.st.tab_keys && !root.chips ? Math.max(key_metrics.height + 2, key_metrics.advanceWidth("9") + 8) + 6 : 0
+
+    readonly property real bracket_space: root.st.tab_brackets.a > 0 && !root.chips ? label_metrics.advanceWidth("[]") + 4 : 0
 
     function needs(list) {
         // Reading .font re-runs dependent bindings when the style changes the font.
         const f = label_metrics.font;
-        return list.map(l => root.chips ? label_metrics.advanceWidth(root.st.chip_brackets ? "[" + l + "]" : l) + 20 : label_metrics.advanceWidth(l) + 12 + root.key_space);
+        return list.map(l => root.chips ? label_metrics.advanceWidth(root.st.chip_brackets ? "[" + l + "]" : l) + 20 : label_metrics.advanceWidth(l) + 12 + root.key_space + root.bracket_space);
     }
 
     // Fewest balanced rows of consecutive indices whose widths fit `avail`.

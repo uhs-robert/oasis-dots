@@ -11,4 +11,10 @@ Every `.ttf`/`.otf` here is registered for the whole qs process by `services/Bun
 | ShareTechMono-Regular.ttf | Share Tech Mono | google/fonts ofl/sharetechmono | OFL-ShareTechMono.txt |
 | Orbitron-Variable.ttf | Orbitron | google/fonts ofl/orbitron | OFL-Orbitron.txt |
 | Michroma-Regular.ttf | Michroma | google/fonts ofl/michroma | OFL-Michroma.txt |
+| B612Mono-Regular.ttf, B612Mono-Bold.ttf | B612 Mono | google/fonts ofl/b612mono | OFL-B612Mono.txt |
+| Oxanium-Variable.ttf | Oxanium | google/fonts ofl/oxanium | OFL-Oxanium.txt |
 | DSEG7Classic-Regular.ttf, DSEG7Classic-Bold.ttf | DSEG7 Classic | keshikan/DSEG v0.46 | OFL-DSEG.txt |
+| Jura-Variable.ttf | Jura | google/fonts ofl/jura | OFL-Jura.txt |
+| Saira-Variable.ttf | Saira | google/fonts ofl/saira | OFL-Saira.txt |
+| BarlowCondensed-Regular.ttf, -Medium, -SemiBold, -Bold | Barlow Condensed | google/fonts ofl/barlowcondensed | OFL-BarlowCondensed.txt |
+| SairaStencilOne-Regular.ttf | Saira Stencil One | google/fonts ofl/sairastencilone | OFL-SairaStencilOne.txt |

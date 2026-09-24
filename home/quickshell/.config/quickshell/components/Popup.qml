@@ -16,6 +16,8 @@ PanelWindow {
     // Content height; the base adds the style's title tab and footer around it.
     property real body_height: 0
     property string title: popup_name.toUpperCase()
+    // A live value after the style's title readout, e.g. unread counts.
+    property string title_value: ""
     property string footer_hint: ""
     // The full key list behind `?`; while set, the footer shows only help_hint.
     property string key_help: footer_hint
@@ -209,12 +211,12 @@ PanelWindow {
     readonly property int line_height: root.st.accent_height
     readonly property bool has_title: root.st.show_title && title !== ""
     readonly property bool has_footer: root.st.show_footer && footer_hint !== ""
-    // Room kept clear of the corner brackets around the title.
-    readonly property real bracket_pad: root.st.frame_brackets.a > 0 ? 4 : 0
     readonly property bool lcd: root.st.lcd_top.a > 0
     readonly property real title_gap: root.st.title_rule.a > 0 ? 6 : 0
+    readonly property bool banded: root.st.title_band.a > 0
+    readonly property real band_height: Math.max(26, title_tab.height + 4)
     readonly property real engraving_height: root.st.frame_engraving !== "" ? engraving.implicitHeight + 4 : 0
-    readonly property real header_height: (has_title ? title_tab.height + bracket_pad + root.st.inset_pad + title_gap : 0) + root.st.lcd_margin * 2
+    readonly property real header_height: (has_title ? (root.banded ? root.band_height + 8 : title_tab.height + title_gap) + root.st.inset_pad : 0) + root.st.lcd_margin * 2
     readonly property real footer_height: (has_footer ? base_footer.implicitHeight + 10 + root.st.inset_pad : 0) + root.st.lcd_margin * 2 + engraving_height
     property real line_progress: 0
     property real drop_progress: 0
@@ -361,10 +363,10 @@ PanelWindow {
             // Reads as the island unfolding downward: its color, joined flush under the accent line.
             Rectangle {
                 anchors.fill: parent
-                color: root.st.frame_chamfer > 0 || root.st.frame_visor ? "transparent" : root.st.frame_follows_island ? root.held_color : root.st.frame_color
+                color: root.st.frame_chamfer > 0 || root.st.frame_visor || root.st.custom_frame ? "transparent" : root.st.frame_follows_island ? root.held_color : root.st.frame_color
                 bottomLeftRadius: root.frame_radius
                 bottomRightRadius: root.frame_radius
-                border.width: root.st.frame_visor || root.st.frame_chamfer > 0 ? 0 : root.st.frame_border_width
+                border.width: root.st.frame_visor || root.st.frame_chamfer > 0 || root.st.custom_frame ? 0 : root.st.frame_border_width
                 border.color: root.st.frame_border_color
             }
 
@@ -401,7 +403,7 @@ PanelWindow {
                 chamfer: root.st.frame_chamfer
             }
 
-            CornerBrackets {
+            CustomFrame {
                 anchors.fill: parent
             }
 
@@ -418,9 +420,9 @@ PanelWindow {
                 y: lcd_panel.edge
                 width: parent.width - lcd_panel.edge * 2
                 height: parent.height - lcd_panel.edge * 2 - root.engraving_height
-                radius: 8
+                radius: root.st.lcd_radius
                 border.width: 1
-                border.color: Qt.alpha(Theme.bg_shadow, 0.6)
+                border.color: root.st.lcd_border
                 clip: true
                 gradient: Gradient {
                     GradientStop { position: 0; color: root.st.lcd_top }
@@ -437,6 +439,14 @@ PanelWindow {
                         height: 1
                         color: root.st.lcd_scan
                     }
+                }
+
+                CornerBrackets {
+                    anchors.fill: parent
+                    color: root.st.lcd_brackets
+                    inset: 5
+                    arm: 14
+                    all_corners: true
                 }
             }
 
@@ -462,49 +472,97 @@ PanelWindow {
                 opacity: glow_layer.layered ? 0 : 1
 
 
+                Loader {
+                    active: root.has_title && root.banded
+                    x: root.st.inset_pad + root.st.frame_border_width
+                    y: x
+                    width: parent.width - x * 2
+                    height: root.band_height
+                    sourceComponent: TabHeader {
+                        readonly property var ids: root.st.title_ids[root.popup_name] || []
+                        title: root.title
+                        panel_id: ids[0] || ""
+                        readout: ids[1] || ""
+                        readout_value: root.title_value
+                    }
+                }
+
                 Rectangle {
                     id: title_tab
-                    visible: root.has_title
-                    x: (root.st.fade_fills ? root.st.frame_border_width : root.bracket_pad * 1.5) + root.st.inset_pad + root.st.lcd_margin * 2
-                    y: (root.st.fade_fills ? root.st.frame_border_width : root.bracket_pad) + root.st.inset_pad + root.st.lcd_margin * 2
-                    width: root.st.fade_fills ? parent.width - root.st.frame_border_width * 2 : Math.min(title_text.implicitWidth + 20, parent.width - title_tab.x * 2)
-                    height: title_text.implicitHeight + 4
+                    visible: root.has_title && !root.banded
+                    x: (root.st.fade_fills ? root.st.frame_border_width : 0) + root.st.inset_pad + root.st.lcd_margin * 2
+                    y: (root.st.fade_fills ? root.st.frame_border_width : 0) + root.st.inset_pad + root.st.lcd_margin * 2
+                    readonly property real reticle_space: root.st.title_reticle.a > 0 ? title_text.implicitHeight + 4 : 0
+                    readonly property real lead_space: title_tab.reticle_space + title_index.space
+                    width: root.st.fade_fills ? parent.width - root.st.frame_border_width * 2 : Math.min(title_text.implicitWidth + 20 + title_tab.lead_space, parent.width - title_tab.x * 2)
+                    height: Math.max(title_text.implicitHeight, title_index.space > 0 ? title_index.implicitHeight : 0) + 4
                     color: root.st.fade_fills ? "transparent" : root.st.title_bg
+
+                    Reticle {
+                        visible: title_tab.reticle_space > 0
+                        x: 6
+                        anchors.verticalCenter: parent.verticalCenter
+                        width: title_tab.reticle_space - 4
+                        height: width
+                        color: root.st.title_reticle
+                        center_color: root.st.caret_color
+                    }
 
                     FadeFill {
                         visible: root.st.fade_fills
                         fill: root.st.title_bg
                     }
 
+                    TitleIndex {
+                        id: title_index
+                        x: 10 + title_tab.reticle_space
+                        anchors.verticalCenter: parent.verticalCenter
+                        st: root.st
+                        name: root.popup_name
+                    }
+
                     Text {
                         id: title_text
                         anchors.centerIn: root.st.fade_fills ? undefined : parent
-                        x: 10
+                        anchors.horizontalCenterOffset: title_tab.lead_space / 2
+                        x: 10 + title_tab.lead_space
                         y: (parent.height - height) / 2
-                        width: Math.min(implicitWidth, parent.width - 20)
+                        width: Math.min(implicitWidth, parent.width - 20 - title_tab.lead_space)
                         elide: Text.ElideRight
                         text: root.st.title_prefix + root.title + (Style.caret_phase ? root.st.title_suffix : " ".repeat(root.st.title_suffix.length))
                         color: root.st.title_fg
                         font.family: root.st.title_font_family
                         font.pixelSize: root.st.font_size - 2
-                        font.bold: root.st.title_font_family === root.st.font_family
+                        font.weight: root.st.title_weight > 0 ? root.st.title_weight : root.st.title_font_family === root.st.font_family ? Font.Bold : Font.Normal
                         font.letterSpacing: root.st.title_spacing
-                        style: root.st.title_glow.a > 0 ? Text.Outline : Text.Normal
-                        styleColor: root.st.title_glow
                     }
                 }
 
                 Text {
+                    id: title_readout
                     // Dropped on narrow popups rather than drawn over the title.
-                    visible: root.has_title && root.st.title_readout !== "" && title_tab.x + (root.st.fade_fills ? 10 + title_text.implicitWidth : title_tab.width) + 12 <= parent.width - anchors.rightMargin - implicitWidth
+                    visible: root.has_title && root.st.title_readout !== "" && title_tab.x + (root.st.fade_fills ? 10 + title_tab.lead_space + title_text.implicitWidth : title_tab.width) + 12 <= parent.width - anchors.rightMargin - implicitWidth
                     anchors.right: parent.right
-                    anchors.rightMargin: (root.lcd ? root.st.lcd_margin * 2 : 12) + root.bracket_pad + root.st.inset_pad
+                    anchors.rightMargin: (root.lcd ? root.st.lcd_margin * 2 : 12) + root.st.inset_pad
                     y: title_tab.y + (title_tab.height - height) / 2
                     text: root.st.title_readout.replace("{code}", root.title.slice(0, 3))
                     color: root.st.title_readout_fg.a > 0 ? root.st.title_readout_fg : root.st.text_muted
                     font.family: root.st.font_family
                     font.pixelSize: root.st.font_size - 5
                     font.letterSpacing: 1
+                }
+
+                Rectangle {
+                    visible: root.has_title && root.st.title_trail.a > 0 && width > 8
+                    x: title_tab.x + (root.st.fade_fills ? 10 + title_tab.lead_space + title_text.implicitWidth + 12 : title_tab.width)
+                    y: title_tab.y + Math.round(title_tab.height / 2)
+                    width: (title_readout.visible ? title_readout.x - 12 : parent.width - title_readout.anchors.rightMargin) - x
+                    height: 1
+                    gradient: Gradient {
+                        orientation: Gradient.Horizontal
+                        GradientStop { position: 0; color: root.st.title_trail }
+                        GradientStop { position: 1; color: Qt.alpha(root.st.title_trail, 0) }
+                    }
                 }
 
                 Rectangle {
@@ -645,11 +703,11 @@ PanelWindow {
 
             // Static scanlines; nothing animates them.
             Item {
-                visible: root.st.scanlines
+                visible: root.st.scanlines && root.st.frame_octagon <= 0
                 anchors.fill: parent
 
                 Repeater {
-                    model: root.st.scanlines ? Math.max(0, Math.ceil(parent.height / 3)) : 0
+                    model: root.st.scanlines && root.st.frame_octagon <= 0 ? Math.max(0, Math.ceil(parent.height / 3)) : 0
 
                     Rectangle {
                         required property int index

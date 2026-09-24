@@ -97,9 +97,9 @@ PanelWindow {
 
     TextMetrics {
         id: key_metrics
-        font.family: Style.font_family
+        font.family: Style.mono_font
         font.pixelSize: Style.font_size - 5
-        font.bold: true
+        font.bold: Style.mono_font === Style.font_family
         text: root.longest_key
     }
 
@@ -118,16 +118,18 @@ PanelWindow {
         readonly property int pad_x: Style.px(14)
         readonly property int pad_y: Style.px(8)
         readonly property real top_edge: Math.max(Style.accent_height, Style.frame_border_width)
-        readonly property real title_x: Style.fade_fills || Style.rounded ? frame.radius : Style.frame_brackets.a > 0 ? 6 : 0
+        readonly property real title_x: Style.fade_fills || Style.rounded ? frame.radius : 0
         // The inner ring's room below the accent line, which already covers the border.
         readonly property real ring_pad: Style.inset_pad > 0 ? Style.inset_pad - Style.frame_border_width : 0
-        readonly property real header_height: title_tab.height + frame.ring_pad
+        readonly property bool banded: Style.show_title && Style.title_band.a > 0
+        readonly property real band_height: Math.max(26, title_tab.height + 4)
+        readonly property real header_height: frame.banded ? frame.band_height + 4 + Style.inset_pad : title_tab.height + frame.ring_pad
 
         width: Math.max(body.implicitWidth + pad_x * 2, title_text.implicitWidth + 20 + title_x * 2 + Style.inset_pad * 2 + (readout.visible ? readout.implicitWidth + 16 : 0))
         height: top_edge + header_height + body.implicitHeight + pad_y * 2
         radius: Style.frame_radius
-        color: Style.frame_chamfer > 0 || Style.frame_visor ? "transparent" : Style.frame_follows_island ? Theme.bg_mantle : Style.frame_color
-        border.width: Style.frame_visor || Style.frame_chamfer > 0 ? 0 : Style.frame_border_width
+        color: Style.frame_chamfer > 0 || Style.frame_visor || Style.custom_frame ? "transparent" : Style.frame_follows_island ? Theme.bg_mantle : Style.frame_color
+        border.width: Style.frame_visor || Style.frame_chamfer > 0 || Style.custom_frame ? 0 : Style.frame_border_width
         border.color: Style.frame_border_color
 
         VisorGlass {
@@ -164,7 +166,7 @@ PanelWindow {
             chamfer: Style.frame_chamfer
         }
 
-        CornerBrackets {
+        CustomFrame {
             anchors.fill: parent
         }
 
@@ -189,8 +191,23 @@ PanelWindow {
             opacity: glow_layer.layered ? 0 : 1
 
 
+            Loader {
+                active: frame.banded
+                x: Style.inset_pad + Style.frame_border_width
+                y: x
+                width: frame.width - x * 2
+                height: frame.band_height
+                sourceComponent: TabHeader {
+                    readonly property var ids: Style.title_ids.whichkey || []
+                    title: root.title
+                    panel_id: ids[0] || ""
+                    readout: ids[1] || ""
+                }
+            }
+
             Rectangle {
                 id: title_tab
+                opacity: frame.banded ? 0 : 1
                 x: frame.title_x + Style.inset_pad
                 y: frame.top_edge + frame.ring_pad
                 width: Style.fade_fills ? frame.width - frame.title_x * 2 : title_text.implicitWidth + 20
@@ -210,10 +227,8 @@ PanelWindow {
                     color: Style.show_title ? Style.title_fg : Style.accent_color
                     font.family: Style.title_font_family
                     font.pixelSize: Style.font_size - 2
-                    font.bold: Style.title_font_family === Style.font_family
+                    font.weight: Style.title_weight > 0 ? Style.title_weight : Style.title_font_family === Style.font_family ? Font.Bold : Font.Normal
                     font.letterSpacing: Style.show_title ? Style.title_spacing : 0
-                    style: Style.title_glow.a > 0 ? Text.Outline : Text.Normal
-                    styleColor: Style.title_glow
                 }
             }
 
@@ -324,11 +339,11 @@ PanelWindow {
         }
 
         Item {
-            visible: Style.scanlines
+            visible: Style.scanlines && Style.frame_octagon <= 0
             anchors.fill: parent
 
             Repeater {
-                model: Style.scanlines ? Math.max(0, Math.ceil(parent.height / 3)) : 0
+                model: Style.scanlines && Style.frame_octagon <= 0 ? Math.max(0, Math.ceil(parent.height / 3)) : 0
 
                 Rectangle {
                     required property int index

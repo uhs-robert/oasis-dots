@@ -14,6 +14,7 @@ Popup {
     size_class: "large"
     preferred_width: 440
     fit_island: true
+    title_value: WeatherState.has_data ? root.day_span + "D" : ""
     body_height: content.implicitHeight + 24
     key_help: "[ ] tabs · 1-" + root.tabs.length + " select · Tab view · h/l move · H/L jump · gg now · G end · r refresh" + (root.has_alerts ? " · a alerts" : "")
 
@@ -195,7 +196,30 @@ Popup {
             spacing: 8
 
             // --- Current conditions header, shown above every tab ---
+            Loader {
+                Layout.fillWidth: true
+                active: Style.weather_header !== ""
+                visible: active
+                sourceComponent: Style.weather_header === "spec" ? spec_header : Style.weather_header === "scope" ? scope_header : ring_header
+
+                Component {
+                    id: spec_header
+                    WeatherSpec {}
+                }
+
+                Component {
+                    id: scope_header
+                    ScopeHeader {}
+                }
+
+                Component {
+                    id: ring_header
+                    RingHeader {}
+                }
+            }
+
             RowLayout {
+                visible: Style.weather_header === ""
                 Layout.fillWidth: true
                 spacing: 14
 
@@ -272,18 +296,30 @@ Popup {
                 Layout.fillWidth: true
                 Layout.preferredHeight: root.has_alerts ? 28 : 0
                 visible: root.has_alerts
-                radius: Style.radius(4)
+                radius: Style.pill_chips ? height / 2 : Style.radius(4)
                 readonly property color alert_color: WeatherState.alerts.length > 0 ? WeatherState.alert_color(WeatherState.alerts[0].severity) : Style.text_dim
                 color: Style.boxed_cards ? Qt.alpha(alert_color, 0.1) : Theme.bg_surface
                 border.width: Style.boxed_cards ? 1 : 0
                 border.color: alert_color
 
+                Hazard {
+                    visible: Style.hazard.a > 0
+                    x: 1
+                    y: 1
+                    width: 30
+                    height: parent.height - 2
+                    color: Theme.bg_crust
+                    stripe: Style.hazard
+                }
+
                 RowLayout {
                     anchors.fill: parent
                     anchors.margins: 6
+                    anchors.leftMargin: Style.hazard.a > 0 ? 40 : 6
                     spacing: 8
 
                     Rectangle {
+                        visible: Style.hazard.a === 0
                         Layout.preferredWidth: 8
                         Layout.preferredHeight: 8
                         radius: Style.radius(4)
