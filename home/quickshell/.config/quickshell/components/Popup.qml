@@ -174,6 +174,23 @@ PanelWindow {
         }
     }
 
+    // Hyprland moves pointer focus to this layer when it maps, so an unmoved re-click on the bar lands here, off the surface.
+    MouseArea {
+        id: outside_catch
+        x: -100000
+        y: -100000
+        width: 200000
+        height: 200000
+        z: -1
+        acceptedButtons: Qt.AllButtons
+        onPressed: mouse => {
+            const px = mouse.x + outside_catch.x;
+            const py = mouse.y + outside_catch.y;
+            if (px >= 0 && py >= 0 && px < root.width && py < root.height) mouse.accepted = false;
+            else if (root.wanted) Popups.close();
+        }
+    }
+
     function edge_x(w) {
         return side === "right" ? width - w : side === "left" ? 0 : (width - w) / 2;
     }
