@@ -142,7 +142,7 @@ Popup {
         } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
             root.invoke_selected();
             event.accepted = true;
-        } else if (event.key === Qt.Key_D && (event.modifiers & Qt.ShiftModifier)) {
+        } else if (event.key === Qt.Key_T || (event.key === Qt.Key_D && (event.modifiers & Qt.ShiftModifier))) {
             NotificationState.toggle_dnd();
             event.accepted = true;
         } else if (event.key === Qt.Key_C && (event.modifiers & Qt.ShiftModifier)) {
@@ -219,7 +219,7 @@ Popup {
                     Layout.alignment: Qt.AlignVCenter
                     icon: "\u{f009b}"
                     label: "Do not disturb"
-                    key_hint: "D"
+                    key_hint: Style.row_keys ? "t" : "D"
                     active: NotificationState.dnd
                     onActivated: NotificationState.toggle_dnd()
                 }
@@ -383,7 +383,7 @@ Popup {
 
             MenuFooter {
                 Layout.fillWidth: true
-                text: "[ ] tabs · 1-3 select · Tab order · j/k move · gg/G first/last · Enter open · d/x dismiss · C clear all · D dnd"
+                text: "[ ] tabs · 1-3 select · Tab order · j/k move · gg/G first/last · Enter open · d/x dismiss · C clear all · t toggle"
             }
         }
     }

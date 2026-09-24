@@ -58,6 +58,9 @@ Singleton {
             chip_brackets: true,
             chip_active_bg: "transparent",
             chip_active_fg: Theme.theme_primary,
+            toggle_brackets: true,
+            toggle_on: Theme.ok,
+            toggle_off: Theme.fg_muted,
             marker_fill: true,
             selection_bar: false,
             title_prefix: "",
@@ -117,6 +120,9 @@ Singleton {
                 chip_brackets: false,
                 chip_active_bg: Theme.bg_surface,
                 chip_active_fg: Theme.theme_secondary,
+                toggle_brackets: false,
+                toggle_on: Theme.theme_primary,
+                toggle_off: Theme.fg_dim,
                 marker_fill: false,
                 selection_bar: false,
                 title_prefix: "",
@@ -211,6 +217,9 @@ Singleton {
     readonly property bool chip_brackets: root.active.chip_brackets
     readonly property color chip_active_bg: root.active.chip_active_bg
     readonly property color chip_active_fg: root.active.chip_active_fg
+    readonly property bool toggle_brackets: root.active.toggle_brackets
+    readonly property color toggle_on: root.active.toggle_on
+    readonly property color toggle_off: root.active.toggle_off
     readonly property bool marker_fill: root.active.marker_fill
     readonly property bool selection_bar: root.active.selection_bar
     readonly property string title_prefix: root.active.title_prefix

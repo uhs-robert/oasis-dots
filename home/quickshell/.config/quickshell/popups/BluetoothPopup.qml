@@ -11,18 +11,23 @@ Popup {
 
     popup_name: "bluetooth"
     preferred_width: 260
-    footer_hint: "j/k move · Enter connect · p power · q close"
+    footer_hint: "j/k move · Enter connect · t toggle · q close"
     body_height: content.implicitHeight + 24
 
     readonly property var adapter: QsBt.Bluetooth.defaultAdapter
     readonly property bool has_adapter: !!adapter
     readonly property var devices: has_adapter ? adapter.devices.values.filter(d => d.paired) : []
 
+    // -1 is the power switch above the list.
     property int selected: 0
     onDevicesChanged: if (selected >= devices.length) selected = Math.max(0, devices.length - 1);
 
     readonly property bool is_open: Popups.open_name === "bluetooth"
     onIs_openChanged: if (is_open) root.selected = 0;
+
+    function toggle_power() {
+        if (root.has_adapter) root.adapter.enabled = !root.adapter.enabled;
+    }
 
     function battery_label(device) {
         return device.batteryAvailable ? Math.round(device.battery * 100) + "%" : "";
@@ -38,14 +43,17 @@ Popup {
         focus: true
 
         Keys.onPressed: event => {
-            if (event.key === Qt.Key_P && root.has_adapter) {
-                root.adapter.enabled = !root.adapter.enabled;
+            if (event.key === Qt.Key_T) {
+                root.toggle_power();
                 event.accepted = true;
             } else if (event.key === Qt.Key_J) {
-                root.selected = Math.min(root.devices.length - 1, root.selected + 1);
+                root.selected = Math.max(0, Math.min(root.devices.length - 1, root.selected + 1));
                 event.accepted = true;
             } else if (event.key === Qt.Key_K) {
-                root.selected = Math.max(0, root.selected - 1);
+                root.selected = Math.max(root.has_adapter ? -1 : 0, root.selected - 1);
+                event.accepted = true;
+            } else if ((event.key === Qt.Key_Return || event.key === Qt.Key_Enter) && root.selected === -1) {
+                root.toggle_power();
                 event.accepted = true;
             } else if ((event.key === Qt.Key_Return || event.key === Qt.Key_Enter) && root.devices[root.selected]) {
                 const d = root.devices[root.selected];
@@ -61,29 +69,14 @@ Popup {
             anchors.top: parent.top
             spacing: 4
 
-            RowLayout {
-                Layout.fillWidth: true
-                spacing: 8
-
-                Text {
-                    Layout.fillWidth: true
-                    text: root.has_adapter ? root.adapter.name : "No adapter"
-                    color: Theme.fg_strong
-                    font.family: Style.font_family
-                    font.pixelSize: Style.font_size - 1
-                }
-
-                Text {
-                    visible: root.has_adapter
-                    text: root.has_adapter && root.adapter.enabled ? "On" : "Off"
-                    color: root.has_adapter && root.adapter.enabled ? Theme.theme_primary : Theme.fg_dim
-                    font.family: Style.font_family
-                    font.pixelSize: Style.font_size - 2
-                }
-
-                KeyBadge {
-                    visible: Style.row_keys && root.has_adapter
-                    key: "p"
+            ToggleRow {
+                label: root.has_adapter ? root.adapter.name : "No adapter"
+                checked: root.has_adapter && root.adapter.enabled
+                show_state: root.has_adapter
+                selected: root.selected === -1
+                onToggled: {
+                    root.selected = -1;
+                    root.toggle_power();
                 }
             }
 

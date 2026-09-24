@@ -13,7 +13,7 @@ Popup {
 
     popup_name: "network"
     preferred_width: 320
-    footer_hint: root.password_mode ? "" : root.forget_confirm ? "y forget · n keep" : "j/k move · Enter connect · f forget · w wifi · r scan · q close"
+    footer_hint: root.password_mode ? "" : root.forget_confirm ? "y forget · n keep" : "j/k move · Enter connect · f forget · t toggle · r scan · q close"
 
     // The list fits its rows and only scrolls past most of the screen height.
     readonly property real max_list_height: (root.screen ? root.screen.height : 1080) * 0.6
@@ -58,6 +58,7 @@ Popup {
     readonly property var wifi_networks: root.build_network_list()
     readonly property var nav_rows: root.wifi_networks.concat([{ advanced: true }])
 
+    // -1 is the Wi-Fi switch above the list.
     property int selected: 0
     property bool forget_confirm: false
     // Captured when f is pressed: rescans reorder the list while the prompt is up.
@@ -158,6 +159,10 @@ Popup {
         }
     }
 
+    function toggle_wifi() {
+        Networking.wifiEnabled = !Networking.wifiEnabled;
+    }
+
     function submit_password() {
         if (!root.password_target) return;
         root.status_text = "Connecting…";
@@ -203,11 +208,11 @@ Popup {
                 network_list.positionViewAtIndex(root.selected, ListView.Contain);
                 event.accepted = true;
             } else if (event.key === Qt.Key_K) {
-                root.selected = Math.max(0, root.selected - 1);
-                network_list.positionViewAtIndex(root.selected, ListView.Contain);
+                root.selected = Math.max(-1, root.selected - 1);
+                if (root.selected >= 0) network_list.positionViewAtIndex(root.selected, ListView.Contain);
                 event.accepted = true;
-            } else if (event.key === Qt.Key_W) {
-                Networking.wifiEnabled = !Networking.wifiEnabled;
+            } else if (event.key === Qt.Key_T) {
+                root.toggle_wifi();
                 event.accepted = true;
             } else if (event.key === Qt.Key_R) {
                 root.start_scan();
@@ -217,7 +222,8 @@ Popup {
                 root.forget_confirm = true;
                 event.accepted = true;
             } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
-                if (row && row.advanced) Quickshell.execDetached(["nm-connection-editor"]);
+                if (root.selected === -1) root.toggle_wifi();
+                else if (row && row.advanced) Quickshell.execDetached(["nm-connection-editor"]);
                 else root.connect_to(row);
                 event.accepted = true;
             }
@@ -231,28 +237,14 @@ Popup {
             spacing: 6
             visible: !root.password_mode
 
-            RowLayout {
-                Layout.fillWidth: true
-                spacing: 8
-
-                Text {
-                    Layout.fillWidth: true
-                    text: "Wi-Fi"
-                    color: Theme.fg_strong
-                    font.family: Style.font_family
-                    font.pixelSize: Style.font_size - 1
-                }
-
-                Text {
-                    text: Networking.wifiEnabled ? "On" : "Off"
-                    color: Networking.wifiEnabled ? Theme.theme_primary : Theme.fg_dim
-                    font.family: Style.font_family
-                    font.pixelSize: Style.font_size - 2
-                }
-
-                KeyBadge {
-                    visible: Style.row_keys
-                    key: "w"
+            ToggleRow {
+                label: "Wi-Fi"
+                checked: Networking.wifiEnabled
+                selected: root.selected === -1
+                onToggled: {
+                    root.selected = -1;
+                    root.forget_confirm = false;
+                    root.toggle_wifi();
                 }
             }
 
