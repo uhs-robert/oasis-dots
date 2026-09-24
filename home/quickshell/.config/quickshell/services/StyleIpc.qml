@@ -28,4 +28,12 @@ IpcHandler {
     function get_bar(): bool {
         return Style.style_bar;
     }
+
+    function toggle_cava_line(): void {
+        Style.set_cava_line(!Style.cava_line);
+    }
+
+    function get_cava_line(): bool {
+        return Style.cava_line;
+    }
 }

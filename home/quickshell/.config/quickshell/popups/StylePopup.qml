@@ -10,7 +10,7 @@ Popup {
 
     popup_name: "style"
     preferred_width: 180
-    footer_hint: "j/k preview · 1-9 pick · Enter apply · t style bar · q cancel"
+    footer_hint: "j/k preview · 1-9 pick · Enter apply · t style bar · c cava line · q cancel"
     body_height: content.implicitHeight + 24
 
     property int selected: 0
@@ -43,6 +43,9 @@ Popup {
         Keys.onPressed: event => {
             if (event.key === Qt.Key_T) {
                 Style.set_bar(!Style.style_bar);
+                event.accepted = true;
+            } else if (event.key === Qt.Key_C) {
+                Style.set_cava_line(!Style.cava_line);
                 event.accepted = true;
             } else if (event.key === Qt.Key_J) {
                 root.selected = (root.selected + 1) % Style.names.length;
@@ -119,6 +122,13 @@ Popup {
                 label: "Style bar"
                 checked: Style.style_bar
                 onToggled: Style.set_bar(!Style.style_bar)
+            }
+
+            ToggleRow {
+                label: "Cava line"
+                toggle_key: "c"
+                checked: Style.cava_line
+                onToggled: Style.set_cava_line(!Style.cava_line)
             }
         }
     }

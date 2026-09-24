@@ -10,12 +10,13 @@ MenuRow {
     property string label: ""
     property bool checked: false
     property bool show_state: true
+    property string toggle_key: "t"
     // Bracketed styles pad the row like a list row; the default stays flush.
     readonly property real pad: Style.toggle_brackets ? 6 : 0
 
     signal toggled()
 
-    key: root.show_state ? "t" : ""
+    key: root.show_state ? root.toggle_key : ""
     Layout.fillWidth: true
     implicitHeight: Style.toggle_brackets ? Style.px(22) : content_row.implicitHeight
 

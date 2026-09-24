@@ -415,6 +415,7 @@ Singleton {
 
     // Saved with the style; off keeps the bar on the default look.
     property bool style_bar: false
+    property bool cava_line: true
     readonly property var plain_bar: Object.assign({}, root.styles["default"], {
         bar_border_width: 0,
         bar_border_color: "transparent"
@@ -472,8 +473,13 @@ Singleton {
         root.save();
     }
 
+    function set_cava_line(on) {
+        root.cava_line = on;
+        root.save();
+    }
+
     function save() {
-        state_file.setText(JSON.stringify({ style: root.saved_name, style_bar: root.style_bar }));
+        state_file.setText(JSON.stringify({ style: root.saved_name, style_bar: root.style_bar, cava_line: root.cava_line }));
     }
 
     function preview(style_name) {
@@ -505,6 +511,7 @@ Singleton {
                 const data = JSON.parse(text());
                 const saved = data.style;
                 root.style_bar = data.style_bar === true;
+                root.cava_line = data.cava_line !== false;
                 if (typeof saved === "string" && saved in root.styles) {
                     root.name = saved;
                     root.saved_name = saved;
