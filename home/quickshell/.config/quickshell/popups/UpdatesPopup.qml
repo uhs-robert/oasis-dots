@@ -29,6 +29,13 @@ Popup {
 
     onCurrent_listChanged: root.selected = Math.max(0, Math.min(root.selected, root.current_list.length - 1))
     onCurrent_subChanged: root.selected = 0
+    search_enabled: true
+    search_rows: root.current_list.map(p => p.name)
+    search_cursor: root.selected
+    onSearch_select: index => {
+        root.selected = index;
+        row_list.positionViewAtIndex(index, ListView.Contain);
+    }
     onJump_first: root.go_first()
     onJump_last: root.go_last()
 
@@ -146,11 +153,11 @@ Popup {
                             anchors.rightMargin: 8 + update_row.key_space
                             spacing: 8
 
-                            Text {
+                            RowLabel {
                                 Layout.fillWidth: true
                                 Layout.minimumWidth: 0
                                 elide: Text.ElideRight
-                                text: update_row.modelData.name
+                                label: update_row.modelData.name
                                 color: update_row.fg(root.st.text_fg)
                                 font.family: root.st.font_family
                                 font.pixelSize: root.st.font_size - 2

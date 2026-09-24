@@ -48,6 +48,16 @@ Popup {
         return n >= 0 && n < 9 ? String(n + 1) : "";
     }
 
+    function row_label(row) {
+        if (row.type === "stream") return row.node.properties["application.name"] || row.node.name;
+        return row.node.description || row.node.name;
+    }
+
+    search_enabled: true
+    search_rows: root.rows.map(r => r.type === "sink_slider" || r.type === "source_slider" ? "" : root.row_label(r))
+    search_cursor: root.selected
+    onSearch_select: index => root.select_row(index)
+
     function select_row(index) {
         root.selected = index;
         rows_list.positionViewAtIndex(index, ListView.Contain);
@@ -180,10 +190,10 @@ Popup {
                             anchors.rightMargin: 6 + vol_row.key_space
                             spacing: 6
 
-                            Text {
+                            RowLabel {
                                 Layout.fillWidth: true
                                 elide: Text.ElideRight
-                                text: row_wrap.modelData.node.description || row_wrap.modelData.node.name
+                                label: root.row_label(row_wrap.modelData)
                                 color: vol_row.fg((row_wrap.modelData.node === Pipewire.defaultAudioSink || row_wrap.modelData.node === Pipewire.defaultAudioSource) ? root.st.text_accent : root.st.text_fg)
                                 font.family: root.st.font_family
                                 font.pixelSize: root.st.font_size - 1
@@ -206,10 +216,11 @@ Popup {
                             anchors.rightMargin: 6 + vol_row.key_space
                             spacing: 6
 
-                            Text {
+                            RowLabel {
                                 Layout.preferredWidth: Style.px(90)
                                 elide: Text.ElideRight
-                                text: row_wrap.modelData.type === "stream" ? (row_wrap.modelData.node.properties["application.name"] || row_wrap.modelData.node.name) : (row_wrap.modelData.node.description || row_wrap.modelData.node.name)
+                                label: root.row_label(row_wrap.modelData)
+                                searchable: row_wrap.modelData.type === "stream"
                                 color: vol_row.fg(root.st.text_fg)
                                 font.family: root.st.font_family
                                 font.pixelSize: root.st.font_size - 1

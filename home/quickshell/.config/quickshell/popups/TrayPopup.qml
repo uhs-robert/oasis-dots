@@ -25,6 +25,10 @@ Popup {
 
     readonly property bool is_open: Popups.open_name === "tray"
     onIs_openChanged: if (is_open) root.selected = 0
+    search_enabled: true
+    search_rows: root.items.map(i => root.app_name(i) + " " + root.detail(i))
+    search_cursor: root.selected
+    onSearch_select: index => root.selected = index
     onJump_first: root.selected = 0
     onJump_last: root.selected = Math.max(0, root.items.length - 1)
 
@@ -177,19 +181,19 @@ Popup {
                             source: item_row.modelData.icon
                         }
 
-                        Text {
-                            text: root.app_name(item_row.modelData)
+                        RowLabel {
+                            label: root.app_name(item_row.modelData)
                             color: item_row.fg(root.st.text_fg)
                             font.family: root.st.font_family
                             font.pixelSize: root.st.font_size - 1
                         }
 
-                        Text {
+                        RowLabel {
                             Layout.fillWidth: true
                             elide: Text.ElideRight
                             maximumLineCount: 1
                             wrapMode: Text.NoWrap
-                            text: root.detail(item_row.modelData)
+                            label: root.detail(item_row.modelData)
                             color: item_row.fg(root.st.text_dim)
                             font.family: root.st.font_family
                             font.pixelSize: root.st.font_size - 3

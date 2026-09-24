@@ -38,6 +38,13 @@ Popup {
     }
     onCurrent_tabChanged: root.selected = 0
     onSelectedChanged: root.action_index = -1
+    search_enabled: true
+    search_rows: root.entry_rows.map(r => r.entry.notification ? r.entry.notification.summary + " " + r.entry.notification.appName : "")
+    search_cursor: root.selected
+    onSearch_select: index => {
+        root.selected = index;
+        root.scroll_to_selected();
+    }
     onJump_first: root.go_first()
     onJump_last: root.go_last()
 

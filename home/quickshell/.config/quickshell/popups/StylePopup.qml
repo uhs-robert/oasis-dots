@@ -22,6 +22,10 @@ Popup {
         else Style.preview(Style.saved_name);
     }
     onSelectedChanged: if (is_open) Style.preview(Style.names[root.selected])
+    search_enabled: true
+    search_rows: Style.names.map(n => root.label(n))
+    search_cursor: root.selected
+    onSearch_select: index => root.selected = index
     onJump_first: root.selected = 0
     onJump_last: root.selected = Style.names.length - 1
 
@@ -91,9 +95,9 @@ Popup {
                         anchors.verticalCenter: parent.verticalCenter
                         spacing: 8
 
-                        Text {
+                        RowLabel {
                             Layout.fillWidth: true
-                            text: root.label(row.modelData)
+                            label: root.label(row.modelData)
                             color: row.fg(root.st.text_fg)
                             font.family: root.st.font_family
                             font.pixelSize: root.st.font_size

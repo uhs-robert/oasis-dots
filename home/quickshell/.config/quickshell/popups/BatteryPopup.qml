@@ -73,6 +73,10 @@ Popup {
         ppd_check_proc.running = true;
         Backlight.refresh();
     }
+    search_enabled: true
+    search_rows: root.nav_rows.map(r => r.kind === "profile" ? root.profiles[r.index].label : "")
+    search_cursor: root.selected
+    onSearch_select: index => root.selected = index
     onJump_first: root.selected = 0
     onJump_last: root.selected = Math.max(0, root.nav_rows.length - 1)
 
@@ -271,9 +275,9 @@ Popup {
                         anchors.rightMargin: 6 + profile_row.key_space
                         spacing: 6
 
-                        Text {
+                        RowLabel {
                             Layout.fillWidth: true
-                            text: profile_row.modelData.label
+                            label: profile_row.modelData.label
                             color: profile_row.fg(PowerProfiles.profile === profile_row.modelData.value ? root.st.text_accent : root.st.text_fg)
                             font.family: root.st.font_family
                             font.pixelSize: root.st.font_size - 1

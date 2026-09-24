@@ -5,6 +5,7 @@ import Quickshell
 import Quickshell.Services.Notifications
 import "../../theme"
 import "../../services"
+import "../../components"
 
 // A single notification row, shared by the All/Apps/Critical tabs. Every Text below sets
 // Layout.minimumWidth: 0 so a long unbroken summary/body can never grow the card past its width.
@@ -134,11 +135,11 @@ Item {
                 Layout.minimumWidth: 0
                 spacing: 3
 
-                Text {
+                RowLabel {
                     Layout.fillWidth: true
                     Layout.minimumWidth: 0
                     elide: Text.ElideRight
-                    text: Style.boxed_cards
+                    label: Style.boxed_cards
                         ? "[" + (root.notification ? root.notification.appName : "") + "] " + (root.entry ? root.relative_time(root.entry.time) : "") + root.urgency_tag
                         : (root.notification ? root.notification.appName : "") + "  ·  " + (root.entry ? root.relative_time(root.entry.time) : "")
                     color: Style.boxed_cards ? root.accent : Style.text_muted
@@ -146,11 +147,11 @@ Item {
                     font.pixelSize: Style.font_size - (Style.boxed_cards ? 3 : 1)
                 }
 
-                Text {
+                RowLabel {
                     Layout.fillWidth: true
                     Layout.minimumWidth: 0
                     elide: Text.ElideRight
-                    text: root.notification ? root.notification.summary : ""
+                    label: root.notification ? root.notification.summary : ""
                     color: Theme.fg_core
                     font.bold: Style.title_font_family === Style.font_family
                     font.family: Style.title_font_family

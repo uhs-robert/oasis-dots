@@ -107,6 +107,13 @@ Popup {
         root.refresh_ip();
     }
     onNav_rowsChanged: if (root.selected >= root.nav_rows.length) root.selected = Math.max(0, root.nav_rows.length - 1);
+    search_enabled: !root.password_mode && !root.forget_confirm && !root.on_details && !root.dns_edit_mode
+    search_rows: root.nav_rows.map(r => r.advanced ? "Advanced…" : r.name)
+    search_cursor: root.selected
+    onSearch_select: index => {
+        root.selected = index;
+        network_list.positionViewAtIndex(index, ListView.Contain);
+    }
     onJump_first: {
         if (root.on_details) root.setting_selected = 0;
         else root.selected = -1;
@@ -572,10 +579,10 @@ Popup {
                                 font.pixelSize: root.st.font_size - 1
                             }
 
-                            Text {
+                            RowLabel {
                                 Layout.fillWidth: true
                                 elide: Text.ElideRight
-                                text: net_row.is_advanced ? "Advanced…" : net_row.modelData.name
+                                label: net_row.is_advanced ? "Advanced…" : net_row.modelData.name
                                 color: net_row.fg(net_row.modelData.connected ? root.st.text_accent : root.st.text_fg)
                                 font.family: root.st.font_family
                                 font.pixelSize: root.st.font_size - 1

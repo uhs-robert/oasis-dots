@@ -6,6 +6,7 @@ import Quickshell
 import Quickshell.Wayland
 import "../theme"
 import "../services"
+import "Search.js" as Search
 
 PanelWindow {
     id: root
@@ -39,6 +40,18 @@ PanelWindow {
     signal jump_first()
     signal jump_last()
 
+    // `/` search: search_rows is each j/k row's text by index; search_select(i) must select row i like j/k would.
+    property bool search_enabled: false
+    property var search_rows: []
+    property int search_cursor: -1
+    signal search_select(int index)
+    property string search_query: ""
+    property bool search_typing: false
+    readonly property bool search_shown: root.search_enabled && (root.search_typing || root.search_query !== "")
+    readonly property var search_matches: root.search_shown ? Search.matches(root.search_rows, root.search_query) : []
+    // The base footer is hidden in some styles; it then overlays the content's bottom edge while searching.
+    readonly property bool search_overlay: root.search_shown && !root.has_footer && root.footer_hint !== ""
+
     property var sub_memory: ({})
     property double last_g_ms: 0
 
@@ -71,8 +84,38 @@ PanelWindow {
     function focus_active_view() {
         if (!root.visible) return;
         if (root.help_open) key_help_view.forceActiveFocus();
+        else if (root.search_typing) search_input.forceActiveFocus();
         else content_scope.forceActiveFocus();
     }
+
+    function open_search() {
+        search_input.text = "";
+        root.search_typing = true;
+        search_input.forceActiveFocus();
+    }
+
+    function clear_search() {
+        const refocus = search_input.activeFocus;
+        root.search_typing = false;
+        search_input.text = "";
+        if (refocus) root.focus_active_view();
+    }
+
+    function accept_search() {
+        root.search_typing = false;
+        root.focus_active_view();
+    }
+
+    // Next or previous match from the popup's selection, wrapping.
+    function step_search(delta) {
+        const m = root.search_matches;
+        if (m.length === 0) return;
+        let target = delta > 0 ? m.find(i => i > root.search_cursor) : m.slice().reverse().find(i => i < root.search_cursor);
+        if (target === undefined) target = delta > 0 ? m[0] : m[m.length - 1];
+        root.search_select(target);
+    }
+
+    onSearch_enabledChanged: if (!root.search_enabled) root.clear_search()
 
     // Deferred so the help view's visibility has already followed help_open.
     onHelp_openChanged: Qt.callLater(root.focus_active_view)
@@ -84,6 +127,10 @@ PanelWindow {
         const back = event.key === Qt.Key_Backtab || (event.modifiers & Qt.ShiftModifier);
         if (root.key_help !== "" && root.is_help_key(event)) {
             help_open = true;
+        } else if (root.search_enabled && (event.key === Qt.Key_Slash || event.text === "/")) {
+            root.open_search();
+        } else if (root.search_enabled && root.search_query !== "" && event.key === Qt.Key_N) {
+            root.step_search(back ? -1 : 1);
         } else if (event.key === Qt.Key_Q) {
             Popups.close();
         } else if (tabs.length > 0 && event.key === Qt.Key_BracketLeft) {
@@ -198,6 +245,7 @@ PanelWindow {
             held_screen_name = Popups.open_screen_name;
             held_color = Popups.open_color;
             help_open = false;
+            clear_search();
             visible = true;
             open_anim.restart();
             content_scope.forceActiveFocus();
@@ -280,6 +328,8 @@ PanelWindow {
         id: reveal
         // Tells the components inside which token set to read (Style.for_item).
         readonly property string size_class: root.size_class
+        // Lets MenuFooter and RowLabel inside draw this popup's search.
+        readonly property var search_popup: root
         y: root.line_height
         width: root.width
         height: (root.height - root.line_height) * root.drop_progress
@@ -457,16 +507,59 @@ PanelWindow {
                     color: root.st.title_rule
                 }
 
+                Rectangle {
+                    visible: root.search_overlay
+                    z: 2
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    anchors.bottom: parent.bottom
+                    anchors.margins: root.st.frame_border_width
+                    height: base_footer.implicitHeight + 8
+                    color: root.st.frame_follows_island ? root.held_color : root.st.frame_color
+                    bottomLeftRadius: root.st.frame_radius
+                    bottomRightRadius: root.st.frame_radius
+                }
+
                 MenuFooter {
                     id: base_footer
-                    visible: root.has_footer
+                    visible: root.has_footer || root.search_overlay
+                    z: root.search_overlay ? 2 : 0
                     anchors.left: parent.left
                     anchors.right: parent.right
                     anchors.bottom: parent.bottom
                     anchors.leftMargin: 12 + root.st.lcd_margin
                     anchors.rightMargin: 12 + root.st.lcd_margin
-                    anchors.bottomMargin: 8 + root.st.inset_pad + root.st.lcd_margin * 2 + root.engraving_height
+                    anchors.bottomMargin: (root.search_overlay ? 4 : 8) + root.st.inset_pad + root.st.lcd_margin * 2 + root.engraving_height
                     text: root.key_help !== "" ? root.help_hint : root.footer_hint
+                }
+
+                // Takes the typed query off screen; MenuFooter draws it in the footer line.
+                TextInput {
+                    id: search_input
+                    width: 0
+                    height: 0
+                    opacity: 0
+                    maximumLength: 64
+                    onTextChanged: {
+                        root.search_query = text;
+                        if (root.search_typing && text !== "") {
+                            const i = Search.best(root.search_rows, text);
+                            if (i >= 0) root.search_select(i);
+                        }
+                    }
+
+                    Keys.onPressed: event => {
+                        if (event.key === Qt.Key_Escape || (event.key === Qt.Key_Backspace && search_input.text === "")) {
+                            root.clear_search();
+                        } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
+                            root.accept_search();
+                        } else if (event.key === Qt.Key_Down || event.key === Qt.Key_Up) {
+                            root.step_search(event.key === Qt.Key_Down ? 1 : -1);
+                        } else {
+                            return;
+                        }
+                        event.accepted = true;
+                    }
                 }
 
                 FocusScope {
@@ -479,7 +572,10 @@ PanelWindow {
                     focus: true
                     opacity: root.help_open ? 0 : 1
 
-                    Keys.onEscapePressed: Popups.close()
+                    Keys.onEscapePressed: {
+                        if (root.search_query !== "") root.clear_search();
+                        else Popups.close();
+                    }
                     Keys.onPressed: event => root.handle_shared_key(event)
                 }
 
@@ -490,6 +586,7 @@ PanelWindow {
                     text: root.key_help
                     tab_count: root.tabs.length
                     has_views: root.sub_views.length > 0
+                    searchable: root.search_enabled
                     onBack: root.help_open = false
                 }
             }

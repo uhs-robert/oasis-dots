@@ -33,6 +33,13 @@ Popup {
     }
     onSessionsChanged: selected = Math.max(0, Math.min(selected, sessions.length - 1));
     onCurrent_tabChanged: if (root.current_tab === 1) ClaudeUsageState.refresh(false);
+    search_enabled: root.current_tab === 0
+    search_rows: root.sessions.map(x => (x.title || "Untitled") + " " + (x.project || "") + " " + (x.agent || "claude"))
+    search_cursor: root.selected
+    onSearch_select: index => {
+        root.selected = index;
+        session_list.positionViewAtIndex(index, ListView.Contain);
+    }
     onJump_first: root.go_first()
     onJump_last: root.go_last()
 
@@ -227,11 +234,11 @@ Popup {
                                     font.bold: true
                                 }
 
-                                Text {
+                                RowLabel {
                                     Layout.fillWidth: true
                                     Layout.minimumWidth: 0
                                     elide: Text.ElideRight
-                                    text: session_row.modelData.title || "Untitled"
+                                    label: session_row.modelData.title || "Untitled"
                                     color: session_row.fg(root.st.text_fg)
                                     font.family: root.st.font_family
                                     font.pixelSize: root.st.font_size - 1
@@ -242,11 +249,11 @@ Popup {
                                 Layout.fillWidth: true
                                 spacing: 6
 
-                                Text {
+                                RowLabel {
                                     Layout.fillWidth: true
                                     Layout.minimumWidth: 0
                                     elide: Text.ElideRight
-                                    text: (session_row.modelData.agent || "claude") + " · " + (session_row.modelData.project || "") + " · " + (session_row.modelData.where || "") + " · " + root.age(session_row.modelData.since)
+                                    label: (session_row.modelData.agent || "claude") + " · " + (session_row.modelData.project || "") + " · " + (session_row.modelData.where || "") + " · " + root.age(session_row.modelData.since)
                                     color: session_row.fg(root.st.text_muted)
                                     font.family: root.st.font_family
                                     font.pixelSize: root.st.font_size - 3

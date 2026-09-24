@@ -13,6 +13,7 @@ Item {
     property string text: ""
     property int tab_count: 0
     property bool has_views: false
+    property bool searchable: false
     signal back()
 
     readonly property var own_entries: KeyHints.parse(root.text).filter(g => !(g.key === "[ ]" && g.desc === "tabs") && !(/^1-\d$/.test(g.key) && g.desc === "select") && !(g.key === "q" && g.desc === "close"))
@@ -24,6 +25,7 @@ Item {
             e.push({ key: root.tab_count > 1 ? "1-" + Math.min(9, root.tab_count) : "1", desc: "select" });
         }
         if (root.has_views) e.push({ key: "Tab", desc: "views" });
+        if (root.searchable) e.push({ key: "/", desc: "search" }, { key: "n/N", desc: "next/prev match" });
         e.push({ key: "?", desc: "help" }, { key: "Esc/Backspace", desc: "back" }, { key: "q", desc: "close" });
         return e.filter(g => root.own_keys.indexOf(g.key) < 0);
     }

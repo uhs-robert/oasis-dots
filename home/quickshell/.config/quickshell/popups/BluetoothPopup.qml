@@ -27,6 +27,10 @@ Popup {
     onIs_openChanged: if (is_open) root.selected = 0;
     onJump_first: root.selected = root.has_adapter ? -1 : 0
     onJump_last: root.selected = Math.max(0, root.devices.length - 1)
+    search_enabled: true
+    search_rows: root.devices.map(d => d.name)
+    search_cursor: root.selected
+    onSearch_select: index => root.selected = index
 
     function toggle_power() {
         if (root.has_adapter) root.adapter.enabled = !root.adapter.enabled;
@@ -120,10 +124,10 @@ Popup {
                             font.pixelSize: root.st.font_size - 1
                         }
 
-                        Text {
+                        RowLabel {
                             Layout.fillWidth: true
                             elide: Text.ElideRight
-                            text: device_row.modelData.name
+                            label: device_row.modelData.name
                             color: device_row.fg(device_row.modelData.connected ? root.st.text_accent : root.st.text_fg)
                             font.family: root.st.font_family
                             font.pixelSize: root.st.font_size - 1
