@@ -40,7 +40,7 @@ Item {
 
         Item {
             Layout.alignment: Qt.AlignVCenter
-            implicitWidth: glyph.implicitWidth
+            implicitWidth: glyph.implicitWidth + (count_text.visible ? count_text.implicitWidth * 0.6 : 0)
             implicitHeight: glyph.implicitHeight
 
             Text {
@@ -51,25 +51,16 @@ Item {
                 font.pixelSize: Theme.glyph_size
             }
 
-            Rectangle {
+            Text {
+                id: count_text
                 visible: root.unread > 0
-                width: badge_label.implicitWidth + 6
-                height: 12
-                radius: 6
-                anchors.right: glyph.right
-                anchors.top: glyph.top
-                anchors.margins: -3
-                color: Theme.theme_primary
-
-                Text {
-                    id: badge_label
-                    anchors.centerIn: parent
-                    text: root.unread > 99 ? "99+" : String(root.unread)
-                    color: Theme.bg_core
-                    font.family: Theme.font_family
-                    font.pixelSize: Theme.font_size - 5
-                    font.bold: true
-                }
+                x: glyph.implicitWidth - implicitWidth * 0.4
+                y: -3
+                text: root.unread > 99 ? "99+" : String(root.unread)
+                color: glyph.color
+                font.family: Theme.font_family
+                font.pixelSize: Theme.font_size - 3
+                font.bold: true
             }
         }
     }
