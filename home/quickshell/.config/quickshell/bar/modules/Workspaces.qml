@@ -9,6 +9,7 @@ import "../../services"
 import "../../components"
 import "../../components/ff7" as Ff7
 import "../../components/gameboy" as Gameboy
+import "../../components/metroid" as Metroid
 import "../../components/nes" as Nes
 import "../../components/ps1" as Ps1
 import "../../components/ps2" as Ps2
@@ -31,8 +32,10 @@ Item {
     // FF7 weapon slot bar: apps are materia orbs in sockets linked in pairs.
     readonly property bool materia: Style.workspace_art === "materia"
     readonly property int slot_size: compact ? 22 : 24
-    readonly property int icon_size: materia ? (compact ? 10 : 12) : party ? (compact ? 14 : 16) : slots ? (compact ? 15 : 17) : compact ? 16 : 19
-    readonly property int pill_height: materia ? slot_size : map ? 34 : slots ? (compact ? 26 : 30) : party ? (compact ? 22 : 26) : compact ? 20 : 22
+    // Metroid door hatches: closed doors show their app count, the active one opens onto its apps.
+    readonly property bool doors: Style.workspace_art === "doors"
+    readonly property int icon_size: materia ? (compact ? 10 : 12) : doors ? (compact ? 12 : 14) : party ? (compact ? 14 : 16) : slots ? (compact ? 15 : 17) : compact ? 16 : 19
+    readonly property int pill_height: materia ? slot_size : doors ? (compact ? 26 : 30) : map ? 34 : slots ? (compact ? 26 : 30) : party ? (compact ? 22 : 26) : compact ? 20 : 22
     readonly property int tile_face: compact ? 8 : 10
     readonly property int tile_depth: compact ? 2 : 3
 
@@ -126,7 +129,7 @@ Item {
     Row {
         id: row
         x: root.materia ? 6 : 0
-        spacing: root.materia ? (root.compact ? 10 : 12) : root.map ? 8 : root.slots || root.party ? 6 : root.compact ? 6 : 8
+        spacing: root.materia ? (root.compact ? 10 : 12) : root.doors ? 2 : root.map ? 8 : root.slots || root.party ? 6 : root.compact ? 6 : 8
 
         Repeater {
             model: root.workspace_list
@@ -146,12 +149,12 @@ Item {
                 readonly property int cursor_gap: root.party && modelData.focused ? root.party_gap : 0
 
                 height: root.pill_height
-                width: root.materia ? (is_empty ? root.slot_size : icons.implicitWidth) : root.party ? cursor_gap + (is_empty ? height : icons.implicitWidth + 10) : pill.map ? Math.max(22, icons.implicitWidth + 8) : root.slots ? (is_empty ? root.tile_face * 2 + 4 : icons.implicitWidth + root.tile_face + 6) : is_empty ? height : icons.implicitWidth + (modelData.active ? 22 : 12)
+                width: root.materia ? (is_empty ? root.slot_size : icons.implicitWidth) : root.doors ? (modelData.active && !is_empty ? icons.implicitWidth + height - 4 : height) : root.party ? cursor_gap + (is_empty ? height : icons.implicitWidth + 10) : pill.map ? Math.max(22, icons.implicitWidth + 8) : root.slots ? (is_empty ? root.tile_face * 2 + 4 : icons.implicitWidth + root.tile_face + 6) : is_empty ? height : icons.implicitWidth + (modelData.active ? 22 : 12)
                 radius: pill.map || root.party || root.slots ? 0 : Style.bar_pill_square || pill.qblock ? 0 : height / 2
                 rotation: pill.diamond ? 45 : 0
                 scale: pill.diamond ? 0.75 : 1
                 antialiasing: pill.diamond || radius > 0
-                color: root.materia || pill.qblock || pill.ps2 || root.slots || pill.map || root.party ? "transparent" : modelData.focused ? Style.bar_workspace_focused : modelData.active ? Style.bar_workspace_active : Style.bar_workspace_idle
+                color: root.materia || root.doors || pill.qblock || pill.ps2 || root.slots || pill.map || root.party ? "transparent" : modelData.focused ? Style.bar_workspace_focused : modelData.active ? Style.bar_workspace_active : Style.bar_workspace_idle
                 border.width: !root.materia && !root.slots && !pill.map && !root.party && Style.bar_workspace_ring.a > 0 && !(Style.bar_workspace_diamond && !is_empty && modelData.focused) ? 1 : 0
                 border.color: Style.bar_workspace_ring
 
@@ -166,7 +169,18 @@ Item {
                 Loader {
                     anchors.fill: parent
                     z: pill.map ? 1 : 0
-                    sourceComponent: root.materia ? ff7_slots : pill.qblock ? nes_qblock : root.slots ? ps1_card : pill.ps2 ? (pill.is_empty ? ps2_cube : ps2_block) : pill.map ? snes_dot : root.party ? gb_party : null
+
+                    Component {
+                        id: metroid_door
+                        Metroid.DoorHatch {
+                            open: pill.modelData.active
+                            lit: pill.modelData.focused
+                            empty: pill.is_empty
+                            count: pill.toplevels.length
+                        }
+                    }
+
+                    sourceComponent: root.materia ? ff7_slots : root.doors ? metroid_door : pill.qblock ? nes_qblock : root.slots ? ps1_card : pill.ps2 ? (pill.is_empty ? ps2_cube : ps2_block) : pill.map ? snes_dot : root.party ? gb_party : null
 
                     Component {
                         id: ff7_slots
@@ -298,6 +312,7 @@ Item {
 
                 Row {
                     id: icons
+                    visible: !root.doors || pill.modelData.active
                     anchors.centerIn: pill.map || root.slots ? undefined : parent
                     anchors.horizontalCenter: pill.map || root.slots ? parent.horizontalCenter : undefined
                     anchors.top: pill.map || root.slots ? parent.top : undefined
@@ -313,7 +328,7 @@ Item {
                             required property var modelData
                             required property int index
 
-                            width: root.materia ? root.slot_size : pill.glyph + (root.slots || pill.map || root.party ? 0 : 4)
+                            width: root.materia ? root.slot_size : pill.glyph + (root.doors || root.slots || pill.map || root.party ? 0 : 4)
                             height: width
 
                             Ff7.MateriaSlot {
