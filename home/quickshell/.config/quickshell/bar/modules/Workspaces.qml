@@ -9,6 +9,7 @@ import "../../services"
 import "../../components"
 import "../../components/ff7" as Ff7
 import "../../components/gameboy" as Gameboy
+import "../../components/goldeneye" as Goldeneye
 import "../../components/metroid" as Metroid
 import "../../components/nes" as Nes
 import "../../components/ps1" as Ps1
@@ -28,6 +29,8 @@ Item {
     readonly property bool map: Style.console_views === "snes"
     // Pokemon party rows: a double-bordered box per workspace, the focused one pointed at by a cursor.
     readonly property bool party: Style.controller === "gameboy"
+    // GoldenEye watch dial: workspace ticks on one arc replace the pills.
+    readonly property bool dial: Style.workspace_art === "dial"
     readonly property int party_gap: 8
     // FF7 weapon slot bar: apps are materia orbs in sockets linked in pairs.
     readonly property bool materia: Style.workspace_art === "materia"
@@ -131,8 +134,18 @@ Item {
         x: root.materia ? 6 : 0
         spacing: root.materia ? (root.compact ? 10 : 12) : root.doors ? 2 : root.map ? 8 : root.slots || root.party ? 6 : root.compact ? 6 : 8
 
+        Loader {
+            active: root.dial
+            visible: active
+            sourceComponent: Goldeneye.WatchDial {
+                host: root
+                workspaces: root.workspace_list
+                compact: root.compact
+            }
+        }
+
         Repeater {
-            model: root.workspace_list
+            model: root.dial ? [] : root.workspace_list
 
             Rectangle {
                 id: pill
