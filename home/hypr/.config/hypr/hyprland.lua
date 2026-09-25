@@ -26,6 +26,8 @@ local function init()
       quickshell_ipc = Scripts.qs_ipc,
       auto_show = { disabled = { "NORMAL", "INSERT", "VISUAL", "V-LINE", "Cursor" } },
     },
+    -- reaches Quickshell through which_key.quickshell_ipc; the terminal bar is the fallback
+    prompt = { frontend = Config.shell == "quickshell" and "quickshell" or "terminal" },
   })
 end
 

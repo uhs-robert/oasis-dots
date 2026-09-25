@@ -73,6 +73,7 @@ ShellRoot {
     MediaPopup {}
     NotificationsPopup {}
     Picker {}
+    HyprvimPrompt {}
     AppsProvider {}
     PopupIpc {}
     PickerIpc {}

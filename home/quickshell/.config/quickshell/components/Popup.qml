@@ -15,6 +15,15 @@ PanelWindow {
     property real preferred_width: 260
     // Content height; the base adds the style's title tab and footer around it.
     property real body_height: 0
+    // Opt-in for dock_bottom: the surface keeps this content height while the drawn panel grows inside it, so it never resizes.
+    property real reserve_height: 0
+    readonly property bool reserving: root.dock_bottom && root.reserve_height > 0
+    property real drawn_body_height: root.body_height
+    Behavior on drawn_body_height {
+        enabled: root.reserving && root.visible && root.drop_progress === 1
+        NumberAnimation { duration: 150; easing.type: Easing.OutCubic }
+    }
+    readonly property real panel_height: root.reserving ? Math.min(root.height, root.drawn_body_height + root.header_height + root.footer_height + root.st.frame_drop) : root.height
     property string title: popup_name.toUpperCase()
     // A live value after the style's title readout, e.g. unread counts.
     property string title_value: ""
@@ -192,7 +201,7 @@ PanelWindow {
 
     // Never narrower than the island's bottom edge (its body, between the slants).
     implicitWidth: root.passive ? root.island_width : root.fit_island && root.island_width > 0 && root.side !== "center" ? root.island_width : Math.max(Style.px(preferred_width) + root.st.lcd_margin * 2, island_width, root.st.popup_min_width)
-    implicitHeight: body_height + header_height + footer_height + root.st.frame_drop
+    implicitHeight: (root.reserving ? Math.max(reserve_height, body_height) : body_height) + header_height + footer_height + root.st.frame_drop
     default property alias content: content_scope.data
 
     readonly property bool wanted: root.passive ? Tooltip.visible && Tooltip.island !== null && Popups.open_name === "" : Popups.open_name === root.popup_name && Popups.open_screen_name !== ""
@@ -222,10 +231,23 @@ PanelWindow {
     WlrLayershell.namespace: "quickshell-popup"
     WlrLayershell.layer: WlrLayer.Overlay
     WlrLayershell.keyboardFocus: root.passive ? WlrKeyboardFocus.None : WlrKeyboardFocus.OnDemand
-    mask: root.passive ? no_input : null
+    mask: root.passive ? no_input : root.reserving ? panel_input : null
 
     Region {
         id: no_input
+    }
+
+    // The transparent reserve above the panel passes clicks through to the scrim below, which closes the popup.
+    Region {
+        id: panel_input
+        item: panel_area
+    }
+
+    Item {
+        id: panel_area
+        y: root.height - root.panel_height
+        width: root.width
+        height: root.panel_height
     }
 
     readonly property int line_height: root.st.accent_height
@@ -334,7 +356,7 @@ PanelWindow {
         onPressed: mouse => {
             const px = mouse.x + outside_catch.x;
             const py = mouse.y + outside_catch.y;
-            if (px >= 0 && py >= 0 && px < root.width && py < root.height) mouse.accepted = false;
+            if (px >= 0 && py >= root.height - root.panel_height && px < root.width && py < root.height) mouse.accepted = false;
             else if (root.wanted) Popups.close();
         }
     }
@@ -363,7 +385,7 @@ PanelWindow {
         readonly property var search_popup: root
         y: root.dock_bottom ? root.height - reveal.height : root.line_height
         width: root.width
-        height: (root.height - root.line_height) * root.drop_progress
+        height: (root.panel_height - root.line_height) * root.drop_progress
         clip: true
 
         Rectangle {
@@ -378,7 +400,7 @@ PanelWindow {
 
         Item {
             width: root.width
-            height: root.height - root.line_height - (root.dock_bottom ? 0 : root.st.frame_drop)
+            height: root.panel_height - root.line_height - (root.dock_bottom ? 0 : root.st.frame_drop)
 
             // Reads as the island unfolding downward: its color, joined flush under the accent line.
             Rectangle {
