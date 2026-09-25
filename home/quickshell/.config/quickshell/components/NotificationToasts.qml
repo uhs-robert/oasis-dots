@@ -73,14 +73,15 @@ PanelWindow {
         Keys.onPressed: event => root.handle_key(event)
 
         Repeater {
-            model: root.visible_toasts
+            // Ids, not entries: an array model snapshots copies of its objects. Each change still rebuilds the cards.
+            model: root.visible_toasts.map(e => e.id)
 
             NotificationToastCard {
                 id: toast_card
                 Layout.fillWidth: true
                 required property var modelData
-                entry: toast_card.modelData
-                selected: NotificationState.toast_focus && !!toast_card.modelData && toast_card.modelData.id === NotificationState.toast_selected_id
+                entry: root.visible_toasts.find(e => e.id === toast_card.modelData) || null
+                selected: NotificationState.toast_focus && toast_card.modelData === NotificationState.toast_selected_id
                 focused_action: toast_card.selected ? NotificationState.toast_action : -1
             }
         }

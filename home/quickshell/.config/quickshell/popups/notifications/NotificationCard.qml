@@ -13,6 +13,8 @@ Item {
     id: root
 
     property var entry: null
+    // Set by the list: entry.read changes in place, which a binding on entry can't see.
+    property bool unread: false
     property bool selected: false
     property int focused_action: -1
     // The card's 1-based position in the list, shown by styles with channel cards.
@@ -189,7 +191,7 @@ Item {
         }
 
         Rectangle {
-            visible: root.entry && !root.entry.read
+            visible: root.unread
             width: 8
             height: 8
             radius: Style.radius(4)

@@ -334,11 +334,13 @@ Popup {
                     visible: root.rows.length > 0
                     clip: true
                     spacing: 6
-                    model: root.rows
+                    // An index model reads the live rows; an array model would snapshot copies of them.
+                    model: root.rows.length
 
                     delegate: Item {
                         id: row_item
-                        required property var modelData
+                        required property int index
+                        readonly property var modelData: root.rows[row_item.index] || ({ type: "" })
 
                         width: ListView.view.width
                         height: row_item.modelData.type === "day" ? day_text.implicitHeight + 6 : row_item.modelData.type === "app_header" ? app_header.implicitHeight + 4 : card.implicitHeight
@@ -387,6 +389,7 @@ Popup {
                             visible: row_item.modelData.type === "entry"
                             width: row_item.width
                             entry: row_item.modelData.type === "entry" ? row_item.modelData.entry : null
+                            unread: row_item.modelData.type === "entry" && !row_item.modelData.entry.read
                             selected: !!(row_item.modelData.type === "entry" && root.entry_rows[root.selected] && root.entry_rows[root.selected].entry.id === row_item.modelData.entry.id)
                             focused_action: card.selected ? root.action_index : -1
                             channel: root.entry_rows.indexOf(row_item.modelData) + 1

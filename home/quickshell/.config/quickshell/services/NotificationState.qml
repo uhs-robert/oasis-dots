@@ -13,6 +13,8 @@ Singleton {
     property var history: []
     property var toasts: []
     property bool dnd: false
+    // Toast timers by entry id; kept off the entries so model rows never hold a Timer.
+    property var timers: ({})
     readonly property int unread: history.filter(e => !e.read).length
 
     readonly property int timeout_normal_ms: 5000
@@ -66,7 +68,7 @@ Singleton {
     }
 
     function make_entry(n, read) {
-        const entry = { id: n.id, notification: n, time: Date.now(), timer: null, read: read, on_closed: null };
+        const entry = { id: n.id, notification: n, time: Date.now(), read: read, paused: false, on_closed: null };
         entry.on_closed = () => root.remove_entry(entry);
         n.closed.connect(entry.on_closed);
         return entry;
@@ -75,14 +77,28 @@ Singleton {
     // Only visible toasts count down; queued ones wait for a slot so a burst never expires unseen.
     function sync_timers() {
         root.toasts.forEach((entry, i) => {
+            const timer = root.timers[entry.id];
             if (i >= root.max_visible_toasts) {
-                if (entry.timer) entry.timer.stop();
-            } else if (!entry.timer) {
+                if (timer) timer.stop();
+            } else if (!timer) {
                 root.start_timeout(entry, entry.notification);
-            } else if (!entry.timer.running && !entry.paused && !root.toast_focus) {
-                entry.timer.restart();
+            } else if (!timer.running && !entry.paused && !root.toast_focus) {
+                timer.restart();
             }
         });
+    }
+
+    // Maps any entry-shaped value (e.g. from a delegate) back to the live entry with its id.
+    function resolve(entry) {
+        if (!entry) return null;
+        return root.toasts.find(e => e.id === entry.id) || root.history.find(e => e.id === entry.id) || null;
+    }
+
+    function stop_all_timers(entries) {
+        for (const entry of entries) {
+            const timer = root.timers[entry.id];
+            if (timer) timer.stop();
+        }
     }
 
     function start_timeout(entry, n) {
@@ -90,28 +106,37 @@ Singleton {
         const fallback = n.urgency === NotificationUrgency.Critical ? 0 : n.urgency === NotificationUrgency.Low ? root.timeout_low_ms : root.timeout_normal_ms;
         const ms = n.expireTimeout >= 0 ? n.expireTimeout : fallback;
         if (ms <= 0) return;
+        const id = entry.id;
         const timer = timer_component.createObject(root, { interval: ms });
         timer.triggered.connect(() => {
+            if (root.timers[id] !== timer) return;
+            const in_history = root.history.some(e => e.id === id);
             root.hide_toast(entry);
-            if (!root.history.includes(entry) && entry.notification) entry.notification.expire();
+            if (!in_history && entry.notification) entry.notification.expire();
         });
-        entry.timer = timer;
+        root.timers[id] = timer;
         if (!root.toast_focus) timer.start();
     }
 
-    function stop_timer(entry) {
-        if (!entry.timer) return;
-        entry.timer.stop();
-        entry.timer.destroy();
-        entry.timer = null;
+    function stop_timer(id) {
+        const timer = root.timers[id];
+        if (!timer) return;
+        delete root.timers[id];
+        timer.stop();
+        timer.destroy();
     }
 
     // Drops an entry from both lists, e.g. when the app itself closes/expires it.
     function remove_entry(entry) {
-        root.toasts = root.toasts.filter(e => e !== entry);
-        root.history = root.history.filter(e => e !== entry);
-        root.stop_timer(entry);
-        root.disconnect_entry(entry);
+        const live = root.resolve(entry);
+        if (!live) {
+            if (entry) root.disconnect_entry(entry);
+            return;
+        }
+        root.toasts = root.toasts.filter(e => e.id !== live.id);
+        root.history = root.history.filter(e => e.id !== live.id);
+        root.stop_timer(live.id);
+        root.disconnect_entry(live);
         root.sync_timers();
     }
 
@@ -124,8 +149,10 @@ Singleton {
     }
 
     function dismiss(entry) {
-        if (entry.notification) entry.notification.dismiss();
-        root.remove_entry(entry);
+        const live = root.resolve(entry);
+        if (!live) return;
+        if (live.notification) live.notification.dismiss();
+        root.remove_entry(live);
     }
 
     function clear_all() {
@@ -134,8 +161,10 @@ Singleton {
     }
 
     function hide_toast(entry) {
-        root.toasts = root.toasts.filter(e => e !== entry);
-        root.stop_timer(entry);
+        if (!entry) return;
+        const id = entry.id;
+        root.toasts = root.toasts.filter(e => e.id !== id);
+        root.stop_timer(id);
         root.sync_timers();
     }
 
@@ -148,20 +177,25 @@ Singleton {
     }
 
     function pause_toast(entry) {
-        entry.paused = true;
-        if (entry.timer) entry.timer.stop();
+        const live = root.resolve(entry);
+        if (!live) return;
+        live.paused = true;
+        root.stop_all_timers([live]);
     }
 
     function resume_toast(entry) {
-        entry.paused = false;
-        if (entry.timer && !root.toast_focus) entry.timer.restart();
+        const live = root.resolve(entry);
+        if (!live) return;
+        live.paused = false;
+        const timer = root.timers[live.id];
+        if (timer && !root.toast_focus) timer.restart();
     }
 
     function focus_toast(direction) {
         if (root.visible_toasts.length === 0) return false;
         if (!root.toast_focus) {
             root.toast_focus = true;
-            for (const entry of root.toasts) if (entry.timer) entry.timer.stop();
+            root.stop_all_timers(root.toasts);
             root.select_toast(0);
         } else {
             root.move_toast(direction === "prev" ? -1 : 1);
@@ -222,7 +256,7 @@ Singleton {
             root.leave_toast_focus();
             return;
         }
-        for (const entry of list) if (entry.timer) entry.timer.stop();
+        root.stop_all_timers(list);
         const idx = list.findIndex(e => e.id === root.toast_selected_id);
         if (idx >= 0) root.toast_index = idx;
         else root.select_toast(Math.min(root.toast_index, list.length - 1));
@@ -249,6 +283,7 @@ Singleton {
     }
 
     function invoke_default(entry) {
+        entry = root.resolve(entry) || entry;
         const n = entry.notification;
         const action = root.find_default_action(n);
         if (n) root.focus_app(n.desktopEntry, n.appName);
@@ -268,6 +303,7 @@ Singleton {
 
     // Per spec an invoked action closes the notification unless the app marked it resident.
     function invoke_action(entry, action) {
+        entry = root.resolve(entry) || entry;
         action.invoke();
         if (entry.notification && entry.notification.resident) root.hide_toast(entry);
         else root.dismiss(entry);
