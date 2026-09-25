@@ -6,6 +6,9 @@ import Quickshell.Services.Pipewire
 import "../components"
 import "../theme"
 import "../services"
+import "snes" as Snes
+import "../components/ps1" as Ps1
+import "../components/ps2" as Ps2
 
 Popup {
     id: root
@@ -71,6 +74,22 @@ Popup {
 
     function is_slider_row(type) {
         return type !== "sink_device" && type !== "source_device";
+    }
+
+    // The PS1 CD Player: devices and streams as numbered tracks, levels as its VU meter.
+    readonly property bool cd: root.st.console_views === "ps1"
+
+    function track_number(index) {
+        const row = root.rows[index];
+        if (!row) return 0;
+        if (row.type === "stream") return root.device_indices.length + root.streams.indexOf(row.node) + 1;
+        return root.device_indices.indexOf(index) + 1;
+    }
+
+    function channel_levels(node) {
+        const a = node && node.audio;
+        if (!a) return [0];
+        return a.volumes && a.volumes.length >= 2 ? [a.volumes[0], a.volumes[1]] : [a.volume];
     }
 
     property int selected: 0
@@ -153,6 +172,27 @@ Popup {
             anchors.top: parent.top
             spacing: 2
 
+            Loader {
+                id: sink_ring
+                readonly property var sink_audio: Pipewire.defaultAudioSink ? Pipewire.defaultAudioSink.audio : null
+                active: root.st.console_views === "ps2" && !!sink_audio
+                visible: active
+                Layout.fillWidth: true
+                Layout.preferredHeight: active ? Style.px(112) : 0
+                Layout.bottomMargin: 6
+                sourceComponent: Item {
+                    Ps2.SphereRing {
+                        readonly property var audio: sink_ring.sink_audio
+                        anchors.centerIn: parent
+                        width: parent.height
+                        value: audio ? audio.volume : 0
+                        dimmed: !!audio && audio.muted
+                        label: audio ? String(Math.round(audio.volume * 100)) : ""
+                        caption: audio && audio.muted ? "Muted" : "Volume"
+                    }
+                }
+            }
+
             ListView {
                 id: rows_list
                 Layout.fillWidth: true
@@ -176,8 +216,34 @@ Popup {
                         label: root.section_of(row_wrap.modelData.type)
                     }
 
+                    Loader {
+                        active: root.st.console_views === "snes"
+                        visible: active
+                        width: row_wrap.width
+                        sourceComponent: Snes.SnesVolumeRow {
+                            readonly property var audio: row_wrap.modelData.node.audio
+                            label: root.row_label(row_wrap.modelData)
+                            key: root.row_key(row_wrap.index)
+                            selected: row_wrap.index === root.selected
+                            level_row: root.is_slider_row(row_wrap.modelData.type)
+                            is_default: row_wrap.modelData.node === Pipewire.defaultAudioSink || row_wrap.modelData.node === Pipewire.defaultAudioSource
+                            searchable: !level_row || row_wrap.modelData.type === "stream"
+                            volume: audio ? audio.volume : 0
+                            muted: !!audio && audio.muted
+                            onClicked: {
+                                root.selected = row_wrap.index;
+                                if (!level_row) root.set_default(row_wrap.modelData);
+                            }
+                            onMoved: v => {
+                                if (audio) audio.volume = v;
+                            }
+                            onMute_clicked: root.toggle_mute(row_wrap.modelData.node)
+                        }
+                    }
+
                     MenuRow {
                         id: vol_row
+                        visible: root.st.console_views !== "snes"
                         width: row_wrap.width
                         height: Style.px(22)
                         selected: row_wrap.index === root.selected
@@ -189,6 +255,16 @@ Popup {
                             anchors.leftMargin: 6 + vol_row.inset
                             anchors.rightMargin: 6 + vol_row.key_space
                             spacing: 6
+
+                            Loader {
+                                active: root.cd
+                                visible: root.cd
+                                sourceComponent: Ps1.TrackBox {
+                                    size: vol_row.height - 4
+                                    number: root.track_number(row_wrap.index)
+                                    lit: row_wrap.modelData.node === Pipewire.defaultAudioSink || row_wrap.modelData.node === Pipewire.defaultAudioSource
+                                }
+                            }
 
                             RowLabel {
                                 Layout.fillWidth: true
@@ -216,6 +292,16 @@ Popup {
                             anchors.rightMargin: 6 + vol_row.key_space
                             spacing: 6
 
+                            Loader {
+                                active: root.cd && row_wrap.modelData.type === "stream"
+                                visible: active
+                                sourceComponent: Ps1.TrackBox {
+                                    size: vol_row.height - 4
+                                    number: root.track_number(row_wrap.index)
+                                    lit: vol_row.selected
+                                }
+                            }
+
                             RowLabel {
                                 Layout.preferredWidth: Style.px(90)
                                 elide: Text.ElideRight
@@ -226,13 +312,36 @@ Popup {
                                 font.pixelSize: root.st.font_size - 1
                             }
 
+                            Loader {
+                                active: root.cd
+                                visible: root.cd
+                                Layout.fillWidth: true
+                                Layout.preferredHeight: Style.px(12)
+                                sourceComponent: Ps1.VuMeter {
+                                    levels: root.channel_levels(row_wrap.modelData.node)
+                                    muted: !!row_wrap.modelData.node.audio && row_wrap.modelData.node.audio.muted
+                                    onMoved: v => {
+                                        if (row_wrap.modelData.node.audio) row_wrap.modelData.node.audio.volume = v;
+                                    }
+                                }
+                            }
+
                             Slider {
+                                visible: !root.cd
                                 Layout.fillWidth: true
                                 on_selection: vol_row.selected
                                 value: row_wrap.modelData.node.audio ? row_wrap.modelData.node.audio.volume : 0
                                 onMoved: v => {
                                     if (row_wrap.modelData.node.audio) row_wrap.modelData.node.audio.volume = v;
                                 }
+                            }
+
+                            Text {
+                                visible: root.st.console_views === "nes"
+                                text: Math.round((row_wrap.modelData.node.audio ? row_wrap.modelData.node.audio.volume : 0) * 100) + "%"
+                                color: vol_row.fg(root.st.text_fg)
+                                font.family: root.st.font_family
+                                font.pixelSize: root.st.font_size - 4
                             }
 
                             Text {

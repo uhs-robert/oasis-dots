@@ -265,7 +265,8 @@ PanelWindow {
     readonly property real band_height: Math.max(26, title_tab.height + 4)
     readonly property real engraving_height: root.st.frame_engraving !== "" ? engraving.implicitHeight + 4 : 0
     readonly property real header_height: (has_title ? (root.banded ? root.band_height + 8 : title_tab.height + title_gap) + root.st.inset_pad : 0) + root.st.lcd_margin * 2 + root.device_top
-    readonly property real footer_height: (has_footer ? base_footer.implicitHeight + 10 + root.st.inset_pad : 0) + root.st.lcd_margin * 2 + engraving_height + root.device_bottom
+    // Console inset rings also clear a content-drawn footer.
+    readonly property real footer_height: (has_footer ? base_footer.implicitHeight + 10 + root.st.inset_pad : root.st.console_views !== "" && root.st.frame_inset_width > 0 ? root.st.inset_pad : 0) + root.st.lcd_margin * 2 + engraving_height + root.device_bottom
     property real line_progress: 0
     property real drop_progress: 0
 
@@ -625,6 +626,16 @@ PanelWindow {
                     font.family: root.st.font_family
                     font.pixelSize: root.st.font_size - 5
                     font.letterSpacing: 1
+                }
+
+                Loader {
+                    active: root.has_title && !root.banded && !root.passive && root.st.console_views === "ps2"
+                    visible: title_tab.x + title_tab.width + 10 <= x
+                    anchors.right: parent.right
+                    anchors.rightMargin: title_readout.anchors.rightMargin
+                    y: title_tab.y + (title_tab.height - height) / 2
+                    source: active ? "ps2/AnalogLed.qml" : ""
+                    onLoaded: item.lit = Qt.binding(() => root.wanted && glow_layer.Window.active)
                 }
 
                 Rectangle {

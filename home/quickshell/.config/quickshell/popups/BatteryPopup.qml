@@ -6,6 +6,10 @@ import Quickshell.Services.UPower
 import "../components"
 import "../theme"
 import "../services"
+import "../components/nes" as Nes
+import "snes" as Snes
+import "../components/ps1" as Ps1
+import "../components/ps2" as Ps2
 
 Popup {
     id: root
@@ -46,6 +50,9 @@ Popup {
     }
 
     property bool ppd_available: false
+    readonly property bool nes: root.st.console_views === "nes"
+    readonly property real status_indent: root.nes ? 22 : 0
+    readonly property real percent_width: percent_metrics.height > 0 ? Math.max(32, Math.ceil(percent_metrics.advanceWidth("100%"))) : 32
     property int selected: 0
 
     readonly property var profiles: {
@@ -133,6 +140,17 @@ Popup {
             }
         }
 
+        Loader {
+            active: root.nes
+            width: 14
+            height: Math.max(0, brightness_row.y - 10)
+            sourceComponent: Nes.EnergyBar {
+                vertical: true
+                value: root.percent / 100
+                low_from: 0.2
+            }
+        }
+
         ColumnLayout {
             id: main_column
             anchors.left: parent.left
@@ -140,14 +158,81 @@ Popup {
             anchors.top: parent.top
             spacing: 4
 
+            // Console status views replace the readout lines.
+            Loader {
+                id: status_view
+                readonly property Component view: ({ snes: snes_status, ps1: ps1_status, ps2: ps2_status })[root.st.console_views] || null
+                active: !!view
+                visible: active
+                Layout.fillWidth: true
+                sourceComponent: view
+            }
+
+            Component {
+                id: snes_status
+                Snes.SnesBatteryStatus {
+                    percent: root.percent
+                    state_label: root.state_label
+                    time_label: root.time_label
+                    rate: root.rate
+                }
+            }
+
+            Component {
+                id: ps1_status
+                Ps1.LifeBar {
+                    value: root.percent / 100
+                    detail: [root.state_label.toUpperCase(), root.time_label, root.rate > 0 ? root.rate.toFixed(1) + " W" : ""].filter(t => t !== "").join("  ")
+                }
+            }
+
+            Component {
+                id: ps2_status
+                Column {
+                    spacing: 0
+
+                    Ps2.ConfigRow {
+                        width: parent.width
+                        label: "Battery"
+                        value: root.has_battery ? Math.round(root.percent) + "%" : "None"
+                        level: root.has_battery ? root.percent / 100 : -1
+                        level_color: root.percent <= 20 && root.state_label === "Discharging" ? Theme.warning : Theme.theme_primary_light
+                    }
+
+                    Ps2.ConfigRow {
+                        width: parent.width
+                        label: "Status"
+                        value: root.state_label
+                    }
+
+                    Ps2.ConfigRow {
+                        visible: root.time_label !== ""
+                        width: parent.width
+                        label: "Time"
+                        value: root.time_label
+                    }
+
+                    Ps2.ConfigRow {
+                        visible: root.rate > 0
+                        width: parent.width
+                        label: "Rate"
+                        value: root.rate.toFixed(1) + " W"
+                    }
+                }
+            }
+
             Text {
-                text: Math.round(root.percent) + "%"
+                visible: !status_view.active
+                Layout.leftMargin: root.status_indent
+                text: (root.nes ? "BAT " : "") + Math.round(root.percent) + "%"
                 color: root.st.text_strong
                 font.family: root.st.font_family
                 font.pixelSize: root.st.font_size + 4
             }
 
             Text {
+                visible: !status_view.active
+                Layout.leftMargin: root.status_indent
                 text: root.state_label
                 color: root.st.text_muted
                 font.family: root.st.font_family
@@ -155,7 +240,8 @@ Popup {
             }
 
             Text {
-                visible: root.time_label !== ""
+                visible: root.time_label !== "" && !status_view.active
+                Layout.leftMargin: root.status_indent
                 text: root.time_label
                 color: root.st.text_muted
                 font.family: root.st.font_family
@@ -163,11 +249,18 @@ Popup {
             }
 
             Text {
-                visible: root.rate > 0
+                visible: root.rate > 0 && !status_view.active
+                Layout.leftMargin: root.status_indent
                 text: root.rate.toFixed(1) + " W"
                 color: root.st.text_muted
                 font.family: root.st.font_family
                 font.pixelSize: root.st.font_size - 2
+            }
+
+            FontMetrics {
+                id: percent_metrics
+                font.family: root.st.font_family
+                font.pixelSize: root.st.font_size - 1
             }
 
             MenuRow {
@@ -198,7 +291,7 @@ Popup {
                     }
 
                     Text {
-                        Layout.preferredWidth: 32
+                        Layout.preferredWidth: root.percent_width
                         text: Backlight.percent + "%"
                         color: brightness_row.fg(root.st.text_fg)
                         font.family: root.st.font_family
@@ -235,7 +328,7 @@ Popup {
                     }
 
                     Text {
-                        Layout.preferredWidth: 32
+                        Layout.preferredWidth: root.percent_width
                         text: Backlight.kbd_percent + "%"
                         color: kbd_row.fg(root.st.text_fg)
                         font.family: root.st.font_family

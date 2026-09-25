@@ -14,6 +14,14 @@ Popup {
     footer_hint: "b/Enter btop · q close"
     body_height: content.implicitHeight + 24
 
+    readonly property real label_width: label_metrics.height > 0 ? Math.max(40, Math.ceil(label_metrics.advanceWidth("Temp"))) : 40
+
+    FontMetrics {
+        id: label_metrics
+        font.family: root.st.font_family
+        font.pixelSize: root.st.font_size - 1
+    }
+
     readonly property var stat_rows: {
         const list = [
             { kind: "cpu", label: "CPU", glyph: "" },
@@ -105,7 +113,7 @@ Popup {
                         }
 
                         Text {
-                            Layout.preferredWidth: 40
+                            Layout.preferredWidth: stat_row.is_btop ? implicitWidth : root.label_width
                             text: stat_row.modelData.label
                             color: stat_row.fg(root.st.text_fg)
                             font.family: root.st.font_family

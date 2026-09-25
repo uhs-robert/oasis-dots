@@ -9,6 +9,9 @@ import Quickshell.Wayland
 import Quickshell.Services.Pipewire
 import "../theme"
 import "../services"
+import "snes" as Snes
+import "ps1" as Ps1
+import "ps2" as Ps2
 
 PanelWindow {
     id: root
@@ -49,6 +52,16 @@ PanelWindow {
     readonly property bool ring_layout: Style.osd_layout === "ring" && !root.showing_vox
     readonly property bool banded: Style.show_title && (Style.title_band.a > 0 || Style.title_strip.a > 0)
     readonly property bool hud_layout: Style.osd_layout === "hud" && !root.showing_vox
+    // Console OSD art picked by osd_layout, with the default parts it replaces.
+    readonly property var console_osd: root.showing_vox ? null : ({
+            rpg: { art: rpg_osd, hides: ["glyph", "meter", "percent"] },
+            alert: { art: alert_osd, hides: ["glyph"] },
+            glow: { art: glow_osd, hides: ["meter", "percent"], size: Style.px(84) }
+        })[Style.osd_layout] || null
+
+    function replaced(part) {
+        return !!root.console_osd && root.console_osd.hides.indexOf(part) >= 0;
+    }
 
     readonly property string title: root.showing_vox ? root.vox_phase.toUpperCase() : root.kind.toUpperCase()
 
@@ -102,6 +115,7 @@ PanelWindow {
         root.muted = new_muted;
         root.delta = Math.round(root.level * 100) - Math.round(prev * 100);
         root.hold_screen();
+        if (!root.level_wanted && Style.osd_layout === "alert" && console_osd_loader.item) console_osd_loader.item.pop();
         root.level_wanted = true;
         root.refresh();
         hide_timer.restart();
@@ -236,7 +250,8 @@ PanelWindow {
         opacity: root.reveal
         width: Math.max(body.implicitWidth + pad_x * 2, title_tab.visible ? title_tab.width + Style.inset_pad * 2 : 0)
         height: header_height + body.implicitHeight + pad_y * 2
-        radius: Style.rounded && !Style.frame_visor ? height / 2 : Style.frame_radius
+        // Sized console art makes the frame near square, where a pill radius would round it into a circle.
+        radius: Style.rounded && !Style.frame_visor && !(root.console_osd && root.console_osd.size) ? height / 2 : Style.frame_radius
         color: Style.frame_chamfer > 0 || Style.frame_visor || Style.custom_frame ? "transparent" : Style.frame_follows_island ? Theme.bg_core : Style.frame_color
         border.width: Style.frame_visor || Style.frame_chamfer > 0 || Style.custom_frame ? 0 : Style.frame_border_width
         border.color: Style.frame_border_color
@@ -386,8 +401,18 @@ PanelWindow {
                     label: root.kind === "brightness" ? "Backlight" : root.muted ? "Muted" : "\u25d6 " + (root.sink ? root.sink.description || root.sink.name : "")
                 }
 
+                Loader {
+                    id: console_osd_loader
+                    active: !!root.console_osd
+                    visible: active
+                    Layout.alignment: Qt.AlignVCenter
+                    Layout.preferredWidth: root.console_osd && root.console_osd.size ? root.console_osd.size : -1
+                    Layout.preferredHeight: root.console_osd && root.console_osd.size ? root.console_osd.size : -1
+                    sourceComponent: root.console_osd ? root.console_osd.art : null
+                }
+
                 Text {
-                    visible: !root.readout_layout
+                    visible: !root.readout_layout && !root.replaced("glyph")
                     Layout.alignment: Qt.AlignVCenter
                     Layout.preferredWidth: Theme.glyph_size + 4
                     horizontalAlignment: Text.AlignHCenter
@@ -399,13 +424,15 @@ PanelWindow {
                 }
 
                 Item {
-                    visible: !root.readout_layout
+                    visible: !root.readout_layout && !root.replaced("meter")
                     Layout.alignment: Qt.AlignVCenter
                     Layout.preferredWidth: root.showing_vox ? Style.px(260) : Style.px(180)
                     Layout.preferredHeight: root.showing_vox ? Style.px(44) : meter.implicitHeight
 
                     Meter {
                         id: meter
+                        // Volume OSD matches the Volume popup's art (hearts on NES); brightness keeps its own.
+                        art_key: root.kind === "volume" ? "volume" : "osd"
                         visible: !root.showing_vox
                         width: parent.width
                         anchors.verticalCenter: parent.verticalCenter
@@ -424,7 +451,7 @@ PanelWindow {
                 }
 
                 Text {
-                    visible: !root.readout_layout && !root.ring_layout
+                    visible: !root.readout_layout && !root.ring_layout && !root.replaced("percent")
                     Layout.alignment: Qt.AlignVCenter
                     Layout.preferredWidth: percent_metrics.width
                     horizontalAlignment: Text.AlignRight
@@ -434,6 +461,33 @@ PanelWindow {
                     font.pixelSize: percent_metrics.font.pixelSize
                     font.bold: Style.number_font !== Style.font_family
                 }
+            }
+        }
+
+        Component {
+            id: rpg_osd
+            Snes.SnesOsd {
+                level: root.level
+                percent: root.percent
+                muted: root.muted
+            }
+        }
+
+        Component {
+            id: alert_osd
+            Ps1.AlertMark {
+                size: Theme.glyph_size + 10
+                opacity: root.muted ? 0.5 : 1
+            }
+        }
+
+        Component {
+            id: glow_osd
+            Ps2.GlowRing {
+                value: root.level
+                label: String(root.percent)
+                caption: root.muted ? "Muted" : ""
+                dimmed: root.muted
             }
         }
 

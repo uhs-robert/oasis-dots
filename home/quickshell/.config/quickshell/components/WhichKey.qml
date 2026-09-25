@@ -39,7 +39,7 @@ PanelWindow {
         return Math.max(1, Math.min(4, wanted_cols));
     }
     readonly property string longest_key: root.items.reduce((a, item) => item.key.length > a.length ? item.key : a, "")
-    readonly property real key_width: Math.max(key_metrics.height + 2, key_metrics.advanceWidth + 8)
+    readonly property real key_width: Style.controller !== "" ? Math.max(key_metrics.height + 2, key_measure.implicitWidth) : Math.max(key_metrics.height + 2, key_metrics.advanceWidth + 8)
     readonly property real desc_max_width: Math.max(Style.px(80), (root.screen_width * 0.9 - frame.pad_x * 2) / root.columns - root.key_width - Style.px(24))
 
     screen: {
@@ -101,6 +101,23 @@ PanelWindow {
         font.pixelSize: Style.font_size - 5
         font.bold: Style.mono_font === Style.font_family
         text: root.longest_key
+    }
+
+    // Controller buttons change a badge's width, so the key column sizes from the badges as drawn.
+    Column {
+        id: key_measure
+        opacity: 0
+        enabled: false
+
+        Repeater {
+            model: Style.controller !== "" ? root.items : []
+
+            KeyBadge {
+                required property var modelData
+                key: modelData.key
+                desc: modelData.desc || ""
+            }
+        }
     }
 
     Rectangle {
@@ -282,6 +299,7 @@ PanelWindow {
                             KeyBadge {
                                 anchors.verticalCenter: parent.verticalCenter
                                 key: row.modelData.key
+                                desc: row.modelData.desc || ""
                             }
 
                             Text {

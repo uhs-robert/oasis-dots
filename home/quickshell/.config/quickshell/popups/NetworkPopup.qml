@@ -7,6 +7,11 @@ import Quickshell.Networking
 import "../components"
 import "../theme"
 import "../services"
+import "../components/nes" as Nes
+import "../components/snes" as Snes
+import "../components/ps1" as Ps1
+import "../components/ps1/Codec.js" as Codec
+import "../components/ps2" as Ps2
 
 Popup {
     id: root
@@ -43,6 +48,9 @@ Popup {
         return null;
     }
 
+    // The MGS codec: signal read out as a 140.xx frequency.
+    readonly property bool codec: root.st.console_views === "ps1"
+    readonly property bool ps2: root.st.console_views === "ps2"
     readonly property var wifi_glyphs: ["󰤯", "󰤟", "󰤢", "󰤥", "󰤨"]
 
     function signal_glyph(strength) {
@@ -499,6 +507,40 @@ Popup {
                 spacing: 6
                 visible: !root.on_details
 
+                Loader {
+                    active: root.ps2
+                    visible: active
+                    Layout.fillWidth: true
+                    sourceComponent: Column {
+                        readonly property var wifi: root.active_wifi_network
+                        readonly property bool wired: !!root.wired_device && root.wired_device.connected
+                        spacing: 0
+
+                        Ps2.ConfigRow {
+                            width: parent.width
+                            label: "Connection"
+                            value: parent.wifi ? parent.wifi.name : parent.wired ? "Wired: " + root.wired_device.name : "Not connected"
+                            value_color: parent.wifi || parent.wired ? Theme.fg_strong : root.st.text_muted
+                        }
+
+                        Ps2.ConfigRow {
+                            visible: !!parent.wifi
+                            width: parent.width
+                            label: "Signal"
+                            value: parent.wifi ? Math.round(parent.wifi.signalStrength * 100) + "%" : ""
+                            level: parent.wifi ? parent.wifi.signalStrength : -1
+                        }
+
+                        Ps2.ConfigRow {
+                            visible: text_ip !== ""
+                            readonly property string text_ip: parent.wifi ? root.wifi_ipv4 : parent.wired ? root.wired_ipv4 : ""
+                            width: parent.width
+                            label: "IP Address"
+                            value: text_ip
+                        }
+                    }
+                }
+
                 ToggleRow {
                     label: "Wi-Fi"
                     checked: Networking.wifiEnabled
@@ -510,8 +552,19 @@ Popup {
                     }
                 }
 
+                Loader {
+                    active: root.codec && !!root.active_wifi_network
+                    visible: active
+                    Layout.fillWidth: true
+                    sourceComponent: Ps1.CodecPanel {
+                        ssid: root.active_wifi_network ? root.active_wifi_network.name : ""
+                        strength: root.active_wifi_network ? root.active_wifi_network.signalStrength : 0
+                        detail: root.wifi_ipv4
+                    }
+                }
+
                 Text {
-                    visible: !!root.active_wifi_network
+                    visible: !root.codec && !!root.active_wifi_network && !root.ps2
                     text: root.active_wifi_network
                         ? root.active_wifi_network.name + "  " + Math.round(root.active_wifi_network.signalStrength * 100) + "%"
                             + (root.wifi_ipv4 ? "  " + root.wifi_ipv4 : "")
@@ -522,7 +575,7 @@ Popup {
                 }
 
                 Text {
-                    visible: !!root.wired_device && root.wired_device.connected
+                    visible: !!root.wired_device && root.wired_device.connected && !root.ps2
                     text: root.wired_device ? "Wired: " + root.wired_device.name + (root.wired_ipv4 ? "  " + root.wired_ipv4 : "") : ""
                     color: root.st.text_accent
                     font.family: root.st.font_family
@@ -565,14 +618,50 @@ Popup {
                         height: Style.px(24)
                         selected: net_row.index === root.selected
 
+                        Loader {
+                            active: root.ps2
+                            anchors.fill: parent
+                            z: -1
+                            sourceComponent: Ps2.Block {
+                                selected: net_row.selected
+                                radius: 4
+                            }
+                        }
+
                         RowLayout {
                             anchors.fill: parent
                             anchors.leftMargin: 6 + net_row.inset
                             anchors.rightMargin: 6 + net_row.key_space
                             spacing: 6
 
+                            // Console signal art in place of the glyph; SNES puts its gauge at the row's end.
+                            Loader {
+                                id: signal_art
+                                readonly property Component view: ({ nes: nes_signal, ps1: ps1_signal })[root.st.console_views] || null
+                                active: !net_row.is_advanced && !!view
+                                visible: active
+                                sourceComponent: view
+
+                                Component {
+                                    id: nes_signal
+                                    Nes.CoinMeter {
+                                        size: 12
+                                        value: net_row.modelData.signalStrength || 0
+                                    }
+                                }
+
+                                Component {
+                                    id: ps1_signal
+                                    Ps1.Digits {
+                                        text: Codec.freq(net_row.modelData.signalStrength)
+                                        size: root.st.font_size - 7
+                                        color: net_row.modelData.connected ? Theme.green : Qt.tint(Theme.green, Qt.alpha(root.st.text_dim, 0.5))
+                                    }
+                                }
+                            }
+
                             Text {
-                                visible: !net_row.is_advanced
+                                visible: !net_row.is_advanced && !signal_art.active && root.st.console_views !== "snes"
                                 text: root.signal_glyph(net_row.modelData.signalStrength || 0)
                                 color: net_row.fg(net_row.modelData.connected ? root.st.text_primary : root.st.text_fg)
                                 font.family: root.st.font_family
@@ -589,6 +678,14 @@ Popup {
                             }
 
                             Text {
+                                visible: (root.codec || root.st.console_views === "nes") && !net_row.is_advanced
+                                text: Math.round((net_row.modelData.signalStrength || 0) * 100) + "%"
+                                color: net_row.fg(root.st.text_muted)
+                                font.family: root.st.font_family
+                                font.pixelSize: root.st.font_size - 3
+                            }
+
+                            Text {
                                 visible: !net_row.is_advanced && net_row.modelData.security !== WifiSecurityType.Open
                                 text: ""
                                 color: net_row.fg(root.st.text_muted)
@@ -602,6 +699,17 @@ Popup {
                                 color: net_row.fg(root.st.text_muted)
                                 font.family: root.st.font_family
                                 font.pixelSize: root.st.font_size - 2
+                            }
+
+                            Loader {
+                                active: !net_row.is_advanced && root.st.console_views === "snes"
+                                visible: active
+                                Layout.preferredWidth: Style.px(36)
+                                Layout.alignment: Qt.AlignVCenter
+                                sourceComponent: Snes.SnesGauge {
+                                    implicitHeight: 7
+                                    value: net_row.modelData.signalStrength || 0
+                                }
                             }
                         }
 

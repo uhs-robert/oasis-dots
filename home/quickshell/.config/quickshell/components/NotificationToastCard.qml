@@ -5,6 +5,8 @@ import Quickshell
 import Quickshell.Services.Notifications
 import "../theme"
 import "../services"
+import "../popups/weather" as Weather
+import "ps1" as Ps1
 
 Rectangle {
     id: root
@@ -13,6 +15,10 @@ Rectangle {
     property bool selected: false
     property int focused_action: -1
     readonly property var notification: root.entry ? root.entry.notification : null
+    // A Dragon Quest window; toast_enter "type" types its summary out once.
+    readonly property bool dq: Style.card_layout === "dq"
+    property real typed: 1
+    readonly property string summary: root.notification ? root.notification.summary : ""
 
     readonly property var actions: {
         if (!root.notification || !root.notification.actions) return [];
@@ -59,15 +65,74 @@ Rectangle {
 
     implicitHeight: layout.implicitHeight + 16 + Style.inset_pad * 2
     radius: Style.radius(8)
-    color: Style.frame_visor || Style.custom_frame ? "transparent" : Style.boxed_cards
+    color: Style.frame_visor || Style.custom_frame || root.dq ? "transparent" : Style.boxed_cards
         ? (root.selected ? Qt.tint(Style.frame_color, Qt.alpha(Style.caret_color, 0.08)) : Style.frame_color)
         : (root.selected ? Theme.bg_surface : Theme.bg_mantle)
-    border.width: Style.frame_visor || Style.custom_frame ? 0 : root.selected && !Style.boxed_cards ? 2 : 1
+    border.width: Style.frame_visor || Style.custom_frame || root.dq ? 0 : root.selected && !Style.boxed_cards ? 2 : 1
     border.color: root.selected ? Style.caret_color : Style.boxed_cards ? root.accent : Theme.ui_border
     clip: true
 
     opacity: 0
-    Component.onCompleted: enter_anim.start()
+    Component.onCompleted: {
+        enter_anim.start();
+        if (Style.toast_enter === "type") root.typed = 0;
+        const arrival = ({ type: type_enter, mode7: mode7_enter, wobble: wobble_enter })[Style.toast_enter];
+        if (arrival) arrival.start();
+    }
+
+    transform: [
+        Rotation {
+            id: enter_tilt
+            readonly property bool plane: Style.toast_enter === "mode7"
+            origin.x: enter_tilt.plane ? root.width / 2 : root.width
+            origin.y: enter_tilt.plane ? root.height : 0
+            axis { x: enter_tilt.plane ? 1 : 0; y: 0; z: enter_tilt.plane ? 0 : 1 }
+        },
+        Scale {
+            id: enter_zoom
+            origin.x: root.width / 2
+            origin.y: root.height / 2
+        },
+        Translate {
+            id: enter_shift
+        }
+    ]
+
+    // Slides in, then types the summary out once.
+    SequentialAnimation {
+        id: type_enter
+        NumberAnimation { target: enter_shift; property: "x"; from: (root.parent ? root.parent.width : 400) + 16; to: 0; duration: 240; easing.type: Easing.OutCubic }
+        NumberAnimation { target: root; property: "typed"; from: 0; to: 1; duration: Math.min(1200, root.summary.length * 35) }
+    }
+
+    // Flies in once from a small, tilted-back plane to flat.
+    ParallelAnimation {
+        id: mode7_enter
+        NumberAnimation { target: enter_tilt; property: "angle"; from: 70; to: 0; duration: 420; easing.type: Easing.OutCubic }
+        NumberAnimation { target: enter_zoom; property: "xScale"; from: 0.25; to: 1; duration: 420; easing.type: Easing.OutCubic }
+        NumberAnimation { target: enter_zoom; property: "yScale"; from: 0.25; to: 1; duration: 420; easing.type: Easing.OutCubic }
+    }
+
+    // A PS1 affine wobble: slides in tilted and settles through a few overshoots.
+    ParallelAnimation {
+        id: wobble_enter
+
+        NumberAnimation { target: enter_shift; property: "x"; from: 64; to: 0; duration: 260; easing.type: Easing.OutBack }
+
+        SequentialAnimation {
+            NumberAnimation { target: enter_tilt; property: "angle"; from: 7; to: -3; duration: 140; easing.type: Easing.OutQuad }
+            NumberAnimation { target: enter_tilt; property: "angle"; to: 1.5; duration: 90 }
+            NumberAnimation { target: enter_tilt; property: "angle"; to: 0; duration: 80 }
+        }
+    }
+
+    Loader {
+        active: root.dq
+        anchors.fill: parent
+        sourceComponent: Weather.DqWindow {
+            border.color: root.selected ? Style.caret_color : Theme.fg_strong
+        }
+    }
 
     NumberAnimation {
         id: enter_anim
@@ -75,8 +140,28 @@ Rectangle {
         property: "opacity"
         from: 0
         to: 1
-        duration: 180
+        duration: Style.toast_enter === "bloom" ? 420 : 180
         easing.type: Easing.OutCubic
+    }
+
+    // The PS2 bloom: a soft light that swells in with the card and fades once.
+    Loader {
+        active: Style.toast_enter === "bloom"
+        anchors.fill: parent
+        z: 2
+        sourceComponent: Rectangle {
+            radius: root.radius
+            gradient: Gradient {
+                GradientStop { position: 0; color: Qt.alpha(Theme.theme_primary_light, 0.4) }
+                GradientStop { position: 0.6; color: Qt.alpha(Theme.theme_primary, 0.12) }
+                GradientStop { position: 1; color: "transparent" }
+            }
+
+            SequentialAnimation on opacity {
+                NumberAnimation { from: 0; to: 1; duration: 220; easing.type: Easing.OutCubic }
+                NumberAnimation { to: 0; duration: 650; easing.type: Easing.InOutQuad }
+            }
+        }
     }
 
     // Closes with a short fade, then tells the state to actually drop the entry.
@@ -128,7 +213,7 @@ Rectangle {
     }
 
     FrameInset {
-        visible: Style.boxed_cards && Style.frame_inset_width > 0
+        visible: Style.boxed_cards && Style.frame_inset_width > 0 && !root.dq
         edge: root.border.width
         top_radius: root.radius
         bottom_radius: root.radius
@@ -237,11 +322,21 @@ Rectangle {
         anchors.leftMargin: (Style.row_cursor !== "" ? 16 : 12) + Style.inset_pad
         spacing: 8
 
+        Loader {
+            active: Style.console_views === "ps1"
+            visible: active
+            Layout.alignment: Qt.AlignTop
+            sourceComponent: Ps1.CodecPortrait {
+                notification: root.notification
+                size: 38
+            }
+        }
+
         Image {
             Layout.alignment: Qt.AlignTop
             Layout.preferredWidth: 36
             Layout.preferredHeight: 36
-            visible: root.notification && (root.notification.image !== "" || root.notification.appIcon !== "")
+            visible: Style.console_views !== "ps1" && root.notification && (root.notification.image !== "" || root.notification.appIcon !== "")
             source: root.notification ? (root.notification.image !== "" ? root.notification.image : Quickshell.iconPath(root.notification.appIcon, true)) : ""
             fillMode: Image.PreserveAspectFit
         }
@@ -290,7 +385,7 @@ Rectangle {
                 Layout.fillWidth: true
                 Layout.minimumWidth: 0
                 elide: Text.ElideRight
-                text: root.notification ? root.notification.summary : ""
+                text: root.typed < 1 ? root.summary.slice(0, Math.ceil(root.typed * root.summary.length)) : root.summary
                 color: Theme.fg_core
                 font.bold: Style.title_font_family === Style.font_family
                 font.family: Style.title_font_family

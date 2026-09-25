@@ -27,16 +27,22 @@ Item {
         if (root.has_views) e.push({ key: "Tab", desc: "views" });
         if (root.searchable) e.push({ key: "/", desc: "search" }, { key: "n/N", desc: "next/prev match" });
         e.push({ key: "Ctrl+h/l", desc: "prev/next module" });
-        if (Popups.back_name !== "") e.push({ key: "Backspace", desc: "back to " + Popups.back_name });
-        e.push({ key: "?", desc: "help" }, { key: "Esc/Backspace", desc: "back" }, { key: "q", desc: "close" });
+        e.push({ key: "?", desc: "help" }, { key: "Backspace", desc: Popups.back_name !== "" ? "back to " + Popups.back_name : "back" }, { key: "q/Esc", desc: "close" });
         return e.filter(g => root.own_keys.indexOf(g.key) < 0);
     }
 
     readonly property real key_column: {
+        if (root.st.controller !== "") return Math.min(list.width * 0.5, Math.max(key_metrics.height + 2, measure.implicitWidth));
         const h = key_metrics.height + 2;
         let w = 0;
         for (const g of root.own_entries.concat(root.general_entries)) w = Math.max(w, key_metrics.advanceWidth(KeyHints.with_glyphs(g.key)));
         return Math.min(list.width * 0.45, Math.max(h, w + 8));
+    }
+    // Controller rows share the tallest badge's height so button and key rows keep one pitch.
+    readonly property real pad_row_height: {
+        let h = 0;
+        for (let i = 0; i < measure.children.length; i++) h = Math.max(h, measure.children[i].height || 0);
+        return h;
     }
     readonly property real step: desc_metrics.height * 2
     readonly property real max_y: Math.max(0, flick.contentHeight - flick.height)
@@ -49,9 +55,9 @@ Item {
     onVisibleChanged: if (visible) flick.contentY = 0
 
     Keys.onPressed: event => {
-        if (event.key === Qt.Key_Question || event.text === "?" || event.key === Qt.Key_Escape || event.key === Qt.Key_Backspace) {
+        if (event.key === Qt.Key_Question || event.text === "?" || event.key === Qt.Key_Backspace) {
             root.back();
-        } else if (event.key === Qt.Key_Q) {
+        } else if (event.key === Qt.Key_Q || event.key === Qt.Key_Escape) {
             Popups.close();
         } else if (event.key === Qt.Key_J || event.key === Qt.Key_Down) {
             root.scroll_to(flick.contentY + root.step);
@@ -92,6 +98,24 @@ Item {
         onWheel: wheel => wheel.accepted = true
     }
 
+    // Sizes the key column from the badges as drawn, controller buttons included.
+    Column {
+        id: measure
+        opacity: 0
+        enabled: false
+
+        Repeater {
+            model: root.st.controller !== "" ? root.own_entries.concat(root.general_entries) : []
+
+            KeyBadge {
+                required property var modelData
+                with_key: true
+                key: KeyHints.with_glyphs(modelData.key)
+                desc: modelData.desc
+            }
+        }
+    }
+
     Component {
         id: help_row_component
 
@@ -99,24 +123,27 @@ Item {
             id: help_row
             required property var modelData
             width: list.width
-            height: Math.max(badge_clip.height, desc_text.implicitHeight)
+            height: Math.max(root.pad_row_height, badge_clip.height, desc_text.implicitHeight)
 
             Item {
                 id: badge_clip
-                y: Math.max(0, (desc_metrics.height - height) / 2)
+                y: Math.max(0, (Math.max(desc_metrics.height, root.pad_row_height) - height) / 2)
                 width: root.key_column
                 height: badge.height
                 clip: badge.width > width
 
                 KeyBadge {
                     id: badge
+                    with_key: true
                     key: KeyHints.with_glyphs(help_row.modelData.key)
+                    desc: help_row.modelData.desc
                 }
             }
 
             Text {
                 id: desc_text
                 x: root.key_column + 8
+                y: Math.max(0, (root.pad_row_height - desc_metrics.height) / 2)
                 width: Math.max(0, help_row.width - x)
                 text: help_row.modelData.desc
                 wrapMode: Text.Wrap

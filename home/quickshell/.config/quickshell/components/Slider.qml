@@ -1,6 +1,7 @@
 // home/quickshell/.config/quickshell/components/Slider.qml
 import QtQuick
 import "../theme"
+import "ps2" as Ps2
 
 Item {
     id: root
@@ -14,13 +15,25 @@ Item {
     implicitHeight: Style.px(14)
 
     function set_from_x(x) {
-        const span = root.st.segmented_levels && root.st.slider_readout ? root.width - readout.width - 6 : track.width;
+        const span = root.st.segmented_levels && !root.glow_bar ? meter.art_width : track.width;
         root.moved(Math.max(0, Math.min(1, x / Math.max(1, span))));
+    }
+
+    readonly property bool glow_bar: root.st.console_views === "ps2"
+
+    Loader {
+        active: root.glow_bar
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.verticalCenter: parent.verticalCenter
+        sourceComponent: Ps2.GlowBar {
+            value: root.value
+        }
     }
 
     Rectangle {
         id: track
-        visible: !root.st.segmented_levels
+        visible: !root.st.segmented_levels && !root.glow_bar
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.verticalCenter: parent.verticalCenter
@@ -37,7 +50,8 @@ Item {
     }
 
     Meter {
-        visible: root.st.segmented_levels
+        id: meter
+        visible: root.st.segmented_levels && !root.glow_bar
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.rightMargin: root.st.slider_readout ? readout.width + 6 : 0

@@ -35,7 +35,7 @@ Popup {
     }
 
     function label(style_name) {
-        return style_name.charAt(0).toUpperCase() + style_name.slice(1);
+        return Style.label(style_name);
     }
 
     Item {

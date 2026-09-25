@@ -26,6 +26,16 @@ Item {
     // Slanted segments lean past their slot by this much at the top.
     readonly property real lean: root.st.meter_slant * root.implicitHeight
     readonly property real segment_width: Math.max(2, (width - root.lean - gap * (segment_count - 1)) / segment_count)
+    // Picks the style's meter_art; defaults to the enclosing popup's name.
+    property string art_key: {
+        for (let p = root.parent; p; p = p.parent) {
+            if (p.search_popup !== undefined) return p.search_popup.popup_name;
+        }
+        return "";
+    }
+    readonly property string art: root.st.meter_art[root.art_key] || ""
+    // The width the art actually draws across; Slider maps clicks onto it.
+    readonly property real art_width: art_loader.item && art_loader.item.art_width !== undefined ? art_loader.item.art_width : root.width
 
     implicitWidth: segment_count * 3 + gap * (segment_count - 1)
     implicitHeight: root.st.meter_height > 0 ? root.st.meter_height : Style.px(10)
@@ -52,7 +62,7 @@ Item {
     }
 
     PixelBox {
-        visible: root.st.pixel_border.a > 0 && !root.st.tick_ruler
+        visible: root.st.pixel_border.a > 0 && !root.st.tick_ruler && root.art === ""
         x: -4
         y: -4
         width: root.width + 8
@@ -64,7 +74,7 @@ Item {
     Loader {
         width: root.width
         height: root.implicitHeight
-        active: root.st.tick_ruler
+        active: root.st.tick_ruler && root.art === ""
         sourceComponent: TickRuler {
             meter: root
         }
@@ -73,7 +83,7 @@ Item {
     Loader {
         width: root.width
         height: root.implicitHeight
-        active: root.st.meter_solid && !root.st.tick_ruler
+        active: root.st.meter_solid && !root.st.tick_ruler && root.art === ""
         sourceComponent: AtbBar {
             value: root.value
             fill_color: root.on_selection && root.st.selection_inverse ? root.st.selection_fg : root.on_color
@@ -84,9 +94,17 @@ Item {
         }
     }
 
+    Loader {
+        id: art_loader
+        width: root.width
+        height: root.implicitHeight
+        source: root.art
+        onLoaded: item.meter = root
+    }
+
     Item {
         id: segments
-        visible: !root.st.tick_ruler && !root.st.meter_solid
+        visible: !root.st.tick_ruler && !root.st.meter_solid && root.art === ""
         width: root.width
         height: root.implicitHeight
         layer.enabled: root.st.meter_bloom

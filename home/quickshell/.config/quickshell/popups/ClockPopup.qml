@@ -1,15 +1,20 @@
 // home/quickshell/.config/quickshell/popups/ClockPopup.qml
 import QtQuick
 import QtQuick.Layouts
+import Quickshell
 import "../components"
 import "../theme"
 import "../services"
+import "../components/ps1" as Ps1
+import "../components/ps2" as Ps2
+import "../components/snes" as SnesParts
+import "snes" as Snes
 
 Popup {
     id: root
 
     popup_name: "clock"
-    title: Qt.formatDate(new Date(root.view_year, root.view_month, 1), "MMM yyyy").toUpperCase()
+    title: root.nes ? root.hud_title : Qt.formatDate(new Date(root.view_year, root.view_month, 1), "MMM yyyy").toUpperCase()
     preferred_width: 320
     footer_hint: "h/l month · j/k year · t/gg today · [ ] zone · q close"
     body_height: content.implicitHeight + 24
@@ -19,7 +24,20 @@ Popup {
     property int view_month: today.getMonth()
     jumps_enabled: true
 
+    readonly property bool bios: root.st.console_views === "ps1"
     readonly property bool is_open: Popups.open_name === "clock"
+    // A Mario HUD title with today's date and time; the viewed month moves into the body.
+    readonly property bool nes: root.st.console_views === "nes"
+    readonly property string hud_title: {
+        const d = Timezones.shift(hud_clock.date);
+        return "WORLD " + (d.getMonth() + 1) + "-" + d.getDate() + "  TIME " + Qt.formatTime(d, "HH:mm");
+    }
+
+    SystemClock {
+        id: hud_clock
+        enabled: root.nes && root.is_open
+        precision: SystemClock.Minutes
+    }
     onIs_openChanged: if (is_open) go_today()
     onJump_first: go_today()
 
@@ -102,7 +120,9 @@ Popup {
 
     // Equal-width columns need the exact available width, not a guess, so the grid never clips.
     readonly property real grid_column_spacing: 4
-    readonly property real available_cell_width: (content.width - grid_column_spacing * 7) / 8
+    // The SNES calendar window keeps its cells clear of its border and drop shadow.
+    readonly property real calendar_inset: root.st.console_views === "snes" ? 10 : 0
+    readonly property real available_cell_width: (content.width - (root.calendar_inset > 0 ? root.calendar_inset * 2 + 3 : 0) - grid_column_spacing * 7) / 8
     readonly property int grid_font_size: available_cell_width < 20 ? root.st.font_size - 2 : root.st.font_size - 1
 
     Item {
@@ -139,6 +159,16 @@ Popup {
             }
         }
 
+        // SNES: the zones and calendar sit in their own RPG window.
+        Loader {
+            active: root.st.console_views === "snes"
+            x: main_column.x
+            y: main_column.y + zone_row.y - 8
+            width: main_column.width
+            height: grid.y + grid.height - zone_row.y + 19
+            sourceComponent: SnesParts.SnesWindow {}
+        }
+
         ColumnLayout {
             id: main_column
             anchors.left: parent.left
@@ -146,8 +176,40 @@ Popup {
             anchors.top: parent.top
             spacing: 8
 
+            // Console clock screens above the calendar.
+            Loader {
+                readonly property Component view: ({ snes: snes_clock, ps1: ps1_clock, ps2: ps2_clock })[root.st.console_views] || null
+                active: !!view
+                visible: active
+                Layout.fillWidth: true
+                sourceComponent: view
+
+                Component {
+                    id: snes_clock
+                    Snes.SnesClockStatus {
+                        running: root.is_open
+                    }
+                }
+
+                Component {
+                    id: ps1_clock
+                    Ps1.SaveClock {
+                        id: save_clock
+                        running: root.is_open
+                        week: root.week_number(save_clock.now)
+                    }
+                }
+
+                Component {
+                    id: ps2_clock
+                    Ps2.ClockScreen {
+                        running: root.visible
+                    }
+                }
+            }
+
             Text {
-                visible: !root.has_title
+                visible: !root.has_title || root.nes
                 Layout.alignment: Qt.AlignHCenter
                 text: Qt.formatDate(new Date(root.view_year, root.view_month, 1), "MMMM yyyy")
                 color: root.st.text_fg
@@ -157,7 +219,9 @@ Popup {
             }
 
             Row {
+                id: zone_row
                 Layout.alignment: Qt.AlignHCenter
+                Layout.topMargin: root.st.console_views === "snes" ? 6 : 0
                 spacing: 10
 
                 Repeater {
@@ -196,6 +260,9 @@ Popup {
             GridLayout {
                 id: grid
                 Layout.fillWidth: true
+                Layout.bottomMargin: root.st.console_views === "snes" ? 12 : 0
+                Layout.leftMargin: root.calendar_inset
+                Layout.rightMargin: root.calendar_inset > 0 ? root.calendar_inset + 3 : 0
                 columns: 8
                 rowSpacing: 4
                 columnSpacing: root.grid_column_spacing
@@ -203,27 +270,41 @@ Popup {
                 Repeater {
                     model: root.flat_cells
 
-                    Text {
+                    Item {
                         id: cell
                         required property var modelData
                         readonly property bool marked: modelData.kind === "day" && modelData.is_today === true && root.st.marker_fill
 
                         Layout.fillWidth: true
                         Layout.preferredWidth: 0
-                        horizontalAlignment: Text.AlignHCenter
-                        elide: Text.ElideNone
-                        text: modelData.text
-                        font.family: root.st.font_family
-                        font.pixelSize: modelData.kind === "header" || modelData.kind === "weeknum" ? root.grid_font_size - 1 : root.grid_font_size
-                        color: cell.marked ? root.st.title_fg : modelData.kind === "header" ? root.st.text_muted : modelData.kind === "weeknum" ? root.st.text_dim : modelData.is_today ? Theme.theme_accent : (modelData.in_month ? root.st.text_fg : root.st.text_muted)
-                        font.underline: modelData.kind === "day" && modelData.is_today === true && !root.st.marker_fill
-                        font.bold: cell.marked
+                        implicitHeight: cell_text.implicitHeight
 
                         Rectangle {
-                            z: -1
-                            visible: cell.marked
+                            visible: cell.marked && !root.bios
                             anchors.fill: parent
                             color: root.st.title_bg
+                        }
+
+                        Loader {
+                            active: cell.marked && root.bios
+                            anchors.fill: parent
+                            sourceComponent: Ps1.BiosPanel {
+                                lit: true
+                                radius: 3
+                            }
+                        }
+
+                        Text {
+                            id: cell_text
+                            width: parent.width
+                            horizontalAlignment: Text.AlignHCenter
+                            elide: Text.ElideNone
+                            text: cell.modelData.text
+                            font.family: root.st.font_family
+                            font.pixelSize: cell.modelData.kind === "header" || cell.modelData.kind === "weeknum" ? root.grid_font_size - 1 : root.grid_font_size
+                            color: cell.marked ? root.st.title_fg : cell.modelData.kind === "header" ? root.st.text_muted : cell.modelData.kind === "weeknum" ? root.st.text_dim : cell.modelData.is_today ? Theme.theme_accent : (cell.modelData.in_month ? root.st.text_fg : root.st.text_muted)
+                            font.underline: cell.modelData.kind === "day" && cell.modelData.is_today === true && !root.st.marker_fill
+                            font.bold: cell.marked
                         }
                     }
                 }

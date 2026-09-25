@@ -10,7 +10,13 @@ Singleton {
     property string name: "default"
     // The saved choice; `name` differs from it only while the style picker previews.
     property string saved_name: "default"
-    readonly property var names: Object.keys(root.styles)
+    readonly property var order: ["default", "terminal", "crt", "nes", "snes", "gameboy", "goldeneye", "ps1", "ff7", "ps2", "halflife", "tie", "metroid", "oblivion", "mech"]
+    readonly property var names: root.order.filter(n => n in root.styles).concat(Object.keys(root.styles).filter(n => root.order.indexOf(n) < 0))
+    readonly property var labels: ({ crt: "CRT", nes: "NES", snes: "SNES", gameboy: "Gameboy", goldeneye: "Goldeneye", ps1: "PSX", ff7: "FFVII", ps2: "PS2", halflife: "Half Life", tie: "Tie Fighter" })
+
+    function label(style_name) {
+        return root.labels[style_name] || style_name.charAt(0).toUpperCase() + style_name.slice(1);
+    }
 
     readonly property var styles: {
         const terminal = {
@@ -213,7 +219,11 @@ Singleton {
             window_gradient: [],
             materia: ({}),
             hand_cursor: false,
-            meter_solid: false
+            meter_solid: false,
+            controller: "",
+            meter_art: ({}),
+            toast_enter: "",
+            console_views: ""
         };
         return {
             "default": {
@@ -416,7 +426,11 @@ Singleton {
                 window_gradient: [],
                 materia: ({}),
                 hand_cursor: false,
-                meter_solid: false
+                meter_solid: false,
+                controller: "",
+                    meter_art: ({}),
+                    toast_enter: "",
+                console_views: ""
             },
             "terminal": Object.assign({}, terminal, {
                 wait_anim: "cursor",
@@ -518,12 +532,22 @@ Singleton {
                 bar_border_color: "transparent",
                 bar_inset_gap: 2,
                 bar_inset_width: 2,
-                bar_inset_color: Theme.fg_strong
+                bar_inset_color: Theme.fg_strong,
+                card_layout: "dq",
+                controller: "nes",
+                console_views: "nes",
+                toast_enter: "type",
+                meter_art: ({ volume: "nes/HeartMeter.qml", battery: "nes/EnergyBar.qml", osd: "nes/EnergyBar.qml", media: "nes/PianoRoll.qml" })
             }),
             "snes": Object.assign({}, terminal, {
                 wait_anim: "hand",
                 done_anim: "pixel",
                 weather_header: "mode7",
+                controller: "snes",
+                console_views: "snes",
+                osd_layout: "rpg",
+                card_layout: "dialogue",
+                toast_enter: "mode7",
                 // Greys lifted toward primary_light so they read on the shaded window.
                 text_muted: Qt.tint(Theme.fg_dim, Qt.alpha(Theme.theme_primary_light, 0.4)),
                 text_dim: Qt.tint(Theme.fg_dim, Qt.alpha(Theme.theme_primary_light, 0.65)),
@@ -579,6 +603,10 @@ Singleton {
                 bar_text_raised: true
             }),
             "ps1": Object.assign({}, terminal, {
+                controller: "ps1",
+                toast_enter: "wobble",
+                console_views: "ps1",
+                osd_layout: "alert",
                 wait_anim: "alert",
                 done_anim: "pixel",
                 weather_header: "memcard",
@@ -820,6 +848,9 @@ Singleton {
                 wait_anim: "rumble",
                 weather_header: "towers",
                 done_anim: "pixel",
+                // Muted text lifted so it still reads on the lit selection pill.
+                text_muted: Qt.tint(Theme.fg_muted, Qt.alpha(Theme.theme_primary_light, 0.35)),
+                text_dim: Qt.tint(Theme.fg_dim, Qt.alpha(Theme.theme_primary_light, 0.3)),
                 font_family: "Exo 2",
                 font_size: Theme.popup_font_size + 1,
                 rounded: true,
@@ -867,7 +898,17 @@ Singleton {
                 bar_border_color: "transparent",
                 bar_rounded: true,
                 bar_workspace_idle: Qt.alpha(Theme.theme_primary, 0.12),
-                bar_hover_bg: Qt.alpha(Theme.theme_primary, 0.2)
+                bar_hover_bg: Qt.alpha(Theme.theme_primary, 0.2),
+                frame_shade: Qt.tint(Theme.bg_mantle, Qt.alpha(Theme.theme_primary, 0.14)),
+                shade_vertical: true,
+                bar_inset_gap: 2,
+                bar_inset_width: 1,
+                bar_inset_color: Qt.alpha(Theme.theme_primary_light, 0.22),
+                card_layout: "dialog",
+                osd_layout: "glow",
+                controller: "ps2",
+                console_views: "ps2",
+                toast_enter: "bloom"
             }),
             // TIE Fighter cockpit: large popups in the octagonal viewport, `small` ones the targeting computer.
             "tie": (() => {
@@ -1285,6 +1326,7 @@ Singleton {
                     shade_1: g1,
                     shade_2: g2,
                     shade_3: g3,
+                    controller: "gameboy",
                     pixel_border: g2,
                     text_muted: g2,
                     text_dim: g2,
@@ -1393,6 +1435,9 @@ Singleton {
                     caret_blink: false,
                     row_cursor: "",
                     hand_cursor: true,
+                    controller: "ps1",
+                    // Lighter than PS1's so the dark end of the window gradient keeps its blue.
+                    dither: Qt.alpha(Theme.bg_shadow, 0.14),
                     tab_active_bg: "transparent",
                     tab_active_fg: Theme.fg_strong,
                     tab_fg: Theme.theme_primary_light,
@@ -1707,7 +1752,7 @@ Singleton {
     // Start's schematic and status strip.
     readonly property color schematic: root.active.schematic
     readonly property bool status_strip: root.active.status_strip
-    // Alternate layouts: "" keeps the default; osd "ring", "readout" or "hud", weather "ring", "spec", "scope", "watch", "memcard", "battle", "mode7", "wttr", "weatherstar", "towers", "scan", "hev", "pokedex" or "status", cards "rule", "channel" or "pixel".
+    // Alternate layouts: "" keeps the default; osd "ring", "readout", "hud", "rpg", "alert" or "glow", weather "ring", "spec", "scope", "watch", "memcard", "battle", "mode7", "wttr", "weatherstar", "towers", "scan", "hev", "pokedex" or "status", cards "rule", "channel", "pixel", "dq", "dialogue" or "dialog".
     readonly property string osd_layout: root.active.osd_layout
     readonly property string weather_header: root.active.weather_header
     readonly property string card_layout: root.active.card_layout
@@ -1738,6 +1783,14 @@ Singleton {
     readonly property bool hand_cursor: root.active.hand_cursor
     // Meters as one continuous gauge (AtbBar) instead of segments.
     readonly property bool meter_solid: root.active.meter_solid
+    // Key badges, footers and help draw this console's buttons (KeyHints.controller_maps, components/<console>/<Console>Button.qml).
+    readonly property string controller: root.active.controller
+    // Meter art by popup name (or "osd"): a component path relative to components/ that replaces the segments.
+    readonly property var meter_art: root.active.meter_art
+    // Toast arrival: "" fades in; "type" slides and types, "mode7" zooms from a tilted plane, "wobble" settles, "bloom" glows, each once.
+    readonly property string toast_enter: root.active.toast_enter
+    // Popups, toasts and bar modules swap in this console's views ("nes", "snes", "ps1", "ps2"); "" keeps the shared ones.
+    readonly property string console_views: root.active.console_views
 
     property bool cava_line: true
     readonly property var bar: root.active

@@ -15,9 +15,8 @@ Item {
     property bool centered: false
     // Tabs that show their number already teach "1-N select".
     readonly property string filtered_text: root.st.tab_keys ? root.text.split(" · ").filter(g => !/^1-\d select$/.test(g)).join(" · ") : root.text
-    readonly property string shown_text: KeyHints.with_glyphs(root.filtered_text)
     readonly property int rule_gap: root.st.footer_rule ? 5 : 0
-    readonly property var groups: KeyHints.parse(root.shown_text)
+    readonly property var groups: KeyHints.parse(root.filtered_text)
     // While the enclosing popup searches, its query line takes this footer's place at the same height.
     readonly property var popup: {
         for (let p = root.parent; p; p = p.parent) {
@@ -70,18 +69,36 @@ Item {
             model: root.groups
 
             Row {
+                id: group
                 required property var modelData
                 required property int index
+                readonly property bool pad: root.st.controller !== "" && KeyHints.controller_parts(root.st.controller, group.modelData.key, group.modelData.desc).length > 0
                 spacing: 4
+
+                Loader {
+                    active: group.pad
+                    visible: active
+                    anchors.verticalCenter: parent.verticalCenter
+                    sourceComponent: ControllerBadge {
+                        controller: root.st.controller
+                        key: group.modelData.key
+                        desc: group.modelData.desc
+                        size: Math.round(desc_text.implicitHeight)
+                        text_color: root.st.footer_key_fg
+                        font_family: root.st.font_family
+                        font_size: root.st.font_size - 4
+                    }
+                }
 
                 Text {
                     id: key_text
                     readonly property bool capped: root.st.footer_key_bg.a > 0
+                    visible: !group.pad
                     height: desc_text.implicitHeight
                     verticalAlignment: Text.AlignVCenter
                     leftPadding: key_text.capped ? 4 : 0
                     rightPadding: key_text.capped ? 4 : 0
-                    text: parent.modelData.key
+                    text: KeyHints.with_glyphs(parent.modelData.key)
                     color: root.st.footer_key_fg
                     font.family: key_text.capped ? root.st.mono_font : root.st.font_family
                     font.pixelSize: root.st.font_size - 4
@@ -98,7 +115,8 @@ Item {
 
                 Text {
                     id: desc_text
-                    text: parent.modelData.desc + (parent.index < root.groups.length - 1 ? root.st.footer_separator : "")
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: KeyHints.with_glyphs(parent.modelData.desc) + (parent.index < root.groups.length - 1 ? root.st.footer_separator : "")
                     color: root.st.footer_fg
                     font.family: root.st.font_family
                     font.pixelSize: root.st.font_size - 4

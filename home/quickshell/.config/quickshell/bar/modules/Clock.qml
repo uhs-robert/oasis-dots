@@ -29,7 +29,9 @@ Row {
     readonly property string zone_text: root.compact ? "" : Timezones.is_local ? Qt.formatDateTime(Timezones.shift(clock.date), "t") : Timezones.abbrev
     readonly property string time_text: root.zone_text === "" ? root.digits_text : root.digits_text + " " + root.zone_text
 
-    readonly property string date_text: Qt.formatDateTime(Timezones.shift(clock.date), "ddd MMM dd")
+    // A Mario HUD line: TIME and WORLD captions, the date as month-day.
+    readonly property bool hud: Style.console_views === "nes"
+    readonly property string date_text: root.hud ? Qt.formatDateTime(Timezones.shift(clock.date), "M-d") : Qt.formatDateTime(Timezones.shift(clock.date), "ddd MMM dd")
 
     // Proportional fonts would resize the island every tick; tabular digits and a width floor hold it still.
     TextMetrics {
@@ -44,6 +46,15 @@ Row {
         text: "["
         color: Style.bar_clock_brackets
         font: time_label.font
+    }
+
+    Text {
+        visible: root.hud
+        anchors.verticalCenter: parent.verticalCenter
+        text: "TIME"
+        color: Theme.theme_primary
+        font.family: Style.bar_font_family
+        font.pixelSize: Style.bar_font_size
     }
 
     Rectangle {
@@ -87,7 +98,7 @@ Row {
     Text {
         visible: !root.compact
         anchors.verticalCenter: parent.verticalCenter
-        text: "|"
+        text: root.hud ? " WORLD" : "|"
         color: Theme.theme_primary
         font.family: Style.bar_font_family
         style: Style.bar_text_style

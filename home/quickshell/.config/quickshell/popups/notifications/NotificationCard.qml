@@ -6,6 +6,10 @@ import Quickshell.Services.Notifications
 import "../../components"
 import "../../theme"
 import "../../services"
+import "../weather" as Weather
+import "../../components/snes" as Snes
+import "../../components/ps1" as Ps1
+import "../../components/ps2" as Ps2
 
 // A single notification row, shared by the All/Apps/Critical tabs. Every Text below sets
 // Layout.minimumWidth: 0 so a long unbroken summary/body can never grow the card past its width.
@@ -20,7 +24,22 @@ Item {
     // The card's 1-based position in the list, shown by styles with channel cards.
     property int channel: 0
     readonly property bool channels: Style.card_layout === "channel"
+    // Chrono Trigger dialogue boxes: the app speaks its summary and body in a blue window.
+    readonly property bool dialogue: Style.card_layout === "dialogue"
+    readonly property bool dq: Style.card_layout === "dq"
+    // MGS codec calls: the app icon as the caller's portrait.
+    readonly property bool codec: Style.console_views === "ps1"
+    readonly property bool dialog: Style.card_layout === "dialog"
     readonly property bool critical: !!root.notification && root.notification.urgency === NotificationUrgency.Critical
+
+    readonly property bool focused_valid: root.focused_action >= 0 && root.focused_action < root.actions.length
+
+    // What Enter does in the popup: the focused action, else the default.
+    function enter() {
+        if (!root.focused_valid) return root.invoke_requested();
+        NotificationState.invoke_action(root.entry, root.actions[root.focused_action]);
+        Popups.close();
+    }
 
     signal invoke_requested()
     signal select_requested()
@@ -70,7 +89,7 @@ Item {
         id: card
         anchors.left: parent.left
         anchors.right: parent.right
-        implicitHeight: layout.implicitHeight + 20
+        implicitHeight: layout.implicitHeight + 20 + (({ dq: 8, dialogue: 3 })[Style.card_layout] || 0)
         radius: Style.radius(8)
         color: Style.card_layout !== "" ? "transparent" : Style.boxed_cards ? (root.selected ? Qt.alpha(Style.caret_color, 0.08) : "transparent") : root.selected ? Theme.bg_surface : Theme.bg_mantle
         border.width: Style.card_layout !== "" ? 0 : 1
@@ -81,9 +100,24 @@ Item {
             shown: root.selected
         }
 
+        // Console windows behind the card, one per card_layout.
+        Loader {
+            anchors.fill: parent
+            z: -1
+            sourceComponent: ({ dq: dq_card, dialogue: dialogue_card, dialog: dialog_card })[Style.card_layout] || null
+        }
+
         CardRule {
             visible: Style.card_layout === "rule"
             selected: root.selected
+        }
+
+        HandCursor {
+            visible: root.dialogue && root.selected
+            x: 5
+            y: layout.y + 2
+            width: 19
+            height: 12
         }
 
         PixelBox {
@@ -161,8 +195,8 @@ Item {
         }
 
         Text {
-            visible: Style.boxed_cards && root.selected && Style.row_cursor !== "" && Style.caret_phase && Style.card_layout !== "pixel"
-            x: 4
+            visible: Style.boxed_cards && root.selected && Style.row_cursor !== "" && Style.caret_phase && Style.card_layout !== "pixel" && !root.dialogue
+            x: root.dq ? 9 : 4
             y: layout.y + 1
             text: Style.row_cursor
             color: Style.caret_color
@@ -207,14 +241,26 @@ Item {
             anchors.right: parent.right
             anchors.top: parent.top
             anchors.margins: 10
-            anchors.leftMargin: root.channels ? 58 : 16
+            anchors.leftMargin: root.channels ? 58 : root.dialogue ? 28 : root.dq ? 24 : 16
+            anchors.rightMargin: root.dialogue ? 16 : 10
             spacing: 10
+
+            Loader {
+                active: root.codec && !root.channels
+                visible: active
+                Layout.alignment: Qt.AlignTop
+                sourceComponent: Ps1.CodecPortrait {
+                    notification: root.notification
+                    size: root.width < 320 ? 34 : 44
+                    ringing: !!root.entry && Date.now() - root.entry.time < 5000
+                }
+            }
 
             Image {
                 Layout.alignment: Qt.AlignTop
                 Layout.preferredWidth: root.width < 320 ? 32 : 44
                 Layout.preferredHeight: Layout.preferredWidth
-                visible: !root.channels && root.notification && (root.notification.image !== "" || root.notification.appIcon !== "")
+                visible: !root.codec && !root.channels && root.notification && (root.notification.image !== "" || root.notification.appIcon !== "")
                 source: root.notification ? (root.notification.image !== "" ? root.notification.image : Quickshell.iconPath(root.notification.appIcon, true)) : ""
                 fillMode: Image.PreserveAspectFit
             }
@@ -228,16 +274,29 @@ Item {
                     Layout.fillWidth: true
                     Layout.minimumWidth: 0
                     elide: Text.ElideRight
-                    rightPadding: root.channels ? priority_text.implicitWidth + 8 : 0
-                    label: root.channels ? (root.notification ? root.notification.appName : "") : Style.boxed_cards
+                    label: root.dialogue ? (root.notification ? root.notification.appName : "") + ":" : root.channels || root.dialog ? (root.notification ? root.notification.appName : "") + (root.dialog && root.entry ? "  ·  " + root.relative_time(root.entry.time) + root.urgency_tag : "") : Style.boxed_cards
                         ? "[" + (root.notification ? root.notification.appName : "") + "] " + (root.entry ? root.relative_time(root.entry.time) : "") + root.urgency_tag
                         : (root.notification ? root.notification.appName : "") + "  ·  " + (root.entry ? root.relative_time(root.entry.time) : "")
-                    color: root.channels ? Style.text_muted : Style.boxed_cards ? root.accent : Style.text_muted
+                    rightPadding: root.dialogue ? speaker_time.implicitWidth + 8 : root.channels ? priority_text.implicitWidth + 8 : 0
+                    color: root.dialogue ? (root.critical ? Theme.theme_label : Theme.theme_secondary) : root.channels ? Style.text_muted : Style.boxed_cards ? root.accent : Style.text_muted
+                    style: root.dialogue ? Text.Raised : Text.Normal
+                    styleColor: Style.text_shadow
                     font.family: Style.font_family
                     font.pixelSize: Style.font_size - (Style.boxed_cards ? 3 : 1)
                     font.bold: root.channels
                     font.capitalization: root.channels ? Font.AllUppercase : Font.MixedCase
                     font.letterSpacing: root.channels ? Style.label_spacing : 0
+
+                    Text {
+                        id: speaker_time
+                        visible: root.dialogue
+                        anchors.right: parent.right
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: root.entry ? root.relative_time(root.entry.time) + root.urgency_tag : ""
+                        color: Style.text_muted
+                        font.family: Style.font_family
+                        font.pixelSize: Style.font_size - 5
+                    }
 
                     Text {
                         id: priority_text
@@ -255,8 +314,11 @@ Item {
                     Layout.fillWidth: true
                     Layout.minimumWidth: 0
                     elide: Text.ElideRight
+                    Layout.leftMargin: root.dialogue ? 12 : 0
                     label: root.notification ? root.notification.summary : ""
-                    color: Theme.fg_core
+                    color: root.dialogue ? Theme.fg_strong : Theme.fg_core
+                    style: root.dialogue ? Text.Raised : Text.Normal
+                    styleColor: Style.text_shadow
                     font.bold: Style.title_font_family === Style.font_family
                     font.family: Style.title_font_family
                     font.pixelSize: Style.font_size + (Style.boxed_cards ? 0 : 1)
@@ -271,8 +333,12 @@ Item {
                     elide: Text.ElideRight
                     // StyledText (unlike RichText) elides correctly and still renders <b>/<i>/etc.
                     textFormat: Text.StyledText
+                    Layout.leftMargin: root.dialogue ? 12 : 0
                     text: root.notification ? NotificationState.clean_body(root.notification.body) : ""
-                    color: Style.text_muted
+                    lineHeight: root.dq ? 1.2 : 1
+                    color: root.dialogue ? Theme.fg_core : Style.text_muted
+                    style: root.dialogue ? Text.Raised : Text.Normal
+                    styleColor: Style.text_shadow
                     font.family: Style.font_family
                     font.pixelSize: Style.font_size
                 }
@@ -335,6 +401,19 @@ Item {
                         }
                     }
                 }
+
+                Loader {
+                    active: root.dialog && root.selected
+                    visible: active
+                    Layout.topMargin: 4
+                    sourceComponent: Ps2.DialogPrompt {
+                        entries: [
+                            { button: "cross", text: root.focused_valid ? root.actions[root.focused_action].text : "Open", action: () => root.enter() },
+                            { key: "d", text: "Dismiss", action: () => NotificationState.dismiss(root.entry) },
+                            { button: "start", text: "Close", action: () => Popups.close() }
+                        ]
+                    }
+                }
             }
         }
 
@@ -345,6 +424,40 @@ Item {
                 root.select_requested();
                 root.invoke_requested();
             }
+        }
+    }
+
+    Component {
+        id: dq_card
+        Weather.DqWindow {
+            border.color: root.selected ? Style.caret_color : Theme.fg_strong
+
+            Text {
+                anchors.right: parent.right
+                anchors.bottom: parent.bottom
+                anchors.rightMargin: 10
+                anchors.bottomMargin: 8
+                opacity: !root.selected || Style.caret_phase ? 1 : 0
+                text: "\u25bc"
+                color: root.selected ? Style.caret_color : Theme.fg_strong
+                font.family: Style.font_family
+                font.pixelSize: 8
+            }
+        }
+    }
+
+    Component {
+        id: dialogue_card
+        Snes.SnesWindow {
+            lit: root.selected
+        }
+    }
+
+    Component {
+        id: dialog_card
+        Ps2.DialogPanel {
+            selected: root.selected
+            accent: root.critical ? Theme.error : Theme.theme_primary_light
         }
     }
 }

@@ -4,6 +4,7 @@ import QtQuick.Layouts
 import Quickshell
 import "../../theme"
 import "../../services"
+import "../../components/snes" as Snes
 
 // A SNES RPG menu window: blue gradient panel in a light double border, conditions set out like a status screen.
 Item {
@@ -16,55 +17,18 @@ Item {
 
     implicitHeight: body.implicitHeight + 24
 
-    Rectangle {
-        anchors.fill: panel
-        anchors.topMargin: 3
-        anchors.leftMargin: 3
-        anchors.rightMargin: -3
-        anchors.bottomMargin: -3
-        radius: panel.radius
-        color: Qt.alpha(Theme.bg_shadow, 0.7)
-    }
-
-    Rectangle {
-        id: panel
+    Snes.SnesWindow {
+        id: menu_window
         anchors.fill: parent
-        anchors.rightMargin: 3
-        anchors.bottomMargin: 3
-        radius: 6
-        border.width: 2
-        border.color: Theme.fg_strong
-        gradient: Gradient {
-            GradientStop { position: 0; color: Qt.tint(Theme.bg_crust, Qt.alpha(Theme.theme_primary_strong, 0.72)) }
-            GradientStop { position: 1; color: Qt.tint(Theme.bg_crust, Qt.alpha(Theme.theme_primary_strong, 0.16)) }
-        }
-
-        Rectangle {
-            anchors.fill: parent
-            anchors.margins: 2
-            radius: 4
-            color: "transparent"
-            border.width: 1
-            border.color: Theme.fg_dim
-        }
-
-        Rectangle {
-            anchors.fill: parent
-            anchors.margins: 3
-            radius: 3
-            color: "transparent"
-            border.width: 1
-            border.color: Qt.alpha(Theme.bg_shadow, 0.45)
-        }
     }
 
     ColumnLayout {
         id: body
-        anchors.left: panel.left
-        anchors.right: panel.right
-        anchors.top: panel.top
+        anchors.left: menu_window.left
+        anchors.right: menu_window.right
+        anchors.top: menu_window.top
         anchors.leftMargin: 14
-        anchors.rightMargin: 14
+        anchors.rightMargin: 14 + menu_window.drop
         anchors.topMargin: 10
         spacing: 6
 

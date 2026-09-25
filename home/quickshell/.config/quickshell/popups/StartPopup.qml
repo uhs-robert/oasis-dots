@@ -5,12 +5,15 @@ import Quickshell
 import "../components"
 import "../theme"
 import "../services"
+import "start" as Start
+import "snes" as Snes
+import "../components/ps2" as Ps2
 
 Popup {
     id: root
 
     popup_name: "start"
-    preferred_width: root.st.status_strip ? 235 : 180
+    preferred_width: root.st.status_strip ? 235 : root.st.console_views === "snes" ? 210 : 180
     footer_hint: root.confirm ? "y/Enter confirm · n/Esc back" : "j/k move · gg/G first/last · Enter run · 1-" + root.actions.length + " pick · q close"
     body_height: content.implicitHeight + 24
     jumps_enabled: !root.confirm
@@ -64,8 +67,16 @@ Popup {
         anchors.right: parent.right
         anchors.top: parent.top
         anchors.margins: 12
-        implicitHeight: root.confirm ? confirm_row.implicitHeight : actions_col.implicitHeight + (strip_loader.active ? strip_loader.height + 10 : 0)
+        implicitHeight: root.confirm ? confirm_row.implicitHeight : (menu_view.active ? menu_view.implicitHeight : actions_col.implicitHeight) + (strip_loader.active ? strip_loader.height + 10 : 0)
         focus: true
+
+        Loader {
+            active: root.st.console_views === "ps2"
+            anchors.fill: parent
+            anchors.margins: -12
+            z: -2
+            sourceComponent: Ps2.Haze {}
+        }
 
         Loader {
             active: root.st.schematic.a > 0
@@ -85,7 +96,7 @@ Popup {
                 if (event.key === Qt.Key_Y || event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
                     root.run(root.selected);
                     event.accepted = true;
-                } else if (event.key === Qt.Key_N || event.key === Qt.Key_Escape) {
+                } else if (event.key === Qt.Key_N || event.key === Qt.Key_Escape || event.key === Qt.Key_Backspace) {
                     root.confirm = false;
                     event.accepted = true;
                 }
@@ -112,7 +123,7 @@ Popup {
             anchors.right: parent.right
             anchors.top: parent.top
             spacing: 4
-            visible: !root.confirm
+            visible: !root.confirm && !menu_view.active
 
             Repeater {
                 model: root.actions
@@ -128,6 +139,19 @@ Popup {
                     selected: index === root.selected
                     key: root.keys[row.index]
                     slot: row.index + 1
+
+                    Loader {
+                        anchors.fill: parent
+                        z: -1
+                        sourceComponent: ({ ps2: ps2_block })[root.st.console_views] || null
+
+                        Component {
+                            id: ps2_block
+                            Ps2.Block {
+                                selected: row.selected
+                            }
+                        }
+                    }
 
                     RowLayout {
                         anchors.left: parent.left
@@ -155,6 +179,34 @@ Popup {
                         onClicked: root.choose(row.index)
                     }
                 }
+            }
+        }
+
+        // Console menus replace the action rows.
+        Loader {
+            id: menu_view
+            readonly property Component view: ({ nes: nes_menu, snes: snes_menu })[root.st.console_views] || null
+            active: !!view
+            visible: !root.confirm
+            anchors.left: parent.left
+            anchors.right: parent.right
+            sourceComponent: view
+        }
+
+        Component {
+            id: nes_menu
+            Start.NesMenu {
+                popup: root
+            }
+        }
+
+        Component {
+            id: snes_menu
+            Snes.SnesStartView {
+                labels: root.actions
+                keys: root.keys
+                selected: root.selected
+                onPicked: index => root.choose(index)
             }
         }
 
