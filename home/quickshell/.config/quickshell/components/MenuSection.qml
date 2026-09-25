@@ -16,9 +16,20 @@ Text {
     color: root.st.section_fg
     font.family: root.st.label_font_family
     font.pixelSize: root.st.font_size - 3
-    font.capitalization: root.st.label_caps ? Font.AllUppercase : Font.MixedCase
-    font.letterSpacing: root.st.label_spacing
-    leftPadding: root.st.section_marker.a > 0 ? 11 : 0
+    font.capitalization: root.st.label_caps || root.st.caps_tracking > 0 ? Font.AllUppercase : Font.MixedCase
+    font.letterSpacing: root.st.caps_tracking > 0 ? root.st.caps_tracking : root.st.label_spacing
+    font.bold: root.st.caps_tracking > 0
+    readonly property bool orb: root.st.materia.section !== undefined
+    leftPadding: root.orb ? 15 : root.st.section_marker.a > 0 ? 11 : 0
+
+    MateriaOrb {
+        visible: root.orb
+        y: root.topPadding + Math.round(root.contentHeight / 2) - 4.5
+        width: 9
+        height: 9
+        glow: false
+        color: root.orb ? root.st.materia.section : "transparent"
+    }
 
     Shape {
         visible: root.st.section_marker.a > 0

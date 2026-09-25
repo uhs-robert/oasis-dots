@@ -6,6 +6,7 @@ import Quickshell.Hyprland
 import Quickshell.Widgets
 import "../../theme"
 import "../../services"
+import "../../components"
 
 Item {
     id: root
@@ -104,6 +105,14 @@ Item {
                 }
                 Behavior on color {
                     ColorAnimation { duration: 280; easing.type: Easing.InOutCubic }
+                }
+
+                MateriaOrb {
+                    visible: pill.modelData.focused && Style.materia.workspace !== undefined
+                    anchors.fill: parent
+                    radius: pill.radius
+                    glow: false
+                    color: visible ? Style.materia.workspace : "transparent"
                 }
 
                 Rectangle {

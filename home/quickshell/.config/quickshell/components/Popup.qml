@@ -40,6 +40,11 @@ PanelWindow {
     // A hover shelf: follows Tooltip instead of Popups, never takes focus or input, and plays faster.
     property bool passive: false
     property real anim_scale: root.passive ? 0.6 : 1
+    // Small popups inside the style's handheld shell (DeviceShell), and the room it keeps around the content.
+    readonly property bool device: root.st.device_shell && !root.passive
+    readonly property int device_side: root.device ? 20 : 0
+    readonly property int device_top: root.device ? 30 : 0
+    readonly property int device_bottom: root.device ? 80 : 0
     // Set while a native menu from this popup is open; focus returns to the popup when it closes.
     property bool suspend_grab: false
 
@@ -200,7 +205,7 @@ PanelWindow {
     }
 
     // Never narrower than the island's bottom edge (its body, between the slants).
-    implicitWidth: root.passive ? root.island_width : root.fit_island && root.island_width > 0 && root.side !== "center" ? root.island_width : Math.max(Style.px(preferred_width) + root.st.lcd_margin * 2, island_width, root.st.popup_min_width)
+    implicitWidth: root.passive ? root.island_width : root.fit_island && root.island_width > 0 && root.side !== "center" ? root.island_width : Math.max(Style.px(preferred_width) + root.st.lcd_margin * 2 + root.device_side * 2, island_width, root.st.popup_min_width)
     implicitHeight: (root.reserving ? Math.max(reserve_height, body_height) : body_height) + header_height + footer_height + root.st.frame_drop
     default property alias content: content_scope.data
 
@@ -255,11 +260,12 @@ PanelWindow {
     readonly property bool has_footer: root.st.show_footer && footer_hint !== ""
     readonly property bool lcd: root.st.lcd_top.a > 0
     readonly property real title_gap: root.st.title_rule.a > 0 ? 6 : 0
-    readonly property bool banded: root.st.title_band.a > 0
+    readonly property bool stripped: root.st.title_strip.a > 0
+    readonly property bool banded: root.st.title_band.a > 0 || root.stripped
     readonly property real band_height: Math.max(26, title_tab.height + 4)
     readonly property real engraving_height: root.st.frame_engraving !== "" ? engraving.implicitHeight + 4 : 0
-    readonly property real header_height: (has_title ? (root.banded ? root.band_height + 8 : title_tab.height + title_gap) + root.st.inset_pad : 0) + root.st.lcd_margin * 2
-    readonly property real footer_height: (has_footer ? base_footer.implicitHeight + 10 + root.st.inset_pad : 0) + root.st.lcd_margin * 2 + engraving_height
+    readonly property real header_height: (has_title ? (root.banded ? root.band_height + 8 : title_tab.height + title_gap) + root.st.inset_pad : 0) + root.st.lcd_margin * 2 + root.device_top
+    readonly property real footer_height: (has_footer ? base_footer.implicitHeight + 10 + root.st.inset_pad : 0) + root.st.lcd_margin * 2 + engraving_height + root.device_bottom
     property real line_progress: 0
     property real drop_progress: 0
 
@@ -405,7 +411,7 @@ PanelWindow {
             // Reads as the island unfolding downward: its color, joined flush under the accent line.
             Rectangle {
                 anchors.fill: parent
-                color: root.st.frame_chamfer > 0 || root.st.frame_visor || root.st.custom_frame ? "transparent" : root.st.frame_follows_island ? root.held_color : root.st.frame_color
+                color: root.st.frame_chamfer > 0 || root.st.frame_visor || root.st.custom_frame || root.device ? "transparent" : root.st.frame_follows_island ? root.held_color : root.st.frame_color
                 bottomLeftRadius: root.frame_radius
                 bottomRightRadius: root.frame_radius
                 border.width: root.st.frame_visor || root.st.frame_chamfer > 0 || root.st.custom_frame ? 0 : root.st.frame_border_width
@@ -447,6 +453,19 @@ PanelWindow {
 
             CustomFrame {
                 anchors.fill: parent
+                device: root.device
+                top_radius: 0
+                bottom_radius: root.frame_radius
+            }
+
+            Loader {
+                anchors.fill: parent
+                active: root.device
+                sourceComponent: DeviceShell {
+                    room_side: root.device_side
+                    room_top: root.device_top
+                    room_bottom: root.device_bottom
+                }
             }
 
             FrameInset {
@@ -520,20 +539,34 @@ PanelWindow {
                     y: x
                     width: parent.width - x * 2
                     height: root.band_height
-                    sourceComponent: TabHeader {
-                        readonly property var ids: root.st.title_ids[root.popup_name] || []
-                        title: root.title
-                        panel_id: ids[0] || ""
-                        readout: ids[1] || ""
-                        readout_value: root.title_value
+                    sourceComponent: root.stripped ? title_strip : tab_header
+
+                    Component {
+                        id: tab_header
+                        TabHeader {
+                            readonly property var ids: root.st.title_ids[root.popup_name] || []
+                            title: root.title
+                            panel_id: ids[0] || ""
+                            readout: ids[1] || ""
+                            readout_value: root.title_value
+                        }
+                    }
+
+                    Component {
+                        id: title_strip
+                        TitleStrip {
+                            title: root.title
+                            readout_value: root.title_value
+                            closable: !root.passive
+                        }
                     }
                 }
 
                 Rectangle {
                     id: title_tab
                     visible: root.has_title && !root.banded
-                    x: (root.st.fade_fills ? root.st.frame_border_width : 0) + root.st.inset_pad + root.st.lcd_margin * 2
-                    y: (root.st.fade_fills ? root.st.frame_border_width : 0) + root.st.inset_pad + root.st.lcd_margin * 2
+                    x: (root.st.fade_fills ? root.st.frame_border_width : 0) + root.st.inset_pad + root.st.lcd_margin * 2 + root.device_side
+                    y: (root.st.fade_fills ? root.st.frame_border_width : 0) + root.st.inset_pad + root.st.lcd_margin * 2 + root.device_top
                     readonly property real reticle_space: root.st.title_reticle.a > 0 ? title_text.implicitHeight + 4 : 0
                     readonly property real lead_space: title_tab.reticle_space + title_index.space
                     width: root.st.fade_fills ? parent.width - root.st.frame_border_width * 2 : Math.min(title_text.implicitWidth + 20 + title_tab.lead_space, parent.width - title_tab.x * 2)
@@ -585,7 +618,7 @@ PanelWindow {
                     // Dropped on narrow popups rather than drawn over the title.
                     visible: root.has_title && root.st.title_readout !== "" && title_tab.x + (root.st.fade_fills ? 10 + title_tab.lead_space + title_text.implicitWidth : title_tab.width) + 12 <= parent.width - anchors.rightMargin - implicitWidth
                     anchors.right: parent.right
-                    anchors.rightMargin: (root.lcd ? root.st.lcd_margin * 2 : 12) + root.st.inset_pad
+                    anchors.rightMargin: (root.lcd ? root.st.lcd_margin * 2 : 12) + root.st.inset_pad + root.device_side
                     y: title_tab.y + (title_tab.height - height) / 2
                     text: root.st.title_readout.replace("{code}", root.title.slice(0, 3))
                     color: root.st.title_readout_fg.a > 0 ? root.st.title_readout_fg : root.st.text_muted
@@ -636,9 +669,9 @@ PanelWindow {
                     anchors.left: parent.left
                     anchors.right: parent.right
                     anchors.bottom: parent.bottom
-                    anchors.leftMargin: 12 + root.st.lcd_margin
-                    anchors.rightMargin: 12 + root.st.lcd_margin
-                    anchors.bottomMargin: (root.search_overlay ? 4 : 8) + root.st.inset_pad + root.st.lcd_margin * 2 + root.engraving_height
+                    anchors.leftMargin: 12 + root.st.lcd_margin + root.device_side
+                    anchors.rightMargin: 12 + root.st.lcd_margin + root.device_side
+                    anchors.bottomMargin: (root.search_overlay ? 4 : 8) + root.st.inset_pad + root.st.lcd_margin * 2 + root.engraving_height + root.device_bottom
                     text: root.footer_override !== "" ? root.footer_override : (root.key_help !== "" ? root.help_hint : root.footer_hint)
                 }
 
@@ -676,8 +709,8 @@ PanelWindow {
                     anchors.fill: parent
                     anchors.topMargin: root.header_height
                     anchors.bottomMargin: root.footer_height
-                    anchors.leftMargin: root.st.lcd_margin
-                    anchors.rightMargin: root.st.lcd_margin
+                    anchors.leftMargin: root.st.lcd_margin + root.device_side
+                    anchors.rightMargin: root.st.lcd_margin + root.device_side
                     focus: true
                     opacity: root.help_open ? 0 : 1
 

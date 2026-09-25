@@ -211,6 +211,23 @@ Rectangle {
         top_radius: root.radius
     }
 
+    // Styles with a title strip head the toast like a window: the app line sits on the strip.
+    Rectangle {
+        visible: Style.title_strip.a > 0
+        x: root.border.width
+        y: root.border.width
+        width: root.width - root.border.width * 2
+        height: layout.y + header_row.height + 4 - y
+        color: Style.title_strip
+
+        Rectangle {
+            anchors.bottom: parent.bottom
+            width: parent.width
+            height: 1
+            color: Style.hairline.a > 0 ? Style.hairline : Style.frame_border_color
+        }
+    }
+
     RowLayout {
         id: layout
         anchors.left: parent.left
@@ -235,8 +252,10 @@ Rectangle {
             spacing: 2
 
             RowLayout {
+                id: header_row
                 Layout.fillWidth: true
                 Layout.minimumWidth: 0
+                Layout.bottomMargin: Style.title_strip.a > 0 ? 6 : 0
                 spacing: 6
 
                 Text {
@@ -310,27 +329,38 @@ Rectangle {
                         required property var modelData
                         required property int index
                         readonly property bool focused: action_chip.index === root.focused_action
+                        readonly property bool hand: action_chip.focused && Style.hand_cursor
 
-                        implicitWidth: Math.min(action_label.implicitWidth + 16, layout.width)
+                        implicitWidth: Math.min(action_label.implicitWidth + 16 + (action_chip.hand ? 20 : 0), layout.width)
                         implicitHeight: 22
                         radius: Style.pill_chips ? height / 2 : Style.radius(11)
-                        color: action_chip.focused ? Style.chip_pick : Style.boxed_cards ? "transparent" : Theme.bg_surface
+                        color: action_chip.hand ? "transparent" : action_chip.focused ? Style.chip_pick : Style.boxed_cards ? "transparent" : Theme.bg_surface
                         border.width: Style.boxed_cards || action_chip.focused ? 1 : 0
                         border.color: action_chip.focused ? Style.chip_pick : Style.chip_border.a > 0 ? Style.chip_border : Style.key_border
 
                         Text {
                             id: action_label
                             anchors.centerIn: parent
+                            anchors.horizontalCenterOffset: action_chip.hand ? 10 : 0
                             elide: Text.ElideRight
                             width: Math.min(implicitWidth, layout.width - 16)
                             horizontalAlignment: Text.AlignHCenter
                             text: action_chip.modelData.text
-                            color: action_chip.focused ? Theme.bg_crust : Theme.theme_secondary
+                            color: action_chip.hand ? Theme.fg_strong : action_chip.focused ? Theme.bg_crust : Theme.theme_secondary
                             font.bold: action_chip.focused
                             font.family: Style.font_family
                             font.pixelSize: Style.font_size - (Style.boxed_cards ? 3 : 4)
                             style: action_chip.focused ? Text.Normal : root.text_style
                             styleColor: root.glow_color
+                        }
+
+                        HandCursor {
+                            visible: action_chip.hand
+                            anchors.right: action_label.left
+                            anchors.rightMargin: 4
+                            anchors.verticalCenter: parent.verticalCenter
+                            width: 16
+                            height: 10
                         }
 
                         MouseArea {

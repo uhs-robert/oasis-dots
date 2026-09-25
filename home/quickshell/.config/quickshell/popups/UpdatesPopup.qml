@@ -11,6 +11,7 @@ Popup {
 
     popup_name: "updates"
     preferred_width: 520
+    fit_island: true
     body_height: content.implicitHeight + 24
     key_help: "Tab views · j/k move · gg/G ends · r refresh · u upgrade · q close"
 
@@ -94,12 +95,12 @@ Popup {
             anchors.top: parent.top
             spacing: 6
 
-            RowLayout {
+            Flow {
                 Layout.fillWidth: true
                 spacing: 8
 
                 Text {
-                    Layout.fillWidth: true
+                    width: Math.min(implicitWidth, parent.width)
                     text: UpdatesState.total + " update" + (UpdatesState.total === 1 ? "" : "s") + " · " + UpdatesState.official.length + " official, " + UpdatesState.aur.length + " AUR"
                     color: root.st.text_fg
                     font.family: root.st.font_family
@@ -109,6 +110,8 @@ Popup {
                 }
 
                 Text {
+                    width: Math.min(implicitWidth, parent.width)
+                    elide: Text.ElideRight
                     text: UpdatesState.checking ? "Checking…" : UpdatesState.error ? UpdatesState.error : (UpdatesState.last_checked > 0 ? "Checked " + Qt.formatTime(new Date(UpdatesState.last_checked), "HH:mm") : "Never checked")
                     color: UpdatesState.error && !UpdatesState.checking ? Theme.warning : root.st.text_muted
                     font.family: root.st.font_family
@@ -122,6 +125,9 @@ Popup {
 
                 Text {
                     anchors.centerIn: parent
+                    width: parent.width - 16
+                    horizontalAlignment: Text.AlignHCenter
+                    wrapMode: Text.Wrap
                     visible: root.current_list.length === 0
                     text: UpdatesState.error ? UpdatesState.error : "Up to date"
                     color: UpdatesState.error ? Theme.warning : root.st.text_dim
@@ -138,20 +144,34 @@ Popup {
                     model: root.current_list
                     currentIndex: root.selected
 
+                    // Rows too narrow for a typical name beside its versions put the versions on a second line.
+                    readonly property bool stacked: row_list.width < row_metrics.advanceWidth("python-package-name 1.23.4-1 → 1.23.5-1") + 24
+
+                    FontMetrics {
+                        id: row_metrics
+                        font.family: root.st.font_family
+                        font.pixelSize: root.st.font_size - 2
+                    }
+
                     delegate: MenuRow {
                         id: update_row
                         required property var modelData
                         required property int index
 
                         width: row_list.width
-                        height: Style.px(30)
+                        height: row_list.stacked ? Math.max(Style.px(30), row_text.implicitHeight + 8) : Style.px(30)
                         selected: update_row.index === root.selected
 
-                        RowLayout {
-                            anchors.fill: parent
+                        GridLayout {
+                            id: row_text
+                            anchors.left: parent.left
+                            anchors.right: parent.right
+                            anchors.verticalCenter: parent.verticalCenter
                             anchors.leftMargin: 8 + update_row.inset
                             anchors.rightMargin: 8 + update_row.key_space
-                            spacing: 8
+                            columns: row_list.stacked ? 1 : 2
+                            columnSpacing: 8
+                            rowSpacing: 0
 
                             RowLabel {
                                 Layout.fillWidth: true
@@ -165,7 +185,9 @@ Popup {
 
                             // One elided Text so long versions shrink from the left and keep the new version visible.
                             Text {
-                                Layout.maximumWidth: row_list.width * 0.6
+                                Layout.fillWidth: row_list.stacked
+                                Layout.maximumWidth: row_list.stacked ? row_text.width - 8 : row_list.width * 0.6
+                                Layout.leftMargin: row_list.stacked ? 8 : 0
                                 elide: Text.ElideLeft
                                 textFormat: Text.StyledText
                                 text: update_row.modelData.old + " → <font color=\"" + Theme.yellow + "\">" + update_row.modelData.new + "</font>"
@@ -183,37 +205,20 @@ Popup {
                 }
             }
 
-            Item {
+            TabRows {
                 Layout.fillWidth: true
-                Layout.preferredHeight: 28
-
-                RowLayout {
-                    anchors.centerIn: parent
-                    spacing: 4
-
-                    Repeater {
-                        model: root.sub_views
-
-                        MenuTab {
-                            id: sub_chip
-                            required property string modelData
-                            required property int index
-
-                            base_radius: 12
-                            label: sub_chip.modelData
-                            active: sub_chip.index === root.current_sub
-                            font_size: root.st.font_size - 3
-                            onClicked: {
-                                root.current_sub = sub_chip.index;
-                                root.selected = 0;
-                            }
-                        }
-                    }
+                chips: true
+                labels: root.sub_views
+                current: root.current_sub
+                onPicked: index => {
+                    root.current_sub = index;
+                    root.selected = 0;
                 }
             }
 
             MenuFooter {
                 Layout.fillWidth: true
+                wrap: true
                 text: root.help_hint
             }
         }

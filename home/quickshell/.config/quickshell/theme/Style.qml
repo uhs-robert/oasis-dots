@@ -200,7 +200,20 @@ Singleton {
             title_index: [],
             title_weight: 0,
             title_trail: "transparent",
-            bar_ticks: "transparent"
+            bar_ticks: "transparent",
+            title_strip: "transparent",
+            caps_tracking: 0,
+            tab_outline: "transparent",
+            shade_0: "transparent",
+            shade_1: "transparent",
+            shade_2: "transparent",
+            shade_3: "transparent",
+            pixel_border: "transparent",
+            device_shell: false,
+            window_gradient: [],
+            materia: ({}),
+            hand_cursor: false,
+            meter_solid: false
         };
         return {
             "default": {
@@ -390,7 +403,20 @@ Singleton {
                 title_index: [],
                 title_weight: 0,
                 title_trail: "transparent",
-                bar_ticks: "transparent"
+                bar_ticks: "transparent",
+                title_strip: "transparent",
+                caps_tracking: 0,
+                tab_outline: "transparent",
+                shade_0: "transparent",
+                shade_1: "transparent",
+                shade_2: "transparent",
+                shade_3: "transparent",
+                pixel_border: "transparent",
+                device_shell: false,
+                window_gradient: [],
+                materia: ({}),
+                hand_cursor: false,
+                meter_solid: false
             },
             "terminal": Object.assign({}, terminal, {
                 wait_anim: "cursor",
@@ -1164,7 +1190,283 @@ Singleton {
                 bar_workspace_ring: Qt.alpha(Theme.theme_primary_light, 0.24),
                 bar_pill_square: true,
                 bar_hover_bg: Qt.alpha(Theme.theme_primary_light, 0.24)
-            })
+            }),
+            // Half-Life's VGUI windows and HEV HUD: dark panels on a primary hairline, Exo 2 text, Chakra Petch readouts.
+            "halflife": (() => {
+                const hl = Theme.theme_primary;
+                const hl_t = Qt.alpha(hl, 0.72);
+                const hl_l = Qt.alpha(hl, 0.55);
+                const hl_hair = Qt.alpha(hl, 0.75);
+                const hl_d = Qt.alpha(hl, 0.3);
+                const hl_f = Qt.alpha(hl, 0.13);
+                return Object.assign({}, terminal, {
+                    wait_anim: "hev_alert",
+                    done_anim: "hev_pickup",
+                    weather_header: "hev",
+                    osd_layout: "hud",
+                    text_muted: hl_t,
+                    text_dim: Qt.alpha(hl, 0.85),
+                    text_fg: hl,
+                    text_primary: hl,
+                    font_family: "Exo 2",
+                    font_size: Theme.popup_font_size + 2,
+                    number_font: "Chakra Petch",
+                    mono_font: "Chakra Petch",
+                    frame_color: Theme.bg_core,
+                    frame_border_color: hl_l,
+                    accent_color: hl,
+                    accent_height: 1,
+                    hairline: hl_hair,
+                    hairline_dim: hl_d,
+                    selection_bg: hl_f,
+                    selection_outline: "transparent",
+                    selection_border: hl_l,
+                    caret_color: hl,
+                    caret_blink: false,
+                    row_cursor: "",
+                    tab_active_bg: hl_f,
+                    tab_active_fg: Theme.fg_strong,
+                    tab_fg: hl_t,
+                    tab_underline: hl,
+                    tab_outline: hl_d,
+                    key_fg: Theme.theme_secondary,
+                    key_border: Qt.alpha(Theme.theme_secondary, 0.45),
+                    section_fg: hl,
+                    section_rule: false,
+                    section_fade: hl_d,
+                    label_spacing: 1,
+                    caps_tracking: 3,
+                    footer_fg: hl_t,
+                    footer_rule_solid: true,
+                    footer_rule_color: hl_d,
+                    meter_on: hl,
+                    meter_off: hl_f,
+                    title_bg: "transparent",
+                    title_fg: hl,
+                    title_spacing: 3.8,
+                    title_strip: hl_f,
+                    chip_brackets: false,
+                    chip_active_bg: hl,
+                    chip_active_fg: Theme.bg_crust,
+                    chip_pick: hl,
+                    chip_border: hl_l,
+                    toggle_brackets: false,
+                    toggle_on: hl,
+                    toggle_off: hl_t,
+                    marker_fill: false,
+                    bar_font_family: "Chakra Petch",
+                    bar_font_size: Theme.font_size + 1,
+                    bar_letter_spacing: 0.8,
+                    bar_side_bg: Qt.alpha(Theme.bg_core, 0.94),
+                    bar_center_bg: Qt.alpha(Theme.bg_core, 0.94),
+                    bar_fg: hl,
+                    bar_clock_fg: hl,
+                    bar_border_color: hl_l,
+                    bar_workspace_focused: Theme.theme_secondary,
+                    bar_workspace_active: hl,
+                    bar_workspace_idle: hl_f,
+                    bar_workspace_ring: hl_d,
+                    bar_pill_square: true,
+                    bar_hover_bg: hl_d
+                });
+            })(),
+            // A backlit Game Boy screen in four shades of the primary; `small` popups sit in the handheld's shell.
+            "gameboy": (() => {
+                const g0 = Qt.tint(Theme.bg_crust, Qt.alpha(Theme.theme_primary, 0.08));
+                const g1 = Qt.tint(Theme.bg_core, Qt.alpha(Theme.theme_primary_strong, 0.34));
+                const g2 = Theme.theme_primary;
+                const g3 = Theme.theme_primary_light;
+                return Object.assign({}, terminal, {
+                    wait_anim: "exclaim",
+                    done_anim: "levelup",
+                    weather_header: "pokedex",
+                    card_layout: "pixel",
+                    shade_0: g0,
+                    shade_1: g1,
+                    shade_2: g2,
+                    shade_3: g3,
+                    pixel_border: g2,
+                    text_muted: g2,
+                    text_dim: g2,
+                    text_fg: g3,
+                    text_strong: g3,
+                    text_primary: g3,
+                    text_accent: g3,
+                    // Silkscreen and Press Start 2P sit on an 8px grid; 16 is Silkscreen's 2x size.
+                    font_family: "Silkscreen",
+                    font_size: 16,
+                    title_font_family: "Press Start 2P",
+                    number_font: "Press Start 2P",
+                    mono_font: "Press Start 2P",
+                    frame_color: g1,
+                    frame_border_width: 0,
+                    frame_border_color: g2,
+                    frame_pad: 6,
+                    accent_color: g2,
+                    accent_height: 0,
+                    selection_bg: g3,
+                    selection_inverse: true,
+                    selection_fg: g0,
+                    selection_outline: "transparent",
+                    caret_color: g0,
+                    row_cursor: "\u25b6",
+                    tab_active_bg: g3,
+                    tab_active_fg: g0,
+                    tab_fg: g2,
+                    key_fg: g3,
+                    key_border: g2,
+                    section_fg: g2,
+                    section_rule: false,
+                    section_fade: g2,
+                    footer_fg: g2,
+                    footer_key_fg: g3,
+                    footer_rule_color: g2,
+                    meter_on: g3,
+                    meter_off: g0,
+                    meter_hot: Theme.theme_label,
+                    meter_height: 8,
+                    chart_fill: g3,
+                    title_bg: "transparent",
+                    title_fg: g3,
+                    title_spacing: 0,
+                    chip_brackets: false,
+                    chip_active_bg: g3,
+                    chip_active_fg: g0,
+                    chip_pick: g3,
+                    chip_border: g2,
+                    toggle_on: g3,
+                    toggle_off: g2,
+                    marker_fill: false,
+                    bar_font_family: "Silkscreen",
+                    bar_font_size: 16,
+                    bar_side_bg: g1,
+                    bar_center_bg: g1,
+                    bar_fg: g3,
+                    bar_clock_fg: g3,
+                    bar_border_width: 2,
+                    bar_border_color: g0,
+                    bar_inset_gap: 0,
+                    bar_inset_width: 2,
+                    bar_inset_color: g2,
+                    bar_workspace_focused: g3,
+                    bar_workspace_active: g2,
+                    bar_workspace_idle: g0,
+                    bar_workspace_ring: g2,
+                    bar_pill_square: true,
+                    bar_hover_bg: Qt.alpha(g3, 0.25),
+                    small: {
+                        device_shell: true
+                    }
+                });
+            })(),
+            // Final Fantasy VII materia menus: blue diagonal windows in a light rim, orbs for keys and a pointing hand.
+            "ff7": (() => {
+                const rim = Qt.tint(Theme.fg_strong, Qt.alpha(Theme.theme_primary_light, 0.55));
+                const win_top = Qt.tint(Theme.ui_visual_bg, Qt.alpha(Theme.theme_primary_strong, 0.14));
+                const win_mid = Qt.tint(Theme.bg_crust, Qt.alpha(Theme.ui_visual_bg, 0.55));
+                const win_end = Qt.tint(Theme.bg_crust, Qt.alpha(Theme.ui_visual_bg, 0.14));
+                const label = Qt.tint(Theme.fg_strong, Qt.alpha(Theme.theme_primary_light, 0.15));
+                return Object.assign({}, terminal, {
+                    wait_anim: "atb",
+                    done_anim: "fanfare",
+                    weather_header: "status",
+                    text_muted: Qt.tint(Theme.fg_dim, Qt.alpha(Theme.theme_primary_light, 0.5)),
+                    text_dim: Theme.theme_primary_light,
+                    text_fg: label,
+                    text_primary: Theme.theme_primary_light,
+                    font_family: "Nunito",
+                    font_size: Theme.popup_font_size + 4,
+                    frame_color: win_end,
+                    frame_shade: win_top,
+                    window_gradient: [[0, win_top], [0.4, win_mid], [1, win_end]],
+                    frame_radius: 6,
+                    frame_border_width: 2,
+                    frame_border_color: rim,
+                    frame_inset_width: 1,
+                    frame_inset_color: Theme.fg_muted,
+                    frame_drop: 4,
+                    accent_color: rim,
+                    accent_height: 2,
+                    selection_bg: "transparent",
+                    selection_outline: "transparent",
+                    caret_color: Theme.fg_strong,
+                    caret_blink: false,
+                    row_cursor: "",
+                    hand_cursor: true,
+                    tab_active_bg: "transparent",
+                    tab_active_fg: Theme.fg_strong,
+                    tab_fg: Theme.theme_primary_light,
+                    key_bg: "transparent",
+                    key_fg: Theme.bg_crust,
+                    key_border: "transparent",
+                    key_round: true,
+                    materia: {
+                        key: Theme.theme_secondary,
+                        section: Theme.ok,
+                        workspace: Theme.ok,
+                        alert: Theme.theme_label,
+                        clear: Theme.theme_secondary,
+                        cloud: Theme.theme_primary_light,
+                        rain: Theme.info,
+                        storm: Theme.theme_label,
+                        snow: Theme.fg_strong,
+                        fog: Theme.fg_dim,
+                        days: {
+                            red: Theme.theme_label,
+                            green: Theme.ok,
+                            purple: Theme.magenta,
+                            blue: Theme.info,
+                            yellow: Theme.theme_secondary
+                        }
+                    },
+                    section_fg: Theme.theme_primary_light,
+                    section_rule: false,
+                    section_fade: Qt.alpha(rim, 0.3),
+                    label_caps: true,
+                    label_spacing: 1.2,
+                    footer_fg: Theme.theme_primary_light,
+                    footer_key_fg: Theme.theme_secondary,
+                    footer_rule_color: Qt.alpha(rim, 0.2),
+                    meter_on: Theme.theme_primary_strong,
+                    meter_shade: Theme.theme_primary_light,
+                    meter_off: Theme.bg_crust,
+                    meter_hot: Theme.theme_label,
+                    meter_outline: Theme.fg_muted,
+                    meter_radius: 1,
+                    meter_height: 7,
+                    meter_solid: true,
+                    title_bg: "transparent",
+                    title_fg: Theme.theme_primary_light,
+                    title_spacing: 0.5,
+                    chip_brackets: false,
+                    chip_active_bg: "transparent",
+                    chip_active_fg: Theme.fg_strong,
+                    chip_pick: Qt.alpha(Theme.fg_strong, 0.2),
+                    chip_border: Qt.alpha(rim, 0.45),
+                    toggle_brackets: false,
+                    toggle_on: Theme.ok,
+                    toggle_off: Theme.theme_primary_light,
+                    text_shadow: Qt.alpha(Theme.bg_crust, 0.85),
+                    bar_font_family: "Nunito",
+                    bar_font_size: Theme.font_size + 1,
+                    bar_side_bg: win_end,
+                    bar_center_bg: win_end,
+                    bar_fg: Theme.fg_strong,
+                    bar_clock_fg: Theme.fg_strong,
+                    bar_border_width: 2,
+                    bar_border_color: rim,
+                    bar_inset_gap: 2,
+                    bar_inset_width: 1,
+                    bar_inset_color: Theme.fg_muted,
+                    bar_workspace_focused: Theme.ok,
+                    bar_workspace_active: Theme.theme_secondary,
+                    bar_workspace_idle: Theme.bg_crust,
+                    bar_workspace_ring: Theme.fg_muted,
+                    bar_hover_bg: Qt.alpha(Theme.fg_strong, 0.12),
+                    bar_glow_color: Theme.bg_crust,
+                    bar_text_raised: true
+                });
+            })()
         };
     }
 
@@ -1405,14 +1707,37 @@ Singleton {
     // Start's schematic and status strip.
     readonly property color schematic: root.active.schematic
     readonly property bool status_strip: root.active.status_strip
-    // Alternate layouts: "" keeps the default; osd "ring" or "readout", weather "ring", "spec", "scope", "watch", "memcard", "battle", "mode7", "wttr", "weatherstar", "towers" or "scan", cards "rule" or "channel".
+    // Alternate layouts: "" keeps the default; osd "ring", "readout" or "hud", weather "ring", "spec", "scope", "watch", "memcard", "battle", "mode7", "wttr", "weatherstar", "towers", "scan", "hev", "pokedex" or "status", cards "rule", "channel" or "pixel".
     readonly property string osd_layout: root.active.osd_layout
     readonly property string weather_header: root.active.weather_header
     readonly property string card_layout: root.active.card_layout
-    // The keeptabs done celebration: hearts, pixel (stepped) or lcd (stepped, then blinks).
+    // The keeptabs done celebration: hearts, pixel (stepped), lcd (stepped, then blinks), hev_pickup, levelup (inverted flash, pixel sparkles) or fanfare.
     readonly property string done_anim: root.active.done_anim || "hearts"
-    // The keeptabs waiting cue: bubble, cursor, pressanykey, advance, hand, alert, rumble, transmission, scan, comms, ping or orders.
+    // The keeptabs waiting cue: bubble, cursor, pressanykey, advance, hand, alert, rumble, transmission, scan, comms, ping, orders, hev_alert, exclaim or atb.
     readonly property string wait_anim: root.active.wait_anim || "bubble"
+    // A full-width title strip in this color with a hairline under it and a close box at the right.
+    readonly property color title_strip: root.active.title_strip
+    // Sections, tabs, chips and header buttons in caps tracked this far; footers keep label_caps.
+    readonly property real caps_tracking: root.active.caps_tracking
+    // A 1px outline around every tab and header button; the active tab takes selection_border.
+    readonly property color tab_outline: root.active.tab_outline
+    // A four-shade screen palette, darkest first, for pixel-art parts (sprites, photos, dot bars).
+    readonly property color shade_0: root.active.shade_0
+    readonly property color shade_1: root.active.shade_1
+    readonly property color shade_2: root.active.shade_2
+    readonly property color shade_3: root.active.shade_3
+    // Frames get a 2px pixel double border with this middle ring (PixelFrame); keys and meters get 2px pixel rings.
+    readonly property color pixel_border: root.active.pixel_border
+    // Small popups sit inside a handheld's shell (DeviceShell); hover shelves never do.
+    readonly property bool device_shell: root.active.device_shell
+    // Diagonal [position, color] stops filling window frames inside their border (WindowGradient); empty keeps frame_color.
+    readonly property var window_gradient: root.active.window_gradient
+    // Orb colors (MateriaOrb) by role (key, section, workspace, alert), weather kind and daily slot color; a role left out draws no orb.
+    readonly property var materia: root.active.materia
+    // A pointing hand (HandCursor) on the selected row, active tab, picked chip and selected day.
+    readonly property bool hand_cursor: root.active.hand_cursor
+    // Meters as one continuous gauge (AtbBar) instead of segments.
+    readonly property bool meter_solid: root.active.meter_solid
 
     property bool cava_line: true
     readonly property var bar: root.active

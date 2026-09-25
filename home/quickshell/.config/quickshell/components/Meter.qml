@@ -51,6 +51,16 @@ Item {
         }
     }
 
+    PixelBox {
+        visible: root.st.pixel_border.a > 0 && !root.st.tick_ruler
+        x: -4
+        y: -4
+        width: root.width + 8
+        height: root.implicitHeight + 8
+        fill: root.st.meter_off
+        rings: [root.st.pixel_border, root.st.meter_off]
+    }
+
     Loader {
         width: root.width
         height: root.implicitHeight
@@ -60,9 +70,23 @@ Item {
         }
     }
 
+    Loader {
+        width: root.width
+        height: root.implicitHeight
+        active: root.st.meter_solid && !root.st.tick_ruler
+        sourceComponent: AtbBar {
+            value: root.value
+            fill_color: root.on_selection && root.st.selection_inverse ? root.st.selection_fg : root.on_color
+            shade_color: Qt.colorEqual(root.on_color, root.st.meter_on) && root.st.meter_shade.a > 0 ? root.st.meter_shade : Qt.tint(fill_color, Qt.alpha(Theme.fg_strong, 0.35))
+            hot_from: root.hot ? 0 : root.hot_from
+            busy: root.busy
+            busy_pos: root.busy_pos
+        }
+    }
+
     Item {
         id: segments
-        visible: !root.st.tick_ruler
+        visible: !root.st.tick_ruler && !root.st.meter_solid
         width: root.width
         height: root.implicitHeight
         layer.enabled: root.st.meter_bloom

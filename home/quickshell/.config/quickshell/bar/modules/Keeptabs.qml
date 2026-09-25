@@ -165,7 +165,10 @@ Item {
                         glyph_half: glyph_text.width / 2,
                         content_right: group.content_width - cx,
                         badge: count_text.visible,
-                        badge_bottom: count_text.y + count_text.height - cy
+                        badge_bottom: count_text.y + count_text.height - cy,
+                        badge_x: count_text.x - cx,
+                        badge_y: count_text.y - cy,
+                        count: group.modelData.count
                     };
                 }
 
@@ -219,7 +222,7 @@ Item {
         id: pulse_loader
         property bool nudge: false
         active: false
-        z: -1
+        z: item && !item.under ? 1 : -1
         x: root.done_anchor ? root.done_anchor.x : 0
         y: root.done_anchor ? root.done_anchor.y : 0
         sourceComponent: DonePulse {

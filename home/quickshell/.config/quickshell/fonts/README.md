@@ -18,3 +18,5 @@ Every `.ttf`/`.otf` here is registered for the whole qs process by `services/Bun
 | Saira-Variable.ttf | Saira | google/fonts ofl/saira | OFL-Saira.txt |
 | BarlowCondensed-Regular.ttf, -Medium, -SemiBold, -Bold | Barlow Condensed | google/fonts ofl/barlowcondensed | OFL-BarlowCondensed.txt |
 | SairaStencilOne-Regular.ttf | Saira Stencil One | google/fonts ofl/sairastencilone | OFL-SairaStencilOne.txt |
+| ChakraPetch-Medium.ttf, ChakraPetch-Bold.ttf | Chakra Petch | google/fonts ofl/chakrapetch | OFL-ChakraPetch.txt |
+| Nunito-Variable.ttf | Nunito | google/fonts ofl/nunito | OFL-Nunito.txt |

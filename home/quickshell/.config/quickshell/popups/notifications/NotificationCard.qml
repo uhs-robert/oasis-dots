@@ -84,6 +84,13 @@ Item {
             selected: root.selected
         }
 
+        PixelBox {
+            visible: Style.card_layout === "pixel"
+            anchors.fill: parent
+            fill: Style.shade_0
+            rings: [root.selected ? Style.shade_3 : Style.shade_2, Style.shade_0, Style.shade_3]
+        }
+
         Loader {
             active: root.channels
             anchors.fill: parent
@@ -152,7 +159,7 @@ Item {
         }
 
         Text {
-            visible: Style.boxed_cards && root.selected && Style.row_cursor !== "" && Style.caret_phase
+            visible: Style.boxed_cards && root.selected && Style.row_cursor !== "" && Style.caret_phase && Style.card_layout !== "pixel"
             x: 4
             y: layout.y + 1
             text: Style.row_cursor
@@ -283,26 +290,37 @@ Item {
                             required property var modelData
                             required property int index
                             readonly property bool focused: action_chip.index === root.focused_action
+                            readonly property bool hand: action_chip.focused && Style.hand_cursor
 
-                            implicitWidth: Math.min(action_label.implicitWidth + 18, layout.width)
+                            implicitWidth: Math.min(action_label.implicitWidth + 18 + (action_chip.hand ? 20 : 0), layout.width)
                             implicitHeight: 26
                             radius: Style.pill_chips ? height / 2 : Style.radius(13)
-                            color: action_chip.focused ? Style.chip_pick : Style.boxed_cards ? "transparent" : Theme.bg_surface
+                            color: action_chip.hand ? "transparent" : action_chip.focused ? Style.chip_pick : Style.boxed_cards ? "transparent" : Theme.bg_surface
                             border.width: Style.boxed_cards || action_chip.focused ? 1 : 0
                             border.color: action_chip.focused ? Style.chip_pick : Style.chip_border.a > 0 ? Style.chip_border : Style.key_border
 
                             Text {
                                 id: action_label
                                 anchors.centerIn: parent
+                                anchors.horizontalCenterOffset: action_chip.hand ? 10 : 0
                                 anchors.margins: 4
                                 elide: Text.ElideRight
                                 width: Math.min(implicitWidth, layout.width - 18)
                                 horizontalAlignment: Text.AlignHCenter
                                 text: action_chip.modelData.text
-                                color: action_chip.focused ? Theme.bg_crust : Theme.theme_secondary
+                                color: action_chip.hand ? Theme.fg_strong : action_chip.focused ? Theme.bg_crust : Theme.theme_secondary
                                 font.bold: action_chip.focused
                                 font.family: Style.label_font_family
                                 font.pixelSize: Style.font_size - 3
+                            }
+
+                            HandCursor {
+                                visible: action_chip.hand
+                                anchors.right: action_label.left
+                                anchors.rightMargin: 4
+                                anchors.verticalCenter: parent.verticalCenter
+                                width: 16
+                                height: 10
                             }
 
                             MouseArea {

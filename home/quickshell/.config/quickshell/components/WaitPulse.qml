@@ -20,12 +20,12 @@ Item {
     signal finished()
 
     // These redraw the glyph themselves, so the module hides the real one while they play.
-    readonly property bool hides_glyph: root.mode === "rumble" || root.mode === "transmission"
+    readonly property bool hides_glyph: root.mode === "rumble" || root.mode === "transmission" || root.mode === "hev_alert" || root.mode === "atb"
     // Drawn beneath the glyph row so the glyph and its count badge stay on top.
-    readonly property bool under: ["pressanykey", "rumble", "transmission", "scan", "comms", "ping", "orders"].indexOf(root.mode) !== -1
+    readonly property bool under: ["pressanykey", "rumble", "transmission", "scan", "comms", "ping", "orders", "hev_alert"].indexOf(root.mode) !== -1
     readonly property real strength: root.nudge ? 0.6 : 1
     readonly property real half: root.glyph_size / 2
-    readonly property var durations: ({ bubble: [1200, 700], cursor: [1200, 600], pressanykey: [1400, 700], advance: [1400, 600], hand: [1200, 600], alert: [1000, 600], rumble: [1000, 450], transmission: [1200, 500], scan: [1300, 700], comms: [1200, 500], ping: [1400, 900], orders: [1400, 600] })
+    readonly property var durations: ({ bubble: [1200, 700], cursor: [1200, 600], pressanykey: [1400, 700], advance: [1400, 600], hand: [1200, 600], alert: [1000, 600], rumble: [1000, 450], transmission: [1200, 500], scan: [1300, 700], comms: [1200, 500], ping: [1400, 900], orders: [1400, 600], hev_alert: [900, 600], exclaim: [1000, 600], atb: [1600, 1000] })
     readonly property int duration: (root.durations[root.mode] || root.durations.bubble)[root.nudge ? 1 : 0]
     property real elapsed
     readonly property real tail: 1 - root.phase(root.duration - 150, 150)
@@ -73,7 +73,7 @@ Item {
     }
 
     Loader {
-        sourceComponent: ({ bubble: bubble_c, cursor: cursor_c, pressanykey: pressanykey_c, advance: advance_c, hand: hand_c, alert: alert_c, rumble: rumble_c, transmission: transmission_c, scan: scan_c, comms: comms_c, ping: ping_c, orders: orders_c })[root.mode] || bubble_c
+        sourceComponent: ({ bubble: bubble_c, cursor: cursor_c, pressanykey: pressanykey_c, advance: advance_c, hand: hand_c, alert: alert_c, rumble: rumble_c, transmission: transmission_c, scan: scan_c, comms: comms_c, ping: ping_c, orders: orders_c, hev_alert: hev_alert_c, exclaim: exclaim_c, atb: atb_c })[root.mode] || bubble_c
     }
 
     Component {
@@ -386,6 +386,139 @@ Item {
         }
     }
 
+    // HEV suit alert: a warning triangle blinks at the glyph's shoulder and the island hairline under its slot turns red.
+    Component {
+        id: hev_alert_c
+
+        Item {
+            id: hev
+            readonly property int frame: root.step(150)
+            readonly property int blinks: root.nudge ? 2 : 3
+            readonly property bool done: hev.frame >= hev.blinks * 2
+            readonly property bool lit: !hev.done && hev.frame % 2 === 0
+            readonly property real tri_x: Math.max(-root.room_left + 1, -root.glyph_half - 4)
+            readonly property real tri_y: Math.max(-root.room_up + 1, -root.half - 3)
+
+            Text {
+                x: -width / 2
+                y: -height / 2
+                text: root.glyph
+                color: root.color
+                opacity: hev.lit || hev.done ? 1 : 0.35
+                font.family: root.font_family
+                font.pixelSize: root.glyph_size
+                style: Style.bar_text_style
+                styleColor: Style.bar_glow_color
+            }
+
+            Shape {
+                visible: hev.lit
+                x: Math.round(hev.tri_x)
+                y: Math.round(hev.tri_y)
+                width: 10
+                height: 9
+                opacity: root.strength
+                preferredRendererType: Shape.CurveRenderer
+
+                ShapePath {
+                    fillColor: Theme.theme_label
+                    strokeColor: Theme.bg_shadow
+                    strokeWidth: 1
+                    joinStyle: ShapePath.MiterJoin
+                    PathPolyline { path: [Qt.point(5, 0), Qt.point(10, 9), Qt.point(0, 9), Qt.point(5, 0)] }
+                }
+
+                Rectangle {
+                    x: 4.5
+                    y: 3
+                    width: 1
+                    height: 3
+                    color: Theme.bg_crust
+                }
+
+                Rectangle {
+                    x: 4.5
+                    y: 7
+                    width: 1
+                    height: 1
+                    color: Theme.bg_crust
+                }
+            }
+
+            Rectangle {
+                visible: hev.lit
+                x: -root.room_left
+                y: Math.round(root.room_down) - 1
+                width: root.room_left + root.room_right
+                height: 1
+                color: Theme.theme_label
+                opacity: root.strength
+            }
+        }
+    }
+
+    // An ATB gauge fills under the glyph; full, it turns gold, the glyph goes white and the hand points at it.
+    Component {
+        id: atb_c
+
+        Item {
+            id: atb
+            readonly property int fill_ms: root.nudge ? 500 : 900
+            readonly property bool ready: root.elapsed >= atb.fill_ms
+            readonly property real x0: -Math.min(root.room_left - 2, root.glyph_half + 1)
+            readonly property real x1: Math.min(root.room_right - 2, root.glyph_half + 1)
+            readonly property real bar_y: Math.min(root.room_down - 5, root.half + 2)
+            readonly property real hand_w: Math.max(6, Math.min(12, root.room_left - root.glyph_half + 5))
+
+            Text {
+                x: -width / 2
+                y: -height / 2
+                text: root.glyph
+                color: atb.ready ? Theme.fg_strong : root.color
+                font.family: root.font_family
+                font.pixelSize: root.glyph_size
+                style: Style.bar_text_style
+                styleColor: Style.bar_glow_color
+            }
+
+            Rectangle {
+                x: atb.x0 - 1
+                y: atb.bar_y - 1
+                width: atb.x1 - atb.x0 + 2
+                height: 5
+                color: Theme.fg_muted
+                opacity: root.tail
+
+                Rectangle {
+                    x: 1
+                    y: 1
+                    width: parent.width - 2
+                    height: 3
+                    color: Theme.bg_crust
+
+                    Rectangle {
+                        width: parent.width * Math.min(1, 0.15 + 0.85 * root.phase(0, atb.fill_ms))
+                        height: parent.height
+                        gradient: Gradient {
+                            orientation: Gradient.Horizontal
+                            GradientStop { position: 0; color: atb.ready ? Theme.theme_secondary_strong : Theme.theme_primary_strong }
+                            GradientStop { position: 1; color: atb.ready ? Theme.theme_secondary : Theme.theme_primary_light }
+                        }
+                    }
+                }
+            }
+
+            HandCursor {
+                visible: root.elapsed >= atb.fill_ms + 100
+                x: Math.max(-root.room_left + 1, -root.glyph_half + 2 - width)
+                y: -height / 2
+                width: atb.hand_w
+                height: Math.round(atb.hand_w * 14 / 22)
+                opacity: root.tail * root.strength
+            }
+        }
+    }
+
     Component {
         id: orders_c
 
@@ -419,6 +552,44 @@ Item {
                 stripe: Style.hazard.a > 0 ? Style.hazard : orders.amber
                 tile: 6
                 line: 2
+            }
+        }
+    }
+
+    // A trainer's "!" balloon over the glyph's shoulder: half size, then full, held, then gone.
+    Component {
+        id: exclaim_c
+
+        Item {
+            id: exclaim
+            readonly property color light: Style.shade_3.a > 0 ? Style.shade_3 : Theme.fg_strong
+            readonly property color dark: Style.shade_0.a > 0 ? Style.shade_0 : Theme.bg_crust
+            readonly property bool half: root.elapsed < 120
+            readonly property int box_w: 15
+            readonly property int box_h: 17
+            visible: root.elapsed >= 60 && root.elapsed < root.duration - 100
+            x: Math.round(Math.max(-root.room_left + 1, Math.min(root.room_right - 1 - box_w, 0)))
+            y: Math.round(Math.max(-root.room_up + 1, -root.half - box_h + 6))
+            width: box_w
+            height: box_h
+            transformOrigin: Item.BottomLeft
+            scale: exclaim.half ? 0.5 : 1
+            opacity: root.nudge ? 0.85 : 1
+
+            PixelBox {
+                anchors.fill: parent
+                fill: exclaim.light
+                rings: [exclaim.light, exclaim.dark]
+                ring_width: 1
+            }
+
+            Text {
+                anchors.centerIn: parent
+                anchors.horizontalCenterOffset: 1
+                text: "!"
+                color: exclaim.dark
+                font.family: "Press Start 2P"
+                font.pixelSize: 8
             }
         }
     }

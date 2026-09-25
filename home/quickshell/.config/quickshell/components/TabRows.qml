@@ -28,8 +28,8 @@ ColumnLayout {
         font.family: root.st.label_font_family
         font.pixelSize: root.font_size
         font.bold: true
-        font.capitalization: root.st.tab_caps ? Font.AllUppercase : Font.MixedCase
-        font.letterSpacing: root.st.tab_caps ? root.st.label_spacing : 0
+        font.capitalization: root.st.tab_caps || root.st.caps_tracking > 0 ? Font.AllUppercase : Font.MixedCase
+        font.letterSpacing: root.st.caps_tracking > 0 ? root.st.caps_tracking * (root.chips ? 0.3 : 1) : root.st.tab_caps ? root.st.label_spacing : 0
     }
 
     FontMetrics {
@@ -47,7 +47,8 @@ ColumnLayout {
     function needs(list) {
         // Reading .font re-runs dependent bindings when the style changes the font.
         const f = label_metrics.font;
-        return list.map(l => root.chips ? label_metrics.advanceWidth(root.st.chip_brackets ? "[" + l + "]" : l) + 20 : label_metrics.advanceWidth(l) + 12 + root.key_space + root.bracket_space);
+        const hand = root.st.hand_cursor ? 20 : 0;
+        return list.map(l => root.chips ? label_metrics.advanceWidth(root.st.chip_brackets ? "[" + l + "]" : l) + 20 + hand : label_metrics.advanceWidth(l) + 12 + root.key_space + root.bracket_space + hand);
     }
 
     // Fewest balanced rows of consecutive indices whose widths fit `avail`.

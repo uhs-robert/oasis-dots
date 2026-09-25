@@ -33,7 +33,9 @@ Item {
     readonly property int tower_labels_h: Math.round(Style.font_size * 3.4)
     // Metroid: scan brackets lock onto the selected day.
     readonly property bool scan: Style.weather_header === "scan"
-    readonly property bool custom_column: root.stat_columns || root.ws_panels || root.tower_columns
+    // Game Boy: days as a Game Boy Camera photo strip on the week's hi/lo dot scale.
+    readonly property bool camera: Style.weather_header === "pokedex" && root.sub === 0
+    readonly property bool custom_column: root.stat_columns || root.ws_panels || root.tower_columns || root.camera
     // NES: each column in a Dragon Quest window with a cursor on the selected day.
     readonly property bool dq: Style.weather_header === "battle"
     // SNES: columns standing on a Mode 7 floor.
@@ -41,6 +43,12 @@ Item {
     readonly property bool floor_shown: root.mode7 && root.visible && Popups.open_name === "weather"
     // Terminal: `curl wttr.in`, the window as one box-drawn table.
     readonly property bool wttr_table: Style.weather_header === "wttr" && root.sub === 0
+    // Half-Life: HL1 weapon-slot buckets, the selected day open wider.
+    readonly property bool hev_slots: Style.weather_header === "hev" && root.sub === 0
+    // FF7: the days as linked materia slots.
+    readonly property bool materia_slots: Style.weather_header === "status" && root.sub === 0
+    // Views that draw the whole window themselves instead of the day row.
+    readonly property bool row_replaced: root.wttr_table || root.hev_slots || root.materia_slots
 
     onFloor_shownChanged: {
         if (!floor_loader.item) return;
@@ -78,11 +86,18 @@ Item {
         const f = [label_metrics.font, table_metrics.font];
         const mission_w = root.mission ? Math.max(label_metrics.advanceWidth("a) WED"), small_metrics.advanceWidth("PROGRESS") + 8) : 0;
         const dq_w = root.dq ? 2 * (small_metrics.advanceWidth(Style.row_cursor) + 3) : 0;
+        if (root.hev_slots) return Math.max(1, Math.min(5, 1 + Math.floor((root.width - 100) / 52)));
         const col = root.stat_columns ? 56
             : Style.weather_header === "wttr" ? table_metrics.advanceWidth("─") * 8 - 4
+            : Style.weather_header === "status" ? Math.max(table_metrics.advanceWidth("Today"), table_metrics.advanceWidth("100%"), 44) + 6
             : root.dq ? Math.max(label_metrics.advanceWidth("100%"), label_metrics.advanceWidth("WED") + dq_w) + 16
+            // Room for a 3x-scale 24x18 photo (72x54) plus its frame.
+            : root.camera ? 24 * 3 + 18 + 8
             : Math.max(label_metrics.advanceWidth("Today"), label_metrics.advanceWidth("100%"), mission_w) + 8;
-        return Math.max(1, Math.min(5, Math.floor((root.width + 4) / (col + 4))));
+        // Reserve room for the row-label column ("RAIN" is the widest), matching MateriaSlots' own label_w.
+        const status_label_w = Math.max(40, small_metrics.advanceWidth("RAIN") + 12);
+        const room = Style.weather_header === "status" ? root.width - status_label_w : root.width + 4;
+        return Math.max(1, Math.min(5, Math.floor(room / (col + 4))));
     }
     readonly property var window_days: WeatherState.days.slice(root.first_day, root.first_day + root.fit_days)
 
@@ -111,6 +126,9 @@ Item {
         const r = root.week_temp_range;
         return root.headroom + (r.max - day.min) / (r.max - r.min) * root.band_range_h;
     }
+
+    readonly property real week_low: WeatherState.days.length > 0 ? Math.min(...WeatherState.days.map(d => d.min)) : 0
+    readonly property real week_high: WeatherState.days.length > 0 ? Math.max(...WeatherState.days.map(d => d.max)) : 1
 
     readonly property real wind_max: {
         const days = WeatherState.days;
@@ -180,9 +198,35 @@ Item {
             }
         }
 
+        Loader {
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            active: root.hev_slots
+            visible: active
+            sourceComponent: WeaponSlots {
+                days: root.window_days
+                first_day: root.first_day
+                day_cursor: root.day_cursor
+                on_select: root.on_select
+            }
+        }
+
+        Loader {
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            active: root.materia_slots
+            visible: active
+            sourceComponent: MateriaSlots {
+                days: root.window_days
+                first_day: root.first_day
+                day_cursor: root.day_cursor
+                on_select: root.on_select
+            }
+        }
+
         RowLayout {
             id: day_row
-            visible: !root.wttr_table
+            visible: !root.row_replaced
             Layout.fillWidth: true
             Layout.fillHeight: true
             spacing: 4
@@ -274,6 +318,19 @@ Item {
                             scale_min: root.week_temp_range.min
                             scale_max: root.week_temp_range.max
                             labels_h: root.tower_labels_h
+                        }
+                    }
+
+                    Loader {
+                        active: root.camera
+                        anchors.fill: parent
+                        sourceComponent: CameraPhoto {
+                            day: day_col.modelData
+                            day_index: day_col.day_index
+                            selected: day_col.day_index === root.day_cursor
+                            scale_min: root.week_low
+                            scale_max: root.week_high
+                            slot_w: Math.floor((day_row.width - day_row.spacing * (root.window_days.length - 1)) / Math.max(1, root.window_days.length))
                         }
                     }
 
@@ -538,6 +595,26 @@ Item {
                         }
                     }
                 }
+            }
+        }
+
+        RowLayout {
+            visible: root.camera && root.window_days.length > 0
+            Layout.fillWidth: true
+
+            Text {
+                Layout.fillWidth: true
+                text: "HI LO °" + WeatherState.unit_symbol() + " · RAIN %"
+                color: Style.shade_2
+                font.family: Style.font_family
+                font.pixelSize: Style.font_size - 5
+            }
+
+            Text {
+                text: Math.round(root.week_low) + "–" + Math.round(root.week_high) + "°" + WeatherState.unit_symbol()
+                color: Style.shade_2
+                font.family: Style.font_family
+                font.pixelSize: Style.font_size - 5
             }
         }
 

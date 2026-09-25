@@ -24,6 +24,10 @@ Popup {
     readonly property bool on_alerts_tab: root.has_alerts && root.current_tab === 2
     readonly property bool mission: Style.weather_header === "watch"
     readonly property bool threat: Style.weather_header === "scan"
+    readonly property bool hev: Style.weather_header === "hev"
+    readonly property bool dex: Style.weather_header === "pokedex"
+    // Headers that carry their own alert (HEV banner, Pokédex alert, FF7 status panel) replace the shared banner.
+    readonly property bool own_alert: root.hev || root.dex || Style.weather_header === "status"
 
     readonly property var daily_sub_names: ["Temp & Precip", "Wind", "UV", "Sunshine", "Sun & Moon"]
     readonly property int sun_moon_sub: 4
@@ -202,7 +206,7 @@ Popup {
                 Layout.fillWidth: true
                 active: Style.weather_header !== ""
                 visible: active
-                sourceComponent: ({ spec: spec_header, scope: scope_header, watch: watch_header, memcard: memcard_header, battle: battle_header, mode7: mode7_header, wttr: wttr_header, weatherstar: ws_header, towers: towers_header, scan: scan_header })[Style.weather_header] || ring_header
+                sourceComponent: ({ spec: spec_header, scope: scope_header, watch: watch_header, memcard: memcard_header, battle: battle_header, mode7: mode7_header, wttr: wttr_header, weatherstar: ws_header, towers: towers_header, scan: scan_header, hev: hev_header, pokedex: dex_header, status: status_header })[Style.weather_header] || ring_header
 
                 Component {
                     id: spec_header
@@ -255,9 +259,32 @@ Popup {
                 }
 
                 Component {
+                    id: dex_header
+                    DexHeader {}
+                }
+
+                Component {
+                    id: status_header
+                    StatusPanel {
+                        onAlert_clicked: root.set_tab(root.tabs.length - 1)
+                    }
+                }
+
+                Component {
                     id: ring_header
                     RingHeader {}
                 }
+
+                Component {
+                    id: hev_header
+                    HevHeader {}
+                }
+            }
+
+            AnnouncementBanner {
+                Layout.fillWidth: true
+                visible: root.hev && root.has_alerts
+                on_open: function () { root.set_tab(root.tabs.length - 1); }
             }
 
             RowLayout {
@@ -335,9 +362,10 @@ Popup {
 
             // --- Active-alert banner ---
             Rectangle {
+                readonly property bool shown: root.has_alerts && !root.own_alert
                 Layout.fillWidth: true
-                Layout.preferredHeight: root.has_alerts ? 28 : 0
-                visible: root.has_alerts
+                Layout.preferredHeight: shown ? 28 : 0
+                visible: shown
                 radius: Style.pill_chips ? height / 2 : Style.radius(4)
                 readonly property color alert_color: root.mission || root.threat ? Theme.theme_label : WeatherState.alerts.length > 0 ? WeatherState.alert_color(WeatherState.alerts[0].severity) : Style.text_dim
                 color: Style.boxed_cards ? Qt.alpha(alert_color, 0.1) : Theme.bg_surface
@@ -392,6 +420,15 @@ Popup {
 
                 MouseArea {
                     anchors.fill: parent
+                    onClicked: root.set_tab(root.tabs.length - 1)
+                }
+            }
+
+            Loader {
+                Layout.fillWidth: true
+                active: root.dex && root.has_alerts
+                visible: active
+                sourceComponent: DexAlert {
                     onClicked: root.set_tab(root.tabs.length - 1)
                 }
             }

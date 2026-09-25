@@ -47,7 +47,8 @@ PanelWindow {
     readonly property bool vox_recording: root.showing_vox && root.vox_phase === "recording"
     readonly property bool readout_layout: Style.osd_layout === "readout" && !root.showing_vox
     readonly property bool ring_layout: Style.osd_layout === "ring" && !root.showing_vox
-    readonly property bool banded: Style.show_title && Style.title_band.a > 0
+    readonly property bool banded: Style.show_title && (Style.title_band.a > 0 || Style.title_strip.a > 0)
+    readonly property bool hud_layout: Style.osd_layout === "hud" && !root.showing_vox
 
     readonly property string title: root.showing_vox ? root.vox_phase.toUpperCase() : root.kind.toUpperCase()
 
@@ -206,7 +207,7 @@ PanelWindow {
     TextMetrics {
         id: percent_metrics
         font.family: Style.number_font
-        font.pixelSize: Style.font_size
+        font.pixelSize: root.hud_layout ? Style.font_size + 5 : Style.font_size
         font.bold: Style.number_font !== Style.font_family
         text: "100%"
     }
@@ -297,11 +298,24 @@ PanelWindow {
                 y: x
                 width: frame.width - x * 2
                 height: frame.band_height
-                sourceComponent: TabHeader {
-                    readonly property var ids: Style.title_ids.osd || []
-                    title: root.title
-                    panel_id: ids[0] || ""
-                    readout: ids[1] || ""
+                sourceComponent: Style.title_strip.a > 0 ? osd_strip : osd_header
+
+                Component {
+                    id: osd_header
+                    TabHeader {
+                        readonly property var ids: Style.title_ids.osd || []
+                        title: root.title
+                        panel_id: ids[0] || ""
+                        readout: ids[1] || ""
+                    }
+                }
+
+                Component {
+                    id: osd_strip
+                    TitleStrip {
+                        title: root.title
+                        closable: false
+                    }
                 }
             }
 
@@ -415,9 +429,9 @@ PanelWindow {
                     Layout.preferredWidth: percent_metrics.width
                     horizontalAlignment: Text.AlignRight
                     text: root.showing_vox ? root.elapsed : root.percent + "%"
-                    color: root.showing_vox && !root.vox_recording ? Theme.warning : !root.showing_vox && root.muted ? Style.text_muted : Theme.fg_core
+                    color: root.showing_vox && !root.vox_recording ? Theme.warning : !root.showing_vox && root.muted ? Style.text_muted : root.hud_layout ? Style.text_primary : Theme.fg_core
                     font.family: Style.number_font
-                    font.pixelSize: Style.font_size
+                    font.pixelSize: percent_metrics.font.pixelSize
                     font.bold: Style.number_font !== Style.font_family
                 }
             }

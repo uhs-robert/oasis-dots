@@ -13,7 +13,7 @@ Rectangle {
     property int slot: -1
     readonly property bool marked: root.st.row_marker !== ""
     // Room reserved at the left for the style's cursor marker; rows add it to their left margin.
-    readonly property real inset: root.marked ? 16 : root.st.row_cursor !== "" ? cursor_text.implicitWidth + 4 : 0
+    readonly property real inset: root.marked ? 16 : root.st.hand_cursor ? 24 : root.st.row_cursor !== "" ? cursor_text.implicitWidth + 4 : 0
     // The row's shortcut, drawn as a badge at the right by styles that show row keys.
     property string key: ""
     readonly property bool show_key: root.st.row_keys && root.key !== ""
@@ -107,11 +107,18 @@ Rectangle {
         anchors.verticalCenter: parent.verticalCenter
         text: root.st.row_cursor
         color: root.st.caret_color
-        font.family: root.st.font_family
+        font.family: root.st.mono_font
         font.pixelSize: root.st.font_size - 1
         font.bold: true
     }
 
+    HandCursor {
+        visible: root.selected && !root.marked && root.st.hand_cursor
+        x: 3
+        anchors.verticalCenter: parent.verticalCenter
+        width: 19
+        height: 12
+    }
 
     KeyBadge {
         id: key_badge
