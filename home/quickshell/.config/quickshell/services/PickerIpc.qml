@@ -9,6 +9,10 @@ IpcHandler {
         return Pickers.open(name, null) ? "ok" : "unknown";
     }
 
+    function open_with(name: string, arg: string): string {
+        return Pickers.open(name, null, undefined, undefined, undefined, arg) ? "ok" : "unknown";
+    }
+
     function toggle(name: string): string {
         return Pickers.toggle(name, null) ? "ok" : "unknown";
     }
