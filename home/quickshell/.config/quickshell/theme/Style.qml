@@ -223,7 +223,8 @@ Singleton {
             controller: "",
             meter_art: ({}),
             toast_enter: "",
-            console_views: ""
+            console_views: "",
+            workspace_art: ""
         };
         return {
             "default": {
@@ -430,7 +431,8 @@ Singleton {
                 controller: "",
                     meter_art: ({}),
                     toast_enter: "",
-                console_views: ""
+                console_views: "",
+                workspace_art: ""
             },
             "terminal": Object.assign({}, terminal, {
                 wait_anim: "cursor",
@@ -656,6 +658,7 @@ Singleton {
             }),
             // Perfect Dark panels; `small` turns the small popups into the Q-branch watch LCD.
             "goldeneye": Object.assign({}, terminal, {
+                workspace_art: "dial",
                 wait_anim: "transmission",
                 done_anim: "lcd",
                 text_muted: Qt.tint(Theme.fg_muted, Qt.alpha(Theme.fg_core, 0.3)),
@@ -782,6 +785,7 @@ Singleton {
                 }
             }),
             "metroid": Object.assign({}, terminal, {
+                workspace_art: "doors",
                 wait_anim: "scan",
                 weather_header: "scan",
                 // Greys lifted toward primary_light so they read on the visor glass.
@@ -1409,6 +1413,7 @@ Singleton {
                 const win_end = Qt.tint(Theme.bg_crust, Qt.alpha(Theme.ui_visual_bg, 0.14));
                 const label = Qt.tint(Theme.fg_strong, Qt.alpha(Theme.theme_primary_light, 0.15));
                 return Object.assign({}, terminal, {
+                    workspace_art: "materia",
                     wait_anim: "atb",
                     done_anim: "fanfare",
                     weather_header: "status",
@@ -1791,6 +1796,8 @@ Singleton {
     readonly property string toast_enter: root.active.toast_enter
     // Popups, toasts and bar modules swap in this console's views ("nes", "snes", "ps1", "ps2"); "" keeps the shared ones.
     readonly property string console_views: root.active.console_views
+    // Bar workspace indicator art for non-console styles ("dial", "materia", "doors"); "" keeps pills.
+    readonly property string workspace_art: root.active.workspace_art
 
     property bool cava_line: true
     readonly property var bar: root.active

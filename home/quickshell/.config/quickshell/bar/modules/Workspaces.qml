@@ -7,11 +7,13 @@ import Quickshell.Widgets
 import "../../theme"
 import "../../services"
 import "../../components"
+import "../../components/ff7" as Ff7
 import "../../components/gameboy" as Gameboy
 import "../../components/nes" as Nes
 import "../../components/ps1" as Ps1
 import "../../components/ps2" as Ps2
 import "../../components/snes" as Snes
+import "../../components/ff7/Materia.js" as Materia
 
 Item {
     id: root
@@ -26,12 +28,15 @@ Item {
     // Pokemon party rows: a double-bordered box per workspace, the focused one pointed at by a cursor.
     readonly property bool party: Style.controller === "gameboy"
     readonly property int party_gap: 8
-    readonly property int icon_size: party ? (compact ? 14 : 16) : slots ? (compact ? 15 : 17) : compact ? 16 : 19
-    readonly property int pill_height: map ? 34 : slots ? (compact ? 26 : 30) : party ? (compact ? 22 : 26) : compact ? 20 : 22
+    // FF7 weapon slot bar: apps are materia orbs in sockets linked in pairs.
+    readonly property bool materia: Style.workspace_art === "materia"
+    readonly property int slot_size: compact ? 22 : 24
+    readonly property int icon_size: materia ? (compact ? 10 : 12) : party ? (compact ? 14 : 16) : slots ? (compact ? 15 : 17) : compact ? 16 : 19
+    readonly property int pill_height: materia ? slot_size : map ? 34 : slots ? (compact ? 26 : 30) : party ? (compact ? 22 : 26) : compact ? 20 : 22
     readonly property int tile_face: compact ? 8 : 10
     readonly property int tile_depth: compact ? 2 : 3
 
-    implicitWidth: row.implicitWidth
+    implicitWidth: row.implicitWidth + (materia ? 12 : 0)
     implicitHeight: row.implicitHeight
 
     readonly property var workspace_list: {
@@ -111,9 +116,17 @@ Item {
         }
     }
 
+    Ff7.WeaponBar {
+        visible: root.materia
+        y: -2
+        width: row.width + 12
+        height: row.height + 4
+    }
+
     Row {
         id: row
-        spacing: root.map ? 8 : root.slots || root.party ? 6 : root.compact ? 6 : 8
+        x: root.materia ? 6 : 0
+        spacing: root.materia ? (root.compact ? 10 : 12) : root.map ? 8 : root.slots || root.party ? 6 : root.compact ? 6 : 8
 
         Repeater {
             model: root.workspace_list
@@ -133,13 +146,13 @@ Item {
                 readonly property int cursor_gap: root.party && modelData.focused ? root.party_gap : 0
 
                 height: root.pill_height
-                width: root.party ? cursor_gap + (is_empty ? height : icons.implicitWidth + 10) : pill.map ? Math.max(22, icons.implicitWidth + 8) : root.slots ? (is_empty ? root.tile_face * 2 + 4 : icons.implicitWidth + root.tile_face + 6) : is_empty ? height : icons.implicitWidth + (modelData.active ? 22 : 12)
+                width: root.materia ? (is_empty ? root.slot_size : icons.implicitWidth) : root.party ? cursor_gap + (is_empty ? height : icons.implicitWidth + 10) : pill.map ? Math.max(22, icons.implicitWidth + 8) : root.slots ? (is_empty ? root.tile_face * 2 + 4 : icons.implicitWidth + root.tile_face + 6) : is_empty ? height : icons.implicitWidth + (modelData.active ? 22 : 12)
                 radius: pill.map || root.party || root.slots ? 0 : Style.bar_pill_square || pill.qblock ? 0 : height / 2
                 rotation: pill.diamond ? 45 : 0
                 scale: pill.diamond ? 0.75 : 1
                 antialiasing: pill.diamond || radius > 0
-                color: pill.qblock || pill.ps2 || root.slots || pill.map || root.party ? "transparent" : modelData.focused ? Style.bar_workspace_focused : modelData.active ? Style.bar_workspace_active : Style.bar_workspace_idle
-                border.width: !root.slots && !pill.map && !root.party && Style.bar_workspace_ring.a > 0 && !(Style.bar_workspace_diamond && !is_empty && modelData.focused) ? 1 : 0
+                color: root.materia || pill.qblock || pill.ps2 || root.slots || pill.map || root.party ? "transparent" : modelData.focused ? Style.bar_workspace_focused : modelData.active ? Style.bar_workspace_active : Style.bar_workspace_idle
+                border.width: !root.materia && !root.slots && !pill.map && !root.party && Style.bar_workspace_ring.a > 0 && !(Style.bar_workspace_diamond && !is_empty && modelData.focused) ? 1 : 0
                 border.color: Style.bar_workspace_ring
 
                 Behavior on width {
@@ -153,7 +166,18 @@ Item {
                 Loader {
                     anchors.fill: parent
                     z: pill.map ? 1 : 0
-                    sourceComponent: pill.qblock ? nes_qblock : root.slots ? ps1_card : pill.ps2 ? (pill.is_empty ? ps2_cube : ps2_block) : pill.map ? snes_dot : root.party ? gb_party : null
+                    sourceComponent: root.materia ? ff7_slots : pill.qblock ? nes_qblock : root.slots ? ps1_card : pill.ps2 ? (pill.is_empty ? ps2_cube : ps2_block) : pill.map ? snes_dot : root.party ? gb_party : null
+
+                    Component {
+                        id: ff7_slots
+                        Ff7.MateriaLinks {
+                            count: pill.toplevels.length
+                            slot: root.slot_size
+                            spacing: icons.spacing
+                            lit: pill.modelData.focused
+                            raised: pill.modelData.active || pill_hover.hovered
+                        }
+                    }
 
                     Component {
                         id: gb_party
@@ -244,7 +268,7 @@ Item {
                 }
 
                 MateriaOrb {
-                    visible: pill.modelData.focused && Style.materia.workspace !== undefined
+                    visible: pill.modelData.focused && Style.materia.workspace !== undefined && !root.materia
                     anchors.fill: parent
                     radius: pill.radius
                     glow: false
@@ -256,7 +280,7 @@ Item {
                     anchors.leftMargin: pill.cursor_gap
                     radius: parent.radius
                     color: root.party ? Style.shade_3 : Theme.fg_core
-                    opacity: !root.slots && !pill.modelData.active && pill_hover.hovered ? 0.1 : 0
+                    opacity: !root.slots && !root.materia && !pill.modelData.active && pill_hover.hovered ? 0.1 : 0
 
                     Behavior on opacity {
                         NumberAnimation { duration: 150 }
@@ -279,7 +303,7 @@ Item {
                     anchors.top: pill.map || root.slots ? parent.top : undefined
                     anchors.topMargin: root.slots ? pill.height - root.tile_depth - root.tile_face / 2 + 1 - pill.glyph : pill.modelData.focused ? 1 : 3
                     anchors.horizontalCenterOffset: pill.cursor_gap / 2
-                    spacing: pill.map ? 1 : 2
+                    spacing: root.materia ? 6 : pill.map ? 1 : 2
 
                     Repeater {
                         model: pill.toplevels
@@ -287,9 +311,18 @@ Item {
                         Item {
                             id: icon_item
                             required property var modelData
+                            required property int index
 
-                            width: pill.glyph + (root.slots || pill.map || root.party ? 0 : 4)
+                            width: root.materia ? root.slot_size : pill.glyph + (root.slots || pill.map || root.party ? 0 : 4)
                             height: width
+
+                            Ff7.MateriaSlot {
+                                visible: root.materia
+                                anchors.fill: parent
+                                lit: pill.modelData.focused
+                                raised: pill.modelData.active || pill_hover.hovered
+                                color: visible ? (Style.materia.days || {})[Materia.slot_names(pill.toplevels.map(t => root.class_of(t)))[icon_item.index]] || "transparent" : "transparent"
+                            }
 
                             IconImage {
                                 anchors.centerIn: parent
