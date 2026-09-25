@@ -47,13 +47,23 @@ Singleton {
         onTriggered: root.settle()
     }
 
-    // Skips the saved style loading at startup or on a config reload.
+    // Survives config reloads, so only a fresh process plays the intro.
+    PersistentProperties {
+        id: process_state
+        reloadableId: "style_transitions"
+        property bool started: false
+    }
+
+    // Waits for the bars to map and settle; a fresh start then plays the saved style once.
     Timer {
         running: true
-        interval: 3000
+        interval: 2000
         onTriggered: {
             root.shown = Style.name;
             root.armed = true;
+            if (process_state.started) return;
+            process_state.started = true;
+            root.request(Style.name, false);
         }
     }
 
