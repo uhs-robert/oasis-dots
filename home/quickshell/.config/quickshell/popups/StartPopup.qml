@@ -28,8 +28,14 @@ Popup {
 
     readonly property bool is_open: Popups.open_name === "start"
     onIs_openChanged: if (is_open) {
-        selected = 0;
-        confirm = false;
+        if (Popups.pending_confirm >= 0) {
+            selected = Popups.pending_confirm;
+            confirm = true;
+            Popups.pending_confirm = -1;
+        } else {
+            selected = 0;
+            confirm = false;
+        }
     }
     search_enabled: !root.confirm
     search_rows: root.actions

@@ -4,7 +4,7 @@
 # Location: ~/.config/voxtype/config.toml
 # All settings can be overridden via CLI flags
 
-# State file for external integrations (Waybar, polybar, etc.)
+# State file for external integrations (status bar, polybar, etc.)
 # Use "auto" for default location ($XDG_RUNTIME_DIR/voxtype/state),
 # a custom path, or "disabled" to turn off. The daemon writes state
 # ("idle", "recording", "transcribing") to this file whenever it changes.
@@ -234,7 +234,7 @@ show_engine_icon = false
 # min_speech_duration_ms = 100  # Minimum speech required
 
 [status]
-# Status display icons for Waybar/tray integrations
+# Status display icons for status bar/tray integrations
 #
 # Icon theme (or path to custom theme file):
 #   Font-based (require specific fonts):

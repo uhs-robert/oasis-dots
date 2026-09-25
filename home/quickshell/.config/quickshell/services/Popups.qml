@@ -14,6 +14,8 @@ Singleton {
     property string open_screen_name: ""
     // Popup name to reopen on Backspace, e.g. "start" for popups opened from the Start menu.
     property string back_name: ""
+    // Consumed by StartPopup on open: an actions index to land straight in confirm mode for, or -1.
+    property int pending_confirm: -1
 
     // screen_name -> { module_name: { item, color } }, so each bar keeps its own anchors.
     property var default_anchors: ({})

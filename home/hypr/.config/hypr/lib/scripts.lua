@@ -1,7 +1,6 @@
 -- home/hypr/.config/hypr/lib/scripts.lua
 
 local HYPR = "~/.config/hypr/scripts/"
-local WAYBAR = "~/.config/waybar/scripts/"
 local MONITOR = "~/.config/hypr/monitors/scripts/"
 
 --- @class Scripts
@@ -19,8 +18,6 @@ local Scripts = {
   window_selector       = HYPR    .. "rofi-hyprwindow.sh",
   keybind_help          = HYPR    .. "keybind-help.lua",
   toggle_monitor_layout = MONITOR .. "toggle-monitor-layout.sh",
-  confirm_action        = WAYBAR  .. "confirm-action.sh",
-  toggle_mpris_mode     = WAYBAR  .. "toggle_mpris_mode.rb",
 }
 
 return Scripts

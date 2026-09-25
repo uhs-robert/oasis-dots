@@ -22,12 +22,11 @@ local function init()
     -- The clone tracks main and is pulled by `just update-repos` (run by topgrade).
     updates = { channel = "off" },
     which_key = {
-      frontend = Config.shell == "quickshell" and "quickshell" or "eww",
+      frontend = "quickshell",
       quickshell_ipc = Scripts.qs_ipc,
       auto_show = { disabled = { "NORMAL", "INSERT", "VISUAL", "V-LINE", "Cursor" } },
     },
-    -- reaches Quickshell through which_key.quickshell_ipc; the terminal bar is the fallback
-    prompt = { frontend = Config.shell == "quickshell" and "quickshell" or "terminal" },
+    prompt = { frontend = "quickshell" },
   })
 end
 

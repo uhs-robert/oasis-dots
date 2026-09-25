@@ -34,7 +34,7 @@ local set_animations = function()
   hl.animation({ leaf = "fade", enabled = true, speed = 4, bezier = "smooth" })
 end
 
---- Applies animation layer rules for shell surfaces (waybar, rofi, notifications, etc.).
+--- Applies animation layer rules for shell surfaces (rofi, notifications, etc.).
 --- Returns a registry table mapping rule name -> rule handle (supports set_enabled / is_enabled).
 --- @return table<string, any>
 local set_layer_rules = function()
@@ -48,7 +48,6 @@ local set_layer_rules = function()
   end
 
   -- stylua: ignore start
-  register({ name = "waybar",            match = { namespace = "waybar" },            animation = "slide top" })
   register({ name = "rofi",              match = { namespace = "rofi" },              animation = "slide" })
   register({ name = "hyprpaper",         match = { namespace = "hyprpaper" },         animation = "fade" })
   register({ name = "selection",         match = { namespace = "selection" },         animation = "fade" })

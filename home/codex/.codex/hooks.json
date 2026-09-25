@@ -1,5 +1,5 @@
 {
-  "description": "Record session state for the rofi picker and Waybar module",
+  "description": "Record session state for the rofi picker and status bar module",
   "hooks": {
     "SessionStart": [
       {

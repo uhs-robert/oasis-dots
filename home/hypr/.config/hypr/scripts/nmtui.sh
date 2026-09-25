@@ -7,7 +7,6 @@ CMD="nmtui"
 
 for arg in "$@"; do
   case "$arg" in
-    --waybar)  FOOT_ARGS+=(--app-id waybar-nmtui) ;;
     --connect) CMD="nmtui-connect" ;;
   esac
 done

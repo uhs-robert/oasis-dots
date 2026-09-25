@@ -32,6 +32,7 @@ Submap.define({
     local rows = {
       -- stylua: ignore start
       { "TAB",       Workspace.focus_last(),                "Last Workspace" },
+      { "A",         popup("keeptabs"),                     "Agent Sessions" },
       { "B",         Apps.focus_or_launch(APP.firefox),     "Browser" },
       { "C",         Apps.focus_or_launch(APP.tmux_config), "Tmuxifier Config" },
       { "SHIFT + C", Apps.focus_or_launch(APP.tmux_client),  "Tmuxifier Client" },
@@ -50,12 +51,6 @@ Submap.define({
       { "Y",         Window.focus_by(SELECTORS.youtube),    "Youtube" },
       -- stylua: ignore end
     }
-
-    if Config.shell == "quickshell" then
-      table.insert(rows, { "A", popup("keeptabs"), "Agent Sessions" })
-    else
-      table.insert(rows, { "A", Menu.agents(), "Agent Sessions" })
-    end
 
     for i, entry in ipairs(Config.monitors) do
       local sel = Workspaces.get_monitor_selector(entry)

@@ -24,7 +24,7 @@ Bind.leader_fn("CTRL + A",       Menu.agents(),           "Agent Sessions")
 Bind.leader_fn("N",              edit_in_vim,             "Edit Selection in Vim")
 Bind.leader_fn("Y",              Cmd.term("yazi"),        "Yazi")
 
-if Config.shell == "quickshell" then Bind.leader_fn("B", Submap.switch("Bar"), "+Bar", {keep=true} ) end
+Bind.leader_fn("B", Submap.switch("Bar"), "+Bar", {keep=true})
 
 -- Commands
 Bind.fn("CTRL + SHIFT + ESCAPE", Cmd.term("btop"),    "Task Manager")

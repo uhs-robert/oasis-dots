@@ -88,6 +88,7 @@ ShellRoot {
     BrightnessIpc {}
     NotificationsIpc {}
     StyleIpc {}
+    PowerIpc {}
     TooltipShelf {}
     NotificationToasts {}
     Osd {}

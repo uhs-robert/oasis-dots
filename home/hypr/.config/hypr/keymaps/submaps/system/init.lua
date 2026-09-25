@@ -10,27 +10,17 @@ local TERM_CMD = Config.app.term_cmd
 local TUI_FILES = Config.app.tui_file_manager
 
 local CMD = {
-  logout = 'command -v hyprshutdown >/dev/null 2>&1 && hyprshutdown || hyprctl dispatch "hl.dsp.exit()"',
-  reboot = "systemctl reboot",
-  poweroff = "systemctl poweroff",
-  restart_waybar = "killall swaync swaync-client; pkill -SIGINT waybar; sleep 0.4; swaync & waybar &",
-  toggle_waybar = "pkill -SIGUSR1 waybar",
-  restart_waybar_git = "killall swaync swaync-client; pkill -SIGINT waybar; sleep 0.4; swaync & ~/clones/Waybar/build/waybar -c ~/.config/waybar/config.jsonc -s ~/.config/waybar/style.css &",
   edit_keymaps = TERM_CMD .. " -e " .. TUI_FILES .. " ~/.config/hypr/keymaps/",
-  theme_switch = "~/.config/hypr/theme/switch.lua '" .. Config.app.dmenu_cmd .. "' " .. Config.shell,
+  theme_switch = "~/.config/hypr/theme/switch.lua '" .. Config.app.dmenu_cmd .. "'",
   restart_voxtype = "systemctl --user restart voxtype",
 }
 
 local POWER = {
-  logout = Scripts.confirm_action .. " --title Logout    --glyph '󰍃' --exec '" .. CMD.logout .. "'",
-  lock = Scripts.confirm_action .. " --title Lock      --glyph '󰌾' --exec '" .. Scripts.hyprlock .. "'",
-  reboot = Scripts.confirm_action .. " --title Reboot    --glyph '󰜉' --exec '" .. CMD.reboot .. "'",
-  off = Scripts.confirm_action .. " --title 'Power Off' --glyph '󰐥' --exec '" .. CMD.poweroff .. "'",
+  logout = Scripts.qs_ipc .. " call power confirm logout",
+  lock = Scripts.qs_ipc .. " call power confirm lock",
+  reboot = Scripts.qs_ipc .. " call power confirm reboot",
+  off = Scripts.qs_ipc .. " call power confirm poweroff",
 }
-
-local NOTIFICATIONS = Config.shell == "quickshell"
-    and { "N", Cmd.run(Scripts.qs_ipc .. " call popup open notifications"), "Notification Center" }
-  or { "N", Submap.switch("Notifications"), "Notification Center", { keep = true } }
 
 Submap.define({
   name = "System",
@@ -45,7 +35,6 @@ Submap.define({
     { "SLASH",     Cmd.run(CMD.edit_keymaps),           "Edit Keymaps" },
     { "SPACE",     Cmd.term("btop"),                    "Task Manager" },
     { "A",         Cmd.term("abtop"),                   "AI Manager" },
-    { "B",         Cmd.run(CMD.toggle_waybar),          "Toggle Waybar" },
     { "D",         Cmd.run(Config.app.display_manager), "Display Manager" },
     { "E",         Cmd.run(POWER.logout),               "Logout" },
     { "H",         Cmd.run("hyprctl reload"),           "Reload Hyprland" },
@@ -53,8 +42,7 @@ Submap.define({
     { "I",         Cmd.run(Scripts.nmtui),              "Internet (nmtui)" },
     { "K",         Cmd.run("hyprctl kill"),             "Kill App (Click)" },
     { "L",         Cmd.run(POWER.lock),                 "Lock" },
-    NOTIFICATIONS,
-    { "SHIFT + M", Cmd.run(Scripts.toggle_mpris_mode),  "Toggle Mpris Mode" },
+    { "N",         Cmd.run(Scripts.qs_ipc .. " call popup open notifications"), "Notification Center" },
     { "R",         Cmd.run(POWER.reboot),               "Reboot" },
     { "SHIFT + R", require("config.autostart"),         "Replay Autostart" },
     { "P",         Cmd.run(POWER.off),                  "Power Off" },
@@ -62,8 +50,6 @@ Submap.define({
     { "U",         Cmd.term("topgrade"),                "Update System" },
     { "V",         Cmd.term("voxtype configure"),       "Voxtype Settings" },
     { "SHIFT + V", Cmd.term(CMD.restart_voxtype),       "Voxtype Restart" },
-    { "W",         Cmd.run(CMD.restart_waybar),         "Restart Waybar" },
-    { "SHIFT + W", Cmd.run(CMD.restart_waybar_git),     "Restart Waybar (Github)" },
     { "X",         Cmd.run("hyprctl seterror disable"), "Disabled Hypr Errors" },
   },
 }).setup()

@@ -47,12 +47,11 @@ Menu.show = function(mode, opts)
   end
 end
 
---- Return an action that opens Quickshell's `provider` picker under the Quickshell shell, else runs `fallback`.
+--- Return an action that opens Quickshell's `provider` picker, falling back to `fallback` when it is unavailable.
 --- @param provider string
---- @param fallback string Shell command, also run when the bar is not running or lacks the picker.
+--- @param fallback string Shell command, run when the bar is not running or lacks the picker.
 --- @return fun()
 function Menu.picker(provider, fallback)
-  if Config.shell ~= "quickshell" then return Cmd.run(fallback) end
   return Cmd.run(Scripts.qs_picker .. " " .. provider .. " '" .. fallback:gsub("'", "'\\''") .. "'")
 end
 

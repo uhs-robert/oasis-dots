@@ -18,7 +18,6 @@ local function init()
   enable_wallpaper_rotation()
   sync_steam_desktop_entry()
   require("extensions.auto_launcher")
-  require("extensions.waybar_floats")
 end
 
 init()

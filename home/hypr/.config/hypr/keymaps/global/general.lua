@@ -23,14 +23,9 @@ local move_actions  = { left = Window.move_dir("l"),  down = Window.move_dir("d"
 Bind.keys(Direction.binds(focus_actions, "Focus",       Bind.leader,  { submap_universal = true }))
 Bind.keys(Direction.binds(move_actions,  "Move Window", shift_leader, { submap_universal = true }))
 
--- Float Cycle (Quickshell: notification toasts first)
-if Config.shell == "quickshell" then
-  Bind.leader_key("BRACKETLEFT",  Window.focus_toast_or_float("prev"), "Prev Toast/Float")
-  Bind.leader_key("BRACKETRIGHT", Window.focus_toast_or_float("next"), "Next Toast/Float")
-else
-  Bind.leader_key("BRACKETLEFT",  Window.cycle_float("prev"), "Prev Float")
-  Bind.leader_key("BRACKETRIGHT", Window.cycle_float("next"), "Next Float")
-end
+-- Float Cycle (notification toasts first)
+Bind.leader_key("BRACKETLEFT",  Window.focus_toast_or_float("prev"), "Prev Toast/Float")
+Bind.leader_key("BRACKETRIGHT", Window.focus_toast_or_float("next"), "Next Toast/Float")
 
 -- Window Special
 Bind.leader_key("S",         Window.toggle_special("scratchpad"),  OPTS.universal("Toggle Scratchpad"))
