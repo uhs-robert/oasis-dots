@@ -22,7 +22,7 @@ PanelWindow {
     property bool waited: false
     // Buffer pixels per logical pixel, so the loupe magnifies real screen pixels.
     readonly property real buffer_scale: frozen_view.sourceSize.width > 0 ? frozen_view.sourceSize.width / root.width : root.modelData.devicePixelRatio
-    readonly property color dim_color: Qt.alpha(Theme.bg_shadow, 0.55)
+    readonly property color dim_color: Qt.alpha(Theme.bg_shadow, 0.6)
 
     screen: root.modelData
     anchors.top: true
@@ -36,6 +36,7 @@ PanelWindow {
     WlrLayershell.keyboardFocus: root.keyboard_owner ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
 
     property point press_point: Qt.point(0, 0)
+    property point last_mouse: Qt.point(-1, -1)
 
     function run_tool(index) {
         const action = Screenshot.actions[index];
@@ -385,6 +386,9 @@ PanelWindow {
             Screenshot.set_selection(root.screen_name, mouse.x, mouse.y, 0, 0);
         }
         onPositionChanged: mouse => {
+            // Qt re-sends hover at a resting pointer when the scene changes; only real motion takes the cursor back.
+            if (mouse.x === root.last_mouse.x && mouse.y === root.last_mouse.y && !pressed) return;
+            root.last_mouse = Qt.point(mouse.x, mouse.y);
             Screenshot.set_cursor(root.screen_name, mouse.x, mouse.y, false);
             if (!pressed) return;
             const x = Math.max(0, Math.min(root.width, mouse.x));
