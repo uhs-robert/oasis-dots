@@ -10,6 +10,9 @@ import "../weather" as Weather
 import "../../components/snes" as Snes
 import "../../components/ps1" as Ps1
 import "../../components/ps2" as Ps2
+import "../../components/oasis" as Oasis
+import "../../components/modern" as Modern
+import "../../components/neovim" as Neovim
 
 // A single notification row, shared by the All/Apps/Critical tabs. Every Text below sets
 // Layout.minimumWidth: 0 so a long unbroken summary/body can never grow the card past its width.
@@ -30,6 +33,9 @@ Item {
     // MGS codec calls: the app icon as the caller's portrait.
     readonly property bool codec: Style.console_views === "ps1"
     readonly property bool dialog: Style.card_layout === "dialog"
+    // Layered cards with the app icon on a tinted tile.
+    readonly property bool tile: Style.card_layout === "tile"
+    readonly property bool notify: Style.card_layout === "notify"
     readonly property bool critical: !!root.notification && root.notification.urgency === NotificationUrgency.Critical
 
     readonly property bool focused_valid: root.focused_action >= 0 && root.focused_action < root.actions.length
@@ -59,7 +65,7 @@ Item {
         if (!root.notification) return Style.text_dim;
         if (root.notification.urgency === NotificationUrgency.Critical) return Theme.error;
         if (root.notification.urgency === NotificationUrgency.Low) return Style.text_dim;
-        return Style.text_primary;
+        return root.notify ? Theme.info : Style.text_primary;
     }
 
     readonly property string urgency_tag: {
@@ -104,7 +110,7 @@ Item {
         Loader {
             anchors.fill: parent
             z: -1
-            sourceComponent: ({ dq: dq_card, dialogue: dialogue_card, dialog: dialog_card })[Style.card_layout] || null
+            sourceComponent: ({ dq: dq_card, dialogue: dialogue_card, dialog: dialog_card, oasis: oasis_card, tile: tile_card, notify: notify_card })[Style.card_layout] || null
         }
 
         CardRule {
@@ -170,7 +176,7 @@ Item {
                         text: "CH-" + String(root.channel).padStart(2, "0")
                         color: root.selected ? Style.caret_color : Style.text_primary
                         font.family: Style.mono_font
-                        font.pixelSize: Style.font_size - 3
+                        font.pixelSize: Style.fs(-3)
                     }
 
                     Text {
@@ -178,7 +184,7 @@ Item {
                         text: "T-" + (root.entry ? root.relative_time(root.entry.time).toUpperCase() : "")
                         color: Style.text_muted
                         font.family: Style.mono_font
-                        font.pixelSize: Style.font_size - 5
+                        font.pixelSize: Style.fs(-5)
                     }
 
                     Hazard {
@@ -201,7 +207,7 @@ Item {
             text: Style.row_cursor
             color: Style.caret_color
             font.family: Style.font_family
-            font.pixelSize: Style.font_size - 1
+            font.pixelSize: Style.fs(-1)
             font.bold: true
         }
 
@@ -215,7 +221,7 @@ Item {
         }
 
         Rectangle {
-            visible: !Style.boxed_cards
+            visible: !Style.boxed_cards && ["oasis", "tile"].indexOf(Style.card_layout) < 0
             anchors.left: parent.left
             anchors.top: parent.top
             anchors.bottom: parent.bottom
@@ -241,7 +247,7 @@ Item {
             anchors.right: parent.right
             anchors.top: parent.top
             anchors.margins: 10
-            anchors.leftMargin: root.channels ? 58 : root.dialogue ? 28 : root.dq ? 24 : 16
+            anchors.leftMargin: root.channels ? 58 : root.dialogue ? 28 : root.dq ? 24 : root.tile ? 12 : 16
             anchors.rightMargin: root.dialogue ? 16 : 10
             spacing: 10
 
@@ -256,11 +262,23 @@ Item {
                 }
             }
 
+            Loader {
+                active: root.tile
+                visible: active
+                Layout.alignment: Qt.AlignTop
+                sourceComponent: Modern.AccentTile {
+                    size: root.width < 320 ? 32 : 36
+                    tint: root.critical ? Theme.theme_label : Theme.info
+                    glyph: "\u{f0f3}"
+                    notification: root.notification
+                }
+            }
+
             Image {
                 Layout.alignment: Qt.AlignTop
                 Layout.preferredWidth: root.width < 320 ? 32 : 44
                 Layout.preferredHeight: Layout.preferredWidth
-                visible: !root.codec && !root.channels && root.notification && (root.notification.image !== "" || root.notification.appIcon !== "")
+                visible: !root.codec && !root.channels && !root.tile && root.notification && (root.notification.image !== "" || root.notification.appIcon !== "")
                 source: root.notification ? (root.notification.image !== "" ? root.notification.image : Quickshell.iconPath(root.notification.appIcon, true)) : ""
                 fillMode: Image.PreserveAspectFit
             }
@@ -270,7 +288,22 @@ Item {
                 Layout.minimumWidth: 0
                 spacing: 3
 
+                Loader {
+                    active: root.notify
+                    visible: active
+                    Layout.fillWidth: true
+                    Layout.minimumWidth: 0
+                    Layout.rightMargin: root.unread ? 12 : 0
+                    sourceComponent: Neovim.NotifyHeader {
+                        app: root.notification ? root.notification.appName : ""
+                        age: root.entry ? root.relative_time(root.entry.time) : ""
+                        level: root.critical ? "critical" : root.urgency_tag === "" ? "" : "low"
+                        accent: root.accent
+                    }
+                }
+
                 RowLabel {
+                    visible: !root.notify
                     Layout.fillWidth: true
                     Layout.minimumWidth: 0
                     elide: Text.ElideRight
@@ -295,7 +328,7 @@ Item {
                         text: root.entry ? root.relative_time(root.entry.time) + root.urgency_tag : ""
                         color: Style.text_muted
                         font.family: Style.font_family
-                        font.pixelSize: Style.font_size - 5
+                        font.pixelSize: Style.fs(-5)
                     }
 
                     Text {
@@ -306,7 +339,7 @@ Item {
                         text: "PRI " + (root.critical ? "CRITICAL" : root.notification && root.notification.urgency === NotificationUrgency.Low ? "LOW" : "NORMAL")
                         color: root.critical ? Theme.theme_label : Style.text_muted
                         font.family: Style.mono_font
-                        font.pixelSize: Style.font_size - 4
+                        font.pixelSize: Style.fs(-4)
                     }
                 }
 
@@ -363,7 +396,7 @@ Item {
                             implicitWidth: Math.min(action_label.implicitWidth + 18 + (action_chip.hand ? 20 : 0), layout.width)
                             implicitHeight: 26
                             radius: Style.pill_chips ? height / 2 : Style.radius(13)
-                            color: action_chip.hand ? "transparent" : action_chip.focused ? Style.chip_pick : Style.boxed_cards ? "transparent" : Theme.bg_surface
+                            color: action_chip.hand ? "transparent" : action_chip.focused ? Style.chip_pick : Style.boxed_cards ? "transparent" : root.tile ? Style.tab_active_bg : Theme.bg_surface
                             border.width: Style.boxed_cards || action_chip.focused ? 1 : 0
                             border.color: action_chip.focused ? Style.chip_pick : Style.chip_border.a > 0 ? Style.chip_border : Style.key_border
 
@@ -376,10 +409,10 @@ Item {
                                 width: Math.min(implicitWidth, layout.width - 18)
                                 horizontalAlignment: Text.AlignHCenter
                                 text: action_chip.modelData.text
-                                color: action_chip.hand ? Theme.fg_strong : action_chip.focused ? Theme.bg_crust : Theme.theme_secondary
+                                color: action_chip.hand ? Theme.fg_strong : action_chip.focused ? Theme.bg_crust : Style.chip_fg.a > 0 ? Style.chip_fg : Theme.theme_secondary
                                 font.bold: action_chip.focused
                                 font.family: Style.label_font_family
-                                font.pixelSize: Style.font_size - 3
+                                font.pixelSize: Style.fs(-3)
                             }
 
                             HandCursor {
@@ -454,10 +487,35 @@ Item {
     }
 
     Component {
+        id: tile_card
+        Modern.CardSurface {
+            selected: root.selected
+        }
+    }
+
+    Component {
+        id: notify_card
+        Rectangle {
+            radius: 6
+            color: root.selected ? Theme.bg_surface : "transparent"
+            border.width: 1
+            border.color: root.selected ? Style.caret_color : Qt.tint(Style.frame_color, Qt.alpha(root.accent, 0.7))
+        }
+    }
+
+    Component {
         id: dialog_card
         Ps2.DialogPanel {
             selected: root.selected
             accent: root.critical ? Theme.error : Theme.theme_primary_light
+        }
+    }
+
+    Component {
+        id: oasis_card
+        Oasis.OasisCard {
+            selected: root.selected
+            critical: root.critical
         }
     }
 }

@@ -11,7 +11,7 @@ Rectangle {
 
     property string label: ""
     property bool active: false
-    property int font_size: root.st.font_size - 2
+    property int font_size: root.st.fs(-2)
     property real base_radius: 4
     // The tab's 1-9 jump key, drawn as a badge by styles that show keys.
     property string key: ""
@@ -22,7 +22,6 @@ Rectangle {
     readonly property bool bracketed: root.active && !root.is_chip && root.st.tab_brackets.a > 0
     readonly property real bracket_space: root.bracketed ? open_bracket.implicitWidth * 2 + 4 : 0
     readonly property real hand_space: root.active && root.st.hand_cursor ? 20 : 0
-
     signal clicked()
 
     // Filling tabs share their row evenly, so they must not ask for the label's width.
@@ -47,6 +46,21 @@ Rectangle {
         stroke: root.is_chip && !root.active ? root.st.chip_border : "transparent"
     }
 
+    Rectangle {
+        visible: root.active && root.st.tab_active_shade.a > 0 && root.cut <= 0
+        anchors.fill: parent
+        radius: root.radius
+        gradient: Gradient {
+            GradientStop { position: 0; color: root.st.tab_active_shade }
+            GradientStop { position: 1; color: root.fill }
+        }
+
+        Sheen {
+            color_top: root.st.sheen
+            corner: parent.radius
+        }
+    }
+
     KeyBadge {
         id: key_badge
         visible: root.show_key
@@ -55,6 +69,7 @@ Rectangle {
         anchors.verticalCenter: parent.verticalCenter
         key: root.key
         on_fill: root.active
+        plain: root.st.tab_key_plain
     }
 
     Text {
@@ -117,6 +132,18 @@ Rectangle {
         width: parent.width
         height: root.st.hairline.a > 0 && !root.outlined ? 1 : 2
         color: root.st.tab_underline
+    }
+
+    // A dash under the label in a tab well, else a bar down the left edge.
+    Rectangle {
+        readonly property bool dash: root.st.tab_well.a > 0
+        visible: root.active && !root.is_chip && root.st.tab_marker.a > 0
+        x: dash ? (parent.width - width) / 2 : 0
+        y: dash ? parent.height - height - 2 : 0
+        width: dash ? 16 : 2
+        height: dash ? 2 : parent.height
+        radius: dash ? 1 : 0
+        color: root.st.tab_marker
     }
 
     MouseArea {

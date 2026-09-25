@@ -16,6 +16,17 @@ Singleton {
     property string temp_path: ""
     readonly property bool has_temp: temp_path !== ""
 
+    // Recent samples for sparklines, oldest first; they grow only when a poll lands.
+    readonly property int history_size: 60
+    property var cpu_history: []
+    property var mem_history: []
+    property var temp_history: []
+    function pushed(list, v) {
+        const out = list.length >= root.history_size ? list.slice(list.length - root.history_size + 1) : list.slice();
+        out.push(v);
+        return out;
+    }
+
     property real prev_total: -1
     property real prev_idle: -1
 
@@ -56,7 +67,10 @@ Singleton {
             if (root.prev_total >= 0) {
                 const dt = total - root.prev_total;
                 const di = idle - root.prev_idle;
-                if (dt > 0) root.cpu_percent = Math.round((1 - di / dt) * 100);
+                if (dt > 0) {
+                    root.cpu_percent = Math.round((1 - di / dt) * 100);
+                    root.cpu_history = root.pushed(root.cpu_history, root.cpu_percent);
+                }
             }
             root.prev_total = total;
             root.prev_idle = idle;
@@ -74,6 +88,7 @@ Singleton {
                 root.mem_percent = Math.round((1 - avail / total) * 100);
                 root.mem_total_gb = total / 1048576;
                 root.mem_used_gb = (total - avail) / 1048576;
+                root.mem_history = root.pushed(root.mem_history, root.mem_percent);
             }
         }
     }
@@ -81,6 +96,9 @@ Singleton {
     FileView {
         id: temp_file
         path: root.has_temp ? root.temp_path : ""
-        onLoaded: root.temp_c = Math.round(Number(text()) / 1000)
+        onLoaded: {
+            root.temp_c = Math.round(Number(text()) / 1000);
+            root.temp_history = root.pushed(root.temp_history, root.temp_c);
+        }
     }
 }

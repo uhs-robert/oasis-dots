@@ -45,7 +45,7 @@ ColumnLayout {
                 text: "TRACK"
                 color: Theme.theme_primary_light
                 font.family: Style.font_family
-                font.pixelSize: Style.font_size - 5
+                font.pixelSize: Style.fs(-5)
             }
 
             Digits {
@@ -60,7 +60,7 @@ ColumnLayout {
                 text: "TIME"
                 color: Theme.theme_primary_light
                 font.family: Style.font_family
-                font.pixelSize: Style.font_size - 5
+                font.pixelSize: Style.fs(-5)
             }
 
             Digits {
@@ -74,7 +74,7 @@ ColumnLayout {
                 text: "/ " + root.length_text
                 color: Style.text_dim
                 font.family: Style.font_family
-                font.pixelSize: Style.font_size - 4
+                font.pixelSize: Style.fs(-4)
             }
         }
     }
@@ -109,7 +109,7 @@ ColumnLayout {
                     text: button.modelData.glyph
                     color: button.modelData.lit ? Theme.fg_strong : Style.text_fg
                     font.family: Style.font_family
-                    font.pixelSize: button.modelData.glyph.length > 2 ? Style.font_size - 6 : Style.font_size - 4
+                    font.pixelSize: button.modelData.glyph.length > 2 ? Style.fs(-6) : Style.fs(-4)
                     style: Text.Raised
                     styleColor: Style.text_shadow
                 }

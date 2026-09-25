@@ -137,7 +137,7 @@ RowLayout {
                 text: "°" + WeatherState.unit_symbol()
                 color: root.health
                 font.family: Style.font_family
-                font.pixelSize: Style.font_size - 1
+                font.pixelSize: Style.fs(-1)
             }
         }
 
@@ -149,7 +149,7 @@ RowLayout {
             text: root.has ? root.cur.cond : WeatherState.loading ? "Loading" : "Unavailable"
             color: root.has || WeatherState.loading ? Style.text_fg : Theme.warning
             font.family: Style.font_family
-            font.pixelSize: Style.font_size - 3
+            font.pixelSize: Style.fs(-3)
             font.capitalization: Font.AllUppercase
             font.letterSpacing: 1
         }
@@ -163,7 +163,7 @@ RowLayout {
             text: "FEELS LIKE " + (root.has ? Math.round(root.cur.feels) + "°" + WeatherState.unit_symbol() : "")
             color: Style.text_muted
             font.family: Style.font_family
-            font.pixelSize: Style.font_size - 4
+            font.pixelSize: Style.fs(-4)
         }
 
         GridLayout {
@@ -188,7 +188,7 @@ RowLayout {
                         text: readout_row.modelData.label
                         color: readout_row.modelData.label_color
                         font.family: Style.font_family
-                        font.pixelSize: Style.font_size - 4
+                        font.pixelSize: Style.fs(-4)
                     }
 
                     Text {
@@ -198,14 +198,14 @@ RowLayout {
                         text: "·".repeat(40)
                         color: Qt.alpha(Style.text_muted, 0.4)
                         font.family: Style.font_family
-                        font.pixelSize: Style.font_size - 4
+                        font.pixelSize: Style.fs(-4)
                     }
 
                     Text {
                         text: readout_row.modelData.value
                         color: Style.text_fg
                         font.family: Style.font_family
-                        font.pixelSize: Style.font_size - 4
+                        font.pixelSize: Style.fs(-4)
                     }
                 }
             }
@@ -219,7 +219,7 @@ RowLayout {
             text: "STALE DATA" + (WeatherState.error ? ": " + WeatherState.error : "")
             color: Theme.warning
             font.family: Style.font_family
-            font.pixelSize: Style.font_size - 4
+            font.pixelSize: Style.fs(-4)
         }
     }
 }

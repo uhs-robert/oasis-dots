@@ -7,12 +7,15 @@ import Quickshell.Io
 Singleton {
     id: root
 
-    property string name: "default"
+    property string name: "oasis"
     // The saved choice; `name` differs from it only while the style picker previews.
-    property string saved_name: "default"
-    readonly property var order: ["default", "terminal", "crt", "nes", "snes", "gameboy", "goldeneye", "ps1", "ff7", "ps2", "halflife", "tie", "metroid", "oblivion", "mech"]
-    readonly property var names: root.order.filter(n => n in root.styles).concat(Object.keys(root.styles).filter(n => root.order.indexOf(n) < 0))
-    readonly property var labels: ({ crt: "CRT", nes: "NES", snes: "SNES", gameboy: "Gameboy", goldeneye: "Goldeneye", ps1: "PSX", ff7: "FFVII", ps2: "PS2", halflife: "Half Life", tie: "Tie Fighter" })
+    property string saved_name: "oasis"
+    // Everyday styles, then consoles by release year, then sci-fi.
+    readonly property var order: ["oasis", "modern", "neovim", "terminal", "crt", "nes", "gameboy", "snes", "ps1", "ff7", "goldeneye", "ps2", "tie", "halflife", "metroid", "oblivion", "mech"]
+    // The base token set every style builds on; retired from the picker, old saves map to oasis.
+    readonly property var hidden: ["default"]
+    readonly property var names: root.order.filter(n => n in root.styles).concat(Object.keys(root.styles).filter(n => root.order.indexOf(n) < 0 && root.hidden.indexOf(n) < 0))
+    readonly property var labels: ({ crt: "CRT", nes: "NES", snes: "SNES", gameboy: "Gameboy", goldeneye: "Goldeneye", ps1: "PSX", ff7: "FFVII", ps2: "PS2", halflife: "Half Life", tie: "Tie Fighter", modern: "Modern" })
 
     function label(style_name) {
         return root.labels[style_name] || style_name.charAt(0).toUpperCase() + style_name.slice(1);
@@ -150,11 +153,13 @@ Singleton {
             footer_key_bg: "transparent",
             footer_separator: " \u00b7 ",
             footer_rule_solid: false,
+            footer_tanks: false,
             slider_readout: false,
             hazard: "transparent",
             schematic: "transparent",
             status_strip: false,
             osd_layout: "",
+            level_layout: "",
             card_layout: "",
             weather_header: "",
             bar_pill_square: false,
@@ -168,6 +173,8 @@ Singleton {
             bar_clock_bg: "transparent",
             bar_clock_fg: Theme.fg_core,
             bar_clock_font: "",
+            bar_clock_size: 0,
+            bar_glyph_size: 0,
             bar_border_width: 1,
             bar_border_color: Theme.fg_muted,
             bar_rounded: false,
@@ -225,7 +232,45 @@ Singleton {
             meter_art: ({}),
             toast_enter: "",
             console_views: "",
-            workspace_art: ""
+            workspace_art: "",
+            slant_frame: false,
+            footer_moon: false,
+            selection_edge: "transparent",
+            chip_tabs: false,
+            title_case: false,
+            title_size: 0,
+            frame_float: 0,
+            frame_shadow: "transparent",
+            sheen: "transparent",
+            selection_shade: "transparent",
+            tab_well: "transparent",
+            tab_active_shade: "transparent",
+            tab_key_plain: false,
+            title_status: false,
+            chip_fg: "transparent",
+            bar_capsule: 0,
+            bar_capsule_pad: 0,
+            bar_height: 0,
+            bar_module_gap: 16,
+            bar_pill_height: 0,
+            bar_pill_pad: 0,
+            bar_workspace_gap: 0,
+            bar_workspace_shade: "transparent",
+            bar_workspace_dot: "transparent",
+            bar_clock_layout: "",
+            bar_start_well: "transparent",
+            border_title: false,
+            row_gutter: false,
+            tab_marker: "transparent",
+            section_fold: false,
+            footer_arrow: "",
+            footer_italic: false,
+            footer_size: 0,
+            whichkey_arrow: "",
+            whichkey_size: 0,
+            type_scale: ({}),
+            meter_gap: 2,
+            bar_lualine: false
         };
         return {
             "default": {
@@ -359,11 +404,13 @@ Singleton {
                 footer_key_bg: "transparent",
                 footer_separator: " \u00b7 ",
                 footer_rule_solid: false,
+                footer_tanks: false,
                 slider_readout: false,
                 hazard: "transparent",
                 schematic: "transparent",
                 status_strip: false,
                 osd_layout: "",
+                level_layout: "",
                 card_layout: "",
                 weather_header: "",
                 bar_pill_square: false,
@@ -377,6 +424,8 @@ Singleton {
                 bar_clock_bg: "transparent",
                 bar_clock_fg: Theme.fg_core,
                 bar_clock_font: "",
+                bar_clock_size: 0,
+                bar_glyph_size: 0,
                 bar_border_width: 1,
                 bar_border_color: Qt.alpha(Theme.ui_border, 0.5),
                 bar_rounded: true,
@@ -434,7 +483,45 @@ Singleton {
                     meter_art: ({}),
                     toast_enter: "",
                 console_views: "",
-                workspace_art: ""
+                workspace_art: "",
+                slant_frame: false,
+                footer_moon: false,
+                selection_edge: "transparent",
+                chip_tabs: false,
+                title_case: false,
+                title_size: 0,
+                frame_float: 0,
+                frame_shadow: "transparent",
+                sheen: "transparent",
+                selection_shade: "transparent",
+                tab_well: "transparent",
+                tab_active_shade: "transparent",
+                tab_key_plain: false,
+                title_status: false,
+                chip_fg: "transparent",
+                bar_capsule: 0,
+                bar_capsule_pad: 0,
+                bar_height: 0,
+                bar_module_gap: 16,
+                bar_pill_height: 0,
+                bar_pill_pad: 0,
+                bar_workspace_gap: 0,
+                bar_workspace_shade: "transparent",
+                bar_workspace_dot: "transparent",
+                bar_clock_layout: "",
+                bar_start_well: "transparent",
+                border_title: false,
+                row_gutter: false,
+                tab_marker: "transparent",
+                section_fold: false,
+                footer_arrow: "",
+                footer_italic: false,
+                footer_size: 0,
+                whichkey_arrow: "",
+                whichkey_size: 0,
+                type_scale: ({}),
+                meter_gap: 2,
+                bar_lualine: false
             },
             "terminal": Object.assign({}, terminal, {
                 wait_anim: "cursor",
@@ -796,13 +883,18 @@ Singleton {
             }),
             "metroid": Object.assign({}, terminal, {
                 workspace_art: "doors",
+                level_layout: "visor",
                 wait_anim: "scan",
                 weather_header: "scan",
                 // Greys lifted toward primary_light so they read on the visor glass.
                 text_muted: Qt.tint(Theme.fg_dim, Qt.alpha(Theme.theme_primary_light, 0.4)),
                 text_dim: Qt.tint(Theme.fg_dim, Qt.alpha(Theme.theme_primary_light, 0.65)),
                 font_family: "Share Tech Mono",
-                font_size: Theme.popup_font_size + 2,
+                font_size: Theme.popup_font_size + 1,
+                // Meta and hint text at full size; the smallest labels stay a step down.
+                type_scale: ({ "-1": 0, "-2": 0, "-3": -3, "-4": -3, "-5": -4, "-7": -5, "-8": -5 }),
+                footer_size: 16,
+                whichkey_size: 16,
                 number_font: "Orbitron",
                 rounded: true,
                 frame_visor: true,
@@ -831,7 +923,10 @@ Singleton {
                 label_caps: true,
                 label_spacing: 2.5,
                 footer_fg: Qt.tint(Theme.fg_dim, Qt.alpha(Theme.theme_primary_light, 0.4)),
-                footer_rule: false,
+                footer_rule: true,
+                footer_tanks: true,
+                footer_rule_color: Qt.alpha(Theme.theme_primary, 0.35),
+                title_reticle: Qt.alpha(Theme.theme_primary, 0.8),
                 meter_off: Qt.alpha(Theme.theme_primary, 0.06),
                 meter_radius: 1,
                 meter_outline: Qt.alpha(Theme.theme_primary, 0.55),
@@ -847,7 +942,7 @@ Singleton {
                 toggle_on: Theme.theme_primary,
                 toggle_off: Qt.tint(Theme.fg_dim, Qt.alpha(Theme.theme_primary_light, 0.4)),
                 bar_font_family: "Share Tech Mono",
-                bar_font_size: Theme.font_size + 1,
+                bar_font_size: 16,
                 bar_side_bg: Qt.alpha(Theme.bg_crust, 0.95),
                 bar_center_bg: Qt.alpha(Theme.bg_crust, 0.95),
                 bar_fg: Theme.theme_primary_light,
@@ -1526,11 +1621,345 @@ Singleton {
                     bar_glow_color: Theme.bg_crust,
                     bar_text_raised: true
                 });
+            })(),
+            // A desert oasis at night: night-blue panels, sand for selection and focus, slanted frames with a sand horizon and a crescent moon.
+            "oasis": (() => {
+                const sand = Theme.theme_secondary;
+                const sky = Qt.tint(Theme.bg_mantle, Qt.alpha(Theme.ui_visual_bg, 0.72));
+                const rim = Qt.tint(Theme.bg_mantle, Qt.alpha(Theme.theme_primary_light, 0.4));
+                const edge = Qt.tint(Theme.bg_core, Qt.alpha(Theme.theme_primary, 0.28));
+                const hair = Qt.alpha(Theme.theme_primary, 0.3);
+                const well = Qt.alpha(Theme.bg_crust, 0.55);
+                const t2 = Qt.tint(Theme.fg_core, Qt.alpha(Theme.theme_primary_light, 0.28));
+                return Object.assign({}, terminal, {
+                    workspace_art: "constellation",
+                    bar_clock_layout: "horizon",
+                    weather_header: "oasis",
+                    osd_layout: "horizon",
+                    level_layout: "slant",
+                    card_layout: "oasis",
+                    text_muted: Theme.fg_dim,
+                    text_dim: t2,
+                    text_fg: t2,
+                    text_strong: Theme.fg_strong,
+                    text_primary: Theme.theme_primary_light,
+                    text_accent: sand,
+                    font_family: "Inter",
+                    font_size: Theme.popup_font_size + 1,
+                    type_scale: ({ "-1": 0, "-2": 0, "-3": -3, "-4": -3, "-5": -4, "-7": -5, "-8": -5 }),
+                    scale: 1,
+                    number_font: "Inter",
+                    mono_font: "JetBrainsMono Nerd Font",
+                    rounded: true,
+                    corner_scale: 2,
+                    frame_color: Theme.bg_core,
+                    frame_shade: sky,
+                    shade_vertical: true,
+                    frame_radius: 0,
+                    frame_border_width: 1,
+                    frame_border_color: edge,
+                    accent_color: rim,
+                    accent_height: 1,
+                    accent_full_width: false,
+                    sheen: Qt.alpha(Theme.theme_primary_light, 0.34),
+                    selection_bg: Qt.alpha(sand, 0.16),
+                    selection_outline: "transparent",
+                    selection_edge: sand,
+                    fade_fills: true,
+                    caret_color: sand,
+                    caret_blink: false,
+                    row_cursor: "",
+                    tab_well: well,
+                    chip_tabs: true,
+                    tab_marker: sand,
+                    tab_active_shade: Theme.bg_surface,
+                    tab_active_bg: Qt.tint(Theme.bg_mantle, Qt.alpha(Theme.bg_surface, 0.55)),
+                    tab_active_fg: Theme.fg_strong,
+                    tab_fg: Theme.fg_dim,
+                    key_bg: Qt.alpha(sand, 0.1),
+                    key_fg: sand,
+                    key_border: Qt.alpha(sand, 0.22),
+                    section_fg: Theme.theme_primary,
+                    section_rule: false,
+                    section_fade: hair,
+                    slant_frame: true,
+                    footer_moon: true,
+                    label_caps: false,
+                    caps_tracking: 0,
+                    footer_fg: Theme.fg_dim,
+                    footer_key_fg: sand,
+                    footer_key_bg: Qt.alpha(sand, 0.1),
+                    footer_rule: true,
+                    footer_rule_solid: true,
+                    footer_rule_color: hair,
+                    meter_on: Theme.theme_primary_light,
+                    meter_off: Qt.alpha(Theme.theme_primary, 0.14),
+                    meter_hot: Theme.theme_label,
+                    meter_radius: 2,
+                    meter_height: 6,
+                    chart_fill: Theme.theme_primary_light,
+                    title_bg: "transparent",
+                    title_fg: Theme.fg_strong,
+                    title_spacing: 0,
+                    title_weight: Font.DemiBold,
+                    title_case: true,
+                    title_size: Theme.popup_font_size + 1,
+                    boxed_cards: false,
+                    chip_brackets: false,
+                    chip_bg: Qt.alpha(Theme.theme_primary, 0.1),
+                    chip_active_bg: Qt.alpha(sand, 0.16),
+                    chip_active_fg: Theme.fg_strong,
+                    chip_pick: sand,
+                    chip_border: edge,
+                    toggle_brackets: false,
+                    toggle_on: sand,
+                    toggle_off: Theme.fg_dim,
+                    marker_fill: false,
+                    bar_font_family: "Inter",
+                    bar_font_size: 16,
+                    whichkey_size: 16,
+                    footer_size: 16,
+                    bar_side_bg: Theme.bg_core,
+                    bar_center_bg: Theme.bg_core,
+                    bar_fg: t2,
+                    bar_clock_fg: Theme.fg_strong,
+                    bar_border_width: 1,
+                    bar_border_color: edge,
+                    bar_rounded: true,
+                    bar_workspace_focused: sand,
+                    bar_workspace_active: Theme.theme_primary_light,
+                    bar_workspace_idle: Theme.bg_surface,
+                    bar_workspace_ring: "transparent",
+                    bar_hover_bg: Qt.alpha(Theme.theme_primary_light, 0.1)
+                });
+            })(),
+            // Layered surfaces in Geist: floating cards, one segmented tab control, primary gradient selection.
+            "modern": (() => {
+                const t1 = Theme.fg_strong;
+                const t2 = Qt.tint(Theme.bg_mantle, Qt.alpha(Theme.fg_core, 0.74));
+                const t3 = Qt.tint(Theme.bg_mantle, Qt.alpha(Theme.fg_core, 0.5));
+                const l0 = Qt.tint(Theme.bg_core, Qt.alpha(Theme.bg_mantle, 0.78));
+                const l1 = Qt.tint(Theme.bg_mantle, Qt.alpha(Theme.bg_surface, 0.62));
+                const l2 = Qt.tint(Theme.bg_surface, Qt.alpha(Theme.ui_visual_bg, 0.55));
+                const raised = Qt.tint(Theme.bg_mantle, Qt.alpha(Theme.bg_surface, 0.72));
+                const well = Qt.tint(Theme.bg_mantle, Qt.alpha(Theme.bg_core, 0.72));
+                const edge = Qt.alpha(Theme.fg_strong, 0.07);
+                const hi = Qt.alpha(Theme.fg_strong, 0.13);
+                const accent_top = Qt.tint(Theme.theme_primary_light, Qt.alpha(Theme.theme_primary, 0.82));
+                const accent = Theme.theme_primary_strong;
+                return Object.assign({}, terminal, {
+                    text_muted: t3,
+                    text_dim: t2,
+                    text_fg: t1,
+                    text_strong: t1,
+                    text_primary: Theme.theme_primary,
+                    text_accent: Theme.theme_secondary,
+                    font_family: "Geist",
+                    font_size: Theme.popup_font_size + 1,
+                    type_scale: ({ "-1": 0, "-2": 0, "-3": -3, "-4": -3, "-5": -4, "-7": -5, "-8": -5 }),
+                    footer_size: 16,
+                    whichkey_size: 16,
+                    number_font: "Geist Mono",
+                    mono_font: "Geist Mono",
+                    scale: 1.1,
+                    rounded: true,
+                    corner_scale: 1.75,
+                    frame_color: l0,
+                    frame_shade: l1,
+                    shade_vertical: true,
+                    frame_radius: 22,
+                    frame_border_width: 1,
+                    frame_border_color: edge,
+                    frame_pad: 8,
+                    frame_drop: 14,
+                    frame_float: 6,
+                    frame_shadow: Qt.alpha(Theme.bg_crust, 0.6),
+                    sheen: hi,
+                    accent_color: Theme.theme_primary,
+                    accent_height: 0,
+                    selection_bg: accent,
+                    selection_shade: accent_top,
+                    selection_inverse: true,
+                    selection_fg: Theme.bg_crust,
+                    selection_outline: "transparent",
+                    caret_color: Theme.theme_primary,
+                    caret_blink: false,
+                    row_cursor: "",
+                    tab_well: well,
+                    tab_active_bg: raised,
+                    tab_active_shade: l2,
+                    tab_active_fg: t1,
+                    tab_fg: t2,
+                    tab_key_plain: true,
+                    key_bg: l2,
+                    key_fg: t2,
+                    key_border: edge,
+                    section_fg: t3,
+                    section_rule: false,
+                    footer_fg: t3,
+                    footer_key_fg: t2,
+                    footer_key_bg: l2,
+                    footer_rule_solid: true,
+                    footer_rule_color: edge,
+                    meter_on: Theme.theme_primary,
+                    meter_shade: Theme.theme_primary_light,
+                    meter_off: well,
+                    meter_hot: Theme.theme_label,
+                    meter_radius: 2,
+                    meter_height: 8,
+                    chart_fill: Theme.theme_primary,
+                    title_bg: "transparent",
+                    title_fg: t1,
+                    title_spacing: -0.2,
+                    title_weight: Font.DemiBold,
+                    title_case: true,
+                    title_status: true,
+                    title_size: Theme.popup_font_size,
+                    row_keys: false,
+                    boxed_cards: false,
+                    chip_brackets: false,
+                    chip_active_bg: raised,
+                    chip_active_fg: t1,
+                    chip_pick: accent,
+                    chip_fg: t1,
+                    toggle_brackets: false,
+                    toggle_on: Theme.theme_primary,
+                    toggle_off: t3,
+                    marker_fill: false,
+                    osd_layout: "tile",
+                    level_layout: "capsule",
+                    card_layout: "tile",
+                    weather_header: "hero",
+                    bar_font_family: "Geist",
+                    bar_font_size: Theme.font_size,
+                    bar_side_bg: l0,
+                    bar_center_bg: l0,
+                    bar_fg: t1,
+                    bar_clock_fg: t1,
+                    bar_border_width: 1,
+                    bar_border_color: edge,
+                    bar_rounded: true,
+                    bar_capsule: 5,
+                    bar_capsule_pad: 14,
+                    bar_height: 40,
+                    bar_module_gap: 22,
+                    bar_pill_height: 26,
+                    bar_pill_pad: 3,
+                    bar_workspace_gap: 10,
+                    bar_clock_layout: "capsule",
+                    bar_start_well: well,
+                    bar_workspace_focused: accent,
+                    bar_workspace_shade: accent_top,
+                    bar_workspace_active: Qt.alpha(Theme.theme_primary, 0.35),
+                    bar_workspace_idle: Qt.tint(Theme.bg_mantle, Qt.alpha(Theme.bg_surface, 0.8)),
+                    bar_workspace_dot: Qt.alpha(Theme.fg_core, 0.26),
+                    bar_workspace_ring: "transparent",
+                    bar_hover_bg: Qt.alpha(Theme.fg_strong, 0.08),
+                    small: {
+                        frame_radius: 18
+                    }
+                });
+            })(),
+            // Modern Neovim: lualine bar, floating windows with border titles, telescope rows, which-key footers, nvim-notify cards.
+            "neovim": (() => {
+                const float_border = Qt.tint(Theme.bg_mantle, Qt.alpha(Theme.theme_primary, 0.6));
+                return Object.assign({}, terminal, {
+                    workspace_art: "buffers",
+                    weather_header: "lsp",
+                    card_layout: "notify",
+                    wait_anim: "cursor",
+                    font_family: "Maple Mono NF",
+                    // One 16px scale like the notification panel: -1/-2 text is primary, -3/-4 meta, -5 and smaller tags.
+                    font_size: Theme.popup_font_size + 1,
+                    type_scale: ({ "-1": 0, "-2": 0, "-3": -4, "-5": -6, "-7": -6, "-8": -6 }),
+                    scale: 1.1,
+                    rounded: false,
+                    border_title: true,
+                    title_case: true,
+                    title_status: true,
+                    frame_color: Theme.bg_mantle,
+                    frame_radius: 8,
+                    frame_border_width: 1,
+                    frame_border_color: float_border,
+                    accent_color: Theme.theme_primary,
+                    accent_height: 0,
+                    selection_bg: Theme.bg_surface,
+                    selection_outline: "transparent",
+                    selection_bar: true,
+                    caret_color: Theme.theme_primary,
+                    caret_blink: false,
+                    row_cursor: "",
+                    row_gutter: true,
+                    row_keys: false,
+                    tab_bg: Theme.bg_crust,
+                    tab_active_bg: Theme.theme_secondary,
+                    tab_active_fg: Theme.bg_core,
+                    tab_fg: Theme.fg_dim,
+                    tab_marker: Theme.theme_secondary,
+                    key_bg: "transparent",
+                    key_fg: Theme.theme_secondary,
+                    key_border: "transparent",
+                    section_fg: Theme.theme_primary,
+                    section_rule: false,
+                    section_fold: true,
+                    footer_fg: Theme.fg_dim,
+                    footer_key_fg: Theme.theme_secondary,
+                    footer_rule: true,
+                    footer_rule_solid: true,
+                    footer_rule_color: Theme.bg_surface,
+                    footer_separator: "",
+                    footer_arrow: "",
+                    footer_italic: true,
+                    footer_size: 16,
+                    whichkey_arrow: "\u279c",
+                    whichkey_size: 16,
+                    meter_on: Theme.theme_primary,
+                    meter_off: Theme.bg_surface,
+                    meter_hot: Theme.theme_label,
+                    meter_radius: 0,
+                    meter_height: 4,
+                    meter_gap: 1,
+                    title_bg: Theme.theme_primary,
+                    title_fg: Theme.bg_crust,
+                    title_spacing: 0,
+                    chip_brackets: false,
+                    chip_active_bg: Theme.ui_visual_bg,
+                    chip_active_fg: Theme.fg_strong,
+                    chip_pick: Theme.theme_primary,
+                    chip_border: Theme.bg_surface,
+                    toggle_brackets: false,
+                    toggle_on: Theme.ok,
+                    toggle_off: Theme.fg_dim,
+                    bar_lualine: true,
+                    bar_font_family: "Maple Mono NF",
+                    // Sized like the tmux status line in kitty: Maple Mono at 12pt.
+                    bar_font_size: 16,
+                    bar_glyph_size: 16,
+                    bar_clock_size: 16,
+                    bar_height: 24,
+                    bar_side_bg: Theme.bg_surface,
+                    bar_center_bg: Theme.bg_surface,
+                    bar_fg: Theme.fg_core,
+                    bar_clock_fg: Theme.fg_strong,
+                    bar_border_width: 0,
+                    bar_border_color: "transparent",
+                    bar_workspace_focused: Theme.theme_primary,
+                    bar_workspace_active: Theme.theme_secondary,
+                    bar_workspace_idle: Theme.fg_muted,
+                    // LualineSection lights hovered components itself.
+                    bar_hover_bg: "transparent"
+                });
             })()
         };
     }
 
-    readonly property var active: root.styles[root.name] || root.styles["default"]
+    readonly property var active: root.styles[root.name] || root.styles["oasis"]
+    // Frames drawn by SlantFrame: flat top, bottom corners cut at the bar islands' slant, a sand horizon along the foot.
+    readonly property bool slant_frame: root.active.slant_frame
+    // Extra room under a frame's content so the long cut clears the footer.
+    readonly property int slant_room: root.slant_frame ? 8 : 0
+    // A small sand crescent at the right end of the footer rule.
+    readonly property bool footer_moon: root.active.footer_moon
     // Small popups read this token set; it is the singleton itself unless the style has a `small` block.
     readonly property var small: root.active.small ? root.resolve(Object.assign({}, root.active, root.active.small)) : root
 
@@ -1553,13 +1982,22 @@ Singleton {
         o.number_font = o.number_font || o.font_family;
         o.label_font_family = o.label_font_family || o.font_family;
         o.mono_font = o.mono_font || o.font_family;
-        o.custom_frame = o.frame_octagon > 0 || o.frame_cut > 0;
+        o.custom_frame = o.frame_octagon > 0 || o.frame_cut > 0 || o.slant_frame;
         o.inset_pad = o.frame_inset_width > 0 ? o.frame_border_width + o.frame_inset_gap + o.frame_inset_width : o.frame_pad;
+        o.fs = k => o.font_size + (o.type_scale && o.type_scale[k] !== undefined ? o.type_scale[k] : k);
         return o;
     }
 
     readonly property string font_family: root.active.font_family
     readonly property int font_size: root.active.font_size
+    // Maps a text role's offset from font_size to the style's own (e.g. {"-2": 0} lifts -2 text to full size); unlisted offsets pass through.
+    readonly property var type_scale: root.active.type_scale || ({})
+
+    // A text size as font_size plus an offset, through the style's type_scale.
+    function fs(k) {
+        const v = root.type_scale[k];
+        return root.font_size + (v !== undefined ? v : k);
+    }
     // Big readouts (weather temperature, OSD percentage); empty uses font_family.
     readonly property string number_font: root.active.number_font !== "" ? root.active.number_font : root.font_family
     readonly property color text_muted: root.active.text_muted
@@ -1707,7 +2145,7 @@ Singleton {
     readonly property real frame_cut: root.active.frame_cut
     readonly property real frame_notch: root.active.frame_notch
     // A frame component draws the fill and border, so the base rectangle and FrameShade stay empty.
-    readonly property bool custom_frame: root.frame_octagon > 0 || root.frame_cut > 0
+    readonly property bool custom_frame: root.frame_octagon > 0 || root.frame_cut > 0 || root.slant_frame
     // The middle of a frame_cut border's vertical fade; its ends are frame_border_color.
     readonly property color frame_line: root.active.frame_line
     readonly property color frame_marks: root.active.frame_marks
@@ -1769,8 +2207,10 @@ Singleton {
     // Start's schematic and status strip.
     readonly property color schematic: root.active.schematic
     readonly property bool status_strip: root.active.status_strip
-    // Alternate layouts: "" keeps the default; osd "ring", "readout", "hud", "rpg", "alert" or "glow", weather "ring", "spec", "scope", "watch", "memcard", "battle", "mode7", "wttr", "weatherstar", "towers", "scan", "hev", "pokedex" or "status", cards "rule", "channel", "pixel", "dq", "dialogue" or "dialog".
+    // Alternate layouts: "" keeps the default; osd "ring", "readout", "hud", "rpg", "alert", "glow", "horizon" or "tile", weather "ring", "spec", "scope", "watch", "memcard", "battle", "mode7", "wttr", "weatherstar", "towers", "scan", "hev", "pokedex", "status", "oasis", "hero" or "lsp", cards "rule", "channel", "pixel", "dq", "dialogue", "dialog", "oasis", "tile" or "notify".
     readonly property string osd_layout: root.active.osd_layout
+    // Level rows: "capsule" draws them as tall capsule sliders with live peaks, "slant" and "visor" the same with slanted ends or visor glass (Volume popup and OSD only); "" keeps the shared slider.
+    readonly property string level_layout: root.active.level_layout
     readonly property string weather_header: root.active.weather_header
     readonly property string card_layout: root.active.card_layout
     // The keeptabs done celebration: hearts, pixel (stepped), lcd (stepped, then blinks), hev_pickup, levelup (inverted flash, pixel sparkles) or fanfare.
@@ -1808,8 +2248,48 @@ Singleton {
     readonly property string toast_enter: root.active.toast_enter
     // Popups, toasts and bar modules swap in this console's views ("nes", "snes", "ps1", "ps2"); "" keeps the shared ones.
     readonly property string console_views: root.active.console_views
-    // Bar workspace indicator art for non-console styles ("dial", "materia", "doors"); "" keeps pills.
+    // Bar workspace indicator art for non-console styles ("dial", "materia", "doors", "constellation", "buffers"); "" keeps pills.
     readonly property string workspace_art: root.active.workspace_art
+    // Popups float this many px below the bar with every corner rounded; frame_shadow fills frame_drop's room with a soft shadow.
+    readonly property int frame_float: root.active.frame_float
+    readonly property color frame_shadow: root.active.frame_shadow
+    // Frames drawn as Neovim floating windows (FloatFrame): rounded all round, the title as a chip set into the top border.
+    readonly property bool border_title: root.active.border_title
+    // A 1px highlight (Sheen) along the top of raised surfaces: floating frames, capsule islands, shaded tabs and rows, keycaps, cards.
+    readonly property color sheen: root.active.sheen
+    // Popup, OSD and which-key titles in title case ("NETWORK" to "Network", see title_text); title_size 0 keeps font_size - 2.
+    readonly property bool title_case: root.active.title_case
+    readonly property int title_size: root.active.title_size
+    // The popup's live title value at the right of its title (in the border under border_title).
+    readonly property bool title_status: root.active.title_status
+    // Tab and chip rows sit in a recessed well of this color; tab_marker then draws as a dash under the active label.
+    readonly property color tab_well: root.active.tab_well
+    // The active tab's marker: a 2px bar down its left edge, or a dash under its label in a tab_well.
+    readonly property color tab_marker: root.active.tab_marker
+    // Top colors of vertical gradients into tab_active_bg (raised active tabs and chips) and selection_bg (selected rows).
+    readonly property color tab_active_shade: root.active.tab_active_shade
+    readonly property color selection_shade: root.active.selection_shade
+    // Tab jump keys as bare digits instead of badges.
+    readonly property bool tab_key_plain: root.active.tab_key_plain
+    // Sub-view chips drawn as tabs that fill their row.
+    readonly property bool chip_tabs: root.active.chip_tabs
+    // Action chip text; transparent keeps theme_secondary.
+    readonly property color chip_fg: root.active.chip_fg
+    // A lit edge down the left of the selected row.
+    readonly property color selection_edge: root.active.selection_edge
+    // Rows get a line-number gutter showing their key; the selected row's number takes text_accent.
+    readonly property bool row_gutter: root.active.row_gutter
+    // Sections as open folds: a fold marker, the label and a dotted fill.
+    readonly property bool section_fold: root.active.section_fold
+    // Drawn between each footer key and its description.
+    readonly property string footer_arrow: root.active.footer_arrow
+    readonly property bool footer_italic: root.active.footer_italic
+    // Footer text size in px; 0 keeps the popup-derived sizes.
+    readonly property int footer_size: root.active.footer_size
+    readonly property string whichkey_arrow: root.active.whichkey_arrow
+    // Which-key keys and labels in px; 0 keeps the popup-derived sizes.
+    readonly property int whichkey_size: root.active.whichkey_size
+    readonly property real meter_gap: root.active.meter_gap
 
     property bool cava_line: true
     readonly property var bar: root.active
@@ -1825,6 +2305,11 @@ Singleton {
     readonly property color bar_clock_bg: root.bar.bar_clock_bg
     readonly property color bar_clock_fg: root.bar.bar_clock_fg
     readonly property string bar_clock_font: root.bar.bar_clock_font || root.bar_font_family
+    // Clock icon and time size in px; 0 keeps the style's own size.
+    readonly property int bar_clock_size: root.bar.bar_clock_size
+    // Bar module glyphs; 0 in a style keeps Theme.glyph_size.
+    readonly property int bar_glyph_size: root.bar.bar_glyph_size > 0 ? root.bar.bar_glyph_size : Theme.glyph_size
+    readonly property int bar_badge_size: root.bar.bar_glyph_size > 0 ? Math.round(root.bar.bar_glyph_size * 0.62) : Math.max(6, root.bar_font_size - 3)
     readonly property int bar_border_width: root.bar.bar_border_width
     readonly property color bar_border_color: root.bar.bar_border_color
     readonly property bool bar_rounded: root.bar.bar_rounded
@@ -1847,7 +2332,31 @@ Singleton {
     readonly property color bar_hover_bg: root.bar.bar_hover_bg
     readonly property color bar_glow_color: root.bar.bar_glow_color
     readonly property color bar_scanline_color: root.bar.bar_scanline_color
+    // Islands as floating capsules this many px inside the bar's top and ends, resting on its bottom edge; 0 keeps the slanted islands.
+    readonly property int bar_capsule: root.bar.bar_capsule
+    readonly property int bar_capsule_pad: root.bar.bar_capsule_pad
+    // Bar height when bars.json sets none; 0 keeps the default.
+    readonly property int bar_height: root.bar.bar_height
+    readonly property int bar_module_gap: root.bar.bar_module_gap
+    // Plain workspace pills: height (0 keeps the default), extra room each side of their icons, and the gap between them.
+    readonly property int bar_pill_height: root.bar.bar_pill_height
+    readonly property int bar_pill_pad: root.bar.bar_pill_pad
+    readonly property int bar_workspace_gap: root.bar.bar_workspace_gap
+    readonly property color bar_workspace_shade: root.bar.bar_workspace_shade
+    // Empty workspaces as small dots of this color instead of pills.
+    readonly property color bar_workspace_dot: root.bar.bar_workspace_dot
+    // Bar clock layout: "capsule" (time with a small zone, a hairline and the date) or "horizon" (a horizon with the sun or moon in the center island).
+    readonly property string bar_clock_layout: root.bar.bar_clock_layout
+    readonly property color bar_start_well: root.bar.bar_start_well
+    // A lualine statusline: flat sections with arrow separators, the start button as the HyprVim mode chip.
+    readonly property bool bar_lualine: root.bar.bar_lualine
     readonly property int bar_text_style: root.bar.bar_text_raised ? Text.Raised : root.bar_glow_color.a > 0 ? Text.Outline : Text.Normal
+
+    // A title as the token set `st` (this singleton when omitted) shows it: all-caps words of three letters or more recased under title_case.
+    function title_text(text, st) {
+        const t = text || "";
+        return (st || root).title_case ? t.replace(/\b[A-Z]{3,}\b/g, w => w.charAt(0) + w.slice(1).toLowerCase()) : t;
+    }
 
     // Corner radius for a shape that is rounded by `r` in the default look.
     function radius(r) {
@@ -1865,6 +2374,7 @@ Singleton {
     }
 
     function set(style_name) {
+        if (root.hidden.indexOf(style_name) >= 0) style_name = "oasis";
         if (!(style_name in root.styles)) {
             console.warn("Style: unknown style " + style_name);
             return false;
@@ -1885,7 +2395,7 @@ Singleton {
     }
 
     function preview(style_name) {
-        if (style_name in root.styles) root.name = style_name;
+        if (style_name in root.styles && root.hidden.indexOf(style_name) < 0) root.name = style_name;
     }
 
     function cycle() {
@@ -1913,7 +2423,7 @@ Singleton {
                 const data = JSON.parse(text());
                 const saved = data.style;
                 root.cava_line = data.cava_line !== false;
-                if (typeof saved === "string" && saved in root.styles) {
+                if (typeof saved === "string" && saved in root.styles && root.hidden.indexOf(saved) < 0) {
                     root.name = saved;
                     root.saved_name = saved;
                 }

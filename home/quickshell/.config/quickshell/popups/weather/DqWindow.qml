@@ -41,7 +41,7 @@ Rectangle {
             text: root.title
             color: Theme.fg_strong
             font.family: Style.font_family
-            font.pixelSize: Style.font_size - 6
+            font.pixelSize: Style.fs(-6)
         }
     }
 }

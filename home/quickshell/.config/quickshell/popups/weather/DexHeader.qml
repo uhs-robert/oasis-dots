@@ -16,7 +16,7 @@ ColumnLayout {
     readonly property bool roomy: root.width >= 320
     readonly property int sprite_pixel: root.roomy ? 3 : 2
     readonly property int box: root.roomy ? 64 : 48
-    readonly property int stat_px: Style.font_size - 4
+    readonly property int stat_px: Style.fs(-4)
     readonly property string place: WeatherState.location_name.split(",")[0].trim()
     readonly property string name: root.has ? root.cur.cond.toUpperCase() : WeatherState.loading ? "LOADING" : "NO DATA"
     readonly property bool open: Popups.open_name === "weather"

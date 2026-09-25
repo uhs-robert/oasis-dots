@@ -10,12 +10,12 @@ Text {
 
     property string label: ""
 
-    width: (root.st.section_rule || root.st.section_fade.a > 0) && parent ? parent.width : implicitWidth
+    width: (root.st.section_rule || root.st.section_fade.a > 0 || root.st.section_fold) && parent ? parent.width : undefined
     clip: root.st.section_rule
-    text: root.st.section_rule ? "── " + root.label + " " + "─".repeat(160) : root.label
+    text: root.st.section_rule ? "── " + root.label + " " + "─".repeat(160) : root.st.section_fold ? "\u25be " + root.label : root.label
     color: root.st.section_fg
     font.family: root.st.label_font_family
-    font.pixelSize: root.st.font_size - 3
+    font.pixelSize: root.st.fs(-3)
     font.capitalization: root.st.label_caps || root.st.caps_tracking > 0 ? Font.AllUppercase : Font.MixedCase
     font.letterSpacing: root.st.caps_tracking > 0 ? root.st.caps_tracking : root.st.label_spacing
     font.bold: root.st.caps_tracking > 0
@@ -42,6 +42,17 @@ Text {
             fillColor: root.st.section_marker
             PathPolyline { path: [Qt.point(0, 0), Qt.point(5, 4), Qt.point(0, 8), Qt.point(0, 0)] }
         }
+    }
+
+    Text {
+        visible: root.st.section_fold
+        x: root.leftPadding + root.contentWidth + 6
+        y: root.topPadding
+        width: Math.max(0, root.width - x)
+        clip: true
+        text: root.st.section_fold ? "\u00b7".repeat(120) : ""
+        color: root.st.text_muted
+        font: root.font
     }
 
     Rectangle {

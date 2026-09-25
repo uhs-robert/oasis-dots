@@ -27,7 +27,7 @@ Item {
             style: Text.Raised
             styleColor: Style.text_shadow
             font.family: Style.font_family
-            font.pixelSize: Style.font_size - 8
+            font.pixelSize: Style.fs(-8)
         }
 
         Text {

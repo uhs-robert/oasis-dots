@@ -30,7 +30,7 @@ Item {
     // Grows the open bucket's contents so it fills tall Daily areas instead of sitting content-sized.
     readonly property real bucket_scale: Math.max(1, Math.min(2.2, root.bucket_h / 130))
     readonly property real closed_scale: Math.max(1, Math.min(1.5, root.bucket_scale))
-    readonly property real stat_size: Style.font_size - 6 + Math.round((root.bucket_scale - 1) * 3)
+    readonly property real stat_size: Style.fs(-6) + Math.round((root.bucket_scale - 1) * 3)
     readonly property real temps_scale: Math.max(1, Math.min(root.bucket_scale, (root.open_inner_w - 2) / Math.max(1, probe_temps.implicitWidth)))
 
     Temps {
@@ -94,7 +94,7 @@ Item {
                         text: (slot.open || slot.width >= 60 ? slot.modelData.weekday : Qt.formatDate(new Date(slot.modelData.date + "T00:00:00"), "ddd")).toUpperCase()
                         color: slot.open ? Theme.bg_crust : root.hl_t
                         font.family: Style.font_family
-                        font.pixelSize: Style.font_size - 6
+                        font.pixelSize: Style.fs(-6)
                         font.bold: true
                         font.letterSpacing: slot.open ? 1.3 : 0.5
                     }
@@ -222,7 +222,7 @@ Item {
                         FitText {
                             text: slot.modelData.pop + "%"
                             color: Theme.info
-                            font.pixelSize: (Style.font_size - 5) * Math.min(root.closed_scale, 1.3)
+                            font.pixelSize: (Style.fs(-5)) * Math.min(root.closed_scale, 1.3)
                             font.bold: true
                         }
 

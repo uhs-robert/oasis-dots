@@ -7,6 +7,8 @@ import "../theme"
 import "../services"
 import "../popups/weather" as Weather
 import "ps1" as Ps1
+import "modern" as Modern
+import "neovim" as Neovim
 
 Rectangle {
     id: root
@@ -17,6 +19,12 @@ Rectangle {
     readonly property var notification: root.entry ? root.entry.notification : null
     // A Dragon Quest window; toast_enter "type" types its summary out once.
     readonly property bool dq: Style.card_layout === "dq"
+    readonly property bool oasis: Style.card_layout === "oasis"
+    readonly property bool tile: Style.card_layout === "tile"
+    // An nvim-notify window: border and title line in the level color.
+    readonly property bool notify: Style.card_layout === "notify"
+    // Card layouts that draw their own surface behind the toast.
+    readonly property bool own_surface: root.dq || root.oasis || root.tile
     property real typed: 1
     readonly property string summary: root.notification ? root.notification.summary : ""
 
@@ -33,7 +41,7 @@ Rectangle {
         if (!root.notification) return Style.text_dim;
         if (root.notification.urgency === NotificationUrgency.Critical) return Theme.error;
         if (root.notification.urgency === NotificationUrgency.Low) return Style.text_dim;
-        return Style.text_primary;
+        return root.notify ? Theme.info : Style.text_primary;
     }
 
     readonly property string urgency_tag: {
@@ -63,13 +71,13 @@ Rectangle {
         onTriggered: root.time_tick += 1
     }
 
-    implicitHeight: layout.implicitHeight + 16 + Style.inset_pad * 2
-    radius: Style.radius(8)
-    color: Style.frame_visor || Style.custom_frame || root.dq ? "transparent" : Style.boxed_cards
+    implicitHeight: layout.implicitHeight + (root.tile ? 28 : 16) + Style.inset_pad * 2 + Style.slant_room
+    radius: root.tile ? Style.frame_radius : root.notify ? 6 : Style.radius(8)
+    color: Style.frame_visor || Style.custom_frame || root.own_surface ? "transparent" : Style.boxed_cards
         ? (root.selected ? Qt.tint(Style.frame_color, Qt.alpha(Style.caret_color, 0.08)) : Style.frame_color)
         : (root.selected ? Theme.bg_surface : Theme.bg_mantle)
-    border.width: Style.frame_visor || Style.custom_frame || root.dq ? 0 : root.selected && !Style.boxed_cards ? 2 : 1
-    border.color: root.selected ? Style.caret_color : Style.boxed_cards ? root.accent : Theme.ui_border
+    border.width: Style.frame_visor || Style.custom_frame || root.own_surface ? 0 : root.selected && !Style.boxed_cards ? 2 : 1
+    border.color: root.selected ? Style.caret_color : root.notify ? Qt.tint(Style.frame_color, Qt.alpha(root.accent, 0.7)) : Style.boxed_cards ? root.accent : Theme.ui_border
     clip: true
 
     opacity: 0
@@ -123,6 +131,15 @@ Rectangle {
             NumberAnimation { target: enter_tilt; property: "angle"; from: 7; to: -3; duration: 140; easing.type: Easing.OutQuad }
             NumberAnimation { target: enter_tilt; property: "angle"; to: 1.5; duration: 90 }
             NumberAnimation { target: enter_tilt; property: "angle"; to: 0; duration: 80 }
+        }
+    }
+
+    Loader {
+        active: root.tile
+        anchors.fill: parent
+        sourceComponent: Modern.CardSurface {
+            floating: true
+            selected: root.selected
         }
     }
 
@@ -220,7 +237,7 @@ Rectangle {
     }
 
     Rectangle {
-        visible: !Style.boxed_cards
+        visible: !Style.boxed_cards && !root.own_surface
         anchors.left: parent.left
         anchors.top: parent.top
         anchors.bottom: parent.bottom
@@ -270,7 +287,7 @@ Rectangle {
         text: Style.row_cursor
         color: Style.caret_color
         font.family: Style.font_family
-        font.pixelSize: Style.font_size - 3
+        font.pixelSize: Style.fs(-3)
         font.bold: true
     }
 
@@ -318,9 +335,10 @@ Rectangle {
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.top: parent.top
-        anchors.margins: 8 + Style.inset_pad
-        anchors.leftMargin: (Style.row_cursor !== "" ? 16 : 12) + Style.inset_pad
-        spacing: 8
+        anchors.margins: (root.tile ? 14 : 8) + Style.inset_pad
+        anchors.leftMargin: (root.tile ? 14 : Style.row_cursor !== "" ? 16 : 12) + Style.inset_pad
+        anchors.rightMargin: (root.tile ? 14 : 8) + Style.inset_pad + Style.slant_room
+        spacing: root.tile ? 12 : 8
 
         Loader {
             active: Style.console_views === "ps1"
@@ -332,11 +350,22 @@ Rectangle {
             }
         }
 
+        Loader {
+            active: root.tile
+            visible: active
+            Layout.alignment: Qt.AlignTop
+            sourceComponent: Modern.AccentTile {
+                tint: root.notification && root.notification.urgency === NotificationUrgency.Critical ? Theme.theme_label : Theme.info
+                glyph: "\u{f0f3}"
+                notification: root.notification
+            }
+        }
+
         Image {
             Layout.alignment: Qt.AlignTop
             Layout.preferredWidth: 36
             Layout.preferredHeight: 36
-            visible: Style.console_views !== "ps1" && root.notification && (root.notification.image !== "" || root.notification.appIcon !== "")
+            visible: Style.console_views !== "ps1" && !root.tile && root.notification && (root.notification.image !== "" || root.notification.appIcon !== "")
             source: root.notification ? (root.notification.image !== "" ? root.notification.image : Quickshell.iconPath(root.notification.appIcon, true)) : ""
             fillMode: Image.PreserveAspectFit
         }
@@ -353,7 +382,21 @@ Rectangle {
                 Layout.bottomMargin: Style.title_strip.a > 0 ? 6 : 0
                 spacing: 6
 
+                Loader {
+                    active: root.notify
+                    visible: active
+                    Layout.fillWidth: true
+                    Layout.minimumWidth: 0
+                    sourceComponent: Neovim.NotifyHeader {
+                        app: root.notification ? root.notification.appName : ""
+                        age: root.relative_time
+                        level: root.urgency_tag === "" ? "" : root.notification.urgency === NotificationUrgency.Critical ? "critical" : "low"
+                        accent: root.accent
+                    }
+                }
+
                 Text {
+                    visible: !root.notify
                     Layout.fillWidth: true
                     Layout.minimumWidth: 0
                     elide: Text.ElideRight
@@ -371,7 +414,7 @@ Rectangle {
                     text: "×"
                     color: Style.text_dim
                     font.family: Style.font_family
-                    font.pixelSize: Style.font_size + 2
+                    font.pixelSize: Style.fs(2)
 
                     MouseArea {
                         anchors.fill: parent
@@ -429,7 +472,7 @@ Rectangle {
                         implicitWidth: Math.min(action_label.implicitWidth + 16 + (action_chip.hand ? 20 : 0), layout.width)
                         implicitHeight: 22
                         radius: Style.pill_chips ? height / 2 : Style.radius(11)
-                        color: action_chip.hand ? "transparent" : action_chip.focused ? Style.chip_pick : Style.boxed_cards ? "transparent" : Theme.bg_surface
+                        color: action_chip.hand ? "transparent" : action_chip.focused ? Style.chip_pick : Style.boxed_cards ? "transparent" : root.tile ? Style.tab_active_bg : Theme.bg_surface
                         border.width: Style.boxed_cards || action_chip.focused ? 1 : 0
                         border.color: action_chip.focused ? Style.chip_pick : Style.chip_border.a > 0 ? Style.chip_border : Style.key_border
 
@@ -441,7 +484,7 @@ Rectangle {
                             width: Math.min(implicitWidth, layout.width - 16)
                             horizontalAlignment: Text.AlignHCenter
                             text: action_chip.modelData.text
-                            color: action_chip.hand ? Theme.fg_strong : action_chip.focused ? Theme.bg_crust : Theme.theme_secondary
+                            color: action_chip.hand ? Theme.fg_strong : action_chip.focused ? Theme.bg_crust : Style.chip_fg.a > 0 ? Style.chip_fg : Theme.theme_secondary
                             font.bold: action_chip.focused
                             font.family: Style.font_family
                             font.pixelSize: Style.font_size - (Style.boxed_cards ? 3 : 4)

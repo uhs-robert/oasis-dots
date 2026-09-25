@@ -60,7 +60,7 @@ Item {
                 text: root.day ? root.day.weekday : ""
                 color: root.selected ? Style.text_strong : Style.text_fg
                 font.family: Style.font_family
-                font.pixelSize: Style.font_size - 3
+                font.pixelSize: Style.fs(-3)
                 font.bold: true
                 font.capitalization: Font.AllUppercase
                 font.letterSpacing: 1
@@ -71,7 +71,7 @@ Item {
                 text: "D" + (root.day_index + 1)
                 color: Style.text_muted
                 font.family: Style.mono_font
-                font.pixelSize: Style.font_size - 6
+                font.pixelSize: Style.fs(-6)
             }
         }
     }
@@ -125,14 +125,14 @@ Item {
                 text: root.day ? Math.round(root.day.max) : ""
                 color: Style.text_strong
                 font.family: Style.number_font
-                font.pixelSize: Style.font_size + 5
+                font.pixelSize: Style.fs(5)
             }
 
             Text {
                 text: "°"
                 color: Style.text_muted
                 font.family: Style.mono_font
-                font.pixelSize: Style.font_size - 3
+                font.pixelSize: Style.fs(-3)
             }
         }
 
@@ -140,21 +140,21 @@ Item {
             text: root.day_index === 0 ? "REF" : root.change > 0 ? "▲" + root.change : root.change < 0 ? "▼" + (-root.change) : "="
             color: root.day_index === 0 || root.change === 0 ? Style.text_muted : root.change > 0 ? Theme.ok : Theme.theme_label
             font.family: Style.mono_font
-            font.pixelSize: Style.font_size - 4
+            font.pixelSize: Style.fs(-4)
         }
 
         Text {
             text: root.day ? Math.round(root.day.min) + "°" : ""
             color: Style.text_muted
             font.family: Style.mono_font
-            font.pixelSize: Style.font_size - 3
+            font.pixelSize: Style.fs(-3)
         }
 
         Text {
             text: root.day ? root.day.pop + "%" : ""
             color: Theme.info
             font.family: Style.mono_font
-            font.pixelSize: Style.font_size - 5
+            font.pixelSize: Style.fs(-5)
         }
     }
 }

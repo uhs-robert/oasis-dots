@@ -21,7 +21,7 @@ Item {
         text: root.label
         color: Theme.theme_primary_light
         font.family: Style.font_family
-        font.pixelSize: Style.font_size - 5
+        font.pixelSize: Style.fs(-5)
         font.capitalization: Font.AllUppercase
         font.letterSpacing: 1.2
     }
@@ -36,7 +36,7 @@ Item {
         text: root.value
         color: root.value_color
         font.family: Style.font_family
-        font.pixelSize: Style.font_size - 2
+        font.pixelSize: Style.fs(-2)
         font.weight: Font.Light
     }
 

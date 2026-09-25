@@ -208,7 +208,7 @@ Popup {
                 text: "\u{f002}"
                 color: root.st.text_primary
                 font.family: "JetBrainsMono Nerd Font"
-                font.pixelSize: root.st.font_size - 2
+                font.pixelSize: root.st.fs(-2)
             }
 
             TextInput {
@@ -223,7 +223,7 @@ Popup {
                 color: root.st.text_fg
                 selectionColor: root.st.selection_bg
                 font.family: root.st.font_family
-                font.pixelSize: root.st.font_size - 1
+                font.pixelSize: root.st.fs(-1)
                 onTextChanged: root.query = text
                 // A static caret: the default one blinks for as long as the picker is open.
                 cursorDelegate: Rectangle {
@@ -267,7 +267,7 @@ Popup {
                 text: (root.insert ? "INSERT" : "NORMAL") + (query_bar.width < Style.px(260) ? "" : "  " + root.results.length + "/" + (root.provider ? root.provider.items.length : 0))
                 color: root.insert ? root.st.text_accent : root.st.text_primary
                 font.family: root.st.font_family
-                font.pixelSize: root.st.font_size - 4
+                font.pixelSize: root.st.fs(-4)
                 font.bold: true
             }
 
@@ -326,7 +326,7 @@ Popup {
                         text: Fuzzy.highlight(row.result.item.label || "", row.result.positions, String(row.fg(root.st.text_accent)))
                         color: row.fg(root.st.text_fg)
                         font.family: root.st.font_family
-                        font.pixelSize: root.st.font_size - 1
+                        font.pixelSize: root.st.fs(-1)
                     }
 
                     Text {
@@ -341,7 +341,7 @@ Popup {
                         text: row.result.item.description || ""
                         color: row.fg(root.st.text_muted)
                         font.family: root.st.font_family
-                        font.pixelSize: root.st.font_size - 4
+                        font.pixelSize: root.st.fs(-4)
                     }
 
                     MouseArea {
@@ -360,7 +360,7 @@ Popup {
                 text: root.provider && root.provider.items.length > 0 ? "No matches" : "Nothing to pick"
                 color: root.st.text_muted
                 font.family: root.st.font_family
-                font.pixelSize: root.st.font_size - 2
+                font.pixelSize: root.st.fs(-2)
             }
 
             Loader {
@@ -389,7 +389,7 @@ Popup {
             text: root.selected_item && root.selected_item.description ? root.selected_item.description : " "
             color: root.st.text_muted
             font.family: root.st.font_family
-            font.pixelSize: root.st.font_size - 3
+            font.pixelSize: root.st.fs(-3)
         }
     }
 }

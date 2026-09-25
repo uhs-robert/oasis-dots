@@ -69,7 +69,7 @@ ColumnLayout {
                     text: "°" + WeatherState.unit_symbol()
                     color: Style.text_muted
                     font.family: Style.mono_font
-                    font.pixelSize: Style.font_size - 1
+                    font.pixelSize: Style.fs(-1)
                 }
             }
 
@@ -80,7 +80,7 @@ ColumnLayout {
                 text: root.has ? root.cur.cond : WeatherState.loading ? "Loading" : "Unavailable"
                 color: root.has || WeatherState.loading ? Style.text_primary : Theme.warning
                 font.family: Style.font_family
-                font.pixelSize: Style.font_size - 1
+                font.pixelSize: Style.fs(-1)
                 font.bold: true
                 font.capitalization: Font.AllUppercase
                 font.letterSpacing: Style.label_spacing
@@ -91,7 +91,7 @@ ColumnLayout {
                 text: "FEELS " + (root.has ? Math.round(root.cur.feels) + "°" + WeatherState.unit_symbol() : "")
                 color: Style.text_muted
                 font.family: Style.mono_font
-                font.pixelSize: Style.font_size - 4
+                font.pixelSize: Style.fs(-4)
             }
         }
 
@@ -159,7 +159,7 @@ ColumnLayout {
             text: "LOC"
             color: Style.text_muted
             font.family: Style.mono_font
-            font.pixelSize: Style.font_size - 4
+            font.pixelSize: Style.fs(-4)
         }
 
         Text {
@@ -169,7 +169,7 @@ ColumnLayout {
             text: WeatherState.location_name
             color: Style.text_fg
             font.family: Style.mono_font
-            font.pixelSize: Style.font_size - 4
+            font.pixelSize: Style.fs(-4)
         }
 
         Text {
@@ -177,7 +177,7 @@ ColumnLayout {
             text: Math.abs(WeatherState.lat).toFixed(2) + (WeatherState.lat >= 0 ? "N " : "S ") + Math.abs(WeatherState.lon).toFixed(2) + (WeatherState.lon >= 0 ? "E" : "W")
             color: Style.text_muted
             font.family: Style.mono_font
-            font.pixelSize: Style.font_size - 4
+            font.pixelSize: Style.fs(-4)
         }
     }
 
@@ -188,6 +188,6 @@ ColumnLayout {
         text: "STALE DATA" + (WeatherState.error ? ": " + WeatherState.error : "")
         color: Theme.warning
         font.family: Style.mono_font
-        font.pixelSize: Style.font_size - 4
+        font.pixelSize: Style.fs(-4)
     }
 }

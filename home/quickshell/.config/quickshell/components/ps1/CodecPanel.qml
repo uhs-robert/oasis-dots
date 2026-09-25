@@ -42,7 +42,7 @@ Rectangle {
 
         Digits {
             text: Codec.freq(root.strength)
-            size: Style.font_size + 2
+            size: Style.fs(2)
             color: Theme.green
         }
 
@@ -57,7 +57,7 @@ Rectangle {
                 text: root.ssid
                 color: Theme.bright_green
                 font.family: Style.font_family
-                font.pixelSize: Style.font_size - 2
+                font.pixelSize: Style.fs(-2)
             }
 
             Text {
@@ -66,7 +66,7 @@ Rectangle {
                 text: "SIGNAL " + Math.round(root.strength * 100) + "%" + (root.detail !== "" ? "  " + root.detail : "")
                 color: Qt.alpha(Theme.bright_green, 0.75)
                 font.family: Style.font_family
-                font.pixelSize: Style.font_size - 5
+                font.pixelSize: Style.fs(-5)
             }
         }
     }

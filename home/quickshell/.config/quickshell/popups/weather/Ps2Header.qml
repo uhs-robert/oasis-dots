@@ -92,7 +92,7 @@ ColumnLayout {
                     text: root.has ? root.cur.cond : WeatherState.loading ? "Loading…" : "Unavailable"
                     color: root.has || WeatherState.loading ? Theme.fg_strong : Theme.warning
                     font.family: Style.font_family
-                    font.pixelSize: Style.font_size + 1
+                    font.pixelSize: Style.fs(1)
                     font.weight: Font.Light
                 }
 
@@ -103,7 +103,7 @@ ColumnLayout {
                     text: "Feels like " + (root.has ? Math.round(root.cur.feels) + "°" : "")
                     color: Style.text_muted
                     font.family: Style.font_family
-                    font.pixelSize: Style.font_size - 3
+                    font.pixelSize: Style.fs(-3)
                 }
 
                 Text {
@@ -113,7 +113,7 @@ ColumnLayout {
                     text: WeatherState.location_name
                     color: Theme.theme_primary_light
                     font.family: Style.font_family
-                    font.pixelSize: Style.font_size - 4
+                    font.pixelSize: Style.fs(-4)
                     font.capitalization: Font.AllUppercase
                     font.letterSpacing: 1.5
                 }
@@ -151,7 +151,7 @@ ColumnLayout {
                     text: stat.modelData[0]
                     color: Theme.theme_primary_light
                     font.family: Style.font_family
-                    font.pixelSize: Style.font_size - 5
+                    font.pixelSize: Style.fs(-5)
                     font.capitalization: Font.AllUppercase
                     font.letterSpacing: 1
                 }
@@ -161,7 +161,7 @@ ColumnLayout {
                     text: stat.modelData[1]
                     color: Theme.fg_strong
                     font.family: Style.font_family
-                    font.pixelSize: Style.font_size - 2
+                    font.pixelSize: Style.fs(-2)
                 }
             }
         }
@@ -174,6 +174,6 @@ ColumnLayout {
         text: (WeatherState.stale ? "Stale data" : "Error") + (WeatherState.error ? ": " + WeatherState.error : "")
         color: Theme.warning
         font.family: Style.font_family
-        font.pixelSize: Style.font_size - 4
+        font.pixelSize: Style.fs(-4)
     }
 }

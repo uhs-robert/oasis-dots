@@ -30,7 +30,7 @@ Row {
                     visible: !!entry.modelData.button
                     anchors.verticalCenter: parent.verticalCenter
                     button: entry.modelData.button || "cross"
-                    size: Style.font_size - 1
+                    size: Style.fs(-1)
                 }
 
                 KeyBadge {
@@ -44,7 +44,7 @@ Row {
                     text: entry.modelData.text
                     color: Theme.fg_core
                     font.family: Style.font_family
-                    font.pixelSize: Style.font_size - 3
+                    font.pixelSize: Style.fs(-3)
                     font.weight: Font.Light
                 }
             }

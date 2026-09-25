@@ -34,7 +34,7 @@ MenuRow {
             text: root.label
             color: root.fg(root.st.text_strong)
             font.family: root.st.font_family
-            font.pixelSize: root.st.font_size - 1
+            font.pixelSize: root.st.fs(-1)
         }
 
         Text {
@@ -42,7 +42,7 @@ MenuRow {
             text: root.state_label !== "" ? (root.st.toggle_brackets ? "[" + root.state_label.toUpperCase() + "]" : root.state_label) : root.st.toggle_brackets ? (root.checked ? "[ ON ]" : "[OFF]") : (root.checked ? "On" : "Off")
             color: root.fg(root.checked ? root.st.toggle_on : root.st.toggle_off)
             font.family: root.st.font_family
-            font.pixelSize: root.st.font_size - 2
+            font.pixelSize: root.st.fs(-2)
         }
     }
 

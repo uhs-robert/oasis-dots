@@ -118,7 +118,7 @@ Item {
             text: root.chosen ? root.chosen.name : ""
             color: root.st.text_strong
             font.family: root.st.font_family
-            font.pixelSize: root.st.font_size - 4
+            font.pixelSize: root.st.fs(-4)
         }
 
         Text {
@@ -128,7 +128,7 @@ Item {
             text: root.chosen ? root.chosen.old + " \u2192 <font color=\"" + Theme.yellow + "\">" + root.chosen.new + "</font>" : ""
             color: root.st.text_muted
             font.family: root.st.font_family
-            font.pixelSize: root.st.font_size - 4
+            font.pixelSize: root.st.fs(-4)
         }
     }
 }

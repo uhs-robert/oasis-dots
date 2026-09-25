@@ -39,7 +39,7 @@ ColumnLayout {
     TextMetrics {
         id: label_metrics
         font.family: Style.font_family
-        font.pixelSize: Style.font_size - 4
+        font.pixelSize: Style.fs(-4)
         font.weight: Font.ExtraBold
         text: "FEELS"
     }
@@ -47,7 +47,7 @@ ColumnLayout {
     TextMetrics {
         id: pct_metrics
         font.family: Style.font_family
-        font.pixelSize: Style.font_size - 2
+        font.pixelSize: Style.fs(-2)
         font.weight: Font.ExtraBold
         text: "100%"
     }
@@ -58,7 +58,7 @@ ColumnLayout {
     component Label: Text {
         color: Theme.theme_primary_light
         font.family: Style.font_family
-        font.pixelSize: Style.font_size - 4
+        font.pixelSize: Style.fs(-4)
         font.weight: Font.ExtraBold
         font.letterSpacing: 1
     }
@@ -73,7 +73,7 @@ ColumnLayout {
     component Small: Text {
         color: Theme.theme_primary_light
         font.family: Style.font_family
-        font.pixelSize: Style.font_size - 5
+        font.pixelSize: Style.fs(-5)
         font.weight: Font.DemiBold
     }
 
@@ -118,7 +118,7 @@ ColumnLayout {
                 Small {
                     visible: stat.high !== ""
                     text: "/"
-                    font.pixelSize: Style.font_size - 2
+                    font.pixelSize: Style.fs(-2)
                 }
 
                 Value {
@@ -224,7 +224,7 @@ ColumnLayout {
                     text: root.has ? root.cur.cond : WeatherState.loading ? "Loading" : "Unavailable" + (WeatherState.error ? ": " + WeatherState.error : "")
                     color: root.has || WeatherState.loading ? Theme.fg_strong : Theme.warning
                     font.family: Style.font_family
-                    font.pixelSize: Style.font_size + 2
+                    font.pixelSize: Style.fs(2)
                     font.weight: Font.ExtraBold
                 }
             }
@@ -275,7 +275,7 @@ ColumnLayout {
 
                 Value {
                     text: kv.modelData[1]
-                    font.pixelSize: Style.font_size - 2
+                    font.pixelSize: Style.fs(-2)
                 }
 
                 Small {
@@ -322,7 +322,7 @@ ColumnLayout {
                 Layout.preferredWidth: root.pct_col_w
                 horizontalAlignment: Text.AlignRight
                 text: root.today ? root.today.pop + "%" : ""
-                font.pixelSize: Style.font_size - 2
+                font.pixelSize: Style.fs(-2)
             }
         }
     }
@@ -333,6 +333,6 @@ ColumnLayout {
         elide: Text.ElideRight
         text: WeatherState.stale ? "Stale data" + (WeatherState.error ? ": " + WeatherState.error : "") : WeatherState.location_name
         color: WeatherState.stale ? Theme.warning : Theme.theme_primary_light
-        font.pixelSize: Style.font_size - 4
+        font.pixelSize: Style.fs(-4)
     }
 }

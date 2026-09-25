@@ -3,38 +3,36 @@ import QtQuick
 import QtQuick.Shapes
 import "../theme"
 
-// A visor pane: rounded top, wide elliptical bottom and a glass gradient.
+// A combat visor pane: glass fill, bottom corners cut with the bar islands' notched bracket, small top cuts when floating.
 Shape {
     id: root
 
-    property real top_radius: Style.frame_radius
+    // 0 keeps the top corners square, for frames hung flush from an island.
+    property real top_cut: 6
     property color border_color: Style.frame_border_color
     property real border_width: Math.max(1, Style.frame_border_width)
 
-    readonly property real rt: Math.min(root.top_radius, root.width / 2, root.height / 2)
-    readonly property real rx: Math.min(34, root.width / 4)
-    readonly property real ry: Math.max(0, Math.min(46, (root.height - root.rt) * 0.6))
+    readonly property real k: Math.min(18, root.width / 4, root.height / 3)
+    readonly property real t: Math.min(root.top_cut, root.height / 4)
+    readonly property real step_y: root.height - root.k * 0.52
 
     visible: Style.frame_visor
     preferredRendererType: Shape.CurveRenderer
 
     function outline(i) {
-        const w = root.width, h = root.height, t = Math.max(0, root.rt - i), x = Math.max(0, root.rx - i), y = Math.max(0, root.ry - i);
-        return "M " + i + " " + (i + t)
-            + " A " + t + " " + t + " 0 0 1 " + (i + t) + " " + i
-            + " L " + (w - i - t) + " " + i
-            + " A " + t + " " + t + " 0 0 1 " + (w - i) + " " + (i + t)
-            + " L " + (w - i) + " " + (h - i - y)
-            + " A " + x + " " + y + " 0 0 1 " + (w - i - x) + " " + (h - i)
-            + " L " + (i + x) + " " + (h - i)
-            + " A " + x + " " + y + " 0 0 1 " + i + " " + (h - i - y)
-            + " Z";
+        const w = root.width, h = root.height, k = root.k, t = Math.max(0, root.t - i * 0.41), y = root.step_y;
+        return [
+            Qt.point(i + t, i), Qt.point(w - i - t, i), Qt.point(w - i, i + t), Qt.point(w - i, h - k),
+            Qt.point(w - k * 0.36, y), Qt.point(w - k * 0.58, y), Qt.point(w - k, h - i),
+            Qt.point(k, h - i), Qt.point(k * 0.58, y), Qt.point(k * 0.36, y), Qt.point(i, h - k),
+            Qt.point(i, i + t), Qt.point(i + t, i)
+        ];
     }
 
     ShapePath {
         strokeWidth: -1
         fillColor: Qt.alpha(Theme.bg_crust, 0.94)
-        PathSvg { path: root.outline(0) }
+        PathPolyline { path: root.outline(0) }
     }
 
     ShapePath {
@@ -47,7 +45,7 @@ Shape {
             GradientStop { position: 0; color: Qt.alpha(Theme.ui_visual_bg, 0.55) }
             GradientStop { position: 1; color: Qt.alpha(Theme.ui_visual_bg, 0) }
         }
-        PathSvg { path: root.outline(0) }
+        PathPolyline { path: root.outline(0) }
     }
 
     ShapePath {
@@ -62,13 +60,27 @@ Shape {
             GradientStop { position: 0; color: Qt.alpha(Theme.theme_primary, 0.2) }
             GradientStop { position: 0.6; color: Qt.alpha(Theme.theme_primary, 0) }
         }
-        PathSvg { path: root.outline(0) }
+        PathPolyline { path: root.outline(0) }
     }
 
     ShapePath {
         strokeWidth: root.border_width
         strokeColor: root.border_color
         fillColor: "transparent"
-        PathSvg { path: root.outline(root.border_width / 2) }
+        joinStyle: ShapePath.MiterJoin
+        PathPolyline { path: root.outline(root.border_width / 2) }
+    }
+
+    // A tooth under each notch step, like the bar islands'.
+    ShapePath {
+        strokeWidth: -1
+        fillColor: Qt.alpha(root.border_color, Math.min(1, root.border_color.a * 1.8))
+        PathSvg {
+            path: {
+                const w = root.width, k = root.k, y = root.step_y;
+                const tooth = (a, b) => "M " + a + " " + y + " L " + b + " " + y + " L " + b + " " + (y + 3) + " L " + a + " " + (y + 3) + " Z";
+                return tooth(w - k * 0.58, w - k * 0.36) + " " + tooth(k * 0.36, k * 0.58);
+            }
+        }
     }
 }

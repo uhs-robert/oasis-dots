@@ -24,7 +24,7 @@ ColumnLayout {
             text: root.label
             color: root.low ? Theme.red : Theme.bright_green
             font.family: Style.font_family
-            font.pixelSize: Style.font_size - 2
+            font.pixelSize: Style.fs(-2)
             font.bold: true
             font.letterSpacing: 1
             style: Text.Raised
@@ -37,7 +37,7 @@ ColumnLayout {
             text: root.value_text
             color: Style.text_strong
             font.family: Style.font_family
-            font.pixelSize: Style.font_size + 2
+            font.pixelSize: Style.fs(2)
             style: Text.Raised
             styleColor: Style.text_shadow
         }
@@ -70,6 +70,6 @@ ColumnLayout {
         text: root.detail
         color: Style.text_muted
         font.family: Style.font_family
-        font.pixelSize: Style.font_size - 4
+        font.pixelSize: Style.fs(-4)
     }
 }

@@ -123,7 +123,7 @@ Popup {
     // The SNES calendar window keeps its cells clear of its border and drop shadow.
     readonly property real calendar_inset: root.st.console_views === "snes" ? 10 : 0
     readonly property real available_cell_width: (content.width - (root.calendar_inset > 0 ? root.calendar_inset * 2 + 3 : 0) - grid_column_spacing * 7) / 8
-    readonly property int grid_font_size: available_cell_width < 20 ? root.st.font_size - 2 : root.st.font_size - 1
+    readonly property int grid_font_size: available_cell_width < 20 ? root.st.fs(-2) : root.st.fs(-1)
 
     Item {
         id: content
@@ -236,7 +236,7 @@ Popup {
                         text: Timezones.abbrevs[index] || "..."
                         color: is_active ? (root.st.marker_fill ? root.st.title_fg : root.st.text_accent) : root.st.text_muted
                         font.family: root.st.font_family
-                        font.pixelSize: root.st.font_size - 2
+                        font.pixelSize: root.st.fs(-2)
                         font.bold: is_active
                         font.underline: is_active && !root.st.marker_fill
 

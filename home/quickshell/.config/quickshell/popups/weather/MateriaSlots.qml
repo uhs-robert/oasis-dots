@@ -59,14 +59,14 @@ Item {
     FontMetrics {
         id: row_metrics
         font.family: Style.font_family
-        font.pixelSize: Math.round((Style.font_size - 3) * root.row_scale)
+        font.pixelSize: Math.round((Style.fs(-3)) * root.row_scale)
         font.weight: Font.ExtraBold
     }
 
     TextMetrics {
         id: label_metrics
         font.family: Style.font_family
-        font.pixelSize: Math.round((Style.font_size - 5) * root.row_scale)
+        font.pixelSize: Math.round((Style.fs(-5)) * root.row_scale)
         font.weight: Font.ExtraBold
         text: root.widest(root.rows.map(r => r[0]))
     }
@@ -74,7 +74,7 @@ Item {
     TextMetrics {
         id: weekday_metrics
         font.family: Style.font_family
-        font.pixelSize: Math.round((Style.font_size - 3) * root.row_scale)
+        font.pixelSize: Math.round((Style.fs(-3)) * root.row_scale)
         font.weight: Font.Bold
         text: root.widest(root.days.concat([{
             weekday: "Today"
@@ -84,7 +84,7 @@ Item {
     TextMetrics {
         id: temp_metrics
         font.family: Style.font_family
-        font.pixelSize: Math.round((Style.font_size - 3) * root.row_scale)
+        font.pixelSize: Math.round((Style.fs(-3)) * root.row_scale)
         font.weight: Font.ExtraBold
         text: root.widest([].concat(...Array.from(root.days || []).map(d => [Math.round(d.max) + "°", Math.round(d.min) + "°"])).concat(["-9°"]))
     }
@@ -92,7 +92,7 @@ Item {
     TextMetrics {
         id: rain_metrics
         font.family: Style.font_family
-        font.pixelSize: Math.round((Style.font_size - 4) * root.row_scale)
+        font.pixelSize: Math.round((Style.fs(-4)) * root.row_scale)
         font.weight: Font.Bold
         text: "100%"
     }
@@ -226,7 +226,7 @@ Item {
                         text: cell.modelData[1](slot.modelData)
                         color: cell.index === 2 || slot.selected && cell.index === 0 ? Theme.fg_strong : cell.index === 4 ? Style.text_fg : Theme.theme_primary_light
                         font.family: Style.font_family
-                        font.pixelSize: Math.round((cell.index === 0 ? Style.font_size - 3 : Style.font_size - (cell.index === 4 ? 4 : 3)) * root.row_scale * cell.col_scale)
+                        font.pixelSize: Math.round((cell.index === 0 ? Style.fs(-3) : Style.font_size - (cell.index === 4 ? 4 : 3)) * root.row_scale * cell.col_scale)
                         font.weight: cell.index === 2 ? Font.ExtraBold : Font.Bold
                     }
 
@@ -262,7 +262,7 @@ Item {
             text: modelData[0]
             color: Theme.theme_primary_light
             font.family: Style.font_family
-            font.pixelSize: Math.round((Style.font_size - 5) * root.row_scale)
+            font.pixelSize: Math.round((Style.fs(-5)) * root.row_scale)
             font.weight: Font.ExtraBold
             font.letterSpacing: 1
         }

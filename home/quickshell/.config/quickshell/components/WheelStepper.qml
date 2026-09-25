@@ -20,6 +20,11 @@ QtObject {
         return notches;
     }
 
+    // Touchpads send pixel deltas; about 60px of swipe makes one notch.
+    function consume_event(wheel) {
+        return root.consume(wheel.pixelDelta.y !== 0 ? wheel.pixelDelta.y * 2 : wheel.angleDelta.y);
+    }
+
     function snap(current, direction, min, max) {
         const step = 5;
         const target = direction > 0

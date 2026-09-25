@@ -66,8 +66,8 @@ Item {
         ColumnLayout {
             Layout.fillWidth: true
             spacing: 0
-            Text { Layout.fillWidth: true; elide: Text.ElideRight; text: sun_end.label; color: Style.text_muted; font.family: Style.font_family; font.pixelSize: Style.font_size - 3 }
-            Text { Layout.fillWidth: true; elide: Text.ElideRight; text: sun_end.time || "—"; color: Theme.fg_core; font.family: Style.font_family; font.pixelSize: Style.font_size + 2; font.bold: true }
+            Text { Layout.fillWidth: true; elide: Text.ElideRight; text: sun_end.label; color: Style.text_muted; font.family: Style.font_family; font.pixelSize: Style.fs(-3) }
+            Text { Layout.fillWidth: true; elide: Text.ElideRight; text: sun_end.time || "—"; color: Theme.fg_core; font.family: Style.font_family; font.pixelSize: Style.fs(2); font.bold: true }
         }
     }
 
@@ -107,7 +107,7 @@ Item {
                         text: day_cell.modelData.weekday
                         color: day_cell.day_index === root.day_cursor ? Theme.theme_secondary : Style.text_muted
                         font.family: Style.font_family
-                        font.pixelSize: Style.font_size - 2
+                        font.pixelSize: Style.fs(-2)
                     }
 
                     MouseArea {
@@ -172,9 +172,9 @@ Item {
                 anchors.horizontalCenter: parent.horizontalCenter
                 anchors.bottom: parent.bottom
                 anchors.bottomMargin: 20
-                Text { anchors.horizontalCenter: parent.horizontalCenter; text: root.day ? root.day.date.substr(5) : ""; color: Style.text_dim; font.family: Style.font_family; font.pixelSize: Style.font_size - 3 }
-                Text { anchors.horizontalCenter: parent.horizontalCenter; text: "Day length"; color: Style.text_muted; font.family: Style.font_family; font.pixelSize: Style.font_size - 3 }
-                Text { anchors.horizontalCenter: parent.horizontalCenter; text: root.day_length(); color: Theme.fg_core; font.family: Style.font_family; font.pixelSize: Style.font_size + 2 }
+                Text { anchors.horizontalCenter: parent.horizontalCenter; text: root.day ? root.day.date.substr(5) : ""; color: Style.text_dim; font.family: Style.font_family; font.pixelSize: Style.fs(-3) }
+                Text { anchors.horizontalCenter: parent.horizontalCenter; text: "Day length"; color: Style.text_muted; font.family: Style.font_family; font.pixelSize: Style.fs(-3) }
+                Text { anchors.horizontalCenter: parent.horizontalCenter; text: root.day_length(); color: Theme.fg_core; font.family: Style.font_family; font.pixelSize: Style.fs(2) }
             }
         }
 
@@ -226,7 +226,7 @@ Item {
                     text: WeatherState.moon_name(root.moon_phase)
                     color: Theme.fg_core
                     font.family: Style.font_family
-                    font.pixelSize: Style.font_size + 2
+                    font.pixelSize: Style.fs(2)
                     font.bold: true
                 }
 
@@ -236,7 +236,7 @@ Item {
                     text: "Moonrise " + (root.moon_times.rise || "—")
                     color: Style.text_muted
                     font.family: Style.font_family
-                    font.pixelSize: Style.font_size - 2
+                    font.pixelSize: Style.fs(-2)
                 }
 
                 Text {
@@ -246,7 +246,7 @@ Item {
                     text: "Moonset " + (root.moon_times.set || "")
                     color: Style.text_muted
                     font.family: Style.font_family
-                    font.pixelSize: Style.font_size - 2
+                    font.pixelSize: Style.fs(-2)
                 }
 
                 Text {
@@ -255,7 +255,7 @@ Item {
                     text: "Full moon " + root.next_full
                     color: Style.text_dim
                     font.family: Style.font_family
-                    font.pixelSize: Style.font_size - 2
+                    font.pixelSize: Style.fs(-2)
                 }
             }
         }

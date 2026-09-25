@@ -38,7 +38,7 @@ ColumnLayout {
             text: WeatherState.location_name.toUpperCase()
             color: Style.title_fg
             font.family: Style.font_family
-            font.pixelSize: Style.font_size - 4
+            font.pixelSize: Style.fs(-4)
             style: Text.Raised
             styleColor: Style.text_shadow
         }
@@ -81,7 +81,7 @@ ColumnLayout {
                         text: root.has ? Math.round(root.cur.temp) + "°" + WeatherState.unit_symbol() : "--°"
                         color: root.has ? Style.text_strong : Style.text_dim
                         font.family: Style.font_family
-                        font.pixelSize: Style.font_size + 12
+                        font.pixelSize: Style.fs(12)
                         style: Text.Raised
                         styleColor: Style.text_shadow
                     }
@@ -98,7 +98,7 @@ ColumnLayout {
                             text: root.has ? root.cur.cond.toUpperCase() : WeatherState.loading ? "LOADING" : "NO DATA"
                             color: root.has || WeatherState.loading ? Theme.theme_primary_light : Theme.warning
                             font.family: Style.font_family
-                            font.pixelSize: Style.font_size - 3
+                            font.pixelSize: Style.fs(-3)
                         }
 
                         Text {
@@ -108,7 +108,7 @@ ColumnLayout {
                             text: "FEELS " + (root.has ? Math.round(root.cur.feels) + "°" : "")
                             color: Style.text_muted
                             font.family: Style.font_family
-                            font.pixelSize: Style.font_size - 5
+                            font.pixelSize: Style.fs(-5)
                         }
                     }
                 }
@@ -129,14 +129,14 @@ ColumnLayout {
                                 text: parent.modelData[0]
                                 color: Theme.theme_primary_light
                                 font.family: Style.font_family
-                                font.pixelSize: Style.font_size - 5
+                                font.pixelSize: Style.fs(-5)
                             }
 
                             Text {
                                 text: parent.modelData[1]
                                 color: Style.text_fg
                                 font.family: Style.font_family
-                                font.pixelSize: Style.font_size - 5
+                                font.pixelSize: Style.fs(-5)
                             }
                         }
                     }
@@ -149,7 +149,7 @@ ColumnLayout {
                     text: "STALE DATA" + (WeatherState.error ? ": " + WeatherState.error : "")
                     color: Theme.warning
                     font.family: Style.font_family
-                    font.pixelSize: Style.font_size - 5
+                    font.pixelSize: Style.fs(-5)
                 }
             }
         }

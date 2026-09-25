@@ -12,6 +12,9 @@ import "../services"
 import "snes" as Snes
 import "ps1" as Ps1
 import "ps2" as Ps2
+import "oasis" as Oasis
+import "modern" as Modern
+import "neovim" as Neovim
 
 PanelWindow {
     id: root
@@ -47,16 +50,20 @@ PanelWindow {
     }
 
     readonly property bool showing_vox: root.content === "voxtype"
+    // Metroid's volume meter is the visor level row with the default sink's live wave.
+    readonly property bool visor_wave: Style.level_layout === "visor" && !root.showing_vox && root.kind === "volume"
     readonly property bool vox_recording: root.showing_vox && root.vox_phase === "recording"
     readonly property bool readout_layout: Style.osd_layout === "readout" && !root.showing_vox
     readonly property bool ring_layout: Style.osd_layout === "ring" && !root.showing_vox
     readonly property bool banded: Style.show_title && (Style.title_band.a > 0 || Style.title_strip.a > 0)
     readonly property bool hud_layout: Style.osd_layout === "hud" && !root.showing_vox
     // Console OSD art picked by osd_layout, with the default parts it replaces.
-    readonly property var console_osd: root.showing_vox ? null : ({
+    readonly property var console_osd: root.showing_vox ? (Style.osd_layout === "tile" ? { art: tile_vox_osd, hides: ["glyph", "meter", "percent"], framed: true, untitled: true } : null) : ({
             rpg: { art: rpg_osd, hides: ["glyph", "meter", "percent"] },
             alert: { art: alert_osd, hides: ["glyph"] },
-            glow: { art: glow_osd, hides: ["meter", "percent"], size: Style.px(84) }
+            glow: { art: glow_osd, hides: ["meter", "percent"], size: Style.px(84) },
+            horizon: { art: horizon_osd, hides: ["glyph", "meter", "percent"], framed: true, untitled: true },
+            tile: { art: tile_osd, hides: ["glyph", "meter", "percent"], framed: true, untitled: true }
         })[Style.osd_layout] || null
 
     function replaced(part) {
@@ -82,11 +89,15 @@ PanelWindow {
     screen: Quickshell.screens.find(s => s.name === root.held_screen_name) || null
     visible: root.wanted || root.reveal > 0
     anchors.bottom: true
-    margins.bottom: Style.px(72)
+    margins.bottom: Style.px(72) - root.shadow_pad
+    // Room around the frame for a soft shadow, so the window never clips it.
+    readonly property int shadow_pad: Style.frame_shadow.a > 0 ? Style.frame_drop : 0
     exclusiveZone: 0
     color: "transparent"
-    implicitWidth: frame.width
-    implicitHeight: frame.height + root.slide
+    implicitWidth: frame.width + root.shadow_pad * 2
+    // Floating frames set the title chip into the top border, half of it above the frame.
+    readonly property real float_top: Style.border_title && Style.show_title ? Math.round(title_tab.height / 2) : 0
+    implicitHeight: frame.height + root.slide + root.shadow_pad + root.float_top
     mask: Region {}
     WlrLayershell.namespace: "quickshell-osd"
     WlrLayershell.layer: WlrLayer.Overlay
@@ -221,20 +232,35 @@ PanelWindow {
     TextMetrics {
         id: percent_metrics
         font.family: Style.number_font
-        font.pixelSize: root.hud_layout ? Style.font_size + 5 : Style.font_size
+        font.pixelSize: root.hud_layout ? Style.fs(5) : Style.font_size
         font.bold: Style.number_font !== Style.font_family
         text: "100%"
     }
 
     // Fits in the slide room under the frame, so the window keeps its size.
     Rectangle {
-        visible: Style.frame_drop > 0
+        visible: Style.frame_drop > 0 && Style.frame_shadow.a === 0
+        x: frame.x
         y: frame.y + Style.frame_drop
         width: frame.width
         height: frame.height
         radius: frame.radius
         color: Theme.bg_shadow
         opacity: frame.opacity
+    }
+
+    Loader {
+        active: Style.frame_shadow.a > 0
+        x: frame.x + 4
+        y: frame.y + 4
+        width: frame.width - 8
+        height: frame.height
+        opacity: frame.opacity
+        sourceComponent: RectangularShadow {
+            blur: root.shadow_pad
+            radius: frame.radius
+            color: Style.frame_shadow
+        }
     }
 
     Rectangle {
@@ -244,14 +270,15 @@ PanelWindow {
         readonly property int pad_y: Style.px(10)
         readonly property real top_rule: Style.frame_top_rule ? Style.accent_height : 0
         readonly property real band_height: Math.max(26, title_tab.height + 4)
-        readonly property real header_height: !title_tab.visible ? 0 : root.banded ? frame.band_height + 4 + Style.inset_pad : title_tab.height + frame.top_rule + Style.inset_pad
+        readonly property real header_height: !title_tab.visible ? 0 : root.banded ? frame.band_height + 4 + Style.inset_pad : Style.border_title ? root.float_top : title_tab.height + frame.top_rule + Style.inset_pad
 
-        y: root.slide * (1 - root.reveal)
+        x: root.shadow_pad
+        y: root.float_top + root.slide * (1 - root.reveal)
         opacity: root.reveal
         width: Math.max(body.implicitWidth + pad_x * 2, title_tab.visible ? title_tab.width + Style.inset_pad * 2 : 0)
-        height: header_height + body.implicitHeight + pad_y * 2
-        // Sized console art makes the frame near square, where a pill radius would round it into a circle.
-        radius: Style.rounded && !Style.frame_visor && !(root.console_osd && root.console_osd.size) ? height / 2 : Style.frame_radius
+        height: header_height + body.implicitHeight + pad_y * 2 + Style.slant_room
+        // Sized console art makes the frame near square, where a pill radius would round it into a circle; framed art keeps the frame radius.
+        radius: Style.rounded && !Style.frame_visor && !(root.console_osd && (root.console_osd.size || root.console_osd.framed)) ? height / 2 : Style.frame_radius
         color: Style.frame_chamfer > 0 || Style.frame_visor || Style.custom_frame ? "transparent" : Style.frame_follows_island ? Theme.bg_core : Style.frame_color
         border.width: Style.frame_visor || Style.frame_chamfer > 0 || Style.custom_frame ? 0 : Style.frame_border_width
         border.color: Style.frame_border_color
@@ -299,6 +326,12 @@ PanelWindow {
             bottom_radius: frame.radius
         }
 
+        Sheen {
+            color_top: Style.frame_float > 0 ? Style.sheen : "transparent"
+            corner: frame.radius
+            edge: Style.frame_border_width
+        }
+
         Item {
             id: glow_layer
             readonly property bool layered: Style.glow || Style.text_shadow.a > 0
@@ -336,8 +369,8 @@ PanelWindow {
 
             Rectangle {
                 id: title_tab
-                visible: Style.show_title
-                opacity: root.banded ? 0 : 1
+                visible: Style.show_title && !(root.console_osd && root.console_osd.untitled)
+                opacity: root.banded || Style.border_title ? 0 : 1
                 x: (Style.fade_fills || Style.rounded ? frame.radius : 0) + Style.inset_pad
                 y: (Style.fade_fills ? Style.frame_border_width : 0) + frame.top_rule + Style.inset_pad
                 width: Style.fade_fills ? Math.max(title_text.implicitWidth + 20 + title_index.space, body.implicitWidth + frame.pad_x * 2 - frame.radius * 2) : title_text.implicitWidth + 20 + title_index.space
@@ -362,12 +395,21 @@ PanelWindow {
                     anchors.horizontalCenterOffset: title_index.space / 2
                     x: 10 + title_index.space
                     y: (parent.height - height) / 2
-                    text: Style.title_prefix + root.title + Style.title_suffix
+                    text: Style.title_prefix + Style.title_text(root.title) + Style.title_suffix
                     color: Style.title_fg
                     font.family: Style.title_font_family
-                    font.pixelSize: Style.font_size - 2
+                    font.pixelSize: Style.title_size > 0 ? Style.title_size : Style.fs(-2)
                     font.weight: Style.title_weight > 0 ? Style.title_weight : Style.title_font_family === Style.font_family ? Font.Bold : Font.Normal
                     font.letterSpacing: Style.title_spacing
+                }
+            }
+
+            Loader {
+                active: Style.border_title && Style.show_title
+                x: 12
+                y: -root.float_top
+                sourceComponent: Neovim.BorderTitle {
+                    title: Style.title_text(root.title)
                 }
             }
 
@@ -427,13 +469,25 @@ PanelWindow {
                     visible: !root.readout_layout && !root.replaced("meter")
                     Layout.alignment: Qt.AlignVCenter
                     Layout.preferredWidth: root.showing_vox ? Style.px(260) : Style.px(180)
-                    Layout.preferredHeight: root.showing_vox ? Style.px(44) : meter.implicitHeight
+                    Layout.preferredHeight: root.showing_vox ? Style.px(44) : root.visor_wave ? Style.px(24) : meter.implicitHeight
+
+                    Modern.CapsuleSlider {
+                        visible: root.visor_wave
+                        width: parent.width
+                        height: parent.height
+                        value: root.level
+                        muted: root.muted
+                        interactive: false
+                        show_readout: false
+                        node: root.sink
+                        peaks_on: root.visor_wave && root.wanted && root.visible && Power.on_ac
+                    }
 
                     Meter {
                         id: meter
                         // Volume OSD matches the Volume popup's art (hearts on NES); brightness keeps its own.
                         art_key: root.kind === "volume" ? "volume" : "osd"
-                        visible: !root.showing_vox
+                        visible: !root.showing_vox && !root.visor_wave
                         width: parent.width
                         anchors.verticalCenter: parent.verticalCenter
                         value: root.showing_vox ? 0 : root.level
@@ -446,7 +500,7 @@ PanelWindow {
                         visible: root.showing_vox
                         anchors.fill: parent
                         frozen: !root.vox_recording
-                        running: root.showing_vox && root.visible
+                        running: root.showing_vox && root.visible && !root.replaced("meter")
                     }
                 }
 
@@ -478,6 +532,45 @@ PanelWindow {
             Ps1.AlertMark {
                 size: Theme.glyph_size + 10
                 opacity: root.muted ? 0.5 : 1
+            }
+        }
+
+        Component {
+            id: horizon_osd
+            Oasis.HorizonOsd {
+                level: root.level
+                percent: root.percent
+                muted: root.muted
+                glyph: root.glyph
+                label: root.kind === "brightness" ? "Brightness" : root.muted ? "Muted" : "Volume"
+                detail: root.kind === "brightness" ? "Backlight" : root.sink ? root.sink.description || root.sink.name : ""
+                wave: root.kind === "volume"
+                node: root.sink
+                peaks_on: root.wanted && root.visible && Power.on_ac
+            }
+        }
+
+        Component {
+            id: tile_osd
+            Modern.TileOsd {
+                kind: root.kind
+                level: root.level
+                percent: root.percent
+                muted: root.muted
+                glyph: root.glyph
+                device: root.kind === "volume" && root.sink ? root.sink.description || root.sink.name : ""
+                node: root.sink
+                peaks_on: root.wanted && root.visible && Power.on_ac
+            }
+        }
+
+        Component {
+            id: tile_vox_osd
+            Modern.VoxTileOsd {
+                recording: root.vox_recording
+                elapsed: root.elapsed
+                glyph: "󰍬"
+                running: root.showing_vox && root.visible
             }
         }
 

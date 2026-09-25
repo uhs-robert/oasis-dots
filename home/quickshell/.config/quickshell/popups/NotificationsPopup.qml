@@ -254,7 +254,7 @@ Popup {
                             color: Theme.fg_core
                             font.bold: true
                             font.family: Style.font_family
-                            font.pixelSize: Style.font_size + 6
+                            font.pixelSize: Style.fs(6)
                         }
 
                         Text {
@@ -265,7 +265,7 @@ Popup {
                             text: NotificationState.unread + " unread · " + NotificationState.history.length + " total"
                             color: Style.text_muted
                             font.family: Style.font_family
-                            font.pixelSize: Style.font_size - 2
+                            font.pixelSize: Style.fs(-2)
                         }
                     }
                 }
@@ -296,7 +296,7 @@ Popup {
                 Layout.fillWidth: true
                 labels: root.tabs
                 current: root.current_tab
-                font_size: Style.font_size - 1
+                font_size: Style.fs(-1)
                 tab_height: Style.px(28)
                 onPicked: i => root.set_tab(i)
             }
@@ -355,7 +355,7 @@ Popup {
                             color: Style.text_dim
                             font.bold: true
                             font.family: Style.font_family
-                            font.pixelSize: Style.font_size - 2
+                            font.pixelSize: Style.fs(-2)
                         }
 
                         RowLayout {
@@ -380,7 +380,7 @@ Popup {
                                 color: Style.text_muted
                                 font.bold: true
                                 font.family: Style.font_family
-                                font.pixelSize: Style.font_size - 1
+                                font.pixelSize: Style.fs(-1)
                             }
                         }
 

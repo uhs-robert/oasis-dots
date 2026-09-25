@@ -83,7 +83,7 @@ Rectangle {
                     text: "TODAY"
                     color: Theme.theme_primary_light
                     font.family: Style.font_family
-                    font.pixelSize: Style.font_size - 5
+                    font.pixelSize: Style.fs(-5)
                     font.letterSpacing: 1
                 }
 
@@ -102,7 +102,7 @@ Rectangle {
                     text: Qt.formatTime(root.now, "HH:mm")
                     color: Style.text_strong
                     font.family: Style.font_family
-                    font.pixelSize: Style.font_size + 12
+                    font.pixelSize: Style.fs(12)
                     style: Text.Raised
                     styleColor: Style.text_shadow
                 }
@@ -119,7 +119,7 @@ Rectangle {
                         text: Qt.formatDate(root.now, "ddd d MMM yyyy").toUpperCase()
                         color: Theme.theme_primary_light
                         font.family: Style.font_family
-                        font.pixelSize: Style.font_size - 3
+                        font.pixelSize: Style.fs(-3)
                     }
 
                     Text {
@@ -128,7 +128,7 @@ Rectangle {
                         text: "WEEK " + root.week + (root.zone ? " · " + root.zone.toUpperCase() : "")
                         color: Style.text_muted
                         font.family: Style.font_family
-                        font.pixelSize: Style.font_size - 5
+                        font.pixelSize: Style.fs(-5)
                     }
                 }
             }

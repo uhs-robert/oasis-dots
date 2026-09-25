@@ -13,7 +13,7 @@ Rectangle {
     property int slot: -1
     readonly property bool marked: root.st.row_marker !== ""
     // Room reserved at the left for the style's cursor marker; rows add it to their left margin.
-    readonly property real inset: root.marked ? 16 : root.st.hand_cursor ? 24 : root.st.row_cursor !== "" ? cursor_text.implicitWidth + 4 : 0
+    readonly property real inset: root.marked ? 16 : root.st.row_gutter ? 32 : root.st.hand_cursor ? 24 : root.st.row_cursor !== "" ? cursor_text.implicitWidth + 4 : 0
     // The row's shortcut, drawn as a badge at the right by styles that show row keys.
     property string key: ""
     readonly property bool show_key: root.st.row_keys && root.key !== ""
@@ -46,6 +46,22 @@ Rectangle {
     FadeFill {
         visible: root.selected && root.st.fade_fills
         fill: root.st.selection_bg
+        radius: root.st.selection_edge.a > 0 ? root.radius : 0
+    }
+
+    Rectangle {
+        visible: root.selected && root.st.selection_shade.a > 0
+        anchors.fill: parent
+        radius: root.radius
+        gradient: Gradient {
+            GradientStop { position: 0; color: root.st.selection_shade }
+            GradientStop { position: 1; color: root.st.selection_bg }
+        }
+
+        Sheen {
+            color_top: root.st.sheen
+            corner: parent.radius
+        }
     }
 
     DashedOutline {
@@ -64,6 +80,16 @@ Rectangle {
         width: 2
         height: parent.height
         color: root.st.caret_color
+    }
+
+    Rectangle {
+        visible: root.selected && root.st.selection_edge.a > 0
+        anchors.verticalCenter: parent.verticalCenter
+        width: 3
+        height: Math.max(6, parent.height - 14)
+        topRightRadius: 3
+        bottomRightRadius: 3
+        color: root.st.selection_edge
     }
 
     Rectangle {
@@ -97,7 +123,20 @@ Rectangle {
         text: String(root.slot).padStart(2, "0")
         color: root.selected ? root.st.caret_color : root.st.text_muted
         font.family: root.st.mono_font
-        font.pixelSize: root.st.font_size - 4
+        font.pixelSize: root.st.fs(-4)
+    }
+
+    Text {
+        visible: root.st.row_gutter
+        x: 6
+        width: 20
+        anchors.verticalCenter: parent.verticalCenter
+        horizontalAlignment: Text.AlignRight
+        text: root.key !== "" ? root.key : root.slot >= 0 ? String(root.slot) : ""
+        color: root.selected ? root.st.text_accent : root.st.text_muted
+        font.family: root.st.mono_font
+        font.pixelSize: root.st.fs(-3)
+        font.bold: root.selected
     }
 
     Text {
@@ -108,7 +147,7 @@ Rectangle {
         text: root.st.row_cursor
         color: root.st.caret_color
         font.family: root.st.mono_font
-        font.pixelSize: root.st.font_size - 1
+        font.pixelSize: root.st.fs(-1)
         font.bold: true
     }
 

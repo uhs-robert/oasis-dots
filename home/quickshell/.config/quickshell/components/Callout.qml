@@ -35,7 +35,7 @@ RowLayout {
             text: root.label
             color: root.st.text_muted
             font.family: root.st.font_family
-            font.pixelSize: root.st.font_size - 5
+            font.pixelSize: root.st.fs(-5)
             font.capitalization: Font.AllUppercase
             font.letterSpacing: 2.5
         }
@@ -49,7 +49,7 @@ RowLayout {
             elide: Text.ElideRight
             color: root.small ? root.st.text_fg : root.value_color
             font.family: root.st.font_family
-            font.pixelSize: root.small ? root.st.font_size - 3 : root.st.font_size - 1
+            font.pixelSize: root.small ? root.st.fs(-3) : root.st.fs(-1)
             font.letterSpacing: 0.5
         }
     }

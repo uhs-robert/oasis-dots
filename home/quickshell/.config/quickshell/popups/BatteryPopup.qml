@@ -6,6 +6,7 @@ import Quickshell.Services.UPower
 import "../components"
 import "../theme"
 import "../services"
+import "../components/modern" as Modern
 import "../components/nes" as Nes
 import "snes" as Snes
 import "../components/ps1" as Ps1
@@ -100,6 +101,19 @@ Popup {
         id: ppd_check_proc
         command: ["busctl", "--system", "introspect", "org.freedesktop.UPower.PowerProfiles", "/org/freedesktop/UPower/PowerProfiles"]
         onExited: code => root.ppd_available = code === 0
+    }
+
+    // The wheel steps a backlight row like h/l, one snap step per notch.
+    property string wheel_kind: ""
+    function wheel_adjust(kind, wheel) {
+        if (kind !== root.wheel_kind) {
+            stepper.accumulated = 0;
+            root.wheel_kind = kind;
+        }
+        const notches = stepper.consume_event(wheel);
+        if (notches === 0) return;
+        if (kind === "brightness" && Backlight.has_device) Backlight.set_percent(stepper.snap_by(Backlight.percent, notches, 1, 100));
+        else if (kind === "kbd" && Backlight.has_kbd) Backlight.kbd_set_percent(stepper.snap_by(Backlight.kbd_percent, notches, 0, 100));
     }
 
     Item {
@@ -227,7 +241,7 @@ Popup {
                 text: (root.nes ? "BAT " : "") + Math.round(root.percent) + "%"
                 color: root.st.text_strong
                 font.family: root.st.font_family
-                font.pixelSize: root.st.font_size + 4
+                font.pixelSize: root.st.fs(4)
             }
 
             Text {
@@ -236,7 +250,7 @@ Popup {
                 text: root.state_label
                 color: root.st.text_muted
                 font.family: root.st.font_family
-                font.pixelSize: root.st.font_size - 2
+                font.pixelSize: root.st.fs(-2)
             }
 
             Text {
@@ -245,7 +259,7 @@ Popup {
                 text: root.time_label
                 color: root.st.text_muted
                 font.family: root.st.font_family
-                font.pixelSize: root.st.font_size - 2
+                font.pixelSize: root.st.fs(-2)
             }
 
             Text {
@@ -254,21 +268,76 @@ Popup {
                 text: root.rate.toFixed(1) + " W"
                 color: root.st.text_muted
                 font.family: root.st.font_family
-                font.pixelSize: root.st.font_size - 2
+                font.pixelSize: root.st.fs(-2)
             }
 
             FontMetrics {
                 id: percent_metrics
                 font.family: root.st.font_family
-                font.pixelSize: root.st.font_size - 1
+                font.pixelSize: root.st.fs(-1)
+            }
+
+            Loader {
+                active: root.st.level_layout === "capsule"
+                visible: active
+                Layout.fillWidth: true
+                Layout.topMargin: 6
+                sourceComponent: Modern.CapsuleSlider {
+                    glow: true
+                    glyph: "󰃠"
+                    label: "Brightness"
+                    value: Backlight.percent / 100
+                    selected: !!root.nav_rows[root.selected] && root.nav_rows[root.selected].kind === "brightness"
+                    onMoved: v => Backlight.set_percent(Math.max(1, Math.round(v * 100)))
+
+                    WheelHandler {
+                        acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
+                        onWheel: event => {
+                            root.wheel_adjust("brightness", event);
+                            event.accepted = true;
+                        }
+                    }
+                }
+            }
+
+            Loader {
+                active: root.st.level_layout === "capsule" && Backlight.has_kbd
+                visible: active
+                Layout.fillWidth: true
+                Layout.topMargin: 4
+                sourceComponent: Modern.CapsuleSlider {
+                    glow: true
+                    glyph: "󰌌"
+                    label: "Keyboard"
+                    value: Backlight.kbd_percent / 100
+                    selected: !!root.nav_rows[root.selected] && root.nav_rows[root.selected].kind === "kbd"
+                    onMoved: v => Backlight.kbd_set_percent(Math.round(v * 100))
+
+                    WheelHandler {
+                        acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
+                        onWheel: event => {
+                            root.wheel_adjust("kbd", event);
+                            event.accepted = true;
+                        }
+                    }
+                }
             }
 
             MenuRow {
                 id: brightness_row
+                visible: root.st.level_layout !== "capsule"
                 Layout.fillWidth: true
                 Layout.topMargin: 6
                 height: Style.px(22)
                 selected: !!root.nav_rows[root.selected] && root.nav_rows[root.selected].kind === "brightness"
+
+                WheelHandler {
+                    acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
+                    onWheel: event => {
+                        root.wheel_adjust("brightness", event);
+                        event.accepted = true;
+                    }
+                }
 
                 RowLayout {
                     anchors.fill: parent
@@ -295,17 +364,25 @@ Popup {
                         text: Backlight.percent + "%"
                         color: brightness_row.fg(root.st.text_fg)
                         font.family: root.st.font_family
-                        font.pixelSize: root.st.font_size - 1
+                        font.pixelSize: root.st.fs(-1)
                     }
                 }
             }
 
             MenuRow {
                 id: kbd_row
-                visible: Backlight.has_kbd
+                visible: Backlight.has_kbd && root.st.level_layout !== "capsule"
                 Layout.fillWidth: true
                 height: Style.px(22)
                 selected: !!root.nav_rows[root.selected] && root.nav_rows[root.selected].kind === "kbd"
+
+                WheelHandler {
+                    acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
+                    onWheel: event => {
+                        root.wheel_adjust("kbd", event);
+                        event.accepted = true;
+                    }
+                }
 
                 RowLayout {
                     anchors.fill: parent
@@ -332,7 +409,7 @@ Popup {
                         text: Backlight.kbd_percent + "%"
                         color: kbd_row.fg(root.st.text_fg)
                         font.family: root.st.font_family
-                        font.pixelSize: root.st.font_size - 1
+                        font.pixelSize: root.st.fs(-1)
                     }
                 }
             }
@@ -343,7 +420,7 @@ Popup {
                 text: "power-profiles-daemon not running"
                 color: root.st.text_dim
                 font.family: root.st.font_family
-                font.pixelSize: root.st.font_size - 3
+                font.pixelSize: root.st.fs(-3)
             }
 
             Repeater {
@@ -373,7 +450,7 @@ Popup {
                             label: profile_row.modelData.label
                             color: profile_row.fg(PowerProfiles.profile === profile_row.modelData.value ? root.st.text_accent : root.st.text_fg)
                             font.family: root.st.font_family
-                            font.pixelSize: root.st.font_size - 1
+                            font.pixelSize: root.st.fs(-1)
                         }
                     }
 

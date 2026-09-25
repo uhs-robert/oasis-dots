@@ -11,8 +11,12 @@ Item {
     property string title: ""
     property string readout_value: ""
     property bool closable: true
+    // Overrides the title colour when set, e.g. with the active submap's.
+    property color title_color: "transparent"
 
     implicitHeight: Math.max(24, title_text.implicitHeight + 10)
+    // The narrowest width that shows the whole title; mirrors title_text's width limit.
+    readonly property real min_width: title_text.x + title_text.implicitWidth + 8 + 22 + (value_text.visible ? value_text.implicitWidth + 8 : 0)
 
     Rectangle {
         anchors.fill: parent
@@ -33,9 +37,9 @@ Item {
         width: Math.max(0, Math.min(implicitWidth, (value_text.visible ? value_text.x : close_box.x) - x - 8))
         elide: Text.ElideRight
         text: root.title
-        color: root.st.title_fg
+        color: root.title_color.a > 0 ? root.title_color : root.st.title_fg
         font.family: root.st.title_font_family
-        font.pixelSize: root.st.font_size - 3
+        font.pixelSize: root.st.fs(-3)
         font.bold: true
         font.capitalization: Font.AllUppercase
         font.letterSpacing: root.st.title_spacing
@@ -50,7 +54,7 @@ Item {
         text: root.readout_value
         color: root.st.text_muted
         font.family: root.st.number_font
-        font.pixelSize: root.st.font_size - 4
+        font.pixelSize: root.st.fs(-4)
         font.bold: true
     }
 

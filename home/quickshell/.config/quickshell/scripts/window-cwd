@@ -1,0 +1,78 @@
+#!/usr/bin/env bash
+# Prints a terminal window's open Neovim file, else its working directory: its tmux client's pane, else kitty remote control, else the deepest child's cwd.
+# Usage: window-cwd <window pid> <window title>
+pid=$1
+title=$2
+[ -n "$pid" ] || exit 0
+run_dir="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
+
+# The file in the first nvim at or below $1 that answers on its socket.
+nvim_file() {
+  local queue=("$1") p sock file
+  while [ ${#queue[@]} -gt 0 ]; do
+    p=${queue[0]}
+    queue=("${queue[@]:1}")
+    if [ "$(cat "/proc/$p/comm" 2>/dev/null)" = "nvim" ]; then
+      for sock in "$run_dir/nvim.$p.0" "$run_dir"/nvim."$p".*; do
+        [ -S "$sock" ] || continue
+        file=$(timeout 0.5 nvim --server "$sock" --remote-expr 'expand("%:p")' 2>/dev/null)
+        [ -n "$file" ] && { printf 'file:%s\n' "$file"; return 0; }
+        return 1
+      done
+    fi
+    mapfile -t -O "${#queue[@]}" queue < <(pgrep -P "$p")
+  done
+  return 1
+}
+
+descends() {
+  local p=$1
+  while [ -n "$p" ] && [ "$p" -gt 1 ]; do
+    [ "$p" = "$pid" ] && return 0
+    p=$(ps -o ppid= -p "$p" 2>/dev/null | tr -d ' ')
+  done
+  return 1
+}
+
+if command -v tmux >/dev/null 2>&1; then
+  pick="" only="" count=0 pick_pane="" only_pane=""
+  while IFS=$'\t' read -r cpid session path pane_pid command; do
+    descends "$cpid" || continue
+    count=$((count + 1))
+    only=$path
+    only_pane="$pane_pid $command"
+    case "$title" in
+      "$session" | *" $session" | "$session "*) pick=$path pick_pane="$pane_pid $command" ;;
+    esac
+  done < <(tmux list-clients -F $'#{client_pid}\t#{client_session}\t#{pane_current_path}\t#{pane_pid}\t#{pane_current_command}' 2>/dev/null)
+  [ -z "$pick" ] && [ "$count" -eq 1 ] && pick=$only pick_pane=$only_pane
+  if [ -n "$pick" ]; then
+    [ "${pick_pane#* }" = "nvim" ] && nvim_file "${pick_pane%% *}" && exit 0
+    printf '%s\n' "$pick"
+    exit 0
+  fi
+fi
+
+sock="$run_dir/kitty-$pid"
+if [ -S "$sock" ] && command -v kitty >/dev/null 2>&1; then
+  cwd=$(kitty @ --to "unix:$sock" ls 2>/dev/null | python3 -c '
+import json, sys
+title = sys.argv[1]
+for osw in json.load(sys.stdin):
+    for tab in osw.get("tabs", []):
+        for w in tab.get("windows", []):
+            if w.get("is_focused") and tab.get("is_focused") and w.get("title") == title:
+                procs = w.get("foreground_processes") or []
+                print(procs[-1].get("cwd") if procs and procs[-1].get("cwd") else w.get("cwd", ""))
+                sys.exit()
+' "$title")
+  if [ -n "$cwd" ]; then
+    printf '%s\n' "$cwd"
+    exit 0
+  fi
+fi
+
+leaf=$pid
+while child=$(pgrep -P "$leaf" | tail -n 1) && [ -n "$child" ]; do leaf=$child; done
+[ "$(cat "/proc/$leaf/comm" 2>/dev/null)" = "nvim" ] && nvim_file "$(ps -o ppid= -p "$leaf" | tr -d ' ')" && exit 0
+readlink "/proc/$leaf/cwd" 2>/dev/null

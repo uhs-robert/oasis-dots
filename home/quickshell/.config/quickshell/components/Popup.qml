@@ -7,6 +7,8 @@ import Quickshell.Wayland
 import "../theme"
 import "../services"
 import "Search.js" as Search
+import "../picker/Fuzzy.js" as Fuzzy
+import "neovim" as Neovim
 
 PanelWindow {
     id: root
@@ -27,6 +29,8 @@ PanelWindow {
     property string title: popup_name.toUpperCase()
     // A live value after the style's title readout, e.g. unread counts.
     property string title_value: ""
+    // Passive popups (the tooltip shelf) show app text as it is.
+    readonly property string shown_title: root.passive ? root.title : Style.title_text(root.title, root.st)
     property string footer_hint: ""
     // The full key list behind `?`; while set, the footer shows only help_hint.
     property string key_help: footer_hint
@@ -65,8 +69,36 @@ PanelWindow {
     signal search_select(int index)
     property string search_query: ""
     property bool search_typing: false
-    readonly property bool search_shown: root.search_enabled && (root.search_typing || root.search_query !== "")
-    readonly property var search_matches: root.search_shown ? Search.matches(root.search_rows, root.search_query) : []
+    // Opt-in: the popup opens straight into typing (INSERT), fuzzy-matches search_rows like the HyprVim
+    // prompt, and Esc leaves typing (NORMAL) without clearing the query rather than canceling the search.
+    property bool search_starts_open: false
+    signal search_accept()
+    readonly property bool search_shown: root.search_enabled && (root.search_starts_open ? root.search_typing : (root.search_typing || root.search_query !== ""))
+    readonly property var search_matches: root.search_shown ? (root.search_starts_open ? root.fuzzy_matches(root.search_rows, root.search_query) : Search.matches(root.search_rows, root.search_query)) : []
+
+    function fuzzy_matches(rows, query) {
+        const terms = Fuzzy.terms_of(query);
+        if (terms.length === 0) return [];
+        const found = [];
+        for (let i = 0; i < rows.length; i++) if (Fuzzy.score_item(terms, { label: rows[i] })) found.push(i);
+        return found;
+    }
+
+    // Highest-scoring row, or -1 when nothing matches.
+    function fuzzy_best(rows, query) {
+        const terms = Fuzzy.terms_of(query);
+        if (terms.length === 0) return -1;
+        let best = -1;
+        let best_score = -Infinity;
+        for (let i = 0; i < rows.length; i++) {
+            const m = Fuzzy.score_item(terms, { label: rows[i] });
+            if (m && m.score > best_score) {
+                best_score = m.score;
+                best = i;
+            }
+        }
+        return best;
+    }
     // The base footer is hidden in some styles; it then overlays the content's bottom edge while searching.
     readonly property bool search_overlay: root.search_shown && !root.has_footer && root.footer_hint !== ""
 
@@ -112,6 +144,13 @@ PanelWindow {
         search_input.forceActiveFocus();
     }
 
+    // Resumes typing without losing the query, for `i`/`/` back into INSERT on a search_starts_open popup.
+    function enter_search() {
+        root.search_typing = true;
+        search_input.forceActiveFocus();
+        search_input.cursorPosition = search_input.text.length;
+    }
+
     function clear_search() {
         const refocus = search_input.activeFocus;
         root.search_typing = false;
@@ -146,7 +185,9 @@ PanelWindow {
         if (root.key_help !== "" && root.is_help_key(event)) {
             help_open = true;
         } else if (root.search_enabled && (event.key === Qt.Key_Slash || event.text === "/")) {
-            root.open_search();
+            if (root.search_starts_open) root.enter_search(); else root.open_search();
+        } else if (root.search_starts_open && event.key === Qt.Key_I) {
+            root.enter_search();
         } else if (root.search_enabled && root.search_query !== "" && event.key === Qt.Key_N) {
             root.step_search(back ? -1 : 1);
         } else if (event.key === Qt.Key_Backspace && Popups.back_name !== "") {
@@ -186,6 +227,12 @@ PanelWindow {
     // Full width along the bottom of the screen, rising from its edge; the frame loses its rounded corners.
     property bool dock_bottom: false
     readonly property real frame_radius: root.dock_bottom ? 0 : root.st.frame_radius
+    readonly property bool floating: root.st.frame_float > 0 && !root.dock_bottom && !root.island_capsule
+    readonly property real top_radius: root.floating ? root.frame_radius : 0
+    // Hung flush from a capsule: square under it, rounded where the frame reaches past its ends.
+    readonly property real overhang: root.island_capsule && !root.dock_bottom ? root.width - root.island_width : 0
+    readonly property real top_left_radius: root.overhang > 0 && root.side !== "left" ? Math.min(root.frame_radius, root.side === "center" ? root.overhang / 2 : root.overhang) : root.top_radius
+    readonly property real top_right_radius: root.overhang > 0 && root.side !== "right" ? Math.min(root.frame_radius, root.side === "center" ? root.overhang / 2 : root.overhang) : root.top_radius
     // Shortcuts fire before the focused item, so popups that bind h/l themselves still walk.
     function walk_allowed() {
         const f = content_scope.Window.activeFocusItem;
@@ -218,7 +265,9 @@ PanelWindow {
 
     // The anchor is the island's body; its parent is the Island, which knows which end caps it has.
     readonly property var island: held_anchor ? held_anchor.parent : null
-    readonly property real island_width: held_anchor ? held_anchor.width : 0
+    // Capsule islands measure by the capsule they draw, not the body between their caps.
+    readonly property bool island_capsule: !!island && island.capsule === true
+    readonly property real island_width: root.island && root.island_capsule ? root.island.capsule_width : held_anchor ? held_anchor.width : 0
     readonly property bool island_cap_left: !!island && island.cap_left === true
     readonly property bool island_cap_right: !!island && island.cap_right === true
     // cap_right-only = a left island, flush with the screen's left edge; cap_left-only = a right island.
@@ -230,13 +279,18 @@ PanelWindow {
     anchors.bottom: dock_bottom
     anchors.left: side === "left" || dock_bottom
     anchors.right: side === "right" || dock_bottom
+    margins.top: root.floating ? root.st.frame_float : 0
+    margins.left: root.island && root.island_capsule && root.side === "left" ? root.island.capsule_inset : 0
+    margins.right: root.island && root.island_capsule && root.side === "right" ? root.island.capsule_inset : 0
     exclusiveZone: 0
     color: "transparent"
     visible: false
     WlrLayershell.namespace: "quickshell-popup"
     WlrLayershell.layer: WlrLayer.Overlay
     WlrLayershell.keyboardFocus: root.passive ? WlrKeyboardFocus.None : WlrKeyboardFocus.OnDemand
-    mask: root.passive ? no_input : root.reserving ? panel_input : null
+    mask: root.passive ? no_input : root.reserving || root.shadow_room > 0 ? panel_input : null
+    // The soft shadow's room under the frame; it passes clicks through to the scrim like the reserve does.
+    readonly property real shadow_room: !root.dock_bottom && root.st.frame_shadow.a > 0 ? root.st.frame_drop : 0
 
     Region {
         id: no_input
@@ -252,7 +306,7 @@ PanelWindow {
         id: panel_area
         y: root.height - root.panel_height
         width: root.width
-        height: root.panel_height
+        height: root.panel_height - root.shadow_room
     }
 
     readonly property int line_height: root.st.accent_height
@@ -266,7 +320,7 @@ PanelWindow {
     readonly property real engraving_height: root.st.frame_engraving !== "" ? Math.ceil(engraving_metrics.height) + 4 : 0
     readonly property real header_height: (has_title ? (root.banded ? root.band_height + 8 : title_tab.height + title_gap) + root.st.inset_pad : 0) + root.st.lcd_margin * 2 + root.device_top
     // Console inset rings also clear a content-drawn footer.
-    readonly property real footer_height: (has_footer ? base_footer.implicitHeight + 10 + root.st.inset_pad : root.st.console_views !== "" && root.st.frame_inset_width > 0 ? root.st.inset_pad : 0) + root.st.lcd_margin * 2 + engraving_height + root.device_bottom
+    readonly property real footer_height: (has_footer ? base_footer.implicitHeight + 10 + root.st.inset_pad : root.st.console_views !== "" && root.st.frame_inset_width > 0 ? root.st.inset_pad : 0) + root.st.lcd_margin * 2 + engraving_height + root.device_bottom + Style.slant_room
     property real line_progress: 0
     property real drop_progress: 0
 
@@ -304,10 +358,11 @@ PanelWindow {
             held_screen_name = Popups.open_screen_name;
             held_color = Popups.open_color;
             help_open = false;
-            clear_search();
+            if (!root.search_starts_open) clear_search();
             visible = true;
             open_anim.restart();
-            content_scope.forceActiveFocus();
+            if (root.search_starts_open) root.open_search();
+            else content_scope.forceActiveFocus();
         } else if (visible && passive && Popups.open_name !== "") {
             open_anim.stop();
             close_anim.stop();
@@ -363,7 +418,7 @@ PanelWindow {
         onPressed: mouse => {
             const px = mouse.x + outside_catch.x;
             const py = mouse.y + outside_catch.y;
-            if (px >= 0 && py >= root.height - root.panel_height && px < root.width && py < root.height) mouse.accepted = false;
+            if (px >= 0 && py >= root.height - root.panel_height && px < root.width && py < root.height - root.shadow_room) mouse.accepted = false;
             else if (root.wanted) Popups.close();
         }
     }
@@ -396,13 +451,26 @@ PanelWindow {
         clip: true
 
         Rectangle {
-            visible: !root.dock_bottom && root.st.frame_drop > 0
+            visible: !root.dock_bottom && root.st.frame_drop > 0 && root.st.frame_shadow.a === 0
             y: root.st.frame_drop
             width: root.width
             height: root.height - root.line_height - root.st.frame_drop
             color: Theme.bg_shadow
             bottomLeftRadius: root.frame_radius
             bottomRightRadius: root.frame_radius
+        }
+
+        Loader {
+            active: !root.dock_bottom && root.st.frame_shadow.a > 0
+            x: root.frame_radius
+            y: root.st.frame_drop / 2
+            width: root.width - root.frame_radius * 2
+            height: root.height - root.line_height - root.st.frame_drop
+            sourceComponent: RectangularShadow {
+                blur: root.st.frame_drop
+                radius: root.frame_radius
+                color: root.st.frame_shadow
+            }
         }
 
         Item {
@@ -412,15 +480,30 @@ PanelWindow {
             // Reads as the island unfolding downward: its color, joined flush under the accent line.
             Rectangle {
                 anchors.fill: parent
-                color: root.st.frame_chamfer > 0 || root.st.frame_visor || root.st.custom_frame || root.device ? "transparent" : root.st.frame_follows_island ? root.held_color : root.st.frame_color
+                color: root.st.frame_chamfer > 0 || root.st.frame_visor || root.st.custom_frame || root.device || root.st.border_title ? "transparent" : root.st.frame_follows_island ? root.held_color : root.st.frame_color
+                topLeftRadius: root.top_left_radius
+                topRightRadius: root.top_right_radius
                 bottomLeftRadius: root.frame_radius
                 bottomRightRadius: root.frame_radius
-                border.width: root.st.frame_visor || root.st.frame_chamfer > 0 || root.st.custom_frame ? 0 : root.st.frame_border_width
+                border.width: root.st.frame_visor || root.st.frame_chamfer > 0 || root.st.custom_frame || root.st.border_title ? 0 : root.st.frame_border_width
                 border.color: root.st.frame_border_color
+            }
+
+            Loader {
+                anchors.fill: parent
+                active: root.st.border_title
+                sourceComponent: Neovim.FloatFrame {
+                    st: root.st
+                    title: root.has_title ? root.shown_title : ""
+                    status: root.st.title_status ? root.title_value : ""
+                    chip_height: root.has_title ? title_tab.height : 0
+                    radius: root.frame_radius
+                }
             }
 
             VisorGlass {
                 anchors.fill: parent
+                top_cut: root.top_radius > 0 ? 6 : 0
             }
 
             Shape {
@@ -448,8 +531,25 @@ PanelWindow {
             FrameShade {
                 anchors.fill: parent
                 anchors.margins: root.st.frame_border_width
+                top_left_radius: Math.max(0, root.top_left_radius - root.st.frame_border_width)
+                top_right_radius: Math.max(0, root.top_right_radius - root.st.frame_border_width)
                 bottom_radius: Math.max(0, root.frame_radius - root.st.frame_border_width)
                 chamfer: root.st.frame_chamfer
+            }
+
+            // Under a capsule the top border gives way, so the capsule's fill runs straight into the frame's.
+            Rectangle {
+                visible: root.island_capsule && !root.dock_bottom && root.st.frame_border_width > 0
+                x: root.edge_x(root.island_width) + root.st.frame_border_width
+                width: root.island_width - root.st.frame_border_width * 2
+                height: root.st.frame_border_width
+                color: root.st.frame_shade.a > 0 ? root.st.frame_shade : root.st.frame_color
+            }
+
+            Sheen {
+                color_top: root.floating ? root.st.sheen : "transparent"
+                corner: root.top_radius
+                edge: root.st.frame_border_width
             }
 
             CustomFrame {
@@ -570,12 +670,12 @@ PanelWindow {
 
                 Rectangle {
                     id: title_tab
-                    visible: root.has_title && !root.banded
+                    visible: root.has_title && !root.banded && !root.st.border_title
                     x: (root.st.fade_fills ? root.st.frame_border_width : 0) + root.st.inset_pad + root.st.lcd_margin * 2 + root.device_side
                     y: (root.st.fade_fills ? root.st.frame_border_width : 0) + root.st.inset_pad + root.st.lcd_margin * 2 + root.device_top
                     readonly property real reticle_space: root.st.title_reticle.a > 0 ? title_text.implicitHeight + 4 : 0
                     readonly property real lead_space: title_tab.reticle_space + title_index.space
-                    width: root.st.fade_fills ? parent.width - root.st.frame_border_width * 2 : Math.min(title_metrics.width + 20 + title_tab.lead_space, parent.width - title_tab.x * 2)
+                    width: root.st.fade_fills ? parent.width - root.st.frame_border_width * 2 : Math.min(Math.ceil(Math.max(title_metrics.width, title_metrics.advanceWidth)) + 20 + title_tab.lead_space, parent.width - title_tab.x * 2)
                     height: Math.max(title_text.implicitHeight, title_index.space > 0 ? title_index.implicitHeight : 0) + 4
                     color: root.st.fade_fills ? "transparent" : root.st.title_bg
 
@@ -614,12 +714,12 @@ PanelWindow {
                         anchors.horizontalCenterOffset: title_tab.lead_space / 2
                         x: 10 + title_tab.lead_space
                         y: (parent.height - height) / 2
-                        width: Math.min(title_metrics.width, parent.width - 20 - title_tab.lead_space)
+                        width: Math.min(Math.ceil(Math.max(title_metrics.width, title_metrics.advanceWidth)), parent.width - 20 - title_tab.lead_space)
                         elide: Text.ElideRight
-                        text: root.st.title_prefix + root.title + (Style.caret_phase ? root.st.title_suffix : " ".repeat(root.st.title_suffix.length))
+                        text: root.st.title_prefix + root.shown_title + (Style.caret_phase ? root.st.title_suffix : " ".repeat(root.st.title_suffix.length))
                         color: root.st.title_fg
                         font.family: root.st.title_font_family
-                        font.pixelSize: root.st.font_size - 2
+                        font.pixelSize: root.st.title_size > 0 ? root.st.title_size : root.st.fs(-2)
                         font.weight: root.st.title_weight > 0 ? root.st.title_weight : root.st.title_font_family === root.st.font_family ? Font.Bold : Font.Normal
                         font.letterSpacing: root.st.title_spacing
                     }
@@ -635,8 +735,20 @@ PanelWindow {
                     text: root.st.title_readout.replace("{code}", root.title.slice(0, 3))
                     color: root.st.title_readout_fg.a > 0 ? root.st.title_readout_fg : root.st.text_muted
                     font.family: root.st.font_family
-                    font.pixelSize: root.st.font_size - 5
+                    font.pixelSize: root.st.fs(-5)
                     font.letterSpacing: 1
+                }
+
+                // Plain sentence-case titles carry the live title value at the right, like a status line.
+                Text {
+                    visible: root.has_title && !root.banded && root.st.title_status && !root.st.border_title && root.st.title_readout === "" && root.title_value !== "" && title_tab.x + title_tab.width + 12 <= parent.width - anchors.rightMargin - implicitWidth
+                    anchors.right: parent.right
+                    anchors.rightMargin: title_readout.anchors.rightMargin + 4
+                    y: title_tab.y + (title_tab.height - height) / 2
+                    text: root.title_value
+                    color: root.st.text_muted
+                    font.family: root.st.mono_font
+                    font.pixelSize: root.st.fs(-3)
                 }
 
                 Loader {
@@ -693,7 +805,7 @@ PanelWindow {
                     anchors.bottom: parent.bottom
                     anchors.leftMargin: 12 + root.st.lcd_margin + root.device_side
                     anchors.rightMargin: 12 + root.st.lcd_margin + root.device_side
-                    anchors.bottomMargin: (root.search_overlay ? 4 : 8) + root.st.inset_pad + root.st.lcd_margin * 2 + root.engraving_height + root.device_bottom
+                    anchors.bottomMargin: (root.search_overlay ? 4 : 8) + root.st.inset_pad + root.st.lcd_margin * 2 + root.engraving_height + root.device_bottom + Style.slant_room
                     text: root.footer_override !== "" ? root.footer_override : (root.key_help !== "" ? root.help_hint : root.footer_hint)
                 }
 
@@ -707,16 +819,21 @@ PanelWindow {
                     onTextChanged: {
                         root.search_query = text;
                         if (root.search_typing && text !== "") {
-                            const i = Search.best(root.search_rows, text);
+                            const i = root.search_starts_open ? root.fuzzy_best(root.search_rows, text) : Search.best(root.search_rows, text);
                             if (i >= 0) root.search_select(i);
                         }
                     }
 
                     Keys.onPressed: event => {
-                        if (event.key === Qt.Key_Escape || (event.key === Qt.Key_Backspace && search_input.text === "")) {
-                            root.clear_search();
+                        if (event.key === Qt.Key_Escape) {
+                            if (root.search_starts_open) root.accept_search();
+                            else root.clear_search();
+                        } else if (event.key === Qt.Key_Backspace && search_input.text === "") {
+                            if (!root.search_starts_open) root.clear_search();
+                            else return;
                         } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
-                            root.accept_search();
+                            if (root.search_starts_open) root.search_accept();
+                            else root.accept_search();
                         } else if (event.key === Qt.Key_Down || event.key === Qt.Key_Up) {
                             root.step_search(event.key === Qt.Key_Down ? 1 : -1);
                         } else {

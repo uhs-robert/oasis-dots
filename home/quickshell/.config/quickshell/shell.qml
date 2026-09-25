@@ -53,6 +53,7 @@ ShellRoot {
                     screen: screen_scope.modelData
                     line_width: bar.center_width
                     bar_present: screen_scope.has_bar
+                    chip_shown: bar.has_mode_chip
                 }
             }
         }

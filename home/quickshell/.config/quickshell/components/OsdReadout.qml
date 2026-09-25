@@ -40,7 +40,7 @@ RowLayout {
             text: "%"
             color: Style.text_muted
             font.family: Style.number_font
-            font.pixelSize: Style.font_size + 1
+            font.pixelSize: Style.fs(1)
         }
     }
 
@@ -60,7 +60,7 @@ RowLayout {
                 text: root.label
                 color: Style.text_muted
                 font.family: Style.font_family
-                font.pixelSize: Style.font_size - 4
+                font.pixelSize: Style.fs(-4)
                 font.bold: true
                 font.capitalization: Font.AllUppercase
                 font.letterSpacing: Style.label_spacing
@@ -70,7 +70,7 @@ RowLayout {
                 text: root.delta > 0 ? "▲ +" + root.delta : root.delta < 0 ? "▼ " + root.delta : "= 0"
                 color: root.delta > 0 ? Theme.ok : root.delta < 0 ? Theme.theme_label : Style.text_muted
                 font.family: Style.mono_font
-                font.pixelSize: Style.font_size - 4
+                font.pixelSize: Style.fs(-4)
             }
         }
 
@@ -115,7 +115,7 @@ RowLayout {
                         text: modelData
                         color: Style.text_muted
                         font.family: Style.mono_font
-                        font.pixelSize: Style.font_size - 6
+                        font.pixelSize: Style.fs(-6)
                     }
                 }
             }

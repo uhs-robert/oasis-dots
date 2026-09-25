@@ -39,7 +39,7 @@ Item {
                 text: WeatherState.aq_current ? WeatherState.aq_current.aqi : "--"
                 color: WeatherState.aq_current ? WeatherState.aqi_color(WeatherState.aq_current.aqi) : Style.text_dim
                 font.family: Style.font_family
-                font.pixelSize: Style.font_size + 20
+                font.pixelSize: Style.fs(20)
                 font.bold: true
             }
 
@@ -75,8 +75,8 @@ Item {
                     Layout.fillWidth: true
                     Layout.preferredWidth: 0
                     spacing: 0
-                    Text { Layout.fillWidth: true; elide: Text.ElideRight; text: reading.modelData.label; color: Style.text_muted; font.family: Style.font_family; font.pixelSize: Style.font_size - 3 }
-                    Text { Layout.fillWidth: true; elide: Text.ElideRight; text: reading.modelData.value !== null ? reading.modelData.value.toFixed(1) : "--"; color: Theme.fg_core; font.family: Style.font_family; font.pixelSize: Style.font_size + 1 }
+                    Text { Layout.fillWidth: true; elide: Text.ElideRight; text: reading.modelData.label; color: Style.text_muted; font.family: Style.font_family; font.pixelSize: Style.fs(-3) }
+                    Text { Layout.fillWidth: true; elide: Text.ElideRight; text: reading.modelData.value !== null ? reading.modelData.value.toFixed(1) : "--"; color: Theme.fg_core; font.family: Style.font_family; font.pixelSize: Style.fs(1) }
                 }
             }
         }
@@ -88,7 +88,7 @@ Item {
             text: r ? WeatherState.format_hour(new Date(r.dt)) + "  AQI " + r.aqi + " (" + WeatherState.aqi_band(r.aqi).label + ")" : ""
             color: Theme.fg_core
             font.family: Style.font_family
-            font.pixelSize: Style.font_size - 1
+            font.pixelSize: Style.fs(-1)
         }
 
         Canvas {
@@ -113,7 +113,7 @@ Item {
                 const max_v = Math.max(100, ...rows.map(r => r.aqi));
                 const col_w = w / rows.length;
 
-                ctx.font = (Style.font_size - 3) + "px \"" + Style.font_family + "\"";
+                ctx.font = (Style.fs(-3)) + "px \"" + Style.font_family + "\"";
                 ctx.textAlign = "center";
                 const label_w = ctx.measureText(WeatherState.format_hour(new Date(2000, 0, 1, 12))).width + 8;
                 const step = [3, 4, 6, 8, 12].find(n => n * col_w >= label_w) || 12;

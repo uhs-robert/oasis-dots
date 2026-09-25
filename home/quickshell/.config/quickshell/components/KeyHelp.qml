@@ -80,14 +80,14 @@ Item {
     FontMetrics {
         id: key_metrics
         font.family: root.st.mono_font
-        font.pixelSize: root.st.font_size - 5
+        font.pixelSize: root.st.fs(-5)
         font.bold: root.st.mono_font === root.st.font_family
     }
 
     FontMetrics {
         id: desc_metrics
         font.family: root.st.font_family
-        font.pixelSize: root.st.font_size - 3
+        font.pixelSize: root.st.fs(-3)
     }
 
     // Keeps clicks, hover and wheel off the hidden content underneath.
@@ -149,7 +149,7 @@ Item {
                 wrapMode: Text.Wrap
                 color: root.st.text_fg
                 font.family: root.st.font_family
-                font.pixelSize: root.st.font_size - 3
+                font.pixelSize: root.st.fs(-3)
                 font.capitalization: root.st.label_caps ? Font.AllUppercase : Font.MixedCase
                 font.letterSpacing: root.st.label_spacing
             }

@@ -49,7 +49,7 @@ Rectangle {
             color: root.active ? Theme.bg_core : Theme.fg_core
             font.bold: root.active || root.cut
             font.family: Style.font_family
-            font.pixelSize: Style.font_size - 2
+            font.pixelSize: Style.fs(-2)
             font.capitalization: Style.tab_caps || Style.caps_tracking > 0 ? Font.AllUppercase : Font.MixedCase
             font.letterSpacing: Style.caps_tracking > 0 ? Style.caps_tracking * 0.7 : Style.tab_caps ? Style.label_spacing * 0.6 : 0
         }
@@ -78,7 +78,7 @@ Rectangle {
                 color: root.active && !key_cap.orb ? Theme.theme_primary : Style.key_fg
                 font.bold: key_cap.orb || Style.mono_font === Style.font_family
                 font.family: Style.mono_font
-                font.pixelSize: Style.font_size - 5
+                font.pixelSize: Style.fs(-5)
             }
         }
     }

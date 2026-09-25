@@ -14,7 +14,7 @@ Item {
     property color outer: root.st.shade_2
     property color text_color: root.st.shade_3
     property color prompt_color: root.inner
-    property int font_size: root.st.font_size - 4
+    property int font_size: root.st.fs(-4)
     property bool rich: false
     // Characters shown while typing; the full text once it reaches the end.
     property real typed: -1

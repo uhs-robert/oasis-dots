@@ -4,6 +4,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import Quickshell.Hyprland
+import "../theme"
 
 Singleton {
     id: root
@@ -85,7 +86,7 @@ Singleton {
     readonly property int default_height: 34
 
     function height_for(rule) {
-        return rule && rule.height > 0 ? rule.height : root.default_height;
+        return rule && rule.height > 0 ? rule.height : Style.bar_height > 0 ? Style.bar_height : root.default_height;
     }
 
     function compact_for(rule, screen_name) {

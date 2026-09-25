@@ -3,7 +3,6 @@ import QtQuick
 import QtQuick.Layouts
 import Quickshell
 import Quickshell.Hyprland
-import Quickshell.Widgets
 import "../../theme"
 import "../../services"
 import "../../components"
@@ -11,7 +10,9 @@ import "../../components/ff7" as Ff7
 import "../../components/gameboy" as Gameboy
 import "../../components/goldeneye" as Goldeneye
 import "../../components/metroid" as Metroid
+import "../../components/neovim" as Neovim
 import "../../components/nes" as Nes
+import "../../components/oasis" as Oasis
 import "../../components/ps1" as Ps1
 import "../../components/ps2" as Ps2
 import "../../components/snes" as Snes
@@ -22,6 +23,7 @@ Item {
 
     property string screen_name: ""
     property bool compact: false
+    property int bar_height: 30
 
     // Final Fantasy Tactics map: an isometric tile per workspace, stretching so every app stands on it.
     readonly property bool slots: Style.console_views === "ps1"
@@ -31,19 +33,24 @@ Item {
     readonly property bool party: Style.controller === "gameboy"
     // GoldenEye watch dial: workspace ticks on one arc replace the pills.
     readonly property bool dial: Style.workspace_art === "dial"
+    // Oasis night sky: a star per workspace on a low constellation, apps under their star.
+    readonly property bool stars: Style.workspace_art === "constellation"
     readonly property int party_gap: 8
     // FF7 weapon slot bar: apps are materia orbs in sockets linked in pairs.
     readonly property bool materia: Style.workspace_art === "materia"
     readonly property int slot_size: compact ? 22 : 24
     // Metroid door hatches: closed doors show their app count, the active one opens onto its apps.
     readonly property bool doors: Style.workspace_art === "doors"
+    // Lualine buffers: numbered tabs with their apps, full bar height.
+    readonly property bool buffers: Style.workspace_art === "buffers"
     readonly property int icon_size: materia ? (compact ? 10 : 12) : doors ? (compact ? 12 : 14) : party ? (compact ? 14 : 16) : slots ? (compact ? 15 : 17) : compact ? 16 : 19
-    readonly property int pill_height: materia ? slot_size : doors ? (compact ? 26 : 30) : map ? 34 : slots ? (compact ? 26 : 30) : party ? (compact ? 22 : 26) : compact ? 20 : 22
+    readonly property int pill_height: materia ? slot_size : doors ? (compact ? 26 : 30) : map ? 34 : slots ? (compact ? 26 : 30) : party ? (compact ? 22 : 26) : Style.bar_pill_height > 0 ? Style.bar_pill_height - (compact ? 4 : 0) : compact ? 20 : 22
     readonly property int tile_face: compact ? 8 : 10
     readonly property int tile_depth: compact ? 2 : 3
 
     implicitWidth: row.implicitWidth + (materia ? 12 : 0)
-    implicitHeight: row.implicitHeight
+    // Dots are shorter than pills; the row keeps the pill height so it stays centered.
+    implicitHeight: Style.bar_workspace_dot.a > 0 ? Math.max(row.implicitHeight, root.pill_height) : row.implicitHeight
 
     readonly property var workspace_list: {
         const list = Hyprland.workspaces.values.filter(w => w.id > 0 && w.monitor && w.monitor.name === root.screen_name);
@@ -132,7 +139,7 @@ Item {
     Row {
         id: row
         x: root.materia ? 6 : 0
-        spacing: root.materia ? (root.compact ? 10 : 12) : root.doors ? 2 : root.map ? 8 : root.slots || root.party ? 6 : root.compact ? 6 : 8
+        spacing: root.materia ? (root.compact ? 10 : 12) : root.doors ? 2 : root.map ? 8 : root.slots || root.party ? 6 : Style.bar_workspace_gap > 0 ? Style.bar_workspace_gap - (root.compact ? 2 : 0) : root.compact ? 6 : 8
 
         Loader {
             active: root.dial
@@ -144,8 +151,30 @@ Item {
             }
         }
 
+        Loader {
+            active: root.stars
+            visible: active
+            sourceComponent: Oasis.Constellation {
+                host: root
+                workspaces: root.workspace_list
+                compact: root.compact
+                bar_height: root.bar_height
+            }
+        }
+
+        Loader {
+            active: root.buffers
+            visible: active
+            sourceComponent: Neovim.BufferLine {
+                host: root
+                workspaces: root.workspace_list
+                compact: root.compact
+                bar_height: root.bar_height
+            }
+        }
+
         Repeater {
-            model: root.dial ? [] : root.workspace_list
+            model: root.dial || root.stars || root.buffers ? [] : root.workspace_list
 
             Rectangle {
                 id: pill
@@ -160,14 +189,25 @@ Item {
                 readonly property bool ps2: Style.console_views === "ps2"
                 readonly property var toplevels: modelData.toplevels.values
                 readonly property int cursor_gap: root.party && modelData.focused ? root.party_gap : 0
+                // Plain pills: the style's own art is drawn by none of the branches above.
+                readonly property bool plain: !root.materia && !root.doors && !pill.qblock && !pill.ps2 && !root.slots && !pill.map && !root.party && !pill.diamond
+                readonly property bool dot: pill.plain && pill.is_empty && !pill.modelData.active && Style.bar_workspace_dot.a > 0
 
-                height: root.pill_height
-                width: root.materia ? (is_empty ? root.slot_size : icons.implicitWidth) : root.doors ? (modelData.active && !is_empty ? icons.implicitWidth + height - 4 : height) : root.party ? cursor_gap + (is_empty ? height : icons.implicitWidth + 10) : pill.map ? Math.max(22, icons.implicitWidth + 8) : root.slots ? (is_empty ? root.tile_face * 2 + 4 : icons.implicitWidth + root.tile_face + 6) : is_empty ? height : icons.implicitWidth + (modelData.active ? 22 : 12)
+                // Hovered dots grow and light a core, the only hint they can be clicked.
+                readonly property bool dot_hovered: pill_hover.hovered || dot_hover.hovered
+                property real dot_size: pill.dot_hovered ? 11 : 7
+                Behavior on dot_size {
+                    NumberAnimation { duration: 140; easing.type: Easing.OutCubic }
+                }
+
+                height: pill.dot ? 11 : root.pill_height
+                y: (root.pill_height - height) / 2
+                width: root.materia ? (is_empty ? root.slot_size : icons.implicitWidth) : root.doors ? (modelData.active && !is_empty ? icons.implicitWidth + height - 4 : height) : root.party ? cursor_gap + (is_empty ? height : icons.implicitWidth + 10) : pill.map ? Math.max(22, icons.implicitWidth + 8) : root.slots ? (is_empty ? root.tile_face * 2 + 4 : icons.implicitWidth + root.tile_face + 6) : is_empty ? height : icons.implicitWidth + (modelData.active ? 22 : 12) + Style.bar_pill_pad * 2
                 radius: pill.map || root.party || root.slots ? 0 : Style.bar_pill_square || pill.qblock ? 0 : height / 2
                 rotation: pill.diamond ? 45 : 0
                 scale: pill.diamond ? 0.75 : 1
                 antialiasing: pill.diamond || radius > 0
-                color: root.materia || root.doors || pill.qblock || pill.ps2 || root.slots || pill.map || root.party ? "transparent" : modelData.focused ? Style.bar_workspace_focused : modelData.active ? Style.bar_workspace_active : Style.bar_workspace_idle
+                color: root.materia || root.doors || pill.qblock || pill.ps2 || root.slots || pill.map || root.party ? "transparent" : pill.dot ? "transparent" : modelData.focused ? Style.bar_workspace_focused : modelData.active ? Style.bar_workspace_active : Style.bar_workspace_idle
                 border.width: !root.materia && !root.slots && !pill.map && !root.party && Style.bar_workspace_ring.a > 0 && !(Style.bar_workspace_diamond && !is_empty && modelData.focused) ? 1 : 0
                 border.color: Style.bar_workspace_ring
 
@@ -294,6 +334,45 @@ Item {
                     }
                 }
 
+                Rectangle {
+                    visible: pill.plain && pill.modelData.focused && Style.bar_workspace_shade.a > 0
+                    anchors.fill: parent
+                    radius: pill.radius
+                    gradient: Gradient {
+                        GradientStop { position: 0; color: Style.bar_workspace_shade }
+                        GradientStop { position: 1; color: Style.bar_workspace_focused }
+                    }
+                }
+
+                Sheen {
+                    color_top: pill.plain && !pill.dot ? Style.sheen : "transparent"
+                    corner: pill.radius
+                }
+
+                // The dot is drawn inside a fixed 11px slot, so growing it moves nothing else.
+                Rectangle {
+                    visible: pill.dot
+                    anchors.centerIn: parent
+                    width: pill.dot_size
+                    height: width
+                    radius: width / 2
+                    color: Style.bar_workspace_dot
+                }
+
+                Rectangle {
+                    visible: pill.dot && opacity > 0
+                    anchors.centerIn: parent
+                    width: 5
+                    height: 5
+                    radius: 2.5
+                    color: Style.bar_workspace_focused
+                    opacity: pill.dot_hovered ? 1 : 0
+
+                    Behavior on opacity {
+                        NumberAnimation { duration: 140; easing.type: Easing.OutCubic }
+                    }
+                }
+
                 MateriaOrb {
                     visible: pill.modelData.focused && Style.materia.workspace !== undefined && !root.materia
                     anchors.fill: parent
@@ -307,7 +386,7 @@ Item {
                     anchors.leftMargin: pill.cursor_gap
                     radius: parent.radius
                     color: root.party ? Style.shade_3 : Theme.fg_core
-                    opacity: !root.slots && !root.materia && !pill.modelData.active && pill_hover.hovered ? 0.1 : 0
+                    opacity: !root.slots && !root.materia && !pill.dot && !pill.modelData.active && pill_hover.hovered ? 0.1 : 0
 
                     Behavior on opacity {
                         NumberAnimation { duration: 150 }
@@ -323,6 +402,24 @@ Item {
                     id: pill_hover
                 }
 
+                // A dot's hit area: the capsule's height, out to half the gap on each side.
+                Item {
+                    visible: pill.dot
+                    x: -row.spacing / 2
+                    y: (pill.height - height) / 2
+                    width: pill.width + row.spacing
+                    height: root.bar_height - Style.bar_capsule
+
+                    HoverHandler {
+                        id: dot_hover
+                    }
+
+                    MouseArea {
+                        anchors.fill: parent
+                        onClicked: Hyprland.dispatch("hl.dsp.focus({ workspace = '" + pill.modelData.id + "' })")
+                    }
+                }
+
                 Row {
                     id: icons
                     visible: !root.doors || pill.modelData.active
@@ -336,11 +433,14 @@ Item {
                     Repeater {
                         model: pill.toplevels
 
-                        Item {
+                        WorkspaceIcon {
                             id: icon_item
-                            required property var modelData
                             required property int index
 
+                            host: root
+                            workspace_id: pill.modelData.id
+                            glyph: pill.glyph
+                            icon_opacity: pill.map && !pill.modelData.focused ? 0.6 : 1
                             width: root.materia ? root.slot_size : pill.glyph + (root.doors || root.slots || pill.map || root.party ? 0 : 4)
                             height: width
 
@@ -350,32 +450,6 @@ Item {
                                 lit: pill.modelData.focused
                                 raised: pill.modelData.active || pill_hover.hovered
                                 color: visible ? (Style.materia.days || {})[Materia.slot_names(pill.toplevels.map(t => root.class_of(t)))[icon_item.index]] || "transparent" : "transparent"
-                            }
-
-                            IconImage {
-                                anchors.centerIn: parent
-                                implicitSize: pill.glyph
-                                opacity: pill.map && !pill.modelData.focused ? 0.6 : 1
-                                source: root.icon_for(root.class_of(icon_item.modelData))
-                            }
-
-                            MouseArea {
-                                anchors.fill: parent
-                                acceptedButtons: Qt.LeftButton | Qt.MiddleButton
-                                onClicked: mouse => {
-                                    if (mouse.button === Qt.LeftButton) {
-                                        root.focus_toplevel(pill.modelData.id, icon_item.modelData.address);
-                                    } else if (mouse.button === Qt.MiddleButton) {
-                                        root.close_toplevel(icon_item.modelData.address);
-                                    }
-                                }
-                            }
-
-                            HoverHandler {
-                                onHoveredChanged: {
-                                    if (hovered) Tooltip.show(icon_item, icon_item.modelData.title, root.name_of(icon_item.modelData));
-                                    else Tooltip.hide(icon_item);
-                                }
                             }
                         }
                     }

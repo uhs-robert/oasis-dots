@@ -61,7 +61,7 @@ Item {
             style: Text.Raised
             styleColor: Style.text_shadow
             font.family: Style.font_family
-            font.pixelSize: Style.font_size - 1
+            font.pixelSize: Style.fs(-1)
         }
 
         KeyBadge {
@@ -92,14 +92,14 @@ Item {
                 style: Text.Raised
                 styleColor: Style.text_shadow
                 font.family: Style.font_family
-                font.pixelSize: Style.font_size - 1
+                font.pixelSize: Style.fs(-1)
             }
 
             Text {
                 text: root.muted ? "" : ""
                 color: root.muted ? Theme.theme_label : Theme.theme_primary_light
                 font.family: Theme.font_family
-                font.pixelSize: Style.font_size - 2
+                font.pixelSize: Style.fs(-2)
 
                 MouseArea {
                     anchors.fill: parent
@@ -124,7 +124,7 @@ Item {
                 style: Text.Raised
                 styleColor: Style.text_shadow
                 font.family: Style.font_family
-                font.pixelSize: Style.font_size - 5
+                font.pixelSize: Style.fs(-5)
             }
 
             Snes.SnesGauge {
@@ -153,7 +153,7 @@ Item {
                 style: Text.Raised
                 styleColor: Style.text_shadow
                 font.family: Style.font_family
-                font.pixelSize: Style.font_size - 3
+                font.pixelSize: Style.fs(-3)
             }
         }
     }
@@ -161,6 +161,6 @@ Item {
     FontMetrics {
         id: value_metrics
         font.family: Style.font_family
-        font.pixelSize: Style.font_size - 3
+        font.pixelSize: Style.fs(-3)
     }
 }

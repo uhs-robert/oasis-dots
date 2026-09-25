@@ -22,7 +22,7 @@ Item {
     readonly property int busy_span: 4
     readonly property int busy_head: Math.floor(root.busy_pos * (root.segment_count + root.busy_span)) - root.busy_span
     property color on_color: root.st.meter_on
-    readonly property int gap: 2
+    readonly property real gap: root.st.meter_gap
     // Slanted segments lean past their slot by this much at the top.
     readonly property real lean: root.st.meter_slant * root.implicitHeight
     readonly property real segment_width: Math.max(2, (width - root.lean - gap * (segment_count - 1)) / segment_count)

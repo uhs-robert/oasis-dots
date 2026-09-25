@@ -59,7 +59,7 @@ ColumnLayout {
                     text: root.current ? root.current.name : ""
                     color: Style.text_strong
                     font.family: Style.font_family
-                    font.pixelSize: Style.font_size - 2
+                    font.pixelSize: Style.fs(-2)
                     style: Text.Raised
                     styleColor: Style.text_shadow
                 }
@@ -71,7 +71,7 @@ ColumnLayout {
                     text: root.current ? root.current.old + " → <font color=\"" + Theme.yellow + "\">" + root.current.new + "</font>" : ""
                     color: Style.text_muted
                     font.family: Style.font_family
-                    font.pixelSize: Style.font_size - 4
+                    font.pixelSize: Style.fs(-4)
                 }
             }
 
@@ -79,7 +79,7 @@ ColumnLayout {
                 text: String(root.selected + 1).padStart(2, "0") + "/" + String(root.packages.length).padStart(2, "0")
                 color: Theme.theme_primary_light
                 font.family: Style.mono_font
-                font.pixelSize: Style.font_size - 4
+                font.pixelSize: Style.fs(-4)
             }
         }
     }
@@ -118,7 +118,7 @@ ColumnLayout {
                     text: String(tile.index + 1).padStart(2, "0")
                     color: tile.lit ? Theme.theme_primary_light : Style.text_dim
                     font.family: Style.mono_font
-                    font.pixelSize: Style.font_size - 7
+                    font.pixelSize: Style.fs(-7)
                 }
 
                 PackageIcon {
@@ -138,7 +138,7 @@ ColumnLayout {
                     text: tile.modelData.name
                     color: tile.lit ? Style.text_strong : Style.text_fg
                     font.family: Style.font_family
-                    font.pixelSize: Style.font_size - 6
+                    font.pixelSize: Style.fs(-6)
                 }
             }
 

@@ -11,9 +11,13 @@ Item {
     property string panel_id: ""
     property string readout: ""
     property string readout_value: ""
+    // Overrides the title and band underline colour when set, e.g. with the active submap's.
+    property color accent: "transparent"
     readonly property real cut: root.st.frame_cut
     readonly property color line: root.st.frame_line.a > 0 ? root.st.frame_line : root.st.frame_border_color
     readonly property real band_width: Math.min(band_row.implicitWidth + 42, root.width)
+    // The narrowest width that shows the whole title; mirrors title_text's width limit.
+    readonly property real min_width: band_row.x + 40 + (root.panel_id !== "" ? 30 : 0) + title_text.implicitWidth
 
     implicitHeight: Math.max(26, title_text.implicitHeight + 8)
 
@@ -44,7 +48,7 @@ Item {
         anchors.bottom: parent.bottom
         width: Math.max(0, root.band_width - 2)
         height: 2
-        color: root.st.tab_underline.a > 0 ? root.st.tab_underline : root.st.caret_color
+        color: root.accent.a > 0 ? root.accent : root.st.tab_underline.a > 0 ? root.st.tab_underline : root.st.caret_color
     }
 
     Row {
@@ -59,7 +63,7 @@ Item {
             text: root.panel_id
             color: root.st.text_accent
             font.family: root.st.mono_font
-            font.pixelSize: root.st.font_size - 4
+            font.pixelSize: root.st.fs(-4)
         }
 
         Text {
@@ -67,9 +71,9 @@ Item {
             width: Math.max(0, Math.min(implicitWidth, root.width - band_row.x - 40 - (root.panel_id !== "" ? 30 : 0)))
             elide: Text.ElideRight
             text: root.title
-            color: root.st.title_fg
+            color: root.accent.a > 0 ? root.accent : root.st.title_fg
             font.family: root.st.title_font_family
-            font.pixelSize: root.st.font_size - 1
+            font.pixelSize: root.st.fs(-1)
             font.bold: true
             font.letterSpacing: root.st.title_spacing
         }
@@ -97,7 +101,7 @@ Item {
         text: root.readout + (root.readout_value !== "" ? " <font color='" + root.st.text_strong + "'>" + root.readout_value + "</font>" : "")
         color: root.st.title_readout_fg.a > 0 ? root.st.title_readout_fg : root.st.text_muted
         font.family: root.st.mono_font
-        font.pixelSize: root.st.font_size - 5
+        font.pixelSize: root.st.fs(-5)
         font.letterSpacing: 1.4
     }
 }

@@ -38,7 +38,7 @@ Item {
                 style: Text.Raised
                 styleColor: Style.text_shadow
                 font.family: Style.font_family
-                font.pixelSize: Style.font_size - 2
+                font.pixelSize: Style.fs(-2)
             }
 
             Item {
@@ -51,7 +51,7 @@ Item {
                 style: Text.Raised
                 styleColor: Style.text_shadow
                 font.family: Style.number_font
-                font.pixelSize: Style.font_size + 4
+                font.pixelSize: Style.fs(4)
             }
 
             Text {
@@ -60,7 +60,7 @@ Item {
                 style: Text.Raised
                 styleColor: Style.text_shadow
                 font.family: Style.number_font
-                font.pixelSize: Style.font_size - 2
+                font.pixelSize: Style.fs(-2)
             }
         }
 
@@ -83,7 +83,7 @@ Item {
                 style: Text.Raised
                 styleColor: Style.text_shadow
                 font.family: Style.font_family
-                font.pixelSize: Style.font_size - 5
+                font.pixelSize: Style.fs(-5)
             }
 
             Text {
@@ -96,7 +96,7 @@ Item {
                 style: Text.Raised
                 styleColor: Style.text_shadow
                 font.family: Style.font_family
-                font.pixelSize: Style.font_size - 5
+                font.pixelSize: Style.fs(-5)
             }
         }
 
@@ -111,7 +111,7 @@ Item {
                 style: Text.Raised
                 styleColor: Style.text_shadow
                 font.family: Style.font_family
-                font.pixelSize: Style.font_size - 5
+                font.pixelSize: Style.fs(-5)
             }
 
             Text {
@@ -122,7 +122,7 @@ Item {
                 style: Text.Raised
                 styleColor: Style.text_shadow
                 font.family: Style.font_family
-                font.pixelSize: Style.font_size - 5
+                font.pixelSize: Style.fs(-5)
             }
         }
     }

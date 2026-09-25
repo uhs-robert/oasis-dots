@@ -68,7 +68,7 @@ Item {
                 text: root.alert ? root.alert.event : ""
                 color: Qt.tint(Theme.fg_strong, Qt.alpha(Theme.theme_label, 0.45))
                 font.family: Style.font_family
-                font.pixelSize: Style.font_size - 2
+                font.pixelSize: Style.fs(-2)
                 font.weight: Font.ExtraBold
             }
         }
@@ -81,7 +81,7 @@ Item {
             text: !root.alert ? "" : [root.alert.ends ? "until " + WeatherState.fmt_location_time(new Date(root.alert.ends)) : "", root.more > 0 ? "+" + root.more + " more" : ""].filter(s => s !== "").join("  ")
             color: Theme.theme_primary_light
             font.family: Style.font_family
-            font.pixelSize: Style.font_size - 5
+            font.pixelSize: Style.fs(-5)
             font.weight: Font.DemiBold
         }
     }

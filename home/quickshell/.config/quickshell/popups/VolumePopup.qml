@@ -9,6 +9,7 @@ import "../services"
 import "snes" as Snes
 import "../components/ps1" as Ps1
 import "../components/ps2" as Ps2
+import "../components/modern" as Modern
 
 Popup {
     id: root
@@ -52,6 +53,7 @@ Popup {
     }
 
     function row_label(row) {
+        if (!row.node) return "";
         if (row.type === "stream") return row.node.properties["application.name"] || row.node.name;
         return row.node.description || row.node.name;
     }
@@ -78,6 +80,9 @@ Popup {
 
     // The PS1 CD Player: devices and streams as numbered tracks, levels as its VU meter.
     readonly property bool cd: root.st.console_views === "ps1"
+    readonly property bool capsules: ["capsule", "slant", "visor"].indexOf(root.st.level_layout) >= 0
+    // Live peaks cost a PipeWire stream per row, so they only run while the popup is open on AC power.
+    readonly property bool peaks_on: root.capsules && root.is_open && root.visible && Power.on_ac
 
     function track_number(index) {
         const row = root.rows[index];
@@ -113,6 +118,17 @@ Popup {
         if (!node || !node.ready || !node.audio) return;
         const pct = stepper.snap(Math.round(node.audio.volume * 100), direction, 0, 100);
         node.audio.volume = pct / 100;
+    }
+
+    // The wheel steps a level row like h/l, one snap step per notch.
+    property var wheel_node: null
+    function wheel_adjust(node, wheel) {
+        if (node !== root.wheel_node) {
+            stepper.accumulated = 0;
+            root.wheel_node = node;
+        }
+        const notches = stepper.consume_event(wheel);
+        for (let i = 0; i < Math.abs(notches); i++) root.adjust_snap(node, notches > 0 ? 1 : -1);
     }
 
     function toggle_mute(node) {
@@ -210,6 +226,16 @@ Popup {
                     width: rows_list.width
                     spacing: 2
 
+                    // Accepting the wheel here keeps it from scrolling the list.
+                    WheelHandler {
+                        enabled: root.is_slider_row(row_wrap.modelData.type)
+                        acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
+                        onWheel: event => {
+                            root.wheel_adjust(row_wrap.modelData.node, event);
+                            event.accepted = true;
+                        }
+                    }
+
                     MenuSection {
                         visible: row_wrap.index === 0 || root.section_of(root.rows[row_wrap.index - 1].type) !== root.section_of(row_wrap.modelData.type)
                         topPadding: row_wrap.index === 0 ? 0 : 6
@@ -221,7 +247,7 @@ Popup {
                         visible: active
                         width: row_wrap.width
                         sourceComponent: Snes.SnesVolumeRow {
-                            readonly property var audio: row_wrap.modelData.node.audio
+                            readonly property var audio: row_wrap.modelData.node?.audio
                             label: root.row_label(row_wrap.modelData)
                             key: root.row_key(row_wrap.index)
                             selected: row_wrap.index === root.selected
@@ -241,9 +267,29 @@ Popup {
                         }
                     }
 
+                    Loader {
+                        active: root.capsules && root.is_slider_row(row_wrap.modelData.type)
+                        visible: active
+                        width: row_wrap.width
+                        sourceComponent: Modern.CapsuleSlider {
+                            readonly property bool is_source: row_wrap.modelData.type === "source_slider"
+                            value: node.audio ? node.audio.volume : 0
+                            muted: !!node.audio && node.audio.muted
+                            glyph: is_source ? (muted ? "󰍭" : "󰍬") : muted ? "󰖁" : "󰕾"
+                            label: root.row_label(row_wrap.modelData)
+                            selected: row_wrap.index === root.selected
+                            node: row_wrap.modelData.node
+                            peaks_on: root.peaks_on
+                            onMoved: v => {
+                                if (node.audio) node.audio.volume = v;
+                            }
+                            onMute_clicked: root.toggle_mute(node)
+                        }
+                    }
+
                     MenuRow {
                         id: vol_row
-                        visible: root.st.console_views !== "snes"
+                        visible: root.st.console_views !== "snes" && !(root.capsules && root.is_slider_row(row_wrap.modelData.type))
                         width: row_wrap.width
                         height: Style.px(22)
                         selected: row_wrap.index === root.selected
@@ -272,7 +318,7 @@ Popup {
                                 label: root.row_label(row_wrap.modelData)
                                 color: vol_row.fg((row_wrap.modelData.node === Pipewire.defaultAudioSink || row_wrap.modelData.node === Pipewire.defaultAudioSource) ? root.st.text_accent : root.st.text_fg)
                                 font.family: root.st.font_family
-                                font.pixelSize: root.st.font_size - 1
+                                font.pixelSize: root.st.fs(-1)
                             }
                         }
 
@@ -309,7 +355,7 @@ Popup {
                                 searchable: row_wrap.modelData.type === "stream"
                                 color: vol_row.fg(root.st.text_fg)
                                 font.family: root.st.font_family
-                                font.pixelSize: root.st.font_size - 1
+                                font.pixelSize: root.st.fs(-1)
                             }
 
                             Loader {
@@ -319,9 +365,9 @@ Popup {
                                 Layout.preferredHeight: Style.px(12)
                                 sourceComponent: Ps1.VuMeter {
                                     levels: root.channel_levels(row_wrap.modelData.node)
-                                    muted: !!row_wrap.modelData.node.audio && row_wrap.modelData.node.audio.muted
+                                    muted: !!row_wrap.modelData.node?.audio && row_wrap.modelData.node?.audio.muted
                                     onMoved: v => {
-                                        if (row_wrap.modelData.node.audio) row_wrap.modelData.node.audio.volume = v;
+                                        if (row_wrap.modelData.node?.audio) row_wrap.modelData.node.audio.volume = v;
                                     }
                                 }
                             }
@@ -330,25 +376,25 @@ Popup {
                                 visible: !root.cd
                                 Layout.fillWidth: true
                                 on_selection: vol_row.selected
-                                value: row_wrap.modelData.node.audio ? row_wrap.modelData.node.audio.volume : 0
+                                value: row_wrap.modelData.node?.audio ? row_wrap.modelData.node?.audio.volume : 0
                                 onMoved: v => {
-                                    if (row_wrap.modelData.node.audio) row_wrap.modelData.node.audio.volume = v;
+                                    if (row_wrap.modelData.node?.audio) row_wrap.modelData.node.audio.volume = v;
                                 }
                             }
 
                             Text {
                                 visible: root.st.console_views === "nes"
-                                text: Math.round((row_wrap.modelData.node.audio ? row_wrap.modelData.node.audio.volume : 0) * 100) + "%"
+                                text: Math.round((row_wrap.modelData.node?.audio ? row_wrap.modelData.node?.audio.volume : 0) * 100) + "%"
                                 color: vol_row.fg(root.st.text_fg)
                                 font.family: root.st.font_family
-                                font.pixelSize: root.st.font_size - 4
+                                font.pixelSize: root.st.fs(-4)
                             }
 
                             Text {
-                                text: row_wrap.modelData.node.audio && row_wrap.modelData.node.audio.muted ? "" : ""
+                                text: row_wrap.modelData.node?.audio && row_wrap.modelData.node?.audio.muted ? "" : ""
                                 color: vol_row.fg(root.st.text_primary)
                                 font.family: root.st.font_family
-                                font.pixelSize: root.st.font_size - 1
+                                font.pixelSize: root.st.fs(-1)
 
                                 MouseArea {
                                     anchors.fill: parent
@@ -366,7 +412,7 @@ Popup {
                 text: "No apps playing"
                 color: root.st.text_dim
                 font.family: root.st.font_family
-                font.pixelSize: root.st.font_size - 2
+                font.pixelSize: root.st.fs(-2)
             }
         }
     }

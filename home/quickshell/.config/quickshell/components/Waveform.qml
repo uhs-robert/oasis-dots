@@ -17,6 +17,10 @@ Item {
     // Bars from this level up take the hot color.
     property real hot_from: 0.9
     property var levels: []
+    // Where the line wave's levels come from, and their gain; voxtype's mic by default.
+    property var sample: n => VoxtypeAudio.averages(n)
+    property real gain: VoxtypeAudio.gain
+    property color tint: "transparent"
     readonly property int gap: 2
     readonly property real bar_width: Math.max(2, (width - gap * (bar_count - 1)) / bar_count)
 
@@ -41,7 +45,7 @@ Item {
             root.levels = VoxtypeAudio.columns(root.bar_count);
             return;
         }
-        const targets = VoxtypeAudio.averages(root.wave_count);
+        const targets = root.sample(root.wave_count);
         const next = root.wave_levels.length === root.wave_count ? root.wave_levels.slice() : new Array(root.wave_count).fill(0);
         for (let i = 0; i < root.wave_count; i++) next[i] = root.approach(next[i], targets[i], targets[i] > next[i] ? 30 : 14, dt);
         root.wave_levels = next;
@@ -77,12 +81,12 @@ Item {
         const out = new Array(n);
         for (let i = 0; i < n; i++) {
             const s = raw[Math.max(0, i - 1)] * 0.25 + raw[i] * 0.5 + raw[Math.min(n - 1, i + 1)] * 0.25;
-            out[i] = Math.max(0.015, Math.min(1, s * VoxtypeAudio.gain));
+            out[i] = Math.max(0.015, Math.min(1, s * root.gain));
         }
         return out;
     }
     readonly property bool hot_now: root.envelope.length > 0 && root.envelope[root.envelope.length - 1] >= root.hot_from
-    readonly property color line_color: root.frozen ? Theme.warning : root.hot_now ? Style.meter_hot : Style.meter_on
+    readonly property color line_color: root.tint.a > 0 ? root.tint : root.frozen ? Theme.warning : root.hot_now ? Style.meter_hot : Style.meter_on
     readonly property real breath: 0.5 + 0.5 * Math.sin(root.phase * 1.6)
     readonly property real amp: root.height * 0.45
     readonly property var top_points: {

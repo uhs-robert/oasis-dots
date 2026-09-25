@@ -244,7 +244,7 @@ Popup {
                             text: root.player ? (root.player.identity || "Player") : ""
                             color: Style.text_muted
                             font.family: Style.font_family
-                            font.pixelSize: Style.font_size - 4
+                            font.pixelSize: Style.fs(-4)
                         }
                     }
 
@@ -256,7 +256,7 @@ Popup {
                         text: root.player ? (root.player.trackTitle || "Unknown title") : "Nothing playing"
                         color: Theme.fg_core
                         font.family: Style.font_family
-                        font.pixelSize: Style.font_size + 5
+                        font.pixelSize: Style.fs(5)
                         font.weight: root.ps2 ? Font.ExtraLight : Font.Bold
                     }
 
@@ -277,7 +277,7 @@ Popup {
                                 text: root.player ? (root.player.trackTitle || "Unknown title") : "Nothing playing"
                                 color: Theme.fg_strong
                                 font.family: Style.font_family
-                                font.pixelSize: Style.font_size + 2
+                                font.pixelSize: Style.fs(2)
                             }
                         }
                     }
@@ -302,7 +302,7 @@ Popup {
                         text: root.player ? root.player.trackAlbum : ""
                         color: Style.text_dim
                         font.family: Style.font_family
-                        font.pixelSize: Style.font_size - 2
+                        font.pixelSize: Style.fs(-2)
                         font.weight: root.ps2 ? Font.Light : Font.Normal
                     }
 
@@ -433,7 +433,7 @@ Popup {
                             text: root.player ? root.fmt_time(root.player.position) : "0:00"
                             color: Style.text_dim
                             font.family: Style.font_family
-                            font.pixelSize: Style.font_size - 4
+                            font.pixelSize: Style.fs(-4)
                         }
 
                         Item { Layout.fillWidth: true }
@@ -442,7 +442,7 @@ Popup {
                             text: progress_item.has_length ? root.fmt_time(progress_item.track_length) : "Live"
                             color: Style.text_dim
                             font.family: Style.font_family
-                            font.pixelSize: Style.font_size - 4
+                            font.pixelSize: Style.fs(-4)
                         }
                     }
 
@@ -553,7 +553,7 @@ Popup {
                             base_radius: 12
                             label: player_chip.modelData.identity || "Player"
                             active: player_chip.modelData === root.player
-                            font_size: Style.font_size - 3
+                            font_size: Style.fs(-3)
                             onClicked: MediaState.select(player_chip.modelData)
                         }
                     }

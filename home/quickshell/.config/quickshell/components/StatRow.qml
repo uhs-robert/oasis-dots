@@ -26,7 +26,7 @@ ColumnLayout {
             text: root.label
             color: root.st.text_muted
             font.family: root.st.font_family
-            font.pixelSize: root.st.font_size - 4
+            font.pixelSize: root.st.fs(-4)
             font.bold: true
             font.capitalization: Font.AllUppercase
             font.letterSpacing: root.st.label_spacing * 0.7
@@ -36,7 +36,7 @@ ColumnLayout {
             text: root.value
             color: root.st.text_strong
             font.family: root.st.mono_font
-            font.pixelSize: root.st.font_size - 3
+            font.pixelSize: root.st.fs(-3)
         }
 
         Text {
@@ -44,7 +44,7 @@ ColumnLayout {
             text: root.unit
             color: root.st.text_muted
             font.family: root.st.mono_font
-            font.pixelSize: root.st.font_size - 6
+            font.pixelSize: root.st.fs(-6)
         }
     }
 

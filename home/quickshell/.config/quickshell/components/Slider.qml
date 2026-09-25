@@ -71,13 +71,13 @@ Item {
         text: Math.round(root.value * 100)
         color: root.on_selection && root.st.selection_inverse ? root.st.selection_fg : root.st.text_strong
         font.family: root.st.mono_font
-        font.pixelSize: root.st.font_size - 3
+        font.pixelSize: root.st.fs(-3)
     }
 
     FontMetrics {
         id: readout_metrics
         font.family: root.st.mono_font
-        font.pixelSize: root.st.font_size - 3
+        font.pixelSize: root.st.fs(-3)
     }
 
     MouseArea {

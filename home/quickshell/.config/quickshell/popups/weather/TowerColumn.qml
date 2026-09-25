@@ -154,7 +154,7 @@ Item {
             text: root.day.weekday || ""
             color: root.selected ? Theme.fg_strong : Theme.theme_primary_light
             font.family: Style.font_family
-            font.pixelSize: Style.font_size - 2
+            font.pixelSize: Style.fs(-2)
             font.weight: root.selected ? Font.Medium : Font.Light
         }
 
@@ -165,7 +165,7 @@ Item {
             textFormat: Text.StyledText
             text: root.day.max !== undefined ? "<font color=\"" + root.hi_color + "\">" + Math.round(root.day.max) + "°</font> <font color=\"" + root.lo_color + "\">" + Math.round(root.day.min) + "°</font>" : ""
             font.family: Style.font_family
-            font.pixelSize: Style.font_size - 3
+            font.pixelSize: Style.fs(-3)
         }
 
         Row {
@@ -177,14 +177,14 @@ Item {
                 text: "\u{f058c}"
                 color: root.rain_color
                 font.family: "Symbols Nerd Font"
-                font.pixelSize: Style.font_size - 4
+                font.pixelSize: Style.fs(-4)
             }
 
             Text {
                 text: (root.day.pop || 0) + "%"
                 color: root.rain_color
                 font.family: Style.font_family
-                font.pixelSize: Style.font_size - 4
+                font.pixelSize: Style.fs(-4)
             }
         }
     }

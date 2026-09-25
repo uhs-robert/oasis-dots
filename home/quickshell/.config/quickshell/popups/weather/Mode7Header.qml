@@ -68,7 +68,7 @@ Item {
                 text: root.has ? root.cur.cond : WeatherState.loading ? "Loading" : "No signal"
                 color: root.has || WeatherState.loading ? Theme.theme_secondary : Theme.warning
                 font.family: Style.font_family
-                font.pixelSize: Style.font_size - 2
+                font.pixelSize: Style.fs(-2)
                 font.capitalization: Font.AllUppercase
                 style: Text.Raised
                 styleColor: Style.text_shadow
@@ -94,7 +94,7 @@ Item {
                     text: row_label.modelData[0]
                     color: Theme.theme_primary_light
                     font.family: Style.font_family
-                    font.pixelSize: Style.font_size - 6
+                    font.pixelSize: Style.fs(-6)
                     style: Text.Raised
                     styleColor: Style.text_shadow
                 }
@@ -114,7 +114,7 @@ Item {
                     text: row_value.modelData[1]
                     color: Theme.fg_strong
                     font.family: Style.font_family
-                    font.pixelSize: Style.font_size - 6
+                    font.pixelSize: Style.fs(-6)
                     style: Text.Raised
                     styleColor: Style.text_shadow
                 }
@@ -130,7 +130,7 @@ Item {
                 text: WeatherState.stale ? "STALE" : "LOC"
                 color: WeatherState.stale ? Theme.warning : Theme.theme_primary_light
                 font.family: Style.font_family
-                font.pixelSize: Style.font_size - 6
+                font.pixelSize: Style.fs(-6)
                 style: Text.Raised
                 styleColor: Style.text_shadow
             }
@@ -143,7 +143,7 @@ Item {
                 text: WeatherState.stale ? (WeatherState.error || "Old data") : WeatherState.location_name
                 color: WeatherState.stale ? Theme.warning : Theme.fg_strong
                 font.family: Style.font_family
-                font.pixelSize: Style.font_size - 6
+                font.pixelSize: Style.fs(-6)
                 style: Text.Raised
                 styleColor: Style.text_shadow
             }

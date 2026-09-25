@@ -3,6 +3,8 @@ import QtQuick
 import QtQuick.Layouts
 import QtQuick.Shapes
 import "../components"
+import "../components/metroid" as Metroid
+import "../services"
 import "../theme"
 
 Item {
@@ -22,22 +24,95 @@ Item {
     property real inset_gap: 0
     property real inset_width: 0
     property color inset_color: "transparent"
-    // Visor glass: curved bottom corners instead of slants, glass gradient into bg_color, border along sides and bottom.
+    // Metroid Prime visor glass cut into notched bracket ends (VisorIsland) instead of slants.
     property bool visor: false
-    readonly property bool shaded: root.shade_color.a > 0 || root.visor
+    // Cava plays along the bottom edge; the visor's crosshair makes way for it.
+    property bool wave_shown: false
+    // A capsule this many px inside the island's top and ends, resting on its bottom edge; sheen_color lights its top edge.
+    property real capsule_inset: 0
+    property color sheen_color: "transparent"
+    readonly property bool capsule: root.capsule_inset > 0
+    readonly property real capsule_width: body.width
+    readonly property real capsule_radius: (root.height - root.capsule_inset) / 2
+    // The submap tab hangs from this island.
+    property bool tab_joined: false
+    readonly property bool joined: root.capsule && (root.tab_joined || (Popups.open_name !== "" && Popups.open_anchor === body) || (Popups.open_name === "" && Tooltip.visible && Tooltip.island === body))
+    // 1 while a popup or the submap tab hangs from the capsule: its bottom corners flatten to meet it.
+    property real join: 0
+    readonly property bool shaded: root.shade_color.a > 0 || root.visor || root.capsule
     default property alias content: layout.children
 
     readonly property alias body_item: body
-    readonly property int cap_width: height / 2
+    // Lualine: side islands end in arrows, the center one leans; content brings its own padding.
+    readonly property bool lualine: Style.bar_lualine
+    // Fill for the right cap when the content's last segment runs into it.
+    property color cap_right_fill: "transparent"
+    property color cap_left_fill: "transparent"
+    readonly property bool center: root.cap_left && root.cap_right
+    readonly property int cap_width: root.lualine ? Math.round(height * 0.4) : root.visor ? Math.round(height * 0.8) : height / 2
+    readonly property real pad: root.capsule ? Style.bar_capsule_pad : root.lualine ? (root.center ? 10 : 0) : 8
 
     signal clicked
 
     height: 30
-    width: body.width + (cap_left ? cap_width : 0) + (cap_right ? cap_width : 0)
+    width: root.capsule ? body.width + root.capsule_inset * 2 : body.width + (cap_left ? cap_width : 0) + (cap_right ? cap_width : 0)
+
+    onJoinedChanged: {
+        join_anim.stop();
+        unjoin_anim.stop();
+        (root.joined ? join_anim : unjoin_anim).restart();
+    }
+
+    NumberAnimation { id: join_anim; target: root; property: "join"; to: 1; duration: 180; easing.type: Easing.OutCubic }
+
+    // Waits for the popup to fold away before the corners round again.
+    SequentialAnimation {
+        id: unjoin_anim
+        PauseAnimation { duration: 120 }
+        NumberAnimation { target: root; property: "join"; to: 0; duration: 90; easing.type: Easing.InCubic }
+    }
+
+    Rectangle {
+        visible: root.capsule
+        x: root.capsule_inset
+        y: root.capsule_inset
+        width: body.width
+        height: root.height - root.capsule_inset
+        topLeftRadius: root.capsule_radius
+        topRightRadius: root.capsule_radius
+        bottomLeftRadius: root.capsule_radius * (1 - root.join)
+        bottomRightRadius: root.capsule_radius * (1 - root.join)
+        border.width: root.border_width
+        border.color: root.border_color
+        gradient: Gradient {
+            GradientStop { position: 0; color: capsule_fill.top_color }
+            GradientStop { position: 1; color: capsule_fill.bottom_color }
+        }
+
+        // Joined, the bottom takes the popup's top shade and drops its border so the fills run on unbroken.
+        Rectangle {
+            id: capsule_fill
+            readonly property color top_color: root.shade_color.a > 0 ? root.shade_color : root.bg_color
+            readonly property color bottom_color: Qt.tint(root.bg_color, Qt.alpha(capsule_fill.top_color, root.join))
+            visible: root.join > 0 && root.border_width > 0
+            x: root.border_width
+            y: parent.height - root.border_width
+            width: parent.width - root.border_width * 2
+            height: root.border_width
+            color: capsule_fill.bottom_color
+            opacity: root.join
+        }
+
+        Sheen {
+            color_top: root.sheen_color
+            corner: root.capsule_radius
+            edge: root.border_width
+        }
+    }
 
     // The popup style's shade and dither, behind the modules and clipped to the slants.
     Shape {
-        visible: root.shaded && !root.visor
+        visible: root.shaded && !root.visor && !root.capsule
         anchors.fill: parent
         preferredRendererType: Shape.CurveRenderer
 
@@ -61,41 +136,17 @@ Item {
         }
     }
 
-    Shape {
-        id: visor_glass
-        readonly property real rx: root.cap_width
-        readonly property real ry: root.height / 2
-
-        function edge(i, closed) {
-            const w = root.width, h = root.height, x = Math.max(0, visor_glass.rx - i), y = Math.max(0, visor_glass.ry - i);
-            let d = root.cap_left ? "M " + i + " 0 L " + i + " " + (h - i - y) + " A " + x + " " + y + " 0 0 0 " + (i + x) + " " + (h - i) : "M 0 " + (h - i);
-            d += root.cap_right ? " L " + (w - i - x) + " " + (h - i) + " A " + x + " " + y + " 0 0 0 " + (w - i) + " " + (h - i - y) + " L " + (w - i) + " 0" : " L " + w + " " + (h - i);
-            return closed ? d + " L " + w + " 0 L 0 0 Z" : d;
-        }
-
-        visible: root.visor
+    Loader {
         anchors.fill: parent
-        preferredRendererType: Shape.CurveRenderer
-
-        ShapePath {
-            strokeWidth: -1
-            fillGradient: LinearGradient {
-                x1: 0
-                y1: 0
-                x2: 0
-                y2: root.height
-                GradientStop { position: 0; color: Qt.alpha(Theme.ui_visual_bg, 0.75) }
-                GradientStop { position: 1; color: root.bg_color }
-            }
-            PathSvg { path: visor_glass.edge(0, true) }
-        }
-
-        ShapePath {
-            strokeWidth: root.border_width
-            strokeColor: root.border_width > 0 ? root.border_color : "transparent"
-            fillColor: "transparent"
-            capStyle: ShapePath.FlatCap
-            PathSvg { path: visor_glass.edge(root.border_width / 2, false) }
+        active: root.visor
+        sourceComponent: Metroid.VisorIsland {
+            cap_left: root.cap_left
+            cap_right: root.cap_right
+            cap: root.cap_width
+            bg_color: root.bg_color
+            border_width: root.border_width
+            border_color: root.border_color
+            marks_shown: !root.wave_shown
         }
     }
 
@@ -109,9 +160,9 @@ Item {
     Rectangle {
         id: body
 
-        x: cap_left ? root.cap_width : 0
+        x: root.capsule ? root.capsule_inset : cap_left ? root.cap_width : 0
         height: root.height
-        width: Math.ceil(layout.implicitWidth) + 16
+        width: Math.ceil(layout.implicitWidth) + root.pad * 2
         color: root.shaded ? "transparent" : root.bg_color
 
         // A tick scale rising from the bottom edge.
@@ -139,33 +190,36 @@ Item {
 
         RowLayout {
             id: layout
-            x: 8
-            height: parent.height
-            spacing: 16
+            x: root.pad
+            y: root.capsule ? root.capsule_inset : 0
+            height: parent.height - y
+            spacing: root.lualine && !root.center ? 0 : Style.bar_module_gap
         }
     }
 
     // Caps overlap the body by 1px so fractional scaling (1.6 on the laptop) leaves no seam.
     Shape {
-        visible: root.cap_left
+        visible: root.cap_left && !root.capsule
         width: root.cap_width + 1
         height: root.height
         preferredRendererType: Shape.CurveRenderer
 
         ShapePath {
             strokeWidth: -1
-            fillColor: root.shaded ? "transparent" : root.bg_color
-            startX: 0
-            startY: 0
-            PathLine { x: root.cap_width + 1; y: 0 }
-            PathLine { x: root.cap_width + 1; y: root.height }
-            PathLine { x: root.cap_width; y: root.height }
-            PathLine { x: 0; y: 0 }
+            fillColor: root.cap_left_fill.a > 0 ? root.cap_left_fill : root.shaded ? "transparent" : root.bg_color
+            PathPolyline {
+                path: {
+                    const c = root.cap_width, h = root.height;
+                    if (!root.lualine) return [Qt.point(0, 0), Qt.point(c + 1, 0), Qt.point(c + 1, h), Qt.point(c, h), Qt.point(0, 0)];
+                    if (root.center) return [Qt.point(c, 0), Qt.point(c + 1, 0), Qt.point(c + 1, h), Qt.point(0, h), Qt.point(c, 0)];
+                    return [Qt.point(c, 0), Qt.point(c + 1, 0), Qt.point(c + 1, h), Qt.point(c, h), Qt.point(0, h / 2), Qt.point(c, 0)];
+                }
+            }
         }
     }
 
     Shape {
-        visible: root.cap_right
+        visible: root.cap_right && !root.capsule
         x: root.width - root.cap_width - 1
         width: root.cap_width + 1
         height: root.height
@@ -173,13 +227,14 @@ Item {
 
         ShapePath {
             strokeWidth: -1
-            fillColor: root.shaded ? "transparent" : root.bg_color
-            startX: 0
-            startY: 0
-            PathLine { x: root.cap_width + 1; y: 0 }
-            PathLine { x: 1; y: root.height }
-            PathLine { x: 0; y: root.height }
-            PathLine { x: 0; y: 0 }
+            fillColor: root.cap_right_fill.a > 0 ? root.cap_right_fill : root.shaded ? "transparent" : root.bg_color
+            PathPolyline {
+                path: {
+                    const c = root.cap_width, h = root.height;
+                    if (!root.lualine || root.center) return [Qt.point(0, 0), Qt.point(c + 1, 0), Qt.point(1, h), Qt.point(0, h), Qt.point(0, 0)];
+                    return [Qt.point(0, 0), Qt.point(1, 0), Qt.point(c + 1, h / 2), Qt.point(1, h), Qt.point(0, h), Qt.point(0, 0)];
+                }
+            }
         }
     }
 
@@ -206,7 +261,7 @@ Item {
 
     // Traces the slants and bottom edge; the sides on the screen edge stay open.
     Shape {
-        visible: root.border_width > 0 && !root.visor
+        visible: root.border_width > 0 && !root.visor && !root.capsule
         anchors.fill: parent
         preferredRendererType: Shape.CurveRenderer
 
@@ -232,7 +287,7 @@ Item {
     }
 
     Shape {
-        visible: root.inset_width > 0 && root.inset_color.a > 0
+        visible: root.inset_width > 0 && root.inset_color.a > 0 && !root.capsule
         anchors.fill: parent
         preferredRendererType: Shape.CurveRenderer
 

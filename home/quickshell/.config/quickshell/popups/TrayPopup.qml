@@ -152,7 +152,7 @@ Popup {
                 text: "No tray apps"
                 color: root.st.text_dim
                 font.family: root.st.font_family
-                font.pixelSize: root.st.font_size - 2
+                font.pixelSize: root.st.fs(-2)
             }
 
             Repeater {
@@ -185,7 +185,7 @@ Popup {
                             label: root.app_name(item_row.modelData)
                             color: item_row.fg(root.st.text_fg)
                             font.family: root.st.font_family
-                            font.pixelSize: root.st.font_size - 1
+                            font.pixelSize: root.st.fs(-1)
                         }
 
                         RowLabel {
@@ -196,7 +196,7 @@ Popup {
                             label: root.detail(item_row.modelData)
                             color: item_row.fg(root.st.text_dim)
                             font.family: root.st.font_family
-                            font.pixelSize: root.st.font_size - 3
+                            font.pixelSize: root.st.fs(-3)
                         }
                     }
 

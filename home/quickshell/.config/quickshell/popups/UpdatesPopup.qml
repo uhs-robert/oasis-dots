@@ -129,7 +129,7 @@ Popup {
                             text: UpdatesState.total === 1 ? "block" : "blocks"
                             color: Theme.theme_primary_light
                             font.family: root.st.font_family
-                            font.pixelSize: root.st.font_size - 4
+                            font.pixelSize: root.st.fs(-4)
                             font.capitalization: Font.AllUppercase
                             font.letterSpacing: 1.2
                         }
@@ -138,7 +138,7 @@ Popup {
                             text: UpdatesState.official.length + " official · " + UpdatesState.aur.length + " AUR"
                             color: root.st.text_muted
                             font.family: root.st.font_family
-                            font.pixelSize: root.st.font_size - 4
+                            font.pixelSize: root.st.fs(-4)
                         }
                     }
                 }
@@ -165,7 +165,7 @@ Popup {
                     text: UpdatesState.checking ? "Checking…" : UpdatesState.error ? UpdatesState.error : (UpdatesState.last_checked > 0 ? "Checked " + Qt.formatTime(new Date(UpdatesState.last_checked), "HH:mm") : "Never checked")
                     color: UpdatesState.error && !UpdatesState.checking ? Theme.warning : root.st.text_muted
                     font.family: root.st.font_family
-                    font.pixelSize: root.st.font_size - 3
+                    font.pixelSize: root.st.fs(-3)
                 }
             }
 
@@ -182,7 +182,7 @@ Popup {
                     text: UpdatesState.error ? UpdatesState.error : "Up to date"
                     color: UpdatesState.error ? Theme.warning : root.st.text_dim
                     font.family: root.st.font_family
-                    font.pixelSize: root.st.font_size - 1
+                    font.pixelSize: root.st.fs(-1)
                 }
 
                 // Console grids replace the package list.
@@ -236,7 +236,7 @@ Popup {
                     FontMetrics {
                         id: row_metrics
                         font.family: root.st.font_family
-                        font.pixelSize: root.st.font_size - 2
+                        font.pixelSize: root.st.fs(-2)
                     }
 
                     delegate: MenuRow {
@@ -279,7 +279,7 @@ Popup {
                                 label: update_row.modelData.name
                                 color: update_row.fg(root.st.text_fg)
                                 font.family: root.st.font_family
-                                font.pixelSize: root.st.font_size - 2
+                                font.pixelSize: root.st.fs(-2)
                             }
 
                             // One elided Text so long versions shrink from the left and keep the new version visible.
@@ -292,7 +292,7 @@ Popup {
                                 text: update_row.modelData.old + " → <font color=\"" + Theme.yellow + "\">" + update_row.modelData.new + "</font>"
                                 color: update_row.fg(root.st.text_muted)
                                 font.family: root.st.font_family
-                                font.pixelSize: root.st.font_size - 3
+                                font.pixelSize: root.st.fs(-3)
                             }
                         }
 

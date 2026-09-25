@@ -12,7 +12,7 @@ Item {
     property var day: ({})
     property bool selected: false
     readonly property var short_conds: ({ 0: "Sunny", 1: "Mostly Sunny", 2: "Partly Cloudy", 3: "Cloudy", 45: "Fog", 48: "Fog", 51: "Drizzle", 53: "Drizzle", 55: "Drizzle", 56: "Frz Drizzle", 57: "Frz Drizzle", 61: "Light Rain", 63: "Rain", 65: "Heavy Rain", 66: "Frz Rain", 67: "Frz Rain", 71: "Light Snow", 73: "Snow", 75: "Heavy Snow", 77: "Flurries", 80: "Showers", 81: "Showers", 82: "Heavy Showers", 85: "Snow Showers", 86: "Snow Showers", 95: "T'Storms", 96: "T'Storms", 99: "T'Storms" })
-    readonly property int small_px: Style.font_size - 6
+    readonly property int small_px: Style.fs(-6)
 
     WsPanel {
         anchors.fill: parent
@@ -32,7 +32,7 @@ Item {
             text: root.day.weekday || ""
             color: Theme.theme_secondary
             font.family: Style.font_family
-            font.pixelSize: Style.font_size - 2
+            font.pixelSize: Style.fs(-2)
             style: Text.Outline
             styleColor: Theme.bg_shadow
         }
@@ -113,7 +113,7 @@ Item {
                     text: modelData !== undefined ? Math.round(modelData) : ""
                     color: Theme.fg_strong
                     font.family: Style.font_family
-                    font.pixelSize: Style.font_size - 1
+                    font.pixelSize: Style.fs(-1)
                     style: Text.Outline
                     styleColor: Theme.bg_shadow
                 }
@@ -140,7 +140,7 @@ Item {
             text: (root.day.pop || 0) + "%"
             color: Theme.fg_strong
             font.family: Style.font_family
-            font.pixelSize: Style.font_size - 3
+            font.pixelSize: Style.fs(-3)
             style: Text.Outline
             styleColor: Theme.bg_shadow
         }

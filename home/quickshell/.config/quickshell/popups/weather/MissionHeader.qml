@@ -16,7 +16,7 @@ ColumnLayout {
     FontMetrics {
         id: facility_metrics
         font.family: Style.font_family
-        font.pixelSize: Style.font_size - 4
+        font.pixelSize: Style.fs(-4)
     }
 
     GridLayout {
@@ -31,7 +31,7 @@ ColumnLayout {
             text: "MISSION 04: WEATHER"
             color: Style.accent_color
             font.family: Style.title_font_family
-            font.pixelSize: Style.font_size - 6
+            font.pixelSize: Style.fs(-6)
             font.letterSpacing: 1
         }
 
@@ -43,7 +43,7 @@ ColumnLayout {
             text: (root.one_line ? "· " : "") + root.facility
             color: Style.text_fg
             font.family: Style.font_family
-            font.pixelSize: Style.font_size - 4
+            font.pixelSize: Style.fs(-4)
         }
     }
 

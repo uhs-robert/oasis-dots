@@ -17,5 +17,5 @@ Text {
     color: root.st.text_accent
     font.family: root.st.number_font
     font.weight: Font.ExtraLight
-    font.pixelSize: root.st.font_size + 8
+    font.pixelSize: root.st.fs(8)
 }

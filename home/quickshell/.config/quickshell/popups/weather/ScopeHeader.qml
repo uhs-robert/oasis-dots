@@ -147,7 +147,7 @@ ColumnLayout {
                     text: modelData[0]
                     color: Qt.alpha(root.ring, 0.8)
                     font.family: Style.mono_font
-                    font.pixelSize: Math.max(7, Style.font_size - 6)
+                    font.pixelSize: Math.max(7, Style.fs(-6))
                 }
             }
 
@@ -251,7 +251,7 @@ ColumnLayout {
                     text: "WARNING"
                     color: root.lock
                     font.family: Style.mono_font
-                    font.pixelSize: Style.font_size - 5
+                    font.pixelSize: Style.fs(-5)
                     font.bold: true
                     font.letterSpacing: 1.5
                 }
@@ -279,7 +279,7 @@ ColumnLayout {
                         text: "°" + WeatherState.unit_symbol()
                         color: root.lock
                         font.family: Style.mono_font
-                        font.pixelSize: Style.font_size - 2
+                        font.pixelSize: Style.fs(-2)
                     }
                 }
 
@@ -300,7 +300,7 @@ ColumnLayout {
                 text: "TGT: " + (root.has ? root.cur.cond : WeatherState.loading ? "Acquiring" : "No signal")
                 color: root.has || WeatherState.loading ? Style.text_fg : Theme.warning
                 font.family: Style.mono_font
-                font.pixelSize: Style.font_size - 3
+                font.pixelSize: Style.fs(-3)
                 font.capitalization: Font.AllUppercase
                 font.letterSpacing: 1
             }
@@ -311,7 +311,7 @@ ColumnLayout {
                 text: "FEELS " + (root.has ? Math.round(root.cur.feels) + "°" + WeatherState.unit_symbol() : "")
                 color: root.readout
                 font.family: Style.mono_font
-                font.pixelSize: Style.font_size - 4
+                font.pixelSize: Style.fs(-4)
             }
 
             Repeater {
@@ -327,7 +327,7 @@ ColumnLayout {
                         text: readout_row.modelData.label
                         color: Qt.alpha(root.readout, 0.6)
                         font.family: Style.mono_font
-                        font.pixelSize: Style.font_size - 4
+                        font.pixelSize: Style.fs(-4)
                     }
 
                     Text {
@@ -337,14 +337,14 @@ ColumnLayout {
                         text: "·".repeat(60)
                         color: Qt.alpha(root.readout, 0.3)
                         font.family: Style.mono_font
-                        font.pixelSize: Style.font_size - 4
+                        font.pixelSize: Style.fs(-4)
                     }
 
                     Text {
                         text: readout_row.modelData.value
                         color: readout_row.modelData.color
                         font.family: Style.mono_font
-                        font.pixelSize: Style.font_size - 4
+                        font.pixelSize: Style.fs(-4)
                     }
                 }
             }
@@ -360,7 +360,7 @@ ColumnLayout {
             text: "LOC"
             color: Style.text_muted
             font.family: Style.mono_font
-            font.pixelSize: Style.font_size - 4
+            font.pixelSize: Style.fs(-4)
         }
 
         Text {
@@ -370,7 +370,7 @@ ColumnLayout {
             text: WeatherState.location_name
             color: Style.text_fg
             font.family: Style.mono_font
-            font.pixelSize: Style.font_size - 4
+            font.pixelSize: Style.fs(-4)
         }
 
         Text {
@@ -378,7 +378,7 @@ ColumnLayout {
             text: Math.abs(WeatherState.lat).toFixed(2) + (WeatherState.lat >= 0 ? "N " : "S ") + Math.abs(WeatherState.lon).toFixed(2) + (WeatherState.lon >= 0 ? "E" : "W")
             color: Style.text_muted
             font.family: Style.mono_font
-            font.pixelSize: Style.font_size - 4
+            font.pixelSize: Style.fs(-4)
         }
     }
 
@@ -389,6 +389,6 @@ ColumnLayout {
         text: "STALE DATA" + (WeatherState.error ? ": " + WeatherState.error : "")
         color: Theme.warning
         font.family: Style.mono_font
-        font.pixelSize: Style.font_size - 4
+        font.pixelSize: Style.fs(-4)
     }
 }

@@ -6,6 +6,9 @@ import "../components"
 import "../theme"
 import "../services"
 import "weather"
+import "../components/oasis" as Oasis
+import "../components/modern" as Modern
+import "../components/neovim" as Neovim
 
 Popup {
     id: root
@@ -27,7 +30,7 @@ Popup {
     readonly property bool hev: Style.weather_header === "hev"
     readonly property bool dex: Style.weather_header === "pokedex"
     // Headers that carry their own alert (HEV banner, Pokédex alert, FF7 status panel) replace the shared banner.
-    readonly property bool own_alert: root.hev || root.dex || Style.weather_header === "status"
+    readonly property bool own_alert: root.hev || root.dex || Style.weather_header === "status" || Style.weather_header === "hero" || Style.weather_header === "lsp"
 
     readonly property var daily_sub_names: ["Temp & Precip", "Wind", "UV", "Sunshine", "Sun & Moon"]
     readonly property int sun_moon_sub: 4
@@ -206,7 +209,7 @@ Popup {
                 Layout.fillWidth: true
                 active: Style.weather_header !== ""
                 visible: active
-                sourceComponent: ({ spec: spec_header, scope: scope_header, watch: watch_header, memcard: memcard_header, battle: battle_header, mode7: mode7_header, wttr: wttr_header, weatherstar: ws_header, towers: towers_header, scan: scan_header, hev: hev_header, pokedex: dex_header, status: status_header })[Style.weather_header] || ring_header
+                sourceComponent: ({ spec: spec_header, scope: scope_header, watch: watch_header, memcard: memcard_header, battle: battle_header, mode7: mode7_header, wttr: wttr_header, weatherstar: ws_header, towers: towers_header, scan: scan_header, hev: hev_header, pokedex: dex_header, status: status_header, oasis: oasis_header, hero: hero_header, lsp: lsp_header })[Style.weather_header] || ring_header
 
                 Component {
                     id: spec_header
@@ -271,6 +274,21 @@ Popup {
                 }
 
                 Component {
+                    id: hero_header
+                    Modern.WeatherHero {
+                        onAlert_clicked: root.set_tab(root.tabs.length - 1)
+                    }
+                }
+
+                Component {
+                    id: lsp_header
+                    Neovim.WeatherLsp {
+                        trail: [root.tabs[root.current_tab] || "", root.sub_views[root.current_sub] || ""]
+                        onAlert_clicked: root.set_tab(root.tabs.length - 1)
+                    }
+                }
+
+                Component {
                     id: ring_header
                     RingHeader {}
                 }
@@ -278,6 +296,11 @@ Popup {
                 Component {
                     id: hev_header
                     HevHeader {}
+                }
+
+                Component {
+                    id: oasis_header
+                    Oasis.OasisHeader {}
                 }
             }
 
@@ -311,7 +334,7 @@ Popup {
                         text: WeatherState.has_data ? root.fmt_temp(WeatherState.current.temp) : "--°"
                         color: WeatherState.has_data ? WeatherState.temp_color(WeatherState.current.temp) : Style.text_dim
                         font.family: Style.number_font
-                        font.pixelSize: Style.font_size + 12
+                        font.pixelSize: Style.fs(12)
                         font.bold: true
                     }
 
@@ -321,7 +344,7 @@ Popup {
                         text: WeatherState.has_data ? WeatherState.current.cond : WeatherState.loading ? "Loading…" : "Unavailable: " + WeatherState.error
                         color: WeatherState.has_data || WeatherState.loading ? Theme.fg_core : Theme.warning
                         font.family: Style.font_family
-                        font.pixelSize: Style.font_size + 1
+                        font.pixelSize: Style.fs(1)
                     }
 
                     Text {
@@ -331,7 +354,7 @@ Popup {
                         text: "Feels like " + (WeatherState.has_data ? root.fmt_temp(WeatherState.current.feels) : "")
                         color: Style.text_muted
                         font.family: Style.font_family
-                        font.pixelSize: Style.font_size - 2
+                        font.pixelSize: Style.fs(-2)
                     }
 
                     Text {
@@ -341,7 +364,7 @@ Popup {
                         text: WeatherState.location_name
                         color: Style.text_dim
                         font.family: Style.font_family
-                        font.pixelSize: Style.font_size - 2
+                        font.pixelSize: Style.fs(-2)
                     }
                 }
 
@@ -356,7 +379,7 @@ Popup {
                     text: "Stale data" + (WeatherState.error ? ": " + WeatherState.error : "")
                     color: Theme.warning
                     font.family: Style.font_family
-                    font.pixelSize: Style.font_size - 3
+                    font.pixelSize: Style.fs(-3)
                 }
             }
 
@@ -401,7 +424,7 @@ Popup {
                         text: root.mission ? "MISSION CRITICAL" : "THREAT DETECTED"
                         color: Theme.theme_label
                         font.family: root.mission ? Style.title_font_family : Style.font_family
-                        font.pixelSize: Style.font_size - 6
+                        font.pixelSize: Style.fs(-6)
                         font.letterSpacing: 1
                     }
 
@@ -413,7 +436,7 @@ Popup {
                             : WeatherState.alerts[0].event + " · until " + root.fmt_alert_time(WeatherState.alerts[0].ends) + (WeatherState.alerts.length > 1 ? "  +" + (WeatherState.alerts.length - 1) + " more" : "")
                         color: root.mission || root.threat ? Theme.theme_label : WeatherState.alerts.length > 0 ? WeatherState.alert_color(WeatherState.alerts[0].severity) : Theme.fg_core
                         font.family: Style.font_family
-                        font.pixelSize: Style.font_size - 2
+                        font.pixelSize: Style.fs(-2)
                         font.bold: true
                     }
                 }
@@ -511,7 +534,7 @@ Popup {
                 text: WeatherState.updated > 0 ? "Updated " + WeatherState.format_hour(new Date(WeatherState.updated)) : "Never updated"
                 color: Style.text_dim
                 font.family: Style.font_family
-                font.pixelSize: Style.font_size - 4
+                font.pixelSize: Style.fs(-4)
             }
 
             MenuFooter {

@@ -75,7 +75,7 @@ Item {
             font.family: Style.bar_font_family
             style: Style.bar_text_style
             styleColor: Style.bar_glow_color
-            font.pixelSize: Theme.glyph_size
+            font.pixelSize: Style.bar_glyph_size
         }
     }
 

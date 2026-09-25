@@ -21,7 +21,7 @@ Popup {
         elide: Text.ElideRight
         color: root.st.text_fg
         font.family: root.st.font_family
-        font.pixelSize: root.st.font_size - 1
+        font.pixelSize: root.st.fs(-1)
         lineHeight: 1.1
     }
 }

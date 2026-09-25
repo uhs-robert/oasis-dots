@@ -15,7 +15,7 @@ Item {
     property real scale_max: 1
     property var on_select: function (i) {}
 
-    readonly property int text_px: Style.font_size - 4
+    readonly property int text_px: Style.fs(-4)
     // Reading metrics.font makes the advance rebind once the family and size land.
     readonly property real glyph_w: metrics.font.pixelSize > 0 ? Math.max(1, metrics.advanceWidth("─")) : 1
     readonly property real lh: Math.max(1, Math.floor(metrics.height))

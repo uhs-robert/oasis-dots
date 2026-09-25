@@ -14,6 +14,9 @@ Rectangle {
     property bool on_fill: false
     // Keeps the keyboard key beside its controller buttons, as the ? help does.
     property bool with_key: false
+    // A bare key with no cap, e.g. a tab's jump digit.
+    property bool plain: false
+    property int font_px: 0
     readonly property bool pad: root.st.controller !== "" && KeyHints.controller_parts(root.st.controller, root.key, root.desc).length > 0
     readonly property bool tinted: root.on_fill && root.st.key_bg.a === 0 && !root.orb
 
@@ -24,9 +27,15 @@ Rectangle {
     radius: root.st.key_round ? height / 2 : Style.radius(3)
     readonly property bool cut: root.st.key_cut > 0 && !root.pad
     readonly property bool orb: root.st.materia.key !== undefined && !root.pad
-    color: root.cut || root.orb || root.pad ? "transparent" : root.st.key_bg
-    border.width: root.cut || root.orb || root.pad ? 0 : root.st.pixel_border.a > 0 ? 2 : 1
+    color: root.cut || root.orb || root.pad || root.plain ? "transparent" : root.st.key_bg
+    border.width: root.cut || root.orb || root.pad || root.plain ? 0 : root.st.pixel_border.a > 0 ? 2 : 1
     border.color: root.tinted ? root.st.tab_active_fg : root.st.key_border
+
+    Sheen {
+        color_top: !root.plain && !root.pad && root.st.key_bg.a > 0 ? root.st.sheen : "transparent"
+        corner: root.radius
+        edge: 1
+    }
 
     CutBox {
         visible: root.cut
@@ -80,7 +89,7 @@ Rectangle {
         text: root.key
         color: root.tinted ? root.st.tab_active_fg : root.st.key_fg
         font.family: root.st.mono_font
-        font.pixelSize: root.st.font_size - 5
+        font.pixelSize: root.font_px > 0 ? root.font_px : root.st.fs(-5)
         font.bold: root.orb || root.st.mono_font === root.st.font_family
     }
 }

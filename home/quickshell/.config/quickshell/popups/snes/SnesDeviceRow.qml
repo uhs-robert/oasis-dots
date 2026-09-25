@@ -58,7 +58,7 @@ Item {
                 style: Text.Raised
                 styleColor: Style.text_shadow
                 font.family: Style.font_family
-                font.pixelSize: Style.font_size - 1
+                font.pixelSize: Style.fs(-1)
             }
 
             Text {
@@ -67,7 +67,7 @@ Item {
                 style: Text.Raised
                 styleColor: Style.text_shadow
                 font.family: Style.font_family
-                font.pixelSize: Style.font_size - 5
+                font.pixelSize: Style.fs(-5)
             }
         }
 
@@ -82,7 +82,7 @@ Item {
                 style: Text.Raised
                 styleColor: Style.text_shadow
                 font.family: Style.font_family
-                font.pixelSize: Style.font_size - 5
+                font.pixelSize: Style.fs(-5)
             }
 
             Snes.SnesGauge {
@@ -100,7 +100,7 @@ Item {
                 style: Text.Raised
                 styleColor: Style.text_shadow
                 font.family: Style.font_family
-                font.pixelSize: Style.font_size - 3
+                font.pixelSize: Style.fs(-3)
             }
         }
     }
@@ -108,12 +108,12 @@ Item {
     FontMetrics {
         id: label_metrics
         font.family: Style.font_family
-        font.pixelSize: Style.font_size - 5
+        font.pixelSize: Style.fs(-5)
     }
 
     FontMetrics {
         id: value_metrics
         font.family: Style.font_family
-        font.pixelSize: Style.font_size - 3
+        font.pixelSize: Style.fs(-3)
     }
 }

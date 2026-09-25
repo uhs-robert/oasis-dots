@@ -103,7 +103,7 @@ Popup {
                 text: "No paired devices"
                 color: root.st.text_dim
                 font.family: root.st.font_family
-                font.pixelSize: root.st.font_size - 2
+                font.pixelSize: root.st.fs(-2)
             }
 
             Repeater {
@@ -160,7 +160,7 @@ Popup {
                             text: device_row.modelData.connected ? "󰂱" : "󰂯"
                             color: device_row.fg(device_row.modelData.connected ? root.st.text_primary : root.st.text_dim)
                             font.family: root.st.font_family
-                            font.pixelSize: root.st.font_size - 1
+                            font.pixelSize: root.st.fs(-1)
                         }
 
                         RowLabel {
@@ -169,7 +169,7 @@ Popup {
                             label: device_row.modelData.name
                             color: device_row.fg(device_row.modelData.connected ? root.st.text_accent : root.st.text_fg)
                             font.family: root.st.font_family
-                            font.pixelSize: root.st.font_size - 1
+                            font.pixelSize: root.st.fs(-1)
                         }
 
                         Loader {
@@ -186,7 +186,7 @@ Popup {
                             text: root.battery_label(device_row.modelData)
                             color: device_row.fg(root.st.text_muted)
                             font.family: root.st.font_family
-                            font.pixelSize: root.st.font_size - 2
+                            font.pixelSize: root.st.fs(-2)
                         }
                     }
 

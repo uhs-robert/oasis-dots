@@ -5,6 +5,7 @@ import Quickshell
 import "../components"
 import "../theme"
 import "../services"
+import "../components/modern" as Modern
 
 Popup {
     id: root
@@ -19,7 +20,7 @@ Popup {
     FontMetrics {
         id: label_metrics
         font.family: root.st.font_family
-        font.pixelSize: root.st.font_size - 1
+        font.pixelSize: root.st.fs(-1)
     }
 
     readonly property var stat_rows: {
@@ -52,6 +53,14 @@ Popup {
         return false;
     }
 
+    // Sparkline samples scaled 0-1; temperatures span 30-100°C.
+    function spark_of(kind) {
+        if (kind === "cpu") return SysStats.cpu_history.map(v => v / 100);
+        if (kind === "memory") return SysStats.mem_history.map(v => v / 100);
+        if (kind === "temperature") return SysStats.temp_history.map(v => (v - 30) / 70);
+        return [];
+    }
+
     function open_btop() {
         Quickshell.execDetached(["kitty", "btop"]);
         Popups.close();
@@ -82,6 +91,24 @@ Popup {
             spacing: 4
 
             Repeater {
+                model: root.st.level_layout === "capsule" ? root.stat_rows.filter(r => r.kind !== "btop") : []
+
+                Modern.CapsuleSlider {
+                    required property var modelData
+                    Layout.fillWidth: true
+                    interactive: false
+                    glyph: modelData.glyph
+                    label: modelData.kind === "memory" ? "RAM  " + SysStats.mem_used_gb.toFixed(1) + " / " + SysStats.mem_total_gb.toFixed(1) + " GB" : modelData.label
+                    readout_text: root.value_text(modelData.kind)
+                    value: root.meter_value(modelData.kind)
+                    spark: {
+                        const s = root.spark_of(modelData.kind);
+                        return s.length ? s : [root.meter_value(modelData.kind)];
+                    }
+                }
+            }
+
+            Repeater {
                 model: root.stat_rows
 
                 MenuRow {
@@ -91,6 +118,7 @@ Popup {
 
                     readonly property bool is_btop: modelData.kind === "btop"
 
+                    visible: stat_row.is_btop || root.st.level_layout !== "capsule"
                     Layout.fillWidth: true
                     height: Style.px(26)
                     clip: true
@@ -117,7 +145,7 @@ Popup {
                             text: stat_row.modelData.label
                             color: stat_row.fg(root.st.text_fg)
                             font.family: root.st.font_family
-                            font.pixelSize: root.st.font_size - 1
+                            font.pixelSize: root.st.fs(-1)
                         }
 
                         Meter {
@@ -134,7 +162,7 @@ Popup {
                                 + (stat_row.modelData.kind === "memory" ? " (" + SysStats.mem_used_gb.toFixed(1) + "/" + SysStats.mem_total_gb.toFixed(1) + "GB)" : "")
                             color: stat_row.fg(root.st.text_muted)
                             font.family: root.st.font_family
-                            font.pixelSize: root.st.font_size - 2
+                            font.pixelSize: root.st.fs(-2)
                         }
                     }
 

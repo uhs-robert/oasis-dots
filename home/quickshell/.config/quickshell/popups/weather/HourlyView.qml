@@ -74,7 +74,7 @@ Item {
         }
 
         const top_pad = 20;
-        const amount_px = Style.font_size - 3;
+        const amount_px = Style.fs(-3);
         const bottom_pad = root.sub === 1 ? amount_px + 6 : 0;
         const plot_h = h - top_pad - bottom_pad;
         const y_of = v => top_pad + plot_h - ((v - min_v) / (max_v - min_v || 1)) * plot_h;
@@ -93,7 +93,7 @@ Item {
         }
         ctx.globalAlpha = 1;
         ctx.fillStyle = Style.text_muted;
-        ctx.font = (Style.font_size - 2) + "px \"" + Style.font_family + "\"";
+        ctx.font = (Style.fs(-2)) + "px \"" + Style.font_family + "\"";
         ctx.textAlign = "left";
         for (const b of root.day_boundaries) {
             ctx.fillText(b.label, b.index * root.hour_col_w + 3, 12);
@@ -192,7 +192,7 @@ Item {
             text: root.readout
             color: Theme.fg_core
             font.family: Style.font_family
-            font.pixelSize: Style.font_size - 2
+            font.pixelSize: Style.fs(-2)
             elide: Text.ElideRight
         }
 
@@ -287,7 +287,7 @@ Item {
                             text: WeatherState.format_hour(new Date(hour_col.modelData.dt))
                             color: hour_col.index === root.hour_cursor ? Theme.theme_secondary : Style.text_muted
                             font.family: Style.font_family
-                            font.pixelSize: Style.font_size - 2
+                            font.pixelSize: Style.fs(-2)
                         }
                     }
                 }

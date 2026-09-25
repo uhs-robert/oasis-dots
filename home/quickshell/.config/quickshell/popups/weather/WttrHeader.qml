@@ -12,7 +12,7 @@ ColumnLayout {
     readonly property var cur: WeatherState.current
     readonly property bool has: WeatherState.has_data && !!root.cur
     readonly property bool celsius: WeatherState.settings.unit === "celsius"
-    readonly property int text_px: Style.font_size - 4
+    readonly property int text_px: Style.fs(-4)
     readonly property var art_colors: ({ y: Theme.yellow, c: Qt.tint(Theme.fg_core, Qt.alpha(Theme.fg_dim, 0.55)), d: Theme.fg_dim, r: Theme.blue, s: Theme.fg_strong, t: Theme.bright_yellow, f: Theme.fg_dim, u: Theme.fg_muted })
     readonly property var art: WttrArt.arts[root.has ? WttrArt.kind(root.cur.code) : "unknown"]
     // Keys only when the art, a key column and the longest value all fit on one row.
@@ -75,7 +75,7 @@ ColumnLayout {
             text: WttrArt.markup(root.art, root.art_colors)
             color: Style.text_fg
             font.family: Style.font_family
-            font.pixelSize: Style.font_size - 5
+            font.pixelSize: Style.fs(-5)
         }
 
         ColumnLayout {

@@ -47,7 +47,7 @@ Item {
                     style: Text.Raised
                     styleColor: Style.text_shadow
                     font.family: Style.font_family
-                    font.pixelSize: Style.font_size - 2
+                    font.pixelSize: Style.fs(-2)
                 }
 
                 Text {

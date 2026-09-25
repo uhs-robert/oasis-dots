@@ -53,7 +53,8 @@ Item {
 
             Image {
                 id: icon
-                readonly property int implicit_size: root.compact ? 24 : 30
+                // A bar_glyph_size style sizes the art to its glyphs; the art's padding needs ~1.5x.
+                readonly property int implicit_size: Style.bar.bar_glyph_size > 0 ? Math.round(Style.bar_glyph_size * 1.5) : root.compact ? 24 : 30
                 readonly property real dpr: QsWindow.window ? QsWindow.window.devicePixelRatio : 1
 
                 // The icon art has wide padding (more at night), so it draws past its slot.

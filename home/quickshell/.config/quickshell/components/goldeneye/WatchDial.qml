@@ -2,9 +2,8 @@
 import QtQuick
 import QtQuick.Shapes
 import Quickshell.Hyprland
-import Quickshell.Widgets
 import "../../theme"
-import "../../services"
+import ".."
 
 // Bond's pause-menu watch face: a tick per workspace on a shallow arc, apps under their ticks, the laser hand on the focused one.
 Item {
@@ -268,37 +267,10 @@ Item {
                 Repeater {
                     model: slot.modelData.toplevels.values
 
-                    Item {
-                        id: icon_item
-                        required property var modelData
-
-                        width: root.glyph
-                        height: width
-
-                        IconImage {
-                            anchors.centerIn: parent
-                            implicitSize: root.glyph
-                            source: root.host.icon_for(root.host.class_of(icon_item.modelData))
-                        }
-
-                        MouseArea {
-                            anchors.fill: parent
-                            acceptedButtons: Qt.LeftButton | Qt.MiddleButton
-                            onClicked: mouse => {
-                                if (mouse.button === Qt.LeftButton) {
-                                    root.host.focus_toplevel(slot.modelData.id, icon_item.modelData.address);
-                                } else if (mouse.button === Qt.MiddleButton) {
-                                    root.host.close_toplevel(icon_item.modelData.address);
-                                }
-                            }
-                        }
-
-                        HoverHandler {
-                            onHoveredChanged: {
-                                if (hovered) Tooltip.show(icon_item, icon_item.modelData.title, root.host.name_of(icon_item.modelData));
-                                else Tooltip.hide(icon_item);
-                            }
-                        }
+                    WorkspaceIcon {
+                        host: root.host
+                        workspace_id: slot.modelData.id
+                        glyph: root.glyph
                     }
                 }
             }

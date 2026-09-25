@@ -11,6 +11,8 @@ PanelWindow {
 
     property real line_width: 260
     property bool bar_present: true
+    // The bar on this screen shows the submap in a lualine mode chip instead.
+    property bool chip_shown: false
     property string shown_name: ""
     property color shown_color: Theme.theme_secondary
     property real line_progress: 0
@@ -26,24 +28,30 @@ PanelWindow {
     implicitHeight: line.height + tab.height
     mask: Region {}
 
+    onChip_shownChanged: root.sync()
+
     // Keeps the last name and color on screen while the hide animation plays.
+    function sync() {
+        if (!root.bar_present) return;
+        if (SubmapState.active && !root.chip_shown) {
+            root.shown_name = SubmapState.submap_name;
+            root.shown_color = SubmapState.bar_color;
+            hide_anim.stop();
+            if (!root.visible || root.line_progress < 1) {
+                root.visible = true;
+                show_anim.restart();
+            }
+        } else if (root.visible) {
+            show_anim.stop();
+            hide_anim.restart();
+        }
+    }
+
     Connections {
         target: SubmapState
 
         function onSubmap_nameChanged() {
-            if (!root.bar_present) return;
-            if (SubmapState.active) {
-                root.shown_name = SubmapState.submap_name;
-                root.shown_color = SubmapState.submap_color;
-                hide_anim.stop();
-                if (!root.visible || root.line_progress < 1) {
-                    root.visible = true;
-                    show_anim.restart();
-                }
-            } else {
-                show_anim.stop();
-                hide_anim.restart();
-            }
+            root.sync();
         }
     }
 
@@ -113,6 +121,15 @@ PanelWindow {
                     height: 1
                     color: Qt.alpha(root.shown_color, 0.08)
                 }
+            }
+
+            // Under a capsule the tab's top border gives way so its fill meets the line.
+            Rectangle {
+                visible: Style.bar_capsule > 0 && tab.border.width > 0
+                x: tab.border.width
+                width: tab.width - tab.border.width * 2
+                height: tab.border.width
+                color: tab.color
             }
 
             FrameInset {

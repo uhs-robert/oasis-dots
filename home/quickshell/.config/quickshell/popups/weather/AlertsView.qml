@@ -65,7 +65,7 @@ Item {
             text: "THREAT DETECTED" + (root.alerts.length > 1 ? " · " + root.alerts.length : "")
             color: Theme.theme_label
             font.family: Style.font_family
-            font.pixelSize: Style.font_size - 4
+            font.pixelSize: Style.fs(-4)
             font.letterSpacing: 2.5
         }
 
@@ -74,7 +74,7 @@ Item {
             text: root.objectives ? "NO ACTIVE ALERTS" : "No active alerts"
             color: Style.text_dim
             font.family: Style.font_family
-            font.pixelSize: Style.font_size - 1
+            font.pixelSize: Style.fs(-1)
         }
 
         // At most three rows show; the rest scroll so the detail keeps most of the height.
@@ -124,13 +124,13 @@ Item {
                                 text: alert_row.modelData.event.toUpperCase()
                                 color: alert_row.fg(alert_row.index === root.alert_cursor ? Theme.theme_secondary : Theme.fg_core)
                                 font.family: Style.font_family
-                                font.pixelSize: Style.font_size - 2
+                                font.pixelSize: Style.fs(-2)
                             }
                             Text {
                                 text: "attacks!"
                                 color: alert_row.fg(alert_row.index === root.alert_cursor ? Theme.theme_secondary : Theme.fg_core)
                                 font.family: Style.font_family
-                                font.pixelSize: Style.font_size - 2
+                                font.pixelSize: Style.fs(-2)
                             }
                         }
                         Text {
@@ -140,7 +140,7 @@ Item {
                             text: root.objectives ? "OBJECTIVE: AVOID " + alert_row.modelData.event.toUpperCase() : alert_row.modelData.event
                             color: alert_row.fg(root.objectives || root.threat ? Theme.theme_label : alert_row.index === root.alert_cursor ? Theme.theme_secondary : Theme.fg_core)
                             font.family: Style.font_family
-                            font.pixelSize: Style.font_size - 2
+                            font.pixelSize: Style.fs(-2)
                         }
                         Text {
                             Layout.fillWidth: true
@@ -148,7 +148,7 @@ Item {
                             text: root.objectives ? "PRIORITY: " + alert_row.modelData.severity.toUpperCase() + (alert_row.modelData.ends ? " · UNTIL " + root.fmt_time(alert_row.modelData.ends).toUpperCase() : "") : alert_row.modelData.severity
                             color: alert_row.fg(Style.text_muted)
                             font.family: Style.font_family
-                            font.pixelSize: Style.font_size - 4
+                            font.pixelSize: Style.fs(-4)
                         }
                     }
                 }
@@ -190,7 +190,7 @@ Item {
                     text: root.selected ? root.fmt_time(root.selected.onset) + " – " + root.fmt_time(root.selected.ends) + "  ·  " + root.selected.area : ""
                     color: Style.text_muted
                     font.family: Style.font_family
-                    font.pixelSize: Style.font_size - 3
+                    font.pixelSize: Style.fs(-3)
                 }
 
                 Text {
@@ -200,7 +200,7 @@ Item {
                     text: root.selected ? root.unwrap(root.selected.description) : ""
                     color: Theme.fg_core
                     font.family: Style.font_family
-                    font.pixelSize: Style.font_size - 2
+                    font.pixelSize: Style.fs(-2)
                 }
 
                 Text {
@@ -211,7 +211,7 @@ Item {
                     text: root.selected ? (root.objectives ? "ORDERS: " : "What to do: ") + root.unwrap(root.selected.instruction) : ""
                     color: Theme.fg_core
                     font.family: Style.font_family
-                    font.pixelSize: Style.font_size - 2
+                    font.pixelSize: Style.fs(-2)
                 }
             }
         }

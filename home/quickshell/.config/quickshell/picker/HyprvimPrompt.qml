@@ -778,7 +778,7 @@ Popup {
                                 text: Fuzzy.highlight(row.entry.item.label, row.entry.positions, String(row.fg(root.st.text_accent)))
                                 color: row.fg(root.st.text_fg)
                                 font.family: root.st.mono_font
-                                font.pixelSize: root.st.font_size - 1
+                                font.pixelSize: root.st.fs(-1)
                             }
 
                             Text {
@@ -791,7 +791,7 @@ Popup {
                                 color: row.fg(root.st.text_muted)
                                 opacity: 0.7
                                 font.family: root.st.mono_font
-                                font.pixelSize: root.st.font_size - 3
+                                font.pixelSize: root.st.fs(-3)
                             }
 
                             Text {
@@ -804,7 +804,7 @@ Popup {
                                 text: row.entry.item.description
                                 color: row.fg(root.st.text_muted)
                                 font.family: root.st.font_family
-                                font.pixelSize: root.st.font_size - 3
+                                font.pixelSize: root.st.fs(-3)
                             }
 
                             MouseArea {
@@ -831,7 +831,7 @@ Popup {
                 text: root.warn_text !== "" ? root.warn_text : root.loading && root.hint === "" ? "loading..." : ":" + (root.hint_ctx.cmd || "") + " arg " + (root.hint_ctx.pos || "") + ": " + root.hint + (root.loading ? "  (loading...)" : "")
                 color: root.warn_text !== "" ? Theme.warning : root.st.text_muted
                 font.family: root.st.font_family
-                font.pixelSize: root.st.font_size - 3
+                font.pixelSize: root.st.fs(-3)
             }
 
             Rectangle {
@@ -853,7 +853,7 @@ Popup {
                     text: root.spec.label || ""
                     color: root.st.text_accent
                     font.family: root.st.mono_font
-                    font.pixelSize: root.st.font_size - 1
+                    font.pixelSize: root.st.fs(-1)
                     font.bold: true
                 }
 
@@ -870,7 +870,7 @@ Popup {
                     selectionColor: root.st.selection_bg
                     selectedTextColor: root.st.selection_inverse ? root.st.selection_fg : root.st.text_fg
                     font.family: root.st.mono_font
-                    font.pixelSize: root.st.font_size - 1
+                    font.pixelSize: root.st.fs(-1)
                     onTextChanged: {
                         if (root.applying) return;
                         root.cycle_base = null;
@@ -922,7 +922,7 @@ Popup {
                     text: (root.insert ? "INSERT" : "NORMAL") + (root.menu_shown ? "  " + (root.selected >= 0 ? root.selected + 1 + "/" : "") + root.items.length : "")
                     color: root.insert ? root.st.text_accent : root.st.text_primary
                     font.family: root.st.font_family
-                    font.pixelSize: root.st.font_size - 4
+                    font.pixelSize: root.st.fs(-4)
                     font.bold: true
                 }
 
@@ -944,7 +944,7 @@ Popup {
             Keys.onPressed: event => {
                 const ctrl = event.modifiers & Qt.ControlModifier;
                 const k = event.key;
-                const line = root.st.font_size + 4;
+                const line = root.st.fs(4);
                 if (k === Qt.Key_Return || k === Qt.Key_Enter) Popups.close();
                 else if (k === Qt.Key_J || k === Qt.Key_Down) root.scroll_output(line);
                 else if (k === Qt.Key_K || k === Qt.Key_Up) root.scroll_output(-line);
@@ -961,7 +961,7 @@ Popup {
                 text: (root.spec.label || "") + (root.spec.text || "")
                 color: root.st.text_accent
                 font.family: root.st.mono_font
-                font.pixelSize: root.st.font_size - 2
+                font.pixelSize: root.st.fs(-2)
                 font.bold: true
             }
 
@@ -983,7 +983,7 @@ Popup {
                     text: root.output_text
                     color: root.st.text_fg
                     font.family: root.st.mono_font
-                    font.pixelSize: root.st.font_size - 3
+                    font.pixelSize: root.st.fs(-3)
                 }
             }
         }

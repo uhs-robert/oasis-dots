@@ -159,26 +159,12 @@ Popup {
             spacing: 6
 
             // --- Tab row ---
-            RowLayout {
+            TabRows {
                 Layout.fillWidth: true
-                spacing: 4
-
-                Repeater {
-                    model: root.tabs
-
-                    MenuTab {
-                        id: tab_chip
-                        required property string modelData
-                        required property int index
-
-                        Layout.fillWidth: true
-                        implicitHeight: Style.px(26)
-                        label: tab_chip.modelData
-                        active: tab_chip.index === root.current_tab
-                        key: tab_chip.index < 9 ? String(tab_chip.index + 1) : ""
-                        onClicked: root.set_tab(tab_chip.index)
-                    }
-                }
+                labels: root.tabs
+                current: root.current_tab
+                tab_height: Style.px(26)
+                onPicked: index => root.set_tab(index)
             }
 
             // --- Content: fixed height so the popup never resizes between tabs ---
@@ -192,7 +178,7 @@ Popup {
                     text: "No agent sessions"
                     color: root.st.text_dim
                     font.family: root.st.font_family
-                    font.pixelSize: root.st.font_size - 2
+                    font.pixelSize: root.st.fs(-2)
                 }
 
                 ListView {
@@ -230,7 +216,7 @@ Popup {
                                     text: (session_row.modelData.state || "idle").toUpperCase()
                                     color: session_row.fg(root.state_color(session_row.modelData.state))
                                     font.family: root.st.font_family
-                                    font.pixelSize: root.st.font_size - 2
+                                    font.pixelSize: root.st.fs(-2)
                                     font.bold: true
                                 }
 
@@ -241,7 +227,7 @@ Popup {
                                     label: session_row.modelData.title || "Untitled"
                                     color: session_row.fg(root.st.text_fg)
                                     font.family: root.st.font_family
-                                    font.pixelSize: root.st.font_size - 1
+                                    font.pixelSize: root.st.fs(-1)
                                 }
                             }
 
@@ -256,7 +242,7 @@ Popup {
                                     label: (session_row.modelData.agent || "claude") + " · " + (session_row.modelData.project || "") + " · " + (session_row.modelData.where || "") + " · " + root.age(session_row.modelData.since)
                                     color: session_row.fg(root.st.text_muted)
                                     font.family: root.st.font_family
-                                    font.pixelSize: root.st.font_size - 3
+                                    font.pixelSize: root.st.fs(-3)
                                 }
 
                                 Text {
@@ -264,7 +250,7 @@ Popup {
                                     text: session_row.has_context ? session_row.modelData.context_pct + "% · " + root.fmt_tokens(session_row.modelData.context_used) + "/" + root.fmt_tokens(session_row.modelData.context_window) : ""
                                     color: session_row.fg(root.st.text_dim)
                                     font.family: root.st.font_family
-                                    font.pixelSize: root.st.font_size - 4
+                                    font.pixelSize: root.st.fs(-4)
                                 }
                             }
 
@@ -316,7 +302,7 @@ Popup {
                         text: ClaudeUsageState.loading ? "Loading…" : ClaudeUsageState.error ? ClaudeUsageState.error : (ClaudeUsageState.updated > 0 ? "Claude usage · updated " + Qt.formatTime(new Date(ClaudeUsageState.updated), "HH:mm") : "Claude usage")
                         color: ClaudeUsageState.error && !ClaudeUsageState.loading ? Theme.warning : root.st.text_muted
                         font.family: root.st.font_family
-                        font.pixelSize: root.st.font_size - 2
+                        font.pixelSize: root.st.fs(-2)
                         font.bold: true
                     }
 
@@ -327,7 +313,7 @@ Popup {
                         text: ClaudeUsageState.error ? "" : "No usage data yet"
                         color: root.st.text_dim
                         font.family: root.st.font_family
-                        font.pixelSize: root.st.font_size - 1
+                        font.pixelSize: root.st.fs(-1)
                     }
 
                     ListView {
@@ -364,7 +350,7 @@ Popup {
                                         color: root.st.text_fg
                                         font.bold: true
                                         font.family: root.st.font_family
-                                        font.pixelSize: root.st.font_size - 1
+                                        font.pixelSize: root.st.fs(-1)
                                     }
 
                                     Text {
@@ -372,7 +358,7 @@ Popup {
                                         color: root.context_bar_color(usage_row.modelData.percent)
                                         font.bold: true
                                         font.family: root.st.font_family
-                                        font.pixelSize: root.st.font_size - 2
+                                        font.pixelSize: root.st.fs(-2)
                                     }
                                 }
 
@@ -408,7 +394,7 @@ Popup {
                                     text: "resets " + usage_row.modelData.resets
                                     color: root.st.text_dim
                                     font.family: root.st.font_family
-                                    font.pixelSize: root.st.font_size - 3
+                                    font.pixelSize: root.st.fs(-3)
                                 }
                             }
                         }

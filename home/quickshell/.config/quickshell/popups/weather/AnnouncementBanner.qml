@@ -11,15 +11,6 @@ Rectangle {
     property var on_open: function () {}
     readonly property var alert: WeatherState.alerts.length > 0 ? WeatherState.alerts[0] : null
     readonly property color red: Theme.theme_label
-    readonly property var weekday_names: ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"]
-
-    function until(iso) {
-        if (!iso) return "";
-        const d = new Date(iso);
-        const shifted = new Date(d.getTime() + WeatherState.utc_offset * 1000);
-        const day = shifted.toISOString().substr(0, 10) === WeatherState.location_date_str() ? "" : root.weekday_names[shifted.getUTCDay()] + " ";
-        return "UNTIL " + day + WeatherState.fmt_location_time(d).toUpperCase();
-    }
 
     implicitHeight: column.implicitHeight + 2
     color: Qt.alpha(root.red, 0.06)
@@ -47,7 +38,7 @@ Rectangle {
                 text: "BLACK MESA ANNOUNCEMENT SYSTEM"
                 color: Theme.bg_crust
                 font.family: Style.font_family
-                font.pixelSize: Style.font_size - 6
+                font.pixelSize: Style.fs(-6)
                 font.bold: true
                 font.letterSpacing: root.width >= 300 ? 2.8 : 1
             }
@@ -67,16 +58,16 @@ Rectangle {
                 text: root.alert ? root.alert.event + (WeatherState.alerts.length > 1 ? "  +" + (WeatherState.alerts.length - 1) : "") : ""
                 color: root.red
                 font.family: Style.font_family
-                font.pixelSize: Style.font_size - 3
+                font.pixelSize: Style.fs(-3)
                 font.weight: Font.DemiBold
             }
 
             Text {
                 visible: root.alert && root.alert.ends && root.width >= 260
-                text: root.alert ? root.until(root.alert.ends) : ""
+                text: root.alert ? WeatherState.fmt_until(root.alert.ends).toUpperCase() : ""
                 color: root.red
                 font.family: Style.number_font
-                font.pixelSize: Style.font_size - 4
+                font.pixelSize: Style.fs(-4)
                 font.bold: true
                 font.letterSpacing: 0.7
             }

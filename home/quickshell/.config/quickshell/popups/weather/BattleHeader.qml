@@ -51,7 +51,7 @@ Item {
                     text: root.has ? root.cur.cond.toUpperCase() + " APPEARS!" : WeatherState.loading ? "LOADING..." : "NOTHING APPEARS."
                     color: root.has || WeatherState.loading ? Theme.fg_strong : Theme.warning
                     font.family: Style.font_family
-                    font.pixelSize: Style.font_size - 4
+                    font.pixelSize: Style.fs(-4)
                     lineHeight: 1.3
                 }
 
@@ -71,14 +71,14 @@ Item {
                                 text: parent.modelData[0]
                                 color: Style.caret_color
                                 font.family: Style.font_family
-                                font.pixelSize: Style.font_size - 5
+                                font.pixelSize: Style.fs(-5)
                             }
 
                             Text {
                                 text: parent.modelData[1]
                                 color: Theme.fg_strong
                                 font.family: Style.font_family
-                                font.pixelSize: Style.font_size - 5
+                                font.pixelSize: Style.fs(-5)
                             }
                         }
                     }
@@ -91,7 +91,7 @@ Item {
                     text: "STALE DATA"
                     color: Theme.warning
                     font.family: Style.font_family
-                    font.pixelSize: Style.font_size - 5
+                    font.pixelSize: Style.fs(-5)
                 }
             }
         }

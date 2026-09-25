@@ -571,7 +571,7 @@ Popup {
                         : ""
                     color: root.st.text_accent
                     font.family: root.st.font_family
-                    font.pixelSize: root.st.font_size - 2
+                    font.pixelSize: root.st.fs(-2)
                 }
 
                 Text {
@@ -579,7 +579,7 @@ Popup {
                     text: root.wired_device ? "Wired: " + root.wired_device.name + (root.wired_ipv4 ? "  " + root.wired_ipv4 : "") : ""
                     color: root.st.text_accent
                     font.family: root.st.font_family
-                    font.pixelSize: root.st.font_size - 2
+                    font.pixelSize: root.st.fs(-2)
                 }
 
                 Text {
@@ -587,7 +587,7 @@ Popup {
                     text: root.status_text
                     color: root.st.text_muted
                     font.family: root.st.font_family
-                    font.pixelSize: root.st.font_size - 3
+                    font.pixelSize: root.st.fs(-3)
                 }
 
                 Text {
@@ -595,7 +595,7 @@ Popup {
                     text: "Forget " + (root.forget_target ? root.forget_target.name : "this network") + "? y/n"
                     color: Theme.error
                     font.family: root.st.font_family
-                    font.pixelSize: root.st.font_size - 2
+                    font.pixelSize: root.st.fs(-2)
                 }
 
                 ListView {
@@ -654,7 +654,7 @@ Popup {
                                     id: ps1_signal
                                     Ps1.Digits {
                                         text: Codec.freq(net_row.modelData.signalStrength)
-                                        size: root.st.font_size - 7
+                                        size: root.st.fs(-7)
                                         color: net_row.modelData.connected ? Theme.green : Qt.tint(Theme.green, Qt.alpha(root.st.text_dim, 0.5))
                                     }
                                 }
@@ -665,7 +665,7 @@ Popup {
                                 text: root.signal_glyph(net_row.modelData.signalStrength || 0)
                                 color: net_row.fg(net_row.modelData.connected ? root.st.text_primary : root.st.text_fg)
                                 font.family: root.st.font_family
-                                font.pixelSize: root.st.font_size - 1
+                                font.pixelSize: root.st.fs(-1)
                             }
 
                             RowLabel {
@@ -674,7 +674,7 @@ Popup {
                                 label: net_row.is_advanced ? "Advanced…" : net_row.modelData.name
                                 color: net_row.fg(net_row.modelData.connected ? root.st.text_accent : root.st.text_fg)
                                 font.family: root.st.font_family
-                                font.pixelSize: root.st.font_size - 1
+                                font.pixelSize: root.st.fs(-1)
                             }
 
                             Text {
@@ -682,7 +682,7 @@ Popup {
                                 text: Math.round((net_row.modelData.signalStrength || 0) * 100) + "%"
                                 color: net_row.fg(root.st.text_muted)
                                 font.family: root.st.font_family
-                                font.pixelSize: root.st.font_size - 3
+                                font.pixelSize: root.st.fs(-3)
                             }
 
                             Text {
@@ -690,7 +690,7 @@ Popup {
                                 text: ""
                                 color: net_row.fg(root.st.text_muted)
                                 font.family: root.st.font_family
-                                font.pixelSize: root.st.font_size - 2
+                                font.pixelSize: root.st.fs(-2)
                             }
 
                             Text {
@@ -698,7 +698,7 @@ Popup {
                                 text: ""
                                 color: net_row.fg(root.st.text_muted)
                                 font.family: root.st.font_family
-                                font.pixelSize: root.st.font_size - 2
+                                font.pixelSize: root.st.fs(-2)
                             }
 
                             Loader {
@@ -739,7 +739,7 @@ Popup {
                     text: "Select a network in the list to see its details"
                     color: root.st.text_muted
                     font.family: root.st.font_family
-                    font.pixelSize: root.st.font_size - 2
+                    font.pixelSize: root.st.fs(-2)
                 }
 
                 Repeater {
@@ -757,7 +757,7 @@ Popup {
                             text: detail_row.modelData.label
                             color: root.st.text_muted
                             font.family: root.st.font_family
-                            font.pixelSize: root.st.font_size - 2
+                            font.pixelSize: root.st.fs(-2)
                         }
 
                         Text {
@@ -770,7 +770,7 @@ Popup {
                             text: detail_row.modelData.value
                             color: root.st.text_fg
                             font.family: root.st.font_family
-                            font.pixelSize: root.st.font_size - 2
+                            font.pixelSize: root.st.fs(-2)
                         }
                     }
                 }
@@ -789,7 +789,7 @@ Popup {
                     text: !root.details_target || !root.details_target.known ? "Connect to edit settings" : root.details.loaded ? "No saved profile found" : "Loading…"
                     color: root.st.text_muted
                     font.family: root.st.font_family
-                    font.pixelSize: root.st.font_size - 2
+                    font.pixelSize: root.st.fs(-2)
                 }
 
                 ToggleRow {
@@ -826,7 +826,7 @@ Popup {
                         text: "DNS"
                         color: dns_row.fg(root.st.text_strong)
                         font.family: root.st.font_family
-                        font.pixelSize: root.st.font_size - 1
+                        font.pixelSize: root.st.fs(-1)
                     }
 
                     Text {
@@ -839,7 +839,7 @@ Popup {
                         text: root.profile && root.profile.dns.length > 0 ? root.profile.dns.join("\n") : "Auto"
                         color: dns_row.fg(root.profile && root.profile.dns.length > 0 ? root.st.text_fg : root.st.toggle_off)
                         font.family: root.st.font_family
-                        font.pixelSize: root.st.font_size - 2
+                        font.pixelSize: root.st.fs(-2)
                     }
 
                     MouseArea {
@@ -859,7 +859,7 @@ Popup {
                         text: "DNS for " + root.details_ssid
                         color: root.st.text_strong
                         font.family: root.st.font_family
-                        font.pixelSize: root.st.font_size - 1
+                        font.pixelSize: root.st.fs(-1)
                     }
 
                     Rectangle {
@@ -875,7 +875,7 @@ Popup {
                             clip: true
                             color: root.st.text_fg
                             font.family: root.st.font_family
-                            font.pixelSize: root.st.font_size - 1
+                            font.pixelSize: root.st.fs(-1)
                             text: root.dns_text
                             onTextChanged: root.dns_text = text
 
@@ -899,7 +899,7 @@ Popup {
                         text: "Separate with spaces; leave blank for automatic"
                         color: root.st.text_muted
                         font.family: root.st.font_family
-                        font.pixelSize: root.st.font_size - 3
+                        font.pixelSize: root.st.fs(-3)
                     }
 
                     MenuFooter {
@@ -914,7 +914,7 @@ Popup {
                     text: root.profile && root.profile.active ? "Applying…" : "Saving…"
                     color: root.st.text_muted
                     font.family: root.st.font_family
-                    font.pixelSize: root.st.font_size - 3
+                    font.pixelSize: root.st.fs(-3)
                 }
 
                 Text {
@@ -924,7 +924,7 @@ Popup {
                     text: root.setting_error
                     color: Theme.warning
                     font.family: root.st.font_family
-                    font.pixelSize: root.st.font_size - 3
+                    font.pixelSize: root.st.fs(-3)
                 }
             }
 
@@ -950,7 +950,7 @@ Popup {
                 text: root.password_target ? "Password for " + root.password_target.name : ""
                 color: root.st.text_strong
                 font.family: root.st.font_family
-                font.pixelSize: root.st.font_size - 1
+                font.pixelSize: root.st.fs(-1)
             }
 
             Rectangle {
@@ -967,7 +967,7 @@ Popup {
                     echoMode: root.password_visible ? TextInput.Normal : TextInput.Password
                     color: root.st.text_fg
                     font.family: root.st.font_family
-                    font.pixelSize: root.st.font_size - 1
+                    font.pixelSize: root.st.fs(-1)
                     text: root.password_text
                     onTextChanged: root.password_text = text
 
@@ -996,7 +996,7 @@ Popup {
                 text: root.status_text
                 color: root.st.text_muted
                 font.family: root.st.font_family
-                font.pixelSize: root.st.font_size - 3
+                font.pixelSize: root.st.fs(-3)
             }
         }
     }

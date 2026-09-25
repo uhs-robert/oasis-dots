@@ -49,7 +49,7 @@ Item {
         style: Text.Raised
         styleColor: Style.text_shadow
         font.family: Style.font_family
-        font.pixelSize: Style.font_size - 4
+        font.pixelSize: Style.fs(-4)
     }
 
     Snes.SnesWindow {
@@ -101,7 +101,7 @@ Item {
                 text: cell.icon[0]
                 color: cell.icon[1]
                 font.family: Theme.font_family
-                font.pixelSize: Style.font_size - 3
+                font.pixelSize: Style.fs(-3)
             }
 
             RowLabel {
@@ -114,7 +114,7 @@ Item {
                 style: Text.Raised
                 styleColor: Style.text_shadow
                 font.family: Style.font_family
-                font.pixelSize: Style.font_size - 4
+                font.pixelSize: Style.fs(-4)
             }
 
             Text {
@@ -129,7 +129,7 @@ Item {
                 style: Text.Raised
                 styleColor: Style.text_shadow
                 font.family: Style.font_family
-                font.pixelSize: Style.font_size - 5
+                font.pixelSize: Style.fs(-5)
             }
 
             MouseArea {

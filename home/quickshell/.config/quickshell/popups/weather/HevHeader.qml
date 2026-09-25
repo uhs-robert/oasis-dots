@@ -199,7 +199,7 @@ ColumnLayout {
                 text: root.voice[1]
                 color: root.voice_color
                 font.family: Style.font_family
-                font.pixelSize: Style.font_size - 5
+                font.pixelSize: Style.fs(-5)
                 font.bold: true
                 font.letterSpacing: 1.3
             }
@@ -214,7 +214,7 @@ ColumnLayout {
         text: root.has ? root.cur.cond + " · Feels like " + Math.round(root.cur.feels) + "°" + WeatherState.unit_symbol() + " · Wind " + Math.round(root.cur.wind_speed) + " " + WeatherState.wind_unit() + " " + root.compass[Math.round(((root.cur.wind_dir % 360) + 360) % 360 / 22.5) % 16] : ""
         color: root.hl_t
         font.family: Style.font_family
-        font.pixelSize: Style.font_size - 3
+        font.pixelSize: Style.fs(-3)
     }
 
     Text {
@@ -224,7 +224,7 @@ ColumnLayout {
         text: WeatherState.location_name
         color: root.hl_t
         font.family: Style.font_family
-        font.pixelSize: Style.font_size - 4
+        font.pixelSize: Style.fs(-4)
     }
 
     Text {
@@ -234,7 +234,7 @@ ColumnLayout {
         text: (WeatherState.stale ? "Stale data" : "Unavailable") + (WeatherState.error ? ": " + WeatherState.error : "")
         color: Theme.warning
         font.family: Style.font_family
-        font.pixelSize: Style.font_size - 4
+        font.pixelSize: Style.fs(-4)
     }
 
     component Readout: Row {
@@ -265,7 +265,7 @@ ColumnLayout {
     component CapsLabel: Text {
         color: root.hl_t
         font.family: Style.font_family
-        font.pixelSize: Style.font_size - 6
+        font.pixelSize: Style.fs(-6)
         font.bold: true
         font.letterSpacing: 3.2
     }

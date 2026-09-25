@@ -12,7 +12,7 @@ ColumnLayout {
     readonly property var cur: WeatherState.current
     readonly property bool has: WeatherState.has_data && !!root.cur
     readonly property bool roomy: root.width >= 330
-    readonly property int row_px: Style.font_size - 4
+    readonly property int row_px: Style.fs(-4)
     readonly property var rows: !root.has ? [] : [
         ["Humidity:", root.cur.humidity + "%"],
         ["Dewpoint:", Math.round(root.cur.dew_point) + "°"]
@@ -26,7 +26,7 @@ ColumnLayout {
         text: "Current Conditions"
         color: Theme.theme_secondary
         font.family: Style.font_family
-        font.pixelSize: Style.font_size - 1
+        font.pixelSize: Style.fs(-1)
         style: Text.Outline
         styleColor: Theme.bg_shadow
     }

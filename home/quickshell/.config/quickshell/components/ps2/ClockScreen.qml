@@ -75,7 +75,7 @@ Item {
                 text: root.now.getHours() < 12 ? "AM" : "PM"
                 color: Theme.theme_primary_light
                 font.family: Style.font_family
-                font.pixelSize: Style.font_size - 5
+                font.pixelSize: Style.fs(-5)
                 font.letterSpacing: 1.2
             }
         }
@@ -88,7 +88,7 @@ Item {
         text: Qt.formatDate(root.now, "dddd, MMMM d") + (Timezones.abbrev !== "" && !Timezones.is_local ? "  ·  " + Timezones.abbrev : "")
         color: Theme.theme_primary_light
         font.family: Style.font_family
-        font.pixelSize: Style.font_size - 4
+        font.pixelSize: Style.fs(-4)
         font.capitalization: Font.AllUppercase
         font.letterSpacing: 1.5
     }

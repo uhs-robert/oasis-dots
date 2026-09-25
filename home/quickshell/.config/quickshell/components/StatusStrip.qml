@@ -61,7 +61,7 @@ Rectangle {
             text: root.strained ? "SYS STRAIN" : "SYS NOMINAL"
             color: root.state_color
             font.family: root.st.mono_font
-            font.pixelSize: root.st.font_size - 4
+            font.pixelSize: root.st.fs(-4)
             font.letterSpacing: 1.2
         }
 
@@ -77,14 +77,14 @@ Rectangle {
                     text: readout.modelData[0]
                     color: root.st.text_muted
                     font.family: root.st.mono_font
-                    font.pixelSize: root.st.font_size - 4
+                    font.pixelSize: root.st.fs(-4)
                 }
 
                 Text {
                     text: readout.modelData[1]
                     color: root.st.text_fg
                     font.family: root.st.mono_font
-                    font.pixelSize: root.st.font_size - 4
+                    font.pixelSize: root.st.fs(-4)
                 }
             }
         }

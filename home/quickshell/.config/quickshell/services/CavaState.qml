@@ -3,6 +3,7 @@ pragma Singleton
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import "../theme"
 
 // One shared cava process for every screen's border strip, running only while media is
 // playing on AC power. Parses "n;n;...;" stdout lines into a 0..1 levels array.
@@ -11,7 +12,9 @@ Singleton {
 
     readonly property int bar_count: 48
     property var levels: root.zeros()
-    readonly property bool wanted: MediaState.playing && Power.on_ac
+    // Lualine bars count the screens showing their strip; with none, cava does not run.
+    property int lualine_viewers: 0
+    readonly property bool wanted: MediaState.playing && Power.on_ac && (!Style.bar_lualine || root.lualine_viewers > 0)
 
     function zeros() {
         const a = [];

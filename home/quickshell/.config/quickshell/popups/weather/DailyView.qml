@@ -5,6 +5,8 @@ import Quickshell
 import "../../components"
 import "../../theme"
 import "../../services"
+import "../../components/oasis" as Oasis
+import "../../components/modern" as Modern
 
 // One column per day in a window of up to five that the popup scrolls with day_cursor.
 // sub 0: temp band + precip chance. 1: wind. 2: UV. 3: sunshine.
@@ -35,7 +37,11 @@ Item {
     readonly property bool scan: Style.weather_header === "scan"
     // Game Boy: days as a Game Boy Camera photo strip on the week's hi/lo dot scale.
     readonly property bool camera: Style.weather_header === "pokedex" && root.sub === 0
-    readonly property bool custom_column: root.stat_columns || root.ws_panels || root.tower_columns || root.camera
+    // Oasis: range pills over a horizon of weekday names, the selected day rising in sand.
+    readonly property bool dunes: Style.weather_header === "oasis" && root.sub === 0
+    // Modern: raised day columns with a pill label and a range track.
+    readonly property bool pill_columns: Style.weather_header === "hero" && root.sub === 0
+    readonly property bool custom_column: root.stat_columns || root.ws_panels || root.tower_columns || root.camera || root.dunes || root.pill_columns
     // NES: each column in a Dragon Quest window with a cursor on the selected day.
     readonly property bool dq: Style.weather_header === "battle"
     // SNES: columns standing on a Mode 7 floor.
@@ -66,19 +72,19 @@ Item {
     FontMetrics {
         id: label_metrics
         font.family: Style.font_family
-        font.pixelSize: Style.font_size - 2
+        font.pixelSize: Style.fs(-2)
     }
 
     FontMetrics {
         id: table_metrics
         font.family: Style.font_family
-        font.pixelSize: Style.font_size - 4
+        font.pixelSize: Style.fs(-4)
     }
 
     FontMetrics {
         id: small_metrics
         font.family: Style.font_family
-        font.pixelSize: Style.font_size - 5
+        font.pixelSize: Style.fs(-5)
     }
 
     // Columns that fit without clipping their widest label, capped at five.
@@ -115,6 +121,15 @@ Item {
         if (hi <= lo) hi = lo + 1;
         const pad = Math.max(1, (hi - lo) * 0.12);
         return { min: lo - pad, max: hi + pad };
+    }
+
+    // Oasis scales its floating bars to the days in view, so the warmest sits right under its icon.
+    readonly property var window_temp_range: {
+        const days = root.window_days;
+        if (!days || days.length === 0) return { min: 0, max: 1 };
+        const lo = Math.min(...days.map(d => d.min));
+        const hi = Math.max(...days.map(d => d.max));
+        return { min: lo, max: Math.max(hi, lo + 1) };
     }
 
     function inner_top_y(day) {
@@ -178,7 +193,7 @@ Item {
             text: "Extended Forecast"
             color: Theme.theme_secondary
             font.family: Style.font_family
-            font.pixelSize: Style.font_size - 3
+            font.pixelSize: Style.fs(-3)
             style: Text.Outline
             styleColor: Theme.bg_shadow
         }
@@ -335,6 +350,32 @@ Item {
                     }
 
                     Loader {
+                        active: root.dunes
+                        anchors.fill: parent
+                        sourceComponent: Oasis.OasisDay {
+                            day: day_col.modelData
+                            selected: day_col.day_index === root.day_cursor
+                            scale_min: root.window_temp_range.min
+                            scale_max: root.window_temp_range.max
+                            first: day_col.index === 0
+                            last: day_col.index === root.window_days.length - 1
+                            bleed: day_row.spacing / 2
+                        }
+                    }
+
+                    Loader {
+                        active: root.pill_columns
+                        anchors.fill: parent
+                        sourceComponent: Modern.DayColumn {
+                            day: day_col.modelData
+                            label: root.day_label(day_col.modelData, day_col.day_index)
+                            selected: day_col.day_index === root.day_cursor
+                            scale_min: root.week_temp_range.min
+                            scale_max: root.week_temp_range.max
+                        }
+                    }
+
+                    Loader {
                         active: root.ws_panels
                         anchors.fill: parent
                         sourceComponent: WsDayPanel {
@@ -421,7 +462,7 @@ Item {
                                 text: Math.round(day_col.modelData.max) + "°"
                                 color: root.thin_range ? Style.text_strong : Theme.yellow
                                 font.family: Style.font_family
-                                font.pixelSize: Style.font_size - 3
+                                font.pixelSize: Style.fs(-3)
                             }
 
                             Text {
@@ -430,7 +471,7 @@ Item {
                                 text: Math.round(day_col.modelData.min) + "°"
                                 color: root.thin_range ? Style.text_muted : Theme.yellow
                                 font.family: Style.font_family
-                                font.pixelSize: Style.font_size - 3
+                                font.pixelSize: Style.fs(-3)
                             }
                         }
 
@@ -446,7 +487,7 @@ Item {
                                 text: "▲"
                                 rotation: day_col.modelData.wind_dir
                                 color: Theme.cyan
-                                font.pixelSize: Style.font_size - 3
+                                font.pixelSize: Style.fs(-3)
                             }
 
                             Rectangle {
@@ -473,7 +514,7 @@ Item {
                                 text: Math.round(day_col.modelData.wind_speed_max)
                                 color: Theme.cyan
                                 font.family: Style.font_family
-                                font.pixelSize: Style.font_size - 3
+                                font.pixelSize: Style.fs(-3)
                             }
                         }
 
@@ -499,7 +540,7 @@ Item {
                                 text: day_col.modelData.uv_max.toFixed(1)
                                 color: WeatherState.uv_color(day_col.modelData.uv_max)
                                 font.family: Style.font_family
-                                font.pixelSize: Style.font_size - 3
+                                font.pixelSize: Style.fs(-3)
                             }
                         }
 
@@ -525,7 +566,7 @@ Item {
                                 text: day_col.modelData.sunshine_hours.toFixed(1) + "h"
                                 color: Theme.yellow
                                 font.family: Style.font_family
-                                font.pixelSize: Style.font_size - 3
+                                font.pixelSize: Style.fs(-3)
                             }
                         }
 
@@ -536,7 +577,7 @@ Item {
                             text: day_col.modelData.pop + "%"
                             color: Theme.blue
                             font.family: Style.font_family
-                            font.pixelSize: Style.font_size - 2
+                            font.pixelSize: Style.fs(-2)
                         }
 
                         Item {
@@ -567,7 +608,7 @@ Item {
                             text: root.day_label(day_col.modelData, day_col.day_index)
                             color: root.dq ? Theme.fg_strong : day_col.day_index === root.day_cursor ? Theme.theme_secondary : Theme.fg_core
                             font.family: Style.font_family
-                            font.pixelSize: Style.font_size - 2
+                            font.pixelSize: Style.fs(-2)
 
                             Text {
                                 visible: root.dq && day_col.day_index === root.day_cursor && Style.caret_phase
@@ -577,7 +618,7 @@ Item {
                                 text: Style.row_cursor
                                 color: Style.caret_color
                                 font.family: Style.font_family
-                                font.pixelSize: Style.font_size - 5
+                                font.pixelSize: Style.fs(-5)
                             }
                         }
 
@@ -590,7 +631,7 @@ Item {
                             text: "IN PROGRESS"
                             color: Style.accent_color
                             font.family: Style.font_family
-                            font.pixelSize: Style.font_size - 5
+                            font.pixelSize: Style.fs(-5)
                             font.letterSpacing: 1
                         }
                     }
@@ -607,14 +648,14 @@ Item {
                 text: "HI LO °" + WeatherState.unit_symbol() + " · RAIN %"
                 color: Style.shade_2
                 font.family: Style.font_family
-                font.pixelSize: Style.font_size - 5
+                font.pixelSize: Style.fs(-5)
             }
 
             Text {
                 text: Math.round(root.week_low) + "–" + Math.round(root.week_high) + "°" + WeatherState.unit_symbol()
                 color: Style.shade_2
                 font.family: Style.font_family
-                font.pixelSize: Style.font_size - 5
+                font.pixelSize: Style.fs(-5)
             }
         }
 
@@ -642,7 +683,7 @@ Item {
                 text: selected ? selected.cond + " · " + selected.precip.toFixed(2) + (WeatherState.settings.unit === "celsius" ? " mm" : " in") + " · " + (selected.sunrise || "—") + "–" + (selected.sunset || "—") : ""
                 color: Style.text_muted
                 font.family: Style.font_family
-                font.pixelSize: Style.font_size - 3
+                font.pixelSize: Style.fs(-3)
             }
 
             Text {

@@ -78,7 +78,7 @@ RowLayout {
                 text: root.threat ? "THREAT DETECTED" : root.has ? "SCAN COMPLETE" : WeatherState.loading ? "SCANNING" : "SCAN FAILED"
                 color: root.threat ? Theme.theme_label : root.has || WeatherState.loading ? Theme.theme_primary : Theme.warning
                 font.family: Style.font_family
-                font.pixelSize: Style.font_size - 5
+                font.pixelSize: Style.fs(-5)
                 font.letterSpacing: 2.5
             }
 
@@ -87,7 +87,7 @@ RowLayout {
                 text: Math.round(root.has ? root.cur.temp : 0) + "°" + WeatherState.unit_symbol()
                 color: Theme.fg_strong
                 font.family: Style.number_font
-                font.pixelSize: Style.font_size + 4
+                font.pixelSize: Style.fs(4)
             }
         }
 
@@ -108,7 +108,7 @@ RowLayout {
             text: root.log_line
             color: root.has ? Style.text_fg : Style.text_muted
             font.family: Style.font_family
-            font.pixelSize: Style.font_size - 4
+            font.pixelSize: Style.fs(-4)
             lineHeight: 1.1
         }
 
@@ -119,7 +119,7 @@ RowLayout {
             text: "Location: " + WeatherState.location_name
             color: Style.text_muted
             font.family: Style.font_family
-            font.pixelSize: Style.font_size - 5
+            font.pixelSize: Style.fs(-5)
         }
 
         Text {
@@ -129,7 +129,7 @@ RowLayout {
             text: "Stale data" + (WeatherState.error ? ": " + WeatherState.error : "")
             color: Theme.warning
             font.family: Style.font_family
-            font.pixelSize: Style.font_size - 5
+            font.pixelSize: Style.fs(-5)
         }
     }
 }

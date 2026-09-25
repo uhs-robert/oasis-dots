@@ -16,7 +16,7 @@ Item {
     readonly property alias glyph_item: glyph_text
     readonly property alias count_item: count_text
 
-    readonly property real badge_size: Math.max(6, Style.bar_font_size - 3)
+    readonly property real badge_size: Style.bar_badge_size
     readonly property real badge_rise: 3
     readonly property real badge_overlap: 1
 
@@ -31,7 +31,7 @@ Item {
         font.family: Style.bar_font_family
         style: Style.bar_text_style
         styleColor: Style.bar_glow_color
-        font.pixelSize: Theme.glyph_size
+        font.pixelSize: Style.bar_glyph_size
         opacity: root.glyph_opacity
     }
 
