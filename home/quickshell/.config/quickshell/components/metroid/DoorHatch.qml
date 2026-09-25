@@ -140,9 +140,9 @@ Item {
     Text {
         anchors.centerIn: parent
         opacity: 1 - root.open_t
-        visible: opacity > 0
+        visible: opacity > 0 && !root.empty
         text: root.count
-        color: root.empty ? Qt.alpha(Theme.theme_primary_light, 0.55) : Theme.fg_strong
+        color: Theme.fg_strong
         style: Text.Outline
         styleColor: Theme.bg_crust
         font.family: Style.number_font

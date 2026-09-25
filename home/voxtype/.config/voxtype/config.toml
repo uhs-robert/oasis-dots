@@ -317,6 +317,7 @@ backend = "auto"
 threshold = 0.5
 
 [parakeet]
+model = "parakeet-tdt-0.6b-v3"
 streaming = false
 #
 # Per-state icon overrides (optional, takes precedence over theme)

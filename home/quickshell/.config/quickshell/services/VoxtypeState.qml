@@ -19,6 +19,7 @@ Singleton {
         running: true
         stdout: SplitParser {
             onRead: line => {
+                if (!line.startsWith("{")) return;
                 try {
                     const data = JSON.parse(line);
                     root.state = data.alt || data.class || "idle";
