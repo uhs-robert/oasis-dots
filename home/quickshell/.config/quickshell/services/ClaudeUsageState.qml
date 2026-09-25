@@ -20,18 +20,42 @@ Singleton {
     // Warn once per reset window: session at 80%, any weekly limit at 90%.
     readonly property var warnings: root.rows.filter(r => r.percent >= (/session/i.test(r.label) ? 80 : 90))
     readonly property bool warning: root.warnings.length > 0
+    // Persisted so a restart or reload doesn't warn again for the same window.
     property var warned: ({})
 
+    // The reset time wobbles between e.g. "6am" and "5:59am"; round to the hour.
+    function reset_key(resets) {
+        const m = /^(\w+ \d+),?\s*(\d+)(?::(\d+))?\s*(am|pm)/i.exec(resets || "");
+        if (!m) return resets || "";
+        const hour = (parseInt(m[2]) % 12 + (/pm/i.test(m[4]) ? 12 : 0) + (m[3] && parseInt(m[3]) >= 30 ? 1 : 0)) % 24;
+        return m[1] + " " + hour;
+    }
+
+    FileView {
+        id: warned_file
+        path: Quickshell.stateDir + "/claude_usage_warned.json"
+        printErrors: false
+        blockAllReads: true
+        onLoaded: {
+            try {
+                root.warned = JSON.parse(text()) || {};
+            } catch (e) {}
+        }
+        onLoadFailed: error => {}
+    }
+
     onWarningsChanged: {
+        if (root.rows.length === 0) return;
         const next = {};
         for (const r of root.warnings) {
-            const key = r.label + "|" + r.resets;
+            const key = r.label + "|" + root.reset_key(r.resets);
             next[key] = true;
             if (root.warned[key]) continue;
             const urgency = r.percent >= 95 ? "critical" : "normal";
             Quickshell.execDetached(["notify-send", "-a", "Claude usage", "-u", urgency, r.label + " at " + r.percent + "%", r.resets ? "Resets " + r.resets : ""]);
         }
         root.warned = next;
+        warned_file.setText(JSON.stringify(next));
     }
 
     Timer {
