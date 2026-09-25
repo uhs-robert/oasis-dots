@@ -70,6 +70,8 @@ hl.config({
     force_default_wallpaper = 0,
     disable_hyprland_logo = true,
     disable_splash_rendering = true,
+    -- Lets hyprlock take over from a crashed lock screen (run from a TTY).
+    allow_session_lock_restore = true,
   },
 
   -- https://wiki.hypr.land/Configuring/Layouts/Dwindle-Layout/
