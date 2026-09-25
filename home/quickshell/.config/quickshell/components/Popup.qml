@@ -570,7 +570,7 @@ PanelWindow {
                     y: (root.st.fade_fills ? root.st.frame_border_width : 0) + root.st.inset_pad + root.st.lcd_margin * 2 + root.device_top
                     readonly property real reticle_space: root.st.title_reticle.a > 0 ? title_text.implicitHeight + 4 : 0
                     readonly property real lead_space: title_tab.reticle_space + title_index.space
-                    width: root.st.fade_fills ? parent.width - root.st.frame_border_width * 2 : Math.min(title_text.implicitWidth + 20 + title_tab.lead_space, parent.width - title_tab.x * 2)
+                    width: root.st.fade_fills ? parent.width - root.st.frame_border_width * 2 : Math.min(title_metrics.width + 20 + title_tab.lead_space, parent.width - title_tab.x * 2)
                     height: Math.max(title_text.implicitHeight, title_index.space > 0 ? title_index.implicitHeight : 0) + 4
                     color: root.st.fade_fills ? "transparent" : root.st.title_bg
 
@@ -597,13 +597,19 @@ PanelWindow {
                         name: root.popup_name
                     }
 
+                    TextMetrics {
+                        id: title_metrics
+                        font: title_text.font
+                        text: title_text.text
+                    }
+
                     Text {
                         id: title_text
                         anchors.centerIn: root.st.fade_fills ? undefined : parent
                         anchors.horizontalCenterOffset: title_tab.lead_space / 2
                         x: 10 + title_tab.lead_space
                         y: (parent.height - height) / 2
-                        width: Math.min(implicitWidth, parent.width - 20 - title_tab.lead_space)
+                        width: Math.min(title_metrics.width, parent.width - 20 - title_tab.lead_space)
                         elide: Text.ElideRight
                         text: root.st.title_prefix + root.title + (Style.caret_phase ? root.st.title_suffix : " ".repeat(root.st.title_suffix.length))
                         color: root.st.title_fg
