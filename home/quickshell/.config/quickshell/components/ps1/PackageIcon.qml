@@ -10,7 +10,8 @@ Item {
     property string name: ""
     property real size: 20
 
-    readonly property int hash: {
+    // real, not int: hashes above 2^31 would wrap to a negative QML int and index colors[] out of range.
+    readonly property real hash: {
         let h = 5381;
         for (let i = 0; i < root.name.length; i++) h = ((h * 33) ^ root.name.charCodeAt(i)) >>> 0;
         return h;

@@ -230,15 +230,19 @@ Singleton {
         xhr.timeout = root.request_timeout_ms;
         xhr.onreadystatechange = () => {
             if (xhr.readyState !== XMLHttpRequest.DONE) return;
-            if (xhr.status === 200) {
-                try {
-                    const data = JSON.parse(xhr.responseText);
-                    root.handle_forecast(data, location_name, lat, lon);
-                } catch (e) {
-                    root.fail("forecast parse error: " + e);
-                }
-            } else {
+            if (xhr.status !== 200) {
                 root.fail("forecast request failed: " + xhr.status);
+                return;
+            }
+            const body = xhr.responseText;
+            if (!/^\s*[[{]/.test(body || "")) {
+                root.fail("forecast response not JSON (status " + xhr.status + ", " + root.body_snippet(body) + ")");
+                return;
+            }
+            try {
+                root.handle_forecast(JSON.parse(body), location_name, lat, lon);
+            } catch (e) {
+                root.fail("forecast parse error: " + e + " (" + root.body_snippet(body) + ")");
             }
         };
         xhr.onerror = () => root.fail("forecast request network error");
@@ -268,6 +272,12 @@ Singleton {
         } catch (e) {
             root.fail("parse error: " + e);
         }
+    }
+
+    // First bytes of a bad response body, for a one-line log without dumping the whole thing.
+    function body_snippet(text) {
+        if (!text) return "empty body";
+        return "first bytes: " + JSON.stringify(text.trim().slice(0, 60));
     }
 
     function fail(msg) {
