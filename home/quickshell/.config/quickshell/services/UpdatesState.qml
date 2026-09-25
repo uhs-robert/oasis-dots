@@ -3,6 +3,7 @@ pragma Singleton
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import Quickshell.Hyprland
 
 // Official (checkupdates) and AUR (paru -Qua) update counts, ported from the Waybar
 // arch_updates.rb script so the bar has no Ruby dependency.
@@ -120,14 +121,50 @@ Singleton {
     function run_upgrade() {
         if (root.upgrade_running) return;
         root.upgrade_running = true;
+        root.focus_pending = true;
+        root.upgrade_address = "";
+        focus_timeout.restart();
         upgrade_proc.running = true;
+    }
+
+    readonly property string upgrade_class: "quickshell-upgrade"
+    property bool focus_pending: false
+    property string upgrade_address: ""
+
+    function focus_upgrade() {
+        Hyprland.dispatch("hl.dsp.focus({ window = 'address:0x" + root.upgrade_address + "' })");
+    }
+
+    // The popup's layer still holds the keyboard when the window maps; its closing hands focus back.
+    Connections {
+        target: Hyprland
+        enabled: root.focus_pending
+        function onRawEvent(event) {
+            if (event.name === "openwindow") {
+                const parts = event.data.split(",");
+                if (parts[2] !== root.upgrade_class) return;
+                root.upgrade_address = parts[0];
+                root.focus_upgrade();
+            } else if (event.name === "closelayer" && event.data === "quickshell-popup" && root.upgrade_address !== "") {
+                root.focus_upgrade();
+            }
+        }
+    }
+
+    Timer {
+        id: focus_timeout
+        interval: 3000
+        onTriggered: {
+            root.focus_pending = false;
+            root.upgrade_address = "";
+        }
     }
 
     // Hyprland's term wrapper normalizes every terminal to `term -e cmd`, but may hand the
     // window to a running instance and exit at once, so the refresh waits on topgrade itself.
     Process {
         id: upgrade_proc
-        command: ["env", "-u", "TMUX", "-u", "TMUX_PANE", "sh", "-c", "t=\"$HOME/.config/hypr/scripts/term\"; [ -x \"$t\" ] || t=\"${TERMINAL:-kitty}\"; exec \"$t\" -e topgrade"]
+        command: ["env", "-u", "TMUX", "-u", "TMUX_PANE", "sh", "-c", "t=\"$HOME/.config/hypr/scripts/term\"; [ -x \"$t\" ] || t=\"${TERMINAL:-kitty}\"; exec \"$t\" --class " + root.upgrade_class + " -e topgrade"]
         onExited: upgrade_watch.start()
     }
 
