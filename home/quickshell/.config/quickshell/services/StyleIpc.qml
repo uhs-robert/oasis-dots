@@ -1,16 +1,17 @@
 // home/quickshell/.config/quickshell/services/StyleIpc.qml
 import Quickshell.Io
 import "../theme"
+import "../components/transitions"
 
 IpcHandler {
     target: "style"
 
     function set(name: string): void {
-        Style.set(name);
+        Transitions.commit(name);
     }
 
     function cycle(): void {
-        Style.cycle();
+        Transitions.commit(Style.names[(Style.names.indexOf(Style.saved_name) + 1) % Style.names.length]);
     }
 
     function get(): string {

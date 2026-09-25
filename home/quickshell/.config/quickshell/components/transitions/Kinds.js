@@ -21,22 +21,23 @@ const by_style = {
     mech: "trace"
 };
 
+// [cover, reveal] in ms: the old look is covered, the style swaps, then the new one is revealed.
 const durations = {
-    fade: 450,
-    blur: 600,
-    crt: 820,
-    flash: 700,
-    palette: 600,
-    mosaic: 640,
-    flicker: 700,
-    blocks: 650,
-    towers: 850,
-    visor: 800,
-    iris: 900,
-    grid: 700,
-    trace: 800,
-    cursor: 650,
-    sunrise: 850
+    fade: [200, 300],
+    blur: [250, 400],
+    crt: [330, 470],
+    flash: [250, 500],
+    palette: [300, 400],
+    mosaic: [300, 450],
+    flicker: [300, 500],
+    blocks: [300, 450],
+    towers: [350, 550],
+    visor: [350, 550],
+    iris: [400, 500],
+    grid: [300, 450],
+    trace: [350, 500],
+    cursor: [300, 400],
+    sunrise: [400, 600]
 };
 
 // Kinds that redraw the bar itself; the rest paint a cover clipped to the islands.
@@ -47,8 +48,12 @@ function kind_for(name) {
     return by_style[name] || "fade";
 }
 
-function duration(kind) {
-    return durations[kind] || durations.fade;
+function cover(kind) {
+    return (durations[kind] || durations.fade)[0];
+}
+
+function reveal(kind) {
+    return (durations[kind] || durations.fade)[1];
 }
 
 function is_texture(kind) {

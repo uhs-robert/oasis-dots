@@ -128,27 +128,27 @@ function visor(ctx, t, d, w, h, c) {
     ctx.stroke();
 }
 
-// GoldenEye: gun-barrel dots cross to the centre, then the barrel's iris opens.
-function iris(ctx, t, d, w, h, c) {
+// GoldenEye: gun-barrel dots cross to the centre, the iris closes on the old look and opens on the new.
+function iris(ctx, t, cover, reveal, w, h, c) {
     const cx = w / 2;
     const cy = h / 2;
     const r0 = Math.max(2, h * 0.2);
-    const open = ease_in_out(seg(t, 0.45 * d, d));
-    const radius = open > 0 ? r0 + open * (cx + h) : 0;
-    cover_except(ctx, w, h, c, cx, cy, radius, radius);
-    if (open > 0) {
-        ctx.globalAlpha = 1 - open;
+    const far = cx + h;
+    const radius = t < cover ? (1 - ease_in_out(seg(t, 0.5 * cover, cover))) * far : ease_in_out(seg(t, cover, cover + reveal)) * far;
+    if (t >= 0.5 * cover) {
+        cover_except(ctx, w, h, c, cx, cy, radius, radius);
+        ctx.globalAlpha = 1 - radius / far;
         ctx.strokeStyle = c.dim;
         ctx.lineWidth = Math.max(2, h * 0.12);
-        ellipse_path(ctx, cx, cy, radius, radius);
+        ellipse_path(ctx, cx, cy, Math.max(r0, radius), Math.max(r0, radius));
         ctx.stroke();
-        return;
     }
-    const lead = ease_in_out(seg(t, 0, 0.4 * d)) * cx;
+    ctx.globalAlpha = t < cover ? 1 : 1 - seg(t, cover, cover + 0.3 * reveal);
     ctx.fillStyle = c.strong;
+    const lead = ease_in_out(seg(t, 0, 0.5 * cover)) * cx;
     for (let k = 0; k < 3; k++) {
-        const x = lead - k * h * 1.1 * (1 - seg(t, 0.3 * d, 0.4 * d));
-        if (x < -r0) continue;
+        const x = lead - k * h * 1.1 * (1 - seg(t, 0.35 * cover, 0.5 * cover));
+        if (x < -r0 || (k > 0 && t >= 0.5 * cover)) continue;
         ellipse_path(ctx, x, cy, r0, r0);
         ctx.fill();
     }
@@ -250,12 +250,18 @@ function sunrise(ctx, t, d, w, h, c) {
     ctx.fill();
 }
 
-const painters = { blocks: blocks, towers: towers, visor: visor, iris: iris, grid: grid, trace: trace, cursor: cursor, sunrise: sunrise };
+const painters = { blocks: blocks, towers: towers, visor: visor, grid: grid, trace: trace, cursor: cursor, sunrise: sunrise };
 
-function paint(ctx, kind, t, d, w, h, c) {
+// The cover half plays a kind's reveal in reverse; iris has its own two halves.
+function paint(ctx, kind, t, cover, reveal, w, h, c) {
     ctx.save();
     ctx.clearRect(0, 0, w, h);
-    const fn = painters[kind];
-    if (fn) fn(ctx, t, d, w, h, c);
+    if (kind === "iris") {
+        iris(ctx, t, cover, reveal, w, h, c);
+    } else {
+        const fn = painters[kind];
+        const r = t < cover ? reveal * (1 - t / cover) : t - cover;
+        if (fn) fn(ctx, r, reveal, w, h, c);
+    }
     ctx.restore();
 }

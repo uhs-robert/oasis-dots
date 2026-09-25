@@ -10,7 +10,11 @@ Item {
 
     required property Item target
     property string kind: "blocks"
-    property int duration: 650
+    property int cover: 300
+    property int reveal: 450
+    property int start_at: 0
+    // Holds at start_at until released, for the startup intro.
+    property bool hold: false
     property real elapsed
 
     signal finished()
@@ -33,10 +37,13 @@ Item {
 
     onElapsedChanged: canvas.requestPaint()
 
+    Component.onCompleted: root.elapsed = root.start_at
+
     NumberAnimation on elapsed {
-        from: 0
-        to: root.duration
-        duration: root.duration
+        from: root.start_at
+        to: root.cover + root.reveal
+        duration: root.cover + root.reveal - root.start_at
+        running: !root.hold
         onFinished: root.finished()
     }
 
@@ -56,6 +63,6 @@ Item {
             maskEnabled: true
             maskSource: mask
         }
-        onPaint: Covers.paint(canvas.getContext("2d"), root.kind, root.elapsed, root.duration, canvas.width, canvas.height, root.colors)
+        onPaint: Covers.paint(canvas.getContext("2d"), root.kind, root.elapsed, root.cover, root.reveal, canvas.width, canvas.height, root.colors)
     }
 }

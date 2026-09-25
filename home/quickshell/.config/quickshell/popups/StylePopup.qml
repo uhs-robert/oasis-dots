@@ -20,10 +20,10 @@ Popup {
     readonly property bool is_open: Popups.open_name === "style"
     onIs_openChanged: {
         if (is_open) root.selected = Math.max(0, Style.names.indexOf(Style.saved_name));
-        else Style.preview(Style.saved_name);
+        else Transitions.show(Style.saved_name, true);
     }
     // Typing to find only highlights a row; NORMAL-mode navigation (j/k, gg/G, 1-9) still previews live.
-    onSelectedChanged: if (is_open && !root.search_typing) Style.preview(Style.names[root.selected])
+    onSelectedChanged: if (is_open && !root.search_typing) Transitions.show(Style.names[root.selected], false)
     search_enabled: true
     search_starts_open: true
     search_rows: Style.names.map(n => root.label(n))
@@ -32,14 +32,13 @@ Popup {
     // Enter while typing drops to NORMAL on the match and previews it; a second Enter applies.
     onSearch_accept: {
         root.accept_search();
-        Style.preview(Style.names[root.selected]);
-        Transitions.settle();
+        Transitions.show(Style.names[root.selected], true);
     }
     onJump_first: root.selected = 0
     onJump_last: root.selected = Style.names.length - 1
 
     function apply() {
-        Style.set(Style.names[root.selected]);
+        Transitions.commit(Style.names[root.selected]);
         Popups.close();
     }
 

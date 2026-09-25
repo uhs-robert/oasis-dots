@@ -9,18 +9,33 @@ Item {
     required property Item target
     property bool shown: true
     property string kind: "fade"
+    property int start_at: 0
 
-    function play(kind) {
+    function play(kind, start_at) {
         loader.active = false;
         if (!root.shown || root.width <= 0 || root.height <= 0) return;
         root.kind = kind;
+        root.start_at = start_at;
         loader.active = true;
     }
 
+    // Keeps the bar blank until the intro reveals it.
+    function hold_intro() {
+        root.play("fade", Kinds.cover("fade"));
+    }
+
+    Component.onCompleted: if (Transitions.intro) root.hold_intro()
+
     Connections {
         target: Transitions
-        function onPlay(kind) {
-            root.play(kind);
+        function onPlay(kind, start_at) {
+            root.play(kind, start_at);
+        }
+        function onStop() {
+            loader.active = false;
+        }
+        function onIntroChanged() {
+            if (Transitions.intro) root.hold_intro();
         }
     }
 
@@ -36,7 +51,10 @@ Item {
         TextureFx {
             target: root.target
             kind: root.kind
-            duration: Kinds.duration(root.kind)
+            cover: Kinds.cover(root.kind)
+            reveal: Kinds.reveal(root.kind)
+            start_at: root.start_at
+            hold: Transitions.intro
             onFinished: loader.active = false
         }
     }
@@ -46,7 +64,10 @@ Item {
         CoverFx {
             target: root.target
             kind: root.kind
-            duration: Kinds.duration(root.kind)
+            cover: Kinds.cover(root.kind)
+            reveal: Kinds.reveal(root.kind)
+            start_at: root.start_at
+            hold: Transitions.intro
             onFinished: loader.active = false
         }
     }

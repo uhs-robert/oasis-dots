@@ -2374,15 +2374,21 @@ Singleton {
     }
 
     function set(style_name) {
+        const saved = root.save_choice(style_name);
+        if (saved !== "") root.name = saved;
+        return saved !== "";
+    }
+
+    // Saves the choice without changing the displayed style; returns the saved name, or "" if unknown.
+    function save_choice(style_name) {
         if (root.hidden.indexOf(style_name) >= 0) style_name = "oasis";
         if (!(style_name in root.styles)) {
             console.warn("Style: unknown style " + style_name);
-            return false;
+            return "";
         }
-        root.name = style_name;
         root.saved_name = style_name;
         root.save();
-        return true;
+        return style_name;
     }
 
     function set_cava_line(on) {
