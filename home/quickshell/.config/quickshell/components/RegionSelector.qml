@@ -227,6 +227,38 @@ PanelWindow {
         }
 
         Item {
+            id: key_cursor
+            readonly property point at: Screenshot.cursor_point
+            readonly property int arm: 12
+            visible: Screenshot.phase === "select" && Screenshot.cursor_screen === root.screen_name && (Screenshot.keys_moved || Screenshot.anchored)
+
+            Repeater {
+                model: [[-key_cursor.arm - 3, 0, key_cursor.arm, 1], [4, 0, key_cursor.arm, 1], [0, -key_cursor.arm - 3, 1, key_cursor.arm], [0, 4, 1, key_cursor.arm]]
+
+                Rectangle {
+                    required property var modelData
+                    x: key_cursor.at.x + modelData[0]
+                    y: key_cursor.at.y + modelData[1]
+                    width: modelData[2]
+                    height: modelData[3]
+                    color: Style.caret_color
+                    border.width: 0
+                }
+            }
+
+            Rectangle {
+                visible: Screenshot.anchored
+                x: Screenshot.anchor_point.x - 3
+                y: Screenshot.anchor_point.y - 3
+                width: 7
+                height: 7
+                color: "transparent"
+                border.width: 1
+                border.color: Style.accent_color
+            }
+        }
+
+        Item {
             id: loupe
             readonly property real lens: 176
             readonly property real pad: 6
@@ -235,11 +267,11 @@ PanelWindow {
             readonly property int count: Math.floor(loupe.lens / loupe.zoom) % 2 === 0 ? Math.floor(loupe.lens / loupe.zoom) + 1 : Math.floor(loupe.lens / loupe.zoom)
             readonly property int half: (loupe.count - 1) / 2
             readonly property real view: loupe.count * loupe.zoom
-            readonly property point at: Screenshot.lens_point
+            readonly property point at: Screenshot.cursor_point
             readonly property int bx: Math.floor(loupe.at.x * root.buffer_scale)
             readonly property int by: Math.floor(loupe.at.y * root.buffer_scale)
             readonly property real gap: 28
-            visible: Screenshot.lens_on && Screenshot.phase === "select" && Screenshot.lens_screen === root.screen_name && frozen_view.hasContent
+            visible: Screenshot.lens_on && Screenshot.phase === "select" && Screenshot.cursor_screen === root.screen_name && frozen_view.hasContent
             width: loupe.view + loupe.pad * 2
             height: loupe.view + loupe.pad * 2 + coords.implicitHeight + 4
             x: loupe.at.x + loupe.gap + loupe.width <= root.width ? loupe.at.x + loupe.gap : loupe.at.x - loupe.gap - loupe.width
@@ -334,7 +366,7 @@ PanelWindow {
                 anchors.centerIn: parent
                 width: Math.min(implicitWidth, root.width - 56)
                 wrap: false
-                text: Screenshot.phase === "toolbar" ? "h/l move · Enter run · c copy · s save · a annotate · o ocr · r record · Backspace reselect · Esc cancel" : (Screenshot.has_selection ? "hjkl move · HJKL resize · Enter " + (Screenshot.preset !== "" ? Screenshot.preset : "confirm") : "drag select · Enter full screen") + " · m loupe · +/- zoom · Esc cancel"
+                text: Screenshot.phase === "toolbar" ? "h/l move · Enter run · c copy · s save · a annotate · o ocr · r record · Backspace reselect · Esc cancel" : Screenshot.anchored ? "hjkl extend · o swap ends · v drop anchor · Enter " + (Screenshot.preset !== "" ? Screenshot.preset : "confirm") + " · Esc drop anchor" : "drag/hjkl cursor · v/space anchor · Enter full screen · m loupe · +/- zoom · Esc cancel"
             }
         }
     }
@@ -347,12 +379,13 @@ PanelWindow {
         hoverEnabled: true
         onWheel: wheel => Screenshot.step_zoom(wheel.angleDelta.y > 0 ? 1 : wheel.angleDelta.y < 0 ? -1 : 0)
         onPressed: mouse => {
+            Screenshot.anchored = false;
             root.press_point = Qt.point(mouse.x, mouse.y);
             Screenshot.phase = "select";
             Screenshot.set_selection(root.screen_name, mouse.x, mouse.y, 0, 0);
         }
         onPositionChanged: mouse => {
-            Screenshot.set_lens(root.screen_name, mouse.x, mouse.y);
+            Screenshot.set_cursor(root.screen_name, mouse.x, mouse.y, false);
             if (!pressed) return;
             const x = Math.max(0, Math.min(root.width, mouse.x));
             const y = Math.max(0, Math.min(root.height, mouse.y));
@@ -371,15 +404,30 @@ PanelWindow {
         focus: root.keyboard_owner
         Component.onCompleted: if (root.keyboard_owner) keys_item.forceActiveFocus()
 
+        // Direction keys held down, so two of them move the cursor diagonally like the Cursor submap.
+        property var held: ({})
+
+        readonly property string phase: Screenshot.phase
+        onPhaseChanged: keys_item.held = {}
+
+        Keys.onReleased: event => {
+            if (!event.isAutoRepeat) delete keys_item.held[event.key];
+        }
+
         Keys.onPressed: event => {
             const shift = event.modifiers & Qt.ShiftModifier;
-            const step = event.modifiers & Qt.ControlModifier ? 1 : 10;
+            const ctrl = event.modifiers & Qt.ControlModifier;
+            // The Cursor submap's tiers: 10px, Shift 100, Ctrl 1, Ctrl+Shift 300.
+            const step = ctrl && shift ? 300 : shift ? 100 : ctrl ? 1 : 10;
             const toolbar = Screenshot.phase === "toolbar";
             const typed = toolbar ? Screenshot.actions.findIndex(a => a.key === event.text) : -1;
             const dir = { [Qt.Key_H]: [-1, 0], [Qt.Key_Left]: [-1, 0], [Qt.Key_L]: [1, 0], [Qt.Key_Right]: [1, 0], [Qt.Key_K]: [0, -1], [Qt.Key_Up]: [0, -1], [Qt.Key_J]: [0, 1], [Qt.Key_Down]: [0, 1] }[event.key];
             if (Screenshot.phase === "capture") {
                 return;
-            } else if (event.key === Qt.Key_Escape || event.key === Qt.Key_Q) {
+            } else if (event.key === Qt.Key_Escape) {
+                if (!toolbar && Screenshot.anchored) Screenshot.clear_anchor();
+                else Screenshot.cancel();
+            } else if (event.key === Qt.Key_Q) {
                 Screenshot.cancel();
             } else if (event.key === Qt.Key_Plus || event.key === Qt.Key_Equal || event.text === "+" || event.text === "=") {
                 Screenshot.step_zoom(1);
@@ -389,8 +437,9 @@ PanelWindow {
                 Screenshot.lens_on = !Screenshot.lens_on;
             } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
                 if (toolbar) root.run_tool(Screenshot.tool_index);
+                else if (Screenshot.anchored || Screenshot.has_selection) Screenshot.confirm();
                 else {
-                    if (!Screenshot.has_selection) Screenshot.select_screen(root.screen_name);
+                    Screenshot.select_screen(root.screen_name);
                     Screenshot.confirm();
                 }
             } else if (typed >= 0) {
@@ -403,8 +452,18 @@ PanelWindow {
                 const delta = event.key === Qt.Key_Backtab || shift ? -1 : 1;
                 Screenshot.tool_index = (Screenshot.tool_index + delta + Screenshot.actions.length) % Screenshot.actions.length;
             } else if (!toolbar && dir) {
-                if (shift) Screenshot.nudge(0, 0, dir[0] * step, dir[1] * step);
-                else Screenshot.nudge(dir[0] * step, dir[1] * step, 0, 0);
+                keys_item.held[event.key] = dir;
+                let dx = 0;
+                let dy = 0;
+                for (const k in keys_item.held) {
+                    dx += keys_item.held[k][0];
+                    dy += keys_item.held[k][1];
+                }
+                Screenshot.move_cursor(Math.sign(dx) * step, Math.sign(dy) * step);
+            } else if (!toolbar && (event.key === Qt.Key_V || event.key === Qt.Key_Space)) {
+                Screenshot.toggle_anchor();
+            } else if (!toolbar && event.key === Qt.Key_O) {
+                Screenshot.swap_anchor();
             } else {
                 return;
             }

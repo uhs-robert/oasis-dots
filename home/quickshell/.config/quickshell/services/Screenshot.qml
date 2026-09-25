@@ -29,13 +29,18 @@ Singleton {
         { id: "record", key: "r", label: "Record" }
     ]
     property int tool_index: 0
-    // The loupe: on/off, zoom (displayed px per buffer px) and where it looks.
+    // The loupe: on/off and zoom (displayed px per buffer px); it looks at the cursor.
     property bool lens_on: true
     readonly property var zoom_levels: [2, 4, 8, 16]
     property int zoom_index: 1
     readonly property int zoom: root.zoom_levels[root.zoom_index]
-    property string lens_screen: ""
-    property point lens_point: Qt.point(0, 0)
+    // The selector's cursor, moved by the mouse and by hjkl; keys_moved draws it while the pointer rests.
+    property string cursor_screen: ""
+    property point cursor_point: Qt.point(0, 0)
+    property bool keys_moved: false
+    // vim visual: v sets the anchor, the selection spans anchor to cursor.
+    property bool anchored: false
+    property point anchor_point: Qt.point(0, 0)
     property string pending_action: ""
     property string capture_file: ""
 
@@ -85,7 +90,28 @@ Singleton {
         root.sel_screen = "";
         root.sel_rect = Qt.rect(0, 0, 0, 0);
         root.tool_index = 0;
+        root.anchored = false;
+        root.keys_moved = false;
+        if (screen) root.set_cursor(screen.name, screen.width / 2, screen.height / 2, false);
+        pointer_query.running = true;
         root.phase = "select";
+    }
+
+    // Starts the cursor at the real pointer when it is on the focused screen.
+    Process {
+        id: pointer_query
+        command: ["hyprctl", "cursorpos"]
+        stdout: StdioCollector {
+            id: pointer_text
+            onStreamFinished: {
+                const m = pointer_text.text.match(/(-?\d+(?:\.\d+)?)\D+(-?\d+(?:\.\d+)?)/);
+                const s = root.screen_of(root.focus_screen);
+                if (!m || !s || root.keys_moved) return;
+                const x = parseFloat(m[1]) - s.x;
+                const y = parseFloat(m[2]) - s.y;
+                if (x >= 0 && y >= 0 && x < s.width && y < s.height) root.set_cursor(s.name, x, y, false);
+            }
+        }
     }
 
     function cancel() {
@@ -93,6 +119,7 @@ Singleton {
         capture_watchdog.stop();
         root.phase = "";
         root.sel_screen = "";
+        root.anchored = false;
     }
 
     function fail(message) {
@@ -120,27 +147,51 @@ Singleton {
         if (s) root.set_selection(screen_name, 0, 0, s.width, s.height);
     }
 
-    function set_lens(screen_name, x, y) {
-        root.lens_screen = screen_name;
-        root.lens_point = Qt.point(x, y);
+    // Anchored, the cursor stays on the anchor's screen and drags the selection with it.
+    function set_cursor(screen_name, x, y, by_keys) {
+        if (root.anchored && screen_name !== root.cursor_screen) return;
+        const s = root.screen_of(screen_name);
+        if (!s) return;
+        root.cursor_screen = screen_name;
+        root.cursor_point = Qt.point(Math.max(0, Math.min(s.width - 1, x)), Math.max(0, Math.min(s.height - 1, y)));
+        root.keys_moved = by_keys;
+        if (root.anchored) root.span_selection();
+    }
+
+    function move_cursor(dx, dy) {
+        if (root.cursor_screen === "") return;
+        root.set_cursor(root.cursor_screen, root.cursor_point.x + dx, root.cursor_point.y + dy, true);
+    }
+
+    function span_selection() {
+        const a = root.anchor_point;
+        const c = root.cursor_point;
+        root.set_selection(root.cursor_screen, Math.min(a.x, c.x), Math.min(a.y, c.y), Math.abs(c.x - a.x), Math.abs(c.y - a.y));
+    }
+
+    function toggle_anchor() {
+        if (root.anchored) return root.clear_anchor();
+        if (root.cursor_screen === "") return;
+        root.anchor_point = root.cursor_point;
+        root.anchored = true;
+        root.span_selection();
+    }
+
+    function clear_anchor() {
+        root.anchored = false;
+        root.sel_screen = "";
+    }
+
+    function swap_anchor() {
+        if (!root.anchored) return;
+        const a = root.anchor_point;
+        root.anchor_point = root.cursor_point;
+        root.cursor_point = a;
+        root.keys_moved = true;
     }
 
     function step_zoom(delta) {
         root.zoom_index = Math.max(0, Math.min(root.zoom_levels.length - 1, root.zoom_index + delta));
-    }
-
-    // Moves by dx/dy and grows by dw/dh, kept inside the selection's screen; the loupe follows the corner that moved.
-    function nudge(dx, dy, dw, dh) {
-        const s = root.screen_of(root.sel_screen);
-        if (!s || !root.has_selection) return;
-        const r = root.sel_rect;
-        const w = Math.max(2, Math.min(s.width, r.width + dw));
-        const h = Math.max(2, Math.min(s.height, r.height + dh));
-        const x = Math.max(0, Math.min(s.width - w, r.x + dx));
-        const y = Math.max(0, Math.min(s.height - h, r.y + dy));
-        root.sel_rect = Qt.rect(x, y, w, h);
-        const resized = dw !== 0 || dh !== 0;
-        root.set_lens(root.sel_screen, resized ? x + w - 1 : x, resized ? y + h - 1 : y);
     }
 
     // Global logical geometry in slurp's "x,y wxh" form.
