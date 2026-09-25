@@ -1,3 +1,6 @@
+[Audio]
+activateMonitorChannelVolumes=true
+
 [Spectrum]
 spectrumShape=lines
 
