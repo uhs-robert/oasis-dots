@@ -146,9 +146,11 @@ Item {
 
                 readonly property bool is_done: modelData.glyph === KeeptabsState.done_glyph
                 readonly property bool is_wait: modelData.glyph === KeeptabsState.wait_glyph
-                readonly property real content_width: glyph_text.implicitWidth + (count_text.visible ? count_text.implicitWidth * 0.6 : 0)
-                implicitWidth: group.content_width
-                implicitHeight: glyph_text.implicitHeight
+                readonly property Item glyph_text: badge.glyph_item
+                readonly property Item count_text: badge.count_item
+                readonly property real content_width: badge.implicitWidth
+                implicitWidth: badge.implicitWidth
+                implicitHeight: badge.implicitHeight
 
                 // Its slot reaches half the row spacing past each side, or the island's spacing at the module's ends.
                 readonly property var slot: {
@@ -188,31 +190,14 @@ Item {
                     value: group.slot
                 }
 
-                Text {
-                    id: glyph_text
+                BadgedGlyph {
+                    id: badge
+                    glyph: group.modelData.glyph
+                    count: group.modelData.count
+                    tint: group.modelData.color || Theme.theme_primary
                     // Pango rise is in 1/1024 pt; keeptabs uses +-1024 to bob the running icon.
-                    y: -group.modelData.rise / 1024
-                    text: group.modelData.glyph
-                    color: group.modelData.color || Theme.theme_primary
-                    font.family: Style.bar_font_family
-                    style: Style.bar_text_style
-                    styleColor: Style.bar_glow_color
-                    font.pixelSize: Theme.glyph_size
-                    opacity: (group.is_done && pulse_loader.active) || (group.is_wait && root.wait_hides_glyph) ? 0 : 1
-                }
-
-                Text {
-                    id: count_text
-                    visible: group.modelData.count !== ""
-                    x: glyph_text.implicitWidth - implicitWidth * 0.4
-                    y: -3
-                    text: group.modelData.count
-                    color: group.modelData.color || Theme.theme_primary
-                    font.family: Style.bar_font_family
-                    style: Style.bar_text_style
-                    styleColor: Style.bar_glow_color
-                    font.pixelSize: Style.bar_font_size - 3
-                    font.bold: true
+                    glyph_rise: group.modelData.rise
+                    glyph_opacity: (group.is_done && pulse_loader.active) || (group.is_wait && root.wait_hides_glyph) ? 0 : 1
                 }
             }
         }

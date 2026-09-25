@@ -3,6 +3,7 @@ import QtQuick
 import QtQuick.Layouts
 import "../../theme"
 import "../../services"
+import "../../components"
 
 Item {
     id: root
@@ -36,40 +37,6 @@ Item {
         radius: Style.bar_radius(4)
         color: Style.bar_hover_bg
         opacity: hover_handler.hovered ? 0.5 : 0
-    }
-
-    // A glyph with its count as a small badge at the top right, like the keeptabs module.
-    component BadgedGlyph: Item {
-        id: badged
-        property string glyph: ""
-        property string count: ""
-        property color tint: Theme.yellow
-
-        implicitWidth: glyph_text.implicitWidth + count_text.implicitWidth * 0.6
-        implicitHeight: glyph_text.implicitHeight
-
-        Text {
-            id: glyph_text
-            text: badged.glyph
-            color: badged.tint
-            font.family: Style.bar_font_family
-            style: Style.bar_text_style
-            styleColor: Style.bar_glow_color
-            font.pixelSize: Theme.glyph_size
-        }
-
-        Text {
-            id: count_text
-            x: glyph_text.implicitWidth - implicitWidth * 0.4
-            y: -3
-            text: badged.count
-            color: badged.tint
-            font.family: Style.bar_font_family
-            style: Style.bar_text_style
-            styleColor: Style.bar_glow_color
-            font.pixelSize: Style.bar_font_size - 3
-            font.bold: true
-        }
     }
 
     RowLayout {
