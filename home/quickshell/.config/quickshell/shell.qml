@@ -5,6 +5,7 @@ import Quickshell
 import "./bar"
 import "./components"
 import "./components/transitions"
+import "./overview"
 import "./picker"
 import "./popups"
 import "./services"
@@ -105,4 +106,5 @@ ShellRoot {
     NotificationToasts {}
     Osd {}
     WhichKey {}
+    Overview {}
 }
