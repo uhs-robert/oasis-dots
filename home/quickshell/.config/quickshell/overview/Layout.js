@@ -1,6 +1,10 @@
 .pragma library
 
 // Monitors in rows: a monitor starts a new row once it sits below every monitor already in the row.
+function flat(list) {
+    return [].concat(...list);
+}
+
 function bands(groups) {
     const order = groups.map((g, i) => i).sort((a, b) => groups[a].y - groups[b].y || groups[a].x - groups[b].x);
     const out = [];
@@ -61,7 +65,7 @@ function minimap(groups, area_w, area_h, m) {
     const real_w = Math.max(1, Math.max(...groups.map(g => g.x + g.w)) - min_x);
     const band_h = rows_of.map(band => Math.max(...band.map(i => gh[i])));
     const total_h = band_h.reduce((a, b) => a + b, 0) + (rows_of.length - 1) * m.group_gap;
-    const out = empty(groups, groups.flatMap(g => g.tiles));
+    const out = empty(groups, flat(groups.map(g => g.tiles)));
     let y = Math.max(0, (area_h - total_h) / 2);
     rows_of.forEach((band, b) => {
         const xs = [];
@@ -91,7 +95,7 @@ function minimap(groups, area_w, area_h, m) {
 
 // One full-width row per monitor, in mini-map reading order, its name in a column on the left.
 function rows(groups, area_w, area_h, m) {
-    const order = bands(groups).flat();
+    const order = flat(bands(groups));
     const n = Math.max(1, order.length);
     let th = (area_h - (n - 1) * m.group_gap - n * 2 * m.pad) / n;
     for (const i of order) {
@@ -101,7 +105,7 @@ function rows(groups, area_w, area_h, m) {
     th = Math.max(8, th);
     const gh = th + 2 * m.pad;
     const total_h = n * gh + (n - 1) * m.group_gap;
-    const out = empty(groups, groups.flatMap(g => g.tiles));
+    const out = empty(groups, flat(groups.map(g => g.tiles)));
     let y = Math.max(0, (area_h - total_h) / 2);
     for (const i of order) {
         out.group_rects[i] = { x: 0, y: y, w: area_w, h: gh };
@@ -116,7 +120,7 @@ function rows(groups, area_w, area_h, m) {
 
 // Every workspace in one strip along the bottom, scrolled to the selection, which also shows large above it.
 function filmstrip(groups, area_w, area_h, m, tiles, selected) {
-    const order = bands(groups).flat();
+    const order = flat(bands(groups));
     const strip_h = Math.max(48, Math.min(m.strip, area_h * 0.22));
     const th = strip_h - m.label - m.pad;
     const out = empty(groups, tiles);

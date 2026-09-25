@@ -35,7 +35,7 @@ PanelWindow {
     readonly property var tab_order: root.selected_tile ? root.reading_order(root.selected_tile.windows) : []
     readonly property string current_address: root.tab_order.some(w => w.address === root.selected_address) ? root.selected_address : root.tab_order.length > 0 ? root.tab_order[0].address : ""
     readonly property var picked_toplevel: root.picked_address !== "" ? WindowState.find(root.picked_address) : null
-    readonly property var nav_order: Layout.bands(root.groups).flatMap(g => root.groups[g].tiles)
+    readonly property var nav_order: Layout.flat(Layout.flat(Layout.bands(root.groups)).map(g => root.groups[g].tiles))
     readonly property var matches: root.query === "" ? null : root.match_set(root.query)
     readonly property int match_count: root.matches ? Object.keys(root.matches).length : 0
 
@@ -253,7 +253,7 @@ PanelWindow {
                 const at = order.indexOf(from);
                 to = at >= 0 ? order[at + dx] : -1;
             } else {
-                const band_order = Layout.bands(root.groups).flat();
+                const band_order = Layout.flat(Layout.bands(root.groups));
                 const tile = root.tiles[from];
                 const g = band_order.indexOf(tile.group) + dy;
                 if (g >= 0 && g < band_order.length) {
