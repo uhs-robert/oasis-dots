@@ -4,6 +4,7 @@ import QtQuick.Layouts
 import "../components"
 import "../theme"
 import "../services"
+import "../components/transitions"
 
 Popup {
     id: root
@@ -32,6 +33,7 @@ Popup {
     onSearch_accept: {
         root.accept_search();
         Style.preview(Style.names[root.selected]);
+        Transitions.settle();
     }
     onJump_first: root.selected = 0
     onJump_last: root.selected = Style.names.length - 1

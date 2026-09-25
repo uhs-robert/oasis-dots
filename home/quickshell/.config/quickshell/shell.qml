@@ -4,6 +4,7 @@ import QtQuick
 import Quickshell
 import "./bar"
 import "./components"
+import "./components/transitions"
 import "./picker"
 import "./popups"
 import "./services"
@@ -42,6 +43,12 @@ ShellRoot {
                         anchors.fill: parent
                         screen_name: screen_scope.modelData.name
                         rule: screen_scope.rule
+                    }
+
+                    StyleTransition {
+                        anchors.fill: parent
+                        target: bar
+                        shown: screen_scope.has_bar
                     }
                 }
 
