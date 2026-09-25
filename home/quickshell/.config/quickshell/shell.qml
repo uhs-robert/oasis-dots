@@ -83,6 +83,8 @@ ShellRoot {
     Picker {}
     HyprvimPrompt {}
     AppsProvider {}
+    ClipboardProvider {}
+    WindowsProvider {}
     PopupIpc {}
     PickerIpc {}
     BrightnessIpc {}

@@ -18,12 +18,14 @@ Popup {
     anim_scale: 0.3
     preferred_width: 320
     title: root.provider ? root.provider.title.toUpperCase() : "PICKER"
-    footer_hint: "Enter open · Esc normal · q close"
-    footer_override: root.insert ? "Enter open · Esc normal" : ""
-    key_help: ["Enter open", "Up/Down move", "Ctrl+j/k move", "Tab/Shift+Tab next/prev", "Ctrl+u clear", "Esc normal mode", "j/k rows", "h/l columns", "gg/G first/last", "i/a insert", "/ search"].concat(root.provider ? root.provider.actions.map(a => a.key + " " + a.desc) : []).concat(["q/Esc close"]).join(" · ")
+    footer_hint: "Enter " + root.verb + " · Esc normal · q close"
+    footer_override: root.insert ? "Enter " + root.verb + " · Esc normal" : root.action_hint !== "" ? "Enter " + root.verb + " · " + root.action_hint + " · ? help · q close" : ""
+    key_help: ["Enter " + root.verb, "Up/Down move", "Ctrl+j/k move", "Tab/Shift+Tab next/prev", "Ctrl+u clear", "Esc normal mode", "j/k rows", "h/l columns", "gg/G first/last", "i/a insert", "/ search"].concat(root.action_hint !== "" ? [root.action_hint] : []).concat(["q/Esc close"]).join(" · ")
     jumps_enabled: !root.insert
 
     readonly property var provider: Pickers.provider
+    readonly property string verb: root.provider ? root.provider.verb : "open"
+    readonly property string action_hint: root.provider ? root.provider.actions.map(a => a.key + " " + a.desc).join(" · ") : ""
     readonly property bool is_open: Popups.open_name === "picker"
     readonly property int columns: root.dock_bottom && root.provider ? Math.max(1, root.provider.columns) : 1
     readonly property real cell_height: Style.px(30)
@@ -39,10 +41,22 @@ Popup {
     readonly property var results: root.rank(root.provider ? root.provider.items : [], root.query)
     readonly property var selected_item: root.results.length > 0 ? root.results[Math.min(root.selected, root.results.length - 1)].item : null
 
+    property string ranked_query: ""
+    property var shown_results: []
+
+    // A new query starts over; new items under the same query keep the selected item, or its row once it is gone.
     onResultsChanged: {
         root.sync_slots();
-        root.selected = 0;
-        grid.positionViewAtBeginning();
+        const old = root.shown_results[root.selected];
+        root.shown_results = root.results;
+        if (root.query !== root.ranked_query) {
+            root.ranked_query = root.query;
+            root.selected = root.first_index();
+            grid.positionViewAtBeginning();
+            return;
+        }
+        const same = old ? root.results.findIndex(r => r.item.id === old.item.id) : -1;
+        root.selected = same >= 0 ? same : Math.max(0, Math.min(root.selected, root.results.length - 1));
     }
     onSelectedChanged: grid.positionViewAtIndex(root.selected, GridView.Contain)
     onJump_first: root.selected = 0
@@ -52,14 +66,27 @@ Popup {
     onVisibleChanged: if (!visible) root.reset()
     onIs_openChanged: if (is_open) {
         root.reset();
-        root.set_insert(true);
+        root.set_insert(!root.provider || root.provider.starts_insert);
     }
     Component.onCompleted: root.sync_slots()
 
+    Connections {
+        target: Pickers
+
+        function onStep_requested(delta) {
+            root.step(delta);
+        }
+    }
+
     function reset() {
         query_input.text = "";
-        root.selected = 0;
+        root.selected = root.first_index();
         grid.positionViewAtBeginning();
+    }
+
+    function first_index() {
+        if (root.query !== "" || !root.provider) return 0;
+        return Math.max(0, Math.min(root.provider.initial_index, root.results.length - 1));
     }
 
     // One row per result, grown or shrunk at the tail, so delegates outlive a new ranking and just rebind.
@@ -78,18 +105,21 @@ Popup {
         const terms = Fuzzy.terms_of(query);
         const name = root.provider ? root.provider.name : "";
         const use_usage = !!root.provider && root.provider.rank_by_usage;
+        const keep_order = !!root.provider && root.provider.keep_order;
         const out = [];
-        for (const item of items) {
+        for (let i = 0; i < items.length; i++) {
+            const item = items[i];
             const f = use_usage ? Pickers.frecency(name, item.id) : 0;
             const bonus = f > 0 ? 12 * Math.log2(1 + f) : 0;
             if (terms.length === 0) {
-                out.push({ item: item, positions: [], score: bonus });
+                out.push({ item: item, positions: [], score: bonus, order: i });
                 continue;
             }
             const m = Fuzzy.score_item(terms, item);
-            if (m) out.push({ item: item, positions: m.positions, score: m.score + bonus });
+            if (m) out.push({ item: item, positions: m.positions, score: m.score + bonus, order: i });
         }
-        out.sort((a, b) => b.score - a.score || (terms.length > 0 ? a.item.label.length - b.item.label.length : 0) || a.item.label.localeCompare(b.item.label));
+        if (keep_order && terms.length === 0) return out;
+        out.sort((a, b) => b.score - a.score || (keep_order ? a.order - b.order : (terms.length > 0 ? a.item.label.length - b.item.label.length : 0) || a.item.label.localeCompare(b.item.label)));
         return out;
     }
 
@@ -339,6 +369,7 @@ Popup {
                         anchors.verticalCenter: parent.verticalCenter
                         elide: Text.ElideRight
                         text: row.result.item.description || ""
+                        textFormat: Text.PlainText
                         color: row.fg(root.st.text_muted)
                         font.family: root.st.font_family
                         font.pixelSize: root.st.fs(-4)
@@ -369,7 +400,7 @@ Popup {
                 anchors.top: parent.top
                 anchors.bottom: parent.bottom
                 width: parent.width * 0.38 - 8
-                active: !!root.provider && root.provider.preview !== null
+                active: root.visible && !!root.provider && root.provider.preview !== null
                 sourceComponent: root.provider ? root.provider.preview : null
             }
 
@@ -387,6 +418,7 @@ Popup {
             width: parent.width
             elide: Text.ElideRight
             text: root.selected_item && root.selected_item.description ? root.selected_item.description : " "
+            textFormat: Text.PlainText
             color: root.st.text_muted
             font.family: root.st.font_family
             font.pixelSize: root.st.fs(-3)

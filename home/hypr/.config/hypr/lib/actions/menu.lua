@@ -50,9 +50,11 @@ end
 --- Return an action that opens Quickshell's `provider` picker, falling back to `fallback` when it is unavailable.
 --- @param provider string
 --- @param fallback string Shell command, run when the bar is not running or lacks the picker.
+--- @param mode? string Passed to the provider on open, e.g. "move".
 --- @return fun()
-function Menu.picker(provider, fallback)
-  return Cmd.run(Scripts.qs_picker .. " " .. provider .. " '" .. fallback:gsub("'", "'\\''") .. "'")
+function Menu.picker(provider, fallback, mode)
+  local quoted = "'" .. fallback:gsub("'", "'\\''") .. "'"
+  return Cmd.run(Scripts.qs_picker .. " " .. provider .. " " .. quoted .. (mode and (" " .. mode) or ""))
 end
 
 -- Basic Action
@@ -60,7 +62,15 @@ Menu.drun = function() return Menu.picker("apps", show_cmd("drun")) end
 Menu.run = function() return Menu.show("run") end
 Menu.ssh = function() return Menu.show("ssh") end
 Menu.window = function() return Menu.show("window") end
-Menu.hyprwindow = function() return Menu.show("hyprwindow") end
+Menu.hyprwindow = function() return Menu.picker("windows", show_cmd("hyprwindow")) end
+
+--- Return an action that moves the focused window to a picked window's workspace.
+--- @param follow boolean Follow the window to its new workspace.
+--- @return fun()
+function Menu.hyprwindow_move(follow)
+  local mode = follow and "move" or "move-silent"
+  return Menu.picker("windows", Scripts.window_selector .. " --" .. mode, mode)
+end
 
 --- Return an action that picks a $PATH executable and runs it in a terminal.
 --- @return fun()
@@ -81,14 +91,14 @@ function Menu.agents() return Cmd.run("~/.local/bin/keeptabs-pick") end
 --- @return fun()
 function Menu.clipboard()
   local picker = DMENU_CMD .. " -p 'Clipboard'"
-  return Cmd.run("cliphist list | " .. picker .. " | cliphist decode | wl-copy")
+  return Menu.picker("clipboard", "cliphist list | " .. picker .. " | cliphist decode | wl-copy")
 end
 
 --- Return an action that deletes a single clipboard history entry.
 --- @return fun()
 function Menu.clipboard_delete()
   local picker = DMENU_CMD .. " -p 'Delete from clipboard'"
-  return Cmd.run("cliphist list | " .. picker .. " | cliphist delete")
+  return Menu.picker("clipboard", "cliphist list | " .. picker .. " | cliphist delete", "delete")
 end
 
 --- Return an action that opens a zoxide directory in the file manager, or in `app` when given.

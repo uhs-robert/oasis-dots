@@ -1,6 +1,14 @@
 #!/usr/bin/env bash
 # hypr/.config/hypr/scripts/qs-picker
 # Opens a Quickshell picker, or runs the fallback command when no running bar has that picker.
+# Usage: qs-picker <provider> <fallback> [mode]
 provider="$1"
 fallback="$2"
-[ "$("$(dirname "$0")/qs-ipc" call picker open "$provider" 2>/dev/null)" = ok ] || exec sh -c "$fallback"
+mode="${3:-}"
+ipc="$(dirname "$0")/qs-ipc"
+if [ -n "$mode" ]; then
+  result="$("$ipc" call picker open_with "$provider" "$mode" 2>/dev/null)"
+else
+  result="$("$ipc" call picker open "$provider" 2>/dev/null)"
+fi
+[ "$result" = ok ] || exec sh -c "$fallback"

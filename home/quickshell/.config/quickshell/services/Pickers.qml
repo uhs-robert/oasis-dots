@@ -11,12 +11,15 @@ Singleton {
 
     property var providers: ({})
     property string provider_name: ""
+    property string provider_arg: ""
     readonly property var provider: root.providers[root.provider_name] || null
     readonly property bool is_open: Popups.open_name === "picker"
 
     // provider_key -> { count, last_ms }
     property var usage: ({})
     readonly property real half_life_days: 14
+
+    signal step_requested(int delta)
 
     function register(provider) {
         const next = Object.assign({}, root.providers);
@@ -25,16 +28,22 @@ Singleton {
     }
 
     // With an anchor it drops from that island like a popup; without one it docks at the bottom of the focused monitor.
-    function open(name, anchor_item, color, screen_name, back_to) {
+    // `arg` reaches the provider's refresh(), e.g. a mode like "move".
+    function open(name, anchor_item, color, screen_name, back_to, arg) {
         const p = root.providers[name];
         if (!p) {
             console.warn("Pickers: unknown provider " + name);
             return false;
         }
+        if (p.repeat_steps && root.is_open && root.provider_name === name && root.provider_arg === (arg || "") && !anchor_item) {
+            root.step_requested(1);
+            return true;
+        }
         // Closing first resets the query and moves a docked picker to the now-focused monitor.
         root.close();
         root.provider_name = name;
-        p.refresh();
+        root.provider_arg = arg || "";
+        p.refresh(arg || "");
         if (anchor_item) {
             Popups.open("picker", anchor_item, color, screen_name, back_to);
         } else {

@@ -22,11 +22,10 @@ Bind.leader_fn("CTRL + E", Menu.emoji(),     "Emoji Picker")
 Bind.leader_fn("CTRL + P", Menu.bitwarden(), "Passwords")
 
 -- Window Selector / Move
-local function select_window(action) return Scripts.window_selector .. " --" .. action end
 Bind.leader_fn("T",                 Menu.hyprwindow(),               "Find window")
 Bind.fn("ALT + TAB",                Menu.hyprwindow(),               "Find window")
-Bind.leader_cmd("SHIFT + T",        select_window("move"),           "Move to another window")
-Bind.leader_cmd("CTRL + SHIFT + T", select_window("move-silent"),    "Silent move to another window")
+Bind.leader_fn("SHIFT + T",         Menu.hyprwindow_move(true),      "Move to another window")
+Bind.leader_fn("CTRL + SHIFT + T",  Menu.hyprwindow_move(false),     "Silent move to another window")
 
 -- HyprVim Utilities
 local function open_hyprvim_term() require("lua.plugins.hyprvim").command.prompt() end
