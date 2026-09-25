@@ -32,6 +32,7 @@ Item {
         keeptabs: keeptabs_component,
         updates: updates_component,
         voxtype: voxtype_component,
+        recording: recording_component,
         notifications: notifications_component,
         media: media_component
     })
@@ -56,7 +57,7 @@ Item {
     readonly property var right_entries: root.build_entries(root.rule ? root.rule.right : [])
     // Lualine's right-island section for a module; bars.json order is kept inside each, center modules first.
     function lualine_section(base) {
-        return base === "notifications" || base === "clock" ? "z" : ["network", "bluetooth", "voxtype"].indexOf(base) >= 0 ? "y" : "x";
+        return base === "notifications" || base === "clock" ? "z" : ["network", "bluetooth", "recording", "voxtype"].indexOf(base) >= 0 ? "y" : "x";
     }
 
     readonly property bool lists_media: [root.left_entries, root.center_entries, root.right_entries].some(l => l.some(e => e.base === "media"))
@@ -98,6 +99,7 @@ Item {
     Component { id: keeptabs_component; Keeptabs { compact: root.compact; screen_name: root.screen_name } }
     Component { id: updates_component; Updates { compact: root.compact; screen_name: root.screen_name } }
     Component { id: voxtype_component; Voxtype { compact: root.compact } }
+    Component { id: recording_component; Recording { compact: root.compact } }
     Component { id: notifications_component; Notifications { compact: root.compact; screen_name: root.screen_name } }
     Component { id: media_component; Media { compact: root.compact; screen_name: root.screen_name } }
 
@@ -353,9 +355,9 @@ Item {
         else if (Style.bar_lualine && !root.lists_media) Popups.register_default("media", right_island.body_item, right_island.bg_color, root.screen_name);
     }
 
-    // Popup names in bar order for Ctrl+H/L walking; workspaces and voxtype have no popup.
+    // Popup names in bar order for Ctrl+H/L walking; workspaces, voxtype and recording have no popup.
     function popup_names(entries) {
-        return entries.filter(e => e.base !== "workspaces" && e.base !== "voxtype").map(e => e.base);
+        return entries.filter(e => ["workspaces", "voxtype", "recording"].indexOf(e.base) < 0).map(e => e.base);
     }
 
     function sync_popup_order() {
