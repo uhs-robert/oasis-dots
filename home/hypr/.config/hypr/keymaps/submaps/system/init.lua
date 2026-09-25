@@ -48,7 +48,7 @@ Submap.define({
     { "SHIFT + R", require("config.autostart"),         "Replay Autostart" },
     { "P",         Cmd.run(POWER.off),                  "Power Off" },
     { "T",         Cmd.run(CMD.theme_switch),           "Theme Switch" },
-    { "U",         Cmd.term("topgrade"),                "Update System" },
+    { "U",         Cmd.run(Scripts.qs_ipc .. " call popup open updates"), "Update System" },
     { "V",         Cmd.term("voxtype configure"),       "Voxtype Settings" },
     { "SHIFT + V", Cmd.term(CMD.restart_voxtype),       "Voxtype Restart" },
     { "X",         Cmd.run("hyprctl seterror disable"), "Disabled Hypr Errors" },
