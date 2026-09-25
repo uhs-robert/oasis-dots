@@ -1493,7 +1493,7 @@ Singleton {
                     toggle_off: Theme.theme_primary_light,
                     text_shadow: Qt.alpha(Theme.bg_crust, 0.85),
                     bar_font_family: "Nunito",
-                    bar_font_size: Theme.font_size + 1,
+                    bar_font_size: Theme.font_size + 2,
                     bar_side_bg: win_end,
                     bar_center_bg: win_end,
                     bar_fg: Theme.fg_strong,
