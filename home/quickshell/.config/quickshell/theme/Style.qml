@@ -112,6 +112,7 @@ Singleton {
             frame_glow: "transparent",
             scanlines: false,
             scanline_color: "transparent",
+            scanline_period: 3,
             glow: false,
             glow_color: "transparent",
             glow_tint: 0,
@@ -320,6 +321,7 @@ Singleton {
                 frame_glow: "transparent",
                 scanlines: false,
                 scanline_color: "transparent",
+                scanline_period: 3,
                 glow: false,
                 glow_color: "transparent",
                 glow_tint: 0,
@@ -535,6 +537,10 @@ Singleton {
                 bar_inset_gap: 2,
                 bar_inset_width: 2,
                 bar_inset_color: Theme.fg_strong,
+                scanlines: true,
+                scanline_color: Qt.alpha(Theme.bg_shadow, 0.12),
+                scanline_period: 2,
+                bar_scanline_color: Qt.alpha(Theme.bg_shadow, 0.08),
                 card_layout: "dq",
                 controller: "nes",
                 console_views: "nes",
@@ -592,6 +598,10 @@ Singleton {
                 toggle_on: Theme.theme_secondary,
                 toggle_off: Qt.tint(Theme.fg_dim, Qt.alpha(Theme.theme_primary_light, 0.65)),
                 text_shadow: Theme.bg_shadow,
+                scanlines: true,
+                scanline_color: Qt.alpha(Theme.bg_shadow, 0.12),
+                scanline_period: 2,
+                bar_scanline_color: Qt.alpha(Theme.bg_shadow, 0.08),
                 bar_font_family: "Silkscreen",
                 bar_font_size: 16,
                 bar_side_bg: Theme.bg_core,
@@ -1660,6 +1670,8 @@ Singleton {
     readonly property color frame_glow: root.active.frame_glow
     readonly property bool scanlines: root.active.scanlines
     readonly property color scanline_color: root.active.scanline_color
+    // Rows per scanline; 2 cuts every row of a 2x pixel font alike.
+    readonly property int scanline_period: root.active.scanline_period
     readonly property bool glow: root.active.glow
     readonly property color glow_color: root.active.glow_color
     readonly property real glow_tint: root.active.glow_tint

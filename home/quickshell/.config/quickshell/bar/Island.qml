@@ -14,6 +14,7 @@ Item {
     property int border_width: 0
     property color border_color: "transparent"
     property color scanline_color: "transparent"
+    property int scanline_period: 3
     property color shade_color: "transparent"
     property bool shade_vertical: false
     property color dither_color: "transparent"
@@ -188,14 +189,14 @@ Item {
         anchors.fill: parent
 
         Repeater {
-            model: root.scanline_color.a > 0 ? Math.ceil(root.height / 3) : 0
+            model: root.scanline_color.a > 0 ? Math.ceil(root.height / root.scanline_period) : 0
 
             Rectangle {
                 required property int index
-                readonly property real slant: index * 3 * root.cap_width / root.height
+                readonly property real slant: index * root.scanline_period * root.cap_width / root.height
 
                 x: root.cap_left ? slant : 0
-                y: index * 3
+                y: index * root.scanline_period
                 width: root.width - x - (root.cap_right ? slant : 0)
                 height: 1
                 color: root.scanline_color

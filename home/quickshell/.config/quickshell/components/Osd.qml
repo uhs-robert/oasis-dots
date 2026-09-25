@@ -536,13 +536,14 @@ PanelWindow {
         Item {
             visible: Style.scanlines && Style.frame_octagon <= 0
             anchors.fill: parent
+            anchors.margins: frame.radius > 0 ? Style.frame_border_width : 0
 
             Repeater {
-                model: Style.scanlines && Style.frame_octagon <= 0 ? Math.max(0, Math.ceil(parent.height / 3)) : 0
+                model: Style.scanlines && Style.frame_octagon <= 0 ? Math.max(0, Math.ceil(parent.height / Style.scanline_period)) : 0
 
                 Rectangle {
                     required property int index
-                    y: index * 3
+                    y: index * Style.scanline_period
                     width: parent.width
                     height: 1
                     color: Style.scanline_color

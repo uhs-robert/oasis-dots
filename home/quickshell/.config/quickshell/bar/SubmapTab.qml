@@ -104,11 +104,11 @@ PanelWindow {
 
             // Static scanlines; nothing animates them.
             Repeater {
-                model: Style.scanlines ? Math.ceil(tab.height / 3) : 0
+                model: Style.scanlines ? Math.ceil(tab.height / Style.scanline_period) : 0
 
                 Rectangle {
                     required property int index
-                    y: index * 3
+                    y: index * Style.scanline_period
                     width: tab.width
                     height: 1
                     color: Qt.alpha(root.shown_color, 0.08)
