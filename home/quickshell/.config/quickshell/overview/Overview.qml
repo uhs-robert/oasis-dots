@@ -25,6 +25,7 @@ PanelWindow {
     property string selected_address: ""
     property string picked_address: ""
     property bool typing: false
+    property bool help_open: false
     property string query: ""
 
     readonly property var model: root.visible ? root.build(Hyprland.monitors.values, Hyprland.workspaces.values, Hyprland.toplevels.values) : ({ groups: [], tiles: [] })
@@ -105,6 +106,7 @@ PanelWindow {
         root.held_screen_name = target ? target.name : "";
         root.refresh();
         root.picked_address = "";
+        root.help_open = false;
         root.clear_filter();
         const ws = Hyprland.focusedWorkspace;
         root.selected_key = ws ? "ws:" + ws.id : "";
@@ -125,6 +127,7 @@ PanelWindow {
         if (!root.wanted) return;
         root.wanted = false;
         root.typing = false;
+        root.help_open = false;
         reveal_anim.stop();
         if (Power.on_ac && root.visible) {
             reveal_anim.to = 0;
@@ -332,10 +335,27 @@ PanelWindow {
         if (root.visible) keys.forceActiveFocus();
     }
 
+    function show_help() {
+        root.help_open = true;
+        key_help.forceActiveFocus();
+    }
+
+    function hide_help() {
+        root.help_open = false;
+        if (root.typing) filter_input.forceActiveFocus();
+        else keys.forceActiveFocus();
+    }
+
+    function is_help_key(event) {
+        return event.key === Qt.Key_Question || event.text === "?";
+    }
+
     function handle_key(event) {
         const k = event.key;
         if (event.modifiers & (Qt.ControlModifier | Qt.AltModifier)) return;
-        if (k === Qt.Key_Escape) {
+        if (root.is_help_key(event)) {
+            root.show_help();
+        } else if (k === Qt.Key_Escape) {
             if (root.picked_address !== "") root.picked_address = "";
             else if (root.query !== "") root.clear_filter();
             else root.hide_overview();
@@ -382,9 +402,16 @@ PanelWindow {
         }
     }
 
-    readonly property string footer_text: root.typing ? "Enter accept · Tab next match · Esc clear"
-        : root.picked_address !== "" ? "hjkl target · m drop · Enter drop · 1-9 workspace · Esc cancel"
-        : "hjkl move · Tab window · Enter focus · m move · / filter · 1-9 workspace · q close"
+    readonly property string footer_text: root.help_open ? "? back · Esc back · q close"
+        : root.typing ? "Enter accept · Tab next match · Esc clear · ? help"
+        : root.picked_address !== "" ? "hjkl target · m drop · Enter drop · Esc cancel · ? help"
+        : "hjkl move · Tab window · Enter focus · m move · / filter · ? help · q close"
+
+    readonly property string normal_help: "h/j/k/l move between workspaces · Arrows move between workspaces · Tab next window · Shift+Tab previous window · Enter focus window, or the workspace if empty · m pick up window to move · / filter windows · 1-9 select workspace by id · Click focus window or workspace"
+    readonly property string help_text: root.typing ? "Type filter by class or title · Enter accept filter · Tab/Down next match · Shift+Tab/Up previous match · Backspace delete, clears when empty · Esc clear filter"
+        : root.picked_address !== "" ? "h/j/k/l choose target workspace · Arrows choose target workspace · 1-9 target workspace by id · m drop window there · Enter drop window there · Click drop on workspace · Esc cancel move"
+        : root.query !== "" ? "Esc clear filter · / edit filter · " + root.normal_help
+        : root.normal_help
 
     readonly property string status_text: {
         if (root.typing || root.query !== "") return "/" + root.query + (root.typing ? "_" : "") + "  " + root.match_count + " match" + (root.match_count === 1 ? "" : "es");
@@ -466,7 +493,9 @@ PanelWindow {
             }
             Keys.onPressed: event => {
                 const k = event.key;
-                if (k === Qt.Key_Escape) {
+                if (root.is_help_key(event)) {
+                    root.show_help();
+                } else if (k === Qt.Key_Escape) {
                     root.clear_filter();
                 } else if (k === Qt.Key_Return || k === Qt.Key_Enter) {
                     root.accept_filter();
@@ -588,6 +617,22 @@ PanelWindow {
 
             onTile_clicked: root.tile_clicked(root.selected_index, "")
             onWindow_clicked: address => root.tile_clicked(root.selected_index, address)
+        }
+
+        // The full key list for the current mode, drawn over the tiles.
+        Rectangle {
+            visible: root.help_open
+            anchors.fill: parent
+            color: Style.frame_color.a > 0.5 ? Style.frame_color : Theme.bg_crust
+
+            KeyHelp {
+                id: key_help
+                anchors.fill: parent
+                text: root.help_text
+                general: [{ key: "?", desc: "back" }, { key: "Esc", desc: "back" }, { key: "q", desc: "close overview" }]
+                onBack: root.hide_help()
+                onClose_requested: root.hide_overview()
+            }
         }
     }
 }

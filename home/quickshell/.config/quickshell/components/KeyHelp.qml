@@ -14,11 +14,15 @@ Item {
     property int tab_count: 0
     property bool has_views: false
     property bool searchable: false
+    // Replaces the popup's General list outside a Popup; Esc then goes back and q emits close_requested.
+    property var general: null
     signal back()
+    signal close_requested()
 
     readonly property var own_entries: KeyHints.parse(root.text).filter(g => !(g.key === "[ ]" && g.desc === "tabs") && !(/^1-\d$/.test(g.key) && g.desc === "select") && !(g.key === "q" && g.desc === "close"))
     readonly property var own_keys: root.own_entries.reduce((keys, g) => keys.concat(g.key.split("/")), [])
     readonly property var general_entries: {
+        if (root.general !== null) return root.general;
         const e = [];
         if (root.tab_count > 0) {
             e.push({ key: "[ ]", desc: "tabs" });
@@ -57,6 +61,10 @@ Item {
     Keys.onPressed: event => {
         if (event.key === Qt.Key_Question || event.text === "?" || event.key === Qt.Key_Backspace) {
             root.back();
+        } else if (root.general !== null && event.key === Qt.Key_Escape) {
+            root.back();
+        } else if (root.general !== null && event.key === Qt.Key_Q) {
+            root.close_requested();
         } else if (event.key === Qt.Key_Q || event.key === Qt.Key_Escape) {
             Popups.close();
         } else if (event.key === Qt.Key_J || event.key === Qt.Key_Down) {
