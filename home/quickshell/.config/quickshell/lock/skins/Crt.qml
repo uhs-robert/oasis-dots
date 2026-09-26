@@ -33,11 +33,20 @@ Item {
     }
 
     Component.onCompleted: {
-        if (root.animate) power_on.start();
+        if (root.animate && root.phase === "idle") power_on.start();
     }
 
     onPhaseChanged: {
-        if (root.phase === "unlock" && root.animate) power_off.start();
+        if (root.phase === "unlock") {
+            if (root.animate) power_off.start();
+            return;
+        }
+        power_off.stop();
+        tube.xScale = 1;
+        tube.yScale = 1;
+        scr.opacity = 1;
+        flash.opacity = 0;
+        dot.opacity = 0;
     }
 
     Connections {

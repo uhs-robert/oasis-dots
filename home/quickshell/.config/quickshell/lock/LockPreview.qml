@@ -29,6 +29,7 @@ Scope {
     }
 
     function close() {
+        replay.stop();
         root.shown = false;
         loader.source = "";
     }
@@ -50,13 +51,15 @@ Scope {
         if (loader.status === Loader.Error) loader.setSource(Qt.resolvedUrl("LockScreen.qml"), { ctx: fake });
     }
 
+    // Each phase starts from a fresh skin, so an unlock's collapsed tube never carries over.
     function phase(p) {
+        replay.stop();
         root.reset();
+        root.load();
         if (p === "typing") fake.buffer_length = 3;
         else if (p === "wrong") root.fake_fail();
         else if (p === "saver") fake.saver = true;
         else if (p === "unlock") root.fake_unlock();
-        else if (p === "idle") root.load();
     }
 
     function fake_fail() {
