@@ -399,6 +399,7 @@ Singleton {
         failed: root.failed
         fail_count: root.fail_count
         message: root.message !== "" ? root.message : root.pam_error
+        prompt: root.prompt
         caps_lock: root.caps_lock
         typing: root.typing
         granted: root.granted
