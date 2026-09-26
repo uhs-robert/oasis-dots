@@ -56,7 +56,7 @@ Popup {
         if (index === 0) {
             Quickshell.execDetached(["hyprctl", "dispatch", "LayerRules.exec_without_animation('rofi -show drun -theme ~/.config/rofi/themes/oasis-start.rasi')"]);
         } else if (index === 2) {
-            Quickshell.execDetached(["sh", "-c", "~/.config/hypr/scripts/hyprlock-screenshot.lua"]);
+            Quickshell.execDetached(["sh", "-c", "~/.config/hypr/scripts/lock-screen.sh"]);
         } else if (index === 3) {
             Quickshell.execDetached(["sh", "-c", "command -v hyprshutdown >/dev/null 2>&1 && hyprshutdown || hyprctl dispatch \"hl.dsp.exit()\""]);
         } else if (index === 4) {

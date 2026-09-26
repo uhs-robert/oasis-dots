@@ -5,6 +5,7 @@ import Quickshell
 import "./bar"
 import "./components"
 import "./components/transitions"
+import "./lock"
 import "./overview"
 import "./picker"
 import "./popups"
@@ -102,6 +103,7 @@ ShellRoot {
     StyleIpc {}
     PowerIpc {}
     ScreenshotIpc {}
+    LockIpc {}
     TooltipShelf {}
     NotificationToasts {}
     Osd {}
