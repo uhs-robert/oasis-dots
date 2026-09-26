@@ -24,6 +24,7 @@ PanelWindow {
     readonly property real buffer_scale: frozen_view.sourceSize.width > 0 ? frozen_view.sourceSize.width / root.width : root.modelData.devicePixelRatio
     readonly property color dim_color: Qt.alpha(Theme.bg_shadow, 0.6)
     readonly property bool pixel_mode: Screenshot.mode === "pixel"
+    readonly property bool target_mode: Screenshot.mode === "window"
     // The still frame saved at buffer size, which the swatch canvas samples for the hex readout.
     property string pixel_image: ""
     property string pixel_file: ""
@@ -123,6 +124,23 @@ PanelWindow {
             width: parent.width - x
             height: root.sel.height
             color: root.dim_color
+        }
+
+        Repeater {
+            model: root.target_mode ? Screenshot.targets : []
+
+            Rectangle {
+                required property var modelData
+                required property int index
+                visible: modelData.screen === root.screen_name && index !== Screenshot.target_index && Screenshot.phase === "select"
+                x: modelData.rect.x
+                y: modelData.rect.y
+                width: modelData.rect.width
+                height: modelData.rect.height
+                color: "transparent"
+                border.width: 1
+                border.color: Qt.alpha(Style.accent_color, 0.5)
+            }
         }
 
         Item {
@@ -432,7 +450,7 @@ PanelWindow {
                 anchors.centerIn: parent
                 width: Math.min(implicitWidth, root.width - 56)
                 wrap: false
-                text: root.pixel_mode ? "hjkl move · Enter pick · m loupe · +/- zoom · Esc cancel" : Screenshot.phase === "toolbar" ? "h/l move · Enter run · c copy · s save · a annotate · o ocr · r record · Backspace reselect · Esc cancel" : Screenshot.anchored ? "hjkl extend · o swap ends · v drop anchor · Enter " + (Screenshot.preset !== "" ? Screenshot.preset : "confirm") + " · Esc drop anchor" : "drag/hjkl cursor · v/space anchor · Enter full screen · m loupe · +/- zoom · Esc cancel"
+                text: root.target_mode && Screenshot.phase === "select" ? "hjkl/Tab " + Screenshot.mode + " · Enter pick · Esc cancel" : root.pixel_mode ? "hjkl move · Enter pick · m loupe · +/- zoom · Esc cancel" : Screenshot.phase === "toolbar" ? "h/l move · Enter run · c copy · s save · a annotate · o ocr · r record · Backspace reselect · Esc cancel" : Screenshot.anchored ? "hjkl extend · o swap ends · v drop anchor · Enter " + (Screenshot.preset !== "" ? Screenshot.preset : "confirm") + " · Esc drop anchor" : "drag/hjkl cursor · v/space anchor · Enter full screen · m loupe · +/- zoom · Esc cancel"
             }
         }
     }
@@ -445,6 +463,14 @@ PanelWindow {
         hoverEnabled: true
         onWheel: wheel => Screenshot.step_zoom(wheel.angleDelta.y > 0 ? 1 : wheel.angleDelta.y < 0 ? -1 : 0)
         onPressed: mouse => {
+            if (root.target_mode) {
+                const i = Screenshot.target_at(root.screen_name, mouse.x, mouse.y);
+                if (i < 0) return;
+                Screenshot.phase = "select";
+                Screenshot.highlight(i);
+                Screenshot.confirm();
+                return;
+            }
             if (root.pixel_mode) {
                 Screenshot.set_cursor(root.screen_name, mouse.x, mouse.y, false);
                 Screenshot.pick_pixel();
@@ -460,6 +486,11 @@ PanelWindow {
             if (mouse.x === root.last_mouse.x && mouse.y === root.last_mouse.y && !pressed) return;
             root.last_mouse = Qt.point(mouse.x, mouse.y);
             Screenshot.set_cursor(root.screen_name, mouse.x, mouse.y, false);
+            if (root.target_mode && Screenshot.phase === "select") {
+                const i = Screenshot.target_at(root.screen_name, mouse.x, mouse.y);
+                if (i >= 0 && i !== Screenshot.target_index) Screenshot.highlight(i);
+                return;
+            }
             if (!pressed || root.pixel_mode) return;
             const x = Math.max(0, Math.min(root.width, mouse.x));
             const y = Math.max(0, Math.min(root.height, mouse.y));
@@ -467,7 +498,7 @@ PanelWindow {
             Screenshot.set_selection(root.screen_name, Math.min(p.x, x), Math.min(p.y, y), Math.abs(x - p.x), Math.abs(y - p.y));
         }
         onReleased: {
-            if (root.pixel_mode) return;
+            if (root.pixel_mode || root.target_mode) return;
             if (Screenshot.has_selection) Screenshot.confirm();
             else Screenshot.sel_screen = "";
         }
@@ -512,9 +543,13 @@ PanelWindow {
                 Screenshot.lens_on = !Screenshot.lens_on;
             } else if (root.pixel_mode && (event.key === Qt.Key_Return || event.key === Qt.Key_Enter)) {
                 Screenshot.pick_pixel();
+            } else if (!toolbar && root.target_mode && dir) {
+                Screenshot.step_target(dir[0], dir[1]);
+            } else if (!toolbar && root.target_mode && (event.key === Qt.Key_Tab || event.key === Qt.Key_Backtab)) {
+                Screenshot.cycle_target(event.key === Qt.Key_Backtab || shift ? -1 : 1);
             } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
                 if (toolbar) root.run_tool(Screenshot.tool_index);
-                else if (Screenshot.anchored || Screenshot.has_selection) Screenshot.confirm();
+                else if (Screenshot.anchored || Screenshot.has_selection || root.target_mode) Screenshot.confirm();
                 else {
                     Screenshot.select_screen(root.screen_name);
                     Screenshot.confirm();
@@ -537,9 +572,9 @@ PanelWindow {
                     dy += keys_item.held[k][1];
                 }
                 Screenshot.move_cursor(Math.sign(dx) * step, Math.sign(dy) * step);
-            } else if (!toolbar && !root.pixel_mode && (event.key === Qt.Key_V || event.key === Qt.Key_Space)) {
+            } else if (!toolbar && !root.pixel_mode && !root.target_mode && (event.key === Qt.Key_V || event.key === Qt.Key_Space)) {
                 Screenshot.toggle_anchor();
-            } else if (!toolbar && !root.pixel_mode && event.key === Qt.Key_O) {
+            } else if (!toolbar && !root.pixel_mode && !root.target_mode && event.key === Qt.Key_O) {
                 Screenshot.swap_anchor();
             } else {
                 return;

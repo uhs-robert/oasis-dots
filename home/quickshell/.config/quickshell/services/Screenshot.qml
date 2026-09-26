@@ -15,8 +15,11 @@ Singleton {
     property string phase: ""
     readonly property bool selecting: root.phase !== ""
     property bool frozen: false
-    // "region" drags a rect, "pixel" picks a colour from the still frame.
+    // "region" drags a rect, "pixel" picks a colour from the still frame, "window" picks a window's rect.
     property string mode: "region"
+    // Pickable rects for window mode: { screen, rect (screen-local), label }, most recently focused first.
+    property var targets: []
+    property int target_index: -1
     // The centre pixel under the loupe in pixel mode, sampled from the still frame; "" until known.
     property string pixel_hex: ""
     // Runs on confirm instead of showing the toolbar: "" for the toolbar, else a toolbar action.
@@ -90,6 +93,9 @@ Singleton {
         root.lens_on = root.mode === "region" || root.mode === "pixel";
         root.pixel_hex = "";
         if (root.mode === "pixel") frozen = true;
+        root.targets = [];
+        root.target_index = -1;
+        if (root.mode === "window") window_query.running = true;
         const mon = Hyprland.focusedMonitor;
         const screen = (mon && root.screen_of(mon.name)) || Quickshell.screens[0];
         root.focus_screen = screen ? screen.name : "";
@@ -103,6 +109,92 @@ Singleton {
         if (screen) root.set_cursor(screen.name, screen.width / 2, screen.height / 2, false);
         pointer_query.running = true;
         root.phase = "select";
+    }
+
+    // Visible windows on each monitor's shown workspace (and its open special one), clipped to that monitor.
+    Process {
+        id: window_query
+        command: ["sh", "-c", "printf '[%s,%s]' \"$(hyprctl -j monitors)\" \"$(hyprctl -j clients)\""]
+        stdout: StdioCollector {
+            id: window_text
+            onStreamFinished: {
+                if (root.mode !== "window" || root.phase === "") return;
+                try {
+                    const data = JSON.parse(window_text.text);
+                    root.set_targets(root.window_targets(data[0], data[1]), 0);
+                } catch (e) {
+                    console.warn("Screenshot: window list: " + e);
+                }
+            }
+        }
+    }
+
+    function window_targets(monitors, clients) {
+        const shown = {};
+        for (const m of monitors) shown[m.id] = { name: m.name, ws: m.activeWorkspace ? m.activeWorkspace.id : 0, special: m.specialWorkspace ? m.specialWorkspace.id : 0 };
+        const visible = c => {
+            const m = shown[c.monitor];
+            return m && c.mapped && !c.hidden && c.workspace && (c.workspace.id === m.ws || (m.special !== 0 && c.workspace.id === m.special) || c.pinned);
+        };
+        const list = [];
+        for (const c of clients.filter(visible).sort((a, b) => a.focusHistoryID - b.focusHistoryID)) {
+            const s = root.screen_of(shown[c.monitor].name);
+            if (!s) continue;
+            const x0 = Math.max(c.at[0], s.x);
+            const y0 = Math.max(c.at[1], s.y);
+            const x1 = Math.min(c.at[0] + c.size[0], s.x + s.width);
+            const y1 = Math.min(c.at[1] + c.size[1], s.y + s.height);
+            if (x1 - x0 >= 2 && y1 - y0 >= 2) list.push({ screen: s.name, rect: Qt.rect(x0 - s.x, y0 - s.y, x1 - x0, y1 - y0), label: c.class || c.title || "" });
+        }
+        return list;
+    }
+
+    function set_targets(list, first) {
+        root.targets = list;
+        root.highlight(list.length > 0 ? Math.max(0, first) : -1);
+    }
+
+    function highlight(index) {
+        root.target_index = index;
+        const t = root.targets[index];
+        if (t) root.set_selection(t.screen, t.rect.x, t.rect.y, t.rect.width, t.rect.height);
+    }
+
+    function center_of(t) {
+        const s = root.screen_of(t.screen);
+        return Qt.point((s ? s.x : 0) + t.rect.x + t.rect.width / 2, (s ? s.y : 0) + t.rect.y + t.rect.height / 2);
+    }
+
+    // Nearest target in a direction, like Hyprland movefocus: along the axis first, sideways offset weighs double.
+    function step_target(dx, dy) {
+        const from = root.targets[root.target_index];
+        if (!from) return root.highlight(root.targets.length > 0 ? 0 : -1);
+        const c = root.center_of(from);
+        let best = -1;
+        let best_score = Infinity;
+        for (let i = 0; i < root.targets.length; i++) {
+            if (i === root.target_index) continue;
+            const p = root.center_of(root.targets[i]);
+            const along = (p.x - c.x) * dx + (p.y - c.y) * dy;
+            if (along <= 0) continue;
+            const side = Math.abs(dx !== 0 ? p.y - c.y : p.x - c.x);
+            const score = along + side * 2;
+            if (score < best_score) {
+                best_score = score;
+                best = i;
+            }
+        }
+        if (best >= 0) root.highlight(best);
+    }
+
+    function cycle_target(delta) {
+        const n = root.targets.length;
+        if (n > 0) root.highlight(((root.target_index + delta) % n + n) % n);
+    }
+
+    // The most recently focused target under a screen-local point, so floating windows win over tiled ones below.
+    function target_at(screen_name, x, y) {
+        return root.targets.findIndex(t => t.screen === screen_name && x >= t.rect.x && y >= t.rect.y && x < t.rect.x + t.rect.width && y < t.rect.y + t.rect.height);
     }
 
     // Starts the cursor at the real pointer when it is on the focused screen.
