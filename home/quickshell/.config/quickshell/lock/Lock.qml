@@ -314,7 +314,7 @@ Singleton {
                     Component.onCompleted: {
                         screen_loader.setSource(root.skin_url(), { ctx: live_ctx });
                         if (screen_loader.status === Loader.Error) screen_loader.setSource(Qt.resolvedUrl("LockScreen.qml"), { ctx: live_ctx });
-                        if (screen_loader.item && "screen_name" in screen_loader.item) screen_loader.item.screen_name = surface.screen ? surface.screen.name : "";
+                        if (screen_loader.item && "screen_name" in screen_loader.item) screen_loader.item.screen_name = Qt.binding(() => surface.screen ? surface.screen.name : "");
                         const ms = screen_loader.item ? screen_loader.item.unlock_ms : undefined;
                         root.unlock_ms = typeof ms === "number" ? ms : 0;
                     }
