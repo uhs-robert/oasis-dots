@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+# Tracks a Quickshell session lock across qs restarts, so a new qs can take over a lock whose owner died.
+# Usage: lock-flag set <qs pid> | clear | check <qs pid> | hyprlock
+flag="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/qs-session-locked"
+sig=${HYPRLAND_INSTANCE_SIGNATURE:-}
+
+case "$1" in
+set) printf '%s %s\n' "$sig" "$2" >"$flag" ;;
+clear) rm -f "$flag" ;;
+check)
+  [ -f "$flag" ] || exit 0
+  read -r owner_sig owner_pid <"$flag"
+  if [ -z "$sig" ] || [ "$owner_sig" != "$sig" ]; then
+    rm -f "$flag"
+    exit 0
+  fi
+  [ "$owner_pid" = "$2" ] && exit 0
+  case "$(cat "/proc/$owner_pid/comm" 2>/dev/null)" in
+  qs | quickshell) exit 0 ;;
+  esac
+  echo relock
+  ;;
+hyprlock)
+  pidof hyprlock >/dev/null && exit 0
+  hyprlock --immediate-render --no-fade-in && rm -f "$flag"
+  ;;
+*) exit 2 ;;
+esac

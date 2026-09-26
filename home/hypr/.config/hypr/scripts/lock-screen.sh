@@ -7,7 +7,8 @@ pidof hyprlock >/dev/null && exit 0
 
 fallback() {
   pidof hyprlock >/dev/null && exit 0
-  exec hyprlock --immediate-render --no-fade-in
+  hyprlock --immediate-render --no-fade-in && rm -f "${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/qs-session-locked"
+  exit 0
 }
 
 pgrep -x qs >/dev/null || fallback
