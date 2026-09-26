@@ -34,6 +34,25 @@ PanelWindow {
     readonly property var model: root.visible ? root.build(Hyprland.monitors.values, Hyprland.workspaces.values, Hyprland.toplevels.values) : ({ groups: [], tiles: [] })
     readonly property var groups: root.model.groups
     readonly property var tiles: root.model.tiles
+    readonly property var tile_index_of: {
+        const out = {};
+        root.tiles.forEach((t, i) => out[t.key] = i);
+        return out;
+    }
+
+    // Tile delegates live per workspace key; closed windows drop out of marks and the carried set.
+    onTilesChanged: {
+        Layout.sync_keys(tile_slots, root.tiles.map(t => t.key));
+        const known = {};
+        for (const t of root.tiles) for (const w of t.windows) known[w.address] = true;
+        if (root.tiles.length === 0) return;
+        if (root.marks.some(a => !known[a])) root.marks = root.marks.filter(a => known[a]);
+        if (root.picked.some(a => !known[a])) root.picked = root.picked.filter(a => known[a]);
+    }
+
+    ListModel {
+        id: tile_slots
+    }
     readonly property int selected_index: Math.max(0, root.tiles.findIndex(t => t.key === root.selected_key))
     readonly property var selected_tile: root.tiles[root.selected_index] || null
     readonly property var tab_order: root.selected_tile ? root.reading_order(root.selected_tile.windows) : []
@@ -361,16 +380,18 @@ PanelWindow {
         const tile = root.selected_tile;
         const carried = root.alive(root.picked);
         const swap_with = root.swap_address;
+        const moving = tile ? carried.filter(a => !tile.windows.some(w => w.address === a)) : [];
+        if (swap_with === "" && moving.length === 0) {
+            root.cancel_pick();
+            return;
+        }
         root.picked = [];
-        if (!tile || carried.length === 0) return;
         if (swap_with !== "") {
             WindowState.swap(carried[0], swap_with);
             root.selected_address = carried[0];
             refresh_timer.restart();
             return;
         }
-        const moving = carried.filter(a => !tile.windows.some(w => w.address === a));
-        if (moving.length === 0) return;
         for (const a of moving) WindowState.move_to_workspace(a, tile.id, false);
         if (tile.is_new) Hyprland.dispatch("hl.dsp.workspace.move({ workspace = " + tile.id + ", monitor = '" + root.groups[tile.group].name + "' })");
         root.selected_key = "ws:" + tile.id;
@@ -640,12 +661,13 @@ PanelWindow {
         }
 
         Repeater {
-            model: root.tiles
+            model: tile_slots
 
             WorkspaceTile {
                 id: tile
-                required property var modelData
-                required property int index
+                required property string key
+                readonly property int index: root.tile_index_of[tile.key] !== undefined ? root.tile_index_of[tile.key] : -1
+                readonly property var modelData: root.tiles[tile.index] || null
                 readonly property var rect: root.layout.tile_rects[tile.index] || ({ x: 0, y: 0, w: 0, h: 0 })
 
                 x: tile.rect.x
