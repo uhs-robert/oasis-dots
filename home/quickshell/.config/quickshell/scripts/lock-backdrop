@@ -1,0 +1,38 @@
+#!/usr/bin/env bash
+# Screenshots outputs into the runtime dir for the lock backdrop; prints each output name once its file is ready.
+# Usage: lock-backdrop capture <prefix> <output>... | clear <prefix>
+run="${XDG_RUNTIME_DIR:-}"
+[ -n "$run" ] && [ -d "$run" ] || exit 1
+umask 077
+prefix=$2
+case "$prefix" in
+qs-lock | qs-lockpreview) ;;
+*) exit 2 ;;
+esac
+
+clear_files() {
+  rm -f "$run/$prefix"-*.png "$run/$prefix"-*.png.part
+}
+
+case "$1" in
+clear) clear_files ;;
+capture)
+  shift 2
+  clear_files
+  pids=()
+  trap 'kill "${pids[@]}" 2>/dev/null; wait; rm -f "$run/$prefix"-*.png.part; exit 1' TERM INT
+  for name in "$@"; do
+    [[ $name =~ ^[A-Za-z0-9._-]+$ ]] || continue
+    file="$run/$prefix-$name.png"
+    (
+      grim -l 1 -o "$name" "$file.part" 2>/dev/null &
+      grim_pid=$!
+      trap 'kill "$grim_pid" 2>/dev/null; exit 1' TERM
+      wait "$grim_pid" && mv -f "$file.part" "$file" && echo "$name"
+    ) &
+    pids+=($!)
+  done
+  wait
+  ;;
+*) exit 2 ;;
+esac

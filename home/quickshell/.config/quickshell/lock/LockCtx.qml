@@ -35,6 +35,10 @@ QtObject {
     readonly property color tint_base: root.tint_pair[0]
     readonly property color tint_bright: root.tint_pair[1]
     readonly property color tint_strong: root.tint === "primary" ? Theme.theme_primary_strong : root.tint === "secondary" ? Theme.theme_secondary_strong : root.tint_base
+    // Output name to a pre-lock screenshot URL; skins opt in by reading it for their screen_name.
+    property var backdrops: ({})
+    // pixelate, blur or off (Style.lock_backdrop).
+    property string backdrop_mode: Style.lock_backdrop
     // Set by the preview to pin a phase.
     property string forced_phase: ""
 

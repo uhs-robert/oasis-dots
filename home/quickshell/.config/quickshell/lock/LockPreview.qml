@@ -21,14 +21,29 @@ Scope {
     function open(name, tint) {
         const style_name = name === "" || name === "follow" ? Style.lock_name : name;
         if (style_name !== "simple" && !(style_name in Style.styles)) return "unknown";
-        const mon = Hyprland.focusedMonitor;
-        root.held_screen_name = mon ? mon.name : "";
         root.skin = style_name;
         root.tint = tint || "";
         root.reset();
+        // Already shown: a new screenshot would catch the preview itself, so keep the one taken.
+        if (root.shown) {
+            root.load();
+            return "ok";
+        }
+        if (capture.running) return "ok";
+        const mon = Hyprland.focusedMonitor;
+        root.held_screen_name = mon ? mon.name : "";
+        fake.backdrops = {};
+        if (!Lock.wants_backdrop(style_name)) {
+            root.show();
+            return "ok";
+        }
+        capture.start(root.held_screen_name !== "" ? [root.held_screen_name] : Quickshell.screens.map(s => s.name));
+        return "ok";
+    }
+
+    function show() {
         root.shown = true;
         root.load();
-        return "ok";
     }
 
     function close() {
@@ -36,6 +51,8 @@ Scope {
         root.shown = false;
         root.tint = "";
         loader.source = "";
+        fake.backdrops = {};
+        capture.clear();
     }
 
     function reset() {
@@ -52,11 +69,12 @@ Scope {
     function load() {
         if (root.skin === "simple") {
             loader.setSource(Qt.resolvedUrl("LockScreen.qml"), { ctx: fake });
-            return;
+        } else {
+            const file = root.skin.charAt(0).toUpperCase() + root.skin.slice(1) + ".qml";
+            loader.setSource(Qt.resolvedUrl("skins/" + file), { ctx: fake });
+            if (loader.status === Loader.Error) loader.setSource(Qt.resolvedUrl("LockScreen.qml"), { ctx: fake });
         }
-        const file = root.skin.charAt(0).toUpperCase() + root.skin.slice(1) + ".qml";
-        loader.setSource(Qt.resolvedUrl("skins/" + file), { ctx: fake });
-        if (loader.status === Loader.Error) loader.setSource(Qt.resolvedUrl("LockScreen.qml"), { ctx: fake });
+        if (loader.item && "screen_name" in loader.item) loader.item.screen_name = root.held_screen_name;
     }
 
     // Each phase starts from a fresh skin, so an unlock's collapsed tube never carries over.
@@ -92,6 +110,15 @@ Scope {
         id: fake
         typing: true
         tint: root.tint !== "" ? root.tint : Style.lock_tint
+    }
+
+    LockCapture {
+        id: capture
+        prefix: "qs-lockpreview"
+        onFinished: files => {
+            fake.backdrops = files;
+            root.show();
+        }
     }
 
     Timer {

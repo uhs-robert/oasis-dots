@@ -2397,6 +2397,9 @@ Singleton {
     // The lock skins' colour family.
     property string lock_tint: "primary"
     readonly property var lock_tints: ["primary", "secondary", "green", "amber", "white"]
+    // What the simple lock draws behind its card: the desktop pixelated, blurred, or nothing.
+    property string lock_backdrop: "pixelate"
+    readonly property var lock_backdrops: ["pixelate", "blur", "off"]
 
     function valid_lock_style(style_name) {
         return style_name === "follow" || style_name === "simple" || (style_name in root.styles && root.hidden.indexOf(style_name) < 0);
@@ -2416,13 +2419,20 @@ Singleton {
         return true;
     }
 
+    function set_lock_backdrop(mode) {
+        if (root.lock_backdrops.indexOf(mode) < 0) return false;
+        root.lock_backdrop = mode;
+        root.save();
+        return true;
+    }
+
     function set_cava_line(on) {
         root.cava_line = on;
         root.save();
     }
 
     function save() {
-        state_file.setText(JSON.stringify({ style: root.saved_name, cava_line: root.cava_line, lock_style: root.lock_style, lock_tint: root.lock_tint }));
+        state_file.setText(JSON.stringify({ style: root.saved_name, cava_line: root.cava_line, lock_style: root.lock_style, lock_tint: root.lock_tint, lock_backdrop: root.lock_backdrop }));
     }
 
     function preview(style_name) {
@@ -2456,6 +2466,7 @@ Singleton {
                 root.cava_line = data.cava_line !== false;
                 if (typeof data.lock_style === "string" && root.valid_lock_style(data.lock_style)) root.lock_style = data.lock_style;
                 if (root.lock_tints.indexOf(data.lock_tint) >= 0) root.lock_tint = data.lock_tint;
+                if (root.lock_backdrops.indexOf(data.lock_backdrop) >= 0) root.lock_backdrop = data.lock_backdrop;
                 if (typeof saved === "string" && saved in root.styles && root.hidden.indexOf(saved) < 0) {
                     root.name = saved;
                     root.saved_name = saved;
