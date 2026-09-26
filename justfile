@@ -82,3 +82,27 @@ update-repos:
         echo "skip: not on a branch (pinned to $(git -C "$dir" describe --tags --always))"
       fi
     done
+
+# Stage the Quickshell greeter (lock skins, theme, fonts, your lock style) and print its sudo install commands; --install runs them
+greeter-sync *ARGS:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    source lib/greeter.sh
+    stage="${XDG_CACHE_HOME:-$HOME/.cache}/dotfiles/greeter"
+    skin=$(stage_greeter "$stage" "$PWD")
+    echo "Staged greeter in $stage (skin: $skin)"
+    if [[ " {{ARGS}} " == *" --install "* ]]; then
+      while read -r cmd; do echo "+ $cmd"; eval "$cmd"; done < <(greeter_install_cmds "$stage" "$PWD")
+    else
+      echo "Install with:"
+      greeter_install_cmds "$stage" "$PWD" | sed 's/^/  /'
+    fi
+
+# Run the staged greeter in a window with a fake greetd: any password logs in except "wrong"; Esc quits
+greeter-preview:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    source lib/greeter.sh
+    stage="${XDG_CACHE_HOME:-$HOME/.cache}/dotfiles/greeter"
+    stage_greeter "$stage" "$PWD" >/dev/null
+    env -u GREETD_SOCK -u QS_GREETER_STATE qs -p "$stage"

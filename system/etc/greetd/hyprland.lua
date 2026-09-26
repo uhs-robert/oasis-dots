@@ -29,6 +29,8 @@ hl.bind(
 hl.bind("SUPER + X", hl.dsp.window.kill())
 hl.bind("SUPER + F", hl.dsp.window.fullscreen({ action = "toggle" }))
 hl.bind("SUPER + Q", restart_login)
+-- Swap the Quickshell greeter for tuigreet (qs-greeter falls back when qs exits after this marker).
+hl.bind("SUPER + T", hl.dsp.exec_cmd("mkdir -p /run/user/962/qs-greeter; touch /run/user/962/qs-greeter/fallback; pkill -x qs; sleep 1; pkill -9 -x qs"))
 
 ---- [MONITORS] ----
 -- MAIN
@@ -100,12 +102,13 @@ hl.on("hyprland.start", function()
 			.. ":x /run/user/962; setfacl -m u:"
 			.. ADMIN
 			.. ":rw /run/user/962/wayland-1; "
+			.. "if [ -x /usr/local/bin/qs-greeter ]; then /usr/local/bin/qs-greeter; else "
 			.. TERMINAL
 			.. " -- tuigreet --config /etc/tuigreet/config.toml --debug /tmp/tuigreet.log &"
 			.. "terminal_pid=$!; "
 			.. "sleep 1.5; "
 			.. "hyprctl eval 'FULLSCREEN_TERMINAL()'; "
-			.. "wait $terminal_pid; "
+			.. "wait $terminal_pid; fi; "
 			.. "hyprctl dispatch 'hl.dsp.exit()'"
 	)
 end)

@@ -91,7 +91,7 @@ detect_primary_connector() {
   esac
 }
 
-# Optionally installs greetd + tuigreet, deploys their configs, and enables the greetd service.
+# Optionally installs greetd + tuigreet, deploys their configs, the Quickshell greeter (tuigreet stays as its fallback), and enables greetd.
 install_greetd() {
   confirm "Install greetd + tuigreet (display manager)?" || return 0
 
@@ -110,8 +110,22 @@ install_greetd() {
   sudo install -Dm644 system/etc/greetd/config.toml /etc/greetd/config.toml
   sudo install -Dm644 "$tmp" /etc/tuigreet/config.toml
   sudo install -Dm755 system/usr/local/bin/tuigreet-oasis /usr/local/bin/tuigreet-oasis
+  sudo install -Dm644 system/etc/greetd/kitty.conf /etc/greetd/kitty.conf
   rm -f "$tmp"
   success "greetd/tuigreet config installed"
+
+  if confirm "Use the Quickshell greeter (your lock screen style; tuigreet stays as fallback)?"; then
+    local stage
+    stage=$(mktemp -d)
+    info "Greeter skin: $(stage_greeter "$stage" "$DOTFILES_DIR")"
+    while read -r cmd; do eval "$cmd"; done < <(greeter_install_cmds "$stage" "$DOTFILES_DIR")
+    rm -rf "$stage"
+    success "Quickshell greeter installed (F10 or SUPER+T switches to tuigreet)"
+  else
+    sudo install -Dm644 system/etc/greetd/hyprland.lua /etc/greetd/hyprland.lua
+    sudo rm -f /usr/local/bin/qs-greeter
+    success "tuigreet greeter installed"
+  fi
 
   sudo systemctl enable greetd
   success "greetd enabled (active on next boot)"

@@ -10,6 +10,7 @@ source "$DOTFILES_DIR/lib/arch.sh"
 source "$DOTFILES_DIR/lib/rust.sh"
 source "$DOTFILES_DIR/lib/stow.sh"
 source "$DOTFILES_DIR/lib/services.sh"
+source "$DOTFILES_DIR/lib/greeter.sh"
 source "$DOTFILES_DIR/lib/repos.sh"
 source "$DOTFILES_DIR/lib/fonts.sh"
 
