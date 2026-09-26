@@ -15,6 +15,10 @@ Singleton {
     property string phase: ""
     readonly property bool selecting: root.phase !== ""
     property bool frozen: false
+    // "region" drags a rect, "pixel" picks a colour from the still frame.
+    property string mode: "region"
+    // The centre pixel under the loupe in pixel mode, sampled from the still frame; "" until known.
+    property string pixel_hex: ""
     // Runs on confirm instead of showing the toolbar: "" for the toolbar, else a toolbar action.
     property string preset: ""
     property string focus_screen: ""
@@ -76,12 +80,16 @@ Singleton {
         root.run_after_close(() => Quickshell.execDetached([root.script, "--" + flag]));
     }
 
-    function select(frozen, preset) {
-        root.run_after_close(() => root.start_select(frozen, preset));
+    function select(frozen, preset, mode) {
+        root.run_after_close(() => root.start_select(frozen, preset, mode));
     }
 
-    function start_select(frozen, preset) {
+    function start_select(frozen, preset, mode) {
         if (root.phase === "capture") return;
+        root.mode = mode || "region";
+        root.lens_on = root.mode === "region" || root.mode === "pixel";
+        root.pixel_hex = "";
+        if (root.mode === "pixel") frozen = true;
         const mon = Hyprland.focusedMonitor;
         const screen = (mon && root.screen_of(mon.name)) || Quickshell.screens[0];
         root.focus_screen = screen ? screen.name : "";
@@ -202,6 +210,23 @@ Singleton {
         return Math.round(s.x + r.x) + "," + Math.round(s.y + r.y) + " " + Math.round(r.width) + "x" + Math.round(r.height);
     }
 
+    // Copies the sampled hex like hyprpicker -a; without a sample, screenshot.sh reads the pixel from the frozen overlay.
+    function pick_pixel() {
+        const s = root.screen_of(root.cursor_screen);
+        if (!s) return root.cancel();
+        if (root.pixel_hex !== "") {
+            const hex = root.pixel_hex;
+            root.cancel();
+            Quickshell.execDetached(["wl-copy", hex]);
+            Quickshell.execDetached(["notify-send", "Picked Color", hex]);
+            return;
+        }
+        root.pending_action = "pixel";
+        grab.command = [root.script, "--pixel-at", Math.floor(s.x + root.cursor_point.x) + "," + Math.floor(s.y + root.cursor_point.y) + " 1x1"];
+        root.phase = "capture";
+        capture_delay.restart();
+    }
+
     function act(action) {
         const geometry = root.geometry();
         if (geometry === "") return root.cancel();
@@ -239,6 +264,10 @@ Singleton {
     Process {
         id: grab
         onExited: code => {
+            if (root.pending_action === "pixel") {
+                root.cancel();
+                return;
+            }
             if (root.phase !== "capture") {
                 Quickshell.execDetached(["rm", "-f", "--", root.capture_file]);
                 return;

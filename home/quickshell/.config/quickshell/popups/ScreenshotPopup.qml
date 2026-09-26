@@ -28,7 +28,7 @@ Popup {
         { section: "Record", key: "W", label: "Record window", glyph: "\u{f0614}", flag: "record-window" },
         { section: "Record", key: "S", label: "Record screen", glyph: "\u{f0e51}", flag: "record-screen" },
         { section: "Record", key: "F", label: "Record focused", glyph: "\u{f08c6}", flag: "record-focused" },
-        { section: "Tools", key: "p", label: "Pick pixel color", glyph: "\u{f020a}", flag: "pixel" },
+        { section: "Tools", key: "p", label: "Pick pixel color", glyph: "\u{f020a}", select: "", frozen: true, mode: "pixel" },
         { section: "Tools", key: "t", label: "Text from region", glyph: "\u{f113a}", select: "ocr", frozen: false }
     ]
     readonly property var rows: root.base_rows
@@ -53,7 +53,7 @@ Popup {
         if (!row) return;
         root.selected = index;
         if (row.select !== undefined) {
-            Screenshot.select(row.frozen, row.select);
+            Screenshot.select(row.frozen, row.select, row.mode);
         } else {
             Screenshot.run_flag(row.flag);
         }
