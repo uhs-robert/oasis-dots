@@ -1,0 +1,38 @@
+#!/usr/bin/env bash
+# /usr/local/bin/qs-greeter
+# Runs the Quickshell greeter; falls back to tuigreet in kitty when it is missing, does not come up in 10s, crashes, or asks for it (F10, SUPER+T).
+
+config=${QS_GREETER_CONFIG:-/etc/greetd/quickshell}
+state="${XDG_RUNTIME_DIR:-/tmp}/qs-greeter"
+mkdir -p "$state"
+rm -f "$state/ready" "$state/fallback"
+
+tuigreet_fallback() {
+  kitty -- tuigreet --config /etc/tuigreet/config.toml --debug /tmp/tuigreet.log &
+  local terminal_pid=$!
+  sleep 1.5
+  hyprctl eval 'FULLSCREEN_TERMINAL()' >/dev/null
+  wait "$terminal_pid"
+  exit 0
+}
+
+command -v qs >/dev/null && [[ -f "$config/shell.qml" ]] || tuigreet_fallback
+
+QS_GREETER_STATE="$state" qs -p "$config" >/tmp/qs-greeter.log 2>&1 &
+qs_pid=$!
+
+for _ in $(seq 40); do
+  [[ -e "$state/ready" ]] && break
+  kill -0 "$qs_pid" 2>/dev/null || break
+  sleep 0.25
+done
+if [[ ! -e "$state/ready" ]]; then
+  kill "$qs_pid" 2>/dev/null
+  wait "$qs_pid"
+  tuigreet_fallback
+fi
+
+wait "$qs_pid"
+status=$?
+[[ -e "$state/fallback" || $status -ne 0 ]] && tuigreet_fallback
+exit 0
