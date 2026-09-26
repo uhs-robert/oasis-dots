@@ -17,8 +17,8 @@ PanelWindow {
 
     property bool wanted: false
     property string held_screen_name: ""
-    // Temporary: which layout draft is drawn (1 mini-map, 2 rows, 3 filmstrip).
-    property int draft: 1
+    // The filmstrip view instead of the mini-map, until the overview closes.
+    property bool filmstrip: false
     property real reveal: 0
 
     property string selected_key: ""
@@ -77,11 +77,10 @@ PanelWindow {
         pad: Style.px(10),
         label: Style.fs(-3) + Style.px(12),
         group_gap: Style.px(22),
-        label_col: Style.px(130),
         strip: Style.px(150)
     })
-    readonly property var layout: Layout.compute(root.draft, root.groups, root.tiles, frame.body.width, frame.body.height, root.metrics, root.selected_index)
-    readonly property bool animate_moves: root.draft === 3 && Power.on_ac && root.reveal === 1
+    readonly property var layout: Layout.compute(root.filmstrip, root.groups, root.tiles, frame.body.width, frame.body.height, root.metrics, root.selected_index)
+    readonly property bool animate_moves: root.filmstrip && Power.on_ac && root.reveal === 1
 
     screen: Quickshell.screens.find(s => s.name === root.held_screen_name) || null
     visible: false
@@ -116,20 +115,6 @@ PanelWindow {
         }
     }
 
-    IpcHandler {
-        target: "overview_draft"
-
-        function set(n: int): string {
-            if (n < 1 || n > 3) return "unknown";
-            root.draft = n;
-            return "ok";
-        }
-
-        function get(): int {
-            return root.draft;
-        }
-    }
-
     function show_overview() {
         if (root.wanted) return;
         Popups.close();
@@ -137,6 +122,7 @@ PanelWindow {
         const target = (mon && Quickshell.screens.find(s => s.name === mon.name)) || Quickshell.screens[0];
         root.held_screen_name = target ? target.name : "";
         root.refresh();
+        root.filmstrip = false;
         root.picked = [];
         root.marks = [];
         root.help_open = false;
@@ -283,7 +269,7 @@ PanelWindow {
     function move(dx, dy) {
         const from = root.selected_index;
         let to = -1;
-        if (root.draft === 3) {
+        if (root.filmstrip) {
             const order = root.layout.order;
             if (dx !== 0) {
                 const at = order.indexOf(from);
@@ -465,6 +451,8 @@ PanelWindow {
             root.toggle_mark();
         } else if (!root.carrying && k === Qt.Key_V) {
             root.toggle_mark_all();
+        } else if (k === Qt.Key_F) {
+            root.filmstrip = !root.filmstrip;
         } else if (k === Qt.Key_Slash || event.text === "/") {
             root.start_filter();
         } else if (k >= Qt.Key_1 && k <= Qt.Key_9) {
@@ -493,10 +481,10 @@ PanelWindow {
         : root.swap_address !== "" ? "m swap · Enter swap · Tab other window · hjkl workspace · Esc cancel · ? help"
         : root.carrying ? "hjkl workspace · Tab window · m drop · Enter drop · Esc cancel · ? help"
         : root.marks.length > 0 ? "Space mark · V mark all · m move " + root.marks.length + " · hjkl move · Esc clear marks · ? help"
-        : "hjkl move · Tab window · Enter focus · m move · Space mark · / filter · ? help · q close"
+        : "hjkl move · Tab window · Enter focus · m move · Space mark · / filter · f view · ? help · q close"
 
-    readonly property string normal_help: "h/j/k/l move between workspaces · Arrows move between workspaces · Tab next window · Shift+Tab previous window · Enter focus window, or the workspace if empty · m pick up window, or every marked window · Space/v mark or unmark window · V mark or unmark all in workspace · / filter windows · 1-9 select workspace by id · Click focus window or workspace"
-    readonly property string carry_help: "h/j/k/l choose target workspace · Arrows choose target workspace · 1-9 target workspace by id · Tab/Shift+Tab choose a window in the same workspace to swap with · m drop there, or swap with the SWAP window · Enter drop there, or swap · Click drop on workspace · Esc cancel, marks come back"
+    readonly property string normal_help: "h/j/k/l move between workspaces · Arrows move between workspaces · Tab next window · Shift+Tab previous window · Enter focus window, or the workspace if empty · m pick up window, or every marked window · Space/v mark or unmark window · V mark or unmark all in workspace · / filter windows · 1-9 select workspace by id · f toggle filmstrip view, j/k there jump monitors · Click focus window or workspace"
+    readonly property string carry_help: "h/j/k/l choose target workspace · Arrows choose target workspace · 1-9 target workspace by id · Tab/Shift+Tab choose a window in the same workspace to swap with · m drop there, or swap with the SWAP window · Enter drop there, or swap · f toggle filmstrip view · Click drop on workspace · Esc cancel, marks come back"
     readonly property string help_text: root.typing ? "Type filter by class or title · Enter accept filter · Tab/Down next match · Shift+Tab/Up previous match · Backspace delete, clears when empty · Esc clear filter"
         : root.carrying ? root.carry_help
         : root.marks.length > 0 ? "Esc clear all marks · " + root.normal_help
@@ -628,7 +616,7 @@ PanelWindow {
                 }
 
                 Rectangle {
-                    visible: root.draft !== 3
+                    visible: !root.filmstrip
                     anchors.fill: parent
                     radius: Style.radius(8)
                     color: Qt.alpha(Theme.bg_mantle, 0.5)
@@ -637,7 +625,7 @@ PanelWindow {
                 }
 
                 Rectangle {
-                    visible: root.draft === 3
+                    visible: root.filmstrip
                     y: root.metrics.label - Style.px(4)
                     width: parent.width
                     height: 1
@@ -646,8 +634,8 @@ PanelWindow {
 
                 Item {
                     x: root.metrics.pad
-                    y: root.draft === 2 ? (parent.height - height) / 2 : root.draft === 3 ? 0 : Style.px(6)
-                    width: (root.draft === 2 ? root.metrics.label_col : parent.width) - root.metrics.pad * 2
+                    y: root.filmstrip ? 0 : Style.px(6)
+                    width: parent.width - root.metrics.pad * 2
                     height: section.implicitHeight
                     clip: true
 
@@ -686,7 +674,7 @@ PanelWindow {
                 drop_target: tile.selected && root.can_drop
                 matches: root.matches
                 shown: root.visible
-                live: tile.selected && root.draft !== 3
+                live: tile.selected && !root.filmstrip
 
                 onTile_clicked: root.tile_clicked(tile.index, "")
                 onWindow_clicked: address => root.tile_clicked(tile.index, address)
@@ -701,7 +689,7 @@ PanelWindow {
         WorkspaceTile {
             id: big_tile
             readonly property var rect: root.layout.big || ({ x: 0, y: 0, w: 0, h: 0 })
-            visible: root.draft === 3 && !!root.layout.big
+            visible: root.filmstrip && !!root.layout.big
             x: big_tile.rect.x
             y: big_tile.rect.y
             width: big_tile.rect.w
@@ -716,7 +704,7 @@ PanelWindow {
             swap_address: root.swap_address
             drop_target: root.can_drop
             matches: root.matches
-            shown: root.visible && root.draft === 3
+            shown: root.visible && root.filmstrip
             live: true
 
             onTile_clicked: root.tile_clicked(root.selected_index, "")

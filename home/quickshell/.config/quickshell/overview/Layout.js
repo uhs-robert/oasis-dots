@@ -93,31 +93,6 @@ function minimap(groups, area_w, area_h, m) {
     return out;
 }
 
-// One full-width row per monitor, in mini-map reading order, its name in a column on the left.
-function rows(groups, area_w, area_h, m) {
-    const order = flat(bands(groups));
-    const n = Math.max(1, order.length);
-    let th = (area_h - (n - 1) * m.group_gap - n * 2 * m.pad) / n;
-    for (const i of order) {
-        const k = Math.max(1, groups[i].tiles.length);
-        th = Math.min(th, (area_w - 2 * m.pad - m.label_col - (k - 1) * m.gap) / (k * aspect(groups[i])));
-    }
-    th = Math.max(8, th);
-    const gh = th + 2 * m.pad;
-    const total_h = n * gh + (n - 1) * m.group_gap;
-    const out = empty(groups, flat(groups.map(g => g.tiles)));
-    let y = Math.max(0, (area_h - total_h) / 2);
-    for (const i of order) {
-        out.group_rects[i] = { x: 0, y: y, w: area_w, h: gh };
-        const tw = aspect(groups[i]) * th;
-        groups[i].tiles.forEach((t, j) => {
-            out.tile_rects[t] = { x: m.pad + m.label_col + j * (tw + m.gap), y: y + m.pad, w: tw, h: th };
-        });
-        y += gh + m.group_gap;
-    }
-    return out;
-}
-
 // Every workspace in one strip along the bottom, scrolled to the selection, which also shows large above it.
 function filmstrip(groups, area_w, area_h, m, tiles, selected) {
     const order = flat(bands(groups));
@@ -154,10 +129,9 @@ function filmstrip(groups, area_w, area_h, m, tiles, selected) {
     return out;
 }
 
-function compute(draft, groups, tiles, area_w, area_h, m, selected) {
+function compute(strip, groups, tiles, area_w, area_h, m, selected) {
     if (groups.length === 0 || area_w <= 0 || area_h <= 0) return empty(groups, tiles);
-    if (draft === 2) return rows(groups, area_w, area_h, m);
-    if (draft === 3) return filmstrip(groups, area_w, area_h, m, tiles, selected);
+    if (strip) return filmstrip(groups, area_w, area_h, m, tiles, selected);
     return minimap(groups, area_w, area_h, m);
 }
 
