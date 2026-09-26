@@ -694,7 +694,7 @@ PanelWindow {
                 if (toolbar) root.run_tool(Screenshot.tool_index);
                 else if (Screenshot.anchored || Screenshot.has_selection || root.target_mode) Screenshot.confirm();
                 else {
-                    Screenshot.select_screen(root.screen_name);
+                    Screenshot.select_screen(Screenshot.cursor_screen);
                     Screenshot.confirm();
                 }
             } else if (typed >= 0) {

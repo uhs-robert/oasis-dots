@@ -276,9 +276,30 @@ Singleton {
         if (root.anchored) root.span_selection();
     }
 
+    // Unanchored, the cursor crosses onto the monitor past the edge it runs into (the nearest one that way
+    // when monitors are offset or gapped); anchored, it stays on the anchor's monitor.
     function move_cursor(dx, dy) {
-        if (root.cursor_screen === "") return;
-        root.set_cursor(root.cursor_screen, root.cursor_point.x + dx, root.cursor_point.y + dy, true);
+        const from = root.screen_of(root.cursor_screen);
+        if (!from) return;
+        const gx = from.x + root.cursor_point.x + dx;
+        const gy = from.y + root.cursor_point.y + dy;
+        const inside = s => gx >= s.x && gy >= s.y && gx < s.x + s.width && gy < s.y + s.height;
+        let to = root.anchored || inside(from) ? from : Quickshell.screens.find(inside) || null;
+        if (!to) {
+            let best = Infinity;
+            for (const s of Quickshell.screens) {
+                if (s === from) continue;
+                const ahead = (dx > 0 && s.x >= from.x + from.width) || (dx < 0 && s.x + s.width <= from.x) || (dy > 0 && s.y >= from.y + from.height) || (dy < 0 && s.y + s.height <= from.y);
+                if (!ahead) continue;
+                const d = Math.hypot(Math.max(s.x - gx, 0, gx - (s.x + s.width - 1)), Math.max(s.y - gy, 0, gy - (s.y + s.height - 1)));
+                if (d < best) {
+                    best = d;
+                    to = s;
+                }
+            }
+        }
+        if (!to) to = from;
+        root.set_cursor(to.name, gx - to.x, gy - to.y, true);
     }
 
     function span_selection() {
