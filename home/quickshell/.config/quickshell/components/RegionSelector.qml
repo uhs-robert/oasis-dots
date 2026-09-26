@@ -25,6 +25,14 @@ PanelWindow {
     readonly property color dim_color: Qt.alpha(Theme.bg_shadow, 0.6)
     readonly property bool pixel_mode: Screenshot.mode === "pixel"
     readonly property bool target_mode: Screenshot.mode === "window" || Screenshot.mode === "screen"
+    property bool help_open: false
+    readonly property string tier_keys: "hjkl move 10px · H/J/K/L move 100px · C-hjkl move 1px · C-H/J/K/L move 300px"
+    readonly property string help_text: Screenshot.phase === "toolbar" ? "h/l move · Tab/S-Tab next/prev · c copy · s save · a annotate · o ocr · r record · Enter run · Backspace reselect · q/Esc cancel" : root.pixel_mode ? root.tier_keys + " · Enter pick · click pick · m loupe · +/- zoom · q/Esc cancel" : root.target_mode ? "hjkl nearest " + Screenshot.mode + " · Tab/S-Tab cycle · Enter pick · click pick · m loupe · +/- zoom · q/Esc cancel" : root.tier_keys + " · v/space set or drop anchor · o swap ends · drag select · Enter confirm, whole screen without a selection · m loupe · +/- zoom · Esc drop anchor, then cancel · q cancel"
+
+    function set_help(open) {
+        root.help_open = open;
+        Qt.callLater(() => open ? key_help.forceActiveFocus() : keys_item.forceActiveFocus());
+    }
     // The still frame saved at buffer size, which the swatch canvas samples for the hex readout.
     property string pixel_image: ""
     property string pixel_file: ""
@@ -433,6 +441,53 @@ PanelWindow {
         }
 
         Rectangle {
+            id: help_box
+            visible: root.keyboard_owner && root.help_open
+            z: 3
+            anchors.centerIn: parent
+            width: Math.min(parent.width - 64, Style.px(520))
+            height: Math.min(parent.height - 160, Style.px(440))
+            radius: Style.frame_radius
+            color: Style.frame_color
+            border.width: Style.frame_border_width
+            border.color: Style.frame_border_color
+
+            MouseArea {
+                anchors.fill: parent
+            }
+
+            Rectangle {
+                width: parent.width
+                height: Style.accent_height
+                color: Style.accent_color
+                topLeftRadius: help_box.radius
+                topRightRadius: help_box.radius
+            }
+
+            Text {
+                id: help_title
+                x: 16
+                y: 10 + Style.accent_height
+                text: Style.title_text("Screenshot keys", Style)
+                color: Style.title_fg
+                font.family: Style.title_font_family
+                font.pixelSize: Style.fs(-2)
+            }
+
+            KeyHelp {
+                id: key_help
+                anchors.fill: parent
+                anchors.topMargin: help_title.y + help_title.height + 8
+                anchors.leftMargin: 12
+                anchors.rightMargin: 12
+                anchors.bottomMargin: 12
+                popup_keys: false
+                text: root.help_text
+                onBack: root.set_help(false)
+            }
+        }
+
+        Rectangle {
             id: hint_box
             visible: root.keyboard_owner
             anchors.horizontalCenter: parent.horizontalCenter
@@ -450,7 +505,7 @@ PanelWindow {
                 anchors.centerIn: parent
                 width: Math.min(implicitWidth, root.width - 56)
                 wrap: false
-                text: root.target_mode && Screenshot.phase === "select" ? "hjkl/Tab " + Screenshot.mode + " · Enter pick · Esc cancel" : root.pixel_mode ? "hjkl move · Enter pick · m loupe · +/- zoom · Esc cancel" : Screenshot.phase === "toolbar" ? "h/l move · Enter run · c copy · s save · a annotate · o ocr · r record · Backspace reselect · Esc cancel" : Screenshot.anchored ? "hjkl extend · o swap ends · v drop anchor · Enter " + (Screenshot.preset !== "" ? Screenshot.preset : "confirm") + " · Esc drop anchor" : "drag/hjkl cursor · v/space anchor · Enter full screen · m loupe · +/- zoom · Esc cancel"
+                text: (root.target_mode && Screenshot.phase === "select" ? "hjkl/Tab " + Screenshot.mode + " · Enter pick · Esc cancel" : root.pixel_mode ? "hjkl move · Enter pick · m loupe · +/- zoom · Esc cancel" : Screenshot.phase === "toolbar" ? "h/l move · Enter run · c copy · s save · a annotate · o ocr · r record · Backspace reselect · Esc cancel" : Screenshot.anchored ? "hjkl extend · o swap ends · v drop anchor · Enter " + (Screenshot.preset !== "" ? Screenshot.preset : "confirm") + " · Esc drop anchor" : "drag/hjkl cursor · v/space anchor · Enter full screen · m loupe · +/- zoom · Esc cancel") + " · ? help"
             }
         }
     }
@@ -530,6 +585,8 @@ PanelWindow {
             const dir = { [Qt.Key_H]: [-1, 0], [Qt.Key_Left]: [-1, 0], [Qt.Key_L]: [1, 0], [Qt.Key_Right]: [1, 0], [Qt.Key_K]: [0, -1], [Qt.Key_Up]: [0, -1], [Qt.Key_J]: [0, 1], [Qt.Key_Down]: [0, 1] }[event.key];
             if (Screenshot.phase === "capture") {
                 return;
+            } else if (event.key === Qt.Key_Question || event.text === "?") {
+                root.set_help(true);
             } else if (event.key === Qt.Key_Escape) {
                 if (!toolbar && Screenshot.anchored) Screenshot.clear_anchor();
                 else Screenshot.cancel();
