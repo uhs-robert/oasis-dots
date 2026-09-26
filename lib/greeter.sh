@@ -2,6 +2,8 @@
 # Stages and installs the Quickshell greeter (/etc/greetd/quickshell) with the lock skins, theme, fonts and the user's lock style.
 
 GREETER_DEST=/etc/greetd/quickshell
+# Data only (greeter.json, theme.json), owned by the installing user and readable by group greeter; the bar keeps it current.
+GREETER_DATA=/var/lib/qs-greeter
 
 # Builds the greeter tree in $1 from the repo at $2 plus this user's theme and lock style; prints the resolved skin.
 stage_greeter() {
@@ -34,12 +36,17 @@ stage_greeter() {
   printf '%s\n' "$lock"
 }
 
-# The commands that install a staged tree at $1 and the wrapper and greetd Hyprland config from the repo at $2.
+# The commands that install a staged tree at $1 and the wrapper and greetd Hyprland config from the repo at $2, then seed the data dir.
 greeter_install_cmds() {
   local stage=$1 repo=$2
+  local seed_theme=":"
+  [[ -f "$stage/theme/theme.json" ]] && seed_theme="install -m 640 '$stage/theme/theme.json' $GREETER_DATA/theme.json"
   printf '%s\n' \
     "[ ! -f /etc/greetd/hyprland.lua ] || [ -f /etc/greetd/hyprland.lua.bak ] || sudo cp /etc/greetd/hyprland.lua /etc/greetd/hyprland.lua.bak" \
     "sudo rsync -rlpt --delete --chown=root:root --chmod=D755,F644 '$stage/' '$GREETER_DEST/'" \
     "sudo install -Dm755 '$repo/system/usr/local/bin/qs-greeter' /usr/local/bin/qs-greeter" \
-    "sudo install -Dm644 '$repo/system/etc/greetd/hyprland.lua' /etc/greetd/hyprland.lua"
+    "sudo install -Dm644 '$repo/system/etc/greetd/hyprland.lua' /etc/greetd/hyprland.lua" \
+    "sudo install -d -m 2750 -o '$USER' -g greeter $GREETER_DATA" \
+    "install -m 640 '$stage/greeter.json' $GREETER_DATA/greeter.json" \
+    "$seed_theme"
 }

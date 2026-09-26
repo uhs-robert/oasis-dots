@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+# Writes the greeter's data files (greeter.json, theme.json) into /var/lib/qs-greeter when that directory exists and is writable.
+# Usage: greeter-data <greeter.json text> <theme.json path>
+dir=${QS_GREETER_DATA:-/var/lib/qs-greeter}
+[[ -d "$dir" && -w "$dir" ]] || exit 0
+umask 027
+
+# Replaces $dir/$1 with $2 in one rename, only when $2 is a JSON object.
+write() {
+  jq -e 'type == "object"' >/dev/null 2>&1 <<<"$2" || return 0
+  local tmp
+  tmp=$(mktemp "$dir/.$1.XXXXXX") || return 0
+  if printf '%s\n' "$2" >"$tmp" && chmod 640 "$tmp" && mv -f "$tmp" "$dir/$1"; then return 0; fi
+  rm -f "$tmp"
+}
+
+write greeter.json "$1"
+[[ -f "$2" ]] && write theme.json "$(cat "$2")"
+exit 0

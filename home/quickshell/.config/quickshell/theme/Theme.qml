@@ -104,16 +104,26 @@ Singleton {
     property int glyph_size: 19
     property int popup_font_size: 15
 
+    // QS_THEME_JSON (set by the greeter) is read first; if it is missing or invalid the bundled theme.json is used.
+    property string override_path: Quickshell.env("QS_THEME_JSON") || ""
+
     FileView {
         id: theme_file
-        path: Quickshell.shellDir + "/theme/theme.json"
+        path: root.override_path !== "" ? root.override_path : Quickshell.shellDir + "/theme/theme.json"
         watchChanges: true
+        printErrors: root.override_path === ""
         onFileChanged: reload()
+        onLoadFailed: error => {
+            if (root.override_path !== "") root.override_path = "";
+        }
         onLoaded: {
             try {
-                root.apply(JSON.parse(text()));
+                const data = JSON.parse(text());
+                if (!data || typeof data !== "object" || Array.isArray(data)) throw new Error("not an object");
+                root.apply(data);
             } catch (e) {
                 console.warn("theme.json: " + e);
+                if (root.override_path !== "") root.override_path = "";
             }
         }
     }

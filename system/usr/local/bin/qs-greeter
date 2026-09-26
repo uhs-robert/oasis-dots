@@ -29,7 +29,7 @@ command -v qs >/dev/null && [[ -f "$config/shell.qml" ]] || tuigreet_fallback
 
 # The greeter user's home is /, so its XDG dirs live here; no crash dialog over the fallback.
 XDG_CACHE_HOME="$state/cache" XDG_STATE_HOME="$state/state" XDG_DATA_HOME="$state/data" \
-  QS_DISABLE_CRASH_HANDLER=1 QS_GREETER_STATE="$state" \
+  QS_DISABLE_CRASH_HANDLER=1 QS_GREETER_STATE="$state" QS_THEME_JSON=/var/lib/qs-greeter/theme.json \
   qs -p "$config" >"$state/qs.log" 2>&1 &
 qs_pid=$!
 
