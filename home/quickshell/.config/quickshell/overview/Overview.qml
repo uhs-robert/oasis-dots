@@ -23,7 +23,10 @@ PanelWindow {
 
     property string selected_key: ""
     property string selected_address: ""
-    property string picked_address: ""
+    // Carried window addresses, and the marks they came from so Esc can put them back.
+    property var picked: []
+    property bool picked_from_marks: false
+    property var marks: []
     property bool typing: false
     property bool help_open: false
     property string query: ""
@@ -35,7 +38,17 @@ PanelWindow {
     readonly property var selected_tile: root.tiles[root.selected_index] || null
     readonly property var tab_order: root.selected_tile ? root.reading_order(root.selected_tile.windows) : []
     readonly property string current_address: root.tab_order.some(w => w.address === root.selected_address) ? root.selected_address : root.tab_order.length > 0 ? root.tab_order[0].address : ""
-    readonly property var picked_toplevel: root.picked_address !== "" ? WindowState.find(root.picked_address) : null
+    readonly property bool carrying: root.picked.length > 0
+    readonly property var picked_set: root.to_set(root.picked)
+    readonly property var picked_toplevel: root.carrying ? WindowState.find(root.picked[0]) : null
+    readonly property var mark_numbers: {
+        const out = {};
+        root.marks.forEach((a, i) => out[a] = i + 1);
+        return out;
+    }
+    // One window carried inside its own workspace, selection on another window there: m/Enter swaps them.
+    readonly property string swap_address: root.picked.length === 1 && !!root.selected_tile && root.selected_tile.windows.some(w => w.address === root.picked[0]) && root.current_address !== root.picked[0] ? root.current_address : ""
+    readonly property bool can_drop: root.carrying && root.swap_address === "" && !!root.selected_tile && root.picked.some(a => !root.selected_tile.windows.some(w => w.address === a))
     readonly property var nav_order: Layout.flat(Layout.flat(Layout.bands(root.groups)).map(g => root.groups[g].tiles))
     readonly property var matches: root.query === "" ? null : root.match_set(root.query)
     readonly property int match_count: root.matches ? Object.keys(root.matches).length : 0
@@ -105,7 +118,8 @@ PanelWindow {
         const target = (mon && Quickshell.screens.find(s => s.name === mon.name)) || Quickshell.screens[0];
         root.held_screen_name = target ? target.name : "";
         root.refresh();
-        root.picked_address = "";
+        root.picked = [];
+        root.marks = [];
         root.help_open = false;
         root.clear_filter();
         const ws = Hyprland.focusedWorkspace;
@@ -301,20 +315,66 @@ PanelWindow {
         root.hide_overview();
     }
 
-    function pick() {
-        if (root.current_address !== "") root.picked_address = root.current_address;
+    function to_set(list) {
+        const out = {};
+        for (const a of list) out[a] = true;
+        return out;
     }
 
-    // Moves the carried window without following it; a fresh slot's workspace is then sent to its monitor.
+    function alive(list) {
+        return list.filter(a => WindowState.find(a) !== null);
+    }
+
+    function toggle_mark() {
+        const a = root.current_address;
+        if (a === "") return;
+        root.marks = root.marks.indexOf(a) >= 0 ? root.marks.filter(m => m !== a) : root.marks.concat([a]);
+    }
+
+    // Marks every window in the selected workspace, or unmarks them all when they already are.
+    function toggle_mark_all() {
+        const here = root.tab_order.map(w => w.address);
+        if (here.length === 0) return;
+        const all = here.every(a => root.marks.indexOf(a) >= 0);
+        root.marks = all ? root.marks.filter(m => here.indexOf(m) < 0) : root.marks.concat(here.filter(a => root.marks.indexOf(a) < 0));
+    }
+
+    function pick() {
+        const marked = root.alive(root.marks);
+        if (marked.length > 0) {
+            root.picked = marked;
+            root.picked_from_marks = true;
+            root.marks = [];
+        } else if (root.current_address !== "") {
+            root.picked = [root.current_address];
+            root.picked_from_marks = false;
+        }
+    }
+
+    function cancel_pick() {
+        if (root.picked_from_marks) root.marks = root.alive(root.picked);
+        root.picked = [];
+    }
+
+    // Swaps inside a workspace, else moves every carried window there without following; a fresh slot is then sent to its monitor.
     function drop() {
         const tile = root.selected_tile;
-        const address = root.picked_address;
-        root.picked_address = "";
-        if (!tile || address === "" || tile.windows.some(w => w.address === address)) return;
-        WindowState.move_to_workspace(address, tile.id, false);
+        const carried = root.alive(root.picked);
+        const swap_with = root.swap_address;
+        root.picked = [];
+        if (!tile || carried.length === 0) return;
+        if (swap_with !== "") {
+            WindowState.swap(carried[0], swap_with);
+            root.selected_address = carried[0];
+            refresh_timer.restart();
+            return;
+        }
+        const moving = carried.filter(a => !tile.windows.some(w => w.address === a));
+        if (moving.length === 0) return;
+        for (const a of moving) WindowState.move_to_workspace(a, tile.id, false);
         if (tile.is_new) Hyprland.dispatch("hl.dsp.workspace.move({ workspace = " + tile.id + ", monitor = '" + root.groups[tile.group].name + "' })");
         root.selected_key = "ws:" + tile.id;
-        root.selected_address = address;
+        root.selected_address = moving[0];
         refresh_timer.restart();
     }
 
@@ -356,7 +416,8 @@ PanelWindow {
         if (root.is_help_key(event)) {
             root.show_help();
         } else if (k === Qt.Key_Escape) {
-            if (root.picked_address !== "") root.picked_address = "";
+            if (root.carrying) root.cancel_pick();
+            else if (root.marks.length > 0) root.marks = [];
             else if (root.query !== "") root.clear_filter();
             else root.hide_overview();
         } else if (k === Qt.Key_Q) {
@@ -374,11 +435,15 @@ PanelWindow {
         } else if (k === Qt.Key_Backtab) {
             root.cycle_window(-1);
         } else if (k === Qt.Key_Return || k === Qt.Key_Enter) {
-            if (root.picked_address !== "") root.drop();
+            if (root.carrying) root.drop();
             else root.activate();
         } else if (k === Qt.Key_M) {
-            if (root.picked_address !== "") root.drop();
+            if (root.carrying) root.drop();
             else root.pick();
+        } else if (!root.carrying && (k === Qt.Key_Space || (k === Qt.Key_V && !(event.modifiers & Qt.ShiftModifier)))) {
+            root.toggle_mark();
+        } else if (!root.carrying && k === Qt.Key_V) {
+            root.toggle_mark_all();
         } else if (k === Qt.Key_Slash || event.text === "/") {
             root.start_filter();
         } else if (k >= Qt.Key_1 && k <= Qt.Key_9) {
@@ -392,7 +457,7 @@ PanelWindow {
     // A click on a tile's background focuses the workspace itself rather than one of its windows.
     function tile_clicked(index, address) {
         root.select(index, address);
-        if (root.picked_address !== "") {
+        if (root.carrying) {
             root.drop();
         } else if (address === "" && root.selected_tile) {
             root.focus_workspace(root.selected_tile);
@@ -404,22 +469,31 @@ PanelWindow {
 
     readonly property string footer_text: root.help_open ? "? back · Esc back · q close"
         : root.typing ? "Enter accept · Tab next match · Esc clear · ? help"
-        : root.picked_address !== "" ? "hjkl target · m drop · Enter drop · Esc cancel · ? help"
-        : "hjkl move · Tab window · Enter focus · m move · / filter · ? help · q close"
+        : root.swap_address !== "" ? "m swap · Enter swap · Tab other window · hjkl workspace · Esc cancel · ? help"
+        : root.carrying ? "hjkl workspace · Tab window · m drop · Enter drop · Esc cancel · ? help"
+        : root.marks.length > 0 ? "Space mark · V mark all · m move " + root.marks.length + " · hjkl move · Esc clear marks · ? help"
+        : "hjkl move · Tab window · Enter focus · m move · Space mark · / filter · ? help · q close"
 
-    readonly property string normal_help: "h/j/k/l move between workspaces · Arrows move between workspaces · Tab next window · Shift+Tab previous window · Enter focus window, or the workspace if empty · m pick up window to move · / filter windows · 1-9 select workspace by id · Click focus window or workspace"
+    readonly property string normal_help: "h/j/k/l move between workspaces · Arrows move between workspaces · Tab next window · Shift+Tab previous window · Enter focus window, or the workspace if empty · m pick up window, or every marked window · Space/v mark or unmark window · V mark or unmark all in workspace · / filter windows · 1-9 select workspace by id · Click focus window or workspace"
+    readonly property string carry_help: "h/j/k/l choose target workspace · Arrows choose target workspace · 1-9 target workspace by id · Tab/Shift+Tab choose a window in the same workspace to swap with · m drop there, or swap with the SWAP window · Enter drop there, or swap · Click drop on workspace · Esc cancel, marks come back"
     readonly property string help_text: root.typing ? "Type filter by class or title · Enter accept filter · Tab/Down next match · Shift+Tab/Up previous match · Backspace delete, clears when empty · Esc clear filter"
-        : root.picked_address !== "" ? "h/j/k/l choose target workspace · Arrows choose target workspace · 1-9 target workspace by id · m drop window there · Enter drop window there · Click drop on workspace · Esc cancel move"
+        : root.carrying ? root.carry_help
+        : root.marks.length > 0 ? "Esc clear all marks · " + root.normal_help
         : root.query !== "" ? "Esc clear filter · / edit filter · " + root.normal_help
         : root.normal_help
 
     readonly property string status_text: {
         if (root.typing || root.query !== "") return "/" + root.query + (root.typing ? "_" : "") + "  " + root.match_count + " match" + (root.match_count === 1 ? "" : "es");
-        if (root.picked_address !== "") return "MOVE " + (root.picked_toplevel ? WindowState.short_class(root.picked_toplevel) : "window").toUpperCase();
+        const lead = root.picked_toplevel ? WindowState.short_class(root.picked_toplevel) : "window";
+        if (root.swap_address !== "") {
+            const other = WindowState.find(root.swap_address);
+            return ("SWAP " + lead + " with " + (other ? WindowState.short_class(other) : "window")).toUpperCase();
+        }
+        if (root.carrying) return root.picked.length > 1 ? "MOVE " + root.picked.length + " windows" : "MOVE " + lead.toUpperCase();
         const tile = root.selected_tile;
         if (!tile) return "";
         const mon = root.groups[tile.group] ? root.groups[tile.group].name : "";
-        return mon + " · " + (tile.is_new ? "new workspace " + tile.name : "workspace " + tile.name + " · " + tile.windows.length + " window" + (tile.windows.length === 1 ? "" : "s"));
+        return (root.marks.length > 0 ? root.marks.length + " marked · " : "") + mon + " · " + (tile.is_new ? "new workspace " + tile.name : "workspace " + tile.name + " · " + tile.windows.length + " window" + (tile.windows.length === 1 ? "" : "s"));
     }
 
     NumberAnimation {
@@ -468,7 +542,7 @@ PanelWindow {
         scale: 0.97 + 0.03 * root.reveal
         title: "OVERVIEW"
         status: root.status_text
-        status_color: root.picked_address !== "" || root.query !== "" ? Style.text_accent : Style.text_muted
+        status_color: root.carrying || root.marks.length > 0 || root.query !== "" ? Style.text_accent : Style.text_muted
         footer: root.footer_text
 
         FocusScope {
@@ -582,8 +656,12 @@ PanelWindow {
                 entry: tile.modelData
                 selected: tile.index === root.selected_index
                 selected_address: root.current_address
-                picked_address: root.picked_address
+                picked: root.picked_set
                 picked_toplevel: root.picked_toplevel
+                picked_count: root.picked.length
+                marks: root.mark_numbers
+                swap_address: tile.selected ? root.swap_address : ""
+                drop_target: tile.selected && root.can_drop
                 matches: root.matches
                 shown: root.visible
                 live: tile.selected && root.draft !== 3
@@ -609,8 +687,12 @@ PanelWindow {
             entry: root.selected_tile
             selected: true
             selected_address: root.current_address
-            picked_address: root.picked_address
+            picked: root.picked_set
             picked_toplevel: root.picked_toplevel
+            picked_count: root.picked.length
+            marks: root.mark_numbers
+            swap_address: root.swap_address
+            drop_target: root.can_drop
             matches: root.matches
             shown: root.visible && root.draft === 3
             live: true
