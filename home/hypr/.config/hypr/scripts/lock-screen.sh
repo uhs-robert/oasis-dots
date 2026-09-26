@@ -3,11 +3,17 @@
 # Locks with the Quickshell lock screen; falls back to hyprlock when the bar is not running or cannot lock.
 
 ipc="$HOME/.config/hypr/scripts/qs-ipc"
+flag_script="$HOME/.config/quickshell/scripts/lock-flag"
 pidof hyprlock >/dev/null && exit 0
 
+# Serialized with lock-flag's hyprlock; a hyprlock that ran over 1s held the lock, so its exit is a real unlock.
 fallback() {
+  exec 9>"${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/qs-hyprlock.lock"
+  flock -n 9 || exit 0
   pidof hyprlock >/dev/null && exit 0
-  hyprlock --immediate-render --no-fade-in && rm -f "${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/qs-session-locked"
+  start=$(date +%s%N)
+  hyprlock --immediate-render --no-fade-in || exit 0
+  if [ $(($(date +%s%N) - start)) -gt 1000000000 ] && [ -x "$flag_script" ]; then "$flag_script" clear; fi
   exit 0
 }
 

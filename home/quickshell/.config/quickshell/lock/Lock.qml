@@ -21,6 +21,7 @@ Singleton {
         // Set once the compositor confirmed this lock, so a later end is a lost lock, not a refusal.
         property bool held: false
         property bool heal_checked: false
+        property bool healing: false
 
         onLoaded: {
             if (persist.heal_checked) return;
@@ -41,7 +42,7 @@ Singleton {
     property bool caps_lock: false
     // True for a while after each key, so the caret only blinks while someone is typing.
     property bool typing: false
-    property bool healing: false
+    property bool quitting: false
     readonly property string flag_script: Quickshell.shellDir + "/scripts/lock-flag"
 
     signal rejected
@@ -58,20 +59,19 @@ Singleton {
             persist.locked = false;
             return "failed";
         }
-        Quickshell.execDetached([root.flag_script, "set", String(Quickshell.processId)]);
         return "ok";
     }
 
     // A fresh qs found the lock of a dead qs: take it over, else hand the screen to hyprlock.
     function heal() {
         console.warn("Lock: taking over the session lock of a qs that exited");
-        root.healing = true;
-        const r = root.lock();
-        if (r === "failed") root.heal_fallback();
+        persist.healing = true;
+        Quickshell.execDetached(["notify-send", "-a", "Lock", "-i", "system-lock-screen", "Session re-locked after the bar restarted"]);
+        if (root.lock() === "failed") root.heal_fallback();
     }
 
     function heal_fallback() {
-        root.healing = false;
+        persist.healing = false;
         Quickshell.execDetached([root.flag_script, "hyprlock"]);
     }
 
@@ -209,15 +209,16 @@ Singleton {
                 console.warn("Lock: the session lock ended without authentication");
                 pam.abort();
                 persist.locked = false;
-                if (root.healing) root.heal_fallback();
-                else if (!persist.held) Quickshell.execDetached([root.flag_script, "clear"]);
+                if (persist.healing) root.heal_fallback();
+                else if (persist.held && !root.quitting) lost_clear.restart();
             }
         }
 
         onSecureChanged: {
             if (session_lock.secure && persist.locked) {
                 persist.held = true;
-                root.healing = false;
+                persist.healing = false;
+                Quickshell.execDetached([root.flag_script, "set", String(Quickshell.processId)]);
             }
         }
 
@@ -247,6 +248,20 @@ Singleton {
                 }
             }
         }
+    }
+
+    // The compositor ended a held lock while qs lives on (e.g. a forced unlock); a dying qs never gets here.
+    Timer {
+        id: lost_clear
+        interval: 500
+        onTriggered: {
+            if (!root.quitting && !persist.locked) Quickshell.execDetached([root.flag_script, "clear"]);
+        }
+    }
+
+    Connections {
+        target: Qt.application
+        function onAboutToQuit() { root.quitting = true; }
     }
 
     Process {
