@@ -23,9 +23,12 @@ Bind.leader_fn("CTRL + P", Menu.bitwarden(), "Passwords")
 
 -- Window Selector / Move
 Bind.leader_fn("T",                 Menu.hyprwindow(),               "Find window")
-Bind.fn("ALT + TAB",                Menu.hyprwindow(),               "Find window")
 Bind.leader_fn("SHIFT + T",         Menu.hyprwindow_move(true),      "Move to another window")
 Bind.leader_fn("CTRL + SHIFT + T",  Menu.hyprwindow_move(false),     "Silent move to another window")
+
+-- Workspace Overview
+Bind.fn("ALT + TAB",                Menu.overview(),                 "Workspace overview")
+Bind.leader_fn("SHIFT + TAB",       Menu.overview(),                 "Workspace overview")
 
 -- HyprVim Utilities
 local function open_hyprvim_term() require("lua.plugins.hyprvim").command.prompt() end

@@ -64,6 +64,10 @@ Menu.ssh = function() return Menu.show("ssh") end
 Menu.window = function() return Menu.show("window") end
 Menu.hyprwindow = function() return Menu.picker("windows", show_cmd("hyprwindow")) end
 
+--- Return an action that opens the Quickshell workspace overview.
+--- @return fun()
+function Menu.overview() return Cmd.run(Scripts.qs_ipc .. " call overview open") end
+
 --- Return an action that moves the focused window to a picked window's workspace.
 --- @param follow boolean Follow the window to its new workspace.
 --- @return fun()
