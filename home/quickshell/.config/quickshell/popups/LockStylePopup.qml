@@ -7,6 +7,7 @@ import "../components"
 import "../theme"
 import "../services"
 import "../lock"
+import "../lock/Tints.js" as Tints
 
 Popup {
     id: root
@@ -253,7 +254,7 @@ Popup {
                             implicitWidth: Style.px(10)
                             implicitHeight: Style.px(10)
                             radius: Style.px(2)
-                            color: (fake.tint_families[tint_row.modelData] || fake.tint_families.primary)[1]
+                            color: Tints.pair(Theme, tint_row.modelData)[1]
                         }
 
                         RowLabel {
