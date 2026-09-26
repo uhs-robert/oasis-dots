@@ -5,6 +5,7 @@ import Quickshell.Widgets
 import "../components"
 import "../theme"
 import "../services"
+import "Layout.js" as Layout
 
 // One workspace as a small monitor: its windows at their real places, scaled into the tile.
 Item {
@@ -30,6 +31,19 @@ Item {
 
     readonly property bool is_new: !!root.entry && root.entry.is_new
     readonly property var windows: root.entry ? root.entry.windows : []
+    // address -> { info, order }; delegates live per address so thumbnails outlive rebuilt entries.
+    readonly property var window_map: {
+        const out = {};
+        root.windows.forEach((w, i) => out[w.address] = { info: w, order: i });
+        return out;
+    }
+
+    onWindowsChanged: Layout.sync_keys(slots, root.windows.map(w => w.address))
+    Component.onCompleted: Layout.sync_keys(slots, root.windows.map(w => w.address))
+
+    ListModel {
+        id: slots
+    }
     readonly property int text_style: Style.glow ? Text.Outline : Style.text_shadow.a > 0 ? Text.Raised : Text.Normal
     readonly property color text_glow: Style.glow ? Qt.alpha(Theme.theme_primary, 0.3) : Style.text_shadow
     readonly property real label_px: Math.max(9, Math.min(Style.fs(-3), root.height * 0.16))
@@ -63,12 +77,14 @@ Item {
         clip: true
 
         Repeater {
-            model: root.windows
+            model: slots
 
             Rectangle {
                 id: win
-                required property var modelData
-                required property int index
+                required property string key
+                readonly property var slot: root.window_map[win.key] || ({ info: { address: win.key, toplevel: null, rx: 0, ry: 0, rw: 0, rh: 0, floating: false }, order: 0 })
+                readonly property var modelData: win.slot.info
+                readonly property int index: win.slot.order
                 readonly property bool is_selected: root.selected && win.modelData.address === root.selected_address
                 readonly property bool is_picked: !!root.picked[win.modelData.address]
                 readonly property int mark: root.marks[win.modelData.address] || 0

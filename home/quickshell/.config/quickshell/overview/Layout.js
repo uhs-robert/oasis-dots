@@ -182,3 +182,17 @@ function neighbor(rects, from, dx, dy) {
     });
     return best;
 }
+
+// Brings a ListModel's `key` rows in line with keys: gone ones removed, new ones appended, the rest left alive.
+function sync_keys(list_model, keys) {
+    const want = {};
+    for (const k of keys) want[k] = true;
+    const have = {};
+    for (let i = list_model.count - 1; i >= 0; i--) {
+        const k = list_model.get(i).key;
+        if (want[k] && !have[k]) have[k] = true;
+        else list_model.remove(i);
+    }
+    const add = keys.filter(k => !have[k]).map(k => ({ key: k }));
+    if (add.length > 0) list_model.append(add);
+}
