@@ -49,6 +49,14 @@ Singleton {
     property bool anchored: false
     property point anchor_point: Qt.point(0, 0)
     property string pending_action: ""
+    // Set when the selector is cancelled mid-grab, so a late grim result is thrown away.
+    property bool grab_cancelled: false
+    // Capture delay, kept for the session: the selector closes and the bar counts down before the action runs.
+    readonly property var delays: [0, 3, 5, 10]
+    property int delay_index: 0
+    readonly property int delay_s: root.delays[root.delay_index]
+    property int countdown: 0
+    property var countdown_run: null
     property string capture_file: ""
 
     property bool recording: false
@@ -219,6 +227,7 @@ Singleton {
     }
 
     function cancel() {
+        if (root.phase === "capture") root.grab_cancelled = true;
         capture_delay.stop();
         capture_watchdog.stop();
         root.phase = "";
@@ -323,21 +332,60 @@ Singleton {
         capture_delay.restart();
     }
 
+    function cycle_delay() {
+        root.delay_index = (root.delay_index + 1) % root.delays.length;
+    }
+
+    function start_countdown(fn) {
+        root.countdown_run = fn;
+        root.countdown = root.delay_s;
+    }
+
+    function cancel_countdown() {
+        root.countdown = 0;
+        root.countdown_run = null;
+    }
+
+    Timer {
+        interval: 1000
+        repeat: true
+        running: root.countdown > 0
+        onTriggered: {
+            root.countdown -= 1;
+            if (root.countdown > 0) return;
+            const fn = root.countdown_run;
+            root.countdown_run = null;
+            if (fn) fn();
+        }
+    }
+
     function act(action) {
         const geometry = root.geometry();
         if (geometry === "") return root.cancel();
+        if (root.delay_s > 0) {
+            const scale = String(root.screen_of(root.sel_screen).devicePixelRatio);
+            root.cancel();
+            root.start_countdown(() => action === "record" ? Quickshell.execDetached([root.script, "--record-geometry", geometry]) : root.run_grab(action, scale, geometry));
+            return;
+        }
         if (action === "record") {
             root.cancel();
             after_close.fn = () => Quickshell.execDetached([root.script, "--record-geometry", geometry]);
             after_close.restart();
             return;
         }
-        root.pending_action = action;
-        root.capture_file = (Quickshell.env("XDG_RUNTIME_DIR") || "/tmp") + "/qs-screenshot-" + Date.now() + ".png";
-        const s = root.screen_of(root.sel_screen);
-        grab.command = ["grim", "-s", String(s.devicePixelRatio), "-g", geometry, root.capture_file];
         root.phase = "capture";
-        capture_delay.restart();
+        root.run_grab(action, String(root.screen_of(root.sel_screen).devicePixelRatio), geometry);
+    }
+
+    // With the selector up this waits for its chrome to hide; after a countdown there is no overlay and grim runs at once.
+    function run_grab(action, scale, geometry) {
+        root.pending_action = action;
+        root.grab_cancelled = false;
+        root.capture_file = (Quickshell.env("XDG_RUNTIME_DIR") || "/tmp") + "/qs-screenshot-" + Date.now() + ".png";
+        grab.command = ["grim", "-s", scale, "-g", geometry, root.capture_file];
+        if (root.phase === "capture") return capture_delay.restart();
+        grab.running = true;
     }
 
     // The overlay drops its chrome first; a frozen one keeps showing the still frame for grim to read.
@@ -364,7 +412,7 @@ Singleton {
                 root.cancel();
                 return;
             }
-            if (root.phase !== "capture") {
+            if (root.grab_cancelled) {
                 Quickshell.execDetached(["rm", "-f", "--", root.capture_file]);
                 return;
             }
@@ -401,7 +449,9 @@ Singleton {
         watcher.running = false;
     }
 
+    // Also cancels a pending capture countdown.
     function stop_recording() {
+        if (root.countdown > 0) return root.cancel_countdown();
         Quickshell.execDetached(["pkill", "-INT", "-x", "wf-recorder"]);
     }
 

@@ -5,7 +5,7 @@ local Menu = require("lib.actions.menu") ---@class Menu
 -- Screenshot
 -- stylua: ignore start
 local screenshot = function(action) return action and Scripts.screenshot .. " --" .. action or Scripts.screenshot end
-Bind.cmd("Print",    screenshot(),         "Screenshot")
+Bind.cmd("Print",    screenshot(),         "Screenshot", { submap_universal = true })
 Bind.leader_cmd("I", screenshot(),         "Screenshot")
 Bind.leader_cmd("P", screenshot("pixel"),  "Color Picker")
 
