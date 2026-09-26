@@ -122,6 +122,27 @@ qs_select() {
   [[ "$("$SCRIPT_DIR/qs-ipc" call screenshot select "$1" "$2" 2>/dev/null)" == ok ]]
 }
 
+# Open a Quickshell selector mode (pixel, window, screen); false when no bar answers.
+qs_pick() {
+  [[ "$("$SCRIPT_DIR/qs-ipc" call screenshot pick "$1" "$2" 2>/dev/null)" == ok ]]
+}
+
+# Copy the colour of one pixel at "x,y 1x1" as lowercase hex, like hyprpicker -a.
+handle_pixel_at() {
+  need grim
+  need magick
+  local color
+  color="$(grim -g "$1" -t ppm - | magick - -format '#%[hex:p{0,0}]' info:)"
+  color="${color,,}"
+  [[ "$color" =~ ^#[0-9a-f]{6} ]] || {
+    notify-send "Pick Failed" "Could not read the pixel"
+    exit 1
+  }
+  color="${color:0:7}"
+  wl-copy "$color"
+  notify-send "Picked Color" "$color"
+}
+
 # Act on a captured image: copy, save, annotate or ocr. The image file is removed on exit.
 handle_image() {
   local image="$1" action="$2"
@@ -235,6 +256,7 @@ if [[ "$1" == "-h" || "$1" == "--help" ]]; then
   echo "  --record-focused      Record focused window"
   echo "  --record-geometry G   Record the region G (\"x,y wxh\")"
   echo "  --image FILE [act]    Act on an already captured image (FILE is removed)"
+  echo "  --pixel-at G          Copy the colour of the pixel at G (\"x,y 1x1\")"
   echo "                        act: --copy, --save, --annotate (default), --ocr"
   echo ""
   echo "Without an option, opens the Quickshell screenshot menu, or rofi when no bar answers."
@@ -244,10 +266,14 @@ if [[ "$1" == "-h" || "$1" == "--help" ]]; then
   exit 0
 fi
 
-# The Quickshell selector's image flag never stops a recording.
+# The Quickshell selector's image and pixel flags never stop a recording.
 case "$1" in
 --image)
   handle_region_args "$@"
+  exit 0
+  ;;
+--pixel-at)
+  handle_pixel_at "$2"
   exit 0
   ;;
 esac
@@ -302,11 +328,12 @@ fi
 case "$CHOICE" in
 r | --region) qs_select false toolbar || handle_screenshot "region" ;;
 z | --freeze) qs_select true toolbar || handle_screenshot "region" "--freeze" ;;
-s | --screen) handle_screenshot "output" ;;
-w | --window) handle_screenshot "window" ;;
+s | --screen) qs_pick screen toolbar || handle_screenshot "output" ;;
+w | --window) qs_pick window toolbar || handle_screenshot "window" ;;
 f | --focused) handle_screenshot "window" -m active ;;
 t | --text) qs_select false ocr || handle_text_ocr ;;
 p | --pixel)
+  qs_pick pixel toolbar && exit 0
   need hyprpicker
   COLOR="$(hyprpicker -a || exit 1)"
   wl-copy "$COLOR"
@@ -317,8 +344,14 @@ p | --pixel)
   need slurp
   handle_recording "$(slurp)"
 } ;;
---record-window) need slurp; handle_recording "$(get_windows | slurp -r)" ;;
---record-screen) need slurp; handle_recording "$(get_outputs | slurp -r)" ;;
+--record-window) qs_pick window record || {
+  need slurp
+  handle_recording "$(get_windows | slurp -r)"
+} ;;
+--record-screen) qs_pick screen record || {
+  need slurp
+  handle_recording "$(get_outputs | slurp -r)"
+} ;;
 --record-focused) handle_recording "$(get_focused)" ;;
 --record-geometry) handle_recording "$2" ;;
 

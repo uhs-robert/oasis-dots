@@ -3,6 +3,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Layouts
 import Quickshell
+import Quickshell.Io
 import Quickshell.Wayland
 import "../theme"
 import "../services"
@@ -18,11 +19,40 @@ PanelWindow {
     readonly property rect sel: root.mine ? Screenshot.sel_rect : Qt.rect(0, 0, 0, 0)
     readonly property bool toolbar_shown: root.mine && Screenshot.phase === "toolbar"
     // Hidden while grim reads the screen, and until the still frame is in so the chrome never lands in it.
-    readonly property bool chrome_shown: Screenshot.phase !== "capture" && (frozen_view.hasContent || !Screenshot.frozen && root.waited)
+    readonly property bool chrome_shown: Screenshot.phase !== "capture" && (root.pixel_mode ? root.frame_ready : frozen_view.hasContent || !Screenshot.frozen && root.waited)
     property bool waited: false
     // Buffer pixels per logical pixel, so the loupe magnifies real screen pixels.
     readonly property real buffer_scale: frozen_view.sourceSize.width > 0 ? frozen_view.sourceSize.width / root.width : root.modelData.devicePixelRatio
     readonly property color dim_color: Qt.alpha(Theme.bg_shadow, 0.6)
+    readonly property bool pixel_mode: Screenshot.mode === "pixel"
+    readonly property bool target_mode: Screenshot.mode === "window" || Screenshot.mode === "screen"
+    property bool help_open: false
+    readonly property string delay_label: Screenshot.delay_s > 0 ? "Delay " + Screenshot.delay_s + "s" : "No delay"
+    readonly property string tier_keys: "hjkl move 10px · H/J/K/L move 100px · C-hjkl move 1px · C-H/J/K/L move 300px"
+    readonly property string help_text: Screenshot.phase === "toolbar" ? "h/l move · Tab/S-Tab next/prev · c copy · s save · a annotate · o ocr · r record · d delay off/3s/5s/10s · Enter run · Backspace reselect · q/Esc cancel" : root.pixel_mode ? root.tier_keys + " · Enter pick · click pick · m loupe · +/- zoom · q/Esc cancel" : root.target_mode ? "hjkl nearest " + Screenshot.mode + " · Tab/S-Tab cycle · d delay off/3s/5s/10s · Enter pick · click pick · m loupe · +/- zoom · q/Esc cancel" : root.tier_keys + " · v/space set or drop anchor · o swap ends · drag select · Enter confirm, whole screen without a selection · m loupe · +/- zoom · Esc drop anchor, then cancel · q cancel"
+
+    function set_help(open) {
+        root.help_open = open;
+        Qt.callLater(() => open ? key_help.forceActiveFocus() : keys_item.forceActiveFocus());
+    }
+    // Pixel mode freezes with grim's own capture of this output (real pixels on every scale), taken before
+    // anything is drawn; it is the background, the loupe's source and what the swatch samples.
+    readonly property string pixel_file: root.pixel_mode ? (Quickshell.env("XDG_RUNTIME_DIR") || "/tmp") + "/qs-pixel-" + root.screen_name + "-" + Date.now() + ".png" : ""
+    property string pixel_image: ""
+    readonly property bool frame_ready: frame_image.status === Image.Ready && frame_image.sourceSize.width > 0
+    readonly property real pixel_scale: root.frame_ready ? frame_image.sourceSize.width / root.width : root.buffer_scale
+    readonly property real sample_scale: root.pixel_mode ? root.pixel_scale : root.buffer_scale
+
+    Process {
+        running: root.pixel_mode
+        command: ["grim", "-o", root.screen_name, root.pixel_file]
+        onExited: code => {
+            if (code === 0) root.pixel_image = "file://" + root.pixel_file;
+            else Screenshot.fail("grim could not capture " + root.screen_name);
+        }
+    }
+
+    Component.onDestruction: if (root.pixel_file !== "") Quickshell.execDetached(["rm", "-f", "--", root.pixel_file])
 
     screen: root.modelData
     anchors.top: true
@@ -47,11 +77,20 @@ PanelWindow {
     ScreencopyView {
         id: frozen_view
         anchors.fill: parent
-        visible: Screenshot.frozen
+        visible: Screenshot.frozen && !root.pixel_mode
         captureSource: root.modelData
         live: false
         paintCursor: false
-        onStopped: if (Screenshot.frozen && !frozen_view.hasContent) Screenshot.fail("Frozen capture failed")
+        onStopped: if (Screenshot.frozen && !root.pixel_mode && !frozen_view.hasContent) Screenshot.fail("Frozen capture failed")
+    }
+
+    Image {
+        id: frame_image
+        anchors.fill: parent
+        visible: root.frame_ready
+        source: root.pixel_image
+        cache: false
+        smooth: false
     }
 
     Timer {
@@ -61,8 +100,8 @@ PanelWindow {
     }
 
     Timer {
-        running: Screenshot.frozen && !frozen_view.hasContent
-        interval: 1500
+        running: Screenshot.frozen && !(root.pixel_mode ? root.frame_ready : frozen_view.hasContent)
+        interval: root.pixel_mode ? 4000 : 1500
         onTriggered: Screenshot.fail("Frozen capture timed out")
     }
 
@@ -72,7 +111,7 @@ PanelWindow {
         visible: root.chrome_shown
 
         Rectangle {
-            visible: !root.mine
+            visible: !root.mine && !root.pixel_mode
             anchors.fill: parent
             color: root.dim_color
         }
@@ -107,6 +146,23 @@ PanelWindow {
             width: parent.width - x
             height: root.sel.height
             color: root.dim_color
+        }
+
+        Repeater {
+            model: root.target_mode ? Screenshot.targets : []
+
+            Rectangle {
+                required property var modelData
+                required property int index
+                visible: modelData.screen === root.screen_name && index !== Screenshot.target_index && Screenshot.phase === "select"
+                x: modelData.rect.x
+                y: modelData.rect.y
+                width: modelData.rect.width
+                height: modelData.rect.height
+                color: "transparent"
+                border.width: 1
+                border.color: Qt.alpha(Style.accent_color, 0.5)
+            }
         }
 
         Item {
@@ -224,6 +280,30 @@ PanelWindow {
                         }
                     }
                 }
+
+                MenuRow {
+                    id: delay_tool
+                    Layout.preferredWidth: delay_label.implicitWidth + 16 + delay_tool.inset + delay_tool.key_space
+                    Layout.preferredHeight: Style.px(28)
+                    base_radius: 6
+                    key: "d"
+
+                    Text {
+                        id: delay_label
+                        anchors.left: parent.left
+                        anchors.leftMargin: 8 + delay_tool.inset
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: root.delay_label
+                        color: Screenshot.delay_s > 0 ? Theme.warning : Style.text_muted
+                        font.family: Style.font_family
+                        font.pixelSize: Style.font_size
+                    }
+
+                    MouseArea {
+                        anchors.fill: parent
+                        onClicked: Screenshot.cycle_delay()
+                    }
+                }
             }
         }
 
@@ -269,12 +349,12 @@ PanelWindow {
             readonly property int half: (loupe.count - 1) / 2
             readonly property real view: loupe.count * loupe.zoom
             readonly property point at: Screenshot.cursor_point
-            readonly property int bx: Math.floor(loupe.at.x * root.buffer_scale)
-            readonly property int by: Math.floor(loupe.at.y * root.buffer_scale)
+            readonly property int bx: Math.floor(loupe.at.x * root.sample_scale)
+            readonly property int by: Math.floor(loupe.at.y * root.sample_scale)
             readonly property real gap: 28
-            visible: Screenshot.lens_on && Screenshot.phase === "select" && Screenshot.cursor_screen === root.screen_name && frozen_view.hasContent
+            visible: Screenshot.lens_on && Screenshot.phase === "select" && Screenshot.cursor_screen === root.screen_name && (root.pixel_mode ? root.frame_ready : frozen_view.hasContent)
             width: loupe.view + loupe.pad * 2
-            height: loupe.view + loupe.pad * 2 + coords.implicitHeight + 4
+            height: loupe.view + loupe.pad * 2 + coords.implicitHeight + 4 + (root.pixel_mode ? swatch_row.height + 4 : 0)
             x: loupe.at.x + loupe.gap + loupe.width <= root.width ? loupe.at.x + loupe.gap : loupe.at.x - loupe.gap - loupe.width
             y: loupe.at.y + loupe.gap + loupe.height <= root.height ? loupe.at.y + loupe.gap : loupe.at.y - loupe.gap - loupe.height
 
@@ -293,9 +373,19 @@ PanelWindow {
                 height: loupe.view
                 clip: true
 
-                ShaderEffectSource {
+                Image {
+                    visible: root.pixel_mode
                     anchors.fill: parent
-                    sourceItem: frozen_view
+                    source: root.pixel_mode ? root.pixel_image : ""
+                    sourceClipRect: Qt.rect(loupe.bx - loupe.half, loupe.by - loupe.half, loupe.count, loupe.count)
+                    cache: false
+                    smooth: false
+                }
+
+                ShaderEffectSource {
+                    visible: !root.pixel_mode
+                    anchors.fill: parent
+                    sourceItem: root.pixel_mode ? null : frozen_view
                     sourceRect: Qt.rect((loupe.bx - loupe.half) / root.buffer_scale, (loupe.by - loupe.half) / root.buffer_scale, loupe.count / root.buffer_scale, loupe.count / root.buffer_scale)
                     textureSize: Qt.size(loupe.count, loupe.count)
                     smooth: false
@@ -337,6 +427,57 @@ PanelWindow {
                 }
             }
 
+            Row {
+                id: swatch_row
+                visible: root.pixel_mode
+                anchors.horizontalCenter: parent.horizontalCenter
+                anchors.bottom: coords.top
+                anchors.bottomMargin: 2
+                height: Math.max(swatch.height, hex_text.implicitHeight)
+                spacing: 6
+
+                // Draws the centre buffer pixel and reads it back as the hex readout.
+                Canvas {
+                    id: swatch
+                    readonly property string src: root.pixel_image
+                    readonly property int bx: loupe.bx
+                    readonly property int by: loupe.by
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: 12
+                    height: 12
+                    onSrcChanged: if (swatch.src !== "") swatch.loadImage(swatch.src)
+                    onImageLoaded: swatch.requestPaint()
+                    onBxChanged: swatch.requestPaint()
+                    onByChanged: swatch.requestPaint()
+                    onPaint: {
+                        const ctx = swatch.getContext("2d");
+                        ctx.clearRect(0, 0, swatch.width, swatch.height);
+                        const w = frame_image.sourceSize.width;
+                        const h = frame_image.sourceSize.height;
+                        if (swatch.src === "" || !swatch.isImageLoaded(swatch.src) || w <= 0 || h <= 0) return;
+                        ctx.drawImage(swatch.src, Math.max(0, Math.min(w - 1, swatch.bx)), Math.max(0, Math.min(h - 1, swatch.by)), 1, 1, 0, 0, swatch.width, swatch.height);
+                        const d = ctx.getImageData(swatch.width / 2, swatch.height / 2, 1, 1).data;
+                        if (root.screen_name === Screenshot.cursor_screen) Screenshot.pixel_hex = "#" + [d[0], d[1], d[2]].map(v => v.toString(16).padStart(2, "0")).join("");
+                    }
+
+                    Rectangle {
+                        anchors.fill: parent
+                        color: "transparent"
+                        border.width: 1
+                        border.color: Style.frame_border_color
+                    }
+                }
+
+                Text {
+                    id: hex_text
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: Screenshot.pixel_hex !== "" ? Screenshot.pixel_hex : "#------"
+                    color: Style.text_fg
+                    font.family: Style.mono_font
+                    font.pixelSize: Style.fs(-3)
+                }
+            }
+
             Text {
                 id: coords
                 anchors.horizontalCenter: parent.horizontalCenter
@@ -346,6 +487,53 @@ PanelWindow {
                 color: Style.text_fg
                 font.family: Style.mono_font
                 font.pixelSize: Style.fs(-4)
+            }
+        }
+
+        Rectangle {
+            id: help_box
+            visible: root.keyboard_owner && root.help_open
+            z: 3
+            anchors.centerIn: parent
+            width: Math.min(parent.width - 64, Style.px(520))
+            height: Math.min(parent.height - 160, Style.px(440))
+            radius: Style.frame_radius
+            color: Style.frame_color
+            border.width: Style.frame_border_width
+            border.color: Style.frame_border_color
+
+            MouseArea {
+                anchors.fill: parent
+            }
+
+            Rectangle {
+                width: parent.width
+                height: Style.accent_height
+                color: Style.accent_color
+                topLeftRadius: help_box.radius
+                topRightRadius: help_box.radius
+            }
+
+            Text {
+                id: help_title
+                x: 16
+                y: 10 + Style.accent_height
+                text: Style.title_text("Screenshot keys", Style)
+                color: Style.title_fg
+                font.family: Style.title_font_family
+                font.pixelSize: Style.fs(-2)
+            }
+
+            KeyHelp {
+                id: key_help
+                anchors.fill: parent
+                anchors.topMargin: help_title.y + help_title.height + 8
+                anchors.leftMargin: 12
+                anchors.rightMargin: 12
+                anchors.bottomMargin: 12
+                popup_keys: false
+                text: root.help_text
+                onBack: root.set_help(false)
             }
         }
 
@@ -367,7 +555,7 @@ PanelWindow {
                 anchors.centerIn: parent
                 width: Math.min(implicitWidth, root.width - 56)
                 wrap: false
-                text: Screenshot.phase === "toolbar" ? "h/l move · Enter run · c copy · s save · a annotate · o ocr · r record · Backspace reselect · Esc cancel" : Screenshot.anchored ? "hjkl extend · o swap ends · v drop anchor · Enter " + (Screenshot.preset !== "" ? Screenshot.preset : "confirm") + " · Esc drop anchor" : "drag/hjkl cursor · v/space anchor · Enter full screen · m loupe · +/- zoom · Esc cancel"
+                text: (root.target_mode && Screenshot.phase === "select" ? "hjkl/Tab " + Screenshot.mode + " · d " + root.delay_label.toLowerCase() + " · Enter pick · Esc cancel" : root.pixel_mode ? "hjkl move · Enter pick · m loupe · +/- zoom · Esc cancel" : Screenshot.phase === "toolbar" ? "h/l move · Enter run · c copy · s save · a annotate · o ocr · r record · d delay · Backspace reselect · Esc cancel" : Screenshot.anchored ? "hjkl extend · o swap ends · v drop anchor · Enter " + (Screenshot.preset !== "" ? Screenshot.preset : "confirm") + " · Esc drop anchor" : "drag/hjkl cursor · v/space anchor · Enter full screen · m loupe · +/- zoom · Esc cancel") + " · ? help"
             }
         }
     }
@@ -380,6 +568,19 @@ PanelWindow {
         hoverEnabled: true
         onWheel: wheel => Screenshot.step_zoom(wheel.angleDelta.y > 0 ? 1 : wheel.angleDelta.y < 0 ? -1 : 0)
         onPressed: mouse => {
+            if (root.target_mode) {
+                const i = Screenshot.target_at(root.screen_name, mouse.x, mouse.y);
+                if (i < 0) return;
+                Screenshot.phase = "select";
+                Screenshot.highlight(i);
+                Screenshot.confirm();
+                return;
+            }
+            if (root.pixel_mode) {
+                Screenshot.set_cursor(root.screen_name, mouse.x, mouse.y, false);
+                Screenshot.pick_pixel();
+                return;
+            }
             Screenshot.anchored = false;
             root.press_point = Qt.point(mouse.x, mouse.y);
             Screenshot.phase = "select";
@@ -390,13 +591,19 @@ PanelWindow {
             if (mouse.x === root.last_mouse.x && mouse.y === root.last_mouse.y && !pressed) return;
             root.last_mouse = Qt.point(mouse.x, mouse.y);
             Screenshot.set_cursor(root.screen_name, mouse.x, mouse.y, false);
-            if (!pressed) return;
+            if (root.target_mode && Screenshot.phase === "select") {
+                const i = Screenshot.target_at(root.screen_name, mouse.x, mouse.y);
+                if (i >= 0 && i !== Screenshot.target_index) Screenshot.highlight(i);
+                return;
+            }
+            if (!pressed || root.pixel_mode) return;
             const x = Math.max(0, Math.min(root.width, mouse.x));
             const y = Math.max(0, Math.min(root.height, mouse.y));
             const p = root.press_point;
             Screenshot.set_selection(root.screen_name, Math.min(p.x, x), Math.min(p.y, y), Math.abs(x - p.x), Math.abs(y - p.y));
         }
         onReleased: {
+            if (root.pixel_mode || root.target_mode) return;
             if (Screenshot.has_selection) Screenshot.confirm();
             else Screenshot.sel_screen = "";
         }
@@ -428,6 +635,8 @@ PanelWindow {
             const dir = { [Qt.Key_H]: [-1, 0], [Qt.Key_Left]: [-1, 0], [Qt.Key_L]: [1, 0], [Qt.Key_Right]: [1, 0], [Qt.Key_K]: [0, -1], [Qt.Key_Up]: [0, -1], [Qt.Key_J]: [0, 1], [Qt.Key_Down]: [0, 1] }[event.key];
             if (Screenshot.phase === "capture") {
                 return;
+            } else if (event.key === Qt.Key_Question || event.text === "?") {
+                root.set_help(true);
             } else if (event.key === Qt.Key_Escape) {
                 if (!toolbar && Screenshot.anchored) Screenshot.clear_anchor();
                 else Screenshot.cancel();
@@ -439,9 +648,17 @@ PanelWindow {
                 Screenshot.step_zoom(-1);
             } else if (event.key === Qt.Key_M && !shift) {
                 Screenshot.lens_on = !Screenshot.lens_on;
+            } else if (root.pixel_mode && (event.key === Qt.Key_Return || event.key === Qt.Key_Enter)) {
+                Screenshot.pick_pixel();
+            } else if ((toolbar || root.target_mode) && event.key === Qt.Key_D) {
+                Screenshot.cycle_delay();
+            } else if (!toolbar && root.target_mode && dir) {
+                Screenshot.step_target(dir[0], dir[1]);
+            } else if (!toolbar && root.target_mode && (event.key === Qt.Key_Tab || event.key === Qt.Key_Backtab)) {
+                Screenshot.cycle_target(event.key === Qt.Key_Backtab || shift ? -1 : 1);
             } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
                 if (toolbar) root.run_tool(Screenshot.tool_index);
-                else if (Screenshot.anchored || Screenshot.has_selection) Screenshot.confirm();
+                else if (Screenshot.anchored || Screenshot.has_selection || root.target_mode) Screenshot.confirm();
                 else {
                     Screenshot.select_screen(root.screen_name);
                     Screenshot.confirm();
@@ -464,9 +681,9 @@ PanelWindow {
                     dy += keys_item.held[k][1];
                 }
                 Screenshot.move_cursor(Math.sign(dx) * step, Math.sign(dy) * step);
-            } else if (!toolbar && (event.key === Qt.Key_V || event.key === Qt.Key_Space)) {
+            } else if (!toolbar && !root.pixel_mode && !root.target_mode && (event.key === Qt.Key_V || event.key === Qt.Key_Space)) {
                 Screenshot.toggle_anchor();
-            } else if (!toolbar && event.key === Qt.Key_O) {
+            } else if (!toolbar && !root.pixel_mode && !root.target_mode && event.key === Qt.Key_O) {
                 Screenshot.swap_anchor();
             } else {
                 return;

@@ -9,8 +9,10 @@ Item {
 
     property bool compact: false
 
-    readonly property bool shown: Screenshot.recording
-    readonly property string tip: "Recording " + Screenshot.elapsed_text + "\nClick to stop"
+    // A pending capture countdown takes the chip before the recording it may start.
+    readonly property bool counting: Screenshot.countdown > 0
+    readonly property bool shown: Screenshot.recording || root.counting
+    readonly property string tip: root.counting ? "Capture in " + Screenshot.countdown + "s\nClick to cancel" : "Recording " + Screenshot.elapsed_text + "\nClick to stop"
     onTipChanged: if (hover_handler.hovered) Tooltip.show(root, root.tip, "recording")
     visible: shown
     implicitWidth: shown ? row.implicitWidth : 0
@@ -32,8 +34,8 @@ Item {
         Text {
             id: dot
             Layout.alignment: Qt.AlignVCenter
-            text: "\u{f044a}"
-            color: Theme.theme_label
+            text: root.counting ? "\u{f051b}" : "\u{f044a}"
+            color: root.counting ? Theme.warning : Theme.theme_label
             font.family: Style.bar_font_family
             style: Style.bar_text_style
             styleColor: Style.bar_glow_color
@@ -50,9 +52,9 @@ Item {
         }
 
         Text {
-            visible: !root.compact
+            visible: !root.compact || root.counting
             Layout.alignment: Qt.AlignVCenter
-            text: Screenshot.elapsed_text
+            text: root.counting ? String(Screenshot.countdown) : Screenshot.elapsed_text
             color: Style.bar_fg
             font.family: Style.bar_font_family
             style: Style.bar_text_style

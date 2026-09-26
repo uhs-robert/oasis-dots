@@ -27,6 +27,12 @@ IpcHandler {
         return "ok";
     }
 
+    // mode: "pixel" picks a colour; preset as for select.
+    function pick(mode: string, preset: string): string {
+        Screenshot.select(false, preset === "toolbar" ? "" : preset, mode);
+        return "ok";
+    }
+
     function stop_recording(): void {
         Screenshot.stop_recording();
     }
