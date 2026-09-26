@@ -30,7 +30,7 @@ hl.bind("SUPER + X", hl.dsp.window.kill())
 hl.bind("SUPER + F", hl.dsp.window.fullscreen({ action = "toggle" }))
 hl.bind("SUPER + Q", restart_login)
 -- Swap the Quickshell greeter for tuigreet (qs-greeter falls back when qs exits after this marker).
-hl.bind("SUPER + T", hl.dsp.exec_cmd("mkdir -p /run/user/962/qs-greeter; touch /run/user/962/qs-greeter/fallback; pkill -x qs"))
+hl.bind("SUPER + T", hl.dsp.exec_cmd("mkdir -p /run/user/962/qs-greeter; touch /run/user/962/qs-greeter/fallback; pkill -x qs; sleep 1; pkill -9 -x qs"))
 
 ---- [MONITORS] ----
 -- MAIN
