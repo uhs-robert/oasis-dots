@@ -73,6 +73,18 @@ get_windows() {
   hyprctl clients -j | jq -r '.[] | select(.at and .size) | "\(.at[0]),\(.at[1]) \(.size[0])x\(.size[1])"'
 }
 
+# Notify about a saved file with Open and Show in folder actions, in the background so the script never waits.
+notify_saved() {
+  local title="$1" file="$2"
+  (
+    choice="$(timeout 600 notify-send --action=open=Open --action=folder="Show in folder" --wait "$title" "$file")" || true
+    case "$choice" in
+    open) xdg-open "$file" ;;
+    folder) "$SCRIPT_DIR/term" -e yazi "$file" ;;
+    esac
+  ) >/dev/null 2>&1 &
+}
+
 # Capture a screenshot via hyprshot, annotate with satty if available, save to SCREENSHOT_DIR, and copy to clipboard.
 handle_screenshot() {
   need hyprshot
@@ -86,7 +98,12 @@ handle_screenshot() {
   else
     hyprshot -m "$mode" "${extra_args[@]}" --raw >"$filename"
   fi
+  [[ -s "$filename" ]] || {
+    rm -f -- "$filename"
+    return 0
+  }
   wl-copy <"$filename"
+  notify_saved "Screenshot Saved" "$filename"
 }
 
 # Record a screen region with wf-recorder, save to RECORDING_DIR, and copy to clipboard.
@@ -113,8 +130,8 @@ handle_recording() {
     notify-send "Recording Failed" "wf-recorder wrote no video"
     exit 1
   }
-  notify-send "Recording Saved!" "$filename"
   wl-copy <"$filename"
+  notify_saved "Recording Saved!" "$filename"
 }
 
 # Open the Quickshell region selector; false when no bar answers. preset: toolbar, ocr or record.
@@ -162,16 +179,19 @@ handle_image() {
   save)
     cp -- "$image" "$filename"
     wl-copy --type image/png <"$filename"
-    notify-send "Screenshot Saved" "$filename"
+    notify_saved "Screenshot Saved" "$filename"
     ;;
   annotate)
     if want satty; then
       satty -f "$image" -o "$filename"
-      [[ -f "$filename" ]] && wl-copy --type image/png <"$filename"
+      if [[ -f "$filename" ]]; then
+        wl-copy --type image/png <"$filename"
+        notify_saved "Screenshot Saved" "$filename"
+      fi
     else
       cp -- "$image" "$filename"
       wl-copy --type image/png <"$filename"
-      notify-send "Screenshot Saved" "satty missing, saved without annotation: $filename"
+      notify_saved "Screenshot Saved" "$filename"
     fi
     ;;
   ocr)
