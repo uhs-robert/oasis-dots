@@ -19,7 +19,7 @@ PanelWindow {
     readonly property rect sel: root.mine ? Screenshot.sel_rect : Qt.rect(0, 0, 0, 0)
     readonly property bool toolbar_shown: root.mine && Screenshot.phase === "toolbar"
     // Hidden while grim reads the screen, and until the still frame is in so the chrome never lands in it.
-    readonly property bool chrome_shown: Screenshot.phase !== "capture" && (root.pixel_mode ? root.frame_ready : frozen_view.hasContent || !Screenshot.frozen && root.waited)
+    readonly property bool chrome_shown: Screenshot.phase !== "capture" && (root.pixel_mode ? root.frame_ready || root.grab_failed : frozen_view.hasContent || !Screenshot.frozen && root.waited)
     property bool waited: false
     // Buffer pixels per logical pixel, so the loupe magnifies real screen pixels.
     readonly property real buffer_scale: frozen_view.sourceSize.width > 0 ? frozen_view.sourceSize.width / root.width : root.modelData.devicePixelRatio
@@ -38,19 +38,47 @@ PanelWindow {
     // Pixel mode freezes with grim's own capture of this output (real pixels on every scale), taken before
     // anything is drawn; it is the background, the loupe's source and what the swatch samples.
     property string pixel_file: ""
-    Component.onCompleted: if (root.pixel_mode) root.pixel_file = (Quickshell.env("XDG_RUNTIME_DIR") || "/tmp") + "/qs-pixel-" + root.screen_name + "-" + Date.now() + ".png"
+    property int grab_tries: 0
+    property bool grab_failed: false
+    Component.onCompleted: if (root.pixel_mode) {
+        root.pixel_file = (Quickshell.env("XDG_RUNTIME_DIR") || "/tmp") + "/qs-pixel-" + root.screen_name + "-" + Date.now() + ".png";
+        root.start_frame_grab();
+    }
+
+    // The command is set before starting: bound running/command could start grim with the old, empty path.
+    function start_frame_grab() {
+        root.grab_tries += 1;
+        frame_grab.command = ["grim", "-o", root.screen_name, root.pixel_file];
+        frame_grab.running = true;
+    }
+
+    // Only the cursor's screen is needed to pick; another screen that can't be grabbed just stays unfrozen.
+    function frame_grab_failed(reason) {
+        root.grab_failed = true;
+        console.warn("RegionSelector: grim -o " + root.screen_name + " failed: " + reason);
+        if (Screenshot.cursor_screen === root.screen_name) Screenshot.fail("grim could not capture " + root.screen_name + (reason !== "" ? ": " + reason : ""));
+    }
     property string pixel_image: ""
     readonly property bool frame_ready: frame_image.status === Image.Ready && frame_image.sourceSize.width > 0
     readonly property real pixel_scale: root.frame_ready ? frame_image.sourceSize.width / root.width : root.buffer_scale
     readonly property real sample_scale: root.pixel_mode ? root.pixel_scale : root.buffer_scale
 
     Process {
-        running: root.pixel_file !== ""
-        command: ["grim", "-o", root.screen_name, root.pixel_file]
+        id: frame_grab
+        stderr: StdioCollector {
+            id: frame_grab_err
+        }
         onExited: code => {
             if (code === 0) root.pixel_image = "file://" + root.pixel_file;
-            else Screenshot.fail("grim could not capture " + root.screen_name);
+            else if (root.grab_tries < 3) frame_retry.restart();
+            else root.frame_grab_failed(frame_grab_err.text.trim() || "exit " + code);
         }
+    }
+
+    Timer {
+        id: frame_retry
+        interval: 150
+        onTriggered: root.start_frame_grab()
     }
 
     Component.onDestruction: if (root.pixel_file !== "") Quickshell.execDetached(["rm", "-f", "--", root.pixel_file])
@@ -101,9 +129,9 @@ PanelWindow {
     }
 
     Timer {
-        running: Screenshot.frozen && !(root.pixel_mode ? root.frame_ready : frozen_view.hasContent)
+        running: Screenshot.frozen && !root.grab_failed && !(root.pixel_mode ? root.frame_ready : frozen_view.hasContent)
         interval: root.pixel_mode ? 4000 : 1500
-        onTriggered: Screenshot.fail("Frozen capture timed out")
+        onTriggered: root.pixel_mode ? root.frame_grab_failed("timed out") : Screenshot.fail("Frozen capture timed out")
     }
 
     Item {
