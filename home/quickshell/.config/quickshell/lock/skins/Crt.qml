@@ -14,9 +14,11 @@ Item {
     readonly property int unlock_ms: 1150
 
     readonly property real u: Math.min(root.width, root.height * 16 / 9) / 100
-    readonly property color ph: Theme.bright_green
-    readonly property color ph_dim: Qt.tint(Theme.bg_shadow, Qt.alpha(Theme.green, 0.72))
-    readonly property color ph_faint: Qt.tint(Theme.bg_shadow, Qt.alpha(Theme.green, 0.22))
+    // The phosphor: the lock tint's bright shade for text, its base for dim text, rings and the glass.
+    readonly property color tint_base: root.ctx ? root.ctx.tint_base : Theme.green
+    readonly property color ph: root.ctx ? root.ctx.tint_bright : Theme.bright_green
+    readonly property color ph_dim: Qt.tint(Theme.bg_shadow, Qt.alpha(root.tint_base, 0.72))
+    readonly property color ph_faint: Qt.tint(Theme.bg_shadow, Qt.alpha(root.tint_base, 0.22))
     readonly property color ph_hot: Qt.tint(root.ph, Qt.alpha(Theme.fg_strong, 0.15))
     readonly property string font: "VT323"
     readonly property bool animate: !!root.ctx && root.ctx.animate
@@ -115,7 +117,7 @@ Item {
                     focalY: centerY
                     centerRadius: Math.max(glass.width, glass.height) * 0.6
                     focalRadius: 0
-                    GradientStop { position: 0; color: Qt.tint(Theme.bg_shadow, Qt.alpha(Theme.green, 0.09)) }
+                    GradientStop { position: 0; color: Qt.tint(Theme.bg_shadow, Qt.alpha(root.tint_base, 0.09)) }
                     GradientStop { position: 0.85; color: Theme.bg_shadow }
                 }
                 PathRectangle { width: glass.width; height: glass.height; radius: glass.radius }
@@ -452,7 +454,7 @@ Item {
                     GradientStop { position: 0.68; color: "transparent" }
                     GradientStop { position: 1; color: Qt.alpha(Theme.bg_shadow, 0.7) }
                 }
-                PathRectangle { width: glass.width; height: glass.height }
+                PathRectangle { width: glass.width; height: glass.height; radius: glass.radius }
             }
 
             ShapePath {
@@ -466,7 +468,7 @@ Item {
                     GradientStop { position: 0.22; color: Qt.alpha(Theme.fg_strong, 0.06) }
                     GradientStop { position: 0.4; color: "transparent" }
                 }
-                PathRectangle { width: glass.width; height: glass.height }
+                PathRectangle { width: glass.width; height: glass.height; radius: glass.radius }
             }
         }
 
@@ -482,6 +484,29 @@ Item {
         color: Theme.bg_shadow
         visible: false
         layer.enabled: true
+    }
+
+    // Repaints the bezel over the glass's square corners with the bezel's own gradient, in case the mask is not applied.
+    Shape {
+        anchors.fill: parent
+        preferredRendererType: Shape.CurveRenderer
+
+        ShapePath {
+            strokeWidth: -1
+            fillRule: ShapePath.OddEvenFill
+            fillGradient: RadialGradient {
+                centerX: root.width / 2
+                centerY: root.height * 0.4
+                focalX: centerX
+                focalY: centerY
+                centerRadius: Math.max(root.width, root.height) * 0.75
+                focalRadius: 0
+                GradientStop { position: 0; color: Qt.tint(Theme.bg_shadow, Qt.alpha(Theme.bg_surface, 0.6)) }
+                GradientStop { position: 1; color: Theme.bg_shadow }
+            }
+            PathRectangle { x: glass.x; y: glass.y; width: glass.width; height: glass.height }
+            PathRectangle { x: glass.x; y: glass.y; width: glass.width; height: glass.height; radius: glass.radius }
+        }
     }
 
     // The rim, outside the clipped glass so its stroke is not cut in half.

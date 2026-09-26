@@ -18,7 +18,7 @@ Scope {
     // `name` is a style, or "" for the lock's own; returns "ok" or "unknown".
     function open(name) {
         const style_name = name === "" || name === "follow" ? Style.lock_name : name;
-        if (!(style_name in Style.styles)) return "unknown";
+        if (style_name !== "simple" && !(style_name in Style.styles)) return "unknown";
         const mon = Hyprland.focusedMonitor;
         root.held_screen_name = mon ? mon.name : "";
         root.skin = style_name;
@@ -46,6 +46,10 @@ Scope {
     }
 
     function load() {
+        if (root.skin === "simple") {
+            loader.setSource(Qt.resolvedUrl("LockScreen.qml"), { ctx: fake });
+            return;
+        }
         const file = root.skin.charAt(0).toUpperCase() + root.skin.slice(1) + ".qml";
         loader.setSource(Qt.resolvedUrl("skins/" + file), { ctx: fake });
         if (loader.status === Loader.Error) loader.setSource(Qt.resolvedUrl("LockScreen.qml"), { ctx: fake });

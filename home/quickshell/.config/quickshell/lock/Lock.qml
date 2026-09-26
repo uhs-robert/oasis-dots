@@ -145,6 +145,7 @@ Singleton {
     // The style's skins/<Name>.qml, else the generic screen.
     function skin_url() {
         const name = Style.lock_name;
+        if (name === "simple") return Qt.resolvedUrl("LockScreen.qml");
         const file = name.charAt(0).toUpperCase() + name.slice(1) + ".qml";
         for (let i = 0; i < skin_files.count; i++) {
             if (skin_files.get(i, "fileName") === file) return Qt.resolvedUrl("skins/" + file);

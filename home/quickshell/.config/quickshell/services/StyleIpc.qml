@@ -18,13 +18,22 @@ IpcHandler {
         return Style.name;
     }
 
-    // A style name, or "follow" to match the active style.
+    // A style name, "follow" to match the active style, or "simple" for the plain lock screen.
     function set_lock(name: string): string {
         return Style.set_lock_style(name) ? "ok" : "unknown";
     }
 
     function get_lock(): string {
         return Style.lock_style;
+    }
+
+    // primary, secondary, green, amber or white.
+    function set_lock_tint(name: string): string {
+        return Style.set_lock_tint(name) ? "ok" : "unknown";
+    }
+
+    function get_lock_tint(): string {
+        return Style.lock_tint;
     }
 
     function toggle_cava_line(): void {
