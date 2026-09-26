@@ -14,14 +14,17 @@ Scope {
     property bool shown: false
     property string skin: ""
     property string held_screen_name: ""
+    // A tint to show instead of Style.lock_tint, or "".
+    property string tint: ""
 
     // `name` is a style, or "" for the lock's own; returns "ok" or "unknown".
-    function open(name) {
+    function open(name, tint) {
         const style_name = name === "" || name === "follow" ? Style.lock_name : name;
         if (style_name !== "simple" && !(style_name in Style.styles)) return "unknown";
         const mon = Hyprland.focusedMonitor;
         root.held_screen_name = mon ? mon.name : "";
         root.skin = style_name;
+        root.tint = tint || "";
         root.reset();
         root.shown = true;
         root.load();
@@ -31,6 +34,7 @@ Scope {
     function close() {
         replay.stop();
         root.shown = false;
+        root.tint = "";
         loader.source = "";
     }
 
@@ -87,6 +91,7 @@ Scope {
     LockCtx {
         id: fake
         typing: true
+        tint: root.tint !== "" ? root.tint : Style.lock_tint
     }
 
     Timer {

@@ -126,7 +126,8 @@ Singleton {
     // Reopens the popup that opened the current one, keeping the same anchor/color/screen.
     function back() {
         if (root.back_name === "") return;
-        root.open(root.back_name, root.open_anchor, root.open_color, root.open_screen_name);
+        const found = root.find_in_screen(root.open_screen_name, root.back_name);
+        root.open(root.back_name, root.open_anchor, root.open_color, root.open_screen_name, found ? found.back_to : "");
     }
 
     function toggle(name, anchor_item, color, screen_name) {
