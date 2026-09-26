@@ -72,6 +72,8 @@ PanelWindow {
     // Opt-in: the popup opens straight into typing (INSERT), fuzzy-matches search_rows like the HyprVim
     // prompt, and Esc leaves typing (NORMAL) without clearing the query rather than canceling the search.
     property bool search_starts_open: false
+    // With search_starts_open, false opens in NORMAL with an empty query; `i` or `/` starts typing.
+    property bool search_opens_typing: true
     signal search_accept()
     readonly property bool search_shown: root.search_enabled && (root.search_starts_open ? root.search_typing : (root.search_typing || root.search_query !== ""))
     readonly property var search_matches: root.search_shown ? (root.search_starts_open ? root.fuzzy_matches(root.search_rows, root.search_query) : Search.matches(root.search_rows, root.search_query)) : []
@@ -358,10 +360,10 @@ PanelWindow {
             held_screen_name = Popups.open_screen_name;
             held_color = Popups.open_color;
             help_open = false;
-            if (!root.search_starts_open) clear_search();
+            if (!root.search_starts_open || !root.search_opens_typing) clear_search();
             visible = true;
             open_anim.restart();
-            if (root.search_starts_open) root.open_search();
+            if (root.search_starts_open && root.search_opens_typing) root.open_search();
             else content_scope.forceActiveFocus();
         } else if (visible && passive && Popups.open_name !== "") {
             open_anim.stop();
