@@ -95,6 +95,12 @@ Singleton {
         if (follow) root.focus(source_address);
     }
 
+    // Swaps two windows' places; `window` names the source, as it does for window.move.
+    function swap(address, other_address) {
+        if (!root.valid(address) || !root.valid(other_address) || address === other_address) return;
+        Hyprland.dispatch("hl.dsp.window.swap({ window = " + root.selector(address) + ", target = " + root.selector(other_address) + " })");
+    }
+
     Connections {
         target: Hyprland
 
