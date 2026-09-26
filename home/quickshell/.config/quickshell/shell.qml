@@ -79,6 +79,9 @@ ShellRoot {
     ClockPopup {}
     StartPopup {}
     StylePopup {}
+    LockStylePopup {
+        previewer: lock_preview
+    }
     VolumePopup {}
     BatteryPopup {}
     BluetoothPopup {}
