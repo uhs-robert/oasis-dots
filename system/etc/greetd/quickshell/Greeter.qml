@@ -13,20 +13,36 @@ Singleton {
     readonly property bool preview: !Greetd.available
     readonly property string state_dir: Quickshell.env("QS_GREETER_STATE") || ""
 
+    // The bar keeps /var/lib/qs-greeter/greeter.json current; the copy from the last greeter-sync covers a missing or bad one.
+    property FileView live_settings_file: FileView {
+        path: "/var/lib/qs-greeter/greeter.json"
+        blockLoading: true
+        printErrors: false
+    }
     property FileView settings_file: FileView {
         path: Quickshell.shellDir + "/greeter.json"
         blockLoading: true
         printErrors: false
     }
-    readonly property var settings: {
-        try {
-            return JSON.parse(root.settings_file.text()) || {};
-        } catch (e) {
-            return {};
-        }
-    }
+    readonly property var settings: root.parse_settings(root.live_settings_file.text()) || root.parse_settings(root.settings_file.text()) || {}
     readonly property string user: root.settings.user || "roberth"
     readonly property string skin: root.settings.lock_style || "simple"
+
+    // Settings as an object whose fields are plain strings, with a skin name that can only name a file in lock/skins; else null.
+    function parse_settings(text) {
+        try {
+            const d = JSON.parse(text);
+            if (!d || typeof d !== "object" || Array.isArray(d)) return null;
+            for (const k of ["user", "lock_style", "lock_tint", "session"]) {
+                if (d[k] !== undefined && typeof d[k] !== "string") return null;
+            }
+            if (d.lock_style !== undefined && !/^[a-z0-9_]+$/.test(d.lock_style)) return null;
+            if (d.user !== undefined && !/^[a-z_][a-z0-9_-]*\$?$/.test(d.user)) return null;
+            return d;
+        } catch (e) {
+            return null;
+        }
+    }
 
     property string buffer: ""
     property string pending: ""

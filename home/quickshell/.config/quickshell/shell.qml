@@ -104,6 +104,7 @@ ShellRoot {
     BrightnessIpc {}
     NotificationsIpc {}
     StyleIpc {}
+    GreeterSync {}
     PowerIpc {}
     ScreenshotIpc {}
     LockPreview {
