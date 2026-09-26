@@ -16,6 +16,8 @@ QtObject {
     property bool failed: false
     property int fail_count: 0
     property string message: ""
+    // A PAM prompt other than the password one, e.g. for a second factor.
+    property string prompt: ""
     property bool caps_lock: false
     property bool typing: false
     // PAM accepted; the skin plays its unlock before the session opens.
