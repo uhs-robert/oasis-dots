@@ -66,6 +66,14 @@ ShellRoot {
         }
     }
 
+    Variants {
+        model: Screenshot.selecting ? Quickshell.screens : []
+
+        delegate: Component {
+            RegionSelector {}
+        }
+    }
+
     ClockPopup {}
     StartPopup {}
     StylePopup {}
@@ -79,6 +87,7 @@ ShellRoot {
     WeatherPopup {}
     UpdatesPopup {}
     MediaPopup {}
+    ScreenshotPopup {}
     NotificationsPopup {}
     Picker {}
     HyprvimPrompt {}
@@ -91,6 +100,7 @@ ShellRoot {
     NotificationsIpc {}
     StyleIpc {}
     PowerIpc {}
+    ScreenshotIpc {}
     TooltipShelf {}
     NotificationToasts {}
     Osd {}

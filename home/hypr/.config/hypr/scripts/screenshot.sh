@@ -12,7 +12,14 @@ SCREENSHOT_DIR="${XDG_PICTURES_DIR:-$HOME/Pictures}/Screenshots"
 RECORDING_DIR="${XDG_VIDEOS_DIR:-$HOME/Videos}/Recordings"
 mkdir -p "$SCREENSHOT_DIR" "$RECORDING_DIR"
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
 timestamp() { date +'%Y-%m-%d_%Hh%Mm%Ss'; }
+
+# Tell the Quickshell bar about recordings; silent when no bar is running.
+qs_call() {
+  "$SCRIPT_DIR/qs-ipc" call screenshot "$@" >/dev/null 2>&1 || true
+}
 
 # Assert a command exists; notify and exit if missing.
 need() {
@@ -29,7 +36,7 @@ want() {
 
 # Report presence of all hard and soft dependencies to stdout.
 check_deps() {
-  local hard_deps=(hyprshot wl-copy wf-recorder hyprpicker tesseract slurp jq)
+  local hard_deps=(hyprshot grim wl-copy wf-recorder hyprpicker tesseract slurp jq)
   local soft_deps=(satty)
   local ok=true
   for dep in "${hard_deps[@]}"; do
@@ -90,10 +97,102 @@ handle_recording() {
   local ts filename
   ts="$(timestamp)"
   filename="$RECORDING_DIR/recording-$ts.mp4"
+  [[ -n "$region" ]] || {
+    notify-send "Recording Cancelled" "No region selected"
+    exit 1
+  }
   notify-send "Recording begin" "Open the recorder again to stop."
-  $RECORDER -g "$region" -f "$filename"
+  local rec_pid
+  $RECORDER -g "$region" -f "$filename" &
+  rec_pid=$!
+  qs_call recording_started "$rec_pid"
+  wait "$rec_pid" || true
+  qs_call recording_stopped
+  [[ -s "$filename" ]] || {
+    rm -f -- "$filename"
+    notify-send "Recording Failed" "wf-recorder wrote no video"
+    exit 1
+  }
   notify-send "Recording Saved!" "$filename"
   wl-copy <"$filename"
+}
+
+# Open the Quickshell region selector; false when no bar answers. preset: toolbar, ocr or record.
+qs_select() {
+  [[ "$("$SCRIPT_DIR/qs-ipc" call screenshot select "$1" "$2" 2>/dev/null)" == ok ]]
+}
+
+# Act on a captured image: copy, save, annotate or ocr. The image file is removed on exit.
+handle_image() {
+  local image="$1" action="$2"
+  local filename
+  CLEANUP_IMAGE="$image"
+  trap 'rm -f -- "$CLEANUP_IMAGE"' EXIT
+  [[ -s "$image" ]] || {
+    notify-send "Screenshot Failed" "No image captured"
+    exit 1
+  }
+  filename="$SCREENSHOT_DIR/screenshot-$(timestamp).png"
+  case "$action" in
+  copy)
+    wl-copy --type image/png <"$image"
+    notify-send "Screenshot Copied" "Image copied to clipboard"
+    ;;
+  save)
+    cp -- "$image" "$filename"
+    wl-copy --type image/png <"$filename"
+    notify-send "Screenshot Saved" "$filename"
+    ;;
+  annotate)
+    if want satty; then
+      satty -f "$image" -o "$filename"
+      [[ -f "$filename" ]] && wl-copy --type image/png <"$filename"
+    else
+      cp -- "$image" "$filename"
+      wl-copy --type image/png <"$filename"
+      notify-send "Screenshot Saved" "satty missing, saved without annotation: $filename"
+    fi
+    ;;
+  ocr)
+    need tesseract
+    local ocr_text
+    if ocr_text=$(tesseract "$image" - 2>/dev/null); then
+      printf '%s' "$ocr_text" | wl-copy
+      notify-send "OCR Complete" "Text copied to clipboard"
+    else
+      notify-send "OCR Failed" "Tesseract failed to process image"
+    fi
+    ;;
+  *)
+    notify-send "Screenshot Failed" "Unknown image action: $action"
+    ;;
+  esac
+}
+
+# Parse the Quickshell selector's flags: --image FILE plus one action flag.
+handle_region_args() {
+  local image="" action="annotate"
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+    --image)
+      image="$2"
+      shift 2
+      ;;
+    --copy | --save | --annotate | --ocr)
+      action="${1#--}"
+      shift
+      ;;
+    *)
+      notify-send "Cancelled" "Unknown option: $1"
+      exit 1
+      ;;
+    esac
+  done
+  [[ -n "$image" ]] || {
+    notify-send "Cancelled" "No image given"
+    exit 1
+  }
+  handle_image "$image" "$action"
 }
 
 # Capture a region screenshot, run tesseract OCR on it, and copy the extracted text to clipboard.
@@ -134,11 +233,24 @@ if [[ "$1" == "-h" || "$1" == "--help" ]]; then
   echo "  --record-window       Record window"
   echo "  --record-screen       Record screen"
   echo "  --record-focused      Record focused window"
+  echo "  --record-geometry G   Record the region G (\"x,y wxh\")"
+  echo "  --image FILE [act]    Act on an already captured image (FILE is removed)"
+  echo "                        act: --copy, --save, --annotate (default), --ocr"
+  echo ""
+  echo "Without an option, opens the Quickshell screenshot menu, or rofi when no bar answers."
   echo ""
   echo "Dependencies:"
   check_deps
   exit 0
 fi
+
+# The Quickshell selector's image flag never stops a recording.
+case "$1" in
+--image)
+  handle_region_args "$@"
+  exit 0
+  ;;
+esac
 
 # Stop recorder if already running
 if REC_PID=$(pidof "$RECORDER" 2>/dev/null); then
@@ -148,34 +260,37 @@ fi
 
 # Choose action
 CHOICE="$1"
+if [[ -z "$CHOICE" ]] && [[ "$("$SCRIPT_DIR/qs-ipc" call screenshot open 2>/dev/null)" == ok ]]; then
+  exit 0
+fi
 if [[ -z "$CHOICE" ]]; then
   CHOICE=$(
     cat <<EOF | "${MENU[@]}"
-📸 Screenshot Region
-📸 Screenshot Frozen Region
-📸 Screenshot Screen
-📸 Screenshot Window
-📸 Screenshot Focused
-📹 Record Region
-📹 Record Window
-📹 Record Screen
-📹 Record Focused
-🎨 Pick Pixel Color
-📄 OCR Text from Region
+Screenshot Region
+Screenshot Frozen Region
+Screenshot Screen
+Screenshot Window
+Screenshot Focused
+Record Region
+Record Window
+Record Screen
+Record Focused
+Pick Pixel Color
+OCR Text from Region
 EOF
   )
   case "$CHOICE" in
-  "📸 Screenshot Region") CHOICE="--region" ;;
-  "📸 Screenshot Frozen Region") CHOICE="--freeze" ;;
-  "📸 Screenshot Screen") CHOICE="--screen" ;;
-  "📸 Screenshot Window") CHOICE="--window" ;;
-  "📸 Screenshot Focused") CHOICE="--focused" ;;
-  "📹 Record Region") CHOICE="--record-region" ;;
-  "📹 Record Window") CHOICE="--record-window" ;;
-  "📹 Record Screen") CHOICE="--record-screen" ;;
-  "📹 Record Focused") CHOICE="--record-focused" ;;
-  "🎨 Pick Pixel Color") CHOICE="--pixel" ;;
-  "📄 OCR Text from Region") CHOICE="--text" ;;
+  "Screenshot Region") CHOICE="--region" ;;
+  "Screenshot Frozen Region") CHOICE="--freeze" ;;
+  "Screenshot Screen") CHOICE="--screen" ;;
+  "Screenshot Window") CHOICE="--window" ;;
+  "Screenshot Focused") CHOICE="--focused" ;;
+  "Record Region") CHOICE="--record-region" ;;
+  "Record Window") CHOICE="--record-window" ;;
+  "Record Screen") CHOICE="--record-screen" ;;
+  "Record Focused") CHOICE="--record-focused" ;;
+  "Pick Pixel Color") CHOICE="--pixel" ;;
+  "OCR Text from Region") CHOICE="--text" ;;
   *)
     notify-send "Cancelled" "No valid option selected"
     exit 1
@@ -185,12 +300,12 @@ fi
 
 # Main logic
 case "$CHOICE" in
-r | --region) handle_screenshot "region" ;;
-z | --freeze) handle_screenshot "region" "--freeze" ;;
+r | --region) qs_select false toolbar || handle_screenshot "region" ;;
+z | --freeze) qs_select true toolbar || handle_screenshot "region" "--freeze" ;;
 s | --screen) handle_screenshot "output" ;;
 w | --window) handle_screenshot "window" ;;
 f | --focused) handle_screenshot "window" -m active ;;
-t | --text) handle_text_ocr ;;
+t | --text) qs_select false ocr || handle_text_ocr ;;
 p | --pixel)
   need hyprpicker
   COLOR="$(hyprpicker -a || exit 1)"
@@ -198,10 +313,14 @@ p | --pixel)
   echo "Picked Color" "$COLOR"
   ;;
 
---record-region) need slurp; handle_recording "$(slurp)" ;;
+--record-region) qs_select false record || {
+  need slurp
+  handle_recording "$(slurp)"
+} ;;
 --record-window) need slurp; handle_recording "$(get_windows | slurp -r)" ;;
 --record-screen) need slurp; handle_recording "$(get_outputs | slurp -r)" ;;
 --record-focused) handle_recording "$(get_focused)" ;;
+--record-geometry) handle_recording "$2" ;;
 
 *)
   notify-send "Cancelled" "Unknown action"

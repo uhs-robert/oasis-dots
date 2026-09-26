@@ -1,0 +1,307 @@
+// home/quickshell/.config/quickshell/services/Screenshot.qml
+pragma Singleton
+import QtQuick
+import Quickshell
+import Quickshell.Hyprland
+import Quickshell.Io
+
+// The screenshot menu, the region selector's shared state, and the recording indicator.
+Singleton {
+    id: root
+
+    readonly property string script: Quickshell.env("HOME") + "/.config/hypr/scripts/screenshot.sh"
+
+    // "select" while dragging, "toolbar" once a region is chosen, "capture" while grim runs.
+    property string phase: ""
+    readonly property bool selecting: root.phase !== ""
+    property bool frozen: false
+    // Runs on confirm instead of showing the toolbar: "" for the toolbar, else a toolbar action.
+    property string preset: ""
+    property string focus_screen: ""
+    property string sel_screen: ""
+    property rect sel_rect: Qt.rect(0, 0, 0, 0)
+    readonly property bool has_selection: root.sel_screen !== "" && root.sel_rect.width >= 2 && root.sel_rect.height >= 2
+    readonly property var actions: [
+        { id: "copy", key: "c", label: "Copy" },
+        { id: "save", key: "s", label: "Save" },
+        { id: "annotate", key: "a", label: "Annotate" },
+        { id: "ocr", key: "o", label: "OCR" },
+        { id: "record", key: "r", label: "Record" }
+    ]
+    property int tool_index: 0
+    // The loupe: on/off and zoom (displayed px per buffer px); it looks at the cursor.
+    property bool lens_on: true
+    readonly property var zoom_levels: [2, 4, 8, 16]
+    property int zoom_index: 1
+    readonly property int zoom: root.zoom_levels[root.zoom_index]
+    // The selector's cursor, moved by the mouse and by hjkl; keys_moved draws it while the pointer rests.
+    property string cursor_screen: ""
+    property point cursor_point: Qt.point(0, 0)
+    property bool keys_moved: false
+    // vim visual: v sets the anchor, the selection spans anchor to cursor.
+    property bool anchored: false
+    property point anchor_point: Qt.point(0, 0)
+    property string pending_action: ""
+    property string capture_file: ""
+
+    property bool recording: false
+    property double record_start_ms: 0
+    property int elapsed_s: 0
+    readonly property string elapsed_text: {
+        const s = root.elapsed_s;
+        const pad = n => String(n).padStart(2, "0");
+        return (s >= 3600 ? Math.floor(s / 3600) + ":" : "") + pad(Math.floor(s / 60) % 60) + ":" + pad(s % 60);
+    }
+
+    // Drops from the center island, like the clock.
+    function open_menu() {
+        const found = Popups.find_default("clock");
+        if (found) {
+            Popups.open("screenshot", found.item, Popups.anchor_color(found), found.screen_name);
+        } else {
+            const mon = Hyprland.focusedMonitor;
+            Popups.open("screenshot", null, undefined, mon ? mon.name : "");
+        }
+    }
+
+    // Waits for an open popup's close animation so it never lands in the capture.
+    function run_after_close(fn) {
+        if (Popups.open_name === "") return fn();
+        Popups.close();
+        after_close.fn = fn;
+        after_close.restart();
+    }
+
+    function run_flag(flag) {
+        root.run_after_close(() => Quickshell.execDetached([root.script, "--" + flag]));
+    }
+
+    function select(frozen, preset) {
+        root.run_after_close(() => root.start_select(frozen, preset));
+    }
+
+    function start_select(frozen, preset) {
+        if (root.phase === "capture") return;
+        const mon = Hyprland.focusedMonitor;
+        const screen = (mon && root.screen_of(mon.name)) || Quickshell.screens[0];
+        root.focus_screen = screen ? screen.name : "";
+        root.frozen = frozen;
+        root.preset = preset || "";
+        root.sel_screen = "";
+        root.sel_rect = Qt.rect(0, 0, 0, 0);
+        root.tool_index = 0;
+        root.anchored = false;
+        root.keys_moved = false;
+        if (screen) root.set_cursor(screen.name, screen.width / 2, screen.height / 2, false);
+        pointer_query.running = true;
+        root.phase = "select";
+    }
+
+    // Starts the cursor at the real pointer when it is on the focused screen.
+    Process {
+        id: pointer_query
+        command: ["hyprctl", "cursorpos"]
+        stdout: StdioCollector {
+            id: pointer_text
+            onStreamFinished: {
+                const m = pointer_text.text.match(/(-?\d+(?:\.\d+)?)\D+(-?\d+(?:\.\d+)?)/);
+                const s = root.screen_of(root.focus_screen);
+                if (!m || !s || root.keys_moved) return;
+                const x = parseFloat(m[1]) - s.x;
+                const y = parseFloat(m[2]) - s.y;
+                if (x >= 0 && y >= 0 && x < s.width && y < s.height) root.set_cursor(s.name, x, y, false);
+            }
+        }
+    }
+
+    function cancel() {
+        capture_delay.stop();
+        capture_watchdog.stop();
+        root.phase = "";
+        root.sel_screen = "";
+        root.anchored = false;
+    }
+
+    function fail(message) {
+        root.cancel();
+        Quickshell.execDetached(["notify-send", "Screenshot Failed", message]);
+    }
+
+    function confirm() {
+        if (!root.has_selection) return;
+        if (root.preset !== "") root.act(root.preset);
+        else root.phase = "toolbar";
+    }
+
+    function screen_of(name) {
+        return Quickshell.screens.find(s => s.name === name) || null;
+    }
+
+    function set_selection(screen_name, x, y, w, h) {
+        root.sel_screen = screen_name;
+        root.sel_rect = Qt.rect(x, y, w, h);
+    }
+
+    function select_screen(screen_name) {
+        const s = root.screen_of(screen_name);
+        if (s) root.set_selection(screen_name, 0, 0, s.width, s.height);
+    }
+
+    // Anchored, the cursor stays on the anchor's screen and drags the selection with it.
+    function set_cursor(screen_name, x, y, by_keys) {
+        if (root.anchored && screen_name !== root.cursor_screen) return;
+        const s = root.screen_of(screen_name);
+        if (!s) return;
+        root.cursor_screen = screen_name;
+        root.cursor_point = Qt.point(Math.max(0, Math.min(s.width - 1, x)), Math.max(0, Math.min(s.height - 1, y)));
+        root.keys_moved = by_keys;
+        if (root.anchored) root.span_selection();
+    }
+
+    function move_cursor(dx, dy) {
+        if (root.cursor_screen === "") return;
+        root.set_cursor(root.cursor_screen, root.cursor_point.x + dx, root.cursor_point.y + dy, true);
+    }
+
+    function span_selection() {
+        const a = root.anchor_point;
+        const c = root.cursor_point;
+        root.set_selection(root.cursor_screen, Math.min(a.x, c.x), Math.min(a.y, c.y), Math.abs(c.x - a.x), Math.abs(c.y - a.y));
+    }
+
+    function toggle_anchor() {
+        if (root.anchored) return root.clear_anchor();
+        if (root.cursor_screen === "") return;
+        root.anchor_point = root.cursor_point;
+        root.anchored = true;
+        root.span_selection();
+    }
+
+    function clear_anchor() {
+        root.anchored = false;
+        root.sel_screen = "";
+    }
+
+    function swap_anchor() {
+        if (!root.anchored) return;
+        const a = root.anchor_point;
+        root.anchor_point = root.cursor_point;
+        root.cursor_point = a;
+        root.keys_moved = true;
+    }
+
+    function step_zoom(delta) {
+        root.zoom_index = Math.max(0, Math.min(root.zoom_levels.length - 1, root.zoom_index + delta));
+    }
+
+    // Global logical geometry in slurp's "x,y wxh" form.
+    function geometry() {
+        const s = root.screen_of(root.sel_screen);
+        if (!s) return "";
+        const r = root.sel_rect;
+        return Math.round(s.x + r.x) + "," + Math.round(s.y + r.y) + " " + Math.round(r.width) + "x" + Math.round(r.height);
+    }
+
+    function act(action) {
+        const geometry = root.geometry();
+        if (geometry === "") return root.cancel();
+        if (action === "record") {
+            root.cancel();
+            after_close.fn = () => Quickshell.execDetached([root.script, "--record-geometry", geometry]);
+            after_close.restart();
+            return;
+        }
+        root.pending_action = action;
+        root.capture_file = (Quickshell.env("XDG_RUNTIME_DIR") || "/tmp") + "/qs-screenshot-" + Date.now() + ".png";
+        const s = root.screen_of(root.sel_screen);
+        grab.command = ["grim", "-s", String(s.devicePixelRatio), "-g", geometry, root.capture_file];
+        root.phase = "capture";
+        capture_delay.restart();
+    }
+
+    // The overlay drops its chrome first; a frozen one keeps showing the still frame for grim to read.
+    Timer {
+        id: capture_delay
+        interval: 120
+        onTriggered: {
+            grab.running = true;
+            capture_watchdog.restart();
+        }
+    }
+
+    // A grim that never starts (missing) must not leave the invisible overlay holding the keyboard.
+    Timer {
+        id: capture_watchdog
+        interval: 5000
+        onTriggered: if (root.phase === "capture") root.cancel()
+    }
+
+    Process {
+        id: grab
+        onExited: code => {
+            if (root.phase !== "capture") {
+                Quickshell.execDetached(["rm", "-f", "--", root.capture_file]);
+                return;
+            }
+            root.cancel();
+            if (code === 0) Quickshell.execDetached([root.script, "--image", root.capture_file, "--" + root.pending_action]);
+            else Quickshell.execDetached(["notify-send", "Screenshot Failed", "grim exited with " + code]);
+        }
+    }
+
+    Timer {
+        id: after_close
+        property var fn: null
+        interval: 350
+        onTriggered: {
+            const fn = after_close.fn;
+            after_close.fn = null;
+            if (fn) fn();
+        }
+    }
+
+    // Called by screenshot.sh with wf-recorder's pid; the watcher ends with it.
+    function recording_started(pid, elapsed_s) {
+        root.record_start_ms = Date.now() - (elapsed_s || 0) * 1000;
+        root.elapsed_s = elapsed_s || 0;
+        root.recording = true;
+        if (!watcher.running && /^[0-9]+$/.test(pid)) {
+            watcher.command = ["tail", "--pid=" + pid, "-f", "/dev/null"];
+            watcher.running = true;
+        }
+    }
+
+    function recording_stopped() {
+        root.recording = false;
+        watcher.running = false;
+    }
+
+    function stop_recording() {
+        Quickshell.execDetached(["pkill", "-INT", "-x", "wf-recorder"]);
+    }
+
+    Process {
+        id: watcher
+        onExited: root.recording = false
+    }
+
+    Timer {
+        interval: 1000
+        repeat: true
+        running: root.recording
+        onTriggered: root.elapsed_s = Math.floor((Date.now() - root.record_start_ms) / 1000)
+    }
+
+    // One check at start, for a recording that outlived a shell restart.
+    Process {
+        running: true
+        command: ["sh", "-c", "pid=$(pidof -s wf-recorder) && echo \"$pid $(ps -o etimes= -p \"$pid\")\""]
+        stdout: StdioCollector {
+            id: running_pid
+            onStreamFinished: {
+                const parts = running_pid.text.trim().split(/\s+/);
+                if (parts[0] !== "") root.recording_started(parts[0], parseInt(parts[1]) || 0);
+            }
+        }
+    }
+}
