@@ -3,6 +3,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Layouts
 import Quickshell
+import Quickshell.Io
 import Quickshell.Wayland
 import "../theme"
 import "../services"
@@ -18,7 +19,7 @@ PanelWindow {
     readonly property rect sel: root.mine ? Screenshot.sel_rect : Qt.rect(0, 0, 0, 0)
     readonly property bool toolbar_shown: root.mine && Screenshot.phase === "toolbar"
     // Hidden while grim reads the screen, and until the still frame is in so the chrome never lands in it.
-    readonly property bool chrome_shown: Screenshot.phase !== "capture" && (frozen_view.hasContent || !Screenshot.frozen && root.waited)
+    readonly property bool chrome_shown: Screenshot.phase !== "capture" && (root.pixel_mode ? root.frame_ready : frozen_view.hasContent || !Screenshot.frozen && root.waited)
     property bool waited: false
     // Buffer pixels per logical pixel, so the loupe magnifies real screen pixels.
     readonly property real buffer_scale: frozen_view.sourceSize.width > 0 ? frozen_view.sourceSize.width / root.width : root.modelData.devicePixelRatio
@@ -34,17 +35,21 @@ PanelWindow {
         root.help_open = open;
         Qt.callLater(() => open ? key_help.forceActiveFocus() : keys_item.forceActiveFocus());
     }
-    // The still frame saved at buffer size, which the swatch canvas samples for the hex readout.
+    // Pixel mode freezes with grim's own capture of this output (real pixels on every scale), taken before
+    // anything is drawn; it is the background, the loupe's source and what the swatch samples.
+    readonly property string pixel_file: root.pixel_mode ? (Quickshell.env("XDG_RUNTIME_DIR") || "/tmp") + "/qs-pixel-" + root.screen_name + "-" + Date.now() + ".png" : ""
     property string pixel_image: ""
-    property string pixel_file: ""
+    readonly property bool frame_ready: frame_image.status === Image.Ready && frame_image.sourceSize.width > 0
+    readonly property real pixel_scale: root.frame_ready ? frame_image.sourceSize.width / root.width : root.buffer_scale
+    readonly property real sample_scale: root.pixel_mode ? root.pixel_scale : root.buffer_scale
 
-    function save_frame() {
-        if (!root.pixel_mode || root.pixel_file !== "" || !frozen_view.hasContent) return;
-        const path = (Quickshell.env("XDG_RUNTIME_DIR") || "/tmp") + "/qs-pixel-" + root.screen_name + "-" + Date.now() + ".png";
-        root.pixel_file = path;
-        frozen_view.grabToImage(result => {
-            if (result.saveToFile(path)) root.pixel_image = "file://" + path;
-        }, frozen_view.sourceSize);
+    Process {
+        running: root.pixel_mode
+        command: ["grim", "-o", root.screen_name, root.pixel_file]
+        onExited: code => {
+            if (code === 0) root.pixel_image = "file://" + root.pixel_file;
+            else Screenshot.fail("grim could not capture " + root.screen_name);
+        }
     }
 
     Component.onDestruction: if (root.pixel_file !== "") Quickshell.execDetached(["rm", "-f", "--", root.pixel_file])
@@ -72,12 +77,20 @@ PanelWindow {
     ScreencopyView {
         id: frozen_view
         anchors.fill: parent
-        visible: Screenshot.frozen
+        visible: Screenshot.frozen && !root.pixel_mode
         captureSource: root.modelData
         live: false
         paintCursor: false
-        onStopped: if (Screenshot.frozen && !frozen_view.hasContent) Screenshot.fail("Frozen capture failed")
-        onHasContentChanged: root.save_frame()
+        onStopped: if (Screenshot.frozen && !root.pixel_mode && !frozen_view.hasContent) Screenshot.fail("Frozen capture failed")
+    }
+
+    Image {
+        id: frame_image
+        anchors.fill: parent
+        visible: root.frame_ready
+        source: root.pixel_image
+        cache: false
+        smooth: false
     }
 
     Timer {
@@ -87,8 +100,8 @@ PanelWindow {
     }
 
     Timer {
-        running: Screenshot.frozen && !frozen_view.hasContent
-        interval: 1500
+        running: Screenshot.frozen && !(root.pixel_mode ? root.frame_ready : frozen_view.hasContent)
+        interval: root.pixel_mode ? 4000 : 1500
         onTriggered: Screenshot.fail("Frozen capture timed out")
     }
 
@@ -336,10 +349,10 @@ PanelWindow {
             readonly property int half: (loupe.count - 1) / 2
             readonly property real view: loupe.count * loupe.zoom
             readonly property point at: Screenshot.cursor_point
-            readonly property int bx: Math.floor(loupe.at.x * root.buffer_scale)
-            readonly property int by: Math.floor(loupe.at.y * root.buffer_scale)
+            readonly property int bx: Math.floor(loupe.at.x * root.sample_scale)
+            readonly property int by: Math.floor(loupe.at.y * root.sample_scale)
             readonly property real gap: 28
-            visible: Screenshot.lens_on && Screenshot.phase === "select" && Screenshot.cursor_screen === root.screen_name && frozen_view.hasContent
+            visible: Screenshot.lens_on && Screenshot.phase === "select" && Screenshot.cursor_screen === root.screen_name && (root.pixel_mode ? root.frame_ready : frozen_view.hasContent)
             width: loupe.view + loupe.pad * 2
             height: loupe.view + loupe.pad * 2 + coords.implicitHeight + 4 + (root.pixel_mode ? swatch_row.height + 4 : 0)
             x: loupe.at.x + loupe.gap + loupe.width <= root.width ? loupe.at.x + loupe.gap : loupe.at.x - loupe.gap - loupe.width
@@ -360,9 +373,19 @@ PanelWindow {
                 height: loupe.view
                 clip: true
 
-                ShaderEffectSource {
+                Image {
+                    visible: root.pixel_mode
                     anchors.fill: parent
-                    sourceItem: frozen_view
+                    source: root.pixel_mode ? root.pixel_image : ""
+                    sourceClipRect: Qt.rect(loupe.bx - loupe.half, loupe.by - loupe.half, loupe.count, loupe.count)
+                    cache: false
+                    smooth: false
+                }
+
+                ShaderEffectSource {
+                    visible: !root.pixel_mode
+                    anchors.fill: parent
+                    sourceItem: root.pixel_mode ? null : frozen_view
                     sourceRect: Qt.rect((loupe.bx - loupe.half) / root.buffer_scale, (loupe.by - loupe.half) / root.buffer_scale, loupe.count / root.buffer_scale, loupe.count / root.buffer_scale)
                     textureSize: Qt.size(loupe.count, loupe.count)
                     smooth: false
@@ -429,8 +452,10 @@ PanelWindow {
                     onPaint: {
                         const ctx = swatch.getContext("2d");
                         ctx.clearRect(0, 0, swatch.width, swatch.height);
-                        if (swatch.src === "" || !swatch.isImageLoaded(swatch.src)) return;
-                        ctx.drawImage(swatch.src, swatch.bx, swatch.by, 1, 1, 0, 0, swatch.width, swatch.height);
+                        const w = frame_image.sourceSize.width;
+                        const h = frame_image.sourceSize.height;
+                        if (swatch.src === "" || !swatch.isImageLoaded(swatch.src) || w <= 0 || h <= 0) return;
+                        ctx.drawImage(swatch.src, Math.max(0, Math.min(w - 1, swatch.bx)), Math.max(0, Math.min(h - 1, swatch.by)), 1, 1, 0, 0, swatch.width, swatch.height);
                         const d = ctx.getImageData(swatch.width / 2, swatch.height / 2, 1, 1).data;
                         if (root.screen_name === Screenshot.cursor_screen) Screenshot.pixel_hex = "#" + [d[0], d[1], d[2]].map(v => v.toString(16).padStart(2, "0")).join("");
                     }
