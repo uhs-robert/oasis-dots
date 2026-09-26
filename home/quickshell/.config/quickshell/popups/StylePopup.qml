@@ -11,7 +11,7 @@ Popup {
 
     popup_name: "style"
     preferred_width: 180
-    footer_hint: "j/k preview · gg/G first/last · 1-9 pick · Enter apply · c cava line · q cancel"
+    footer_hint: "/ find · j/k preview · gg/G first/last · 1-9 pick · Enter apply · c cava line · q cancel"
     body_height: content.implicitHeight + 24
     jumps_enabled: true
 
@@ -26,6 +26,7 @@ Popup {
     onSelectedChanged: if (is_open && !root.search_typing) Transitions.show(Style.names[root.selected], false)
     search_enabled: true
     search_starts_open: true
+    search_opens_typing: false
     search_rows: Style.names.map(n => root.label(n))
     search_cursor: root.selected
     onSearch_select: index => root.selected = index
