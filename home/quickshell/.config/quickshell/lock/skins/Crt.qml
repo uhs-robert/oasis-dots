@@ -93,7 +93,14 @@ Item {
         y: root.height * 0.026
         width: root.width - x * 2
         height: root.height - y * 2
-        clip: true
+        // Clipped to the rounded screen so the bezel shows through the corners.
+        layer.enabled: true
+        layer.effect: MultiEffect {
+            maskEnabled: true
+            maskSource: glass_mask
+            maskThresholdMin: 0.5
+            maskSpreadAtMin: 1
+        }
 
         Shape {
             anchors.fill: parent
@@ -463,26 +470,30 @@ Item {
             }
         }
 
-        // The glass corners and rim: bezel fill outside the rounded screen, then a thin rim.
-        Shape {
-            anchors.fill: parent
-            preferredRendererType: Shape.CurveRenderer
+    }
 
-            ShapePath {
-                strokeWidth: -1
-                fillColor: Theme.bg_shadow
-                fillRule: ShapePath.OddEvenFill
-                PathRectangle { width: glass.width; height: glass.height }
-                PathRectangle { width: glass.width; height: glass.height; radius: glass.radius }
-            }
+    Rectangle {
+        id: glass_mask
+        x: glass.x
+        y: glass.y
+        width: glass.width
+        height: glass.height
+        radius: glass.radius
+        color: Theme.bg_shadow
+        visible: false
+        layer.enabled: true
+    }
 
-            ShapePath {
-                fillColor: "transparent"
-                strokeColor: Qt.tint(Theme.bg_shadow, Qt.alpha(Theme.bg_surface, 0.7))
-                strokeWidth: Math.max(2, root.u * 0.35)
-                PathRectangle { width: glass.width; height: glass.height; radius: glass.radius }
-            }
-        }
+    // The rim, outside the clipped glass so its stroke is not cut in half.
+    Rectangle {
+        x: glass.x
+        y: glass.y
+        width: glass.width
+        height: glass.height
+        radius: glass.radius
+        color: "transparent"
+        border.width: Math.max(2, root.u * 0.35)
+        border.color: Qt.tint(Theme.bg_shadow, Qt.alpha(Theme.bg_surface, 0.7))
     }
 
     SequentialAnimation {
