@@ -29,7 +29,7 @@ PanelWindow {
     property bool help_open: false
     readonly property string delay_label: Screenshot.delay_s > 0 ? "Delay " + Screenshot.delay_s + "s" : "No delay"
     readonly property string tier_keys: "hjkl move 10px · H/J/K/L move 100px · C-hjkl move 1px · C-H/J/K/L move 300px"
-    readonly property string help_text: Screenshot.phase === "toolbar" ? "h/l move · Tab/S-Tab next/prev · c copy · s save · a annotate · o ocr · r record · d delay off/3s/5s/10s · Enter run · Backspace reselect · q/Esc cancel" : root.pixel_mode ? root.tier_keys + " · Enter pick · click pick · m loupe · +/- zoom · q/Esc cancel" : root.target_mode ? "hjkl nearest " + Screenshot.mode + " · Tab/S-Tab cycle · d delay off/3s/5s/10s · Enter pick · click pick · m loupe · +/- zoom · q/Esc cancel" : root.tier_keys + " · v/space set or drop anchor · o swap ends · drag select · Enter confirm, whole screen without a selection · m loupe · +/- zoom · Esc drop anchor, then cancel · q cancel"
+    readonly property string help_text: Screenshot.phase === "toolbar" ? "h/l move · Tab/S-Tab next/prev · c copy · s save · a annotate · o ocr · r record" + (Screenshot.frozen ? "" : " · d delay off/3s/5s/10s") + " · Enter run · Backspace reselect · q/Esc cancel" : root.pixel_mode ? root.tier_keys + " · Enter pick · click pick · m loupe · +/- zoom · q/Esc cancel" : root.target_mode ? "hjkl nearest " + Screenshot.mode + " · Tab/S-Tab cycle · d delay off/3s/5s/10s · Enter pick · click pick · m loupe · +/- zoom · q/Esc cancel" : root.tier_keys + " · v/space set or drop anchor · o swap ends · drag select · Enter confirm, whole screen without a selection · m loupe · +/- zoom · Esc drop anchor, then cancel · q cancel"
 
     function set_help(open) {
         root.help_open = open;
@@ -37,14 +37,15 @@ PanelWindow {
     }
     // Pixel mode freezes with grim's own capture of this output (real pixels on every scale), taken before
     // anything is drawn; it is the background, the loupe's source and what the swatch samples.
-    readonly property string pixel_file: root.pixel_mode ? (Quickshell.env("XDG_RUNTIME_DIR") || "/tmp") + "/qs-pixel-" + root.screen_name + "-" + Date.now() + ".png" : ""
+    property string pixel_file: ""
+    Component.onCompleted: if (root.pixel_mode) root.pixel_file = (Quickshell.env("XDG_RUNTIME_DIR") || "/tmp") + "/qs-pixel-" + root.screen_name + "-" + Date.now() + ".png"
     property string pixel_image: ""
     readonly property bool frame_ready: frame_image.status === Image.Ready && frame_image.sourceSize.width > 0
     readonly property real pixel_scale: root.frame_ready ? frame_image.sourceSize.width / root.width : root.buffer_scale
     readonly property real sample_scale: root.pixel_mode ? root.pixel_scale : root.buffer_scale
 
     Process {
-        running: root.pixel_mode
+        running: root.pixel_file !== ""
         command: ["grim", "-o", root.screen_name, root.pixel_file]
         onExited: code => {
             if (code === 0) root.pixel_image = "file://" + root.pixel_file;
@@ -283,6 +284,7 @@ PanelWindow {
 
                 MenuRow {
                     id: delay_tool
+                    visible: !Screenshot.frozen
                     Layout.preferredWidth: delay_label.implicitWidth + 16 + delay_tool.inset + delay_tool.key_space
                     Layout.preferredHeight: Style.px(28)
                     base_radius: 6
@@ -457,7 +459,10 @@ PanelWindow {
                         if (swatch.src === "" || !swatch.isImageLoaded(swatch.src) || w <= 0 || h <= 0) return;
                         ctx.drawImage(swatch.src, Math.max(0, Math.min(w - 1, swatch.bx)), Math.max(0, Math.min(h - 1, swatch.by)), 1, 1, 0, 0, swatch.width, swatch.height);
                         const d = ctx.getImageData(swatch.width / 2, swatch.height / 2, 1, 1).data;
-                        if (root.screen_name === Screenshot.cursor_screen) Screenshot.pixel_hex = "#" + [d[0], d[1], d[2]].map(v => v.toString(16).padStart(2, "0")).join("");
+                        if (root.screen_name !== Screenshot.cursor_screen) return;
+                        Screenshot.pixel_hex = "#" + [d[0], d[1], d[2]].map(v => v.toString(16).padStart(2, "0")).join("");
+                        Screenshot.pixel_hex_screen = root.screen_name;
+                        Screenshot.pixel_hex_point = loupe.at;
                     }
 
                     Rectangle {
@@ -555,7 +560,7 @@ PanelWindow {
                 anchors.centerIn: parent
                 width: Math.min(implicitWidth, root.width - 56)
                 wrap: false
-                text: (root.target_mode && Screenshot.phase === "select" ? "hjkl/Tab " + Screenshot.mode + " · d " + root.delay_label.toLowerCase() + " · Enter pick · Esc cancel" : root.pixel_mode ? "hjkl move · Enter pick · m loupe · +/- zoom · Esc cancel" : Screenshot.phase === "toolbar" ? "h/l move · Enter run · c copy · s save · a annotate · o ocr · r record · d delay · Backspace reselect · Esc cancel" : Screenshot.anchored ? "hjkl extend · o swap ends · v drop anchor · Enter " + (Screenshot.preset !== "" ? Screenshot.preset : "confirm") + " · Esc drop anchor" : "drag/hjkl cursor · v/space anchor · Enter full screen · m loupe · +/- zoom · Esc cancel") + " · ? help"
+                text: (root.target_mode && Screenshot.phase === "select" ? "hjkl/Tab " + Screenshot.mode + " · d " + root.delay_label.toLowerCase() + " · Enter pick · Esc cancel" : root.pixel_mode ? "hjkl move · Enter pick · m loupe · +/- zoom · Esc cancel" : Screenshot.phase === "toolbar" ? "h/l move · Enter run · c copy · s save · a annotate · o ocr · r record" + (Screenshot.frozen ? "" : " · d delay") + " · Backspace reselect · Esc cancel" : Screenshot.anchored ? "hjkl extend · o swap ends · v drop anchor · Enter " + (Screenshot.preset !== "" ? Screenshot.preset : "confirm") + " · Esc drop anchor" : "drag/hjkl cursor · v/space anchor · Enter full screen · m loupe · +/- zoom · Esc cancel") + " · ? help"
             }
         }
     }
@@ -577,6 +582,7 @@ PanelWindow {
                 return;
             }
             if (root.pixel_mode) {
+                if (!root.frame_ready) return;
                 Screenshot.set_cursor(root.screen_name, mouse.x, mouse.y, false);
                 Screenshot.pick_pixel();
                 return;
@@ -650,7 +656,7 @@ PanelWindow {
                 Screenshot.lens_on = !Screenshot.lens_on;
             } else if (root.pixel_mode && (event.key === Qt.Key_Return || event.key === Qt.Key_Enter)) {
                 Screenshot.pick_pixel();
-            } else if ((toolbar || root.target_mode) && event.key === Qt.Key_D) {
+            } else if ((toolbar || root.target_mode) && !Screenshot.frozen && event.key === Qt.Key_D) {
                 Screenshot.cycle_delay();
             } else if (!toolbar && root.target_mode && dir) {
                 Screenshot.step_target(dir[0], dir[1]);

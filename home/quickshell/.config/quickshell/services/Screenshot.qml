@@ -22,6 +22,9 @@ Singleton {
     property int target_index: -1
     // The centre pixel under the loupe in pixel mode, sampled from the still frame; "" until known.
     property string pixel_hex: ""
+    // Where pixel_hex was sampled; a pick trusts it only at that exact cursor spot.
+    property string pixel_hex_screen: ""
+    property point pixel_hex_point: Qt.point(-1, -1)
     // Runs on confirm instead of showing the toolbar: "" for the toolbar, else a toolbar action.
     property string preset: ""
     property string focus_screen: ""
@@ -97,9 +100,11 @@ Singleton {
 
     function start_select(frozen, preset, mode) {
         if (root.phase === "capture") return;
+        root.cancel_countdown();
         root.mode = mode || "region";
         root.lens_on = root.mode === "region" || root.mode === "pixel";
         root.pixel_hex = "";
+        root.pixel_hex_screen = "";
         if (root.mode === "pixel") frozen = true;
         root.targets = [];
         root.target_index = -1;
@@ -319,8 +324,8 @@ Singleton {
     function pick_pixel() {
         const s = root.screen_of(root.cursor_screen);
         if (!s) return root.cancel();
-        // The swatch only samples while the loupe shows; otherwise its hex is stale.
-        if (root.pixel_hex !== "" && root.lens_on) {
+        const sampled = root.pixel_hex !== "" && root.lens_on && root.pixel_hex_screen === root.cursor_screen && root.pixel_hex_point.x === root.cursor_point.x && root.pixel_hex_point.y === root.cursor_point.y;
+        if (sampled) {
             const hex = root.pixel_hex;
             root.cancel();
             Quickshell.execDetached(["wl-copy", hex]);
@@ -356,14 +361,15 @@ Singleton {
             if (root.countdown > 0) return;
             const fn = root.countdown_run;
             root.countdown_run = null;
-            if (fn) fn();
+            // A selector opened meanwhile owns the screen; the old capture is dropped.
+            if (fn && root.phase === "") fn();
         }
     }
 
     function act(action) {
         const geometry = root.geometry();
         if (geometry === "") return root.cancel();
-        if (root.delay_s > 0) {
+        if (root.delay_s > 0 && !root.frozen) {
             const scale = String(root.screen_of(root.sel_screen).devicePixelRatio);
             root.cancel();
             root.start_countdown(() => action === "record" ? Quickshell.execDetached([root.script, "--record-geometry", geometry]) : root.run_grab(action, scale, geometry));
@@ -386,6 +392,7 @@ Singleton {
         root.capture_file = (Quickshell.env("XDG_RUNTIME_DIR") || "/tmp") + "/qs-screenshot-" + Date.now() + ".png";
         grab.command = ["grim", "-s", scale, "-g", geometry, root.capture_file];
         if (root.phase === "capture") return capture_delay.restart();
+        if (root.phase !== "") return;
         grab.running = true;
     }
 
