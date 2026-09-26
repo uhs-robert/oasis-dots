@@ -328,7 +328,7 @@ fi
 case "$CHOICE" in
 r | --region) qs_select false toolbar || handle_screenshot "region" ;;
 z | --freeze) qs_select true toolbar || handle_screenshot "region" "--freeze" ;;
-s | --screen) handle_screenshot "output" ;;
+s | --screen) qs_pick screen toolbar || handle_screenshot "output" ;;
 w | --window) qs_pick window toolbar || handle_screenshot "window" ;;
 f | --focused) handle_screenshot "window" -m active ;;
 t | --text) qs_select false ocr || handle_text_ocr ;;
@@ -348,7 +348,10 @@ p | --pixel)
   need slurp
   handle_recording "$(get_windows | slurp -r)"
 } ;;
---record-screen) need slurp; handle_recording "$(get_outputs | slurp -r)" ;;
+--record-screen) qs_pick screen record || {
+  need slurp
+  handle_recording "$(get_outputs | slurp -r)"
+} ;;
 --record-focused) handle_recording "$(get_focused)" ;;
 --record-geometry) handle_recording "$2" ;;
 

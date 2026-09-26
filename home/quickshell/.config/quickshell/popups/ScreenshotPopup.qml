@@ -21,12 +21,12 @@ Popup {
     readonly property var base_rows: [
         { section: "Capture", key: "r", label: "Region", glyph: "\u{f0a6d}", select: "", frozen: false },
         { section: "Capture", key: "z", label: "Frozen region", glyph: "\u{f0717}", select: "", frozen: true },
-        { section: "Capture", key: "s", label: "Screen", glyph: "\u{f0e51}", flag: "screen" },
+        { section: "Capture", key: "s", label: "Screen", glyph: "\u{f0e51}", select: "", frozen: false, mode: "screen" },
         { section: "Capture", key: "w", label: "Window", glyph: "\u{f0614}", select: "", frozen: false, mode: "window" },
         { section: "Capture", key: "f", label: "Focused window", glyph: "\u{f08c6}", flag: "focused" },
         { section: "Record", key: "R", label: "Record region", glyph: "\u{f0a6d}", select: "record", frozen: false },
         { section: "Record", key: "W", label: "Record window", glyph: "\u{f0614}", select: "record", frozen: false, mode: "window" },
-        { section: "Record", key: "S", label: "Record screen", glyph: "\u{f0e51}", flag: "record-screen" },
+        { section: "Record", key: "S", label: "Record screen", glyph: "\u{f0e51}", select: "record", frozen: false, mode: "screen" },
         { section: "Record", key: "F", label: "Record focused", glyph: "\u{f08c6}", flag: "record-focused" },
         { section: "Tools", key: "p", label: "Pick pixel color", glyph: "\u{f020a}", select: "", frozen: true, mode: "pixel" },
         { section: "Tools", key: "t", label: "Text from region", glyph: "\u{f113a}", select: "ocr", frozen: false }

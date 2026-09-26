@@ -24,7 +24,7 @@ PanelWindow {
     readonly property real buffer_scale: frozen_view.sourceSize.width > 0 ? frozen_view.sourceSize.width / root.width : root.modelData.devicePixelRatio
     readonly property color dim_color: Qt.alpha(Theme.bg_shadow, 0.6)
     readonly property bool pixel_mode: Screenshot.mode === "pixel"
-    readonly property bool target_mode: Screenshot.mode === "window"
+    readonly property bool target_mode: Screenshot.mode === "window" || Screenshot.mode === "screen"
     // The still frame saved at buffer size, which the swatch canvas samples for the hex readout.
     property string pixel_image: ""
     property string pixel_file: ""

@@ -15,9 +15,9 @@ Singleton {
     property string phase: ""
     readonly property bool selecting: root.phase !== ""
     property bool frozen: false
-    // "region" drags a rect, "pixel" picks a colour from the still frame, "window" picks a window's rect.
+    // "region" drags a rect, "pixel" picks a colour from the still frame, "window" and "screen" pick a window's or monitor's rect.
     property string mode: "region"
-    // Pickable rects for window mode: { screen, rect (screen-local), label }, most recently focused first.
+    // Pickable rects for window and screen mode: { screen, rect (screen-local), label }, most recently focused first.
     property var targets: []
     property int target_index: -1
     // The centre pixel under the loupe in pixel mode, sampled from the still frame; "" until known.
@@ -95,7 +95,6 @@ Singleton {
         if (root.mode === "pixel") frozen = true;
         root.targets = [];
         root.target_index = -1;
-        if (root.mode === "window") window_query.running = true;
         const mon = Hyprland.focusedMonitor;
         const screen = (mon && root.screen_of(mon.name)) || Quickshell.screens[0];
         root.focus_screen = screen ? screen.name : "";
@@ -108,6 +107,11 @@ Singleton {
         root.keys_moved = false;
         if (screen) root.set_cursor(screen.name, screen.width / 2, screen.height / 2, false);
         pointer_query.running = true;
+        if (root.mode === "window") window_query.running = true;
+        if (root.mode === "screen") {
+            const list = Quickshell.screens.map(s => ({ screen: s.name, rect: Qt.rect(0, 0, s.width, s.height), label: s.name }));
+            root.set_targets(list, list.findIndex(t => t.screen === root.focus_screen));
+        }
         root.phase = "select";
     }
 
