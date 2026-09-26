@@ -25,7 +25,7 @@ QtObject {
     // The lock tint family (Style.lock_tint): a base and a bright shade that skins derive their colours from.
     property string tint: Style.lock_tint
     readonly property var tint_families: ({
-            primary: [Theme.theme_primary, Theme.theme_primary_light],
+            primary: [Theme.theme_primary_strong, Theme.theme_primary_strong],
             secondary: [Theme.theme_secondary_strong, Theme.theme_secondary],
             green: [Theme.green, Theme.bright_green],
             amber: [Theme.syntax_constant, Theme.bright_yellow],
