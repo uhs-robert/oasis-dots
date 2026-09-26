@@ -1,6 +1,7 @@
 // home/quickshell/.config/quickshell/lock/LockScreen.qml
 pragma ComponentBehavior: Bound
 import QtQuick
+import QtQuick.Effects
 import QtQuick.Layouts
 import QtQuick.Shapes
 import Quickshell
@@ -13,6 +14,11 @@ Item {
 
     // Handed in by the lock host; this generic screen reads Lock directly.
     property var ctx: null
+    // Set by the host to this surface's output, which picks its backdrop screenshot.
+    property string screen_name: ""
+    readonly property string backdrop_mode: root.ctx ? root.ctx.backdrop_mode : "off"
+    readonly property string backdrop_source: root.ctx && root.backdrop_mode !== "off" ? root.ctx.backdrops[root.screen_name] || "" : ""
+    readonly property bool has_backdrop: root.backdrop_source !== "" && shot.status === Image.Ready
 
     readonly property int text_style: Style.glow ? Text.Outline : Style.text_shadow.a > 0 ? Text.Raised : Text.Normal
     readonly property color glow_color: Style.glow ? Qt.alpha(Theme.theme_primary, 0.3) : Style.text_shadow
@@ -61,6 +67,40 @@ Item {
         gradient: Gradient {
             GradientStop { position: 0; color: Theme.bg_core }
             GradientStop { position: 1; color: Theme.bg_crust }
+        }
+    }
+
+    // A tiny decode stretched without smoothing is the pixelation: about 60 blocks across.
+    Image {
+        id: shot
+        anchors.fill: parent
+        visible: root.has_backdrop && root.backdrop_mode === "pixelate"
+        source: root.backdrop_source
+        cache: false
+        asynchronous: true
+        fillMode: Image.Stretch
+        smooth: root.backdrop_mode !== "pixelate"
+        sourceSize.width: root.backdrop_mode === "pixelate" ? 60 : Math.max(1, Math.round(root.width / 8))
+    }
+
+    Loader {
+        anchors.fill: parent
+        active: root.has_backdrop && root.backdrop_mode === "blur"
+        sourceComponent: MultiEffect {
+            source: shot
+            blurEnabled: true
+            blur: 1
+            blurMax: 48
+            autoPaddingEnabled: false
+        }
+    }
+
+    Rectangle {
+        anchors.fill: parent
+        visible: root.has_backdrop
+        gradient: Gradient {
+            GradientStop { position: 0; color: Qt.alpha(Theme.bg_core, 0.55) }
+            GradientStop { position: 1; color: Qt.alpha(Theme.bg_crust, 0.72) }
         }
     }
 

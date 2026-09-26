@@ -23,10 +23,13 @@ Singleton {
         property bool held: false
         property bool heal_checked: false
         property bool healing: false
+        // JSON map of output name to backdrop screenshot, kept so a reload while locked still draws it.
+        property string backdrops: ""
 
         onLoaded: {
             if (persist.heal_checked) return;
             persist.heal_checked = true;
+            capture.clear();
             heal_check.running = true;
         }
     }
@@ -51,24 +54,52 @@ Singleton {
     // Left alone for long: skins stop their loops.
     property bool dormant: false
     readonly property string flag_script: Quickshell.shellDir + "/scripts/lock-flag"
+    readonly property var backdrop_files: {
+        try {
+            return JSON.parse(persist.backdrops || "{}");
+        } catch (e) {
+            return {};
+        }
+    }
 
     signal rejected
 
+    // Screenshots the outputs first when the screen draws a backdrop; the lock follows within capture.cap_ms.
     function lock() {
+        if (persist.locked) return "locked";
+        if (capture.running) return "ok";
+        Popups.close();
+        if (!root.wants_backdrop()) return root.engage({});
+        capture.start(Quickshell.screens.map(s => s.name));
+        return "ok";
+    }
+
+    function engage(files) {
         if (persist.locked) return "locked";
         root.reset_input();
         root.fail_count = 0;
         root.message = "";
         root.granted = false;
         root.wake();
-        Popups.close();
         persist.held = false;
+        persist.backdrops = JSON.stringify(files);
         persist.locked = true;
         if (!session_lock.locked) {
             persist.locked = false;
+            root.drop_backdrop();
             return "failed";
         }
         return "ok";
+    }
+
+    // Only the generic screen draws the backdrop, so other skins never take a screenshot.
+    function wants_backdrop(style_name) {
+        return Style.lock_backdrop !== "off" && String(root.skin_url(style_name)) === String(Qt.resolvedUrl("LockScreen.qml"));
+    }
+
+    function drop_backdrop() {
+        persist.backdrops = "";
+        capture.clear();
     }
 
     // A fresh qs found the lock of a dead qs: take it over, else hand the screen to hyprlock.
@@ -76,7 +107,7 @@ Singleton {
         console.warn("Lock: taking over the session lock of a qs that exited");
         persist.healing = true;
         Quickshell.execDetached(["notify-send", "-a", "Lock", "-i", "system-lock-screen", "Session re-locked after the bar restarted"]);
-        if (root.lock() === "failed") root.heal_fallback();
+        if (root.engage({}) === "failed") root.heal_fallback();
     }
 
     function heal_fallback() {
@@ -85,6 +116,7 @@ Singleton {
     }
 
     function state() {
+        if (capture.running) return "pending";
         if (!persist.locked) return "unlocked";
         return session_lock.secure ? "secure" : "pending";
     }
@@ -139,12 +171,13 @@ Singleton {
         if (!root.granted) return;
         root.granted = false;
         persist.locked = false;
+        root.drop_backdrop();
         Quickshell.execDetached([root.flag_script, "clear"]);
     }
 
-    // The style's skins/<Name>.qml, else the generic screen.
-    function skin_url() {
-        const name = Style.lock_name;
+    // The style's skins/<Name>.qml, else the generic screen; `style_name` defaults to the lock's own.
+    function skin_url(style_name) {
+        const name = style_name || Style.lock_name;
         if (name === "simple") return Qt.resolvedUrl("LockScreen.qml");
         const file = name.charAt(0).toUpperCase() + name.slice(1) + ".qml";
         for (let i = 0; i < skin_files.count; i++) {
@@ -250,6 +283,7 @@ Singleton {
                 console.warn("Lock: the session lock ended without authentication");
                 pam.abort();
                 persist.locked = false;
+                root.drop_backdrop();
                 if (persist.healing) root.heal_fallback();
                 else if (persist.held && !root.quitting) lost_clear.restart();
             }
@@ -264,6 +298,7 @@ Singleton {
         }
 
         WlSessionLockSurface {
+            id: surface
             color: Theme.bg_crust
 
             // Keys live here, not in the loaded screen, so a broken screen still takes the password.
@@ -279,6 +314,7 @@ Singleton {
                     Component.onCompleted: {
                         screen_loader.setSource(root.skin_url(), { ctx: live_ctx });
                         if (screen_loader.status === Loader.Error) screen_loader.setSource(Qt.resolvedUrl("LockScreen.qml"), { ctx: live_ctx });
+                        if (screen_loader.item && "screen_name" in screen_loader.item) screen_loader.item.screen_name = surface.screen ? surface.screen.name : "";
                         const ms = screen_loader.item ? screen_loader.item.unlock_ms : undefined;
                         root.unlock_ms = typeof ms === "number" ? ms : 0;
                     }
@@ -343,6 +379,12 @@ Singleton {
         onTriggered: root.dormant = persist.locked
     }
 
+    LockCapture {
+        id: capture
+        prefix: "qs-lock"
+        onFinished: files => root.engage(files)
+    }
+
     FolderListModel {
         id: skin_files
         folder: Qt.resolvedUrl("skins")
@@ -362,6 +404,7 @@ Singleton {
         granted: root.granted
         saver: root.saver && Power.on_ac
         animate: Power.on_ac && !root.dormant
+        backdrops: root.backdrop_files
     }
 
     Connections {

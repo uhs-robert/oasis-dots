@@ -36,6 +36,15 @@ IpcHandler {
         return Style.lock_tint;
     }
 
+    // pixelate, blur or off: the simple lock screen's desktop backdrop.
+    function set_lock_backdrop(name: string): string {
+        return Style.set_lock_backdrop(name) ? "ok" : "unknown";
+    }
+
+    function get_lock_backdrop(): string {
+        return Style.lock_backdrop;
+    }
+
     function toggle_cava_line(): void {
         Style.set_cava_line(!Style.cava_line);
     }
