@@ -319,7 +319,8 @@ Singleton {
     function pick_pixel() {
         const s = root.screen_of(root.cursor_screen);
         if (!s) return root.cancel();
-        if (root.pixel_hex !== "") {
+        // The swatch only samples while the loupe shows; otherwise its hex is stale.
+        if (root.pixel_hex !== "" && root.lens_on) {
             const hex = root.pixel_hex;
             root.cancel();
             Quickshell.execDetached(["wl-copy", hex]);
