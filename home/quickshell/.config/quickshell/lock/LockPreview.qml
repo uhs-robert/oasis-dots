@@ -55,10 +55,12 @@ Scope {
     function phase(p) {
         replay.stop();
         root.reset();
-        root.load();
         if (p === "typing") fake.buffer_length = 3;
-        else if (p === "wrong") root.fake_fail();
         else if (p === "saver") fake.saver = true;
+        else if (p === "wrong" || p === "unlock") fake.forced_phase = p;
+        root.load();
+        fake.forced_phase = "";
+        if (p === "wrong") root.fake_fail();
         else if (p === "unlock") root.fake_unlock();
     }
 
