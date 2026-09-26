@@ -103,7 +103,12 @@ ShellRoot {
     StyleIpc {}
     PowerIpc {}
     ScreenshotIpc {}
-    LockIpc {}
+    LockPreview {
+        id: lock_preview
+    }
+    LockIpc {
+        previewer: lock_preview
+    }
     TooltipShelf {}
     NotificationToasts {}
     Osd {}

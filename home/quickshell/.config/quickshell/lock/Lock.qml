@@ -2,6 +2,7 @@
 pragma Singleton
 pragma ComponentBehavior: Bound
 import QtQuick
+import Qt.labs.folderlistmodel
 import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
@@ -43,6 +44,12 @@ Singleton {
     // True for a while after each key, so the caret only blinks while someone is typing.
     property bool typing: false
     property bool quitting: false
+    // PAM succeeded; the session opens once the skin's unlock animation (unlock_ms) has played.
+    property bool granted: false
+    property int unlock_ms: 0
+    property bool saver: false
+    // Left alone for long: skins stop their loops.
+    property bool dormant: false
     readonly property string flag_script: Quickshell.shellDir + "/scripts/lock-flag"
 
     signal rejected
@@ -52,6 +59,8 @@ Singleton {
         root.reset_input();
         root.fail_count = 0;
         root.message = "";
+        root.granted = false;
+        root.wake();
         Popups.close();
         persist.held = false;
         persist.locked = true;
@@ -119,7 +128,37 @@ Singleton {
         root.rejected();
     }
 
+    function wake() {
+        root.saver = false;
+        root.dormant = false;
+        saver_timer.restart();
+        dormant_timer.restart();
+    }
+
+    function finish_unlock() {
+        if (!root.granted) return;
+        root.granted = false;
+        persist.locked = false;
+        Quickshell.execDetached([root.flag_script, "clear"]);
+    }
+
+    // The style's skins/<Name>.qml, else the generic screen.
+    function skin_url() {
+        const name = Style.lock_name;
+        if (name === "simple") return Qt.resolvedUrl("LockScreen.qml");
+        const file = name.charAt(0).toUpperCase() + name.slice(1) + ".qml";
+        for (let i = 0; i < skin_files.count; i++) {
+            if (skin_files.get(i, "fileName") === file) return Qt.resolvedUrl("skins/" + file);
+        }
+        return Qt.resolvedUrl("LockScreen.qml");
+    }
+
     function key(event) {
+        root.wake();
+        if (root.granted) {
+            event.accepted = true;
+            return;
+        }
         root.typing = true;
         typing_timer.restart();
         const ctrl = (event.modifiers & Qt.ControlModifier) && !(event.modifiers & Qt.AltModifier);
@@ -186,8 +225,10 @@ Singleton {
                 root.reset_input();
                 root.fail_count = 0;
                 root.message = "";
-                persist.locked = false;
-                Quickshell.execDetached([root.flag_script, "clear"]);
+                root.granted = true;
+                const delay = Power.on_ac ? Math.max(0, Math.min(2000, root.unlock_ms)) : 0;
+                if (delay === 0) root.finish_unlock();
+                else unlock_timer.restart();
                 return;
             }
             root.fail_count += 1;
@@ -234,7 +275,13 @@ Singleton {
                 Loader {
                     id: screen_loader
                     anchors.fill: parent
-                    source: "LockScreen.qml"
+
+                    Component.onCompleted: {
+                        screen_loader.setSource(root.skin_url(), { ctx: live_ctx });
+                        if (screen_loader.status === Loader.Error) screen_loader.setSource(Qt.resolvedUrl("LockScreen.qml"), { ctx: live_ctx });
+                        const ms = screen_loader.item ? screen_loader.item.unlock_ms : undefined;
+                        root.unlock_ms = typeof ms === "number" ? ms : 0;
+                    }
                 }
 
                 Text {
@@ -272,5 +319,53 @@ Singleton {
                 if (this.text.trim() === "relock") root.heal();
             }
         }
+    }
+
+    Timer {
+        id: unlock_timer
+        interval: Math.max(1, Math.min(2000, root.unlock_ms))
+        onTriggered: root.finish_unlock()
+    }
+
+    Timer {
+        id: saver_timer
+        interval: 30000
+        onTriggered: {
+            if (!persist.locked) return;
+            if (Power.on_ac && !root.granted && !root.checking && root.buffer === "") root.saver = true;
+            else saver_timer.restart();
+        }
+    }
+
+    Timer {
+        id: dormant_timer
+        interval: 600000
+        onTriggered: root.dormant = persist.locked
+    }
+
+    FolderListModel {
+        id: skin_files
+        folder: Qt.resolvedUrl("skins")
+        nameFilters: ["*.qml"]
+        showDirs: false
+    }
+
+    LockCtx {
+        id: live_ctx
+        buffer_length: root.buffer.length
+        checking: root.checking
+        failed: root.failed
+        fail_count: root.fail_count
+        message: root.message !== "" ? root.message : root.pam_error
+        caps_lock: root.caps_lock
+        typing: root.typing
+        granted: root.granted
+        saver: root.saver && Power.on_ac
+        animate: Power.on_ac && !root.dormant
+    }
+
+    Connections {
+        target: root
+        function onRejected() { live_ctx.rejected(); }
     }
 }

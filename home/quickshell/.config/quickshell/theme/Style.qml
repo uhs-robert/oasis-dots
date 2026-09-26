@@ -2391,13 +2391,38 @@ Singleton {
         return style_name;
     }
 
+    // The lock screen's own style: "follow" for the active one, "simple" for the plain generic screen.
+    property string lock_style: "follow"
+    readonly property string lock_name: root.lock_style === "follow" ? root.name : root.lock_style
+    // The lock skins' colour family.
+    property string lock_tint: "primary"
+    readonly property var lock_tints: ["primary", "secondary", "green", "amber", "white"]
+
+    function valid_lock_style(style_name) {
+        return style_name === "follow" || style_name === "simple" || (style_name in root.styles && root.hidden.indexOf(style_name) < 0);
+    }
+
+    function set_lock_style(style_name) {
+        if (!root.valid_lock_style(style_name)) return false;
+        root.lock_style = style_name;
+        root.save();
+        return true;
+    }
+
+    function set_lock_tint(tint) {
+        if (root.lock_tints.indexOf(tint) < 0) return false;
+        root.lock_tint = tint;
+        root.save();
+        return true;
+    }
+
     function set_cava_line(on) {
         root.cava_line = on;
         root.save();
     }
 
     function save() {
-        state_file.setText(JSON.stringify({ style: root.saved_name, cava_line: root.cava_line }));
+        state_file.setText(JSON.stringify({ style: root.saved_name, cava_line: root.cava_line, lock_style: root.lock_style, lock_tint: root.lock_tint }));
     }
 
     function preview(style_name) {
@@ -2429,6 +2454,8 @@ Singleton {
                 const data = JSON.parse(text());
                 const saved = data.style;
                 root.cava_line = data.cava_line !== false;
+                if (typeof data.lock_style === "string" && root.valid_lock_style(data.lock_style)) root.lock_style = data.lock_style;
+                if (root.lock_tints.indexOf(data.lock_tint) >= 0) root.lock_tint = data.lock_tint;
                 if (typeof saved === "string" && saved in root.styles && root.hidden.indexOf(saved) < 0) {
                     root.name = saved;
                     root.saved_name = saved;
