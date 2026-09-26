@@ -11,6 +11,9 @@ import "../services"
 Item {
     id: root
 
+    // Handed in by the lock host; this generic screen reads Lock directly.
+    property var ctx: null
+
     readonly property int text_style: Style.glow ? Text.Outline : Style.text_shadow.a > 0 ? Text.Raised : Text.Normal
     readonly property color glow_color: Style.glow ? Qt.alpha(Theme.theme_primary, 0.3) : Style.text_shadow
     readonly property string user_name: Quickshell.env("USER") || ""

@@ -2391,13 +2391,24 @@ Singleton {
         return style_name;
     }
 
+    // The lock screen's own style, or "follow" for the active one.
+    property string lock_style: "follow"
+    readonly property string lock_name: root.lock_style === "follow" ? root.name : root.lock_style
+
+    function set_lock_style(style_name) {
+        if (style_name !== "follow" && (!(style_name in root.styles) || root.hidden.indexOf(style_name) >= 0)) return false;
+        root.lock_style = style_name;
+        root.save();
+        return true;
+    }
+
     function set_cava_line(on) {
         root.cava_line = on;
         root.save();
     }
 
     function save() {
-        state_file.setText(JSON.stringify({ style: root.saved_name, cava_line: root.cava_line }));
+        state_file.setText(JSON.stringify({ style: root.saved_name, cava_line: root.cava_line, lock_style: root.lock_style }));
     }
 
     function preview(style_name) {
@@ -2429,6 +2440,8 @@ Singleton {
                 const data = JSON.parse(text());
                 const saved = data.style;
                 root.cava_line = data.cava_line !== false;
+                const lock = data.lock_style;
+                if (typeof lock === "string" && (lock === "follow" || (lock in root.styles && root.hidden.indexOf(lock) < 0))) root.lock_style = lock;
                 if (typeof saved === "string" && saved in root.styles && root.hidden.indexOf(saved) < 0) {
                     root.name = saved;
                     root.saved_name = saved;

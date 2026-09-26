@@ -18,6 +18,15 @@ IpcHandler {
         return Style.name;
     }
 
+    // A style name, or "follow" to match the active style.
+    function set_lock(name: string): string {
+        return Style.set_lock_style(name) ? "ok" : "unknown";
+    }
+
+    function get_lock(): string {
+        return Style.lock_style;
+    }
+
     function toggle_cava_line(): void {
         Style.set_cava_line(!Style.cava_line);
     }
