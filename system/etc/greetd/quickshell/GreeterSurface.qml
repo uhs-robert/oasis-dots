@@ -9,6 +9,8 @@ Item {
     // Keys live here, not in the skin, so a broken skin still takes the password.
     focus: true
     Keys.onPressed: event => Greeter.key(event)
+    onActiveFocusChanged: if (root.activeFocus && root.visible) Greeter.mark_ready()
+    onVisibleChanged: if (root.activeFocus && root.visible) Greeter.mark_ready()
 
     Rectangle {
         anchors.fill: parent
@@ -41,7 +43,7 @@ Item {
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.bottom: parent.bottom
         anchors.bottomMargin: Math.max(2, parent.height * 0.004)
-        text: (Greeter.preview ? "PREVIEW · " : "") + "F2 " + Greeter.session.name + "   F10 text login   F11 reboot   F12 power off"
+        text: (Greeter.preview ? "PREVIEW · " : "") + "F2 " + Greeter.session.name + "   F10 or SUPER+T text login   F11 reboot   F12 power off"
         color: Theme.fg_dim
         font.family: "Share Tech Mono"
         font.pixelSize: Math.max(11, parent.height * 0.014)

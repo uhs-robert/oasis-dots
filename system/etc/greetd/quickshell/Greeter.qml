@@ -60,8 +60,12 @@ Singleton {
         tint: root.settings.lock_tint || "primary"
     }
 
-    // Tells the qs-greeter wrapper the UI came up.
+    property bool ready: false
+
+    // Tells the qs-greeter wrapper the UI is up: called once a surface is shown and holds the keyboard.
     function mark_ready() {
+        if (root.ready) return;
+        root.ready = true;
         if (root.state_dir !== "") ready_file.setText("1\n");
     }
 
@@ -93,9 +97,12 @@ Singleton {
         if (root.preview) {
             root.pending = answer;
             mock_timer.restart();
-        } else if (Greetd.state === GreetdState.Authenticating) {
+        } else if (Greetd.state === GreetdState.Authenticating && root.prompt !== "") {
+            root.prompt = "";
             Greetd.respond(answer);
         } else {
+            // A session left over from an earlier attempt is dropped before a new one starts.
+            if (Greetd.state !== GreetdState.Inactive) Greetd.cancelSession();
             root.pending = answer;
             Greetd.createSession(root.user);
         }
@@ -103,6 +110,8 @@ Singleton {
 
     function fail(text) {
         watchdog.stop();
+        launch_timer.stop();
+        root.granted = false;
         root.checking = false;
         root.pending = "";
         root.prompt = "";
@@ -124,7 +133,7 @@ Singleton {
 
     function launch() {
         const exec = root.session.exec;
-        const cmd = exec === "/usr/bin/start-hyprland" ? "exec /usr/bin/start-hyprland >/tmp/hyprland-greetd.log 2>&1" : "exec " + exec;
+        const cmd = exec === "/usr/bin/start-hyprland" ? "sh -c 'clear; exec /usr/bin/start-hyprland >/tmp/hyprland-greetd.log 2>&1'" : exec;
         if (root.preview) {
             console.log("Greeter preview: would launch " + cmd);
             root.granted = false;
@@ -132,7 +141,8 @@ Singleton {
             root.message = "Preview: would start " + root.session.name;
             return;
         }
-        Greetd.launch(["sh", "-c", cmd], [], true);
+        // greetd runs the joined command through `sh -c "exec ..."`, so it gets one string.
+        Greetd.launch([cmd], [], true);
     }
 
     function power(action) {
@@ -149,6 +159,11 @@ Singleton {
 
     function key(event) {
         root.wake();
+        if (event.key === Qt.Key_F10) {
+            root.fallback();
+            event.accepted = true;
+            return;
+        }
         if (root.granted) {
             event.accepted = true;
             return;
@@ -158,8 +173,6 @@ Singleton {
             root.submit();
         } else if (event.key === Qt.Key_F2) {
             root.session_index = (root.session_index + 1) % root.sessions.length;
-        } else if (event.key === Qt.Key_F10) {
-            root.fallback();
         } else if (event.key === Qt.Key_F11) {
             root.power("reboot");
         } else if (event.key === Qt.Key_F12) {
@@ -216,6 +229,10 @@ Singleton {
         function onError(error) {
             Greetd.cancelSession();
             root.fail(error);
+        }
+
+        function onLaunched() {
+            launched_file.setText("1\n");
         }
     }
 
@@ -275,12 +292,21 @@ Singleton {
 
     FileView {
         id: ready_file
+        blockWrites: true
         path: root.state_dir + "/ready"
         printErrors: false
     }
 
     FileView {
+        id: launched_file
+        blockWrites: true
+        path: root.state_dir + "/launched"
+        printErrors: false
+    }
+
+    FileView {
         id: fallback_file
+        blockWrites: true
         path: root.state_dir + "/fallback"
         printErrors: false
     }

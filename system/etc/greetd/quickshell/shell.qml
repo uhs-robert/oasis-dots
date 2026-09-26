@@ -50,5 +50,4 @@ ShellRoot {
         }
     }
 
-    Component.onCompleted: Greeter.mark_ready()
 }

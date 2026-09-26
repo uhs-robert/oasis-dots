@@ -123,6 +123,7 @@ install_greetd() {
     success "Quickshell greeter installed (F10 or SUPER+T switches to tuigreet)"
   else
     sudo install -Dm644 system/etc/greetd/hyprland.lua /etc/greetd/hyprland.lua
+    sudo rm -f /usr/local/bin/qs-greeter
     success "tuigreet greeter installed"
   fi
 

@@ -38,7 +38,8 @@ stage_greeter() {
 greeter_install_cmds() {
   local stage=$1 repo=$2
   printf '%s\n' \
-    "sudo rsync -rlt --delete --chown=root:root --chmod=D755,F644 '$stage/' '$GREETER_DEST/'" \
+    "[ ! -f /etc/greetd/hyprland.lua ] || [ -f /etc/greetd/hyprland.lua.bak ] || sudo cp /etc/greetd/hyprland.lua /etc/greetd/hyprland.lua.bak" \
+    "sudo rsync -rlpt --delete --chown=root:root --chmod=D755,F644 '$stage/' '$GREETER_DEST/'" \
     "sudo install -Dm755 '$repo/system/usr/local/bin/qs-greeter' /usr/local/bin/qs-greeter" \
     "sudo install -Dm644 '$repo/system/etc/greetd/hyprland.lua' /etc/greetd/hyprland.lua"
 }

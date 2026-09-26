@@ -4,8 +4,8 @@
 
 config=${QS_GREETER_CONFIG:-/etc/greetd/quickshell}
 state="${XDG_RUNTIME_DIR:-/tmp}/qs-greeter"
-mkdir -p "$state"
-rm -f "$state/ready" "$state/fallback"
+mkdir -p "$state/cache" "$state/state" "$state/data"
+rm -f "$state/ready" "$state/fallback" "$state/launched"
 
 tuigreet_fallback() {
   kitty -- tuigreet --config /etc/tuigreet/config.toml --debug /tmp/tuigreet.log &
@@ -16,9 +16,21 @@ tuigreet_fallback() {
   exit 0
 }
 
+stop_qs() {
+  kill "$qs_pid" 2>/dev/null
+  for _ in 1 2 3 4 5 6 7 8; do
+    kill -0 "$qs_pid" 2>/dev/null || return
+    sleep 0.25
+  done
+  kill -9 "$qs_pid" 2>/dev/null
+}
+
 command -v qs >/dev/null && [[ -f "$config/shell.qml" ]] || tuigreet_fallback
 
-QS_GREETER_STATE="$state" qs -p "$config" >/tmp/qs-greeter.log 2>&1 &
+# The greeter user's home is /, so its XDG dirs live here; no crash dialog over the fallback.
+XDG_CACHE_HOME="$state/cache" XDG_STATE_HOME="$state/state" XDG_DATA_HOME="$state/data" \
+  QS_DISABLE_CRASH_HANDLER=1 QS_GREETER_STATE="$state" \
+  qs -p "$config" >"$state/qs.log" 2>&1 &
 qs_pid=$!
 
 for _ in $(seq 40); do
@@ -27,12 +39,12 @@ for _ in $(seq 40); do
   sleep 0.25
 done
 if [[ ! -e "$state/ready" ]]; then
-  kill "$qs_pid" 2>/dev/null
-  wait "$qs_pid"
+  stop_qs
   tuigreet_fallback
 fi
 
 wait "$qs_pid"
 status=$?
+[[ -e "$state/launched" ]] && exit 0
 [[ -e "$state/fallback" || $status -ne 0 ]] && tuigreet_fallback
 exit 0
