@@ -20,7 +20,9 @@ PanelWindow {
     // Opt-in for dock_bottom: the surface keeps this content height while the drawn panel grows inside it, so it never resizes.
     property real reserve_height: 0
     readonly property bool reserving: root.dock_bottom && root.reserve_height > 0
-    property real drawn_body_height: root.body_height
+    // Grows to fit the key list while help is open.
+    readonly property real shown_body_height: root.help_open ? Math.max(root.body_height, key_help_view.content_height) : root.body_height
+    property real drawn_body_height: root.shown_body_height
     Behavior on drawn_body_height {
         enabled: root.reserving && root.visible && root.drop_progress === 1
         NumberAnimation { duration: 150; easing.type: Easing.OutCubic }
@@ -255,7 +257,7 @@ PanelWindow {
 
     // Never narrower than the island's bottom edge (its body, between the slants).
     implicitWidth: root.passive ? root.island_width : root.fit_island && root.island_width > 0 && root.side !== "center" ? root.island_width : Math.max(Style.px(preferred_width) + root.st.lcd_margin * 2 + root.device_side * 2, island_width, root.st.popup_min_width)
-    implicitHeight: (root.reserving ? Math.max(reserve_height, body_height) : body_height) + header_height + footer_height + root.st.frame_drop
+    implicitHeight: (root.reserving ? Math.max(reserve_height, shown_body_height) : shown_body_height) + header_height + footer_height + root.st.frame_drop
     default property alias content: content_scope.data
 
     readonly property bool wanted: root.passive ? Tooltip.visible && Tooltip.island !== null && Popups.open_name === "" : Popups.open_name === root.popup_name && Popups.open_screen_name !== ""
