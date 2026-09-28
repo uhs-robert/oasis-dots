@@ -685,6 +685,8 @@ Item {
                     centered: true
                     text: (root.ctx ? root.ctx.host : "").toUpperCase()
                     color: "#f4f4f4"
+                    style: Text.Outline
+                    styleColor: "#1a1030"
                     font.family: "Cormorant SC"
                     font.weight: 600
                     font.pixelSize: Math.round(0.07224 * logo.height)
