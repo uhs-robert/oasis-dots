@@ -11,6 +11,8 @@ Item {
 
     property var device: null
     property bool selected: false
+    // Overrides the Connected/Paired word, e.g. while pairing.
+    property string status: ""
     signal clicked()
 
     readonly property bool connected: !!root.device && root.device.connected
@@ -62,8 +64,18 @@ Item {
             }
 
             Text {
-                text: root.connected ? "Connected" : "Paired"
-                color: root.connected ? Theme.theme_primary_light : Style.text_muted
+                visible: !!root.device && root.device.paired && root.device.trusted
+                text: "󰕥"
+                color: Theme.theme_primary_light
+                style: Text.Raised
+                styleColor: Style.text_shadow
+                font.family: Style.font_family
+                font.pixelSize: Style.fs(-5)
+            }
+
+            Text {
+                text: root.status !== "" ? root.status : root.connected ? "Connected" : root.device && root.device.paired ? "Paired" : "New"
+                color: root.status === "Failed" ? Theme.error : root.connected ? Theme.theme_primary_light : Style.text_muted
                 style: Text.Raised
                 styleColor: Style.text_shadow
                 font.family: Style.font_family
