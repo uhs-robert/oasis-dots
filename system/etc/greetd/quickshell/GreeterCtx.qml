@@ -15,6 +15,7 @@ QtObject {
     property bool failed: false
     property int fail_count: 0
     property string message: ""
+    property string prompt: ""
     property bool caps_lock: false
     property bool typing: false
     property bool granted: false

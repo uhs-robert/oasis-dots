@@ -68,6 +68,7 @@ Singleton {
         failed: root.failed
         fail_count: root.fail_count
         message: root.message
+        prompt: root.prompt
         caps_lock: root.caps_lock
         typing: root.typing
         granted: root.granted
