@@ -11,6 +11,13 @@ Singleton {
 
     readonly property string script: Quickshell.env("HOME") + "/.config/hypr/scripts/screenshot.sh"
 
+    function set_capture_opaque(on) {
+        Quickshell.execDetached(["hyprctl", "dispatch", "WindowRules.capture_opaque(" + on + ")"]);
+    }
+
+    // Undoes a selection that a crash left forcing windows opaque.
+    Component.onCompleted: root.set_capture_opaque(false)
+
     // "select" while dragging, "toolbar" once a region is chosen, "capture" while grim runs.
     property string phase: ""
     readonly property bool selecting: root.phase !== ""
@@ -125,7 +132,15 @@ Singleton {
             const list = Quickshell.screens.map(s => ({ screen: s.name, rect: Qt.rect(0, 0, s.width, s.height), label: s.name }));
             root.set_targets(list, list.findIndex(t => t.screen === root.focus_screen));
         }
-        root.phase = "select";
+        // The overlays freeze the screen as they appear, so windows go opaque a couple of frames first.
+        root.set_capture_opaque(true);
+        capture_opaque_delay.restart();
+    }
+
+    Timer {
+        id: capture_opaque_delay
+        interval: 32
+        onTriggered: root.phase = "select"
     }
 
     // Visible windows on each monitor's shown workspace (and its open special one), clipped to that monitor.
@@ -233,11 +248,14 @@ Singleton {
 
     function cancel() {
         if (root.phase === "capture") root.grab_cancelled = true;
+        capture_opaque_delay.stop();
+        grab_delay.stop();
         capture_delay.stop();
         capture_watchdog.stop();
         root.phase = "";
         root.sel_screen = "";
         root.anchored = false;
+        root.set_capture_opaque(false);
     }
 
     function fail(message) {
@@ -412,9 +430,17 @@ Singleton {
         root.grab_cancelled = false;
         root.capture_file = (Quickshell.env("XDG_RUNTIME_DIR") || "/tmp") + "/qs-screenshot-" + Date.now() + ".png";
         grab.command = ["grim", "-s", scale, "-g", geometry, root.capture_file];
+        // After a countdown the selector is gone and opacity was restored, so it comes back before grim.
+        root.set_capture_opaque(true);
         if (root.phase === "capture") return capture_delay.restart();
         if (root.phase !== "") return;
-        grab.running = true;
+        grab_delay.restart();
+    }
+
+    Timer {
+        id: grab_delay
+        interval: 32
+        onTriggered: grab.running = true
     }
 
     // The overlay drops its chrome first; a frozen one keeps showing the still frame for grim to read.
