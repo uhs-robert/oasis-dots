@@ -75,7 +75,7 @@ Item {
         dusk: { sky: ["#2e2f52", "#6a5f7e", "#c89a8a"], hills: ["#3a3550", "#221f30", "#110f18"] },
         night: { sky: ["#02040d", "#0b1230", "#1f2a55"], hills: ["#151b33", "#0b0f1e", "#04060c"] }
     })
-    // One phase (0..1 per 12 minutes) drives the whole sky: the sun crosses its arc over 0..0.5 (dawn, day, dusk), the moon over 0.5..1 (night).
+    // One phase (0..1 per cycle) drives the whole sky: the sun crosses its arc over -0.03..0.40 (dawn, day, dusk), the moon over 0.37..1.03 (night).
     // It starts at the clock's time of day and runs on a wall clock; the animation only ticks while the title shows. Without animate it stays pinned to the clock.
     readonly property int cycle_ms: 150000
     property real sky_phase: 0
@@ -83,19 +83,21 @@ Item {
     property real cycle_epoch: 0
     property bool cycle_armed: false
     readonly property bool sky_live: root.animate && (root.view === "title" || root.view === "saver")
-    readonly property var tod_phase: ({ dawn: 0.0372, day: 0.25, dusk: 0.4628, night: 0.75 })
+    readonly property var tod_phase: ({ dawn: 0.0692, day: 0.185, dusk: 0.3008, night: 0.7 })
     readonly property real cyc: root.animate ? root.sky_phase - Math.floor(root.sky_phase) : root.tod_phase[root.tod]
-    // v is each body's time across the sky, 0 rising to 1 setting; its height is symmetric in v.
-    readonly property real sun_v: (root.cyc + 0.03) / 0.56
-    readonly property real moon_v: ((root.cyc - 0.47 + 1) % 1) / 0.56
-    readonly property point sun_at: root.arc(root.sun_v)
-    readonly property point moon_at: root.arc(root.moon_v)
+    // v is each body's time across the sky, 0 rising to 1 setting; t is its eased place on the arc, slow near the horizons and quick over the top.
+    readonly property real sun_v: (root.cyc + 0.03) / 0.43
+    readonly property real moon_v: ((root.cyc - 0.37 + 1) % 1) / 0.66
+    readonly property real sun_t: root.glide(root.sun_v)
+    readonly property real moon_t: root.glide(root.moon_v)
+    readonly property point sun_at: root.arc(root.sun_t)
+    readonly property point moon_at: root.arc(root.moon_t)
     readonly property real sun_alpha: root.sun_v >= 0 && root.sun_v <= 1 ? 1 : 0
     readonly property real moon_alpha: root.moon_v >= 0 && root.moon_v <= 1 ? 1 : 0
     // Day holds while the sun is within 60 degrees of straight up on its arc (10 to 2 o'clock).
-    readonly property real sun_angle: Math.abs(root.sun_v - 0.5) * 180
+    readonly property real sun_angle: Math.abs(root.sun_t - 0.5) * 180
     readonly property real day_w: root.sun_alpha > 0 ? 1 - root.ease(55, 65, root.sun_angle) : 0
-    readonly property real night_w: root.sun_alpha === 0 ? 1 : root.sun_v < 0.5 ? 1 - root.ease(0, 0.12, root.sun_v) : root.ease(0.88, 1, root.sun_v)
+    readonly property real night_w: root.sun_alpha === 0 ? 1 : root.sun_t < 0.5 ? 1 - root.ease(0, 0.02, root.sun_t) : root.ease(0.98, 1, root.sun_t)
     readonly property var shade_keys: ({ dawn: root.shades("dawn"), day: root.shades("day"), dusk: root.shades("dusk"), night: root.shades("night") })
     property color sky0: root.blend("sky", 0)
     property color sky1: root.blend("sky", 1)
@@ -131,6 +133,11 @@ Item {
     }
 
     // Left horizon to right horizon behind the hills; the peak (v = 0.5) sits right of the logo.
+    function glide(v) {
+        const c = Math.cos(Math.PI * Math.max(0, Math.min(1, v)));
+        return 0.5 - 0.5 * Math.sign(c) * Math.pow(Math.abs(c), 0.6);
+    }
+
     function arc(v) {
         const t = Math.max(0, v);
         return Qt.point(800 - 760 * Math.cos(Math.PI * Math.pow(t, 0.515)), 780 - 650 * Math.sin(Math.PI * t));
