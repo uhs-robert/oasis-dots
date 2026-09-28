@@ -531,7 +531,9 @@ Singleton {
             },
             "terminal": Object.assign({}, terminal, {
                 wait_anim: "cursor",
-                weather_header: "wttr"
+                weather_header: "wttr",
+                picker_skin: "tmux",
+                picker_hint_keys: "123456789"
             }),
             "crt": Object.assign({}, terminal, {
                 wait_anim: "pressanykey",
