@@ -6,6 +6,7 @@ import QtQuick.Layouts
 import QtQuick.Shapes
 import Quickshell.Io
 import "../../theme"
+import "../../components/screensavers"
 
 // A green-phosphor terminal in a curved tube: powers on from a dot, collapses to a line and a dot on unlock.
 Item {
@@ -21,9 +22,10 @@ Item {
     readonly property color tint_base: root.ctx ? root.ctx.tint_base : Theme.green
     readonly property color ph: root.ctx ? root.ctx.tint_bright : Theme.bright_green
     readonly property color ph_dim: Qt.tint(Theme.bg_shadow, Qt.alpha(root.tint_base, 0.72))
-    readonly property color ph_faint: Qt.tint(Theme.bg_shadow, Qt.alpha(root.tint_base, 0.22))
     readonly property color ph_hot: Qt.tint(root.ph, Qt.alpha(Theme.fg_strong, 0.15))
     readonly property string font: "VT323"
+    // The screensaver phase's effect: "matrix" or "starfield".
+    readonly property string saver_effect: "matrix"
     readonly property bool animate: !!root.ctx && root.ctx.animate
     readonly property string phase: root.ctx ? root.ctx.phase : "idle"
     readonly property bool dimmed: root.phase === "wrong" || root.phase === "unlock"
@@ -643,117 +645,38 @@ Item {
         Item {
             id: saver
 
-            Item {
-                id: radar
-                readonly property real size: root.u * 34
-                x: (saver.width - size) / 2
-                y: saver.height * 0.52 - size / 2
-                width: size
-                height: size
+            Loader {
+                anchors.fill: parent
+                sourceComponent: root.saver_effect === "starfield" ? starfield : matrix
+            }
 
-                Repeater {
-                    model: 3
+            Component {
+                id: starfield
 
-                    Rectangle {
-                        required property int index
-                        readonly property real d: root.u * 5.4 * 2 * (index + 1)
-                        anchors.centerIn: parent
-                        width: d
-                        height: d
-                        radius: d / 2
-                        color: "transparent"
-                        border.width: Math.max(1, root.u * 0.15)
-                        border.color: root.ph_faint
-                    }
+                Starfield {
+                    running: root.animate
+                    color: root.ph_hot
+                    dim_color: root.ph_dim
+                    count: 320
+                    render_scale: 0.5
                 }
+            }
 
-                Rectangle {
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    width: Math.max(1, root.u * 0.12)
-                    height: parent.height
-                    color: root.ph_faint
-                }
+            Component {
+                id: matrix
 
-                Rectangle {
-                    anchors.verticalCenter: parent.verticalCenter
-                    width: parent.width
-                    height: Math.max(1, root.u * 0.12)
-                    color: root.ph_faint
-                }
-
-                Shape {
-                    id: sweep
-                    anchors.fill: parent
-                    rotation: 40
-                    preferredRendererType: Shape.CurveRenderer
-
-                    ShapePath {
-                        strokeWidth: -1
-                        fillGradient: ConicalGradient {
-                            centerX: radar.size / 2
-                            centerY: radar.size / 2
-                            angle: 90
-                            GradientStop { position: 0; color: root.ph }
-                            GradientStop { position: 0.006; color: Qt.alpha(root.ph, 0.45) }
-                            GradientStop { position: 0.194; color: "transparent" }
-                            GradientStop { position: 1; color: "transparent" }
-                        }
-                        PathAngleArc {
-                            centerX: radar.size / 2
-                            centerY: radar.size / 2
-                            radiusX: radar.size / 2
-                            radiusY: radar.size / 2
-                            startAngle: 0
-                            sweepAngle: 360
-                        }
-                    }
-
-                    RotationAnimation on rotation {
-                        running: root.animate
-                        loops: Animation.Infinite
-                        from: 40
-                        to: 400
-                        duration: 4000
-                    }
-                }
-
-                Repeater {
-                    model: [[0.28, 0.34], [0.66, 0.30], [0.58, 0.72]].slice(0, Math.max(1, Math.min(3, root.ctx ? root.ctx.notifications : 0)))
-
-                    Rectangle {
-                        id: blip
-                        required property var modelData
-                        required property int index
-                        readonly property real d: root.u * 0.8
-                        x: modelData[0] * radar.size - d / 2
-                        y: modelData[1] * radar.size - d / 2
-                        width: d
-                        height: d
-                        radius: d / 2
-                        color: root.ph
-                        opacity: 0.6
-
-                        SequentialAnimation on opacity {
-                            running: root.animate
-                            loops: Animation.Infinite
-                            PauseAnimation { duration: (blip.index * 1100) % 4000 }
-                            NumberAnimation { from: 0.25; to: 1; duration: 320 }
-                            NumberAnimation { to: 0.25; duration: 3680 - (blip.index * 1100) % 4000 }
-                        }
-                    }
-                }
-
-                Rectangle {
-                    anchors.fill: parent
-                    radius: width / 2
-                    color: "transparent"
-                    border.width: Math.max(1, root.u * 0.2)
-                    border.color: root.ph_dim
+                MatrixRain {
+                    running: root.animate
+                    color: Theme.theme_primary_strong
+                    trail_color: Theme.theme_primary_strong
+                    font_family: root.font
+                    glyph_size: root.u * 2.2
+                    characters: "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#$%&*+=<>:;?!/|"
                 }
             }
 
             Rectangle {
-                anchors.centerIn: radar
+                anchors.centerIn: parent
                 width: rtime.implicitWidth + root.u * 2
                 height: rtime.implicitHeight
                 color: Qt.alpha(Theme.bg_shadow, 0.7)
@@ -771,7 +694,7 @@ Item {
             Text {
                 x: root.u * 3.4
                 y: root.u * 2.6
-                text: "SYSTEM LOCKED<br>STANDBY SCAN<br><font color='" + root.ph + "'>" + root.up(root.ctx ? root.ctx.host : "") + "</font>"
+                text: "SYSTEM LOCKED<br>STANDBY<br><font color='" + root.ph + "'>" + root.up(root.ctx ? root.ctx.host : "") + "</font>"
                 textFormat: Text.StyledText
                 color: root.ph_dim
                 lineHeight: 1.25

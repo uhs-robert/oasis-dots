@@ -9,6 +9,8 @@ import Quickshell.Wayland
 import Quickshell.Services.Pam
 import "../services"
 import "../theme"
+// Skins load by URL; importing the folder lets Quickshell register the component folders they import.
+import "skins"
 
 // The session lock: one surface per screen, unlocked only by a PAM success.
 Singleton {
