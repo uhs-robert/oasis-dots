@@ -53,8 +53,6 @@ Singleton {
     property bool granted: false
     property int unlock_ms: 0
     property bool saver: false
-    // Left alone for long: skins stop their loops.
-    property bool dormant: false
     readonly property string flag_script: Quickshell.shellDir + "/scripts/lock-flag"
     readonly property var backdrop_files: {
         try {
@@ -165,9 +163,7 @@ Singleton {
 
     function wake() {
         root.saver = false;
-        root.dormant = false;
         saver_timer.restart();
-        dormant_timer.restart();
     }
 
     // Reboots or powers off from the lock; the skin asking has already confirmed.
@@ -398,12 +394,6 @@ Singleton {
         }
     }
 
-    Timer {
-        id: dormant_timer
-        interval: 600000
-        onTriggered: root.dormant = persist.locked
-    }
-
     LockCapture {
         id: capture
         prefix: "qs-lock"
@@ -429,7 +419,7 @@ Singleton {
         typing: root.typing
         granted: root.granted
         saver: root.saver && Power.on_ac
-        animate: Power.on_ac && !root.dormant
+        animate: Power.on_ac
         backdrops: root.backdrop_files
         power_live: true
         sound: true
