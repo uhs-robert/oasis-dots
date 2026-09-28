@@ -755,10 +755,46 @@ Singleton {
         95: "thunderstorm", 96: "thunderstorm", 99: "thunderstorm"
     })
 
-    function icon_source(code, is_day) {
+    // Square [x, y, side] around each icon's visible art, in its 128-unit viewBox; the padding varies per icon.
+    readonly property var icon_crops: ({
+        "clear-day": [16, 16, 96],
+        "clear-night": [32, 32, 64],
+        "mostly-clear-day": [18, 25, 74],
+        "mostly-clear-night": [33, 36, 59],
+        "partly-cloudy-day": [18, 16.5, 86],
+        "partly-cloudy-night": [24, 21.5, 80],
+        "overcast-day": [18, 14.5, 90],
+        "overcast-night": [24, 19.5, 84],
+        "fog-day": [32, 33.2, 64],
+        "fog-night": [38.5, 39.8, 51],
+        "drizzle": [24, 29.5, 80],
+        "overcast-drizzle": [24, 27.5, 84],
+        "sleet": [24, 34.5, 80],
+        "extreme-sleet": [24, 32.5, 84],
+        "rain": [24, 32, 80],
+        "overcast-rain": [24, 30, 84],
+        "extreme-rain": [24, 30, 84],
+        "snow": [24, 30.5, 80],
+        "overcast-snow": [24, 28.5, 84],
+        "extreme-snow": [24, 28.5, 84],
+        "thunderstorms": [24, 34.5, 80],
+        "thunderstorms-hail": [24, 34.5, 80],
+        "extreme-thunderstorms-hail": [24, 34.5, 80],
+        "not-available": [32, 31.8, 65]
+    })
+
+    function icon_slug(code, is_day) {
         const entry = root.weather_icon_map[Math.round(code)];
-        if (!entry) return root.asset_url("not-available");
-        return root.asset_url(is_day ? entry.day : (entry.night || entry.day));
+        if (!entry) return "not-available";
+        return is_day ? entry.day : (entry.night || entry.day);
+    }
+
+    function icon_source(code, is_day) {
+        return root.asset_url(root.icon_slug(code, is_day));
+    }
+
+    function icon_crop(code, is_day) {
+        return root.icon_crops[root.icon_slug(code, is_day)] || [0, 0, 128];
     }
 
     function description(code) {
