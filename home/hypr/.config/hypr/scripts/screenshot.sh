@@ -37,7 +37,7 @@ want() {
 # Report presence of all hard and soft dependencies to stdout.
 check_deps() {
   local hard_deps=(hyprshot grim wl-copy wf-recorder hyprpicker tesseract slurp jq)
-  local soft_deps=(satty)
+  local soft_deps=(satty wlrctl)
   local ok=true
   for dep in "${hard_deps[@]}"; do
     if want "$dep"; then
@@ -82,6 +82,26 @@ notify_saved() {
     open) xdg-open "$file" ;;
     folder) "$SCRIPT_DIR/term" -e yazi "$file" ;;
     esac
+  ) >/dev/null 2>&1 &
+}
+
+# Copy OCR text from a scroll capture; the notification offers save, open and copy image, then both files are removed.
+notify_scroll_text() {
+  local text="$1" image="$2"
+  if ! grep -q '[^[:space:]]' "$text"; then
+    notify-send "OCR Failed" "No text found"
+    rm -f -- "$text" "$image"
+    return 0
+  fi
+  wl-copy <"$text"
+  (
+    choice="$(timeout 600 notify-send --action=save="Save text" --action=open=Open --action=image="Copy image" --wait "OCR Complete" "Text copied to clipboard")" || true
+    case "$choice" in
+    save) cp -- "$text" "$SCREENSHOT_DIR/ocr-$(timestamp).txt" ;;
+    open) "$SCRIPT_DIR/term" -e "${EDITOR:-nvim}" "$text" ;;
+    image) wl-copy --type image/png <"$image" ;;
+    esac
+    rm -f -- "$text" "$image"
   ) >/dev/null 2>&1 &
 }
 
@@ -211,13 +231,17 @@ handle_image() {
   esac
 }
 
-# Parse the Quickshell selector's flags: --image FILE plus one action flag.
+# Parse the Quickshell selector's flags: --image FILE plus one action flag, or --scroll-text FILE.
 handle_region_args() {
-  local image="" action="annotate"
+  local image="" action="annotate" text=""
   while [[ $# -gt 0 ]]; do
     case "$1" in
     --image)
       image="$2"
+      shift 2
+      ;;
+    --scroll-text)
+      text="$2"
       shift 2
       ;;
     --copy | --save | --annotate | --ocr)
@@ -234,6 +258,10 @@ handle_region_args() {
     notify-send "Cancelled" "No image given"
     exit 1
   }
+  if [[ -n "$text" ]]; then
+    notify_scroll_text "$text" "$image"
+    return 0
+  fi
   handle_image "$image" "$action"
 }
 
@@ -278,6 +306,8 @@ if [[ "$1" == "-h" || "$1" == "--help" ]]; then
   echo "  --record-geometry G   Record the region G (\"x,y wxh\")"
   echo "  --image FILE [act]    Act on an already captured image (FILE is removed)"
   echo "                        act: --copy, --save, --annotate (default), --ocr"
+  echo "  --image FILE --scroll-text TXT"
+  echo "                        Copy the OCR text TXT of a scroll capture (FILE and TXT are removed)"
   echo "  --pixel-at G          Copy the colour of the pixel at G (\"x,y 1x1\")"
   echo ""
   echo "Without an option, opens the Quickshell screenshot menu, or rofi when no bar answers."

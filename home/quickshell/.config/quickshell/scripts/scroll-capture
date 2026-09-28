@@ -1,0 +1,251 @@
+#!/usr/bin/env python3
+# Scrolls a screen region under the pointer, stitches the grim frames into one tall PNG, optionally OCRs it.
+# Usage: scroll-capture GEOMETRY SCALE OUTPUT [--max-frames N] [--text-out FILE] | scroll-capture --stitch FRAME... -o OUTPUT
+import argparse
+import io
+import os
+import signal
+import subprocess
+import sys
+import tempfile
+import time
+
+import numpy as np
+from PIL import Image
+
+SETTLE_S = 0.3
+TARGET_SHIFT = 0.6
+MIN_OVERLAP = 0.15
+MATCH_TOLERANCE = 2.0
+SAME_TOLERANCE = 0.5
+CHUNK_HEIGHT = 5000
+FIRST_WHEEL = 5
+MAX_RETRIES = 4
+
+stop_requested = False
+
+
+def log(message):
+    print(message, flush=True)
+
+
+def to_gray(rgb):
+    return (rgb[..., :3] @ np.array([0.299, 0.587, 0.114], dtype=np.float32)).astype(np.float32)
+
+
+def frames_same(a, b):
+    return float(np.abs(a - b).mean()) < SAME_TOLERANCE
+
+
+def row_features(gray):
+    ramp = np.linspace(-1.0, 1.0, gray.shape[1], dtype=np.float32)
+    return np.stack([gray.mean(axis=1), (gray * ramp).mean(axis=1)], axis=1)
+
+
+def find_shift(prev, nxt, top, bottom):
+    """Rows the content moved up between two gray frames, or None when they do not overlap."""
+    height = prev.shape[0]
+    p = prev[top : height - bottom]
+    n = nxt[top : height - bottom]
+    rows = p.shape[0]
+    max_shift = rows - max(int(rows * MIN_OVERLAP), 16)
+    if max_shift < 1:
+        return None
+    fp = row_features(p)
+    fn = row_features(n)
+    shifts = np.arange(1, max_shift + 1)
+    scores = np.array([np.abs(fp[s:] - fn[: rows - s]).mean() for s in shifts])
+    verified = []
+    for s in shifts[np.argsort(scores)[:16]]:
+        if float(fp[s:, 0].std()) < 1.0:
+            continue
+        verified.append((float(np.abs(p[s:] - n[: rows - s]).mean()), int(s)))
+    good = [v for v in verified if v[0] <= MATCH_TOLERANCE]
+    if not good:
+        return None
+    best = min(v[0] for v in good)
+    return min(s for score, s in good if score <= best + 0.5)
+
+
+def sticky_bands(grays):
+    top = bottom = grays[0].shape[0] // 3
+    for a, b in zip(grays, grays[1:]):
+        same = np.abs(a - b).max(axis=1) <= 3.0
+        lead = int(np.argmin(same)) if not same.all() else len(same)
+        trail = int(np.argmin(same[::-1])) if not same.all() else len(same)
+        top = min(top, lead)
+        bottom = min(bottom, trail)
+    return top, bottom
+
+
+def stitch(frames):
+    """Frames are RGB uint8 arrays of one region scrolled down; returns the tall RGB array."""
+    if len(frames) == 1:
+        return frames[0]
+    grays = [to_gray(f) for f in frames]
+    top, bottom = sticky_bands(grays)
+    height = frames[0].shape[0]
+    end = height - bottom
+    parts = [frames[0][:end]]
+    for i in range(1, len(frames)):
+        shift = find_shift(grays[i - 1], grays[i], top, bottom)
+        if shift is None:
+            parts.append(frames[i][top:end])
+        else:
+            parts.append(frames[i][end - shift : end])
+    if bottom:
+        parts.append(frames[-1][end:])
+    return np.concatenate(parts, axis=0)
+
+
+def chunk_bounds(gray, max_height=CHUNK_HEIGHT):
+    bounds = []
+    start = 0
+    total = gray.shape[0]
+    while total - start > max_height:
+        lo = start + int(max_height * 0.7)
+        hi = start + max_height
+        spread = gray[lo:hi].max(axis=1) - gray[lo:hi].min(axis=1)
+        blank = np.flatnonzero(spread < 8)
+        cut = lo + int(blank[-1]) + 1 if len(blank) else hi
+        bounds.append((start, cut))
+        start = cut
+    bounds.append((start, total))
+    return bounds
+
+
+def ocr(tall, path):
+    gray = to_gray(tall)
+    texts = []
+    with tempfile.TemporaryDirectory() as tmp:
+        for i, (a, b) in enumerate(chunk_bounds(gray)):
+            chunk = os.path.join(tmp, f"chunk{i}.png")
+            Image.fromarray(tall[a:b]).save(chunk)
+            run = subprocess.run(["tesseract", chunk, "stdout", "-c", "preserve_interword_spaces=1"], capture_output=True, text=True)
+            if run.returncode != 0:
+                raise RuntimeError("tesseract failed")
+            texts.append(run.stdout.rstrip("\n"))
+    with open(path, "w") as f:
+        f.write("\n".join(texts) + "\n")
+
+
+def save(tall, path):
+    Image.fromarray(tall).save(path)
+
+
+def sh(*cmd):
+    return subprocess.run(cmd, capture_output=True, text=True)
+
+
+def grab(geometry, scale):
+    run = subprocess.run(["grim", "-t", "ppm", "-s", scale, "-g", geometry, "-"], capture_output=True)
+    if run.returncode != 0:
+        raise RuntimeError("grim failed")
+    return np.array(Image.open(io.BytesIO(run.stdout)).convert("RGB"))
+
+
+def cursor_pos():
+    out = sh("hyprctl", "cursorpos").stdout.replace(",", " ").split()
+    return (out[0], out[1]) if len(out) >= 2 else None
+
+
+def wheel(amount):
+    sh("wlrctl", "pointer", "scroll", str(int(amount)), "0")
+    time.sleep(SETTLE_S)
+
+
+def page_down():
+    sh("wtype", "-k", "Next")
+    time.sleep(SETTLE_S)
+
+
+def on_term(_signum, _frame):
+    global stop_requested
+    stop_requested = True
+
+
+def capture(geometry, scale, max_frames):
+    origin, size = geometry.split()
+    x, y = (int(v) for v in origin.split(","))
+    w, h = (int(v) for v in size.split("x"))
+    saved = cursor_pos()
+    sh("hyprctl", "dispatch", "movecursor", str(x + w // 2), str(y + h // 2))
+    frames = [grab(geometry, scale)]
+    log("frame 1")
+    amount = FIRST_WHEEL
+    direction = 1
+    calibrated = False
+    retries = 0
+    try:
+        while len(frames) < max_frames and not stop_requested:
+            wheel(direction * amount)
+            frame = grab(geometry, scale)
+            prev_gray = to_gray(frames[-1])
+            gray = to_gray(frame)
+            if frames_same(prev_gray, gray):
+                page_down()
+                frame = grab(geometry, scale)
+                gray = to_gray(frame)
+                if frames_same(prev_gray, gray):
+                    break
+            shift = find_shift(prev_gray, gray, 0, 0)
+            if shift is None and retries < MAX_RETRIES:
+                retries += 1
+                wheel(-direction * amount)
+                if find_shift(gray, prev_gray, 0, 0) is not None:
+                    direction = -direction
+                else:
+                    amount = max(1, amount // 2)
+                continue
+            if shift is not None and not calibrated:
+                amount = max(1, round(amount * TARGET_SHIFT * frame.shape[0] / shift))
+                calibrated = True
+            frames.append(frame)
+            log(f"frame {len(frames)}")
+    finally:
+        if saved:
+            sh("hyprctl", "dispatch", "movecursor", saved[0].split(".")[0], saved[1].split(".")[0])
+    return frames
+
+
+def run_capture(args):
+    signal.signal(signal.SIGTERM, on_term)
+    signal.signal(signal.SIGINT, on_term)
+    frames = capture(args.geometry, args.scale, args.max_frames)
+    tall = stitch(frames)
+    save(tall, args.output)
+    if args.text_out:
+        ocr(tall, args.text_out)
+    log(f"done {args.output}")
+
+
+def run_stitch(args):
+    frames = [np.array(Image.open(p).convert("RGB")) for p in args.frames]
+    save(stitch(frames), args.output)
+
+
+def main():
+    if len(sys.argv) > 1 and sys.argv[1] == "--stitch":
+        parser = argparse.ArgumentParser()
+        parser.add_argument("--stitch", action="store_true")
+        parser.add_argument("frames", nargs="+")
+        parser.add_argument("-o", "--output", required=True)
+        run_stitch(parser.parse_args())
+        return 0
+    parser = argparse.ArgumentParser()
+    parser.add_argument("geometry")
+    parser.add_argument("scale")
+    parser.add_argument("output")
+    parser.add_argument("--max-frames", type=int, default=50)
+    parser.add_argument("--text-out")
+    args = parser.parse_args()
+    try:
+        run_capture(args)
+    except (RuntimeError, OSError) as e:
+        print(f"error: {e}", file=sys.stderr)
+        return 1
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
