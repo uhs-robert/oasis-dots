@@ -4,6 +4,7 @@ import QtQuick
 import QtQuick.Effects
 import QtQuick.Layouts
 import QtQuick.Shapes
+import Quickshell.Io
 import "../../theme"
 
 // A green-phosphor terminal in a curved tube: powers on from a dot, collapses to a line and a dot on unlock.
@@ -68,6 +69,33 @@ Item {
         running: root.animate
         onTriggered: root.blink_on = !root.blink_on
         onRunningChanged: root.blink_on = true
+    }
+
+    // Skins are built per lock surface, so this is when the session locked.
+    property var locked_at: new Date()
+
+    function locked_for(now) {
+        const mins = Math.floor((now - root.locked_at) / 60000);
+        if (mins < 1) return "JUST NOW";
+        const h = Math.floor(mins / 60);
+        return (h > 0 ? h + "H " + String(mins % 60).padStart(2, "0") + "M" : mins + "M") + " AGO";
+    }
+
+    FileView {
+        id: uptime_file
+        path: "/proc/uptime"
+        blockLoading: true
+    }
+
+    // Rereads /proc/uptime on each clock tick passed in.
+    function uptime_text(now) {
+        uptime_file.reload();
+        const mins = Math.floor(parseFloat(uptime_file.text()) / 60);
+        if (isNaN(mins)) return "UNKNOWN";
+        const d = Math.floor(mins / 1440);
+        const h = Math.floor(mins % 1440 / 60);
+        const pad = n => String(n).padStart(2, "0");
+        return (d > 0 ? d + "D " + pad(h) + "H " : h > 0 ? h + "H " : "") + pad(mins % 60) + "M";
     }
 
     // ACCESS DENIED flashes three times per rejection, then clears.
@@ -278,7 +306,8 @@ Item {
                                 rows.push(["MSGS", c.notifications + " PENDING · SEALED"]);
                                 if (c.has_event) rows.push(["NEXT", root.up(c.event_time + " " + c.event_title)]);
                                 rows.push(["AUDIO", c.has_media ? root.up(c.media_title) + " [" + root.up(c.media_status) + "]" : "IDLE"]);
-                                rows.push(["CLOCK", c.time_text + " LOCAL"]);
+                                rows.push(["SESSION", "LOCKED " + root.locked_for(c.now)]);
+                                rows.push(["UPTIME", root.uptime_text(c.now)]);
                                 const cells = [];
                                 for (const r of rows) cells.push({ text: r[0], key: true }, { text: r[1], key: false });
                                 return cells;
