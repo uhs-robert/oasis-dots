@@ -164,6 +164,7 @@ Singleton {
             weather_header: "",
             picker_skin: "",
             picker_hud: Theme.theme_secondary,
+            picker_hint_keys: "",
             bar_pill_square: false,
             bar_font_family: "JetBrainsMono Nerd Font",
             bar_font_size: Theme.font_size,
@@ -417,6 +418,7 @@ Singleton {
                 weather_header: "",
                 picker_skin: "",
                 picker_hud: Theme.theme_primary,
+                picker_hint_keys: "",
                 bar_pill_square: false,
                 bar_font_family: Theme.font_family,
                 bar_font_size: Theme.font_size,
@@ -1887,6 +1889,9 @@ Singleton {
                     border_title: true,
                     title_case: true,
                     title_status: true,
+                    picker_skin: "nvimfloat",
+                    picker_hint_keys: "asfgzxcvbnwertyuiop",
+                    picker_hud: Theme.theme_primary,
                     frame_color: Theme.bg_mantle,
                     frame_radius: 8,
                     frame_border_width: 1,
@@ -2225,6 +2230,7 @@ Singleton {
     // Picker cursor/loupe treatment: "" keeps the shared look, "scope" swaps in the MGS binocular skin.
     readonly property string picker_skin: root.active.picker_skin
     readonly property color picker_hud: root.active.picker_hud
+    readonly property string picker_hint_keys: root.active.picker_hint_keys || ""
     readonly property string card_layout: root.active.card_layout
     // The keeptabs done celebration: hearts, pixel (stepped), lcd (stepped, then blinks), hev_pickup, levelup (inverted flash, pixel sparkles) or fanfare.
     readonly property string done_anim: root.active.done_anim || "hearts"
