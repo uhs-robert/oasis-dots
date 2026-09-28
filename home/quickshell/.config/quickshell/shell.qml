@@ -14,6 +14,8 @@ import "./services"
 ShellRoot {
     id: root
 
+    Component.onDestruction: Screenshot.set_capture_opaque(false)
+
     BundledFonts {}
 
     Variants {

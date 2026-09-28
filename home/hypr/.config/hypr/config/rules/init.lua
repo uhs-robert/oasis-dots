@@ -2,7 +2,10 @@
 
 --- @class Rules
 --- @field layer_rules table<string, any> Registry of named layer-rule handles (supports set_enabled/is_enabled).
+--- @field window_rules table<string, any> Registry of named window-rule handles (supports set_enabled/is_enabled).
 local Rules = {}
+
+local FADE_SPEED = 4
 
 --- Registers bezier curves and animation definitions for windows, workspaces, fade, and layers.
 local set_animations = function()
@@ -31,7 +34,7 @@ local set_animations = function()
   hl.animation({ leaf = "fadeLayersOut", enabled = true, speed = 3, bezier = "linearish" })
 
   -- FADE
-  hl.animation({ leaf = "fade", enabled = true, speed = 4, bezier = "smooth" })
+  hl.animation({ leaf = "fade", enabled = true, speed = FADE_SPEED, bezier = "smooth" })
 end
 
 --- Applies animation layer rules for shell surfaces (rofi, notifications, etc.).
@@ -74,6 +77,8 @@ end
 local set_workspace_rules = function() return nil end
 
 --- Applies window rules: opacity, float, pin, XWayland fixes, and per-app overrides.
+--- Returns a registry table mapping rule name -> rule handle (supports set_enabled / is_enabled).
+--- @return table<string, any>
 local set_window_rules = function()
   -- https://wiki.hypr.land/Configuring/Basics/Window-Rules/#window-rules
   hl.window_rule({ name = "suppress-maximize-events", match = { class = ".*" }, suppress_event = "maximize" })
@@ -144,6 +149,17 @@ local set_window_rules = function()
     focus_on_activate = true,
     fullscreen = true,
   })
+
+  -- Last, so it beats the browser opacity overrides above.
+  local rules = {}
+  rules["capture-opaque"] = hl.window_rule({
+    name = "capture-opaque",
+    match = { class = ".*" },
+    opacity = "1.0 override 1.0 override",
+    enabled = false,
+  })
+
+  return rules
 end
 
 --- Toggles browser opacity when a screenshare session starts or stops.
@@ -192,6 +208,16 @@ function Rules.toggle(name)
   return hl.dsp.no_op()
 end
 
+--- Forces every window opaque for the screenshot selector, skipping the fade so captures never see it mid-way.
+--- @param on boolean
+function Rules.set_capture_opaque(on)
+  hl.animation({ leaf = "fadeSwitch", enabled = not on, speed = FADE_SPEED, bezier = "smooth" })
+  local r = Rules.window_rules["capture-opaque"]
+  if r then r:set_enabled(on) end
+
+  return hl.dsp.no_op()
+end
+
 --- @param name string
 --- @param cmd string
 function Rules.exec_without_layer_rule(name, cmd)
@@ -236,11 +262,16 @@ _G.LayerRules = {
   exec_without_animation = function(cmd) return Rules.exec_without_layer_animations(cmd) end,
 }
 
+-- Global functions which are accessible externally via `hyprctl dispatch "WindowRules"`
+_G.WindowRules = {
+  capture_opaque = function(on) return Rules.set_capture_opaque(on) end,
+}
+
 local function init()
   set_animations()
   Rules.layer_rules = set_layer_rules()
   set_workspace_rules()
-  set_window_rules()
+  Rules.window_rules = set_window_rules()
   set_screenshare_handler()
 end
 

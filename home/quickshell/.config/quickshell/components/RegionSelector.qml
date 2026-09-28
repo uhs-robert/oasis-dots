@@ -92,7 +92,8 @@ PanelWindow {
     color: "transparent"
     WlrLayershell.namespace: "quickshell-region"
     WlrLayershell.layer: WlrLayer.Overlay
-    WlrLayershell.keyboardFocus: root.keyboard_owner ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
+    // Exclusive would make Hyprland send every screen's pointer input to this one surface.
+    WlrLayershell.keyboardFocus: root.keyboard_owner ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
 
     property point press_point: Qt.point(0, 0)
     property point last_mouse: Qt.point(-1, -1)
@@ -403,20 +404,10 @@ PanelWindow {
                 height: loupe.view
                 clip: true
 
-                Image {
-                    visible: root.pixel_mode
-                    anchors.fill: parent
-                    source: root.pixel_mode ? root.pixel_image : ""
-                    sourceClipRect: Qt.rect(loupe.bx - loupe.half, loupe.by - loupe.half, loupe.count, loupe.count)
-                    cache: false
-                    smooth: false
-                }
-
                 ShaderEffectSource {
-                    visible: !root.pixel_mode
                     anchors.fill: parent
-                    sourceItem: root.pixel_mode ? null : frozen_view
-                    sourceRect: Qt.rect((loupe.bx - loupe.half) / root.buffer_scale, (loupe.by - loupe.half) / root.buffer_scale, loupe.count / root.buffer_scale, loupe.count / root.buffer_scale)
+                    sourceItem: root.pixel_mode ? frame_image : frozen_view
+                    sourceRect: Qt.rect((loupe.bx - loupe.half) / root.sample_scale, (loupe.by - loupe.half) / root.sample_scale, loupe.count / root.sample_scale, loupe.count / root.sample_scale)
                     textureSize: Qt.size(loupe.count, loupe.count)
                     smooth: false
                     mipmap: false
@@ -477,8 +468,8 @@ PanelWindow {
                     height: 12
                     onSrcChanged: if (swatch.src !== "") swatch.loadImage(swatch.src)
                     onImageLoaded: swatch.requestPaint()
-                    onBxChanged: swatch.requestPaint()
-                    onByChanged: swatch.requestPaint()
+                    onBxChanged: Qt.callLater(swatch.requestPaint)
+                    onByChanged: Qt.callLater(swatch.requestPaint)
                     onPaint: {
                         const ctx = swatch.getContext("2d");
                         ctx.clearRect(0, 0, swatch.width, swatch.height);
