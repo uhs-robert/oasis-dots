@@ -487,7 +487,15 @@ Item {
                 font.letterSpacing: root.u * 0.15
             }
 
+            Rectangle {
+                anchors.fill: scope_status
+                anchors.margins: -root.u * 0.5
+                visible: scope_status.opacity > 0
+                color: Theme.bg_shadow
+            }
+
             Text {
+                id: scope_status
                 anchors.horizontalCenter: parent.horizontalCenter
                 anchors.bottom: parent.bottom
                 anchors.bottomMargin: root.u * 0.8
@@ -754,7 +762,22 @@ Item {
                 render_scale: 0.5
             }
 
+            Repeater {
+                model: [saver_head, saver_time, saver_info, saver_strip]
+
+                Rectangle {
+                    required property var modelData
+                    x: modelData.x - root.u * 1
+                    y: modelData.y - root.u * 0.8
+                    width: modelData.width + root.u * 2
+                    height: modelData.height + root.u * 1.6
+                    radius: root.u * 0.3
+                    color: Qt.alpha(Theme.bg_shadow, 0.85)
+                }
+            }
+
             RowLayout {
+                id: saver_head
                 x: root.u * 3
                 y: root.u * 3
                 spacing: root.u * 1.2
@@ -784,6 +807,7 @@ Item {
             }
 
             ColumnLayout {
+                id: saver_time
                 anchors.right: parent.right
                 anchors.rightMargin: root.u * 3
                 y: root.u * 3
@@ -816,6 +840,7 @@ Item {
             }
 
             Text {
+                id: saver_info
                 x: root.u * 3
                 y: root.u * 10
                 lineHeight: 1.4
@@ -830,13 +855,14 @@ Item {
             Rectangle {
                 x: root.u * 3
                 anchors.bottom: parent.bottom
-                anchors.bottomMargin: root.u * 2.4
+                anchors.bottomMargin: root.u * 3.6
                 width: parent.width - x * 2
                 height: Math.max(1, root.u * 0.1)
                 color: root.vec_faint
             }
 
             RowLayout {
+                id: saver_strip
                 x: root.u * 3
                 anchors.bottom: parent.bottom
                 anchors.bottomMargin: root.u * 1.6
