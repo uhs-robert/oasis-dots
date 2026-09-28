@@ -73,34 +73,66 @@ Item {
         dusk: { sky: ["#2e2f52", "#6a5f7e", "#c89a8a"], hills: ["#3a3550", "#221f30", "#110f18"] },
         night: { sky: ["#02040d", "#0b1230", "#1f2a55"], hills: ["#151b33", "#0b0f1e", "#04060c"] }
     })
-    readonly property var pal: root.palettes[root.shown_tod]
+    readonly property var pal: root.palettes[root.tod]
 
-    // The saver walks dusk, night, dawn from the current time; sky_tod is set only while it runs.
-    readonly property var sky_cycle: ["dusk", "night", "dawn"]
-    property string sky_tod: ""
-    property bool sky_glide: false
-    readonly property string shown_tod: root.sky_tod !== "" ? root.sky_tod : root.tod
-    property color sky0: root.pal.sky[0]
-    property color sky1: root.pal.sky[1]
-    property color sky2: root.pal.sky[2]
-    property color hill0: root.pal.hills[0]
-    property color hill1: root.pal.hills[1]
-    property color hill2: root.pal.hills[2]
-    property real star_alpha: root.shown_tod === "night" ? 1 : root.shown_tod === "dusk" ? 0.4 : 0
-    property real moon_alpha: root.shown_tod === "dawn" ? 0 : 1
-    property real sun_alpha: root.shown_tod === "dawn" ? 1 : 0
-    property real cloud_alpha: root.shown_tod === "night" ? 0.45 : 1
+    // The saver's sky turns continuously through dusk, night and dawn: one phase (0..1 per loop) drives every colour and the moon and sun arcs.
+    property real sky_phase: 0
+    property real cycle_start: 0
+    property bool cycle_armed: false
+    readonly property bool cycling: root.phase === "saver" && root.animate
+    readonly property real cyc: root.sky_phase - Math.floor(root.sky_phase)
+    readonly property var sky_keys: ["dusk", "night", "dawn", "dusk"].map(t => ({
+        sky: root.palettes[t].sky.map(root.rgb),
+        hills: root.palettes[t].hills.map(root.rgb),
+        stars: t === "night" ? 1 : t === "dusk" ? 0.4 : 0,
+        clouds: t === "night" ? 0.45 : 1
+    }))
+    readonly property int leg: Math.min(2, Math.floor(root.cyc * 3))
+    readonly property real leg_t: {
+        const t = root.cyc * 3 - root.leg;
+        return t * t * (3 - 2 * t);
+    }
+    // Moon over phases -0.05..0.71 (rises at dusk, sinks at dawn); sun over 0.62..1.05 (rises at dawn, sinks at dusk).
+    readonly property real moon_u: ((root.cyc + 0.05) % 1) / 0.76
+    readonly property real sun_u: ((root.cyc + 0.38) % 1) / 0.43
+    property color sky0: root.cycling ? root.blend("sky", 0) : root.pal.sky[0]
+    property color sky1: root.cycling ? root.blend("sky", 1) : root.pal.sky[1]
+    property color sky2: root.cycling ? root.blend("sky", 2) : root.pal.sky[2]
+    property color hill0: root.cycling ? root.blend("hills", 0) : root.pal.hills[0]
+    property color hill1: root.cycling ? root.blend("hills", 1) : root.pal.hills[1]
+    property color hill2: root.cycling ? root.blend("hills", 2) : root.pal.hills[2]
+    readonly property real star_alpha: root.cycling ? root.lerp(root.sky_keys[root.leg].stars, root.sky_keys[root.leg + 1].stars, root.leg_t) : root.tod === "night" ? 1 : root.tod === "dusk" ? 0.4 : 0
+    readonly property real cloud_alpha: root.cycling ? root.lerp(root.sky_keys[root.leg].clouds, root.sky_keys[root.leg + 1].clouds, root.leg_t) : root.tod === "night" ? 0.45 : 1
+    readonly property real moon_alpha: root.cycling ? (root.moon_u <= 1 ? 1 : 0) : root.tod === "dawn" ? 0 : 1
+    readonly property real sun_alpha: root.cycling ? (root.sun_u <= 1 ? 1 : 0) : root.tod === "dawn" ? 1 : 0
+    readonly property point moon_at: root.cycling ? root.arc(root.moon_u) : Qt.point(1370, 150)
+    readonly property point sun_at: root.cycling ? root.arc(root.sun_u) : Qt.point(1300, 500)
 
-    Behavior on sky0 { enabled: root.sky_glide; ColorAnimation { duration: 6000; easing.type: Easing.InOutSine } }
-    Behavior on sky1 { enabled: root.sky_glide; ColorAnimation { duration: 6000; easing.type: Easing.InOutSine } }
-    Behavior on sky2 { enabled: root.sky_glide; ColorAnimation { duration: 6000; easing.type: Easing.InOutSine } }
-    Behavior on hill0 { enabled: root.sky_glide; ColorAnimation { duration: 6000; easing.type: Easing.InOutSine } }
-    Behavior on hill1 { enabled: root.sky_glide; ColorAnimation { duration: 6000; easing.type: Easing.InOutSine } }
-    Behavior on hill2 { enabled: root.sky_glide; ColorAnimation { duration: 6000; easing.type: Easing.InOutSine } }
-    Behavior on star_alpha { enabled: root.sky_glide; NumberAnimation { duration: 6000; easing.type: Easing.InOutSine } }
-    Behavior on moon_alpha { enabled: root.sky_glide; NumberAnimation { duration: 6000; easing.type: Easing.InOutSine } }
-    Behavior on sun_alpha { enabled: root.sky_glide; NumberAnimation { duration: 6000; easing.type: Easing.InOutSine } }
-    Behavior on cloud_alpha { enabled: root.sky_glide; NumberAnimation { duration: 6000; easing.type: Easing.InOutSine } }
+    function rgb(hex) {
+        return [1, 3, 5].map(i => parseInt(hex.substr(i, 2), 16) / 255);
+    }
+
+    function lerp(a, b, t) {
+        return a + (b - a) * t;
+    }
+
+    function blend(kind, i) {
+        const a = root.sky_keys[root.leg][kind][i], b = root.sky_keys[root.leg + 1][kind][i];
+        return Qt.rgba(root.lerp(a[0], b[0], root.leg_t), root.lerp(a[1], b[1], root.leg_t), root.lerp(a[2], b[2], root.leg_t), 1);
+    }
+
+    // Left horizon to right horizon behind the hills, peaking right of the logo at u = 0.7.
+    function arc(u) {
+        return Qt.point(800 - 760 * Math.cos(Math.PI * u), 780 - 650 * Math.sin(Math.PI * Math.pow(Math.max(0, u), 1.94)));
+    }
+
+    NumberAnimation on sky_phase {
+        running: root.cycling && root.cycle_armed
+        from: root.cycle_start
+        to: root.cycle_start + 1
+        duration: 180000
+        loops: Animation.Infinite
+    }
 
     readonly property string ui_font: "Rounded Mplus 1c"
     readonly property string key_font: "Belleza"
@@ -214,23 +246,12 @@ Item {
         onLoaded: audio_loader.item.track = Qt.binding(() => root.music_track)
     }
     onPhaseChanged: {
-        if (root.phase === "saver") {
-            if (root.can_step) root.ctx.scene = "";
-            root.sky_tod = root.tod;
-        } else {
-            root.sky_glide = false;
-            root.sky_tod = "";
-        }
-    }
-
-    Timer {
-        interval: 40000
-        repeat: true
-        running: root.phase === "saver" && root.animate && root.sky_tod !== ""
-        onTriggered: {
-            root.sky_glide = true;
-            root.sky_tod = root.sky_cycle[(root.sky_cycle.indexOf(root.sky_tod) + 1) % root.sky_cycle.length];
-        }
+        root.cycle_armed = false;
+        if (root.phase !== "saver") return;
+        if (root.can_step) root.ctx.scene = "";
+        root.cycle_start = ({ dusk: 0, night: 1 / 3, dawn: 2 / 3 })[root.tod];
+        root.sky_phase = root.cycle_start;
+        root.cycle_armed = true;
     }
     onScreenChanged: {
         const from = root.last_screen;
@@ -744,9 +765,12 @@ Item {
                 }
 
                 Item {
-                    anchors.fill: parent
+                    width: 1600
+                    height: 900
                     visible: root.moon_alpha > 0
                     opacity: root.moon_alpha
+                    x: root.moon_at.x - 1370
+                    y: root.moon_at.y - 150
 
                     Radial {
                         cx: 1370
@@ -800,8 +824,8 @@ Item {
                     height: 900
                     visible: root.sun_alpha > 0
                     opacity: root.sun_alpha
-                    x: -60
-                    y: 330
+                    x: root.sun_at.x - 1360
+                    y: root.sun_at.y - 170
 
                     Radial {
                         cx: 1360
