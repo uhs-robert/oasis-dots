@@ -162,6 +162,8 @@ Singleton {
             level_layout: "",
             card_layout: "",
             weather_header: "",
+            picker_skin: "",
+            picker_hud: Theme.theme_secondary,
             bar_pill_square: false,
             bar_font_family: "JetBrainsMono Nerd Font",
             bar_font_size: Theme.font_size,
@@ -413,6 +415,8 @@ Singleton {
                 level_layout: "",
                 card_layout: "",
                 weather_header: "",
+                picker_skin: "",
+                picker_hud: Theme.theme_primary,
                 bar_pill_square: false,
                 bar_font_family: Theme.font_family,
                 bar_font_size: Theme.font_size,
@@ -709,6 +713,8 @@ Singleton {
                 wait_anim: "alert",
                 done_anim: "pixel",
                 weather_header: "memcard",
+                picker_skin: "scope",
+                picker_hud: Qt.tint(Theme.green, Qt.alpha(Theme.theme_secondary, 0.35)),
                 // Muted text brightened; the shaded, dithered frame swallows the theme greys.
                 text_muted: Qt.tint(Theme.fg_dim, Qt.alpha(Theme.fg_core, 0.35)),
                 text_dim: Qt.tint(Theme.fg_dim, Qt.alpha(Theme.fg_core, 0.6)),
@@ -2212,6 +2218,9 @@ Singleton {
     // Level rows: "capsule" draws them as tall capsule sliders with live peaks, "slant" and "visor" the same with slanted ends or visor glass (Volume popup and OSD only); "" keeps the shared slider.
     readonly property string level_layout: root.active.level_layout
     readonly property string weather_header: root.active.weather_header
+    // Picker cursor/loupe treatment: "" keeps the shared look, "scope" swaps in the MGS binocular skin.
+    readonly property string picker_skin: root.active.picker_skin
+    readonly property color picker_hud: root.active.picker_hud
     readonly property string card_layout: root.active.card_layout
     // The keeptabs done celebration: hearts, pixel (stepped), lcd (stepped, then blinks), hev_pickup, levelup (inverted flash, pixel sparkles) or fanfare.
     readonly property string done_anim: root.active.done_anim || "hearts"

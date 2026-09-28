@@ -7,6 +7,7 @@ import Quickshell.Io
 import Quickshell.Wayland
 import "../theme"
 import "../services"
+import "picker"
 
 // One per screen while Screenshot.selecting: drag a region, then pick an action from the toolbar.
 PanelWindow {
@@ -342,19 +343,24 @@ PanelWindow {
             id: key_cursor
             readonly property point at: Screenshot.cursor_point
             readonly property int arm: 12
+            readonly property bool scope_skin: Style.picker_skin === "scope" && !root.target_mode
             visible: Screenshot.phase === "select" && Screenshot.cursor_screen === root.screen_name && (Screenshot.keys_moved || Screenshot.anchored)
 
-            Repeater {
-                model: [[-key_cursor.arm - 3, 0, key_cursor.arm, 1], [4, 0, key_cursor.arm, 1], [0, -key_cursor.arm - 3, 1, key_cursor.arm], [0, 4, 1, key_cursor.arm]]
+            Item {
+                visible: !key_cursor.scope_skin
 
-                Rectangle {
-                    required property var modelData
-                    x: key_cursor.at.x + modelData[0]
-                    y: key_cursor.at.y + modelData[1]
-                    width: modelData[2]
-                    height: modelData[3]
-                    color: Style.caret_color
-                    border.width: 0
+                Repeater {
+                    model: [[-key_cursor.arm - 3, 0, key_cursor.arm, 1], [4, 0, key_cursor.arm, 1], [0, -key_cursor.arm - 3, 1, key_cursor.arm], [0, 4, 1, key_cursor.arm]]
+
+                    Rectangle {
+                        required property var modelData
+                        x: key_cursor.at.x + modelData[0]
+                        y: key_cursor.at.y + modelData[1]
+                        width: modelData[2]
+                        height: modelData[3]
+                        color: Style.caret_color
+                        border.width: 0
+                    }
                 }
             }
 
@@ -370,6 +376,13 @@ PanelWindow {
             }
         }
 
+        ScopeCursor {
+            anchors.fill: parent
+            screen_name: root.screen_name
+            origin: Qt.point(root.modelData.x, root.modelData.y)
+            target_mode: root.target_mode
+        }
+
         Item {
             id: loupe
             readonly property real lens: 176
@@ -382,24 +395,39 @@ PanelWindow {
             readonly property point at: Screenshot.cursor_point
             readonly property int bx: Math.floor(loupe.at.x * root.sample_scale)
             readonly property int by: Math.floor(loupe.at.y * root.sample_scale)
-            readonly property real gap: 28
+            readonly property bool scope: Style.picker_skin === "scope"
+            readonly property real gap: loupe.scope ? 36 : 28
+            readonly property real header_h: loupe.scope ? 20 : 0
+            readonly property real foot_h: 22
             visible: Screenshot.lens_on && Screenshot.phase === "select" && Screenshot.cursor_screen === root.screen_name && (root.pixel_mode ? root.frame_ready : frozen_view.hasContent)
             width: loupe.view + loupe.pad * 2
-            height: loupe.view + loupe.pad * 2 + coords.implicitHeight + 4 + (root.pixel_mode ? swatch_row.height + 4 : 0)
+            height: loupe.scope ? loupe.view + loupe.pad * 2 + loupe.header_h + loupe.foot_h : loupe.view + loupe.pad * 2 + coords.implicitHeight + 4 + (root.pixel_mode ? swatch_row.height + 4 : 0)
             x: loupe.at.x + loupe.gap + loupe.width <= root.width ? loupe.at.x + loupe.gap : loupe.at.x - loupe.gap - loupe.width
             y: loupe.at.y + loupe.gap + loupe.height <= root.height ? loupe.at.y + loupe.gap : loupe.at.y - loupe.gap - loupe.height
 
             Rectangle {
                 anchors.fill: parent
-                radius: Style.frame_radius
-                color: Style.frame_color
-                border.width: Math.max(1, Style.frame_border_width)
-                border.color: Style.frame_border_color
+                radius: loupe.scope ? 0 : Style.frame_radius
+                color: loupe.scope ? Qt.alpha(Style.frame_color, 0.82) : Style.frame_color
+                border.width: loupe.scope ? 1 : Math.max(1, Style.frame_border_width)
+                border.color: loupe.scope ? Qt.alpha(Style.picker_hud, 0.7) : Style.frame_border_color
+            }
+
+            Text {
+                id: zoomhead
+                visible: loupe.scope
+                anchors.top: parent.top
+                anchors.topMargin: 6
+                anchors.horizontalCenter: parent.horizontalCenter
+                text: "- ZOOM LEVEL - -  " + loupe.zoom * 100 + " -"
+                color: Style.picker_hud
+                font.family: Style.font_family
+                font.pixelSize: Style.fs(-6)
             }
 
             Item {
                 x: loupe.pad
-                y: loupe.pad
+                y: loupe.pad + loupe.header_h
                 width: loupe.view
                 height: loupe.view
                 clip: true
@@ -437,29 +465,94 @@ PanelWindow {
                     }
                 }
 
+                Repeater {
+                    model: loupe.scope ? Math.ceil(loupe.view / 3) : 0
+
+                    Rectangle {
+                        required property int index
+                        y: index * 3
+                        width: loupe.view
+                        height: 1
+                        color: Qt.rgba(0, 0, 0, 0.18)
+                    }
+                }
+
+                Repeater {
+                    model: loupe.scope ? Math.floor(loupe.view / 11) + 1 : 0
+
+                    Rectangle {
+                        required property int index
+                        x: loupe.view - 3
+                        y: index * 11
+                        width: 3
+                        height: 1
+                        color: Qt.alpha(Style.picker_hud, 0.7)
+                    }
+                }
+
                 Rectangle {
+                    visible: loupe.scope
+                    x: 0
+                    y: center_px.y + center_px.height / 2
+                    width: Math.max(0, center_px.x)
+                    height: 1
+                    color: Qt.alpha(Style.picker_hud, 0.45)
+                }
+
+                Rectangle {
+                    visible: loupe.scope
+                    x: center_px.x + center_px.width
+                    y: center_px.y + center_px.height / 2
+                    width: Math.max(0, loupe.view - x)
+                    height: 1
+                    color: Qt.alpha(Style.picker_hud, 0.45)
+                }
+
+                Rectangle {
+                    visible: loupe.scope
+                    x: center_px.x + center_px.width / 2
+                    y: 0
+                    width: 1
+                    height: Math.max(0, center_px.y)
+                    color: Qt.alpha(Style.picker_hud, 0.45)
+                }
+
+                Rectangle {
+                    visible: loupe.scope
+                    x: center_px.x + center_px.width / 2
+                    y: center_px.y + center_px.height
+                    width: 1
+                    height: Math.max(0, loupe.view - y)
+                    color: Qt.alpha(Style.picker_hud, 0.45)
+                }
+
+                Rectangle {
+                    id: center_px
                     x: loupe.half * loupe.zoom - border.width
                     y: loupe.half * loupe.zoom - border.width
                     width: loupe.zoom + border.width * 2
                     height: loupe.zoom + border.width * 2
                     color: "transparent"
                     border.width: loupe.zoom >= 8 ? 2 : 1
-                    border.color: Style.caret_color
+                    border.color: loupe.scope ? Style.picker_hud : Style.caret_color
                 }
             }
 
             Row {
                 id: swatch_row
-                visible: root.pixel_mode
-                anchors.horizontalCenter: parent.horizontalCenter
-                anchors.bottom: coords.top
+                visible: loupe.scope ? true : root.pixel_mode
+                anchors.horizontalCenter: !loupe.scope ? parent.horizontalCenter : undefined
+                anchors.bottom: !loupe.scope ? coords.top : undefined
                 anchors.bottomMargin: 2
+                anchors.right: loupe.scope ? scope_foot.right : undefined
+                anchors.verticalCenter: loupe.scope ? scope_foot.verticalCenter : undefined
                 height: Math.max(swatch.height, hex_text.implicitHeight)
                 spacing: 6
 
                 // Draws the centre buffer pixel and reads it back as the hex readout.
                 Canvas {
                     id: swatch
+                    visible: root.pixel_mode
                     readonly property string src: root.pixel_image
                     readonly property int bx: loupe.bx
                     readonly property int by: loupe.by
@@ -494,9 +587,20 @@ PanelWindow {
 
                 Text {
                     id: hex_text
+                    visible: root.pixel_mode
                     anchors.verticalCenter: parent.verticalCenter
                     text: Screenshot.pixel_hex !== "" ? Screenshot.pixel_hex : "#------"
-                    color: Style.text_fg
+                    color: loupe.scope ? Style.picker_hud : Style.text_fg
+                    font.family: Style.mono_font
+                    font.pixelSize: Style.fs(-3)
+                }
+
+                Text {
+                    id: scope_read
+                    visible: loupe.scope && !root.pixel_mode
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: "X" + Math.round(root.modelData.x + loupe.at.x) + " Y" + Math.round(root.modelData.y + loupe.at.y)
+                    color: Style.picker_hud
                     font.family: Style.mono_font
                     font.pixelSize: Style.fs(-3)
                 }
@@ -504,6 +608,7 @@ PanelWindow {
 
             Text {
                 id: coords
+                visible: !loupe.scope
                 anchors.horizontalCenter: parent.horizontalCenter
                 anchors.bottom: parent.bottom
                 anchors.bottomMargin: loupe.pad - 2
@@ -511,6 +616,66 @@ PanelWindow {
                 color: Style.text_fg
                 font.family: Style.mono_font
                 font.pixelSize: Style.fs(-4)
+            }
+
+            Item {
+                id: scope_foot
+                visible: loupe.scope
+                x: loupe.pad
+                y: loupe.pad + loupe.header_h + loupe.view + (loupe.foot_h - foot_left.height) / 2
+                width: loupe.view
+                height: foot_left.height
+
+                Row {
+                    id: foot_left
+                    anchors.left: parent.left
+                    anchors.verticalCenter: parent.verticalCenter
+                    spacing: 6
+
+                    Item {
+                        width: 26
+                        height: 14
+                        anchors.verticalCenter: parent.verticalCenter
+
+                        Rectangle {
+                            x: 1
+                            y: 2
+                            width: 10
+                            height: 10
+                            radius: 5
+                            color: "transparent"
+                            border.width: 2
+                            border.color: Theme.red
+                        }
+
+                        Rectangle {
+                            x: 15
+                            y: 2
+                            width: 10
+                            height: 10
+                            radius: 5
+                            color: "transparent"
+                            border.width: 2
+                            border.color: Theme.red
+                        }
+
+                        Rectangle {
+                            x: 10
+                            y: 5
+                            width: 6
+                            height: 3
+                            color: Theme.red
+                        }
+                    }
+
+                    Text {
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: root.pixel_mode ? "SCOPE" : "CAMERA"
+                        color: Style.text_fg
+                        font.family: Style.font_family
+                        font.pixelSize: Style.fs(-6)
+                    }
+                }
             }
         }
 
@@ -588,7 +753,7 @@ PanelWindow {
         anchors.fill: parent
         z: -1
         enabled: Screenshot.phase === "select" || Screenshot.phase === "toolbar"
-        cursorShape: Qt.CrossCursor
+        cursorShape: Style.picker_skin === "scope" && Screenshot.phase === "select" && !root.target_mode && root.chrome_shown ? Qt.BlankCursor : Qt.CrossCursor
         hoverEnabled: true
         onWheel: wheel => Screenshot.step_zoom(wheel.angleDelta.y > 0 ? 1 : wheel.angleDelta.y < 0 ? -1 : 0)
         onPressed: mouse => {
