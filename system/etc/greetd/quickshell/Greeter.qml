@@ -25,7 +25,41 @@ Singleton {
         printErrors: false
     }
     readonly property var settings: root.parse_settings(root.live_settings_file.text()) || root.parse_settings(root.settings_file.text()) || {}
-    readonly property string user: root.settings.user || "roberth"
+    // A user picked on the login screen, else the saved one.
+    property string chosen: ""
+    readonly property string user: root.chosen || root.settings.user || "roberth"
+
+    property FileView passwd_file: FileView {
+        path: "/etc/passwd"
+        blockLoading: true
+        printErrors: false
+    }
+    // Users with a UID in the login range and a real shell, as {name, full}; the saved user first.
+    readonly property var users: {
+        const out = [];
+        for (const line of root.passwd_file.text().split("\n")) {
+            const f = line.split(":");
+            const uid = parseInt(f[2]);
+            if (f.length < 7 || !(uid >= 1000 && uid < 60000) || /(nologin|false)$/.test(f[6])) continue;
+            if (!/^[a-z_][a-z0-9_-]*\$?$/.test(f[0])) continue;
+            out.push({ name: f[0], full: f[4] || "" });
+        }
+        const saved = root.settings.user || "";
+        out.sort((a, b) => (b.name === saved) - (a.name === saved));
+        return out;
+    }
+
+    function pick_user(name) {
+        if (root.checking || root.granted || name === root.user || !root.users.some(u => u.name === name)) return;
+        if (!root.preview && Greetd.state !== GreetdState.Inactive) Greetd.cancelSession();
+        root.buffer = "";
+        root.pending = "";
+        root.prompt = "";
+        root.failed = false;
+        root.fail_count = 0;
+        root.message = "";
+        root.chosen = name;
+    }
     readonly property string skin: root.settings.lock_style || "simple"
 
     // Settings as an object whose fields are plain strings, with a skin name that can only name a file in lock/skins; else null.
@@ -75,6 +109,7 @@ Singleton {
         granted: root.granted
         saver: root.saver && !UPower.onBattery
         user: root.user
+        users: root.users
         tint: root.settings.lock_tint || "primary"
         power_live: !root.preview
         music: root.settings.lock_music !== "off"
@@ -90,6 +125,7 @@ Singleton {
             if (i >= 0) root.session_index = i;
         }
         function onFallback_request() { root.fallback(); }
+        function onUser_request(name) { root.pick_user(name); }
     }
 
     property bool ready: false

@@ -54,5 +54,6 @@ greeter_install_cmds() {
     "sudo install -Dm644 '$repo/system/etc/greetd/hyprland.lua' /etc/greetd/hyprland.lua" \
     "sudo install -d -m 2750 -o '$USER' -g greeter $GREETER_DATA" \
     "install -m 640 '$stage/greeter.json' $GREETER_DATA/greeter.json" \
-    "$seed_theme"
+    "$seed_theme" \
+    "[ ! -f '$HOME/.face' ] || install -D -m 640 '$HOME/.face' '$GREETER_DATA/faces/$USER'"
 }

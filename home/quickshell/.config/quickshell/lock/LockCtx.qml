@@ -72,6 +72,20 @@ QtObject {
     readonly property string date_text: Qt.formatDate(root.now, "dddd, MMMM d")
 
     readonly property string user: Quickshell.env("USER") || ""
+    property FileView passwd_file: FileView {
+        path: "/etc/passwd"
+        blockLoading: true
+        printErrors: false
+    }
+    // Only this user, as {name, full}; the greeter lists every login user.
+    readonly property var users: {
+        const line = root.passwd_file.text().split("\n").find(l => l.split(":")[0] === root.user) || "";
+        return [{ name: root.user, full: line.split(":")[4] || "" }];
+    }
+
+    function face_urls(name) {
+        return name === root.user ? ["file://" + Quickshell.env("HOME") + "/.face"] : [];
+    }
     property FileView hostname_file: FileView {
         path: "/etc/hostname"
         blockLoading: true

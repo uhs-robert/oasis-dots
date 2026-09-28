@@ -5,11 +5,12 @@ import Quickshell
 import Quickshell.Io
 import "../theme"
 
-// Keeps the login screen's data (lock style, tint, theme) in /var/lib/qs-greeter current; does nothing when that directory is absent.
+// Keeps the login screen's data (lock style, tint, theme, face) in /var/lib/qs-greeter current; does nothing when that directory is absent.
 Scope {
     id: root
 
     readonly property string theme_path: Quickshell.shellDir + "/theme/theme.json"
+    readonly property string face_path: Quickshell.env("HOME") + "/.face"
 
     // The greeter's lock style: follow resolves to the bar style, and a style without a skin to simple.
     function resolved_lock() {
@@ -30,7 +31,7 @@ Scope {
             lock_music: Style.lock_music ? "on" : "off",
             session: "Hyprland"
         };
-        Quickshell.execDetached([Quickshell.shellDir + "/scripts/greeter-data", JSON.stringify(data), root.theme_path]);
+        Quickshell.execDetached([Quickshell.shellDir + "/scripts/greeter-data", JSON.stringify(data), root.theme_path, root.face_path]);
     }
 
     function schedule() {
@@ -63,6 +64,13 @@ Scope {
 
     FileView {
         path: root.theme_path
+        watchChanges: true
+        printErrors: false
+        onFileChanged: root.schedule()
+    }
+
+    FileView {
+        path: root.face_path
         watchChanges: true
         printErrors: false
         onFileChanged: root.schedule()
