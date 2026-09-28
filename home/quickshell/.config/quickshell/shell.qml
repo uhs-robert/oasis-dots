@@ -78,6 +78,7 @@ ShellRoot {
 
     ClockPopup {}
     StartPopup {}
+    PowerPopup {}
     StylePopup {}
     LockStylePopup {
         previewer: lock_preview

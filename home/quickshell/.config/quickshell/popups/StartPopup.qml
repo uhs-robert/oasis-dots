@@ -18,24 +18,19 @@ Popup {
     body_height: content.implicitHeight + 24
     jumps_enabled: !root.confirm
 
-    readonly property var actions: ["Apps", "Style", "Lock", "Logout", "Reboot", "Power Off"]
+    // Rows past the first two are Power actions, in Power.actions order.
+    readonly property var actions: ["Apps", "Style"].concat(Power.actions.map(a => Power.labels[a]))
     readonly property var keys: root.actions.map((a, i) => String(i + 1))
-    readonly property var glyphs: ["󰣇", "󰏘", "󰌾", "󰍃", "󰜉", "󰐥"]
-    readonly property var glyph_colors: [Theme.green, Theme.theme_secondary, root.st.text_fg, Theme.info, Theme.warning, Theme.theme_label]
+    readonly property var glyphs: ["󰣇", "󰏘"].concat(Power.actions.map(a => Power.glyphs[a]))
+    readonly property var glyph_colors: [Theme.green, Theme.theme_secondary].concat(Power.actions.map(a => Power.color(a, root.st)))
 
     property int selected: 0
     property bool confirm: false
 
     readonly property bool is_open: Popups.open_name === "start"
     onIs_openChanged: if (is_open) {
-        if (Popups.pending_confirm >= 0) {
-            selected = Popups.pending_confirm;
-            confirm = true;
-            Popups.pending_confirm = -1;
-        } else {
-            selected = 0;
-            confirm = false;
-        }
+        selected = 0;
+        confirm = false;
     }
     search_enabled: !root.confirm
     search_rows: root.actions
@@ -55,14 +50,8 @@ Popup {
     function run(index) {
         if (index === 0) {
             Quickshell.execDetached(["hyprctl", "dispatch", "LayerRules.exec_without_animation('rofi -show drun -theme ~/.config/rofi/themes/oasis-start.rasi')"]);
-        } else if (index === 2) {
-            Quickshell.execDetached(["sh", "-c", "~/.config/hypr/scripts/lock-screen.sh"]);
-        } else if (index === 3) {
-            Quickshell.execDetached(["sh", "-c", "command -v hyprshutdown >/dev/null 2>&1 && hyprshutdown || hyprctl dispatch \"hl.dsp.exit()\""]);
-        } else if (index === 4) {
-            Quickshell.execDetached(["systemctl", "reboot"]);
-        } else if (index === 5) {
-            Quickshell.execDetached(["systemctl", "poweroff"]);
+        } else if (index >= 2) {
+            Power.run(Power.actions[index - 2]);
         }
         Popups.close();
     }
@@ -99,13 +88,7 @@ Popup {
 
         Keys.onPressed: event => {
             if (root.confirm) {
-                if (event.key === Qt.Key_Y || event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
-                    root.run(root.selected);
-                    event.accepted = true;
-                } else if (event.key === Qt.Key_N || event.key === Qt.Key_Escape || event.key === Qt.Key_Backspace) {
-                    root.confirm = false;
-                    event.accepted = true;
-                }
+                confirm_row.handle_key(event);
                 return;
             }
             if (event.key === Qt.Key_J) {
@@ -226,43 +209,15 @@ Popup {
             sourceComponent: StatusStrip {}
         }
 
-        RowLayout {
+        PowerConfirm {
             id: confirm_row
             anchors.horizontalCenter: parent.horizontalCenter
             anchors.top: parent.top
             visible: root.confirm
-            spacing: 12
-
-            Text {
-                text: root.glyphs[root.selected] + " " + root.actions[root.selected] + "?"
-                color: root.glyph_colors[root.selected]
-                font.family: root.st.font_family
-                font.pixelSize: root.st.font_size
-            }
-
-            Text {
-                text: "Yes"
-                color: Theme.ok
-                font.family: root.st.font_family
-                font.pixelSize: root.st.font_size
-
-                MouseArea {
-                    anchors.fill: parent
-                    onClicked: root.run(root.selected)
-                }
-            }
-
-            Text {
-                text: "No"
-                color: Theme.error
-                font.family: root.st.font_family
-                font.pixelSize: root.st.font_size
-
-                MouseArea {
-                    anchors.fill: parent
-                    onClicked: root.confirm = false
-                }
-            }
+            st: root.st
+            action: root.selected >= 2 ? Power.actions[root.selected - 2] : ""
+            onConfirmed: root.run(root.selected)
+            onCancelled: root.confirm = false
         }
     }
 }
