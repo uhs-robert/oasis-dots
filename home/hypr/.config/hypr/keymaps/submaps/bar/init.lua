@@ -26,7 +26,7 @@ Submap.define({
     { "Q", popup("system"),        "System" },
     { "S", popup("start"),         "Start Menu" },
     { "T", popup("tray"),          "Tray" },
-    { "U", popup("updates"),       "Updates" },
+    { "U", Cmd.run(Scripts.focus_topgrade), "Updates" },
     { "V", popup("volume"),        "Volume" },
     { "W", popup("weather"),       "Weather" },
   },

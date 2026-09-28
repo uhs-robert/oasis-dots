@@ -10,6 +10,7 @@ local Scripts = {
   voxtype               = HYPR    .. "voxtype-with-media-pause.sh",
   focus_media_player    = HYPR    .. "focus-media-player.sh",
   focus_toast_or_float  = HYPR    .. "focus-toast-or-float.sh",
+  focus_topgrade        = HYPR    .. "focus-topgrade.sh",
   qs_ipc                = HYPR    .. "qs-ipc",
   qs_picker             = HYPR    .. "qs-picker",
   nmtui                 = HYPR    .. "nmtui.sh",
