@@ -243,11 +243,9 @@ Item {
                     strokeWidth: Math.max(1, root.u * 0.1)
                     fillColor: "transparent"
                     PathMove { x: scope.width * 0.065; y: 1 }
-                    PathLine { x: scope.width * 0.065; y: scope.height * 0.98 }
+                    PathLine { x: scope.width * 0.065; y: scope.height - 1 }
                     PathMove { x: scope.width * 0.935; y: 1 }
-                    PathLine { x: scope.width * 0.935; y: scope.height * 0.98 }
-                    PathMove { x: 1; y: scope.height * 0.06 }
-                    PathLine { x: scope.width * 0.06; y: scope.height * 0.06 }
+                    PathLine { x: scope.width * 0.935; y: scope.height - 1 }
                 }
 
                 // Trench rails from the four corners to the vanishing point.
