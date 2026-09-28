@@ -2,8 +2,10 @@
 import QtQuick
 import QtMultimedia
 import Qt.labs.folderlistmodel
+import Quickshell
 
-// The Ocarina skin's music and sound effects from audio/ (made by scripts/ocarina-audio); a missing file stays silent.
+// The Ocarina skin's music and sound effects (made by scripts/ocarina-audio): the skin's own audio/ when it holds
+// files (the greeter's staged copy), else the user's data dir; a missing file stays silent.
 Item {
     id: audio
 
@@ -13,14 +15,18 @@ Item {
     readonly property real fx_volume: 0.4
     property real title_level: 0
     property real fairy_level: 0
+    readonly property string data_dir: "file://" + (Quickshell.env("XDG_DATA_HOME") || (Quickshell.env("HOME") + "/.local/share")) + "/quickshell/ocarina-audio"
+    readonly property bool local_has_files: local_listing.count > 0
+    readonly property string base: audio.local_has_files ? Qt.resolvedUrl("audio") : audio.data_dir
     readonly property var files: {
         const out = {};
+        const listing = audio.local_has_files ? local_listing : data_listing;
         for (let i = 0; i < listing.count; i++) out[listing.get(i, "fileName")] = true;
         return out;
     }
 
     function file(name) {
-        return audio.files[name] ? Qt.resolvedUrl("audio/" + name) : "";
+        return audio.files[name] ? audio.base + "/" + name : "";
     }
 
     function play(name) {
@@ -48,8 +54,15 @@ Item {
     onFilesChanged: Qt.callLater(audio.sync)
 
     FolderListModel {
-        id: listing
+        id: local_listing
         folder: Qt.resolvedUrl("audio")
+        nameFilters: ["*.ogg", "*.wav"]
+        showDirs: false
+    }
+
+    FolderListModel {
+        id: data_listing
+        folder: audio.local_has_files ? "" : audio.data_dir
         nameFilters: ["*.ogg", "*.wav"]
         showDirs: false
     }
