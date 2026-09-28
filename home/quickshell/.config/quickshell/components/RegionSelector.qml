@@ -2,6 +2,7 @@
 pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Layouts
+import QtQuick.Effects
 import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
@@ -223,9 +224,45 @@ PanelWindow {
             }
         }
 
+        CornerBrackets {
+            id: ge_area_brackets
+            visible: root.mine && Style.picker_skin === "goldeneye" && Screenshot.phase === "select"
+            x: root.sel.x - 5
+            y: root.sel.y - 5
+            width: root.sel.width + 10
+            height: root.sel.height + 10
+            color: Theme.theme_label
+            inset: 0
+            arm: 10
+            thickness: 2
+            all_corners: true
+        }
+
+        Row {
+            id: ge_area_label
+            visible: ge_area_brackets.visible
+            x: ge_area_brackets.x
+            y: ge_area_brackets.y - height - 4
+            spacing: 4
+
+            Text {
+                text: "AREA"
+                color: Theme.theme_label
+                font.family: Style.font_family
+                font.pixelSize: Style.fs(-4)
+            }
+
+            Text {
+                text: Math.round(root.sel.width) + " x " + Math.round(root.sel.height)
+                color: Theme.fg_strong
+                font.family: Style.font_family
+                font.pixelSize: Style.fs(-4)
+            }
+        }
+
         Rectangle {
             id: readout
-            visible: root.mine
+            visible: root.mine && !(Style.picker_skin === "goldeneye" && Screenshot.phase === "select")
             readonly property bool above: root.sel.y >= height + 8
             x: Math.max(0, Math.min(parent.width - width, root.sel.x))
             y: readout.above ? root.sel.y - height - 6 : root.sel.y + 6
@@ -390,6 +427,12 @@ PanelWindow {
             target_mode: root.target_mode
         }
 
+        LockOnCursor {
+            anchors.fill: parent
+            screen_name: root.screen_name
+            target_mode: root.target_mode
+        }
+
         Item {
             id: loupe
             readonly property real lens: 176
@@ -404,10 +447,19 @@ PanelWindow {
             readonly property int by: Math.floor(loupe.at.y * root.sample_scale)
             readonly property bool scope: Style.picker_skin === "scope"
             readonly property bool jrpg: Style.picker_skin === "jrpg"
-            readonly property real gap: loupe.scope || loupe.jrpg ? 36 : 28
+            readonly property bool goldeneye: Style.picker_skin === "goldeneye"
+            readonly property real gap: loupe.scope || loupe.jrpg || loupe.goldeneye ? 36 : 28
             readonly property real jrpg_name_h: 16
             readonly property real jrpg_gap: 6
             readonly property real jrpg_drop: 3
+            readonly property real ge_rim: 208
+            readonly property real ge_strip_gap: 8
+            readonly property real ge_strip_h: 52
+            // Zero-padded global coordinate readout for the watch strip.
+            function ge_pad4(v) {
+                const n = Math.round(v);
+                return (n < 0 ? "-" : "") + String(Math.abs(n)).padStart(4, "0");
+            }
             // R/G/B in pixel mode; X/Y (and W/H while dragging) in region mode, values matching the coords readout.
             readonly property var jrpg_rows: {
                 if (!loupe.jrpg) return [];
@@ -434,13 +486,13 @@ PanelWindow {
             readonly property real header_h: loupe.scope ? 20 : loupe.jrpg ? loupe.jrpg_name_h + loupe.jrpg_gap : 0
             readonly property real foot_h: 22
             visible: Screenshot.lens_on && Screenshot.phase === "select" && Screenshot.cursor_screen === root.screen_name && (root.pixel_mode ? root.frame_ready : frozen_view.hasContent)
-            width: loupe.view + loupe.pad * 2 + (loupe.jrpg ? loupe.jrpg_drop : 0)
-            height: loupe.scope ? loupe.view + loupe.pad * 2 + loupe.header_h + loupe.foot_h : loupe.jrpg ? loupe.pad + loupe.header_h + loupe.view + loupe.jrpg_gap + loupe.jrpg_stats_h + loupe.pad + loupe.jrpg_drop : loupe.view + loupe.pad * 2 + coords.implicitHeight + 4 + (root.pixel_mode ? swatch_row.height + 4 : 0)
+            width: loupe.goldeneye ? loupe.ge_rim : loupe.view + loupe.pad * 2 + (loupe.jrpg ? loupe.jrpg_drop : 0)
+            height: loupe.goldeneye ? loupe.ge_rim + loupe.ge_strip_gap + loupe.ge_strip_h : loupe.scope ? loupe.view + loupe.pad * 2 + loupe.header_h + loupe.foot_h : loupe.jrpg ? loupe.pad + loupe.header_h + loupe.view + loupe.jrpg_gap + loupe.jrpg_stats_h + loupe.pad + loupe.jrpg_drop : loupe.view + loupe.pad * 2 + coords.implicitHeight + 4 + (root.pixel_mode ? swatch_row.height + 4 : 0)
             x: loupe.at.x + loupe.gap + loupe.width <= root.width ? loupe.at.x + loupe.gap : loupe.at.x - (loupe.jrpg ? 66 : loupe.gap) - loupe.width
             y: loupe.at.y + loupe.gap + loupe.height <= root.height ? loupe.at.y + loupe.gap : loupe.at.y - loupe.gap - loupe.height
 
             Rectangle {
-                visible: !loupe.scope && !loupe.jrpg
+                visible: !loupe.scope && !loupe.jrpg && !loupe.goldeneye
                 anchors.fill: parent
                 radius: Style.frame_radius
                 color: Style.frame_color
@@ -460,6 +512,61 @@ PanelWindow {
             SnesParts.SnesWindow {
                 visible: loupe.jrpg
                 anchors.fill: parent
+            }
+
+            MultiEffect {
+                visible: loupe.goldeneye
+                anchors.fill: ge_rim_item
+                source: ge_rim_item
+                shadowEnabled: true
+                shadowColor: Qt.alpha(Theme.bg_shadow, 0.6)
+                shadowHorizontalOffset: 4
+                shadowVerticalOffset: 6
+                shadowBlur: 0.4
+            }
+
+            Item {
+                id: ge_rim_item
+                visible: loupe.goldeneye
+                layer.enabled: loupe.goldeneye
+                x: 0
+                y: 0
+                width: loupe.ge_rim
+                height: loupe.ge_rim
+
+                Rectangle {
+                    anchors.fill: parent
+                    radius: width / 2
+                    color: Theme.bg_crust
+                }
+
+                Rectangle {
+                    anchors.centerIn: parent
+                    width: parent.width - 10
+                    height: parent.height - 10
+                    radius: width / 2
+                    color: Qt.tint(Theme.bg_surface, Qt.alpha(Theme.bg_crust, 0.5))
+                }
+
+                Rectangle {
+                    anchors.centerIn: parent
+                    width: parent.width - 14
+                    height: parent.height - 14
+                    radius: width / 2
+                    color: "transparent"
+                    border.width: 1
+                    border.color: Qt.alpha(Theme.fg_strong, 0.12)
+                }
+
+                Text {
+                    anchors.top: parent.top
+                    anchors.topMargin: 14
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    text: "x" + loupe.zoom + ".0"
+                    color: Theme.theme_label
+                    font.family: Style.font_family
+                    font.pixelSize: Style.fs(-5)
+                }
             }
 
             Text {
@@ -501,11 +608,14 @@ PanelWindow {
             }
 
             Item {
-                x: loupe.pad
-                y: loupe.pad + loupe.header_h
+                id: lens_content
+                x: loupe.goldeneye ? (loupe.ge_rim - loupe.view) / 2 : loupe.pad
+                y: loupe.goldeneye ? (loupe.ge_rim - loupe.view) / 2 : loupe.pad + loupe.header_h
                 width: loupe.view
                 height: loupe.view
                 clip: true
+                visible: !loupe.goldeneye
+                layer.enabled: loupe.goldeneye
 
                 ShaderEffectSource {
                     anchors.fill: parent
@@ -601,6 +711,88 @@ PanelWindow {
                     color: Qt.alpha(Style.picker_hud, 0.45)
                 }
 
+                Canvas {
+                    id: ge_vignette
+                    visible: loupe.goldeneye
+                    anchors.fill: parent
+                    onPaint: {
+                        const ctx = ge_vignette.getContext("2d");
+                        ctx.clearRect(0, 0, ge_vignette.width, ge_vignette.height);
+                        const cx2 = ge_vignette.width / 2;
+                        const cy2 = ge_vignette.height / 2;
+                        const r = Math.max(cx2, cy2);
+                        const grad = ctx.createRadialGradient(cx2, cy2, r * 0.62, cx2, cy2, r);
+                        grad.addColorStop(0, Qt.alpha(Theme.bg_shadow, 0));
+                        grad.addColorStop(1, Qt.alpha(Theme.bg_shadow, 1));
+                        ctx.fillStyle = grad;
+                        ctx.fillRect(0, 0, ge_vignette.width, ge_vignette.height);
+                    }
+                    Component.onCompleted: ge_vignette.requestPaint()
+                }
+
+                Rectangle {
+                    visible: loupe.goldeneye
+                    x: 0
+                    y: center_px.y + center_px.height / 2
+                    width: Math.max(0, center_px.x - 3)
+                    height: 1
+                    color: Theme.bg_shadow
+                }
+
+                Rectangle {
+                    visible: loupe.goldeneye
+                    x: center_px.x + center_px.width + 3
+                    y: center_px.y + center_px.height / 2
+                    width: Math.max(0, loupe.view - x)
+                    height: 1
+                    color: Theme.bg_shadow
+                }
+
+                Rectangle {
+                    visible: loupe.goldeneye
+                    x: center_px.x + center_px.width / 2
+                    y: 0
+                    width: 1
+                    height: Math.max(0, center_px.y - 3)
+                    color: Theme.bg_shadow
+                }
+
+                Rectangle {
+                    visible: loupe.goldeneye
+                    x: center_px.x + center_px.width / 2
+                    y: center_px.y + center_px.height + 3
+                    width: 1
+                    height: Math.max(0, loupe.view - y)
+                    color: Theme.bg_shadow
+                }
+
+                Rectangle {
+                    visible: loupe.goldeneye
+                    x: 0
+                    y: (loupe.view - 30) / 2
+                    width: 3
+                    height: 30
+                    color: Theme.bg_shadow
+                }
+
+                Rectangle {
+                    visible: loupe.goldeneye
+                    x: loupe.view - 3
+                    y: (loupe.view - 30) / 2
+                    width: 3
+                    height: 30
+                    color: Theme.bg_shadow
+                }
+
+                Rectangle {
+                    visible: loupe.goldeneye
+                    x: (loupe.view - 30) / 2
+                    y: loupe.view - 3
+                    width: 30
+                    height: 3
+                    color: Theme.bg_shadow
+                }
+
                 Rectangle {
                     id: center_px
                     x: loupe.half * loupe.zoom - border.width
@@ -609,7 +801,7 @@ PanelWindow {
                     height: loupe.zoom + border.width * 2
                     color: "transparent"
                     border.width: loupe.zoom >= 8 ? 2 : 1
-                    border.color: loupe.scope ? Style.picker_hud : loupe.jrpg ? (jrpg_blink.alt ? Theme.theme_secondary : Theme.fg_strong) : Style.caret_color
+                    border.color: loupe.scope ? Style.picker_hud : loupe.jrpg ? (jrpg_blink.alt ? Theme.theme_secondary : Theme.fg_strong) : loupe.goldeneye ? Theme.theme_label : Style.caret_color
                 }
 
                 Rectangle {
@@ -619,6 +811,30 @@ PanelWindow {
                     border.width: 2
                     border.color: Theme.theme_primary_light
                 }
+            }
+
+            Rectangle {
+                id: ge_lens_mask
+                visible: false
+                x: lens_content.x
+                y: lens_content.y
+                width: lens_content.width
+                height: lens_content.height
+                radius: width / 2
+                layer.enabled: true
+            }
+
+            MultiEffect {
+                visible: loupe.goldeneye
+                x: lens_content.x
+                y: lens_content.y
+                width: lens_content.width
+                height: lens_content.height
+                source: lens_content
+                maskEnabled: true
+                maskSource: ge_lens_mask
+                maskThresholdMin: 0.5
+                maskSpreadAtMin: 1.0
             }
 
             Timer {
@@ -633,7 +849,7 @@ PanelWindow {
             Row {
                 id: swatch_row
                 visible: loupe.scope ? true : root.pixel_mode
-                opacity: loupe.jrpg ? 0 : 1
+                opacity: loupe.jrpg || loupe.goldeneye ? 0 : 1
                 anchors.horizontalCenter: !loupe.scope ? parent.horizontalCenter : undefined
                 anchors.bottom: !loupe.scope ? coords.top : undefined
                 anchors.bottomMargin: 2
@@ -701,7 +917,7 @@ PanelWindow {
 
             Text {
                 id: coords
-                visible: !loupe.scope && !loupe.jrpg
+                visible: !loupe.scope && !loupe.jrpg && !loupe.goldeneye
                 anchors.horizontalCenter: parent.horizontalCenter
                 anchors.bottom: parent.bottom
                 anchors.bottomMargin: loupe.pad - 2
@@ -829,6 +1045,109 @@ PanelWindow {
                                 height: parent.height - 2
                                 color: stat_row.modelData.color
                             }
+                        }
+                    }
+                }
+            }
+
+            Rectangle {
+                id: ge_strip
+                visible: loupe.goldeneye
+                x: (loupe.ge_rim - loupe.view) / 2
+                y: loupe.ge_rim + loupe.ge_strip_gap
+                width: loupe.view
+                height: loupe.ge_strip_h
+                radius: 12
+                border.width: 2
+                border.color: Qt.tint(Theme.bg_surface, Qt.alpha(Theme.fg_muted, 0.4))
+                gradient: Gradient {
+                    GradientStop {
+                        position: 0
+                        color: Theme.bg_surface
+                    }
+                    GradientStop {
+                        position: 1
+                        color: Theme.bg_mantle
+                    }
+                }
+
+                layer.enabled: loupe.goldeneye
+                layer.effect: MultiEffect {
+                    shadowEnabled: true
+                    shadowColor: Qt.alpha(Theme.bg_shadow, 0.6)
+                    shadowHorizontalOffset: 4
+                    shadowVerticalOffset: 6
+                    shadowBlur: 0.4
+                }
+
+                Text {
+                    x: 10
+                    y: 6
+                    text: "Q-BRANCH"
+                    color: Theme.fg_dim
+                    font.family: Style.font_family
+                    font.pixelSize: Style.fs(-7)
+                }
+
+                Text {
+                    id: ge_strip_right_label
+                    x: parent.width - width - 10
+                    y: 6
+                    text: root.pixel_mode ? "COLOR" : "CAMERA"
+                    color: Theme.fg_dim
+                    font.family: Style.font_family
+                    font.pixelSize: Style.fs(-7)
+                }
+
+                Rectangle {
+                    id: ge_lcd
+                    x: 6
+                    y: 20
+                    width: parent.width - 12
+                    height: parent.height - 26
+                    radius: 6
+                    color: Qt.tint(Theme.bg_crust, Qt.alpha(Theme.theme_primary_light, 0.14))
+
+                    Rectangle {
+                        visible: root.pixel_mode
+                        anchors.left: parent.left
+                        anchors.leftMargin: 6
+                        anchors.verticalCenter: parent.verticalCenter
+                        width: 12
+                        height: 12
+                        border.width: 1
+                        border.color: Theme.fg_muted
+                        color: Screenshot.pixel_hex !== "" ? Screenshot.pixel_hex : "transparent"
+                    }
+
+                    Text {
+                        anchors.left: parent.left
+                        anchors.leftMargin: root.pixel_mode ? 24 : 8
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: root.pixel_mode ? (Screenshot.pixel_hex !== "" ? Screenshot.pixel_hex : "#------") : root.mine ? Math.round(root.sel.width) + " x " + Math.round(root.sel.height) : "READY"
+                        color: Theme.theme_primary_light
+                        font.family: Style.number_font
+                        font.pixelSize: Style.fs(-3)
+                    }
+
+                    Column {
+                        anchors.right: parent.right
+                        anchors.rightMargin: 6
+                        anchors.verticalCenter: parent.verticalCenter
+                        spacing: 1
+
+                        Text {
+                            text: "X " + loupe.ge_pad4(root.modelData.x + loupe.at.x)
+                            color: Qt.alpha(Theme.fg_dim, 0.65)
+                            font.family: Style.mono_font
+                            font.pixelSize: Style.fs(-7)
+                        }
+
+                        Text {
+                            text: "Y " + loupe.ge_pad4(root.modelData.y + loupe.at.y)
+                            color: Qt.alpha(Theme.fg_dim, 0.65)
+                            font.family: Style.mono_font
+                            font.pixelSize: Style.fs(-7)
                         }
                     }
                 }
