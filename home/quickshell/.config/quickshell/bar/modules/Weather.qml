@@ -53,7 +53,7 @@ Item {
 
             Image {
                 id: icon
-                readonly property int implicit_size: Math.round(Style.bar_glyph_size * 1.3)
+                readonly property int implicit_size: Style.bar_glyph_size
                 readonly property real dpr: QsWindow.window ? QsWindow.window.devicePixelRatio : 1
                 readonly property var crop: root.has_data ? WeatherState.icon_crop(root.current.code, root.current.is_day) : [0, 0, 128]
                 // Scales the whole canvas so the art's crop square fills the slot; the transparent padding overhangs.
