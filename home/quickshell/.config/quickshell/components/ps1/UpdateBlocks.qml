@@ -3,7 +3,7 @@ import QtQuick
 import QtQuick.Layouts
 import "../../theme"
 
-// Updates as a memory card: a block per package (icon, name, slot count) under the selected save's info panel.
+// Updates as a memory card: a row per package under the selected save's info panel; only the selected row shows its block.
 ColumnLayout {
     id: root
 
@@ -12,11 +12,9 @@ ColumnLayout {
     signal picked(int index)
 
     readonly property var current: root.packages[root.selected] || null
-    readonly property real tile_min: Style.px(92)
-    readonly property int columns: Math.max(2, Math.floor(grid.width / root.tile_min))
 
     function reveal(index) {
-        grid.positionViewAtIndex(index, GridView.Contain);
+        list.positionViewAtIndex(index, ListView.Contain);
     }
 
     spacing: 6
@@ -84,67 +82,87 @@ ColumnLayout {
         }
     }
 
-    GridView {
-        id: grid
+    ListView {
+        id: list
         Layout.fillWidth: true
         Layout.fillHeight: true
         clip: true
+        spacing: 3
         model: root.packages
         currentIndex: root.selected
-        cellWidth: Math.floor(width / root.columns)
-        cellHeight: Style.px(62)
         boundsBehavior: Flickable.StopAtBounds
 
         delegate: Item {
-            id: tile
+            id: row
             required property var modelData
             required property int index
-            readonly property bool lit: tile.index === root.selected
+            readonly property bool lit: row.index === root.selected
 
-            width: grid.cellWidth
-            height: grid.cellHeight
+            width: list.width
+            height: Style.px(30)
 
             Rectangle {
                 anchors.fill: parent
-                anchors.margins: 3
                 radius: 4
-                color: tile.lit ? Style.selection_bg : Qt.alpha(Theme.bg_shadow, 0.3)
+                color: row.lit ? Style.selection_bg : Qt.alpha(Theme.bg_shadow, 0.3)
                 border.width: 2
-                border.color: tile.lit ? Theme.theme_primary_light : Qt.alpha(Style.frame_border_color, 0.6)
+                border.color: row.lit ? Theme.theme_primary_light : Qt.alpha(Style.frame_border_color, 0.6)
+            }
+
+            RowLayout {
+                anchors.fill: parent
+                anchors.leftMargin: 8
+                anchors.rightMargin: 8
+                spacing: 8
 
                 Text {
-                    x: 5
-                    y: 3
-                    text: String(tile.index + 1).padStart(2, "0")
-                    color: tile.lit ? Theme.theme_primary_light : Style.text_dim
+                    text: String(row.index + 1).padStart(2, "0")
+                    color: row.lit ? Theme.theme_primary_light : Style.text_dim
                     font.family: Style.mono_font
-                    font.pixelSize: Style.fs(-7)
+                    font.pixelSize: Style.fs(-6)
                 }
 
-                PackageIcon {
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    y: 6
-                    size: Style.px(22)
-                    name: tile.modelData.name
+                Item {
+                    Layout.preferredWidth: Style.px(22)
+                    Layout.preferredHeight: Style.px(22)
+
+                    MemBlock {
+                        anchors.fill: parent
+                        visible: row.lit
+                        size: parent.width
+                        lit: true
+
+                        PackageIcon {
+                            anchors.centerIn: parent
+                            size: parent.width - 6
+                            name: row.modelData.name
+                        }
+                    }
                 }
 
                 Text {
-                    anchors.left: parent.left
-                    anchors.right: parent.right
-                    anchors.bottom: parent.bottom
-                    anchors.margins: 4
-                    horizontalAlignment: Text.AlignHCenter
+                    Layout.fillWidth: true
+                    Layout.minimumWidth: 0
                     elide: Text.ElideRight
-                    text: tile.modelData.name
-                    color: tile.lit ? Style.text_strong : Style.text_fg
+                    text: row.modelData.name
+                    color: row.lit ? Style.text_strong : Style.text_fg
                     font.family: Style.font_family
-                    font.pixelSize: Style.fs(-6)
+                    font.pixelSize: Style.fs(-3)
+                }
+
+                Text {
+                    Layout.maximumWidth: list.width * 0.4
+                    elide: Text.ElideLeft
+                    text: row.modelData.new
+                    color: row.lit ? Theme.yellow : Style.text_muted
+                    font.family: Style.font_family
+                    font.pixelSize: Style.fs(-5)
                 }
             }
 
             MouseArea {
                 anchors.fill: parent
-                onClicked: root.picked(tile.index)
+                onClicked: root.picked(row.index)
             }
         }
     }
