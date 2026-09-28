@@ -43,6 +43,7 @@ Item {
             if (root.animate) power_off.start();
             return;
         }
+        if (root.phase === "wrong") root.flash_denied();
         power_off.stop();
         tube.xScale = 1;
         tube.yScale = 1;
@@ -55,6 +56,7 @@ Item {
         target: root.ctx
         function onRejected() {
             if (root.animate) jolt.restart();
+            root.flash_denied();
         }
     }
 
@@ -64,6 +66,26 @@ Item {
         running: root.animate
         onTriggered: root.blink_on = !root.blink_on
         onRunningChanged: root.blink_on = true
+    }
+
+    // ACCESS DENIED flashes three times per rejection, then clears.
+    property bool denied_on: true
+    property int denied_toggles: 0
+
+    function flash_denied() {
+        root.denied_on = true;
+        root.denied_toggles = 0;
+        if (root.animate) denied_blink.restart();
+    }
+
+    Timer {
+        id: denied_blink
+        interval: 500
+        repeat: true
+        onTriggered: {
+            root.denied_on = !root.denied_on;
+            if (++root.denied_toggles >= 5) stop();
+        }
     }
 
     // Bezel.
@@ -168,7 +190,7 @@ Item {
 
                         Text {
                             Layout.fillWidth: true
-                            text: root.dim_bright("UHS-OS 7.2 · TERMINAL ", root.up(root.ctx ? root.ctx.host : ""))
+                            text: root.dim_bright("OASIS 0.0.0 · TERMINAL ",root.up(root.ctx ? root.ctx.host : ""))
                             textFormat: Text.StyledText
                             elide: Text.ElideRight
                             color: root.ph
@@ -279,15 +301,15 @@ Item {
                     anchors.centerIn: parent
                     width: banner.implicitWidth + root.u * 4.8
                     height: banner.implicitHeight + root.u * 0.8
-                    opacity: root.phase === "wrong" && !root.blink_on ? 0 : 1
-                    color: root.phase === "wrong" ? root.ph : Qt.alpha(Theme.bg_shadow, 0.8)
+                    opacity: root.phase === "wrong" && !root.denied_on ? 0 : 1
+                    color: root.phase === "wrong" ? Theme.red : Qt.alpha(Theme.bg_shadow, 0.8)
 
                     Text {
                         id: banner
                         anchors.centerIn: parent
                         anchors.horizontalCenterOffset: font.letterSpacing / 2
                         text: root.phase === "unlock" ? "ACCESS GRANTED" : "ACCESS DENIED"
-                        color: root.phase === "wrong" ? Theme.bg_shadow : root.ph
+                        color: root.phase === "wrong" ? Theme.bg_shadow : Theme.bright_green
                         font.family: root.font
                         font.pixelSize: root.u * 7
                         font.letterSpacing: root.u * 7 * 0.14
@@ -375,7 +397,12 @@ Item {
                                 if (c.buffer_length > 0) return "RETURN TO SUBMIT";
                                 return "PRESS ANY KEY";
                             }
-                            color: root.ctx && root.ctx.caps_lock && root.phase !== "unlock" ? Theme.warning : root.ph_dim
+                            color: {
+                                const c = root.ctx;
+                                if (!c || root.phase === "unlock") return root.ph_dim;
+                                if (c.caps_lock) return Theme.warning;
+                                return c.checking ? Theme.yellow : root.ph_dim;
+                            }
                             font.family: root.font
                             font.pixelSize: root.u * 1.8
                         }
