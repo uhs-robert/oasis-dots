@@ -49,9 +49,14 @@ Item {
                 color: Qt.alpha(root.hud, 0.4)
             }
 
+            LabelPlate {
+                target: other_label
+            }
+
             Text {
-                x: 4
-                y: 3
+                id: other_label
+                x: 6
+                y: 4
                 text: other.modelData.label
                 color: Qt.alpha(root.hud, 0.55)
                 font.family: Style.font_family
@@ -152,6 +157,27 @@ Item {
             }
         }
 
+        LabelPlate {
+            target: header_text
+        }
+
+        LabelPlate {
+            target: size_text
+        }
+
+        LabelPlate {
+            target: cam_text
+            from: cam_icon
+        }
+
+        LabelPlate {
+            target: x_text
+        }
+
+        LabelPlate {
+            target: y_text
+        }
+
         Text {
             id: header_text
             x: root.tx + root.label_margin
@@ -178,12 +204,14 @@ Item {
         }
 
         Binoculars {
+            id: cam_icon
             x: root.tx + root.label_margin
             y: size_text.base_y - 1
             color: Theme.red
         }
 
         Text {
+            id: cam_text
             x: root.tx + root.label_margin + 32
             y: size_text.base_y - 1
             text: "CAMERA"
@@ -195,6 +223,7 @@ Item {
         }
 
         Text {
+            id: x_text
             visible: !root.full && target_visuals.width - (root.tx + root.tw) > 90
             x: target_visuals.width - 70
             y: root.cy - 18
@@ -207,6 +236,7 @@ Item {
         }
 
         Text {
+            id: y_text
             visible: !root.full && target_visuals.height - (root.ty + root.th) > 44
             x: root.cx + 6
             y: target_visuals.height - 20

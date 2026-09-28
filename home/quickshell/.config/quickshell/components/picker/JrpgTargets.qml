@@ -30,7 +30,7 @@ Item {
     readonly property var menu_targets: root.region ? [{ label: "AREA", rect: root.sel }] : root.full ? Screenshot.targets : Screenshot.targets.filter(t => t.screen === root.screen_name)
     readonly property int cur_row: root.region ? 0 : root.full ? Screenshot.target_index : root.menu_targets.indexOf(Screenshot.targets[Screenshot.target_index])
     readonly property string menu_title: root.full ? "OUTPUTS" : root.region ? "TARGET" : "ENEMIES"
-    readonly property real menu_w: 190
+    readonly property real menu_w: Math.max(190, Math.min(420, 20 + 22 + 16 + root.shown_rows.reduce((w, t) => Math.max(w, name_metrics.advanceWidth(t.label) + size_metrics.advanceWidth(root.size_label(t.rect))), 0)))
     readonly property real row_h: 22
     readonly property int max_rows: Math.max(1, Math.min(8, Math.floor((root.height - 84) / root.row_h)))
     readonly property int first_row: Math.max(0, Math.min(root.menu_targets.length - root.max_rows, root.cur_row - Math.floor(root.max_rows / 2)))
@@ -39,6 +39,22 @@ Item {
     readonly property bool menu_right: root.tx + root.tw / 2 < root.width / 2
 
     visible: root.mine || root.target_mode
+
+    function size_label(r) {
+        return Math.round(r.width) + " x " + Math.round(r.height);
+    }
+
+    FontMetrics {
+        id: name_metrics
+        font.family: Style.font_family
+        font.pixelSize: Style.fs(-6)
+    }
+
+    FontMetrics {
+        id: size_metrics
+        font.family: Style.font_family
+        font.pixelSize: Style.fs(-7)
+    }
 
     Repeater {
         model: root.target_mode ? Screenshot.targets : []
@@ -167,7 +183,10 @@ Item {
                     Text {
                         anchors.left: parent.left
                         anchors.leftMargin: 22
+                        anchors.right: row_size.left
+                        anchors.rightMargin: 16
                         anchors.verticalCenter: parent.verticalCenter
+                        elide: Text.ElideRight
                         text: row.modelData.label
                         color: row.index + root.first_row === root.cur_row ? Theme.fg_strong : Theme.theme_primary_light
                         font.family: Style.font_family
@@ -177,9 +196,10 @@ Item {
                     }
 
                     Text {
+                        id: row_size
                         anchors.right: parent.right
                         anchors.verticalCenter: parent.verticalCenter
-                        text: Math.round(row.modelData.rect.width) + " x " + Math.round(row.modelData.rect.height)
+                        text: root.size_label(row.modelData.rect)
                         color: Theme.theme_secondary
                         font.family: Style.font_family
                         font.pixelSize: Style.fs(-7)
