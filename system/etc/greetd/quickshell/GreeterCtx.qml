@@ -26,6 +26,7 @@ QtObject {
     property string scene: ""
     property string user: ""
     property string tint: "primary"
+    property string session_name: ""
 
     readonly property string phase: {
         if (root.forced_phase !== "") return root.forced_phase;
@@ -37,7 +38,7 @@ QtObject {
     }
 
     signal rejected
-    // A skin asks for "reboot" or "poweroff" after its own confirmation; only a ctx with power_live acts on it.
+    // A skin asks for "reboot", "poweroff" or "firmware" after its own confirmation; only a ctx with power_live acts on it.
     signal power_request(string action)
     property bool power_live: false
     property bool sound: true
@@ -45,6 +46,10 @@ QtObject {
     property bool login: true
     property var sound_owner: null
     signal cue(string name)
+    // Options menu requests: cycle to the next session, select the safe session, or fall back to the text login.
+    signal session_request
+    signal safe_request
+    signal fallback_request
 
     readonly property var tint_pair: Tints.pair(Theme, root.tint)
     readonly property color tint_base: root.tint_pair[0]
