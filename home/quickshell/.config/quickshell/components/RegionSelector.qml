@@ -3,6 +3,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Layouts
 import QtQuick.Effects
+import QtQuick.Shapes
 import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
@@ -433,6 +434,13 @@ PanelWindow {
             target_mode: root.target_mode
         }
 
+        ScopeItemCursor {
+            anchors.fill: parent
+            screen_name: root.screen_name
+            origin: Qt.point(root.modelData.x, root.modelData.y)
+            target_mode: root.target_mode
+        }
+
         Item {
             id: loupe
             readonly property real lens: 176
@@ -448,13 +456,20 @@ PanelWindow {
             readonly property bool scope: Style.picker_skin === "scope"
             readonly property bool jrpg: Style.picker_skin === "jrpg"
             readonly property bool goldeneye: Style.picker_skin === "goldeneye"
-            readonly property real gap: loupe.scope || loupe.jrpg || loupe.goldeneye ? 36 : 28
+            readonly property bool scopeitem: Style.picker_skin === "scopeitem"
+            readonly property real gap: loupe.scope || loupe.jrpg || loupe.goldeneye || loupe.scopeitem ? 36 : 28
             readonly property real jrpg_name_h: 16
             readonly property real jrpg_gap: 6
             readonly property real jrpg_drop: 3
             readonly property real ge_rim: 208
             readonly property real ge_strip_gap: 8
             readonly property real ge_strip_h: 52
+            readonly property real si_pad: 10
+            readonly property real si_ruler_h: 22
+            readonly property real si_zbar_w: 30
+            readonly property real si_body_gap: 10
+            readonly property real si_foot_gap: 8
+            readonly property real si_foot_h: 20
             // Zero-padded global coordinate readout for the watch strip.
             function ge_pad4(v) {
                 const n = Math.round(v);
@@ -483,16 +498,17 @@ PanelWindow {
                 return rows;
             }
             readonly property real jrpg_stats_h: loupe.jrpg_rows.length > 0 ? loupe.jrpg_rows.length * 14 + (loupe.jrpg_rows.length - 1) * 3 : 0
-            readonly property real header_h: loupe.scope ? 20 : loupe.jrpg ? loupe.jrpg_name_h + loupe.jrpg_gap : 0
+            readonly property real header_h: loupe.scope ? 20 : loupe.jrpg ? loupe.jrpg_name_h + loupe.jrpg_gap : loupe.scopeitem ? loupe.si_ruler_h : 0
             readonly property real foot_h: 22
+            readonly property real si_body_w: loupe.view + loupe.si_body_gap + loupe.si_zbar_w
             visible: Screenshot.lens_on && Screenshot.phase === "select" && Screenshot.cursor_screen === root.screen_name && (root.pixel_mode ? root.frame_ready : frozen_view.hasContent)
-            width: loupe.goldeneye ? loupe.ge_rim : loupe.view + loupe.pad * 2 + (loupe.jrpg ? loupe.jrpg_drop : 0)
-            height: loupe.goldeneye ? loupe.ge_rim + loupe.ge_strip_gap + loupe.ge_strip_h : loupe.scope ? loupe.view + loupe.pad * 2 + loupe.header_h + loupe.foot_h : loupe.jrpg ? loupe.pad + loupe.header_h + loupe.view + loupe.jrpg_gap + loupe.jrpg_stats_h + loupe.pad + loupe.jrpg_drop : loupe.view + loupe.pad * 2 + coords.implicitHeight + 4 + (root.pixel_mode ? swatch_row.height + 4 : 0)
+            width: loupe.goldeneye ? loupe.ge_rim : loupe.scopeitem ? loupe.si_pad * 2 + loupe.si_body_w : loupe.view + loupe.pad * 2 + (loupe.jrpg ? loupe.jrpg_drop : 0)
+            height: loupe.goldeneye ? loupe.ge_rim + loupe.ge_strip_gap + loupe.ge_strip_h : loupe.scope ? loupe.view + loupe.pad * 2 + loupe.header_h + loupe.foot_h : loupe.jrpg ? loupe.pad + loupe.header_h + loupe.view + loupe.jrpg_gap + loupe.jrpg_stats_h + loupe.pad + loupe.jrpg_drop : loupe.scopeitem ? loupe.si_pad + loupe.si_ruler_h + loupe.view + loupe.si_foot_gap + loupe.si_foot_h + loupe.si_pad : loupe.view + loupe.pad * 2 + coords.implicitHeight + 4 + (root.pixel_mode ? swatch_row.height + 4 : 0)
             x: loupe.at.x + loupe.gap + loupe.width <= root.width ? loupe.at.x + loupe.gap : loupe.at.x - (loupe.jrpg ? 66 : loupe.gap) - loupe.width
             y: loupe.at.y + loupe.gap + loupe.height <= root.height ? loupe.at.y + loupe.gap : loupe.at.y - loupe.gap - loupe.height
 
             Rectangle {
-                visible: !loupe.scope && !loupe.jrpg && !loupe.goldeneye
+                visible: !loupe.scope && !loupe.jrpg && !loupe.goldeneye && !loupe.scopeitem
                 anchors.fill: parent
                 radius: Style.frame_radius
                 color: Style.frame_color
@@ -507,6 +523,33 @@ PanelWindow {
                 color: Qt.alpha(Style.frame_color, 0.82)
                 border.width: 1
                 border.color: Qt.alpha(Style.picker_hud, 0.7)
+            }
+
+            Rectangle {
+                visible: loupe.scopeitem
+                anchors.fill: parent
+                radius: 6
+                border.width: 1
+                border.color: Qt.alpha(Theme.blue, 0.65)
+                gradient: Gradient {
+                    GradientStop {
+                        position: 0
+                        color: Qt.tint(Theme.bg_crust, Qt.alpha(Theme.blue, 0.16))
+                    }
+                    GradientStop {
+                        position: 1
+                        color: Qt.alpha(Theme.bg_crust, 0.9)
+                    }
+                }
+            }
+
+            Rectangle {
+                visible: loupe.scopeitem
+                x: 1
+                y: 1
+                width: parent.width - 2
+                height: 1
+                color: Qt.alpha(Theme.fg_strong, 0.18)
             }
 
             SnesParts.SnesWindow {
@@ -608,9 +651,80 @@ PanelWindow {
             }
 
             Item {
+                id: si_ruler
+                visible: loupe.scopeitem
+                x: loupe.si_pad
+                y: loupe.si_pad
+                width: loupe.si_body_w
+                height: loupe.si_ruler_h
+                clip: true
+
+                Rectangle {
+                    anchors.bottom: parent.bottom
+                    width: parent.width
+                    height: 1
+                    color: Qt.alpha(Theme.blue, 0.6)
+                }
+
+                Shape {
+                    id: si_caret
+                    x: parent.width / 2 - 5
+                    y: 0
+                    width: 10
+                    height: 5
+                    ShapePath {
+                        fillColor: Theme.theme_secondary
+                        strokeWidth: -1
+                        startX: 0
+                        startY: 0
+                        PathLine {
+                            x: 10
+                            y: 0
+                        }
+                        PathLine {
+                            x: 5
+                            y: 5
+                        }
+                        PathLine {
+                            x: 0
+                            y: 0
+                        }
+                    }
+                }
+
+                Repeater {
+                    model: si_ruler.visible ? Math.ceil(si_ruler.width / 40) + 2 : 0
+
+                    Text {
+                        id: si_tick
+                        required property int index
+                        readonly property real step: 40
+                        readonly property real base_x: Math.round(root.modelData.x + loupe.at.x)
+                        readonly property real first: Math.ceil((si_tick.base_x - si_ruler.width / 2) / si_tick.step) * si_tick.step
+                        readonly property real global_v: si_tick.first + si_tick.index * si_tick.step
+                        x: si_ruler.width / 2 + (si_tick.global_v - si_tick.base_x) - si_tick.implicitWidth / 2
+                        y: si_ruler.height - si_tick.implicitHeight - 5
+                        text: (si_tick.global_v < 0 ? "-" : "") + String(Math.abs(Math.round(si_tick.global_v))).padStart(4, "0")
+                        color: Theme.theme_primary_light
+                        font.family: Style.mono_font
+                        font.pixelSize: Style.fs(-8)
+
+                        Rectangle {
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            anchors.top: parent.bottom
+                            anchors.topMargin: 1
+                            width: 1
+                            height: 4
+                            color: Theme.blue
+                        }
+                    }
+                }
+            }
+
+            Item {
                 id: lens_content
-                x: loupe.goldeneye ? (loupe.ge_rim - loupe.view) / 2 : loupe.pad
-                y: loupe.goldeneye ? (loupe.ge_rim - loupe.view) / 2 : loupe.pad + loupe.header_h
+                x: loupe.goldeneye ? (loupe.ge_rim - loupe.view) / 2 : loupe.scopeitem ? loupe.si_pad : loupe.pad
+                y: loupe.goldeneye ? (loupe.ge_rim - loupe.view) / 2 : loupe.scopeitem ? loupe.si_pad + loupe.si_ruler_h : loupe.pad + loupe.header_h
                 width: loupe.view
                 height: loupe.view
                 clip: true
@@ -660,6 +774,36 @@ PanelWindow {
                         height: 1
                         color: Qt.rgba(0, 0, 0, 0.18)
                     }
+                }
+
+                Repeater {
+                    model: loupe.scopeitem ? Math.ceil(loupe.view / 3) : 0
+
+                    Rectangle {
+                        required property int index
+                        y: index * 3
+                        width: loupe.view
+                        height: 1
+                        color: Qt.alpha(Theme.bg_shadow, 0.14)
+                    }
+                }
+
+                Rectangle {
+                    visible: loupe.scopeitem
+                    anchors.fill: parent
+                    color: "transparent"
+                    border.width: 1
+                    border.color: Qt.alpha(Theme.blue, 0.55)
+                }
+
+                CornerBrackets {
+                    visible: loupe.scopeitem
+                    anchors.fill: parent
+                    color: Theme.blue
+                    inset: 6
+                    arm: 14
+                    thickness: 2
+                    all_corners: true
                 }
 
                 Repeater {
@@ -801,7 +945,7 @@ PanelWindow {
                     height: loupe.zoom + border.width * 2
                     color: "transparent"
                     border.width: loupe.zoom >= 8 ? 2 : 1
-                    border.color: loupe.scope ? Style.picker_hud : loupe.jrpg ? (jrpg_blink.alt ? Theme.theme_secondary : Theme.fg_strong) : loupe.goldeneye ? Theme.theme_label : Style.caret_color
+                    border.color: loupe.scope ? Style.picker_hud : loupe.jrpg ? (jrpg_blink.alt ? Theme.theme_secondary : Theme.fg_strong) : loupe.goldeneye ? Theme.theme_label : loupe.scopeitem ? Theme.theme_secondary : Style.caret_color
                 }
 
                 Rectangle {
@@ -849,7 +993,7 @@ PanelWindow {
             Row {
                 id: swatch_row
                 visible: loupe.scope ? true : root.pixel_mode
-                opacity: loupe.jrpg || loupe.goldeneye ? 0 : 1
+                opacity: loupe.jrpg || loupe.goldeneye || loupe.scopeitem ? 0 : 1
                 anchors.horizontalCenter: !loupe.scope ? parent.horizontalCenter : undefined
                 anchors.bottom: !loupe.scope ? coords.top : undefined
                 anchors.bottomMargin: 2
@@ -917,7 +1061,7 @@ PanelWindow {
 
             Text {
                 id: coords
-                visible: !loupe.scope && !loupe.jrpg && !loupe.goldeneye
+                visible: !loupe.scope && !loupe.jrpg && !loupe.goldeneye && !loupe.scopeitem
                 anchors.horizontalCenter: parent.horizontalCenter
                 anchors.bottom: parent.bottom
                 anchors.bottomMargin: loupe.pad - 2
@@ -984,6 +1128,144 @@ PanelWindow {
                         font.family: Style.font_family
                         font.pixelSize: Style.fs(-6)
                     }
+                }
+            }
+
+            Column {
+                id: si_zbar
+                visible: loupe.scopeitem
+                x: loupe.si_pad + loupe.view + loupe.si_body_gap
+                y: loupe.si_pad + loupe.si_ruler_h + loupe.view - si_zbar.implicitHeight
+                spacing: 3
+
+                Repeater {
+                    model: loupe.scopeitem ? [3, 2, 1, 0] : []
+
+                    Rectangle {
+                        id: si_seg
+                        required property int modelData
+                        readonly property int step: Screenshot.zoom_levels[si_seg.modelData]
+                        width: loupe.si_zbar_w
+                        height: 10
+                        color: si_seg.step <= loupe.zoom ? Theme.blue : "transparent"
+                        border.width: si_seg.step <= loupe.zoom ? 0 : 1
+                        border.color: Qt.alpha(Theme.blue, 0.5)
+                    }
+                }
+
+                Text {
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    text: "x" + loupe.zoom
+                    color: Theme.blue
+                    font.family: Style.mono_font
+                    font.pixelSize: Style.fs(-7)
+                }
+            }
+
+            Item {
+                id: si_foot
+                visible: loupe.scopeitem
+                x: loupe.si_pad
+                y: loupe.si_pad + loupe.si_ruler_h + loupe.view + loupe.si_foot_gap
+                width: loupe.si_body_w
+                height: loupe.si_foot_h
+
+                Row {
+                    id: si_chip
+                    anchors.left: parent.left
+                    anchors.verticalCenter: parent.verticalCenter
+                    spacing: 4
+
+                    Rectangle {
+                        anchors.verticalCenter: parent.verticalCenter
+                        width: si_icon.width + 6
+                        height: si_icon.height + 4
+                        color: "transparent"
+                        border.width: 1
+                        border.color: Qt.alpha(Theme.blue, 0.5)
+
+                        Item {
+                            id: si_icon
+                            anchors.centerIn: parent
+                            width: 22
+                            height: 11
+
+                            Rectangle {
+                                x: 0
+                                y: 1
+                                width: 9
+                                height: 9
+                                radius: 4
+                                color: "transparent"
+                                border.width: 2
+                                border.color: Theme.blue
+                            }
+
+                            Rectangle {
+                                x: 13
+                                y: 1
+                                width: 9
+                                height: 9
+                                radius: 4
+                                color: "transparent"
+                                border.width: 2
+                                border.color: Theme.blue
+                            }
+
+                            Rectangle {
+                                x: 8
+                                y: 4
+                                width: 6
+                                height: 3
+                                color: Theme.blue
+                            }
+                        }
+                    }
+
+                    Text {
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: root.pixel_mode ? "SCOPE" : "CAMERA"
+                        color: Theme.fg_strong
+                        font.family: Style.font_family
+                        font.bold: true
+                        font.letterSpacing: 1
+                        font.pixelSize: Style.fs(-6)
+                    }
+                }
+
+                Row {
+                    id: si_pixel_read
+                    visible: root.pixel_mode
+                    anchors.right: parent.right
+                    anchors.verticalCenter: parent.verticalCenter
+                    spacing: 6
+
+                    Rectangle {
+                        anchors.verticalCenter: parent.verticalCenter
+                        width: 12
+                        height: 12
+                        color: Screenshot.pixel_hex !== "" ? Screenshot.pixel_hex : "transparent"
+                        border.width: 1
+                        border.color: Qt.alpha(Theme.blue, 0.5)
+                    }
+
+                    Text {
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: Screenshot.pixel_hex !== "" ? Screenshot.pixel_hex : "#------"
+                        color: Theme.fg_strong
+                        font.family: Style.mono_font
+                        font.pixelSize: Style.fs(-4)
+                    }
+                }
+
+                Text {
+                    visible: !root.pixel_mode
+                    anchors.right: parent.right
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: root.mine ? Math.round(root.sel.width) + " x " + Math.round(root.sel.height) : loupe.ge_pad4(root.modelData.x + loupe.at.x) + " " + loupe.ge_pad4(root.modelData.y + loupe.at.y)
+                    color: Theme.fg_strong
+                    font.family: Style.mono_font
+                    font.pixelSize: Style.fs(-4)
                 }
             }
 
