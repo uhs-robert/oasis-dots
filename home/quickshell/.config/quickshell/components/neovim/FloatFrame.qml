@@ -11,6 +11,7 @@ Item {
     property string status: ""
     property real chip_height: 20
     property real radius: root.st.frame_radius
+    property color fill: root.st.frame_color
     readonly property real border_y: Math.round(root.chip_height / 2)
 
     Rectangle {
@@ -18,7 +19,7 @@ Item {
         width: root.width
         height: Math.max(0, root.height - root.border_y)
         radius: root.radius
-        color: root.st.frame_color
+        color: root.fill
         border.width: root.st.frame_border_width
         border.color: root.st.frame_border_color
     }

@@ -30,7 +30,7 @@ PanelWindow {
     readonly property color dim_color: Qt.alpha(Theme.bg_shadow, 0.6)
     readonly property bool pixel_mode: Screenshot.mode === "pixel"
     readonly property bool target_mode: Screenshot.mode === "window" || Screenshot.mode === "screen"
-    readonly property bool skinned_targets: ["scope", "jrpg", "goldeneye", "scopeitem", "scanvisor"].includes(Style.picker_skin)
+    readonly property bool skinned_targets: ["scope", "jrpg", "goldeneye", "scopeitem", "scanvisor", "nvimfloat"].includes(Style.picker_skin)
     property bool help_open: false
     readonly property string delay_label: Screenshot.delay_s > 0 ? "Delay " + Screenshot.delay_s + "s" : "No delay"
     readonly property string tier_keys: "hjkl move 10px · H/J/K/L move 100px · C-hjkl move 1px · C-H/J/K/L move 300px"
@@ -273,6 +273,15 @@ PanelWindow {
             target_mode: root.target_mode
         }
 
+        NvimTargets {
+            anchors.fill: parent
+            visible: Style.picker_skin === "nvimfloat" && !root.pixel_mode
+            screen_name: root.screen_name
+            sel: root.sel
+            mine: root.mine
+            target_mode: root.target_mode
+        }
+
         Rectangle {
             id: readout
             visible: root.mine && !root.skinned_targets
@@ -460,6 +469,12 @@ PanelWindow {
             target_mode: root.target_mode
         }
 
+        NvimCursor {
+            anchors.fill: parent
+            screen_name: root.screen_name
+            target_mode: root.target_mode
+        }
+
         Item {
             id: loupe
             readonly property real lens: 176
@@ -477,7 +492,11 @@ PanelWindow {
             readonly property bool goldeneye: Style.picker_skin === "goldeneye"
             readonly property bool scopeitem: Style.picker_skin === "scopeitem"
             readonly property bool scanvisor: Style.picker_skin === "scanvisor"
-            readonly property real gap: loupe.scanvisor ? 40 : loupe.scope || loupe.jrpg || loupe.goldeneye || loupe.scopeitem ? 36 : 28
+            readonly property bool nvimfloat: Style.picker_skin === "nvimfloat"
+            readonly property real gap: loupe.scanvisor ? 40 : loupe.nvimfloat ? 30 : loupe.scope || loupe.jrpg || loupe.goldeneye || loupe.scopeitem ? 36 : 28
+            readonly property real nv_row_h: 20
+            readonly property real nv_cmd_h: 18
+            readonly property real nv_foot_gap: 4
             readonly property real jrpg_name_h: 16
             readonly property real jrpg_gap: 6
             readonly property real jrpg_drop: 3
@@ -530,17 +549,17 @@ PanelWindow {
                 return rows;
             }
             readonly property real jrpg_stats_h: loupe.jrpg_rows.length > 0 ? loupe.jrpg_rows.length * 14 + (loupe.jrpg_rows.length - 1) * 3 : 0
-            readonly property real header_h: loupe.scope ? 20 : loupe.jrpg ? loupe.jrpg_name_h + loupe.jrpg_gap : loupe.scopeitem ? loupe.si_ruler_h : 0
+            readonly property real header_h: loupe.scope ? 20 : loupe.jrpg ? loupe.jrpg_name_h + loupe.jrpg_gap : loupe.scopeitem ? loupe.si_ruler_h : loupe.nvimfloat ? 18 : 0
             readonly property real foot_h: 22
             readonly property real si_body_w: loupe.view + loupe.si_body_gap + loupe.si_zbar_w
             visible: Screenshot.lens_on && Screenshot.phase === "select" && Screenshot.cursor_screen === root.screen_name && (root.pixel_mode ? root.frame_ready : frozen_view.hasContent)
             width: loupe.goldeneye ? loupe.ge_rim : loupe.scopeitem ? loupe.si_pad * 2 + loupe.si_body_w : loupe.scanvisor ? loupe.sv_pad * 2 + loupe.view : loupe.view + loupe.pad * 2 + (loupe.jrpg ? loupe.jrpg_drop : 0)
-            height: loupe.goldeneye ? loupe.ge_rim + loupe.ge_strip_gap + loupe.ge_strip_h : loupe.scope ? loupe.view + loupe.pad * 2 + loupe.header_h + loupe.foot_h : loupe.jrpg ? loupe.pad + loupe.header_h + loupe.view + loupe.jrpg_gap + loupe.jrpg_stats_h + loupe.pad + loupe.jrpg_drop : loupe.scopeitem ? loupe.si_pad + loupe.si_ruler_h + loupe.view + loupe.si_foot_gap + loupe.si_foot_h + loupe.si_pad : loupe.scanvisor ? loupe.sv_pad + loupe.sv_header_h + loupe.sv_header_gap + loupe.view + loupe.sv_card_gap + sv_card_col.implicitHeight + loupe.sv_pad : loupe.view + loupe.pad * 2 + coords.implicitHeight + 4 + (root.pixel_mode ? swatch_row.height + 4 : 0)
+            height: loupe.goldeneye ? loupe.ge_rim + loupe.ge_strip_gap + loupe.ge_strip_h : loupe.scope ? loupe.view + loupe.pad * 2 + loupe.header_h + loupe.foot_h : loupe.jrpg ? loupe.pad + loupe.header_h + loupe.view + loupe.jrpg_gap + loupe.jrpg_stats_h + loupe.pad + loupe.jrpg_drop : loupe.scopeitem ? loupe.si_pad + loupe.si_ruler_h + loupe.view + loupe.si_foot_gap + loupe.si_foot_h + loupe.si_pad : loupe.scanvisor ? loupe.sv_pad + loupe.sv_header_h + loupe.sv_header_gap + loupe.view + loupe.sv_card_gap + sv_card_col.implicitHeight + loupe.sv_pad : loupe.nvimfloat ? loupe.pad + loupe.header_h + loupe.view + loupe.nv_foot_gap + loupe.nv_row_h + loupe.nv_cmd_h + loupe.pad : loupe.view + loupe.pad * 2 + coords.implicitHeight + 4 + (root.pixel_mode ? swatch_row.height + 4 : 0)
             x: loupe.at.x + loupe.gap + loupe.width <= root.width ? loupe.at.x + loupe.gap : loupe.at.x - (loupe.jrpg ? 66 : loupe.gap) - loupe.width
             y: loupe.at.y + loupe.gap + loupe.height <= root.height ? loupe.at.y + loupe.gap : loupe.at.y - loupe.gap - loupe.height
 
             Rectangle {
-                visible: !loupe.scope && !loupe.jrpg && !loupe.goldeneye && !loupe.scopeitem && !loupe.scanvisor
+                visible: !loupe.scope && !loupe.jrpg && !loupe.goldeneye && !loupe.scopeitem && !loupe.scanvisor && !loupe.nvimfloat
                 anchors.fill: parent
                 radius: Style.frame_radius
                 color: Style.frame_color
@@ -984,7 +1003,7 @@ PanelWindow {
                     height: loupe.zoom + border.width * 2
                     color: "transparent"
                     border.width: loupe.zoom >= 8 ? 2 : 1
-                    border.color: loupe.scope ? Style.picker_hud : loupe.jrpg ? (jrpg_blink.alt ? Theme.theme_secondary : Theme.fg_strong) : loupe.goldeneye ? Theme.theme_label : loupe.scopeitem ? Theme.theme_secondary : loupe.scanvisor ? (loupe.sv_complete ? Theme.bright_green : Theme.bright_yellow) : Style.caret_color
+                    border.color: loupe.scope ? Style.picker_hud : loupe.jrpg ? (jrpg_blink.alt ? Theme.theme_secondary : Theme.fg_strong) : loupe.goldeneye ? Theme.theme_label : loupe.scopeitem ? Theme.theme_secondary : loupe.scanvisor ? (loupe.sv_complete ? Theme.bright_green : Theme.bright_yellow) : loupe.nvimfloat ? Theme.fg_core : Style.caret_color
                 }
 
                 Rectangle {
@@ -1032,7 +1051,7 @@ PanelWindow {
             Row {
                 id: swatch_row
                 visible: loupe.scope ? true : root.pixel_mode
-                opacity: loupe.jrpg || loupe.goldeneye || loupe.scopeitem || loupe.scanvisor ? 0 : 1
+                opacity: loupe.jrpg || loupe.goldeneye || loupe.scopeitem || loupe.scanvisor || loupe.nvimfloat ? 0 : 1
                 anchors.horizontalCenter: !loupe.scope ? parent.horizontalCenter : undefined
                 anchors.bottom: !loupe.scope ? coords.top : undefined
                 anchors.bottomMargin: 2
@@ -1100,7 +1119,7 @@ PanelWindow {
 
             Text {
                 id: coords
-                visible: !loupe.scope && !loupe.jrpg && !loupe.goldeneye && !loupe.scopeitem && !loupe.scanvisor
+                visible: !loupe.scope && !loupe.jrpg && !loupe.goldeneye && !loupe.scopeitem && !loupe.scanvisor && !loupe.nvimfloat
                 anchors.horizontalCenter: parent.horizontalCenter
                 anchors.bottom: parent.bottom
                 anchors.bottomMargin: loupe.pad - 2
@@ -1634,6 +1653,178 @@ PanelWindow {
                     }
                 }
             }
+
+            Rectangle {
+                visible: loupe.nvimfloat
+                z: -1
+                anchors.fill: parent
+                radius: 6
+                color: Theme.bg_crust
+                border.width: 1
+                border.color: Theme.theme_primary
+            }
+
+            Rectangle {
+                visible: loupe.nvimfloat
+                x: 12
+                y: -1
+                width: nv_title_text.implicitWidth + 12
+                height: 16
+                radius: 3
+                color: Theme.theme_secondary
+
+                Text {
+                    id: nv_title_text
+                    anchors.centerIn: parent
+                    text: root.pixel_mode ? (Screenshot.pixel_hex !== "" ? Screenshot.pixel_hex : "#------") : "Region"
+                    color: Theme.bg_crust
+                    font.family: Style.mono_font
+                    font.bold: true
+                    font.pixelSize: Style.fs(-6)
+                }
+            }
+
+            Text {
+                visible: loupe.nvimfloat
+                anchors.right: parent.right
+                anchors.rightMargin: 12
+                y: 2
+                text: loupe.zoom + "x"
+                color: Theme.theme_primary_light
+                font.family: Style.mono_font
+                font.pixelSize: Style.fs(-6)
+            }
+
+            Item {
+                id: nv_lualine
+                visible: loupe.nvimfloat
+                x: loupe.pad
+                y: loupe.pad + loupe.header_h + loupe.view + loupe.nv_foot_gap
+                width: loupe.view
+                height: loupe.nv_row_h
+
+                readonly property string mode: root.pixel_mode ? "NORMAL" : root.mine ? "V-BLOCK" : "VISUAL"
+                readonly property color mode_color: root.pixel_mode ? Theme.theme_primary : Theme.magenta
+
+                Rectangle {
+                    id: nv_mode_chip
+                    height: parent.height
+                    width: nv_mode_text.implicitWidth + 16
+                    color: nv_lualine.mode_color
+
+                    Text {
+                        id: nv_mode_text
+                        anchors.centerIn: parent
+                        text: nv_lualine.mode
+                        color: Theme.bg_crust
+                        font.family: Style.font_family
+                        font.bold: true
+                        font.pixelSize: Style.fs(-7)
+                    }
+                }
+
+                Shape {
+                    id: nv_mode_arrow
+                    x: nv_mode_chip.width
+                    width: 10
+                    height: nv_lualine.height
+                    ShapePath {
+                        fillColor: nv_lualine.mode_color
+                        strokeWidth: -1
+                        startX: 0
+                        startY: 0
+                        PathLine {
+                            x: 10
+                            y: nv_lualine.height / 2
+                        }
+                        PathLine {
+                            x: 0
+                            y: nv_lualine.height
+                        }
+                        PathLine {
+                            x: 0
+                            y: 0
+                        }
+                    }
+                }
+
+                Rectangle {
+                    visible: root.pixel_mode
+                    x: nv_mode_arrow.x + nv_mode_arrow.width
+                    height: parent.height
+                    width: 26
+                    color: Theme.bg_surface
+
+                    Rectangle {
+                        anchors.centerIn: parent
+                        width: 12
+                        height: 12
+                        color: Screenshot.pixel_hex !== "" ? Screenshot.pixel_hex : "transparent"
+                    }
+                }
+
+                Text {
+                    visible: !root.pixel_mode
+                    x: nv_mode_arrow.x + nv_mode_arrow.width + 6
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: "▦"
+                    color: Theme.theme_primary_light
+                    font.pixelSize: Style.fs(-6)
+                }
+
+                Text {
+                    id: nv_z_text
+                    anchors.right: parent.right
+                    height: parent.height
+                    verticalAlignment: Text.AlignVCenter
+                    text: Math.round(loupe.at.y) + ":" + Math.round(loupe.at.x)
+                    color: Theme.bg_crust
+                    font.family: Style.mono_font
+                    font.bold: true
+                    font.pixelSize: Style.fs(-7)
+
+                    Rectangle {
+                        z: -1
+                        anchors.fill: parent
+                        anchors.leftMargin: -8
+                        color: Theme.theme_primary_strong
+                    }
+                }
+            }
+
+            Row {
+                id: nv_cmdline
+                visible: loupe.nvimfloat
+                x: loupe.pad
+                y: nv_lualine.y + nv_lualine.height + 2
+                width: loupe.view
+                height: loupe.nv_cmd_h
+                spacing: 4
+
+                Text {
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: root.pixel_mode ? ":hi" : root.mine ? ":'<,'>" : ":"
+                    color: Theme.magenta
+                    font.family: Style.mono_font
+                    font.pixelSize: Style.fs(-6)
+                }
+
+                Text {
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: root.pixel_mode ? "Pick" : "Screenshot"
+                    color: Theme.fg_core
+                    font.family: Style.mono_font
+                    font.pixelSize: Style.fs(-6)
+                }
+
+                Text {
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: root.pixel_mode ? "guifg=" + (Screenshot.pixel_hex !== "" ? Screenshot.pixel_hex : "#------") : root.mine ? Math.round(root.sel.width) + "x" + Math.round(root.sel.height) : ""
+                    color: Theme.theme_secondary
+                    font.family: Style.mono_font
+                    font.pixelSize: Style.fs(-6)
+                }
+            }
         }
 
         Rectangle {
@@ -1803,6 +1994,9 @@ PanelWindow {
                 Screenshot.step_target(dir[0], dir[1]);
             } else if (!toolbar && root.target_mode && (event.key === Qt.Key_Tab || event.key === Qt.Key_Backtab)) {
                 Screenshot.cycle_target(event.key === Qt.Key_Backtab || shift ? -1 : 1);
+            } else if (!toolbar && root.target_mode && event.text !== "" && Style.picker_hint_keys.indexOf(event.text) >= 0 && Style.picker_hint_keys.indexOf(event.text) < Screenshot.targets.length) {
+                Screenshot.highlight(Style.picker_hint_keys.indexOf(event.text));
+                Screenshot.confirm();
             } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
                 if (toolbar) root.run_tool(Screenshot.tool_index);
                 else if (Screenshot.anchored || Screenshot.has_selection || root.target_mode) Screenshot.confirm();
