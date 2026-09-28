@@ -98,7 +98,11 @@ notify_scroll_text() {
     choice="$(timeout 600 notify-send --action=save="Save text" --action=open=Open --action=image="Copy image" --wait "OCR Complete" "Text copied to clipboard")" || true
     case "$choice" in
     save) cp -- "$text" "$SCREENSHOT_DIR/ocr-$(timestamp).txt" ;;
-    open) "$SCRIPT_DIR/term" -e "${EDITOR:-nvim}" "$text" ;;
+    open)
+      saved="$SCREENSHOT_DIR/ocr-$(timestamp).txt"
+      cp -- "$text" "$saved"
+      "$SCRIPT_DIR/term" -e "${EDITOR:-nvim}" "$saved"
+      ;;
     image) wl-copy --type image/png <"$image" ;;
     esac
     rm -f -- "$text" "$image"

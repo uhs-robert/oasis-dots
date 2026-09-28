@@ -30,14 +30,15 @@ def log(message):
 
 
 def to_gray(rgb):
-    return (rgb[..., :3] @ np.array([0.299, 0.587, 0.114], dtype=np.float32)).astype(np.float32)
+    return (rgb[..., :3] @ np.array([0.299, 0.587, 0.114], dtype=np.float32)).astype(np.uint8)
 
 
 def frames_same(a, b):
-    return float(np.abs(a - b).mean()) < SAME_TOLERANCE
+    return float(np.abs(a.astype(np.int16) - b).mean()) < SAME_TOLERANCE
 
 
 def row_features(gray):
+    gray = gray.astype(np.float32)
     ramp = np.linspace(-1.0, 1.0, gray.shape[1], dtype=np.float32)
     return np.stack([gray.mean(axis=1), (gray * ramp).mean(axis=1)], axis=1)
 
@@ -45,8 +46,8 @@ def row_features(gray):
 def find_shift(prev, nxt, top, bottom):
     """Rows the content moved up between two gray frames, or None when they do not overlap."""
     height = prev.shape[0]
-    p = prev[top : height - bottom]
-    n = nxt[top : height - bottom]
+    p = prev[top : height - bottom].astype(np.float32)
+    n = nxt[top : height - bottom].astype(np.float32)
     rows = p.shape[0]
     max_shift = rows - max(int(rows * MIN_OVERLAP), 16)
     if max_shift < 1:
@@ -67,10 +68,10 @@ def find_shift(prev, nxt, top, bottom):
     return min(s for score, s in good if score <= best + 0.5)
 
 
-def sticky_bands(grays):
-    top = bottom = grays[0].shape[0] // 3
-    for a, b in zip(grays, grays[1:]):
-        same = np.abs(a - b).max(axis=1) <= 3.0
+def sticky_bands(frames):
+    top = bottom = frames[0].shape[0] // 3
+    for a, b in zip(frames, frames[1:]):
+        same = np.abs(to_gray(a).astype(np.int16) - to_gray(b)).max(axis=1) <= 3
         lead = int(np.argmin(same)) if not same.all() else len(same)
         trail = int(np.argmin(same[::-1])) if not same.all() else len(same)
         top = min(top, lead)
@@ -82,13 +83,12 @@ def stitch(frames):
     """Frames are RGB uint8 arrays of one region scrolled down; returns the tall RGB array."""
     if len(frames) == 1:
         return frames[0]
-    grays = [to_gray(f) for f in frames]
-    top, bottom = sticky_bands(grays)
+    top, bottom = sticky_bands(frames)
     height = frames[0].shape[0]
     end = height - bottom
     parts = [frames[0][:end]]
     for i in range(1, len(frames)):
-        shift = find_shift(grays[i - 1], grays[i], top, bottom)
+        shift = find_shift(to_gray(frames[i - 1]), to_gray(frames[i]), top, bottom)
         if shift is None:
             parts.append(frames[i][top:end])
         else:
@@ -154,11 +154,6 @@ def wheel(amount):
     time.sleep(SETTLE_S)
 
 
-def page_down():
-    sh("wtype", "-k", "Next")
-    time.sleep(SETTLE_S)
-
-
 def on_term(_signum, _frame):
     global stop_requested
     stop_requested = True
@@ -171,6 +166,7 @@ def capture(geometry, scale, max_frames):
     saved = cursor_pos()
     sh("hyprctl", "dispatch", "movecursor", str(x + w // 2), str(y + h // 2))
     frames = [grab(geometry, scale)]
+    prev_gray = to_gray(frames[0])
     log("frame 1")
     amount = FIRST_WHEEL
     direction = 1
@@ -180,14 +176,9 @@ def capture(geometry, scale, max_frames):
         while len(frames) < max_frames and not stop_requested:
             wheel(direction * amount)
             frame = grab(geometry, scale)
-            prev_gray = to_gray(frames[-1])
             gray = to_gray(frame)
             if frames_same(prev_gray, gray):
-                page_down()
-                frame = grab(geometry, scale)
-                gray = to_gray(frame)
-                if frames_same(prev_gray, gray):
-                    break
+                break
             shift = find_shift(prev_gray, gray, 0, 0)
             if shift is None and retries < MAX_RETRIES:
                 retries += 1
@@ -201,6 +192,7 @@ def capture(geometry, scale, max_frames):
                 amount = max(1, round(amount * TARGET_SHIFT * frame.shape[0] / shift))
                 calibrated = True
             frames.append(frame)
+            prev_gray = gray
             log(f"frame {len(frames)}")
     finally:
         if saved:

@@ -439,6 +439,12 @@ Singleton {
 
     // The overlay closes first so wheel events reach the window beneath.
     function start_scroll(action, scale, geometry) {
+        capture_opaque_delay.stop();
+        grab_delay.stop();
+        capture_delay.stop();
+        capture_watchdog.stop();
+        root.sel_screen = "";
+        root.anchored = false;
         const base = (Quickshell.env("XDG_RUNTIME_DIR") || "/tmp") + "/qs-screenshot-" + Date.now();
         root.pending_action = action;
         root.capture_file = base + ".png";
