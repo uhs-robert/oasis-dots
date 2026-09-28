@@ -11,6 +11,8 @@ Item {
     id: root
 
     property var ctx: null
+    // Fills the screen edge to edge instead of framing the tube in a TV bezel.
+    readonly property bool full_bleed: true
     readonly property int unlock_ms: 1150
 
     readonly property real u: Math.min(root.width, root.height * 16 / 9) / 100
@@ -111,10 +113,10 @@ Item {
 
     Item {
         id: glass
-        readonly property real radius: root.u * 3.6
+        readonly property real radius: root.full_bleed ? 0 : root.u * 3.6
 
-        x: root.width * 0.034
-        y: root.height * 0.026
+        x: root.full_bleed ? 0 : root.width * 0.034
+        y: root.full_bleed ? 0 : root.height * 0.026
         width: root.width - x * 2
         height: root.height - y * 2
         // Clipped to the rounded screen so the bezel shows through the corners.
@@ -538,6 +540,7 @@ Item {
 
     // The rim, outside the clipped glass so its stroke is not cut in half.
     Rectangle {
+        visible: !root.full_bleed
         x: glass.x
         y: glass.y
         width: glass.width
