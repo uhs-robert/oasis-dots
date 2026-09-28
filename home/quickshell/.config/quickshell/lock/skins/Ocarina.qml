@@ -75,14 +75,16 @@ Item {
         dusk: { sky: ["#2e2f52", "#6a5f7e", "#c89a8a"], hills: ["#3a3550", "#221f30", "#110f18"] },
         night: { sky: ["#02040d", "#0b1230", "#1f2a55"], hills: ["#151b33", "#0b0f1e", "#04060c"] }
     })
-    // One phase (0..1 per loop) drives the whole sky: the sun crosses its arc over 0..0.5 (dawn, day, dusk), the moon over 0.5..1 (night).
-    // Outside the saver the phase is pinned to the clock's time of day.
+    // One phase (0..1 per 12 minutes) drives the whole sky: the sun crosses its arc over 0..0.5 (dawn, day, dusk), the moon over 0.5..1 (night).
+    // It starts at the clock's time of day and runs on a wall clock; the animation only ticks while the title shows. Without animate it stays pinned to the clock.
+    readonly property int cycle_ms: 720000
     property real sky_phase: 0
     property real cycle_start: 0
+    property real cycle_epoch: 0
     property bool cycle_armed: false
-    readonly property bool cycling: root.phase === "saver" && root.animate
+    readonly property bool sky_live: root.animate && (root.view === "title" || root.view === "saver")
     readonly property var tod_phase: ({ dawn: 0.0372, day: 0.25, dusk: 0.4628, night: 0.75 })
-    readonly property real cyc: root.cycling ? root.sky_phase - Math.floor(root.sky_phase) : root.tod_phase[root.tod]
+    readonly property real cyc: root.animate ? root.sky_phase - Math.floor(root.sky_phase) : root.tod_phase[root.tod]
     // v is each body's time across the sky, 0 rising to 1 setting; its height is symmetric in v.
     readonly property real sun_v: (root.cyc + 0.03) / 0.56
     readonly property real moon_v: ((root.cyc - 0.47 + 1) % 1) / 0.56
@@ -134,11 +136,29 @@ Item {
         return Qt.point(800 - 760 * Math.cos(Math.PI * Math.pow(t, 0.515)), 780 - 650 * Math.sin(Math.PI * t));
     }
 
+    function start_cycle() {
+        root.cycle_start = root.tod_phase[root.tod];
+        root.cycle_epoch = Date.now();
+        root.sync_cycle();
+    }
+
+    // Catches the phase up with the wall clock, then lets the animation run on from there.
+    function sync_cycle() {
+        root.cycle_armed = false;
+        if (!root.sky_live) return;
+        root.sky_phase = root.cycle_start + (Date.now() - root.cycle_epoch) / root.cycle_ms;
+        sky_anim.from = root.sky_phase;
+        sky_anim.to = root.sky_phase + 1;
+        root.cycle_armed = true;
+    }
+
+    onAnimateChanged: if (root.animate) root.start_cycle()
+    onSky_liveChanged: root.sync_cycle()
+
     NumberAnimation on sky_phase {
-        running: root.cycling && root.cycle_armed
-        from: root.cycle_start
-        to: root.cycle_start + 1
-        duration: 720000
+        id: sky_anim
+        running: root.sky_live && root.cycle_armed
+        duration: root.cycle_ms
         loops: Animation.Infinite
     }
 
@@ -146,7 +166,6 @@ Item {
     readonly property string key_font: "Belleza"
 
     readonly property var stars: root.scatter(5, 90, rnd => ({ x: rnd() * 1600, y: Math.pow(rnd(), 1.5) * 520, r: 0.8 + rnd() * 1.5, a: 0.35 + rnd() * 0.6 }))
-    readonly property var still_clouds: root.scatter(11, 5, rnd => root.cloud(rnd, 3, 22))
     readonly property var drift_clouds: root.scatter(17, 10, rnd => root.cloud(rnd, 2, 26))
     readonly property var menu_puffs: root.scatter(23, 12, rnd => {
         const rx = 90 + rnd() * 170;
@@ -241,7 +260,10 @@ Item {
     }
 
     clip: true
-    Component.onCompleted: root.claim_sound()
+    Component.onCompleted: {
+        root.claim_sound();
+        root.start_cycle();
+    }
     Component.onDestruction: {
         root.dying = true;
         if (root.ctx && root.ctx.sound_owner === root) root.ctx.sound_owner = null;
@@ -253,14 +275,7 @@ Item {
         source: Qt.resolvedUrl("ocarina/OcarinaAudio.qml")
         onLoaded: audio_loader.item.track = Qt.binding(() => root.music_track)
     }
-    onPhaseChanged: {
-        root.cycle_armed = false;
-        if (root.phase !== "saver") return;
-        if (root.can_step) root.ctx.scene = "";
-        root.cycle_start = root.tod_phase[root.tod];
-        root.sky_phase = root.cycle_start;
-        root.cycle_armed = true;
-    }
+    onPhaseChanged: if (root.phase === "saver" && root.can_step) root.ctx.scene = ""
     onScreenChanged: {
         const from = root.last_screen;
         root.last_screen = root.screen;
@@ -900,22 +915,7 @@ Item {
                     opacity: root.cloud_alpha
 
                     Repeater {
-                        model: title.saver ? [] : root.still_clouds
-
-                        Radial {
-                            required property var modelData
-                            cx: modelData.x + modelData.w / 2
-                            cy: modelData.y + modelData.h / 2
-                            rx: modelData.w / 2
-                            ry: modelData.h / 2
-                            inner: "#57ffffff"
-                            middle: "#1fffffff"
-                            mid: 0.6
-                        }
-                    }
-
-                    Repeater {
-                        model: title.saver ? root.drift_clouds : []
+                        model: root.drift_clouds
 
                         Radial {
                             id: drifting
@@ -1058,29 +1058,40 @@ Item {
                     font.letterSpacing: 0.42
                 }
 
-                FitText {
-                    id: press_start
-                    visible: !title.saver
-                    x0: 800
-                    base_y: 752
-                    centered: true
-                    text: "PRESS START"
-                    color: "#ff3a1e"
-                    style: Text.Outline
-                    styleColor: "#2a0400"
-                    font.family: "Cinzel"
-                    font.weight: 700
-                    font.pixelSize: 42
-                    font.letterSpacing: 4
+                Item {
+                    id: press_fade
+                    anchors.fill: parent
+                    opacity: title.saver ? 0 : 1
 
-                    SequentialAnimation on opacity {
-                        running: root.animate && !title.saver && !root.lit
-                        loops: Animation.Infinite
-                        onStopped: press_start.opacity = 1
-                        PropertyAction { value: 1 }
-                        PauseAnimation { duration: 650 }
-                        PropertyAction { value: 0 }
-                        PauseAnimation { duration: 650 }
+                    Behavior on opacity {
+                        enabled: root.animate
+                        NumberAnimation { duration: 1000 }
+                    }
+
+                    FitText {
+                        id: press_start
+                        visible: press_fade.opacity > 0
+                        x0: 800
+                        base_y: 752
+                        centered: true
+                        text: "PRESS START"
+                        color: "#ff3a1e"
+                        style: Text.Outline
+                        styleColor: "#2a0400"
+                        font.family: "Cinzel"
+                        font.weight: 700
+                        font.pixelSize: 42
+                        font.letterSpacing: 4
+
+                        SequentialAnimation on opacity {
+                            running: root.animate && !title.saver && !root.lit
+                            loops: Animation.Infinite
+                            onStopped: press_start.opacity = 1
+                            PropertyAction { value: 1 }
+                            PauseAnimation { duration: 650 }
+                            PropertyAction { value: 0 }
+                            PauseAnimation { duration: 650 }
+                        }
                     }
                 }
 
