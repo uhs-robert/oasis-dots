@@ -27,6 +27,11 @@ Item {
         return root.scene === "file" || root.scene === "name" ? root.scene : "title";
     }
 
+    // The title stays on show under the PRESS START fade to white; the view follows `screen` otherwise.
+    property bool holding_title: false
+    readonly property string view: root.holding_title ? "title" : root.screen
+    property string last_screen: "title"
+
     readonly property string tod: {
         const d = root.ctx ? root.ctx.now : new Date();
         const h = d.getHours() + d.getMinutes() / 60;
@@ -105,6 +110,18 @@ Item {
 
     clip: true
     onPhaseChanged: if (root.phase === "saver" && root.can_step) root.ctx.scene = ""
+    onScreenChanged: {
+        const from = root.last_screen;
+        root.last_screen = root.screen;
+        if (from === "title" && (root.screen === "file" || root.screen === "name") && root.animate) {
+            root.holding_title = true;
+            start_fade.restart();
+        } else if (start_fade.running && root.screen !== "file" && root.screen !== "name") {
+            start_fade.stop();
+            root.holding_title = false;
+            start_white.opacity = 0;
+        }
+    }
 
     Timer {
         id: back_timer
@@ -431,6 +448,83 @@ Item {
         }
     }
 
+    // The game's 4:3 menu frame, fitted inside its parent; children use menu (1280x720) units, centred on the panel.
+    component PanelFrame: Item {
+        id: frame
+        default property alias content: menu_space.data
+        readonly property real k: frame.parent ? 0.94 * Math.min(frame.parent.width / 960, frame.parent.height / 720) : 1
+        width: 960
+        height: 720
+        x: frame.parent ? (frame.parent.width - 960) / 2 : 0
+        y: frame.parent ? (frame.parent.height - 720) / 2 : 0
+        scale: frame.k
+
+        Item {
+            id: menu_space
+            x: -199
+            y: -27
+            width: 1280
+            height: 720
+        }
+    }
+
+    // The menu window; its right side dissolves into the sky. `k` is its on-screen scale.
+    component MenuPanel: Item {
+        id: panel
+        property real k: 1
+        x: 262
+        y: 105
+        width: 834
+        height: 495
+        layer.enabled: true
+        layer.textureSize: Qt.size(Math.ceil(panel.width * panel.k), Math.ceil(panel.height * panel.k))
+        layer.effect: MultiEffect {
+            maskEnabled: true
+            maskSource: panel_fade
+            maskThresholdMin: 0.5
+            maskSpreadAtMin: 1
+        }
+
+        Shape {
+            x: -262
+            y: -105
+            width: 1280
+            height: 720
+            preferredRendererType: Shape.CurveRenderer
+
+            ShapePath {
+                strokeWidth: -1
+                fillGradient: LinearGradient {
+                    x1: 760
+                    y1: 0
+                    x2: 180
+                    y2: 720
+                    GradientStop { position: 0; color: "#16265e" }
+                    GradientStop { position: 0.55; color: "#2c4aa6" }
+                    GradientStop { position: 1; color: "#4c78dc" }
+                }
+                PathSvg { path: "M297 113 H1078 Q1086 113 1086 121 V582 Q1086 590 1078 590 H294 L272 568 V137 Z" }
+            }
+            Stroke { strokeColor: "#6f98f4"; strokeWidth: 9; d: "M272 568 V137 L297 113 H1086" }
+            Stroke { strokeColor: "#99b8d0ff"; strokeWidth: 2; d: "M277 565 V139 L299 118" }
+            Stroke { strokeColor: "#0a1234"; strokeWidth: 6; d: "M294 590 H1080" }
+            Stroke { strokeColor: "#08102e"; strokeWidth: 6; d: "M1086 203 H313 V560" }
+            Stroke { strokeColor: "#807d9ee6"; strokeWidth: 2; d: "M1086 208 H318 V556" }
+        }
+
+        Rectangle {
+            id: panel_fade
+            anchors.fill: parent
+            visible: false
+            layer.enabled: true
+            gradient: Gradient {
+                orientation: Gradient.Horizontal
+                GradientStop { position: 0.6; color: "#ffffffff" }
+                GradientStop { position: 1; color: "#00ffffff" }
+            }
+        }
+    }
+
     component Stroke: ShapePath {
         property alias d: svg.path
         fillColor: "transparent"
@@ -441,19 +535,19 @@ Item {
 
     Loader {
         anchors.fill: parent
-        active: root.screen === "title" || root.screen === "saver"
+        active: root.view === "title" || root.view === "saver"
         sourceComponent: title_view
     }
 
     Loader {
         anchors.fill: parent
-        active: root.screen === "file"
+        active: root.view === "file"
         sourceComponent: file_view
     }
 
     Loader {
         anchors.fill: parent
-        active: root.screen === "name"
+        active: root.view === "name"
         sourceComponent: name_view
     }
 
@@ -462,7 +556,7 @@ Item {
 
         Item {
             id: title
-            readonly property bool saver: root.screen === "saver"
+            readonly property bool saver: root.view === "saver"
 
             Stage {
                 id: title_stage
@@ -748,117 +842,86 @@ Item {
 
         Item {
             Stage {
-                id: file_stage
                 design_w: 1280
                 design_h: 720
 
                 MenuSky {}
+            }
 
-                Item {
-                    id: fs_panel
-                    anchors.fill: parent
-                    layer.enabled: true
-                    layer.textureSize: Qt.size(Math.ceil(1280 * file_stage.k), Math.ceil(720 * file_stage.k))
-                    layer.effect: MultiEffect {
-                        maskEnabled: true
-                        maskSource: fs_fade
-                        maskThresholdMin: 0.5
-                        maskSpreadAtMin: 1
-                    }
+            PanelFrame {
+                id: fs_frame
 
-                    Shape {
-                        anchors.fill: parent
-                        preferredRendererType: Shape.CurveRenderer
-
-                        ShapePath {
-                            strokeWidth: -1
-                            fillGradient: LinearGradient {
-                                x1: 760
-                                y1: 0
-                                x2: 180
-                                y2: 720
-                                GradientStop { position: 0; color: "#16265e" }
-                                GradientStop { position: 0.55; color: "#2c4aa6" }
-                                GradientStop { position: 1; color: "#4c78dc" }
-                            }
-                            PathSvg { path: "M125 20 H1260 V703 H148 L113 668 V32 Q113 20 125 20 Z" }
-                        }
-                        Stroke { strokeColor: "#6f98f4"; strokeWidth: 10; d: "M113 668 V32 Q113 20 125 20" }
-                        Stroke { strokeColor: "#99b8d0ff"; strokeWidth: 2; d: "M118 664 V34" }
-                        Stroke { strokeColor: "#0a1234"; strokeWidth: 6; d: "M148 703 H1260" }
-                        Stroke { strokeColor: "#08102e"; strokeWidth: 6; d: "M1260 120 H172 V660" }
-                        Stroke { strokeColor: "#807d9ee6"; strokeWidth: 2; d: "M1260 125 H177 V656" }
-                    }
-                }
-
-                Rectangle {
-                    id: fs_fade
-                    anchors.fill: parent
-                    visible: false
-                    layer.enabled: true
-                    gradient: Gradient {
-                        orientation: Gradient.Horizontal
-                        GradientStop { position: 0.6; color: "#ffffffff" }
-                        GradientStop { position: 0.95; color: "#00ffffff" }
-                    }
+                MenuPanel {
+                    k: fs_frame.k
                 }
 
                 Heading {
-                    x0: 238
-                    base_y: 72
-                    size: 60
-                    fit_w: 537
+                    x0: 352
+                    base_y: 182
+                    size: 52
+                    fit_w: 465
                     text: "Please select a file."
                 }
 
-                Plate {
-                    x: 485
-                    y: 148
-                    width: 448
-                    height: 62
-                    r: 10
-                    shadow_x: 5
-                }
+                // The game's file list, scaled from its full-screen layout into the name entry frame.
+                Item {
+                    readonly property real s: 0.661
+                    x: 313 - 172 * s
+                    y: 203 - 120 * s
+                    width: 1280
+                    height: 720
+                    scale: s
+                    transformOrigin: Item.TopLeft
 
-                FitText {
-                    x0: 540
-                    base_y: 205
-                    text: (root.ctx ? root.ctx.user : "").slice(0, 8)
-                    color: "#e6ecf6"
-                    style: Text.Outline
-                    styleColor: "#2a3c78"
-                    font.family: root.key_font
-                    font.pixelSize: 62
-                    font.letterSpacing: 6
-                }
+                    Plate {
+                        x: 485
+                        y: 148
+                        width: 448
+                        height: 62
+                        r: 10
+                        shadow_x: 5
+                    }
 
-                Pill { x: 202; y: 147; width: 276; height: 66; label: "File 1"; label_x0: 268; label_x1: 410; base_y: 204; lit: true }
+                    FitText {
+                        x0: 540
+                        base_y: 205
+                        text: (root.ctx ? root.ctx.user : "").slice(0, 8)
+                        color: "#e6ecf6"
+                        style: Text.Outline
+                        styleColor: "#2a3c78"
+                        font.family: root.key_font
+                        font.pixelSize: 62
+                        font.letterSpacing: 6
+                    }
 
-                Rectangle {
-                    x: 442
-                    y: 169
-                    width: 84
-                    height: 31
-                    radius: 15.5
-                    color: "#2a3c86"
-                    border.width: 3
-                    border.color: "#0a1234"
+                    Pill { x: 202; y: 147; width: 276; height: 66; label: "File 1"; label_x0: 268; label_x1: 410; base_y: 204; lit: true }
 
                     Rectangle {
-                        x: 10
-                        y: 5
-                        width: 60
-                        height: 12
-                        radius: 6
-                        color: "#9ab8f2"
-                    }
-                }
+                        x: 442
+                        y: 169
+                        width: 84
+                        height: 31
+                        radius: 15.5
+                        color: "#2a3c86"
+                        border.width: 3
+                        border.color: "#0a1234"
 
-                Pill { x: 203; y: 225; width: 277; height: 65; label: "File 2"; label_x0: 268; label_x1: 420; base_y: 281; dot: true }
-                Pill { x: 203; y: 298; width: 277; height: 65; label: "File 3"; label_x0: 268; label_x1: 420; base_y: 354; dot: true }
-                Pill { x: 203; y: 409; width: 275; height: 64; label: "Copy"; label_x0: 272; label_x1: 412; base_y: 460 }
-                Pill { x: 203; y: 483; width: 275; height: 65; label: "Erase"; label_x0: 273; label_x1: 425; base_y: 535 }
-                Pill { x: 203; y: 594; width: 275; height: 67; label: "Options"; label_x0: 255; label_x1: 440; base_y: 645 }
+                        Rectangle {
+                            x: 10
+                            y: 5
+                            width: 60
+                            height: 12
+                            radius: 6
+                            color: "#9ab8f2"
+                        }
+                    }
+
+                    Pill { x: 203; y: 225; width: 277; height: 65; label: "File 2"; label_x0: 268; label_x1: 420; base_y: 281; dot: true }
+                    Pill { x: 203; y: 298; width: 277; height: 65; label: "File 3"; label_x0: 268; label_x1: 420; base_y: 354; dot: true }
+                    Pill { x: 203; y: 409; width: 275; height: 64; label: "Copy"; label_x0: 272; label_x1: 412; base_y: 460 }
+                    Pill { x: 203; y: 483; width: 275; height: 65; label: "Erase"; label_x0: 273; label_x1: 425; base_y: 535 }
+                    Pill { x: 203; y: 594; width: 275; height: 67; label: "Options"; label_x0: 255; label_x1: 440; base_y: 645 }
+                }
             }
 
             NumberAnimation on opacity {
@@ -884,29 +947,13 @@ Item {
                 design_h: 720
 
                 MenuSky {}
+            }
 
-                Shape {
-                    anchors.fill: parent
-                    preferredRendererType: Shape.CurveRenderer
+            PanelFrame {
+                id: ne_frame
 
-                    ShapePath {
-                        strokeWidth: -1
-                        fillGradient: LinearGradient {
-                            x1: 760
-                            y1: 0
-                            x2: 180
-                            y2: 720
-                            GradientStop { position: 0; color: "#16265e" }
-                            GradientStop { position: 0.55; color: "#2c4aa6" }
-                            GradientStop { position: 1; color: "#4c78dc" }
-                        }
-                        PathSvg { path: "M297 113 H1078 Q1086 113 1086 121 V582 Q1086 590 1078 590 H294 L272 568 V137 Z" }
-                    }
-                    Stroke { strokeColor: "#6f98f4"; strokeWidth: 9; d: "M272 568 V137 L297 113 H1086" }
-                    Stroke { strokeColor: "#99b8d0ff"; strokeWidth: 2; d: "M277 565 V139 L299 118" }
-                    Stroke { strokeColor: "#0a1234"; strokeWidth: 6; d: "M294 590 H1080" }
-                    Stroke { strokeColor: "#08102e"; strokeWidth: 6; d: "M1086 203 H313 V560" }
-                    Stroke { strokeColor: "#807d9ee6"; strokeWidth: 2; d: "M1086 208 H318 V556" }
+                MenuPanel {
+                    k: ne_frame.k
                 }
 
                 Heading {
@@ -1172,7 +1219,7 @@ Item {
     Rectangle {
         id: flash
         anchors.fill: parent
-        visible: root.phase === "wrong" && root.screen === "name"
+        visible: root.phase === "wrong" && root.view === "name"
         color: "#e00c0c"
         opacity: root.animate ? 0 : 0.14
 
@@ -1183,6 +1230,22 @@ Item {
             NumberAnimation { target: flash; property: "opacity"; to: 0.45; duration: 180; easing.type: Easing.OutQuad }
             NumberAnimation { target: flash; property: "opacity"; to: 0.1; duration: 360; easing.type: Easing.OutQuad }
             PauseAnimation { duration: 480 }
+        }
+    }
+
+    Rectangle {
+        id: start_white
+        anchors.fill: parent
+        visible: start_white.opacity > 0
+        color: "#ffffff"
+        opacity: 0
+
+        SequentialAnimation {
+            id: start_fade
+            NumberAnimation { target: start_white; property: "opacity"; from: 0; to: 1; duration: 550; easing.type: Easing.InQuad }
+            PropertyAction { target: root; property: "holding_title"; value: false }
+            PauseAnimation { duration: 150 }
+            NumberAnimation { target: start_white; property: "opacity"; to: 0; duration: 550; easing.type: Easing.OutQuad }
         }
     }
 
