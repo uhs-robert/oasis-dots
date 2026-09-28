@@ -546,6 +546,8 @@ Singleton {
                 frame_border_color: Qt.tint(Theme.bg_crust, Qt.alpha(Theme.theme_primary, 0.35)),
                 frame_glow: Theme.ui_visual_bg,
                 accent_color: Theme.theme_primary,
+                picker_skin: "tvosd",
+                picker_hint_keys: "123456789",
                 selection_bg: Qt.alpha(Theme.theme_primary, 0.14),
                 selection_outline: "transparent",
                 selection_bar: true,
