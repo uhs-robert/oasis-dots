@@ -64,49 +64,55 @@ Item {
     readonly property string tod: {
         const d = root.ctx ? root.ctx.now : new Date();
         const h = d.getHours() + d.getMinutes() / 60;
-        if (h >= 5 && h < 12) return "dawn";
-        if (h >= 12 && h < 20.5) return "dusk";
+        if (h >= 5 && h < 10) return "dawn";
+        if (h >= 10 && h < 14) return "day";
+        if (h >= 14 && h < 20.5) return "dusk";
         return "night";
     }
     readonly property var palettes: ({
         dawn: { sky: ["#2c3466", "#b46a84", "#f6a65c"], hills: ["#6a4a66", "#33222e", "#160e12"] },
+        day: { sky: ["#2a6ad0", "#6aa6ea", "#cfe6f7"], hills: ["#6f8fb0", "#3f6a30", "#1e3a14"] },
         dusk: { sky: ["#2e2f52", "#6a5f7e", "#c89a8a"], hills: ["#3a3550", "#221f30", "#110f18"] },
         night: { sky: ["#02040d", "#0b1230", "#1f2a55"], hills: ["#151b33", "#0b0f1e", "#04060c"] }
     })
-    readonly property var pal: root.palettes[root.tod]
-
-    // The saver's sky turns continuously through dusk, night and dawn: one phase (0..1 per loop) drives every colour and the moon and sun arcs.
+    // One phase (0..1 per loop) drives the whole sky: the sun crosses its arc over 0..0.5 (dawn, day, dusk), the moon over 0.5..1 (night).
+    // Outside the saver the phase is pinned to the clock's time of day.
     property real sky_phase: 0
     property real cycle_start: 0
     property bool cycle_armed: false
     readonly property bool cycling: root.phase === "saver" && root.animate
-    readonly property real cyc: root.sky_phase - Math.floor(root.sky_phase)
-    readonly property var sky_keys: ["dusk", "night", "dawn", "dusk"].map(t => ({
-        sky: root.palettes[t].sky.map(root.rgb),
-        hills: root.palettes[t].hills.map(root.rgb),
-        stars: t === "night" ? 1 : t === "dusk" ? 0.4 : 0,
-        clouds: t === "night" ? 0.45 : 1
-    }))
-    readonly property int leg: Math.min(2, Math.floor(root.cyc * 3))
-    readonly property real leg_t: {
-        const t = root.cyc * 3 - root.leg;
+    readonly property var tod_phase: ({ dawn: 0.0372, day: 0.25, dusk: 0.4628, night: 0.75 })
+    readonly property real cyc: root.cycling ? root.sky_phase - Math.floor(root.sky_phase) : root.tod_phase[root.tod]
+    // v is each body's time across the sky, 0 rising to 1 setting; its height is symmetric in v.
+    readonly property real sun_v: (root.cyc + 0.03) / 0.56
+    readonly property real moon_v: ((root.cyc - 0.47 + 1) % 1) / 0.56
+    readonly property point sun_at: root.arc(root.sun_v)
+    readonly property point moon_at: root.arc(root.moon_v)
+    readonly property real sun_alpha: root.sun_v >= 0 && root.sun_v <= 1 ? 1 : 0
+    readonly property real moon_alpha: root.moon_v >= 0 && root.moon_v <= 1 ? 1 : 0
+    // Day holds while the sun is within 60 degrees of straight up on its arc (10 to 2 o'clock).
+    readonly property real sun_angle: Math.abs(root.sun_v - 0.5) * 180
+    readonly property real day_w: root.sun_alpha > 0 ? 1 - root.ease(55, 65, root.sun_angle) : 0
+    readonly property real night_w: root.sun_alpha === 0 ? 1 : root.sun_v < 0.5 ? 1 - root.ease(0, 0.12, root.sun_v) : root.ease(0.88, 1, root.sun_v)
+    readonly property var shade_keys: ({ dawn: root.shades("dawn"), day: root.shades("day"), dusk: root.shades("dusk"), night: root.shades("night") })
+    property color sky0: root.blend("sky", 0)
+    property color sky1: root.blend("sky", 1)
+    property color sky2: root.blend("sky", 2)
+    property color hill0: root.blend("hills", 0)
+    property color hill1: root.blend("hills", 1)
+    property color hill2: root.blend("hills", 2)
+    readonly property real star_alpha: root.night_w + (1 - root.night_w) * (1 - root.day_w) * 0.2
+    readonly property real cloud_alpha: 1 - 0.55 * root.night_w
+    readonly property real day_cloud_alpha: root.day_w * (1 - root.night_w)
+
+    function ease(a, b, v) {
+        const t = Math.max(0, Math.min(1, (v - a) / (b - a)));
         return t * t * (3 - 2 * t);
     }
-    // Moon over phases -0.05..0.71 (rises at dusk, sinks at dawn); sun over 0.62..1.05 (rises at dawn, sinks at dusk).
-    readonly property real moon_u: ((root.cyc + 0.05) % 1) / 0.76
-    readonly property real sun_u: ((root.cyc + 0.38) % 1) / 0.43
-    property color sky0: root.cycling ? root.blend("sky", 0) : root.pal.sky[0]
-    property color sky1: root.cycling ? root.blend("sky", 1) : root.pal.sky[1]
-    property color sky2: root.cycling ? root.blend("sky", 2) : root.pal.sky[2]
-    property color hill0: root.cycling ? root.blend("hills", 0) : root.pal.hills[0]
-    property color hill1: root.cycling ? root.blend("hills", 1) : root.pal.hills[1]
-    property color hill2: root.cycling ? root.blend("hills", 2) : root.pal.hills[2]
-    readonly property real star_alpha: root.cycling ? root.lerp(root.sky_keys[root.leg].stars, root.sky_keys[root.leg + 1].stars, root.leg_t) : root.tod === "night" ? 1 : root.tod === "dusk" ? 0.4 : 0
-    readonly property real cloud_alpha: root.cycling ? root.lerp(root.sky_keys[root.leg].clouds, root.sky_keys[root.leg + 1].clouds, root.leg_t) : root.tod === "night" ? 0.45 : 1
-    readonly property real moon_alpha: root.cycling ? (root.moon_u <= 1 ? 1 : 0) : root.tod === "dawn" ? 0 : 1
-    readonly property real sun_alpha: root.cycling ? (root.sun_u <= 1 ? 1 : 0) : root.tod === "dawn" ? 1 : 0
-    readonly property point moon_at: root.cycling ? root.arc(root.moon_u) : Qt.point(1370, 150)
-    readonly property point sun_at: root.cycling ? root.arc(root.sun_u) : Qt.point(1300, 500)
+
+    function shades(t) {
+        return { sky: root.palettes[t].sky.map(root.rgb), hills: root.palettes[t].hills.map(root.rgb) };
+    }
 
     function rgb(hex) {
         return [1, 3, 5].map(i => parseInt(hex.substr(i, 2), 16) / 255);
@@ -116,21 +122,23 @@ Item {
         return a + (b - a) * t;
     }
 
+    // The low sun's colours (dawn before noon, dusk after), toward day as it climbs, toward night as it sets.
     function blend(kind, i) {
-        const a = root.sky_keys[root.leg][kind][i], b = root.sky_keys[root.leg + 1][kind][i];
-        return Qt.rgba(root.lerp(a[0], b[0], root.leg_t), root.lerp(a[1], b[1], root.leg_t), root.lerp(a[2], b[2], root.leg_t), 1);
+        const low = root.shade_keys[root.sun_v < 0.5 ? "dawn" : "dusk"][kind][i], day = root.shade_keys.day[kind][i], night = root.shade_keys.night[kind][i];
+        return Qt.rgba(...[0, 1, 2].map(c => root.lerp(root.lerp(low[c], day[c], root.day_w), night[c], root.night_w)), 1);
     }
 
-    // Left horizon to right horizon behind the hills, peaking right of the logo at u = 0.7.
-    function arc(u) {
-        return Qt.point(800 - 760 * Math.cos(Math.PI * u), 780 - 650 * Math.sin(Math.PI * Math.pow(Math.max(0, u), 1.94)));
+    // Left horizon to right horizon behind the hills; the peak (v = 0.5) sits right of the logo.
+    function arc(v) {
+        const t = Math.max(0, v);
+        return Qt.point(800 - 760 * Math.cos(Math.PI * Math.pow(t, 0.515)), 780 - 650 * Math.sin(Math.PI * t));
     }
 
     NumberAnimation on sky_phase {
         running: root.cycling && root.cycle_armed
         from: root.cycle_start
         to: root.cycle_start + 1
-        duration: 180000
+        duration: 720000
         loops: Animation.Infinite
     }
 
@@ -249,7 +257,7 @@ Item {
         root.cycle_armed = false;
         if (root.phase !== "saver") return;
         if (root.can_step) root.ctx.scene = "";
-        root.cycle_start = ({ dusk: 0, night: 1 / 3, dawn: 2 / 3 })[root.tod];
+        root.cycle_start = root.tod_phase[root.tod];
         root.sky_phase = root.cycle_start;
         root.cycle_armed = true;
     }
@@ -843,6 +851,26 @@ Item {
                         height: 116
                         radius: 58
                         color: "#fff8dc"
+                    }
+                }
+
+                Item {
+                    anchors.fill: parent
+                    visible: root.day_cloud_alpha > 0
+                    opacity: root.day_cloud_alpha
+
+                    Repeater {
+                        model: [[170, 190, 120, 30], [250, 168, 80, 42], [1300, 330, 150, 30], [1380, 304, 90, 44]]
+
+                        Radial {
+                            required property var modelData
+                            cx: modelData[0]
+                            cy: modelData[1]
+                            rx: modelData[2] + 10
+                            ry: modelData[3] + 10
+                            inner: "#d9ffffff"
+                            mid: 0.7
+                        }
                     }
                 }
 
