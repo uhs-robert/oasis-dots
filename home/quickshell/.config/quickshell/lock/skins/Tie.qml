@@ -751,105 +751,6 @@ Item {
                 render_scale: 0.5
             }
 
-            // Radar sweep.
-            Item {
-                id: radar
-                anchors.centerIn: parent
-                width: Math.min(parent.width, parent.height) * 0.5
-                height: width
-
-                Rectangle {
-                    anchors.fill: parent
-                    radius: width / 2
-                    color: "transparent"
-                    border.width: Math.max(1, root.u * 0.15)
-                    border.color: root.vec
-
-                    Repeater {
-                        model: 6
-                        Rectangle {
-                            required property int index
-                            anchors.centerIn: parent
-                            width: radar.width * (index + 1) / 7
-                            height: width
-                            radius: width / 2
-                            color: "transparent"
-                            border.width: 1
-                            border.color: root.vec_faint
-                        }
-                    }
-                }
-
-                Rectangle {
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    y: 0
-                    width: Math.max(1, root.u * 0.1)
-                    height: parent.height
-                    color: root.vec_faint
-                }
-
-                Rectangle {
-                    anchors.verticalCenter: parent.verticalCenter
-                    x: 0
-                    width: parent.width
-                    height: Math.max(1, root.u * 0.1)
-                    color: root.vec_faint
-                }
-
-                Item {
-                    id: sweep
-                    anchors.fill: parent
-                    rotation: 0
-                    transformOrigin: Item.Center
-
-                    NumberAnimation on rotation {
-                        running: root.animate
-                        loops: Animation.Infinite
-                        from: 0
-                        to: 360
-                        duration: 6000
-                    }
-
-                    Shape {
-                        anchors.fill: parent
-                        preferredRendererType: Shape.CurveRenderer
-
-                        ShapePath {
-                            strokeColor: "transparent"
-                            fillColor: Qt.alpha(root.vec, 0.35)
-                            PathMove { x: radar.width / 2; y: radar.height / 2 }
-                            PathLine { x: radar.width / 2; y: 0 }
-                            PathArc { x: radar.width * 0.933; y: radar.height * 0.25; radiusX: radar.width / 2; radiusY: radar.height / 2 }
-                            PathLine { x: radar.width / 2; y: radar.height / 2 }
-                        }
-                    }
-                }
-
-                Repeater {
-                    model: [[0.32, 0.3, 1.2], [0.7, 0.42, 2.6], [0.58, 0.76, 4.3], [0.22, 0.64, 5.1]]
-
-                    Rectangle {
-                        id: blip
-                        required property var modelData
-                        x: radar.width * modelData[0] - width / 2
-                        y: radar.height * modelData[1] - height / 2
-                        width: root.u * 0.8
-                        height: width
-                        radius: width / 2
-                        color: root.hot
-
-                        SequentialAnimation {
-                            running: root.animate
-                            loops: Animation.Infinite
-                            PauseAnimation { duration: blip.modelData[2] * 1000 }
-                            NumberAnimation { target: blip; property: "opacity"; from: 0.15; to: 1; duration: 480 }
-                            NumberAnimation { target: blip; property: "opacity"; to: 0.3; duration: 2000 }
-                            PauseAnimation { duration: Math.max(0, 6000 - blip.modelData[2] * 1000 - 2480) }
-                        }
-                    }
-                }
-            }
-
             RowLayout {
                 x: root.u * 3
                 y: root.u * 3
@@ -861,7 +762,7 @@ Item {
                     spacing: root.u * 0.2
 
                     Text {
-                        text: "SECTOR SCAN"
+                        text: "HYPERSPACE"
                         color: root.vec
                         font.family: root.head_font
                         font.bold: true
@@ -915,7 +816,7 @@ Item {
                 x: root.u * 3
                 y: root.u * 10
                 lineHeight: 1.4
-                text: "GRID 7-ALPHA<br>SWEEP 06.0 S<br>CONTACTS " + String(root.ctx ? root.ctx.notifications : 0).padStart(2, "0") + "<br>OPERATOR " + root.up(root.ctx ? root.ctx.user : "")
+                text: "GRID 7-ALPHA<br>CONTACTS " + String(root.ctx ? root.ctx.notifications : 0).padStart(2, "0") + "<br>OPERATOR " + root.up(root.ctx ? root.ctx.user : "")
                 textFormat: Text.StyledText
                 color: root.vec_dim
                 font.family: root.body_font
