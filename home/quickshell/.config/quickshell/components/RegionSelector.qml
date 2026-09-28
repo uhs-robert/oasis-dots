@@ -2072,7 +2072,7 @@ PanelWindow {
                 visible: loupe.tvosd
                 x: loupe.tv_pad_x
                 y: loupe.tv_pad_y + loupe.tv_header_h + loupe.view + loupe.tv_lens_gap * 2
-                width: loupe.view
+                width: loupe.tv_width - loupe.tv_pad_x * 2
                 spacing: 0
 
                 Repeater {
@@ -2117,7 +2117,7 @@ PanelWindow {
                             anchors.right: tv_value.left
                             anchors.rightMargin: 4
                             anchors.verticalCenter: parent.verticalCenter
-                            elide: Text.ElideNone
+                            clip: true
                             text: "▮".repeat(filled) + "▯".repeat(10 - filled)
                             color: tv_row.modelData.color
                             style: Text.Outline
