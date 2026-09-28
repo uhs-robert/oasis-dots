@@ -105,18 +105,18 @@ Item {
                 Rectangle {
                     id: tooth
                     required property int index
-                    anchors.centerIn: parent
-                    width: crest.width * 0.12
-                    height: crest.width * 0.16
-                    y: -crest.height * 0.47
+                    width: crest.width * 0.1
+                    height: crest.height * 0.12
+                    x: (crest.width - width) / 2
+                    y: crest.height * 0.04
                     color: crest.crest_color
-                    transform: Rotation { angle: tooth.index * 22.5; origin.x: tooth.width / 2; origin.y: crest.height * 0.47 + tooth.height / 2 }
+                    transform: Rotation { angle: tooth.index * 22.5; origin.x: tooth.width / 2; origin.y: crest.height * 0.46 }
                 }
             }
 
             Rectangle {
                 anchors.centerIn: parent
-                width: parent.width * 0.8
+                width: parent.width * 0.76
                 height: width
                 radius: width / 2
                 color: "transparent"
@@ -139,12 +139,12 @@ Item {
                 Rectangle {
                     id: spoke
                     required property int index
-                    anchors.centerIn: parent
-                    width: crest.width * 0.09
-                    height: crest.width * 0.16
-                    y: -crest.height * 0.23
+                    width: crest.width * 0.07
+                    height: crest.height * 0.2
+                    x: (crest.width - width) / 2
+                    y: crest.height * 0.12
                     color: crest.crest_color
-                    transform: Rotation { angle: spoke.index * 45 + 22.5; origin.x: spoke.width / 2; origin.y: crest.height * 0.23 + spoke.height / 2 }
+                    transform: Rotation { angle: spoke.index * 45 + 22.5; origin.x: spoke.width / 2; origin.y: crest.height * 0.38 }
                 }
             }
 
@@ -172,6 +172,7 @@ Item {
             spacing: root.u * 1.4
 
             Loader {
+                Layout.alignment: Qt.AlignVCenter
                 sourceComponent: crest_icon
             }
 
@@ -198,6 +199,7 @@ Item {
             }
 
             Text {
+                Layout.alignment: Qt.AlignRight | Qt.AlignVCenter
                 text: root.phase === "wrong" ? "ALERT STATUS: RED" : root.phase === "unlock" ? "ACCESS: GRANTED" : "ACCESS: RESTRICTED"
                 color: root.vec_dim
                 font.family: root.body_font
@@ -218,7 +220,7 @@ Item {
         Item {
             id: scope
             x: top.x
-            y: top.y + top.height + root.u * 1.6
+            y: top.y + top.height + root.u * 3.4
             width: root.width * 0.42
             height: root.height - y - root.u * 8.5
 
@@ -466,7 +468,7 @@ Item {
 
             Text {
                 x: root.u * 0.4
-                y: -root.u * 0.7
+                y: -height - root.u * 0.4
                 text: "TARGETING COMPUTER"
                 color: root.vec
                 font.family: root.body_font
@@ -477,7 +479,7 @@ Item {
             Text {
                 anchors.right: parent.right
                 anchors.rightMargin: root.u * 0.4
-                y: -root.u * 0.7
+                y: -height - root.u * 0.4
                 text: "RANGE " + ({ idle: "0041.20", typing: "0027.85", wrong: "----.--", unlock: "0000.00" }[root.phase] || "0041.20")
                 color: root.vec
                 font.family: root.body_font
@@ -503,7 +505,7 @@ Item {
         Item {
             id: term
             x: root.width * 0.5
-            y: scope.y - root.u * 0.6
+            y: scope.y - root.u * 1.8
             width: root.width - x - root.u * 3
 
             Text {
@@ -566,8 +568,9 @@ Item {
                     Shape {
                         id: corner
                         required property int index
-                        readonly property real cx: index === 0 ? 0 : gate.width
-                        readonly property real cy: index === 0 ? 0 : gate.height
+                        readonly property real inset: Math.max(2, root.u * 0.22) / 2
+                        readonly property real cx: index === 0 ? inset : gate.width - inset
+                        readonly property real cy: index === 0 ? inset : gate.height - inset
                         readonly property real sx: index === 0 ? 1 : -1
                         readonly property real sy: index === 0 ? 1 : -1
                         anchors.fill: parent
