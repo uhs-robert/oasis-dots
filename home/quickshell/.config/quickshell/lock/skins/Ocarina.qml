@@ -1043,14 +1043,14 @@ Item {
                     x0: 352
                     base_y: 182
                     size: 52
-                    fit_w: 153
-                    text: "Name ?"
+                    fit_w: 236
+                    text: "Password ?"
                 }
 
                 Plate {
-                    x: 543
+                    x: 623
                     y: 137
-                    width: 308
+                    width: 290
                     height: 46
                     r: 8
                 }
@@ -1062,7 +1062,7 @@ Item {
                     ShapePath {
                         strokeWidth: -1
                         fillColor: "#1a2a66"
-                        PathSvg { path: "M554 156 L562 161 L554 166 Z" }
+                        PathSvg { path: "M634 156 L642 161 L634 166 Z" }
                     }
                 }
 
@@ -1072,7 +1072,7 @@ Item {
                     Shape {
                         id: mark
                         required property int index
-                        x: 598 + mark.index * 31 - 13
+                        x: 670 + mark.index * 31 - 13
                         y: 160 - 13
                         width: 26
                         height: 26
@@ -1091,7 +1091,7 @@ Item {
 
                 Orb {
                     visible: !name_screen.unlocking
-                    cx: 598 + root.marks * 31
+                    cx: 670 + root.marks * 31
                     cy: 160
                     rx: 26
 
@@ -1245,7 +1245,7 @@ Item {
                         base_y: 590
                         max_w: 600
                         textFormat: name_screen.prompt !== "" ? Text.PlainText : Text.StyledText
-                        text: name_screen.prompt !== "" ? name_screen.prompt : "That's <font color=\"#ff3c3c\">not the right name</font>..."
+                        text: name_screen.prompt !== "" ? name_screen.prompt : "That's <font color=\"#ff3c3c\">not the right password</font>..."
                         color: "#ffffff"
                         font.family: root.ui_font
                         font.weight: 500
