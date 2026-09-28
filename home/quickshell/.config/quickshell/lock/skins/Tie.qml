@@ -405,8 +405,10 @@ Item {
                     loops: Animation.Infinite
                     PropertyAction { target: brk_scale; property: "xScale"; value: 1.5 }
                     PropertyAction { target: brk_scale; property: "yScale"; value: 1.5 }
-                    NumberAnimation { target: brk_scale; property: "xScale"; to: 0.72; duration: 500; easing.type: Easing.OutCubic }
-                    NumberAnimation { target: brk_scale; property: "yScale"; to: 0.72; duration: 500; easing.type: Easing.OutCubic }
+                    ParallelAnimation {
+                        NumberAnimation { target: brk_scale; property: "xScale"; to: 0.72; duration: 500; easing.type: Easing.OutCubic }
+                        NumberAnimation { target: brk_scale; property: "yScale"; to: 0.72; duration: 500; easing.type: Easing.OutCubic }
+                    }
                     PauseAnimation { duration: 900 }
                 }
 
