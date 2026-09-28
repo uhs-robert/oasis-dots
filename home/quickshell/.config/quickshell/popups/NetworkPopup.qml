@@ -24,7 +24,7 @@ Popup {
 
     // The list fits its rows and only scrolls past most of the screen height.
     readonly property real max_list_height: (root.screen ? root.screen.height : 1080) * 0.6
-    body_height: content.implicitHeight + 24
+    body_height: Math.max(280, content.implicitHeight + 24)
     jumps_enabled: !root.password_mode && !root.forget_confirm && !root.dns_edit_mode
 
     readonly property string list_help: "Tab details · j/k move · gg/G first/last · Enter connect · f forget · t toggle · r scan · q close"
