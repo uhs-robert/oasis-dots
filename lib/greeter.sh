@@ -21,18 +21,19 @@ stage_greeter() {
   [[ -f "$live/theme/theme.json" ]] && cp "$live/theme/theme.json" "$dest/theme/"
   cp "$qs"/fonts/*.ttf "$qs"/fonts/OFL-*.txt "$dest/fonts/"
 
-  local style=oasis lock=follow tint=primary
+  local style=oasis lock=follow tint=primary music=on
   if [[ -f "$state" ]]; then
     style=$(jq -r '.style // "oasis"' "$state")
     lock=$(jq -r '.lock_style // "follow"' "$state")
     tint=$(jq -r '.lock_tint // "primary"' "$state")
+    music=$(jq -r 'if .lock_music == false then "off" else "on" end' "$state")
   fi
   [[ "$lock" == "follow" ]] && lock=$style
   local file="${lock^}.qml"
   [[ "$lock" != "simple" && -f "$dest/lock/skins/$file" ]] || lock=simple
 
-  jq -n --arg user "${GREETER_USER:-$USER}" --arg lock "$lock" --arg tint "$tint" \
-    '{user: $user, lock_style: $lock, lock_tint: $tint, session: "Hyprland"}' >"$dest/greeter.json"
+  jq -n --arg user "${GREETER_USER:-$USER}" --arg lock "$lock" --arg tint "$tint" --arg music "$music" \
+    '{user: $user, lock_style: $lock, lock_tint: $tint, lock_music: $music, session: "Hyprland"}' >"$dest/greeter.json"
   printf '%s\n' "$lock"
 }
 

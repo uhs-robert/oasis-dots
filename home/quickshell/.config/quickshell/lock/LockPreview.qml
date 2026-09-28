@@ -110,6 +110,7 @@ Scope {
     LockCtx {
         id: fake
         typing: true
+        sound: true
         tint: root.tint !== "" ? root.tint : Style.lock_tint
     }
 

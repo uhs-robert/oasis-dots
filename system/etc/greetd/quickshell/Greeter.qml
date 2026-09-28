@@ -33,7 +33,7 @@ Singleton {
         try {
             const d = JSON.parse(text);
             if (!d || typeof d !== "object" || Array.isArray(d)) return null;
-            for (const k of ["user", "lock_style", "lock_tint", "session"]) {
+            for (const k of ["user", "lock_style", "lock_tint", "lock_music", "session"]) {
                 if (d[k] !== undefined && typeof d[k] !== "string") return null;
             }
             if (d.lock_style !== undefined && !/^[a-z0-9_]+$/.test(d.lock_style)) return null;
@@ -76,6 +76,7 @@ Singleton {
         user: root.user
         tint: root.settings.lock_tint || "primary"
         power_live: !root.preview
+        music: root.settings.lock_music !== "off"
     }
 
     Connections {

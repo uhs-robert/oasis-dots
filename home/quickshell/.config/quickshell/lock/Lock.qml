@@ -432,6 +432,7 @@ Singleton {
         animate: Power.on_ac && !root.dormant
         backdrops: root.backdrop_files
         power_live: true
+        sound: true
     }
 
     Connections {

@@ -25,6 +25,18 @@ Item {
         return m ? m[1] : "Linux";
     }
 
+    readonly property bool has_music: true
+    readonly property bool sound_on: !!root.ctx && root.ctx.sound === true
+    readonly property bool owns_sound: root.sound_on && root.ctx.sound_owner === root
+    // The title theme plays only on the login screen; the fountain from the white fade until unlock, the title or the saver.
+    readonly property string music_track: {
+        if (!root.owns_sound || root.ctx.music === false || root.phase === "saver" || root.phase === "unlock") return "";
+        if (root.screen === "file" || root.screen === "name") return "fairy";
+        return root.ctx.login === true ? "title" : "";
+    }
+    property int heard_typed: 0
+    property bool dying: false
+
     readonly property bool can_step: !!root.ctx && "scene" in root.ctx
     readonly property string scene: root.can_step ? root.ctx.scene : ""
     readonly property int typed: root.ctx ? root.ctx.buffer_length : 0
@@ -135,7 +147,10 @@ Item {
         if (!root.can_step || c.buffer_length > 0 || c.checking || c.granted) return false;
         const ctrl = (event.modifiers & Qt.ControlModifier) && !(event.modifiers & Qt.AltModifier);
         if (c.scene === "name") {
-            if (event.key === Qt.Key_Escape) c.scene = "file";
+            if (event.key === Qt.Key_Escape) {
+                c.scene = "file";
+                root.cue("cancel");
+            }
             return false;
         }
         const on_file = root.screen === "file";
@@ -143,19 +158,30 @@ Item {
             const i = root.file_items.indexOf(root.file_item);
             const next = root.file_items[(i + (event.key === Qt.Key_Down ? 1 : root.file_items.length - 1)) % root.file_items.length];
             c.scene = next === "file1" ? "file" : "file:" + next;
+            root.cue("move");
             return true;
         }
         if (!ctrl && (event.key === Qt.Key_Return || event.key === Qt.Key_Enter || event.key === Qt.Key_Space)) {
+            root.cue(on_file || c.scene === "lit" ? "decide" : "start");
             if (on_file) root.file_activate();
             else c.scene = c.scene === "lit" ? "file" : "lit";
             return true;
         }
         if ((on_file || c.scene === "lit") && event.key === Qt.Key_Escape) {
             c.scene = "";
+            root.cue("cancel");
             return true;
         }
         if (!ctrl && event.text !== "" && event.text.charCodeAt(0) >= 32 && event.text.charCodeAt(0) !== 127) c.scene = "name";
         return false;
+    }
+
+    function cue(name) {
+        if (root.sound_on) root.ctx.cue(name);
+    }
+
+    function claim_sound() {
+        if (root.sound_on && !root.dying && !root.ctx.sound_owner) root.ctx.sound_owner = root;
     }
 
     // Reboot and Shut down need a second press while the note shows; the ctx runs it unless it is a preview.
@@ -175,6 +201,18 @@ Item {
     }
 
     clip: true
+    Component.onCompleted: root.claim_sound()
+    Component.onDestruction: {
+        root.dying = true;
+        if (root.ctx && root.ctx.sound_owner === root) root.ctx.sound_owner = null;
+    }
+
+    Loader {
+        id: audio_loader
+        active: root.owns_sound
+        source: Qt.resolvedUrl("ocarina/OcarinaAudio.qml")
+        onLoaded: audio_loader.item.track = Qt.binding(() => root.music_track)
+    }
     onPhaseChanged: {
         if (root.phase === "saver") {
             if (root.can_step) root.ctx.scene = "";
@@ -230,8 +268,17 @@ Item {
             back_timer.restart();
             note_timer.restart();
         }
-        function onBuffer_lengthChanged() { back_timer.restart(); }
+        function onBuffer_lengthChanged() {
+            back_timer.restart();
+            if (root.owns_sound && root.typed > root.heard_typed && audio_loader.item) audio_loader.item.play("letter");
+            root.heard_typed = root.typed;
+        }
+        function onSound_ownerChanged() { root.claim_sound(); }
+        function onCue(name) {
+            if (root.owns_sound && audio_loader.item) audio_loader.item.play(name);
+        }
         function onRejected() {
+            if (root.owns_sound && audio_loader.item) audio_loader.item.play("error");
             if (root.can_step) root.ctx.scene = "name";
             back_timer.restart();
             if (root.animate) flash_anim.restart();

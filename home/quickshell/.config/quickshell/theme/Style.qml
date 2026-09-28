@@ -2427,6 +2427,8 @@ Singleton {
     // What the simple lock draws behind its card: the desktop pixelated, blurred, or nothing.
     property string lock_backdrop: "pixelate"
     readonly property var lock_backdrops: ["pixelate", "blur", "off"]
+    // Lock skins with music play it only while this is on.
+    property bool lock_music: true
 
     function valid_lock_style(style_name) {
         return style_name === "follow" || style_name === "simple" || root.lock_only_names.indexOf(style_name) >= 0 || (style_name in root.styles && root.hidden.indexOf(style_name) < 0);
@@ -2453,13 +2455,18 @@ Singleton {
         return true;
     }
 
+    function set_lock_music(on) {
+        root.lock_music = on;
+        root.save();
+    }
+
     function set_cava_line(on) {
         root.cava_line = on;
         root.save();
     }
 
     function save() {
-        state_file.setText(JSON.stringify({ style: root.saved_name, cava_line: root.cava_line, lock_style: root.lock_style, lock_tint: root.lock_tint, lock_backdrop: root.lock_backdrop }));
+        state_file.setText(JSON.stringify({ style: root.saved_name, cava_line: root.cava_line, lock_style: root.lock_style, lock_tint: root.lock_tint, lock_backdrop: root.lock_backdrop, lock_music: root.lock_music }));
     }
 
     function preview(style_name) {
@@ -2494,6 +2501,7 @@ Singleton {
                 if (typeof data.lock_style === "string" && root.valid_lock_style(data.lock_style)) root.lock_style = data.lock_style;
                 if (root.lock_tints.indexOf(data.lock_tint) >= 0) root.lock_tint = data.lock_tint;
                 if (root.lock_backdrops.indexOf(data.lock_backdrop) >= 0) root.lock_backdrop = data.lock_backdrop;
+                root.lock_music = data.lock_music !== false;
                 if (typeof saved === "string" && saved in root.styles && root.hidden.indexOf(saved) < 0) {
                     root.name = saved;
                     root.saved_name = saved;
