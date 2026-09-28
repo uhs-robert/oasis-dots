@@ -96,8 +96,17 @@ Item {
             if (["openwindow", "closewindow", "movewindow", "workspace", "focusedmon"].includes(event.name)) {
                 Hyprland.refreshToplevels();
                 Hyprland.refreshWorkspaces();
+            } else if (["createworkspacev2", "moveworkspacev2"].includes(event.name)) {
+                burst_refresh.restart();
             }
         }
+    }
+
+    // Quickshell drops refreshes while one is in flight, so a burst of new workspaces can stay monitorless.
+    Timer {
+        id: burst_refresh
+        interval: 200
+        onTriggered: Hyprland.refreshWorkspaces()
     }
 
     MouseArea {
