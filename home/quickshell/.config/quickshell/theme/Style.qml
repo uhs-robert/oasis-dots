@@ -1543,6 +1543,7 @@ Singleton {
                     wait_anim: "atb",
                     done_anim: "fanfare",
                     weather_header: "status",
+                    picker_skin: "materia",
                     text_muted: Qt.tint(Theme.fg_dim, Qt.alpha(Theme.theme_primary_light, 0.5)),
                     text_dim: Theme.theme_primary_light,
                     text_fg: label,
