@@ -170,10 +170,11 @@ Singleton {
         dormant_timer.restart();
     }
 
-    // Reboots or powers off from the lock; the skin asking has already confirmed.
+    // Reboots, powers off or reboots to firmware setup from the lock; the skin asking has already confirmed.
     function power(action) {
-        if (!persist.locked || (action !== "reboot" && action !== "poweroff")) return;
-        Quickshell.execDetached(["systemctl", action]);
+        if (!persist.locked || ["reboot", "poweroff", "firmware"].indexOf(action) < 0) return;
+        if (action === "firmware") Quickshell.execDetached(["systemctl", "reboot", "--firmware-setup"]);
+        else Quickshell.execDetached(["systemctl", action]);
     }
 
     function finish_unlock() {

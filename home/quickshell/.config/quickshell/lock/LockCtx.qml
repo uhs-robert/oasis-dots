@@ -50,7 +50,7 @@ QtObject {
     }
 
     signal rejected
-    // A skin asks for "reboot" or "poweroff" after its own confirmation; only a ctx with power_live acts on it.
+    // A skin asks for "reboot", "poweroff" or "firmware" after its own confirmation; only a ctx with power_live acts on it.
     signal power_request(string action)
     property bool power_live: false
     // Audio: only a ctx with sound plays any (the lock and the full preview, never thumbnails); one skin instance, the owner, plays for all outputs.
