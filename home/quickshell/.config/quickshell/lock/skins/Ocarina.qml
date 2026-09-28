@@ -162,7 +162,7 @@ Item {
             return true;
         }
         if (!ctrl && (event.key === Qt.Key_Return || event.key === Qt.Key_Enter || event.key === Qt.Key_Space)) {
-            root.cue(on_file || c.scene === "lit" ? "decide" : "start");
+            root.cue(on_file ? "decide" : "start");
             if (on_file) root.file_activate();
             else c.scene = c.scene === "lit" ? "file" : "lit";
             return true;
