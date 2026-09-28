@@ -30,7 +30,7 @@ PanelWindow {
     readonly property color dim_color: Qt.alpha(Theme.bg_shadow, 0.6)
     readonly property bool pixel_mode: Screenshot.mode === "pixel"
     readonly property bool target_mode: Screenshot.mode === "window" || Screenshot.mode === "screen"
-    readonly property bool skinned_targets: ["scope", "jrpg", "goldeneye", "scopeitem", "scanvisor", "nvimfloat"].includes(Style.picker_skin)
+    readonly property bool skinned_targets: ["scope", "jrpg", "goldeneye", "scopeitem", "scanvisor", "tmux", "nvimfloat"].includes(Style.picker_skin)
     property bool help_open: false
     readonly property string delay_label: Screenshot.delay_s > 0 ? "Delay " + Screenshot.delay_s + "s" : "No delay"
     readonly property string tier_keys: "hjkl move 10px · H/J/K/L move 100px · C-hjkl move 1px · C-H/J/K/L move 300px"
@@ -282,6 +282,16 @@ PanelWindow {
             target_mode: root.target_mode
         }
 
+        TmuxTargets {
+            anchors.fill: parent
+            visible: Style.picker_skin === "tmux" && !root.pixel_mode
+            screen_name: root.screen_name
+            origin: Qt.point(root.modelData.x, root.modelData.y)
+            sel: root.sel
+            mine: root.mine
+            target_mode: root.target_mode
+        }
+
         Rectangle {
             id: readout
             visible: root.mine && !root.skinned_targets
@@ -475,6 +485,12 @@ PanelWindow {
             target_mode: root.target_mode
         }
 
+        TmuxCursor {
+            anchors.fill: parent
+            screen_name: root.screen_name
+            target_mode: root.target_mode
+        }
+
         Item {
             id: loupe
             readonly property real lens: 176
@@ -493,10 +509,11 @@ PanelWindow {
             readonly property bool scopeitem: Style.picker_skin === "scopeitem"
             readonly property bool scanvisor: Style.picker_skin === "scanvisor"
             readonly property bool nvimfloat: Style.picker_skin === "nvimfloat"
-            readonly property real gap: loupe.scanvisor ? 40 : loupe.nvimfloat ? 30 : loupe.scope || loupe.jrpg || loupe.goldeneye || loupe.scopeitem ? 36 : 28
+            readonly property real gap: loupe.scanvisor ? 40 : loupe.tmux ? 30 : loupe.nvimfloat ? 30 : loupe.scope || loupe.jrpg || loupe.goldeneye || loupe.scopeitem ? 36 : 28
             readonly property real nv_row_h: 20
             readonly property real nv_cmd_h: 18
             readonly property real nv_foot_gap: 4
+            readonly property bool tmux: Style.picker_skin === "tmux"
             readonly property real jrpg_name_h: 16
             readonly property real jrpg_gap: 6
             readonly property real jrpg_drop: 3
@@ -513,6 +530,16 @@ PanelWindow {
             readonly property real sv_header_h: 18
             readonly property real sv_header_gap: 8
             readonly property real sv_card_gap: 17
+            readonly property real tmux_pad: 10
+            readonly property real tmux_w: 220
+            readonly property real tmux_line_h: 18
+            readonly property real tmux_gap: 6
+            // R/G/B parsed from the pixel-mode hex readout, for the tmux pick output line.
+            readonly property var tmux_rgb: {
+                const hex = Screenshot.pixel_hex;
+                if (hex.length < 7) return [0, 0, 0];
+                return [parseInt(hex.substr(1, 2), 16), parseInt(hex.substr(3, 2), 16), parseInt(hex.substr(5, 2), 16)];
+            }
             readonly property bool sv_complete: scan_cursor.complete
             // R/G/B parsed from the swatch's hex readout; withheld as 0 until the scan completes.
             readonly property var sv_rgb: {
@@ -553,18 +580,46 @@ PanelWindow {
             readonly property real foot_h: 22
             readonly property real si_body_w: loupe.view + loupe.si_body_gap + loupe.si_zbar_w
             visible: Screenshot.lens_on && Screenshot.phase === "select" && Screenshot.cursor_screen === root.screen_name && (root.pixel_mode ? root.frame_ready : frozen_view.hasContent)
-            width: loupe.goldeneye ? loupe.ge_rim : loupe.scopeitem ? loupe.si_pad * 2 + loupe.si_body_w : loupe.scanvisor ? loupe.sv_pad * 2 + loupe.view : loupe.view + loupe.pad * 2 + (loupe.jrpg ? loupe.jrpg_drop : 0)
-            height: loupe.goldeneye ? loupe.ge_rim + loupe.ge_strip_gap + loupe.ge_strip_h : loupe.scope ? loupe.view + loupe.pad * 2 + loupe.header_h + loupe.foot_h : loupe.jrpg ? loupe.pad + loupe.header_h + loupe.view + loupe.jrpg_gap + loupe.jrpg_stats_h + loupe.pad + loupe.jrpg_drop : loupe.scopeitem ? loupe.si_pad + loupe.si_ruler_h + loupe.view + loupe.si_foot_gap + loupe.si_foot_h + loupe.si_pad : loupe.scanvisor ? loupe.sv_pad + loupe.sv_header_h + loupe.sv_header_gap + loupe.view + loupe.sv_card_gap + sv_card_col.implicitHeight + loupe.sv_pad : loupe.nvimfloat ? loupe.pad + loupe.header_h + loupe.view + loupe.nv_foot_gap + loupe.nv_row_h + loupe.nv_cmd_h + loupe.pad : loupe.view + loupe.pad * 2 + coords.implicitHeight + 4 + (root.pixel_mode ? swatch_row.height + 4 : 0)
+            width: loupe.goldeneye ? loupe.ge_rim : loupe.scopeitem ? loupe.si_pad * 2 + loupe.si_body_w : loupe.scanvisor ? loupe.sv_pad * 2 + loupe.view : loupe.tmux ? loupe.tmux_w : loupe.view + loupe.pad * 2 + (loupe.jrpg ? loupe.jrpg_drop : 0)
+            height: loupe.goldeneye ? loupe.ge_rim + loupe.ge_strip_gap + loupe.ge_strip_h : loupe.scope ? loupe.view + loupe.pad * 2 + loupe.header_h + loupe.foot_h : loupe.jrpg ? loupe.pad + loupe.header_h + loupe.view + loupe.jrpg_gap + loupe.jrpg_stats_h + loupe.pad + loupe.jrpg_drop : loupe.scopeitem ? loupe.si_pad + loupe.si_ruler_h + loupe.view + loupe.si_foot_gap + loupe.si_foot_h + loupe.si_pad : loupe.scanvisor ? loupe.sv_pad + loupe.sv_header_h + loupe.sv_header_gap + loupe.view + loupe.sv_card_gap + sv_card_col.implicitHeight + loupe.sv_pad : loupe.tmux ? loupe.tmux_pad * 2 + loupe.tmux_line_h * 3 + loupe.tmux_gap * 2 + loupe.view : loupe.nvimfloat ? loupe.pad + loupe.header_h + loupe.view + loupe.nv_foot_gap + loupe.nv_row_h + loupe.nv_cmd_h + loupe.pad : loupe.view + loupe.pad * 2 + coords.implicitHeight + 4 + (root.pixel_mode ? swatch_row.height + 4 : 0)
             x: loupe.at.x + loupe.gap + loupe.width <= root.width ? loupe.at.x + loupe.gap : loupe.at.x - (loupe.jrpg ? 66 : loupe.gap) - loupe.width
             y: loupe.at.y + loupe.gap + loupe.height <= root.height ? loupe.at.y + loupe.gap : loupe.at.y - loupe.gap - loupe.height
 
             Rectangle {
-                visible: !loupe.scope && !loupe.jrpg && !loupe.goldeneye && !loupe.scopeitem && !loupe.scanvisor && !loupe.nvimfloat
+                visible: !loupe.scope && !loupe.jrpg && !loupe.goldeneye && !loupe.scopeitem && !loupe.scanvisor && !loupe.tmux && !loupe.nvimfloat
                 anchors.fill: parent
                 radius: Style.frame_radius
                 color: Style.frame_color
                 border.width: Math.max(1, Style.frame_border_width)
                 border.color: Style.frame_border_color
+            }
+
+            Rectangle {
+                visible: loupe.tmux
+                anchors.fill: parent
+                color: Theme.bg_crust
+                border.width: 1
+                border.color: Theme.green
+            }
+
+            Rectangle {
+                visible: loupe.tmux
+                x: tmux_title.x - 3
+                y: tmux_title.y
+                width: tmux_title.implicitWidth + 6
+                height: tmux_title.implicitHeight
+                color: Theme.bg_crust
+            }
+
+            Text {
+                id: tmux_title
+                visible: loupe.tmux
+                x: 10
+                y: -tmux_title.implicitHeight / 2
+                text: "[0] pick"
+                color: Theme.green
+                font.family: Style.font_family
+                font.pixelSize: Style.fs(-6)
             }
 
             ScanGlass {
@@ -781,8 +836,8 @@ PanelWindow {
 
             Item {
                 id: lens_content
-                x: loupe.goldeneye ? (loupe.ge_rim - loupe.view) / 2 : loupe.scopeitem ? loupe.si_pad : loupe.scanvisor ? loupe.sv_pad : loupe.pad
-                y: loupe.goldeneye ? (loupe.ge_rim - loupe.view) / 2 : loupe.scopeitem ? loupe.si_pad + loupe.si_ruler_h : loupe.scanvisor ? loupe.sv_pad + loupe.sv_header_h + loupe.sv_header_gap : loupe.pad + loupe.header_h
+                x: loupe.goldeneye ? (loupe.ge_rim - loupe.view) / 2 : loupe.scopeitem ? loupe.si_pad : loupe.scanvisor ? loupe.sv_pad : loupe.tmux ? loupe.tmux_pad : loupe.pad
+                y: loupe.goldeneye ? (loupe.ge_rim - loupe.view) / 2 : loupe.scopeitem ? loupe.si_pad + loupe.si_ruler_h : loupe.scanvisor ? loupe.sv_pad + loupe.sv_header_h + loupe.sv_header_gap : loupe.tmux ? loupe.tmux_pad + loupe.tmux_line_h + loupe.tmux_gap : loupe.pad + loupe.header_h
                 width: loupe.view
                 height: loupe.view
                 clip: true
@@ -1003,7 +1058,7 @@ PanelWindow {
                     height: loupe.zoom + border.width * 2
                     color: "transparent"
                     border.width: loupe.zoom >= 8 ? 2 : 1
-                    border.color: loupe.scope ? Style.picker_hud : loupe.jrpg ? (jrpg_blink.alt ? Theme.theme_secondary : Theme.fg_strong) : loupe.goldeneye ? Theme.theme_label : loupe.scopeitem ? Theme.theme_secondary : loupe.scanvisor ? (loupe.sv_complete ? Theme.bright_green : Theme.bright_yellow) : loupe.nvimfloat ? Theme.fg_core : Style.caret_color
+                    border.color: loupe.scope ? Style.picker_hud : loupe.jrpg ? (jrpg_blink.alt ? Theme.theme_secondary : Theme.fg_strong) : loupe.goldeneye ? Theme.theme_label : loupe.scopeitem ? Theme.theme_secondary : loupe.scanvisor ? (loupe.sv_complete ? Theme.bright_green : Theme.bright_yellow) : loupe.tmux ? Theme.ui_match_bg : loupe.nvimfloat ? Theme.fg_core : Style.caret_color
                 }
 
                 Rectangle {
@@ -1051,7 +1106,7 @@ PanelWindow {
             Row {
                 id: swatch_row
                 visible: loupe.scope ? true : root.pixel_mode
-                opacity: loupe.jrpg || loupe.goldeneye || loupe.scopeitem || loupe.scanvisor || loupe.nvimfloat ? 0 : 1
+                opacity: loupe.jrpg || loupe.goldeneye || loupe.scopeitem || loupe.scanvisor || loupe.tmux || loupe.nvimfloat ? 0 : 1
                 anchors.horizontalCenter: !loupe.scope ? parent.horizontalCenter : undefined
                 anchors.bottom: !loupe.scope ? coords.top : undefined
                 anchors.bottomMargin: 2
@@ -1119,7 +1174,7 @@ PanelWindow {
 
             Text {
                 id: coords
-                visible: !loupe.scope && !loupe.jrpg && !loupe.goldeneye && !loupe.scopeitem && !loupe.scanvisor && !loupe.nvimfloat
+                visible: !loupe.scope && !loupe.jrpg && !loupe.goldeneye && !loupe.scopeitem && !loupe.scanvisor && !loupe.tmux && !loupe.nvimfloat
                 anchors.horizontalCenter: parent.horizontalCenter
                 anchors.bottom: parent.bottom
                 anchors.bottomMargin: loupe.pad - 2
@@ -1823,6 +1878,108 @@ PanelWindow {
                     color: Theme.theme_secondary
                     font.family: Style.mono_font
                     font.pixelSize: Style.fs(-6)
+                }
+            }
+
+            Row {
+                id: tmux_cmd_line
+                visible: loupe.tmux
+                x: loupe.tmux_pad
+                y: loupe.tmux_pad
+                height: loupe.tmux_line_h
+                spacing: 4
+
+                Text {
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: "$"
+                    color: Theme.green
+                    font.family: Style.mono_font
+                    font.pixelSize: 12
+                }
+
+                Text {
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: "pick --at " + Math.round(root.modelData.x + loupe.at.x) + "," + Math.round(root.modelData.y + loupe.at.y) + " --zoom " + loupe.zoom
+                    color: Theme.fg_strong
+                    font.family: Style.mono_font
+                    font.pixelSize: 12
+                }
+            }
+
+            Row {
+                id: tmux_output_line
+                visible: loupe.tmux && root.pixel_mode
+                x: loupe.tmux_pad
+                y: loupe.tmux_pad + loupe.tmux_line_h + loupe.tmux_gap + loupe.view + loupe.tmux_gap
+                height: loupe.tmux_line_h
+                spacing: 8
+
+                Text {
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: Screenshot.pixel_hex !== "" ? Screenshot.pixel_hex : "#------"
+                    color: Theme.fg_strong
+                    font.family: Style.mono_font
+                    font.pixelSize: 12
+                }
+
+                Text {
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: "rgb(" + loupe.tmux_rgb[0] + " " + loupe.tmux_rgb[1] + " " + loupe.tmux_rgb[2] + ")"
+                    color: Theme.fg_dim
+                    font.family: Style.mono_font
+                    font.pixelSize: 12
+                }
+
+                Text {
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: "██"
+                    color: Screenshot.pixel_hex !== "" ? Screenshot.pixel_hex : Theme.fg_dim
+                    font.family: Style.mono_font
+                    font.pixelSize: 12
+                }
+            }
+
+            Text {
+                id: tmux_region_line
+                visible: loupe.tmux && !root.pixel_mode
+                x: loupe.tmux_pad
+                y: loupe.tmux_pad + loupe.tmux_line_h + loupe.tmux_gap + loupe.view + loupe.tmux_gap
+                height: loupe.tmux_line_h
+                text: root.mine ? Math.round(root.sel.width) + "x" + Math.round(root.sel.height) + "  +" + Math.round(root.sel.x) + "," + Math.round(root.sel.y) : "drag to select"
+                color: root.mine ? Theme.fg_strong : Theme.fg_dim
+                font.family: Style.mono_font
+                font.pixelSize: 12
+            }
+
+            Row {
+                id: tmux_prompt_line
+                visible: loupe.tmux
+                x: loupe.tmux_pad
+                y: loupe.tmux_pad + loupe.tmux_line_h * 2 + loupe.tmux_gap * 2 + loupe.view
+                height: loupe.tmux_line_h
+                spacing: 4
+
+                Text {
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: "$ "
+                    color: Theme.green
+                    font.family: Style.mono_font
+                    font.pixelSize: 12
+                }
+
+                Rectangle {
+                    id: tmux_prompt_block
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: 7
+                    height: 13
+                    color: Theme.fg_core
+
+                    Timer {
+                        running: tmux_prompt_line.visible
+                        interval: 500
+                        repeat: true
+                        onTriggered: tmux_prompt_block.opacity = tmux_prompt_block.opacity > 0 ? 0 : 1
+                    }
                 }
             }
         }
