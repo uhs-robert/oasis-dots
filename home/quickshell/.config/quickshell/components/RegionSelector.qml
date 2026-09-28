@@ -1656,6 +1656,7 @@ PanelWindow {
 
             Rectangle {
                 visible: loupe.nvimfloat
+                z: -1
                 anchors.fill: parent
                 radius: 6
                 color: Theme.bg_crust

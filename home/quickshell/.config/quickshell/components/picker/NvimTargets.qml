@@ -70,6 +70,7 @@ Item {
         anchors.fill: parent
 
         Nvim.FloatFrame {
+            fill: "transparent"
             x: root.fx
             y: root.fy
             width: root.fw
