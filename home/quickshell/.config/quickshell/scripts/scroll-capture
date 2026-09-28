@@ -16,7 +16,10 @@ from PIL import Image
 SETTLE_S = 0.3
 TARGET_SHIFT = 0.6
 MIN_OVERLAP = 0.15
-MATCH_TOLERANCE = 2.0
+FEATURE_TOLERANCE = 3.0
+ROW_TOLERANCE = 2.0
+MATCH_FRACTION = 0.88
+CLUSTER_GAP = 16
 SAME_TOLERANCE = 0.5
 CHUNK_HEIGHT = 5000
 FIRST_WHEEL = 5
@@ -43,8 +46,23 @@ def row_features(gray):
     return np.stack([gray.mean(axis=1), (gray * ramp).mean(axis=1)], axis=1)
 
 
+def stale_rows(mismatch):
+    """Length of the changed cluster at the bottom of an overlap, 0 when the bottom rows match."""
+    rows = len(mismatch)
+    idx = np.flatnonzero(mismatch)
+    if len(idx) == 0 or rows - 1 - idx[-1] > CLUSTER_GAP:
+        return 0
+    start = idx[-1]
+    for m in idx[::-1][1:]:
+        if start - m > CLUSTER_GAP + 1:
+            break
+        start = m
+    k = rows - int(start)
+    return k if k <= rows * 0.25 else 0
+
+
 def find_shift(prev, nxt, top, bottom):
-    """Rows the content moved up between two gray frames, or None when they do not overlap."""
+    """Returns (rows the content moved up, stale rows at the bottom of the overlap), or None."""
     height = prev.shape[0]
     p = prev[top : height - bottom].astype(np.float32)
     n = nxt[top : height - bottom].astype(np.float32)
@@ -54,18 +72,25 @@ def find_shift(prev, nxt, top, bottom):
         return None
     fp = row_features(p)
     fn = row_features(n)
+    flat_p = p.std(axis=1) < 1.0
+    flat_n = n.std(axis=1) < 1.0
     shifts = np.arange(1, max_shift + 1)
-    scores = np.array([np.abs(fp[s:] - fn[: rows - s]).mean() for s in shifts])
-    verified = []
-    for s in shifts[np.argsort(scores)[:16]]:
-        if float(fp[s:, 0].std()) < 1.0:
+    fractions = np.array([(np.abs(fp[s:] - fn[: rows - s]).max(axis=1) < FEATURE_TOLERANCE).mean() for s in shifts])
+    best = None
+    for s in shifts[np.argsort(-fractions, kind="stable")[:16]]:
+        s = int(s)
+        ov = rows - s
+        live = ~(flat_p[s:] & flat_n[:ov])
+        if live.sum() < 3:
             continue
-        verified.append((float(np.abs(p[s:] - n[: rows - s]).mean()), int(s)))
-    good = [v for v in verified if v[0] <= MATCH_TOLERANCE]
-    if not good:
-        return None
-    best = min(v[0] for v in good)
-    return min(s for score, s in good if score <= best + 0.5)
+        mismatch = np.abs(p[s:] - n[:ov]).mean(axis=1) >= ROW_TOLERANCE
+        fraction = float(1 - mismatch[live].mean())
+        if fraction < MATCH_FRACTION:
+            continue
+        key = (-round(fraction, 3), s)
+        if best is None or key < best[0]:
+            best = (key, s, stale_rows(mismatch))
+    return None if best is None else (best[1], best[2])
 
 
 def sticky_bands(frames):
@@ -79,6 +104,15 @@ def sticky_bands(frames):
     return top, bottom
 
 
+def drop_rows(parts, count):
+    while count > 0:
+        if len(parts[-1]) <= count:
+            count -= len(parts.pop())
+        else:
+            parts[-1] = parts[-1][:-count]
+            count = 0
+
+
 def stitch(frames):
     """Frames are RGB uint8 arrays of one region scrolled down; returns the tall RGB array."""
     if len(frames) == 1:
@@ -88,11 +122,13 @@ def stitch(frames):
     end = height - bottom
     parts = [frames[0][:end]]
     for i in range(1, len(frames)):
-        shift = find_shift(to_gray(frames[i - 1]), to_gray(frames[i]), top, bottom)
-        if shift is None:
+        match = find_shift(to_gray(frames[i - 1]), to_gray(frames[i]), top, bottom)
+        if match is None:
             parts.append(frames[i][top:end])
         else:
-            parts.append(frames[i][end - shift : end])
+            shift, stale = match
+            drop_rows(parts, stale)
+            parts.append(frames[i][end - shift - stale : end])
     if bottom:
         parts.append(frames[-1][end:])
     return np.concatenate(parts, axis=0)
@@ -121,7 +157,7 @@ def ocr(tall, path):
         for i, (a, b) in enumerate(chunk_bounds(gray)):
             chunk = os.path.join(tmp, f"chunk{i}.png")
             Image.fromarray(tall[a:b]).save(chunk)
-            run = subprocess.run(["tesseract", chunk, "stdout", "-c", "preserve_interword_spaces=1"], capture_output=True, text=True)
+            run = subprocess.run(["tesseract", chunk, "stdout", "--psm", "6", "-c", "preserve_interword_spaces=1"], capture_output=True, text=True)
             if run.returncode != 0:
                 raise RuntimeError("tesseract failed")
             texts.append(run.stdout.rstrip("\n"))
@@ -149,6 +185,13 @@ def cursor_pos():
     return (out[0], out[1]) if len(out) >= 2 else None
 
 
+def nudge():
+    # A warp sends no motion, so the window under the pointer would not get the wheel.
+    sh("wlrctl", "pointer", "move", "1", "0")
+    sh("wlrctl", "pointer", "move", "-1", "0")
+    time.sleep(0.1)
+
+
 def wheel(amount):
     sh("wlrctl", "pointer", "scroll", str(int(amount)), "0")
     time.sleep(SETTLE_S)
@@ -165,12 +208,15 @@ def capture(geometry, scale, max_frames):
     w, h = (int(v) for v in size.split("x"))
     saved = cursor_pos()
     sh("hyprctl", "dispatch", "movecursor", str(x + w // 2), str(y + h // 2))
+    nudge()
     frames = [grab(geometry, scale)]
     prev_gray = to_gray(frames[0])
     log("frame 1")
     amount = FIRST_WHEEL
     direction = 1
     calibrated = False
+    moved = False
+    nudged = False
     retries = 0
     try:
         while len(frames) < max_frames and not stop_requested:
@@ -178,21 +224,26 @@ def capture(geometry, scale, max_frames):
             frame = grab(geometry, scale)
             gray = to_gray(frame)
             if frames_same(prev_gray, gray):
-                break
-            shift = find_shift(prev_gray, gray, 0, 0)
-            if shift is None and retries < MAX_RETRIES:
+                if moved or nudged:
+                    break
+                nudged = True
+                nudge()
+                continue
+            match = find_shift(prev_gray, gray, 0, 0)
+            if match is None and retries < MAX_RETRIES:
                 retries += 1
                 wheel(-direction * amount)
                 if find_shift(gray, prev_gray, 0, 0) is not None:
                     direction = -direction
                 else:
-                    amount = max(1, amount // 2)
+                    amount = max(FIRST_WHEEL, amount // 2)
                 continue
-            if shift is not None and not calibrated:
-                amount = max(1, round(amount * TARGET_SHIFT * frame.shape[0] / shift))
+            if match is not None and not calibrated:
+                amount = max(1, round(amount * TARGET_SHIFT * frame.shape[0] / match[0]))
                 calibrated = True
             frames.append(frame)
             prev_gray = gray
+            moved = True
             log(f"frame {len(frames)}")
     finally:
         if saved:
