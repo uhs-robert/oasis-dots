@@ -3,6 +3,7 @@ import QtQuick
 import QtQuick.Layouts
 import Quickshell
 import Quickshell.Hyprland
+import Quickshell.Io
 import "../../theme"
 import "../../services"
 import "../../components"
@@ -52,10 +53,32 @@ Item {
     // Dots are shorter than pills; the row keeps the pill height so it stays centered.
     implicitHeight: Style.bar_workspace_dot.a > 0 ? Math.max(row.implicitHeight, root.pill_height) : row.implicitHeight
 
+    // Workspace ids Hyprland reports on this screen, read with hyprctl.
+    property var hypr_ids: []
+    onScreen_nameChanged: ids_refresh.restart()
+
     readonly property var workspace_list: {
         const list = Hyprland.workspaces.values.filter(w => w.id > 0 && w.monitor && w.monitor.name === root.screen_name);
+        const known = list.map(w => w.id);
+        // Quickshell can miss existing workspaces (persistent ones at login) and QML cannot make it re-list them.
+        for (const id of root.hypr_ids) {
+            if (known.indexOf(id) < 0) list.push({ id: id, name: String(id), focused: false, active: false, toplevels: { values: [] }, monitor: { name: root.screen_name }, lastIpcObject: {} });
+        }
         list.sort((a, b) => a.id - b.id);
         return list;
+    }
+
+    Process {
+        id: hypr_ids_proc
+        running: true
+        command: ["hyprctl", "workspaces", "-j"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                try {
+                    root.hypr_ids = JSON.parse(text).filter(w => w.id > 0 && w.monitor === root.screen_name).map(w => w.id);
+                } catch (e) {}
+            }
+        }
     }
 
     function icon_for(cls) {
@@ -96,17 +119,19 @@ Item {
             if (["openwindow", "closewindow", "movewindow", "workspace", "focusedmon"].includes(event.name)) {
                 Hyprland.refreshToplevels();
                 Hyprland.refreshWorkspaces();
-            } else if (["createworkspacev2", "moveworkspacev2"].includes(event.name)) {
-                burst_refresh.restart();
+            } else if (["createworkspacev2", "destroyworkspacev2", "moveworkspacev2", "configreloaded", "monitoraddedv2"].includes(event.name)) {
+                ids_refresh.restart();
             }
         }
     }
 
-    // Quickshell drops refreshes while one is in flight, so a burst of new workspaces can stay monitorless.
     Timer {
-        id: burst_refresh
+        id: ids_refresh
         interval: 200
-        onTriggered: Hyprland.refreshWorkspaces()
+        onTriggered: {
+            Hyprland.refreshWorkspaces();
+            hypr_ids_proc.running = true;
+        }
     }
 
     MouseArea {
