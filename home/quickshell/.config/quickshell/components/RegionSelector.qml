@@ -31,7 +31,7 @@ PanelWindow {
     readonly property color dim_color: Qt.alpha(Theme.bg_shadow, 0.6)
     readonly property bool pixel_mode: Screenshot.mode === "pixel"
     readonly property bool target_mode: Screenshot.mode === "window" || Screenshot.mode === "screen"
-    readonly property bool skinned_targets: ["scope", "jrpg", "goldeneye", "scopeitem", "scanvisor", "tvosd", "tmux", "nvimfloat", "tiecomp", "materia", "duckhunt"].includes(Style.picker_skin)
+    readonly property bool skinned_targets: ["scope", "jrpg", "goldeneye", "scopeitem", "scanvisor", "tvosd", "tmux", "nvimfloat", "tiecomp", "materia", "duckhunt", "pokemon"].includes(Style.picker_skin)
     property bool help_open: false
     readonly property string delay_label: Screenshot.delay_s > 0 ? "Delay " + Screenshot.delay_s + "s" : "No delay"
     readonly property string tier_keys: "hjkl move 10px · H/J/K/L move 100px · C-hjkl move 1px · C-H/J/K/L move 300px"
@@ -332,6 +332,15 @@ PanelWindow {
             target_mode: root.target_mode
         }
 
+        PokemonTargets {
+            anchors.fill: parent
+            visible: Style.picker_skin === "pokemon" && !root.pixel_mode
+            screen_name: root.screen_name
+            sel: root.sel
+            mine: root.mine
+            target_mode: root.target_mode
+        }
+
         Rectangle {
             id: readout
             visible: root.mine && !root.skinned_targets
@@ -555,6 +564,12 @@ PanelWindow {
             target_mode: root.target_mode
         }
 
+        PokemonCursor {
+            anchors.fill: parent
+            screen_name: root.screen_name
+            target_mode: root.target_mode
+        }
+
         Item {
             id: loupe
             readonly property real lens: 176
@@ -573,7 +588,7 @@ PanelWindow {
             readonly property bool scopeitem: Style.picker_skin === "scopeitem"
             readonly property bool scanvisor: Style.picker_skin === "scanvisor"
             readonly property bool nvimfloat: Style.picker_skin === "nvimfloat"
-            readonly property real gap: loupe.duckhunt ? 34 : loupe.materia ? 34 : loupe.tvosd || loupe.tiecomp ? 32 : loupe.scanvisor ? 40 : loupe.tmux ? 30 : loupe.nvimfloat ? 30 : loupe.scope || loupe.jrpg || loupe.goldeneye || loupe.scopeitem ? 36 : 28
+            readonly property real gap: loupe.pokemon ? 34 : loupe.duckhunt ? 34 : loupe.materia ? 34 : loupe.tvosd || loupe.tiecomp ? 32 : loupe.scanvisor ? 40 : loupe.tmux ? 30 : loupe.nvimfloat ? 30 : loupe.scope || loupe.jrpg || loupe.goldeneye || loupe.scopeitem ? 36 : 28
             readonly property bool materia: Style.picker_skin === "materia"
             readonly property bool duckhunt: Style.picker_skin === "duckhunt"
             readonly property real nv_row_h: 20
@@ -582,6 +597,46 @@ PanelWindow {
             readonly property bool tmux: Style.picker_skin === "tmux"
             readonly property bool tvosd: Style.picker_skin === "tvosd"
             readonly property bool tiecomp: Style.picker_skin === "tiecomp"
+
+            readonly property bool pokemon: Style.picker_skin === "pokemon"
+            readonly property real pk_width: 250
+            readonly property real pk_pad: 10
+            readonly property real pk_lens_gap: 8
+            readonly property real pk_line_h: 18
+            readonly property real pk_divider_gap: 6
+            readonly property real pk_divider_h: 4
+            readonly property real pk_header_h: loupe.pk_line_h * 3
+            readonly property real pk_msg_h: loupe.pk_line_h * 2
+            // R/G/B parsed from the swatch's hex readout.
+            readonly property var pk_rgb: {
+                if (!loupe.pokemon) return [0, 0, 0];
+                const hex = Screenshot.pixel_hex;
+                if (hex.length < 7) return [0, 0, 0];
+                return [parseInt(hex.substr(1, 2), 16), parseInt(hex.substr(3, 2), 16), parseInt(hex.substr(5, 2), 16)];
+            }
+            // Luminance of the sampled color, 0-1, driving the HP bar fill.
+            readonly property real pk_luma: (loupe.pk_rgb[0] * 0.3 + loupe.pk_rgb[1] * 0.59 + loupe.pk_rgb[2] * 0.11) / 255
+            function pk_hp_color(ratio) {
+                return ratio > 0.5 ? Theme.green : ratio > 0.2 ? Theme.theme_secondary : Theme.red;
+            }
+            function pk_pad3(v) {
+                return String(Math.max(0, Math.min(999, Math.round(v)))).padStart(3, "0");
+            }
+            function pk_pad4(v) {
+                return String(Math.max(0, Math.round(v))).padStart(4, "0");
+            }
+            readonly property var pk_rows: {
+                if (!loupe.pokemon) return [];
+                if (root.pixel_mode) return ["RED   " + loupe.pk_pad3(loupe.pk_rgb[0]), "GREEN " + loupe.pk_pad3(loupe.pk_rgb[1]), "BLUE  " + loupe.pk_pad3(loupe.pk_rgb[2])];
+                return ["X " + loupe.pk_pad4(loupe.at.x) + " Y " + loupe.pk_pad4(loupe.at.y)];
+            }
+            readonly property real pk_stats_h: loupe.pk_rows.length * loupe.pk_line_h
+            readonly property var pk_message: {
+                if (!loupe.pokemon) return ["", ""];
+                if (root.pixel_mode) return ["Wild " + (Screenshot.pixel_hex !== "" ? Screenshot.pixel_hex : "#------"), "appeared!"];
+                if (root.mine) return ["Got a " + Math.round(root.sel.width) + "x" + Math.round(root.sel.height), "shot!"];
+                return ["Drag to catch", "an area!"];
+            }
             readonly property real jrpg_name_h: 16
             readonly property real jrpg_gap: 6
             readonly property real jrpg_drop: 3
@@ -730,13 +785,13 @@ PanelWindow {
                 ];
             }
             visible: Screenshot.lens_on && Screenshot.phase === "select" && Screenshot.cursor_screen === root.screen_name && (root.pixel_mode ? root.frame_ready : frozen_view.hasContent)
-            width: loupe.duckhunt ? loupe.dh_width : loupe.goldeneye ? loupe.ge_rim : loupe.scopeitem ? loupe.si_pad * 2 + loupe.si_body_w : loupe.scanvisor ? loupe.sv_pad * 2 + loupe.view : loupe.tvosd ? loupe.tv_width : loupe.tiecomp ? loupe.tc_width : loupe.tmux ? loupe.tmux_w : loupe.materia ? loupe.mat_width : loupe.view + loupe.pad * 2 + (loupe.jrpg ? loupe.jrpg_drop : 0)
-            height: loupe.duckhunt ? loupe.dh_lens_size + loupe.dh_gap + loupe.dh_hud_h + loupe.dh_gap + loupe.dh_score_h : loupe.goldeneye ? loupe.ge_rim + loupe.ge_strip_gap + loupe.ge_strip_h : loupe.scope ? loupe.view + loupe.pad * 2 + loupe.header_h + loupe.foot_h : loupe.jrpg ? loupe.pad + loupe.header_h + loupe.view + loupe.jrpg_gap + loupe.jrpg_stats_h + loupe.pad + loupe.jrpg_drop : loupe.scopeitem ? loupe.si_pad + loupe.si_ruler_h + loupe.view + loupe.si_foot_gap + loupe.si_foot_h + loupe.si_pad : loupe.scanvisor ? loupe.sv_pad + loupe.sv_header_h + loupe.sv_header_gap + loupe.view + loupe.sv_card_gap + sv_card_col.implicitHeight + loupe.sv_pad : loupe.tvosd ? loupe.tv_pad_y * 2 + loupe.tv_header_h + loupe.tv_lens_gap * 2 + loupe.view + tv_rows_col.implicitHeight : loupe.tiecomp ? loupe.tc_pad_y * 2 + loupe.tc_header_h + loupe.tc_lens_gap * 2 + loupe.view + tc_rows_col.implicitHeight : loupe.tmux ? loupe.tmux_pad * 2 + loupe.tmux_line_h * 3 + loupe.tmux_gap * 2 + loupe.view : loupe.nvimfloat ? loupe.pad + loupe.header_h + loupe.view + loupe.nv_foot_gap + loupe.nv_row_h + loupe.nv_cmd_h + loupe.pad : loupe.materia ? loupe.mat_pad_y * 2 + loupe.mat_header_h + loupe.view + loupe.mat_row_gap + mat_rows_col.implicitHeight : loupe.view + loupe.pad * 2 + coords.implicitHeight + 4 + (root.pixel_mode ? swatch_row.height + 4 : 0)
+            width: loupe.duckhunt ? loupe.dh_width : loupe.goldeneye ? loupe.ge_rim : loupe.scopeitem ? loupe.si_pad * 2 + loupe.si_body_w : loupe.scanvisor ? loupe.sv_pad * 2 + loupe.view : loupe.tvosd ? loupe.tv_width : loupe.tiecomp ? loupe.tc_width : loupe.tmux ? loupe.tmux_w : loupe.materia ? loupe.mat_width : loupe.pokemon ? loupe.pk_width : loupe.view + loupe.pad * 2 + (loupe.jrpg ? loupe.jrpg_drop : 0)
+            height: loupe.duckhunt ? loupe.dh_lens_size + loupe.dh_gap + loupe.dh_hud_h + loupe.dh_gap + loupe.dh_score_h : loupe.goldeneye ? loupe.ge_rim + loupe.ge_strip_gap + loupe.ge_strip_h : loupe.scope ? loupe.view + loupe.pad * 2 + loupe.header_h + loupe.foot_h : loupe.jrpg ? loupe.pad + loupe.header_h + loupe.view + loupe.jrpg_gap + loupe.jrpg_stats_h + loupe.pad + loupe.jrpg_drop : loupe.scopeitem ? loupe.si_pad + loupe.si_ruler_h + loupe.view + loupe.si_foot_gap + loupe.si_foot_h + loupe.si_pad : loupe.scanvisor ? loupe.sv_pad + loupe.sv_header_h + loupe.sv_header_gap + loupe.view + loupe.sv_card_gap + sv_card_col.implicitHeight + loupe.sv_pad : loupe.tvosd ? loupe.tv_pad_y * 2 + loupe.tv_header_h + loupe.tv_lens_gap * 2 + loupe.view + tv_rows_col.implicitHeight : loupe.tiecomp ? loupe.tc_pad_y * 2 + loupe.tc_header_h + loupe.tc_lens_gap * 2 + loupe.view + tc_rows_col.implicitHeight : loupe.tmux ? loupe.tmux_pad * 2 + loupe.tmux_line_h * 3 + loupe.tmux_gap * 2 + loupe.view : loupe.nvimfloat ? loupe.pad + loupe.header_h + loupe.view + loupe.nv_foot_gap + loupe.nv_row_h + loupe.nv_cmd_h + loupe.pad : loupe.materia ? loupe.mat_pad_y * 2 + loupe.mat_header_h + loupe.view + loupe.mat_row_gap + mat_rows_col.implicitHeight : loupe.pokemon ? loupe.pk_pad * 2 + loupe.pk_header_h + loupe.pk_lens_gap * 2 + loupe.view + loupe.pk_stats_h + loupe.pk_divider_gap * 2 + loupe.pk_divider_h + loupe.pk_msg_h : loupe.view + loupe.pad * 2 + coords.implicitHeight + 4 + (root.pixel_mode ? swatch_row.height + 4 : 0)
             x: loupe.at.x + loupe.gap + loupe.width <= root.width ? loupe.at.x + loupe.gap : loupe.at.x - (loupe.jrpg ? 66 : loupe.gap) - loupe.width
             y: loupe.at.y + loupe.gap + loupe.height <= root.height ? loupe.at.y + loupe.gap : loupe.at.y - loupe.gap - loupe.height
 
             Rectangle {
-                visible: !loupe.scope && !loupe.jrpg && !loupe.goldeneye && !loupe.scopeitem && !loupe.scanvisor && !loupe.tvosd && !loupe.tmux && !loupe.nvimfloat && !loupe.duckhunt && !loupe.materia && !loupe.tiecomp
+                visible: !loupe.scope && !loupe.jrpg && !loupe.goldeneye && !loupe.scopeitem && !loupe.scanvisor && !loupe.tvosd && !loupe.tmux && !loupe.nvimfloat && !loupe.pokemon && !loupe.duckhunt && !loupe.materia && !loupe.tiecomp
                 anchors.fill: parent
                 radius: Style.frame_radius
                 color: Style.frame_color
@@ -793,6 +848,25 @@ PanelWindow {
                 color: Theme.bg_shadow
                 border.width: 3
                 border.color: Theme.green
+            }
+
+            Rectangle {
+                visible: loupe.pokemon
+                anchors.fill: parent
+                color: Style.shade_0
+                border.width: 2
+                border.color: Style.shade_1
+                antialiasing: false
+            }
+
+            Rectangle {
+                visible: loupe.pokemon
+                anchors.fill: parent
+                anchors.margins: 3
+                color: "transparent"
+                border.width: 2
+                border.color: Style.shade_2
+                antialiasing: false
             }
 
             ScanGlass {
@@ -1057,8 +1131,8 @@ PanelWindow {
 
             Item {
                 id: lens_content
-                x: loupe.duckhunt ? loupe.dh_lens_x + loupe.dh_pad : loupe.goldeneye ? (loupe.ge_rim - loupe.view) / 2 : loupe.scopeitem ? loupe.si_pad : loupe.scanvisor ? loupe.sv_pad : loupe.tvosd ? loupe.tv_pad_x : loupe.tiecomp ? loupe.tc_pad_x : loupe.tmux ? loupe.tmux_pad : loupe.materia ? loupe.mat_pad_x : loupe.pad
-                y: loupe.duckhunt ? loupe.dh_pad : loupe.goldeneye ? (loupe.ge_rim - loupe.view) / 2 : loupe.scopeitem ? loupe.si_pad + loupe.si_ruler_h : loupe.scanvisor ? loupe.sv_pad + loupe.sv_header_h + loupe.sv_header_gap : loupe.tvosd ? loupe.tv_pad_y + loupe.tv_header_h + loupe.tv_lens_gap : loupe.tiecomp ? loupe.tc_pad_y + loupe.tc_header_h + loupe.tc_lens_gap : loupe.tmux ? loupe.tmux_pad + loupe.tmux_line_h + loupe.tmux_gap : loupe.materia ? loupe.mat_pad_y + loupe.mat_header_h : loupe.pad + loupe.header_h
+                x: loupe.duckhunt ? loupe.dh_lens_x + loupe.dh_pad : loupe.goldeneye ? (loupe.ge_rim - loupe.view) / 2 : loupe.scopeitem ? loupe.si_pad : loupe.scanvisor ? loupe.sv_pad : loupe.tvosd ? loupe.tv_pad_x : loupe.tiecomp ? loupe.tc_pad_x : loupe.tmux ? loupe.tmux_pad : loupe.materia ? loupe.mat_pad_x : loupe.pokemon ? (loupe.pk_width - loupe.view) / 2 : loupe.pad
+                y: loupe.duckhunt ? loupe.dh_pad : loupe.goldeneye ? (loupe.ge_rim - loupe.view) / 2 : loupe.scopeitem ? loupe.si_pad + loupe.si_ruler_h : loupe.scanvisor ? loupe.sv_pad + loupe.sv_header_h + loupe.sv_header_gap : loupe.tvosd ? loupe.tv_pad_y + loupe.tv_header_h + loupe.tv_lens_gap : loupe.tiecomp ? loupe.tc_pad_y + loupe.tc_header_h + loupe.tc_lens_gap : loupe.tmux ? loupe.tmux_pad + loupe.tmux_line_h + loupe.tmux_gap : loupe.materia ? loupe.mat_pad_y + loupe.mat_header_h : loupe.pokemon ? loupe.pk_pad + loupe.pk_header_h + loupe.pk_lens_gap : loupe.pad + loupe.header_h
                 width: loupe.view
                 height: loupe.view
                 clip: true
@@ -1301,7 +1375,7 @@ PanelWindow {
                     height: loupe.zoom + border.width * 2
                     color: "transparent"
                     border.width: loupe.zoom >= 8 ? 2 : 1
-                    border.color: loupe.duckhunt ? Theme.fg_strong : loupe.scope ? Style.picker_hud : loupe.jrpg ? (jrpg_blink.alt ? Theme.theme_secondary : Theme.fg_strong) : loupe.goldeneye ? Theme.theme_label : loupe.scopeitem ? Theme.theme_secondary : loupe.scanvisor ? (loupe.sv_complete ? Theme.bright_green : Theme.bright_yellow) : loupe.tvosd ? Theme.bright_green : loupe.tiecomp ? Theme.red : loupe.tmux ? Theme.ui_match_bg : loupe.nvimfloat ? Theme.fg_core : loupe.materia ? Theme.fg_strong : Style.caret_color
+                    border.color: loupe.duckhunt ? Theme.fg_strong : loupe.scope ? Style.picker_hud : loupe.jrpg ? (jrpg_blink.alt ? Theme.theme_secondary : Theme.fg_strong) : loupe.goldeneye ? Theme.theme_label : loupe.scopeitem ? Theme.theme_secondary : loupe.scanvisor ? (loupe.sv_complete ? Theme.bright_green : Theme.bright_yellow) : loupe.tvosd ? Theme.bright_green : loupe.tiecomp ? Theme.red : loupe.tmux ? Theme.ui_match_bg : loupe.nvimfloat ? Theme.fg_core : loupe.materia ? Theme.fg_strong : loupe.pokemon ? Style.shade_1 : Style.caret_color
                 }
 
                 Rectangle {
@@ -1377,6 +1451,18 @@ PanelWindow {
                 maskSpreadAtMin: 1.0
             }
 
+            Rectangle {
+                visible: loupe.pokemon
+                x: lens_content.x - 3
+                y: lens_content.y - 3
+                width: lens_content.width + 6
+                height: lens_content.height + 6
+                color: "transparent"
+                border.width: 3
+                border.color: Style.shade_1
+                antialiasing: false
+            }
+
             Timer {
                 id: jrpg_blink
                 property bool alt: false
@@ -1389,7 +1475,7 @@ PanelWindow {
             Row {
                 id: swatch_row
                 visible: loupe.scope ? true : root.pixel_mode
-                opacity: loupe.jrpg || loupe.goldeneye || loupe.scopeitem || loupe.scanvisor || loupe.tvosd || loupe.tmux || loupe.nvimfloat || loupe.tiecomp || loupe.materia || loupe.duckhunt ? 0 : 1
+                opacity: loupe.jrpg || loupe.goldeneye || loupe.scopeitem || loupe.scanvisor || loupe.tvosd || loupe.tmux || loupe.nvimfloat || loupe.tiecomp || loupe.materia || loupe.duckhunt || loupe.pokemon ? 0 : 1
                 anchors.horizontalCenter: !loupe.scope ? parent.horizontalCenter : undefined
                 anchors.bottom: !loupe.scope ? coords.top : undefined
                 anchors.bottomMargin: 2
@@ -1457,7 +1543,7 @@ PanelWindow {
 
             Text {
                 id: coords
-                visible: !loupe.scope && !loupe.jrpg && !loupe.goldeneye && !loupe.scopeitem && !loupe.scanvisor && !loupe.tvosd && !loupe.tmux && !loupe.nvimfloat && !loupe.duckhunt && !loupe.materia && !loupe.tiecomp
+                visible: !loupe.scope && !loupe.jrpg && !loupe.goldeneye && !loupe.scopeitem && !loupe.scanvisor && !loupe.tvosd && !loupe.tmux && !loupe.nvimfloat && !loupe.pokemon && !loupe.duckhunt && !loupe.materia && !loupe.tiecomp
                 anchors.horizontalCenter: parent.horizontalCenter
                 anchors.bottom: parent.bottom
                 anchors.bottomMargin: loupe.pad - 2
@@ -2672,6 +2758,153 @@ PanelWindow {
                         color: Theme.bright_green
                         font.family: Style.font_family
                         font.pixelSize: 10
+                    }
+                }
+            }
+
+            Column {
+                id: pk_header_col
+                visible: loupe.pokemon
+                x: loupe.pk_pad
+                y: loupe.pk_pad
+                width: loupe.pk_width - loupe.pk_pad * 2
+                spacing: 0
+
+                Text {
+                    width: parent.width
+                    height: loupe.pk_line_h
+                    text: root.pixel_mode ? (Screenshot.pixel_hex !== "" ? Screenshot.pixel_hex : "#------") : "AREA"
+                    color: Style.text_fg
+                    font.family: Style.mono_font
+                    font.pixelSize: 12
+                }
+
+                Item {
+                    width: parent.width
+                    height: loupe.pk_line_h
+
+                    Text {
+                        anchors.left: parent.left
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: ":L" + loupe.zoom
+                        color: Style.text_fg
+                        font.family: Style.mono_font
+                        font.pixelSize: 12
+                    }
+
+                    Text {
+                        anchors.right: parent.right
+                        anchors.verticalCenter: parent.verticalCenter
+                        visible: !root.pixel_mode && root.mine
+                        text: Math.round(root.sel.width) + "x" + Math.round(root.sel.height)
+                        color: Style.text_fg
+                        font.family: Style.mono_font
+                        font.pixelSize: 12
+                    }
+                }
+
+                Item {
+                    id: pk_hp_row
+                    width: parent.width
+                    height: loupe.pk_line_h
+
+                    Text {
+                        id: pk_hp_label
+                        anchors.left: parent.left
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: "HP:"
+                        color: Style.text_fg
+                        font.family: Style.mono_font
+                        font.pixelSize: 12
+                    }
+
+                    Rectangle {
+                        id: pk_hp_bar
+                        anchors.left: pk_hp_label.right
+                        anchors.leftMargin: 6
+                        anchors.right: parent.right
+                        anchors.verticalCenter: parent.verticalCenter
+                        height: 8
+                        radius: 4
+                        color: "transparent"
+                        border.width: 1
+                        border.color: Style.shade_1
+
+                        Rectangle {
+                            x: 1
+                            y: 1
+                            width: Math.max(0, Math.round((pk_hp_bar.width - 2) * Math.min(1, loupe.pk_luma)))
+                            height: pk_hp_bar.height - 2
+                            radius: 3
+                            color: loupe.pk_hp_color(loupe.pk_luma)
+                        }
+                    }
+                }
+            }
+
+            Column {
+                id: pk_stats_col
+                visible: loupe.pokemon
+                x: loupe.pk_pad
+                y: loupe.pk_pad + loupe.pk_header_h + loupe.pk_lens_gap + loupe.view + loupe.pk_lens_gap
+                width: loupe.pk_width - loupe.pk_pad * 2
+                spacing: 0
+
+                Repeater {
+                    model: loupe.pokemon ? loupe.pk_rows : []
+
+                    Text {
+                        required property string modelData
+                        width: pk_stats_col.width
+                        height: loupe.pk_line_h
+                        text: modelData
+                        color: Style.text_fg
+                        font.family: Style.mono_font
+                        font.pixelSize: 12
+                    }
+                }
+            }
+
+            Column {
+                id: pk_divider
+                visible: loupe.pokemon
+                x: loupe.pk_pad
+                y: pk_stats_col.y + loupe.pk_stats_h + loupe.pk_divider_gap
+                width: loupe.pk_width - loupe.pk_pad * 2
+                spacing: 2
+
+                Rectangle {
+                    width: parent.width
+                    height: 1
+                    color: Style.shade_1
+                }
+
+                Rectangle {
+                    width: parent.width
+                    height: 1
+                    color: Style.shade_1
+                }
+            }
+
+            Column {
+                id: pk_message_col
+                visible: loupe.pokemon
+                x: loupe.pk_pad
+                y: pk_divider.y + loupe.pk_divider_h + loupe.pk_divider_gap
+                width: loupe.pk_width - loupe.pk_pad * 2
+                spacing: 0
+
+                Repeater {
+                    model: loupe.pokemon ? loupe.pk_message : []
+
+                    Text {
+                        required property string modelData
+                        width: pk_message_col.width
+                        height: loupe.pk_line_h
+                        text: modelData
+                        color: Style.text_fg
+                        font.family: Style.mono_font
+                        font.pixelSize: 12
                     }
                 }
             }

@@ -1449,6 +1449,7 @@ Singleton {
                     done_anim: "levelup",
                     weather_header: "pokedex",
                     card_layout: "pixel",
+                    picker_skin: "pokemon",
                     shade_0: g0,
                     shade_1: g1,
                     shade_2: g2,
