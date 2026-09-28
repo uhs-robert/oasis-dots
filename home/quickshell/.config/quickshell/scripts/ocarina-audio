@@ -231,9 +231,39 @@ music_gain() {
   python3 -c "import sys; print(round(min(-18 - float(sys.argv[1]), -1 - float(sys.argv[2])), 2))" "$loud" "$peak"
 }
 
-# Cuts samples [0, end) of $1 into $2 with $4 dB of gain.
+# Cuts samples [$5, end) of $1 into $2 with $4 dB of gain, fading in over 5ms when it starts past 0.
 cut() {
-  ffmpeg -v error -y -i "$1" -ar "$rate" -af "atrim=end_sample=$3,asetpts=PTS-STARTPTS,volume=$4dB" -c:a libvorbis -q:a 6 -fflags +bitexact -flags:a +bitexact "$2"
+  local fade=
+  (($5 > 0)) && fade=",afade=t=in:d=0.005"
+  ffmpeg -v error -y -i "$1" -ar "$rate" -af "atrim=start_sample=$5:end_sample=$3,asetpts=PTS-STARTPTS$fade,volume=$4dB" -c:a libvorbis -q:a 6 -fflags +bitexact -flags:a +bitexact "$2"
+}
+
+# Prints the sample (at $rate) where $1 first sounds: 20ms RMS held over max(-50 dBFS, median - 40 dB) for 100ms, backed off 20ms onto a zero crossing.
+sound_start() {
+  ffmpeg -v error -i "$1" -ac 1 -ar "$rate" -f f32le - | python3 -c '
+import sys
+import numpy as np
+x = np.frombuffer(sys.stdin.buffer.read(), dtype=np.float32).astype(np.float64)
+rate = int(sys.argv[1])
+w, hop = int(0.02 * rate), int(0.005 * rate)
+if len(x) < 2 * w:
+    print(0)
+    sys.exit()
+env = 20 * np.log10(np.sqrt(np.lib.stride_tricks.sliding_window_view(x ** 2, w)[::hop].mean(axis=1)) + 1e-12)
+thr = max(-50.0, float(np.median(env[env > -80])) - 40 if np.any(env > -80) else -50.0)
+run = int(0.1 / 0.005)
+loud = env > thr
+hits = [i for i in range(len(loud) - run) if loud[i:i + run].all()]
+if not hits:
+    print(0)
+    sys.exit()
+c = max(0, hits[0] * hop - int(0.02 * rate))
+for k in range(0, 301):
+    if c - k >= 1 and (x[c - k - 1] <= 0) != (x[c - k] <= 0):
+        c -= k
+        break
+print(c)
+' "$rate"
 }
 
 # Writes samples [from, end) of $1 to $2 with $5 dB of gain, from being $6 or start; the last 60ms crossfade into the audio just before start, so it hands over seamlessly to the loop.
@@ -298,7 +328,10 @@ if [[ -f $title_src ]]; then
   e=$(jq -r .end <<<"$title_json")
   gain=$(music_gain "$title_src")
   if ((s > 0)); then
-    cut "$title_src" "$out/title_intro.ogg" "$s" "$gain"
+    trim=$(sound_start "$title_src")
+    ((trim < s)) || trim=0
+    cut "$title_src" "$out/title_intro.ogg" "$s" "$gain" "$trim"
+    title_json=$(jq -c --argjson t "$trim" --argjson r "$rate" '. + {trim_start: $t, trim_start_s: ($t / $r * 10000 | round / 10000)}' <<<"$title_json")
   else
     rm -f "$out/title_intro.ogg"
   fi
