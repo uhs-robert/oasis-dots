@@ -27,6 +27,7 @@ Scope {
             user: Quickshell.env("USER") || "",
             lock_style: root.resolved_lock(),
             lock_tint: Style.lock_tint,
+            lock_music: Style.lock_music ? "on" : "off",
             session: "Hyprland"
         };
         Quickshell.execDetached([Quickshell.shellDir + "/scripts/greeter-data", JSON.stringify(data), root.theme_path]);
@@ -57,6 +58,7 @@ Scope {
         function onSaved_nameChanged() { root.schedule(); }
         function onLock_styleChanged() { root.schedule(); }
         function onLock_tintChanged() { root.schedule(); }
+        function onLock_musicChanged() { root.schedule(); }
     }
 
     FileView {

@@ -15,7 +15,7 @@ Popup {
     popup_name: "lockscreen"
     title: "LOCK SCREEN"
     preferred_width: 280
-    footer_hint: "Tab screen/tint · j/k preview · gg/G first/last · 1-9 pick · Enter apply · p full view · q close"
+    footer_hint: "Tab screen/tint · j/k preview · gg/G first/last · 1-9 pick · Enter apply · p full view · m music · q close"
     body_height: content.implicitHeight + 24
     jumps_enabled: true
     sub_views: ["Screen", "Tint"]
@@ -32,7 +32,7 @@ Popup {
         for (let i = 0; i < skin_files.count; i++) out.push(skin_files.get(i, "fileName"));
         return out;
     }
-    readonly property var screens: ["follow", "simple"].concat(Style.names.filter(n => root.has_skin(n)))
+    readonly property var screens: ["follow", "simple"].concat(Style.names.concat(Style.lock_only_names).filter(n => root.has_skin(n)))
     readonly property var tints: Style.lock_tints
     readonly property string preview_screen: root.screens[root.screen_index] || "follow"
     readonly property string preview_tint: root.tints[root.tint_index] || "primary"
@@ -42,6 +42,7 @@ Popup {
         return root.has_skin(n) ? n : "simple";
     }
 
+    readonly property bool has_music: !!skin_loader.item && skin_loader.item.has_music === true
     readonly property bool is_open: Popups.open_name === "lockscreen"
     onIs_openChanged: {
         if (!is_open) {
@@ -127,6 +128,8 @@ Popup {
                 root.apply();
             } else if (event.key === Qt.Key_P) {
                 root.open_full();
+            } else if (event.key === Qt.Key_M && root.has_music) {
+                Style.set_lock_music(!Style.lock_music);
             } else if (event.key >= Qt.Key_1 && event.key <= Qt.Key_9) {
                 root.move_to(event.key - Qt.Key_1);
             } else {
@@ -281,6 +284,45 @@ Popup {
                             root.apply();
                         }
                     }
+                }
+            }
+
+            MenuRow {
+                id: music_row
+                visible: root.has_music
+                Layout.fillWidth: true
+                Layout.topMargin: 6
+                Layout.preferredHeight: Style.px(26)
+                base_radius: 6
+                key: "m"
+
+                RowLayout {
+                    anchors.left: parent.left
+                    anchors.leftMargin: 8 + music_row.inset
+                    anchors.right: parent.right
+                    anchors.rightMargin: 8 + music_row.key_space
+                    anchors.verticalCenter: parent.verticalCenter
+                    spacing: 8
+
+                    RowLabel {
+                        Layout.fillWidth: true
+                        label: "Music"
+                        color: music_row.fg(root.st.text_fg)
+                        font.family: root.st.font_family
+                        font.pixelSize: root.st.font_size
+                    }
+
+                    Text {
+                        text: Style.lock_music ? "on" : "off"
+                        color: Style.lock_music ? music_row.fg(Theme.ok) : music_row.fg(root.st.text_dim)
+                        font.family: root.st.font_family
+                        font.pixelSize: root.st.fs(-3)
+                    }
+                }
+
+                MouseArea {
+                    anchors.fill: parent
+                    onClicked: Style.set_lock_music(!Style.lock_music)
                 }
             }
 

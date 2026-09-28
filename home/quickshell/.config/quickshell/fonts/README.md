@@ -22,3 +22,7 @@ Every `.ttf`/`.otf` here is registered for the whole qs process by `services/Bun
 | Nunito-Variable.ttf | Nunito | google/fonts ofl/nunito | OFL-Nunito.txt |
 | Inter-Light.ttf, Inter-Regular.ttf, Inter-Medium.ttf, Inter-SemiBold.ttf | Inter | rsms/inter v4.1 (extras/ttf) | OFL-Inter.txt |
 | Geist-Variable.ttf, GeistMono-Variable.ttf | Geist, Geist Mono | vercel/geist-font v1.7.2 | OFL-Geist.txt |
+| CormorantSC-SemiBold.ttf | Cormorant SC | google/fonts ofl/cormorantsc, Latin subset | OFL-CormorantSC.txt |
+| Cinzel-Variable.ttf | Cinzel | google/fonts ofl/cinzel | OFL-Cinzel.txt |
+| Belleza-Regular.ttf | Belleza | google/fonts ofl/belleza | OFL-Belleza.txt |
+| MPLUSRounded1c-Medium.ttf, MPLUSRounded1c-ExtraBold.ttf | Rounded Mplus 1c | google/fonts ofl/mplusrounded1c, Latin subset | OFL-MPLUSRounded1c.txt |

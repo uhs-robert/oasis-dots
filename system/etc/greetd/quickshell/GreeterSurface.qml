@@ -8,7 +8,7 @@ Item {
 
     // Keys live here, not in the skin, so a broken skin still takes the password.
     focus: true
-    Keys.onPressed: event => Greeter.key(event)
+    Keys.onPressed: event => Greeter.key(event, skin_loader.item)
     onActiveFocusChanged: if (root.activeFocus && root.visible) Greeter.mark_ready()
     onVisibleChanged: if (root.activeFocus && root.visible) Greeter.mark_ready()
 

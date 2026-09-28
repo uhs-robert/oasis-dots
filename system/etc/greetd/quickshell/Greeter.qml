@@ -33,7 +33,7 @@ Singleton {
         try {
             const d = JSON.parse(text);
             if (!d || typeof d !== "object" || Array.isArray(d)) return null;
-            for (const k of ["user", "lock_style", "lock_tint", "session"]) {
+            for (const k of ["user", "lock_style", "lock_tint", "lock_music", "session"]) {
                 if (d[k] !== undefined && typeof d[k] !== "string") return null;
             }
             if (d.lock_style !== undefined && !/^[a-z0-9_]+$/.test(d.lock_style)) return null;
@@ -68,12 +68,20 @@ Singleton {
         failed: root.failed
         fail_count: root.fail_count
         message: root.message
+        prompt: root.prompt
         caps_lock: root.caps_lock
         typing: root.typing
         granted: root.granted
         saver: root.saver && !UPower.onBattery
         user: root.user
         tint: root.settings.lock_tint || "primary"
+        power_live: !root.preview
+        music: root.settings.lock_music !== "off"
+    }
+
+    Connections {
+        target: root.ctx
+        function onPower_request(action) { root.power_now(action); }
     }
 
     property bool ready: false
@@ -169,11 +177,28 @@ Singleton {
             return;
         }
         root.power_armed = "";
+        root.power_now(action);
+    }
+
+    function power_now(action) {
+        if (action !== "reboot" && action !== "poweroff") return;
         if (root.preview) root.message = "Preview: would " + action;
         else Quickshell.execDetached(["systemctl", action]);
     }
 
-    function key(event) {
+    // True when `skin` defines handle_key(event) and it returns exactly true; a throwing skin takes nothing.
+    function skin_takes(event, skin) {
+        if (!skin || typeof skin.handle_key !== "function") return false;
+        try {
+            return skin.handle_key(event) === true;
+        } catch (e) {
+            console.warn("Greeter: skin handle_key failed: " + e);
+            return false;
+        }
+    }
+
+    // `skin` may take a key only while the buffer is empty and greetd waits on nothing.
+    function key(event, skin) {
         root.wake();
         if (event.key === Qt.Key_F10) {
             root.fallback();
@@ -181,6 +206,10 @@ Singleton {
             return;
         }
         if (root.granted) {
+            event.accepted = true;
+            return;
+        }
+        if (!root.checking && root.buffer === "" && root.prompt === "" && root.skin_takes(event, skin)) {
             event.accepted = true;
             return;
         }

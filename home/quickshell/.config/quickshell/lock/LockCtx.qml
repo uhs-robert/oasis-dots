@@ -37,6 +37,8 @@ QtObject {
     property string backdrop_mode: Style.lock_backdrop
     // Set by the preview to pin a phase.
     property string forced_phase: ""
+    // A skin's own sub-screen, shared by every output; the skin steps it from handle_key and "" is its first.
+    property string scene: ""
 
     readonly property string phase: {
         if (root.forced_phase !== "") return root.forced_phase;
@@ -48,6 +50,17 @@ QtObject {
     }
 
     signal rejected
+    // A skin asks for "reboot" or "poweroff" after its own confirmation; only a ctx with power_live acts on it.
+    signal power_request(string action)
+    property bool power_live: false
+    // Audio: only a ctx with sound plays any (the lock and the full preview, never thumbnails); one skin instance, the owner, plays for all outputs.
+    property bool sound: false
+    property bool music: Style.lock_music
+    // The login screen rather than the lock; skins may play more there.
+    property bool login: false
+    property var sound_owner: null
+    // A skin's named sound effect, heard by the owner.
+    signal cue(string name)
 
     property SystemClock clock: SystemClock {
         precision: SystemClock.Minutes

@@ -15,12 +15,15 @@ QtObject {
     property bool failed: false
     property int fail_count: 0
     property string message: ""
+    property string prompt: ""
     property bool caps_lock: false
     property bool typing: false
     property bool granted: false
     property bool saver: false
     property bool animate: !UPower.onBattery
     property string forced_phase: ""
+    // A skin's own sub-screen; the skin steps it from handle_key.
+    property string scene: ""
     property string user: ""
     property string tint: "primary"
 
@@ -34,6 +37,14 @@ QtObject {
     }
 
     signal rejected
+    // A skin asks for "reboot" or "poweroff" after its own confirmation; only a ctx with power_live acts on it.
+    signal power_request(string action)
+    property bool power_live: false
+    property bool sound: true
+    property bool music: true
+    property bool login: true
+    property var sound_owner: null
+    signal cue(string name)
 
     readonly property var tint_pair: Tints.pair(Theme, root.tint)
     readonly property color tint_base: root.tint_pair[0]
