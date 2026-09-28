@@ -1046,6 +1046,7 @@ Singleton {
                 const lock = Theme.theme_label;
                 return Object.assign({}, terminal, {
                     wait_anim: "comms",
+                    picker_skin: "tiecomp",
                     text_muted: Qt.alpha(vec, 0.55),
                     text_dim: Qt.alpha(vec, 0.7),
                     text_fg: Qt.tint(Theme.fg_core, Qt.alpha(vec, 0.72)),
