@@ -11,6 +11,7 @@ import "../theme"
 import "../services"
 import "picker"
 import "snes" as SnesParts
+import "ff7" as Ff7Parts
 
 // One per screen while Screenshot.selecting: drag a region, then pick an action from the toolbar.
 PanelWindow {
@@ -30,7 +31,7 @@ PanelWindow {
     readonly property color dim_color: Qt.alpha(Theme.bg_shadow, 0.6)
     readonly property bool pixel_mode: Screenshot.mode === "pixel"
     readonly property bool target_mode: Screenshot.mode === "window" || Screenshot.mode === "screen"
-    readonly property bool skinned_targets: ["scope", "jrpg", "goldeneye", "scopeitem", "scanvisor", "tvosd", "tmux", "nvimfloat", "tiecomp"].includes(Style.picker_skin)
+    readonly property bool skinned_targets: ["scope", "jrpg", "goldeneye", "scopeitem", "scanvisor", "tvosd", "tmux", "nvimfloat", "tiecomp", "materia"].includes(Style.picker_skin)
     property bool help_open: false
     readonly property string delay_label: Screenshot.delay_s > 0 ? "Delay " + Screenshot.delay_s + "s" : "No delay"
     readonly property string tier_keys: "hjkl move 10px · H/J/K/L move 100px · C-hjkl move 1px · C-H/J/K/L move 300px"
@@ -312,6 +313,15 @@ PanelWindow {
             target_mode: root.target_mode
         }
 
+        MateriaTargets {
+            anchors.fill: parent
+            visible: Style.picker_skin === "materia" && !root.pixel_mode
+            screen_name: root.screen_name
+            sel: root.sel
+            mine: root.mine
+            target_mode: root.target_mode
+        }
+
         Rectangle {
             id: readout
             visible: root.mine && !root.skinned_targets
@@ -523,6 +533,12 @@ PanelWindow {
             target_mode: root.target_mode
         }
 
+        MateriaCursor {
+            anchors.fill: parent
+            screen_name: root.screen_name
+            target_mode: root.target_mode
+        }
+
         Item {
             id: loupe
             readonly property real lens: 176
@@ -541,7 +557,8 @@ PanelWindow {
             readonly property bool scopeitem: Style.picker_skin === "scopeitem"
             readonly property bool scanvisor: Style.picker_skin === "scanvisor"
             readonly property bool nvimfloat: Style.picker_skin === "nvimfloat"
-            readonly property real gap: loupe.tvosd || loupe.tiecomp ? 32 : loupe.scanvisor ? 40 : loupe.tmux ? 30 : loupe.nvimfloat ? 30 : loupe.scope || loupe.jrpg || loupe.goldeneye || loupe.scopeitem ? 36 : 28
+            readonly property real gap: loupe.materia ? 34 : loupe.tvosd || loupe.tiecomp ? 32 : loupe.scanvisor ? 40 : loupe.tmux ? 30 : loupe.nvimfloat ? 30 : loupe.scope || loupe.jrpg || loupe.goldeneye || loupe.scopeitem ? 36 : 28
+            readonly property bool materia: Style.picker_skin === "materia"
             readonly property real nv_row_h: 20
             readonly property real nv_cmd_h: 18
             readonly property real nv_foot_gap: 4
@@ -666,14 +683,36 @@ PanelWindow {
             readonly property real header_h: loupe.scope ? 20 : loupe.jrpg ? loupe.jrpg_name_h + loupe.jrpg_gap : loupe.scopeitem ? loupe.si_ruler_h : loupe.nvimfloat ? 18 : 0
             readonly property real foot_h: 22
             readonly property real si_body_w: loupe.view + loupe.si_body_gap + loupe.si_zbar_w
+            readonly property real mat_width: 222
+            readonly property real mat_pad_x: 14
+            readonly property real mat_pad_y: 10
+            readonly property real mat_header_h: 28
+            readonly property real mat_row_gap: 4
+            // R/G/B AP bars in pixel mode; Size (while dragging) and Pos in region mode.
+            readonly property var mat_rows: {
+                if (!loupe.materia) return [];
+                if (root.pixel_mode) {
+                    const hex = Screenshot.pixel_hex;
+                    const rgb = hex.length >= 7 ? [parseInt(hex.substr(1, 2), 16), parseInt(hex.substr(3, 2), 16), parseInt(hex.substr(5, 2), 16)] : [0, 0, 0];
+                    return [
+                        { label: "R AP", value: String(rgb[0]), ratio: rgb[0] / 255, color: Theme.red, bar: true },
+                        { label: "G AP", value: String(rgb[1]), ratio: rgb[1] / 255, color: Theme.green, bar: true },
+                        { label: "B AP", value: String(rgb[2]), ratio: rgb[2] / 255, color: Theme.blue, bar: true }
+                    ];
+                }
+                return [
+                    { label: "Size", value: root.mine ? Math.round(root.sel.width) + " x " + Math.round(root.sel.height) : "--", ratio: 0, color: "transparent", bar: false },
+                    { label: "Pos", value: Math.round(root.modelData.x + loupe.at.x) + ", " + Math.round(root.modelData.y + loupe.at.y), ratio: 0, color: "transparent", bar: false }
+                ];
+            }
             visible: Screenshot.lens_on && Screenshot.phase === "select" && Screenshot.cursor_screen === root.screen_name && (root.pixel_mode ? root.frame_ready : frozen_view.hasContent)
-            width: loupe.goldeneye ? loupe.ge_rim : loupe.scopeitem ? loupe.si_pad * 2 + loupe.si_body_w : loupe.scanvisor ? loupe.sv_pad * 2 + loupe.view : loupe.tvosd ? loupe.tv_width : loupe.tiecomp ? loupe.tc_width : loupe.tmux ? loupe.tmux_w : loupe.view + loupe.pad * 2 + (loupe.jrpg ? loupe.jrpg_drop : 0)
-            height: loupe.goldeneye ? loupe.ge_rim + loupe.ge_strip_gap + loupe.ge_strip_h : loupe.scope ? loupe.view + loupe.pad * 2 + loupe.header_h + loupe.foot_h : loupe.jrpg ? loupe.pad + loupe.header_h + loupe.view + loupe.jrpg_gap + loupe.jrpg_stats_h + loupe.pad + loupe.jrpg_drop : loupe.scopeitem ? loupe.si_pad + loupe.si_ruler_h + loupe.view + loupe.si_foot_gap + loupe.si_foot_h + loupe.si_pad : loupe.scanvisor ? loupe.sv_pad + loupe.sv_header_h + loupe.sv_header_gap + loupe.view + loupe.sv_card_gap + sv_card_col.implicitHeight + loupe.sv_pad : loupe.tvosd ? loupe.tv_pad_y * 2 + loupe.tv_header_h + loupe.tv_lens_gap * 2 + loupe.view + tv_rows_col.implicitHeight : loupe.tiecomp ? loupe.tc_pad_y * 2 + loupe.tc_header_h + loupe.tc_lens_gap * 2 + loupe.view + tc_rows_col.implicitHeight : loupe.tmux ? loupe.tmux_pad * 2 + loupe.tmux_line_h * 3 + loupe.tmux_gap * 2 + loupe.view : loupe.nvimfloat ? loupe.pad + loupe.header_h + loupe.view + loupe.nv_foot_gap + loupe.nv_row_h + loupe.nv_cmd_h + loupe.pad : loupe.view + loupe.pad * 2 + coords.implicitHeight + 4 + (root.pixel_mode ? swatch_row.height + 4 : 0)
+            width: loupe.goldeneye ? loupe.ge_rim : loupe.scopeitem ? loupe.si_pad * 2 + loupe.si_body_w : loupe.scanvisor ? loupe.sv_pad * 2 + loupe.view : loupe.tvosd ? loupe.tv_width : loupe.tiecomp ? loupe.tc_width : loupe.tmux ? loupe.tmux_w : loupe.materia ? loupe.mat_width : loupe.view + loupe.pad * 2 + (loupe.jrpg ? loupe.jrpg_drop : 0)
+            height: loupe.goldeneye ? loupe.ge_rim + loupe.ge_strip_gap + loupe.ge_strip_h : loupe.scope ? loupe.view + loupe.pad * 2 + loupe.header_h + loupe.foot_h : loupe.jrpg ? loupe.pad + loupe.header_h + loupe.view + loupe.jrpg_gap + loupe.jrpg_stats_h + loupe.pad + loupe.jrpg_drop : loupe.scopeitem ? loupe.si_pad + loupe.si_ruler_h + loupe.view + loupe.si_foot_gap + loupe.si_foot_h + loupe.si_pad : loupe.scanvisor ? loupe.sv_pad + loupe.sv_header_h + loupe.sv_header_gap + loupe.view + loupe.sv_card_gap + sv_card_col.implicitHeight + loupe.sv_pad : loupe.tvosd ? loupe.tv_pad_y * 2 + loupe.tv_header_h + loupe.tv_lens_gap * 2 + loupe.view + tv_rows_col.implicitHeight : loupe.tiecomp ? loupe.tc_pad_y * 2 + loupe.tc_header_h + loupe.tc_lens_gap * 2 + loupe.view + tc_rows_col.implicitHeight : loupe.tmux ? loupe.tmux_pad * 2 + loupe.tmux_line_h * 3 + loupe.tmux_gap * 2 + loupe.view : loupe.nvimfloat ? loupe.pad + loupe.header_h + loupe.view + loupe.nv_foot_gap + loupe.nv_row_h + loupe.nv_cmd_h + loupe.pad : loupe.materia ? loupe.mat_pad_y * 2 + loupe.mat_header_h + loupe.view + loupe.mat_row_gap + mat_rows_col.implicitHeight : loupe.view + loupe.pad * 2 + coords.implicitHeight + 4 + (root.pixel_mode ? swatch_row.height + 4 : 0)
             x: loupe.at.x + loupe.gap + loupe.width <= root.width ? loupe.at.x + loupe.gap : loupe.at.x - (loupe.jrpg ? 66 : loupe.gap) - loupe.width
             y: loupe.at.y + loupe.gap + loupe.height <= root.height ? loupe.at.y + loupe.gap : loupe.at.y - loupe.gap - loupe.height
 
             Rectangle {
-                visible: !loupe.scope && !loupe.jrpg && !loupe.goldeneye && !loupe.scopeitem && !loupe.scanvisor && !loupe.tvosd && !loupe.tmux && !loupe.nvimfloat && !loupe.tiecomp
+                visible: !loupe.scope && !loupe.jrpg && !loupe.goldeneye && !loupe.scopeitem && !loupe.scanvisor && !loupe.tvosd && !loupe.tmux && !loupe.nvimfloat && !loupe.materia && !loupe.tiecomp
                 anchors.fill: parent
                 radius: Style.frame_radius
                 color: Style.frame_color
@@ -766,6 +805,54 @@ PanelWindow {
             SnesParts.SnesWindow {
                 visible: loupe.jrpg
                 anchors.fill: parent
+            }
+
+            Ff7Parts.Ff7Window {
+                visible: loupe.materia
+                anchors.fill: parent
+            }
+
+            Item {
+                id: mat_header
+                visible: loupe.materia
+                x: loupe.mat_pad_x
+                y: loupe.mat_pad_y
+                width: loupe.mat_width - loupe.mat_pad_x * 2
+                height: 22
+
+                MateriaOrb {
+                    id: mat_orb
+                    visible: root.pixel_mode
+                    anchors.left: parent.left
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: 22
+                    height: 22
+                    color: Screenshot.pixel_hex !== "" ? Screenshot.pixel_hex : Theme.fg_muted
+                }
+
+                Text {
+                    anchors.left: root.pixel_mode ? mat_orb.right : parent.left
+                    anchors.leftMargin: root.pixel_mode ? 8 : 0
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: root.pixel_mode ? (Screenshot.pixel_hex !== "" ? Screenshot.pixel_hex : "#------") + " Materia" : "Area Materia"
+                    color: Theme.fg_strong
+                    style: Text.Raised
+                    styleColor: Style.text_shadow
+                    font.family: Style.font_family
+                    font.pixelSize: Style.fs(-4)
+                }
+            }
+
+            Rectangle {
+                visible: loupe.materia
+                x: lens_content.x - 2
+                y: lens_content.y - 2
+                width: lens_content.width + 4
+                height: lens_content.height + 4
+                radius: 4
+                color: "transparent"
+                border.width: 2
+                border.color: Style.frame_border_color
             }
 
             MultiEffect {
@@ -934,8 +1021,8 @@ PanelWindow {
 
             Item {
                 id: lens_content
-                x: loupe.goldeneye ? (loupe.ge_rim - loupe.view) / 2 : loupe.scopeitem ? loupe.si_pad : loupe.scanvisor ? loupe.sv_pad : loupe.tvosd ? loupe.tv_pad_x : loupe.tiecomp ? loupe.tc_pad_x : loupe.tmux ? loupe.tmux_pad : loupe.pad
-                y: loupe.goldeneye ? (loupe.ge_rim - loupe.view) / 2 : loupe.scopeitem ? loupe.si_pad + loupe.si_ruler_h : loupe.scanvisor ? loupe.sv_pad + loupe.sv_header_h + loupe.sv_header_gap : loupe.tvosd ? loupe.tv_pad_y + loupe.tv_header_h + loupe.tv_lens_gap : loupe.tiecomp ? loupe.tc_pad_y + loupe.tc_header_h + loupe.tc_lens_gap : loupe.tmux ? loupe.tmux_pad + loupe.tmux_line_h + loupe.tmux_gap : loupe.pad + loupe.header_h
+                x: loupe.goldeneye ? (loupe.ge_rim - loupe.view) / 2 : loupe.scopeitem ? loupe.si_pad : loupe.scanvisor ? loupe.sv_pad : loupe.tvosd ? loupe.tv_pad_x : loupe.tiecomp ? loupe.tc_pad_x : loupe.tmux ? loupe.tmux_pad : loupe.materia ? loupe.mat_pad_x : loupe.pad
+                y: loupe.goldeneye ? (loupe.ge_rim - loupe.view) / 2 : loupe.scopeitem ? loupe.si_pad + loupe.si_ruler_h : loupe.scanvisor ? loupe.sv_pad + loupe.sv_header_h + loupe.sv_header_gap : loupe.tvosd ? loupe.tv_pad_y + loupe.tv_header_h + loupe.tv_lens_gap : loupe.tiecomp ? loupe.tc_pad_y + loupe.tc_header_h + loupe.tc_lens_gap : loupe.tmux ? loupe.tmux_pad + loupe.tmux_line_h + loupe.tmux_gap : loupe.materia ? loupe.mat_pad_y + loupe.mat_header_h : loupe.pad + loupe.header_h
                 width: loupe.view
                 height: loupe.view
                 clip: true
@@ -1178,7 +1265,7 @@ PanelWindow {
                     height: loupe.zoom + border.width * 2
                     color: "transparent"
                     border.width: loupe.zoom >= 8 ? 2 : 1
-                    border.color: loupe.scope ? Style.picker_hud : loupe.jrpg ? (jrpg_blink.alt ? Theme.theme_secondary : Theme.fg_strong) : loupe.goldeneye ? Theme.theme_label : loupe.scopeitem ? Theme.theme_secondary : loupe.scanvisor ? (loupe.sv_complete ? Theme.bright_green : Theme.bright_yellow) : loupe.tvosd ? Theme.bright_green : loupe.tiecomp ? Theme.red : loupe.tmux ? Theme.ui_match_bg : loupe.nvimfloat ? Theme.fg_core : Style.caret_color
+                    border.color: loupe.scope ? Style.picker_hud : loupe.jrpg ? (jrpg_blink.alt ? Theme.theme_secondary : Theme.fg_strong) : loupe.goldeneye ? Theme.theme_label : loupe.scopeitem ? Theme.theme_secondary : loupe.scanvisor ? (loupe.sv_complete ? Theme.bright_green : Theme.bright_yellow) : loupe.tvosd ? Theme.bright_green : loupe.tiecomp ? Theme.red : loupe.tmux ? Theme.ui_match_bg : loupe.nvimfloat ? Theme.fg_core : loupe.materia ? Theme.fg_strong : Style.caret_color
                 }
 
                 Rectangle {
@@ -1248,7 +1335,7 @@ PanelWindow {
             Row {
                 id: swatch_row
                 visible: loupe.scope ? true : root.pixel_mode
-                opacity: loupe.jrpg || loupe.goldeneye || loupe.scopeitem || loupe.scanvisor || loupe.tvosd || loupe.tmux || loupe.nvimfloat || loupe.tiecomp ? 0 : 1
+                opacity: loupe.jrpg || loupe.goldeneye || loupe.scopeitem || loupe.scanvisor || loupe.tvosd || loupe.tmux || loupe.nvimfloat || loupe.tiecomp || loupe.materia ? 0 : 1
                 anchors.horizontalCenter: !loupe.scope ? parent.horizontalCenter : undefined
                 anchors.bottom: !loupe.scope ? coords.top : undefined
                 anchors.bottomMargin: 2
@@ -1316,7 +1403,7 @@ PanelWindow {
 
             Text {
                 id: coords
-                visible: !loupe.scope && !loupe.jrpg && !loupe.goldeneye && !loupe.scopeitem && !loupe.scanvisor && !loupe.tvosd && !loupe.tmux && !loupe.nvimfloat && !loupe.tiecomp
+                visible: !loupe.scope && !loupe.jrpg && !loupe.goldeneye && !loupe.scopeitem && !loupe.scanvisor && !loupe.tvosd && !loupe.tmux && !loupe.nvimfloat && !loupe.materia && !loupe.tiecomp
                 anchors.horizontalCenter: parent.horizontalCenter
                 anchors.bottom: parent.bottom
                 anchors.bottomMargin: loupe.pad - 2
@@ -1583,6 +1670,92 @@ PanelWindow {
                                 color: stat_row.modelData.color
                             }
                         }
+                    }
+                }
+            }
+
+            Column {
+                id: mat_rows_col
+                visible: loupe.materia
+                x: loupe.mat_pad_x
+                y: loupe.mat_pad_y + loupe.mat_header_h + loupe.view + loupe.mat_row_gap
+                width: loupe.mat_width - loupe.mat_pad_x * 2
+                spacing: 4
+
+                Repeater {
+                    model: loupe.materia ? loupe.mat_rows : []
+
+                    Column {
+                        id: mat_row
+                        required property var modelData
+                        width: mat_rows_col.width
+                        spacing: 2
+
+                        Item {
+                            width: parent.width
+                            height: 14
+
+                            Text {
+                                anchors.left: parent.left
+                                anchors.verticalCenter: parent.verticalCenter
+                                text: mat_row.modelData.label
+                                color: Theme.theme_primary_light
+                                font.family: Style.font_family
+                                font.pixelSize: Style.fs(-6)
+                            }
+
+                            Text {
+                                anchors.right: parent.right
+                                anchors.verticalCenter: parent.verticalCenter
+                                text: mat_row.modelData.value
+                                color: Theme.fg_strong
+                                font.family: Style.font_family
+                                font.pixelSize: Style.fs(-6)
+                            }
+                        }
+
+                        Rectangle {
+                            visible: mat_row.modelData.bar
+                            width: parent.width
+                            height: 5
+                            color: Theme.bg_shadow
+                            border.width: 1
+                            border.color: Theme.fg_muted
+
+                            Rectangle {
+                                x: 1
+                                y: 1
+                                width: Math.max(0, (parent.width - 2) * Math.max(0, Math.min(1, mat_row.modelData.ratio)))
+                                height: parent.height - 2
+                                gradient: Gradient {
+                                    GradientStop { position: 0; color: mat_row.modelData.color }
+                                    GradientStop { position: 1; color: Theme.fg_strong }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Item {
+                    width: mat_rows_col.width
+                    height: 14
+
+                    Text {
+                        anchors.left: parent.left
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: "Lv"
+                        color: Theme.theme_primary_light
+                        font.family: Style.font_family
+                        font.pixelSize: Style.fs(-6)
+                    }
+
+                    Text {
+                        anchors.right: parent.right
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: String(Screenshot.zoom_index + 1)
+                        color: Theme.fg_strong
+                        font.family: Style.font_family
+                        font.pixelSize: Style.fs(-6)
                     }
                 }
             }
