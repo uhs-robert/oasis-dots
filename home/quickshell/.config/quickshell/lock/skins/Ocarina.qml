@@ -44,19 +44,37 @@ Item {
     readonly property int typed: root.ctx ? root.ctx.buffer_length : 0
     readonly property bool lit: root.scene === "lit"
     readonly property bool checking: !!root.ctx && root.ctx.checking
-    // title, file, name or saver.
+    // title, file, name or saver. Options counts as "file" too: it's a floating panel over file select.
     readonly property string screen: {
         if (root.phase === "saver") return "saver";
         if (root.phase === "unlock" || root.typed > 0 || root.checking) return "name";
-        if (root.scene === "file" || root.scene.startsWith("file:")) return "file";
+        if (root.scene === "file" || root.scene.startsWith("file:") || root.scene.startsWith("opt:")) return "file";
         return root.scene === "name" ? "name" : "title";
     }
 
     // File select's cursor and note live in the scene as "file:<item>:<note>" so every output agrees.
     readonly property var file_items: ["file1", "reboot", "poweroff", "options"]
     readonly property string file_item: root.scene.startsWith("file:") ? root.scene.split(":")[1] : "file1"
-    readonly property string file_note: root.scene.split(":")[2] || ""
+    readonly property string file_note: root.scene.startsWith("file:") ? (root.scene.split(":")[2] || "") : ""
     readonly property var power_words: ({ reboot: "reboot", poweroff: "shut down" })
+
+    // The Options menu's cursor and note live in the scene as "opt:<item>:<note>". Greeter-only entries are hidden on the lock.
+    readonly property bool ctx_login: !!root.ctx && root.ctx.login === true
+    readonly property var opt_items: root.ctx_login ? ["session", "safe", "text", "firmware", "back"] : ["firmware", "back"]
+    readonly property bool in_options: root.scene.startsWith("opt:")
+    readonly property string opt_item: root.in_options ? root.scene.split(":")[1] : (root.opt_items[0] || "")
+    readonly property string opt_note: root.in_options ? (root.scene.split(":")[2] || "") : ""
+    readonly property var opt_words: ({ firmware: "reboot to firmware setup", text: "switch to the text login" })
+
+    function opt_label(item) {
+        switch (item) {
+        case "session": return "Session: " + (root.ctx && "session_name" in root.ctx ? root.ctx.session_name : "");
+        case "safe": return "Safe session";
+        case "text": return "Text login";
+        case "firmware": return "Firmware setup";
+        default: return "Back";
+        }
+    }
 
     // The title stays on show under the PRESS START fade to white; the view follows `screen` otherwise.
     property bool holding_title: false
@@ -222,20 +240,39 @@ Item {
             return false;
         }
         const on_file = root.screen === "file";
-        if (on_file && (event.key === Qt.Key_Up || event.key === Qt.Key_Down)) {
+        const in_opts = root.in_options;
+        if (on_file && !in_opts && (event.key === Qt.Key_Up || event.key === Qt.Key_Down)) {
             const i = root.file_items.indexOf(root.file_item);
             const next = root.file_items[(i + (event.key === Qt.Key_Down ? 1 : root.file_items.length - 1)) % root.file_items.length];
             c.scene = next === "file1" ? "file" : "file:" + next;
             root.cue("move");
             return true;
         }
-        if (!ctrl && (event.key === Qt.Key_Return || event.key === Qt.Key_Enter || event.key === Qt.Key_Space)) {
+        if (in_opts && (event.key === Qt.Key_Up || event.key === Qt.Key_Down)) {
+            const items = root.opt_items;
+            const i = items.indexOf(root.opt_item);
+            const next = items[(i + (event.key === Qt.Key_Down ? 1 : items.length - 1)) % items.length];
+            c.scene = "opt:" + next;
+            root.cue("move");
+            return true;
+        }
+        if (in_opts && !ctrl && (event.key === Qt.Key_Return || event.key === Qt.Key_Enter)) {
+            root.cue("decide");
+            root.opt_activate();
+            return true;
+        }
+        if (in_opts && event.key === Qt.Key_Escape) {
+            c.scene = "file:options";
+            root.cue("cancel");
+            return true;
+        }
+        if (!ctrl && (event.key === Qt.Key_Return || event.key === Qt.Key_Enter || (event.key === Qt.Key_Space && !in_opts))) {
             root.cue(on_file ? "decide" : "start");
             if (on_file) root.file_activate();
             else c.scene = c.scene === "lit" ? "file" : "lit";
             return true;
         }
-        if ((on_file || c.scene === "lit") && event.key === Qt.Key_Escape) {
+        if ((on_file || c.scene === "lit") && !in_opts && event.key === Qt.Key_Escape) {
             c.scene = "";
             root.cue("cancel");
             return true;
@@ -259,12 +296,35 @@ Item {
         if (item === "file1") {
             c.scene = "name";
         } else if (item === "options") {
-            c.scene = "file:options:soon";
+            c.scene = "opt:" + root.opt_items[0];
         } else if (root.file_note === "armed") {
             c.scene = "file:" + item + (c.power_live ? ":running" : ":preview");
             if (c.power_live) c.power_request(item);
         } else {
             c.scene = "file:" + item + ":armed";
+        }
+    }
+
+    // Session cycling is harmless in a preview; safe/firmware/text only run once power_live, else a preview note shows.
+    // Firmware and text login need a second press while the note shows, like Reboot/Shut down.
+    function opt_activate() {
+        const c = root.ctx;
+        const item = root.opt_item;
+        if (item === "back") {
+            c.scene = "file:options";
+        } else if (item === "session") {
+            if (c.power_live && "session_request" in c) c.session_request();
+        } else if (item === "safe") {
+            if (c.power_live && "safe_request" in c) c.safe_request();
+            c.scene = "name";
+        } else if (root.opt_note === "armed") {
+            c.scene = "opt:" + item + (c.power_live ? ":running" : ":preview");
+            if (c.power_live) {
+                if (item === "firmware") c.power_request("firmware");
+                else if (item === "text" && "fallback_request" in c) c.fallback_request();
+            }
+        } else {
+            c.scene = "opt:" + item + ":armed";
         }
     }
 
@@ -308,7 +368,12 @@ Item {
         id: note_timer
         interval: 4000
         onTriggered: {
-            if (root.can_step && root.screen === "file" && root.file_note !== "") root.ctx.scene = "file:" + root.file_item;
+            if (!root.can_step || root.screen !== "file") return;
+            if (root.in_options) {
+                if (root.opt_note !== "") root.ctx.scene = "opt:" + root.opt_item;
+            } else if (root.file_note !== "") {
+                root.ctx.scene = "file:" + root.file_item;
+            }
         }
     }
 
@@ -1145,11 +1210,12 @@ Item {
                     base_y: 182
                     size: 52
                     fit_w: 465
-                    text: "Please select a file."
+                    text: root.in_options ? "Options" : "Please select a file."
                 }
 
                 // The game's file list, scaled from its full-screen layout into the name entry frame.
                 Item {
+                    visible: !root.in_options
                     readonly property real s: 0.661
                     x: 313 - 172 * s
                     y: 203 - 120 * s
@@ -1208,6 +1274,78 @@ Item {
                     Pill { x: 203; y: 594; width: 275; height: 67; label: "Options"; label_x0: 255; label_x1: 440; base_y: 645; lit: root.file_item === "options" }
                 }
 
+                // The Options menu: a floating panel of Pill rows over the same frame, so it shares file select's style.
+                Item {
+                    visible: root.in_options
+
+                    Repeater {
+                        model: root.opt_items
+
+                        Pill {
+                            id: opt_row
+                            required property int index
+                            required property var modelData
+                            x: 352
+                            y: 230 + opt_row.index * 74
+                            width: 460
+                            height: 62
+                            label: root.opt_label(opt_row.modelData)
+                            label_x0: opt_row.x + 40
+                            label_x1: opt_row.x + opt_row.width - 30
+                            base_y: opt_row.y + 43
+                            lit: root.opt_item === opt_row.modelData
+                        }
+                    }
+                }
+
+                Item {
+                    id: opt_note_box
+                    readonly property string word: root.opt_words[root.opt_item] || ""
+                    readonly property var lines: {
+                        const w = opt_note_box.word;
+                        switch (root.opt_note) {
+                        case "armed": return [w.charAt(0).toUpperCase() + w.slice(1) + "?", "Press Enter again to " + w + "."];
+                        case "running": return ["One moment...", "See you soon."];
+                        case "preview": return ["Preview: would " + w + ".", "Nothing was run."];
+                        default: return [];
+                        }
+                    }
+                    visible: opt_note_box.lines.length > 0
+
+                    Rectangle {
+                        x: 540
+                        y: 420
+                        width: 520
+                        height: 120
+                        radius: 14
+                        color: "#c7000000"
+                    }
+
+                    FitText {
+                        x0: 568
+                        base_y: 465
+                        max_w: 470
+                        textFormat: Text.PlainText
+                        text: opt_note_box.lines[0] || ""
+                        color: "#ffffff"
+                        font.family: root.ui_font
+                        font.weight: 500
+                        font.pixelSize: 28
+                    }
+
+                    FitText {
+                        x0: 568
+                        base_y: 507
+                        max_w: 470
+                        textFormat: Text.PlainText
+                        text: opt_note_box.lines[1] || ""
+                        color: "#ffffff"
+                        font.family: root.ui_font
+                        font.weight: 500
+                        font.pixelSize: 28
+                    }
+                }
+
                 Item {
                     id: note_box
                     readonly property string word: root.power_words[root.file_item] || ""
@@ -1217,7 +1355,6 @@ Item {
                         case "armed": return [w.charAt(0).toUpperCase() + w.slice(1) + " the <font color=\"#ff3c3c\">system</font>?", "Press Enter again to " + w + "."];
                         case "running": return [w === "reboot" ? "Rebooting..." : "Shutting down...", "See you soon."];
                         case "preview": return ["Preview: would " + w + ".", "Nothing was run."];
-                        case "soon": return ["Options are coming soon.", ""];
                         default: return [];
                         }
                     }
