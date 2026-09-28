@@ -79,7 +79,7 @@ write_tags() {
   return 1
 }
 
-# Prints "start end" in samples at $rate from pymusiclooper's best candidate.
+# Prints "start end" in the source's own samples from pymusiclooper's best candidate.
 loop_points() {
   local file=$1
   command -v pipx >/dev/null || {
@@ -97,12 +97,14 @@ import json, sys
 import numpy as np
 x = np.frombuffer(sys.stdin.buffer.read(), dtype=np.float32).astype(np.float64)
 s, e, rate, mode = int(sys.argv[1]), int(sys.argv[2]), int(sys.argv[3]), sys.argv[4]
-if mode == "full":
-    pre, post = 3 * rate, min(6 * rate, len(x) - e - 2000)
+pre = max(0, min(3 * rate, s, e - 1503))
+post = max(0, min(6 * rate, len(x) - e - 1503, e - s))
+if mode == "full" and pre + post >= 4096:
     a = x[s - pre:s + post]
     def score(d):
         b = x[e + d - pre:e + d + post]
-        return float(np.dot(a, b) / np.sqrt(np.dot(a, a) * np.dot(b, b)))
+        den = np.sqrt(np.dot(a, a) * np.dot(b, b))
+        return float(np.dot(a, b) / den) if len(b) == len(a) and den > 0 else -2.0
     e += max(range(-1500, 1501, 3), key=score)
     e += max(range(-3, 4), key=score)
 if mode != "keep":
@@ -168,6 +170,7 @@ resolve_loop() {
     how=tags mode=keep
   else
     read -r s e < <(loop_points "$file")
+    read -r s e < <(python3 -c "import sys; r = $rate / int(sys.argv[3]); print(round(int(sys.argv[1]) * r), round(int(sys.argv[2]) * r))" "$s" "$e" "$sr")
     how=detected mode=full
   fi
   json=$(refine "$file" "$s" "$e" "$mode")
