@@ -1308,11 +1308,7 @@ Item {
 
         SequentialAnimation {
             id: flash_anim
-            loops: 2
-            NumberAnimation { target: flash; property: "opacity"; from: 0.62; to: 0.06; duration: 180; easing.type: Easing.OutQuad }
-            NumberAnimation { target: flash; property: "opacity"; to: 0.45; duration: 180; easing.type: Easing.OutQuad }
-            NumberAnimation { target: flash; property: "opacity"; to: 0.1; duration: 360; easing.type: Easing.OutQuad }
-            PauseAnimation { duration: 480 }
+            NumberAnimation { target: flash; property: "opacity"; from: 0.62; to: 0.1; duration: 540; easing.type: Easing.OutQuad }
         }
     }
 
