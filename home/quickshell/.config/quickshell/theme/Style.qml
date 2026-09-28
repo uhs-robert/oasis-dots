@@ -774,6 +774,7 @@ Singleton {
                 frame_shade: Qt.tint(Theme.bg_crust, Qt.alpha(Theme.ui_visual_bg, 0.6)),
                 frame_border_color: Qt.alpha(Theme.theme_label, 0.6),
                 frame_chamfer: 14,
+                picker_skin: "goldeneye",
                 accent_color: Theme.theme_label,
                 accent_height: 2,
                 frame_top_rule: true,
