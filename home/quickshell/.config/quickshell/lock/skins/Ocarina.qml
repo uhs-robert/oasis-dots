@@ -305,17 +305,16 @@ Item {
         }
     }
 
-    // Session cycling is harmless in a preview; safe/firmware/text only run once power_live, else a preview note shows.
-    // Firmware and text login need a second press while the note shows, like Reboot/Shut down.
+    // Firmware and text login need a second press while the note shows, like Reboot/Shut down; previews only show a note.
     function opt_activate() {
         const c = root.ctx;
         const item = root.opt_item;
         if (item === "back") {
             c.scene = "file:options";
         } else if (item === "session") {
-            if (c.power_live && "session_request" in c) c.session_request();
+            if ("session_request" in c) c.session_request();
         } else if (item === "safe") {
-            if (c.power_live && "safe_request" in c) c.safe_request();
+            if ("safe_request" in c) c.safe_request();
             c.scene = "name";
         } else if (root.opt_note === "armed") {
             c.scene = "opt:" + item + (c.power_live ? ":running" : ":preview");
@@ -1299,61 +1298,14 @@ Item {
                 }
 
                 Item {
-                    id: opt_note_box
-                    readonly property string word: root.opt_words[root.opt_item] || ""
-                    readonly property var lines: {
-                        const w = opt_note_box.word;
-                        switch (root.opt_note) {
-                        case "armed": return [w.charAt(0).toUpperCase() + w.slice(1) + "?", "Press Enter again to " + w + "."];
-                        case "running": return ["One moment...", "See you soon."];
-                        case "preview": return ["Preview: would " + w + ".", "Nothing was run."];
-                        default: return [];
-                        }
-                    }
-                    visible: opt_note_box.lines.length > 0
-
-                    Rectangle {
-                        x: 540
-                        y: 420
-                        width: 520
-                        height: 120
-                        radius: 14
-                        color: "#c7000000"
-                    }
-
-                    FitText {
-                        x0: 568
-                        base_y: 465
-                        max_w: 470
-                        textFormat: Text.PlainText
-                        text: opt_note_box.lines[0] || ""
-                        color: "#ffffff"
-                        font.family: root.ui_font
-                        font.weight: 500
-                        font.pixelSize: 28
-                    }
-
-                    FitText {
-                        x0: 568
-                        base_y: 507
-                        max_w: 470
-                        textFormat: Text.PlainText
-                        text: opt_note_box.lines[1] || ""
-                        color: "#ffffff"
-                        font.family: root.ui_font
-                        font.weight: 500
-                        font.pixelSize: 28
-                    }
-                }
-
-                Item {
                     id: note_box
-                    readonly property string word: root.power_words[root.file_item] || ""
+                    readonly property string note: root.in_options ? root.opt_note : root.file_note
+                    readonly property string word: (root.in_options ? root.opt_words[root.opt_item] : root.power_words[root.file_item]) || ""
                     readonly property var lines: {
                         const w = note_box.word;
-                        switch (root.file_note) {
-                        case "armed": return [w.charAt(0).toUpperCase() + w.slice(1) + " the <font color=\"#ff3c3c\">system</font>?", "Press Enter again to " + w + "."];
-                        case "running": return [w === "reboot" ? "Rebooting..." : "Shutting down...", "See you soon."];
+                        switch (note_box.note) {
+                        case "armed": return [w.charAt(0).toUpperCase() + w.slice(1) + (root.in_options ? "?" : " the <font color=\"#ff3c3c\">system</font>?"), "Press Enter again to " + w + "."];
+                        case "running": return [({ reboot: "Rebooting...", poweroff: "Shutting down...", firmware: "Rebooting to setup...", text: "Switching..." })[root.in_options ? root.opt_item : root.file_item], "See you soon."];
                         case "preview": return ["Preview: would " + w + ".", "Nothing was run."];
                         default: return [];
                         }
@@ -1398,7 +1350,7 @@ Item {
                         y: 518
                         width: 16
                         height: 11
-                        visible: root.file_note === "armed"
+                        visible: note_box.note === "armed"
                         preferredRendererType: Shape.CurveRenderer
 
                         ShapePath {

@@ -58,10 +58,8 @@ Singleton {
     property int unlock_ms: 0
     property string power_armed: ""
 
-    property var sessions: [
-        { name: "Hyprland", exec: "/usr/bin/start-hyprland" },
-        { name: "Safe Hyprland", exec: "/usr/bin/start-hyprland -- -c /etc/greetd/quickshell/safe-hyprland.lua", safe: true }
-    ]
+    readonly property var safe_session: ({ name: "Safe Hyprland", exec: "/usr/bin/start-hyprland -- -c /etc/greetd/quickshell/safe-hyprland.lua", safe: true })
+    property var sessions: [{ name: "Hyprland", exec: "/usr/bin/start-hyprland" }, root.safe_session]
     property int session_index: 0
     readonly property var session: root.sessions[Math.min(root.session_index, root.sessions.length - 1)]
 
@@ -384,7 +382,7 @@ Singleton {
                 if (list.length === 0) return;
                 const preferred = root.settings.session || "Hyprland";
                 list.sort((a, b) => (b.name === preferred) - (a.name === preferred));
-                list.push({ name: "Safe Hyprland", exec: "/usr/bin/start-hyprland -- -c /etc/greetd/quickshell/safe-hyprland.lua", safe: true });
+                list.push(root.safe_session);
                 root.sessions = list;
                 root.session_index = 0;
             }
