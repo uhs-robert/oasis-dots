@@ -45,14 +45,12 @@ Item {
     readonly property string tod: {
         const d = root.ctx ? root.ctx.now : new Date();
         const h = d.getHours() + d.getMinutes() / 60;
-        if (h >= 5 && h < 8) return "dawn";
-        if (h >= 8 && h < 17.5) return "day";
-        if (h >= 17.5 && h < 20.5) return "dusk";
+        if (h >= 5 && h < 12) return "dawn";
+        if (h >= 12 && h < 20.5) return "dusk";
         return "night";
     }
     readonly property var palettes: ({
         dawn: { sky: ["#2c3466", "#b46a84", "#f6a65c"], hills: ["#6a4a66", "#33222e", "#160e12"] },
-        day: { sky: ["#2a6ad0", "#6aa6ea", "#cfe6f7"], hills: ["#6f8fb0", "#3f6a30", "#1e3a14"] },
         dusk: { sky: ["#2e2f52", "#6a5f7e", "#c89a8a"], hills: ["#3a3550", "#221f30", "#110f18"] },
         night: { sky: ["#02040d", "#0b1230", "#1f2a55"], hills: ["#151b33", "#0b0f1e", "#04060c"] }
     })
@@ -665,7 +663,7 @@ Item {
                 Item {
                     width: 1600
                     height: 900
-                    visible: root.tod === "dawn" || root.tod === "day"
+                    visible: root.tod === "dawn"
                     x: root.tod === "dawn" ? -60 : 0
                     y: root.tod === "dawn" ? 330 : 0
 
@@ -685,20 +683,6 @@ Item {
                         height: 116
                         radius: 58
                         color: "#fff8dc"
-                    }
-                }
-
-                Repeater {
-                    model: root.tod === "day" ? [[170, 190, 120, 30], [250, 168, 80, 42], [1300, 330, 150, 30], [1380, 304, 90, 44]] : []
-
-                    Radial {
-                        required property var modelData
-                        cx: modelData[0]
-                        cy: modelData[1]
-                        rx: modelData[2] + 10
-                        ry: modelData[3] + 10
-                        inner: "#d9ffffff"
-                        mid: 0.7
                     }
                 }
 
