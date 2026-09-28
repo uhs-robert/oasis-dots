@@ -77,7 +77,7 @@ Item {
     })
     // One phase (0..1 per 12 minutes) drives the whole sky: the sun crosses its arc over 0..0.5 (dawn, day, dusk), the moon over 0.5..1 (night).
     // It starts at the clock's time of day and runs on a wall clock; the animation only ticks while the title shows. Without animate it stays pinned to the clock.
-    readonly property int cycle_ms: 720000
+    readonly property int cycle_ms: 150000
     property real sky_phase: 0
     property real cycle_start: 0
     property real cycle_epoch: 0
