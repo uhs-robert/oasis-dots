@@ -127,7 +127,6 @@ Singleton {
         root.keys_moved = false;
         if (screen) root.set_cursor(screen.name, screen.width / 2, screen.height / 2, false);
         pointer_query.running = true;
-        if (root.mode === "window") window_query.running = true;
         if (root.mode === "screen") {
             const list = Quickshell.screens.map(s => ({ screen: s.name, rect: Qt.rect(0, 0, s.width, s.height), label: s.name }));
             root.set_targets(list, list.findIndex(t => t.screen === root.focus_screen));
@@ -140,7 +139,10 @@ Singleton {
     Timer {
         id: capture_opaque_delay
         interval: 32
-        onTriggered: root.phase = "select"
+        onTriggered: {
+            root.phase = "select";
+            if (root.mode === "window") window_query.running = true;
+        }
     }
 
     // Visible windows on each monitor's shown workspace (and its open special one), clipped to that monitor.
