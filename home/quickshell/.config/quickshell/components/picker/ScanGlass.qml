@@ -40,7 +40,6 @@ Shape {
     }
 
     ShapePath {
-        visible: root.sheen
         strokeWidth: -1
         fillGradient: RadialGradient {
             centerX: root.width / 2
@@ -49,7 +48,7 @@ Shape {
             focalY: 0
             centerRadius: root.width * 0.5
             focalRadius: 0
-            GradientStop { position: 0; color: Qt.alpha(Theme.fg_strong, 0.1) }
+            GradientStop { position: 0; color: Qt.alpha(Theme.fg_strong, root.sheen ? 0.1 : 0) }
             GradientStop { position: 1; color: Qt.alpha(Theme.fg_strong, 0) }
         }
         PathPolyline { path: root.outline(0) }
