@@ -21,6 +21,8 @@ QtObject {
     property bool saver: false
     property bool animate: !UPower.onBattery
     property string forced_phase: ""
+    // A skin's own sub-screen; the skin steps it from handle_key.
+    property string scene: ""
     property string user: ""
     property string tint: "primary"
 

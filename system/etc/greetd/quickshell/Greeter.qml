@@ -173,7 +173,19 @@ Singleton {
         else Quickshell.execDetached(["systemctl", action]);
     }
 
-    function key(event) {
+    // True when `skin` defines handle_key(event) and it returns exactly true; a throwing skin takes nothing.
+    function skin_takes(event, skin) {
+        if (!skin || typeof skin.handle_key !== "function") return false;
+        try {
+            return skin.handle_key(event) === true;
+        } catch (e) {
+            console.warn("Greeter: skin handle_key failed: " + e);
+            return false;
+        }
+    }
+
+    // `skin` may take a key only while the buffer is empty and greetd waits on nothing.
+    function key(event, skin) {
         root.wake();
         if (event.key === Qt.Key_F10) {
             root.fallback();
@@ -181,6 +193,10 @@ Singleton {
             return;
         }
         if (root.granted) {
+            event.accepted = true;
+            return;
+        }
+        if (!root.checking && root.buffer === "" && root.prompt === "" && root.skin_takes(event, skin)) {
             event.accepted = true;
             return;
         }

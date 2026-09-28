@@ -82,6 +82,7 @@ Singleton {
         root.fail_count = 0;
         root.message = "";
         root.granted = false;
+        live_ctx.scene = "";
         root.wake();
         persist.held = false;
         persist.backdrops = JSON.stringify(files);
@@ -188,7 +189,19 @@ Singleton {
         return Qt.resolvedUrl("LockScreen.qml");
     }
 
-    function key(event) {
+    // True when `skin` defines handle_key(event) and it returns exactly true; a throwing skin takes nothing.
+    function skin_takes(event, skin) {
+        if (!skin || typeof skin.handle_key !== "function") return false;
+        try {
+            return skin.handle_key(event) === true;
+        } catch (e) {
+            console.warn("Lock: skin handle_key failed: " + e);
+            return false;
+        }
+    }
+
+    // `skin` is the focused screen's skin; it may take a key only while the buffer is empty and PAM waits on nothing.
+    function key(event, skin) {
         root.wake();
         if (root.granted) {
             event.accepted = true;
@@ -196,6 +209,10 @@ Singleton {
         }
         root.typing = true;
         typing_timer.restart();
+        if (!root.checking && root.buffer === "" && root.prompt === "" && root.skin_takes(event, skin)) {
+            event.accepted = true;
+            return;
+        }
         const ctrl = (event.modifiers & Qt.ControlModifier) && !(event.modifiers & Qt.AltModifier);
         if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
             root.submit();
@@ -307,7 +324,7 @@ Singleton {
             Item {
                 anchors.fill: parent
                 focus: true
-                Keys.onPressed: event => root.key(event)
+                Keys.onPressed: event => root.key(event, screen_loader.item)
 
                 Loader {
                     id: screen_loader

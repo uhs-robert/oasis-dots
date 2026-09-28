@@ -17,8 +17,12 @@ Singleton {
     readonly property var names: root.order.filter(n => n in root.styles).concat(Object.keys(root.styles).filter(n => root.order.indexOf(n) < 0 && root.hidden.indexOf(n) < 0))
     readonly property var labels: ({ crt: "CRT", nes: "NES", snes: "SNES", gameboy: "Gameboy", goldeneye: "Goldeneye", ps1: "PSX", ff7: "FFVII", ps2: "PS2", halflife: "Half Life", tie: "Tie Fighter", modern: "Modern" })
 
+    // Lock screens with no bar style of their own yet, name to label; never in `names`.
+    readonly property var lock_only: ({ ocarina: "Ocarina" })
+    readonly property var lock_only_names: Object.keys(root.lock_only)
+
     function label(style_name) {
-        return root.labels[style_name] || style_name.charAt(0).toUpperCase() + style_name.slice(1);
+        return root.labels[style_name] || root.lock_only[style_name] || style_name.charAt(0).toUpperCase() + style_name.slice(1);
     }
 
     readonly property var styles: {
@@ -2425,7 +2429,7 @@ Singleton {
     readonly property var lock_backdrops: ["pixelate", "blur", "off"]
 
     function valid_lock_style(style_name) {
-        return style_name === "follow" || style_name === "simple" || (style_name in root.styles && root.hidden.indexOf(style_name) < 0);
+        return style_name === "follow" || style_name === "simple" || root.lock_only_names.indexOf(style_name) >= 0 || (style_name in root.styles && root.hidden.indexOf(style_name) < 0);
     }
 
     function set_lock_style(style_name) {

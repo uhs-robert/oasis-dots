@@ -37,6 +37,8 @@ QtObject {
     property string backdrop_mode: Style.lock_backdrop
     // Set by the preview to pin a phase.
     property string forced_phase: ""
+    // A skin's own sub-screen, shared by every output; the skin steps it from handle_key and "" is its first.
+    property string scene: ""
 
     readonly property string phase: {
         if (root.forced_phase !== "") return root.forced_phase;

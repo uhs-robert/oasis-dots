@@ -32,7 +32,7 @@ Popup {
         for (let i = 0; i < skin_files.count; i++) out.push(skin_files.get(i, "fileName"));
         return out;
     }
-    readonly property var screens: ["follow", "simple"].concat(Style.names.filter(n => root.has_skin(n)))
+    readonly property var screens: ["follow", "simple"].concat(Style.names.concat(Style.lock_only_names).filter(n => root.has_skin(n)))
     readonly property var tints: Style.lock_tints
     readonly property string preview_screen: root.screens[root.screen_index] || "follow"
     readonly property string preview_tint: root.tints[root.tint_index] || "primary"

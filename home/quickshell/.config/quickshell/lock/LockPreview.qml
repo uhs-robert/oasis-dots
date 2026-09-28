@@ -20,7 +20,7 @@ Scope {
     // `name` is a style, or "" for the lock's own; returns "ok" or "unknown".
     function open(name, tint) {
         const style_name = name === "" || name === "follow" ? Style.lock_name : name;
-        if (style_name !== "simple" && !(style_name in Style.styles)) return "unknown";
+        if (style_name !== "simple" && !(style_name in Style.styles) && Style.lock_only_names.indexOf(style_name) < 0) return "unknown";
         root.skin = style_name;
         root.tint = tint || "";
         root.reset();
@@ -64,6 +64,7 @@ Scope {
         fake.message = "";
         fake.granted = false;
         fake.saver = false;
+        fake.scene = "";
     }
 
     function load() {
@@ -147,12 +148,13 @@ Scope {
             anchors.fill: parent
             focus: true
 
-            // Esc or q closes; 1-5 pick idle, typing, wrong, unlock, saver; other keys type, Enter fails, Shift+Enter unlocks.
+            // Esc or q closes; 1-5 pick idle, typing, wrong, unlock, saver; the skin's handle_key goes next; other keys type, Enter fails, Shift+Enter unlocks.
             Keys.onPressed: event => {
                 const phases = { "1": "idle", "2": "typing", "3": "wrong", "4": "unlock", "5": "saver" };
                 if (event.key === Qt.Key_Escape || event.text === "q") root.close();
                 else if (event.text in phases) root.phase(phases[event.text]);
-                else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
+                else if (!fake.granted && fake.buffer_length === 0 && Lock.skin_takes(event, loader.item)) {
+                } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
                     if (event.modifiers & Qt.ShiftModifier) root.fake_unlock();
                     else root.fake_fail();
                 } else if (event.key === Qt.Key_Backspace) fake.buffer_length = Math.max(0, fake.buffer_length - 1);

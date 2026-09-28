@@ -15,7 +15,7 @@ stage_greeter() {
   rm -rf "$dest"
   mkdir -p "$dest/lock/skins" "$dest/theme" "$dest/fonts"
   cp -r "$repo/system/etc/greetd/quickshell/." "$dest/"
-  cp "$qs"/lock/skins/*.qml "$dest/lock/skins/"
+  cp -r "$qs/lock/skins/." "$dest/lock/skins/"
   cp "$qs/lock/Tints.js" "$dest/lock/"
   cp "$qs/theme/Theme.qml" "$qs/theme/Style.qml" "$dest/theme/"
   [[ -f "$live/theme/theme.json" ]] && cp "$live/theme/theme.json" "$dest/theme/"
