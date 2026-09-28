@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Imports the Ocarina lock skin's game audio into lock/skins/ocarina/audio (gitignored): loops cut at detected or given points, loudness evened out.
-# Loop points come from LOOPSTART/LOOPLENGTH (or LOOPEND) tags in the source OGGs; untagged tracks are detected and the result is tagged into the source losslessly.
+# Each track's source is its first of .flac, .ogg or .mp3; loop points come from LOOPSTART/LOOPLENGTH (or LOOPEND) tags in it; untagged tracks are detected and the result is tagged into the source losslessly.
 # Usage: ocarina-audio [--title-loop START END] [--fairy-loop START END] [--redetect] [--out DIR] [SOURCE_DIR]   (START/END in seconds; overrides are tagged too)
 set -euo pipefail
 
@@ -65,11 +65,13 @@ read_tags() {
 }
 
 # Tags start/end (source samples) into $1 without touching its audio: copy with new tags, check the decoded audio is identical, then swap in.
+# OGG keeps Vorbis comments on the stream; FLAC comments and MP3 ID3 TXXX frames are file-level.
 write_tags() {
-  local file=$1 start=$2 end=$3 tmp before after
-  tmp=$(mktemp "$(dirname "$file")/.ocarina-tags.XXXXXX.ogg") || return 1
+  local file=$1 start=$2 end=$3 tmp before after scope=
+  [[ ${file##*.} == ogg ]] && scope=:s:a:0
+  tmp=$(mktemp "$(dirname "$file")/.ocarina-tags.XXXXXX.${file##*.}") || return 1
   if ffmpeg -v error -y -i "$file" -map 0 -c copy -map_metadata 0 \
-    -metadata:s:a:0 LOOPSTART="$start" -metadata:s:a:0 LOOPLENGTH="$((end - start))" -metadata:s:a:0 LOOPEND= "$tmp" &&
+    "-metadata$scope" LOOPSTART="$start" "-metadata$scope" LOOPLENGTH="$((end - start))" "-metadata$scope" LOOPEND= "$tmp" &&
     before=$(ffmpeg -v error -i "$file" -map 0:a -f md5 -) && after=$(ffmpeg -v error -i "$tmp" -map 0:a -f md5 -) &&
     [[ -n $before && $before == "$after" ]] && touch -r "$file" "$tmp" && mv -f "$tmp" "$file"; then
     return 0
@@ -181,8 +183,20 @@ resolve_loop() {
   jq -c --arg how "$how" '. + {source: $how}' <<<"$json"
 }
 
-title_src="$src/music/Title Theme.ogg"
-fairy_src="$src/music/Great Fairy's Fountain.ogg"
+# Prints the first of $1.flac, $1.ogg and $1.mp3 that exists.
+find_src() {
+  local ext
+  for ext in flac ogg mp3; do
+    if [[ -f "$1.$ext" ]]; then
+      [[ $ext == mp3 ]] && echo "ocarina-audio: $1.mp3: MP3 loop points may be off by encoder padding; FLAC is recommended" >&2
+      printf '%s\n' "$1.$ext"
+      return
+    fi
+  done
+}
+
+title_src=$(find_src "$src/music/Title Theme")
+fairy_src=$(find_src "$src/music/Great Fairy's Fountain")
 title_json=null
 fairy_json=null
 
@@ -198,7 +212,7 @@ if [[ -f $title_src ]]; then
   fi
   cut_loop "$title_src" "$out/title_loop.ogg" "$s" "$e" "$gain"
 else
-  echo "ocarina-audio: no $title_src, skipping the title theme" >&2
+  echo "ocarina-audio: no $src/music/Title Theme.{flac,ogg,mp3}, skipping the title theme" >&2
 fi
 
 if [[ -f $fairy_src ]]; then
@@ -208,7 +222,7 @@ if [[ -f $fairy_src ]]; then
   gain=$(music_gain "$fairy_src")
   cut_loop "$fairy_src" "$out/fairy_loop.ogg" "$s" "$e" "$gain"
 else
-  echo "ocarina-audio: no $fairy_src, skipping the fairy fountain" >&2
+  echo "ocarina-audio: no $src/music/Great Fairy's Fountain.{flac,ogg,mp3}, skipping the fairy fountain" >&2
 fi
 
 declare -A fx=([start]=OOT_PressStart [move]=OOT_MainMenu_Cursor [letter]=OOT_MainMenu_Letter [decide]=OOT_MainMenu_Select [cancel]=OOT_MainMenu_Cancel [error]=OOT_MainMenu_Error)
