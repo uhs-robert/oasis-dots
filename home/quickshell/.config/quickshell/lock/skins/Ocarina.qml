@@ -755,10 +755,11 @@ Item {
                 Item {
                     id: fire
                     property real phase: 0
-                    x: 372.2 - 80 * 0.8425
-                    y: 35 - 140 * 0.8425
-                    width: 1120 * 0.8425
-                    height: 929 * 0.8425
+                    readonly property real k: logo.width / 960
+                    x: logo.x - 80 * k
+                    y: logo.y - 140 * k
+                    width: 1120 * k
+                    height: 929 * k
                     visible: root.lit
                     transformOrigin: Item.Bottom
 
@@ -824,18 +825,18 @@ Item {
 
                 Image {
                     id: logo
-                    x: 372.2
-                    y: 35
-                    width: 808.8
-                    height: 631.2
+                    width: 808.8 * 0.82
+                    height: 631.2 * 0.82
+                    x: 776.6 - width / 2
+                    y: 350.6 - height / 2
                     source: Qt.resolvedUrl("ocarina/logo.png")
-                    sourceSize.width: Math.round(808.8 * title_stage.k)
+                    sourceSize.width: Math.round(logo.width * title_stage.k)
                     fillMode: Image.PreserveAspectFit
                     asynchronous: true
                     smooth: true
                     mipmap: true
                     layer.enabled: root.lit
-                    layer.textureSize: Qt.size(logo.sourceSize.width, Math.round(logo.sourceSize.width * 631.2 / 808.8))
+                    layer.textureSize: Qt.size(logo.sourceSize.width, Math.round(logo.sourceSize.width * logo.height / logo.width))
                     layer.effect: MultiEffect {
                         shadowEnabled: true
                         shadowColor: "#ff9a24"
