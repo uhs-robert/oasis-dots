@@ -150,6 +150,14 @@ def chunk_bounds(gray, max_height=CHUNK_HEIGHT):
     return bounds
 
 
+def tidy(text):
+    lines = text.split("\n")
+    filled = [i for i, line in enumerate(lines[:-1]) if line.strip()]
+    if filled and sum(not lines[i + 1].strip() for i in filled) >= 0.8 * len(filled):
+        return "\n".join(line for line in lines if line.strip())
+    return text
+
+
 def ocr(tall, path):
     gray = to_gray(tall)
     texts = []
@@ -162,7 +170,7 @@ def ocr(tall, path):
                 raise RuntimeError("tesseract failed")
             texts.append(run.stdout.rstrip("\n"))
     with open(path, "w") as f:
-        f.write("\n".join(texts) + "\n")
+        f.write(tidy("\n".join(texts)) + "\n")
 
 
 def save(tall, path):
