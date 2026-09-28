@@ -1,12 +1,14 @@
 #!/usr/bin/env bash
 # Imports the Ocarina lock skin's game audio into lock/skins/ocarina/audio (gitignored): loops cut at detected or given points, loudness evened out.
-# Loop points come from LOOPSTART/LOOPLENGTH (or LOOPEND) tags in the source OGGs; untagged tracks are detected and the result is tagged into the source losslessly.
-# Usage: ocarina-audio [--title-loop START END] [--fairy-loop START END] [--redetect] [--out DIR] [SOURCE_DIR]   (START/END in seconds; overrides are tagged too)
+# Each track's source is its first of .flac, .ogg or .mp3; loop points come from LOOPSTART/LOOPLENGTH (or LOOPEND) tags in it; untagged tracks are detected and the result is tagged into the source losslessly.
+# The fairy fountain plays from OCARINA_START (a tag in its source, else --fairy-start or 28s, snapped to an onset) into its loop.
+# Usage: ocarina-audio [--title-loop START END] [--fairy-loop START END] [--fairy-start SEC] [--redetect] [--out DIR] [SOURCE_DIR]   (seconds; overrides are tagged too)
 set -euo pipefail
 
 src="$HOME/Downloads/oot"
 title_loop=()
 fairy_loop=()
+fairy_start=
 redetect=0
 out="$(cd "$(dirname "$0")/.." && pwd)/lock/skins/ocarina/audio"
 while (($#)); do
@@ -19,6 +21,10 @@ while (($#)); do
     fairy_loop=("$2" "$3")
     shift 3
     ;;
+  --fairy-start)
+    fairy_start=$2
+    shift 2
+    ;;
   --redetect)
     redetect=1
     shift
@@ -28,7 +34,7 @@ while (($#)); do
     shift 2
     ;;
   -h | --help)
-    sed -n '2,4p' "$0"
+    sed -n '2,5p' "$0"
     exit 0
     ;;
   *)
@@ -64,12 +70,16 @@ read_tags() {
       | if $s == null then empty elif $l != null then "\($s) \($s + $l)" elif $e != null then "\($s) \($e)" else empty end'
 }
 
-# Tags start/end (source samples) into $1 without touching its audio: copy with new tags, check the decoded audio is identical, then swap in.
-write_tags() {
-  local file=$1 start=$2 end=$3 tmp before after
-  tmp=$(mktemp "$(dirname "$file")/.ocarina-tags.XXXXXX.ogg") || return 1
-  if ffmpeg -v error -y -i "$file" -map 0 -c copy -map_metadata 0 \
-    -metadata:s:a:0 LOOPSTART="$start" -metadata:s:a:0 LOOPLENGTH="$((end - start))" -metadata:s:a:0 LOOPEND= "$tmp" &&
+# Sets KEY=VALUE tags on $1 without touching its audio: copy with new tags, check the decoded audio is identical, then swap in; an empty value removes the tag.
+# OGG keeps Vorbis comments on the stream; FLAC comments and MP3 ID3 TXXX frames are file-level.
+write_meta() {
+  local file=$1 tmp before after scope='' kv
+  local args=()
+  shift
+  [[ ${file##*.} == ogg ]] && scope=:s:a:0
+  for kv in "$@"; do args+=("-metadata$scope" "$kv"); done
+  tmp=$(mktemp "$(dirname "$file")/.ocarina-tags.XXXXXX.${file##*.}") || return 1
+  if ffmpeg -v error -y -i "$file" -map 0 -c copy -map_metadata 0 "${args[@]}" "$tmp" &&
     before=$(ffmpeg -v error -i "$file" -map 0:a -f md5 -) && after=$(ffmpeg -v error -i "$tmp" -map 0:a -f md5 -) &&
     [[ -n $before && $before == "$after" ]] && touch -r "$file" "$tmp" && mv -f "$tmp" "$file"; then
     return 0
@@ -79,44 +89,128 @@ write_tags() {
   return 1
 }
 
-# Prints "start end" in the source's own samples from pymusiclooper's best candidate.
+# Tags the loop start/end (source samples) into $1.
+write_tags() {
+  write_meta "$1" LOOPSTART="$2" LOOPLENGTH="$(($3 - $2))" LOOPEND=
+}
+
+# Prints the value of tag $2 in $1 (any case, file or stream level), or nothing.
+read_tag() {
+  ffprobe -v error -show_entries format_tags:stream_tags -of json "$1" |
+    jq -r --arg k "${2^^}" '[.format.tags, (.streams // [])[].tags] | map(select(. != null)) | add // {} | with_entries(.key |= ascii_upcase) | .[$k] // empty'
+}
+
+# Prints the sample (at $rate) of the onset nearest $2 seconds among the strong ones within 1.5s, favouring bass attacks, placed 10ms early on a rising zero crossing.
+snap_start() {
+  ffmpeg -v error -i "$1" -ac 1 -ar "$rate" -f f32le - | python3 -c '
+import sys
+import numpy as np
+x = np.frombuffer(sys.stdin.buffer.read(), dtype=np.float32).astype(np.float64)
+rate, target = int(sys.argv[1]), float(sys.argv[2])
+n, hop = 2048, 512
+lo = max(0, int((target - 1.5) * rate) - n)
+hi = min(len(x), int((target + 1.5) * rate) + n)
+seg = x[lo:hi]
+if len(seg) < 4 * n:
+    print(max(0, min(len(x) - 1, int(target * rate))))
+    sys.exit()
+mag = np.log1p(np.abs(np.fft.rfft(np.lib.stride_tricks.sliding_window_view(seg, n)[::hop] * np.hanning(n), axis=1)))
+flux = np.maximum(0, np.diff(mag, axis=0))
+low = int(300 * n / rate)
+score = flux.sum(axis=1) / (flux.sum(axis=1).max() + 1e-9) + flux[:, :low].sum(axis=1) / (flux[:, :low].sum(axis=1).max() + 1e-9)
+centres = lo + (np.arange(1, len(mag)) * hop) + n // 2
+ok = np.abs(centres - target * rate) <= 1.5 * rate
+peak = np.r_[False, (score[1:-1] >= score[:-2]) & (score[1:-1] >= score[2:]), False]
+strong = ok & peak & (score >= 0.6 * score[ok].max())
+if not strong.any():
+    strong = ok & (score == score[ok].max())
+c = int(min(centres[strong], key=lambda v: abs(v - target * rate)))
+blk = 64
+e = np.array([np.sum(x[i:i + blk] ** 2) for i in range(c - 1024, c + 1024, blk)])
+c = c - 1024 + int(np.argmax(np.diff(e))) * blk - int(0.01 * rate)
+for k in sorted(range(-300, 301), key=abs):
+    if c + k >= 1 and x[c + k - 1] <= 0 < x[c + k]:
+        c += k
+        break
+print(max(0, c))
+' "$rate" "$2"
+}
+
+# Prints the second where a closing fade-out starts: the point after which the 0.5s RMS stays 3 dB under the track's median, walked back along the falling slope.
+fade_start() {
+  ffmpeg -v error -i "$1" -ac 1 -f f32le - | python3 -c '
+import sys
+import numpy as np
+x = np.frombuffer(sys.stdin.buffer.read(), dtype=np.float32).astype(np.float64)
+rate, w, hop = int(sys.argv[1]), int(sys.argv[1]) // 2, int(sys.argv[1]) // 4
+env = np.array([20 * np.log10(np.sqrt(np.mean(x[i:i + w] ** 2)) + 1e-9) for i in range(0, max(1, len(x) - w), hop)])
+ref = np.median(env[env > -60]) if np.any(env > -60) else 0
+tail = np.maximum.accumulate(env[::-1])[::-1] < ref - 3
+if not tail.any():
+    print(round(len(x) / rate, 3))
+    sys.exit()
+i = int(np.argmax(tail))
+smooth = np.convolve(env, np.ones(4) / 4, mode="same")
+floor = max(0, i - 20)
+while i > floor and smooth[i - 1] > smooth[i] + 0.05:
+    i -= 1
+print(round(i * hop / rate, 3))
+' "$(src_rate "$1")"
+}
+
+# Prints "start end" in the source's own samples from pymusiclooper's best candidate, run on the audio up to 1s before any closing fade.
 loop_points() {
-  local file=$1
+  local file=$1 fade dur keep trimmed
   command -v pipx >/dev/null || {
     echo "ocarina-audio: pipx is needed to detect loops; pass --title-loop/--fairy-loop instead" >&2
     exit 1
   }
-  pipx run pymusiclooper export-points --path "$file" --export-to stdout --alt-export-top 1 2>/dev/null |
+  fade=$(fade_start "$file")
+  dur=$(ffprobe -v error -show_entries format=duration -of csv=p=0 "$file")
+  keep=$(python3 -c "import sys; f, d = map(float, sys.argv[1:]); print(round(max(1.0, f - 1), 3) if f < d - 1 else sys.argv[2])" "$fade" "$dur")
+  if [[ $keep != "$dur" ]]; then
+    echo "ocarina-audio: $file fades out from ${fade}s; loop ends are kept before ${keep}s" >&2
+  fi
+  trimmed=$(mktemp "${TMPDIR:-/tmp}/ocarina-detect.XXXXXX.flac")
+  ffmpeg -v error -y -i "$file" -map 0:a -t "$keep" -c:a flac "$trimmed"
+  pipx run pymusiclooper export-points --path "$trimmed" --export-to stdout --alt-export-top 1 2>/dev/null |
     awk '$1 ~ /^[0-9]+$/ && $2 ~ /^[0-9]+$/ { print $1, $2; exit }'
+  rm -f "$trimmed"
 }
 
-# Prints JSON with the join quality of $2..$3; mode $4 is "full" (tune the length on a 9s window, then snap), "snap" (move both to a rising zero crossing) or "keep".
+# Prints JSON with the join quality of $2..$3; mode $4 is "full" (tune the length on up to 30s before the fade at $5 seconds, kept only if the spectra agree, then snap), "snap" (move both to a rising zero crossing) or "keep".
 refine() {
   ffmpeg -v error -i "$1" -ac 1 -ar "$rate" -f f32le - | python3 -c '
 import json, sys
 import numpy as np
 x = np.frombuffer(sys.stdin.buffer.read(), dtype=np.float32).astype(np.float64)
 s, e, rate, mode = int(sys.argv[1]), int(sys.argv[2]), int(sys.argv[3]), sys.argv[4]
-pre = max(0, min(3 * rate, s, e - 1503))
-post = max(0, min(6 * rate, len(x) - e - 1503, e - s))
+limit = min(len(x), int(float(sys.argv[5]) * rate))
+def spectra(seg, n=2048, hop=512):
+    f = np.lib.stride_tricks.sliding_window_view(seg, n)[::hop] * np.hanning(n)
+    m = np.log1p(np.abs(np.fft.rfft(f, axis=1))[:, :800])
+    m -= m.mean(axis=1, keepdims=True)
+    return m / (np.linalg.norm(m, axis=1, keepdims=True) + 1e-9)
+def spectral(e):
+    w = min(5 * rate, limit - e, len(x) - e)
+    return float(np.mean(np.sum(spectra(x[s:s + w]) * spectra(x[e:e + w]), axis=1))) if w >= 2048 else -2.0
+pre = max(0, min(10 * rate, s, e - 1503))
+post = max(0, min(20 * rate, limit - e - 1503, e - s))
 if mode == "full" and pre + post >= 4096:
     a = x[s - pre:s + post]
     def score(d):
         b = x[e + d - pre:e + d + post]
         den = np.sqrt(np.dot(a, a) * np.dot(b, b))
         return float(np.dot(a, b) / den) if len(b) == len(a) and den > 0 else -2.0
-    e += max(range(-1500, 1501, 3), key=score)
-    e += max(range(-3, 4), key=score)
+    d = max(range(-1500, 1501, 3), key=score)
+    d += max(range(-3, 4), key=lambda k: score(d + k))
+    if spectral(e + d) >= spectral(e) - 0.005:
+        e += d
 if mode != "keep":
     for k in sorted(range(-300, 301), key=abs):
         if s + k >= 1 and e + k <= len(x) and x[s + k - 1] <= 0 < x[s + k]:
             s, e = s + k, e + k
             break
-def spectra(seg, n=2048, hop=512):
-    f = np.lib.stride_tricks.sliding_window_view(seg, n)[::hop] * np.hanning(n)
-    m = np.log1p(np.abs(np.fft.rfft(f, axis=1))[:, :800])
-    m -= m.mean(axis=1, keepdims=True)
-    return m / (np.linalg.norm(m, axis=1, keepdims=True) + 1e-9)
 def finite(v):
     return round(float(v), 3) if np.isfinite(v) else None
 w = min(5 * rate, len(x) - e)
@@ -125,7 +219,7 @@ m = min(rate, len(x) - e)
 with np.errstate(all="ignore"):
     corr = finite(np.corrcoef(x[s:s + m], x[e:e + m])[0, 1]) if m >= 2 else None
 print(json.dumps({"start": s, "end": e, "start_s": round(s / rate, 4), "end_s": round(e / rate, 4), "loop_s": round((e - s) / rate, 4), "spectral_match": spec, "wave_corr": corr}))
-' "$2" "$3" "$rate" "$4"
+' "$2" "$3" "$rate" "$4" "$5"
 }
 
 # Prints the gain in dB that brings a track to -18 LUFS without its peak passing -1 dBFS.
@@ -137,25 +231,55 @@ music_gain() {
   python3 -c "import sys; print(round(min(-18 - float(sys.argv[1]), -1 - float(sys.argv[2])), 2))" "$loud" "$peak"
 }
 
-# Cuts samples [0, end) of $1 into $2 with $4 dB of gain.
+# Cuts samples [$5, end) of $1 into $2 with $4 dB of gain, fading in over 5ms when it starts past 0.
 cut() {
-  ffmpeg -v error -y -i "$1" -ar "$rate" -af "atrim=end_sample=$3,asetpts=PTS-STARTPTS,volume=$4dB" -c:a libvorbis -q:a 6 -fflags +bitexact -flags:a +bitexact "$2"
+  local fade=
+  (($5 > 0)) && fade=",afade=t=in:d=0.005"
+  ffmpeg -v error -y -i "$1" -ar "$rate" -af "atrim=start_sample=$5:end_sample=$3,asetpts=PTS-STARTPTS$fade,volume=$4dB" -c:a libvorbis -q:a 6 -fflags +bitexact -flags:a +bitexact "$2"
 }
 
-# Writes samples [start, end) of $1 to $2 with $5 dB of gain; the last 60ms crossfade into the audio just before start, so the wrap is seamless.
+# Prints the sample (at $rate) where $1 first sounds: 20ms RMS held over max(-50 dBFS, median - 40 dB) for 100ms, backed off 20ms onto a zero crossing.
+sound_start() {
+  ffmpeg -v error -i "$1" -ac 1 -ar "$rate" -f f32le - | python3 -c '
+import sys
+import numpy as np
+x = np.frombuffer(sys.stdin.buffer.read(), dtype=np.float32).astype(np.float64)
+rate = int(sys.argv[1])
+w, hop = int(0.02 * rate), int(0.005 * rate)
+if len(x) < 2 * w:
+    print(0)
+    sys.exit()
+env = 20 * np.log10(np.sqrt(np.lib.stride_tricks.sliding_window_view(x ** 2, w)[::hop].mean(axis=1)) + 1e-12)
+thr = max(-50.0, float(np.median(env[env > -80])) - 40 if np.any(env > -80) else -50.0)
+run = int(0.1 / 0.005)
+loud = env > thr
+hits = [i for i in range(len(loud) - run) if loud[i:i + run].all()]
+if not hits:
+    print(0)
+    sys.exit()
+c = max(0, hits[0] * hop - int(0.02 * rate))
+for k in range(0, 301):
+    if c - k >= 1 and (x[c - k - 1] <= 0) != (x[c - k] <= 0):
+        c -= k
+        break
+print(c)
+' "$rate"
+}
+
+# Writes samples [from, end) of $1 to $2 with $5 dB of gain, from being $6 or start; the last 60ms crossfade into the audio just before start, so it hands over seamlessly to the loop.
 cut_loop() {
   ffmpeg -v error -i "$1" -ar "$rate" -ac 2 -f f32le - | python3 -c '
 import sys
 import numpy as np
 x = np.frombuffer(sys.stdin.buffer.read(), dtype=np.float32).reshape(-1, 2).astype(np.float64)
-s, e, gain = int(sys.argv[1]), int(sys.argv[2]), float(sys.argv[3])
-n = min(int(0.06 * int(sys.argv[4])), s, e - s)
-loop = x[s:e].copy()
+s, e, gain, f = int(sys.argv[1]), int(sys.argv[2]), float(sys.argv[3]), int(sys.argv[5])
+n = min(int(0.06 * int(sys.argv[4])), s, e - s, e - f)
+loop = x[f:e].copy()
 if n > 0:
     t = np.linspace(0, np.pi / 2, n)[:, None]
     loop[-n:] = loop[-n:] * np.cos(t) + x[s - n:s] * np.sin(t)
 sys.stdout.buffer.write((loop * 10 ** (gain / 20)).astype(np.float32).tobytes())
-' "$3" "$4" "$5" "$rate" | ffmpeg -v error -y -f f32le -ar "$rate" -ac 2 -i - -c:a libvorbis -q:a 6 -fflags +bitexact -flags:a +bitexact "$2"
+' "$3" "$4" "$5" "$rate" "${6:-$3}" | ffmpeg -v error -y -f f32le -ar "$rate" -ac 2 -i - -c:a libvorbis -q:a 6 -fflags +bitexact -flags:a +bitexact "$2"
 }
 
 # Resolves a track's loop (override, tags or detection), tags the source when the points are new, and prints the loop JSON.
@@ -173,7 +297,7 @@ resolve_loop() {
     read -r s e < <(python3 -c "import sys; r = $rate / int(sys.argv[3]); print(round(int(sys.argv[1]) * r), round(int(sys.argv[2]) * r))" "$s" "$e" "$sr")
     how=detected mode=full
   fi
-  json=$(refine "$file" "$s" "$e" "$mode")
+  json=$(refine "$file" "$s" "$e" "$mode" "$(fade_start "$file")")
   if [[ $how != tags ]]; then
     read -r s e < <(jq -r --argjson r "$(python3 -c "print(int($sr) / $rate)")" '"\(.start * $r | round) \(.end * $r | round)"' <<<"$json")
     write_tags "$file" "$s" "$e" || true
@@ -181,8 +305,20 @@ resolve_loop() {
   jq -c --arg how "$how" '. + {source: $how}' <<<"$json"
 }
 
-title_src="$src/music/Title Theme.ogg"
-fairy_src="$src/music/Great Fairy's Fountain.ogg"
+# Prints the first of $1.flac, $1.ogg and $1.mp3 that exists.
+find_src() {
+  local ext
+  for ext in flac ogg mp3; do
+    if [[ -f "$1.$ext" ]]; then
+      [[ $ext == mp3 ]] && echo "ocarina-audio: $1.mp3: MP3 loop points may be off by encoder padding; FLAC is recommended" >&2
+      printf '%s\n' "$1.$ext"
+      return
+    fi
+  done
+}
+
+title_src=$(find_src "$src/music/Title Theme")
+fairy_src=$(find_src "$src/music/Great Fairy's Fountain")
 title_json=null
 fairy_json=null
 
@@ -192,13 +328,16 @@ if [[ -f $title_src ]]; then
   e=$(jq -r .end <<<"$title_json")
   gain=$(music_gain "$title_src")
   if ((s > 0)); then
-    cut "$title_src" "$out/title_intro.ogg" "$s" "$gain"
+    trim=$(sound_start "$title_src")
+    ((trim < s)) || trim=0
+    cut "$title_src" "$out/title_intro.ogg" "$s" "$gain" "$trim"
+    title_json=$(jq -c --argjson t "$trim" --argjson r "$rate" '. + {trim_start: $t, trim_start_s: ($t / $r * 10000 | round / 10000)}' <<<"$title_json")
   else
     rm -f "$out/title_intro.ogg"
   fi
   cut_loop "$title_src" "$out/title_loop.ogg" "$s" "$e" "$gain"
 else
-  echo "ocarina-audio: no $title_src, skipping the title theme" >&2
+  echo "ocarina-audio: no $src/music/Title Theme.{flac,ogg,mp3}, skipping the title theme" >&2
 fi
 
 if [[ -f $fairy_src ]]; then
@@ -207,8 +346,25 @@ if [[ -f $fairy_src ]]; then
   e=$(jq -r .end <<<"$fairy_json")
   gain=$(music_gain "$fairy_src")
   cut_loop "$fairy_src" "$out/fairy_loop.ogg" "$s" "$e" "$gain"
+  sr=$(src_rate "$fairy_src")
+  tag=$(read_tag "$fairy_src" OCARINA_START)
+  if [[ -z $fairy_start && $tag =~ ^[0-9]+$ ]]; then
+    from=$(python3 -c "import sys; print(round(int(sys.argv[1]) * $rate / int(sys.argv[2])))" "$tag" "$sr")
+    from_how=tags
+  else
+    from=$(snap_start "$fairy_src" "${fairy_start:-28}")
+    from_how=snapped
+    write_meta "$fairy_src" OCARINA_START="$(python3 -c "import sys; print(round(int(sys.argv[1]) * int(sys.argv[2]) / $rate))" "$from" "$sr")" || true
+  fi
+  if ((from < e)); then
+    cut_loop "$fairy_src" "$out/fairy_intro.ogg" "$s" "$e" "$gain" "$from"
+  else
+    rm -f "$out/fairy_intro.ogg"
+  fi
+  fairy_json=$(jq -c --argjson f "$from" --arg how "$from_how" --argjson r "$rate" \
+    '. + {play_from: $f, play_from_s: ($f / $r * 10000 | round / 10000), play_from_source: $how}' <<<"$fairy_json")
 else
-  echo "ocarina-audio: no $fairy_src, skipping the fairy fountain" >&2
+  echo "ocarina-audio: no $src/music/Great Fairy's Fountain.{flac,ogg,mp3}, skipping the fairy fountain" >&2
 fi
 
 declare -A fx=([start]=OOT_PressStart [move]=OOT_MainMenu_Cursor [letter]=OOT_MainMenu_Letter [decide]=OOT_MainMenu_Select [cancel]=OOT_MainMenu_Cancel [error]=OOT_MainMenu_Error)

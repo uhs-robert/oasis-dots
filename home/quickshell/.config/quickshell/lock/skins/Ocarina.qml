@@ -35,6 +35,8 @@ Item {
         return root.ctx.login === true ? "title" : "";
     }
     property int heard_typed: 0
+    // Set once the accept sound has played for this attempt; a new password clears it.
+    property bool heard_unlock: false
     property bool dying: false
 
     readonly property bool can_step: !!root.ctx && "scene" in root.ctx
@@ -282,7 +284,13 @@ Item {
         source: Qt.resolvedUrl("ocarina/OcarinaAudio.qml")
         onLoaded: audio_loader.item.track = Qt.binding(() => root.music_track)
     }
-    onPhaseChanged: if (root.phase === "saver" && root.can_step) root.ctx.scene = ""
+    onPhaseChanged: {
+        if (root.phase === "saver" && root.can_step) root.ctx.scene = "";
+        if (root.phase === "unlock" && !root.heard_unlock && root.owns_sound && audio_loader.item) {
+            root.heard_unlock = true;
+            audio_loader.item.play("decide");
+        }
+    }
     onScreenChanged: {
         const from = root.last_screen;
         root.last_screen = root.screen;
@@ -304,25 +312,14 @@ Item {
         }
     }
 
-    Timer {
-        id: back_timer
-        interval: 20000
-        onTriggered: {
-            if (root.can_step && root.typed === 0 && !root.checking && !root.ctx.granted) root.ctx.scene = "";
-        }
-    }
-
     Connections {
         target: root.ctx
         ignoreUnknownSignals: true
-        function onSceneChanged() {
-            back_timer.restart();
-            note_timer.restart();
-        }
+        function onSceneChanged() { note_timer.restart(); }
         function onBuffer_lengthChanged() {
-            back_timer.restart();
             if (root.owns_sound && root.typed > root.heard_typed && audio_loader.item) audio_loader.item.play("letter");
             root.heard_typed = root.typed;
+            if (root.typed > 0) root.heard_unlock = false;
         }
         function onSound_ownerChanged() { root.claim_sound(); }
         function onCue(name) {
@@ -331,7 +328,6 @@ Item {
         function onRejected() {
             if (root.owns_sound && audio_loader.item) audio_loader.item.play("error");
             if (root.can_step) root.ctx.scene = "name";
-            back_timer.restart();
             if (root.animate) flash_anim.restart();
         }
     }

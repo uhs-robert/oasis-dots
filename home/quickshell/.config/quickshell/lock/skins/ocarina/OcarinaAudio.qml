@@ -34,7 +34,11 @@ Item {
             if (audio.files["title_intro.ogg"]) title_intro.play();
             else title_loop.play();
         }
-        if (audio.track === "fairy" && fairy.playbackState !== MediaPlayer.PlayingState) fairy.play();
+        const fairy_on = fairy_intro.playbackState === MediaPlayer.PlayingState || fairy_loop.playbackState === MediaPlayer.PlayingState;
+        if (audio.track === "fairy" && !fairy_on) {
+            if (audio.files["fairy_intro.ogg"]) fairy_intro.play();
+            else fairy_loop.play();
+        }
         title_fade.restart();
         fairy_fade.restart();
     }
@@ -68,7 +72,10 @@ Item {
         NumberAnimation { target: audio; property: "fairy_level"; to: audio.track === "fairy" ? 1 : 0; duration: 800 }
         ScriptAction {
             script: {
-                if (audio.track !== "fairy") fairy.stop();
+                if (audio.track !== "fairy") {
+                    fairy_intro.stop();
+                    fairy_loop.stop();
+                }
             }
         }
     }
@@ -96,7 +103,19 @@ Item {
     }
 
     MediaPlayer {
-        id: fairy
+        id: fairy_intro
+        source: audio.file("fairy_intro.ogg")
+        onSourceChanged: Qt.callLater(audio.sync)
+        audioOutput: AudioOutput {
+            volume: audio.fairy_level * audio.music_volume
+        }
+        onMediaStatusChanged: {
+            if (fairy_intro.mediaStatus === MediaPlayer.EndOfMedia && audio.track === "fairy") fairy_loop.play();
+        }
+    }
+
+    MediaPlayer {
+        id: fairy_loop
         source: audio.file("fairy_loop.ogg")
         onSourceChanged: Qt.callLater(audio.sync)
         loops: MediaPlayer.Infinite
