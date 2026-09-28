@@ -19,6 +19,7 @@ Item {
     readonly property bool can_step: !!root.ctx && "scene" in root.ctx
     readonly property string scene: root.can_step ? root.ctx.scene : ""
     readonly property int typed: root.ctx ? root.ctx.buffer_length : 0
+    readonly property bool lit: root.scene === "lit"
     readonly property bool checking: !!root.ctx && root.ctx.checking
     // title, file, name or saver.
     readonly property string screen: {
@@ -87,7 +88,7 @@ Item {
         return { x: (rnd() * 110 - 25) * 16, y: (top + rnd() * spread) * 16, w: w, h: w * (0.16 + rnd() * 0.1), dur: Math.round(90 + rnd() * 70) * 1000, lead: rnd() * 150 * 1000 };
     }
 
-    // Enter or Space steps title to file select to name entry, Escape steps back; a printable key jumps to name entry and still types.
+    // Enter or Space ignites the title, then steps to file select and name entry; Escape steps back; a printable key jumps to name entry and still types.
     function handle_key(event) {
         const c = root.ctx;
         if (!root.can_step || c.buffer_length > 0 || c.checking || c.granted) return false;
@@ -97,10 +98,10 @@ Item {
             return false;
         }
         if (!ctrl && (event.key === Qt.Key_Return || event.key === Qt.Key_Enter || event.key === Qt.Key_Space)) {
-            c.scene = c.scene === "file" ? "name" : "file";
+            c.scene = c.scene === "file" ? "name" : c.scene === "lit" ? "file" : "lit";
             return true;
         }
-        if (c.scene === "file" && event.key === Qt.Key_Escape) {
+        if ((c.scene === "file" || c.scene === "lit") && event.key === Qt.Key_Escape) {
             c.scene = "";
             return true;
         }
@@ -757,6 +758,77 @@ Item {
                     }
                 }
 
+                // Frames are 1120x929 around the 960px wide logo, offset 80 left and 140 up.
+                Item {
+                    id: fire
+                    property real phase: 0
+                    x: 372.2 - 80 * 0.8425
+                    y: 35 - 140 * 0.8425
+                    width: 1120 * 0.8425
+                    height: 929 * 0.8425
+                    visible: root.lit
+                    transformOrigin: Item.Bottom
+
+                    Item {
+                        anchors.fill: parent
+                        transformOrigin: Item.Bottom
+
+                        Repeater {
+                            model: 5
+
+                            Image {
+                                required property int index
+                                anchors.fill: parent
+                                source: Qt.resolvedUrl("ocarina/fire" + index + ".png")
+                                opacity: index === Math.floor(fire.phase) ? 1 : 0
+                                asynchronous: true
+                                smooth: true
+
+                                Behavior on opacity {
+                                    enabled: root.animate
+                                    NumberAnimation { duration: 90 }
+                                }
+                            }
+                        }
+
+                        SequentialAnimation on scale {
+                            running: root.animate && root.lit
+                            loops: Animation.Infinite
+                            NumberAnimation { to: 1.02; duration: 300; easing.type: Easing.InOutSine }
+                            NumberAnimation { to: 0.99; duration: 260; easing.type: Easing.InOutSine }
+                            NumberAnimation { to: 1.015; duration: 340; easing.type: Easing.InOutSine }
+                            NumberAnimation { to: 1; duration: 280; easing.type: Easing.InOutSine }
+                        }
+                    }
+
+                    NumberAnimation on phase {
+                        running: root.animate && root.lit
+                        from: 0
+                        to: 4.99
+                        duration: 500
+                        loops: Animation.Infinite
+                    }
+
+                    ParallelAnimation {
+                        id: ignite
+                        NumberAnimation { target: fire; property: "opacity"; from: 0; to: 1; duration: 300; easing.type: Easing.OutQuad }
+                        NumberAnimation { target: fire; property: "scale"; from: 0.85; to: 1; duration: 300; easing.type: Easing.OutBack }
+                    }
+                }
+
+                Connections {
+                    target: root
+                    function onLitChanged() {
+                        if (root.lit && root.animate) {
+                            ignite.restart();
+                        } else {
+                            ignite.stop();
+                            fire.opacity = 1;
+                            fire.scale = 1;
+                        }
+                    }
+                }
+
                 Image {
                     id: logo
                     x: 372.2
@@ -769,6 +841,23 @@ Item {
                     asynchronous: true
                     smooth: true
                     mipmap: true
+                    layer.enabled: root.lit
+                    layer.textureSize: Qt.size(logo.sourceSize.width, Math.round(logo.sourceSize.width * 631.2 / 808.8))
+                    layer.effect: MultiEffect {
+                        shadowEnabled: true
+                        shadowColor: "#ff9a24"
+                        shadowBlur: 0.5
+                        shadowScale: 1.015
+                        blurMax: 24
+
+                        SequentialAnimation on shadowOpacity {
+                            running: root.animate
+                            loops: Animation.Infinite
+                            NumberAnimation { from: 0.8; to: 1; duration: 180 }
+                            NumberAnimation { from: 1; to: 0.75; duration: 220 }
+                            NumberAnimation { from: 0.75; to: 0.8; duration: 160 }
+                        }
+                    }
                 }
 
                 // Placed from logo.json: centre 0.67878, baseline 0.77947, size 0.07224 and max width 0.50074 of the logo box.
@@ -803,7 +892,7 @@ Item {
                     font.letterSpacing: 4
 
                     SequentialAnimation on opacity {
-                        running: root.animate && !title.saver
+                        running: root.animate && !title.saver && !root.lit
                         loops: Animation.Infinite
                         onStopped: press_start.opacity = 1
                         PropertyAction { value: 1 }
@@ -816,8 +905,10 @@ Item {
                 FitText {
                     x0: 800
                     base_y: 838
+                    max_w: 640
                     centered: true
-                    text: "© 1998 Nintendo"
+                    textFormat: Text.PlainText
+                    text: "© 1998 " + (root.ctx ? root.ctx.host : "")
                     color: "#ffffff"
                     style: Text.Outline
                     styleColor: "#000000"
