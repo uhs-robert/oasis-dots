@@ -58,6 +58,82 @@ Item {
     readonly property color win_mid: Qt.tint(Theme.bg_shadow, Qt.alpha(Theme.theme_primary_strong, 0.3))
     readonly property color win_end: Qt.tint(Theme.bg_shadow, Qt.alpha(Theme.theme_primary_strong, 0.14))
 
+    // Lifestream: particles on a helix around the sword, split into a back and a front canvas so they wrap it.
+    readonly property bool stream_on: root.screen === "saver"
+    property real stream_t: 0
+    // Canvas resolution against the screen; the glow hides the upscale.
+    readonly property real stream_res: 0.5
+    readonly property var stream: {
+        let seed = 7;
+        const rnd = () => {
+            seed = (seed * 16807) % 2147483647;
+            return (seed - 1) / 2147483646;
+        };
+        const out = [];
+        for (let i = 0; i < 120; i++) {
+            out.push({ th: rnd() * Math.PI * 2, w: 0.3 + rnd() * 0.45, s: rnd() * 1300, v: -(14 + rnd() * 30), r: 110 + Math.pow(rnd(), 0.7) * 210, arc: 0.5 + rnd() * 0.9, size: 0.6 + rnd() * 1.4, tone: rnd() });
+        }
+        const motes = [];
+        for (let i = 0; i < 70; i++) motes.push({ x: rnd() * 1600, y: rnd() * 900, v: 10 + rnd() * 26, sway: 10 + rnd() * 40, f: 0.2 + rnd() * 0.5, size: 0.8 + rnd() * 1.8 });
+        return { parts: out, motes: motes };
+    }
+
+    function paint_stream(ctx, w, h, front) {
+        ctx.reset();
+        const k = Math.max(w / 1600, h / 900);
+        const ox = (w - 1600 * k) / 2;
+        const oy = (h - 900 * k) / 2;
+        const t = root.stream_t;
+        const ang = sword.rotation * Math.PI / 180;
+        const ax = -Math.sin(ang), ay = Math.cos(ang);
+        const px = Math.cos(ang), py = Math.sin(ang);
+        const cx = 800, cy = 427, half = 650;
+        const tones = [String(Theme.ok), String(Theme.hint), String(root.white)];
+        ctx.globalCompositeOperation = "lighter";
+        ctx.lineCap = "butt";
+        if (!front) {
+            for (const m of root.stream.motes) {
+                const y = ((m.y - m.v * t) % 900 + 900) % 900;
+                const x = m.x + Math.sin(t * m.f + m.x) * m.sway;
+                ctx.globalAlpha = 0.25 + 0.25 * Math.sin(t * m.f * 3 + m.y);
+                ctx.fillStyle = tones[0];
+                ctx.beginPath();
+                ctx.arc(ox + x * k, oy + y * k, m.size * k, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+        const at = (p, th) => {
+            const r = p.r * (1 + 0.15 * Math.sin(t * 0.6 + p.th));
+            const along = ((p.s + p.v * t) % 1300 + 1300) % 1300 - half + r * 0.5 * Math.sin(th);
+            return [ox + (cx + ax * along + px * r * Math.cos(th)) * k, oy + (cy + ay * along + py * r * Math.cos(th)) * k, along];
+        };
+        for (const p of root.stream.parts) {
+            const th = p.th + p.w * t;
+            const depth = Math.sin(th);
+            if ((depth >= 0) !== front) continue;
+            const head = at(p, th);
+            const edge = Math.min(1, (half - Math.abs(head[2])) / 160);
+            if (edge <= 0) continue;
+            const lit = (0.35 + 0.65 * (depth + 1) / 2) * edge;
+            const tail = [head];
+            for (let j = 1; j <= 5; j++) tail.push(at(p, th - p.arc * j / 5));
+            const color = p.tone < 0.55 ? tones[0] : p.tone < 0.92 ? tones[1] : tones[2];
+            const near = 0.7 + 0.5 * (depth + 1) / 2;
+            ctx.strokeStyle = color;
+            for (const [width, alpha] of [[7, 0.14], [1.8, 0.8]]) {
+                for (let j = 1; j < tail.length; j++) {
+                    const fade = 1 - (j - 1) / (tail.length - 1);
+                    ctx.lineWidth = width * p.size * k * near * (0.4 + 0.6 * fade);
+                    ctx.globalAlpha = alpha * lit * fade;
+                    ctx.beginPath();
+                    ctx.moveTo(tail[j - 1][0], tail[j - 1][1]);
+                    ctx.lineTo(tail[j][0], tail[j][1]);
+                    ctx.stroke();
+                }
+            }
+        }
+    }
+
     function display_name(u) {
         const full = String(u && u.full || "").split(",")[0].trim().split(/\s+/)[0];
         const name = full || String(u && u.name || "");
@@ -440,6 +516,42 @@ Item {
 
         Stage {
             cover: true
+            visible: root.stream_on
+
+            Shape {
+                anchors.fill: parent
+                preferredRendererType: Shape.CurveRenderer
+                opacity: 0.8 + 0.2 * Math.sin(root.stream_t * 0.8)
+                ShapePath {
+                    strokeWidth: 0
+                    strokeColor: "transparent"
+                    fillGradient: RadialGradient {
+                        centerX: 800
+                        centerY: 427
+                        focalX: 800
+                        focalY: 427
+                        centerRadius: 620
+                        GradientStop { position: 0; color: Qt.alpha(Theme.ok, 0.16) }
+                        GradientStop { position: 0.5; color: Qt.alpha(Theme.hint, 0.06) }
+                        GradientStop { position: 1; color: "transparent" }
+                    }
+                    PathRectangle { width: 1600; height: 900 }
+                }
+            }
+        }
+
+        Canvas {
+            id: stream_back
+            visible: root.stream_on
+            width: parent.width * root.stream_res
+            height: parent.height * root.stream_res
+            scale: 1 / root.stream_res
+            transformOrigin: Item.TopLeft
+            onPaint: root.paint_stream(stream_back.getContext("2d"), stream_back.width, stream_back.height, false)
+        }
+
+        Stage {
+            cover: true
 
             Item {
                 id: sword
@@ -561,6 +673,16 @@ Item {
                     PathRectangle { width: 1600; height: 900 }
                 }
             }
+        }
+
+        Canvas {
+            id: stream_front
+            visible: root.stream_on
+            width: parent.width * root.stream_res
+            height: parent.height * root.stream_res
+            scale: 1 / root.stream_res
+            transformOrigin: Item.TopLeft
+            onPaint: root.paint_stream(stream_front.getContext("2d"), stream_front.width, stream_front.height, true)
         }
 
         Stage {
@@ -1129,6 +1251,25 @@ Item {
             PauseAnimation { duration: root.unlock_ms * 0.55 }
             NumberAnimation { target: flash; property: "opacity"; from: 0; to: 1; duration: root.unlock_ms * 0.3 }
         }
+    }
+
+    Timer {
+        interval: 40
+        repeat: true
+        running: root.stream_on && root.animate
+        property double start: 0
+        onRunningChanged: if (running) start = Date.now() - root.stream_t * 1000
+        onTriggered: root.stream_t = (Date.now() - start) / 1000
+    }
+
+    onStream_tChanged: {
+        stream_back.requestPaint();
+        stream_front.requestPaint();
+    }
+    onStream_onChanged: {
+        if (!root.stream_on) return;
+        stream_back.requestPaint();
+        stream_front.requestPaint();
     }
 
     QtObject {
