@@ -905,10 +905,8 @@ Item {
                 FitText {
                     x0: 800
                     base_y: 838
-                    max_w: 640
                     centered: true
-                    textFormat: Text.PlainText
-                    text: "© 1998 " + (root.ctx ? root.ctx.host : "")
+                    text: "© 1998 Nintendo"
                     color: "#ffffff"
                     style: Text.Outline
                     styleColor: "#000000"
