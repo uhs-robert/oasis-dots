@@ -601,9 +601,9 @@ PanelWindow {
                 rows.push({ label: "VOL", value: loupe.zoom + "x", ratio: 0, vol: true, color: Theme.green });
                 return rows;
             }
-            readonly property real tc_width: 230
-            readonly property real tc_pad_x: 12
-            readonly property real tc_pad_y: 10
+            readonly property real tc_width: 252
+            readonly property real tc_pad_x: 22
+            readonly property real tc_pad_y: 18
             readonly property real tc_header_h: 22
             readonly property real tc_lens_gap: 8
             readonly property real tc_row_h: 18

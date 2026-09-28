@@ -44,7 +44,7 @@ Item {
     readonly property var lock_steps: [60, 30, 0]
     property int lock_step: root.lock_steps.length - 1
     readonly property real grow: root.lock_steps[root.lock_step]
-    readonly property real card_w: 240
+    readonly property real card_w: 264
 
     visible: root.mine || root.target_mode
 
@@ -124,10 +124,10 @@ Item {
         readonly property real target_x: root.tx + root.tw
         readonly property real target_y: root.ty + root.th
         visible: root.mine
-        x: Math.max(0, Math.min(root.width - card.width, card.target_x - card.width))
-        y: Math.max(0, Math.min(root.height - card.height, card.target_y - card.height))
+        x: Math.max(0, Math.min(root.width - card.width, card.target_x - card.width - 16))
+        y: Math.max(0, Math.min(root.height - card.height, card.target_y - card.height - 16))
         width: root.card_w
-        height: card_col.implicitHeight + 20
+        height: card_col.implicitHeight + 36
 
         OctagonFrame {
             anchors.fill: parent
@@ -135,10 +135,10 @@ Item {
 
         Column {
             id: card_col
-            x: 12
-            y: 10
+            x: 24
+            y: 18
             spacing: 2
-            width: card.width - 24
+            width: card.width - 48
 
             Text {
                 text: root.full ? "SECTOR " + root.cls : root.region ? "TGT AREA" : "TGT " + root.screen_n + "/" + root.screen_targets.length
