@@ -6,7 +6,7 @@ import QtQuick.Shapes
 import "../../theme"
 import "../../components/screensavers"
 
-// An Imperial cockpit targeting console: a trench-scope reticle hunts, locks green or loses red with the password.
+// A TIE cockpit targeting console: a trench-scope reticle hunts, locks green or loses red with the password.
 Item {
     id: root
 
@@ -181,7 +181,7 @@ Item {
                 spacing: root.u * 0.2
 
                 Text {
-                    text: "IMPERIAL NETWORK"
+                    text: "OASIS NETWORK"
                     color: root.vec
                     font.family: root.head_font
                     font.bold: true
