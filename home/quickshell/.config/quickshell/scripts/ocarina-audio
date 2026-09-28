@@ -1,13 +1,14 @@
 #!/usr/bin/env bash
 # Imports the Ocarina lock skin's game audio into lock/skins/ocarina/audio (gitignored): loops cut at detected or given points, loudness evened out.
 # Loop points come from LOOPSTART/LOOPLENGTH (or LOOPEND) tags in the source OGGs; untagged tracks are detected and the result is tagged into the source losslessly.
-# Usage: ocarina-audio [--title-loop START END] [--fairy-loop START END] [--redetect] [SOURCE_DIR]   (START/END in seconds; overrides are tagged too)
+# Usage: ocarina-audio [--title-loop START END] [--fairy-loop START END] [--redetect] [--out DIR] [SOURCE_DIR]   (START/END in seconds; overrides are tagged too)
 set -euo pipefail
 
 src="$HOME/Downloads/oot"
 title_loop=()
 fairy_loop=()
 redetect=0
+out="$(cd "$(dirname "$0")/.." && pwd)/lock/skins/ocarina/audio"
 while (($#)); do
   case "$1" in
   --title-loop)
@@ -22,6 +23,10 @@ while (($#)); do
     redetect=1
     shift
     ;;
+  --out)
+    out=$2
+    shift 2
+    ;;
   -h | --help)
     sed -n '2,4p' "$0"
     exit 0
@@ -33,7 +38,6 @@ while (($#)); do
   esac
 done
 
-out="$(cd "$(dirname "$0")/.." && pwd)/lock/skins/ocarina/audio"
 rate=44100
 for tool in ffmpeg ffprobe jq python3; do
   command -v "$tool" >/dev/null || {
@@ -103,7 +107,7 @@ if mode == "full":
     e += max(range(-3, 4), key=score)
 if mode != "keep":
     for k in sorted(range(-300, 301), key=abs):
-        if x[s + k - 1] <= 0 < x[s + k]:
+        if s + k >= 1 and e + k <= len(x) and x[s + k - 1] <= 0 < x[s + k]:
             s, e = s + k, e + k
             break
 def spectra(seg, n=2048, hop=512):
@@ -111,10 +115,14 @@ def spectra(seg, n=2048, hop=512):
     m = np.log1p(np.abs(np.fft.rfft(f, axis=1))[:, :800])
     m -= m.mean(axis=1, keepdims=True)
     return m / (np.linalg.norm(m, axis=1, keepdims=True) + 1e-9)
+def finite(v):
+    return round(float(v), 3) if np.isfinite(v) else None
 w = min(5 * rate, len(x) - e)
-spec = float(np.mean(np.sum(spectra(x[s:s + w]) * spectra(x[e:e + w]), axis=1)))
-corr = float(np.corrcoef(x[s:s + rate], x[e:e + rate])[0, 1])
-print(json.dumps({"start": s, "end": e, "start_s": round(s / rate, 4), "end_s": round(e / rate, 4), "loop_s": round((e - s) / rate, 4), "spectral_match": round(spec, 3), "wave_corr": round(corr, 3)}))
+spec = finite(np.mean(np.sum(spectra(x[s:s + w]) * spectra(x[e:e + w]), axis=1))) if w >= 2048 else None
+m = min(rate, len(x) - e)
+with np.errstate(all="ignore"):
+    corr = finite(np.corrcoef(x[s:s + m], x[e:e + m])[0, 1]) if m >= 2 else None
+print(json.dumps({"start": s, "end": e, "start_s": round(s / rate, 4), "end_s": round(e / rate, 4), "loop_s": round((e - s) / rate, 4), "spectral_match": spec, "wave_corr": corr}))
 ' "$2" "$3" "$rate" "$4"
 }
 
@@ -139,10 +147,11 @@ import sys
 import numpy as np
 x = np.frombuffer(sys.stdin.buffer.read(), dtype=np.float32).reshape(-1, 2).astype(np.float64)
 s, e, gain = int(sys.argv[1]), int(sys.argv[2]), float(sys.argv[3])
-n = min(int(0.06 * int(sys.argv[4])), s)
+n = min(int(0.06 * int(sys.argv[4])), s, e - s)
 loop = x[s:e].copy()
-t = np.linspace(0, np.pi / 2, n)[:, None]
-loop[-n:] = loop[-n:] * np.cos(t) + x[s - n:s] * np.sin(t)
+if n > 0:
+    t = np.linspace(0, np.pi / 2, n)[:, None]
+    loop[-n:] = loop[-n:] * np.cos(t) + x[s - n:s] * np.sin(t)
 sys.stdout.buffer.write((loop * 10 ** (gain / 20)).astype(np.float32).tobytes())
 ' "$3" "$4" "$5" "$rate" | ffmpeg -v error -y -f f32le -ar "$rate" -ac 2 -i - -c:a libvorbis -q:a 6 -fflags +bitexact -flags:a +bitexact "$2"
 }
@@ -179,7 +188,11 @@ if [[ -f $title_src ]]; then
   s=$(jq -r .start <<<"$title_json")
   e=$(jq -r .end <<<"$title_json")
   gain=$(music_gain "$title_src")
-  cut "$title_src" "$out/title_intro.ogg" "$s" "$gain"
+  if ((s > 0)); then
+    cut "$title_src" "$out/title_intro.ogg" "$s" "$gain"
+  else
+    rm -f "$out/title_intro.ogg"
+  fi
   cut_loop "$title_src" "$out/title_loop.ogg" "$s" "$e" "$gain"
 else
   echo "ocarina-audio: no $title_src, skipping the title theme" >&2
