@@ -13,7 +13,7 @@ Popup {
     title: "Screenshot"
     preferred_width: 250
     footer_hint: "j/k move · Enter run · q close"
-    key_help: "j/k move · gg/G first/last · Enter run · r region · z frozen region · s screen · w window · f focused · R record region · W record window · S record screen · F record focused · p pixel · t text · q close"
+    key_help: "j/k move · gg/G first/last · Enter run · r region · z frozen region · s screen · w window · f focused · R record region · W record window · S record screen · F record focused · p pixel · t text · x scroll text · X scroll capture · q close"
     body_height: content.implicitHeight + 24
     jumps_enabled: true
 
@@ -29,7 +29,9 @@ Popup {
         { section: "Record", key: "S", label: "Record screen", glyph: "\u{f0e51}", select: "record", frozen: false, mode: "screen" },
         { section: "Record", key: "F", label: "Record focused", glyph: "\u{f08c6}", flag: "record-focused" },
         { section: "Tools", key: "p", label: "Pick pixel color", glyph: "\u{f020a}", select: "", frozen: true, mode: "pixel" },
-        { section: "Tools", key: "t", label: "Text from region", glyph: "\u{f113a}", select: "ocr", frozen: false }
+        { section: "Tools", key: "t", label: "Text from region", glyph: "\u{f113a}", select: "ocr", frozen: false },
+        { section: "Tools", key: "x", label: "Scroll text (OCR)", glyph: "\u{f113a}", select: "scroll_text", frozen: false },
+        { section: "Tools", key: "X", label: "Scroll capture (image)", glyph: "\u{f0a6d}", select: "scroll_image", frozen: false }
     ]
     readonly property var rows: root.base_rows
 

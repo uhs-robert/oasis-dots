@@ -6,7 +6,8 @@ IpcHandler {
 
     // Returns "ok" so screenshot.sh can fall back to rofi on anything else.
     function open(): string {
-        Screenshot.open_menu();
+        if (Screenshot.scrolling) Screenshot.stop_scroll();
+        else Screenshot.open_menu();
         return "ok";
     }
 
@@ -16,12 +17,13 @@ IpcHandler {
     }
 
     function toggle(): string {
-        if (Popups.open_name === "screenshot") Popups.close();
+        if (Screenshot.scrolling) Screenshot.stop_scroll();
+        else if (Popups.open_name === "screenshot") Popups.close();
         else Screenshot.open_menu();
         return "ok";
     }
 
-    // preset: "toolbar" (or "") shows the toolbar, "ocr" and "record" act on confirm.
+    // preset: "toolbar" (or "") shows the toolbar, "ocr", "record", "scroll_text" and "scroll_image" act on confirm.
     function select(frozen: bool, preset: string): string {
         Screenshot.select(frozen, preset === "toolbar" ? "" : preset);
         return "ok";

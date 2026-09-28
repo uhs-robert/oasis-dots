@@ -18,9 +18,12 @@ Singleton {
     // Undoes a selection that a crash left forcing windows opaque.
     Component.onCompleted: root.set_capture_opaque(false)
 
-    // "select" while dragging, "toolbar" once a region is chosen, "capture" while grim runs.
+    // "select" while dragging, "toolbar" once a region is chosen, "capture" while grim runs, "scroll" while scroll-capture runs with no overlay.
     property string phase: ""
-    readonly property bool selecting: root.phase !== ""
+    readonly property bool selecting: root.phase !== "" && root.phase !== "scroll"
+    readonly property bool scrolling: root.phase === "scroll"
+    property int scroll_frames: 0
+    property string scroll_text_file: ""
     property bool frozen: false
     // "region" drags a rect, "pixel" picks a colour from the still frame, "window" and "screen" pick a window's or monitor's rect.
     property string mode: "region"
@@ -45,6 +48,8 @@ Singleton {
         { id: "save", key: "s", label: "Save" },
         { id: "annotate", key: "a", label: "Annotate" },
         { id: "ocr", key: "o", label: "OCR" },
+        { id: "scroll_text", key: "t", label: "Scroll text" },
+        { id: "scroll_image", key: "i", label: "Scroll image" },
         { id: "record", key: "r", label: "Record" }
     ]
     property int tool_index: 0
@@ -108,7 +113,7 @@ Singleton {
     }
 
     function start_select(frozen, preset, mode) {
-        if (root.phase === "capture") return;
+        if (root.phase === "capture" || root.scrolling) return;
         root.cancel_countdown();
         root.mode = mode || "region";
         root.lens_on = root.mode === "region" || root.mode === "pixel";
@@ -251,6 +256,7 @@ Singleton {
     }
 
     function cancel() {
+        if (root.scrolling) return root.stop_scroll();
         if (root.phase === "capture") root.grab_cancelled = true;
         capture_opaque_delay.stop();
         grab_delay.stop();
@@ -413,12 +419,14 @@ Singleton {
     function act(action) {
         const geometry = root.geometry();
         if (geometry === "") return root.cancel();
+        const scroll = action === "scroll_text" || action === "scroll_image";
         if (root.delay_s > 0 && !root.frozen) {
             const scale = String(root.screen_of(root.sel_screen).devicePixelRatio);
             root.cancel();
-            root.start_countdown(() => action === "record" ? Quickshell.execDetached([root.script, "--record-geometry", geometry]) : root.run_grab(action, scale, geometry));
+            root.start_countdown(() => action === "record" ? Quickshell.execDetached([root.script, "--record-geometry", geometry]) : scroll ? root.start_scroll(action, scale, geometry) : root.run_grab(action, scale, geometry));
             return;
         }
+        if (scroll) return root.start_scroll(action, String(root.screen_of(root.sel_screen).devicePixelRatio), geometry);
         if (action === "record") {
             root.cancel();
             after_close.fn = () => Quickshell.execDetached([root.script, "--record-geometry", geometry]);
@@ -427,6 +435,63 @@ Singleton {
         }
         root.phase = "capture";
         root.run_grab(action, String(root.screen_of(root.sel_screen).devicePixelRatio), geometry);
+    }
+
+    // The overlay closes first so wheel events reach the window beneath.
+    function start_scroll(action, scale, geometry) {
+        capture_opaque_delay.stop();
+        grab_delay.stop();
+        capture_delay.stop();
+        capture_watchdog.stop();
+        root.sel_screen = "";
+        root.anchored = false;
+        const base = (Quickshell.env("XDG_RUNTIME_DIR") || "/tmp") + "/qs-screenshot-" + Date.now();
+        root.pending_action = action;
+        root.capture_file = base + ".png";
+        root.scroll_text_file = action === "scroll_text" ? base + ".txt" : "";
+        root.scroll_frames = 0;
+        scroller.command = [Quickshell.shellDir + "/scripts/scroll-capture", geometry, scale, root.capture_file].concat(root.scroll_text_file !== "" ? ["--text-out", root.scroll_text_file] : []);
+        root.phase = "scroll";
+        root.set_capture_opaque(true);
+        scroll_delay.restart();
+    }
+
+    // Also stops one still waiting for the overlay to close.
+    function stop_scroll() {
+        if (!root.scrolling) return;
+        if (scroller.running) return scroller.signal(15);
+        scroll_delay.stop();
+        root.phase = "";
+        root.set_capture_opaque(false);
+    }
+
+    Timer {
+        id: scroll_delay
+        interval: 300
+        onTriggered: scroller.running = true
+    }
+
+    Process {
+        id: scroller
+        stdout: SplitParser {
+            onRead: line => {
+                const m = line.match(/^frame (\d+)/);
+                if (m) root.scroll_frames = parseInt(m[1]);
+            }
+        }
+        onExited: code => {
+            const text = root.scroll_text_file;
+            root.phase = "";
+            root.set_capture_opaque(false);
+            if (code !== 0) {
+                Quickshell.execDetached(["rm", "-f", "--", root.capture_file, text]);
+                Quickshell.execDetached(["notify-send", "Scroll Capture Failed", "scroll-capture exited with " + code]);
+            } else if (text !== "") {
+                Quickshell.execDetached([root.script, "--image", root.capture_file, "--scroll-text", text]);
+            } else {
+                Quickshell.execDetached([root.script, "--image", root.capture_file, "--save"]);
+            }
+        }
     }
 
     // With the selector up this waits for its chrome to hide; after a countdown there is no overlay and grim runs at once.

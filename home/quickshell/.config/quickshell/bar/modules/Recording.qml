@@ -11,8 +11,9 @@ Item {
 
     // A pending capture countdown takes the chip before the recording it may start.
     readonly property bool counting: Screenshot.countdown > 0
-    readonly property bool shown: Screenshot.recording || root.counting
-    readonly property string tip: root.counting ? "Capture in " + Screenshot.countdown + "s\nClick to cancel" : "Recording " + Screenshot.elapsed_text + "\nClick to stop"
+    readonly property bool scrolling: Screenshot.scrolling
+    readonly property bool shown: Screenshot.recording || root.counting || root.scrolling
+    readonly property string tip: root.scrolling ? "Scroll capture, " + Screenshot.scroll_frames + " frames\nClick or Print to stop" : root.counting ? "Capture in " + Screenshot.countdown + "s\nClick to cancel" : "Recording " + Screenshot.elapsed_text + "\nClick to stop"
     onTipChanged: if (hover_handler.hovered) Tooltip.show(root, root.tip, "recording")
     visible: shown
     implicitWidth: shown ? row.implicitWidth : 0
@@ -34,7 +35,7 @@ Item {
         Text {
             id: dot
             Layout.alignment: Qt.AlignVCenter
-            text: root.counting ? "\u{f051b}" : "\u{f044a}"
+            text: root.scrolling ? "\u{f0a6d}" : root.counting ? "\u{f051b}" : "\u{f044a}"
             color: root.counting ? Theme.warning : Theme.theme_label
             font.family: Style.bar_font_family
             style: Style.bar_text_style
@@ -52,9 +53,9 @@ Item {
         }
 
         Text {
-            visible: !root.compact || root.counting
+            visible: !root.compact || root.counting || root.scrolling
             Layout.alignment: Qt.AlignVCenter
-            text: root.counting ? String(Screenshot.countdown) : Screenshot.elapsed_text
+            text: root.scrolling ? String(Screenshot.scroll_frames) : root.counting ? String(Screenshot.countdown) : Screenshot.elapsed_text
             color: Style.bar_fg
             font.family: Style.bar_font_family
             style: Style.bar_text_style
@@ -73,6 +74,6 @@ Item {
 
     MouseArea {
         anchors.fill: parent
-        onClicked: Screenshot.stop_recording()
+        onClicked: root.scrolling ? Screenshot.stop_scroll() : Screenshot.stop_recording()
     }
 }
