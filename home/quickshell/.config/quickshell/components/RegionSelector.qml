@@ -30,7 +30,7 @@ PanelWindow {
     readonly property color dim_color: Qt.alpha(Theme.bg_shadow, 0.6)
     readonly property bool pixel_mode: Screenshot.mode === "pixel"
     readonly property bool target_mode: Screenshot.mode === "window" || Screenshot.mode === "screen"
-    readonly property bool skinned_targets: ["scope", "jrpg", "goldeneye"].includes(Style.picker_skin)
+    readonly property bool skinned_targets: ["scope", "jrpg", "goldeneye", "scopeitem"].includes(Style.picker_skin)
     property bool help_open: false
     readonly property string delay_label: Screenshot.delay_s > 0 ? "Delay " + Screenshot.delay_s + "s" : "No delay"
     readonly property string tier_keys: "hjkl move 10px · H/J/K/L move 100px · C-hjkl move 1px · C-H/J/K/L move 300px"
@@ -251,6 +251,16 @@ PanelWindow {
             sel: root.sel
             mine: root.mine
             target_mode: root.target_mode
+        }
+
+        ScopeItemTargets {
+            anchors.fill: parent
+            visible: Style.picker_skin === "scopeitem" && !root.pixel_mode
+            screen_name: root.screen_name
+            sel: root.sel
+            mine: root.mine
+            target_mode: root.target_mode
+            origin: Qt.point(root.modelData.x, root.modelData.y)
         }
 
         Rectangle {
