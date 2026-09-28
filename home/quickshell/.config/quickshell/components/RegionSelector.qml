@@ -8,6 +8,7 @@ import Quickshell.Wayland
 import "../theme"
 import "../services"
 import "picker"
+import "snes" as SnesParts
 
 // One per screen while Screenshot.selecting: drag a region, then pick an action from the toolbar.
 PanelWindow {
@@ -343,11 +344,11 @@ PanelWindow {
             id: key_cursor
             readonly property point at: Screenshot.cursor_point
             readonly property int arm: 12
-            readonly property bool scope_skin: Style.picker_skin === "scope" && !root.target_mode
+            readonly property bool hide_arms: Style.picker_skin !== "" && !root.target_mode
             visible: Screenshot.phase === "select" && Screenshot.cursor_screen === root.screen_name && (Screenshot.keys_moved || Screenshot.anchored)
 
             Item {
-                visible: !key_cursor.scope_skin
+                visible: !key_cursor.hide_arms
 
                 Repeater {
                     model: [[-key_cursor.arm - 3, 0, key_cursor.arm, 1], [4, 0, key_cursor.arm, 1], [0, -key_cursor.arm - 3, 1, key_cursor.arm], [0, 4, 1, key_cursor.arm]]
@@ -383,6 +384,12 @@ PanelWindow {
             target_mode: root.target_mode
         }
 
+        JrpgCursor {
+            anchors.fill: parent
+            screen_name: root.screen_name
+            target_mode: root.target_mode
+        }
+
         Item {
             id: loupe
             readonly property real lens: 176
@@ -396,21 +403,89 @@ PanelWindow {
             readonly property int bx: Math.floor(loupe.at.x * root.sample_scale)
             readonly property int by: Math.floor(loupe.at.y * root.sample_scale)
             readonly property bool scope: Style.picker_skin === "scope"
-            readonly property real gap: loupe.scope ? 36 : 28
-            readonly property real header_h: loupe.scope ? 20 : 0
+            readonly property bool jrpg: Style.picker_skin === "jrpg"
+            readonly property real gap: loupe.scope || loupe.jrpg ? 36 : 28
+            readonly property real jrpg_name_h: 16
+            readonly property real jrpg_gap: 6
+            readonly property real jrpg_drop: 3
+            // R/G/B in pixel mode; X/Y (and W/H while dragging) in region mode, values matching the coords readout.
+            readonly property var jrpg_rows: {
+                if (!loupe.jrpg) return [];
+                if (root.pixel_mode) {
+                    const hex = Screenshot.pixel_hex;
+                    const rgb = hex.length >= 7 ? [parseInt(hex.substr(1, 2), 16), parseInt(hex.substr(3, 2), 16), parseInt(hex.substr(5, 2), 16)] : [0, 0, 0];
+                    return [
+                        { label: "R", value: rgb[0], ratio: rgb[0] / 255, color: Theme.red },
+                        { label: "G", value: rgb[1], ratio: rgb[1] / 255, color: Theme.green },
+                        { label: "B", value: rgb[2], ratio: rgb[2] / 255, color: Theme.blue }
+                    ];
+                }
+                const rows = [
+                    { label: "X", value: Math.round(root.modelData.x + loupe.at.x), ratio: loupe.at.x / root.width, color: Theme.theme_primary_light },
+                    { label: "Y", value: Math.round(root.modelData.y + loupe.at.y), ratio: loupe.at.y / root.height, color: Theme.theme_primary_light }
+                ];
+                if (root.mine) {
+                    rows.push({ label: "W", value: Math.round(root.sel.width), ratio: root.sel.width / root.width, color: Theme.theme_secondary });
+                    rows.push({ label: "H", value: Math.round(root.sel.height), ratio: root.sel.height / root.height, color: Theme.theme_secondary });
+                }
+                return rows;
+            }
+            readonly property real jrpg_stats_h: loupe.jrpg_rows.length > 0 ? loupe.jrpg_rows.length * 14 + (loupe.jrpg_rows.length - 1) * 3 : 0
+            readonly property real header_h: loupe.scope ? 20 : loupe.jrpg ? loupe.jrpg_name_h + loupe.jrpg_gap : 0
             readonly property real foot_h: 22
             visible: Screenshot.lens_on && Screenshot.phase === "select" && Screenshot.cursor_screen === root.screen_name && (root.pixel_mode ? root.frame_ready : frozen_view.hasContent)
-            width: loupe.view + loupe.pad * 2
-            height: loupe.scope ? loupe.view + loupe.pad * 2 + loupe.header_h + loupe.foot_h : loupe.view + loupe.pad * 2 + coords.implicitHeight + 4 + (root.pixel_mode ? swatch_row.height + 4 : 0)
-            x: loupe.at.x + loupe.gap + loupe.width <= root.width ? loupe.at.x + loupe.gap : loupe.at.x - loupe.gap - loupe.width
+            width: loupe.view + loupe.pad * 2 + (loupe.jrpg ? loupe.jrpg_drop : 0)
+            height: loupe.scope ? loupe.view + loupe.pad * 2 + loupe.header_h + loupe.foot_h : loupe.jrpg ? loupe.pad + loupe.header_h + loupe.view + loupe.jrpg_gap + loupe.jrpg_stats_h + loupe.pad + loupe.jrpg_drop : loupe.view + loupe.pad * 2 + coords.implicitHeight + 4 + (root.pixel_mode ? swatch_row.height + 4 : 0)
+            x: loupe.at.x + loupe.gap + loupe.width <= root.width ? loupe.at.x + loupe.gap : loupe.at.x - (loupe.jrpg ? 66 : loupe.gap) - loupe.width
             y: loupe.at.y + loupe.gap + loupe.height <= root.height ? loupe.at.y + loupe.gap : loupe.at.y - loupe.gap - loupe.height
 
             Rectangle {
+                visible: !loupe.scope && !loupe.jrpg
                 anchors.fill: parent
-                radius: loupe.scope ? 0 : Style.frame_radius
-                color: loupe.scope ? Qt.alpha(Style.frame_color, 0.82) : Style.frame_color
-                border.width: loupe.scope ? 1 : Math.max(1, Style.frame_border_width)
-                border.color: loupe.scope ? Qt.alpha(Style.picker_hud, 0.7) : Style.frame_border_color
+                radius: Style.frame_radius
+                color: Style.frame_color
+                border.width: Math.max(1, Style.frame_border_width)
+                border.color: Style.frame_border_color
+            }
+
+            Rectangle {
+                visible: loupe.scope
+                anchors.fill: parent
+                radius: 0
+                color: Qt.alpha(Style.frame_color, 0.82)
+                border.width: 1
+                border.color: Qt.alpha(Style.picker_hud, 0.7)
+            }
+
+            SnesParts.SnesWindow {
+                visible: loupe.jrpg
+                anchors.fill: parent
+            }
+
+            Text {
+                id: jrpg_name_left
+                visible: loupe.jrpg
+                x: loupe.pad
+                y: loupe.pad
+                text: root.pixel_mode ? (Screenshot.pixel_hex !== "" ? Screenshot.pixel_hex : "#------") : "TARGET"
+                color: Theme.fg_strong
+                style: Text.Raised
+                styleColor: Style.text_shadow
+                font.family: Style.font_family
+                font.pixelSize: Style.fs(-5)
+            }
+
+            Text {
+                id: jrpg_name_right
+                visible: loupe.jrpg
+                x: loupe.pad + loupe.view - jrpg_name_right.implicitWidth
+                y: loupe.pad
+                text: "Lv " + loupe.zoom
+                color: Theme.theme_secondary
+                style: Text.Raised
+                styleColor: Style.text_shadow
+                font.family: Style.font_family
+                font.pixelSize: Style.fs(-6)
             }
 
             Text {
@@ -534,13 +609,31 @@ PanelWindow {
                     height: loupe.zoom + border.width * 2
                     color: "transparent"
                     border.width: loupe.zoom >= 8 ? 2 : 1
-                    border.color: loupe.scope ? Style.picker_hud : Style.caret_color
+                    border.color: loupe.scope ? Style.picker_hud : loupe.jrpg ? (jrpg_blink.alt ? Theme.theme_secondary : Theme.fg_strong) : Style.caret_color
                 }
+
+                Rectangle {
+                    visible: loupe.jrpg
+                    anchors.fill: parent
+                    color: "transparent"
+                    border.width: 2
+                    border.color: Theme.theme_primary_light
+                }
+            }
+
+            Timer {
+                id: jrpg_blink
+                property bool alt: false
+                running: loupe.jrpg && loupe.visible
+                interval: 400
+                repeat: true
+                onTriggered: jrpg_blink.alt = !jrpg_blink.alt
             }
 
             Row {
                 id: swatch_row
                 visible: loupe.scope ? true : root.pixel_mode
+                opacity: loupe.jrpg ? 0 : 1
                 anchors.horizontalCenter: !loupe.scope ? parent.horizontalCenter : undefined
                 anchors.bottom: !loupe.scope ? coords.top : undefined
                 anchors.bottomMargin: 2
@@ -608,7 +701,7 @@ PanelWindow {
 
             Text {
                 id: coords
-                visible: !loupe.scope
+                visible: !loupe.scope && !loupe.jrpg
                 anchors.horizontalCenter: parent.horizontalCenter
                 anchors.bottom: parent.bottom
                 anchors.bottomMargin: loupe.pad - 2
@@ -674,6 +767,69 @@ PanelWindow {
                         color: Style.text_fg
                         font.family: Style.font_family
                         font.pixelSize: Style.fs(-6)
+                    }
+                }
+            }
+
+            Column {
+                id: jrpg_stats
+                visible: loupe.jrpg
+                x: loupe.pad
+                y: loupe.pad + loupe.header_h + loupe.view + loupe.jrpg_gap
+                width: loupe.view
+                spacing: 3
+
+                Repeater {
+                    model: loupe.jrpg ? loupe.jrpg_rows : []
+
+                    Item {
+                        id: stat_row
+                        required property var modelData
+                        width: jrpg_stats.width
+                        height: 14
+
+                        Text {
+                            id: stat_label
+                            anchors.left: parent.left
+                            anchors.verticalCenter: parent.verticalCenter
+                            width: 12
+                            text: stat_row.modelData.label
+                            color: Theme.theme_primary_light
+                            font.family: Style.font_family
+                            font.pixelSize: Style.fs(-7)
+                        }
+
+                        Text {
+                            id: stat_value
+                            anchors.right: parent.right
+                            anchors.verticalCenter: parent.verticalCenter
+                            width: 30
+                            horizontalAlignment: Text.AlignRight
+                            text: String(stat_row.modelData.value)
+                            color: Theme.fg_strong
+                            font.family: Style.mono_font
+                            font.pixelSize: Style.fs(-7)
+                        }
+
+                        Rectangle {
+                            anchors.left: stat_label.right
+                            anchors.leftMargin: 4
+                            anchors.right: stat_value.left
+                            anchors.rightMargin: 4
+                            anchors.verticalCenter: parent.verticalCenter
+                            height: 6
+                            color: Theme.bg_shadow
+                            border.width: 1
+                            border.color: Theme.fg_muted
+
+                            Rectangle {
+                                x: 1
+                                y: 1
+                                width: Math.max(0, (parent.width - 2) * Math.max(0, Math.min(1, stat_row.modelData.ratio)))
+                                height: parent.height - 2
+                                color: stat_row.modelData.color
+                            }
+                        }
                     }
                 }
             }
@@ -753,7 +909,7 @@ PanelWindow {
         anchors.fill: parent
         z: -1
         enabled: Screenshot.phase === "select" || Screenshot.phase === "toolbar"
-        cursorShape: Style.picker_skin === "scope" && Screenshot.phase === "select" && !root.target_mode && root.chrome_shown ? Qt.BlankCursor : Qt.CrossCursor
+        cursorShape: Style.picker_skin !== "" && Screenshot.phase === "select" && !root.target_mode && root.chrome_shown ? Qt.BlankCursor : Qt.CrossCursor
         hoverEnabled: true
         onWheel: wheel => Screenshot.step_zoom(wheel.angleDelta.y > 0 ? 1 : wheel.angleDelta.y < 0 ? -1 : 0)
         onPressed: mouse => {

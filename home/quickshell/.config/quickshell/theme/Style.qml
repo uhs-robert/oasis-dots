@@ -647,6 +647,7 @@ Singleton {
                 osd_layout: "rpg",
                 card_layout: "dialogue",
                 toast_enter: "mode7",
+                picker_skin: "jrpg",
                 // Greys lifted toward primary_light so they read on the shaded window.
                 text_muted: Qt.tint(Theme.fg_dim, Qt.alpha(Theme.theme_primary_light, 0.4)),
                 text_dim: Qt.tint(Theme.fg_dim, Qt.alpha(Theme.theme_primary_light, 0.65)),
