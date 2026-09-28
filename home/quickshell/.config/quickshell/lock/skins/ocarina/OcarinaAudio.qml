@@ -39,8 +39,9 @@ Item {
         fairy_fade.restart();
     }
 
-    onTrackChanged: audio.sync()
-    onFilesChanged: audio.sync()
+    // Sources resolve after the folder listing, so sync again once they do.
+    onTrackChanged: Qt.callLater(audio.sync)
+    onFilesChanged: Qt.callLater(audio.sync)
 
     FolderListModel {
         id: listing
@@ -75,6 +76,7 @@ Item {
     MediaPlayer {
         id: title_intro
         source: audio.file("title_intro.ogg")
+        onSourceChanged: Qt.callLater(audio.sync)
         audioOutput: AudioOutput {
             volume: audio.title_level * audio.music_volume
         }
@@ -86,6 +88,7 @@ Item {
     MediaPlayer {
         id: title_loop
         source: audio.file("title_loop.ogg")
+        onSourceChanged: Qt.callLater(audio.sync)
         loops: MediaPlayer.Infinite
         audioOutput: AudioOutput {
             volume: audio.title_level * audio.music_volume
@@ -95,6 +98,7 @@ Item {
     MediaPlayer {
         id: fairy
         source: audio.file("fairy_loop.ogg")
+        onSourceChanged: Qt.callLater(audio.sync)
         loops: MediaPlayer.Infinite
         audioOutput: AudioOutput {
             volume: audio.fairy_level * audio.music_volume
