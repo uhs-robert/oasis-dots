@@ -188,7 +188,7 @@ PanelWindow {
             Rectangle {
                 required property var modelData
                 required property int index
-                visible: modelData.screen === root.screen_name && index !== Screenshot.target_index && Screenshot.phase === "select"
+                visible: Style.picker_skin === "" && modelData.screen === root.screen_name && index !== Screenshot.target_index && Screenshot.phase === "select"
                 x: modelData.rect.x
                 y: modelData.rect.y
                 width: modelData.rect.width
@@ -202,7 +202,7 @@ PanelWindow {
         Item {
             id: frame
             readonly property int edge: Math.max(1, Style.frame_border_width)
-            visible: root.mine
+            visible: root.mine && Style.picker_skin === ""
             x: root.sel.x - frame.edge
             y: root.sel.y - frame.edge
             width: root.sel.width + frame.edge * 2
@@ -225,45 +225,36 @@ PanelWindow {
             }
         }
 
-        CornerBrackets {
-            id: ge_area_brackets
-            visible: root.mine && Style.picker_skin === "goldeneye" && Screenshot.phase === "select"
-            x: root.sel.x - 5
-            y: root.sel.y - 5
-            width: root.sel.width + 10
-            height: root.sel.height + 10
-            color: Theme.theme_label
-            inset: 0
-            arm: 10
-            thickness: 2
-            all_corners: true
+        ScopeTargets {
+            anchors.fill: parent
+            visible: Style.picker_skin === "scope" && !root.pixel_mode
+            screen_name: root.screen_name
+            sel: root.sel
+            mine: root.mine
+            target_mode: root.target_mode
         }
 
-        Row {
-            id: ge_area_label
-            visible: ge_area_brackets.visible
-            x: ge_area_brackets.x
-            y: ge_area_brackets.y - height - 4
-            spacing: 4
+        JrpgTargets {
+            anchors.fill: parent
+            visible: Style.picker_skin === "jrpg" && !root.pixel_mode
+            screen_name: root.screen_name
+            sel: root.sel
+            mine: root.mine
+            target_mode: root.target_mode
+        }
 
-            Text {
-                text: "AREA"
-                color: Theme.theme_label
-                font.family: Style.font_family
-                font.pixelSize: Style.fs(-4)
-            }
-
-            Text {
-                text: Math.round(root.sel.width) + " x " + Math.round(root.sel.height)
-                color: Theme.fg_strong
-                font.family: Style.font_family
-                font.pixelSize: Style.fs(-4)
-            }
+        LockOnTargets {
+            anchors.fill: parent
+            visible: Style.picker_skin === "goldeneye" && !root.pixel_mode
+            screen_name: root.screen_name
+            sel: root.sel
+            mine: root.mine
+            target_mode: root.target_mode
         }
 
         Rectangle {
             id: readout
-            visible: root.mine && !(Style.picker_skin === "goldeneye" && Screenshot.phase === "select")
+            visible: root.mine && Style.picker_skin === ""
             readonly property bool above: root.sel.y >= height + 8
             x: Math.max(0, Math.min(parent.width - width, root.sel.x))
             y: readout.above ? root.sel.y - height - 6 : root.sel.y + 6
