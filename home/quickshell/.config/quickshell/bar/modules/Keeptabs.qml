@@ -196,7 +196,8 @@ Item {
                     count: group.modelData.count
                     tint: group.modelData.color || Theme.theme_primary
                     // Pango rise is in 1/1024 pt; keeptabs uses +-1024 to bob the running icon.
-                    glyph_rise: group.modelData.rise
+                    // The robot's body sits low under its antenna, so the bob is lifted 2px to center the body.
+                    glyph_rise: group.modelData.rise ? group.modelData.rise + 2048 : 0
                     glyph_opacity: (group.is_done && pulse_loader.active) || (group.is_wait && root.wait_hides_glyph) ? 0 : 1
                 }
             }
