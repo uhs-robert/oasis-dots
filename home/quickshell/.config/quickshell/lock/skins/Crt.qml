@@ -667,8 +667,8 @@ Item {
 
                 MatrixRain {
                     running: root.animate
-                    color: root.ph_hot
-                    trail_color: root.ph
+                    color: Theme.theme_primary_strong
+                    trail_color: Theme.theme_primary_strong
                     font_family: root.font
                     glyph_size: root.u * 2.2
                     characters: "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#$%&*+=<>:;?!/|"
