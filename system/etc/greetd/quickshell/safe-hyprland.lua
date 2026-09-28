@@ -11,8 +11,8 @@ hl.monitor({
 
 ---- [KEYBINDS] ----
 hl.bind("SUPER + RETURN", hl.dsp.exec_cmd("kitty"))
-hl.bind("SUPER + Q", hl.dsp.window.kill())
-hl.bind("SUPER + M", hl.dsp.exit())
+hl.bind("SUPER + X", hl.dsp.window.kill())
+hl.bind("SUPER + Q", hl.dsp.exit())
 
 ---- [START UP] ----
 hl.on("hyprland.start", function()
