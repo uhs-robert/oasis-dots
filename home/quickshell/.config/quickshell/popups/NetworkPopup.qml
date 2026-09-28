@@ -10,7 +10,6 @@ import "../services"
 import "../components/nes" as Nes
 import "../components/snes" as Snes
 import "../components/ps1" as Ps1
-import "../components/ps1/Codec.js" as Codec
 import "../components/ps2" as Ps2
 
 Popup {
@@ -634,10 +633,10 @@ Popup {
                             anchors.rightMargin: 6 + net_row.key_space
                             spacing: 6
 
-                            // Console signal art in place of the glyph; SNES puts its gauge at the row's end.
+                            // NES signal art in place of the glyph; SNES puts its gauge at the row's end.
                             Loader {
                                 id: signal_art
-                                readonly property Component view: ({ nes: nes_signal, ps1: ps1_signal })[root.st.console_views] || null
+                                readonly property Component view: ({ nes: nes_signal })[root.st.console_views] || null
                                 active: !net_row.is_advanced && !!view
                                 visible: active
                                 sourceComponent: view
@@ -647,15 +646,6 @@ Popup {
                                     Nes.CoinMeter {
                                         size: 12
                                         value: net_row.modelData.signalStrength || 0
-                                    }
-                                }
-
-                                Component {
-                                    id: ps1_signal
-                                    Ps1.Digits {
-                                        text: Codec.freq(net_row.modelData.signalStrength)
-                                        size: root.st.fs(-7)
-                                        color: net_row.modelData.connected ? Theme.green : Qt.tint(Theme.green, Qt.alpha(root.st.text_dim, 0.5))
                                     }
                                 }
                             }
