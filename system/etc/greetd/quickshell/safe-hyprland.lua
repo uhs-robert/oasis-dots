@@ -11,6 +11,7 @@ hl.monitor({
 
 ---- [KEYBINDS] ----
 hl.bind("SUPER + RETURN", hl.dsp.exec_cmd("kitty"))
+hl.bind("SUPER + O", hl.dsp.exec_cmd("rofi -show drun"))
 hl.bind("SUPER + X", hl.dsp.window.kill())
 hl.bind("SUPER + Q", hl.dsp.exit())
 
