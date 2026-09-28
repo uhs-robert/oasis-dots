@@ -61,7 +61,34 @@ Item {
         dusk: { sky: ["#2e2f52", "#6a5f7e", "#c89a8a"], hills: ["#3a3550", "#221f30", "#110f18"] },
         night: { sky: ["#02040d", "#0b1230", "#1f2a55"], hills: ["#151b33", "#0b0f1e", "#04060c"] }
     })
-    readonly property var pal: root.palettes[root.tod]
+    readonly property var pal: root.palettes[root.shown_tod]
+
+    // The saver walks dusk, night, dawn from the current time; sky_tod is set only while it runs.
+    readonly property var sky_cycle: ["dusk", "night", "dawn"]
+    property string sky_tod: ""
+    property bool sky_glide: false
+    readonly property string shown_tod: root.sky_tod !== "" ? root.sky_tod : root.tod
+    property color sky0: root.pal.sky[0]
+    property color sky1: root.pal.sky[1]
+    property color sky2: root.pal.sky[2]
+    property color hill0: root.pal.hills[0]
+    property color hill1: root.pal.hills[1]
+    property color hill2: root.pal.hills[2]
+    property real star_alpha: root.shown_tod === "night" ? 1 : root.shown_tod === "dusk" ? 0.4 : 0
+    property real moon_alpha: root.shown_tod === "dawn" ? 0 : 1
+    property real sun_alpha: root.shown_tod === "dawn" ? 1 : 0
+    property real cloud_alpha: root.shown_tod === "night" ? 0.45 : 1
+
+    Behavior on sky0 { enabled: root.sky_glide; ColorAnimation { duration: 6000; easing.type: Easing.InOutSine } }
+    Behavior on sky1 { enabled: root.sky_glide; ColorAnimation { duration: 6000; easing.type: Easing.InOutSine } }
+    Behavior on sky2 { enabled: root.sky_glide; ColorAnimation { duration: 6000; easing.type: Easing.InOutSine } }
+    Behavior on hill0 { enabled: root.sky_glide; ColorAnimation { duration: 6000; easing.type: Easing.InOutSine } }
+    Behavior on hill1 { enabled: root.sky_glide; ColorAnimation { duration: 6000; easing.type: Easing.InOutSine } }
+    Behavior on hill2 { enabled: root.sky_glide; ColorAnimation { duration: 6000; easing.type: Easing.InOutSine } }
+    Behavior on star_alpha { enabled: root.sky_glide; NumberAnimation { duration: 6000; easing.type: Easing.InOutSine } }
+    Behavior on moon_alpha { enabled: root.sky_glide; NumberAnimation { duration: 6000; easing.type: Easing.InOutSine } }
+    Behavior on sun_alpha { enabled: root.sky_glide; NumberAnimation { duration: 6000; easing.type: Easing.InOutSine } }
+    Behavior on cloud_alpha { enabled: root.sky_glide; NumberAnimation { duration: 6000; easing.type: Easing.InOutSine } }
 
     readonly property string ui_font: "Rounded Mplus 1c"
     readonly property string key_font: "Belleza"
@@ -148,7 +175,25 @@ Item {
     }
 
     clip: true
-    onPhaseChanged: if (root.phase === "saver" && root.can_step) root.ctx.scene = ""
+    onPhaseChanged: {
+        if (root.phase === "saver") {
+            if (root.can_step) root.ctx.scene = "";
+            root.sky_tod = root.tod;
+        } else {
+            root.sky_glide = false;
+            root.sky_tod = "";
+        }
+    }
+
+    Timer {
+        interval: 40000
+        repeat: true
+        running: root.phase === "saver" && root.animate && root.sky_tod !== ""
+        onTriggered: {
+            root.sky_glide = true;
+            root.sky_tod = root.sky_cycle[(root.sky_cycle.indexOf(root.sky_tod) + 1) % root.sky_cycle.length];
+        }
+    }
     onScreenChanged: {
         const from = root.last_screen;
         root.last_screen = root.screen;
@@ -622,9 +667,9 @@ Item {
                             y1: 0
                             x2: 320
                             y2: 900
-                            GradientStop { position: 0; color: root.pal.sky[0] }
-                            GradientStop { position: 0.55; color: root.pal.sky[1] }
-                            GradientStop { position: 0.8; color: root.pal.sky[2] }
+                            GradientStop { position: 0; color: root.sky0 }
+                            GradientStop { position: 0.55; color: root.sky1 }
+                            GradientStop { position: 0.8; color: root.sky2 }
                         }
                         PathRectangle { width: 1600; height: 900 }
                     }
@@ -632,8 +677,8 @@ Item {
 
                 Item {
                     anchors.fill: parent
-                    visible: root.tod === "dusk" || root.tod === "night"
-                    opacity: root.tod === "dusk" ? 0.4 : 1
+                    visible: root.star_alpha > 0
+                    opacity: root.star_alpha
 
                     Repeater {
                         model: root.stars
@@ -653,7 +698,8 @@ Item {
 
                 Item {
                     anchors.fill: parent
-                    visible: root.tod === "dusk" || root.tod === "night"
+                    visible: root.moon_alpha > 0
+                    opacity: root.moon_alpha
 
                     Radial {
                         cx: 1370
@@ -705,9 +751,10 @@ Item {
                 Item {
                     width: 1600
                     height: 900
-                    visible: root.tod === "dawn"
-                    x: root.tod === "dawn" ? -60 : 0
-                    y: root.tod === "dawn" ? 330 : 0
+                    visible: root.sun_alpha > 0
+                    opacity: root.sun_alpha
+                    x: -60
+                    y: 330
 
                     Radial {
                         cx: 1360
@@ -734,24 +781,24 @@ Item {
 
                     ShapePath {
                         strokeWidth: -1
-                        fillColor: root.pal.hills[0]
+                        fillColor: root.hill0
                         PathSvg { path: "M-10 640 L120 616 L230 628 L340 600 L450 622 L560 606 L700 630 L860 612 L1010 634 L1150 610 L1290 626 L1420 604 L1610 622 V910 H-10 Z" }
                     }
                     ShapePath {
                         strokeWidth: -1
-                        fillColor: root.pal.hills[1]
+                        fillColor: root.hill1
                         PathSvg { path: "M-10 700 C200 660 420 650 640 676 C860 702 1080 690 1280 664 C1420 648 1540 652 1610 660 V910 H-10 Z" }
                     }
                     ShapePath {
                         strokeWidth: -1
-                        fillColor: root.pal.hills[2]
+                        fillColor: root.hill2
                         PathSvg { path: "M-10 790 C240 752 520 760 800 782 C1080 804 1340 776 1610 758 V910 H-10 Z" }
                     }
                 }
 
                 Item {
                     anchors.fill: parent
-                    opacity: root.tod === "night" ? 0.45 : 1
+                    opacity: root.cloud_alpha
 
                     Repeater {
                         model: title.saver ? [] : root.still_clouds
