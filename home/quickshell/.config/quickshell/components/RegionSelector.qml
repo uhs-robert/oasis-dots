@@ -31,7 +31,7 @@ PanelWindow {
     readonly property color dim_color: Qt.alpha(Theme.bg_shadow, 0.6)
     readonly property bool pixel_mode: Screenshot.mode === "pixel"
     readonly property bool target_mode: Screenshot.mode === "window" || Screenshot.mode === "screen"
-    readonly property bool skinned_targets: ["scope", "jrpg", "goldeneye", "scopeitem", "scanvisor", "tvosd", "tmux", "nvimfloat", "tiecomp", "materia"].includes(Style.picker_skin)
+    readonly property bool skinned_targets: ["scope", "jrpg", "goldeneye", "scopeitem", "scanvisor", "tvosd", "tmux", "nvimfloat", "tiecomp", "materia", "duckhunt"].includes(Style.picker_skin)
     property bool help_open: false
     readonly property string delay_label: Screenshot.delay_s > 0 ? "Delay " + Screenshot.delay_s + "s" : "No delay"
     readonly property string tier_keys: "hjkl move 10px · H/J/K/L move 100px · C-hjkl move 1px · C-H/J/K/L move 300px"
@@ -322,6 +322,16 @@ PanelWindow {
             target_mode: root.target_mode
         }
 
+        DuckHuntTargets {
+            anchors.fill: parent
+            visible: Style.picker_skin === "duckhunt" && !root.pixel_mode
+            screen_name: root.screen_name
+            origin: Qt.point(root.modelData.x, root.modelData.y)
+            sel: root.sel
+            mine: root.mine
+            target_mode: root.target_mode
+        }
+
         Rectangle {
             id: readout
             visible: root.mine && !root.skinned_targets
@@ -539,6 +549,12 @@ PanelWindow {
             target_mode: root.target_mode
         }
 
+        ZapperCursor {
+            anchors.fill: parent
+            screen_name: root.screen_name
+            target_mode: root.target_mode
+        }
+
         Item {
             id: loupe
             readonly property real lens: 176
@@ -557,8 +573,9 @@ PanelWindow {
             readonly property bool scopeitem: Style.picker_skin === "scopeitem"
             readonly property bool scanvisor: Style.picker_skin === "scanvisor"
             readonly property bool nvimfloat: Style.picker_skin === "nvimfloat"
-            readonly property real gap: loupe.materia ? 34 : loupe.tvosd || loupe.tiecomp ? 32 : loupe.scanvisor ? 40 : loupe.tmux ? 30 : loupe.nvimfloat ? 30 : loupe.scope || loupe.jrpg || loupe.goldeneye || loupe.scopeitem ? 36 : 28
+            readonly property real gap: loupe.duckhunt ? 34 : loupe.materia ? 34 : loupe.tvosd || loupe.tiecomp ? 32 : loupe.scanvisor ? 40 : loupe.tmux ? 30 : loupe.nvimfloat ? 30 : loupe.scope || loupe.jrpg || loupe.goldeneye || loupe.scopeitem ? 36 : 28
             readonly property bool materia: Style.picker_skin === "materia"
+            readonly property bool duckhunt: Style.picker_skin === "duckhunt"
             readonly property real nv_row_h: 20
             readonly property real nv_cmd_h: 18
             readonly property real nv_foot_gap: 4
@@ -598,6 +615,13 @@ PanelWindow {
             readonly property real tv_header_h: 34
             readonly property real tv_lens_gap: 8
             // R/G/B parsed from the swatch's hex readout.
+            readonly property real dh_width: 300
+            readonly property real dh_pad: 6
+            readonly property real dh_gap: 6
+            readonly property real dh_hud_h: 40
+            readonly property real dh_score_h: 40
+            readonly property real dh_lens_size: loupe.view + loupe.dh_pad * 2
+            readonly property real dh_lens_x: (loupe.dh_width - loupe.dh_lens_size) / 2
             readonly property var tv_rgb: {
                 if (!loupe.tvosd) return [0, 0, 0];
                 const hex = Screenshot.pixel_hex;
@@ -706,13 +730,13 @@ PanelWindow {
                 ];
             }
             visible: Screenshot.lens_on && Screenshot.phase === "select" && Screenshot.cursor_screen === root.screen_name && (root.pixel_mode ? root.frame_ready : frozen_view.hasContent)
-            width: loupe.goldeneye ? loupe.ge_rim : loupe.scopeitem ? loupe.si_pad * 2 + loupe.si_body_w : loupe.scanvisor ? loupe.sv_pad * 2 + loupe.view : loupe.tvosd ? loupe.tv_width : loupe.tiecomp ? loupe.tc_width : loupe.tmux ? loupe.tmux_w : loupe.materia ? loupe.mat_width : loupe.view + loupe.pad * 2 + (loupe.jrpg ? loupe.jrpg_drop : 0)
-            height: loupe.goldeneye ? loupe.ge_rim + loupe.ge_strip_gap + loupe.ge_strip_h : loupe.scope ? loupe.view + loupe.pad * 2 + loupe.header_h + loupe.foot_h : loupe.jrpg ? loupe.pad + loupe.header_h + loupe.view + loupe.jrpg_gap + loupe.jrpg_stats_h + loupe.pad + loupe.jrpg_drop : loupe.scopeitem ? loupe.si_pad + loupe.si_ruler_h + loupe.view + loupe.si_foot_gap + loupe.si_foot_h + loupe.si_pad : loupe.scanvisor ? loupe.sv_pad + loupe.sv_header_h + loupe.sv_header_gap + loupe.view + loupe.sv_card_gap + sv_card_col.implicitHeight + loupe.sv_pad : loupe.tvosd ? loupe.tv_pad_y * 2 + loupe.tv_header_h + loupe.tv_lens_gap * 2 + loupe.view + tv_rows_col.implicitHeight : loupe.tiecomp ? loupe.tc_pad_y * 2 + loupe.tc_header_h + loupe.tc_lens_gap * 2 + loupe.view + tc_rows_col.implicitHeight : loupe.tmux ? loupe.tmux_pad * 2 + loupe.tmux_line_h * 3 + loupe.tmux_gap * 2 + loupe.view : loupe.nvimfloat ? loupe.pad + loupe.header_h + loupe.view + loupe.nv_foot_gap + loupe.nv_row_h + loupe.nv_cmd_h + loupe.pad : loupe.materia ? loupe.mat_pad_y * 2 + loupe.mat_header_h + loupe.view + loupe.mat_row_gap + mat_rows_col.implicitHeight : loupe.view + loupe.pad * 2 + coords.implicitHeight + 4 + (root.pixel_mode ? swatch_row.height + 4 : 0)
+            width: loupe.duckhunt ? loupe.dh_width : loupe.goldeneye ? loupe.ge_rim : loupe.scopeitem ? loupe.si_pad * 2 + loupe.si_body_w : loupe.scanvisor ? loupe.sv_pad * 2 + loupe.view : loupe.tvosd ? loupe.tv_width : loupe.tiecomp ? loupe.tc_width : loupe.tmux ? loupe.tmux_w : loupe.materia ? loupe.mat_width : loupe.view + loupe.pad * 2 + (loupe.jrpg ? loupe.jrpg_drop : 0)
+            height: loupe.duckhunt ? loupe.dh_lens_size + loupe.dh_gap + loupe.dh_hud_h + loupe.dh_gap + loupe.dh_score_h : loupe.goldeneye ? loupe.ge_rim + loupe.ge_strip_gap + loupe.ge_strip_h : loupe.scope ? loupe.view + loupe.pad * 2 + loupe.header_h + loupe.foot_h : loupe.jrpg ? loupe.pad + loupe.header_h + loupe.view + loupe.jrpg_gap + loupe.jrpg_stats_h + loupe.pad + loupe.jrpg_drop : loupe.scopeitem ? loupe.si_pad + loupe.si_ruler_h + loupe.view + loupe.si_foot_gap + loupe.si_foot_h + loupe.si_pad : loupe.scanvisor ? loupe.sv_pad + loupe.sv_header_h + loupe.sv_header_gap + loupe.view + loupe.sv_card_gap + sv_card_col.implicitHeight + loupe.sv_pad : loupe.tvosd ? loupe.tv_pad_y * 2 + loupe.tv_header_h + loupe.tv_lens_gap * 2 + loupe.view + tv_rows_col.implicitHeight : loupe.tiecomp ? loupe.tc_pad_y * 2 + loupe.tc_header_h + loupe.tc_lens_gap * 2 + loupe.view + tc_rows_col.implicitHeight : loupe.tmux ? loupe.tmux_pad * 2 + loupe.tmux_line_h * 3 + loupe.tmux_gap * 2 + loupe.view : loupe.nvimfloat ? loupe.pad + loupe.header_h + loupe.view + loupe.nv_foot_gap + loupe.nv_row_h + loupe.nv_cmd_h + loupe.pad : loupe.materia ? loupe.mat_pad_y * 2 + loupe.mat_header_h + loupe.view + loupe.mat_row_gap + mat_rows_col.implicitHeight : loupe.view + loupe.pad * 2 + coords.implicitHeight + 4 + (root.pixel_mode ? swatch_row.height + 4 : 0)
             x: loupe.at.x + loupe.gap + loupe.width <= root.width ? loupe.at.x + loupe.gap : loupe.at.x - (loupe.jrpg ? 66 : loupe.gap) - loupe.width
             y: loupe.at.y + loupe.gap + loupe.height <= root.height ? loupe.at.y + loupe.gap : loupe.at.y - loupe.gap - loupe.height
 
             Rectangle {
-                visible: !loupe.scope && !loupe.jrpg && !loupe.goldeneye && !loupe.scopeitem && !loupe.scanvisor && !loupe.tvosd && !loupe.tmux && !loupe.nvimfloat && !loupe.materia && !loupe.tiecomp
+                visible: !loupe.scope && !loupe.jrpg && !loupe.goldeneye && !loupe.scopeitem && !loupe.scanvisor && !loupe.tvosd && !loupe.tmux && !loupe.nvimfloat && !loupe.duckhunt && !loupe.materia && !loupe.tiecomp
                 anchors.fill: parent
                 radius: Style.frame_radius
                 color: Style.frame_color
@@ -757,6 +781,18 @@ PanelWindow {
                 visible: loupe.tvosd
                 anchors.fill: parent
                 color: Qt.alpha(Theme.bg_shadow, 0.72)
+            }
+
+            Rectangle {
+                visible: loupe.duckhunt
+                x: loupe.dh_lens_x
+                y: 0
+                width: loupe.dh_lens_size
+                height: loupe.dh_lens_size
+                radius: 6
+                color: Theme.bg_shadow
+                border.width: 3
+                border.color: Theme.green
             }
 
             ScanGlass {
@@ -1021,8 +1057,8 @@ PanelWindow {
 
             Item {
                 id: lens_content
-                x: loupe.goldeneye ? (loupe.ge_rim - loupe.view) / 2 : loupe.scopeitem ? loupe.si_pad : loupe.scanvisor ? loupe.sv_pad : loupe.tvosd ? loupe.tv_pad_x : loupe.tiecomp ? loupe.tc_pad_x : loupe.tmux ? loupe.tmux_pad : loupe.materia ? loupe.mat_pad_x : loupe.pad
-                y: loupe.goldeneye ? (loupe.ge_rim - loupe.view) / 2 : loupe.scopeitem ? loupe.si_pad + loupe.si_ruler_h : loupe.scanvisor ? loupe.sv_pad + loupe.sv_header_h + loupe.sv_header_gap : loupe.tvosd ? loupe.tv_pad_y + loupe.tv_header_h + loupe.tv_lens_gap : loupe.tiecomp ? loupe.tc_pad_y + loupe.tc_header_h + loupe.tc_lens_gap : loupe.tmux ? loupe.tmux_pad + loupe.tmux_line_h + loupe.tmux_gap : loupe.materia ? loupe.mat_pad_y + loupe.mat_header_h : loupe.pad + loupe.header_h
+                x: loupe.duckhunt ? loupe.dh_lens_x + loupe.dh_pad : loupe.goldeneye ? (loupe.ge_rim - loupe.view) / 2 : loupe.scopeitem ? loupe.si_pad : loupe.scanvisor ? loupe.sv_pad : loupe.tvosd ? loupe.tv_pad_x : loupe.tiecomp ? loupe.tc_pad_x : loupe.tmux ? loupe.tmux_pad : loupe.materia ? loupe.mat_pad_x : loupe.pad
+                y: loupe.duckhunt ? loupe.dh_pad : loupe.goldeneye ? (loupe.ge_rim - loupe.view) / 2 : loupe.scopeitem ? loupe.si_pad + loupe.si_ruler_h : loupe.scanvisor ? loupe.sv_pad + loupe.sv_header_h + loupe.sv_header_gap : loupe.tvosd ? loupe.tv_pad_y + loupe.tv_header_h + loupe.tv_lens_gap : loupe.tiecomp ? loupe.tc_pad_y + loupe.tc_header_h + loupe.tc_lens_gap : loupe.tmux ? loupe.tmux_pad + loupe.tmux_line_h + loupe.tmux_gap : loupe.materia ? loupe.mat_pad_y + loupe.mat_header_h : loupe.pad + loupe.header_h
                 width: loupe.view
                 height: loupe.view
                 clip: true
@@ -1265,7 +1301,7 @@ PanelWindow {
                     height: loupe.zoom + border.width * 2
                     color: "transparent"
                     border.width: loupe.zoom >= 8 ? 2 : 1
-                    border.color: loupe.scope ? Style.picker_hud : loupe.jrpg ? (jrpg_blink.alt ? Theme.theme_secondary : Theme.fg_strong) : loupe.goldeneye ? Theme.theme_label : loupe.scopeitem ? Theme.theme_secondary : loupe.scanvisor ? (loupe.sv_complete ? Theme.bright_green : Theme.bright_yellow) : loupe.tvosd ? Theme.bright_green : loupe.tiecomp ? Theme.red : loupe.tmux ? Theme.ui_match_bg : loupe.nvimfloat ? Theme.fg_core : loupe.materia ? Theme.fg_strong : Style.caret_color
+                    border.color: loupe.duckhunt ? Theme.fg_strong : loupe.scope ? Style.picker_hud : loupe.jrpg ? (jrpg_blink.alt ? Theme.theme_secondary : Theme.fg_strong) : loupe.goldeneye ? Theme.theme_label : loupe.scopeitem ? Theme.theme_secondary : loupe.scanvisor ? (loupe.sv_complete ? Theme.bright_green : Theme.bright_yellow) : loupe.tvosd ? Theme.bright_green : loupe.tiecomp ? Theme.red : loupe.tmux ? Theme.ui_match_bg : loupe.nvimfloat ? Theme.fg_core : loupe.materia ? Theme.fg_strong : Style.caret_color
                 }
 
                 Rectangle {
@@ -1297,6 +1333,24 @@ PanelWindow {
                 color: "transparent"
                 border.width: 2
                 border.color: Theme.green
+            }
+
+            Rectangle {
+                visible: loupe.duckhunt
+                x: lens_content.x
+                y: lens_content.y + lens_content.height - 16
+                width: lens_content.width
+                height: 16
+                gradient: Gradient {
+                    GradientStop {
+                        position: 0
+                        color: "transparent"
+                    }
+                    GradientStop {
+                        position: 1
+                        color: Qt.alpha(Theme.green, 0.35)
+                    }
+                }
             }
 
             Rectangle {
@@ -1335,7 +1389,7 @@ PanelWindow {
             Row {
                 id: swatch_row
                 visible: loupe.scope ? true : root.pixel_mode
-                opacity: loupe.jrpg || loupe.goldeneye || loupe.scopeitem || loupe.scanvisor || loupe.tvosd || loupe.tmux || loupe.nvimfloat || loupe.tiecomp || loupe.materia ? 0 : 1
+                opacity: loupe.jrpg || loupe.goldeneye || loupe.scopeitem || loupe.scanvisor || loupe.tvosd || loupe.tmux || loupe.nvimfloat || loupe.tiecomp || loupe.materia || loupe.duckhunt ? 0 : 1
                 anchors.horizontalCenter: !loupe.scope ? parent.horizontalCenter : undefined
                 anchors.bottom: !loupe.scope ? coords.top : undefined
                 anchors.bottomMargin: 2
@@ -1403,7 +1457,7 @@ PanelWindow {
 
             Text {
                 id: coords
-                visible: !loupe.scope && !loupe.jrpg && !loupe.goldeneye && !loupe.scopeitem && !loupe.scanvisor && !loupe.tvosd && !loupe.tmux && !loupe.nvimfloat && !loupe.materia && !loupe.tiecomp
+                visible: !loupe.scope && !loupe.jrpg && !loupe.goldeneye && !loupe.scopeitem && !loupe.scanvisor && !loupe.tvosd && !loupe.tmux && !loupe.nvimfloat && !loupe.duckhunt && !loupe.materia && !loupe.tiecomp
                 anchors.horizontalCenter: parent.horizontalCenter
                 anchors.bottom: parent.bottom
                 anchors.bottomMargin: loupe.pad - 2
@@ -2439,6 +2493,185 @@ PanelWindow {
                             font.family: Style.font_family
                             font.pixelSize: Style.fs(-6)
                         }
+                    }
+                }
+            }
+
+            Item {
+                id: dh_hud_row
+                visible: loupe.duckhunt
+                x: 0
+                y: loupe.dh_lens_size + loupe.dh_gap
+                width: loupe.dh_width
+                height: loupe.dh_hud_h
+
+                Rectangle {
+                    id: dh_zoom_box
+                    x: 0
+                    y: 0
+                    height: parent.height
+                    width: dh_zoom_row.implicitWidth + 16
+                    radius: 6
+                    color: Theme.bg_shadow
+                    border.width: 3
+                    border.color: Theme.green
+
+                    Row {
+                        id: dh_zoom_row
+                        anchors.centerIn: parent
+
+                        Text {
+                            text: "R="
+                            color: Theme.bright_green
+                            font.family: Style.font_family
+                            font.pixelSize: 10
+                        }
+
+                        Text {
+                            text: String(loupe.zoom)
+                            color: Theme.fg_strong
+                            font.family: Style.font_family
+                            font.pixelSize: 10
+                        }
+                    }
+                }
+
+                Rectangle {
+                    id: dh_shot_box
+                    x: dh_zoom_box.x + dh_zoom_box.width + 8
+                    y: 0
+                    height: parent.height
+                    width: dh_shot_col.implicitWidth + 16
+                    radius: 6
+                    color: Theme.bg_shadow
+                    border.width: 3
+                    border.color: Theme.green
+
+                    Column {
+                        id: dh_shot_col
+                        anchors.centerIn: parent
+                        spacing: 2
+
+                        Row {
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            spacing: 3
+
+                            Repeater {
+                                model: 3
+
+                                Rectangle {
+                                    width: 5
+                                    height: 11
+                                    topLeftRadius: 2
+                                    topRightRadius: 2
+                                    color: Theme.bright_yellow
+                                }
+                            }
+                        }
+
+                        Text {
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            text: "SHOT"
+                            color: Theme.bright_green
+                            font.family: Style.font_family
+                            font.pixelSize: 10
+                        }
+                    }
+                }
+
+                Rectangle {
+                    id: dh_hit_box
+                    x: dh_shot_box.x + dh_shot_box.width + 8
+                    y: 0
+                    width: Math.max(0, parent.width - dh_hit_box.x)
+                    height: parent.height
+                    radius: 6
+                    color: Theme.bg_shadow
+                    border.width: 3
+                    border.color: Theme.green
+                    clip: true
+
+                    Row {
+                        anchors.left: parent.left
+                        anchors.leftMargin: 8
+                        anchors.verticalCenter: parent.verticalCenter
+                        spacing: 2
+
+                        Text {
+                            text: "HIT"
+                            color: Theme.bright_green
+                            font.family: Style.font_family
+                            font.pixelSize: 10
+                        }
+
+                        Repeater {
+                            model: dh_hud_row.visible ? 10 : 0
+
+                            DuckIcon {
+                                id: hit_duck
+                                required property int index
+                                fill: Screenshot.recent_picks[hit_duck.index] ? Screenshot.recent_picks[hit_duck.index] : Theme.fg_muted
+                            }
+                        }
+                    }
+                }
+            }
+
+            Rectangle {
+                id: dh_score_box
+                visible: loupe.duckhunt
+                y: loupe.dh_lens_size + loupe.dh_gap * 2 + loupe.dh_hud_h
+                x: loupe.dh_width - dh_score_box.width
+                width: dh_score_col.implicitWidth + 16
+                height: loupe.dh_score_h
+                radius: 6
+                color: Theme.bg_shadow
+                border.width: 3
+                border.color: Theme.green
+
+                Column {
+                    id: dh_score_col
+                    anchors.centerIn: parent
+                    spacing: 2
+
+                    Row {
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        visible: root.pixel_mode
+                        spacing: 4
+
+                        Rectangle {
+                            width: 10
+                            height: 10
+                            anchors.verticalCenter: parent.verticalCenter
+                            color: Screenshot.pixel_hex !== "" ? Screenshot.pixel_hex : Theme.bg_shadow
+                            border.width: 1
+                            border.color: Theme.fg_strong
+                        }
+
+                        Text {
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: Screenshot.pixel_hex !== "" ? Screenshot.pixel_hex.substring(1) : "------"
+                            color: Theme.fg_strong
+                            font.family: Style.font_family
+                            font.pixelSize: 10
+                        }
+                    }
+
+                    Text {
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        visible: !root.pixel_mode
+                        text: root.mine ? Math.round(root.sel.width) + "x" + Math.round(root.sel.height) : String(Math.round(root.modelData.x + loupe.at.x)).padStart(4, "0") + String(Math.round(root.modelData.y + loupe.at.y)).padStart(4, "0")
+                        color: Theme.fg_strong
+                        font.family: Style.font_family
+                        font.pixelSize: 10
+                    }
+
+                    Text {
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        text: "SCORE"
+                        color: Theme.bright_green
+                        font.family: Style.font_family
+                        font.pixelSize: 10
                     }
                 }
             }

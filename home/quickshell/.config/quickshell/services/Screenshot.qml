@@ -32,6 +32,8 @@ Singleton {
     // Where pixel_hex was sampled; a pick trusts it only at that exact cursor spot.
     property string pixel_hex_screen: ""
     property point pixel_hex_point: Qt.point(-1, -1)
+    // Last 10 successfully picked hex colors, most recent last.
+    property var recent_picks: []
     // Runs on confirm instead of showing the toolbar: "" for the toolbar, else a toolbar action.
     property string preset: ""
     property string focus_screen: ""
@@ -368,6 +370,7 @@ Singleton {
         const sampled = root.pixel_hex !== "" && root.lens_on && root.pixel_hex_screen === root.cursor_screen && root.pixel_hex_point.x === root.cursor_point.x && root.pixel_hex_point.y === root.cursor_point.y;
         if (sampled) {
             const hex = root.pixel_hex;
+            root.recent_picks = [...root.recent_picks, hex].slice(-10);
             root.cancel();
             Quickshell.execDetached(["wl-copy", hex]);
             Quickshell.execDetached(["notify-send", "Picked Color", hex]);
@@ -464,8 +467,13 @@ Singleton {
 
     Process {
         id: grab
+        stdout: StdioCollector {
+            id: grab_out
+        }
         onExited: code => {
             if (root.pending_action === "pixel") {
+                const hex = grab_out.text.trim();
+                if (code === 0 && /^#[0-9a-f]{6}$/i.test(hex)) root.recent_picks = [...root.recent_picks, hex].slice(-10);
                 root.cancel();
                 return;
             }

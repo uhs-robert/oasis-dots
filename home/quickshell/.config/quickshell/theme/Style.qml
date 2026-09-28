@@ -646,6 +646,7 @@ Singleton {
                 controller: "nes",
                 console_views: "nes",
                 toast_enter: "type",
+                picker_skin: "duckhunt",
                 meter_art: ({ volume: "nes/HeartMeter.qml", battery: "nes/EnergyBar.qml", osd: "nes/EnergyBar.qml", media: "nes/PianoRoll.qml" })
             }),
             "snes": Object.assign({}, terminal, {

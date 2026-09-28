@@ -158,6 +158,7 @@ handle_pixel_at() {
   color="${color:0:7}"
   wl-copy "$color"
   notify-send "Picked Color" "$color"
+  printf '%s\n' "$color"
 }
 
 # Act on a captured image: copy, save, annotate or ocr. The image file is removed on exit.
