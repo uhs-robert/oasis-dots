@@ -53,6 +53,8 @@ Item {
     }
     readonly property real step: desc_metrics.height * 2
     readonly property real max_y: Math.max(0, flick.contentHeight - flick.height)
+    // Height the whole key list needs, margins included.
+    readonly property real content_height: list.implicitHeight + 24
     property double last_g_ms: 0
 
     function scroll_to(y) {

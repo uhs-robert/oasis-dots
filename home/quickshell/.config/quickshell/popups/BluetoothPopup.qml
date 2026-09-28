@@ -16,7 +16,7 @@ Popup {
     popup_name: "bluetooth"
     preferred_width: 260
     footer_hint: root.forget_confirm ? "y forget · n keep" : "j/k move · gg/G first/last · Enter connect · s scan · T trust · x forget · t toggle · q close"
-    body_height: Math.max(280, content.implicitHeight + 24)
+    body_height: Math.max(340, content.implicitHeight + 24)
     jumps_enabled: !root.forget_confirm
 
     readonly property var adapter: QsBt.Bluetooth.defaultAdapter
