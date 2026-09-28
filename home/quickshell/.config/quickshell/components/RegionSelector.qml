@@ -30,6 +30,7 @@ PanelWindow {
     readonly property color dim_color: Qt.alpha(Theme.bg_shadow, 0.6)
     readonly property bool pixel_mode: Screenshot.mode === "pixel"
     readonly property bool target_mode: Screenshot.mode === "window" || Screenshot.mode === "screen"
+    readonly property bool skinned_targets: ["scope", "jrpg", "goldeneye"].includes(Style.picker_skin)
     property bool help_open: false
     readonly property string delay_label: Screenshot.delay_s > 0 ? "Delay " + Screenshot.delay_s + "s" : "No delay"
     readonly property string tier_keys: "hjkl move 10px · H/J/K/L move 100px · C-hjkl move 1px · C-H/J/K/L move 300px"
@@ -188,7 +189,7 @@ PanelWindow {
             Rectangle {
                 required property var modelData
                 required property int index
-                visible: Style.picker_skin === "" && modelData.screen === root.screen_name && index !== Screenshot.target_index && Screenshot.phase === "select"
+                visible: !root.skinned_targets && modelData.screen === root.screen_name && index !== Screenshot.target_index && Screenshot.phase === "select"
                 x: modelData.rect.x
                 y: modelData.rect.y
                 width: modelData.rect.width
@@ -202,7 +203,7 @@ PanelWindow {
         Item {
             id: frame
             readonly property int edge: Math.max(1, Style.frame_border_width)
-            visible: root.mine && Style.picker_skin === ""
+            visible: root.mine && !root.skinned_targets
             x: root.sel.x - frame.edge
             y: root.sel.y - frame.edge
             width: root.sel.width + frame.edge * 2
@@ -254,7 +255,7 @@ PanelWindow {
 
         Rectangle {
             id: readout
-            visible: root.mine && Style.picker_skin === ""
+            visible: root.mine && !root.skinned_targets
             readonly property bool above: root.sel.y >= height + 8
             x: Math.max(0, Math.min(parent.width - width, root.sel.x))
             y: readout.above ? root.sel.y - height - 6 : root.sel.y + 6
