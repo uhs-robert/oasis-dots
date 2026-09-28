@@ -943,6 +943,7 @@ Singleton {
                 title_spacing: 3,
                 title_readout: "SCAN VISOR",
                 title_readout_fg: Theme.theme_primary,
+                picker_skin: "scanvisor",
                 chip_brackets: false,
                 chip_active_bg: Theme.theme_secondary,
                 chip_active_fg: Theme.bg_crust,
