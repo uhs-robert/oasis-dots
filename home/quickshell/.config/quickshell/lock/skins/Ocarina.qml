@@ -3,6 +3,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Effects
 import QtQuick.Shapes
+import Quickshell.Io
 
 // Ocarina of Time: the title over a clock-driven sky; PRESS START leads to file select, then name entry takes the password.
 Item {
@@ -15,6 +16,14 @@ Item {
     readonly property string phase: root.ctx ? root.ctx.phase : "idle"
     // The screensaver phase's effect.
     readonly property string saver_effect: "clouds"
+
+    property FileView os_release: FileView {
+        path: "/etc/os-release"
+    }
+    readonly property string distro: {
+        const m = root.os_release.text().match(/^NAME="?([^"\n]*)"?$/m);
+        return m ? m[1] : "Linux";
+    }
 
     readonly property bool can_step: !!root.ctx && "scene" in root.ctx
     readonly property string scene: root.can_step ? root.ctx.scene : ""
@@ -906,7 +915,7 @@ Item {
                     x0: 800
                     base_y: 838
                     centered: true
-                    text: "© 1998 Nintendo"
+                    text: "© 1998 " + root.distro
                     color: "#ffffff"
                     style: Text.Outline
                     styleColor: "#000000"
