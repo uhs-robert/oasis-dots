@@ -144,7 +144,6 @@ Item {
         const still = root.phase === "unlock" && !root.animate;
         swirl.t = still ? 1 : 0;
         flash.opacity = still ? 0.85 : 0;
-        welcome.opacity = still ? 1 : 0;
         scene_layer.rotation = 0;
         scene_layer.scale = 1;
         if (root.phase === "unlock" && root.animate) warp.start();
@@ -1121,26 +1120,6 @@ Item {
         opacity: 0
     }
 
-    Stage {
-        visible: root.screen === "unlock"
-
-        Text {
-            id: welcome
-            width: 1600
-            y: 400
-            horizontalAlignment: Text.AlignHCenter
-            text: (root.login ? "Welcome, " : "Welcome back, ") + root.display_name(root.current)
-            font.family: root.ui_font
-            font.weight: 700
-            font.variableAxes: ({ wght: 700 })
-            renderType: Text.QtRendering
-            font.pixelSize: 35
-            font.letterSpacing: 9.6
-            color: root.shadow
-            opacity: 0
-        }
-    }
-
     ParallelAnimation {
         id: warp
         NumberAnimation { target: swirl; property: "t"; from: 0; to: 1; duration: root.unlock_ms; easing.type: Easing.InCubic }
@@ -1149,10 +1128,6 @@ Item {
         SequentialAnimation {
             PauseAnimation { duration: root.unlock_ms * 0.55 }
             NumberAnimation { target: flash; property: "opacity"; from: 0; to: 1; duration: root.unlock_ms * 0.3 }
-        }
-        SequentialAnimation {
-            PauseAnimation { duration: root.unlock_ms * 0.75 }
-            NumberAnimation { target: welcome; property: "opacity"; from: 0; to: 1; duration: root.unlock_ms * 0.15 }
         }
     }
 
