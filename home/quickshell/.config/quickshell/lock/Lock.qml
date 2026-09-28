@@ -170,6 +170,12 @@ Singleton {
         dormant_timer.restart();
     }
 
+    // Reboots or powers off from the lock; the skin asking has already confirmed.
+    function power(action) {
+        if (!persist.locked || (action !== "reboot" && action !== "poweroff")) return;
+        Quickshell.execDetached(["systemctl", action]);
+    }
+
     function finish_unlock() {
         if (!root.granted) return;
         root.granted = false;
@@ -425,10 +431,16 @@ Singleton {
         saver: root.saver && Power.on_ac
         animate: Power.on_ac && !root.dormant
         backdrops: root.backdrop_files
+        power_live: true
     }
 
     Connections {
         target: root
         function onRejected() { live_ctx.rejected(); }
+    }
+
+    Connections {
+        target: live_ctx
+        function onPower_request(action) { root.power(action); }
     }
 }

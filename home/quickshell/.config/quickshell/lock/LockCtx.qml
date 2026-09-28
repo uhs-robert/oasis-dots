@@ -50,6 +50,9 @@ QtObject {
     }
 
     signal rejected
+    // A skin asks for "reboot" or "poweroff" after its own confirmation; only a ctx with power_live acts on it.
+    signal power_request(string action)
+    property bool power_live: false
 
     property SystemClock clock: SystemClock {
         precision: SystemClock.Minutes

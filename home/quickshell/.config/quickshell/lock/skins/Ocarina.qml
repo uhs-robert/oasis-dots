@@ -34,8 +34,15 @@ Item {
     readonly property string screen: {
         if (root.phase === "saver") return "saver";
         if (root.phase === "unlock" || root.typed > 0 || root.checking) return "name";
-        return root.scene === "file" || root.scene === "name" ? root.scene : "title";
+        if (root.scene === "file" || root.scene.startsWith("file:")) return "file";
+        return root.scene === "name" ? "name" : "title";
     }
+
+    // File select's cursor and note live in the scene as "file:<item>:<note>" so every output agrees.
+    readonly property var file_items: ["file1", "reboot", "poweroff", "options"]
+    readonly property string file_item: root.scene.startsWith("file:") ? root.scene.split(":")[1] : "file1"
+    readonly property string file_note: root.scene.split(":")[2] || ""
+    readonly property var power_words: ({ reboot: "reboot", poweroff: "shut down" })
 
     // The title stays on show under the PRESS START fade to white; the view follows `screen` otherwise.
     property bool holding_title: false
@@ -104,16 +111,40 @@ Item {
             if (event.key === Qt.Key_Escape) c.scene = "file";
             return false;
         }
-        if (!ctrl && (event.key === Qt.Key_Return || event.key === Qt.Key_Enter || event.key === Qt.Key_Space)) {
-            c.scene = c.scene === "file" ? "name" : c.scene === "lit" ? "file" : "lit";
+        const on_file = root.screen === "file";
+        if (on_file && (event.key === Qt.Key_Up || event.key === Qt.Key_Down)) {
+            const i = root.file_items.indexOf(root.file_item);
+            const next = root.file_items[(i + (event.key === Qt.Key_Down ? 1 : root.file_items.length - 1)) % root.file_items.length];
+            c.scene = next === "file1" ? "file" : "file:" + next;
             return true;
         }
-        if ((c.scene === "file" || c.scene === "lit") && event.key === Qt.Key_Escape) {
+        if (!ctrl && (event.key === Qt.Key_Return || event.key === Qt.Key_Enter || event.key === Qt.Key_Space)) {
+            if (on_file) root.file_activate();
+            else c.scene = c.scene === "lit" ? "file" : "lit";
+            return true;
+        }
+        if ((on_file || c.scene === "lit") && event.key === Qt.Key_Escape) {
             c.scene = "";
             return true;
         }
         if (!ctrl && event.text !== "" && event.text.charCodeAt(0) >= 32 && event.text.charCodeAt(0) !== 127) c.scene = "name";
         return false;
+    }
+
+    // Reboot and Shut down need a second press while the note shows; the ctx runs it unless it is a preview.
+    function file_activate() {
+        const c = root.ctx;
+        const item = root.file_item;
+        if (item === "file1") {
+            c.scene = "name";
+        } else if (item === "options") {
+            c.scene = "file:options:soon";
+        } else if (root.file_note === "armed") {
+            c.scene = "file:" + item + (c.power_live ? ":running" : ":preview");
+            if (c.power_live) c.power_request(item);
+        } else {
+            c.scene = "file:" + item + ":armed";
+        }
     }
 
     clip: true
@@ -132,6 +163,14 @@ Item {
     }
 
     Timer {
+        id: note_timer
+        interval: 4000
+        onTriggered: {
+            if (root.can_step && root.screen === "file" && root.file_note !== "") root.ctx.scene = "file:" + root.file_item;
+        }
+    }
+
+    Timer {
         id: back_timer
         interval: 20000
         onTriggered: {
@@ -142,7 +181,10 @@ Item {
     Connections {
         target: root.ctx
         ignoreUnknownSignals: true
-        function onSceneChanged() { back_timer.restart(); }
+        function onSceneChanged() {
+            back_timer.restart();
+            note_timer.restart();
+        }
         function onBuffer_lengthChanged() { back_timer.restart(); }
         function onRejected() {
             if (root.can_step) root.ctx.scene = "name";
@@ -977,7 +1019,7 @@ Item {
                         font.letterSpacing: 6
                     }
 
-                    Pill { x: 202; y: 147; width: 276; height: 66; label: "File 1"; label_x0: 268; label_x1: 410; base_y: 204; lit: true }
+                    Pill { x: 202; y: 147; width: 276; height: 66; label: "File 1"; label_x0: 268; label_x1: 410; base_y: 204; lit: root.file_item === "file1" }
 
                     Rectangle {
                         x: 442
@@ -1001,9 +1043,93 @@ Item {
 
                     Pill { x: 203; y: 225; width: 277; height: 65; label: "File 2"; label_x0: 268; label_x1: 420; base_y: 281; dot: true }
                     Pill { x: 203; y: 298; width: 277; height: 65; label: "File 3"; label_x0: 268; label_x1: 420; base_y: 354; dot: true }
-                    Pill { x: 203; y: 409; width: 275; height: 64; label: "Copy"; label_x0: 272; label_x1: 412; base_y: 460 }
-                    Pill { x: 203; y: 483; width: 275; height: 65; label: "Erase"; label_x0: 273; label_x1: 425; base_y: 535 }
-                    Pill { x: 203; y: 594; width: 275; height: 67; label: "Options"; label_x0: 255; label_x1: 440; base_y: 645 }
+                    Pill { x: 203; y: 409; width: 275; height: 64; label: "Reboot"; label_x0: 243; label_x1: 438; base_y: 460; lit: root.file_item === "reboot" }
+                    Pill { x: 203; y: 483; width: 275; height: 65; label: "Shut down"; label_x0: 228; label_x1: 453; base_y: 535; lit: root.file_item === "poweroff" }
+                    Pill { x: 203; y: 594; width: 275; height: 67; label: "Options"; label_x0: 255; label_x1: 440; base_y: 645; lit: root.file_item === "options" }
+                }
+
+                Item {
+                    id: note_box
+                    readonly property string word: root.power_words[root.file_item] || ""
+                    readonly property var lines: {
+                        const w = note_box.word;
+                        switch (root.file_note) {
+                        case "armed": return [w.charAt(0).toUpperCase() + w.slice(1) + " the <font color=\"#ff3c3c\">system</font>?", "Press Enter again to " + w + "."];
+                        case "running": return [w === "reboot" ? "Rebooting..." : "Shutting down...", "See you soon."];
+                        case "preview": return ["Preview: would " + w + ".", "Nothing was run."];
+                        case "soon": return ["Options are coming soon.", ""];
+                        default: return [];
+                        }
+                    }
+                    visible: note_box.lines.length > 0
+
+                    Rectangle {
+                        x: 540
+                        y: 420
+                        width: 520
+                        height: 120
+                        radius: 14
+                        color: "#c7000000"
+                    }
+
+                    FitText {
+                        x0: 568
+                        base_y: 465
+                        max_w: 470
+                        textFormat: Text.StyledText
+                        text: note_box.lines[0] || ""
+                        color: "#ffffff"
+                        font.family: root.ui_font
+                        font.weight: 500
+                        font.pixelSize: 28
+                    }
+
+                    FitText {
+                        x0: 568
+                        base_y: 507
+                        max_w: 470
+                        textFormat: Text.PlainText
+                        text: note_box.lines[1] || ""
+                        color: "#ffffff"
+                        font.family: root.ui_font
+                        font.weight: 500
+                        font.pixelSize: 28
+                    }
+
+                    Shape {
+                        x: 1024
+                        y: 518
+                        width: 16
+                        height: 11
+                        visible: root.file_note === "armed"
+                        preferredRendererType: Shape.CurveRenderer
+
+                        ShapePath {
+                            strokeWidth: -1
+                            fillColor: "#3cd26a"
+                            PathSvg { path: "M0 0 L16 0 L8 11 Z" }
+                        }
+
+                        SequentialAnimation on y {
+                            running: root.animate
+                            loops: Animation.Infinite
+                            NumberAnimation { from: 518; to: 522; duration: 600; easing.type: Easing.InOutSine }
+                            NumberAnimation { from: 522; to: 518; duration: 600; easing.type: Easing.InOutSine }
+                        }
+                    }
+                }
+
+                FitText {
+                    x0: 642
+                    base_y: 651
+                    centered: true
+                    text: "↑↓ Select ● A-Decide ● B-Cancel"
+                    color: "#8ff6ff"
+                    style: Text.Outline
+                    styleColor: "#03202c"
+                    font.family: root.ui_font
+                    font.weight: 800
+                    font.pixelSize: 32
                 }
             }
 

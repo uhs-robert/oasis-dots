@@ -37,6 +37,9 @@ QtObject {
     }
 
     signal rejected
+    // A skin asks for "reboot" or "poweroff" after its own confirmation; only a ctx with power_live acts on it.
+    signal power_request(string action)
+    property bool power_live: false
 
     readonly property var tint_pair: Tints.pair(Theme, root.tint)
     readonly property color tint_base: root.tint_pair[0]

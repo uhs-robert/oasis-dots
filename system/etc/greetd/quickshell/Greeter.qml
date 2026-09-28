@@ -75,6 +75,12 @@ Singleton {
         saver: root.saver && !UPower.onBattery
         user: root.user
         tint: root.settings.lock_tint || "primary"
+        power_live: !root.preview
+    }
+
+    Connections {
+        target: root.ctx
+        function onPower_request(action) { root.power_now(action); }
     }
 
     property bool ready: false
@@ -170,6 +176,11 @@ Singleton {
             return;
         }
         root.power_armed = "";
+        root.power_now(action);
+    }
+
+    function power_now(action) {
+        if (action !== "reboot" && action !== "poweroff") return;
         if (root.preview) root.message = "Preview: would " + action;
         else Quickshell.execDetached(["systemctl", action]);
     }
