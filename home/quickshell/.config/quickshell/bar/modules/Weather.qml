@@ -53,19 +53,19 @@ Item {
 
             Image {
                 id: icon
-                // A bar_glyph_size style sizes the art to its glyphs; the art's padding needs ~1.5x.
-                readonly property int implicit_size: Style.bar.bar_glyph_size > 0 ? Math.round(Style.bar_glyph_size * 1.5) : root.compact ? 24 : 30
+                readonly property int implicit_size: Math.round(Style.bar_glyph_size * 1.3)
                 readonly property real dpr: QsWindow.window ? QsWindow.window.devicePixelRatio : 1
-
-                // The icon art has wide padding (more at night), so it draws past its slot.
-                readonly property int draw_size: Math.round(implicit_size * 1.3)
+                readonly property var crop: root.has_data ? WeatherState.icon_crop(root.current.code, root.current.is_day) : [0, 0, 128]
+                // Scales the whole canvas so the art's crop square fills the slot; the transparent padding overhangs.
+                readonly property real unit: implicit_size / crop[2]
 
                 visible: root.has_data
-                anchors.centerIn: parent
-                width: draw_size
-                height: draw_size
-                sourceSize.width: Math.ceil(draw_size * dpr)
-                sourceSize.height: Math.ceil(draw_size * dpr)
+                x: -crop[0] * unit
+                y: -crop[1] * unit
+                width: 128 * unit
+                height: 128 * unit
+                sourceSize.width: Math.ceil(width * dpr)
+                sourceSize.height: Math.ceil(height * dpr)
                 source: root.has_data ? WeatherState.icon_source(root.current.code, root.current.is_day) : ""
                 smooth: true
                 mipmap: true

@@ -21,11 +21,12 @@ Item {
     readonly property real badge_overlap: 1
 
     implicitWidth: glyph_text.implicitWidth + (count_text.visible ? count_text.implicitWidth - root.badge_overlap : 0)
-    implicitHeight: glyph_text.implicitHeight + root.badge_rise
+    // Height is the glyph alone so layouts center the glyph; the badge overhangs the top.
+    implicitHeight: glyph_text.implicitHeight
 
     Text {
         id: glyph_text
-        y: root.badge_rise - root.glyph_rise / 1024
+        y: -root.glyph_rise / 1024
         text: root.glyph
         color: root.tint
         font.family: Style.bar_font_family
@@ -39,7 +40,7 @@ Item {
         id: count_text
         visible: root.count !== ""
         x: glyph_text.implicitWidth - root.badge_overlap
-        y: 0
+        y: -root.badge_rise
         text: root.count
         color: root.tint
         font.family: Style.bar_font_family
