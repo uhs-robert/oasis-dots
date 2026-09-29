@@ -14,10 +14,12 @@ Scope {
     readonly property int mpv_volume: Math.round(100 * Math.cbrt(Math.max(0, Math.min(1, root.volume))))
     readonly property string sock: (Quickshell.env("XDG_RUNTIME_DIR") || "/tmp") + "/qs-mpv-" + Quickshell.processId + "-" + Math.floor(Math.random() * 1e9)
 
+    readonly property bool linked: link.item !== null && link.item.connected
+
     function send(command) {
-        if (!socket.connected) return false;
-        socket.write(JSON.stringify({ command: command }) + "\n");
-        socket.flush();
+        if (!root.linked) return false;
+        link.item.write(JSON.stringify({ command: command }) + "\n");
+        link.item.flush();
         return true;
     }
 
@@ -42,7 +44,7 @@ Scope {
         id: proc
         onRunningChanged: {
             if (proc.running) return;
-            socket.connected = false;
+            link.active = false;
             Quickshell.execDetached(["rm", "-f", root.sock]);
         }
         // A start with no audio sink exits at once; try again while still wanted.
@@ -55,17 +57,26 @@ Scope {
         onTriggered: root.sync()
     }
 
-    Socket {
-        id: socket
-        path: root.sock
-        onConnectedChanged: if (socket.connected) root.send(["set_property", "volume", root.mpv_volume])
+    // A Socket never retries after a failed connect, so each attempt builds a fresh one.
+    Loader {
+        id: link
+        active: false
+        sourceComponent: Socket {
+            path: root.sock
+            connected: true
+        }
     }
+
+    onLinkedChanged: if (root.linked) root.send(["set_property", "volume", root.mpv_volume])
 
     // The socket appears a moment after mpv starts.
     Timer {
         interval: 50
         repeat: true
-        running: proc.running && !socket.connected
-        onTriggered: socket.connected = true
+        running: proc.running && !root.linked
+        onTriggered: {
+            link.active = false;
+            link.active = true;
+        }
     }
 }
