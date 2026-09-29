@@ -14,7 +14,8 @@ Popup {
     size_class: "large"
     // The pane keeps 450; the sidebar grows to fit the widest section label in the active style.
     preferred_width: 467 + nav.width / Style.scale
-    body_height: Math.max(nav.implicitHeight, pane_loader.implicitHeight) + 24
+    body_height: Math.max(nav.implicitHeight, root.pane_height) + 24
+    reserve_height: root.max_body
     jumps_enabled: true
     search_enabled: true
     footer_hint: root.in_pane && root.pane ? root.pane.shown_hint : "/ find · j/k move · l enter · 1-9 pick · gg/G first/last · q close"
@@ -27,6 +28,12 @@ Popup {
     property string loaded_id: ""
     readonly property var pane: pane_loader.item
     readonly property bool is_open: Popups.open_name === "settings"
+    // Last valid pane height, held while a section loads; max_body is the tallest body this open.
+    property real pane_height: 0
+    property real max_body: 0
+    readonly property real pane_implicit: pane_loader.status === Loader.Ready ? pane_loader.implicitHeight : NaN
+    onPane_implicitChanged: if (isFinite(root.pane_implicit) && root.pane_implicit > 0) root.pane_height = root.pane_implicit
+    onBody_heightChanged: if (isFinite(root.body_height)) root.max_body = Math.max(root.max_body, root.body_height)
 
     search_rows: root.in_pane && root.pane ? root.pane.search_rows : Sections.list.map(s => s.label + " " + s.group + " " + s.keywords)
     search_cursor: root.in_pane && root.pane ? root.pane.search_cursor : root.nav_index
@@ -42,6 +49,7 @@ Popup {
             root.in_pane = false;
             return;
         }
+        root.max_body = root.body_height;
         if (!root.apply_request()) {
             root.load_section();
             root.leave_pane();
@@ -58,6 +66,7 @@ Popup {
         if (!section || root.loaded_id === section.id) return;
         root.loaded_id = section.id;
         pane_loader.setSource(Qt.resolvedUrl(section.source), { popup: root });
+        pane_fade.restart();
     }
 
     function enter_pane() {
@@ -95,7 +104,7 @@ Popup {
         anchors.right: parent.right
         anchors.top: parent.top
         anchors.margins: 12
-        implicitHeight: Math.max(nav.implicitHeight, pane_loader.implicitHeight)
+        implicitHeight: Math.max(nav.implicitHeight, root.pane_height)
         focus: true
 
         // Runs after the section: Esc, h and Tab it did not use go back to the sidebar.
@@ -218,6 +227,16 @@ Popup {
             anchors.leftMargin: 8
             anchors.right: parent.right
             anchors.top: parent.top
+        }
+
+        NumberAnimation {
+            id: pane_fade
+            target: pane_loader
+            property: "opacity"
+            from: 0
+            to: 1
+            duration: 150
+            easing.type: Easing.OutCubic
         }
     }
 }

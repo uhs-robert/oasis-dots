@@ -21,7 +21,7 @@ Rectangle {
     readonly property real screen_h: root.popup && root.popup.screen && root.popup.screen.height > 0 ? root.popup.screen.height : 1080
 
     Layout.fillWidth: true
-    Layout.preferredHeight: Math.round(width * screen_h / screen_w)
+    Layout.preferredHeight: width > 0 ? Math.round(width * screen_h / screen_w) : 0
     color: Theme.bg_shadow
     border.width: 1
     border.color: root.popup ? root.popup.st.frame_border_color : Style.frame_border_color
@@ -53,7 +53,7 @@ Rectangle {
         id: skin_loader
         width: root.screen_w
         height: root.screen_h
-        scale: (root.width - 2) / root.screen_w
+        scale: Math.max(0.01, (root.width - 2) / root.screen_w)
         transformOrigin: Item.TopLeft
         x: 1
         y: 1
