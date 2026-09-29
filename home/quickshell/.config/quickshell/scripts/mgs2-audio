@@ -1,13 +1,15 @@
 #!/usr/bin/env bash
-# Imports the MGS2 lock skin's audio into $XDG_DATA_HOME/quickshell/mgs2-audio: the title and menu themes as an intro plus a loop, and the menu sound effects.
-# Music is title.* and menu.* (first of .flac, .ogg, .mp3, .wav); loops come from --*-loop, else LOOPSTART/LOOPLENGTH (or LOOPEND) tags, else the whole track loops.
-# Effects are start, move, letter, decide, cancel, error and accept, any audio extension; a missing file stays silent.
-# Usage: mgs2-audio [--title-loop START END] [--menu-loop START END] [--out DIR] [SOURCE_DIR]   (seconds)
+# Imports the MGS2 lock skin's audio into $XDG_DATA_HOME/quickshell/mgs2-audio: the title and menu themes as an intro plus a sample-exact loop, and the menu sound effects.
+# Music is title.* (else any file with "title" in its name) and menu.*, in SOURCE_DIR or its music/. Loops come from --*-loop, else LOOPSTART/LOOPLENGTH (or LOOPEND) tags,
+# else they are detected from the track's repeats and tagged into the source losslessly, so later runs reuse them; a track with no clean repeat loops whole.
+# Effects, in SOURCE_DIR or its fx/: back, select, error, submit, transition_wipe, transition_left and transition_right; a missing file stays silent.
+# Usage: mgs2-audio [--title-loop START END] [--menu-loop START END] [--redetect] [--out DIR] [SOURCE_DIR]   (seconds; overrides are tagged too)
 set -euo pipefail
 
-src="$HOME/Downloads/mgs2"
+src="$HOME/Downloads/Metal Gear"
 title_loop=()
 menu_loop=()
+redetect=0
 out="${XDG_DATA_HOME:-$HOME/.local/share}/quickshell/mgs2-audio"
 while (($#)); do
   case "$1" in
@@ -19,12 +21,16 @@ while (($#)); do
     menu_loop=("$2" "$3")
     shift 3
     ;;
+  --redetect)
+    redetect=1
+    shift
+    ;;
   --out)
     out=$2
     shift 2
     ;;
   -h | --help)
-    sed -n '2,5p' "$0"
+    sed -n '2,6p' "$0"
     exit 0
     ;;
   *)
@@ -34,12 +40,16 @@ while (($#)); do
   esac
 done
 
-for tool in ffmpeg ffprobe jq; do
+for tool in ffmpeg ffprobe jq python3; do
   command -v "$tool" >/dev/null || {
     echo "mgs2-audio: $tool is required" >&2
     exit 1
   }
 done
+python3 -c 'import numpy' 2>/dev/null || {
+  echo "mgs2-audio: python3 numpy is required" >&2
+  exit 1
+}
 [[ -d $src ]] || {
   echo "mgs2-audio: no source directory $src" >&2
   exit 1
@@ -47,12 +57,12 @@ done
 rate=44100
 mkdir -p "$out"
 
-# Prints the first file in $src named $1 with one of the extensions $2.., ignoring case.
+# Prints the first file in $src or one folder down named $1 with one of the extensions $2.., ignoring case.
 find_src() {
   local name=$1 ext file
   shift
   for ext in "$@"; do
-    file=$(find "$src" -maxdepth 1 -type f -iname "$name.$ext" -print -quit)
+    file=$(find "$src" -maxdepth 2 -type f -iname "$name.$ext" -print -quit)
     if [[ -n $file ]]; then
       printf '%s\n' "$file"
       return 0
@@ -60,44 +70,136 @@ find_src() {
   done
 }
 
-# Prints "start end" in seconds from the file's loop tags, or nothing.
-read_tags() {
-  local sr
-  sr=$(ffprobe -v error -select_streams a:0 -show_entries stream=sample_rate -of csv=p=0 "$1")
-  ffprobe -v error -show_entries format_tags:stream_tags -of json "$1" |
-    jq -r --argjson sr "$sr" '[.format.tags, (.streams // [])[].tags] | map(select(. != null)) | add // {} | with_entries(.key |= ascii_upcase)
-      | (.LOOPSTART // "" | tonumber? // null) as $s | (.LOOPLENGTH // "" | tonumber? // null) as $l | (.LOOPEND // "" | tonumber? // null) as $e
-      | if $s == null then empty elif $l != null then "\($s / $sr) \(($s + $l) / $sr)" elif $e != null then "\($s / $sr) \($e / $sr)" else empty end'
+# Prints the source's sample rate.
+src_rate() {
+  ffprobe -v error -select_streams a:0 -show_entries stream=sample_rate -of csv=p=0 "$1"
 }
 
-# Writes $out/$1_intro.ogg and $out/$1_loop.ogg from the source $1.*, looping between the two given seconds when set.
+# Prints "start end" in source samples from the file's loop tags, or nothing.
+read_tags() {
+  ffprobe -v error -show_entries format_tags:stream_tags -of json "$1" |
+    jq -r '[.format.tags, (.streams // [])[].tags] | map(select(. != null)) | add // {} | with_entries(.key |= ascii_upcase)
+      | (.LOOPSTART // "" | tonumber? // null) as $s | (.LOOPLENGTH // "" | tonumber? // null) as $l | (.LOOPEND // "" | tonumber? // null) as $e
+      | if $s == null then empty elif $l != null then "\($s) \($s + $l)" elif $e != null then "\($s) \($e)" else empty end'
+}
+
+# Sets KEY=VALUE tags on $1 without touching its audio: copy with new tags, check the decoded audio is identical, then swap in; an empty value removes the tag.
+write_meta() {
+  local file=$1 tmp before after scope='' kv
+  local args=()
+  shift
+  [[ ${file##*.} == ogg ]] && scope=:s:a:0
+  for kv in "$@"; do args+=("-metadata$scope" "$kv"); done
+  tmp=$(mktemp "$(dirname "$file")/.mgs2-tags.XXXXXX.${file##*.}") || return 1
+  if ffmpeg -v error -y -i "$file" -map 0 -c copy -map_metadata 0 "${args[@]}" "$tmp" &&
+    before=$(ffmpeg -v error -i "$file" -map 0:a -f md5 -) && after=$(ffmpeg -v error -i "$tmp" -map 0:a -f md5 -) &&
+    [[ -n $before && $before == "$after" ]] && touch -r "$file" "$tmp" && mv -f "$tmp" "$file"; then
+    return 0
+  fi
+  rm -f "$tmp"
+  echo "mgs2-audio: could not tag $file; left it untouched" >&2
+  return 1
+}
+
+# Prints "start end" in source samples for a loop found from the track's own repeats, or nothing when it has no clean one.
+# The repeat length comes from spectral self-similarity, refined sample-exact; the loop starts where the repeat holds and ends whole repeats later, before any fade-out.
+detect_loop() {
+  local sr
+  sr=$(src_rate "$1")
+  ffmpeg -v error -i "$1" -ac 1 -f f32le - | python3 -c '
+import sys
+import numpy as np
+x = np.frombuffer(sys.stdin.buffer.read(), dtype=np.float32).astype(np.float64)
+r = int(sys.argv[1])
+if len(x) < 30 * r:
+    sys.exit()
+hop = r // 2
+rms = np.array([10 * np.log10(np.mean(x[i:i + hop] ** 2) + 1e-12) for i in range(0, len(x) - hop, hop)])
+med = np.median(rms)
+i = len(rms) - 1
+while i > 0 and rms[i] < med - 6:
+    i -= 1
+fade = (i + 1) * hop
+step = max(1, r // 11025)
+y = x[:fade:step]
+n, fh = 2048, 512
+frames = np.lib.stride_tricks.sliding_window_view(y, n)[::fh] * np.hanning(n)
+s = np.log1p(np.abs(np.fft.rfft(frames, axis=1)))[:, :400]
+s -= s.mean(axis=1, keepdims=True)
+s /= np.linalg.norm(s, axis=1, keepdims=True) + 1e-9
+fps = (r / step) / fh
+best, lag = -1.0, 0
+for l in range(int(8 * fps), len(s) // 2):
+    v = (s[:len(s) - l] * s[l:]).sum(axis=1).mean()
+    if v > best:
+        best, lag = v, l
+if best < 0.5:
+    sys.exit()
+l0, seg = int(lag / fps * r), 2 * r
+nc = lambda a, b: np.dot(a, b) / np.sqrt(np.dot(a, a) * np.dot(b, b) + 1e-12)
+ts = [int(t) for t in np.linspace(0.2, 0.8, 7) * fade if t + l0 + seg + 4000 < fade]
+votes = []
+for t in ts:
+    a = x[t:t + seg]
+    votes.append(max(range(l0 - 3000, l0 + 3000), key=lambda l: np.dot(a, x[t + l:t + l + seg])))
+if not votes:
+    sys.exit()
+L = int(np.median(votes))
+w, q = r // 2, r // 4
+good = [nc(x[t:t + w], x[t + L:t + L + w]) >= 0.97 for t in range(0, fade - L - w, q)]
+start = None
+for k in range(len(good) - 8):
+    if all(good[k:k + 8]):
+        start = k * q + q
+        break
+if start is None:
+    sys.exit()
+for d in sorted(range(-400, 401), key=abs):
+    if x[start + d - 1] <= 0 < x[start + d]:
+        start += d
+        break
+m = (fade - r - start) // L
+if m < 1:
+    sys.exit()
+print(start, start + m * L)
+' "$sr"
+}
+
+# Writes $out/$1_intro.ogg and $out/$1_loop.ogg from the source $1.*: loop points from the given seconds, the tags, or detection, tagged into the source when new.
 music() {
-  local name=$1 file start end
+  local name=$1 file sr s='' e=''
   shift
   file=$(find_src "$name" flac ogg mp3 wav)
-  if [[ -z $file ]]; then
-    echo "mgs2-audio: no $name track in $src; it stays silent" >&2
-    return 0
-  fi
-  if (($# == 2)); then
-    start=$1 end=$2
-  else
-    read -r start end < <(read_tags "$file") || true
-  fi
+  [[ -n $file || $name != title ]] || file=$(find "$src" -maxdepth 2 -type f -iname '*title*' \( -iname '*.flac' -o -iname '*.ogg' -o -iname '*.mp3' -o -iname '*.wav' \) -print -quit)
   rm -f "$out/${name}_intro.ogg" "$out/${name}_loop.ogg"
-  if [[ -z ${start:-} ]]; then
-    ffmpeg -v error -y -i "$file" -ar "$rate" -c:a libvorbis -q:a 6 "$out/${name}_loop.ogg"
-    printf 'mgs2-audio: %s loops whole\n' "$name"
+  if [[ -z $file ]]; then
+    if [[ $name == menu ]]; then
+      echo "mgs2-audio: no menu track in $src; the menus keep the title theme" >&2
+    else
+      echo "mgs2-audio: no $name track in $src; it stays silent" >&2
+    fi
     return 0
   fi
-  local s e
-  s=$(awk -v t="$start" -v r="$rate" 'BEGIN { printf "%d", t * r + 0.5 }')
-  e=$(awk -v t="$end" -v r="$rate" 'BEGIN { printf "%d", t * r + 0.5 }')
-  if ((s > 0)); then
-    ffmpeg -v error -y -i "$file" -ar "$rate" -af "atrim=end_sample=$s" -c:a libvorbis -q:a 6 "$out/${name}_intro.ogg"
+  sr=$(src_rate "$file")
+  if (($# == 2)); then
+    s=$(awk -v t="$1" -v r="$sr" 'BEGIN { printf "%d", t * r + 0.5 }')
+    e=$(awk -v t="$2" -v r="$sr" 'BEGIN { printf "%d", t * r + 0.5 }')
+    write_meta "$file" LOOPSTART="$s" LOOPLENGTH="$((e - s))" LOOPEND= || true
+  elif ((! redetect)) && read -r s e < <(read_tags "$file") && [[ -n ${s:-} ]]; then
+    :
+  elif read -r s e < <(detect_loop "$file") && [[ -n ${s:-} ]]; then
+    write_meta "$file" LOOPSTART="$s" LOOPLENGTH="$((e - s))" LOOPEND= || true
   fi
-  ffmpeg -v error -y -i "$file" -ar "$rate" -af "atrim=start_sample=$s:end_sample=$e,asetpts=N/SR/TB" -c:a libvorbis -q:a 6 "$out/${name}_loop.ogg"
-  printf 'mgs2-audio: %s loops %ss to %ss\n' "$name" "$start" "$end"
+  if [[ -z $s ]]; then
+    ffmpeg -v error -y -i "$file" -ar "$rate" -c:a libvorbis -q:a 6 "$out/${name}_loop.ogg"
+    printf 'mgs2-audio: %s has no clean repeat; it loops whole\n' "$name"
+    return 0
+  fi
+  if ((s > 0)); then
+    ffmpeg -v error -y -i "$file" -af "atrim=end_sample=$s,aresample=$rate" -c:a libvorbis -q:a 6 "$out/${name}_intro.ogg"
+  fi
+  ffmpeg -v error -y -i "$file" -af "atrim=start_sample=$s:end_sample=$e,asetpts=N/SR/TB,aresample=$rate" -c:a libvorbis -q:a 6 "$out/${name}_loop.ogg"
+  printf 'mgs2-audio: %s loops %.3fs to %.3fs\n' "$name" "$(awk -v v="$s" -v r="$sr" 'BEGIN { print v / r }')" "$(awk -v v="$e" -v r="$sr" 'BEGIN { print v / r }')"
 }
 
 # Writes $out/$1.wav from the source $1.* as 16-bit PCM, which QSoundEffect can play.
@@ -114,5 +216,5 @@ fx() {
 
 music title "${title_loop[@]}"
 music menu "${menu_loop[@]}"
-for name in start move letter decide cancel error accept; do fx "$name"; done
+for name in back select error submit transition_wipe transition_left transition_right; do fx "$name"; done
 printf 'mgs2-audio: wrote %s\n' "$out"

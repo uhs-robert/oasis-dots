@@ -30,18 +30,21 @@ Item {
     }
 
     function play(name) {
-        const fx = ({ start: fx_start, move: fx_move, letter: fx_letter, decide: fx_decide, cancel: fx_cancel, error: fx_error, accept: fx_accept })[name];
+        const fx = ({ back: fx_back, select: fx_select, error: fx_error, submit: fx_submit, transition_wipe: fx_wipe, transition_left: fx_left, transition_right: fx_right })[name];
         if (fx && fx.status === SoundEffect.Ready) fx.play();
     }
 
+    // Without a menu theme of its own, the menus keep the title theme playing.
+    readonly property string playing: audio.track === "menu" && !audio.files["menu_loop.ogg"] && !audio.files["menu_intro.ogg"] ? "title" : audio.track
+
     function sync() {
         const title_on = title_intro.playbackState === MediaPlayer.PlayingState || title_loop.playbackState === MediaPlayer.PlayingState;
-        if (audio.track === "title" && !title_on) {
+        if (audio.playing === "title" && !title_on) {
             if (audio.files["title_intro.ogg"]) title_intro.play();
             else title_loop.play();
         }
         const menu_on = menu_intro.playbackState === MediaPlayer.PlayingState || menu_loop.playbackState === MediaPlayer.PlayingState;
-        if (audio.track === "menu" && !menu_on) {
+        if (audio.playing === "menu" && !menu_on) {
             if (audio.files["menu_intro.ogg"]) menu_intro.play();
             else menu_loop.play();
         }
@@ -50,7 +53,7 @@ Item {
     }
 
     // Sources resolve after the folder listing, so sync again once they do.
-    onTrackChanged: Qt.callLater(audio.sync)
+    onPlayingChanged: Qt.callLater(audio.sync)
     onFilesChanged: Qt.callLater(audio.sync)
 
     MediaDevices {
@@ -86,10 +89,10 @@ Item {
 
     SequentialAnimation {
         id: title_fade
-        NumberAnimation { target: audio; property: "title_level"; to: audio.track === "title" ? 1 : 0; duration: 800 }
+        NumberAnimation { target: audio; property: "title_level"; to: audio.playing === "title" ? 1 : 0; duration: 800 }
         ScriptAction {
             script: {
-                if (audio.track !== "title") {
+                if (audio.playing !== "title") {
                     title_intro.stop();
                     title_loop.stop();
                 }
@@ -99,10 +102,10 @@ Item {
 
     SequentialAnimation {
         id: menu_fade
-        NumberAnimation { target: audio; property: "menu_level"; to: audio.track === "menu" ? 1 : 0; duration: 800 }
+        NumberAnimation { target: audio; property: "menu_level"; to: audio.playing === "menu" ? 1 : 0; duration: 800 }
         ScriptAction {
             script: {
-                if (audio.track !== "menu") {
+                if (audio.playing !== "menu") {
                     menu_intro.stop();
                     menu_loop.stop();
                 }
@@ -119,7 +122,7 @@ Item {
             volume: audio.title_level * audio.music_volume
         }
         onMediaStatusChanged: {
-            if (title_intro.mediaStatus === MediaPlayer.EndOfMedia && audio.track === "title") title_loop.play();
+            if (title_intro.mediaStatus === MediaPlayer.EndOfMedia && audio.playing === "title") title_loop.play();
         }
     }
 
@@ -143,7 +146,7 @@ Item {
             volume: audio.menu_level * audio.music_volume
         }
         onMediaStatusChanged: {
-            if (menu_intro.mediaStatus === MediaPlayer.EndOfMedia && audio.track === "menu") menu_loop.play();
+            if (menu_intro.mediaStatus === MediaPlayer.EndOfMedia && audio.playing === "menu") menu_loop.play();
         }
     }
 
@@ -158,11 +161,11 @@ Item {
         }
     }
 
-    SoundEffect { id: fx_start; source: audio.file("start.wav"); audioDevice: devices.defaultAudioOutput; volume: audio.fx_volume }
-    SoundEffect { id: fx_move; source: audio.file("move.wav"); audioDevice: devices.defaultAudioOutput; volume: audio.fx_volume }
-    SoundEffect { id: fx_letter; source: audio.file("letter.wav"); audioDevice: devices.defaultAudioOutput; volume: audio.fx_volume }
-    SoundEffect { id: fx_decide; source: audio.file("decide.wav"); audioDevice: devices.defaultAudioOutput; volume: audio.fx_volume }
-    SoundEffect { id: fx_cancel; source: audio.file("cancel.wav"); audioDevice: devices.defaultAudioOutput; volume: audio.fx_volume }
+    SoundEffect { id: fx_back; source: audio.file("back.wav"); audioDevice: devices.defaultAudioOutput; volume: audio.fx_volume }
+    SoundEffect { id: fx_select; source: audio.file("select.wav"); audioDevice: devices.defaultAudioOutput; volume: audio.fx_volume }
     SoundEffect { id: fx_error; source: audio.file("error.wav"); audioDevice: devices.defaultAudioOutput; volume: audio.fx_volume }
-    SoundEffect { id: fx_accept; source: audio.file("accept.wav"); audioDevice: devices.defaultAudioOutput; volume: audio.fx_volume }
+    SoundEffect { id: fx_submit; source: audio.file("submit.wav"); audioDevice: devices.defaultAudioOutput; volume: audio.fx_volume }
+    SoundEffect { id: fx_wipe; source: audio.file("transition_wipe.wav"); audioDevice: devices.defaultAudioOutput; volume: audio.fx_volume }
+    SoundEffect { id: fx_left; source: audio.file("transition_left.wav"); audioDevice: devices.defaultAudioOutput; volume: audio.fx_volume }
+    SoundEffect { id: fx_right; source: audio.file("transition_right.wav"); audioDevice: devices.defaultAudioOutput; volume: audio.fx_volume }
 }

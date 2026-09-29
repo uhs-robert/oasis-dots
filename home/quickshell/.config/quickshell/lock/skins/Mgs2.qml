@@ -10,7 +10,7 @@ Item {
     id: root
 
     property var ctx: null
-    readonly property int unlock_ms: 3550
+    readonly property int unlock_ms: 3850
 
     readonly property bool animate: !!root.ctx && root.ctx.animate
     readonly property string phase: root.ctx ? root.ctx.phase : "idle"
@@ -32,7 +32,6 @@ Item {
         if (root.screen === "menu" || root.screen === "load" || root.screen === "name") return "menu";
         return root.ctx.login === true ? "title" : "";
     }
-    property int heard_typed: 0
     // Set once the accept sound has played for this attempt; a new password clears it.
     property bool heard_unlock: false
     property bool dying: false
@@ -53,6 +52,20 @@ Item {
     // Black once the unlock caption starts.
     property bool captioning: false
     readonly property string view: root.captioning ? "unlock" : root.screen
+    // The page on show: the view, with Options as its own page; it trails `page` while a transition runs.
+    readonly property string page: root.view === "menu" && root.in_options ? "opt" : root.view
+    property string shown: ""
+    // Page turns run as steps; a step's draw(tk) places the frame as tk runs 0 to 1.
+    property var steps: []
+    property var step: null
+    property real tk: 1
+    property bool content_on: true
+    // The title's intro fades the background up from black only the first time; returns from the menu keep it.
+    property bool title_bg_shown: false
+    // The frame alternates between two layouts each page turn, like the game: L has full left and bottom rules, R full top and right ones.
+    property bool layout_r: false
+    readonly property real content_alpha: root.step && root.step.content ? root.tk : root.content_on ? 1 : 0
+    readonly property real title_out: root.step && root.step.title === "out" ? root.tk : 0
 
     // The menu's cursor and note live in the scene as "menu:<item>:<note>" so every output agrees.
     readonly property var menu_items: ["load", "options", "reboot", "poweroff"]
@@ -140,15 +153,130 @@ Item {
     readonly property color ok_green: "#a0e0b0"
     readonly property color mol_red: "#d63126"
 
-    // Each screen's frame: the vertical rule, the rail beside the box, the box and the horizontal rule.
-    readonly property var frames: ({
-        menu: { v: 62, rail: [62, 140], box: [140, 46, 1540, 756], h: 756 },
-        load: { v: 62, rail: [88, 140], box: [140, 62, 1500, 690], h: 690 },
-        name: { v: 56, rail: [56, 140], box: [140, 66, 1530, 775], h: 775 }
-    })
-    readonly property var frame: root.frames[root.view] || null
-    property var last_frame: root.frames.menu
-    onFrameChanged: if (root.frame) root.last_frame = root.frame
+    // The menu box: its outline starts at the left rule, with the rail inside its left end.
+    readonly property var box: ({ left: 62, top: 46, right: 1544, bottom: 756, rail: 78 })
+
+    function out(k, t0, t1) {
+        const x = Math.max(0, Math.min(1, (k - t0) / (t1 - t0)));
+        return 1 - Math.pow(1 - x, 3);
+    }
+
+    function inout(k, t0, t1) {
+        const x = Math.max(0, Math.min(1, (k - t0) / (t1 - t0)));
+        return x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
+    }
+
+    function lerp(a, b, t) {
+        return a + (b - a) * t;
+    }
+
+    // The resting frame: the box, plus L's full left and bottom rules or R's full top and right ones.
+    function rest_draw() {
+        const b = root.box;
+        if (!root.is_framed(root.shown)) return { box: null, h: [], v: [] };
+        return { box: [b.left, b.top, b.right, b.bottom], h: [root.layout_r ? b.top : b.bottom], v: [root.layout_r ? b.right : b.left] };
+    }
+
+    // The frame as drawn: {box: [left, top, right, bottom] or null, h: [y...], v: [x...]}; the rules always run the full screen, only moving.
+    readonly property var draw: root.step && root.step.draw ? root.step.draw(root.tk) : root.rest_draw()
+    readonly property var fb: {
+        const d = root.draw.box || [0, 0, 0, 0];
+        return { v: d[0], r0: d[0], r1: Math.min(d[0] + root.box.rail, d[2]), x1: d[2], y0: d[1], y1: d[3] };
+    }
+    readonly property bool box_on: !!root.draw.box && root.draw.box[2] - root.draw.box[0] > 0.5 && root.draw.box[3] - root.draw.box[1] > 0.5
+    readonly property var guides: root.draw.h.map(y => ({ h: true, p: y })).concat(root.draw.v.map(x => ({ h: false, p: x })))
+
+    function is_framed(p) {
+        return p === "menu" || p === "opt" || p === "load" || p === "name";
+    }
+
+    function rest() {
+        step_anim.stop();
+        root.steps = [];
+        root.step = null;
+        root.tk = 1;
+        root.content_on = true;
+    }
+
+    // Runs steps in order: {ms, ease, draw, wipe, content, title, keep, start}; title "out" zooms the title away.
+    function run(list) {
+        step_anim.stop();
+        root.steps = list;
+        root.next_step();
+    }
+
+    function next_step() {
+        const list = root.steps;
+        const s = list.shift();
+        root.steps = list;
+        if (!s) {
+            if (!(root.step && root.step.keep)) root.rest();
+            return;
+        }
+        if (s.start) s.start();
+        root.step = s;
+        root.tk = 0;
+        step_anim.duration = s.ms;
+        step_anim.easing.type = s.ease === undefined ? Easing.Linear : s.ease;
+        step_anim.restart();
+    }
+
+    // From L, the bottom rule wipes the page off the top; after a beat a rule rises from the screen's bottom, and as it settles the left rule
+    // slides right while the risen one climbs on, drawing R's box from the bottom-left. From R it all mirrors: the right rule wipes left,
+    // one comes in from the right, then it slides left while the top rule drops, drawing L's box from the top-right. Rules only ever move.
+    function turn_page() {
+        const to = root.page, from = root.shown;
+        const still = !root.animate || from === "" || [to, from].some(p => p === "unlock" || p === "saver");
+        if (to === from || still) {
+            root.shown = to;
+            if (!root.is_framed(to)) root.layout_r = false;
+            root.rest();
+            return;
+        }
+        if (root.is_framed(from)) root.sfx("transition_wipe");
+        const b = root.box, L = b.left, T = b.top, R = b.right, B = b.bottom;
+        const framed_to = root.is_framed(to);
+        const list = [];
+        const swap = r => ({ ms: 1, draw: () => ({ box: null, h: [], v: [] }), start: () => {
+                root.shown = to;
+                root.content_on = false;
+                root.layout_r = framed_to && r;
+            } });
+        // L's box, drawn from the top-right: the vertical rule comes in from x0 and slides to the left edge, the horizontal one drops from y0.
+        const draw_l = (x0, y0) => k => {
+            const x = k < 0.45 ? root.lerp(x0, R, root.out(k, 0, 0.45)) : root.lerp(R, L, root.inout(k, 0.45, 1));
+            const y = root.lerp(y0, B, root.inout(k, 0.35, 1));
+            return { box: x < R && y > T ? [x, T, R, y] : null, h: [y], v: [x] };
+        };
+        if (root.is_framed(from)) {
+            if (!root.layout_r) {
+                list.push({ ms: 260, ease: Easing.InQuad, wipe: true, draw: k => ({ box: [L, T, R, root.lerp(B, T, k)], h: [root.lerp(B, T, k)], v: [L] }) });
+                list.push({ ms: 60, draw: k => ({ box: null, h: [root.lerp(T, -10, k)], v: [L] }) });
+                list.push(swap(true), { ms: 250, draw: () => ({ box: null, h: [], v: [L] }) });
+                if (framed_to) {
+                    list.push({ ms: 620, start: () => root.sfx("transition_right"), draw: k => {
+                            const y = k < 0.45 ? root.lerp(910, B, root.out(k, 0, 0.45)) : root.lerp(B, T, root.inout(k, 0.45, 1));
+                            const x = root.lerp(L, R, root.inout(k, 0.35, 1));
+                            return { box: x > L && y < B ? [L, y, x, B] : null, h: [y], v: [x] };
+                        } });
+                }
+            } else {
+                list.push({ ms: 260, ease: Easing.InQuad, wipe: true, draw: k => ({ box: [L, T, root.lerp(R, L, k), B], h: [T], v: [root.lerp(R, L, k)] }) });
+                list.push({ ms: 60, draw: k => ({ box: null, h: [T], v: [root.lerp(L, -10, k)] }) });
+                list.push(swap(false), { ms: 250, draw: () => ({ box: null, h: [T], v: [] }) });
+                if (framed_to) list.push({ ms: 620, start: () => root.sfx("transition_left"), draw: draw_l(1610, T) });
+            }
+        } else if (from === "title") {
+            list.push({ ms: 1000, ease: Easing.InQuad, title: "out", draw: () => ({ box: null, h: [], v: [] }) }, swap(false), { ms: 120, draw: () => ({ box: null, h: [], v: [] }) });
+            if (framed_to) list.push({ ms: 620, start: () => root.sfx("transition_left"), draw: draw_l(1610, -10) });
+        } else {
+            list.push(swap(false));
+        }
+        if (framed_to) list.push({ ms: 150, content: true });
+        root.run(list);
+    }
+
+    onPageChanged: root.turn_page()
 
     readonly property var mol_sets: ({
         title: [[21, 1080, 180, 1.3], [4, 90, 780, 0.9], [9, 1300, 470, 1.0]],
@@ -196,7 +324,7 @@ Item {
         if (root.screen === "name") {
             if (event.key === Qt.Key_Escape) {
                 c.scene = "load";
-                root.cue("cancel");
+                root.cue("back");
             }
             return false;
         }
@@ -205,24 +333,23 @@ Item {
             const at = items.indexOf(root.in_options ? root.opt_item : root.menu_item);
             const next = items[(at + (down ? 1 : items.length - 1)) % items.length];
             c.scene = (root.in_options ? "opt:" : "menu:") + next;
-            root.cue("move");
+            root.cue("select");
             return true;
         }
         if (root.screen === "menu" && enter) {
-            root.cue("decide");
             if (root.in_options) root.opt_activate();
             else root.menu_activate();
             return true;
         }
         if (root.screen === "menu" && event.key === Qt.Key_Escape) {
             c.scene = root.in_options ? "menu:options" : "";
-            root.cue("cancel");
+            root.cue("back");
             return true;
         }
         if (root.screen === "load" && (up || down)) {
             if (root.users.length > 1) {
                 c.scene = "load:" + ((root.load_sel + (down ? 1 : root.users.length - 1)) % root.users.length);
-                root.cue("move");
+                root.cue("select");
             }
             return true;
         }
@@ -230,21 +357,25 @@ Item {
             const u = root.users[root.load_sel];
             if (u && u.name !== c.user && typeof c.user_request === "function") c.user_request(u.name);
             c.scene = "name";
-            root.cue("decide");
             return true;
         }
         if (root.screen === "load" && event.key === Qt.Key_Escape) {
             c.scene = "menu";
-            root.cue("cancel");
+            root.cue("back");
             return true;
         }
         if (root.screen === "title" && (enter || event.key === Qt.Key_Space)) {
             c.scene = "menu";
-            root.cue("start");
+            root.cue("submit");
             return true;
         }
         if (!ctrl && event.text !== "" && event.text.charCodeAt(0) > 32 && event.text.charCodeAt(0) !== 127) c.scene = "name";
         return false;
+    }
+
+    // Plays an effect on this output only if it owns the sound; page turns run on every output.
+    function sfx(name) {
+        if (root.owns_sound && audio_loader.item) audio_loader.item.play(name);
     }
 
     function cue(name) {
@@ -295,6 +426,8 @@ Item {
 
     clip: true
     Component.onCompleted: {
+        root.shown = root.page;
+        root.rest();
         root.claim_sound();
         if (root.granted) root.start_unlock();
     }
@@ -321,7 +454,7 @@ Item {
             root.start_unlock();
             if (!root.heard_unlock && root.owns_sound && audio_loader.item) {
                 root.heard_unlock = true;
-                audio_loader.item.play("accept");
+                audio_loader.item.play("submit");
             }
         } else {
             unlock_anim.stop();
@@ -348,8 +481,6 @@ Item {
         ignoreUnknownSignals: true
         function onSceneChanged() { note_timer.restart(); }
         function onBuffer_lengthChanged() {
-            if (root.owns_sound && root.typed > root.heard_typed && audio_loader.item) audio_loader.item.play("letter");
-            root.heard_typed = root.typed;
             if (root.typed > 0) root.heard_unlock = false;
         }
         function onSound_ownerChanged() { root.claim_sound(); }
@@ -363,10 +494,29 @@ Item {
         }
     }
 
-    // Green line, then black, the host and time typed out and held, then faded; all inside unlock_ms.
+    NumberAnimation {
+        id: step_anim
+        target: root
+        property: "tk"
+        from: 0
+        to: 1
+        onFinished: root.next_step()
+    }
+
+    // Green line, the frame folding into its top-right corner, black, the host and time typed out and held, then faded; all inside unlock_ms.
     SequentialAnimation {
         id: unlock_anim
         PauseAnimation { duration: 750 }
+        ScriptAction {
+            script: {
+                const b = root.box;
+                if (root.shown === "name") root.run([{ ms: 300, ease: Easing.InQuad, wipe: true, keep: true, draw: k => {
+                        const x = root.lerp(b.left, b.right, k), y = root.lerp(b.bottom, b.top, k);
+                        return { box: [x, b.top, b.right, y], h: [y], v: [x] };
+                    } }]);
+            }
+        }
+        PauseAnimation { duration: 300 }
         NumberAnimation { target: black; property: "opacity"; from: 0; to: 1; duration: 200 }
         PropertyAction { target: root; property: "captioning"; value: true }
         NumberAnimation { target: root; property: "caption_chars"; from: 0; to: root.caption_text.length; duration: 800 }
@@ -420,11 +570,6 @@ Item {
                 PathSvg { path: seg.g.fill }
             }
         }
-    }
-
-    component Slide: NumberAnimation {
-        duration: 520
-        easing.type: Easing.InOutCubic
     }
 
     // A DATA LOAD cell; the selected row is red.
@@ -757,28 +902,28 @@ Item {
     // Everything below draws on the 1600x900 stage.
     Rectangle {
         anchors.fill: parent
-        color: root.view === "unlock" ? "#000000" : "#0c100e"
+        color: root.shown === "unlock" ? "#000000" : "#0c100e"
     }
 
     Stage {
         id: stage
 
         Murk {
-            opacity: root.view === "load" ? 0.45 : 1
-            visible: root.view !== "unlock"
+            opacity: root.shown === "load" ? 0.45 : 1
+            visible: root.shown !== "unlock"
         }
 
         Rectangle {
             anchors.fill: parent
-            visible: root.view === "saver"
+            visible: root.shown === "saver"
             color: "#66000000"
         }
 
         // The grey structure diagram behind NAME ENTRY.
         Item {
             anchors.fill: parent
-            opacity: root.view === "name" ? 1 : 0
-            visible: opacity > 0
+            opacity: root.shown === "name" ? 1 : 0
+            visible: opacity > 0 && root.shown !== "unlock"
 
             Behavior on opacity { NumberAnimation { duration: 500 } }
 
@@ -816,10 +961,10 @@ Item {
             Item {
                 id: mol
                 required property var modelData
-                readonly property bool on: root.view === mol.modelData.set
+                readonly property bool on: (root.shown === "opt" ? "menu" : root.shown) === mol.modelData.set
                 anchors.fill: parent
                 opacity: mol.on ? 0.55 + mol.modelData.i * 0.1 : 0
-                visible: opacity > 0
+                visible: opacity > 0 && root.shown !== "unlock"
 
                 Behavior on opacity {
                     enabled: root.animate
@@ -869,7 +1014,7 @@ Item {
         // Status codes down the right: battery, unread count and weather among the noise.
         Item {
             anchors.fill: parent
-            visible: root.view === "title" || root.view === "menu" || root.view === "name"
+            visible: ["title", "menu", "opt", "name"].indexOf(root.shown) >= 0
 
             Repeater {
                 model: 20
@@ -932,47 +1077,35 @@ Item {
             }
         }
 
-        // The frame lines slide between screens like the game's menus.
+        // The frame lines, folded and unfolded between pages like the game's menus.
         Item {
-            id: frame_lines
-            readonly property var f: root.last_frame
             anchors.fill: parent
-            opacity: root.frame ? 1 : 0
-            visible: opacity > 0
+            visible: root.is_framed(root.shown)
 
-            Behavior on opacity { NumberAnimation { duration: 400 } }
+            // Fixed slots, so the rules move each frame without being rebuilt.
+            Repeater {
+                model: 6
 
-            Rectangle {
-                x: frame_lines.f.v
-                width: 1.5
-                height: 900
-                color: root.line_color
-                opacity: 0.55
-
-                Behavior on x { enabled: root.animate; Slide {} }
+                Rectangle {
+                    required property int index
+                    readonly property var g: root.guides[index] || null
+                    visible: g !== null
+                    x: g && !g.h ? g.p : 0
+                    y: g && g.h ? g.p : 0
+                    width: g && !g.h ? 1.5 : 1600
+                    height: g && g.h ? 1.5 : 900
+                    color: root.line_color
+                    opacity: 0.55
+                }
             }
 
             Rectangle {
-                y: frame_lines.f.h
-                width: 1600
-                height: 1.5
-                color: root.line_color
-                opacity: 0.55
-
-                Behavior on y { enabled: root.animate; Slide {} }
-            }
-
-            Rectangle {
-                x: frame_lines.f.rail[0]
-                y: frame_lines.f.box[1]
-                width: frame_lines.f.rail[1] - frame_lines.f.rail[0]
-                height: frame_lines.f.box[3] - frame_lines.f.box[1]
+                visible: root.box_on
+                x: root.fb.r0
+                y: root.fb.y0
+                width: Math.max(0, root.fb.r1 - root.fb.r0)
+                height: Math.max(0, root.fb.y1 - root.fb.y0)
                 color: "#14aabab0"
-
-                Behavior on x { enabled: root.animate; Slide {} }
-                Behavior on y { enabled: root.animate; Slide {} }
-                Behavior on width { enabled: root.animate; Slide {} }
-                Behavior on height { enabled: root.animate; Slide {} }
 
                 Rectangle {
                     anchors.right: parent.right
@@ -982,56 +1115,74 @@ Item {
                 }
             }
 
+            // The box outline takes in the rail, so its top edge starts at the left rule like the game's.
             Rectangle {
-                x: frame_lines.f.box[0]
-                y: frame_lines.f.box[1]
-                width: frame_lines.f.box[2] - frame_lines.f.box[0]
-                height: frame_lines.f.box[3] - frame_lines.f.box[1]
+                visible: root.box_on && root.fb.y1 - root.fb.y0 > 1
+                x: root.fb.r0
+                y: root.fb.y0
+                width: Math.max(0, root.fb.x1 - root.fb.r0)
+                height: Math.max(0, root.fb.y1 - root.fb.y0)
                 color: "transparent"
                 border.width: 1.5
                 border.color: "#8c9eaca3"
-
-                Behavior on x { enabled: root.animate; Slide {} }
-                Behavior on y { enabled: root.animate; Slide {} }
-                Behavior on width { enabled: root.animate; Slide {} }
-                Behavior on height { enabled: root.animate; Slide {} }
             }
         }
 
         Loader {
             anchors.fill: parent
-            active: root.view === "title"
+            active: root.shown === "title"
             sourceComponent: title_view
         }
 
-        Loader {
-            anchors.fill: parent
-            active: root.view === "menu"
-            sourceComponent: menu_view
+        // Framed pages show only inside the box and rail, so folding the box wipes them away; the layer does the cutting, since clip lets shapes fully outside it through.
+        Item {
+            id: page_clip
+            layer.enabled: root.step !== null
+            x: root.fb.v
+            y: root.fb.y0
+            width: Math.max(0, root.fb.x1 + 20 - root.fb.v)
+            height: Math.max(0, root.fb.y1 - root.fb.y0)
+            clip: true
+            visible: root.is_framed(root.shown) && root.box_on
+
+            Item {
+                x: -page_clip.x
+                y: -page_clip.y
+                width: 1600
+                height: 900
+                opacity: root.content_alpha
+
+                Loader {
+                    anchors.fill: parent
+                    active: root.shown === "menu" || root.shown === "opt"
+                    sourceComponent: menu_view
+                }
+
+                Loader {
+                    anchors.fill: parent
+                    active: root.shown === "load"
+                    sourceComponent: load_view
+                }
+
+                Loader {
+                    anchors.fill: parent
+                    active: root.shown === "name"
+                    sourceComponent: name_view
+                }
+            }
         }
 
         Loader {
             anchors.fill: parent
-            active: root.view === "load"
-            sourceComponent: load_view
-        }
-
-        Loader {
-            anchors.fill: parent
-            active: root.view === "name"
-            sourceComponent: name_view
-        }
-
-        Loader {
-            anchors.fill: parent
-            active: root.view === "saver"
+            active: root.shown === "saver"
             sourceComponent: saver_view
         }
 
         Text {
             x: 158
             y: 790
-            visible: root.view === "menu" || root.view === "load" || root.view === "name"
+            visible: root.is_framed(root.shown)
+            opacity: root.step && root.step.wipe ? 1 - root.tk : root.content_alpha
             width: 1300
             text: root.desc[0]
             textFormat: Text.PlainText
@@ -1048,7 +1199,7 @@ Item {
             anchors.right: parent.right
             anchors.rightMargin: 200
             y: 790
-            visible: root.view === "unlock"
+            visible: root.shown === "unlock"
             opacity: root.caption_alpha
             text: root.caption_text.slice(0, root.animate ? root.caption_chars : root.caption_text.length)
             textFormat: Text.PlainText
@@ -1177,15 +1328,66 @@ Item {
     Component {
         id: title_view
 
+        // The intro: the background and face fade up while the lockup zooms down into place; the date fades in just before it lands,
+        // and PRESS START appears and starts blinking the moment it does. It waits until the screen is actually showing.
         Item {
+            id: title
+            readonly property bool fade_bg: !root.title_bg_shown
+            readonly property bool on_screen: !!title.Window.window && title.Window.window.visible
+            property real t: root.animate ? 0 : 1
+            readonly property real bg: title.fade_bg ? root.out(title.t, 0, 0.85) : 1
+            readonly property real art: root.out(title.t, 0, 0.85)
+            readonly property real land: root.out(title.t, 0.15, 1)
+            readonly property real lockup: root.out(title.t, 0.15, 0.55)
+            readonly property real info: root.inout(title.t, 0.45, 1)
+            readonly property bool landed: title.t >= 1
+            property bool started: false
+
+            function begin(force) {
+                if (title.started || (!title.on_screen && !force)) return;
+                title.started = true;
+                if (root.animate) intro.start();
+                root.title_bg_shown = true;
+            }
+
+            onOn_screenChanged: title.begin(false)
+            Component.onCompleted: title.begin(false)
+
+            // In case the window never reports itself visible, the intro still plays.
+            Timer {
+                interval: 1500
+                running: true
+                onTriggered: title.begin(true)
+            }
+
+            NumberAnimation {
+                id: intro
+                target: title
+                property: "t"
+                from: 0
+                to: 1
+                duration: 1800
+            }
+
+            Rectangle {
+                width: 1600
+                height: 900
+                color: "#000000"
+                opacity: 1 - title.bg
+                visible: opacity > 0
+            }
+
             TitleArt {
-                opacity: 0.8
+                opacity: 0.8 * title.art * (1 - root.title_out)
             }
 
             Column {
                 y: 70
                 width: 1600
                 spacing: 0
+                scale: (1.35 - 0.35 * title.land) * (1 + 0.18 * root.title_out)
+                opacity: title.lockup * (1 - root.title_out)
+                transformOrigin: Item.Center
 
                 Text {
                     anchors.horizontalCenter: parent.horizontalCenter
@@ -1279,31 +1481,41 @@ Item {
                 }
             }
 
-            Seg {
-                x: (1600 - width) / 2
-                y: 698
-                text: "PRESS START BUTTON"
-                h: 24
-                gap: 3.2
-                color: "#c9d1c9"
+            Item {
+                anchors.fill: parent
+                opacity: Math.max(0, 1 - 2.5 * root.title_out)
 
-                SequentialAnimation on opacity {
-                    running: root.animate
-                    loops: Animation.Infinite
-                    NumberAnimation { from: 1; to: 0.35; duration: 1200; easing.type: Easing.InOutSine }
-                    NumberAnimation { from: 0.35; to: 1; duration: 1200; easing.type: Easing.InOutSine }
+                Seg {
+                    x: (1600 - width) / 2
+                    y: 698
+                    visible: title.landed
+                    text: "PRESS START BUTTON"
+                    h: 24
+                    gap: 3.2
+                    color: "#c9d1c9"
+
+                    // Starts at its nearly clear end, so it fades in right as the date finishes and brightens into the blink.
+                    opacity: 0.06
+
+                    SequentialAnimation on opacity {
+                        running: root.animate && title.landed
+                        loops: Animation.Infinite
+                        NumberAnimation { from: 0.06; to: 1; duration: 1200; easing.type: Easing.InOutSine }
+                        NumberAnimation { from: 1; to: 0.06; duration: 1200; easing.type: Easing.InOutSine }
+                    }
                 }
-            }
 
-            Text {
-                y: 780
-                width: 1600
-                horizontalAlignment: Text.AlignHCenter
-                textFormat: Text.StyledText
-                text: "<font color=\"#d4d8d6\">" + root.clock_text + "</font>&nbsp;&nbsp;&nbsp; " + Qt.formatDate(root.now, "dddd, MMMM d, yyyy")
-                color: "#b3b7b5"
-                font.family: root.ui_font
-                font.pixelSize: 27
+                Text {
+                    y: 780
+                    width: 1600
+                    opacity: title.info
+                    horizontalAlignment: Text.AlignHCenter
+                    textFormat: Text.StyledText
+                    text: "<font color=\"#d4d8d6\">" + root.clock_text + "</font>&nbsp;&nbsp;&nbsp; " + Qt.formatDate(root.now, "dddd, MMMM d, yyyy")
+                    color: "#b3b7b5"
+                    font.family: root.ui_font
+                    font.pixelSize: 27
+                }
             }
         }
     }
@@ -1313,14 +1525,15 @@ Item {
 
         Item {
             id: menu
-            readonly property var items: root.in_options ? root.opt_items : root.menu_items
-            readonly property string sel: root.in_options ? root.opt_item : root.menu_item
-            readonly property real list_y: root.in_options ? 150 : 104
+            readonly property bool opts: root.shown === "opt"
+            readonly property var items: menu.opts ? root.opt_items : root.menu_items
+            readonly property string sel: menu.opts ? root.opt_item : root.menu_item
+            readonly property real list_y: menu.opts ? 150 : 104
 
             Head {
                 x: 178
                 y: 96
-                visible: root.in_options
+                visible: menu.opts
                 text: "OPTIONS"
             }
 
@@ -1332,7 +1545,7 @@ Item {
                     required property string modelData
                     x: 178
                     y: menu.list_y + index * 53
-                    text: (root.in_options ? root.opt_label(modelData) : root.menu_labels[modelData]) || ""
+                    text: (menu.opts ? root.opt_label(modelData) : root.menu_labels[modelData]) || ""
                     h: 26
                     color: modelData === menu.sel ? root.item_on : root.item_off
                 }
@@ -1531,7 +1744,7 @@ Item {
 
             Rectangle {
                 x: 118
-                y: 735
+                y: 715
                 width: 16
                 height: 13
                 color: "#c7d0c9"
@@ -1539,7 +1752,7 @@ Item {
 
             Seg {
                 x: 178
-                y: 728
+                y: 708
                 text: "OK"
                 h: 26
                 color: name.ready ? root.ok_green : "#56615a"
@@ -1550,7 +1763,7 @@ Item {
     Rectangle {
         id: flash
         anchors.fill: parent
-        visible: root.phase === "wrong" && root.view === "name"
+        visible: root.phase === "wrong" && root.shown === "name"
         color: "#c01a1a"
         opacity: root.animate ? 0 : 0.12
 
