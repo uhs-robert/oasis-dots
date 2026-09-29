@@ -44,8 +44,8 @@ Item {
 
     readonly property bool sound_on: !!root.ctx && root.ctx.sound === true
     readonly property bool owns_sound: root.sound_on && root.ctx.sound_owner === root
-    // The Prelude plays on the title and the screensaver only.
-    readonly property string music_track: root.owns_sound && root.ctx.music !== false && (root.screen === "title" || root.screen === "saver") ? "title" : ""
+    // The Prelude plays only on the login screen, on its title and screensaver.
+    readonly property string music_track: root.owns_sound && root.login && root.ctx.music !== false && (root.screen === "title" || root.screen === "saver") ? "title" : ""
     property int heard_typed: 0
     property bool heard_unlock: false
     property bool dying: false
