@@ -11,8 +11,7 @@
   <a href="https://github.com/uhs-robert/oasis-dots/network/members"><img src="https://img.shields.io/github/forks/uhs-robert/oasis-dots?colorA=192330&colorB=C799FF&style=for-the-badge&cacheSeconds=4300" alt="Forks"></a>
   <a href="https://github.com/uhs-robert/oasis-dots"><img src="https://img.shields.io/github/repo-size/uhs-robert/oasis-dots?colorA=192330&colorB=F4A261&style=for-the-badge&cacheSeconds=4300" alt="Repo size"></a>
 </p>
-
-Oasis-themed dotfiles for Arch Linux and Hyprland, with an installer, an uninstaller and a Quickshell desktop shell. Managed with [GNU Stow](https://www.gnu.org/software/stow/); packages live under `home/`.
+<p align="center">Oasis-themed dotfiles for Arch Linux and Hyprland using Quickshell.</p>
 
 ## Desktop
 
@@ -22,6 +21,9 @@ An Arch Linux desktop on Hyprland, driven from the keyboard.
 - A [Quickshell](home/quickshell/.config/quickshell/README.md) desktop shell: per-monitor bars, popups, notifications, pickers, a workspace overview, a Settings panel and the lock screen. It comes in swappable styles, from a clean modern look to NES, PS1 and FF7.
 - [Oasis](https://github.com/uhs-robert/oasis.nvim) color themes across everything. Switching the palette recolors Hyprland, the shell, rofi and the terminals in one go.
 - A greetd login screen that reuses the lock screen's look, with tuigreet as a fallback.
+
+> [!NOTE]
+> Managed with [GNU Stow](https://www.gnu.org/software/stow/); packages live under `home/`.
 
 <!-- Screenshots: add from the assets branch here. -->
 
