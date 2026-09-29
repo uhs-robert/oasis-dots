@@ -19,6 +19,7 @@ cfg() {
 on_ac() {
   local dir type has_battery=0
   for dir in /sys/class/power_supply/*; do
+    [ "$(cat "$dir/scope" 2>/dev/null)" = Device ] && continue
     type=$(cat "$dir/type" 2>/dev/null)
     if [ "$type" = Battery ]; then
       has_battery=1
