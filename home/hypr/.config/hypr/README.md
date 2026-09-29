@@ -59,7 +59,7 @@ A vim-modal navigation layer for Hyprland. Activate with `SUPER + SPACE`, exit w
 Provides `normal`/`insert`/`visual` modes (and more) with window navigation, workspace jumping, and a which-key popup that shows keybinds for all of your submaps.
 
 > [!NOTE]
-> See the [HyprVim repo](https://github.com/uhs-robert/hyprvim) for full documentation. Whichkey requires `eww`.
+> See the [HyprVim repo](https://github.com/uhs-robert/hyprvim) for full documentation. This setup runs its which-key HUD and `:` prompt on the Quickshell frontend.
 >
 > `lua/plugins/hyprvim` is a symlink into the dotfiles `repos/` directory, which the installer fills with a HyprVim clone.
 
