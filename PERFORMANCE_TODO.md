@@ -25,6 +25,10 @@ p=$(pgrep -xn qs); ps -o etime=,rss= -p $p; grep -E 'Anonymous|AnonHuge' /proc/$
 - [x] **9. Notification images at drawn size.** `NotificationCard`, `NotificationToastCard` and the notifications popup header icon set `sourceSize`.
 - [x] **11. Notification history capped at 100.** Entries past the cap are dismissed so the server frees them and their images, including history restored on reload.
 - [x] **13. Voxtype peaks.** Already a fixed ring buffer.
+- [x] **Audio through mpv.** Qt never unloads its FFmpeg backend, so the first lock with sound left ~130 MB in qs for good. `lock/skins/sound/MpvProcess.qml` runs mpv as a child over its IPC socket (`setpriv --pdeathsig` so it dies with qs); Ocarina, FF7 and ThemeAudio use it, and nothing in the shell imports QtMultimedia now.
+- [x] **Submap tab on the focused monitor only.** A Leader press built a tab window per bar; it now builds one, ~+19 MB instead of ~+44 MB.
+- [x] **Repeated keeptabs frames skipped.** `keeptabs-status` prints every tick; identical lines no longer rebuild the run list and redraw every bar. This was the unexplained idle redraw.
+- [x] **Ocarina images.** The logo is 1920 px wide instead of 3840 (a 46 MB decode per monitor, drawn at ~1100 px), and it and the fire frames are uncached so they leave with the lock.
 
 ## Tried, not worth it
 
@@ -35,12 +39,14 @@ p=$(pgrep -xn qs); ps -o etime=,rss= -p $p; grep -E 'Anonymous|AnonHuge' /proc/$
 - **`QSG_RHI_BACKEND=vulkan`:** +10 MB over OpenGL.
 - **Lazy WhichKey, Overview, Osd, toasts (old item 14):** all of them together cost ~11 MB.
 - **Pickers' providers:** ~0 MB.
+- **Lazy which-key:** Quickshell already drops a hidden window's render thread, so it saved only 2-3 MB; reverted.
+- **Submap tab inside the bar window:** would save ~15 MB more per submap after the focused-monitor change, but puts the tab under popups and makes the bar surface always taller with a click-through strip to get right.
 - **Bundled fonts (old item 7):** 5.4 MB on disk, and loading them on demand would relayout text on every style switch and preview.
 
 ## Open
 
+- [ ] **Memory kept after the first lock.** A skin's first draw leaves ~25-50 MB per surface that stays (a real lock on 4 monitors: ~100 MB). It levels off, so it is not a leak; heaptrack shows only ~1 MB of it is malloc heap and `malloc_trim` frees nothing, so it is directly mapped memory, most likely Mesa's shader and buffer caches. Confirming needs an mmap trace with backtraces (the gdb script attempt produced no report). Run lock preview tests on eDP-1; `LockPreview` opens on the focused monitor, so add a way to target a screen first.
 - [ ] **Early memory jump.** One dev run was 481 MB at 11 s and 815 MB about a minute later, before any popup opened; cycling all 16 popups 5 times after that settled at ~846 MB with no errors and no further growth. Other runs read ~480 MB at 150 s, so this is either a transient startup peak or something that fires once (weather, updates, clipboard, usage fetches). Sample every 2 s through the first 3 minutes to see the curve, then bisect services.
-- [ ] **Idle redraws.** At idle each bar renders ~2 frames a second: one from the clock's seconds (`bar/modules/Clock.qml`, `SystemClock.Seconds`) and one from a source not found yet. Idle CPU is ~1 s per minute, split between the render threads and the GUI thread. Find the second source with the frame log (`QT_LOGGING_RULES=qt.scenegraph.time.renderloop.debug=true`) by removing bar modules one at a time in a copy of the config.
 - [ ] **Per-window driver cost.** ~26 MB per bar window, from radeonsi. Nothing to do in QML short of fewer bars; revisit if Qt or Mesa change.
 - [ ] **5. Only build the shown weather tab.** Now only matters while the weather popup is open. `day_span` reads `daily_view.fit_days` on every tab, so Daily needs care.
 - [ ] **10. Glow layers.** `components/Popup.qml:642` layers the whole frame in glow or text-shadow styles; Osd, WhichKey and Meter do the same. Only matters in those styles.
