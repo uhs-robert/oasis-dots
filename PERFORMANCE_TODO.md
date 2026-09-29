@@ -2,40 +2,51 @@
 
 Quickshell memory and CPU work, biggest win first. Paths are relative to `home/quickshell/.config/quickshell/` unless noted.
 
-## Baseline (2026-09-29)
+## Numbers (2026-09-29, 4 monitors, 150 s after start)
 
-Stowed `qs -n` on 4 monitors: 1.26 GB RSS at 2.5 min uptime, 1.07 GB of it anonymous, 110 threads. The QML JS heap (`memfd:JSGCHeap`) is only ~33 MB, so the cost sits in C++ objects, the scene graph and the GL driver, not in JS. Measure with:
+| Build | RSS | Anonymous | Threads |
+| --- | --- | --- | --- |
+| `main` (stowed, some popups opened) | 1.26 GB | 1.07 GB | 110 |
+| Lazy popups (item 1) | ~575 MB | ~373 MB | ~67 |
+| Plus lazy theme audio and no glthread (items 6, 2) | ~480 MB | ~323 MB | ~53 |
+
+Where the rest goes, from stripped-down configs: a bare `ShellRoot {}` is 155 MB (46 MB anonymous, mostly Qt, Mesa and fonts); each bar window adds ~26-28 MB, the same as an empty `PanelWindow`, so it is driver and window cost rather than bar content; the shared QML types, singletons and services are ~140 MB; the pickers' providers and the always-built overlays (Osd, WhichKey, toasts, Overview) are ~0 and ~11 MB. `malloc_trim` frees nothing, so none of it is allocator waste. Measure with:
 
 ```bash
-p=$(pgrep -x qs); ps -o etime=,rss= -p $p; grep -E 'Anonymous|AnonHuge' /proc/$p/smaps_rollup; ls /proc/$p/task | wc -l
+p=$(pgrep -xn qs); ps -o etime=,rss= -p $p; grep -E 'Anonymous|AnonHuge' /proc/$p/smaps_rollup; ls /proc/$p/task | wc -l
 ```
 
-## Startup cost
+## Done
 
-- [x] **1. Build popups on open, drop them after close.** `shell.qml` creates 19 `Popup` PanelWindows at startup and each builds its whole body (tabs, Repeaters, Canvases, layers) while hidden. Wrap them in a `LazyLoader` that loads just before `Popups.open` sets `open_name` and unloads once the close animation hides the window. Keep `HyprvimPrompt` (owns an `IpcHandler`) and `TooltipShelf` (hover-driven) eager.
-- [ ] **2. Fewer GL contexts and render threads.** Every window that has been shown keeps its own `QSGRenderThread`, GL context, driver threads (`qs:gl0`, `qs:gdrv0`) and glyph atlas; one run had 9 render threads for 4 visible surfaces. Item 1 removes most of these. Also try `QSG_RENDER_LOOP=basic` to see if a single render thread costs less without hurting animation.
-- [ ] **3. Transparent hugepages and malloc arenas.** THP is `always`, and 370-390 MB of anonymous memory sits in `AnonHugePages`. With ~100 threads glibc opens many arenas, each touched region rounds up to 2 MB pages. A/B test `MALLOC_ARENA_MAX=2` on the qs launch, and THP `madvise` system-wide (`/sys/kernel/mm/transparent_hugepage/enabled`).
-- [ ] **4. Two GL stacks mapped.** Mesa (gallium, LLVM) and NVIDIA libraries are both loaded. Check that qs renders on the iGPU only (`__EGL_VENDOR_LIBRARY_FILENAMES` or `__GLX_VENDOR_LIBRARY_NAME=mesa`) so the NVIDIA stack never loads.
-- [ ] **5. Only build the shown weather tab.** `popups/WeatherPopup.qml:471-506` keeps Daily, Hourly, Air, SunMoon and Alerts alive and swaps them with `visible`. Hourly is a `Repeater` over all hours in a `Flickable` plus a `Canvas`. Put each tab in a `Loader` bound to the current tab.
-- [ ] **6. QtMultimedia always loaded.** The `services/ThemeAudio.qml` singleton imports QtMultimedia, which loads the FFmpeg backend for the whole process, and its 4 `SoundEffect`s load even with UI sounds off. Load the effects only when sounds are on.
-- [ ] **7. All 57 bundled fonts load at startup (low value).** `services/BundledFonts.qml` registers every font in `fonts/`, but they total 5.4 MB, under 1% of qs memory. Glyph caches only grow for fonts actually drawn, and loading on demand would relayout text on every style switch and preview. Skip unless measurement says otherwise.
+- [x] **1. Build popups on open, drop them after close.** `components/LazyPopup.qml` wraps the 17 bar popups; `Popups.load_name` is set just before `open_name`, so a popup is built closed and sees the open as a change. `HyprvimPrompt` (owns an `IpcHandler`) and `TooltipShelf` (hover-driven) stay eager. Popups no longer remember their tab or section between opens.
+- [x] **2. Mesa glthread off.** `//@ pragma Env mesa_glthread=false` in `shell.qml`: ~20 MB and 8 threads less, no visible cost for a bar's small draws.
+- [x] **6. QtMultimedia only when sounds are on.** Any `SoundEffect` or `MediaPlayer` loads the FFmpeg backend for the whole process. `services/ThemeAudio.qml` now builds its effects only while UI or notification sounds are on, and its music player only while lock music plays: ~75 MB less with sounds off.
+- [x] **8. Album art at drawn size.** `popups/MediaPopup.qml` sets `sourceSize` (half width for the blurred backdrop).
+- [x] **9. Notification images at drawn size.** `NotificationCard`, `NotificationToastCard` and the notifications popup header icon set `sourceSize`.
+- [x] **11. Notification history capped at 100.** Entries past the cap are dismissed so the server frees them and their images, including history restored on reload.
+- [x] **13. Voxtype peaks.** Already a fixed ring buffer.
 
-## Images and effects
+## Tried, not worth it
 
-- [x] **8. Album art at full resolution.** `popups/MediaPopup.qml:120` and `:205` have no `sourceSize` and sit under 4 `layer.enabled` items plus a blur and a mask `MultiEffect`. Set `sourceSize` to the drawn size. Item 1 drops the layers while closed.
-- [x] **9. Notification images at full size.** `popups/notifications/NotificationCard.qml:277`, `components/NotificationToastCard.qml:364` and `popups/NotificationsPopup.qml:367` (an 18 px icon) have no `sourceSize`.
-- [ ] **10. Glow layers in every popup.** `components/Popup.qml:642` layers the whole frame when the style has glow or text shadow, plus the `MultiEffect` Loaders at `:880-910`. Same pattern in `components/Osd.qml`, `components/WhichKey.qml` and `components/Meter.qml`. Item 1 covers popups; Osd and WhichKey stay built.
+- **`MALLOC_ARENA_MAX=2`:** no change.
+- **THP off for qs (`prctl(PR_SET_THP_DISABLE)` wrapper):** one run came out at 743 MB, no sign of a gain; left THP `always`. Needs a clean rerun before ruling it out.
+- **Mesa-only EGL (`__EGL_VENDOR_LIBRARY_FILENAMES=.../50_mesa.json`):** -40 MB RSS, but ~32 MB of that is shared, reclaimable NVIDIA library pages, and it would break rendering on an NVIDIA-only machine. qs already renders on the AMD iGPU.
+- **`QSG_RENDER_LOOP=basic`:** -10 MB, at the risk of animations stalling while the GUI thread is busy.
+- **`QSG_RHI_BACKEND=vulkan`:** +10 MB over OpenGL.
+- **Lazy WhichKey, Overview, Osd, toasts (old item 14):** all of them together cost ~11 MB.
+- **Pickers' providers:** ~0 MB.
+- **Bundled fonts (old item 7):** 5.4 MB on disk, and loading them on demand would relayout text on every style switch and preview.
 
-## Growth over time
+## Open
 
-- [x] **11. Cap notification history.** `services/NotificationState.qml:64` prepends every notification with no limit, keeps each `Notification` `tracked` with its image data, and restores the history on reload. Cap it (50-100) and drop the image of entries past the cap.
-- [ ] **12. Array rebuilds on notification change.** `NotificationState` rebuilds whole arrays with `concat`/`filter`, and `NotificationsPopup.qml:72-95` and `components/NotificationToasts.qml:77` rebuild every row. Move to a `ListModel` or keyed updates if item 11 is not enough.
-- [ ] **13. Voxtype peak buffer.** Check that the peaks pushed at `services/VoxtypeAudio.qml:87` are capped.
-
-## Other always-alive windows
-
-- [ ] **14.** `components/Osd.qml`, `components/WhichKey.qml`, `components/NotificationToasts.qml`, `overview/Overview.qml` and the per-screen `components/PopupScrim.qml` and `bar/SubmapTab.qml` stay built while hidden. Lazy-load the ones that are rarely shown (WhichKey, Overview) after item 1 proves the pattern.
+- [ ] **Early memory jump.** One dev run was 481 MB at 11 s and 815 MB about a minute later, before any popup opened; cycling all 16 popups 5 times after that settled at ~846 MB with no errors and no further growth. Other runs read ~480 MB at 150 s, so this is either a transient startup peak or something that fires once (weather, updates, clipboard, usage fetches). Sample every 2 s through the first 3 minutes to see the curve, then bisect services.
+- [ ] **Idle redraws.** At idle each bar renders ~2 frames a second: one from the clock's seconds (`bar/modules/Clock.qml`, `SystemClock.Seconds`) and one from a source not found yet. Idle CPU is ~1 s per minute, split between the render threads and the GUI thread. Find the second source with the frame log (`QT_LOGGING_RULES=qt.scenegraph.time.renderloop.debug=true`) by removing bar modules one at a time in a copy of the config.
+- [ ] **Per-window driver cost.** ~26 MB per bar window, from radeonsi. Nothing to do in QML short of fewer bars; revisit if Qt or Mesa change.
+- [ ] **5. Only build the shown weather tab.** Now only matters while the weather popup is open. `day_span` reads `daily_view.fit_days` on every tab, so Daily needs care.
+- [ ] **10. Glow layers.** `components/Popup.qml:642` layers the whole frame in glow or text-shadow styles; Osd, WhichKey and Meter do the same. Only matters in those styles.
+- [ ] **12. Notification array rebuilds.** `NotificationState` rebuilds whole arrays on each change and the popup rebuilds every row. CPU churn more than memory now that history is capped.
+- [ ] **Redundant Hyprland refreshes.** Each bar's `bar/modules/Workspaces.qml` calls `Hyprland.refreshToplevels()`/`refreshWorkspaces()` on every window event, so 4 bars send 4 requests per event.
 
 ## Already fine
 
-Lock surfaces, lock skins and their audio, `RegionSelector`, overview thumbnails (`live_cap: 6`), the clipboard caches and the picker `GridView` are already lazy or bounded.
+Lock surfaces, lock skins and their audio, `RegionSelector`, overview thumbnails (`live_cap: 6`), the clipboard caches, the picker `GridView` and the voxtype ring buffer are already lazy or bounded.
