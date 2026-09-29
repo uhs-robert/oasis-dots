@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 # Imports the MGS2 lock skin's audio into $XDG_DATA_HOME/quickshell/mgs2-audio: the title and menu themes as an intro plus a loop, and the menu sound effects.
-# Music is title.* and menu.* (first of .flac, .ogg, .mp3, .wav); loops come from --*-loop, else LOOPSTART/LOOPLENGTH (or LOOPEND) tags, else the whole track loops.
-# Effects are start, move, letter, decide, cancel, error, accept and page (the menu page transition), any audio extension; a missing file stays silent.
+# Music is title.* (else any file with "title" in its name) and menu.*, in SOURCE_DIR or its music/; loops come from --*-loop, else LOOPSTART/LOOPLENGTH (or LOOPEND) tags, else the whole track loops.
+# Effects, in SOURCE_DIR or its fx/: back, select, error, submit, transition_wipe, transition_left and transition_right; a missing file stays silent.
 # Usage: mgs2-audio [--title-loop START END] [--menu-loop START END] [--out DIR] [SOURCE_DIR]   (seconds)
 set -euo pipefail
 
-src="$HOME/Downloads/mgs2"
+src="$HOME/Downloads/Metal Gear"
 title_loop=()
 menu_loop=()
 out="${XDG_DATA_HOME:-$HOME/.local/share}/quickshell/mgs2-audio"
@@ -47,12 +47,12 @@ done
 rate=44100
 mkdir -p "$out"
 
-# Prints the first file in $src named $1 with one of the extensions $2.., ignoring case.
+# Prints the first file in $src or one folder down named $1 with one of the extensions $2.., ignoring case.
 find_src() {
   local name=$1 ext file
   shift
   for ext in "$@"; do
-    file=$(find "$src" -maxdepth 1 -type f -iname "$name.$ext" -print -quit)
+    file=$(find "$src" -maxdepth 2 -type f -iname "$name.$ext" -print -quit)
     if [[ -n $file ]]; then
       printf '%s\n' "$file"
       return 0
@@ -75,8 +75,13 @@ music() {
   local name=$1 file start end
   shift
   file=$(find_src "$name" flac ogg mp3 wav)
+  [[ -n $file || $name != title ]] || file=$(find "$src" -maxdepth 2 -type f -iname '*title*' \( -iname '*.flac' -o -iname '*.ogg' -o -iname '*.mp3' -o -iname '*.wav' \) -print -quit)
   if [[ -z $file ]]; then
-    echo "mgs2-audio: no $name track in $src; it stays silent" >&2
+    if [[ $name == menu ]]; then
+      echo "mgs2-audio: no menu track in $src; the menus keep the title theme" >&2
+    else
+      echo "mgs2-audio: no $name track in $src; it stays silent" >&2
+    fi
     return 0
   fi
   if (($# == 2)); then
@@ -114,5 +119,5 @@ fx() {
 
 music title "${title_loop[@]}"
 music menu "${menu_loop[@]}"
-for name in start move letter decide cancel error accept page; do fx "$name"; done
+for name in back select error submit transition_wipe transition_left transition_right; do fx "$name"; done
 printf 'mgs2-audio: wrote %s\n' "$out"

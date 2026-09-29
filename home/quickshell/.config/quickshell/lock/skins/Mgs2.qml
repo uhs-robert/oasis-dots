@@ -32,7 +32,6 @@ Item {
         if (root.screen === "menu" || root.screen === "load" || root.screen === "name") return "menu";
         return root.ctx.login === true ? "title" : "";
     }
-    property int heard_typed: 0
     // Set once the accept sound has played for this attempt; a new password clears it.
     property bool heard_unlock: false
     property bool dying: false
@@ -234,7 +233,7 @@ Item {
             root.rest();
             return;
         }
-        if (root.owns_sound && audio_loader.item) audio_loader.item.play("page");
+        if (root.is_framed(from)) root.sfx("transition_wipe");
         const b = root.box, L = b.left, T = b.top, R = b.right, B = b.bottom;
         const framed_to = root.is_framed(to);
         const list = [];
@@ -255,7 +254,7 @@ Item {
                 list.push({ ms: 60, draw: k => ({ box: null, h: [root.lerp(T, -10, k)], v: [L] }) });
                 list.push(swap(true), { ms: 250, draw: () => ({ box: null, h: [], v: [L] }) });
                 if (framed_to) {
-                    list.push({ ms: 620, draw: k => {
+                    list.push({ ms: 620, start: () => root.sfx("transition_right"), draw: k => {
                             const y = k < 0.45 ? root.lerp(910, B, root.out(k, 0, 0.45)) : root.lerp(B, T, root.inout(k, 0.45, 1));
                             const x = root.lerp(L, R, root.inout(k, 0.35, 1));
                             return { box: x > L && y < B ? [L, y, x, B] : null, h: [y], v: [x] };
@@ -265,11 +264,11 @@ Item {
                 list.push({ ms: 260, ease: Easing.InQuad, wipe: true, draw: k => ({ box: [L, T, root.lerp(R, L, k), B], h: [T], v: [root.lerp(R, L, k)] }) });
                 list.push({ ms: 60, draw: k => ({ box: null, h: [T], v: [root.lerp(L, -10, k)] }) });
                 list.push(swap(false), { ms: 250, draw: () => ({ box: null, h: [T], v: [] }) });
-                if (framed_to) list.push({ ms: 620, draw: draw_l(1610, T) });
+                if (framed_to) list.push({ ms: 620, start: () => root.sfx("transition_left"), draw: draw_l(1610, T) });
             }
         } else if (from === "title") {
             list.push({ ms: 1000, ease: Easing.InQuad, title: "out", draw: () => ({ box: null, h: [], v: [] }) }, swap(false), { ms: 120, draw: () => ({ box: null, h: [], v: [] }) });
-            if (framed_to) list.push({ ms: 620, draw: draw_l(1610, -10) });
+            if (framed_to) list.push({ ms: 620, start: () => root.sfx("transition_left"), draw: draw_l(1610, -10) });
         } else {
             list.push(swap(false));
         }
@@ -325,7 +324,7 @@ Item {
         if (root.screen === "name") {
             if (event.key === Qt.Key_Escape) {
                 c.scene = "load";
-                root.cue("cancel");
+                root.cue("back");
             }
             return false;
         }
@@ -334,24 +333,23 @@ Item {
             const at = items.indexOf(root.in_options ? root.opt_item : root.menu_item);
             const next = items[(at + (down ? 1 : items.length - 1)) % items.length];
             c.scene = (root.in_options ? "opt:" : "menu:") + next;
-            root.cue("move");
+            root.cue("select");
             return true;
         }
         if (root.screen === "menu" && enter) {
-            root.cue("decide");
             if (root.in_options) root.opt_activate();
             else root.menu_activate();
             return true;
         }
         if (root.screen === "menu" && event.key === Qt.Key_Escape) {
             c.scene = root.in_options ? "menu:options" : "";
-            root.cue("cancel");
+            root.cue("back");
             return true;
         }
         if (root.screen === "load" && (up || down)) {
             if (root.users.length > 1) {
                 c.scene = "load:" + ((root.load_sel + (down ? 1 : root.users.length - 1)) % root.users.length);
-                root.cue("move");
+                root.cue("select");
             }
             return true;
         }
@@ -359,21 +357,25 @@ Item {
             const u = root.users[root.load_sel];
             if (u && u.name !== c.user && typeof c.user_request === "function") c.user_request(u.name);
             c.scene = "name";
-            root.cue("decide");
             return true;
         }
         if (root.screen === "load" && event.key === Qt.Key_Escape) {
             c.scene = "menu";
-            root.cue("cancel");
+            root.cue("back");
             return true;
         }
         if (root.screen === "title" && (enter || event.key === Qt.Key_Space)) {
             c.scene = "menu";
-            root.cue("start");
+            root.cue("submit");
             return true;
         }
         if (!ctrl && event.text !== "" && event.text.charCodeAt(0) > 32 && event.text.charCodeAt(0) !== 127) c.scene = "name";
         return false;
+    }
+
+    // Plays an effect on this output only if it owns the sound; page turns run on every output.
+    function sfx(name) {
+        if (root.owns_sound && audio_loader.item) audio_loader.item.play(name);
     }
 
     function cue(name) {
@@ -452,7 +454,7 @@ Item {
             root.start_unlock();
             if (!root.heard_unlock && root.owns_sound && audio_loader.item) {
                 root.heard_unlock = true;
-                audio_loader.item.play("accept");
+                audio_loader.item.play("submit");
             }
         } else {
             unlock_anim.stop();
@@ -479,8 +481,6 @@ Item {
         ignoreUnknownSignals: true
         function onSceneChanged() { note_timer.restart(); }
         function onBuffer_lengthChanged() {
-            if (root.owns_sound && root.typed > root.heard_typed && audio_loader.item) audio_loader.item.play("letter");
-            root.heard_typed = root.typed;
             if (root.typed > 0) root.heard_unlock = false;
         }
         function onSound_ownerChanged() { root.claim_sound(); }
@@ -1328,21 +1328,36 @@ Item {
     Component {
         id: title_view
 
-        // The intro: the background fades up from black while the lockup zooms down into place; the date fades in as it lands,
-        // and PRESS START appears and starts blinking the moment it does.
+        // The intro: the background and face fade up while the lockup zooms down into place; the date fades in just before it lands,
+        // and PRESS START appears and starts blinking the moment it does. It waits until the screen is actually showing.
         Item {
             id: title
             readonly property bool fade_bg: !root.title_bg_shown
+            readonly property bool on_screen: !!title.Window.window && title.Window.window.visible
             property real t: root.animate ? 0 : 1
             readonly property real bg: title.fade_bg ? root.out(title.t, 0, 0.85) : 1
+            readonly property real art: root.out(title.t, 0, 0.85)
             readonly property real land: root.out(title.t, 0.15, 1)
             readonly property real lockup: root.out(title.t, 0.15, 0.55)
-            readonly property real info: root.out(title.t, 0.55, 1)
+            readonly property real info: root.out(title.t, 0.72, 0.92)
             readonly property bool landed: title.t >= 1
+            property bool started: false
 
-            Component.onCompleted: {
+            function begin(force) {
+                if (title.started || (!title.on_screen && !force)) return;
+                title.started = true;
                 if (root.animate) intro.start();
                 root.title_bg_shown = true;
+            }
+
+            onOn_screenChanged: title.begin(false)
+            Component.onCompleted: title.begin(false)
+
+            // In case the window never reports itself visible, the intro still plays.
+            Timer {
+                interval: 1500
+                running: true
+                onTriggered: title.begin(true)
             }
 
             NumberAnimation {
@@ -1363,7 +1378,7 @@ Item {
             }
 
             TitleArt {
-                opacity: 0.8 * title.bg * (1 - root.title_out)
+                opacity: 0.8 * title.art * (1 - root.title_out)
             }
 
             Column {
