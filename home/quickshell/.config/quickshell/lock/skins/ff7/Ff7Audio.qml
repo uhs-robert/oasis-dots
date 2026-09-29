@@ -1,7 +1,7 @@
 // home/quickshell/.config/quickshell/lock/skins/ff7/Ff7Audio.qml
 import QtQuick
-import QtMultimedia
 import Qt.labs.folderlistmodel
+import "../sound"
 
 // The FF7 skin's music and sound effects from audio/ (made by scripts/ff7-audio); a missing file stays silent.
 Item {
@@ -17,42 +17,18 @@ Item {
         for (let i = 0; i < listing.count; i++) out[listing.get(i, "fileName")] = true;
         return out;
     }
+    readonly property var fx_files: ({ cursor: "cursor.wav", select: "cursor.wav", cancel: "cancel.wav", buzzer: "buzzer.wav", loading: "loading.wav", loaded: "loaded.wav" })
 
     function file(name) {
-        return audio.files[name] ? Qt.resolvedUrl("audio/" + name) : "";
+        return audio.files[name] ? Qt.resolvedUrl("audio/" + name).toString() : "";
     }
 
     function play(name) {
-        const fx = ({ cursor: fx_cursor, select: fx_cursor, cancel: fx_cancel, buzzer: fx_buzzer, loading: fx_loading, loaded: fx_loaded })[name];
-        if (fx && fx.status === SoundEffect.Ready) fx.play();
+        const url = audio.file(audio.fx_files[name] || "");
+        if (url !== "") fx.send(["loadfile", url, "replace"]);
     }
 
-    function sync() {
-        const title_on = title_intro.playbackState === MediaPlayer.PlayingState || title_loop.playbackState === MediaPlayer.PlayingState;
-        if (audio.track === "title" && !title_on) {
-            if (audio.files["title_intro.ogg"]) title_intro.play();
-            else title_loop.play();
-        }
-        title_fade.restart();
-    }
-
-    onTrackChanged: Qt.callLater(audio.sync)
-    onFilesChanged: Qt.callLater(audio.sync)
-
-    MediaDevices {
-        id: devices
-        property bool had_output: false
-        Component.onCompleted: devices.had_output = devices.defaultAudioOutput.mode !== AudioDevice.Null
-        // Players started with no sink stay silent, so restart them once one appears.
-        onDefaultAudioOutputChanged: {
-            if (!devices.had_output) {
-                title_intro.stop();
-                title_loop.stop();
-                Qt.callLater(audio.sync);
-            }
-            devices.had_output = devices.defaultAudioOutput.mode !== AudioDevice.Null;
-        }
-    }
+    onTrackChanged: title_fade.restart()
 
     FolderListModel {
         id: listing
@@ -61,46 +37,25 @@ Item {
         showDirs: false
     }
 
-    SequentialAnimation {
+    NumberAnimation {
         id: title_fade
-        NumberAnimation { target: audio; property: "title_level"; to: audio.track === "title" ? 1 : 0; duration: 800 }
-        ScriptAction {
-            script: {
-                if (audio.track !== "title") {
-                    title_intro.stop();
-                    title_loop.stop();
-                }
-            }
-        }
+        target: audio
+        property: "title_level"
+        to: audio.track === "title" ? 1 : 0
+        duration: 800
     }
 
-    MediaPlayer {
-        id: title_intro
-        source: audio.file("title_intro.ogg")
-        onSourceChanged: Qt.callLater(audio.sync)
-        audioOutput: AudioOutput {
-            device: devices.defaultAudioOutput
-            volume: audio.title_level * audio.music_volume
-        }
-        onMediaStatusChanged: {
-            if (title_intro.mediaStatus === MediaPlayer.EndOfMedia && audio.track === "title") title_loop.play();
-        }
+    MpvProcess {
+        readonly property string loop: audio.file("title_loop.ogg")
+        wanted: loop !== "" && (audio.track === "title" || audio.title_level > 0)
+        args: (audio.file("title_intro.ogg") !== "" ? [audio.file("title_intro.ogg")] : []).concat(["--{", "--loop-file=inf", loop, "--}"])
+        volume: audio.title_level * audio.music_volume
     }
 
-    MediaPlayer {
-        id: title_loop
-        source: audio.file("title_loop.ogg")
-        onSourceChanged: Qt.callLater(audio.sync)
-        loops: MediaPlayer.Infinite
-        audioOutput: AudioOutput {
-            device: devices.defaultAudioOutput
-            volume: audio.title_level * audio.music_volume
-        }
+    MpvProcess {
+        id: fx
+        wanted: true
+        args: ["--idle=yes"]
+        volume: audio.fx_volume
     }
-
-    SoundEffect { id: fx_cursor; source: audio.file("cursor.wav"); audioDevice: devices.defaultAudioOutput; volume: audio.fx_volume }
-    SoundEffect { id: fx_cancel; source: audio.file("cancel.wav"); audioDevice: devices.defaultAudioOutput; volume: audio.fx_volume }
-    SoundEffect { id: fx_buzzer; source: audio.file("buzzer.wav"); audioDevice: devices.defaultAudioOutput; volume: audio.fx_volume }
-    SoundEffect { id: fx_loading; source: audio.file("loading.wav"); audioDevice: devices.defaultAudioOutput; volume: audio.fx_volume }
-    SoundEffect { id: fx_loaded; source: audio.file("loaded.wav"); audioDevice: devices.defaultAudioOutput; volume: audio.fx_volume }
 }
