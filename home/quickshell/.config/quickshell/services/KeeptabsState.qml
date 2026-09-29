@@ -5,7 +5,7 @@ import Quickshell
 import Quickshell.Io
 import "../theme"
 
-// One keeptabs-waybar stream shared by every bar; it animates and idles on battery by itself.
+// One keeptabs-status stream shared by every bar; it animates and idles on battery by itself.
 Singleton {
     id: root
 
@@ -81,7 +81,7 @@ Singleton {
 
     Process {
         id: stream
-        command: ["sh", "-c", "exec ~/.local/bin/keeptabs-waybar"]
+        command: ["sh", "-c", "exec ~/.local/bin/keeptabs-status"]
         running: true
         stdout: SplitParser {
             property string last_line: ""
