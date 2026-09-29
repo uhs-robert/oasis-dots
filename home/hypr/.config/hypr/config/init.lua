@@ -8,7 +8,7 @@ local Utils = require("lib.utils") ---@class Utils
 --- @field hybrid boolean|nil True when the connected internal panel is driven by a non-NVIDIA GPU (default: auto-detected)
 
 --- @class Config.Cursor
---- @field theme string Xcursor theme name (default: "xcursor-bibata-original-classic")
+--- @field theme string Xcursor theme name (default: "Bibata-Original-Classic")
 --- @field hypr_theme string Hyprcursor theme name (default: "hyprcursor-bibata-original-classic")
 --- @field size integer Cursor size in pixels (default: 24)
 
@@ -63,7 +63,7 @@ Config.defaults = {
     hybrid = nil,
   },
   cursor = {
-    theme = "xcursor-bibata-original-classic",
+    theme = "Bibata-Original-Classic",
     hypr_theme = "hyprcursor-bibata-original-classic",
     size = 24,
   },
