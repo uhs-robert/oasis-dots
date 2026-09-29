@@ -618,7 +618,8 @@ Item {
         FitText {
             x0: pill.label_x0 - pill.x
             base_y: pill.base_y - pill.y
-            fit_w: pill.label_x1 - pill.label_x0
+            fit_w: pill.label_x1 > pill.label_x0 ? pill.label_x1 - pill.label_x0 : 0
+            max_w: pill.width - 2 * (pill.label_x0 - pill.x)
             text: pill.label
             color: pill.lit ? "#6d97a6" : "#0d1840"
             style: Text.Outline
@@ -1273,9 +1274,16 @@ Item {
                     Pill { x: 203; y: 594; width: 275; height: 67; label: "Options"; label_x0: 255; label_x1: 440; base_y: 645; lit: root.file_item === "options" }
                 }
 
-                // The Options menu: a floating panel of Pill rows over the same frame, so it shares file select's style.
+                // The Options menu, in file select's scaled layout so its rows match the file pills.
                 Item {
                     visible: root.in_options
+                    readonly property real s: 0.661
+                    x: 313 - 172 * s
+                    y: 203 - 120 * s
+                    width: 1280
+                    height: 720
+                    scale: s
+                    transformOrigin: Item.TopLeft
 
                     Repeater {
                         model: root.opt_items
@@ -1284,14 +1292,13 @@ Item {
                             id: opt_row
                             required property int index
                             required property var modelData
-                            x: 352
-                            y: 230 + opt_row.index * 74
-                            width: 460
-                            height: 62
+                            x: 203
+                            y: 147 + opt_row.index * 78
+                            width: 480
+                            height: 65
                             label: root.opt_label(opt_row.modelData)
                             label_x0: opt_row.x + 40
-                            label_x1: opt_row.x + opt_row.width - 30
-                            base_y: opt_row.y + 43
+                            base_y: opt_row.y + 56
                             lit: root.opt_item === opt_row.modelData
                         }
                     }
