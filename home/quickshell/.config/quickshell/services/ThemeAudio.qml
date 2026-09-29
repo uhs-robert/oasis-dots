@@ -70,7 +70,7 @@ Singleton {
         state_file.setText(JSON.stringify({ ui: root.ui, notify: root.notify, music: root.music, volume: root.volume, pack: root.pack }));
     }
 
-    component Pack: QtObject {
+    component Pack: Item {
         id: pack
 
         property string style_name: ""
