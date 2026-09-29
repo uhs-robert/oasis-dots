@@ -524,15 +524,23 @@ Item {
         NumberAnimation { target: root; property: "caption_alpha"; to: 0; duration: 300 }
     }
 
-    // A design-space stage, scaled to cover its parent and centred (SVG "slice").
+    // A design-space stage, scaled to cover its parent and centred (SVG "slice"); in portrait it fits the width instead.
     component Stage: Item {
         id: stage
-        readonly property real k: stage.parent ? Math.max(stage.parent.width / 1600, stage.parent.height / 900) : 1
+        readonly property bool tall: stage.parent ? stage.parent.height > stage.parent.width : false
+        readonly property real k: stage.parent ? (stage.tall ? stage.parent.width / 1600 : Math.max(stage.parent.width / 1600, stage.parent.height / 900)) : 1
+        // Visible height over 900; backdrops scale by it to still cover a portrait screen.
+        readonly property real fill: stage.tall ? stage.parent.height / stage.k / 900 : 1
+        readonly property real spare: (stage.fill - 1) * 450
         width: 1600
         height: 900
         x: stage.parent ? (stage.parent.width - 1600) / 2 : 0
         y: stage.parent ? (stage.parent.height - 900) / 2 : 0
         scale: stage.k
+
+        function spread(y) {
+            return 450 + (y - 450) * stage.fill;
+        }
     }
 
     // Text in the menu face; h is the cap height in stage units.
@@ -909,12 +917,14 @@ Item {
         id: stage
 
         Murk {
+            scale: stage.fill
             opacity: root.shown === "load" ? 0.45 : 1
             visible: root.shown !== "unlock"
         }
 
         Rectangle {
             anchors.fill: parent
+            scale: stage.fill
             visible: root.shown === "saver"
             color: "#66000000"
         }
@@ -1022,7 +1032,7 @@ Item {
                 Seg {
                     required property int index
                     x: 1030
-                    y: 30 + index * 46
+                    y: stage.spread(30 + index * 46)
                     text: "--"
                     h: 5
                     sw: 0.9
@@ -1038,7 +1048,7 @@ Item {
                     id: code
                     required property int index
                     required property string modelData
-                    readonly property real code_y: 36 + code.index * 128 + root.code_offsets[code.index]
+                    readonly property real code_y: stage.spread(36 + code.index * 128 + root.code_offsets[code.index])
 
                     Seg {
                         x: 1210
@@ -1067,7 +1077,7 @@ Item {
                 Seg {
                     required property int index
                     x: 1000 + index * 150
-                    y: 700
+                    y: stage.spread(700)
                     text: "N"
                     h: 10
                     sw: 0.8
@@ -1091,9 +1101,9 @@ Item {
                     readonly property var g: root.guides[index] || null
                     visible: g !== null
                     x: g && !g.h ? g.p : 0
-                    y: g && g.h ? g.p : 0
+                    y: g && g.h ? g.p : -stage.spare
                     width: g && !g.h ? 1.5 : 1600
-                    height: g && g.h ? 1.5 : 900
+                    height: g && g.h ? 1.5 : 900 + 2 * stage.spare
                     color: root.line_color
                     opacity: 0.55
                 }
@@ -1304,6 +1314,7 @@ Item {
             }
 
             TitleArt {
+                scale: stage.fill
                 opacity: 0.45
             }
 
@@ -1341,6 +1352,8 @@ Item {
             readonly property real lockup: root.out(title.t, 0.15, 0.55)
             readonly property real info: root.inout(title.t, 0.45, 1)
             readonly property bool landed: title.t >= 1
+            readonly property real lift: stage.spare * 0.45
+            readonly property real grow: stage.tall ? 1.08 : 1
             property bool started: false
 
             function begin(force) {
@@ -1372,20 +1385,22 @@ Item {
             Rectangle {
                 width: 1600
                 height: 900
+                scale: stage.fill
                 color: "#000000"
                 opacity: 1 - title.bg
                 visible: opacity > 0
             }
 
             TitleArt {
+                scale: stage.fill
                 opacity: 0.8 * title.art * (1 - root.title_out)
             }
 
             Column {
-                y: 70
+                y: 70 - title.lift
                 width: 1600
                 spacing: 0
-                scale: (1.35 - 0.35 * title.land) * (1 + 0.18 * root.title_out)
+                scale: (1.35 - 0.35 * title.land) * (1 + 0.18 * root.title_out) * title.grow
                 opacity: title.lockup * (1 - root.title_out)
                 transformOrigin: Item.Center
 
@@ -1487,7 +1502,8 @@ Item {
 
                 Seg {
                     x: (1600 - width) / 2
-                    y: 698
+                    y: 698 + title.lift
+                    scale: title.grow * title.grow
                     visible: title.landed
                     text: "PRESS START BUTTON"
                     h: 24
@@ -1506,8 +1522,9 @@ Item {
                 }
 
                 Text {
-                    y: 780
+                    y: 780 + title.lift
                     width: 1600
+                    scale: title.grow * title.grow
                     opacity: title.info
                     horizontalAlignment: Text.AlignHCenter
                     textFormat: Text.StyledText
