@@ -56,13 +56,10 @@ Item {
     // The page on show: the view, with Options as its own page; it trails `page` while a transition runs.
     readonly property string page: root.view === "menu" && root.in_options ? "opt" : root.view
     property string shown: ""
-    // Page turns run as steps; each moves the frame box from box_a to box_b as tk runs 0 to 1.
+    // Page turns run as steps; a step's draw(tk) places the frame as tk runs 0 to 1.
     property var steps: []
     property var step: null
     property real tk: 1
-    property var box_a: [0, 0, 0, 0]
-    property var box_b: [0, 0, 0, 0]
-    property bool box_on: false
     property bool content_on: true
     // The frame alternates between two layouts each page turn, like the game: L has full left and bottom rules, R full top and right ones.
     property bool layout_r: false
@@ -156,44 +153,38 @@ Item {
     readonly property color ok_green: "#a0e0b0"
     readonly property color mol_red: "#d63126"
 
-    // The menu frame: the left rule, the rail inside the box's left end, and the box; both layouts share the box and differ only in their rules.
-    readonly property var frame_l: ({ v: 62, rail: [62, 140], box: [140, 46, 1544, 756] })
-    readonly property var frame_r: root.frame_l
-    readonly property var cur_box: root.layout_r ? root.frame_r.box : root.frame_l.box
-    readonly property var last_frame: root.frame_l
+    // The menu box: its outline starts at the left rule, with the rail inside its left end.
+    readonly property var box: ({ left: 62, top: 46, right: 1544, bottom: 756, rail: 78 })
 
-    function win(k, t0, t1) {
+    function out(k, t0, t1) {
         const x = Math.max(0, Math.min(1, (k - t0) / (t1 - t0)));
         return 1 - Math.pow(1 - x, 3);
     }
-    // The box's own progress: tk, or its window of tk when a step overlaps the box with a travelling rule.
-    readonly property real kb: root.step && root.step.bt ? root.win(root.tk, root.step.bt[0], root.step.bt[1]) : root.tk
-    // The frame as drawn: the box between box_a and box_b, with the rail riding its left edge.
+
+    function inout(k, t0, t1) {
+        const x = Math.max(0, Math.min(1, (k - t0) / (t1 - t0)));
+        return x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
+    }
+
+    function lerp(a, b, t) {
+        return a + (b - a) * t;
+    }
+
+    // The resting frame: the box, plus L's full left and bottom rules or R's full top and right ones.
+    function rest_draw() {
+        const b = root.box;
+        if (!root.is_framed(root.shown)) return { box: null, h: [], v: [] };
+        return { box: [b.left, b.top, b.right, b.bottom], h: [root.layout_r ? b.top : b.bottom], v: [root.layout_r ? b.right : b.left] };
+    }
+
+    // The frame as drawn: {box: [left, top, right, bottom] or null, h: [y...], v: [x...]}; the rules always run the full screen, only moving.
+    readonly property var draw: root.step && root.step.draw ? root.step.draw(root.tk) : root.rest_draw()
     readonly property var fb: {
-        const f = root.last_frame, k = root.kb, a = root.box_a, b = root.box_b;
-        const e = [0, 1, 2, 3].map(i => a[i] + (b[i] - a[i]) * k);
-        const dx = e[0] - f.box[0];
-        return { v: f.v + dx, r0: f.rail[0] + dx, r1: f.rail[1] + dx, x0: e[0], y0: e[1], x1: e[2], y1: e[3] };
+        const d = root.draw.box || [0, 0, 0, 0];
+        return { v: d[0], r0: d[0], r1: Math.min(d[0] + root.box.rail, d[2]), x1: d[2], y0: d[1], y1: d[3] };
     }
-    // Full-length rules: at rest the layout's two; a step names its own as a box edge, a fixed spot or a [from, to(, t0, t1)] travel,
-    // optionally wrapped as {p, s: [[from0, from1], [to0, to1]], t} to shrink its span from full length to part of it.
-    readonly property var guides: {
-        const st = root.step, b = root.fb, k = root.tk;
-        const travel = p => p.length > 2 ? root.win(k, p[2], p[3]) : k;
-        const edge = p => st && st.bt && root.kb <= 0 ? null : ({ left: b.v, right: b.x1, top: b.y0, bottom: b.y1 })[p];
-        const pos = p => typeof p === "number" ? p : Array.isArray(p) ? p[0] + (p[1] - p[0]) * travel(p) : edge(p);
-        const make = (h, spec) => {
-            const g = spec !== null && typeof spec === "object" && !Array.isArray(spec) ? spec : { p: spec };
-            let span = h ? [0, 1600] : [0, 900];
-            if (g.s) {
-                const w = g.t ? root.win(k, g.t[0], g.t[1]) : k;
-                span = [0, 1].map(i => g.s[0][i] + (g.s[1][i] - g.s[0][i]) * w);
-            }
-            return { h: h, p: pos(g.p), s0: span[0], s1: span[1] };
-        };
-        const hs = st && st.h ? st.h : [root.layout_r ? "top" : "bottom"], vs = st && st.v ? st.v : [root.layout_r ? "right" : "left"];
-        return hs.map(p => make(true, p)).concat(vs.map(p => make(false, p))).filter(g => g.p !== null && g.p !== undefined);
-    }
+    readonly property bool box_on: !!root.draw.box && root.draw.box[2] - root.draw.box[0] > 0.5 && root.draw.box[3] - root.draw.box[1] > 0.5
+    readonly property var guides: root.draw.h.map(y => ({ h: true, p: y })).concat(root.draw.v.map(x => ({ h: false, p: x })))
 
     function is_framed(p) {
         return p === "menu" || p === "opt" || p === "load" || p === "name";
@@ -204,12 +195,10 @@ Item {
         root.steps = [];
         root.step = null;
         root.tk = 1;
-        if (root.is_framed(root.shown)) root.box_a = root.box_b = root.cur_box;
-        root.box_on = root.is_framed(root.shown);
         root.content_on = true;
     }
 
-    // Runs steps in order: {ms, ease, a, b, bt, box, h, v, wipe, content, title, keep, start}; bt is the box's window of the step.
+    // Runs steps in order: {ms, ease, draw, wipe, content, title, keep, start}.
     function run(list) {
         step_anim.stop();
         root.steps = list;
@@ -225,13 +214,6 @@ Item {
             return;
         }
         if (s.start) s.start();
-        if (s.a) {
-            root.box_a = s.a;
-            root.box_b = s.b || s.a;
-        } else if (s.content) {
-            root.box_a = root.box_b = root.cur_box;
-        }
-        root.box_on = s.box !== false && root.is_framed(root.shown);
         root.step = s;
         root.tk = 0;
         step_anim.duration = s.ms;
@@ -239,9 +221,9 @@ Item {
         step_anim.restart();
     }
 
-    // Page turns move only the rules. From L the bottom rule wipes the page off the top, a new one rises from the screen's bottom,
-    // and the page grows from the bottom-left until its top and right edges are R's rules. From R the right rule wipes it off the left,
-    // a new one comes in from the right, and the page grows from the top-right into L. Rules left over shrink to box edges. The title zooms away instead.
+    // From L, the bottom rule wipes the page off the top; after a beat a rule rises from the screen's bottom, and as it settles the left rule
+    // slides right while the risen one climbs on, drawing R's box from the bottom-left. From R it all mirrors: the right rule wipes left,
+    // one comes in from the right, then it slides left while the top rule drops, drawing L's box from the top-right. Rules only ever move.
     function turn_page() {
         const to = root.page, from = root.shown;
         const still = !root.animate || from === "" || [to, from].some(p => p === "unlock" || p === "saver");
@@ -252,38 +234,46 @@ Item {
             return;
         }
         if (root.owns_sound && audio_loader.item) audio_loader.item.play("page");
-        const none = { box: false, h: [], v: [] };
-        const list = [];
+        const b = root.box, L = b.left, T = b.top, R = b.right, B = b.bottom;
         const framed_to = root.is_framed(to);
-        const swap = r => Object.assign({ ms: 1, start: () => {
+        const list = [];
+        const swap = r => ({ ms: 1, draw: () => ({ box: null, h: [], v: [] }), start: () => {
                 root.shown = to;
                 root.content_on = false;
                 root.layout_r = framed_to && r;
-            } }, none);
-        const lv = root.frame_l.v, win = [0.4, 1];
+            } });
+        // L's box, drawn from the top-right: the vertical rule comes in from x0 and slides to the left edge, the horizontal one drops from y0.
+        const draw_l = (x0, y0) => k => {
+            const x = k < 0.45 ? root.lerp(x0, R, root.out(k, 0, 0.45)) : root.lerp(R, L, root.inout(k, 0.45, 1));
+            const y = root.lerp(y0, B, root.inout(k, 0.35, 1));
+            return { box: x < R && y > T ? [x, T, R, y] : null, h: [y], v: [x] };
+        };
         if (root.is_framed(from)) {
             if (!root.layout_r) {
-                const o = root.frame_l.box, n = root.frame_r.box;
-                list.push({ ms: 260, ease: Easing.InQuad, wipe: true, a: o, b: [o[0], o[1], o[2], o[1]], h: ["bottom"], v: ["left"] });
-                list.push({ ms: 60, box: false, h: [[o[1], -10]], v: [lv] });
-                list.push(swap(true), { ms: 250, box: false, h: [], v: [lv] });
-                if (framed_to) list.push({ ms: 560, a: [n[0], n[3], n[0], n[3]], b: n, bt: win, h: [{ p: [910, n[3], 0, 0.55], s: [[0, 1600], [lv, n[2]]], t: win }, "top"], v: [{ p: lv, s: [[0, 900], [n[1], n[3]]], t: win }, "right"] });
+                list.push({ ms: 260, ease: Easing.InQuad, wipe: true, draw: k => ({ box: [L, T, R, root.lerp(B, T, k)], h: [root.lerp(B, T, k)], v: [L] }) });
+                list.push({ ms: 60, draw: k => ({ box: null, h: [root.lerp(T, -10, k)], v: [L] }) });
+                list.push(swap(true), { ms: 250, draw: () => ({ box: null, h: [], v: [L] }) });
+                if (framed_to) {
+                    list.push({ ms: 620, draw: k => {
+                            const y = k < 0.45 ? root.lerp(910, B, root.out(k, 0, 0.45)) : root.lerp(B, T, root.inout(k, 0.45, 1));
+                            const x = root.lerp(L, R, root.inout(k, 0.35, 1));
+                            return { box: x > L && y < B ? [L, y, x, B] : null, h: [y], v: [x] };
+                        } });
+                }
             } else {
-                const o = root.frame_r.box, n = root.frame_l.box;
-                list.push({ ms: 260, ease: Easing.InQuad, wipe: true, a: o, b: [o[0], o[1], o[0], o[3]], h: ["top"], v: ["right"] });
-                list.push({ ms: 60, box: false, h: [o[1]], v: [[o[0], -10]] });
-                list.push(swap(false), { ms: 250, box: false, h: [o[1]], v: [] });
-                if (framed_to) list.push({ ms: 560, a: [n[2], n[1], n[2], n[1]], b: n, bt: win, h: [{ p: n[1], s: [[0, 1600], [lv, n[2]]], t: win }, "bottom"], v: [{ p: [1610, n[2], 0, 0.55], s: [[0, 900], [n[1], n[3]]], t: win }, "left"] });
+                list.push({ ms: 260, ease: Easing.InQuad, wipe: true, draw: k => ({ box: [L, T, root.lerp(R, L, k), B], h: [T], v: [root.lerp(R, L, k)] }) });
+                list.push({ ms: 60, draw: k => ({ box: null, h: [T], v: [root.lerp(L, -10, k)] }) });
+                list.push(swap(false), { ms: 250, draw: () => ({ box: null, h: [T], v: [] }) });
+                if (framed_to) list.push({ ms: 620, draw: draw_l(1610, T) });
             }
         } else if (from === "title") {
-            const n = root.frame_l.box;
-            list.push({ ms: 1000, ease: Easing.InQuad, title: "out" }, swap(false), Object.assign({ ms: 120 }, none));
-            if (framed_to) list.push({ ms: 300, ease: Easing.OutCubic, a: [n[2], n[1], n[2], n[1]], b: n });
+            list.push({ ms: 1000, ease: Easing.InQuad, title: "out", draw: () => ({ box: null, h: [], v: [] }) }, swap(false), { ms: 120, draw: () => ({ box: null, h: [], v: [] }) });
+            if (framed_to) list.push({ ms: 620, draw: draw_l(1610, -10) });
         } else {
             list.push(swap(false));
         }
-        if (framed_to) list.push({ ms: 150, box: true, content: true });
-        else if (to === "title") list.push({ ms: 400, title: "in" });
+        if (framed_to) list.push({ ms: 150, content: true });
+        else if (to === "title") list.push({ ms: 400, title: "in", draw: () => ({ box: null, h: [], v: [] }) });
         root.run(list);
     }
 
@@ -519,8 +509,11 @@ Item {
         PauseAnimation { duration: 750 }
         ScriptAction {
             script: {
-                const b = root.cur_box;
-                if (root.shown === "name") root.run([{ ms: 300, ease: Easing.InQuad, wipe: true, keep: true, a: b, b: [b[2], b[1], b[2], b[1]] }]);
+                const b = root.box;
+                if (root.shown === "name") root.run([{ ms: 300, ease: Easing.InQuad, wipe: true, keep: true, draw: k => {
+                        const x = root.lerp(b.left, b.right, k), y = root.lerp(b.bottom, b.top, k);
+                        return { box: [x, b.top, b.right, y], h: [y], v: [x] };
+                    } }]);
             }
         }
         PauseAnimation { duration: 300 }
@@ -1097,10 +1090,10 @@ Item {
                     required property int index
                     readonly property var g: root.guides[index] || null
                     visible: g !== null
-                    x: !g ? 0 : g.h ? g.s0 : g.p
-                    y: !g ? 0 : g.h ? g.p : g.s0
-                    width: !g ? 0 : g.h ? g.s1 - g.s0 : 1.5
-                    height: !g ? 0 : g.h ? 1.5 : g.s1 - g.s0
+                    x: g && !g.h ? g.p : 0
+                    y: g && g.h ? g.p : 0
+                    width: g && !g.h ? 1.5 : 1600
+                    height: g && g.h ? 1.5 : 900
                     color: root.line_color
                     opacity: 0.55
                 }
