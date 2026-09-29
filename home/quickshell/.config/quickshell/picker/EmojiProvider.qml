@@ -27,6 +27,7 @@ PickerProvider {
     tabs: ["Emoji", "GitHub", "Font Awesome", "Nerd Font"]
 
     property string set_name: "emoji"
+    glyph_font: root.set_name === "nerd_font" || root.set_name === "fontawesome" ? "Symbols Nerd Font" : ""
     property string loading_set: ""
     // set -> parsed items, filled on first use.
     property var cache: ({})

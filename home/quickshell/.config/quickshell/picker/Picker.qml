@@ -387,7 +387,7 @@ Popup {
                         text: row.result.item.glyph || ""
                         textFormat: Text.PlainText
                         color: row.fg(root.st.text_fg)
-                        font.family: root.st.font_family
+                        font.family: root.provider && root.provider.glyph_font !== "" ? root.provider.glyph_font : root.st.font_family
                         font.pixelSize: root.st.fs(2)
                     }
 
