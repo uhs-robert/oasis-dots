@@ -58,7 +58,7 @@ Item {
     readonly property color win_mid: Qt.tint(Theme.bg_shadow, Qt.alpha(Theme.theme_primary_strong, 0.3))
     readonly property color win_end: Qt.tint(Theme.bg_shadow, Qt.alpha(Theme.theme_primary_strong, 0.14))
 
-    // Lifestream: particles on a helix around the sword, split into a back and a front canvas so they wrap it.
+    // Lifestream: ribbons of braided strands flowing across the screen, split into a back and a front canvas so they weave past the sword.
     readonly property bool stream_on: root.screen === "saver"
     property real stream_t: 0
     // Canvas resolution against the screen; the glow hides the upscale.
@@ -69,13 +69,27 @@ Item {
             seed = (seed * 16807) % 2147483647;
             return (seed - 1) / 2147483646;
         };
-        const out = [];
-        for (let i = 0; i < 120; i++) {
-            out.push({ th: rnd() * Math.PI * 2, w: 0.3 + rnd() * 0.45, s: rnd() * 1300, v: -(14 + rnd() * 30), r: 110 + Math.pow(rnd(), 0.7) * 210, arc: 0.5 + rnd() * 0.9, size: 0.6 + rnd() * 1.4, tone: rnd() });
+        const bands = [
+            { y: 300, amp: 70, k: 0.0042, w: 0.35, spread: 46, twist: 0.0031, tilt: -0.06, n: 11, ph: 0.4 },
+            { y: 520, amp: 105, k: 0.0033, w: 0.28, spread: 62, twist: 0.0026, tilt: 0.05, n: 14, ph: 2.1 },
+            { y: 720, amp: 60, k: 0.0048, w: 0.4, spread: 38, twist: 0.0036, tilt: -0.03, n: 9, ph: 4.2 }
+        ];
+        for (const b of bands) {
+            b.strands = [];
+            for (let i = 0; i < b.n; i++) b.strands.push({ o: (i / (b.n - 1) - 0.5) * 2, wob: 3 + rnd() * 8, f: rnd() * 6, lit: 0.35 + rnd() * 0.65 });
+            b.sparks = [];
+            for (let i = 0; i < 55; i++) b.sparks.push({ u: rnd(), o: (rnd() * 2 - 1) * 1.5, v: 40 + rnd() * 70, tw: rnd() * 6, size: 0.8 + rnd() * 1.8 });
         }
         const motes = [];
         for (let i = 0; i < 70; i++) motes.push({ x: rnd() * 1600, y: rnd() * 900, v: 10 + rnd() * 26, sway: 10 + rnd() * 40, f: 0.2 + rnd() * 0.5, size: 0.8 + rnd() * 1.8 });
-        return { parts: out, motes: motes };
+        return { bands: bands, motes: motes };
+    }
+
+    // A band's point at design x for strand offset o, and its depth (over the sword when positive).
+    function band_at(b, x, o, wob, f, t) {
+        const centre = b.y + (x - 800) * b.tilt + b.amp * Math.sin(b.k * x - b.w * t + b.ph) + b.amp * 0.35 * Math.sin(b.k * 2.3 * x + b.w * 0.6 * t);
+        const pinch = Math.cos(b.twist * x - b.w * 1.4 * t + b.ph * 2);
+        return [centre + b.spread * o * pinch + wob * Math.sin(x * 0.011 + f + t * 0.7), Math.sin(x * 0.0024 + b.ph * 1.7 + t * 0.15)];
     }
 
     function paint_stream(ctx, w, h, front) {
@@ -84,52 +98,89 @@ Item {
         const ox = (w - 1600 * k) / 2;
         const oy = (h - 900 * k) / 2;
         const t = root.stream_t;
-        const ang = sword.rotation * Math.PI / 180;
-        const ax = -Math.sin(ang), ay = Math.cos(ang);
-        const px = Math.cos(ang), py = Math.sin(ang);
-        const cx = 800, cy = 427, half = 650;
-        const tones = [String(Theme.ok), String(Theme.hint), String(root.white)];
+        const green = String(Theme.ok), teal = String(Theme.hint), white = String(root.white);
         ctx.globalCompositeOperation = "lighter";
-        ctx.lineCap = "butt";
+        ctx.lineCap = "round";
+        ctx.lineJoin = "round";
         if (!front) {
+            ctx.fillStyle = green;
             for (const m of root.stream.motes) {
                 const y = ((m.y - m.v * t) % 900 + 900) % 900;
                 const x = m.x + Math.sin(t * m.f + m.x) * m.sway;
                 ctx.globalAlpha = 0.25 + 0.25 * Math.sin(t * m.f * 3 + m.y);
-                ctx.fillStyle = tones[0];
                 ctx.beginPath();
                 ctx.arc(ox + x * k, oy + y * k, m.size * k, 0, Math.PI * 2);
                 ctx.fill();
             }
         }
-        const at = (p, th) => {
-            const r = p.r * (1 + 0.15 * Math.sin(t * 0.6 + p.th));
-            const along = ((p.s + p.v * t) % 1300 + 1300) % 1300 - half + r * 0.5 * Math.sin(th);
-            return [ox + (cx + ax * along + px * r * Math.cos(th)) * k, oy + (cy + ay * along + py * r * Math.cos(th)) * k, along];
+        const fade = (c) => {
+            const g = ctx.createLinearGradient(0, 0, w, 0);
+            g.addColorStop(0, "transparent");
+            g.addColorStop(0.12, c);
+            g.addColorStop(0.88, c);
+            g.addColorStop(1, "transparent");
+            return g;
         };
-        for (const p of root.stream.parts) {
-            const th = p.th + p.w * t;
-            const depth = Math.sin(th);
-            if ((depth >= 0) !== front) continue;
-            const head = at(p, th);
-            const edge = Math.min(1, (half - Math.abs(head[2])) / 160);
-            if (edge <= 0) continue;
-            const lit = (0.35 + 0.65 * (depth + 1) / 2) * edge;
-            const tail = [head];
-            for (let j = 1; j <= 5; j++) tail.push(at(p, th - p.arc * j / 5));
-            const color = p.tone < 0.55 ? tones[0] : p.tone < 0.92 ? tones[1] : tones[2];
-            const near = 0.7 + 0.5 * (depth + 1) / 2;
-            ctx.strokeStyle = color;
-            for (const [width, alpha] of [[7, 0.14], [1.8, 0.8]]) {
-                for (let j = 1; j < tail.length; j++) {
-                    const fade = 1 - (j - 1) / (tail.length - 1);
-                    ctx.lineWidth = width * p.size * k * near * (0.4 + 0.6 * fade);
-                    ctx.globalAlpha = alpha * lit * fade;
-                    ctx.beginPath();
-                    ctx.moveTo(tail[j - 1][0], tail[j - 1][1]);
-                    ctx.lineTo(tail[j][0], tail[j][1]);
-                    ctx.stroke();
+        const step = 40;
+        // Traces strand offset o across the screen; where the depth side flips, both canvases meet at the segment's midpoint.
+        const trace = (b, o, wob, f) => {
+            ctx.beginPath();
+            let prev = null;
+            for (let x = -40; x <= 1640; x += step) {
+                const [y, d] = root.band_at(b, x, o, wob, f, t);
+                const mine = (d >= 0) === front;
+                const px = ox + x * k, py = oy + y * k;
+                if (prev && prev.mine !== mine) {
+                    const mx = (prev.x + px) / 2, my = (prev.y + py) / 2;
+                    if (mine) ctx.moveTo(mx, my);
+                    else ctx.lineTo(mx, my);
                 }
+                if (mine) {
+                    if (prev && prev.mine) ctx.lineTo(px, py);
+                    else if (!prev) ctx.moveTo(px, py);
+                    else ctx.lineTo(px, py);
+                }
+                prev = { x: px, y: py, mine: mine };
+            }
+        };
+        for (const b of root.stream.bands) {
+            ctx.lineCap = "butt";
+            ctx.strokeStyle = fade(green);
+            ctx.globalAlpha = 0.07;
+            ctx.lineWidth = b.spread * 1.6 * k;
+            trace(b, 0, 0, 0);
+            ctx.stroke();
+            ctx.globalAlpha = 0.1;
+            ctx.lineWidth = b.spread * 0.6 * k;
+            trace(b, 0, 0, 0);
+            ctx.stroke();
+            ctx.lineCap = "round";
+            for (const s of b.strands) {
+                ctx.strokeStyle = fade(s.lit > 0.85 ? white : s.lit > 0.55 ? teal : green);
+                ctx.globalAlpha = 0.18 * s.lit;
+                ctx.lineWidth = 5 * k;
+                trace(b, s.o, s.wob, s.f);
+                ctx.stroke();
+                ctx.globalAlpha = 0.75 * s.lit;
+                ctx.lineWidth = 1.3 * k;
+                trace(b, s.o, s.wob, s.f);
+                ctx.stroke();
+            }
+            for (const [color, bright] of [[green, false], [white, true]]) {
+                ctx.fillStyle = color;
+                ctx.globalAlpha = bright ? 0.9 : 0.7;
+                ctx.beginPath();
+                b.sparks.forEach((p, i) => {
+                    if ((i % 4 === 0) !== bright) return;
+                    const x = ((p.u * 1760 + p.v * t) % 1760) - 80;
+                    const [y, d] = root.band_at(b, x, p.o, 0, 0, t);
+                    if ((d >= 0) !== front) return;
+                    const r = p.size * k * (0.6 + 0.4 * Math.sin(t * 2.5 + p.tw));
+                    if (r <= 0) return;
+                    ctx.moveTo(ox + x * k + r, oy + y * k);
+                    ctx.arc(ox + x * k, oy + y * k, r, 0, Math.PI * 2);
+                });
+                ctx.fill();
             }
         }
     }
