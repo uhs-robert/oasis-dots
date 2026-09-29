@@ -4,13 +4,13 @@ import QtQuick.Layouts
 import "../theme"
 
 // A section of ChoiceRows; each row is { label, values: () => [...], text: v => string, value: () => current, set: v => void, pick?: bool }.
-// Enter or a click opens a filterable list for rows with pick_min or more values; `pick: false` keeps a row cycling.
+// Enter or a click opens a filterable list of a row's values; `pick: false` keeps a row cycling.
 SettingsPane {
     id: root
 
     property var rows: []
     property int cursor: 0
-    property int pick_min: 4
+    property int pick_min: 2
     property int picking_row: -1
     default property alias header: header_col.data
     property alias footer: footer_col.data
