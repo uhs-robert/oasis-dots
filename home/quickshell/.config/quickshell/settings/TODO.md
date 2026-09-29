@@ -27,7 +27,7 @@ Tracks the Settings panel that drops from the center island (issue #361). Update
 - [x] Start menu "Settings" row and leader `S` open the panel
 - [x] Live test on the bar and fix what turns up
 - [x] PR merged (two review findings still open, below)
-- [ ] Move lock settings out of `style.json` into `lock.json`, migrating current values on first load (bar fixes track)
+- [x] Move lock settings out of `style.json` into `lock.json`, migrating current values on first load (bar fixes track)
 
 ## Step 2: bar modules (done)
 
@@ -37,11 +37,11 @@ Tracks the Settings panel that drops from the center island (issue #361). Update
 - [x] Per-monitor bar overrides
 - [x] Live test on the bar (rebuild on edit, monitor targeting, own layout on and off)
 - [x] PR merged (two review findings still open, below)
-- [ ] Edit the `compact` flag per monitor; the override only seeds it
-- [ ] Add and remove module arguments (`system:temperature`); entries with arguments are only listed once a rule or the state names them
-- [ ] Re-test on the bar after the review fixes: hide/show keeps position across a restart, lualine (neovim style) reorders within x/y/z only
-- [ ] Fix first (open Codex findings): shared J/K on a monitor whose rule lacks some modules (the HP Z22n has no weather/volume/battery) pushes those modules to the end of the other monitor's bar. `order_from` in `BarLayout.js` should merge the edited view into the old order without relocating entries absent from the view
-- [ ] Fix: `resolve_key` drops a stale override when its old connector is now used by a different monitor; only reserve a key when that connector holds a live screen with the same description
+- [x] Edit the `compact` flag per monitor; the override only seeds it
+- [x] Add and remove module arguments (`system:temperature`); entries with arguments are only listed once a rule or the state names them
+- [x] Re-test on the bar after the review fixes: hide/show keeps position across a restart, lualine (neovim style) reorders within x/y/z only
+- [x] Fix first (open Codex findings): shared J/K on a monitor whose rule lacks some modules (the HP Z22n has no weather/volume/battery) pushes those modules to the end of the other monitor's bar. `order_from` in `BarLayout.js` should merge the edited view into the old order without relocating entries absent from the view
+- [x] Fix: `resolve_key` drops a stale override when its old connector is now used by a different monitor; only reserve a key when that connector holds a live screen with the same description
 
 ## Next up (resume here)
 

@@ -68,7 +68,7 @@ Singleton {
     }
 
     function monitor_key(screen) {
-        return BarLayout.resolve_key(root.state, root.description_for(screen), screen.name, Quickshell.screens.map(s => s.name));
+        return BarLayout.resolve_key(root.state, root.description_for(screen), screen.name, Quickshell.screens.map(s => ({ name: s.name, description: root.description_for(s) })));
     }
 
     function glob_to_regex(pattern) {

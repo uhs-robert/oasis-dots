@@ -2441,27 +2441,27 @@ Singleton {
     function set_lock_style(style_name) {
         if (!root.valid_lock_style(style_name)) return false;
         root.lock_style = style_name;
-        root.save();
+        root.save_lock();
         return true;
     }
 
     function set_lock_tint(tint) {
         if (root.lock_tints.indexOf(tint) < 0) return false;
         root.lock_tint = tint;
-        root.save();
+        root.save_lock();
         return true;
     }
 
     function set_lock_backdrop(mode) {
         if (root.lock_backdrops.indexOf(mode) < 0) return false;
         root.lock_backdrop = mode;
-        root.save();
+        root.save_lock();
         return true;
     }
 
     function set_lock_music(on) {
         root.lock_music = on;
-        root.save();
+        root.save_lock();
     }
 
     function set_cava_line(on) {
@@ -2470,7 +2470,18 @@ Singleton {
     }
 
     function save() {
-        state_file.setText(JSON.stringify({ style: root.saved_name, cava_line: root.cava_line, lock_style: root.lock_style, lock_tint: root.lock_tint, lock_backdrop: root.lock_backdrop, lock_music: root.lock_music }));
+        state_file.setText(JSON.stringify({ style: root.saved_name, cava_line: root.cava_line }));
+    }
+
+    function save_lock() {
+        lock_file.setText(JSON.stringify({ lock_style: root.lock_style, lock_tint: root.lock_tint, lock_backdrop: root.lock_backdrop, lock_music: root.lock_music }));
+    }
+
+    function load_lock(data) {
+        if (typeof data.lock_style === "string" && root.valid_lock_style(data.lock_style)) root.lock_style = data.lock_style;
+        if (root.lock_tints.indexOf(data.lock_tint) >= 0) root.lock_tint = data.lock_tint;
+        if (root.lock_backdrops.indexOf(data.lock_backdrop) >= 0) root.lock_backdrop = data.lock_backdrop;
+        root.lock_music = data.lock_music !== false;
     }
 
     function preview(style_name) {
@@ -2502,10 +2513,7 @@ Singleton {
                 const data = JSON.parse(text());
                 const saved = data.style;
                 root.cava_line = data.cava_line !== false;
-                if (typeof data.lock_style === "string" && root.valid_lock_style(data.lock_style)) root.lock_style = data.lock_style;
-                if (root.lock_tints.indexOf(data.lock_tint) >= 0) root.lock_tint = data.lock_tint;
-                if (root.lock_backdrops.indexOf(data.lock_backdrop) >= 0) root.lock_backdrop = data.lock_backdrop;
-                root.lock_music = data.lock_music !== false;
+                root.legacy_lock = data;
                 if (typeof saved === "string" && saved in root.styles && root.hidden.indexOf(saved) < 0) {
                     root.name = saved;
                     root.saved_name = saved;
@@ -2517,8 +2525,30 @@ Singleton {
         onLoadFailed: error => {}
     }
 
+    property var legacy_lock: null
+
+    FileView {
+        id: lock_file
+        path: root.state_dir + "/lock.json"
+        printErrors: false
+        blockLoading: true
+        onLoaded: {
+            try {
+                root.load_lock(JSON.parse(text()));
+            } catch (e) {
+                console.warn("Style: invalid lock.json (" + e + ")");
+            }
+        }
+        onLoadFailed: error => {
+            if (!root.legacy_lock) return;
+            root.load_lock(root.legacy_lock);
+            root.save_lock();
+        }
+    }
+
     Component.onCompleted: {
         ensure_state_dir.running = true;
         state_file.reload();
+        lock_file.reload();
     }
 }
