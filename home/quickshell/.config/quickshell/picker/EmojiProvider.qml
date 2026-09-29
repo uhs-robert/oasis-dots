@@ -25,6 +25,13 @@ PickerProvider {
     })
     readonly property var sets: ["emoji", "gitmoji", "fontawesome", "nerd_font"]
     tabs: ["Emoji", "GitHub", "Font Awesome", "Nerd Font"]
+    // Qt never falls back from one icon font to another, so each glyph names the font that covers it.
+    readonly property var set_fonts: ({
+        fontawesome: [
+            { family: "Font Awesome 7 Free", weight: Font.Black, pattern: "Font Awesome 7 Free:style=Solid" },
+            { family: "Font Awesome 7 Brands", weight: Font.Normal, pattern: "Font Awesome 7 Brands" }
+        ]
+    })
 
     property string set_name: "emoji"
     glyph_font: root.set_name === "nerd_font" || root.set_name === "fontawesome" ? "Symbols Nerd Font" : ""
@@ -32,7 +39,18 @@ PickerProvider {
     // set -> parsed items, filled on first use.
     property var cache: ({})
 
-    function parse(text) {
+    // fc-list charset ("20-7e a0 ...") -> { codepoint: true }.
+    function charset(text) {
+        const out = {};
+        for (const part of text.trim().split(/\s+/)) {
+            if (part === "") continue;
+            const [a, b] = part.split("-").map(h => parseInt(h, 16));
+            for (let c = a; c <= (b === undefined ? a : b); c++) out[c] = true;
+        }
+        return out;
+    }
+
+    function parse(text, fonts) {
         const out = [];
         const seen = {};
         for (const line of text.split("\n")) {
@@ -48,7 +66,13 @@ PickerProvider {
                 label = m[1];
                 keywords = m[2].split(", ");
             }
-            out.push({ id: glyph, label: label, glyph: glyph, keywords: keywords });
+            const item = { id: glyph, label: label, glyph: glyph, keywords: keywords };
+            const font = fonts.find(f => f.chars[glyph.codePointAt(0)]);
+            if (font) {
+                item.glyph_font = font.family;
+                item.glyph_weight = font.weight;
+            }
+            out.push(item);
         }
         return out;
     }
@@ -56,14 +80,17 @@ PickerProvider {
     function load(set) {
         if (load_proc.running) return;
         root.loading_set = set;
-        load_proc.command = ["sh", "-c", "cat " + root.data_dir + "/" + root.globs[set]];
+        const charsets = (root.set_fonts[set] || []).map(f => "; printf '\\036'; fc-list -f '%{charset}\\n' '" + f.pattern + "'").join("");
+        load_proc.command = ["sh", "-c", "cat " + root.data_dir + "/" + root.globs[set] + charsets];
         load_proc.running = true;
     }
 
     function loaded(text) {
         const set = root.loading_set;
         const next = Object.assign({}, root.cache);
-        next[set] = root.parse(text);
+        const parts = text.split("\x1e");
+        const fonts = (root.set_fonts[set] || []).map((f, i) => Object.assign({ chars: root.charset(parts[i + 1] || "") }, f));
+        next[set] = root.parse(parts[0], fonts);
         root.cache = next;
         root.loading_set = "";
         if (root.set_name === set) root.items = next[set];
