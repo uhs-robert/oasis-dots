@@ -172,10 +172,10 @@ Item {
         const dx = e[0] - f.box[0];
         return { v: f.v + dx, r0: f.rail[0] + dx, r1: f.rail[1] + dx, x0: e[0], y0: e[1], x1: e[2], y1: e[3] };
     }
-    // Full-length rules: at rest the bottom and left ones; a step names its own, as box edges or [from, to] travels.
+    // Full-length rules: at rest the bottom and left ones; a step names its own, as box edges, fixed spots or [from, to] travels.
     readonly property var guides: {
         const st = root.step, b = root.fb, k = root.tk;
-        const at = p => Array.isArray(p) ? p[0] + (p[1] - p[0]) * k : ({ left: b.v, right: b.x1, top: b.y0, bottom: b.y1 })[p];
+        const at = p => typeof p === "number" ? p : Array.isArray(p) ? p[0] + (p[1] - p[0]) * k : ({ left: b.v, right: b.x1, top: b.y0, bottom: b.y1 })[p];
         const hs = st && st.h ? st.h : ["bottom"], vs = st && st.v ? st.v : ["left"];
         return hs.map(p => ({ h: true, p: at(p) })).concat(vs.map(p => ({ h: false, p: at(p) })));
     }
@@ -248,24 +248,30 @@ Item {
                 if (root.is_framed(to)) root.last_frame = root.frames[to === "opt" ? "menu" : to];
             } }, none);
         const n = root.is_framed(to) ? root.box_of(to) : null;
+        const nf = n ? root.frames[to === "opt" ? "menu" : to] : null;
         if (root.is_framed(from)) {
-            const o = root.box_of(from);
+            const o = root.box_of(from), ov = root.last_frame.v;
             const up = !root.wipe_left;
             root.wipe_left = !root.wipe_left;
+            // Only the moving rule travels; the resting ones (left for up, left and bottom for left) stay on screen throughout.
             if (up) {
+                const nv = nf ? nf.v : ov;
                 list.push({ ms: 260, ease: Easing.InQuad, wipe: true, a: o, b: [o[0], o[1], o[2], o[1]], h: ["bottom"], v: ["left"] });
-                list.push({ ms: 60, box: false, h: [[o[1], -10]], v: ["left"] });
+                list.push({ ms: 60, box: false, h: [[o[1], -10]], v: [ov] });
+                list.push(swap, { ms: 250, box: false, h: [], v: [[ov, nv]] });
+                if (n) {
+                    list.push({ ms: 260, ease: Easing.OutCubic, a: n, box: false, h: [[910, n[3]]], v: [nv] });
+                    list.push({ ms: 320, ease: Easing.OutCubic, a: [n[0], n[3], n[0], n[3]], b: n, h: ["bottom", "top"], v: ["left", "right"] });
+                }
             } else {
+                const nb = n ? n[3] : o[3], nv = nf ? nf.v : ov;
                 list.push({ ms: 260, ease: Easing.InQuad, wipe: true, a: o, b: [o[0], o[1], o[0], o[3]], h: ["bottom"], v: ["left", "right"] });
-                list.push({ ms: 60, box: false, h: [], v: [[o[0], -10]] });
-            }
-            list.push(swap, Object.assign({ ms: 250 }, none));
-            if (n && up) {
-                list.push({ ms: 260, ease: Easing.OutCubic, a: n, box: false, h: [[910, n[3]]], v: [] });
-                list.push({ ms: 320, ease: Easing.OutCubic, a: [n[0], n[3], n[0], n[3]], b: n, h: ["bottom", "top"], v: ["left", "right"] });
-            } else if (n) {
-                list.push({ ms: 260, ease: Easing.OutCubic, a: n, box: false, h: [], v: [[1610, n[2]]] });
-                list.push({ ms: 320, ease: Easing.OutCubic, a: [n[2], n[1], n[2], n[1]], b: n, h: ["bottom"], v: ["left", "right"] });
+                list.push({ ms: 60, box: false, h: [o[3]], v: [[o[0], -10], ov] });
+                list.push(swap, { ms: 250, box: false, h: [[o[3], nb]], v: [[ov, nv]] });
+                if (n) {
+                    list.push({ ms: 260, ease: Easing.OutCubic, a: n, box: false, h: [nb], v: [[1610, n[2]], nv] });
+                    list.push({ ms: 320, ease: Easing.OutCubic, a: [n[2], n[1], n[2], n[1]], b: n, h: [nb, "bottom"], v: [nv, "left", "right"] });
+                }
             }
         } else if (from === "title") {
             list.push({ ms: 1000, ease: Easing.InQuad, title: "out" }, swap, Object.assign({ ms: 120 }, none));
@@ -1082,7 +1088,7 @@ Item {
 
             // Fixed slots, so the rules move each frame without being rebuilt.
             Repeater {
-                model: 4
+                model: 6
 
                 Rectangle {
                     required property int index
