@@ -3,7 +3,7 @@ import QtQuick
 import QtMultimedia
 import Qt.labs.folderlistmodel
 
-// The FF7 skin's music and sound effects from audio/; a missing file stays silent.
+// The FF7 skin's music and sound effects from audio/ (made by scripts/ff7-audio); a missing file stays silent.
 Item {
     id: audio
 
@@ -23,7 +23,7 @@ Item {
     }
 
     function play(name) {
-        const fx = ({ cursor: fx_cursor, select: fx_select, cancel: fx_cancel, buzzer: fx_buzzer, swirl: fx_swirl })[name];
+        const fx = ({ cursor: fx_cursor, select: fx_cursor, cancel: fx_cancel, buzzer: fx_buzzer, loading: fx_loading, loaded: fx_loaded })[name];
         if (fx && fx.status === SoundEffect.Ready) fx.play();
     }
 
@@ -82,8 +82,8 @@ Item {
     }
 
     SoundEffect { id: fx_cursor; source: audio.file("cursor.wav"); volume: audio.fx_volume }
-    SoundEffect { id: fx_select; source: audio.file("select.wav"); volume: audio.fx_volume }
     SoundEffect { id: fx_cancel; source: audio.file("cancel.wav"); volume: audio.fx_volume }
     SoundEffect { id: fx_buzzer; source: audio.file("buzzer.wav"); volume: audio.fx_volume }
-    SoundEffect { id: fx_swirl; source: audio.file("swirl.wav"); volume: audio.fx_volume }
+    SoundEffect { id: fx_loading; source: audio.file("loading.wav"); volume: audio.fx_volume }
+    SoundEffect { id: fx_loaded; source: audio.file("loaded.wav"); volume: audio.fx_volume }
 }

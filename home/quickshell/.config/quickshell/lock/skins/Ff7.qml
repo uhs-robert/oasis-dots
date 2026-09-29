@@ -44,7 +44,8 @@ Item {
 
     readonly property bool sound_on: !!root.ctx && root.ctx.sound === true
     readonly property bool owns_sound: root.sound_on && root.ctx.sound_owner === root
-    readonly property string music_track: !root.owns_sound || root.ctx.music === false || root.phase === "saver" || root.phase === "unlock" ? "" : "title"
+    // The Prelude plays on the title and the screensaver only.
+    readonly property string music_track: root.owns_sound && root.ctx.music !== false && (root.screen === "title" || root.screen === "saver") ? "title" : ""
     property int heard_typed: 0
     property bool heard_unlock: false
     property bool dying: false
@@ -252,7 +253,7 @@ Item {
                 root.cue("buzzer");
             } else {
                 c.scene = "files:" + root.user_index;
-                root.cue("select");
+                root.cue("loading");
             }
             return true;
         }
@@ -291,7 +292,7 @@ Item {
     onPhaseChanged: {
         if (root.phase === "saver" && root.can_step) root.ctx.scene = "";
         if (root.phase === "unlock") {
-            if (!root.heard_unlock && root.owns_sound && audio_loader.item) audio_loader.item.play("swirl");
+            if (!root.heard_unlock && root.owns_sound && audio_loader.item) audio_loader.item.play("loaded");
             root.heard_unlock = true;
         }
         root.set_warp();
