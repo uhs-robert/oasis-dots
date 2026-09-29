@@ -9,5 +9,17 @@ LazyLoader {
 
     required property string name
 
-    active: Popups.load_name === root.name || (root.item !== null && root.item.visible)
+    // Latched from the popup's visibility; reading item.visible in the binding loops through active.
+    property bool showing: false
+
+    active: Popups.load_name === root.name || root.showing
+
+    // A named property, since LazyLoader's default property is the popup itself.
+    property Connections watch: Connections {
+        target: root.item
+        ignoreUnknownSignals: true
+        function onVisibleChanged() {
+            root.showing = !!root.item && root.item.visible;
+        }
+    }
 }

@@ -17,7 +17,8 @@ PanelWindow {
     property string shown_name: ""
     property color shown_color: Theme.theme_secondary
     // Only the focused monitor shows the tab, so a submap opens one window instead of one per bar.
-    readonly property bool focused: !!Hyprland.focusedMonitor && !!root.screen && Hyprland.focusedMonitor.name === root.screen.name
+    property string screen_name: ""
+    readonly property bool focused: !!Hyprland.focusedMonitor && Hyprland.focusedMonitor.name === root.screen_name
     property real line_progress: 0
     property real tab_progress: 0
 
