@@ -13,6 +13,7 @@ local CMD = {
   edit_keymaps = TERM_CMD .. " -e " .. TUI_FILES .. " ~/.config/hypr/keymaps/",
   theme_switch = "~/.config/hypr/theme/switch.lua '" .. Config.app.dmenu_cmd .. "'",
   restart_voxtype = "systemctl --user restart voxtype",
+  restart_bar = "pkill -f '^qs -n'; qs -n",
 }
 
 local POWER = {
@@ -35,6 +36,7 @@ Submap.define({
     { "SLASH",     Cmd.run(CMD.edit_keymaps),           "Edit Keymaps" },
     { "SPACE",     Cmd.term("btop"),                    "Task Manager" },
     { "A",         Cmd.term("abtop"),                   "AI Manager" },
+    { "B",         Cmd.run(CMD.restart_bar),            "Restart Bar" },
     { "D",         Cmd.run(Config.app.display_manager), "Display Manager" },
     { "E",         Cmd.run(POWER.logout),               "Logout" },
     { "H",         Cmd.run("hyprctl reload"),           "Reload Hyprland" },
