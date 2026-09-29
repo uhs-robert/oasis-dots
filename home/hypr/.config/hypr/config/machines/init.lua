@@ -48,13 +48,43 @@ function Machines.load()
   return profile
 end
 
---- Merge shared session values with the current machine profile.
---- Machine-profile values win so host-specific hardware can override shared defaults.
+local APP_KEYS = { term = true, editor = true, gui_file_manager = true, tui_file_manager = true }
+
+--- Default-app choices saved by the Settings panel in ~/.local/state/hypr/apps.json.
+--- @return table
+function Machines.apps_state()
+  local base = os.getenv("XDG_STATE_HOME") or ((os.getenv("HOME") or "") .. "/.local/state")
+  local path = base .. "/hypr/apps.json"
+  local file = io.open(path, "r")
+  if not file then return {} end
+  file:close()
+
+  local pipe = io.popen("jq -r '(.app // {}) | to_entries[] | \"\\(.key)\\t\\(.value)\"' '" .. path .. "' 2>/dev/null")
+  if not pipe then return {} end
+  local app = {}
+  for line in pipe:lines() do
+    local key, value = line:match("^([%w_]+)\t([%w._+-]+)$")
+    if key and APP_KEYS[key] then app[key] = value end
+  end
+  pipe:close()
+
+  return app
+end
+
+--- Merge shared session values with the current machine profile, then the saved UI state.
+--- Machine-profile values win so host-specific hardware can override shared defaults; UI state wins over both.
 --- @param shared table|nil
 --- @return table
 function Machines.merge(shared)
   local merged = deep_copy(shared or {})
   Utils.deep_extend(merged, Machines.load())
+
+  local app = Machines.apps_state()
+  if next(app) ~= nil then
+    merged.app = merged.app or {}
+    Utils.deep_extend(merged.app, app)
+    if app.term then merged.app.term_cmd = nil end
+  end
 
   return merged
 end
