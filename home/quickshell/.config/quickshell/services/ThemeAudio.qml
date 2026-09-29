@@ -71,7 +71,7 @@ Singleton {
 
     function preview(kind) {
         const url = ui_pack.find(kind, ["wav", "ogg"]);
-        if (url !== "") effects.send(["loadfile", url, "replace"]);
+        if (url !== "") effects.queue(["loadfile", url, "replace"]);
     }
 
     function save() {

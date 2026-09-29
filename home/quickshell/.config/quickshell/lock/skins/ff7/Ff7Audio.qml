@@ -25,10 +25,14 @@ Item {
 
     function play(name) {
         const url = audio.file(audio.fx_files[name] || "");
-        if (url !== "") fx.send(["loadfile", url, "replace"]);
+        if (url !== "") fx.queue(["loadfile", url, "replace"]);
     }
 
-    onTrackChanged: title_fade.restart()
+    // `to` is set here, not bound: a binding on track may not have updated yet when this handler runs.
+    onTrackChanged: {
+        title_fade.to = audio.track === "title" ? 1 : 0;
+        title_fade.restart();
+    }
 
     FolderListModel {
         id: listing
@@ -41,7 +45,6 @@ Item {
         id: title_fade
         target: audio
         property: "title_level"
-        to: audio.track === "title" ? 1 : 0
         duration: 800
     }
 

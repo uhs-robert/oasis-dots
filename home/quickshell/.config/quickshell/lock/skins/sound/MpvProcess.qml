@@ -23,6 +23,14 @@ Scope {
         return true;
     }
 
+    // Commands from before the socket connects, sent once it does.
+    property var pending: []
+
+    function queue(command) {
+        if (root.send(command)) return;
+        root.pending = root.pending.concat([command]).slice(-8);
+    }
+
     function sync() {
         if (root.wanted && !proc.running) {
             proc.command = ["setpriv", "--pdeathsig", "TERM", "mpv", "--no-config", "--no-video", "--no-terminal", "--really-quiet", "--gapless-audio=yes", "--volume=" + root.mpv_volume, "--input-ipc-server=" + root.sock].concat(root.args);
@@ -45,6 +53,7 @@ Scope {
         onRunningChanged: {
             if (proc.running) return;
             link.active = false;
+            root.pending = [];
             Quickshell.execDetached(["rm", "-f", root.sock]);
         }
         // A start with no audio sink exits at once; try again while still wanted.
@@ -67,7 +76,12 @@ Scope {
         }
     }
 
-    onLinkedChanged: if (root.linked) root.send(["set_property", "volume", root.mpv_volume])
+    onLinkedChanged: {
+        if (!root.linked) return;
+        root.send(["set_property", "volume", root.mpv_volume]);
+        for (const command of root.pending) root.send(command);
+        root.pending = [];
+    }
 
     // The socket appears a moment after mpv starts.
     Timer {

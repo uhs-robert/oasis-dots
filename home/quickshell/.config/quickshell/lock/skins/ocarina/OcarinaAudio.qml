@@ -31,7 +31,7 @@ Item {
 
     function play(name) {
         const url = audio.file(name + ".wav");
-        if (url !== "") fx.send(["loadfile", url, "replace"]);
+        if (url !== "") fx.queue(["loadfile", url, "replace"]);
     }
 
     function track_args(name) {
@@ -39,8 +39,11 @@ Item {
         return (intro !== "" ? [intro] : []).concat(["--{", "--loop-file=inf", audio.file(name + "_loop.ogg"), "--}"]);
     }
 
+    // `to` is set here, not bound: a binding on track may not have updated yet when this handler runs.
     onTrackChanged: {
+        title_fade.to = audio.track === "title" ? 1 : 0;
         title_fade.restart();
+        fairy_fade.to = audio.track === "fairy" ? 1 : 0;
         fairy_fade.restart();
     }
 
@@ -62,7 +65,6 @@ Item {
         id: title_fade
         target: audio
         property: "title_level"
-        to: audio.track === "title" ? 1 : 0
         duration: 800
     }
 
@@ -70,7 +72,6 @@ Item {
         id: fairy_fade
         target: audio
         property: "fairy_level"
-        to: audio.track === "fairy" ? 1 : 0
         duration: 800
     }
 
