@@ -90,6 +90,7 @@ Item {
     readonly property int user_index: Math.max(0, root.users.findIndex(u => root.ctx && u.name === root.ctx.user))
     readonly property int load_sel: root.scene.startsWith("load:") ? Math.min(root.users.length - 1, parseInt(root.scene.split(":")[1]) || 0) : root.user_index
     readonly property string user_name: root.ctx ? root.ctx.user : ""
+    readonly property var face_urls: root.ctx && typeof root.ctx.face_urls === "function" ? root.ctx.face_urls(root.user_name) : []
     readonly property string host: root.ctx ? root.ctx.host : ""
 
     readonly property date now: root.ctx ? root.ctx.now : new Date()
@@ -656,6 +657,99 @@ Item {
         }
     }
 
+    // The title art: a red hex grid on the right, and the user's face cut to four reds, else the painted smear.
+    component TitleArt: Item {
+        id: art
+        // The face_urls entry being tried; past the end means none loaded.
+        property int face_at: 0
+        readonly property string face_url: root.face_urls[art.face_at] || ""
+        readonly property bool has_face: face_image.status === Image.Ready && face_shader.status === ShaderEffect.Compiled
+        width: 1600
+        height: 900
+
+        Canvas {
+            anchors.fill: parent
+            renderStrategy: Canvas.Cooperative
+            onPaint: {
+                const c = getContext("2d");
+                const R = 34, w = Math.sqrt(3) * R;
+                c.lineWidth = 1.6;
+                for (let row = -1; row < 16; row++) {
+                    for (let col = -1; col < 30; col++) {
+                        const x = 560 + col * w + (row % 2 ? w / 2 : 0), y = 60 + row * R * 1.5;
+                        const d = Math.hypot((x - 1180) / 1.25, y - 430) / 560;
+                        if (d >= 1) continue;
+                        c.strokeStyle = "rgba(200,36,28," + (0.34 * Math.pow(1 - d, 1.6)).toFixed(3) + ")";
+                        c.beginPath();
+                        for (let i = 0; i < 6; i++) {
+                            const a = Math.PI / 6 + i * Math.PI / 3;
+                            if (i === 0) c.moveTo(x + R * Math.cos(a), y + R * Math.sin(a));
+                            else c.lineTo(x + R * Math.cos(a), y + R * Math.sin(a));
+                        }
+                        c.closePath();
+                        c.stroke();
+                    }
+                }
+            }
+        }
+
+        Paint {
+            visible: !art.has_face
+        }
+
+        // Cut to four reds and faded at 110px, then scaled up so the stretch softens it like paint.
+        Item {
+            id: face
+            readonly property int n: 110
+            readonly property real size: 960
+            width: face.n
+            height: face.n
+            x: 780 - face.n / 2
+            y: 500 - face.n / 2
+            scale: face.size / face.n
+            rotation: -5.7
+            visible: art.has_face
+            layer.enabled: true
+            layer.smooth: true
+
+            Image {
+                id: face_image
+                anchors.fill: parent
+                source: art.face_url
+                sourceSize: Qt.size(face.n * 2, face.n * 2)
+                fillMode: Image.PreserveAspectCrop
+                visible: false
+                onStatusChanged: if (face_image.status === Image.Error) art.face_at += 1
+            }
+
+            ShaderEffect {
+                id: face_shader
+                anchors.fill: parent
+                property variant source: face_image
+                fragmentShader: Qt.resolvedUrl("mgs2/face.frag.qsb")
+            }
+
+            Canvas {
+                anchors.fill: parent
+                renderStrategy: Canvas.Cooperative
+                onPaint: {
+                    const c = getContext("2d");
+                    const n = face.n, u = face.size / n, r = Art.rng(1987);
+                    c.lineCap = "round";
+                    for (let i = 0; i < 60; i++) {
+                        const a = r() * Math.PI * 2, d = 0.75 * Math.pow(r(), 0.8), sx = n / 2 + Math.cos(a) * d * 380 / u, sy = n / 2 + Math.sin(a) * d * 320 / u, ang = -0.8 + (r() - 0.5) * 1.2, len = (40 + r() * 110) / u;
+                        c.strokeStyle = "rgba(10,4,4," + (0.12 + r() * 0.25) + ")";
+                        c.lineWidth = (5 + r() * 14) / u;
+                        c.beginPath();
+                        c.moveTo(sx, sy);
+                        c.lineTo(sx + Math.cos(ang) * len, sy + Math.sin(ang) * len);
+                        c.stroke();
+                    }
+                }
+            }
+        }
+    }
+
     // Everything below draws on the 1600x900 stage.
     Rectangle {
         anchors.fill: parent
@@ -1053,7 +1147,7 @@ Item {
                 loops: Animation.Infinite
             }
 
-            Paint {
+            TitleArt {
                 opacity: 0.45
             }
 
@@ -1079,7 +1173,7 @@ Item {
         id: title_view
 
         Item {
-            Paint {
+            TitleArt {
                 opacity: 0.8
             }
 
