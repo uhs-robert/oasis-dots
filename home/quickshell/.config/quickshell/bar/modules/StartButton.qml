@@ -108,7 +108,7 @@ Item {
         acceptedButtons: Qt.LeftButton | Qt.RightButton
         onClicked: mouse => {
             if (mouse.button === Qt.RightButton) {
-                Quickshell.execDetached(["sh", "-c", "~/.config/hypr/theme/switch.lua"]);
+                SettingsNav.open("colors");
             } else {
                 Popups.toggle("start", root.island, root.island_color, root.screen_name);
             }

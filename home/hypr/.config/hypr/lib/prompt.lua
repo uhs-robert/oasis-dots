@@ -5,6 +5,8 @@
 
 local Config = require("config") ---@class Config
 local Hypr = require("lib.hypr") ---@class HyprLib
+local Cmd = require("lib.actions.cmd") ---@class Cmd
+local Scripts = require("lib.scripts") ---@class Scripts
 
 local STATE_FILE = "/tmp/hypr-prompt-result"
 
@@ -41,21 +43,57 @@ function Prompt.async(label, callback)
   Hypr.cmd_then_dispatch(cmd, "_hv_prompt_cb()")()
 end
 
----Show a dmenu-style selection picker without blocking the compositor.
+---@param s string
+---@return string
+local function shell_quote(s) return "'" .. s:gsub("'", "'\\''") .. "'" end
+
+---@param s string
+---@return string
+local function json_str(s)
+  local escaped = s:gsub('[%c"\\]', function(c) return string.format("\\u%04x", c:byte()) end)
+  return '"' .. escaped .. '"'
+end
+
+---Show a selection picker without blocking the compositor: the Quickshell "choices" picker when the bar answers, else dmenu.
 ---`callback` is called once with the chosen string, or nil if cancelled.
 ---@param label    string
 ---@param choices  string[]
 ---@param callback fun(result: string|nil)
 function Prompt.select(label, choices, callback)
-  local input_file = "/tmp/hypr-prompt-choices"
+  local runtime = os.getenv("XDG_RUNTIME_DIR") or "/tmp"
+  local input_file = runtime .. "/hypr-prompt-choices"
+  local spec_file = input_file .. ".json"
   local f = io.open(input_file, "w")
   if f then
     f:write(table.concat(choices, "\n"))
     f:close()
   end
+  f = io.open(spec_file, "w")
+  if f then
+    local quoted = {}
+    for i, c in ipairs(choices) do
+      quoted[i] = json_str(c)
+    end
+    f:write(
+      '{"label":'
+        .. json_str(label)
+        .. ',"result_path":'
+        .. json_str(STATE_FILE)
+        .. ',"choices":['
+        .. table.concat(quoted, ",")
+        .. "]}"
+    )
+    f:close()
+  end
   install_cb(callback)
-  local cmd = "cat " .. input_file .. " | " .. build_cmd(label) .. " > " .. STATE_FILE
-  Hypr.cmd_then_dispatch(cmd, "_hv_prompt_cb()")()
+  local fallback = "cat "
+    .. shell_quote(input_file)
+    .. " | "
+    .. build_cmd(label)
+    .. " > "
+    .. STATE_FILE
+    .. " ; hyprctl dispatch '_hv_prompt_cb()'"
+  Cmd.run(Scripts.qs_picker .. " choices " .. shell_quote(fallback) .. " " .. shell_quote(spec_file))()
 end
 
 return Prompt
