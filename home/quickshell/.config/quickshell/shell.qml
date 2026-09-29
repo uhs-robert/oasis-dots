@@ -1,4 +1,5 @@
 //@ pragma UseQApplication
+//@ pragma Env mesa_glthread=false
 // home/quickshell/.config/quickshell/shell.qml
 import QtQuick
 import Quickshell
