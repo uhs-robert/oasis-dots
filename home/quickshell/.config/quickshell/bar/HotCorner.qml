@@ -25,7 +25,7 @@ PanelWindow {
     function fire() {
         if (root.fullscreen_here()) return;
         if (root.right) {
-            if (!root.overview || !root.overview.wanted) Popups.open("notifications", undefined);
+            if ((!root.overview || !root.overview.wanted) && Popups.find_default("notifications")) Popups.open("notifications", undefined);
         } else if (root.overview) {
             root.overview.show_overview();
         }
@@ -52,7 +52,8 @@ PanelWindow {
                 dwell.restart();
             } else {
                 dwell.stop();
-                root.fired = false;
+                // The overview covering the corner is not a real leave; closing it must not refire.
+                if (!root.overview || !root.overview.wanted) root.fired = false;
             }
         }
     }
