@@ -826,6 +826,21 @@ Item {
                         PathSvg { path: "M52 268 a6 6 0 1 0 12 0 a6 6 0 1 0 -12 0 M84 268 a6 6 0 1 0 12 0 a6 6 0 1 0 -12 0 M144 268 a6 6 0 1 0 12 0 a6 6 0 1 0 -12 0 M176 268 a6 6 0 1 0 12 0 a6 6 0 1 0 -12 0" }
                     }
                     ShapePath {
+                        strokeWidth: 2
+                        strokeColor: Qt.alpha(root.shadow, 0.65)
+                        fillGradient: RadialGradient {
+                            centerX: 124
+                            centerY: 262
+                            focalX: 124
+                            focalY: 262
+                            centerRadius: 14
+                            GradientStop { position: 0; color: root.white }
+                            GradientStop { position: 0.5; color: sword.steel_hi }
+                            GradientStop { position: 1; color: sword.steel_lo }
+                        }
+                        PathSvg { path: "M108 268 a12 12 0 1 0 24 0 a12 12 0 1 0 -24 0" }
+                    }
+                    ShapePath {
                         strokeWidth: 0
                         strokeColor: "transparent"
                         fillGradient: RadialGradient {
