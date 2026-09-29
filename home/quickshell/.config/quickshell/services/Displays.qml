@@ -26,6 +26,7 @@ Singleton {
     property var proposed: ({})
     property var queued: ({})
     property string after: ""
+    property var written: ({})
 
     readonly property int enabled_count: root.monitors.filter(m => !m.disabled).length
 
@@ -109,9 +110,8 @@ Singleton {
         const mode = root.after;
         root.after = "";
         if (mode === "keep") {
-            const monitors = Object.assign({}, root.saved, root.proposed);
-            root.saved = monitors;
-            write_proc.command = ["sh", "-c", 'mkdir -p "$(dirname "$1")" && printf %s "$2" > "$1.tmp" && mv "$1.tmp" "$1"', "sh", root.state_path, JSON.stringify({ monitors: monitors })];
+            root.written = Object.assign({}, root.saved, root.proposed);
+            write_proc.command = ["sh", "-c", 'mkdir -p "$(dirname "$1")" && printf %s "$2" > "$1.tmp" && mv "$1.tmp" "$1"', "sh", root.state_path, JSON.stringify({ monitors: root.written })];
             write_proc.running = true;
         } else if (mode === "revert") {
             const chunk = DisplayLayout.lua_chunk(root.monitors, root.snapshot);
@@ -123,8 +123,8 @@ Singleton {
         root.finish();
     }
 
-    function applied(text) {
-        if (text.trim().indexOf("error") === 0) {
+    function applied(code, text, err) {
+        if (code !== 0 || err.trim() !== "" || text.trim().indexOf("error") === 0) {
             root.say("Hyprland rejected the change");
             root.queued = {};
             root.after = "revert";
@@ -192,7 +192,10 @@ Singleton {
         stdout: StdioCollector {
             id: apply_out
         }
-        onExited: root.applied(apply_out.text)
+        stderr: StdioCollector {
+            id: apply_err
+        }
+        onExited: code => root.applied(code, apply_out.text, apply_err.text)
     }
 
     Process {
@@ -201,6 +204,10 @@ Singleton {
 
     Process {
         id: write_proc
+        onExited: code => {
+            if (code === 0) root.saved = root.written;
+            else root.say("Applied but not saved; it will not survive a restart");
+        }
     }
 
     FileView {
