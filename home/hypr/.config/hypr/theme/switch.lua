@@ -1,13 +1,14 @@
 #!/usr/bin/env lua
 -- home/hypr/.config/hypr/theme/switch.lua
 -- Standalone theme switcher. No hl dependency, safe to spawn as a subprocess.
--- Picks a palette via rofi, saves the choice, then reloads Hyprland so all
+-- Picks a palette via rofi (or `--set NAME` from Quickshell), saves the choice, then reloads Hyprland so all
 -- in-process generators (hyprland, quickshell, rofi, conf) run with hl available.
 
 local HOME = os.getenv("HOME")
 local COLORS_DIR = HOME .. "/.config/hypr/theme/colors"
 local STATE_FILE = HOME .. "/.config/hypr/theme/.current_theme"
-local DMENU = arg[1] or "rofi -name rofiDmenu -i -dmenu"
+local SET = arg[1] == "--set" and arg[2] or nil
+local DMENU = (not SET and arg[1]) or "rofi -name rofiDmenu -i -dmenu"
 
 --- Returns sorted list of palette names from the colors directory.
 --- @return string[]
@@ -46,10 +47,21 @@ end
 --- Reloads Hyprland.
 local function apply() os.execute("hyprctl reload") end
 
---- Entry point. Lists themes, prompts user, persists choice, and reloads.
+--- Entry point. Lists themes, picks one (via `--set NAME` or the prompt), persists it, and reloads.
 local function init()
   local names = list_themes()
   if #names == 0 then os.exit(1) end
+
+  if SET then
+    for _, name in ipairs(names) do
+      if name == SET then
+        save(name)
+        apply()
+        return
+      end
+    end
+    os.exit(1)
+  end
 
   local choice = pick_theme(names)
   if not choice then os.exit(0) end

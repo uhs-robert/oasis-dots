@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+# Prints the Oasis palettes Hyprland can switch to as JSON: { name: { key: "#hex", ... } }.
+set -euo pipefail
+
+dir="${1:-$HOME/.config/hypr/theme/colors}"
+shopt -s nullglob
+files=("$dir"/*.lua)
+((${#files[@]})) || {
+  echo "{}"
+  exit 0
+}
+awk '
+  FNR == 1 {
+    name = FILENAME
+    sub(/^.*\//, "", name)
+    sub(/\.lua$/, "", name)
+    printf "%s\"%s\": {", (n++ ? "," : ""), name
+    first = 1
+  }
+  match($0, /^[ \t]*[a-z_0-9]+[ \t]*=[ \t]*"#[0-9A-Fa-f]+"/) {
+    line = substr($0, RSTART, RLENGTH)
+    split(line, kv, "=")
+    key = kv[1]; gsub(/[ \t]/, "", key)
+    val = kv[2]; gsub(/[ \t"]/, "", val)
+    if (key ~ /^color[0-9]+$/) next
+    printf "%s\"%s\":\"%s\"", (first ? "" : ","), key, val
+    first = 0
+  }
+  ENDFILE { printf "}" }
+  BEGIN { printf "{" }
+  END { print "}" }
+' "${files[@]}"
