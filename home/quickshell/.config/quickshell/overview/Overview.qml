@@ -81,6 +81,19 @@ PanelWindow {
     })
     readonly property var layout: Layout.compute(root.filmstrip, root.groups, root.tiles, frame.body.width, frame.body.height, root.metrics, root.selected_index)
     readonly property bool animate_moves: root.filmstrip && Power.on_ac && root.reveal === 1
+    // The selected window (or the whole tile when empty) in body coordinates, for the scope skin.
+    readonly property var aim: {
+        const tile = root.selected_tile;
+        const r = root.filmstrip ? root.layout.big : root.layout.tile_rects[root.selected_index];
+        if (!tile || !r || r.w <= 0) return null;
+        const g = root.groups[tile.group];
+        const w = tile.windows.find(x => x.address === root.current_address);
+        const place = (g ? g.name + " : " : "") + tile.name;
+        if (!w) return { x: r.x, y: r.y, w: r.w, h: r.h, cls: tile.is_new ? "NEW" : "EMPTY", place: place, real: g ? { x: g.x, y: g.y, w: g.w, h: g.h } : null };
+        const cw = r.w - 4;
+        const ch = r.h - 4;
+        return { x: r.x + 2 + w.rx * cw, y: r.y + 2 + w.ry * ch, w: Math.max(4, w.rw * cw), h: Math.max(4, w.rh * ch), cls: w.label.toUpperCase(), place: place, real: w.real };
+    }
 
     screen: Quickshell.screens.find(s => s.name === root.held_screen_name) || null
     visible: false
@@ -191,7 +204,8 @@ PanelWindow {
             floating: ipc.floating === true,
             label: WindowState.short_class(t),
             title: t.title || "",
-            cls: WindowState.class_of(t)
+            cls: WindowState.class_of(t),
+            real: full ? { x: g.x, y: g.y, w: g.w, h: g.h } : { x: at[0], y: at[1], w: size[0], h: size[1] }
         };
     }
 
@@ -709,6 +723,15 @@ PanelWindow {
 
             onTile_clicked: root.tile_clicked(root.selected_index, "")
             onWindow_clicked: address => root.tile_clicked(root.selected_index, address)
+        }
+
+        ScopeAim {
+            anchors.fill: parent
+            aim: root.help_open ? null : root.aim
+            cls: root.aim ? root.aim.cls : ""
+            place: root.aim ? root.aim.place : ""
+            real: root.aim ? root.aim.real : null
+            glide: Power.on_ac && root.reveal === 1
         }
 
         // The full key list for the current mode, drawn over the tiles.
