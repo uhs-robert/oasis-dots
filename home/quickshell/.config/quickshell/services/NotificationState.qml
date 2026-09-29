@@ -20,6 +20,7 @@ Singleton {
     readonly property int timeout_normal_ms: 5000
     readonly property int timeout_low_ms: 3000
     readonly property int max_visible_toasts: 5
+    readonly property int max_history: 100
     readonly property var visible_toasts: root.toasts.slice(0, root.max_visible_toasts)
 
     // Keyboard focus on the toast stack; the selection is tracked by entry id.
@@ -61,7 +62,10 @@ Singleton {
         }
 
         const entry = root.make_entry(n, false);
-        if (!n.transient) root.history = [entry].concat(root.history);
+        if (!n.transient) {
+            root.history = [entry].concat(root.history);
+            root.trim_history();
+        }
         if (suppressed) return;
         root.toasts = [entry].concat(root.toasts);
         root.sync_timers();
@@ -154,6 +158,12 @@ Singleton {
         if (!live) return;
         if (live.notification) live.notification.dismiss();
         root.remove_entry(live);
+    }
+
+    // Oldest entries past the cap are dismissed so the server frees them and their images.
+    function trim_history() {
+        const extra = root.history.slice(root.max_history).filter(e => !root.toasts.some(t => t.id === e.id));
+        for (const entry of extra) root.dismiss(entry);
     }
 
     function clear_all() {
@@ -370,5 +380,6 @@ Singleton {
             restored.push(root.make_entry(n, true));
         }
         root.history = restored.reverse().concat(root.history);
+        root.trim_history();
     }
 }
