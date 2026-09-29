@@ -47,10 +47,21 @@ Tracks the Settings panel that drops from the center island (issue #361). Update
 
 State on 2026-09-29: step 1 merged; step 2 is PR #368 (branch `feat/settings-bar-modules`), with the two open findings below still to fix before merging.
 
-Steps 3 and 5 can run in parallel, each in its own worktree off `main`; they only share one line in `Sections.js` and this file. Test them on the live bar one at a time.
+Plan for the next session, all decided, no open questions: run four tracks in parallel, each in its own worktree off `main`. Each branch gets a review and a Codex pass, then a live test on the bar one at a time, and merges only after that test.
 
-- Step 3 (displays) is the risky one: build and test the keep-or-revert countdown first.
-- Step 5 (themes): first list the per-style knobs that already exist in `Style.qml` and agree which to expose before building the section.
+1. Bar fixes: the two open step 2 findings, then merge #368. Goes first; the other branches rebase on it.
+2. Displays (step 3).
+3. System (step 4).
+4. Themes (step 5).
+
+Answers given for these tracks:
+
+- Displays: keep-or-revert countdown is 15 seconds.
+- Color scheme: the Oasis palettes, picked in a Settings Colors section with a live preview. A choice recolors everything through the existing pipeline (save, reload Hyprland, every generator reruns); the palette drives Quickshell's primary, secondary and other colors. The rofi switch (`theme/switch.lua`, Start right-click) stays as is.
+- Theme audio covers lock/login music, UI sound effects (cursor, confirm, cancel), and notification sounds. Sounds are chiptune generated with sox per style and tracked in the repo, with a gitignored override folder for the user's own files.
+- Theme-specific options: expose the per-style knobs that already exist in `Style.qml` (scanlines, glow, dither, fonts, effects); the user trims after testing.
+- Power: idle timeouts (dim, lock, screen off, suspend; separate AC and battery), lid and power button actions, and the power profile on AC and battery.
+- Default apps: one state file drives both `xdg-mime` associations and Hyprland's `Config.app` launch binds; it wins over `<hostname>.lua`, like monitors.
 
 ## Step 3: displays
 
