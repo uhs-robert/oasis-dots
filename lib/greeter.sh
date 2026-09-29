@@ -10,7 +10,7 @@ stage_greeter() {
   local dest=$1 repo=$2
   local qs="$repo/home/quickshell/.config/quickshell"
   local live="${XDG_CONFIG_HOME:-$HOME/.config}/quickshell"
-  local state="${XDG_STATE_HOME:-$HOME/.local/state}/quickshell/style.json"
+  local state_dir="${XDG_STATE_HOME:-$HOME/.local/state}/quickshell"
 
   rm -rf "$dest"
   mkdir -p "$dest/lock/skins" "$dest/theme" "$dest/fonts"
@@ -29,19 +29,29 @@ stage_greeter() {
   [[ -f "$live/theme/theme.json" ]] && cp "$live/theme/theme.json" "$dest/theme/"
   cp "$qs"/fonts/*.ttf "$qs"/fonts/OFL-*.txt "$dest/fonts/"
 
-  local style=oasis lock=follow tint=primary music=on
-  if [[ -f "$state" ]]; then
-    style=$(jq -r '.style // "oasis"' "$state")
-    lock=$(jq -r '.lock_style // "follow"' "$state")
-    tint=$(jq -r '.lock_tint // "primary"' "$state")
-    music=$(jq -r 'if .lock_music == false then "off" else "on" end' "$state")
+  local style=oasis lock=follow tint=primary music=on session=Hyprland
+  local login_screen=follow login_tint=follow login_music=follow
+  [[ -f "$state_dir/style.json" ]] && style=$(jq -r '.style // "oasis"' "$state_dir/style.json")
+  if [[ -f "$state_dir/lock.json" ]]; then
+    lock=$(jq -r '.lock_style // "follow"' "$state_dir/lock.json")
+    tint=$(jq -r '.lock_tint // "primary"' "$state_dir/lock.json")
+    music=$(jq -r 'if .lock_music == false then "off" else "on" end' "$state_dir/lock.json")
   fi
+  if [[ -f "$state_dir/greeter.json" ]]; then
+    login_screen=$(jq -r '.screen // "follow"' "$state_dir/greeter.json")
+    login_tint=$(jq -r '.tint // "follow"' "$state_dir/greeter.json")
+    login_music=$(jq -r '.music // "follow"' "$state_dir/greeter.json")
+    session=$(jq -r '.session // "Hyprland"' "$state_dir/greeter.json")
+  fi
+  [[ "$login_screen" != "follow" ]] && lock=$login_screen
+  [[ "$login_tint" != "follow" ]] && tint=$login_tint
+  [[ "$login_music" != "follow" ]] && music=$login_music
   [[ "$lock" == "follow" ]] && lock=$style
   local file="${lock^}.qml"
   [[ "$lock" != "simple" && -f "$dest/lock/skins/$file" ]] || lock=simple
 
-  jq -n --arg user "${GREETER_USER:-$USER}" --arg lock "$lock" --arg tint "$tint" --arg music "$music" \
-    '{user: $user, lock_style: $lock, lock_tint: $tint, lock_music: $music, session: "Hyprland"}' >"$dest/greeter.json"
+  jq -n --arg user "${GREETER_USER:-$USER}" --arg lock "$lock" --arg tint "$tint" --arg music "$music" --arg session "$session" \
+    '{user: $user, lock_style: $lock, lock_tint: $tint, lock_music: $music, session: $session}' >"$dest/greeter.json"
   printf '%s\n' "$lock"
 }
 
