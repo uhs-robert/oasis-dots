@@ -61,11 +61,12 @@ Item {
     property var step: null
     property real tk: 1
     property bool content_on: true
+    // The title's intro fades the background up from black only the first time; returns from the menu keep it.
+    property bool title_bg_shown: false
     // The frame alternates between two layouts each page turn, like the game: L has full left and bottom rules, R full top and right ones.
     property bool layout_r: false
     readonly property real content_alpha: root.step && root.step.content ? root.tk : root.content_on ? 1 : 0
     readonly property real title_out: root.step && root.step.title === "out" ? root.tk : 0
-    readonly property real title_in: root.step && root.step.title === "in" ? root.tk : 1
 
     // The menu's cursor and note live in the scene as "menu:<item>:<note>" so every output agrees.
     readonly property var menu_items: ["load", "options", "reboot", "poweroff"]
@@ -198,7 +199,7 @@ Item {
         root.content_on = true;
     }
 
-    // Runs steps in order: {ms, ease, draw, wipe, content, title, keep, start}.
+    // Runs steps in order: {ms, ease, draw, wipe, content, title, keep, start}; title "out" zooms the title away.
     function run(list) {
         step_anim.stop();
         root.steps = list;
@@ -273,7 +274,6 @@ Item {
             list.push(swap(false));
         }
         if (framed_to) list.push({ ms: 150, content: true });
-        else if (to === "title") list.push({ ms: 400, title: "in", draw: () => ({ box: null, h: [], v: [] }) });
         root.run(list);
     }
 
@@ -1131,7 +1131,6 @@ Item {
         Loader {
             anchors.fill: parent
             active: root.shown === "title"
-            opacity: root.title_in
             sourceComponent: title_view
         }
 
@@ -1329,17 +1328,50 @@ Item {
     Component {
         id: title_view
 
+        // The intro: the background fades up from black while the lockup zooms down into place; the date fades in as it lands,
+        // and PRESS START appears and starts blinking the moment it does.
         Item {
+            id: title
+            readonly property bool fade_bg: !root.title_bg_shown
+            property real t: root.animate ? 0 : 1
+            readonly property real bg: title.fade_bg ? root.out(title.t, 0, 0.85) : 1
+            readonly property real land: root.out(title.t, 0.15, 1)
+            readonly property real lockup: root.out(title.t, 0.15, 0.55)
+            readonly property real info: root.out(title.t, 0.55, 1)
+            readonly property bool landed: title.t >= 1
+
+            Component.onCompleted: {
+                if (root.animate) intro.start();
+                root.title_bg_shown = true;
+            }
+
+            NumberAnimation {
+                id: intro
+                target: title
+                property: "t"
+                from: 0
+                to: 1
+                duration: 1800
+            }
+
+            Rectangle {
+                width: 1600
+                height: 900
+                color: "#000000"
+                opacity: 1 - title.bg
+                visible: opacity > 0
+            }
+
             TitleArt {
-                opacity: 0.8 * (1 - root.title_out)
+                opacity: 0.8 * title.bg * (1 - root.title_out)
             }
 
             Column {
                 y: 70
                 width: 1600
                 spacing: 0
-                scale: 1 + 0.18 * root.title_out
-                opacity: 1 - root.title_out
+                scale: (1.35 - 0.35 * title.land) * (1 + 0.18 * root.title_out)
+                opacity: title.lockup * (1 - root.title_out)
                 transformOrigin: Item.Center
 
                 Text {
@@ -1441,13 +1473,14 @@ Item {
                 Seg {
                     x: (1600 - width) / 2
                     y: 698
+                    visible: title.landed
                     text: "PRESS START BUTTON"
                     h: 24
                     gap: 3.2
                     color: "#c9d1c9"
 
                     SequentialAnimation on opacity {
-                        running: root.animate
+                        running: root.animate && title.landed
                         loops: Animation.Infinite
                         NumberAnimation { from: 1; to: 0.35; duration: 1200; easing.type: Easing.InOutSine }
                         NumberAnimation { from: 0.35; to: 1; duration: 1200; easing.type: Easing.InOutSine }
@@ -1457,6 +1490,7 @@ Item {
                 Text {
                     y: 780
                     width: 1600
+                    opacity: title.info
                     horizontalAlignment: Text.AlignHCenter
                     textFormat: Text.StyledText
                     text: "<font color=\"#d4d8d6\">" + root.clock_text + "</font>&nbsp;&nbsp;&nbsp; " + Qt.formatDate(root.now, "dddd, MMMM d, yyyy")
