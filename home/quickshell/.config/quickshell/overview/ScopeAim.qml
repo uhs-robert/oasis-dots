@@ -163,10 +163,13 @@ Item {
 
     Text {
         id: size_text
-        readonly property real base_y: root.ty + root.th + 8 <= root.height - 20 ? root.ty + root.th + 8 : root.ty + root.th - 24
+        readonly property bool below: root.ty + root.th + 8 <= root.height - 20
+        readonly property real base_y: size_text.below ? root.ty + root.th + 8 : root.ty + root.th - 24
+        // Too narrow for both readouts on one row: the size steps a row away from the target.
+        readonly property bool crowded: scope_text.x + scope_text.implicitWidth + 8 > size_text.x
         visible: !!root.real
         x: root.tx + root.tw - 4 - size_text.implicitWidth
-        y: size_text.base_y
+        y: size_text.base_y + (size_text.crowded ? (size_text.below ? 1 : -1) * (size_text.implicitHeight + 4) : 0)
         text: root.real ? Math.round(root.real.w) + " x " + Math.round(root.real.h) : ""
         color: root.hud
         font.family: Style.font_family

@@ -206,10 +206,24 @@ local function set_shared_monitor(active, name)
   shared_monitors[name] = entry
 end
 
+--- Quickshell layers whose window thumbnails open toplevel captures of their own.
+local thumbnail_layers = { "quickshell-overview", "quickshell-popup" }
+
+--- @return boolean
+local function thumbnails_open()
+  for _, ns in ipairs(thumbnail_layers) do
+    for _, l in ipairs(hl.get_layers({ namespace = ns }) or {}) do
+      if l.mapped then return true end
+    end
+  end
+  return false
+end
+
 --- Toggles browser opacity when a screenshare session starts or stops, and clears the shared window's effects.
 --- Browsers dim when inactive by default; override to full opacity during capture.
 local set_screenshare_handler = function()
   hl.on("screenshare.state", function(active, share_type, name)
+    if share_type == 1 and thumbnails_open() then return end
     if share_type == 1 then
       tag_shared_window(active, name)
     else

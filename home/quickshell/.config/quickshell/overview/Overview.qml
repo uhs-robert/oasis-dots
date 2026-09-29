@@ -329,9 +329,17 @@ PanelWindow {
     function activate() {
         const tile = root.selected_tile;
         if (!tile) return;
-        if (root.current_address !== "") WindowState.focus(root.current_address);
-        else root.focus_workspace(tile);
+        const address = root.current_address;
+        if (address === "") {
+            root.focus_workspace(tile);
+            root.hide_overview();
+            return;
+        }
+        // The first focus warps the cursor onto the window, so follow_mouse lands there when the overview unmaps.
+        WindowState.focus(address);
         root.hide_overview();
+        focus_timer.address = address;
+        focus_timer.restart();
     }
 
     function to_set(list) {
@@ -356,6 +364,20 @@ PanelWindow {
         if (here.length === 0) return;
         const all = here.every(a => root.marks.indexOf(a) >= 0);
         root.marks = all ? root.marks.filter(m => here.indexOf(m) < 0) : root.marks.concat(here.filter(a => root.marks.indexOf(a) < 0));
+    }
+
+    // Closes every marked window, or the selected one; selection steps to the next window.
+    function close_windows() {
+        const marked = root.alive(root.marks);
+        const doomed = marked.length > 0 ? marked : root.current_address !== "" ? [root.current_address] : [];
+        if (doomed.length === 0) return;
+        const at = root.tab_order.findIndex(w => w.address === root.current_address);
+        const left = root.tab_order.filter(w => doomed.indexOf(w.address) < 0);
+        const next = left.find(w => root.tab_order.indexOf(w) > at) || left[left.length - 1];
+        root.selected_address = next ? next.address : "";
+        root.marks = [];
+        for (const a of doomed) WindowState.close(a);
+        refresh_timer.restart();
     }
 
     function pick() {
@@ -465,6 +487,8 @@ PanelWindow {
             root.toggle_mark();
         } else if (!root.carrying && k === Qt.Key_V) {
             root.toggle_mark_all();
+        } else if (!root.carrying && k === Qt.Key_X) {
+            root.close_windows();
         } else if (k === Qt.Key_F) {
             root.filmstrip = !root.filmstrip;
         } else if (k === Qt.Key_Slash || event.text === "/") {
@@ -494,10 +518,10 @@ PanelWindow {
         : root.typing ? "Enter accept · Tab next match · Esc clear · ? help"
         : root.swap_address !== "" ? "m swap · Enter swap · Tab other window · hjkl workspace · Esc cancel · ? help"
         : root.carrying ? "hjkl workspace · Tab window · m drop · Enter drop · Esc cancel · ? help"
-        : root.marks.length > 0 ? "Space mark · V mark all · m move " + root.marks.length + " · hjkl move · Esc clear marks · ? help"
-        : "hjkl move · Tab window · Enter focus · m move · Space mark · / filter · f view · ? help · q close"
+        : root.marks.length > 0 ? "Space mark · V mark all · m move " + root.marks.length + " · x close " + root.marks.length + " · hjkl move · Esc clear marks · ? help"
+        : "hjkl move · Tab window · Enter focus · m move · x close · Space mark · / filter · f view · ? help · q close"
 
-    readonly property string normal_help: "h/j/k/l move between workspaces · Arrows move between workspaces · Tab next window · Shift+Tab previous window · Enter focus window, or the workspace if empty · m pick up window, or every marked window · Space/v mark or unmark window · V mark or unmark all in workspace · / filter windows · 1-9 select workspace by id · f toggle filmstrip view, j/k there jump monitors · Click focus window or workspace"
+    readonly property string normal_help: "h/j/k/l move between workspaces · Arrows move between workspaces · Tab next window · Shift+Tab previous window · Enter focus window, or the workspace if empty · m pick up window, or every marked window · x close window, or every marked window · Space/v mark or unmark window · V mark or unmark all in workspace · / filter windows · 1-9 select workspace by id · f toggle filmstrip view, j/k there jump monitors · Click focus window or workspace"
     readonly property string carry_help: "h/j/k/l choose target workspace · Arrows choose target workspace · 1-9 target workspace by id · Tab/Shift+Tab choose a window in the same workspace to swap with · m drop there, or swap with the SWAP window · Enter drop there, or swap · f toggle filmstrip view · Click drop on workspace · Esc cancel, marks come back"
     readonly property string help_text: root.typing ? "Type filter by class or title · Enter accept filter · Tab/Down next match · Shift+Tab/Up previous match · Backspace delete, clears when empty · Esc clear filter"
         : root.carrying ? root.carry_help
@@ -532,6 +556,14 @@ PanelWindow {
         id: refresh_timer
         interval: 120
         onTriggered: root.refresh()
+    }
+
+    // Focus waits for the overview to drop its exclusive keyboard grab, else the grab's release restores the old window.
+    Timer {
+        id: focus_timer
+        property string address: ""
+        interval: 60
+        onTriggered: WindowState.focus(focus_timer.address)
     }
 
     Connections {

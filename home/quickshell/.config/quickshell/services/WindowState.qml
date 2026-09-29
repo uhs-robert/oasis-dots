@@ -114,8 +114,20 @@ Singleton {
 
     function focus(address) {
         if (!root.valid(address)) return;
-        Hyprland.dispatch("hl.dsp.focus({ window = " + root.selector(address) + " })");
-        Hyprland.dispatch("hl.dsp.window.alter_zorder({ mode = 'top', window = " + root.selector(address) + " })");
+        const ws = (root.find(address) || {}).workspace;
+        const hidden = ws && !(ws.name || "").startsWith("special:") && (!ws.monitor || ws.monitor.activeWorkspace !== ws);
+        const target = hidden ? root.workspace_selector(ws.id) : "";
+        const steps = [
+            "hl.dsp.focus({ window = " + root.selector(address) + " })",
+            "hl.dsp.window.alter_zorder({ mode = 'top', window = " + root.selector(address) + " })"
+        ];
+        if (target === "") {
+            steps.forEach(s => Hyprland.dispatch(s));
+            return;
+        }
+        // Separate dispatches can land out of order, and the workspace switch would then refocus its last window.
+        steps.unshift("hl.dsp.focus({ workspace = " + target + " })");
+        Quickshell.execDetached(["hyprctl", "eval", steps.map(s => "hl.dispatch(" + s + ")").join("; ")]);
     }
 
     // Negative ids would read as relative, so those workspaces go by name.
@@ -132,6 +144,11 @@ Singleton {
         if (!root.valid(source_address) || target === "") return;
         Hyprland.dispatch("hl.dsp.window.move({ window = " + root.selector(source_address) + ", workspace = " + target + ", follow = " + (follow ? "true" : "false") + " })");
         if (follow) root.focus(source_address);
+    }
+
+    function close(address) {
+        if (!root.valid(address)) return;
+        Hyprland.dispatch("hl.dsp.window.close({ window = " + root.selector(address) + " })");
     }
 
     // Swaps two windows' places; `window` names the source, as it does for window.move.
