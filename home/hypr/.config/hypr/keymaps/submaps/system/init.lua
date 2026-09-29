@@ -11,7 +11,10 @@ local TUI_FILES = Config.app.tui_file_manager
 
 local CMD = {
   edit_keymaps = TERM_CMD .. " -e " .. TUI_FILES .. " ~/.config/hypr/keymaps/",
-  theme_switch = "~/.config/hypr/theme/switch.lua '" .. Config.app.dmenu_cmd .. "'",
+  theme_switch = Scripts.qs_ipc
+    .. " call settings open colors >/dev/null 2>&1 || ~/.config/hypr/theme/switch.lua '"
+    .. Config.app.dmenu_cmd
+    .. "'",
   restart_voxtype = "systemctl --user restart voxtype",
   restart_bar = "pkill -f '^qs -n'; qs -n",
 }

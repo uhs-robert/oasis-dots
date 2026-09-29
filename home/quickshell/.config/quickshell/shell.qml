@@ -163,6 +163,7 @@ ShellRoot {
     DirsProvider {}
     WindowsProvider {}
     KeybindsProvider {}
+    ChoicesProvider {}
     PopupIpc {}
     PickerIpc {}
     BrightnessIpc {}
