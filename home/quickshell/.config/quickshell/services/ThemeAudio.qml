@@ -75,17 +75,21 @@ Singleton {
 
         property string style_name: ""
         property string user_dir: ""
-        readonly property var urls: {
+        function listing(model) {
             const out = {};
-            for (let i = 0; i < shipped.count; i++) out[shipped.get(i, "fileName")] = String(shipped.get(i, "fileUrl"));
-            for (let i = 0; i < mine.count; i++) out[mine.get(i, "fileName")] = String(mine.get(i, "fileUrl"));
+            for (let i = 0; i < model.count; i++) out[model.get(i, "fileName")] = String(model.get(i, "fileUrl"));
             return out;
         }
 
+        readonly property var shipped_urls: pack.listing(shipped)
+        readonly property var user_urls: pack.listing(mine)
+
+        // Any of the user's files beats every shipped one.
         function find(base, exts) {
-            for (const ext of exts) {
-                const url = pack.urls[base + "." + ext];
-                if (url) return url;
+            for (const set of [pack.user_urls, pack.shipped_urls]) {
+                for (const ext of exts) {
+                    if (set[base + "." + ext]) return set[base + "." + ext];
+                }
             }
             return "";
         }
@@ -108,10 +112,10 @@ Singleton {
     Pack { id: ui_pack; user_dir: root.user_dir; style_name: root.pack_name }
     Pack { id: music_pack; user_dir: root.user_dir; style_name: root.music_on ? root.music_name : "" }
 
-    SoundEffect { id: fx_cursor; source: ui_pack.find("cursor", ["wav"]); volume: root.volume }
-    SoundEffect { id: fx_confirm; source: ui_pack.find("confirm", ["wav"]); volume: root.volume }
-    SoundEffect { id: fx_cancel; source: ui_pack.find("cancel", ["wav"]); volume: root.volume }
-    SoundEffect { id: fx_notify; source: ui_pack.find("notify", ["wav"]); volume: root.volume }
+    SoundEffect { id: fx_cursor; source: ui_pack.find("cursor", ["wav", "ogg"]); volume: root.volume }
+    SoundEffect { id: fx_confirm; source: ui_pack.find("confirm", ["wav", "ogg"]); volume: root.volume }
+    SoundEffect { id: fx_cancel; source: ui_pack.find("cancel", ["wav", "ogg"]); volume: root.volume }
+    SoundEffect { id: fx_notify; source: ui_pack.find("notify", ["wav", "ogg"]); volume: root.volume }
 
     MediaPlayer {
         id: player

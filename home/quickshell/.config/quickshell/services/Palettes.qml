@@ -15,6 +15,9 @@ Singleton {
     property var colors: ({})
     readonly property var names: Object.keys(root.colors)
     property string current: ""
+    // True once the palette list and the active name have both been read.
+    property bool settled: false
+    readonly property bool ready: root.settled && root.names.length > 0
     readonly property var swatch_keys: ["bg_core", "bg_surface", "fg_core", "theme_primary", "theme_secondary", "theme_accent", "green", "red", "blue", "magenta"]
 
     function label(name) {
@@ -64,8 +67,11 @@ Singleton {
         watchChanges: true
         printErrors: false
         onFileChanged: reload()
-        onLoaded: root.current = text().trim()
-        onLoadFailed: error => {}
+        onLoaded: {
+            root.current = text().trim();
+            root.settled = true;
+        }
+        onLoadFailed: error => root.settled = true
     }
 
     Component.onCompleted: loader.running = true

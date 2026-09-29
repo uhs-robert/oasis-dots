@@ -10,6 +10,8 @@ SettingsPane {
     id: root
 
     property int selected: 0
+    // Set once the user moves; until then the selection follows the active palette as it loads.
+    property bool touched: false
     readonly property string picked: Palettes.names[root.selected] || ""
 
     footer_hint: "/ find · j/k preview · gg/G first/last · 1-9 pick · Enter apply · Esc sections · q close"
@@ -19,35 +21,53 @@ SettingsPane {
 
     // Leaving the pane or closing the popup drops any unapplied preview.
     onLiveChanged: {
-        if (root.live) root.selected = Math.max(0, Palettes.names.indexOf(Palettes.current));
-        else Palettes.restore();
+        if (root.live) {
+            root.touched = false;
+            root.resync();
+        } else {
+            Palettes.restore();
+        }
     }
-    onPickedChanged: if (root.live && !root.popup.search_typing) Palettes.preview(root.picked)
-    Component.onCompleted: if (root.live) root.selected = Math.max(0, Palettes.names.indexOf(Palettes.current))
+    onPickedChanged: if (root.live && Palettes.ready && root.touched && !root.popup.search_typing) Palettes.preview(root.picked)
+    Component.onCompleted: root.resync()
     Component.onDestruction: Palettes.restore()
 
+    function resync() {
+        if (!root.touched && Palettes.ready) root.selected = Math.max(0, Palettes.names.indexOf(Palettes.current));
+    }
+
     function search_select(index) {
+        root.touched = true;
         root.selected = index;
     }
 
     function jump(delta) {
+        root.touched = true;
         root.selected = delta < 0 ? 0 : Palettes.names.length - 1;
     }
 
     function apply() {
-        Palettes.apply(root.picked);
+        if (Palettes.ready) Palettes.apply(root.picked);
+    }
+
+    Connections {
+        target: Palettes
+        function onReadyChanged() { root.resync(); }
+        function onNamesChanged() { root.resync(); }
+        function onCurrentChanged() { root.resync(); }
     }
 
     Connections {
         target: root.popup
         function onSearch_typingChanged() {
-            if (root.live && !root.popup.search_typing) Palettes.preview(root.picked);
+            if (root.live && Palettes.ready && root.touched && !root.popup.search_typing) Palettes.preview(root.picked);
         }
     }
 
     Keys.onPressed: event => {
         if (event.modifiers & Qt.ControlModifier) return;
         const count = Palettes.names.length;
+        if (event.key === Qt.Key_J || event.key === Qt.Key_K || (event.key >= Qt.Key_1 && event.key <= Qt.Key_9)) root.touched = true;
         if (event.key === Qt.Key_J) root.selected = root.wrap_index(root.selected, 1, count);
         else if (event.key === Qt.Key_K) root.selected = root.wrap_index(root.selected, -1, count);
         else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) root.apply();
@@ -123,6 +143,7 @@ SettingsPane {
                     anchors.fill: parent
                     onClicked: {
                         root.focus_pane();
+                        root.touched = true;
                         root.selected = row.index;
                         root.apply();
                     }
