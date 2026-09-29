@@ -395,6 +395,21 @@ Singleton {
         root.span_selection();
     }
 
+    function reselect() {
+        root.phase = "select";
+        if (root.mode === "window" || root.mode === "screen") return;
+        const r = root.sel_rect;
+        const c = root.cursor_screen === root.sel_screen ? root.cursor_point : Qt.point(r.x + r.width, r.y + r.height);
+        const right = c.x >= r.x + r.width / 2;
+        const bottom = c.y >= r.y + r.height / 2;
+        root.anchor_point = Qt.point(right ? r.x : r.x + r.width, bottom ? r.y : r.y + r.height);
+        root.cursor_point = Qt.point(right ? r.x + r.width : r.x, bottom ? r.y + r.height : r.y);
+        root.cursor_screen = root.sel_screen;
+        root.anchored = true;
+        root.keys_moved = true;
+        root.span_selection();
+    }
+
     function clear_anchor() {
         root.anchored = false;
         root.sel_screen = "";

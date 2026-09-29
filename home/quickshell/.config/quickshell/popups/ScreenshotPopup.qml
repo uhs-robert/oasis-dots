@@ -13,13 +13,13 @@ Popup {
     title: "Screenshot"
     preferred_width: 250
     footer_hint: "j/k move · Enter run · q close"
-    key_help: "j/k move · gg/G first/last · Enter run · r region · z frozen region · s screen · w window · f focused · R record region · W record window · S record screen · F record focused · p pixel · t text · x scroll text · X scroll capture · q close"
+    key_help: "j/k move · gg/G first/last · Enter run · r/i region · z frozen region · s screen · w window · f focused · R record region · W record window · S record screen · F record focused · p pixel · t text · x scroll text · X scroll capture · q close"
     body_height: content.implicitHeight + 24
     jumps_enabled: true
 
     // `select` rows use the themed selector; `flag` rows hand screenshot.sh one of its flags.
     readonly property var base_rows: [
-        { section: "Capture", key: "r", label: "Region", glyph: "\u{f0a6d}", select: "", frozen: false },
+        { section: "Capture", key: "r", alt_key: "i", label: "Region", glyph: "\u{f0a6d}", select: "", frozen: false },
         { section: "Capture", key: "z", label: "Frozen region", glyph: "\u{f0717}", select: "", frozen: true },
         { section: "Capture", key: "s", label: "Screen", glyph: "\u{f0e51}", select: "", frozen: false, mode: "screen" },
         { section: "Capture", key: "w", label: "Window", glyph: "\u{f0614}", select: "", frozen: false, mode: "window" },
@@ -71,7 +71,7 @@ Popup {
         focus: true
 
         Keys.onPressed: event => {
-            const typed = event.modifiers & (Qt.ControlModifier | Qt.AltModifier) ? -1 : root.rows.findIndex(r => r.key === event.text);
+            const typed = event.modifiers & (Qt.ControlModifier | Qt.AltModifier) ? -1 : root.rows.findIndex(r => r.key === event.text || r.alt_key === event.text);
             if (event.key === Qt.Key_J) {
                 root.selected = root.wrap_index(root.selected, 1, 0, root.rows.length);
             } else if (event.key === Qt.Key_K) {
