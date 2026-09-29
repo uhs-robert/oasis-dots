@@ -160,6 +160,8 @@ Item {
         return out;
     }
     readonly property var diagram: Art.diagram()
+    // Molecules drawn around the origin for the screensaver's drifters to pick from.
+    readonly property var saver_pool: [2, 4, 5, 8, 9, 12, 14, 17, 19, 21, 23, 27].map((seed, i) => Art.molecule(seed, 0, 0, 0.8 + (i % 4) * 0.2))
     readonly property var blobs: {
         const r = Art.rng(11), out = [];
         for (let i = 0; i < 14; i++) out.push({ x: r() * 1600, y: r() * 900, rx: 160 + r() * 380, ry: 80 + r() * 200, light: r() >= 0.5, a: 0.1 + r() * 0.22, s: (r() - 0.5) * 0.02 });
@@ -657,7 +659,7 @@ Item {
     // Everything below draws on the 1600x900 stage.
     Rectangle {
         anchors.fill: parent
-        color: root.view === "unlock" || root.view === "saver" ? "#000000" : "#0c100e"
+        color: root.view === "unlock" ? "#000000" : "#0c100e"
     }
 
     Stage {
@@ -665,7 +667,13 @@ Item {
 
         Murk {
             opacity: root.view === "load" ? 0.45 : 1
-            visible: root.view !== "unlock" && root.view !== "saver"
+            visible: root.view !== "unlock"
+        }
+
+        Rectangle {
+            anchors.fill: parent
+            visible: root.view === "saver"
+            color: "#66000000"
         }
 
         // The grey structure diagram behind NAME ENTRY.
@@ -916,6 +924,12 @@ Item {
             sourceComponent: name_view
         }
 
+        Loader {
+            anchors.fill: parent
+            active: root.view === "saver"
+            sourceComponent: saver_view
+        }
+
         Text {
             x: 158
             y: 790
@@ -931,17 +945,133 @@ Item {
             font.pixelSize: 40
         }
 
-        // The unlock and saver caption, typed out on black like the game's opening cards.
+        // The unlock caption, typed out on black like the game's opening cards.
         Text {
             anchors.right: parent.right
             anchors.rightMargin: 200
             y: 790
-            visible: root.view === "unlock" || root.view === "saver"
-            text: root.view === "saver" ? root.caption_text : root.caption_text.slice(0, root.animate ? root.caption_chars : root.caption_text.length)
+            visible: root.view === "unlock"
+            text: root.caption_text.slice(0, root.animate ? root.caption_chars : root.caption_text.length)
             textFormat: Text.PlainText
             color: "#f2f2f2"
             font.family: root.ui_font
             font.pixelSize: 34
+        }
+    }
+
+    // A red molecule that fades in somewhere, drifts and turns a little, fades out, then comes back elsewhere.
+    component Drifter: Item {
+        id: drifter
+        required property int index
+        readonly property int life: 9000 + drifter.index * 900
+        property var mol: root.saver_pool[drifter.index]
+        property real x0: 0
+        property real y0: 0
+        property real x1: 0
+        property real y1: 0
+        property real r0: 0
+        property real turn: 0
+        property real t: root.animate ? 0 : 0.5
+        x: drifter.x0 + (drifter.x1 - drifter.x0) * drifter.t
+        y: drifter.y0 + (drifter.y1 - drifter.y0) * drifter.t
+        rotation: drifter.r0 + drifter.turn * drifter.t
+        transformOrigin: Item.TopLeft
+        opacity: 0.7 * Math.min(1, drifter.t / 0.2, (1 - drifter.t) / 0.2)
+
+        function respawn() {
+            drifter.mol = root.saver_pool[Math.floor(Math.random() * root.saver_pool.length)];
+            drifter.x0 = 100 + Math.random() * 1300;
+            drifter.y0 = 80 + Math.random() * 700;
+            const a = Math.random() * Math.PI * 2, d = 120 + Math.random() * 200;
+            drifter.x1 = drifter.x0 + Math.cos(a) * d;
+            drifter.y1 = drifter.y0 + Math.sin(a) * d * 0.6;
+            drifter.r0 = (Math.random() - 0.5) * 60;
+            drifter.turn = (Math.random() - 0.5) * 30;
+        }
+
+        Component.onCompleted: drifter.respawn()
+
+        SequentialAnimation {
+            running: root.animate
+            PauseAnimation { duration: drifter.index * 2200 }
+            SequentialAnimation {
+                loops: Animation.Infinite
+                ScriptAction { script: drifter.respawn() }
+                NumberAnimation { target: drifter; property: "t"; from: 0; to: 1; duration: drifter.life; easing.type: Easing.InOutSine }
+                PauseAnimation { duration: 800 }
+            }
+        }
+
+        Shape {
+            preferredRendererType: Shape.CurveRenderer
+
+            ShapePath {
+                fillColor: "transparent"
+                strokeColor: "#40d63126"
+                strokeWidth: 7
+                joinStyle: ShapePath.RoundJoin
+                PathSvg { path: drifter.mol.d }
+            }
+
+            ShapePath {
+                fillColor: "transparent"
+                strokeColor: root.mol_red
+                strokeWidth: 2.2
+                joinStyle: ShapePath.MiterJoin
+                PathSvg { path: drifter.mol.d }
+            }
+        }
+
+        Repeater {
+            model: drifter.mol.labels
+
+            Text {
+                required property var modelData
+                x: modelData.x
+                y: modelData.y - 14
+                text: modelData.t
+                color: root.mol_red
+                font.family: root.ui_font
+                font.pixelSize: 15
+            }
+        }
+    }
+
+    Component {
+        id: saver_view
+
+        // The title with its text gone: dimmed paint, drifting molecules and a faint wandering clock.
+        Item {
+            id: saver
+            property real t: 0
+
+            NumberAnimation on t {
+                running: root.animate
+                from: 0
+                to: 3600
+                duration: 3600000
+                loops: Animation.Infinite
+            }
+
+            Paint {
+                opacity: 0.45
+            }
+
+            Repeater {
+                model: 5
+
+                Drifter {}
+            }
+
+            Seg {
+                x: 1300 - width / 2 + Math.sin(saver.t / 23) * 160
+                y: 780 + Math.sin(saver.t / 17) * 50
+                text: root.clock_text
+                h: 30
+                gap: 3.2
+                color: "#c9d1c9"
+                opacity: 0.3
+            }
         }
     }
 
