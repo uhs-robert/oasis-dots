@@ -196,7 +196,7 @@ Singleton {
         root.pending = "";
         root.prompt = "";
         root.granted = true;
-        launch_timer.interval = UPower.onBattery ? 1 : Math.max(1, Math.min(2000, root.unlock_ms));
+        launch_timer.interval = UPower.onBattery ? 1 : Math.max(1, Math.min(4000, root.unlock_ms));
         launch_timer.restart();
     }
 
