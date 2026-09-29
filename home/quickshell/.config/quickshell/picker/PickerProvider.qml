@@ -3,7 +3,7 @@ import QtQuick
 import Quickshell
 import "../services"
 
-// Base for a picker source. Items are { id, label, description, icon, keywords }; any other fields pass through.
+// Base for a picker source. Items are { id, label, description, icon, keywords, glyph, accent }; any other fields pass through.
 Scope {
     id: root
 

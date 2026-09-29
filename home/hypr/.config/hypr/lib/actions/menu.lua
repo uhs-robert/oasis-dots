@@ -53,8 +53,10 @@ end
 --- @param mode? string Passed to the provider on open, e.g. "move".
 --- @return fun()
 function Menu.picker(provider, fallback, mode)
-  local quoted = "'" .. fallback:gsub("'", "'\\''") .. "'"
-  return Cmd.run(Scripts.qs_picker .. " " .. provider .. " " .. quoted .. (mode and (" " .. mode) or ""))
+  local function quote(s) return "'" .. s:gsub("'", "'\\''") .. "'" end
+  return Cmd.run(
+    Scripts.qs_picker .. " " .. provider .. " " .. quote(fallback) .. (mode and (" " .. quote(mode)) or "")
+  )
 end
 
 -- Basic Action
@@ -63,6 +65,12 @@ Menu.run = function() return Menu.show("run") end
 Menu.ssh = function() return Menu.show("ssh") end
 Menu.window = function() return Menu.show("window") end
 Menu.hyprwindow = function() return Menu.picker("windows", show_cmd("hyprwindow")) end
+
+--- Return an action that lists the active submap's described binds, falling back to the rofi script.
+--- @return fun()
+function Menu.keybinds()
+  return function() Menu.picker("keybinds", Scripts.keybind_help, hl.get_current_submap())() end
+end
 
 --- Return an action that opens the Quickshell workspace overview.
 --- @return fun()

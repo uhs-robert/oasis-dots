@@ -401,7 +401,7 @@ Popup {
                         elide: Text.ElideRight
                         textFormat: Text.StyledText
                         text: Fuzzy.highlight(row.result.item.label || "", row.result.positions, String(row.fg(root.st.text_accent)))
-                        color: row.fg(root.st.text_fg)
+                        color: row.fg(row.result.item.accent ? root.st.text_accent : root.st.text_fg)
                         font.family: root.st.font_family
                         font.pixelSize: root.st.fs(-1)
                     }
