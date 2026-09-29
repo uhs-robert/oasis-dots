@@ -18,7 +18,7 @@ Singleton {
     readonly property var labels: ({ crt: "CRT", nes: "NES", snes: "SNES", gameboy: "Gameboy", goldeneye: "Goldeneye", ps1: "PSX", ff7: "FFVII", ps2: "PS2", halflife: "Half Life", tie: "Tie Fighter", modern: "Modern" })
 
     // Lock screens with no bar style of their own yet, name to label; never in `names`.
-    readonly property var lock_only: ({ ocarina: "Ocarina" })
+    readonly property var lock_only: ({ ocarina: "Ocarina", mgs2: "MGS2" })
     readonly property var lock_only_names: Object.keys(root.lock_only)
 
     function label(style_name) {
