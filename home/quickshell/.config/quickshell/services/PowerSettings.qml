@@ -20,7 +20,7 @@ Singleton {
     readonly property var idle_defaults: ({ dim: 150, lock: 300, screen_off: 0, suspend: 0 })
     readonly property var lid_actions: ["suspend", "lock", "poweroff", "ignore"]
     readonly property var button_actions: ["poweroff", "suspend", "lock", "ignore"]
-    readonly property var profiles: ["keep", "power-saver", "balanced", "performance"]
+    readonly property var profiles: PowerProfiles.hasPerformanceProfile ? ["keep", "power-saver", "balanced", "performance"] : ["keep", "power-saver", "balanced"]
     readonly property var idle_steps: [0, 30, 60, 120, 150, 180, 300, 600, 900, 1800, 3600, 7200]
 
     property var values: root.defaults()
@@ -57,10 +57,15 @@ Singleton {
         save_timer.restart();
     }
 
+    function profile_of(key) {
+        const value = root.values[key];
+        return root.profiles.indexOf(value) >= 0 ? value : "keep";
+    }
+
     function valid(key, value) {
         if (key === "power_button") return root.button_actions.indexOf(value) >= 0;
         if (key.indexOf("lid_") === 0) return root.lid_actions.indexOf(value) >= 0;
-        if (key.indexOf("profile_") === 0) return root.profiles.indexOf(value) >= 0;
+        if (key.indexOf("profile_") === 0) return ["keep", "power-saver", "balanced", "performance"].indexOf(value) >= 0;
         return Number.isInteger(value) && value >= 0;
     }
 

@@ -30,7 +30,7 @@ RowsSection {
             label: label,
             values: () => choices,
             text: v => v === "keep" ? "Leave as is" : v,
-            value: () => PowerSettings.values[key],
+            value: () => key.indexOf("profile_") === 0 ? PowerSettings.profile_of(key) : PowerSettings.values[key],
             set: v => PowerSettings.set(key, v)
         };
     }

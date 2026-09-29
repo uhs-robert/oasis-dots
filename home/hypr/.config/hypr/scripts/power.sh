@@ -67,7 +67,7 @@ gen_idle() {
 }
 
 start_idle() {
-  setsid -f hypridle -c "$(idle_conf)" >/dev/null 2>&1
+  setsid -f hypridle -c "$(idle_conf)" >/dev/null 2>&1 9>&-
 }
 
 idle() {
@@ -101,7 +101,7 @@ apply_inhibitor() {
   if [ "$want" = 1 ] && ! inhibiting; then
     setsid -f systemd-inhibit --what=handle-lid-switch:handle-power-key --who="$inhibit_tag" \
       --why="Lid and power button handled by Hyprland" --mode=block \
-      bash -c 'exec -a hypr-power-inhibit sleep infinity' >/dev/null 2>&1
+      bash -c 'exec -a hypr-power-inhibit sleep infinity' >/dev/null 2>&1 9>&-
   elif [ "$want" = 0 ] && inhibiting; then
     pkill -f -- "$inhibit_tag"
   fi
