@@ -157,6 +157,7 @@ ShellRoot {
     EmojiProvider {}
     DirsProvider {}
     WindowsProvider {}
+    KeybindsProvider {}
     PopupIpc {}
     PickerIpc {}
     BrightnessIpc {}

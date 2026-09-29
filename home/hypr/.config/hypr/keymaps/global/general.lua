@@ -1,5 +1,6 @@
 local Bind = require("lib.key.bind") ---@class BindLib
 local Config = require("config") ---@class Config
+local Menu = require("lib.actions.menu") ---@class Menu
 local Direction = require("lib.key.direction") ---@class Direction
 local Window = require("lib.actions.window") ---@class WindowActions
 
@@ -9,7 +10,7 @@ local OPTS = {
 }
 
 -- Utility
-Bind.leader_cmd("SLASH",  require("lib.scripts").keybind_help, OPTS.universal("Keybind Help"))
+Bind.leader_fn("SLASH",  Menu.keybinds(), OPTS.universal("Keybind Help"))
 
 -- Window Actions
 Bind.leader_key("X",   Window.close(),             "Close Window")
