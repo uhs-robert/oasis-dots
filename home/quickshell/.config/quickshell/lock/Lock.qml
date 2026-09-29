@@ -281,7 +281,7 @@ Singleton {
                 root.fail_count = 0;
                 root.message = "";
                 root.granted = true;
-                const delay = Power.on_ac ? Math.max(0, Math.min(2000, root.unlock_ms)) : 0;
+                const delay = Power.on_ac ? Math.max(0, Math.min(4000, root.unlock_ms)) : 0;
                 if (delay === 0) root.finish_unlock();
                 else unlock_timer.restart();
                 return;
@@ -381,7 +381,7 @@ Singleton {
 
     Timer {
         id: unlock_timer
-        interval: Math.max(1, Math.min(2000, root.unlock_ms))
+        interval: Math.max(1, Math.min(4000, root.unlock_ms))
         onTriggered: root.finish_unlock()
     }
 

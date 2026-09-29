@@ -10,7 +10,7 @@ Item {
     id: root
 
     property var ctx: null
-    readonly property int unlock_ms: 2000
+    readonly property int unlock_ms: 3550
 
     readonly property bool animate: !!root.ctx && root.ctx.animate
     readonly property string phase: root.ctx ? root.ctx.phase : "idle"
@@ -98,6 +98,7 @@ Item {
     readonly property string day_text: Qt.formatDate(root.now, "yyyy/MM/dd")
     readonly property string caption_text: root.host + ", " + root.clock_text + "..."
     property int caption_chars: 0
+    property real caption_alpha: 1
 
     // The description line under every menu screen, as [text, tone] with tone "", "red" or "green".
     readonly property var desc: {
@@ -304,6 +305,7 @@ Item {
 
     function start_unlock() {
         root.caption_chars = 0;
+        root.caption_alpha = 1;
         if (root.animate) unlock_anim.restart();
     }
 
@@ -361,13 +363,15 @@ Item {
         }
     }
 
-    // Green line, then black, then the host and time typed out; all inside unlock_ms.
+    // Green line, then black, the host and time typed out and held, then faded; all inside unlock_ms.
     SequentialAnimation {
         id: unlock_anim
         PauseAnimation { duration: 750 }
         NumberAnimation { target: black; property: "opacity"; from: 0; to: 1; duration: 200 }
         PropertyAction { target: root; property: "captioning"; value: true }
         NumberAnimation { target: root; property: "caption_chars"; from: 0; to: root.caption_text.length; duration: 800 }
+        PauseAnimation { duration: 1500 }
+        NumberAnimation { target: root; property: "caption_alpha"; to: 0; duration: 300 }
     }
 
     // A design-space stage, scaled to cover its parent and centred (SVG "slice").
@@ -1045,6 +1049,7 @@ Item {
             anchors.rightMargin: 200
             y: 790
             visible: root.view === "unlock"
+            opacity: root.caption_alpha
             text: root.caption_text.slice(0, root.animate ? root.caption_chars : root.caption_text.length)
             textFormat: Text.PlainText
             color: "#f2f2f2"
