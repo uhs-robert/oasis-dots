@@ -29,15 +29,23 @@ Tracks the Settings panel that drops from the center island (issue #361). Update
 - [x] Review findings resolved, PR merged
 - [ ] Optional: move lock settings out of `style.json` into their own state file
 
-## Step 2: bar modules
+## Step 2: bar modules (done)
 
 - [x] State file `state/quickshell/bars.json` merged over the tracked `bars.json`
 - [x] Module visibility toggles
 - [x] Module reordering (left, center, right)
 - [x] Per-monitor bar overrides
-- [ ] Live test on the bar (rebuild on edit, monitor targeting, own layout on and off)
+- [x] Live test on the bar (rebuild on edit, monitor targeting, own layout on and off)
+- [x] Review findings resolved, PR merged
 - [ ] Edit the `compact` flag per monitor; the override only seeds it
 - [ ] Add and remove module arguments (`system:temperature`); entries with arguments are only listed once a rule or the state names them
+
+## Next up
+
+Steps 3 and 5 can run in parallel, each in its own worktree off `main`; they only share one line in `Sections.js` and this file. Test them on the live bar one at a time.
+
+- Step 3 (displays) is the risky one: build and test the keep-or-revert countdown first.
+- Step 5 (themes): first list the per-style knobs that already exist in `Style.qml` and agree which to expose before building the section.
 
 ## Step 3: displays
 
