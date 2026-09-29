@@ -20,8 +20,9 @@ Popup {
     title: root.provider ? root.provider.title.toUpperCase() : "PICKER"
     footer_hint: "Enter " + root.verb + " · Esc normal · q close"
     footer_override: root.insert ? "Enter " + root.verb + " · Esc normal" : root.action_hint !== "" ? "Enter " + root.verb + " · " + root.action_hint + " · ? help · q close" : ""
-    key_help: ["Enter " + root.verb, "Up/Down move", "Ctrl+j/k move", "Tab/Shift+Tab next/prev", "Ctrl+u clear", "Esc normal mode", "j/k rows", "h/l columns", "gg/G first/last", "i/a insert", "/ search"].concat(root.action_hint !== "" ? [root.action_hint] : []).concat(["q/Esc close"]).join(" · ")
+    key_help: ["Enter " + root.verb, "Up/Down move", "Ctrl+j/k move", "Tab/Shift+Tab next/prev"].concat(root.tabs.length > 0 ? ["Ctrl+Tab/Ctrl+Shift+Tab tabs"] : []).concat(["Ctrl+u clear", "Esc normal mode", "j/k rows", "h/l columns", "gg/G first/last", "i/a insert", "/ search"]).concat(root.action_hint !== "" ? [root.action_hint] : []).concat(["q/Esc close"]).join(" · ")
     jumps_enabled: !root.insert
+    tabs: root.provider ? root.provider.tabs : []
 
     readonly property var provider: Pickers.provider
     readonly property string verb: root.provider ? root.provider.verb : "open"
@@ -30,7 +31,8 @@ Popup {
     readonly property int columns: root.dock_bottom && root.provider ? Math.max(1, root.provider.columns) : 1
     readonly property real cell_height: Style.px(30)
     readonly property real screen_height: root.screen ? root.screen.height : 1080
-    readonly property real anchored_height: query_bar.height + 8 + root.cell_height * Math.max(1, Math.min(10, root.results.length)) + detail.height + 6 + 24
+    readonly property real tabs_space: tab_rows.visible ? tab_rows.height + 8 : 0
+    readonly property real anchored_height: root.tabs_space + query_bar.height + 8 + root.cell_height * Math.max(1, Math.min(10, root.results.length)) + detail.height + 6 + 24
 
     body_height: root.dock_bottom ? Math.round(root.screen_height * 0.4) - root.header_height - root.footer_height - root.st.frame_drop : root.anchored_height
 
@@ -65,10 +67,25 @@ Popup {
     // Reset once hidden so an open finds the empty-query results already laid out.
     onVisibleChanged: if (!visible) root.reset()
     onIs_openChanged: if (is_open) {
+        if (root.provider) root.current_tab = root.provider.tab;
         root.reset();
         root.set_insert(!root.provider || root.provider.starts_insert);
     }
     Component.onCompleted: root.sync_slots()
+
+    onCurrent_tabChanged: if (root.provider && root.provider.tab !== root.current_tab) {
+        root.provider.select_tab(root.current_tab);
+        root.selected = 0;
+        grid.positionViewAtBeginning();
+    }
+
+    Connections {
+        target: root.provider
+
+        function onTabChanged() {
+            root.current_tab = root.provider.tab;
+        }
+    }
 
     Connections {
         target: Pickers
@@ -179,6 +196,8 @@ Popup {
             root.move_row(1);
         } else if (k === Qt.Key_Up || (ctrl && (k === Qt.Key_K || k === Qt.Key_P))) {
             root.move_row(-1);
+        } else if (ctrl && (k === Qt.Key_Tab || k === Qt.Key_Backtab) && root.tabs.length > 0) {
+            root.step_tab(k === Qt.Key_Tab ? 1 : -1);
         } else if (k === Qt.Key_Tab) {
             root.step(1);
         } else if (k === Qt.Key_Backtab) {
@@ -222,8 +241,19 @@ Popup {
 
         Keys.onPressed: event => root.handle_key(event)
 
+        TabRows {
+            id: tab_rows
+            visible: root.tabs.length > 0
+            width: parent.width
+            height: visible ? implicitHeight : 0
+            labels: root.tabs
+            current: root.current_tab
+            onPicked: index => root.set_tab(index)
+        }
+
         Rectangle {
             id: query_bar
+            y: root.tabs_space
             width: parent.width
             height: Style.px(30)
             radius: Style.radius(4)
@@ -310,7 +340,7 @@ Popup {
 
         Item {
             id: list_area
-            y: query_bar.height + 8
+            y: query_bar.y + query_bar.height + 8
             width: parent.width
             height: parent.height - y - detail.height - 6
 

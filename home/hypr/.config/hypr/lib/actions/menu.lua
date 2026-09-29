@@ -119,13 +119,8 @@ function Menu.zoxide(app)
 end
 
 --- Return an action that picks a character and types it into the focused window.
---- @param files? string rofimoji file set (e.g. "nerd_font"); default is emoji
 --- @return fun()
-function Menu.emoji(files)
-  local files_arg = files and (" --files " .. files) or ""
-  local rofimoji = "rofimoji --action type" .. files_arg .. " --selector-args '-name rofiDmenu'"
-  return Menu.picker("emoji", rofimoji, files)
-end
+function Menu.emoji() return Menu.picker("emoji", "rofimoji --action type --selector-args '-name rofiDmenu'") end
 
 --- Return an action that picks a Bitwarden entry (see ~/.config/rofi-rbw.rc).
 --- @return fun()

@@ -32,9 +32,6 @@ Submap.define({
       { "CTRL + V",      Menu.clipboard(),                                "Clipboard" },
       { "TAB",           Menu.overview(),                                 "Workspace Overview" },
       { "E",             Menu.emoji(),                                    "Emoji" },
-      { "SHIFT + E",     Menu.emoji("nerd_font"),                         "Nerd Font" },
-      { "CTRL + E",      Menu.emoji("gitmoji"),                           "Gitmoji" },
-      { "ALT + E",       Menu.emoji("fontawesome"),                       "Font Awesome" },
 
       -- Commands
       { "PERIOD",        Cmd.run(Scripts.voxtype),                        "Speech to Text" },
