@@ -70,7 +70,7 @@ Singleton {
     }
 
     function preview(kind) {
-        const fx = ({ cursor: fx_cursor, confirm: fx_confirm, cancel: fx_cancel, notify: fx_notify })[kind];
+        const fx = effects.item ? effects.item.fx[kind] : null;
         if (fx && fx.status === SoundEffect.Ready) fx.play();
     }
 
@@ -121,23 +121,31 @@ Singleton {
     Pack { id: login_pack; user_dir: root.user_dir; style_name: root.login_name }
     Pack { id: music_pack; user_dir: root.user_dir; style_name: root.music_on ? root.music_name : "" }
 
-    SoundEffect { id: fx_cursor; source: ui_pack.find("cursor", ["wav", "ogg"]); volume: root.volume }
-    SoundEffect { id: fx_confirm; source: ui_pack.find("confirm", ["wav", "ogg"]); volume: root.volume }
-    SoundEffect { id: fx_cancel; source: ui_pack.find("cancel", ["wav", "ogg"]); volume: root.volume }
-    SoundEffect { id: fx_notify; source: ui_pack.find("notify", ["wav", "ogg"]); volume: root.volume }
+    // QtMultimedia loads its FFmpeg backend on the first media object, so none exist while sounds are off.
+    Loader {
+        id: effects
+        active: root.ui || root.notify
+        sourceComponent: QtObject {
+            readonly property var fx: ({ cursor: fx_cursor, confirm: fx_confirm, cancel: fx_cancel, notify: fx_notify })
+            property SoundEffect fx_cursor: SoundEffect { source: ui_pack.find("cursor", ["wav", "ogg"]); volume: root.volume }
+            property SoundEffect fx_confirm: SoundEffect { source: ui_pack.find("confirm", ["wav", "ogg"]); volume: root.volume }
+            property SoundEffect fx_cancel: SoundEffect { source: ui_pack.find("cancel", ["wav", "ogg"]); volume: root.volume }
+            property SoundEffect fx_notify: SoundEffect { source: ui_pack.find("notify", ["wav", "ogg"]); volume: root.volume }
+        }
+    }
 
-    MediaPlayer {
-        id: player
-        source: root.music_on ? root.music_url : ""
-        loops: MediaPlayer.Infinite
-        audioOutput: AudioOutput {
-            volume: root.volume * 0.6
-        }
-        onMediaStatusChanged: {
-            if (player.mediaStatus === MediaPlayer.LoadedMedia && root.music_on) player.play();
-        }
-        onSourceChanged: {
-            if (player.source.toString() === "") player.stop();
+    Loader {
+        active: root.music_on
+        sourceComponent: MediaPlayer {
+            id: player
+            source: root.music_url
+            loops: MediaPlayer.Infinite
+            audioOutput: AudioOutput {
+                volume: root.volume * 0.6
+            }
+            onMediaStatusChanged: {
+                if (player.mediaStatus === MediaPlayer.LoadedMedia) player.play();
+            }
         }
     }
 
