@@ -51,7 +51,7 @@ p=$(pgrep -xn qs); ps -o etime=,rss= -p $p; grep -E 'Anonymous|AnonHuge' /proc/$
 - [ ] **5. Only build the shown weather tab.** Now only matters while the weather popup is open. `day_span` reads `daily_view.fit_days` on every tab, so Daily needs care.
 - [ ] **10. Glow layers.** `components/Popup.qml:642` layers the whole frame in glow or text-shadow styles; Osd, WhichKey and Meter do the same. Only matters in those styles.
 - [ ] **12. Notification array rebuilds.** `NotificationState` rebuilds whole arrays on each change and the popup rebuilds every row. CPU churn more than memory now that history is capped.
-- [ ] **Redundant Hyprland refreshes.** Each bar's `bar/modules/Workspaces.qml` calls `Hyprland.refreshToplevels()`/`refreshWorkspaces()` on every window event, so 4 bars send 4 requests per event.
+- [x] **Redundant Hyprland refreshes.** `services/WindowState.qml` now refreshes once per window event and runs one `hyprctl workspaces -j` for all bars; `bar/modules/Workspaces.qml` filters that list for its screen.
 
 ## Already fine
 

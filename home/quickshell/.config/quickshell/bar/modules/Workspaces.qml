@@ -54,8 +54,7 @@ Item {
     implicitHeight: Style.bar_workspace_dot.a > 0 ? Math.max(row.implicitHeight, root.pill_height) : row.implicitHeight
 
     // Workspace ids Hyprland reports on this screen, read with hyprctl.
-    property var hypr_ids: []
-    onScreen_nameChanged: ids_refresh.restart()
+    readonly property var hypr_ids: WindowState.hypr_workspaces.filter(w => w.monitor === root.screen_name).map(w => w.id)
 
     readonly property var workspace_list: {
         const list = Hyprland.workspaces.values.filter(w => w.id > 0 && w.monitor && w.monitor.name === root.screen_name);
@@ -66,19 +65,6 @@ Item {
         }
         list.sort((a, b) => a.id - b.id);
         return list;
-    }
-
-    Process {
-        id: hypr_ids_proc
-        running: true
-        command: ["hyprctl", "workspaces", "-j"]
-        stdout: StdioCollector {
-            onStreamFinished: {
-                try {
-                    root.hypr_ids = JSON.parse(text).filter(w => w.id > 0 && w.monitor === root.screen_name).map(w => w.id);
-                } catch (e) {}
-            }
-        }
     }
 
     function icon_for(cls) {
@@ -111,28 +97,6 @@ Item {
         Quickshell.execDetached(["hyprctl", "dispatch", "hl.dsp.window.close({ window = 'address:0x" + address + "' })"]);
     }
 
-    // The workspace/toplevel models can lag behind these events; nudge a resync.
-    Connections {
-        target: Hyprland
-
-        function onRawEvent(event) {
-            if (["openwindow", "closewindow", "movewindow", "workspace", "focusedmon"].includes(event.name)) {
-                Hyprland.refreshToplevels();
-                Hyprland.refreshWorkspaces();
-            } else if (["createworkspacev2", "destroyworkspacev2", "moveworkspacev2", "configreloaded", "monitoraddedv2"].includes(event.name)) {
-                ids_refresh.restart();
-            }
-        }
-    }
-
-    Timer {
-        id: ids_refresh
-        interval: 200
-        onTriggered: {
-            Hyprland.refreshWorkspaces();
-            hypr_ids_proc.running = true;
-        }
-    }
 
     MouseArea {
         anchors.fill: parent

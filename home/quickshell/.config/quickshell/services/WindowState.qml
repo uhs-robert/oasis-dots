@@ -3,6 +3,7 @@ pragma Singleton
 import QtQuick
 import Quickshell
 import Quickshell.Hyprland
+import Quickshell.Io
 
 // Hyprland windows in most-recently-focused order, with focus and move helpers.
 Singleton {
@@ -38,6 +39,44 @@ Singleton {
     function refresh() {
         Hyprland.refreshToplevels();
         Hyprland.refreshWorkspaces();
+    }
+
+    // Every workspace with its monitor, read with hyprctl; Quickshell can miss persistent ones at login.
+    property var hypr_workspaces: []
+
+    // One resync for all bars: the workspace/toplevel models can lag behind these events.
+    Connections {
+        target: Hyprland
+
+        function onRawEvent(event) {
+            if (["openwindow", "closewindow", "movewindow", "workspace", "focusedmon"].includes(event.name)) {
+                root.refresh();
+            } else if (["createworkspacev2", "destroyworkspacev2", "moveworkspacev2", "configreloaded", "monitoraddedv2"].includes(event.name)) {
+                ids_refresh.restart();
+            }
+        }
+    }
+
+    Timer {
+        id: ids_refresh
+        interval: 200
+        onTriggered: {
+            Hyprland.refreshWorkspaces();
+            ids_proc.running = true;
+        }
+    }
+
+    Process {
+        id: ids_proc
+        running: true
+        command: ["hyprctl", "workspaces", "-j"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                try {
+                    root.hypr_workspaces = JSON.parse(text).filter(w => w.id > 0).map(w => ({ id: w.id, monitor: w.monitor }));
+                } catch (e) {}
+            }
+        }
     }
 
     function find(address) {
