@@ -23,7 +23,8 @@ SettingsPane {
     readonly property bool has_own: root.monitor_key !== "" && !!BarConfig.state.monitors[root.monitor_key]
     readonly property var tracked: root.view_screen ? BarConfig.tracked_rule_for(root.view_screen) : null
     readonly property var view_layout: BarLayout.layout_of(BarLayout.effective(root.tracked, BarConfig.state, root.monitor_key))
-    readonly property int top_count: root.target_screen ? 2 : 1
+    readonly property int top_count: root.target_screen ? (root.has_own ? 3 : 2) : 1
+    readonly property bool own_compact: root.has_own && BarConfig.compact_for(BarConfig.state.monitors[root.monitor_key], root.target)
     readonly property var entries: {
         const out = [];
         for (const side of BarLayout.sides) {
@@ -35,7 +36,7 @@ SettingsPane {
     }
     readonly property int total: root.top_count + root.entries.length
 
-    footer_hint: "j/k move · Space show/hide · J/K reorder · H/L side · h/l target · / find · Esc sections · q close"
+    footer_hint: "j/k move · Space show/hide · J/K reorder · H/L side · a add argument · x remove · h/l target · / find · Esc sections · q close"
     search_rows: ["Editing target"].concat(root.target_screen ? ["Own layout"] : [], root.entries.map(e => e.entry))
     search_cursor: root.cursor
     implicitHeight: col.implicitHeight
@@ -65,6 +66,30 @@ SettingsPane {
         const eff = BarLayout.effective(root.tracked, BarConfig.state, root.monitor_key);
         if (!eff) return;
         BarConfig.set_state(BarLayout.set_own(BarConfig.state, root.monitor_key, eff, BarConfig.compact_for(eff, root.target_screen.name)));
+    }
+
+    function toggle_compact() {
+        if (!root.has_own) return;
+        BarConfig.set_state(BarLayout.set_compact(BarConfig.state, root.monitor_key, !root.own_compact));
+    }
+
+    function add_argument() {
+        const item = root.current_module();
+        if (!item) return;
+        const base = BarConfig.parse_module(item.entry).base;
+        const next = BarLayout.next_entry(base, root.entries.map(e => e.entry));
+        if (next === "") return;
+        const side = item.side === "hidden" ? "right" : item.side;
+        const index = item.side === "hidden" ? -1 : root.view_layout[side].indexOf(item.entry) + 1;
+        root.edit({ type: "show", entry: next, side: side, index: index });
+        root.follow(next);
+    }
+
+    function remove_argument() {
+        const item = root.current_module();
+        if (!item || item.entry.indexOf(":") < 0) return;
+        if (BarLayout.tracked_side(BarConfig.rules, item.entry) === "") root.edit({ type: "remove", entry: item.entry });
+        else if (item.side !== "hidden") root.edit({ type: "hide", entry: item.entry });
     }
 
     function edit(op) {
@@ -136,6 +161,9 @@ SettingsPane {
         else if (root.cursor === 0 && (event.key === Qt.Key_H || event.key === Qt.Key_L)) root.cycle_target(event.key === Qt.Key_H ? -1 : 1);
         else if (root.cursor === 0 && (event.key === Qt.Key_Return || event.key === Qt.Key_Enter || event.key === Qt.Key_Space)) root.cycle_target(1);
         else if (root.target_screen && root.cursor === 1 && (event.key === Qt.Key_L || event.key === Qt.Key_Return || event.key === Qt.Key_Enter || event.key === Qt.Key_Space)) root.toggle_own();
+        else if (root.has_own && root.cursor === 2 && (event.key === Qt.Key_H || event.key === Qt.Key_L || event.key === Qt.Key_Return || event.key === Qt.Key_Enter || event.key === Qt.Key_Space)) root.toggle_compact();
+        else if (on_module && !shift && event.key === Qt.Key_A) root.add_argument();
+        else if (on_module && !shift && event.key === Qt.Key_X) root.remove_argument();
         else if (on_module && (event.key === Qt.Key_Return || event.key === Qt.Key_Enter || event.key === Qt.Key_Space)) root.toggle_module();
         else return;
         event.accepted = true;
@@ -168,6 +196,18 @@ SettingsPane {
                 root.focus_pane();
                 root.cursor = 1;
                 root.toggle_own();
+            }
+        }
+
+        ChoiceRow {
+            visible: root.has_own
+            selected: root.live && root.cursor === 2
+            label: "Compact"
+            value_text: root.own_compact ? "on" : "off"
+            onStepped: {
+                root.focus_pane();
+                root.cursor = 2;
+                root.toggle_compact();
             }
         }
 
