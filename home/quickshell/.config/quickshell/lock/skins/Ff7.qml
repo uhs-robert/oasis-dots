@@ -588,17 +588,51 @@ Item {
         Stage {
             cover: true
 
+            // The warm pool of light the tip stands in.
+            Item {
+                visible: root.screen !== "files"
+                x: 340
+                y: 736
+                width: 600
+                height: 130
+
+                Shape {
+                    width: 600
+                    height: 600
+                    preferredRendererType: Shape.CurveRenderer
+                    transform: Scale { yScale: 130 / 600 }
+                    ShapePath {
+                        strokeWidth: 0
+                        strokeColor: "transparent"
+                        fillGradient: RadialGradient {
+                            centerX: 300
+                            centerY: 300
+                            focalX: 300
+                            focalY: 300
+                            centerRadius: 300
+                            GradientStop { position: 0; color: Qt.alpha(Qt.tint(Theme.bg_mantle, Qt.alpha(Theme.bright_yellow, 0.6)), 0.85) }
+                            GradientStop { position: 0.6; color: Qt.alpha(Qt.tint(Theme.bg_mantle, Qt.alpha(Theme.bright_yellow, 0.4)), 0.3) }
+                            GradientStop { position: 1; color: "transparent" }
+                        }
+                        PathRectangle { width: 600; height: 600 }
+                    }
+                }
+            }
+
+            // The Buster Sword planted tip-down, as on the title screen: silver blade lit blue from the left.
             Item {
                 id: sword
                 width: 240
                 height: 1100
-                x: 800 - 120
-                y: 450 - 550 - 23
-                scale: 1152 / 1100
-                rotation: 54
-                opacity: root.stream_on ? 1 : 0.9
+                x: 864 - 120
+                y: 577 - 550
+                scale: 637 / 1100
+                rotation: 47
                 visible: root.screen !== "files"
                 property real glint_y: -400
+                readonly property color steel_hi: Qt.tint(Theme.fg_dim, Qt.alpha(root.white, 0.7))
+                readonly property color steel: Qt.tint(Theme.fg_dim, Qt.alpha(Theme.theme_primary_light, 0.35))
+                readonly property color steel_lo: Qt.tint(Theme.bg_surface, Qt.alpha(Theme.fg_dim, 0.45))
 
                 NumberAnimation on glint_y {
                     running: root.animate && root.screen !== "unlock"
@@ -609,46 +643,66 @@ Item {
                     easing.type: Easing.InOutSine
                 }
 
-                SequentialAnimation on rotation {
-                    running: root.animate && root.screen === "saver"
-                    loops: Animation.Infinite
-                    NumberAnimation { from: 54; to: 56; duration: 12000; easing.type: Easing.InOutSine }
-                    NumberAnimation { from: 56; to: 52; duration: 24000; easing.type: Easing.InOutSine }
-                    NumberAnimation { from: 52; to: 54; duration: 12000; easing.type: Easing.InOutSine }
-                }
-
                 Shape {
                     anchors.fill: parent
                     preferredRendererType: Shape.CurveRenderer
                     ShapePath {
                         strokeWidth: 0
                         strokeColor: "transparent"
-                        fillGradient: LinearGradient {
-                            x1: 44
-                            x2: 196
-                            GradientStop { position: 0; color: Theme.bg_mantle }
-                            GradientStop { position: 0.55; color: Theme.bg_surface }
-                            GradientStop { position: 1; color: Theme.bg_mantle }
+                        fillGradient: RadialGradient {
+                            centerX: 60
+                            centerY: 860
+                            focalX: 60
+                            focalY: 860
+                            centerRadius: 420
+                            GradientStop { position: 0; color: Qt.alpha(Qt.tint(Theme.info, Qt.alpha(root.white, 0.3)), 0.42) }
+                            GradientStop { position: 0.5; color: Qt.alpha(Theme.info, 0.12) }
+                            GradientStop { position: 1; color: "transparent" }
                         }
-                        PathSvg { path: "M44 282 H196 V960 L44 1092 Z" }
+                        PathRectangle { x: -400; y: 380; width: 900; height: 960 }
                     }
                     ShapePath {
                         strokeWidth: 0
                         strokeColor: "transparent"
-                        fillColor: Qt.tint(Theme.bg_mantle, Qt.alpha(root.shadow, 0.55))
-                        PathSvg { path: "M44 282 H68 V1071 L44 1092 Z" }
+                        fillGradient: LinearGradient {
+                            x1: 52
+                            x2: 188
+                            GradientStop { position: 0; color: sword.steel_hi }
+                            GradientStop { position: 0.4; color: sword.steel }
+                            GradientStop { position: 1; color: sword.steel_lo }
+                        }
+                        PathSvg { path: "M52 282 H188 V968 L52 1092 Z" }
                     }
                     ShapePath {
                         strokeWidth: 0
                         strokeColor: "transparent"
-                        fillColor: Qt.tint(Theme.bg_surface, Qt.alpha(Theme.fg_dim, 0.45))
-                        PathSvg { path: "M182 282 H196 V960 L44 1092 L44 1076 L182 956 Z" }
+                        fillGradient: LinearGradient {
+                            y1: 282
+                            y2: 1092
+                            GradientStop { position: 0; color: Qt.alpha(root.shadow, 0.45) }
+                            GradientStop { position: 0.6; color: Qt.alpha(root.shadow, 0.1) }
+                            GradientStop { position: 1; color: Qt.alpha(root.white, 0.12) }
+                        }
+                        PathSvg { path: "M52 282 H188 V968 L52 1092 Z" }
                     }
                     ShapePath {
-                        strokeWidth: 1.5
-                        strokeColor: Qt.alpha(Theme.fg_dim, 0.55)
+                        strokeWidth: 0
+                        strokeColor: "transparent"
+                        fillColor: Qt.tint(root.white, Qt.alpha(Theme.info, 0.35))
+                        PathSvg { path: "M52 282 H61 V1084 L52 1092 Z" }
+                    }
+                    ShapePath {
+                        strokeWidth: 0
+                        strokeColor: "transparent"
+                        fillColor: Qt.alpha(root.shadow, 0.35)
+                        PathSvg { path: "M176 282 H188 V968 L52 1092 L52 1080 L176 962 Z" }
+                    }
+                    ShapePath {
+                        strokeWidth: 3
+                        strokeColor: Qt.alpha(root.shadow, 0.22)
                         fillColor: "transparent"
-                        PathSvg { path: "M68 300 V1060 M182 300 V950" }
+                        capStyle: ShapePath.RoundCap
+                        PathSvg { path: "M92 700 q12 30 4 60 M110 790 q-10 24 6 50 M88 880 l18 30 M126 860 q6 20 -4 40 M100 960 q10 18 2 36" }
                     }
                     ShapePath {
                         strokeWidth: 0
@@ -657,88 +711,102 @@ Item {
                             y1: sword.glint_y
                             y2: sword.glint_y + 220
                             GradientStop { position: 0; color: Qt.alpha(root.white, 0) }
-                            GradientStop { position: 0.5; color: Qt.alpha(root.white, root.animate ? 0.22 : 0) }
+                            GradientStop { position: 0.5; color: Qt.alpha(root.white, root.animate ? 0.18 : 0) }
                             GradientStop { position: 1; color: Qt.alpha(root.white, 0) }
                         }
-                        PathSvg { path: "M44 282 H196 V960 L44 1092 Z" }
+                        PathSvg { path: "M52 282 H188 V968 L52 1092 Z" }
                     }
                     ShapePath {
                         strokeWidth: 2
-                        strokeColor: Qt.alpha(Theme.fg_dim, 0.5)
+                        strokeColor: Qt.alpha(sword.steel_lo, 0.8)
                         fillColor: root.shadow
-                        PathSvg { path: "M110 336 a15 15 0 1 0 30 0 a15 15 0 1 0 -30 0 M110 388 a15 15 0 1 0 30 0 a15 15 0 1 0 -30 0" }
+                        PathSvg { path: "M109 334 a11 11 0 1 0 22 0 a11 11 0 1 0 -22 0 M109 378 a11 11 0 1 0 22 0 a11 11 0 1 0 -22 0" }
                     }
                     ShapePath {
                         strokeWidth: 0
                         strokeColor: "transparent"
-                        fillColor: Qt.tint(Theme.bg_mantle, Qt.alpha(Theme.bright_yellow, 0.2))
-                        PathSvg { path: "M110 34 h20 q4 0 4 4 v200 q0 4 -4 4 h-20 q-4 0 -4 -4 v-200 q0 -4 4 -4 z" }
-                    }
-                    ShapePath {
-                        strokeWidth: 3
-                        strokeColor: Qt.alpha(root.shadow, 0.7)
-                        fillColor: "transparent"
-                        PathSvg { path: "M106 44 L134 54 M106 60 L134 70 M106 76 L134 86 M106 92 L134 102 M106 108 L134 118 M106 124 L134 134 M106 140 L134 150 M106 156 L134 166 M106 172 L134 182 M106 188 L134 198 M106 204 L134 214 M106 220 L134 230" }
+                        fillGradient: LinearGradient {
+                            x1: 110
+                            x2: 130
+                            GradientStop { position: 0; color: Qt.tint(root.shadow, Qt.alpha(Theme.red, 0.5)) }
+                            GradientStop { position: 0.4; color: Qt.tint(root.shadow, Qt.alpha(Theme.red, 0.72)) }
+                            GradientStop { position: 1; color: Qt.tint(root.shadow, Qt.alpha(Theme.red, 0.35)) }
+                        }
+                        PathSvg { path: "M110 40 h20 v214 h-20 z" }
                     }
                     ShapePath {
                         strokeWidth: 0
                         strokeColor: "transparent"
-                        fillColor: Qt.tint(Theme.fg_dim, Qt.alpha(Theme.bg_surface, 0.8))
-                        PathSvg { path: "M62 252 h116 q4 0 4 4 v22 q0 4 -4 4 h-116 q-4 0 -4 -4 v-22 q0 -4 4 -4 z M101 240 h38 q3 0 3 3 v8 q0 3 -3 3 h-38 q-3 0 -3 -3 v-8 q0 -3 3 -3 z M106 14 h28 q6 0 6 6 v10 q0 6 -6 6 h-28 q-6 0 -6 -6 v-10 q0 -6 6 -6 z M111 10 a9 9 0 1 0 18 0 a9 9 0 1 0 -18 0" }
+                        fillGradient: LinearGradient {
+                            y1: 250
+                            y2: 286
+                            GradientStop { position: 0; color: sword.steel_hi }
+                            GradientStop { position: 1; color: sword.steel_lo }
+                        }
+                        PathSvg { path: "M42 250 h156 q4 0 4 4 v28 q0 4 -4 4 h-156 q-4 0 -4 -4 v-28 q0 -4 4 -4 z" }
+                    }
+                    ShapePath {
+                        strokeWidth: 0
+                        strokeColor: "transparent"
+                        fillGradient: RadialGradient {
+                            centerX: 114
+                            centerY: 22
+                            focalX: 114
+                            focalY: 22
+                            centerRadius: 20
+                            GradientStop { position: 0; color: root.white }
+                            GradientStop { position: 0.45; color: sword.steel_hi }
+                            GradientStop { position: 1; color: sword.steel_lo }
+                        }
+                        PathSvg { path: "M104 28 a16 16 0 1 0 32 0 a16 16 0 1 0 -32 0" }
                     }
                 }
             }
+        }
 
-            Shape {
-                visible: root.screen === "title" || root.screen === "unlock"
-                anchors.fill: parent
-                preferredRendererType: Shape.CurveRenderer
-                ShapePath {
-                    strokeWidth: 0
-                    strokeColor: "transparent"
-                    fillGradient: RadialGradient {
-                        centerX: 800
-                        centerY: 594
-                        focalX: 800
-                        focalY: 594
-                        centerRadius: 640
-                        GradientStop { position: 0; color: Qt.alpha(root.shadow, 0.75) }
-                        GradientStop { position: 0.8; color: Qt.alpha(root.shadow, 0) }
-                    }
-                    PathRectangle { width: 1600; height: 900 }
-                }
+        // PS1-style ordered dither over the backdrop, in whole screen pixels.
+        Image {
+            readonly property int cell: Math.max(1, Math.round(root.height / 540))
+            readonly property string tile: {
+                const bayer = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5];
+                let rects = "";
+                for (let i = 0; i < 16; i++) rects += "<rect x='" + (i % 4) * cell + "' y='" + Math.floor(i / 4) * cell + "' width='" + cell + "' height='" + cell + "' fill-opacity='" + (bayer[i] / 16 * 0.32).toFixed(3) + "'/>";
+                return "data:image/svg+xml;utf8," + encodeURIComponent("<svg xmlns='http://www.w3.org/2000/svg' width='" + 4 * cell + "' height='" + 4 * cell + "'><g fill='" + Qt.rgba(root.shadow.r, root.shadow.g, root.shadow.b, 1) + "'>" + rects + "</g></svg>");
             }
+            anchors.fill: parent
+            fillMode: Image.Tile
+            smooth: false
+            source: tile
         }
 
         Stage {
             visible: root.screen === "title" || root.screen === "unlock"
 
             Column {
-                x: 800 - width / 2
-                y: 560
+                x: 716
+                y: 392
                 spacing: 0
 
                 Repeater {
-                    model: [{ t: "NEW GAME", k: "new" }, { t: "CONTINUE", k: "continue" }]
+                    model: [{ t: "NEW GAME", k: "new" }, { t: "Continue?", k: "continue" }]
                     Item {
                         id: row
                         required property var modelData
                         readonly property bool picked: root.on_new === (row.modelData.k === "new")
                         width: 220
-                        height: 54.4
+                        height: 44
 
                         Glove {
                             visible: row.picked
-                            x: -76.8
-                            y: 9.6
+                            x: -70
+                            y: 5
                         }
 
                         SText {
                             anchors.verticalCenter: parent.verticalCenter
                             text: row.modelData.t
-                            font.pixelSize: 34
-                            font.letterSpacing: 4
-                            color: row.modelData.k === "new" ? root.dim : root.white
+                            font.pixelSize: 30
+                            font.letterSpacing: 1.5
                         }
                     }
                 }
@@ -1164,7 +1232,7 @@ Item {
         }
     }
 
-    // Screensaver: the sword drifts and a play-time window walks the corners.
+    // Screensaver: a play-time window walks the corners over the Lifestream.
     Stage {
         visible: root.screen === "saver"
 
