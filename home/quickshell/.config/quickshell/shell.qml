@@ -67,12 +67,6 @@ ShellRoot {
                     overview: overview_window
                 }
 
-                HotCorner {
-                    screen: screen_scope.modelData
-                    overview: overview_window
-                    right: true
-                }
-
                 SubmapTab {
                     screen: screen_scope.modelData
                     screen_name: screen_scope.modelData.name

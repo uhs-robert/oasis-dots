@@ -6,11 +6,10 @@ import Quickshell.Wayland
 import "../lock"
 import "../services"
 
-// A tiny overlay square in a top corner: resting the pointer there opens the overview (left) or notifications (right).
+// A tiny overlay square in the top-left corner: resting the pointer there opens the overview.
 PanelWindow {
     id: root
 
-    property bool right: false
     property var overview: null
 
     readonly property int dwell_ms: 250
@@ -21,11 +20,8 @@ PanelWindow {
     readonly property bool reachable: {
         const sc = root.screen;
         if (!sc) return false;
-        const cx = root.right ? sc.x + sc.width : sc.x;
-        const side_x = root.right ? cx : cx - 1;
-        const top_x = root.right ? cx - 1 : cx;
         const covers = (s, x, y) => s !== sc && x >= s.x && x < s.x + s.width && y >= s.y && y < s.y + s.height;
-        return !Quickshell.screens.some(s => covers(s, side_x, sc.y) || covers(s, top_x, sc.y - 1));
+        return !Quickshell.screens.some(s => covers(s, sc.x - 1, sc.y) || covers(s, sc.x, sc.y - 1));
     }
 
     function fullscreen_here() {
@@ -34,12 +30,7 @@ PanelWindow {
     }
 
     function fire() {
-        if (root.fullscreen_here()) return;
-        if (root.right) {
-            if ((!root.overview || !root.overview.wanted) && Popups.find_default("notifications")) Popups.open("notifications", undefined);
-        } else if (root.overview) {
-            root.overview.show_overview();
-        }
+        if (!root.fullscreen_here() && root.overview) root.overview.show_overview();
     }
 
     visible: root.reachable && HotCorners.enabled && !Lock.locked
@@ -48,8 +39,7 @@ PanelWindow {
     implicitHeight: 3
     exclusionMode: ExclusionMode.Ignore
     anchors.top: true
-    anchors.left: !root.right
-    anchors.right: root.right
+    anchors.left: true
     WlrLayershell.namespace: "quickshell-hotcorner"
     WlrLayershell.layer: WlrLayer.Overlay
     WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
