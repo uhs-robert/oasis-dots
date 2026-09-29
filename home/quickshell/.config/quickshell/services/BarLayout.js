@@ -16,9 +16,19 @@ function unique(list) {
     return out;
 }
 
+function clean_last(raw) {
+    const out = {};
+    if (is_object(raw)) {
+        for (const k of Object.keys(raw)) {
+            if (sides.indexOf(raw[k]) >= 0) out[k] = raw[k];
+        }
+    }
+    return out;
+}
+
 // Clean copy of a state file's contents; throws on the wrong shape.
 function normalize(raw) {
-    if (raw === null || raw === undefined) return { shared: { place: {}, order: [] }, monitors: {} };
+    if (raw === null || raw === undefined) return { shared: { place: {}, order: [], last_side: {} }, monitors: {} };
     if (!is_object(raw)) throw new Error("bars.json state must be a JSON object");
     const shared = is_object(raw.shared) ? raw.shared : {};
     const place = {};
@@ -33,11 +43,11 @@ function normalize(raw) {
         for (const k of Object.keys(raw.monitors)) {
             const m = raw.monitors[k];
             if (!is_object(m)) continue;
-            monitors[k] = { left: unique(m.left), center: unique(m.center), right: unique(m.right) };
+            monitors[k] = { left: unique(m.left), center: unique(m.center), right: unique(m.right), last_side: clean_last(m.last_side) };
             if (typeof m.compact === "boolean") monitors[k].compact = m.compact;
         }
     }
-    return { shared: { place: place, order: unique(shared.order) }, monitors: monitors };
+    return { shared: { place: place, order: unique(shared.order), last_side: clean_last(shared.last_side) }, monitors: monitors };
 }
 
 function layout_of(rule) {
@@ -137,17 +147,31 @@ function order_from(layout, old) {
     return out;
 }
 
+// Side to restore a hidden entry to: its remembered side, else the tracked one, else right.
+function restore_side(rules, state, key, entry) {
+    const own = key && state.monitors[key];
+    const last = own ? own.last_side : state.shared.last_side;
+    return last[entry] || tracked_side(rules, entry) || "right";
+}
+
 // op: { type: "hide" | "show" | "side", entry, side? } or { type: "move", entry, delta }. Returns a new state.
 function edit(rule, state, key, op) {
     const next = normalize(state);
     const view = layout_of(effective(rule, next, key));
     const own = key && next.monitors[key];
+    const after = apply_op(view, op);
+    const was = side_of(view, op.entry);
     if (own) {
-        next.monitors[key] = Object.assign({}, own, apply_op(view, op));
-    } else if (op.type === "move") {
-        next.shared.order = order_from(apply_op(view, op), next.shared.order);
+        next.monitors[key] = Object.assign({}, own, after);
+        if (op.type === "hide" && was) next.monitors[key].last_side[op.entry] = was;
+        return next;
+    }
+    if (op.type === "hide") {
+        next.shared.place[op.entry] = "hidden";
+        if (was) next.shared.last_side[op.entry] = was;
     } else {
-        next.shared.place[op.entry] = op.type === "hide" ? "hidden" : op.side;
+        if (op.type !== "move") next.shared.place[op.entry] = op.side;
+        next.shared.order = order_from(after, next.shared.order);
     }
     return next;
 }

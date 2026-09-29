@@ -14,7 +14,6 @@ SettingsPane {
 
     property int cursor: 0
     property string target: ""
-    property var last_side: ({})
 
     readonly property var screens: Array.from(Quickshell.screens)
     readonly property var target_screen: root.screens.find(s => s.name === root.target) || null
@@ -78,12 +77,10 @@ SettingsPane {
         const item = root.current_module();
         if (!item) return;
         if (item.side !== "hidden") {
-            root.last_side[item.entry] = item.side;
             root.edit({ type: "hide", entry: item.entry });
             return;
         }
-        const back = root.last_side[item.entry] || BarLayout.tracked_side(BarConfig.rules, item.entry) || "right";
-        root.edit({ type: "show", entry: item.entry, side: back });
+        root.edit({ type: "show", entry: item.entry, side: BarLayout.restore_side(BarConfig.rules, BarConfig.state, root.monitor_key, item.entry) });
     }
 
     // Keeps the cursor on the module it moved.
@@ -116,7 +113,7 @@ SettingsPane {
         root.cursor = delta < 0 ? 0 : root.total - 1;
     }
 
-    onTop_countChanged: root.cursor = Math.min(root.cursor, root.total - 1)
+    onTotalChanged: root.cursor = Math.min(root.cursor, root.total - 1)
 
     Keys.onPressed: event => {
         if (event.modifiers & Qt.ControlModifier) return;
