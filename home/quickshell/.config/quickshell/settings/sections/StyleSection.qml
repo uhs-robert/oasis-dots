@@ -25,6 +25,13 @@ RowsSection {
             text: v => v,
             value: () => Style.cava_line ? "on" : "off",
             set: v => Style.set_cava_line(v === "on")
+        },
+        {
+            label: "Hot corners",
+            values: () => ["on", "off"],
+            text: v => v,
+            value: () => HotCorners.enabled ? "on" : "off",
+            set: v => HotCorners.set_enabled(v === "on")
         }
     ]
 
