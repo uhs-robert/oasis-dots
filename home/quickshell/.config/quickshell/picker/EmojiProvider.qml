@@ -4,7 +4,7 @@ import Quickshell
 import Quickshell.Io
 import "../services"
 
-// rofimoji character sets: Enter types the character into the previous window, `y` copies it.
+// rofimoji character sets, one per tab: Enter types the character into the previous window, `y` copies it.
 PickerProvider {
     id: root
 
@@ -23,7 +23,8 @@ PickerProvider {
         gitmoji: "gitmoji.csv",
         fontawesome: "fontawesome6.csv"
     })
-    readonly property var titles: ({ emoji: "Emoji", nerd_font: "Nerd Font", gitmoji: "Gitmoji", fontawesome: "Font Awesome" })
+    readonly property var sets: ["emoji", "gitmoji", "fontawesome", "nerd_font"]
+    tabs: ["Emoji", "GitHub", "Font Awesome", "Nerd Font"]
 
     property string set_name: "emoji"
     property string loading_set: ""
@@ -69,9 +70,13 @@ PickerProvider {
     }
 
     function refresh(arg) {
-        const set = root.globs[arg] !== undefined ? arg : "emoji";
+        root.select_tab(Math.max(0, root.sets.indexOf(arg)));
+    }
+
+    function select_tab(i) {
+        const set = root.sets[i];
+        root.tab = i;
         root.set_name = set;
-        root.title = root.titles[set];
         if (root.cache[set] !== undefined) {
             root.items = root.cache[set];
             return;

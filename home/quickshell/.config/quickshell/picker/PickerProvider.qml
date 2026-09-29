@@ -28,9 +28,14 @@ Scope {
     property var actions: []
     // Drawn beside the list with `entry` set to the selected item.
     property Component preview: null
+    // Tab labels drawn above the query; the picker calls select_tab(i) on a switch, which must set `tab`.
+    property var tabs: []
+    property int tab: 0
 
     // Called on every open with the opener's mode arg, so keep it cheap; an item's `icon_path` skips the picker's icon lookup.
     function refresh(arg) {}
+
+    function select_tab(i) {}
 
     function activate(item) {}
 
