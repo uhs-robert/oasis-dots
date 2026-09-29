@@ -59,6 +59,15 @@ Item {
         border.color: root.drop_target ? Style.text_accent : root.selected ? Style.caret_color : Theme.ui_border
     }
 
+    Dither {
+        visible: !root.is_new && color.a > 0
+        anchors.fill: parent
+        anchors.margins: 1
+        color: Style.dither
+        radius: Style.radius(6)
+        top_radius: Style.radius(6)
+    }
+
     DashedOutline {
         visible: root.is_new
         anchors.fill: parent

@@ -638,6 +638,15 @@ PanelWindow {
                     border.color: group.holds_selection ? Qt.alpha(Style.caret_color, 0.6) : Qt.alpha(Theme.ui_border, 0.6)
                 }
 
+                Dither {
+                    visible: !root.filmstrip && color.a > 0
+                    anchors.fill: parent
+                    anchors.margins: 1
+                    color: Style.dither
+                    radius: Style.radius(8)
+                    top_radius: Style.radius(8)
+                }
+
                 Rectangle {
                     visible: root.filmstrip
                     y: root.metrics.label - Style.px(4)
