@@ -1,4 +1,4 @@
-// home/quickshell/.config/quickshell/components/WhichKey.qml
+// home/quickshell/.config/quickshell/components/WhichKeyPanel.qml
 pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Effects
@@ -12,12 +12,11 @@ import "../theme"
 import "../services"
 import "neovim" as Neovim
 
-// HyprVim's which-key HUD over its `hyprvim_whichkey` IPC target, drawn in the active style.
+// The which-key HUD drawn in the active style; WhichKey owns the IPC target and builds this only while needed.
 PanelWindow {
     id: root
 
     property var payload: ({})
-    property bool wanted: false
 
     readonly property var items: root.payload.items || []
     readonly property string position: root.payload.position || "bottom-right"
@@ -52,7 +51,6 @@ PanelWindow {
         const mon = Hyprland.focusedMonitor;
         return (mon && Quickshell.screens.find(s => s.name === mon.name)) || null;
     }
-    visible: false
     color: "transparent"
     exclusiveZone: 0
     anchors.top: root.position.startsWith("top")
@@ -79,35 +77,6 @@ PanelWindow {
     WlrLayershell.namespace: "quickshell-whichkey"
     WlrLayershell.layer: WlrLayer.Overlay
     WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
-
-    IpcHandler {
-        target: "hyprvim_whichkey"
-
-        function open(path: string): void {
-            root.wanted = true;
-            payload_file.path = path;
-            payload_file.reload();
-        }
-
-        function close(): void {
-            root.wanted = false;
-            root.visible = false;
-        }
-    }
-
-    FileView {
-        id: payload_file
-        printErrors: false
-        onLoaded: {
-            if (!root.wanted) return;
-            try {
-                root.payload = JSON.parse(text());
-                root.visible = root.items.length > 0;
-            } catch (e) {
-                console.warn("WhichKey: invalid payload (" + e + ")");
-            }
-        }
-    }
 
     TextMetrics {
         id: arrow_metrics
