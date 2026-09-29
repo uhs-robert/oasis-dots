@@ -13,7 +13,8 @@ Item {
     property var ctx: null
     readonly property int unlock_ms: 900
 
-    readonly property real u: Math.min(root.width, root.height * 16 / 9) / 100
+    readonly property bool portrait: root.height > root.width
+    readonly property real u: root.portrait ? Math.min(root.width / 58, root.height / 100) : Math.min(root.width, root.height * 16 / 9) / 100
     readonly property bool animate: !!root.ctx && root.ctx.animate
     readonly property string phase: root.ctx ? root.ctx.phase : "idle"
     // The screensaver phase's effect: "matrix" or "starfield".
@@ -220,9 +221,9 @@ Item {
         Item {
             id: scope
             x: top.x
-            y: top.y + top.height + root.u * 3.4
-            width: root.width * 0.42
-            height: root.height - y - root.u * 8.5
+            y: root.portrait ? term.y + term.height + root.u * 3.6 : top.y + top.height + root.u * 3.4
+            width: root.portrait ? top.width : root.width * 0.42
+            height: root.portrait ? Math.min(width * 1.2, strip.y - y - root.u * 2.6) : root.height - y - root.u * 8.5
 
             readonly property real vx: width * 0.5
             readonly property real vy: height * 0.42
@@ -510,9 +511,10 @@ Item {
         // Terminal: clock, identity and the clearance gate.
         Item {
             id: term
-            x: root.width * 0.5
-            y: scope.y - root.u * 1.8
+            x: root.portrait ? top.x : root.width * 0.5
+            y: top.y + top.height + root.u * 1.6
             width: root.width - x - root.u * 3
+            height: gate.y + gate.height
 
             Text {
                 text: "STANDARD TIME"
@@ -660,18 +662,20 @@ Item {
 
         Rectangle {
             x: root.u * 3
-            y: parent.height - root.u * 3.6
+            y: strip.y - root.u * 0.7
             width: parent.width - x * 2
             height: Math.max(1, root.u * 0.1)
             color: root.vec_faint
         }
 
-        RowLayout {
+        GridLayout {
             id: strip
             x: root.u * 3
-            y: parent.height - root.u * 2.9
+            y: root.portrait ? parent.height - height - root.u * 1.8 : parent.height - root.u * 2.9
             width: parent.width - x * 2
-            spacing: 0
+            columns: root.portrait ? 3 : 5
+            columnSpacing: 0
+            rowSpacing: root.u * 0.6
 
             Repeater {
                 model: {
@@ -696,7 +700,7 @@ Item {
                     Rectangle {
                         Layout.preferredWidth: Math.max(1, root.u * 0.1)
                         Layout.fillHeight: true
-                        visible: stat.index > 0
+                        visible: stat.index % strip.columns > 0
                         color: root.vec_faint
                     }
 

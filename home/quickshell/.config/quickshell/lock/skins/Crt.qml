@@ -17,7 +17,8 @@ Item {
     readonly property bool full_bleed: true
     readonly property int unlock_ms: 1150
 
-    readonly property real u: Math.min(root.width, root.height * 16 / 9) / 100
+    readonly property bool portrait: root.height > root.width
+    readonly property real u: root.portrait ? root.width / 64 : Math.min(root.width, root.height * 16 / 9) / 100
     // The phosphor: the lock tint's bright shade for text, its base for dim text, rings and the glass.
     readonly property color tint_base: root.ctx ? root.ctx.tint_base : Theme.green
     readonly property color ph: root.ctx ? root.ctx.tint_bright : Theme.bright_green
@@ -214,11 +215,12 @@ Item {
                     visible: root.phase !== "saver"
                     opacity: root.dimmed ? 0.16 : 1
 
-                    RowLayout {
+                    GridLayout {
                         id: hdr
                         x: root.u * 3.4
                         y: root.u * 2.6
                         width: parent.width - x * 2
+                        columns: root.portrait ? 1 : 2
 
                         Text {
                             Layout.fillWidth: true
@@ -250,7 +252,9 @@ Item {
                     Rectangle {
                         id: title_box
                         anchors.horizontalCenter: parent.horizontalCenter
-                        y: hdr.y + hdr.height + root.u * 0.5 + root.u * 2.4
+                        readonly property real base_y: hdr.y + hdr.height + root.u * 0.5 + root.u * 2.4
+                        // Portrait sits the title and stats a little above the middle of the free space.
+                        y: root.portrait ? Math.max(base_y, base_y + (prompt.y - base_y - (height + root.u * 3.8 + sub.height + stats.height)) * 0.4) : base_y
                         width: title.implicitWidth + root.u * 6
                         height: title.implicitHeight + root.u * 0.8
                         color: "transparent"
@@ -269,11 +273,13 @@ Item {
                             id: title
                             anchors.centerIn: parent
                             anchors.horizontalCenterOffset: font.letterSpacing / 2
-                            text: "SYSTEM LOCKED"
+                            readonly property real title_size: root.u * (root.portrait ? 9.5 : 7.6)
+                            text: root.portrait ? "SYSTEM\nLOCKED" : "SYSTEM LOCKED"
+                            horizontalAlignment: Text.AlignHCenter
                             color: root.ph
                             font.family: root.font
-                            font.pixelSize: root.u * 7.6
-                            font.letterSpacing: root.u * 7.6 * 0.18
+                            font.pixelSize: title_size
+                            font.letterSpacing: title_size * 0.18
                         }
                     }
 
@@ -281,8 +287,9 @@ Item {
                         id: sub
                         anchors.horizontalCenter: parent.horizontalCenter
                         y: title_box.y + title_box.height + root.u * 0.8
-                        text: root.dim_bright("OPERATOR ", root.up(root.ctx ? root.ctx.user : "")) + "<font color='" + root.ph_dim + "'> · AUTHORISATION REQUIRED</font>"
+                        text: root.dim_bright("OPERATOR ", root.up(root.ctx ? root.ctx.user : "")) + "<font color='" + root.ph_dim + "'>" + (root.portrait ? "<br>" : " · ") + "AUTHORISATION REQUIRED</font>"
                         textFormat: Text.StyledText
+                        horizontalAlignment: Text.AlignHCenter
                         color: root.ph
                         font.family: root.font
                         font.pixelSize: root.u * 1.8
@@ -290,10 +297,11 @@ Item {
                     }
 
                     GridLayout {
+                        id: stats
                         anchors.horizontalCenter: parent.horizontalCenter
                         y: sub.y + sub.height + root.u * 3
-                        width: parent.width * 0.78
-                        columns: 4
+                        width: parent.width * (root.portrait ? 0.84 : 0.78)
+                        columns: root.portrait ? 2 : 4
                         columnSpacing: root.u * 1.8
                         rowSpacing: root.u * 0.5
 
@@ -318,7 +326,7 @@ Item {
                             Text {
                                 required property var modelData
                                 Layout.fillWidth: !modelData.key
-                                Layout.maximumWidth: modelData.key ? -1 : root.width * 0.3
+                                Layout.maximumWidth: modelData.key ? -1 : root.width * (root.portrait ? 0.6 : 0.3)
                                 text: modelData.text
                                 elide: Text.ElideRight
                                 color: modelData.key ? root.ph_dim : root.ph
@@ -341,7 +349,8 @@ Item {
                         id: banner
                         anchors.centerIn: parent
                         anchors.horizontalCenterOffset: font.letterSpacing / 2
-                        text: root.phase === "unlock" ? "ACCESS GRANTED" : "ACCESS DENIED"
+                        text: "ACCESS" + (root.portrait ? "\n" : " ") + (root.phase === "unlock" ? "GRANTED" : "DENIED")
+                        horizontalAlignment: Text.AlignHCenter
                         color: root.phase === "wrong" ? Theme.bg_shadow : Theme.bright_green
                         font.family: root.font
                         font.pixelSize: root.u * 7
@@ -352,7 +361,7 @@ Item {
                 Text {
                     visible: root.phase === "wrong" || root.phase === "unlock"
                     anchors.horizontalCenter: parent.horizontalCenter
-                    y: parent.height * 0.64
+                    y: parent.height * (root.portrait ? 0.72 : 0.64)
                     width: parent.width * 0.8
                     horizontalAlignment: Text.AlignHCenter
                     wrapMode: Text.Wrap
@@ -382,11 +391,13 @@ Item {
                         color: root.ph_dim
                     }
 
-                    RowLayout {
+                    GridLayout {
                         id: prompt_row
                         y: root.u * 0.6
                         width: parent.width
-                        spacing: root.u * 0.6
+                        columns: 5
+                        columnSpacing: root.u * 0.6
+                        rowSpacing: root.u * 0.4
 
                         Text {
                             id: prompt_label
@@ -397,7 +408,7 @@ Item {
                         }
 
                         Text {
-                            readonly property int shown: root.ctx ? (root.phase === "unlock" ? 8 : Math.min(root.ctx.buffer_length, 32)) : 0
+                            readonly property int shown: root.ctx ? (root.phase === "unlock" ? 8 : Math.min(root.ctx.buffer_length, root.portrait ? 10 : 32)) : 0
                             visible: shown > 0
                             text: "*".repeat(shown)
                             color: root.ph_hot
@@ -419,7 +430,12 @@ Item {
                             Layout.fillWidth: true
                         }
 
+                        // Portrait drops the status under the prompt, where the row has no room for it.
                         Text {
+                            Layout.row: root.portrait ? 1 : 0
+                            Layout.column: root.portrait ? 0 : 4
+                            Layout.columnSpan: root.portrait ? 5 : 1
+                            Layout.alignment: Qt.AlignRight | Qt.AlignVCenter
                             text: {
                                 const c = root.ctx;
                                 if (!c) return "";

@@ -811,6 +811,10 @@ Item {
         Item {
             id: title
             readonly property bool saver: root.view === "saver"
+            // Narrower than the stage (portrait), the logo and text shrink to fit while the sky still covers.
+            readonly property real fit: Math.min(1, title.width / title_stage.k / 860)
+            // There the sun and moon arc narrows to stay on screen.
+            readonly property real arc_k: title.fit < 1 ? (title.width / title_stage.k / 2 - 40) / 760 : 1
 
             Stage {
                 id: title_stage
@@ -860,7 +864,7 @@ Item {
                     height: 900
                     visible: root.moon_alpha > 0
                     opacity: root.moon_alpha
-                    x: root.moon_at.x - 1370
+                    x: 800 + (root.moon_at.x - 800) * title.arc_k - 1370
                     y: root.moon_at.y - 150
 
                     Radial {
@@ -915,7 +919,7 @@ Item {
                     height: 900
                     visible: root.sun_alpha > 0
                     opacity: root.sun_alpha
-                    x: root.sun_at.x - 1360
+                    x: 800 + (root.sun_at.x - 800) * title.arc_k - 1360
                     y: root.sun_at.y - 170
 
                     Radial {
@@ -1084,9 +1088,9 @@ Item {
 
                 Image {
                     id: logo
-                    width: 808.8 * 0.82
-                    height: 631.2 * 0.82
-                    x: 776.6 - width / 2
+                    width: 808.8 * 0.82 * title.fit
+                    height: 631.2 * 0.82 * title.fit
+                    x: 776.6 * title.fit + 800 * (1 - title.fit) - width / 2
                     y: 350.6 - height / 2
                     source: Qt.resolvedUrl("ocarina/logo.png")
                     sourceSize.width: Math.round(logo.width * title_stage.k)
@@ -1152,8 +1156,8 @@ Item {
                         styleColor: "#2a0400"
                         font.family: "Cinzel"
                         font.weight: 700
-                        font.pixelSize: 42
-                        font.letterSpacing: 4
+                        font.pixelSize: Math.round(42 * title.fit)
+                        font.letterSpacing: 4 * title.fit
 
                         SequentialAnimation on opacity {
                             running: root.animate && !title.saver && !root.lit
@@ -1177,8 +1181,8 @@ Item {
                     styleColor: "#000000"
                     font.family: root.ui_font
                     font.weight: 800
-                    font.pixelSize: 30
-                    font.letterSpacing: 1
+                    font.pixelSize: Math.round(30 * title.fit)
+                    font.letterSpacing: title.fit
                 }
             }
 

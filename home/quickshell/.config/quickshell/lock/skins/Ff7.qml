@@ -174,6 +174,8 @@ Item {
     // PS1-style 4x4 ordered dither: whole screen pixels, drawn in design units under a stage's scale of `k`.
     readonly property int dither_px: Math.max(1, Math.round(root.height / 540))
     readonly property real ui_k: Math.max(0.01, Math.min(root.width / 1600, root.height / 900))
+    readonly property bool tall: root.height > root.width
+    readonly property var title_frame: [480, 660, 560, 0.5]
     function dither_tile(cell) {
         const bayer = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5];
         let rects = "";
@@ -321,16 +323,21 @@ Item {
     }
 
     // A design-space stage centred on its parent: `cover` fills it and crops, else it fits whole.
+    // In portrait, `tall_frame` [x, width, y, at] spans design x..x+width across it with design y at `at` of its height.
     component Stage: Item {
         id: stage
         property bool cover: false
+        property var tall_frame: null
+        readonly property bool framed: root.tall && !!stage.tall_frame && !!stage.parent
         readonly property real kx: stage.parent ? stage.parent.width / 1600 : 1
         readonly property real ky: stage.parent ? stage.parent.height / 900 : 1
+        readonly property real k: stage.framed ? stage.parent.width / stage.tall_frame[1] : stage.cover ? Math.max(stage.kx, stage.ky) : Math.min(stage.kx, stage.ky)
+        readonly property real foot: stage.parent ? 450 + (stage.parent.height - stage.y - 450) / stage.k : 900
         width: 1600
         height: 900
-        x: stage.parent ? (stage.parent.width - 1600) / 2 : 0
-        y: stage.parent ? (stage.parent.height - 900) / 2 : 0
-        scale: stage.cover ? Math.max(stage.kx, stage.ky) : Math.min(stage.kx, stage.ky)
+        x: stage.framed ? -800 - (stage.tall_frame[0] - 800) * stage.k : stage.parent ? (stage.parent.width - 1600) / 2 : 0
+        y: stage.framed ? stage.parent.height * stage.tall_frame[3] - 450 - (stage.tall_frame[2] - 450) * stage.k : stage.parent ? (stage.parent.height - 900) / 2 : 0
+        scale: stage.k
     }
 
     // Menu text with the game's hard drop shadow.
@@ -366,6 +373,7 @@ Item {
         id: win
         default property alias content: body.data
         property real pad: 20
+        property real k: root.ui_k
         readonly property real r: 11
 
         Rectangle {
@@ -424,7 +432,7 @@ Item {
                     height: win.height
                     fillMode: Image.Tile
                     smooth: false
-                    source: root.dither_tile(root.dither_px / root.ui_k)
+                    source: root.dither_tile(root.dither_px / win.k)
                 }
             }
         }
@@ -625,6 +633,7 @@ Item {
 
         Stage {
             cover: true
+            tall_frame: root.title_frame
 
             // The warm pool of light the tip stands in.
             Item {
@@ -917,7 +926,9 @@ Item {
         }
 
         Stage {
+            id: title_stage
             visible: root.screen === "title" || root.screen === "unlock"
+            tall_frame: root.title_frame
 
             Column {
                 x: 716
@@ -950,9 +961,9 @@ Item {
             }
 
             SText {
-                x: 0
+                x: root.tall ? root.title_frame[0] + root.title_frame[1] / 2 - 800 : 0
                 width: 1600
-                y: 900 - 41.6 - height
+                y: (root.tall ? title_stage.foot : 900) - 41.6 - height
                 horizontalAlignment: Text.AlignHCenter
                 font.pixelSize: 18
                 font.letterSpacing: 3.2
@@ -967,6 +978,7 @@ Item {
                     if (c.has_weather) parts.push(c.weather_temp);
                     if (c.notifications > 0) parts.push(c.notifications + " mail");
                     if (root.login && c.host) parts.push(c.host);
+                    if (root.tall && parts.length > 2) return parts.slice(0, 2).join("  ·  ") + "<br>" + parts.slice(2).join("  ·  ");
                     return parts.join("  ·  ");
                 }
             }
@@ -1128,13 +1140,16 @@ Item {
 
     // Name entry: the password as the character naming screen, with the save slot's stats.
     Stage {
+        id: pw_stage
         visible: root.screen === "pw"
+        tall_frame: [0, 787.2, 0, 0.05]
 
         Win {
             x: 41.6
             y: 32
-            width: 1516.8
+            width: root.tall ? 704 : 1516.8
             height: 64
+            k: pw_stage.k
             pad: 0
             SText {
                 anchors.centerIn: parent
@@ -1158,6 +1173,7 @@ Item {
             width: 704
             height: 330
             pad: 22
+            k: pw_stage.k
 
             Lbl {
                 text: "Password"
@@ -1249,9 +1265,10 @@ Item {
 
         SText {
             id: miss
+            readonly property real rest_y: root.tall ? 820 : 600
             visible: root.phase === "wrong"
             x: 393.6 - width / 2
-            y: 600
+            y: miss.rest_y
             text: "Miss"
             font.pixelSize: 70
             wght: 900
@@ -1263,21 +1280,22 @@ Item {
             SequentialAnimation {
                 id: miss_pop
                 PropertyAction { target: miss; property: "opacity"; value: 0 }
-                PropertyAction { target: miss; property: "y"; value: 624 }
+                PropertyAction { target: miss; property: "y"; value: miss.rest_y + 24 }
                 ParallelAnimation {
-                    NumberAnimation { target: miss; property: "y"; to: 584; duration: 280; easing.type: Easing.OutBack; easing.overshoot: 3 }
+                    NumberAnimation { target: miss; property: "y"; to: miss.rest_y - 16; duration: 280; easing.type: Easing.OutBack; easing.overshoot: 3 }
                     NumberAnimation { target: miss; property: "opacity"; to: 1; duration: 200 }
                 }
-                NumberAnimation { target: miss; property: "y"; to: 600; duration: 210; easing.type: Easing.OutQuad }
+                NumberAnimation { target: miss; property: "y"; to: miss.rest_y; duration: 210; easing.type: Easing.OutQuad }
             }
         }
 
         Win {
-            x: 1600 - 41.6 - 704
-            y: 900 - 41.6 - height
+            x: root.tall ? 41.6 : 1600 - 41.6 - 704
+            y: root.tall ? 496.4 : 900 - 41.6 - height
             width: 704
             height: 214
             pad: 22
+            k: pw_stage.k
 
             Portrait {
                 user_name: root.current.name
