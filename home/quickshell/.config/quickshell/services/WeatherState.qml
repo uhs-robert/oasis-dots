@@ -206,7 +206,9 @@ Singleton {
         xhr.send();
     }
 
+    // A `location_name` setting replaces the looked-up place name, e.g. to keep a real city private.
     function fetch_forecast(lat, lon, location_name) {
+        location_name = root.settings.location_name || location_name;
         root.lat = lat;
         root.lon = lon;
 
