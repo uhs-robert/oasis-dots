@@ -1,6 +1,7 @@
 // home/quickshell/.config/quickshell/bar/SubmapTab.qml
 import QtQuick
 import Quickshell
+import Quickshell.Hyprland
 import Quickshell.Wayland
 import "../components"
 import "../theme"
@@ -15,6 +16,8 @@ PanelWindow {
     property bool chip_shown: false
     property string shown_name: ""
     property color shown_color: Theme.theme_secondary
+    // Only the focused monitor shows the tab, so a submap opens one window instead of one per bar.
+    readonly property bool focused: !!Hyprland.focusedMonitor && !!root.screen && Hyprland.focusedMonitor.name === root.screen.name
     property real line_progress: 0
     property real tab_progress: 0
 
@@ -29,11 +32,12 @@ PanelWindow {
     mask: Region {}
 
     onChip_shownChanged: root.sync()
+    onFocusedChanged: root.sync()
 
     // Keeps the last name and color on screen while the hide animation plays.
     function sync() {
         if (!root.bar_present) return;
-        if (SubmapState.active && !root.chip_shown) {
+        if (SubmapState.active && !root.chip_shown && root.focused) {
             root.shown_name = SubmapState.submap_name;
             root.shown_color = SubmapState.bar_color;
             hide_anim.stop();
