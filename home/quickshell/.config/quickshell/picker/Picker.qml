@@ -342,7 +342,22 @@ Popup {
                         anchors.verticalCenter: parent.verticalCenter
                         implicitSize: Style.px(20)
                         asynchronous: true
-                        source: root.icon_source(row.result.item)
+                        source: row.result.item.glyph ? "" : root.icon_source(row.result.item)
+                        visible: !row.result.item.glyph
+                    }
+
+                    Text {
+                        id: row_glyph
+                        visible: !!row.result.item.glyph
+                        x: 8 + row.inset
+                        width: Style.px(20)
+                        anchors.verticalCenter: parent.verticalCenter
+                        horizontalAlignment: Text.AlignHCenter
+                        text: row.result.item.glyph || ""
+                        textFormat: Text.PlainText
+                        color: row.fg(root.st.text_fg)
+                        font.family: root.st.font_family
+                        font.pixelSize: root.st.fs(2)
                     }
 
                     Text {

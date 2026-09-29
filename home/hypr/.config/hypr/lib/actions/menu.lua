@@ -113,16 +113,18 @@ function Menu.zoxide(app)
   local shell = [[zsh -i -c 'cd "{}" && ]] .. (app or "y") .. [[; exec zsh -i']]
   local class = app and "" or (" --class " .. FILE_MANAGER)
   local open = TERM_CMD .. class .. " -e " .. shell
-  return Cmd.run("zoxide query -l | " .. picker .. " | xargs -r -I{} " .. open)
+  local rofi = "zoxide query -l | " .. picker .. " | xargs -r -I{} " .. open
+  if app then return Cmd.run(rofi) end
+  return Menu.picker("dirs", rofi)
 end
 
 --- Return an action that picks a character and types it into the focused window.
---- @param files? string|string[] rofimoji file set(s), e.g. "nerd_font" (default: emoji)
+--- @param files? string rofimoji file set (e.g. "nerd_font"); default is emoji
 --- @return fun()
 function Menu.emoji(files)
-  local list = type(files) == "table" and files or { files }
-  local files_arg = files and (" --files " .. table.concat(list, " ")) or ""
-  return Cmd.run("rofimoji --action type" .. files_arg .. " --selector-args '-name rofiDmenu'")
+  local files_arg = files and (" --files " .. files) or ""
+  local rofimoji = "rofimoji --action type" .. files_arg .. " --selector-args '-name rofiDmenu'"
+  return Menu.picker("emoji", rofimoji, files)
 end
 
 --- Return an action that picks a Bitwarden entry (see ~/.config/rofi-rbw.rc).

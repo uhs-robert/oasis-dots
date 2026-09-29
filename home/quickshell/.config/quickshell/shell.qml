@@ -101,6 +101,8 @@ ShellRoot {
     HyprvimPrompt {}
     AppsProvider {}
     ClipboardProvider {}
+    EmojiProvider {}
+    DirsProvider {}
     WindowsProvider {}
     PopupIpc {}
     PickerIpc {}
