@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Imports the Ocarina lock skin's game audio into lock/skins/ocarina/audio (gitignored): loops cut at detected or given points, loudness evened out.
+# Imports the Ocarina lock skin's game audio into $XDG_DATA_HOME/quickshell/ocarina-audio (gitignored): loops cut at detected or given points, loudness evened out.
 # Each track's source is its first of .flac, .ogg or .mp3; loop points come from LOOPSTART/LOOPLENGTH (or LOOPEND) tags in it; untagged tracks are detected and the result is tagged into the source losslessly.
 # The fairy fountain plays from OCARINA_START (a tag in its source, else --fairy-start or 28s, snapped to an onset) into its loop.
 # Usage: ocarina-audio [--title-loop START END] [--fairy-loop START END] [--fairy-start SEC] [--redetect] [--out DIR] [SOURCE_DIR]   (seconds; overrides are tagged too)
@@ -10,7 +10,7 @@ title_loop=()
 fairy_loop=()
 fairy_start=
 redetect=0
-out="$(cd "$(dirname "$0")/.." && pwd)/lock/skins/ocarina/audio"
+out="${XDG_DATA_HOME:-$HOME/.local/share}/quickshell/ocarina-audio"
 while (($#)); do
   case "$1" in
   --title-loop)

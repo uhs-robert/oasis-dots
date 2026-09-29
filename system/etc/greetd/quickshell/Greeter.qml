@@ -58,7 +58,8 @@ Singleton {
     property int unlock_ms: 0
     property string power_armed: ""
 
-    property var sessions: [{ name: "Hyprland", exec: "/usr/bin/start-hyprland" }]
+    readonly property var safe_session: ({ name: "Safe Hyprland", exec: "/usr/bin/start-hyprland -- -c /etc/greetd/quickshell/safe-hyprland.lua", safe: true })
+    property var sessions: [{ name: "Hyprland", exec: "/usr/bin/start-hyprland" }, root.safe_session]
     property int session_index: 0
     readonly property var session: root.sessions[Math.min(root.session_index, root.sessions.length - 1)]
 
@@ -77,11 +78,18 @@ Singleton {
         tint: root.settings.lock_tint || "primary"
         power_live: !root.preview
         music: root.settings.lock_music !== "off"
+        session_name: root.session.name
     }
 
     Connections {
         target: root.ctx
         function onPower_request(action) { root.power_now(action); }
+        function onSession_request() { root.session_index = (root.session_index + 1) % root.sessions.length; }
+        function onSafe_request() {
+            const i = root.sessions.findIndex(s => s.safe === true);
+            if (i >= 0) root.session_index = i;
+        }
+        function onFallback_request() { root.fallback(); }
     }
 
     property bool ready: false
@@ -157,7 +165,7 @@ Singleton {
 
     function launch() {
         const exec = root.session.exec;
-        const cmd = exec === "/usr/bin/start-hyprland" ? "sh -c 'clear; exec /usr/bin/start-hyprland >/tmp/hyprland-greetd.log 2>&1'" : exec;
+        const cmd = exec.startsWith("/usr/bin/start-hyprland") ? "sh -c 'clear; exec " + exec + " >/tmp/hyprland-greetd.log 2>&1'" : exec;
         if (root.preview) {
             console.log("Greeter preview: would launch " + cmd);
             root.granted = false;
@@ -181,8 +189,12 @@ Singleton {
     }
 
     function power_now(action) {
-        if (action !== "reboot" && action !== "poweroff") return;
-        if (root.preview) root.message = "Preview: would " + action;
+        if (["reboot", "poweroff", "firmware"].indexOf(action) < 0) return;
+        if (root.preview) {
+            root.message = "Preview: would " + action;
+            return;
+        }
+        if (action === "firmware") Quickshell.execDetached(["systemctl", "reboot", "--firmware-setup"]);
         else Quickshell.execDetached(["systemctl", action]);
     }
 
@@ -370,6 +382,7 @@ Singleton {
                 if (list.length === 0) return;
                 const preferred = root.settings.session || "Hyprland";
                 list.sort((a, b) => (b.name === preferred) - (a.name === preferred));
+                list.push(root.safe_session);
                 root.sessions = list;
                 root.session_index = 0;
             }
