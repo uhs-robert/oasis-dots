@@ -31,6 +31,14 @@ Singleton {
     readonly property bool music_on: root.lock_active && root.music && Style.lock_music && !root.own_music
     readonly property string music_url: music_pack.find("music", ["ogg", "wav", "mp3"])
 
+    // The login screen's own pack, and the music file to hand the greeter ("" when off, or the skin brings its own).
+    readonly property string login_skin: LoginScreen.resolved_screen
+    readonly property string login_name: root.pack === "follow" && root.login_skin in Style.styles ? root.login_skin : root.pack_name
+    readonly property string login_music_path: {
+        if (!root.music || !LoginScreen.resolved_music || ["ff7", "ocarina"].indexOf(root.login_skin) >= 0) return "";
+        return login_pack.find("music", ["ogg", "wav", "mp3"]).replace(/^file:\/\//, "");
+    }
+
     function valid_pack(name) {
         return root.packs.indexOf(name) >= 0;
     }
@@ -110,6 +118,7 @@ Singleton {
     }
 
     Pack { id: ui_pack; user_dir: root.user_dir; style_name: root.pack_name }
+    Pack { id: login_pack; user_dir: root.user_dir; style_name: root.login_name }
     Pack { id: music_pack; user_dir: root.user_dir; style_name: root.music_on ? root.music_name : "" }
 
     SoundEffect { id: fx_cursor; source: ui_pack.find("cursor", ["wav", "ogg"]); volume: root.volume }
