@@ -35,6 +35,11 @@ IpcHandler {
         return "ok";
     }
 
+    // For share-picker: answers the XDPH request by writing its selection, or an empty line, to reply.
+    function share(windows: string, reply: string): string {
+        return Screenshot.start_share(windows, reply) ? "ok" : "busy";
+    }
+
     function stop_recording(): void {
         Screenshot.stop_recording();
     }

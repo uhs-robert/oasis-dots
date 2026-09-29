@@ -75,6 +75,9 @@ Singleton {
     property int countdown: 0
     property var countdown_run: null
     property string capture_file: ""
+    // A pending XDPH share request: the fifo share-picker reads, and XDPH's window ids by Hyprland address.
+    property string share_reply: ""
+    property var share_ids: ({})
 
     property bool recording: false
     property double record_start_ms: 0
@@ -114,6 +117,7 @@ Singleton {
 
     function start_select(frozen, preset, mode) {
         if (root.phase === "capture" || root.scrolling) return;
+        if (preset !== "share") root.send_share("");
         root.cancel_countdown();
         root.mode = mode || "region";
         root.lens_on = root.mode === "region" || root.mode === "pixel";
@@ -170,6 +174,42 @@ Singleton {
         }
     }
 
+    // list is XDPH_WINDOW_SHARING_LIST: id[HC>]class[HT>]title[HE>]address[HA>], repeated.
+    function start_share(list, reply) {
+        if (root.phase === "capture" || root.scrolling) return false;
+        root.send_share("");
+        const ids = {};
+        for (const entry of list.split("[HA>]")) {
+            const m = entry.match(/^(\d+)\[HC>\][\s\S]*\[HE>\](\w+)$/);
+            if (m && Number(m[2])) ids[Number(m[2])] = m[1];
+        }
+        root.share_ids = ids;
+        root.share_reply = reply;
+        root.select(false, "share", "window");
+        return true;
+    }
+
+    function send_share(selection) {
+        const reply = root.share_reply;
+        root.share_reply = "";
+        if (reply !== "") Quickshell.execDetached(["sh", "-c", "[ -p \"$2\" ] && printf '%s\\n' \"$1\" > \"$2\"", "sh", selection, reply]);
+    }
+
+    function share_selection() {
+        const s = root.screen_of(root.sel_screen);
+        const r = root.sel_rect;
+        const t = root.targets[root.target_index];
+        const whole = r.x <= 0 && r.y <= 0 && r.width >= s.width && r.height >= s.height;
+        if (root.mode === "window") root.send_share(t && t.share_id ? "window:" + t.share_id : "");
+        else if (root.mode === "screen" || whole) root.send_share("screen:" + s.name);
+        else root.send_share("region:" + s.name + "@" + root.geometry().replace(" ", ",").replace("x", ","));
+        root.cancel();
+    }
+
+    function switch_mode(mode) {
+        if (root.phase === "select" && root.mode !== mode) root.start_select(root.frozen, root.preset, mode);
+    }
+
     function window_targets(monitors, clients) {
         const shown = {};
         for (const m of monitors) shown[m.id] = { name: m.name, ws: m.activeWorkspace ? m.activeWorkspace.id : 0, special: m.specialWorkspace ? m.specialWorkspace.id : 0 };
@@ -185,7 +225,9 @@ Singleton {
             const y0 = Math.max(c.at[1], s.y);
             const x1 = Math.min(c.at[0] + c.size[0], s.x + s.width);
             const y1 = Math.min(c.at[1] + c.size[1], s.y + s.height);
-            if (x1 - x0 >= 2 && y1 - y0 >= 2) list.push({ screen: s.name, rect: Qt.rect(x0 - s.x, y0 - s.y, x1 - x0, y1 - y0), label: c.class || c.title || "" });
+            const share_id = root.preset === "share" ? root.share_ids[Number(c.address)] || "" : "";
+            if (root.preset === "share" && share_id === "") continue;
+            if (x1 - x0 >= 2 && y1 - y0 >= 2) list.push({ screen: s.name, rect: Qt.rect(x0 - s.x, y0 - s.y, x1 - x0, y1 - y0), label: c.class || c.title || "", share_id: share_id });
         }
         return list;
     }
@@ -257,6 +299,7 @@ Singleton {
 
     function cancel() {
         if (root.scrolling) return root.stop_scroll();
+        root.send_share("");
         if (root.phase === "capture") root.grab_cancelled = true;
         capture_opaque_delay.stop();
         grab_delay.stop();
@@ -419,6 +462,7 @@ Singleton {
     function act(action) {
         const geometry = root.geometry();
         if (geometry === "") return root.cancel();
+        if (action === "share") return root.share_selection();
         const scroll = action === "scroll_text" || action === "scroll_image";
         if (root.delay_s > 0 && !root.frozen) {
             const scale = String(root.screen_of(root.sel_screen).devicePixelRatio);

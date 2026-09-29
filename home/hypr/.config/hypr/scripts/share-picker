@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+# hypr/.config/hypr/scripts/share-picker
+# XDPH custom_picker_binary: the bar's selector picks the share, the preview picker covers a bar that is down.
+reply=$(mktemp -u "${XDG_RUNTIME_DIR:-/tmp}/qs-share-XXXXXX")
+mkfifo -m 600 "$reply" || exec hyprland-preview-share-picker "$@"
+trap 'rm -f "$reply"' EXIT
+exec 3<>"$reply"
+if [ "$("$(dirname "$0")/qs-ipc" call screenshot share "${XDPH_WINDOW_SHARING_LIST:-}" "$reply" 2>/dev/null)" != ok ]; then
+  exec 3<&-
+  rm -f "$reply"
+  exec hyprland-preview-share-picker "$@"
+fi
+flags=""
+[[ " $* " == *" --allow-token "* ]] && flags=r
+if read -r -t 600 selection <&3 && [ -n "$selection" ]; then
+  printf '[SELECTION]%s/%s\n' "$flags" "$selection"
+fi
