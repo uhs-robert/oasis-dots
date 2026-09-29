@@ -115,7 +115,8 @@ Singleton {
         root.run_after_close(() => root.start_select(frozen, preset, mode));
     }
 
-    function start_select(frozen, preset, mode) {
+    // on_screen keeps the selector on that screen instead of the focused monitor.
+    function start_select(frozen, preset, mode, on_screen) {
         if (root.phase === "capture" || root.scrolling) return;
         if (preset !== "share") root.send_share("");
         root.cancel_countdown();
@@ -127,7 +128,7 @@ Singleton {
         root.targets = [];
         root.target_index = -1;
         const mon = Hyprland.focusedMonitor;
-        const screen = (mon && root.screen_of(mon.name)) || Quickshell.screens[0];
+        const screen = root.screen_of(on_screen || "") || (mon && root.screen_of(mon.name)) || Quickshell.screens[0];
         root.focus_screen = screen ? screen.name : "";
         root.frozen = frozen;
         root.preset = preset || "";
@@ -166,7 +167,8 @@ Singleton {
                 if (root.mode !== "window" || root.phase === "") return;
                 try {
                     const data = JSON.parse(window_text.text);
-                    root.set_targets(root.window_targets(data[0], data[1]), 0);
+                    const list = root.window_targets(data[0], data[1]);
+                    root.set_targets(list, list.findIndex(t => t.screen === root.focus_screen));
                 } catch (e) {
                     console.warn("Screenshot: window list: " + e);
                 }
@@ -207,7 +209,7 @@ Singleton {
     }
 
     function switch_mode(mode) {
-        if (root.phase === "select" && root.mode !== mode) root.start_select(root.frozen, root.preset, mode);
+        if (root.phase === "select" && root.mode !== mode) root.start_select(root.frozen, root.preset, mode, root.sel_screen || root.cursor_screen);
     }
 
     function window_targets(monitors, clients) {
