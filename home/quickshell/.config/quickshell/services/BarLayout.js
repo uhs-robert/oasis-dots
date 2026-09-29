@@ -104,7 +104,7 @@ function effective(rule, state, key) {
     return out;
 }
 
-// Stable override key: an exact match, else the only saved key for the same description whose connector is not another live screen.
+// Stable override key: an exact match, else the only saved key for the same description whose connector is not a live screen with that description.
 function resolve_key(state, description, name, connected) {
     const fresh = description ? description + " @ " + name : name;
     if (state.monitors[fresh]) return fresh;
@@ -112,7 +112,8 @@ function resolve_key(state, description, name, connected) {
     const found = Object.keys(state.monitors).filter(k => {
         if (k === description) return true;
         if (k.indexOf(description + " @ ") !== 0) return false;
-        return connected.indexOf(k.slice(description.length + 3)) < 0;
+        const connector = k.slice(description.length + 3);
+        return !connected.some(c => c.name === connector && c.description === description);
     });
     return found.length === 1 ? found[0] : fresh;
 }
@@ -172,11 +173,20 @@ function apply_op(layout, op) {
     return out;
 }
 
+// The edited view's order written into `old`; entries the view lacks keep their slots.
 function order_from(layout, old) {
-    const out = layout.left.concat(layout.center, layout.right);
-    for (const e of old) {
-        if (out.indexOf(e) < 0) out.push(e);
-    }
+    const view = layout.left.concat(layout.center, layout.right);
+    const out = old.slice();
+    view.forEach((e, i) => {
+        if (out.indexOf(e) >= 0) return;
+        const after = i > 0 ? out.indexOf(view[i - 1]) : -1;
+        out.splice(after + 1, 0, e);
+    });
+    const slots = [];
+    out.forEach((e, i) => {
+        if (view.indexOf(e) >= 0) slots.push(i);
+    });
+    slots.forEach((slot, i) => out[slot] = view[i]);
     return out;
 }
 
@@ -187,11 +197,36 @@ function restore_side(rules, state, key, entry) {
     return last[entry] || { side: tracked_side(rules, entry) || "right", index: -1 };
 }
 
-// op: { type: "hide" | "show" | "side", entry, side?, index? } or { type: "move", entry, delta } or { type: "move", entry, with } to swap with another entry. Returns a new state.
+// Forgets an entry everywhere in the state.
+function purge(state, entry) {
+    const next = normalize(state);
+    delete next.shared.place[entry];
+    delete next.shared.last_side[entry];
+    next.shared.order = next.shared.order.filter(e => e !== entry);
+    for (const m of Object.values(next.monitors)) {
+        for (const s of sides) m[s] = m[s].filter(e => e !== entry);
+        delete m.last_side[entry];
+    }
+    return next;
+}
+
+// Arguments the modules that take one accept.
+var module_args = { system: ["cpu", "memory", "temperature"] };
+
+// The first `base:arg` not in `taken`, else "".
+function next_entry(base, taken) {
+    for (const arg of module_args[base] || []) {
+        if (taken.indexOf(base + ":" + arg) < 0) return base + ":" + arg;
+    }
+    return "";
+}
+
+// op: { type: "hide" | "show" | "side" | "remove", entry, side?, index? } or { type: "move", entry, delta } or { type: "move", entry, with } to swap with another entry. Returns a new state.
 function edit(rule, state, key, op) {
     const next = normalize(state);
     const view = layout_of(effective(rule, next, key));
     const own = key && next.monitors[key];
+    if (op.type === "remove") return purge(next, op.entry);
     const after = apply_op(view, op);
     const was = side_of(view, op.entry);
     if (own) {
@@ -212,6 +247,12 @@ function edit(rule, state, key, op) {
 function set_own(state, key, layout, compact) {
     const next = normalize(state);
     next.monitors[key] = Object.assign({}, layout_of(layout), { compact: compact });
+    return next;
+}
+
+function set_compact(state, key, compact) {
+    const next = normalize(state);
+    if (next.monitors[key]) next.monitors[key].compact = compact;
     return next;
 }
 
