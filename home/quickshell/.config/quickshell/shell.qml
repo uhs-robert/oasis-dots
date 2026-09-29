@@ -62,6 +62,17 @@ ShellRoot {
                     screen: screen_scope.modelData
                 }
 
+                HotCorner {
+                    screen: screen_scope.modelData
+                    overview: overview_window
+                }
+
+                HotCorner {
+                    screen: screen_scope.modelData
+                    overview: overview_window
+                    right: true
+                }
+
                 SubmapTab {
                     screen: screen_scope.modelData
                     screen_name: screen_scope.modelData.name
@@ -176,5 +187,7 @@ ShellRoot {
     NotificationToasts {}
     Osd {}
     WhichKey {}
-    Overview {}
+    Overview {
+        id: overview_window
+    }
 }
