@@ -367,6 +367,8 @@ Rectangle {
             Layout.preferredHeight: 36
             visible: Style.console_views !== "ps1" && !root.tile && root.notification && (root.notification.image !== "" || root.notification.appIcon !== "")
             source: root.notification ? (root.notification.image !== "" ? root.notification.image : Quickshell.iconPath(root.notification.appIcon, true)) : ""
+            sourceSize.width: width * 2
+            sourceSize.height: height * 2
             fillMode: Image.PreserveAspectFit
         }
 

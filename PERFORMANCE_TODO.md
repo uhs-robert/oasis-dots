@@ -22,13 +22,13 @@ p=$(pgrep -x qs); ps -o etime=,rss= -p $p; grep -E 'Anonymous|AnonHuge' /proc/$p
 
 ## Images and effects
 
-- [ ] **8. Album art at full resolution.** `popups/MediaPopup.qml:120` and `:205` have no `sourceSize` and sit under 4 `layer.enabled` items plus a blur and a mask `MultiEffect`. Set `sourceSize` to the drawn size. Item 1 drops the layers while closed.
-- [ ] **9. Notification images at full size.** `popups/notifications/NotificationCard.qml:277`, `components/NotificationToastCard.qml:364` and `popups/NotificationsPopup.qml:367` (an 18 px icon) have no `sourceSize`.
+- [x] **8. Album art at full resolution.** `popups/MediaPopup.qml:120` and `:205` have no `sourceSize` and sit under 4 `layer.enabled` items plus a blur and a mask `MultiEffect`. Set `sourceSize` to the drawn size. Item 1 drops the layers while closed.
+- [x] **9. Notification images at full size.** `popups/notifications/NotificationCard.qml:277`, `components/NotificationToastCard.qml:364` and `popups/NotificationsPopup.qml:367` (an 18 px icon) have no `sourceSize`.
 - [ ] **10. Glow layers in every popup.** `components/Popup.qml:642` layers the whole frame when the style has glow or text shadow, plus the `MultiEffect` Loaders at `:880-910`. Same pattern in `components/Osd.qml`, `components/WhichKey.qml` and `components/Meter.qml`. Item 1 covers popups; Osd and WhichKey stay built.
 
 ## Growth over time
 
-- [ ] **11. Cap notification history.** `services/NotificationState.qml:64` prepends every notification with no limit, keeps each `Notification` `tracked` with its image data, and restores the history on reload. Cap it (50-100) and drop the image of entries past the cap.
+- [x] **11. Cap notification history.** `services/NotificationState.qml:64` prepends every notification with no limit, keeps each `Notification` `tracked` with its image data, and restores the history on reload. Cap it (50-100) and drop the image of entries past the cap.
 - [ ] **12. Array rebuilds on notification change.** `NotificationState` rebuilds whole arrays with `concat`/`filter`, and `NotificationsPopup.qml:72-95` and `components/NotificationToasts.qml:77` rebuild every row. Move to a `ListModel` or keyed updates if item 11 is not enough.
 - [ ] **13. Voxtype peak buffer.** Check that the peaks pushed at `services/VoxtypeAudio.qml:87` are capped.
 
