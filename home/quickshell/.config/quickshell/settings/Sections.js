@@ -4,6 +4,7 @@
 var list = [
     { id: "style", group: "Appearance", label: "Style", glyph: "󰏘", keywords: "theme bar cava paint", source: "sections/StyleSection.qml" },
     { id: "bar", group: "Bar", label: "Bar modules", glyph: "󰕮", keywords: "modules hide show order reorder monitor layout panel", source: "sections/BarModulesSection.qml" },
+    { id: "displays", group: "System", label: "Displays", glyph: "󰍹", keywords: "monitors resolution refresh scale rotate orientation arrange position enable disable screen", source: "sections/DisplaysSection.qml" },
     { id: "lock", group: "Lock & Login", label: "Lock screen", glyph: "󰌾", keywords: "skin tint backdrop music", source: "sections/LockSection.qml" },
     { id: "login", group: "Lock & Login", label: "Login screen", glyph: "󰍂", keywords: "greeter greetd session sync", source: "sections/LoginSection.qml" }
 ];
