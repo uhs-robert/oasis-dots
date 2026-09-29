@@ -39,7 +39,7 @@ qs ipc call style set ps1
 qs ipc call style cycle
 ```
 
-Settings > Theme options tweaks the current style (scanlines, glow, dither, fonts, text size). Settings > Colors picks the Oasis palette. It saves through the same switcher as the rofi one (right-click the Start button), which reloads Hyprland and reruns every color generator, including the one that writes `theme/theme.json` for this shell.
+Settings > Theme options tweaks the current style (scanlines, glow, dither, fonts, text size). Settings > Colors picks the Oasis palette (right-clicking the Start button opens it too). It saves through `theme/switch.lua`, the same switcher the rofi fallback uses, which reloads Hyprland and reruns every color generator, including the one that writes `theme/theme.json` for this shell.
 
 ## Settings panel
 
