@@ -115,7 +115,7 @@ function Menu.zoxide(app)
   local open = TERM_CMD .. class .. " -e " .. shell
   local rofi = "zoxide query -l | " .. picker .. " | xargs -r -I{} " .. open
   if app then return Cmd.run(rofi) end
-  return Menu.picker("dirs", rofi)
+  return Menu.picker("dirs", rofi, FILE_MANAGER)
 end
 
 --- Return an action that picks a character and types it into the focused window.

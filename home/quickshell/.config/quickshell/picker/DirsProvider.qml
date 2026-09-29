@@ -17,6 +17,7 @@ PickerProvider {
 
     readonly property string home: Quickshell.env("HOME")
     readonly property string term: root.home + "/.config/hypr/scripts/term"
+    property string file_manager_class: "yazi"
 
     function parse(text) {
         const out = [];
@@ -30,13 +31,15 @@ PickerProvider {
         return out;
     }
 
+    // The mode arg carries Config.app.tui_file_manager as the window class.
     function refresh(arg) {
+        root.file_manager_class = arg || "yazi";
         list_proc.running = false;
         list_proc.running = true;
     }
 
     function activate(item) {
-        Quickshell.execDetached([root.term, "--class", "yazi", "-e", "zsh", "-i", "-c", "cd \"$1\" && y; exec zsh -i", "zsh", item.path]);
+        Quickshell.execDetached([root.term, "--class", root.file_manager_class, "-e", "zsh", "-i", "-c", "cd \"$1\" && y; exec zsh -i", "zsh", item.path]);
     }
 
     function run_action(key, item) {
