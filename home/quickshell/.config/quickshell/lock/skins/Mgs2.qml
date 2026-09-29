@@ -64,8 +64,8 @@ Item {
     property var box_b: [0, 0, 0, 0]
     property bool box_on: false
     property bool content_on: true
-    // Page turns alternate between wiping up and wiping left, like the game.
-    property bool wipe_left: false
+    // The frame alternates between two layouts each page turn, like the game: L has full left and bottom rules, R full top and right ones.
+    property bool layout_r: false
     readonly property real content_alpha: root.step && root.step.content ? root.tk : root.content_on ? 1 : 0
     readonly property real title_out: root.step && root.step.title === "out" ? root.tk : 0
     readonly property real title_in: root.step && root.step.title === "in" ? root.tk : 1
@@ -156,41 +156,47 @@ Item {
     readonly property color ok_green: "#a0e0b0"
     readonly property color mol_red: "#d63126"
 
-    // The menu frame, the same on every page like the game's: the left rule, the rail inside the box's left end, and the box, whose bottom is the bottom rule.
-    readonly property var frame_all: ({ v: 62, rail: [62, 140], box: [140, 46, 1544, 756] })
-    readonly property var frames: ({ menu: root.frame_all, load: root.frame_all, name: root.frame_all })
-    readonly property var frame: root.frames[root.shown === "opt" ? "menu" : root.shown] || null
-    property var last_frame: root.frames.menu
-    onFrameChanged: if (root.frame) root.last_frame = root.frame
-    // The frame as drawn: the box between box_a and box_b, with the rail riding its left edge.
+    // The menu frame: the left rule, the rail inside the box's left end, and the box; R's box reaches nearly to the screen's right edge.
+    readonly property var frame_l: ({ v: 62, rail: [62, 140], box: [140, 46, 1544, 756] })
+    readonly property var frame_r: ({ v: 62, rail: [62, 140], box: [140, 46, 1594, 756] })
+    readonly property var cur_box: root.layout_r ? root.frame_r.box : root.frame_l.box
+    readonly property var last_frame: root.frame_l
+
     function win(k, t0, t1) {
         const x = Math.max(0, Math.min(1, (k - t0) / (t1 - t0)));
         return 1 - Math.pow(1 - x, 3);
     }
     // The box's own progress: tk, or its window of tk when a step overlaps the box with a travelling rule.
     readonly property real kb: root.step && root.step.bt ? root.win(root.tk, root.step.bt[0], root.step.bt[1]) : root.tk
+    // The frame as drawn: the box between box_a and box_b, with the rail riding its left edge.
     readonly property var fb: {
         const f = root.last_frame, k = root.kb, a = root.box_a, b = root.box_b;
         const e = [0, 1, 2, 3].map(i => a[i] + (b[i] - a[i]) * k);
         const dx = e[0] - f.box[0];
         return { v: f.v + dx, r0: f.rail[0] + dx, r1: f.rail[1] + dx, x0: e[0], y0: e[1], x1: e[2], y1: e[3] };
     }
-    // Full-length rules: at rest the bottom and left ones; a step names its own, as box edges, fixed spots or [from, to(, t0, t1)] travels.
+    // Full-length rules: at rest the layout's two; a step names its own as a box edge, a fixed spot or a [from, to(, t0, t1)] travel,
+    // optionally wrapped as {p, s: [[from0, from1], [to0, to1]], t} to shrink its span from full length to part of it.
     readonly property var guides: {
         const st = root.step, b = root.fb, k = root.tk;
         const travel = p => p.length > 2 ? root.win(k, p[2], p[3]) : k;
         const edge = p => st && st.bt && root.kb <= 0 ? null : ({ left: b.v, right: b.x1, top: b.y0, bottom: b.y1 })[p];
-        const at = p => typeof p === "number" ? p : Array.isArray(p) ? p[0] + (p[1] - p[0]) * travel(p) : edge(p);
-        const hs = st && st.h ? st.h : ["bottom"], vs = st && st.v ? st.v : ["left"];
-        return hs.map(p => ({ h: true, p: at(p) })).concat(vs.map(p => ({ h: false, p: at(p) }))).filter(g => g.p !== null && g.p !== undefined);
+        const pos = p => typeof p === "number" ? p : Array.isArray(p) ? p[0] + (p[1] - p[0]) * travel(p) : edge(p);
+        const make = (h, spec) => {
+            const g = spec !== null && typeof spec === "object" && !Array.isArray(spec) ? spec : { p: spec };
+            let span = h ? [0, 1600] : [0, 900];
+            if (g.s) {
+                const w = g.t ? root.win(k, g.t[0], g.t[1]) : k;
+                span = [0, 1].map(i => g.s[0][i] + (g.s[1][i] - g.s[0][i]) * w);
+            }
+            return { h: h, p: pos(g.p), s0: span[0], s1: span[1] };
+        };
+        const hs = st && st.h ? st.h : [root.layout_r ? "top" : "bottom"], vs = st && st.v ? st.v : [root.layout_r ? "right" : "left"];
+        return hs.map(p => make(true, p)).concat(vs.map(p => make(false, p))).filter(g => g.p !== null && g.p !== undefined);
     }
 
     function is_framed(p) {
         return p === "menu" || p === "opt" || p === "load" || p === "name";
-    }
-
-    function box_of(p) {
-        return root.frames[p === "opt" ? "menu" : p].box;
     }
 
     function rest() {
@@ -198,10 +204,7 @@ Item {
         root.steps = [];
         root.step = null;
         root.tk = 1;
-        if (root.is_framed(root.shown)) {
-            root.last_frame = root.frames[root.shown === "opt" ? "menu" : root.shown];
-            root.box_a = root.box_b = root.box_of(root.shown);
-        }
+        if (root.is_framed(root.shown)) root.box_a = root.box_b = root.cur_box;
         root.box_on = root.is_framed(root.shown);
         root.content_on = true;
     }
@@ -225,6 +228,8 @@ Item {
         if (s.a) {
             root.box_a = s.a;
             root.box_b = s.b || s.a;
+        } else if (s.content) {
+            root.box_a = root.box_b = root.cur_box;
         }
         root.box_on = s.box !== false && root.is_framed(root.shown);
         root.step = s;
@@ -234,51 +239,50 @@ Item {
         step_anim.restart();
     }
 
-    // Page turns alternate like the game. Up: the bottom rule wipes the page off the top, a new one rises from the screen's bottom and the page grows from the bottom-left.
-    // Left: the right rule wipes it off the left, a new one comes in from the right and the page grows from the top-right. The title zooms away instead.
+    // Page turns move only the rules. From L the bottom rule wipes the page off the top, a new one rises from the screen's bottom,
+    // and the page grows from the bottom-left until its top and right edges are R's rules. From R the right rule wipes it off the left,
+    // a new one comes in from the right, and the page grows from the top-right into L. Rules left over shrink to box edges. The title zooms away instead.
     function turn_page() {
         const to = root.page, from = root.shown;
         const still = !root.animate || from === "" || [to, from].some(p => p === "unlock" || p === "saver");
         if (to === from || still) {
             root.shown = to;
+            if (!root.is_framed(to)) root.layout_r = false;
             root.rest();
             return;
         }
         if (root.owns_sound && audio_loader.item) audio_loader.item.play("page");
         const none = { box: false, h: [], v: [] };
         const list = [];
-        const swap = Object.assign({ ms: 1, start: () => {
+        const framed_to = root.is_framed(to);
+        const swap = r => Object.assign({ ms: 1, start: () => {
                 root.shown = to;
                 root.content_on = false;
-                if (root.is_framed(to)) root.last_frame = root.frames[to === "opt" ? "menu" : to];
+                root.layout_r = framed_to && r;
             } }, none);
-        const n = root.is_framed(to) ? root.box_of(to) : null;
-        const nf = n ? root.frames[to === "opt" ? "menu" : to] : null;
+        const lv = root.frame_l.v, win = [0.4, 1];
         if (root.is_framed(from)) {
-            const o = root.box_of(from), ov = root.last_frame.v;
-            const up = !root.wipe_left;
-            root.wipe_left = !root.wipe_left;
-            // Only the moving rule travels; the resting ones (left for up, left and bottom for left) stay on screen throughout.
-            if (up) {
-                const nv = nf ? nf.v : ov;
+            if (!root.layout_r) {
+                const o = root.frame_l.box, n = root.frame_r.box;
                 list.push({ ms: 260, ease: Easing.InQuad, wipe: true, a: o, b: [o[0], o[1], o[2], o[1]], h: ["bottom"], v: ["left"] });
-                list.push({ ms: 60, box: false, h: [[o[1], -10]], v: [ov] });
-                list.push(swap, { ms: 250, box: false, h: [], v: [[ov, nv]] });
-                if (n) list.push({ ms: 520, a: [n[0], n[3], n[0], n[3]], b: n, bt: [0.4, 1], h: [[910, n[3], 0, 0.55], "top"], v: [nv, "right"] });
+                list.push({ ms: 60, box: false, h: [[o[1], -10]], v: [lv] });
+                list.push(swap(true), { ms: 250, box: false, h: [], v: [lv] });
+                if (framed_to) list.push({ ms: 560, a: [n[0], n[3], n[0], n[3]], b: n, bt: win, h: [{ p: [910, n[3], 0, 0.55], s: [[0, 1600], [lv, 1600]], t: win }, "top"], v: [{ p: lv, s: [[0, 900], [n[1], n[3]]], t: win }, "right"] });
             } else {
-                const nb = n ? n[3] : o[3], nv = nf ? nf.v : ov;
-                list.push({ ms: 260, ease: Easing.InQuad, wipe: true, a: o, b: [o[0], o[1], o[0], o[3]], h: ["bottom"], v: ["left", "right"] });
-                list.push({ ms: 60, box: false, h: [o[3]], v: [[o[0], -10], ov] });
-                list.push(swap, { ms: 250, box: false, h: [[o[3], nb]], v: [[ov, nv]] });
-                if (n) list.push({ ms: 520, a: [n[2], n[1], n[2], n[1]], b: n, bt: [0.4, 1], h: [nb, "bottom"], v: [[1610, n[2], 0, 0.55], nv, "left"] });
+                const o = root.frame_r.box, n = root.frame_l.box;
+                list.push({ ms: 260, ease: Easing.InQuad, wipe: true, a: o, b: [o[0], o[1], o[0], o[3]], h: ["top"], v: ["right"] });
+                list.push({ ms: 60, box: false, h: [o[1]], v: [[o[0], -10]] });
+                list.push(swap(false), { ms: 250, box: false, h: [o[1]], v: [] });
+                if (framed_to) list.push({ ms: 560, a: [n[2], n[1], n[2], n[1]], b: n, bt: win, h: [{ p: n[1], s: [[0, 1600], [lv, n[2]]], t: win }, "bottom"], v: [{ p: [1610, n[2], 0, 0.55], s: [[0, 900], [n[1], n[3]]], t: win }, "left"] });
             }
         } else if (from === "title") {
-            list.push({ ms: 1000, ease: Easing.InQuad, title: "out" }, swap, Object.assign({ ms: 120 }, none));
-            if (n) list.push({ ms: 300, ease: Easing.OutCubic, a: [n[2], n[1], n[2], n[1]], b: n });
+            const n = root.frame_l.box;
+            list.push({ ms: 1000, ease: Easing.InQuad, title: "out" }, swap(false), Object.assign({ ms: 120 }, none));
+            if (framed_to) list.push({ ms: 300, ease: Easing.OutCubic, a: [n[2], n[1], n[2], n[1]], b: n });
         } else {
-            list.push(swap);
+            list.push(swap(false));
         }
-        if (n) list.push({ ms: 150, a: n, content: true });
+        if (framed_to) list.push({ ms: 150, box: true, content: true });
         else if (to === "title") list.push({ ms: 400, title: "in" });
         root.run(list);
     }
@@ -515,7 +519,7 @@ Item {
         PauseAnimation { duration: 750 }
         ScriptAction {
             script: {
-                const b = root.box_of("name");
+                const b = root.cur_box;
                 if (root.shown === "name") root.run([{ ms: 300, ease: Easing.InQuad, wipe: true, keep: true, a: b, b: [b[2], b[1], b[2], b[1]] }]);
             }
         }
@@ -1093,10 +1097,10 @@ Item {
                     required property int index
                     readonly property var g: root.guides[index] || null
                     visible: g !== null
-                    x: g && !g.h ? g.p : 0
-                    y: g && g.h ? g.p : 0
-                    width: g && !g.h ? 1.5 : 1600
-                    height: g && g.h ? 1.5 : 900
+                    x: !g ? 0 : g.h ? g.s0 : g.p
+                    y: !g ? 0 : g.h ? g.p : g.s0
+                    width: !g ? 0 : g.h ? g.s1 - g.s0 : 1.5
+                    height: !g ? 0 : g.h ? 1.5 : g.s1 - g.s0
                     color: root.line_color
                     opacity: 0.55
                 }
