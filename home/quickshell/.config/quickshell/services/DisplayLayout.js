@@ -111,25 +111,24 @@ function axis_stops(rect, others, axis) {
     return out;
 }
 
-// Moves `rect` one press along dir ("h", "j", "k", "l"): to the next neighbor-edge stop, or a fixed step; null when blocked.
+// Moves `rect` one press along dir ("h", "j", "k", "l") to the next neighbor-edge stop or a fixed step; null when a monitor is in the way.
 function nudge(rect, others, dir, fine) {
     const axis = dir === "h" || dir === "l" ? "x" : "y";
+    const len = axis === "x" ? "w" : "h";
     const sign = dir === "l" || dir === "j" ? 1 : -1;
     const cur = rect[axis];
-    const candidates = [];
-    if (fine) {
-        candidates.push(cur + sign * fine_step);
-    } else {
+    let target = cur + sign * (fine ? fine_step : nudge_step);
+    if (!fine) {
         const stops = axis_stops(rect, others, axis).filter(s => (s - cur) * sign > 0);
-        stops.sort((a, b) => Math.abs(a - cur) - Math.abs(b - cur));
-        candidates.push(...stops, cur + sign * nudge_step);
+        if (stops.length > 0) target = stops.reduce((a, b) => Math.abs(a - cur) <= Math.abs(b - cur) ? a : b);
     }
-    for (const c of candidates) {
-        const next = Object.assign({}, rect);
-        next[axis] = c;
-        if (fits(next, others)) return { x: next.x, y: next.y };
-    }
-    return null;
+    const swept = Object.assign({}, rect);
+    swept[axis] = Math.min(cur, target);
+    swept[len] = rect[len] + Math.abs(target - cur);
+    if (!fits(swept, others)) return null;
+    const next = Object.assign({}, rect);
+    next[axis] = target;
+    return { x: next.x, y: next.y };
 }
 
 // Pulls a dragged rect to the nearest neighbor edges within reach; null when it would overlap another monitor.
