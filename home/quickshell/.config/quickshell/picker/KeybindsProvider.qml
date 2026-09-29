@@ -14,6 +14,7 @@ PickerProvider {
     rank_by_usage: false
     keep_order: true
     columns: 2
+    grid_descriptions: true
 
     property string submap: ""
 

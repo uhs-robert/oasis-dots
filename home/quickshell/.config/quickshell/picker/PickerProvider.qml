@@ -13,6 +13,7 @@ Scope {
     property var items: []
     // Grid columns when docked; an anchored picker is always a single column.
     property int columns: 1
+    property bool grid_descriptions: false
     property bool rank_by_usage: true
     // Keep the items' own order when nothing is typed, and on equal scores.
     property bool keep_order: false

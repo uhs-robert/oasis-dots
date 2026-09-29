@@ -408,7 +408,7 @@ Popup {
 
                     Text {
                         id: row_desc
-                        visible: root.columns === 1 && text !== "" && row.width - row_label.x - row_label.implicitWidth > Style.px(90)
+                        visible: (root.columns === 1 || root.provider.grid_descriptions) && text !== "" && row.width - row_label.x - row_label.implicitWidth > Style.px(90)
                         anchors.left: row_label.right
                         anchors.leftMargin: 10
                         anchors.right: parent.right
