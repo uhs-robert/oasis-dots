@@ -17,7 +17,7 @@ Popup {
     body_height: Math.max(nav.implicitHeight, pane_loader.implicitHeight) + 24
     jumps_enabled: true
     search_enabled: true
-    footer_hint: root.in_pane && root.pane ? root.pane.footer_hint : "/ find · j/k move · l enter · 1-9 pick · gg/G first/last · q close"
+    footer_hint: root.in_pane && root.pane ? root.pane.shown_hint : "/ find · j/k move · l enter · 1-9 pick · gg/G first/last · q close"
 
     // The lock's full-screen preview (LockPreview), for the lock section's p key.
     property var previewer: null
