@@ -104,6 +104,19 @@ function effective(rule, state, key) {
     return out;
 }
 
+// Stable override key: an exact match, else the only saved key for the same description whose connector is not another live screen.
+function resolve_key(state, description, name, connected) {
+    const fresh = description ? description + " @ " + name : name;
+    if (state.monitors[fresh]) return fresh;
+    if (!description) return fresh;
+    const found = Object.keys(state.monitors).filter(k => {
+        if (k === description) return true;
+        if (k.indexOf(description + " @ ") !== 0) return false;
+        return connected.indexOf(k.slice(description.length + 3)) < 0;
+    });
+    return found.length === 1 ? found[0] : fresh;
+}
+
 function side_of(layout, entry) {
     for (const s of sides) {
         if (layout[s].indexOf(entry) >= 0) return s;
@@ -121,6 +134,11 @@ function hidden_entries(rules, state, layout) {
         for (const s of sides) unique(rule[s]).forEach(add);
     }
     Object.keys(state.shared.place).forEach(add);
+    Object.keys(state.shared.last_side).forEach(add);
+    for (const m of Object.values(state.monitors)) {
+        for (const s of sides) m[s].forEach(add);
+        Object.keys(m.last_side).forEach(add);
+    }
     return all.filter(e => side_of(layout, e) === "");
 }
 

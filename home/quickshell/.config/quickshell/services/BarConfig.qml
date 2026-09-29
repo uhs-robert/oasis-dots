@@ -67,12 +67,8 @@ Singleton {
         state_file.setText(JSON.stringify(root.state));
     }
 
-    // Identical monitors share a description, so a duplicate gets its connector name appended.
     function monitor_key(screen) {
-        const description = root.description_for(screen);
-        if (!description) return screen.name;
-        const shared = Quickshell.screens.some(s => s.name !== screen.name && root.description_for(s) === description);
-        return shared ? description + " @ " + screen.name : description;
+        return BarLayout.resolve_key(root.state, root.description_for(screen), screen.name, Quickshell.screens.map(s => s.name));
     }
 
     function glob_to_regex(pattern) {
