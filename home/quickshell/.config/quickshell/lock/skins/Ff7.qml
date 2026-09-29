@@ -1217,7 +1217,7 @@ Item {
         }
     }
 
-    // Battle swirl: the title spins and zooms away under white wedges, then a white flash.
+    // Battle swirl: the title spins and zooms away under white wedges, then a fade to black.
     Item {
         id: swirl
         visible: root.screen === "unlock"
@@ -1240,7 +1240,7 @@ Item {
                 ShapePath {
                     strokeWidth: 0
                     strokeColor: "transparent"
-                    fillColor: Qt.alpha(root.white, 0.55)
+                    fillColor: Qt.alpha(root.white, 0.3)
                     startX: swirl.width / 2
                     startY: swirl.height / 2
                     PathLine { x: swirl.width / 2 + swirl.width / 2; y: swirl.height / 2 }
@@ -1263,7 +1263,7 @@ Item {
         id: flash
         visible: root.screen === "unlock"
         anchors.fill: parent
-        color: root.white
+        color: root.shadow
         opacity: 0
     }
 
