@@ -73,8 +73,9 @@ Answers given for these tracks:
 
 ## Step 4: system
 
-- [ ] Default applications and XDG associations (`xdg-mime`, `~/.config/mimeapps.list`)
-- [ ] Power and session configuration (decide how `hypridle.conf` is generated or templated)
+- [x] Default applications and XDG associations (`xdg-mime`, `~/.config/mimeapps.list`); state in `~/.local/state/hypr/apps.json`, applied by `scripts/apps.sh`
+- [x] Power and session configuration; state in `~/.local/state/hypr/power.json`, `scripts/power.sh` generates `~/.local/state/hypr/hypridle.conf` and watches AC changes with udev
+- [ ] Live test Step 4 on the bar and a laptop (lid, power button, AC switching)
 
 ## Step 5: themes
 
