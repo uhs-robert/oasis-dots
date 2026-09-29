@@ -158,14 +158,37 @@ local set_window_rules = function()
     opacity = "1.0 override 1.0 override",
     enabled = false,
   })
+  hl.window_rule({
+    name = "shared-window",
+    match = { tag = "shared" },
+    opacity = "1.0 override 1.0 override",
+    no_dim = true,
+  })
 
   return rules
 end
 
---- Toggles browser opacity when a screenshare session starts or stops.
+--- Tags a shared window so it shows opaque and undimmed; name is its title at share start.
+--- @param active boolean
+--- @param name string
+local function tag_shared_window(active, name)
+  for _, w in ipairs(hl.get_windows() or {}) do
+    local tags = type(w.tags) == "table" and table.concat(w.tags, ",") or (w.tags or "")
+    local tagged = string.find("," .. tags .. ",", ",shared,", 1, true) ~= nil
+    if active and w.title == name then
+      hl.dispatch(hl.dsp.window.tag({ window = "address:" .. w.address, tag = "+shared" }))
+      return
+    elseif not active and tagged then
+      hl.dispatch(hl.dsp.window.tag({ window = "address:" .. w.address, tag = "-shared" }))
+    end
+  end
+end
+
+--- Toggles browser opacity when a screenshare session starts or stops, and clears the shared window's effects.
 --- Browsers dim when inactive by default; override to full opacity during capture.
 local set_screenshare_handler = function()
-  hl.on("screenshare.state", function(active, _type, _name)
+  hl.on("screenshare.state", function(active, share_type, name)
+    if share_type == 1 then tag_shared_window(active, name) end
     local opacity = active and "1.0 1.0 override" or "1.0 override 0.85 override"
     hl.window_rule({
       name = "firefox-opacity",
