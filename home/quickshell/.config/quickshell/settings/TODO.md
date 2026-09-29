@@ -8,7 +8,7 @@ Tracks the Settings panel that drops from the center island (issue #361). Update
 - `Sections.js` is the registry. A new section is one file under `sections/` plus one entry there.
 - `SettingsPane.qml` is the section base; `RowsSection.qml` + `ChoiceRow.qml` give declarative `h`/`l` choice rows; `PickerList.qml` is the shared fuzzy option list they open on Enter.
 - `SettingsNav.open(id)` and `qs-ipc call settings open <id>` deep-link to a section.
-- Keys: sidebar `j`/`k`, `l`/`Enter` into the pane; pane `j`/`k` rows, `h`/`l` change, `Enter` opens a fuzzy list of the options (rows with 4+ values); `Esc` back; `/` find; `q` close.
+- Keys: sidebar `j`/`k`, `l`/`Enter` into the pane; pane `j`/`k` rows, `h`/`l` change, `Enter` opens a fuzzy list of a choice row's options; `Esc` back; `/` find; `q` close.
 
 ## Decisions
 

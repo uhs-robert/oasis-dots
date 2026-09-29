@@ -36,7 +36,7 @@ SettingsPane {
     }
     readonly property int total: root.top_count + root.entries.length
 
-    footer_hint: "j/k move · Space show/hide · J/K reorder · H/L side · a add argument · x remove · h/l target · / find · Esc sections · q close"
+    footer_hint: "j/k move · Enter target list · Space show/hide · J/K reorder · H/L side · a add argument · x remove · h/l target · / find · Esc sections · q close"
     search_rows: ["Editing target"].concat(root.target_screen ? ["Own layout"] : [], root.has_own ? ["Compact"] : [], root.entries.map(e => e.entry))
     search_cursor: root.cursor
     implicitHeight: col.implicitHeight
@@ -55,6 +55,11 @@ SettingsPane {
     function cycle_target(delta) {
         const values = root.target_values();
         root.target = values[root.wrap_index(values.indexOf(root.target), delta, values.length)];
+    }
+
+    function open_target_picker() {
+        const values = root.target_values();
+        root.show_picker(picker, "Editing target", values.map(v => root.target_text(v)), values.indexOf(root.target), i => root.target = values[i]);
     }
 
     function toggle_own() {
@@ -149,7 +154,7 @@ SettingsPane {
     onTotalChanged: root.cursor = Math.min(root.cursor, root.total - 1)
 
     Keys.onPressed: event => {
-        if (event.modifiers & Qt.ControlModifier) return;
+        if (root.picking || (event.modifiers & Qt.ControlModifier)) return;
         const shift = !!(event.modifiers & Qt.ShiftModifier);
         const on_module = root.cursor >= root.top_count;
         if (event.key === Qt.Key_J && !(shift && on_module)) root.cursor = root.wrap_index(root.cursor, 1, root.total);
@@ -159,7 +164,8 @@ SettingsPane {
         else if (event.key === Qt.Key_H && shift) root.shift_side(-1);
         else if (event.key === Qt.Key_L && shift) root.shift_side(1);
         else if (root.cursor === 0 && (event.key === Qt.Key_H || event.key === Qt.Key_L)) root.cycle_target(event.key === Qt.Key_H ? -1 : 1);
-        else if (root.cursor === 0 && (event.key === Qt.Key_Return || event.key === Qt.Key_Enter || event.key === Qt.Key_Space)) root.cycle_target(1);
+        else if (root.cursor === 0 && (event.key === Qt.Key_Return || event.key === Qt.Key_Enter)) root.open_target_picker();
+        else if (root.cursor === 0 && event.key === Qt.Key_Space) root.cycle_target(1);
         else if (root.target_screen && root.cursor === 1 && (event.key === Qt.Key_L || event.key === Qt.Key_Return || event.key === Qt.Key_Enter || event.key === Qt.Key_Space)) root.toggle_own();
         else if (root.has_own && root.cursor === 2 && (event.key === Qt.Key_H || event.key === Qt.Key_L || event.key === Qt.Key_Return || event.key === Qt.Key_Enter || event.key === Qt.Key_Space)) root.toggle_compact();
         else if (on_module && !shift && event.key === Qt.Key_A) root.add_argument();
@@ -176,19 +182,28 @@ SettingsPane {
         anchors.top: parent.top
         spacing: 4
 
+        PickerList {
+            id: picker
+            visible: root.picking
+            st: root.st
+            onPicked: index => root.finish_picker(index)
+            onClosed: root.hide_picker()
+        }
+
         ChoiceRow {
+            visible: !root.picking
             selected: root.live && root.cursor === 0
             label: "Editing target"
             value_text: root.target_text(root.target)
-            onStepped: delta => {
+            onStepped: {
                 root.focus_pane();
                 root.cursor = 0;
-                root.cycle_target(delta);
+                root.open_target_picker();
             }
         }
 
         ChoiceRow {
-            visible: !!root.target_screen
+            visible: !!root.target_screen && !root.picking
             selected: root.live && root.cursor === 1
             label: "Own layout"
             value_text: root.has_own ? "on" : "off"
@@ -200,7 +215,7 @@ SettingsPane {
         }
 
         ChoiceRow {
-            visible: root.has_own
+            visible: root.has_own && !root.picking
             selected: root.live && root.cursor === 2
             label: "Compact"
             value_text: root.own_compact ? "on" : "off"
@@ -212,7 +227,7 @@ SettingsPane {
         }
 
         Text {
-            visible: !!root.target_screen && !root.has_own
+            visible: !!root.target_screen && !root.has_own && !root.picking
             Layout.fillWidth: true
             text: "Edits go to the shared layout for every monitor"
             wrapMode: Text.WordWrap
@@ -222,7 +237,7 @@ SettingsPane {
         }
 
         Repeater {
-            model: root.entries
+            model: root.picking ? [] : root.entries
 
             ColumnLayout {
                 id: item

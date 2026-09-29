@@ -11,7 +11,6 @@ SettingsPane {
     property var rows: []
     property int cursor: 0
     property int pick_min: 2
-    property int picking_row: -1
     default property alias header: header_col.data
     property alias footer: footer_col.data
 
@@ -43,34 +42,14 @@ SettingsPane {
     function open_picker(index) {
         const row = root.rows[index];
         const values = row.values();
-        picker.title = row.label;
-        picker.items = values.map(v => ({ label: row.text(v) }));
-        picker.current = values.indexOf(row.value());
         root.cursor = index;
-        root.picking_row = index;
-        root.picking = true;
-        picker.open();
-    }
-
-    function close_picker() {
-        if (!root.picking) return;
-        root.picking = false;
-        root.picking_row = -1;
-        root.forceActiveFocus();
-    }
-
-    function pick(item_index) {
-        const row = root.rows[root.picking_row];
-        if (row) row.set(row.values()[item_index]);
-        root.close_picker();
+        root.show_picker(picker, row.label, values.map(v => row.text(v)), values.indexOf(row.value()), i => row.set(values[i]));
     }
 
     function activate(index, delta) {
         if (root.pickable(index)) root.open_picker(index);
         else root.step(index, delta);
     }
-
-    onLiveChanged: if (!root.live) root.close_picker()
 
     function search_select(index) {
         root.cursor = index;
@@ -116,8 +95,8 @@ SettingsPane {
             id: picker
             visible: root.picking
             st: root.st
-            onPicked: index => root.pick(index)
-            onClosed: root.close_picker()
+            onPicked: index => root.finish_picker(index)
+            onClosed: root.hide_picker()
         }
 
         Repeater {
