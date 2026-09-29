@@ -184,11 +184,37 @@ local function tag_shared_window(active, name)
   end
 end
 
+local shared_monitors = {}
+
+--- Shows every window on a shared monitor opaque and undimmed while any share of it runs.
+--- @param active boolean
+--- @param name string
+local function set_shared_monitor(active, name)
+  local entry = shared_monitors[name] or { count = 0 }
+  entry.count = math.max(0, entry.count + (active and 1 or -1))
+  if entry.count > 0 and not entry.rule then
+    entry.rule = hl.window_rule({
+      name = "shared-monitor-" .. name,
+      match = { workspace = "m[" .. name .. "]" },
+      opacity = "1.0 override 1.0 override",
+      no_dim = true,
+    })
+  elseif entry.count == 0 and entry.rule then
+    entry.rule:set_enabled(false)
+    entry.rule = nil
+  end
+  shared_monitors[name] = entry
+end
+
 --- Toggles browser opacity when a screenshare session starts or stops, and clears the shared window's effects.
 --- Browsers dim when inactive by default; override to full opacity during capture.
 local set_screenshare_handler = function()
   hl.on("screenshare.state", function(active, share_type, name)
-    if share_type == 1 then tag_shared_window(active, name) end
+    if share_type == 1 then
+      tag_shared_window(active, name)
+    else
+      set_shared_monitor(active, name)
+    end
     local opacity = active and "1.0 1.0 override" or "1.0 override 0.85 override"
     hl.window_rule({
       name = "firefox-opacity",
