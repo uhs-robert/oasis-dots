@@ -17,8 +17,6 @@ RowsSection {
             text: v => Style.label(v) + (v === Style.saved_name ? " (active)" : ""),
             value: () => Style.saved_name,
             set: v => Transitions.commit(v),
-            preview: v => Transitions.show(v, false),
-            revert: () => Transitions.show(Style.saved_name, true),
             cycle: false
         },
         {
@@ -35,6 +33,4 @@ RowsSection {
         Style.set_cava_line(!Style.cava_line);
         event.accepted = true;
     }
-
-    Component.onDestruction: Transitions.show(Style.saved_name, true)
 }

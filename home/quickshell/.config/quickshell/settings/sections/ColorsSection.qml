@@ -8,9 +8,7 @@ import ".."
 RowsSection {
     id: root
 
-    // The palette the preview card draws: the highlighted one while the list is open.
-    property string shown: ""
-    readonly property string card_name: root.shown !== "" ? root.shown : Palettes.current
+    readonly property string card_name: Palettes.current
 
     footer_hint: "j/k move · Enter list · Esc sections · q close"
     rows: [
@@ -20,19 +18,9 @@ RowsSection {
             text: v => Palettes.label(v) + (v === Palettes.current ? " (active)" : ""),
             value: () => Palettes.current,
             set: v => Palettes.apply(v),
-            preview: v => {
-                root.shown = v;
-                Palettes.preview(v);
-            },
-            revert: () => {
-                root.shown = "";
-                Palettes.restore();
-            },
             cycle: false
         }
     ]
-
-    Component.onDestruction: Palettes.restore()
 
     footer: Rectangle {
         id: card
@@ -51,7 +39,7 @@ RowsSection {
             spacing: 4
 
             Text {
-                text: Palettes.label(root.card_name) + " preview"
+                text: Palettes.label(root.card_name)
                 color: card.c.theme_primary || "transparent"
                 font.family: root.st.font_family
                 font.pixelSize: root.st.font_size

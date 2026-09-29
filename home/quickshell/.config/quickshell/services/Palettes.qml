@@ -3,7 +3,6 @@ pragma Singleton
 import QtQuick
 import Quickshell
 import Quickshell.Io
-import "../theme"
 
 // The Oasis palettes Hyprland's theme switcher knows, the active one, and applying a choice through that switcher.
 Singleton {
@@ -28,15 +27,6 @@ Singleton {
     function swatches(name) {
         const c = root.colors[name] || {};
         return root.swatch_keys.map(k => c[k] || "transparent");
-    }
-
-    // Shows a palette on the whole shell without saving it.
-    function preview(name) {
-        if (name in root.colors) Theme.apply(root.colors[name]);
-    }
-
-    function restore() {
-        Theme.restore();
     }
 
     // Saves the palette, reloads Hyprland and reruns every generator through switch.lua.

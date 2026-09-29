@@ -128,10 +128,6 @@ Singleton {
         }
     }
 
-    function restore() {
-        theme_file.reload();
-    }
-
     function apply(data) {
         for (const key in data) {
             if (key in root && typeof data[key] === "string" && data[key] !== "") {
