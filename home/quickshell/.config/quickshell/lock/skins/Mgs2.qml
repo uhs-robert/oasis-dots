@@ -663,7 +663,7 @@ Item {
         // The face_urls entry being tried; past the end means none loaded.
         property int face_at: 0
         readonly property string face_url: root.face_urls[art.face_at] || ""
-        readonly property bool has_face: face_image.status === Image.Ready && face_shader.status === ShaderEffect.Compiled
+        readonly property bool has_face: face_image.status === Image.Ready && face_shader.status !== ShaderEffect.Error
         width: 1600
         height: 900
 
