@@ -56,12 +56,23 @@ local function load_state()
   return data.monitors
 end
 
+--- Finds the override for a profile entry under its own or its live monitor's description, then connector.
 --- @param state table<string, table>
---- @param entry { description?: string, name?: string }
+--- @param entry { description?: string, name?: string, id?: integer }
+--- @param monitors table[]
 --- @return table|nil
-local function state_for(state, entry)
-  local found = entry.description and state[entry.description] or entry.name and state[entry.name]
-  if type(found) == "table" then return found end
+local function state_for(state, entry, monitors)
+  local keys = { entry.description, entry.name }
+  for _, mon in ipairs(monitors) do
+    if is_monitor_match(mon, entry) then
+      keys = { entry.description, mon.description, entry.name, mon.name }
+      break
+    end
+  end
+  for i = 1, 4 do
+    local key = keys[i]
+    if key and type(state[key]) == "table" then return state[key] end
+  end
 end
 
 --- Applies one monitor rule; a state override replaces only the fields it carries.
@@ -95,7 +106,7 @@ local function init_monitors()
   local handled = {}
   for _, entry in ipairs(MONITOR_ORDER) do
     local output = get_monitor_output(entry, monitors)
-    local override = state_for(state, entry)
+    local override = state_for(state, entry, monitors)
     if output then apply_rule(output, entry, override) end
     if entry.description then handled[entry.description] = true end
     if entry.name then handled[entry.name] = true end
@@ -115,7 +126,7 @@ local function init_monitors()
       apply_rule(
         output,
         { mode = "preferred", position = "auto", scale = 1 },
-        state_for(state, { description = mon.description, name = mon.name })
+        state_for(state, { description = mon.description, name = mon.name }, monitors)
       )
       handled[key] = true
     end

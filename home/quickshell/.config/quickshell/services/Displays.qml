@@ -25,6 +25,7 @@ Singleton {
     property var snapshot: ({})
     property var proposed: ({})
     property var queued: ({})
+    property string after: ""
 
     readonly property int enabled_count: root.monitors.filter(m => !m.disabled).length
 
@@ -43,6 +44,7 @@ Singleton {
 
     // Applies rules (connector name to spec) now and starts or extends the countdown; keep() persists them.
     function stage(changes) {
+        if (root.after !== "") return;
         if (!root.pending) {
             root.snapshot = {};
             root.proposed = {};
@@ -72,7 +74,7 @@ Singleton {
 
     function flush() {
         if (apply_proc.running) {
-            flush_timer.restart();
+            if (root.after === "") flush_timer.restart();
             return;
         }
         const chunk = DisplayLayout.lua_chunk(root.monitors, root.queued);
@@ -82,26 +84,54 @@ Singleton {
         apply_proc.running = true;
     }
 
+    // Waits for the in-flight apply and any queued edits before persisting.
     function keep() {
-        if (!root.pending) return;
-        if (flush_timer.running) {
-            flush_timer.stop();
-            root.flush();
+        if (!root.pending || root.after !== "") return;
+        tick.stop();
+        flush_timer.stop();
+        root.after = "keep";
+        if (apply_proc.running) return;
+        if (Object.keys(root.queued).length > 0) root.flush();
+        else root.settle();
+    }
+
+    // Drops queued edits and restores the snapshot once the in-flight apply has finished.
+    function revert() {
+        if (!root.pending || root.after === "revert") return;
+        tick.stop();
+        flush_timer.stop();
+        root.queued = {};
+        root.after = "revert";
+        if (!apply_proc.running) root.settle();
+    }
+
+    function settle() {
+        const mode = root.after;
+        root.after = "";
+        if (mode === "keep") {
+            const monitors = Object.assign({}, root.saved, root.proposed);
+            root.saved = monitors;
+            write_proc.command = ["sh", "-c", 'mkdir -p "$(dirname "$1")" && printf %s "$2" > "$1.tmp" && mv "$1.tmp" "$1"', "sh", root.state_path, JSON.stringify({ monitors: monitors })];
+            write_proc.running = true;
+        } else if (mode === "revert") {
+            const chunk = DisplayLayout.lua_chunk(root.monitors, root.snapshot);
+            if (chunk !== "") {
+                revert_proc.command = ["hyprctl", "eval", chunk];
+                revert_proc.running = true;
+            }
         }
-        const monitors = Object.assign({}, root.saved, root.proposed);
-        root.saved = monitors;
-        write_proc.command = ["sh", "-c", 'mkdir -p "$(dirname "$1")" && printf %s "$2" > "$1.tmp" && mv "$1.tmp" "$1"', "sh", root.state_path, JSON.stringify({ monitors: monitors })];
-        write_proc.running = true;
         root.finish();
     }
 
-    function revert() {
-        if (!root.pending) return;
-        const chunk = DisplayLayout.lua_chunk(root.monitors, root.snapshot);
-        root.finish();
-        if (chunk === "") return;
-        revert_proc.command = ["hyprctl", "eval", chunk];
-        revert_proc.running = true;
+    function applied(text) {
+        if (text.trim().indexOf("error") === 0) {
+            root.say("Hyprland rejected the change");
+            root.queued = {};
+            root.after = "revert";
+        }
+        if (root.after === "keep" && Object.keys(root.queued).length > 0) root.flush();
+        else if (root.after !== "") root.settle();
+        else refresh_timer.restart();
     }
 
     function finish() {
@@ -160,15 +190,9 @@ Singleton {
     Process {
         id: apply_proc
         stdout: StdioCollector {
-            onStreamFinished: {
-                if (text.trim().indexOf("error") === 0) {
-                    root.say("Hyprland rejected the change");
-                    root.revert();
-                } else {
-                    refresh_timer.restart();
-                }
-            }
+            id: apply_out
         }
+        onExited: root.applied(apply_out.text)
     }
 
     Process {
