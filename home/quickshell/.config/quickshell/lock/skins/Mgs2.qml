@@ -10,7 +10,7 @@ Item {
     id: root
 
     property var ctx: null
-    readonly property int unlock_ms: 3550
+    readonly property int unlock_ms: 3850
 
     readonly property bool animate: !!root.ctx && root.ctx.animate
     readonly property string phase: root.ctx ? root.ctx.phase : "idle"
@@ -56,15 +56,20 @@ Item {
     // The page on show: the view, with Options as its own page; it trails `page` while a transition runs.
     readonly property string page: root.view === "menu" && root.in_options ? "opt" : root.view
     property string shown: ""
-    // 1 is the frame fully open; a transition folds it up to 0, switches `shown`, then unfolds it from the top-right.
-    property real fold: 1
-    property bool unfolding: false
-    property real content_alpha: 1
-    property real title_alpha: 1
-    property int tx_fold_out: 0
-    property int tx_title_out: 0
-    property int tx_fold_in: 0
-    property int tx_title_in: 0
+    // Page turns run as steps; each moves the frame box from box_a to box_b as tk runs 0 to 1.
+    property var steps: []
+    property var step: null
+    property real tk: 1
+    property var box_a: [0, 0, 0, 0]
+    property var box_b: [0, 0, 0, 0]
+    property bool box_on: false
+    property bool lines_on: false
+    property bool content_on: true
+    // Page turns alternate between wiping up and wiping left, like the game.
+    property bool wipe_left: false
+    readonly property real content_alpha: root.step && root.step.content ? root.tk : root.content_on ? 1 : 0
+    readonly property real title_out: root.step && root.step.title === "out" ? root.tk : 0
+    readonly property real title_in: root.step && root.step.title === "in" ? root.tk : 1
 
     // The menu's cursor and note live in the scene as "menu:<item>:<note>" so every output agrees.
     readonly property var menu_items: ["load", "options", "reboot", "poweroff"]
@@ -161,36 +166,103 @@ Item {
     readonly property var frame: root.frames[root.shown === "opt" ? "menu" : root.shown] || null
     property var last_frame: root.frames.menu
     onFrameChanged: if (root.frame) root.last_frame = root.frame
-    // The frame as drawn: the box keeps its top edge, its bottom follows `fold`, and while unfolding its left edge sweeps in from the right.
+    // The frame as drawn: the box between box_a and box_b, the rail and vertical rule riding its left edge, the horizontal rule its bottom unless a step moves it alone.
     readonly property var fb: {
-        const f = root.last_frame, k = root.fold;
-        const dx = root.unfolding ? (f.box[2] - f.box[0]) * (1 - k) : 0;
-        return { v: f.v + dx, r0: f.rail[0] + dx, r1: f.rail[1] + dx, x0: f.box[0] + dx, y0: f.box[1], x1: f.box[2], y1: f.box[1] + (f.box[3] - f.box[1]) * k };
+        const f = root.last_frame, k = root.tk, a = root.box_a, b = root.box_b;
+        const e = [0, 1, 2, 3].map(i => a[i] + (b[i] - a[i]) * k);
+        const dx = e[0] - f.box[0];
+        const line = root.step && root.step.line ? root.step.line[0] + (root.step.line[1] - root.step.line[0]) * k : e[3];
+        return { v: f.v + dx, r0: f.rail[0] + dx, r1: f.rail[1] + dx, x0: e[0], y0: e[1], x1: e[2], y1: e[3], line: line };
     }
 
     function is_framed(p) {
         return p === "menu" || p === "opt" || p === "load" || p === "name";
     }
 
-    // Folds the old page away and unfolds the new one; unlock, the saver and still screens switch at once.
+    function box_of(p) {
+        return root.frames[p === "opt" ? "menu" : p].box;
+    }
+
+    function rest() {
+        step_anim.stop();
+        root.steps = [];
+        root.step = null;
+        root.tk = 1;
+        if (root.is_framed(root.shown)) {
+            root.last_frame = root.frames[root.shown === "opt" ? "menu" : root.shown];
+            root.box_a = root.box_b = root.box_of(root.shown);
+        }
+        root.box_on = root.lines_on = root.is_framed(root.shown);
+        root.content_on = true;
+    }
+
+    // Runs steps in order: {ms, ease, a, b, box, lines, line, wipe, content, title, start}.
+    function run(list) {
+        step_anim.stop();
+        root.steps = list;
+        root.next_step();
+    }
+
+    function next_step() {
+        const list = root.steps;
+        const s = list.shift();
+        root.steps = list;
+        if (!s) {
+            if (!(root.step && root.step.keep)) root.rest();
+            return;
+        }
+        if (s.start) s.start();
+        if (s.a) {
+            root.box_a = s.a;
+            root.box_b = s.b || s.a;
+        }
+        root.box_on = s.box !== false && root.is_framed(root.shown);
+        root.lines_on = s.lines !== false && root.is_framed(root.shown);
+        root.step = s;
+        root.tk = 0;
+        step_anim.duration = s.ms;
+        step_anim.easing.type = s.ease === undefined ? Easing.Linear : s.ease;
+        step_anim.restart();
+    }
+
+    // The old page wipes up or left (in turn), or the title zooms away; then the new page grows from a corner.
     function turn_page() {
         const to = root.page, from = root.shown;
-        tx.stop();
         const still = !root.animate || from === "" || [to, from].some(p => p === "unlock" || p === "saver");
         if (to === from || still) {
             root.shown = to;
-            root.fold = 1;
-            root.unfolding = false;
-            root.content_alpha = 1;
-            root.title_alpha = 1;
+            root.rest();
             return;
         }
-        root.tx_fold_out = root.is_framed(from) ? Math.round(250 * root.fold) : 0;
-        root.tx_title_out = from === "title" ? 400 : 0;
-        root.tx_fold_in = root.is_framed(to) ? 300 : 0;
-        root.tx_title_in = to === "title" ? 400 : 0;
         if (root.owns_sound && audio_loader.item) audio_loader.item.play("page");
-        tx.restart();
+        const list = [];
+        const swap = { ms: 1, box: false, lines: false, start: () => {
+                root.shown = to;
+                root.content_on = false;
+                if (root.is_framed(to)) root.last_frame = root.frames[to === "opt" ? "menu" : to];
+            } };
+        const n = root.is_framed(to) ? root.box_of(to) : null;
+        let up = true;
+        if (root.is_framed(from)) {
+            const o = root.box_of(from);
+            up = !root.wipe_left;
+            root.wipe_left = !root.wipe_left;
+            list.push({ ms: 260, ease: Easing.InQuad, wipe: true, a: o, b: up ? [o[0], o[1], o[2], o[1]] : [o[0], o[1], o[0], o[3]] });
+            list.push(swap);
+            if (n && up) list.push({ ms: 380, ease: Easing.InOutQuad, box: false, a: n, line: [o[1], n[3]] });
+            else list.push({ ms: 120, box: false, lines: false });
+        } else if (from === "title") {
+            list.push({ ms: 1000, ease: Easing.InQuad, title: "out" }, swap, { ms: 120, box: false, lines: false });
+        } else {
+            list.push(swap);
+        }
+        if (n) {
+            list.push(up && root.is_framed(from) ? { ms: 300, ease: Easing.OutCubic, a: [n[0], n[3], n[0], n[3]], b: n } : { ms: 300, ease: Easing.OutCubic, a: [n[2], n[1], n[2], n[1]], b: n });
+            list.push({ ms: 150, a: n, content: true });
+        } else if (to === "title") {
+            list.push({ ms: 400, title: "in" });
+        }
+        root.run(list);
     }
 
     onPageChanged: root.turn_page()
@@ -341,6 +413,7 @@ Item {
     clip: true
     Component.onCompleted: {
         root.shown = root.page;
+        root.rest();
         root.claim_sound();
         if (root.granted) root.start_unlock();
     }
@@ -409,32 +482,26 @@ Item {
         }
     }
 
-    SequentialAnimation {
-        id: tx
-        ParallelAnimation {
-            NumberAnimation { target: root; property: "fold"; to: 0; duration: root.tx_fold_out; easing.type: Easing.InQuad }
-            NumberAnimation { target: root; property: "title_alpha"; to: 0; duration: root.tx_title_out }
-        }
-        ScriptAction {
-            script: {
-                root.unfolding = true;
-                root.fold = 0;
-                root.content_alpha = 0;
-                root.title_alpha = root.tx_title_in > 0 ? 0 : 1;
-                root.shown = root.page;
-            }
-        }
-        PauseAnimation { duration: 120 }
-        NumberAnimation { target: root; property: "fold"; to: 1; duration: root.tx_fold_in; easing.type: Easing.OutCubic }
-        NumberAnimation { target: root; property: "title_alpha"; to: 1; duration: root.tx_title_in }
-        NumberAnimation { target: root; property: "content_alpha"; to: 1; duration: 150 }
-        ScriptAction { script: root.unfolding = false }
+    NumberAnimation {
+        id: step_anim
+        target: root
+        property: "tk"
+        from: 0
+        to: 1
+        onFinished: root.next_step()
     }
 
-    // Green line, then black, the host and time typed out and held, then faded; all inside unlock_ms.
+    // Green line, the frame folding into its top-right corner, black, the host and time typed out and held, then faded; all inside unlock_ms.
     SequentialAnimation {
         id: unlock_anim
         PauseAnimation { duration: 750 }
+        ScriptAction {
+            script: {
+                const b = root.box_of("name");
+                if (root.shown === "name") root.run([{ ms: 300, ease: Easing.InQuad, wipe: true, keep: true, a: b, b: [b[2], b[1], b[2], b[1]] }]);
+            }
+        }
+        PauseAnimation { duration: 300 }
         NumberAnimation { target: black; property: "opacity"; from: 0; to: 1; duration: 200 }
         PropertyAction { target: root; property: "captioning"; value: true }
         NumberAnimation { target: root; property: "caption_chars"; from: 0; to: root.caption_text.length; duration: 800 }
@@ -841,7 +908,7 @@ Item {
         Item {
             anchors.fill: parent
             opacity: root.shown === "name" ? 1 : 0
-            visible: opacity > 0
+            visible: opacity > 0 && root.shown !== "unlock"
 
             Behavior on opacity { NumberAnimation { duration: 500 } }
 
@@ -882,7 +949,7 @@ Item {
                 readonly property bool on: (root.shown === "opt" ? "menu" : root.shown) === mol.modelData.set
                 anchors.fill: parent
                 opacity: mol.on ? 0.55 + mol.modelData.i * 0.1 : 0
-                visible: opacity > 0
+                visible: opacity > 0 && root.shown !== "unlock"
 
                 Behavior on opacity {
                     enabled: root.animate
@@ -998,7 +1065,7 @@ Item {
         // The frame lines, folded and unfolded between pages like the game's menus.
         Item {
             anchors.fill: parent
-            visible: root.is_framed(root.shown) && root.fold > 0.001
+            visible: root.lines_on
 
             Rectangle {
                 x: root.fb.v
@@ -1009,7 +1076,7 @@ Item {
             }
 
             Rectangle {
-                y: root.fb.y1
+                y: root.fb.line
                 width: 1600
                 height: 1.5
                 color: root.line_color
@@ -1017,10 +1084,11 @@ Item {
             }
 
             Rectangle {
+                visible: root.box_on
                 x: root.fb.r0
                 y: root.fb.y0
-                width: root.fb.r1 - root.fb.r0
-                height: root.fb.y1 - root.fb.y0
+                width: Math.max(0, root.fb.r1 - root.fb.r0)
+                height: Math.max(0, root.fb.y1 - root.fb.y0)
                 color: "#14aabab0"
 
                 Rectangle {
@@ -1032,10 +1100,11 @@ Item {
             }
 
             Rectangle {
+                visible: root.box_on
                 x: root.fb.x0
                 y: root.fb.y0
-                width: root.fb.x1 - root.fb.x0
-                height: root.fb.y1 - root.fb.y0
+                width: Math.max(0, root.fb.x1 - root.fb.x0)
+                height: Math.max(0, root.fb.y1 - root.fb.y0)
                 color: "transparent"
                 border.width: 1.5
                 border.color: "#8c9eaca3"
@@ -1045,26 +1114,27 @@ Item {
         Loader {
             anchors.fill: parent
             active: root.shown === "title"
-            opacity: root.title_alpha
+            opacity: root.title_in
             sourceComponent: title_view
         }
 
-        // Framed pages show only inside the box and rail, so folding the box wipes them away.
+        // Framed pages show only inside the box and rail, so folding the box wipes them away; the layer does the cutting, since clip lets shapes fully outside it through.
         Item {
             id: page_clip
+            layer.enabled: root.step !== null
             x: root.fb.v
             y: root.fb.y0
             width: Math.max(0, root.fb.x1 + 20 - root.fb.v)
             height: Math.max(0, root.fb.y1 - root.fb.y0)
             clip: true
-            visible: root.is_framed(root.shown)
+            visible: root.is_framed(root.shown) && root.box_on
 
             Item {
                 x: -page_clip.x
                 y: -page_clip.y
                 width: 1600
                 height: 900
-                opacity: root.unfolding ? root.content_alpha : 1
+                opacity: root.content_alpha
 
                 Loader {
                     anchors.fill: parent
@@ -1096,7 +1166,7 @@ Item {
             x: 158
             y: 790
             visible: root.is_framed(root.shown)
-            opacity: root.unfolding ? root.content_alpha : root.fold
+            opacity: root.step && root.step.wipe ? 1 - root.tk : root.content_alpha
             width: 1300
             text: root.desc[0]
             textFormat: Text.PlainText
@@ -1244,13 +1314,16 @@ Item {
 
         Item {
             TitleArt {
-                opacity: 0.8
+                opacity: 0.8 * (1 - root.title_out)
             }
 
             Column {
                 y: 70
                 width: 1600
                 spacing: 0
+                scale: 1 + 0.18 * root.title_out
+                opacity: 1 - root.title_out
+                transformOrigin: Item.Center
 
                 Text {
                     anchors.horizontalCenter: parent.horizontalCenter
@@ -1344,31 +1417,36 @@ Item {
                 }
             }
 
-            Seg {
-                x: (1600 - width) / 2
-                y: 698
-                text: "PRESS START BUTTON"
-                h: 24
-                gap: 3.2
-                color: "#c9d1c9"
+            Item {
+                anchors.fill: parent
+                opacity: Math.max(0, 1 - 2.5 * root.title_out)
 
-                SequentialAnimation on opacity {
-                    running: root.animate
-                    loops: Animation.Infinite
-                    NumberAnimation { from: 1; to: 0.35; duration: 1200; easing.type: Easing.InOutSine }
-                    NumberAnimation { from: 0.35; to: 1; duration: 1200; easing.type: Easing.InOutSine }
+                Seg {
+                    x: (1600 - width) / 2
+                    y: 698
+                    text: "PRESS START BUTTON"
+                    h: 24
+                    gap: 3.2
+                    color: "#c9d1c9"
+
+                    SequentialAnimation on opacity {
+                        running: root.animate
+                        loops: Animation.Infinite
+                        NumberAnimation { from: 1; to: 0.35; duration: 1200; easing.type: Easing.InOutSine }
+                        NumberAnimation { from: 0.35; to: 1; duration: 1200; easing.type: Easing.InOutSine }
+                    }
                 }
-            }
 
-            Text {
-                y: 780
-                width: 1600
-                horizontalAlignment: Text.AlignHCenter
-                textFormat: Text.StyledText
-                text: "<font color=\"#d4d8d6\">" + root.clock_text + "</font>&nbsp;&nbsp;&nbsp; " + Qt.formatDate(root.now, "dddd, MMMM d, yyyy")
-                color: "#b3b7b5"
-                font.family: root.ui_font
-                font.pixelSize: 27
+                Text {
+                    y: 780
+                    width: 1600
+                    horizontalAlignment: Text.AlignHCenter
+                    textFormat: Text.StyledText
+                    text: "<font color=\"#d4d8d6\">" + root.clock_text + "</font>&nbsp;&nbsp;&nbsp; " + Qt.formatDate(root.now, "dddd, MMMM d, yyyy")
+                    color: "#b3b7b5"
+                    font.family: root.ui_font
+                    font.pixelSize: 27
+                }
             }
         }
     }
