@@ -1,0 +1,134 @@
+#!/usr/bin/env bash
+# Generates each style's chiptune sounds with sox into sounds/<style>/: cursor, confirm, cancel, notify (wav) and a music loop (ogg).
+# Usage: make-sounds [--out DIR] [STYLE...]   (no styles means all; files in ~/.local/share/quickshell/sounds/<style>/ override these)
+set -euo pipefail
+
+command -v sox >/dev/null || {
+  echo "make-sounds: sox is required" >&2
+  exit 1
+}
+
+out="$(cd "$(dirname "$0")/.." && pwd)/sounds"
+styles=()
+while (($#)); do
+  case "$1" in
+  --out)
+    out=$2
+    shift 2
+    ;;
+  -h | --help)
+    sed -n '2,3p' "$0"
+    exit 0
+    ;;
+  *)
+    styles+=("$1")
+    shift
+    ;;
+  esac
+done
+
+rate=22050
+# style|wave|root_hz|scale|step_s|pattern
+profiles=(
+  "oasis|sine|261.63|pent|0.34|0"
+  "modern|sine|293.66|major|0.30|1"
+  "neovim|triangle|220.00|dorian|0.28|2"
+  "terminal|square|174.61|minor|0.26|3"
+  "crt|sawtooth|196.00|minor|0.30|0"
+  "nes|square|261.63|major|0.18|1"
+  "gameboy|square|329.63|pent|0.20|2"
+  "snes|triangle|246.94|major|0.26|3"
+  "ps1|sine|220.00|minor|0.36|0"
+  "ff7|triangle|207.65|dorian|0.34|1"
+  "goldeneye|sawtooth|155.56|minor|0.24|2"
+  "ps2|sine|233.08|pent|0.38|3"
+  "tie|square|146.83|minor|0.22|0"
+  "halflife|sawtooth|130.81|dorian|0.32|1"
+  "metroid|triangle|164.81|minor|0.30|2"
+  "oblivion|sine|196.00|dorian|0.40|3"
+  "mech|square|185.00|minor|0.20|0"
+)
+declare -A scales=([pent]="0 2 4 7 9" [major]="0 2 4 5 7 9 11" [minor]="0 2 3 5 7 8 10" [dorian]="0 2 3 5 7 9 10")
+patterns=(
+  "0 2 4 2 3 1 2 0 4 3 2 4 5 3 1 0"
+  "0 1 2 4 2 1 0 2 3 4 3 2 1 2 4 0"
+  "2 4 5 4 2 0 1 2 4 2 1 0 -1 0 1 2"
+  "0 0 2 4 4 2 5 4 2 3 1 2 0 1 -1 0"
+)
+bass_degrees=(0 3 4 0 2 3 4 0)
+
+# Prints the frequency of scale degree $3 (any integer) above root $1 in scale $2.
+degree_freq() {
+  awk -v root="$1" -v deg="$3" -v offs="${scales[$2]}" 'BEGIN {
+    n = split(offs, o, " ")
+    oct = int(deg / n); i = deg - oct * n
+    if (i < 0) { i += n; oct -= 1 }
+    printf "%.2f", root * 2 ^ ((o[i + 1] + 12 * oct) / 12)
+  }'
+}
+
+# Writes one note to $1: $2 seconds of wave $3 at $4 Hz, volume $5.
+tone() {
+  sox -q -n -r "$rate" -b 16 -c 1 "$1" synth "$2" "$3" "$4" fade q 0.004 "$2" 0.02 vol "$5"
+}
+
+# Concatenates the note files after $1 into $1.
+join() {
+  local dest=$1
+  shift
+  sox -q "$@" "$dest"
+}
+
+make_style() {
+  local style=$1 wave=$2 root=$3 scale=$4 step=$5 pat=$6 dir="$out/$1" tmp i bass_len
+  local -a notes parts
+  mkdir -p "$dir"
+  tmp=$(mktemp -d)
+
+  tone "$tmp/hi.wav" 0.035 "$wave" "$(degree_freq "$root" "$scale" 7)" 0.45
+  cp "$tmp/hi.wav" "$dir/cursor.wav"
+
+  tone "$tmp/a.wav" 0.06 "$wave" "$(degree_freq "$root" "$scale" 5)" 0.5
+  tone "$tmp/b.wav" 0.11 "$wave" "$(degree_freq "$root" "$scale" 9)" 0.5
+  join "$dir/confirm.wav" "$tmp/a.wav" "$tmp/b.wav"
+
+  tone "$tmp/c.wav" 0.06 "$wave" "$(degree_freq "$root" "$scale" 7)" 0.5
+  tone "$tmp/d.wav" 0.11 "$wave" "$(degree_freq "$root" "$scale" 3)" 0.5
+  join "$dir/cancel.wav" "$tmp/c.wav" "$tmp/d.wav"
+
+  parts=()
+  for i in 5 7 9; do
+    tone "$tmp/n$i.wav" 0.09 "$wave" "$(degree_freq "$root" "$scale" "$i")" 0.5
+    parts+=("$tmp/n$i.wav")
+  done
+  tone "$tmp/n12.wav" 0.2 "$wave" "$(degree_freq "$root" "$scale" 12)" 0.5
+  join "$dir/notify.wav" "${parts[@]}" "$tmp/n12.wav"
+
+  read -ra notes <<<"${patterns[pat]}"
+  parts=()
+  for i in "${!notes[@]}"; do
+    tone "$tmp/l$i.wav" "$step" "$wave" "$(degree_freq "$root" "$scale" $((notes[i] + 7)))" 0.4
+    tone "$tmp/m$i.wav" "$step" "$wave" "$(degree_freq "$root" "$scale" $((notes[i] + 9)))" 0.4
+    parts+=("$tmp/l$i.wav")
+  done
+  for i in "${!notes[@]}"; do parts+=("$tmp/m$i.wav"); done
+  join "$tmp/lead.wav" "${parts[@]}"
+
+  bass_len=$(awk -v s="$step" 'BEGIN { printf "%.3f", s * 4 }')
+  parts=()
+  for i in "${!bass_degrees[@]}"; do
+    tone "$tmp/b$i.wav" "$bass_len" triangle "$(degree_freq "$root" "$scale" "${bass_degrees[i]}")" 0.5
+    parts+=("$tmp/b$i.wav")
+  done
+  join "$tmp/bass.wav" "${parts[@]}"
+
+  sox -q -m "$tmp/lead.wav" "$tmp/bass.wav" -C 1 -r "$rate" -c 1 "$dir/music.ogg" norm -3
+  rm -rf "$tmp"
+  printf 'make-sounds: %s\n' "$style"
+}
+
+for profile in "${profiles[@]}"; do
+  IFS='|' read -r style wave root scale step pat <<<"$profile"
+  if ((${#styles[@]})) && [[ " ${styles[*]} " != *" $style "* ]]; then continue; fi
+  make_style "$style" "$wave" "$root" "$scale" "$step" "$pat"
+done

@@ -408,6 +408,12 @@ Singleton {
         showDirs: false
     }
 
+    Binding {
+        target: ThemeAudio
+        property: "lock_active"
+        value: persist.locked
+    }
+
     LockCtx {
         id: live_ctx
         buffer_length: root.buffer.length

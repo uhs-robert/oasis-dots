@@ -1980,7 +1980,11 @@ Singleton {
         };
     }
 
-    readonly property var active: root.styles[root.name] || root.styles["oasis"]
+    readonly property var base_active: root.styles[root.name] || root.styles["oasis"]
+    readonly property var active: {
+        const opts = root.theme_values[root.styles[root.name] ? root.name : "oasis"];
+        return opts ? root.with_options(root.base_active, opts) : root.base_active;
+    }
     // Frames drawn by SlantFrame: flat top, bottom corners cut at the bar islands' slant, a sand horizon along the foot.
     readonly property bool slant_frame: root.active.slant_frame
     // Extra room under a frame's content so the long cut clears the footer.
@@ -2464,6 +2468,101 @@ Singleton {
         root.save_lock();
     }
 
+    // Per-style option values by style then key, from theme_options.json; only values that differ from the style's own are kept.
+    property var theme_values: ({})
+    // The current style's option schema: [{ key, label, type, default, choices | min, max, step }].
+    readonly property var settings: root.settings_for(root.saved_name)
+    readonly property var font_choices: {
+        const seen = {};
+        for (const n in root.styles) {
+            if (root.styles[n].font_family) seen[root.styles[n].font_family] = true;
+            if (root.styles[n].bar_font_family) seen[root.styles[n].bar_font_family] = true;
+        }
+        return Object.keys(seen).sort();
+    }
+
+    function settings_for(style_name) {
+        const b = root.styles[style_name];
+        if (!b) return [];
+        const out = [];
+        const flag = (key, label) => out.push({ key: key, label: label, type: "bool", default: true });
+        if (b.scanlines === true) flag("scanlines", "Scanlines");
+        if (b.glow === true) {
+            flag("glow", "Glow");
+            out.push({ key: "glow_tint", label: "Glow strength", type: "number", default: b.glow_tint, min: 0, max: 1, step: 0.05 });
+        }
+        if (b.dither !== undefined && Qt.color(b.dither).a > 0) flag("dither", "Dither");
+        if (b.meter_bloom === true) flag("meter_bloom", "Meter bloom");
+        if (b.caret_blink === true) flag("caret_blink", "Caret blink");
+        if (b.fade_fills === true) flag("fade_fills", "Fade fills");
+        out.push({ key: "font_family", label: "Font", type: "choice", default: b.font_family, choices: root.font_choices });
+        out.push({ key: "bar_font_family", label: "Bar font", type: "choice", default: b.bar_font_family, choices: root.font_choices });
+        out.push({ key: "font_size", label: "Text size", type: "number", default: b.font_size, min: 8, max: 32, step: 1 });
+        return out;
+    }
+
+    // The value of option `key` for the current style: the saved one, else the style's own.
+    function option(key) {
+        const def = root.settings.find(d => d.key === key);
+        if (!def) return undefined;
+        const saved = (root.theme_values[root.saved_name] || {})[key];
+        return saved !== undefined ? saved : def.type === "bool" ? true : def.default;
+    }
+
+    function set_option(key, value) {
+        const def = root.settings.find(d => d.key === key);
+        if (!def || !root.valid_option(def, value)) return false;
+        const all = Object.assign({}, root.theme_values);
+        const mine = Object.assign({}, all[root.saved_name] || {});
+        if (value === (def.type === "bool" ? true : def.default)) delete mine[key];
+        else mine[key] = value;
+        if (Object.keys(mine).length > 0) all[root.saved_name] = mine;
+        else delete all[root.saved_name];
+        root.theme_values = all;
+        root.save_options();
+        return true;
+    }
+
+    function reset_options() {
+        const all = Object.assign({}, root.theme_values);
+        delete all[root.saved_name];
+        root.theme_values = all;
+        root.save_options();
+    }
+
+    function valid_option(def, value) {
+        if (def.type === "bool") return typeof value === "boolean";
+        if (def.type === "choice") return def.choices.indexOf(value) >= 0;
+        return typeof value === "number" && isFinite(value) && value >= def.min && value <= def.max;
+    }
+
+    // A style's tokens with the saved option values laid over them; dither is a colour, so off blanks it.
+    function with_options(base, opts) {
+        const o = Object.assign({}, base);
+        for (const k in opts) {
+            if (k === "dither") o.dither = "transparent";
+            else o[k] = opts[k];
+        }
+        return o;
+    }
+
+    function save_options() {
+        options_file.setText(JSON.stringify(root.theme_values));
+    }
+
+    function load_options(data) {
+        const all = {};
+        for (const style_name in data) {
+            const mine = {};
+            for (const def of root.settings_for(style_name)) {
+                const v = data[style_name] ? data[style_name][def.key] : undefined;
+                if (v !== undefined && root.valid_option(def, v) && v !== (def.type === "bool" ? true : def.default)) mine[def.key] = v;
+            }
+            if (Object.keys(mine).length > 0) all[style_name] = mine;
+        }
+        root.theme_values = all;
+    }
+
     function set_cava_line(on) {
         root.cava_line = on;
         root.save();
@@ -2528,6 +2627,21 @@ Singleton {
     property var legacy_lock: null
 
     FileView {
+        id: options_file
+        path: root.state_dir + "/theme_options.json"
+        printErrors: false
+        blockLoading: true
+        onLoaded: {
+            try {
+                root.load_options(JSON.parse(text()));
+            } catch (e) {
+                console.warn("Style: invalid theme_options.json (" + e + ")");
+            }
+        }
+        onLoadFailed: error => {}
+    }
+
+    FileView {
         id: lock_file
         path: root.state_dir + "/lock.json"
         printErrors: false
@@ -2550,5 +2664,6 @@ Singleton {
         ensure_state_dir.running = true;
         state_file.reload();
         lock_file.reload();
+        options_file.reload();
     }
 }

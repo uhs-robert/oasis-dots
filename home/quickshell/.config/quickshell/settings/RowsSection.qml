@@ -2,9 +2,10 @@
 import QtQuick
 import QtQuick.Layouts
 import "../theme"
+import "../services"
 
 // A section of ChoiceRows; each row is { label, values: () => [...], text: v => string, value: () => current, set: v => void, pick?: bool }.
-// Enter or a click opens a filterable list of a row's values; `pick: false` keeps a row cycling.
+// Enter or a click opens a filterable list of a row's values; `pick: false` keeps a row cycling and `cycle: false` stops h/l from stepping it.
 SettingsPane {
     id: root
 
@@ -19,6 +20,8 @@ SettingsPane {
     // Runs first; a section that accepts the event keeps it from the rows.
     signal first_key(var event)
 
+    onCursorChanged: if (root.live) ThemeAudio.play("cursor")
+
     footer_hint: "j/k move · h/l change · Enter list · Esc sections · q close"
     search_rows: root.rows.map(r => r.label)
     search_cursor: root.cursor
@@ -26,12 +29,13 @@ SettingsPane {
 
     function step(index, delta) {
         const row = root.rows[index];
-        if (!row) return;
+        if (!row || row.cycle === false) return;
         const values = row.values();
         if (values.length === 0) return;
         const at = values.indexOf(row.value());
         const next = at < 0 ? (delta > 0 ? 0 : values.length - 1) : root.wrap_index(at, delta, values.length);
         row.set(values[next]);
+        ThemeAudio.play("confirm");
     }
 
     function pickable(index) {
@@ -43,7 +47,10 @@ SettingsPane {
         const row = root.rows[index];
         const values = row.values();
         root.cursor = index;
-        root.show_picker(picker, row.label, values.map(v => row.text(v)), values.indexOf(row.value()), i => row.set(values[i]));
+        root.show_picker(picker, row.label, values.map(v => row.text(v)), values.indexOf(row.value()), i => {
+            row.set(values[i]);
+            ThemeAudio.play("confirm");
+        });
     }
 
     function activate(index, delta) {

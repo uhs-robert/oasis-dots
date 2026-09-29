@@ -10,6 +10,8 @@ ShellRoot {
 
     Fonts {}
 
+    GreeterAudio {}
+
     Variants {
         model: Greeter.preview ? [] : Quickshell.screens
 

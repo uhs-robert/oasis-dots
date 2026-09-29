@@ -65,6 +65,7 @@ Singleton {
         if (suppressed) return;
         root.toasts = [entry].concat(root.toasts);
         root.sync_timers();
+        ThemeAudio.play("notify");
     }
 
     function make_entry(n, read) {

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Writes the greeter's data files (greeter.json, theme.json, faces/$USER) into /var/lib/qs-greeter when that directory exists and is writable.
-# Usage: greeter-data <greeter.json text> <theme.json path> [face path]
+# Usage: greeter-data <greeter.json text> <theme.json path> [face path] [music path]
 dir=${QS_GREETER_DATA:-/var/lib/qs-greeter}
 [[ -d "$dir" && -w "$dir" ]] || exit 0
 umask 027
@@ -19,5 +19,13 @@ write greeter.json "$1"
 if [[ -n "${3:-}" && -f "$3" && -n "${USER:-}" ]] && ! cmp -s "$3" "$dir/faces/$USER"; then
   mkdir -p "$dir/faces" && tmp=$(mktemp "$dir/faces/.$USER.XXXXXX") &&
     { cp -L "$3" "$tmp" && chmod 640 "$tmp" && mv -f "$tmp" "$dir/faces/$USER" || rm -f "$tmp"; }
+fi
+
+# The theme music the greeter plays; an empty or missing path clears it.
+rm -f "$dir"/music.ogg "$dir"/music.wav "$dir"/music.mp3
+if [[ -n "${4:-}" && -f "$4" ]]; then
+  case "${4##*.}" in
+  ogg | wav | mp3) cp -L "$4" "$dir/music.${4##*.}" && chmod 640 "$dir/music.${4##*.}" ;;
+  esac
 fi
 exit 0
