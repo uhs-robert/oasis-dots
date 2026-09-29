@@ -3,6 +3,7 @@
 // Settings sections in sidebar order; `source` is relative to the settings folder.
 var list = [
     { id: "style", group: "Appearance", label: "Style", glyph: "󰏘", keywords: "theme bar cava paint", source: "sections/StyleSection.qml" },
+    { id: "theme", group: "Appearance", label: "Theme options", glyph: "󰒓", keywords: "scanlines glow dither font effects style options", source: "sections/ThemeOptionsSection.qml" },
     { id: "bar", group: "Bar", label: "Bar modules", glyph: "󰕮", keywords: "modules hide show order reorder monitor layout panel", source: "sections/BarModulesSection.qml" },
     { id: "displays", group: "System", label: "Displays", glyph: "󰍹", keywords: "monitors resolution refresh scale rotate orientation arrange position enable disable screen", source: "sections/DisplaysSection.qml" },
     { id: "apps", group: "System", label: "Default apps", glyph: "󰀻", keywords: "terminal browser editor file manager mime xdg associations mail pdf", source: "sections/DefaultAppsSection.qml" },
