@@ -27,7 +27,7 @@ Tracks the Settings panel that drops from the center island (issue #361). Update
 - [x] Start menu "Settings" row and leader `S` open the panel
 - [x] Live test on the bar and fix what turns up
 - [x] Review findings resolved, PR merged
-- [ ] Optional: move lock settings out of `style.json` into their own state file
+- [ ] Move lock settings out of `style.json` into `lock.json`, migrating current values on first load (bar fixes track)
 
 ## Step 2: bar modules (done)
 
@@ -49,7 +49,7 @@ State on 2026-09-29: steps 1 and 2 merged (#366, #368). Step 2 merged with two o
 
 Plan for the next session, all decided, no open questions: run four tracks in parallel, each in its own worktree off `main`. Each branch gets a review and a Codex pass, then a live test on the bar one at a time, and merges only after that test.
 
-1. Bar fixes: the two open step 2 findings. Goes first; the other branches rebase on it.
+1. Bar fixes: the two open step 2 findings, plus moving lock settings into `lock.json` (step 1 list). Goes first, before Themes touches `Style.qml`; the other branches rebase on it.
 2. Displays (step 3).
 3. System (step 4).
 4. Themes (step 5).
