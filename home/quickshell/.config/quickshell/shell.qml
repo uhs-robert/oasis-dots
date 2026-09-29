@@ -10,6 +10,7 @@ import "./overview"
 import "./picker"
 import "./popups"
 import "./services"
+import "./settings"
 
 ShellRoot {
     id: root
@@ -81,8 +82,7 @@ ShellRoot {
     ClockPopup {}
     StartPopup {}
     PowerPopup {}
-    StylePopup {}
-    LockStylePopup {
+    SettingsPopup {
         previewer: lock_preview
     }
     VolumePopup {}
@@ -107,6 +107,7 @@ ShellRoot {
     BrightnessIpc {}
     NotificationsIpc {}
     StyleIpc {}
+    SettingsIpc {}
     GreeterSync {}
     PowerIpc {}
     ScreenshotIpc {}

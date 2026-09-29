@@ -19,9 +19,9 @@ Popup {
     jumps_enabled: !root.confirm
 
     // Rows past the first two are Power actions, in Power.actions order.
-    readonly property var actions: ["Apps", "Style"].concat(Power.actions.map(a => Power.labels[a]))
+    readonly property var actions: ["Apps", "Settings"].concat(Power.actions.map(a => Power.labels[a]))
     readonly property var keys: root.actions.map((a, i) => String(i + 1))
-    readonly property var glyphs: ["󰣇", "󰏘"].concat(Power.actions.map(a => Power.glyphs[a]))
+    readonly property var glyphs: ["󰣇", "󰒓"].concat(Power.actions.map(a => Power.glyphs[a]))
     readonly property var glyph_colors: [Theme.green, Theme.theme_secondary].concat(Power.actions.map(a => Power.color(a, root.st)))
 
     property int selected: 0
@@ -43,7 +43,7 @@ Popup {
         selected = index;
         if (index === 0) {
             if (!Pickers.open("apps", Popups.open_anchor, Popups.open_color, Popups.open_screen_name, "start")) run(0);
-        } else if (index === 1) Popups.open("style", Popups.open_anchor, Popups.open_color, Popups.open_screen_name, "start");
+        } else if (index === 1) SettingsNav.open("");
         else confirm = true;
     }
 
