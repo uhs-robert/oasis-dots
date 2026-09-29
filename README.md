@@ -128,3 +128,7 @@ Vim-style keybindings for Betterbird through the tbkeys add-on, with a Neovim co
 ## Termux
 
 For a standalone mobile SSH setup, see [termux/README.md](termux/README.md). It uses its own installer and Stow packages, independent of the desktop setup.
+
+## License
+
+[GPL-3.0](LICENSE). Bundled third-party pieces keep their own licenses: the fonts in the Quickshell config (SIL Open Font License, see its `fonts/README.md`), the weather icons (MIT, see `assets/weather/LICENSE`), the Bibata cursor themes (GPL-3.0), and the vendored tmux and Yazi plugins and flavors (see each one's own files).
