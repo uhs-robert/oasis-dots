@@ -39,7 +39,7 @@ Tracks the Settings panel that drops from the center island (issue #361). Update
 - [x] PR merged (two review findings still open, below)
 - [x] Edit the `compact` flag per monitor; the override only seeds it
 - [x] Add and remove module arguments (`system:temperature`); entries with arguments are only listed once a rule or the state names them
-- [ ] Re-test on the bar after the review fixes: hide/show keeps position across a restart, lualine (neovim style) reorders within x/y/z only
+- [x] Re-test on the bar after the review fixes: hide/show keeps position across a restart, lualine (neovim style) reorders within x/y/z only
 - [x] Fix first (open Codex findings): shared J/K on a monitor whose rule lacks some modules (the HP Z22n has no weather/volume/battery) pushes those modules to the end of the other monitor's bar. `order_from` in `BarLayout.js` should merge the edited view into the old order without relocating entries absent from the view
 - [x] Fix: `resolve_key` drops a stale override when its old connector is now used by a different monitor; only reserve a key when that connector holds a live screen with the same description
 
