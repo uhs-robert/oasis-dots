@@ -122,6 +122,7 @@ Popup {
                 anchors.fill: parent
                 visible: false
                 source: root.has_art ? root.player.trackArtUrl : ""
+                sourceSize.width: Math.ceil(width / 2)
                 fillMode: Image.PreserveAspectCrop
                 asynchronous: true
                 layer.enabled: true
@@ -208,6 +209,7 @@ Popup {
                         anchors.fill: parent
                         visible: false
                         source: root.player ? root.player.trackArtUrl : ""
+                        sourceSize.width: width * 2
                         fillMode: Image.PreserveAspectCrop
                         asynchronous: true
                         layer.enabled: true

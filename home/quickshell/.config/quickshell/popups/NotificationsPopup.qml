@@ -369,6 +369,8 @@ Popup {
                                 Layout.preferredHeight: 18
                                 visible: row_item.modelData.type === "app_header" && row_item.modelData.icon !== ""
                                 source: row_item.modelData.type === "app_header" ? Quickshell.iconPath(row_item.modelData.icon, true) : ""
+                                sourceSize.width: width * 2
+                                sourceSize.height: height * 2
                                 fillMode: Image.PreserveAspectFit
                             }
 

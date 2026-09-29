@@ -1030,6 +1030,9 @@ Item {
                                 required property int index
                                 anchors.fill: parent
                                 source: Qt.resolvedUrl("ocarina/fire" + index + ".png")
+                                sourceSize.width: Math.round(fire.width * title_stage.k)
+                                // Uncached, so the frames leave with the lock instead of staying in Qt's image cache.
+                                cache: false
                                 opacity: index === Math.floor(fire.phase) ? 1 : 0
                                 asynchronous: true
                                 smooth: true
@@ -1087,6 +1090,7 @@ Item {
                     y: 350.6 - height / 2
                     source: Qt.resolvedUrl("ocarina/logo.png")
                     sourceSize.width: Math.round(logo.width * title_stage.k)
+                    cache: false
                     fillMode: Image.PreserveAspectFit
                     asynchronous: true
                     smooth: true

@@ -5,7 +5,7 @@ import Quickshell
 import Quickshell.Io
 import "../theme"
 
-// One keeptabs-waybar stream shared by every bar; it animates and idles on battery by itself.
+// One keeptabs-status stream shared by every bar; it animates and idles on battery by itself.
 Singleton {
     id: root
 
@@ -81,10 +81,14 @@ Singleton {
 
     Process {
         id: stream
-        command: ["sh", "-c", "exec ~/.local/bin/keeptabs-waybar"]
+        command: ["sh", "-c", "exec ~/.local/bin/keeptabs-status"]
         running: true
         stdout: SplitParser {
+            property string last_line: ""
             onRead: line => {
+                // Idle ticks repeat the same frame; skip them so the bars don't redraw.
+                if (line === last_line) return;
+                last_line = line;
                 try {
                     const data = JSON.parse(line);
                     const runs = root.parse(data.text || "");

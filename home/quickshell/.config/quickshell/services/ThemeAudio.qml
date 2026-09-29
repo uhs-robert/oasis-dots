@@ -1,11 +1,11 @@
 // home/quickshell/.config/quickshell/services/ThemeAudio.qml
 pragma Singleton
 import QtQuick
-import QtMultimedia
 import Qt.labs.folderlistmodel
 import Quickshell
 import Quickshell.Io
 import "../theme"
+import "../lock/skins/sound"
 
 // Per-style UI, notification and lock sounds: sounds/<style>/ ships in the repo, ~/.local/share/quickshell/sounds/<style>/ wins file by file. Saved in audio.json under the state dir.
 Singleton {
@@ -70,8 +70,8 @@ Singleton {
     }
 
     function preview(kind) {
-        const fx = ({ cursor: fx_cursor, confirm: fx_confirm, cancel: fx_cancel, notify: fx_notify })[kind];
-        if (fx && fx.status === SoundEffect.Ready) fx.play();
+        const url = ui_pack.find(kind, ["wav", "ogg"]);
+        if (url !== "") effects.queue(["loadfile", url, "replace"]);
     }
 
     function save() {
@@ -121,24 +121,17 @@ Singleton {
     Pack { id: login_pack; user_dir: root.user_dir; style_name: root.login_name }
     Pack { id: music_pack; user_dir: root.user_dir; style_name: root.music_on ? root.music_name : "" }
 
-    SoundEffect { id: fx_cursor; source: ui_pack.find("cursor", ["wav", "ogg"]); volume: root.volume }
-    SoundEffect { id: fx_confirm; source: ui_pack.find("confirm", ["wav", "ogg"]); volume: root.volume }
-    SoundEffect { id: fx_cancel; source: ui_pack.find("cancel", ["wav", "ogg"]); volume: root.volume }
-    SoundEffect { id: fx_notify; source: ui_pack.find("notify", ["wav", "ogg"]); volume: root.volume }
+    MpvProcess {
+        id: effects
+        wanted: root.ui || root.notify
+        args: ["--idle=yes"]
+        volume: root.volume
+    }
 
-    MediaPlayer {
-        id: player
-        source: root.music_on ? root.music_url : ""
-        loops: MediaPlayer.Infinite
-        audioOutput: AudioOutput {
-            volume: root.volume * 0.6
-        }
-        onMediaStatusChanged: {
-            if (player.mediaStatus === MediaPlayer.LoadedMedia && root.music_on) player.play();
-        }
-        onSourceChanged: {
-            if (player.source.toString() === "") player.stop();
-        }
+    MpvProcess {
+        wanted: root.music_on && root.music_url !== ""
+        args: ["--loop-file=inf", root.music_url]
+        volume: root.volume * 0.6
     }
 
     FileView {

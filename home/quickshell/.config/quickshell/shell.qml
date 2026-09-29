@@ -1,4 +1,5 @@
 //@ pragma UseQApplication
+//@ pragma Env mesa_glthread=false
 // home/quickshell/.config/quickshell/shell.qml
 import QtQuick
 import Quickshell
@@ -63,6 +64,7 @@ ShellRoot {
 
                 SubmapTab {
                     screen: screen_scope.modelData
+                    screen_name: screen_scope.modelData.name
                     line_width: bar.center_width
                     bar_present: screen_scope.has_bar
                     chip_shown: bar.has_mode_chip
@@ -79,25 +81,76 @@ ShellRoot {
         }
     }
 
-    ClockPopup {}
-    StartPopup {}
-    PowerPopup {}
-    SettingsPopup {
-        previewer: lock_preview
+    LazyPopup {
+        name: "clock"
+        ClockPopup {}
     }
-    VolumePopup {}
-    BatteryPopup {}
-    BluetoothPopup {}
-    SystemPopup {}
-    TrayPopup {}
-    NetworkPopup {}
-    KeeptabsPopup {}
-    WeatherPopup {}
-    UpdatesPopup {}
-    MediaPopup {}
-    ScreenshotPopup {}
-    NotificationsPopup {}
-    Picker {}
+    LazyPopup {
+        name: "start"
+        StartPopup {}
+    }
+    LazyPopup {
+        name: "power"
+        PowerPopup {}
+    }
+    LazyPopup {
+        name: "settings"
+        SettingsPopup {
+            previewer: lock_preview
+        }
+    }
+    LazyPopup {
+        name: "volume"
+        VolumePopup {}
+    }
+    LazyPopup {
+        name: "battery"
+        BatteryPopup {}
+    }
+    LazyPopup {
+        name: "bluetooth"
+        BluetoothPopup {}
+    }
+    LazyPopup {
+        name: "system"
+        SystemPopup {}
+    }
+    LazyPopup {
+        name: "tray"
+        TrayPopup {}
+    }
+    LazyPopup {
+        name: "network"
+        NetworkPopup {}
+    }
+    LazyPopup {
+        name: "keeptabs"
+        KeeptabsPopup {}
+    }
+    LazyPopup {
+        name: "weather"
+        WeatherPopup {}
+    }
+    LazyPopup {
+        name: "updates"
+        UpdatesPopup {}
+    }
+    LazyPopup {
+        name: "media"
+        MediaPopup {}
+    }
+    LazyPopup {
+        name: "screenshot"
+        ScreenshotPopup {}
+    }
+    LazyPopup {
+        name: "notifications"
+        NotificationsPopup {}
+    }
+    LazyPopup {
+        name: "picker"
+        Picker {}
+    }
     HyprvimPrompt {}
     AppsProvider {}
     ClipboardProvider {}

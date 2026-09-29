@@ -9,6 +9,8 @@ Singleton {
     id: root
 
     property string open_name: ""
+    // Set just before open_name, so a LazyPopup builds its popup closed and sees the open as a change.
+    property string load_name: ""
     property var open_anchor: null
     property color open_color: Theme.bg_mantle
     property string open_screen_name: ""
@@ -112,11 +114,13 @@ Singleton {
             open_screen_name = found ? found.screen_name : (screen_name || "");
             if (found && !back) back = found.back_to || "";
         }
+        load_name = name;
         open_name = name;
         back_name = back;
     }
 
     function close() {
+        load_name = "";
         open_name = "";
         open_anchor = null;
         open_screen_name = "";
