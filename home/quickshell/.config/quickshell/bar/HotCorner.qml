@@ -17,6 +17,17 @@ PanelWindow {
     readonly property var monitor: Hyprland.monitorFor(root.screen)
     property bool fired: false
 
+    // A corner shared with a neighbouring monitor is no wall for the pointer, so only outer corners act.
+    readonly property bool reachable: {
+        const sc = root.screen;
+        if (!sc) return false;
+        const cx = root.right ? sc.x + sc.width : sc.x;
+        const side_x = root.right ? cx : cx - 1;
+        const top_x = root.right ? cx - 1 : cx;
+        const covers = (s, x, y) => s !== sc && x >= s.x && x < s.x + s.width && y >= s.y && y < s.y + s.height;
+        return !Quickshell.screens.some(s => covers(s, side_x, sc.y) || covers(s, top_x, sc.y - 1));
+    }
+
     function fullscreen_here() {
         const ws = root.monitor ? root.monitor.activeWorkspace : null;
         return !!ws && !!ws.lastIpcObject && !!ws.lastIpcObject.hasfullscreen;
@@ -31,11 +42,10 @@ PanelWindow {
         }
     }
 
-    visible: HotCorners.enabled && !Lock.locked
+    visible: root.reachable && HotCorners.enabled && !Lock.locked
     color: "transparent"
     implicitWidth: 3
     implicitHeight: 3
-    exclusiveZone: 0
     exclusionMode: ExclusionMode.Ignore
     anchors.top: true
     anchors.left: !root.right
