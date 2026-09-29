@@ -3,12 +3,14 @@ import QtQuick
 import QtQuick.Layouts
 import "../theme"
 
-// A section of ChoiceRows; each row is { label, values: () => [...], text: v => string, value: () => current, set: v => void }.
+// A section of ChoiceRows; each row is { label, values: () => [...], text: v => string, value: () => current, set: v => void, pick?: bool }.
+// Enter or a click opens a filterable list of a row's values; `pick: false` keeps a row cycling.
 SettingsPane {
     id: root
 
     property var rows: []
     property int cursor: 0
+    property int pick_min: 2
     default property alias header: header_col.data
     property alias footer: footer_col.data
 
@@ -17,7 +19,7 @@ SettingsPane {
     // Runs first; a section that accepts the event keeps it from the rows.
     signal first_key(var event)
 
-    footer_hint: "j/k move · h/l change · Esc sections · q close"
+    footer_hint: "j/k move · h/l change · Enter list · Esc sections · q close"
     search_rows: root.rows.map(r => r.label)
     search_cursor: root.cursor
     implicitHeight: col.implicitHeight
@@ -32,6 +34,23 @@ SettingsPane {
         row.set(values[next]);
     }
 
+    function pickable(index) {
+        const row = root.rows[index];
+        return !!row && row.pick !== false && row.values().length >= root.pick_min;
+    }
+
+    function open_picker(index) {
+        const row = root.rows[index];
+        const values = row.values();
+        root.cursor = index;
+        root.show_picker(picker, row.label, values.map(v => row.text(v)), values.indexOf(row.value()), i => row.set(values[i]));
+    }
+
+    function activate(index, delta) {
+        if (root.pickable(index)) root.open_picker(index);
+        else root.step(index, delta);
+    }
+
     function search_select(index) {
         root.cursor = index;
     }
@@ -41,13 +60,15 @@ SettingsPane {
     }
 
     Keys.onPressed: event => {
+        if (root.picking) return;
         if (event.modifiers & Qt.ControlModifier) return;
         root.first_key(event);
         if (event.accepted) return;
         if (event.key === Qt.Key_J) root.cursor = root.wrap_index(root.cursor, 1, root.rows.length);
         else if (event.key === Qt.Key_K) root.cursor = root.wrap_index(root.cursor, -1, root.rows.length);
         else if (event.key === Qt.Key_H) root.step(root.cursor, -1);
-        else if (event.key === Qt.Key_L || event.key === Qt.Key_Return || event.key === Qt.Key_Enter || event.key === Qt.Key_Space) root.step(root.cursor, 1);
+        else if (event.key === Qt.Key_L || event.key === Qt.Key_Space) root.step(root.cursor, 1);
+        else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) root.activate(root.cursor, 1);
         else {
             root.extra_key(event);
             return;
@@ -70,6 +91,14 @@ SettingsPane {
             spacing: 4
         }
 
+        PickerList {
+            id: picker
+            visible: root.picking
+            st: root.st
+            onPicked: index => root.finish_picker(index)
+            onClosed: root.hide_picker()
+        }
+
         Repeater {
             model: root.rows
 
@@ -78,13 +107,14 @@ SettingsPane {
                 required property int index
                 required property var modelData
 
+                visible: !root.picking
                 selected: root.live && row.index === root.cursor
                 label: row.modelData.label
                 value_text: row.modelData.text(row.modelData.value())
                 onStepped: delta => {
                     root.focus_pane();
                     root.cursor = row.index;
-                    root.step(row.index, delta);
+                    root.activate(row.index, delta);
                 }
             }
         }

@@ -17,9 +17,9 @@ PanelWindow {
     property real preferred_width: 260
     // Content height; the base adds the style's title tab and footer around it.
     property real body_height: 0
-    // Opt-in for dock_bottom: the surface keeps this content height while the drawn panel grows inside it, so it never resizes.
+    // Opt-in: the surface keeps this content height while the drawn panel grows inside it, so it never resizes.
     property real reserve_height: 0
-    readonly property bool reserving: root.dock_bottom && root.reserve_height > 0
+    readonly property bool reserving: root.reserve_height > 0
     // Grows to fit the key list while help is open.
     readonly property real shown_body_height: root.help_open ? Math.max(root.body_height, key_help_view.content_height) : root.body_height
     property real drawn_body_height: root.shown_body_height
@@ -308,7 +308,7 @@ PanelWindow {
 
     Item {
         id: panel_area
-        y: root.height - root.panel_height
+        y: root.dock_bottom ? root.height - root.panel_height : 0
         width: root.width
         height: root.panel_height - root.shadow_room
     }
@@ -422,7 +422,7 @@ PanelWindow {
         onPressed: mouse => {
             const px = mouse.x + outside_catch.x;
             const py = mouse.y + outside_catch.y;
-            if (px >= 0 && py >= root.height - root.panel_height && px < root.width && py < root.height - root.shadow_room) mouse.accepted = false;
+            if (px >= 0 && py >= panel_area.y && px < root.width && py < panel_area.y + panel_area.height) mouse.accepted = false;
             else if (root.wanted) Popups.close();
         }
     }
@@ -458,7 +458,7 @@ PanelWindow {
             visible: !root.dock_bottom && root.st.frame_drop > 0 && root.st.frame_shadow.a === 0
             y: root.st.frame_drop
             width: root.width
-            height: root.height - root.line_height - root.st.frame_drop
+            height: root.panel_height - root.line_height - root.st.frame_drop
             color: Theme.bg_shadow
             bottomLeftRadius: root.frame_radius
             bottomRightRadius: root.frame_radius
@@ -469,7 +469,7 @@ PanelWindow {
             x: root.frame_radius
             y: root.st.frame_drop / 2
             width: root.width - root.frame_radius * 2
-            height: root.height - root.line_height - root.st.frame_drop
+            height: root.panel_height - root.line_height - root.st.frame_drop
             sourceComponent: RectangularShadow {
                 blur: root.st.frame_drop
                 radius: root.frame_radius
