@@ -3,6 +3,7 @@ import QtQuick
 import QtQuick.Layouts
 import "../theme"
 import "../services"
+import "../services/BarLayout.js" as BarLayout
 import "modules"
 import "../components/oasis" as Oasis
 import "../components/neovim" as Neovim
@@ -57,7 +58,7 @@ Item {
     readonly property var right_entries: root.build_entries(root.rule ? root.rule.right : [])
     // Lualine's right-island section for a module; bars.json order is kept inside each, center modules first.
     function lualine_section(base) {
-        return base === "notifications" || base === "clock" ? "z" : ["network", "bluetooth", "recording", "voxtype"].indexOf(base) >= 0 ? "y" : "x";
+        return BarLayout.lualine_section(base);
     }
 
     readonly property bool lists_media: [root.left_entries, root.center_entries, root.right_entries].some(l => l.some(e => e.base === "media"))

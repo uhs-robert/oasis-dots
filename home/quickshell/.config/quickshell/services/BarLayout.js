@@ -4,6 +4,16 @@ var sides = ["left", "center", "right"];
 // Keep in step with Bar.module_map.
 var known = ["start", "workspaces", "clock", "tray", "volume", "battery", "bluetooth", "system", "network", "weather", "keeptabs", "updates", "voxtype", "recording", "notifications", "media"];
 
+// Right-island section a lualine bar draws a module in.
+function lualine_section(entry) {
+    const base = entry.split(":")[0];
+    return base === "notifications" || base === "clock" ? "z" : ["network", "bluetooth", "recording", "voxtype"].indexOf(base) >= 0 ? "y" : "x";
+}
+
+function section_sorted(list) {
+    return ["x", "y", "z"].reduce((out, k) => out.concat(list.filter(e => lualine_section(e) === k)), []);
+}
+
 function is_object(v) {
     return typeof v === "object" && v !== null && !Array.isArray(v);
 }
@@ -130,7 +140,7 @@ function apply_op(layout, op) {
         const list = out[from];
         if (!list) return out;
         const i = list.indexOf(op.entry);
-        const j = i + op.delta;
+        const j = op.with ? list.indexOf(op.with) : i + op.delta;
         if (j < 0 || j >= list.length) return out;
         list[i] = list[j];
         list[j] = op.entry;
@@ -159,7 +169,7 @@ function restore_side(rules, state, key, entry) {
     return last[entry] || { side: tracked_side(rules, entry) || "right", index: -1 };
 }
 
-// op: { type: "hide" | "show" | "side", entry, side?, index? } or { type: "move", entry, delta }. Returns a new state.
+// op: { type: "hide" | "show" | "side", entry, side?, index? } or { type: "move", entry, delta } or { type: "move", entry, with } to swap with another entry. Returns a new state.
 function edit(rule, state, key, op) {
     const next = normalize(state);
     const view = layout_of(effective(rule, next, key));

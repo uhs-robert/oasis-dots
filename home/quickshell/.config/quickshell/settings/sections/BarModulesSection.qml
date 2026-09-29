@@ -26,7 +26,10 @@ SettingsPane {
     readonly property int top_count: root.target_screen ? 2 : 1
     readonly property var entries: {
         const out = [];
-        for (const side of BarLayout.sides) root.view_layout[side].forEach(e => out.push({ entry: e, side: side }));
+        for (const side of BarLayout.sides) {
+            const list = Style.bar_lualine && side !== "left" ? BarLayout.section_sorted(root.view_layout[side]) : root.view_layout[side];
+            list.forEach(e => out.push({ entry: e, side: side }));
+        }
         BarLayout.hidden_entries(BarConfig.rules, BarConfig.state, root.view_layout).forEach(e => out.push({ entry: e, side: "hidden" }));
         return out;
     }
@@ -93,7 +96,11 @@ SettingsPane {
     function move_module(delta) {
         const item = root.current_module();
         if (!item || item.side === "hidden") return;
-        root.edit({ type: "move", entry: item.entry, delta: delta });
+        const same = root.entries.filter(e => e.side === item.side).map(e => e.entry);
+        const neighbor = same[same.indexOf(item.entry) + delta];
+        const sectioned = Style.bar_lualine && item.side !== "left";
+        if (!neighbor || (sectioned && BarLayout.lualine_section(neighbor) !== BarLayout.lualine_section(item.entry))) return;
+        root.edit({ type: "move", entry: item.entry, with: neighbor });
         root.follow(item.entry);
     }
 
