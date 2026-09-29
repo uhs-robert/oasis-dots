@@ -2,6 +2,7 @@
 pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Shapes
+import Quickshell.Io
 import "../../theme"
 
 // Final Fantasy VII: the Buster Sword title menu, a save file per user, the password as a name entry and a battle swirl to unlock.
@@ -550,6 +551,8 @@ Item {
     component Gauge: Rectangle {
         id: g
         property real value: 1
+        property color lo: Qt.tint(Theme.bg_surface, Qt.alpha(Theme.blue, 0.6))
+        property color hi: Theme.bright_blue
         width: 128
         height: 7.2
         color: root.shadow
@@ -562,8 +565,8 @@ Item {
             width: (g.width - 2.6) * Math.max(0, Math.min(1, g.value))
             gradient: Gradient {
                 orientation: Gradient.Horizontal
-                GradientStop { position: 0; color: Qt.tint(Theme.bg_surface, Qt.alpha(Theme.blue, 0.6)) }
-                GradientStop { position: 1; color: Theme.bright_blue }
+                GradientStop { position: 0; color: g.lo }
+                GradientStop { position: 1; color: g.hi }
             }
         }
     }
@@ -813,32 +816,78 @@ Item {
                     }
                     ShapePath {
                         strokeWidth: 1.5
-                        strokeColor: Qt.alpha(root.shadow, 0.6)
-                        fillGradient: RadialGradient {
-                            centerX: 120
-                            centerY: 262
-                            focalX: 120
-                            focalY: 262
-                            centerRadius: 90
-                            GradientStop { position: 0; color: sword.steel_hi }
-                            GradientStop { position: 1; color: sword.steel }
-                        }
-                        PathSvg { path: "M52 268 a6 6 0 1 0 12 0 a6 6 0 1 0 -12 0 M84 268 a6 6 0 1 0 12 0 a6 6 0 1 0 -12 0 M144 268 a6 6 0 1 0 12 0 a6 6 0 1 0 -12 0 M176 268 a6 6 0 1 0 12 0 a6 6 0 1 0 -12 0" }
-                    }
-                    ShapePath {
-                        strokeWidth: 2
                         strokeColor: Qt.alpha(root.shadow, 0.65)
                         fillGradient: RadialGradient {
-                            centerX: 124
-                            centerY: 262
-                            focalX: 124
-                            focalY: 262
-                            centerRadius: 14
+                            centerX: 59
+                            centerY: 264
+                            focalX: 59
+                            focalY: 264
+                            centerRadius: 10
                             GradientStop { position: 0; color: root.white }
                             GradientStop { position: 0.5; color: sword.steel_hi }
                             GradientStop { position: 1; color: sword.steel_lo }
                         }
-                        PathSvg { path: "M108 268 a12 12 0 1 0 24 0 a12 12 0 1 0 -24 0" }
+                        PathSvg { path: "M48 268 a8 8 0 1 0 16 0 a8 8 0 1 0 -16 0" }
+                    }
+                    ShapePath {
+                        strokeWidth: 1.5
+                        strokeColor: Qt.alpha(root.shadow, 0.65)
+                        fillGradient: RadialGradient {
+                            centerX: 91
+                            centerY: 264
+                            focalX: 91
+                            focalY: 264
+                            centerRadius: 10
+                            GradientStop { position: 0; color: root.white }
+                            GradientStop { position: 0.5; color: sword.steel_hi }
+                            GradientStop { position: 1; color: sword.steel_lo }
+                        }
+                        PathSvg { path: "M80 268 a8 8 0 1 0 16 0 a8 8 0 1 0 -16 0" }
+                    }
+                    ShapePath {
+                        strokeWidth: 1.5
+                        strokeColor: Qt.alpha(root.shadow, 0.65)
+                        fillGradient: RadialGradient {
+                            centerX: 123
+                            centerY: 264
+                            focalX: 123
+                            focalY: 264
+                            centerRadius: 10
+                            GradientStop { position: 0; color: root.white }
+                            GradientStop { position: 0.5; color: sword.steel_hi }
+                            GradientStop { position: 1; color: sword.steel_lo }
+                        }
+                        PathSvg { path: "M112 268 a8 8 0 1 0 16 0 a8 8 0 1 0 -16 0" }
+                    }
+                    ShapePath {
+                        strokeWidth: 1.5
+                        strokeColor: Qt.alpha(root.shadow, 0.65)
+                        fillGradient: RadialGradient {
+                            centerX: 155
+                            centerY: 264
+                            focalX: 155
+                            focalY: 264
+                            centerRadius: 10
+                            GradientStop { position: 0; color: root.white }
+                            GradientStop { position: 0.5; color: sword.steel_hi }
+                            GradientStop { position: 1; color: sword.steel_lo }
+                        }
+                        PathSvg { path: "M144 268 a8 8 0 1 0 16 0 a8 8 0 1 0 -16 0" }
+                    }
+                    ShapePath {
+                        strokeWidth: 1.5
+                        strokeColor: Qt.alpha(root.shadow, 0.65)
+                        fillGradient: RadialGradient {
+                            centerX: 187
+                            centerY: 264
+                            focalX: 187
+                            focalY: 264
+                            centerRadius: 10
+                            GradientStop { position: 0; color: root.white }
+                            GradientStop { position: 0.5; color: sword.steel_hi }
+                            GradientStop { position: 1; color: sword.steel_lo }
+                        }
+                        PathSvg { path: "M176 268 a8 8 0 1 0 16 0 a8 8 0 1 0 -16 0" }
                     }
                     ShapePath {
                         strokeWidth: 0
@@ -1244,14 +1293,15 @@ Item {
                 SText { text: root.display_name(root.current); font.pixelSize: 27; font.letterSpacing: 1.6 }
                 Row {
                     spacing: 9.6
-                    Lbl { text: "LV"; font.pixelSize: 20 }
+                    Lbl { text: "LV"; font.pixelSize: 20; width: 34 }
                     SText { text: "99"; font.pixelSize: 20 }
                 }
                 Row {
                     spacing: 9.6
-                    Lbl { text: "HP"; font.pixelSize: 20; anchors.verticalCenter: parent.verticalCenter }
+                    Lbl { text: "HP"; font.pixelSize: 20; width: 34; anchors.verticalCenter: parent.verticalCenter }
                     SText {
                         anchors.verticalCenter: parent.verticalCenter
+                        width: 96
                         text: root.ctx && root.ctx.has_battery ? root.ctx.battery_percent + "/100" : "9999/9999"
                         font.pixelSize: 20
                     }
@@ -1262,10 +1312,18 @@ Item {
                 }
                 Row {
                     spacing: 9.6
-                    Lbl { text: "MP"; font.pixelSize: 20 }
+                    Lbl { text: "MP"; font.pixelSize: 20; width: 34; anchors.verticalCenter: parent.verticalCenter }
                     SText {
-                        text: !root.ctx || !root.ctx.has_battery ? "999/999" : root.ctx.charging ? "Charging" : "On battery"
+                        anchors.verticalCenter: parent.verticalCenter
+                        width: 96
+                        text: root.mem_total > 0 ? Math.round(root.mem_avail / 1048576) + "/" + Math.round(root.mem_total / 1048576) : "999/999"
                         font.pixelSize: 20
+                    }
+                    Gauge {
+                        anchors.verticalCenter: parent.verticalCenter
+                        value: root.mem_total > 0 ? root.mem_avail / root.mem_total : 1
+                        lo: Qt.tint(Theme.bg_surface, Qt.alpha(Theme.green, 0.6))
+                        hi: Theme.bright_green
                     }
                 }
             }
@@ -1308,12 +1366,6 @@ Item {
                     spacing: 9.6
                     Lbl { text: "Mail"; font.pixelSize: 18 }
                     SText { text: root.ctx ? String(root.ctx.notifications) : ""; font.pixelSize: 18 }
-                }
-                Row {
-                    visible: !!root.ctx && root.ctx.has_media
-                    spacing: 9.6
-                    Lbl { text: "Music"; font.pixelSize: 18 }
-                    SText { text: root.ctx ? root.ctx.media_status + ": " + root.ctx.media_title : ""; font.pixelSize: 18; elide: Text.ElideRight; width: Math.min(implicitWidth, 420) }
                 }
             }
         }
@@ -1447,6 +1499,32 @@ Item {
     }
     onStream_onChanged: {
         if (root.stream_on) stream_back.requestPaint();
+    }
+
+    // MP: available memory in GiB, read while the name entry shows.
+    property real mem_total: 0
+    property real mem_avail: 0
+
+    FileView {
+        id: meminfo
+        path: "/proc/meminfo"
+        printErrors: false
+        onLoaded: {
+            const kb = key => {
+                const m = meminfo.text().match(new RegExp("^" + key + ":\\s+(\\d+)", "m"));
+                return m ? parseInt(m[1]) : 0;
+            };
+            root.mem_total = kb("MemTotal");
+            root.mem_avail = kb("MemAvailable");
+        }
+    }
+
+    Timer {
+        interval: 5000
+        repeat: true
+        triggeredOnStart: true
+        running: root.screen === "pw"
+        onTriggered: meminfo.reload()
     }
 
     QtObject {
