@@ -202,6 +202,7 @@ Singleton {
         if (reply !== "") Quickshell.execDetached(["sh", "-c", "[ -p \"$2\" ] && printf '%s\\n' \"$1\" > \"$2\"", "sh", selection, reply]);
     }
 
+    // Regions are output-local: XDPH hands them straight to capture_output_region.
     function share_selection() {
         const s = root.screen_of(root.sel_screen);
         const r = root.sel_rect;
@@ -209,7 +210,7 @@ Singleton {
         const whole = r.x <= 0 && r.y <= 0 && r.width >= s.width && r.height >= s.height;
         if (root.mode === "window") root.send_share(t && t.share_id ? "window:" + t.share_id : "");
         else if (root.mode === "screen" || whole) root.send_share("screen:" + s.name);
-        else root.send_share("region:" + s.name + "@" + root.geometry().replace(" ", ",").replace("x", ","));
+        else root.send_share("region:" + s.name + "@" + [r.x, r.y, r.width, r.height].map(Math.round).join(","));
         root.cancel();
     }
 
