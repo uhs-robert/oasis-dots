@@ -30,7 +30,7 @@ Item {
     }
 
     function play(name) {
-        const fx = ({ start: fx_start, move: fx_move, letter: fx_letter, decide: fx_decide, cancel: fx_cancel, error: fx_error, accept: fx_accept })[name];
+        const fx = ({ start: fx_start, move: fx_move, letter: fx_letter, decide: fx_decide, cancel: fx_cancel, error: fx_error, accept: fx_accept, page: fx_page })[name];
         if (fx && fx.status === SoundEffect.Ready) fx.play();
     }
 
@@ -165,4 +165,5 @@ Item {
     SoundEffect { id: fx_cancel; source: audio.file("cancel.wav"); audioDevice: devices.defaultAudioOutput; volume: audio.fx_volume }
     SoundEffect { id: fx_error; source: audio.file("error.wav"); audioDevice: devices.defaultAudioOutput; volume: audio.fx_volume }
     SoundEffect { id: fx_accept; source: audio.file("accept.wav"); audioDevice: devices.defaultAudioOutput; volume: audio.fx_volume }
+    SoundEffect { id: fx_page; source: audio.file("page.wav"); audioDevice: devices.defaultAudioOutput; volume: audio.fx_volume }
 }

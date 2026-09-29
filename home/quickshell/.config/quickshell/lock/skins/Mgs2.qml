@@ -53,6 +53,18 @@ Item {
     // Black once the unlock caption starts.
     property bool captioning: false
     readonly property string view: root.captioning ? "unlock" : root.screen
+    // The page on show: the view, with Options as its own page; it trails `page` while a transition runs.
+    readonly property string page: root.view === "menu" && root.in_options ? "opt" : root.view
+    property string shown: ""
+    // 1 is the frame fully open; a transition folds it up to 0, switches `shown`, then unfolds it from the top-right.
+    property real fold: 1
+    property bool unfolding: false
+    property real content_alpha: 1
+    property real title_alpha: 1
+    property int tx_fold_out: 0
+    property int tx_title_out: 0
+    property int tx_fold_in: 0
+    property int tx_title_in: 0
 
     // The menu's cursor and note live in the scene as "menu:<item>:<note>" so every output agrees.
     readonly property var menu_items: ["load", "options", "reboot", "poweroff"]
@@ -146,9 +158,42 @@ Item {
         load: { v: 62, rail: [88, 140], box: [140, 62, 1500, 690], h: 690 },
         name: { v: 56, rail: [56, 140], box: [140, 66, 1530, 775], h: 775 }
     })
-    readonly property var frame: root.frames[root.view] || null
+    readonly property var frame: root.frames[root.shown === "opt" ? "menu" : root.shown] || null
     property var last_frame: root.frames.menu
     onFrameChanged: if (root.frame) root.last_frame = root.frame
+    // The frame as drawn: the box keeps its top edge, its bottom follows `fold`, and while unfolding its left edge sweeps in from the right.
+    readonly property var fb: {
+        const f = root.last_frame, k = root.fold;
+        const dx = root.unfolding ? (f.box[2] - f.box[0]) * (1 - k) : 0;
+        return { v: f.v + dx, r0: f.rail[0] + dx, r1: f.rail[1] + dx, x0: f.box[0] + dx, y0: f.box[1], x1: f.box[2], y1: f.box[1] + (f.box[3] - f.box[1]) * k };
+    }
+
+    function is_framed(p) {
+        return p === "menu" || p === "opt" || p === "load" || p === "name";
+    }
+
+    // Folds the old page away and unfolds the new one; unlock, the saver and still screens switch at once.
+    function turn_page() {
+        const to = root.page, from = root.shown;
+        tx.stop();
+        const still = !root.animate || from === "" || [to, from].some(p => p === "unlock" || p === "saver");
+        if (to === from || still) {
+            root.shown = to;
+            root.fold = 1;
+            root.unfolding = false;
+            root.content_alpha = 1;
+            root.title_alpha = 1;
+            return;
+        }
+        root.tx_fold_out = root.is_framed(from) ? Math.round(250 * root.fold) : 0;
+        root.tx_title_out = from === "title" ? 400 : 0;
+        root.tx_fold_in = root.is_framed(to) ? 300 : 0;
+        root.tx_title_in = to === "title" ? 400 : 0;
+        if (root.owns_sound && audio_loader.item) audio_loader.item.play("page");
+        tx.restart();
+    }
+
+    onPageChanged: root.turn_page()
 
     readonly property var mol_sets: ({
         title: [[21, 1080, 180, 1.3], [4, 90, 780, 0.9], [9, 1300, 470, 1.0]],
@@ -295,6 +340,7 @@ Item {
 
     clip: true
     Component.onCompleted: {
+        root.shown = root.page;
         root.claim_sound();
         if (root.granted) root.start_unlock();
     }
@@ -363,6 +409,28 @@ Item {
         }
     }
 
+    SequentialAnimation {
+        id: tx
+        ParallelAnimation {
+            NumberAnimation { target: root; property: "fold"; to: 0; duration: root.tx_fold_out; easing.type: Easing.InQuad }
+            NumberAnimation { target: root; property: "title_alpha"; to: 0; duration: root.tx_title_out }
+        }
+        ScriptAction {
+            script: {
+                root.unfolding = true;
+                root.fold = 0;
+                root.content_alpha = 0;
+                root.title_alpha = root.tx_title_in > 0 ? 0 : 1;
+                root.shown = root.page;
+            }
+        }
+        PauseAnimation { duration: 120 }
+        NumberAnimation { target: root; property: "fold"; to: 1; duration: root.tx_fold_in; easing.type: Easing.OutCubic }
+        NumberAnimation { target: root; property: "title_alpha"; to: 1; duration: root.tx_title_in }
+        NumberAnimation { target: root; property: "content_alpha"; to: 1; duration: 150 }
+        ScriptAction { script: root.unfolding = false }
+    }
+
     // Green line, then black, the host and time typed out and held, then faded; all inside unlock_ms.
     SequentialAnimation {
         id: unlock_anim
@@ -420,11 +488,6 @@ Item {
                 PathSvg { path: seg.g.fill }
             }
         }
-    }
-
-    component Slide: NumberAnimation {
-        duration: 520
-        easing.type: Easing.InOutCubic
     }
 
     // A DATA LOAD cell; the selected row is red.
@@ -757,27 +820,27 @@ Item {
     // Everything below draws on the 1600x900 stage.
     Rectangle {
         anchors.fill: parent
-        color: root.view === "unlock" ? "#000000" : "#0c100e"
+        color: root.shown === "unlock" ? "#000000" : "#0c100e"
     }
 
     Stage {
         id: stage
 
         Murk {
-            opacity: root.view === "load" ? 0.45 : 1
-            visible: root.view !== "unlock"
+            opacity: root.shown === "load" ? 0.45 : 1
+            visible: root.shown !== "unlock"
         }
 
         Rectangle {
             anchors.fill: parent
-            visible: root.view === "saver"
+            visible: root.shown === "saver"
             color: "#66000000"
         }
 
         // The grey structure diagram behind NAME ENTRY.
         Item {
             anchors.fill: parent
-            opacity: root.view === "name" ? 1 : 0
+            opacity: root.shown === "name" ? 1 : 0
             visible: opacity > 0
 
             Behavior on opacity { NumberAnimation { duration: 500 } }
@@ -816,7 +879,7 @@ Item {
             Item {
                 id: mol
                 required property var modelData
-                readonly property bool on: root.view === mol.modelData.set
+                readonly property bool on: (root.shown === "opt" ? "menu" : root.shown) === mol.modelData.set
                 anchors.fill: parent
                 opacity: mol.on ? 0.55 + mol.modelData.i * 0.1 : 0
                 visible: opacity > 0
@@ -869,7 +932,7 @@ Item {
         // Status codes down the right: battery, unread count and weather among the noise.
         Item {
             anchors.fill: parent
-            visible: root.view === "title" || root.view === "menu" || root.view === "name"
+            visible: ["title", "menu", "opt", "name"].indexOf(root.shown) >= 0
 
             Repeater {
                 model: 20
@@ -932,47 +995,33 @@ Item {
             }
         }
 
-        // The frame lines slide between screens like the game's menus.
+        // The frame lines, folded and unfolded between pages like the game's menus.
         Item {
-            id: frame_lines
-            readonly property var f: root.last_frame
             anchors.fill: parent
-            opacity: root.frame ? 1 : 0
-            visible: opacity > 0
-
-            Behavior on opacity { NumberAnimation { duration: 400 } }
+            visible: root.is_framed(root.shown) && root.fold > 0.001
 
             Rectangle {
-                x: frame_lines.f.v
+                x: root.fb.v
                 width: 1.5
                 height: 900
                 color: root.line_color
                 opacity: 0.55
-
-                Behavior on x { enabled: root.animate; Slide {} }
             }
 
             Rectangle {
-                y: frame_lines.f.h
+                y: root.fb.y1
                 width: 1600
                 height: 1.5
                 color: root.line_color
                 opacity: 0.55
-
-                Behavior on y { enabled: root.animate; Slide {} }
             }
 
             Rectangle {
-                x: frame_lines.f.rail[0]
-                y: frame_lines.f.box[1]
-                width: frame_lines.f.rail[1] - frame_lines.f.rail[0]
-                height: frame_lines.f.box[3] - frame_lines.f.box[1]
+                x: root.fb.r0
+                y: root.fb.y0
+                width: root.fb.r1 - root.fb.r0
+                height: root.fb.y1 - root.fb.y0
                 color: "#14aabab0"
-
-                Behavior on x { enabled: root.animate; Slide {} }
-                Behavior on y { enabled: root.animate; Slide {} }
-                Behavior on width { enabled: root.animate; Slide {} }
-                Behavior on height { enabled: root.animate; Slide {} }
 
                 Rectangle {
                     anchors.right: parent.right
@@ -983,55 +1032,71 @@ Item {
             }
 
             Rectangle {
-                x: frame_lines.f.box[0]
-                y: frame_lines.f.box[1]
-                width: frame_lines.f.box[2] - frame_lines.f.box[0]
-                height: frame_lines.f.box[3] - frame_lines.f.box[1]
+                x: root.fb.x0
+                y: root.fb.y0
+                width: root.fb.x1 - root.fb.x0
+                height: root.fb.y1 - root.fb.y0
                 color: "transparent"
                 border.width: 1.5
                 border.color: "#8c9eaca3"
-
-                Behavior on x { enabled: root.animate; Slide {} }
-                Behavior on y { enabled: root.animate; Slide {} }
-                Behavior on width { enabled: root.animate; Slide {} }
-                Behavior on height { enabled: root.animate; Slide {} }
             }
         }
 
         Loader {
             anchors.fill: parent
-            active: root.view === "title"
+            active: root.shown === "title"
+            opacity: root.title_alpha
             sourceComponent: title_view
         }
 
-        Loader {
-            anchors.fill: parent
-            active: root.view === "menu"
-            sourceComponent: menu_view
+        // Framed pages show only inside the box and rail, so folding the box wipes them away.
+        Item {
+            id: page_clip
+            x: root.fb.v
+            y: root.fb.y0
+            width: Math.max(0, root.fb.x1 + 20 - root.fb.v)
+            height: Math.max(0, root.fb.y1 - root.fb.y0)
+            clip: true
+            visible: root.is_framed(root.shown)
+
+            Item {
+                x: -page_clip.x
+                y: -page_clip.y
+                width: 1600
+                height: 900
+                opacity: root.unfolding ? root.content_alpha : 1
+
+                Loader {
+                    anchors.fill: parent
+                    active: root.shown === "menu" || root.shown === "opt"
+                    sourceComponent: menu_view
+                }
+
+                Loader {
+                    anchors.fill: parent
+                    active: root.shown === "load"
+                    sourceComponent: load_view
+                }
+
+                Loader {
+                    anchors.fill: parent
+                    active: root.shown === "name"
+                    sourceComponent: name_view
+                }
+            }
         }
 
         Loader {
             anchors.fill: parent
-            active: root.view === "load"
-            sourceComponent: load_view
-        }
-
-        Loader {
-            anchors.fill: parent
-            active: root.view === "name"
-            sourceComponent: name_view
-        }
-
-        Loader {
-            anchors.fill: parent
-            active: root.view === "saver"
+            active: root.shown === "saver"
             sourceComponent: saver_view
         }
 
         Text {
             x: 158
             y: 790
-            visible: root.view === "menu" || root.view === "load" || root.view === "name"
+            visible: root.is_framed(root.shown)
+            opacity: root.unfolding ? root.content_alpha : root.fold
             width: 1300
             text: root.desc[0]
             textFormat: Text.PlainText
@@ -1048,7 +1113,7 @@ Item {
             anchors.right: parent.right
             anchors.rightMargin: 200
             y: 790
-            visible: root.view === "unlock"
+            visible: root.shown === "unlock"
             opacity: root.caption_alpha
             text: root.caption_text.slice(0, root.animate ? root.caption_chars : root.caption_text.length)
             textFormat: Text.PlainText
@@ -1313,14 +1378,15 @@ Item {
 
         Item {
             id: menu
-            readonly property var items: root.in_options ? root.opt_items : root.menu_items
-            readonly property string sel: root.in_options ? root.opt_item : root.menu_item
-            readonly property real list_y: root.in_options ? 150 : 104
+            readonly property bool opts: root.shown === "opt"
+            readonly property var items: menu.opts ? root.opt_items : root.menu_items
+            readonly property string sel: menu.opts ? root.opt_item : root.menu_item
+            readonly property real list_y: menu.opts ? 150 : 104
 
             Head {
                 x: 178
                 y: 96
-                visible: root.in_options
+                visible: menu.opts
                 text: "OPTIONS"
             }
 
@@ -1332,7 +1398,7 @@ Item {
                     required property string modelData
                     x: 178
                     y: menu.list_y + index * 53
-                    text: (root.in_options ? root.opt_label(modelData) : root.menu_labels[modelData]) || ""
+                    text: (menu.opts ? root.opt_label(modelData) : root.menu_labels[modelData]) || ""
                     h: 26
                     color: modelData === menu.sel ? root.item_on : root.item_off
                 }
@@ -1550,7 +1616,7 @@ Item {
     Rectangle {
         id: flash
         anchors.fill: parent
-        visible: root.phase === "wrong" && root.view === "name"
+        visible: root.phase === "wrong" && root.shown === "name"
         color: "#c01a1a"
         opacity: root.animate ? 0 : 0.12
 

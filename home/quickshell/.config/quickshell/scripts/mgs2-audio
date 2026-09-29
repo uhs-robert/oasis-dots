@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Imports the MGS2 lock skin's audio into $XDG_DATA_HOME/quickshell/mgs2-audio: the title and menu themes as an intro plus a loop, and the menu sound effects.
 # Music is title.* and menu.* (first of .flac, .ogg, .mp3, .wav); loops come from --*-loop, else LOOPSTART/LOOPLENGTH (or LOOPEND) tags, else the whole track loops.
-# Effects are start, move, letter, decide, cancel, error and accept, any audio extension; a missing file stays silent.
+# Effects are start, move, letter, decide, cancel, error, accept and page (the menu page transition), any audio extension; a missing file stays silent.
 # Usage: mgs2-audio [--title-loop START END] [--menu-loop START END] [--out DIR] [SOURCE_DIR]   (seconds)
 set -euo pipefail
 
@@ -114,5 +114,5 @@ fx() {
 
 music title "${title_loop[@]}"
 music menu "${menu_loop[@]}"
-for name in start move letter decide cancel error accept; do fx "$name"; done
+for name in start move letter decide cancel error accept page; do fx "$name"; done
 printf 'mgs2-audio: wrote %s\n' "$out"
