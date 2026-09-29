@@ -156,11 +156,11 @@ Item {
     readonly property color ok_green: "#a0e0b0"
     readonly property color mol_red: "#d63126"
 
-    // Each screen's frame: the vertical rule, the rail beside the box, the box and the horizontal rule.
+    // Each screen's frame: the vertical rule, the rail beside the box, and the box. Every box shares one bottom and one left rule, so the rules sit still between pages.
     readonly property var frames: ({
-        menu: { v: 62, rail: [62, 140], box: [140, 46, 1540, 756], h: 756 },
-        load: { v: 62, rail: [88, 140], box: [140, 62, 1500, 690], h: 690 },
-        name: { v: 56, rail: [56, 140], box: [140, 66, 1530, 775], h: 775 }
+        menu: { v: 62, rail: [62, 140], box: [140, 46, 1540, 760] },
+        load: { v: 62, rail: [88, 140], box: [140, 62, 1500, 760] },
+        name: { v: 62, rail: [62, 140], box: [140, 66, 1530, 760] }
     })
     readonly property var frame: root.frames[root.shown === "opt" ? "menu" : root.shown] || null
     property var last_frame: root.frames.menu
@@ -1695,7 +1695,7 @@ Item {
 
             Rectangle {
                 x: 118
-                y: 735
+                y: 715
                 width: 16
                 height: 13
                 color: "#c7d0c9"
@@ -1703,7 +1703,7 @@ Item {
 
             Seg {
                 x: 178
-                y: 728
+                y: 708
                 text: "OK"
                 h: 26
                 color: name.ready ? root.ok_green : "#56615a"
