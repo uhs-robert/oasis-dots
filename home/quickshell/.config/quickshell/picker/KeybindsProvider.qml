@@ -13,7 +13,6 @@ PickerProvider {
     verb: "run"
     rank_by_usage: false
     keep_order: true
-    columns: 2
 
     property string submap: ""
 
