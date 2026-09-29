@@ -42,7 +42,7 @@ Item {
     MediaDevices {
         id: devices
         property bool had_output: false
-        Component.onCompleted: devices.had_output = !devices.defaultAudioOutput.isNull
+        Component.onCompleted: devices.had_output = devices.defaultAudioOutput.mode !== AudioDevice.Null
         // Players started with no sink stay silent, so restart them once one appears.
         onDefaultAudioOutputChanged: {
             if (!devices.had_output) {
@@ -50,7 +50,7 @@ Item {
                 title_loop.stop();
                 Qt.callLater(audio.sync);
             }
-            devices.had_output = !devices.defaultAudioOutput.isNull;
+            devices.had_output = devices.defaultAudioOutput.mode !== AudioDevice.Null;
         }
     }
 
