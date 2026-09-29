@@ -25,6 +25,10 @@ QtObject {
     // A skin's own sub-screen; the skin steps it from handle_key.
     property string scene: ""
     property string user: ""
+    // Login users as {name, full}, the saved user first.
+    property var users: []
+    // A skin picks another user; the greeter switches to it.
+    signal user_request(string name)
     property string tint: "primary"
     property string session_name: ""
 
@@ -50,6 +54,11 @@ QtObject {
     signal session_request
     signal safe_request
     signal fallback_request
+
+    // The user's picture: the one the bar syncs into the data dir, else AccountsService's.
+    function face_urls(name) {
+        return ["file:///var/lib/qs-greeter/faces/" + name, "file:///var/lib/AccountsService/icons/" + name];
+    }
 
     readonly property var tint_pair: Tints.pair(Theme, root.tint)
     readonly property color tint_base: root.tint_pair[0]

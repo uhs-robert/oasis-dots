@@ -1,0 +1,106 @@
+#!/usr/bin/env bash
+# Imports the FF7 lock skin's audio into lock/skins/ff7/audio (gitignored): the Prelude as an intro plus a sample-exact loop, and the menu sound effects.
+# Usage: ff7-audio [--loop-start SEC] [--out DIR] [SOURCE_DIR]   (music/*Prelude*, fx/{Cursor,Back,Denied,Loading}.*, fx/*save-load*)
+set -euo pipefail
+
+src="$HOME/Downloads/FF7"
+loop_start=48
+out="$(cd "$(dirname "$0")/.." && pwd)/lock/skins/ff7/audio"
+while (($#)); do
+  case "$1" in
+  --loop-start)
+    loop_start=$2
+    shift 2
+    ;;
+  --out)
+    out=$2
+    shift 2
+    ;;
+  -h | --help)
+    sed -n '2,3p' "$0"
+    exit 0
+    ;;
+  *)
+    src=$1
+    shift
+    ;;
+  esac
+done
+
+for tool in ffmpeg python3; do
+  command -v "$tool" >/dev/null || {
+    echo "ff7-audio: $tool is required" >&2
+    exit 1
+  }
+done
+python3 -c 'import numpy' 2>/dev/null || {
+  echo "ff7-audio: python numpy is required" >&2
+  exit 1
+}
+
+# Prints the first file under $src/$1 whose name matches glob $2, ignoring case.
+find_src() {
+  find "$src/$1" -maxdepth 1 -type f -iname "$2" -print -quit 2>/dev/null
+}
+
+rate=44100
+prelude=$(find_src music '*prelude*')
+[[ -n $prelude ]] || {
+  echo "ff7-audio: no Prelude track under $src/music" >&2
+  exit 1
+}
+
+# Prints the loop length in samples at $rate: best whole-track self-similarity lag, refined by waveform correlation.
+loop_samples=$(ffmpeg -v error -i "$prelude" -ac 1 -ar "$rate" -f f32le - | python3 -c '
+import sys
+import numpy as np
+x = np.frombuffer(sys.stdin.buffer.read(), dtype=np.float32).astype(np.float64)
+rate = int(sys.argv[1])
+env_rate, n, hop = 11025, 2048, 512
+y = x[::rate // env_rate][: int(250 * env_rate)]
+frames = np.lib.stride_tricks.sliding_window_view(y, n)[::hop] * np.hanning(n)
+s = np.log1p(np.abs(np.fft.rfft(frames, axis=1)))[:, :400]
+s -= s.mean(axis=1, keepdims=True)
+s /= np.linalg.norm(s, axis=1, keepdims=True) + 1e-9
+fps = env_rate / hop
+best, lag = -1.0, 0
+for l in range(int(40 * fps), int(200 * fps)):
+    m = len(s) - l
+    if m < int(30 * fps):
+        break
+    v = (s[:m] * s[l:]).sum(axis=1).mean()
+    if v > best:
+        best, lag = v, l
+l0 = int(lag / fps * rate)
+seg = 4 * rate
+votes = []
+for t in (60, 90, 120):
+    a = x[t * rate : t * rate + seg]
+    lags = range(l0 - 3000, l0 + 3000)
+    votes.append(max(lags, key=lambda l: np.dot(a, x[t * rate + l : t * rate + l + seg])))
+print(int(np.median(votes)))
+' "$rate")
+
+start=$(python3 -c "print(round($loop_start * $rate))")
+mkdir -p "$out"
+ffmpeg -v error -y -i "$prelude" -ar "$rate" -af "atrim=end_sample=$start" -c:a libvorbis -q:a 6 "$out/title_intro.ogg"
+ffmpeg -v error -y -i "$prelude" -ar "$rate" -af "atrim=start_sample=$start:end_sample=$((start + loop_samples)),asetpts=N/SR/TB" -c:a libvorbis -q:a 6 "$out/title_loop.ogg"
+
+# Copies fx source $1 (glob) to $out/$2 as 16-bit PCM, which QSoundEffect can play.
+fx() {
+  local file
+  file=$(find_src fx "$1")
+  if [[ -z $file ]]; then
+    echo "ff7-audio: no fx matching $1; $2 stays silent" >&2
+    return 0
+  fi
+  ffmpeg -v error -y -i "$file" -ar "$rate" -c:a pcm_s16le "$out/$2"
+}
+
+fx 'cursor.*' cursor.wav
+fx 'back.*' cancel.wav
+fx 'denied.*' buzzer.wav
+fx 'loading.*' loading.wav
+fx '*save-load*' loaded.wav
+
+printf 'ff7-audio: loop %s samples (%.3fs) from %ss into %s\n' "$loop_samples" "$(python3 -c "print($loop_samples / $rate)")" "$loop_start" "$out"
