@@ -12,7 +12,8 @@ Popup {
     popup_name: "settings"
     title: "SETTINGS"
     size_class: "large"
-    preferred_width: 600
+    // The pane keeps 450; the sidebar grows to fit the widest section label in the active style.
+    preferred_width: 467 + nav.width / Style.scale
     body_height: Math.max(nav.implicitHeight, pane_loader.implicitHeight) + 24
     jumps_enabled: true
     search_enabled: true
@@ -108,7 +109,15 @@ Popup {
 
         Item {
             id: nav
-            width: Style.px(150)
+            readonly property real fit: {
+                let w = 0;
+                for (let i = 0; i < nav_repeater.count; i++) {
+                    const item = nav_repeater.itemAt(i);
+                    if (item) w = Math.max(w, item.need);
+                }
+                return w;
+            }
+            width: Math.max(Style.px(150), Math.ceil(nav.fit))
             implicitHeight: nav_col.implicitHeight
             focus: true
 
@@ -129,6 +138,7 @@ Popup {
                 spacing: 4
 
                 Repeater {
+                    id: nav_repeater
                     model: Sections.list
 
                     Column {
@@ -136,6 +146,7 @@ Popup {
                         required property int index
                         required property var modelData
                         readonly property bool first: entry.index === 0 || Sections.list[entry.index - 1].group !== entry.modelData.group
+                        readonly property real need: 16 + nav_row.inset + nav_row.key_space + nav_layout.implicitWidth
 
                         width: nav_col.width
                         spacing: 4
@@ -156,6 +167,7 @@ Popup {
                             key: entry.index < 9 ? String(entry.index + 1) : ""
 
                             RowLayout {
+                                id: nav_layout
                                 anchors.left: parent.left
                                 anchors.leftMargin: 8 + nav_row.inset
                                 anchors.right: parent.right

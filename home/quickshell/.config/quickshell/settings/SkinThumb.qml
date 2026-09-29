@@ -17,8 +17,8 @@ Rectangle {
     // The skin loads only while true.
     property bool active: true
     readonly property bool has_music: !!skin_loader.item && skin_loader.item.has_music === true
-    readonly property real screen_w: root.popup && root.popup.screen ? root.popup.screen.width : 1920
-    readonly property real screen_h: root.popup && root.popup.screen ? root.popup.screen.height : 1080
+    readonly property real screen_w: root.popup && root.popup.screen && root.popup.screen.width > 0 ? root.popup.screen.width : 1920
+    readonly property real screen_h: root.popup && root.popup.screen && root.popup.screen.height > 0 ? root.popup.screen.height : 1080
 
     Layout.fillWidth: true
     Layout.preferredHeight: Math.round(width * screen_h / screen_w)
