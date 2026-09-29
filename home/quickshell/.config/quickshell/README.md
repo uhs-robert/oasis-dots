@@ -1,0 +1,190 @@
+# Quickshell
+
+The desktop shell for this Hyprland setup, written for [Quickshell](https://quickshell.org). One config replaces Waybar, swaync, the rofi pickers, the lock screen and the greeter UI. Every monitor gets its own bar, and all colors follow the active Oasis theme.
+
+Hyprland starts it with `qs -n` (see `home/hypr/.config/hypr/config/autostart/`). Hyprland binds reach it over IPC. When it isn't running, the pickers fall back to rofi and the lock to hyprlock.
+
+## Layout
+
+| Path          | Purpose                                                                                    |
+| ------------- | ------------------------------------------------------------------------------------------ |
+| `shell.qml`   | Entry point: a bar per monitor, then every popup, picker provider, IPC handler and overlay |
+| `bar/`        | The bar, its islands, the submap tab, the hot corner, and one file per module in `modules/` |
+| `popups/`     | One popup per bar module (clock, volume, network, weather...), plus Start, Power and the screenshot tool |
+| `picker/`     | The fuzzy picker, its providers (apps, windows, clipboard, dirs, emoji, keybinds) and the HyprVim `:` prompt |
+| `services/`   | Singletons that hold state (media, network, weather, notifications...) and the IPC handlers |
+| `components/` | Shared widgets, with per-style pieces in their own folders (`nes/`, `ps1/`, `oasis/`...)   |
+| `theme/`      | `Theme.qml` (colors from the Oasis theme) and `Style.qml` (every style's tokens)          |
+| `settings/`   | The Settings panel and its sections                                                        |
+| `lock/`       | The session lock, the simple lock screen and the styled lock skins in `skins/`             |
+| `overview/`   | The workspace overview                                                                     |
+| `fonts/`      | Bundled OFL fonts, registered for the whole shell                                          |
+| `sounds/`     | Per-style UI sounds and music loops                                                         |
+| `scripts/`    | Helpers the shell runs: greeter data, lock backdrop, audio importers, sound generator      |
+| `assets/`     | Weather icons                                                                              |
+| `bars.json`   | Tracked bar layout per monitor, matched by description or connector name                   |
+
+Weather reads `weather.json`, with untracked per-machine overrides (real coordinates, say) in `weather.local.json`.
+
+## Styles
+
+A style changes how the whole shell looks and behaves: fonts, frames, meters, key hints, transitions, sounds, even which views a popup shows. Colors never come from a style. They always come from the active Oasis palette, so every style works with every theme.
+
+The styles, in picker order: `oasis` (the default), `modern`, `neovim`, `terminal`, `crt`, `nes`, `gameboy`, `snes`, `ps1`, `ff7`, `goldeneye`, `ps2`, `tie`, `halflife`, `metroid`, `oblivion` and `mech`. Everyday styles come first, then consoles by release year, then sci-fi.
+
+Switch styles from Settings > Style (Start > Settings opens the panel), or over IPC:
+
+```bash
+qs ipc call style set ps1
+qs ipc call style cycle
+```
+
+Settings > Theme options tweaks the current style (scanlines, glow, dither, fonts, text size). Settings > Colors picks the Oasis palette. It saves through the same switcher as the rofi one (right-click the Start button), which reloads Hyprland and reruns every color generator, including the one that writes `theme/theme.json` for this shell.
+
+## Settings panel
+
+The panel drops from the center of the bar. Open it with `SUPER + SPACE` then `S`, from the Start menu, or with `qs ipc call settings open <section>` (section ids are in `settings/Sections.js`).
+
+| Group        | Sections                           |
+| ------------ | ---------------------------------- |
+| Appearance   | Style, Colors, Theme options       |
+| Bar          | Bar modules                        |
+| System       | Displays, Default apps, Power      |
+| Sound        | Theme audio                        |
+| Lock & Login | Lock screen, Login screen          |
+
+What you set here is saved as state under `~/.local/state` (or `$XDG_STATE_HOME`). State wins over the tracked defaults, so the repo stays clean while each machine keeps its own choices. Delete a file to fall back to the defaults.
+
+| File                                      | Holds                                            |
+| ----------------------------------------- | ------------------------------------------------ |
+| `quickshell/style.json`                   | Current style, bar cava line                     |
+| `quickshell/theme_options.json`           | Per-style option overrides                       |
+| `quickshell/bars.json`                    | Bar module layout, merged over the tracked `bars.json` |
+| `quickshell/hot_corners.json`             | Hot corners on or off                            |
+| `quickshell/audio.json`                   | Theme audio choices                              |
+| `quickshell/lock.json`                    | Lock skin, tint, backdrop, music                 |
+| `quickshell/greeter.json`                 | Login screen choices                             |
+| `quickshell/picker_usage.json`            | Picker ranking by use                            |
+| `hypr/monitors.json`                      | Display settings, read by Hyprland               |
+| `hypr/apps.json`                          | Default apps, read by Hyprland                   |
+| `hypr/power.json`                         | Idle and power settings, read by Hyprland        |
+
+Notification history lives in Quickshell's own per-config state folder (`~/.local/state/quickshell/by-shell/<id>/notifications.json`).
+
+## Keys
+
+Every popup uses the same keys. `?` shows the full list for the popup you're in.
+
+| Key              | Action                                   |
+| ---------------- | ---------------------------------------- |
+| `[` / `]`        | Previous / next tab                      |
+| `1`-`9`          | Jump to a tab                            |
+| `Tab`            | Next sub-view (`Shift + Tab` back)       |
+| `j` / `k`        | Move down / up                           |
+| `h` / `l`        | Change a value, or move left / right     |
+| `gg` / `G`       | First / last row                         |
+| `/`              | Search, `n` / `N` for next / previous match |
+| `Ctrl + h` / `l` | Walk to the neighbouring bar popup       |
+| `Backspace`      | Back to the popup you came from          |
+| `?`              | Key help                                 |
+| `q` / `Esc`      | Close                                    |
+
+Console styles draw controller buttons in place of keys in the footers and help.
+
+The main binds that open things (the leader is `SUPER`):
+
+| Bind                                  | Opens                                              |
+| ------------------------------------- | -------------------------------------------------- |
+| `SUPER + B`, then a letter            | A bar popup (`S` Start, `N` notifications, `V` volume, `W` weather, `C` calendar...) |
+| `SUPER + SPACE`, then a letter        | The same popups, plus `S` Settings and `SPACE` Start |
+| `SUPER + /`                           | Keybinds picker for the current submap             |
+| `SUPER + O`                           | Apps picker                                        |
+| `SUPER + T`                           | Windows picker (`SHIFT` moves the focused window there) |
+| `SUPER + CTRL + V`                    | Clipboard picker                                   |
+| `SUPER + CTRL + SPACE`                | Directory picker                                   |
+| `SUPER + CTRL + E`                    | Emoji picker                                       |
+| `ALT + TAB`, `SUPER + SHIFT + TAB`    | Workspace overview (also the top-left hot corner)  |
+| `Print`, `SUPER + I`                  | Screenshot and recording tool                      |
+| `SUPER + [` / `]`                     | Focus the previous / next notification toast      |
+| `SUPER + Q`, then `N`                 | Notification center                                |
+
+All binds live in `home/hypr/.config/hypr/keymaps/`.
+
+## IPC
+
+Anything the shell exposes can be called from a script or bind with `qs ipc call <target> <function> [args]`. Hyprland calls it through `~/.config/hypr/scripts/qs-ipc`, a wrapper that finds the running bar even when it was started from a worktree. The examples below use that wrapper:
+
+```bash
+qs-ipc call popup open volume
+qs-ipc call picker open apps
+qs-ipc call lock state
+qs-ipc show        # list every target and function
+```
+
+`qs-picker <provider> <fallback> [mode]` in the same folder opens a picker, or runs the fallback command when no bar answers.
+
+| Target          | Functions                                                             |
+| --------------- | --------------------------------------------------------------------- |
+| `popup`         | `open <name>`, `toggle <name>`, `close`                               |
+| `picker`        | `open <name>`, `open_with <name> <mode>`, `toggle <name>`, `close`    |
+| `settings`      | `open <section>`, `toggle`                                            |
+| `style`         | `set`, `cycle`, `get`, `set_lock`, `set_lock_tint`, `set_lock_backdrop`, `toggle_cava_line` and their getters |
+| `overview`      | `open`, `close`, `toggle`                                             |
+| `notifications` | `open`, `close`, `toggle_dnd`, `clear_all`, `dismiss_latest`, `dismiss_all`, `focus_toast`, `has_toast` |
+| `screenshot`    | `open`, `close`, `toggle`, `select`, `pick`, `share`, `stop_recording` and the recording callbacks |
+| `lock`          | `lock`, `state`, `preview <style>`, `preview_close`                   |
+| `power`         | `confirm <lock\|logout\|reboot\|poweroff>`                            |
+| `brightness`    | `refresh`                                                             |
+| `transition`    | `play <kind or style>`                                                |
+| `hyprvim_whichkey`, `hyprvim_prompt` | The HyprVim which-key HUD and `:` prompt          |
+
+Popup names are the `LazyPopup` names in `shell.qml`: `start`, `settings`, `power`, `clock`, `volume`, `battery`, `bluetooth`, `system`, `tray`, `network`, `keeptabs`, `weather`, `updates`, `media`, `screenshot`, `notifications`.
+
+## Lock screen and greeter
+
+`~/.config/hypr/scripts/lock-screen.sh` (used by hypridle and the Power menu) locks with this shell and falls back to hyprlock when the bar isn't running or can't lock. If qs restarts while locked, the new instance takes the lock over.
+
+Settings > Lock screen picks the lock: `follow` (the lock skin of the current style), `simple` (a plain card over a pixelated or blurred desktop), or any skin by name. Skins live in `lock/skins/` as `Crt`, `Ff7`, `Mgs2`, `Ocarina` and `Tie`. `Ocarina` and `Mgs2` are lock-only and have no bar style. A style without a skin gets the simple screen. Tints recolor the skins (primary, secondary, green, amber, white).
+
+The FF7, MGS2 and Ocarina skins can play game music, which isn't in the repo. Import your own copies with `scripts/ff7-audio`, `scripts/mgs2-audio` and `scripts/ocarina-audio`.
+
+The login screen is a Quickshell greeter under greetd that shows your lock skin. The installer offers it; to update or install it by hand:
+
+```bash
+just greeter-sync            # stage it and print the sudo commands
+just greeter-sync --install  # stage and install it
+just greeter-preview         # try it in a window with a fake greetd
+```
+
+It installs to `/etc/greetd/quickshell` with its data in `/var/lib/qs-greeter`, which the bar keeps current as your theme and choices change (Settings > Login screen > Sync to greeter). `/usr/local/bin/qs-greeter` falls back to tuigreet when the greeter is missing, fails to start or crashes. Press `F10` or `SUPER + T` at the login screen to switch to tuigreet yourself.
+
+## Extending
+
+**A style.** Add its token set to `styles` in `theme/Style.qml` (most build on the shared `terminal` base with `Object.assign`), then add its name to `order`, and to `labels` if the label isn't just the capitalized name. Optional extras: a transition in `components/transitions/Kinds.js`, a sound pack in `sounds/<style>/` (`scripts/make-sounds <style>` generates one) and a lock skin.
+
+**A Settings section.** Write `settings/sections/<Name>Section.qml`, usually a `RowsSection` with a list of rows, and add an entry to `list` in `settings/Sections.js`. The sidebar, search and IPC pick it up from there.
+
+**A picker provider.** Subclass `picker/PickerProvider.qml`: set `name` and `items`, implement `refresh()` and `activate()`, and it registers itself. Add it to `shell.qml` next to the other providers. To open it from Hyprland, bind `Menu.picker("<name>", "<rofi fallback>")` from `lib/actions/menu.lua`, so the bind still works without the bar.
+
+**A lock skin.** Add `lock/skins/<Style>.qml` (first letter capitalized). It shows up in Settings > Lock screen and in the greeter once it exists. For a skin with no bar style, also add it to `lock_only` in `theme/Style.qml`.
+
+## Development
+
+To try a worktree copy, stop the live bar (not while the screen is locked, the lock lives in it) and start the copy by path:
+
+```bash
+qs kill
+hyprctl dispatch "hl.dsp.exec_cmd('qs -n -p $HOME/path/to/worktree/home/quickshell/.config/quickshell')"
+```
+
+Starting it through Hyprland rather than from a shell keeps the terminal's environment (tmux, say) out of everything the bar spawns. `qs-ipc` finds a bar started this way. Go back to the stowed config the same way with `qs -n`.
+
+The live log is at `$XDG_RUNTIME_DIR/quickshell/by-id/<id>/log.log`, or read it with `qs log -p <path>` (`-f` to follow). A QML error there means the config didn't load. `qmllint` doesn't catch these reliably, so check the log after every change.
+
+One rule for new code: nothing animates or polls on battery or while it isn't visible. Gate timers and animations on `Power.on_ac` and on the item being shown.
+
+## Fonts and sounds
+
+The bundled fonts are all under the SIL Open Font License. `fonts/README.md` lists each one with its source and licence file. The weather icons in `assets/weather/` are MIT licensed (see its `LICENSE`).
+
+The sounds in `sounds/<style>/` are generated by `scripts/make-sounds` with sox. To use your own, drop files with the same names (`cursor.wav`, `confirm.wav`, `cancel.wav`, `notify.wav`, `music.ogg`) into `~/.local/share/quickshell/sounds/<style>/`. They win file by file.

@@ -2,6 +2,17 @@
 
 Personal dotfiles managed with [GNU Stow](https://www.gnu.org/software/stow/). Packages live under `home/`.
 
+## Desktop
+
+An Arch Linux desktop on Hyprland, driven from the keyboard.
+
+- [Hyprland](home/hypr/.config/hypr/README.md), configured in Lua, with [HyprVim](https://github.com/uhs-robert/hyprvim) for Vim-modal window management and which-key hints.
+- A [Quickshell](home/quickshell/.config/quickshell/README.md) desktop shell: per-monitor bars, popups, notifications, pickers, a workspace overview, a Settings panel and the lock screen. It comes in swappable styles, from a clean modern look to NES, PS1 and FF7.
+- [Oasis](https://github.com/uhs-robert/oasis.nvim) color themes across everything. Switching the palette recolors Hyprland, the shell, rofi and the terminals in one go.
+- A greetd login screen that reuses the lock screen's look, with tuigreet as a fallback.
+
+<!-- Screenshots: add from the assets branch here. -->
+
 ## Full Install (Automated)
 
 ```bash
