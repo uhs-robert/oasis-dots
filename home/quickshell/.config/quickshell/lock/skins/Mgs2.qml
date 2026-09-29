@@ -156,9 +156,9 @@ Item {
     readonly property color ok_green: "#a0e0b0"
     readonly property color mol_red: "#d63126"
 
-    // The menu frame: the left rule, the rail inside the box's left end, and the box; R's box reaches nearly to the screen's right edge.
+    // The menu frame: the left rule, the rail inside the box's left end, and the box; both layouts share the box and differ only in their rules.
     readonly property var frame_l: ({ v: 62, rail: [62, 140], box: [140, 46, 1544, 756] })
-    readonly property var frame_r: ({ v: 62, rail: [62, 140], box: [140, 46, 1594, 756] })
+    readonly property var frame_r: root.frame_l
     readonly property var cur_box: root.layout_r ? root.frame_r.box : root.frame_l.box
     readonly property var last_frame: root.frame_l
 
@@ -267,7 +267,7 @@ Item {
                 list.push({ ms: 260, ease: Easing.InQuad, wipe: true, a: o, b: [o[0], o[1], o[2], o[1]], h: ["bottom"], v: ["left"] });
                 list.push({ ms: 60, box: false, h: [[o[1], -10]], v: [lv] });
                 list.push(swap(true), { ms: 250, box: false, h: [], v: [lv] });
-                if (framed_to) list.push({ ms: 560, a: [n[0], n[3], n[0], n[3]], b: n, bt: win, h: [{ p: [910, n[3], 0, 0.55], s: [[0, 1600], [lv, 1600]], t: win }, "top"], v: [{ p: lv, s: [[0, 900], [n[1], n[3]]], t: win }, "right"] });
+                if (framed_to) list.push({ ms: 560, a: [n[0], n[3], n[0], n[3]], b: n, bt: win, h: [{ p: [910, n[3], 0, 0.55], s: [[0, 1600], [lv, n[2]]], t: win }, "top"], v: [{ p: lv, s: [[0, 900], [n[1], n[3]]], t: win }, "right"] });
             } else {
                 const o = root.frame_r.box, n = root.frame_l.box;
                 list.push({ ms: 260, ease: Easing.InQuad, wipe: true, a: o, b: [o[0], o[1], o[0], o[3]], h: ["top"], v: ["right"] });
