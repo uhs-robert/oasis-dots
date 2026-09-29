@@ -79,7 +79,7 @@ Answers given for these tracks:
 
 ## Step 5: themes
 
-- [ ] Per-style `settings` schema in `Style.qml`
-- [ ] Theme-specific settings section rendered from the schema
-- [ ] Theme audio configuration
-- [ ] Color scheme selection
+- [x] Per-style `settings` schema in `Style.qml`
+- [x] Theme-specific settings section rendered from the schema
+- [x] Theme audio configuration
+- [x] Color scheme selection
