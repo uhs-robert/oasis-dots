@@ -20,7 +20,9 @@ function clean_last(raw) {
     const out = {};
     if (is_object(raw)) {
         for (const k of Object.keys(raw)) {
-            if (sides.indexOf(raw[k]) >= 0) out[k] = raw[k];
+            const v = raw[k];
+            if (sides.indexOf(v) >= 0) out[k] = { side: v, index: -1 };
+            else if (is_object(v) && sides.indexOf(v.side) >= 0) out[k] = { side: v.side, index: Number.isInteger(v.index) && v.index >= 0 ? v.index : -1 };
         }
     }
     return out;
@@ -135,7 +137,10 @@ function apply_op(layout, op) {
         return out;
     }
     for (const s of sides) out[s] = out[s].filter(e => e !== op.entry);
-    if (op.type !== "hide") out[op.side].push(op.entry);
+    if (op.type === "hide") return out;
+    const to = out[op.side];
+    if (op.index >= 0) to.splice(Math.min(op.index, to.length), 0, op.entry);
+    else to.push(op.entry);
     return out;
 }
 
@@ -147,14 +152,14 @@ function order_from(layout, old) {
     return out;
 }
 
-// Side to restore a hidden entry to: its remembered side, else the tracked one, else right.
+// { side, index } to restore a hidden entry to: remembered, else the tracked side, else right; index -1 appends.
 function restore_side(rules, state, key, entry) {
     const own = key && state.monitors[key];
     const last = own ? own.last_side : state.shared.last_side;
-    return last[entry] || tracked_side(rules, entry) || "right";
+    return last[entry] || { side: tracked_side(rules, entry) || "right", index: -1 };
 }
 
-// op: { type: "hide" | "show" | "side", entry, side? } or { type: "move", entry, delta }. Returns a new state.
+// op: { type: "hide" | "show" | "side", entry, side?, index? } or { type: "move", entry, delta }. Returns a new state.
 function edit(rule, state, key, op) {
     const next = normalize(state);
     const view = layout_of(effective(rule, next, key));
@@ -163,12 +168,12 @@ function edit(rule, state, key, op) {
     const was = side_of(view, op.entry);
     if (own) {
         next.monitors[key] = Object.assign({}, own, after);
-        if (op.type === "hide" && was) next.monitors[key].last_side[op.entry] = was;
+        if (op.type === "hide" && was) next.monitors[key].last_side[op.entry] = { side: was, index: view[was].indexOf(op.entry) };
         return next;
     }
     if (op.type === "hide") {
         next.shared.place[op.entry] = "hidden";
-        if (was) next.shared.last_side[op.entry] = was;
+        if (was) next.shared.last_side[op.entry] = { side: was, index: view[was].indexOf(op.entry) };
     } else {
         if (op.type !== "move") next.shared.place[op.entry] = op.side;
         next.shared.order = order_from(after, next.shared.order);

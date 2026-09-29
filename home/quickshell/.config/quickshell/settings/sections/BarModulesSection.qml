@@ -80,7 +80,8 @@ SettingsPane {
             root.edit({ type: "hide", entry: item.entry });
             return;
         }
-        root.edit({ type: "show", entry: item.entry, side: BarLayout.restore_side(BarConfig.rules, BarConfig.state, root.monitor_key, item.entry) });
+        const back = BarLayout.restore_side(BarConfig.rules, BarConfig.state, root.monitor_key, item.entry);
+        root.edit({ type: "show", entry: item.entry, side: back.side, index: back.index });
     }
 
     // Keeps the cursor on the module it moved.
