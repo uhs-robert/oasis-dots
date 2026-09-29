@@ -39,7 +39,9 @@ Singleton {
     property var recent_picks: []
     // Runs on confirm instead of showing the toolbar: "" for the toolbar, else a toolbar action.
     property string preset: ""
+    // focus_screen holds the keyboard; start_screen is where the cursor and first target start.
     property string focus_screen: ""
+    property string start_screen: ""
     property string sel_screen: ""
     property rect sel_rect: Qt.rect(0, 0, 0, 0)
     readonly property bool has_selection: root.sel_screen !== "" && root.sel_rect.width >= 2 && root.sel_rect.height >= 2
@@ -115,7 +117,8 @@ Singleton {
         root.run_after_close(() => root.start_select(frozen, preset, mode));
     }
 
-    function start_select(frozen, preset, mode) {
+    // on_screen keeps the selector on that screen instead of the focused monitor.
+    function start_select(frozen, preset, mode, on_screen) {
         if (root.phase === "capture" || root.scrolling) return;
         if (preset !== "share") root.send_share("");
         root.cancel_countdown();
@@ -127,8 +130,11 @@ Singleton {
         root.targets = [];
         root.target_index = -1;
         const mon = Hyprland.focusedMonitor;
-        const screen = (mon && root.screen_of(mon.name)) || Quickshell.screens[0];
-        root.focus_screen = screen ? screen.name : "";
+        const focused = (mon && root.screen_of(mon.name)) || Quickshell.screens[0];
+        const screen = root.screen_of(on_screen || "") || focused;
+        // Moving keyboard focus to another screen's layer would wait for the pointer to enter it.
+        if (!on_screen) root.focus_screen = focused ? focused.name : "";
+        root.start_screen = screen ? screen.name : "";
         root.frozen = frozen;
         root.preset = preset || "";
         root.sel_screen = "";
@@ -140,7 +146,7 @@ Singleton {
         pointer_query.running = true;
         if (root.mode === "screen") {
             const list = Quickshell.screens.map(s => ({ screen: s.name, rect: Qt.rect(0, 0, s.width, s.height), label: s.name }));
-            root.set_targets(list, list.findIndex(t => t.screen === root.focus_screen));
+            root.set_targets(list, list.findIndex(t => t.screen === root.start_screen));
         }
         // The overlays freeze the screen as they appear, so windows go opaque a couple of frames first.
         root.set_capture_opaque(true);
@@ -166,7 +172,8 @@ Singleton {
                 if (root.mode !== "window" || root.phase === "") return;
                 try {
                     const data = JSON.parse(window_text.text);
-                    root.set_targets(root.window_targets(data[0], data[1]), 0);
+                    const list = root.window_targets(data[0], data[1]);
+                    root.set_targets(list, list.findIndex(t => t.screen === root.start_screen));
                 } catch (e) {
                     console.warn("Screenshot: window list: " + e);
                 }
@@ -195,6 +202,7 @@ Singleton {
         if (reply !== "") Quickshell.execDetached(["sh", "-c", "[ -p \"$2\" ] && printf '%s\\n' \"$1\" > \"$2\"", "sh", selection, reply]);
     }
 
+    // Regions are output-local: XDPH hands them straight to capture_output_region.
     function share_selection() {
         const s = root.screen_of(root.sel_screen);
         const r = root.sel_rect;
@@ -202,12 +210,12 @@ Singleton {
         const whole = r.x <= 0 && r.y <= 0 && r.width >= s.width && r.height >= s.height;
         if (root.mode === "window") root.send_share(t && t.share_id ? "window:" + t.share_id : "");
         else if (root.mode === "screen" || whole) root.send_share("screen:" + s.name);
-        else root.send_share("region:" + s.name + "@" + root.geometry().replace(" ", ",").replace("x", ","));
+        else root.send_share("region:" + s.name + "@" + [r.x, r.y, r.width, r.height].map(Math.round).join(","));
         root.cancel();
     }
 
     function switch_mode(mode) {
-        if (root.phase === "select" && root.mode !== mode) root.start_select(root.frozen, root.preset, mode);
+        if (root.phase === "select" && root.mode !== mode) root.start_select(root.frozen, root.preset, mode, root.sel_screen || root.cursor_screen);
     }
 
     function window_targets(monitors, clients) {
@@ -288,7 +296,7 @@ Singleton {
             id: pointer_text
             onStreamFinished: {
                 const m = pointer_text.text.match(/(-?\d+(?:\.\d+)?)\D+(-?\d+(?:\.\d+)?)/);
-                const s = root.screen_of(root.focus_screen);
+                const s = root.screen_of(root.start_screen);
                 if (!m || !s || root.keys_moved) return;
                 const x = parseFloat(m[1]) - s.x;
                 const y = parseFloat(m[2]) - s.y;
