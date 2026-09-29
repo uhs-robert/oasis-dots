@@ -84,7 +84,11 @@ Singleton {
         command: ["sh", "-c", "exec ~/.local/bin/keeptabs-waybar"]
         running: true
         stdout: SplitParser {
+            property string last_line: ""
             onRead: line => {
+                // Idle ticks repeat the same frame; skip them so the bars don't redraw.
+                if (line === last_line) return;
+                last_line = line;
                 try {
                     const data = JSON.parse(line);
                     const runs = root.parse(data.text || "");
