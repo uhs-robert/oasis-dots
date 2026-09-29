@@ -18,7 +18,7 @@ p=$(pgrep -x qs); ps -o etime=,rss= -p $p; grep -E 'Anonymous|AnonHuge' /proc/$p
 - [ ] **4. Two GL stacks mapped.** Mesa (gallium, LLVM) and NVIDIA libraries are both loaded. Check that qs renders on the iGPU only (`__EGL_VENDOR_LIBRARY_FILENAMES` or `__GLX_VENDOR_LIBRARY_NAME=mesa`) so the NVIDIA stack never loads.
 - [ ] **5. Only build the shown weather tab.** `popups/WeatherPopup.qml:471-506` keeps Daily, Hourly, Air, SunMoon and Alerts alive and swaps them with `visible`. Hourly is a `Repeater` over all hours in a `Flickable` plus a `Canvas`. Put each tab in a `Loader` bound to the current tab.
 - [ ] **6. QtMultimedia always loaded.** The `services/ThemeAudio.qml` singleton imports QtMultimedia, which loads the FFmpeg backend for the whole process, and its 4 `SoundEffect`s load even with UI sounds off. Load the effects only when sounds are on.
-- [ ] **7. All 57 bundled fonts load at startup.** `services/BundledFonts.qml` registers every font in `fonts/` (5.4 MB). Load only the families the active style uses.
+- [ ] **7. All 57 bundled fonts load at startup (low value).** `services/BundledFonts.qml` registers every font in `fonts/`, but they total 5.4 MB, under 1% of qs memory. Glyph caches only grow for fonts actually drawn, and loading on demand would relayout text on every style switch and preview. Skip unless measurement says otherwise.
 
 ## Images and effects
 
