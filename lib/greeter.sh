@@ -17,11 +17,14 @@ stage_greeter() {
   cp -r "$repo/system/etc/greetd/quickshell/." "$dest/"
   cp -r "$qs/lock/skins/." "$dest/lock/skins/"
   cp "$qs/lock/Tints.js" "$dest/lock/"
-  local audio_dir="${XDG_DATA_HOME:-$HOME/.local/share}/quickshell/ocarina-audio"
-  if [[ -d "$audio_dir" ]]; then
-    mkdir -p "$dest/lock/skins/ocarina/audio"
-    cp -r "$audio_dir/." "$dest/lock/skins/ocarina/audio/"
-  fi
+  local skin audio_dir
+  for skin in ocarina mgs2; do
+    audio_dir="${XDG_DATA_HOME:-$HOME/.local/share}/quickshell/$skin-audio"
+    if [[ -d "$audio_dir" ]]; then
+      mkdir -p "$dest/lock/skins/$skin/audio"
+      cp -r "$audio_dir/." "$dest/lock/skins/$skin/audio/"
+    fi
+  done
   cp "$qs/theme/Theme.qml" "$qs/theme/Style.qml" "$dest/theme/"
   [[ -f "$live/theme/theme.json" ]] && cp "$live/theme/theme.json" "$dest/theme/"
   cp "$qs"/fonts/*.ttf "$qs"/fonts/OFL-*.txt "$dest/fonts/"
