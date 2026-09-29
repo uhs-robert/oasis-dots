@@ -3011,8 +3011,11 @@ PanelWindow {
         }
         onPositionChanged: mouse => {
             // Qt re-sends hover at a resting pointer when the scene changes; only real motion takes the cursor back.
+            // The first report is only a baseline: it may be one of those re-sends before the pointer ever moved.
+            const first = root.last_mouse.x < 0 && !pressed;
             if (mouse.x === root.last_mouse.x && mouse.y === root.last_mouse.y && !pressed) return;
             root.last_mouse = Qt.point(mouse.x, mouse.y);
+            if (first) return;
             Screenshot.set_cursor(root.screen_name, mouse.x, mouse.y, false);
             if (root.target_mode && Screenshot.phase === "select") {
                 const i = Screenshot.target_at(root.screen_name, mouse.x, mouse.y);
