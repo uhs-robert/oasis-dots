@@ -106,10 +106,12 @@ Popup {
         const name = root.provider ? root.provider.name : "";
         const use_usage = !!root.provider && root.provider.rank_by_usage;
         const keep_order = !!root.provider && root.provider.keep_order;
+        const cap = root.provider ? root.provider.max_results : 0;
+        const usage = use_usage ? Pickers.frecencies(name) : ({});
         const out = [];
         for (let i = 0; i < items.length; i++) {
             const item = items[i];
-            const f = use_usage ? Pickers.frecency(name, item.id) : 0;
+            const f = usage[item.id] || 0;
             const bonus = f > 0 ? 12 * Math.log2(1 + f) : 0;
             if (terms.length === 0) {
                 out.push({ item: item, positions: [], score: bonus, order: i });
@@ -118,9 +120,8 @@ Popup {
             const m = Fuzzy.score_item(terms, item);
             if (m) out.push({ item: item, positions: m.positions, score: m.score + bonus, order: i });
         }
-        if (keep_order && terms.length === 0) return out;
-        out.sort((a, b) => b.score - a.score || (keep_order ? a.order - b.order : (terms.length > 0 ? a.item.label.length - b.item.label.length : 0) || a.item.label.localeCompare(b.item.label)));
-        return out;
+        if (!(keep_order && terms.length === 0)) out.sort((a, b) => b.score - a.score || (keep_order ? a.order - b.order : (terms.length > 0 ? a.item.label.length - b.item.label.length : 0) || a.item.label.localeCompare(b.item.label)));
+        return cap > 0 ? out.slice(0, cap) : out;
     }
 
     function set_insert(on) {

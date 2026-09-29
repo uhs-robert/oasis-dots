@@ -13,6 +13,7 @@ PickerProvider {
     placeholder: "Search characters"
     columns: 4
     verb: "type"
+    max_results: 300
     actions: [{ key: "y", desc: "copy" }]
 
     readonly property string data_dir: "/usr/lib/python3.*/site-packages/picker/data"
@@ -79,14 +80,24 @@ PickerProvider {
         root.load(set);
     }
 
+    property string pending_glyph: ""
+
+    // Types from a timer so the picker's close has run before wtype targets the focused window.
     function activate(item) {
-        Quickshell.execDetached(["sh", "-c", "sleep 0.15; exec wtype -- \"$1\"", "sh", item.glyph]);
+        root.pending_glyph = item.glyph;
+        type_timer.restart();
     }
 
     function run_action(key, item) {
         if (key !== "y") return;
         Pickers.close();
         Quickshell.execDetached(["wl-copy", "--", item.glyph]);
+    }
+
+    Timer {
+        id: type_timer
+        interval: 150
+        onTriggered: Quickshell.execDetached(["wtype", "--", root.pending_glyph])
     }
 
     Process {

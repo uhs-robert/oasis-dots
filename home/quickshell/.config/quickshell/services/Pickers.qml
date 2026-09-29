@@ -73,6 +73,16 @@ Singleton {
         return u.count * Math.pow(0.5, age_days / root.half_life_days);
     }
 
+    // id -> frecency for one provider, so ranking reads the usage map once.
+    function frecencies(provider_name) {
+        const out = {};
+        const prefix = provider_name + ":";
+        for (const k in root.usage) {
+            if (k.startsWith(prefix)) out[k.slice(prefix.length)] = root.frecency(provider_name, k.slice(prefix.length));
+        }
+        return out;
+    }
+
     function record(provider_name, id) {
         const next = {};
         for (const k in root.usage) {
