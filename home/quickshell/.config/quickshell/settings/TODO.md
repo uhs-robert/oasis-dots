@@ -31,10 +31,13 @@ Tracks the Settings panel that drops from the center island (issue #361). Update
 
 ## Step 2: bar modules
 
-- [ ] State file `state/quickshell/bars.json` merged over the tracked `bars.json`
-- [ ] Module visibility toggles
-- [ ] Module reordering (left, center, right)
-- [ ] Per-monitor bar overrides
+- [x] State file `state/quickshell/bars.json` merged over the tracked `bars.json`
+- [x] Module visibility toggles
+- [x] Module reordering (left, center, right)
+- [x] Per-monitor bar overrides
+- [ ] Live test on the bar (rebuild on edit, monitor targeting, own layout on and off)
+- [ ] Edit the `compact` flag per monitor; the override only seeds it
+- [ ] Add and remove module arguments (`system:temperature`); entries with arguments are only listed once a rule or the state names them
 
 ## Step 3: displays
 
