@@ -39,7 +39,9 @@ Singleton {
     property var recent_picks: []
     // Runs on confirm instead of showing the toolbar: "" for the toolbar, else a toolbar action.
     property string preset: ""
+    // focus_screen holds the keyboard; start_screen is where the cursor and first target start.
     property string focus_screen: ""
+    property string start_screen: ""
     property string sel_screen: ""
     property rect sel_rect: Qt.rect(0, 0, 0, 0)
     readonly property bool has_selection: root.sel_screen !== "" && root.sel_rect.width >= 2 && root.sel_rect.height >= 2
@@ -128,8 +130,11 @@ Singleton {
         root.targets = [];
         root.target_index = -1;
         const mon = Hyprland.focusedMonitor;
-        const screen = root.screen_of(on_screen || "") || (mon && root.screen_of(mon.name)) || Quickshell.screens[0];
-        root.focus_screen = screen ? screen.name : "";
+        const focused = (mon && root.screen_of(mon.name)) || Quickshell.screens[0];
+        const screen = root.screen_of(on_screen || "") || focused;
+        // Moving keyboard focus to another screen's layer would wait for the pointer to enter it.
+        if (!on_screen) root.focus_screen = focused ? focused.name : "";
+        root.start_screen = screen ? screen.name : "";
         root.frozen = frozen;
         root.preset = preset || "";
         root.sel_screen = "";
@@ -141,7 +146,7 @@ Singleton {
         pointer_query.running = true;
         if (root.mode === "screen") {
             const list = Quickshell.screens.map(s => ({ screen: s.name, rect: Qt.rect(0, 0, s.width, s.height), label: s.name }));
-            root.set_targets(list, list.findIndex(t => t.screen === root.focus_screen));
+            root.set_targets(list, list.findIndex(t => t.screen === root.start_screen));
         }
         // The overlays freeze the screen as they appear, so windows go opaque a couple of frames first.
         root.set_capture_opaque(true);
@@ -168,7 +173,7 @@ Singleton {
                 try {
                     const data = JSON.parse(window_text.text);
                     const list = root.window_targets(data[0], data[1]);
-                    root.set_targets(list, list.findIndex(t => t.screen === root.focus_screen));
+                    root.set_targets(list, list.findIndex(t => t.screen === root.start_screen));
                 } catch (e) {
                     console.warn("Screenshot: window list: " + e);
                 }
@@ -290,7 +295,7 @@ Singleton {
             id: pointer_text
             onStreamFinished: {
                 const m = pointer_text.text.match(/(-?\d+(?:\.\d+)?)\D+(-?\d+(?:\.\d+)?)/);
-                const s = root.screen_of(root.focus_screen);
+                const s = root.screen_of(root.start_screen);
                 if (!m || !s || root.keys_moved) return;
                 const x = parseFloat(m[1]) - s.x;
                 const y = parseFloat(m[2]) - s.y;
