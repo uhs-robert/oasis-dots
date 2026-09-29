@@ -417,7 +417,7 @@ Singleton {
 
     function swap_anchor() {
         if (!root.anchored) return;
-        const a = root.anchor_point;
+        const a = Qt.point(root.anchor_point.x, root.anchor_point.y);
         root.anchor_point = root.cursor_point;
         root.cursor_point = a;
         root.keys_moved = true;
