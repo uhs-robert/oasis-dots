@@ -69,7 +69,7 @@ Answers given for these tracks:
 - [x] Live apply through `hyprctl` with a keep-or-revert countdown
 - [x] Resolution, refresh rate, scale, orientation, enable/disable
 - [x] Visual arrangement: `hjkl` nudge, edge snapping, mouse drag secondary
-- [ ] Live test on the bar: apply and revert on a spare monitor, disable and re-enable, arrange, reload Hyprland with a state file present
+- [x] Live test on the bar: apply and revert on a spare monitor, disable and re-enable, arrange, reload Hyprland with a state file present
 
 ## Step 4: system
 
