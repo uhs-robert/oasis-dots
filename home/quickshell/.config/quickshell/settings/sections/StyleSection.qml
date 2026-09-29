@@ -25,6 +25,7 @@ SettingsPane {
     // Typing to find only highlights a row; the preview follows once typing ends.
     onSelectedChanged: if (root.live && !root.popup.search_typing) Transitions.show(Style.names[root.selected], false)
     Component.onCompleted: if (root.live) root.selected = Math.max(0, Style.names.indexOf(Style.saved_name))
+    Component.onDestruction: Transitions.show(Style.saved_name, true)
 
     function search_select(index) {
         root.selected = index;
