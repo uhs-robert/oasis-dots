@@ -63,7 +63,6 @@ Item {
     property var box_a: [0, 0, 0, 0]
     property var box_b: [0, 0, 0, 0]
     property bool box_on: false
-    property bool lines_on: false
     property bool content_on: true
     // Page turns alternate between wiping up and wiping left, like the game.
     property bool wipe_left: false
@@ -166,13 +165,19 @@ Item {
     readonly property var frame: root.frames[root.shown === "opt" ? "menu" : root.shown] || null
     property var last_frame: root.frames.menu
     onFrameChanged: if (root.frame) root.last_frame = root.frame
-    // The frame as drawn: the box between box_a and box_b, the rail and vertical rule riding its left edge, the horizontal rule its bottom unless a step moves it alone.
+    // The frame as drawn: the box between box_a and box_b, with the rail riding its left edge.
     readonly property var fb: {
         const f = root.last_frame, k = root.tk, a = root.box_a, b = root.box_b;
         const e = [0, 1, 2, 3].map(i => a[i] + (b[i] - a[i]) * k);
         const dx = e[0] - f.box[0];
-        const line = root.step && root.step.line ? root.step.line[0] + (root.step.line[1] - root.step.line[0]) * k : e[3];
-        return { v: f.v + dx, r0: f.rail[0] + dx, r1: f.rail[1] + dx, x0: e[0], y0: e[1], x1: e[2], y1: e[3], line: line };
+        return { v: f.v + dx, r0: f.rail[0] + dx, r1: f.rail[1] + dx, x0: e[0], y0: e[1], x1: e[2], y1: e[3] };
+    }
+    // Full-length rules: at rest the bottom and left ones; a step names its own, as box edges or [from, to] travels.
+    readonly property var guides: {
+        const st = root.step, b = root.fb, k = root.tk;
+        const at = p => Array.isArray(p) ? p[0] + (p[1] - p[0]) * k : ({ left: b.v, right: b.x1, top: b.y0, bottom: b.y1 })[p];
+        const hs = st && st.h ? st.h : ["bottom"], vs = st && st.v ? st.v : ["left"];
+        return hs.map(p => ({ h: true, p: at(p) })).concat(vs.map(p => ({ h: false, p: at(p) })));
     }
 
     function is_framed(p) {
@@ -192,11 +197,11 @@ Item {
             root.last_frame = root.frames[root.shown === "opt" ? "menu" : root.shown];
             root.box_a = root.box_b = root.box_of(root.shown);
         }
-        root.box_on = root.lines_on = root.is_framed(root.shown);
+        root.box_on = root.is_framed(root.shown);
         root.content_on = true;
     }
 
-    // Runs steps in order: {ms, ease, a, b, box, lines, line, wipe, content, title, start}.
+    // Runs steps in order: {ms, ease, a, b, box, h, v, wipe, content, title, keep, start}.
     function run(list) {
         step_anim.stop();
         root.steps = list;
@@ -217,7 +222,6 @@ Item {
             root.box_b = s.b || s.a;
         }
         root.box_on = s.box !== false && root.is_framed(root.shown);
-        root.lines_on = s.lines !== false && root.is_framed(root.shown);
         root.step = s;
         root.tk = 0;
         step_anim.duration = s.ms;
@@ -225,7 +229,8 @@ Item {
         step_anim.restart();
     }
 
-    // The old page wipes up or left (in turn), or the title zooms away; then the new page grows from a corner.
+    // Page turns alternate like the game. Up: the bottom rule wipes the page off the top, a new one rises from the screen's bottom and the page grows from the bottom-left.
+    // Left: the right rule wipes it off the left, a new one comes in from the right and the page grows from the top-right. The title zooms away instead.
     function turn_page() {
         const to = root.page, from = root.shown;
         const still = !root.animate || from === "" || [to, from].some(p => p === "unlock" || p === "saver");
@@ -235,33 +240,41 @@ Item {
             return;
         }
         if (root.owns_sound && audio_loader.item) audio_loader.item.play("page");
+        const none = { box: false, h: [], v: [] };
         const list = [];
-        const swap = { ms: 1, box: false, lines: false, start: () => {
+        const swap = Object.assign({ ms: 1, start: () => {
                 root.shown = to;
                 root.content_on = false;
                 if (root.is_framed(to)) root.last_frame = root.frames[to === "opt" ? "menu" : to];
-            } };
+            } }, none);
         const n = root.is_framed(to) ? root.box_of(to) : null;
-        let up = true;
         if (root.is_framed(from)) {
             const o = root.box_of(from);
-            up = !root.wipe_left;
+            const up = !root.wipe_left;
             root.wipe_left = !root.wipe_left;
-            list.push({ ms: 260, ease: Easing.InQuad, wipe: true, a: o, b: up ? [o[0], o[1], o[2], o[1]] : [o[0], o[1], o[0], o[3]] });
-            list.push(swap);
-            if (n && up) list.push({ ms: 380, ease: Easing.InOutQuad, box: false, a: n, line: [o[1], n[3]] });
-            else list.push({ ms: 120, box: false, lines: false });
+            if (up) {
+                list.push({ ms: 260, ease: Easing.InQuad, wipe: true, a: o, b: [o[0], o[1], o[2], o[1]], h: ["bottom"], v: ["left"] });
+                list.push({ ms: 60, box: false, h: [[o[1], -10]], v: ["left"] });
+            } else {
+                list.push({ ms: 260, ease: Easing.InQuad, wipe: true, a: o, b: [o[0], o[1], o[0], o[3]], h: ["bottom"], v: ["left", "right"] });
+                list.push({ ms: 60, box: false, h: [], v: [[o[0], -10]] });
+            }
+            list.push(swap, Object.assign({ ms: 250 }, none));
+            if (n && up) {
+                list.push({ ms: 260, ease: Easing.OutCubic, a: n, box: false, h: [[910, n[3]]], v: [] });
+                list.push({ ms: 320, ease: Easing.OutCubic, a: [n[0], n[3], n[0], n[3]], b: n, h: ["bottom", "top"], v: ["left", "right"] });
+            } else if (n) {
+                list.push({ ms: 260, ease: Easing.OutCubic, a: n, box: false, h: [], v: [[1610, n[2]]] });
+                list.push({ ms: 320, ease: Easing.OutCubic, a: [n[2], n[1], n[2], n[1]], b: n, h: ["bottom"], v: ["left", "right"] });
+            }
         } else if (from === "title") {
-            list.push({ ms: 1000, ease: Easing.InQuad, title: "out" }, swap, { ms: 120, box: false, lines: false });
+            list.push({ ms: 1000, ease: Easing.InQuad, title: "out" }, swap, Object.assign({ ms: 120 }, none));
+            if (n) list.push({ ms: 300, ease: Easing.OutCubic, a: [n[2], n[1], n[2], n[1]], b: n });
         } else {
             list.push(swap);
         }
-        if (n) {
-            list.push(up && root.is_framed(from) ? { ms: 300, ease: Easing.OutCubic, a: [n[0], n[3], n[0], n[3]], b: n } : { ms: 300, ease: Easing.OutCubic, a: [n[2], n[1], n[2], n[1]], b: n });
-            list.push({ ms: 150, a: n, content: true });
-        } else if (to === "title") {
-            list.push({ ms: 400, title: "in" });
-        }
+        if (n) list.push({ ms: 150, a: n, content: true });
+        else if (to === "title") list.push({ ms: 400, title: "in" });
         root.run(list);
     }
 
@@ -1065,22 +1078,23 @@ Item {
         // The frame lines, folded and unfolded between pages like the game's menus.
         Item {
             anchors.fill: parent
-            visible: root.lines_on
+            visible: root.is_framed(root.shown)
 
-            Rectangle {
-                x: root.fb.v
-                width: 1.5
-                height: 900
-                color: root.line_color
-                opacity: 0.55
-            }
+            // Fixed slots, so the rules move each frame without being rebuilt.
+            Repeater {
+                model: 4
 
-            Rectangle {
-                y: root.fb.line
-                width: 1600
-                height: 1.5
-                color: root.line_color
-                opacity: 0.55
+                Rectangle {
+                    required property int index
+                    readonly property var g: root.guides[index] || null
+                    visible: g !== null
+                    x: g && !g.h ? g.p : 0
+                    y: g && g.h ? g.p : 0
+                    width: g && !g.h ? 1.5 : 1600
+                    height: g && g.h ? 1.5 : 900
+                    color: root.line_color
+                    opacity: 0.55
+                }
             }
 
             Rectangle {
