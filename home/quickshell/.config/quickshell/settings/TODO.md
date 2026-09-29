@@ -29,12 +29,39 @@ Tracks the Settings panel that drops from the center island (issue #361). Update
 - [x] Review findings resolved, PR merged
 - [ ] Optional: move lock settings out of `style.json` into their own state file
 
-## Step 2: bar modules
+## Step 2: bar modules (done)
 
-- [ ] State file `state/quickshell/bars.json` merged over the tracked `bars.json`
-- [ ] Module visibility toggles
-- [ ] Module reordering (left, center, right)
-- [ ] Per-monitor bar overrides
+- [x] State file `state/quickshell/bars.json` merged over the tracked `bars.json`
+- [x] Module visibility toggles
+- [x] Module reordering (left, center, right)
+- [x] Per-monitor bar overrides
+- [x] Live test on the bar (rebuild on edit, monitor targeting, own layout on and off)
+- [x] Review findings resolved, PR merged
+- [ ] Edit the `compact` flag per monitor; the override only seeds it
+- [ ] Add and remove module arguments (`system:temperature`); entries with arguments are only listed once a rule or the state names them
+- [ ] Re-test on the bar after the review fixes: hide/show keeps position across a restart, lualine (neovim style) reorders within x/y/z only
+- [ ] Fix first (open Codex findings): shared J/K on a monitor whose rule lacks some modules (the HP Z22n has no weather/volume/battery) pushes those modules to the end of the other monitor's bar. `order_from` in `BarLayout.js` should merge the edited view into the old order without relocating entries absent from the view
+- [ ] Fix: `resolve_key` drops a stale override when its old connector is now used by a different monitor; only reserve a key when that connector holds a live screen with the same description
+
+## Next up (resume here)
+
+State on 2026-09-29: steps 1 and 2 merged (#366, #368). Step 2 merged with two open Codex findings, listed under step 2; fix those first.
+
+Plan for the next session, all decided, no open questions: run four tracks in parallel, each in its own worktree off `main`. Each branch gets a review and a Codex pass, then a live test on the bar one at a time, and merges only after that test.
+
+1. Bar fixes: the two open step 2 findings. Goes first; the other branches rebase on it.
+2. Displays (step 3).
+3. System (step 4).
+4. Themes (step 5).
+
+Answers given for these tracks:
+
+- Displays: keep-or-revert countdown is 15 seconds.
+- Color scheme: the Oasis palettes, picked in a Settings Colors section with a live preview. A choice recolors everything through the existing pipeline (save, reload Hyprland, every generator reruns); the palette drives Quickshell's primary, secondary and other colors. The rofi switch (`theme/switch.lua`, Start right-click) stays as is.
+- Theme audio covers lock/login music, UI sound effects (cursor, confirm, cancel), and notification sounds. Sounds are chiptune generated with sox per style and tracked in the repo, with a gitignored override folder for the user's own files.
+- Theme-specific options: expose the per-style knobs that already exist in `Style.qml` (scanlines, glow, dither, fonts, effects); the user trims after testing.
+- Power: idle timeouts (dim, lock, screen off, suspend; separate AC and battery), lid and power button actions, and the power profile on AC and battery.
+- Default apps: one state file drives both `xdg-mime` associations and Hyprland's `Config.app` launch binds; it wins over `<hostname>.lua`, like monitors.
 
 ## Step 3: displays
 

@@ -5,6 +5,7 @@ import Quickshell
 import Quickshell.Io
 import Quickshell.Hyprland
 import "../theme"
+import "BarLayout.js" as BarLayout
 
 Singleton {
     id: root
@@ -22,6 +23,8 @@ Singleton {
 
     property var rules: default_rules
     property var warned_modules: ({})
+    property var state: BarLayout.normalize(null)
+    property bool warned_state: false
 
     FileView {
         id: config_file
@@ -38,6 +41,34 @@ Singleton {
             }
         }
         onLoadFailed: error => console.warn("BarConfig: failed to load bars.json (" + error + "), using defaults")
+    }
+
+    FileView {
+        id: state_file
+        path: Style.state_dir + "/bars.json"
+        printErrors: false
+        blockLoading: true
+        watchChanges: true
+        onFileChanged: reload()
+        onLoaded: {
+            try {
+                root.state = BarLayout.normalize(text().trim() === "" ? null : JSON.parse(text()));
+            } catch (e) {
+                if (!root.warned_state) console.warn("BarConfig: invalid state bars.json, ignoring it (" + e + ")");
+                root.warned_state = true;
+                root.state = BarLayout.normalize(null);
+            }
+        }
+        onLoadFailed: error => root.state = BarLayout.normalize(null)
+    }
+
+    function set_state(next) {
+        root.state = BarLayout.normalize(next);
+        state_file.setText(JSON.stringify(root.state));
+    }
+
+    function monitor_key(screen) {
+        return BarLayout.resolve_key(root.state, root.description_for(screen), screen.name, Quickshell.screens.map(s => s.name));
     }
 
     function glob_to_regex(pattern) {
@@ -72,15 +103,24 @@ Singleton {
         return true;
     }
 
-    // Returns the first matching rule for a screen, or null (with a warning) when nothing matches.
-    function rule_for(screen) {
+    // Returns the first tracked rule matching a screen, or null.
+    function tracked_rule_for(screen) {
         const screen_name = screen.name;
         const description = root.description_for(screen);
         for (const rule of root.rules) {
             if (root.rule_matches(rule, screen_name, description)) return rule;
         }
-        console.warn("BarConfig: no bars.json rule matched screen \"" + screen_name + "\"; no bar shown");
         return null;
+    }
+
+    // The tracked rule with the state file's layout merged in, or null (with a warning) when nothing matches.
+    function rule_for(screen) {
+        const tracked = root.tracked_rule_for(screen);
+        if (!tracked) {
+            console.warn("BarConfig: no bars.json rule matched screen \"" + screen.name + "\"; no bar shown");
+            return null;
+        }
+        return BarLayout.effective(tracked, root.state, root.monitor_key(screen));
     }
 
     readonly property int default_height: 34
