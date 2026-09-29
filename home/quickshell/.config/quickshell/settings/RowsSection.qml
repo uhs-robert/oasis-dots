@@ -14,6 +14,8 @@ SettingsPane {
 
     // Keys the rows do not use, for sections with their own.
     signal extra_key(var event)
+    // Runs first; a section that accepts the event keeps it from the rows.
+    signal first_key(var event)
 
     footer_hint: "j/k move · h/l change · Esc sections · q close"
     search_rows: root.rows.map(r => r.label)
@@ -40,6 +42,8 @@ SettingsPane {
 
     Keys.onPressed: event => {
         if (event.modifiers & Qt.ControlModifier) return;
+        root.first_key(event);
+        if (event.accepted) return;
         if (event.key === Qt.Key_J) root.cursor = root.wrap_index(root.cursor, 1, root.rows.length);
         else if (event.key === Qt.Key_K) root.cursor = root.wrap_index(root.cursor, -1, root.rows.length);
         else if (event.key === Qt.Key_H) root.step(root.cursor, -1);

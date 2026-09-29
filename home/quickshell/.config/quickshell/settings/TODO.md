@@ -65,10 +65,11 @@ Answers given for these tracks:
 
 ## Step 3: displays
 
-- [ ] Monitor state file read by `hypr/config/monitors/init.lua`, winning over `<hostname>.lua`
-- [ ] Live apply through `hyprctl` with a keep-or-revert countdown
-- [ ] Resolution, refresh rate, scale, orientation, enable/disable
-- [ ] Visual arrangement: `hjkl` nudge, edge snapping, mouse drag secondary
+- [x] Monitor state file read by `hypr/config/monitors/init.lua`, winning over `<hostname>.lua`
+- [x] Live apply through `hyprctl` with a keep-or-revert countdown
+- [x] Resolution, refresh rate, scale, orientation, enable/disable
+- [x] Visual arrangement: `hjkl` nudge, edge snapping, mouse drag secondary
+- [x] Live test on the bar: apply and revert on a spare monitor, disable and re-enable, arrange, reload Hyprland with a state file present
 
 ## Step 4: system
 
