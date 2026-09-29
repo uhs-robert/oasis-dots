@@ -1,6 +1,7 @@
 -- home/hypr/.config/hypr/config/system/monitors.lua
 
 local Config = require("config") ---@class Config
+local Json = require("lib.json") ---@class Json
 local PERSISTENT_WS = Config.persistent_workspaces
 --- @type { description?: string, name?: string, id?: integer, mode?: string, position?: string, scale?: number, transform?: integer, primary?: boolean }[]
 local MONITOR_ORDER = Config.monitors
@@ -40,22 +41,64 @@ local function get_monitor_output(entry, monitors)
   end
 end
 
---- Applies hl.monitor() settings for all MONITOR_ORDER entries that have mode defined.
+--- Reads the UI-written per-monitor overrides keyed by description or connector name.
+--- A missing, unreadable or malformed file yields no overrides.
+--- @return table<string, table>
+local function load_state()
+  local base = os.getenv("XDG_STATE_HOME")
+  if not base or base == "" then base = (os.getenv("HOME") or "") .. "/.local/state" end
+  local file = io.open(base .. "/hypr/monitors.json", "r")
+  if not file then return {} end
+  local text = file:read("*a")
+  file:close()
+  local data = Json.decode(text)
+  if type(data) ~= "table" or type(data.monitors) ~= "table" then return {} end
+  return data.monitors
+end
+
+--- @param state table<string, table>
+--- @param entry { description?: string, name?: string }
+--- @return table|nil
+local function state_for(state, entry)
+  local found = entry.description and state[entry.description] or entry.name and state[entry.name]
+  if type(found) == "table" then return found end
+end
+
+--- Applies one monitor rule; a state override replaces only the fields it carries.
+--- @param output string
+--- @param base table
+--- @param override table|nil
+local function apply_rule(output, base, override)
+  local rule = {
+    output = output,
+    mode = base.mode,
+    position = base.position or "auto",
+    scale = tostring(base.scale or 1),
+    transform = base.transform,
+  }
+  if override then
+    if type(override.mode) == "string" then rule.mode = override.mode end
+    if type(override.position) == "string" then rule.position = override.position end
+    if override.scale ~= nil then rule.scale = tostring(override.scale) end
+    if type(override.transform) == "number" then rule.transform = override.transform end
+    if override.disabled == true then rule = { output = output, disabled = true } end
+  end
+  if rule.disabled or rule.mode then hl.monitor(rule) end
+end
+
+--- Applies hl.monitor() settings for MONITOR_ORDER entries, then UI overrides on top.
 --- Unknown monitors (not in MONITOR_ORDER) get preferred mode/auto position/scale 1
 --- so a newly plugged-in display still comes up usable instead of unconfigured.
 local function init_monitors()
   local monitors = hl.get_monitors()
+  local state = load_state()
+  local handled = {}
   for _, entry in ipairs(MONITOR_ORDER) do
     local output = get_monitor_output(entry, monitors)
-    if output and entry.mode then
-      hl.monitor({
-        output = output,
-        mode = entry.mode,
-        position = entry.position or "auto",
-        scale = tostring(entry.scale or 1),
-        transform = entry.transform,
-      })
-    end
+    local override = state_for(state, entry)
+    if output then apply_rule(output, entry, override) end
+    if entry.description then handled[entry.description] = true end
+    if entry.name then handled[entry.name] = true end
   end
 
   for _, mon in ipairs(monitors) do
@@ -66,7 +109,23 @@ local function init_monitors()
         break
       end
     end
-    if not known then hl.monitor({ output = mon.name, mode = "preferred", position = "auto", scale = "1" }) end
+    if not known then
+      local key = state[mon.description] and mon.description or mon.name
+      local output = key == mon.description and "desc:" .. key or mon.name
+      apply_rule(
+        output,
+        { mode = "preferred", position = "auto", scale = 1 },
+        state_for(state, { description = mon.description, name = mon.name })
+      )
+      handled[key] = true
+    end
+  end
+
+  -- Overrides for monitors that are unplugged or disabled (so absent from the live list).
+  for key, override in pairs(state) do
+    if not handled[key] and type(override) == "table" and override.disabled == true then
+      apply_rule(override.description == true and "desc:" .. key or key, {}, override)
+    end
   end
 end
 
