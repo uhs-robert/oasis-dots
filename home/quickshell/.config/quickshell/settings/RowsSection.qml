@@ -2,6 +2,7 @@
 import QtQuick
 import QtQuick.Layouts
 import "../theme"
+import "../services"
 
 // A section of ChoiceRows; each row is { label, values: () => [...], text: v => string, value: () => current, set: v => void, pick?: bool }.
 // Enter or a click opens a filterable list of a row's values; `pick: false` keeps a row cycling.
@@ -19,6 +20,8 @@ SettingsPane {
     // Runs first; a section that accepts the event keeps it from the rows.
     signal first_key(var event)
 
+    onCursorChanged: if (root.live) ThemeAudio.play("cursor")
+
     footer_hint: "j/k move · h/l change · Enter list · Esc sections · q close"
     search_rows: root.rows.map(r => r.label)
     search_cursor: root.cursor
@@ -32,6 +35,7 @@ SettingsPane {
         const at = values.indexOf(row.value());
         const next = at < 0 ? (delta > 0 ? 0 : values.length - 1) : root.wrap_index(at, delta, values.length);
         row.set(values[next]);
+        ThemeAudio.play("confirm");
     }
 
     function pickable(index) {

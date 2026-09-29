@@ -43,7 +43,11 @@ Popup {
     }
     onJump_first: root.jump(-1)
     onJump_last: root.jump(1)
-    onNav_indexChanged: if (root.is_open) root.load_section()
+    onNav_indexChanged: {
+        if (!root.is_open) return;
+        root.load_section();
+        ThemeAudio.play("cursor");
+    }
     onIs_openChanged: {
         if (!root.is_open) {
             root.in_pane = false;
@@ -73,9 +77,11 @@ Popup {
         if (!root.pane) return;
         root.in_pane = true;
         root.pane.forceActiveFocus();
+        ThemeAudio.play("confirm");
     }
 
     function leave_pane() {
+        if (root.in_pane) ThemeAudio.play("cancel");
         root.in_pane = false;
         nav.forceActiveFocus();
     }
