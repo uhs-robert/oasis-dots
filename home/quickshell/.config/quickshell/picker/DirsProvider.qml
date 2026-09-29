@@ -78,6 +78,7 @@ PickerProvider {
 
             function parse(text, path) {
                 if (text.startsWith("\x01")) return pane.set_state("missing", path);
+                if (text.endsWith("\x02")) return pane.set_state("unreadable", path);
                 const dirs = [], files = [], hdirs = [], hfiles = [];
                 for (const name of text.split("\n")) {
                     if (name === "") continue;
@@ -111,9 +112,13 @@ PickerProvider {
             Process {
                 id: dir_proc
                 property string path: ""
-                command: ["sh", "-c", "cd \"$1\" 2>/dev/null || { printf '\\001'; exit; }; ls -A -p --group-directories-first", "sh", dir_proc.path]
+                command: ["sh", "-c", "printf '%s\\n' \"$1\"; cd \"$1\" 2>/dev/null || { printf '\\001'; exit; }; ls -A -p --group-directories-first 2>/dev/null || printf '\\002'", "sh", dir_proc.path]
                 stdout: StdioCollector {
-                    onStreamFinished: if (dir_proc.path === (pane.entry ? pane.entry.path : "")) pane.parse(text, dir_proc.path)
+                    onStreamFinished: {
+                        const nl = text.indexOf("\n");
+                        const path = text.slice(0, nl);
+                        if (nl >= 0 && pane.entry && path === pane.entry.path) pane.parse(text.slice(nl + 1), path);
+                    }
                 }
             }
 
@@ -144,7 +149,7 @@ PickerProvider {
                     visible: pane.phase !== "ready"
                     width: parent.width
                     height: pane.row_h
-                    text: pane.phase === "missing" ? "Not found" : pane.phase === "empty" ? "Empty" : ""
+                    text: pane.phase === "missing" ? "Not found" : pane.phase === "unreadable" ? "Can't read" : pane.phase === "empty" ? "Empty" : ""
                     color: Style.text_muted
                     font.family: Style.font_family
                     font.pixelSize: Style.fs(-3)
