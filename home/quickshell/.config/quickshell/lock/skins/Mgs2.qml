@@ -1339,7 +1339,7 @@ Item {
             readonly property real art: root.out(title.t, 0, 0.85)
             readonly property real land: root.out(title.t, 0.15, 1)
             readonly property real lockup: root.out(title.t, 0.15, 0.55)
-            readonly property real info: root.inout(title.t, 0.4, 0.95)
+            readonly property real info: root.inout(title.t, 0.45, 1)
             readonly property bool landed: title.t >= 1
             property bool started: false
 
@@ -1494,14 +1494,14 @@ Item {
                     gap: 3.2
                     color: "#c9d1c9"
 
-                    // Starts at its dim end, so it arrives muted and brightens into the blink.
-                    opacity: 0.35
+                    // Starts at its nearly clear end, so it fades in right as the date finishes and brightens into the blink.
+                    opacity: 0.06
 
                     SequentialAnimation on opacity {
                         running: root.animate && title.landed
                         loops: Animation.Infinite
-                        NumberAnimation { from: 0.35; to: 1; duration: 1200; easing.type: Easing.InOutSine }
-                        NumberAnimation { from: 1; to: 0.35; duration: 1200; easing.type: Easing.InOutSine }
+                        NumberAnimation { from: 0.06; to: 1; duration: 1200; easing.type: Easing.InOutSine }
+                        NumberAnimation { from: 1; to: 0.06; duration: 1200; easing.type: Easing.InOutSine }
                     }
                 }
 
