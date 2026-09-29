@@ -45,11 +45,11 @@ Tracks the Settings panel that drops from the center island (issue #361). Update
 
 ## Next up (resume here)
 
-State on 2026-09-29: step 1 merged; step 2 is PR #368 (branch `feat/settings-bar-modules`), with the two open findings below still to fix before merging.
+State on 2026-09-29: steps 1 and 2 merged (#366, #368). Step 2 merged with two open Codex findings, listed under step 2; fix those first.
 
 Plan for the next session, all decided, no open questions: run four tracks in parallel, each in its own worktree off `main`. Each branch gets a review and a Codex pass, then a live test on the bar one at a time, and merges only after that test.
 
-1. Bar fixes: the two open step 2 findings, then merge #368. Goes first; the other branches rebase on it.
+1. Bar fixes: the two open step 2 findings. Goes first; the other branches rebase on it.
 2. Displays (step 3).
 3. System (step 4).
 4. Themes (step 5).
