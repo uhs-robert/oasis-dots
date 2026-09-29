@@ -1202,7 +1202,7 @@ Singleton {
                 title_fg: Theme.fg_strong,
                 title_spacing: 5,
                 title_weight: Font.Light,
-                title_index: ["start", "volume", "notifications", "weather", "media", "clock", "battery", "network", "bluetooth", "system", "updates", "tray", "keeptabs", "style"],
+                title_index: ["start", "volume", "notifications", "weather", "media", "clock", "battery", "network", "bluetooth", "system", "updates", "tray", "keeptabs", "settings"],
                 title_trail: Qt.alpha(Theme.fg_strong, 0.24),
                 title_readout: "TET · LINK",
                 title_readout_fg: Qt.alpha(Theme.fg_strong, 0.55),
@@ -1327,7 +1327,7 @@ Singleton {
                     updates: ["11", "PARTS"],
                     keeptabs: ["12", "TABS"],
                     clock: ["13", "CHRONO"],
-                    style: ["14", "PAINT"],
+                    settings: ["14", "CONFIG"],
                     osd: ["OSD", "OUTPUT"],
                     whichkey: ["KEY", "BINDS"]
                 },

@@ -52,7 +52,7 @@ Submap.define({
       { "N",             popup("notifications"),                          "Notifications" },
       { "P",             popup("battery"),                                "Power and Brightness" },
       { "Q",             popup("system"),                                 "System" },
-      { "S",             popup("style"),                                  "Style" },
+      { "S",             popup("settings"),                               "Settings" },
       { "T",             popup("tray"),                                   "Tray" },
       { "U",             Cmd.run(Scripts.focus_topgrade),                 "Updates" },
       { "V",             popup("volume"),                                 "Volume" },

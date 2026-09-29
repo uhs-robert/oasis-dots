@@ -350,6 +350,7 @@ Item {
         // Keybind power confirms drop from the center island, else wherever the clock sits.
         const power_island = root.has_center ? center_island : island || right_island;
         Popups.register_default("power", power_island.body_item, power_island.bg_color, root.screen_name);
+        Popups.register_default("settings", power_island.body_item, power_island.bg_color, root.screen_name);
         // Without a media module in bars.json, the media popup drops from the center island.
         Popups.unregister("media", root.screen_name, center_island.body_item);
         Popups.unregister("media", root.screen_name, right_island.body_item);
