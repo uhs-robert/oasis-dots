@@ -160,6 +160,11 @@ Item {
         return out;
     }
     readonly property var diagram: Art.diagram()
+    readonly property var blobs: {
+        const r = Art.rng(11), out = [];
+        for (let i = 0; i < 14; i++) out.push({ x: r() * 1600, y: r() * 900, rx: 160 + r() * 380, ry: 80 + r() * 200, light: r() >= 0.5, a: 0.1 + r() * 0.22, s: (r() - 0.5) * 0.02 });
+        return out;
+    }
 
     readonly property var code_labels: [
         "P5JJAF9BD9RE",
@@ -497,43 +502,107 @@ Item {
     }
 
     // The murky grey-green ground, the dark jagged band on the left and film grain; drawn once.
-    component Murk: Canvas {
+    // The murky grey-green ground: drifting light and dark blobs, the dark jagged band on the left, and scrolling film grain.
+    component Murk: Item {
+        id: murk
+        // Seconds since the skin loaded; it drives the drift and the grain.
+        property real t: 0
         width: 1600
         height: 900
-        renderStrategy: Canvas.Cooperative
-        onPaint: {
-            const c = getContext("2d");
-            const r = Art.rng(11);
-            c.fillStyle = "#171d1a";
-            c.fillRect(0, 0, 1600, 900);
-            for (let i = 0; i < 14; i++) {
-                const x = r() * 1600, y = r() * 900, rx = 160 + r() * 380, ry = 80 + r() * 200, light = r() >= 0.5, a = 0.1 + r() * 0.22;
-                r();
-                c.save();
-                c.translate(x, y);
-                c.scale(1, ry / rx);
-                const g = c.createRadialGradient(0, 0, 0, 0, 0, rx);
-                g.addColorStop(0, light ? "rgba(120,138,126," + a + ")" : "rgba(0,0,0," + Math.min(1, a * 2.2) + ")");
-                g.addColorStop(1, "rgba(0,0,0,0)");
-                c.fillStyle = g;
-                c.fillRect(-rx, -rx, rx * 2, rx * 2);
-                c.restore();
+
+        NumberAnimation on t {
+            running: root.animate && murk.visible
+            from: 0
+            to: 3600
+            duration: 3600000
+            loops: Animation.Infinite
+        }
+
+        Rectangle {
+            anchors.fill: parent
+            color: "#171d1a"
+        }
+
+        Repeater {
+            model: root.blobs
+
+            Shape {
+                id: blob
+                required property var modelData
+                x: blob.modelData.x + Math.sin(murk.t * blob.modelData.s * 50 + blob.modelData.y) * 60 - blob.modelData.rx
+                y: blob.modelData.y - blob.modelData.rx
+                width: blob.modelData.rx * 2
+                height: blob.modelData.rx * 2
+                preferredRendererType: Shape.CurveRenderer
+                transform: Scale { origin.y: blob.modelData.rx; yScale: blob.modelData.ry / blob.modelData.rx }
+
+                ShapePath {
+                    strokeWidth: -1
+                    fillGradient: RadialGradient {
+                        centerX: blob.modelData.rx
+                        centerY: blob.modelData.rx
+                        focalX: blob.modelData.rx
+                        focalY: blob.modelData.rx
+                        centerRadius: blob.modelData.rx
+                        focalRadius: 0
+                        GradientStop { position: 0; color: blob.modelData.light ? Qt.rgba(0.47, 0.54, 0.494, blob.modelData.a) : Qt.rgba(0, 0, 0, Math.min(1, blob.modelData.a * 2.2)) }
+                        GradientStop { position: 1; color: "#00000000" }
+                    }
+                    PathRectangle { width: blob.width; height: blob.height }
+                }
             }
-            c.fillStyle = "rgba(4,6,5,0.75)";
-            c.beginPath();
-            const band = [[330, -10], [390, -10], [390, 90], [250, 200], [250, 420], [130, 520], [130, 900], [60, 900], [60, 500], [190, 390], [190, 170], [330, 70]];
-            c.moveTo(band[0][0], band[0][1]);
-            for (const p of band.slice(1)) c.lineTo(p[0], p[1]);
-            c.closePath();
-            c.fill();
-            c.fillStyle = "rgba(3,5,4,0.6)";
-            c.fillRect(0, 610, 1600, 12);
-            c.fillRect(0, 170, 1600, 6);
-            const gr = Art.rng(7);
-            for (let i = 0; i < 9000; i++) {
-                const v = Math.floor(gr() * 255);
-                c.fillStyle = "rgba(" + v + "," + v + "," + v + ",0.1)";
-                c.fillRect(gr() * 1600, gr() * 900, 2, 2);
+        }
+
+        Shape {
+            anchors.fill: parent
+            preferredRendererType: Shape.CurveRenderer
+
+            ShapePath {
+                strokeWidth: -1
+                fillColor: "#bf040605"
+                PathSvg { path: "M330 -10 L390 -10 L390 90 L250 200 L250 420 L130 520 L130 900 L60 900 L60 500 L190 390 L190 170 L330 70 Z" }
+            }
+
+            ShapePath {
+                strokeWidth: -1
+                fillColor: "#99030504"
+                PathSvg { path: "M0 610 H1600 V622 H0 Z M0 170 H1600 V176 H0 Z" }
+            }
+        }
+
+        // One 800x450 grain tile, drawn once and repeated 3x3 so the scroll always covers the stage.
+        Canvas {
+            id: grain
+            width: 800
+            height: 450
+            renderStrategy: Canvas.Cooperative
+            onPaint: {
+                const c = getContext("2d");
+                const r = Art.rng(7);
+                for (let i = 0; i < 6000; i++) {
+                    const v = Math.floor(r() * 255);
+                    c.fillStyle = "rgba(" + v + "," + v + "," + v + ",0.12)";
+                    c.fillRect(Math.floor(r() * 400) * 2, Math.floor(r() * 225) * 2, 2, 2);
+                }
+            }
+        }
+
+        Item {
+            x: -((murk.t * 60) % 800)
+            y: -((murk.t * 35) % 450)
+
+            Repeater {
+                model: 9
+
+                ShaderEffectSource {
+                    required property int index
+                    x: (index % 3) * 800
+                    y: Math.floor(index / 3) * 450
+                    width: 800
+                    height: 450
+                    sourceItem: grain
+                    hideSource: true
+                }
             }
         }
     }
