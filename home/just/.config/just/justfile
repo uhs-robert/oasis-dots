@@ -40,15 +40,7 @@ orphans-remove:
 clean:
     sudo pacman -Sc
 
-# Hyprland / Waybar
-
-waybar-reload:
-    pkill waybar || true
-    waybar & disown
-
-swaync-reload:
-    swaync-client -R
-    swaync-client -rs
+# Hyprland
 
 reload:
     hyprctl reload
