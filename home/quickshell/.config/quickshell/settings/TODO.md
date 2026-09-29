@@ -40,11 +40,12 @@ Tracks the Settings panel that drops from the center island (issue #361). Update
 - [ ] Edit the `compact` flag per monitor; the override only seeds it
 - [ ] Add and remove module arguments (`system:temperature`); entries with arguments are only listed once a rule or the state names them
 - [ ] Re-test on the bar after the review fixes: hide/show keeps position across a restart, lualine (neovim style) reorders within x/y/z only
-- [ ] Check the last Codex pass on #368's final commit (it was still running at merge)
+- [ ] Fix first (open Codex findings): shared J/K on a monitor whose rule lacks some modules (the HP Z22n has no weather/volume/battery) pushes those modules to the end of the other monitor's bar. `order_from` in `BarLayout.js` should merge the edited view into the old order without relocating entries absent from the view
+- [ ] Fix: `resolve_key` drops a stale override when its old connector is now used by a different monitor; only reserve a key when that connector holds a live screen with the same description
 
 ## Next up (resume here)
 
-State on 2026-09-29: steps 1 and 2 merged to `main`. Nothing in flight.
+State on 2026-09-29: step 1 merged; step 2 is PR #368 (branch `feat/settings-bar-modules`), with the two open findings below still to fix before merging.
 
 Steps 3 and 5 can run in parallel, each in its own worktree off `main`; they only share one line in `Sections.js` and this file. Test them on the live bar one at a time.
 
