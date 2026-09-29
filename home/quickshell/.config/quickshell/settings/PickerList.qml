@@ -35,6 +35,9 @@ ColumnLayout {
     Layout.fillWidth: true
     spacing: 4
 
+    // Hiding leaves the input focused, and the pane's forceActiveFocus is a no-op while it is.
+    onVisibleChanged: if (!root.visible) input.focus = false
+
     function open() {
         input.text = "";
         root.query = "";
