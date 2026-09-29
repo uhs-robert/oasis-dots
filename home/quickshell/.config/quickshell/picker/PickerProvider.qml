@@ -17,6 +17,8 @@ Scope {
     // Keep the items' own order when nothing is typed, and on equal scores.
     property bool keep_order: false
     property bool starts_insert: true
+    // Most rows shown; 0 shows every match.
+    property int max_results: 0
     // Opening it again while open steps to the next row, so a held Alt+Tab cycles.
     property bool repeat_steps: false
     // Selected row on open and whenever the query is cleared.
