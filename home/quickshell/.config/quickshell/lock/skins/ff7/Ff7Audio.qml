@@ -39,6 +39,21 @@ Item {
     onTrackChanged: Qt.callLater(audio.sync)
     onFilesChanged: Qt.callLater(audio.sync)
 
+    MediaDevices {
+        id: devices
+        property bool had_output: false
+        Component.onCompleted: devices.had_output = !devices.defaultAudioOutput.isNull
+        // Players started with no sink stay silent, so restart them once one appears.
+        onDefaultAudioOutputChanged: {
+            if (!devices.had_output) {
+                title_intro.stop();
+                title_loop.stop();
+                Qt.callLater(audio.sync);
+            }
+            devices.had_output = !devices.defaultAudioOutput.isNull;
+        }
+    }
+
     FolderListModel {
         id: listing
         folder: Qt.resolvedUrl("audio")
@@ -64,6 +79,7 @@ Item {
         source: audio.file("title_intro.ogg")
         onSourceChanged: Qt.callLater(audio.sync)
         audioOutput: AudioOutput {
+            device: devices.defaultAudioOutput
             volume: audio.title_level * audio.music_volume
         }
         onMediaStatusChanged: {
@@ -77,13 +93,14 @@ Item {
         onSourceChanged: Qt.callLater(audio.sync)
         loops: MediaPlayer.Infinite
         audioOutput: AudioOutput {
+            device: devices.defaultAudioOutput
             volume: audio.title_level * audio.music_volume
         }
     }
 
-    SoundEffect { id: fx_cursor; source: audio.file("cursor.wav"); volume: audio.fx_volume }
-    SoundEffect { id: fx_cancel; source: audio.file("cancel.wav"); volume: audio.fx_volume }
-    SoundEffect { id: fx_buzzer; source: audio.file("buzzer.wav"); volume: audio.fx_volume }
-    SoundEffect { id: fx_loading; source: audio.file("loading.wav"); volume: audio.fx_volume }
-    SoundEffect { id: fx_loaded; source: audio.file("loaded.wav"); volume: audio.fx_volume }
+    SoundEffect { id: fx_cursor; source: audio.file("cursor.wav"); audioDevice: devices.defaultAudioOutput; volume: audio.fx_volume }
+    SoundEffect { id: fx_cancel; source: audio.file("cancel.wav"); audioDevice: devices.defaultAudioOutput; volume: audio.fx_volume }
+    SoundEffect { id: fx_buzzer; source: audio.file("buzzer.wav"); audioDevice: devices.defaultAudioOutput; volume: audio.fx_volume }
+    SoundEffect { id: fx_loading; source: audio.file("loading.wav"); audioDevice: devices.defaultAudioOutput; volume: audio.fx_volume }
+    SoundEffect { id: fx_loaded; source: audio.file("loaded.wav"); audioDevice: devices.defaultAudioOutput; volume: audio.fx_volume }
 }
