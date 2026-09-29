@@ -58,7 +58,7 @@ Item {
     readonly property color win_mid: Qt.tint(Theme.bg_shadow, Qt.alpha(Theme.theme_primary_strong, 0.3))
     readonly property color win_end: Qt.tint(Theme.bg_shadow, Qt.alpha(Theme.theme_primary_strong, 0.14))
 
-    // Lifestream: ribbons of braided strands flowing across the screen, split into a back and a front canvas so they weave past the sword.
+    // Lifestream: ribbons of braided strands flowing across the screen behind the sword.
     readonly property bool stream_on: root.screen === "saver"
     property real stream_t: 0
     // Canvas resolution against the screen; the glow hides the upscale.
@@ -85,14 +85,14 @@ Item {
         return { bands: bands, motes: motes };
     }
 
-    // A band's point at design x for strand offset o, and its depth (over the sword when positive).
+    // A band's y at design x for strand offset o.
     function band_at(b, x, o, wob, f, t) {
         const centre = b.y + (x - 800) * b.tilt + b.amp * Math.sin(b.k * x - b.w * t + b.ph) + b.amp * 0.35 * Math.sin(b.k * 2.3 * x + b.w * 0.6 * t);
         const pinch = Math.cos(b.twist * x - b.w * 1.4 * t + b.ph * 2);
-        return [centre + b.spread * o * pinch + wob * Math.sin(x * 0.011 + f + t * 0.7), Math.sin(x * 0.0024 + b.ph * 1.7 + t * 0.15)];
+        return centre + b.spread * o * pinch + wob * Math.sin(x * 0.011 + f + t * 0.7);
     }
 
-    function paint_stream(ctx, w, h, front) {
+    function paint_stream(ctx, w, h) {
         ctx.reset();
         const k = Math.max(w / 1600, h / 900);
         const ox = (w - 1600 * k) / 2;
@@ -102,16 +102,14 @@ Item {
         ctx.globalCompositeOperation = "lighter";
         ctx.lineCap = "round";
         ctx.lineJoin = "round";
-        if (!front) {
-            ctx.fillStyle = green;
-            for (const m of root.stream.motes) {
-                const y = ((m.y - m.v * t) % 900 + 900) % 900;
-                const x = m.x + Math.sin(t * m.f + m.x) * m.sway;
-                ctx.globalAlpha = 0.25 + 0.25 * Math.sin(t * m.f * 3 + m.y);
-                ctx.beginPath();
-                ctx.arc(ox + x * k, oy + y * k, m.size * k, 0, Math.PI * 2);
-                ctx.fill();
-            }
+        ctx.fillStyle = green;
+        for (const m of root.stream.motes) {
+            const y = ((m.y - m.v * t) % 900 + 900) % 900;
+            const x = m.x + Math.sin(t * m.f + m.x) * m.sway;
+            ctx.globalAlpha = 0.25 + 0.25 * Math.sin(t * m.f * 3 + m.y);
+            ctx.beginPath();
+            ctx.arc(ox + x * k, oy + y * k, m.size * k, 0, Math.PI * 2);
+            ctx.fill();
         }
         const fade = (c) => {
             const g = ctx.createLinearGradient(0, 0, w, 0);
@@ -122,25 +120,12 @@ Item {
             return g;
         };
         const step = 40;
-        // Traces strand offset o across the screen; where the depth side flips, both canvases meet at the segment's midpoint.
         const trace = (b, o, wob, f) => {
             ctx.beginPath();
-            let prev = null;
             for (let x = -40; x <= 1640; x += step) {
-                const [y, d] = root.band_at(b, x, o, wob, f, t);
-                const mine = (d >= 0) === front;
-                const px = ox + x * k, py = oy + y * k;
-                if (prev && prev.mine !== mine) {
-                    const mx = (prev.x + px) / 2, my = (prev.y + py) / 2;
-                    if (mine) ctx.moveTo(mx, my);
-                    else ctx.lineTo(mx, my);
-                }
-                if (mine) {
-                    if (prev && prev.mine) ctx.lineTo(px, py);
-                    else if (!prev) ctx.moveTo(px, py);
-                    else ctx.lineTo(px, py);
-                }
-                prev = { x: px, y: py, mine: mine };
+                const y = oy + root.band_at(b, x, o, wob, f, t) * k;
+                if (x === -40) ctx.moveTo(ox + x * k, y);
+                else ctx.lineTo(ox + x * k, y);
             }
         };
         for (const b of root.stream.bands) {
@@ -173,8 +158,7 @@ Item {
                 b.sparks.forEach((p, i) => {
                     if ((i % 4 === 0) !== bright) return;
                     const x = ((p.u * 1760 + p.v * t) % 1760) - 80;
-                    const [y, d] = root.band_at(b, x, p.o, 0, 0, t);
-                    if ((d >= 0) !== front) return;
+                    const y = root.band_at(b, x, p.o, 0, 0, t);
                     const r = p.size * k * (0.6 + 0.4 * Math.sin(t * 2.5 + p.tw));
                     if (r <= 0) return;
                     ctx.moveTo(ox + x * k + r, oy + y * k);
@@ -598,7 +582,7 @@ Item {
             height: parent.height * root.stream_res
             scale: 1 / root.stream_res
             transformOrigin: Item.TopLeft
-            onPaint: root.paint_stream(stream_back.getContext("2d"), stream_back.width, stream_back.height, false)
+            onPaint: root.paint_stream(stream_back.getContext("2d"), stream_back.width, stream_back.height)
         }
 
         Stage {
@@ -612,7 +596,7 @@ Item {
                 y: 450 - 550 - 23
                 scale: 1152 / 1100
                 rotation: 54
-                opacity: 0.9
+                opacity: root.stream_on ? 1 : 0.9
                 visible: root.screen !== "files"
                 property real glint_y: -400
 
@@ -724,16 +708,6 @@ Item {
                     PathRectangle { width: 1600; height: 900 }
                 }
             }
-        }
-
-        Canvas {
-            id: stream_front
-            visible: root.stream_on
-            width: parent.width * root.stream_res
-            height: parent.height * root.stream_res
-            scale: 1 / root.stream_res
-            transformOrigin: Item.TopLeft
-            onPaint: root.paint_stream(stream_front.getContext("2d"), stream_front.width, stream_front.height, true)
         }
 
         Stage {
@@ -1315,12 +1289,9 @@ Item {
 
     onStream_tChanged: {
         stream_back.requestPaint();
-        stream_front.requestPaint();
     }
     onStream_onChanged: {
-        if (!root.stream_on) return;
-        stream_back.requestPaint();
-        stream_front.requestPaint();
+        if (root.stream_on) stream_back.requestPaint();
     }
 
     QtObject {
