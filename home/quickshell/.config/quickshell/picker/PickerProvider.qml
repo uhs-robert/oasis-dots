@@ -28,6 +28,8 @@ Scope {
     property var actions: []
     // Drawn beside the list with `entry` set to the selected item.
     property Component preview: null
+    // Font for item glyphs; empty uses the style font.
+    property string glyph_font: ""
     // Tab labels drawn above the query; the picker calls select_tab(i) on a switch, which must set `tab`.
     property var tabs: []
     property int tab: 0
