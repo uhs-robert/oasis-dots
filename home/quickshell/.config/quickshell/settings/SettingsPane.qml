@@ -12,7 +12,7 @@ FocusScope {
     property bool picking: false
     property var pick_list: null
     property var pick_done: null
-    readonly property string shown_hint: root.picking ? "type to filter · Up/Down or Ctrl+n/p move · Enter pick · Esc cancel" : root.footer_hint
+    readonly property string shown_hint: root.picking ? (root.pick_list && !root.pick_list.insert ? "Enter pick · j/k move · gg/G first/last · i insert · Esc close" : "Enter pick · Up/Down or Ctrl+n/p move · Esc normal") : root.footer_hint
     property var search_rows: []
     property int search_cursor: -1
     // True while the popup is open with focus in the pane; typing a search keeps it so.

@@ -15,6 +15,8 @@ ColumnLayout {
     property int current: -1
     property string query: ""
     property int cursor: 0
+    property bool insert: true
+    property real last_g_ms: 0
     readonly property int window_size: 8
 
     readonly property var results: {
@@ -36,14 +38,28 @@ ColumnLayout {
     spacing: 4
 
     // Hiding leaves the input focused, and the pane's forceActiveFocus is a no-op while it is.
-    onVisibleChanged: if (!root.visible) input.focus = false
+    onVisibleChanged: if (!root.visible) {
+        input.focus = false;
+        normal_keys.focus = false;
+    }
 
     function open() {
         input.text = "";
         root.query = "";
         const at = root.results.findIndex(r => r.index === root.current);
         root.cursor = Math.max(0, at);
-        input.forceActiveFocus();
+        root.set_insert(true);
+    }
+
+    function set_insert(on) {
+        root.insert = on;
+        if (on) {
+            normal_keys.focus = false;
+            input.forceActiveFocus();
+        } else {
+            input.focus = false;
+            normal_keys.forceActiveFocus();
+        }
     }
 
     function move(delta) {
@@ -54,6 +70,40 @@ ColumnLayout {
     function accept() {
         const r = root.results[root.cursor];
         if (r) root.picked(r.index);
+    }
+
+    Item {
+        id: normal_keys
+        Layout.preferredWidth: 0
+        Layout.preferredHeight: 0
+
+        Keys.onPressed: event => {
+            const ctrl = !!(event.modifiers & Qt.ControlModifier);
+            const k = event.key;
+            if (ctrl || (event.modifiers & Qt.AltModifier)) return;
+            if (k === Qt.Key_Escape || k === Qt.Key_Q) root.closed();
+            else if (k === Qt.Key_Return || k === Qt.Key_Enter) root.accept();
+            else if (k === Qt.Key_Down || k === Qt.Key_J || k === Qt.Key_Tab) root.move(1);
+            else if (k === Qt.Key_Up || k === Qt.Key_K || k === Qt.Key_Backtab) root.move(-1);
+            else if (k === Qt.Key_I || event.text === "/") root.set_insert(true);
+            else if (k === Qt.Key_A) {
+                root.set_insert(true);
+                input.cursorPosition = input.text.length;
+            } else if (k === Qt.Key_G) {
+                if (event.modifiers & Qt.ShiftModifier) {
+                    root.cursor = Math.max(0, root.results.length - 1);
+                } else {
+                    const now_ms = Date.now();
+                    if (now_ms - root.last_g_ms < 500) {
+                        root.last_g_ms = 0;
+                        root.cursor = 0;
+                    } else {
+                        root.last_g_ms = now_ms;
+                    }
+                }
+            } else return;
+            event.accepted = true;
+        }
     }
 
     Text {
@@ -70,12 +120,15 @@ ColumnLayout {
         radius: 6
         color: "transparent"
         border.width: 1
-        border.color: Qt.alpha(root.st.text_muted, 0.4)
+        border.color: root.insert ? root.st.text_accent : Qt.alpha(root.st.text_muted, 0.4)
 
         TextInput {
             id: input
-            anchors.fill: parent
+            anchors.left: parent.left
+            anchors.top: parent.top
+            anchors.bottom: parent.bottom
             anchors.leftMargin: 8
+            anchors.right: mode_text.left
             anchors.rightMargin: 8
             verticalAlignment: TextInput.AlignVCenter
             maximumLength: 64
@@ -91,7 +144,8 @@ ColumnLayout {
 
             Keys.onPressed: event => {
                 const ctrl = !!(event.modifiers & Qt.ControlModifier);
-                if (event.key === Qt.Key_Escape) root.closed();
+                if (event.key === Qt.Key_Escape) root.set_insert(false);
+                else if (ctrl && event.key === Qt.Key_U) input.text = "";
                 else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) root.accept();
                 else if (event.key === Qt.Key_Down || (ctrl && (event.key === Qt.Key_N || event.key === Qt.Key_J))) root.move(1);
                 else if (event.key === Qt.Key_Up || (ctrl && (event.key === Qt.Key_P || event.key === Qt.Key_K))) root.move(-1);
@@ -100,6 +154,24 @@ ColumnLayout {
                 else return;
                 event.accepted = true;
             }
+        }
+
+        Text {
+            id: mode_text
+            anchors.right: parent.right
+            anchors.rightMargin: 8
+            anchors.verticalCenter: parent.verticalCenter
+            text: root.insert ? "INSERT" : "NORMAL"
+            color: root.insert ? root.st.text_accent : root.st.text_primary
+            font.family: root.st.font_family
+            font.pixelSize: root.st.fs(-4)
+            font.bold: true
+        }
+
+        MouseArea {
+            anchors.fill: parent
+            z: -1
+            onClicked: root.set_insert(true)
         }
 
         Text {
