@@ -1,6 +1,18 @@
-# dotfiles
+<p align="center">
+  <img
+    src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/logo.png"
+    width="auto" height="128" alt="Oasis logo" />
+</p>
+<h1 align="center">oasis-dots</h1>
+<hr/>
+<p align="center">
+  <a href="https://github.com/uhs-robert/oasis-dots/stargazers"><img src="https://img.shields.io/github/stars/uhs-robert/oasis-dots?colorA=192330&colorB=khaki&style=for-the-badge&cacheSeconds=4300" alt="Stargazers"></a>
+  <a href="https://github.com/uhs-robert/oasis-dots/issues"><img src="https://img.shields.io/github/issues/uhs-robert/oasis-dots?colorA=192330&colorB=skyblue&style=for-the-badge&cacheSeconds=4300" alt="Issues"></a>
+  <a href="https://github.com/uhs-robert/oasis-dots/graphs/contributors"><img src="https://img.shields.io/github/contributors/uhs-robert/oasis-dots?colorA=192330&colorB=8FD1C7&style=for-the-badge&cacheSeconds=4300" alt="Contributors"></a>
+  <a href="https://github.com/uhs-robert/oasis-dots/network/members"><img src="https://img.shields.io/github/forks/uhs-robert/oasis-dots?colorA=192330&colorB=C799FF&style=for-the-badge&cacheSeconds=4300" alt="Forks"></a>
+</p>
 
-Personal dotfiles managed with [GNU Stow](https://www.gnu.org/software/stow/). Packages live under `home/`.
+Oasis-themed dotfiles for Arch Linux and Hyprland, with an installer, an uninstaller and a Quickshell desktop shell. Managed with [GNU Stow](https://www.gnu.org/software/stow/); packages live under `home/`.
 
 ## Desktop
 
