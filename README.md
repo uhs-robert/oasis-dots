@@ -13,6 +13,16 @@
 </p>
 <p align="center">Oasis-themed dotfiles for Arch Linux and Hyprland using Quickshell.</p>
 
+## Why oasis-dots
+
+**Keyboard first, for Vim users.** Nothing here assumes a mouse. [HyprVim](https://github.com/uhs-robert/hyprvim) gives Hyprland Vim modes, a leader key and which-key hints. Every popup opens on a key and answers to the same keys (`j`/`k`, `h`/`l`, `gg`/`G`, `/`, `[`/`]`, `?`, `q`), and the pickers have INSERT and NORMAL modes. Even the pointer jobs go through the keyboard: a virtual cursor, a screenshot region selector you steer with `hjkl` across monitors, the workspace overview, and monitor arrangement in Settings. The apps follow suit: Neovim, tmux, Yazi, qutebrowser, Tridactyl and Betterbird with tbkeys.
+
+**Retro styles.** The Quickshell shell swaps its whole look live, from a clean Oasis or Modern style to NES, SNES, Game Boy, PS1, PS2, FF7, GoldenEye, Metroid, Half-Life and TIE Fighter. Styles bring their own transitions, sounds, picker skins and lock screens, and colors always come from the active Oasis palette, so every style works with every theme.
+
+**One theme everywhere.** The [Oasis](https://github.com/uhs-robert/oasis.nvim) palettes, all AAA contrast, recolor Hyprland, the shell, the terminals and the apps in one switch.
+
+**Hard to lock yourself out.** Every shell piece has a fallback (rofi pickers, hyprlock, tuigreet at login), choices made in Settings are saved as state instead of editing tracked files, and a real installer and uninstaller set it up and take it down.
+
 ## Desktop
 
 An Arch Linux desktop on Hyprland, driven from the keyboard.
@@ -27,6 +37,19 @@ An Arch Linux desktop on Hyprland, driven from the keyboard.
 > Managed with [GNU Stow](https://www.gnu.org/software/stow/); packages live under `home/`.
 
 <!-- Screenshots: add from the assets branch here. -->
+
+## First five keys
+
+| Key                  | Does                                                                 |
+| -------------------- | -------------------------------------------------------------------- |
+| `SUPER + SPACE`      | Leader: a which-key menu of everything; `SPACE` then opens Start, `S` Settings |
+| `SUPER + /`          | Search and run the keybinds of the mode you are in                   |
+| `SUPER + O`          | Apps picker                                                          |
+| `ALT + TAB`          | Workspace overview, moved with `hjkl`                                |
+| `SUPER + V`          | HyprVim NORMAL mode for moving windows and workspaces; `SUPER + ESCAPE` leaves it |
+
+The [Hyprland README](home/hypr/.config/hypr/README.md) and the [Quickshell README](home/quickshell/.config/quickshell/README.md) have the rest.
+
 
 ## Full Install (Automated)
 
