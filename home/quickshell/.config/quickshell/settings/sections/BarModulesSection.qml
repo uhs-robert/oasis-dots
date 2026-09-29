@@ -37,7 +37,7 @@ SettingsPane {
     readonly property int total: root.top_count + root.entries.length
 
     footer_hint: "j/k move · Space show/hide · J/K reorder · H/L side · a add argument · x remove · h/l target · / find · Esc sections · q close"
-    search_rows: ["Editing target"].concat(root.target_screen ? ["Own layout"] : [], root.entries.map(e => e.entry))
+    search_rows: ["Editing target"].concat(root.target_screen ? ["Own layout"] : [], root.has_own ? ["Compact"] : [], root.entries.map(e => e.entry))
     search_cursor: root.cursor
     implicitHeight: col.implicitHeight
 
