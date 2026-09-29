@@ -13,6 +13,7 @@ PickerProvider {
     verb: "run"
     rank_by_usage: false
     keep_order: true
+    columns: 2
 
     property string submap: ""
 
@@ -36,10 +37,13 @@ PickerProvider {
         } catch (e) {
             console.warn("KeybindsProvider: invalid hyprctl output (" + e + ")");
         }
-        return binds.filter(b => b.has_description && b.submap === root.submap).map(b => {
+        const wanted = root.submap.toLowerCase();
+        const items = binds.filter(b => b.has_description && b.submap.toLowerCase() === wanted).map(b => {
             const chord = root.chord_of(b);
-            return { id: String(b.arg), label: b.description, description: chord, keywords: [chord, b.key], arg: b.arg };
+            return { id: String(b.arg), label: b.description, description: chord, keywords: [chord, b.key], arg: b.arg, accent: b.description.startsWith("+") };
         });
+        // Binds that enter a submap ("+Name") lead, as in which-key.
+        return items.filter(i => i.accent).concat(items.filter(i => !i.accent));
     }
 
     // The bind ran inside its submap; leave it before the picker takes focus, as keybind-help.lua does.
