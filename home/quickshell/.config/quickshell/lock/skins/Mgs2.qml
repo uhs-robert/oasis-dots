@@ -156,28 +156,33 @@ Item {
     readonly property color ok_green: "#a0e0b0"
     readonly property color mol_red: "#d63126"
 
-    // Each screen's frame: the vertical rule, the rail beside the box, and the box. Every box shares one bottom and one left rule, so the rules sit still between pages.
-    readonly property var frames: ({
-        menu: { v: 62, rail: [62, 140], box: [140, 46, 1540, 760] },
-        load: { v: 62, rail: [88, 140], box: [140, 62, 1500, 760] },
-        name: { v: 62, rail: [62, 140], box: [140, 66, 1530, 760] }
-    })
+    // The menu frame, the same on every page like the game's: the left rule, the rail inside the box's left end, and the box, whose bottom is the bottom rule.
+    readonly property var frame_all: ({ v: 62, rail: [62, 140], box: [140, 46, 1544, 756] })
+    readonly property var frames: ({ menu: root.frame_all, load: root.frame_all, name: root.frame_all })
     readonly property var frame: root.frames[root.shown === "opt" ? "menu" : root.shown] || null
     property var last_frame: root.frames.menu
     onFrameChanged: if (root.frame) root.last_frame = root.frame
     // The frame as drawn: the box between box_a and box_b, with the rail riding its left edge.
+    function win(k, t0, t1) {
+        const x = Math.max(0, Math.min(1, (k - t0) / (t1 - t0)));
+        return 1 - Math.pow(1 - x, 3);
+    }
+    // The box's own progress: tk, or its window of tk when a step overlaps the box with a travelling rule.
+    readonly property real kb: root.step && root.step.bt ? root.win(root.tk, root.step.bt[0], root.step.bt[1]) : root.tk
     readonly property var fb: {
-        const f = root.last_frame, k = root.tk, a = root.box_a, b = root.box_b;
+        const f = root.last_frame, k = root.kb, a = root.box_a, b = root.box_b;
         const e = [0, 1, 2, 3].map(i => a[i] + (b[i] - a[i]) * k);
         const dx = e[0] - f.box[0];
         return { v: f.v + dx, r0: f.rail[0] + dx, r1: f.rail[1] + dx, x0: e[0], y0: e[1], x1: e[2], y1: e[3] };
     }
-    // Full-length rules: at rest the bottom and left ones; a step names its own, as box edges, fixed spots or [from, to] travels.
+    // Full-length rules: at rest the bottom and left ones; a step names its own, as box edges, fixed spots or [from, to(, t0, t1)] travels.
     readonly property var guides: {
         const st = root.step, b = root.fb, k = root.tk;
-        const at = p => typeof p === "number" ? p : Array.isArray(p) ? p[0] + (p[1] - p[0]) * k : ({ left: b.v, right: b.x1, top: b.y0, bottom: b.y1 })[p];
+        const travel = p => p.length > 2 ? root.win(k, p[2], p[3]) : k;
+        const edge = p => st && st.bt && root.kb <= 0 ? null : ({ left: b.v, right: b.x1, top: b.y0, bottom: b.y1 })[p];
+        const at = p => typeof p === "number" ? p : Array.isArray(p) ? p[0] + (p[1] - p[0]) * travel(p) : edge(p);
         const hs = st && st.h ? st.h : ["bottom"], vs = st && st.v ? st.v : ["left"];
-        return hs.map(p => ({ h: true, p: at(p) })).concat(vs.map(p => ({ h: false, p: at(p) })));
+        return hs.map(p => ({ h: true, p: at(p) })).concat(vs.map(p => ({ h: false, p: at(p) }))).filter(g => g.p !== null && g.p !== undefined);
     }
 
     function is_framed(p) {
@@ -201,7 +206,7 @@ Item {
         root.content_on = true;
     }
 
-    // Runs steps in order: {ms, ease, a, b, box, h, v, wipe, content, title, keep, start}.
+    // Runs steps in order: {ms, ease, a, b, bt, box, h, v, wipe, content, title, keep, start}; bt is the box's window of the step.
     function run(list) {
         step_anim.stop();
         root.steps = list;
@@ -259,19 +264,13 @@ Item {
                 list.push({ ms: 260, ease: Easing.InQuad, wipe: true, a: o, b: [o[0], o[1], o[2], o[1]], h: ["bottom"], v: ["left"] });
                 list.push({ ms: 60, box: false, h: [[o[1], -10]], v: [ov] });
                 list.push(swap, { ms: 250, box: false, h: [], v: [[ov, nv]] });
-                if (n) {
-                    list.push({ ms: 260, ease: Easing.OutCubic, a: n, box: false, h: [[910, n[3]]], v: [nv] });
-                    list.push({ ms: 320, ease: Easing.OutCubic, a: [n[0], n[3], n[0], n[3]], b: n, h: ["bottom", "top"], v: ["left", "right"] });
-                }
+                if (n) list.push({ ms: 520, a: [n[0], n[3], n[0], n[3]], b: n, bt: [0.4, 1], h: [[910, n[3], 0, 0.55], "top"], v: [nv, "right"] });
             } else {
                 const nb = n ? n[3] : o[3], nv = nf ? nf.v : ov;
                 list.push({ ms: 260, ease: Easing.InQuad, wipe: true, a: o, b: [o[0], o[1], o[0], o[3]], h: ["bottom"], v: ["left", "right"] });
                 list.push({ ms: 60, box: false, h: [o[3]], v: [[o[0], -10], ov] });
                 list.push(swap, { ms: 250, box: false, h: [[o[3], nb]], v: [[ov, nv]] });
-                if (n) {
-                    list.push({ ms: 260, ease: Easing.OutCubic, a: n, box: false, h: [nb], v: [[1610, n[2]], nv] });
-                    list.push({ ms: 320, ease: Easing.OutCubic, a: [n[2], n[1], n[2], n[1]], b: n, h: [nb, "bottom"], v: [nv, "left", "right"] });
-                }
+                if (n) list.push({ ms: 520, a: [n[2], n[1], n[2], n[1]], b: n, bt: [0.4, 1], h: [nb, "bottom"], v: [[1610, n[2], 0, 0.55], nv, "left"] });
             }
         } else if (from === "title") {
             list.push({ ms: 1000, ease: Easing.InQuad, title: "out" }, swap, Object.assign({ ms: 120 }, none));
@@ -1119,11 +1118,12 @@ Item {
                 }
             }
 
+            // The box outline takes in the rail, so its top edge starts at the left rule like the game's.
             Rectangle {
-                visible: root.box_on
-                x: root.fb.x0
+                visible: root.box_on && root.fb.y1 - root.fb.y0 > 1
+                x: root.fb.r0
                 y: root.fb.y0
-                width: Math.max(0, root.fb.x1 - root.fb.x0)
+                width: Math.max(0, root.fb.x1 - root.fb.r0)
                 height: Math.max(0, root.fb.y1 - root.fb.y0)
                 color: "transparent"
                 border.width: 1.5
