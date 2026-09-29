@@ -18,15 +18,15 @@ Tracks the Settings panel that drops from the center island (issue #361). Update
 - Monitor arrangement is keyboard-first: `hjkl` nudges the selected monitor and snaps to edges; mouse drag is secondary.
 - Theme options and theme audio come from a per-style `settings: [{ key, type, default }]` schema, rendered generically.
 
-## Step 1: panel shell (in progress, branch `feat/settings-panel`)
+## Step 1: panel shell (done)
 
 - [x] Panel, sidebar, pane loader, section registry, deep-link IPC
 - [x] Style section (moved from the Start menu's Style popup)
 - [x] Lock screen section (screen, tint, backdrop, music, preview)
 - [x] Login screen section (follow or override the lock choices, music, session, sync), saved to `greeter.json`
 - [x] Start menu "Settings" row and leader `S` open the panel
-- [ ] Live test on the bar and fix what turns up
-- [ ] Review findings resolved, PR merged
+- [x] Live test on the bar and fix what turns up
+- [x] Review findings resolved, PR merged
 - [ ] Optional: move lock settings out of `style.json` into their own state file
 
 ## Step 2: bar modules
