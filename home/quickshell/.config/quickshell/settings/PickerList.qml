@@ -31,11 +31,16 @@ ColumnLayout {
     }
     readonly property int first_shown: Math.max(0, Math.min(root.cursor - Math.floor(root.window_size / 2), root.results.length - root.window_size))
 
+    readonly property int highlight: root.results.length > 0 ? root.results[Math.min(root.cursor, root.results.length - 1)].index : -1
+
     signal picked(int index)
+    signal highlighted(int index)
     signal closed
 
     Layout.fillWidth: true
     spacing: 4
+
+    onHighlightChanged: if (root.highlight >= 0) root.highlighted(root.highlight)
 
     // Hiding leaves the input focused, and the pane's forceActiveFocus is a no-op while it is.
     onVisibleChanged: if (!root.visible) {

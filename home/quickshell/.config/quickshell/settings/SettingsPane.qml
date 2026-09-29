@@ -12,6 +12,8 @@ FocusScope {
     property bool picking: false
     property var pick_list: null
     property var pick_done: null
+    property var pick_preview: null
+    property var pick_revert: null
     readonly property string shown_hint: root.picking ? (root.pick_list && !root.pick_list.insert ? "Enter pick · j/k move · gg/G first/last · i insert · Esc close" : "Enter pick · Up/Down or Ctrl+n/p move · Esc normal") : root.footer_hint
     property var search_rows: []
     property int search_cursor: -1
@@ -36,22 +38,33 @@ FocusScope {
     }
 
     // Opens `list` (a PickerList) over `labels`; on_pick gets the chosen index.
-    function show_picker(list, title, labels, current, on_pick) {
+    // Optional on_preview(index) runs as the highlight moves; on_revert() drops the preview when the picker closes.
+    function show_picker(list, title, labels, current, on_pick, on_preview, on_revert) {
         list.title = title;
         list.items = labels.map(l => ({ label: l }));
         list.current = current;
         root.pick_list = list;
         root.pick_done = on_pick;
+        root.pick_preview = on_preview || null;
+        root.pick_revert = on_revert || null;
         root.picking = true;
         list.open();
     }
 
     function hide_picker() {
         if (!root.picking) return;
+        const revert = root.pick_revert;
         root.picking = false;
         root.pick_list = null;
         root.pick_done = null;
+        root.pick_preview = null;
+        root.pick_revert = null;
         root.forceActiveFocus();
+        if (revert) revert();
+    }
+
+    function pick_highlight(index) {
+        if (root.picking && root.pick_preview) root.pick_preview(index);
     }
 
     function finish_picker(index) {

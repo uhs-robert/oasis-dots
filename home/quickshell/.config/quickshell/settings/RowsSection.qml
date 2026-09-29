@@ -5,7 +5,8 @@ import "../theme"
 import "../services"
 
 // A section of ChoiceRows; each row is { label, values: () => [...], text: v => string, value: () => current, set: v => void, pick?: bool }.
-// Enter or a click opens a filterable list of a row's values; `pick: false` keeps a row cycling.
+// Enter or a click opens a filterable list of a row's values; `pick: false` keeps a row cycling and `cycle: false` stops h/l from stepping it.
+// A row may add `preview: v => void` (run as the list highlight moves) and `revert: () => void` (run when the list closes).
 SettingsPane {
     id: root
 
@@ -29,7 +30,7 @@ SettingsPane {
 
     function step(index, delta) {
         const row = root.rows[index];
-        if (!row) return;
+        if (!row || row.cycle === false) return;
         const values = row.values();
         if (values.length === 0) return;
         const at = values.indexOf(row.value());
@@ -47,7 +48,10 @@ SettingsPane {
         const row = root.rows[index];
         const values = row.values();
         root.cursor = index;
-        root.show_picker(picker, row.label, values.map(v => row.text(v)), values.indexOf(row.value()), i => row.set(values[i]));
+        root.show_picker(picker, row.label, values.map(v => row.text(v)), values.indexOf(row.value()), i => {
+            row.set(values[i]);
+            ThemeAudio.play("confirm");
+        }, row.preview ? i => row.preview(values[i]) : null, row.revert || null);
     }
 
     function activate(index, delta) {
@@ -99,6 +103,7 @@ SettingsPane {
             id: picker
             visible: root.picking
             st: root.st
+            onHighlighted: index => root.pick_highlight(index)
             onPicked: index => root.finish_picker(index)
             onClosed: root.hide_picker()
         }
