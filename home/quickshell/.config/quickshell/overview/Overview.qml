@@ -79,7 +79,8 @@ PanelWindow {
     readonly property bool can_drop: root.carrying && root.swap_address === "" && !!root.selected_tile && root.picked.some(a => !root.selected_tile.windows.some(w => w.address === a))
     readonly property var nav_order: Layout.flat(Layout.flat(Layout.bands(root.groups)).map(g => root.groups[g].tiles))
     readonly property var ranked: root.typing ? root.rank(root.window_entries(), root.query) : []
-    readonly property var hit_entry: root.ranked[Math.min(root.hit, root.ranked.length - 1)] || null
+    readonly property int hit_index: Math.min(root.hit, root.ranked.length - 1)
+    readonly property var hit_entry: root.ranked[root.hit_index] || null
     readonly property var matches: root.query === "" ? null : root.to_set(root.ranked.map(e => e.address))
     readonly property int match_count: root.ranked.length
     readonly property real list_width: root.typing ? Math.min(Style.px(460), frame.body.width * 0.34) : 0
@@ -359,7 +360,7 @@ PanelWindow {
 
     function step_hit(delta) {
         const n = root.ranked.length;
-        if (n > 0) root.set_hit((root.hit + delta + n) % n);
+        if (n > 0) root.set_hit((root.hit_index + delta + n) % n);
     }
 
     function accept_hit() {
@@ -1028,7 +1029,7 @@ PanelWindow {
             width: root.list_width
             height: frame.body.height
             entries: root.ranked
-            current: root.hit
+            current: root.hit_index
             onChosen: index => {
                 root.set_hit(index);
                 root.accept_hit();
