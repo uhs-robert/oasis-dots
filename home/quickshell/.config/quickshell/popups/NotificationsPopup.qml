@@ -161,9 +161,14 @@ Popup {
         const sel = root.entry_rows[root.selected];
         if (!sel) return;
         const actions = root.actions_of(sel.entry);
-        if (root.action_index >= 0 && root.action_index < actions.length) NotificationState.invoke_action(sel.entry, actions[root.action_index]);
-        else NotificationState.invoke_default(sel.entry);
-        Popups.close();
+        if (root.action_index >= 0 && root.action_index < actions.length) {
+            NotificationState.invoke_action(sel.entry, actions[root.action_index]);
+            root.action_index = -1;
+            NotificationState.close_popup_if_empty();
+        } else {
+            NotificationState.invoke_default(sel.entry);
+            Popups.close();
+        }
     }
 
     function handle_key(event) {

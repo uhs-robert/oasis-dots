@@ -45,7 +45,7 @@ Item {
         if (!root.focused_valid) return root.invoke_requested();
         ThemeAudio.play("confirm");
         NotificationState.invoke_action(root.entry, root.actions[root.focused_action]);
-        Popups.close();
+        NotificationState.close_popup_if_empty();
     }
 
     signal invoke_requested()
@@ -433,6 +433,7 @@ Item {
                                     root.select_requested();
                                     ThemeAudio.play("confirm");
                                     NotificationState.invoke_action(root.entry, action_chip.modelData);
+                                    NotificationState.close_popup_if_empty();
                                 }
                             }
                         }

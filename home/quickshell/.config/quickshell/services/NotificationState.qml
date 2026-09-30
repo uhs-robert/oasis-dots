@@ -248,7 +248,7 @@ Singleton {
         const entry = root.selected_toast();
         const actions = entry ? root.actions_of(entry) : [];
         const action = actions[root.toast_action] || null;
-        root.leave_toast_focus();
+        if (!action) root.leave_toast_focus();
         if (!entry) return;
         if (action) root.invoke_action(entry, action);
         else root.invoke_default(entry);
@@ -318,6 +318,10 @@ Singleton {
         action.invoke();
         if (entry.notification && entry.notification.resident) root.hide_toast(entry);
         else root.dismiss(entry);
+    }
+
+    function close_popup_if_empty() {
+        if (root.history.length === 0) Popups.close();
     }
 
     function mark_read() {
