@@ -52,7 +52,11 @@ Learn the keybinds like you do in NeoVim with which-key upon submap entry. Searc
   </tr>
 </table>
 
-<!-- HyprVim command prompt screenshot goes here. -->
+<p align="center">
+  <a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/prompt-menu.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/prompt-menu.webp" width="100%" alt="HyprVim command prompt with fuzzy menu"></a>
+  <a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/prompt-args.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/prompt-args.webp" width="100%" alt="HyprVim command prompt with argument hints"></a>
+  <br><em><strong>Command prompt:</strong> <code>:</code> in HyprVim NORMAL mode, a fuzzy menu of commands, then hints for each argument</em>
+</p>
 
 More that never needs a mouse:
 
@@ -113,18 +117,55 @@ Just a few example weather modules:
   </tr>
 </table>
 
+<details>
+<summary>🌤️ The weather popup in every other style</summary>
+
+<table>
+  <tr>
+    <td align="center" width="33%"><a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/weather-oasis.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/weather-oasis.webp" width="100%" alt="Oasis"></a><br><strong>Oasis</strong></td>
+    <td align="center" width="33%"><a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/weather-modern.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/weather-modern.webp" width="100%" alt="Modern"></a><br><strong>Modern</strong></td>
+    <td align="center" width="33%"><a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/weather-neovim.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/weather-neovim.webp" width="100%" alt="Neovim"></a><br><strong>Neovim</strong></td>
+  </tr>
+  <tr>
+    <td align="center" width="33%"><a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/weather-terminal.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/weather-terminal.webp" width="100%" alt="Terminal"></a><br><strong>Terminal</strong></td>
+    <td align="center" width="33%"><a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/weather-crt.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/weather-crt.webp" width="100%" alt="CRT"></a><br><strong>CRT</strong></td>
+    <td align="center" width="33%"><a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/weather-gameboy.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/weather-gameboy.webp" width="100%" alt="Game Boy"></a><br><strong>Game Boy</strong></td>
+  </tr>
+  <tr>
+    <td align="center" width="33%"><a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/weather-snes.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/weather-snes.webp" width="100%" alt="SNES"></a><br><strong>SNES</strong></td>
+    <td align="center" width="33%"><a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/weather-ps1.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/weather-ps1.webp" width="100%" alt="PSX"></a><br><strong>PSX</strong></td>
+    <td align="center" width="33%"><a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/weather-goldeneye.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/weather-goldeneye.webp" width="100%" alt="GoldenEye"></a><br><strong>GoldenEye</strong></td>
+  </tr>
+  <tr>
+    <td align="center" width="33%"><a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/weather-ps2.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/weather-ps2.webp" width="100%" alt="PS2"></a><br><strong>PS2</strong></td>
+    <td align="center" width="33%"><a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/weather-tie.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/weather-tie.webp" width="100%" alt="TIE Fighter"></a><br><strong>TIE Fighter</strong></td>
+    <td align="center" width="33%"><a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/weather-metroid.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/weather-metroid.webp" width="100%" alt="Metroid"></a><br><strong>Metroid</strong></td>
+  </tr>
+</table>
+
+</details>
+
 ### 📸 Other Module Examples
 
 As you can see, styles influence every popup. Each card below shows a different popup and a different style.
 
 <table>
   <tr>
-    <td align="center" width="50%"><a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/tour-settings-metroid.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/tour-settings-metroid.webp" width="100%" alt="Settings"></a><br><strong>Settings (Metroid)</strong><br><em>Metroid's scan visor over the settings menu</em></td>
+    <td align="center" width="50%"><a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/tour-settings-crt.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/tour-settings-crt.webp" width="100%" alt="Settings"></a><br><strong>Settings (CRT)</strong><br><em>Phosphor terminal settings: styles, colors, bar, displays, apps, power, sound and lock</em></td>
     <td align="center" width="50%"><a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/tour-overview-ps1.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/tour-overview-ps1.webp" width="100%" alt="Workspace overview"></a><br><strong>Workspace Overview (PSX)</strong><br><em>Monitors and workspaces selected via Metal Gear scope</em></td>
   </tr>
   <tr>
-    <td align="center" width="50%"><a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/tour-volume-ps2.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/tour-volume-ps2.webp" width="100%" alt="Volume"></a><br><strong>Volume (PS2)</strong><br><em>PS2 circular memory-dial mixer</em></td>
     <td align="center" width="50%"><a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/tour-calendar-gameboy.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/tour-calendar-gameboy.webp" width="100%" alt="Calendar"></a><br><strong>Calendar (Gameboy)</strong><br><em>Calendar inside a Game Boy screen with time zones</em></td>
+  </tr>
+</table>
+
+The volume mixer in three styles:
+
+<table>
+  <tr>
+    <td align="center" width="33%"><a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/volume-oasis.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/volume-oasis.webp" width="100%" alt="Oasis"></a><br><strong>Oasis</strong></td>
+    <td align="center" width="33%"><a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/volume-crt.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/volume-crt.webp" width="100%" alt="CRT"></a><br><strong>CRT</strong></td>
+    <td align="center" width="33%"><a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/volume-ps1.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/volume-ps1.webp" width="100%" alt="PSX"></a><br><strong>PSX</strong></td>
   </tr>
 </table>
 
