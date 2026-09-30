@@ -67,7 +67,7 @@ Singleton {
         try {
             const d = JSON.parse(text);
             if (!d || typeof d !== "object" || Array.isArray(d)) return null;
-            for (const k of ["user", "lock_style", "lock_tint", "lock_music", "session", "theme_music", "music_file", "music_volume", "fx_volume"]) {
+            for (const k of ["user", "lock_style", "lock_tint", "lock_music", "session", "theme_music", "music_file", "music_volume"]) {
                 if (d[k] !== undefined && typeof d[k] !== "string") return null;
             }
             if (d.lock_style !== undefined && !/^[a-z0-9_]+$/.test(d.lock_style)) return null;
@@ -119,7 +119,6 @@ Singleton {
         power_live: !root.preview
         music: root.settings.lock_music !== "off"
         music_volume: root.level_setting(root.settings.music_volume)
-        fx_volume: root.level_setting(root.settings.fx_volume)
         session_name: root.session.name
     }
 

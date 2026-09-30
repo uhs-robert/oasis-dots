@@ -57,7 +57,6 @@ QtObject {
     property bool sound: false
     property bool music: Style.lock_music
     readonly property real music_volume: ThemeAudio.music_volume
-    readonly property real fx_volume: ThemeAudio.fx_volume
     // The login screen rather than the lock; skins may play more there.
     property bool login: false
     property var sound_owner: null
