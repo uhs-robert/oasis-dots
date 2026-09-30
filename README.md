@@ -37,13 +37,13 @@ An Arch Linux desktop on Hyprland, driven from the keyboard with vim binds and m
 No mouse required. [HyprVim](https://github.com/uhs-robert/hyprvim) gives Hyprland Vim modes, a leader key and which-key hints. Every popup opens on a key and answers to the same keys (`j`/`k`, `h`/`l`, `gg`/`G`, `/`, `[`/`]`, `?`, `q`), and the pickers have INSERT and NORMAL modes. Even the pointer jobs go through the keyboard: a virtual cursor, a screenshot region selector that you steer with `hjkl` across monitors, the workspace overview, and monitor arrangements in Settings. The apps follow suit: Neovim, tmux, Yazi, qutebrowser, Tridactyl and Betterbird with tbkeys.
 
 <p align="center">
-  <a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/region-styles.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/region-styles.webp" width="100%" alt="The region selector, steered with hjkl, in twelve styles"></a>
+  <a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/region-ps1.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/region-ps1.webp" width="100%" alt="The PS1 region selector, steered with hjkl, with its zoom scope"></a>
 </p>
 
 <table>
   <tr>
-    <td align="center" width="50%"><a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/keybinds.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/keybinds.webp" width="100%" alt="Keybinds picker"></a><br><strong>Keybinds picker</strong><br><em>SUPER + / searches and runs the binds of the current mode</em></td>
-    <td align="center" width="50%"><a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/emoji.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/emoji.webp" width="100%" alt="Emoji picker"></a><br><strong>Emoji picker</strong><br><em>Type to filter, Enter types it into the window you came from</em></td>
+    <td align="center" width="50%"><a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/picker-keybinds.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/picker-keybinds.webp" width="100%" alt="Keybinds picker"></a><br><strong>Keybinds picker</strong><br><em>SUPER + / searches and runs the binds of the current mode</em></td>
+    <td align="center" width="50%"><a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/picker-emoji.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/picker-emoji.webp" width="100%" alt="Emoji picker"></a><br><strong>Emoji picker</strong><br><em>Type to filter, Enter types it into the window you came from</em></td>
   </tr>
 </table>
 
