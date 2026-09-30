@@ -38,6 +38,8 @@ PanelWindow {
     property bool typing: false
     property bool help_open: false
     property string query: ""
+    property int hit: 0
+    property bool from_search: false
 
     readonly property var groups: root.model.groups
     readonly property var tiles: root.model.tiles
@@ -63,8 +65,12 @@ PanelWindow {
     readonly property string swap_key: root.picked.length === 1 && !!root.selected_tile && root.selected_tile.key !== root.picked[0] && root.session_of(root.picked[0]) === root.selected_tile.session_id ? root.selected_tile.key : ""
     readonly property bool can_drop: root.carrying && root.swap_key === "" && !!root.selected_tile && root.picked.some(k => root.session_of(k) !== root.selected_tile.session_id)
     readonly property var nav_order: Layout.flat(Layout.flat(Layout.bands(root.groups)).map(g => root.groups[g].tiles))
-    readonly property var matches: root.query === "" ? null : root.match_set(root.query)
-    readonly property int match_count: root.matches ? Object.keys(root.matches).length : 0
+    readonly property var ranked: root.typing ? root.rank(TmuxData.search_entries(root.tiles, Quickshell.env("HOME") || "", root.picked_set), root.query) : []
+    readonly property int hit_index: Math.min(root.hit, root.ranked.length - 1)
+    readonly property var hit_entry: root.ranked[root.hit_index] || null
+    readonly property var matches: root.query === "" ? null : root.to_set(root.ranked.map(e => e.key))
+    readonly property int match_count: root.ranked.length
+    readonly property real list_width: root.typing ? Math.min(Style.px(460), frame.body.width * 0.34) : 0
     readonly property var ansi_palette: [Theme.black, Theme.red, Theme.green, Theme.yellow, Theme.blue, Theme.magenta, Theme.cyan, Theme.white, Theme.bright_black, Theme.bright_red, Theme.bright_green, Theme.bright_yellow, Theme.bright_blue, Theme.bright_magenta, Theme.bright_cyan, Theme.bright_white].map(c => String(c))
 
     readonly property var metrics: ({
@@ -74,7 +80,7 @@ PanelWindow {
         group_gap: Style.px(22),
         strip: Style.px(150)
     })
-    readonly property var layout: Layout.compute(root.filmstrip, root.groups, root.tiles, frame.body.width, frame.body.height, root.metrics, root.selected_index)
+    readonly property var layout: Layout.compute(root.filmstrip, root.groups, root.tiles, frame.body.width - root.list_width, frame.body.height, root.metrics, root.selected_index)
     readonly property bool animate_moves: root.filmstrip && Power.on_ac && root.reveal === 1
     // The selected pane (or the whole tile) in body coordinates, for the scope skin.
     readonly property var aim: {
@@ -128,6 +134,12 @@ PanelWindow {
             return "ok";
         }
 
+        function search(): string {
+            root.show_overview();
+            root.start_filter(true);
+            return "ok";
+        }
+
         function toggle(): string {
             if (root.wanted) root.hide_overview();
             else root.show_overview();
@@ -150,6 +162,7 @@ PanelWindow {
         root.selected_key = "";
         root.selected_pane = "";
         root.picked = [];
+        root.from_search = false;
         root.marks = [];
         root.help_open = false;
         digit_timer.stop();
@@ -202,6 +215,7 @@ PanelWindow {
             const group = latest ? next.groups.find(g => g.id === latest.session_id) : null;
             const start = group ? group.active_tile : next.tiles.length > 0 ? 0 : -1;
             if (start >= 0) root.select(start);
+            if (root.typing) root.reset_hit();
         }
         const missing = Layout.flat(next.tiles.map(t => t.panes)).map(p => p.pane_id).filter(id => root.previews[id] === undefined);
         if (missing.length > 0) root.capture(missing);
@@ -244,28 +258,51 @@ PanelWindow {
         return t ? t.session_id : "";
     }
 
-    function match_set(query) {
+    function rank(entries, query) {
         const terms = Fuzzy.terms_of(query);
-        const set = {};
-        if (terms.length === 0) return set;
-        for (const t of root.tiles) {
-            const cmds = t.panes.map(p => p.cmd);
-            const paths = t.panes.map(p => p.path);
-            if (Fuzzy.score_item(terms, { label: t.name.trim(), description: paths.join(" "), keywords: cmds })) set[t.key] = true;
+        if (terms.length === 0) return entries;
+        const scored = [];
+        for (const e of entries) {
+            const s = Fuzzy.score_item(terms, e);
+            if (s) scored.push({ entry: e, score: s.score });
         }
-        return set;
+        scored.sort((a, b) => b.score - a.score || a.entry.recency - b.entry.recency);
+        return scored.map(s => s.entry);
     }
 
-    function match_list() {
-        if (!root.matches) return [];
-        return root.nav_order.filter(i => root.matches[root.tiles[i].key]);
+    function select_entry(entry) {
+        const at = entry ? root.tile_index_of[entry.key] : undefined;
+        if (at !== undefined) root.select(at);
     }
 
-    function step_match(delta) {
-        const list = root.match_list();
-        if (list.length === 0) return;
-        const at = list.indexOf(root.selected_index);
-        root.select(list[at < 0 ? (delta > 0 ? 0 : list.length - 1) : (at + delta + list.length) % list.length]);
+    function set_hit(i) {
+        root.hit = i;
+        root.select_entry(root.hit_entry);
+    }
+
+    // An empty query starts on the window before the latest client's when searching, else on the selected window.
+    function reset_hit() {
+        const list = root.ranked;
+        const latest = TmuxData.latest_client(root.clients);
+        const group = latest ? root.groups.find(g => g.id === latest.session_id) : null;
+        const current = group ? root.tiles[group.active_tile] : null;
+        let at = 0;
+        if (root.query === "") at = root.from_search ? (list.length >= 2 && current && list[0].key === current.key ? 1 : 0) : Math.max(0, list.findIndex(e => e.key === root.selected_key));
+        root.set_hit(at);
+    }
+
+    function step_hit(delta) {
+        const n = root.ranked.length;
+        if (n > 0) root.set_hit((root.hit_index + delta + n) % n);
+    }
+
+    function accept_hit() {
+        const entry = root.hit_entry;
+        if (!entry) return;
+        root.select_entry(entry);
+        root.clear_filter();
+        if (root.carrying) root.drop();
+        else root.activate();
     }
 
     function select(index, pane) {
@@ -472,15 +509,12 @@ PanelWindow {
         reload_timer.restart();
     }
 
-    function start_filter() {
+    function start_filter(from_search) {
+        root.from_search = from_search;
         root.typing = true;
         filter_input.forceActiveFocus();
         filter_input.cursorPosition = filter_input.text.length;
-    }
-
-    function accept_filter() {
-        root.typing = false;
-        keys.forceActiveFocus();
+        root.reset_hit();
     }
 
     function clear_filter() {
@@ -574,7 +608,7 @@ PanelWindow {
         } else if (k === Qt.Key_F) {
             root.filmstrip = !root.filmstrip;
         } else if (k === Qt.Key_Slash || event.text === "/") {
-            root.start_filter();
+            root.start_filter(false);
         } else if (k >= Qt.Key_0 && k <= Qt.Key_9) {
             root.type_digit(String(k - Qt.Key_0));
         } else {
@@ -592,18 +626,18 @@ PanelWindow {
     }
 
     readonly property string footer_text: root.help_open ? "? back · Esc back · q close"
-        : root.typing ? "Enter accept · Tab next match · Esc clear · ? help"
+        : root.typing ? "Enter " + (root.carrying ? "drop here" : "go") + " · Tab/Down next · Shift+Tab/Up previous · Esc " + (root.from_search && root.query === "" ? "close" : "clear") + " · ? help"
         : root.swap_key !== "" ? "m swap · Enter swap · hjkl window · Esc cancel · ? help"
         : root.carrying ? "hjkl session · m drop · Enter drop · Esc cancel · ? help"
         : root.marks.length > 0 ? "Space mark · V mark all · m move " + root.marks.length + " · x kill " + root.marks.length + " · hjkl move · Esc clear marks · ? help"
-        : "hjkl move · Ctrl+hjkl session · Tab pane · Enter go · m move · x kill · Space mark · / filter · f view · ? help · q close"
+        : "hjkl move · Ctrl+hjkl session · Tab pane · Enter go · m move · x kill · Space mark · / search · f view · ? help · q close"
 
-    readonly property string normal_help: "h/j/k/l move between windows · Arrows move between windows · Ctrl+h/j/k/l or Ctrl+Arrows jump to the neighbouring session · Ctrl+1-9 jump to the nth session, Ctrl+0 the 10th · 1-9 select window by tmux index in this session, type 12 quickly for window 12 · Tab next pane · Shift+Tab previous pane · Enter go to window and pane · m pick up window, or every marked window · x kill window, or every marked window · Space/v mark or unmark window · V mark or unmark all in session · / filter by name, command or path · f toggle filmstrip view · Click go to window or pane"
+    readonly property string normal_help: "h/j/k/l move between windows · Arrows move between windows · Ctrl+h/j/k/l or Ctrl+Arrows jump to the neighbouring session · Ctrl+1-9 jump to the nth session, Ctrl+0 the 10th · 1-9 select window by tmux index in this session, type 12 quickly for window 12 · Tab next pane · Shift+Tab previous pane · Enter go to window and pane · m pick up window, or every marked window · x kill window, or every marked window · Space/v mark or unmark window · V mark or unmark all in session · / search windows by name, command, path or session · f toggle filmstrip view · Click go to window or pane"
     readonly property string carry_help: "h/j/k/l choose target window or session · Arrows choose target · Ctrl+h/j/k/l jump to a session · Ctrl+1-9 target the nth session · m drop into the selected session, or swap with the selected window of the same session · Enter drop or swap · f toggle filmstrip view · Click drop or swap · Esc cancel, marks come back"
-    readonly property string help_text: root.typing ? "Type filter by window name, pane command or pane path · Enter accept filter · Tab/Down next match · Shift+Tab/Up previous match · Backspace delete, clears when empty · Esc clear filter"
+    readonly property string help_text: root.typing ? "Type to search windows by name, pane command, pane path or session · Enter go to the highlighted window, or drop the carried window on its session · Tab/Down next match · Shift+Tab/Up previous match · Backspace delete, clears when empty · Esc clear search, or close when it is empty"
         : root.carrying ? root.carry_help
         : root.marks.length > 0 ? "Esc clear all marks · " + root.normal_help
-        : root.query !== "" ? "Esc clear filter · / edit filter · " + root.normal_help
+        : root.query !== "" ? "Esc clear search · " + root.normal_help
         : root.normal_help
 
     readonly property string status_text: {
@@ -726,10 +760,7 @@ PanelWindow {
             maximumLength: 64
             onTextChanged: {
                 root.query = text;
-                if (text !== "") {
-                    const list = root.match_list();
-                    if (list.length > 0) root.select(list[0]);
-                }
+                if (root.typing) root.reset_hit();
             }
             Keys.onPressed: event => {
                 const before = root.cursor_key();
@@ -738,15 +769,16 @@ PanelWindow {
                     root.show_help();
                 } else if (k === Qt.Key_Escape) {
                     ThemeAudio.play("cancel");
-                    root.clear_filter();
+                    if (root.from_search && root.query === "") root.hide_overview();
+                    else root.clear_filter();
                 } else if (k === Qt.Key_Return || k === Qt.Key_Enter) {
                     ThemeAudio.play("confirm");
-                    root.accept_filter();
+                    root.accept_hit();
                 } else if (k === Qt.Key_Tab || k === Qt.Key_Down) {
-                    root.step_match(1);
+                    root.step_hit(1);
                     root.play_if_moved(before);
                 } else if (k === Qt.Key_Backtab || k === Qt.Key_Up) {
-                    root.step_match(-1);
+                    root.step_hit(-1);
                     root.play_if_moved(before);
                 } else if (k === Qt.Key_Backspace && filter_input.text === "") {
                     ThemeAudio.play("cancel");
@@ -876,6 +908,19 @@ PanelWindow {
 
             onTile_clicked: root.tile_clicked(root.selected_index, "")
             onPane_clicked: pane_id => root.tile_clicked(root.selected_index, pane_id)
+        }
+
+        SearchList {
+            visible: root.typing
+            x: frame.body.width - width
+            width: root.list_width
+            height: frame.body.height
+            entries: root.ranked
+            current: root.hit_index
+            onChosen: index => {
+                root.set_hit(index);
+                root.accept_hit();
+            }
         }
 
         ScopeAim {

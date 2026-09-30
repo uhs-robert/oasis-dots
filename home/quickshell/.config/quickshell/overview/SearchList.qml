@@ -5,7 +5,7 @@ import "../components"
 import "../services"
 import "../theme"
 
-// Ranked window matches beside the overview tiles; the highlighted row is the one Enter acts on.
+// Ranked window matches beside the overview tiles; the highlighted row is the one Enter acts on. Rows take `icon_source` or else the toplevel's icon.
 Rectangle {
     id: root
 
@@ -45,13 +45,14 @@ Rectangle {
                 anchors.verticalCenter: parent.verticalCenter
                 implicitSize: Style.px(24)
                 asynchronous: true
-                source: WindowState.icon_for(row.modelData.toplevel)
+                visible: source !== ""
+                source: row.modelData.icon_source !== undefined ? row.modelData.icon_source : WindowState.icon_for(row.modelData.toplevel)
             }
 
             Text {
                 id: row_title
-                anchors.left: row_icon.right
-                anchors.leftMargin: 8
+                anchors.left: row_icon.visible ? row_icon.right : parent.left
+                anchors.leftMargin: row_icon.visible ? 8 : 8 + row.inset
                 anchors.right: parent.right
                 anchors.rightMargin: 8
                 anchors.top: parent.top
