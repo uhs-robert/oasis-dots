@@ -324,6 +324,16 @@ PanelWindow {
         if (to !== undefined && to >= 0) root.select(to);
     }
 
+    // Lands on the workspace the neighbouring monitor shows, or its first tile.
+    function move_monitor(dx, dy) {
+        const tile = root.selected_tile;
+        if (!tile) return;
+        const to = Layout.neighbor(root.groups, tile.group, dx, dy);
+        if (to < 0) return;
+        const target = root.groups[to].tiles;
+        root.select(target.find(i => root.tiles[i].shown_on_monitor) ?? target[0]);
+    }
+
     function cycle_window(delta) {
         const order = root.tab_order;
         if (order.length === 0) return;
@@ -531,10 +541,26 @@ PanelWindow {
         return event.key === Qt.Key_Question || event.text === "?";
     }
 
+    function direction_of(k) {
+        if (k === Qt.Key_H || k === Qt.Key_Left) return [-1, 0];
+        if (k === Qt.Key_L || k === Qt.Key_Right) return [1, 0];
+        if (k === Qt.Key_K || k === Qt.Key_Up) return [0, -1];
+        if (k === Qt.Key_J || k === Qt.Key_Down) return [0, 1];
+        return null;
+    }
+
     function handle_key(event) {
         const before = root.cursor_key();
         const k = event.key;
-        if (event.modifiers & (Qt.ControlModifier | Qt.AltModifier)) return;
+        if (event.modifiers & Qt.AltModifier) return;
+        if (event.modifiers & Qt.ControlModifier) {
+            const dir = root.direction_of(k);
+            if (!dir) return;
+            root.move_monitor(dir[0], dir[1]);
+            root.play_if_moved(before);
+            event.accepted = true;
+            return;
+        }
         if (root.is_help_key(event)) {
             root.show_help();
         } else if (k === Qt.Key_Escape) {
@@ -546,17 +572,9 @@ PanelWindow {
         } else if (k === Qt.Key_Q) {
             ThemeAudio.play("cancel");
             root.hide_overview();
-        } else if (k === Qt.Key_H || k === Qt.Key_Left) {
-            root.move(-1, 0);
-            root.play_if_moved(before);
-        } else if (k === Qt.Key_L || k === Qt.Key_Right) {
-            root.move(1, 0);
-            root.play_if_moved(before);
-        } else if (k === Qt.Key_K || k === Qt.Key_Up) {
-            root.move(0, -1);
-            root.play_if_moved(before);
-        } else if (k === Qt.Key_J || k === Qt.Key_Down) {
-            root.move(0, 1);
+        } else if (root.direction_of(k)) {
+            const dir = root.direction_of(k);
+            root.move(dir[0], dir[1]);
             root.play_if_moved(before);
         } else if (k === Qt.Key_Tab) {
             root.cycle_window(1);
@@ -612,12 +630,12 @@ PanelWindow {
     readonly property string footer_text: root.help_open ? "? back · Esc back · q close"
         : root.typing ? "Enter accept · Tab next match · Esc clear · ? help"
         : root.swap_address !== "" ? "m swap · Enter swap · Tab other window · hjkl workspace · Esc cancel · ? help"
-        : root.carrying ? "hjkl workspace · Tab window · m drop · Enter drop · Esc cancel · ? help"
+        : root.carrying ? "hjkl workspace · Ctrl+hjkl monitor · Tab window · m drop · Enter drop · Esc cancel · ? help"
         : root.marks.length > 0 ? "Space mark · V mark all · m move " + root.marks.length + " · x close " + root.marks.length + " · hjkl move · Esc clear marks · ? help"
-        : "hjkl move · Tab window · Enter focus · m move · x close · Space mark · / filter · f view · s special · ? help · q close"
+        : "hjkl move · Ctrl+hjkl monitor · Tab window · Enter focus · m move · x close · Space mark · / filter · f view · s special · ? help · q close"
 
-    readonly property string normal_help: "h/j/k/l move between workspaces · Arrows move between workspaces · Tab next window · Shift+Tab previous window · Enter focus window, or the workspace if empty · m pick up window, or every marked window · x close window, or every marked window · Space/v mark or unmark window · V mark or unmark all in workspace · / filter windows · 1-9 select workspace by id, type 12 quickly for workspace 12, or the nth special workspace · s toggle special workspaces · f toggle filmstrip view, j/k there jump monitors · Click focus window or workspace"
-    readonly property string carry_help: "h/j/k/l choose target workspace · Arrows choose target workspace · 1-9 target workspace by id, type 12 quickly for workspace 12 · s toggle special workspaces · Tab/Shift+Tab choose a window in the same workspace to swap with · m drop there, or swap with the SWAP window · Enter drop there, or swap · f toggle filmstrip view · Click drop on workspace · Esc cancel, marks come back"
+    readonly property string normal_help: "h/j/k/l move between workspaces · Arrows move between workspaces · Ctrl+h/j/k/l or Ctrl+Arrows jump to the next monitor that way · Tab next window · Shift+Tab previous window · Enter focus window, or the workspace if empty · m pick up window, or every marked window · x close window, or every marked window · Space/v mark or unmark window · V mark or unmark all in workspace · / filter windows · 1-9 select workspace by id, type 12 quickly for workspace 12, or the nth special workspace · s toggle special workspaces · f toggle filmstrip view, j/k there jump monitors · Click focus window or workspace"
+    readonly property string carry_help: "h/j/k/l choose target workspace · Arrows choose target workspace · Ctrl+h/j/k/l choose target monitor · 1-9 target workspace by id, type 12 quickly for workspace 12 · s toggle special workspaces · Tab/Shift+Tab choose a window in the same workspace to swap with · m drop there, or swap with the SWAP window · Enter drop there, or swap · f toggle filmstrip view · Click drop on workspace · Esc cancel, marks come back"
     readonly property string help_text: root.typing ? "Type filter by class or title · Enter accept filter · Tab/Down next match · Shift+Tab/Up previous match · Backspace delete, clears when empty · Esc clear filter"
         : root.carrying ? root.carry_help
         : root.marks.length > 0 ? "Esc clear all marks · " + root.normal_help
