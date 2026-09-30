@@ -288,7 +288,10 @@ Item {
         id: audio_loader
         active: root.owns_sound
         source: Qt.resolvedUrl("ff7/Ff7Audio.qml")
-        onLoaded: audio_loader.item.track = Qt.binding(() => root.music_track)
+        onLoaded: {
+            audio_loader.item.track = Qt.binding(() => root.music_track);
+            audio_loader.item.music_setting = Qt.binding(() => root.ctx.music_volume);
+        }
     }
 
     onPhaseChanged: {

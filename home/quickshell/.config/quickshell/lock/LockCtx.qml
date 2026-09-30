@@ -56,6 +56,7 @@ QtObject {
     // Audio: only a ctx with sound plays any (the lock and the full preview, never thumbnails); one skin instance, the owner, plays for all outputs.
     property bool sound: false
     property bool music: Style.lock_music
+    readonly property real music_volume: ThemeAudio.music_volume
     // The login screen rather than the lock; skins may play more there.
     property bool login: false
     property var sound_owner: null

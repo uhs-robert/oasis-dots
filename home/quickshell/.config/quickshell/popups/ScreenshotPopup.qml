@@ -53,6 +53,7 @@ Popup {
     function choose(index) {
         const row = root.rows[index];
         if (!row) return;
+        ThemeAudio.play("confirm");
         root.selected = index;
         if (row.select !== undefined) {
             Screenshot.select(row.frozen, row.select, row.mode);
@@ -74,8 +75,10 @@ Popup {
             const typed = event.modifiers & (Qt.ControlModifier | Qt.AltModifier) ? -1 : root.rows.findIndex(r => r.key === event.text || r.alt_key === event.text);
             if (event.key === Qt.Key_J) {
                 root.selected = root.wrap_index(root.selected, 1, 0, root.rows.length);
+                ThemeAudio.play("cursor");
             } else if (event.key === Qt.Key_K) {
                 root.selected = root.wrap_index(root.selected, -1, 0, root.rows.length);
+                ThemeAudio.play("cursor");
             } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
                 root.choose(root.selected);
             } else if (typed >= 0) {

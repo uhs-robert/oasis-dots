@@ -1,6 +1,7 @@
 // home/quickshell/.config/quickshell/popups/media/RoundButton.qml
 import QtQuick
 import "../../theme"
+import "../../services"
 
 // A small round icon button for the media transport row.
 Rectangle {
@@ -62,6 +63,9 @@ Rectangle {
         anchors.fill: parent
         hoverEnabled: true
         enabled: root.button_enabled
-        onClicked: root.activated()
+        onClicked: {
+            ThemeAudio.play("confirm");
+            root.activated();
+        }
     }
 }

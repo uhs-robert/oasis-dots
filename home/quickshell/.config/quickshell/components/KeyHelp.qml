@@ -65,12 +65,15 @@ Item {
 
     Keys.onPressed: event => {
         if (event.key === Qt.Key_Question || event.text === "?" || event.key === Qt.Key_Backspace) {
+            ThemeAudio.play("cancel");
             root.back();
         } else if (root.general !== null && event.key === Qt.Key_Escape) {
+            ThemeAudio.play("cancel");
             root.back();
         } else if (root.general !== null && event.key === Qt.Key_Q) {
             root.close_requested();
         } else if (event.key === Qt.Key_Q || event.key === Qt.Key_Escape) {
+            ThemeAudio.play("cancel");
             if (root.popup_keys) Popups.close();
             else root.back();
         } else if (event.key === Qt.Key_J || event.key === Qt.Key_Down) {

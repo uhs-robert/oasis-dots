@@ -1,6 +1,7 @@
 // home/quickshell/.config/quickshell/popups/updates/NesInventory.qml
 import QtQuick
 import "../../components"
+import "../../services"
 import "../../theme"
 
 // A Zelda inventory: one item tile per package, the selected one boxed, its versions spelled out below.
@@ -100,7 +101,10 @@ Item {
 
             MouseArea {
                 anchors.fill: parent
-                onClicked: root.popup.selected = tile.index
+                onClicked: {
+                    root.popup.selected = tile.index;
+                    ThemeAudio.play("cursor");
+                }
             }
         }
     }

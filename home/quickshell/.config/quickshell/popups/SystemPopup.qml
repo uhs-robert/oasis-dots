@@ -62,6 +62,7 @@ Popup {
     }
 
     function open_btop() {
+        ThemeAudio.play("confirm");
         Quickshell.execDetached(["kitty", "btop"]);
         Popups.close();
     }

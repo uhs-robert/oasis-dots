@@ -262,6 +262,7 @@ Popup {
 
     function activate_setting(i) {
         if (!root.profile) return;
+        ThemeAudio.play("confirm");
         root.setting_selected = i;
         if (i === 0) root.run_modify(["connection.autoconnect", root.profile.autoconnect ? "no" : "yes"], false);
         else if (i === 1) root.run_modify(["connection.metered", root.metered_next[root.profile.metered] || "unknown"], false);
@@ -277,6 +278,7 @@ Popup {
     }
 
     function finish_dns_edit(apply) {
+        ThemeAudio.play(apply ? "confirm" : "cancel");
         root.dns_edit_mode = false;
         if (!apply) return;
         const list = root.dns_text.split(/[\s,;]+/).filter(d => d !== "");
@@ -286,12 +288,16 @@ Popup {
     function handle_details_key(event) {
         if (event.key === Qt.Key_Escape || event.key === Qt.Key_Backspace) {
             root.current_sub = 0;
+            ThemeAudio.play("cancel");
         } else if (event.key === Qt.Key_R) {
             root.fetch_details();
+            ThemeAudio.play("confirm");
         } else if (root.setting_count > 0 && event.key === Qt.Key_J) {
             root.setting_selected = root.wrap_index(root.setting_selected, 1, 0, root.setting_count);
+            ThemeAudio.play("cursor");
         } else if (root.setting_count > 0 && event.key === Qt.Key_K) {
             root.setting_selected = root.wrap_index(root.setting_selected, -1, 0, root.setting_count);
+            ThemeAudio.play("cursor");
         } else if (event.key === Qt.Key_T && root.setting_selected < 2) {
             root.activate_setting(root.setting_selected);
         } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
@@ -395,6 +401,7 @@ Popup {
 
     function connect_to(network) {
         if (!network) return;
+        ThemeAudio.play("confirm");
         if (network.connected) {
             network.disconnect();
             return;
@@ -412,22 +419,26 @@ Popup {
     }
 
     function open_advanced() {
+        ThemeAudio.play("confirm");
         Popups.close();
         Quickshell.execDetached(["env", "-u", "TMUX", "-u", "TMUX_PANE", "sh", "-c", "t=\"$HOME/.config/hypr/scripts/term\"; [ -x \"$t\" ] || t=\"${TERMINAL:-kitty}\"; exec \"$t\" -e nmtui"]);
     }
 
     function toggle_wifi() {
+        ThemeAudio.play("confirm");
         Networking.wifiEnabled = !Networking.wifiEnabled;
     }
 
     function submit_password() {
         if (!root.password_target) return;
+        ThemeAudio.play("confirm");
         root.status_text = "Connecting…";
         root.password_target.connectWithPsk(root.password_text);
         root.password_text = "";
     }
 
     function cancel_password() {
+        ThemeAudio.play("cancel");
         root.password_mode = false;
         root.password_text = "";
         root.password_target = null;
@@ -449,10 +460,12 @@ Popup {
             if (root.forget_confirm) {
                 if (root.is_help_key(event) || event.key === Qt.Key_Q) return;
                 if (event.key === Qt.Key_Y) {
+                    ThemeAudio.play("confirm");
                     if (root.forget_target) root.forget_target.forget();
                     root.forget_confirm = false;
                     root.forget_target = null;
                 } else if (event.key === Qt.Key_N || event.key === Qt.Key_Escape) {
+                    ThemeAudio.play("cancel");
                     root.forget_confirm = false;
                     root.forget_target = null;
                 }
@@ -469,20 +482,24 @@ Popup {
             if (event.key === Qt.Key_J) {
                 root.selected = root.wrap_index(root.selected, 1, -1, root.nav_rows.length + 1);
                 if (root.selected >= 0) network_list.positionViewAtIndex(root.selected, ListView.Contain);
+                ThemeAudio.play("cursor");
                 event.accepted = true;
             } else if (event.key === Qt.Key_K) {
                 root.selected = root.wrap_index(root.selected, -1, -1, root.nav_rows.length + 1);
                 if (root.selected >= 0) network_list.positionViewAtIndex(root.selected, ListView.Contain);
+                ThemeAudio.play("cursor");
                 event.accepted = true;
             } else if (event.key === Qt.Key_T) {
                 root.toggle_wifi();
                 event.accepted = true;
             } else if (event.key === Qt.Key_R) {
                 root.start_scan();
+                ThemeAudio.play("confirm");
                 event.accepted = true;
             } else if (event.key === Qt.Key_F && row && !row.advanced && row.known) {
                 root.forget_target = row;
                 root.forget_confirm = true;
+                ThemeAudio.play("confirm");
                 event.accepted = true;
             } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
                 if (root.selected === -1) root.toggle_wifi();
@@ -924,7 +941,10 @@ Popup {
                 chips: true
                 labels: root.sub_views
                 current: root.current_sub
-                onPicked: i => root.current_sub = i
+                onPicked: i => {
+                    root.current_sub = i;
+                    ThemeAudio.play("cursor");
+                }
             }
         }
 

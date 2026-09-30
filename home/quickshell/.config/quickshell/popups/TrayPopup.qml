@@ -67,6 +67,7 @@ Popup {
 
     function activate_row(item_data) {
         if (!item_data) return;
+        ThemeAudio.play("confirm");
         if (item_data.onlyMenu) {
             root.open_menu(item_data, item_repeater.itemAt(root.items.indexOf(item_data)));
             return;
@@ -127,15 +128,18 @@ Popup {
             const item_data = root.items[root.selected];
             if (event.key === Qt.Key_J) {
                 root.selected = root.wrap_index(root.selected, 1, 0, root.items.length);
+                ThemeAudio.play("cursor");
                 event.accepted = true;
             } else if (event.key === Qt.Key_K) {
                 root.selected = root.wrap_index(root.selected, -1, 0, root.items.length);
+                ThemeAudio.play("cursor");
                 event.accepted = true;
             } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
                 root.activate_row(item_data);
                 event.accepted = true;
             } else if (event.key === Qt.Key_M || event.key === Qt.Key_L) {
                 root.open_menu(item_data, item_repeater.itemAt(root.selected));
+                ThemeAudio.play("confirm");
                 event.accepted = true;
             }
         }
@@ -207,8 +211,10 @@ Popup {
                             root.selected = item_row.index;
                             if (mouse.button === Qt.RightButton) {
                                 root.open_menu(item_row.modelData, item_row);
+                                ThemeAudio.play("confirm");
                             } else if (mouse.button === Qt.MiddleButton) {
                                 item_row.modelData.secondaryActivate();
+                                ThemeAudio.play("confirm");
                                 Popups.close();
                             } else {
                                 root.activate_row(item_row.modelData);

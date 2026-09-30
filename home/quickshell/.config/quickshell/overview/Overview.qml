@@ -328,6 +328,7 @@ PanelWindow {
         } else {
             return;
         }
+        ThemeAudio.play("cursor");
         digit_timer.restart();
     }
 
@@ -475,36 +476,49 @@ PanelWindow {
         if (root.is_help_key(event)) {
             root.show_help();
         } else if (k === Qt.Key_Escape) {
+            ThemeAudio.play("cancel");
             if (root.carrying) root.cancel_pick();
             else if (root.marks.length > 0) root.marks = [];
             else if (root.query !== "") root.clear_filter();
             else root.hide_overview();
         } else if (k === Qt.Key_Q) {
+            ThemeAudio.play("cancel");
             root.hide_overview();
         } else if (k === Qt.Key_H || k === Qt.Key_Left) {
             root.move(-1, 0);
+            ThemeAudio.play("cursor");
         } else if (k === Qt.Key_L || k === Qt.Key_Right) {
             root.move(1, 0);
+            ThemeAudio.play("cursor");
         } else if (k === Qt.Key_K || k === Qt.Key_Up) {
             root.move(0, -1);
+            ThemeAudio.play("cursor");
         } else if (k === Qt.Key_J || k === Qt.Key_Down) {
             root.move(0, 1);
+            ThemeAudio.play("cursor");
         } else if (k === Qt.Key_Tab) {
             root.cycle_window(1);
+            ThemeAudio.play("cursor");
         } else if (k === Qt.Key_Backtab) {
             root.cycle_window(-1);
+            ThemeAudio.play("cursor");
         } else if (k === Qt.Key_Return || k === Qt.Key_Enter) {
+            ThemeAudio.play("confirm");
             if (root.carrying) root.drop();
             else root.activate();
         } else if (k === Qt.Key_M) {
+            ThemeAudio.play("confirm");
             if (root.carrying) root.drop();
             else root.pick();
         } else if (!root.carrying && (k === Qt.Key_Space || (k === Qt.Key_V && !(event.modifiers & Qt.ShiftModifier)))) {
             root.toggle_mark();
+            ThemeAudio.play("confirm");
         } else if (!root.carrying && k === Qt.Key_V) {
             root.toggle_mark_all();
+            ThemeAudio.play("confirm");
         } else if (!root.carrying && k === Qt.Key_X) {
             root.close_windows();
+            ThemeAudio.play("confirm");
         } else if (k === Qt.Key_F) {
             root.filmstrip = !root.filmstrip;
         } else if (k === Qt.Key_Slash || event.text === "/") {
@@ -519,6 +533,7 @@ PanelWindow {
 
     // A click on a tile's background focuses the workspace itself rather than one of its windows.
     function tile_clicked(index, address) {
+        ThemeAudio.play("confirm");
         root.select(index, address);
         if (root.carrying) {
             root.drop();
@@ -605,7 +620,10 @@ PanelWindow {
 
         MouseArea {
             anchors.fill: parent
-            onClicked: root.hide_overview()
+            onClicked: {
+                ThemeAudio.play("cancel");
+                root.hide_overview();
+            }
         }
     }
 
@@ -647,14 +665,19 @@ PanelWindow {
                 if (root.is_help_key(event)) {
                     root.show_help();
                 } else if (k === Qt.Key_Escape) {
+                    ThemeAudio.play("cancel");
                     root.clear_filter();
                 } else if (k === Qt.Key_Return || k === Qt.Key_Enter) {
+                    ThemeAudio.play("confirm");
                     root.accept_filter();
                 } else if (k === Qt.Key_Tab || k === Qt.Key_Down) {
                     root.step_match(1);
+                    ThemeAudio.play("cursor");
                 } else if (k === Qt.Key_Backtab || k === Qt.Key_Up) {
                     root.step_match(-1);
+                    ThemeAudio.play("cursor");
                 } else if (k === Qt.Key_Backspace && filter_input.text === "") {
+                    ThemeAudio.play("cancel");
                     root.clear_filter();
                 } else {
                     return;

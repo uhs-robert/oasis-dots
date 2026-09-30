@@ -161,27 +161,38 @@ Popup {
         return iso ? WeatherState.fmt_location_time(new Date(iso)) : "—";
     }
 
+    function open_alerts() {
+        root.set_tab(root.tabs.length - 1);
+        ThemeAudio.play("confirm");
+    }
+
     function handle_key(event) {
         if (event.key === Qt.Key_A && root.has_alerts) {
-            root.set_tab(root.tabs.length - 1);
+            root.open_alerts();
             event.accepted = true;
         } else if (event.key === Qt.Key_R) {
             WeatherState.refresh(true);
+            ThemeAudio.play("confirm");
             event.accepted = true;
         } else if ((event.key === Qt.Key_Return || event.key === Qt.Key_Enter) && root.current_tab === 0) {
             root.jump_to_hour_for_selected_day();
+            ThemeAudio.play("confirm");
             event.accepted = true;
         } else if (event.key === Qt.Key_H) {
             root.move_time(-1, !!(event.modifiers & Qt.ShiftModifier));
+            ThemeAudio.play("cursor");
             event.accepted = true;
         } else if (event.key === Qt.Key_L) {
             root.move_time(1, !!(event.modifiers & Qt.ShiftModifier));
+            ThemeAudio.play("cursor");
             event.accepted = true;
         } else if (root.on_alerts_tab && event.key === Qt.Key_J) {
             root.move_alert_cursor(1, false);
+            ThemeAudio.play("cursor");
             event.accepted = true;
         } else if (root.on_alerts_tab && event.key === Qt.Key_K) {
             root.move_alert_cursor(-1, false);
+            ThemeAudio.play("cursor");
             event.accepted = true;
         }
     }
@@ -269,14 +280,14 @@ Popup {
                 Component {
                     id: status_header
                     StatusPanel {
-                        onAlert_clicked: root.set_tab(root.tabs.length - 1)
+                        onAlert_clicked: root.open_alerts()
                     }
                 }
 
                 Component {
                     id: hero_header
                     Modern.WeatherHero {
-                        onAlert_clicked: root.set_tab(root.tabs.length - 1)
+                        onAlert_clicked: root.open_alerts()
                     }
                 }
 
@@ -284,7 +295,7 @@ Popup {
                     id: lsp_header
                     Neovim.WeatherLsp {
                         trail: [root.tabs[root.current_tab] || "", root.sub_views[root.current_sub] || ""]
-                        onAlert_clicked: root.set_tab(root.tabs.length - 1)
+                        onAlert_clicked: root.open_alerts()
                     }
                 }
 
@@ -307,7 +318,7 @@ Popup {
             AnnouncementBanner {
                 Layout.fillWidth: true
                 visible: root.hev && root.has_alerts
-                on_open: function () { root.set_tab(root.tabs.length - 1); }
+                on_open: function () { root.open_alerts(); }
             }
 
             RowLayout {
@@ -443,7 +454,7 @@ Popup {
 
                 MouseArea {
                     anchors.fill: parent
-                    onClicked: root.set_tab(root.tabs.length - 1)
+                    onClicked: root.open_alerts()
                 }
             }
 
@@ -452,7 +463,7 @@ Popup {
                 active: root.dex && root.has_alerts
                 visible: active
                 sourceComponent: DexAlert {
-                    onClicked: root.set_tab(root.tabs.length - 1)
+                    onClicked: root.open_alerts()
                 }
             }
 
@@ -461,7 +472,10 @@ Popup {
                 labels: root.tabs
                 current: root.current_tab
                 tab_height: Style.px(26)
-                onPicked: i => root.set_tab(i)
+                onPicked: i => {
+                    root.set_tab(i);
+                    ThemeAudio.play("cursor");
+                }
             }
 
             Item {
@@ -475,7 +489,7 @@ Popup {
                     day_cursor: root.day_cursor
                     first_day: root.day_first
                     sub: root.daily_sub
-                    on_select: function (i) { root.day_cursor = i; }
+                    on_select: function (i) { root.day_cursor = i; ThemeAudio.play("cursor"); }
                 }
 
                 HourlyView {
@@ -484,14 +498,14 @@ Popup {
                     visible: root.current_tab === 1 && !root.on_air
                     hour_cursor: root.hour_cursor
                     sub: root.hourly_sub
-                    on_select: function (i) { root.hour_cursor = i; }
+                    on_select: function (i) { root.hour_cursor = i; ThemeAudio.play("cursor"); }
                 }
 
                 AirView {
                     anchors.fill: parent
                     visible: root.on_air
                     hour_cursor: root.hour_cursor
-                    on_select: function (i) { root.hour_cursor = i; }
+                    on_select: function (i) { root.hour_cursor = i; ThemeAudio.play("cursor"); }
                 }
 
                 SunMoonView {
@@ -500,7 +514,7 @@ Popup {
                     day_cursor: root.day_cursor
                     first_day: root.day_first
                     day_span: root.day_span
-                    on_select: function (i) { root.day_cursor = i; }
+                    on_select: function (i) { root.day_cursor = i; ThemeAudio.play("cursor"); }
                 }
 
                 AlertsView {
@@ -508,7 +522,7 @@ Popup {
                     anchors.fill: parent
                     visible: root.on_alerts_tab
                     alert_cursor: root.alert_cursor
-                    on_select: function (i) { root.alert_cursor = i; }
+                    on_select: function (i) { root.alert_cursor = i; ThemeAudio.play("cursor"); }
                 }
             }
 
@@ -526,7 +540,10 @@ Popup {
                     labels: root.sub_views
                     current: root.current_sub
                     reserve_labels: [root.daily_sub_names, root.hourly_sub_names]
-                    onPicked: i => root.current_sub = i
+                    onPicked: i => {
+                        root.current_sub = i;
+                        ThemeAudio.play("cursor");
+                    }
                 }
             }
 

@@ -156,6 +156,7 @@ Popup {
         if (!item || !root.provider) return;
         const p = root.provider;
         if (p.rank_by_usage) Pickers.record(p.name, item.id);
+        ThemeAudio.play("confirm");
         Pickers.close();
         p.activate(item);
     }
@@ -164,6 +165,7 @@ Popup {
     function move_row(delta) {
         const n = root.results.length;
         if (n === 0) return;
+        ThemeAudio.play("cursor");
         const cols = root.columns;
         if (cols === 1) {
             root.selected = root.wrap_index(root.selected, delta, 0, n);
@@ -176,7 +178,9 @@ Popup {
     }
 
     function step(delta) {
-        if (root.results.length > 0) root.selected = root.wrap_index(root.selected, delta, 0, root.results.length);
+        if (root.results.length === 0) return;
+        root.selected = root.wrap_index(root.selected, delta, 0, root.results.length);
+        ThemeAudio.play("cursor");
     }
 
     function icon_source(item) {
@@ -198,6 +202,7 @@ Popup {
             root.move_row(-1);
         } else if (ctrl && (k === Qt.Key_Tab || k === Qt.Key_Backtab) && root.tabs.length > 0) {
             root.step_tab(k === Qt.Key_Tab ? 1 : -1);
+            ThemeAudio.play("cursor");
         } else if (k === Qt.Key_Tab) {
             root.step(1);
         } else if (k === Qt.Key_Backtab) {
@@ -223,6 +228,7 @@ Popup {
             query_input.cursorPosition = query_input.text.length;
         } else if (root.provider && root.selected_item && root.provider.actions.some(a => a.key === event.text)) {
             root.provider.run_action(event.text, root.selected_item);
+            ThemeAudio.play("confirm");
         } else {
             return;
         }

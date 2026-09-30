@@ -73,26 +73,33 @@ Popup {
     function handle_key(event) {
         if (event.key === Qt.Key_Backtab || (event.key === Qt.Key_Tab && (event.modifiers & Qt.ShiftModifier))) {
             root.step_player(-1);
+            ThemeAudio.play("cursor");
             event.accepted = true;
         } else if (event.key === Qt.Key_Tab) {
             root.step_player(1);
+            ThemeAudio.play("cursor");
             event.accepted = true;
         } else if (event.key === Qt.Key_Space || event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
             MediaState.toggle();
+            ThemeAudio.play("confirm");
             event.accepted = true;
         } else if (event.key === Qt.Key_H) {
             if (event.modifiers & Qt.ShiftModifier) MediaState.previous();
             else MediaState.seek_by(-5);
+            ThemeAudio.play((event.modifiers & Qt.ShiftModifier) ? "confirm" : "cursor");
             event.accepted = true;
         } else if (event.key === Qt.Key_L) {
             if (event.modifiers & Qt.ShiftModifier) MediaState.next();
             else MediaState.seek_by(5);
+            ThemeAudio.play((event.modifiers & Qt.ShiftModifier) ? "confirm" : "cursor");
             event.accepted = true;
         } else if (event.key === Qt.Key_S) {
             root.toggle_shuffle();
+            ThemeAudio.play("confirm");
             event.accepted = true;
         } else if (event.key === Qt.Key_R) {
             root.cycle_loop();
+            ThemeAudio.play("confirm");
             event.accepted = true;
         }
     }
@@ -556,7 +563,10 @@ Popup {
                             label: player_chip.modelData.identity || "Player"
                             active: player_chip.modelData === root.player
                             font_size: Style.fs(-3)
-                            onClicked: MediaState.select(player_chip.modelData)
+                            onClicked: {
+                                MediaState.select(player_chip.modelData);
+                                ThemeAudio.play("cursor");
+                            }
                         }
                     }
                 }

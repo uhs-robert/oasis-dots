@@ -8,7 +8,7 @@ Scope {
     id: root
 
     readonly property string file: Greeter.settings.music_file || ""
-    readonly property real level: Math.max(0, Math.min(1, parseFloat(Greeter.settings.music_volume || "0.5") || 0))
+    readonly property real level: Greeter.level_setting(Greeter.settings.music_volume)
     readonly property bool wanted: Greeter.settings.theme_music === "on" && Greeter.settings.lock_music !== "off" && root.file !== "" && !Greeter.granted
 
     MediaPlayer {
@@ -16,7 +16,7 @@ Scope {
         source: root.wanted ? "file:///var/lib/qs-greeter/" + root.file : ""
         loops: MediaPlayer.Infinite
         audioOutput: AudioOutput {
-            volume: root.level * 0.6
+            volume: root.level
         }
         onMediaStatusChanged: {
             if (player.mediaStatus === MediaPlayer.LoadedMedia && root.wanted) player.play();

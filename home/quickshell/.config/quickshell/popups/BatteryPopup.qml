@@ -129,26 +129,32 @@ Popup {
             const row = root.nav_rows[root.selected];
             if (event.key === Qt.Key_J) {
                 root.selected = root.wrap_index(root.selected, 1, 0, root.nav_rows.length);
+                ThemeAudio.play("cursor");
                 event.accepted = true;
             } else if (event.key === Qt.Key_K) {
                 root.selected = root.wrap_index(root.selected, -1, 0, root.nav_rows.length);
+                ThemeAudio.play("cursor");
                 event.accepted = true;
             } else if (event.key === Qt.Key_L) {
                 if (row && row.kind === "brightness") Backlight.set_percent(stepper.snap(Backlight.percent, 1, 1, 100));
                 else if (row && row.kind === "kbd") Backlight.kbd_set_percent(stepper.snap(Backlight.kbd_percent, 1, 0, 100));
+                if (row && (row.kind === "brightness" || row.kind === "kbd")) ThemeAudio.play("cursor");
                 event.accepted = true;
             } else if (event.key === Qt.Key_H) {
                 if (row && row.kind === "brightness") Backlight.set_percent(stepper.snap(Backlight.percent, -1, 1, 100));
                 else if (row && row.kind === "kbd") Backlight.kbd_set_percent(stepper.snap(Backlight.kbd_percent, -1, 0, 100));
+                if (row && (row.kind === "brightness" || row.kind === "kbd")) ThemeAudio.play("cursor");
                 event.accepted = true;
             } else if ((event.key === Qt.Key_Return || event.key === Qt.Key_Enter) && row && row.kind === "profile") {
                 PowerProfiles.profile = root.profiles[row.index].value;
+                ThemeAudio.play("confirm");
                 event.accepted = true;
             } else if (root.ppd_available && !(event.modifiers & (Qt.ShiftModifier | Qt.ControlModifier | Qt.AltModifier))) {
                 const i = root.profiles.findIndex(p => p.key === event.text);
                 if (i >= 0) {
                     root.selected = root.nav_rows.findIndex(r => r.kind === "profile" && r.index === i);
                     PowerProfiles.profile = root.profiles[i].value;
+                    ThemeAudio.play("confirm");
                     event.accepted = true;
                 }
             }
@@ -459,6 +465,7 @@ Popup {
                         onClicked: {
                             root.selected = profile_row.nav_index;
                             PowerProfiles.profile = profile_row.modelData.value;
+                            ThemeAudio.play("confirm");
                         }
                     }
                 }

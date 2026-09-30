@@ -15,9 +15,19 @@ RowLayout {
 
     spacing: 12
 
+    function confirm() {
+        ThemeAudio.play("confirm");
+        root.confirmed();
+    }
+
+    function cancel() {
+        ThemeAudio.play("cancel");
+        root.cancelled();
+    }
+
     function handle_key(event) {
-        if (event.key === Qt.Key_Y || event.key === Qt.Key_Return || event.key === Qt.Key_Enter) root.confirmed();
-        else if (event.key === Qt.Key_N || event.key === Qt.Key_Escape || event.key === Qt.Key_Backspace) root.cancelled();
+        if (event.key === Qt.Key_Y || event.key === Qt.Key_Return || event.key === Qt.Key_Enter) root.confirm();
+        else if (event.key === Qt.Key_N || event.key === Qt.Key_Escape || event.key === Qt.Key_Backspace) root.cancel();
         else return;
         event.accepted = true;
     }
@@ -37,7 +47,7 @@ RowLayout {
 
         MouseArea {
             anchors.fill: parent
-            onClicked: root.confirmed()
+            onClicked: root.confirm()
         }
     }
 
@@ -49,7 +59,7 @@ RowLayout {
 
         MouseArea {
             anchors.fill: parent
-            onClicked: root.cancelled()
+            onClicked: root.cancel()
         }
     }
 }
