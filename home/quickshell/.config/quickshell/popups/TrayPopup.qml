@@ -17,6 +17,7 @@ Popup {
     footer_hint: "j/k move · gg/G first/last · Enter open · m/l menu · q close"
     body_height: content.implicitHeight + 24
     jumps_enabled: true
+    cursor_state: root.selected
 
     readonly property var items: SystemTray.items.values
 
@@ -125,14 +126,15 @@ Popup {
         focus: true
 
         Keys.onPressed: event => {
+            const before = root.cursor_key();
             const item_data = root.items[root.selected];
             if (event.key === Qt.Key_J) {
                 root.selected = root.wrap_index(root.selected, 1, 0, root.items.length);
-                ThemeAudio.play("cursor");
+                root.play_if_moved(before);
                 event.accepted = true;
             } else if (event.key === Qt.Key_K) {
                 root.selected = root.wrap_index(root.selected, -1, 0, root.items.length);
-                ThemeAudio.play("cursor");
+                root.play_if_moved(before);
                 event.accepted = true;
             } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
                 root.activate_row(item_data);

@@ -16,6 +16,7 @@ Popup {
     key_help: "j/k move · gg/G first/last · Enter run · r/i region · z frozen region · s screen · w window · f focused · R record region · W record window · S record screen · F record focused · p pixel · t text · x scroll text · X scroll capture · q close"
     body_height: content.implicitHeight + 24
     jumps_enabled: true
+    cursor_state: root.selected
 
     // `select` rows use the themed selector; `flag` rows hand screenshot.sh one of its flags.
     readonly property var base_rows: [
@@ -72,13 +73,14 @@ Popup {
         focus: true
 
         Keys.onPressed: event => {
+            const before = root.cursor_key();
             const typed = event.modifiers & (Qt.ControlModifier | Qt.AltModifier) ? -1 : root.rows.findIndex(r => r.key === event.text || r.alt_key === event.text);
             if (event.key === Qt.Key_J) {
                 root.selected = root.wrap_index(root.selected, 1, 0, root.rows.length);
-                ThemeAudio.play("cursor");
+                root.play_if_moved(before);
             } else if (event.key === Qt.Key_K) {
                 root.selected = root.wrap_index(root.selected, -1, 0, root.rows.length);
-                ThemeAudio.play("cursor");
+                root.play_if_moved(before);
             } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
                 root.choose(root.selected);
             } else if (typed >= 0) {

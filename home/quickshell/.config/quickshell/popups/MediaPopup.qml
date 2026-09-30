@@ -24,6 +24,7 @@ Popup {
 
     readonly property var player: MediaState.active
     readonly property var players: MediaState.players
+    cursor_state: root.player_index(root.player)
     readonly property bool has_art: !!root.player && root.player.trackArtUrl !== ""
     readonly property bool ps2: Style.console_views === "ps2"
 
@@ -71,13 +72,14 @@ Popup {
     }
 
     function handle_key(event) {
+        const before = root.cursor_key();
         if (event.key === Qt.Key_Backtab || (event.key === Qt.Key_Tab && (event.modifiers & Qt.ShiftModifier))) {
             root.step_player(-1);
-            ThemeAudio.play("cursor");
+            root.play_if_moved(before);
             event.accepted = true;
         } else if (event.key === Qt.Key_Tab) {
             root.step_player(1);
-            ThemeAudio.play("cursor");
+            root.play_if_moved(before);
             event.accepted = true;
         } else if (event.key === Qt.Key_Space || event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
             MediaState.toggle();

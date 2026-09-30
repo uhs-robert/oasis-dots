@@ -23,6 +23,7 @@ Popup {
     readonly property bool nes: root.st.console_views === "nes"
     sub_views: root.nes ? ["Official x" + UpdatesState.official.length, "AUR x" + UpdatesState.aur.length] : ["Official (" + UpdatesState.official.length + ")", "AUR (" + UpdatesState.aur.length + ")"]
     jumps_enabled: true
+    cursor_state: root.selected
     readonly property var current_list: root.current_sub === 0 ? UpdatesState.official : UpdatesState.aur
 
     property int selected: 0
@@ -74,13 +75,14 @@ Popup {
     }
 
     function handle_key(event) {
+        const before = root.cursor_key();
         if (event.key === Qt.Key_J) {
             root.move_selected(1);
-            ThemeAudio.play("cursor");
+            root.play_if_moved(before);
             event.accepted = true;
         } else if (event.key === Qt.Key_K) {
             root.move_selected(-1);
-            ThemeAudio.play("cursor");
+            root.play_if_moved(before);
             event.accepted = true;
         } else if (event.key === Qt.Key_R) {
             UpdatesState.refresh();

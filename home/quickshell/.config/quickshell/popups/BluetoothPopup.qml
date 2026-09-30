@@ -18,6 +18,7 @@ Popup {
     footer_hint: root.forget_confirm ? "y forget · n keep" : "j/k move · gg/G first/last · Enter connect · s scan · T trust · x forget · t toggle · q close"
     body_height: Math.max(340, content.implicitHeight + 24)
     jumps_enabled: !root.forget_confirm
+    cursor_state: root.selected
 
     readonly property var adapter: QsBt.Bluetooth.defaultAdapter
     readonly property bool has_adapter: !!adapter
@@ -158,6 +159,7 @@ Popup {
         focus: true
 
         Keys.onPressed: event => {
+            const before = root.cursor_key();
             if (root.forget_confirm) {
                 if (root.is_help_key(event) || event.key === Qt.Key_Q) return;
                 if (event.key === Qt.Key_Y && root.forget_target) root.forget_target.forget();
@@ -193,12 +195,12 @@ Popup {
             } else if (event.key === Qt.Key_J) {
                 const min = root.has_adapter ? -1 : 0;
                 root.selected = root.wrap_index(root.selected, 1, min, root.rows.length - min);
-                ThemeAudio.play("cursor");
+                root.play_if_moved(before);
                 event.accepted = true;
             } else if (event.key === Qt.Key_K) {
                 const min = root.has_adapter ? -1 : 0;
                 root.selected = root.wrap_index(root.selected, -1, min, root.rows.length - min);
-                ThemeAudio.play("cursor");
+                root.play_if_moved(before);
                 event.accepted = true;
             } else if ((event.key === Qt.Key_Return || event.key === Qt.Key_Enter) && root.selected === -1) {
                 root.toggle_power();

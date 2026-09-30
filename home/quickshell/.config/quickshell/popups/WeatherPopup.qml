@@ -38,6 +38,7 @@ Popup {
     readonly property int air_sub: 5
     sub_views: root.current_tab === 0 ? root.daily_sub_names : root.current_tab === 1 ? root.hourly_sub_names : []
     jumps_enabled: true
+    cursor_state: [root.day_cursor, root.day_first, root.hour_cursor, root.alert_cursor]
 
     // None of this is reset on close: the popup lives for the whole qs session, only visibility toggles.
     property int daily_sub: 0
@@ -170,6 +171,7 @@ Popup {
     }
 
     function handle_key(event) {
+        const before = root.cursor_key();
         if (event.key === Qt.Key_A && root.has_alerts) {
             root.open_alerts();
             event.accepted = true;
@@ -183,19 +185,19 @@ Popup {
             event.accepted = true;
         } else if (event.key === Qt.Key_H) {
             root.move_time(-1, !!(event.modifiers & Qt.ShiftModifier));
-            ThemeAudio.play("cursor");
+            root.play_if_moved(before);
             event.accepted = true;
         } else if (event.key === Qt.Key_L) {
             root.move_time(1, !!(event.modifiers & Qt.ShiftModifier));
-            ThemeAudio.play("cursor");
+            root.play_if_moved(before);
             event.accepted = true;
         } else if (root.on_alerts_tab && event.key === Qt.Key_J) {
             root.move_alert_cursor(1, false);
-            ThemeAudio.play("cursor");
+            root.play_if_moved(before);
             event.accepted = true;
         } else if (root.on_alerts_tab && event.key === Qt.Key_K) {
             root.move_alert_cursor(-1, false);
-            ThemeAudio.play("cursor");
+            root.play_if_moved(before);
             event.accepted = true;
         }
     }

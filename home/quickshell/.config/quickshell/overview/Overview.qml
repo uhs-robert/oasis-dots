@@ -331,6 +331,13 @@ PanelWindow {
         root.selected_address = order[(at + delta + order.length) % order.length].address;
     }
 
+    function cursor_key() {
+        return root.selected_key + "|" + root.current_address;
+    }
+    function play_if_moved(before) {
+        if (root.cursor_key() !== before) ThemeAudio.play("cursor");
+    }
+
     // Special mode has no usable ids, so digits count tiles in hjkl order there.
     function jump(id) {
         const i = root.special ? (id >= 1 && id <= root.nav_order.length ? root.nav_order[id - 1] : -1) : root.tiles.findIndex(t => !t.is_new && t.id === id);
@@ -340,6 +347,7 @@ PanelWindow {
 
     // Digits typed in quick succession name one workspace, so 1 then 2 lands on 12 when it exists.
     function type_digit(d) {
+        const before = root.cursor_key();
         const joined = digit_timer.running ? digit_timer.typed + d : "";
         if (joined !== "" && root.jump(parseInt(joined))) {
             digit_timer.typed = joined;
@@ -349,7 +357,7 @@ PanelWindow {
         } else {
             return;
         }
-        ThemeAudio.play("cursor");
+        root.play_if_moved(before);
         digit_timer.restart();
     }
 
@@ -524,6 +532,7 @@ PanelWindow {
     }
 
     function handle_key(event) {
+        const before = root.cursor_key();
         const k = event.key;
         if (event.modifiers & (Qt.ControlModifier | Qt.AltModifier)) return;
         if (root.is_help_key(event)) {
@@ -539,22 +548,22 @@ PanelWindow {
             root.hide_overview();
         } else if (k === Qt.Key_H || k === Qt.Key_Left) {
             root.move(-1, 0);
-            ThemeAudio.play("cursor");
+            root.play_if_moved(before);
         } else if (k === Qt.Key_L || k === Qt.Key_Right) {
             root.move(1, 0);
-            ThemeAudio.play("cursor");
+            root.play_if_moved(before);
         } else if (k === Qt.Key_K || k === Qt.Key_Up) {
             root.move(0, -1);
-            ThemeAudio.play("cursor");
+            root.play_if_moved(before);
         } else if (k === Qt.Key_J || k === Qt.Key_Down) {
             root.move(0, 1);
-            ThemeAudio.play("cursor");
+            root.play_if_moved(before);
         } else if (k === Qt.Key_Tab) {
             root.cycle_window(1);
-            ThemeAudio.play("cursor");
+            root.play_if_moved(before);
         } else if (k === Qt.Key_Backtab) {
             root.cycle_window(-1);
-            ThemeAudio.play("cursor");
+            root.play_if_moved(before);
         } else if (k === Qt.Key_Return || k === Qt.Key_Enter) {
             ThemeAudio.play("confirm");
             if (root.carrying) root.drop();
@@ -723,6 +732,7 @@ PanelWindow {
                 }
             }
             Keys.onPressed: event => {
+                const before = root.cursor_key();
                 const k = event.key;
                 if (root.is_help_key(event)) {
                     root.show_help();
@@ -734,10 +744,10 @@ PanelWindow {
                     root.accept_filter();
                 } else if (k === Qt.Key_Tab || k === Qt.Key_Down) {
                     root.step_match(1);
-                    ThemeAudio.play("cursor");
+                    root.play_if_moved(before);
                 } else if (k === Qt.Key_Backtab || k === Qt.Key_Up) {
                     root.step_match(-1);
-                    ThemeAudio.play("cursor");
+                    root.play_if_moved(before);
                 } else if (k === Qt.Key_Backspace && filter_input.text === "") {
                     ThemeAudio.play("cancel");
                     root.clear_filter();

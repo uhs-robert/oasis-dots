@@ -25,6 +25,7 @@ Popup {
     readonly property real max_list_height: (root.screen ? root.screen.height : 1080) * 0.6
     body_height: Math.max(340, content.implicitHeight + 24)
     jumps_enabled: !root.password_mode && !root.forget_confirm && !root.dns_edit_mode
+    cursor_state: [root.selected, root.setting_selected]
 
     readonly property string list_help: "Tab details · j/k move · gg/G first/last · Enter connect · f forget · t toggle · r scan · q close"
     readonly property string details_help: root.profile
@@ -286,6 +287,7 @@ Popup {
     }
 
     function handle_details_key(event) {
+        const before = root.cursor_key();
         if (event.key === Qt.Key_Escape || event.key === Qt.Key_Backspace) {
             root.current_sub = 0;
             ThemeAudio.play("cancel");
@@ -294,10 +296,10 @@ Popup {
             ThemeAudio.play("confirm");
         } else if (root.setting_count > 0 && event.key === Qt.Key_J) {
             root.setting_selected = root.wrap_index(root.setting_selected, 1, 0, root.setting_count);
-            ThemeAudio.play("cursor");
+            root.play_if_moved(before);
         } else if (root.setting_count > 0 && event.key === Qt.Key_K) {
             root.setting_selected = root.wrap_index(root.setting_selected, -1, 0, root.setting_count);
-            ThemeAudio.play("cursor");
+            root.play_if_moved(before);
         } else if (event.key === Qt.Key_T && root.setting_selected < 2) {
             root.activate_setting(root.setting_selected);
         } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
@@ -455,6 +457,7 @@ Popup {
         focus: true
 
         Keys.onPressed: event => {
+            const before = root.cursor_key();
             if (root.password_mode || root.dns_edit_mode) return;
 
             if (root.forget_confirm) {
@@ -482,12 +485,12 @@ Popup {
             if (event.key === Qt.Key_J) {
                 root.selected = root.wrap_index(root.selected, 1, -1, root.nav_rows.length + 1);
                 if (root.selected >= 0) network_list.positionViewAtIndex(root.selected, ListView.Contain);
-                ThemeAudio.play("cursor");
+                root.play_if_moved(before);
                 event.accepted = true;
             } else if (event.key === Qt.Key_K) {
                 root.selected = root.wrap_index(root.selected, -1, -1, root.nav_rows.length + 1);
                 if (root.selected >= 0) network_list.positionViewAtIndex(root.selected, ListView.Contain);
-                ThemeAudio.play("cursor");
+                root.play_if_moved(before);
                 event.accepted = true;
             } else if (event.key === Qt.Key_T) {
                 root.toggle_wifi();

@@ -24,6 +24,7 @@ Popup {
 
     tabs: ["Agents", "Usage"]
     jumps_enabled: root.current_tab === 0
+    cursor_state: root.selected
 
     readonly property bool is_open: Popups.open_name === "keeptabs"
     onIs_openChanged: if (is_open) {
@@ -126,17 +127,18 @@ Popup {
     }
 
     function handle_key(event) {
+        const before = root.cursor_key();
         if (root.current_tab === 1 && event.key === Qt.Key_R) {
             ClaudeUsageState.refresh(true);
             ThemeAudio.play("confirm");
             event.accepted = true;
         } else if (root.current_tab === 0 && event.key === Qt.Key_J) {
             root.move_selected(1);
-            ThemeAudio.play("cursor");
+            root.play_if_moved(before);
             event.accepted = true;
         } else if (root.current_tab === 0 && event.key === Qt.Key_K) {
             root.move_selected(-1);
-            ThemeAudio.play("cursor");
+            root.play_if_moved(before);
             event.accepted = true;
         } else if (root.current_tab === 0 && (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) && root.sessions[root.selected]) {
             root.focus_session(root.sessions[root.selected].id);

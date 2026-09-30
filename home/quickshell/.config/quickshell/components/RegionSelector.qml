@@ -39,6 +39,13 @@ PanelWindow {
     readonly property string tier_keys: "hjkl move 10px · H/J/K/L move 100px · C-hjkl move 1px · C-H/J/K/L move 300px"
     readonly property string help_text: Screenshot.phase === "toolbar" ? "h/l move · Tab/S-Tab next/prev · c copy · s save · a annotate · o ocr · t scroll text · i scroll image · r record" + (Screenshot.frozen ? "" : " · d delay off/3s/5s/10s") + " · Enter run · Esc/Backspace adjust selection · q cancel" : root.pixel_mode ? root.tier_keys + " · Enter pick · click pick · m loupe · i/o or +/- zoom · q/Esc cancel" : root.target_mode ? "hjkl nearest " + Screenshot.mode + " · Tab/S-Tab cycle · " + (root.sharing ? root.share_keys : "d delay off/3s/5s/10s") + " · Enter pick · click pick · m loupe · i/o or +/- zoom · q/Esc cancel" : root.tier_keys + " · space anchor, then confirm · v set or drop anchor · O swap ends · drag select" + (root.sharing ? " · " + root.share_keys : "") + " · Enter confirm, whole screen without a selection · m loupe · i/o or +/- zoom · Esc drop anchor, then cancel · q cancel"
 
+    function cursor_key() {
+        return Screenshot.target_index + "|" + Screenshot.tool_index;
+    }
+    function play_if_moved(before) {
+        if (root.cursor_key() !== before) ThemeAudio.play("cursor");
+    }
+
     function set_help(open) {
         root.help_open = open;
         Qt.callLater(() => open ? key_help.forceActiveFocus() : keys_item.forceActiveFocus());
@@ -3060,6 +3067,7 @@ PanelWindow {
         }
 
         Keys.onPressed: event => {
+            const before = root.cursor_key();
             const shift = event.modifiers & Qt.ShiftModifier;
             const ctrl = event.modifiers & Qt.ControlModifier;
             // The Cursor submap's tiers: 10px, Shift 100, Ctrl 1, Ctrl+Shift 300.
@@ -3096,13 +3104,13 @@ PanelWindow {
                 Screenshot.cycle_delay();
             } else if (!toolbar && root.target_mode && dir) {
                 Screenshot.step_target(dir[0], dir[1]);
-                ThemeAudio.play("cursor");
+                root.play_if_moved(before);
             } else if (!toolbar && root.target_mode && (event.key === Qt.Key_Tab || event.key === Qt.Key_Backtab)) {
                 Screenshot.cycle_target(event.key === Qt.Key_Backtab || shift ? -1 : 1);
-                ThemeAudio.play("cursor");
+                root.play_if_moved(before);
             } else if (!toolbar && root.target_mode && Style.picker_skin === "tiecomp" && event.key === Qt.Key_T && !ctrl) {
                 Screenshot.cycle_target(shift ? -1 : 1);
-                ThemeAudio.play("cursor");
+                root.play_if_moved(before);
             } else if (!toolbar && root.target_mode && event.text !== "" && Style.picker_hint_keys.indexOf(event.text) >= 0 && Style.picker_hint_keys.indexOf(event.text) < Screenshot.targets.length) {
                 Screenshot.highlight(Style.picker_hint_keys.indexOf(event.text));
                 ThemeAudio.play("confirm");
@@ -3125,11 +3133,11 @@ PanelWindow {
                 Screenshot.reselect();
             } else if (toolbar && dir && dir[0] !== 0) {
                 Screenshot.tool_index = (Screenshot.tool_index + dir[0] + Screenshot.actions.length) % Screenshot.actions.length;
-                ThemeAudio.play("cursor");
+                root.play_if_moved(before);
             } else if (toolbar && (event.key === Qt.Key_Tab || event.key === Qt.Key_Backtab)) {
                 const delta = event.key === Qt.Key_Backtab || shift ? -1 : 1;
                 Screenshot.tool_index = (Screenshot.tool_index + delta + Screenshot.actions.length) % Screenshot.actions.length;
-                ThemeAudio.play("cursor");
+                root.play_if_moved(before);
             } else if (!toolbar && dir) {
                 keys_item.held[event.key] = dir;
                 let dx = 0;

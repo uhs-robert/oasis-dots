@@ -26,6 +26,7 @@ Popup {
     readonly property var time_sort_names: ["Newest first", "Oldest first"]
     sub_views: root.current_tab === 1 ? root.app_sort_names : root.time_sort_names
     jumps_enabled: true
+    cursor_state: [root.selected, root.action_index]
 
     property int selected: 0
     // -1 is the card body; 0.. are the selected card's action buttons.
@@ -175,21 +176,22 @@ Popup {
     }
 
     function handle_key(event) {
+        const before = root.cursor_key();
         if (event.key === Qt.Key_J) {
             root.move_selected(1);
-            ThemeAudio.play("cursor");
+            root.play_if_moved(before);
             event.accepted = true;
         } else if (event.key === Qt.Key_K) {
             root.move_selected(-1);
-            ThemeAudio.play("cursor");
+            root.play_if_moved(before);
             event.accepted = true;
         } else if (event.key === Qt.Key_L) {
             root.move_action(event.modifiers & Qt.ShiftModifier ? 99 : 1);
-            ThemeAudio.play("cursor");
+            root.play_if_moved(before);
             event.accepted = true;
         } else if (event.key === Qt.Key_H) {
             root.move_action(event.modifiers & Qt.ShiftModifier ? -99 : -1);
-            ThemeAudio.play("cursor");
+            root.play_if_moved(before);
             event.accepted = true;
         } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
             root.invoke_selected();

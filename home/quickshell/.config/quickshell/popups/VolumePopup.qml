@@ -25,6 +25,7 @@ Popup {
     readonly property real max_list_height: (root.screen ? root.screen.height : 1080) * 0.6
     body_height: content.implicitHeight + 24
     jumps_enabled: true
+    cursor_state: root.selected
 
     readonly property var output_devices: Pipewire.nodes.values.filter(n => n.isSink && !n.isStream && n.audio)
     readonly property var input_devices: Pipewire.nodes.values.filter(n => !n.isSink && !n.isStream && n.audio)
@@ -116,8 +117,10 @@ Popup {
 
     function adjust_snap(node, direction) {
         if (!node || !node.ready || !node.audio) return;
-        const pct = stepper.snap(Math.round(node.audio.volume * 100), direction, 0, 100);
+        const current = Math.round(node.audio.volume * 100);
+        const pct = stepper.snap(current, direction, 0, 100);
         node.audio.volume = pct / 100;
+        return pct !== current;
     }
 
     // The wheel steps a level row like h/l, one snap step per notch.
@@ -153,24 +156,23 @@ Popup {
         focus: true
 
         Keys.onPressed: event => {
+            const before = root.cursor_key();
             const row = root.rows[root.selected];
             if (event.key === Qt.Key_J) {
                 root.selected = root.wrap_index(root.selected, 1, 0, root.rows.length);
                 rows_list.positionViewAtIndex(root.selected, ListView.Contain);
-                ThemeAudio.play("cursor");
+                root.play_if_moved(before);
                 event.accepted = true;
             } else if (event.key === Qt.Key_K) {
                 root.selected = root.wrap_index(root.selected, -1, 0, root.rows.length);
                 rows_list.positionViewAtIndex(root.selected, ListView.Contain);
-                ThemeAudio.play("cursor");
+                root.play_if_moved(before);
                 event.accepted = true;
             } else if (event.key === Qt.Key_L && row && root.is_slider_row(row.type)) {
-                root.adjust_snap(row.node, 1);
-                ThemeAudio.play("cursor");
+                if (root.adjust_snap(row.node, 1)) ThemeAudio.play("cursor");
                 event.accepted = true;
             } else if (event.key === Qt.Key_H && row && root.is_slider_row(row.type)) {
-                root.adjust_snap(row.node, -1);
-                ThemeAudio.play("cursor");
+                if (root.adjust_snap(row.node, -1)) ThemeAudio.play("cursor");
                 event.accepted = true;
             } else if (event.key === Qt.Key_M && (event.modifiers & Qt.ShiftModifier)) {
                 root.toggle_mute(Pipewire.defaultAudioSource);
@@ -180,7 +182,7 @@ Popup {
                 event.accepted = true;
             } else if (event.key >= Qt.Key_1 && event.key <= Qt.Key_9 && event.key - Qt.Key_1 < root.device_indices.length) {
                 root.select_row(root.device_indices[event.key - Qt.Key_1]);
-                ThemeAudio.play("cursor");
+                root.play_if_moved(before);
                 event.accepted = true;
             } else if ((event.key === Qt.Key_Return || event.key === Qt.Key_Enter) && row && !root.is_slider_row(row.type)) {
                 root.set_default(row);

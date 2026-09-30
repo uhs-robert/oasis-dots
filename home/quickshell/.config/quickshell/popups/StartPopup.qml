@@ -17,6 +17,7 @@ Popup {
     footer_hint: root.confirm ? "y/Enter confirm · n/Esc back" : "j/k move · gg/G first/last · Enter run · 1-" + root.actions.length + " pick · q close"
     body_height: content.implicitHeight + 24
     jumps_enabled: !root.confirm
+    cursor_state: root.selected
 
     // Rows past the first two are Power actions, in Power.actions order.
     readonly property var actions: ["Apps", "Settings"].concat(Power.actions.map(a => Power.labels[a]))
@@ -88,17 +89,18 @@ Popup {
         }
 
         Keys.onPressed: event => {
+            const before = root.cursor_key();
             if (root.confirm) {
                 confirm_row.handle_key(event);
                 return;
             }
             if (event.key === Qt.Key_J) {
                 root.selected = root.wrap_index(root.selected, 1, 0, root.actions.length);
-                ThemeAudio.play("cursor");
+                root.play_if_moved(before);
                 event.accepted = true;
             } else if (event.key === Qt.Key_K) {
                 root.selected = root.wrap_index(root.selected, -1, 0, root.actions.length);
-                ThemeAudio.play("cursor");
+                root.play_if_moved(before);
                 event.accepted = true;
             } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
                 root.choose(root.selected);

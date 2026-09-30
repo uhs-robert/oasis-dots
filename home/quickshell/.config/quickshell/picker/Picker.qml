@@ -22,6 +22,7 @@ Popup {
     footer_override: root.insert ? "Enter " + root.verb + " · Esc normal" : root.action_hint !== "" ? "Enter " + root.verb + " · " + root.action_hint + " · ? help · q close" : ""
     key_help: ["Enter " + root.verb, "Up/Down move", "Ctrl+j/k move", "Tab/Shift+Tab next/prev"].concat(root.tabs.length > 0 ? ["Ctrl+Tab/Ctrl+Shift+Tab tabs"] : []).concat(["Ctrl+u clear", "Esc normal mode", "j/k rows", "h/l columns", "0/$ row ends", "gg/G first/last", "i/a insert", "/ search"]).concat(root.action_hint !== "" ? [root.action_hint] : []).concat(["q/Esc close"]).join(" · ")
     jumps_enabled: !root.insert
+    cursor_state: root.selected
     tabs: root.provider ? root.provider.tabs : []
 
     readonly property var provider: Pickers.provider
@@ -176,22 +177,24 @@ Popup {
     function move_row(delta) {
         const n = root.results.length;
         if (n === 0) return;
-        ThemeAudio.play("cursor");
+        const before = root.selected;
         const cols = root.columns;
         if (cols === 1) {
             root.selected = root.wrap_index(root.selected, delta, 0, n);
-            return;
+        } else {
+            const rows = Math.ceil(n / cols);
+            const col = root.selected % cols;
+            const row = (Math.floor(root.selected / cols) + delta + rows) % rows;
+            root.selected = Math.min(n - 1, row * cols + col);
         }
-        const rows = Math.ceil(n / cols);
-        const col = root.selected % cols;
-        const row = (Math.floor(root.selected / cols) + delta + rows) % rows;
-        root.selected = Math.min(n - 1, row * cols + col);
+        if (root.selected !== before) ThemeAudio.play("cursor");
     }
 
     function step(delta) {
         if (root.results.length === 0) return;
+        const before = root.selected;
         root.selected = root.wrap_index(root.selected, delta, 0, root.results.length);
-        ThemeAudio.play("cursor");
+        if (root.selected !== before) ThemeAudio.play("cursor");
     }
 
     function icon_source(item) {
@@ -203,6 +206,7 @@ Popup {
     }
 
     function handle_key(event) {
+        const before = root.cursor_key();
         const ctrl = event.modifiers & Qt.ControlModifier;
         const k = event.key;
         if (k === Qt.Key_Return || k === Qt.Key_Enter) {
@@ -213,7 +217,7 @@ Popup {
             root.move_row(-1);
         } else if (ctrl && (k === Qt.Key_Tab || k === Qt.Key_Backtab) && root.tabs.length > 0) {
             root.step_tab(k === Qt.Key_Tab ? 1 : -1);
-            ThemeAudio.play("cursor");
+            root.play_if_moved(before);
         } else if (k === Qt.Key_Tab) {
             root.step(1);
         } else if (k === Qt.Key_Backtab) {

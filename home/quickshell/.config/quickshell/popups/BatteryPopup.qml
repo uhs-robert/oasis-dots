@@ -24,6 +24,7 @@ Popup {
     footer_hint: "j/k move · gg/G first/last · h/l adjust · Enter profile · s/b/p profile · q close"
     body_height: content.implicitHeight + 24
     jumps_enabled: true
+    cursor_state: root.selected
 
     readonly property var device: UPower.displayDevice
     readonly property bool has_battery: !!device && device.ready
@@ -126,24 +127,29 @@ Popup {
         focus: true
 
         Keys.onPressed: event => {
+            const before = root.cursor_key();
             const row = root.nav_rows[root.selected];
             if (event.key === Qt.Key_J) {
                 root.selected = root.wrap_index(root.selected, 1, 0, root.nav_rows.length);
-                ThemeAudio.play("cursor");
+                root.play_if_moved(before);
                 event.accepted = true;
             } else if (event.key === Qt.Key_K) {
                 root.selected = root.wrap_index(root.selected, -1, 0, root.nav_rows.length);
-                ThemeAudio.play("cursor");
+                root.play_if_moved(before);
                 event.accepted = true;
             } else if (event.key === Qt.Key_L) {
-                if (row && row.kind === "brightness") Backlight.set_percent(stepper.snap(Backlight.percent, 1, 1, 100));
-                else if (row && row.kind === "kbd") Backlight.kbd_set_percent(stepper.snap(Backlight.kbd_percent, 1, 0, 100));
-                if (row && (row.kind === "brightness" || row.kind === "kbd")) ThemeAudio.play("cursor");
+                const level = !row ? -1 : row.kind === "brightness" ? Backlight.percent : row.kind === "kbd" ? Backlight.kbd_percent : -1;
+                const target = level < 0 ? level : stepper.snap(level, 1, row.kind === "brightness" ? 1 : 0, 100);
+                if (row && row.kind === "brightness") Backlight.set_percent(target);
+                else if (row && row.kind === "kbd") Backlight.kbd_set_percent(target);
+                if (target !== level) ThemeAudio.play("cursor");
                 event.accepted = true;
             } else if (event.key === Qt.Key_H) {
-                if (row && row.kind === "brightness") Backlight.set_percent(stepper.snap(Backlight.percent, -1, 1, 100));
-                else if (row && row.kind === "kbd") Backlight.kbd_set_percent(stepper.snap(Backlight.kbd_percent, -1, 0, 100));
-                if (row && (row.kind === "brightness" || row.kind === "kbd")) ThemeAudio.play("cursor");
+                const level = !row ? -1 : row.kind === "brightness" ? Backlight.percent : row.kind === "kbd" ? Backlight.kbd_percent : -1;
+                const target = level < 0 ? level : stepper.snap(level, -1, row.kind === "brightness" ? 1 : 0, 100);
+                if (row && row.kind === "brightness") Backlight.set_percent(target);
+                else if (row && row.kind === "kbd") Backlight.kbd_set_percent(target);
+                if (target !== level) ThemeAudio.play("cursor");
                 event.accepted = true;
             } else if ((event.key === Qt.Key_Return || event.key === Qt.Key_Enter) && row && row.kind === "profile") {
                 PowerProfiles.profile = root.profiles[row.index].value;

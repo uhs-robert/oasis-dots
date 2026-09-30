@@ -23,6 +23,7 @@ Popup {
     property int view_year: today.getFullYear()
     property int view_month: today.getMonth()
     jumps_enabled: true
+    cursor_state: [root.view_year, root.view_month, Timezones.index]
 
     readonly property bool bios: root.st.console_views === "ps1"
     readonly property bool is_open: Popups.open_name === "clock"
@@ -135,33 +136,34 @@ Popup {
         focus: true
 
         Keys.onPressed: event => {
+            const before = root.cursor_key();
             if (event.key === Qt.Key_H) {
                 root.prev_month();
-                ThemeAudio.play("cursor");
+                root.play_if_moved(before);
                 event.accepted = true;
             } else if (event.key === Qt.Key_L) {
                 root.next_month();
-                ThemeAudio.play("cursor");
+                root.play_if_moved(before);
                 event.accepted = true;
             } else if (event.key === Qt.Key_J) {
                 root.view_year += 1;
-                ThemeAudio.play("cursor");
+                root.play_if_moved(before);
                 event.accepted = true;
             } else if (event.key === Qt.Key_K) {
                 root.view_year -= 1;
-                ThemeAudio.play("cursor");
+                root.play_if_moved(before);
                 event.accepted = true;
             } else if (event.key === Qt.Key_BracketRight) {
                 Timezones.cycle(1);
-                ThemeAudio.play("cursor");
+                root.play_if_moved(before);
                 event.accepted = true;
             } else if (event.key === Qt.Key_BracketLeft) {
                 Timezones.cycle(-1);
-                ThemeAudio.play("cursor");
+                root.play_if_moved(before);
                 event.accepted = true;
             } else if (event.key === Qt.Key_T) {
                 root.go_today();
-                ThemeAudio.play("cursor");
+                root.play_if_moved(before);
                 event.accepted = true;
             }
         }

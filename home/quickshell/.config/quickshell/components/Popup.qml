@@ -63,6 +63,15 @@ PanelWindow {
     property bool jumps_enabled: false
     signal jump_first()
     signal jump_last()
+    // The popup's cursor position(s); key moves play the cursor sound only when it (or the tab) changes.
+    property var cursor_state: null
+    function cursor_key() {
+        return JSON.stringify([current_tab, current_sub, search_cursor, cursor_state]);
+    }
+    function play_if_moved(before) {
+        if (root.cursor_key() !== before) ThemeAudio.play("cursor");
+    }
+
     // 0/$ emit line_start/line_end only while set: the left and right ends of an h/l row.
     property bool line_ends_enabled: false
     signal line_start()
@@ -190,6 +199,7 @@ PanelWindow {
         const focus_item = content_scope.Window.activeFocusItem;
         if (focus_item && "cursorPosition" in focus_item) return;
         const back = event.key === Qt.Key_Backtab || (event.modifiers & Qt.ShiftModifier);
+        const before = root.cursor_key();
         if (root.key_help !== "" && root.is_help_key(event)) {
             help_open = true;
         } else if (root.search_enabled && (event.key === Qt.Key_Slash || event.text === "/")) {
@@ -198,7 +208,7 @@ PanelWindow {
             root.enter_search();
         } else if (root.search_enabled && root.search_query !== "" && event.key === Qt.Key_N) {
             root.step_search(back ? -1 : 1);
-            ThemeAudio.play("cursor");
+            root.play_if_moved(before);
         } else if (event.key === Qt.Key_Backspace && Popups.back_name !== "") {
             ThemeAudio.play("cancel");
             Popups.back();
@@ -209,29 +219,29 @@ PanelWindow {
             Popups.close();
         } else if (tabs.length > 0 && event.key === Qt.Key_BracketLeft) {
             step_tab(-1);
-            ThemeAudio.play("cursor");
+            root.play_if_moved(before);
         } else if (tabs.length > 0 && event.key === Qt.Key_BracketRight) {
             step_tab(1);
-            ThemeAudio.play("cursor");
+            root.play_if_moved(before);
         } else if (event.key >= Qt.Key_1 && event.key < Qt.Key_1 + Math.min(9, tabs.length)) {
             set_tab(event.key - Qt.Key_1);
-            ThemeAudio.play("cursor");
+            root.play_if_moved(before);
         } else if ((event.key === Qt.Key_Tab || event.key === Qt.Key_Backtab) && (tabs.length > 0 || sub_views.length > 0)) {
             step_sub(back ? -1 : 1);
-            ThemeAudio.play("cursor");
+            root.play_if_moved(before);
         } else if (line_ends_enabled && (event.key === Qt.Key_0 || event.text === "$")) {
             if (event.key === Qt.Key_0) line_start(); else line_end();
-            ThemeAudio.play("cursor");
+            root.play_if_moved(before);
         } else if (jumps_enabled && event.key === Qt.Key_G) {
             if (event.modifiers & Qt.ShiftModifier) {
                 jump_last();
-                ThemeAudio.play("cursor");
+                root.play_if_moved(before);
             } else {
                 const now_ms = Date.now();
                 if (now_ms - last_g_ms < 500) {
                     last_g_ms = 0;
                     jump_first();
-                    ThemeAudio.play("cursor");
+                    root.play_if_moved(before);
                 } else {
                     last_g_ms = now_ms;
                 }
@@ -859,8 +869,9 @@ PanelWindow {
                             if (root.search_starts_open) root.search_accept();
                             else root.accept_search();
                         } else if (event.key === Qt.Key_Down || event.key === Qt.Key_Up) {
+                            const before = root.cursor_key();
                             root.step_search(event.key === Qt.Key_Down ? 1 : -1);
-                            ThemeAudio.play("cursor");
+                            root.play_if_moved(before);
                         } else {
                             return;
                         }
