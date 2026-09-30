@@ -47,6 +47,8 @@ QtObject {
     property bool power_live: false
     property bool sound: true
     property bool music: true
+    property real music_volume: 0.5
+    property real fx_volume: 0.5
     property bool login: true
     property var sound_owner: null
     signal cue(string name)

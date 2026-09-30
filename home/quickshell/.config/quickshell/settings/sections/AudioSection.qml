@@ -32,11 +32,18 @@ RowsSection {
             set: v => ThemeAudio.set_flag("music", v === "on")
         },
         {
-            label: "Volume",
+            label: "Music volume",
             values: () => ThemeAudio.volumes,
             text: v => Math.round(v * 100) + "%",
-            value: () => ThemeAudio.volume,
-            set: v => ThemeAudio.set_volume(v)
+            value: () => ThemeAudio.music_volume,
+            set: v => ThemeAudio.set_volume("music_volume", v)
+        },
+        {
+            label: "Effects volume",
+            values: () => ThemeAudio.volumes,
+            text: v => Math.round(v * 100) + "%",
+            value: () => ThemeAudio.fx_volume,
+            set: v => ThemeAudio.set_volume("fx_volume", v)
         },
         {
             label: "Sound pack",

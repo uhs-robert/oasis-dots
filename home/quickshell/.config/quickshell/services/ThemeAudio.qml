@@ -14,7 +14,8 @@ Singleton {
     property bool ui: false
     property bool notify: false
     property bool music: false
-    property real volume: 0.5
+    property real music_volume: 0.5
+    property real fx_volume: 0.5
     // "follow" uses the bar style's pack, else a style name.
     property string pack: "follow"
     // The lock host sets this while the session is locked.
@@ -52,9 +53,9 @@ Singleton {
         root.save();
     }
 
-    function set_volume(value) {
-        if (root.volumes.indexOf(value) < 0) return false;
-        root.volume = value;
+    function set_volume(name, value) {
+        if (["music_volume", "fx_volume"].indexOf(name) < 0 || root.volumes.indexOf(value) < 0) return false;
+        root[name] = value;
         root.save();
         return true;
     }
@@ -78,7 +79,7 @@ Singleton {
     }
 
     function save() {
-        state_file.setText(JSON.stringify({ ui: root.ui, notify: root.notify, music: root.music, volume: root.volume, pack: root.pack }));
+        state_file.setText(JSON.stringify({ ui: root.ui, notify: root.notify, music: root.music, music_volume: root.music_volume, fx_volume: root.fx_volume, pack: root.pack }));
     }
 
     component Pack: Item {
@@ -139,13 +140,13 @@ Singleton {
         id: effects
         wanted: root.ui || root.notify
         args: ["--idle=yes"]
-        volume: root.volume
+        volume: root.fx_volume
     }
 
     MpvProcess {
         wanted: root.music_on && root.music_url !== ""
         args: ["--loop-file=inf", root.music_url]
-        volume: root.volume * 0.6
+        volume: root.music_volume
     }
 
     FileView {
@@ -159,7 +160,10 @@ Singleton {
                 root.ui = data.ui === true;
                 root.notify = data.notify === true;
                 root.music = data.music === true;
-                if (root.volumes.indexOf(data.volume) >= 0) root.volume = data.volume;
+                const music_saved = data.music_volume !== undefined ? data.music_volume : data.volume;
+                const fx_saved = data.fx_volume !== undefined ? data.fx_volume : data.volume;
+                if (root.volumes.indexOf(music_saved) >= 0) root.music_volume = music_saved;
+                if (root.volumes.indexOf(fx_saved) >= 0) root.fx_volume = fx_saved;
                 if (typeof data.pack === "string" && (data.pack === "follow" || data.pack in Style.styles)) root.pack = data.pack;
             } catch (e) {
                 console.warn("ThemeAudio: invalid audio.json (" + e + ")");

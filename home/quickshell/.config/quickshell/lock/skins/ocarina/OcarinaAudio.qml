@@ -11,8 +11,10 @@ Item {
 
     // "title", "fairy" or "".
     property string track: ""
-    readonly property real music_volume: 0.4
-    readonly property real fx_volume: 0.4
+    property real music_setting: 0.5
+    property real fx_setting: 0.5
+    readonly property real music_volume: audio.music_setting * 0.8
+    readonly property real fx_volume: audio.fx_setting * 0.8
     property real title_level: 0
     property real fairy_level: 0
     readonly property string data_dir: "file://" + (Quickshell.env("XDG_DATA_HOME") || (Quickshell.env("HOME") + "/.local/share")) + "/quickshell/ocarina-audio"
