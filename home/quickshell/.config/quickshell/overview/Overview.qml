@@ -34,6 +34,7 @@ PanelWindow {
     property bool typing: false
     property bool help_open: false
     property string query: ""
+    property var monitor_slots: []
 
     readonly property var model: root.visible ? root.build(Hyprland.monitors.values, Hyprland.workspaces.values, Hyprland.toplevels.values, root.special) : ({ groups: [], tiles: [] })
     readonly property var groups: root.model.groups
@@ -139,6 +140,7 @@ PanelWindow {
         const target = (mon && Quickshell.screens.find(s => s.name === mon.name)) || Quickshell.screens[0];
         root.held_screen_name = target ? target.name : "";
         root.refresh();
+        slots_proc.running = true;
         root.filmstrip = false;
         const active_ws = Hyprland.activeToplevel ? Hyprland.activeToplevel.workspace : null;
         const on_special = mon ? root.shown_special(mon) || (active_ws && (active_ws.name || "").startsWith("special:") ? active_ws.name : "") : "";
@@ -331,6 +333,14 @@ PanelWindow {
         const to = Layout.neighbor(root.groups, tile.group, dx, dy);
         if (to < 0) return;
         const target = root.groups[to].tiles;
+        root.select(target.find(i => root.tiles[i].shown_on_monitor) ?? target[0]);
+    }
+
+    // Slot n is the monitor SUPER+CTRL+n focuses.
+    function jump_monitor(slot) {
+        const g = root.groups.findIndex(g => g.name === root.monitor_slots[slot - 1]);
+        if (g < 0) return;
+        const target = root.groups[g].tiles;
         root.select(target.find(i => root.tiles[i].shown_on_monitor) ?? target[0]);
     }
 
@@ -555,8 +565,9 @@ PanelWindow {
         if (event.modifiers & Qt.AltModifier) return;
         if (event.modifiers & Qt.ControlModifier) {
             const dir = root.direction_of(k);
-            if (!dir) return;
-            root.move_monitor(dir[0], dir[1]);
+            if (dir) root.move_monitor(dir[0], dir[1]);
+            else if (k >= Qt.Key_0 && k <= Qt.Key_9) root.jump_monitor(k === Qt.Key_0 ? 10 : k - Qt.Key_0);
+            else return;
             root.play_if_moved(before);
             event.accepted = true;
             return;
@@ -630,12 +641,12 @@ PanelWindow {
     readonly property string footer_text: root.help_open ? "? back · Esc back · q close"
         : root.typing ? "Enter accept · Tab next match · Esc clear · ? help"
         : root.swap_address !== "" ? "m swap · Enter swap · Tab other window · hjkl workspace · Esc cancel · ? help"
-        : root.carrying ? "hjkl workspace · Ctrl+hjkl monitor · Tab window · m drop · Enter drop · Esc cancel · ? help"
+        : root.carrying ? "hjkl workspace · Ctrl+hjkl/1-9 monitor · Tab window · m drop · Enter drop · Esc cancel · ? help"
         : root.marks.length > 0 ? "Space mark · V mark all · m move " + root.marks.length + " · x close " + root.marks.length + " · hjkl move · Esc clear marks · ? help"
-        : "hjkl move · Ctrl+hjkl monitor · Tab window · Enter focus · m move · x close · Space mark · / filter · f view · s special · ? help · q close"
+        : "hjkl move · Ctrl+hjkl/1-9 monitor · Tab window · Enter focus · m move · x close · Space mark · / filter · f view · s special · ? help · q close"
 
-    readonly property string normal_help: "h/j/k/l move between workspaces · Arrows move between workspaces · Ctrl+h/j/k/l or Ctrl+Arrows jump to the next monitor that way · Tab next window · Shift+Tab previous window · Enter focus window, or the workspace if empty · m pick up window, or every marked window · x close window, or every marked window · Space/v mark or unmark window · V mark or unmark all in workspace · / filter windows · 1-9 select workspace by id, type 12 quickly for workspace 12, or the nth special workspace · s toggle special workspaces · f toggle filmstrip view, j/k there jump monitors · Click focus window or workspace"
-    readonly property string carry_help: "h/j/k/l choose target workspace · Arrows choose target workspace · Ctrl+h/j/k/l choose target monitor · 1-9 target workspace by id, type 12 quickly for workspace 12 · s toggle special workspaces · Tab/Shift+Tab choose a window in the same workspace to swap with · m drop there, or swap with the SWAP window · Enter drop there, or swap · f toggle filmstrip view · Click drop on workspace · Esc cancel, marks come back"
+    readonly property string normal_help: "h/j/k/l move between workspaces · Arrows move between workspaces · Ctrl+h/j/k/l or Ctrl+Arrows jump to the next monitor that way · Ctrl+1-9 jump to that monitor number, as SUPER+Ctrl+1-9 counts them · Tab next window · Shift+Tab previous window · Enter focus window, or the workspace if empty · m pick up window, or every marked window · x close window, or every marked window · Space/v mark or unmark window · V mark or unmark all in workspace · / filter windows · 1-9 select workspace by id, type 12 quickly for workspace 12, or the nth special workspace · s toggle special workspaces · f toggle filmstrip view, j/k there jump monitors · Click focus window or workspace"
+    readonly property string carry_help: "h/j/k/l choose target workspace · Arrows choose target workspace · Ctrl+h/j/k/l choose target monitor · Ctrl+1-9 target monitor by number · 1-9 target workspace by id, type 12 quickly for workspace 12 · s toggle special workspaces · Tab/Shift+Tab choose a window in the same workspace to swap with · m drop there, or swap with the SWAP window · Enter drop there, or swap · f toggle filmstrip view · Click drop on workspace · Esc cancel, marks come back"
     readonly property string help_text: root.typing ? "Type filter by class or title · Enter accept filter · Tab/Down next match · Shift+Tab/Up previous match · Backspace delete, clears when empty · Esc clear filter"
         : root.carrying ? root.carry_help
         : root.marks.length > 0 ? "Esc clear all marks · " + root.normal_help
@@ -663,6 +674,15 @@ PanelWindow {
         duration: 170
         easing.type: Easing.OutCubic
         onFinished: if (!root.wanted) root.visible = false
+    }
+
+    // Hyprland owns the slot order, and hyprctl eval prints nothing back, so the slots go through a file.
+    Process {
+        id: slots_proc
+        command: ["sh", "-c", "f=\"$XDG_RUNTIME_DIR/qs-monitor-slots\"; hyprctl eval \"local W = require('lib.workspaces'); local t = {}; for i = 1, 10 do t[i] = W.get_monitor_for_slot(i) or '-' end; local f = io.open('$f', 'w'); f:write(table.concat(t, ' ')); f:close()\" >/dev/null && cat \"$f\""]
+        stdout: StdioCollector {
+            onStreamFinished: root.monitor_slots = text.trim().split(/\s+/)
+        }
     }
 
     Timer {
