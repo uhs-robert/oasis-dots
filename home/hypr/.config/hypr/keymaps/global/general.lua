@@ -15,7 +15,7 @@ Bind.leader_fn("SLASH",  Menu.keybinds(), OPTS.universal("Keybind Help"))
 -- Window Actions
 Bind.leader_key("X",   Window.close(),             "Close Window")
 Bind.leader_key("F",   Window.fullscreen_toggle(), "Toggle Fullscreen")
-Bind.leader_key("TAB", Window.focus_last(),        "Previous Window")
+Bind.leader_key("SHIFT + TAB", Window.focus_last(), "Previous Window")
 
 -- Window Focus/Movement
 local shift_leader = Bind.leader ~= "" and (Bind.leader .. " + SHIFT") or "SHIFT"

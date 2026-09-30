@@ -29,7 +29,7 @@ Bind.leader_fn("CTRL + SHIFT + T",  Menu.hyprwindow_move(false),     "Silent mov
 
 -- Workspace Overview
 Bind.fn("ALT + TAB",                Menu.overview(),                 "Workspace overview")
-Bind.leader_fn("SHIFT + TAB",       Menu.overview(),                 "Workspace overview")
+Bind.leader_fn("TAB",               Menu.overview(),                 "Workspace overview")
 
 -- HyprVim Utilities
 local function open_hyprvim_term() require("lua.plugins.hyprvim").command.prompt() end
