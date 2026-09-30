@@ -1,4 +1,4 @@
-// home/quickshell/.config/quickshell/tmux-overview/TmuxTile.qml
+// home/quickshell/.config/quickshell/tmux_overview/TmuxTile.qml
 pragma ComponentBehavior: Bound
 import QtQuick
 import "../components"

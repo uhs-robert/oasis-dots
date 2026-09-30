@@ -1,4 +1,4 @@
-// home/quickshell/.config/quickshell/tmux-overview/TmuxOverview.qml
+// home/quickshell/.config/quickshell/tmux_overview/TmuxOverview.qml
 pragma ComponentBehavior: Bound
 import QtQuick
 import Quickshell
