@@ -8,6 +8,7 @@ import "./components"
 import "./components/transitions"
 import "./lock"
 import "./overview"
+import "./tmux_overview"
 import "./picker"
 import "./popups"
 import "./services"
@@ -185,4 +186,5 @@ ShellRoot {
     Overview {
         id: overview_window
     }
+    TmuxOverview {}
 }

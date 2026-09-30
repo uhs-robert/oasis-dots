@@ -31,6 +31,7 @@ Submap.define({
       { "SHIFT + O",     Launcher.show_picker,                            "Session Launcher" },
       { "CTRL + V",      Menu.clipboard(),                                "Clipboard" },
       { "TAB",           Menu.overview(),                                 "Workspace Overview" },
+      { "SHIFT + TAB",   Menu.tmux_overview(),                            "Tmux Overview" },
       { "E",             Menu.emoji(),                                    "Emoji" },
 
       -- Commands
