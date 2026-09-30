@@ -9,9 +9,13 @@
   <a href="https://github.com/uhs-robert/oasis-dots/issues"><img src="https://img.shields.io/github/issues/uhs-robert/oasis-dots?colorA=192330&colorB=skyblue&style=for-the-badge&cacheSeconds=4300" alt="Issues"></a>
   <a href="https://github.com/uhs-robert/oasis-dots/graphs/contributors"><img src="https://img.shields.io/github/contributors/uhs-robert/oasis-dots?colorA=192330&colorB=8FD1C7&style=for-the-badge&cacheSeconds=4300" alt="Contributors"></a>
   <a href="https://github.com/uhs-robert/oasis-dots/network/members"><img src="https://img.shields.io/github/forks/uhs-robert/oasis-dots?colorA=192330&colorB=C799FF&style=for-the-badge&cacheSeconds=4300" alt="Forks"></a>
-  <a href="https://github.com/uhs-robert/oasis-dots"><img src="https://img.shields.io/github/repo-size/uhs-robert/oasis-dots?colorA=192330&colorB=F4A261&style=for-the-badge&cacheSeconds=4300" alt="Repo size"></a>
+  <a href="https://discord.gg/b7y5CGVGTB"><img src="https://img.shields.io/discord/1554625284068741140?label=discord&logo=discord&logoColor=white&colorA=192330&colorB=5865F2&style=for-the-badge&cacheSeconds=4300" alt="Discord"></a>
 </p>
 <p align="center">Oasis-themed dotfiles for Arch Linux and Hyprland using Quickshell.</p>
+
+<p align="center">
+  <a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/hero.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/hero.webp" width="100%" alt="Switching styles, the Leader menu, the overview and the Duck Hunt region selector"></a>
+</p>
 
 ## 🖥️ Overview
 
@@ -26,17 +30,31 @@ An Arch Linux desktop on Hyprland, driven from the keyboard with vim binds and m
 > [!NOTE]
 > Managed with [GNU Stow](https://www.gnu.org/software/stow/); packages live under `home/`.
 
-<!-- Screenshots: add from the assets branch here. -->
-
 ## 🌴 Why oasis-dots
 
 ### Keyboard first, for Vim users
 
 No mouse required. [HyprVim](https://github.com/uhs-robert/hyprvim) gives Hyprland Vim modes, a leader key and which-key hints. Every popup opens on a key and answers to the same keys (`j`/`k`, `h`/`l`, `gg`/`G`, `/`, `[`/`]`, `?`, `q`), and the pickers have INSERT and NORMAL modes. Even the pointer jobs go through the keyboard: a virtual cursor, a screenshot region selector that you steer with `hjkl` across monitors, the workspace overview, and monitor arrangements in Settings. The apps follow suit: Neovim, tmux, Yazi, qutebrowser, Tridactyl and Betterbird with tbkeys.
 
+<p align="center">
+  <a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/region-styles.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/region-styles.webp" width="100%" alt="The region selector, steered with hjkl, in twelve styles"></a>
+</p>
+
+<table>
+  <tr>
+    <td align="center" width="50%"><a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/keybinds.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/keybinds.webp" width="100%" alt="Keybinds picker"></a><br><strong>Keybinds picker</strong><br><em>SUPER + / searches and runs the binds of the current mode</em></td>
+    <td align="center" width="50%"><a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/emoji.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/emoji.webp" width="100%" alt="Emoji picker"></a><br><strong>Emoji picker</strong><br><em>Type to filter, Enter types it into the window you came from</em></td>
+  </tr>
+</table>
+
 ### Retro styles
 
 The Quickshell shell swaps its whole look live, from a clean Oasis or Modern style to NES, SNES, Game Boy, PS1, PS2, FF7, GoldenEye, Metroid, Half-Life and TIE Fighter. Styles bring their own transitions, sounds, picker skins and lock screens, and colors always come from the active Oasis palette, so every style works with every theme.
+
+<p align="center">
+  <a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/bar-styles.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/bar-styles.webp" width="100%" alt="The bar in Oasis, Modern, Neovim, Metroid and PS1"></a>
+  <a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/weather-styles.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/weather-styles.webp" width="100%" alt="The weather popup in NES, Game Boy, PS1, FF7, Metroid and Half-Life"></a>
+</p>
 
 ### One theme everywhere
 
@@ -57,6 +75,46 @@ Every shell piece has a fallback (rofi pickers, hyprlock, tuigreet at login), ch
 | `SUPER + V`     | HyprVim NORMAL mode for moving windows and workspaces; `SUPER + ESCAPE` leaves it |
 
 The [Hyprland README](home/hypr/.config/hypr/README.md) and the [Quickshell README](home/quickshell/.config/quickshell/README.md) have the rest.
+
+## 📸 Tour
+
+<table>
+  <tr>
+    <td align="center" width="50%"><a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/tour-settings-metroid.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/tour-settings-metroid.webp" width="100%" alt="Settings"></a><br><strong>Settings</strong><br><em>Metroid's scan visor over styles, colors, bar, displays, apps, power, sound and lock</em></td>
+    <td align="center" width="50%"><a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/tour-overview-ps1.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/tour-overview-ps1.webp" width="100%" alt="Workspace overview"></a><br><strong>Workspace overview</strong><br><em>Every monitor and workspace behind a PS1 scope, moved with hjkl</em></td>
+  </tr>
+  <tr>
+    <td align="center" width="50%"><a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/tour-volume-ps2.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/tour-volume-ps2.webp" width="100%" alt="Volume"></a><br><strong>Volume</strong><br><em>The PS2 memory-dial mixer for outputs, inputs and apps</em></td>
+    <td align="center" width="50%"><a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/tour-calendar-gameboy.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/tour-calendar-gameboy.webp" width="100%" alt="Calendar"></a><br><strong>Calendar</strong><br><em>A Game Boy calendar with time zones</em></td>
+  </tr>
+</table>
+
+## 🔒 Lock screens
+
+Each style can bring its own lock screen, and the login screen reuses it.
+
+<table>
+  <tr>
+    <td align="center" width="50%"><a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/lock-mgs2-anim.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/lock-mgs2-anim.webp" width="100%" alt="Oasis Gear Solid 2"></a><br><strong>Oasis Gear Solid 2</strong><br><em>Tactical tiling action</em></td>
+    <td align="center" width="50%"><a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/lock-ocarina-anim.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/lock-ocarina-anim.webp" width="100%" alt="The Legend of Oasis"></a><br><strong>The Legend of Oasis</strong><br><em>Dusk turns to night and the logo ignites on PRESS START</em></td>
+  </tr>
+</table>
+
+<details>
+<summary>More lock screens</summary>
+
+<table>
+  <tr>
+    <td align="center" width="50%"><a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/lock-ff7.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/lock-ff7.webp" width="100%" alt="Final Fantasy VII"></a><br><strong>Final Fantasy VII</strong><br><em>New Game, Continue?</em></td>
+    <td align="center" width="50%"><a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/lock-crt.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/lock-crt.webp" width="100%" alt="CRT terminal"></a><br><strong>CRT terminal</strong><br><em>A phosphor system lock</em></td>
+  </tr>
+  <tr>
+    <td align="center" width="50%"><a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/lock-tie.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/lock-tie.webp" width="100%" alt="TIE Fighter"></a><br><strong>TIE Fighter</strong><br><em>Targeting computer and clearance code</em></td>
+    <td align="center" width="50%"><a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/lock-ocarina.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/lock-ocarina.webp" width="100%" alt="The Legend of Oasis"></a><br><strong>The Legend of Oasis</strong><br><em>The title screen, still</em></td>
+  </tr>
+</table>
+
+</details>
 
 ## 📦 Full Install (Automated)
 
