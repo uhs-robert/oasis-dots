@@ -31,7 +31,8 @@ Singleton {
     readonly property string pack_name: root.pack === "follow" || Style.names.indexOf(root.pack) < 0 ? Style.saved_name : root.pack
     readonly property string music_name: root.pack === "follow" && Style.lock_name in Style.styles ? Style.lock_name : root.pack_name
     // These lock skins bring their own music.
-    readonly property bool own_music: ["ff7", "ocarina"].indexOf(Style.lock_name) >= 0
+    readonly property var own_music_skins: ["ff7", "mgs2", "ocarina"]
+    readonly property bool own_music: root.own_music_skins.indexOf(Style.lock_name) >= 0
     readonly property bool music_on: root.lock_active && root.music && Style.lock_music && !root.own_music
     readonly property string music_url: music_pack.find("music", ["ogg", "wav", "mp3"])
 
@@ -39,7 +40,7 @@ Singleton {
     readonly property string login_skin: LoginScreen.resolved_screen
     readonly property string login_name: root.pack === "follow" && root.login_skin in Style.styles ? root.login_skin : root.pack_name
     readonly property string login_music_path: {
-        if (!root.music || !LoginScreen.resolved_music || ["ff7", "ocarina"].indexOf(root.login_skin) >= 0) return "";
+        if (!root.music || !LoginScreen.resolved_music || root.own_music_skins.indexOf(root.login_skin) >= 0) return "";
         return login_pack.find("music", ["ogg", "wav", "mp3"]).replace(/^file:\/\//, "");
     }
 
