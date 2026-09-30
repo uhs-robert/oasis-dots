@@ -32,7 +32,7 @@ An Arch Linux desktop on Hyprland, driven from the keyboard with vim binds and m
 
 ## 🎹 Keyboard First, for Vim Users
 
-<p align="center"><em>Manage your GUI, TUI, and everything in-between with just a keyboard and vim modes/motions.</em></p>
+> Manage your GUI, TUI, and everything in-between with just a keyboard and vim modes/motions.
 
 Oasis brings Vim to Hyprland with [HyprVim](https://github.com/uhs-robert/hyprvim) and takes it even further beyond with virtual cursors, mouse emulation, and full keyboard navigation. Every menu, picker, and setting is accessed and controlled by vim modes/binds.
 
@@ -52,9 +52,18 @@ Learn the keybinds like you do in NeoVim with which-key upon submap entry. Searc
   </tr>
 </table>
 
+<!-- HyprVim command prompt screenshot goes here. -->
+
+More that never needs a mouse:
+
+- **Command prompt:** HyprVim's `:` prompt runs commands from a fuzzy menu, with hints for each argument as you type.
+- **Screen sharing:** the share picker reuses the region selector, so you pick a screen, a window or a region by keyboard.
+- **Scrolling capture:** grab a page longer than the screen and OCR it to text in one pass.
+- **Displays:** arrange monitors in Settings with `hjkl`, with a countdown that reverts anything you don't confirm.
+
 ## 🎨 Styles
 
-<p align="center"><em>Pick from over 15 different styles including `Oasis`, `Modern`, `NeoVim`, and more.</em></p>
+> Pick from over 15 different styles including `Oasis`, `Modern`, `NeoVim`, and more.
 
 Powered by the [Oasis](https://github.com/uhs-robert/oasis.nvim) colorscheme palettes from NeoVim, also includes over 15 different styles to choose from in combination.
 
@@ -142,7 +151,6 @@ Each style can bring its own lock screen, and the login screen reuses it.
   </tr>
   <tr>
     <td align="center" width="50%"><a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/lock-tie.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/lock-tie.webp" width="100%" alt="TIE Fighter"></a><br><strong>TIE Fighter</strong><br><em>Targeting computer and clearance code</em></td>
-    <td align="center" width="50%"><a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/lock-ocarina.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/lock-ocarina.webp" width="100%" alt="The Legend of Oasis"></a><br><strong>The Legend of Oasis</strong><br><em>The title screen, still</em></td>
   </tr>
 </table>
 
@@ -199,7 +207,7 @@ NVIM_CONFIG_REPO=you/nvim ./install.sh
 
 ## 🧩 Partial Install (Manual Stow)
 
-If you don't want to install the full dotfiles then you may also manually stow the individual packages that you want. Theme files, HyprVim and the qutebrowser styles are symlinks into `repos/`, so run `just repos` first to set those up (see [External Repos](#external-repos)).
+If you don't want to install the full dotfiles then you may also manually stow the individual packages that you want. Theme files, HyprVim and the qutebrowser styles are symlinks into `repos/`, so run `just repos` first to set those up (see [External Repos](#-external-repos)).
 
 ```bash
 stow -d home <package>     # deploy a package
