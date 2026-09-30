@@ -139,7 +139,6 @@ Scope {
         anchors.bottom: true
         anchors.left: true
         anchors.right: true
-        exclusiveZone: 0
         exclusionMode: ExclusionMode.Ignore
         WlrLayershell.namespace: "quickshell-lock-preview"
         WlrLayershell.layer: WlrLayer.Overlay
