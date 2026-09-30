@@ -27,7 +27,7 @@ Singleton {
     readonly property string user_dir: root.data_dir + "/sounds"
     // Game packs, offered once imported; names maps a kind to the file base, and a kind left out uses the style's own sound.
     readonly property var games: ({
-            "game:ff7": { label: "FFVII", dir: Qt.resolvedUrl("../lock/skins/ff7/audio"), names: { cursor: "cursor", confirm: "cursor", cancel: "cancel" } },
+            "game:ff7": { label: "FFVII", replaces: "ff7", dir: Qt.resolvedUrl("../lock/skins/ff7/audio"), names: { cursor: "cursor", confirm: "cursor", cancel: "cancel" } },
             "game:mgs2": { label: "MGS2", dir: "file://" + root.data_dir + "/mgs2-audio", names: { cursor: "select", confirm: "submit", cancel: "back" } },
             "game:ocarina": { label: "Ocarina", dir: "file://" + root.data_dir + "/ocarina-audio", names: { cursor: "move", confirm: "decide", cancel: "cancel", notify: "letter" } }
         })
@@ -78,8 +78,10 @@ Singleton {
         return style_name;
     }
 
+    // An imported game hides the style pack it replaces.
     function pack_options(style_name) {
-        return [style_name].concat(Style.names.filter(name => name !== style_name), root.imported_games);
+        const hidden = root.imported_games.map(key => root.games[key].replaces).filter(name => name);
+        return [style_name].concat(Style.names.filter(name => name !== style_name)).filter(name => hidden.indexOf(name) < 0).concat(root.imported_games);
     }
 
     function pack_label(name) {
