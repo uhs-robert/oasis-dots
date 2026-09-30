@@ -28,7 +28,6 @@ Singleton {
         "Resize": Theme.syntax_builtin_func,
         "Move": Theme.syntax_preproc,
         "Zoom": Theme.bright_cyan,
-        "Marks": Theme.syntax_operator,
         "Monitors": Theme.syntax_bracket,
         "Bar": Theme.theme_primary_light,
         "YANK": Theme.syntax_special,
