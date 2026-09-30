@@ -36,12 +36,16 @@ An Arch Linux desktop on Hyprland, driven from the keyboard with vim binds and m
 
 Oasis brings Vim to Hyprland with [HyprVim](https://github.com/uhs-robert/hyprvim) and takes it even further beyond with virtual cursors, mouse emulation, and full keyboard navigation. Every menu, picker, and setting is accessed and controlled by vim modes/binds.
 
-Even the screenshot/video recorder/color picker can be steered with nothing but your keyboard:
+### Screenshot, Video Recorder, Color Picker
+
+Even the screenshot/video recorder/color picker can be steered with nothing but your keyboard.
 
 <p align="center">
   <a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/region-ps1.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/region-ps1.webp" width="100%" alt="The PS1 region selector, steered with hjkl, with its zoom scope"></a>
   <br><em><strong>Screenshot region selector:</strong> move, anchor and resize with <code>hjkl</code>, zoom with <code>i</code>/<code>o</code></em>
 </p>
+
+### Which-key and keybind search/run
 
 Learn the keybinds like you do in NeoVim with which-key upon submap entry. Search/run any keybind with `SUPER + /`:
 
@@ -52,15 +56,22 @@ Learn the keybinds like you do in NeoVim with which-key upon submap entry. Searc
   </tr>
 </table>
 
-<p align="center">
-  <a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/prompt-menu.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/prompt-menu.webp" width="100%" alt="HyprVim command prompt with fuzzy menu"></a>
-  <a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/prompt-args.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/prompt-args.webp" width="100%" alt="HyprVim command prompt with argument hints"></a>
-  <br><em><strong>Command prompt:</strong> <code>:</code> in HyprVim NORMAL mode, a fuzzy menu of commands, then hints for each argument</em>
-</p>
+### HyprVim Command Mode
 
-More that never needs a mouse:
+And control Hyprland via `:`, like Vim's **Command Mode**:
 
-- **Command prompt:** HyprVim's `:` prompt runs commands from a fuzzy menu, with hints for each argument as you type.
+<table>
+  <tr>
+    <td><a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/prompt-menu.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/prompt-menu.webp" width="100%" alt="HyprVim command prompt with fuzzy menu"></a><br/><p align="center">HyprVim Command Mode with fuzzy completion</p></td>
+  </tr>
+  <tr>
+    <td><a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/prompt-args.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/prompt-args.webp" width="100%" alt="HyprVim command prompt with argument hints"></a><br/><p align="center">Includes flag hints to teach arguments as you use</p></td>
+  </tr>
+</table>
+
+### And Even More
+
+- **Mouse from the keyboard:** `SUPER + C` enters the Cursor submap: `hjkl` moves the pointer (`SHIFT` for fast, `CTRL` for single pixels), `SPACE` clicks, `e`/`y` scroll, and `f` or `t` drop [wl-kbptr](https://github.com/moverest/wl-kbptr) hint labels on screen to click anything in a couple of keystrokes.
 - **Screen sharing:** the share picker reuses the region selector, so you pick a screen, a window or a region by keyboard.
 - **Scrolling capture:** grab a page longer than the screen and OCR it to text in one pass.
 - **Displays:** arrange monitors in Settings with `hjkl`, with a countdown that reverts anything you don't confirm.
@@ -145,19 +156,7 @@ Just a few example weather modules:
 
 </details>
 
-### 📸 Other Module Examples
-
-As you can see, styles influence every popup. Each card below shows a different popup and a different style.
-
-<table>
-  <tr>
-    <td align="center" width="50%"><a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/tour-settings-crt.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/tour-settings-crt.webp" width="100%" alt="Settings"></a><br><strong>Settings (CRT)</strong><br><em>Phosphor terminal settings: styles, colors, bar, displays, apps, power, sound and lock</em></td>
-    <td align="center" width="50%"><a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/tour-overview-ps1.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/tour-overview-ps1.webp" width="100%" alt="Workspace overview"></a><br><strong>Workspace Overview (PSX)</strong><br><em>Monitors and workspaces selected via Metal Gear scope</em></td>
-  </tr>
-  <tr>
-    <td align="center" width="50%"><a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/tour-calendar-gameboy.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/tour-calendar-gameboy.webp" width="100%" alt="Calendar"></a><br><strong>Calendar (Gameboy)</strong><br><em>Calendar inside a Game Boy screen with time zones</em></td>
-  </tr>
-</table>
+### 🔊 Volume Mixer Examples
 
 The volume mixer in three styles:
 
@@ -169,7 +168,20 @@ The volume mixer in three styles:
   </tr>
 </table>
 
-The controls on each menu are identical across styles but the presentation is wildly different. You won't see a Gameboy screen in the Calendar for PSX.
+### 📸 Tour of Some Other Modules
+
+Styles influence every popup. Each card below shows a different popup and a different style.
+
+<table>
+  <tr>
+    <td align="center" width="50%"><a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/tour-settings-crt.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/tour-settings-crt.webp" width="100%" alt="Settings"></a><br><strong>Settings (CRT)</strong><br><em>Settings menu: styles, colors, bar, displays, apps, power, etc</em></td>
+    <td align="center" width="50%"><a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/tour-overview-ps1.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/tour-overview-ps1.webp" width="100%" alt="Workspace overview"></a><br><strong>Workspace Overview (PSX)</strong><br><em>Monitors and workspaces selected via Metal Gear scope</em></td>
+  </tr>
+  <tr>
+    <td align="center" width="50%"><a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/tour-calendar-gameboy.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/tour-calendar-gameboy.webp" width="100%" alt="Calendar"></a><br><strong>Calendar (Gameboy)</strong><br><em>Calendar inside a Game Boy screen with time zones</em></td>
+    <td align="center" width="50%"><a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/tour-notifications-ps1.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/tour-notifications-ps1.webp" width="100%" alt="Notifications"></a><br><strong>Notifications (PSX)</strong><br><em>History with Do Not Disturb, filters and inline actions like Join, Open and Focus</em></td>
+  </tr>
+</table>
 
 ## 🔒 Lock screens
 
@@ -177,8 +189,8 @@ Each style can bring its own lock screen, and the login screen reuses it.
 
 <table>
   <tr>
-    <td align="center" width="50%"><a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/lock-mgs2-anim.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/lock-mgs2-anim.webp" width="100%" alt="Oasis Gear Solid 2"></a><br><strong>Oasis Gear Solid 2</strong><br><em>Tactical tiling action</em></td>
-    <td align="center" width="50%"><a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/lock-ocarina-anim.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/lock-ocarina-anim.webp" width="100%" alt="The Legend of Oasis"></a><br><strong>The Legend of Oasis</strong><br><em>Dusk turns to night and the logo ignites on PRESS START</em></td>
+    <td align="center" width="50%"><a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/lock-mgs2-anim.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/lock-mgs2-anim.webp" width="100%" alt="Oasis Gear Solid 2"></a><br><strong>Oasis Gear Solid 2</strong><br><em>Title, menu, options, memory card load, then a wrong password and a retry</em></td>
+    <td align="center" width="50%"><a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/lock-ocarina-anim.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/lock-ocarina-anim.webp" width="100%" alt="The Legend of Oasis"></a><br><strong>The Legend of Oasis</strong><br><em>The sky runs from night to dawn, then file select, options, and a wrong password before the retry</em></td>
   </tr>
 </table>
 
