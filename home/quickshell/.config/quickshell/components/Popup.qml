@@ -194,28 +194,37 @@ PanelWindow {
             root.enter_search();
         } else if (root.search_enabled && root.search_query !== "" && event.key === Qt.Key_N) {
             root.step_search(back ? -1 : 1);
+            ThemeAudio.play("cursor");
         } else if (event.key === Qt.Key_Backspace && Popups.back_name !== "") {
+            ThemeAudio.play("cancel");
             Popups.back();
         } else if ((event.modifiers & Qt.ControlModifier) && (event.key === Qt.Key_H || event.key === Qt.Key_L)) {
             Popups.walk(event.key === Qt.Key_L ? 1 : -1);
         } else if (event.key === Qt.Key_Q) {
+            ThemeAudio.play("cancel");
             Popups.close();
         } else if (tabs.length > 0 && event.key === Qt.Key_BracketLeft) {
             step_tab(-1);
+            ThemeAudio.play("cursor");
         } else if (tabs.length > 0 && event.key === Qt.Key_BracketRight) {
             step_tab(1);
+            ThemeAudio.play("cursor");
         } else if (event.key >= Qt.Key_1 && event.key < Qt.Key_1 + Math.min(9, tabs.length)) {
             set_tab(event.key - Qt.Key_1);
+            ThemeAudio.play("cursor");
         } else if ((event.key === Qt.Key_Tab || event.key === Qt.Key_Backtab) && (tabs.length > 0 || sub_views.length > 0)) {
             step_sub(back ? -1 : 1);
+            ThemeAudio.play("cursor");
         } else if (jumps_enabled && event.key === Qt.Key_G) {
             if (event.modifiers & Qt.ShiftModifier) {
                 jump_last();
+                ThemeAudio.play("cursor");
             } else {
                 const now_ms = Date.now();
                 if (now_ms - last_g_ms < 500) {
                     last_g_ms = 0;
                     jump_first();
+                    ThemeAudio.play("cursor");
                 } else {
                     last_g_ms = now_ms;
                 }
@@ -830,16 +839,21 @@ PanelWindow {
 
                     Keys.onPressed: event => {
                         if (event.key === Qt.Key_Escape) {
+                            ThemeAudio.play("cancel");
                             if (root.search_starts_open) root.accept_search();
                             else root.clear_search();
                         } else if (event.key === Qt.Key_Backspace && search_input.text === "") {
-                            if (!root.search_starts_open) root.clear_search();
-                            else return;
+                            if (!root.search_starts_open) {
+                                ThemeAudio.play("cancel");
+                                root.clear_search();
+                            } else return;
                         } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
+                            ThemeAudio.play("confirm");
                             if (root.search_starts_open) root.search_accept();
                             else root.accept_search();
                         } else if (event.key === Qt.Key_Down || event.key === Qt.Key_Up) {
                             root.step_search(event.key === Qt.Key_Down ? 1 : -1);
+                            ThemeAudio.play("cursor");
                         } else {
                             return;
                         }
@@ -858,6 +872,7 @@ PanelWindow {
                     opacity: root.help_open ? 0 : 1
 
                     Keys.onEscapePressed: {
+                        ThemeAudio.play("cancel");
                         if (root.search_query !== "") root.clear_search();
                         else Popups.close();
                     }

@@ -68,6 +68,7 @@ Popup {
     }
 
     function run_selected_upgrade() {
+        ThemeAudio.play("confirm");
         UpdatesState.run_upgrade();
         Popups.close();
     }
@@ -75,12 +76,15 @@ Popup {
     function handle_key(event) {
         if (event.key === Qt.Key_J) {
             root.move_selected(1);
+            ThemeAudio.play("cursor");
             event.accepted = true;
         } else if (event.key === Qt.Key_K) {
             root.move_selected(-1);
+            ThemeAudio.play("cursor");
             event.accepted = true;
         } else if (event.key === Qt.Key_R) {
             UpdatesState.refresh();
+            ThemeAudio.play("confirm");
             event.accepted = true;
         } else if (event.key === Qt.Key_U || event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
             root.run_selected_upgrade();
@@ -208,7 +212,10 @@ Popup {
                         items: root.current_list
                         selected: root.selected
                         aur: root.current_sub === 1
-                        onClicked: index => root.selected = index
+                        onClicked: index => {
+                            root.selected = index;
+                            ThemeAudio.play("cursor");
+                        }
                     }
                 }
 
@@ -217,7 +224,10 @@ Popup {
                     Ps1.UpdateBlocks {
                         packages: root.current_list
                         selected: root.selected
-                        onPicked: index => root.selected = index
+                        onPicked: index => {
+                            root.selected = index;
+                            ThemeAudio.play("cursor");
+                        }
                     }
                 }
 
@@ -298,7 +308,10 @@ Popup {
 
                         MouseArea {
                             anchors.fill: parent
-                            onClicked: root.selected = update_row.index
+                            onClicked: {
+                                root.selected = update_row.index;
+                                ThemeAudio.play("cursor");
+                            }
                         }
                     }
                 }
@@ -312,6 +325,7 @@ Popup {
                 onPicked: index => {
                     root.current_sub = index;
                     root.selected = 0;
+                    ThemeAudio.play("cursor");
                 }
             }
 

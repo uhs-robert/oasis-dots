@@ -102,6 +102,7 @@ Popup {
     }
 
     function focus_session(id) {
+        ThemeAudio.play("confirm");
         Quickshell.execDetached(["sh", "-c", "exec ~/.local/bin/keeptabs-pick --focus \"$1\"", "sh", id]);
         Popups.close();
     }
@@ -127,12 +128,15 @@ Popup {
     function handle_key(event) {
         if (root.current_tab === 1 && event.key === Qt.Key_R) {
             ClaudeUsageState.refresh(true);
+            ThemeAudio.play("confirm");
             event.accepted = true;
         } else if (root.current_tab === 0 && event.key === Qt.Key_J) {
             root.move_selected(1);
+            ThemeAudio.play("cursor");
             event.accepted = true;
         } else if (root.current_tab === 0 && event.key === Qt.Key_K) {
             root.move_selected(-1);
+            ThemeAudio.play("cursor");
             event.accepted = true;
         } else if (root.current_tab === 0 && (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) && root.sessions[root.selected]) {
             root.focus_session(root.sessions[root.selected].id);
@@ -164,7 +168,10 @@ Popup {
                 labels: root.tabs
                 current: root.current_tab
                 tab_height: Style.px(26)
-                onPicked: index => root.set_tab(index)
+                onPicked: index => {
+                    root.set_tab(index);
+                    ThemeAudio.play("cursor");
+                }
             }
 
             // --- Content: fixed height so the popup never resizes between tabs ---

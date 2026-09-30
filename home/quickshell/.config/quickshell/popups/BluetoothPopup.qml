@@ -62,14 +62,17 @@ Popup {
     onSearch_select: index => root.selected = index
 
     function toggle_power() {
+        ThemeAudio.play("confirm");
         if (root.has_adapter) root.adapter.enabled = !root.adapter.enabled;
     }
 
     function toggle_scan() {
+        ThemeAudio.play("confirm");
         if (root.has_adapter && root.adapter.enabled) root.adapter.discovering = !root.adapter.discovering;
     }
 
     function activate(device) {
+        ThemeAudio.play("confirm");
         root.follow(device);
         if (device === root.pair_target && root.pair_phase !== "failed") return;
         if (device === root.pair_target) root.clear_pair();
@@ -159,6 +162,7 @@ Popup {
                 if (root.is_help_key(event) || event.key === Qt.Key_Q) return;
                 if (event.key === Qt.Key_Y && root.forget_target) root.forget_target.forget();
                 if (event.key === Qt.Key_Y || event.key === Qt.Key_N || event.key === Qt.Key_Escape) {
+                    ThemeAudio.play(event.key === Qt.Key_Y ? "confirm" : "cancel");
                     root.forget_confirm = false;
                     root.forget_target = null;
                 }
@@ -168,7 +172,10 @@ Popup {
 
             const row = root.rows[root.selected];
             if (event.key === Qt.Key_T && (event.modifiers & Qt.ShiftModifier)) {
-                if (row && row.paired) row.trusted = !row.trusted;
+                if (row && row.paired) {
+                    row.trusted = !row.trusted;
+                    ThemeAudio.play("confirm");
+                }
                 event.accepted = true;
             } else if (event.key === Qt.Key_T) {
                 root.toggle_power();
@@ -180,15 +187,18 @@ Popup {
                 if (row && row.paired) {
                     root.forget_target = row;
                     root.forget_confirm = true;
+                    ThemeAudio.play("confirm");
                 }
                 event.accepted = true;
             } else if (event.key === Qt.Key_J) {
                 const min = root.has_adapter ? -1 : 0;
                 root.selected = root.wrap_index(root.selected, 1, min, root.rows.length - min);
+                ThemeAudio.play("cursor");
                 event.accepted = true;
             } else if (event.key === Qt.Key_K) {
                 const min = root.has_adapter ? -1 : 0;
                 root.selected = root.wrap_index(root.selected, -1, min, root.rows.length - min);
+                ThemeAudio.play("cursor");
                 event.accepted = true;
             } else if ((event.key === Qt.Key_Return || event.key === Qt.Key_Enter) && root.selected === -1) {
                 root.toggle_power();

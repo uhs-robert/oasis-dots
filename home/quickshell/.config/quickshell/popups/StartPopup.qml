@@ -40,6 +40,7 @@ Popup {
     onJump_last: root.selected = root.actions.length - 1
 
     function choose(index) {
+        ThemeAudio.play("confirm");
         selected = index;
         if (index === 0) {
             if (!Pickers.open("apps", Popups.open_anchor, Popups.open_color, Popups.open_screen_name, "start")) run(0);
@@ -93,9 +94,11 @@ Popup {
             }
             if (event.key === Qt.Key_J) {
                 root.selected = root.wrap_index(root.selected, 1, 0, root.actions.length);
+                ThemeAudio.play("cursor");
                 event.accepted = true;
             } else if (event.key === Qt.Key_K) {
                 root.selected = root.wrap_index(root.selected, -1, 0, root.actions.length);
+                ThemeAudio.play("cursor");
                 event.accepted = true;
             } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
                 root.choose(root.selected);
