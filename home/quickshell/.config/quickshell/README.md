@@ -103,7 +103,7 @@ The main binds that open things (the leader is `SUPER`):
 | `SUPER + CTRL + V`                    | Clipboard picker                                   |
 | `SUPER + CTRL + SPACE`                | Directory picker                                   |
 | `SUPER + CTRL + E`                    | Emoji picker                                       |
-| `ALT + TAB`, `SUPER + SHIFT + TAB`    | Workspace overview (also the top-left hot corner)  |
+| `ALT + TAB`, `SUPER + TAB`            | Workspace overview (also the top-left hot corner)  |
 | `Print`, `SUPER + I`                  | Screenshot and recording tool                      |
 | `SUPER + [` / `]`                     | Focus the previous / next notification toast      |
 | `SUPER + Q`, then `N`                 | Notification center                                |

@@ -38,6 +38,9 @@ end
 --- Focus the previously focused window.
 Window.focus_last = function() return Hypr.dispatch(hl.dsp.focus({ last = true })) end
 
+--- Focus the urgent window, or the previously focused window if none is urgent.
+Window.focus_urgent_or_last = function() return Hypr.dispatch(hl.dsp.focus({ urgent_or_last = true })) end
+
 --- @param dir string  Direction code: "l", "d", "u", "r"
 Window.focus_dir = function(dir) return Hypr.dispatch(hl.dsp.focus({ direction = dir })) end
 
