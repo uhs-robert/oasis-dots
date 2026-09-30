@@ -407,9 +407,8 @@ PanelWindow {
         const tile = root.selected_tile;
         if (!tile) return;
         const select = ["select-window", "-t", tile.key, ";", "select-pane", "-t", root.current_pane];
-        let address = "";
-        if (TmuxData.client_of(root.clients, tile.session_id)) {
-            address = root.window_address(tile.session_name);
+        let address = TmuxData.client_of(root.clients, tile.session_id) ? root.window_address(tile.session_name) : "";
+        if (address !== "") {
             root.tmux(select);
         } else {
             const latest = TmuxData.latest_client(root.clients);
@@ -504,7 +503,7 @@ PanelWindow {
             let args = [];
             for (const k of moving) args = args.concat(args.length > 0 ? [";"] : [], ["move-window", "-s", k, "-t", tile.session_id + ":"]);
             root.tmux(args);
-            root.selected_key = moving[0];
+            root.selected_key = tile.session_id + ":" + moving[0].split(":")[1];
         }
         reload_timer.restart();
     }

@@ -135,8 +135,5 @@ function latest_client(clients) {
 
 // Hyprland titles are the session name, with a "Tmux " prefix when a tmuxifier layout set the title string.
 function title_matches(title, session_name) {
-    for (const base of [session_name, "Tmux " + session_name]) {
-        if (title === base || title.startsWith(base + " ")) return true;
-    }
-    return false;
+    return title === session_name || title === "Tmux " + session_name;
 }
