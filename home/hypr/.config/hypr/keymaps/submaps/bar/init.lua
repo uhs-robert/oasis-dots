@@ -3,6 +3,7 @@
 
 local Submap = require("lib.key.submap") ---@class Submap
 local Cmd = require("lib.actions.cmd") ---@class Cmd
+local Menu = require("lib.actions.menu") ---@class Menu
 local Scripts = require("lib.scripts") ---@class Scripts
 
 local function popup(name) return Cmd.run(Scripts.qs_ipc .. " call popup open " .. name) end
@@ -16,7 +17,7 @@ Submap.define({
 
   -- stylua: ignore
   binds = {
-    { "A", popup("keeptabs"),      "Agents" },
+    { "A", Menu.agents(),          "Agents" },
     { "B", popup("bluetooth"),     "Bluetooth" },
     { "C", popup("clock"),         "Calendar" },
     { "I", popup("network"),       "Network and Internet" },

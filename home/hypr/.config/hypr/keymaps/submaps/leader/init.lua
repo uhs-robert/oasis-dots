@@ -41,7 +41,7 @@ Submap.define({
 
       -- Bar popups
       { "SPACE",         popup("start"),                                  "Start Menu" },
-      { "A",             popup("keeptabs"),                               "Agents" },
+      { "A",             Menu.agents(),                                   "Agents" },
       { "B",             popup("bluetooth"),                              "Bluetooth" },
       { "C",             popup("clock"),                                  "Calendar" },
       { "I",             popup("network"),                                "Network and Internet" },
