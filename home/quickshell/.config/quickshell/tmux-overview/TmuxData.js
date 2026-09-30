@@ -88,7 +88,7 @@ function parse_model(text) {
             const lead_pane = own.find(p => p.active) || own[0];
             if (w.active) g.active_tile = tiles.length;
             g.tiles.push(tiles.length);
-            tiles.push({ key: w.id, id: w.id, index: w.index, name: w.name, group: groups.length, session_id: s.id, session_name: s.name, active: w.active, cols: w.cols, rows: w.rows, panes: own, cmd: lead_pane ? lead_pane.cmd : "" });
+            tiles.push({ key: s.id + ":" + w.id, id: w.id, index: w.index, name: w.name, group: groups.length, session_id: s.id, session_name: s.name, active: w.active, cols: w.cols, rows: w.rows, panes: own, cmd: lead_pane ? lead_pane.cmd : "" });
         }
         if (g.active_tile < 0) g.active_tile = g.tiles[0];
         groups.push(g);

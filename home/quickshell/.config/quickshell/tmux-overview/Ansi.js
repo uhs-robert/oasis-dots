@@ -87,7 +87,7 @@ function to_html(raw, palette, default_fg, default_bg, max_lines) {
     const out = [];
     for (const line of kept) {
         let html = "";
-        let open = "";
+        let open = span_open(state, default_fg, default_bg);
         let text = "";
         const flush = () => {
             if (text === "") return;
@@ -107,7 +107,6 @@ function to_html(raw, palette, default_fg, default_bg, max_lines) {
         }
         text += line.slice(last);
         flush();
-        open = span_open(state, default_fg, default_bg);
         out.push(html);
     }
     return out.join("<br>");

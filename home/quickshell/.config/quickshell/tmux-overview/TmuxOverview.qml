@@ -369,7 +369,7 @@ PanelWindow {
     function activate() {
         const tile = root.selected_tile;
         if (!tile) return;
-        const select = ["select-window", "-t", tile.id, ";", "select-pane", "-t", root.current_pane];
+        const select = ["select-window", "-t", tile.key, ";", "select-pane", "-t", root.current_pane];
         let address = "";
         if (TmuxData.client_of(root.clients, tile.session_id)) {
             address = root.window_address(tile.session_name);
@@ -381,6 +381,7 @@ PanelWindow {
                 root.tmux(["switch-client", "-c", latest.name, "-t", tile.session_id, ";"].concat(select));
             } else {
                 root.tmux(select);
+                Quickshell.execDetached(["kitty", "-e", "tmux", "attach-session", "-t", tile.session_id]);
             }
         }
         root.hide_overview();
