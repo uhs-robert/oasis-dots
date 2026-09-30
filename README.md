@@ -14,7 +14,7 @@
 <p align="center">Oasis-themed dotfiles for Arch Linux and Hyprland using Quickshell.</p>
 
 <p align="center">
-  <a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/hero.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/hero.webp" width="100%" alt="Switching styles, the Leader menu, the overview and the Duck Hunt region selector"></a>
+  <a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/hero-v2.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/hero-v2.webp" width="100%" alt="Switching styles, the Leader menu, the overview and a region selection with zoom"></a>
 </p>
 
 ## 🖥️ Overview
