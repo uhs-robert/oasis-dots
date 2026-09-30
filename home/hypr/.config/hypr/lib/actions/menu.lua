@@ -95,9 +95,12 @@ end
 --- @return fun()
 function Menu.tmux() return Cmd.run(Scripts.rofi_tmux) end
 
---- Return an action that opens the keeptabs agent session picker.
+--- Return an action that opens the Quickshell keeptabs popup, falling back to the rofi picker.
 --- @return fun()
-function Menu.agents() return Cmd.run("~/.local/bin/keeptabs-pick") end
+function Menu.agents()
+  local open = Scripts.qs_ipc .. " call popup open keeptabs"
+  return Cmd.run("sh -c 'out=$(" .. open .. " 2>&1) && [ -z \"$out\" ] || exec ~/.local/bin/keeptabs-pick'")
+end
 
 --- Return an action that picks a clipboard history entry and copies it back.
 --- @return fun()
