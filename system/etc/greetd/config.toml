@@ -6,7 +6,7 @@ vt = "next"
 # The default session, also known as the greeter.
 [default_session]
 # command = "/usr/local/bin/tuigreet-oasis"
-command = "dbus-run-session start-hyprland -- -c /etc/greetd/hyprland.lua"
+command = "dbus-run-session start-hyprland -- -c /etc/greetd/hyprland.lua >/dev/null 2>&1"
 
 # The user to run the command as. The privileges this user must have depends
 # on the greeter. A graphical greeter may for example require the user to be
