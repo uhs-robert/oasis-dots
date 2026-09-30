@@ -16,6 +16,7 @@ Rectangle {
     property var entry: null
     property bool selected: false
     property int focused_action: -1
+    readonly property bool highlighted: root.selected || hover_handler.hovered
     readonly property var notification: root.entry ? root.entry.notification : null
     // A Dragon Quest window; toast_enter "type" types its summary out once.
     readonly property bool dq: Style.card_layout === "dq"
@@ -76,8 +77,8 @@ Rectangle {
     color: Style.frame_visor || Style.custom_frame || root.own_surface ? "transparent" : Style.boxed_cards
         ? (root.selected ? Qt.tint(Style.frame_color, Qt.alpha(Style.caret_color, 0.08)) : Style.frame_color)
         : (root.selected ? Theme.bg_surface : Theme.bg_mantle)
-    border.width: Style.frame_visor || Style.custom_frame || root.own_surface ? 0 : root.selected && !Style.boxed_cards ? 2 : 1
-    border.color: root.selected ? Style.caret_color : root.notify ? Qt.tint(Style.frame_color, Qt.alpha(root.accent, 0.7)) : Style.boxed_cards ? root.accent : Theme.ui_border
+    border.width: Style.frame_visor || Style.custom_frame || root.own_surface ? 0 : root.highlighted && !Style.boxed_cards ? 2 : 1
+    border.color: root.highlighted ? Theme.theme_secondary : root.notify ? Qt.tint(Style.frame_color, Qt.alpha(root.accent, 0.7)) : Style.boxed_cards ? root.accent : Theme.ui_border
     clip: true
 
     opacity: 0
@@ -147,7 +148,7 @@ Rectangle {
         active: root.dq
         anchors.fill: parent
         sourceComponent: Weather.DqWindow {
-            border.color: root.selected ? Style.caret_color : Theme.fg_strong
+            border.color: root.highlighted ? Theme.theme_secondary : Theme.fg_strong
         }
     }
 
@@ -205,7 +206,7 @@ Rectangle {
 
     VisorGlass {
         anchors.fill: parent
-        border_color: root.selected ? Style.caret_color : Qt.alpha(root.accent, 0.5)
+        border_color: root.highlighted ? Theme.theme_secondary : Qt.alpha(root.accent, 0.5)
     }
 
     FrameShade {
@@ -218,8 +219,8 @@ Rectangle {
 
     CustomFrame {
         anchors.fill: parent
-        chamfer_edge: root.selected ? Style.caret_color : Style.frame_border_color
-        octagon_edge: root.selected ? Style.caret_color : root.accent
+        chamfer_edge: root.highlighted ? Theme.theme_secondary : Style.frame_border_color
+        octagon_edge: root.highlighted ? Theme.theme_secondary : root.accent
         octagon_cut: Math.min(Style.frame_octagon, 10)
         struts: false
     }
