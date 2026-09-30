@@ -19,6 +19,10 @@ PanelWindow {
     property string held_screen_name: ""
     // The filmstrip view instead of the mini-map, until the overview closes.
     property bool filmstrip: false
+    // Special workspaces instead of regular ones, until toggled back or the overview closes.
+    property bool special: false
+    // Special workspaces that keep a tile even when Hyprland has dropped them for being empty.
+    readonly property var pinned_specials: ["scratchpad"]
     property real reveal: 0
 
     property string selected_key: ""
@@ -31,7 +35,7 @@ PanelWindow {
     property bool help_open: false
     property string query: ""
 
-    readonly property var model: root.visible ? root.build(Hyprland.monitors.values, Hyprland.workspaces.values, Hyprland.toplevels.values) : ({ groups: [], tiles: [] })
+    readonly property var model: root.visible ? root.build(Hyprland.monitors.values, Hyprland.workspaces.values, Hyprland.toplevels.values, root.special) : ({ groups: [], tiles: [] })
     readonly property var groups: root.model.groups
     readonly property var tiles: root.model.tiles
     readonly property var tile_index_of: {
@@ -40,11 +44,11 @@ PanelWindow {
         return out;
     }
 
-    // Tile delegates live per workspace key; closed windows drop out of marks and the carried set.
+    // Tile delegates live per workspace key; closed windows drop out of marks and the carried set, even ones in the other mode.
     onTilesChanged: {
         Layout.sync_keys(tile_slots, root.tiles.map(t => t.key));
         const known = {};
-        for (const t of root.tiles) for (const w of t.windows) known[w.address] = true;
+        for (const t of Hyprland.toplevels.values) known[t.address] = true;
         if (root.tiles.length === 0) return;
         if (root.marks.some(a => !known[a])) root.marks = root.marks.filter(a => known[a]);
         if (root.picked.some(a => !known[a])) root.picked = root.picked.filter(a => known[a]);
@@ -136,13 +140,16 @@ PanelWindow {
         root.held_screen_name = target ? target.name : "";
         root.refresh();
         root.filmstrip = false;
+        const active_ws = Hyprland.activeToplevel ? Hyprland.activeToplevel.workspace : null;
+        const on_special = mon ? root.shown_special(mon) || (active_ws && (active_ws.name || "").startsWith("special:") ? active_ws.name : "") : "";
+        root.special = on_special !== "";
         root.picked = [];
         root.marks = [];
         root.help_open = false;
         digit_timer.stop();
         root.clear_filter();
         const ws = Hyprland.focusedWorkspace;
-        root.selected_key = ws ? "ws:" + ws.id : "";
+        root.selected_key = root.special ? "sp:" + on_special.slice(8) : ws ? "ws:" + ws.id : "";
         root.selected_address = WindowState.active_address;
         root.wanted = true;
         root.visible = true;
@@ -210,8 +217,8 @@ PanelWindow {
         };
     }
 
-    // Monitors with their workspaces in id order, then a fresh workspace slot to drop windows on.
-    function build(monitors, workspaces, toplevels) {
+    // Monitors with their workspaces in id order, then a fresh workspace slot; special mode lists only special workspaces.
+    function build(monitors, workspaces, toplevels, special) {
         const groups = [];
         const tiles = [];
         const used = {};
@@ -219,12 +226,25 @@ PanelWindow {
         for (const m of monitors) {
             const size = root.logical_size(m);
             const g = { name: m.name, monitor: m, x: m.x, y: m.y, w: size.w, h: size.h, tiles: [], focused: m.focused };
-            const list = workspaces.filter(w => w.monitor === m && !(w.name || "").startsWith("special:")).sort((a, b) => a.id - b.id);
+            const owns = w => w.monitor === m || (!w.monitor && m.focused);
+            const list = workspaces.filter(w => owns(w) && (w.name || "").startsWith("special:") === special).sort((a, b) => a.id - b.id);
+            const shown_special = root.shown_special(m);
             for (const w of list) {
                 const wins = toplevels.filter(t => t.workspace === w).map(t => root.window_entry(t, g));
                 wins.sort((a, b) => (a.floating ? 1 : 0) - (b.floating ? 1 : 0));
                 g.tiles.push(tiles.length);
-                tiles.push({ key: "ws:" + w.id, id: w.id, name: w.name || String(w.id), ws: w, group: groups.length, is_new: false, focused: w.focused, shown_on_monitor: m.activeWorkspace === w, windows: wins });
+                const name = special ? w.name.slice(8) : w.name || String(w.id);
+                const shown = special ? shown_special === w.name : m.activeWorkspace === w;
+                tiles.push({ key: (special ? "sp:" + name : "ws:" + w.id), id: w.id, name: name, ws: w, group: groups.length, is_new: false, focused: w.focused, shown_on_monitor: shown, windows: wins });
+            }
+            if (special) {
+                for (const name of m.focused ? root.pinned_specials : []) {
+                    if (workspaces.some(w => w.name === "special:" + name)) continue;
+                    g.tiles.push(tiles.length);
+                    tiles.push({ key: "sp:" + name, id: 0, name: name, ws: null, group: groups.length, is_new: true, focused: false, shown_on_monitor: false, windows: [] });
+                }
+                if (g.tiles.length > 0) groups.push(g);
+                continue;
             }
             let next = Math.max(0, ...list.map(w => w.id)) + 1;
             while (used[next]) next++;
@@ -311,8 +331,9 @@ PanelWindow {
         root.selected_address = order[(at + delta + order.length) % order.length].address;
     }
 
+    // Special mode has no usable ids, so digits count tiles in hjkl order there.
     function jump(id) {
-        const i = root.tiles.findIndex(t => !t.is_new && t.id === id);
+        const i = root.special ? (id >= 1 && id <= root.nav_order.length ? root.nav_order[id - 1] : -1) : root.tiles.findIndex(t => !t.is_new && t.id === id);
         if (i >= 0) root.select(i);
         return i >= 0;
     }
@@ -331,7 +352,21 @@ PanelWindow {
         digit_timer.restart();
     }
 
+    function shown_special(monitor) {
+        return ((monitor.lastIpcObject || {}).specialWorkspace || {}).name || "";
+    }
+
+    function quoted(text) {
+        return "'" + text.replace(/\\/g, "\\\\").replace(/'/g, "\\'") + "'";
+    }
+
     function focus_workspace(tile) {
+        if (root.special) {
+            if (tile.shown_on_monitor) return;
+            special_timer.name = tile.name;
+            special_timer.restart();
+            return;
+        }
         if (tile.is_new) {
             const g = root.groups[tile.group];
             Hyprland.dispatch("hl.dsp.focus({ monitor = '" + g.name + "' })");
@@ -340,6 +375,21 @@ PanelWindow {
         }
         const target = WindowState.workspace_selector(tile.id);
         if (target !== "") Hyprland.dispatch("hl.dsp.focus({ workspace = " + target + " })");
+    }
+
+    // Selection lands on the active window's workspace when shown, else the first tile.
+    function toggle_special() {
+        root.special = !root.special;
+        digit_timer.stop();
+        const here = root.tiles.findIndex(t => t.windows.some(w => w.address === WindowState.active_address));
+        if (here >= 0) {
+            root.select(here, WindowState.active_address);
+        } else if (root.special) {
+            if (root.nav_order.length > 0) root.select(root.nav_order[0]);
+        } else {
+            const ws = Hyprland.focusedWorkspace;
+            root.selected_key = ws ? "ws:" + ws.id : "";
+        }
     }
 
     function activate() {
@@ -430,9 +480,12 @@ PanelWindow {
             refresh_timer.restart();
             return;
         }
-        for (const a of moving) WindowState.move_to_workspace(a, tile.id, false);
-        if (tile.is_new) Hyprland.dispatch("hl.dsp.workspace.move({ workspace = " + tile.id + ", monitor = '" + root.groups[tile.group].name + "' })");
-        root.selected_key = "ws:" + tile.id;
+        for (const a of moving) {
+            if (root.special) Hyprland.dispatch("hl.dsp.window.move({ window = " + WindowState.selector(a) + ", workspace = " + root.quoted("special:" + tile.name) + ", follow = false })");
+            else WindowState.move_to_workspace(a, tile.id, false);
+        }
+        if (tile.is_new && !root.special) Hyprland.dispatch("hl.dsp.workspace.move({ workspace = " + tile.id + ", monitor = '" + root.groups[tile.group].name + "' })");
+        root.selected_key = root.special ? tile.key : "ws:" + tile.id;
         root.selected_address = moving[0];
         refresh_timer.restart();
     }
@@ -505,6 +558,8 @@ PanelWindow {
             root.toggle_mark_all();
         } else if (!root.carrying && k === Qt.Key_X) {
             root.close_windows();
+        } else if (k === Qt.Key_S) {
+            root.toggle_special();
         } else if (k === Qt.Key_F) {
             root.filmstrip = !root.filmstrip;
         } else if (k === Qt.Key_Slash || event.text === "/") {
@@ -535,10 +590,10 @@ PanelWindow {
         : root.swap_address !== "" ? "m swap · Enter swap · Tab other window · hjkl workspace · Esc cancel · ? help"
         : root.carrying ? "hjkl workspace · Tab window · m drop · Enter drop · Esc cancel · ? help"
         : root.marks.length > 0 ? "Space mark · V mark all · m move " + root.marks.length + " · x close " + root.marks.length + " · hjkl move · Esc clear marks · ? help"
-        : "hjkl move · Tab window · Enter focus · m move · x close · Space mark · / filter · f view · ? help · q close"
+        : "hjkl move · Tab window · Enter focus · m move · x close · Space mark · / filter · f view · s special · ? help · q close"
 
-    readonly property string normal_help: "h/j/k/l move between workspaces · Arrows move between workspaces · Tab next window · Shift+Tab previous window · Enter focus window, or the workspace if empty · m pick up window, or every marked window · x close window, or every marked window · Space/v mark or unmark window · V mark or unmark all in workspace · / filter windows · 1-9 select workspace by id, type 12 quickly for workspace 12 · f toggle filmstrip view, j/k there jump monitors · Click focus window or workspace"
-    readonly property string carry_help: "h/j/k/l choose target workspace · Arrows choose target workspace · 1-9 target workspace by id, type 12 quickly for workspace 12 · Tab/Shift+Tab choose a window in the same workspace to swap with · m drop there, or swap with the SWAP window · Enter drop there, or swap · f toggle filmstrip view · Click drop on workspace · Esc cancel, marks come back"
+    readonly property string normal_help: "h/j/k/l move between workspaces · Arrows move between workspaces · Tab next window · Shift+Tab previous window · Enter focus window, or the workspace if empty · m pick up window, or every marked window · x close window, or every marked window · Space/v mark or unmark window · V mark or unmark all in workspace · / filter windows · 1-9 select workspace by id, type 12 quickly for workspace 12, or the nth special workspace · s toggle special workspaces · f toggle filmstrip view, j/k there jump monitors · Click focus window or workspace"
+    readonly property string carry_help: "h/j/k/l choose target workspace · Arrows choose target workspace · 1-9 target workspace by id, type 12 quickly for workspace 12 · s toggle special workspaces · Tab/Shift+Tab choose a window in the same workspace to swap with · m drop there, or swap with the SWAP window · Enter drop there, or swap · f toggle filmstrip view · Click drop on workspace · Esc cancel, marks come back"
     readonly property string help_text: root.typing ? "Type filter by class or title · Enter accept filter · Tab/Down next match · Shift+Tab/Up previous match · Backspace delete, clears when empty · Esc clear filter"
         : root.carrying ? root.carry_help
         : root.marks.length > 0 ? "Esc clear all marks · " + root.normal_help
@@ -554,9 +609,9 @@ PanelWindow {
         }
         if (root.carrying) return root.picked.length > 1 ? "MOVE " + root.picked.length + " windows" : "MOVE " + lead.toUpperCase();
         const tile = root.selected_tile;
-        if (!tile) return "";
+        if (!tile) return root.special ? "no special workspaces" : "";
         const mon = root.groups[tile.group] ? root.groups[tile.group].name : "";
-        return (root.marks.length > 0 ? root.marks.length + " marked · " : "") + mon + " · " + (tile.is_new ? "new workspace " + tile.name : "workspace " + tile.name + " · " + tile.windows.length + " window" + (tile.windows.length === 1 ? "" : "s"));
+        return (root.marks.length > 0 ? root.marks.length + " marked · " : "") + mon + " · " + (tile.is_new ? (root.special ? "empty special " : "new workspace ") + tile.name : (root.special ? "special " : "workspace ") + tile.name + " · " + tile.windows.length + " window" + (tile.windows.length === 1 ? "" : "s"));
     }
 
     NumberAnimation {
@@ -581,6 +636,13 @@ PanelWindow {
     }
 
     // Focus waits for the overview to drop its exclusive keyboard grab, else the grab's release restores the old window.
+    Timer {
+        id: special_timer
+        property string name: ""
+        interval: 60
+        onTriggered: Hyprland.dispatch("hl.dsp.workspace.toggle_special(" + root.quoted(special_timer.name) + ")")
+    }
+
     Timer {
         id: focus_timer
         property string address: ""
@@ -617,7 +679,7 @@ PanelWindow {
         height: parent.height - y * 2
         opacity: root.reveal
         scale: 0.97 + 0.03 * root.reveal
-        title: "OVERVIEW"
+        title: root.special ? "SPECIAL" : "OVERVIEW"
         status: root.status_text
         status_color: root.carrying || root.marks.length > 0 || root.query !== "" ? Style.text_accent : Style.text_muted
         footer: root.footer_text
