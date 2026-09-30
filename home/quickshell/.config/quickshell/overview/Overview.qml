@@ -139,6 +139,7 @@ PanelWindow {
         root.picked = [];
         root.marks = [];
         root.help_open = false;
+        digit_timer.stop();
         root.clear_filter();
         const ws = Hyprland.focusedWorkspace;
         root.selected_key = ws ? "ws:" + ws.id : "";
@@ -313,6 +314,21 @@ PanelWindow {
     function jump(id) {
         const i = root.tiles.findIndex(t => !t.is_new && t.id === id);
         if (i >= 0) root.select(i);
+        return i >= 0;
+    }
+
+    // Digits typed in quick succession name one workspace, so 1 then 2 lands on 12 when it exists.
+    function type_digit(d) {
+        const joined = digit_timer.running ? digit_timer.typed + d : "";
+        if (joined !== "" && root.jump(parseInt(joined))) {
+            digit_timer.typed = joined;
+        } else if (d !== "0") {
+            root.jump(parseInt(d));
+            digit_timer.typed = d;
+        } else {
+            return;
+        }
+        digit_timer.restart();
     }
 
     function focus_workspace(tile) {
@@ -493,8 +509,8 @@ PanelWindow {
             root.filmstrip = !root.filmstrip;
         } else if (k === Qt.Key_Slash || event.text === "/") {
             root.start_filter();
-        } else if (k >= Qt.Key_1 && k <= Qt.Key_9) {
-            root.jump(k - Qt.Key_0);
+        } else if (k >= Qt.Key_0 && k <= Qt.Key_9) {
+            root.type_digit(String(k - Qt.Key_0));
         } else {
             return;
         }
@@ -521,8 +537,8 @@ PanelWindow {
         : root.marks.length > 0 ? "Space mark · V mark all · m move " + root.marks.length + " · x close " + root.marks.length + " · hjkl move · Esc clear marks · ? help"
         : "hjkl move · Tab window · Enter focus · m move · x close · Space mark · / filter · f view · ? help · q close"
 
-    readonly property string normal_help: "h/j/k/l move between workspaces · Arrows move between workspaces · Tab next window · Shift+Tab previous window · Enter focus window, or the workspace if empty · m pick up window, or every marked window · x close window, or every marked window · Space/v mark or unmark window · V mark or unmark all in workspace · / filter windows · 1-9 select workspace by id · f toggle filmstrip view, j/k there jump monitors · Click focus window or workspace"
-    readonly property string carry_help: "h/j/k/l choose target workspace · Arrows choose target workspace · 1-9 target workspace by id · Tab/Shift+Tab choose a window in the same workspace to swap with · m drop there, or swap with the SWAP window · Enter drop there, or swap · f toggle filmstrip view · Click drop on workspace · Esc cancel, marks come back"
+    readonly property string normal_help: "h/j/k/l move between workspaces · Arrows move between workspaces · Tab next window · Shift+Tab previous window · Enter focus window, or the workspace if empty · m pick up window, or every marked window · x close window, or every marked window · Space/v mark or unmark window · V mark or unmark all in workspace · / filter windows · 1-9 select workspace by id, type 12 quickly for workspace 12 · f toggle filmstrip view, j/k there jump monitors · Click focus window or workspace"
+    readonly property string carry_help: "h/j/k/l choose target workspace · Arrows choose target workspace · 1-9 target workspace by id, type 12 quickly for workspace 12 · Tab/Shift+Tab choose a window in the same workspace to swap with · m drop there, or swap with the SWAP window · Enter drop there, or swap · f toggle filmstrip view · Click drop on workspace · Esc cancel, marks come back"
     readonly property string help_text: root.typing ? "Type filter by class or title · Enter accept filter · Tab/Down next match · Shift+Tab/Up previous match · Backspace delete, clears when empty · Esc clear filter"
         : root.carrying ? root.carry_help
         : root.marks.length > 0 ? "Esc clear all marks · " + root.normal_help
@@ -550,6 +566,12 @@ PanelWindow {
         duration: 170
         easing.type: Easing.OutCubic
         onFinished: if (!root.wanted) root.visible = false
+    }
+
+    Timer {
+        id: digit_timer
+        property string typed: ""
+        interval: 600
     }
 
     Timer {
