@@ -20,7 +20,7 @@ Submap.define({
 
   -- stylua: ignore
   binds = {
-    { "SPACE",     Menu.hyprwindow(),                    "Find Window" },
+    { "SPACE",     Menu.overview_search(),               "Search Windows" },
     { "SLASH",     Menu.drun(),                          "Search Applications" },
     { "A",         Cmd.term("aria2tui"),                 "Aria2tui" },
     { "B",         Apps.open("bottles"),                 "Bottles" },

@@ -11,7 +11,7 @@ Hyprland starts it with `qs -n` (see `home/hypr/.config/hypr/config/autostart/`)
 | `shell.qml`   | Entry point: a bar per monitor, then every popup, picker provider, IPC handler and overlay |
 | `bar/`        | The bar, its islands, the submap tab, the hot corner, and one file per module in `modules/` |
 | `popups/`     | One popup per bar module (clock, volume, network, weather...), plus Start, Power and the screenshot tool |
-| `picker/`     | The fuzzy picker, its providers (apps, windows, clipboard, dirs, emoji, keybinds) and the HyprVim `:` prompt |
+| `picker/`     | The fuzzy picker, its providers (apps, clipboard, dirs, emoji, keybinds) and the HyprVim `:` prompt |
 | `services/`   | Singletons that hold state (media, network, weather, notifications...) and the IPC handlers |
 | `components/` | Shared widgets, with per-style pieces in their own folders (`nes/`, `ps1/`, `oasis/`...)   |
 | `theme/`      | `Theme.qml` (colors from the Oasis theme) and `Style.qml` (every style's tokens)          |
@@ -99,7 +99,7 @@ The main binds that open things (the leader is `SUPER`):
 | `SUPER + SPACE`, then a letter        | The same popups, plus `S` Settings and `SPACE` Start |
 | `SUPER + /`                           | Keybinds picker for the current submap             |
 | `SUPER + O`                           | Apps picker                                        |
-| `SUPER + T`                           | Windows picker (`SHIFT` moves the focused window there) |
+| `SUPER + T`                           | Workspace overview with window search (`SHIFT` carries the focused window to a workspace and follows it, `CTRL + SHIFT` leaves the view where it is) |
 | `SUPER + CTRL + V`                    | Clipboard picker                                   |
 | `SUPER + CTRL + SPACE`                | Directory picker                                   |
 | `SUPER + CTRL + E`                    | Emoji picker                                       |
@@ -129,7 +129,7 @@ qs-ipc show        # list every target and function
 | `picker`        | `open <name>`, `open_with <name> <mode>`, `toggle <name>`, `close`    |
 | `settings`      | `open <section>`, `toggle`                                            |
 | `style`         | `set`, `cycle`, `get`, `set_lock`, `set_lock_tint`, `set_lock_backdrop`, `toggle_cava_line` and their getters |
-| `overview`      | `open`, `close`, `toggle`                                             |
+| `overview`      | `open`, `close`, `toggle`, `search`, `move_follow`, `move_silent`                                           |
 | `notifications` | `open`, `close`, `toggle_dnd`, `clear_all`, `dismiss_latest`, `dismiss_all`, `focus_toast`, `has_toast` |
 | `screenshot`    | `open`, `close`, `toggle`, `select`, `pick`, `share`, `stop_recording` and the recording callbacks |
 | `lock`          | `lock`, `state`, `preview <style>`, `preview_close`                   |

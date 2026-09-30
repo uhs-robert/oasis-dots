@@ -64,7 +64,6 @@ Menu.drun = function() return Menu.picker("apps", show_cmd("drun")) end
 Menu.run = function() return Menu.show("run") end
 Menu.ssh = function() return Menu.show("ssh") end
 Menu.window = function() return Menu.show("window") end
-Menu.hyprwindow = function() return Menu.picker("windows", show_cmd("hyprwindow")) end
 
 --- Return an action that lists the active submap's described binds, falling back to the rofi script.
 --- @return fun()
@@ -76,12 +75,15 @@ end
 --- @return fun()
 function Menu.overview() return Cmd.run(Scripts.qs_ipc .. " call overview open") end
 
---- Return an action that moves the focused window to a picked window's workspace.
+--- Return an action that opens the workspace overview with window search active.
+--- @return fun()
+function Menu.overview_search() return Cmd.run(Scripts.qs_ipc .. " call overview search") end
+
+--- Return an action that opens the overview carrying the focused window, to drop it on a workspace.
 --- @param follow boolean Follow the window to its new workspace.
 --- @return fun()
-function Menu.hyprwindow_move(follow)
-  local mode = follow and "move" or "move-silent"
-  return Menu.picker("windows", Scripts.window_selector .. " --" .. mode, mode)
+function Menu.overview_move(follow)
+  return Cmd.run(Scripts.qs_ipc .. " call overview " .. (follow and "move_follow" or "move_silent"))
 end
 
 --- Return an action that picks a $PATH executable and runs it in a terminal.
