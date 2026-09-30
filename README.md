@@ -38,23 +38,19 @@ No mouse required. [HyprVim](https://github.com/uhs-robert/hyprvim) gives Hyprla
 
 <p align="center">
   <a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/region-ps1.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/region-ps1.webp" width="100%" alt="The PS1 region selector, steered with hjkl, with its zoom scope"></a>
+  <br><em>The screenshot region selector: move, anchor and resize with <code>hjkl</code>, zoom with <code>i</code>/<code>o</code>, across every monitor</em>
 </p>
 
 <table>
   <tr>
-    <td align="center" width="50%"><a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/picker-keybinds.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/picker-keybinds.webp" width="100%" alt="Keybinds picker"></a><br><strong>Keybinds picker</strong><br><em>SUPER + / searches and runs the binds of the current mode</em></td>
-    <td align="center" width="50%"><a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/picker-emoji.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/picker-emoji.webp" width="100%" alt="Emoji picker"></a><br><strong>Emoji picker</strong><br><em>Type to filter, Enter types it into the window you came from</em></td>
+    <td align="center" width="34%"><a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/whichkey-leader.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/whichkey-leader.webp" width="100%" alt="Which-key"></a><br><strong>Which-key</strong><br><em>Every submap lists its keys as you enter it (PSX style)</em></td>
+    <td align="center" width="66%"><a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/picker-keybinds.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/picker-keybinds.webp" width="100%" alt="Keybind executor"></a><br><strong>Keybind executor</strong><br><em>SUPER + / fuzzy-searches the binds of the mode you are in and runs the one you pick</em></td>
   </tr>
 </table>
 
 ### Retro styles
 
-The Quickshell shell swaps its whole look live, from a clean Oasis or Modern style to NES, SNES, Game Boy, PS1, PS2, FF7, GoldenEye, Metroid, Half-Life and TIE Fighter. Styles bring their own transitions, sounds, picker skins and lock screens, and colors always come from the active Oasis palette, so every style works with every theme.
-
-<p align="center">
-  <a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/bar-styles.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/bar-styles.webp" width="100%" alt="The bar in Oasis, Modern, Neovim, Metroid and PS1"></a>
-  <a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/weather-styles.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/weather-styles.webp" width="100%" alt="The weather popup in NES, Game Boy, PS1, FF7, Metroid and Half-Life"></a>
-</p>
+The Quickshell shell swaps its whole look live, from a clean Oasis or Modern style to NES, SNES, Game Boy, PS1, PS2, FF7, GoldenEye, Metroid, Half-Life and TIE Fighter. Styles bring their own transitions, sounds, picker skins and lock screens, and colors always come from the active Oasis palette, so every style works with every theme. See [Styles](#-styles).
 
 ### One theme everywhere
 
@@ -76,7 +72,48 @@ Every shell piece has a fallback (rofi pickers, hyprlock, tuigreet at login), ch
 
 The [Hyprland README](home/hypr/.config/hypr/README.md) and the [Quickshell README](home/quickshell/.config/quickshell/README.md) have the rest.
 
+## 🎨 Styles
+
+A style changes the whole shell at once: the bar, every popup, the pickers, the fonts, the sounds, the transitions and the lock screen. Pick one in Settings > Style (`SUPER + SPACE` then `S`) and it swaps live. Colors always come from the active Oasis palette, so every style works with every theme.
+
+There are 15 to choose from: Oasis (the default), Modern, Neovim, Terminal, CRT, NES, Game Boy, SNES, PSX, FF7, GoldenEye, PS2, TIE Fighter, Half-Life and Metroid. A few of them, as the bar:
+
+<table>
+  <tr>
+    <td width="22%"><strong>Oasis</strong><br><em>The default: slanted frames and a horizon rule</em></td>
+    <td><a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/bar-oasis.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/bar-oasis.webp" width="100%" alt="Oasis bar"></a></td>
+  </tr>
+  <tr>
+    <td width="22%"><strong>Modern</strong><br><em>Rounded capsule islands</em></td>
+    <td><a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/bar-modern.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/bar-modern.webp" width="100%" alt="Modern bar"></a></td>
+  </tr>
+  <tr>
+    <td width="22%"><strong>Neovim</strong><br><em>A lualine-style bar with the HyprVim mode chip</em></td>
+    <td><a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/bar-neovim.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/bar-neovim.webp" width="100%" alt="Neovim bar"></a></td>
+  </tr>
+  <tr>
+    <td width="22%"><strong>Metroid</strong><br><em>Metroid Prime's combat visor</em></td>
+    <td><a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/bar-metroid.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/bar-metroid.webp" width="100%" alt="Metroid bar"></a></td>
+  </tr>
+  <tr>
+    <td width="22%"><strong>PSX</strong><br><em>PlayStation memory card menus</em></td>
+    <td><a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/bar-ps1.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/bar-ps1.webp" width="100%" alt="PSX bar"></a></td>
+  </tr>
+</table>
+
+And the same weather popup in three of them:
+
+<table>
+  <tr>
+    <td align="center" width="33%"><a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/weather-nes.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/weather-nes.webp" width="100%" alt="NES weather"></a><br><strong>NES</strong><br><em>Dragon Quest bars</em></td>
+    <td align="center" width="33%"><a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/weather-ff7.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/weather-ff7.webp" width="100%" alt="FF7 weather"></a><br><strong>FF7</strong><br><em>Materia orbs</em></td>
+    <td align="center" width="33%"><a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/weather-halflife.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/weather-halflife.webp" width="100%" alt="Half-Life weather"></a><br><strong>Half-Life</strong><br><em>HEV suit readout</em></td>
+  </tr>
+</table>
+
 ## 📸 Tour
+
+Every popup exists in every style. Each card below shows a different one.
 
 <table>
   <tr>
