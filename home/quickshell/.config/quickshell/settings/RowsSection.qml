@@ -12,6 +12,9 @@ SettingsPane {
     property var rows: []
     property int cursor: 0
     property int pick_min: 2
+    property var pick_values: []
+    // The value under the open list's cursor, undefined when no list is open.
+    readonly property var highlighted_value: root.picking && picker.highlighted >= 0 ? root.pick_values[picker.highlighted] : undefined
     default property alias header: header_col.data
     property alias footer: footer_col.data
 
@@ -47,6 +50,7 @@ SettingsPane {
         const row = root.rows[index];
         const values = row.values();
         root.cursor = index;
+        root.pick_values = values;
         root.show_picker(picker, row.label, values.map(v => row.text(v)), values.indexOf(row.value()), i => {
             row.set(values[i]);
             ThemeAudio.play("confirm");

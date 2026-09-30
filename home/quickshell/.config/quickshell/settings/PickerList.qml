@@ -29,6 +29,7 @@ ColumnLayout {
         if (terms.length > 0) out.sort((a, b) => b.score - a.score || a.index - b.index);
         return out;
     }
+    readonly property int highlighted: root.results[root.cursor] ? root.results[root.cursor].index : -1
     readonly property int first_shown: Math.max(0, Math.min(root.cursor - Math.floor(root.window_size / 2), root.results.length - root.window_size))
 
     signal picked(int index)

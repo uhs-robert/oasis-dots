@@ -8,7 +8,7 @@ import ".."
 RowsSection {
     id: root
 
-    readonly property string card_name: Palettes.current
+    readonly property string card_name: root.highlighted_value ?? Palettes.current
 
     footer_hint: "j/k move · Enter list · Esc sections · q close"
     rows: [
