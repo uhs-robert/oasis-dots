@@ -46,11 +46,11 @@ RowsSection {
             set: v => ThemeAudio.set_volume("fx_volume", v)
         },
         {
-            label: "Sound pack",
-            values: () => ThemeAudio.packs,
-            text: v => v === "follow" ? "Follow style (" + Style.label(Style.saved_name) + ")" : Style.label(v),
-            value: () => ThemeAudio.pack,
-            set: v => ThemeAudio.set_pack(v)
+            label: "Effects pack",
+            values: () => ThemeAudio.pack_options(Style.saved_name),
+            text: v => ThemeAudio.pack_label(v) + (v === Style.saved_name ? " (own)" : "") + (v === ThemeAudio.default_pack(Style.saved_name) ? " (default)" : ""),
+            value: () => ThemeAudio.pack_for(Style.saved_name),
+            set: v => ThemeAudio.set_pack(Style.saved_name, v)
         }
     ]
 
@@ -80,7 +80,7 @@ RowsSection {
 
     footer: Text {
         Layout.fillWidth: true
-        text: "Your own wav/ogg files in ~/.local/share/quickshell/sounds/<style>/ (cursor, confirm, cancel, notify, music) replace the shipped ones. Lock music also needs the Lock screen's Music on."
+        text: "Effects packs are set per style; imported game packs appear once imported. Your own wav/ogg files in ~/.local/share/quickshell/sounds/<style>/ (cursor, confirm, cancel, notify) replace the pack's. Lock and login music only plays from your own music.ogg/wav/mp3 there, with the Lock screen's Music on."
         wrapMode: Text.WordWrap
         color: root.st.text_dim
         font.family: root.st.font_family
