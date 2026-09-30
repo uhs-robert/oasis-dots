@@ -23,7 +23,10 @@ Singleton {
     readonly property var kinds: ["cursor", "confirm", "cancel", "notify"]
     readonly property var volumes: [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
     readonly property var packs: ["follow"].concat(Style.names)
-    readonly property string user_dir: (Quickshell.env("XDG_DATA_HOME") || Quickshell.env("HOME") + "/.local/share") + "/quickshell/sounds"
+    readonly property string data_dir: (Quickshell.env("XDG_DATA_HOME") || Quickshell.env("HOME") + "/.local/share") + "/quickshell"
+    readonly property string user_dir: root.data_dir + "/sounds"
+    // Imported game effects a style borrows over its shipped ones, as kind: file base.
+    readonly property var borrowed: ({ ps1: { dir: root.data_dir + "/mgs2-audio", names: { cursor: "select", confirm: "submit", cancel: "back" } } })
     readonly property string pack_name: root.pack === "follow" || Style.names.indexOf(root.pack) < 0 ? Style.saved_name : root.pack
     readonly property string music_name: root.pack === "follow" && Style.lock_name in Style.styles ? Style.lock_name : root.pack_name
     // These lock skins bring their own music.
@@ -83,6 +86,7 @@ Singleton {
 
         property string style_name: ""
         property string user_dir: ""
+        readonly property var borrow: root.borrowed[pack.style_name] || null
         function listing(model) {
             const out = {};
             for (let i = 0; i < model.count; i++) out[model.get(i, "fileName")] = String(model.get(i, "fileUrl"));
@@ -91,12 +95,15 @@ Singleton {
 
         readonly property var shipped_urls: pack.listing(shipped)
         readonly property var user_urls: pack.listing(mine)
+        readonly property var borrowed_urls: pack.listing(lent)
 
-        // Any of the user's files beats every shipped one.
+        // The user's files beat borrowed ones, which beat shipped ones.
         function find(base, exts) {
-            for (const set of [pack.user_urls, pack.shipped_urls]) {
+            const lent_base = pack.borrow ? pack.borrow.names[base] : undefined;
+            for (const [set, name] of [[pack.user_urls, base], [pack.borrowed_urls, lent_base], [pack.shipped_urls, base]]) {
+                if (!name) continue;
                 for (const ext of exts) {
-                    if (set[base + "." + ext]) return set[base + "." + ext];
+                    if (set[name + "." + ext]) return set[name + "." + ext];
                 }
             }
             return "";
@@ -112,6 +119,13 @@ Singleton {
         FolderListModel {
             id: mine
             folder: "file://" + pack.user_dir + "/" + (pack.style_name || "none")
+            nameFilters: ["*.wav", "*.ogg", "*.mp3"]
+            showDirs: false
+        }
+
+        FolderListModel {
+            id: lent
+            folder: pack.borrow ? "file://" + pack.borrow.dir : ""
             nameFilters: ["*.wav", "*.ogg", "*.mp3"]
             showDirs: false
         }
