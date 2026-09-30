@@ -7,7 +7,7 @@ Standalone mobile SSH environment for Termux.
 In a fresh Termux session:
 
 ```sh
-pkg update -y && pkg install -y git && git clone https://github.com/uhs-robert/dotfiles.git ~/dotfiles && bash ~/dotfiles/termux/install.sh
+pkg update -y && pkg install -y git && git clone https://github.com/uhs-robert/oasis-dots.git ~/dotfiles && bash ~/dotfiles/termux/install.sh
 ```
 
 Already have the repo? Just run `bash ~/dotfiles/termux/install.sh` again.

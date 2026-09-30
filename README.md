@@ -1,8 +1,215 @@
-# dotfiles
+<p align="center">
+  <img
+    src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/logo.png"
+    width="auto" height="128" alt="Oasis logo" />
+</p>
+<h1 align="center">oasis-dots</h1>
+<p align="center">
+  <a href="https://github.com/uhs-robert/oasis-dots/stargazers"><img src="https://img.shields.io/github/stars/uhs-robert/oasis-dots?colorA=192330&colorB=khaki&style=for-the-badge&cacheSeconds=4300" alt="Stargazers"></a>
+  <a href="https://github.com/uhs-robert/oasis-dots/issues"><img src="https://img.shields.io/github/issues/uhs-robert/oasis-dots?colorA=192330&colorB=skyblue&style=for-the-badge&cacheSeconds=4300" alt="Issues"></a>
+  <a href="https://github.com/uhs-robert/oasis-dots/graphs/contributors"><img src="https://img.shields.io/github/contributors/uhs-robert/oasis-dots?colorA=192330&colorB=8FD1C7&style=for-the-badge&cacheSeconds=4300" alt="Contributors"></a>
+  <a href="https://github.com/uhs-robert/oasis-dots/network/members"><img src="https://img.shields.io/github/forks/uhs-robert/oasis-dots?colorA=192330&colorB=C799FF&style=for-the-badge&cacheSeconds=4300" alt="Forks"></a>
+  <a href="https://discord.gg/b7y5CGVGTB"><img src="https://img.shields.io/discord/1554625284068741140?label=discord&logo=discord&logoColor=white&colorA=192330&colorB=5865F2&style=for-the-badge&cacheSeconds=4300" alt="Discord"></a>
+</p>
+<p align="center">Oasis-themed dotfiles for Arch Linux and Hyprland using Quickshell.</p>
 
-Personal dotfiles managed with [GNU Stow](https://www.gnu.org/software/stow/). Packages live under `home/`.
+<p align="center">
+  <a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/hero.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/hero.webp" width="100%" alt="Switching styles, the Leader menu, the overview and the Duck Hunt region selector"></a>
+</p>
 
-## Full Install (Automated)
+## 🖥️ Overview
+
+An Arch Linux desktop on Hyprland, driven from the keyboard with vim binds and modes; no need for a mouse.
+
+- [Hyprland](home/hypr/.config/hypr/README.md), configured in Lua, with [HyprVim](https://github.com/uhs-robert/hyprvim) for Vim-modal window management and which-key hints.
+- A [Quickshell](home/quickshell/.config/quickshell/README.md) desktop shell: per-monitor bars, popups, notifications, pickers, a workspace overview, a Settings panel and the lock screen.
+  - It comes in swappable styles, from a clean modern look to multiple different retro gaming eras.
+- [Oasis](https://github.com/uhs-robert/oasis.nvim) color themes across everything.
+- A greetd login screen that reuses the lock screen's look, with tuigreet as a fallback.
+
+> [!NOTE]
+> Managed with [GNU Stow](https://www.gnu.org/software/stow/); packages live under `home/`.
+
+## 🎹 Keyboard First, for Vim Users
+
+> Manage your GUI, TUI, and everything in-between with just a keyboard and vim modes/motions.
+
+Oasis brings Vim to Hyprland with [HyprVim](https://github.com/uhs-robert/hyprvim) and takes it even further beyond with virtual cursors, mouse emulation, and full keyboard navigation. Every menu, picker, and setting is accessed and controlled by vim modes/binds.
+
+### Screenshot, Video Recorder, Color Picker
+
+Even the screenshot/video recorder/color picker can be steered with nothing but your keyboard.
+
+<p align="center">
+  <a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/region-ps1.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/region-ps1.webp" width="100%" alt="The PS1 region selector, steered with hjkl, with its zoom scope"></a>
+  <br><em><strong>Screenshot region selector:</strong> move, anchor and resize with <code>hjkl</code>, zoom with <code>i</code>/<code>o</code></em>
+</p>
+
+### Which-key and keybind search/run
+
+Learn the keybinds like you do in NeoVim with which-key upon submap entry. Search/run any keybind with `SUPER + /`:
+
+<table>
+  <tr>
+    <td align="center" width="34%"><a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/whichkey-leader.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/whichkey-leader.webp" width="100%" alt="Which-key"></a><br><strong>Which-key</strong><br><em>Submaps list their keys (PSX style)</em></td>
+    <td align="center" width="66%"><a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/picker-keybinds.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/picker-keybinds.webp" width="100%" alt="Keybind executor"></a><br><strong>Keybind Search/Run</strong><br><em><code>SUPER + /</code> fuzzy-searches binds in the mode you are in and runs the one you pick</em></td>
+  </tr>
+</table>
+
+### HyprVim Command Mode
+
+And control Hyprland via `:`, like Vim's **Command Mode**:
+
+<table>
+  <tr>
+    <td><a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/prompt-menu.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/prompt-menu.webp" width="100%" alt="HyprVim command prompt with fuzzy menu"></a><br/><p align="center">HyprVim Command Mode with fuzzy completion</p></td>
+  </tr>
+  <tr>
+    <td><a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/prompt-args.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/prompt-args.webp" width="100%" alt="HyprVim command prompt with argument hints"></a><br/><p align="center">Includes flag hints to teach arguments as you use</p></td>
+  </tr>
+</table>
+
+### And Even More
+
+- **Mouse from the keyboard:** `SUPER + C` enters the Cursor submap: `hjkl` moves the pointer (`SHIFT` for fast, `CTRL` for single pixels), `SPACE` clicks, `e`/`y` scroll, and `f` or `t` drop [wl-kbptr](https://github.com/moverest/wl-kbptr) hint labels on screen to click anything in a couple of keystrokes.
+- **Screen sharing:** the share picker reuses the region selector, so you pick a screen, a window or a region by keyboard.
+- **Scrolling capture:** grab a page longer than the screen and OCR it to text in one pass.
+- **Displays:** arrange monitors in Settings with `hjkl`, with a countdown that reverts anything you don't confirm.
+
+## 🎨 Styles
+
+> Pick from over 15 different styles including `Oasis`, `Modern`, `NeoVim`, and more.
+
+Powered by the [Oasis](https://github.com/uhs-robert/oasis.nvim) colorscheme palettes from NeoVim, also includes over 15 different styles to choose from in combination.
+
+Styles transform the appearance of the bar, popups, menus, pickers, fonts, sounds, transitions, and the lock screen too.
+
+Pick a style in `Settings > Style` (`SUPER + SPACE` then `S`) and it swaps live.
+
+> [!NOTE]
+> **Styles include:** Oasis, Modern, CRT, NES, Game Boy, SNES, PSX, FF7, GoldenEye, PS2, TIE Fighter, Half-Life and Metroid.
+
+### 🍫 Bar Style Examples
+
+Just a few example bars:
+
+<table>
+  <tr>
+    <td width="15%" align="center"><strong>Oasis</strong><br><em>Default</em></td>
+    <td><a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/bar-oasis.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/bar-oasis.webp" width="100%" alt="Oasis bar"></a></td>
+  </tr>
+  <tr>
+    <td width="15%" align="center"><strong>Modern</strong><br><em>Rounded</em></td>
+    <td><a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/bar-modern.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/bar-modern.webp" width="100%" alt="Modern bar"></a></td>
+  </tr>
+  <tr>
+    <td width="15%" align="center"><strong>Neovim</strong><br><em>Lualine-style</em></td>
+    <td><a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/bar-neovim.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/bar-neovim.webp" width="100%" alt="Neovim bar"></a></td>
+  </tr>
+  <tr>
+    <td width="15%" align="center"><strong>Metroid</strong><br><em>Combat visor</em></td>
+    <td><a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/bar-metroid.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/bar-metroid.webp" width="100%" alt="Metroid bar"></a></td>
+  </tr>
+  <tr>
+    <td width="15%" align="center"><strong>PSX</strong><br><em>Retro PSX</em></td>
+    <td><a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/bar-ps1.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/bar-ps1.webp" width="100%" alt="PSX bar"></a></td>
+  </tr>
+</table>
+
+### 🌦️ Weather Module Examples
+
+Just a few example weather modules:
+
+<table>
+  <tr>
+    <td align="center" width="33%"><a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/weather-nes.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/weather-nes.webp" width="100%" alt="NES weather"></a><br><strong>NES</strong><br><em>Dragon Quest bars</em></td>
+    <td align="center" width="33%"><a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/weather-ff7.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/weather-ff7.webp" width="100%" alt="FF7 weather"></a><br><strong>FF7</strong><br><em>Materia orbs</em></td>
+    <td align="center" width="33%"><a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/weather-halflife.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/weather-halflife.webp" width="100%" alt="Half-Life weather"></a><br><strong>Half-Life</strong><br><em>HEV suit readout</em></td>
+  </tr>
+</table>
+
+<details>
+<summary>🌤️ The weather popup in every other style</summary>
+
+<table>
+  <tr>
+    <td align="center" width="33%"><a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/weather-oasis.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/weather-oasis.webp" width="100%" alt="Oasis"></a><br><strong>Oasis</strong></td>
+    <td align="center" width="33%"><a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/weather-modern.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/weather-modern.webp" width="100%" alt="Modern"></a><br><strong>Modern</strong></td>
+    <td align="center" width="33%"><a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/weather-neovim.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/weather-neovim.webp" width="100%" alt="Neovim"></a><br><strong>Neovim</strong></td>
+  </tr>
+  <tr>
+    <td align="center" width="33%"><a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/weather-terminal.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/weather-terminal.webp" width="100%" alt="Terminal"></a><br><strong>Terminal</strong></td>
+    <td align="center" width="33%"><a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/weather-crt.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/weather-crt.webp" width="100%" alt="CRT"></a><br><strong>CRT</strong></td>
+    <td align="center" width="33%"><a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/weather-gameboy.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/weather-gameboy.webp" width="100%" alt="Game Boy"></a><br><strong>Game Boy</strong></td>
+  </tr>
+  <tr>
+    <td align="center" width="33%"><a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/weather-snes.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/weather-snes.webp" width="100%" alt="SNES"></a><br><strong>SNES</strong></td>
+    <td align="center" width="33%"><a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/weather-ps1.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/weather-ps1.webp" width="100%" alt="PSX"></a><br><strong>PSX</strong></td>
+    <td align="center" width="33%"><a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/weather-goldeneye.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/weather-goldeneye.webp" width="100%" alt="GoldenEye"></a><br><strong>GoldenEye</strong></td>
+  </tr>
+  <tr>
+    <td align="center" width="33%"><a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/weather-ps2.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/weather-ps2.webp" width="100%" alt="PS2"></a><br><strong>PS2</strong></td>
+    <td align="center" width="33%"><a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/weather-tie.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/weather-tie.webp" width="100%" alt="TIE Fighter"></a><br><strong>TIE Fighter</strong></td>
+    <td align="center" width="33%"><a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/weather-metroid.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/weather-metroid.webp" width="100%" alt="Metroid"></a><br><strong>Metroid</strong></td>
+  </tr>
+</table>
+
+</details>
+
+### 🔊 Volume Mixer Examples
+
+The volume mixer in three styles:
+
+<table>
+  <tr>
+    <td align="center" width="33%"><a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/volume-oasis.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/volume-oasis.webp" width="100%" alt="Oasis"></a><br><strong>Oasis</strong></td>
+    <td align="center" width="33%"><a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/volume-crt.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/volume-crt.webp" width="100%" alt="CRT"></a><br><strong>CRT</strong></td>
+    <td align="center" width="33%"><a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/volume-ps1.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/volume-ps1.webp" width="100%" alt="PSX"></a><br><strong>PSX</strong></td>
+  </tr>
+</table>
+
+### 📸 Tour of Some Other Modules
+
+Styles influence every popup. Each card below shows a different popup and a different style.
+
+<table>
+  <tr>
+    <td align="center" width="50%"><a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/tour-settings-crt.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/tour-settings-crt.webp" width="100%" alt="Settings"></a><br><strong>Settings (CRT)</strong><br><em>Settings menu: styles, colors, bar, displays, apps, power, etc</em></td>
+    <td align="center" width="50%"><a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/tour-overview-ps1.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/tour-overview-ps1.webp" width="100%" alt="Workspace overview"></a><br><strong>Workspace Overview (PSX)</strong><br><em>Monitors and workspaces selected via Metal Gear scope</em></td>
+  </tr>
+  <tr>
+    <td align="center" width="50%"><a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/tour-calendar-gameboy.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/tour-calendar-gameboy.webp" width="100%" alt="Calendar"></a><br><strong>Calendar (Gameboy)</strong><br><em>Calendar inside a Game Boy screen with time zones</em></td>
+    <td align="center" width="50%"><a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/tour-notifications-ps1.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/tour-notifications-ps1.webp" width="100%" alt="Notifications"></a><br><strong>Notifications (PSX)</strong><br><em>History with Do Not Disturb, filters and inline actions like Join, Open and Focus</em></td>
+  </tr>
+</table>
+
+## 🔒 Lock screens
+
+Each style can bring its own lock screen, and the login screen reuses it.
+
+<table>
+  <tr>
+    <td align="center" width="50%"><a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/lock-mgs2-anim.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/lock-mgs2-anim.webp" width="100%" alt="Oasis Gear Solid 2"></a><br><strong>Oasis Gear Solid 2</strong><br><em>Title, menu, options, memory card load, then a wrong password and a retry</em></td>
+    <td align="center" width="50%"><a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/lock-ocarina-anim.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/lock-ocarina-anim.webp" width="100%" alt="The Legend of Oasis"></a><br><strong>The Legend of Oasis</strong><br><em>The sky runs from night to dawn, then file select, options, and a wrong password before the retry</em></td>
+  </tr>
+</table>
+
+<details>
+<summary>🍭 More lock screens</summary>
+
+<table>
+  <tr>
+    <td align="center" width="50%"><a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/lock-ff7.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/lock-ff7.webp" width="100%" alt="Final Fantasy VII"></a><br><strong>Final Fantasy VII</strong><br><em>New Game, Continue?</em></td>
+    <td align="center" width="50%"><a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/lock-crt.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/lock-crt.webp" width="100%" alt="CRT terminal"></a><br><strong>CRT terminal</strong><br><em>A phosphor system lock</em></td>
+  </tr>
+  <tr>
+    <td align="center" width="50%"><a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/lock-tie.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/lock-tie.webp" width="100%" alt="TIE Fighter"></a><br><strong>TIE Fighter</strong><br><em>Targeting computer and clearance code</em></td>
+  </tr>
+</table>
+
+</details>
+
+## 📦 Full Install (Automated)
 
 ```bash
 ./install.sh        # full install (Arch only)
@@ -18,7 +225,19 @@ Flags: `--no-aur`, `--no-cargo`, `--no-system-files`, `--no-services`, `--dev`, 
 
 `--server` is for headless machines: it installs the `[CORE] [SYSTEM] [CLI] [DEV]` sections of `packages/arch.ini` plus `[SHELL] [CLI]` from `packages/arch-aur.ini`, stows the `[SERVER]` list from `packages/stow.ini`, and skips fonts, Rust, greetd, and the desktop services.
 
-## External Repos
+## ⌨️ Getting Started, Your First Five Keys
+
+| Key             | Does                                                                              |
+| --------------- | --------------------------------------------------------------------------------- |
+| `SUPER + SPACE` | Leader: a which-key menu of everything; `SPACE` then opens Start, `S` Settings    |
+| `SUPER + /`     | Search and run the keybinds of the mode you are in                                |
+| `SUPER + O`     | Apps picker                                                                       |
+| `ALT + TAB`     | Workspace overview, move around with `hjkl`. Press `?` for help.                  |
+| `SUPER + V`     | HyprVim NORMAL mode for moving windows and workspaces; `SUPER + ESCAPE` leaves it |
+
+The [Hyprland README](home/hypr/.config/hypr/README.md) and the [Quickshell README](home/quickshell/.config/quickshell/README.md) have the rest.
+
+## 🔗 External Repos
 
 Some configs live in their own repositories, listed in `packages/repos.ini`: Oasis themes (`oasis.nvim`), HyprVim, keeptabs, rob-bin, the qutebrowser site styles, and the Neovim config. The installer clones them into `repos/` inside this checkout (gitignored) and the dotfiles reference them from there, so nothing depends on where you keep your code.
 
@@ -39,9 +258,9 @@ To use your own Neovim config, set `NVIM_CONFIG_REPO` to `owner/name` or a git U
 NVIM_CONFIG_REPO=you/nvim ./install.sh
 ```
 
-## Partial Install (Manual Stow)
+## 🧩 Partial Install (Manual Stow)
 
-If you don't want to install the full dotfiles then you may also manually stow the individual packages that you want. Theme files, HyprVim and the qutebrowser styles are symlinks into `repos/`, so run `just repos` first to set those up (see [External Repos](#external-repos)).
+If you don't want to install the full dotfiles then you may also manually stow the individual packages that you want. Theme files, HyprVim and the qutebrowser styles are symlinks into `repos/`, so run `just repos` first to set those up (see [External Repos](#-external-repos)).
 
 ```bash
 stow -d home <package>     # deploy a package
@@ -54,20 +273,11 @@ The `git` package reads your `[user]` block from `~/.config/git/identity`, which
 printf '[user]\n\tname = NAME\n\temail = EMAIL\n' > ~/.config/git/identity
 ```
 
-## Yazi packages
+## 📁 Yazi
 
-Yazi plugins managed by `ya pkg` use `~/.config/yazi/package.toml` as the reproducible package manifest. Keep that file tracked in this repository and let `ya pkg` manage package state rather than manually editing package-managed plugin files.
+Plugin management with `ya pkg` and a root Yazi that stays in sync with your keymap. See [home/yazi/.config/yazi/README.md](home/yazi/.config/yazi/README.md).
 
-```bash
-ya pkg add <package>     # add a plugin and update package.toml
-ya pkg delete <package>  # remove a plugin and update package.toml
-ya pkg upgrade           # update installed packages and package.toml
-ya pkg install           # restore packages recorded in package.toml
-```
-
-After changing Yazi packages, commit the resulting `home/yazi/.config/yazi/package.toml` change. Package-managed plugin directories under `home/yazi/.config/yazi/plugins/` are generated state and are ignored; only local plugins are tracked there. Do not hand-author package metadata or copy upstream plugin files as a substitute for running `ya pkg`.
-
-## Justfile
+## 🛠️ Justfile
 
 Common tasks are wrapped in a `justfile` (run with [`just`](https://github.com/casey/just)). With `just`, you can just run:
 
@@ -81,49 +291,14 @@ just sync-root-yazi   # regenerate root's Yazi keymap from the user's
 just update-repos     # pull the external repos cloned into repos/
 ```
 
-## Betterbird / tbkeys
+## ✉️ Betterbird / tbkeys
 
-Vim-style keybindings for Betterbird, provided by the tbkeys add-on. Two locations matter:
+Vim-style keybindings for Betterbird through the tbkeys add-on, with a Neovim compose bridge. See [home/thunderbird/README.md](home/thunderbird/README.md).
 
-- `home/thunderbird/tbkeys/keys.json` - the keymap, one line per binding.
-- `home/thunderbird/.config/tbkeys/*.js` - the code the bindings call, split into cohesive feature modules. Stowed to `~/.config/tbkeys/` by the `thunderbird` package, and loaded automatically each time Betterbird starts.
-
-`system/opt/betterbird/betterbird.cfg` resolves `~/.config/tbkeys/` once per window and loads the modules through `Services.scriptloader.loadSubScriptWithOptions` in a fixed dependency order: `core.js`, `selection.js`, `folders.js`, `motions.js`, `navigation.js`, `actions.js`, `yank.js`, `editor.js`, `search.js`, `command.js`, `ui.js`, `hints.js`, `whichkey.js`. A missing or failing module logs which file it was rather than a generic error, and loading stops there for that window.
-
-Each module is `(function (tk) { "use strict"; ... })(window.tk);`, populating the shared `window.tk` namespace rather than using ES modules, imports, a bundler, or a build step. `core.js` is the exception: it first runs the teardown hooks the previous load left behind (`whichkey_teardown`, `ui_teardown`, `command_teardown`, `editor_teardown`, `hints_teardown`) so a reload doesn't leak listeners or injected elements, then creates a fresh `window.tk = {}` before populating it, so a reload never carries stale functions from a previous version.
-
-Module responsibilities, following a one-way dependency direction (later modules may call into earlier ones, never the reverse):
-
-- `core.js` - fresh `window.tk` init, shared window/tree accessors, count handling, `repeat_command`, last-action recording, and other primitives with no feature dependency.
-- `selection.js` - visual-mode state (`window.vim`/`visualAnchor`/`visualEnd`) and `tk_toggle_visual`. Motions, navigation, and actions read this state directly rather than each owning a copy.
-- `folders.js` - folder lookup/display, jump-list history, folder marks, folder-tree expand/collapse helpers, and `g`-prefixed goto commands.
-- `motions.js` - `h/j/k/l`, `gg`/`G`, paging, viewport repositioning (`zz`/`zt`/`zb`), and the thread/folder fold commands (`zM`/`zR`).
-- `navigation.js` - higher-level stepping (unread/thread/starred/attachment), focus switching, and tab navigation.
-- `actions.js` - message mutations (read/unread/flag/junk/delete/archive/move) and `.` repeat-last-action.
-- `yank.js` - non-mutating message metadata/content yanks and privileged clipboard writes.
-- `editor.js` - the compose bridge: secure per-window temp files, asynchronous Kitty/Neovim/Pandoc sessions, conflict detection, Markdown-to-HTML conversion, and compose-editor write-back. Plain-text compose opens as text; HTML compose opens as Markdown.
-- `search.js` - context-sensitive `/` search: incremental folder search, Quick Filter Bar thread search, native message find, repeat/cancel state, and `tk_escape`.
-- `command.js` - the Vim-style `:` command line: input UI, parser, and a declarative command registry (`archive`, `move`, `filter`, `open`, `edit`) that calls into the existing folder/action helpers rather than duplicating them.
-- `ui.js` - the persistent mode/count/status indicator and lightweight transient feedback.
-- `hints.js` - cross-document Vimium-style hints for visible actionable controls. It owns target discovery, labels, advanced actions, keyboard capture, and teardown; `whichkey.js` remains passive.
-- `whichkey.js` - the passive which-key overlay: chord trie, timers, and transient rendering. Loaded last, and fires the initial `tk.repaint_mode()` once every module is in place. Visualization only - it never touches Mousetrap or tbkeys keyboard dispatch.
-
-New behavior belongs in the module matching its responsibility above; a feature spanning several (e.g. an operator acting over a range) should consume the existing `selection.js`/`motions.js`/`actions.js` primitives rather than reimplementing them.
-
-After editing any module, restart Betterbird.
-
-The `e` binding and `:edit` command open the current compose body in Kitty/Neovim. `Ctrl+E` is also a direct compose-body shortcut. Plain-text messages open as text; HTML messages are converted to Markdown and converted back to HTML after saving. Pandoc must be installed for HTML compose editing. The compose body displays INSERT mode while typing; `Ctrl+O` enters NORMAL mode for one command, after which the body returns to INSERT. In that NORMAL window, `e` opens Neovim. To use another terminal/editor launcher, set `window.__tbkeys_external_editor_command` to an argument array before invoking it; the file path is appended automatically (for example, `["wezterm", "start", "--", "nvim"]`). The converter can be overridden with `window.__tbkeys_markdown_converter_command` (for example, `["pandoc"]`). In a mail window, `/` searches the focused pane: folders use the incremental folder search, the thread list uses Thunderbird's Quick Filter Bar, and the message pane uses native find-in-message; `n`/`N` repeat folder or message searches.
-
-The mail keymap uses `f` for hints, `F` for the filter family (`F u`, `F a`, `F s`, `F f`), and `;` for advanced hint actions. Forward remains available as `g F`, and Open Conversation as `g C`. After editing `keys.json`, paste its contents into the add-on's options page (Add-ons Manager, tbkeys, Options). That file is a tracked copy, not something the add-on reads from disk. The same is true of `quicktext.json`.
-
-Betterbird upgrades wipe the startup file that loads these modules, so `install.sh` sets up a pacman hook that puts it back automatically. Nothing to do after an upgrade.
-
-## Root Yazi
-
-The user Yazi keymap uses `~` and `$USER`, which resolve to `/root` when Yazi runs as root, so root gets a rewritten copy at `/root/.config/yazi/keymap.toml` rather than a symlink. Launch root Yazi with `yazi-root` (installed to `/usr/local/bin` by `install.sh`): it regenerates that copy from the current user keymap on every launch, so the two never drift. It finds the user config by resolving the `yazi.toml` symlink in `/root/.config/yazi`, so no username is configured anywhere. To refresh the copy without launching Yazi, run `yazi-root --sync-only` or `just sync-root-yazi`.
-
-Plain `sudo yazi` stays in sync too, via a shim at `/usr/local/sbin/yazi` that runs the same regeneration before exec'ing the real binary. `sudo` ignores the caller's `PATH` in favour of `secure_path`, which starts with `/usr/local/sbin`, while a normal user's `PATH` has no `sbin` entries, so the shim applies to `sudo yazi` only, and your own `yazi` still runs `/usr/bin/yazi` directly.
-
-## Termux
+## 📱 Termux
 
 For a standalone mobile SSH setup, see [termux/README.md](termux/README.md). It uses its own installer and Stow packages, independent of the desktop setup.
+
+## 📜 License
+
+[GPL-3.0](LICENSE). Bundled third-party pieces keep their own licenses: the fonts in the Quickshell config (SIL Open Font License, see its `fonts/README.md`), the weather icons (MIT, see `assets/weather/LICENSE`), the Bibata cursor themes (GPL-3.0), and the vendored tmux and Yazi plugins and flavors (see each one's own files).

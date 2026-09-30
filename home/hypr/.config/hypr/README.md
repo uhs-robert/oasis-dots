@@ -1,39 +1,41 @@
 # Hyprland Config
 
-A Lua-driven Hyprland setup for a fully keyboard-driven workflow. Vim-modal navigation via [HyprVim](https://github.com/uhs-robert/hyprvim) with whichkey for keybind discovery. Includes dedicated submaps for window/workspace management, application navigation, virtual cursor emulation (`wlrctl` and `wl-kbptr`), and more. Also includes a color theme switcher, custom workspace session launcher, and a time-of-day wallpaper rotation system.
+A Lua-driven Hyprland setup for a fully keyboard-driven workflow. Vim-modal navigation via [HyprVim](https://github.com/uhs-robert/hyprvim) with whichkey for keybind discovery. Includes dedicated submaps for window/workspace management, application navigation, virtual cursor emulation (`wlrctl` and `wl-kbptr`), and more. Also includes a color theme switcher, custom workspace session launcher, and a time-of-day wallpaper rotation system. The bar, popups, pickers and lock screen come from the [Quickshell desktop shell](#desktop-shell).
 
 ## What's in here
 
-| Path           | Purpose                                                  |
-| -------------- | -------------------------------------------------------- |
-| `hyprland.lua` | Entry point for machine config and session init          |
-| `config/`      | Core config module (monitors, env, Nvidia, cursor, apps) |
-| `keymaps/`     | All keybinds; one file per submap                        |
-| `theme/`       | Color theme system with rofi picker                      |
-| `hyprvim/`     | Vim-modal navigation layer                               |
-| `extensions/`  | Workspace launcher, wallpaper, and other extensions      |
-| `lib/`         | Shared Lua libraries (Bind, utils, key system)           |
+| Path                  | Purpose                                                  |
+| --------------------- | -------------------------------------------------------- |
+| `hyprland.lua`        | Entry point for machine config and session init          |
+| `config/`             | Core config module (monitors, env, Nvidia, cursor, apps) |
+| `keymaps/`            | All keybinds; one file per submap                        |
+| `theme/`              | Oasis color themes, the switcher and the generators      |
+| `lua/plugins/hyprvim` | Vim-modal navigation layer                               |
+| `extensions/`         | Workspace launcher, wallpaper, and other extensions      |
+| `lib/`                | Shared Lua libraries (Bind, utils, key system)           |
+| `scripts/`            | Shell helpers, including the Quickshell IPC wrappers     |
 
 ## Using this config
 
-#### 1. Make a Copy
+#### 1. Install it
 
-Fork the repo then deploy with stow:
+The easiest route is the full installer from the [repo root](../../../../README.md), which sets up everything this config expects.
+
+To take just the Hyprland config, clone the repo and stow it. Run `just repos` first: the theme palettes and HyprVim are symlinks into `repos/`, and they stay broken until it has cloned them.
 
 ```bash
-stow -d home hypr
+just repos        # clone oasis.nvim, HyprVim and the other external repos into repos/
+just stow hypr    # link home/hypr into ~/.config/hypr
 hyprctl reload
 ```
 
-Or just move the `hypr` directory into your `.config/`:
+On its own it still expects a few neighbours: the bar, popups and lock screen come from the `quickshell` package, the pickers fall back to `rofi`, and some binds call tools like `wl-kbptr`, `wlrctl` and `hyprpaper` (see `packages/arch.ini` and `packages/arch-aur.ini`). Moving the folder by hand instead of stowing it breaks those symlinks.
 
-```bash
-mv home/hypr/.config/hypr ~/.config/hypr
-```
+#### 2. Set up your machine
 
-#### 2. Update your config settings
+With the Quickshell shell running, most of this is in its Settings panel (`SUPER + SPACE` then `S`): Displays sets resolution, refresh rate, scale and arrangement with a keep-or-revert countdown, Default apps picks the terminal, editor and file managers, and Power sets idle timeouts and lid actions. Those choices are saved as state under `~/.local/state/hypr/`, and the display and app choices win over the machine profile below.
 
-Machine hardware (monitors, DRM devices) lives in `config/machines/`, not `hyprland.lua`. Copy `config/machines/default.lua` to `config/machines/<hostname>.lua` and set your own monitors and DRM devices:
+The files are the tracked defaults, and the only place for things Settings doesn't cover, such as DRM devices or GPU options. Machine settings live in `config/machines/`, not `hyprland.lua`. Copy `config/machines/default.lua` to `config/machines/<hostname>.lua` and set what differs on that machine:
 
 ```lua
 -- config/machines/<hostname>.lua
@@ -54,7 +56,7 @@ The loader picks this up automatically by hostname; see `config/machines/README.
 
 ## HyprVim
 
-A vim-modal navigation layer for Hyprland. Activate with `SUPER + SPACE`, exit with `SUPER + ESCAPE`.
+A vim-modal navigation layer for Hyprland. Activate with `SUPER + V`, exit with `SUPER + ESCAPE`.
 
 Provides `normal`/`insert`/`visual` modes (and more) with window navigation, workspace jumping, and a which-key popup that shows keybinds for all of your submaps.
 
@@ -65,7 +67,7 @@ Provides `normal`/`insert`/`visual` modes (and more) with window navigation, wor
 
 ## Keybinds
 
-Press `SUPER + /` to open a rofi picker showing all active keybinds for the current mode.
+Press `SUPER + /` to open the Quickshell keybinds picker for the current mode. When the bar isn't running it falls back to the rofi script (`scripts/keybind-help.lua`).
 
 > [!TIP]
 > All binds are defined in `hypr/keymaps/`, one file per submap.
@@ -80,29 +82,39 @@ The `persistent_workspaces` option pins that many workspaces per monitor so they
 
 ## App Launcher / Sessions
 
-`extensions/auto_launcher/` provides a rofi-based workspace session launcher. A session is a named set of apps, each pinned to a specific monitor and workspace offset. Sessions are defined in `sessions.lua`:
+`extensions/auto_launcher/` provides a workspace session launcher, picked in the Quickshell picker (or the dmenu command in `Config.app.dmenu_cmd`, rofi by default, when the bar isn't running). A session is a named set of apps, each pinned to a specific monitor and workspace offset. Sessions are returned by `get_sessions()` in `sessions.lua`:
 
 ```lua
 -- extensions/auto_launcher/sessions.lua
-M.sessions = {
-  ["Work"] = {
-    { monitor = 1, ws = 1, cmd = "kitty", class = "kitty" },
-    { monitor = 2, ws = 1, cmd = "firefox", class = "org.mozilla.firefox" },
-  },
-}
+function M.get_sessions()
+  return {
+    ["Work"] = {
+      { monitor = 1, ws = 1, cmd = "kitty", class = "kitty" },
+      { monitor = 2, ws = 1, cmd = "firefox", class = "org.mozilla.firefox" },
+    },
+  }
+end
 ```
 
 Trigger the picker with `SUPER + SHIFT + O`.
 
 ## Wallpaper
 
-`extensions/wallpaper/` is a time-of-day wallpaper rotation system built on hyprpaper. It picks wallpapers from different folders based on solar position (morning/day/evening/night) and rotates on a configurable interval.
+`extensions/wallpaper/` is a time-of-day wallpaper rotation system built on hyprpaper. It picks wallpapers from a different folder for each part of the day (morning, day, evening, night), switching at fixed hours or at the sun's position for your location, and rotates on a configurable interval.
 
 Configure directories and timing in `extensions/wallpaper/config.lua`.
 
 ## Theme
 
+The colors come from the Oasis palettes in `theme/colors/`. Picking one saves it, reloads Hyprland and reruns every generator in `theme/generate/` (Hyprland, rofi, the terminals and Quickshell).
+
+Pick a palette from Settings > Colors in the Quickshell panel, with a live preview. Right-clicking the bar's Start button or pressing `SUPER + Q` then `T` opens it there; without the bar, `SUPER + Q` then `T` falls back to the rofi picker.
+
 ```bash
-~/.config/hypr/theme/main.lua --menu   # interactive picker
-~/.config/hypr/theme/main.lua --list   # list palettes
+~/.config/hypr/theme/switch.lua                     # rofi picker (the fallback)
+~/.config/hypr/theme/switch.lua --set oasis_lagoon  # set one directly
 ```
+
+## Desktop shell
+
+The bar, popups, notifications, pickers, workspace overview, lock screen and greeter are one Quickshell config. Hyprland starts it at login and talks to it through `scripts/qs-ipc`, falling back to rofi or hyprlock when it isn't running. See the [Quickshell README](../../../quickshell/.config/quickshell/README.md) for styles, settings, keys and IPC.
