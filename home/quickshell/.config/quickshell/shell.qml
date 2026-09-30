@@ -161,7 +161,6 @@ ShellRoot {
     ClipboardProvider {}
     EmojiProvider {}
     DirsProvider {}
-    WindowsProvider {}
     KeybindsProvider {}
     ChoicesProvider {}
     PopupIpc {}

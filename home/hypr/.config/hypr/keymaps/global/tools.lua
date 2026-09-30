@@ -22,10 +22,10 @@ Bind.leader_fn("CTRL + SPACE", Menu.zoxide(),    "Jump to Directory")
 Bind.leader_fn("CTRL + E", Menu.emoji(),     "Emoji Picker")
 Bind.leader_fn("CTRL + P", Menu.bitwarden(), "Passwords")
 
--- Window Selector / Move
-Bind.leader_fn("T",                 Menu.hyprwindow(),               "Find window")
-Bind.leader_fn("SHIFT + T",         Menu.hyprwindow_move(true),      "Move to another window")
-Bind.leader_fn("CTRL + SHIFT + T",  Menu.hyprwindow_move(false),     "Silent move to another window")
+-- Window Search / Move
+Bind.leader_fn("T",                 Menu.overview_search(),          "Search windows")
+Bind.leader_fn("SHIFT + T",         Menu.overview_move(true),        "Move window in overview")
+Bind.leader_fn("CTRL + SHIFT + T",  Menu.overview_move(false),       "Silent move window in overview")
 
 -- Workspace Overview
 Bind.fn("ALT + TAB",                Menu.overview(),                 "Workspace overview")

@@ -35,6 +35,10 @@ PanelWindow {
     property bool help_open: false
     property string query: ""
     property var monitor_slots: []
+    property int hit: 0
+    property bool from_search: false
+    // "follow" or "silent" while a carry opened from a bind ends with the overview closing after the drop.
+    property string carry_exit: ""
 
     readonly property var model: root.visible ? root.build(Hyprland.monitors.values, Hyprland.workspaces.values, Hyprland.toplevels.values, root.special) : ({ groups: [], tiles: [] })
     readonly property var groups: root.model.groups
@@ -74,8 +78,12 @@ PanelWindow {
     readonly property string swap_address: root.picked.length === 1 && !!root.selected_tile && root.selected_tile.windows.some(w => w.address === root.picked[0]) && root.current_address !== root.picked[0] ? root.current_address : ""
     readonly property bool can_drop: root.carrying && root.swap_address === "" && !!root.selected_tile && root.picked.some(a => !root.selected_tile.windows.some(w => w.address === a))
     readonly property var nav_order: Layout.flat(Layout.flat(Layout.bands(root.groups)).map(g => root.groups[g].tiles))
-    readonly property var matches: root.query === "" ? null : root.match_set(root.query)
-    readonly property int match_count: root.matches ? Object.keys(root.matches).length : 0
+    readonly property var ranked: root.typing ? root.rank(root.window_entries(), root.query) : []
+    readonly property int hit_index: Math.min(root.hit, root.ranked.length - 1)
+    readonly property var hit_entry: root.ranked[root.hit_index] || null
+    readonly property var matches: root.query === "" ? null : root.to_set(root.ranked.map(e => e.address))
+    readonly property int match_count: root.ranked.length
+    readonly property real list_width: root.typing ? Math.min(Style.px(460), frame.body.width * 0.34) : 0
 
     readonly property var metrics: ({
         gap: Style.px(10),
@@ -84,7 +92,7 @@ PanelWindow {
         group_gap: Style.px(22),
         strip: Style.px(150)
     })
-    readonly property var layout: Layout.compute(root.filmstrip, root.groups, root.tiles, frame.body.width, frame.body.height, root.metrics, root.selected_index)
+    readonly property var layout: Layout.compute(root.filmstrip, root.groups, root.tiles, frame.body.width - root.list_width, frame.body.height, root.metrics, root.selected_index)
     readonly property bool animate_moves: root.filmstrip && Power.on_ac && root.reveal === 1
     // The selected window (or the whole tile when empty) in body coordinates, for the scope skin.
     readonly property var aim: {
@@ -117,7 +125,7 @@ PanelWindow {
         target: "overview"
 
         function open(): string {
-            root.show_overview();
+            root.show_overview("", false);
             return "ok";
         }
 
@@ -126,14 +134,29 @@ PanelWindow {
             return "ok";
         }
 
+        function search(): string {
+            root.show_overview("search", false);
+            return "ok";
+        }
+
+        function move_follow(): string {
+            root.show_overview("move", true);
+            return "ok";
+        }
+
+        function move_silent(): string {
+            root.show_overview("move", false);
+            return "ok";
+        }
+
         function toggle(): string {
             if (root.wanted) root.hide_overview();
-            else root.show_overview();
+            else root.show_overview("", false);
             return "ok";
         }
     }
 
-    function show_overview() {
+    function show_overview(entry, follow) {
         if (root.wanted) return;
         Popups.close();
         const mon = Hyprland.focusedMonitor;
@@ -146,6 +169,8 @@ PanelWindow {
         const on_special = mon ? root.shown_special(mon) || (active_ws && (active_ws.name || "").startsWith("special:") ? active_ws.name : "") : "";
         root.special = on_special !== "";
         root.picked = [];
+        root.carry_exit = "";
+        root.from_search = false;
         root.marks = [];
         root.help_open = false;
         digit_timer.stop();
@@ -163,6 +188,13 @@ PanelWindow {
             root.reveal = 1;
         }
         keys.forceActiveFocus();
+        if (entry === "search") {
+            root.start_filter(true);
+        } else if (entry === "move" && WindowState.find(WindowState.active_address)) {
+            root.picked = [WindowState.active_address];
+            root.picked_from_marks = false;
+            root.carry_exit = follow ? "follow" : "silent";
+        }
     }
 
     function hide_overview() {
@@ -258,36 +290,86 @@ PanelWindow {
         return { groups: groups, tiles: tiles };
     }
 
-    function match_set(query) {
-        const terms = Fuzzy.terms_of(query);
-        const set = {};
-        if (terms.length === 0) return set;
-        for (const tile of root.tiles) {
-            for (const w of tile.windows) {
-                if (Fuzzy.score_item(terms, { label: w.label, description: w.title, keywords: [w.cls] })) set[w.address] = true;
-            }
-        }
-        return set;
+    function clean_title(title, short_class) {
+        let t = title || "";
+        if (short_class.toLowerCase() === "firefox") t = t.replace(/^XXX\s*/, "");
+        return t.replace(/\s+[—-]\s+(Mozilla Firefox|Betterbird|Slack|qutebrowser)$/, "");
     }
 
-    // Matching windows in the order hjkl walks the tiles, each tile in reading order.
-    function match_list() {
-        if (!root.matches) return [];
+    // Every window, most recent first, minus the carried ones.
+    function window_entries() {
         const out = [];
-        for (const i of root.nav_order) {
-            for (const w of root.reading_order(root.tiles[i].windows)) {
-                if (root.matches[w.address]) out.push({ tile: i, address: w.address });
-            }
-        }
+        WindowState.windows.forEach((t, recency) => {
+            if (!t.workspace || root.picked_set[t.address]) return;
+            const ipc = t.lastIpcObject || {};
+            const short = WindowState.short_class(t);
+            const ws_name = t.workspace.name || "";
+            const title = root.clean_title(t.title, short);
+            out.push({
+                address: t.address,
+                toplevel: t,
+                recency: recency,
+                label: short || "window",
+                title: title,
+                ws_name: ws_name,
+                ws_id: t.workspace.id,
+                place: ws_name.replace(/^special:/, "special "),
+                description: ws_name + " · " + title,
+                keywords: [WindowState.class_of(t), ipc.initialClass || "", ws_name, t.title || ""]
+            });
+        });
         return out;
     }
 
-    function step_match(delta) {
-        const list = root.match_list();
-        if (list.length === 0) return;
-        const at = list.findIndex(m => m.tile === root.selected_index && m.address === root.current_address);
-        const next = at < 0 ? (delta > 0 ? 0 : list.length - 1) : (at + delta + list.length) % list.length;
-        root.select(list[next].tile, list[next].address);
+    function rank(entries, query) {
+        const terms = Fuzzy.terms_of(query);
+        if (terms.length === 0) return entries;
+        const scored = [];
+        for (const e of entries) {
+            const s = Fuzzy.score_item(terms, e);
+            if (s) scored.push({ entry: e, score: s.score });
+        }
+        scored.sort((a, b) => b.score - a.score || a.entry.recency - b.entry.recency);
+        return scored.map(s => s.entry);
+    }
+
+    // Puts the tile selection on the window, switching between regular and special mode when it lives in the other one.
+    function select_entry(entry) {
+        if (!entry) return;
+        const is_special = entry.ws_name.startsWith("special:");
+        if (is_special !== root.special) {
+            root.special = is_special;
+            digit_timer.stop();
+        }
+        const at = root.tile_index_of[is_special ? "sp:" + entry.ws_name.slice(8) : "ws:" + entry.ws_id];
+        if (at !== undefined) root.select(at, entry.address);
+    }
+
+    function set_hit(i) {
+        root.hit = i;
+        root.select_entry(root.hit_entry);
+    }
+
+    // An empty query starts on the window before the current one when searching, else on the selected window.
+    function reset_hit() {
+        const list = root.ranked;
+        let at = 0;
+        if (root.query === "") at = root.from_search ? (list.length >= 2 && list[0].address === WindowState.active_address ? 1 : 0) : Math.max(0, list.findIndex(e => e.address === root.current_address));
+        root.set_hit(at);
+    }
+
+    function step_hit(delta) {
+        const n = root.ranked.length;
+        if (n > 0) root.set_hit((root.hit_index + delta + n) % n);
+    }
+
+    function accept_hit() {
+        const entry = root.hit_entry;
+        if (!entry) return;
+        root.select_entry(entry);
+        root.clear_filter();
+        if (root.carrying) root.drop();
+        else root.activate_address(entry.address);
     }
 
     function select(index, address) {
@@ -430,6 +512,10 @@ PanelWindow {
             root.hide_overview();
             return;
         }
+        root.activate_address(address);
+    }
+
+    function activate_address(address) {
         // The first focus warps the cursor onto the window, so follow_mouse lands there when the overview unmaps.
         WindowState.focus(address);
         root.hide_overview();
@@ -481,18 +567,21 @@ PanelWindow {
             root.picked = marked;
             root.picked_from_marks = true;
             root.marks = [];
+            root.carry_exit = "";
         } else if (root.current_address !== "") {
             root.picked = [root.current_address];
             root.picked_from_marks = false;
+            root.carry_exit = "";
         }
     }
 
     function cancel_pick() {
+        root.carry_exit = "";
         if (root.picked_from_marks) root.marks = root.alive(root.picked);
         root.picked = [];
     }
 
-    // Swaps inside a workspace, else moves every carried window there without following; a fresh slot is then sent to its monitor.
+    // Swaps inside a workspace, else moves every carried window there; a fresh slot is then sent to its monitor.
     function drop() {
         const tile = root.selected_tile;
         const carried = root.alive(root.picked);
@@ -503,10 +592,13 @@ PanelWindow {
             return;
         }
         root.picked = [];
+        const exit = root.carry_exit;
+        root.carry_exit = "";
         if (swap_with !== "") {
             WindowState.swap(carried[0], swap_with);
             root.selected_address = carried[0];
             refresh_timer.restart();
+            if (exit !== "") root.hide_overview();
             return;
         }
         for (const a of moving) {
@@ -517,17 +609,20 @@ PanelWindow {
         root.selected_key = root.special ? tile.key : "ws:" + tile.id;
         root.selected_address = moving[0];
         refresh_timer.restart();
+        if (exit === "") return;
+        root.hide_overview();
+        if (exit === "follow") {
+            focus_timer.address = moving[0];
+            focus_timer.restart();
+        }
     }
 
-    function start_filter() {
+    function start_filter(from_search) {
+        root.from_search = from_search;
         root.typing = true;
         filter_input.forceActiveFocus();
         filter_input.cursorPosition = filter_input.text.length;
-    }
-
-    function accept_filter() {
-        root.typing = false;
-        keys.forceActiveFocus();
+        root.reset_hit();
     }
 
     function clear_filter() {
@@ -615,7 +710,7 @@ PanelWindow {
         } else if (k === Qt.Key_F) {
             root.filmstrip = !root.filmstrip;
         } else if (k === Qt.Key_Slash || event.text === "/") {
-            root.start_filter();
+            root.start_filter(false);
         } else if (k >= Qt.Key_0 && k <= Qt.Key_9) {
             root.type_digit(String(k - Qt.Key_0));
         } else {
@@ -639,18 +734,18 @@ PanelWindow {
     }
 
     readonly property string footer_text: root.help_open ? "? back · Esc back · q close"
-        : root.typing ? "Enter accept · Tab next match · Esc clear · ? help"
+        : root.typing ? "Enter " + (root.carrying ? "drop here" : "focus") + " · Tab/Down next · Shift+Tab/Up previous · Esc " + (root.from_search && root.query === "" ? "close" : "clear") + " · ? help"
         : root.swap_address !== "" ? "m swap · Enter swap · Tab other window · hjkl workspace · Esc cancel · ? help"
         : root.carrying ? "hjkl workspace · Ctrl+hjkl/1-9 monitor · Tab window · m drop · Enter drop · Esc cancel · ? help"
         : root.marks.length > 0 ? "Space mark · V mark all · m move " + root.marks.length + " · x close " + root.marks.length + " · hjkl move · Esc clear marks · ? help"
-        : "hjkl move · Ctrl+hjkl/1-9 monitor · Tab window · Enter focus · m move · x close · Space mark · / filter · f view · s special · ? help · q close"
+        : "hjkl move · Ctrl+hjkl/1-9 monitor · Tab window · Enter focus · m move · x close · Space mark · / search · f view · s special · ? help · q close"
 
-    readonly property string normal_help: "h/j/k/l move between workspaces · Arrows move between workspaces · Ctrl+h/j/k/l or Ctrl+Arrows jump to the next monitor that way · Ctrl+1-9 jump to that monitor number, as SUPER+Ctrl+1-9 counts them · Tab next window · Shift+Tab previous window · Enter focus window, or the workspace if empty · m pick up window, or every marked window · x close window, or every marked window · Space/v mark or unmark window · V mark or unmark all in workspace · / filter windows · 1-9 select workspace by id, type 12 quickly for workspace 12, or the nth special workspace · s toggle special workspaces · f toggle filmstrip view, j/k there jump monitors · Click focus window or workspace"
+    readonly property string normal_help: "h/j/k/l move between workspaces · Arrows move between workspaces · Ctrl+h/j/k/l or Ctrl+Arrows jump to the next monitor that way · Ctrl+1-9 jump to that monitor number, as SUPER+Ctrl+1-9 counts them · Tab next window · Shift+Tab previous window · Enter focus window, or the workspace if empty · m pick up window, or every marked window · x close window, or every marked window · Space/v mark or unmark window · V mark or unmark all in workspace · / search windows by class, title or workspace · 1-9 select workspace by id, type 12 quickly for workspace 12, or the nth special workspace · s toggle special workspaces · f toggle filmstrip view, j/k there jump monitors · Click focus window or workspace"
     readonly property string carry_help: "h/j/k/l choose target workspace · Arrows choose target workspace · Ctrl+h/j/k/l choose target monitor · Ctrl+1-9 target monitor by number · 1-9 target workspace by id, type 12 quickly for workspace 12 · s toggle special workspaces · Tab/Shift+Tab choose a window in the same workspace to swap with · m drop there, or swap with the SWAP window · Enter drop there, or swap · f toggle filmstrip view · Click drop on workspace · Esc cancel, marks come back"
-    readonly property string help_text: root.typing ? "Type filter by class or title · Enter accept filter · Tab/Down next match · Shift+Tab/Up previous match · Backspace delete, clears when empty · Esc clear filter"
+    readonly property string help_text: root.typing ? "Type to search windows by class, title or workspace · Enter focus the highlighted window, or drop the carried window on its workspace · Tab/Down next match · Shift+Tab/Up previous match · Backspace delete, clears when empty · Esc clear search, or close when it is empty"
         : root.carrying ? root.carry_help
         : root.marks.length > 0 ? "Esc clear all marks · " + root.normal_help
-        : root.query !== "" ? "Esc clear filter · / edit filter · " + root.normal_help
+        : root.query !== "" ? "Esc clear search · " + root.normal_help
         : root.normal_help
 
     readonly property string status_text: {
@@ -764,10 +859,7 @@ PanelWindow {
             maximumLength: 64
             onTextChanged: {
                 root.query = text;
-                if (text !== "") {
-                    const list = root.match_list();
-                    if (list.length > 0) root.select(list[0].tile, list[0].address);
-                }
+                if (root.typing) root.reset_hit();
             }
             Keys.onPressed: event => {
                 const before = root.cursor_key();
@@ -776,15 +868,16 @@ PanelWindow {
                     root.show_help();
                 } else if (k === Qt.Key_Escape) {
                     ThemeAudio.play("cancel");
-                    root.clear_filter();
+                    if (root.from_search && root.query === "") root.hide_overview();
+                    else root.clear_filter();
                 } else if (k === Qt.Key_Return || k === Qt.Key_Enter) {
                     ThemeAudio.play("confirm");
-                    root.accept_filter();
+                    root.accept_hit();
                 } else if (k === Qt.Key_Tab || k === Qt.Key_Down) {
-                    root.step_match(1);
+                    root.step_hit(1);
                     root.play_if_moved(before);
                 } else if (k === Qt.Key_Backtab || k === Qt.Key_Up) {
-                    root.step_match(-1);
+                    root.step_hit(-1);
                     root.play_if_moved(before);
                 } else if (k === Qt.Key_Backspace && filter_input.text === "") {
                     ThemeAudio.play("cancel");
@@ -928,6 +1021,19 @@ PanelWindow {
             place: root.aim ? root.aim.place : ""
             real: root.aim ? root.aim.real : null
             glide: Power.on_ac && root.reveal === 1
+        }
+
+        SearchList {
+            visible: root.typing
+            x: frame.body.width - width
+            width: root.list_width
+            height: frame.body.height
+            entries: root.ranked
+            current: root.hit_index
+            onChosen: index => {
+                root.set_hit(index);
+                root.accept_hit();
+            }
         }
 
         // The full key list for the current mode, drawn over the tiles.

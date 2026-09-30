@@ -18,7 +18,6 @@ local Scripts = {
   toggle_autolock       = HYPR    .. "toggle-autolock.sh",
   power                 = HYPR    .. "power.sh",
   rofi_tmux             = HYPR    .. "rofi-tmux.sh",
-  window_selector       = HYPR    .. "rofi-hyprwindow.sh",
   keybind_help          = HYPR    .. "keybind-help.lua",
   toggle_monitor_layout = MONITOR .. "toggle-monitor-layout.sh",
 }
