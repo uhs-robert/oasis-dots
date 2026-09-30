@@ -415,3 +415,19 @@ bind spp fillcmdline open proton
 bind Spp fillcmdline tabopen proton
 bind sps fillcmdline open steam
 bind Sps fillcmdline tabopen steam
+
+"" -- SITE: PEAK TASK BOARD --
+"" Hand the board's vim keys to the page; everything else stays tridactyl's.
+unbindurl (peak\.uphillsolutions\.tech|localhost:3000)/.*view=board --mode=normal h
+unbindurl (peak\.uphillsolutions\.tech|localhost:3000)/.*view=board --mode=normal j
+unbindurl (peak\.uphillsolutions\.tech|localhost:3000)/.*view=board --mode=normal k
+unbindurl (peak\.uphillsolutions\.tech|localhost:3000)/.*view=board --mode=normal l
+unbindurl (peak\.uphillsolutions\.tech|localhost:3000)/.*view=board --mode=normal H
+unbindurl (peak\.uphillsolutions\.tech|localhost:3000)/.*view=board --mode=normal J
+unbindurl (peak\.uphillsolutions\.tech|localhost:3000)/.*view=board --mode=normal K
+unbindurl (peak\.uphillsolutions\.tech|localhost:3000)/.*view=board --mode=normal L
+unbindurl (peak\.uphillsolutions\.tech|localhost:3000)/.*view=board --mode=normal o
+unbindurl (peak\.uphillsolutions\.tech|localhost:3000)/.*view=board --mode=normal v
+unbindurl (peak\.uphillsolutions\.tech|localhost:3000)/.*view=board --mode=normal C
+unbindurl (peak\.uphillsolutions\.tech|localhost:3000)/.*view=board --mode=normal m
+unbindurl (peak\.uphillsolutions\.tech|localhost:3000)/.*view=board --mode=normal <Escape>
