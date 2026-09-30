@@ -132,11 +132,13 @@ Popup {
     }
 
     function toggle_mute(node) {
+        ThemeAudio.play("confirm");
         if (!node || !node.audio) return;
         node.audio.muted = !node.audio.muted;
     }
 
     function set_default(row) {
+        ThemeAudio.play("confirm");
         if (row.type === "sink_device") Pipewire.preferredDefaultAudioSink = row.node;
         else if (row.type === "source_device") Pipewire.preferredDefaultAudioSource = row.node;
     }
@@ -155,16 +157,20 @@ Popup {
             if (event.key === Qt.Key_J) {
                 root.selected = root.wrap_index(root.selected, 1, 0, root.rows.length);
                 rows_list.positionViewAtIndex(root.selected, ListView.Contain);
+                ThemeAudio.play("cursor");
                 event.accepted = true;
             } else if (event.key === Qt.Key_K) {
                 root.selected = root.wrap_index(root.selected, -1, 0, root.rows.length);
                 rows_list.positionViewAtIndex(root.selected, ListView.Contain);
+                ThemeAudio.play("cursor");
                 event.accepted = true;
             } else if (event.key === Qt.Key_L && row && root.is_slider_row(row.type)) {
                 root.adjust_snap(row.node, 1);
+                ThemeAudio.play("cursor");
                 event.accepted = true;
             } else if (event.key === Qt.Key_H && row && root.is_slider_row(row.type)) {
                 root.adjust_snap(row.node, -1);
+                ThemeAudio.play("cursor");
                 event.accepted = true;
             } else if (event.key === Qt.Key_M && (event.modifiers & Qt.ShiftModifier)) {
                 root.toggle_mute(Pipewire.defaultAudioSource);
@@ -174,6 +180,7 @@ Popup {
                 event.accepted = true;
             } else if (event.key >= Qt.Key_1 && event.key <= Qt.Key_9 && event.key - Qt.Key_1 < root.device_indices.length) {
                 root.select_row(root.device_indices[event.key - Qt.Key_1]);
+                ThemeAudio.play("cursor");
                 event.accepted = true;
             } else if ((event.key === Qt.Key_Return || event.key === Qt.Key_Enter) && row && !root.is_slider_row(row.type)) {
                 root.set_default(row);

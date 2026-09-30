@@ -43,6 +43,7 @@ Item {
     // What Enter does in the popup: the focused action, else the default.
     function enter() {
         if (!root.focused_valid) return root.invoke_requested();
+        ThemeAudio.play("confirm");
         NotificationState.invoke_action(root.entry, root.actions[root.focused_action]);
         Popups.close();
     }
@@ -430,6 +431,7 @@ Item {
                                 anchors.fill: parent
                                 onClicked: {
                                     root.select_requested();
+                                    ThemeAudio.play("confirm");
                                     NotificationState.invoke_action(root.entry, action_chip.modelData);
                                 }
                             }
@@ -445,7 +447,7 @@ Item {
                         entries: [
                             { button: "cross", text: root.focused_valid ? root.actions[root.focused_action].text : "Open", action: () => root.enter() },
                             { key: "d", text: "Dismiss", action: () => NotificationState.dismiss(root.entry) },
-                            { button: "start", text: "Close", action: () => Popups.close() }
+                            { button: "start", text: "Close", action: () => { ThemeAudio.play("cancel"); Popups.close(); } }
                         ]
                     }
                 }

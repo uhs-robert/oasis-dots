@@ -138,6 +138,7 @@ Popup {
     }
 
     function dismiss_selected() {
+        ThemeAudio.play("confirm");
         const sel = root.entry_rows[root.selected];
         if (sel) NotificationState.dismiss(sel.entry);
     }
@@ -156,6 +157,7 @@ Popup {
     }
 
     function invoke_selected() {
+        ThemeAudio.play("confirm");
         const sel = root.entry_rows[root.selected];
         if (!sel) return;
         const actions = root.actions_of(sel.entry);
@@ -167,24 +169,30 @@ Popup {
     function handle_key(event) {
         if (event.key === Qt.Key_J) {
             root.move_selected(1);
+            ThemeAudio.play("cursor");
             event.accepted = true;
         } else if (event.key === Qt.Key_K) {
             root.move_selected(-1);
+            ThemeAudio.play("cursor");
             event.accepted = true;
         } else if (event.key === Qt.Key_L) {
             root.move_action(event.modifiers & Qt.ShiftModifier ? 99 : 1);
+            ThemeAudio.play("cursor");
             event.accepted = true;
         } else if (event.key === Qt.Key_H) {
             root.move_action(event.modifiers & Qt.ShiftModifier ? -99 : -1);
+            ThemeAudio.play("cursor");
             event.accepted = true;
         } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
             root.invoke_selected();
             event.accepted = true;
         } else if (event.key === Qt.Key_T || (event.key === Qt.Key_D && (event.modifiers & Qt.ShiftModifier))) {
             NotificationState.toggle_dnd();
+            ThemeAudio.play("confirm");
             event.accepted = true;
         } else if (event.key === Qt.Key_C && (event.modifiers & Qt.ShiftModifier)) {
             NotificationState.clear_all();
+            ThemeAudio.play("confirm");
             event.accepted = true;
         } else if (event.key === Qt.Key_D || event.key === Qt.Key_X) {
             root.dismiss_selected();
@@ -278,7 +286,10 @@ Popup {
                     label: "DND"
                     key_hint: Style.row_keys ? "t" : "D"
                     active: NotificationState.dnd
-                    onActivated: NotificationState.toggle_dnd()
+                    onActivated: {
+                        NotificationState.toggle_dnd();
+                        ThemeAudio.play("confirm");
+                    }
                 }
 
                 HeaderButton {
@@ -288,7 +299,10 @@ Popup {
                     icon: "\u{f0a7a}"
                     label: "Clear all"
                     key_hint: "C"
-                    onActivated: NotificationState.clear_all()
+                    onActivated: {
+                        NotificationState.clear_all();
+                        ThemeAudio.play("confirm");
+                    }
                 }
             }
 
@@ -298,7 +312,10 @@ Popup {
                 current: root.current_tab
                 font_size: Style.fs(-1)
                 tab_height: Style.px(28)
-                onPicked: i => root.set_tab(i)
+                onPicked: i => {
+                    root.set_tab(i);
+                    ThemeAudio.play("cursor");
+                }
             }
 
             // --- Content: fixed height so the panel never resizes as entries change ---
@@ -397,6 +414,7 @@ Popup {
                             channel: root.entry_rows.indexOf(row_item.modelData) + 1
                             onSelect_requested: root.select_entry(row_item.modelData.entry)
                             onInvoke_requested: {
+                                ThemeAudio.play("confirm");
                                 NotificationState.invoke_default(row_item.modelData.entry);
                                 Popups.close();
                             }
@@ -412,7 +430,10 @@ Popup {
                 labels: root.sub_views
                 current: root.current_sub
                 reserve_labels: [root.app_sort_names, root.time_sort_names]
-                onPicked: root.step_sub(1)
+                onPicked: {
+                    root.step_sub(1);
+                    ThemeAudio.play("cursor");
+                }
             }
 
             MenuFooter {

@@ -108,7 +108,9 @@ PanelWindow {
 
     function run_tool(index) {
         const action = Screenshot.actions[index];
-        if (action) Screenshot.act(action.id);
+        if (!action) return;
+        ThemeAudio.play("confirm");
+        Screenshot.act(action.id);
     }
 
     // One still frame per screen: the frozen background, and the loupe's source in both modes.
@@ -2995,12 +2997,14 @@ PanelWindow {
                 if (i < 0) return;
                 Screenshot.phase = "select";
                 Screenshot.highlight(i);
+                ThemeAudio.play("confirm");
                 Screenshot.confirm();
                 return;
             }
             if (root.pixel_mode) {
                 if (!root.frame_ready) return;
                 Screenshot.set_cursor(root.screen_name, mouse.x, mouse.y, false);
+                ThemeAudio.play("confirm");
                 Screenshot.pick_pixel();
                 return;
             }
@@ -3030,8 +3034,12 @@ PanelWindow {
         }
         onReleased: {
             if (root.pixel_mode || root.target_mode) return;
-            if (Screenshot.has_selection) Screenshot.confirm();
-            else Screenshot.sel_screen = "";
+            if (Screenshot.has_selection) {
+                ThemeAudio.play("confirm");
+                Screenshot.confirm();
+            } else {
+                Screenshot.sel_screen = "";
+            }
         }
     }
 
@@ -3064,10 +3072,12 @@ PanelWindow {
             } else if (event.key === Qt.Key_Question || event.text === "?") {
                 root.set_help(true);
             } else if (event.key === Qt.Key_Escape) {
+                ThemeAudio.play("cancel");
                 if (toolbar) Screenshot.reselect();
                 else if (Screenshot.anchored) Screenshot.clear_anchor();
                 else Screenshot.cancel();
             } else if (event.key === Qt.Key_Q) {
+                ThemeAudio.play("cancel");
                 Screenshot.cancel();
             } else if (event.key === Qt.Key_Plus || event.key === Qt.Key_Equal || event.text === "+" || event.text === "=") {
                 Screenshot.step_zoom(1);
@@ -3078,6 +3088,7 @@ PanelWindow {
             } else if (event.key === Qt.Key_M && !shift) {
                 Screenshot.lens_on = !Screenshot.lens_on;
             } else if (root.pixel_mode && (event.key === Qt.Key_Return || event.key === Qt.Key_Enter)) {
+                ThemeAudio.play("confirm");
                 Screenshot.pick_pixel();
             } else if (!toolbar && root.sharing && shift && [Qt.Key_W, Qt.Key_S, Qt.Key_R].includes(event.key)) {
                 Screenshot.switch_mode({ [Qt.Key_W]: "window", [Qt.Key_S]: "screen", [Qt.Key_R]: "region" }[event.key]);
@@ -3085,29 +3096,40 @@ PanelWindow {
                 Screenshot.cycle_delay();
             } else if (!toolbar && root.target_mode && dir) {
                 Screenshot.step_target(dir[0], dir[1]);
+                ThemeAudio.play("cursor");
             } else if (!toolbar && root.target_mode && (event.key === Qt.Key_Tab || event.key === Qt.Key_Backtab)) {
                 Screenshot.cycle_target(event.key === Qt.Key_Backtab || shift ? -1 : 1);
+                ThemeAudio.play("cursor");
             } else if (!toolbar && root.target_mode && Style.picker_skin === "tiecomp" && event.key === Qt.Key_T && !ctrl) {
                 Screenshot.cycle_target(shift ? -1 : 1);
+                ThemeAudio.play("cursor");
             } else if (!toolbar && root.target_mode && event.text !== "" && Style.picker_hint_keys.indexOf(event.text) >= 0 && Style.picker_hint_keys.indexOf(event.text) < Screenshot.targets.length) {
                 Screenshot.highlight(Style.picker_hint_keys.indexOf(event.text));
+                ThemeAudio.play("confirm");
                 Screenshot.confirm();
             } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
-                if (toolbar) root.run_tool(Screenshot.tool_index);
-                else if (Screenshot.anchored || Screenshot.has_selection || root.target_mode) Screenshot.confirm();
-                else {
+                if (toolbar) {
+                    root.run_tool(Screenshot.tool_index);
+                } else if (Screenshot.anchored || Screenshot.has_selection || root.target_mode) {
+                    ThemeAudio.play("confirm");
+                    Screenshot.confirm();
+                } else {
                     Screenshot.select_screen(Screenshot.cursor_screen);
+                    ThemeAudio.play("confirm");
                     Screenshot.confirm();
                 }
             } else if (typed >= 0) {
                 root.run_tool(typed);
             } else if (toolbar && event.key === Qt.Key_Backspace) {
+                ThemeAudio.play("cancel");
                 Screenshot.reselect();
             } else if (toolbar && dir && dir[0] !== 0) {
                 Screenshot.tool_index = (Screenshot.tool_index + dir[0] + Screenshot.actions.length) % Screenshot.actions.length;
+                ThemeAudio.play("cursor");
             } else if (toolbar && (event.key === Qt.Key_Tab || event.key === Qt.Key_Backtab)) {
                 const delta = event.key === Qt.Key_Backtab || shift ? -1 : 1;
                 Screenshot.tool_index = (Screenshot.tool_index + delta + Screenshot.actions.length) % Screenshot.actions.length;
+                ThemeAudio.play("cursor");
             } else if (!toolbar && dir) {
                 keys_item.held[event.key] = dir;
                 let dx = 0;
@@ -3122,8 +3144,12 @@ PanelWindow {
                     event.accepted = true;
                     return;
                 }
-                if (event.key === Qt.Key_Space && Screenshot.anchored) Screenshot.confirm();
-                else Screenshot.toggle_anchor();
+                if (event.key === Qt.Key_Space && Screenshot.anchored) {
+                    ThemeAudio.play("confirm");
+                    Screenshot.confirm();
+                } else {
+                    Screenshot.toggle_anchor();
+                }
             } else if (!toolbar && !root.pixel_mode && !root.target_mode && shift && event.key === Qt.Key_O) {
                 Screenshot.swap_anchor();
             } else {

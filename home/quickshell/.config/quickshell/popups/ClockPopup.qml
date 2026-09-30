@@ -137,24 +137,31 @@ Popup {
         Keys.onPressed: event => {
             if (event.key === Qt.Key_H) {
                 root.prev_month();
+                ThemeAudio.play("cursor");
                 event.accepted = true;
             } else if (event.key === Qt.Key_L) {
                 root.next_month();
+                ThemeAudio.play("cursor");
                 event.accepted = true;
             } else if (event.key === Qt.Key_J) {
                 root.view_year += 1;
+                ThemeAudio.play("cursor");
                 event.accepted = true;
             } else if (event.key === Qt.Key_K) {
                 root.view_year -= 1;
+                ThemeAudio.play("cursor");
                 event.accepted = true;
             } else if (event.key === Qt.Key_BracketRight) {
                 Timezones.cycle(1);
+                ThemeAudio.play("cursor");
                 event.accepted = true;
             } else if (event.key === Qt.Key_BracketLeft) {
                 Timezones.cycle(-1);
+                ThemeAudio.play("cursor");
                 event.accepted = true;
             } else if (event.key === Qt.Key_T) {
                 root.go_today();
+                ThemeAudio.play("cursor");
                 event.accepted = true;
             }
         }
@@ -251,7 +258,10 @@ Popup {
 
                         MouseArea {
                             anchors.fill: parent
-                            onClicked: Timezones.index = zone_label.index
+                            onClicked: {
+                                Timezones.index = zone_label.index;
+                                ThemeAudio.play("cursor");
+                            }
                         }
                     }
                 }

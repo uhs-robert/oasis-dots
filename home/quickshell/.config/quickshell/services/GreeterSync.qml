@@ -18,13 +18,13 @@ Scope {
             lock_style: LoginScreen.resolved_screen,
             lock_tint: LoginScreen.resolved_tint,
             lock_music: LoginScreen.resolved_music ? "on" : "off",
-            session: LoginScreen.session
+            session: LoginScreen.session,
+            music_volume: String(ThemeAudio.music_volume)
         };
         const music = ThemeAudio.login_music_path;
         if (music !== "") {
             data.theme_music = "on";
             data.music_file = "music." + music.split(".").pop();
-            data.music_volume = String(ThemeAudio.volume);
         }
         Quickshell.execDetached([Quickshell.shellDir + "/scripts/greeter-data", JSON.stringify(data), root.theme_path, root.face_path, music]);
     }
@@ -56,7 +56,7 @@ Scope {
     Connections {
         target: ThemeAudio
         function onLogin_music_pathChanged() { root.schedule(); }
-        function onVolumeChanged() { root.schedule(); }
+        function onMusic_volumeChanged() { root.schedule(); }
     }
 
     FileView {
