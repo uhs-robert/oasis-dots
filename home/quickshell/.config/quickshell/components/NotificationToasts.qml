@@ -44,6 +44,8 @@ PanelWindow {
         else if (event.key === Qt.Key_K) NotificationState.move_toast(-1);
         else if (event.key === Qt.Key_L) NotificationState.move_toast_action(shift ? 99 : 1);
         else if (event.key === Qt.Key_H) NotificationState.move_toast_action(shift ? -99 : -1);
+        else if (event.key === Qt.Key_0) NotificationState.move_toast_action(-99);
+        else if (event.text === "$") NotificationState.move_toast_action(99);
         else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) NotificationState.invoke_selected_toast();
         else if (event.key === Qt.Key_D || event.key === Qt.Key_X) NotificationState.dismiss_selected_toast();
         else if (event.key === Qt.Key_Escape || event.key === Qt.Key_Q) NotificationState.leave_toast_focus();

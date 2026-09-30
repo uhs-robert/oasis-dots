@@ -63,6 +63,10 @@ PanelWindow {
     property bool jumps_enabled: false
     signal jump_first()
     signal jump_last()
+    // 0/$ emit line_start/line_end only while set: the left and right ends of an h/l row.
+    property bool line_ends_enabled: false
+    signal line_start()
+    signal line_end()
 
     // `/` search: search_rows is each j/k row's text by index; search_select(i) must select row i like j/k would.
     property bool search_enabled: false
@@ -214,6 +218,9 @@ PanelWindow {
             ThemeAudio.play("cursor");
         } else if ((event.key === Qt.Key_Tab || event.key === Qt.Key_Backtab) && (tabs.length > 0 || sub_views.length > 0)) {
             step_sub(back ? -1 : 1);
+            ThemeAudio.play("cursor");
+        } else if (line_ends_enabled && (event.key === Qt.Key_0 || event.text === "$")) {
+            if (event.key === Qt.Key_0) line_start(); else line_end();
             ThemeAudio.play("cursor");
         } else if (jumps_enabled && event.key === Qt.Key_G) {
             if (event.modifiers & Qt.ShiftModifier) {

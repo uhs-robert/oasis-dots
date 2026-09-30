@@ -20,7 +20,7 @@ Popup {
     title: root.provider ? root.provider.title.toUpperCase() : "PICKER"
     footer_hint: "Enter " + root.verb + " · Esc normal · q close"
     footer_override: root.insert ? "Enter " + root.verb + " · Esc normal" : root.action_hint !== "" ? "Enter " + root.verb + " · " + root.action_hint + " · ? help · q close" : ""
-    key_help: ["Enter " + root.verb, "Up/Down move", "Ctrl+j/k move", "Tab/Shift+Tab next/prev"].concat(root.tabs.length > 0 ? ["Ctrl+Tab/Ctrl+Shift+Tab tabs"] : []).concat(["Ctrl+u clear", "Esc normal mode", "j/k rows", "h/l columns", "gg/G first/last", "i/a insert", "/ search"]).concat(root.action_hint !== "" ? [root.action_hint] : []).concat(["q/Esc close"]).join(" · ")
+    key_help: ["Enter " + root.verb, "Up/Down move", "Ctrl+j/k move", "Tab/Shift+Tab next/prev"].concat(root.tabs.length > 0 ? ["Ctrl+Tab/Ctrl+Shift+Tab tabs"] : []).concat(["Ctrl+u clear", "Esc normal mode", "j/k rows", "h/l columns", "0/$ row ends", "gg/G first/last", "i/a insert", "/ search"]).concat(root.action_hint !== "" ? [root.action_hint] : []).concat(["q/Esc close"]).join(" · ")
     jumps_enabled: !root.insert
     tabs: root.provider ? root.provider.tabs : []
 
@@ -162,6 +162,17 @@ Popup {
     }
 
     // j/k keep the column and wrap top to bottom; a short last row lands on its last item.
+    function line_ends(to_end) {
+        const n = root.results.length;
+        if (n === 0) return;
+        const cols = root.columns;
+        const start = cols === 1 ? 0 : root.selected - root.selected % cols;
+        root.selected = to_end ? (cols === 1 ? n - 1 : Math.min(n - 1, start + cols - 1)) : start;
+    }
+    line_ends_enabled: true
+    onLine_start: root.line_ends(false)
+    onLine_end: root.line_ends(true)
+
     function move_row(delta) {
         const n = root.results.length;
         if (n === 0) return;
