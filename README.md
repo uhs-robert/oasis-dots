@@ -19,89 +19,82 @@
 
 ## 🖥️ Overview
 
-An Arch Linux desktop on Hyprland, driven from the keyboard with vim binds and modes.
+An Arch Linux desktop on Hyprland, driven from the keyboard with vim binds and modes; no need for a mouse.
 
 - [Hyprland](home/hypr/.config/hypr/README.md), configured in Lua, with [HyprVim](https://github.com/uhs-robert/hyprvim) for Vim-modal window management and which-key hints.
 - A [Quickshell](home/quickshell/.config/quickshell/README.md) desktop shell: per-monitor bars, popups, notifications, pickers, a workspace overview, a Settings panel and the lock screen.
-  - It comes in swappable styles, from a clean modern look to different retro gaming eras.
+  - It comes in swappable styles, from a clean modern look to multiple different retro gaming eras.
 - [Oasis](https://github.com/uhs-robert/oasis.nvim) color themes across everything.
 - A greetd login screen that reuses the lock screen's look, with tuigreet as a fallback.
 
 > [!NOTE]
 > Managed with [GNU Stow](https://www.gnu.org/software/stow/); packages live under `home/`.
 
-## 🌴 Why oasis-dots
+## 🎹 Keyboard First, for Vim Users
 
-### Keyboard first, for Vim users
+<p align="center"><em>Manage your GUI, TUI, and everything in-between with just a keyboard and vim modes/motions.</em></p>
 
-No mouse required. [HyprVim](https://github.com/uhs-robert/hyprvim) gives Hyprland Vim modes, a leader key and which-key hints. Every popup opens on a key and answers to the same keys (`j`/`k`, `h`/`l`, `gg`/`G`, `/`, `[`/`]`, `?`, `q`), and the pickers have INSERT and NORMAL modes. Even the pointer jobs go through the keyboard: a virtual cursor, a screenshot region selector that you steer with `hjkl` across monitors, the workspace overview, and monitor arrangements in Settings. The apps follow suit: Neovim, tmux, Yazi, qutebrowser, Tridactyl and Betterbird with tbkeys.
+Oasis brings Vim to Hyprland with [HyprVim](https://github.com/uhs-robert/hyprvim) and takes it even further beyond with virtual cursors, mouse emulation, and full keyboard navigation. Every menu, picker, and setting is accessed and controlled by vim modes/binds.
+
+Even the screenshot/video recorder/color picker can be steered with nothing but your keyboard:
 
 <p align="center">
   <a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/region-ps1.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/region-ps1.webp" width="100%" alt="The PS1 region selector, steered with hjkl, with its zoom scope"></a>
-  <br><em>The screenshot region selector: move, anchor and resize with <code>hjkl</code>, zoom with <code>i</code>/<code>o</code>, across every monitor</em>
+  <br><em><strong>Screenshot region selector:</strong> move, anchor and resize with <code>hjkl</code>, zoom with <code>i</code>/<code>o</code></em>
 </p>
+
+Learn the keybinds like you do in NeoVim with which-key upon submap entry. Search/run any keybind with `SUPER + /`:
 
 <table>
   <tr>
-    <td align="center" width="34%"><a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/whichkey-leader.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/whichkey-leader.webp" width="100%" alt="Which-key"></a><br><strong>Which-key</strong><br><em>Every submap lists its keys as you enter it (PSX style)</em></td>
-    <td align="center" width="66%"><a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/picker-keybinds.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/picker-keybinds.webp" width="100%" alt="Keybind executor"></a><br><strong>Keybind executor</strong><br><em>SUPER + / fuzzy-searches the binds of the mode you are in and runs the one you pick</em></td>
+    <td align="center" width="34%"><a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/whichkey-leader.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/whichkey-leader.webp" width="100%" alt="Which-key"></a><br><strong>Which-key</strong><br><em>Submaps list their keys (PSX style)</em></td>
+    <td align="center" width="66%"><a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/picker-keybinds.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/picker-keybinds.webp" width="100%" alt="Keybind executor"></a><br><strong>Keybind Search/Run</strong><br><em><code>SUPER + /</code> fuzzy-searches binds in the mode you are in and runs the one you pick</em></td>
   </tr>
 </table>
 
-### Retro styles
-
-The Quickshell shell swaps its whole look live, from a clean Oasis or Modern style to NES, SNES, Game Boy, PS1, PS2, FF7, GoldenEye, Metroid, Half-Life and TIE Fighter. Styles bring their own transitions, sounds, picker skins and lock screens, and colors always come from the active Oasis palette, so every style works with every theme. See [Styles](#-styles).
-
-### One theme everywhere
-
-The [Oasis](https://github.com/uhs-robert/oasis.nvim) palettes, all AAA contrast, recolor Hyprland, the shell, the terminals and the apps in one switch.
-
-### Hard to lock yourself out
-
-Every shell piece has a fallback (rofi pickers, hyprlock, tuigreet at login), choices made in Settings are saved as state instead of editing tracked files, and a real installer and uninstaller set it up and take it down.
-
-## ⌨️ First five keys
-
-| Key             | Does                                                                              |
-| --------------- | --------------------------------------------------------------------------------- |
-| `SUPER + SPACE` | Leader: a which-key menu of everything; `SPACE` then opens Start, `S` Settings    |
-| `SUPER + /`     | Search and run the keybinds of the mode you are in                                |
-| `SUPER + O`     | Apps picker                                                                       |
-| `ALT + TAB`     | Workspace overview, move around with `hjkl`. Press `?` for help.                  |
-| `SUPER + V`     | HyprVim NORMAL mode for moving windows and workspaces; `SUPER + ESCAPE` leaves it |
-
-The [Hyprland README](home/hypr/.config/hypr/README.md) and the [Quickshell README](home/quickshell/.config/quickshell/README.md) have the rest.
-
 ## 🎨 Styles
 
-A style changes the whole shell at once: the bar, every popup, the pickers, the fonts, the sounds, the transitions and the lock screen. Pick one in Settings > Style (`SUPER + SPACE` then `S`) and it swaps live. Colors always come from the active Oasis palette, so every style works with every theme.
+<p align="center"><em>Pick from over 15 different styles including `Oasis`, `Modern`, `NeoVim`, and more.</em></p>
 
-There are 15 to choose from: Oasis (the default), Modern, Neovim, Terminal, CRT, NES, Game Boy, SNES, PSX, FF7, GoldenEye, PS2, TIE Fighter, Half-Life and Metroid. A few of them, as the bar:
+Powered by the [Oasis](https://github.com/uhs-robert/oasis.nvim) colorscheme palettes from NeoVim, also includes over 15 different styles to choose from in combination.
+
+Styles transform the appearance of the bar, popups, menus, pickers, fonts, sounds, transitions, and the lock screen too.
+
+Pick a style in `Settings > Style` (`SUPER + SPACE` then `S`) and it swaps live.
+
+> [!NOTE]
+> **Styles include:** Oasis, Modern, CRT, NES, Game Boy, SNES, PSX, FF7, GoldenEye, PS2, TIE Fighter, Half-Life and Metroid.
+
+### 🍫 Bar Style Examples
+
+Just a few example bars:
 
 <table>
   <tr>
-    <td width="22%"><strong>Oasis</strong><br><em>The default: slanted frames and a horizon rule</em></td>
+    <td width="15%" align="center"><strong>Oasis</strong><br><em>Default</em></td>
     <td><a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/bar-oasis.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/bar-oasis.webp" width="100%" alt="Oasis bar"></a></td>
   </tr>
   <tr>
-    <td width="22%"><strong>Modern</strong><br><em>Rounded capsule islands</em></td>
+    <td width="15%" align="center"><strong>Modern</strong><br><em>Rounded</em></td>
     <td><a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/bar-modern.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/bar-modern.webp" width="100%" alt="Modern bar"></a></td>
   </tr>
   <tr>
-    <td width="22%"><strong>Neovim</strong><br><em>A lualine-style bar with the HyprVim mode chip</em></td>
+    <td width="15%" align="center"><strong>Neovim</strong><br><em>Lualine-style</em></td>
     <td><a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/bar-neovim.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/bar-neovim.webp" width="100%" alt="Neovim bar"></a></td>
   </tr>
   <tr>
-    <td width="22%"><strong>Metroid</strong><br><em>Metroid Prime's combat visor</em></td>
+    <td width="15%" align="center"><strong>Metroid</strong><br><em>Combat visor</em></td>
     <td><a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/bar-metroid.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/bar-metroid.webp" width="100%" alt="Metroid bar"></a></td>
   </tr>
   <tr>
-    <td width="22%"><strong>PSX</strong><br><em>PlayStation memory card menus</em></td>
+    <td width="15%" align="center"><strong>PSX</strong><br><em>Retro PSX</em></td>
     <td><a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/bar-ps1.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/bar-ps1.webp" width="100%" alt="PSX bar"></a></td>
   </tr>
 </table>
 
-And the same weather popup in three of them:
+### 🌦️ Weather Module Examples
+
+Just a few example weather modules:
 
 <table>
   <tr>
@@ -111,20 +104,22 @@ And the same weather popup in three of them:
   </tr>
 </table>
 
-## 📸 Tour
+### 📸 Other Module Examples
 
-Every popup exists in every style. Each card below shows a different one.
+As you can see, styles influence every popup. Each card below shows a different popup and a different style.
 
 <table>
   <tr>
-    <td align="center" width="50%"><a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/tour-settings-metroid.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/tour-settings-metroid.webp" width="100%" alt="Settings"></a><br><strong>Settings</strong><br><em>Metroid's scan visor over styles, colors, bar, displays, apps, power, sound and lock</em></td>
-    <td align="center" width="50%"><a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/tour-overview-ps1.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/tour-overview-ps1.webp" width="100%" alt="Workspace overview"></a><br><strong>Workspace overview</strong><br><em>Every monitor and workspace behind a PS1 scope, moved with hjkl</em></td>
+    <td align="center" width="50%"><a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/tour-settings-metroid.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/tour-settings-metroid.webp" width="100%" alt="Settings"></a><br><strong>Settings (Metroid)</strong><br><em>Metroid's scan visor over the settings menu</em></td>
+    <td align="center" width="50%"><a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/tour-overview-ps1.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/tour-overview-ps1.webp" width="100%" alt="Workspace overview"></a><br><strong>Workspace Overview (PSX)</strong><br><em>Monitors and workspaces selected via Metal Gear scope</em></td>
   </tr>
   <tr>
-    <td align="center" width="50%"><a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/tour-volume-ps2.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/tour-volume-ps2.webp" width="100%" alt="Volume"></a><br><strong>Volume</strong><br><em>The PS2 memory-dial mixer for outputs, inputs and apps</em></td>
-    <td align="center" width="50%"><a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/tour-calendar-gameboy.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/tour-calendar-gameboy.webp" width="100%" alt="Calendar"></a><br><strong>Calendar</strong><br><em>A Game Boy calendar with time zones</em></td>
+    <td align="center" width="50%"><a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/tour-volume-ps2.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/tour-volume-ps2.webp" width="100%" alt="Volume"></a><br><strong>Volume (PS2)</strong><br><em>PS2 circular memory-dial mixer</em></td>
+    <td align="center" width="50%"><a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/tour-calendar-gameboy.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/tour-calendar-gameboy.webp" width="100%" alt="Calendar"></a><br><strong>Calendar (Gameboy)</strong><br><em>Calendar inside a Game Boy screen with time zones</em></td>
   </tr>
 </table>
+
+The controls on each menu are identical across styles but the presentation is wildly different. You won't see a Gameboy screen in the Calendar for PSX.
 
 ## 🔒 Lock screens
 
@@ -138,7 +133,7 @@ Each style can bring its own lock screen, and the login screen reuses it.
 </table>
 
 <details>
-<summary>More lock screens</summary>
+<summary>🍭 More lock screens</summary>
 
 <table>
   <tr>
@@ -168,6 +163,18 @@ Installs system packages, AUR packages, fonts, and dev tools, then stows dotfile
 Flags: `--no-aur`, `--no-cargo`, `--no-system-files`, `--no-services`, `--dev`, `--server`.
 
 `--server` is for headless machines: it installs the `[CORE] [SYSTEM] [CLI] [DEV]` sections of `packages/arch.ini` plus `[SHELL] [CLI]` from `packages/arch-aur.ini`, stows the `[SERVER]` list from `packages/stow.ini`, and skips fonts, Rust, greetd, and the desktop services.
+
+## ⌨️ Getting Started, Your First Five Keys
+
+| Key             | Does                                                                              |
+| --------------- | --------------------------------------------------------------------------------- |
+| `SUPER + SPACE` | Leader: a which-key menu of everything; `SPACE` then opens Start, `S` Settings    |
+| `SUPER + /`     | Search and run the keybinds of the mode you are in                                |
+| `SUPER + O`     | Apps picker                                                                       |
+| `ALT + TAB`     | Workspace overview, move around with `hjkl`. Press `?` for help.                  |
+| `SUPER + V`     | HyprVim NORMAL mode for moving windows and workspaces; `SUPER + ESCAPE` leaves it |
+
+The [Hyprland README](home/hypr/.config/hypr/README.md) and the [Quickshell README](home/quickshell/.config/quickshell/README.md) have the rest.
 
 ## 🔗 External Repos
 
