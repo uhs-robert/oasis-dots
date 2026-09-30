@@ -516,6 +516,16 @@ Rectangle {
         }
     }
 
+    Rectangle {
+        visible: root.highlighted && (root.tile || root.oasis) && !Style.frame_visor && !Style.custom_frame
+        anchors.fill: parent
+        z: 3
+        radius: root.radius
+        color: "transparent"
+        border.width: 2
+        border.color: Theme.theme_secondary
+    }
+
     HoverHandler {
         id: hover_handler
         onHoveredChanged: {
