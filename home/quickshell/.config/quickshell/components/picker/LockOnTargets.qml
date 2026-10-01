@@ -166,13 +166,11 @@ Item {
         height: 44
         status: root.grow === 0 ? "LOCKED" : "TRACKING"
 
-        Text {
+        Goldeneye.SizeText {
             id: watch_lcd
             anchors.centerIn: parent
-            text: Math.round(root.tw) + " x " + Math.round(root.th)
-            color: W.green
-            font.family: W.digit_font
-            font.pixelSize: Style.fs(-3)
+            width_px: Math.round(root.tw)
+            height_px: Math.round(root.th)
         }
     }
 }

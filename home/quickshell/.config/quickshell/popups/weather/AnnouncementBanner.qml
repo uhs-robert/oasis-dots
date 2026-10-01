@@ -66,7 +66,7 @@ Rectangle {
                 visible: root.alert && root.alert.ends && root.width >= 260
                 text: root.alert ? WeatherState.fmt_until(root.alert.ends).toUpperCase() : ""
                 color: root.red
-                font.family: Style.number_font
+                font.family: Style.frame_watch ? Style.font_family : Style.number_font
                 font.pixelSize: Style.fs(-4)
                 font.bold: true
                 font.letterSpacing: 0.7

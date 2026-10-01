@@ -1944,13 +1944,23 @@ PanelWindow {
                 }
 
                 Text {
+                    visible: root.pixel_mode || !root.mine
                     anchors.left: parent.left
                     anchors.leftMargin: root.pixel_mode ? 26 : 10
                     anchors.verticalCenter: parent.verticalCenter
-                    text: root.pixel_mode ? (Screenshot.pixel_hex !== "" ? Screenshot.pixel_hex : "#------") : root.mine ? Math.round(root.sel.width) + " x " + Math.round(root.sel.height) : "READY"
+                    text: root.pixel_mode ? (Screenshot.pixel_hex !== "" ? Screenshot.pixel_hex : "#------") : "READY"
                     color: Watch.green
-                    font.family: Watch.digit_font
+                    font.family: root.pixel_mode ? Watch.digit_font : Watch.mono_font
                     font.pixelSize: Style.fs(-3)
+                }
+
+                Goldeneye.SizeText {
+                    visible: !root.pixel_mode && root.mine
+                    anchors.left: parent.left
+                    anchors.leftMargin: 10
+                    anchors.verticalCenter: parent.verticalCenter
+                    width_px: Math.round(root.sel.width)
+                    height_px: Math.round(root.sel.height)
                 }
 
                 Column {
