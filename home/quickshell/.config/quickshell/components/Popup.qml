@@ -9,6 +9,7 @@ import "../services"
 import "Search.js" as Search
 import "../picker/Fuzzy.js" as Fuzzy
 import "neovim" as Neovim
+import "goldeneye" as Goldeneye
 
 PanelWindow {
     id: root
@@ -607,7 +608,7 @@ PanelWindow {
             Rectangle {
                 id: lcd_panel
                 readonly property real edge: root.st.inset_pad + root.st.lcd_margin
-                visible: root.lcd
+                visible: root.lcd && !root.st.frame_watch
                 x: lcd_panel.edge
                 y: lcd_panel.edge
                 width: parent.width - lcd_panel.edge * 2
@@ -639,6 +640,14 @@ PanelWindow {
                     inset: 5
                     arm: 14
                     all_corners: true
+                }
+            }
+
+            Loader {
+                anchors.fill: parent
+                active: root.st.frame_watch
+                sourceComponent: Goldeneye.PopupBezel {
+                    st: root.st
                 }
             }
 
