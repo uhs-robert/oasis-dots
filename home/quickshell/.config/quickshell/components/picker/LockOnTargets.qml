@@ -152,15 +152,6 @@ Item {
                     font.pixelSize: Style.fs(-4)
                     font.letterSpacing: 1
                 }
-
-                Text {
-                    visible: Style.title_readout !== ""
-                    anchors.verticalCenter: parent.verticalCenter
-                    text: Style.title_readout.replace("{code}", root.cls.slice(0, 3).toUpperCase())
-                    color: Theme.theme_label
-                    font.family: Style.font_family
-                    font.pixelSize: Style.fs(-7)
-                }
             }
         }
     }

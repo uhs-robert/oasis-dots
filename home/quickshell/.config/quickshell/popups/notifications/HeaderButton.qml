@@ -13,14 +13,16 @@ Rectangle {
     property string key_hint: ""
     property bool active: false
 
+    readonly property bool watch: Style.frame_watch
+
     signal activated()
 
     implicitWidth: row.implicitWidth + 28
     implicitHeight: row.implicitHeight + 16
     radius: Style.pill_chips ? height / 2 : Style.radius(8)
-    color: root.active ? Theme.theme_primary : mouse_area.pressed ? Qt.darker(Theme.bg_surface, 1.3) : mouse_area.containsMouse ? Theme.ui_visual_bg : Style.pill_chips ? "transparent" : Style.tab_outline.a > 0 ? Style.tab_active_bg : Theme.bg_surface
+    color: root.watch ? (root.active ? Style.chip_active_bg : mouse_area.containsMouse ? Style.selection_bg : "transparent") : root.active ? Theme.theme_primary : mouse_area.pressed ? Qt.darker(Theme.bg_surface, 1.3) : mouse_area.containsMouse ? Theme.ui_visual_bg : Style.pill_chips ? "transparent" : Style.tab_outline.a > 0 ? Style.tab_active_bg : Theme.bg_surface
     border.width: 1
-    border.color: Style.pill_chips || Style.tab_outline.a > 0 ? Style.chip_border : Theme.ui_border
+    border.color: root.watch || Style.pill_chips || Style.tab_outline.a > 0 ? Style.chip_border : Theme.ui_border
 
     RowLayout {
         id: row
@@ -29,14 +31,14 @@ Rectangle {
 
         Text {
             text: root.icon
-            color: root.active ? Theme.bg_core : Theme.fg_core
+            color: root.watch ? Style.text_strong : root.active ? Theme.bg_core : Theme.fg_core
             font.family: Style.font_family
             font.pixelSize: Style.font_size
         }
 
         Text {
             text: root.label
-            color: root.active ? Theme.bg_core : Theme.fg_core
+            color: root.watch ? Style.text_strong : root.active ? Theme.bg_core : Theme.fg_core
             font.bold: root.active
             font.family: Style.font_family
             font.pixelSize: Style.fs(-2)
@@ -51,9 +53,9 @@ Rectangle {
             implicitWidth: key_cap.orb ? Math.max(16, key_label.implicitWidth + 8) : key_label.implicitWidth + 8
             implicitHeight: 16
             radius: Style.key_round ? height / 2 : Style.radius(3)
-            color: key_cap.orb ? "transparent" : root.active ? Theme.bg_core : Style.key_bg
+            color: key_cap.orb ? "transparent" : root.active && !root.watch ? Theme.bg_core : Style.key_bg
             border.width: key_cap.orb ? 0 : 1
-            border.color: root.active ? Theme.ui_border : Style.key_border
+            border.color: root.active && !root.watch ? Theme.ui_border : Style.key_border
 
             MateriaOrb {
                 visible: key_cap.orb
@@ -65,7 +67,7 @@ Rectangle {
                 id: key_label
                 anchors.centerIn: parent
                 text: root.key_hint
-                color: root.active && !key_cap.orb ? Theme.theme_primary : Style.key_fg
+                color: root.active && !key_cap.orb && !root.watch ? Theme.theme_primary : Style.key_fg
                 font.bold: key_cap.orb || Style.mono_font === Style.font_family
                 font.family: Style.mono_font
                 font.pixelSize: Style.fs(-5)
