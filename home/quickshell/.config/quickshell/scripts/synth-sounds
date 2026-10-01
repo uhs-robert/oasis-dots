@@ -723,7 +723,7 @@ def goldeneye():
 
 
 def goldeneye_skin():
-    """Lock and unlock chirps for a GoldenEye lock skin: one sine sweeping up to a cut, and its mirror."""
+    """Effects for a GoldenEye lock skin: lock and unlock chirps (one sine sweeping up to a cut, and its mirror) and the pause-watch static."""
     def chirp(points, levels):
         t = clock(len(levels) * 0.01)
         return finish(np.concatenate([lowpass(shaped(np.sin(glide(t, points)), levels), 7900, order=8), np.zeros(480)]), 0.4)
@@ -734,7 +734,19 @@ def goldeneye_skin():
     down = [(0, 7900), (0.032, 7900), (0.064, 6824), (0.096, 5300), (0.128, 4047), (0.16, 3252), (0.192, 2662), (0.224, 2191), (0.256, 1838), (0.288, 1580), (0.32, 1370), (0.352, 1190), (0.44, 900)]
     down_levels = [0, 0, 0.02, 0.08, 1.0, 1.0, 1.0, 0.89, 0.78, 0.78, 0.67, 0.55, 0.49, 0.43, 0.36, 0.30, 0.26, 0.22, 0.19, 0.16, 0.14, 0.12]
     down_levels += [0.10, 0.09, 0.08, 0.06, 0.05, 0.05, 0.04, 0.04, 0.03, 0.03, 0.03, 0.02, 0.02, 0.02, 0.02, 0.02, 0.02, 0.02, 0.01, 0.01, 0.01, 0]
-    return {"lock_open": chirp(up, up_levels), "lock_close": chirp(down, down_levels)}
+    # Pause-watch static, measured from the pause music: two swells of 0.8-6.5 kHz hiss gated at 60 Hz.
+    levels = "9 9 32 52 54 54 54 52 54 58 58 55 55 55 55 58 59 59 59 61 61 61 61 61 50 50 50 50 50 52 52 52 52 46 42 39 39 39 38 34 28 28 28 25 21 20 19 19 17 17 16 16 16 16"
+    levels += " 14 14 14 14 14 15 16 16 16 17 18 19 19 19 19 20 20 20 20 22 25 26 26 29 29 38 38 40 40 38 36 30 30 30 29 29 36 44 44 44 36 36 36 36 45 47 47 47 47 47"
+    levels += " 49 49 49 49 42 42 30 30 30 30 28 20 20 20 18 18 14 14 14 13 10 7 4 2 0"
+    levels = [int(level) / 100 for level in levels.split()]
+    count = int(len(levels) * 0.01 * RATE)
+    centres = [1000, 1500] + [2250 + 500 * i for i in range(12)]
+    weights = [0.27, 0.25, 0.27, 0.36, 0.67, 1.0, 0.50, 0.58, 0.47, 0.32, 0.11, 0.09, 0.03, 0.02]
+    spectrum = np.fft.rfft(noise(count, 62)) * np.sqrt(np.interp(np.fft.rfftfreq(count, 1 / RATE), centres, weights, left=0, right=0))
+    t = clock(count / RATE)[:count]
+    gate = (0.5 + 0.5 * np.cos(2 * np.pi * 60 * t)) ** 2
+    static = finish(np.fft.irfft(spectrum, count) * gate * np.interp(t, np.arange(len(levels)) * 0.01, levels), 0.3)
+    return {"lock_open": chirp(up, up_levels), "lock_close": chirp(down, down_levels), "static": static}
 
 
 STYLES = {
