@@ -20,12 +20,12 @@ ShellRoot {
 
     FontLoader {
         id: mono_font
-        source: Qt.resolvedUrl("../../home/quickshell/.config/quickshell/fonts/GeistMono-Variable.ttf")
+        source: Qt.resolvedUrl("fonts/GeistMono-Variable.ttf")
     }
 
     FontLoader {
         id: sans_font
-        source: Qt.resolvedUrl("../../home/quickshell/.config/quickshell/fonts/Geist-Variable.ttf")
+        source: Qt.resolvedUrl("fonts/Geist-Variable.ttf")
     }
 
     // A fresh surface maps above any layer that opened since the last one.
@@ -147,12 +147,24 @@ ShellRoot {
                     NumberAnimation { duration: 800; easing.type: Easing.OutCubic }
                 }
 
+                Image {
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    visible: status === Image.Ready
+                    source: Qt.resolvedUrl("logo.png")
+                    width: 760 * win.k
+                    height: width * implicitHeight / Math.max(1, implicitWidth)
+                    fillMode: Image.PreserveAspectFit
+                    smooth: true
+                    mipmap: true
+                }
+
                 Text {
                     anchors.horizontalCenter: parent.horizontalCenter
+                    topPadding: 24 * win.k
                     text: "Oasis Dots"
                     color: "#f4f7f9"
                     font.family: root.sans_family
-                    font.pixelSize: 168 * win.k
+                    font.pixelSize: 120 * win.k
                     font.weight: Font.Bold
                 }
 

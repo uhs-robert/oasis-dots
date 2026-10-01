@@ -36,6 +36,7 @@ T_WORK_TIMEOUT=${T_WORK_TIMEOUT:-90}
 T_WORK_HOLD=${T_WORK_HOLD:-0.6}
 T_OVERVIEW_HOLD=${T_OVERVIEW_HOLD:-1.0}
 T_OVERVIEW_STEP=${T_OVERVIEW_STEP:-0.4}
+T_OVERVIEW_JUMP=${T_OVERVIEW_JUMP:-0.7}
 T_STYLE_HOLD=${T_STYLE_HOLD:-0.4}
 T_MOVE_STEP=${T_MOVE_STEP:-0.4}
 T_KEYBINDS_HOLD=${T_KEYBINDS_HOLD:-1.0}
@@ -881,20 +882,18 @@ scene_work() {
 }
 
 scene_overview() {
-  local target ch
   set_style ps1 PSX
   ipc "SUPER + TAB" call overview open
   wait_layer quickshell-overview
   pause "$T_OVERVIEW_HOLD"
-  for ch in l j h k; do
-    press "${ch^^}" "$ch"
-    pause "$T_OVERVIEW_STEP"
-  done
-  target=$(busy_output_ws || true)
-  if [[ -n $target ]]; then
-    press "${target:0:1} ${target:1}" "$target"
-    pause "$T_OVERVIEW_STEP"
-  fi
+  press "CTRL + L" ^l
+  pause "$T_OVERVIEW_JUMP"
+  press "CTRL + H" ^h
+  pause "$T_OVERVIEW_JUMP"
+  press "TAB" @Tab
+  pause "$T_OVERVIEW_JUMP"
+  press "SHIFT + TAB" +@Tab
+  pause "$T_OVERVIEW_JUMP"
   press "ENTER" @Return
   wait_layer_gone quickshell-overview
   assert_active_on_output
@@ -1027,30 +1026,32 @@ scene_screenshot() {
   wait_layer_gone quickshell-region
 }
 
-move_overview_window() {
-  local cls=$1 slot=$2 first=$3 src dest n
-  src=$(window_ws "$cls" || true)
-  dest=$(slot_ws "$slot" || true)
-  dest=${dest:-$((10 + slot))}
-  src=${src:-16}
-  n=$(tab_count "$src" "$cls" || echo 0)
-  if [[ $first == first ]]; then
-    ipc "SUPER + TAB" call overview open
-    wait_layer quickshell-overview
+move_marked_windows() {
+  local src=$1 dest=$2 n
+  if ! ((DRY)); then
+    hyprctl clients -j | jq -e --argjson ws "$src" --arg prot "$protect_addrs" '
+      ($prot | split(" ")) as $p | [.[] | select(.workspace.id == $ws)] | length >= 2 and all(.[]; .address | IN($p[]) | not)' >/dev/null ||
+      die "workspace $src does not hold the windows to move"
   fi
-  press "${src:0:1} ${src:1}" "$src"
+  ipc "SUPER + TAB" call overview open
+  wait_layer quickshell-overview
   pause "$T_OVERVIEW_STEP"
+  press "${src:0:1} ${src:1}" "$src"
+  pause "$T_OVERVIEW_JUMP"
+  press "SHIFT + V" +v
+  pause "$T_OVERVIEW_JUMP"
+  press "M" m
+  pause "$T_OVERVIEW_JUMP"
+  press "${dest:0:1} ${dest:1}" "$dest"
+  pause "$T_OVERVIEW_JUMP"
+  press "M" m
+  pause "$T_OVERVIEW_JUMP"
+  if ((DRY)); then n=1; else n=$(tab_count "$dest" slack || echo 0); fi
   while ((n > 0)); do
     press "TAB" @Tab
     pause "$T_OVERVIEW_STEP"
     n=$((n - 1))
   done
-  press "M" m
-  pause "$T_OVERVIEW_STEP"
-  press "${dest:0:1} ${dest:1}" "$dest"
-  pause "$T_OVERVIEW_STEP"
-  press "M" m
-  pause "$T_MOVE_STEP"
 }
 
 resize_step() {
@@ -1061,8 +1062,9 @@ resize_step() {
 
 scene_to_hdmi() {
   focus_output_monitor
-  move_overview_window betterbird 4 first
-  move_overview_window slack 4 next
+  local src
+  src=$(window_ws slack || true)
+  move_marked_windows "${src:-16}" "$(slot_ws 4)"
   press "ENTER" @Return
   wait_layer_gone quickshell-overview
   pause "$T_MOVE_STEP"
