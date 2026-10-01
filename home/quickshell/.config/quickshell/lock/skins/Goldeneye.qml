@@ -9,6 +9,8 @@ Item {
     id: root
 
     property var ctx: null
+    // Set by the host to this surface's output, which picks its desktop screenshot.
+    property string screen_name: ""
     readonly property int unlock_ms: 1600
 
     readonly property bool animate: !!root.ctx && root.ctx.animate
@@ -123,6 +125,9 @@ Item {
     readonly property int frame_at: Math.max(0, Math.min(root.n_frames - 1, Math.floor(root.intro_t / 0.88 * root.n_frames)))
     readonly property real face_alpha: root.has_frames ? Math.max(0, Math.min(1, (root.intro_t - 0.84) / 0.16)) : root.intro_t
 
+    readonly property string backdrop_file: root.ctx && root.ctx.backdrops && !root.login ? root.ctx.backdrops[root.screen_name] || "" : ""
+    readonly property real backdrop_alpha: root.has_frames ? 1 - root.ease(0.42, 0.8, root.intro_t) : 0
+
     property real burst_level: 0
     property int noise_step: 0
     property int burst_interval: 30000
@@ -160,7 +165,7 @@ Item {
     }
 
     function frames_ready() {
-        return !!frames_loader.item && frames_loader.item.ready >= root.n_frames;
+        return !!frames_loader.item && frames_loader.item.ready >= root.n_frames * 2;
     }
 
     function begin_motion() {
@@ -398,6 +403,17 @@ Item {
         color: "#000000"
     }
 
+    // The desktop as it was when the lock engaged, behind the arm until the watch fills the screen.
+    Image {
+        anchors.fill: parent
+        source: root.backdrop_file !== "" && (root.intro_t < 1 || root.frames_on) ? root.backdrop_file : ""
+        cache: false
+        asynchronous: true
+        fillMode: Image.Stretch
+        opacity: root.backdrop_alpha
+        visible: opacity > 0
+    }
+
     // The 1020 x 720 plate scaled to fit, black around it.
     Item {
         id: stage
@@ -418,21 +434,50 @@ Item {
                 readonly property int total: root.n_frames
 
                 Repeater {
+                    id: colors
                     model: sheet.total
 
                     Image {
                         id: arm
                         required property int index
-                        width: 1020
-                        height: 720
                         source: Qt.resolvedUrl("goldeneye/frames/arm_" + String(arm.index).padStart(2, "0") + ".jpg")
                         sourceSize.width: Math.round(Math.min(1020, 1020 * stage.k))
                         cache: false
                         asynchronous: true
-                        smooth: false
-                        visible: arm.index === root.frame_at
+                        visible: false
                         onStatusChanged: if (arm.status === Image.Ready) sheet.ready += 1
                     }
+                }
+
+                Repeater {
+                    id: masks
+                    model: sheet.total
+
+                    Image {
+                        id: cut
+                        required property int index
+                        source: Qt.resolvedUrl("goldeneye/frames/mask_" + String(cut.index).padStart(2, "0") + ".png")
+                        sourceSize.width: Math.round(Math.min(1020, 1020 * stage.k))
+                        cache: false
+                        asynchronous: true
+                        visible: false
+                        onStatusChanged: if (cut.status === Image.Ready) sheet.ready += 1
+                    }
+                }
+
+                // Covers the whole output; past the frame's edge the arm runs on from its edge pixels until the watch fills the view.
+                ShaderEffect {
+                    width: root.width / stage.k
+                    height: root.height / stage.k
+                    x: (1020 - width) / 2
+                    y: (720 - height) / 2
+                    property real span_x: width / 1020
+                    property real span_y: height / 720
+                    property real reach: 1 - root.ease(0.55, 0.78, root.intro_t)
+                    property variant color_src: colors.count > 0 ? colors.itemAt(root.frame_at) : null
+                    property variant mask_src: masks.count > 0 ? masks.itemAt(root.frame_at) : null
+                    visible: !!color_src && !!mask_src && sheet.ready >= sheet.total * 2
+                    fragmentShader: Qt.resolvedUrl("goldeneye/frame.frag.qsb")
                 }
             }
         }
@@ -457,6 +502,8 @@ Item {
                 active: !root.has_frames
                 sourceComponent: Bezel {}
             }
+
+            Panel {}
 
             Hands {
                 id: hands
@@ -758,36 +805,75 @@ Item {
         }
     }
 
-    // One translucent spear-shaped hand, pivoting on the dial centre.
-    component Spear: Item {
-        id: spear
+    // The panel's translucent green octagon over the bezel: the dots and the white bars show through its edge.
+    component Panel: Item {
+        id: panel
+        readonly property var edge: [[294, 118], [272, 144], [250, 168], [232, 200], [212, 232], [200, 264], [194, 296], [188, 340], [188, 380], [194, 420], [204, 460], [214, 492], [234, 524], [251, 556], [274, 580], [294, 603]]
+        readonly property var outline: panel.edge.map(p => Qt.point(p[0], p[1])).concat(panel.edge.slice().reverse().map(p => Qt.point(1020 - p[0], p[1])))
+        anchors.fill: parent
+
+        Shape {
+            preferredRendererType: Shape.CurveRenderer
+            ShapePath {
+                strokeWidth: -1
+                fillGradient: LinearGradient {
+                    x1: 0
+                    y1: 118
+                    x2: 0
+                    y2: 603
+                    GradientStop { position: 0; color: Qt.rgba(0, 0.13, 0, 0.8) }
+                    GradientStop { position: 1; color: Qt.rgba(0, 0.19, 0.01, 0.8) }
+                }
+                PathPolyline { path: panel.outline }
+            }
+        }
+
+        Rectangle {
+            x: 188
+            y: 347
+            width: 62
+            height: 26
+            color: Qt.rgba(0.7, 0.78, 0.7, 0.26)
+        }
+
+        Rectangle {
+            x: 770
+            y: 347
+            width: 62
+            height: 26
+            color: Qt.rgba(0.7, 0.78, 0.7, 0.26)
+        }
+    }
+
+    // One outlined bar hand with a pointed tip, pivoting on the dial centre.
+    component Hand: Item {
+        id: hand
         property real length: 150
-        property real head: 34
-        property real shaft: 7
-        property real tail: 30
+        property real half: 20
+        property real roof: 34
+        property real tail: 26
         x: 510
         y: 360
 
         Shape {
             preferredRendererType: Shape.CurveRenderer
             ShapePath {
-                strokeWidth: 2
-                strokeColor: Qt.rgba(0.85, 0.92, 0.85, 0.5)
-                fillColor: Qt.rgba(0.8, 0.88, 0.8, 0.16)
+                strokeWidth: 5
+                strokeColor: Qt.rgba(0.69, 0.86, 0.69, 0.28)
+                fillColor: Qt.rgba(0.69, 0.86, 0.69, 0.09)
+                joinStyle: ShapePath.MiterJoin
                 startX: 0
-                startY: -spear.length
-                PathLine { x: spear.head / 2; y: -spear.length + spear.head }
-                PathLine { x: spear.shaft; y: -spear.length + spear.head }
-                PathLine { x: spear.shaft; y: spear.tail }
-                PathLine { x: -spear.shaft; y: spear.tail }
-                PathLine { x: -spear.shaft; y: -spear.length + spear.head }
-                PathLine { x: -spear.head / 2; y: -spear.length + spear.head }
-                PathLine { x: 0; y: -spear.length }
+                startY: -hand.length
+                PathLine { x: hand.half; y: -hand.length + hand.roof }
+                PathLine { x: hand.half; y: hand.tail }
+                PathLine { x: -hand.half; y: hand.tail }
+                PathLine { x: -hand.half; y: -hand.length + hand.roof }
+                PathLine { x: 0; y: -hand.length }
             }
         }
     }
 
-    // The clock hands over the panel.
+    // The clock hands over the panel; their length follows the panel's edge in their direction.
     component Hands: Item {
         id: hands
         width: 1020
@@ -796,16 +882,31 @@ Item {
         readonly property real min_a: (root.now.getMinutes() + root.now.getSeconds() / 60) * 6
         readonly property real sec_a: root.now.getSeconds() * 6
 
-        Spear {
-            length: 130
+        function reach(deg) {
+            const r = deg * Math.PI / 180;
+            return 0.97 / Math.hypot(Math.sin(r) / 322, Math.cos(r) / 242);
+        }
+
+        Hand {
+            length: hands.reach(hands.hour_a) * 0.66
+            half: 20
             rotation: hands.hour_a
         }
 
-        Spear {
-            length: 200
-            head: 28
-            shaft: 5
+        Hand {
+            length: hands.reach(hands.min_a)
+            half: 16
+            roof: 30
+            tail: 28
             rotation: hands.min_a
+        }
+
+        Rectangle {
+            x: 486
+            y: 366
+            width: 52
+            height: 28
+            color: Qt.rgba(0.69, 0.86, 0.69, 0.2)
         }
 
         Item {
@@ -815,10 +916,10 @@ Item {
 
             Rectangle {
                 x: -1
-                y: -222
+                y: -hands.reach(hands.sec_a)
                 width: 2
-                height: 270
-                color: Qt.rgba(0.92, 0.96, 0.92, 0.5)
+                height: hands.reach(hands.sec_a) + 40
+                color: Qt.rgba(0.82, 0.92, 0.82, 0.55)
             }
         }
     }
@@ -916,12 +1017,10 @@ Item {
         }
 
         Rectangle {
-            x: 190
-            y: 118
-            width: 640
-            height: 485
-            radius: 150
-            color: "#052008"
+            x: 488
+            y: 612
+            width: 24
+            height: 78
         }
     }
 }

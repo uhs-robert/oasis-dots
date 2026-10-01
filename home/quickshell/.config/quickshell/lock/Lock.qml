@@ -100,9 +100,13 @@ Singleton {
         return "ok";
     }
 
-    // Only the generic screen draws the backdrop, so other skins never take a screenshot.
+    // The generic screen draws the backdrop unless it is off; skins in backdrop_skins always take one for their own intro.
+    readonly property var backdrop_skins: ["Goldeneye.qml"]
+
     function wants_backdrop(style_name) {
-        return Style.lock_backdrop !== "off" && String(root.skin_url(style_name)) === String(Qt.resolvedUrl("LockScreen.qml"));
+        const url = String(root.skin_url(style_name));
+        if (root.backdrop_skins.some(f => url.endsWith("/lock/skins/" + f))) return true;
+        return Style.lock_backdrop !== "off" && url === String(Qt.resolvedUrl("LockScreen.qml"));
     }
 
     function drop_backdrop() {
