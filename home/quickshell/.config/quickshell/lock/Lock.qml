@@ -53,6 +53,7 @@ Singleton {
     property bool granted: false
     property int unlock_ms: 0
     property bool saver: false
+    property bool music_armed: false
     readonly property string flag_script: Quickshell.shellDir + "/scripts/lock-flag"
     readonly property var backdrop_files: {
         try {
@@ -80,6 +81,7 @@ Singleton {
         root.fail_count = 0;
         root.message = "";
         root.granted = false;
+        root.disarm_music();
         live_ctx.scene = "";
         root.wake();
         persist.held = false;
@@ -161,6 +163,11 @@ Singleton {
         root.rejected();
     }
 
+    function disarm_music() {
+        root.music_armed = false;
+        music_timer.stop();
+    }
+
     function wake() {
         root.saver = false;
         saver_timer.restart();
@@ -176,6 +183,7 @@ Singleton {
     function finish_unlock() {
         if (!root.granted) return;
         root.granted = false;
+        root.disarm_music();
         persist.locked = false;
         root.drop_backdrop();
         Quickshell.execDetached([root.flag_script, "clear"]);
@@ -206,6 +214,8 @@ Singleton {
     // `skin` is the focused screen's skin; it may take a key only while the buffer is empty and PAM waits on nothing.
     function key(event, skin) {
         root.wake();
+        root.music_armed = true;
+        music_timer.restart();
         if (root.granted) {
             // A fresh press skips the unlock animation; a held Enter from the submit does not.
             if (!event.isAutoRepeat) {
@@ -241,6 +251,12 @@ Singleton {
             return;
         }
         event.accepted = true;
+    }
+
+    Timer {
+        id: music_timer
+        interval: 120000
+        onTriggered: root.music_armed = false
     }
 
     Timer {
@@ -419,6 +435,12 @@ Singleton {
         value: persist.locked
     }
 
+    Binding {
+        target: ThemeAudio
+        property: "lock_armed"
+        value: root.music_armed
+    }
+
     LockCtx {
         id: live_ctx
         buffer_length: root.buffer.length
@@ -435,6 +457,7 @@ Singleton {
         backdrops: root.backdrop_files
         power_live: true
         sound: true
+        music_armed: root.music_armed
     }
 
     Connections {

@@ -30,7 +30,7 @@ Item {
     readonly property bool owns_sound: root.sound_on && root.ctx.sound_owner === root
     // The title theme plays only on the login screen; the fountain from the white fade until unlock, the title or the saver.
     readonly property string music_track: {
-        if (!root.owns_sound || root.ctx.music === false || root.phase === "saver" || root.phase === "unlock") return "";
+        if (!root.owns_sound || root.ctx.music === false || root.ctx.music_armed === false || root.phase === "saver" || root.phase === "unlock") return "";
         if (root.screen === "file" || root.screen === "name") return "fairy";
         return root.ctx.login === true ? "title" : "";
     }

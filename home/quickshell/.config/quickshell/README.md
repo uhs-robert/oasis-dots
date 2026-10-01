@@ -148,6 +148,8 @@ Settings > Lock screen picks the lock: `follow` (the lock skin of the current st
 
 The FF7, MGS2 and Ocarina skins can play game music and effects, which aren't in the repo. Import your own copies with `scripts/ff7-audio`, `scripts/mgs2-audio` and `scripts/ocarina-audio`. The MGS2 skin's effects are the exception: synthesized stand-ins ship in `lock/skins/mgs2/fx/` (from `scripts/synth-sounds mgs2-skin`), and an imported file of the same name replaces each one.
 
+On the lock, all music (skin and theme) stays silent until a key press and fades out after 2 minutes without one; the lock host owns this as `music_armed` on the lock ctx, so a skin with music gates on `ctx.music_armed !== false`. The login screen plays music from the start.
+
 The login screen is a Quickshell greeter under greetd that shows your lock skin. The installer offers it; to update or install it by hand:
 
 ```bash
