@@ -20,6 +20,10 @@ Singleton {
     property string choice: ""
     // The lock host sets this while the session is locked.
     property bool lock_active: false
+    // The lock host clears this until a key press; lock music fades out with it.
+    property bool lock_armed: true
+    property real music_level: root.lock_armed ? 1 : 0
+    Behavior on music_level { NumberAnimation { duration: 800 } }
 
     readonly property var kinds: ["cursor", "confirm", "cancel", "notify"]
     readonly property var volumes: [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
@@ -231,9 +235,9 @@ Singleton {
     }
 
     MpvProcess {
-        wanted: root.music_on && root.music_url !== ""
+        wanted: root.music_on && root.music_url !== "" && (root.lock_armed || root.music_level > 0)
         args: ["--loop-file=inf", root.music_url]
-        volume: root.music_volume
+        volume: root.music_volume * root.music_level
     }
 
     FileView {

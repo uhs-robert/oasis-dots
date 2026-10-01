@@ -28,7 +28,7 @@ Item {
     readonly property bool owns_sound: root.sound_on && root.ctx.sound_owner === root
     // The title theme plays only on the login screen; the menu theme from the main menu until unlock or the saver.
     readonly property string music_track: {
-        if (!root.owns_sound || root.ctx.music === false || root.phase === "saver" || root.phase === "unlock") return "";
+        if (!root.owns_sound || root.ctx.music === false || root.ctx.music_armed === false || root.phase === "saver" || root.phase === "unlock") return "";
         if (root.screen === "menu" || root.screen === "load" || root.screen === "name") return "menu";
         return root.ctx.login === true ? "title" : "";
     }
