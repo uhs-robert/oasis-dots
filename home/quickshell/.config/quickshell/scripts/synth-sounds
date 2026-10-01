@@ -723,7 +723,7 @@ def goldeneye():
 
 
 def goldeneye_skin():
-    """Effects for a GoldenEye lock skin: lock and unlock chirps (one sine sweeping up to a cut, and its mirror) and the pause-watch static."""
+    """Effects for a GoldenEye lock skin: lock and unlock chirps (one sine sweeping up to a cut, and its mirror), the pause-watch static and the theme pack's clicks."""
     def chirp(points, levels):
         t = clock(len(levels) * 0.01)
         return finish(np.concatenate([lowpass(shaped(np.sin(glide(t, points)), levels), 7900, order=8), np.zeros(480)]), 0.4)
@@ -746,7 +746,24 @@ def goldeneye_skin():
     t = clock(count / RATE)[:count]
     gate = (0.5 + 0.5 * np.cos(2 * np.pi * 60 * t)) ** 2
     static = finish(np.fft.irfft(spectrum, count) * gate * np.interp(t, np.arange(len(levels)) * 0.01, levels), 0.3)
-    return {"lock_open": chirp(up, up_levels), "lock_close": chirp(down, down_levels), "static": static}
+    # The theme pack's clicks again: select, confirm and back as they are, a short quiet cursor click for typing, and the cancel slowed and doubled for a rejected password.
+    clicks = goldeneye()
+    cancel = clicks["cancel"]
+    key = clicks["cursor"][: int(0.03 * RATE)]
+    slow = np.interp(np.arange(int(len(cancel) / 0.72)) * 0.72, np.arange(len(cancel)), cancel)
+    error = np.zeros(len(slow) + int(0.09 * RATE))
+    error[: len(slow)] += slow
+    error[int(0.09 * RATE) : int(0.09 * RATE) + len(cancel)] += cancel
+    return {
+        "lock_open": chirp(up, up_levels),
+        "lock_close": chirp(down, down_levels),
+        "static": static,
+        "select": clicks["cursor"],
+        "confirm": clicks["confirm"],
+        "back": cancel,
+        "type": finish(key, 0.16),
+        "error": finish(error, 0.36),
+    }
 
 
 STYLES = {

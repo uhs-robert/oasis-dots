@@ -1,0 +1,258 @@
+#!/usr/bin/env python3
+# Builds the GoldenEye lock skin's intro frames and bezel plate from a capture of the pause watch (needs ffmpeg, PIL and numpy).
+# Usage: goldeneye-frames [VIDEO]   (default: downloads the whole reference capture, an hour long, with yt-dlp into ~/.cache/goldeneye-frames)
+# Writes lock/skins/goldeneye/frames/: arm_NN.jpg (matted onto black) with mask_NN.png, plate.jpg and count.txt (gitignored, game footage).
+import os
+import shutil
+import subprocess
+import sys
+import tempfile
+from collections import deque
+from pathlib import Path
+
+import numpy as np
+from PIL import Image, ImageDraw
+
+URL = "https://youtu.be/LlzYhBITxzs"
+CROP = (130, 0, 1150, 720)
+FIRST, LAST, CASE_FROM, SILHOUETTE_FROM = 36, 67, 52, 66
+ICON = (1002, 632, 22)
+# The bezel is the darkest of PLATE_N settled-face frames PLATE_STEP seconds apart: the real-time hands never sit on one spot for long.
+PLATE_START, PLATE_STEP, PLATE_N = 10.0, 120.0, 29
+SILHOUETTE = [(63, 0), (960, 0), (1020, 152), (1020, 568), (960, 720), (130, 720), (0, 617), (0, 115)]
+PANEL_LEFT = [(294, 118), (272, 144), (250, 168), (232, 200), (212, 232), (200, 264), (194, 296), (188, 340), (188, 380), (194, 420), (204, 460), (214, 492), (234, 524), (251, 556), (274, 580), (294, 603)]
+DOTS = [(230, 200), (788, 200), (230, 520), (788, 520)]
+DOT_SPRITE = (350, 635)
+BARS = [(163, 188), (832, 857)]
+OUT = Path(__file__).resolve().parent.parent / "lock" / "skins" / "goldeneye" / "frames"
+
+
+def fetch(video):
+    if video:
+        return video
+    cache = Path(os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache")) / "goldeneye-frames"
+    cache.mkdir(parents=True, exist_ok=True)
+    path = cache / "ref.mp4"
+    if not path.exists():
+        subprocess.run(["yt-dlp", "-f", "bestvideo[height<=720]", "-o", str(path), URL], check=True)
+    return str(path)
+
+
+def extract(video, tmp):
+    subprocess.run(["ffmpeg", "-v", "error", "-ss", "1.0", "-t", "3.0", "-i", video, "-vf", "fps=30", f"{tmp}/f%03d.png"], check=True)
+
+
+def load(tmp, i):
+    return np.asarray(Image.open(f"{tmp}/f{i:03d}.png").convert("RGB").crop(CROP)).astype(np.float32)
+
+
+def box(a, r):
+    k = 2 * r + 1
+    p = np.pad(a, ((r + 1, r), (r + 1, r)), mode="edge")
+    c = p.cumsum(0).cumsum(1)
+    return (c[k:, k:] - c[:-k, k:] - c[k:, :-k] + c[:-k, :-k]) / (k * k)
+
+
+def dilate(m, r):
+    return box(m.astype(np.float32), r) > 0.0001
+
+
+def erode(m, r):
+    return box(m.astype(np.float32), r) > 0.9999
+
+
+def close(m, r):
+    return erode(dilate(m, r), r)
+
+
+def quarter(m, down=4):
+    h, w = m.shape
+    return m[: h // down * down, : w // down * down].reshape(h // down, down, w // down, down).mean(axis=(1, 3)) > 0.4
+
+
+def grow(seeds, allowed):
+    seen = np.zeros(allowed.shape, bool)
+    dq = deque()
+    for y, x in seeds:
+        if allowed[y, x] and not seen[y, x]:
+            seen[y, x] = True
+            dq.append((y, x))
+    while dq:
+        cy, cx = dq.popleft()
+        for ny, nx in ((cy + 1, cx), (cy - 1, cx), (cy, cx + 1), (cy, cx - 1)):
+            if 0 <= ny < allowed.shape[0] and 0 <= nx < allowed.shape[1] and allowed[ny, nx] and not seen[ny, nx]:
+                seen[ny, nx] = True
+                dq.append((ny, nx))
+    return seen
+
+
+def largest(m, down=4):
+    q = quarter(m, down)
+    lab = np.zeros(q.shape, np.int32)
+    best, best_n, n = None, 0, 0
+    for y in range(q.shape[0]):
+        for x in range(q.shape[1]):
+            if q[y, x] and not lab[y, x]:
+                n += 1
+                comp = grow([(y, x)], q & (lab == 0))
+                lab[comp] = n
+                if comp.sum() > best_n:
+                    best, best_n = comp, comp.sum()
+    if best is None:
+        return m
+    up = np.kron(best, np.ones((down, down), bool))
+    full = np.zeros(m.shape, bool)
+    full[: up.shape[0], : up.shape[1]] = up
+    return m & dilate(full, 3)
+
+
+def fill_holes(m, down=4):
+    q = quarter(m, down)
+    edge = [(y, x) for y in range(q.shape[0]) for x in (0, q.shape[1] - 1)] + [(y, x) for x in range(q.shape[1]) for y in (0, q.shape[0] - 1)]
+    outside = grow(edge, ~q)
+    up = np.kron(~q & ~outside, np.ones((down, down), bool))
+    full = np.zeros(m.shape, bool)
+    full[: up.shape[0], : up.shape[1]] = up
+    return m | full
+
+
+def polygon_mask(points, scale=4):
+    img = Image.new("L", (1020 * scale, 720 * scale), 0)
+    ImageDraw.Draw(img).polygon([(x * scale, y * scale) for x, y in points], fill=255)
+    return np.asarray(img.resize((1020, 720), Image.BOX)).astype(np.float32) / 255
+
+
+def panel_points():
+    right = [(1020 - x, y) for x, y in reversed(PANEL_LEFT)]
+    return PANEL_LEFT + right
+
+
+def feather(m):
+    return box(box(erode(m, 1).astype(np.float32), 1), 1)
+
+
+def inpaint(img, cx, cy, r):
+    x0, y0, x1, y1 = cx - r - 6, cy - r - 6, min(1020, cx + r + 6), min(720, cy + r + 6)
+    patch = img[y0:y1, x0:x1].copy()
+    ys, xs = np.mgrid[y0:y1, x0:x1]
+    hole = (xs - cx) ** 2 + (ys - cy) ** 2 <= r * r
+    patch[hole] = patch[~hole].mean(axis=0)
+    for _ in range(400):
+        p = np.pad(patch, ((1, 1), (1, 1), (0, 0)), mode="edge")
+        avg = (p[:-2, 1:-1] + p[2:, 1:-1] + p[1:-1, :-2] + p[1:-1, 2:]) / 4
+        patch[hole] = avg[hole]
+    out = img.copy()
+    out[y0:y1, x0:x1] = patch
+    return out
+
+
+# The camera keeps the watch centred, so its case and bracelet follow from the green panel's width alone.
+WATCH_CENTRE = (510, 361)
+
+
+def case_mask(f):
+    r, g, b = f[..., 0], f[..., 1], f[..., 2]
+    green = dilate(erode((g > r + 14) & (g > b + 14) & (g > 30), 1), 1)
+    ys, xs = np.nonzero(green)
+    if len(xs) < 30:
+        return None
+    cx, cy = np.median(xs), np.median(ys)
+    near = (abs(xs - cx) < 400) & (abs(ys - cy) < 300)
+    pw = float(np.subtract(*np.percentile(xs[near], [98, 2])))
+    x, y = WATCH_CENTRE
+    img = Image.new("L", (1020 * 4, 720 * 4), 0)
+    draw = ImageDraw.Draw(img)
+    rx, ry, bw, bh = 0.98 * pw, 0.7 * pw, 0.485 * pw, 1.27 * pw
+    draw.ellipse([(x - rx) * 4, (y - ry) * 4, (x + rx) * 4, (y + ry) * 4], fill=255)
+    draw.rectangle([(x - bw) * 4, (y - bh) * 4, (x + bw) * 4, (y + bh) * 4], fill=255)
+    return np.asarray(img.resize((1020, 720), Image.BOX)) > 127
+
+
+# Skin is orange, the sleeve dark and smooth, the bracelet and bezel bright and grey; gravel is none of those.
+def matte(f, i):
+    r, g, b = f[..., 0], f[..., 1], f[..., 2]
+    lum = (r + g + b) / 3
+    skin = ((r - b) > 8) & (r > 22)
+    mean = box(lum, 3)
+    sd = np.sqrt(np.maximum(box(lum * lum, 3) - mean * mean, 0))
+    sleeve = (mean < 38) & (sd < 5.5) & ((b - r) > 1)
+    sat = np.maximum(np.maximum(r, g), b) - np.minimum(np.minimum(r, g), b)
+    metal = dilate(erode((box(lum, 5) > 105) & (box(sat, 5) < 30), 2), 2)
+    if i >= SILHOUETTE_FROM:
+        return polygon_mask(SILHOUETTE)
+    m = skin | sleeve
+    case = case_mask(f) if i >= CASE_FROM else None
+    m |= metal if case is None else case
+    m = close(m, 5)
+    m = largest(m)
+    m = dilate(erode(m, 3), 3)
+    m = fill_holes(close(m, 4))
+    m = erode(dilate(m, 1), 2) | erode(m, 1)
+    return feather(m)
+
+
+# The bottom-right bezel carries the emulator icon and wrist skin, so it is rebuilt from the top-right one, mirrored and blended in.
+def mirror_corner(img):
+    ys, xs = np.mgrid[0:720, 0:1020]
+    w = np.clip((ys - 440) / 100.0, 0, 1) * np.clip((xs - 925) / 30.0, 0, 1)
+    return img * (1 - w[..., None]) + img[::-1] * w[..., None]
+
+
+def plate(tmp, video):
+    subprocess.run(["ffmpeg", "-v", "error", "-ss", str(PLATE_START), "-t", str(PLATE_N * PLATE_STEP), "-i", video, "-vf", f"fps=1/{PLATE_STEP:g},crop={CROP[2] - CROP[0]}:{CROP[3]}:{CROP[0]}:0", f"{tmp}/p%03d.png"], check=True)
+    stack = np.stack([np.asarray(Image.open(p).convert("RGB")) for p in sorted(Path(tmp).glob("p*.png"))])
+    out = np.zeros(stack.shape[1:], np.float32)
+    for y in range(0, out.shape[0], 40):
+        out[y : y + 40] = np.percentile(stack[:, y : y + 40], 5, axis=0)
+    panel = polygon_mask(panel_points()) > 0
+    out[dilate(panel, 3)] = 0
+    for x0, x1 in BARS:
+        out[344:370, x0:x1] = 235
+    sx, sy = DOT_SPRITE
+    sprite = out[sy - 26 : sy + 26, sx - 26 : sx + 26].copy()
+    yy, xx = np.mgrid[-26:26, -26:26]
+    alpha = np.clip(26 - np.hypot(xx, yy), 0, 1)[..., None]
+    for cx, cy in DOTS:
+        region = out[cy - 26 : cy + 26, cx - 26 : cx + 26]
+        out[cy - 26 : cy + 26, cx - 26 : cx + 26] = region * (1 - alpha) + sprite * alpha
+    out = mirror_corner(out)
+    return out * polygon_mask(SILHOUETTE)[..., None]
+
+
+def save(a, path):
+    Image.fromarray(np.clip(a, 0, 255).astype(np.uint8)).save(path, quality=88, subsampling=0)
+
+
+def publish(tmp_path, name):
+    os.replace(tmp_path, OUT / name)
+
+
+def main():
+    video = fetch(sys.argv[1] if len(sys.argv) > 1 else "")
+    OUT.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory() as tmp:
+        extract(video, tmp)
+        work = OUT / ".build"
+        shutil.rmtree(work, ignore_errors=True)
+        work.mkdir()
+        n = 0
+        for i in range(FIRST, LAST + 1):
+            f = load(tmp, i)
+            f = mirror_corner(f) if i >= SILHOUETTE_FROM else inpaint(f, *ICON)
+            alpha = matte(f, i)
+            save(f * alpha[..., None], work / f"arm_{n:02d}.jpg")
+            Image.fromarray((alpha * 255).astype(np.uint8)).save(work / f"mask_{n:02d}.png", optimize=True)
+            n += 1
+        save(plate(tmp, video), work / "plate.jpg")
+        (work / "count.txt").write_text(f"{n}\n")
+        keep = {p.name for p in work.iterdir()}
+        for name in sorted(keep, key=lambda x: x == "count.txt"):
+            publish(work / name, name)
+        for old in OUT.glob("*"):
+            if old.is_file() and old.name not in keep:
+                old.unlink()
+        shutil.rmtree(work)
+    print(f"{n} frames and plate in {OUT}")
+
+
+main()

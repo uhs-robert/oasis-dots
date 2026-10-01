@@ -17,8 +17,9 @@ stage_greeter() {
   cp -r "$repo/system/etc/greetd/quickshell/." "$dest/"
   cp -r "$qs/lock/skins/." "$dest/lock/skins/"
   cp "$qs/lock/Tints.js" "$dest/lock/"
+  [[ -f "$qs/VERSION" ]] && cp "$qs/VERSION" "$dest/"
   local skin audio_dir
-  for skin in ocarina mgs2; do
+  for skin in ocarina mgs2 goldeneye; do
     audio_dir="${XDG_DATA_HOME:-$HOME/.local/share}/quickshell/$skin-audio"
     if [[ -d "$audio_dir" ]]; then
       mkdir -p "$dest/lock/skins/$skin/audio"
