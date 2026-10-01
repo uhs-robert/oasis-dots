@@ -14,8 +14,8 @@ DEMO_OUTPUT=${DEMO_OUTPUT:-HDMI-A-1}
 DEMO_PASSWORD=${DEMO_PASSWORD:-oasisdemo}
 DEMO_FPS=${DEMO_FPS:-60}
 DEMO_OUT_DIR=${DEMO_OUT_DIR:-$HOME/Videos/Recordings}
-DEMO_LOCATION=${DEMO_LOCATION:-San Francisco, CA}
-DEMO_SEARCH_TEXT=${DEMO_SEARCH_TEXT:-fire}
+DEMO_LOCATION=${DEMO_LOCATION:-New York, NY}
+DEMO_SEARCH_TEXT=${DEMO_SEARCH_TEXT:-uphill}
 DEMO_PROTECT_PID=${DEMO_PROTECT_PID:-${KITTY_PID:-}}
 DEMO_WEATHER_FILE=${DEMO_WEATHER_FILE:-$HOME/.config/quickshell/weather.local.json}
 DEMO_RESET_KILL=${DEMO_RESET_KILL:-0}
@@ -25,7 +25,7 @@ T_LEAD=${T_LEAD:-0.15}
 T_KEY_GAP=${T_KEY_GAP:-0.1}
 T_SETTLE=${T_SETTLE:-0.3}
 T_TYPE_DELAY_MS=${T_TYPE_DELAY_MS:-70}
-T_LOGIN_INTRO=${T_LOGIN_INTRO:-0.8}
+T_LOGIN_INTRO=${T_LOGIN_INTRO:-0.5}
 T_LOGIN_TITLE_TURN=${T_LOGIN_TITLE_TURN:-2.0}
 T_LOGIN_PAGE_TURN=${T_LOGIN_PAGE_TURN:-1.45}
 T_LOGIN_HOLD=${T_LOGIN_HOLD:-0.25}
@@ -35,8 +35,8 @@ T_LOGIN_UNLOCK_MARGIN=${T_LOGIN_UNLOCK_MARGIN:-0.3}
 T_WORK_TIMEOUT=${T_WORK_TIMEOUT:-90}
 T_WORK_HOLD=${T_WORK_HOLD:-0.6}
 T_OVERVIEW_HOLD=${T_OVERVIEW_HOLD:-1.0}
-T_OVERVIEW_STEP=${T_OVERVIEW_STEP:-0.25}
-T_STYLE_HOLD=${T_STYLE_HOLD:-0.6}
+T_OVERVIEW_STEP=${T_OVERVIEW_STEP:-0.4}
+T_STYLE_HOLD=${T_STYLE_HOLD:-0.4}
 T_MOVE_STEP=${T_MOVE_STEP:-0.4}
 T_KEYBINDS_HOLD=${T_KEYBINDS_HOLD:-1.0}
 T_TMUX_STEP=${T_TMUX_STEP:-0.35}
@@ -44,9 +44,12 @@ T_TMUX_HOLD=${T_TMUX_HOLD:-0.7}
 T_SHOT_STEP=${T_SHOT_STEP:-0.18}
 T_RESIZE_STEP=${T_RESIZE_STEP:-0.3}
 T_SPLIT_HOLD=${T_SPLIT_HOLD:-1.1}
+T_SEARCH_HOLD=${T_SEARCH_HOLD:-1.2}
+T_KEEPTABS_HOLD=${T_KEEPTABS_HOLD:-2.0}
+DEMO_FAST=${DEMO_FAST:-5}
 T_KEEPTABS_STEP=${T_KEEPTABS_STEP:-0.35}
 T_SETTINGS_HOLD=${T_SETTINGS_HOLD:-0.6}
-T_OUTRO_HOLD=${T_OUTRO_HOLD:-3.5}
+T_OUTRO_HOLD=${T_OUTRO_HOLD:-4.5}
 
 scenes=(login work overview styles move_window keybinds tmux screenshot to_hdmi keeptabs settings outro)
 work_classes=(eu.betterbird.Betterbird org.qutebrowser.qutebrowser firefox kitty-tmux-uphill kitty-tmux-config slack)
@@ -57,6 +60,9 @@ declare -A style_reveal_ms=([oasis]=600 [snes]=450 [ff7]=500 [goldeneye]=500 [ne
 DRY=0
 expect_ns=""
 recorder_pid=""
+rec_t0=""
+fast_from=""
+fast_ranges=()
 weather_created=0
 protect_pids=" "
 protect_addrs=""
@@ -74,6 +80,18 @@ pause() {
   else
     sleep "$1"
   fi
+}
+
+now_rel() { awk -v a="$(date +%s.%N)" -v b="$rec_t0" 'BEGIN { printf "%.2f", a - b }'; }
+
+fast_begin() {
+  [[ -z $rec_t0 ]] || fast_from=$(now_rel)
+}
+
+fast_end() {
+  [[ -n $rec_t0 && -n $fast_from ]] || return 0
+  fast_ranges+=("$fast_from $(now_rel)")
+  fast_from=""
 }
 
 ### protection ###
@@ -305,6 +323,10 @@ type_text() {
   if [[ $expect_ns == *overview* && $1 == *[xX]* ]]; then
     die "refusing to type 'x' while an overview is open"
   fi
+  if ((${#1} <= 12)); then
+    overlay_keys "${1^^}"
+    pause "$T_LEAD"
+  fi
   send -d "$T_TYPE_DELAY_MS" "$1"
 }
 
@@ -481,6 +503,19 @@ wait_clients() {
       sleep 0.5
     done
   done
+}
+
+wait_browser_loaded() {
+  if ((DRY)); then
+    emit wait "browser pages loaded"
+    return 0
+  fi
+  local i
+  for ((i = 0; i < 40; i++)); do
+    hyprctl clients -j | jq -e '[.[] | select(.class | test("(^|\\.)firefox$")) | .title] | length > 0 and all(.[]; test("^(Mozilla Firefox|)$") | not)' >/dev/null && break
+    sleep 0.5
+  done
+  sleep 4
 }
 
 tab_count() {
@@ -836,8 +871,12 @@ scene_work() {
   pause "$T_MOVE_STEP"
   press "ENTER" @Return
   wait_layer_gone quickshell-popup
+  pause 1.2
+  fast_begin
   wait_clients "$T_WORK_TIMEOUT" "${work_classes[@]}"
   ensure_claude_window || true
+  wait_browser_loaded
+  fast_end
   pause "$T_WORK_HOLD"
 }
 
@@ -853,7 +892,7 @@ scene_overview() {
   done
   target=$(busy_output_ws || true)
   if [[ -n $target ]]; then
-    press "$target" "$target"
+    press "${target:0:1} ${target:1}" "$target"
     pause "$T_OVERVIEW_STEP"
   fi
   press "ENTER" @Return
@@ -875,32 +914,42 @@ scene_styles() {
   pause "$T_STYLE_HOLD"
   set_style neovim Neovim
   pause "$T_STYLE_HOLD"
-  qs_ipc call popup close
+  press "Q" q
   wait_layer_gone quickshell-popup
 }
 
 scene_move_window() {
-  local dest
+  local dest="" cur slot id
   set_style ps1 PSX
   focus_output_window
   ipc "SUPER + T" call overview search
   wait_layer quickshell-overview
   type_text "$DEMO_SEARCH_TEXT"
-  pause "$T_MOVE_STEP"
+  pause "$T_SEARCH_HOLD"
   press "ENTER" @Return
   wait_layer_gone quickshell-overview
-  pause "$T_MOVE_STEP"
+  pause "$T_SEARCH_HOLD"
   assert_active_on_output
   ipc "SUPER + SHIFT + T" call overview move_follow
   wait_layer quickshell-overview
-  pause "$T_MOVE_STEP"
-  dest=$(slot_ws 2 || true)
-  dest=${dest:-12}
-  press "$dest" "$dest"
-  pause "$T_MOVE_STEP"
+  pause "$T_SEARCH_HOLD"
+  if ((DRY)); then
+    dest=11
+  else
+    cur=$(hyprctl activewindow -j | jq -r '.workspace.id')
+    for slot in 1 2 3; do
+      id=$(slot_ws "$slot")
+      if [[ $id != "$cur" ]]; then
+        dest=$id
+        break
+      fi
+    done
+  fi
+  press "${dest:0:1} ${dest:1}" "$dest"
+  pause "$T_SEARCH_HOLD"
   press "ENTER" @Return
   wait_layer_gone quickshell-overview
-  pause "$T_MOVE_STEP"
+  pause "$T_SEARCH_HOLD"
 }
 
 scene_keybinds() {
@@ -913,7 +962,7 @@ scene_keybinds() {
   bind "SUPER + /" 'require("lib.actions.menu").keybinds()()'
   wait_layer quickshell-popup
   type_text "$query"
-  pause "$T_MOVE_STEP"
+  pause "$T_SEARCH_HOLD"
   press "ENTER" @Return
   wait_layer_gone quickshell-popup
   pause "$T_KEYBINDS_HOLD"
@@ -959,16 +1008,12 @@ scene_screenshot() {
     pause "$T_SHOT_STEP"
   done
   press "V" v
-  for key in l l l l j j j; do
+  for key in l l l j j; do
     press "SHIFT + ${key^^}" "+$key"
     pause "$T_SHOT_STEP"
   done
   press "I" i
-  pause "$T_SHOT_STEP"
-  press "I" i
   pause "$T_TMUX_STEP"
-  press "O" o
-  pause "$T_SHOT_STEP"
   press "O" o
   pause "$T_SHOT_STEP"
   press "SHIFT + O" +o
@@ -993,7 +1038,7 @@ move_overview_window() {
     ipc "SUPER + TAB" call overview open
     wait_layer quickshell-overview
   fi
-  press "$src" "$src"
+  press "${src:0:1} ${src:1}" "$src"
   pause "$T_OVERVIEW_STEP"
   while ((n > 0)); do
     press "TAB" @Tab
@@ -1002,7 +1047,7 @@ move_overview_window() {
   done
   press "M" m
   pause "$T_OVERVIEW_STEP"
-  press "$dest" "$dest"
+  press "${dest:0:1} ${dest:1}" "$dest"
   pause "$T_OVERVIEW_STEP"
   press "M" m
   pause "$T_MOVE_STEP"
@@ -1056,7 +1101,7 @@ scene_keeptabs() {
   ((DRY)) || n=$(keeptabs_steps)
   ipc "SUPER + CTRL + A" call popup open keeptabs
   wait_layer quickshell-popup
-  pause "$T_KEEPTABS_STEP"
+  pause "$T_KEEPTABS_HOLD"
   while ((n > 0)); do
     press "J" j
     pause "$T_KEEPTABS_STEP"
@@ -1064,7 +1109,7 @@ scene_keeptabs() {
   done
   press "ENTER" @Return
   wait_layer_gone quickshell-popup
-  pause "$T_MOVE_STEP"
+  pause "$T_KEEPTABS_HOLD"
   assert_active_on_output
 }
 
@@ -1108,9 +1153,10 @@ start_recorder() {
     emit record "wf-recorder -o $DEMO_OUTPUT -r $DEMO_FPS -f $raw"
     return 0
   fi
+  rec_t0=$(date +%s.%N)
   wf-recorder -o "$DEMO_OUTPUT" -r "$DEMO_FPS" -f "$raw" >/dev/null 2>&1 &
   recorder_pid=$!
-  sleep 1
+  sleep 0.6
   kill -0 "$recorder_pid" 2>/dev/null || die "wf-recorder failed to start"
 }
 
@@ -1120,7 +1166,20 @@ encode() {
     emit encode "ffmpeg $raw -> $out (H.264 yuv420p 1920x1080 ${DEMO_FPS} fps)"
     return 0
   fi
-  ffmpeg -y -loglevel error -i "$raw" -vf "scale=1920:1080:flags=lanczos,format=yuv420p" -r "$DEMO_FPS" \
+  local filter="" labels="" prev=0 n=0 r from to
+  for r in "${fast_ranges[@]}"; do
+    read -r from to <<<"$r"
+    filter+="[0:v]trim=$prev:$from,setpts=PTS-STARTPTS[s$n];"
+    filter+="[0:v]trim=$from:$to,setpts=(PTS-STARTPTS)/${DEMO_FAST}[s$((n + 1))];"
+    labels+="[s$n][s$((n + 1))]"
+    n=$((n + 2))
+    prev=$to
+  done
+  filter+="[0:v]trim=start=$prev,setpts=PTS-STARTPTS[s$n];"
+  labels+="[s$n]"
+  filter+="${labels}concat=n=$((n + 1)):v=1,scale=1920:1080:flags=lanczos,format=yuv420p,fps=${DEMO_FPS}[v]"
+  printf '%s\n' "${fast_ranges[@]}" >"$raw.fast"
+  ffmpeg -y -loglevel error -i "$raw" -filter_complex "$filter" -map "[v]" \
     -c:v libx264 -preset slow -crf 18 -movflags +faststart "$out"
   log "showcase: wrote $out"
 }
@@ -1150,7 +1209,6 @@ record() {
   ensure_overlay
   login_open
   start_recorder "$raw"
-  pause 1
   run_all
   stop_recorder
   encode "$raw" "$out"
