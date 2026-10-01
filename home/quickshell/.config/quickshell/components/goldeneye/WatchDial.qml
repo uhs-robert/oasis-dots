@@ -20,12 +20,13 @@ Item {
     readonly property int face_top: 3
     readonly property int icon_drop: compact ? 7 : 8
     readonly property real max_sag: 6
-    readonly property color face: Watch.black
+    readonly property color face: Style.bar_center_bg
     readonly property color lit: Watch.green
     readonly property color unlit: Watch.green_dim
     readonly property color mark: Watch.white
     readonly property color hand: Qt.rgba(0.82, 0.92, 0.82, 1)
-    readonly property color metal: "#4a4a4a"
+    readonly property color rim: Qt.tint(Style.bar_center_bg, Qt.alpha(Theme.fg_muted, 0.25))
+    readonly property color metal: Qt.tint(Style.bar_center_bg, Qt.alpha(Theme.fg_muted, 0.5))
 
     function gap(on) {
         return on ? 6 : 2;
@@ -109,7 +110,7 @@ Item {
                 y1: 0
                 x2: 0
                 y2: root.face_top + root.max_sag
-                GradientStop { position: 0; color: Watch.rim }
+                GradientStop { position: 0; color: root.rim }
                 GradientStop { position: 1; color: root.face }
             }
             PathSvg { path: root.arc_path + "V0H0Z" }
