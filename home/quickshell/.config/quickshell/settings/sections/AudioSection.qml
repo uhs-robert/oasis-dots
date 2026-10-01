@@ -47,10 +47,10 @@ RowsSection {
         },
         {
             label: "Effects pack",
-            values: () => ThemeAudio.pack_options(Style.saved_name),
-            text: v => ThemeAudio.pack_label(v) + (v === Style.saved_name ? " (own)" : "") + (v === ThemeAudio.default_pack(Style.saved_name) ? " (default)" : ""),
-            value: () => ThemeAudio.pack_for(Style.saved_name),
-            set: v => ThemeAudio.set_pack(Style.saved_name, v)
+            values: () => ThemeAudio.pack_options(),
+            text: v => v === "" ? "Follow style (" + ThemeAudio.pack_label(ThemeAudio.default_pack(Style.saved_name)) + ")" : ThemeAudio.pack_label(v),
+            value: () => ThemeAudio.valid_pack(ThemeAudio.choice) ? ThemeAudio.choice : "",
+            set: v => ThemeAudio.set_pack(v)
         }
     ]
 
@@ -80,7 +80,7 @@ RowsSection {
 
     footer: Text {
         Layout.fillWidth: true
-        text: "Effects packs are set per style; imported game packs appear once imported. Your own wav/ogg files in ~/.local/share/quickshell/sounds/<style>/ (cursor, confirm, cancel, notify) replace the pack's. Lock and login music only plays from your own music.ogg/wav/mp3 there, with the Lock screen's Music on."
+        text: "The effects pack applies to every style; Follow style uses each style's own. Imported game packs appear once imported. Your own wav/ogg files in ~/.local/share/quickshell/sounds/<pack>/ (cursor, confirm, cancel, notify) replace that pack's. Lock and login music only plays from your own music.ogg/wav/mp3 there, with the Lock screen's Music on."
         wrapMode: Text.WordWrap
         color: root.st.text_dim
         font.family: root.st.font_family

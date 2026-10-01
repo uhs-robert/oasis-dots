@@ -1,0 +1,765 @@
+#!/usr/bin/env python3
+# Synthesizes each ported pack's sounds into sounds/<pack>/ (a style, or an extra pack such as mgs2): cursor, confirm, cancel and notify (ogg). Also writes lock skin effects (mgs2-skin). Needs numpy and ffmpeg.
+# Usage: synth-sounds [--out DIR] [NAME...]   (no names means all; files in ~/.local/share/quickshell/sounds/<style>/ override these)
+import argparse
+import subprocess
+import sys
+from pathlib import Path
+
+import numpy as np
+
+RATE = 48000
+NES_CLOCK = 1789773.0
+NES_FRAME = 1 / 60
+GB_FRAME = 1 / 64
+
+
+def midi_hz(note):
+    return 440.0 * 2 ** ((note - 69) / 12)
+
+
+def cents(freq, amount):
+    return freq * 2 ** (amount / 1200)
+
+
+def lowpass(signal, cutoff, order=2):
+    spectrum = np.fft.rfft(signal)
+    freqs = np.fft.rfftfreq(len(signal), 1 / RATE)
+    return np.fft.irfft(spectrum / np.sqrt(1 + (freqs / cutoff) ** (2 * order)), len(signal))
+
+
+def highpass(signal, cutoff, order=1):
+    spectrum = np.fft.rfft(signal)
+    freqs = np.fft.rfftfreq(len(signal), 1 / RATE)
+    ratio = (freqs / cutoff) ** (2 * order)
+    return np.fft.irfft(spectrum * np.sqrt(ratio / (1 + ratio)), len(signal))
+
+
+def reverb(signal, seconds, mix, tone=5000):
+    count = int(seconds * RATE)
+    impulse = np.random.default_rng(7).standard_normal(count) * np.exp(-np.arange(count) / (seconds * RATE / 6))
+    impulse = lowpass(impulse, tone)
+    impulse /= np.sqrt(np.sum(impulse**2))
+    size = len(signal) + count
+    wet = np.fft.irfft(np.fft.rfft(signal, size) * np.fft.rfft(impulse, size), size)
+    return np.concatenate([signal, np.zeros(count)]) + mix * wet
+
+
+def mix_at(parts, seconds):
+    out = np.zeros(int(seconds * RATE))
+    for offset, part in parts:
+        start = int(offset * RATE)
+        end = min(len(out), start + len(part))
+        out[start:end] += part[: end - start]
+    return out
+
+
+def finish(signal, peak):
+    fade = int(0.012 * RATE)
+    signal = signal.copy()
+    signal[-fade:] *= np.linspace(1, 0, fade) ** 2
+    return signal / np.max(np.abs(signal)) * peak
+
+
+def write_audio(path, signal):
+    """Encodes by suffix: .ogg as vorbis, .wav as 32 kHz PCM."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    pcm = (np.clip(signal, -1, 1) * 32767).astype("<i2").tobytes()
+    codec = ["-c:a", "libvorbis", "-q:a", "5"] if path.suffix == ".ogg" else ["-c:a", "pcm_s16le", "-ar", "32000"]
+    command = ["ffmpeg", "-v", "error", "-y", "-f", "s16le", "-ar", str(RATE), "-ac", "1", "-i", "-"]
+    subprocess.run(command + codec + ["-fflags", "+bitexact", "-flags:a", "+bitexact", str(path)], input=pcm, check=True)
+
+
+def string(freq, seconds, decay, position=0.22, damping=0.02):
+    """Plucked string as decaying harmonics; higher ones die faster."""
+    t = np.arange(int(seconds * RATE)) / RATE
+    out = np.zeros(len(t))
+    for k in range(1, int(min(40, RATE / 2.2 / freq)) + 1):
+        partial = freq * k * np.sqrt(1 + 0.0004 * k * k)
+        out += np.sin(k * np.pi * position) / k**1.6 * np.sin(2 * np.pi * partial * t) * np.exp(-t / (decay / (1 + damping * k * k)))
+    return out
+
+
+def oud(note, seconds, decay, gain=1.0):
+    """Double-course string with a short plectrum click."""
+    freq = midi_hz(note)
+    body = string(cents(freq, -4), seconds, decay) + string(cents(freq, 4), seconds, decay * 0.9)
+    click = np.random.default_rng(note).standard_normal(len(body)) * np.exp(-np.arange(len(body)) / (0.004 * RATE))
+    body += 0.25 * lowpass(highpass(click, 800), 3500)
+    return gain * body * np.minimum(np.arange(len(body)) / (0.0015 * RATE), 1)
+
+
+def oasis():
+    # D Hijaz: D Eb F# G A Bb C
+    d, e_flat, f_sharp, a = 62, 63, 66, 69
+    cursor = oud(a, 0.3, 0.07)
+    confirm = mix_at([(0, oud(a, 0.5, 0.16)), (0.085, oud(d + 12, 0.7, 0.26))], 0.8)
+    cancel = mix_at([(0, oud(e_flat, 0.4, 0.14)), (0.085, oud(d, 0.6, 0.2, gain=0.9))], 0.7)
+    notes = [(0, d, 0.2), (0.1, f_sharp, 0.2), (0.2, a, 0.22), (0.3, e_flat + 12, 0.25), (0.46, d + 12, 0.5)]
+    notify = mix_at([(at, oud(note, 1.2, decay)) for at, note, decay in notes], 1.7)
+    return {
+        "cursor": finish(reverb(lowpass(cursor, 4500), 0.3, 0.08, tone=3000), 0.36),
+        "confirm": finish(reverb(lowpass(confirm, 5000), 0.6, 0.14, tone=3000), 0.5),
+        "cancel": finish(reverb(lowpass(cancel, 4000), 0.5, 0.12, tone=3000), 0.46),
+        "notify": finish(reverb(lowpass(notify, 5000), 0.9, 0.18, tone=3000), 0.5),
+    }
+
+
+def nes_hz(note):
+    """Pitch as the 2A03 pulse timer would round it."""
+    timer = round(NES_CLOCK / (16 * midi_hz(note)) - 1)
+    return NES_CLOCK / (16 * (timer + 1))
+
+
+def gb_hz(note):
+    """Pitch as the DMG 11-bit frequency register would round it."""
+    return 131072 / round(131072 / midi_hz(note))
+
+
+def pulse(frames, duty, hz=nes_hz, frame=NES_FRAME):
+    """Band-limited pulse channel; frames is one (midi note, volume 0-15) per frame."""
+    per_frame = int(RATE * frame)
+    freq = np.repeat([hz(note) for note, _ in frames], per_frame)
+    level = np.repeat([volume / 15 for _, volume in frames], per_frame)
+    phase = 2 * np.pi * np.cumsum(freq) / RATE
+    out = np.zeros(len(freq))
+    for k in range(1, int(RATE / 2 / freq.min()) + 1):
+        out += np.where(freq * k < RATE / 2, 1, 0) * (2 / (k * np.pi)) * np.sin(np.pi * k * duty) * np.cos(k * phase)
+    return out * level
+
+
+def nes_voice(steps, duty, echo=0.0):
+    """steps is (note, frames, start volume, end volume); echo adds the second pulse two frames late."""
+    frames = []
+    for note, count, start, end in steps:
+        frames += [(note, round(v)) for v in np.linspace(start, end, count)]
+    lead = pulse(frames, duty)
+    if echo <= 0:
+        return lead
+    late = pulse([(note, round(volume * echo)) for note, volume in frames], duty)
+    delay = int(2 * NES_FRAME * RATE)
+    return np.concatenate([lead, np.zeros(delay)]) + np.concatenate([np.zeros(delay), late])
+
+
+def nes():
+    def shape(signal, peak):
+        return finish(lowpass(highpass(np.concatenate([signal, np.zeros(480)]), 90), 9000, order=1), peak)
+
+    cursor = nes_voice([(83, 1, 9, 9), (88, 3, 8, 0)], 0.25)
+    confirm = nes_voice([(81, 3, 11, 10), (88, 14, 11, 0)], 0.5, echo=0.35)
+    cancel = nes_voice([(79, 3, 10, 9), (72, 9, 9, 0)], 0.25)
+    notify = nes_voice([(72, 4, 11, 9), (76, 4, 11, 9), (79, 4, 11, 9), (84, 4, 11, 9), (88, 20, 12, 0)], 0.5, echo=0.4)
+    return {
+        "cursor": shape(cursor, 0.16),
+        "confirm": shape(confirm, 0.24),
+        "cancel": shape(cancel, 0.2),
+        "notify": shape(notify, 0.24),
+    }
+
+
+def gb_voice(steps, duty, echo=0.0):
+    """steps is (start note, end note, frames, start volume, end volume); a note pair sweeps like channel 1."""
+    frames = []
+    for start_note, end_note, count, start, end in steps:
+        frames += [(note, round(v)) for note, v in zip(np.linspace(start_note, end_note, count), np.linspace(start, end, count))]
+    lead = pulse(frames, duty, gb_hz, GB_FRAME)
+    if echo <= 0:
+        return lead
+    late = pulse([(note, round(volume * echo)) for note, volume in frames], duty, gb_hz, GB_FRAME)
+    delay = int(3 * GB_FRAME * RATE)
+    return np.concatenate([lead, np.zeros(delay)]) + np.concatenate([np.zeros(delay), late])
+
+
+def gameboy():
+    def shape(signal, peak):
+        return finish(lowpass(highpass(np.concatenate([signal, np.zeros(480)]), 250, order=2), 7000, order=1), peak)
+
+    cursor = gb_voice([(86, 86, 4, 10, 0)], 0.125)
+    confirm = gb_voice([(83, 83, 3, 12, 11), (90, 90, 16, 13, 0)], 0.5, echo=0.3)
+    cancel = gb_voice([(81, 69, 9, 11, 0)], 0.25)
+    notify = gb_voice([(76, 76, 3, 11, 9), (80, 80, 3, 11, 9), (83, 83, 3, 11, 9), (88, 88, 3, 11, 9), (95, 95, 22, 13, 0)], 0.25, echo=0.4)
+    return {
+        "cursor": shape(cursor, 0.18),
+        "confirm": shape(confirm, 0.24),
+        "cancel": shape(cancel, 0.2),
+        "notify": shape(notify, 0.24),
+    }
+
+
+def noise(count, seed):
+    return np.random.default_rng(seed).standard_normal(count)
+
+
+def pop(start_hz, end_hz, seconds, decay, glide=0.012, gain=1.0):
+    """Bubble pop: a sine that snaps from one pitch to another."""
+    t = np.arange(int(seconds * RATE)) / RATE
+    freq = end_hz + (start_hz - end_hz) * np.exp(-t / glide)
+    phase = 2 * np.pi * np.cumsum(freq) / RATE
+    body = np.sin(phase) + 0.1 * np.sin(2 * phase)
+    return gain * body * np.minimum(t / 0.002, 1) * np.exp(-t / decay)
+
+
+def tick(seconds=0.08, thump_hz=200, click=0.5, gain=1.0):
+    """Haptic-style tap: a low thump under a soft click."""
+    t = np.arange(int(seconds * RATE)) / RATE
+    freq = thump_hz * (0.65 + 0.35 * np.exp(-t / 0.01))
+    thump = np.sin(2 * np.pi * np.cumsum(freq) / RATE) * np.exp(-t / 0.016)
+    snap = lowpass(highpass(noise(len(t), 5) * np.exp(-t / 0.003), 1800), 5000)
+    return gain * (thump + click * snap) * np.minimum(t / 0.0008, 1)
+
+
+def bloom(notes, seconds, attack=0.06, decay=0.5):
+    """Soft detuned sine chord that swells in."""
+    t = np.arange(int(seconds * RATE)) / RATE
+    out = np.zeros(len(t))
+    for note in notes:
+        freq = midi_hz(note)
+        out += np.sin(2 * np.pi * cents(freq, -6) * t) + np.sin(2 * np.pi * cents(freq, 6) * t)
+    return out * np.minimum(t / attack, 1) ** 2 * np.exp(-t / decay)
+
+
+def modern():
+    cursor = tick(gain=0.8)
+    confirm = mix_at([(0, pop(520, 880, 0.15, 0.04)), (0.075, pop(700, 1175, 0.2, 0.06))], 0.3)
+    cancel = pop(700, 380, 0.2, 0.05, glide=0.02)
+    notify = mix_at([(0, tick(gain=0.6)), (0.02, bloom([74, 81, 90], 1.2) * 0.22)], 1.3)
+    return {
+        "cursor": finish(cursor, 0.4),
+        "confirm": finish(lowpass(reverb(confirm, 0.25, 0.08), 7000), 0.46),
+        "cancel": finish(lowpass(reverb(cancel, 0.25, 0.08), 5000), 0.42),
+        "notify": finish(lowpass(reverb(notify, 1.0, 0.25), 6000), 0.46),
+    }
+
+
+def echo(signal, delay=0.11, feedback=0.38, repeats=4, tone=2800):
+    """SPC700-style echo: each repeat quieter and duller."""
+    step = int(delay * RATE)
+    out = np.concatenate([signal, np.zeros(step * repeats)])
+    tap = signal
+    for i in range(1, repeats + 1):
+        tap = lowpass(tap, tone, order=1) * feedback
+        out[step * i : step * i + len(tap)] += tap
+    return out
+
+
+def blip(notes, step, tail=0.03):
+    """Rounded square beeps, one per step, the last with a short release."""
+    parts = []
+    for i, note in enumerate(notes):
+        freq = midi_hz(note)
+        last = i == len(notes) - 1
+        t = np.arange(int((step + (tail if last else 0)) * RATE)) / RATE
+        tone = np.zeros(len(t))
+        for k in range(1, int(RATE / 2.2 / freq) + 1, 2):
+            tone += np.sin(2 * np.pi * freq * k * t) / k
+        edge = np.minimum(t / 0.002, 1)
+        if last:
+            edge = edge * np.exp(-np.maximum(t - step * 0.5, 0) / (tail * 0.8))
+        parts.append(tone * edge)
+    return np.concatenate(parts)
+
+
+def snes():
+    def shape(signal, peak, cutoff=5000):
+        return finish(lowpass(signal, cutoff, order=3), peak)
+
+    cursor = blip([88], 0.035)
+    confirm = blip([88, 93], 0.04, tail=0.06)
+    cancel = blip([81, 76], 0.045, tail=0.05)
+    notify = blip([76, 80, 83, 88, 83, 88], 0.045, tail=0.25)
+    return {
+        "cursor": shape(cursor, 0.16),
+        "confirm": shape(echo(confirm, feedback=0.18, repeats=1), 0.22),
+        "cancel": shape(cancel, 0.2, cutoff=4000),
+        "notify": shape(echo(notify, delay=0.14, feedback=0.3, repeats=3), 0.22),
+    }
+
+
+def key(seconds=0.09, body_hz=1100, depth=1.0, seed=3):
+    """Mechanical key: a click over a short plastic knock."""
+    t = np.arange(int(seconds * RATE)) / RATE
+    click = lowpass(highpass(noise(len(t), seed) * np.exp(-t / 0.002), 1500), 7000)
+    knock = np.sin(2 * np.pi * body_hz * t) * np.exp(-t / 0.006) + 0.5 * np.sin(2 * np.pi * body_hz * 2.3 * t) * np.exp(-t / 0.003)
+    thud = depth * np.sin(2 * np.pi * 190 * t) * np.exp(-t / 0.012)
+    return (0.6 * click + knock + thud) * np.minimum(t / 0.0005, 1)
+
+
+def beep(freq, seconds, gain=1.0):
+    """PC speaker beep: a band-limited square with soft edges."""
+    t = np.arange(int(seconds * RATE)) / RATE
+    out = np.zeros(len(t))
+    for k in range(1, int(RATE / 2.2 / freq) + 1, 2):
+        out += np.sin(2 * np.pi * freq * k * t) / k
+    return gain * out * np.minimum(t / 0.003, 1) * np.minimum((t[-1] - t) / 0.006, 1)
+
+
+def terminal():
+    def soft(signal, peak, cutoff):
+        return finish(lowpass(np.concatenate([signal, np.zeros(960)]), cutoff, order=2), peak)
+
+    cursor = key(body_hz=800, depth=1.3)
+    confirm = mix_at([(0, key(body_hz=700, depth=1.6)), (0.045, key(body_hz=950, depth=0.6, seed=4) * 0.5), (0.02, beep(880, 0.07, gain=0.15))], 0.16)
+    cancel = mix_at([(0, key(body_hz=600, depth=1.6)), (0.02, beep(440, 0.09, gain=0.15))], 0.14)
+    notify = mix_at([(0, beep(784, 0.08)), (0.13, beep(784, 0.1))], 0.25)
+    return {
+        "cursor": soft(cursor, 0.3, 3000),
+        "confirm": soft(confirm, 0.36, 3000),
+        "cancel": soft(cancel, 0.34, 2600),
+        "notify": soft(highpass(notify, 250), 0.2, 1700),
+    }
+
+
+def pluck(note, seconds, decay, bright=5000, dark=700, gain=1.0):
+    """Synth pluck: three detuned saws through a closing filter."""
+    t = np.arange(int(seconds * RATE)) / RATE
+    cutoff = dark + (bright - dark) * np.exp(-t / 0.05)
+    out = np.zeros(len(t))
+    for detune in (-9, 0, 9):
+        freq = cents(midi_hz(note), detune)
+        for k in range(1, int(min(48, RATE / 2.2 / freq)) + 1):
+            out += np.sin(2 * np.pi * freq * k * t) / k / np.sqrt(1 + (k * freq / cutoff) ** 4)
+    return gain * out * np.minimum(t / 0.002, 1) * np.exp(-t / decay)
+
+
+def static(seconds, decay, low=2000, high=6000, seed=13):
+    t = np.arange(int(seconds * RATE)) / RATE
+    return lowpass(highpass(noise(len(t), seed), low, order=2), high) * np.exp(-t / decay)
+
+
+def sweep(start_hz, end_hz, seconds, decay, glide, cutoff=2500):
+    """Saw that slides in pitch, like a tube powering up or collapsing."""
+    t = np.arange(int(seconds * RATE)) / RATE
+    freq = end_hz + (start_hz - end_hz) * np.exp(-t / glide)
+    phase = 2 * np.pi * np.cumsum(freq) / RATE
+    out = np.zeros(len(t))
+    for k in range(1, int(RATE / 2.2 / max(start_hz, end_hz)) + 1):
+        out += np.sin(k * phase) / k / np.sqrt(1 + (k * freq / cutoff) ** 4)
+    return out * np.minimum(t / 0.005, 1) * np.exp(-t / decay)
+
+
+def thunk(seconds=0.12, freq=90):
+    t = np.arange(int(seconds * RATE)) / RATE
+    return np.sin(2 * np.pi * freq * (0.7 + 0.3 * np.exp(-t / 0.02)) * t) * np.exp(-t / 0.03)
+
+
+def crt():
+    cursor = mix_at([(0, static(0.05, 0.006) * 0.5), (0, pluck(79, 0.08, 0.02, bright=2500) * 0.5)], 0.09)
+    confirm = mix_at([(0, static(0.08, 0.015) * 0.25), (0, sweep(180, 720, 0.25, 0.09, 0.05))], 0.28)
+    cancel = mix_at([(0, sweep(700, 110, 0.28, 0.1, 0.06)), (0.05, thunk() * 0.8)], 0.3)
+    plucks = [(0, pluck(67, 0.9, 0.25, bright=2800)), (0.12, pluck(74, 0.9, 0.3, bright=2800)), (0.24, pluck(79, 0.9, 0.4, bright=2800))]
+    notify = mix_at([(0, static(0.4, 0.12) * 0.12)] + plucks, 1.2)
+    return {
+        "cursor": finish(lowpass(cursor, 5000), 0.26),
+        "confirm": finish(lowpass(reverb(confirm, 0.25, 0.08), 5000), 0.4),
+        "cancel": finish(lowpass(reverb(cancel, 0.25, 0.08), 4500), 0.4),
+        "notify": finish(lowpass(reverb(notify, 0.6, 0.15), 5000), 0.42),
+    }
+
+
+def pip(freq, seconds):
+    """Tiny sine pip with rounded edges, so it never clicks."""
+    t = np.arange(int(seconds * RATE)) / RATE
+    return np.sin(2 * np.pi * freq * t) * np.sin(np.pi * t / t[-1]) ** 2
+
+
+def neovim():
+    def quiet(signal, peak):
+        return lowpass(np.concatenate([signal, np.zeros(480)]), 5000) / np.max(np.abs(signal)) * peak
+
+    return {
+        "cursor": quiet(pip(1320, 0.018), 0.09),
+        "confirm": quiet(np.concatenate([pip(1320, 0.02), pip(1760, 0.03)]), 0.13),
+        "cancel": quiet(pip(880, 0.035), 0.12),
+        "notify": quiet(mix_at([(0, pip(1320, 0.05)), (0.09, pip(1760, 0.08))], 0.18), 0.15),
+    }
+
+
+def air(seconds, attack, decay, low, high, seed=23):
+    t = np.arange(int(seconds * RATE)) / RATE
+    return lowpass(highpass(noise(len(t), seed), low, order=2), high) * np.minimum(t / attack, 1) * np.exp(-t / decay)
+
+
+def shine(note, seconds, decay):
+    t = np.arange(int(seconds * RATE)) / RATE
+    return np.sin(2 * np.pi * midi_hz(note) * t) * np.minimum(t / 0.004, 1) * np.exp(-t / decay)
+
+
+def ps2():
+    # Bb pentatonic pads, no percussive hits
+    cursor = bloom([82], 0.15, attack=0.012, decay=0.035)
+    confirm = mix_at([(0, bloom([70, 77], 0.7, attack=0.05, decay=0.2)), (0.14, bloom([77, 82], 0.9, attack=0.06, decay=0.3))], 1.1)
+    cancel = mix_at([(0, bloom([70, 77], 0.5, attack=0.04, decay=0.14)), (0.12, bloom([65, 70], 0.7, attack=0.05, decay=0.2))], 0.9)
+    swell = bloom([58, 65, 70, 77], 1.6, attack=0.12, decay=0.6) * 0.2
+    notify = mix_at([(0, swell), (0, air(1.0, 0.2, 0.3, 4000, 9000) * 0.08), (0.15, shine(94, 0.8, 0.3) * 0.12)], 1.6)
+    return {
+        "cursor": finish(lowpass(reverb(cursor, 0.5, 0.2), 6000), 0.22),
+        "confirm": finish(lowpass(reverb(confirm, 1.5, 0.4), 6000), 0.42),
+        "cancel": finish(lowpass(reverb(cancel, 1.2, 0.35), 4000), 0.38),
+        "notify": finish(reverb(notify, 1.8, 0.45), 0.44),
+    }
+
+
+def clock(seconds):
+    return np.arange(int(seconds * RATE)) / RATE
+
+
+def window(t, start, end, edge=0.004):
+    return np.clip((t - start) / edge, 0, 1) * np.clip((end - t) / edge, 0, 1)
+
+
+def glide(t, points):
+    """Phase of a tone whose pitch follows (seconds, hz) breakpoints."""
+    times, freqs = zip(*points)
+    return 2 * np.pi * np.cumsum(np.interp(t, times, freqs)) / RATE
+
+
+def buzz(seconds=0.09, freq=261, first=1.7):
+    """Burst of narrow pulses, the first one hardest: a dry digital tick."""
+    t = clock(seconds)
+    out = np.zeros(len(t))
+    for k in range(1, int(7000 / freq) + 1):
+        out += np.cos(2 * np.pi * freq * k * t)
+    out /= np.max(np.abs(out))
+    return out * (1 + first * (t < 0.5 / freq)) * np.exp(-t / 0.3) * np.clip((seconds - t) / 0.004, 0, 1)
+
+
+def codec_tone(phase):
+    return np.sin(phase) + 0.8 * np.sin(2 * phase) + 0.25 * np.sin(3 * phase) + 0.4 * np.sin(4 * phase)
+
+
+def mgs2_menu():
+    """The three MGS2 menu effects, resynthesized from pitch and envelope measurements."""
+    t = clock(0.14)
+    submit = codec_tone(2 * np.pi * 3150 * t) * np.interp(t, [0, 0.095, 0.12, 0.14], [0, 1, 0.6, 0])
+
+    t = clock(0.21)
+    phase = glide(t, [(0, 2570), (0.06, 2570), (0.2, 1440)])
+    back = (np.sin(phase) + 0.5 * np.sin(2 * phase)) * np.interp(t, [0, 0.05, 0.1, 0.2, 0.21], [0, 1, 0.3, 0.12, 0])
+    back += 0.45 * np.sin(2 * np.pi * 3141 * t) * np.interp(t, [0, 0.05, 0.12], [0, 1, 0])
+    return {
+        "select": finish(np.concatenate([buzz(), np.zeros(480)]), 0.4),
+        "submit": finish(lowpass(reverb(submit, 0.7, 0.3), 14000), 0.2),
+        "back": finish(lowpass(reverb(back, 0.7, 0.3), 14000), 0.2),
+    }
+
+
+def mgs2():
+    # The notify ring is invented; MGS2 has no menu sound for it.
+    menu = mgs2_menu()
+    t = clock(0.28)
+    trill = 0.5 + 0.5 * np.sign(np.sin(2 * np.pi * 28 * t))
+    burst = codec_tone(2 * np.pi * 2570 * t) * lowpass(trill, 400) * window(t, 0, 0.28, 0.006)
+    ring = mix_at([(0, burst), (0.4, burst)], 0.7)
+    return {
+        "cursor": menu["select"],
+        "confirm": menu["submit"],
+        "cancel": menu["back"],
+        "notify": finish(lowpass(reverb(ring, 0.6, 0.2), 14000), 0.2),
+    }
+
+
+def ps1():
+    # Resynthesized from measurements of MGS1 effects 0x1F, 0xB5, 0xB3 and the 0x10 codec ring.
+    t = clock(0.125)
+    select = (np.sin(2 * np.pi * 3160 * t) + 0.3 * np.sin(2 * np.pi * 6320 * t))
+    select *= np.interp(t, [0, 0.01, 0.03, 0.04, 0.06, 0.11, 0.118, 0.125], [0.1, 0.39, 0.48, 0.76, 1.0, 0.94, 0.3, 0])
+
+    t = clock(0.4)
+    points = [(0, 2440), (0.04, 2347), (0.06, 2139), (0.1, 1922), (0.14, 1649), (0.18, 1430), (0.22, 1248), (0.26, 1005), (0.3, 920), (0.36, 770), (0.4, 740)]
+    phase = glide(t, points)
+    back = (np.sin(phase) + 0.15 * np.sin(2 * phase)) * np.interp(t, [0, 0.05, 0.14, 0.25, 0.35, 0.4], [0.2, 1, 0.75, 0.6, 0.45, 0])
+
+    t = clock(0.036)
+    low = tone(t, [(1178, 1), (2356, 0.8), (4712, 0.4)]) * window(t, 0, 0.036, 0.003)
+    high = tone(t, [(1482, 1), (2964, 0.9)]) * window(t, 0, 0.036, 0.003)
+    trill = mix_at([(i * 0.038, low if i % 2 == 0 else high) for i in range(8)], 0.31)
+    ring = mix_at([(0, trill), (0.435, trill)], 0.75)
+    return {
+        "cursor": finish(np.concatenate([buzz(0.1, first=1.0), np.zeros(480)]), 0.34),
+        "confirm": finish(lowpass(reverb(select, 0.5, 0.25), 14000), 0.2),
+        "cancel": finish(lowpass(reverb(back, 0.6, 0.3), 14000), 0.2),
+        "notify": finish(lowpass(reverb(ring, 0.5, 0.2), 12000), 0.24),
+    }
+
+
+def swish(points, levels):
+    """MGS2 transition: a tight cluster of very high tones sliding together."""
+    t = clock(len(levels) * 0.02)
+    out = np.zeros(len(t))
+    for offset, level in [(-700, 0.33), (-540, 0.45), (-225, 0.7), (0, 1.0), (185, 0.33)]:
+        out += level * np.sin(glide(t, [(at, freq + offset) for at, freq in points]))
+    air = lowpass(noise(len(t), 41), 12000) - lowpass(noise(len(t), 41), 7000)
+    return shaped(out + 0.6 * unit(air) * np.max(np.abs(out)), levels, 0.02)
+
+
+def mgs2_skin():
+    """Every effect the MGS2 lock skin plays, under the skin's own file names."""
+    t = clock(0.62)
+    hit = unit(lowpass(noise(len(t), 43), 8000)) * window(t, 0, 0.155, 0.004)
+    phase = glide(t, [(0, 3400), (0.16, 3400), (0.2, 2982), (0.24, 2575), (0.28, 2188), (0.32, 1884), (0.36, 1764), (0.62, 1761)])
+    fall = (np.sin(phase) + 0.8 * np.sin(phase / 2) + 0.5 * np.sin(1.5 * phase)) * np.clip((t - 0.155) / 0.01, 0, 1)
+    fall += 0.6 * np.sin(2 * np.pi * 7919 * t) * np.clip((t - 0.3) / 0.02, 0, 1)
+    error_levels = [0.67, 0.85, 1.0, 0.73, 0.79, 0.94, 0.46, 0.45, 0.27, 0.45, 0.50, 0.47, 0.41, 0.39, 0.39, 0.34]
+    error_levels += [0.34, 0.30, 0.22, 0.21, 0.23, 0.20, 0.13, 0.12, 0.11, 0.07, 0.07, 0.06, 0.06, 0.05, 0.03, 0]
+    error = shaped(hit * 2.3 + unit(fall), error_levels, 0.02)
+
+    wipe = [0.01, 0.30, 0.61, 1.0, 0.44, 0.39, 0.34, 0.27, 0.23, 0.16, 0.12, 0.11, 0.10, 0.08, 0.07, 0.06, 0.05, 0.04, 0.04, 0.03, 0.02, 0.02, 0.01, 0.01, 0]
+    left = [0.0, 0.21, 0.57, 0.76, 1.0, 0.37, 0.30, 0.27, 0.25, 0.21, 0.16, 0.14, 0.11, 0.11, 0.10, 0.08, 0.08, 0.06, 0.06, 0.04, 0.04, 0.03, 0.02, 0.01, 0.01, 0]
+    return {
+        **mgs2_menu(),
+        "error": finish(lowpass(reverb(error, 0.7, 0.3), 14000), 0.22),
+        "transition_wipe": finish(swish([(0, 9250), (0.5, 7430)], wipe), 0.14),
+        "transition_right": finish(swish([(0, 9250), (0.5, 7430)], wipe[:3] + [1.0, 0.47] + wipe[5:]), 0.14),
+        "transition_left": finish(swish([(0, 8180), (0.08, 8200), (0.52, 9290)], left), 0.14),
+    }
+
+
+def ff7():
+    # Resynthesized from pitch and envelope measurements of the FFVII menu effects, which share one sound for cursor and confirm.
+    t = clock(0.125)
+    phase = glide(t, [(0, 1320), (0.065, 2098), (0.125, 2098)])
+    chirp = (np.sin(phase) + 0.1 * np.sin(2 * phase)) * np.exp(-t / 0.055)
+    chirp += 0.5 * np.sin(2 * np.pi * 2355 * t) * np.exp(-(((t - 0.045) / 0.018) ** 2))
+    chirp = np.concatenate([chirp * window(t, 0, 0.125, 0.0015), np.zeros(480)])
+
+    t = clock(0.062)
+    cancel = np.sin(2 * np.pi * 3130 * t) * window(t, 0, 0.034, 0.008)
+    cancel += np.sin(2 * np.pi * 6390 * t) * window(t, 0.012, 0.062, 0.01)
+    cancel += 0.6 * np.sin(2 * np.pi * 4860 * t) * window(t, 0.03, 0.062, 0.008)
+
+    t = clock(0.5)
+    chime = np.sin(glide(t, [(0, 1482), (0.12, 1506), (0.135, 2010), (0.5, 2004)]))
+    chime *= np.interp(t, [0, 0.02, 0.13, 0.17, 0.5], [0, 0.6, 0.8, 1.0, 0])
+    return {
+        "cursor": finish(chirp, 0.3),
+        "confirm": finish(chirp, 0.36),
+        "cancel": finish(np.concatenate([cancel, np.zeros(480)]), 0.22),
+        "notify": finish(reverb(chime, 0.4, 0.1), 0.36),
+    }
+
+
+def ping(freq, seconds, decay):
+    """Sonar-clean tone, two voices a hair apart so the tail breathes."""
+    t = clock(seconds)
+    out = np.sin(2 * np.pi * cents(freq, -3) * t) + np.sin(2 * np.pi * cents(freq, 3) * t)
+    return out * np.minimum(t / 0.002, 1) * np.exp(-t / decay)
+
+
+def reticle():
+    cursor = pip(2349, 0.02)
+    confirm = np.concatenate([pip(1568, 0.035), pip(2349, 0.05)])
+    cancel = np.concatenate([pip(1568, 0.035), pip(1175, 0.05)])
+    notify = mix_at([(0, ping(1175, 1.2, 0.35)), (0, bloom([50, 57], 1.6, attack=0.3, decay=0.7) * 0.12)], 1.6)
+    return {
+        "cursor": finish(reverb(cursor, 0.4, 0.15), 0.14),
+        "confirm": finish(reverb(confirm, 0.9, 0.25), 0.26),
+        "cancel": finish(lowpass(reverb(cancel, 0.8, 0.22), 5000), 0.24),
+        "notify": finish(reverb(notify, 2.0, 0.5), 0.4),
+    }
+
+
+def crush(signal, rate=22050, bits=8):
+    """Late-90s PC sample quality: low rate, few bits."""
+    hold = int(round(RATE / rate))
+    held = np.repeat(signal[::hold], hold)[: len(signal)]
+    steps = 2 ** (bits - 1)
+    return np.round(held / np.max(np.abs(held)) * steps) / steps
+
+
+def burst(freq, seconds, edge=0.0008):
+    t = clock(seconds)
+    return np.sin(2 * np.pi * freq * t) * window(t, 0, seconds, edge)
+
+
+def band_noise(seconds, low, high, seed, level):
+    t = clock(seconds)
+    out = lowpass(highpass(noise(len(t), seed), low, order=2), high) * window(t, 0, seconds, 0.01)
+    return out / np.max(np.abs(out)) * level
+
+
+def halflife():
+    # Resynthesized from measurements of Half-Life's wpn_moveselect, wpn_select, wpn_denyselect and smallmedkit1.
+    def dry(signal, peak):
+        return finish(np.concatenate([lowpass(crush(signal), 9000), np.zeros(480)]), peak)
+
+    t = clock(0.022)
+    chirp = np.sin(glide(t, [(0, 400), (0.008, 400), (0.022, 1100)])) * window(t, 0, 0.022, 0.001)
+    ratchet = [(at, burst(1880, 0.0055) * 0.64) for at in (0.033, 0.077, 0.121, 0.130, 0.173, 0.217)]
+    move = mix_at([(0, chirp)] + ratchet, 0.225)
+
+    thump = burst(560, 0.013) + 0.3 * burst(1390, 0.013)
+    select = mix_at([(0, thump), (0.045, thump), (0.09, thump)], 0.105)
+
+    t = clock(0.105)
+    hum = (np.sin(2 * np.pi * 182 * t) + 0.36 * np.sin(2 * np.pi * 364 * t)) * window(t, 0, 0.105, 0.001)
+    hum *= 1 + 0.8 * np.exp(-t / 0.003)
+    tick = lowpass(highpass(noise(int(0.005 * RATE), 31), 600), 3500) * np.hanning(int(0.005 * RATE))
+    tick = tick / np.max(np.abs(tick)) * 1.2
+    deny = mix_at([(0, hum), (0.131, tick), (0.162, tick)], 0.17)
+
+    beeps = [(0, burst(604, 0.03, 0.002)), (0.05, burst(604, 0.1, 0.002)), (0.17, burst(604, 0.1, 0.002))]
+    t = clock(0.24)
+    hiss = band_noise(0.24, 4800, 8000, 35, 1.0) * np.interp(t, [0, 0.24], [1, 0.6])
+    medkit = mix_at(beeps + [(0.28, band_noise(0.1, 1900, 2800, 33, 0.45)), (0.52, hiss / np.max(np.abs(hiss)) * 1.3)], 0.765)
+    return {
+        "cursor": dry(move, 0.3),
+        "confirm": dry(select, 0.3),
+        "cancel": dry(deny, 0.3),
+        "notify": dry(medkit, 0.3),
+    }
+
+
+def tone(t, parts):
+    return sum(level * np.sin(2 * np.pi * freq * t) for freq, level in parts)
+
+
+def unit(signal):
+    return signal / np.max(np.abs(signal))
+
+
+def shaped(signal, levels, step=0.01):
+    """Applies a measured envelope, one level per step."""
+    t = clock(len(signal) / RATE)
+    return unit(signal) * np.interp(t, np.arange(len(levels)) * step, levels)
+
+
+def metroid():
+    # Resynthesized from measurements of four Metroid Prime front-end and visor effects.
+    def dry(signal, peak):
+        return finish(np.concatenate([signal, np.zeros(480)]), peak)
+
+    t = clock(0.16)
+    move = np.sin(glide(t, [(0, 360), (0.033, 360), (0.038, 521), (0.16, 521)]))
+    move += tone(t, [(2247, 0.4), (4239, 0.3), (6873, 0.25)]) * window(t, 0.015, 0.045, 0.008)
+    move += tone(t, [(3888, 0.45), (4934, 0.45)]) * np.interp(t, [0.03, 0.045, 0.07, 0.12], [0, 1, 1, 0.2])
+    move += tone(t, [(1116, 0.4), (5525, 0.35)]) * np.interp(t, [0.08, 0.1, 0.16], [0, 1, 1])
+    move_levels = [0.37, 0.34, 0.61, 0.72, 0.82, 0.82, 0.96, 0.98, 1.0, 0.96, 0.86, 0.8, 0.64, 0.52, 0.30, 0.04, 0]
+
+    t = clock(0.265)
+    select = unit(tone(t, [(208, 1), (410, 0.85), (1160, 0.3)])) * window(t, 0, 0.075, 0.006)
+    select += unit(tone(t, [(732, 1), (105, 0.6), (261, 0.7), (1160, 0.4)])) * window(t, 0.068, 0.14, 0.006)
+    select += unit(tone(t, [(105, 1), (53, 0.38), (155, 0.38)])) * window(t, 0.13, 0.265, 0.006)
+    select_levels = [0.71, 0.93, 0.70, 0.55, 0.70, 0.76, 1.0, 0.57, 0.45, 0.56, 0.62, 0.78, 0.64, 0.53]
+    select_levels += [0.28, 0.23, 0.24, 0.23, 0.24, 0.25, 0.24, 0.27, 0.27, 0.29, 0.29, 0.28, 0.03]
+
+    t = clock(0.275)
+    back = unit(tone(t, [(300, 1), (250, 0.4), (352, 0.5)])) * window(t, 0, 0.145, 0.01)
+    back += unit(tone(t, [(152, 1), (103, 0.6), (53, 0.4)])) * window(t, 0.125, 0.275, 0.01)
+    back_levels = [0.07, 0.13, 0.14, 0.21, 0.30, 0.38, 0.49, 0.54, 0.59, 0.72, 1.0, 0.88, 0.66, 0.48]
+    back_levels += [0.34, 0.43, 0.27, 0.27, 0.14, 0.13, 0.10, 0.10, 0.07, 0.06, 0.05, 0.03, 0.02, 0]
+
+    t = clock(0.46)
+    scan = np.sin(glide(t, [(0, 205), (0.025, 680), (0.05, 920), (0.075, 1043), (0.4, 1875), (0.46, 2030)]))
+    upper = [(0, 205), (0.025, 680), (0.05, 920), (0.075, 1104), (0.15, 1321), (0.25, 1649), (0.3, 1837), (0.35, 2068), (0.4, 2317), (0.46, 2620)]
+    scan = (scan + 0.9 * np.sin(glide(t, upper))) * (1 - 0.15 * (1 - np.cos(2 * np.pi * 47 * t)))
+    scan_levels = [0.55, 1.0, 0.77, 0.25, 0.25, 0.22, 0.51, 0.34, 0.58, 0.44, 0.58, 0.37, 0.54, 0.48, 0.33, 0.42, 0.42, 0.40, 0.37, 0.34, 0.30, 0.26, 0.22, 0.19]
+    scan_levels += [0.16, 0.13, 0.12, 0.12, 0.12, 0.13, 0.12, 0.12, 0.11, 0.08, 0.07, 0.05, 0.05, 0.05, 0.07, 0.07, 0.07, 0.06, 0.05, 0.03, 0.02, 0.02, 0]
+    return {
+        "cursor": dry(shaped(move, move_levels), 0.3),
+        "confirm": dry(shaped(select, select_levels), 0.36),
+        "cancel": dry(shaped(back, back_levels), 0.36),
+        "notify": dry(shaped(scan, scan_levels), 0.34),
+    }
+
+
+def tie():
+    # Resynthesized from measurements of X-Wing Alliance's TARGETSELECT, TARGETLOCK, SETPOWERLEVEL0 and PLAYERURGENT.
+    def dry(signal, peak):
+        return finish(np.concatenate([lowpass(signal, 10000), np.zeros(480)]), peak)
+
+    t = clock(0.045)
+    select = tone(t, [(2197, 1), (4395, 0.32), (1099, 0.1)]) * window(t, 0, 0.045, 0.001)
+
+    t = clock(0.27)
+    lock = tone(t, [(2353, 1), (785, 0.8)]) * window(t, 0, 0.27, 0.002)
+
+    t = clock(0.16)
+    body = tone(t, [(425, 1), (595, 1), (770, 0.45), (1515, 0.28), (1740, 0.3)]) * np.exp(-t / 0.06)
+    snap = tone(t, [(4254, 1), (4523, 0.7)]) * np.exp(-t / 0.004)
+    power_off = (unit(body) + 0.7 * unit(snap)) * window(t, 0, 0.16, 0.001)
+
+    pattern = [(0, [(1066, 0.045)]), (0.085, [(2133, 0.02), (1066, 0.025)]), (0.13, [(2133, 0.03)]), (0.175, [(2133, 0.025)])]
+    pattern += [(0.22, [(2133, 0.03)]), (0.265, [(2133, 0.035)]), (0.315, [(2133, 0.025), (1066, 0.02)])]
+    bursts = []
+    for at, notes in pattern:
+        chunk = np.concatenate([np.sin(2 * np.pi * freq * clock(length)) for freq, length in notes])
+        bursts.append((at, chunk * window(clock(len(chunk) / RATE), 0, len(chunk) / RATE, 0.002)))
+    return {
+        "cursor": dry(select, 0.22),
+        "confirm": dry(lock, 0.2),
+        "cancel": dry(power_off, 0.3),
+        "notify": dry(mix_at(bursts, 0.365), 0.24),
+    }
+
+
+def clack(levels, bands, seed, ring=0.0):
+    """Mechanical click: noise in weighted bands under a measured envelope, levels 0-99 per millisecond."""
+    levels = [int(level) / 99 for level in levels.split()] + [0]
+    t = clock(len(levels) * 0.001)
+    raw = noise(len(t), seed)
+    out = np.zeros(len(t))
+    for low, high, weight in bands:
+        band = lowpass(highpass(raw, low, order=2), high, order=4)
+        out += np.sqrt(weight) * band / np.sqrt(np.mean(band**2))
+    out += ring * np.max(np.abs(out)) * np.sin(2 * np.pi * 1000 * t)
+    return shaped(out, levels, 0.001)
+
+
+def goldeneye():
+    # Resynthesized from envelope and band measurements of four GoldenEye 007 mechanical clicks; the cancel's silent gap is shortened.
+    def n64(signal, peak):
+        return finish(np.concatenate([lowpass(signal, 7900, order=8), np.zeros(480)]), peak)
+
+    cursor = "2 37 99 45 24 12 18 15 10 10 10 7 5 4 8 6 7 8 4 5 6 5 5 4 3 4 3 3 3 2 4 1 2 2 2 2 2 1 2 2 1 1 1 2 2 3 2 2 1 2 4 2 5 2 5 3 2 2 1 5 3 4 2 3 2 5 5 3 3 2 2 2 2 2 2 3"
+    confirm = "8 6 99 87 63 31 18 9 15 12 9 8 6 5 3 5 9 9 5 8 5 5 5 5 3 5 3 2 2 5 3 2 2 3 2 2 2 2 2 2 1 1 1 1 2 4 3 2 3 5 5 6 6 4 5 5 4 3 2 4 8 9 6 5 5 3 9 5 5 5 2 4 4 3 3 1 2 1 3 2"
+    cancel = "14 21 47 40 18 21 7 44 99 69 90 89 85 97 99 91 94 92 94 80 95 85 99 98 99 32 30 27 34 38 34 18 29 34 27 29 31 22 19 68 72 18 26 55 42 15 20 17 10 9 9 15 6 11 12 9 9 9 6 9 6 7 6 9 6 7 4 6 6 8 11 8 8 7 9 4 5 3 3 2 4 4 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 2 42 60 26 15 8 8 6 8 82 86 36 27 21 12 9 4 4 3 2 2 2 2 2 3"
+    notify = "58 94 90 83 87 63 49 41 28 40 63 80 82 97 68 76 68 55 72 46 34 15 22 20 19 25 35 52 47 32 26 25 23 21 22 23 18 12 15 14 20 11 13 12 15 9 9 9 10 10 10 11 10 11 18 31 35 23 21 34 22 12 20 63 79 72 57 54 36 32 15 44 67 76 78 60 48 39 27 35 39 64 62 61 90 77 53 43 68 44 61 91 66 68 76 64 51 59 83 84 88 85 98 99 86 86 85 69 67 54 60 54 33 44 39 23 24 34 29 19 22 11 13 14 14 14 13 11 8 9 13 14 13 16 10 21 11 10 11 9 13 8 21 31 45 59 43 43 53 30 34 17 11 15 13 16 15 16 11 6 12 14 21 15 13 8 7 10 15 13 12 10 5 4 7 7 7 6 5 21 34 23 10 14 19 11 8 21 15 11 6 5 15 16 13 9 12 9 4 5 9 5 4 3 4 4 5 4 3 4 4 4 3 3 3"
+    return {
+        "cursor": n64(clack(cursor, [(1000, 3000, 0.15), (3000, 6000, 0.43), (6000, 8000, 0.9)], 51), 0.3),
+        "confirm": n64(clack(confirm, [(300, 1000, 0.02), (1000, 3000, 0.24), (3000, 6000, 0.41), (6000, 8000, 0.7)], 52, ring=0.05), 0.34),
+        "cancel": n64(clack(cancel, [(1000, 3000, 0.15), (3000, 6000, 0.52), (6000, 8000, 0.6)], 53), 0.34),
+        "notify": n64(clack(notify, [(300, 1000, 0.02), (1000, 3000, 0.35), (3000, 6000, 0.49), (6000, 8000, 0.22)], 54), 0.34),
+    }
+
+
+STYLES = {
+    "oasis": oasis,
+    "modern": modern,
+    "neovim": neovim,
+    "terminal": terminal,
+    "crt": crt,
+    "nes": nes,
+    "gameboy": gameboy,
+    "snes": snes,
+    "ps1": ps1,
+    "mgs2": mgs2,
+    "ff7": ff7,
+    "goldeneye": goldeneye,
+    "ps2": ps2,
+    "tie": tie,
+    "halflife": halflife,
+    "metroid": metroid,
+    "reticle": reticle,
+}
+
+# Lock skin effects, written as wav under the config root; QtMultimedia's SoundEffect plays nothing else.
+SKIN_FX = {"mgs2-skin": ("lock/skins/mgs2/fx", mgs2_skin)}
+
+if __name__ == "__main__":
+    root = Path(__file__).resolve().parent.parent
+    parser = argparse.ArgumentParser(usage="synth-sounds [--out DIR] [NAME...]")
+    parser.add_argument("--out", type=Path)
+    parser.add_argument("names", nargs="*", metavar="NAME")
+    options = parser.parse_args()
+    unknown = [name for name in options.names if name not in STYLES and name not in SKIN_FX]
+    if unknown:
+        sys.exit("synth-sounds: unknown name " + ", ".join(unknown))
+    for name in options.names or list(STYLES) + list(SKIN_FX):
+        if name in STYLES:
+            for kind, signal in STYLES[name]().items():
+                write_audio((options.out or root / "sounds") / name / f"{kind}.ogg", signal)
+        else:
+            target, render = SKIN_FX[name]
+            for kind, signal in render().items():
+                write_audio((options.out / name if options.out else root / target) / f"{kind}.wav", signal)
+        print(f"synth-sounds: {name}")

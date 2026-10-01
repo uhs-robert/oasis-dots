@@ -4,8 +4,8 @@ import QtMultimedia
 import Qt.labs.folderlistmodel
 import Quickshell
 
-// The MGS2 skin's music and sound effects (made by scripts/mgs2-audio): the skin's own audio/ when it holds
-// files (the greeter's staged copy), else the user's data dir; a missing file stays silent.
+// The MGS2 skin's music and sound effects. The user's files (made by scripts/mgs2-audio) come from the skin's own audio/ when it holds
+// any (the greeter's staged copy), else the data dir; an effect they lack plays the synthesized one in fx/, and missing music stays silent.
 Item {
     id: audio
 
@@ -26,8 +26,11 @@ Item {
         return out;
     }
 
+    readonly property var shipped: ["back.wav", "select.wav", "error.wav", "submit.wav", "transition_wipe.wav", "transition_left.wav", "transition_right.wav"]
+
     function file(name) {
-        return audio.files[name] ? audio.base + "/" + name : "";
+        if (audio.files[name]) return audio.base + "/" + name;
+        return audio.shipped.indexOf(name) >= 0 ? Qt.resolvedUrl("fx/" + name) : "";
     }
 
     function play(name) {

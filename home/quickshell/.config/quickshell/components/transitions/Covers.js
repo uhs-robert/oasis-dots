@@ -182,7 +182,7 @@ function grid(ctx, t, d, w, h, c) {
     ctx.fillRect(xs - 1, 0, 2, h);
 }
 
-// Oblivion and Mech: accent lines trace out from the centre along both edges, then the dark lifts.
+// Reticle: accent lines trace out from the centre along both edges, then the dark lifts.
 function trace(ctx, t, d, w, h, c) {
     const cx = w / 2;
     const half = ease_out(seg(t, 0, 0.55 * d)) * cx;

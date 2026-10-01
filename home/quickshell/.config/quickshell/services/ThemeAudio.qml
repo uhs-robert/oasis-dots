@@ -7,7 +7,7 @@ import Quickshell.Io
 import "../theme"
 import "../lock/skins/sound"
 
-// Per-style UI and notification sounds from an effects pack (a style's sounds/<style>/ or an imported game); ~/.local/share/quickshell/sounds/<style>/ wins file by file and is the only source of lock and login music. Saved in audio.json under the state dir.
+// UI and notification sounds from one effects pack (a sounds/<pack>/ directory or an imported game), the style's own unless the user picks one; ~/.local/share/quickshell/sounds/<pack>/ wins file by file, and its <style>/ is the only source of lock and login music. Saved in audio.json under the state dir.
 Singleton {
     id: root
 
@@ -16,8 +16,8 @@ Singleton {
     property bool music: false
     property real music_volume: 0.5
     property real fx_volume: 0.5
-    // The user's pack per style, as style: pack id; unset styles use their preset.
-    property var choices: ({})
+    // The user's pack for every style; "" follows the style (its preset, else its own).
+    property string choice: ""
     // The lock host sets this while the session is locked.
     property bool lock_active: false
 
@@ -28,10 +28,12 @@ Singleton {
     // Game packs, offered once imported; names maps a kind to the file base, and a kind left out uses the style's own sound.
     readonly property var games: ({
             "game:ff7": { label: "FFVII", replaces: "ff7", dir: Qt.resolvedUrl("../lock/skins/ff7/audio"), names: { cursor: "cursor", confirm: "cursor", cancel: "cancel" } },
-            "game:mgs2": { label: "MGS2", dir: "file://" + root.data_dir + "/mgs2-audio", names: { cursor: "select", confirm: "submit", cancel: "back" } },
+            "game:mgs2": { label: "MGS2 (imported)", dir: "file://" + root.data_dir + "/mgs2-audio", names: { cursor: "select", confirm: "submit", cancel: "back" } },
             "game:ocarina": { label: "Ocarina", dir: "file://" + root.data_dir + "/ocarina-audio", names: { cursor: "move", confirm: "decide", cancel: "cancel", notify: "letter" } }
         })
-    readonly property var presets: ({ ff7: "game:ff7", ps1: "game:mgs2" })
+    // Shipped packs that belong to no style.
+    readonly property var extra_packs: ({ mgs2: { label: "MGS2" } })
+    readonly property var presets: ({ ff7: "game:ff7" })
     readonly property var game_urls: {
         const out = {};
         for (let i = 0; i < game_dirs.count; i++) {
@@ -63,29 +65,30 @@ Singleton {
     }
 
     function valid_pack(name) {
-        return Style.names.indexOf(name) >= 0 || root.imported_games.indexOf(name) >= 0;
+        return Style.names.indexOf(name) >= 0 || name in root.extra_packs || root.imported_games.indexOf(name) >= 0;
     }
 
     function default_pack(style_name) {
         return root.presets[style_name] || style_name;
     }
 
-    // The pack a style really uses: its choice, else its preset, else its own.
+    // The pack a style really uses: the user's choice, else its preset, else its own.
     function pack_for(style_name) {
-        for (const name of [root.choices[style_name], root.default_pack(style_name)]) {
+        for (const name of [root.choice, root.default_pack(style_name)]) {
             if (name && root.valid_pack(name)) return name;
         }
         return style_name;
     }
 
-    // An imported game hides the style pack it replaces.
-    function pack_options(style_name) {
+    // "" is follow the style; an imported game hides the style pack it replaces.
+    function pack_options() {
         const hidden = root.imported_games.map(key => root.games[key].replaces).filter(name => name);
-        return [style_name].concat(Style.names.filter(name => name !== style_name)).filter(name => hidden.indexOf(name) < 0).concat(root.imported_games);
+        return [""].concat(Style.names.filter(name => hidden.indexOf(name) < 0), Object.keys(root.extra_packs), root.imported_games);
     }
 
     function pack_label(name) {
-        return name in root.games ? root.games[name].label : Style.label(name);
+        const pack = root.games[name] || root.extra_packs[name];
+        return pack ? pack.label : Style.label(name);
     }
 
     function set_flag(name, on) {
@@ -101,11 +104,9 @@ Singleton {
         return true;
     }
 
-    function set_pack(style_name, name) {
-        if (Style.names.indexOf(style_name) < 0 || !root.valid_pack(name)) return false;
-        const next = Object.assign({}, root.choices);
-        next[style_name] = name;
-        root.choices = next;
+    function set_pack(name) {
+        if (name !== "" && !root.valid_pack(name)) return false;
+        root.choice = name;
         root.save();
         return true;
     }
@@ -116,13 +117,20 @@ Singleton {
         root.preview(kind);
     }
 
+    property int voice: 0
+    property real played_at: 0
+
     function preview(kind) {
         const url = ui_pack.find(kind, ["wav", "ogg"]);
-        if (url !== "") effects.queue(["loadfile", url, "replace"]);
+        const now = Date.now();
+        if (url === "" || now - root.played_at < 30) return;
+        root.played_at = now;
+        voices.objectAt(root.voice).play(["pw-play", "--volume", String(root.fx_volume), decodeURIComponent(String(url).replace(/^file:\/\//, ""))]);
+        root.voice = (root.voice + 1) % voices.count;
     }
 
     function save() {
-        state_file.setText(JSON.stringify({ ui: root.ui, notify: root.notify, music: root.music, music_volume: root.music_volume, fx_volume: root.fx_volume, packs: root.choices }));
+        state_file.setText(JSON.stringify({ ui: root.ui, notify: root.notify, music: root.music, music_volume: root.music_volume, fx_volume: root.fx_volume, pack: root.choice }));
     }
 
     component Pack: Item {
@@ -158,7 +166,7 @@ Singleton {
 
         FolderListModel {
             id: mine
-            folder: "file://" + pack.user_dir + "/" + (pack.style_name || "none")
+            folder: "file://" + pack.user_dir + "/" + ((!pack.game && pack.choice) || pack.style_name || "none")
             nameFilters: ["*.wav", "*.ogg", "*.mp3"]
             showDirs: false
         }
@@ -189,11 +197,31 @@ Singleton {
     Pack { id: login_pack; user_dir: root.user_dir; style_name: root.login_name }
     Pack { id: music_pack; user_dir: root.user_dir; style_name: root.music_on ? root.music_name : "" }
 
-    MpvProcess {
-        id: effects
-        wanted: root.ui || root.notify
-        args: ["--idle=yes"]
-        volume: root.fx_volume
+    // One pw-play per effect, a few at once: an idle mpv opened a new stream per file and dropped short or fast-repeated sounds.
+    Instantiator {
+        id: voices
+        model: 4
+        delegate: Process {
+            id: voice_proc
+            property var next: null
+
+            function play(command) {
+                if (voice_proc.running) {
+                    voice_proc.next = command;
+                    voice_proc.signal(15);
+                    return;
+                }
+                voice_proc.command = command;
+                voice_proc.running = true;
+            }
+
+            onExited: {
+                if (!voice_proc.next) return;
+                voice_proc.command = voice_proc.next;
+                voice_proc.next = null;
+                voice_proc.running = true;
+            }
+        }
     }
 
     MpvProcess {
@@ -217,13 +245,7 @@ Singleton {
                 const fx_saved = data.fx_volume !== undefined ? data.fx_volume : data.volume;
                 if (root.volumes.indexOf(music_saved) >= 0) root.music_volume = music_saved;
                 if (root.volumes.indexOf(fx_saved) >= 0) root.fx_volume = fx_saved;
-                if (data.packs && typeof data.packs === "object") {
-                    const saved = {};
-                    for (const [style_name, name] of Object.entries(data.packs)) {
-                        if (Style.names.indexOf(style_name) >= 0 && typeof name === "string" && (Style.names.indexOf(name) >= 0 || name in root.games)) saved[style_name] = name;
-                    }
-                    root.choices = saved;
-                }
+                if (typeof data.pack === "string" && (Style.names.indexOf(data.pack) >= 0 || data.pack in root.extra_packs || data.pack in root.games)) root.choice = data.pack;
             } catch (e) {
                 console.warn("ThemeAudio: invalid audio.json (" + e + ")");
             }

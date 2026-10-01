@@ -17,8 +17,7 @@ const by_style = {
     tie: "grid",
     halflife: "flicker",
     metroid: "visor",
-    oblivion: "trace",
-    mech: "trace"
+    reticle: "trace"
 };
 
 // [cover, reveal] in ms: the old look is covered, the style swaps, then the new one is revealed.
