@@ -3,6 +3,7 @@
 # Usage: goldeneye-frames [VIDEO]   (default: downloads the whole reference capture, an hour long, with yt-dlp into ~/.cache/goldeneye-frames)
 # Writes lock/skins/goldeneye/frames/: arm_NN.jpg (matted onto black) with mask_NN.png, plate.jpg and count.txt (gitignored, game footage).
 import os
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -18,7 +19,7 @@ FIRST, LAST, CASE_FROM, SILHOUETTE_FROM = 36, 67, 52, 66
 ICON = (1002, 632, 22)
 # The bezel is the darkest of PLATE_N settled-face frames PLATE_STEP seconds apart: the real-time hands never sit on one spot for long.
 PLATE_START, PLATE_STEP, PLATE_N = 10.0, 120.0, 29
-SILHOUETTE = [(63, 0), (960, 0), (1020, 152), (1020, 657), (962, 720), (130, 720), (0, 617), (0, 115)]
+SILHOUETTE = [(63, 0), (960, 0), (1020, 152), (1020, 568), (960, 720), (130, 720), (0, 617), (0, 115)]
 PANEL_LEFT = [(294, 118), (272, 144), (250, 168), (232, 200), (212, 232), (200, 264), (194, 296), (188, 340), (188, 380), (194, 420), (204, 460), (214, 492), (234, 524), (251, 556), (274, 580), (294, 603)]
 DOTS = [(230, 200), (788, 200), (230, 520), (788, 520)]
 DOT_SPRITE = (350, 635)
@@ -190,6 +191,13 @@ def matte(f, i):
     return feather(m)
 
 
+# The bottom-right bezel carries the emulator icon and wrist skin, so it is rebuilt from the top-right one, mirrored and blended in.
+def mirror_corner(img):
+    ys, xs = np.mgrid[0:720, 0:1020]
+    w = np.clip((ys - 440) / 100.0, 0, 1) * np.clip((xs - 925) / 30.0, 0, 1)
+    return img * (1 - w[..., None]) + img[::-1] * w[..., None]
+
+
 def plate(tmp, video):
     subprocess.run(["ffmpeg", "-v", "error", "-ss", str(PLATE_START), "-t", str(PLATE_N * PLATE_STEP), "-i", video, "-vf", f"fps=1/{PLATE_STEP:g},crop={CROP[2] - CROP[0]}:{CROP[3]}:{CROP[0]}:0", f"{tmp}/p%03d.png"], check=True)
     stack = np.stack([np.asarray(Image.open(p).convert("RGB")) for p in sorted(Path(tmp).glob("p*.png"))])
@@ -207,7 +215,7 @@ def plate(tmp, video):
     for cx, cy in DOTS:
         region = out[cy - 26 : cy + 26, cx - 26 : cx + 26]
         out[cy - 26 : cy + 26, cx - 26 : cx + 26] = region * (1 - alpha) + sprite * alpha
-    out = inpaint(out, *ICON)
+    out = mirror_corner(out)
     return out * polygon_mask(SILHOUETTE)[..., None]
 
 
@@ -215,23 +223,35 @@ def save(a, path):
     Image.fromarray(np.clip(a, 0, 255).astype(np.uint8)).save(path, quality=88, subsampling=0)
 
 
+def publish(tmp_path, name):
+    os.replace(tmp_path, OUT / name)
+
+
 def main():
     video = fetch(sys.argv[1] if len(sys.argv) > 1 else "")
     OUT.mkdir(parents=True, exist_ok=True)
-    for old in OUT.glob("*"):
-        old.unlink()
     with tempfile.TemporaryDirectory() as tmp:
         extract(video, tmp)
+        work = OUT / ".build"
+        shutil.rmtree(work, ignore_errors=True)
+        work.mkdir()
         n = 0
         for i in range(FIRST, LAST + 1):
             f = load(tmp, i)
-            f = inpaint(f, *ICON)
+            f = mirror_corner(f) if i >= SILHOUETTE_FROM else inpaint(f, *ICON)
             alpha = matte(f, i)
-            save(f * alpha[..., None], OUT / f"arm_{n:02d}.jpg")
-            Image.fromarray((alpha * 255).astype(np.uint8)).save(OUT / f"mask_{n:02d}.png", optimize=True)
+            save(f * alpha[..., None], work / f"arm_{n:02d}.jpg")
+            Image.fromarray((alpha * 255).astype(np.uint8)).save(work / f"mask_{n:02d}.png", optimize=True)
             n += 1
-        save(plate(tmp, video), OUT / "plate.jpg")
-    (OUT / "count.txt").write_text(f"{n}\n")
+        save(plate(tmp, video), work / "plate.jpg")
+        (work / "count.txt").write_text(f"{n}\n")
+        keep = {p.name for p in work.iterdir()}
+        for name in sorted(keep, key=lambda x: x == "count.txt"):
+            publish(work / name, name)
+        for old in OUT.glob("*"):
+            if old.is_file() and old.name not in keep:
+                old.unlink()
+        shutil.rmtree(work)
     print(f"{n} frames and plate in {OUT}")
 
 
