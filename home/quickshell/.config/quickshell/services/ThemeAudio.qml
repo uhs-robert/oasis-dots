@@ -166,7 +166,8 @@ Singleton {
 
         FolderListModel {
             id: mine
-            folder: "file://" + pack.user_dir + "/" + ((!pack.game && pack.choice) || pack.style_name || "none")
+            // A game pack takes no overrides; otherwise they belong to the chosen pack.
+            folder: "file://" + pack.user_dir + "/" + (pack.game ? "none" : pack.choice || pack.style_name || "none")
             nameFilters: ["*.wav", "*.ogg", "*.mp3"]
             showDirs: false
         }
