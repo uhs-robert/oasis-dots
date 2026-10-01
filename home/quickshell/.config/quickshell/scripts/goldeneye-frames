@@ -1,0 +1,203 @@
+#!/usr/bin/env python3
+# Builds the GoldenEye lock skin's intro frames and bezel plate from a capture of the pause watch (needs ffmpeg, PIL and numpy).
+# Usage: goldeneye-frames [VIDEO]   (default: downloads the reference capture with yt-dlp into ~/.cache/goldeneye-frames)
+# Writes lock/skins/goldeneye/frames/: arm_00.jpg.., plate.jpg and count.txt (gitignored, game footage).
+import os
+import subprocess
+import sys
+import tempfile
+from collections import deque
+from pathlib import Path
+
+import numpy as np
+from PIL import Image
+
+URL = "https://youtu.be/LlzYhBITxzs"
+CROP = (130, 0, 1150, 720)
+FIRST, LAST, PLATE_AT, PANEL_AT = 36, 67, 90, 67
+SKIP_BOX = (975, 585, 1020, 720)
+OUT = Path(__file__).resolve().parent.parent / "lock" / "skins" / "goldeneye" / "frames"
+
+
+def fetch(video):
+    if video:
+        return video
+    cache = Path(os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache")) / "goldeneye-frames"
+    cache.mkdir(parents=True, exist_ok=True)
+    path = cache / "ref.mp4"
+    if not path.exists():
+        subprocess.run(["yt-dlp", "-f", "bestvideo[height<=720]", "--download-sections", "*0-6", "-o", str(path), URL], check=True)
+    return str(path)
+
+
+def extract(video, tmp):
+    subprocess.run(["ffmpeg", "-v", "error", "-ss", "1.0", "-t", "3.0", "-i", video, "-vf", "fps=30", f"{tmp}/f%03d.png"], check=True)
+
+
+def load(tmp, i):
+    return np.asarray(Image.open(f"{tmp}/f{i:03d}.png").convert("RGB").crop(CROP)).astype(np.float32)
+
+
+def box(a, r):
+    k = 2 * r + 1
+    p = np.pad(a, ((r + 1, r), (r + 1, r)), mode="edge")
+    c = p.cumsum(0).cumsum(1)
+    return (c[k:, k:] - c[:-k, k:] - c[k:, :-k] + c[:-k, :-k]) / (k * k)
+
+
+def dilate(m, r):
+    return box(m.astype(np.float32), r) > 0.0001
+
+
+def erode(m, r):
+    return box(m.astype(np.float32), r) > 0.9999
+
+
+def close(m, r):
+    return erode(dilate(m, r), r)
+
+
+def quarter(m, down=4):
+    h, w = m.shape
+    return m[: h // down * down, : w // down * down].reshape(h // down, down, w // down, down).mean(axis=(1, 3)) > 0.4
+
+
+def grow(seeds, allowed):
+    seen = np.zeros(allowed.shape, bool)
+    dq = deque()
+    for y, x in seeds:
+        if allowed[y, x] and not seen[y, x]:
+            seen[y, x] = True
+            dq.append((y, x))
+    while dq:
+        cy, cx = dq.popleft()
+        for ny, nx in ((cy + 1, cx), (cy - 1, cx), (cy, cx + 1), (cy, cx - 1)):
+            if 0 <= ny < allowed.shape[0] and 0 <= nx < allowed.shape[1] and allowed[ny, nx] and not seen[ny, nx]:
+                seen[ny, nx] = True
+                dq.append((ny, nx))
+    return seen
+
+
+def largest(m, down=4):
+    q = quarter(m, down)
+    lab = np.zeros(q.shape, np.int32)
+    best, best_n, n = None, 0, 0
+    for y in range(q.shape[0]):
+        for x in range(q.shape[1]):
+            if q[y, x] and not lab[y, x]:
+                n += 1
+                comp = grow([(y, x)], q & (lab == 0))
+                lab[comp] = n
+                if comp.sum() > best_n:
+                    best, best_n = comp, comp.sum()
+    if best is None:
+        return m
+    up = np.kron(best, np.ones((down, down), bool))
+    full = np.zeros(m.shape, bool)
+    full[: up.shape[0], : up.shape[1]] = up
+    return m & dilate(full, 3)
+
+
+def fill_holes(m, down=4):
+    q = quarter(m, down)
+    edge = [(y, x) for y in range(q.shape[0]) for x in (0, q.shape[1] - 1)] + [(y, x) for x in range(q.shape[1]) for y in (0, q.shape[0] - 1)]
+    outside = grow(edge, ~q)
+    up = np.kron(~q & ~outside, np.ones((down, down), bool))
+    full = np.zeros(m.shape, bool)
+    full[: up.shape[0], : up.shape[1]] = up
+    return m | full
+
+
+# Skin is orange, the sleeve dark and smooth, the bracelet and bezel bright and grey; gravel is none of those.
+def span_fill(m):
+    out = np.zeros_like(m)
+    for y in range(m.shape[0]):
+        xs = np.flatnonzero(m[y])
+        if len(xs) > 40:
+            out[y, xs[0] : xs[-1] + 1] = True
+    return out
+
+
+def matte(f, zoomed):
+    r, g, b = f[..., 0], f[..., 1], f[..., 2]
+    lum = (r + g + b) / 3
+    skin = ((r - b) > 14) & (r > 35)
+    mean = box(lum, 3)
+    sd = np.sqrt(np.maximum(box(lum * lum, 3) - mean * mean, 0))
+    sleeve = (mean < 38) & (sd < 5.5) & ((b - r) > 1)
+    sat = np.maximum(np.maximum(r, g), b) - np.minimum(np.minimum(r, g), b)
+    metal = (box(lum, 5) > 105) & (box(sat, 5) < 30)
+    metal = dilate(erode(metal, 2), 2)
+    m = skin | sleeve | metal
+    m[SKIP_BOX[1] :, SKIP_BOX[0] :] = False
+    if zoomed:
+        ys, xs = np.nonzero(metal)
+        x0, x1 = np.percentile(xs, [1, 99]).astype(int)
+        y0, y1 = np.percentile(ys, [1, 99]).astype(int)
+        if x1 - x0 > 600:
+            m = span_fill(dilate(erode(m, 3), 3))
+        else:
+            m[y0 : y1 + 1, x0 : x1 + 1] = True
+    m = close(m, 5)
+    m = largest(m)
+    m = fill_holes(close(m, 4))
+    m = erode(dilate(m, 1), 2) | erode(m, 1)
+    return box(m.astype(np.float32), 1)
+
+
+def keyed(f):
+    ys, xs = np.mgrid[0:720, 0:1020]
+    brown = ((f[..., 0] - f[..., 2]) > 14) & ((f[..., 0] - f[..., 2]) < 90) & (f[..., 0] > 35) & ((xs < 60) | (xs > 940) | ((ys > 640) & (xs < 140)))
+    out = f.copy()
+    out[dilate(brown, 2)] = 0
+    out[SKIP_BOX[1] :, SKIP_BOX[0] :] = 0
+    return out
+
+
+def plate(tmp):
+    base = load(tmp, PLATE_AT)
+    out = base.copy()
+    clean = load(tmp, PANEL_AT)
+    r, g, b = clean[..., 0], clean[..., 1], clean[..., 2]
+    green = close((g > r + 10) & (g > b + 10), 6)
+    ys, xs = np.mgrid[0:720, 0:1020]
+    panel = fill_holes(green) & (ys > 100) & (ys < 620) & (xs > 150) & (xs < 870)
+    out[panel] = clean[panel]
+    for y in range(180, 566):
+        row = np.median(clean[y, 380:420], axis=0)
+        sel = panel[y] & (np.abs(xs[y] - 510) < 90)
+        out[y][sel] = row
+    for y in range(564, 603):
+        line = clean[564]
+        sel = panel[y] & (xs[y] > 290) & (xs[y] < 730)
+        out[y][sel] = line[sel]
+    out[606:, 440:570] = base[606:, 440:570]
+    brown = ((out[..., 0] - out[..., 2]) > 14) & ((out[..., 0] - out[..., 2]) < 90) & (out[..., 0] > 35)
+    corners = (xs < 60) | (xs > 940) | ((ys > 640) & (xs < 140))
+    out[dilate(brown & corners, 2)] = 0
+    out[SKIP_BOX[1] :, SKIP_BOX[0] :] = 0
+    return out
+
+
+def save(a, path):
+    Image.fromarray(np.clip(a, 0, 255).astype(np.uint8)).save(path, quality=88, subsampling=0)
+
+
+def main():
+    video = fetch(sys.argv[1] if len(sys.argv) > 1 else "")
+    OUT.mkdir(parents=True, exist_ok=True)
+    for old in OUT.glob("*"):
+        old.unlink()
+    with tempfile.TemporaryDirectory() as tmp:
+        extract(video, tmp)
+        n = 0
+        for i in range(FIRST, LAST + 1):
+            f = load(tmp, i)
+            save(keyed(f) if i == LAST else f * matte(f, i >= 60)[..., None], OUT / f"arm_{n:02d}.jpg")
+            n += 1
+        save(plate(tmp), OUT / "plate.jpg")
+    (OUT / "count.txt").write_text(f"{n}\n")
+    print(f"{n} frames and plate in {OUT}")
+
+
+main()
