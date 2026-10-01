@@ -1,13 +1,14 @@
 // home/quickshell/.config/quickshell/lock/skins/goldeneye/SegmentArc.qml
 import QtQuick
 
-// Bezel segments on the left half of an ellipse (right half when mirrored), the first at the top; `lit` of them at full colour.
+// Bezel segments on the left half of an ellipse (right half when mirrored), the first at the top; `lit` of them at full colour, counted from the top or the bottom.
 Item {
     id: root
 
     property var colors: []
     property int lit: root.colors.length
     property bool mirror: false
+    property bool from_bottom: false
     property real thickness: 10
     property real span: 112
     property real gap: 3
@@ -33,7 +34,7 @@ Item {
             height: Math.max(2, Math.hypot(root.a * Math.sin(seg.t), root.b * Math.cos(seg.t)) * root.step - root.gap)
             rotation: root.mirror ? -seg.tilt : seg.tilt
             color: seg.modelData
-            opacity: seg.index < root.lit ? 1 : root.unlit_alpha
+            opacity: (root.from_bottom ? seg.index >= root.colors.length - root.lit : seg.index < root.lit) ? 1 : root.unlit_alpha
             antialiasing: true
         }
     }

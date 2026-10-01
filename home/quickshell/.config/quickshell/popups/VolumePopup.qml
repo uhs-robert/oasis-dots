@@ -10,6 +10,7 @@ import "snes" as Snes
 import "../components/ps1" as Ps1
 import "../components/ps2" as Ps2
 import "../components/modern" as Modern
+import "../components/goldeneye" as Goldeneye
 
 Popup {
     id: root
@@ -214,6 +215,37 @@ Popup {
                         dimmed: !!audio && audio.muted
                         label: audio ? String(Math.round(audio.volume * 100)) : ""
                         caption: audio && audio.muted ? "Muted" : "Volume"
+                    }
+                }
+            }
+
+            Loader {
+                id: watch_gauges
+                readonly property var out_audio: Pipewire.defaultAudioSink ? Pipewire.defaultAudioSink.audio : null
+                readonly property var in_audio: Pipewire.defaultAudioSource ? Pipewire.defaultAudioSource.audio : null
+                active: root.st.osd_layout === "watch"
+                visible: active
+                Layout.fillWidth: true
+                Layout.preferredHeight: active ? Style.px(112) : 0
+                Layout.bottomMargin: 6
+                sourceComponent: Item {
+                    Row {
+                        anchors.centerIn: parent
+                        spacing: Style.px(28)
+
+                        Goldeneye.GaugeDial {
+                            size: Style.px(112)
+                            value: watch_gauges.out_audio ? watch_gauges.out_audio.volume : 0
+                            muted: !!watch_gauges.out_audio && watch_gauges.out_audio.muted
+                            label: "OUTPUT"
+                        }
+
+                        Goldeneye.GaugeDial {
+                            size: Style.px(112)
+                            value: watch_gauges.in_audio ? watch_gauges.in_audio.volume : 0
+                            muted: !!watch_gauges.in_audio && watch_gauges.in_audio.muted
+                            label: "INPUT"
+                        }
                     }
                 }
             }

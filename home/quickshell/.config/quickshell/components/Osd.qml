@@ -15,6 +15,7 @@ import "ps2" as Ps2
 import "oasis" as Oasis
 import "modern" as Modern
 import "neovim" as Neovim
+import "goldeneye" as Goldeneye
 
 PanelWindow {
     id: root
@@ -22,6 +23,8 @@ PanelWindow {
     property string kind: "volume"
     property real level: 0
     property bool muted: false
+    // The level before the 0-1 clamp, for gauges that show boost.
+    property real raw_level: 0
     // The last change in percent points, for styles that show it.
     property int delta: 0
     // A level change takes the slot for its hide timer, then voxtype gets it back.
@@ -62,7 +65,8 @@ PanelWindow {
             alert: { art: alert_osd, hides: ["glyph"] },
             glow: { art: glow_osd, hides: ["meter", "percent"], size: Style.px(84) },
             horizon: { art: horizon_osd, hides: ["glyph", "meter", "percent"], framed: true, untitled: true },
-            tile: { art: tile_osd, hides: ["glyph", "meter", "percent"], framed: true, untitled: true }
+            tile: { art: tile_osd, hides: ["glyph", "meter", "percent"], framed: true, untitled: true },
+            watch: { art: watch_osd, hides: ["glyph", "meter", "percent"], framed: true, untitled: true }
         })[Style.osd_layout] || null
 
     function replaced(part) {
@@ -122,6 +126,7 @@ PanelWindow {
         const prev = root.kind === new_kind ? root.level : new_level;
         root.kind = new_kind;
         root.level = Math.max(0, Math.min(1, new_level));
+        root.raw_level = Math.max(0, new_level);
         root.muted = new_muted;
         root.delta = Math.round(root.level * 100) - Math.round(prev * 100);
         root.hold_screen();
@@ -522,6 +527,16 @@ PanelWindow {
                 wave: root.kind === "volume"
                 node: root.sink
                 peaks_on: root.wanted && root.visible && Power.on_ac
+            }
+        }
+
+        Component {
+            id: watch_osd
+            Goldeneye.GaugeDial {
+                size: Style.px(96)
+                value: root.raw_level
+                muted: root.muted
+                label: root.kind === "brightness" ? "LIGHT" : "VOLUME"
             }
         }
 

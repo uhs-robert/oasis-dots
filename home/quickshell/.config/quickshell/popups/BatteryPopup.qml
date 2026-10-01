@@ -11,6 +11,7 @@ import "../components/nes" as Nes
 import "snes" as Snes
 import "../components/ps1" as Ps1
 import "../components/ps2" as Ps2
+import "../components/goldeneye" as Goldeneye
 
 Popup {
     id: root
@@ -183,6 +184,34 @@ Popup {
             anchors.right: parent.right
             anchors.top: parent.top
             spacing: 4
+
+            Loader {
+                active: root.st.osd_layout === "watch" && (root.has_battery || Backlight.has_device)
+                visible: active
+                Layout.fillWidth: true
+                Layout.preferredHeight: active ? Style.px(112) : 0
+                Layout.bottomMargin: 6
+                sourceComponent: Item {
+                    Row {
+                        anchors.centerIn: parent
+                        spacing: Style.px(28)
+
+                        Goldeneye.GaugeDial {
+                            visible: root.has_battery
+                            size: Style.px(112)
+                            value: root.percent / 100
+                            label: "BATTERY"
+                        }
+
+                        Goldeneye.GaugeDial {
+                            visible: Backlight.has_device
+                            size: Style.px(112)
+                            value: Backlight.percent / 100
+                            label: "LIGHT"
+                        }
+                    }
+                }
+            }
 
             // Console status views replace the readout lines.
             Loader {

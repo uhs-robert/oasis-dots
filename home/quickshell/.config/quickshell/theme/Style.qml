@@ -826,6 +826,7 @@ Singleton {
             // The classic pause watch for every popup, in its own fixed colours under any palette.
             "goldeneye": Object.assign({}, terminal, {
                 pal: watch_pal,
+                osd_layout: "watch",
                 workspace_art: "dial",
                 wait_anim: "transmission",
                 done_anim: "lcd",
