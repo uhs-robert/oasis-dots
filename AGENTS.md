@@ -17,7 +17,7 @@ Personal Arch Linux dotfiles deployed with GNU Stow. Three deployment targets, e
 ```bash
 just                  # list recipes
 just check            # full validation (run before committing)
-just lint             # shellcheck install.sh uninstall.sh lib/*.sh
+just lint             # shellcheck install.sh uninstall.sh lib/*.sh demo/*.sh
 just stow <pkg>       # symlink one package into ~
 just restow <pkg>     # fix stale/broken links
 just unstow <pkg>
@@ -32,7 +32,7 @@ just update-repos     # pull non-linked clones in repos/
 ./install.sh --server # headless install, no desktop packages/configs/services
 ```
 
-`just check` runs `lib/check.sh`: shellcheck, `shfmt -i 2`, `stylua` on `home/hypr/.config/hypr`, duplicate-package detection, tracked-symlink validation, and trailing-whitespace scan. Optional tools are skipped when absent rather than failing. There is no single-test runner; the checks are all-or-nothing and report every failure in one pass.
+`just check` runs `lib/check.sh`: shellcheck and `shfmt -i 2` (installer, `lib/`, `demo/`), `stylua` on `home/hypr/.config/hypr`, duplicate-package detection, tracked-symlink validation, and trailing-whitespace scan. Optional tools are skipped when absent rather than failing. There is no single-test runner; the checks are all-or-nothing and report every failure in one pass.
 
 Formatting scope is deliberately narrow — whitespace and stylua checks only cover `install.sh`, `uninstall.sh`, `justfile`, `lib/`, `packages/`, and `home/hypr/`. Everything else under `home/` is vendored or hand-maintained upstream config; do not reformat it.
 
