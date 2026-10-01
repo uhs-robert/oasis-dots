@@ -363,11 +363,17 @@ Item {
         onFinished: if (root.motion_dir > 0) root.intro_busy = false
     }
 
+    // Fires on the wall-clock second so every output ticks together.
     Timer {
+        id: clock_timer
+        function sync() {
+            root.tick = Date.now();
+            clock_timer.interval = 1000 - root.tick % 1000;
+        }
         running: root.animate && root.intro_t >= 1
-        interval: 1000
         repeat: true
-        onTriggered: root.tick = Date.now()
+        onRunningChanged: if (clock_timer.running) clock_timer.sync()
+        onTriggered: clock_timer.sync()
     }
 
     Timer {
