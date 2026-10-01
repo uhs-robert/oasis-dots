@@ -110,6 +110,7 @@ ShellRoot {
             id: win
 
             readonly property real k: Math.max(0.5, win.width / 2560)
+            readonly property real kc: win.k * 1.4
             property bool ready: false
 
             screen: Quickshell.screens.find(s => s.name === root.output_name) || null
@@ -177,8 +178,8 @@ ShellRoot {
                 id: caps
                 anchors.horizontalCenter: parent.horizontalCenter
                 anchors.bottom: parent.bottom
-                anchors.bottomMargin: 150 * win.k
-                spacing: 20 * win.k
+                anchors.bottomMargin: 150 * win.kc
+                spacing: 20 * win.kc
                 opacity: win.ready && root.keys_on && !root.card_on ? 1 : 0
 
                 Behavior on opacity {
@@ -194,14 +195,14 @@ ShellRoot {
                         required property int index
                         required property string modelData
 
-                        spacing: 20 * win.k
+                        spacing: 20 * win.kc
 
                         Rectangle {
-                            width: root.mode === "mask" ? 76 * win.k : Math.max(96 * win.k, cap_text.implicitWidth + 60 * win.k)
-                            height: 96 * win.k
-                            radius: 18 * win.k
+                            width: root.mode === "mask" ? 76 * win.kc : Math.max(96 * win.kc, cap_text.implicitWidth + 60 * win.kc)
+                            height: 96 * win.kc
+                            radius: 18 * win.kc
                             color: "#e6101418"
-                            border.width: Math.max(1, 2 * win.k)
+                            border.width: Math.max(1, 2 * win.kc)
                             border.color: "#59ffffff"
 
                             Text {
@@ -211,14 +212,14 @@ ShellRoot {
                                 text: unit.modelData
                                 color: "#f4f7f9"
                                 font.family: root.mono_family
-                                font.pixelSize: 46 * win.k
+                                font.pixelSize: 46 * win.kc
                                 font.weight: Font.DemiBold
                             }
 
                             Rectangle {
                                 anchors.centerIn: parent
                                 visible: root.mode === "mask"
-                                width: 24 * win.k
+                                width: 24 * win.kc
                                 height: width
                                 radius: width / 2
                                 color: "#f4f7f9"
@@ -231,7 +232,7 @@ ShellRoot {
                             text: "+"
                             color: "#c3cdd4"
                             font.family: root.mono_family
-                            font.pixelSize: 40 * win.k
+                            font.pixelSize: 40 * win.kc
                         }
                     }
                 }

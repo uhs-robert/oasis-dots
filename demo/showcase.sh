@@ -19,37 +19,38 @@ DEMO_SEARCH_TEXT=${DEMO_SEARCH_TEXT:-fire}
 DEMO_PROTECT_PID=${DEMO_PROTECT_PID:-${KITTY_PID:-}}
 DEMO_WEATHER_FILE=${DEMO_WEATHER_FILE:-$HOME/.config/quickshell/weather.local.json}
 DEMO_RESET_KILL=${DEMO_RESET_KILL:-0}
+DEMO_CLAUDE_CMD=${DEMO_CLAUDE_CMD:-claude --model haiku --disallowedTools Bash}
 
-T_LEAD=${T_LEAD:-0.25}
+T_LEAD=${T_LEAD:-0.15}
 T_KEY_GAP=${T_KEY_GAP:-0.1}
-T_SETTLE=${T_SETTLE:-0.4}
+T_SETTLE=${T_SETTLE:-0.3}
 T_TYPE_DELAY_MS=${T_TYPE_DELAY_MS:-70}
-T_LOGIN_INTRO=${T_LOGIN_INTRO:-2.2}
+T_LOGIN_INTRO=${T_LOGIN_INTRO:-0.8}
 T_LOGIN_TITLE_TURN=${T_LOGIN_TITLE_TURN:-2.0}
 T_LOGIN_PAGE_TURN=${T_LOGIN_PAGE_TURN:-1.45}
-T_LOGIN_HOLD=${T_LOGIN_HOLD:-0.5}
-T_LOGIN_CHAR_GAP=${T_LOGIN_CHAR_GAP:-0.15}
+T_LOGIN_HOLD=${T_LOGIN_HOLD:-0.25}
+T_LOGIN_CHAR_GAP=${T_LOGIN_CHAR_GAP:-0.1}
 T_LOGIN_UNLOCK=${T_LOGIN_UNLOCK:-3.85}
 T_LOGIN_UNLOCK_MARGIN=${T_LOGIN_UNLOCK_MARGIN:-0.3}
 T_WORK_TIMEOUT=${T_WORK_TIMEOUT:-90}
-T_WORK_HOLD=${T_WORK_HOLD:-1.0}
-T_OVERVIEW_HOLD=${T_OVERVIEW_HOLD:-1.2}
-T_OVERVIEW_STEP=${T_OVERVIEW_STEP:-0.4}
-T_STYLE_HOLD=${T_STYLE_HOLD:-1.0}
-T_MOVE_STEP=${T_MOVE_STEP:-0.6}
-T_KEYBINDS_HOLD=${T_KEYBINDS_HOLD:-1.2}
-T_TMUX_STEP=${T_TMUX_STEP:-0.5}
-T_TMUX_HOLD=${T_TMUX_HOLD:-1.0}
-T_SHOT_STEP=${T_SHOT_STEP:-0.3}
-T_RESIZE_STEP=${T_RESIZE_STEP:-0.35}
-T_KEEPTABS_STEP=${T_KEEPTABS_STEP:-0.4}
-T_SETTINGS_HOLD=${T_SETTINGS_HOLD:-0.8}
-T_OUTRO_HOLD=${T_OUTRO_HOLD:-4}
+T_WORK_HOLD=${T_WORK_HOLD:-0.6}
+T_OVERVIEW_HOLD=${T_OVERVIEW_HOLD:-1.0}
+T_OVERVIEW_STEP=${T_OVERVIEW_STEP:-0.25}
+T_STYLE_HOLD=${T_STYLE_HOLD:-0.6}
+T_MOVE_STEP=${T_MOVE_STEP:-0.4}
+T_KEYBINDS_HOLD=${T_KEYBINDS_HOLD:-1.0}
+T_TMUX_STEP=${T_TMUX_STEP:-0.35}
+T_TMUX_HOLD=${T_TMUX_HOLD:-0.7}
+T_SHOT_STEP=${T_SHOT_STEP:-0.18}
+T_RESIZE_STEP=${T_RESIZE_STEP:-0.3}
+T_KEEPTABS_STEP=${T_KEEPTABS_STEP:-0.35}
+T_SETTINGS_HOLD=${T_SETTINGS_HOLD:-0.6}
+T_OUTRO_HOLD=${T_OUTRO_HOLD:-3.5}
 
 scenes=(login work overview styles move_window keybinds tmux screenshot to_hdmi keeptabs settings outro)
-work_classes=(eu.betterbird.Betterbird org.qutebrowser.qutebrowser org.mozilla.firefox kitty-tmux-uphill kitty-tmux-config slack)
+work_classes=(eu.betterbird.Betterbird org.qutebrowser.qutebrowser firefox kitty-tmux-uphill kitty-tmux-config slack)
 work_sessions=(UpHill Config)
-declare -A reset_policy=(["org.mozilla.firefox"]=kill)
+declare -A reset_policy=(["firefox"]=kill)
 declare -A style_reveal_ms=([oasis]=600 [snes]=450 [ff7]=500 [goldeneye]=500 [neovim]=400 [ps1]=500)
 
 DRY=0
@@ -96,8 +97,9 @@ init_protection() {
   if [[ -n $DEMO_PROTECT_PID ]]; then
     add_protected "$DEMO_PROTECT_PID"
     add_descendants "$DEMO_PROTECT_PID"
-    protect_addrs=$(hyprctl clients -j 2>/dev/null | jq -r --argjson p "$DEMO_PROTECT_PID" '[.[] | select(.pid == $p) | .address] | join(" ")' || true)
+    protect_addrs=$(hyprctl clients -j 2>/dev/null | jq -r --argjson p "$DEMO_PROTECT_PID" '[.[] | select(.pid == $p and (.class | startswith("kitty-tmux-") | not)) | .address] | join(" ")' || true)
   fi
+  [[ -z ${DEMO_PROTECT_ADDR:-} ]] || protect_addrs=$DEMO_PROTECT_ADDR
 }
 
 is_protected_pid() { [[ $protect_pids == *" $1 "* ]]; }
@@ -337,7 +339,7 @@ leader_chord() {
   overlay_keys "SUPER + SPACE"
   pause "$T_LEAD"
   hypr_eval 'hl.dispatch(hl.dsp.submap("Leader"))'
-  pause 0.9
+  pause 0.6
   overlay_keys "$key"
   pause "$T_LEAD"
   "$@"
@@ -352,17 +354,23 @@ out_ws_ids() {
   hyprctl workspaces -j | jq -r --arg o "$DEMO_OUTPUT" '[.[] | select(.monitor == $o and .id > 0) | .id] | sort | .[]'
 }
 
-slot_ws() { out_ws_ids | sed -n "${1}p"; }
+ws_base() {
+  local first
+  first=$(out_ws_ids | head -n 1)
+  printf '%s' $((((${first:-1} - 1) / 5) * 5 + 1))
+}
+
+slot_ws() { printf '%s\n' $(($(ws_base) + $1 - 1)); }
 
 empty_slot() {
-  local slot=0 id
-  while read -r id; do
-    slot=$((slot + 1))
-    if hyprctl workspaces -j | jq -e --argjson i "$id" 'any(.[]; .id == $i and .windows == 0)' >/dev/null; then
+  local slot id
+  for slot in 1 2 3 4 5; do
+    id=$(slot_ws "$slot")
+    if ! hyprctl clients -j | jq -e --argjson i "$id" 'any(.[]; .workspace.id == $i)' >/dev/null; then
       printf '%s' "$slot"
       return 0
     fi
-  done < <(out_ws_ids)
+  done
   return 1
 }
 
@@ -405,6 +413,30 @@ focus_output_window() {
     sleep 0.1
   done
   die "could not focus window $addr"
+}
+
+focus_ws_window() {
+  local addr
+  if ((DRY)); then
+    emit focus "window on the active workspace of $DEMO_OUTPUT"
+    return 0
+  fi
+  addr=$(hyprctl clients -j | jq -r --argjson ws "$(hyprctl monitors -j | jq --arg o "$DEMO_OUTPUT" '.[] | select(.name == $o) | .activeWorkspace.id')" --arg prot "$protect_addrs" '
+    ($prot | split(" ")) as $p
+    | [.[] | select(.workspace.id == $ws and .mapped and (.address | IN($p[]) | not))]
+    | sort_by(if .class == "firefox" then 0 else 1 end) | .[0].address // empty')
+  [[ -n $addr ]] || die "no window on the active workspace of $DEMO_OUTPUT"
+  hyprctl eval "hl.dispatch(hl.dsp.focus({ window = \"address:$addr\" }))" >/dev/null
+  sleep 0.3
+}
+
+browse_slot() {
+  local base ws
+  base=$(ws_base)
+  ws=$(hyprctl clients -j | jq -r --argjson m "$(out_id)" '
+    ([.[] | select(.class == "kitty-tmux-config") | .workspace.id]) as $busy
+    | [.[] | select(.class == "firefox" and .monitor == $m and (.workspace.id | IN($busy[]) | not)) | .workspace.id] | sort | .[0] // empty')
+  printf '%s' $((${ws:-$base} - base + 1))
 }
 
 assert_active_on_output() {
@@ -476,7 +508,7 @@ ensure_claude_window() {
     return 1
   fi
   tmux list-windows -t Config -F '#{window_name}' | grep -qx claude ||
-    tmux new-window -d -t Config: -n claude -c "$repo_dir" claude
+    tmux new-window -d -t Config: -n claude -c "${DEMO_CLAUDE_DIR:-$repo_dir}" "$DEMO_CLAUDE_CMD"
 }
 
 ### stage and restore ###
@@ -719,6 +751,8 @@ reset_work() {
     emit protected "windows: ${protect_addrs:-none}"
     emit snapshot "$([[ -f $snap ]] && echo "$snap" || echo "none, falling back to Work classes")"
   fi
+  reset_sessions
+  ((DRY)) || sleep 1
   mapfile -t rows < <(closable_windows)
   for row in "${rows[@]}"; do
     IFS=$'\t' read -r addr pid cls <<<"$row"
@@ -728,10 +762,12 @@ reset_work() {
       emit "$policy" "$addr ($cls, pid $pid)"
       continue
     fi
-    close_window "$addr"
-    [[ $policy == kill ]] && kill_pids+=("$pid")
+    if [[ $policy == kill ]]; then
+      kill_pids+=("$pid")
+    else
+      close_window "$addr"
+    fi
   done
-  reset_sessions
   reset_tmux_server
   if ((DRY)); then
     emit restore "then restore and focus an empty workspace on $DEMO_OUTPUT"
@@ -751,15 +787,17 @@ reset_work() {
 
 ### scenes ###
 
-scene_login() {
-  local i ch
+login_open() {
+  expect_ns=quickshell-lock-preview
+  if ! ((DRY)) && layer_open quickshell-lock-preview; then return 0; fi
   focus_output_monitor
-  overlay_keys "SUPER + Q"
-  pause "$T_LEAD"
-  overlay_keys "L"
-  pause "$T_LEAD"
   qs_ipc call lock preview mgs2
   wait_layer quickshell-lock-preview 10
+}
+
+scene_login() {
+  local i ch
+  login_open
   pause "$T_LOGIN_INTRO"
   press "ENTER" @Return
   pause "$T_LOGIN_TITLE_TURN"
@@ -781,7 +819,7 @@ scene_login() {
     pause "$T_LOGIN_CHAR_GAP"
   done
   pause "$T_LOGIN_HOLD"
-  press "SHIFT + ENTER" +@Return
+  press "ENTER" +@Return
   pause "$T_LOGIN_UNLOCK"
   pause "$T_LOGIN_UNLOCK_MARGIN"
   qs_ipc call lock preview_close
@@ -808,7 +846,7 @@ scene_overview() {
   ipc "SUPER + TAB" call overview open
   wait_layer quickshell-overview
   pause "$T_OVERVIEW_HOLD"
-  for ch in l l j h k h; do
+  for ch in l j h k; do
     press "${ch^^}" "$ch"
     pause "$T_OVERVIEW_STEP"
   done
@@ -855,8 +893,8 @@ scene_move_window() {
   ipc "SUPER + SHIFT + T" call overview move_follow
   wait_layer quickshell-overview
   pause "$T_MOVE_STEP"
-  dest=$(slot_ws 5 || true)
-  dest=${dest:-15}
+  dest=$(slot_ws 2 || true)
+  dest=${dest:-12}
   press "$dest" "$dest"
   pause "$T_MOVE_STEP"
   press "ENTER" @Return
@@ -904,23 +942,23 @@ scene_tmux() {
   type_text "What do you think of my dotfiles?"
   pause "$T_TMUX_STEP"
   press "ENTER" @Return
-  go_slot 1
+  if ((DRY)); then go_slot 1; else go_slot "$(browse_slot)"; fi
 }
 
 scene_screenshot() {
-  focus_output_window
+  focus_ws_window
   ipc "PRINT" call screenshot open
   wait_layer quickshell-popup
   press "R" r
   wait_layer quickshell-region
   pause "$T_SHOT_STEP"
   local tok key
-  for key in l l l j j; do
+  for key in h h k k; do
     press "SHIFT + ${key^^}" "+$key"
     pause "$T_SHOT_STEP"
   done
   press "V" v
-  for key in l l j; do
+  for key in l l l l j j j; do
     press "SHIFT + ${key^^}" "+$key"
     pause "$T_SHOT_STEP"
   done
@@ -934,7 +972,7 @@ scene_screenshot() {
   pause "$T_SHOT_STEP"
   press "SHIFT + O" +o
   pause "$T_SHOT_STEP"
-  for tok in h k h; do
+  for tok in h k; do
     press "${tok^^}" "$tok"
     pause "$T_SHOT_STEP"
   done
@@ -978,20 +1016,25 @@ resize_step() {
 scene_to_hdmi() {
   focus_output_monitor
   move_overview_window betterbird 4 first
-  move_overview_window slack 5 next
+  move_overview_window slack 4 next
   press "ENTER" @Return
   wait_layer_gone quickshell-overview
   pause "$T_MOVE_STEP"
   assert_active_on_output
+  bind "SUPER + W" 'hl.dispatch(hl.dsp.submap("Windows"))'
+  wait_layer_soft quickshell-whichkey || log "showcase: which-key did not show"
+  pause "$T_TMUX_HOLD"
+  bind "-" 'hl.dispatch(hl.dsp.layout("togglesplit"))'
+  hypr_eval 'hl.dispatch(hl.dsp.submap("reset"))'
+  pause "$T_MOVE_STEP"
   bind "SUPER + R" 'hl.dispatch(hl.dsp.submap("Resize"))'
   wait_layer_soft quickshell-whichkey || log "showcase: which-key did not show"
   pause "$T_TMUX_HOLD"
   abort_if_protected_active
-  resize_step "SHIFT + L" 100 0
   resize_step "SHIFT + J" 0 100
-  resize_step "SHIFT + H" -100 0
+  resize_step "SHIFT + J" 0 100
+  resize_step "SHIFT + J" 0 100
   resize_step "SHIFT + K" 0 -100
-  resize_step "SHIFT + L" 100 0
   bind "ESC" 'hl.dispatch(hl.dsp.submap("reset"))'
   expect_ns=""
   pause "$T_MOVE_STEP"
@@ -1104,6 +1147,7 @@ record() {
   stage
   weather_created=1
   ensure_overlay
+  login_open
   start_recorder "$raw"
   pause 1
   run_all

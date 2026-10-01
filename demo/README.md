@@ -21,6 +21,6 @@ Scenes after `work` expect its windows. Run `work` once, rehearse the rest, then
 
 ## Tuning
 
-Everything is an environment variable with a default at the top of the script: `DEMO_OUTPUT`, `DEMO_PASSWORD` (letters only, no `q`), `DEMO_FPS`, `DEMO_OUT_DIR`, `DEMO_LOCATION`, `DEMO_SEARCH_TEXT`, `DEMO_WEATHER_FILE`, and one `T_*` variable per delay, for example `T_STYLE_HOLD=2 demo/showcase.sh scene styles`.
+Everything is an environment variable with a default at the top of the script: `DEMO_OUTPUT`, `DEMO_PASSWORD` (letters only, no `q`), `DEMO_FPS`, `DEMO_OUT_DIR`, `DEMO_LOCATION`, `DEMO_SEARCH_TEXT`, `DEMO_WEATHER_FILE`, `DEMO_CLAUDE_CMD`, `DEMO_CLAUDE_DIR`, and one `T_*` variable per delay, for example `T_STYLE_HOLD=2 demo/showcase.sh scene styles`.
 
-`reset` closes windows by address and never touches the protected terminal (`DEMO_PROTECT_PID`, default `$KITTY_PID`). Firefox is also terminated; `DEMO_RESET_KILL=1` terminates every closed app, and `DEMO_RESET_TMUX_SERVER=1` kills the tmux server unless the terminal is inside tmux.
+`reset` closes windows by address and never touches the protected terminal (`DEMO_PROTECT_PID`, default `$KITTY_PID`; kitty shares one pid across its windows, so set `DEMO_PROTECT_ADDR` to pin the exact window). Firefox is also terminated; `DEMO_RESET_KILL=1` terminates every closed app, and `DEMO_RESET_TMUX_SERVER=1` kills the tmux server unless the terminal is inside tmux.
