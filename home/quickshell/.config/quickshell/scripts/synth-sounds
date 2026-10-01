@@ -720,27 +720,7 @@ def halflife():
         "confirm": dry(select, 0.3),
         "cancel": dry(deny, 0.3),
         "notify": dry(medkit, 0.3),
-        **{kind: dry(signal, 0.3) for kind, signal in halflife_lock().items()},
     }
-
-
-def halflife_lock():
-    # In the manner of the suit's buzz, the HUD switching off, and the HEV attention bell.
-    t = clock(0.33)
-    buzz_tone = tone(t, [(715, 1), (790, 0.8), (1590, 0.25), (2145, 0.35), (2355, 0.35)])
-    error = buzz_tone * np.interp(t, [0, 0.01, 0.1, 0.2, 0.3, 0.33], [0, 0.6, 0.45, 0.42, 0.32, 0])
-
-    t = clock(0.23)
-    phase = glide(t, [(0, 1270), (0.07, 1270), (0.09, 390), (0.14, 390), (0.16, 270), (0.23, 270)])
-    hud_off = (np.sin(phase) + 0.3 * np.sin(2 * phase)) * np.interp(t, [0, 0.025, 0.09, 0.13, 0.16, 0.21, 0.23], [0, 0.5, 1, 1, 0.5, 0.45, 0])
-    hud_off[: int(0.012 * RATE)] += 0.5 * burst(3475, 0.012)
-
-    levels = [0, 0.36, 0.45, 0.49, 0.55, 0.62, 0.66, 0.71, 0.73, 0.76, 0.78, 0.79, 0.80, 0.78, 0.77, 0.75, 0.70, 0.67, 0.61, 0.57, 0.50, 0.44, 0.38, 0.34]
-    levels += [0.29, 0.23, 0.19, 0.16, 0.13, 0.10, 0.09, 0.09, 0.08, 0.09, 0.10, 0.13, 0.13, 0.15, 0.16, 0.18, 0.20, 0.22, 0.23, 0.24, 0.24, 0.24, 0.24]
-    levels += [0.24, 0.23, 0.23, 0.22, 0.21, 0.19, 0.17, 0.16, 0.13, 0.12, 0.11, 0.08, 0.07, 0.06, 0.04, 0.03, 0.03, 0.02, 0.01, 0.01, 0]
-    t = clock(len(levels) * 0.01)
-    bell = shaped(tone(t, [(599, 1), (1797, 0.05)]), levels)
-    return {"error": error, "lock": hud_off, "unlock": bell}
 
 
 def tone(t, parts):
@@ -793,25 +773,6 @@ def metroid():
         "confirm": dry(shaped(select, select_levels), 0.36),
         "cancel": dry(shaped(back, back_levels), 0.36),
         "notify": dry(shaped(scan, scan_levels), 0.34),
-        **{kind: dry(signal, 0.32) for kind, signal in metroid_lock().items()},
-    }
-
-
-def metroid_lock():
-    # In the manner of Prime's visor effects: a triple two-tone refusal, three steps down, three steps up.
-    t = clock(0.36)
-    refusal = tone(t, [(1049, 1), (2095, 1), (3144, 0.25)])
-    refusal *= 0.95 * window(t, 0, 0.09, 0.003) + 0.48 * window(t, 0.12, 0.21, 0.003) + 0.47 * window(t, 0.25, 0.34, 0.003)
-
-    t = clock(0.29)
-    rough = 1 - 0.1 * (1 - np.cos(2 * np.pi * 50 * t))
-    env = np.interp(t, [0, 0.005, 0.09, 0.095, 0.19, 0.195, 0.27, 0.29], [0, 1, 0.8, 1, 0.8, 1, 0.7, 0])
-    up = glide(t, [(0, 724), (0.088, 724), (0.092, 1500), (0.188, 1500), (0.192, 1699), (0.29, 1699)])
-    down = glide(t, [(0, 1699), (0.088, 1699), (0.092, 1500), (0.188, 1500), (0.192, 724), (0.29, 724)])
-    return {
-        "error": refusal,
-        "lock": (np.sin(down) + 0.2 * np.sin(2 * down)) * env * rough,
-        "unlock": (np.sin(up) + 0.2 * np.sin(2 * up)) * env * rough,
     }
 
 
@@ -842,22 +803,7 @@ def tie():
         "confirm": dry(lock, 0.2),
         "cancel": dry(power_off, 0.3),
         "notify": dry(mix_at(bursts, 0.365), 0.24),
-        **{kind: dry(signal, 0.26) for kind, signal in tie_lock().items()},
     }
-
-
-def tie_lock():
-    # In the manner of the comm drop and the identify chirp, with its mirror for locking.
-    t = clock(0.34)
-    phase = glide(t, [(0, 513), (0.16, 513), (0.165, 308), (0.34, 308)])
-    error = (np.sin(phase) + 0.08 * np.sin(3 * phase)) * window(t, 0, 0.34, 0.004)
-
-    t = clock(0.29)
-    rise = np.sin(glide(t, [(0, 451), (0.03, 524), (0.06, 560), (0.09, 583), (0.12, 598), (0.15, 650), (0.165, 1008), (0.29, 1008)]))
-    rise *= np.interp(t, [0, 0.06, 0.08, 0.12, 0.155, 0.18, 0.26, 0.29], [0.1, 0.7, 0.3, 1, 0.5, 0.95, 0.4, 0])
-    fall = np.sin(glide(t, [(0, 1008), (0.12, 1008), (0.135, 598), (0.2, 560), (0.29, 451)]))
-    fall *= np.interp(t, [0, 0.005, 0.1, 0.125, 0.15, 0.24, 0.29], [0, 0.95, 0.8, 0.4, 1, 0.5, 0])
-    return {"error": error, "lock": fall, "unlock": rise}
 
 
 def clack(levels, bands, seed, ring=0.0):
