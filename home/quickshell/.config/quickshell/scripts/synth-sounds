@@ -293,11 +293,17 @@ def snes():
     confirm = blip([88, 93], 0.04, tail=0.06)
     cancel = blip([81, 76], 0.045, tail=0.05)
     notify = blip([76, 80, 83, 88, 83, 88], 0.045, tail=0.25)
+    error = np.concatenate([blip([52], 0.06, tail=0.02), np.zeros(int(0.04 * RATE)), blip([52], 0.06, tail=0.08)])
+    lock = blip([88, 83, 76, 69], 0.05, tail=0.15)
+    unlock = blip([64, 71, 76, 83], 0.05, tail=0.25)
     return {
         "cursor": shape(cursor, 0.16),
         "confirm": shape(echo(confirm, feedback=0.18, repeats=1), 0.22),
         "cancel": shape(cancel, 0.2, cutoff=4000),
         "notify": shape(echo(notify, delay=0.14, feedback=0.3, repeats=3), 0.22),
+        "error": shape(error, 0.26, cutoff=2500),
+        "lock": shape(echo(lock, feedback=0.2, repeats=1), 0.22, cutoff=4000),
+        "unlock": shape(echo(unlock, delay=0.14, feedback=0.3, repeats=3), 0.22),
     }
 
 
@@ -327,11 +333,18 @@ def terminal():
     confirm = mix_at([(0, key(body_hz=700, depth=1.6)), (0.045, key(body_hz=950, depth=0.6, seed=4) * 0.5), (0.02, beep(880, 0.07, gain=0.15))], 0.16)
     cancel = mix_at([(0, key(body_hz=600, depth=1.6)), (0.02, beep(440, 0.09, gain=0.15))], 0.14)
     notify = mix_at([(0, beep(784, 0.08)), (0.13, beep(784, 0.1))], 0.25)
+    thud = key(body_hz=450, depth=2.0)
+    error = mix_at([(0, thud), (0.01, beep(220, 0.09, gain=0.5)), (0.14, thud * 0.9), (0.15, beep(220, 0.12, gain=0.5))], 0.3)
+    lock = mix_at([(0, key(body_hz=900, depth=0.8, seed=4)), (0.07, key(body_hz=420, depth=2.2))], 0.18)
+    unlock = mix_at([(0, key(body_hz=420, depth=2.0)), (0.07, key(body_hz=950, depth=0.8, seed=4)), (0.09, beep(880, 0.08, gain=0.15))], 0.2)
     return {
         "cursor": soft(cursor, 0.3, 3000),
         "confirm": soft(confirm, 0.36, 3000),
         "cancel": soft(cancel, 0.34, 2600),
         "notify": soft(highpass(notify, 250), 0.2, 1700),
+        "error": soft(error, 0.36, 2000),
+        "lock": soft(lock, 0.38, 2600),
+        "unlock": soft(unlock, 0.38, 3000),
     }
 
 
