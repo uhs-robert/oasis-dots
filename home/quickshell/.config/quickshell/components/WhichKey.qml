@@ -11,6 +11,7 @@ import Quickshell.Wayland
 import "../theme"
 import "../services"
 import "neovim" as Neovim
+import "goldeneye" as Goldeneye
 
 // HyprVim's which-key HUD over its `hyprvim_whichkey` IPC target, drawn in the active style.
 PanelWindow {
@@ -26,12 +27,15 @@ PanelWindow {
         return Style.show_title ? t.toUpperCase() : t;
     }
     readonly property string footer_hint: (root.payload.footer || []).map(f => ({ ESC: "Esc", BS: "Backspace", RET: "Enter", TAB: "Tab", SPACE: "space" }[f.key] || f.key) + " " + f.desc).join(" · ")
+    // goldeneye draws the HUD as a watch panel with boxed keys.
+    readonly property bool watch: Style.frame_watch
     readonly property bool has_footer: Style.show_footer && root.footer_hint !== ""
 
     readonly property int gap: Style.px(18)
     readonly property int text_size: Style.whichkey_size > 0 ? Style.whichkey_size : Style.fs(-2)
     readonly property int key_size: Style.whichkey_size > 0 ? Style.whichkey_size : Style.fs(-5)
     readonly property int row_height: Math.max(Style.px(22), root.text_size + Style.px(8))
+    readonly property real key_box: root.watch ? Math.max(key_metrics.height + 10, key_metrics.advanceWidth + 16) : 0
     readonly property real screen_width: root.screen ? root.screen.width : 1920
     readonly property real screen_height: root.screen ? root.screen.height : 1080
 
@@ -42,7 +46,7 @@ PanelWindow {
         return Math.max(1, Math.min(4, wanted_cols));
     }
     readonly property string longest_key: root.items.reduce((a, item) => item.key.length > a.length ? item.key : a, "")
-    readonly property real key_width: Style.controller !== "" ? Math.max(key_metrics.height + 2, key_measure.implicitWidth) : Math.max(key_metrics.height + 2, key_metrics.advanceWidth + 8)
+    readonly property real key_width: root.watch ? root.key_box : Style.controller !== "" ? Math.max(key_metrics.height + 2, key_measure.implicitWidth) : Math.max(key_metrics.height + 2, key_metrics.advanceWidth + 8)
     readonly property real arrow_space: Style.whichkey_arrow !== "" ? arrow_metrics.advanceWidth + Style.px(6) : 0
     readonly property real desc_max_width: Math.max(Style.px(80), (root.screen_width * 0.9 - frame.pad_x * 2) / root.columns - root.key_width - root.arrow_space - Style.px(24))
 
@@ -94,6 +98,8 @@ PanelWindow {
             root.visible = false;
         }
     }
+
+    onVisibleChanged: if (root.visible && burst_loader.item) burst_loader.item.play()
 
     FileView {
         id: payload_file
@@ -248,6 +254,15 @@ PanelWindow {
             color: Style.accent_color
         }
 
+        Loader {
+            anchors.fill: parent
+            active: root.watch
+            sourceComponent: Goldeneye.PopupPanel {
+                st: Style
+                edge: 5
+            }
+        }
+
         Item {
             id: glow_layer
             readonly property bool layered: Style.glow || Style.text_shadow.a > 0
@@ -328,6 +343,17 @@ PanelWindow {
                 y: frame.top_edge + frame.header_height + frame.pad_y
                 spacing: Style.px(6)
 
+                Text {
+                    visible: root.watch
+                    Layout.fillWidth: true
+                    elide: Text.ElideRight
+                    text: "MODE: " + (SubmapState.submap_name !== "" ? SubmapState.submap_name : root.payload.title || "").toUpperCase()
+                    color: Style.text_muted
+                    font.family: Style.title_font_family
+                    font.pixelSize: Style.fs(-6)
+                    font.letterSpacing: 1
+                }
+
                 GridLayout {
                     columns: root.columns
                     columnSpacing: Style.px(24)
@@ -343,7 +369,27 @@ PanelWindow {
                             Layout.preferredWidth: root.key_width + Style.px(8) + root.arrow_space + desc_text.width
                             Layout.preferredHeight: root.row_height
 
+                            Rectangle {
+                                visible: root.watch
+                                anchors.verticalCenter: parent.verticalCenter
+                                width: root.key_box
+                                height: root.row_height - Style.px(4)
+                                color: row.modelData.group ? Style.pal.fg_strong : Style.selection_bg
+                                border.width: 1
+                                border.color: row.modelData.destructive ? Style.pal.error : Style.selection_border
+
+                                Text {
+                                    anchors.centerIn: parent
+                                    text: row.modelData.key
+                                    color: row.modelData.group ? Style.pal.bg_core : row.modelData.destructive ? Style.pal.error : Style.pal.fg_strong
+                                    font.family: Style.mono_font
+                                    font.pixelSize: root.key_size
+                                    font.bold: true
+                                }
+                            }
+
                             KeyBadge {
+                                visible: !root.watch
                                 anchors.verticalCenter: parent.verticalCenter
                                 key: row.modelData.key
                                 desc: row.modelData.desc || ""
@@ -367,10 +413,11 @@ PanelWindow {
                                 width: Math.min(implicitWidth, root.desc_max_width)
                                 elide: Text.ElideRight
                                 text: row.modelData.desc
-                                color: row.modelData.group ? Style.accent_color : Style.pal.fg
-                                font.family: Style.font_family
-                                font.pixelSize: root.text_size
-                                font.bold: row.modelData.group === true
+                                color: root.watch && row.modelData.destructive ? Style.pal.error : row.modelData.group ? Style.accent_color : Style.pal.fg
+                                font.family: root.watch && row.modelData.group ? Style.title_font_family : Style.font_family
+                                font.pixelSize: root.watch && row.modelData.group ? Style.fs(-6) : root.text_size
+                                font.capitalization: root.watch && row.modelData.group ? Font.AllUppercase : Font.MixedCase
+                                font.bold: row.modelData.group === true && !root.watch
                             }
                         }
                     }
@@ -451,6 +498,14 @@ PanelWindow {
             color: Style.dither
             radius: frame.radius
             top_radius: frame.radius
+        }
+
+        Loader {
+            id: burst_loader
+            anchors.fill: parent
+            anchors.margins: 5
+            active: Style.open_fx === "static"
+            sourceComponent: Goldeneye.StaticBurst {}
         }
     }
 }
