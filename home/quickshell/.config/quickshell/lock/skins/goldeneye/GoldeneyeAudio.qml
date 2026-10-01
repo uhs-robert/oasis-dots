@@ -5,7 +5,7 @@ import Qt.labs.folderlistmodel
 import Quickshell
 
 // The GoldenEye skin's music and effects. Files in the skin's own audio/ (the greeter's staged copy) else the data dir win over the shipped fx/;
-// the music (music.ogg, .wav or .mp3) and the static effect are not shipped, and a missing file stays silent.
+// the music (music.ogg, .wav or .mp3) is not shipped, and a missing file stays silent.
 Item {
     id: audio
 
@@ -23,7 +23,7 @@ Item {
         for (let i = 0; i < listing.count; i++) out[listing.get(i, "fileName")] = true;
         return out;
     }
-    readonly property var shipped: ["lock_close.wav", "lock_open.wav"]
+    readonly property var shipped: ["lock_close.wav", "lock_open.wav", "static.wav"]
     readonly property string music_file: ["music.ogg", "music.wav", "music.mp3"].find(n => audio.files[n]) || ""
     property string pending: ""
 
