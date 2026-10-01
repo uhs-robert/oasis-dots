@@ -798,7 +798,7 @@ Singleton {
                 title_bg: "transparent",
                 title_fg: Watch.green,
                 title_spacing: 2,
-                title_readout: "OASIS WATCH",
+                title_readout: "OASIS WATCH v" + root.version,
                 title_readout_fg: Watch.green_dim,
                 chip_brackets: false,
                 chip_active_bg: Qt.alpha(Watch.green, 0.22),
@@ -2381,6 +2381,16 @@ Singleton {
         id: ensure_state_dir
         command: ["mkdir", "-p", root.state_dir]
     }
+
+    FileView {
+        id: version_file
+        path: Qt.resolvedUrl("../VERSION")
+        blockLoading: true
+        printErrors: false
+    }
+
+    // The optional VERSION file at the config root, as on the lock skin's header.
+    readonly property string version: version_file.text().trim() || "0.0"
 
     FileView {
         id: state_file
