@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Synthesizes each ported pack's sounds into sounds/<pack>/ (a style, or an extra pack such as mgs2): cursor, confirm, cancel and notify (ogg). Also writes lock skin effects (mgs2-skin, goldeneye-skin). Needs numpy and ffmpeg.
+# Synthesizes each pack's sounds into sounds/<pack>/ (a style, or an extra pack such as mgs2): cursor, confirm, cancel, notify, and where made error, lock and unlock (ogg). Also writes lock skin effects (mgs2-skin, goldeneye-skin). Needs numpy and ffmpeg.
 # Usage: synth-sounds [--out DIR] [NAME...]   (no names means all; files in ~/.local/share/quickshell/sounds/<style>/ override these)
 import argparse
 import subprocess
@@ -450,11 +450,15 @@ def mgs2():
     trill = 0.5 + 0.5 * np.sign(np.sin(2 * np.pi * 28 * t))
     burst = codec_tone(2 * np.pi * 2570 * t) * lowpass(trill, 400) * window(t, 0, 0.28, 0.006)
     ring = mix_at([(0, burst), (0.4, burst)], 0.7)
+    skin = mgs2_skin()
     return {
         "cursor": menu["select"],
         "confirm": menu["submit"],
         "cancel": menu["back"],
         "notify": finish(lowpass(reverb(ring, 0.6, 0.2), 14000), 0.2),
+        "error": skin["error"],
+        "lock": skin["transition_wipe"],
+        "unlock": skin["transition_left"],
     }
 
 
@@ -705,7 +709,7 @@ def clack(levels, bands, seed, ring=0.0):
     return shaped(out, levels, 0.001)
 
 
-def goldeneye():
+def goldeneye_clicks():
     # Resynthesized from envelope and band measurements of four GoldenEye 007 mechanical clicks; the cancel's silent gap is shortened.
     def n64(signal, peak):
         return finish(np.concatenate([lowpass(signal, 7900, order=8), np.zeros(480)]), peak)
@@ -747,7 +751,7 @@ def goldeneye_skin():
     gate = (0.5 + 0.5 * np.cos(2 * np.pi * 60 * t)) ** 2
     static = finish(np.fft.irfft(spectrum, count) * gate * np.interp(t, np.arange(len(levels)) * 0.01, levels), 0.3)
     # The theme pack's clicks again: select, confirm and back as they are, a short quiet cursor click for typing, and the cancel slowed and doubled for a rejected password.
-    clicks = goldeneye()
+    clicks = goldeneye_clicks()
     cancel = clicks["cancel"]
     key = clicks["cursor"][: int(0.03 * RATE)]
     slow = np.interp(np.arange(int(len(cancel) / 0.72)) * 0.72, np.arange(len(cancel)), cancel)
@@ -764,6 +768,11 @@ def goldeneye_skin():
         "type": finish(key, 0.16),
         "error": finish(error, 0.36),
     }
+
+
+def goldeneye():
+    skin = goldeneye_skin()
+    return {**goldeneye_clicks(), "error": skin["error"], "lock": skin["lock_close"], "unlock": skin["lock_open"]}
 
 
 STYLES = {

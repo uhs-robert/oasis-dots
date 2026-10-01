@@ -97,6 +97,7 @@ Singleton {
             root.drop_backdrop();
             return "failed";
         }
+        ThemeAudio.play_lock("lock");
         return "ok";
     }
 
@@ -169,6 +170,7 @@ Singleton {
         root.prompt = "";
         root.failed = true;
         root.message = text;
+        ThemeAudio.play_lock("error");
         root.rejected();
     }
 
@@ -315,6 +317,7 @@ Singleton {
                 root.fail_count = 0;
                 root.message = "";
                 root.granted = true;
+                ThemeAudio.play_lock("unlock");
                 const delay = Power.on_ac ? Math.max(0, Math.min(4000, root.unlock_ms)) : 0;
                 if (delay === 0) root.finish_unlock();
                 else unlock_timer.restart();

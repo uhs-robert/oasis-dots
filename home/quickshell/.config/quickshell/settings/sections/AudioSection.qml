@@ -65,7 +65,7 @@ RowsSection {
     Timer {
         id: preview_timer
         property int step: 0
-        readonly property var order: ["confirm", "cancel", "notify"]
+        readonly property var order: ["confirm", "cancel", "notify", "error", "lock", "unlock"]
         interval: 450
         repeat: true
         onTriggered: {

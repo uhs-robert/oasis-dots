@@ -321,6 +321,7 @@ Singleton {
 
     function fail(message) {
         root.cancel();
+        ThemeAudio.play("error");
         Quickshell.execDetached(["notify-send", "Screenshot Failed", message]);
     }
 

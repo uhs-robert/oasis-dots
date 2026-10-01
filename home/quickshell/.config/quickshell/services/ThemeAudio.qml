@@ -25,15 +25,17 @@ Singleton {
     property real music_level: root.lock_armed ? 1 : 0
     Behavior on music_level { NumberAnimation { duration: 800 } }
 
-    readonly property var kinds: ["cursor", "confirm", "cancel", "notify"]
+    readonly property var kinds: ["cursor", "confirm", "cancel", "notify", "error", "lock", "unlock"]
+    // A pack without one of these plays the other kind instead; lock and unlock have none and stay silent.
+    readonly property var fallbacks: ({ error: "cancel" })
     readonly property var volumes: [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
     readonly property string data_dir: (Quickshell.env("XDG_DATA_HOME") || Quickshell.env("HOME") + "/.local/share") + "/quickshell"
     readonly property string user_dir: root.data_dir + "/sounds"
     // Game packs, offered once imported; names maps a kind to the file base, and a kind left out uses the style's own sound.
     readonly property var games: ({
-            "game:ff7": { label: "FFVII", replaces: "ff7", dir: Qt.resolvedUrl("../lock/skins/ff7/audio"), names: { cursor: "cursor", confirm: "cursor", cancel: "cancel" } },
-            "game:mgs2": { label: "MGS2 (imported)", dir: "file://" + root.data_dir + "/mgs2-audio", names: { cursor: "select", confirm: "submit", cancel: "back" } },
-            "game:ocarina": { label: "Ocarina", dir: "file://" + root.data_dir + "/ocarina-audio", names: { cursor: "move", confirm: "decide", cancel: "cancel", notify: "letter" } }
+            "game:ff7": { label: "FFVII", replaces: "ff7", dir: Qt.resolvedUrl("../lock/skins/ff7/audio"), names: { cursor: "cursor", confirm: "cursor", cancel: "cancel", error: "buzzer" } },
+            "game:mgs2": { label: "MGS2 (imported)", dir: "file://" + root.data_dir + "/mgs2-audio", names: { cursor: "select", confirm: "submit", cancel: "back", error: "error" } },
+            "game:ocarina": { label: "Ocarina", dir: "file://" + root.data_dir + "/ocarina-audio", names: { cursor: "move", confirm: "decide", cancel: "cancel", notify: "letter", error: "error" } }
         })
     // Shipped packs that belong to no style.
     readonly property var extra_packs: ({ mgs2: { label: "MGS2" } })
@@ -126,12 +128,17 @@ Singleton {
         root.preview(kind);
     }
 
+    // Lock screen cues; a skin with its own audio plays its own.
+    function play_lock(kind) {
+        if (!root.own_music) root.play(kind);
+    }
+
     readonly property string fx_node_name: "quickshell-fx"
     property int voice: 0
     property real played_at: 0
 
     function preview(kind) {
-        const url = ui_pack.find(kind, ["wav", "ogg"]);
+        const url = ui_pack.find(kind, ["wav", "ogg"]) || (root.fallbacks[kind] ? ui_pack.find(root.fallbacks[kind], ["wav", "ogg"]) : "");
         const now = Date.now();
         if (url === "" || now - root.played_at < 30) return;
         root.played_at = now;
