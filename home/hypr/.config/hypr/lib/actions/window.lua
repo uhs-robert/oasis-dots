@@ -2,11 +2,20 @@
 
 local Workspaces = require("lib.workspaces") --- @class Workspaces
 local Hypr = require("lib.hypr") --- @class HyprLib
+local Closed = require("lib.closed_windows") --- @class ClosedWindows
+
+--- Close the active window so it can be restored afterwards.
+--- @param action "close"|"kill"
+--- @return fun()
+local function close_active(action)
+  return function() Closed.close({ hl.get_active_window() }, action) end
+end
 
 --- @class WindowActions
 local Window = {
-  close = function() return Hypr.dispatch(hl.dsp.window.close()) end,
-  kill = function() return Hypr.dispatch(hl.dsp.window.kill()) end,
+  close = function() return close_active("close") end,
+  kill = function() return close_active("kill") end,
+  restore_closed = function() return Closed.restore end,
   fullscreen_toggle = function() return Hypr.dispatch(hl.dsp.window.fullscreen({ action = "toggle" })) end,
   float_toggle = function() return Hypr.dispatch(hl.dsp.window.float({ action = "toggle" })) end,
   pseudo_toggle = function() return Hypr.dispatch(hl.dsp.window.pseudo()) end,

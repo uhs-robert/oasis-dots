@@ -6,6 +6,7 @@ local Submap = require("lib.key.submap") --- @class Submap
 local Cmd = require("lib.actions.cmd") ---@class Cmd
 local Window = require("lib.actions.window") ---@class WindowActions
 local Scripts = require("lib.scripts") ---@class Scripts
+local Closed = require("lib.closed_windows") --- @class ClosedWindows
 
 local CLEAR_NOTIFICATIONS = Scripts.qs_ipc .. " call notifications clear_all"
 
@@ -31,17 +32,11 @@ local function close_workspace_windows(kill, except_active)
     local ws = hl.get_active_workspace()
     if not ws then return end
     local active_addr = except_active and (hl.get_active_window() or {}).address
+    local targets = {}
     for _, w in ipairs(hl.get_windows() or {}) do
-      if w.workspace and w.workspace.id == ws.id then
-        if not active_addr or w.address ~= active_addr then
-          if kill then
-            os.execute("kill -9 " .. tostring(w.pid))
-          else
-            hl.dispatch(hl.dsp.window.close({ window = "address:" .. w.address }))
-          end
-        end
-      end
+      if w.workspace and w.workspace.id == ws.id and w.address ~= active_addr then targets[#targets + 1] = w end
     end
+    Closed.close(targets, kill and "sigkill" or "close")
   end
 end
 
@@ -51,19 +46,17 @@ end
 --- @return fun()
 local function close_by_class(classes, kill)
   return function()
+    local targets = {}
     for _, w in ipairs(hl.get_windows() or {}) do
       local lower = w.class:lower()
       for _, c in ipairs(classes) do
         if lower:find(c, 1, true) then
-          if kill then
-            os.execute("kill -9 " .. tostring(w.pid))
-          else
-            hl.dispatch(hl.dsp.window.close({ window = "address:" .. w.address }))
-          end
+          targets[#targets + 1] = w
           break
         end
       end
     end
+    Closed.close(targets, kill and "sigkill" or "close")
   end
 end
 

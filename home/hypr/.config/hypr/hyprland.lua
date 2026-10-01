@@ -27,6 +27,7 @@ local function init()
       auto_show = { disabled = { "NORMAL", "INSERT", "VISUAL", "V-LINE", "Cursor" } },
     },
     prompt = { frontend = "quickshell" },
+    close_handler = function(addresses, kill) require("lib.closed_windows").close_addresses(addresses, kill) end,
   })
 end
 

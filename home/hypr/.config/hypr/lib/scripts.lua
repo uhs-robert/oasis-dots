@@ -19,6 +19,7 @@ local Scripts = {
   power                 = HYPR    .. "power.sh",
   rofi_tmux             = HYPR    .. "rofi-tmux.sh",
   keybind_help          = HYPR    .. "keybind-help.lua",
+  kitty_window_cmd      = HYPR    .. "kitty-window-cmd.sh",
   toggle_monitor_layout = MONITOR .. "toggle-monitor-layout.sh",
 }
 
