@@ -43,6 +43,7 @@ T_TMUX_STEP=${T_TMUX_STEP:-0.35}
 T_TMUX_HOLD=${T_TMUX_HOLD:-0.7}
 T_SHOT_STEP=${T_SHOT_STEP:-0.18}
 T_RESIZE_STEP=${T_RESIZE_STEP:-0.3}
+T_SPLIT_HOLD=${T_SPLIT_HOLD:-1.1}
 T_KEEPTABS_STEP=${T_KEEPTABS_STEP:-0.35}
 T_SETTINGS_HOLD=${T_SETTINGS_HOLD:-0.6}
 T_OUTRO_HOLD=${T_OUTRO_HOLD:-3.5}
@@ -424,7 +425,7 @@ focus_ws_window() {
   addr=$(hyprctl clients -j | jq -r --argjson ws "$(hyprctl monitors -j | jq --arg o "$DEMO_OUTPUT" '.[] | select(.name == $o) | .activeWorkspace.id')" --arg prot "$protect_addrs" '
     ($prot | split(" ")) as $p
     | [.[] | select(.workspace.id == $ws and .mapped and (.address | IN($p[]) | not))]
-    | sort_by(if .class == "firefox" then 0 else 1 end) | .[0].address // empty')
+    | sort_by(if (.class | test("(^|\\.)firefox$")) then 0 else 1 end) | .[0].address // empty')
   [[ -n $addr ]] || die "no window on the active workspace of $DEMO_OUTPUT"
   hyprctl eval "hl.dispatch(hl.dsp.focus({ window = \"address:$addr\" }))" >/dev/null
   sleep 0.3
@@ -435,7 +436,7 @@ browse_slot() {
   base=$(ws_base)
   ws=$(hyprctl clients -j | jq -r --argjson m "$(out_id)" '
     ([.[] | select(.class == "kitty-tmux-config") | .workspace.id]) as $busy
-    | [.[] | select(.class == "firefox" and .monitor == $m and (.workspace.id | IN($busy[]) | not)) | .workspace.id] | sort | .[0] // empty')
+    | [.[] | select((.class | test("(^|\\.)firefox$")) and .monitor == $m and (.workspace.id | IN($busy[]) | not)) | .workspace.id] | sort | .[0] // empty')
   printf '%s' $((${ws:-$base} - base + 1))
 }
 
@@ -475,7 +476,7 @@ wait_clients() {
   fi
   local deadline=$((SECONDS + timeout))
   for cls in "$@"; do
-    until hyprctl clients -j | jq -e --arg c "$cls" 'any(.[]; .class == $c)' >/dev/null; do
+    until hyprctl clients -j | jq -e --arg c "$cls" 'any(.[]; .class == $c or (.class | endswith("." + $c)))' >/dev/null; do
       ((SECONDS < deadline)) || die "window $cls did not appear"
       sleep 0.5
     done
@@ -664,7 +665,7 @@ closable_windows() {
   else
     hyprctl clients -j | jq -r --argjson cls "$(printf '%s\n' "${work_classes[@]}" | jq -R . | jq -s .)" --arg prot "$protect_addrs" '
       ($prot | split(" ")) as $p
-      | .[] | select((.class | IN($cls[])) and (.address | IN($p[]) | not))
+      | .[] | select(((.class | IN($cls[])) or (.class | endswith(".firefox"))) and (.address | IN($p[]) | not))
       | [.address, (.pid | tostring), .class] | @tsv'
   fi
 }
@@ -691,7 +692,7 @@ reset_policy_of() {
     printf kill
     return 0
   }
-  printf '%s' "${reset_policy[$1]:-close}"
+  printf '%s' "${reset_policy[${1##*.}]:-close}"
 }
 
 alive() { kill -0 "$1" 2>/dev/null; }
@@ -1026,7 +1027,7 @@ scene_to_hdmi() {
   pause "$T_TMUX_HOLD"
   bind "-" 'hl.dispatch(hl.dsp.layout("togglesplit"))'
   hypr_eval 'hl.dispatch(hl.dsp.submap("reset"))'
-  pause "$T_MOVE_STEP"
+  pause "$T_SPLIT_HOLD"
   bind "SUPER + R" 'hl.dispatch(hl.dsp.submap("Resize"))'
   wait_layer_soft quickshell-whichkey || log "showcase: which-key did not show"
   pause "$T_TMUX_HOLD"
