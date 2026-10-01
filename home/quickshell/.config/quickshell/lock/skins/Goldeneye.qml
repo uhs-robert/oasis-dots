@@ -3,6 +3,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Shapes
 import Quickshell.Io
+import "goldeneye" as GE
 import "goldeneye/Watch.js" as Watch
 
 // GoldenEye 007's pause watch: the arm lifts and the view zooms into the dial; the panel takes the user and password, OPTIONS RESTART POWEROFF sit under the header.
@@ -522,8 +523,9 @@ Item {
 
             Panel {}
 
-            Hands {
+            GE.WatchHands {
                 id: hands
+                now: root.now
                 opacity: root.in_options || root.login ? 0.3 : 1
             }
 
@@ -859,85 +861,6 @@ Item {
             width: 62
             height: 26
             color: Qt.rgba(0.7, 0.78, 0.7, 0.26)
-        }
-    }
-
-    // One outlined bar hand with a pointed tip, pivoting on the dial centre.
-    component Hand: Item {
-        id: hand
-        property real length: 150
-        property real half: 20
-        property real roof: 34
-        property real tail: 26
-        x: 510
-        y: 360
-
-        Shape {
-            preferredRendererType: Shape.CurveRenderer
-            ShapePath {
-                strokeWidth: 5
-                strokeColor: Qt.rgba(0.69, 0.86, 0.69, 0.28)
-                fillColor: Qt.rgba(0.69, 0.86, 0.69, 0.09)
-                joinStyle: ShapePath.MiterJoin
-                startX: 0
-                startY: -hand.length
-                PathLine { x: hand.half; y: -hand.length + hand.roof }
-                PathLine { x: hand.half; y: hand.tail }
-                PathLine { x: -hand.half; y: hand.tail }
-                PathLine { x: -hand.half; y: -hand.length + hand.roof }
-                PathLine { x: 0; y: -hand.length }
-            }
-        }
-    }
-
-    // The clock hands over the panel; their length follows the panel's edge in their direction.
-    component Hands: Item {
-        id: hands
-        width: 1020
-        height: 720
-        readonly property real hour_a: ((root.now.getHours() % 12) + root.now.getMinutes() / 60) * 30
-        readonly property real min_a: (root.now.getMinutes() + root.now.getSeconds() / 60) * 6
-        readonly property real sec_a: root.now.getSeconds() * 6
-
-        function reach(deg) {
-            const r = deg * Math.PI / 180;
-            return 0.97 / Math.hypot(Math.sin(r) / 322, Math.cos(r) / 242);
-        }
-
-        Hand {
-            length: hands.reach(hands.hour_a) * 0.66
-            half: 20
-            rotation: hands.hour_a
-        }
-
-        Hand {
-            length: hands.reach(hands.min_a)
-            half: 16
-            roof: 30
-            tail: 28
-            rotation: hands.min_a
-        }
-
-        Rectangle {
-            x: 486
-            y: 366
-            width: 52
-            height: 28
-            color: Qt.rgba(0.69, 0.86, 0.69, 0.2)
-        }
-
-        Item {
-            x: 510
-            y: 360
-            rotation: hands.sec_a
-
-            Rectangle {
-                x: -1
-                y: -hands.reach(hands.sec_a)
-                width: 2
-                height: hands.reach(hands.sec_a) + 40
-                color: Qt.rgba(0.82, 0.92, 0.82, 0.55)
-            }
         }
     }
 

@@ -7,6 +7,7 @@ import "../theme"
 import "../services"
 import "../components/ps1" as Ps1
 import "../components/ps2" as Ps2
+import "../components/goldeneye" as Goldeneye
 import "../components/snes" as SnesParts
 import "snes" as Snes
 
@@ -187,7 +188,7 @@ Popup {
 
             // Console clock screens above the calendar.
             Loader {
-                readonly property Component view: ({ snes: snes_clock, ps1: ps1_clock, ps2: ps2_clock })[root.st.console_views] || null
+                readonly property Component view: root.st.frame_watch ? watch_clock : ({ snes: snes_clock, ps1: ps1_clock, ps2: ps2_clock })[root.st.console_views] || null
                 active: !!view
                 visible: active
                 Layout.fillWidth: true
@@ -206,6 +207,13 @@ Popup {
                         id: save_clock
                         running: root.is_open
                         week: root.week_number(save_clock.now)
+                    }
+                }
+
+                Component {
+                    id: watch_clock
+                    Goldeneye.ClockFace {
+                        running: root.is_open
                     }
                 }
 
