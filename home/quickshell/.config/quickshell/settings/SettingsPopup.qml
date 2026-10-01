@@ -13,9 +13,10 @@ Popup {
     title: "SETTINGS"
     size_class: "large"
     // The pane keeps 450; the sidebar grows to fit the widest section label in the active style.
-    preferred_width: 467 + nav.width / Style.scale
-    body_height: Math.max(nav.implicitHeight, root.pane_height) + 24
-    reserve_height: root.max_body
+    face_frame: true
+    preferred_width: (467 + nav.width / Style.scale) * root.fit
+    body_height: root.natural_body * root.fit
+    reserve_height: root.max_body * root.fit
     jumps_enabled: true
     search_enabled: true
     footer_hint: root.in_pane && root.pane ? root.pane.shown_hint : "/ find · j/k move · l enter · 1-9 pick · gg/G first/last · q close"
@@ -31,9 +32,17 @@ Popup {
     // Last valid pane height, held while a section loads; max_body is the tallest body this open.
     property real pane_height: 0
     property real max_body: 0
+    readonly property real natural_body: Math.max(nav.implicitHeight, root.pane_height) + 24
+    // Shrinks the content to fit a small screen when the face's frame leaves too little room.
+    readonly property real fit: {
+        if (!root.face || !root.screen || !(root.screen.height > 0) || !(root.max_body > 0)) return 1;
+        const room_h = root.screen.height - 16 - root.header_height - root.footer_height;
+        const room_w = root.screen.width - 16 - (root.st.lcd_margin + root.device_side) * 2;
+        return Math.max(0.5, Math.min(1, room_h / root.max_body, room_w / (467 + nav.width / Style.scale)));
+    }
     readonly property real pane_implicit: pane_loader.status === Loader.Ready ? pane_loader.implicitHeight : NaN
     onPane_implicitChanged: if (isFinite(root.pane_implicit) && root.pane_implicit > 0) root.pane_height = root.pane_implicit
-    onBody_heightChanged: if (isFinite(root.body_height)) root.max_body = Math.max(root.max_body, root.body_height)
+    onNatural_bodyChanged: if (isFinite(root.natural_body)) root.max_body = Math.max(root.max_body, root.natural_body)
 
     search_rows: root.in_pane && root.pane ? root.pane.search_rows : Sections.list.map(s => s.label + " " + s.group + " " + s.keywords)
     search_cursor: root.in_pane && root.pane ? root.pane.search_cursor : root.nav_index
@@ -53,7 +62,7 @@ Popup {
             root.in_pane = false;
             return;
         }
-        root.max_body = root.body_height;
+        root.max_body = root.natural_body;
         if (!root.apply_request()) {
             root.load_section();
             root.leave_pane();
@@ -106,10 +115,11 @@ Popup {
 
     FocusScope {
         id: body
-        anchors.left: parent.left
-        anchors.right: parent.right
-        anchors.top: parent.top
-        anchors.margins: 12
+        x: 12
+        y: 12
+        width: (parent.width - 24) / root.fit
+        scale: root.fit
+        transformOrigin: Item.TopLeft
         implicitHeight: Math.max(nav.implicitHeight, root.pane_height)
         focus: true
 

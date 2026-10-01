@@ -57,6 +57,10 @@ Singleton {
             lcd_margin: 0,
             frame_engraving: "",
             frame_watch: false,
+            face_side: 0,
+            face_top: 0,
+            face_bottom: 0,
+            face_radius: 0,
             accent_color: Theme.theme_secondary,
             accent_height: 3,
             accent_full_width: true,
@@ -295,6 +299,10 @@ Singleton {
                 lcd_margin: 0,
                 frame_engraving: "",
                 frame_watch: false,
+                face_side: 0,
+                face_top: 0,
+                face_bottom: 0,
+                face_radius: 0,
                 accent_color: Theme.theme_primary,
                 accent_height: 3,
                 accent_full_width: false,
@@ -759,6 +767,10 @@ Singleton {
                 frame_border_width: 2,
                 frame_radius: 10,
                 frame_watch: true,
+                face_side: 48,
+                face_top: 30,
+                face_bottom: 30,
+                face_radius: 90,
                 lcd_top: Qt.rgba(Watch.panel_top[0], Watch.panel_top[1], Watch.panel_top[2], Watch.panel_top[3]),
                 lcd_bottom: Qt.rgba(Watch.panel_bottom[0], Watch.panel_bottom[1], Watch.panel_bottom[2], Watch.panel_bottom[3]),
                 lcd_margin: 16,
@@ -1868,6 +1880,11 @@ Singleton {
     readonly property string frame_engraving: root.active.frame_engraving
     // Draws the watch bezel (segment columns, white bars, studs) and the panel as a green octagon.
     readonly property bool frame_watch: root.active.frame_watch
+    // Room a popup that opts into the full watch face keeps around its content, and the face's corner radius.
+    readonly property int face_side: root.active.face_side
+    readonly property int face_top: root.active.face_top
+    readonly property int face_bottom: root.active.face_bottom
+    readonly property int face_radius: root.active.face_radius
     readonly property color accent_color: root.active.accent_color
     readonly property int accent_height: root.active.accent_height
     readonly property bool accent_full_width: root.active.accent_full_width
