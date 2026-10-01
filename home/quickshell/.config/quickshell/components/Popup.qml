@@ -49,12 +49,9 @@ PanelWindow {
     property real anim_scale: root.passive ? 0.6 : 1
     // Small popups inside the style's handheld shell (DeviceShell), and the room it keeps around the content.
     readonly property bool device: root.st.device_shell && !root.passive
-    // Opt-in: the popup is drawn as the whole watch face and keeps the style's face room around its content.
-    property bool face_frame: false
-    readonly property bool face: root.face_frame && root.st.frame_watch && !root.passive
-    readonly property int device_side: root.device ? 20 : root.face ? root.st.face_side : 0
-    readonly property int device_top: root.device ? 30 : root.face ? root.st.face_top : 0
-    readonly property int device_bottom: root.device ? 80 : root.face ? root.st.face_bottom : 0
+    readonly property int device_side: root.device ? 20 : 0
+    readonly property int device_top: root.device ? 30 : 0
+    readonly property int device_bottom: root.device ? 80 : 0
     // Set while a native menu from this popup is open; focus returns to the popup when it closes.
     property bool suspend_grab: false
 
@@ -322,7 +319,7 @@ PanelWindow {
     WlrLayershell.namespace: "quickshell-popup"
     WlrLayershell.layer: WlrLayer.Overlay
     WlrLayershell.keyboardFocus: root.passive ? WlrKeyboardFocus.None : WlrKeyboardFocus.OnDemand
-    mask: root.passive ? no_input : root.face ? face_input : root.reserving || root.shadow_room > 0 ? panel_input : null
+    mask: root.passive ? no_input : root.reserving || root.shadow_room > 0 ? panel_input : null
     // The soft shadow's room under the frame; it passes clicks through to the scrim like the reserve does.
     readonly property real shadow_room: !root.dock_bottom && root.st.frame_shadow.a > 0 ? root.st.frame_drop : 0
 
@@ -336,16 +333,6 @@ PanelWindow {
         item: panel_area
     }
 
-    // The face's rounded dial; clicks outside it fall through.
-    Region {
-        id: face_input
-        x: 0
-        y: panel_area.y
-        width: panel_area.width
-        height: panel_area.height
-        radius: root.st.face_radius
-    }
-
     Item {
         id: panel_area
         y: root.dock_bottom ? root.height - root.panel_height : 0
@@ -353,7 +340,7 @@ PanelWindow {
         height: root.panel_height - root.shadow_room
     }
 
-    readonly property int line_height: root.face ? 0 : root.st.accent_height
+    readonly property int line_height: root.st.accent_height
     readonly property bool has_title: root.st.show_title && title !== ""
     readonly property bool has_footer: root.st.show_footer && footer_hint !== ""
     readonly property bool lcd: root.st.lcd_top.a > 0
@@ -524,12 +511,12 @@ PanelWindow {
             // Reads as the island unfolding downward: its color, joined flush under the accent line.
             Rectangle {
                 anchors.fill: parent
-                color: root.st.frame_chamfer > 0 || root.st.frame_visor || root.st.custom_frame || root.device || root.face || root.st.border_title ? "transparent" : root.st.frame_follows_island ? root.held_color : root.st.frame_color
+                color: root.st.frame_chamfer > 0 || root.st.frame_visor || root.st.custom_frame || root.device || root.st.border_title ? "transparent" : root.st.frame_follows_island ? root.held_color : root.st.frame_color
                 topLeftRadius: root.top_left_radius
                 topRightRadius: root.top_right_radius
                 bottomLeftRadius: root.frame_radius
                 bottomRightRadius: root.frame_radius
-                border.width: root.st.frame_visor || root.st.frame_chamfer > 0 || root.st.custom_frame || root.face || root.st.border_title ? 0 : root.st.frame_border_width
+                border.width: root.st.frame_visor || root.st.frame_chamfer > 0 || root.st.custom_frame || root.st.border_title ? 0 : root.st.frame_border_width
                 border.color: root.st.frame_border_color
             }
 
@@ -659,20 +646,8 @@ PanelWindow {
             Loader {
                 anchors.fill: parent
                 active: root.st.frame_watch
-                sourceComponent: root.face ? face_bezel : plain_bezel
-
-                Component {
-                    id: plain_bezel
-                    Goldeneye.PopupBezel {
-                        st: root.st
-                    }
-                }
-
-                Component {
-                    id: face_bezel
-                    Goldeneye.FaceBezel {
-                        st: root.st
-                    }
+                sourceComponent: Goldeneye.PopupPanel {
+                    st: root.st
                 }
             }
 
