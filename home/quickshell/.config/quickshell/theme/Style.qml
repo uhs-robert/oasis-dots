@@ -280,6 +280,7 @@ Singleton {
             chart_outline: "transparent",
             bar_workspace_diamond: false,
             bar_clock_brackets: "transparent",
+            bar_separator: "",
             hairline: "transparent",
             hairline_dim: "transparent",
             frame_ticks: "",
@@ -521,6 +522,7 @@ Singleton {
                 chart_outline: "transparent",
                 bar_workspace_diamond: false,
                 bar_clock_brackets: "transparent",
+                bar_separator: "",
                 hairline: "transparent",
                 hairline_dim: "transparent",
                 frame_ticks: "",
@@ -908,6 +910,7 @@ Singleton {
                 bar_center_bg: Theme.bg_crust,
                 bar_border_color: Qt.alpha(Theme.theme_label, 0.5),
                 bar_hover_bg: Qt.alpha(Theme.theme_label, 0.18),
+                bar_separator: "tick",
                 bar_clock_bg: "#04200a",
                 bar_clock_fg: Watch.green,
                 bar_clock_font: Watch.digit_font
@@ -2234,6 +2237,8 @@ Singleton {
     readonly property bool bar_workspace_diamond: root.bar.bar_workspace_diamond
     // Brackets around the bar clock's time.
     readonly property color bar_clock_brackets: root.bar.bar_clock_brackets
+    // "tick" draws the white watch bar between bar items in place of "|".
+    readonly property string bar_separator: root.bar.bar_separator
     // A tick scale rising from each island's bottom edge.
     readonly property color bar_ticks: root.bar.bar_ticks
     // An inner line along each island's slants and bottom edge.
