@@ -16,13 +16,13 @@ record() {
 
 # Optional tooling: skip when absent so validation stays dependency-light.
 if command -v shellcheck >/dev/null 2>&1; then
-  shellcheck install.sh uninstall.sh lib/*.sh || record shellcheck
+  shellcheck install.sh uninstall.sh lib/*.sh demo/*.sh || record shellcheck
 else
   echo 'skip: shellcheck not installed'
 fi
 
 if command -v shfmt >/dev/null 2>&1; then
-  shfmt -i 2 -d install.sh uninstall.sh lib/*.sh || record shfmt
+  shfmt -i 2 -d install.sh uninstall.sh lib/*.sh demo/*.sh || record shfmt
 else
   echo 'skip: shfmt not installed'
 fi

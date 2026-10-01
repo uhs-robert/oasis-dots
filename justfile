@@ -51,9 +51,9 @@ uninstall *ARGS:
 sync-root-yazi:
     ./system/usr/local/bin/yazi-root --sync-only
 
-# Shellcheck install.sh, uninstall.sh, and lib/*.sh
+# Shellcheck install.sh, uninstall.sh, lib/*.sh, and demo/*.sh
 lint:
-    shellcheck install.sh uninstall.sh lib/*.sh
+    shellcheck install.sh uninstall.sh lib/*.sh demo/*.sh
 
 # Validate formatting, package manifests, and whitespace; run optional tooling when available
 check:
@@ -106,3 +106,11 @@ greeter-preview:
     stage="${XDG_CACHE_HOME:-$HOME/.cache}/dotfiles/greeter"
     stage_greeter "$stage" "$PWD" >/dev/null
     env -u GREETD_SOCK -u QS_GREETER_STATE qs -p "$stage"
+
+# Rehearse one showcase scene; `demo/showcase.sh list` prints the names
+demo-scene name:
+    demo/showcase.sh scene {{name}}
+
+# Stage the desktop, record every showcase scene, and encode the MP4
+demo-record:
+    demo/showcase.sh record
