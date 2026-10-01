@@ -12,6 +12,8 @@ import "../services"
 import "picker"
 import "snes" as SnesParts
 import "ff7" as Ff7Parts
+import "goldeneye" as Goldeneye
+import "../lock/skins/goldeneye/Watch.js" as Watch
 
 // One per screen while Screenshot.selecting: drag a region, then pick an action from the toolbar.
 PanelWindow {
@@ -1911,26 +1913,14 @@ PanelWindow {
                 }
             }
 
-            Rectangle {
+            Goldeneye.WatchReadout {
                 id: ge_strip
                 visible: loupe.goldeneye
                 x: (loupe.ge_rim - loupe.view) / 2
                 y: loupe.ge_rim + loupe.ge_strip_gap
                 width: loupe.view
                 height: loupe.ge_strip_h
-                radius: 12
-                border.width: 2
-                border.color: Qt.tint(Theme.bg_surface, Qt.alpha(Theme.fg_muted, 0.4))
-                gradient: Gradient {
-                    GradientStop {
-                        position: 0
-                        color: Theme.bg_surface
-                    }
-                    GradientStop {
-                        position: 1
-                        color: Theme.bg_mantle
-                    }
-                }
+                status: root.pixel_mode ? "COLOR" : "CAMERA"
 
                 layer.enabled: loupe.goldeneye
                 layer.effect: MultiEffect {
@@ -1941,75 +1931,46 @@ PanelWindow {
                     shadowBlur: 0.4
                 }
 
-                Text {
-                    x: 10
-                    y: 6
-                    text: "Q-BRANCH"
-                    color: Theme.fg_dim
-                    font.family: Style.font_family
-                    font.pixelSize: Style.fs(-7)
-                }
-
-                Text {
-                    id: ge_strip_right_label
-                    x: parent.width - width - 10
-                    y: 6
-                    text: root.pixel_mode ? "COLOR" : "CAMERA"
-                    color: Theme.fg_dim
-                    font.family: Style.font_family
-                    font.pixelSize: Style.fs(-7)
-                }
-
                 Rectangle {
-                    id: ge_lcd
-                    x: 6
-                    y: 20
-                    width: parent.width - 12
-                    height: parent.height - 26
-                    radius: 6
-                    color: Qt.tint(Theme.bg_crust, Qt.alpha(Theme.theme_primary_light, 0.14))
+                    visible: root.pixel_mode
+                    anchors.left: parent.left
+                    anchors.leftMargin: 8
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: 12
+                    height: 12
+                    border.width: 1
+                    border.color: Watch.green_dim
+                    color: Screenshot.pixel_hex !== "" ? Screenshot.pixel_hex : "transparent"
+                }
 
-                    Rectangle {
-                        visible: root.pixel_mode
-                        anchors.left: parent.left
-                        anchors.leftMargin: 6
-                        anchors.verticalCenter: parent.verticalCenter
-                        width: 12
-                        height: 12
-                        border.width: 1
-                        border.color: Theme.fg_muted
-                        color: Screenshot.pixel_hex !== "" ? Screenshot.pixel_hex : "transparent"
+                Text {
+                    anchors.left: parent.left
+                    anchors.leftMargin: root.pixel_mode ? 26 : 10
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: root.pixel_mode ? (Screenshot.pixel_hex !== "" ? Screenshot.pixel_hex : "#------") : root.mine ? Math.round(root.sel.width) + " x " + Math.round(root.sel.height) : "READY"
+                    color: Watch.green
+                    font.family: Watch.digit_font
+                    font.pixelSize: Style.fs(-3)
+                }
+
+                Column {
+                    anchors.right: parent.right
+                    anchors.rightMargin: 8
+                    anchors.verticalCenter: parent.verticalCenter
+                    spacing: 1
+
+                    Text {
+                        text: "X " + loupe.ge_pad4(root.modelData.x + loupe.at.x)
+                        color: Qt.alpha(Watch.green_mid, 0.75)
+                        font.family: Watch.mono_font
+                        font.pixelSize: Style.fs(-7)
                     }
 
                     Text {
-                        anchors.left: parent.left
-                        anchors.leftMargin: root.pixel_mode ? 24 : 8
-                        anchors.verticalCenter: parent.verticalCenter
-                        text: root.pixel_mode ? (Screenshot.pixel_hex !== "" ? Screenshot.pixel_hex : "#------") : root.mine ? Math.round(root.sel.width) + " x " + Math.round(root.sel.height) : "READY"
-                        color: Theme.theme_primary_light
-                        font.family: Style.number_font
-                        font.pixelSize: Style.fs(-3)
-                    }
-
-                    Column {
-                        anchors.right: parent.right
-                        anchors.rightMargin: 6
-                        anchors.verticalCenter: parent.verticalCenter
-                        spacing: 1
-
-                        Text {
-                            text: "X " + loupe.ge_pad4(root.modelData.x + loupe.at.x)
-                            color: Qt.alpha(Theme.fg_dim, 0.65)
-                            font.family: Style.mono_font
-                            font.pixelSize: Style.fs(-7)
-                        }
-
-                        Text {
-                            text: "Y " + loupe.ge_pad4(root.modelData.y + loupe.at.y)
-                            color: Qt.alpha(Theme.fg_dim, 0.65)
-                            font.family: Style.mono_font
-                            font.pixelSize: Style.fs(-7)
-                        }
+                        text: "Y " + loupe.ge_pad4(root.modelData.y + loupe.at.y)
+                        color: Qt.alpha(Watch.green_mid, 0.75)
+                        font.family: Watch.mono_font
+                        font.pixelSize: Style.fs(-7)
                     }
                 }
             }

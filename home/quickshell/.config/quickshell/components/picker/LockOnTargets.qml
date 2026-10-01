@@ -4,9 +4,11 @@ import QtQuick
 import "../../theme"
 import "../../services"
 import ".."
+import "../goldeneye" as Goldeneye
+import "../../lock/skins/goldeneye/Watch.js" as W
 
-// GoldenEye/Perfect Dark dressing for the window/screen/region target: red lock-on brackets that
-// step closed when the target changes, a TARGET/AREA panel, and a Q-BRANCH watch readout.
+// GoldenEye dressing for the window/screen/region target: red lock-on brackets that
+// step closed when the target changes, a TARGET/AREA panel, and an OASIS WATCH readout.
 Item {
     id: root
 
@@ -163,62 +165,23 @@ Item {
         }
     }
 
-    Rectangle {
+    Goldeneye.WatchReadout {
         id: watch
         visible: root.mine
-        readonly property real w: watch_lcd.implicitWidth + 20
+        readonly property real w: Math.max(watch_lcd.implicitWidth + 24, watch.caption_width)
         x: root.tx + root.tw - watch.w - (root.full ? 24 : 18)
         y: root.ty + root.th - (root.full ? 74 : 66)
         width: watch.w
         height: 44
-        radius: 12
-        border.width: 2
-        border.color: Qt.tint(Theme.bg_surface, Qt.alpha(Theme.fg_muted, 0.4))
-        gradient: Gradient {
-            GradientStop {
-                position: 0
-                color: Theme.bg_surface
-            }
-            GradientStop {
-                position: 1
-                color: Theme.bg_mantle
-            }
-        }
+        status: root.grow === 0 ? "LOCKED" : "TRACKING"
 
         Text {
-            x: 8
-            y: 4
-            text: "Q-BRANCH"
-            color: Theme.fg_dim
-            font.family: Style.font_family
-            font.pixelSize: Style.fs(-8)
-        }
-
-        Text {
-            x: watch.width - width - 8
-            y: 4
-            text: root.grow === 0 ? "LOCKED" : "TRACKING"
-            color: Theme.fg_dim
-            font.family: Style.font_family
-            font.pixelSize: Style.fs(-8)
-        }
-
-        Rectangle {
-            x: 6
-            y: 18
-            width: parent.width - 12
-            height: parent.height - 24
-            radius: 6
-            color: Qt.tint(Theme.bg_crust, Qt.alpha(Theme.theme_primary_light, 0.14))
-
-            Text {
-                id: watch_lcd
-                anchors.centerIn: parent
-                text: Math.round(root.tw) + " x " + Math.round(root.th)
-                color: Theme.theme_primary_light
-                font.family: Style.number_font
-                font.pixelSize: Style.fs(-3)
-            }
+            id: watch_lcd
+            anchors.centerIn: parent
+            text: Math.round(root.tw) + " x " + Math.round(root.th)
+            color: W.green
+            font.family: W.digit_font
+            font.pixelSize: Style.fs(-3)
         }
     }
 }
