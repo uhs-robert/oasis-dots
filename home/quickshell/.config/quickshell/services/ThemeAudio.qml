@@ -58,9 +58,14 @@ Singleton {
         return login_pack.find("music", ["ogg", "wav", "mp3"]).replace(/^file:\/\//, "");
     }
 
+    // A FolderListModel keeps its old rows when pointed at a missing folder, so rows from elsewhere are dropped.
     function listing(model) {
         const out = {};
-        for (let i = 0; i < model.count; i++) out[model.get(i, "fileName")] = String(model.get(i, "fileUrl"));
+        const prefix = String(model.folder).replace(/\/?$/, "/");
+        for (let i = 0; i < model.count; i++) {
+            const url = String(model.get(i, "fileUrl"));
+            if (url.startsWith(prefix)) out[model.get(i, "fileName")] = url;
+        }
         return out;
     }
 
