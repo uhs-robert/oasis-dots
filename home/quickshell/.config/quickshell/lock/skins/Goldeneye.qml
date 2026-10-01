@@ -59,7 +59,7 @@ Item {
     readonly property bool in_options: root.scene.startsWith("opt:")
     readonly property string opt_item: root.in_options ? root.scene.split(":")[1] : ""
     readonly property string opt_note: root.in_options ? (root.scene.split(":")[2] || "") : ""
-    readonly property var opt_words: ({ firmware: "firmware setup", text: "text login" })
+    readonly property var opt_words: ({ firmware: "firmware", text: "text login" })
 
     function opt_label(item) {
         switch (item) {
@@ -86,6 +86,7 @@ Item {
         if (root.in_options) {
             if (root.opt_note === "armed") return ["ENTER AGAIN FOR " + (root.opt_words[root.opt_item] || "THIS").toUpperCase(), "red"];
             if (root.opt_note === "preview") return ["PREVIEW: NO " + (root.opt_words[root.opt_item] || "ACTION").toUpperCase(), "dim"];
+            if (root.opt_note === "running") return [(root.opt_words[root.opt_item] || "WORKING").toUpperCase() + "...", ""];
             return ["OPTIONS", ""];
         }
         if (root.in_nav) {
@@ -106,6 +107,7 @@ Item {
 
     readonly property color green: "#4af05c"
     readonly property color green_dim: "#238a30"
+    readonly property color green_mid: "#3cc04c"
     readonly property color red: "#ff5a48"
     readonly property string head_font: "Michroma"
     readonly property string mono_font: "Share Tech Mono"
@@ -113,7 +115,9 @@ Item {
 
     // intro_t runs 0 (black) to 1 (the settled face); frames play over its first 88% and the face fades in after.
     property real intro_t: 1
-    property bool frames_on: false
+    property bool intro_busy: false
+    // Loaded while the intro runs and from the first key on, so the unlock can start at once.
+    readonly property bool frames_on: root.has_frames && root.motion && (root.intro_busy || root.typed > 0 || root.checking || root.granted)
     property int motion_dir: 0
     readonly property bool has_frames: root.n_frames > 0
     readonly property int frame_at: Math.max(0, Math.min(root.n_frames - 1, Math.floor(root.intro_t / 0.88 * root.n_frames)))
@@ -148,10 +152,15 @@ Item {
     // Starts the frames once they have loaded (or 600 ms have passed) so the first frame is not black.
     function play_motion(dir) {
         root.motion_dir = dir;
-        root.frames_on = root.has_frames;
+        root.intro_busy = dir > 0 && root.has_frames;
         frames_wait.since = Date.now();
-        if (root.has_frames) frames_wait.restart();
+        frames_wait.cap = dir > 0 ? 600 : 250;
+        if (root.has_frames && !root.frames_ready()) frames_wait.restart();
         else root.begin_motion();
+    }
+
+    function frames_ready() {
+        return !!frames_loader.item && frames_loader.item.ready >= root.n_frames;
     }
 
     function begin_motion() {
@@ -160,7 +169,7 @@ Item {
         motion_anim.stop();
         motion_anim.from = dir > 0 ? 0 : root.intro_t;
         motion_anim.to = dir > 0 ? 1 : 0;
-        motion_anim.duration = dir > 0 ? 1400 : Math.round(1500 * root.intro_t);
+        motion_anim.duration = dir > 0 ? 1400 : Math.round(1300 * root.intro_t);
         motion_anim.start();
         root.sfx(dir > 0 ? "lock_close" : "lock_open");
     }
@@ -275,6 +284,8 @@ Item {
         else if (root.motion && root.has_frames) {
             root.intro_t = 0;
             root.play_motion(1);
+        } else if (root.motion) {
+            root.sfx("lock_close");
         }
     }
     Component.onDestruction: {
@@ -332,11 +343,11 @@ Item {
     Timer {
         id: frames_wait
         property real since: 0
+        property int cap: 600
         interval: 40
         repeat: true
         onTriggered: {
-            const item = frames_loader.item;
-            if ((item && item.ready >= root.n_frames) || Date.now() - frames_wait.since > 600) root.begin_motion();
+            if (root.frames_ready() || Date.now() - frames_wait.since > frames_wait.cap) root.begin_motion();
         }
     }
 
@@ -344,7 +355,7 @@ Item {
         id: motion_anim
         target: root
         property: "intro_t"
-        onFinished: if (root.motion_dir > 0) root.frames_on = false
+        onFinished: if (root.motion_dir > 0) root.intro_busy = false
     }
 
     Timer {
@@ -449,6 +460,7 @@ Item {
 
             Hands {
                 id: hands
+                opacity: root.in_options || root.login ? 0.3 : 1
             }
 
             ShaderEffectSource {
@@ -491,8 +503,8 @@ Item {
                 }
 
                 Text {
-                    x: 255
-                    width: 510
+                    x: 235
+                    width: 550
                     y: 186
                     horizontalAlignment: Text.AlignHCenter
                     elide: Text.ElideRight
@@ -527,7 +539,7 @@ Item {
                         Text {
                             anchors.centerIn: parent
                             text: root.nav_labels[nav.modelData]
-                            color: nav.on ? root.green : root.green_dim
+                            color: nav.on ? root.green : root.green_mid
                             font.family: root.head_font
                             font.pixelSize: 15
                             renderType: Text.QtRendering
@@ -565,7 +577,7 @@ Item {
                             Text {
                                 anchors.centerIn: parent
                                 text: root.opt_label(opt.modelData)
-                                color: opt.on ? root.green : root.green_dim
+                                color: opt.on ? root.green : root.green_mid
                                 font.family: root.head_font
                                 font.pixelSize: 16
                                 renderType: Text.QtRendering
@@ -592,15 +604,15 @@ Item {
                             y: 282
                             width: 96
                             height: 130
-                            opacity: person.on ? 1 : 0.5
+                            opacity: person.on ? 1 : 0.85
                             onUrlsChanged: person.attempt = 0
 
                             Rectangle {
                                 width: 96
                                 height: 96
-                                color: "#06200a"
-                                border.width: person.on ? 3 : 1
-                                border.color: person.on ? root.green : root.green_dim
+                                color: person.on ? "#0c3a14" : "#06200a"
+                                border.width: person.on ? 3 : 2
+                                border.color: person.on ? root.green : root.green_mid
 
                                 Rectangle {
                                     visible: face_image.status !== Image.Ready
@@ -609,7 +621,7 @@ Item {
                                     width: 30
                                     height: 30
                                     radius: 15
-                                    color: root.green_dim
+                                    color: root.green_mid
                                 }
 
                                 Rectangle {
@@ -619,7 +631,7 @@ Item {
                                     width: 56
                                     height: 36
                                     radius: 18
-                                    color: root.green_dim
+                                    color: root.green_mid
                                 }
 
                                 Image {
@@ -640,7 +652,7 @@ Item {
                                 horizontalAlignment: Text.AlignHCenter
                                 elide: Text.ElideRight
                                 text: person.modelData.name.toUpperCase()
-                                color: person.on ? root.green : root.green_dim
+                                color: person.on ? root.green : root.green_mid
                                 font.family: root.mono_font
                                 font.pixelSize: 16
                                 renderType: Text.QtRendering
