@@ -1,9 +1,12 @@
 #!/usr/bin/env bash
 # hypr/.config/hypr/scripts/lock-screen.sh
 # Locks with the Quickshell lock screen; falls back to hyprlock when the bar is not running or cannot lock.
+# Usage: lock-screen.sh [--auto]; --auto marks an idle, sleep or lid lock, whose lock music waits for a key.
 
 ipc="$HOME/.config/hypr/scripts/qs-ipc"
 flag_script="$HOME/.config/quickshell/scripts/lock-flag"
+lock_fn=lock
+[ "${1:-}" = "--auto" ] && lock_fn=lock_auto
 pidof hyprlock >/dev/null && exit 0
 
 # Serialized with lock-flag's hyprlock; a hyprlock that ran over 1s held the lock, so its exit is a real unlock.
@@ -19,7 +22,7 @@ fallback() {
 
 pgrep -x qs >/dev/null || fallback
 
-reply=$(timeout 1 "$ipc" call lock lock 2>/dev/null)
+reply=$(timeout 1 "$ipc" call lock "$lock_fn" 2>/dev/null)
 [ -z "$reply" ] && reply=$(timeout 1 "$ipc" call lock state 2>/dev/null)
 case "$reply" in
 locked | secure) exit 0 ;;

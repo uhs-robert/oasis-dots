@@ -142,13 +142,13 @@ Popup names are the `LazyPopup` names in `shell.qml`: `start`, `settings`, `powe
 
 ## Lock screen and greeter
 
-`~/.config/hypr/scripts/lock-screen.sh` (used by hypridle and the Power menu) locks with this shell and falls back to hyprlock when the bar isn't running or can't lock. If qs restarts while locked, the new instance takes the lock over.
+`~/.config/hypr/scripts/lock-screen.sh` (used by hypridle and the Power menu; hypridle passes `--auto`) locks with this shell and falls back to hyprlock when the bar isn't running or can't lock. If qs restarts while locked, the new instance takes the lock over.
 
 Settings > Lock screen picks the lock: `follow` (the lock skin of the current style), `simple` (a plain card over a pixelated or blurred desktop), or any skin by name. Skins live in `lock/skins/` as `Crt`, `Ff7`, `Mgs2`, `Ocarina` and `Tie`. `Ocarina` and `Mgs2` are lock-only and have no bar style. A style without a skin gets the simple screen. Tints recolor the skins (primary, secondary, green, amber, white). Once the password is accepted, any key skips the skin's unlock animation, on the lock and the login screen alike.
 
 The FF7, MGS2 and Ocarina skins can play game music and effects, which aren't in the repo. Import your own copies with `scripts/ff7-audio`, `scripts/mgs2-audio` and `scripts/ocarina-audio`. The MGS2 skin's effects are the exception: synthesized stand-ins ship in `lock/skins/mgs2/fx/` (from `scripts/synth-sounds mgs2-skin`), and an imported file of the same name replaces each one.
 
-On the lock, all music (skin and theme) stays silent until a key press and fades out after 2 minutes without one; the lock host owns this as `music_armed` on the lock ctx, so a skin with music gates on `ctx.music_armed !== false`. The login screen plays music from the start.
+On the lock, all music (skin and theme) fades out after 2 minutes without a key press. A manual lock (keybind, Power menu, `lock-screen.sh`, `loginctl lock-session`) starts the music right away; an automatic one (idle timeout, before sleep, lid close) and a lock taken over after a bar restart stay silent until the first key press; the lock host owns this as `music_armed` on the lock ctx, so a skin with music gates on `ctx.music_armed !== false`. The login screen plays music from the start.
 
 The login screen is a Quickshell greeter under greetd that shows your lock skin. The installer offers it; to update or install it by hand:
 

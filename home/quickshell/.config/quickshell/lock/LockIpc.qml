@@ -20,6 +20,11 @@ Scope {
             return Lock.lock();
         }
 
+        // Like lock(), but the music stays silent until the first key press.
+        function lock_auto(): string {
+            return Lock.lock(true);
+        }
+
         // Shows a lock skin in a normal overlay window with fake state; the session lock and PAM are never touched.
         function preview(name: string): string {
             return root.previewer ? root.previewer.open(name) : "unavailable";
