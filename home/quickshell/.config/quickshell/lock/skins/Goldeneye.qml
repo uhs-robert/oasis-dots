@@ -38,6 +38,7 @@ Item {
     readonly property bool music_on: root.owns_sound && root.ctx.music !== false && root.ctx.music_armed !== false && root.phase !== "unlock"
     property bool dying: false
     property bool heard_unlock: false
+    property int heard_typed: 0
 
     readonly property bool can_step: !!root.ctx && "scene" in root.ctx
     readonly property string scene: root.can_step ? root.ctx.scene : ""
@@ -239,6 +240,7 @@ Item {
             if (root.login && enter && root.users[root.user_sel] && root.users[root.user_sel].name !== root.user_name) {
                 if (typeof c.user_request === "function") c.user_request(root.users[root.user_sel].name);
                 c.scene = "";
+                root.cue("confirm");
                 return true;
             }
         }
@@ -250,6 +252,7 @@ Item {
     function nav_activate() {
         const c = root.ctx;
         const item = root.nav_item;
+        root.cue("confirm");
         if (item === "options") {
             c.scene = "opt:" + root.opt_items[0];
         } else if (root.nav_note === "armed") {
@@ -264,6 +267,7 @@ Item {
     function opt_activate() {
         const c = root.ctx;
         const item = root.opt_item;
+        root.cue(item === "back" ? "back" : "confirm");
         if (item === "back") {
             c.scene = "nav:options";
         } else if (item === "session") {
@@ -333,8 +337,14 @@ Item {
         function onSceneChanged() { note_timer.restart(); }
         function onBuffer_lengthChanged() {
             if (root.typed > 0) root.heard_unlock = false;
+            const step = root.typed - root.heard_typed;
+            root.heard_typed = root.typed;
+            if (step === 1 || (step === -1 && !root.checking && !root.wrong)) root.sfx("type");
         }
         function onSound_ownerChanged() { root.claim_sound(); }
+        function onCheckingChanged() {
+            if (root.checking) root.sfx("confirm");
+        }
         function onCue(name) {
             if (root.owns_sound && audio_loader.item) audio_loader.item.play(name);
         }

@@ -23,7 +23,7 @@ Item {
         for (let i = 0; i < listing.count; i++) out[listing.get(i, "fileName")] = true;
         return out;
     }
-    readonly property var shipped: ["lock_close.wav", "lock_open.wav", "static.wav"]
+    readonly property var shipped: ["lock_close.wav", "lock_open.wav", "static.wav", "select.wav", "confirm.wav", "back.wav", "type.wav", "error.wav"]
     readonly property string music_file: ["music.ogg", "music.wav", "music.mp3"].find(n => audio.files[n]) || ""
     property string pending: ""
 
@@ -33,7 +33,7 @@ Item {
     }
 
     function play(name) {
-        const fx = ({ lock_close: fx_lock_close, lock_open: fx_lock_open, static: fx_static, select: fx_select, back: fx_back, error: fx_error })[name];
+        const fx = ({ lock_close: fx_lock_close, lock_open: fx_lock_open, static: fx_static, select: fx_select, confirm: fx_confirm, back: fx_back, type: fx_type, error: fx_error })[name];
         if (!fx || String(fx.source) === "") return;
         if (fx.status === SoundEffect.Ready) fx.play();
         else audio.pending = name;
@@ -111,6 +111,8 @@ Item {
     Fx { id: fx_lock_open; name: "lock_open" }
     Fx { id: fx_static; name: "static" }
     Fx { id: fx_select; name: "select" }
+    Fx { id: fx_confirm; name: "confirm" }
     Fx { id: fx_back; name: "back" }
+    Fx { id: fx_type; name: "type" }
     Fx { id: fx_error; name: "error" }
 }
