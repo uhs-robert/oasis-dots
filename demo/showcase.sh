@@ -44,7 +44,8 @@ T_TMUX_STEP=${T_TMUX_STEP:-0.35}
 T_TMUX_HOLD=${T_TMUX_HOLD:-0.7}
 T_SHOT_STEP=${T_SHOT_STEP:-0.18}
 T_RESIZE_STEP=${T_RESIZE_STEP:-0.3}
-T_SPLIT_HOLD=${T_SPLIT_HOLD:-1.1}
+T_SPLIT_HOLD=${T_SPLIT_HOLD:-0.6}
+T_VOLUME_STEP=${T_VOLUME_STEP:-0.35}
 T_SEARCH_HOLD=${T_SEARCH_HOLD:-1.2}
 T_KEEPTABS_HOLD=${T_KEEPTABS_HOLD:-2.0}
 DEMO_FAST=${DEMO_FAST:-5}
@@ -519,6 +520,33 @@ wait_browser_loaded() {
   sleep 4
 }
 
+start_music() {
+  if ((DRY)); then
+    emit music "focus the YouTube window and press k"
+    return 0
+  fi
+  local addr i
+  addr=$(hyprctl clients -j | jq -r '[.[] | select((.class | test("(^|\\.)firefox$")) and (.title | test("YouTube")))][0].address // empty')
+  if [[ -z $addr ]]; then
+    log "showcase: no YouTube window; music not started"
+    return 0
+  fi
+  hyprctl eval "hl.dispatch(hl.dsp.focus({ window = \"address:$addr\" }))" >/dev/null
+  sleep 0.6
+  [[ $(active_addr) == "$addr" ]] || return 0
+  send k
+  for ((i = 0; i < 30; i++)); do
+    [[ $(playerctl status 2>/dev/null) == Playing ]] && return 0
+    sleep 0.2
+  done
+  log "showcase: music did not start"
+}
+
+volume_step() {
+  bind "$1" "require(\"lib.actions.media\").$2()()"
+  pause "$T_VOLUME_STEP"
+}
+
 tab_count() {
   hyprctl clients -j | jq -r --argjson ws "$1" --arg c "$2" '
     [.[] | select(.workspace.id == $ws and .mapped)] | sort_by(.at[1], .at[0])
@@ -639,6 +667,7 @@ restore_ui() {
   "$qs_ipc_bin" call lock preview_close >/dev/null 2>&1 || true
   "$qs_ipc_bin" call screenshot close >/dev/null 2>&1 || true
   "$qs_ipc_bin" call style set oasis >/dev/null 2>&1 || true
+  playerctl pause >/dev/null 2>&1 || true
   overlay_ipc card false 2>/dev/null || true
   overlay_ipc clear 2>/dev/null || true
 }
@@ -877,12 +906,15 @@ scene_work() {
   wait_clients "$T_WORK_TIMEOUT" "${work_classes[@]}"
   ensure_claude_window || true
   wait_browser_loaded
+  start_music
+  qs_ipc call style set ps1
+  wait_style ps1
   fast_end
   pause "$T_WORK_HOLD"
 }
 
 scene_overview() {
-  set_style ps1 PSX
+  [[ $(qs_query call style get) == ps1 ]] || set_style ps1 PSX
   ipc "SUPER + TAB" call overview open
   wait_layer quickshell-overview
   pause "$T_OVERVIEW_HOLD"
@@ -900,6 +932,11 @@ scene_overview() {
 }
 
 scene_styles() {
+  volume_step "SUPER + ALT + J" volume_down
+  volume_step "SUPER + ALT + J" volume_down
+  volume_step "SUPER + ALT + K" volume_up
+  volume_step "SUPER + ALT + K" volume_up
+  pause "$T_TMUX_HOLD"
   leader_chord W qs_ipc call popup open weather
   wait_layer quickshell-popup
   pause "$T_STYLE_HOLD"
@@ -952,10 +989,10 @@ scene_move_window() {
 }
 
 scene_keybinds() {
-  local query=fullscreen matches
+  local query="window right" matches
   if ! ((DRY)); then
     matches=$(hyprctl binds -j | jq -r --arg q "$query" '[.[] | select(.has_description and .submap == "" and (.description | ascii_downcase | contains($q))) | .description] | join("|")')
-    [[ $matches == "Toggle Fullscreen" ]] || die "keybind finder query '$query' no longer maps to one safe bind ($matches)"
+    [[ $matches == "Move Window Right" ]] || die "keybind finder query '$query' no longer maps to one safe bind ($matches)"
   fi
   focus_output_window
   bind "SUPER + /" 'require("lib.actions.menu").keybinds()()'
@@ -965,9 +1002,6 @@ scene_keybinds() {
   press "ENTER" @Return
   wait_layer_gone quickshell-popup
   pause "$T_KEYBINDS_HOLD"
-  abort_if_protected_active
-  bind "SUPER + F" 'hl.dispatch(hl.dsp.window.fullscreen({ action = "toggle" }))'
-  pause "$T_MOVE_STEP"
 }
 
 scene_tmux() {
@@ -977,7 +1011,7 @@ scene_tmux() {
   ipc "ALT + GRAVE" call tmux-overview open
   wait_layer quickshell-tmux-overview
   pause "$T_TMUX_HOLD"
-  for ch in l j h l; do
+  for ch in l j; do
     press "${ch^^}" "$ch"
     pause "$T_TMUX_STEP"
   done
@@ -996,9 +1030,9 @@ scene_tmux() {
 
 scene_screenshot() {
   focus_ws_window
-  ipc "PRINT" call screenshot open
-  wait_layer quickshell-popup
-  press "R" r
+  overlay_keys "PRINT"
+  pause "$T_LEAD"
+  ipc "R" call screenshot select false toolbar
   wait_layer quickshell-region
   pause "$T_SHOT_STEP"
   local tok key
@@ -1069,11 +1103,7 @@ scene_to_hdmi() {
   wait_layer_gone quickshell-overview
   pause "$T_MOVE_STEP"
   assert_active_on_output
-  bind "SUPER + W" 'hl.dispatch(hl.dsp.submap("Windows"))'
-  wait_layer_soft quickshell-whichkey || log "showcase: which-key did not show"
-  pause "$T_TMUX_HOLD"
-  bind "-" 'hl.dispatch(hl.dsp.layout("togglesplit"))'
-  hypr_eval 'hl.dispatch(hl.dsp.submap("reset"))'
+  hypr_eval 'hl.dispatch(hl.dsp.layout("togglesplit"))'
   pause "$T_SPLIT_HOLD"
   bind "SUPER + R" 'hl.dispatch(hl.dsp.submap("Resize"))'
   wait_layer_soft quickshell-whichkey || log "showcase: which-key did not show"
