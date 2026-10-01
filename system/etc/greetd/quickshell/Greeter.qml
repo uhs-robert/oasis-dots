@@ -260,6 +260,11 @@ Singleton {
             return;
         }
         if (root.granted) {
+            // A fresh press skips the unlock animation; a held Enter from the submit does not.
+            if (!event.isAutoRepeat && launch_timer.running) {
+                launch_timer.stop();
+                root.launch();
+            }
             event.accepted = true;
             return;
         }

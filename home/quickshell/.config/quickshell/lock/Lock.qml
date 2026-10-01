@@ -207,6 +207,11 @@ Singleton {
     function key(event, skin) {
         root.wake();
         if (root.granted) {
+            // A fresh press skips the unlock animation; a held Enter from the submit does not.
+            if (!event.isAutoRepeat) {
+                unlock_timer.stop();
+                root.finish_unlock();
+            }
             event.accepted = true;
             return;
         }
