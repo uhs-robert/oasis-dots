@@ -75,8 +75,10 @@ PanelWindow {
         Keys.onPressed: event => root.handle_key(event)
 
         Repeater {
-            // Ids, not entries: an array model snapshots copies of its objects. Each change still rebuilds the cards.
-            model: root.visible_toasts.map(e => e.id)
+            // Ids, not entries: a model snapshots copies of its objects. ScriptModel keeps the surviving cards alive.
+            model: ScriptModel {
+                values: root.visible_toasts.map(e => e.id)
+            }
 
             NotificationToastCard {
                 id: toast_card
