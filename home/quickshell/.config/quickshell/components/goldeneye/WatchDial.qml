@@ -21,10 +21,11 @@ Item {
     readonly property int icon_drop: compact ? 7 : 8
     readonly property real max_sag: 6
     readonly property color face: Style.bar_center_bg
-    readonly property color lit: Watch.green
-    readonly property color unlit: Watch.green_dim
-    readonly property color mark: Watch.white
-    readonly property color hand: Qt.rgba(0.82, 0.92, 0.82, 1)
+    readonly property bool light: root.face.hslLightness > 0.6
+    readonly property color lit: root.light ? Watch.green_dim : Watch.green
+    readonly property color unlit: root.light ? Qt.alpha(Watch.green_dim, 0.45) : Watch.green_dim
+    readonly property color mark: root.light ? Theme.fg_core : Watch.white
+    readonly property color hand: root.light ? Theme.fg_core : Qt.rgba(0.82, 0.92, 0.82, 1)
     readonly property color rim: Qt.tint(Style.bar_center_bg, Qt.alpha(Theme.fg_muted, 0.25))
     readonly property color metal: Qt.tint(Style.bar_center_bg, Qt.alpha(Theme.fg_muted, 0.5))
 
