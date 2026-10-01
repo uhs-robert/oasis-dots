@@ -7,7 +7,7 @@ Popup {
     id: root
 
     popup_name: "power"
-    preferred_width: 180
+    preferred_width: root.st.confirm_layout === "watch" ? 260 : 180
     footer_hint: "y/Enter confirm · n/Esc cancel"
     body_height: content.implicitHeight + 24
 
