@@ -25,25 +25,15 @@ Rectangle {
     width: implicitWidth
     height: implicitHeight
     radius: root.st.key_round ? height / 2 : Style.radius(3)
-    readonly property bool cut: root.st.key_cut > 0 && !root.pad
     readonly property bool orb: root.st.materia.key !== undefined && !root.pad
-    color: root.cut || root.orb || root.pad || root.plain ? "transparent" : root.st.key_bg
-    border.width: root.cut || root.orb || root.pad || root.plain ? 0 : root.st.pixel_border.a > 0 ? 2 : 1
+    color: root.orb || root.pad || root.plain ? "transparent" : root.st.key_bg
+    border.width: root.orb || root.pad || root.plain ? 0 : root.st.pixel_border.a > 0 ? 2 : 1
     border.color: root.tinted ? root.st.tab_active_fg : root.st.key_border
 
     Sheen {
         color_top: !root.plain && !root.pad && root.st.key_bg.a > 0 ? root.st.sheen : "transparent"
         corner: root.radius
         edge: 1
-    }
-
-    CutBox {
-        visible: root.cut
-        anchors.fill: parent
-        cut_tl: root.st.key_cut
-        cut_br: root.st.key_cut
-        fill: root.st.key_bg
-        stroke: root.tinted ? root.st.tab_active_fg : root.st.key_border
     }
 
     MateriaOrb {

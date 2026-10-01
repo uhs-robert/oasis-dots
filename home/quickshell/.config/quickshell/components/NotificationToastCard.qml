@@ -274,7 +274,7 @@ Rectangle {
 
     Rectangle {
         visible: root.selected && Style.selection_bar && !Style.frame_visor
-        x: 1 + (Style.frame_cut > 0 ? Style.inset_pad : 0)
+        x: 1
         y: x
         width: 2
         height: root.height - y * 2

@@ -53,9 +53,8 @@ PanelWindow {
     // Metroid's volume meter is the visor level row with the default sink's live wave.
     readonly property bool visor_wave: Style.level_layout === "visor" && !root.showing_vox && root.kind === "volume"
     readonly property bool vox_recording: root.showing_vox && root.vox_phase === "recording"
-    readonly property bool readout_layout: Style.osd_layout === "readout" && !root.showing_vox
     readonly property bool ring_layout: Style.osd_layout === "ring" && !root.showing_vox
-    readonly property bool banded: Style.show_title && (Style.title_band.a > 0 || Style.title_strip.a > 0)
+    readonly property bool banded: Style.show_title && Style.title_strip.a > 0
     readonly property bool hud_layout: Style.osd_layout === "hud" && !root.showing_vox
     // Console OSD art picked by osd_layout, with the default parts it replaces.
     readonly property var console_osd: root.showing_vox ? (Style.osd_layout === "tile" ? { art: tile_vox_osd, hides: ["glyph", "meter", "percent"], framed: true, untitled: true } : null) : ({
@@ -346,24 +345,9 @@ PanelWindow {
                 y: x
                 width: frame.width - x * 2
                 height: frame.band_height
-                sourceComponent: Style.title_strip.a > 0 ? osd_strip : osd_header
-
-                Component {
-                    id: osd_header
-                    TabHeader {
-                        readonly property var ids: Style.title_ids.osd || []
-                        title: root.title
-                        panel_id: ids[0] || ""
-                        readout: ids[1] || ""
-                    }
-                }
-
-                Component {
-                    id: osd_strip
-                    TitleStrip {
-                        title: root.title
-                        closable: false
-                    }
+                sourceComponent: TitleStrip {
+                    title: root.title
+                    closable: false
                 }
             }
 
@@ -434,15 +418,6 @@ PanelWindow {
                     }
                 }
 
-                OsdReadout {
-                    visible: root.readout_layout
-                    level: root.level
-                    percent: root.percent
-                    muted: root.muted
-                    delta: root.delta
-                    label: root.kind === "brightness" ? "Backlight" : root.muted ? "Muted" : "\u25d6 " + (root.sink ? root.sink.description || root.sink.name : "")
-                }
-
                 Loader {
                     id: console_osd_loader
                     active: !!root.console_osd
@@ -454,7 +429,7 @@ PanelWindow {
                 }
 
                 Text {
-                    visible: !root.readout_layout && !root.replaced("glyph")
+                    visible: !root.replaced("glyph")
                     Layout.alignment: Qt.AlignVCenter
                     Layout.preferredWidth: Theme.glyph_size + 4
                     horizontalAlignment: Text.AlignHCenter
@@ -466,7 +441,7 @@ PanelWindow {
                 }
 
                 Item {
-                    visible: !root.readout_layout && !root.replaced("meter")
+                    visible: !root.replaced("meter")
                     Layout.alignment: Qt.AlignVCenter
                     Layout.preferredWidth: root.showing_vox ? Style.px(260) : Style.px(180)
                     Layout.preferredHeight: root.showing_vox ? Style.px(44) : root.visor_wave ? Style.px(24) : meter.implicitHeight
@@ -505,7 +480,7 @@ PanelWindow {
                 }
 
                 Text {
-                    visible: !root.readout_layout && !root.ring_layout && !root.replaced("percent")
+                    visible: !root.ring_layout && !root.replaced("percent")
                     Layout.alignment: Qt.AlignVCenter
                     Layout.preferredWidth: percent_metrics.width
                     horizontalAlignment: Text.AlignRight

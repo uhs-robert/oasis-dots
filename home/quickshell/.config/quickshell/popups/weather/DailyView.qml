@@ -20,7 +20,6 @@ Item {
     property var on_select: function (i) {}
 
     readonly property var sub_names: ["Temp & Precip", "Wind", "UV", "Sunshine"]
-    readonly property bool stat_columns: Style.weather_header === "spec" && root.sub === 0
     // Temperature ranges as 1px altitude ladders with rungs.
     readonly property bool ladder: Style.weather_header === "scope"
     readonly property bool thin_range: Style.range_line || root.ladder
@@ -41,7 +40,7 @@ Item {
     readonly property bool dunes: Style.weather_header === "oasis" && root.sub === 0
     // Modern: raised day columns with a pill label and a range track.
     readonly property bool pill_columns: Style.weather_header === "hero" && root.sub === 0
-    readonly property bool custom_column: root.stat_columns || root.ws_panels || root.tower_columns || root.camera || root.dunes || root.pill_columns
+    readonly property bool custom_column: root.ws_panels || root.tower_columns || root.camera || root.dunes || root.pill_columns
     // NES: each column in a Dragon Quest window with a cursor on the selected day.
     readonly property bool dq: Style.weather_header === "battle"
     // SNES: columns standing on a Mode 7 floor.
@@ -93,8 +92,7 @@ Item {
         const mission_w = root.mission ? Math.max(label_metrics.advanceWidth("a) WED"), small_metrics.advanceWidth("PROGRESS") + 8) : 0;
         const dq_w = root.dq ? 2 * (small_metrics.advanceWidth(Style.row_cursor) + 3) : 0;
         if (root.hev_slots) return Math.max(1, Math.min(5, 1 + Math.floor((root.width - 100) / 52)));
-        const col = root.stat_columns ? 56
-            : Style.weather_header === "wttr" ? table_metrics.advanceWidth("─") * 8 - 4
+        const col = Style.weather_header === "wttr" ? table_metrics.advanceWidth("─") * 8 - 4
             : Style.weather_header === "status" ? Math.max(table_metrics.advanceWidth("Today"), table_metrics.advanceWidth("100%"), 44) + 6
             : root.dq ? Math.max(label_metrics.advanceWidth("100%"), label_metrics.advanceWidth("WED") + dq_w) + 16
             // Room for a 3x-scale 24x18 photo (72x54) plus its frame.
@@ -309,18 +307,6 @@ Item {
                             width: parent.width
                             height: 2
                             color: Style.caret_color
-                        }
-                    }
-
-                    Loader {
-                        active: root.stat_columns
-                        anchors.fill: parent
-                        sourceComponent: DayStatColumn {
-                            day: day_col.modelData
-                            day_index: day_col.day_index
-                            selected: day_col.day_index === root.day_cursor
-                            scale_min: root.week_temp_range.min
-                            scale_max: root.week_temp_range.max
                         }
                     }
 

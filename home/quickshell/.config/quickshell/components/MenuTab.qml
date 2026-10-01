@@ -32,22 +32,10 @@ Rectangle {
     border.width: root.is_chip && (root.st.pill_chips || root.outlined) ? 1 : !root.is_chip && root.outlined ? 1 : 0
     border.color: root.is_chip ? (root.active ? root.st.chip_active_bg : root.st.chip_border) : root.active && root.st.selection_border.a > 0 ? root.st.selection_border : root.st.tab_outline
     readonly property color fill: !root.active ? (root.is_chip ? root.st.chip_bg : root.st.tab_bg) : root.is_chip ? root.st.chip_active_bg : root.st.tab_active_bg
-    readonly property real cut: root.is_chip ? root.st.key_cut : root.st.tab_cut
-    color: root.cut > 0 ? "transparent" : root.fill
-
-    CutBox {
-        visible: root.cut > 0
-        anchors.fill: parent
-        cut_tl: root.is_chip ? root.cut : 0
-        cut_tr: root.is_chip ? 0 : root.cut
-        cut_br: root.is_chip ? root.cut : 0
-        fill: root.fill
-        fill_end: root.active && !root.is_chip ? Qt.alpha(root.fill, root.fill.a * 0.6) : root.fill
-        stroke: root.is_chip && !root.active ? root.st.chip_border : "transparent"
-    }
+    color: root.fill
 
     Rectangle {
-        visible: root.active && root.st.tab_active_shade.a > 0 && root.cut <= 0
+        visible: root.active && root.st.tab_active_shade.a > 0
         anchors.fill: parent
         radius: root.radius
         gradient: Gradient {

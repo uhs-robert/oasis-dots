@@ -134,7 +134,7 @@ Item {
                     }
                     color: segment.lit
                         ? (segment.is_hot ? root.st.meter_hot : root.on_selection && root.st.selection_inverse ? root.st.selection_fg : root.on_color)
-                        : root.on_selection && root.st.selection_inverse ? Qt.alpha(root.st.selection_fg, 0.25) : root.st.meter_major.a > 0 && index % 5 === 4 ? root.st.meter_major : root.st.meter_off
+                        : root.on_selection && root.st.selection_inverse ? Qt.alpha(root.st.selection_fg, 0.25) : root.st.meter_off
 
                     // Lit segments shade down from meter_shade at the top.
                     Rectangle {

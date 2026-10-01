@@ -175,7 +175,7 @@ PanelWindow {
         readonly property real title_x: Style.fade_fills || Style.rounded && !Style.title_case ? frame.radius : 0
         // The inner ring's room below the accent line, which already covers the border.
         readonly property real ring_pad: Style.inset_pad > 0 ? Style.inset_pad - Style.frame_border_width : 0
-        readonly property bool banded: Style.show_title && (Style.title_band.a > 0 || Style.title_strip.a > 0)
+        readonly property bool banded: Style.show_title && Style.title_strip.a > 0
         readonly property real band_height: Math.max(26, title_tab.height + 4)
         readonly property real header_height: frame.banded ? frame.band_height + 4 + Style.inset_pad : root.float_title ? root.float_top : title_tab.height + frame.ring_pad
 
@@ -263,26 +263,10 @@ PanelWindow {
                 y: x
                 width: frame.width - x * 2
                 height: frame.band_height
-                sourceComponent: Style.title_strip.a > 0 ? key_strip : key_header
-
-                Component {
-                    id: key_header
-                    TabHeader {
-                        readonly property var ids: Style.title_ids.whichkey || []
-                        accent: root.tinted ? root.header_color : "transparent"
-                        title: root.title
-                        panel_id: ids[0] || ""
-                        readout: ids[1] || ""
-                    }
-                }
-
-                Component {
-                    id: key_strip
-                    TitleStrip {
-                        title: root.title
-                        title_color: root.tinted ? root.header_color : "transparent"
-                        closable: false
-                    }
+                sourceComponent: TitleStrip {
+                    title: root.title
+                    title_color: root.tinted ? root.header_color : "transparent"
+                    closable: false
                 }
             }
 

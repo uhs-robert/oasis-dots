@@ -137,31 +137,14 @@ Singleton {
             chart_fill: Theme.yellow,
             corner_scale: 1,
             mono_font: "",
-            frame_cut: 0,
-            frame_notch: 0,
-            frame_line: "transparent",
-            frame_marks: "transparent",
-            title_band: "transparent",
-            title_ids: ({}),
-            row_marker: "",
-            row_rule: "transparent",
             selection_rule: "transparent",
-            corner_tick: "transparent",
-            key_cut: 0,
             tab_bg: "transparent",
-            tab_cut: 0,
             chip_bg: "transparent",
-            section_marker: "transparent",
-            meter_major: "transparent",
             meter_height: 0,
             footer_key_bg: "transparent",
             footer_separator: " \u00b7 ",
             footer_rule_solid: false,
             footer_tanks: false,
-            slider_readout: false,
-            hazard: "transparent",
-            schematic: "transparent",
-            status_strip: false,
             osd_layout: "",
             level_layout: "",
             card_layout: "",
@@ -391,31 +374,14 @@ Singleton {
                 chart_fill: Theme.yellow,
                 corner_scale: 1,
                 mono_font: "",
-                frame_cut: 0,
-                frame_notch: 0,
-                frame_line: "transparent",
-                frame_marks: "transparent",
-                title_band: "transparent",
-                title_ids: ({}),
-                row_marker: "",
-                row_rule: "transparent",
                 selection_rule: "transparent",
-                corner_tick: "transparent",
-                key_cut: 0,
                 tab_bg: "transparent",
-                tab_cut: 0,
                 chip_bg: "transparent",
-                section_marker: "transparent",
-                meter_major: "transparent",
                 meter_height: 0,
                 footer_key_bg: "transparent",
                 footer_separator: " \u00b7 ",
                 footer_rule_solid: false,
                 footer_tanks: false,
-                slider_readout: false,
-                hazard: "transparent",
-                schematic: "transparent",
-                status_strip: false,
                 osd_layout: "",
                 level_layout: "",
                 card_layout: "",
@@ -1894,7 +1860,7 @@ Singleton {
         o.number_font = o.number_font || o.font_family;
         o.label_font_family = o.label_font_family || o.font_family;
         o.mono_font = o.mono_font || o.font_family;
-        o.custom_frame = o.frame_octagon > 0 || o.frame_cut > 0 || o.slant_frame;
+        o.custom_frame = o.frame_octagon > 0 || o.slant_frame;
         o.inset_pad = o.frame_inset_width > 0 ? o.frame_border_width + o.frame_inset_gap + o.frame_inset_width : o.frame_pad;
         o.fs = k => o.font_size + (o.type_scale && o.type_scale[k] !== undefined ? o.type_scale[k] : k);
         return o;
@@ -2053,14 +2019,8 @@ Singleton {
     readonly property real frame_octagon: root.active.frame_octagon
     // Diagonal struts from the octagon's cut corners and ticks at its edge midpoints.
     readonly property color frame_struts: root.active.frame_struts
-    // Top-left and bottom-right corners cut by this many px (ChamferFrame), with frame_notch px stepped notches.
-    readonly property real frame_cut: root.active.frame_cut
-    readonly property real frame_notch: root.active.frame_notch
     // A frame component draws the fill and border, so the base rectangle and FrameShade stay empty.
-    readonly property bool custom_frame: root.frame_octagon > 0 || root.frame_cut > 0 || root.slant_frame
-    // The middle of a frame_cut border's vertical fade; its ends are frame_border_color.
-    readonly property color frame_line: root.active.frame_line
-    readonly property color frame_marks: root.active.frame_marks
+    readonly property bool custom_frame: root.frame_octagon > 0 || root.slant_frame
     // "top": a tick scale on the top edge, bottom rule and corner crosses; "left": a scale down the left side and a corner ring.
     readonly property string frame_ticks: root.active.frame_ticks
     // Major and minor tick color for frame scales, rules and ruler meters.
@@ -2072,25 +2032,17 @@ Singleton {
     readonly property color lcd_brackets: root.active.lcd_brackets
     // Target-lock corner brackets on selected rows, cards and days.
     readonly property color selection_brackets: root.active.selection_brackets
-    // A 1px rule under the selected row; row_rule draws it under the others.
+    // A 1px rule under the selected row.
     readonly property color selection_rule: root.active.selection_rule
-    readonly property color row_rule: root.active.row_rule
-    // "box" marks every row with a square, filled on the selected one; rows with a slot number show it instead.
-    readonly property string row_marker: root.active.row_marker
-    // A diagonal tick in the top-right corner of cards and the selected row.
-    readonly property color corner_tick: root.active.corner_tick
     // Brackets around the active tab's label.
     readonly property color tab_brackets: root.active.tab_brackets
     // A 1px baseline under every tab.
     readonly property color tab_rule: root.active.tab_rule
     readonly property color tab_bg: root.active.tab_bg
-    readonly property real tab_cut: root.active.tab_cut
     readonly property color chip_bg: root.active.chip_bg
     // Chips, action chips, header buttons and the alert banner as outlined pills.
     readonly property bool pill_chips: root.active.pill_chips
     readonly property bool key_round: root.active.key_round
-    readonly property real key_cut: root.active.key_cut
-    readonly property color section_marker: root.active.section_marker
     // A reticle glyph before popup titles.
     readonly property color title_reticle: root.active.title_reticle
     // Popup names numbered 01, 02, ... in front of their titles.
@@ -2099,27 +2051,17 @@ Singleton {
     readonly property int title_weight: root.active.title_weight
     // A rule from the title to the readout, fading out to the right.
     readonly property color title_trail: root.active.title_trail
-    // A title strip with a tab-cut band in this color (TabHeader); title_ids maps popup names to [id, readout].
-    readonly property color title_band: root.active.title_band
-    readonly property var title_ids: root.active.title_ids
     readonly property color chart_outline: root.active.chart_outline
     // Daily temperature ranges as 1px lines with ring end caps.
     readonly property bool range_line: root.active.range_line
     readonly property bool tick_ruler: root.active.tick_ruler
-    // Every fifth unlit meter segment; meter_height 0 keeps the default height.
-    readonly property color meter_major: root.active.meter_major
+    // 0 keeps the default height.
     readonly property real meter_height: root.active.meter_height
     // Footer keys drawn as filled caps in footer_key_fg on this color.
     readonly property color footer_key_bg: root.active.footer_key_bg
     readonly property string footer_separator: root.active.footer_separator
     readonly property bool footer_rule_solid: root.active.footer_rule_solid
-    readonly property bool slider_readout: root.active.slider_readout
-    // Hazard stripes on alert banners and critical cards.
-    readonly property color hazard: root.active.hazard
-    // Start's schematic and status strip.
-    readonly property color schematic: root.active.schematic
-    readonly property bool status_strip: root.active.status_strip
-    // Alternate layouts: "" keeps the default; osd "ring", "readout", "hud", "rpg", "alert", "glow", "horizon" or "tile", weather "ring", "spec", "scope", "watch", "memcard", "battle", "mode7", "wttr", "weatherstar", "towers", "scan", "hev", "pokedex", "status", "oasis", "hero" or "lsp", cards "rule", "channel", "pixel", "dq", "dialogue", "dialog", "oasis", "tile" or "notify".
+    // Alternate layouts: "" keeps the default; osd "ring", "hud", "rpg", "alert", "glow", "horizon" or "tile", weather "ring", "scope", "watch", "memcard", "battle", "mode7", "wttr", "weatherstar", "towers", "scan", "hev", "pokedex", "status", "oasis", "hero" or "lsp", cards "rule", "pixel", "dq", "dialogue", "dialog", "oasis", "tile" or "notify".
     readonly property string osd_layout: root.active.osd_layout
     // Level rows: "capsule" draws them as tall capsule sliders with live peaks, "slant" and "visor" the same with slanted ends or visor glass (Volume popup and OSD only); "" keeps the shared slider.
     readonly property string level_layout: root.active.level_layout
@@ -2131,7 +2073,7 @@ Singleton {
     readonly property string card_layout: root.active.card_layout
     // The keeptabs done celebration: hearts, pixel (stepped), lcd (stepped, then blinks), hev_pickup, levelup (inverted flash, pixel sparkles) or fanfare.
     readonly property string done_anim: root.active.done_anim || "hearts"
-    // The keeptabs waiting cue: bubble, cursor, pressanykey, advance, hand, alert, rumble, transmission, scan, comms, ping, orders, hev_alert, exclaim or atb.
+    // The keeptabs waiting cue: bubble, cursor, pressanykey, advance, hand, alert, rumble, transmission, scan, comms, ping, hev_alert, exclaim or atb.
     readonly property string wait_anim: root.active.wait_anim || "bubble"
     // A full-width title strip in this color with a hairline under it and a close box at the right.
     readonly property color title_strip: root.active.title_strip

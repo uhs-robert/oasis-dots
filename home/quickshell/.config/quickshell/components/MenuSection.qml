@@ -1,6 +1,5 @@
 // home/quickshell/.config/quickshell/components/MenuSection.qml
 import QtQuick
-import QtQuick.Shapes
 import "../theme"
 
 Text {
@@ -20,7 +19,7 @@ Text {
     font.letterSpacing: root.st.caps_tracking > 0 ? root.st.caps_tracking : root.st.label_spacing
     font.bold: root.st.caps_tracking > 0
     readonly property bool orb: root.st.materia.section !== undefined
-    leftPadding: root.orb ? 15 : root.st.section_marker.a > 0 ? 11 : 0
+    leftPadding: root.orb ? 15 : 0
 
     MateriaOrb {
         visible: root.orb
@@ -29,19 +28,6 @@ Text {
         height: 9
         glow: false
         color: root.orb ? root.st.materia.section : "transparent"
-    }
-
-    Shape {
-        visible: root.st.section_marker.a > 0
-        y: root.topPadding + Math.round(root.contentHeight / 2) - 4
-        width: 5
-        height: 8
-
-        ShapePath {
-            strokeWidth: -1
-            fillColor: root.st.section_marker
-            PathPolyline { path: [Qt.point(0, 0), Qt.point(5, 4), Qt.point(0, 8), Qt.point(0, 0)] }
-        }
     }
 
     Text {

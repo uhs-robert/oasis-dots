@@ -20,7 +20,7 @@ Rectangle {
     readonly property int pad_x: Style.px(18)
     readonly property int pad_y: Style.px(12)
     readonly property real top_edge: Math.max(Style.accent_height, Style.frame_border_width)
-    readonly property bool banded: Style.show_title && (Style.title_band.a > 0 || Style.title_strip.a > 0)
+    readonly property bool banded: Style.show_title && Style.title_strip.a > 0
     readonly property bool float_title: Style.border_title && Style.show_title
     readonly property real band_height: Math.max(26, title_tab.height + 4)
     readonly property real header_height: root.banded ? root.band_height + 4 + Style.inset_pad : root.float_title ? Math.round(title_tab.height / 2) : title_tab.height + Math.max(0, Style.inset_pad - Style.frame_border_width)
@@ -130,26 +130,10 @@ Rectangle {
         y: x
         width: root.width - x * 2
         height: root.band_height
-        sourceComponent: Style.title_strip.a > 0 ? title_strip : tab_header
-
-        Component {
-            id: tab_header
-            TabHeader {
-                readonly property var ids: Style.title_ids.overview || []
-                title: root.title
-                panel_id: ids[0] || ""
-                readout: ids[1] || ""
-                readout_value: root.status
-            }
-        }
-
-        Component {
-            id: title_strip
-            TitleStrip {
-                title: root.title
-                readout_value: root.status
-                closable: false
-            }
+        sourceComponent: TitleStrip {
+            title: root.title
+            readout_value: root.status
+            closable: false
         }
     }
 

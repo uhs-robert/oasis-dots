@@ -225,12 +225,7 @@ Popup {
                 Layout.fillWidth: true
                 active: Style.weather_header !== ""
                 visible: active
-                sourceComponent: ({ spec: spec_header, scope: scope_header, watch: watch_header, memcard: memcard_header, battle: battle_header, mode7: mode7_header, wttr: wttr_header, weatherstar: ws_header, towers: towers_header, scan: scan_header, hev: hev_header, pokedex: dex_header, status: status_header, oasis: oasis_header, hero: hero_header, lsp: lsp_header })[Style.weather_header] || ring_header
-
-                Component {
-                    id: spec_header
-                    WeatherSpec {}
-                }
+                sourceComponent: ({ scope: scope_header, watch: watch_header, memcard: memcard_header, battle: battle_header, mode7: mode7_header, wttr: wttr_header, weatherstar: ws_header, towers: towers_header, scan: scan_header, hev: hev_header, pokedex: dex_header, status: status_header, oasis: oasis_header, hero: hero_header, lsp: lsp_header })[Style.weather_header] || ring_header
 
                 Component {
                     id: scope_header
@@ -411,24 +406,12 @@ Popup {
                 border.width: Style.boxed_cards ? 1 : 0
                 border.color: alert_color
 
-                Hazard {
-                    visible: Style.hazard.a > 0
-                    x: 1
-                    y: 1
-                    width: 30
-                    height: parent.height - 2
-                    color: Theme.bg_crust
-                    stripe: Style.hazard
-                }
-
                 RowLayout {
                     anchors.fill: parent
                     anchors.margins: 6
-                    anchors.leftMargin: Style.hazard.a > 0 ? 40 : 6
                     spacing: 8
 
                     Rectangle {
-                        visible: Style.hazard.a === 0
                         Layout.preferredWidth: 8
                         Layout.preferredHeight: 8
                         radius: Style.radius(4)

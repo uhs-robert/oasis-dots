@@ -4,7 +4,7 @@ import QtQuick
 import "../theme"
 import "oasis" as Oasis
 
-// The style's own frame shape (OctagonFrame, ChamferFrame, PixelFrame, WindowGradient, SlantFrame) and FrameTicks, each loaded only when its token is set.
+// The style's own frame shape (OctagonFrame, PixelFrame, WindowGradient, SlantFrame) and FrameTicks, each loaded only when its token is set.
 Item {
     id: root
 
@@ -26,14 +26,6 @@ Item {
         sourceComponent: WindowGradient {
             top_radius: Math.max(0, root.top_radius - root.st.frame_border_width)
             bottom_radius: Math.max(0, root.bottom_radius - root.st.frame_border_width)
-        }
-    }
-
-    Loader {
-        anchors.fill: parent
-        active: root.st.frame_cut > 0
-        sourceComponent: ChamferFrame {
-            border_color: root.chamfer_edge
         }
     }
 

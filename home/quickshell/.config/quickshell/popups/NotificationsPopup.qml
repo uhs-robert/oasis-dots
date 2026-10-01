@@ -421,7 +421,6 @@ Popup {
                             unread: row_item.modelData.type === "entry" && !row_item.modelData.entry.read
                             selected: !!(row_item.modelData.type === "entry" && root.entry_rows[root.selected] && root.entry_rows[root.selected].entry.id === row_item.modelData.entry.id)
                             focused_action: card.selected ? root.action_index : -1
-                            channel: root.entry_rows.indexOf(row_item.modelData) + 1
                             onSelect_requested: root.select_entry(row_item.modelData.entry)
                             onInvoke_requested: {
                                 ThemeAudio.play("confirm");

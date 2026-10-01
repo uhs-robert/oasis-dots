@@ -54,30 +54,10 @@ Item {
         visible: root.st.segmented_levels && !root.glow_bar
         anchors.left: parent.left
         anchors.right: parent.right
-        anchors.rightMargin: root.st.slider_readout ? readout.width + 6 : 0
         anchors.verticalCenter: parent.verticalCenter
         value: root.value
         hot_from: 0.9
         on_selection: root.on_selection
-    }
-
-    Text {
-        id: readout
-        visible: root.st.slider_readout
-        anchors.right: parent.right
-        anchors.verticalCenter: parent.verticalCenter
-        width: root.st.slider_readout ? Math.ceil(readout_metrics.advanceWidth("100")) : 0
-        horizontalAlignment: Text.AlignRight
-        text: Math.round(root.value * 100)
-        color: root.on_selection && root.st.selection_inverse ? root.st.selection_fg : root.st.text_strong
-        font.family: root.st.mono_font
-        font.pixelSize: root.st.fs(-3)
-    }
-
-    FontMetrics {
-        id: readout_metrics
-        font.family: root.st.mono_font
-        font.pixelSize: root.st.fs(-3)
     }
 
     MouseArea {

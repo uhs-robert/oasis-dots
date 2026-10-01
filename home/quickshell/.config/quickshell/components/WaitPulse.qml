@@ -22,10 +22,10 @@ Item {
     // These redraw the glyph themselves, so the module hides the real one while they play.
     readonly property bool hides_glyph: root.mode === "rumble" || root.mode === "transmission" || root.mode === "hev_alert" || root.mode === "atb"
     // Drawn beneath the glyph row so the glyph and its count badge stay on top.
-    readonly property bool under: ["pressanykey", "rumble", "transmission", "scan", "comms", "ping", "orders", "hev_alert"].indexOf(root.mode) !== -1
+    readonly property bool under: ["pressanykey", "rumble", "transmission", "scan", "comms", "ping", "hev_alert"].indexOf(root.mode) !== -1
     readonly property real strength: root.nudge ? 0.6 : 1
     readonly property real half: root.glyph_size / 2
-    readonly property var durations: ({ bubble: [1200, 700], cursor: [1200, 600], pressanykey: [1400, 700], advance: [1400, 600], hand: [1200, 600], alert: [1000, 600], rumble: [1000, 450], transmission: [1200, 500], scan: [1300, 700], comms: [1200, 500], ping: [1400, 900], orders: [1400, 600], hev_alert: [900, 600], exclaim: [1000, 600], atb: [1600, 1000] })
+    readonly property var durations: ({ bubble: [1200, 700], cursor: [1200, 600], pressanykey: [1400, 700], advance: [1400, 600], hand: [1200, 600], alert: [1000, 600], rumble: [1000, 450], transmission: [1200, 500], scan: [1300, 700], comms: [1200, 500], ping: [1400, 900], hev_alert: [900, 600], exclaim: [1000, 600], atb: [1600, 1000] })
     readonly property int duration: (root.durations[root.mode] || root.durations.bubble)[root.nudge ? 1 : 0]
     property real elapsed
     readonly property real tail: 1 - root.phase(root.duration - 150, 150)
@@ -73,7 +73,7 @@ Item {
     }
 
     Loader {
-        sourceComponent: ({ bubble: bubble_c, cursor: cursor_c, pressanykey: pressanykey_c, advance: advance_c, hand: hand_c, alert: alert_c, rumble: rumble_c, transmission: transmission_c, scan: scan_c, comms: comms_c, ping: ping_c, orders: orders_c, hev_alert: hev_alert_c, exclaim: exclaim_c, atb: atb_c })[root.mode] || bubble_c
+        sourceComponent: ({ bubble: bubble_c, cursor: cursor_c, pressanykey: pressanykey_c, advance: advance_c, hand: hand_c, alert: alert_c, rumble: rumble_c, transmission: transmission_c, scan: scan_c, comms: comms_c, ping: ping_c, hev_alert: hev_alert_c, exclaim: exclaim_c, atb: atb_c })[root.mode] || bubble_c
     }
 
     Component {
@@ -515,43 +515,6 @@ Item {
                 width: atb.hand_w
                 height: Math.round(atb.hand_w * 14 / 22)
                 opacity: root.tail * root.strength
-            }
-        }
-    }
-
-    Component {
-        id: orders_c
-
-        Item {
-            id: orders
-            readonly property int frame: root.step(140)
-            readonly property bool lit: frame % 2 === 0 && frame < (root.nudge ? 2 : 6)
-            readonly property color amber: Theme.bright_yellow
-            readonly property real x0: -Math.min(root.room_left - 1, root.glyph_half + 3)
-            readonly property real x1: Math.min(root.room_right - 1, root.glyph_half + 3)
-            readonly property real box_height: Math.min(root.glyph_size + 4, 2 * root.room - 2)
-
-            Rectangle {
-                visible: orders.lit
-                x: orders.x0
-                y: -height / 2
-                width: orders.x1 - orders.x0
-                height: orders.box_height
-                radius: 3
-                color: Qt.alpha(orders.amber, 0.35 * root.strength)
-                border.color: orders.amber
-                border.width: 1
-            }
-
-            Hazard {
-                visible: orders.lit
-                x: orders.x0
-                y: orders.box_height / 2 + 2
-                width: orders.x1 - orders.x0
-                height: 4
-                stripe: Style.hazard.a > 0 ? Style.hazard : orders.amber
-                tile: 6
-                line: 2
             }
         }
     }

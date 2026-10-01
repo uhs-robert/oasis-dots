@@ -345,7 +345,7 @@ PanelWindow {
     readonly property bool lcd: root.st.lcd_top.a > 0
     readonly property real title_gap: root.st.title_rule.a > 0 ? 6 : 0
     readonly property bool stripped: root.st.title_strip.a > 0
-    readonly property bool banded: root.st.title_band.a > 0 || root.stripped
+    readonly property bool banded: root.stripped
     readonly property real band_height: Math.max(26, title_tab.height + 4)
     readonly property real engraving_height: root.st.frame_engraving !== "" ? Math.ceil(engraving_metrics.height) + 4 : 0
     readonly property real header_height: (has_title ? (root.banded ? root.band_height + 8 : title_tab.height + title_gap) + root.st.inset_pad : 0) + root.st.lcd_margin * 2 + root.device_top
@@ -675,26 +675,10 @@ PanelWindow {
                     y: x
                     width: parent.width - x * 2
                     height: root.band_height
-                    sourceComponent: root.stripped ? title_strip : tab_header
-
-                    Component {
-                        id: tab_header
-                        TabHeader {
-                            readonly property var ids: root.st.title_ids[root.popup_name] || []
-                            title: root.title
-                            panel_id: ids[0] || ""
-                            readout: ids[1] || ""
-                            readout_value: root.title_value
-                        }
-                    }
-
-                    Component {
-                        id: title_strip
-                        TitleStrip {
-                            title: root.title
-                            readout_value: root.title_value
-                            closable: !root.passive
-                        }
+                    sourceComponent: TitleStrip {
+                        title: root.title
+                        readout_value: root.title_value
+                        closable: !root.passive
                     }
                 }
 

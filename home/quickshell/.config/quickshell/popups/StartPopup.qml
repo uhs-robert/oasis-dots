@@ -13,7 +13,7 @@ Popup {
     id: root
 
     popup_name: "start"
-    preferred_width: root.st.status_strip ? 235 : root.st.console_views === "snes" ? 210 : 180
+    preferred_width: root.st.console_views === "snes" ? 210 : 180
     footer_hint: root.confirm ? "y/Enter confirm · n/Esc back" : "j/k move · gg/G first/last · Enter run · 1-" + root.actions.length + " pick · q close"
     body_height: content.implicitHeight + 24
     jumps_enabled: !root.confirm
@@ -64,7 +64,7 @@ Popup {
         anchors.right: parent.right
         anchors.top: parent.top
         anchors.margins: 12
-        implicitHeight: root.confirm ? confirm_row.implicitHeight : (menu_view.active ? menu_view.implicitHeight : actions_col.implicitHeight) + (strip_loader.active ? strip_loader.height + 10 : 0)
+        implicitHeight: root.confirm ? confirm_row.implicitHeight : (menu_view.active ? menu_view.implicitHeight : actions_col.implicitHeight)
         focus: true
 
         Loader {
@@ -73,19 +73,6 @@ Popup {
             anchors.margins: -12
             z: -2
             sourceComponent: Ps2.Haze {}
-        }
-
-        Loader {
-            active: root.st.schematic.a > 0
-            visible: !root.confirm
-            anchors.right: parent.right
-            anchors.rightMargin: -4
-            y: -4
-            z: -1
-            width: Style.px(90)
-            sourceComponent: Schematic {
-                color: root.st.schematic
-            }
         }
 
         Keys.onPressed: event => {
@@ -202,16 +189,6 @@ Popup {
                 selected: root.selected
                 onPicked: index => root.choose(index)
             }
-        }
-
-        Loader {
-            id: strip_loader
-            active: root.st.status_strip
-            visible: !root.confirm
-            x: -12
-            y: actions_col.implicitHeight + 10
-            width: parent.width + 24
-            sourceComponent: StatusStrip {}
         }
 
         PowerConfirm {
