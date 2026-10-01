@@ -86,7 +86,7 @@ Item {
         return out;
     }
     readonly property bool hot_now: root.envelope.length > 0 && root.envelope[root.envelope.length - 1] >= root.hot_from
-    readonly property color line_color: root.tint.a > 0 ? root.tint : root.frozen ? Theme.warning : root.hot_now ? Style.meter_hot : Style.meter_on
+    readonly property color line_color: root.tint.a > 0 ? root.tint : root.frozen ? Style.pal.warning : root.hot_now ? Style.meter_hot : Style.meter_on
     readonly property real breath: 0.5 + 0.5 * Math.sin(root.phase * 1.6)
     readonly property real amp: root.height * 0.45
     readonly property var top_points: {
@@ -114,7 +114,7 @@ Item {
         anchors.fill: parent
         anchors.margins: -(2 + root.breath * 5)
         radius: Style.radius(12)
-        color: Qt.alpha(Theme.warning, 0.06 + root.breath * 0.08)
+        color: Qt.alpha(Style.pal.warning, 0.06 + root.breath * 0.08)
     }
 
     Shape {

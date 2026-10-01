@@ -24,7 +24,7 @@ Item {
     readonly property real readout_h: Math.max(18, readout_text.implicitHeight)
     readonly property int chart_h: root.height - root.readout_h - 8 - root.icon_row_h - root.label_row_h - 4
 
-    readonly property var hour_colors: [Theme.yellow, Theme.blue, Theme.cyan, Theme.warning, Theme.bright_cyan]
+    readonly property var hour_colors: [Style.pal.yellow, Style.pal.blue, Style.pal.cyan, Style.pal.warning, Style.pal.bright_cyan]
 
     readonly property var day_boundaries: {
         const list = [];
@@ -105,7 +105,7 @@ Item {
             for (let i = 0; i < hrs.length; i++) ctx.lineTo(x_of(i), y_of(hrs[i].pop));
             ctx.lineTo(x_of(hrs.length - 1), h - bottom_pad);
             ctx.closePath();
-            ctx.fillStyle = Theme.blue;
+            ctx.fillStyle = Style.pal.blue;
             ctx.globalAlpha = 0.15;
             ctx.fill();
             ctx.globalAlpha = 1;
@@ -143,7 +143,7 @@ Item {
             ctx.fill();
         }
 
-        ctx.fillStyle = Theme.fg_core;
+        ctx.fillStyle = Style.pal.fg;
         ctx.textAlign = "center";
         for (let i = 0; i < hrs.length; i++) {
             const v = values[i];
@@ -153,7 +153,7 @@ Item {
         }
 
         if (root.sub === 1) {
-            ctx.fillStyle = Theme.blue;
+            ctx.fillStyle = Style.pal.blue;
             ctx.font = amount_px + "px \"" + Style.font_family + "\"";
             for (let i = 0; i < hrs.length; i++) ctx.fillText(hrs[i].precip.toFixed(hrs[i].precip < 1 ? 2 : 1), x_of(i), h - 4);
         }
@@ -161,7 +161,7 @@ Item {
         // Crosshair at the selected hour.
         if (root.hour_cursor >= 0 && root.hour_cursor < hrs.length) {
             const cx = x_of(root.hour_cursor);
-            ctx.strokeStyle = Theme.theme_secondary;
+            ctx.strokeStyle = Style.pal.secondary;
             ctx.globalAlpha = 0.5;
             ctx.lineWidth = 1;
             ctx.beginPath();
@@ -190,7 +190,7 @@ Item {
             Layout.fillWidth: true
             Layout.preferredHeight: root.readout_h
             text: root.readout
-            color: Theme.fg_core
+            color: Style.pal.fg
             font.family: Style.font_family
             font.pixelSize: Style.fs(-2)
             elide: Text.ElideRight
@@ -252,7 +252,7 @@ Item {
                         Rectangle {
                             anchors.fill: parent
                             visible: hour_col.index === root.hour_cursor
-                            color: Style.selection_brackets.a > 0 ? Style.selection_bg : Theme.bg_surface
+                            color: Style.selection_brackets.a > 0 ? Style.selection_bg : Style.pal.bg_surface
                             radius: Style.radius(3)
 
                             LockBrackets {}
@@ -276,7 +276,7 @@ Item {
                             anchors.verticalCenterOffset: -(root.label_row_h / 2)
                             text: "▲"
                             rotation: hour_col.modelData.wind_dir
-                            color: Theme.cyan
+                            color: Style.pal.cyan
                             font.pixelSize: Style.font_size
                         }
 
@@ -285,7 +285,7 @@ Item {
                             anchors.topMargin: root.icon_row_h
                             anchors.horizontalCenter: parent.horizontalCenter
                             text: WeatherState.format_hour(new Date(hour_col.modelData.dt))
-                            color: hour_col.index === root.hour_cursor ? Theme.theme_secondary : Style.text_muted
+                            color: hour_col.index === root.hour_cursor ? Style.pal.secondary : Style.text_muted
                             font.family: Style.font_family
                             font.pixelSize: Style.fs(-2)
                         }

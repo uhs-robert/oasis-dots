@@ -233,7 +233,7 @@ Popup {
                 visible: root.forget_confirm
                 Layout.topMargin: 6
                 text: "Forget " + (root.forget_target ? root.forget_target.name : "this device") + "? y/n"
-                color: Theme.error
+                color: Style.pal.error
                 font.family: root.st.font_family
                 font.pixelSize: root.st.fs(-2)
             }
@@ -326,7 +326,7 @@ Popup {
                     sourceComponent: Ps1.MemBlock {
                         size: device_row.height - 4
                         glyph: device_row.modelData.connected ? "󰂱" : "󰂯"
-                        glyph_color: device_row.modelData.connected ? Theme.theme_primary_light : root.st.text_dim
+                        glyph_color: device_row.modelData.connected ? Style.pal.primary_light : root.st.text_dim
                         lit: device_row.modelData.connected
                     }
                 }
@@ -351,7 +351,7 @@ Popup {
                 Text {
                     visible: device_row.status !== ""
                     text: device_row.status
-                    color: device_row.fg(device_row.status === "Failed" ? Theme.error : root.st.text_muted)
+                    color: device_row.fg(device_row.status === "Failed" ? Style.pal.error : root.st.text_muted)
                     font.family: root.st.font_family
                     font.pixelSize: root.st.fs(-2)
                 }

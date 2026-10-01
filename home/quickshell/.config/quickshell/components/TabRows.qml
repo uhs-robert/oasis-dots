@@ -104,7 +104,7 @@ ColumnLayout {
                 y: 1
                 width: parent.width - parent.radius * 2
                 height: 1
-                color: Qt.alpha(Theme.bg_shadow, 0.35)
+                color: Qt.alpha(Style.pal.bg_shadow, 0.35)
             }
 
             RowLayout {

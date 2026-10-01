@@ -222,7 +222,7 @@ Popup {
                         label: "Battery"
                         value: root.has_battery ? Math.round(root.percent) + "%" : "None"
                         level: root.has_battery ? root.percent / 100 : -1
-                        level_color: root.percent <= 20 && root.state_label === "Discharging" ? Theme.warning : Theme.theme_primary_light
+                        level_color: root.percent <= 20 && root.state_label === "Discharging" ? Style.pal.warning : Style.pal.primary_light
                     }
 
                     Ps2.ConfigRow {

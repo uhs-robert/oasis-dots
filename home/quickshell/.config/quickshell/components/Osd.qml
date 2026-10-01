@@ -244,7 +244,7 @@ PanelWindow {
         width: frame.width
         height: frame.height
         radius: frame.radius
-        color: Theme.bg_shadow
+        color: Style.pal.bg_shadow
         opacity: frame.opacity
     }
 
@@ -278,7 +278,7 @@ PanelWindow {
         height: header_height + body.implicitHeight + pad_y * 2 + Style.slant_room
         // Sized console art makes the frame near square, where a pill radius would round it into a circle; framed art keeps the frame radius.
         radius: Style.rounded && !Style.frame_visor && !(root.console_osd && (root.console_osd.size || root.console_osd.framed)) ? height / 2 : Style.frame_radius
-        color: Style.frame_chamfer > 0 || Style.frame_visor || Style.custom_frame ? "transparent" : Style.frame_follows_island ? Theme.bg_core : Style.frame_color
+        color: Style.frame_chamfer > 0 || Style.frame_visor || Style.custom_frame ? "transparent" : Style.frame_follows_island ? Style.pal.bg_core : Style.frame_color
         border.width: Style.frame_visor || Style.frame_chamfer > 0 || Style.custom_frame ? 0 : Style.frame_border_width
         border.color: Style.frame_border_color
 
@@ -434,7 +434,7 @@ PanelWindow {
                     Layout.preferredWidth: Theme.glyph_size + 4
                     horizontalAlignment: Text.AlignHCenter
                     text: root.glyph
-                    color: !root.showing_vox ? Theme.theme_primary : root.vox_recording ? Theme.theme_label : Theme.warning
+                    color: !root.showing_vox ? Style.pal.primary : root.vox_recording ? Style.pal.label : Style.pal.warning
                     opacity: !root.showing_vox && root.muted ? 0.5 : 1
                     font.family: Theme.font_family
                     font.pixelSize: Theme.glyph_size
@@ -485,7 +485,7 @@ PanelWindow {
                     Layout.preferredWidth: percent_metrics.width
                     horizontalAlignment: Text.AlignRight
                     text: root.showing_vox ? root.elapsed : root.percent + "%"
-                    color: root.showing_vox && !root.vox_recording ? Theme.warning : !root.showing_vox && root.muted ? Style.text_muted : root.hud_layout ? Style.text_primary : Theme.fg_core
+                    color: root.showing_vox && !root.vox_recording ? Style.pal.warning : !root.showing_vox && root.muted ? Style.text_muted : root.hud_layout ? Style.text_primary : Style.pal.fg
                     font.family: Style.number_font
                     font.pixelSize: percent_metrics.font.pixelSize
                     font.bold: Style.number_font !== Style.font_family
@@ -581,7 +581,7 @@ PanelWindow {
                     source: glow_layer
                     autoPaddingEnabled: false
                     colorization: Style.glow_tint
-                    colorizationColor: Theme.theme_primary_light
+                    colorizationColor: Style.pal.primary_light
                 }
             }
         }

@@ -48,7 +48,7 @@ Popup {
     onJump_last: root.selected = root.rows.length - 1
 
     function glyph_color(row) {
-        return row.section === "Record" ? Theme.warning : row.section === "Tools" ? Theme.theme_secondary : Theme.theme_primary;
+        return row.section === "Record" ? Style.pal.warning : row.section === "Tools" ? Style.pal.secondary : Style.pal.primary;
     }
 
     function choose(index) {

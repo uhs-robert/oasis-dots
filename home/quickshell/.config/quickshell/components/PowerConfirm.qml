@@ -41,7 +41,7 @@ RowLayout {
 
     Text {
         text: "Yes"
-        color: Theme.ok
+        color: Style.pal.ok
         font.family: root.st.font_family
         font.pixelSize: root.st.font_size
 
@@ -53,7 +53,7 @@ RowLayout {
 
     Text {
         text: "No"
-        color: Theme.error
+        color: Style.pal.error
         font.family: root.st.font_family
         font.pixelSize: root.st.font_size
 

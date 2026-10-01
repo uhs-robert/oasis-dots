@@ -27,7 +27,87 @@ Singleton {
     }
 
     readonly property var styles: {
+        // The palette slots shared components draw with; goldeneye remaps them to the watch's fixed colours.
+        const pal = {
+            error: Theme.error,
+            warning: Theme.warning,
+            ok: Theme.ok,
+            info: Theme.info,
+            hint: Theme.hint,
+            primary: Theme.theme_primary,
+            primary_light: Theme.theme_primary_light,
+            primary_strong: Theme.theme_primary_strong,
+            secondary: Theme.theme_secondary,
+            secondary_strong: Theme.theme_secondary_strong,
+            accent: Theme.theme_accent,
+            label: Theme.theme_label,
+            danger: Theme.theme_label,
+            cursor: Theme.theme_cursor,
+            fg: Theme.fg_core,
+            fg_strong: Theme.fg_strong,
+            fg_muted: Theme.fg_muted,
+            fg_dim: Theme.fg_dim,
+            border: Theme.ui_border,
+            visual_bg: Theme.ui_visual_bg,
+            bg_shadow: Theme.bg_shadow,
+            bg_core: Theme.bg_core,
+            bg_crust: Theme.bg_crust,
+            bg_mantle: Theme.bg_mantle,
+            bg_surface: Theme.bg_surface,
+            magenta: Theme.magenta,
+            bright_yellow: Theme.bright_yellow,
+            bright_blue: Theme.bright_blue,
+            bright_green: Theme.bright_green,
+            bright_magenta: Theme.bright_magenta,
+            bright_red: Theme.bright_red,
+            cyan: Theme.cyan,
+            bright_cyan: Theme.bright_cyan,
+            red: Theme.red,
+            green: Theme.green,
+            yellow: Theme.yellow,
+            blue: Theme.blue
+        };
+        const watch_pal = Object.assign({}, pal, {
+            error: Watch.red,
+            warning: Watch.warm[5],
+            ok: Watch.bar_on,
+            info: Watch.green,
+            hint: Watch.green_mid,
+            primary: Watch.green,
+            primary_light: Watch.green,
+            primary_strong: Watch.green_mid,
+            secondary: Watch.green_mid,
+            secondary_strong: Watch.green_soft,
+            accent: Watch.green,
+            label: Watch.green,
+            danger: Watch.red,
+            cursor: Watch.green,
+            fg: Watch.green_mid,
+            fg_strong: Watch.green,
+            fg_muted: Watch.green_soft,
+            fg_dim: Watch.green_dim,
+            border: Qt.alpha(Watch.green, 0.5),
+            visual_bg: Qt.alpha(Watch.green, 0.22),
+            bg_shadow: Watch.black,
+            bg_core: Watch.black,
+            bg_crust: Watch.black,
+            bg_mantle: "#031505",
+            bg_surface: "#0a2a10",
+            magenta: Watch.cold_lit[2],
+            bright_yellow: Watch.warm[7],
+            bright_blue: Watch.cold_lit[6],
+            bright_green: Watch.green,
+            bright_magenta: Watch.cold_lit[4],
+            bright_red: Watch.red,
+            cyan: Watch.cold_lit[5],
+            bright_cyan: Watch.cold_lit[7],
+            red: Watch.red,
+            green: Watch.bar_on,
+            yellow: Watch.warm[5],
+            blue: Watch.cold_lit[4]
+        });
         const terminal = {
+            pal: pal,
             text_muted: Theme.fg_muted,
             text_dim: Theme.fg_dim,
             text_fg: Theme.fg_core,
@@ -266,6 +346,7 @@ Singleton {
         };
         return {
             "default": {
+                pal: pal,
                 text_muted: Theme.fg_muted,
                 text_dim: Theme.fg_dim,
                 text_fg: Theme.fg_core,
@@ -742,6 +823,7 @@ Singleton {
             }),
             // The classic pause watch for every popup, in its own fixed colours under any palette.
             "goldeneye": Object.assign({}, terminal, {
+                pal: watch_pal,
                 workspace_art: "dial",
                 wait_anim: "transmission",
                 done_anim: "lcd",
@@ -1868,6 +1950,7 @@ Singleton {
     readonly property string frame_engraving: root.active.frame_engraving
     // Draws the popup panel as the watch's green octagon.
     readonly property bool frame_watch: root.active.frame_watch
+    readonly property var pal: root.active.pal
     readonly property color accent_color: root.active.accent_color
     readonly property int accent_height: root.active.accent_height
     readonly property bool accent_full_width: root.active.accent_full_width

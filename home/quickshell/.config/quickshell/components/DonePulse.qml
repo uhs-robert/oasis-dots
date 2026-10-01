@@ -9,7 +9,7 @@ Item {
     id: root
 
     property string glyph: ""
-    property color color: Theme.theme_primary
+    property color color: Style.pal.primary
     property string font_family: Style.bar_font_family
     property int glyph_size: Theme.glyph_size
     // hearts, pixel (stepped, integer motion), lcd (pixel-styled, then the glyph blinks twice at the end), hev_pickup, levelup (inverted flash, then pixel sparkles) or fanfare.
@@ -36,7 +36,7 @@ Item {
     // A health pickup: the glyph and count flash bright and a + rises into the pickup history.
     readonly property bool hev: root.mode === "hev_pickup"
     // The count redrawn over the module's badge in this color; transparent leaves the module's own showing.
-    readonly property color count_color: root.hev ? (root.hev_flash ? Theme.fg_strong : root.color) : root.fanfare && root.elapsed >= 300 && root.elapsed < root.duration - 100 ? Theme.theme_secondary : "transparent"
+    readonly property color count_color: root.hev ? (root.hev_flash ? Style.pal.fg_strong : root.color) : root.fanfare && root.elapsed >= 300 && root.elapsed < root.duration - 100 ? Style.pal.secondary : "transparent"
     // Drawn beneath the glyph row, except by modes that redraw the count badge.
     readonly property bool under: !root.hev && !root.fanfare
     readonly property bool levelup: root.mode === "levelup"
@@ -149,8 +149,8 @@ Item {
     readonly property real hev_fade: root.hev && root.elapsed >= root.duration - 300 ? 0.75 + 0.25 * root.phase(root.duration - 150, 150) : 1
 
     // levelup: the glyph flashes inverted, then pixel plus-sparkles burst from its corners, the far ones skipped on a nudge.
-    readonly property color light: Style.shade_3.a > 0 ? Style.shade_3 : Theme.fg_strong
-    readonly property color dark: Style.shade_0.a > 0 ? Style.shade_0 : Theme.bg_crust
+    readonly property color light: Style.shade_3.a > 0 ? Style.shade_3 : Style.pal.fg_strong
+    readonly property color dark: Style.shade_0.a > 0 ? Style.shade_0 : Style.pal.bg_crust
     readonly property bool inverted: root.levelup && root.elapsed >= 100 && root.elapsed < 250
 
     Rectangle {
@@ -216,8 +216,8 @@ Item {
 
             ShapePath {
                 strokeWidth: 1
-                strokeColor: Qt.alpha(Theme.theme_secondary, 0.4)
-                fillColor: Theme.theme_secondary
+                strokeColor: Qt.alpha(Style.pal.secondary, 0.4)
+                fillColor: Style.pal.secondary
                 PathPolyline {
                     path: {
                         const s = star.s;
@@ -232,12 +232,12 @@ Item {
         x: -width / 2
         y: -height / 2 - (root.fanfare ? (root.nudge ? 2 : 3) * Math.sin(Math.PI * root.phase(80, 360)) : 0)
         text: root.glyph
-        color: root.hev_flash ? Theme.fg_strong : root.inverted ? root.dark : root.color
+        color: root.hev_flash ? Style.pal.fg_strong : root.inverted ? root.dark : root.color
         opacity: root.hev_fade
         font.family: root.font_family
         font.pixelSize: root.glyph_size
         style: root.hev_flash ? Text.Outline : Style.bar_text_style
-        styleColor: root.hev_flash ? Qt.alpha(Theme.ok, 0.7) : Style.bar_glow_color
+        styleColor: root.hev_flash ? Qt.alpha(Style.pal.ok, 0.7) : Style.bar_glow_color
         scale: root.hev || root.fanfare ? 1 : root.pop_scale
         visible: !root.lcd || root.elapsed < root.blink_start || root.blink_step % 2 === 1
     }
@@ -253,7 +253,7 @@ Item {
         font.pixelSize: Style.bar_font_size - 3
         font.bold: true
         style: root.hev_flash ? Text.Outline : Style.bar_text_style
-        styleColor: root.hev_flash ? Qt.alpha(Theme.ok, 0.7) : Style.bar_glow_color
+        styleColor: root.hev_flash ? Qt.alpha(Style.pal.ok, 0.7) : Style.bar_glow_color
     }
 
     // The pickup +, kept inside the glyph's slot and the bar's height.
@@ -273,14 +273,14 @@ Item {
             x: 2.5
             width: 2
             height: parent.height
-            color: Theme.ok
+            color: Style.pal.ok
         }
 
         Rectangle {
             y: 2.5
             width: parent.width
             height: 2
-            color: Theme.ok
+            color: Style.pal.ok
         }
     }
 }

@@ -2,12 +2,12 @@
 import QtQuick
 import "../../lock/skins/goldeneye" as Watch
 
-// A popup's content area as the watch's translucent green octagon, inset in the black frame.
+// A popup or toast content area as the watch's translucent green octagon, inset in the black frame.
 Item {
     id: root
 
     required property var st
-    readonly property real edge: root.st.inset_pad + root.st.lcd_margin
+    property real edge: root.st.inset_pad + root.st.lcd_margin
 
     Watch.PanelShape {
         x: root.edge

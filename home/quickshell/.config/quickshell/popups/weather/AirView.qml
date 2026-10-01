@@ -76,7 +76,7 @@ Item {
                     Layout.preferredWidth: 0
                     spacing: 0
                     Text { Layout.fillWidth: true; elide: Text.ElideRight; text: reading.modelData.label; color: Style.text_muted; font.family: Style.font_family; font.pixelSize: Style.fs(-3) }
-                    Text { Layout.fillWidth: true; elide: Text.ElideRight; text: reading.modelData.value !== null ? reading.modelData.value.toFixed(1) : "--"; color: Theme.fg_core; font.family: Style.font_family; font.pixelSize: Style.fs(1) }
+                    Text { Layout.fillWidth: true; elide: Text.ElideRight; text: reading.modelData.value !== null ? reading.modelData.value.toFixed(1) : "--"; color: Style.pal.fg; font.family: Style.font_family; font.pixelSize: Style.fs(1) }
                 }
             }
         }
@@ -86,7 +86,7 @@ Item {
             elide: Text.ElideRight
             readonly property var r: root.cursor_row
             text: r ? WeatherState.format_hour(new Date(r.dt)) + "  AQI " + r.aqi + " (" + WeatherState.aqi_band(r.aqi).label + ")" : ""
-            color: Theme.fg_core
+            color: Style.pal.fg
             font.family: Style.font_family
             font.pixelSize: Style.fs(-1)
         }
@@ -126,7 +126,7 @@ Item {
                     const y = top_pad + chart_h - bar_h;
 
                     if (i === root.cursor_index) {
-                        ctx.fillStyle = Theme.bg_surface;
+                        ctx.fillStyle = Style.pal.bg_surface;
                         ctx.fillRect(i * col_w, top_pad, col_w, chart_h);
                     }
 

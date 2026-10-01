@@ -148,7 +148,7 @@ PanelWindow {
         width: frame.width
         height: frame.height
         radius: frame.radius
-        color: Theme.bg_shadow
+        color: Style.pal.bg_shadow
     }
 
     Loader {
@@ -187,7 +187,7 @@ PanelWindow {
         width: Math.max(body.implicitWidth + pad_x * 2, frame.header_min) + Style.slant_room
         height: top_edge + header_height + body.implicitHeight + pad_y * 2 + Style.slant_room
         radius: Style.frame_radius
-        color: Style.frame_chamfer > 0 || Style.frame_visor || Style.custom_frame ? "transparent" : Style.frame_follows_island ? Theme.bg_mantle : Style.frame_color
+        color: Style.frame_chamfer > 0 || Style.frame_visor || Style.custom_frame ? "transparent" : Style.frame_follows_island ? Style.pal.bg_mantle : Style.frame_color
         border.width: Style.frame_visor || Style.frame_chamfer > 0 || Style.custom_frame ? 0 : Style.frame_border_width
         border.color: Style.frame_border_color
 
@@ -289,7 +289,7 @@ PanelWindow {
                     x: 10
                     y: (parent.height - height) / 2
                     text: Style.title_prefix + Style.title_text(root.title) + (Style.caret_phase ? Style.title_suffix : " ".repeat(Style.title_suffix.length))
-                    color: !root.tinted ? (Style.show_title ? Style.title_fg : Style.accent_color) : !Style.show_title || !root.filled_title ? root.header_color : Style.fade_fills ? Style.title_fg : Theme.bg_crust
+                    color: !root.tinted ? (Style.show_title ? Style.title_fg : Style.accent_color) : !Style.show_title || !root.filled_title ? root.header_color : Style.fade_fills ? Style.title_fg : Style.pal.bg_crust
                     font.family: Style.title_font_family
                     font.pixelSize: Style.title_size > 0 ? Style.title_size : Style.fs(-2)
                     font.weight: Style.title_weight > 0 ? Style.title_weight : Style.title_font_family === Style.font_family ? Font.Bold : Font.Normal
@@ -305,7 +305,7 @@ PanelWindow {
                 sourceComponent: Neovim.BorderTitle {
                     title: Style.title_text(root.title)
                     fill: root.tinted ? root.header_color : Style.title_bg
-                    ink: root.tinted ? Theme.bg_crust : Style.title_fg
+                    ink: root.tinted ? Style.pal.bg_crust : Style.title_fg
                 }
             }
 
@@ -367,7 +367,7 @@ PanelWindow {
                                 width: Math.min(implicitWidth, root.desc_max_width)
                                 elide: Text.ElideRight
                                 text: row.modelData.desc
-                                color: row.modelData.group ? Style.accent_color : Theme.fg_core
+                                color: row.modelData.group ? Style.accent_color : Style.pal.fg
                                 font.family: Style.font_family
                                 font.pixelSize: root.text_size
                                 font.bold: row.modelData.group === true
@@ -407,7 +407,7 @@ PanelWindow {
                     source: glow_layer
                     autoPaddingEnabled: false
                     colorization: Style.glow_tint
-                    colorizationColor: Theme.theme_primary_light
+                    colorizationColor: Style.pal.primary_light
                 }
             }
         }

@@ -539,7 +539,7 @@ Popup {
                             width: parent.width
                             label: "Connection"
                             value: parent.wifi ? parent.wifi.name : parent.wired ? "Wired: " + root.wired_device.name : "Not connected"
-                            value_color: parent.wifi || parent.wired ? Theme.fg_strong : root.st.text_muted
+                            value_color: parent.wifi || parent.wired ? Style.pal.fg_strong : root.st.text_muted
                         }
 
                         Ps2.ConfigRow {
@@ -612,7 +612,7 @@ Popup {
                 Text {
                     visible: root.forget_confirm
                     text: "Forget " + (root.forget_target ? root.forget_target.name : "this network") + "? y/n"
-                    color: Theme.error
+                    color: Style.pal.error
                     font.family: root.st.font_family
                     font.pixelSize: root.st.fs(-2)
                 }
@@ -876,7 +876,7 @@ Popup {
                         Layout.fillWidth: true
                         implicitHeight: Style.px(26)
                         radius: Style.radius(4)
-                        color: Theme.bg_surface
+                        color: Style.pal.bg_surface
 
                         TextInput {
                             id: dns_input
@@ -932,7 +932,7 @@ Popup {
                     Layout.fillWidth: true
                     wrapMode: Text.Wrap
                     text: root.setting_error
-                    color: Theme.warning
+                    color: Style.pal.warning
                     font.family: root.st.font_family
                     font.pixelSize: root.st.fs(-3)
                 }
@@ -970,7 +970,7 @@ Popup {
                 Layout.fillWidth: true
                 height: Style.px(26)
                 radius: Style.radius(4)
-                color: Theme.bg_surface
+                color: Style.pal.bg_surface
 
                 TextInput {
                     id: password_input

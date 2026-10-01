@@ -87,7 +87,7 @@ Item {
         sourceComponent: AtbBar {
             value: root.value
             fill_color: root.on_selection && root.st.selection_inverse ? root.st.selection_fg : root.on_color
-            shade_color: Qt.colorEqual(root.on_color, root.st.meter_on) && root.st.meter_shade.a > 0 ? root.st.meter_shade : Qt.tint(fill_color, Qt.alpha(Theme.fg_strong, 0.35))
+            shade_color: Qt.colorEqual(root.on_color, root.st.meter_on) && root.st.meter_shade.a > 0 ? root.st.meter_shade : Qt.tint(fill_color, Qt.alpha(Style.pal.fg_strong, 0.35))
             hot_from: root.hot ? 0 : root.hot_from
             busy: root.busy
             busy_pos: root.busy_pos

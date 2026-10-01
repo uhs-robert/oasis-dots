@@ -121,7 +121,7 @@ Popup {
 
                     Text {
                         text: UpdatesState.total
-                        color: Theme.fg_strong
+                        color: Style.pal.fg_strong
                         font.family: root.st.font_family
                         font.pixelSize: root.st.font_size * 2
                         font.weight: Font.ExtraLight
@@ -133,7 +133,7 @@ Popup {
 
                         Text {
                             text: UpdatesState.total === 1 ? "block" : "blocks"
-                            color: Theme.theme_primary_light
+                            color: Style.pal.primary_light
                             font.family: root.st.font_family
                             font.pixelSize: root.st.fs(-4)
                             font.capitalization: Font.AllUppercase
@@ -169,7 +169,7 @@ Popup {
                     width: Math.min(implicitWidth, parent.width)
                     elide: Text.ElideRight
                     text: UpdatesState.checking ? "Checking…" : UpdatesState.error ? UpdatesState.error : (UpdatesState.last_checked > 0 ? "Checked " + Qt.formatTime(new Date(UpdatesState.last_checked), "HH:mm") : "Never checked")
-                    color: UpdatesState.error && !UpdatesState.checking ? Theme.warning : root.st.text_muted
+                    color: UpdatesState.error && !UpdatesState.checking ? Style.pal.warning : root.st.text_muted
                     font.family: root.st.font_family
                     font.pixelSize: root.st.fs(-3)
                 }
@@ -186,7 +186,7 @@ Popup {
                     wrapMode: Text.Wrap
                     visible: root.current_list.length === 0
                     text: UpdatesState.error ? UpdatesState.error : "Up to date"
-                    color: UpdatesState.error ? Theme.warning : root.st.text_dim
+                    color: UpdatesState.error ? Style.pal.warning : root.st.text_dim
                     font.family: root.st.font_family
                     font.pixelSize: root.st.fs(-1)
                 }
@@ -268,7 +268,7 @@ Popup {
                             sourceComponent: Ps2.SaveCube {
                                 width: Style.px(20)
                                 letter: update_row.modelData.name.charAt(0)
-                                color: root.current_sub === 0 ? Theme.theme_primary : Theme.theme_secondary_strong
+                                color: root.current_sub === 0 ? Style.pal.primary : Style.pal.secondary_strong
                                 selected: update_row.selected
                             }
                         }
@@ -301,7 +301,7 @@ Popup {
                                 Layout.leftMargin: row_list.stacked ? 8 : 0
                                 elide: Text.ElideLeft
                                 textFormat: Text.StyledText
-                                text: update_row.modelData.old + " → <font color=\"" + Theme.yellow + "\">" + update_row.modelData.new + "</font>"
+                                text: update_row.modelData.old + " → <font color=\"" + Style.pal.yellow + "\">" + update_row.modelData.new + "</font>"
                                 color: update_row.fg(root.st.text_muted)
                                 font.family: root.st.font_family
                                 font.pixelSize: root.st.fs(-3)

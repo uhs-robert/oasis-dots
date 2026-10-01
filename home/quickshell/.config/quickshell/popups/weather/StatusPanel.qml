@@ -56,7 +56,7 @@ ColumnLayout {
     readonly property real pct_col_w: Math.max(40, pct_metrics.tightBoundingRect.width + 4)
 
     component Label: Text {
-        color: Theme.theme_primary_light
+        color: Style.pal.primary_light
         font.family: Style.font_family
         font.pixelSize: Style.fs(-4)
         font.weight: Font.ExtraBold
@@ -64,14 +64,14 @@ ColumnLayout {
     }
 
     component Value: Text {
-        color: Theme.fg_strong
+        color: Style.pal.fg_strong
         font.family: Style.font_family
         font.pixelSize: Style.font_size
         font.weight: Font.ExtraBold
     }
 
     component Small: Text {
-        color: Theme.theme_primary_light
+        color: Style.pal.primary_light
         font.family: Style.font_family
         font.pixelSize: Style.fs(-5)
         font.weight: Font.DemiBold
@@ -85,8 +85,8 @@ ColumnLayout {
         property string high: ""
         property string unit: ""
         property real fill: 0
-        property color from: Theme.theme_primary_strong
-        property color to: Theme.theme_primary_light
+        property color from: Style.pal.primary_strong
+        property color to: Style.pal.primary_light
 
         Layout.fillWidth: true
         spacing: 6
@@ -162,7 +162,7 @@ ColumnLayout {
             Layout.preferredHeight: 66
             Layout.alignment: Qt.AlignTop
             radius: 4
-            color: Theme.bg_core
+            color: Style.pal.bg_core
             border.width: 2
             border.color: Style.frame_border_color
 
@@ -181,8 +181,8 @@ ColumnLayout {
                         focalX: 31
                         focalY: 25
                         focalRadius: 0
-                        GradientStop { position: 0; color: Qt.tint(Theme.bg_core, Qt.alpha(Theme.theme_primary_light, 0.22)) }
-                        GradientStop { position: 0.7; color: Theme.bg_core }
+                        GradientStop { position: 0; color: Qt.tint(Style.pal.bg_core, Qt.alpha(Style.pal.primary_light, 0.22)) }
+                        GradientStop { position: 0.7; color: Style.pal.bg_core }
                     }
                     PathRectangle { width: 62; height: 62; radius: 2 }
                 }
@@ -222,7 +222,7 @@ ColumnLayout {
                     Layout.minimumWidth: 0
                     elide: Text.ElideRight
                     text: root.has ? root.cur.cond : WeatherState.loading ? "Loading" : "Unavailable" + (WeatherState.error ? ": " + WeatherState.error : "")
-                    color: root.has || WeatherState.loading ? Theme.fg_strong : Theme.warning
+                    color: root.has || WeatherState.loading ? Style.pal.fg_strong : Style.pal.warning
                     font.family: Style.font_family
                     font.pixelSize: Style.fs(2)
                     font.weight: Font.ExtraBold
@@ -245,8 +245,8 @@ ColumnLayout {
                 now: root.has ? String(root.cur.humidity) : ""
                 unit: "%"
                 fill: root.has ? root.cur.humidity / 100 : 0
-                from: Theme.theme_secondary_strong
-                to: Theme.theme_secondary
+                from: Style.pal.secondary_strong
+                to: Style.pal.secondary
             }
         }
     }
@@ -293,7 +293,7 @@ ColumnLayout {
         Layout.fillWidth: true
         Layout.preferredHeight: limit_row.implicitHeight + 12
         radius: 5
-        color: Qt.alpha(Theme.bg_crust, 0.35)
+        color: Qt.alpha(Style.pal.bg_crust, 0.35)
         border.width: 2
         border.color: Style.frame_border_color
 
@@ -313,8 +313,8 @@ ColumnLayout {
                 Layout.fillWidth: true
                 Layout.preferredHeight: 8
                 value: root.today ? root.today.pop / 100 : 0
-                fill_color: Theme.info
-                shade_color: Qt.tint(Theme.info, Qt.alpha(Theme.fg_strong, 0.55))
+                fill_color: Style.pal.info
+                shade_color: Qt.tint(Style.pal.info, Qt.alpha(Style.pal.fg_strong, 0.55))
                 ticks: true
             }
 
@@ -332,7 +332,7 @@ ColumnLayout {
         Layout.fillWidth: true
         elide: Text.ElideRight
         text: WeatherState.stale ? "Stale data" + (WeatherState.error ? ": " + WeatherState.error : "") : WeatherState.location_name
-        color: WeatherState.stale ? Theme.warning : Theme.theme_primary_light
+        color: WeatherState.stale ? Style.pal.warning : Style.pal.primary_light
         font.pixelSize: Style.fs(-4)
     }
 }

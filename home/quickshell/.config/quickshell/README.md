@@ -166,7 +166,7 @@ It installs to `/etc/greetd/quickshell` with its data in `/var/lib/qs-greeter`, 
 
 ## Extending
 
-**A style.** Add its token set to `styles` in `theme/Style.qml` (most build on the shared `terminal` base with `Object.assign`), then add its name to `order`, and to `labels` if the label isn't just the capitalized name. Optional extras: a transition in `components/transitions/Kinds.js`, a sound pack in `sounds/<style>/` (a patch in `scripts/synth-sounds`) and a lock skin.
+**A style.** Add its token set to `styles` in `theme/Style.qml` (most build on the shared `terminal` base with `Object.assign`), then add its name to `order`, and to `labels` if the label isn't just the capitalized name. Shared popup components take their palette colors from `Style.pal`, which defaults to the Oasis palette; a style can remap it (goldeneye does). Optional extras: a transition in `components/transitions/Kinds.js`, a sound pack in `sounds/<style>/` (a patch in `scripts/synth-sounds`) and a lock skin.
 
 **A Settings section.** Write `settings/sections/<Name>Section.qml`, usually a `RowsSection` with a list of rows, and add an entry to `list` in `settings/Sections.js`. The sidebar, search and IPC pick it up from there.
 

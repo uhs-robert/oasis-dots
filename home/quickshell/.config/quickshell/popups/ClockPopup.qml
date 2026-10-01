@@ -322,7 +322,7 @@ Popup {
                             text: cell.modelData.text
                             font.family: root.st.font_family
                             font.pixelSize: cell.modelData.kind === "header" || cell.modelData.kind === "weeknum" ? root.grid_font_size - 1 : root.grid_font_size
-                            color: cell.marked ? root.st.title_fg : cell.modelData.kind === "header" ? root.st.text_muted : cell.modelData.kind === "weeknum" ? root.st.text_dim : cell.modelData.is_today ? Theme.theme_accent : (cell.modelData.in_month ? root.st.text_fg : root.st.text_muted)
+                            color: cell.marked ? root.st.title_fg : cell.modelData.kind === "header" ? root.st.text_muted : cell.modelData.kind === "weeknum" ? root.st.text_dim : cell.modelData.is_today ? Style.pal.accent : (cell.modelData.in_month ? root.st.text_fg : root.st.text_muted)
                             font.underline: cell.modelData.kind === "day" && cell.modelData.is_today === true && !root.st.marker_fill
                             font.bold: cell.marked
                         }
