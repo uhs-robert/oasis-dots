@@ -761,7 +761,7 @@ Singleton {
                 frame_watch: true,
                 lcd_top: Qt.rgba(Watch.panel_top[0], Watch.panel_top[1], Watch.panel_top[2], Watch.panel_top[3]),
                 lcd_bottom: Qt.rgba(Watch.panel_bottom[0], Watch.panel_bottom[1], Watch.panel_bottom[2], Watch.panel_bottom[3]),
-                lcd_margin: 10,
+                lcd_margin: 16,
                 picker_skin: "goldeneye",
                 accent_color: Watch.green,
                 accent_height: 2,

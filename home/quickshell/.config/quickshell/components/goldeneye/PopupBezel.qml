@@ -3,7 +3,7 @@ import QtQuick
 import "../../lock/skins/goldeneye" as Watch
 import "../../lock/skins/goldeneye/Watch.js" as W
 
-// The popup frame as the classic watch: warm and blue segment columns, white bars and studs on the bezel, the green octagon panel inside.
+// The popup frame as the classic watch: curved warm and blue segment arcs, white bars and studs on the bezel, the green octagon panel inside.
 Item {
     id: root
 
@@ -11,35 +11,31 @@ Item {
     property real edge: root.st.inset_pad + root.st.lcd_margin
     property real rim: root.st.frame_border_width
     readonly property real band: root.edge - root.rim
-    readonly property real run: root.height - root.edge * 2
-    readonly property real gap: 3
-    readonly property real seg: Math.max(2, (root.run - root.gap * 7) / 8)
-    readonly property real mid: root.height / 2
+    readonly property real thick: 5
+    readonly property real run: Math.max(30, Math.min(root.height - root.edge * 2 - 8, 8 * 34 + 7 * 3))
+    readonly property real sag: Math.min(Math.max(3, root.band - 1 - root.thick - 1), Math.max(4, root.run * 0.1))
+    readonly property real arc_w: root.thick / 2 + root.sag / (1 - Math.cos(50 * Math.PI / 180))
+    readonly property real arc_h: root.run / 0.72 + root.thick
 
-    Repeater {
-        model: 8
+    Watch.SegmentArc {
+        x: root.rim + 1
+        y: (root.height - root.arc_h) / 2
+        width: root.arc_w
+        height: root.arc_h
+        thickness: root.thick
+        gap: 3
+        colors: W.warm
+    }
 
-        Item {
-            id: pair
-            required property int index
-            readonly property real y0: root.edge + pair.index * (root.seg + root.gap)
-
-            Rectangle {
-                x: root.rim + root.band * 0.2
-                y: pair.y0
-                width: root.band * 0.6
-                height: root.seg
-                color: W.warm[pair.index]
-            }
-
-            Rectangle {
-                x: root.width - root.rim - root.band * 0.8
-                y: pair.y0
-                width: root.band * 0.6
-                height: root.seg
-                color: W.cold_lit[pair.index]
-            }
-        }
+    Watch.SegmentArc {
+        x: root.width - root.rim - 1 - root.arc_w
+        y: (root.height - root.arc_h) / 2
+        width: root.arc_w
+        height: root.arc_h
+        thickness: root.thick
+        gap: 3
+        mirror: true
+        colors: W.cold_lit
     }
 
     Repeater {
