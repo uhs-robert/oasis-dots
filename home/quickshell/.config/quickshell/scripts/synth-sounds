@@ -399,6 +399,20 @@ def crt():
         "confirm": finish(lowpass(reverb(confirm, 0.25, 0.08), 5000), 0.4),
         "cancel": finish(lowpass(reverb(cancel, 0.25, 0.08), 4500), 0.4),
         "notify": finish(lowpass(reverb(notify, 0.6, 0.15), 5000), 0.42),
+        **crt_lock(),
+    }
+
+
+def crt_lock():
+    # A buzzing fault, the tube switching off, and the tube switching on.
+    fault = static(0.1, 0.04, seed=14) * 0.5 + sweep(140, 105, 0.1, 0.08, 0.05, cutoff=1200)
+    error = mix_at([(0, fault), (0.14, fault * 0.9)], 0.26)
+    off = mix_at([(0, sweep(900, 60, 0.45, 0.16, 0.09)), (0.02, static(0.3, 0.06) * 0.2), (0.16, thunk(0.16, 70) * 0.9)], 0.5)
+    on = mix_at([(0, thunk(0.14, 70) * 0.8), (0.03, sweep(60, 900, 0.5, 0.22, 0.12)), (0.05, static(0.4, 0.1) * 0.22)], 0.56)
+    return {
+        "error": finish(lowpass(error, 3500), 0.4),
+        "lock": finish(lowpass(reverb(off, 0.3, 0.1), 4500), 0.42),
+        "unlock": finish(lowpass(reverb(on, 0.35, 0.12), 5000), 0.42),
     }
 
 
@@ -445,6 +459,19 @@ def ps2():
         "confirm": finish(lowpass(reverb(confirm, 1.5, 0.4), 6000), 0.42),
         "cancel": finish(lowpass(reverb(cancel, 1.2, 0.35), 4000), 0.38),
         "notify": finish(reverb(notify, 1.8, 0.45), 0.44),
+        **ps2_lock(),
+    }
+
+
+def ps2_lock():
+    # A dark close cluster, chords stepping down into the low register, and chords stepping up to a sparkle.
+    error = bloom([58, 59, 64], 0.5, attack=0.03, decay=0.14)
+    down = [(0, bloom([77, 82], 0.6, attack=0.05, decay=0.18)), (0.15, bloom([70, 77], 0.7, attack=0.05, decay=0.22)), (0.3, bloom([58, 65], 1.1, attack=0.07, decay=0.4))]
+    up = [(0, bloom([58, 65], 0.6, attack=0.05, decay=0.18)), (0.15, bloom([70, 77], 0.7, attack=0.05, decay=0.22)), (0.3, bloom([82, 89], 1.1, attack=0.07, decay=0.4))]
+    return {
+        "error": finish(lowpass(reverb(error, 0.8, 0.3), 2500), 0.4),
+        "lock": finish(lowpass(reverb(mix_at(down, 1.5), 1.4, 0.4), 4000), 0.4),
+        "unlock": finish(lowpass(reverb(mix_at(up + [(0.34, shine(94, 0.8, 0.3) * 0.25)], 1.5), 1.6, 0.42), 6500), 0.42),
     }
 
 
@@ -628,6 +655,20 @@ def reticle():
         "confirm": finish(reverb(confirm, 0.9, 0.25), 0.26),
         "cancel": finish(lowpass(reverb(cancel, 0.8, 0.22), 5000), 0.24),
         "notify": finish(reverb(notify, 2.0, 0.5), 0.4),
+        **reticle_lock(),
+    }
+
+
+def reticle_lock():
+    # Two dull low pips, a target released (pips down to a low ping), a target acquired (pips up to a high ping).
+    gap = np.zeros(int(0.05 * RATE))
+    error = np.concatenate([pip(784, 0.05), gap, pip(784, 0.05)])
+    released = mix_at([(0, np.concatenate([pip(2349, 0.03), pip(1568, 0.03), pip(1175, 0.035)])), (0.1, ping(587, 0.9, 0.25) * 0.5)], 1.0)
+    acquired = mix_at([(0, np.concatenate([pip(1175, 0.03), pip(1568, 0.03), pip(2349, 0.035)])), (0.1, ping(2349, 0.9, 0.28) * 0.4)], 1.0)
+    return {
+        "error": finish(lowpass(reverb(error, 0.5, 0.15), 3000), 0.26),
+        "lock": finish(lowpass(reverb(released, 1.4, 0.4), 5000), 0.3),
+        "unlock": finish(reverb(acquired, 1.6, 0.45), 0.3),
     }
 
 
