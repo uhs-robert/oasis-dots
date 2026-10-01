@@ -12,6 +12,7 @@ local Config = require("config") ---@class Config
 local Machines = require("config.machines")
 local Default = require("config.machines.default")
 local Scripts = require("lib.scripts")
+local Closed = require("lib.closed_windows")
 
 --- Initialises the Hyprland session: applies machine config and loads all subsystems.
 local function init()
@@ -27,7 +28,7 @@ local function init()
       auto_show = { disabled = { "NORMAL", "INSERT", "VISUAL", "V-LINE", "Cursor" } },
     },
     prompt = { frontend = "quickshell" },
-    close_handler = function(addresses, kill) require("lib.closed_windows").close_addresses(addresses, kill) end,
+    close_handler = Closed.close_addresses,
   })
 end
 
