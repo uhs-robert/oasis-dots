@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # Builds the GoldenEye lock skin's intro frames and bezel plate from a capture of the pause watch (needs ffmpeg, PIL and numpy).
-# Usage: goldeneye-frames [VIDEO]   (default: downloads the reference capture with yt-dlp into ~/.cache/goldeneye-frames)
-# Writes lock/skins/goldeneye/frames/: arm_00.jpg.., plate.jpg and count.txt (gitignored, game footage).
+# Usage: goldeneye-frames [VIDEO]   (default: downloads the whole reference capture, an hour long, with yt-dlp into ~/.cache/goldeneye-frames)
+# Writes lock/skins/goldeneye/frames/: arm_NN.jpg (matted onto black) with mask_NN.png, plate.jpg and count.txt (gitignored, game footage).
 import os
 import subprocess
 import sys
@@ -10,12 +10,19 @@ from collections import deque
 from pathlib import Path
 
 import numpy as np
-from PIL import Image
+from PIL import Image, ImageDraw
 
 URL = "https://youtu.be/LlzYhBITxzs"
 CROP = (130, 0, 1150, 720)
-FIRST, LAST, PLATE_AT, PANEL_AT = 36, 67, 90, 67
-SKIP_BOX = (975, 585, 1020, 720)
+FIRST, LAST, CASE_FROM, SILHOUETTE_FROM = 36, 67, 52, 66
+ICON = (1002, 632, 22)
+# The bezel is the darkest of PLATE_N settled-face frames PLATE_STEP seconds apart: the real-time hands never sit on one spot for long.
+PLATE_START, PLATE_STEP, PLATE_N = 10.0, 120.0, 29
+SILHOUETTE = [(63, 0), (960, 0), (1020, 152), (1020, 657), (962, 720), (130, 720), (0, 617), (0, 115)]
+PANEL_LEFT = [(294, 118), (272, 144), (250, 168), (232, 200), (212, 232), (200, 264), (194, 296), (188, 340), (188, 380), (194, 420), (204, 460), (214, 492), (234, 524), (251, 556), (274, 580), (294, 603)]
+DOTS = [(230, 200), (788, 200), (230, 520), (788, 520)]
+DOT_SPRITE = (350, 635)
+BARS = [(163, 188), (832, 857)]
 OUT = Path(__file__).resolve().parent.parent / "lock" / "skins" / "goldeneye" / "frames"
 
 
@@ -26,7 +33,7 @@ def fetch(video):
     cache.mkdir(parents=True, exist_ok=True)
     path = cache / "ref.mp4"
     if not path.exists():
-        subprocess.run(["yt-dlp", "-f", "bestvideo[height<=720]", "--download-sections", "*0-6", "-o", str(path), URL], check=True)
+        subprocess.run(["yt-dlp", "-f", "bestvideo[height<=720]", "-o", str(path), URL], check=True)
     return str(path)
 
 
@@ -108,75 +115,100 @@ def fill_holes(m, down=4):
     return m | full
 
 
-# Skin is orange, the sleeve dark and smooth, the bracelet and bezel bright and grey; gravel is none of those.
-def span_fill(m):
-    out = np.zeros_like(m)
-    for y in range(m.shape[0]):
-        xs = np.flatnonzero(m[y])
-        if len(xs) > 40:
-            out[y, xs[0] : xs[-1] + 1] = True
+def polygon_mask(points, scale=4):
+    img = Image.new("L", (1020 * scale, 720 * scale), 0)
+    ImageDraw.Draw(img).polygon([(x * scale, y * scale) for x, y in points], fill=255)
+    return np.asarray(img.resize((1020, 720), Image.BOX)).astype(np.float32) / 255
+
+
+def panel_points():
+    right = [(1020 - x, y) for x, y in reversed(PANEL_LEFT)]
+    return PANEL_LEFT + right
+
+
+def feather(m):
+    return box(box(erode(m, 1).astype(np.float32), 1), 1)
+
+
+def inpaint(img, cx, cy, r):
+    x0, y0, x1, y1 = cx - r - 6, cy - r - 6, min(1020, cx + r + 6), min(720, cy + r + 6)
+    patch = img[y0:y1, x0:x1].copy()
+    ys, xs = np.mgrid[y0:y1, x0:x1]
+    hole = (xs - cx) ** 2 + (ys - cy) ** 2 <= r * r
+    patch[hole] = patch[~hole].mean(axis=0)
+    for _ in range(400):
+        p = np.pad(patch, ((1, 1), (1, 1), (0, 0)), mode="edge")
+        avg = (p[:-2, 1:-1] + p[2:, 1:-1] + p[1:-1, :-2] + p[1:-1, 2:]) / 4
+        patch[hole] = avg[hole]
+    out = img.copy()
+    out[y0:y1, x0:x1] = patch
     return out
 
 
-def matte(f, zoomed):
+# The camera keeps the watch centred, so its case and bracelet follow from the green panel's width alone.
+WATCH_CENTRE = (510, 361)
+
+
+def case_mask(f):
+    r, g, b = f[..., 0], f[..., 1], f[..., 2]
+    green = dilate(erode((g > r + 14) & (g > b + 14) & (g > 30), 1), 1)
+    ys, xs = np.nonzero(green)
+    if len(xs) < 30:
+        return None
+    cx, cy = np.median(xs), np.median(ys)
+    near = (abs(xs - cx) < 400) & (abs(ys - cy) < 300)
+    pw = float(np.subtract(*np.percentile(xs[near], [98, 2])))
+    x, y = WATCH_CENTRE
+    img = Image.new("L", (1020 * 4, 720 * 4), 0)
+    draw = ImageDraw.Draw(img)
+    rx, ry, bw, bh = 0.98 * pw, 0.7 * pw, 0.485 * pw, 1.27 * pw
+    draw.ellipse([(x - rx) * 4, (y - ry) * 4, (x + rx) * 4, (y + ry) * 4], fill=255)
+    draw.rectangle([(x - bw) * 4, (y - bh) * 4, (x + bw) * 4, (y + bh) * 4], fill=255)
+    return np.asarray(img.resize((1020, 720), Image.BOX)) > 127
+
+
+# Skin is orange, the sleeve dark and smooth, the bracelet and bezel bright and grey; gravel is none of those.
+def matte(f, i):
     r, g, b = f[..., 0], f[..., 1], f[..., 2]
     lum = (r + g + b) / 3
-    skin = ((r - b) > 14) & (r > 35)
+    skin = ((r - b) > 8) & (r > 22)
     mean = box(lum, 3)
     sd = np.sqrt(np.maximum(box(lum * lum, 3) - mean * mean, 0))
     sleeve = (mean < 38) & (sd < 5.5) & ((b - r) > 1)
     sat = np.maximum(np.maximum(r, g), b) - np.minimum(np.minimum(r, g), b)
-    metal = (box(lum, 5) > 105) & (box(sat, 5) < 30)
-    metal = dilate(erode(metal, 2), 2)
-    m = skin | sleeve | metal
-    m[SKIP_BOX[1] :, SKIP_BOX[0] :] = False
-    if zoomed:
-        ys, xs = np.nonzero(metal)
-        x0, x1 = np.percentile(xs, [1, 99]).astype(int)
-        y0, y1 = np.percentile(ys, [1, 99]).astype(int)
-        if x1 - x0 > 600:
-            m = span_fill(dilate(erode(m, 3), 3))
-        else:
-            m[y0 : y1 + 1, x0 : x1 + 1] = True
+    metal = dilate(erode((box(lum, 5) > 105) & (box(sat, 5) < 30), 2), 2)
+    if i >= SILHOUETTE_FROM:
+        return polygon_mask(SILHOUETTE)
+    m = skin | sleeve
+    case = case_mask(f) if i >= CASE_FROM else None
+    m |= metal if case is None else case
     m = close(m, 5)
     m = largest(m)
+    m = dilate(erode(m, 3), 3)
     m = fill_holes(close(m, 4))
     m = erode(dilate(m, 1), 2) | erode(m, 1)
-    return box(m.astype(np.float32), 1)
+    return feather(m)
 
 
-def keyed(f):
-    ys, xs = np.mgrid[0:720, 0:1020]
-    brown = ((f[..., 0] - f[..., 2]) > 14) & ((f[..., 0] - f[..., 2]) < 90) & (f[..., 0] > 35) & ((xs < 60) | (xs > 940) | ((ys > 640) & (xs < 140)))
-    out = f.copy()
-    out[dilate(brown, 2)] = 0
-    out[SKIP_BOX[1] :, SKIP_BOX[0] :] = 0
-    return out
-
-
-def plate(tmp):
-    base = load(tmp, PLATE_AT)
-    out = base.copy()
-    clean = load(tmp, PANEL_AT)
-    r, g, b = clean[..., 0], clean[..., 1], clean[..., 2]
-    green = close((g > r + 10) & (g > b + 10), 6)
-    ys, xs = np.mgrid[0:720, 0:1020]
-    panel = fill_holes(green) & (ys > 100) & (ys < 620) & (xs > 150) & (xs < 870)
-    out[panel] = clean[panel]
-    for y in range(180, 566):
-        row = np.median(clean[y, 380:420], axis=0)
-        sel = panel[y] & (np.abs(xs[y] - 510) < 90)
-        out[y][sel] = row
-    for y in range(564, 603):
-        line = clean[564]
-        sel = panel[y] & (xs[y] > 290) & (xs[y] < 730)
-        out[y][sel] = line[sel]
-    out[606:, 440:570] = base[606:, 440:570]
-    brown = ((out[..., 0] - out[..., 2]) > 14) & ((out[..., 0] - out[..., 2]) < 90) & (out[..., 0] > 35)
-    corners = (xs < 60) | (xs > 940) | ((ys > 640) & (xs < 140))
-    out[dilate(brown & corners, 2)] = 0
-    out[SKIP_BOX[1] :, SKIP_BOX[0] :] = 0
-    return out
+def plate(tmp, video):
+    subprocess.run(["ffmpeg", "-v", "error", "-ss", str(PLATE_START), "-t", str(PLATE_N * PLATE_STEP), "-i", video, "-vf", f"fps=1/{PLATE_STEP:g},crop={CROP[2] - CROP[0]}:{CROP[3]}:{CROP[0]}:0", f"{tmp}/p%03d.png"], check=True)
+    stack = np.stack([np.asarray(Image.open(p).convert("RGB")) for p in sorted(Path(tmp).glob("p*.png"))])
+    out = np.zeros(stack.shape[1:], np.float32)
+    for y in range(0, out.shape[0], 40):
+        out[y : y + 40] = np.percentile(stack[:, y : y + 40], 5, axis=0)
+    panel = polygon_mask(panel_points()) > 0
+    out[dilate(panel, 3)] = 0
+    for x0, x1 in BARS:
+        out[344:370, x0:x1] = 235
+    sx, sy = DOT_SPRITE
+    sprite = out[sy - 26 : sy + 26, sx - 26 : sx + 26].copy()
+    yy, xx = np.mgrid[-26:26, -26:26]
+    alpha = np.clip(26 - np.hypot(xx, yy), 0, 1)[..., None]
+    for cx, cy in DOTS:
+        region = out[cy - 26 : cy + 26, cx - 26 : cx + 26]
+        out[cy - 26 : cy + 26, cx - 26 : cx + 26] = region * (1 - alpha) + sprite * alpha
+    out = inpaint(out, *ICON)
+    return out * polygon_mask(SILHOUETTE)[..., None]
 
 
 def save(a, path):
@@ -193,9 +225,12 @@ def main():
         n = 0
         for i in range(FIRST, LAST + 1):
             f = load(tmp, i)
-            save(keyed(f) if i == LAST else f * matte(f, i >= 60)[..., None], OUT / f"arm_{n:02d}.jpg")
+            f = inpaint(f, *ICON)
+            alpha = matte(f, i)
+            save(f * alpha[..., None], OUT / f"arm_{n:02d}.jpg")
+            Image.fromarray((alpha * 255).astype(np.uint8)).save(OUT / f"mask_{n:02d}.png", optimize=True)
             n += 1
-        save(plate(tmp), OUT / "plate.jpg")
+        save(plate(tmp, video), OUT / "plate.jpg")
     (OUT / "count.txt").write_text(f"{n}\n")
     print(f"{n} frames and plate in {OUT}")
 
