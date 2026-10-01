@@ -392,6 +392,7 @@ PanelWindow {
             if (!root.search_starts_open || !root.search_opens_typing) clear_search();
             visible = true;
             open_anim.restart();
+            if (burst_loader.item) burst_loader.item.play();
             if (root.search_starts_open && root.search_opens_typing) root.open_search();
             else content_scope.forceActiveFocus();
         } else if (visible && passive && Popups.open_name !== "") {
@@ -969,6 +970,14 @@ PanelWindow {
                 anchors.margins: root.st.frame_border_width
                 color: root.st.dither
                 radius: root.frame_radius
+            }
+
+            Loader {
+                id: burst_loader
+                anchors.fill: parent
+                anchors.margins: root.st.inset_pad + root.st.lcd_margin
+                active: root.st.open_fx === "static" && !root.passive
+                sourceComponent: Goldeneye.StaticBurst {}
             }
         }
     }

@@ -139,6 +139,7 @@ Singleton {
             lcd_margin: 0,
             frame_engraving: "",
             frame_watch: false,
+            open_fx: "",
             confirm_layout: "",
             accent_color: Theme.theme_secondary,
             accent_height: 3,
@@ -379,6 +380,7 @@ Singleton {
                 lcd_margin: 0,
                 frame_engraving: "",
                 frame_watch: false,
+                open_fx: "",
                 confirm_layout: "",
                 accent_color: Theme.theme_primary,
                 accent_height: 3,
@@ -846,6 +848,7 @@ Singleton {
                 frame_border_width: 2,
                 frame_radius: 10,
                 frame_watch: true,
+                open_fx: "static",
                 confirm_layout: "watch",
                 lcd_top: Qt.rgba(Watch.panel_top[0], Watch.panel_top[1], Watch.panel_top[2], Watch.panel_top[3]),
                 lcd_bottom: Qt.rgba(Watch.panel_bottom[0], Watch.panel_bottom[1], Watch.panel_bottom[2], Watch.panel_bottom[3]),
@@ -1957,6 +1960,8 @@ Singleton {
     // Draws the popup panel as the watch's green octagon.
     readonly property bool frame_watch: root.active.frame_watch
     readonly property var pal: root.active.pal
+    // "static" plays the watch's static over a popup as it opens.
+    readonly property string open_fx: root.active.open_fx
     // "watch" asks for a Power action in the lock skin's arm-then-confirm words.
     readonly property string confirm_layout: root.active.confirm_layout
     readonly property color accent_color: root.active.accent_color
