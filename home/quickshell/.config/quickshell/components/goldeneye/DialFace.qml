@@ -10,6 +10,8 @@ Item {
     property int warm_lit: 8
     property int cold_lit: 8
     property bool from_bottom: false
+    property var warm_colors: W.warm
+    property real warm_opacity: 1
     property var cold_colors: W.cold_lit
     property real arc_opacity: 1
     default property alias content: panel.data
@@ -33,10 +35,10 @@ Item {
         height: root.height * 0.726
         thickness: root.width * 0.065
         gap: 3
-        colors: W.warm
+        colors: root.warm_colors
         lit: root.warm_lit
         from_bottom: root.from_bottom
-        opacity: root.arc_opacity
+        opacity: root.arc_opacity * root.warm_opacity
     }
 
     Watch.SegmentArc {

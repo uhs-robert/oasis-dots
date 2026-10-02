@@ -1,5 +1,6 @@
 // home/quickshell/.config/quickshell/components/goldeneye/GaugeDial.qml
 import QtQuick
+import "../../services"
 import "../../lock/skins/goldeneye/Watch.js" as W
 
 // A level as the watch dial: the warm arc fills first (to 50%), then the blue one, bottom up in 16 whole steps; past 100% the blue arc turns red.
@@ -10,6 +11,11 @@ Item {
     property bool muted: false
     property string label: ""
     property real size: 112
+    // Low charge: the warm arc turns red, and pulses while shown on AC.
+    property bool low: false
+    // False while the surface showing the dial is hidden.
+    property bool shown: true
+    property real pulse_level: 1
     readonly property bool over: root.value > 1.0001
     readonly property int steps: Math.max(0, Math.min(16, Math.ceil(Math.min(1, root.value) * 16 - 1e-6)))
     readonly property color digit_color: root.muted || root.over ? W.red : W.green
@@ -17,8 +23,18 @@ Item {
     implicitWidth: root.size
     implicitHeight: root.size
 
+    SequentialAnimation {
+        running: root.low && root.shown && root.visible && Power.on_ac
+        loops: Animation.Infinite
+        onRunningChanged: if (!running) root.pulse_level = 1
+        NumberAnimation { target: root; property: "pulse_level"; to: 0.3; duration: 450; easing.type: Easing.InOutSine }
+        NumberAnimation { target: root; property: "pulse_level"; to: 1; duration: 450; easing.type: Easing.InOutSine }
+    }
+
     DialFace {
         width: root.size
+        warm_colors: root.low ? [W.red, W.red, W.red, W.red, W.red, W.red, W.red, W.red] : W.warm
+        warm_opacity: root.pulse_level
         warm_lit: Math.min(8, root.steps)
         cold_lit: Math.max(0, root.steps - 8)
         from_bottom: true
