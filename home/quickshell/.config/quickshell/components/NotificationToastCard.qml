@@ -48,6 +48,7 @@ Rectangle {
 
     readonly property string urgency_tag: {
         if (!root.notification) return "";
+        if (Style.toast_mission) return root.notification.urgency === NotificationUrgency.Critical ? " · MISSION CRITICAL" : root.notification.urgency === NotificationUrgency.Low ? "" : " · INCOMING";
         if (root.notification.urgency === NotificationUrgency.Critical) return " !! critical";
         if (root.notification.urgency === NotificationUrgency.Low) return " · low";
         return "";

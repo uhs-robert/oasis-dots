@@ -139,6 +139,7 @@ Singleton {
             lcd_margin: 0,
             frame_engraving: "",
             frame_watch: false,
+            toast_mission: false,
             track_bars: false,
             open_fx: "",
             confirm_layout: "",
@@ -382,6 +383,7 @@ Singleton {
                 lcd_margin: 0,
                 frame_engraving: "",
                 frame_watch: false,
+                toast_mission: false,
                 track_bars: false,
                 open_fx: "",
                 confirm_layout: "",
@@ -852,6 +854,7 @@ Singleton {
                 frame_border_width: 2,
                 frame_radius: 10,
                 frame_watch: true,
+                toast_mission: true,
                 track_bars: true,
                 open_fx: "static",
                 confirm_layout: "watch",
@@ -1966,6 +1969,8 @@ Singleton {
     // Draws the popup panel as the watch's green octagon.
     readonly property bool frame_watch: root.active.frame_watch
     readonly property var pal: root.active.pal
+    // Toasts carry the mission wording (INCOMING, MISSION CRITICAL) in their header.
+    readonly property bool toast_mission: root.active.toast_mission
     // Track progress as the lock face's row of green bars.
     readonly property bool track_bars: root.active.track_bars
     // "static" plays the watch's static over a popup as it opens.
