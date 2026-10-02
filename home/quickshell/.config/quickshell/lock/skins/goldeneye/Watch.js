@@ -64,9 +64,14 @@ function step_on(hue, s, bg, target) {
     return hsl_rgb(hue, s, dark ? hi : lo)
 }
 
-// The tinted watch from a hue 0-1 and saturation: the panel is the colorscheme background (`top`, `bottom` as [r, g, b]) with a light tint, translucent over `frame`, and the text steps are picked for contrast on it, light or dark.
+// A colour's saturation for the ramp, 0 for near-greys such as the white lock tint so they stay neutral.
+function sat_of(c) {
+    return Math.max(c.r, c.g, c.b) - Math.min(c.r, c.g, c.b) < 0.12 ? 0 : c.hslSaturation
+}
+
+// The tinted watch from a hue 0-1 and saturation: the panel is the colorscheme background (`top`, `bottom` as [r, g, b]) mixed with `panel_tint` of the hue, translucent over `frame`; text steps are picked for contrast on it.
 function theme_ramp(hue, saturation, top, bottom, alpha, frame) {
-    const s = Math.max(0.3, Math.min(0.85, saturation))
+    const s = saturation <= 0 ? 0 : Math.max(0.3, Math.min(0.85, saturation))
     const base = hsl_rgb(hue, s, 0.5)
     const pt = mix(top, base, panel_tint), pb = mix(bottom, base, panel_tint)
     const over = p => mix(frame, p, alpha)

@@ -114,7 +114,7 @@ Item {
     // The Watch colours option reaches the skin on the ctx; Classic is the fixed green, and a ctx without the field stays Classic.
     readonly property bool tinted: !!root.ctx && root.ctx.watch_colors === "Theme"
     readonly property color hue_src: root.ctx && root.ctx.tint !== "primary" ? root.ctx.tint_base : Theme.theme_primary
-    readonly property var ramp: Watch.theme_ramp(Math.max(0, root.hue_src.hslHue), root.hue_src.hslSaturation, [Theme.bg_surface.r, Theme.bg_surface.g, Theme.bg_surface.b], [Theme.bg_mantle.r, Theme.bg_mantle.g, Theme.bg_mantle.b], 0.8, [0, 0, 0])
+    readonly property var ramp: Watch.theme_ramp(Math.max(0, root.hue_src.hslHue), Watch.sat_of(root.hue_src), [Theme.bg_surface.r, Theme.bg_surface.g, Theme.bg_surface.b], [Theme.bg_mantle.r, Theme.bg_mantle.g, Theme.bg_mantle.b], 0.8, [0, 0, 0])
 
     function rgba(a) {
         return Qt.rgba(a[0], a[1], a[2], a.length > 3 ? a[3] : 1);
@@ -508,7 +508,7 @@ Item {
                     property real span_x: width / 1020
                     property real span_y: height / 720
                     property real reach: 1 - root.ease(0.55, 0.78, root.intro_t)
-                    property real hue_shift: root.tinted ? Math.max(0, root.hue_src.hslHue) * 6.283185 - 2.094395 : 0
+                    property real hue_shift: root.tinted && Watch.sat_of(root.hue_src) > 0 ? Math.max(0, root.hue_src.hslHue) * 6.283185 - 2.094395 : 0
                     property variant color_src: colors.count > 0 ? colors.itemAt(root.frame_at) : null
                     property variant mask_src: masks.count > 0 ? masks.itemAt(root.frame_at) : null
                     visible: !!color_src && !!mask_src && sheet.ready >= sheet.total * 2
