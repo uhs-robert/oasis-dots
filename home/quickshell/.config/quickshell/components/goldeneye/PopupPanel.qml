@@ -17,6 +17,7 @@ Item {
         cut: 12
         notches: false
         top_color: root.st.lcd_top
+        edge: root.st.wk.edge
         bottom_color: root.st.lcd_bottom
     }
 }

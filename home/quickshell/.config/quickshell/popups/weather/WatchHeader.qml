@@ -91,6 +91,7 @@ Item {
         notch_w: 6
         notch_h: 18
         top_color: Style.wk.panel_top
+        edge: Style.wk.edge
         bottom_color: Style.wk.panel_bottom
 
         RowLayout {

@@ -35,15 +35,48 @@ function hsl_rgb(h, s, l) {
     return [rgb[0] + m, rgb[1] + m, rgb[2] + m]
 }
 
-// The tinted watch's text steps, bar and panel colours as [r, g, b] (panels [r, g, b, a]) for a hue 0-1 and saturation; `alpha` is the panel's.
-function theme_ramp(hue, saturation, alpha) {
+// How much of the primary hue is mixed into the colorscheme's panel background.
+var panel_tint = 0.12
+
+function mix(a, b, t) {
+    return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t]
+}
+
+function luminance(c) {
+    const f = v => v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4)
+    return 0.2126 * f(c[0]) + 0.7152 * f(c[1]) + 0.0722 * f(c[2])
+}
+
+function contrast(a, b) {
+    const x = luminance(a), y = luminance(b)
+    return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05)
+}
+
+// The lightness of hue/saturation that reaches `target` contrast on `bg`, lighter on a dark backdrop and darker on a light one.
+function step_on(hue, s, bg, target) {
+    const dark = luminance(bg) < 0.18
+    let lo = dark ? 0.3 : 0, hi = dark ? 1 : 0.7
+    for (let i = 0; i < 16; i++) {
+        const mid = (lo + hi) / 2
+        const ok = contrast(hsl_rgb(hue, s, mid), bg) >= target
+        if (dark) { if (ok) hi = mid; else lo = mid } else { if (ok) lo = mid; else hi = mid }
+    }
+    return hsl_rgb(hue, s, dark ? hi : lo)
+}
+
+// The tinted watch from a hue 0-1 and saturation: the panel is the colorscheme background (`top`, `bottom` as [r, g, b]) with a light tint, translucent over `frame`, and the text steps are picked for contrast on it, light or dark.
+function theme_ramp(hue, saturation, top, bottom, alpha, frame) {
     const s = Math.max(0.3, Math.min(0.85, saturation))
-    const d = Math.min(1, s + 0.3)
-    const tint = l => hsl_rgb(hue, s, l)
-    const deep = l => hsl_rgb(hue, d, l)
+    const base = hsl_rgb(hue, s, 0.5)
+    const pt = mix(top, base, panel_tint), pb = mix(bottom, base, panel_tint)
+    const over = p => mix(frame, p, alpha)
+    const et = over(pt), eb = over(pb)
+    const eff = mix(et, eb, 0.5)
+    const on = c => step_on(hue, s, eff, c)
+    const dim = on(3.4)
     return {
-        lit: tint(0.68), mid: tint(0.57), soft: tint(0.48), dim: tint(0.42), bar_on: tint(0.58), bar_off: tint(0.235),
-        panel_top: hsl_rgb(hue, d, 0.045).concat([alpha]), panel_bottom: hsl_rgb(hue, d, 0.07).concat([alpha]),
-        ink: deep(0.03), mantle: deep(0.05), surface: deep(0.1), clock_bg: deep(0.07), tile_on: deep(0.145), tile_off: deep(0.07)
+        lit: on(8.2), mid: on(5.6), soft: on(4.2), dim: dim, bar_on: on(6.4), bar_off: mix(eff, base, 0.22),
+        panel_top: pt.concat([alpha]), panel_bottom: pb.concat([alpha]), edge: dim.concat([0.45]),
+        clock_bg: pt, tile_on: mix(top, base, 0.28), tile_off: mix(top, base, 0.12), light: luminance(eff) >= 0.18
     }
 }

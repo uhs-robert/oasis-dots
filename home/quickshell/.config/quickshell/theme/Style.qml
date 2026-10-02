@@ -69,7 +69,7 @@ Singleton {
             blue: Theme.blue
         };
         const watch_tokens = r => ({
-            wk: { lit: r.lit, mid: r.mid, soft: r.soft, dim: r.dim, bar_on: r.bar_on, bar_off: r.bar_off, panel_top: r.panel_top, panel_bottom: r.panel_bottom, frame: r.frame, rim: r.rim },
+            wk: { lit: r.lit, mid: r.mid, soft: r.soft, dim: r.dim, bar_on: r.bar_on, bar_off: r.bar_off, panel_top: r.panel_top, panel_bottom: r.panel_bottom, edge: r.edge, frame: r.frame, rim: r.rim },
             pal: Object.assign({}, pal, {
                 error: r.error,
                 warning: r.warning,
@@ -92,9 +92,9 @@ Singleton {
                 fg_dim: r.dim,
                 border: Qt.alpha(r.lit, 0.5),
                 visual_bg: Qt.alpha(r.lit, 0.22),
-                bg_shadow: r.ink,
+                bg_shadow: r.shadow,
                 bg_core: r.ink,
-                bg_crust: r.ink,
+                bg_crust: r.crust,
                 bg_mantle: r.mantle,
                 bg_surface: r.surface,
                 magenta: Watch.cold_lit[2],
@@ -154,18 +154,19 @@ Singleton {
             lit: Watch.green, mid: Watch.green_mid, soft: Watch.green_soft, dim: Watch.green_dim, bar_on: Watch.bar_on, bar_off: Watch.bar_off,
             panel_top: Qt.rgba(Watch.panel_top[0], Watch.panel_top[1], Watch.panel_top[2], Watch.panel_top[3]),
             panel_bottom: Qt.rgba(Watch.panel_bottom[0], Watch.panel_bottom[1], Watch.panel_bottom[2], Watch.panel_bottom[3]),
-            frame: Watch.black, rim: Watch.rim, ink: Watch.black, mantle: "#031505", surface: "#0a2a10", clock_bg: "#04200a",
+            frame: Watch.black, rim: Watch.rim, edge: "transparent", shadow: Watch.black, ink: Watch.black, crust: Watch.black, mantle: "#031505", surface: "#0a2a10", clock_bg: "#04200a",
             state: Watch.white, accent: Watch.green, info: Watch.cold_lit[5], secondary: Watch.cold_lit[6], secondary_strong: Watch.cold_lit[4],
             error: Watch.red, warning: Watch.warm[5], today: Watch.red
         };
         // The watch ramp from the palette's primary hue on a dark tinted panel, a little lighter than classic to keep its contrast on any palette.
         const rgba = a => Qt.rgba(a[0], a[1], a[2], a.length > 3 ? a[3] : 1);
+        const rgb_of = c => [Qt.color(c).r, Qt.color(c).g, Qt.color(c).b];
         const theme_base = Qt.color(Theme.theme_primary);
-        const wr = Watch.theme_ramp(Math.max(0, theme_base.hslHue), theme_base.hslSaturation, Qt.color(Theme.bg_crust).hslLightness > 0.5 ? 0.96 : 0.8);
+        const wr = Watch.theme_ramp(Math.max(0, theme_base.hslHue), theme_base.hslSaturation, rgb_of(Theme.bg_core), rgb_of(Theme.bg_mantle), Qt.color(Theme.bg_crust).hslLightness > 0.5 ? 0.96 : 0.8, rgb_of(Theme.bg_crust));
         const theme_ramp = {
             lit: rgba(wr.lit), mid: rgba(wr.mid), soft: rgba(wr.soft), dim: rgba(wr.dim), bar_on: rgba(wr.bar_on), bar_off: rgba(wr.bar_off),
-            panel_top: rgba(wr.panel_top), panel_bottom: rgba(wr.panel_bottom),
-            frame: Theme.bg_crust, rim: Qt.tint(Theme.bg_crust, Qt.alpha(Theme.fg_muted, 0.5)), ink: rgba(wr.ink), mantle: rgba(wr.mantle), surface: rgba(wr.surface), clock_bg: rgba(wr.clock_bg),
+            panel_top: rgba(wr.panel_top), panel_bottom: rgba(wr.panel_bottom), edge: rgba(wr.edge),
+            frame: Theme.bg_crust, rim: Qt.tint(Theme.bg_crust, Qt.alpha(Theme.fg_muted, 0.5)), shadow: Theme.bg_shadow, ink: Theme.bg_core, crust: Theme.bg_crust, mantle: Theme.bg_mantle, surface: Theme.bg_surface, clock_bg: rgba(wr.clock_bg),
             state: Theme.theme_accent, accent: Theme.theme_accent, info: Theme.theme_secondary, secondary: Theme.theme_secondary, secondary_strong: Theme.theme_secondary_strong,
             error: Theme.error, warning: Theme.warning, today: Theme.error
         };

@@ -99,6 +99,7 @@ Item {
         notches: false
         clip: true
         top_color: Style.wk.panel_top
+        edge: Style.wk.edge
         bottom_color: Style.wk.panel_bottom
     }
 }
