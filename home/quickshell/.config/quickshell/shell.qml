@@ -32,30 +32,36 @@ ShellRoot {
                 readonly property var rule: BarConfig.rule_for(screen_scope.modelData)
                 readonly property bool has_bar: screen_scope.rule !== null && screen_scope.rule.bar !== false
 
-                PanelWindow {
-                    visible: screen_scope.has_bar
-                    screen: screen_scope.modelData
-                    color: "transparent"
-                    implicitHeight: BarConfig.height_for(screen_scope.rule)
-                    exclusiveZone: screen_scope.has_bar ? implicitHeight : 0
+                LazyLoader {
+                    id: bar_loader
+                    active: screen_scope.has_bar
 
-                    anchors {
-                        top: true
-                        left: true
-                        right: true
-                    }
+                    PanelWindow {
+                        readonly property Item bar_item: bar
 
-                    Bar {
-                        id: bar
-                        anchors.fill: parent
-                        screen_name: screen_scope.modelData.name
-                        rule: screen_scope.rule
-                    }
+                        screen: screen_scope.modelData
+                        color: "transparent"
+                        implicitHeight: BarConfig.height_for(screen_scope.rule)
+                        exclusiveZone: implicitHeight
 
-                    StyleTransition {
-                        anchors.fill: parent
-                        target: bar
-                        shown: screen_scope.has_bar
+                        anchors {
+                            top: true
+                            left: true
+                            right: true
+                        }
+
+                        Bar {
+                            id: bar
+                            anchors.fill: parent
+                            screen_name: screen_scope.modelData.name
+                            rule: screen_scope.rule
+                        }
+
+                        StyleTransition {
+                            anchors.fill: parent
+                            target: bar
+                            shown: true
+                        }
                     }
                 }
 
@@ -71,9 +77,9 @@ ShellRoot {
                 SubmapTab {
                     screen: screen_scope.modelData
                     screen_name: screen_scope.modelData.name
-                    line_width: bar.center_width
+                    line_width: bar_loader.item ? bar_loader.item.bar_item.center_width : 260
                     bar_present: screen_scope.has_bar
-                    chip_shown: bar.has_mode_chip
+                    chip_shown: !!bar_loader.item && bar_loader.item.bar_item.has_mode_chip
                 }
             }
         }
