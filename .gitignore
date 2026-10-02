@@ -173,3 +173,6 @@ home/git/.config/git/identity
 
 # Theme switcher state (per machine)
 home/hypr/.config/hypr/theme/.current_theme
+
+# voxtype GPU drop-in, written per machine by setup_voxtype
+home/systemd/.config/systemd/user/voxtype.service.d/gpu.conf

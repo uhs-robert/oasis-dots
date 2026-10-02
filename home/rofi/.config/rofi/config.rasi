@@ -9,7 +9,7 @@
 
 configuration {
 	/*---------- General setting ----------*/
-  modi: "drun,hyprwindow:/home/roberth/.config/hypr/scripts/rofi-hyprwindow.sh,run,ssh";
+  modi: "drun,hyprwindow:rofi-hyprwindow.sh,run,ssh";
 	case-sensitive: false;
 	cycle: true;
 	filter: "";

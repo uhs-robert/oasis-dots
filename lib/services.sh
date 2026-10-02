@@ -58,6 +58,10 @@ install_devtool_deno() {
 # Presents an fzf picker of optional runtimes and dispatches to the right installer.
 install_dev_tools() {
   echo ""
+  if [[ $OPT_YES -eq 1 ]]; then
+    info "Optional developer runtimes: none selected (--yes)"
+    return
+  fi
   info "Optional developer runtimes (Tab to select, Enter to confirm):"
   mapfile -t selected < <(
     read_ini_section devtools.ini TOOLS | fzf --multi --prompt="dev tools> " --no-info
@@ -87,7 +91,14 @@ detect_primary_connector() {
   case ${#connected[@]} in
   0) echo "eDP-1" ;;
   1) echo "${connected[0]}" ;;
-  *) printf '%s\n' "${connected[@]}" | fzf --prompt="Primary display for greeter> " --no-info ;;
+  *)
+    if [[ $OPT_YES -eq 1 ]]; then
+      info "Primary display for greeter: ${connected[0]} (--yes)" >&2
+      echo "${connected[0]}"
+    else
+      printf '%s\n' "${connected[@]}" | fzf --prompt="Primary display for greeter> " --no-info
+    fi
+    ;;
   esac
 }
 
@@ -207,8 +218,13 @@ install_xone() {
 install_steam() {
   confirm "Install Steam?" || return 0
 
-  printf '\e[35m[?] \e[0mnative or flatpak? [native/flatpak] '
-  read -r method
+  if [[ $OPT_YES -eq 1 ]]; then
+    method=native
+    info "Steam install method: native (--yes)"
+  else
+    printf '\e[35m[?] \e[0mnative or flatpak? [native/flatpak] '
+    read -r method
+  fi
 
   case "$method" in
   flatpak)
@@ -264,6 +280,7 @@ setup_voxtype() {
   fi
 
   local gpu_conf="$HOME/.config/systemd/user/voxtype.service.d/gpu.conf"
+  [[ -L "$gpu_conf" && ! -e "$gpu_conf" ]] && rm -f "$gpu_conf"
   if [[ -L "$gpu_conf" ]]; then
     warn "gpu.conf is a dotfiles symlink, skipping GPU detection"
   elif command -v lspci &>/dev/null; then
