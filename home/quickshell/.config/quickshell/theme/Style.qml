@@ -139,6 +139,7 @@ Singleton {
             lcd_margin: 0,
             frame_engraving: "",
             frame_watch: false,
+            link_style: "",
             ammo_counter: false,
             night_vision: false,
             toast_mission: false,
@@ -386,6 +387,7 @@ Singleton {
                 lcd_margin: 0,
                 frame_engraving: "",
                 frame_watch: false,
+                link_style: "",
                 ammo_counter: false,
                 night_vision: false,
                 toast_mission: false,
@@ -860,6 +862,7 @@ Singleton {
                 frame_border_width: 2,
                 frame_radius: 10,
                 frame_watch: true,
+                link_style: "watch",
                 ammo_counter: true,
                 night_vision: true,
                 toast_mission: true,
@@ -1980,6 +1983,8 @@ Singleton {
     // Draws the popup panel as the watch's green octagon.
     readonly property bool frame_watch: root.active.frame_watch
     readonly property var pal: root.active.pal
+    // "watch" words the network and bluetooth popups in the mission language, with dial headers and segment bars.
+    readonly property string link_style: root.active.link_style
     // The overview's `N | M` window counter.
     readonly property bool ammo_counter: root.active.ammo_counter
     // The overview shows unselected windows through a green monochrome tint.

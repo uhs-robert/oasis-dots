@@ -8,6 +8,7 @@ import "../theme"
 import "../services"
 import "../components/nes" as Nes
 import "../components/ps1" as Ps1
+import "../components/goldeneye" as Goldeneye
 import "snes" as Snes
 
 Popup {
@@ -27,6 +28,11 @@ Popup {
     // Named unpaired devices while scanning, capped so a busy area cannot outgrow the popup.
     readonly property var nearby: has_adapter ? adapter.devices.values.filter(d => !d.paired && (d === root.pair_target || root.scanning && d.deviceName !== "")).sort((a, b) => a.name.localeCompare(b.name)).slice(0, 8) : []
     readonly property var rows: root.devices.concat(root.nearby)
+
+    // goldeneye: devices as gadgets in the watch's mission wording, with a dial header and segment battery bars.
+    readonly property bool link_watch: root.st.link_style === "watch"
+    readonly property var connected_devices: root.devices.filter(d => d.connected)
+    readonly property var main_device: root.connected_devices.find(d => d.batteryAvailable) || null
 
     // The device being paired from the nearby list, and how far it got: "pairing", "connecting" or "failed".
     property var pair_target: null
@@ -121,6 +127,12 @@ Popup {
     }
 
     function status_label(device) {
+        if (root.link_watch) {
+            if (device === root.pair_target) return root.pair_phase === "failed" ? "Failed" : "ARMING...";
+            if (device.state === QsBt.BluetoothDeviceState.Connecting) return "LINKING...";
+            if (device.state === QsBt.BluetoothDeviceState.Disconnecting) return "Disconnecting";
+            return device.connected ? "ACTIVE" : device.paired ? "STANDBY" : "";
+        }
         if (device === root.pair_target) return root.pair_phase === "pairing" ? "Pairing" : root.pair_phase === "connecting" ? "Connecting" : "Failed";
         if (device.state === QsBt.BluetoothDeviceState.Connecting) return "Connecting";
         if (device.state === QsBt.BluetoothDeviceState.Disconnecting) return "Disconnecting";
@@ -211,12 +223,45 @@ Popup {
             }
         }
 
+        Goldeneye.ScanStatic {
+            anchors.fill: main_column
+            z: 10
+            scanning: root.link_watch && root.scanning
+        }
+
         ColumnLayout {
             id: main_column
             anchors.left: parent.left
             anchors.right: parent.right
             anchors.top: parent.top
             spacing: 4
+
+            Loader {
+                active: root.link_watch
+                visible: active
+                Layout.fillWidth: true
+                Layout.bottomMargin: 4
+                sourceComponent: Goldeneye.GaugeHeader {
+                    readonly property bool off: !root.has_adapter || !root.adapter.enabled
+                    size: Style.px(100)
+                    value: off ? 0 : root.main_device ? root.main_device.battery : root.devices.length > 0 ? root.connected_devices.length / root.devices.length : 0
+                    readout: off ? "--" : root.main_device ? "" : String(root.connected_devices.length)
+                    label: root.main_device ? "BATTERY" : "ACTIVE"
+
+                    Goldeneye.ReadoutLine {
+                        Layout.fillWidth: true
+                        label: off ? "GADGETS OFFLINE" : root.scanning ? "SCANNING..." : "GADGETS"
+                        alert: off
+                        text: root.has_adapter ? root.adapter.name : "No adapter"
+                    }
+
+                    Goldeneye.ReadoutLine {
+                        Layout.fillWidth: true
+                        label: "ACTIVE"
+                        text: root.connected_devices.length > 0 ? root.connected_devices.map(d => d.name).join(", ") : "none"
+                    }
+                }
+            }
 
             ToggleRow {
                 label: root.has_adapter ? root.adapter.name : "No adapter"
@@ -236,6 +281,13 @@ Popup {
                 color: Style.pal.error
                 font.family: root.st.font_family
                 font.pixelSize: root.st.fs(-2)
+            }
+
+            MenuSection {
+                visible: root.link_watch
+                Layout.fillWidth: true
+                Layout.topMargin: 6
+                label: root.has_adapter && root.adapter.enabled ? "GADGETS" : "GADGETS OFFLINE"
             }
 
             Text {
@@ -261,7 +313,7 @@ Popup {
                 visible: root.scanning || root.nearby.length > 0
                 Layout.fillWidth: true
                 Layout.topMargin: 8
-                label: root.scanning ? "Nearby · scanning" : "Nearby"
+                label: root.link_watch ? (root.scanning ? "NEARBY · SCANNING..." : "NEARBY") : root.scanning ? "Nearby · scanning" : "Nearby"
             }
 
             Text {
@@ -365,8 +417,13 @@ Popup {
                     }
                 }
 
+                Goldeneye.SegmentStrip {
+                    visible: root.link_watch && device_row.modelData.batteryAvailable
+                    value: device_row.modelData.batteryAvailable ? device_row.modelData.battery : 0
+                }
+
                 Text {
-                    visible: root.battery_label(device_row.modelData) !== ""
+                    visible: root.battery_label(device_row.modelData) !== "" && !root.link_watch
                     text: root.battery_label(device_row.modelData)
                     color: device_row.fg(root.st.text_muted)
                     font.family: root.st.font_family

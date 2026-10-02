@@ -10,6 +10,7 @@ Item {
     property bool muted: false
     property bool low: false
     property string label: ""
+    property string readout: ""
     property real size: 100
     default property alias readouts: column.data
 
@@ -22,6 +23,7 @@ Item {
         muted: root.muted
         low: root.low
         label: root.label
+        readout: root.readout
     }
 
     ColumnLayout {

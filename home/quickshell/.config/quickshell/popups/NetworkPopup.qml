@@ -11,6 +11,7 @@ import "../components/nes" as Nes
 import "../components/snes" as Snes
 import "../components/ps1" as Ps1
 import "../components/ps2" as Ps2
+import "../components/goldeneye" as Goldeneye
 
 Popup {
     id: root
@@ -35,6 +36,17 @@ Popup {
     readonly property var wifi_device: {
         for (const d of Networking.devices.values) if (d.type === DeviceType.Wifi) return d;
         return null;
+    }
+
+    // goldeneye: the link in the watch's mission wording, with a dial header and segment signal bars.
+    readonly property bool link_watch: root.st.link_style === "watch"
+    readonly property bool link_scanning: !!root.wifi_device && root.wifi_device.scannerEnabled
+    readonly property bool link_wired: !!root.wired_device && root.wired_device.connected
+    readonly property string link_state: {
+        if (root.status_text.indexOf("Connecting") === 0) return "LINKING...";
+        if (root.link_scanning && !root.active_wifi_network) return "SCANNING...";
+        if (root.active_wifi_network || root.link_wired) return "LINK SECURE";
+        return "NO UPLINK";
     }
 
     readonly property var wired_device: {
@@ -560,8 +572,43 @@ Popup {
                     }
                 }
 
+                Loader {
+                    active: root.link_watch
+                    visible: active
+                    Layout.fillWidth: true
+                    Layout.bottomMargin: 4
+                    sourceComponent: Goldeneye.GaugeHeader {
+                        readonly property var net: root.active_wifi_network
+                        size: Style.px(100)
+                        value: net ? net.signalStrength : 0
+                        readout: net ? "" : "--"
+                        label: "SIGNAL"
+
+                        Goldeneye.ReadoutLine {
+                            Layout.fillWidth: true
+                            label: root.link_state
+                            alert: root.link_state === "NO UPLINK"
+                            text: net ? net.name : root.link_wired ? "Wired: " + root.wired_device.name : ""
+                        }
+
+                        Goldeneye.ReadoutLine {
+                            Layout.fillWidth: true
+                            visible: text !== ""
+                            label: "ADDRESS"
+                            text: net ? root.wifi_ipv4 : root.link_wired ? root.wired_ipv4 : ""
+                        }
+
+                        Goldeneye.ReadoutLine {
+                            Layout.fillWidth: true
+                            visible: text !== ""
+                            label: "SPEED"
+                            text: root.details.dev && root.details.dev.speed && root.details.dev.speed !== "unknown" ? root.details.dev.speed : ""
+                        }
+                    }
+                }
+
                 ToggleRow {
-                    label: "Wi-Fi"
+                    label: root.link_watch ? "UPLINK" : "Wi-Fi"
                     checked: Networking.wifiEnabled
                     selected: root.selected === -1
                     onToggled: {
@@ -583,7 +630,7 @@ Popup {
                 }
 
                 Text {
-                    visible: !root.codec && !!root.active_wifi_network && !root.ps2
+                    visible: !root.codec && !!root.active_wifi_network && !root.ps2 && !root.link_watch
                     text: root.active_wifi_network
                         ? root.active_wifi_network.name + "  " + Math.round(root.active_wifi_network.signalStrength * 100) + "%"
                             + (root.wifi_ipv4 ? "  " + root.wifi_ipv4 : "")
@@ -594,7 +641,7 @@ Popup {
                 }
 
                 Text {
-                    visible: !!root.wired_device && root.wired_device.connected && !root.ps2
+                    visible: !!root.wired_device && root.wired_device.connected && !root.ps2 && !root.link_watch
                     text: root.wired_device ? "Wired: " + root.wired_device.name + (root.wired_ipv4 ? "  " + root.wired_ipv4 : "") : ""
                     color: root.st.text_accent
                     font.family: root.st.font_family
@@ -602,7 +649,7 @@ Popup {
                 }
 
                 Text {
-                    visible: root.status_text !== ""
+                    visible: root.status_text !== "" && !root.link_watch
                     text: root.status_text
                     color: root.st.text_muted
                     font.family: root.st.font_family
@@ -625,6 +672,12 @@ Popup {
                     spacing: 4
                     model: root.nav_rows
                     currentIndex: root.selected
+
+                    Goldeneye.ScanStatic {
+                        anchors.fill: parent
+                        z: 10
+                        scanning: root.link_watch && root.link_scanning
+                    }
 
                     delegate: MenuRow {
                         id: net_row
@@ -670,8 +723,13 @@ Popup {
                                 }
                             }
 
+                            Goldeneye.SegmentStrip {
+                                visible: root.link_watch && !net_row.is_advanced
+                                value: net_row.modelData.signalStrength || 0
+                            }
+
                             Text {
-                                visible: !net_row.is_advanced && !signal_art.active && root.st.console_views !== "snes"
+                                visible: !net_row.is_advanced && !signal_art.active && root.st.console_views !== "snes" && !root.link_watch
                                 text: root.signal_glyph(net_row.modelData.signalStrength || 0)
                                 color: net_row.fg(net_row.modelData.connected ? root.st.text_primary : root.st.text_fg)
                                 font.family: root.st.font_family

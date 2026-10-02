@@ -9,6 +9,8 @@ Item {
     property real value: 0
     property bool muted: false
     property string label: ""
+    // Shown in place of the percentage when set, e.g. a device count.
+    property string readout: ""
     property real size: 112
     // Low charge: the warm arc turns red.
     property bool low: false
@@ -34,7 +36,7 @@ Item {
 
             Text {
                 anchors.horizontalCenter: parent.horizontalCenter
-                text: Math.round(root.value * 100)
+                text: root.readout !== "" ? root.readout : Math.round(root.value * 100)
                 color: root.digit_color
                 opacity: root.muted ? 0.7 : 1
                 font.family: W.digit_font
