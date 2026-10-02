@@ -115,9 +115,8 @@ main() {
   fi
 
   setup_git_identity
-  template_user_configs
   install_nvim_config
-  setup_root_symlinks
+  if [[ $OPT_SYSTEM_FILES -eq 1 ]]; then setup_root_symlinks; fi
   bootstrap_neovim
   if [[ $OPT_SYSTEM_FILES -eq 1 ]]; then install_system_files; fi
   if [[ $OPT_SERVER -eq 1 && $OPT_SERVICES -eq 1 ]]; then
