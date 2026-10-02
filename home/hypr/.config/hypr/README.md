@@ -8,6 +8,7 @@ A Lua-driven Hyprland setup for a fully keyboard-driven workflow. Vim-modal navi
 | --------------------- | -------------------------------------------------------- |
 | `hyprland.lua`        | Entry point for machine config and session init          |
 | `config/`             | Core config module (monitors, env, Nvidia, cursor, apps) |
+| `custom/`             | Your own config via `custom/init.lua`, run last          |
 | `keymaps/`            | All keybinds; one file per submap                        |
 | `theme/`              | Oasis color themes, the switcher and the generators      |
 | `lua/plugins/hyprvim` | Vim-modal navigation layer                               |
@@ -54,6 +55,19 @@ The loader picks this up automatically by hostname; see `config/machines/README.
 > [!TIP]
 > All available options and their defaults are documented in `config/init.lua`.
 
+#### 3. Add your own config
+
+`custom/` is your own Hyprland config, run after this one. Once every subsystem and HyprVim have loaded, `hyprland.lua` runs `custom/init.lua` if it exists; from there you decide what loads and in what order, `require` anything in the library (`lib.key.bind`, `config`, the session registry) and override what the shared config set. The directory is gitignored apart from its README, so your files stay local.
+
+```lua
+-- custom/init.lua
+require("custom.keymaps") -- custom/keymaps.lua
+
+hl.config({ general = { gaps_in = 8, gaps_out = 16 } })
+```
+
+See `custom/README.md` for the layout and more examples, including sessions for the launcher.
+
 ## HyprVim
 
 A vim-modal navigation layer for Hyprland. Activate with `SUPER + V`, exit with `SUPER + ESCAPE`.
@@ -82,18 +96,21 @@ The `persistent_workspaces` option pins that many workspaces per monitor so they
 
 ## App Launcher / Sessions
 
-`extensions/auto_launcher/` provides a workspace session launcher, picked in the Quickshell picker (or the dmenu command in `Config.app.dmenu_cmd`, rofi by default, when the bar isn't running). A session is a named set of apps, each pinned to a specific monitor and workspace offset. Sessions are returned by `get_sessions()` in `sessions.lua`:
+`extensions/auto_launcher/` provides a workspace session launcher, picked in the Quickshell picker (or the dmenu command in `Config.app.dmenu_cmd`, rofi by default, when the bar isn't running). A session is a named set of apps, each pinned to a specific monitor and workspace offset. `sessions.lua` ships a few generic ones (Browsing, Files, Game, System Monitor, System Update) that only use what the installer provides; a monitor index past the connected monitors folds onto the last one, so they work on any layout.
+
+Your own sessions go in your `custom/` config and are registered on top of the defaults. `Sessions.term` runs a command in the configured terminal under its own window class, `Sessions.tmuxifier` loads a tmuxifier session, and a plain table launches any app:
 
 ```lua
--- extensions/auto_launcher/sessions.lua
-function M.get_sessions()
-  return {
-    ["Work"] = {
-      { monitor = 1, ws = 1, cmd = "kitty", class = "kitty" },
-      { monitor = 2, ws = 1, cmd = "firefox", class = "org.mozilla.firefox" },
-    },
-  }
-end
+-- custom/sessions.lua, required from custom/init.lua
+local Sessions = require("extensions.auto_launcher.sessions")
+
+Sessions.add("💼 Work", {
+  { monitor = 1, ws = 1, cmd = "firefox --new-window", class = "org.mozilla.firefox" },
+  Sessions.tmuxifier({ session = "work", monitor = 2, ws = 1 }),
+  { monitor = 2, ws = 2, cmd = "slack", class = "slack", size = { 1064, 461 }, delay = 5000 },
+})
+
+Sessions.remove("🎮 Game") -- drop a default; Sessions.clear() drops them all
 ```
 
 Trigger the picker with `SUPER + SHIFT + O`.

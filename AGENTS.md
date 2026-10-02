@@ -63,6 +63,8 @@ An `[MANUAL]` section's comment lines in `arch.ini` are printed as post-install 
 
 `home/hypr/.config/hypr/` is Lua, not `hyprland.conf`. `hyprland.lua` is the entrypoint; it merges machine config (`config/machines/`) and loads the `hyprvim` plugin (Vim-modal window management with a which-key overlay). Subsystems live in `config/`, `keymaps/`, `extensions/`, `lib/`, `scripts/`, `theme/`. This tree is stylua-checked.
 
+User overrides live in two gitignored places, and tracked files must stay generic: `Config` values (hardware, default apps) in `config/machines/<hostname>.lua`, which `Config.setup` reads first, and everything built on the loaded library (binds, rules, launcher sessions via `extensions/auto_launcher/sessions.lua`'s `add`/`remove`/`clear`) in `custom/`, the user's own config whose `custom/init.lua` entrypoint `hyprland.lua` requires last, if present. The user owns load order inside `custom/`; never auto-load its files. Personal sessions, binds and apps belong in `custom/`, not in tracked defaults.
+
 ## Betterbird / tbkeys
 
 `home/thunderbird/.config/tbkeys/*.js` are loaded in a fixed dependency order by `system/opt/betterbird/betterbird.cfg` — later modules may call earlier ones, never the reverse. `core.js` runs the previous load's teardown hooks and recreates `window.tk` from scratch. See `home/thunderbird/README.md` for the full module responsibility table; put new behavior in the module that owns that responsibility rather than reimplementing primitives.

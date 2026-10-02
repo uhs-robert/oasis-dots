@@ -14,7 +14,7 @@ local Default = require("config.machines.default")
 local Scripts = require("lib.scripts")
 local Closed = require("lib.closed_windows")
 
---- Initialises the Hyprland session: applies machine config and loads all subsystems.
+--- Initialises the Hyprland session: applies machine config, loads all subsystems, then the user's custom/init.lua.
 local function init()
   Config.setup(Machines.merge(Default))
 
@@ -30,6 +30,9 @@ local function init()
     prompt = { frontend = "quickshell" },
     close_handler = Closed.close_addresses,
   })
+
+  -- Last on purpose: custom/init.lua is the user's own entrypoint, run once everything above is loaded.
+  if package.searchpath("custom", package.path) then require("custom") end
 end
 
 init()
