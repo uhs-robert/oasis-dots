@@ -215,12 +215,13 @@ Item {
         }
     }
 
-    // The bezel's hour mark at each end, inside the rim.
+    // The bezel's hour mark at each open end, inside the rim; none on an end that meets the screen edge.
     Repeater {
         model: root.octagon ? [0, 1] : []
 
         Rectangle {
             required property int modelData
+            visible: modelData === 0 ? root.cap_left : root.cap_right
             x: modelData === 0 ? root.lug + 5 : root.width - root.lug - 7
             y: (root.height - height) / 2
             width: 2
