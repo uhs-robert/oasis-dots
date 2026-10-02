@@ -27,7 +27,7 @@ stage_greeter() {
     fi
   done
   cp "$qs/theme/Theme.qml" "$qs/theme/Style.qml" "$qs/theme/Watch.js" "$dest/theme/"
-  if [[ -f "$state_dir/theme.json" ]]; then
+  if jq -e 'type == "object"' "$state_dir/theme.json" &>/dev/null; then
     cp "$state_dir/theme.json" "$dest/theme/"
   elif [[ -f "$live/theme/theme.json" ]]; then
     cp "$live/theme/theme.json" "$dest/theme/"
