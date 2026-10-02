@@ -123,6 +123,8 @@ Trigger the picker with `SUPER + SHIFT + O`.
 
 Season folders are optional. `Winter/Morning`, `Winter/Day` and so on join the pool only while that season is current, alongside the any-season ones in `All/`, so summer never shows a winter wallpaper. Seasons follow the calendar months and flip in the southern hemisphere.
 
+Weather folders work the same way. `Weather/Rain`, `Weather/Snow` and `Weather/Storm` only show while it is raining, snowing or storming, and are favoured over the rest while they match. The weather is read from the Quickshell bar's cache, so it needs the bar running.
+
 Configure directories and timing in `extensions/wallpaper/config.lua`.
 
 ## Theme
