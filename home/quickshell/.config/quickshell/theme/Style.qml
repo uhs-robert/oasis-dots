@@ -3,7 +3,7 @@ pragma Singleton
 import QtQuick
 import Quickshell
 import Quickshell.Io
-import "../lock/skins/goldeneye/Watch.js" as Watch
+import "Watch.js" as Watch
 
 Singleton {
     id: root

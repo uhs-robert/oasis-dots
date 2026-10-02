@@ -6,7 +6,7 @@ import "../components"
 import "../components/metroid" as Metroid
 import "../services"
 import "../theme"
-import "../lock/skins/goldeneye/Watch.js" as Watch
+import "../theme/Watch.js" as Watch
 
 Item {
     id: root

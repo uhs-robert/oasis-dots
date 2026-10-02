@@ -5,7 +5,7 @@ import QtQuick.Shapes
 import Quickshell.Io
 import "../../theme"
 import "goldeneye" as GE
-import "goldeneye/Watch.js" as Watch
+import "../../theme/Watch.js" as Watch
 
 // GoldenEye 007's pause watch: the arm lifts and the view zooms into the dial; the panel takes the user and password, OPTIONS RESTART POWEROFF sit under the header.
 Item {

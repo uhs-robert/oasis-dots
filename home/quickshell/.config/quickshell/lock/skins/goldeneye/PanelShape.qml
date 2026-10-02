@@ -1,7 +1,7 @@
 // home/quickshell/.config/quickshell/lock/skins/goldeneye/PanelShape.qml
 import QtQuick
 import QtQuick.Shapes
-import "Watch.js" as Watch
+import "../../../theme/Watch.js" as Watch
 
 // The watch's translucent green octagon with the pale notches on its sides, at any size.
 Item {

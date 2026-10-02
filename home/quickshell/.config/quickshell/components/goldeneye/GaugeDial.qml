@@ -1,7 +1,7 @@
 // home/quickshell/.config/quickshell/components/goldeneye/GaugeDial.qml
 import QtQuick
 import "../../theme"
-import "../../lock/skins/goldeneye/Watch.js" as W
+import "../../theme/Watch.js" as W
 
 // A level as the watch dial: the warm arc fills first (to 50%), then the blue one, bottom up in 16 whole steps; past 100% the blue arc turns red.
 Item {

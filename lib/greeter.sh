@@ -26,7 +26,7 @@ stage_greeter() {
       cp -r "$audio_dir/." "$dest/lock/skins/$skin/audio/"
     fi
   done
-  cp "$qs/theme/Theme.qml" "$qs/theme/Style.qml" "$dest/theme/"
+  cp "$qs/theme/Theme.qml" "$qs/theme/Style.qml" "$qs/theme/Watch.js" "$dest/theme/"
   [[ -f "$live/theme/theme.json" ]] && cp "$live/theme/theme.json" "$dest/theme/"
   cp "$qs"/fonts/*.ttf "$qs"/fonts/OFL-*.txt "$dest/fonts/"
 

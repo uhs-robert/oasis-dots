@@ -1,6 +1,6 @@
 // home/quickshell/.config/quickshell/components/goldeneye/SegmentStrip.qml
 import QtQuick
-import "../../lock/skins/goldeneye/Watch.js" as W
+import "../../theme/Watch.js" as W
 
 // A short run of slanted warm bezel segments, lit up to `value` (0-1), dim after; yellow first, red at the full end.
 Row {

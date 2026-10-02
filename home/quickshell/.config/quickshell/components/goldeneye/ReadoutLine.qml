@@ -2,7 +2,7 @@
 import QtQuick
 import QtQuick.Layouts
 import "../../theme"
-import "../../lock/skins/goldeneye/Watch.js" as W
+import "../../theme/Watch.js" as W
 
 // A caps label over a value in the watch's fonts: digits in seven-segment, the rest in Share Tech Mono, long text elided.
 ColumnLayout {

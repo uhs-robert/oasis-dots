@@ -13,7 +13,7 @@ import "picker"
 import "snes" as SnesParts
 import "ff7" as Ff7Parts
 import "goldeneye" as Goldeneye
-import "../lock/skins/goldeneye/Watch.js" as Watch
+import "../theme/Watch.js" as Watch
 
 // One per screen while Screenshot.selecting: drag a region, then pick an action from the toolbar.
 PanelWindow {
