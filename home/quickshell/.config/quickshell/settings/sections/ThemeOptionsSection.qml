@@ -24,7 +24,7 @@ RowsSection {
         return {
             label: def.label,
             values: () => kind === "bool" ? ["on", "off"] : kind === "choice" ? def.choices : root.number_values(def),
-            text: v => String(v),
+            text: v => def.labels ? def.labels[v] : String(v),
             value: () => kind === "bool" ? (Style.option(def.key) ? "on" : "off") : Style.option(def.key),
             set: v => Style.set_option(def.key, kind === "bool" ? v === "on" : v)
         };
