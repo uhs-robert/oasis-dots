@@ -159,16 +159,13 @@ Singleton {
             error: Watch.red, warning: Watch.warm[5], today: Watch.red
         };
         // The watch ramp from the palette's primary hue on a dark tinted panel, a little lighter than classic to keep its contrast on any palette.
-        const theme_hue = Math.max(0, Qt.color(Theme.theme_primary).hslHue);
-        const theme_sat = Math.max(0.3, Math.min(0.85, Qt.color(Theme.theme_primary).hslSaturation));
-        const tint = l => Qt.hsla(theme_hue, theme_sat, l, 1);
-        const deep = l => Qt.hsla(theme_hue, Math.min(1, theme_sat + 0.3), l, 1);
-        const panel_alpha = Qt.color(Theme.bg_crust).hslLightness > 0.5 ? 0.96 : 0.8;
+        const rgba = a => Qt.rgba(a[0], a[1], a[2], a.length > 3 ? a[3] : 1);
+        const theme_base = Qt.color(Theme.theme_primary);
+        const wr = Watch.theme_ramp(Math.max(0, theme_base.hslHue), theme_base.hslSaturation, Qt.color(Theme.bg_crust).hslLightness > 0.5 ? 0.96 : 0.8);
         const theme_ramp = {
-            lit: tint(0.68), mid: tint(0.57), soft: tint(0.48), dim: tint(0.42), bar_on: tint(0.58), bar_off: tint(0.235),
-            panel_top: Qt.hsla(theme_hue, Math.min(1, theme_sat + 0.3), 0.045, panel_alpha),
-            panel_bottom: Qt.hsla(theme_hue, Math.min(1, theme_sat + 0.3), 0.07, panel_alpha),
-            frame: Theme.bg_crust, rim: Qt.tint(Theme.bg_crust, Qt.alpha(Theme.fg_muted, 0.5)), ink: deep(0.03), mantle: deep(0.05), surface: deep(0.1), clock_bg: deep(0.07),
+            lit: rgba(wr.lit), mid: rgba(wr.mid), soft: rgba(wr.soft), dim: rgba(wr.dim), bar_on: rgba(wr.bar_on), bar_off: rgba(wr.bar_off),
+            panel_top: rgba(wr.panel_top), panel_bottom: rgba(wr.panel_bottom),
+            frame: Theme.bg_crust, rim: Qt.tint(Theme.bg_crust, Qt.alpha(Theme.fg_muted, 0.5)), ink: rgba(wr.ink), mantle: rgba(wr.mantle), surface: rgba(wr.surface), clock_bg: rgba(wr.clock_bg),
             state: Theme.theme_accent, accent: Theme.theme_accent, info: Theme.theme_secondary, secondary: Theme.theme_secondary, secondary_strong: Theme.theme_secondary_strong,
             error: Theme.error, warning: Theme.warning, today: Theme.error
         };
@@ -2054,6 +2051,8 @@ Singleton {
     readonly property var pal: root.active.pal
     // The watch's colour ramp and panel gradient for the current mode (the classic green or tinted from the palette).
     readonly property var wk: root.active.wk
+    // The saved Watch colours choice, whatever the current style is (the lock skin reads it).
+    readonly property string watch_mode: (root.theme_values.goldeneye || {}).watch_colors || "Theme"
     // "watch" words the network and bluetooth popups in the mission language, with dial headers and segment bars.
     readonly property string link_style: root.active.link_style
     // The overview's `N | M` window counter.

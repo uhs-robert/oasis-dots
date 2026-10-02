@@ -18,6 +18,7 @@ Scope {
             lock_style: LoginScreen.resolved_screen,
             lock_tint: LoginScreen.resolved_tint,
             lock_music: LoginScreen.resolved_music ? "on" : "off",
+            watch_colors: Style.watch_mode,
             session: LoginScreen.session,
             music_volume: String(ThemeAudio.music_volume)
         };
@@ -51,6 +52,11 @@ Scope {
         function onResolved_tintChanged() { root.schedule(); }
         function onResolved_musicChanged() { root.schedule(); }
         function onSessionChanged() { root.schedule(); }
+    }
+
+    Connections {
+        target: Style
+        function onWatch_modeChanged() { root.schedule(); }
     }
 
     Connections {

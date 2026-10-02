@@ -27,6 +27,8 @@ QtObject {
     property bool animate: Power.on_ac
     // The lock tint family (Style.lock_tint): a base and a bright shade that skins derive their colours from.
     property string tint: Style.lock_tint
+    // The GoldenEye skin's Watch colours choice (Style option), Theme or Classic.
+    readonly property string watch_colors: Style.watch_mode
     readonly property var tint_pair: Tints.pair(Theme, root.tint)
     readonly property color tint_base: root.tint_pair[0]
     readonly property color tint_bright: root.tint_pair[1]

@@ -30,6 +30,8 @@ QtObject {
     // A skin picks another user; the greeter switches to it.
     signal user_request(string name)
     property string tint: "primary"
+    // The GoldenEye skin's Watch colours choice from the bar's synced settings.
+    property string watch_colors: "Theme"
     property string session_name: ""
 
     readonly property string phase: {
