@@ -7,6 +7,7 @@ import "../theme"
 import "../services"
 import "../components/ps1" as Ps1
 import "../components/ps2" as Ps2
+import "../components/goldeneye" as Goldeneye
 import "../components/snes" as SnesParts
 import "snes" as Snes
 
@@ -187,7 +188,7 @@ Popup {
 
             // Console clock screens above the calendar.
             Loader {
-                readonly property Component view: ({ snes: snes_clock, ps1: ps1_clock, ps2: ps2_clock })[root.st.console_views] || null
+                readonly property Component view: root.st.frame_watch ? watch_clock : ({ snes: snes_clock, ps1: ps1_clock, ps2: ps2_clock })[root.st.console_views] || null
                 active: !!view
                 visible: active
                 Layout.fillWidth: true
@@ -206,6 +207,13 @@ Popup {
                         id: save_clock
                         running: root.is_open
                         week: root.week_number(save_clock.now)
+                    }
+                }
+
+                Component {
+                    id: watch_clock
+                    Goldeneye.ClockFace {
+                        running: root.is_open
                     }
                 }
 
@@ -314,7 +322,7 @@ Popup {
                             text: cell.modelData.text
                             font.family: root.st.font_family
                             font.pixelSize: cell.modelData.kind === "header" || cell.modelData.kind === "weeknum" ? root.grid_font_size - 1 : root.grid_font_size
-                            color: cell.marked ? root.st.title_fg : cell.modelData.kind === "header" ? root.st.text_muted : cell.modelData.kind === "weeknum" ? root.st.text_dim : cell.modelData.is_today ? Theme.theme_accent : (cell.modelData.in_month ? root.st.text_fg : root.st.text_muted)
+                            color: cell.marked ? root.st.title_fg : cell.modelData.kind === "header" ? root.st.text_muted : cell.modelData.kind === "weeknum" ? root.st.text_dim : cell.modelData.is_today ? Style.pal.today : (cell.modelData.in_month ? root.st.text_fg : root.st.text_muted)
                             font.underline: cell.modelData.kind === "day" && cell.modelData.is_today === true && !root.st.marker_fill
                             font.bold: cell.marked
                         }

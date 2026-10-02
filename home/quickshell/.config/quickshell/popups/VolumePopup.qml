@@ -10,6 +10,7 @@ import "snes" as Snes
 import "../components/ps1" as Ps1
 import "../components/ps2" as Ps2
 import "../components/modern" as Modern
+import "../components/goldeneye" as Goldeneye
 
 Popup {
     id: root
@@ -214,6 +215,44 @@ Popup {
                         dimmed: !!audio && audio.muted
                         label: audio ? String(Math.round(audio.volume * 100)) : ""
                         caption: audio && audio.muted ? "Muted" : "Volume"
+                    }
+                }
+            }
+
+            Loader {
+                id: watch_gauge
+                readonly property var out_audio: Pipewire.defaultAudioSink ? Pipewire.defaultAudioSink.audio : null
+                readonly property var in_audio: Pipewire.defaultAudioSource ? Pipewire.defaultAudioSource.audio : null
+                active: root.st.osd_layout === "watch"
+                visible: active
+                Layout.fillWidth: true
+                Layout.preferredHeight: active ? Style.px(100) : 0
+                Layout.bottomMargin: 6
+                sourceComponent: Goldeneye.GaugeHeader {
+                    readonly property var out_node: Pipewire.defaultAudioSink
+                    readonly property var in_node: Pipewire.defaultAudioSource
+                    readonly property bool out_muted: !!watch_gauge.out_audio && watch_gauge.out_audio.muted
+                    readonly property bool out_boost: !!watch_gauge.out_audio && watch_gauge.out_audio.volume > 1.0001
+                    readonly property bool in_muted: !!watch_gauge.in_audio && watch_gauge.in_audio.muted
+                    size: Style.px(100)
+                    value: watch_gauge.out_audio ? watch_gauge.out_audio.volume : 0
+                    muted: out_muted
+                    label: "VOLUME"
+
+                    Goldeneye.ReadoutLine {
+                        Layout.fillWidth: true
+                        label: "OUTPUT" + (out_muted ? " · MUTED" : out_boost ? " · BOOST" : "")
+                        alert: out_muted || out_boost
+                        text: out_node ? out_node.description || out_node.name : "none"
+                    }
+
+                    Goldeneye.ReadoutLine {
+                        Layout.fillWidth: true
+                        label: "INPUT" + (in_muted ? " · MUTED" : "")
+                        alert: in_muted
+                        digits: watch_gauge.in_audio ? String(Math.round(watch_gauge.in_audio.volume * 100)) : ""
+                        unit: watch_gauge.in_audio ? "%" : ""
+                        text: in_node ? in_node.description || in_node.name : "none"
                     }
                 }
             }

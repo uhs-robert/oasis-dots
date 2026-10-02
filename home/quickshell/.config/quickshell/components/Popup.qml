@@ -9,6 +9,7 @@ import "../services"
 import "Search.js" as Search
 import "../picker/Fuzzy.js" as Fuzzy
 import "neovim" as Neovim
+import "goldeneye" as Goldeneye
 
 PanelWindow {
     id: root
@@ -391,6 +392,7 @@ PanelWindow {
             if (!root.search_starts_open || !root.search_opens_typing) clear_search();
             visible = true;
             open_anim.restart();
+            if (burst_loader.item) burst_loader.item.play();
             if (root.search_starts_open && root.search_opens_typing) root.open_search();
             else content_scope.forceActiveFocus();
         } else if (visible && passive && Popups.open_name !== "") {
@@ -607,7 +609,7 @@ PanelWindow {
             Rectangle {
                 id: lcd_panel
                 readonly property real edge: root.st.inset_pad + root.st.lcd_margin
-                visible: root.lcd
+                visible: root.lcd && !root.st.frame_watch
                 x: lcd_panel.edge
                 y: lcd_panel.edge
                 width: parent.width - lcd_panel.edge * 2
@@ -639,6 +641,14 @@ PanelWindow {
                     inset: 5
                     arm: 14
                     all_corners: true
+                }
+            }
+
+            Loader {
+                anchors.fill: parent
+                active: root.st.frame_watch
+                sourceComponent: Goldeneye.PopupPanel {
+                    st: root.st
                 }
             }
 
@@ -960,6 +970,14 @@ PanelWindow {
                 anchors.margins: root.st.frame_border_width
                 color: root.st.dither
                 radius: root.frame_radius
+            }
+
+            Loader {
+                id: burst_loader
+                anchors.fill: parent
+                anchors.margins: root.st.inset_pad + root.st.lcd_margin
+                active: root.st.open_fx === "static" && !root.passive
+                sourceComponent: Goldeneye.StaticBurst {}
             }
         }
     }

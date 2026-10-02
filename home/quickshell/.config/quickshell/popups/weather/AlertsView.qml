@@ -63,7 +63,7 @@ Item {
             Layout.fillWidth: true
             elide: Text.ElideRight
             text: "THREAT DETECTED" + (root.alerts.length > 1 ? " · " + root.alerts.length : "")
-            color: Theme.theme_label
+            color: Style.pal.label
             font.family: Style.font_family
             font.pixelSize: Style.fs(-4)
             font.letterSpacing: 2.5
@@ -122,13 +122,13 @@ Item {
                                 Layout.fillWidth: true
                                 elide: Text.ElideRight
                                 text: alert_row.modelData.event.toUpperCase()
-                                color: alert_row.fg(alert_row.index === root.alert_cursor ? Theme.theme_secondary : Theme.fg_core)
+                                color: alert_row.fg(alert_row.index === root.alert_cursor ? Style.pal.secondary : Style.pal.fg)
                                 font.family: Style.font_family
                                 font.pixelSize: Style.fs(-2)
                             }
                             Text {
                                 text: "attacks!"
-                                color: alert_row.fg(alert_row.index === root.alert_cursor ? Theme.theme_secondary : Theme.fg_core)
+                                color: alert_row.fg(alert_row.index === root.alert_cursor ? Style.pal.secondary : Style.pal.fg)
                                 font.family: Style.font_family
                                 font.pixelSize: Style.fs(-2)
                             }
@@ -138,7 +138,7 @@ Item {
                             Layout.fillWidth: true
                             elide: Text.ElideRight
                             text: root.objectives ? "OBJECTIVE: AVOID " + alert_row.modelData.event.toUpperCase() : alert_row.modelData.event
-                            color: alert_row.fg(root.objectives || root.threat ? Theme.theme_label : alert_row.index === root.alert_cursor ? Theme.theme_secondary : Theme.fg_core)
+                            color: alert_row.fg(root.objectives || root.threat ? Style.pal.label : alert_row.index === root.alert_cursor ? Style.pal.secondary : Style.pal.fg)
                             font.family: Style.font_family
                             font.pixelSize: Style.fs(-2)
                         }
@@ -178,7 +178,7 @@ Item {
                     Layout.fillWidth: true
                     wrapMode: Text.WordWrap
                     text: root.selected ? root.selected.headline || root.selected.event : ""
-                    color: root.selected ? WeatherState.alert_color(root.selected.severity) : Theme.fg_core
+                    color: root.selected ? WeatherState.alert_color(root.selected.severity) : Style.pal.fg
                     font.family: Style.font_family
                     font.pixelSize: Style.font_size
                     font.bold: true
@@ -198,7 +198,7 @@ Item {
                     Layout.topMargin: 6
                     wrapMode: Text.WordWrap
                     text: root.selected ? root.unwrap(root.selected.description) : ""
-                    color: Theme.fg_core
+                    color: Style.pal.fg
                     font.family: Style.font_family
                     font.pixelSize: Style.fs(-2)
                 }
@@ -209,7 +209,7 @@ Item {
                     visible: !!root.selected && root.selected.instruction !== ""
                     wrapMode: Text.WordWrap
                     text: root.selected ? (root.objectives ? "ORDERS: " : "What to do: ") + root.unwrap(root.selected.instruction) : ""
-                    color: Theme.fg_core
+                    color: Style.pal.fg
                     font.family: Style.font_family
                     font.pixelSize: Style.fs(-2)
                 }

@@ -11,6 +11,7 @@ import "../components/nes" as Nes
 import "snes" as Snes
 import "../components/ps1" as Ps1
 import "../components/ps2" as Ps2
+import "../components/goldeneye" as Goldeneye
 
 Popup {
     id: root
@@ -184,6 +185,77 @@ Popup {
             anchors.top: parent.top
             spacing: 4
 
+            Loader {
+                id: watch_gauge
+                active: root.st.osd_layout === "watch" && root.has_battery
+                visible: active
+                Layout.fillWidth: true
+                Layout.preferredHeight: active ? Style.px(100) : 0
+                Layout.bottomMargin: 6
+                sourceComponent: Goldeneye.GaugeHeader {
+                    readonly property bool is_low: root.percent <= 20 && root.state_label === "Discharging"
+                    readonly property var profile: root.profiles.find(p => p.value === PowerProfiles.profile)
+                    size: Style.px(100)
+                    value: root.percent / 100
+                    low: is_low
+                    label: "BATTERY"
+
+                    Goldeneye.ReadoutLine {
+                        Layout.fillWidth: true
+                        label: "STATUS"
+                        alert: is_low
+                        text: root.state_label
+                    }
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 10
+                        visible: root.rate > 0 || root.time_label !== ""
+
+                        Goldeneye.ReadoutLine {
+                            Layout.fillWidth: true
+                            Layout.preferredWidth: 1
+                            visible: root.rate > 0
+                            label: "DRAW"
+                            digits: root.rate.toFixed(1)
+                            unit: "W"
+                        }
+
+                        Goldeneye.ReadoutLine {
+                            Layout.fillWidth: true
+                            Layout.preferredWidth: 1
+                            visible: root.time_label !== ""
+                            label: root.state_label === "Charging" ? "TO FULL" : "LEFT"
+                            text: root.time_label.replace(" remaining", "").replace(" until full", "")
+                        }
+                    }
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 10
+                        visible: healthy || (root.ppd_available && !!profile)
+                        readonly property bool healthy: !!root.device && root.device.healthSupported
+
+                        Goldeneye.ReadoutLine {
+                            Layout.fillWidth: true
+                            Layout.preferredWidth: 1
+                            visible: parent.healthy
+                            label: "HEALTH"
+                            digits: root.device && root.device.healthSupported ? String(Math.round(root.device.healthPercentage)) : ""
+                            unit: "%"
+                        }
+
+                        Goldeneye.ReadoutLine {
+                            Layout.fillWidth: true
+                            Layout.preferredWidth: 1
+                            visible: root.ppd_available && !!profile
+                            label: "PROFILE"
+                            text: profile ? profile.label : ""
+                        }
+                    }
+                }
+            }
+
             // Console status views replace the readout lines.
             Loader {
                 id: status_view
@@ -222,7 +294,7 @@ Popup {
                         label: "Battery"
                         value: root.has_battery ? Math.round(root.percent) + "%" : "None"
                         level: root.has_battery ? root.percent / 100 : -1
-                        level_color: root.percent <= 20 && root.state_label === "Discharging" ? Theme.warning : Theme.theme_primary_light
+                        level_color: root.percent <= 20 && root.state_label === "Discharging" ? Style.pal.warning : Style.pal.primary_light
                     }
 
                     Ps2.ConfigRow {
@@ -248,7 +320,7 @@ Popup {
             }
 
             Text {
-                visible: !status_view.active
+                visible: !status_view.active && !watch_gauge.active
                 Layout.leftMargin: root.status_indent
                 text: (root.nes ? "BAT " : "") + Math.round(root.percent) + "%"
                 color: root.st.text_strong
@@ -257,7 +329,7 @@ Popup {
             }
 
             Text {
-                visible: !status_view.active
+                visible: !status_view.active && !watch_gauge.active
                 Layout.leftMargin: root.status_indent
                 text: root.state_label
                 color: root.st.text_muted
@@ -266,7 +338,7 @@ Popup {
             }
 
             Text {
-                visible: root.time_label !== "" && !status_view.active
+                visible: root.time_label !== "" && !status_view.active && !watch_gauge.active
                 Layout.leftMargin: root.status_indent
                 text: root.time_label
                 color: root.st.text_muted
@@ -275,7 +347,7 @@ Popup {
             }
 
             Text {
-                visible: root.rate > 0 && !status_view.active
+                visible: root.rate > 0 && !status_view.active && !watch_gauge.active
                 Layout.leftMargin: root.status_indent
                 text: root.rate.toFixed(1) + " W"
                 color: root.st.text_muted

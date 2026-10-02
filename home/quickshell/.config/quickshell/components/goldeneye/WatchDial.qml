@@ -3,9 +3,10 @@ import QtQuick
 import QtQuick.Shapes
 import Quickshell.Hyprland
 import "../../theme"
+import "../../lock/skins/goldeneye/Watch.js" as Watch
 import ".."
 
-// Bond's pause-menu watch face: a tick per workspace on a shallow arc, apps under their ticks, the laser hand on the focused one.
+// The classic pause watch as a bar strip: a tick per workspace on a shallow arc, apps under their ticks, a pale hand on the focused one. Fixed classic colours, whatever the palette.
 Item {
     id: root
 
@@ -19,12 +20,14 @@ Item {
     readonly property int face_top: 3
     readonly property int icon_drop: compact ? 7 : 8
     readonly property real max_sag: 6
-    readonly property color lcd: Theme.theme_primary_light
-    readonly property color lcd_low: Qt.tint(Theme.theme_primary_light, Qt.alpha(Theme.theme_primary, 0.3))
-    readonly property color ink: Theme.bg_core
-    readonly property color laser: Theme.theme_label
-    readonly property color bezel: Qt.tint(Theme.bg_surface, Qt.alpha(Theme.fg_muted, 0.2))
-    readonly property color metal:Qt.tint(Theme.bg_surface, Qt.alpha(Theme.fg_muted, 0.4))
+    readonly property color face: Style.bar_center_bg
+    readonly property bool light: root.face.hslLightness > 0.6
+    readonly property color lit: root.light ? Watch.green_dim : Watch.green
+    readonly property color unlit: root.light ? Qt.alpha(Watch.green_dim, 0.45) : Watch.green_dim
+    readonly property color mark: root.light ? Theme.fg_core : Watch.white
+    readonly property color hand: root.light ? Theme.fg_core : Qt.rgba(0.82, 0.92, 0.82, 1)
+    readonly property color rim: Qt.tint(Style.bar_center_bg, Qt.alpha(Theme.fg_muted, 0.25))
+    readonly property color metal: Qt.tint(Style.bar_center_bg, Qt.alpha(Theme.fg_muted, 0.5))
 
     function gap(on) {
         return on ? 6 : 2;
@@ -97,14 +100,7 @@ Item {
 
         ShapePath {
             strokeWidth: -1
-            fillGradient: LinearGradient {
-                x1: 0
-                y1: root.face_top
-                x2: 0
-                y2: root.height
-                GradientStop { position: 0; color: root.lcd }
-                GradientStop { position: 1; color: root.lcd_low }
-            }
+            fillColor: root.face
             PathSvg { path: root.face_path }
         }
 
@@ -115,8 +111,8 @@ Item {
                 y1: 0
                 x2: 0
                 y2: root.face_top + root.max_sag
-                GradientStop { position: 0; color: root.bezel }
-                GradientStop { position: 1; color: Theme.bg_crust }
+                GradientStop { position: 0; color: root.rim }
+                GradientStop { position: 1; color: root.face }
             }
             PathSvg { path: root.arc_path + "V0H0Z" }
         }
@@ -130,28 +126,47 @@ Item {
 
         ShapePath {
             strokeWidth: 0.8
-            strokeColor: Qt.alpha(root.ink, 0.3)
+            strokeColor: Qt.alpha(root.metal, 0.5)
             fillColor: "transparent"
             PathSvg { path: "M0 " + (root.arc_y(0) + 1.6).toFixed(2) + "A" + root.radius_px + " " + root.radius_px + " 0 0 1 " + root.width + " " + (root.arc_y(root.width) + 1.6).toFixed(2) }
         }
+    }
 
-        ShapePath {
-            strokeWidth: 1
-            strokeColor: Qt.alpha(root.ink, 0.35)
-            fillColor: "transparent"
-            capStyle: ShapePath.FlatCap
-            PathSvg {
-                path: {
-                    let d = "";
-                    for (let m = 6; m < root.width - 4; m += 5) d += root.seg(m, 0, 2);
-                    return d || "M0 0";
+    // The minute ticks echo the bezel: sixteen runs, warm left to right then the blues.
+    Repeater {
+        model: 16
+
+        Shape {
+            id: run
+            required property int index
+            anchors.fill: parent
+            preferredRendererType: Shape.CurveRenderer
+
+            ShapePath {
+                strokeWidth: 1.3
+                strokeColor: Qt.alpha(run.index < 8 ? Watch.warm[run.index] : Watch.cold_lit[run.index - 8], 0.85)
+                fillColor: "transparent"
+                capStyle: ShapePath.FlatCap
+                PathSvg {
+                    path: {
+                        let d = "";
+                        for (let m = 6; m < root.width - 4; m += 5) {
+                            if (Math.min(15, Math.floor(m / root.width * 16)) === run.index) d += root.seg(m, 0, 3);
+                        }
+                        return d || "M0 0";
+                    }
                 }
             }
         }
+    }
+
+    Shape {
+        anchors.fill: parent
+        preferredRendererType: Shape.CurveRenderer
 
         ShapePath {
             strokeWidth: 4
-            strokeColor: root.hand_path === "" ? "transparent" : Qt.alpha(root.laser, root.target && root.target.focused ? 0.3 : 0.14)
+            strokeColor: root.hand_path === "" ? "transparent" : Qt.alpha(root.hand, root.target && root.target.focused ? 0.28 : 0.12)
             fillColor: "transparent"
             capStyle: ShapePath.FlatCap
             PathSvg { path: root.hand_path || "M0 0" }
@@ -159,7 +174,7 @@ Item {
 
         ShapePath {
             strokeWidth: 1.3
-            strokeColor: root.hand_path === "" ? "transparent" : Qt.alpha(root.laser, root.target && root.target.focused ? 1 : 0.5)
+            strokeColor: root.hand_path === "" ? "transparent" : Qt.alpha(root.hand, root.target && root.target.focused ? 0.8 : 0.4)
             fillColor: "transparent"
             capStyle: ShapePath.FlatCap
             PathSvg { path: root.hand_path || "M0 0" }
@@ -167,7 +182,7 @@ Item {
 
         ShapePath {
             strokeWidth: 2
-            strokeColor: root.ink
+            strokeColor: root.lit
             fillColor: "transparent"
             capStyle: ShapePath.FlatCap
             PathSvg { path: root.slots.filter(s => s.k && !s.focused).map(s => root.seg(s.mid, 0, 5)).join("") || "M0 0" }
@@ -175,7 +190,7 @@ Item {
 
         ShapePath {
             strokeWidth: 1.3
-            strokeColor: root.ink
+            strokeColor: root.unlit
             fillColor: "transparent"
             capStyle: ShapePath.FlatCap
             PathSvg { path: root.slots.filter(s => !s.k && !s.focused).map(s => root.seg(s.mid, 0, 3.5)).join("") || "M0 0" }
@@ -183,22 +198,10 @@ Item {
 
         ShapePath {
             strokeWidth: 2
-            strokeColor: root.laser
+            strokeColor: root.mark
             fillColor: "transparent"
             capStyle: ShapePath.FlatCap
             PathSvg { path: root.slots.filter(s => s.focused).map(s => root.seg(s.mid, 0, 8)).join("") || "M0 0" }
-        }
-    }
-
-    Repeater {
-        model: Math.ceil(root.height / 3)
-
-        Rectangle {
-            required property int index
-            y: index * 3
-            width: root.width
-            height: 1
-            color: Qt.alpha(Theme.bg_crust, 0.06)
         }
     }
 
@@ -209,7 +212,7 @@ Item {
         anchors.bottom: parent.bottom
         anchors.bottomMargin: 4
         text: "8".repeat(Math.max(2, readout.text.length))
-        color: Qt.alpha(root.ink, 0.08)
+        color: Qt.alpha(root.lit, 0.1)
         font: readout.font
     }
 
@@ -218,8 +221,8 @@ Item {
         anchors.right: ghost.right
         anchors.bottom: ghost.bottom
         text: root.target ? String(root.target.id) : "--"
-        color: Qt.alpha(root.ink, root.target && root.target.focused ? 1 : 0.55)
-        font.family: Style.number_font
+        color: Qt.alpha(root.lit, root.target && root.target.focused ? 1 : 0.55)
+        font.family: Watch.digit_font
         font.bold: true
         font.pixelSize: Style.bar_font_size + 2
     }
@@ -251,7 +254,7 @@ Item {
                 y: slot.arc_at + 2
                 width: parent.width
                 height: parent.height - y
-                color: root.ink
+                color: root.lit
                 opacity: !slot.modelData.active && slot_hover.hovered ? 0.08 : 0
 
                 Behavior on opacity {

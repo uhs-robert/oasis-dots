@@ -75,16 +75,16 @@ Popup {
     }
 
     function state_color(state) {
-        if (state === "waiting") return Theme.error;
-        if (state === "done") return Theme.ok;
+        if (state === "waiting") return Style.pal.error;
+        if (state === "done") return Style.pal.ok;
         if (state === "running") return root.st.text_primary;
         return root.st.text_dim;
     }
 
     // Below 60% the primary color, 60-85% a warning, above that an error.
     function context_bar_color(pct) {
-        if (pct >= 85) return Theme.error;
-        if (pct >= 60) return Theme.warning;
+        if (pct >= 85) return Style.pal.error;
+        if (pct >= 60) return Style.pal.warning;
         return root.st.text_primary;
     }
 
@@ -278,7 +278,7 @@ Popup {
                                 Layout.preferredHeight: session_row.has_context ? 3 : 0
                                 visible: session_row.has_context && !root.st.segmented_levels
                                 radius: Style.radius(1.5)
-                                color: Theme.bg_surface
+                                color: Style.pal.bg_surface
 
                                 Rectangle {
                                     width: session_row.has_context ? parent.width * Math.max(0, Math.min(100, session_row.modelData.context_pct)) / 100 : 0
@@ -309,7 +309,7 @@ Popup {
                         Layout.minimumWidth: 0
                         elide: Text.ElideRight
                         text: ClaudeUsageState.loading ? "Loading…" : ClaudeUsageState.error ? ClaudeUsageState.error : (ClaudeUsageState.updated > 0 ? "Claude usage · updated " + Qt.formatTime(new Date(ClaudeUsageState.updated), "HH:mm") : "Claude usage")
-                        color: ClaudeUsageState.error && !ClaudeUsageState.loading ? Theme.warning : root.st.text_muted
+                        color: ClaudeUsageState.error && !ClaudeUsageState.loading ? Style.pal.warning : root.st.text_muted
                         font.family: root.st.font_family
                         font.pixelSize: root.st.fs(-2)
                         font.bold: true
@@ -385,7 +385,7 @@ Popup {
                                     Layout.preferredHeight: 8
                                     visible: !root.st.segmented_levels
                                     radius: Style.radius(4)
-                                    color: Theme.bg_surface
+                                    color: Style.pal.bg_surface
 
                                     Rectangle {
                                         width: parent.width * Math.max(0, Math.min(100, usage_row.modelData.percent)) / 100

@@ -3,6 +3,8 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Shapes
 import Quickshell.Io
+import "goldeneye" as GE
+import "goldeneye/Watch.js" as Watch
 
 // GoldenEye 007's pause watch: the arm lifts and the view zooms into the dial; the panel takes the user and password, OPTIONS RESTART POWEROFF sit under the header.
 Item {
@@ -108,13 +110,13 @@ Item {
         return [(root.host !== "" ? root.host.toUpperCase() : "STATUS") + ": " + (root.login ? "LOGIN" : "LOCKED"), ""];
     }
 
-    readonly property color green: "#4af05c"
-    readonly property color green_dim: "#238a30"
-    readonly property color green_mid: "#3cc04c"
-    readonly property color red: "#ff5a48"
-    readonly property string head_font: "Michroma"
-    readonly property string mono_font: "Share Tech Mono"
-    readonly property string digit_font: "DSEG7 Classic"
+    readonly property color green: Watch.green
+    readonly property color green_dim: Watch.green_dim
+    readonly property color green_mid: Watch.green_mid
+    readonly property color red: Watch.red
+    readonly property string head_font: Watch.head_font
+    readonly property string mono_font: Watch.mono_font
+    readonly property string digit_font: Watch.digit_font
 
     // intro_t runs 0 (black) to 1 (the settled face); frames play over its first 88% and the face fades in after.
     property real intro_t: 1
@@ -521,8 +523,9 @@ Item {
 
             Panel {}
 
-            Hands {
+            GE.WatchHands {
                 id: hands
+                now: root.now
                 opacity: root.in_options || root.login ? 0.3 : 1
             }
 
@@ -544,6 +547,7 @@ Item {
                 property variant source: hands_src
                 property real level: root.burst_level
                 property real tick: root.noise_step
+                property real calm: 0
                 fragmentShader: Qt.resolvedUrl("goldeneye/static.frag.qsb")
             }
 
@@ -837,8 +841,8 @@ Item {
                     y1: 118
                     x2: 0
                     y2: 603
-                    GradientStop { position: 0; color: Qt.rgba(0, 0.13, 0, 0.8) }
-                    GradientStop { position: 1; color: Qt.rgba(0, 0.19, 0.01, 0.8) }
+                    GradientStop { position: 0; color: Qt.rgba(Watch.panel_top[0], Watch.panel_top[1], Watch.panel_top[2], Watch.panel_top[3]) }
+                    GradientStop { position: 1; color: Qt.rgba(Watch.panel_bottom[0], Watch.panel_bottom[1], Watch.panel_bottom[2], Watch.panel_bottom[3]) }
                 }
                 PathPolyline { path: panel.outline }
             }
@@ -861,99 +865,20 @@ Item {
         }
     }
 
-    // One outlined bar hand with a pointed tip, pivoting on the dial centre.
-    component Hand: Item {
-        id: hand
-        property real length: 150
-        property real half: 20
-        property real roof: 34
-        property real tail: 26
-        x: 510
-        y: 360
-
-        Shape {
-            preferredRendererType: Shape.CurveRenderer
-            ShapePath {
-                strokeWidth: 5
-                strokeColor: Qt.rgba(0.69, 0.86, 0.69, 0.28)
-                fillColor: Qt.rgba(0.69, 0.86, 0.69, 0.09)
-                joinStyle: ShapePath.MiterJoin
-                startX: 0
-                startY: -hand.length
-                PathLine { x: hand.half; y: -hand.length + hand.roof }
-                PathLine { x: hand.half; y: hand.tail }
-                PathLine { x: -hand.half; y: hand.tail }
-                PathLine { x: -hand.half; y: -hand.length + hand.roof }
-                PathLine { x: 0; y: -hand.length }
-            }
-        }
-    }
-
-    // The clock hands over the panel; their length follows the panel's edge in their direction.
-    component Hands: Item {
-        id: hands
-        width: 1020
-        height: 720
-        readonly property real hour_a: ((root.now.getHours() % 12) + root.now.getMinutes() / 60) * 30
-        readonly property real min_a: (root.now.getMinutes() + root.now.getSeconds() / 60) * 6
-        readonly property real sec_a: root.now.getSeconds() * 6
-
-        function reach(deg) {
-            const r = deg * Math.PI / 180;
-            return 0.97 / Math.hypot(Math.sin(r) / 322, Math.cos(r) / 242);
-        }
-
-        Hand {
-            length: hands.reach(hands.hour_a) * 0.66
-            half: 20
-            rotation: hands.hour_a
-        }
-
-        Hand {
-            length: hands.reach(hands.min_a)
-            half: 16
-            roof: 30
-            tail: 28
-            rotation: hands.min_a
-        }
-
-        Rectangle {
-            x: 486
-            y: 366
-            width: 52
-            height: 28
-            color: Qt.rgba(0.69, 0.86, 0.69, 0.2)
-        }
-
-        Item {
-            x: 510
-            y: 360
-            rotation: hands.sec_a
-
-            Rectangle {
-                x: -1
-                y: -hands.reach(hands.sec_a)
-                width: 2
-                height: hands.reach(hands.sec_a) + 40
-                color: Qt.rgba(0.82, 0.92, 0.82, 0.55)
-            }
-        }
-    }
-
     // Without the plate: a black dial, the red-to-yellow arc on the left, the blue one on the right, white ticks and studs.
     component Bezel: Item {
         id: bezel
         readonly property var arc: [
-            { x: 232, y: 78, w: 100, h: 84, r: 35, c: "#ff2a10" },
-            { x: 138, y: 185, w: 84, h: 90, r: 17, c: "#ff4a14" },
-            { x: 118, y: 320, w: 82, h: 96, r: 0, c: "#ff6a18" },
-            { x: 118, y: 425, w: 76, h: 44, r: -9, c: "#ff8a22" },
-            { x: 135, y: 495, w: 76, h: 44, r: -20, c: "#ffa028" },
-            { x: 165, y: 550, w: 76, h: 44, r: -31, c: "#ffb42c" },
-            { x: 200, y: 610, w: 76, h: 44, r: -42, c: "#ffc830" },
-            { x: 250, y: 650, w: 76, h: 44, r: -52, c: "#ffdc34" }
+            { x: 232, y: 78, w: 100, h: 84, r: 35, c: Watch.warm[0] },
+            { x: 138, y: 185, w: 84, h: 90, r: 17, c: Watch.warm[1] },
+            { x: 118, y: 320, w: 82, h: 96, r: 0, c: Watch.warm[2] },
+            { x: 118, y: 425, w: 76, h: 44, r: -9, c: Watch.warm[3] },
+            { x: 135, y: 495, w: 76, h: 44, r: -20, c: Watch.warm[4] },
+            { x: 165, y: 550, w: 76, h: 44, r: -31, c: Watch.warm[5] },
+            { x: 200, y: 610, w: 76, h: 44, r: -42, c: Watch.warm[6] },
+            { x: 250, y: 650, w: 76, h: 44, r: -52, c: Watch.warm[7] }
         ]
-        readonly property var cold: ["#0c1038", "#101640", "#141c46", "#161d38", "#1a2238", "#1d2538", "#222b3c", "#2a3240"]
+        readonly property var cold: Watch.cold
         anchors.fill: parent
 
         Rectangle {

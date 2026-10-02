@@ -10,7 +10,7 @@ Rectangle {
 
     property var on_open: function () {}
     readonly property var alert: WeatherState.alerts.length > 0 ? WeatherState.alerts[0] : null
-    readonly property color red: Theme.theme_label
+    readonly property color red: Style.pal.label
 
     implicitHeight: column.implicitHeight + 2
     color: Qt.alpha(root.red, 0.06)
@@ -36,7 +36,7 @@ Rectangle {
                 anchors.verticalCenter: parent.verticalCenter
                 elide: Text.ElideRight
                 text: "BLACK MESA ANNOUNCEMENT SYSTEM"
-                color: Theme.bg_crust
+                color: Style.pal.bg_crust
                 font.family: Style.font_family
                 font.pixelSize: Style.fs(-6)
                 font.bold: true
@@ -66,7 +66,7 @@ Rectangle {
                 visible: root.alert && root.alert.ends && root.width >= 260
                 text: root.alert ? WeatherState.fmt_until(root.alert.ends).toUpperCase() : ""
                 color: root.red
-                font.family: Style.number_font
+                font.family: Style.frame_watch ? Style.font_family : Style.number_font
                 font.pixelSize: Style.fs(-4)
                 font.bold: true
                 font.letterSpacing: 0.7

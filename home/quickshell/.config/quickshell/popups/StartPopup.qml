@@ -23,7 +23,7 @@ Popup {
     readonly property var actions: ["Apps", "Settings"].concat(Power.actions.map(a => Power.labels[a]))
     readonly property var keys: root.actions.map((a, i) => String(i + 1))
     readonly property var glyphs: ["󰣇", "󰒓"].concat(Power.actions.map(a => Power.glyphs[a]))
-    readonly property var glyph_colors: [Theme.green, Theme.theme_secondary].concat(Power.actions.map(a => Power.color(a, root.st)))
+    readonly property var glyph_colors: [Style.pal.green, Style.pal.secondary].concat(Power.actions.map(a => Power.color(a, root.st)))
 
     property int selected: 0
     property bool confirm: false

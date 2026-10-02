@@ -67,7 +67,7 @@ Item {
             Layout.fillWidth: true
             spacing: 0
             Text { Layout.fillWidth: true; elide: Text.ElideRight; text: sun_end.label; color: Style.text_muted; font.family: Style.font_family; font.pixelSize: Style.fs(-3) }
-            Text { Layout.fillWidth: true; elide: Text.ElideRight; text: sun_end.time || "—"; color: Theme.fg_core; font.family: Style.font_family; font.pixelSize: Style.fs(2); font.bold: true }
+            Text { Layout.fillWidth: true; elide: Text.ElideRight; text: sun_end.time || "—"; color: Style.pal.fg; font.family: Style.font_family; font.pixelSize: Style.fs(2); font.bold: true }
         }
     }
 
@@ -92,7 +92,7 @@ Item {
                     Layout.preferredWidth: 0
                     implicitHeight: day_text.implicitHeight + 6
                     radius: Style.radius(4)
-                    color: day_cell.day_index !== root.day_cursor ? "transparent" : Style.selection_brackets.a > 0 ? Style.selection_bg : Theme.bg_surface
+                    color: day_cell.day_index !== root.day_cursor ? "transparent" : Style.selection_brackets.a > 0 ? Style.selection_bg : Style.pal.bg_surface
 
                     LockBrackets {
                         shown: day_cell.day_index === root.day_cursor
@@ -105,7 +105,7 @@ Item {
                         horizontalAlignment: Text.AlignHCenter
                         elide: Text.ElideRight
                         text: day_cell.modelData.weekday
-                        color: day_cell.day_index === root.day_cursor ? Theme.theme_secondary : Style.text_muted
+                        color: day_cell.day_index === root.day_cursor ? Style.pal.secondary : Style.text_muted
                         font.family: Style.font_family
                         font.pixelSize: Style.fs(-2)
                     }
@@ -153,7 +153,7 @@ Item {
                 const frac = root.sun_fraction();
                 if (frac !== null) {
                     const angle = Math.PI - frac * Math.PI;
-                    ctx.fillStyle = Theme.yellow;
+                    ctx.fillStyle = Style.pal.yellow;
                     ctx.beginPath();
                     ctx.arc(cx + r * Math.cos(angle), cy - r * Math.sin(angle), 9, 0, 2 * Math.PI);
                     ctx.fill();
@@ -174,7 +174,7 @@ Item {
                 anchors.bottomMargin: 20
                 Text { anchors.horizontalCenter: parent.horizontalCenter; text: root.day ? root.day.date.substr(5) : ""; color: Style.text_dim; font.family: Style.font_family; font.pixelSize: Style.fs(-3) }
                 Text { anchors.horizontalCenter: parent.horizontalCenter; text: "Day length"; color: Style.text_muted; font.family: Style.font_family; font.pixelSize: Style.fs(-3) }
-                Text { anchors.horizontalCenter: parent.horizontalCenter; text: root.day_length(); color: Theme.fg_core; font.family: Style.font_family; font.pixelSize: Style.fs(2) }
+                Text { anchors.horizontalCenter: parent.horizontalCenter; text: root.day_length(); color: Style.pal.fg; font.family: Style.font_family; font.pixelSize: Style.fs(2) }
             }
         }
 
@@ -224,7 +224,7 @@ Item {
                     Layout.fillWidth: true
                     elide: Text.ElideRight
                     text: WeatherState.moon_name(root.moon_phase)
-                    color: Theme.fg_core
+                    color: Style.pal.fg
                     font.family: Style.font_family
                     font.pixelSize: Style.fs(2)
                     font.bold: true

@@ -15,6 +15,7 @@ import "ps2" as Ps2
 import "oasis" as Oasis
 import "modern" as Modern
 import "neovim" as Neovim
+import "goldeneye" as Goldeneye
 
 PanelWindow {
     id: root
@@ -22,6 +23,8 @@ PanelWindow {
     property string kind: "volume"
     property real level: 0
     property bool muted: false
+    // The level before the 0-1 clamp, for gauges that show boost.
+    property real raw_level: 0
     // The last change in percent points, for styles that show it.
     property int delta: 0
     // A level change takes the slot for its hide timer, then voxtype gets it back.
@@ -62,7 +65,8 @@ PanelWindow {
             alert: { art: alert_osd, hides: ["glyph"] },
             glow: { art: glow_osd, hides: ["meter", "percent"], size: Style.px(84) },
             horizon: { art: horizon_osd, hides: ["glyph", "meter", "percent"], framed: true, untitled: true },
-            tile: { art: tile_osd, hides: ["glyph", "meter", "percent"], framed: true, untitled: true }
+            tile: { art: tile_osd, hides: ["glyph", "meter", "percent"], framed: true, untitled: true },
+            watch: { art: watch_osd, hides: ["glyph", "meter", "percent"], framed: true, untitled: true }
         })[Style.osd_layout] || null
 
     function replaced(part) {
@@ -122,6 +126,7 @@ PanelWindow {
         const prev = root.kind === new_kind ? root.level : new_level;
         root.kind = new_kind;
         root.level = Math.max(0, Math.min(1, new_level));
+        root.raw_level = Math.max(0, new_level);
         root.muted = new_muted;
         root.delta = Math.round(root.level * 100) - Math.round(prev * 100);
         root.hold_screen();
@@ -244,7 +249,7 @@ PanelWindow {
         width: frame.width
         height: frame.height
         radius: frame.radius
-        color: Theme.bg_shadow
+        color: Style.pal.bg_shadow
         opacity: frame.opacity
     }
 
@@ -278,7 +283,7 @@ PanelWindow {
         height: header_height + body.implicitHeight + pad_y * 2 + Style.slant_room
         // Sized console art makes the frame near square, where a pill radius would round it into a circle; framed art keeps the frame radius.
         radius: Style.rounded && !Style.frame_visor && !(root.console_osd && (root.console_osd.size || root.console_osd.framed)) ? height / 2 : Style.frame_radius
-        color: Style.frame_chamfer > 0 || Style.frame_visor || Style.custom_frame ? "transparent" : Style.frame_follows_island ? Theme.bg_core : Style.frame_color
+        color: Style.frame_chamfer > 0 || Style.frame_visor || Style.custom_frame ? "transparent" : Style.frame_follows_island ? Style.pal.bg_core : Style.frame_color
         border.width: Style.frame_visor || Style.frame_chamfer > 0 || Style.custom_frame ? 0 : Style.frame_border_width
         border.color: Style.frame_border_color
 
@@ -434,7 +439,7 @@ PanelWindow {
                     Layout.preferredWidth: Theme.glyph_size + 4
                     horizontalAlignment: Text.AlignHCenter
                     text: root.glyph
-                    color: !root.showing_vox ? Theme.theme_primary : root.vox_recording ? Theme.theme_label : Theme.warning
+                    color: !root.showing_vox ? Style.pal.primary : root.vox_recording ? Style.pal.label : Style.pal.warning
                     opacity: !root.showing_vox && root.muted ? 0.5 : 1
                     font.family: Theme.font_family
                     font.pixelSize: Theme.glyph_size
@@ -485,7 +490,7 @@ PanelWindow {
                     Layout.preferredWidth: percent_metrics.width
                     horizontalAlignment: Text.AlignRight
                     text: root.showing_vox ? root.elapsed : root.percent + "%"
-                    color: root.showing_vox && !root.vox_recording ? Theme.warning : !root.showing_vox && root.muted ? Style.text_muted : root.hud_layout ? Style.text_primary : Theme.fg_core
+                    color: root.showing_vox && !root.vox_recording ? Style.pal.warning : !root.showing_vox && root.muted ? Style.text_muted : root.hud_layout ? Style.text_primary : Style.pal.fg
                     font.family: Style.number_font
                     font.pixelSize: percent_metrics.font.pixelSize
                     font.bold: Style.number_font !== Style.font_family
@@ -522,6 +527,16 @@ PanelWindow {
                 wave: root.kind === "volume"
                 node: root.sink
                 peaks_on: root.wanted && root.visible && Power.on_ac
+            }
+        }
+
+        Component {
+            id: watch_osd
+            Goldeneye.GaugeDial {
+                size: Style.px(96)
+                value: root.raw_level
+                muted: root.muted
+                label: root.kind === "brightness" ? "LIGHT" : "VOLUME"
             }
         }
 
@@ -581,7 +596,7 @@ PanelWindow {
                     source: glow_layer
                     autoPaddingEnabled: false
                     colorization: Style.glow_tint
-                    colorizationColor: Theme.theme_primary_light
+                    colorizationColor: Style.pal.primary_light
                 }
             }
         }

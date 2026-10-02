@@ -252,7 +252,7 @@ Popup {
                         id: bell
                         visible: !Style.show_title
                         text: NotificationState.dnd ? "\u{f009b}" : "\u{f009a}"
-                        color: NotificationState.dnd ? Style.text_dim : Theme.theme_primary
+                        color: NotificationState.dnd ? Style.text_dim : Style.pal.primary
                         font.family: Style.font_family
                         font.pixelSize: 40
                     }
@@ -269,7 +269,7 @@ Popup {
                             Layout.minimumWidth: 0
                             elide: Text.ElideRight
                             text: "Notifications"
-                            color: Theme.fg_core
+                            color: Style.pal.fg
                             font.bold: true
                             font.family: Style.font_family
                             font.pixelSize: Style.fs(6)

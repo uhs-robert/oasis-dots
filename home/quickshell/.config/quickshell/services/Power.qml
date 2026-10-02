@@ -16,7 +16,7 @@ Singleton {
 
     // Lock follows the popup's text color, so it takes the popup's style tokens.
     function color(action, st) {
-        return ({ lock: st.text_fg, logout: Theme.info, reboot: Theme.warning, poweroff: Theme.theme_label })[action];
+        return ({ lock: st.text_fg, logout: Style.pal.info, reboot: Style.pal.warning, poweroff: Style.pal.danger })[action];
     }
 
     function run(action) {

@@ -278,7 +278,7 @@ Popup {
             width: parent.width
             height: Style.px(30)
             radius: Style.radius(4)
-            color: Theme.bg_surface
+            color: Style.pal.bg_surface
             border.width: root.insert ? 1 : 0
             border.color: root.st.caret_color
 

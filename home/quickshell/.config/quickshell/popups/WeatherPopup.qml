@@ -353,7 +353,7 @@ Popup {
                         Layout.fillWidth: true
                         elide: Text.ElideRight
                         text: WeatherState.has_data ? WeatherState.current.cond : WeatherState.loading ? "Loading…" : "Unavailable: " + WeatherState.error
-                        color: WeatherState.has_data || WeatherState.loading ? Theme.fg_core : Theme.warning
+                        color: WeatherState.has_data || WeatherState.loading ? Style.pal.fg : Style.pal.warning
                         font.family: Style.font_family
                         font.pixelSize: Style.fs(1)
                     }
@@ -388,7 +388,7 @@ Popup {
                     maximumLineCount: 3
                     elide: Text.ElideRight
                     text: "Stale data" + (WeatherState.error ? ": " + WeatherState.error : "")
-                    color: Theme.warning
+                    color: Style.pal.warning
                     font.family: Style.font_family
                     font.pixelSize: Style.fs(-3)
                 }
@@ -401,8 +401,8 @@ Popup {
                 Layout.preferredHeight: shown ? 28 : 0
                 visible: shown
                 radius: Style.pill_chips ? height / 2 : Style.radius(4)
-                readonly property color alert_color: root.mission || root.threat ? Theme.theme_label : WeatherState.alerts.length > 0 ? WeatherState.alert_color(WeatherState.alerts[0].severity) : Style.text_dim
-                color: Style.boxed_cards ? Qt.alpha(alert_color, 0.1) : Theme.bg_surface
+                readonly property color alert_color: root.mission || root.threat ? Style.pal.label : WeatherState.alerts.length > 0 ? WeatherState.alert_color(WeatherState.alerts[0].severity) : Style.text_dim
+                color: Style.boxed_cards ? Qt.alpha(alert_color, 0.1) : Style.pal.bg_surface
                 border.width: Style.boxed_cards ? 1 : 0
                 border.color: alert_color
 
@@ -421,7 +421,7 @@ Popup {
                     Text {
                         visible: (root.mission || root.threat) && main_column.width >= 340
                         text: root.mission ? "MISSION CRITICAL" : "THREAT DETECTED"
-                        color: Theme.theme_label
+                        color: Style.pal.label
                         font.family: root.mission ? Style.title_font_family : Style.font_family
                         font.pixelSize: Style.fs(-6)
                         font.letterSpacing: 1
@@ -433,7 +433,7 @@ Popup {
                         text: WeatherState.alerts.length === 0 ? ""
                             : root.mission ? (WeatherState.alerts.length > 1 ? "+" + (WeatherState.alerts.length - 1) + "  " : "") + "AVOID " + WeatherState.alerts[0].event.toUpperCase()
                             : WeatherState.alerts[0].event + " · until " + root.fmt_alert_time(WeatherState.alerts[0].ends) + (WeatherState.alerts.length > 1 ? "  +" + (WeatherState.alerts.length - 1) + " more" : "")
-                        color: root.mission || root.threat ? Theme.theme_label : WeatherState.alerts.length > 0 ? WeatherState.alert_color(WeatherState.alerts[0].severity) : Theme.fg_core
+                        color: root.mission || root.threat ? Style.pal.label : WeatherState.alerts.length > 0 ? WeatherState.alert_color(WeatherState.alerts[0].severity) : Style.pal.fg
                         font.family: Style.font_family
                         font.pixelSize: Style.fs(-2)
                         font.bold: true

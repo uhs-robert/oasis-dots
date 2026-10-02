@@ -420,10 +420,10 @@ Singleton {
     }
 
     function alert_color(severity) {
-        if (severity === "Extreme" || severity === "Severe") return Theme.error;
-        if (severity === "Moderate") return Theme.warning;
-        if (severity === "Minor") return Theme.yellow;
-        return Theme.info;
+        if (severity === "Extreme" || severity === "Severe") return Style.pal.error;
+        if (severity === "Moderate") return Style.pal.warning;
+        if (severity === "Minor") return Style.pal.yellow;
+        return Style.pal.info;
     }
 
     function apply_data(parsed) {
@@ -807,18 +807,18 @@ Singleton {
     function condition_color(code, is_day) {
         const key = root.weather_color_keys[Math.round(code)] || "clear";
         switch (key) {
-        case "clear": return is_day ? Theme.yellow : Theme.magenta;
-        case "partly_cloudy": return is_day ? Theme.bright_yellow : Theme.bright_magenta;
-        case "overcast": return Theme.fg_dim;
-        case "fog": return Theme.fg_dim;
-        case "drizzle": return Theme.cyan;
-        case "rain": return Theme.blue;
-        case "heavy_rain": return Theme.bright_blue;
-        case "freezing_rain": return Theme.bright_cyan;
-        case "snow": return Theme.cyan;
-        case "heavy_snow": return Theme.bright_cyan;
-        case "thunderstorm": return Theme.yellow;
-        default: return Theme.theme_primary;
+        case "clear": return is_day ? Style.pal.yellow : Style.pal.magenta;
+        case "partly_cloudy": return is_day ? Style.pal.bright_yellow : Style.pal.bright_magenta;
+        case "overcast": return Style.pal.fg_dim;
+        case "fog": return Style.pal.fg_dim;
+        case "drizzle": return Style.pal.cyan;
+        case "rain": return Style.pal.blue;
+        case "heavy_rain": return Style.pal.bright_blue;
+        case "freezing_rain": return Style.pal.bright_cyan;
+        case "snow": return Style.pal.cyan;
+        case "heavy_snow": return Style.pal.bright_cyan;
+        case "thunderstorm": return Style.pal.yellow;
+        default: return Style.pal.primary;
         }
     }
 
@@ -831,17 +831,17 @@ Singleton {
         const chilly = unit_c ? 19 : 66;
         const neutral = unit_c ? 24 : 76;
         const warm = unit_c ? 29 : 85;
-        if (temp < very_cold) return Theme.bright_cyan;
-        if (temp < cold) return Theme.cyan;
-        if (temp < chilly) return Theme.bright_green;
-        if (temp < neutral) return Theme.green;
-        if (temp < warm) return Theme.yellow;
-        return Theme.red;
+        if (temp < very_cold) return Style.pal.bright_cyan;
+        if (temp < cold) return Style.pal.cyan;
+        if (temp < chilly) return Style.pal.bright_green;
+        if (temp < neutral) return Style.pal.green;
+        if (temp < warm) return Style.pal.yellow;
+        return Style.pal.red;
     }
 
     function pop_color(pop) {
         const p = Math.max(0, Math.min(100, pop));
-        return p < 60 ? Theme.blue : Theme.bright_blue;
+        return p < 60 ? Style.pal.blue : Style.pal.bright_blue;
     }
 
     function unit_symbol() {
@@ -923,13 +923,13 @@ Singleton {
 
     function color_for_key(key) {
         switch (key) {
-        case "green": return Theme.green;
-        case "yellow": return Theme.yellow;
-        case "warning": return Theme.warning;
-        case "red": return Theme.red;
-        case "magenta": return Theme.magenta;
-        case "bright_red": return Theme.bright_red;
-        default: return Theme.fg_core;
+        case "green": return Style.pal.green;
+        case "yellow": return Style.pal.yellow;
+        case "warning": return Style.pal.warning;
+        case "red": return Style.pal.red;
+        case "magenta": return Style.pal.magenta;
+        case "bright_red": return Style.pal.bright_red;
+        default: return Style.pal.fg;
         }
     }
 }

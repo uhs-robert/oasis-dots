@@ -205,7 +205,7 @@ Popup {
         root.snapshot();
         const mon = Hyprland.focusedMonitor;
         const screen = (mon && Quickshell.screens.find(s => s.name === mon.name)) || Quickshell.screens[0];
-        Popups.open(root.popup_name, null, Theme.bg_mantle, screen ? screen.name : "");
+        Popups.open(root.popup_name, null, Style.pal.bg_mantle, screen ? screen.name : "");
         return "ok";
     }
 
@@ -829,7 +829,7 @@ Popup {
                 visible: root.hint_shown
                 elide: Text.ElideRight
                 text: root.warn_text !== "" ? root.warn_text : root.loading && root.hint === "" ? "loading..." : ":" + (root.hint_ctx.cmd || "") + " arg " + (root.hint_ctx.pos || "") + ": " + root.hint + (root.loading ? "  (loading...)" : "")
-                color: root.warn_text !== "" ? Theme.warning : root.st.text_muted
+                color: root.warn_text !== "" ? Style.pal.warning : root.st.text_muted
                 font.family: root.st.font_family
                 font.pixelSize: root.st.fs(-3)
             }
@@ -841,7 +841,7 @@ Popup {
                 anchors.bottom: parent.bottom
                 height: root.input_height
                 radius: Style.radius(4)
-                color: Theme.bg_surface
+                color: Style.pal.bg_surface
                 border.width: root.insert ? 1 : 0
                 border.color: root.st.caret_color
 
@@ -908,7 +908,7 @@ Popup {
                         Text {
                             anchors.verticalCenter: parent.verticalCenter
                             text: block_cursor.ch
-                            color: Theme.bg_surface
+                            color: Style.pal.bg_surface
                             font: input.font
                         }
                     }

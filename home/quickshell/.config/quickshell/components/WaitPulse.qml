@@ -9,7 +9,7 @@ Item {
     id: root
 
     property string glyph: ""
-    property color color: Theme.theme_primary
+    property color color: Style.pal.primary
     property string font_family: Style.bar_font_family
     property int glyph_size: Theme.glyph_size
     property string mode: Style.wait_anim
@@ -94,7 +94,7 @@ Item {
             Rectangle {
                 anchors.fill: parent
                 radius: 4
-                color: Theme.bg_core
+                color: Style.pal.bg_core
                 border.color: root.color
                 border.width: 1
             }
@@ -102,7 +102,7 @@ Item {
             Shape {
                 preferredRendererType: Shape.CurveRenderer
                 ShapePath {
-                    fillColor: Theme.bg_core
+                    fillColor: Style.pal.bg_core
                     strokeColor: root.color
                     strokeWidth: 1
                     startX: bubble.width - 3
@@ -137,7 +137,7 @@ Item {
             y: Math.max(root.badge_bottom + 1, root.half - root.glyph_size * 0.6)
             width: Math.max(2, Math.min(5, root.room_right - root.glyph_half - 2))
             height: foot - y
-            color: Theme.theme_cursor
+            color: Style.pal.cursor
             opacity: root.strength
             visible: root.step(150) % 2 === 0
         }
@@ -207,7 +207,7 @@ Item {
                     y: modelData[1] - 1
                     width: modelData[2] + 2
                     height: modelData[3] + 2
-                    color: Theme.bg_shadow
+                    color: Style.pal.bg_shadow
                 }
             }
 
@@ -220,7 +220,7 @@ Item {
                     y: modelData[1]
                     width: modelData[2]
                     height: modelData[3]
-                    color: Theme.fg_strong
+                    color: Style.pal.fg_strong
                 }
             }
         }
@@ -235,12 +235,12 @@ Item {
             x: Math.max(-root.room_left + 1 + width * (peak - 1) / 2, -root.glyph_half + 1 - width / 2)
             y: Math.max(-root.room_up + height * (peak - 1), -root.half - height * 0.6)
             text: "!"
-            color: Theme.theme_label
+            color: Style.pal.label
             font.family: root.font_family
             font.pixelSize: 12
             font.bold: true
             style: Text.Outline
-            styleColor: Theme.bg_shadow
+            styleColor: Style.pal.bg_shadow
             transformOrigin: Item.Bottom
             scale: p < 0.6 ? peak * p / 0.6 : peak - (peak - 1) * (p - 0.6) / 0.4
             opacity: root.strength
@@ -340,7 +340,7 @@ Item {
             opacity: root.tail * root.strength
 
             Frame {
-                color: Theme.theme_label
+                color: Style.pal.label
                 arm: 5
                 visible: root.step(120) % 2 === 0
             }
@@ -421,8 +421,8 @@ Item {
                 preferredRendererType: Shape.CurveRenderer
 
                 ShapePath {
-                    fillColor: Theme.theme_label
-                    strokeColor: Theme.bg_shadow
+                    fillColor: Style.pal.label
+                    strokeColor: Style.pal.bg_shadow
                     strokeWidth: 1
                     joinStyle: ShapePath.MiterJoin
                     PathPolyline { path: [Qt.point(5, 0), Qt.point(10, 9), Qt.point(0, 9), Qt.point(5, 0)] }
@@ -433,7 +433,7 @@ Item {
                     y: 3
                     width: 1
                     height: 3
-                    color: Theme.bg_crust
+                    color: Style.pal.bg_crust
                 }
 
                 Rectangle {
@@ -441,7 +441,7 @@ Item {
                     y: 7
                     width: 1
                     height: 1
-                    color: Theme.bg_crust
+                    color: Style.pal.bg_crust
                 }
             }
 
@@ -451,7 +451,7 @@ Item {
                 y: Math.round(root.room_down) - 1
                 width: root.room_left + root.room_right
                 height: 1
-                color: Theme.theme_label
+                color: Style.pal.label
                 opacity: root.strength
             }
         }
@@ -474,7 +474,7 @@ Item {
                 x: -width / 2
                 y: -height / 2
                 text: root.glyph
-                color: atb.ready ? Theme.fg_strong : root.color
+                color: atb.ready ? Style.pal.fg_strong : root.color
                 font.family: root.font_family
                 font.pixelSize: root.glyph_size
                 style: Style.bar_text_style
@@ -486,7 +486,7 @@ Item {
                 y: atb.bar_y - 1
                 width: atb.x1 - atb.x0 + 2
                 height: 5
-                color: Theme.fg_muted
+                color: Style.pal.fg_muted
                 opacity: root.tail
 
                 Rectangle {
@@ -494,15 +494,15 @@ Item {
                     y: 1
                     width: parent.width - 2
                     height: 3
-                    color: Theme.bg_crust
+                    color: Style.pal.bg_crust
 
                     Rectangle {
                         width: parent.width * Math.min(1, 0.15 + 0.85 * root.phase(0, atb.fill_ms))
                         height: parent.height
                         gradient: Gradient {
                             orientation: Gradient.Horizontal
-                            GradientStop { position: 0; color: atb.ready ? Theme.theme_secondary_strong : Theme.theme_primary_strong }
-                            GradientStop { position: 1; color: atb.ready ? Theme.theme_secondary : Theme.theme_primary_light }
+                            GradientStop { position: 0; color: atb.ready ? Style.pal.secondary_strong : Style.pal.primary_strong }
+                            GradientStop { position: 1; color: atb.ready ? Style.pal.secondary : Style.pal.primary_light }
                         }
                     }
                 }
@@ -525,8 +525,8 @@ Item {
 
         Item {
             id: exclaim
-            readonly property color light: Style.shade_3.a > 0 ? Style.shade_3 : Theme.fg_strong
-            readonly property color dark: Style.shade_0.a > 0 ? Style.shade_0 : Theme.bg_crust
+            readonly property color light: Style.shade_3.a > 0 ? Style.shade_3 : Style.pal.fg_strong
+            readonly property color dark: Style.shade_0.a > 0 ? Style.shade_0 : Style.pal.bg_crust
             readonly property bool half: root.elapsed < 120
             readonly property int box_w: 15
             readonly property int box_h: 17

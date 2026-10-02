@@ -8,6 +8,7 @@ layout(std140, binding = 0) uniform buf {
     float qt_Opacity;
     float level;
     float tick;
+    float calm;
 };
 layout(binding = 1) uniform sampler2D source;
 
@@ -26,8 +27,8 @@ void main() {
         hand = max(hand, texture(source, uv + off).a);
     }
     hand = smoothstep(0.04, 0.25, hand);
-    float band = 1.0 - smoothstep(0.015, 0.045, abs(uv.y - 0.5));
-    float dense = 0.09 + band * 0.35 + hand * 0.55;
+    float band = (1.0 - smoothstep(0.015, 0.045, abs(uv.y - 0.5))) * (1.0 - 0.85 * calm);
+    float dense = 0.09 * (1.0 - 0.35 * calm) + band * 0.35 + hand * 0.55;
     float on = step(1.0 - dense, n);
     float white = clamp(hand + band * 0.6, 0.0, 1.0) * step(0.5, m);
     vec3 col = mix(vec3(0.25, 0.85, 0.30) * (0.4 + 0.6 * m), vec3(1.0), white);

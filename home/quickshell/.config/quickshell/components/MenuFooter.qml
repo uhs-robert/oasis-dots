@@ -205,7 +205,7 @@ Item {
             id: status_text
             anchors.right: parent.right
             text: !root.searching ? "" : root.popup.search_query === "" ? (root.modal ? KeyHints.with_glyphs("Enter") + " apply" : "") : root.match_count === 0 ? "no match" : (root.match_position >= 0 ? root.match_position + 1 : "-") + "/" + root.match_count
-            color: root.searching && root.popup.search_query !== "" && root.match_count === 0 ? Theme.warning : root.st.footer_fg
+            color: root.searching && root.popup.search_query !== "" && root.match_count === 0 ? Style.pal.warning : root.st.footer_fg
             font.family: root.st.font_family
             font.pixelSize: root.text_px
             font.capitalization: root.st.label_caps ? Font.AllUppercase : Font.MixedCase

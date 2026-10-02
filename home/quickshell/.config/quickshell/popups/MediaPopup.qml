@@ -12,6 +12,7 @@ import "weather" as Weather
 import "snes" as Snes
 import "../components/ps1" as Ps1
 import "../components/ps2" as Ps2
+import "../components/goldeneye" as Goldeneye
 
 Popup {
     id: root
@@ -171,7 +172,7 @@ Popup {
                         id: art_shadow_source
                         anchors.fill: parent
                         radius: Style.radius(12)
-                        color: Theme.bg_shadow
+                        color: Style.pal.bg_shadow
                         visible: false
                         layer.enabled: true
                     }
@@ -191,7 +192,7 @@ Popup {
                     Rectangle {
                         anchors.fill: parent
                         radius: Style.radius(12)
-                        color: Theme.bg_surface
+                        color: Style.pal.bg_surface
                         visible: !art_image.has_art || art_image.status !== Image.Ready
                     }
 
@@ -247,7 +248,7 @@ Popup {
                         implicitWidth: pill_label.implicitWidth + 16
                         implicitHeight: 20
                         radius: Style.radius(10)
-                        color: Theme.bg_surface
+                        color: Style.pal.bg_surface
 
                         Text {
                             id: pill_label
@@ -265,7 +266,7 @@ Popup {
                         Layout.minimumWidth: 0
                         elide: Text.ElideRight
                         text: root.player ? (root.player.trackTitle || "Unknown title") : "Nothing playing"
-                        color: Theme.fg_core
+                        color: Style.pal.fg
                         font.family: Style.font_family
                         font.pixelSize: Style.fs(5)
                         font.weight: root.ps2 ? Font.ExtraLight : Font.Bold
@@ -286,7 +287,7 @@ Popup {
                                 verticalAlignment: Text.AlignVCenter
                                 elide: Text.ElideRight
                                 text: root.player ? (root.player.trackTitle || "Unknown title") : "Nothing playing"
-                                color: Theme.fg_strong
+                                color: Style.pal.fg_strong
                                 font.family: Style.font_family
                                 font.pixelSize: Style.fs(2)
                             }
@@ -299,7 +300,7 @@ Popup {
                         elide: Text.ElideRight
                         visible: root.player && root.player.trackArtist !== ""
                         text: root.player ? root.player.trackArtist : ""
-                        color: Theme.theme_primary
+                        color: Style.pal.primary
                         font.family: Style.font_family
                         font.pixelSize: Style.font_size
                         font.weight: root.ps2 ? Font.Light : Font.Normal
@@ -337,7 +338,7 @@ Popup {
                             width: parent.width
                             height: 6
                             radius: Style.radius(3)
-                            color: Theme.bg_surface
+                            color: Style.pal.bg_surface
                             visible: progress_item.has_length && !Style.segmented_levels && !progress_item.sound_test
                         }
 
@@ -346,7 +347,7 @@ Popup {
                             width: parent.width * progress_item.ratio
                             height: 6
                             radius: Style.radius(3)
-                            color: Theme.theme_primary
+                            color: Style.pal.primary
                             visible: progress_item.has_length && !Style.segmented_levels && !progress_item.sound_test
                         }
 
@@ -354,9 +355,18 @@ Popup {
                             anchors.left: parent.left
                             anchors.right: parent.right
                             anchors.verticalCenter: parent.verticalCenter
-                            visible: progress_item.has_length && Style.segmented_levels && !progress_art.item
+                            visible: progress_item.has_length && Style.segmented_levels && !progress_art.item && !Style.track_bars
                             segment_count: 40
                             implicitHeight: Style.console_views === "nes" ? 16 : Style.px(8)
+                            value: progress_item.ratio
+                        }
+
+                        Goldeneye.BarRow {
+                            anchors.left: parent.left
+                            anchors.right: parent.right
+                            anchors.verticalCenter: parent.verticalCenter
+                            height: Style.px(12)
+                            visible: progress_item.has_length && Style.track_bars
                             value: progress_item.ratio
                         }
 
@@ -395,11 +405,11 @@ Popup {
                             radius: width / 2
                             anchors.verticalCenter: parent.verticalCenter
                             x: Math.max(0, Math.min(parent.width - width, parent.width * progress_item.ratio - width / 2))
-                            color: Theme.theme_primary
+                            color: Style.pal.primary
                             visible: progress_item.has_length && !Style.segmented_levels && !progress_item.sound_test
                             opacity: progress_item.knob_active ? 1 : 0
                             border.width: 2
-                            border.color: Theme.bg_core
+                            border.color: Style.pal.bg_core
 
                             Behavior on width { NumberAnimation { duration: 90; easing.type: Easing.OutCubic } }
                             Behavior on opacity { NumberAnimation { duration: 120 } }
@@ -531,7 +541,7 @@ Popup {
                                     Layout.alignment: Qt.AlignBottom
                                     height: cava_strip.active ? Math.max(2, cava_bar.level * 18) : 2
                                     radius: Style.radius(1)
-                                    color: Theme.theme_primary
+                                    color: Style.pal.primary
                                     opacity: cava_strip.active ? 0.25 : 0
 
                                     Behavior on height { NumberAnimation { duration: 90 } }

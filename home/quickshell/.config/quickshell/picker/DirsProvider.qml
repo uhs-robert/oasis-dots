@@ -125,7 +125,7 @@ PickerProvider {
             Rectangle {
                 anchors.fill: parent
                 radius: Style.radius(4)
-                color: Theme.bg_surface
+                color: Style.pal.bg_surface
             }
 
             Column {

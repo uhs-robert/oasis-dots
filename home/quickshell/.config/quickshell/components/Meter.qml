@@ -3,6 +3,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Effects
 import "../theme"
+import "../lock/skins/goldeneye/Watch.js" as W
 
 Item {
     id: root
@@ -23,6 +24,15 @@ Item {
     readonly property int busy_head: Math.floor(root.busy_pos * (root.segment_count + root.busy_span)) - root.busy_span
     property color on_color: root.st.meter_on
     readonly property real gap: root.st.meter_gap
+    // The bezel palette applies to meters that keep the style's default colour; callers that set their own colour (state bars) keep it.
+    readonly property bool bezel: root.st.meter_palette === "bezel" && Qt.colorEqual(root.on_color, root.st.meter_on)
+
+    // Warm run then blues, light end first, the order the gauge dial fills.
+    function bezel_at(index) {
+        const f = (index + 0.5) / root.segment_count;
+        const k = Math.min(7, Math.floor((f < 0.5 ? f : f - 0.5) * 16));
+        return f < 0.5 ? W.warm[7 - k] : W.cold_lit[7 - k];
+    }
     // Slanted segments lean past their slot by this much at the top.
     readonly property real lean: root.st.meter_slant * root.implicitHeight
     readonly property real segment_width: Math.max(2, (width - root.lean - gap * (segment_count - 1)) / segment_count)
@@ -87,7 +97,7 @@ Item {
         sourceComponent: AtbBar {
             value: root.value
             fill_color: root.on_selection && root.st.selection_inverse ? root.st.selection_fg : root.on_color
-            shade_color: Qt.colorEqual(root.on_color, root.st.meter_on) && root.st.meter_shade.a > 0 ? root.st.meter_shade : Qt.tint(fill_color, Qt.alpha(Theme.fg_strong, 0.35))
+            shade_color: Qt.colorEqual(root.on_color, root.st.meter_on) && root.st.meter_shade.a > 0 ? root.st.meter_shade : Qt.tint(fill_color, Qt.alpha(Style.pal.fg_strong, 0.35))
             hot_from: root.hot ? 0 : root.hot_from
             busy: root.busy
             busy_pos: root.busy_pos
@@ -121,7 +131,7 @@ Item {
                     readonly property bool lit: root.busy
                         ? index >= root.busy_head && index < root.busy_head + root.busy_span
                         : index < Math.round(root.value * root.segment_count)
-                    readonly property bool is_hot: root.hot || index >= Math.round(root.hot_from * root.segment_count)
+                    readonly property bool is_hot: root.hot || (!root.bezel && index >= Math.round(root.hot_from * root.segment_count))
 
                     width: root.segment_width
                     height: root.implicitHeight
@@ -133,8 +143,8 @@ Item {
                         matrix: Qt.matrix4x4(1, -root.st.meter_slant, 0, root.st.meter_slant * segment.height, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1)
                     }
                     color: segment.lit
-                        ? (segment.is_hot ? root.st.meter_hot : root.on_selection && root.st.selection_inverse ? root.st.selection_fg : root.on_color)
-                        : root.on_selection && root.st.selection_inverse ? Qt.alpha(root.st.selection_fg, 0.25) : root.st.meter_off
+                        ? (segment.is_hot ? root.st.meter_hot : root.on_selection && root.st.selection_inverse ? root.st.selection_fg : root.bezel ? root.bezel_at(segment.index) : root.on_color)
+                        : root.on_selection && root.st.selection_inverse ? Qt.alpha(root.st.selection_fg, 0.25) : root.bezel ? Qt.alpha(root.bezel_at(segment.index), 0.2) : root.st.meter_off
 
                     // Lit segments shade down from meter_shade at the top.
                     Rectangle {

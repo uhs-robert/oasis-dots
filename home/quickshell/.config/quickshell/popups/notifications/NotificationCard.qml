@@ -61,9 +61,9 @@ Item {
 
     readonly property color accent: {
         if (!root.notification) return Style.text_dim;
-        if (root.notification.urgency === NotificationUrgency.Critical) return Theme.error;
+        if (root.notification.urgency === NotificationUrgency.Critical) return Style.pal.error;
         if (root.notification.urgency === NotificationUrgency.Low) return Style.text_dim;
-        return root.notify ? Theme.info : Style.text_primary;
+        return root.notify ? Style.pal.info : Style.text_primary;
     }
 
     readonly property string urgency_tag: {
@@ -95,9 +95,9 @@ Item {
         anchors.right: parent.right
         implicitHeight: layout.implicitHeight + 20 + (({ dq: 8, dialogue: 3 })[Style.card_layout] || 0)
         radius: Style.radius(8)
-        color: Style.card_layout !== "" ? "transparent" : Style.boxed_cards ? (root.selected ? Qt.alpha(Style.caret_color, 0.08) : "transparent") : root.selected ? Theme.bg_surface : Theme.bg_mantle
+        color: Style.card_layout !== "" ? "transparent" : Style.boxed_cards ? (root.selected ? Qt.alpha(Style.caret_color, 0.08) : "transparent") : root.selected ? Style.pal.bg_surface : Style.pal.bg_mantle
         border.width: Style.card_layout !== "" ? 0 : 1
-        border.color: !Style.boxed_cards ? Theme.ui_border : root.selected && Style.selection_brackets.a <= 0 ? Style.caret_color : Qt.alpha(root.accent, 0.6)
+        border.color: !Style.boxed_cards ? Style.pal.border : root.selected && Style.selection_brackets.a <= 0 ? Style.caret_color : Qt.alpha(root.accent, 0.6)
         clip: true
 
         LockBrackets {
@@ -169,7 +169,7 @@ Item {
             anchors.top: parent.top
             anchors.right: parent.right
             anchors.margins: 8
-            color: Theme.theme_primary
+            color: Style.pal.primary
         }
 
         RowLayout {
@@ -199,7 +199,7 @@ Item {
                 Layout.alignment: Qt.AlignTop
                 sourceComponent: Modern.AccentTile {
                     size: root.width < 320 ? 32 : 36
-                    tint: root.critical ? Theme.theme_label : Theme.info
+                    tint: root.critical ? Style.pal.label : Style.pal.info
                     glyph: "\u{f0f3}"
                     notification: root.notification
                 }
@@ -244,7 +244,7 @@ Item {
                         ? "[" + (root.notification ? root.notification.appName : "") + "] " + (root.entry ? root.relative_time(root.entry.time) : "") + root.urgency_tag
                         : (root.notification ? root.notification.appName : "") + "  ·  " + (root.entry ? root.relative_time(root.entry.time) : "")
                     rightPadding: root.dialogue ? speaker_time.implicitWidth + 8 : 0
-                    color: root.dialogue ? (root.critical ? Theme.theme_label : Theme.theme_secondary) : Style.boxed_cards ? root.accent : Style.text_muted
+                    color: root.dialogue ? (root.critical ? Style.pal.label : Style.pal.secondary) : Style.boxed_cards ? root.accent : Style.text_muted
                     style: root.dialogue ? Text.Raised : Text.Normal
                     styleColor: Style.text_shadow
                     font.family: Style.font_family
@@ -269,7 +269,7 @@ Item {
                     elide: Text.ElideRight
                     Layout.leftMargin: root.dialogue ? 12 : 0
                     label: root.notification ? root.notification.summary : ""
-                    color: root.dialogue ? Theme.fg_strong : Theme.fg_core
+                    color: root.dialogue ? Style.pal.fg_strong : Style.pal.fg
                     style: root.dialogue ? Text.Raised : Text.Normal
                     styleColor: Style.text_shadow
                     font.bold: Style.title_font_family === Style.font_family
@@ -289,7 +289,7 @@ Item {
                     Layout.leftMargin: root.dialogue ? 12 : 0
                     text: root.notification ? NotificationState.clean_body(root.notification.body) : ""
                     lineHeight: root.dq ? 1.2 : 1
-                    color: root.dialogue ? Theme.fg_core : Style.text_muted
+                    color: root.dialogue ? Style.pal.fg : Style.text_muted
                     style: root.dialogue ? Text.Raised : Text.Normal
                     styleColor: Style.text_shadow
                     font.family: Style.font_family
@@ -316,7 +316,7 @@ Item {
                             implicitWidth: Math.min(action_label.implicitWidth + 18 + (action_chip.hand ? 20 : 0), layout.width)
                             implicitHeight: 26
                             radius: Style.pill_chips ? height / 2 : Style.radius(13)
-                            color: action_chip.hand ? "transparent" : action_chip.focused ? Style.chip_pick : Style.boxed_cards ? "transparent" : root.tile ? Style.tab_active_bg : Theme.bg_surface
+                            color: action_chip.hand ? "transparent" : action_chip.focused ? Style.chip_pick : Style.boxed_cards ? "transparent" : root.tile ? Style.tab_active_bg : Style.pal.bg_surface
                             border.width: Style.boxed_cards || action_chip.focused ? 1 : 0
                             border.color: action_chip.focused ? Style.chip_pick : Style.chip_border.a > 0 ? Style.chip_border : Style.key_border
 
@@ -329,7 +329,7 @@ Item {
                                 width: Math.min(implicitWidth, layout.width - 18)
                                 horizontalAlignment: Text.AlignHCenter
                                 text: action_chip.modelData.text
-                                color: action_chip.hand ? Theme.fg_strong : action_chip.focused ? Theme.bg_crust : Style.chip_fg.a > 0 ? Style.chip_fg : Theme.theme_secondary
+                                color: action_chip.hand ? Style.pal.fg_strong : action_chip.focused ? Style.pal.bg_crust : Style.chip_fg.a > 0 ? Style.chip_fg : Style.pal.secondary
                                 font.bold: action_chip.focused
                                 font.family: Style.label_font_family
                                 font.pixelSize: Style.fs(-3)
@@ -385,7 +385,7 @@ Item {
     Component {
         id: dq_card
         Weather.DqWindow {
-            border.color: root.selected ? Style.caret_color : Theme.fg_strong
+            border.color: root.selected ? Style.caret_color : Style.pal.fg_strong
 
             Text {
                 anchors.right: parent.right
@@ -394,7 +394,7 @@ Item {
                 anchors.bottomMargin: 8
                 opacity: !root.selected || Style.caret_phase ? 1 : 0
                 text: "\u25bc"
-                color: root.selected ? Style.caret_color : Theme.fg_strong
+                color: root.selected ? Style.caret_color : Style.pal.fg_strong
                 font.family: Style.font_family
                 font.pixelSize: 8
             }
@@ -419,7 +419,7 @@ Item {
         id: notify_card
         Rectangle {
             radius: 6
-            color: root.selected ? Theme.bg_surface : "transparent"
+            color: root.selected ? Style.pal.bg_surface : "transparent"
             border.width: 1
             border.color: root.selected ? Style.caret_color : Qt.tint(Style.frame_color, Qt.alpha(root.accent, 0.7))
         }
@@ -429,7 +429,7 @@ Item {
         id: dialog_card
         Ps2.DialogPanel {
             selected: root.selected
-            accent: root.critical ? Theme.error : Theme.theme_primary_light
+            accent: root.critical ? Style.pal.error : Style.pal.primary_light
         }
     }
 

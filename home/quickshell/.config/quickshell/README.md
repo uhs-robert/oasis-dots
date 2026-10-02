@@ -1,6 +1,6 @@
 # Quickshell
 
-The desktop shell for this Hyprland setup, written for [Quickshell](https://quickshell.org). One config replaces Waybar, swaync, the rofi pickers, the lock screen and the greeter UI. Every monitor gets its own bar, and all colors follow the active Oasis theme.
+The desktop shell for this Hyprland setup, written for [Quickshell](https://quickshell.org). One config replaces Waybar, swaync, the rofi pickers, the lock screen and the greeter UI. Every monitor gets its own bar, and all colors follow the active Oasis theme (the GoldenEye style's watch parts are the one exception, see Styles).
 
 Hyprland starts it with `qs -n` (see `home/hypr/.config/hypr/config/autostart/`). Hyprland binds reach it over IPC. When it isn't running, the pickers fall back to rofi and the lock to hyprlock.
 
@@ -28,7 +28,7 @@ Weather reads `weather.json`, with untracked per-machine overrides (real coordin
 
 ## Styles
 
-A style changes how the whole shell looks and behaves: fonts, frames, meters, key hints, transitions, sounds, even which views a popup shows. Colors never come from a style. They always come from the active Oasis palette, so every style works with every theme.
+A style changes how the whole shell looks and behaves: fonts, frames, meters, key hints, transitions, sounds, even which views a popup shows. Colors never come from a style. They always come from the active Oasis palette, so every style works with every theme. The one deliberate exception is the watch in `goldeneye`, which keeps the classic pause watch's own colors under every palette (see below).
 
 The styles, in picker order: `oasis` (the default), `modern`, `neovim`, `terminal`, `crt`, `nes`, `gameboy`, `snes`, `ps1`, `ff7`, `goldeneye`, `ps2`, `tie`, `halflife`, `metroid` and `reticle`. Everyday styles come first, then consoles by release year, then sci-fi.
 
@@ -38,6 +38,8 @@ Switch styles from Settings > Style (Start > Settings opens the panel), or over 
 qs ipc call style set ps1
 qs ipc call style cycle
 ```
+
+`goldeneye` is the classic GoldenEye 007 pause watch, drawn the same way as its lock skin. Popups are a matte black frame around a translucent green octagon panel, with green text and green highlight boxes and an `OASIS WATCH v<version>` readout (the version comes from the optional `VERSION` file at the config root). The bar workspaces are a watch strip with green ticks (white on the focused one) and a pale hand, its minute ticks tinted along the bezel colors, on the bar's own background; the clock is green DSEG7 digits on a dark panel; the weather header is the watch face with temperature and humidity segments; the clock popup shows an analogue watch face with the pale hands, which tick only on AC while the popup is open; the screenshot readouts are small watch faces. The watch colors are the fixed ones in `lock/skins/goldeneye/Watch.js`, shared with the lock skin, so a palette change leaves them alone. The screenshot picker's aiming crosshair and the overview's are the game's fixed red too. Text outside the watch (bar labels) still follows the palette.
 
 Settings > Theme options tweaks the current style (scanlines, glow, dither, fonts, text size). Settings > Colors picks the Oasis palette (right-clicking the Start button opens it too). It saves through `theme/switch.lua`, the same switcher the rofi fallback uses, which reloads Hyprland and reruns every color generator, including the one that writes `theme/theme.json` for this shell.
 
@@ -164,13 +166,13 @@ It installs to `/etc/greetd/quickshell` with its data in `/var/lib/qs-greeter`, 
 
 ## Extending
 
-**A style.** Add its token set to `styles` in `theme/Style.qml` (most build on the shared `terminal` base with `Object.assign`), then add its name to `order`, and to `labels` if the label isn't just the capitalized name. Optional extras: a transition in `components/transitions/Kinds.js`, a sound pack in `sounds/<style>/` (a patch in `scripts/synth-sounds`) and a lock skin.
+**A style.** Add its token set to `styles` in `theme/Style.qml` (most build on the shared `terminal` base with `Object.assign`), then add its name to `order`, and to `labels` if the label isn't just the capitalized name. Shared popup components take their palette colors from `Style.pal`, which defaults to the Oasis palette; a style can remap it (goldeneye does). Optional extras: a transition in `components/transitions/Kinds.js`, a sound pack in `sounds/<style>/` (a patch in `scripts/synth-sounds`) and a lock skin.
 
 **A Settings section.** Write `settings/sections/<Name>Section.qml`, usually a `RowsSection` with a list of rows, and add an entry to `list` in `settings/Sections.js`. The sidebar, search and IPC pick it up from there.
 
 **A picker provider.** Subclass `picker/PickerProvider.qml`: set `name` and `items`, implement `refresh()` and `activate()`, and it registers itself. Add it to `shell.qml` next to the other providers. To open it from Hyprland, bind `Menu.picker("<name>", "<rofi fallback>")` from `lib/actions/menu.lua`, so the bind still works without the bar.
 
-**A lock skin.** Add `lock/skins/<Style>.qml` (first letter capitalized). It shows up in Settings > Lock screen and in the greeter once it exists. For a skin with no bar style, also add it to `lock_only` in `theme/Style.qml`.
+**A lock skin.** Add `lock/skins/<Style>.qml` (first letter capitalized). It shows up in Settings > Lock screen and in the greeter once it exists. For a skin with no bar style, also add it to `lock_only` in `theme/Style.qml`. The greeter stages only `lock/skins/`, `lock/Tints.js`, `theme/` and `fonts/`, so a skin imports nothing from `components/` or `services/`; pieces a bar style shares with its skin (the GoldenEye watch colors, segment arcs and panel) live in the skin's own folder and the style imports them from there.
 
 ## Development
 

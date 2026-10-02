@@ -39,13 +39,13 @@ Item {
         anchors.verticalCenter: parent.verticalCenter
         height: 6
         radius: Style.radius(3)
-        color: Theme.bg_surface
+        color: Style.pal.bg_surface
 
         Rectangle {
             width: track.width * Math.max(0, Math.min(1, root.value))
             height: parent.height
             radius: parent.radius
-            color: root.on_selection && root.st.selection_inverse ? root.st.selection_fg : Theme.theme_primary
+            color: root.on_selection && root.st.selection_inverse ? root.st.selection_fg : Style.pal.primary
         }
     }
 

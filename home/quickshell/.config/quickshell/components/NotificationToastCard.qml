@@ -6,6 +6,7 @@ import Quickshell.Services.Notifications
 import "../theme"
 import "../services"
 import "../popups/weather" as Weather
+import "goldeneye" as Goldeneye
 import "ps1" as Ps1
 import "modern" as Modern
 import "neovim" as Neovim
@@ -40,20 +41,21 @@ Rectangle {
 
     readonly property color accent: {
         if (!root.notification) return Style.text_dim;
-        if (root.notification.urgency === NotificationUrgency.Critical) return Theme.error;
+        if (root.notification.urgency === NotificationUrgency.Critical) return Style.pal.error;
         if (root.notification.urgency === NotificationUrgency.Low) return Style.text_dim;
-        return root.notify ? Theme.info : Style.text_primary;
+        return root.notify ? Style.pal.info : Style.text_primary;
     }
 
     readonly property string urgency_tag: {
         if (!root.notification) return "";
+        if (Style.toast_mission) return root.notification.urgency === NotificationUrgency.Critical ? " · MISSION CRITICAL" : root.notification.urgency === NotificationUrgency.Low ? "" : " · INCOMING";
         if (root.notification.urgency === NotificationUrgency.Critical) return " !! critical";
         if (root.notification.urgency === NotificationUrgency.Low) return " · low";
         return "";
     }
 
     readonly property int text_style: Style.glow ? Text.Outline : Style.text_shadow.a > 0 ? Text.Raised : Text.Normal
-    readonly property color glow_color: Style.glow ? Qt.alpha(Theme.theme_primary, 0.3) : Style.text_shadow
+    readonly property color glow_color: Style.glow ? Qt.alpha(Style.pal.primary, 0.3) : Style.text_shadow
 
     property int time_tick: 0
     readonly property string relative_time: {
@@ -76,9 +78,9 @@ Rectangle {
     radius: root.tile ? Style.frame_radius : root.notify ? 6 : Style.radius(8)
     color: Style.frame_visor || Style.custom_frame || root.own_surface ? "transparent" : Style.boxed_cards
         ? (root.selected ? Qt.tint(Style.frame_color, Qt.alpha(Style.caret_color, 0.08)) : Style.frame_color)
-        : (root.selected ? Theme.bg_surface : Theme.bg_mantle)
+        : (root.selected ? Style.pal.bg_surface : Style.pal.bg_mantle)
     border.width: Style.frame_visor || Style.custom_frame || root.own_surface ? 0 : root.highlighted && !Style.boxed_cards ? 2 : 1
-    border.color: root.highlighted ? Theme.theme_secondary : root.notify ? Qt.tint(Style.frame_color, Qt.alpha(root.accent, 0.7)) : Style.boxed_cards ? root.accent : Theme.ui_border
+    border.color: root.highlighted ? Style.pal.secondary : root.notify ? Qt.tint(Style.frame_color, Qt.alpha(root.accent, 0.7)) : Style.boxed_cards ? root.accent : Style.pal.border
     clip: true
 
     opacity: 0
@@ -148,7 +150,7 @@ Rectangle {
         active: root.dq
         anchors.fill: parent
         sourceComponent: Weather.DqWindow {
-            border.color: root.highlighted ? Theme.theme_secondary : Theme.fg_strong
+            border.color: root.highlighted ? Style.pal.secondary : Style.pal.fg_strong
         }
     }
 
@@ -170,8 +172,8 @@ Rectangle {
         sourceComponent: Rectangle {
             radius: root.radius
             gradient: Gradient {
-                GradientStop { position: 0; color: Qt.alpha(Theme.theme_primary_light, 0.4) }
-                GradientStop { position: 0.6; color: Qt.alpha(Theme.theme_primary, 0.12) }
+                GradientStop { position: 0; color: Qt.alpha(Style.pal.primary_light, 0.4) }
+                GradientStop { position: 0.6; color: Qt.alpha(Style.pal.primary, 0.12) }
                 GradientStop { position: 1; color: "transparent" }
             }
 
@@ -206,7 +208,7 @@ Rectangle {
 
     VisorGlass {
         anchors.fill: parent
-        border_color: root.highlighted ? Theme.theme_secondary : Qt.alpha(root.accent, 0.5)
+        border_color: root.highlighted ? Style.pal.secondary : Qt.alpha(root.accent, 0.5)
     }
 
     FrameShade {
@@ -217,10 +219,19 @@ Rectangle {
         bottom_radius: top_radius
     }
 
+    Loader {
+        anchors.fill: parent
+        active: Style.frame_watch && !root.own_surface
+        sourceComponent: Goldeneye.PopupPanel {
+            st: Style
+            edge: 4
+        }
+    }
+
     CustomFrame {
         anchors.fill: parent
-        chamfer_edge: root.highlighted ? Theme.theme_secondary : Style.frame_border_color
-        octagon_edge: root.highlighted ? Theme.theme_secondary : root.accent
+        chamfer_edge: root.highlighted ? Style.pal.secondary : Style.frame_border_color
+        octagon_edge: root.highlighted ? Style.pal.secondary : root.accent
         octagon_cut: Math.min(Style.frame_octagon, 10)
         struts: false
     }
@@ -301,7 +312,7 @@ Rectangle {
             y: index * Style.scanline_period
             width: root.width
             height: 1
-            color: Qt.alpha(Theme.theme_primary, 0.05)
+            color: Qt.alpha(Style.pal.primary, 0.05)
         }
     }
 
@@ -356,7 +367,7 @@ Rectangle {
             visible: active
             Layout.alignment: Qt.AlignTop
             sourceComponent: Modern.AccentTile {
-                tint: root.notification && root.notification.urgency === NotificationUrgency.Critical ? Theme.theme_label : Theme.info
+                tint: root.notification && root.notification.urgency === NotificationUrgency.Critical ? Style.pal.label : Style.pal.info
                 glyph: "\u{f0f3}"
                 notification: root.notification
             }
@@ -432,7 +443,7 @@ Rectangle {
                 Layout.minimumWidth: 0
                 elide: Text.ElideRight
                 text: root.typed < 1 ? root.summary.slice(0, Math.ceil(root.typed * root.summary.length)) : root.summary
-                color: Theme.fg_core
+                color: Style.pal.fg
                 font.bold: Style.title_font_family === Style.font_family
                 font.family: Style.title_font_family
                 font.pixelSize: Style.font_size + (Style.boxed_cards ? 0 : 1)
@@ -475,7 +486,7 @@ Rectangle {
                         implicitWidth: Math.min(action_label.implicitWidth + 16 + (action_chip.hand ? 20 : 0), layout.width)
                         implicitHeight: 22
                         radius: Style.pill_chips ? height / 2 : Style.radius(11)
-                        color: action_chip.hand ? "transparent" : action_chip.focused ? Style.chip_pick : Style.boxed_cards ? "transparent" : root.tile ? Style.tab_active_bg : Theme.bg_surface
+                        color: action_chip.hand ? "transparent" : action_chip.focused ? Style.chip_pick : Style.boxed_cards ? "transparent" : root.tile ? Style.tab_active_bg : Style.pal.bg_surface
                         border.width: Style.boxed_cards || action_chip.focused ? 1 : 0
                         border.color: action_chip.focused ? Style.chip_pick : Style.chip_border.a > 0 ? Style.chip_border : Style.key_border
 
@@ -487,7 +498,7 @@ Rectangle {
                             width: Math.min(implicitWidth, layout.width - 16)
                             horizontalAlignment: Text.AlignHCenter
                             text: action_chip.modelData.text
-                            color: action_chip.hand ? Theme.fg_strong : action_chip.focused ? Theme.bg_crust : Style.chip_fg.a > 0 ? Style.chip_fg : Theme.theme_secondary
+                            color: action_chip.hand ? Style.pal.fg_strong : action_chip.focused ? Style.pal.bg_crust : Style.chip_fg.a > 0 ? Style.chip_fg : Style.pal.secondary
                             font.bold: action_chip.focused
                             font.family: Style.font_family
                             font.pixelSize: Style.font_size - (Style.boxed_cards ? 3 : 4)
@@ -523,7 +534,7 @@ Rectangle {
         radius: root.radius
         color: "transparent"
         border.width: 2
-        border.color: Theme.theme_secondary
+        border.color: Style.pal.secondary
     }
 
     HoverHandler {

@@ -3,6 +3,7 @@ pragma Singleton
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import "../lock/skins/goldeneye/Watch.js" as Watch
 
 Singleton {
     id: root
@@ -26,7 +27,89 @@ Singleton {
     }
 
     readonly property var styles: {
+        // The palette slots shared components draw with; goldeneye remaps them to the watch's fixed colours.
+        const pal = {
+            error: Theme.error,
+            warning: Theme.warning,
+            ok: Theme.ok,
+            info: Theme.info,
+            hint: Theme.hint,
+            primary: Theme.theme_primary,
+            primary_light: Theme.theme_primary_light,
+            primary_strong: Theme.theme_primary_strong,
+            secondary: Theme.theme_secondary,
+            secondary_strong: Theme.theme_secondary_strong,
+            accent: Theme.theme_accent,
+            today: Theme.theme_accent,
+            label: Theme.theme_label,
+            danger: Theme.theme_label,
+            cursor: Theme.theme_cursor,
+            fg: Theme.fg_core,
+            fg_strong: Theme.fg_strong,
+            fg_muted: Theme.fg_muted,
+            fg_dim: Theme.fg_dim,
+            border: Theme.ui_border,
+            visual_bg: Theme.ui_visual_bg,
+            bg_shadow: Theme.bg_shadow,
+            bg_core: Theme.bg_core,
+            bg_crust: Theme.bg_crust,
+            bg_mantle: Theme.bg_mantle,
+            bg_surface: Theme.bg_surface,
+            magenta: Theme.magenta,
+            bright_yellow: Theme.bright_yellow,
+            bright_blue: Theme.bright_blue,
+            bright_green: Theme.bright_green,
+            bright_magenta: Theme.bright_magenta,
+            bright_red: Theme.bright_red,
+            cyan: Theme.cyan,
+            bright_cyan: Theme.bright_cyan,
+            red: Theme.red,
+            green: Theme.green,
+            yellow: Theme.yellow,
+            blue: Theme.blue
+        };
+        const watch_pal = Object.assign({}, pal, {
+            error: Watch.red,
+            warning: Watch.warm[5],
+            ok: Watch.white,
+            info: Watch.cold_lit[5],
+            hint: Watch.green_mid,
+            primary: Watch.green,
+            primary_light: Watch.white,
+            primary_strong: Watch.green_mid,
+            secondary: Watch.cold_lit[6],
+            secondary_strong: Watch.cold_lit[4],
+            accent: Watch.green,
+            today: Watch.red,
+            label: Watch.green,
+            danger: Watch.red,
+            cursor: Watch.green,
+            fg: Watch.green_mid,
+            fg_strong: Watch.green,
+            fg_muted: Watch.green_soft,
+            fg_dim: Watch.green_dim,
+            border: Qt.alpha(Watch.green, 0.5),
+            visual_bg: Qt.alpha(Watch.green, 0.22),
+            bg_shadow: Watch.black,
+            bg_core: Watch.black,
+            bg_crust: Watch.black,
+            bg_mantle: "#031505",
+            bg_surface: "#0a2a10",
+            magenta: Watch.cold_lit[2],
+            bright_yellow: Watch.warm[7],
+            bright_blue: Watch.cold_lit[6],
+            bright_green: Watch.green,
+            bright_magenta: Watch.cold_lit[4],
+            bright_red: Watch.red,
+            cyan: Watch.cold_lit[5],
+            bright_cyan: Watch.cold_lit[7],
+            red: Watch.red,
+            green: Watch.white,
+            yellow: Watch.warm[5],
+            blue: Watch.cold_lit[4]
+        });
         const terminal = {
+            pal: pal,
             text_muted: Theme.fg_muted,
             text_dim: Theme.fg_dim,
             text_fg: Theme.fg_core,
@@ -55,6 +138,14 @@ Singleton {
             lcd_scan: "transparent",
             lcd_margin: 0,
             frame_engraving: "",
+            frame_watch: false,
+            link_style: "",
+            ammo_counter: false,
+            night_vision: false,
+            toast_mission: false,
+            track_bars: false,
+            open_fx: "",
+            confirm_layout: "",
             accent_color: Theme.theme_secondary,
             accent_height: 3,
             accent_full_width: true,
@@ -194,6 +285,7 @@ Singleton {
             chart_outline: "transparent",
             bar_workspace_diamond: false,
             bar_clock_brackets: "transparent",
+            bar_separator: "",
             hairline: "transparent",
             hairline_dim: "transparent",
             frame_ticks: "",
@@ -260,10 +352,12 @@ Singleton {
             whichkey_size: 0,
             type_scale: ({}),
             meter_gap: 2,
+            meter_palette: "",
             bar_lualine: false
         };
         return {
             "default": {
+                pal: pal,
                 text_muted: Theme.fg_muted,
                 text_dim: Theme.fg_dim,
                 text_fg: Theme.fg_core,
@@ -292,6 +386,14 @@ Singleton {
                 lcd_scan: "transparent",
                 lcd_margin: 0,
                 frame_engraving: "",
+                frame_watch: false,
+                link_style: "",
+                ammo_counter: false,
+                night_vision: false,
+                toast_mission: false,
+                track_bars: false,
+                open_fx: "",
+                confirm_layout: "",
                 accent_color: Theme.theme_primary,
                 accent_height: 3,
                 accent_full_width: false,
@@ -431,6 +533,7 @@ Singleton {
                 chart_outline: "transparent",
                 bar_workspace_diamond: false,
                 bar_clock_brackets: "transparent",
+                bar_separator: "",
                 hairline: "transparent",
                 hairline_dim: "transparent",
                 frame_ticks: "",
@@ -497,6 +600,7 @@ Singleton {
                 whichkey_size: 0,
                 type_scale: ({}),
                 meter_gap: 2,
+                meter_palette: "",
                 bar_lualine: false
             },
             "terminal": Object.assign({}, terminal, {
@@ -737,63 +841,86 @@ Singleton {
                 bar_glow_color: Theme.bg_shadow,
                 bar_text_raised: true
             }),
-            // Perfect Dark panels; `small` turns the small popups into the Q-branch watch LCD.
+            // The classic pause watch for every popup, in its own fixed colours under any palette.
             "goldeneye": Object.assign({}, terminal, {
+                pal: watch_pal,
+                osd_layout: "watch",
                 workspace_art: "dial",
                 wait_anim: "transmission",
                 done_anim: "lcd",
-                text_muted: Qt.tint(Theme.fg_muted, Qt.alpha(Theme.fg_core, 0.3)),
-                text_dim: Qt.tint(Theme.fg_dim, Qt.alpha(Theme.fg_core, 0.2)),
-                font_family: "Share Tech Mono",
-                title_font_family: "Michroma",
-                number_font: "DSEG7 Classic",
-                frame_color: Theme.bg_crust,
-                frame_shade: Qt.tint(Theme.bg_crust, Qt.alpha(Theme.ui_visual_bg, 0.6)),
-                frame_border_color: Qt.alpha(Theme.theme_label, 0.6),
-                frame_chamfer: 14,
+                text_fg: Watch.green_mid,
+                text_strong: Watch.green,
+                text_primary: Watch.green,
+                text_accent: Watch.white,
+                text_muted: Watch.green_soft,
+                text_dim: Watch.green_dim,
+                font_family: Watch.mono_font,
+                title_font_family: Watch.head_font,
+                number_font: Watch.digit_font,
+                frame_color: Watch.black,
+                frame_border_color: Watch.rim,
+                frame_border_width: 2,
+                frame_radius: 10,
+                frame_watch: true,
+                link_style: "watch",
+                ammo_counter: true,
+                night_vision: true,
+                toast_mission: true,
+                track_bars: true,
+                open_fx: "static",
+                confirm_layout: "watch",
+                lcd_top: Qt.rgba(Watch.panel_top[0], Watch.panel_top[1], Watch.panel_top[2], Watch.panel_top[3]),
+                lcd_bottom: Qt.rgba(Watch.panel_bottom[0], Watch.panel_bottom[1], Watch.panel_bottom[2], Watch.panel_bottom[3]),
+                lcd_margin: 8,
                 picker_skin: "goldeneye",
-                accent_color: Theme.theme_label,
+                accent_color: Watch.green,
                 accent_height: 2,
-                frame_top_rule: true,
-                selection_bg: Qt.alpha(Theme.theme_label, 0.16),
+                frame_top_rule: false,
+                selection_bg: Qt.alpha(Watch.green, 0.22),
                 selection_outline: "transparent",
-                selection_bar: true,
-                caret_color: Theme.theme_label,
+                selection_border: Qt.alpha(Watch.green, 0.7),
+                selection_bar: false,
+                caret_color: Watch.green,
                 caret_blink: false,
                 row_cursor: "",
-                tab_active_bg: "transparent",
-                tab_active_fg: Theme.fg_strong,
-                tab_fg: Qt.tint(Theme.fg_dim, Qt.alpha(Theme.fg_core, 0.2)),
+                tab_active_bg: Qt.alpha(Watch.green, 0.22),
+                tab_active_fg: Watch.green,
+                tab_fg: Watch.green_mid,
                 tab_caps: true,
-                tab_underline: Theme.theme_label,
-                key_fg: Theme.theme_secondary,
-                key_border: Qt.alpha(Theme.theme_secondary, 0.5),
-                section_fg: Qt.tint(Theme.fg_dim, Qt.alpha(Theme.fg_core, 0.2)),
+                tab_underline: Watch.green,
+                key_fg: Watch.green,
+                key_border: Qt.alpha(Watch.green, 0.5),
+                section_fg: Watch.green_soft,
                 section_rule: false,
-                section_fade: Qt.alpha(Theme.theme_label, 0.5),
+                section_fade: Qt.alpha(Watch.green, 0.4),
                 label_caps: true,
                 label_spacing: 2,
-                footer_fg: Qt.tint(Theme.fg_dim, Qt.alpha(Theme.fg_core, 0.2)),
-                footer_rule_color: Qt.alpha(Theme.theme_label, 0.25),
-                meter_on: Theme.theme_primary_light,
-                meter_off: Theme.bg_surface,
-                meter_slant: 0.36,
+                footer_fg: Watch.green_soft,
+                footer_key_fg: Watch.green,
+                footer_rule_color: Qt.alpha(Watch.green, 0.25),
+                meter_on: Watch.bar_on,
+                meter_off: Watch.bar_off,
+                meter_hot: Watch.red,
+                meter_slant: 0.4,
+                meter_gap: 3,
+                meter_height: 12,
+                meter_palette: "bezel",
                 chart_slant: 0.21,
-                chart_fill: Theme.theme_secondary,
+                chart_fill: Watch.green_mid,
                 weather_header: "watch",
                 title_bg: "transparent",
-                title_fg: Theme.fg_strong,
-                title_spacing: 4,
-                title_readout: "CI · {code}-07",
-                title_readout_fg: Theme.theme_label,
+                title_fg: Watch.green,
+                title_spacing: 2,
+                title_readout: "OASIS WATCH v" + root.version,
+                title_readout_fg: Watch.green_dim,
                 chip_brackets: false,
-                chip_active_bg: Theme.theme_label,
-                chip_active_fg: Theme.bg_crust,
-                chip_pick: Theme.theme_label,
-                chip_border: Qt.alpha(Theme.theme_label, 0.5),
-                card_edge: Theme.theme_label,
-                toggle_on: Theme.theme_primary_light,
-                toggle_off: Qt.tint(Theme.fg_dim, Qt.alpha(Theme.fg_core, 0.2)),
+                chip_active_bg: Qt.alpha(Watch.green, 0.22),
+                chip_active_fg: Watch.green,
+                chip_pick: Watch.green,
+                chip_border: Qt.alpha(Watch.green, 0.5),
+                card_edge: Watch.green_mid,
+                toggle_on: Watch.white,
+                toggle_off: Watch.green_dim,
                 marker_fill: false,
                 bar_font_family: "Michroma",
                 bar_font_size: Theme.font_size - 3,
@@ -801,70 +928,12 @@ Singleton {
                 bar_letter_spacing: 1.5,
                 bar_side_bg: Theme.bg_crust,
                 bar_center_bg: Theme.bg_crust,
-                bar_border_color: Qt.alpha(Theme.theme_label, 0.5),
-                bar_hover_bg: Qt.alpha(Theme.theme_label, 0.18),
-                bar_clock_bg: Theme.theme_primary_light,
-                bar_clock_fg: Theme.bg_core,
-                bar_clock_font: "DSEG7 Classic",
-                small: {
-                    text_fg: Theme.theme_primary_light,
-                    text_strong: Theme.fg_strong,
-                    text_primary: Theme.theme_primary,
-                    text_accent: Theme.theme_label,
-                    text_muted: Qt.alpha(Theme.theme_primary_light, 0.6),
-                    text_dim: Qt.alpha(Theme.theme_primary_light, 0.78),
-                    title_font_family: "Share Tech Mono",
-                    frame_shade: Theme.bg_surface,
-                    shade_vertical: true,
-                    frame_radius: 22,
-                    frame_chamfer: 0,
-                    frame_border_width: 2,
-                    frame_border_color: Qt.tint(Theme.bg_surface, Qt.alpha(Theme.fg_muted, 0.4)),
-                    frame_inset_width: 3,
-                    frame_inset_color: Theme.bg_shadow,
-                    lcd_top: Qt.tint(Theme.bg_mantle, Qt.alpha(Theme.theme_primary, 0.2)),
-                    lcd_bottom: Qt.tint(Theme.bg_core, Qt.alpha(Theme.theme_primary, 0.12)),
-                    lcd_scan: Qt.alpha(Theme.bg_shadow, 0.3),
-                    lcd_margin: 7,
-                    frame_engraving: "Q BRANCH",
-                    accent_color: Qt.tint(Theme.bg_surface, Qt.alpha(Theme.fg_muted, 0.4)),
-                    frame_top_rule: false,
-                    selection_bg: Theme.theme_primary_light,
-                    selection_inverse: true,
-                    selection_fg: Theme.bg_core,
-                    selection_bar: false,
-                    caret_color: Theme.bg_core,
-                    row_cursor: "▸",
-                    tab_active_bg: Theme.theme_primary_light,
-                    tab_active_fg: Theme.bg_core,
-                    tab_fg: Qt.alpha(Theme.theme_primary_light, 0.6),
-                    tab_caps: false,
-                    tab_underline: "transparent",
-                    key_fg: Theme.theme_primary_light,
-                    key_border: Qt.alpha(Theme.theme_primary_light, 0.6),
-                    section_fg: Theme.theme_primary_light,
-                    section_fade: Qt.alpha(Theme.theme_primary_light, 0.35),
-                    footer_fg: Qt.alpha(Theme.theme_primary_light, 0.6),
-                    footer_key_fg: Theme.theme_primary_light,
-                    footer_rule_color: Qt.alpha(Theme.theme_primary_light, 0.3),
-                    meter_on: Theme.theme_primary_light,
-                    meter_off: Qt.alpha(Theme.theme_primary_light, 0.15),
-                    meter_hot: Theme.theme_label,
-                    meter_slant: 0.32,
-                    title_bg: Theme.theme_primary_light,
-                    title_fg: Theme.bg_core,
-                    title_spacing: 2,
-                    title_readout: "WATCH   MAG",
-                    title_readout_fg: Qt.alpha(Theme.theme_primary_light, 0.7),
-                    title_rule: Qt.alpha(Theme.theme_primary_light, 0.3),
-                    chip_active_bg: Theme.theme_primary_light,
-                    chip_active_fg: Theme.bg_core,
-                    chip_pick: Theme.theme_primary_light,
-                    chip_border: Qt.alpha(Theme.theme_primary_light, 0.6),
-                    card_edge: "transparent",
-                    toggle_on: Theme.theme_primary_light,
-                    toggle_off: Qt.alpha(Theme.theme_primary_light, 0.45)
-                }
+                bar_border_color: Qt.tint(Theme.bg_crust, Qt.alpha(Theme.fg_muted, 0.5)),
+                bar_hover_bg: Qt.tint(Theme.bg_crust, Qt.alpha(Theme.fg_muted, 0.25)),
+                bar_separator: "tick",
+                bar_clock_bg: "#04200a",
+                bar_clock_fg: Watch.green,
+                bar_clock_font: Watch.digit_font
             }),
             "metroid": Object.assign({}, terminal, {
                 workspace_art: "doors",
@@ -1911,6 +1980,23 @@ Singleton {
     readonly property int lcd_margin: root.active.lcd_margin
     // Lettering on the frame under the panel.
     readonly property string frame_engraving: root.active.frame_engraving
+    // Draws the popup panel as the watch's green octagon.
+    readonly property bool frame_watch: root.active.frame_watch
+    readonly property var pal: root.active.pal
+    // "watch" words the network and bluetooth popups in the mission language, with dial headers and segment bars.
+    readonly property string link_style: root.active.link_style
+    // The overview's `N | M` window counter.
+    readonly property bool ammo_counter: root.active.ammo_counter
+    // The overview shows unselected windows through a green monochrome tint.
+    readonly property bool night_vision: root.active.night_vision
+    // Toasts carry the mission wording (INCOMING, MISSION CRITICAL) in their header.
+    readonly property bool toast_mission: root.active.toast_mission
+    // Track progress as the lock face's row of green bars.
+    readonly property bool track_bars: root.active.track_bars
+    // "static" plays the watch's static over a popup as it opens.
+    readonly property string open_fx: root.active.open_fx
+    // "watch" asks for a Power action in the lock skin's arm-then-confirm words.
+    readonly property string confirm_layout: root.active.confirm_layout
     readonly property color accent_color: root.active.accent_color
     readonly property int accent_height: root.active.accent_height
     readonly property bool accent_full_width: root.active.accent_full_width
@@ -2148,6 +2234,8 @@ Singleton {
     // Which-key keys and labels in px; 0 keeps the popup-derived sizes.
     readonly property int whichkey_size: root.active.whichkey_size
     readonly property real meter_gap: root.active.meter_gap
+    // "bezel" colours a level meter warm for its first half and blue for the second, dim when unlit.
+    readonly property string meter_palette: root.active.meter_palette
 
     property bool cava_line: true
     readonly property var bar: root.active
@@ -2181,6 +2269,8 @@ Singleton {
     readonly property bool bar_workspace_diamond: root.bar.bar_workspace_diamond
     // Brackets around the bar clock's time.
     readonly property color bar_clock_brackets: root.bar.bar_clock_brackets
+    // "tick" draws the white watch bar between bar items in place of "|".
+    readonly property string bar_separator: root.bar.bar_separator
     // A tick scale rising from each island's bottom edge.
     readonly property color bar_ticks: root.bar.bar_ticks
     // An inner line along each island's slants and bottom edge.
@@ -2424,6 +2514,16 @@ Singleton {
         id: ensure_state_dir
         command: ["mkdir", "-p", root.state_dir]
     }
+
+    FileView {
+        id: version_file
+        path: Qt.resolvedUrl("../VERSION")
+        blockLoading: true
+        printErrors: false
+    }
+
+    // The optional VERSION file at the config root, as on the lock skin's header.
+    readonly property string version: version_file.text().trim() || "0.0"
 
     FileView {
         id: state_file

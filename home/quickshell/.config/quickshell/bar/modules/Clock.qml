@@ -4,6 +4,7 @@ import Quickshell
 import "../../theme"
 import "../../services"
 import "../../components/modern" as Modern
+import "../../lock/skins/goldeneye/Watch.js" as Watch
 
 Row {
     id: root
@@ -141,8 +142,16 @@ Row {
         font.letterSpacing: Style.bar_letter_spacing
     }
 
+    Rectangle {
+        visible: !root.compact && !root.capsule && !root.on_accent && Style.bar_separator === "tick"
+        anchors.verticalCenter: parent.verticalCenter
+        width: 3
+        height: Style.bar_font_size + 2
+        color: Style.bar_center_bg.hslLightness > 0.6 ? Theme.fg_core : Watch.white
+    }
+
     Text {
-        visible: !root.compact && !root.capsule && !root.on_accent
+        visible: !root.compact && !root.capsule && !root.on_accent && Style.bar_separator === ""
         anchors.verticalCenter: parent.verticalCenter
         text: root.hud ? " WORLD" : root.lualine ? "\u00b7" : "|"
         color: root.on_accent ? Qt.alpha(root.ink, 0.6) : root.lualine || root.horizon ? Style.text_muted : Theme.theme_primary
