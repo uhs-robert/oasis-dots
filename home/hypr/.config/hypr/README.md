@@ -70,7 +70,7 @@ Provides `normal`/`insert`/`visual` modes (and more) with window navigation, wor
 Press `SUPER + /` to open the Quickshell keybinds picker for the current mode. When the bar isn't running it falls back to the rofi script (`scripts/keybind-help.lua`).
 
 > [!TIP]
-> All binds are defined in `hypr/keymaps/`, one file per submap.
+> All binds are defined in `hypr/keymaps/`, one file per submap. [Changing keybinds](../../../../docs/keybinds.md) shows how to edit them and add your own.
 >
 > The whichkey from HyprVim also displays keybinds when entering any submap.
 

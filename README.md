@@ -235,7 +235,7 @@ Flags: `--no-aur`, `--no-cargo`, `--no-system-files`, `--no-services`, `--dev`, 
 | `ALT + TAB`     | Workspace overview, move around with `hjkl`. Press `?` for help.                  |
 | `SUPER + V`     | HyprVim NORMAL mode for moving windows and workspaces; `SUPER + ESCAPE` leaves it |
 
-The [Hyprland README](home/hypr/.config/hypr/README.md) and the [Quickshell README](home/quickshell/.config/quickshell/README.md) have the rest.
+The [Hyprland README](home/hypr/.config/hypr/README.md) and the [Quickshell README](home/quickshell/.config/quickshell/README.md) have the rest. To rebind anything, see [Changing keybinds](docs/keybinds.md).
 
 ## 🔗 External Repos
 
