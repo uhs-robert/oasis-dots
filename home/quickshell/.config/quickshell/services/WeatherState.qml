@@ -445,7 +445,7 @@ Singleton {
         root.utc_offset = parsed.utc_offset || 0;
         root.lat = parsed.lat || root.lat;
         root.lon = parsed.lon || root.lon;
-        root.geo_ms = parsed.geo_ms || 0;
+        if (parsed.geo_ms !== undefined) root.geo_ms = parsed.geo_ms;
         if (parsed.aq_current !== undefined) root.aq_current = parsed.aq_current;
         if (parsed.aq_hours !== undefined) root.aq_hours = parsed.aq_hours;
         if (parsed.aq_current) root.aq_has_data = true;
