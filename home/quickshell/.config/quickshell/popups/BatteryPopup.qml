@@ -198,7 +198,6 @@ Popup {
                         size: Style.px(100)
                         value: root.percent / 100
                         low: root.percent <= 20 && root.state_label === "Discharging"
-                        shown: root.is_open && root.visible
                         label: "BATTERY"
                     }
                 }
