@@ -2,10 +2,10 @@
 # Imports the Ocarina lock skin's game audio into $XDG_DATA_HOME/quickshell/ocarina-audio (gitignored): loops cut at detected or given points, loudness evened out.
 # Each track's source is its first of .flac, .ogg or .mp3; loop points come from LOOPSTART/LOOPLENGTH (or LOOPEND) tags in it; untagged tracks are detected and the result is tagged into the source losslessly.
 # The fairy fountain plays from OCARINA_START (a tag in its source, else --fairy-start or 28s, snapped to an onset) into its loop.
-# Usage: ocarina-audio [--title-loop START END] [--fairy-loop START END] [--fairy-start SEC] [--redetect] [--out DIR] [SOURCE_DIR]   (seconds; overrides are tagged too)
+# Usage: ocarina-audio [--title-loop START END] [--fairy-loop START END] [--fairy-start SEC] [--redetect] [--out DIR] SOURCE_DIR   (seconds; overrides are tagged too)
 set -euo pipefail
 
-src="$HOME/Downloads/oot"
+src=""
 title_loop=()
 fairy_loop=()
 fairy_start=
@@ -43,6 +43,10 @@ while (($#)); do
     ;;
   esac
 done
+[[ -n $src ]] || {
+  echo "ocarina-audio: a source is required (see --help)" >&2
+  exit 1
+}
 
 rate=44100
 for tool in ffmpeg ffprobe jq python3; do

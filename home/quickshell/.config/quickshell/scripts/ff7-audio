@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # Imports the FF7 lock skin's audio into lock/skins/ff7/audio (gitignored): the Prelude as an intro plus a sample-exact loop, and the menu sound effects.
-# Usage: ff7-audio [--loop-start SEC] [--out DIR] [SOURCE_DIR]   (music/*Prelude*, fx/{Cursor,Back,Denied,Loading}.*, fx/*save-load*)
+# Usage: ff7-audio [--loop-start SEC] [--out DIR] SOURCE_DIR   (music/*Prelude*, fx/{Cursor,Back,Denied,Loading}.*, fx/*save-load*)
 set -euo pipefail
 
-src="$HOME/Downloads/FF7"
+src=""
 loop_start=48
 out="$(cd "$(dirname "$0")/.." && pwd)/lock/skins/ff7/audio"
 while (($#)); do
@@ -26,6 +26,10 @@ while (($#)); do
     ;;
   esac
 done
+[[ -n $src ]] || {
+  echo "ff7-audio: a source is required (see --help)" >&2
+  exit 1
+}
 
 for tool in ffmpeg python3; do
   command -v "$tool" >/dev/null || {

@@ -3,10 +3,10 @@
 # Music is title.* (else any file with "title" in its name) and menu.*, in SOURCE_DIR or its music/. Loops come from --*-loop, else LOOPSTART/LOOPLENGTH (or LOOPEND) tags,
 # else they are detected from the track's repeats and tagged into the source losslessly, so later runs reuse them; a track with no clean repeat loops whole.
 # Effects, in SOURCE_DIR or its fx/: back, select, error, submit, transition_wipe, transition_left and transition_right; a missing file stays silent.
-# Usage: mgs2-audio [--title-loop START END] [--menu-loop START END] [--redetect] [--out DIR] [SOURCE_DIR]   (seconds; overrides are tagged too)
+# Usage: mgs2-audio [--title-loop START END] [--menu-loop START END] [--redetect] [--out DIR] SOURCE_DIR   (seconds; overrides are tagged too)
 set -euo pipefail
 
-src="$HOME/Downloads/Metal Gear"
+src=""
 title_loop=()
 menu_loop=()
 redetect=0
@@ -39,6 +39,10 @@ while (($#)); do
     ;;
   esac
 done
+[[ -n $src ]] || {
+  echo "mgs2-audio: a source is required (see --help)" >&2
+  exit 1
+}
 
 for tool in ffmpeg ffprobe jq python3; do
   command -v "$tool" >/dev/null || {
