@@ -119,11 +119,11 @@ Trigger the picker with `SUPER + SHIFT + O`.
 
 ## Wallpaper
 
-`extensions/wallpaper/` is a time-of-day wallpaper rotation system built on hyprpaper. It picks wallpapers from a different folder for each part of the day (morning, day, evening, night), switching at fixed hours or at the sun's position for your location, and rotates on a configurable interval.
+`extensions/wallpaper/` is a time-of-day wallpaper rotation system built on hyprpaper. It picks wallpapers from a different folder for each part of the day (morning, day, evening, night), switching at fixed hours or at the sun's position for your location, and rotates on a configurable interval. Location and sun times come from the Quickshell bar's weather cache when it is there, so following the sun needs no lookup of its own.
 
 Season folders are optional. `Winter/Morning`, `Winter/Day` and so on join the pool only while that season is current, alongside the any-season ones in `All/`, so summer never shows a winter wallpaper. Seasons follow the calendar months and flip in the southern hemisphere.
 
-Weather folders work the same way. `Weather/Rain`, `Weather/Snow` and `Weather/Storm` only show while it is raining, snowing or storming, and are favoured over the rest while they match. The weather is read from the Quickshell bar's cache, so it needs the bar running. Location and sun times come from the same cache when it is there, so following the sun needs no lookup of its own.
+Weather folders work the same way. `Weather/Rain`, `Weather/Snow` and `Weather/Storm` only show while it is raining, snowing or storming, and are favoured over the rest while they match. The weather is read from the Quickshell bar's cache, so it needs the bar running.
 
 Configure directories and timing in `extensions/wallpaper/config.lua`.
 
