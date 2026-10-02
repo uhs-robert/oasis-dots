@@ -349,6 +349,7 @@ Singleton {
             whichkey_size: 0,
             type_scale: ({}),
             meter_gap: 2,
+            meter_palette: "",
             bar_lualine: false
         };
         return {
@@ -593,6 +594,7 @@ Singleton {
                 whichkey_size: 0,
                 type_scale: ({}),
                 meter_gap: 2,
+                meter_palette: "",
                 bar_lualine: false
             },
             "terminal": Object.assign({}, terminal, {
@@ -890,7 +892,10 @@ Singleton {
                 meter_on: Watch.bar_on,
                 meter_off: Watch.bar_off,
                 meter_hot: Watch.red,
-                meter_slant: 0.36,
+                meter_slant: 0.4,
+                meter_gap: 3,
+                meter_height: 12,
+                meter_palette: "bezel",
                 chart_slant: 0.21,
                 chart_fill: Watch.green_mid,
                 weather_header: "watch",
@@ -2214,6 +2219,8 @@ Singleton {
     // Which-key keys and labels in px; 0 keeps the popup-derived sizes.
     readonly property int whichkey_size: root.active.whichkey_size
     readonly property real meter_gap: root.active.meter_gap
+    // "bezel" colours a level meter warm for its first half and blue for the second, dim when unlit.
+    readonly property string meter_palette: root.active.meter_palette
 
     property bool cava_line: true
     readonly property var bar: root.active
