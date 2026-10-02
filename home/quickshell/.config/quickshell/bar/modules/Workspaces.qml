@@ -424,7 +424,7 @@ Item {
 
                 Timer {
                     running: root.party && pill.modelData.focused && !pill.ball
-                    interval: 320
+                    interval: 500
                     repeat: true
                     onTriggered: pill.hop = !pill.hop
                     onRunningChanged: if (!running) pill.hop = false
