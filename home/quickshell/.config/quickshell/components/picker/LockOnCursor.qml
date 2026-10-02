@@ -16,8 +16,6 @@ Item {
     readonly property point at: Screenshot.cursor_point
     readonly property int cx: Math.round(root.at.x)
     readonly property int cy: Math.round(root.at.y)
-    readonly property int tick_len: 6
-    readonly property int tick_gap: 7
     readonly property var lock_sizes: [46, 30, 18]
     property int lock_step: -1
 
@@ -53,46 +51,9 @@ Item {
         }
     }
 
-    Repeater {
-        model: [[0, -root.tick_gap - root.tick_len, 1, root.tick_len], [0, root.tick_gap, 1, root.tick_len], [-root.tick_gap - root.tick_len, 0, root.tick_len, 1], [root.tick_gap, 0, root.tick_len, 1]]
-
-        Rectangle {
-            required property var modelData
-            x: root.cx + modelData[0] - 1
-            y: root.cy + modelData[1] - 1
-            width: modelData[2] + 2
-            height: modelData[3] + 2
-            color: Qt.alpha(Theme.bg_shadow, 0.7)
-        }
-    }
-
-    Repeater {
-        model: [[0, -root.tick_gap - root.tick_len, 1, root.tick_len], [0, root.tick_gap, 1, root.tick_len], [-root.tick_gap - root.tick_len, 0, root.tick_len, 1], [root.tick_gap, 0, root.tick_len, 1]]
-
-        Rectangle {
-            required property var modelData
-            x: root.cx + modelData[0]
-            y: root.cy + modelData[1]
-            width: modelData[2]
-            height: modelData[3]
-            color: Theme.theme_primary_light
-        }
-    }
-
-    Rectangle {
-        x: root.cx - 3
-        y: root.cy - 3
-        width: 5
-        height: 5
-        color: Qt.alpha(Theme.bg_shadow, 0.7)
-    }
-
-    Rectangle {
-        x: root.cx - 1
-        y: root.cy - 1
-        width: 3
-        height: 3
-        color: Theme.theme_primary_light
+    LockCrosshair {
+        cx: root.cx
+        cy: root.cy
     }
 
     Item {

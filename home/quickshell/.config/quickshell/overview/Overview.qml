@@ -1023,6 +1023,12 @@ PanelWindow {
             glide: Power.on_ac && root.reveal === 1
         }
 
+        LockAim {
+            anchors.fill: parent
+            aim: root.help_open ? null : root.aim
+            animate: Power.on_ac && root.reveal === 1
+        }
+
         SearchList {
             visible: root.typing
             x: frame.body.width - width
