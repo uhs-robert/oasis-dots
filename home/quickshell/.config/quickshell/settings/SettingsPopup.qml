@@ -81,6 +81,8 @@ Popup {
     }
 
     function enter_pane() {
+        load_timer.stop();
+        root.load_section();
         if (!root.pane) return;
         root.in_pane = true;
         root.pane.forceActiveFocus();
