@@ -280,6 +280,7 @@ setup_voxtype() {
   fi
 
   local gpu_conf="$HOME/.config/systemd/user/voxtype.service.d/gpu.conf"
+  [[ -L "$gpu_conf" && ! -e "$gpu_conf" ]] && rm -f "$gpu_conf"
   if [[ -L "$gpu_conf" ]]; then
     warn "gpu.conf is a dotfiles symlink, skipping GPU detection"
   elif command -v lspci &>/dev/null; then
