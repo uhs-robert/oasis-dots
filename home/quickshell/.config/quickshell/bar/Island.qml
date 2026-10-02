@@ -178,6 +178,14 @@ Item {
                 }
             }
         }
+    }
+
+    // The rim sits above the island's content so a module that fills the height cannot cover it.
+    Shape {
+        visible: root.octagon
+        anchors.fill: parent
+        z: 2
+        preferredRendererType: Shape.CurveRenderer
 
         ShapePath {
             strokeWidth: root.border_width > 0 ? root.border_width : -1
