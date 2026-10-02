@@ -34,9 +34,9 @@ Item {
     Rectangle {
         anchors.fill: parent
         radius: 10
-        color: W.black
+        color: Style.wk.frame
         border.width: 2
-        border.color: W.rim
+        border.color: Style.wk.rim
     }
 
     Watch.SegmentArc {
