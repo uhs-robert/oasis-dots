@@ -4,6 +4,7 @@ import QtQuick.Effects
 import Quickshell
 import Quickshell.Wayland
 import Quickshell.Widgets
+import "../theme"
 import "../services"
 import "../lock/skins/goldeneye/Watch.js" as W
 
@@ -39,7 +40,7 @@ Item {
         visible: root.tinted && Power.on_ac
         source: view
         colorization: 1
-        colorizationColor: W.green_mid
+        colorizationColor: Style.wk.mid
     }
 
     IconImage {

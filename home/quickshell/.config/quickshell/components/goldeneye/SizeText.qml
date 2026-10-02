@@ -9,7 +9,7 @@ Row {
 
     property int width_px: 0
     property int height_px: 0
-    property color color: W.green
+    property color color: Style.wk.lit
     property real pixel_size: Style.fs(-3)
 
     spacing: root.pixel_size * 0.3

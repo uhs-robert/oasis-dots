@@ -1,5 +1,6 @@
 // home/quickshell/.config/quickshell/components/goldeneye/DialFace.qml
 import QtQuick
+import "../../theme"
 import "../../lock/skins/goldeneye" as Watch
 import "../../lock/skins/goldeneye/Watch.js" as W
 
@@ -97,5 +98,7 @@ Item {
         cut: root.width * 0.073
         notches: false
         clip: true
+        top_color: Style.wk.panel_top
+        bottom_color: Style.wk.panel_bottom
     }
 }
