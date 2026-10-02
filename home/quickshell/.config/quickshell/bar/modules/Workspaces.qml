@@ -30,7 +30,7 @@ Item {
     readonly property bool slots: Style.console_views === "ps1"
     // Super Mario World overworld: level dots on a dotted trail, app icons above them.
     readonly property bool map: Style.console_views === "snes"
-    // Pokemon party: a Poke Ball per workspace, the shown ones open into a party box of hopping apps under a cursor.
+    // Pokemon party: a Poke Ball per workspace, the shown ones open into a party box under a cursor, the active app hopping.
     readonly property bool party: Style.controller === "gameboy"
     // GoldenEye watch dial: workspace ticks on one arc replace the pills.
     readonly property bool dial: Style.workspace_art === "dial"
@@ -451,7 +451,6 @@ Item {
                 Row {
                     id: icons
                     visible: (!root.doors || pill.modelData.active) && !pill.ball
-                    transform: Translate { y: pill.hop ? -2 : 0 }
                     anchors.centerIn: pill.map || root.slots ? undefined : parent
                     anchors.horizontalCenter: pill.map || root.slots ? parent.horizontalCenter : undefined
                     anchors.top: pill.map || root.slots ? parent.top : undefined
@@ -472,6 +471,7 @@ Item {
                             icon_opacity: pill.map && !pill.modelData.focused ? 0.6 : 1
                             width: root.materia ? root.slot_size : pill.glyph + (root.doors || root.slots || pill.map || root.party ? 0 : 4)
                             height: width
+                            transform: Translate { y: pill.hop && Hyprland.activeToplevel === icon_item.modelData ? -2 : 0 }
 
                             Ff7.MateriaSlot {
                                 visible: root.materia
