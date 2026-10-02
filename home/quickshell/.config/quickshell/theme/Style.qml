@@ -1360,7 +1360,7 @@ Singleton {
                     bar_hover_bg: hl_d
                 });
             })(),
-            // A Game Boy screen; `small` popups sit in the handheld's shell. The original is four shades of the primary, Color and SP show the palette.
+            // A Game Boy screen; `small` popups sit in the handheld's shell. The original is four shades of the primary, the Color shows the palette.
             "gameboy": (() => {
                 const build = (model, shades, colors) => {
                     const [g0, g1, g2, g3] = shades;
@@ -1484,8 +1484,8 @@ Singleton {
                     bar_workspace_ring: Theme.theme_secondary
                 };
                 return Object.assign(build("dmg", mono), {
-                    models: { color: build("color", full, colors), sp: build("sp", full, colors) },
-                    model_labels: { dmg: "Original", color: "Color", sp: "Advance SP" }
+                    models: { color: build("color", full, colors) },
+                    model_labels: { dmg: "Original", color: "Color" }
                 });
             })(),
             // Final Fantasy VII materia menus: blue diagonal windows in a light rim, orbs for keys and a pointing hand.
@@ -2215,7 +2215,7 @@ Singleton {
     readonly property color pixel_border: root.active.pixel_border
     // Small popups sit inside a handheld's shell (DeviceShell); hover shelves never do.
     readonly property bool device_shell: root.active.device_shell
-    // Which handheld the shell draws: dmg, color or sp.
+    // Which handheld the shell draws: dmg or color.
     readonly property string device_model: root.active.device_model
     // Diagonal [position, color] stops filling window frames inside their border (WindowGradient); empty keeps frame_color.
     readonly property var window_gradient: root.active.window_gradient

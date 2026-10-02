@@ -20,7 +20,7 @@ Item {
 
     Loader {
         anchors.fill: parent
-        sourceComponent: root.st.device_model === "sp" ? sp : root.st.device_model === "color" ? color : dmg
+        sourceComponent: root.st.device_model === "color" ? color : dmg
     }
 
     Component {
@@ -36,15 +36,6 @@ Item {
         id: color
 
         Gameboy.ShellColor {
-            screen_top: root.screen_top
-            pad_top: root.pad_top
-        }
-    }
-
-    Component {
-        id: sp
-
-        Gameboy.ShellSp {
             screen_top: root.screen_top
             pad_top: root.pad_top
         }
