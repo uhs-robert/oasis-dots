@@ -39,6 +39,7 @@ local Utils = require("lib.utils") ---@class Utils
 --- @field persistent_workspaces integer|boolean Workspaces to pin per monitor, or false to disable (default: 5)
 --- @field vim_mode boolean Use H/J/K/L as directional inputs in keybinds (default: true)
 --- @field use_uwsm boolean Enable uwsm session management (default: false)
+--- @field path_prepend string[] Extra PATH entries placed ahead of the inherited PATH (default: {})
 --- @field drm_devices string|nil DRM device path(s) for AQ_DRM_DEVICES; nil = unset (default: nil)
 --- @field is_laptop boolean|nil Whether the system running is a laptop or desktop (default: nil)
 --- @field nvidia Config.Nvidia
@@ -55,6 +56,7 @@ Config.defaults = {
   persistent_workspaces = 5,
   vim_mode = true,
   use_uwsm = false,
+  path_prepend = {},
   drm_devices = nil,
   is_laptop = nil,
   nvidia = {
