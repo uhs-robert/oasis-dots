@@ -129,6 +129,10 @@ A new period rotates as it starts, and recently shown wallpapers are skipped so 
 
 Configure directories and timing in `extensions/wallpaper/config.lua`.
 
+By default the periods switch at the fixed hours in `start_hours` and nothing touches the network. Set `location_enabled = true` to follow the sun instead. At session start and every `refresh_interval_seconds` (4 hours) the rotator then asks `ipinfo.io` for this machine's public IP and its coordinates, and reads today's sunrise and sunset from `api.open-meteo.com` unless `sunwait` is installed. If the lookup fails it falls back to the system timezone and then to the static hours. Setting `manual_lat` and `manual_lon` skips the `ipinfo.io` calls but still needs `location_enabled = true`, and still uses `open-meteo.com` without `sunwait`.
+
+The rotator runs as its own process, so `Config` and `custom/` don't reach it: change `extensions/wallpaper/config.lua`, or pass flags (`--no-location`, `--coordinates LAT,LON`, `--config PATH`; see `--help`).
+
 ## Theme
 
 The colors come from the Oasis palettes in `theme/colors/`. Picking one saves it, reloads Hyprland and reruns every generator in `theme/generate/` (Hyprland, rofi, the terminals and Quickshell).
