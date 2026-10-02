@@ -53,7 +53,7 @@ Item {
         y: root.ty - root.grow
         width: root.tw + root.grow * 2
         height: root.th + root.grow * 2
-        color: Style.pal.red
+        color: Theme.theme_label
         inset: 0
         arm: Math.max(6, Math.min(22, Math.round(Math.min(root.tw, root.th) / 4)))
         thickness: 3
@@ -63,6 +63,6 @@ Item {
     LockCrosshair {
         cx: Math.round(root.tx + root.tw / 2)
         cy: Math.round(root.ty + root.th / 2)
-        color: Style.pal.primary_light
+        color: Theme.theme_primary_light
     }
 }
