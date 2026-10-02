@@ -13,7 +13,9 @@ Item {
     readonly property var glyphs: ({ idle: "", stopped: "" })
     readonly property color glyph_color: VoxtypeState.recording ? Theme.theme_label : VoxtypeState.transcribing ? Theme.warning : VoxtypeState.state === "stopped" ? Theme.fg_dim : Theme.theme_primary
 
-    implicitWidth: glyph.implicitWidth
+    readonly property bool shown: VoxtypeState.installed
+    visible: shown
+    implicitWidth: shown ? glyph.implicitWidth : 0
     implicitHeight: glyph.implicitHeight
 
     Rectangle {
