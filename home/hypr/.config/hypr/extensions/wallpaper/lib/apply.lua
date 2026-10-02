@@ -2,26 +2,30 @@
 -- Period resolution, file selection, and hyprpaper application
 
 --- @class Apply
---- @field to_monitors fun(cfg: table, util: table, opts?: { exclude?: table<string, boolean>, reserved?: table<string, boolean> }): boolean, table<string, string> Apply wallpapers to all active monitors (or cfg.target_monitor if set); returns ok plus a map of monitor name to the wallpaper path applied
+--- @field to_monitors fun(cfg: table, util: table, opts?: { exclude?: table<string, boolean>, reserved?: table<string, boolean>, history?: string[] }): boolean, table<string, string> Apply wallpapers to all active monitors (or cfg.target_monitor if set); returns ok plus a map of monitor name to the wallpaper path applied
 --- @field list_images fun(dir: string): string[] Public wrapper around list_images for external callers
+--- @field context_label fun(cfg: table): string Current period, season and weather as one label
 local Apply = {}
 
---- Find all image files under `dir` (recursive, follows symlinks).
+--- Find all image files under `dir` (recursive), resolved to their real paths.
 --- @param dir string absolute path to search
---- @return string[] list of absolute file paths
+--- @return string[] list of distinct absolute file paths
 local function list_images(dir)
-  -- Use -print0 to safely handle spaces/newlines
+  -- NUL-separated to safely handle spaces/newlines
   local cmd = string.format(
-    'find -L "%s" -type f \\( -iname "*.png" -o -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.webp" -o -iname "*.bmp" \\) -print0 2>/dev/null',
+    'find -L "%s" -type f \\( -iname "*.png" -o -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.webp" -o -iname "*.bmp" \\) -exec realpath -z {} + 2>/dev/null',
     dir
   )
   local p = io.popen(cmd)
   if not p then return {} end
   local data = p:read("*a") or ""
   p:close()
-  local files = {}
+  local files, seen = {}, {}
   for entry in data:gmatch("([^%z]+)") do
-    table.insert(files, entry)
+    if not seen[entry] then
+      seen[entry] = true
+      table.insert(files, entry)
+    end
   end
   return files
 end
@@ -35,39 +39,57 @@ local function shuffle(t)
   end
 end
 
+--- Return the entries of `list` that are not keys of `blocked`.
+--- @param list string[]
+--- @param blocked table<string, boolean>
+--- @return string[]
+local function unblocked(list, blocked)
+  local out = {}
+  for _, f in ipairs(list) do
+    if not blocked[f] then table.insert(out, f) end
+  end
+  return out
+end
+
+--- Drop reserved and recently shown paths while `count` picks still remain.
+--- The oldest history entries are forgiven first, then the reservations.
+--- @param files string[]
+--- @param favored string[]
+--- @param count integer
+--- @param reserved table<string, boolean>
+--- @param history string[] recently shown paths, oldest first
+--- @return string[] files, string[] favored
+local function narrow(files, favored, count, reserved, history)
+  for first = 1, #history + 1 do
+    local blocked = {}
+    for path in pairs(reserved) do
+      blocked[path] = true
+    end
+    for i = first, #history do
+      blocked[history[i]] = true
+    end
+    local free_files, free_favored = unblocked(files, blocked), unblocked(favored, blocked)
+    if #free_files + #free_favored >= count then return free_files, free_favored end
+  end
+  return files, favored
+end
+
 --- Pick `count` wallpapers, cycling if fewer files exist. Each pick comes from
---- `favored` with probability `chance`, else from `files`.
---- Paths in `reserved` (already live on other monitors) are avoided as long as
---- enough distinct files remain; otherwise the full pool is used as a fallback.
+--- `opts.favored` with probability `opts.chance`, else from `files`.
 --- @param files string[] pool to pick from
 --- @param count integer number of wallpapers needed
---- @param reserved table<string, boolean>|nil paths to avoid reusing
---- @param favored string[]|nil pool picked ahead of `files`
---- @param chance number|nil odds in [0, 1] that a pick comes from `favored`
+--- @param opts { reserved?: table<string, boolean>, history?: string[], favored?: string[], chance?: number }
 --- @return string[] selected file paths (empty if both pools are)
-local function pick_wallpapers(files, count, reserved, favored, chance)
-  favored = favored or {}
+local function pick_wallpapers(files, count, opts)
+  local favored = opts.favored or {}
   if #files + #favored == 0 then return {} end
-  if reserved then
-    local function unreserved(list)
-      local avail = {}
-      for _, f in ipairs(list) do
-        if not reserved[f] then table.insert(avail, f) end
-      end
-      return avail
-    end
-    local free_files, free_favored = unreserved(files), unreserved(favored)
-    -- Only honor reservations if the remaining pool can still fill every monitor.
-    if #free_files + #free_favored >= count then
-      files, favored = free_files, free_favored
-    end
-  end
+  files, favored = narrow(files, favored, count, opts.reserved or {}, opts.history or {})
   shuffle(files)
   shuffle(favored)
   local total = #files + #favored
   local out, used_files, used_favored = {}, 0, 0
   for i = 1, count do
-    if used_favored < #favored and (used_files >= #files or math.random() < (chance or 0)) then
+    if used_favored < #favored and (used_files >= #files or math.random() < (opts.chance or 0)) then
       used_favored = used_favored + 1
       out[i] = favored[used_favored]
     elseif used_files < #files then
@@ -125,17 +147,19 @@ local function current_season(cfg)
   return season
 end
 
---- Map a WMO weather code to a `cfg.weather_dirs` key, or nil for dry weather.
+--- Map a WMO weather code to a `cfg.weather_dirs` key, or nil for clear weather.
 --- @param code integer
 --- @return string|nil
 local function weather_kind(code)
   if code >= 95 then return "storm" end
+  if code == 45 or code == 48 then return "fog" end
+  if code == 3 then return "overcast" end
   if (code >= 71 and code <= 77) or code == 85 or code == 86 then return "snow" end
   if (code >= 51 and code <= 67) or (code >= 80 and code <= 82) then return "rain" end
   return nil
 end
 
---- Return the current weather kind from the Quickshell weather cache, or nil when off, dry or stale.
+--- Return the current weather kind from the Quickshell weather cache, or nil when off, clear or stale.
 --- @param cfg table wallpaper config
 --- @return string|nil
 local function current_weather(cfg)
@@ -161,26 +185,48 @@ end
 --- @return string[] files, string[] dirs the pool was read from, string[] favored weather files
 local function resolve_pool(cfg, period, season, weather)
   if cfg.force_dir then return list_images(cfg.force_dir), { cfg.force_dir }, {} end
-  local season_dirs = season and cfg.season_dirs and cfg.season_dirs[season]
-  local candidates = { cfg.dirs[period] }
-  if season_dirs then table.insert(candidates, season_dirs[period]) end
-  local files, dirs = {}, {}
-  for _, dir in ipairs(candidates) do
-    local found = list_images(dir)
-    if #found > 0 then
-      table.insert(dirs, dir)
-      for _, f in ipairs(found) do
+  local weather_dir = weather and cfg.weather_dirs and cfg.weather_dirs[weather]
+  local favored = weather_dir and list_images(weather_dir) or {}
+  local files, dirs, seen = {}, {}, {}
+  for _, f in ipairs(favored) do
+    seen[f] = true
+  end
+
+  local function add(dir)
+    local before = #files
+    for _, f in ipairs(list_images(dir)) do
+      if not seen[f] then
+        seen[f] = true
         table.insert(files, f)
       end
     end
+    if #files > before then table.insert(dirs, dir) end
   end
-  if #files == 0 and cfg.default_wallpaper_dir then
-    files, dirs = list_images(cfg.default_wallpaper_dir), { cfg.default_wallpaper_dir }
-  end
-  local weather_dir = weather and cfg.weather_dirs and cfg.weather_dirs[weather]
-  local favored = weather_dir and list_images(weather_dir) or {}
+
+  local season_dirs = season and cfg.season_dirs and cfg.season_dirs[season]
+  if cfg.dirs[period] then add(cfg.dirs[period]) end
+  if season_dirs and season_dirs[period] then add(season_dirs[period]) end
+  if #files == 0 and cfg.default_wallpaper_dir then add(cfg.default_wallpaper_dir) end
   if #favored > 0 then table.insert(dirs, weather_dir) end
   return files, dirs, favored
+end
+
+--- Return the current period, season and weather; season and weather are nil when off.
+--- @param cfg table wallpaper config
+--- @return string period, string|nil season, string|nil weather
+local function context(cfg)
+  if not cfg.time_of_day_enabled then return "default", nil, nil end
+  return current_period(cfg), current_season(cfg), current_weather(cfg)
+end
+
+--- @param period string
+--- @param season string|nil
+--- @param weather string|nil
+--- @return string
+local function label_of(period, season, weather)
+  local label = season and (season .. " " .. period) or period
+  if weather then label = label .. " " .. weather end
+  return label
 end
 
 --- Parse `hyprctl -j monitors` JSON output and return unique monitor names.
@@ -266,28 +312,22 @@ end
 --- picks one image per monitor, preloads via hyprpaper, then sets each.
 --- @param cfg table wallpaper config
 --- @param util table shared utility object
---- @param opts table|nil `{ exclude?, reserved? }`; monitors in `exclude` are skipped (startup settle, avoids re-randomizing covered monitors); paths in `reserved` are avoided when picking (keeps live wallpapers off other monitors)
+--- @param opts table|nil `{ exclude?, reserved?, history? }`; monitors in `exclude` are skipped (startup settle); paths in `reserved` (live on other monitors) and `history` (recently shown, oldest first) are avoided when picking
 --- @return boolean ok true on success, false if nothing could be applied
 --- @return table<string, string> applied map of monitor name to the wallpaper path set this call
 function Apply.to_monitors(cfg, util, opts)
-  local period, season, weather, files, dirs
+  local period, season, weather = context(cfg)
+  local files, dirs
   local favored = {}
 
-  -- Use time-of-day periods only if enabled
   if cfg.time_of_day_enabled then
-    period = current_period(cfg)
-    season = current_season(cfg)
-    weather = current_weather(cfg)
     files, dirs, favored = resolve_pool(cfg, period, season, weather)
   else
-    -- Skip time-of-day logic, use default directory directly
-    period = "default"
     local dir = cfg.force_dir or cfg.default_wallpaper_dir
     files, dirs = dir and list_images(dir) or {}, { dir }
   end
 
-  local label = season and (season .. " " .. period) or period
-  if weather then label = label .. " " .. weather end
+  local label = label_of(period, season, weather)
   local dir_list = table.concat(dirs, ", ")
   if #files + #favored == 0 then
     util.log("No wallpapers found in " .. dir_list .. " (period " .. label .. ")", cfg)
@@ -328,7 +368,12 @@ function Apply.to_monitors(cfg, util, opts)
     if #mons == 0 then return true, {} end
   end
 
-  local picks = pick_wallpapers(files, #mons, opts and opts.reserved or nil, favored, cfg.weather_chance)
+  local picks = pick_wallpapers(files, #mons, {
+    reserved = opts and opts.reserved,
+    history = opts and opts.history,
+    favored = favored,
+    chance = cfg.weather_chance,
+  })
 
   util.log(
     string.format("Period %s -> %s; monitors=%d; pool=%d; weather=%d", label, dir_list, #mons, #files, #favored),
@@ -368,5 +413,10 @@ end
 --- @param dir string directory to scan
 --- @return string[] image file paths
 function Apply.list_images(dir) return list_images(dir) end
+
+--- Current period, season and weather as one label; changes when the pool does.
+--- @param cfg table wallpaper config
+--- @return string
+function Apply.context_label(cfg) return label_of(context(cfg)) end
 
 return Apply

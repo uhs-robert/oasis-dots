@@ -6,6 +6,7 @@ local default_config = dofile(script_dir .. "../config.lua")
 
 local Solar = require("wallpaper.lib.solar") ---@class Solar
 local Apply = require("wallpaper.lib.apply") ---@class Apply
+local Audit = require("wallpaper.lib.audit") ---@class Audit
 
 --- @class Rotate
 --- @field start fun(opts?: { argv?: string[], lock_path?: string, once?: boolean, start_hyprpaper?: boolean }): boolean, string|nil Main entry point; parses args, loads config, runs one cycle or the rotation loop
@@ -96,6 +97,8 @@ local function parse_args(argv)
       i = i + 1
     elseif a == "--once" or a == "-o" then
       cli.once = true
+    elseif a == "--audit" then
+      cli.audit = true
     elseif a == "--monitor" and argv[i + 1] then
       overrides.target_monitor = argv[i + 1]
       i = i + 1
@@ -166,6 +169,7 @@ local function parse_args(argv)
       print([[
 Options:
   --once, -o              Run one cycle and exit
+  --audit                 List folder sizes and images in no folder, then exit
   --monitor NAME          Apply to one specific monitor only (implies --once)
   --verbose, -v           Verbose logging
   --config PATH           Use alternate config file
@@ -177,7 +181,7 @@ Options:
   --dir-night PATH        Override night folder
   --season NAME           Force spring, summer, autumn or winter
   --no-seasons            Ignore season folders
-  --weather NAME          Force rain, snow or storm
+  --weather NAME          Force rain, snow, storm, fog or overcast
   --no-weather            Ignore weather folders
   --morning-hour H        Static start hour for morning
   --day-hour H            Static start hour for day
@@ -270,6 +274,39 @@ local function acquire_lock(path)
   return cleanup
 end
 
+-- -------- history --------
+
+local HISTORY_PATH = (os.getenv("XDG_RUNTIME_DIR") or "/tmp") .. "/hypr-wallpaper-history"
+
+--- Read the recently shown wallpaper paths, oldest first.
+--- @return string[]
+local function read_history()
+  local history = {}
+  local f = io.open(HISTORY_PATH, "r")
+  if not f then return history end
+  for line in f:lines() do
+    if line ~= "" then table.insert(history, line) end
+  end
+  f:close()
+  return history
+end
+
+--- Append `paths` to `history` and save its newest `size` entries.
+--- @param history string[]
+--- @param paths table<string, string> monitor name to wallpaper path
+--- @param size integer
+local function write_history(history, paths, size)
+  for _, path in pairs(paths) do
+    table.insert(history, path)
+  end
+  local f = io.open(HISTORY_PATH, "w")
+  if not f then return end
+  for i = math.max(1, #history - size + 1), #history do
+    f:write(history[i], "\n")
+  end
+  f:close()
+end
+
 -- -------- hyprpaper --------
 
 --- Start hyprpaper in the background if it is not already running.
@@ -298,6 +335,10 @@ function Rotate.start(opts)
   if cli.help then return true end
 
   local cfg = load_config({ config_path = cli.config_path }, overrides)
+  if cli.audit then
+    Audit.run(cfg)
+    return true
+  end
 
   local util = {
     log = log,
@@ -371,10 +412,15 @@ function Rotate.start(opts)
   --- settle only fills monitors not yet in `APPLIED_WALLPAPERS`, avoiding live wallpapers.
   local function cycle(mode)
     maybe_refresh()
-    local cycle_opts
-    if mode == "settle" then cycle_opts = { exclude = covered_set(), reserved = reserved_set() } end
+    local history = cfg.history_size > 0 and read_history() or {}
+    local cycle_opts = { history = history }
+    if mode == "settle" then
+      cycle_opts.exclude = covered_set()
+      cycle_opts.reserved = reserved_set()
+    end
     local ok, applied = Apply.to_monitors(cfg, util, cycle_opts)
     if not ok then util.log("Wallpaper application failed; will retry.", cfg) end
+    if cfg.history_size > 0 then write_history(history, applied, cfg.history_size) end
     if mode == "settle" then
       for mon, path in pairs(applied) do
         APPLIED_WALLPAPERS[mon] = path
@@ -410,10 +456,17 @@ function Rotate.start(opts)
     cycle("settle")
   end
 
-  -- Rotation loop (startup already did the first cycle)
+  -- Rotation loop (startup already did the first cycle). Polls so a period,
+  -- season or weather change rotates at once instead of waiting out the interval.
+  local last_context, last_cycle = Apply.context_label(cfg), os.time()
   while true do
-    util.sleep(cfg.interval_seconds)
-    cycle("full")
+    util.sleep(math.min(cfg.poll_seconds, cfg.interval_seconds))
+    maybe_refresh()
+    local now_context = Apply.context_label(cfg)
+    if now_context ~= last_context or os.time() - last_cycle >= cfg.interval_seconds then
+      cycle("full")
+      last_context, last_cycle = now_context, os.time()
+    end
   end
 end
 
