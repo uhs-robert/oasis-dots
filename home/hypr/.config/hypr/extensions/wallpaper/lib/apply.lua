@@ -12,7 +12,7 @@ local Apply = {}
 local function list_images(dir)
   -- Use -print0 to safely handle spaces/newlines
   local cmd = string.format(
-    'find -L "%s" -type f \\( -iname "*.png" -o -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.webp" -o -iname "*.bmp" \\) -print0',
+    'find -L "%s" -type f \\( -iname "*.png" -o -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.webp" -o -iname "*.bmp" \\) -print0 2>/dev/null',
     dir
   )
   local p = io.popen(cmd)
@@ -35,15 +35,14 @@ local function shuffle(t)
   end
 end
 
---- Pick `count` wallpapers from `dir`, cycling if fewer files exist.
+--- Pick `count` wallpapers from `files`, cycling if fewer files exist.
 --- Paths in `reserved` (already live on other monitors) are avoided as long as
 --- enough distinct files remain; otherwise the full pool is used as a fallback.
---- @param dir string directory to pick from
+--- @param files string[] pool to pick from
 --- @param count integer number of wallpapers needed
 --- @param reserved table<string, boolean>|nil paths to avoid reusing
---- @return string[] selected file paths (may be empty if dir has none)
-local function pick_wallpapers(dir, count, reserved)
-  local files = list_images(dir)
+--- @return string[] selected file paths (empty if the pool is)
+local function pick_wallpapers(files, count, reserved)
   if #files == 0 then return {} end
   if reserved then
     local avail = {}
@@ -83,18 +82,52 @@ local function current_period(cfg)
   end
 end
 
---- Resolve which directory to use for the given period.
---- Prefers `cfg.force_dir`, then the period-specific dir (if non-empty),
---- then `cfg.default_wallpaper_dir`, then the period dir regardless.
+local OPPOSITE_SEASON = { spring = "autumn", summer = "winter", autumn = "spring", winter = "summer" }
+
+--- Return the current season from `cfg.season_start_months`, or nil when seasons are off.
+--- @param cfg table wallpaper config
+--- @return string|nil
+local function current_season(cfg)
+  if not cfg.seasons_enabled then return nil end
+  if cfg.force_season then return cfg.force_season end
+  local month = os.date("*t").month
+  local season, season_start, latest, latest_start
+  for name, start in pairs(cfg.season_start_months) do
+    if start <= month and (not season_start or start > season_start) then
+      season, season_start = name, start
+    end
+    if not latest_start or start > latest_start then
+      latest, latest_start = name, start
+    end
+  end
+  season = season or latest
+  if cfg.southern_hemisphere then season = OPPOSITE_SEASON[season] or season end
+  return season
+end
+
+--- Build the pool for `period`: the period dir plus the current season's dir for that period.
+--- `cfg.force_dir` replaces both; `cfg.default_wallpaper_dir` is used when both are empty.
 --- @param cfg table wallpaper config
 --- @param period string period name key into `cfg.dirs`
---- @return string|nil resolved directory path
-local function resolve_dir(cfg, period)
-  if cfg.force_dir then return cfg.force_dir end
-  local candidate = cfg.dirs[period]
-  if candidate and #list_images(candidate) > 0 then return candidate end
-  if cfg.default_wallpaper_dir then return cfg.default_wallpaper_dir end
-  return candidate
+--- @param season string|nil season name key into `cfg.season_dirs`
+--- @return string[] files, string[] dirs the pool was read from
+local function resolve_pool(cfg, period, season)
+  if cfg.force_dir then return list_images(cfg.force_dir), { cfg.force_dir } end
+  local season_dirs = season and cfg.season_dirs and cfg.season_dirs[season]
+  local files, dirs = {}, {}
+  for _, dir in ipairs({ cfg.dirs[period], season_dirs and season_dirs[period] or nil }) do
+    local found = list_images(dir)
+    if #found > 0 then
+      table.insert(dirs, dir)
+      for _, f in ipairs(found) do
+        table.insert(files, f)
+      end
+    end
+  end
+  if #files == 0 and cfg.default_wallpaper_dir then
+    return list_images(cfg.default_wallpaper_dir), { cfg.default_wallpaper_dir }
+  end
+  return files, dirs
 end
 
 --- Parse `hyprctl -j monitors` JSON output and return unique monitor names.
@@ -176,7 +209,7 @@ local function monitors(cfg, util)
 end
 
 --- Apply wallpapers to all active monitors (or `cfg.target_monitor` if set).
---- Resolves the wallpaper directory from the current time-of-day period,
+--- Resolves the pool from the current time-of-day period and season,
 --- picks one image per monitor, preloads via hyprpaper, then sets each.
 --- @param cfg table wallpaper config
 --- @param util table shared utility object
@@ -184,20 +217,24 @@ end
 --- @return boolean ok true on success, false if nothing could be applied
 --- @return table<string, string> applied map of monitor name to the wallpaper path set this call
 function Apply.to_monitors(cfg, util, opts)
-  local period, dir
+  local period, season, files, dirs
 
   -- Use time-of-day periods only if enabled
   if cfg.time_of_day_enabled then
     period = current_period(cfg)
-    dir = resolve_dir(cfg, period)
+    season = current_season(cfg)
+    files, dirs = resolve_pool(cfg, period, season)
   else
     -- Skip time-of-day logic, use default directory directly
     period = "default"
-    dir = cfg.force_dir or cfg.default_wallpaper_dir
+    local dir = cfg.force_dir or cfg.default_wallpaper_dir
+    files, dirs = dir and list_images(dir) or {}, { dir }
   end
 
-  if not dir then
-    util.log("No directory resolved for period " .. period, cfg)
+  local label = season and (season .. " " .. period) or period
+  local dir_list = table.concat(dirs, ", ")
+  if #files == 0 then
+    util.log("No wallpapers found in " .. dir_list .. " (period " .. label .. ")", cfg)
     return false, {}
   end
 
@@ -235,13 +272,9 @@ function Apply.to_monitors(cfg, util, opts)
     if #mons == 0 then return true, {} end
   end
 
-  local picks = pick_wallpapers(dir, #mons, opts and opts.reserved or nil)
-  if #picks == 0 then
-    util.log("No wallpapers found in " .. dir .. " (period " .. period .. ")", cfg)
-    return false, {}
-  end
+  local picks = pick_wallpapers(files, #mons, opts and opts.reserved or nil)
 
-  util.log(string.format("Period %s -> dir %s; monitors=%d; wallpapers=%d", period, dir, #mons, #picks), cfg)
+  util.log(string.format("Period %s -> %s; monitors=%d; pool=%d", label, dir_list, #mons, #files), cfg)
   if cfg.verbose then
     for i, img in ipairs(picks) do
       util.log(string.format("  pick[%d]=%s", i, img), cfg)
@@ -252,16 +285,8 @@ function Apply.to_monitors(cfg, util, opts)
   for i, mon in ipairs(mons) do
     local img = picks[i]
     if img then
-      -- sanitize path (remove embedded newlines) and ensure absolute
       img = img:gsub("[\r\n]", "")
-      -- ensure file exists
       local f = io.open(img, "r")
-      if not f then
-        -- Try relative to dir as fallback
-        local alt = dir .. "/" .. img
-        f = io.open(alt, "r")
-        if f then img = alt end
-      end
       if not f then
         util.log(string.format("Skipping missing file: %s", img), cfg)
       else

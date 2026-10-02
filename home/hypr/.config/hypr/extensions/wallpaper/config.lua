@@ -3,24 +3,47 @@
 -- Adjust paths to your own collections. Leave values as nil to use defaults.
 
 local home = os.getenv("HOME") or ""
+local base = home .. "/Pictures/Wallpapers/Pixel Art"
+
+--- @param root string
+local function period_dirs(root)
+  return {
+    morning = root .. "/Morning",
+    day = root .. "/Day",
+    evening = root .. "/Evening",
+    night = root .. "/Night",
+  }
+end
 
 return {
   -- Feature toggles
   rotation_enabled = true, -- Set to false to apply wallpaper once and exit
   time_of_day_enabled = true, -- Set to false to use only default_wallpaper_dir (no period switching)
+  seasons_enabled = true, -- Set to false to ignore season_dirs (only used when time_of_day_enabled = true)
 
   -- Rotation settings
   interval_minutes = 15, -- Rotation cadence (only used when rotation_enabled = true)
 
   -- Wallpaper directories
-  default_wallpaper_dir = home .. "/Pictures/Wallpapers/Pixel Art", -- Default/fallback directory
+  default_wallpaper_dir = base, -- Default/fallback directory
 
-  -- Specify directories to use based on time of day (only used when time_of_day_enabled = true)
-  dirs = {
-    morning = home .. "/Pictures/Wallpapers/Pixel Art/Morning",
-    day = home .. "/Pictures/Wallpapers/Pixel Art/Day",
-    evening = home .. "/Pictures/Wallpapers/Pixel Art/Evening",
-    night = home .. "/Pictures/Wallpapers/Pixel Art/Night",
+  -- Specify directories to use based on time of day in every season (only used when time_of_day_enabled = true)
+  dirs = period_dirs(base .. "/All"),
+
+  -- Season directories, added to the time-of-day pool only while that season is current
+  season_dirs = {
+    spring = period_dirs(base .. "/Spring"),
+    summer = period_dirs(base .. "/Summer"),
+    autumn = period_dirs(base .. "/Autumn"),
+    winter = period_dirs(base .. "/Winter"),
+  },
+
+  -- Month each season starts (northern hemisphere; flipped when the latitude is southern)
+  season_start_months = {
+    spring = 3,
+    summer = 6,
+    autumn = 9,
+    winter = 12,
   },
 
   -- Static period start hours (24h integers, only used when time_of_day_enabled = true)

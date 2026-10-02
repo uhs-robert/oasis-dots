@@ -123,6 +123,11 @@ local function parse_args(argv)
       overrides.dirs = overrides.dirs or {}
       overrides.dirs.night = argv[i + 1]
       i = i + 1
+    elseif a == "--season" and argv[i + 1] then
+      overrides.force_season = argv[i + 1]
+      i = i + 1
+    elseif a == "--no-seasons" then
+      overrides.seasons_enabled = false
     elseif a == "--morning-hour" and argv[i + 1] then
       overrides.start_hours = overrides.start_hours or {}
       overrides.start_hours.morning = tonumber(argv[i + 1])
@@ -165,6 +170,8 @@ Options:
   --dir-day PATH          Override day folder
   --dir-evening PATH      Override evening folder
   --dir-night PATH        Override night folder
+  --season NAME           Force spring, summer, autumn or winter
+  --no-seasons            Ignore season folders
   --morning-hour H        Static start hour for morning
   --day-hour H            Static start hour for day
   --evening-hour H        Static start hour for evening
@@ -314,19 +321,21 @@ function Rotate.start(opts)
   local state = {}
   local last_loc_refresh = os.time()
 
-  -- Initialize solar calculations only if time-of-day is enabled
-  if cfg.time_of_day_enabled then
+  local function refresh_solar()
     Solar.get_location(cfg, state, util)
     Solar.update_periods(cfg, state, util)
+    cfg.southern_hemisphere = state.lat ~= nil and state.lat < 0
   end
+
+  -- Initialize solar calculations only if time-of-day is enabled
+  if cfg.time_of_day_enabled then refresh_solar() end
 
   local function maybe_refresh()
     if not cfg.time_of_day_enabled or not cfg.location_enabled then return end
     local now = os.time()
     if now - last_loc_refresh >= cfg.refresh_interval_seconds then
       last_loc_refresh = now
-      Solar.get_location(cfg, state, util)
-      Solar.update_periods(cfg, state, util)
+      refresh_solar()
     end
   end
 
