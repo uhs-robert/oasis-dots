@@ -351,6 +351,7 @@ Singleton {
             bar_workspace_diamond: false,
             bar_clock_brackets: "transparent",
             bar_separator: "",
+            bar_island_shape: "",
             hairline: "transparent",
             hairline_dim: "transparent",
             frame_ticks: "",
@@ -601,6 +602,7 @@ Singleton {
                 bar_workspace_diamond: false,
                 bar_clock_brackets: "transparent",
                 bar_separator: "",
+                bar_island_shape: "",
                 hairline: "transparent",
                 hairline_dim: "transparent",
                 frame_ticks: "",
@@ -961,6 +963,7 @@ Singleton {
                 bar_border_color: Qt.tint(Theme.bg_crust, Qt.alpha(Theme.fg_muted, 0.5)),
                 bar_hover_bg: Qt.tint(Theme.bg_crust, Qt.alpha(Theme.fg_muted, 0.25)),
                 bar_separator: "tick",
+                bar_island_shape: "octagon",
                 bar_clock_font: Watch.digit_font,
                 watch_colors: "Theme",
                 watch_classic: classic_tokens
@@ -2344,6 +2347,8 @@ Singleton {
     readonly property color bar_clock_brackets: root.bar.bar_clock_brackets
     // "tick" draws the white watch bar between bar items in place of "|".
     readonly property string bar_separator: root.bar.bar_separator
+    // "octagon" draws chamfered watch-case bar islands (the center one with lugs) with a white tick at each end.
+    readonly property string bar_island_shape: root.bar.bar_island_shape
     // A tick scale rising from each island's bottom edge.
     readonly property color bar_ticks: root.bar.bar_ticks
     // An inner line along each island's slants and bottom edge.

@@ -6,6 +6,7 @@ import "../components"
 import "../components/metroid" as Metroid
 import "../services"
 import "../theme"
+import "../lock/skins/goldeneye/Watch.js" as Watch
 
 Item {
     id: root
@@ -49,13 +50,17 @@ Item {
     property color cap_right_fill: "transparent"
     property color cap_left_fill: "transparent"
     readonly property bool center: root.cap_left && root.cap_right
-    readonly property int cap_width: root.lualine ? Math.round(height * 0.4) : root.visor ? Math.round(height * 0.8) : height / 2
-    readonly property real pad: root.capsule ? Style.bar_capsule_pad : root.lualine ? (root.center ? 10 : 0) : 8
+    // goldeneye: chamfered watch islands, the center one with case lugs, and a white tick at each end.
+    readonly property bool octagon: Style.bar_island_shape === "octagon" && !root.capsule && !root.visor && !root.lualine
+    readonly property real lug: root.octagon && root.center ? 4 : 0
+    readonly property color tick_color: Style.bar_center_bg.hslLightness > 0.6 ? Theme.fg_core : Watch.white
+    readonly property int cap_width: root.octagon ? Math.round(height * 0.3) : root.lualine ? Math.round(height * 0.4) : root.visor ? Math.round(height * 0.8) : height / 2
+    readonly property real pad: root.capsule ? Style.bar_capsule_pad : root.lualine ? (root.center ? 10 : 0) : root.octagon ? 10 : 8
 
     signal clicked
 
     height: 30
-    width: root.capsule ? body.width + root.capsule_inset * 2 : body.width + (cap_left ? cap_width : 0) + (cap_right ? cap_width : 0)
+    width: root.capsule ? body.width + root.capsule_inset * 2 : body.width + (cap_left ? cap_width : 0) + (cap_right ? cap_width : 0) + root.lug * 2
 
     onJoinedChanged: {
         join_anim.stop();
@@ -112,7 +117,7 @@ Item {
 
     // The popup style's shade and dither, behind the modules and clipped to the slants.
     Shape {
-        visible: root.shaded && !root.visor && !root.capsule
+        visible: root.shaded && !root.visor && !root.capsule && !root.octagon
         anchors.fill: parent
         preferredRendererType: Shape.CurveRenderer
 
@@ -150,6 +155,80 @@ Item {
         }
     }
 
+    // The octagon: chamfered corners on the open ends, the screen-edge ends square; fill, rim and the case lugs.
+    Shape {
+        id: octagon_shape
+        visible: root.octagon
+        anchors.fill: parent
+        preferredRendererType: Shape.CurveRenderer
+
+        readonly property real x0: root.lug
+        readonly property real x1: root.width - root.lug
+        readonly property real c: root.cap_width
+        readonly property real i: root.border_width / 2
+
+        ShapePath {
+            strokeWidth: -1
+            fillColor: root.bg_color
+            PathPolyline {
+                path: {
+                    const x0 = octagon_shape.x0, x1 = octagon_shape.x1, c = octagon_shape.c, h = root.height;
+                    const l = root.cap_left, r = root.cap_right;
+                    return [l ? Qt.point(x0 + c, 0) : Qt.point(x0, 0), r ? Qt.point(x1 - c, 0) : Qt.point(x1, 0), r ? Qt.point(x1, c) : Qt.point(x1, 0), r ? Qt.point(x1, h - c) : Qt.point(x1, h), r ? Qt.point(x1 - c, h) : Qt.point(x1, h), l ? Qt.point(x0 + c, h) : Qt.point(x0, h), l ? Qt.point(x0, h - c) : Qt.point(x0, h), l ? Qt.point(x0, c) : Qt.point(x0, 0)];
+                }
+            }
+        }
+
+        ShapePath {
+            strokeWidth: root.border_width > 0 ? root.border_width : -1
+            strokeColor: root.border_color
+            fillColor: "transparent"
+            capStyle: ShapePath.FlatCap
+            joinStyle: ShapePath.MiterJoin
+            PathPolyline {
+                path: {
+                    const x0 = octagon_shape.x0, x1 = octagon_shape.x1, c = octagon_shape.c, h = root.height, i = octagon_shape.i;
+                    const pts = [];
+                    if (root.cap_left) pts.push(Qt.point(x0 + c, i), Qt.point(x0 + i, c), Qt.point(x0 + i, h - c), Qt.point(x0 + c, h - i));
+                    else pts.push(Qt.point(x0, h - i));
+                    if (root.cap_right) pts.push(Qt.point(x1 - c, h - i), Qt.point(x1 - i, h - c), Qt.point(x1 - i, c), Qt.point(x1 - c, i));
+                    else pts.push(Qt.point(x1, h - i));
+                    return pts;
+                }
+            }
+        }
+    }
+
+    // Case lugs on the center island: short tabs in the rim colour, centred on the ends.
+    Repeater {
+        model: root.lug > 0 ? [0, 1] : []
+
+        Rectangle {
+            required property int modelData
+            x: modelData === 0 ? 0 : root.width - root.lug
+            y: root.height / 2 - 7
+            width: root.lug + 1
+            height: 14
+            color: root.border_color
+            opacity: 0.9
+            visible: root.octagon
+        }
+    }
+
+    // The bezel's hour mark at each end, inside the rim.
+    Repeater {
+        model: root.octagon ? [0, 1] : []
+
+        Rectangle {
+            required property int modelData
+            x: modelData === 0 ? root.lug + 5 : root.width - root.lug - 7
+            y: (root.height - height) / 2
+            width: 2
+            height: 12
+            color: root.tick_color
+        }
+    }
+
     Dither {
         anchors.fill: parent
         slant_left: root.cap_left ? root.cap_width : 0
@@ -160,10 +239,10 @@ Item {
     Rectangle {
         id: body
 
-        x: root.capsule ? root.capsule_inset : cap_left ? root.cap_width : 0
+        x: root.capsule ? root.capsule_inset : root.lug + (cap_left ? root.cap_width : 0)
         height: root.height
         width: Math.ceil(layout.implicitWidth) + root.pad * 2
-        color: root.shaded ? "transparent" : root.bg_color
+        color: root.shaded || root.octagon ? "transparent" : root.bg_color
 
         // A tick scale rising from the bottom edge.
         Loader {
@@ -199,7 +278,7 @@ Item {
 
     // Caps overlap the body by 1px so fractional scaling (1.6 on the laptop) leaves no seam.
     Shape {
-        visible: root.cap_left && !root.capsule
+        visible: root.cap_left && !root.capsule && !root.octagon
         width: root.cap_width + 1
         height: root.height
         preferredRendererType: Shape.CurveRenderer
@@ -219,7 +298,7 @@ Item {
     }
 
     Shape {
-        visible: root.cap_right && !root.capsule
+        visible: root.cap_right && !root.capsule && !root.octagon
         x: root.width - root.cap_width - 1
         width: root.cap_width + 1
         height: root.height
@@ -261,7 +340,7 @@ Item {
 
     // Traces the slants and bottom edge; the sides on the screen edge stay open.
     Shape {
-        visible: root.border_width > 0 && !root.visor && !root.capsule
+        visible: root.border_width > 0 && !root.visor && !root.capsule && !root.octagon
         anchors.fill: parent
         preferredRendererType: Shape.CurveRenderer
 
@@ -287,7 +366,7 @@ Item {
     }
 
     Shape {
-        visible: root.inset_width > 0 && root.inset_color.a > 0 && !root.capsule
+        visible: root.inset_width > 0 && root.inset_color.a > 0 && !root.capsule && !root.octagon
         anchors.fill: parent
         preferredRendererType: Shape.CurveRenderer
 
