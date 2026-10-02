@@ -121,6 +121,8 @@ Trigger the picker with `SUPER + SHIFT + O`.
 
 `extensions/wallpaper/` is a time-of-day wallpaper rotation system built on hyprpaper. It picks wallpapers from a different folder for each part of the day (morning, day, evening, night), switching at fixed hours or at the sun's position for your location, and rotates on a configurable interval.
 
+Season folders are optional. `Winter/Morning`, `Winter/Day` and so on join the pool only while that season is current, alongside the any-season period folders, so summer never shows a winter wallpaper. Seasons follow the calendar months and flip in the southern hemisphere.
+
 Configure directories and timing in `extensions/wallpaper/config.lua`.
 
 ## Theme
