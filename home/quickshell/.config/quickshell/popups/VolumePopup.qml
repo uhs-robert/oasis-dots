@@ -220,32 +220,20 @@ Popup {
             }
 
             Loader {
-                id: watch_gauges
+                id: watch_gauge
                 readonly property var out_audio: Pipewire.defaultAudioSink ? Pipewire.defaultAudioSink.audio : null
-                readonly property var in_audio: Pipewire.defaultAudioSource ? Pipewire.defaultAudioSource.audio : null
                 active: root.st.osd_layout === "watch"
                 visible: active
                 Layout.fillWidth: true
-                Layout.preferredHeight: active ? Style.px(112) : 0
+                Layout.preferredHeight: active ? Style.px(100) : 0
                 Layout.bottomMargin: 6
                 sourceComponent: Item {
-                    Row {
+                    Goldeneye.GaugeDial {
                         anchors.centerIn: parent
-                        spacing: Style.px(28)
-
-                        Goldeneye.GaugeDial {
-                            size: Style.px(112)
-                            value: watch_gauges.out_audio ? watch_gauges.out_audio.volume : 0
-                            muted: !!watch_gauges.out_audio && watch_gauges.out_audio.muted
-                            label: "OUTPUT"
-                        }
-
-                        Goldeneye.GaugeDial {
-                            size: Style.px(112)
-                            value: watch_gauges.in_audio ? watch_gauges.in_audio.volume : 0
-                            muted: !!watch_gauges.in_audio && watch_gauges.in_audio.muted
-                            label: "INPUT"
-                        }
+                        size: Style.px(100)
+                        value: watch_gauge.out_audio ? watch_gauge.out_audio.volume : 0
+                        muted: !!watch_gauge.out_audio && watch_gauge.out_audio.muted
+                        label: "VOLUME"
                     }
                 }
             }

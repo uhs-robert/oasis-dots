@@ -186,29 +186,18 @@ Popup {
             spacing: 4
 
             Loader {
-                active: root.st.osd_layout === "watch" && (root.has_battery || Backlight.has_device)
+                id: watch_gauge
+                active: root.st.osd_layout === "watch" && root.has_battery
                 visible: active
                 Layout.fillWidth: true
-                Layout.preferredHeight: active ? Style.px(112) : 0
+                Layout.preferredHeight: active ? Style.px(100) : 0
                 Layout.bottomMargin: 6
                 sourceComponent: Item {
-                    Row {
+                    Goldeneye.GaugeDial {
                         anchors.centerIn: parent
-                        spacing: Style.px(28)
-
-                        Goldeneye.GaugeDial {
-                            visible: root.has_battery
-                            size: Style.px(112)
-                            value: root.percent / 100
-                            label: "BATTERY"
-                        }
-
-                        Goldeneye.GaugeDial {
-                            visible: Backlight.has_device
-                            size: Style.px(112)
-                            value: Backlight.percent / 100
-                            label: "LIGHT"
-                        }
+                        size: Style.px(100)
+                        value: root.percent / 100
+                        label: "BATTERY"
                     }
                 }
             }
@@ -277,7 +266,7 @@ Popup {
             }
 
             Text {
-                visible: !status_view.active
+                visible: !status_view.active && !watch_gauge.active
                 Layout.leftMargin: root.status_indent
                 text: (root.nes ? "BAT " : "") + Math.round(root.percent) + "%"
                 color: root.st.text_strong
