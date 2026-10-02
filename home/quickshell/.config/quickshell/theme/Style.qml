@@ -139,6 +139,7 @@ Singleton {
             lcd_margin: 0,
             frame_engraving: "",
             frame_watch: false,
+            ammo_counter: false,
             night_vision: false,
             toast_mission: false,
             track_bars: false,
@@ -385,6 +386,7 @@ Singleton {
                 lcd_margin: 0,
                 frame_engraving: "",
                 frame_watch: false,
+                ammo_counter: false,
                 night_vision: false,
                 toast_mission: false,
                 track_bars: false,
@@ -858,6 +860,7 @@ Singleton {
                 frame_border_width: 2,
                 frame_radius: 10,
                 frame_watch: true,
+                ammo_counter: true,
                 night_vision: true,
                 toast_mission: true,
                 track_bars: true,
@@ -1977,6 +1980,8 @@ Singleton {
     // Draws the popup panel as the watch's green octagon.
     readonly property bool frame_watch: root.active.frame_watch
     readonly property var pal: root.active.pal
+    // The overview's `N | M` window counter.
+    readonly property bool ammo_counter: root.active.ammo_counter
     // The overview shows unselected windows through a green monochrome tint.
     readonly property bool night_vision: root.active.night_vision
     // Toasts carry the mission wording (INCOMING, MISSION CRITICAL) in their header.

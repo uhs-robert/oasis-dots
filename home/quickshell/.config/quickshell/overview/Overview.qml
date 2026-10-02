@@ -93,6 +93,14 @@ PanelWindow {
         strip: Style.px(150)
     })
     readonly property var layout: Layout.compute(root.filmstrip, root.groups, root.tiles, frame.body.width - root.list_width, frame.body.height, root.metrics, root.selected_index)
+    readonly property int window_total: root.tiles.reduce((n, t) => n + t.windows.length, 0)
+    // The selected window's place among all windows, tile by tile.
+    readonly property int window_at: {
+        let n = 0;
+        for (let i = 0; i < root.selected_index; i++) n += root.tiles[i].windows.length;
+        const at = root.tab_order.findIndex(w => w.address === root.current_address);
+        return at < 0 ? 0 : n + at + 1;
+    }
     readonly property bool animate_moves: root.filmstrip && Power.on_ac && root.reveal === 1
     // The selected window (or the whole tile when empty) in body coordinates, for the scope skin.
     readonly property var aim: {
@@ -1021,6 +1029,15 @@ PanelWindow {
             place: root.aim ? root.aim.place : ""
             real: root.aim ? root.aim.real : null
             glide: Power.on_ac && root.reveal === 1
+        }
+
+        AmmoCounter {
+            visible: Style.ammo_counter && root.window_total > 0
+            anchors.right: parent.right
+            anchors.bottom: parent.bottom
+            anchors.margins: 12
+            index: root.window_at
+            total: root.window_total
         }
 
         LockAim {
