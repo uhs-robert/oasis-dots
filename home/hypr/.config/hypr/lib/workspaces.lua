@@ -6,21 +6,75 @@ local ORDER = Config.monitors
 --- @class Workspaces
 local Workspaces = {}
 
---- Returns the ORDER index for the given monitor, falling back to mon.id+1.
+--- True when `mon` is the monitor a profile entry describes.
 --- @param mon HL.Monitor
---- @return integer
-local function get_order_idx(mon)
-  for i, entry in ipairs(ORDER) do
-    if
-      (entry.description and mon.description == entry.description)
-      or (entry.name and mon.name == entry.name)
-      or (entry.id and mon.id == entry.id)
-    then
-      return i
+--- @param entry { description?: string, name?: string, id?: integer }
+--- @return boolean
+function Workspaces.matches(mon, entry)
+  if entry.description and mon.description == entry.description then return true end
+  if entry.name and mon.name == entry.name then return true end
+  if entry.id and mon.id == entry.id then return true end
+  return false
+end
+
+--- Assigns every monitor a slot: profile position when matched, else the lowest slot no matched monitor holds.
+--- @param monitors HL.Monitor[]
+--- @param order table[] Profile entries
+--- @return table<string, integer> slots Monitor name to slot
+--- @return table<string, boolean> matched Names of monitors that matched a profile entry
+function Workspaces.assign_slots(monitors, order)
+  local sorted = {}
+  for _, mon in ipairs(monitors) do
+    sorted[#sorted + 1] = mon
+  end
+  table.sort(sorted, function(a, b)
+    if a.id ~= b.id then return a.id < b.id end
+    return a.name < b.name
+  end)
+
+  local slots, matched, taken, unknowns = {}, {}, {}, {}
+  for _, mon in ipairs(sorted) do
+    local found
+    for i, entry in ipairs(order) do
+      if not taken[i] and Workspaces.matches(mon, entry) then
+        found = i
+        break
+      end
+    end
+    if found then
+      slots[mon.name], matched[mon.name], taken[found] = found, true, true
+    else
+      unknowns[#unknowns + 1] = mon
     end
   end
 
-  return #ORDER + mon.id + 1
+  local next_slot = 1
+  for _, mon in ipairs(unknowns) do
+    while taken[next_slot] do
+      next_slot = next_slot + 1
+    end
+    slots[mon.name], taken[next_slot] = next_slot, true
+  end
+  return slots, matched
+end
+
+--- Slots of the connected monitors under the current profile.
+--- @return table<string, integer> slots
+--- @return table<string, boolean> matched
+function Workspaces.connected_slots() return Workspaces.assign_slots(hl.get_monitors() or {}, ORDER) end
+
+--- Slot of `mon`, counting it as connected even when it was just removed.
+--- @param mon HL.Monitor
+--- @return integer
+function Workspaces.slot_of(mon)
+  local monitors = {}
+  local present = false
+  for _, m in ipairs(hl.get_monitors() or {}) do
+    monitors[#monitors + 1] = m
+    if m.name == mon.name then present = true end
+  end
+  if not present then monitors[#monitors + 1] = mon end
+  return (Workspaces.assign_slots(monitors, ORDER))[mon.name]
 end
 
 --- Resolves a monitor selector string from an ORDER entry.
@@ -37,48 +91,13 @@ function Workspaces.get_monitor_selector(entry)
   end
 end
 
---- Splits monitors into ORDER-matched slots and unrecognized extras.
---- @param monitors HL.Monitor[]
---- @return table<integer, string>, string[]
-local function classify_monitors(monitors)
-  local filled = {} --- @type table<integer, string>
-  local unknowns = {} --- @type string[]
-  for _, mon in ipairs(monitors) do
-    local idx = get_order_idx(mon)
-    if idx <= #ORDER then
-      filled[idx] = mon.name
-    else
-      table.insert(unknowns, mon.name)
-    end
-  end
-  return filled, unknowns
-end
-
---- Builds an ordered slot list: ORDER positions filled first, unknowns backfilling gaps then appended.
---- @param filled   table<integer, string>
---- @param unknowns string[]
---- @return string[]
-local function build_ordered_list(filled, unknowns)
-  local slots = {} --- @type string[]
-  local u = 1
-  for i = 1, #ORDER do
-    slots[i] = filled[i] or unknowns[u]
-    if not filled[i] then u = u + 1 end
-  end
-  for i = u, #unknowns do
-    table.insert(slots, unknowns[i])
-  end
-  return slots
-end
-
---- Returns the monitor name currently occupying slot `slot` in ORDER.
---- Known monitors fill their configured slot; unknown connected monitors
---- fill empty slots in insertion order (as reported by hl.get_monitors()).
---- @param slot integer 1-based ORDER slot index
+--- Returns the monitor name currently holding slot `slot`.
+--- @param slot integer 1-based slot index
 --- @return string|nil monitor name, or nil if the slot has no monitor
 function Workspaces.get_monitor_for_slot(slot)
-  local filled, unknowns = classify_monitors(hl.get_monitors())
-  return build_ordered_list(filled, unknowns)[slot]
+  for name, idx in pairs((Workspaces.connected_slots())) do
+    if idx == slot then return name end
+  end
 end
 
 return Workspaces
