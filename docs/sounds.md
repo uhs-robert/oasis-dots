@@ -70,16 +70,16 @@ So a pack of your own can start with only the files you care about.
 
 ## Game audio you import
 
-Four lock screens are modelled on games, and the shell can use those games' own audio if you supply it. None of it is in the repo. Each has an importer in `scripts/` that reads your copies, trims and levels them, and finds the music's loop points:
+Four lock screens are modelled on games, and the shell can use those games' own audio if you supply it. None of it is in the repo. Each has an importer in `scripts/` that you run once. It reads your copies, trims and levels them, finds the music's loop points, and writes the result where the shell looks for it. The shell only ever reads those results, so the source folder can be deleted afterwards. Keep it if you might import again: the loop points are saved as tags in the source files.
 
-| Script | Reads from (default) | Writes to |
+| Script | Source it looks for if you name none | Writes to |
 | --- | --- | --- |
 | `ff7-audio` | `~/Downloads/FF7` | `lock/skins/ff7/audio/` in the config |
 | `mgs2-audio` | `~/Downloads/Metal Gear` | `~/.local/share/quickshell/mgs2-audio/` |
 | `ocarina-audio` | `~/Downloads/oot` | `~/.local/share/quickshell/ocarina-audio/` |
 | `goldeneye-audio` | `~/Downloads/007 Watch Theme.flac` | `~/.local/share/quickshell/goldeneye-audio/` |
 
-Each takes a different source folder as its last argument. Run one with `--help` for the file names it expects.
+Pass your own source as the last argument, for example `scripts/mgs2-audio ~/Music/mgs2`. Run a script with `--help` for the file names it expects.
 
 Once imported, FFVII, MGS2 and Ocarina also appear in the Effects pack list, so their menu sounds can be used for the whole shell. An imported pack is used as it is: files in `~/.local/share/quickshell/sounds/` do not override it. Where an imported pack has no file for a sound, the current style's own is used.
 
