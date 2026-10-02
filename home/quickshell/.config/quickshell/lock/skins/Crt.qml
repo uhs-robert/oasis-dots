@@ -6,7 +6,7 @@ import QtQuick.Layouts
 import QtQuick.Shapes
 import Quickshell.Io
 import "../../theme"
-import "../../components/screensavers"
+import "screensavers"
 
 // A green-phosphor terminal in a curved tube: powers on from a dot, collapses to a line and a dot on unlock.
 Item {

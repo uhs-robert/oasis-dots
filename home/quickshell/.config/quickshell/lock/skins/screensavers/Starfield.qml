@@ -1,4 +1,4 @@
-// home/quickshell/.config/quickshell/components/screensavers/Starfield.qml
+// home/quickshell/.config/quickshell/lock/skins/screensavers/Starfield.qml
 import QtQuick
 
 // Stars fly out from a vanishing point, brightening as they near; drawn as warp streaks or dots.
