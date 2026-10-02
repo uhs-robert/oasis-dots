@@ -82,7 +82,7 @@ And control Hyprland via `:`, like Vim's **Command Mode**:
 
 Powered by the [Oasis](https://github.com/uhs-robert/oasis.nvim) colorscheme palettes from NeoVim, also includes over 15 different styles to choose from in combination.
 
-Styles transform the appearance of the bar, popups, menus, pickers, fonts, sounds, transitions, and the lock screen too.
+Styles transform the appearance of the bar, popups, menus, pickers, fonts, sounds, transitions, and the lock screen too. Every sound can be swapped for your own: see [Custom sounds and music](docs/sounds.md).
 
 Pick a style in `Settings > Style` (`SUPER + SPACE` then `S`) and it swaps live.
 
