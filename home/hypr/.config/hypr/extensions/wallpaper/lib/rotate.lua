@@ -128,6 +128,11 @@ local function parse_args(argv)
       i = i + 1
     elseif a == "--no-seasons" then
       overrides.seasons_enabled = false
+    elseif a == "--weather" and argv[i + 1] then
+      overrides.force_weather = argv[i + 1]
+      i = i + 1
+    elseif a == "--no-weather" then
+      overrides.weather_enabled = false
     elseif a == "--morning-hour" and argv[i + 1] then
       overrides.start_hours = overrides.start_hours or {}
       overrides.start_hours.morning = tonumber(argv[i + 1])
@@ -172,6 +177,8 @@ Options:
   --dir-night PATH        Override night folder
   --season NAME           Force spring, summer, autumn or winter
   --no-seasons            Ignore season folders
+  --weather NAME          Force rain, snow or storm
+  --no-weather            Ignore weather folders
   --morning-hour H        Static start hour for morning
   --day-hour H            Static start hour for day
   --evening-hour H        Static start hour for evening
