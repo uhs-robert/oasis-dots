@@ -125,7 +125,7 @@ Season folders are optional. `Winter/Morning`, `Winter/Day` and so on join the p
 
 Weather folders work the same way. `Weather/Rain`, `Weather/Snow`, `Weather/Storm`, `Weather/Fog` and `Weather/Overcast` only show while that weather is current, and are favoured over the rest while they match. The weather is read from the Quickshell bar's cache, so it needs the bar running.
 
-A change of period, season or weather rotates within a minute, and recently shown wallpapers are skipped so small folders do not repeat. `SUPER + Q` then `W` skips to the next set. Run `lua ~/.config/hypr/extensions/wallpaper/init.lua --audit` to list each folder's size and the images no folder uses.
+A new period rotates as it starts, and recently shown wallpapers are skipped so small folders do not repeat. `SUPER + Q` then `W` skips to the next set. Run `lua ~/.config/hypr/extensions/wallpaper/init.lua --audit` to list each folder's size and the images no folder uses.
 
 Configure directories and timing in `extensions/wallpaper/config.lua`.
 

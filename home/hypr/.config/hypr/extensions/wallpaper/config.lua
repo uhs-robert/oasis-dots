@@ -25,7 +25,6 @@ return {
 
   -- Rotation settings
   interval_minutes = 15, -- Rotation cadence (only used when rotation_enabled = true)
-  poll_seconds = 60, -- How often to check for a period, season or weather change, which rotates at once
   history_size = 12, -- Recently shown wallpapers to avoid repeating; 0 allows repeats
 
   -- Wallpaper directories

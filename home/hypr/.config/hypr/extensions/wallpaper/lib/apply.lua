@@ -4,7 +4,7 @@
 --- @class Apply
 --- @field to_monitors fun(cfg: table, util: table, opts?: { exclude?: table<string, boolean>, reserved?: table<string, boolean>, history?: string[] }): boolean, table<string, string> Apply wallpapers to all active monitors (or cfg.target_monitor if set); returns ok plus a map of monitor name to the wallpaper path applied
 --- @field list_images fun(dir: string): string[] Public wrapper around list_images for external callers
---- @field context_label fun(cfg: table): string Current period, season and weather as one label
+--- @field seconds_to_period_change fun(cfg: table): number Seconds until the next time-of-day period starts
 local Apply = {}
 
 --- Find all image files under `dir` (recursive), resolved to their real paths.
@@ -414,9 +414,19 @@ end
 --- @return string[] image file paths
 function Apply.list_images(dir) return list_images(dir) end
 
---- Current period, season and weather as one label; changes when the pool does.
+--- Seconds until the next time-of-day period starts; `math.huge` when periods are off.
 --- @param cfg table wallpaper config
---- @return string
-function Apply.context_label(cfg) return label_of(context(cfg)) end
+--- @return number
+function Apply.seconds_to_period_change(cfg)
+  if not cfg.time_of_day_enabled then return math.huge end
+  local t = os.date("*t")
+  local now_h = t.hour + t.min / 60 + t.sec / 3600
+  local nearest = 24
+  for _, start in pairs(cfg.start_hours) do
+    local ahead = (start - now_h) % 24
+    if ahead > 0 and ahead < nearest then nearest = ahead end
+  end
+  return nearest * 3600 + 1
+end
 
 return Apply

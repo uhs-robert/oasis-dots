@@ -456,17 +456,11 @@ function Rotate.start(opts)
     cycle("settle")
   end
 
-  -- Rotation loop (startup already did the first cycle). Polls so a period,
-  -- season or weather change rotates at once instead of waiting out the interval.
-  local last_context, last_cycle = Apply.context_label(cfg), os.time()
+  -- Rotation loop (startup already did the first cycle). Wakes early for a
+  -- period change so the new period's wallpapers show on time.
   while true do
-    util.sleep(math.min(cfg.poll_seconds, cfg.interval_seconds))
-    maybe_refresh()
-    local now_context = Apply.context_label(cfg)
-    if now_context ~= last_context or os.time() - last_cycle >= cfg.interval_seconds then
-      cycle("full")
-      last_context, last_cycle = now_context, os.time()
-    end
+    util.sleep(math.max(1, math.min(cfg.interval_seconds, Apply.seconds_to_period_change(cfg))))
+    cycle("full")
   end
 end
 
