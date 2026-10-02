@@ -1483,8 +1483,8 @@ Singleton {
                     bar_workspace_active: Theme.theme_secondary,
                     bar_workspace_ring: Theme.theme_secondary
                 };
-                return Object.assign(build("dmg", mono), {
-                    models: { color: build("color", full, colors) },
+                return Object.assign(build("color", full, colors), {
+                    models: { dmg: build("dmg", mono) },
                     model_labels: { dmg: "Original", color: "Color" }
                 });
             })(),
