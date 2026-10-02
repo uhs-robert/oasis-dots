@@ -1,6 +1,34 @@
 ---- [GLOBALS] ----
 GREETD_DIRECTORY = "/etc/greetd"
-ADMIN = "roberth"
+local function valid_user(name)
+	return name and name:match("^[a-z_][a-z0-9_-]*$") and name or nil
+end
+
+local function resolve_admin()
+	local file = io.open(GREETD_DIRECTORY .. "/admin_user")
+	if file then
+		local name = valid_user(file:read("*l"))
+		file:close()
+		if name then
+			return name
+		end
+	end
+	for line in io.lines("/etc/passwd") do
+		local name, uid, shell = line:match("^([^:]+):[^:]*:(%d+):[^:]*:[^:]*:[^:]*:([^:]*)$")
+		uid = tonumber(uid)
+		if valid_user(name) and uid >= 1000 and uid < 60000 and not shell:match("nologin$") and not shell:match("false$") then
+			return name
+		end
+	end
+end
+
+ADMIN = resolve_admin()
+RUNTIME_DIR = os.getenv("XDG_RUNTIME_DIR")
+if not RUNTIME_DIR or RUNTIME_DIR == "" then
+	local uid_pipe = io.popen("id -u")
+	RUNTIME_DIR = "/run/user/" .. uid_pipe:read("*l")
+	uid_pipe:close()
+end
 TERMINAL = "kitty"
 
 ---- [ENV] ----
@@ -8,7 +36,7 @@ hl.env("PATH", "/usr/bin")
 hl.env("KITTY_CACHE_DIRECTORY", "/var/lib/greetd/kitty-cache")
 hl.env("KITTY_RUNTIME_DIRECTORY", "/var/lib/greetd/kitty-runtime")
 hl.env("KITTY_CONFIG_DIRECTORY", GREETD_DIRECTORY)
-hl.env("XDG_RUNTIME_DIR", "/run/user/962")
+hl.env("XDG_RUNTIME_DIR", RUNTIME_DIR)
 hl.env("WAYLAND_DISPLAY", "wayland-1")
 
 ---- [FUNCTIONS] ----
@@ -22,15 +50,17 @@ local restart_login = function()
 end
 
 ---- [KEYBINDS] ----
-hl.bind(
-	"SUPER + RETURN",
-	hl.dsp.exec_cmd(TERMINAL .. " --title admin-shell --directory " .. GREETD_DIRECTORY .. " -- su " .. ADMIN)
-)
+if ADMIN then
+	hl.bind(
+		"SUPER + RETURN",
+		hl.dsp.exec_cmd(TERMINAL .. " --title admin-shell --directory " .. GREETD_DIRECTORY .. " -- su " .. ADMIN)
+	)
+end
 hl.bind("SUPER + X", hl.dsp.window.kill())
 hl.bind("SUPER + F", hl.dsp.window.fullscreen({ action = "toggle" }))
 hl.bind("SUPER + Q", restart_login)
 -- Swap the Quickshell greeter for tuigreet (qs-greeter falls back when qs exits after this marker).
-hl.bind("SUPER + T", hl.dsp.exec_cmd("mkdir -p /run/user/962/qs-greeter; touch /run/user/962/qs-greeter/fallback; pkill -x qs; sleep 1; pkill -9 -x qs"))
+hl.bind("SUPER + T", hl.dsp.exec_cmd("mkdir -p " .. RUNTIME_DIR .. "/qs-greeter; touch " .. RUNTIME_DIR .. "/qs-greeter/fallback; pkill -x qs; sleep 1; pkill -9 -x qs"))
 
 ---- [MONITORS] ----
 -- MAIN
@@ -96,12 +126,11 @@ hl.config({
 
 ---- [START UP] ----
 hl.on("hyprland.start", function()
+	local admin_acl = ADMIN
+			and ("setfacl -m u:" .. ADMIN .. ":x " .. RUNTIME_DIR .. "; setfacl -m u:" .. ADMIN .. ":rw " .. RUNTIME_DIR .. "/wayland-1; ")
+		or ""
 	hl.exec_cmd(
-		"setfacl -m u:"
-			.. ADMIN
-			.. ":x /run/user/962; setfacl -m u:"
-			.. ADMIN
-			.. ":rw /run/user/962/wayland-1; "
+		admin_acl
 			.. "if [ -x /usr/local/bin/qs-greeter ]; then /usr/local/bin/qs-greeter; else "
 			.. TERMINAL
 			.. " -- tuigreet --config /etc/tuigreet/config.toml --debug /tmp/tuigreet.log &"
