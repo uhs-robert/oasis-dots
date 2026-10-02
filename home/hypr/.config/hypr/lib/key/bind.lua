@@ -7,6 +7,48 @@ local Bind = {
   leader = Config.leader,
 }
 
+-- hl.unbind drops a key from every submap (hyprwm/Hyprland#15040), so handles are kept per submap
+-- for Bind.unbind. Bind.unbind and Bind.submap are public API for custom/; keep their signatures stable.
+
+--- Submap that binds are currently being registered in; "" is the global map. Set by Bind.submap.
+local scope = ""
+
+--- @type table<string, table<string, table[]>> submap -> normalized key -> bind handles
+local handles = {}
+
+--- Hyprland compares keys ignoring case and whitespace, so "SUPER + H" and "super+h" are the same bind.
+--- @param key string
+--- @return string
+local function normalize(key) return (key:gsub("%s+", ""):lower()) end
+
+--- @param submap string|nil
+--- @return string
+local function scope_name(submap)
+  if submap == nil or submap == "reset" then return "" end
+  return submap
+end
+
+--- True when a handle's :remove() drops only that bind (Hyprland 0.57+); older releases disable instead.
+local SCOPED_REMOVE = (function()
+  local version = type(hl.version) == "function" and hl.version() or nil
+  if type(version) ~= "string" then return false end
+  local major, minor = version:match("^(%d+)%.(%d+)")
+  major, minor = tonumber(major), tonumber(minor)
+  if not major then return false end
+  return major > 0 or minor >= 57
+end)()
+
+--- @param key    string
+--- @param handle table|nil  Handle returned by hl.bind
+local function track(key, handle)
+  if type(handle) ~= "table" and type(handle) ~= "userdata" then return end
+  local keys = handles[scope] or {}
+  handles[scope] = keys
+  local name = normalize(key)
+  keys[name] = keys[name] or {}
+  table.insert(keys[name], handle)
+end
+
 --- @param value string|string[]  Multiple keys produce one hl.bind call each, all wired to the same action
 --- @return string[]
 local function as_list(value)
@@ -42,7 +84,7 @@ function Bind.key(keys, action, desc, opts)
   end
 
   for _, key in ipairs(as_list(keys)) do
-    hl.bind(key, action, opts)
+    track(key, hl.bind(key, action, opts))
   end
 end
 
@@ -108,6 +150,67 @@ function Bind.keys(rows, defaults)
     end
     Bind.key(row[1], row[2], row[3], opts)
   end
+end
+
+--- Register binds inside a submap; calling it again for an existing submap adds to it.
+--- @param name  string                 Submap name
+--- @param reset string|function        Submap to return to after a bind fires, or fn when omitted
+--- @param fn    function|nil           Registers the binds, e.g. with Bind.key
+function Bind.submap(name, reset, fn)
+  if fn == nil then
+    fn, reset = reset, nil
+  end
+
+  local function body()
+    local previous = scope
+    scope = name
+    local ok, err = xpcall(fn, debug.traceback)
+    scope = previous
+    if not ok then error(err, 0) end
+  end
+
+  if reset then
+    hl.define_submap(name, reset, body)
+  else
+    hl.define_submap(name, body)
+  end
+end
+
+--- Remove binds made through Bind from one submap only; binds made outside Bind aren't tracked.
+--- @param keys   string|string[]
+--- @param submap string|nil  Submap name; nil or "reset" is the global map
+--- @return integer           Number of binds removed
+function Bind.unbind(keys, submap)
+  local scoped = handles[scope_name(submap)]
+  if not scoped then return 0 end
+
+  local count = 0
+  for _, key in ipairs(as_list(keys)) do
+    local name = normalize(key)
+    for _, handle in ipairs(scoped[name] or {}) do
+      if SCOPED_REMOVE then
+        handle:remove()
+      else
+        handle:set_enabled(false)
+      end
+      count = count + 1
+    end
+    scoped[name] = nil
+  end
+
+  return count
+end
+
+--- Like Bind.unbind but prepends Bind.leader to every key.
+--- @param keys   string|string[]
+--- @param submap string|nil
+--- @return integer
+function Bind.leader_unbind(keys, submap)
+  local prefixed = {}
+  for _, k in ipairs(as_list(keys)) do
+    table.insert(prefixed, with_prefix(Bind.leader, k))
+  end
+  return Bind.unbind(prefixed, submap)
 end
 
 return Bind

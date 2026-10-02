@@ -1,4 +1,4 @@
---- Submap lifecycle manager built on top of hl.define_submap / hl.dsp.submap.
+--- Submap lifecycle manager built on top of Bind.submap (hl.define_submap) / hl.dsp.submap.
 --- Tracks current/previous submap state and fires on_enter/on_exit hooks.
 --- Use Submap.define() to declare a submap; call .setup() on the result to register binds.
 local Bind = require("lib.key.bind") ---@class BindLib
@@ -234,11 +234,11 @@ end
 local function bind_catchall(catchall, exit_fn, spec)
   local opts = { release = true, ignore_mods = true }
   if catchall == "stay" then
-    hl.bind("catchall", hl.dsp.no_op(), opts)
+    Bind.key("catchall", hl.dsp.no_op(), opts)
   elseif catchall == "reset" then
-    hl.bind("catchall", exit_fn, opts)
+    Bind.key("catchall", exit_fn, opts)
   elseif type(catchall) == "function" then
-    hl.bind("catchall", function() catchall(context({ spec = spec })) end, opts)
+    Bind.key("catchall", function() catchall(context({ spec = spec })) end, opts)
   end
 end
 
@@ -260,7 +260,7 @@ function Submap.define(spec)
   function M.setup()
     if spec.enter then Bind.key(spec.enter, M.enter, spec.desc or ("+" .. spec.name)) end
 
-    hl.define_submap(spec.name, function()
+    Bind.submap(spec.name, function()
       local catchall = normalize_catchall(spec)
       local raw_binds = apply_individual_oneshots(resolve_binds(spec.binds) or {}, M.exit)
       local binds = catchall == "reset" and wrap_oneshot(raw_binds, M.exit) or raw_binds

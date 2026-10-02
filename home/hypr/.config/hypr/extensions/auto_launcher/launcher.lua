@@ -1,17 +1,17 @@
 -- home/hypr/.config/hypr/extensions/auto_launcher/launcher.lua
 local Config = require("config") ---@class Config
+local Monitors = require("config.monitors") ---@class Monitors
 local Sessions = require("extensions.auto_launcher.sessions") ---@class Sessions
 local Prompt = require("lib.prompt") ---@class Prompt
 
 --- @type table<string, HL.WindowRule>
 local RULES = {}
-local SESSIONS = Sessions.get_sessions()
 local WS_PER_MONITOR = Config.ws_per_monitor
 
---- @param monitor integer  1-based monitor index
+--- @param monitor integer  1-based monitor index; a disconnected one folds onto the highest connected
 --- @param offset integer   1-based workspace offset within the monitor's range
 --- @return integer
-local function ws(monitor, offset) return (monitor - 1) * WS_PER_MONITOR + offset end
+local function ws(monitor, offset) return (Monitors.resolve_slot(monitor) - 1) * WS_PER_MONITOR + offset end
 
 --- Creates (once) and enables a named workspace window rule, then disables it after 30s.
 --- @param match_key "class"|"title"
@@ -114,19 +114,20 @@ local function run(apps)
   end
 end
 
-local names = {}
-for k in pairs(SESSIONS) do
-  names[#names + 1] = k
-end
-table.sort(names)
-
 --- @class Launcher
 local Launcher = {}
 
----Open a session picker via preferred menu launcher and launch the chosen session.
+---Open a session picker and launch the chosen session; sessions are read at pick time.
 function Launcher.show_picker()
+  local sessions = Sessions.get_sessions()
+  local names = {}
+  for k in pairs(sessions) do
+    names[#names + 1] = k
+  end
+  table.sort(names)
+
   Prompt.select("Session", names, function(choice)
-    local apps = choice and SESSIONS[choice]
+    local apps = choice and sessions[choice]
     if apps then run(apps) end
   end)
 end
