@@ -28,7 +28,7 @@ return {
   default_wallpaper_dir = base, -- Default/fallback directory
 
   -- Specify directories to use based on time of day in every season (only used when time_of_day_enabled = true)
-  dirs = period_dirs(base),
+  dirs = period_dirs(base .. "/All"),
 
   -- Season directories, added to the time-of-day pool only while that season is current
   season_dirs = {
