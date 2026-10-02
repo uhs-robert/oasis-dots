@@ -162,7 +162,7 @@ Singleton {
         const rgba = a => Qt.rgba(a[0], a[1], a[2], a.length > 3 ? a[3] : 1);
         const rgb_of = c => [Qt.color(c).r, Qt.color(c).g, Qt.color(c).b];
         const theme_base = Qt.color(Theme.theme_primary);
-        const wr = Watch.theme_ramp(Math.max(0, theme_base.hslHue), theme_base.hslSaturation, rgb_of(Theme.bg_core), rgb_of(Theme.bg_mantle), Qt.color(Theme.bg_crust).hslLightness > 0.5 ? 0.96 : 0.8, rgb_of(Theme.bg_crust));
+        const wr = Watch.theme_ramp(Math.max(0, theme_base.hslHue), theme_base.hslSaturation, rgb_of(Theme.bg_surface), rgb_of(Theme.bg_mantle), Qt.color(Theme.bg_crust).hslLightness > 0.5 ? 0.96 : 0.8, rgb_of(Theme.bg_crust));
         const theme_ramp = {
             lit: rgba(wr.lit), mid: rgba(wr.mid), soft: rgba(wr.soft), dim: rgba(wr.dim), bar_on: rgba(wr.bar_on), bar_off: rgba(wr.bar_off),
             panel_top: rgba(wr.panel_top), panel_bottom: rgba(wr.panel_bottom), edge: rgba(wr.edge),

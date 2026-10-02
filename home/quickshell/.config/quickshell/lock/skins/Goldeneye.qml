@@ -114,7 +114,7 @@ Item {
     // The Watch colours option reaches the skin on the ctx; Classic is the fixed green, and a ctx without the field stays Classic.
     readonly property bool tinted: !!root.ctx && root.ctx.watch_colors === "Theme"
     readonly property color hue_src: root.ctx && root.ctx.tint !== "primary" ? root.ctx.tint_base : Theme.theme_primary
-    readonly property var ramp: Watch.theme_ramp(Math.max(0, root.hue_src.hslHue), root.hue_src.hslSaturation, [Theme.bg_core.r, Theme.bg_core.g, Theme.bg_core.b], [Theme.bg_mantle.r, Theme.bg_mantle.g, Theme.bg_mantle.b], 0.8, [0, 0, 0])
+    readonly property var ramp: Watch.theme_ramp(Math.max(0, root.hue_src.hslHue), root.hue_src.hslSaturation, [Theme.bg_surface.r, Theme.bg_surface.g, Theme.bg_surface.b], [Theme.bg_mantle.r, Theme.bg_mantle.g, Theme.bg_mantle.b], 0.8, [0, 0, 0])
 
     function rgba(a) {
         return Qt.rgba(a[0], a[1], a[2], a.length > 3 ? a[3] : 1);
