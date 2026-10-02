@@ -123,21 +123,20 @@ local function init_monitors()
   end
 end
 
---- Assigns persistent workspace rules per slot so ranges stay stable regardless of how many monitors are connected.
+local persistent_rules = {} --- @type table<integer, { output: string, rule: HL.WorkspaceRule }>
+
+--- Pins each slot's workspace range to its monitor and disables rules left over from an earlier slot assignment.
 --- Unmatched monitors take free slots, so their ranges never collide with a matched monitor's.
 local function init_persistent_workspaces()
   local monitors = hl.get_monitors()
   local slots, matched = Workspaces.assign_slots(monitors, MONITOR_ORDER)
-  local unmatched_slot = {}
-  for _, mon in ipairs(monitors) do
-    if not matched[mon.name] then unmatched_slot[slots[mon.name]] = mon.name end
-  end
+  local wanted = {} --- @type table<integer, string>
 
   for i, entry in ipairs(MONITOR_ORDER) do
     local output = get_monitor_output(entry, monitors)
-    if output and not unmatched_slot[i] then
+    if output then
       for n = (i - 1) * PERSISTENT_WS + 1, i * PERSISTENT_WS do
-        hl.workspace_rule({ workspace = tostring(n), monitor = output, persistent = true })
+        wanted[n] = output
       end
     end
   end
@@ -145,8 +144,21 @@ local function init_persistent_workspaces()
     if not matched[mon.name] then
       local idx = slots[mon.name]
       for n = (idx - 1) * PERSISTENT_WS + 1, idx * PERSISTENT_WS do
-        hl.workspace_rule({ workspace = tostring(n), monitor = mon.name, persistent = true })
+        wanted[n] = mon.name
       end
+    end
+  end
+
+  for n, held in pairs(persistent_rules) do
+    if wanted[n] ~= held.output then
+      held.rule:set_enabled(false)
+      persistent_rules[n] = nil
+    end
+  end
+  for n, output in pairs(wanted) do
+    if not persistent_rules[n] then
+      local rule = hl.workspace_rule({ workspace = tostring(n), monitor = output, persistent = true })
+      persistent_rules[n] = { output = output, rule = rule }
     end
   end
 end
