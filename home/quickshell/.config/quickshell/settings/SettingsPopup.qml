@@ -45,10 +45,17 @@ Popup {
     onJump_last: root.jump(1)
     onNav_indexChanged: {
         if (!root.is_open) return;
-        root.load_section();
+        load_timer.restart();
         ThemeAudio.play("cursor");
     }
+
+    Timer {
+        id: load_timer
+        interval: 120
+        onTriggered: root.load_section()
+    }
     onIs_openChanged: {
+        load_timer.stop();
         if (!root.is_open) {
             root.in_pane = false;
             return;
