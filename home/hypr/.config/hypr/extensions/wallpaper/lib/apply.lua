@@ -107,7 +107,7 @@ end
 --- @return "morning"|"day"|"evening"|"night"
 local function current_period(cfg)
   local t = os.date("*t")
-  local ct = t.hour + t.min / 60
+  local ct = t.hour + t.min / 60 + t.sec / 3600
   local m = cfg.start_hours.morning
   local d = cfg.start_hours.day
   local e = cfg.start_hours.evening
