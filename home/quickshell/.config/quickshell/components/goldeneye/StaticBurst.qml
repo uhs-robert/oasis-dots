@@ -2,7 +2,7 @@
 import QtQuick
 import "../../services"
 
-// A short burst of the pause watch's static over whatever it covers; play() does nothing on battery or while hidden, and the shader is unloaded between bursts.
+// A short, subdued burst of the pause watch's static over whatever it covers; play() does nothing on battery or while hidden, and the shader is unloaded between bursts.
 Item {
     id: root
 
@@ -24,6 +24,7 @@ Item {
             property variant source: blank
             property real level: root.level
             property real tick: root.noise_step
+            property real calm: 1
             fragmentShader: Qt.resolvedUrl("../../lock/skins/goldeneye/static.frag.qsb")
         }
     }

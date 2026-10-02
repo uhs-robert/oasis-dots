@@ -547,6 +547,7 @@ Item {
                 property variant source: hands_src
                 property real level: root.burst_level
                 property real tick: root.noise_step
+                property real calm: 0
                 fragmentShader: Qt.resolvedUrl("goldeneye/static.frag.qsb")
             }
 
