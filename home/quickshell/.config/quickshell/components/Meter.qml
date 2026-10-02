@@ -131,7 +131,7 @@ Item {
                     readonly property bool lit: root.busy
                         ? index >= root.busy_head && index < root.busy_head + root.busy_span
                         : index < Math.round(root.value * root.segment_count)
-                    readonly property bool is_hot: root.hot || index >= Math.round(root.hot_from * root.segment_count)
+                    readonly property bool is_hot: root.hot || (!root.bezel && index >= Math.round(root.hot_from * root.segment_count))
 
                     width: root.segment_width
                     height: root.implicitHeight
