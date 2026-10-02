@@ -68,48 +68,113 @@ Singleton {
             yellow: Theme.yellow,
             blue: Theme.blue
         };
-        const watch_pal = Object.assign({}, pal, {
-            error: Watch.red,
-            warning: Watch.warm[5],
-            ok: Watch.white,
-            info: Watch.cold_lit[5],
-            hint: Watch.green_mid,
-            primary: Watch.green,
-            primary_light: Watch.white,
-            primary_strong: Watch.green_mid,
-            secondary: Watch.cold_lit[6],
-            secondary_strong: Watch.cold_lit[4],
-            accent: Watch.green,
-            today: Watch.red,
-            label: Watch.green,
-            danger: Watch.red,
-            cursor: Watch.green,
-            fg: Watch.green_mid,
-            fg_strong: Watch.green,
-            fg_muted: Watch.green_soft,
-            fg_dim: Watch.green_dim,
-            border: Qt.alpha(Watch.green, 0.5),
-            visual_bg: Qt.alpha(Watch.green, 0.22),
-            bg_shadow: Watch.black,
-            bg_core: Watch.black,
-            bg_crust: Watch.black,
-            bg_mantle: "#031505",
-            bg_surface: "#0a2a10",
-            magenta: Watch.cold_lit[2],
-            bright_yellow: Watch.warm[7],
-            bright_blue: Watch.cold_lit[6],
-            bright_green: Watch.green,
-            bright_magenta: Watch.cold_lit[4],
-            bright_red: Watch.red,
-            cyan: Watch.cold_lit[5],
-            bright_cyan: Watch.cold_lit[7],
-            red: Watch.red,
-            green: Watch.white,
-            yellow: Watch.warm[5],
-            blue: Watch.cold_lit[4]
+        const watch_tokens = r => ({
+            wk: { lit: r.lit, mid: r.mid, soft: r.soft, dim: r.dim, bar_on: r.bar_on, bar_off: r.bar_off, panel_top: r.panel_top, panel_bottom: r.panel_bottom, edge: r.edge, frame: r.frame, rim: r.rim },
+            pal: Object.assign({}, pal, {
+                error: r.error,
+                warning: r.warning,
+                ok: r.state,
+                info: r.info,
+                hint: r.mid,
+                primary: r.lit,
+                primary_light: r.state,
+                primary_strong: r.mid,
+                secondary: r.secondary,
+                secondary_strong: r.secondary_strong,
+                accent: r.accent,
+                today: r.today,
+                label: r.lit,
+                danger: r.error,
+                cursor: r.lit,
+                fg: r.mid,
+                fg_strong: r.lit,
+                fg_muted: r.soft,
+                fg_dim: r.dim,
+                border: Qt.alpha(r.lit, 0.5),
+                visual_bg: Qt.alpha(r.lit, 0.22),
+                bg_shadow: r.shadow,
+                bg_core: r.ink,
+                bg_crust: r.crust,
+                bg_mantle: r.mantle,
+                bg_surface: r.surface,
+                magenta: Watch.cold_lit[2],
+                bright_yellow: Watch.warm[7],
+                bright_blue: Watch.cold_lit[6],
+                bright_green: r.lit,
+                bright_magenta: Watch.cold_lit[4],
+                bright_red: Watch.red,
+                cyan: Watch.cold_lit[5],
+                bright_cyan: Watch.cold_lit[7],
+                red: Watch.red,
+                green: r.state,
+                yellow: Watch.warm[5],
+                blue: Watch.cold_lit[4]
+            }),
+            text_fg: r.mid,
+            text_strong: r.lit,
+            text_primary: r.lit,
+            text_accent: r.state,
+            text_muted: r.soft,
+            text_dim: r.dim,
+            frame_color: r.frame,
+            frame_border_color: r.rim,
+            lcd_top: r.panel_top,
+            lcd_bottom: r.panel_bottom,
+            accent_color: r.lit,
+            selection_bg: Qt.alpha(r.lit, 0.22),
+            selection_border: Qt.alpha(r.lit, 0.7),
+            caret_color: r.lit,
+            tab_active_bg: Qt.alpha(r.lit, 0.22),
+            tab_active_fg: r.lit,
+            tab_fg: r.mid,
+            tab_underline: r.lit,
+            key_fg: r.lit,
+            key_border: Qt.alpha(r.lit, 0.5),
+            section_fg: r.soft,
+            section_fade: Qt.alpha(r.lit, 0.4),
+            footer_fg: r.soft,
+            footer_key_fg: r.lit,
+            footer_rule_color: Qt.alpha(r.lit, 0.25),
+            meter_on: r.bar_on,
+            meter_off: r.bar_off,
+            chart_fill: r.mid,
+            title_fg: r.lit,
+            title_readout_fg: r.dim,
+            chip_active_bg: Qt.alpha(r.lit, 0.22),
+            chip_active_fg: r.lit,
+            chip_pick: r.lit,
+            chip_border: Qt.alpha(r.lit, 0.5),
+            card_edge: r.mid,
+            toggle_on: r.state,
+            toggle_off: r.dim,
+            bar_clock_bg: r.clock_bg,
+            bar_clock_fg: r.lit
         });
+        const classic_ramp = {
+            lit: Watch.green, mid: Watch.green_mid, soft: Watch.green_soft, dim: Watch.green_dim, bar_on: Watch.bar_on, bar_off: Watch.bar_off,
+            panel_top: Qt.rgba(Watch.panel_top[0], Watch.panel_top[1], Watch.panel_top[2], Watch.panel_top[3]),
+            panel_bottom: Qt.rgba(Watch.panel_bottom[0], Watch.panel_bottom[1], Watch.panel_bottom[2], Watch.panel_bottom[3]),
+            frame: Watch.black, rim: Watch.rim, edge: "transparent", shadow: Watch.black, ink: Watch.black, crust: Watch.black, mantle: "#031505", surface: "#0a2a10", clock_bg: "#04200a",
+            state: Watch.white, accent: Watch.green, info: Watch.cold_lit[5], secondary: Watch.cold_lit[6], secondary_strong: Watch.cold_lit[4],
+            error: Watch.red, warning: Watch.warm[5], today: Watch.red
+        };
+        // The watch ramp from the palette's primary hue on a dark tinted panel, a little lighter than classic to keep its contrast on any palette.
+        const rgba = a => Qt.rgba(a[0], a[1], a[2], a.length > 3 ? a[3] : 1);
+        const rgb_of = c => [Qt.color(c).r, Qt.color(c).g, Qt.color(c).b];
+        const theme_base = Qt.color(Theme.theme_primary);
+        const wr = Watch.theme_ramp(Math.max(0, theme_base.hslHue), Watch.sat_of(theme_base), rgb_of(Theme.bg_surface), rgb_of(Theme.bg_mantle), Qt.color(Theme.bg_crust).hslLightness > 0.5 ? 0.96 : 0.8, rgb_of(Theme.bg_crust));
+        const theme_ramp = {
+            lit: rgba(wr.lit), mid: rgba(wr.mid), soft: rgba(wr.soft), dim: rgba(wr.dim), bar_on: rgba(wr.bar_on), bar_off: rgba(wr.bar_off),
+            panel_top: rgba(wr.panel_top), panel_bottom: rgba(wr.panel_bottom), edge: rgba(wr.edge),
+            frame: Theme.bg_crust, rim: Qt.tint(Theme.bg_crust, Qt.alpha(Theme.fg_muted, 0.5)), shadow: Theme.bg_shadow, ink: Theme.bg_core, crust: Theme.bg_crust, mantle: Theme.bg_mantle, surface: Theme.bg_surface, clock_bg: rgba(wr.clock_bg),
+            state: Theme.theme_accent, accent: Theme.theme_accent, info: Theme.theme_secondary, secondary: Theme.theme_secondary, secondary_strong: Theme.theme_secondary_strong,
+            error: Theme.error, warning: Theme.warning, today: Theme.error
+        };
+        const classic_tokens = watch_tokens(classic_ramp);
+        const theme_tokens = watch_tokens(theme_ramp);
         const terminal = {
             pal: pal,
+            wk: classic_tokens.wk,
             text_muted: Theme.fg_muted,
             text_dim: Theme.fg_dim,
             text_fg: Theme.fg_core,
@@ -286,6 +351,7 @@ Singleton {
             bar_workspace_diamond: false,
             bar_clock_brackets: "transparent",
             bar_separator: "",
+            bar_island_shape: "",
             hairline: "transparent",
             hairline_dim: "transparent",
             frame_ticks: "",
@@ -359,6 +425,7 @@ Singleton {
         return {
             "default": {
                 pal: pal,
+                wk: classic_tokens.wk,
                 text_muted: Theme.fg_muted,
                 text_dim: Theme.fg_dim,
                 text_fg: Theme.fg_core,
@@ -535,6 +602,7 @@ Singleton {
                 bar_workspace_diamond: false,
                 bar_clock_brackets: "transparent",
                 bar_separator: "",
+                bar_island_shape: "",
                 hairline: "transparent",
                 hairline_dim: "transparent",
                 frame_ticks: "",
@@ -843,24 +911,15 @@ Singleton {
                 bar_glow_color: Theme.bg_shadow,
                 bar_text_raised: true
             }),
-            // The classic pause watch for every popup, in its own fixed colours under any palette.
+            // The pause watch for every popup: tinted from the palette, or the classic fixed colours (the watch_colors option).
             "goldeneye": Object.assign({}, terminal, {
-                pal: watch_pal,
                 osd_layout: "watch",
                 workspace_art: "dial",
                 wait_anim: "transmission",
                 done_anim: "lcd",
-                text_fg: Watch.green_mid,
-                text_strong: Watch.green,
-                text_primary: Watch.green,
-                text_accent: Watch.white,
-                text_muted: Watch.green_soft,
-                text_dim: Watch.green_dim,
                 font_family: Watch.mono_font,
                 title_font_family: Watch.head_font,
                 number_font: Watch.digit_font,
-                frame_color: Watch.black,
-                frame_border_color: Watch.rim,
                 frame_border_width: 2,
                 frame_radius: 10,
                 frame_watch: true,
@@ -871,58 +930,29 @@ Singleton {
                 track_bars: true,
                 open_fx: "static",
                 confirm_layout: "watch",
-                lcd_top: Qt.rgba(Watch.panel_top[0], Watch.panel_top[1], Watch.panel_top[2], Watch.panel_top[3]),
-                lcd_bottom: Qt.rgba(Watch.panel_bottom[0], Watch.panel_bottom[1], Watch.panel_bottom[2], Watch.panel_bottom[3]),
                 lcd_margin: 8,
                 picker_skin: "goldeneye",
-                accent_color: Watch.green,
                 accent_height: 2,
                 frame_top_rule: false,
-                selection_bg: Qt.alpha(Watch.green, 0.22),
                 selection_outline: "transparent",
-                selection_border: Qt.alpha(Watch.green, 0.7),
                 selection_bar: false,
-                caret_color: Watch.green,
                 caret_blink: false,
                 row_cursor: "",
-                tab_active_bg: Qt.alpha(Watch.green, 0.22),
-                tab_active_fg: Watch.green,
-                tab_fg: Watch.green_mid,
                 tab_caps: true,
-                tab_underline: Watch.green,
-                key_fg: Watch.green,
-                key_border: Qt.alpha(Watch.green, 0.5),
-                section_fg: Watch.green_soft,
                 section_rule: false,
-                section_fade: Qt.alpha(Watch.green, 0.4),
                 label_caps: true,
                 label_spacing: 2,
-                footer_fg: Watch.green_soft,
-                footer_key_fg: Watch.green,
-                footer_rule_color: Qt.alpha(Watch.green, 0.25),
-                meter_on: Watch.bar_on,
-                meter_off: Watch.bar_off,
                 meter_hot: Watch.red,
                 meter_slant: 0.4,
                 meter_gap: 3,
                 meter_height: 12,
                 meter_palette: "bezel",
                 chart_slant: 0.21,
-                chart_fill: Watch.green_mid,
                 weather_header: "watch",
                 title_bg: "transparent",
-                title_fg: Watch.green,
                 title_spacing: 2,
                 title_readout: "OASIS WATCH v" + root.version,
-                title_readout_fg: Watch.green_dim,
                 chip_brackets: false,
-                chip_active_bg: Qt.alpha(Watch.green, 0.22),
-                chip_active_fg: Watch.green,
-                chip_pick: Watch.green,
-                chip_border: Qt.alpha(Watch.green, 0.5),
-                card_edge: Watch.green_mid,
-                toggle_on: Watch.white,
-                toggle_off: Watch.green_dim,
                 marker_fill: false,
                 bar_font_family: "Michroma",
                 bar_font_size: Theme.font_size - 3,
@@ -933,10 +963,11 @@ Singleton {
                 bar_border_color: Qt.tint(Theme.bg_crust, Qt.alpha(Theme.fg_muted, 0.5)),
                 bar_hover_bg: Qt.tint(Theme.bg_crust, Qt.alpha(Theme.fg_muted, 0.25)),
                 bar_separator: "tick",
-                bar_clock_bg: "#04200a",
-                bar_clock_fg: Watch.green,
-                bar_clock_font: Watch.digit_font
-            }),
+                bar_island_shape: "octagon",
+                bar_clock_font: Watch.digit_font,
+                watch_colors: "Theme",
+                watch_classic: classic_tokens
+            }, theme_tokens),
             "metroid": Object.assign({}, terminal, {
                 workspace_art: "doors",
                 level_layout: "visor",
@@ -2022,6 +2053,10 @@ Singleton {
     // Draws the popup panel as the watch's green octagon.
     readonly property bool frame_watch: root.active.frame_watch
     readonly property var pal: root.active.pal
+    // The watch's colour ramp and panel gradient for the current mode (the classic green or tinted from the palette).
+    readonly property var wk: root.active.wk
+    // The saved Watch colours choice, whatever the current style is (the lock skin reads it).
+    readonly property string watch_mode: (root.theme_values.goldeneye || {}).watch_colors || "Theme"
     // "watch" words the network and bluetooth popups in the mission language, with dial headers and segment bars.
     readonly property string link_style: root.active.link_style
     // The overview's `N | M` window counter.
@@ -2312,6 +2347,8 @@ Singleton {
     readonly property color bar_clock_brackets: root.bar.bar_clock_brackets
     // "tick" draws the white watch bar between bar items in place of "|".
     readonly property string bar_separator: root.bar.bar_separator
+    // "octagon" draws chamfered watch-case bar islands (the center one with lugs) with a white tick at each end.
+    readonly property string bar_island_shape: root.bar.bar_island_shape
     // A tick scale rising from each island's bottom edge.
     readonly property color bar_ticks: root.bar.bar_ticks
     // An inner line along each island's slants and bottom edge.
@@ -2450,6 +2487,7 @@ Singleton {
         if (b.meter_bloom === true) flag("meter_bloom", "Meter bloom");
         if (b.caret_blink === true) flag("caret_blink", "Caret blink");
         if (b.fade_fills === true) flag("fade_fills", "Fade fills");
+        if (b.watch_classic) out.push({ key: "watch_colors", label: "Watch colours", type: "choice", default: "Theme", choices: ["Theme", "Classic"] });
         out.push({ key: "font_family", label: "Font", type: "choice", default: b.font_family, choices: root.font_choices });
         out.push({ key: "bar_font_family", label: "Bar font", type: "choice", default: b.bar_font_family, choices: root.font_choices });
         out.push({ key: "font_size", label: "Text size", type: "number", default: b.font_size, min: 8, max: 32, step: 1 });
@@ -2498,6 +2536,7 @@ Singleton {
             if (k === "dither") o.dither = "transparent";
             else o[k] = opts[k];
         }
+        if (o.watch_colors === "Classic" && o.watch_classic) Object.assign(o, o.watch_classic);
         return o;
     }
 

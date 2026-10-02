@@ -1,6 +1,7 @@
 // home/quickshell/.config/quickshell/components/goldeneye/StaticBurst.qml
 import QtQuick
 import "../../services"
+import "../../theme"
 
 // A short, subdued burst of the pause watch's static over whatever it covers; play() does nothing on battery or while hidden, and the shader is unloaded between bursts.
 Item {
@@ -25,6 +26,8 @@ Item {
             property real level: root.level
             property real tick: root.noise_step
             property real calm: 1
+            property real tint_amt: Style.watch_mode === "Theme" ? 1 : 0
+            property color tint_col: Style.wk.mid
             fragmentShader: Qt.resolvedUrl("../../lock/skins/goldeneye/static.frag.qsb")
         }
     }

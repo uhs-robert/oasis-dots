@@ -1,5 +1,6 @@
 // home/quickshell/.config/quickshell/components/goldeneye/DialFace.qml
 import QtQuick
+import "../../theme"
 import "../../lock/skins/goldeneye" as Watch
 import "../../lock/skins/goldeneye/Watch.js" as W
 
@@ -22,9 +23,9 @@ Item {
     Rectangle {
         anchors.fill: parent
         radius: width / 2
-        color: W.black
+        color: Style.wk.frame
         border.width: 2
-        border.color: W.rim
+        border.color: Style.wk.rim
     }
 
     Watch.SegmentArc {
@@ -97,5 +98,8 @@ Item {
         cut: root.width * 0.073
         notches: false
         clip: true
+        top_color: Style.wk.panel_top
+        edge: Style.wk.edge
+        bottom_color: Style.wk.panel_bottom
     }
 }

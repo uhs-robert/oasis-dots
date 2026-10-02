@@ -1,6 +1,7 @@
 // home/quickshell/.config/quickshell/components/goldeneye/ScanStatic.qml
 import QtQuick
 import "../../services"
+import "../../theme"
 
 // A faint, steady static over a list while it is scanning; only on AC and while shown, and the shader is unloaded otherwise.
 Item {
@@ -18,6 +19,8 @@ Item {
             property real level: 0.35
             property real tick: root.noise_step
             property real calm: 1
+            property real tint_amt: Style.watch_mode === "Theme" ? 1 : 0
+            property color tint_col: Style.wk.mid
             fragmentShader: Qt.resolvedUrl("../../lock/skins/goldeneye/static.frag.qsb")
         }
     }

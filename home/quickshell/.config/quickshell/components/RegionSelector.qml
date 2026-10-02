@@ -1939,7 +1939,7 @@ PanelWindow {
                     width: 12
                     height: 12
                     border.width: 1
-                    border.color: Watch.green_dim
+                    border.color: Style.wk.dim
                     color: Screenshot.pixel_hex !== "" ? Screenshot.pixel_hex : "transparent"
                 }
 
@@ -1949,7 +1949,7 @@ PanelWindow {
                     anchors.leftMargin: root.pixel_mode ? 26 : 10
                     anchors.verticalCenter: parent.verticalCenter
                     text: root.pixel_mode ? (Screenshot.pixel_hex !== "" ? Screenshot.pixel_hex : "#------") : "READY"
-                    color: Watch.green
+                    color: Style.wk.lit
                     font.family: root.pixel_mode ? Watch.digit_font : Watch.mono_font
                     font.pixelSize: Style.fs(-3)
                 }
@@ -1971,14 +1971,14 @@ PanelWindow {
 
                     Text {
                         text: "X " + loupe.ge_pad4(root.modelData.x + loupe.at.x)
-                        color: Qt.alpha(Watch.green_mid, 0.75)
+                        color: Qt.alpha(Style.wk.mid, 0.75)
                         font.family: Watch.mono_font
                         font.pixelSize: Style.fs(-7)
                     }
 
                     Text {
                         text: "Y " + loupe.ge_pad4(root.modelData.y + loupe.at.y)
-                        color: Qt.alpha(Watch.green_mid, 0.75)
+                        color: Qt.alpha(Style.wk.mid, 0.75)
                         font.family: Watch.mono_font
                         font.pixelSize: Style.fs(-7)
                     }

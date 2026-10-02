@@ -45,7 +45,7 @@ Item {
         anchors.verticalCenter: parent.verticalCenter
         horizontalAlignment: Text.AlignHCenter
         text: Qt.formatTime(clock.date, "HH:mm")
-        color: W.green
+        color: Style.wk.lit
         font.family: W.digit_font
         font.pixelSize: 60
         fontSizeMode: Text.Fit

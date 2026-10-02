@@ -30,9 +30,10 @@ stage_greeter() {
   [[ -f "$live/theme/theme.json" ]] && cp "$live/theme/theme.json" "$dest/theme/"
   cp "$qs"/fonts/*.ttf "$qs"/fonts/OFL-*.txt "$dest/fonts/"
 
-  local style=oasis lock=follow tint=primary music=on session=Hyprland
+  local style=oasis lock=follow tint=primary music=on session=Hyprland watch=Theme
   local login_screen=follow login_tint=follow login_music=follow
   [[ -f "$state_dir/style.json" ]] && style=$(jq -r '.style // "oasis"' "$state_dir/style.json")
+  [[ -f "$state_dir/theme_options.json" ]] && watch=$(jq -r '.goldeneye.watch_colors // "Theme"' "$state_dir/theme_options.json")
   if [[ -f "$state_dir/lock.json" ]]; then
     lock=$(jq -r '.lock_style // "follow"' "$state_dir/lock.json")
     tint=$(jq -r '.lock_tint // "primary"' "$state_dir/lock.json")
@@ -51,8 +52,8 @@ stage_greeter() {
   local file="${lock^}.qml"
   [[ "$lock" != "simple" && -f "$dest/lock/skins/$file" ]] || lock=simple
 
-  jq -n --arg user "${GREETER_USER:-$USER}" --arg lock "$lock" --arg tint "$tint" --arg music "$music" --arg session "$session" \
-    '{user: $user, lock_style: $lock, lock_tint: $tint, lock_music: $music, session: $session}' >"$dest/greeter.json"
+  jq -n --arg user "${GREETER_USER:-$USER}" --arg lock "$lock" --arg tint "$tint" --arg music "$music" --arg session "$session" --arg watch "$watch" \
+    '{user: $user, lock_style: $lock, lock_tint: $tint, lock_music: $music, watch_colors: $watch, session: $session}' >"$dest/greeter.json"
   printf '%s\n' "$lock"
 }
 

@@ -12,13 +12,13 @@ ColumnLayout {
     property string digits: ""
     property string unit: ""
     property string text: ""
-    property color tone: W.green
+    property color tone: Style.wk.lit
     property bool alert: false
     spacing: 1
 
     Text {
         text: root.label
-        color: root.alert ? W.red : W.green_soft
+        color: root.alert ? Style.pal.error : Style.wk.soft
         font.family: W.head_font
         font.pixelSize: Style.fs(-7)
         font.letterSpacing: 1

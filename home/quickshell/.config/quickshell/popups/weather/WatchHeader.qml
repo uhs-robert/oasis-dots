@@ -34,9 +34,9 @@ Item {
     Rectangle {
         anchors.fill: parent
         radius: 10
-        color: W.black
+        color: Style.wk.frame
         border.width: 2
-        border.color: W.rim
+        border.color: Style.wk.rim
     }
 
     Watch.SegmentArc {
@@ -90,6 +90,9 @@ Item {
         cut: 12
         notch_w: 6
         notch_h: 18
+        top_color: Style.wk.panel_top
+        edge: Style.wk.edge
+        bottom_color: Style.wk.panel_bottom
 
         RowLayout {
             anchors.fill: parent
@@ -116,7 +119,7 @@ Item {
                             id: ghost
                             anchors.right: parent.right
                             text: "8".repeat(Math.max(2, root.digits.length))
-                            color: Qt.alpha(W.green, 0.1)
+                            color: Qt.alpha(Style.wk.lit, 0.1)
                             font.family: W.digit_font
                             font.pixelSize: Style.font_size * 2 + 4
                         }
@@ -124,7 +127,7 @@ Item {
                         Text {
                             anchors.right: parent.right
                             text: root.digits
-                            color: root.has ? W.green : W.green_dim
+                            color: root.has ? Style.wk.lit : Style.wk.dim
                             font.family: W.digit_font
                             font.pixelSize: Style.font_size * 2 + 4
                         }
@@ -132,7 +135,7 @@ Item {
 
                     Text {
                         text: "°" + WeatherState.unit_symbol()
-                        color: W.green_mid
+                        color: Style.wk.mid
                         font.family: W.mono_font
                         font.pixelSize: Style.fs(-1)
                     }
@@ -144,7 +147,7 @@ Item {
                     Layout.topMargin: 2
                     elide: Text.ElideRight
                     text: root.has ? root.cur.cond : WeatherState.loading ? "Loading" : "Unavailable"
-                    color: root.has || WeatherState.loading ? W.green_mid : W.red
+                    color: root.has || WeatherState.loading ? Style.wk.mid : Style.pal.error
                     font.family: W.mono_font
                     font.pixelSize: Style.fs(-3)
                     font.capitalization: Font.AllUppercase
@@ -157,7 +160,7 @@ Item {
                     Layout.minimumWidth: 0
                     elide: Text.ElideRight
                     text: "FEELS LIKE " + (root.has ? Math.round(root.cur.feels) + "°" + WeatherState.unit_symbol() : "")
-                    color: W.green_soft
+                    color: Style.wk.soft
                     font.family: W.mono_font
                     font.pixelSize: Style.fs(-4)
                 }
@@ -168,7 +171,7 @@ Item {
                     Layout.minimumWidth: 0
                     elide: Text.ElideRight
                     text: "STALE DATA" + (WeatherState.error ? ": " + WeatherState.error : "")
-                    color: W.red
+                    color: Style.pal.error
                     font.family: W.mono_font
                     font.pixelSize: Style.fs(-4)
                 }
@@ -191,7 +194,7 @@ Item {
 
                         Text {
                             text: readout_row.modelData.label
-                            color: W.green_soft
+                            color: Style.wk.soft
                             font.family: W.mono_font
                             font.pixelSize: Style.fs(-4)
                         }
@@ -201,14 +204,14 @@ Item {
                             Layout.preferredWidth: 0
                             clip: true
                             text: "·".repeat(40)
-                            color: Qt.alpha(W.green_dim, 0.6)
+                            color: Qt.alpha(Style.wk.dim, 0.6)
                             font.family: W.mono_font
                             font.pixelSize: Style.fs(-4)
                         }
 
                         Text {
                             text: readout_row.modelData.value
-                            color: W.green
+                            color: Style.wk.lit
                             font.family: W.mono_font
                             font.pixelSize: Style.fs(-4)
                         }

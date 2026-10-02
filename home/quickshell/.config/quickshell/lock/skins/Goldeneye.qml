@@ -3,6 +3,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Shapes
 import Quickshell.Io
+import "../../theme"
 import "goldeneye" as GE
 import "goldeneye/Watch.js" as Watch
 
@@ -110,10 +111,25 @@ Item {
         return [(root.host !== "" ? root.host.toUpperCase() : "STATUS") + ": " + (root.login ? "LOGIN" : "LOCKED"), ""];
     }
 
-    readonly property color green: Watch.green
-    readonly property color green_dim: Watch.green_dim
-    readonly property color green_mid: Watch.green_mid
-    readonly property color red: Watch.red
+    // The Watch colours option reaches the skin on the ctx; Classic is the fixed green, and a ctx without the field stays Classic.
+    readonly property bool tinted: !!root.ctx && root.ctx.watch_colors === "Theme"
+    readonly property color hue_src: root.ctx && root.ctx.tint !== "primary" ? root.ctx.tint_base : Theme.theme_primary
+    readonly property var ramp: Watch.theme_ramp(Math.max(0, root.hue_src.hslHue), Watch.sat_of(root.hue_src), [Theme.bg_surface.r, Theme.bg_surface.g, Theme.bg_surface.b], [Theme.bg_mantle.r, Theme.bg_mantle.g, Theme.bg_mantle.b], 0.8, [0, 0, 0])
+
+    function rgba(a) {
+        return Qt.rgba(a[0], a[1], a[2], a.length > 3 ? a[3] : 1);
+    }
+
+    readonly property color green: root.tinted ? root.rgba(root.ramp.lit) : Watch.green
+    readonly property color green_dim: root.tinted ? root.rgba(root.ramp.dim) : Watch.green_dim
+    readonly property color green_mid: root.tinted ? root.rgba(root.ramp.mid) : Watch.green_mid
+    readonly property color red: root.tinted ? Theme.error : Watch.red
+    readonly property color bar_on: root.tinted ? root.rgba(root.ramp.bar_on) : Watch.bar_on
+    readonly property color bar_off: root.tinted ? root.rgba(root.ramp.bar_off) : Watch.bar_off
+    readonly property color tile_on: root.tinted ? root.rgba(root.ramp.tile_on) : "#0c3a14"
+    readonly property color tile_off: root.tinted ? root.rgba(root.ramp.tile_off) : "#06200a"
+    readonly property color panel_top: root.tinted ? root.rgba(root.ramp.panel_top) : Qt.rgba(Watch.panel_top[0], Watch.panel_top[1], Watch.panel_top[2], Watch.panel_top[3])
+    readonly property color panel_bottom: root.tinted ? root.rgba(root.ramp.panel_bottom) : Qt.rgba(Watch.panel_bottom[0], Watch.panel_bottom[1], Watch.panel_bottom[2], Watch.panel_bottom[3])
     readonly property string head_font: Watch.head_font
     readonly property string mono_font: Watch.mono_font
     readonly property string digit_font: Watch.digit_font
@@ -492,6 +508,7 @@ Item {
                     property real span_x: width / 1020
                     property real span_y: height / 720
                     property real reach: 1 - root.ease(0.55, 0.78, root.intro_t)
+                    property real hue_shift: root.tinted && Watch.sat_of(root.hue_src) > 0 ? Math.max(0, root.hue_src.hslHue) * 6.283185 - 2.094395 : 0
                     property variant color_src: colors.count > 0 ? colors.itemAt(root.frame_at) : null
                     property variant mask_src: masks.count > 0 ? masks.itemAt(root.frame_at) : null
                     visible: !!color_src && !!mask_src && sheet.ready >= sheet.total * 2
@@ -548,6 +565,8 @@ Item {
                 property real level: root.burst_level
                 property real tick: root.noise_step
                 property real calm: 0
+                property real tint_amt: root.tinted ? 1 : 0
+                property color tint_col: root.green_mid
                 fragmentShader: Qt.resolvedUrl("goldeneye/static.frag.qsb")
             }
 
@@ -677,7 +696,7 @@ Item {
                             Rectangle {
                                 width: 96
                                 height: 96
-                                color: person.on ? "#0c3a14" : "#06200a"
+                                color: person.on ? root.tile_on : root.tile_off
                                 border.width: person.on ? 3 : 2
                                 border.color: person.on ? root.green : root.green_mid
 
@@ -818,7 +837,7 @@ Item {
                         y: 576
                         width: 70
                         height: 14
-                        color: bar.index < Math.max(1, root.granted ? 5 : Math.min(5, root.typed)) ? "#3dd84a" : "#1d5a24"
+                        color: bar.index < Math.max(1, root.granted ? 5 : Math.min(5, root.typed)) ? root.bar_on : root.bar_off
                     }
                 }
             }
@@ -841,8 +860,8 @@ Item {
                     y1: 118
                     x2: 0
                     y2: 603
-                    GradientStop { position: 0; color: Qt.rgba(Watch.panel_top[0], Watch.panel_top[1], Watch.panel_top[2], Watch.panel_top[3]) }
-                    GradientStop { position: 1; color: Qt.rgba(Watch.panel_bottom[0], Watch.panel_bottom[1], Watch.panel_bottom[2], Watch.panel_bottom[3]) }
+                    GradientStop { position: 0; color: root.panel_top }
+                    GradientStop { position: 1; color: root.panel_bottom }
                 }
                 PathPolyline { path: panel.outline }
             }
