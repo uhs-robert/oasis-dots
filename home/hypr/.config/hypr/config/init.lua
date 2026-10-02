@@ -34,7 +34,7 @@ local Utils = require("lib.utils") ---@class Utils
 
 --- @class Config
 --- @field leader string Modifier key for keybinds (default: "SUPER")
---- @field theme string Name of the theme file in ./theme/themes/ (default: "oasis_moonlight")
+--- @field theme string Name of the theme file in ./theme/colors/ (default: "oasis_moonlight")
 --- @field ws_per_monitor integer Workspaces assigned per monitor on startup (default: 5)
 --- @field persistent_workspaces integer|boolean Workspaces to pin per monitor, or false to disable (default: 5)
 --- @field vim_mode boolean Use H/J/K/L as directional inputs in keybinds (default: true)
