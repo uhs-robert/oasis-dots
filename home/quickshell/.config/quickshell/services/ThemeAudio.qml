@@ -126,6 +126,7 @@ Singleton {
         root.preview(kind);
     }
 
+    readonly property string fx_node_name: "quickshell-fx"
     property int voice: 0
     property real played_at: 0
 
@@ -134,7 +135,7 @@ Singleton {
         const now = Date.now();
         if (url === "" || now - root.played_at < 30) return;
         root.played_at = now;
-        voices.objectAt(root.voice).play(["pw-play", "--volume", String(root.fx_volume), decodeURIComponent(String(url).replace(/^file:\/\//, ""))]);
+        voices.objectAt(root.voice).play(["pw-play", "-P", "{ node.name = " + root.fx_node_name + " }", "--volume", String(root.fx_volume), decodeURIComponent(String(url).replace(/^file:\/\//, ""))]);
         root.voice = (root.voice + 1) % voices.count;
     }
 

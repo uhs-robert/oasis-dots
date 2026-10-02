@@ -30,7 +30,7 @@ Popup {
 
     readonly property var output_devices: Pipewire.nodes.values.filter(n => n.isSink && !n.isStream && n.audio)
     readonly property var input_devices: Pipewire.nodes.values.filter(n => !n.isSink && !n.isStream && n.audio)
-    readonly property var streams: Pipewire.nodes.values.filter(n => n.isStream && n.isSink)
+    readonly property var streams: Pipewire.nodes.values.filter(n => n.isStream && n.isSink && n.name !== ThemeAudio.fx_node_name)
 
     readonly property var rows: {
         const list = [];
