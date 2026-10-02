@@ -4,7 +4,8 @@ local HOME = os.getenv("HOME")
 local Utils = require("lib.utils") ---@class Utils
 
 local CONFIG_DIR = HOME .. "/.config/quickshell"
-local STATE_DIR = (os.getenv("XDG_STATE_HOME") or HOME .. "/.local/state") .. "/quickshell"
+local XDG_STATE = os.getenv("XDG_STATE_HOME")
+local STATE_DIR = ((XDG_STATE and XDG_STATE ~= "") and XDG_STATE or HOME .. "/.local/state") .. "/quickshell"
 
 --- Returns true if path exists (file or directory).
 --- @param path string

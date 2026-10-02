@@ -112,29 +112,48 @@ Singleton {
         return (xdg && xdg !== "" ? xdg : Quickshell.env("HOME") + "/.local/state") + "/quickshell/theme.json";
     }
     readonly property string shell_path: Quickshell.shellDir + "/theme/theme.json"
+    property bool probed: false
     property bool state_ok: false
+    property bool state_missing: false
     readonly property string source_path: override_path !== "" ? override_path : (state_ok ? state_path : shell_path)
 
     FileView {
         id: state_probe
         path: root.greeter ? "" : root.state_path
+        blockLoading: true
         watchChanges: true
         printErrors: false
         onFileChanged: reload()
-        onLoaded: root.state_ok = true
-        onLoadFailed: error => root.state_ok = false
+        onLoaded: {
+            root.state_missing = false;
+            try {
+                const data = JSON.parse(text());
+                if (!data || typeof data !== "object" || Array.isArray(data)) throw new Error("not an object");
+                root.apply(data);
+                root.state_ok = true;
+            } catch (e) {
+                console.warn("theme.json: " + e);
+                root.state_ok = false;
+            }
+            root.probed = true;
+        }
+        onLoadFailed: error => {
+            root.state_missing = true;
+            root.state_ok = false;
+            root.probed = true;
+        }
     }
 
     Timer {
         interval: 5000
         repeat: true
-        running: !root.greeter && !root.state_ok
+        running: !root.greeter && root.state_missing
         onTriggered: state_probe.reload()
     }
 
     FileView {
         id: theme_file
-        path: root.source_path
+        path: root.greeter || root.probed ? (root.state_ok ? "" : (root.override_path !== "" ? root.override_path : root.shell_path)) : ""
         watchChanges: true
         printErrors: root.override_path === ""
         onFileChanged: reload()
