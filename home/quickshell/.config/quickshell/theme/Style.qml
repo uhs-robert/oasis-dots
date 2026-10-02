@@ -139,6 +139,7 @@ Singleton {
             lcd_margin: 0,
             frame_engraving: "",
             frame_watch: false,
+            track_bars: false,
             open_fx: "",
             confirm_layout: "",
             accent_color: Theme.theme_secondary,
@@ -381,6 +382,7 @@ Singleton {
                 lcd_margin: 0,
                 frame_engraving: "",
                 frame_watch: false,
+                track_bars: false,
                 open_fx: "",
                 confirm_layout: "",
                 accent_color: Theme.theme_primary,
@@ -850,6 +852,7 @@ Singleton {
                 frame_border_width: 2,
                 frame_radius: 10,
                 frame_watch: true,
+                track_bars: true,
                 open_fx: "static",
                 confirm_layout: "watch",
                 lcd_top: Qt.rgba(Watch.panel_top[0], Watch.panel_top[1], Watch.panel_top[2], Watch.panel_top[3]),
@@ -1963,6 +1966,8 @@ Singleton {
     // Draws the popup panel as the watch's green octagon.
     readonly property bool frame_watch: root.active.frame_watch
     readonly property var pal: root.active.pal
+    // Track progress as the lock face's row of green bars.
+    readonly property bool track_bars: root.active.track_bars
     // "static" plays the watch's static over a popup as it opens.
     readonly property string open_fx: root.active.open_fx
     // "watch" asks for a Power action in the lock skin's arm-then-confirm words.

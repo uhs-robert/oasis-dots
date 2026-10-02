@@ -12,6 +12,7 @@ import "weather" as Weather
 import "snes" as Snes
 import "../components/ps1" as Ps1
 import "../components/ps2" as Ps2
+import "../components/goldeneye" as Goldeneye
 
 Popup {
     id: root
@@ -354,9 +355,18 @@ Popup {
                             anchors.left: parent.left
                             anchors.right: parent.right
                             anchors.verticalCenter: parent.verticalCenter
-                            visible: progress_item.has_length && Style.segmented_levels && !progress_art.item
+                            visible: progress_item.has_length && Style.segmented_levels && !progress_art.item && !Style.track_bars
                             segment_count: 40
                             implicitHeight: Style.console_views === "nes" ? 16 : Style.px(8)
+                            value: progress_item.ratio
+                        }
+
+                        Goldeneye.BarRow {
+                            anchors.left: parent.left
+                            anchors.right: parent.right
+                            anchors.verticalCenter: parent.verticalCenter
+                            height: Style.px(12)
+                            visible: progress_item.has_length && Style.track_bars
                             value: progress_item.ratio
                         }
 
