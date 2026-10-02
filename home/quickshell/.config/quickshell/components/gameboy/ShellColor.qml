@@ -3,18 +3,18 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import "../../theme"
 
-// The Game Boy Color: a shell in the theme's primary, black bezel with the five-colour logo, round speaker holes.
+// The Game Boy Color: a shell in the theme's secondary, black bezel with the five-colour logo, round speaker holes.
 Item {
     id: root
 
     property int screen_top: 26
     property int pad_top: 0
 
-    readonly property color body: Qt.tint(Theme.theme_primary, Qt.alpha(Theme.fg_strong, 0.1))
-    readonly property color body_low: Qt.tint(Theme.theme_primary, Qt.alpha(Theme.bg_crust, 0.3))
-    readonly property color edge: Qt.tint(Theme.theme_primary, Qt.alpha(Theme.bg_crust, 0.6))
+    readonly property color body: Qt.tint(Theme.theme_secondary, Qt.alpha(Theme.fg_strong, 0.1))
+    readonly property color body_low: Qt.tint(Theme.theme_secondary, Qt.alpha(Theme.bg_crust, 0.3))
+    readonly property color edge: Qt.tint(Theme.theme_secondary, Qt.alpha(Theme.bg_crust, 0.6))
     readonly property color knob: "#1b1b20"
-    readonly property color label: Qt.tint(Theme.theme_primary, Qt.alpha(Theme.bg_crust, 0.75))
+    readonly property color label: Qt.tint(Theme.theme_secondary, Qt.alpha(Theme.bg_crust, 0.75))
 
     Rectangle {
         anchors.fill: parent
