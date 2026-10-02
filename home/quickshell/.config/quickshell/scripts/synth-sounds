@@ -736,8 +736,8 @@ def buzzy(phase, t, rate, depth=0.8):
 def halflife_lock():
     # Resynthesized from measurements of Half-Life's suitchargeno1, wpn_hudoff and wpn_hudon.
     t = clock(0.6)
-    refusal = buzzy(2 * np.pi * 298 * t, t, 75, 0.6) + 0.12 * np.sin(2 * np.pi * 41 * t) + tone(t, [(596, 0.75), (894, 0.5), (495, 0.4), (630, 0.35)])
-    refusal += tone(t, [(1857, 0.6), (1930, 0.4), (3185, 0.4), (3680, 0.4)]) * np.exp(-t / 0.09)
+    refusal = buzzy(2 * np.pi * 298 * t, t, 75, 0.6) + 0.12 * np.sin(2 * np.pi * 41 * t) + tone(t, [(596, 0.3), (894, 0.2)])
+    refusal += tone(t, [(1857, 0.5), (1930, 0.35), (3185, 0.3), (3680, 0.3)]) * (0.25 + 0.75 * np.exp(-t / 0.12))
     charge = "52 83 36 84 24 74 78 64 77 54 80 77 40 84 34 82 24 89 77 56 64 56 69 62 63 71 58 96 93 74 70 73 67 70 71 58 63 49 48 73 53 75 74 68 80 99 96 70 56 74 74 87 65 51 61 58 63 57 50 68"
 
     t = clock(0.23)
