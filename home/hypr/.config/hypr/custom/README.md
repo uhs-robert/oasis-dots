@@ -71,14 +71,34 @@ Sessions.remove("🎮 Game")
 
 ## Keybinds
 
-Binding a key that is already bound doesn't replace it: Hyprland keeps both and runs both. To override one of this config's global binds, remove it with `hl.unbind` first, then bind your own:
+Binding a key that is already bound doesn't replace it: Hyprland keeps both and runs both. To override one of this config's binds, remove it first with `Bind.unbind`, then bind your own:
 
 ```lua
 -- custom/keymaps.lua
 local Bind = require("lib.key.bind")
 
-hl.unbind("SUPER + SHIFT + O")
+-- Global: SUPER + SHIFT + O opens your launcher instead of the session picker.
+Bind.leader_unbind("SHIFT + O")
 Bind.leader_cmd("SHIFT + O", "my-launcher", "My launcher")
+
+-- Inside a submap: H in the Windows submap only; H in every other submap is untouched.
+Bind.unbind("H", "Windows")
+Bind.submap("Windows", function() Bind.key("H", hl.dsp.focus({ direction = "left" }), "Focus left") end)
 ```
 
-`hl.unbind` removes the key from the global map and from every submap at once, so it can't change a key inside one submap without losing it everywhere else.
+- `Bind.unbind(keys, submap)` removes the binds for those keys in that one submap. Leave `submap` out, or pass `"reset"`, for the global map. Keys match the way they were bound, ignoring case and spaces, so `Bind.unbind("SUPER + H")` and `Bind.leader_unbind("H")` are the same. It returns how many binds it removed.
+- `Bind.submap(name, fn)` adds binds to a submap, or defines a new one; use it instead of `hl.define_submap` so `Bind.unbind` can find those binds later. A bind added to a one-shot submap such as Leader doesn't leave it on its own; call `require("lib.key.submap").reset()` at the end of its action.
+- The submap names are the `name` fields under `keymaps/submaps/`, and the `SUPER + /` picker lists every bind in the current submap.
+
+### Why not `hl.unbind`
+
+Hyprland has no way to unbind a key in just one submap. `hl.unbind(key)` removes that key from the global map and from every submap at once, and through Hyprland 0.56 the handle `hl.bind` returns does the same when you call `:remove()` on it. That makes it impossible to change one submap's `H` without losing `H` everywhere else. The request for a scoped unbind is still open upstream: [hyprwm/Hyprland#15040](https://github.com/hyprwm/Hyprland/discussions/15040).
+
+`Bind` works around it. Every bind made through it keeps its handle, filed under the submap it was made in, and `Bind.unbind` acts on those handles only:
+
+- **Hyprland 0.57 and newer** remove the bind outright; the keybind rewrite after 0.56 made `:remove()` drop just that one bind.
+- **Hyprland 0.56 and older**, and `-git` builds that still report 0.56, disable the bind instead. It no longer fires, but `hyprctl binds` still lists it, so it still shows up in the `SUPER + /` picker and the which-key HUD, and choosing it from the picker still runs it.
+
+Only binds made through `Bind` are tracked. HyprVim's own binds, and anything made with a raw `hl.bind`, can only be dropped with `hl.unbind`, which removes the key from every submap.
+
+`Bind.unbind` and `Bind.submap` are the supported way to override binds and are here to stay. If Hyprland adds its own way to unbind a key in one submap, `Bind.unbind` will use it underneath, so configs that call it keep working unchanged.

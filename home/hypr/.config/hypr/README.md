@@ -86,7 +86,7 @@ Press `SUPER + /` to open the Quickshell keybinds picker for the current mode. W
 > [!TIP]
 > All binds are defined in `hypr/keymaps/`, one file per submap.
 >
-> To override one from your `custom/` config, unbind it first and bind your own; see `custom/README.md`.
+> To override one from your `custom/` config, remove it with `Bind.unbind(key, submap)` and bind your own. Hyprland's `hl.unbind` can't target one submap ([hyprwm/Hyprland#15040](https://github.com/hyprwm/Hyprland/discussions/15040)), so `Bind` tracks its binds per submap; see `custom/README.md`.
 >
 > The whichkey from HyprVim also displays keybinds when entering any submap.
 
