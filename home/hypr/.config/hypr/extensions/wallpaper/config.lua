@@ -49,7 +49,8 @@ return {
     winter = 12,
   },
 
-  -- Weather directories, used at any time of day only while that weather is current
+  -- Weather directories, used at any time of day only while that weather is current.
+  -- A subfolder of the same name inside a period folder (Autumn/Night/Rain) also needs that period and season.
   weather_dirs = {
     rain = base .. "/Weather/Rain",
     snow = base .. "/Weather/Snow",
