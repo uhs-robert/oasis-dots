@@ -53,6 +53,7 @@ end
 
 --- Drop reserved and recently shown paths while `count` picks still remain.
 --- The oldest history entries are forgiven first, then the reservations.
+--- History never blocks `favored`: weather folders are small and must keep showing.
 --- @param files string[]
 --- @param favored string[]
 --- @param count integer
@@ -60,6 +61,7 @@ end
 --- @param history string[] recently shown paths, oldest first
 --- @return string[] files, string[] favored
 local function narrow(files, favored, count, reserved, history)
+  local free_favored = unblocked(favored, reserved)
   for first = 1, #history + 1 do
     local blocked = {}
     for path in pairs(reserved) do
@@ -68,7 +70,7 @@ local function narrow(files, favored, count, reserved, history)
     for i = first, #history do
       blocked[history[i]] = true
     end
-    local free_files, free_favored = unblocked(files, blocked), unblocked(favored, blocked)
+    local free_files = unblocked(files, blocked)
     if #free_files + #free_favored >= count then return free_files, free_favored end
   end
   return files, favored
