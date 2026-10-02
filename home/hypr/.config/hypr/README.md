@@ -131,7 +131,7 @@ Configure directories and timing in `extensions/wallpaper/config.lua`.
 
 By default the periods switch at the fixed hours in `start_hours` and nothing touches the network. Set `location_enabled = true` to follow the sun instead. At session start and every `refresh_interval_seconds` (4 hours) the rotator then asks `ipinfo.io` for this machine's public IP and its coordinates, and reads today's sunrise and sunset from `api.open-meteo.com` unless `sunwait` is installed. If the lookup fails it falls back to the system timezone and then to the static hours. Setting `manual_lat` and `manual_lon` skips the `ipinfo.io` calls but still needs `location_enabled = true`, and still uses `open-meteo.com` without `sunwait`.
 
-The rotator runs as its own process, so `Config` and `custom/` don't reach it: change `extensions/wallpaper/config.lua`, or pass flags (`--no-location`, `--coordinates LAT,LON`, `--config PATH`; see `--help`).
+To turn the lookup on for one machine, set `wallpaper_location = true` in its profile under `config/machines/`; autostart then starts the rotator with `--location`. The rotator runs as its own process, so nothing else in `Config` or `custom/` reaches it: its other settings live in `extensions/wallpaper/config.lua` or come from flags (see `--help`).
 
 ## Theme
 

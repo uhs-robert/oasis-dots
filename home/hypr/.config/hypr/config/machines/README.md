@@ -26,6 +26,8 @@ return {
 }
 ```
 
+`wallpaper_location = true` lets the wallpaper rotator follow the sun, which sends this machine's IP to `ipinfo.io`; see the wallpaper section of the main README.
+
 Monitor settings saved from the Settings panel live in `~/.local/state/hypr/monitors.json`, keyed by monitor description (or connector name). Their fields win over the profile's `monitors` per monitor, and a missing or corrupt file is ignored.
 
 Profiles hold values that `Config` reads while the subsystems load. Keybinds, window rules, sessions and anything else built on the loaded library go in your own config under `custom/` instead, whose `init.lua` runs after everything else; see `custom/README.md`.
