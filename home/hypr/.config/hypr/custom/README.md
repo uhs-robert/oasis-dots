@@ -35,7 +35,7 @@ hl.config({
 })
 ```
 
-Keybinds, with the same helpers `keymaps/` uses:
+Keybinds, with the same helpers `keymaps/` uses. See [Keybinds](#keybinds) for overriding the ones this config ships:
 
 ```lua
 -- custom/keymaps.lua
@@ -68,3 +68,17 @@ Sessions.add("💼 Work", {
 
 Sessions.remove("🎮 Game")
 ```
+
+## Keybinds
+
+Binding a key that is already bound doesn't replace it: Hyprland keeps both and runs both. To override one of this config's global binds, remove it with `hl.unbind` first, then bind your own:
+
+```lua
+-- custom/keymaps.lua
+local Bind = require("lib.key.bind")
+
+hl.unbind("SUPER + SHIFT + O")
+Bind.leader_cmd("SHIFT + O", "my-launcher", "My launcher")
+```
+
+`hl.unbind` removes the key from the global map and from every submap at once, so it can't change a key inside one submap without losing it everywhere else.

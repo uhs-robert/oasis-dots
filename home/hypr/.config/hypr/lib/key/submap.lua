@@ -234,11 +234,11 @@ end
 local function bind_catchall(catchall, exit_fn, spec)
   local opts = { release = true, ignore_mods = true }
   if catchall == "stay" then
-    hl.bind("catchall", hl.dsp.no_op(), opts)
+    Bind.key("catchall", hl.dsp.no_op(), opts)
   elseif catchall == "reset" then
-    hl.bind("catchall", exit_fn, opts)
+    Bind.key("catchall", exit_fn, opts)
   elseif type(catchall) == "function" then
-    hl.bind("catchall", function() catchall(context({ spec = spec })) end, opts)
+    Bind.key("catchall", function() catchall(context({ spec = spec })) end, opts)
   end
 end
 

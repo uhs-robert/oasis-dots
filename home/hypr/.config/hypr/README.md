@@ -86,6 +86,8 @@ Press `SUPER + /` to open the Quickshell keybinds picker for the current mode. W
 > [!TIP]
 > All binds are defined in `hypr/keymaps/`, one file per submap.
 >
+> To override one from your `custom/` config, unbind it first and bind your own; see `custom/README.md`.
+>
 > The whichkey from HyprVim also displays keybinds when entering any submap.
 
 ## Workspaces
