@@ -306,6 +306,7 @@ Singleton {
             shade_3: "transparent",
             pixel_border: "transparent",
             device_shell: false,
+            device_model: "",
             window_gradient: [],
             materia: ({}),
             hand_cursor: false,
@@ -554,6 +555,7 @@ Singleton {
                 shade_3: "transparent",
                 pixel_border: "transparent",
                 device_shell: false,
+                device_model: "",
                 window_gradient: [],
                 materia: ({}),
                 hand_cursor: false,
@@ -1358,95 +1360,132 @@ Singleton {
                     bar_hover_bg: hl_d
                 });
             })(),
-            // A backlit Game Boy screen in four shades of the primary; `small` popups sit in the handheld's shell.
+            // A Game Boy screen; `small` popups sit in the handheld's shell. The original is four shades of the primary, the Color shows the palette.
             "gameboy": (() => {
-                const g0 = Qt.tint(Theme.bg_crust, Qt.alpha(Theme.theme_primary, 0.08));
-                const g1 = Qt.tint(Theme.bg_core, Qt.alpha(Theme.theme_primary_strong, 0.34));
-                const g2 = Theme.theme_primary;
-                const g3 = Theme.theme_primary_light;
-                return Object.assign({}, terminal, {
-                    wait_anim: "exclaim",
-                    done_anim: "levelup",
-                    weather_header: "pokedex",
-                    card_layout: "pixel",
-                    picker_skin: "pokemon",
-                    shade_0: g0,
-                    shade_1: g1,
-                    shade_2: g2,
-                    shade_3: g3,
-                    controller: "gameboy",
-                    pixel_border: g2,
-                    text_muted: g2,
-                    text_dim: g2,
-                    text_fg: g3,
-                    text_strong: g3,
-                    text_primary: g3,
-                    text_accent: g3,
-                    // Silkscreen and Press Start 2P sit on an 8px grid; 16 is Silkscreen's 2x size.
-                    font_family: "Silkscreen",
-                    font_size: 16,
-                    title_font_family: "Press Start 2P",
-                    number_font: "Press Start 2P",
-                    mono_font: "Press Start 2P",
-                    frame_color: g1,
-                    frame_border_width: 0,
-                    frame_border_color: g2,
-                    frame_pad: 6,
-                    accent_color: g2,
-                    accent_height: 0,
-                    selection_bg: g3,
-                    selection_inverse: true,
-                    selection_fg: g0,
-                    selection_outline: "transparent",
-                    caret_color: g0,
-                    row_cursor: "\u25b6",
-                    tab_active_bg: g3,
-                    tab_active_fg: g0,
-                    tab_fg: g2,
-                    key_fg: g3,
-                    key_border: g2,
-                    section_fg: g2,
-                    section_rule: false,
-                    section_fade: g2,
-                    footer_fg: g2,
-                    footer_key_fg: g3,
-                    footer_rule_color: g2,
-                    meter_on: g3,
-                    meter_off: g0,
-                    meter_hot: Theme.theme_label,
-                    meter_height: 8,
-                    chart_fill: g3,
-                    title_bg: "transparent",
-                    title_fg: g3,
-                    title_spacing: 0,
-                    chip_brackets: false,
-                    chip_active_bg: g3,
-                    chip_active_fg: g0,
-                    chip_pick: g3,
-                    chip_border: g2,
-                    toggle_on: g3,
-                    toggle_off: g2,
-                    marker_fill: false,
-                    bar_font_family: "Silkscreen",
-                    bar_font_size: 16,
-                    bar_side_bg: g1,
-                    bar_center_bg: g1,
-                    bar_fg: g3,
-                    bar_clock_fg: g3,
-                    bar_border_width: 2,
-                    bar_border_color: g0,
-                    bar_inset_gap: 0,
-                    bar_inset_width: 2,
-                    bar_inset_color: g2,
-                    bar_workspace_focused: g3,
-                    bar_workspace_active: g2,
-                    bar_workspace_idle: g0,
-                    bar_workspace_ring: g2,
-                    bar_pill_square: true,
-                    bar_hover_bg: Qt.alpha(g3, 0.25),
-                    small: {
-                        device_shell: true
-                    }
+                const build = (model, shades, colors) => {
+                    const [g0, g1, g2, g3] = shades;
+                    return Object.assign({}, terminal, {
+                        device_model: model,
+                        wait_anim: "exclaim",
+                        done_anim: "levelup",
+                        weather_header: "pokedex",
+                        card_layout: "pixel",
+                        picker_skin: "pokemon",
+                        shade_0: g0,
+                        shade_1: g1,
+                        shade_2: g2,
+                        shade_3: g3,
+                        controller: "gameboy",
+                        pixel_border: g2,
+                        text_muted: g2,
+                        text_dim: g2,
+                        text_fg: g3,
+                        text_strong: g3,
+                        text_primary: g3,
+                        text_accent: g3,
+                        // Silkscreen and Press Start 2P sit on an 8px grid; 16 is Silkscreen's 2x size.
+                        font_family: "Silkscreen",
+                        font_size: 16,
+                        title_font_family: "Press Start 2P",
+                        number_font: "Press Start 2P",
+                        mono_font: "Press Start 2P",
+                        frame_color: g1,
+                        frame_border_width: 0,
+                        frame_border_color: g2,
+                        frame_pad: 6,
+                        accent_color: g2,
+                        accent_height: 0,
+                        selection_bg: g3,
+                        selection_inverse: true,
+                        selection_fg: g0,
+                        selection_outline: "transparent",
+                        caret_color: g0,
+                        row_cursor: "\u25b6",
+                        tab_active_bg: g3,
+                        tab_active_fg: g0,
+                        tab_fg: g2,
+                        key_fg: g3,
+                        key_border: g2,
+                        section_fg: g2,
+                        section_rule: false,
+                        section_fade: g2,
+                        footer_fg: g2,
+                        footer_key_fg: g3,
+                        footer_rule_color: g2,
+                        meter_on: g3,
+                        meter_off: g0,
+                        meter_hot: Theme.theme_label,
+                        meter_height: 8,
+                        chart_fill: g3,
+                        title_bg: "transparent",
+                        title_fg: g3,
+                        title_spacing: 0,
+                        chip_brackets: false,
+                        chip_active_bg: g3,
+                        chip_active_fg: g0,
+                        chip_pick: g3,
+                        chip_border: g2,
+                        toggle_on: g3,
+                        toggle_off: g2,
+                        marker_fill: false,
+                        bar_font_family: "Silkscreen",
+                        bar_font_size: 16,
+                        bar_side_bg: g1,
+                        bar_center_bg: g1,
+                        bar_fg: g3,
+                        bar_clock_fg: g3,
+                        bar_border_width: 2,
+                        bar_border_color: g0,
+                        bar_inset_gap: 0,
+                        bar_inset_width: 2,
+                        bar_inset_color: g2,
+                        bar_workspace_focused: g3,
+                        bar_workspace_active: g2,
+                        bar_workspace_idle: g0,
+                        bar_workspace_ring: g2,
+                        bar_pill_square: true,
+                        bar_hover_bg: Qt.alpha(g3, 0.25),
+                        small: {
+                            device_shell: true
+                        }
+                    }, colors);
+                };
+                const mono = [
+                    Qt.tint(Theme.bg_crust, Qt.alpha(Theme.theme_primary, 0.08)),
+                    Qt.tint(Theme.bg_core, Qt.alpha(Theme.theme_primary_strong, 0.34)),
+                    Theme.theme_primary,
+                    Theme.theme_primary_light
+                ];
+                const full = [Theme.bg_crust, Theme.bg_core, Theme.theme_primary, Theme.fg_strong];
+                const colors = {
+                    text_muted: Theme.fg_muted,
+                    text_dim: Theme.fg_dim,
+                    text_fg: Theme.fg_core,
+                    text_primary: Theme.theme_primary,
+                    text_accent: Theme.theme_secondary,
+                    selection_bg: Theme.theme_primary,
+                    tab_active_bg: Theme.theme_primary,
+                    tab_fg: Theme.fg_dim,
+                    key_fg: Theme.theme_label,
+                    section_fg: Theme.theme_secondary,
+                    section_fade: Theme.theme_secondary,
+                    footer_fg: Theme.fg_dim,
+                    footer_key_fg: Theme.theme_label,
+                    meter_on: Theme.theme_primary,
+                    chart_fill: Theme.theme_primary,
+                    title_fg: Theme.theme_primary,
+                    chip_active_bg: Theme.theme_primary,
+                    chip_pick: Theme.theme_secondary,
+                    toggle_on: Theme.theme_primary,
+                    toggle_off: Theme.fg_dim,
+                    bar_fg: Theme.fg_core,
+                    bar_workspace_focused: Theme.theme_primary,
+                    bar_workspace_active: Theme.theme_secondary,
+                    bar_workspace_ring: Theme.theme_secondary
+                };
+                return Object.assign(build("color", full, colors), {
+                    models: { dmg: build("dmg", mono) },
+                    model_labels: { dmg: "Original", color: "Color" }
                 });
             })(),
             // Final Fantasy VII materia menus: blue diagonal windows in a light rim, orbs for keys and a pointing hand.
@@ -2176,6 +2215,8 @@ Singleton {
     readonly property color pixel_border: root.active.pixel_border
     // Small popups sit inside a handheld's shell (DeviceShell); hover shelves never do.
     readonly property bool device_shell: root.active.device_shell
+    // Which handheld the shell draws: dmg or color.
+    readonly property string device_model: root.active.device_model
     // Diagonal [position, color] stops filling window frames inside their border (WindowGradient); empty keeps frame_color.
     readonly property var window_gradient: root.active.window_gradient
     // Orb colors (MateriaOrb) by role (key, section, workspace, alert), weather kind and daily slot color; a role left out draws no orb.
@@ -2399,6 +2440,7 @@ Singleton {
         if (!b) return [];
         const out = [];
         const flag = (key, label) => out.push({ key: key, label: label, type: "bool", default: true });
+        if (b.models) out.push({ key: "device_model", label: "Model", type: "choice", default: b.device_model, choices: Object.keys(b.model_labels), labels: b.model_labels });
         if (b.scanlines === true) flag("scanlines", "Scanlines");
         if (b.glow === true) {
             flag("glow", "Glow");
@@ -2449,9 +2491,9 @@ Singleton {
         return typeof value === "number" && isFinite(value) && value >= def.min && value <= def.max;
     }
 
-    // A style's tokens with the saved option values laid over them; dither is a colour, so off blanks it.
+    // A style's tokens with its picked model's and the saved option values laid over them; dither is a colour, so off blanks it.
     function with_options(base, opts) {
-        const o = Object.assign({}, base);
+        const o = Object.assign({}, base, base.models ? base.models[opts.device_model] : null);
         for (const k in opts) {
             if (k === "dither") o.dither = "transparent";
             else o[k] = opts[k];
