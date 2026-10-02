@@ -5,7 +5,7 @@ import QtQuick.Layouts
 import "../../theme"
 import "../../services"
 import "../../lock/skins/goldeneye" as Watch
-import "../../lock/skins/goldeneye/Watch.js" as W
+import "../../theme/Watch.js" as W
 
 // The current conditions as the classic pause watch: warm temperature segments left, blue humidity segments right, a green panel between.
 Item {

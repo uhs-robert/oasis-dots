@@ -6,7 +6,7 @@ import Quickshell.Wayland
 import Quickshell.Widgets
 import "../theme"
 import "../services"
-import "../lock/skins/goldeneye/Watch.js" as W
+import "../theme/Watch.js" as W
 
 // A Hyprland toplevel's live image fitted inside the item, with its app icon until a frame arrives.
 Item {

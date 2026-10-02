@@ -3,7 +3,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Effects
 import "../theme"
-import "../lock/skins/goldeneye/Watch.js" as W
+import "../theme/Watch.js" as W
 
 Item {
     id: root

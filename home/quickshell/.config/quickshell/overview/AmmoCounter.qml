@@ -1,7 +1,7 @@
 // home/quickshell/.config/quickshell/overview/AmmoCounter.qml
 import QtQuick
 import "../theme"
-import "../lock/skins/goldeneye/Watch.js" as W
+import "../theme/Watch.js" as W
 
 // The game's ammo readout for the overview: the selected window, a brass bullet and the window count, as `N | M`.
 Rectangle {

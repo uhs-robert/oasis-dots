@@ -2,7 +2,7 @@
 import QtQuick
 import "../../theme"
 import "../../lock/skins/goldeneye" as Watch
-import "../../lock/skins/goldeneye/Watch.js" as W
+import "../../theme/Watch.js" as W
 
 // A small watch face for the pickers' readouts: a black dial, two caption words and a green panel that holds the children.
 Item {

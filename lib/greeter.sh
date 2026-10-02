@@ -26,7 +26,7 @@ stage_greeter() {
       cp -r "$audio_dir/." "$dest/lock/skins/$skin/audio/"
     fi
   done
-  cp "$qs/theme/Theme.qml" "$qs/theme/Style.qml" "$dest/theme/"
+  cp "$qs/theme/Theme.qml" "$qs/theme/Style.qml" "$qs/theme/Watch.js" "$dest/theme/"
   [[ -f "$live/theme/theme.json" ]] && cp "$live/theme/theme.json" "$dest/theme/"
   cp "$qs"/fonts/*.ttf "$qs"/fonts/OFL-*.txt "$dest/fonts/"
 
@@ -67,6 +67,7 @@ greeter_install_cmds() {
     "sudo rsync -rlpt --delete --chown=root:root --chmod=D755,F644 '$stage/' '$GREETER_DEST/'" \
     "sudo install -Dm755 '$repo/system/usr/local/bin/qs-greeter' /usr/local/bin/qs-greeter" \
     "sudo install -Dm644 '$repo/system/etc/greetd/hyprland.lua' /etc/greetd/hyprland.lua" \
+    "printf '%s\\n' '${GREETER_USER:-$USER}' | sudo tee /etc/greetd/admin_user >/dev/null" \
     "sudo install -d -m 2750 -o '$USER' -g greeter $GREETER_DATA" \
     "install -m 640 '$stage/greeter.json' $GREETER_DATA/greeter.json" \
     "$seed_theme" \
