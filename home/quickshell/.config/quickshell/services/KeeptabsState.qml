@@ -79,10 +79,21 @@ Singleton {
         return out.filter(r => r.text !== "");
     }
 
+    property int restart_delay_ms: 5000
+    property double started_ms: 0
+    property bool warned: false
+
+    Process {
+        id: probe
+        command: ["sh", "-c", "test -x ~/.local/bin/keeptabs-status"]
+        running: true
+        onExited: code => stream.running = code === 0
+    }
+
     Process {
         id: stream
         command: ["sh", "-c", "exec ~/.local/bin/keeptabs-status"]
-        running: true
+        onStarted: root.started_ms = Date.now()
         stdout: SplitParser {
             property string last_line: ""
             onRead: line => {
@@ -125,13 +136,21 @@ Singleton {
         }
         onExited: {
             root.primed = false;
-            restart_timer.start();
+            if (Date.now() - root.started_ms < 30000) {
+                if (!root.warned) console.warn("keeptabs: status stream exits quickly, backing off");
+                root.warned = true;
+                root.restart_delay_ms = Math.min(root.restart_delay_ms * 2, 300000);
+            } else {
+                root.restart_delay_ms = 5000;
+                root.warned = false;
+            }
+            restart_timer.restart();
         }
     }
 
     Timer {
         id: restart_timer
-        interval: 5000
+        interval: root.restart_delay_ms
         onTriggered: stream.running = true
     }
 }

@@ -24,7 +24,7 @@ Hyprland starts it with `qs -n` (see `home/hypr/.config/hypr/config/autostart/`)
 | `assets/`     | Weather icons                                                                              |
 | `bars.json`   | Tracked bar layout per monitor, matched by description or connector name                   |
 
-Weather reads `weather.json`, with untracked per-machine overrides (real coordinates, say) in `weather.local.json`.
+Weather reads `weather.json`, with untracked per-machine overrides (real coordinates, say) in `weather.local.json`. With `latitude` and `longitude` set to `"auto"` the location comes from an IP lookup over HTTPS (ipwho.is), cached and repeated at most once a day.
 
 ## Styles
 
