@@ -2,10 +2,10 @@
 # Imports the GoldenEye lock skin's watch theme into $XDG_DATA_HOME/quickshell/goldeneye-audio (gitignored) as music.ogg: one loop cut at detected or given points, loudness evened out.
 # The source is the first of .flac, .ogg or .mp3 (SOURCE may be the file or its path without extension); loop points come from LOOPSTART/LOOPLENGTH (or LOOPEND) tags in it; an untagged source is detected and the result is tagged into it losslessly.
 # The loop starts at its start point and its last 60ms crossfade into the audio just before it, so the file repeats seamlessly.
-# Usage: goldeneye-audio [--loop START END] [--redetect] [--out DIR] [SOURCE]   (seconds; an override is tagged too; default source ~/Downloads/007 Watch Theme.flac)
+# Usage: goldeneye-audio [--loop START END] [--redetect] [--out DIR] SOURCE   (seconds; an override is tagged too)
 set -euo pipefail
 
-src="$HOME/Downloads/007 Watch Theme.flac"
+src=""
 loop=()
 redetect=0
 out="${XDG_DATA_HOME:-$HOME/.local/share}/quickshell/goldeneye-audio"
@@ -33,6 +33,10 @@ while (($#)); do
     ;;
   esac
 done
+[[ -n $src ]] || {
+  echo "goldeneye-audio: a source is required (see --help)" >&2
+  exit 1
+}
 
 rate=44100
 for tool in ffmpeg ffprobe jq python3; do
