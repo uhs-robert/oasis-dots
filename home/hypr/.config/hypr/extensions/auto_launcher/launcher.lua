@@ -1,5 +1,6 @@
 -- home/hypr/.config/hypr/extensions/auto_launcher/launcher.lua
 local Config = require("config") ---@class Config
+local Monitors = require("config.monitors") ---@class Monitors
 local Sessions = require("extensions.auto_launcher.sessions") ---@class Sessions
 local Prompt = require("lib.prompt") ---@class Prompt
 
@@ -7,14 +8,10 @@ local Prompt = require("lib.prompt") ---@class Prompt
 local RULES = {}
 local WS_PER_MONITOR = Config.ws_per_monitor
 
---- @param monitor integer  1-based monitor index; an index past the connected monitors folds onto the last one
+--- @param monitor integer  1-based monitor index; a disconnected one folds onto the highest connected
 --- @param offset integer   1-based workspace offset within the monitor's range
 --- @return integer
-local function ws(monitor, offset)
-  local connected = #(hl.get_monitors() or {})
-  if connected > 0 and monitor > connected then monitor = connected end
-  return (monitor - 1) * WS_PER_MONITOR + offset
-end
+local function ws(monitor, offset) return (Monitors.resolve_slot(monitor) - 1) * WS_PER_MONITOR + offset end
 
 --- Creates (once) and enables a named workspace window rule, then disables it after 30s.
 --- @param match_key "class"|"title"

@@ -220,6 +220,22 @@ local function on_monitor_removed(mon)
   apply_layout()
 end
 
+--- @class Monitors
+local Monitors = {}
+
+--- Returns `slot` when a connected monitor holds it, else the highest connected slot.
+--- @param slot integer 1-based position in Config.monitors
+--- @return integer
+function Monitors.resolve_slot(slot)
+  local highest
+  for _, mon in ipairs(hl.get_monitors() or {}) do
+    local idx = get_monitor_order_index(mon)
+    if idx == slot then return slot end
+    if not highest or idx > highest then highest = idx end
+  end
+  return highest or slot
+end
+
 --- Applies monitor settings, assigns persistent workspaces, and registers hotplug event handlers.
 local function init()
   apply_layout()
@@ -229,3 +245,5 @@ local function init()
 end
 
 init()
+
+return Monitors

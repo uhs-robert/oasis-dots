@@ -32,7 +32,8 @@ local function init()
   })
 
   -- Last on purpose: custom/init.lua is the user's own entrypoint, run once everything above is loaded.
-  if package.searchpath("custom", package.path) then require("custom") end
+  local config_dir = debug.getinfo(1, "S").source:sub(2):match("(.*/)") or "./"
+  if package.searchpath("custom", config_dir .. "?/init.lua") then require("custom") end
 end
 
 init()
