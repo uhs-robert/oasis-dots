@@ -56,6 +56,7 @@ Item {
         cx: root.cx
         cy: root.cy
         size: 30
+        gap: 2
     }
 
     Item {
