@@ -4,7 +4,7 @@ local HOME = os.getenv("HOME")
 local Utils = require("lib.utils") ---@class Utils
 
 local CONFIG_DIR = HOME .. "/.config/quickshell"
-local THEME_DIR = CONFIG_DIR .. "/theme"
+local STATE_DIR = (os.getenv("XDG_STATE_HOME") or HOME .. "/.local/state") .. "/quickshell"
 
 --- Returns true if path exists (file or directory).
 --- @param path string
@@ -14,11 +14,11 @@ local function exists(path) return os.rename(path, path) ~= nil end
 --- Escape string for JSON (backslash and quote).
 local function escape_json(s) return s:gsub("\\", "\\\\"):gsub('"', '\\"') end
 
---- Writes theme.json to ~/.config/quickshell/theme/, skipped if quickshell isn't installed.
+--- Writes theme.json to $XDG_STATE_HOME/quickshell/, skipped if quickshell isn't installed.
 --- @param c table Palette color table from theme.colors.*
 return function(c)
   if not exists(CONFIG_DIR) then return end
-  os.execute('mkdir -p "' .. THEME_DIR .. '"')
+  os.execute('mkdir -p "' .. STATE_DIR .. '"')
 
   local keys = {}
   for k in pairs(c) do
@@ -35,5 +35,5 @@ return function(c)
   end
   table.insert(lines, "}")
 
-  Utils.write_file(THEME_DIR .. "/theme.json", table.concat(lines, "\n"))
+  Utils.write_file(STATE_DIR .. "/theme.json", table.concat(lines, "\n"))
 end

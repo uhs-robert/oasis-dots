@@ -5,7 +5,7 @@
 --- @field rofi      fun(c: table) Writes colors.rasi
 --- @field conf      fun(c: table) Writes theme.conf with rgb/rgba variables
 --- @field terminals fun(c: table) Updates Ghostty/Kitty/Foot theme configs
---- @field quickshell fun(c: table) Writes theme.json to ~/.config/quickshell/theme/
+--- @field quickshell fun(c: table) Writes theme.json to $XDG_STATE_HOME/quickshell/
 local Generate = {}
 
 Generate.hyprland = require("theme.generate.hyprland")
