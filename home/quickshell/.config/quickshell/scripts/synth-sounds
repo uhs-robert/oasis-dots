@@ -720,7 +720,40 @@ def halflife():
         "confirm": dry(select, 0.3),
         "cancel": dry(deny, 0.3),
         "notify": dry(medkit, 0.3),
+        **{kind: dry(signal, 0.3) for kind, signal in halflife_lock().items()},
     }
+
+
+def percent(text):
+    """Measured envelope levels, written 0-99."""
+    return [int(level) / 99 for level in text.split()] + [0]
+
+
+def buzzy(phase, t, rate, depth=0.8):
+    return (1 + depth * np.cos(2 * np.pi * rate * t)) * np.sin(phase)
+
+
+def halflife_lock():
+    # Resynthesized from measurements of Half-Life's suitchargeno1, wpn_hudoff and wpn_hudon.
+    t = clock(0.6)
+    refusal = buzzy(2 * np.pi * 298 * t, t, 75, 0.6) + 0.12 * np.sin(2 * np.pi * 41 * t) + tone(t, [(596, 0.75), (894, 0.5), (495, 0.4), (630, 0.35)])
+    refusal += tone(t, [(1857, 0.6), (1930, 0.4), (3185, 0.4), (3680, 0.4)]) * np.exp(-t / 0.09)
+    charge = "52 83 36 84 24 74 78 64 77 54 80 77 40 84 34 82 24 89 77 56 64 56 69 62 63 71 58 96 93 74 70 73 67 70 71 58 63 49 48 73 53 75 74 68 80 99 96 70 56 74 74 87 65 51 61 58 63 57 50 68"
+
+    t = clock(0.23)
+    snap = 0.5 * np.sin(glide(t, [(0, 3600), (0.016, 3600), (0.03, 2400), (0.07, 1400), (0.23, 1400)])) + band_noise(0.23, 1500, 4500, 71, 0.6)
+    upper = buzzy(glide(t, [(0, 565), (0.098, 565), (0.102, 406), (0.23, 406)]), t, 47)
+    lower = buzzy(2 * np.pi * 271 * t, t, 57)
+    last = band_noise(0.23, 1000, 3000, 72, 1.0)
+    body = np.where(t < 0.07, snap, np.where(t < 0.135, upper, np.where(t < 0.207, lower, last)))
+    hud = "1 1 2 2 6 8 5 4 90 93 99 54 46 54 61 37 42 45 35 37 28 21 28 26 27 24 22 22 15 23 15 15 22 16 14 12 42 42 79 37 1 67 63 35 1 50 21 2 50 93 83 63 10 5 46 94 81 84 16 29 94 78 73 86 20 6 6 4 1 0 0 0 0 11 18 2 1 1 17 31 29 29 22 6 2 2 2 14 23 30 25 26 9 2 2 10 31 17 28 18 29 9 4 2 2 73 81 61 75 74 0 0 0 0 0 0"
+    hud_off = shaped(body, percent(hud), 0.002)
+
+    tt = clock(0.014)
+    ratchet = buzzy(2 * np.pi * 907 * tt, tt, 60, 0.6) * np.interp(tt, [0, 0.012, 0.0135, 0.014], [0.1, 1, 1, 0])
+    ticks = [(at, ratchet * 0.6) for at in (0.284, 0.370, 0.458, 0.476, 0.564, 0.654)]
+    hud_on = mix_at([(0, hud_off)] + ticks, 0.67)
+    return {"error": shaped(refusal, percent(charge)), "lock": hud_off, "unlock": hud_on}
 
 
 def tone(t, parts):
@@ -773,7 +806,27 @@ def metroid():
         "confirm": dry(shaped(select, select_levels), 0.36),
         "cancel": dry(shaped(back, back_levels), 0.36),
         "notify": dry(shaped(scan, scan_levels), 0.34),
+        **{kind: dry(signal, 0.3) for kind, signal in metroid_lock().items()},
     }
+
+
+def metroid_lock():
+    # Resynthesized from measurements of Metroid Prime's UI_35, UI_13 and UI_12.
+    ui35 = "88 68 76 52 53 49 51 46 52 51 51 55 49 63 71 65 63 62 61 43 34 41 48 45 36 99 82 74 56 43 58 48 56 39 55 41 48 42 42 42 45 41 47 41 43 13 15 13 15 4 1 1 1 0 0"
+    t = clock((len(ui35.split()) + 1) * 0.005)
+    middle = window(t, 0.06, 0.115, 0.008)
+    two_tone = tone(t, [(1570, 1), (3041, 0.35), (4705, 0.3)]) * (1 - middle) + tone(t, [(3135, 1), (1570, 0.3)]) * middle
+
+    ui13 = "72 77 83 0 54 86 71 1 5 80 84 46 0 80 80 88 0 50 84 87 5 6 71 89 56 0 79 83 61 0 47 75 88 6 0 73 97 25 0 72 78 86 0 42 80 87 24 1 84 78 55 0 67 89 73 0 15 80 78 13 0 49 99 43 0 69 82 73 1 29 75 54 22 0 37 32 25 0 10 13 4"
+    t = clock((len(ui13.split()) + 1) * 0.005)
+    fall = [(0, 4100), (0.016, 3973), (0.047, 3621), (0.078, 3372), (0.109, 3023), (0.14, 2944), (0.171, 2619), (0.202, 2370), (0.233, 2220), (0.265, 1989), (0.296, 1772), (0.327, 1506), (0.358, 1438), (0.41, 1300)]
+    down = shaped(buzzy(glide(t, fall), t, 70, 0.5), percent(ui13), 0.005)
+
+    ui12 = "76 92 69 0 55 82 87 0 34 90 82 41 0 89 74 74 0 27 99 75 0 12 90 75 49 0 65 85 79 0 58 92 74 1 6 92 83 51 0 89 85 76 0 56 87 85 3 3 73 86 54 0 82 79 76 0 57 75 92 9 1 69 67 38 0 28 61 34 0 14 37 33 3 0 17 14 10 0 6 5 2 0"
+    t = clock((len(ui12.split()) + 1) * 0.005)
+    rise = [(0, 1900), (0.016, 2007), (0.047, 2285), (0.078, 2388), (0.109, 2687), (0.141, 2938), (0.172, 3275), (0.203, 3450), (0.234, 3627), (0.265, 3967), (0.296, 4225), (0.327, 4389), (0.359, 4652), (0.41, 5100)]
+    up = shaped(buzzy(glide(t, rise), t, 70, 0.5), percent(ui12), 0.005)
+    return {"error": shaped(two_tone, percent(ui35), 0.005), "lock": down, "unlock": up}
 
 
 def tie():
@@ -803,7 +856,28 @@ def tie():
         "confirm": dry(lock, 0.2),
         "cancel": dry(power_off, 0.3),
         "notify": dry(mix_at(bursts, 0.365), 0.24),
+        **{kind: dry(signal, 0.3) for kind, signal in tie_lock().items()},
     }
+
+
+def tie_lock():
+    # Resynthesized from measurements of X-Wing Alliance's BEEP3, BEAM-1C and BEAM-2A.
+    t = clock(0.2)
+    beep3 = tone(t, [(3070, 1), (2925, 0.8), (3290, 0.6), (2634, 0.5), (3145, 0.5)]) + band_noise(0.2, 2500, 4000, 73, 1.2)
+    beep_levels = "56 52 54 69 61 63 69 88 60 93 99 63 98 97 94 68 95 93 93 66 81"
+
+    beam1 = "6 8 14 26 13 10 8 5 7 12 12 18 14 9 7 5 6 21 22 19 10 9 6 4 29 48 46 22 20 23 22 11 64 99 65 71 78 70 68 64 96 97 28 92 96 86 51 44 74 95 43 28 42 40 30 37 43 39 27 22 22 13 9 31 33 28 17 13 7 9 6 18 14 12 10 3 3 6 6 25 28 19 16 10 6 7 8 21 7 3 4"
+    t = clock((len(beam1.split()) + 1) * 0.01)
+    high = tone(t, [(331, 1), (261, 0.25)]) * np.interp(t, [0, 0.26, 0.55, 0.62, 0.7, 0.9], [0.5, 1, 1, 0.6, 0.2, 0.4])
+    low = tone(t, [(111, 1), (182, 0.6), (252, 0.3)]) * np.interp(t, [0, 0.2, 0.3, 0.55, 0.62, 0.9], [1, 1, 0.4, 0.1, 1, 1])
+    down = shaped(high + low, percent(beam1))
+
+    beam2 = "8 13 23 11 8 8 21 17 11 9 4 14 30 23 32 21 21 88 87 64 71 70 60 78 83 66 38 38 24 38 36 21 12 16 13 42 36 9 8 5 14 25 13 10 4 9 11 13 8 13 21 17 9 4 3 30 24 32 23 22 24 88 57 64 71 60 78 99 61 66 37 32 39 36 26 17 12 13 24 42 16 9 5 5 25 25 12 6 4 11"
+    t = clock((len(beam2.split()) + 1) * 0.01)
+    high = tone(t, [(490, 1), (420, 0.4), (560, 0.4)]) * np.interp(t, [0, 0.09, 0.17, 0.3, 0.33, 0.36, 0.43, 0.52, 0.7, 0.76, 0.9], [0.3, 0.9, 1, 1, 0.3, 0.2, 0.9, 1, 1, 0.3, 0.3])
+    low = tone(t, [(190, 1), (243, 0.6), (120, 0.3)]) * np.interp(t, [0, 0.09, 0.17, 0.3, 0.35, 0.5, 0.6, 0.7, 0.78, 0.9], [1, 1, 0.2, 0.2, 1, 0.9, 0.2, 0.2, 1, 1])
+    up = shaped(high + low, percent(beam2))
+    return {"error": shaped(beep3, percent(beep_levels)), "lock": down, "unlock": up}
 
 
 def clack(levels, bands, seed, ring=0.0):
