@@ -1,11 +1,6 @@
 -- home/hypr/.config/hypr/extensions/auto_launcher/sessions.lua
--- Workspace app launcher session registry.
--- Monitor indices follow Config.monitors order in hyprland.lua.
---
--- The sessions here are generic defaults. Add your own from custom/ (see custom/README.md):
---
---   local Sessions = require("extensions.auto_launcher.sessions")
---   Sessions.add("💼 Work", { Sessions.term({ monitor = 1, exec = "btop", class_suffix = "btop" }) })
+-- Session registry for the launcher; monitor indices follow Config.monitors order.
+-- These are generic defaults; add your own from custom/ (see custom/README.md).
 
 local Config = require("config") ---@class Config
 local Apps = require("lib.actions.apps") ---@class Apps
@@ -23,11 +18,16 @@ local Apps = require("lib.actions.apps") ---@class Apps
 --- @class Sessions
 local M = {}
 
+--- Window classes of file managers whose class differs from their command.
+local GUI_FM_CLASS = {
+  nautilus = "org.gnome.Nautilus",
+  dolphin = "org.kde.dolphin",
+}
+
 --- @type table<string, AppEntry[]>|nil built on first use so Config is fully derived
 local registry = nil
 
---- Terminal entry: runs `exec` in the configured terminal under a per-launch window class.
---- Single-instance terminals share one pid, so windows need their own --class to be targetable.
+--- Terminal entry running `exec` under its own window class, since single-instance terminals share a pid.
 --- The class must contain the terminal name for the delete submap's substring match.
 --- @param opts { monitor: integer, ws: integer|nil, exec: string, class_suffix: string, size: [integer, integer]|nil, pos: [integer, integer]|nil, delay: integer|nil }
 --- @return AppEntry
@@ -56,11 +56,11 @@ function M.tmuxifier(opts)
   })
 end
 
---- The sessions shipped with this config. Each sits on monitor 1 and 2 and only uses what the
---- installer provides, so it works on any machine; the launcher folds missing monitors onto the last one.
+--- The generic sessions shipped with this config, on monitors 1 and 2.
 --- @return table<string, AppEntry[]>
 function M.defaults()
   local gui_fm = Config.app.gui_file_manager
+  local gui_fm_class = GUI_FM_CLASS[gui_fm] or gui_fm
   local tui_fm = Config.app.tui_file_manager
 
   return {
@@ -70,7 +70,7 @@ function M.defaults()
     },
 
     ["🗂 Files"] = {
-      { monitor = 1, ws = 1, cmd = gui_fm, class = gui_fm },
+      { monitor = 1, ws = 1, cmd = gui_fm, class = gui_fm_class },
       M.term({ monitor = 2, ws = 1, exec = tui_fm, class_suffix = tui_fm }),
     },
 

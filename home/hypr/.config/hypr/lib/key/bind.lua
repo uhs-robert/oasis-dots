@@ -7,11 +7,8 @@ local Bind = {
   leader = Config.leader,
 }
 
--- Bind.unbind is the supported way to remove a bind, scoped to one submap. Hyprland's own hl.unbind(key)
--- removes the key from the global map and every submap, and through 0.56 so does a bind handle's
--- :remove() (hyprwm/Hyprland#15040). So every bind made here keeps its handle under its submap, and
--- Bind.unbind acts on those alone. Keep its signature stable: if Hyprland gains a scoped unbind, use it
--- inside Bind.unbind rather than changing what callers write.
+-- hl.unbind drops a key from every submap (hyprwm/Hyprland#15040), so handles are kept per submap
+-- for Bind.unbind. Bind.unbind and Bind.submap are public API for custom/; keep their signatures stable.
 
 --- Submap that binds are currently being registered in; "" is the global map. Set by Bind.submap.
 local scope = ""
@@ -31,8 +28,7 @@ local function scope_name(submap)
   return submap
 end
 
---- True when a bind handle's :remove() drops only that bind, which the keybind rewrite after 0.56 made so
---- (hyprwm/Hyprland#15568). Older releases, and -git builds still reporting 0.56, disable the bind instead.
+--- True when a handle's :remove() drops only that bind (Hyprland 0.57+); older releases disable instead.
 local SCOPED_REMOVE = (function()
   local version = type(hl.version) == "function" and hl.version() or nil
   if type(version) ~= "string" then return false end
@@ -156,8 +152,7 @@ function Bind.keys(rows, defaults)
   end
 end
 
---- Register binds inside a submap, so Bind.unbind can tell them apart from the same key elsewhere.
---- Use it instead of hl.define_submap; calling it again for an existing submap adds to it.
+--- Register binds inside a submap; calling it again for an existing submap adds to it.
 --- @param name  string                 Submap name
 --- @param reset string|function        Submap to return to after a bind fires, or fn when omitted
 --- @param fn    function|nil           Registers the binds, e.g. with Bind.key
@@ -169,7 +164,7 @@ function Bind.submap(name, reset, fn)
   local function body()
     local previous = scope
     scope = name
-    local ok, err = pcall(fn)
+    local ok, err = xpcall(fn, debug.traceback)
     scope = previous
     if not ok then error(err, 0) end
   end
@@ -181,9 +176,7 @@ function Bind.submap(name, reset, fn)
   end
 end
 
---- Remove binds made through Bind from one submap only, leaving the same key in every other submap.
---- Keys match the way they were bound, ignoring case and spaces; "SUPER + H" removes Bind.leader_key("H").
---- Binds made outside Bind (raw hl.bind, HyprVim) aren't tracked; hl.unbind is the only way to drop those.
+--- Remove binds made through Bind from one submap only; binds made outside Bind aren't tracked.
 --- @param keys   string|string[]
 --- @param submap string|nil  Submap name; nil or "reset" is the global map
 --- @return integer           Number of binds removed

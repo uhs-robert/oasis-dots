@@ -120,8 +120,7 @@ end
 --- @class Launcher
 local Launcher = {}
 
----Open a session picker via preferred menu launcher and launch the chosen session.
----Sessions are read at pick time so ones added from custom/ after this module loaded are listed.
+---Open a session picker and launch the chosen session; sessions are read at pick time.
 function Launcher.show_picker()
   local sessions = Sessions.get_sessions()
   local names = {}

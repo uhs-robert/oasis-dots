@@ -98,7 +98,7 @@ The `persistent_workspaces` option pins that many workspaces per monitor so they
 
 ## App Launcher / Sessions
 
-`extensions/auto_launcher/` provides a workspace session launcher, picked in the Quickshell picker (or the dmenu command in `Config.app.dmenu_cmd`, rofi by default, when the bar isn't running). A session is a named set of apps, each pinned to a specific monitor and workspace offset. `sessions.lua` ships a few generic ones (Browsing, Files, Game, System Monitor, System Update) that only use what the installer provides; a monitor index past the connected monitors folds onto the last one, so they work on any layout.
+`extensions/auto_launcher/` provides a workspace session launcher, picked in the Quickshell picker (or the dmenu command in `Config.app.dmenu_cmd`, rofi by default, when the bar isn't running). A session is a named set of apps, each pinned to a specific monitor and workspace offset. `sessions.lua` ships a few generic ones (Browsing, Files, Game, System Monitor, System Update) built from your `Config.app` choices and common apps (Firefox, Steam, btop, topgrade); a monitor index past the connected monitors folds onto the last one, so they work on any layout.
 
 Your own sessions go in your `custom/` config and are registered on top of the defaults. `Sessions.term` runs a command in the configured terminal under its own window class, `Sessions.tmuxifier` loads a tmuxifier session, and a plain table launches any app:
 
