@@ -30,7 +30,7 @@ Item {
     readonly property bool slots: Style.console_views === "ps1"
     // Super Mario World overworld: level dots on a dotted trail, app icons above them.
     readonly property bool map: Style.console_views === "snes"
-    // Pokemon party rows: a double-bordered box per workspace, the focused one pointed at by a cursor.
+    // Pokemon party: a Poke Ball per workspace, the shown ones open into a party box of hopping apps under a cursor.
     readonly property bool party: Style.controller === "gameboy"
     // GoldenEye watch dial: workspace ticks on one arc replace the pills.
     readonly property bool dial: Style.workspace_art === "dial"
@@ -187,6 +187,8 @@ Item {
                 readonly property bool ps2: Style.console_views === "ps2"
                 readonly property var toplevels: modelData.toplevels.values
                 readonly property int cursor_gap: root.party && modelData.focused ? root.party_gap : 0
+                readonly property bool ball: root.party && (is_empty || !modelData.active)
+                property bool hop: false
                 // Plain pills: the style's own art is drawn by none of the branches above.
                 readonly property bool plain: !root.materia && !root.doors && !pill.qblock && !pill.ps2 && !root.slots && !pill.map && !root.party && !pill.diamond
                 readonly property bool dot: pill.plain && pill.is_empty && !pill.modelData.active && Style.bar_workspace_dot.a > 0
@@ -200,7 +202,7 @@ Item {
 
                 height: pill.dot ? 11 : root.pill_height
                 y: (root.pill_height - height) / 2
-                width: root.materia ? (is_empty ? root.slot_size : icons.implicitWidth) : root.doors ? (modelData.active && !is_empty ? icons.implicitWidth + height - 4 : height) : root.party ? cursor_gap + (is_empty ? height : icons.implicitWidth + 10) : pill.map ? Math.max(22, icons.implicitWidth + 8) : root.slots ? (is_empty ? root.tile_face * 2 + 4 : icons.implicitWidth + root.tile_face + 6) : is_empty ? height : icons.implicitWidth + (modelData.active ? 22 : 12) + Style.bar_pill_pad * 2
+                width: root.materia ? (is_empty ? root.slot_size : icons.implicitWidth) : root.doors ? (modelData.active && !is_empty ? icons.implicitWidth + height - 4 : height) : root.party ? cursor_gap + (pill.ball ? 16 : icons.implicitWidth + 10) : pill.map ? Math.max(22, icons.implicitWidth + 8) : root.slots ? (is_empty ? root.tile_face * 2 + 4 : icons.implicitWidth + root.tile_face + 6) : is_empty ? height : icons.implicitWidth + (modelData.active ? 22 : 12) + Style.bar_pill_pad * 2
                 radius: pill.map || root.party || root.slots ? 0 : Style.bar_pill_square || pill.qblock ? 0 : height / 2
                 rotation: pill.diamond ? 45 : 0
                 scale: pill.diamond ? 0.75 : 1
@@ -216,7 +218,7 @@ Item {
                     ColorAnimation { duration: 280; easing.type: Easing.InOutCubic }
                 }
 
-                // Console pill art: NES ? blocks, PS1 Tactics tiles, PS2 save cubes and lit blocks, SNES map dots, Game Boy party rows.
+                // Console pill art: NES ? blocks, PS1 Tactics tiles, PS2 save cubes and lit blocks, SNES map dots, Game Boy Poke Balls and party rows.
                 Loader {
                     anchors.fill: parent
                     z: pill.map ? 1 : 0
@@ -252,7 +254,27 @@ Item {
                                 anchors.verticalCenter: parent.verticalCenter
                             }
 
+                            Gameboy.PokeBall {
+                                id: ball
+                                visible: pill.ball
+                                x: pill.cursor_gap + 1
+                                anchors.verticalCenter: parent.verticalCenter
+                                full: !pill.is_empty
+                                lit: pill.modelData.focused
+
+                                SequentialAnimation on rotation {
+                                    running: ball.visible && pill.modelData.urgent === true
+                                    loops: Animation.Infinite
+                                    alwaysRunToEnd: true
+                                    NumberAnimation { to: -18; duration: 90 }
+                                    NumberAnimation { to: 18; duration: 180 }
+                                    NumberAnimation { to: 0; duration: 90 }
+                                    PauseAnimation { duration: 500 }
+                                }
+                            }
+
                             Gameboy.PartyBox {
+                                visible: !pill.ball
                                 x: pill.cursor_gap
                                 width: parent.width - pill.cursor_gap
                                 height: parent.height
@@ -400,6 +422,14 @@ Item {
                     id: pill_hover
                 }
 
+                Timer {
+                    running: root.party && pill.modelData.focused && !pill.ball
+                    interval: 320
+                    repeat: true
+                    onTriggered: pill.hop = !pill.hop
+                    onRunningChanged: if (!running) pill.hop = false
+                }
+
                 // A dot's hit area: the capsule's height, out to half the gap on each side.
                 Item {
                     visible: pill.dot
@@ -420,7 +450,8 @@ Item {
 
                 Row {
                     id: icons
-                    visible: !root.doors || pill.modelData.active
+                    visible: (!root.doors || pill.modelData.active) && !pill.ball
+                    transform: Translate { y: pill.hop ? -2 : 0 }
                     anchors.centerIn: pill.map || root.slots ? undefined : parent
                     anchors.horizontalCenter: pill.map || root.slots ? parent.horizontalCenter : undefined
                     anchors.top: pill.map || root.slots ? parent.top : undefined
