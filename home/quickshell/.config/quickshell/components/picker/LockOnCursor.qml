@@ -4,6 +4,7 @@ import QtQuick
 import "../../theme"
 import "../../services"
 import ".."
+import "../../lock/skins/goldeneye/Watch.js" as W
 
 // Perfect Dark reticle for the Goldeneye picker skin: a four-tick crosshair with a center dot,
 // plus red corner brackets that step inward once the cursor has held still for ~220ms.
@@ -16,7 +17,7 @@ Item {
     readonly property point at: Screenshot.cursor_point
     readonly property int cx: Math.round(root.at.x)
     readonly property int cy: Math.round(root.at.y)
-    readonly property var lock_sizes: [46, 30, 18]
+    readonly property var lock_sizes: [86, 68, 56]
     property int lock_step: -1
 
     visible: Style.picker_skin === "goldeneye" && Screenshot.phase === "select" && Screenshot.cursor_screen === root.screen_name && !root.target_mode
@@ -54,6 +55,7 @@ Item {
     LockCrosshair {
         cx: root.cx
         cy: root.cy
+        size: 30
     }
 
     Item {
@@ -67,7 +69,7 @@ Item {
 
         CornerBrackets {
             anchors.fill: parent
-            color: Theme.theme_label
+            color: Qt.alpha(W.reticle, 0.85)
             inset: 0
             arm: Math.max(4, Math.round(lock_box.size / 4))
             thickness: 2

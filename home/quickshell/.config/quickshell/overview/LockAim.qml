@@ -5,8 +5,9 @@ import "../components"
 import "../components/picker"
 import "../theme"
 import "../services"
+import "../lock/skins/goldeneye/Watch.js" as W
 
-// The GoldenEye lock-on over the overview's selected window: a crosshair on its centre and red corner brackets that step closed when the selection moves.
+// The GoldenEye aiming crosshair on the overview's selected window's centre, with thin red corner brackets that step closed when the selection moves and only on a window much larger than the crosshair.
 Item {
     id: root
 
@@ -48,21 +49,24 @@ Item {
         }
     }
 
+    readonly property real reticle_size: Math.max(24, Math.min(88, Math.min(root.tw, root.th) * 0.4))
+
     CornerBrackets {
+        visible: Math.min(root.tw, root.th) > root.reticle_size * 3
         x: root.tx - root.grow
         y: root.ty - root.grow
         width: root.tw + root.grow * 2
         height: root.th + root.grow * 2
-        color: Theme.theme_label
+        color: Qt.alpha(W.reticle, 0.7)
         inset: 0
-        arm: Math.max(6, Math.min(22, Math.round(Math.min(root.tw, root.th) / 4)))
-        thickness: 3
+        arm: Math.max(6, Math.min(18, Math.round(Math.min(root.tw, root.th) / 6)))
+        thickness: 2
         all_corners: true
     }
 
     LockCrosshair {
         cx: Math.round(root.tx + root.tw / 2)
         cy: Math.round(root.ty + root.th / 2)
-        color: Theme.theme_primary_light
+        size: root.reticle_size
     }
 }

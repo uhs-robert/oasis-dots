@@ -71,7 +71,7 @@ Item {
 
             CornerBrackets {
                 anchors.fill: parent
-                color: Qt.alpha(Theme.theme_primary_light, 0.6)
+                color: Qt.alpha(W.reticle, 0.6)
                 inset: 0
                 arm: 10
                 thickness: 1
@@ -82,7 +82,7 @@ Item {
                 x: 14
                 y: -2
                 text: other.modelData.label
-                color: Qt.alpha(Theme.theme_primary_light, 0.6)
+                color: Qt.alpha(W.reticle, 0.6)
                 font.family: Style.font_family
                 font.pixelSize: Style.fs(-7)
             }
@@ -97,7 +97,7 @@ Item {
         height: root.th - (root.full ? 8 : 0)
         color: "transparent"
         border.width: 1
-        border.color: Qt.alpha(Theme.theme_label, 0.45)
+        border.color: Qt.alpha(W.reticle, 0.45)
     }
 
     CornerBrackets {
@@ -106,7 +106,7 @@ Item {
         y: root.ty + root.base - root.grow
         width: root.tw - root.base * 2 + root.grow * 2
         height: root.th - root.base * 2 + root.grow * 2
-        color: Theme.red
+        color: W.reticle
         inset: 0
         arm: 22
         thickness: 3
@@ -125,7 +125,7 @@ Item {
         Rectangle {
             width: parent.width
             height: 2
-            color: Theme.theme_label
+            color: W.reticle
         }
 
         Column {
@@ -136,7 +136,7 @@ Item {
 
             Text {
                 text: root.region ? "AREA" : "TARGET"
-                color: Theme.theme_label
+                color: W.reticle
                 font.family: Style.font_family
                 font.pixelSize: Style.fs(-7)
                 font.letterSpacing: 1

@@ -10,6 +10,8 @@ var bar_off = "#1d5a24"
 var black = "#000000"
 var white = "#e8e8e8"
 var rim = "#2e2e2e"
+// The aiming crosshair, a little deeper than the skin red so it sits like the game's.
+var reticle = "#e23a28"
 
 var head_font = "Michroma"
 var mono_font = "Share Tech Mono"
