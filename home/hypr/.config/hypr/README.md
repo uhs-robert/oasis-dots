@@ -123,7 +123,9 @@ Trigger the picker with `SUPER + SHIFT + O`.
 
 Season folders are optional. `Winter/Morning`, `Winter/Day` and so on join the pool only while that season is current, alongside the any-season ones in `All/`, so summer never shows a winter wallpaper. Seasons follow the calendar months and flip in the southern hemisphere.
 
-Weather folders work the same way. `Weather/Rain`, `Weather/Snow` and `Weather/Storm` only show while it is raining, snowing or storming, and are favoured over the rest while they match. The weather is read from the Quickshell bar's cache, so it needs the bar running.
+Weather folders work the same way. `Weather/Rain`, `Weather/Snow`, `Weather/Storm`, `Weather/Fog` and `Weather/Overcast` only show while that weather is current, and are favoured over the rest while they match. The weather is read from the Quickshell bar's cache, so it needs the bar running.
+
+A new period rotates as it starts, and recently shown wallpapers are skipped so small folders do not repeat. `SUPER + Q` then `W` skips to the next set. Run `lua ~/.config/hypr/extensions/wallpaper/init.lua --audit` to list each folder's size and the images no folder uses.
 
 Configure directories and timing in `extensions/wallpaper/config.lua`.
 

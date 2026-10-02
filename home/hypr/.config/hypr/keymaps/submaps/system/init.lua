@@ -15,6 +15,7 @@ local CMD = {
     .. " call settings open colors >/dev/null 2>&1 || ~/.config/hypr/theme/switch.lua '"
     .. Config.app.dmenu_cmd
     .. "'",
+  next_wallpaper = "lua ~/.config/hypr/extensions/wallpaper/init.lua --once",
   restart_voxtype = "systemctl --user restart voxtype",
   restart_bar = "pkill -f '^qs -n'; qs -n",
 }
@@ -56,6 +57,7 @@ Submap.define({
     { "U",         Cmd.run(Scripts.focus_topgrade), "Update System" },
     { "V",         Cmd.term("voxtype configure"),       "Voxtype Settings" },
     { "SHIFT + V", Cmd.term(CMD.restart_voxtype),       "Voxtype Restart" },
+    { "W",         Cmd.run(CMD.next_wallpaper),         "Next Wallpaper" },
     { "X",         Cmd.run("hyprctl seterror disable"), "Disabled Hypr Errors" },
   },
 }).setup()

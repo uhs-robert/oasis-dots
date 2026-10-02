@@ -25,6 +25,7 @@ return {
 
   -- Rotation settings
   interval_minutes = 15, -- Rotation cadence (only used when rotation_enabled = true)
+  history_size = 12, -- Recently shown wallpapers to avoid repeating; 0 allows repeats
 
   -- Wallpaper directories
   default_wallpaper_dir = base, -- Default/fallback directory
@@ -53,6 +54,8 @@ return {
     rain = base .. "/Weather/Rain",
     snow = base .. "/Weather/Snow",
     storm = base .. "/Weather/Storm",
+    fog = base .. "/Weather/Fog",
+    overcast = base .. "/Weather/Overcast",
   },
   weather_chance = 0.6, -- Odds that each monitor shows a weather wallpaper while one matches
   weather_cache = cache_home .. "/quickshell/weather.json", -- Written by the Quickshell bar
