@@ -59,13 +59,17 @@ Item {
         color: root.st.shade_1
         clip: true
 
-        // The dot matrix: a gap of the off shade between pixels.
-        Image {
-            visible: root.st.screen_light
-            anchors.fill: parent
-            fillMode: Image.Tile
-            smooth: false
-            source: "data:image/svg+xml;utf8," + encodeURIComponent("<svg xmlns='http://www.w3.org/2000/svg' width='3' height='3'><path d='M2 0h1v3h-1zM0 2h2v1h-2z' fill='" + root.st.shade_0 + "'/></svg>")
+        // The original's unlit rows; the colour screens are clean.
+        Repeater {
+            model: root.st.device_model === "dmg" ? Math.max(0, Math.ceil(screen.height / 3)) : 0
+
+            Rectangle {
+                required property int index
+                y: index * 3
+                width: screen.width
+                height: 1
+                color: Qt.alpha(Theme.bg_crust, 0.12)
+            }
         }
 
         PixelBox {

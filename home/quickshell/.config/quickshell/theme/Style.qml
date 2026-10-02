@@ -307,7 +307,6 @@ Singleton {
             pixel_border: "transparent",
             device_shell: false,
             device_model: "",
-            screen_light: false,
             window_gradient: [],
             materia: ({}),
             hand_cursor: false,
@@ -557,7 +556,6 @@ Singleton {
                 pixel_border: "transparent",
                 device_shell: false,
                 device_model: "",
-                screen_light: false,
                 window_gradient: [],
                 materia: ({}),
                 hand_cursor: false,
@@ -1362,14 +1360,12 @@ Singleton {
                     bar_hover_bg: hl_d
                 });
             })(),
-            // A Game Boy screen in four shades; `small` popups sit in the handheld's shell, one per model.
+            // A Game Boy screen; `small` popups sit in the handheld's shell. The original is four shades of the primary, Color and SP show the palette.
             "gameboy": (() => {
-                // Shades by role: g1 is the screen, g0 the off pixel beside it, g2 and g3 the ink.
-                const build = (model, shades, light) => {
-                    const [g0, g1, g2, g3] = shades.map(c => Qt.tint(c, "transparent"));
+                const build = (model, shades, colors) => {
+                    const [g0, g1, g2, g3] = shades;
                     return Object.assign({}, terminal, {
                         device_model: model,
-                        screen_light: light,
                         wait_anim: "exclaim",
                         done_anim: "levelup",
                         weather_header: "pokedex",
@@ -1418,7 +1414,7 @@ Singleton {
                         footer_rule_color: g2,
                         meter_on: g3,
                         meter_off: g0,
-                        meter_hot: light ? g3 : Theme.theme_label,
+                        meter_hot: Theme.theme_label,
                         meter_height: 8,
                         chart_fill: g3,
                         title_bg: "transparent",
@@ -1452,16 +1448,43 @@ Singleton {
                         small: {
                             device_shell: true
                         }
-                    });
+                    }, colors);
                 };
-                const tint = [
+                const mono = [
                     Qt.tint(Theme.bg_crust, Qt.alpha(Theme.theme_primary, 0.08)),
                     Qt.tint(Theme.bg_core, Qt.alpha(Theme.theme_primary_strong, 0.34)),
                     Theme.theme_primary,
                     Theme.theme_primary_light
                 ];
-                return Object.assign(build("dmg", ["#8bac0f", "#9bbc0f", "#306230", "#0f380f"], true), {
-                    models: { color: build("color", tint, false), sp: build("sp", tint, false) },
+                const full = [Theme.bg_crust, Theme.bg_core, Theme.theme_primary, Theme.fg_strong];
+                const colors = {
+                    text_muted: Theme.fg_muted,
+                    text_dim: Theme.fg_dim,
+                    text_fg: Theme.fg_core,
+                    text_primary: Theme.theme_primary,
+                    text_accent: Theme.theme_secondary,
+                    selection_bg: Theme.theme_primary,
+                    tab_active_bg: Theme.theme_primary,
+                    tab_fg: Theme.fg_dim,
+                    key_fg: Theme.theme_label,
+                    section_fg: Theme.theme_secondary,
+                    section_fade: Theme.theme_secondary,
+                    footer_fg: Theme.fg_dim,
+                    footer_key_fg: Theme.theme_label,
+                    meter_on: Theme.theme_primary,
+                    chart_fill: Theme.theme_primary,
+                    title_fg: Theme.theme_primary,
+                    chip_active_bg: Theme.theme_primary,
+                    chip_pick: Theme.theme_secondary,
+                    toggle_on: Theme.theme_primary,
+                    toggle_off: Theme.fg_dim,
+                    bar_fg: Theme.fg_core,
+                    bar_workspace_focused: Theme.theme_primary,
+                    bar_workspace_active: Theme.theme_secondary,
+                    bar_workspace_ring: Theme.theme_secondary
+                };
+                return Object.assign(build("dmg", mono), {
+                    models: { color: build("color", full, colors), sp: build("sp", full, colors) },
                     model_labels: { dmg: "Original", color: "Color", sp: "Advance SP" }
                 });
             })(),
@@ -2192,11 +2215,8 @@ Singleton {
     readonly property color pixel_border: root.active.pixel_border
     // Small popups sit inside a handheld's shell (DeviceShell); hover shelves never do.
     readonly property bool device_shell: root.active.device_shell
-    // Which handheld the shell draws (dmg, color, sp), and whether its screen is light with dark ink.
+    // Which handheld the shell draws: dmg, color or sp.
     readonly property string device_model: root.active.device_model
-    readonly property bool screen_light: root.active.screen_light
-    // The four shades darkest first by eye, for art drawn with real light and dark.
-    readonly property var sprite_shades: root.screen_light ? [root.shade_3, root.shade_2, root.shade_0, root.shade_1] : [root.shade_0, root.shade_1, root.shade_2, root.shade_3]
     // Diagonal [position, color] stops filling window frames inside their border (WindowGradient); empty keeps frame_color.
     readonly property var window_gradient: root.active.window_gradient
     // Orb colors (MateriaOrb) by role (key, section, workspace, alert), weather kind and daily slot color; a role left out draws no orb.
