@@ -288,9 +288,13 @@ Popup {
         root.modify_queue = root.modify_queue.filter(q => q.uuid !== req.uuid || q.props[0] !== props[0]).concat([req]);
     }
 
-    function queued_value(key) {
+    function pending_request(key) {
         const mine = r => root.profile && r.uuid === root.profile.uuid && r.props[0] === key;
-        const q = root.modify_queue.find(mine) || (root.modify_current && mine(root.modify_current) ? root.modify_current : null);
+        return root.modify_queue.find(mine) || (root.modify_current && mine(root.modify_current) ? root.modify_current : null);
+    }
+
+    function queued_value(key) {
+        const q = root.pending_request(key);
         return q ? q.props[1] : "";
     }
 
@@ -317,7 +321,8 @@ Popup {
 
     function start_dns_edit() {
         if (!root.profile) return;
-        root.dns_text = root.profile.dns.join(" ");
+        const pending = root.pending_request("ipv4.dns");
+        root.dns_text = pending ? pending.props[1].split(",").filter(d => d !== "").join(" ") : root.profile.dns.join(" ");
         root.setting_error = "";
         root.dns_edit_mode = true;
         dns_input.forceActiveFocus();
