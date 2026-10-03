@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # hypr/.config/hypr/scripts/share-picker
-# XDPH custom_picker_binary: the bar's selector picks the share; with no bar the share is cancelled.
+# XDPH custom_picker_binary: the bar's overview picks the share; with no bar the share is cancelled.
 reply=$(mktemp -u "${XDG_RUNTIME_DIR:-/tmp}/qs-share-XXXXXX")
 mkfifo -m 600 "$reply" || exit 1
 trap 'rm -f "$reply"' EXIT
