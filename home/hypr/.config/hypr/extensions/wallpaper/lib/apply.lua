@@ -3,18 +3,41 @@
 
 --- @class Apply
 --- @field to_monitors fun(cfg: table, util: table, opts?: { exclude?: table<string, boolean>, reserved?: table<string, boolean>, history?: string[] }): boolean, table<string, string> Apply wallpapers to all active monitors (or cfg.target_monitor if set); returns ok plus a map of monitor name to the wallpaper path applied
---- @field list_images fun(dir: string): string[] Public wrapper around list_images for external callers
+--- @field list_images fun(dir: string, skip?: string[]): string[] Public wrapper around list_images for external callers
+--- @field folder fun(name: string): string Folder name for a period, season or weather key
+--- @field PERIODS string[] Period keys in day order
+--- @field SEASONS string[] Season keys, without `any`
+--- @field WEATHERS string[] Weather keys
 --- @field seconds_to_period_change fun(cfg: table): number Seconds until the next time-of-day period starts
 local Apply = {}
 
+local PERIODS = { "dawn", "day", "evening", "night" }
+local SEASONS = { "spring", "summer", "fall", "winter" }
+local WEATHERS = { "rain", "snow", "cloudy" }
+local ANY = "any"
+
+--- @param name string key such as `dawn` or `fall`
+--- @return string folder name such as `Dawn` or `Fall`
+local function folder(name) return (name:gsub("^%l", string.upper)) end
+
 --- Find all image files under `dir` (recursive), resolved to their real paths.
 --- @param dir string absolute path to search
+--- @param skip string[]|nil subfolder names not descended into
 --- @return string[] list of distinct absolute file paths
-local function list_images(dir)
+local function list_images(dir, skip)
+  local prune = ""
+  if skip and #skip > 0 then
+    local names = {}
+    for _, name in ipairs(skip) do
+      table.insert(names, string.format('-name "%s"', name))
+    end
+    prune = "-mindepth 1 -type d \\( " .. table.concat(names, " -o ") .. " \\) -prune -o "
+  end
   -- NUL-separated to safely handle spaces/newlines
   local cmd = string.format(
-    'find -L "%s" -type f \\( -iname "*.png" -o -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.webp" -o -iname "*.bmp" \\) -exec realpath -z {} + 2>/dev/null',
-    dir
+    'find -L "%s" %s-type f \\( -iname "*.png" -o -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.webp" -o -iname "*.bmp" \\) -exec realpath -z {} + 2>/dev/null',
+    dir,
+    prune
   )
   local p = io.popen(cmd)
   if not p then return {} end
@@ -105,12 +128,12 @@ local function pick_wallpapers(files, count, opts)
 end
 
 --- Return the time-of-day period name based on `cfg.start_hours`.
---- @param cfg table wallpaper config with `start_hours.{morning,day,evening,night}`
---- @return "morning"|"day"|"evening"|"night"
+--- @param cfg table wallpaper config with `start_hours.{dawn,day,evening,night}`
+--- @return "dawn"|"day"|"evening"|"night"
 local function current_period(cfg)
   local t = os.date("*t")
   local ct = t.hour + t.min / 60 + t.sec / 3600
-  local m = cfg.start_hours.morning
+  local m = cfg.start_hours.dawn
   local d = cfg.start_hours.day
   local e = cfg.start_hours.evening
   local n = cfg.start_hours.night
@@ -118,7 +141,7 @@ local function current_period(cfg)
   if ct >= n or ct < m then
     return "night"
   elseif ct >= m and ct < d then
-    return "morning"
+    return "dawn"
   elseif ct >= d and ct < e then
     return "day"
   else
@@ -126,7 +149,7 @@ local function current_period(cfg)
   end
 end
 
-local OPPOSITE_SEASON = { spring = "autumn", summer = "winter", autumn = "spring", winter = "summer" }
+local OPPOSITE_SEASON = { spring = "fall", summer = "winter", fall = "spring", winter = "summer" }
 
 --- Return the current season from `cfg.season_start_months`, or nil when seasons are off.
 --- @param cfg table wallpaper config
@@ -149,19 +172,17 @@ local function current_season(cfg)
   return season
 end
 
---- Map a WMO weather code to a `cfg.weather_dirs` key, or nil for clear weather.
+--- Map a WMO weather code to a weather key, or nil for clear or partly cloudy skies.
 --- @param code integer
---- @return string|nil
+--- @return "rain"|"snow"|"cloudy"|nil
 local function weather_kind(code)
-  if code >= 95 then return "storm" end
-  if code == 45 or code == 48 then return "fog" end
-  if code == 3 then return "overcast" end
+  if code >= 95 or (code >= 51 and code <= 67) or (code >= 80 and code <= 82) then return "rain" end
   if (code >= 71 and code <= 77) or code == 85 or code == 86 then return "snow" end
-  if (code >= 51 and code <= 67) or (code >= 80 and code <= 82) then return "rain" end
+  if code == 3 or code == 45 or code == 48 then return "cloudy" end
   return nil
 end
 
---- Return the current weather kind from the Quickshell weather cache, or nil when off, clear or stale.
+--- Return the current weather key from the Quickshell weather cache, or nil when off, clear or stale.
 --- @param cfg table wallpaper config
 --- @return string|nil
 local function current_weather(cfg)
@@ -178,38 +199,51 @@ local function current_weather(cfg)
   return weather_kind(code)
 end
 
---- Build the pool for `period`: the period dir plus the current season's dir for that period.
---- `cfg.force_dir` replaces both; `cfg.default_wallpaper_dir` is used when both are empty.
+--- Build the pool from `Any/<Period>` and `<Season>/<Period>`. Their weather subfolders are
+--- skipped, except the current weather's, which is returned separately as the favored pool.
 --- @param cfg table wallpaper config
---- @param period string period name key into `cfg.dirs`
---- @param season string|nil season name key into `cfg.season_dirs`
---- @param weather string|nil weather name key into `cfg.weather_dirs`
+--- @param period string period key
+--- @param season string|nil season key
+--- @param weather string|nil weather key
 --- @return string[] files, string[] dirs the pool was read from, string[] favored weather files
 local function resolve_pool(cfg, period, season, weather)
   if cfg.force_dir then return list_images(cfg.force_dir), { cfg.force_dir }, {} end
-  local weather_dir = weather and cfg.weather_dirs and cfg.weather_dirs[weather]
-  local favored = weather_dir and list_images(weather_dir) or {}
-  local files, dirs, seen = {}, {}, {}
-  for _, f in ipairs(favored) do
-    seen[f] = true
+  local skip = {}
+  for _, name in ipairs(WEATHERS) do
+    table.insert(skip, folder(name))
   end
 
-  local function add(dir)
-    local before = #files
-    for _, f in ipairs(list_images(dir)) do
+  local period_dirs = { cfg.wallpaper_dir .. "/" .. folder(ANY) .. "/" .. folder(period) }
+  if season then table.insert(period_dirs, cfg.wallpaper_dir .. "/" .. folder(season) .. "/" .. folder(period)) end
+
+  local seen = {}
+  local function add(list, dirs, dir, found)
+    local before = #list
+    for _, f in ipairs(found) do
       if not seen[f] then
         seen[f] = true
-        table.insert(files, f)
+        table.insert(list, f)
       end
     end
-    if #files > before then table.insert(dirs, dir) end
+    if #list > before then table.insert(dirs, dir) end
   end
 
-  local season_dirs = season and cfg.season_dirs and cfg.season_dirs[season]
-  if cfg.dirs[period] then add(cfg.dirs[period]) end
-  if season_dirs and season_dirs[period] then add(season_dirs[period]) end
-  if #files == 0 and cfg.default_wallpaper_dir then add(cfg.default_wallpaper_dir) end
-  if #favored > 0 then table.insert(dirs, weather_dir) end
+  local favored, favored_dirs = {}, {}
+  if weather then
+    for _, dir in ipairs(period_dirs) do
+      local nested = dir .. "/" .. folder(weather)
+      add(favored, favored_dirs, nested, list_images(nested))
+    end
+  end
+
+  local files, dirs = {}, {}
+  for _, dir in ipairs(period_dirs) do
+    add(files, dirs, dir, list_images(dir, skip))
+  end
+  if #files + #favored == 0 then add(files, dirs, cfg.wallpaper_dir, list_images(cfg.wallpaper_dir)) end
+  for _, dir in ipairs(favored_dirs) do
+    table.insert(dirs, dir)
+  end
   return files, dirs, favored
 end
 
@@ -325,7 +359,7 @@ function Apply.to_monitors(cfg, util, opts)
   if cfg.time_of_day_enabled then
     files, dirs, favored = resolve_pool(cfg, period, season, weather)
   else
-    local dir = cfg.force_dir or cfg.default_wallpaper_dir
+    local dir = cfg.force_dir or cfg.wallpaper_dir
     files, dirs = dir and list_images(dir) or {}, { dir }
   end
 
@@ -413,8 +447,14 @@ end
 
 --- Public wrapper around `list_images` for external callers.
 --- @param dir string directory to scan
+--- @param skip string[]|nil subfolder names not descended into
 --- @return string[] image file paths
-function Apply.list_images(dir) return list_images(dir) end
+function Apply.list_images(dir, skip) return list_images(dir, skip) end
+
+Apply.folder = folder
+Apply.PERIODS = PERIODS
+Apply.SEASONS = SEASONS
+Apply.WEATHERS = WEATHERS
 
 --- Seconds until the next time-of-day period starts; `math.huge` when periods are off.
 --- @param cfg table wallpaper config

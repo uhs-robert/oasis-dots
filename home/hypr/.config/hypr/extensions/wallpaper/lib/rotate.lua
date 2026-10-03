@@ -110,22 +110,6 @@ local function parse_args(argv)
     elseif a == "--dir" and argv[i + 1] then
       overrides.force_dir = argv[i + 1]
       i = i + 1
-    elseif a == "--dir-morning" and argv[i + 1] then
-      overrides.dirs = overrides.dirs or {}
-      overrides.dirs.morning = argv[i + 1]
-      i = i + 1
-    elseif a == "--dir-day" and argv[i + 1] then
-      overrides.dirs = overrides.dirs or {}
-      overrides.dirs.day = argv[i + 1]
-      i = i + 1
-    elseif a == "--dir-evening" and argv[i + 1] then
-      overrides.dirs = overrides.dirs or {}
-      overrides.dirs.evening = argv[i + 1]
-      i = i + 1
-    elseif a == "--dir-night" and argv[i + 1] then
-      overrides.dirs = overrides.dirs or {}
-      overrides.dirs.night = argv[i + 1]
-      i = i + 1
     elseif a == "--season" and argv[i + 1] then
       overrides.force_season = argv[i + 1]
       i = i + 1
@@ -136,9 +120,9 @@ local function parse_args(argv)
       i = i + 1
     elseif a == "--no-weather" then
       overrides.weather_enabled = false
-    elseif a == "--morning-hour" and argv[i + 1] then
+    elseif a == "--dawn-hour" and argv[i + 1] then
       overrides.start_hours = overrides.start_hours or {}
-      overrides.start_hours.morning = tonumber(argv[i + 1])
+      overrides.start_hours.dawn = tonumber(argv[i + 1])
       i = i + 1
     elseif a == "--day-hour" and argv[i + 1] then
       overrides.start_hours = overrides.start_hours or {}
@@ -177,15 +161,11 @@ Options:
   --config PATH           Use alternate config file
   --interval MIN          Minutes between rotations
   --dir PATH              Force one folder (disables time-of-day switching)
-  --dir-morning PATH      Override morning folder
-  --dir-day PATH          Override day folder
-  --dir-evening PATH      Override evening folder
-  --dir-night PATH        Override night folder
-  --season NAME           Force spring, summer, autumn or winter
+  --season NAME           Force spring, summer, fall or winter
   --no-seasons            Ignore season folders
-  --weather NAME          Force rain, snow, storm, fog or overcast
+  --weather NAME          Force rain, snow or cloudy
   --no-weather            Ignore weather folders
-  --morning-hour H        Static start hour for morning
+  --dawn-hour H           Static start hour for dawn
   --day-hour H            Static start hour for day
   --evening-hour H        Static start hour for evening
   --night-hour H          Static start hour for night
