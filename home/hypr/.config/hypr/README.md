@@ -121,7 +121,7 @@ Trigger the picker with `SUPER + SHIFT + O`.
 
 `extensions/wallpaper/` is a wallpaper rotation system built on hyprpaper. It picks from folders that match the season, the part of the day and the weather, switching periods at fixed hours or at the sun's position for your location. Location, sun times and weather come from the Quickshell bar's weather cache, so it needs no lookups of its own.
 
-The collection has one layout, `<Season>/<Period>/<Weather>/`, under `~/Pictures/Wallpapers/Pixel Art`:
+No wallpapers ship with this repo, since the images are other artists' copyrighted work. Bring your own in one layout, `<Season>/<Period>/<Weather>/`, under `~/Pictures/Wallpapers/Pixel Art`:
 
 - Season: `Any`, `Spring`, `Summer`, `Fall` or `Winter`. `Any` shows in every season. Seasons follow the calendar months and flip in the southern hemisphere.
 - Period: `Dawn`, `Day`, `Evening` or `Night`. Always required.
