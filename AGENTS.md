@@ -51,7 +51,7 @@ New install behavior belongs in the matching lib function, not inline in `instal
 - `stow.ini` — dotfile package names (`[CORE]` auto-stowed, `[OPTIONAL]` fzf-selected, `[SERVER]` used instead of `[CORE]` under `--server`).
 - `repos.ini` — git repositories to clone.
 
-`lib/check-packages.sh` fails on a name appearing in two manifests, excluding `stow.ini` and `repos.ini` (those namespace directories and repos, not packages). Adding a package means editing the manifest, not the installer.
+`lib/check-packages.sh` fails on a name appearing in two manifests, excluding `stow.ini` and `repos.ini` (those namespace directories and repos, not packages). It also fails when a `stow.ini` entry has no `home/` dir, or a `home/` dir is in neither `stow.ini` nor its `unstowed` list. Adding a package means editing the manifest, not the installer.
 
 An `[MANUAL]` section's comment lines in `arch.ini` are printed as post-install notes.
 

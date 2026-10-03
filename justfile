@@ -25,10 +25,8 @@ restow name:
     stow -d home -t ~ -R {{name}}
     @just _seed {{name}}
 
-# Symlink every package in home/ into ~
-stow-all:
-    stow -d home -t ~ $(ls home)
-    @just _seed $(ls home)
+# Symlink the CORE and OPTIONAL packages from packages/stow.ini
+stow-all: stow-core stow-optional
 
 # Remove symlinks for every package in home/
 unstow-all:

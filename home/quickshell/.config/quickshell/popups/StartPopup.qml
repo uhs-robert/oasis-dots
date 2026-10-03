@@ -43,18 +43,13 @@ Popup {
     function choose(index) {
         ThemeAudio.play("confirm");
         selected = index;
-        if (index === 0) {
-            if (!Pickers.open("apps", Popups.open_anchor, Popups.open_color, Popups.open_screen_name, "start")) run(0);
-        } else if (index === 1) SettingsNav.open("");
+        if (index === 0) Pickers.open("apps", Popups.open_anchor, Popups.open_color, Popups.open_screen_name, "start");
+        else if (index === 1) SettingsNav.open("");
         else confirm = true;
     }
 
     function run(index) {
-        if (index === 0) {
-            Quickshell.execDetached(["hyprctl", "dispatch", "LayerRules.exec_without_animation('rofi -show drun -theme ~/.config/rofi/themes/oasis-start.rasi')"]);
-        } else if (index >= 2) {
-            Power.run(Power.actions[index - 2]);
-        }
+        if (index >= 2) Power.run(Power.actions[index - 2]);
         Popups.close();
     }
 

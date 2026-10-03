@@ -40,7 +40,7 @@ Popup {
     jumps_enabled: true
     cursor_state: [root.day_cursor, root.day_first, root.hour_cursor, root.alert_cursor]
 
-    // None of this is reset on close: the popup lives for the whole qs session, only visibility toggles.
+    // LazyPopup rebuilds the popup on every open, so these start from their defaults each time.
     property int daily_sub: 0
     property int hourly_sub: 0
     property int day_cursor: 0

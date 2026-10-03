@@ -23,22 +23,15 @@ local function exit_cursor()
   hl.dispatch(hl.dsp.exec_cmd("pkill wl-kbptr"))
 end
 
---- Wrap `fn` so it runs then resets or switches to another submap.
+--- Wrap `fn` so it runs then resets the submap.
 --- @param fn fun()
---- @param to_submap nil | string
 --- @return fun()
--- stylua: ignore
-local function oneshot(fn, to_submap)
+local function oneshot(fn)
   return function()
     fn()
-    if to_submap then Submap.switch(to_submap) else Submap.reset() end
+    Submap.reset()
   end
 end
-
---- Wrap `fn` so it runs then switches to Cursor submap.
---- @param fn fun()
---- @return fun()
-local function to_cursor(fn) return oneshot(fn, "Cursor") end
 
 --- Build scroll bind rows for a modifier tier.
 --- @param mod string
@@ -155,12 +148,12 @@ local quick_click = Submap.define({
       { Config.leader .. " + SEMICOLON",  Cursor.kbptr("floating_click", { exit = true })},
       { Config.leader .. " + APOSTROPHE", Cursor.kbptr("floating_r_click", { exit = false })},
       -- wl-kbptr modes
-      { "F",                  to_cursor(Cursor.kbptr("floating_click")),                      "Floating Click" },
-      { "SHIFT + F",          to_cursor(Cursor.kbptr("floating_r_click", { exit = false })), "Floating Right Click" },
-      { "CTRL + F",           to_cursor(Cursor.kbptr("floating_move")),                      "Floating Move" },
-      { "T",                  to_cursor(Cursor.kbptr("tile_click")),                         "Tiling Click" },
-      { "SHIFT + T",          to_cursor(Cursor.kbptr("tile_r_click", { exit = false })),     "Tile Right Click" },
-      { "CTRL + T",           to_cursor(Cursor.kbptr("tile_move")),                          "Tiling Move" },
+      { "F",                  Cursor.kbptr("floating_click"),                      "Floating Click" },
+      { "SHIFT + F",          Cursor.kbptr("floating_r_click", { exit = false }), "Floating Right Click" },
+      { "CTRL + F",           Cursor.kbptr("floating_move"),                      "Floating Move" },
+      { "T",                  Cursor.kbptr("tile_click"),                         "Tiling Click" },
+      { "SHIFT + T",          Cursor.kbptr("tile_r_click", { exit = false }),     "Tile Right Click" },
+      { "CTRL + T",           Cursor.kbptr("tile_move"),                          "Tiling Move" },
       -- WhichKey
       { "SHIFT + SLASH",  function() require("lua.plugins.hyprvim").whichkey.toggle() end, "WhichKey" },
     }
