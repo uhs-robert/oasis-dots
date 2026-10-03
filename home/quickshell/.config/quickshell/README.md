@@ -34,17 +34,17 @@ Weather reads `weather.json`, with untracked per-machine overrides (real coordin
 
 | Key | Meaning |
 | --- | --- |
-| `match` | `"*"` for every monitor, or `{ "name": "DP-*", "description": "*Dell*" }`. Both keys are optional globs (`*`, `?`) and must all match. `name` is the connector, `description` is Hyprland's monitor description (`hyprctl monitors`) |
-| `compact` | Tighter bar. Defaults to true on `eDP*` connectors, false elsewhere |
+| `match` | `"*"` for every monitor, or `{ "name": "DP-*", "description": "*Dell*" }`. Both keys are optional globs (`*`, `?`) and must all match. `{}` or any string other than `"*"` never matches. `name` is the connector, `description` is Hyprland's monitor description (`hyprctl monitors`) |
+| `compact` | Tighter bar that hides every `system` module. Defaults to true on `eDP*` connectors, false elsewhere |
 | `height` | Bar height in pixels. Defaults to the style's bar height, else 34 |
 | `bar` | `false` shows no bar on matching monitors |
-| `left`, `center`, `right` | Module names, in draw order. Repeats are dropped, unknown names are skipped with a warning. Lualine styles draw `center` inside the right island |
+| `left`, `center`, `right` | Module names, in draw order. Repeats within one list are dropped (a module in both `left` and `right` draws twice), unknown names are skipped with a warning. Lualine styles draw `center` inside the right island and re-sort it with `right` into their x/y/z sections, so the listed order only holds within a section |
 
-Modules: `start` (Start button), `workspaces`, `clock` (calendar popup), `tray`, `volume`, `battery`, `bluetooth`, `network`, `weather`, `keeptabs` (tmux tab picker), `updates` (pending package updates), `voxtype` (dictation status), `recording` (screen recording chip), `notifications` (center and Do Not Disturb), `media` (now playing, not in the default layout) and `system`. `system` takes an argument, `system:cpu`, `system:memory` or `system:temperature`, and can be listed more than once with different arguments; bare `system` starts on `cpu`.
+Modules: `start` (Start button), `workspaces`, `clock` (calendar popup), `tray`, `volume`, `battery`, `bluetooth`, `network`, `weather`, `keeptabs` (AI agent sessions busy, done or waiting, jump to one; hidden while none run), `updates` (pending package updates), `voxtype` (dictation status), `recording` (screen recording chip), `notifications` (center and Do Not Disturb), `media` (now playing, not in the default layout) and `system`. `system` takes an argument, `system:cpu`, `system:memory` or `system:temperature`, and can be listed more than once with different arguments; bare `system` starts on `cpu`.
 
 ```json
 [
-  { "match": { "name": "eDP-*" }, "compact": true, "left": ["start", "workspaces"], "center": ["clock"], "right": ["volume", "battery", "system:cpu", "system:temperature"] },
+  { "match": { "name": "eDP-*" }, "compact": true, "left": ["start", "workspaces"], "center": ["clock"], "right": ["volume", "battery"] },
   { "match": { "description": "*DELL U2720Q*" }, "height": 40, "left": ["start", "workspaces", "media"], "center": ["clock"], "right": ["tray", "network"] },
   { "match": "*", "left": ["start", "workspaces"], "center": ["clock"], "right": ["volume"] }
 ]
@@ -52,8 +52,8 @@ Modules: `start` (Start button), `workspaces`, `clock` (calendar popup), `tray`,
 
 Settings > Bar modules edits the layout without touching the tracked file. It saves to `quickshell/bars.json` in the state folder (see Settings panel), with two kinds of override over the matching rule:
 
-- `shared` applies to every monitor without its own layout. `place` maps a module to `left`, `center`, `right` or `hidden`, and `order` is a list of modules whose relative order replaces the rule's, each one staying in the slots it already had.
-- `monitors` holds one full `left`/`center`/`right` layout (and `compact`) per monitor, keyed by `<description> @ <connector>`. It replaces the rule's lists outright, so later edits to the tracked file no longer reach that monitor. `height` and `bar` always come from the rule.
+- `shared` applies to every monitor without its own layout. `place` maps a module to `left`, `center`, `right` or `hidden`, and `order` lists modules that swap among the slots they already fill on each side, and the rest do not move.
+- `monitors` holds one full `left`/`center`/`right` layout (and `compact`) per monitor, keyed by `<description> @ <connector>`, or by the connector alone when the monitor has no description. After a connector change, the only saved key with the same description is reused. It replaces the rule's lists outright, so later edits to the tracked file no longer reach that monitor. `height` and `bar` always come from the rule.
 
 Delete the state file to go back to the tracked layout.
 
