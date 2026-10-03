@@ -43,6 +43,23 @@ install_packages() {
   mapfile -t pkgs < <(read_manifest "$DISTRO.ini" CORE SYSTEM CLI DEV)
   sudo pacman -S --needed --noconfirm "${pkgs[@]}"
   success "System packages installed"
+  [[ "${OPT_SERVER:-0}" -eq 1 ]] || check_quickshell_version
+}
+
+QS_TESTED_VERSION=0.3.1
+
+# Warns when Quickshell is missing or older than the version this config is tested with.
+check_quickshell_version() {
+  local have
+  have=$(qs --version 2>/dev/null | grep -oE '[0-9]+(\.[0-9]+)+' | head -n1) || true
+  if [[ -z "$have" ]]; then
+    warn "Quickshell (qs) not found or its version is unreadable, this config is tested with $QS_TESTED_VERSION"
+    return 0
+  fi
+  if [[ "$(printf '%s\n%s\n' "$QS_TESTED_VERSION" "$have" | sort -V | head -n1)" != "$QS_TESTED_VERSION" ]]; then
+    warn "Quickshell $have is older than $QS_TESTED_VERSION, which this config is tested with"
+  fi
+  return 0
 }
 
 install_pipx_packages() {
