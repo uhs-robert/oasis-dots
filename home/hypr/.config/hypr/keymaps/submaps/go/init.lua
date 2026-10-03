@@ -31,7 +31,6 @@ Submap.define({
       { "A",         Menu.agents(),                         "Agent Sessions" },
       { "B",         Apps.focus_or_launch(APP.firefox),     "Browser" },
       { "C",         Apps.focus_or_launch(APP.tmux_config), "Tmuxifier Config" },
-      { "SHIFT + C", Apps.focus_or_launch(APP.tmux_client),  "Tmuxifier Client" },
       { "F",         Apps.focus_or_launch(APP.yazi),        "Files" },
       { "SHIFT + F", Apps.focus_or_launch(APP.thunar),      "Thunar" },
       { "H",         Apps.focus_or_launch(APP.hyprconfig),  "Hypr Config" },
@@ -42,7 +41,6 @@ Submap.define({
       { "S",         Apps.focus_or_launch(APP.slack),       "Slack" },
       { "SHIFT + S", Apps.focus_or_launch(APP.steam),       "Steam" },
       { "T",         Apps.focus_or_launch(APP.terminal),    "Terminal" },
-      { "U",         Apps.focus_or_launch(APP.tmux_uphill), "Tmuxifier UpHill" },
       { "W",         Menu.overview_search(),                "Search Windows" },
       { "Y",         Window.focus_by(SELECTORS.youtube),    "Youtube" },
       -- stylua: ignore end

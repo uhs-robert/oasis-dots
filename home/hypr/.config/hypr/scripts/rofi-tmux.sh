@@ -26,8 +26,6 @@ pretty_name="$(
 )"
 
 case "$session" in
-uphill) pretty_name="UpHill" ;;
-client-dev) pretty_name="Client App" ;;
 config) pretty_name="Config" ;;
 client-portal) pretty_name="Client Portal" ;;
 oasis-swap) pretty_name="Oasis Swap" ;;
@@ -43,7 +41,7 @@ address="$(
     jq -r --arg title "$title" --arg term "$term_name" '
       .[]
       | select(.class | ascii_downcase | contains($term))
-      | select(.title == $title or (.title | startswith($title + " ")))
+      | select((.title | ascii_downcase) as $t | ($title | ascii_downcase) as $w | $t == $w or ($t | startswith($w + " ")))
       | .address
     ' |
     head -n 1
