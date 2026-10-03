@@ -35,7 +35,7 @@ Options:
   -m, --minimal        Skip AUR, Rust, system files, and services
   --no-aur             Skip AUR packages
   --no-cargo           Skip Rust/rustup install
-  --no-system-files    Skip system file installation (/etc/greetd, etc.)
+  --no-system-files    Skip system files (/etc, /usr/local) and root links
   --no-services        Skip service setup (shell, keyd, Steam, Nvidia, voxtype)
   --dev                Clone repos into $GITHUB_DIR for editing and link them
   --server             Headless install: shell/CLI/dev packages and configs only

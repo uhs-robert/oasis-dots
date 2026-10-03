@@ -227,19 +227,19 @@ cd ~/dotfiles
 
 Installs system packages, AUR packages, fonts, and dev tools, then stows dotfiles into `~/`. Prompts for optional components (greetd, Steam, Nvidia, dev runtimes).
 
-When it finishes, reboot if you installed greetd, otherwise log out and run `start-hyprland` from a TTY.
+When it finishes, reboot. Without greetd you can instead log out and run `start-hyprland` from a TTY, unless you installed Nvidia drivers or xone.
 
 <details>
 <summary>What the installer touches outside your home directory</summary>
 
 It uses `sudo` for these; the flags in brackets skip them.
 
-- Packages through pacman and paru, including the `rustup` toolchain and Maple Mono NF in `/usr/local/share/fonts`.
+- Packages through pacman and paru [`--no-aur` for paru], the `rustup` toolchain [`--no-cargo`] and Maple Mono NF in `/usr/local/share/fonts`.
 - `/etc`: `vtrgb-oasis`, `keyd/default.conf` and two pacman hooks; `/usr/local/bin` and `/usr/local/share/betterbird-autoconfig` for the voxtype GPU and Betterbird autoconfig helpers, which also patch `/opt/betterbird` when it exists [`--no-system-files`].
 - `/root`: links root's `.zshrc`, `.zsh_plugins.txt`, Neovim and Yazi config to yours, and adds `yazi-root` and a `/usr/local/sbin/yazi` wrapper, after a prompt [`--no-system-files`].
 - greetd, after a prompt: `/etc/greetd`, `/etc/tuigreet`, `/usr/local/bin/tuigreet-oasis`, the Quickshell greeter in `/etc/greetd/quickshell`, `/usr/local/bin/qs-greeter` and `/var/lib/qs-greeter`, then enables `greetd` [`--no-services`].
 - Your login shell is changed to zsh, and `keyd` and `power-profiles-daemon` are enabled [`--no-services`].
-- Steam, after a prompt: native Steam enables `[multilib]` in `/etc/pacman.conf` and runs a full `pacman -Syu`; the optional xone driver builds a DKMS kernel module [`--no-services`].
+- Steam, after a prompt: native Steam enables `[multilib]` in `/etc/pacman.conf` and runs a full `pacman -Syu`, Flatpak Steam installs `flatpak` and adds a system-wide Flathub remote; the optional xone driver builds a DKMS kernel module [`--no-services`].
 - Nvidia drivers, after a prompt [`--no-services`].
 - voxtype adds you to the `input` group [`--no-services`].
 

@@ -323,6 +323,6 @@ print_next_steps() {
   if systemctl is-enabled greetd &>/dev/null; then
     warn "Next: reboot to log in through greetd"
   else
-    warn "Next: log out and run start-hyprland from a TTY"
+    warn "Next: reboot, or log out and run start-hyprland from a TTY"
   fi
 }

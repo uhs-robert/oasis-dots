@@ -231,9 +231,11 @@ print_manual_steps() {
       rm -rf ~/.tmuxifier
 
 EOF
+  local rm_cmd
+  rm_cmd=$(printf 'rm -rf %q %q' "$DOTFILES_DIR/repos" "$GITHUB_DIR")
   cat <<EOF
     Cloned repos (repos/ in the dotfiles checkout, plus $GITHUB_DIR for --dev installs)
-      rm -rf $DOTFILES_DIR/repos $GITHUB_DIR
+      $rm_cmd
       Review both first, may include work you want to keep.
 
 EOF
