@@ -1,12 +1,5 @@
 [
   {
-    "match": { "description": "HP Inc. HP Z22n G2 6CM8411J22" },
-    "compact": false,
-    "left": ["start", "workspaces"],
-    "center": ["clock"],
-    "right": ["tray", "keeptabs", "updates", "system", "network", "bluetooth", "recording", "voxtype", "notifications"]
-  },
-  {
     "match": "*",
     "compact": false,
     "left": ["start", "workspaces"],

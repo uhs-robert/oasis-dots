@@ -26,8 +26,6 @@ pretty_name="$(
 )"
 
 case "$session" in
-uphill) pretty_name="UpHill" ;;
-client-dev) pretty_name="Client App" ;;
 config) pretty_name="Config" ;;
 client-portal) pretty_name="Client Portal" ;;
 oasis-swap) pretty_name="Oasis Swap" ;;
@@ -41,12 +39,12 @@ term_name="${TERMINAL:-kitty}"
 address="$(
   hyprctl clients -j |
     jq -r --arg title "$title" --arg term "$term_name" '
-      .[]
-      | select(.class | ascii_downcase | contains($term))
-      | select(.title == $title or (.title | startswith($title + " ")))
-      | .address
-    ' |
-    head -n 1
+      def norm: ascii_downcase | gsub("[^a-z0-9]"; "");
+      [.[] | select(.class | ascii_downcase | contains($term))] as $wins
+      | ($wins | map(select((.title | norm) == ($title | norm))))
+        + ($wins | map(select(.title | ascii_downcase | startswith(($title | ascii_downcase) + " "))))
+      | .[0].address // empty
+    '
 )"
 
 if [[ -n "$address" ]]; then

@@ -44,8 +44,6 @@ Apps.map = {
   steam       = { program = "steam",       class = "steam",                         cmd = STEAM_CMD },
   terminal    = { program = TERM,          exclude_title = "Tmux" },
   tmux_config = { program = TERM,          title = "Tmux Config",                   cmd = TERM_CMD .. " -e tmuxifier load-session config" },
-  tmux_client  = { program = TERM,          title = "Tmux Client App",       cmd = TERM_CMD .. " -e tmuxifier load-session client-dev" },
-  tmux_uphill = { program = TERM,          title = "Tmux UpHill",                   cmd = TERM_CMD .. " -e tmuxifier load-session uphill" },
   yazi        = { program = TERM,          class = "yazi",                          cmd = TERM_CMD .. " --class yazi -e yazi" },
 }
 

@@ -27,7 +27,7 @@ Singleton {
     readonly property var settings: root.parse_settings(root.live_settings_file.text()) || root.parse_settings(root.settings_file.text()) || {}
     // A user picked on the login screen, else the saved one.
     property string chosen: ""
-    readonly property string user: root.chosen || root.settings.user || "roberth"
+    readonly property string user: root.chosen || root.settings.user || (root.users.length > 0 ? root.users[0].name : "")
 
     property FileView passwd_file: FileView {
         path: "/etc/passwd"
