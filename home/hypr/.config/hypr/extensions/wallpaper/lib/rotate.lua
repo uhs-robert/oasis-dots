@@ -156,7 +156,7 @@ local function parse_args(argv)
       print([[
 Options:
   --once, -o              Run one cycle and exit
-  --audit                 List folder sizes and images in no folder, then exit
+  --audit                 Check folder sizes, unused images and stray folders, then exit
   --monitor NAME          Apply to one specific monitor only (implies --once)
   --verbose, -v           Verbose logging
   --config PATH           Use alternate config file
