@@ -51,7 +51,7 @@ QS_TESTED_VERSION=0.3.1
 # Warns when Quickshell is missing or older than the version this config is tested with.
 check_quickshell_version() {
   local have
-  have=$(qs --version 2>/dev/null | grep -oE '[0-9]+(\.[0-9]+)+' | head -n1)
+  have=$(qs --version 2>/dev/null | grep -oE '[0-9]+(\.[0-9]+)+' | head -n1) || true
   if [[ -z "$have" ]]; then
     warn "Quickshell (qs) not found or its version is unreadable, this config is tested with $QS_TESTED_VERSION"
     return 0
