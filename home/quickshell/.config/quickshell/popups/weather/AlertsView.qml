@@ -13,6 +13,8 @@ Item {
     property int alert_cursor: 0
     // Called with the clicked alert index; the popup owns alert_cursor, so clicks report up rather than assign it locally.
     property var on_select: function (i) {}
+    property real detail_y: 0
+    property var on_detail_scroll: function (y) {}
 
     readonly property var alerts: WeatherState.alerts
     // Alerts as red "avoid" objectives under a mission line.
@@ -168,6 +170,8 @@ Item {
             contentWidth: width
             contentHeight: detail_col.implicitHeight
             visible: !!root.selected
+            onContentYChanged: root.on_detail_scroll(detail_flick.contentY)
+            Component.onCompleted: detail_flick.contentY = root.detail_y
 
             ColumnLayout {
                 id: detail_col

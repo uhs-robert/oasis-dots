@@ -56,6 +56,7 @@ Popup {
     readonly property bool on_sun_moon: root.current_tab === 0 && root.daily_sub === root.sun_moon_sub
     property int day_span: 5
     property real hourly_scroll_x: 0
+    property real alert_detail_y: 0
 
     Binding {
         target: root
@@ -536,6 +537,8 @@ Popup {
                     sourceComponent: AlertsView {
                         anchors.fill: parent
                         alert_cursor: root.alert_cursor
+                        detail_y: root.alert_detail_y
+                        on_detail_scroll: function (y) { root.alert_detail_y = y; }
                         on_select: function (i) { root.alert_cursor = i; ThemeAudio.play("cursor"); }
                     }
                 }
