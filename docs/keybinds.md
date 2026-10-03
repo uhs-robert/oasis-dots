@@ -1,20 +1,20 @@
 # Changing keybinds
 
-The keys this setup ships are defined in Lua under `~/.config/hypr/keymaps/`. Leave those files alone: your changes go in one file of your own, `custom/keymaps.lua`, which can add binds, replace shipped ones and build new menus. It is gitignored, so `git pull` never conflicts with it, and you can track it in a repo of your own.
+The keys this setup ships are defined in Lua under `~/.config/hypr/keymaps/`. Leave those files alone: your changes go in one file of your own, `custom/keymaps.lua`, which can add binds, replace shipped ones and define new submaps. It is gitignored, so `git pull` never conflicts with it, and you can track it in a repo of your own.
 
 ## Finding what a key does
 
 You rarely need to open a file to find a bind.
 
-- `SUPER + /` searches every bind in the mode you are in and runs the one you pick. Menus are listed first, each with a `+` in front of its name, so it doubles as a map of the menus you can open from here.
-- `SUPER + SHIFT + /` opens which-key from anywhere, showing every key in the current menu at a glance, or the global keys when you are in none.
-- Entering a menu also shows its keys in which-key.
+- `SUPER + /` searches every bind in the mode you are in and runs the one you pick. Submaps are listed first, each with a `+` in front of its name, so it doubles as a map of the submaps you can enter from here.
+- `SUPER + SHIFT + /` opens which-key from anywhere, showing every bind in the current submap at a glance, or the global binds when you are in none.
+- Entering a submap also shows its binds in which-key.
 
 All of them read the description written next to each bind, so anything you add shows up in them too.
 
 ## Where the shipped binds live
 
-Open these to see how a bind is written or which menu a key belongs to:
+Open these to see how a bind is written or which submap a key belongs to:
 
 ```
 keymaps/
@@ -27,12 +27,12 @@ keymaps/
     media.lua          volume, brightness, playback
     power.lua          lock, sleep, power
     mouse.lua          mouse binds
-  submaps/             menus: press one key to enter, then another to act
+  submaps/             submaps: press one key to enter, then another to act
     leader/  apps/  go/  system/  delete/  windows/  monitors/
     groups/  cursor/  resize/  move/  zoom/  bar/
 ```
 
-A global bind fires the moment you press it. A submap is a menu: its entry key switches the keyboard into that menu, where plain keys such as `F` or `SHIFT + S` do things. Each submap's name, which you need for changing it, is the `name` field at the top of its file: `Applications`, `Windows`, `Leader` and so on.
+A global bind fires the moment you press it. A submap is a separate set of binds: its entry key switches the keyboard into it, where plain keys such as `F` or `SHIFT + S` do things, and which-key lists those binds as you enter it. Each submap's name, which you need for changing it, is the `name` field at the top of its file: `Applications`, `Windows`, `Leader` and so on.
 
 ## Setting up your keymap file
 
@@ -73,7 +73,7 @@ return {
 }
 ```
 
-Every `Bind.leader_*` helper and every menu entered with `Config.leader .. " + ..."` follows it, yours included. See `config/machines/README.md` for how profiles work.
+Every `Bind.leader_*` helper and every submap entered with `Config.leader .. " + ..."` follows it, yours included. See `config/machines/README.md` for how profiles work.
 
 ## Adding a bind
 
@@ -102,7 +102,7 @@ The third argument is the description shown in search and which-key. The built-i
 | `Cmd.open_term()` | Opens your terminal |
 | `Cmd.bottom_terminal("command")` | Runs it in a terminal that drops in at the bottom of the screen |
 
-A bind that should also work while you are inside a menu passes its options in place of the description. This replaces the calculator line above, rather than adding to it:
+A bind that should also work while you are inside a submap passes its options in place of the description. This replaces the calculator line above, rather than adding to it:
 
 ```lua
 Bind.leader_cmd("F9", "qalculate-gtk", { submap_universal = true, desc = "Calculator" })
@@ -125,19 +125,19 @@ Bind.leader_unbind("CTRL + RETURN")   -- no more SSH picker on SUPER + CTRL + RE
 
 `Bind.leader_unbind(key)` is `Bind.unbind("SUPER + " .. key)` with your leader in place of `SUPER`. Keys match the way they were bound, ignoring case and spaces. Both return how many binds they removed, so a `0` means the key was written differently or is not one of this config's binds. On Hyprland 0.56 and older an unbound key is disabled rather than removed, so it stops firing but still appears in `SUPER + /`; `custom/README.md` explains why.
 
-## Changing a key inside a menu
+## Changing a key inside a submap
 
-Pass the submap's name to `Bind.unbind` to remove a key from that menu only; the same key in other menus is untouched. Then add your own with `Bind.submap`, which adds to an existing menu:
+Pass the submap's name to `Bind.unbind` to remove a key from that submap only; the same key in other submaps is untouched. Then add your own with `Bind.submap`, which adds to an existing submap:
 
 ```lua
--- In the Windows menu, H focuses left instead of what it did before.
+-- In the Windows submap, H focuses left instead of what it did before.
 Bind.unbind("H", "Windows")
 Bind.submap("Windows", function()
   Bind.key("H", hl.dsp.focus({ direction = "left" }), "Focus left")
 end)
 ```
 
-Some menus, such as Applications and Leader, are one-shot: they close after any key. A bind you add this way does not close the menu on its own, so finish its action with `Submap.reset()`. To add a PDF viewer to the Applications menu (`SUPER + A`) on `Z`:
+Some submaps, such as Applications and Leader, are one-shot: any key leaves them. A bind you add this way does not leave the submap on its own, so finish its action with `Submap.reset()`. To add a PDF viewer to the Applications submap (`SUPER + A`) on `Z`:
 
 ```lua
 Bind.submap("Applications", function()
@@ -148,11 +148,11 @@ Bind.submap("Applications", function()
 end)
 ```
 
-Menus that stay open until you press `ESCAPE`, such as Windows, Resize and Move, need no `Submap.reset()`; each one's `catchall` field says which kind it is (see the table below).
+Submaps that stay active until you press `ESCAPE`, such as Windows, Resize and Move, need no `Submap.reset()`; each one's `catchall` field says which kind it is (see the table below).
 
-## Making a menu of your own
+## Defining a submap of your own
 
-`Submap.define` builds a menu from rows of key, action and description:
+`Submap.define` builds a submap from rows of key, action and description:
 
 ```lua
 Submap.define({
@@ -175,14 +175,14 @@ Submap.define({
 | Field | Meaning |
 | --- | --- |
 | `name` | The submap's name in Hyprland, and the name `Bind.unbind` and `Bind.submap` take |
-| `desc` | The label shown when you enter it. A leading `+` marks it as a menu |
+| `desc` | The label shown when you enter it. A leading `+` marks it as a submap in the bind search and which-key |
 | `enter` | The key that opens it. Check it is free with `SUPER + /` first |
-| `escape` | What `ESCAPE` does. `"reset"` leaves all menus, `"previous"` goes back one, a submap name jumps to that one |
-| `catchall` | What an unlisted key does. `"reset"` makes the menu one-shot: it closes after any key, and its rows close it for you. `"stay"` keeps it open until you escape, for menus you press repeatedly |
+| `escape` | What `ESCAPE` does. `"reset"` leaves all submaps, `"previous"` goes back one, a submap name jumps to that one |
+| `catchall` | What an unlisted key does. `"reset"` makes the submap one-shot: any key leaves it, and its rows leave it for you. `"stay"` keeps it active until you escape, for submaps you press repeatedly |
 
-In a one-shot menu, a row can stay open instead by adding `{ keep = true }` as a fourth item.
+In a one-shot submap, a row can stay in it instead by adding `{ keep = true }` as a fourth item.
 
-To reach your menu from the Leader menu as well, add a row there that switches to it. `Submap.switch` moves straight into your menu, so this row needs no `Submap.reset()`:
+To reach your submap from the Leader submap as well, add a row there that switches to it. `Submap.switch` moves straight into your submap, so this row needs no `Submap.reset()`:
 
 ```lua
 Bind.submap("Leader", function()
@@ -199,5 +199,5 @@ Everything in `custom/` except its README is gitignored, so updates never touch 
 - **Nothing changed:** run `hyprctl reload`, and check that `custom/init.lua` requires `custom.keymaps`. A Lua error in your file shows up as a Hyprland error on reload.
 - **The old action still fires as well:** the shipped bind is still there. Unbind it before binding the key again; `Bind.unbind` returning `0` means the key did not match.
 - **A key does nothing:** check the key name. `SLASH` is not `/`, and `RETURN` is not `ENTER`.
-- **A global bind does nothing inside a menu:** inside a menu, plain keys belong to the menu. A global bind works there only with `submap_universal = true`.
-- **A key you added to a menu leaves the menu open:** end its action with `Submap.reset()`.
+- **A global bind does nothing inside a submap:** inside a submap, its own binds apply. A global bind works there only with `submap_universal = true`.
+- **A key you added to a one-shot submap stays in it:** end its action with `Submap.reset()`.

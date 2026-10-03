@@ -101,7 +101,7 @@ To skip the rotator on a machine, set `wallpaper_enabled = false` in its profile
 
 ## Keybinds
 
-[Changing keybinds](../../../../../docs/keybinds.md) is the full guide: adding binds, replacing shipped ones, changing a key inside one menu, and building menus of your own, all from `custom/keymaps.lua`. The short version:
+[Changing keybinds](../../../../../docs/keybinds.md) is the full guide: adding binds, replacing shipped ones, changing a key inside one submap, and defining submaps of your own, all from `custom/keymaps.lua`. The short version:
 
 ```lua
 -- custom/keymaps.lua, required from custom/init.lua
