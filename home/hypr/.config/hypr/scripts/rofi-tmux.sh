@@ -41,7 +41,7 @@ address="$(
     jq -r --arg title "$title" --arg term "$term_name" '
       .[]
       | select(.class | ascii_downcase | contains($term))
-      | select((.title | ascii_downcase) as $t | ($title | ascii_downcase) as $w | $t == $w or ($t | startswith($w + " ")))
+      | select((.title | ascii_downcase | gsub("[^a-z0-9]"; "")) as $t | ($title | ascii_downcase | gsub("[^a-z0-9]"; "")) as $w | $t | startswith($w))
       | .address
     ' |
     head -n 1
