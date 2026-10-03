@@ -319,8 +319,7 @@ Item {
             if (root.owns_sound && audio_loader.item) audio_loader.item.play("buzzer");
             if (root.can_step) root.ctx.scene = "pw";
             if (root.animate) {
-                shake.restart();
-                miss_pop.restart();
+                if (pw_loader.item) pw_loader.item.play_miss();
             }
         }
     }
@@ -598,40 +597,11 @@ Item {
         anchors.fill: parent
         transformOrigin: Item.Center
 
-        Stage {
-            cover: true
-            visible: root.stream_on
-
-            Shape {
-                anchors.fill: parent
-                preferredRendererType: Shape.CurveRenderer
-                opacity: 0.8 + 0.2 * Math.sin(root.stream_t * 0.8)
-                ShapePath {
-                    strokeWidth: 0
-                    strokeColor: "transparent"
-                    fillGradient: RadialGradient {
-                        centerX: 800
-                        centerY: 427
-                        focalX: 800
-                        focalY: 427
-                        centerRadius: 620
-                        GradientStop { position: 0; color: Qt.alpha(Theme.ok, 0.16) }
-                        GradientStop { position: 0.5; color: Qt.alpha(Theme.hint, 0.06) }
-                        GradientStop { position: 1; color: "transparent" }
-                    }
-                    PathRectangle { width: 1600; height: 900 }
-                }
-            }
-        }
-
-        Canvas {
-            id: stream_back
-            visible: root.stream_on
-            width: parent.width * root.stream_res
-            height: parent.height * root.stream_res
-            scale: 1 / root.stream_res
-            transformOrigin: Item.TopLeft
-            onPaint: root.paint_stream(stream_back.getContext("2d"), stream_back.width, stream_back.height)
+        Loader {
+            id: saver_back_loader
+            anchors.fill: parent
+            active: root.stream_on
+            sourceComponent: saver_back_view
         }
 
         Stage {
@@ -928,61 +898,116 @@ Item {
             source: root.dither_tile(root.dither_px)
         }
 
-        Stage {
-            id: title_stage
-            visible: root.screen === "title" || root.screen === "unlock"
-            tall_frame: root.title_frame
+        Loader {
+            id: title_loader
+            anchors.fill: parent
+            active: root.screen === "title" || root.screen === "unlock"
+            sourceComponent: title_view
+        }
+    }
 
-            Column {
-                x: 716
-                y: 392
-                spacing: 0
+    Component {
+        id: saver_back_view
 
-                Repeater {
-                    model: [{ t: "NEW GAME", k: "new" }, { t: "Continue?", k: "continue" }]
-                    Item {
-                        id: row
-                        required property var modelData
-                        readonly property bool picked: root.on_new === (row.modelData.k === "new")
-                        width: 220
-                        height: 44
+        Item {
+            function repaint() { stream_back.requestPaint(); }
 
-                        Glove {
-                            visible: row.picked
-                            x: -70
-                            y: 5
+            Stage {
+                cover: true
+
+                Shape {
+                    anchors.fill: parent
+                    preferredRendererType: Shape.CurveRenderer
+                    opacity: 0.8 + 0.2 * Math.sin(root.stream_t * 0.8)
+                    ShapePath {
+                        strokeWidth: 0
+                        strokeColor: "transparent"
+                        fillGradient: RadialGradient {
+                            centerX: 800
+                            centerY: 427
+                            focalX: 800
+                            focalY: 427
+                            centerRadius: 620
+                            GradientStop { position: 0; color: Qt.alpha(Theme.ok, 0.16) }
+                            GradientStop { position: 0.5; color: Qt.alpha(Theme.hint, 0.06) }
+                            GradientStop { position: 1; color: "transparent" }
                         }
-
-                        SText {
-                            anchors.verticalCenter: parent.verticalCenter
-                            text: row.modelData.t
-                            font.pixelSize: 30
-                            font.letterSpacing: 1.5
-                        }
+                        PathRectangle { width: 1600; height: 900 }
                     }
                 }
             }
 
-            SText {
-                x: root.tall ? root.title_frame[0] + root.title_frame[1] / 2 - 800 : 0
-                width: 1600
-                y: (root.tall ? title_stage.foot : 900) - 41.6 - height
-                horizontalAlignment: Text.AlignHCenter
-                font.pixelSize: 18
-                font.letterSpacing: 3.2
-                wght: 500
-                color: root.dim
-                textFormat: Text.StyledText
-                text: {
-                    const c = root.ctx;
-                    if (!c) return "";
-                    const parts = ["<b>" + c.time_text + "</b>", c.date_text];
-                    if (c.has_battery) parts.push(c.battery_percent + "%" + (c.charging ? " charging" : ""));
-                    if (c.has_weather) parts.push(c.weather_temp);
-                    if (c.notifications > 0) parts.push(c.notifications + " mail");
-                    if (root.login && c.host) parts.push(c.host);
-                    if (root.tall && parts.length > 2) return parts.slice(0, 2).join("  ·  ") + "<br>" + parts.slice(2).join("  ·  ");
-                    return parts.join("  ·  ");
+            Canvas {
+                id: stream_back
+                width: parent.width * root.stream_res
+                height: parent.height * root.stream_res
+                scale: 1 / root.stream_res
+                transformOrigin: Item.TopLeft
+                onPaint: root.paint_stream(stream_back.getContext("2d"), stream_back.width, stream_back.height)
+                Component.onCompleted: stream_back.requestPaint()
+            }
+        }
+    }
+
+    Component {
+        id: title_view
+
+        Item {
+            Stage {
+                id: title_stage
+                tall_frame: root.title_frame
+
+                Column {
+                    x: 716
+                    y: 392
+                    spacing: 0
+
+                    Repeater {
+                        model: [{ t: "NEW GAME", k: "new" }, { t: "Continue?", k: "continue" }]
+                        Item {
+                            id: row
+                            required property var modelData
+                            readonly property bool picked: root.on_new === (row.modelData.k === "new")
+                            width: 220
+                            height: 44
+
+                            Glove {
+                                visible: row.picked
+                                x: -70
+                                y: 5
+                            }
+
+                            SText {
+                                anchors.verticalCenter: parent.verticalCenter
+                                text: row.modelData.t
+                                font.pixelSize: 30
+                                font.letterSpacing: 1.5
+                            }
+                        }
+                    }
+                }
+
+                SText {
+                    x: root.tall ? root.title_frame[0] + root.title_frame[1] / 2 - 800 : 0
+                    width: 1600
+                    y: (root.tall ? title_stage.foot : 900) - 41.6 - height
+                    horizontalAlignment: Text.AlignHCenter
+                    font.pixelSize: 18
+                    font.letterSpacing: 3.2
+                    wght: 500
+                    color: root.dim
+                    textFormat: Text.StyledText
+                    text: {
+                        const c = root.ctx;
+                        if (!c) return "";
+                        const parts = ["<b>" + c.time_text + "</b>", c.date_text];
+                        if (c.has_battery) parts.push(c.battery_percent + "%" + (c.charging ? " charging" : ""));
+                        if (c.has_weather) parts.push(c.weather_temp);
+                        if (c.notifications > 0) parts.push(c.notifications + " mail");
+                        if (root.login && c.host) parts.push(c.host);
+                        if (root.tall && parts.length > 2) return parts.slice(0, 2).join("  ·  ") + "<br>" + parts.slice(2).join("  ·  ");
+                        return parts.join("  ·  ");
+                    }
                 }
             }
         }
@@ -1007,133 +1032,144 @@ Item {
     }
 
     // Load: one save file per user, the rest EMPTY.
-    Stage {
-        visible: root.screen === "files"
+    Loader {
+        id: files_loader
+        anchors.fill: parent
+        active: root.screen === "files"
+        sourceComponent: files_view
+    }
 
-        Win {
-            x: 41.6
-            y: 32
-            width: 1080
-            height: 64
-            pad: 0
-            SText {
-                x: 24
-                anchors.verticalCenter: parent.verticalCenter
-                text: "Select a file."
-            }
-        }
+    Component {
+        id: files_view
 
-        Win {
-            x: 1140
-            y: 32
-            width: 418.4
-            height: 64
-            pad: 0
-            SText {
-                anchors.centerIn: parent
-                text: "Slot " + (Math.floor(root.file_sel / 3) + 1)
-            }
-        }
-
-        Repeater {
-            model: 3
-            Item {
-                id: file
-                required property int index
-                readonly property int slot: root.page + file.index
-                readonly property var who: root.users[file.slot] || null
-                readonly property bool picked: file.slot === root.file_sel
-                visible: file.slot < root.slot_count
-                x: 128
-                y: 120 + file.index * 244
-                width: 1430.4
-                height: 228
-
-                Glove {
-                    visible: file.picked
-                    x: -86
-                    y: 44
+        Item {
+            Stage {
+                Win {
+                    x: 41.6
+                    y: 32
+                    width: 1080
+                    height: 64
+                    pad: 0
+                    SText {
+                        x: 24
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: "Select a file."
+                    }
                 }
 
                 Win {
-                    anchors.fill: parent
-                    pad: 22
-
+                    x: 1140
+                    y: 32
+                    width: 418.4
+                    height: 64
+                    pad: 0
                     SText {
-                        visible: !file.who
-                        anchors.verticalCenter: parent.verticalCenter
-                        x: 28
-                        text: "EMPTY"
-                        font.pixelSize: 30
-                        font.letterSpacing: 3
-                        color: root.dim
+                        anchors.centerIn: parent
+                        text: "Slot " + (Math.floor(root.file_sel / 3) + 1)
                     }
+                }
 
+                Repeater {
+                    model: 3
                     Item {
-                        visible: !!file.who
-                        anchors.fill: parent
+                        id: file
+                        required property int index
+                        readonly property int slot: root.page + file.index
+                        readonly property var who: root.users[file.slot] || null
+                        readonly property bool picked: file.slot === root.file_sel
+                        visible: file.slot < root.slot_count
+                        x: 128
+                        y: 120 + file.index * 244
+                        width: 1430.4
+                        height: 228
 
-                        Portrait {
-                            user_name: file.who ? file.who.name : ""
-                            x: 0
-                            y: 0
-                            width: 118
-                            height: 132
+                        Glove {
+                            visible: file.picked
+                            x: -86
+                            y: 44
                         }
 
-                        Column {
-                            x: 146
-                            y: 4
-                            spacing: 6
+                        Win {
+                            anchors.fill: parent
+                            pad: 22
+
                             SText {
-                                text: root.display_name(file.who)
-                                font.pixelSize: 34
-                                font.letterSpacing: 1.5
+                                visible: !file.who
+                                anchors.verticalCenter: parent.verticalCenter
+                                x: 28
+                                text: "EMPTY"
+                                font.pixelSize: 30
+                                font.letterSpacing: 3
+                                color: root.dim
                             }
-                            Row {
-                                spacing: 14
-                                Lbl { text: "Level"; font.pixelSize: 24 }
-                                SText { text: "99"; font.pixelSize: 24 }
-                            }
-                            Row {
-                                spacing: 14
-                                Lbl { text: "HP"; font.pixelSize: 24 }
-                                SText { text: "9999/9999"; font.pixelSize: 24 }
-                            }
-                        }
 
-                        Column {
-                            anchors.right: parent.right
-                            anchors.rightMargin: 14
-                            y: 4
-                            spacing: 6
-                            Row {
-                                anchors.right: parent.right
-                                spacing: 22
-                                Lbl { text: "Time"; font.pixelSize: 26 }
-                                SText { text: root.ctx ? root.ctx.time_text : ""; font.pixelSize: 26; width: 110; horizontalAlignment: Text.AlignRight }
-                            }
-                            Row {
-                                anchors.right: parent.right
-                                spacing: 22
-                                Lbl { text: "Gil"; font.pixelSize: 26 }
-                                SText { text: file.who ? String(1000 + file.slot * 337 + root.display_name(file.who).length * 71) : ""; font.pixelSize: 26; width: 110; horizontalAlignment: Text.AlignRight }
-                            }
-                        }
+                            Item {
+                                visible: !!file.who
+                                anchors.fill: parent
 
-                        Rectangle {
-                            x: 146
-                            y: 146
-                            width: parent.width - 146
-                            height: 1.6
-                            color: Qt.alpha(root.white, 0.25)
-                        }
+                                Portrait {
+                                    user_name: file.who ? file.who.name : ""
+                                    x: 0
+                                    y: 0
+                                    width: 118
+                                    height: 132
+                                }
 
-                        SText {
-                            x: 146
-                            y: 156
-                            text: root.ctx ? root.ctx.host || "Midgar" : ""
-                            font.pixelSize: 24
+                                Column {
+                                    x: 146
+                                    y: 4
+                                    spacing: 6
+                                    SText {
+                                        text: root.display_name(file.who)
+                                        font.pixelSize: 34
+                                        font.letterSpacing: 1.5
+                                    }
+                                    Row {
+                                        spacing: 14
+                                        Lbl { text: "Level"; font.pixelSize: 24 }
+                                        SText { text: "99"; font.pixelSize: 24 }
+                                    }
+                                    Row {
+                                        spacing: 14
+                                        Lbl { text: "HP"; font.pixelSize: 24 }
+                                        SText { text: "9999/9999"; font.pixelSize: 24 }
+                                    }
+                                }
+
+                                Column {
+                                    anchors.right: parent.right
+                                    anchors.rightMargin: 14
+                                    y: 4
+                                    spacing: 6
+                                    Row {
+                                        anchors.right: parent.right
+                                        spacing: 22
+                                        Lbl { text: "Time"; font.pixelSize: 26 }
+                                        SText { text: root.ctx ? root.ctx.time_text : ""; font.pixelSize: 26; width: 110; horizontalAlignment: Text.AlignRight }
+                                    }
+                                    Row {
+                                        anchors.right: parent.right
+                                        spacing: 22
+                                        Lbl { text: "Gil"; font.pixelSize: 26 }
+                                        SText { text: file.who ? String(1000 + file.slot * 337 + root.display_name(file.who).length * 71) : ""; font.pixelSize: 26; width: 110; horizontalAlignment: Text.AlignRight }
+                                    }
+                                }
+
+                                Rectangle {
+                                    x: 146
+                                    y: 146
+                                    width: parent.width - 146
+                                    height: 1.6
+                                    color: Qt.alpha(root.white, 0.25)
+                                }
+
+                                SText {
+                                    x: 146
+                                    y: 156
+                                    text: root.ctx ? root.ctx.host || "Midgar" : ""
+                                    font.pixelSize: 24
+                                }
+                            }
                         }
                     }
                 }
@@ -1142,304 +1178,324 @@ Item {
     }
 
     // Name entry: the password as the character naming screen, with the save slot's stats.
-    Stage {
-        id: pw_stage
-        visible: root.screen === "pw"
-        tall_frame: [0, 787.2, 0, 0.05]
+    Loader {
+        id: pw_loader
+        anchors.fill: parent
+        active: root.screen === "pw"
+        sourceComponent: pw_view
+    }
 
-        Win {
-            x: 41.6
-            y: 32
-            width: root.tall ? 704 : 1516.8
-            height: 64
-            k: pw_stage.k
-            pad: 0
-            SText {
-                anchors.centerIn: parent
-                text: {
-                    const c = root.ctx;
-                    if (!c) return "";
-                    if (root.prompt !== "") return root.prompt;
-                    if (root.phase === "wrong") return (c.message && c.message !== "Wrong password" ? c.message + ". " : "The password was wrong. ") + "Attempt " + c.fail_count + ". Try again.";
-                    if (root.checking) return "Please wait...";
-                    return "Enter the password for " + root.display_name(root.current) + "." + (c.caps_lock ? "  CAPS LOCK is on." : "");
-                }
-                font.pixelSize: 24
-                color: root.phase === "wrong" ? Theme.bright_red : root.white
-            }
-        }
+    Component {
+        id: pw_view
 
-        Win {
-            id: pw_win
-            x: 41.6
-            y: 134.4
-            width: 704
-            height: 330
-            pad: 22
-            k: pw_stage.k
-
-            Lbl {
-                text: "Password"
+        Item {
+            function play_miss() {
+                shake.restart();
+                miss_pop.restart();
             }
 
-            Row {
-                id: field
-                x: 80
-                y: 48
-                spacing: 14.4
+            Stage {
+                id: pw_stage
+                tall_frame: [0, 787.2, 0, 0.05]
 
-                Repeater {
-                    model: 10
-                    Item {
-                        id: cell
-                        required property int index
-                        readonly property bool cur: cell.index === Math.min(root.typed, 10) && !root.checking
-                        width: 30.4
-                        height: 48
-
-                        SText {
-                            anchors.horizontalCenter: parent.horizontalCenter
-                            y: 2
-                            visible: cell.index < root.typed
-                            text: "*"
-                            font.pixelSize: 38
-                        }
-
-                        Rectangle {
-                            anchors.bottom: parent.bottom
-                            width: parent.width
-                            height: 3.2
-                            color: cell.cur ? Theme.yellow : Qt.alpha(root.white, 0.7)
-                            opacity: cell.cur && root.animate && blink.on ? 0.25 : 1
-                        }
-                    }
-                }
-            }
-
-            Glove {
-                x: 4
-                y: field.y + 8
-            }
-
-            Grid {
-                x: 0
-                y: 128
-                width: parent.width
-                columns: 13
-                columnSpacing: 6.4
-                rowSpacing: 2.4
-
-                Repeater {
-                    model: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz".split("")
-                    Item {
-                        id: key
-                        required property var modelData
-                        required property int index
-                        readonly property bool on: root.phase !== "wrong" && key.index === (root.typed * 17 + 17) % 52
-                        width: (660 - 12 * 6.4) / 13
-                        height: 32
-
-                        Rectangle {
-                            anchors.fill: parent
-                            visible: key.on
-                            color: "transparent"
-                            border.width: 1.9
-                            border.color: Qt.alpha(root.white, 0.6)
-                        }
-
-                        SText {
-                            anchors.centerIn: parent
-                            text: key.modelData
-                            font.pixelSize: 19
-                            color: key.on ? root.white : Qt.alpha(root.white, 0.5)
-                        }
-                    }
-                }
-            }
-
-            SequentialAnimation {
-                id: shake
-                loops: 2
-                NumberAnimation { target: pw_win; property: "x"; to: 41.6 - 12.8; duration: 110 }
-                NumberAnimation { target: pw_win; property: "x"; to: 41.6 + 12.8; duration: 225 }
-                NumberAnimation { target: pw_win; property: "x"; to: 41.6; duration: 110 }
-            }
-        }
-
-        SText {
-            id: miss
-            readonly property real rest_y: root.tall ? 820 : 600
-            visible: root.phase === "wrong"
-            x: 393.6 - width / 2
-            y: miss.rest_y
-            text: "Miss"
-            font.pixelSize: 70
-            wght: 900
-            font.italic: true
-            font.letterSpacing: 2.4
-            style: Text.Outline
-            styleColor: root.shadow
-
-            SequentialAnimation {
-                id: miss_pop
-                PropertyAction { target: miss; property: "opacity"; value: 0 }
-                PropertyAction { target: miss; property: "y"; value: miss.rest_y + 24 }
-                ParallelAnimation {
-                    NumberAnimation { target: miss; property: "y"; to: miss.rest_y - 16; duration: 280; easing.type: Easing.OutBack; easing.overshoot: 3 }
-                    NumberAnimation { target: miss; property: "opacity"; to: 1; duration: 200 }
-                }
-                NumberAnimation { target: miss; property: "y"; to: miss.rest_y; duration: 210; easing.type: Easing.OutQuad }
-            }
-        }
-
-        Win {
-            x: root.tall ? 41.6 : 1600 - 41.6 - 704
-            y: root.tall ? 496.4 : 900 - 41.6 - height
-            width: 704
-            height: 214
-            pad: 22
-            k: pw_stage.k
-
-            Portrait {
-                user_name: root.current.name
-                x: 0
-                y: 0
-                width: 102.4
-                height: 115.2
-            }
-
-            Column {
-                x: 123
-                y: -2
-                spacing: 0
-                SText { text: root.display_name(root.current); font.pixelSize: 27; font.letterSpacing: 1.6 }
-                Row {
-                    spacing: 9.6
-                    Lbl { text: "LV"; font.pixelSize: 20; width: 34 }
-                    SText { text: "99"; font.pixelSize: 20 }
-                }
-                Row {
-                    spacing: 9.6
-                    Lbl { text: "HP"; font.pixelSize: 20; width: 34; anchors.verticalCenter: parent.verticalCenter }
+                Win {
+                    x: 41.6
+                    y: 32
+                    width: root.tall ? 704 : 1516.8
+                    height: 64
+                    k: pw_stage.k
+                    pad: 0
                     SText {
-                        anchors.verticalCenter: parent.verticalCenter
-                        width: 96
-                        text: root.ctx && root.ctx.has_battery ? root.ctx.battery_percent + "/100" : "9999/9999"
-                        font.pixelSize: 20
-                    }
-                    Gauge {
-                        anchors.verticalCenter: parent.verticalCenter
-                        value: root.ctx && root.ctx.has_battery ? root.ctx.battery_percent / 100 : 1
-                    }
-                }
-                Row {
-                    spacing: 9.6
-                    Lbl { text: "MP"; font.pixelSize: 20; width: 34; anchors.verticalCenter: parent.verticalCenter }
-                    SText {
-                        anchors.verticalCenter: parent.verticalCenter
-                        width: 96
-                        text: root.mem_total > 0 ? Math.round(root.mem_avail / 1048576) + "/" + Math.round(root.mem_total / 1048576) : "999/999"
-                        font.pixelSize: 20
-                    }
-                    Gauge {
-                        anchors.verticalCenter: parent.verticalCenter
-                        value: root.mem_total > 0 ? root.mem_avail / root.mem_total : 1
-                        lo: Qt.tint(Theme.bg_surface, Qt.alpha(Theme.green, 0.6))
-                        hi: Theme.bright_green
+                        anchors.centerIn: parent
+                        text: {
+                            const c = root.ctx;
+                            if (!c) return "";
+                            if (root.prompt !== "") return root.prompt;
+                            if (root.phase === "wrong") return (c.message && c.message !== "Wrong password" ? c.message + ". " : "The password was wrong. ") + "Attempt " + c.fail_count + ". Try again.";
+                            if (root.checking) return "Please wait...";
+                            return "Enter the password for " + root.display_name(root.current) + "." + (c.caps_lock ? "  CAPS LOCK is on." : "");
+                        }
+                        font.pixelSize: 24
+                        color: root.phase === "wrong" ? Theme.bright_red : root.white
                     }
                 }
-            }
 
-            Column {
-                anchors.right: parent.right
-                y: -2
-                Lbl { anchors.right: parent.right; text: "Time"; font.pixelSize: 20 }
-                SText { anchors.right: parent.right; text: root.ctx ? root.ctx.time_text : ""; font.pixelSize: 42 }
-                SText { anchors.right: parent.right; text: root.ctx ? root.ctx.date_text : ""; font.pixelSize: 20 }
-            }
+                Win {
+                    id: pw_win
+                    x: 41.6
+                    y: 134.4
+                    width: 704
+                    height: 330
+                    pad: 22
+                    k: pw_stage.k
 
-            Rectangle {
-                x: 0
-                y: 128
-                width: parent.width
-                height: 1.6
-                color: Qt.alpha(root.white, 0.25)
-            }
+                    Lbl {
+                        text: "Password"
+                    }
 
-            Flow {
-                x: 0
-                y: 136
-                width: parent.width
-                spacing: 25.6
+                    Row {
+                        id: field
+                        x: 80
+                        y: 48
+                        spacing: 14.4
 
-                Row {
-                    spacing: 9.6
-                    Lbl { text: "Location"; font.pixelSize: 18 }
-                    SText { text: root.ctx ? root.ctx.host : ""; font.pixelSize: 18 }
+                        Repeater {
+                            model: 10
+                            Item {
+                                id: cell
+                                required property int index
+                                readonly property bool cur: cell.index === Math.min(root.typed, 10) && !root.checking
+                                width: 30.4
+                                height: 48
+
+                                SText {
+                                    anchors.horizontalCenter: parent.horizontalCenter
+                                    y: 2
+                                    visible: cell.index < root.typed
+                                    text: "*"
+                                    font.pixelSize: 38
+                                }
+
+                                Rectangle {
+                                    anchors.bottom: parent.bottom
+                                    width: parent.width
+                                    height: 3.2
+                                    color: cell.cur ? Theme.yellow : Qt.alpha(root.white, 0.7)
+                                    opacity: cell.cur && root.animate && blink.on ? 0.25 : 1
+                                }
+                            }
+                        }
+                    }
+
+                    Glove {
+                        x: 4
+                        y: field.y + 8
+                    }
+
+                    Grid {
+                        x: 0
+                        y: 128
+                        width: parent.width
+                        columns: 13
+                        columnSpacing: 6.4
+                        rowSpacing: 2.4
+
+                        Repeater {
+                            model: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz".split("")
+                            Item {
+                                id: key
+                                required property var modelData
+                                required property int index
+                                readonly property bool on: root.phase !== "wrong" && key.index === (root.typed * 17 + 17) % 52
+                                width: (660 - 12 * 6.4) / 13
+                                height: 32
+
+                                Rectangle {
+                                    anchors.fill: parent
+                                    visible: key.on
+                                    color: "transparent"
+                                    border.width: 1.9
+                                    border.color: Qt.alpha(root.white, 0.6)
+                                }
+
+                                SText {
+                                    anchors.centerIn: parent
+                                    text: key.modelData
+                                    font.pixelSize: 19
+                                    color: key.on ? root.white : Qt.alpha(root.white, 0.5)
+                                }
+                            }
+                        }
+                    }
+
+                    SequentialAnimation {
+                        id: shake
+                        loops: 2
+                        NumberAnimation { target: pw_win; property: "x"; to: 41.6 - 12.8; duration: 110 }
+                        NumberAnimation { target: pw_win; property: "x"; to: 41.6 + 12.8; duration: 225 }
+                        NumberAnimation { target: pw_win; property: "x"; to: 41.6; duration: 110 }
+                    }
                 }
-                Row {
-                    visible: !!root.ctx && root.ctx.has_weather
-                    spacing: 9.6
-                    Lbl { text: "Sky"; font.pixelSize: 18 }
-                    SText { text: root.ctx ? root.ctx.weather_temp + " " + root.ctx.weather_cond : ""; font.pixelSize: 18 }
+
+                SText {
+                    id: miss
+                    readonly property real rest_y: root.tall ? 820 : 600
+                    visible: root.phase === "wrong"
+                    x: 393.6 - width / 2
+                    y: miss.rest_y
+                    text: "Miss"
+                    font.pixelSize: 70
+                    wght: 900
+                    font.italic: true
+                    font.letterSpacing: 2.4
+                    style: Text.Outline
+                    styleColor: root.shadow
+
+                    SequentialAnimation {
+                        id: miss_pop
+                        PropertyAction { target: miss; property: "opacity"; value: 0 }
+                        PropertyAction { target: miss; property: "y"; value: miss.rest_y + 24 }
+                        ParallelAnimation {
+                            NumberAnimation { target: miss; property: "y"; to: miss.rest_y - 16; duration: 280; easing.type: Easing.OutBack; easing.overshoot: 3 }
+                            NumberAnimation { target: miss; property: "opacity"; to: 1; duration: 200 }
+                        }
+                        NumberAnimation { target: miss; property: "y"; to: miss.rest_y; duration: 210; easing.type: Easing.OutQuad }
+                    }
                 }
-                Row {
-                    visible: !!root.ctx && !root.login
-                    spacing: 9.6
-                    Lbl { text: "Mail"; font.pixelSize: 18 }
-                    SText { text: root.ctx ? String(root.ctx.notifications) : ""; font.pixelSize: 18 }
+
+                Win {
+                    x: root.tall ? 41.6 : 1600 - 41.6 - 704
+                    y: root.tall ? 496.4 : 900 - 41.6 - height
+                    width: 704
+                    height: 214
+                    pad: 22
+                    k: pw_stage.k
+
+                    Portrait {
+                        user_name: root.current.name
+                        x: 0
+                        y: 0
+                        width: 102.4
+                        height: 115.2
+                    }
+
+                    Column {
+                        x: 123
+                        y: -2
+                        spacing: 0
+                        SText { text: root.display_name(root.current); font.pixelSize: 27; font.letterSpacing: 1.6 }
+                        Row {
+                            spacing: 9.6
+                            Lbl { text: "LV"; font.pixelSize: 20; width: 34 }
+                            SText { text: "99"; font.pixelSize: 20 }
+                        }
+                        Row {
+                            spacing: 9.6
+                            Lbl { text: "HP"; font.pixelSize: 20; width: 34; anchors.verticalCenter: parent.verticalCenter }
+                            SText {
+                                anchors.verticalCenter: parent.verticalCenter
+                                width: 96
+                                text: root.ctx && root.ctx.has_battery ? root.ctx.battery_percent + "/100" : "9999/9999"
+                                font.pixelSize: 20
+                            }
+                            Gauge {
+                                anchors.verticalCenter: parent.verticalCenter
+                                value: root.ctx && root.ctx.has_battery ? root.ctx.battery_percent / 100 : 1
+                            }
+                        }
+                        Row {
+                            spacing: 9.6
+                            Lbl { text: "MP"; font.pixelSize: 20; width: 34; anchors.verticalCenter: parent.verticalCenter }
+                            SText {
+                                anchors.verticalCenter: parent.verticalCenter
+                                width: 96
+                                text: root.mem_total > 0 ? Math.round(root.mem_avail / 1048576) + "/" + Math.round(root.mem_total / 1048576) : "999/999"
+                                font.pixelSize: 20
+                            }
+                            Gauge {
+                                anchors.verticalCenter: parent.verticalCenter
+                                value: root.mem_total > 0 ? root.mem_avail / root.mem_total : 1
+                                lo: Qt.tint(Theme.bg_surface, Qt.alpha(Theme.green, 0.6))
+                                hi: Theme.bright_green
+                            }
+                        }
+                    }
+
+                    Column {
+                        anchors.right: parent.right
+                        y: -2
+                        Lbl { anchors.right: parent.right; text: "Time"; font.pixelSize: 20 }
+                        SText { anchors.right: parent.right; text: root.ctx ? root.ctx.time_text : ""; font.pixelSize: 42 }
+                        SText { anchors.right: parent.right; text: root.ctx ? root.ctx.date_text : ""; font.pixelSize: 20 }
+                    }
+
+                    Rectangle {
+                        x: 0
+                        y: 128
+                        width: parent.width
+                        height: 1.6
+                        color: Qt.alpha(root.white, 0.25)
+                    }
+
+                    Flow {
+                        x: 0
+                        y: 136
+                        width: parent.width
+                        spacing: 25.6
+
+                        Row {
+                            spacing: 9.6
+                            Lbl { text: "Location"; font.pixelSize: 18 }
+                            SText { text: root.ctx ? root.ctx.host : ""; font.pixelSize: 18 }
+                        }
+                        Row {
+                            visible: !!root.ctx && root.ctx.has_weather
+                            spacing: 9.6
+                            Lbl { text: "Sky"; font.pixelSize: 18 }
+                            SText { text: root.ctx ? root.ctx.weather_temp + " " + root.ctx.weather_cond : ""; font.pixelSize: 18 }
+                        }
+                        Row {
+                            visible: !!root.ctx && !root.login
+                            spacing: 9.6
+                            Lbl { text: "Mail"; font.pixelSize: 18 }
+                            SText { text: root.ctx ? String(root.ctx.notifications) : ""; font.pixelSize: 18 }
+                        }
+                    }
                 }
             }
         }
     }
 
     // Screensaver: a play-time window walks the corners over the Lifestream.
-    Stage {
-        visible: root.screen === "saver"
+    Loader {
+        id: saver_loader
+        anchors.fill: parent
+        active: root.screen === "saver"
+        sourceComponent: saver_view
+    }
 
-        Win {
-            id: timebox
-            property int spot: 0
-            readonly property var spots: [[41.6, 900 - 41.6 - 132], [1600 - 41.6 - 416, 900 - 41.6 - 132], [1600 - 41.6 - 416, 41.6], [41.6, 41.6]]
-            x: timebox.spots[timebox.spot][0]
-            y: timebox.spots[timebox.spot][1]
-            width: 416
-            height: 132
-            pad: 20
+    Component {
+        id: saver_view
 
-            Timer {
-                interval: 120000
-                repeat: true
-                running: root.screen === "saver"
-                onTriggered: timebox.spot = (timebox.spot + 1) % 4
-            }
+        Item {
+            Stage {
+                Win {
+                    id: timebox
+                    readonly property var spots: [[41.6, 900 - 41.6 - 132], [1600 - 41.6 - 416, 900 - 41.6 - 132], [1600 - 41.6 - 416, 41.6], [41.6, 41.6]]
+                    x: timebox.spots[root.saver_spot][0]
+                    y: timebox.spots[root.saver_spot][1]
+                    width: 416
+                    height: 132
+                    pad: 20
 
-            Column {
-                width: parent.width
-                spacing: 0
-                Item {
-                    width: parent.width
-                    height: 34
-                    Lbl { anchors.verticalCenter: parent.verticalCenter; text: "Time"; font.pixelSize: 20 }
-                    SText { anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter; text: root.ctx ? root.ctx.time_text : ""; font.pixelSize: 29 }
-                }
-                Item {
-                    visible: !root.login
-                    width: parent.width
-                    height: 30
-                    Lbl { anchors.verticalCenter: parent.verticalCenter; text: "Mail"; font.pixelSize: 20 }
-                    SText { anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter; text: root.ctx ? String(root.ctx.notifications) : ""; font.pixelSize: 20 }
-                }
-                SText {
-                    font.pixelSize: 16
-                    color: Qt.tint(Theme.fg_dim, Qt.alpha(root.white, 0.75))
-                    text: {
-                        const c = root.ctx;
-                        if (!c) return "";
-                        const parts = [c.date_text];
-                        if (c.has_battery) parts.push(c.battery_percent + "%" + (c.charging ? " charging" : ""));
-                        if (c.has_weather) parts.push(c.weather_temp);
-                        return parts.join("  ·  ");
+                    Column {
+                        width: parent.width
+                        spacing: 0
+                        Item {
+                            width: parent.width
+                            height: 34
+                            Lbl { anchors.verticalCenter: parent.verticalCenter; text: "Time"; font.pixelSize: 20 }
+                            SText { anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter; text: root.ctx ? root.ctx.time_text : ""; font.pixelSize: 29 }
+                        }
+                        Item {
+                            visible: !root.login
+                            width: parent.width
+                            height: 30
+                            Lbl { anchors.verticalCenter: parent.verticalCenter; text: "Mail"; font.pixelSize: 20 }
+                            SText { anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter; text: root.ctx ? String(root.ctx.notifications) : ""; font.pixelSize: 20 }
+                        }
+                        SText {
+                            font.pixelSize: 16
+                            color: Qt.tint(Theme.fg_dim, Qt.alpha(root.white, 0.75))
+                            text: {
+                                const c = root.ctx;
+                                if (!c) return "";
+                                const parts = [c.date_text];
+                                if (c.has_battery) parts.push(c.battery_percent + "%" + (c.charging ? " charging" : ""));
+                                if (c.has_weather) parts.push(c.weather_temp);
+                                return parts.join("  ·  ");
+                            }
+                        }
                     }
                 }
             }
@@ -1517,10 +1573,19 @@ Item {
     }
 
     onStream_tChanged: {
-        stream_back.requestPaint();
+        if (saver_back_loader.item) saver_back_loader.item.repaint();
     }
     onStream_onChanged: {
-        if (root.stream_on) stream_back.requestPaint();
+        if (root.stream_on && saver_back_loader.item) saver_back_loader.item.repaint();
+    }
+
+    property int saver_spot: 0
+
+    Timer {
+        interval: 120000
+        repeat: true
+        running: root.screen === "saver"
+        onTriggered: root.saver_spot = (root.saver_spot + 1) % 4
     }
 
     // MP: available memory in GiB, read while the name entry shows.
