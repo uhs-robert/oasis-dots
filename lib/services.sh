@@ -313,3 +313,16 @@ setup_voxtype() {
   fi
   success "voxtype configured"
 }
+
+# Checks for the Lua-config Hyprland runtime, then says how to start the session the installer set up.
+print_next_steps() {
+  if ! command -v start-hyprland &>/dev/null; then
+    warn "start-hyprland not found: this config needs a Hyprland build with the Lua config API (the hyprland package)"
+    return
+  fi
+  if systemctl is-enabled greetd &>/dev/null; then
+    warn "Next: reboot to log in through greetd"
+  else
+    warn "Next: reboot, or log out and run start-hyprland from a TTY"
+  fi
+}

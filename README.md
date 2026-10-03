@@ -30,6 +30,8 @@ An Arch Linux desktop on Hyprland, driven from the keyboard with vim binds and m
 > [!NOTE]
 > Managed with [GNU Stow](https://www.gnu.org/software/stow/); packages live under `home/`.
 
+**Requirements:** Arch Linux and a Hyprland build with the Lua config API (the `hl` global) and the `start-hyprland` launcher. The current `hyprland` package from the Arch repos, which the installer pulls in, provides both.
+
 ## 🎹 Keyboard First, for Vim Users
 
 > Manage your GUI, TUI, and everything in-between with just a keyboard and vim modes/motions.
@@ -211,7 +213,11 @@ Each style can bring its own lock screen, and the login screen reuses it.
 
 ## 📦 Full Install (Automated)
 
+Clone the repo to `~/dotfiles`; topgrade's git step pulls it from there.
+
 ```bash
+git clone https://github.com/uhs-robert/oasis-dots.git ~/dotfiles
+cd ~/dotfiles
 ./install.sh        # full install (Arch only)
 ./install.sh -m     # minimal (skip optional components)
 ./install.sh --server # headless: shell/CLI/dev packages and configs only
@@ -220,6 +226,24 @@ Each style can bring its own lock screen, and the login screen reuses it.
 ```
 
 Installs system packages, AUR packages, fonts, and dev tools, then stows dotfiles into `~/`. Prompts for optional components (greetd, Steam, Nvidia, dev runtimes).
+
+When it finishes, reboot. Without greetd you can instead log out and run `start-hyprland` from a TTY, unless you installed Nvidia drivers or xone.
+
+<details>
+<summary>What the installer touches outside your home directory</summary>
+
+It uses `sudo` for these; the flags in brackets skip them.
+
+- Packages through pacman and paru [`--no-aur` for paru], the `rustup` toolchain [`--no-cargo`] and Maple Mono NF in `/usr/local/share/fonts`.
+- `/etc`: `vtrgb-oasis`, `keyd/default.conf` and two pacman hooks; `/usr/local/bin` and `/usr/local/share/betterbird-autoconfig` for the voxtype GPU and Betterbird autoconfig helpers, which also patch `/opt/betterbird` when it exists [`--no-system-files`].
+- `/root`: links root's `.zshrc`, `.zsh_plugins.txt`, Neovim and Yazi config to yours, and adds `yazi-root` and a `/usr/local/sbin/yazi` wrapper, after a prompt [`--no-system-files`].
+- greetd, after a prompt: `/etc/greetd`, `/etc/tuigreet`, `/usr/local/bin/tuigreet-oasis`, the Quickshell greeter in `/etc/greetd/quickshell`, `/usr/local/bin/qs-greeter` and `/var/lib/qs-greeter`, then enables `greetd` [`--no-services`].
+- Your login shell is changed to zsh, and `keyd` and `power-profiles-daemon` are enabled [`--no-services`].
+- Steam, after a prompt: native Steam enables `[multilib]` in `/etc/pacman.conf` and runs a full `pacman -Syu`, Flatpak Steam installs `flatpak` and adds a system-wide Flathub remote; the optional xone driver builds a DKMS kernel module [`--no-services`].
+- Nvidia drivers, after a prompt [`--no-services`].
+- voxtype adds you to the `input` group [`--no-services`].
+
+</details>
 
 If stow reports a conflict with an existing file, the installer shows stow's error and carries on; move the conflicting files aside and run `just stow <package>`. Never use `stow --adopt`, which moves your files into the repo.
 
