@@ -151,7 +151,13 @@ Singleton {
         root.refresh_if_due();
     }
 
-    onOfflineChanged: if (!root.offline) root.refresh_if_due()
+    property bool pending_force: false
+
+    onOfflineChanged: {
+        if (root.offline) return;
+        if (root.pending_force) root.refresh(true);
+        else root.refresh_if_due();
+    }
 
     // Checks every minute so the refresh follows the data's age, not process uptime.
     Timer {
@@ -170,7 +176,12 @@ Singleton {
 
     // A non-forced call within min_refresh_gap_ms of the last success is a no-op.
     function refresh(force) {
-        if (root.loading || root.offline) return;
+        if (root.offline) {
+            if (force) root.pending_force = true;
+            return;
+        }
+        if (root.loading) return;
+        root.pending_force = false;
         const now = Date.now();
         if (!force && root.last_success_ms > 0 && (now - root.last_success_ms) < root.min_refresh_gap_ms) return;
         root.loading = true;
