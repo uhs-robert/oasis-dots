@@ -153,14 +153,12 @@ local function detect_hybrid()
   local edp_connectors = io.popen("ls -d /sys/class/drm/card*-eDP-* 2>/dev/null")
   if not edp_connectors then return false end
 
-  local found_connected = false
   for conn_path in edp_connectors:lines() do
     local status_file = io.open(conn_path .. "/status", "r")
     if status_file then
       local status = status_file:read("*l") or ""
       status_file:close()
       if status == "connected" then
-        found_connected = true
         local card_name = conn_path:match(".*/(.-)%-eDP%-")
         if card_name then
           local driver_link = io.popen("readlink -f /sys/class/drm/" .. card_name .. "/device/driver 2>/dev/null")
