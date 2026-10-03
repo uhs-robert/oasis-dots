@@ -89,5 +89,5 @@ return function(c)
     c.bright_white
   )
 
-  Utils.write_file(HOME .. "/.config/rofi/colors.rasi", rasi)
+  Utils.write_file_if_changed(HOME .. "/.config/rofi/colors.rasi", rasi)
 end

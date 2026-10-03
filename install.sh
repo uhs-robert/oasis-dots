@@ -99,6 +99,7 @@ main() {
   info "Stowing ${stow_section,,} packages..."
   mapfile -t core < <(read_ini_section stow.ini "$stow_section")
   do_stow "${core[@]}"
+  seed_generated_defaults "${core[@]}"
 
   if command -v ya >/dev/null 2>&1 && [[ -f "$HOME/.config/yazi/package.toml" ]]; then
     info "Installing Yazi packages..."
@@ -112,6 +113,7 @@ main() {
   if [[ ${#SELECTED_OPTIONAL[@]} -gt 0 ]]; then
     info "Stowing optional packages..."
     do_stow "${SELECTED_OPTIONAL[@]}"
+    seed_generated_defaults "${SELECTED_OPTIONAL[@]}"
   fi
 
   setup_git_identity
