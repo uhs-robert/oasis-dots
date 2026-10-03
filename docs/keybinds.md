@@ -6,11 +6,11 @@ The keys this setup ships are defined in Lua under `~/.config/hypr/keymaps/`. Le
 
 You rarely need to open a file to find a bind.
 
-- `SUPER + /` searches the binds of the mode you are in, and runs the one you pick.
-- `SUPER + SPACE` opens the Leader menu, which lists every other menu.
-- Entering any menu shows its keys in the which-key overlay.
+- `SUPER + /` searches every bind in the mode you are in and runs the one you pick. Menus are listed first, each with a `+` in front of its name, so it doubles as a map of the menus you can open from here.
+- `SUPER + SHIFT + /` opens which-key from anywhere, showing every key in the current menu at a glance, or the global keys when you are in none.
+- Entering a menu also shows its keys in which-key.
 
-All three read the description written next to each bind, so anything you add shows up in them too.
+All of them read the description written next to each bind, so anything you add shows up in them too.
 
 ## Where the shipped binds live
 
