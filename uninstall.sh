@@ -91,10 +91,15 @@ remove_repo_links() {
 # a pacman hook pointing at a removed script.
 remove_system_files() {
   [[ $OPT_SYSTEM_FILES -eq 0 ]] && return
-  confirm "Remove installed system files (/etc/greetd, /etc/tuigreet, /etc/vtrgb-oasis, /etc/keyd, pacman hooks, betterbird autoconfig, etc.)?" || return
+  confirm "Remove installed system files (/etc/greetd, /var/lib/qs-greeter, /etc/tuigreet, /etc/vtrgb-oasis, /etc/keyd, pacman hooks, betterbird autoconfig, etc.)?" || return
 
   local files=(
     /etc/greetd/config.toml
+    /etc/greetd/kitty.conf
+    /etc/greetd/hyprland.lua
+    /etc/greetd/hyprland.lua.bak
+    /etc/greetd/admin_user
+    /usr/local/bin/qs-greeter
     /etc/tuigreet/config.toml
     /usr/local/bin/tuigreet-oasis
     /etc/vtrgb-oasis
@@ -116,17 +121,26 @@ remove_system_files() {
     fi
   done
   sudo rmdir /usr/local/share/betterbird-autoconfig 2>/dev/null || true
+
+  local dirs=(/etc/greetd/quickshell /var/lib/qs-greeter)
+  for d in "${dirs[@]}"; do
+    if [[ -d "$d" ]]; then
+      sudo rm -rf "$d" && success "Removed $d"
+    else
+      warn "$d not found, skipping"
+    fi
+  done
 }
 
 # Prompts to remove the /root symlinks and generated files created by setup_root_symlinks.
 # /root is mode 700, so runs under sudo rather than as the invoking user.
 remove_root_symlinks() {
   [[ $OPT_SYSTEM_FILES -eq 0 ]] && return
-  confirm "Remove root symlinks and yazi-root files (/root/.zshrc, /root/.oh-my-zsh, /root/.config/nvim, /root/.config/yazi, /usr/local/bin/yazi-root, /usr/local/sbin/yazi)?" || return
+  confirm "Remove root symlinks and yazi-root files (/root/.zshrc, /root/.zsh_plugins.txt, /root/.config/nvim, /root/.config/yazi, /usr/local/bin/yazi-root, /usr/local/sbin/yazi)?" || return
 
   local links=(
     /root/.zshrc
-    /root/.oh-my-zsh
+    /root/.zsh_plugins.txt
     /root/.config/nvim
     /root/.config/yazi/flavors
     /root/.config/yazi/plugins
