@@ -2,6 +2,8 @@
 
 The desktop shell for this Hyprland setup, written for [Quickshell](https://quickshell.org). One config replaces Waybar, swaync, the rofi pickers, the lock screen and the greeter UI. Every monitor gets its own bar, and all colors follow the active Oasis theme (the GoldenEye style's Classic watch colours and its game iconography are the exception, see Styles).
 
+Tested with Quickshell 0.3.1 (the `quickshell` package in the Arch repos); the installer warns if yours is older.
+
 Hyprland starts it with `qs -n` (see `home/hypr/.config/hypr/config/autostart/`). Hyprland binds reach it over IPC. When it isn't running, the pickers fall back to rofi and the lock to hyprlock.
 
 ## Layout
@@ -25,6 +27,35 @@ Hyprland starts it with `qs -n` (see `home/hypr/.config/hypr/config/autostart/`)
 | `bars.json`   | Tracked bar layout per monitor, matched by description or connector name                   |
 
 Weather reads `weather.json`, with untracked per-machine overrides (real coordinates, say) in `weather.local.json`. With `latitude` and `longitude` set to `"auto"` the location comes from an IP lookup over HTTPS (ipwho.is), cached and repeated at most once a day.
+
+## Bar layout
+
+`bars.json` is a JSON array of rules. The first rule that matches a monitor decides its bar, and a monitor no rule matches gets no bar (the log says so). The tracked file ships one `"*"` rule. Edit it live, the bar reloads on save, and a broken file keeps the last good layout.
+
+| Key | Meaning |
+| --- | --- |
+| `match` | `"*"` for every monitor, or `{ "name": "DP-*", "description": "*Dell*" }`. Both keys are optional globs (`*`, `?`) and must all match. `{}` or any string other than `"*"` never matches. `name` is the connector, `description` is Hyprland's monitor description (`hyprctl monitors`) |
+| `compact` | Tighter bar that hides every `system` module. Defaults to true on `eDP*` connectors, false elsewhere |
+| `height` | Bar height in pixels. Defaults to the style's bar height, else 34 |
+| `bar` | `false` shows no bar on matching monitors |
+| `left`, `center`, `right` | Module names, in draw order. Repeats within one list are dropped (a module in both `left` and `right` draws twice), unknown names are skipped with a warning. Lualine styles draw `center` inside the right island and re-sort it with `right` into their x/y/z sections, so the listed order only holds within a section |
+
+Modules: `start` (Start button), `workspaces`, `clock` (calendar popup), `tray`, `volume`, `battery`, `bluetooth`, `network`, `weather`, `keeptabs` (AI agent sessions busy, done or waiting, jump to one; hidden while none run), `updates` (pending package updates), `voxtype` (dictation status), `recording` (screen recording chip), `notifications` (center and Do Not Disturb), `media` (now playing, not in the default layout) and `system`. `system` takes an argument, `system:cpu`, `system:memory` or `system:temperature`, and can be listed more than once with different arguments; bare `system` starts on `cpu`.
+
+```json
+[
+  { "match": { "name": "eDP-*" }, "compact": true, "left": ["start", "workspaces"], "center": ["clock"], "right": ["volume", "battery"] },
+  { "match": { "description": "*DELL U2720Q*" }, "height": 40, "left": ["start", "workspaces", "media"], "center": ["clock"], "right": ["tray", "network"] },
+  { "match": "*", "left": ["start", "workspaces"], "center": ["clock"], "right": ["volume"] }
+]
+```
+
+Settings > Bar modules edits the layout without touching the tracked file. It saves to `quickshell/bars.json` in the state folder (see Settings panel), with two kinds of override over the matching rule:
+
+- `shared` applies to every monitor without its own layout. `place` maps a module to `left`, `center`, `right` or `hidden`, and `order` lists modules that swap among the slots they already fill on each side, and the rest do not move.
+- `monitors` holds one full `left`/`center`/`right` layout (and `compact`) per monitor, keyed by `<description> @ <connector>`, or by the connector alone when the monitor has no description. After a connector change, the only saved key with the same description is reused. It replaces the rule's lists outright, so later edits to the tracked file no longer reach that monitor. `height` and `bar` always come from the rule.
+
+Delete the state file to go back to the tracked layout.
 
 ## Styles
 

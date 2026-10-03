@@ -30,7 +30,7 @@ An Arch Linux desktop on Hyprland, driven from the keyboard with vim binds and m
 > [!NOTE]
 > Managed with [GNU Stow](https://www.gnu.org/software/stow/); packages live under `home/`.
 
-**Requirements:** Arch Linux and a Hyprland build with the Lua config API (the `hl` global) and the `start-hyprland` launcher. The current `hyprland` package from the Arch repos, which the installer pulls in, provides both.
+**Requirements:** Arch Linux and a Hyprland build with the Lua config API (the `hl` global) and the `start-hyprland` launcher. The current `hyprland` package from the Arch repos, which the installer pulls in, provides both. The Quickshell config is tested with Quickshell 0.3.1; the installer warns when `qs` is older.
 
 ## 🎹 Keyboard First, for Vim Users
 
