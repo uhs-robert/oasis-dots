@@ -14,6 +14,7 @@ system-apply:
 # Symlink one package from home/ into ~
 stow name:
     stow -d home -t ~ {{name}}
+    @just _seed {{name}}
 
 # Remove symlinks for one package from ~
 unstow name:
@@ -22,10 +23,12 @@ unstow name:
 # Re-stow one package (fix stale/broken links)
 restow name:
     stow -d home -t ~ -R {{name}}
+    @just _seed {{name}}
 
 # Symlink every package in home/ into ~
 stow-all:
     stow -d home -t ~ $(ls home)
+    @just _seed $(ls home)
 
 # Remove symlinks for every package in home/
 unstow-all:
@@ -34,10 +37,21 @@ unstow-all:
 # Symlink just the CORE packages from packages/stow.ini
 stow-core:
     stow -d home -t ~ $(awk '/^\[CORE\]/{f=1;next} /^\[/{f=0} f && /^[^#[:space:]]/' packages/stow.ini)
+    @just _seed $(awk '/^\[CORE\]/{f=1;next} /^\[/{f=0} f && /^[^#[:space:]]/' packages/stow.ini)
 
 # Symlink just the OPTIONAL packages from packages/stow.ini
 stow-optional:
     stow -d home -t ~ $(awk '/^\[OPTIONAL\]/{f=1;next} /^\[/{f=0} f && /^[^#[:space:]]/' packages/stow.ini)
+    @just _seed $(awk '/^\[OPTIONAL\]/{f=1;next} /^\[/{f=0} f && /^[^#[:space:]]/' packages/stow.ini)
+
+# Copy *.template.* defaults of the given packages into place when missing
+_seed *pkgs:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    DOTFILES_DIR="$PWD"
+    source lib/output.sh
+    source lib/stow.sh
+    seed_generated_defaults {{pkgs}}
 
 # Run full dotfiles install (packages, stow, services); pass flags like --minimal
 install *ARGS:

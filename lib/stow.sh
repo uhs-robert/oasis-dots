@@ -25,7 +25,8 @@ seed_generated_defaults() {
     while IFS= read -r tpl; do
       target="${tpl/.template./.}"
       [[ -e "$HOME/${target#"$DOTFILES_DIR/home/$pkg/"}" ]] && continue
-      cp "$tpl" "$HOME/${target#"$DOTFILES_DIR/home/$pkg/"}" && info "Seeded default ${target##*/}"
+      mkdir -p "$(dirname "$HOME/${target#"$DOTFILES_DIR/home/$pkg/"}")" &&
+        cp "$tpl" "$HOME/${target#"$DOTFILES_DIR/home/$pkg/"}" && info "Seeded default ${target##*/}"
     done < <(find "$DOTFILES_DIR/home/$pkg" -name '*.template.*' -type f)
   done
 }

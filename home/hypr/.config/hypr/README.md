@@ -127,7 +127,7 @@ See [`extensions/wallpaper/README.md`](extensions/wallpaper/README.md) for setti
 
 The colors come from the Oasis palettes in `theme/colors/`. Picking one saves it, reloads Hyprland and reruns every generator in `theme/generate/` (Hyprland, rofi, the terminals and Quickshell, whose `theme.json` lands in `~/.local/state/quickshell/`).
 
-The rofi `colors.rasi`, foot `foot.ini` and yazi `theme.toml` are generated and gitignored. Edit their tracked `colors.template.rasi`, `foot.template.ini` and `theme.template.toml` instead; the installer copies each one into place when the generated file is missing.
+The rofi `colors.rasi`, foot `foot.ini` and yazi `theme.toml` are generated and gitignored. Edit their tracked `colors.template.rasi`, `foot.template.ini` and `theme.template.toml` instead; the installer copies each one into place when the generated file is missing. Deploy these packages with `just stow <pkg>` (or the installer), not bare `stow`, so that step runs.
 
 Pick a palette from Settings > Colors in the Quickshell panel, with a live preview. Right-clicking the bar's Start button or pressing `SUPER + Q` then `T` opens it there; without the bar, `SUPER + Q` then `T` falls back to the rofi picker.
 
