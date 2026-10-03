@@ -17,5 +17,5 @@ return function(c)
   end
   table.sort(lines)
 
-  Utils.write_file(HOME .. "/.config/hypr/theme.conf", table.concat(lines, "\n") .. "\n")
+  Utils.write_file_if_changed(HOME .. "/.config/hypr/theme.conf", table.concat(lines, "\n") .. "\n")
 end

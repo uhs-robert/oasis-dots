@@ -41,4 +41,18 @@ Utils.write_file = function(path, content)
   return true
 end
 
+--- Writes content only when it differs from the file. Returns true when the file changed.
+--- @param path string
+--- @param content string
+--- @return boolean
+Utils.write_file_if_changed = function(path, content)
+  local f = io.open(path, "r")
+  if f then
+    local current = f:read("*a")
+    f:close()
+    if current == content then return false end
+  end
+  return Utils.write_file(path, content)
+end
+
 return Utils
