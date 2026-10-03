@@ -138,6 +138,8 @@ local function parse_args(argv)
       i = i + 1
     elseif a == "--no-location" then
       overrides.location_enabled = false
+    elseif a == "--location" then
+      overrides.location_enabled = true
     elseif a == "--latitude" and argv[i + 1] then
       overrides.manual_lat = tonumber(argv[i + 1])
       i = i + 1
@@ -168,6 +170,7 @@ Options:
   --evening-hour H        Static start hour for evening
   --night-hour H          Static start hour for night
   --no-location           Disable location-based timing
+  --location              Follow the sun using an IP location lookup
   --latitude LAT          Manual latitude
   --longitude LON         Manual longitude
   --coordinates LAT,LON   Manual coordinates

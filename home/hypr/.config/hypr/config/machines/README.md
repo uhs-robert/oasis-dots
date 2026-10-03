@@ -18,6 +18,16 @@ return {
 
 The loader uses `$HOSTNAME` first and falls back to `/etc/hostname`. Profiles are keyed by the short hostname (everything before the first `.`), and profile names must contain only `A-Z`, `a-z`, `0-9`, `_`, or `-`. Invalid hostnames and missing hostname profiles are ignored. Hostname-profile values take precedence over `default.lua`, so host-specific differences can be represented without duplicating the full configuration.
 
+`path_prepend` lists extra directories placed ahead of the inherited `PATH` for everything Hyprland starts, for tools that live in your home directory:
+
+```lua
+return {
+  path_prepend = { os.getenv("HOME") .. "/.npm-global/bin" },
+}
+```
+
+`wallpaper_location = true` lets the wallpaper rotator follow the sun, which sends this machine's IP to `ipinfo.io`; see the wallpaper section of the main README.
+
 Monitor settings saved from the Settings panel live in `~/.local/state/hypr/monitors.json`, keyed by monitor description (or connector name). Their fields win over the profile's `monitors` per monitor, and a missing or corrupt file is ignored.
 
 Profiles hold values that `Config` reads while the subsystems load. Keybinds, window rules, sessions and anything else built on the loaded library go in your own config under `custom/` instead, whose `init.lua` runs after everything else; see `custom/README.md`.

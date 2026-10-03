@@ -1,4 +1,4 @@
--- home/hypr/.config/hypr/config/system/autostart.lua
+-- home/hypr/.config/hypr/config/autostart/init.lua
 
 local Config = require("config")
 local TERM = Config.app.term
@@ -28,7 +28,7 @@ local function run()
   -- hl.exec_cmd("gsettings set org.gnome.desktop.interface gtk-theme 'Breeze-Dark'") -- GTK3 apps
   -- hl.exec_cmd("gsettings set org.gnome.desktop.interface color-scheme 'prefer-dark'") -- GTK4 apps
   -- hl.exec_cmd("hyprpm reload")                                                            -- Load plugins
-  hl.exec_cmd("lua ~/.config/hypr/extensions/wallpaper/init.lua")
+  hl.exec_cmd("lua ~/.config/hypr/extensions/wallpaper/init.lua" .. (Config.wallpaper_location and " --location" or ""))
   hl.exec_cmd("voxtype setup systemd")
 end
 

@@ -43,7 +43,7 @@ return {
   },
 
   -- Location controls (only used when time_of_day_enabled = true)
-  location_enabled = true,
+  location_enabled = false, -- true sends this machine's IP to ipinfo.io and sun times to open-meteo.com
   refresh_interval_seconds = 4 * 60 * 60, -- 4 hours
   manual_lat = nil, -- set to a number, e.g., 40.7128
   manual_lon = nil, -- set to a number, e.g., -74.0060
