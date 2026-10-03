@@ -64,6 +64,14 @@ return function(_c)
   )
 
   -- Live reloads
-  if changed.kitty then os.execute("pkill -USR1 -x kitty") end
+  if changed.kitty then
+    local file = string.format("%s/.config/kitty/themes/%s.conf", HOME, dark)
+    os.execute(
+      string.format(
+        'for s in "${XDG_RUNTIME_DIR:-/tmp}"/kitty-*; do [ -S "$s" ] && kitty @ --to "unix:$s" set-colors --all --configured %q; done >/dev/null 2>&1 &',
+        file
+      )
+    )
+  end
   if changed.tmux then os.execute("tmux source-file ~/.tmux.conf >/dev/null 2>&1 &") end
 end
