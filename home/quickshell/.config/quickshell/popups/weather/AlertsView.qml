@@ -89,6 +89,7 @@ Item {
             spacing: 2
             boundsBehavior: Flickable.StopAtBounds
             model: root.alerts
+            onCountChanged: Qt.callLater(() => alert_list.positionViewAtIndex(root.alert_cursor, ListView.Contain))
 
             delegate: MenuRow {
                 id: alert_row
