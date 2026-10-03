@@ -202,7 +202,7 @@ PanelWindow {
         const on_special = mon ? root.shown_special(mon) || (active_ws && (active_ws.name || "").startsWith("special:") ? active_ws.name : "") : "";
         const resume = entry === "share_resume" ? root.share_resume : null;
         root.share_mode = sharing;
-        root.share_resume = null;
+        if (sharing) root.share_resume = null;
         root.special = resume ? resume.special : on_special !== "" && !sharing;
         root.picked = [];
         root.carry_exit = "";
@@ -221,6 +221,7 @@ PanelWindow {
         }
         root.wanted = true;
         root.visible = true;
+        if (resume && root.tile_index_of[resume.key] === undefined) root.select_focused_workspace();
         reveal_anim.stop();
         if (Power.on_ac) {
             reveal_anim.to = 1;
@@ -545,6 +546,13 @@ PanelWindow {
     }
 
     // Selection lands on the active window's workspace when shown, else the first tile.
+    // Regular workspaces, on the focused one: where a share pick lands when its tile or special list is gone.
+    function select_focused_workspace() {
+        root.special = false;
+        const ws = Hyprland.focusedWorkspace;
+        root.selected_key = ws ? "ws:" + ws.id : "";
+    }
+
     function toggle_special() {
         root.special = !root.special;
         digit_timer.stop();
