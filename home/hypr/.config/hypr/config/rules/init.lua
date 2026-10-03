@@ -76,6 +76,13 @@ end
 --- Applies workspace rules.
 local set_workspace_rules = function() return nil end
 
+local BROWSER_OPACITY = "1.0 override 0.85 override"
+
+local browser_rules = {
+  { name = "firefox-opacity", class = "^(org\\.mozilla\\.firefox)$" },
+  { name = "qutebrowser-opacity", class = "^(org\\.qutebrowser\\.qutebrowser)$" },
+}
+
 --- Applies window rules: opacity, float, pin, XWayland fixes, and per-app overrides.
 --- Returns a registry table mapping rule name -> rule handle (supports set_enabled / is_enabled).
 --- @return table<string, any>
@@ -104,16 +111,9 @@ local set_window_rules = function()
   hl.window_rule({ name = "fix-dropdown-opacity", match = { float = true }, opacity = "1.0 1.0 override" })
 
   -- Browsers
-  hl.window_rule({
-    name = "firefox-opacity",
-    match = { class = "^(org\\.mozilla\\.firefox)$" },
-    opacity = "1.0 override 0.85 override",
-  })
-  hl.window_rule({
-    name = "qutebrowser-opacity",
-    match = { class = "^(org\\.qutebrowser\\.qutebrowser)$" },
-    opacity = "1.0 override 0.85 override",
-  })
+  for _, browser in ipairs(browser_rules) do
+    hl.window_rule({ name = browser.name, match = { class = browser.class }, opacity = BROWSER_OPACITY })
+  end
 
   -- Rofi
   hl.window_rule({ match = { title = "^(rofiMenu)$" }, opacity = "1.0 1.0 override" })
@@ -229,17 +229,10 @@ local set_screenshare_handler = function()
     else
       set_shared_monitor(active, name)
     end
-    local opacity = active and "1.0 1.0 override" or "1.0 override 0.85 override"
-    hl.window_rule({
-      name = "firefox-opacity",
-      match = { class = "^(org\\.mozilla\\.firefox)$" },
-      opacity = opacity,
-    })
-    hl.window_rule({
-      name = "qutebrowser-opacity",
-      match = { class = "^(org\\.qutebrowser\\.qutebrowser)$" },
-      opacity = opacity,
-    })
+    local opacity = active and "1.0 1.0 override" or BROWSER_OPACITY
+    for _, browser in ipairs(browser_rules) do
+      hl.window_rule({ name = browser.name, match = { class = browser.class }, opacity = opacity })
+    end
   end)
 end
 
