@@ -4,6 +4,7 @@
 local Config = require("config") --- @class Config
 local Cmd = require("lib.actions.cmd") --- @class Cmd
 local Menu = require("lib.actions.menu") --- @class Menu
+local Popups = require("lib.actions.popups") --- @class Popups
 local Scripts = require("lib.scripts") --- @class Scripts
 local Submap = require("lib.key.submap") --- @class Submap
 local Window = require("lib.actions.window") --- @class WindowActions
@@ -11,8 +12,6 @@ local Workspace = require("lib.actions.workspace") --- @class WorkspaceActions
 local Launcher = require("extensions.auto_launcher.launcher") ---@class Launcher
 
 local KEEP = { keep = true }
-
-local function popup(name) return Cmd.run(Scripts.qs_ipc .. " call popup open " .. name) end
 
 Submap.define({
   name = "Leader",
@@ -23,7 +22,7 @@ Submap.define({
   catchall = "reset",
 
   binds = function()
-    return {
+    local binds = {
       -- stylua: ignore start
       -- Pickers
       { "SLASH",         Menu.zoxide(),                                   "Directory" },
@@ -39,23 +38,14 @@ Submap.define({
 
       -- Submaps
       { "G",             Submap.switch("Groups"),                         "+Groups",        KEEP },
-
-      -- Bar popups
-      { "SPACE",         popup("start"),                                  "Start Menu" },
-      { "A",             Menu.agents(),                                   "Agents" },
-      { "B",             popup("bluetooth"),                              "Bluetooth" },
-      { "C",             popup("clock"),                                  "Calendar" },
-      { "I",             popup("network"),                                "Network and Internet" },
-      { "M",             popup("media"),                                  "Media" },
-      { "N",             popup("notifications"),                          "Notifications" },
-      { "P",             popup("battery"),                                "Power and Brightness" },
-      { "Q",             popup("system"),                                 "System" },
-      { "S",             popup("settings"),                               "Settings" },
-      { "T",             popup("tray"),                                   "Tray" },
-      { "U",             Cmd.run(Scripts.focus_topgrade),                 "Updates" },
-      { "V",             popup("volume"),                                 "Volume" },
-      { "W",             popup("weather"),                                "Weather" },
       -- stylua: ignore end
     }
+
+    table.insert(binds, { "SPACE", Popups.open("start"), "Start Menu" })
+    local settings = { "S", Popups.open("settings"), "Settings" }
+    for _, row in ipairs(Popups.binds({ S = settings })) do
+      table.insert(binds, row)
+    end
+    return binds
   end,
 }).setup()
