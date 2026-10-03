@@ -15,6 +15,8 @@ Item {
     property int sub: 0
     // Called with the clicked hour index; the popup owns hour_cursor, so clicks report up rather than assign it locally.
     property var on_select: function (i) {}
+    property real scroll_x: 0
+    property var on_scroll: function (x) {}
 
     readonly property var sub_names: ["Temp", "Precip", "Wind", "UV", "Humid"]
 
@@ -192,6 +194,12 @@ Item {
             contentHeight: height
             boundsBehavior: Flickable.StopAtBounds
             flickableDirection: Flickable.HorizontalFlick
+            onContentXChanged: root.on_scroll(flick.contentX)
+
+            Component.onCompleted: {
+                flick.contentX = root.scroll_x;
+                Qt.callLater(root.scroll_to_cursor);
+            }
 
             Item {
                 width: flick.contentWidth
