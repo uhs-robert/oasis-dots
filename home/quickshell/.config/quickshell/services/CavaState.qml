@@ -100,9 +100,10 @@ Singleton {
         root.last_ms = now;
         const target = root.levels;
         const n = target.length;
+        const prev = root.smoothed;
         const next = new Array(n);
         for (let i = 0; i < n; i++) {
-            const cur = root.smoothed[i] || 0;
+            const cur = prev[i] || 0;
             const k = target[i] > cur ? 30 : 14;
             next[i] = cur + (target[i] - cur) * (1 - Math.exp(-k * dt));
         }

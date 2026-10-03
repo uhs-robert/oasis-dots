@@ -65,7 +65,6 @@ Item {
         id: bars
         visible: !root.line
         anchors.fill: parent
-        renderTarget: Canvas.FramebufferObject
 
         onPaint: {
             const ctx = bars.getContext("2d");
@@ -78,7 +77,8 @@ Item {
                 const level = levels[i] || 0;
                 const h = 1 + level * (bars.height - 1);
                 ctx.globalAlpha = 0.5 + 0.5 * level;
-                ctx.fillRect(i * w, bars.height - h, w, h);
+                const x0 = Math.round(i * w);
+                ctx.fillRect(x0, bars.height - h, Math.round((i + 1) * w) - x0, h);
             }
         }
 
@@ -87,7 +87,7 @@ Item {
         onVisibleChanged: bars.request()
 
         function request() {
-            if (!root.line && root.drawing) bars.requestPaint();
+            if (bars.visible && bars.width > 0) bars.requestPaint();
         }
 
         Connections {
