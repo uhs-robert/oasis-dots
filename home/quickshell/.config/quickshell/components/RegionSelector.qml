@@ -112,6 +112,12 @@ PanelWindow {
     // Exclusive would make Hyprland send every screen's pointer input to this one surface.
     WlrLayershell.keyboardFocus: root.keyboard_owner ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
 
+    // Hyprland skips every bind while this holds focus, so SUPER+hjkl cannot move focus off a share pick.
+    ShortcutInhibitor {
+        window: root
+        enabled: root.sharing && root.keyboard_owner
+    }
+
     property point press_point: Qt.point(0, 0)
     property point last_mouse: Qt.point(-1, -1)
 

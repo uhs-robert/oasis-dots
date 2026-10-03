@@ -133,6 +133,12 @@ PanelWindow {
     WlrLayershell.layer: WlrLayer.Overlay
     WlrLayershell.keyboardFocus: root.wanted ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
 
+    // Exclusive focus alone still lets Hyprland run binds; this skips them all so a share pick moves nothing.
+    ShortcutInhibitor {
+        window: root
+        enabled: root.share_mode
+    }
+
     Connections {
         target: Screenshot
 
