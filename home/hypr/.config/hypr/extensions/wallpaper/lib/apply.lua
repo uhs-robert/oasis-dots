@@ -345,7 +345,7 @@ end
 
 --- Apply wallpapers to all active monitors (or `cfg.target_monitor` if set).
 --- Resolves the pool from the current time-of-day period, season and weather,
---- picks one image per monitor, preloads via hyprpaper, then sets each.
+--- picks one image per monitor, then sets each via hyprpaper.
 --- @param cfg table wallpaper config
 --- @param util table shared utility object
 --- @param opts table|nil `{ exclude?, reserved?, history? }`; monitors in `exclude` are skipped (startup settle); paths in `reserved` (live on other monitors) and `history` (recently shown, oldest first) are avoided when picking
@@ -432,7 +432,6 @@ function Apply.to_monitors(cfg, util, opts)
       else
         f:close()
         local base = util.signature and ("HYPRLAND_INSTANCE_SIGNATURE=" .. util.signature .. " ") or ""
-        os.execute(string.format("%shyprctl hyprpaper preload '%s' >/dev/null 2>&1", base, img))
         local rc = os.execute(string.format("%shyprctl hyprpaper wallpaper '%s, %s' >/dev/null 2>&1", base, mon, img))
         if rc ~= 0 and rc ~= true then
           util.log(string.format("hyprpaper wallpaper failed (rc=%s) for %s on %s", tostring(rc), img, mon), cfg)
