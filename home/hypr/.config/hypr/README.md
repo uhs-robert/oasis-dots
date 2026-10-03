@@ -125,7 +125,7 @@ See [`extensions/wallpaper/README.md`](extensions/wallpaper/README.md) for setti
 
 ## Theme
 
-The colors come from the Oasis palettes in `theme/colors/`. Picking one saves it, reloads Hyprland and reruns every generator in `theme/generate/` (Hyprland, rofi, the terminals and Quickshell).
+The colors come from the Oasis palettes in `theme/colors/`. Picking one saves it, reloads Hyprland and reruns every generator in `theme/generate/` (Hyprland, rofi, the terminals and Quickshell, whose `theme.json` lands in `~/.local/state/quickshell/`).
 
 Pick a palette from Settings > Colors in the Quickshell panel, with a live preview. Right-clicking the bar's Start button or pressing `SUPER + Q` then `T` opens it there; without the bar, `SUPER + Q` then `T` falls back to the rofi picker.
 

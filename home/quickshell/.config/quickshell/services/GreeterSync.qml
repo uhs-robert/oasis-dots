@@ -8,7 +8,7 @@ import "../theme"
 Scope {
     id: root
 
-    readonly property string theme_path: Quickshell.shellDir + "/theme/theme.json"
+    readonly property string theme_path: Theme.source_path
     readonly property string face_path: Quickshell.env("HOME") + "/.face"
 
     function write() {
@@ -52,6 +52,11 @@ Scope {
         function onResolved_tintChanged() { root.schedule(); }
         function onResolved_musicChanged() { root.schedule(); }
         function onSessionChanged() { root.schedule(); }
+    }
+
+    Connections {
+        target: Theme
+        function onSource_pathChanged() { root.schedule(); }
     }
 
     Connections {

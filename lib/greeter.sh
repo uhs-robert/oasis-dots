@@ -27,7 +27,11 @@ stage_greeter() {
     fi
   done
   cp "$qs/theme/Theme.qml" "$qs/theme/Style.qml" "$qs/theme/Watch.js" "$dest/theme/"
-  [[ -f "$live/theme/theme.json" ]] && cp "$live/theme/theme.json" "$dest/theme/"
+  if jq -e 'type == "object"' "$state_dir/theme.json" &>/dev/null; then
+    cp "$state_dir/theme.json" "$dest/theme/"
+  elif [[ -f "$live/theme/theme.json" ]]; then
+    cp "$live/theme/theme.json" "$dest/theme/"
+  fi
   cp "$qs"/fonts/*.ttf "$qs"/fonts/OFL-*.txt "$dest/fonts/"
 
   local style=oasis lock=follow tint=primary music=on session=Hyprland watch=Theme
