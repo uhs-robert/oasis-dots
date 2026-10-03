@@ -5,6 +5,7 @@ import Quickshell
 import Quickshell.Hyprland
 import Quickshell.Io
 import "../../theme"
+import "../../services"
 
 // Lualine section c: the focused window's app on this monitor and, for terminals, its working directory.
 Item {
@@ -42,7 +43,7 @@ Item {
         const ws = mon ? mon.activeWorkspace : null;
         if (!ws) return null;
         const last = ((ws.lastIpcObject && ws.lastIpcObject.lastwindow) || "").replace(/^0x/, "");
-        const list = ws.toplevels.values;
+        const list = WindowState.windows_on(ws);
         return list.find(t => t.address === last) || (list.length > 0 ? list[list.length - 1] : null);
     }
 

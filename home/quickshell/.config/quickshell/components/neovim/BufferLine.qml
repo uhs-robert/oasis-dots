@@ -35,7 +35,7 @@ Item {
                 id: slot
                 required property var modelData
                 required property int index
-                readonly property var toplevels: slot.modelData.toplevels.values
+                readonly property var toplevels: WindowState.windows_on(slot.modelData)
                 readonly property bool empty: slot.toplevels.length === 0
                 readonly property bool focused: slot.modelData.focused
                 readonly property bool lit: slot.focused || slot_hover.hovered

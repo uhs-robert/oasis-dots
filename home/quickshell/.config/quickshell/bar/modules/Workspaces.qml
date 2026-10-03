@@ -61,7 +61,7 @@ Item {
         const known = list.map(w => w.id);
         // Quickshell can miss existing workspaces (persistent ones at login) and QML cannot make it re-list them.
         for (const id of root.hypr_ids) {
-            if (known.indexOf(id) < 0) list.push({ id: id, name: String(id), focused: false, active: false, toplevels: { values: [] }, monitor: { name: root.screen_name }, lastIpcObject: {} });
+            if (known.indexOf(id) < 0) list.push({ id: id, name: String(id), focused: false, active: false, monitor: { name: root.screen_name }, lastIpcObject: {} });
         }
         list.sort((a, b) => a.id - b.id);
         return list;
@@ -178,14 +178,14 @@ Item {
                 id: pill
                 required property var modelData
 
-                readonly property bool is_empty: modelData.toplevels.values.length === 0
+                readonly property bool is_empty: pill.toplevels.length === 0
                 readonly property bool diamond: Style.bar_workspace_diamond && is_empty && !root.map && !root.party && !root.slots
                 readonly property bool map: root.map
                 readonly property int glyph: map ? (modelData.focused ? 17 : 14) : root.icon_size
                 // Mario ? blocks; the focused workspace is the one already hit.
                 readonly property bool qblock: Style.console_views === "nes"
                 readonly property bool ps2: Style.console_views === "ps2"
-                readonly property var toplevels: modelData.toplevels.values
+                readonly property var toplevels: WindowState.windows_on(modelData)
                 readonly property int cursor_gap: root.party && modelData.focused ? root.party_gap : 0
                 readonly property bool ball: root.party && (is_empty || !modelData.active)
                 property bool hop: false

@@ -41,6 +41,11 @@ Singleton {
         Hyprland.refreshWorkspaces();
     }
 
+    // A workspace's own toplevels list can keep a window that moved away; the window's workspace stays current.
+    function windows_on(workspace) {
+        return Hyprland.toplevels.values.filter(t => t.workspace === workspace);
+    }
+
     // Every workspace with its monitor, read with hyprctl; Quickshell can miss persistent ones at login.
     property var hypr_workspaces: []
 
