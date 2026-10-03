@@ -230,8 +230,10 @@ print_manual_steps() {
     tmuxifier
       rm -rf ~/.tmuxifier
 
-    Cloned repos (repos/ in the dotfiles checkout, plus ~/Development for --dev installs)
-      rm -rf ~/dotfiles/repos ~/Development
+EOF
+  cat <<EOF
+    Cloned repos (repos/ in the dotfiles checkout, plus $GITHUB_DIR for --dev installs)
+      rm -rf $DOTFILES_DIR/repos $GITHUB_DIR
       Review both first, may include work you want to keep.
 
 EOF
