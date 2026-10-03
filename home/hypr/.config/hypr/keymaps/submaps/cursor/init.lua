@@ -71,7 +71,7 @@ local cursor_mode = Submap.define({
     local keys = {
       -- quick_click
       { "SEMICOLON",          Cursor.kbptr("floating_click",   { exit = true }),  "Floating Click (Exit)" },
-      { "SUPER + SEMICOLON",  Cursor.kbptr("floating_click",   { exit = true })},
+      { Config.leader .. " + SEMICOLON",  Cursor.kbptr("floating_click",   { exit = true })},
       { "SHIFT + SEMICOLON",  Cursor.kbptr("tile_click",       { exit = true }),  "Tiling Click (Exit)" },
       { "APOSTROPHE",         Cursor.kbptr("floating_r_click", { exit = false }), "Floating Right Click"} ,
       { "SHIFT + APOSTROPHE", Cursor.kbptr("tile_r_click",     { exit = false }), "Tiling Right Click"} ,
