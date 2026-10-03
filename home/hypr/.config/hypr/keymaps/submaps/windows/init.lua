@@ -175,7 +175,7 @@ Submap.define({
       keys[#keys + 1] = { "SHIFT + " .. k, for_selected(action), "Move to WS " .. i }
     end
 
-    for i = 1, math.min(#Config.monitors, 10) do
+    for i = 1, #Config.monitors > 0 and math.min(#Config.monitors, 10) or 10 do
       keys[#keys + 1] = { tostring(i % 10), Window.focus_monitor(i), "Monitor " .. i }
     end
 
