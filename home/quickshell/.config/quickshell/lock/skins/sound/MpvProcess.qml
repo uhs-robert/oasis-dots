@@ -63,7 +63,7 @@ Scope {
 
     Process {
         id: probe
-        command: ["sh", "-c", "command -v mpv setpriv >/dev/null"]
+        command: ["sh", "-c", "command -v mpv >/dev/null && command -v setpriv >/dev/null"]
         running: true
         onExited: code => {
             root.available = code === 0;
@@ -89,6 +89,7 @@ Scope {
                     console.warn("mpv audio: exits quickly, giving up");
                     return;
                 }
+                retry.interval = root.retry_ms;
                 root.retry_ms = Math.min(root.retry_ms * 2, 60000);
             } else {
                 root.quick_fails = 0;
@@ -100,7 +101,7 @@ Scope {
 
     Timer {
         id: retry
-        interval: root.retry_ms
+        interval: 1000
         onTriggered: root.sync()
     }
 

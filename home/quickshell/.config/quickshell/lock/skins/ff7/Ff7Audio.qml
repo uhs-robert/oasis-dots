@@ -34,6 +34,7 @@ Item {
 
     // `to` is set here, not bound: a binding on track may not have updated yet when this handler runs.
     onTrackChanged: {
+        if (audio.track !== "") audio.fx_used = true;
         title_fade.to = audio.track === "title" ? 1 : 0;
         title_fade.restart();
     }
