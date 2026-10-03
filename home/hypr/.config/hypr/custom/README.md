@@ -21,8 +21,6 @@ Link files, not the `custom/` directory itself: this README and `.gitignore` are
 - **Hardware and `Config` values** (monitors, DRM devices, GPU options, default apps) belong in `config/machines/<hostname>.lua`. The subsystems read `Config` while they load, so changing it from here is too late for them. See `config/machines/README.md`.
 - **Everything built on the loaded library** belongs here: Hyprland settings, keybinds and submaps, window rules, event handlers, your own sessions for the session launcher.
 
-The lock screen greets you by your user name. To show something else, put it on the first line of `custom/lock_name`.
-
 ## Layout
 
 `custom/init.lua` is the entrypoint, the same way `hyprland.lua` is for this config. Split it up however you like and require your files as `custom.<name>`, which resolves to `custom/<name>.lua` or `custom/<name>/init.lua`:
