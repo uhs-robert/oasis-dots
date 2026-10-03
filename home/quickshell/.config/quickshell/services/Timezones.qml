@@ -3,12 +3,13 @@ pragma Singleton
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import "../theme"
 
 Singleton {
     id: root
 
-    // Clock zones cycled with [ and ] in the calendar; "" is the system zone.
-    property var zones: ["", "America/Los_Angeles", "America/Denver"]
+    // Clock zones cycled with [ and ] in the calendar; "" is the system zone, extras come from timezones.json.
+    property var zones: [""]
 
     property int index: 0
     readonly property string zone: zones[index] || ""
@@ -43,6 +44,25 @@ Singleton {
     onZoneChanged: refresh()
     onZonesChanged: refresh_abbrevs()
     Component.onCompleted: refresh_abbrevs()
+
+    FileView {
+        path: Style.state_dir + "/timezones.json"
+        printErrors: false
+        blockLoading: true
+        watchChanges: true
+        onFileChanged: reload()
+        onLoaded: {
+            try {
+                const data = JSON.parse(text());
+                const extra = (Array.isArray(data) ? data : []).filter((z, i, a) => typeof z === "string" && z !== "" && a.indexOf(z) === i);
+                root.zones = [""].concat(extra);
+            } catch (e) {
+                root.zones = [""];
+            }
+            if (root.index >= root.zones.length) root.index = 0;
+        }
+        onLoadFailed: error => root.zones = [""]
+    }
 
     Process {
         id: abbrev_proc

@@ -67,9 +67,12 @@ What you set here is saved as state under `~/.local/state` (or `$XDG_STATE_HOME`
 | `quickshell/lock.json`                    | Lock skin, tint, backdrop, music                 |
 | `quickshell/greeter.json`                 | Login screen choices                             |
 | `quickshell/picker_usage.json`            | Picker ranking by use                            |
+| `quickshell/timezones.json`               | Extra clock zones, a JSON array of IANA names    |
 | `hypr/monitors.json`                      | Display settings, read by Hyprland               |
 | `hypr/apps.json`                          | Default apps, read by Hyprland                   |
 | `hypr/power.json`                         | Idle and power settings, read by Hyprland        |
+
+The calendar clock cycles through the local zone plus any listed in `quickshell/timezones.json`, for example `["America/Los_Angeles", "America/Denver"]`; there is no Settings page for it.
 
 Notification history lives in Quickshell's own per-config state folder (`~/.local/state/quickshell/by-shell/<id>/notifications.json`).
 
