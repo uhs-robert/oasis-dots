@@ -64,6 +64,6 @@ return function(_c)
   )
 
   -- Live reloads
-  if changed.kitty then os.execute("kitty @ set-colors --all --configured >/dev/null 2>&1 &") end
+  if changed.kitty then os.execute("pkill -USR1 -x kitty") end
   if changed.tmux then os.execute("tmux source-file ~/.tmux.conf >/dev/null 2>&1 &") end
 end
