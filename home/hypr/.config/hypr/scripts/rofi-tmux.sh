@@ -39,12 +39,12 @@ term_name="${TERMINAL:-kitty}"
 address="$(
   hyprctl clients -j |
     jq -r --arg title "$title" --arg term "$term_name" '
-      .[]
-      | select(.class | ascii_downcase | contains($term))
-      | select((.title | ascii_downcase | gsub("[^a-z0-9]"; "")) as $t | ($title | ascii_downcase | gsub("[^a-z0-9]"; "")) as $w | $t | startswith($w))
-      | .address
-    ' |
-    head -n 1
+      def norm: ascii_downcase | gsub("[^a-z0-9]"; "");
+      [.[] | select(.class | ascii_downcase | contains($term))] as $wins
+      | ($wins | map(select((.title | norm) == ($title | norm))))
+        + ($wins | map(select(.title | ascii_downcase | startswith(($title | ascii_downcase) + " "))))
+      | .[0].address // empty
+    '
 )"
 
 if [[ -n "$address" ]]; then
