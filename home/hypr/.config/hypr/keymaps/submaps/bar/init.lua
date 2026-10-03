@@ -2,11 +2,7 @@
 --- Opens a Quickshell bar popup on the focused monitor, then hands keys to the popup
 
 local Submap = require("lib.key.submap") ---@class Submap
-local Cmd = require("lib.actions.cmd") ---@class Cmd
-local Menu = require("lib.actions.menu") ---@class Menu
-local Scripts = require("lib.scripts") ---@class Scripts
-
-local function popup(name) return Cmd.run(Scripts.qs_ipc .. " call popup open " .. name) end
+local Popups = require("lib.actions.popups") ---@class Popups
 
 Submap.define({
   name = "Bar",
@@ -15,20 +11,5 @@ Submap.define({
   escape = "reset",
   catchall = "reset",
 
-  -- stylua: ignore
-  binds = {
-    { "A", Menu.agents(),          "Agents" },
-    { "B", popup("bluetooth"),     "Bluetooth" },
-    { "C", popup("clock"),         "Calendar" },
-    { "I", popup("network"),       "Network and Internet" },
-    { "M", popup("media"),         "Media" },
-    { "N", popup("notifications"), "Notifications" },
-    { "P", popup("battery"),       "Power and Brightness" },
-    { "Q", popup("system"),        "System" },
-    { "S", popup("start"),         "Start Menu" },
-    { "T", popup("tray"),          "Tray" },
-    { "U", Cmd.run(Scripts.focus_topgrade), "Updates" },
-    { "V", popup("volume"),        "Volume" },
-    { "W", popup("weather"),       "Weather" },
-  },
+  binds = Popups.binds(),
 }).setup()
