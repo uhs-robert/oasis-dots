@@ -15,6 +15,8 @@ Item {
     property int sub: 0
     // Called with the clicked hour index; the popup owns hour_cursor, so clicks report up rather than assign it locally.
     property var on_select: function (i) {}
+    property real scroll_x: 0
+    property var on_scroll: function (x) {}
 
     readonly property var sub_names: ["Temp", "Precip", "Wind", "UV", "Humid"]
 
@@ -54,6 +56,13 @@ Item {
         } else if (cursor_x + root.hour_col_w > flick.contentX + flick.width - margin) {
             flick.contentX = Math.min(Math.max(0, flick.contentWidth - flick.width), cursor_x + root.hour_col_w - flick.width + margin);
         }
+    }
+
+    property bool want_scroll: false
+
+    function request_scroll() {
+        if (flick.width > 0) root.scroll_to_cursor();
+        else root.want_scroll = true;
     }
 
     function paint(ctx, w, h) {
@@ -157,19 +166,6 @@ Item {
             ctx.font = amount_px + "px \"" + Style.font_family + "\"";
             for (let i = 0; i < hrs.length; i++) ctx.fillText(hrs[i].precip.toFixed(hrs[i].precip < 1 ? 2 : 1), x_of(i), h - 4);
         }
-
-        // Crosshair at the selected hour.
-        if (root.hour_cursor >= 0 && root.hour_cursor < hrs.length) {
-            const cx = x_of(root.hour_cursor);
-            ctx.strokeStyle = Style.pal.secondary;
-            ctx.globalAlpha = 0.5;
-            ctx.lineWidth = 1;
-            ctx.beginPath();
-            ctx.moveTo(cx, 0);
-            ctx.lineTo(cx, h);
-            ctx.stroke();
-            ctx.globalAlpha = 1;
-        }
     }
 
     readonly property var cursor_row: WeatherState.hours[root.hour_cursor]
@@ -205,6 +201,16 @@ Item {
             contentHeight: height
             boundsBehavior: Flickable.StopAtBounds
             flickableDirection: Flickable.HorizontalFlick
+            onContentXChanged: root.on_scroll(flick.contentX)
+
+            onWidthChanged: {
+                if (root.want_scroll && flick.width > 0) {
+                    root.want_scroll = false;
+                    root.scroll_to_cursor();
+                }
+            }
+
+            Component.onCompleted: flick.contentX = root.scroll_x
 
             Item {
                 width: flick.contentWidth
@@ -223,12 +229,23 @@ Item {
                     Connections {
                         target: Style
                         function onFont_familyChanged() { canvas.requestPaint(); }
+                        function onFont_sizeChanged() { canvas.requestPaint(); }
+                        function onPalChanged() { canvas.requestPaint(); }
+                        function onText_mutedChanged() { canvas.requestPaint(); }
                     }
                     Connections {
                         target: root
                         function onSubChanged() { canvas.requestPaint(); }
-                        function onHour_cursorChanged() { canvas.requestPaint(); }
                     }
+                }
+
+                Rectangle {
+                    visible: root.hour_cursor >= 0 && root.hour_cursor < WeatherState.hours.length
+                    x: root.hour_cursor * root.hour_col_w + root.hour_col_w / 2 - 0.5
+                    width: 1
+                    height: root.chart_h
+                    color: Style.pal.secondary
+                    opacity: 0.5
                 }
 
                 Repeater {
