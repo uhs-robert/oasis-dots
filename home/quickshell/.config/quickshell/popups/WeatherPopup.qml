@@ -60,8 +60,9 @@ Popup {
     Binding {
         target: root
         property: "day_span"
-        value: Math.max(1, daily_loader.item.fit_days)
+        value: daily_loader.item ? Math.max(1, daily_loader.item.fit_days) : root.day_span
         when: daily_loader.item !== null
+        restoreMode: Binding.RestoreNone
     }
 
     function sync_day_window() {
