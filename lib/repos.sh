@@ -47,6 +47,15 @@ clone_repos() {
   mkdir -p "$(dirname "$REPOS_LINK")"
   ln -sfn "$REPOS_DIR" "$REPOS_LINK"
   link_keeptabs
+  warn_unresolved_repo_links
+}
+
+# Hyprland loads without these, but falls back to a built-in palette and no hyprvim.
+warn_unresolved_repo_links() {
+  local base="$DOTFILES_DIR/home/hypr/.config/hypr" path
+  for path in lua/plugins/hyprvim theme/colors/oasis_moonlight.lua; do
+    [[ -e "$base/$path" ]] || warn "Hyprland link does not resolve: $path (check repos/ clones, then run 'just repos')"
+  done
 }
 
 # keeptabs ships its own Makefile; link rather than copy so the checkout stays live.

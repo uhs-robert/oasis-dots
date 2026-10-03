@@ -2,6 +2,7 @@
 
 local Config = require("config") ---@class Config
 local Generate = require("theme.generate") ---@class Generate
+local MissingRepos = require("lib.missing_repos") ---@class MissingRepos
 
 -- Restore last theme selected via switch.lua if the state file exists.
 local state = io.open(os.getenv("HOME") .. "/.config/hypr/theme/.current_theme", "r")
@@ -17,18 +18,25 @@ end
 --- @field apply fun() Runs all generators against the active palette
 local Theme = {}
 
---- Loads the palette for Config.theme and caches it in Theme.colors.
+--- Loads the palette for Config.theme, or the embedded fallback, into Theme.colors.
 --- @return table colors Palette color table
 Theme.load = function()
-  Theme.colors = require("theme.colors." .. Config.theme)
+  local name = "theme.colors." .. Config.theme
+  if package.searchpath(name, package.path) then
+    Theme.colors = require(name)
+    return Theme.colors
+  end
+  if package.searchpath("theme.colors.oasis_moonlight", package.path) then
+    MissingRepos.add("palette " .. Config.theme .. " not found")
+  else
+    MissingRepos.add("theme palettes (repos/oasis.nvim)")
+  end
+  Theme.colors = require("theme.fallback")
   return Theme.colors
 end
 
---- Runs all generators against the active palette, reloading affected services.
-Theme.apply = function()
-  local c = Theme.colors or Theme.load()
-  Generate.all(c)
-end
+--- Runs generators against the active palette, reloading affected services.
+Theme.apply = function() Generate.all(Theme.colors or Theme.load()) end
 
 Theme.load()
 Theme.apply()
