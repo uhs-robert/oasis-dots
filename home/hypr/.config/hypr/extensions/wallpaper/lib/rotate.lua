@@ -245,10 +245,10 @@ local function pid_alive(pid)
 end
 
 --- Acquire a PID-based lock file at `path`.
---- Removes stale locks (dead PID). Returns a cleanup function on success,
+--- Removes stale locks (dead PID). Returns true on success,
 --- or `nil, reason` if another live instance holds the lock.
 --- @param path string lock file path
---- @return (fun(): nil)|nil cleanup, string|nil err
+--- @return true|nil ok, string|nil err
 local function acquire_lock(path)
   -- Lua 5.1 lacks "x" mode; do a simple existence check then create.
   local existing = io.open(path, "r")
@@ -267,8 +267,7 @@ local function acquire_lock(path)
   if not f then return nil, err or "locked" end
   f:write(tostring(self_pid() or ""))
   f:close()
-  local function cleanup() os.remove(path) end
-  return cleanup
+  return true
 end
 
 -- -------- history --------
@@ -351,13 +350,10 @@ function Rotate.start(opts)
 
   -- One-shot runs don't need the lock, only the rotation loop needs singleton enforcement.
   local one_shot = not cfg.rotation_enabled or opts.once or cli.once or (cfg.target_monitor ~= nil)
-  ---@type function|nil
-  local cleanup_lock = nil
   if not one_shot then
     local lock_path = opts.lock_path or "/tmp/hypr-wallpaper-day-system.lock"
-    local lock_err
-    cleanup_lock, lock_err = acquire_lock(lock_path)
-    if not cleanup_lock then
+    local locked, lock_err = acquire_lock(lock_path)
+    if not locked then
       io.stderr:write("Another instance appears to be running (lock: " .. lock_path .. ")\n")
       return false, lock_err
     end
