@@ -163,7 +163,7 @@ Popup {
         root.hour_cursor = idx;
         root.set_tab(1);
         if (root.on_air) root.current_sub = 0;
-        if (hourly_loader.item) hourly_loader.item.scroll_to_cursor();
+        if (hourly_loader.item) hourly_loader.item.request_scroll();
     }
 
     function fmt_temp(t) {

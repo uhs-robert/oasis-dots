@@ -58,6 +58,13 @@ Item {
         }
     }
 
+    property bool want_scroll: false
+
+    function request_scroll() {
+        if (flick.width > 0) root.scroll_to_cursor();
+        else root.want_scroll = true;
+    }
+
     function paint(ctx, w, h) {
         ctx.reset();
         const hrs = WeatherState.hours;
@@ -196,10 +203,14 @@ Item {
             flickableDirection: Flickable.HorizontalFlick
             onContentXChanged: root.on_scroll(flick.contentX)
 
-            Component.onCompleted: {
-                flick.contentX = root.scroll_x;
-                Qt.callLater(root.scroll_to_cursor);
+            onWidthChanged: {
+                if (root.want_scroll && flick.width > 0) {
+                    root.want_scroll = false;
+                    root.scroll_to_cursor();
+                }
             }
+
+            Component.onCompleted: flick.contentX = root.scroll_x
 
             Item {
                 width: flick.contentWidth
