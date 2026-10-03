@@ -38,3 +38,23 @@ if [ -n "$duplicates" ]; then
   printf 'Duplicate package declarations:\n%s\n' "$duplicates" >&2
   exit 1
 fi
+
+# home/ dirs that are not stow packages: phone and browser imports, personal images, and a package awaiting a manifest.
+unstowed="android images org.freedesktop.FileManager1.common tabliss vimium"
+
+stow_entries=$(awk '/^[[:space:]]*($|#|\[)/ { next } { print $1 }' "$pkg_dir/stow.ini" | sort -u)
+
+status=0
+for entry in $stow_entries; do
+  [ -d "$repo_dir/home/$entry" ] && continue
+  echo "stow.ini lists $entry but home/$entry does not exist" >&2
+  status=1
+done
+for path in "$repo_dir"/home/*/; do
+  dir=$(basename -- "$path")
+  case " $unstowed " in *" $dir "*) continue ;; esac
+  printf '%s\n' "$stow_entries" | grep -qx -- "$dir" && continue
+  echo "home/$dir is not listed in stow.ini" >&2
+  status=1
+done
+exit "$status"
