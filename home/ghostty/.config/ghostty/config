@@ -65,3 +65,4 @@ font-family = "Maple Mono NF"
 # font-family-italic = "ProFont IIx Nerd Font"
 font-size = 12.5
 # adjust-cell-height = 20%
+config-file = ?oasis-theme.conf
