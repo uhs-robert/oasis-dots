@@ -21,6 +21,9 @@ Singleton {
 
     property bool official_failed: false
     property bool aur_failed: false
+    property bool official_available: true
+    property bool aur_available: true
+    readonly property bool available: official_available || aur_available
     property bool official_done: false
     property bool aur_done: false
 
@@ -95,7 +98,8 @@ Singleton {
         stdout: StdioCollector {
             onStreamFinished: {
                 const r = root.split_status(text);
-                root.official_failed = r.code !== 0 && r.code !== 2;
+                root.official_available = r.code !== 127;
+                root.official_failed = r.code !== 0 && r.code !== 2 && r.code !== 127;
                 if (r.code === 0) root.official = root.parse_official(r.body);
                 else if (r.code === 2) root.official = [];
                 root.official_done = true;
@@ -110,7 +114,8 @@ Singleton {
         stdout: StdioCollector {
             onStreamFinished: {
                 const r = root.split_status(text);
-                root.aur_failed = r.code !== 0;
+                root.aur_available = r.code !== 127;
+                root.aur_failed = r.code !== 0 && r.code !== 127;
                 if (r.code === 0) root.aur = root.parse_aur(r.body);
                 root.aur_done = true;
                 root.finish_if_done();

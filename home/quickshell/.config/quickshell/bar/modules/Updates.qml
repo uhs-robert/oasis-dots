@@ -16,7 +16,7 @@ Item {
     readonly property int official_count: UpdatesState.official.length
     readonly property int aur_count: UpdatesState.aur.length
 
-    readonly property bool shown: UpdatesState.total > 0 || UpdatesState.error !== ""
+    readonly property bool shown: UpdatesState.available && (UpdatesState.total > 0 || UpdatesState.error !== "")
     visible: shown
     implicitWidth: shown ? row.implicitWidth : 0
     implicitHeight: row.implicitHeight
