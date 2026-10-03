@@ -81,7 +81,7 @@ PanelWindow {
         strip: Style.px(150)
     })
     readonly property var layout: Layout.compute(root.filmstrip, root.groups, root.tiles, frame.body.width - root.list_width, frame.body.height, root.metrics, root.selected_index)
-    readonly property string term_name: (Quickshell.env("TERMINAL") || "kitty").toLowerCase()
+    readonly property string term_name: (DefaultApps.app_value("term") || Quickshell.env("TERMINAL") || "kitty").toLowerCase()
     readonly property bool animate_moves: root.filmstrip && Power.on_ac && root.reveal === 1
     // The selected pane (or the whole tile) in body coordinates, for the scope skin.
     readonly property var aim: {
