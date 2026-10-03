@@ -35,8 +35,8 @@ local Utils = require("lib.utils") ---@class Utils
 --- @class Config
 --- @field leader string Modifier key for keybinds (default: "SUPER")
 --- @field theme string Name of the theme file in ./theme/colors/ (default: "oasis_moonlight")
---- @field ws_per_monitor integer Workspaces assigned per monitor on startup (default: 5)
---- @field persistent_workspaces integer|boolean Workspaces to pin per monitor, or false to disable (default: 5)
+--- @field persistent_workspaces integer|boolean Workspaces per monitor, pinned and monitor-local; false for 5 unpinned, global ones (default: 5)
+--- @field ws_per_monitor integer Derived from persistent_workspaces (5 when false); do not set
 --- @field vim_mode boolean Use H/J/K/L as directional inputs in keybinds (default: true)
 --- @field use_uwsm boolean Enable uwsm session management (default: false)
 --- @field path_prepend string[] Extra PATH entries placed ahead of the inherited PATH (default: {})
@@ -54,7 +54,6 @@ local Config = {}
 Config.defaults = {
   leader = "SUPER",
   theme = "oasis_moonlight",
-  ws_per_monitor = 5,
   persistent_workspaces = 5,
   vim_mode = true,
   use_uwsm = false,
@@ -154,14 +153,12 @@ local function detect_hybrid()
   local edp_connectors = io.popen("ls -d /sys/class/drm/card*-eDP-* 2>/dev/null")
   if not edp_connectors then return false end
 
-  local found_connected = false
   for conn_path in edp_connectors:lines() do
     local status_file = io.open(conn_path .. "/status", "r")
     if status_file then
       local status = status_file:read("*l") or ""
       status_file:close()
       if status == "connected" then
-        found_connected = true
         local card_name = conn_path:match(".*/(.-)%-eDP%-")
         if card_name then
           local driver_link = io.popen("readlink -f /sys/class/drm/" .. card_name .. "/device/driver 2>/dev/null")
@@ -250,6 +247,7 @@ local function derive(cfg)
   end
   if cfg.nvidia.backend == nil then cfg.nvidia.backend = "nvidia-drm" end
   if cfg.nvidia.hybrid == nil then cfg.nvidia.hybrid = cfg.nvidia.enable and detect_hybrid() or false end
+  cfg.ws_per_monitor = type(cfg.persistent_workspaces) == "number" and cfg.persistent_workspaces or 5
   cfg.monitors = resolve_monitors(cfg.monitors, cfg.is_laptop)
   fill_menu_cmds(cfg.app)
 end

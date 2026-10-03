@@ -1,4 +1,5 @@
 local Utils = require("lib.utils") ---@class Utils
+local Json = require("lib.json") ---@class Json
 
 local Machines = {}
 
@@ -57,16 +58,15 @@ function Machines.apps_state()
   local path = base .. "/hypr/apps.json"
   local file = io.open(path, "r")
   if not file then return {} end
+  local text = file:read("*a")
   file:close()
 
-  local pipe = io.popen("jq -r '(.app // {}) | to_entries[] | \"\\(.key)\\t\\(.value)\"' '" .. path .. "' 2>/dev/null")
-  if not pipe then return {} end
+  local data = Json.decode(text)
+  if type(data) ~= "table" or type(data.app) ~= "table" then return {} end
   local app = {}
-  for line in pipe:lines() do
-    local key, value = line:match("^([%w_]+)\t([%w._+-]+)$")
-    if key and APP_KEYS[key] then app[key] = value end
+  for key, value in pairs(data.app) do
+    if APP_KEYS[key] and type(value) == "string" and value:match("^[%w._+-]+$") then app[key] = value end
   end
-  pipe:close()
 
   return app
 end

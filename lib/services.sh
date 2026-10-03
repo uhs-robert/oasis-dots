@@ -298,7 +298,13 @@ setup_voxtype() {
     warn "lspci not available, skipping gpu.conf"
   fi
 
-  voxtype setup model
+  local model
+  model=$(sed -n 's/^model = "\(.*\)"/\1/p' "$HOME/.config/voxtype/config.toml" 2>/dev/null | head -n1)
+  if confirm "Download the voxtype whisper model (${model:-default}, can be over 1 GB)?"; then
+    voxtype setup model
+  else
+    warn "Skipped model download, run later: voxtype setup model"
+  fi
   if systemctl --user show-environment &>/dev/null; then
     systemctl --user daemon-reload
     systemctl --user is-enabled voxtype &>/dev/null || systemctl --user enable --now voxtype
