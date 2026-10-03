@@ -137,9 +137,7 @@ main() {
 
   echo ""
   success "Done!"
-  if [[ $OPT_SERVER -eq 0 ]]; then
-    warn "Start Hyprland and run: hyprctl reload"
-  fi
+  if [[ $OPT_SERVER -eq 0 ]]; then print_next_steps; fi
   echo ""
 }
 
