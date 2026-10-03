@@ -1,6 +1,9 @@
 [Audio]
 activateMonitorChannelVolumes=true
 
+[EffectsPipelines]
+bypass=true
+
 [Spectrum]
 spectrumShape=lines
 
