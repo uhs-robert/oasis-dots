@@ -133,6 +133,7 @@ main() {
     setup_voxtype
   fi
 
+  print_failed_packages
   print_manual_installs
 
   echo ""

@@ -38,11 +38,36 @@ read_manifest() {
   fi
 }
 
+FAILED_PKGS=()
+
+# Installs "$2.." with pacman or paru ($1) in one pass, then per package if that fails.
+install_with_retry() {
+  local tool="$1" pkg
+  shift
+  local -a cmd=(paru -S --needed --noconfirm)
+  [[ "$tool" == pacman ]] && cmd=(sudo pacman -S --needed --noconfirm)
+  [[ $# -gt 0 ]] || return 0
+  "${cmd[@]}" "$@" && return 0
+  warn "Batch install failed, retrying each package"
+  for pkg in "$@"; do
+    "${cmd[@]}" "$pkg" || {
+      warn "Failed to install $pkg"
+      FAILED_PKGS+=("$pkg")
+    }
+  done
+}
+
+print_failed_packages() {
+  [[ ${#FAILED_PKGS[@]} -eq 0 ]] && return
+  echo ""
+  warn "Packages that failed to install: ${FAILED_PKGS[*]}"
+}
+
 install_packages() {
   info "Installing system packages..."
   mapfile -t pkgs < <(read_manifest "$DISTRO.ini" CORE SYSTEM CLI DEV)
-  sudo pacman -S --needed --noconfirm "${pkgs[@]}"
-  success "System packages installed"
+  install_with_retry pacman "${pkgs[@]}"
+  success "System packages processed"
   [[ "${OPT_SERVER:-0}" -eq 1 ]] || check_quickshell_version
 }
 
@@ -73,6 +98,7 @@ install_pipx_packages() {
       success "Installed $pkg"
     else
       warn "Failed to install $pkg"
+      FAILED_PKGS+=("$pkg")
     fi
   done < <(read_pkgs pipx.ini)
 }
@@ -96,7 +122,10 @@ install_luarocks_packages() {
   fi
   info "Installing LuaRocks packages..."
   while IFS= read -r rock; do
-    luarocks install --local "$rock" || warn "Failed to install luarock: $rock"
+    luarocks install --local "$rock" || {
+      warn "Failed to install luarock: $rock"
+      FAILED_PKGS+=("$rock")
+    }
   done < <(read_pkgs luarocks.ini)
   success "LuaRocks packages installed"
 }
