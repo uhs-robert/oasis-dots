@@ -36,11 +36,13 @@ esac
 
 title="Tmux $pretty_name"
 
+term_name="${TERMINAL:-kitty}"
+
 address="$(
   hyprctl clients -j |
-    jq -r --arg title "$title" '
+    jq -r --arg title "$title" --arg term "$term_name" '
       .[]
-      | select(.class == "kitty")
+      | select(.class | ascii_downcase | contains($term))
       | select(.title == $title or (.title | startswith($title + " ")))
       | .address
     ' |
@@ -52,4 +54,6 @@ if [[ -n "$address" ]]; then
   exit 0
 fi
 
-kitty -e tmuxifier load-session "$session" &
+term=~/.config/hypr/scripts/term
+[ -x "$term" ] || term="$term_name"
+"$term" -e tmuxifier load-session "$session" &

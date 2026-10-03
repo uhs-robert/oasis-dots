@@ -81,6 +81,7 @@ PanelWindow {
         strip: Style.px(150)
     })
     readonly property var layout: Layout.compute(root.filmstrip, root.groups, root.tiles, frame.body.width - root.list_width, frame.body.height, root.metrics, root.selected_index)
+    readonly property string term_name: (Quickshell.env("TERMINAL") || "kitty").toLowerCase()
     readonly property bool animate_moves: root.filmstrip && Power.on_ac && root.reveal === 1
     // The selected pane (or the whole tile) in body coordinates, for the scope skin.
     readonly property var aim: {
@@ -389,7 +390,7 @@ PanelWindow {
     }
 
     function window_address(session_name) {
-        const t = WindowState.windows.find(w => (WindowState.class_of(w) || "").startsWith("kitty") && TmuxData.title_matches(w.title || "", session_name));
+        const t = WindowState.windows.find(w => (WindowState.class_of(w) || "").toLowerCase().indexOf(root.term_name) >= 0 && TmuxData.title_matches(w.title || "", session_name));
         return t ? t.address : "";
     }
 
@@ -417,7 +418,7 @@ PanelWindow {
                 root.tmux(["switch-client", "-c", latest.name, "-t", tile.session_id, ";"].concat(select));
             } else {
                 root.tmux(select);
-                Quickshell.execDetached(["kitty", "-e", "tmux", "attach-session", "-t", tile.session_id]);
+                Quickshell.execDetached(["sh", "-c", "t=~/.config/hypr/scripts/term; [ -x \"$t\" ] || t=\"${TERMINAL:-kitty}\"; exec \"$t\" -e tmux attach-session -t \"$1\"", "sh", tile.session_id]);
             }
         }
         root.hide_overview();
@@ -675,7 +676,7 @@ PanelWindow {
         id: live_timer
         interval: 1000
         repeat: true
-        running: root.visible && root.wanted && root.loaded
+        running: root.visible && root.wanted && root.loaded && Power.on_ac
         onTriggered: {
             if (root.selected_tile && !capture_proc.running) root.capture(root.selected_tile.panes.map(p => p.pane_id));
         }
