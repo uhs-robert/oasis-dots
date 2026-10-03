@@ -101,7 +101,7 @@ PanelWindow {
     // The selected window's place among all windows, tile by tile.
     readonly property int window_at: {
         let n = 0;
-        for (let i = 0; i < root.selected_index; i++) n += root.tiles[i].windows.length;
+        for (let i = 0; i < Math.min(root.selected_index, root.tiles.length); i++) n += root.tiles[i].windows.length;
         const at = root.tab_order.findIndex(w => w.address === root.current_address);
         return at < 0 ? 0 : n + at + 1;
     }
