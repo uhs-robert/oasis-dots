@@ -6,13 +6,13 @@
 local Window = {}
 
 --- Return the address of the first client matching the given criteria.
---- @param class string Window class to match exactly
+--- @param class string Window class, also matching `<class>-*` (session launcher windows are `kitty-tmux-<name>`)
 --- @param title string|nil Exact title or title-prefix match (prefix followed by space)
 --- @param exclude_title string|nil Skip windows whose title starts with this string
 --- @return string|nil
 local function find(class, title, exclude_title)
   for _, c in ipairs(hl.get_windows()) do
-    local ok = c.class == class
+    local ok = c.class == class or string.find(c.class, class .. "-", 1, true) == 1
     if ok and title then ok = c.title == title or string.find(c.title, title .. " ", 1, true) == 1 end
     if ok and exclude_title then ok = string.find(c.title, exclude_title, 1, true) ~= 1 end
     if ok then return c.address end
