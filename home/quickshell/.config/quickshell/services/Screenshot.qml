@@ -188,6 +188,7 @@ Singleton {
     function start_share(list, reply) {
         if (root.phase === "capture" || root.scrolling) return false;
         root.cancel();
+        root.cancel_countdown();
         const ids = {};
         for (const entry of list.split("[HA>]")) {
             const m = entry.match(/^(\d+)\[HC>\][\s\S]*\[HE>\](\w+)$/);
