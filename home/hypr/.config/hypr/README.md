@@ -2,6 +2,8 @@
 
 A Lua-driven Hyprland setup for a fully keyboard-driven workflow. Vim-modal navigation via [HyprVim](https://github.com/uhs-robert/hyprvim) with whichkey for keybind discovery. Includes dedicated submaps for window/workspace management, application navigation, virtual cursor emulation (`wlrctl` and `wl-kbptr`), and more. Also includes a color theme switcher, custom workspace session launcher, and a time-of-day wallpaper rotation system. The bar, popups, pickers and lock screen come from the [Quickshell desktop shell](#desktop-shell).
 
+Requires a Hyprland build with the Lua config API (the `hl` global) and `start-hyprland`, which the current `hyprland` package from the Arch repos provides.
+
 ## What's in here
 
 | Path                  | Purpose                                                  |
