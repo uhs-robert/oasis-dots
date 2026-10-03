@@ -92,9 +92,9 @@ Press `SUPER + /` to open the Quickshell keybinds picker for the current mode. W
 
 ## Workspaces
 
-Each monitor gets `ws_per_monitor` workspaces (default: 5). Workspaces are numbered sequentially across monitors: monitor 1 gets 1–5, monitor 2 gets 6–10, and so on.
+Each monitor gets `persistent_workspaces` workspaces (default: 5; 5 when set to `false`). Workspaces are numbered sequentially across monitors: monitor 1 gets 1–5, monitor 2 gets 6–10, and so on.
 
-The `persistent_workspaces` option pins that many workspaces per monitor so they always appear in the bar even when empty. It also switches workspace keybinds to monitor-local mode, number keys and cycle binds stay within the current monitor's range.
+That option pins them so they always appear in the bar even when empty. It also switches workspace keybinds to monitor-local mode, number keys and cycle binds stay within the current monitor's range.
 
 ## App Launcher / Sessions
 
