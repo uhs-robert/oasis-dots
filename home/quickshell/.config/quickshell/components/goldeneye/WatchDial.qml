@@ -3,6 +3,7 @@ import QtQuick
 import QtQuick.Shapes
 import Quickshell.Hyprland
 import "../../theme"
+import "../../services"
 import "../../theme/Watch.js" as Watch
 import ".."
 
@@ -41,7 +42,7 @@ Item {
         const out = [];
         let x = root.lead;
         for (const w of root.workspaces) {
-            const k = w.toplevels.values.length, wd = root.slot_width(k, w.focused);
+            const k = WindowState.windows_on(w).length, wd = root.slot_width(k, w.focused);
             out.push({ id: w.id, x: x, mid: x + wd / 2, w: wd, k: k, focused: w.focused, active: w.active });
             x += wd;
         }
@@ -268,7 +269,7 @@ Item {
                 spacing: root.gap(slot.modelData.focused)
 
                 Repeater {
-                    model: slot.modelData.toplevels.values
+                    model: WindowState.windows_on(slot.modelData)
 
                     WorkspaceIcon {
                         host: root.host

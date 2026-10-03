@@ -3,6 +3,7 @@ import QtQuick
 import QtQuick.Shapes
 import Quickshell.Hyprland
 import "../../theme"
+import "../../services"
 import ".."
 
 // Workspaces as a constellation: a star per workspace with its apps beside it, stars linked across the gaps; the focused one a sand sparkle.
@@ -32,7 +33,7 @@ Item {
         const out = [];
         let x = 0;
         for (const w of root.workspaces) {
-            const k = w.toplevels.values.length, wd = root.slot_width(k);
+            const k = WindowState.windows_on(w).length, wd = root.slot_width(k);
             const end = k > 0 ? x + root.apps_x + k * root.glyph + (k - 1) * root.gap : x + root.star_x;
             out.push({ id: w.id, x: x, w: wd, cx: x + root.star_x, cy: root.bar_height / 2 + root.lifts[Math.abs(w.id) % 5], end: end, k: k, focused: w.focused, active: w.active });
             x += wd;
@@ -188,7 +189,7 @@ Item {
                 spacing: root.gap
 
                 Repeater {
-                    model: slot.modelData.toplevels.values
+                    model: WindowState.windows_on(slot.modelData)
 
                     WorkspaceIcon {
                         host: root.host
