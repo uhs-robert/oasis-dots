@@ -130,7 +130,13 @@ Singleton {
         onLoaded: {
             try {
                 const data = JSON.parse(text());
-                const clean = obj => Object.fromEntries(Object.entries(obj || {}).filter(e => typeof e[1] === "string" && e[1] !== ""));
+                const clean = obj => {
+                    const out = {};
+                    for (const key in obj || {}) {
+                        if (typeof obj[key] === "string" && obj[key] !== "") out[key] = obj[key];
+                    }
+                    return out;
+                };
                 root.app = clean(data.app);
                 root.mime = clean(data.mime);
             } catch (e) {

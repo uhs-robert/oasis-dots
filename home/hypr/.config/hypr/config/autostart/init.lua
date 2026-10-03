@@ -15,7 +15,6 @@ local function run()
   os.execute("systemctl --user start gnome-keyring-daemon.socket")
   os.execute("gnome-keyring-daemon --start --components=secrets,ssh")
   os.execute("dbus-update-activation-environment --systemd GNOME_KEYRING_CONTROL SSH_AUTH_SOCK")
-  if (TERM == 'foot') then hl.exec_cmd('foot --server') end
   hl.exec_cmd("~/.config/hypr/scripts/power.sh watch")
   -- Guards machines that still have swaync installed: D-Bus activation would otherwise respawn it and steal notifications from qs.
   os.execute("systemctl --user mask --runtime --now swaync.service")
@@ -34,4 +33,13 @@ local function run()
   hl.exec_cmd("voxtype setup systemd")
 end
 
-return run
+-- footclient needs a server; switching to foot in Settings only reloads the config, so check on reload too.
+local function ensure_foot_server()
+  if require("config").app.term == "foot" then hl.exec_cmd("pgrep -f '^foot --server' >/dev/null || foot --server") end
+end
+hl.on("config.reloaded", ensure_foot_server)
+
+return function()
+  ensure_foot_server()
+  run()
+end

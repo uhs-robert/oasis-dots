@@ -63,7 +63,7 @@ Popup {
 
     function open_btop() {
         ThemeAudio.play("confirm");
-        Quickshell.execDetached(["kitty", "btop"]);
+        Quickshell.execDetached(["sh", "-c", "t=~/.config/hypr/scripts/term; [ -x \"$t\" ] || t=\"${TERMINAL:-kitty}\"; exec \"$t\" -e btop"]);
         Popups.close();
     }
 
