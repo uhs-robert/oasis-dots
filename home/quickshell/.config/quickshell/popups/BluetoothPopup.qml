@@ -38,6 +38,7 @@ Popup {
     property var pair_target: null
     property string pair_phase: ""
 
+    property bool scan_started_here: false
     property bool forget_confirm: false
     property var forget_target: null
 
@@ -57,7 +58,8 @@ Popup {
         if (is_open) {
             root.selected = 0;
         } else {
-            if (root.scanning) root.adapter.discovering = false;
+            if (root.scan_started_here && root.scanning) root.adapter.discovering = false;
+            root.scan_started_here = false;
             if (root.pair_phase === "failed") root.clear_pair();
         }
     }
@@ -75,7 +77,10 @@ Popup {
 
     function toggle_scan() {
         ThemeAudio.play("confirm");
-        if (root.has_adapter && root.adapter.enabled) root.adapter.discovering = !root.adapter.discovering;
+        if (!root.has_adapter || !root.adapter.enabled) return;
+        const start = !root.adapter.discovering;
+        root.adapter.discovering = start;
+        root.scan_started_here = start;
     }
 
     function activate(device) {
