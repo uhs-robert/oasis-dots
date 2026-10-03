@@ -1,6 +1,6 @@
 # Bundled fonts
 
-Every `.ttf`/`.otf` here is registered for the whole qs process by `services/BundledFonts.qml`; styles refer to them by family name. All are under the SIL Open Font License 1.1, with each licence alongside.
+Every `.ttf` here is registered for the whole qs process by `services/BundledFonts.qml` (the active style and lock skin first, the rest after startup, via its family map, so a new font needs an entry there); styles refer to them by family name. All are under the SIL Open Font License 1.1, with each licence alongside.
 
 | File | Family | Source | Licence |
 | --- | --- | --- | --- |
