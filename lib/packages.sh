@@ -44,8 +44,12 @@ FAILED_PKGS=()
 install_with_retry() {
   local tool="$1" pkg
   shift
-  local -a cmd=(paru -S --needed --noconfirm)
-  [[ "$tool" == pacman ]] && cmd=(sudo pacman -S --needed --noconfirm)
+  local -a cmd
+  case "$tool" in
+  pacman) cmd=(sudo pacman -S --needed --noconfirm) ;;
+  paru) cmd=(paru -S --needed --noconfirm) ;;
+  *) die "install_with_retry: unknown tool '$tool'" ;;
+  esac
   [[ $# -gt 0 ]] || return 0
   "${cmd[@]}" "$@" && return 0
   warn "Batch install failed, retrying each package"
@@ -127,5 +131,5 @@ install_luarocks_packages() {
       FAILED_PKGS+=("$rock")
     }
   done < <(read_pkgs luarocks.ini)
-  success "LuaRocks packages installed"
+  success "LuaRocks packages processed"
 }
