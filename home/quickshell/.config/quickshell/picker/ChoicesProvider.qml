@@ -4,8 +4,8 @@ import Quickshell
 import Quickshell.Io
 import "../services"
 
-// Caller-supplied choices from Prompt.select. The mode arg is a JSON spec path: { label, choices, result_path }.
-// Enter or close writes the pick (empty on cancel) to result_path, then runs the Lua callback once.
+// Caller-supplied choices from Prompt.select. The mode arg is a JSON spec path: { id, label, choices, result_path }.
+// Enter or close writes the pick (empty on cancel) to result_path, then runs the Lua callback for that id once.
 PickerProvider {
     id: root
 
@@ -32,7 +32,8 @@ PickerProvider {
     function finish(text) {
         if (!root.session) return;
         root.session = false;
-        Quickshell.execDetached(["sh", "-c", "printf %s \"$1\" > \"$2\"; hyprctl eval '_hv_prompt_cb()'", "sh", text, root.spec.result_path || "/dev/null"]);
+        if (!root.spec.id) return;
+        Quickshell.execDetached(["sh", "-c", "printf %s \"$1\" > \"$2\"; hyprctl eval \"_hv_prompt_cb('$3')\"", "sh", text, root.spec.result_path || "/dev/null", root.spec.id]);
     }
 
     function activate(item) {
