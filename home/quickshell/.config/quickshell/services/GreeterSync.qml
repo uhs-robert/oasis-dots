@@ -8,7 +8,7 @@ import "../theme"
 Scope {
     id: root
 
-    readonly property string theme_path: Quickshell.shellDir + "/theme/theme.json"
+    readonly property string theme_path: Theme.source_path
     readonly property string face_path: Quickshell.env("HOME") + "/.face"
 
     function write() {
@@ -18,6 +18,7 @@ Scope {
             lock_style: LoginScreen.resolved_screen,
             lock_tint: LoginScreen.resolved_tint,
             lock_music: LoginScreen.resolved_music ? "on" : "off",
+            watch_colors: Style.watch_mode,
             session: LoginScreen.session,
             music_volume: String(ThemeAudio.music_volume)
         };
@@ -51,6 +52,16 @@ Scope {
         function onResolved_tintChanged() { root.schedule(); }
         function onResolved_musicChanged() { root.schedule(); }
         function onSessionChanged() { root.schedule(); }
+    }
+
+    Connections {
+        target: Theme
+        function onSource_pathChanged() { root.schedule(); }
+    }
+
+    Connections {
+        target: Style
+        function onWatch_modeChanged() { root.schedule(); }
     }
 
     Connections {

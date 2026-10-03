@@ -1,6 +1,7 @@
 // home/quickshell/.config/quickshell/components/goldeneye/BarRow.qml
 import QtQuick
-import "../../lock/skins/goldeneye/Watch.js" as W
+import "../../theme"
+import "../../theme/Watch.js" as W
 
 // The lock face's row of green bars as a progress meter: lit up to `value` (0-1), dim after.
 Item {
@@ -21,7 +22,7 @@ Item {
             x: index * (width + root.gap)
             width: (root.width - root.gap * (root.count - 1)) / root.count
             height: root.height
-            color: index < root.lit ? W.bar_on : W.bar_off
+            color: index < root.lit ? Style.wk.bar_on : Style.wk.bar_off
         }
     }
 }

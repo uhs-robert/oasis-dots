@@ -4,7 +4,7 @@ import QtQuick
 import QtQuick.Layouts
 import QtQuick.Shapes
 import "../../theme"
-import "../../components/screensavers"
+import "screensavers"
 
 // A TIE cockpit targeting console: a trench-scope reticle hunts, locks green or loses red with the password.
 Item {

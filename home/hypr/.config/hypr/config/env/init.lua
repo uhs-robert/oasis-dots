@@ -1,4 +1,4 @@
--- home/hypr/.config/hypr/config/system/env.lua
+-- home/hypr/.config/hypr/config/env/init.lua
 --- Sets Wayland, Qt, cursor, and XDG environment variables. Conditionally applies NVIDIA-specific and PRIME offload vars.
 
 local Config = require("config") ---@class Config
@@ -12,21 +12,41 @@ local set_env = function(env_settings)
   end
 end
 
--- See https://wiki.hypr.land/Configuring/Advanced-and-Cool/Environment-variables/
-local env = {
-  PATH = table.concat({
+--- Config.path_prepend and the config's own dirs, ahead of the inherited PATH, without duplicates.
+--- @return string
+local function build_path()
+  local dirs = {}
+  for _, dir in ipairs(Config.path_prepend or {}) do
+    dirs[#dirs + 1] = dir
+  end
+  for _, dir in ipairs({
     HOME .. "/.local/bin",
     HOME .. "/.cargo/bin",
     HOME .. "/go/bin",
-    HOME .. "/.npm-global/bin",
     HOME .. "/.tmuxifier/bin",
-    HOME .. "/.lmstudio/bin",
     HOME .. "/.config/hypr/scripts",
-    HOME .. "/.local/share/dotfiles/repos/rob-bin/bin",
-    "/usr/local/bin",
-    "/usr/bin",
-    "/bin",
-  }, ":"),
+  }) do
+    dirs[#dirs + 1] = dir
+  end
+  for dir in (os.getenv("PATH") or ""):gmatch("[^:]+") do
+    dirs[#dirs + 1] = dir
+  end
+  for _, dir in ipairs({ "/usr/local/bin", "/usr/bin", "/bin" }) do
+    dirs[#dirs + 1] = dir
+  end
+  local seen, out = {}, {}
+  for _, dir in ipairs(dirs) do
+    if not seen[dir] then
+      seen[dir] = true
+      out[#out + 1] = dir
+    end
+  end
+  return table.concat(out, ":")
+end
+
+-- See https://wiki.hypr.land/Configuring/Advanced-and-Cool/Environment-variables/
+local env = {
+  PATH = build_path(),
   GTK_THEME = "Breeze-Dark",
   XCURSOR_THEME = Config.cursor.theme,
   XCURSOR_SIZE = tostring(Config.cursor.size),

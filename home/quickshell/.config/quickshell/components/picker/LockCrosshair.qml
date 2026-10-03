@@ -1,6 +1,6 @@
 // home/quickshell/.config/quickshell/components/picker/LockCrosshair.qml
 import QtQuick
-import "../../lock/skins/goldeneye/Watch.js" as W
+import "../../theme/Watch.js" as W
 
 // The GoldenEye 007 aiming crosshair centred on (cx, cy): a red circle under a cross that runs through the centre and past the circle; a positive `gap` opens the very centre.
 Item {

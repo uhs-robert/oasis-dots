@@ -4,7 +4,7 @@ import Quickshell
 import "../../theme"
 import "../../services"
 import "../../components/modern" as Modern
-import "../../lock/skins/goldeneye/Watch.js" as Watch
+import "../../theme/Watch.js" as Watch
 
 Row {
     id: root

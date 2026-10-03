@@ -1,7 +1,6 @@
 -- home/hypr/.config/hypr/lib/scripts.lua
 
 local HYPR = "~/.config/hypr/scripts/"
-local MONITOR = "~/.config/hypr/monitors/scripts/"
 
 --- @class Scripts
 local Scripts = {
@@ -14,13 +13,11 @@ local Scripts = {
   qs_ipc                = HYPR    .. "qs-ipc",
   qs_picker             = HYPR    .. "qs-picker",
   nmtui                 = HYPR    .. "nmtui.sh",
-  hyprlock              = HYPR    .. "hyprlock-screenshot.lua",
   toggle_autolock       = HYPR    .. "toggle-autolock.sh",
   power                 = HYPR    .. "power.sh",
   rofi_tmux             = HYPR    .. "rofi-tmux.sh",
   keybind_help          = HYPR    .. "keybind-help.lua",
   kitty_window_cmd      = HYPR    .. "kitty-window-cmd.sh",
-  toggle_monitor_layout = MONITOR .. "toggle-monitor-layout.sh",
 }
 
 return Scripts

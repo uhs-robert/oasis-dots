@@ -1,4 +1,4 @@
--- home/hypr/.config/hypr/config/system/rules.lua
+-- home/hypr/.config/hypr/config/rules/init.lua
 
 --- @class Rules
 --- @field layer_rules table<string, any> Registry of named layer-rule handles (supports set_enabled/is_enabled).

@@ -9,16 +9,20 @@ do_stow() {
       warn "Package '$pkg' not found, skipping"
       continue
     fi
-    if stow "$pkg" 2>/dev/null; then
+    if stow "$pkg"; then
       success "Stowed $pkg"
     else
-      warn "Stow conflict in $pkg, run 'stow --adopt $pkg' to resolve, then reset with git"
+      warn "Could not stow $pkg: move the conflicting files aside, then re-run 'just stow $pkg'"
     fi
   done
 }
 
 prompt_optional() {
   echo ""
+  if [[ $OPT_YES -eq 1 ]]; then
+    info "Optional stow packages: none selected (--yes)"
+    return
+  fi
   info "Optional stow packages (Tab to select, Enter to confirm):"
   # shellcheck disable=SC2034  # consumed by install.sh
   mapfile -t SELECTED_OPTIONAL < <(
@@ -53,15 +57,6 @@ setup_git_identity() {
   success "Wrote git identity to $file"
 }
 
-template_user_configs() {
-  local active="$HOME/.config/hypr/monitors/active.conf"
-  local default_layout="$HOME/.config/hypr/monitors/layouts/monitors-default.conf"
-  if [[ -L "$active" && -f "$default_layout" ]]; then
-    cp --remove-destination "$default_layout" "$active"
-    success "Set default monitor layout (run toggle-monitor-layout.sh to switch)"
-  fi
-}
-
 # Set NVIM_CONFIG_REPO to owner/name or a git URL to use a different config; an existing ~/.config/nvim is kept.
 install_nvim_config() {
   local spec="${NVIM_CONFIG_REPO:-$GITHUB_ORG/neovim}"
@@ -94,6 +89,7 @@ bootstrap_neovim() {
 }
 
 setup_root_symlinks() {
+  confirm "Link root's shell and Yazi config to your user config (uses sudo)?" || return 0
   info "Setting up root symlinks..."
   sudo mkdir -p /root/.config/yazi
 

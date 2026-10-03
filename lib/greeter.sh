@@ -26,13 +26,18 @@ stage_greeter() {
       cp -r "$audio_dir/." "$dest/lock/skins/$skin/audio/"
     fi
   done
-  cp "$qs/theme/Theme.qml" "$qs/theme/Style.qml" "$dest/theme/"
-  [[ -f "$live/theme/theme.json" ]] && cp "$live/theme/theme.json" "$dest/theme/"
+  cp "$qs/theme/Theme.qml" "$qs/theme/Style.qml" "$qs/theme/Watch.js" "$dest/theme/"
+  if jq -e 'type == "object"' "$state_dir/theme.json" &>/dev/null; then
+    cp "$state_dir/theme.json" "$dest/theme/"
+  elif [[ -f "$live/theme/theme.json" ]]; then
+    cp "$live/theme/theme.json" "$dest/theme/"
+  fi
   cp "$qs"/fonts/*.ttf "$qs"/fonts/OFL-*.txt "$dest/fonts/"
 
-  local style=oasis lock=follow tint=primary music=on session=Hyprland
+  local style=oasis lock=follow tint=primary music=on session=Hyprland watch=Theme
   local login_screen=follow login_tint=follow login_music=follow
   [[ -f "$state_dir/style.json" ]] && style=$(jq -r '.style // "oasis"' "$state_dir/style.json")
+  [[ -f "$state_dir/theme_options.json" ]] && watch=$(jq -r '.goldeneye.watch_colors // "Theme"' "$state_dir/theme_options.json")
   if [[ -f "$state_dir/lock.json" ]]; then
     lock=$(jq -r '.lock_style // "follow"' "$state_dir/lock.json")
     tint=$(jq -r '.lock_tint // "primary"' "$state_dir/lock.json")
@@ -51,8 +56,8 @@ stage_greeter() {
   local file="${lock^}.qml"
   [[ "$lock" != "simple" && -f "$dest/lock/skins/$file" ]] || lock=simple
 
-  jq -n --arg user "${GREETER_USER:-$USER}" --arg lock "$lock" --arg tint "$tint" --arg music "$music" --arg session "$session" \
-    '{user: $user, lock_style: $lock, lock_tint: $tint, lock_music: $music, session: $session}' >"$dest/greeter.json"
+  jq -n --arg user "${GREETER_USER:-$USER}" --arg lock "$lock" --arg tint "$tint" --arg music "$music" --arg session "$session" --arg watch "$watch" \
+    '{user: $user, lock_style: $lock, lock_tint: $tint, lock_music: $music, watch_colors: $watch, session: $session}' >"$dest/greeter.json"
   printf '%s\n' "$lock"
 }
 
@@ -66,6 +71,7 @@ greeter_install_cmds() {
     "sudo rsync -rlpt --delete --chown=root:root --chmod=D755,F644 '$stage/' '$GREETER_DEST/'" \
     "sudo install -Dm755 '$repo/system/usr/local/bin/qs-greeter' /usr/local/bin/qs-greeter" \
     "sudo install -Dm644 '$repo/system/etc/greetd/hyprland.lua' /etc/greetd/hyprland.lua" \
+    "printf '%s\\n' '${GREETER_USER:-$USER}' | sudo tee /etc/greetd/admin_user >/dev/null" \
     "sudo install -d -m 2750 -o '$USER' -g greeter $GREETER_DATA" \
     "install -m 640 '$stage/greeter.json' $GREETER_DATA/greeter.json" \
     "$seed_theme" \

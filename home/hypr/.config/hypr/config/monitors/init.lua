@@ -1,30 +1,13 @@
--- home/hypr/.config/hypr/config/system/monitors.lua
+-- home/hypr/.config/hypr/config/monitors/init.lua
 
 local Config = require("config") ---@class Config
 local Json = require("lib.json") ---@class Json
+local Workspaces = require("lib.workspaces") ---@class Workspaces
 local PERSISTENT_WS = Config.persistent_workspaces
 --- @type { description?: string, name?: string, id?: integer, mode?: string, position?: string, scale?: number, transform?: integer, primary?: boolean }[]
 local MONITOR_ORDER = Config.monitors
 
---- @param mon HL.Monitor
---- @param entry { description?: string, name?: string, id?: integer }
---- @return boolean
-local function is_monitor_match(mon, entry)
-  if entry.description and mon.description == entry.description then return true end
-  if entry.name and mon.name == entry.name then return true end
-  if entry.id and mon.id == entry.id then return true end
-  return false
-end
-
---- Returns the 1-based position of `mon` in MONITOR_ORDER, or a fallback beyond the list.
---- @param mon HL.Monitor
---- @return integer
-local function get_monitor_order_index(mon)
-  for i, entry in ipairs(MONITOR_ORDER) do
-    if is_monitor_match(mon, entry) then return i end
-  end
-  return #MONITOR_ORDER + mon.id + 1
-end
+local is_monitor_match = Workspaces.matches
 
 --- Resolves the `output` selector for hl.monitor() from an order entry.
 --- Falls back to a live monitor lookup when only `id` is provided.
@@ -140,30 +123,42 @@ local function init_monitors()
   end
 end
 
---- Assigns persistent workspace rules using MONITOR_ORDER index so ranges stay stable
---- regardless of how many monitors are connected.
---- Unknown monitors (not in MONITOR_ORDER) get ranges beyond the known list so they
---- never collide with a known monitor's workspace range.
+local persistent_rules = {} --- @type table<integer, { output: string, rule: HL.WorkspaceRule }>
+
+--- Pins each slot's workspace range to its monitor and disables rules left over from an earlier slot assignment.
+--- Unmatched monitors take free slots, so their ranges never collide with a matched monitor's.
 local function init_persistent_workspaces()
   local monitors = hl.get_monitors()
+  local slots, matched = Workspaces.assign_slots(monitors, MONITOR_ORDER)
+  local wanted = {} --- @type table<integer, string>
+
   for i, entry in ipairs(MONITOR_ORDER) do
     local output = get_monitor_output(entry, monitors)
     if output then
-      local start_ws = (i - 1) * PERSISTENT_WS + 1
-      local end_ws = i * PERSISTENT_WS
-      for n = start_ws, end_ws do
-        hl.workspace_rule({ workspace = tostring(n), monitor = output, persistent = true })
+      for n = (i - 1) * PERSISTENT_WS + 1, i * PERSISTENT_WS do
+        wanted[n] = output
       end
     end
   end
   for _, mon in ipairs(monitors) do
-    local idx = get_monitor_order_index(mon)
-    if idx > #MONITOR_ORDER then
-      local start_ws = (idx - 1) * PERSISTENT_WS + 1
-      local end_ws = idx * PERSISTENT_WS
-      for n = start_ws, end_ws do
-        hl.workspace_rule({ workspace = tostring(n), monitor = mon.name, persistent = true })
+    if not matched[mon.name] then
+      local idx = slots[mon.name]
+      for n = (idx - 1) * PERSISTENT_WS + 1, idx * PERSISTENT_WS do
+        wanted[n] = mon.name
       end
+    end
+  end
+
+  for n, held in pairs(persistent_rules) do
+    if wanted[n] ~= held.output then
+      held.rule:set_enabled(false)
+      persistent_rules[n] = nil
+    end
+  end
+  for n, output in pairs(wanted) do
+    if not persistent_rules[n] then
+      local rule = hl.workspace_rule({ workspace = tostring(n), monitor = output, persistent = true })
+      persistent_rules[n] = { output = output, rule = rule }
     end
   end
 end
@@ -171,7 +166,7 @@ end
 --- Focuses the first persistent workspace assigned to the given monitor.
 --- @param mon HL.Monitor The monitor whose first workspace to focus
 local function focus_first_ws(mon)
-  local idx = get_monitor_order_index(mon)
+  local idx = Workspaces.slot_of(mon)
   hl.dispatch(hl.dsp.focus({ workspace = (idx - 1) * PERSISTENT_WS + 1 }))
 end
 
@@ -205,7 +200,7 @@ end
 --- Moves workspaces from a disconnected monitor to the first remaining monitor.
 --- @param mon HL.Monitor The monitor that was removed
 local function on_monitor_removed(mon)
-  local removed_idx = get_monitor_order_index(mon)
+  local removed_idx = Workspaces.slot_of(mon)
   local remaining = hl.get_monitors()
   local fallback = remaining[1]
 
@@ -220,6 +215,21 @@ local function on_monitor_removed(mon)
   apply_layout()
 end
 
+--- @class Monitors
+local Monitors = {}
+
+--- Returns `slot` when a connected monitor holds it, else the highest connected slot.
+--- @param slot integer 1-based slot index
+--- @return integer
+function Monitors.resolve_slot(slot)
+  local highest
+  for _, idx in pairs((Workspaces.connected_slots())) do
+    if idx == slot then return slot end
+    if not highest or idx > highest then highest = idx end
+  end
+  return highest or slot
+end
+
 --- Applies monitor settings, assigns persistent workspaces, and registers hotplug event handlers.
 local function init()
   apply_layout()
@@ -229,3 +239,5 @@ local function init()
 end
 
 init()
+
+return Monitors

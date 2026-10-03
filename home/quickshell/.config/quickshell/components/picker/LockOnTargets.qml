@@ -5,7 +5,7 @@ import "../../theme"
 import "../../services"
 import ".."
 import "../goldeneye" as Goldeneye
-import "../../lock/skins/goldeneye/Watch.js" as W
+import "../../theme/Watch.js" as W
 
 // GoldenEye dressing for the window/screen/region target: red lock-on brackets that
 // step closed when the target changes, a TARGET/AREA panel, and an OASIS WATCH readout.

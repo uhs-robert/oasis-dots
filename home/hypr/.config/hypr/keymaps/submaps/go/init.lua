@@ -2,18 +2,14 @@
 --- Each bind navigates to a window, workspace, or monitor
 
 local Config = require("config") --- @class Config
-local Cmd = require("lib.actions.cmd") ---@class Cmd
 local Apps = require("lib.actions.apps") --- @class Apps
 local Menu = require("lib.actions.menu") --- @class Menu
 local Submap = require("lib.key.submap") --- @class Submap
 local Window = require("lib.actions.window") --- @class WindowActions
 local Workspace = require("lib.actions.workspace") --- @class WorkspaceActions
 local Workspaces = require("lib.workspaces") --- @class Workspaces
-local Scripts = require("lib.scripts") ---@class Scripts
 
 local APP = Apps.map
-
-local function popup(name) return Cmd.run(Scripts.qs_ipc .. " call popup open " .. name) end
 
 local SELECTORS = {
   youtube = { window = "title:(?i).*youtube.*" },

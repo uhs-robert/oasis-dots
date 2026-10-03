@@ -51,6 +51,58 @@ local function timezone_fallback(util)
   return coords[1], coords[2]
 end
 
+local CACHE_MAX_AGE_S = 24 * 60 * 60
+
+--- Read the Quickshell weather cache, or nil when missing or older than a day.
+--- @param cfg table wallpaper config
+--- @return string|nil json
+local function read_cache(cfg)
+  local f = io.open(cfg.weather_cache or "", "r")
+  if not f then return nil end
+  local json = f:read("*a") or ""
+  f:close()
+  local updated_ms = tonumber(json:match('"updated"%s*:%s*(%d+)'))
+  if not updated_ms or os.time() - updated_ms / 1000 > CACHE_MAX_AGE_S then return nil end
+  return json
+end
+
+--- Return the coordinates the Quickshell bar last looked up, or nil.
+--- @param cfg table wallpaper config
+--- @return number|nil lat, number|nil lon
+local function cache_coordinates(cfg)
+  local json = read_cache(cfg)
+  if not json then return nil end
+  local lat = tonumber(json:match('"lat"%s*:%s*(-?[%d%.]+)'))
+  local lon = tonumber(json:match('"lon"%s*:%s*(-?[%d%.]+)'))
+  if not lat or not lon or (lat == 0 and lon == 0) then return nil end
+  return lat, lon
+end
+
+--- Parse "07:01" or "7:01 PM" into decimal hours, minutes rounded down to a quarter.
+--- @param text string
+--- @return number|nil
+local function parse_clock(text)
+  local h, m, half = text:match("^(%d+):(%d%d)%s*([AaPp]?)")
+  if not h then return nil end
+  h, m = tonumber(h), tonumber(m)
+  if half ~= "" then h = h % 12 + (half:lower() == "p" and 12 or 0) end
+  return h + round_down_quarter(m) / 60
+end
+
+--- Return today's sunrise/sunset (decimal hours) from the Quickshell weather cache.
+--- @param cfg table wallpaper config
+--- @param util table shared utility object
+--- @return number|nil sunrise_decimal, number|nil sunset_decimal
+local function sun_times_cache(cfg, util)
+  local json = read_cache(cfg)
+  if not json then return nil end
+  local rise, set = json:match('"updated"%s*:%s*%d+%s*,%s*"sunrise"%s*:%s*"([^"]*)"%s*,%s*"sunset"%s*:%s*"([^"]*)"')
+  local sunrise, sunset = rise and parse_clock(rise), set and parse_clock(set)
+  if not sunrise or not sunset then return nil end
+  util.log(string.format("sunrise/sunset from Quickshell cache: %s / %s", rise, set), cfg)
+  return sunrise, sunset
+end
+
 --- Fetch current coordinates from ipinfo.io (two HTTP requests).
 --- Returns nil if the request fails or the response is malformed.
 --- @param util table shared utility object
@@ -108,10 +160,10 @@ local function sun_times_sunwait(lat, lon, cfg, util)
   if not util.command_exists("sunwait") then return nil end
   local lat_dir = lat >= 0 and "N" or "S"
   local lon_dir = lon >= 0 and "E" or "W"
-  local cmd = string.format("sunwait -p %0.4f%s %0.4f%s 2>/dev/null", math.abs(lat), lat_dir, math.abs(lon), lon_dir)
+  local cmd = string.format("sunwait list %0.4f%s %0.4f%s 2>/dev/null", math.abs(lat), lat_dir, math.abs(lon), lon_dir)
   local out = util.run_cmd(cmd)
   if not out then return nil end
-  local sh, sm, eh, em = out:match("Sun rises%s+(%d%d)(%d%d).-[Ss]ets%s+(%d%d)(%d%d)")
+  local sh, sm, eh, em = out:match("(%d%d):(%d%d),%s*(%d%d):(%d%d)")
   if not sh then return nil end
   sh, sm, eh, em = tonumber(sh), tonumber(sm), tonumber(eh), tonumber(em)
   sm = round_down_quarter(sm)
@@ -123,13 +175,14 @@ local function sun_times_sunwait(lat, lon, cfg, util)
 end
 
 --- Resolve and store coordinates in `state.lat`/`state.lon`.
---- Priority: manual config → IP geolocation → timezone fallback.
+--- Priority: manual config → Quickshell cache → IP geolocation → timezone fallback.
 --- Returns true if a definitive location was found, false if fallback was used.
 --- @param cfg table wallpaper config
 --- @param state table mutable state table (receives `lat`, `lon`)
 --- @param util table shared utility object
 --- @return boolean
 function Solar.get_location(cfg, state, util)
+  state.from_cache = false
   if
     cfg.manual_lat
     and cfg.manual_lon
@@ -142,7 +195,14 @@ function Solar.get_location(cfg, state, util)
   end
 
   if cfg.location_enabled then
-    local lat, lon = ip_geolocate(util)
+    local lat, lon = cache_coordinates(cfg)
+    if lat and lon then
+      state.lat, state.lon = lat, lon
+      state.from_cache = true
+      util.log("Coordinates from Quickshell cache", cfg)
+      return true
+    end
+    lat, lon = ip_geolocate(util)
     if lat and lon then
       state.lat, state.lon = lat, lon
       util.log("Coordinates from IP: " .. lat .. "," .. lon, cfg)
@@ -157,7 +217,7 @@ function Solar.get_location(cfg, state, util)
 end
 
 --- Fetch sunrise/sunset and update `cfg.start_hours` boundaries.
---- Tries `sunwait` first, falls back to Open-Meteo. Disables
+--- Tries `sunwait` first, then the Quickshell cache, then Open-Meteo. Disables
 --- `cfg.location_enabled` if neither source returns data.
 --- @param cfg table wallpaper config (mutated: `start_hours`, `location_enabled`)
 --- @param state table must have `lat` and `lon` populated by `Solar.get_location`
@@ -166,6 +226,9 @@ function Solar.update_periods(cfg, state, util)
   if not cfg.location_enabled or not state.lat or not state.lon then return end
 
   local sunrise, sunset = sun_times_sunwait(state.lat, state.lon, cfg, util)
+  if not sunrise and state.from_cache then
+    sunrise, sunset = sun_times_cache(cfg, util)
+  end
   if not sunrise then
     sunrise, sunset = sun_times_open_meteo(state.lat, state.lon, cfg, util)
   end
@@ -173,14 +236,14 @@ function Solar.update_periods(cfg, state, util)
   if sunrise and sunset then
     state.sunrise = sunrise
     state.sunset = sunset
-    cfg.start_hours.morning = math.max(0, sunrise - 0.25)
+    cfg.start_hours.dawn = math.max(0, sunrise - 0.25)
     cfg.start_hours.day = sunrise + 4
     cfg.start_hours.evening = math.max(0, sunset - 2.75)
     cfg.start_hours.night = math.min(23.75, sunset + 0.25)
     util.log(
       string.format(
-        "Adjusted periods (h): morning=%.2f day=%.2f evening=%.2f night=%.2f",
-        cfg.start_hours.morning,
+        "Adjusted periods (h): dawn=%.2f day=%.2f evening=%.2f night=%.2f",
+        cfg.start_hours.dawn,
         cfg.start_hours.day,
         cfg.start_hours.evening,
         cfg.start_hours.night

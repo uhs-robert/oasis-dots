@@ -221,6 +221,8 @@ Each style can bring its own lock screen, and the login screen reuses it.
 
 Installs system packages, AUR packages, fonts, and dev tools, then stows dotfiles into `~/`. Prompts for optional components (greetd, Steam, Nvidia, dev runtimes).
 
+If stow reports a conflict with an existing file, the installer shows stow's error and carries on; move the conflicting files aside and run `just stow <package>`. Never use `stow --adopt`, which moves your files into the repo.
+
 Flags: `--no-aur`, `--no-cargo`, `--no-system-files`, `--no-services`, `--dev`, `--server`.
 
 `--server` is for headless machines: it installs the `[CORE] [SYSTEM] [CLI] [DEV]` sections of `packages/arch.ini` plus `[SHELL] [CLI]` from `packages/arch-aur.ini`, stows the `[SERVER]` list from `packages/stow.ini`, and skips fonts, Rust, greetd, and the desktop services.

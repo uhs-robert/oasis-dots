@@ -1,7 +1,7 @@
 // home/quickshell/.config/quickshell/components/goldeneye/SizeText.qml
 import QtQuick
 import "../../theme"
-import "../../lock/skins/goldeneye/Watch.js" as W
+import "../../theme/Watch.js" as W
 
 // "W x H" with the numbers in seven-segment digits and the multiplication sign in a text font.
 Row {
@@ -9,7 +9,7 @@ Row {
 
     property int width_px: 0
     property int height_px: 0
-    property color color: W.green
+    property color color: Style.wk.lit
     property real pixel_size: Style.fs(-3)
 
     spacing: root.pixel_size * 0.3

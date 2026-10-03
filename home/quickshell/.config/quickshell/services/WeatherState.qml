@@ -42,6 +42,7 @@ Singleton {
     property string fetch_key: ""
     property real lat: 0
     property real lon: 0
+    property real geo_ms: 0
 
     property var aq_current: null
     property var aq_hours: []
@@ -54,6 +55,7 @@ Singleton {
     property string alerts_error: ""
 
     readonly property int refresh_interval_ms: 900000
+    readonly property int geo_interval_ms: 86400000
     readonly property int request_timeout_ms: 10000
     readonly property int min_refresh_gap_ms: 60000
     readonly property int retry_gap_ms: 120000
@@ -177,8 +179,11 @@ Singleton {
         const lat = root.settings.latitude;
         const lon = root.settings.longitude;
         if (String(lat) === "auto" || String(lon) === "auto") {
-            root.fetch_location();
+            const cached = root.geo_ms > 0 && (root.lat !== 0 || root.lon !== 0);
+            if (cached && Date.now() - root.geo_ms < root.geo_interval_ms) root.fetch_forecast(root.lat, root.lon, root.location_name);
+            else root.fetch_location();
         } else {
+            root.geo_ms = 0;
             root.fetch_forecast(root.parse_num(lat, 0), root.parse_num(lon, 0), "");
         }
     }
@@ -191,8 +196,9 @@ Singleton {
             if (xhr.status === 200) {
                 try {
                     const data = JSON.parse(xhr.responseText);
-                    const name = [data.city, data.regionName, data.country].filter(p => !!p).join(", ");
-                    root.fetch_forecast(root.parse_num(data.lat, 0), root.parse_num(data.lon, 0), name);
+                    if (data.success === false) throw new Error("lookup refused");
+                    const name = [data.city, data.region, data.country].filter(p => !!p).join(", ");
+                    root.fetch_forecast(root.parse_num(data.latitude, 0), root.parse_num(data.longitude, 0), name, true);
                 } catch (e) {
                     root.fail("location parse error: " + e);
                 }
@@ -202,15 +208,16 @@ Singleton {
         };
         xhr.onerror = () => root.fail("location request network error");
         xhr.ontimeout = () => root.fail("location request timed out");
-        xhr.open("GET", "http://ip-api.com/json/?fields=lat,lon,city,regionName,country");
+        xhr.open("GET", "https://ipwho.is/?fields=success,latitude,longitude,city,region,country");
         xhr.send();
     }
 
     // A `location_name` setting replaces the looked-up place name, e.g. to keep a real city private.
-    function fetch_forecast(lat, lon, location_name) {
+    function fetch_forecast(lat, lon, location_name, geo_fresh) {
         location_name = root.settings.location_name || location_name;
         root.lat = lat;
         root.lon = lon;
+        if (geo_fresh) root.geo_ms = Date.now();
 
         const unit_c = root.settings.unit === "celsius";
         const days_count = Math.max(1, Math.min(16, root.settings.days || 7));
@@ -438,6 +445,7 @@ Singleton {
         root.utc_offset = parsed.utc_offset || 0;
         root.lat = parsed.lat || root.lat;
         root.lon = parsed.lon || root.lon;
+        if (parsed.geo_ms !== undefined) root.geo_ms = parsed.geo_ms;
         if (parsed.aq_current !== undefined) root.aq_current = parsed.aq_current;
         if (parsed.aq_hours !== undefined) root.aq_hours = parsed.aq_hours;
         if (parsed.aq_current) root.aq_has_data = true;
@@ -463,6 +471,7 @@ Singleton {
             utc_offset: root.utc_offset,
             lat: root.lat,
             lon: root.lon,
+            geo_ms: root.geo_ms,
             aq_current: root.aq_current,
             aq_hours: root.aq_hours,
             alerts: root.alerts,

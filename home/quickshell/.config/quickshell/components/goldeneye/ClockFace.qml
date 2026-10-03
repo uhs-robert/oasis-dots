@@ -4,7 +4,7 @@ import Quickshell
 import "../../theme"
 import "../../services"
 import "../../lock/skins/goldeneye" as Watch
-import "../../lock/skins/goldeneye/Watch.js" as W
+import "../../theme/Watch.js" as W
 
 // An analogue clock in the watch's dress: a round black dial with the bezel arcs, white bars and studs, a green panel and the pale hands, and the time in seven-segment digits beside it.
 // The seconds hand ticks on the wall-clock second only while `running` on AC; otherwise the face shows the minute.
@@ -45,7 +45,7 @@ Item {
         anchors.verticalCenter: parent.verticalCenter
         horizontalAlignment: Text.AlignHCenter
         text: Qt.formatTime(clock.date, "HH:mm")
-        color: W.green
+        color: Style.wk.lit
         font.family: W.digit_font
         font.pixelSize: 60
         fontSizeMode: Text.Fit

@@ -1,7 +1,7 @@
 // home/quickshell/.config/quickshell/lock/skins/goldeneye/PanelShape.qml
 import QtQuick
 import QtQuick.Shapes
-import "Watch.js" as Watch
+import "../../../theme/Watch.js" as Watch
 
 // The watch's translucent green octagon with the pale notches on its sides, at any size.
 Item {
@@ -11,6 +11,11 @@ Item {
     property real notch_w: 8
     property real notch_h: 22
     property bool notches: true
+    property color edge: "transparent"
+    readonly property var outline: {
+        const w = root.width, h = root.height, c = Math.min(root.cut, w / 2, h / 2);
+        return [Qt.point(c, 0), Qt.point(w - c, 0), Qt.point(w, c), Qt.point(w, h - c), Qt.point(w - c, h), Qt.point(c, h), Qt.point(0, h - c), Qt.point(0, c), Qt.point(c, 0)];
+    }
     property color top_color: Qt.rgba(Watch.panel_top[0], Watch.panel_top[1], Watch.panel_top[2], Watch.panel_top[3])
     property color bottom_color: Qt.rgba(Watch.panel_bottom[0], Watch.panel_bottom[1], Watch.panel_bottom[2], Watch.panel_bottom[3])
 
@@ -28,12 +33,15 @@ Item {
                 GradientStop { position: 0; color: root.top_color }
                 GradientStop { position: 1; color: root.bottom_color }
             }
-            PathPolyline {
-                path: {
-                    const w = root.width, h = root.height, c = Math.min(root.cut, w / 2, h / 2);
-                    return [Qt.point(c, 0), Qt.point(w - c, 0), Qt.point(w, c), Qt.point(w, h - c), Qt.point(w - c, h), Qt.point(c, h), Qt.point(0, h - c), Qt.point(0, c), Qt.point(c, 0)];
-                }
-            }
+            PathPolyline { path: root.outline }
+        }
+
+        ShapePath {
+            strokeWidth: root.edge.a > 0 ? 1 : -1
+            strokeColor: root.edge
+            fillColor: "transparent"
+            joinStyle: ShapePath.MiterJoin
+            PathPolyline { path: root.outline }
         }
     }
 

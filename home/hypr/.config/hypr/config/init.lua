@@ -34,11 +34,14 @@ local Utils = require("lib.utils") ---@class Utils
 
 --- @class Config
 --- @field leader string Modifier key for keybinds (default: "SUPER")
---- @field theme string Name of the theme file in ./theme/themes/ (default: "oasis_moonlight")
+--- @field theme string Name of the theme file in ./theme/colors/ (default: "oasis_moonlight")
 --- @field ws_per_monitor integer Workspaces assigned per monitor on startup (default: 5)
 --- @field persistent_workspaces integer|boolean Workspaces to pin per monitor, or false to disable (default: 5)
 --- @field vim_mode boolean Use H/J/K/L as directional inputs in keybinds (default: true)
 --- @field use_uwsm boolean Enable uwsm session management (default: false)
+--- @field path_prepend string[] Extra PATH entries placed ahead of the inherited PATH (default: {})
+--- @field wallpaper_enabled boolean Start the wallpaper rotator at login and on monitor hotplug (default: true)
+--- @field wallpaper_location boolean Let the wallpaper rotator look up this machine's location online (default: false)
 --- @field drm_devices string|nil DRM device path(s) for AQ_DRM_DEVICES; nil = unset (default: nil)
 --- @field is_laptop boolean|nil Whether the system running is a laptop or desktop (default: nil)
 --- @field nvidia Config.Nvidia
@@ -55,6 +58,9 @@ Config.defaults = {
   persistent_workspaces = 5,
   vim_mode = true,
   use_uwsm = false,
+  path_prepend = {},
+  wallpaper_enabled = true,
+  wallpaper_location = false,
   drm_devices = nil,
   is_laptop = nil,
   nvidia = {

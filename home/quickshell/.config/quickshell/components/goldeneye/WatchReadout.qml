@@ -2,7 +2,7 @@
 import QtQuick
 import "../../theme"
 import "../../lock/skins/goldeneye" as Watch
-import "../../lock/skins/goldeneye/Watch.js" as W
+import "../../theme/Watch.js" as W
 
 // A small watch face for the pickers' readouts: a black dial, two caption words and a green panel that holds the children.
 Item {
@@ -16,9 +16,9 @@ Item {
     Rectangle {
         anchors.fill: parent
         radius: 10
-        color: W.black
+        color: Style.wk.frame
         border.width: 2
-        border.color: W.rim
+        border.color: Style.wk.rim
     }
 
     Text {
@@ -26,7 +26,7 @@ Item {
         x: 10
         y: 4
         text: root.label
-        color: W.green_dim
+        color: Style.wk.dim
         font.family: W.mono_font
         font.pixelSize: Style.fs(-7)
         font.letterSpacing: 1
@@ -37,7 +37,7 @@ Item {
         x: root.width - width - 10
         y: 4
         text: root.status
-        color: W.green_dim
+        color: Style.wk.dim
         font.family: W.mono_font
         font.pixelSize: Style.fs(-7)
         font.letterSpacing: 1
@@ -50,6 +50,9 @@ Item {
         height: root.height - 22
         cut: 6
         notches: false
+        top_color: Style.wk.panel_top
+        edge: Style.wk.edge
+        bottom_color: Style.wk.panel_bottom
 
         Item {
             id: body

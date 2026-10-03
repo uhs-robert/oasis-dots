@@ -28,7 +28,7 @@ Popup {
     cursor_state: root.selected
 
     readonly property var device: UPower.displayDevice
-    readonly property bool has_battery: !!device && device.ready
+    readonly property bool has_battery: !!device && device.ready && device.isLaptopBattery
     readonly property real percent: has_battery ? device.percentage * 100 : 0
     readonly property int state: has_battery ? device.state : UPowerDeviceState.Unknown
     readonly property real rate: has_battery ? device.changeRate : 0
@@ -168,7 +168,7 @@ Popup {
         }
 
         Loader {
-            active: root.nes
+            active: root.nes && root.has_battery
             width: 14
             height: Math.max(0, brightness_row.y - 10)
             sourceComponent: Nes.EnergyBar {
@@ -260,7 +260,7 @@ Popup {
             Loader {
                 id: status_view
                 readonly property Component view: ({ snes: snes_status, ps1: ps1_status, ps2: ps2_status })[root.st.console_views] || null
-                active: !!view
+                active: !!view && root.has_battery
                 visible: active
                 Layout.fillWidth: true
                 sourceComponent: view
@@ -320,7 +320,16 @@ Popup {
             }
 
             Text {
-                visible: !status_view.active && !watch_gauge.active
+                visible: !root.has_battery
+                Layout.leftMargin: root.status_indent
+                text: "No battery"
+                color: root.st.text_strong
+                font.family: root.st.font_family
+                font.pixelSize: root.st.fs(4)
+            }
+
+            Text {
+                visible: root.has_battery && !status_view.active && !watch_gauge.active
                 Layout.leftMargin: root.status_indent
                 text: (root.nes ? "BAT " : "") + Math.round(root.percent) + "%"
                 color: root.st.text_strong
@@ -329,7 +338,7 @@ Popup {
             }
 
             Text {
-                visible: !status_view.active && !watch_gauge.active
+                visible: root.has_battery && !status_view.active && !watch_gauge.active
                 Layout.leftMargin: root.status_indent
                 text: root.state_label
                 color: root.st.text_muted
@@ -338,7 +347,7 @@ Popup {
             }
 
             Text {
-                visible: root.time_label !== "" && !status_view.active && !watch_gauge.active
+                visible: root.has_battery && root.time_label !== "" && !status_view.active && !watch_gauge.active
                 Layout.leftMargin: root.status_indent
                 text: root.time_label
                 color: root.st.text_muted
@@ -347,7 +356,7 @@ Popup {
             }
 
             Text {
-                visible: root.rate > 0 && !status_view.active && !watch_gauge.active
+                visible: root.has_battery && root.rate > 0 && !status_view.active && !watch_gauge.active
                 Layout.leftMargin: root.status_indent
                 text: root.rate.toFixed(1) + " W"
                 color: root.st.text_muted

@@ -1,6 +1,7 @@
 // home/quickshell/.config/quickshell/components/goldeneye/GaugeDial.qml
 import QtQuick
-import "../../lock/skins/goldeneye/Watch.js" as W
+import "../../theme"
+import "../../theme/Watch.js" as W
 
 // A level as the watch dial: the warm arc fills first (to 50%), then the blue one, bottom up in 16 whole steps; past 100% the blue arc turns red.
 Item {
@@ -16,7 +17,7 @@ Item {
     property bool low: false
     readonly property bool over: root.value > 1.0001
     readonly property int steps: Math.max(0, Math.min(16, Math.ceil(Math.min(1, root.value) * 16 - 1e-6)))
-    readonly property color digit_color: root.muted || root.over ? W.red : W.green
+    readonly property color digit_color: root.muted || root.over ? Style.pal.error : Style.wk.lit
 
     implicitWidth: root.size
     implicitHeight: root.size
@@ -47,7 +48,7 @@ Item {
                 anchors.horizontalCenter: parent.horizontalCenter
                 visible: text !== ""
                 text: root.muted ? "MUTE" : root.label
-                color: root.muted ? W.red : W.green_soft
+                color: root.muted ? Style.pal.error : Style.wk.soft
                 font.family: W.mono_font
                 font.pixelSize: root.size * 0.08
                 font.letterSpacing: 1
