@@ -99,6 +99,7 @@ Singleton {
             onStreamFinished: {
                 const r = root.split_status(text);
                 root.official_available = r.code !== 127;
+                if (!root.official_available) root.official = [];
                 root.official_failed = r.code !== 0 && r.code !== 2 && r.code !== 127;
                 if (r.code === 0) root.official = root.parse_official(r.body);
                 else if (r.code === 2) root.official = [];
@@ -115,6 +116,7 @@ Singleton {
             onStreamFinished: {
                 const r = root.split_status(text);
                 root.aur_available = r.code !== 127;
+                if (!root.aur_available) root.aur = [];
                 root.aur_failed = r.code !== 0 && r.code !== 127;
                 if (r.code === 0) root.aur = root.parse_aur(r.body);
                 root.aur_done = true;
