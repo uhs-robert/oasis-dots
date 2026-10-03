@@ -50,8 +50,7 @@ for entry in $stow_entries; do
   echo "stow.ini lists $entry but home/$entry does not exist" >&2
   status=1
 done
-for path in "$repo_dir"/home/*/; do
-  dir=$(basename -- "$path")
+for dir in $(git -C "$repo_dir" ls-files home | cut -d/ -f2 | sort -u); do
   case " $unstowed " in *" $dir "*) continue ;; esac
   printf '%s\n' "$stow_entries" | grep -qx -- "$dir" && continue
   echo "home/$dir is not listed in stow.ini" >&2
