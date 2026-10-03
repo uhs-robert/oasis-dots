@@ -84,7 +84,7 @@ Provides `normal`/`insert`/`visual` modes (and more) with window navigation, wor
 Press `SUPER + /` to open the Quickshell keybinds picker for the current mode. When the bar isn't running it falls back to the rofi script (`scripts/keybind-help.lua`).
 
 > [!TIP]
-> All binds are defined in `hypr/keymaps/`, one file per submap. [Changing keybinds](../../../../docs/keybinds.md) shows how to edit them and add your own.
+> All binds are defined in `hypr/keymaps/`, one file per submap. [Changing keybinds](../../../../docs/keybinds.md) shows how to change them and add your own from `custom/`, without editing these files.
 >
 > To override one from your `custom/` config, remove it with `Bind.unbind(key, submap)` and bind your own. Hyprland's `hl.unbind` can't target one submap ([hyprwm/Hyprland#15040](https://github.com/hyprwm/Hyprland/discussions/15040)), so `Bind` tracks its binds per submap; see `custom/README.md`.
 >

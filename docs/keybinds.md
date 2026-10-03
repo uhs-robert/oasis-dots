@@ -1,6 +1,6 @@
 # Changing keybinds
 
-Every key in this setup is defined in Lua under `~/.config/hypr/keymaps/`. This page covers how to find a bind, change it, add your own, and build a new menu of keys.
+The keys this setup ships are defined in Lua under `~/.config/hypr/keymaps/`. Leave those files alone: your changes go in one file of your own, `custom/keymaps.lua`, which can add binds, replace shipped ones and build new menus. It is gitignored, so `git pull` never conflicts with it, and you can track it in a repo of your own.
 
 ## Finding what a key does
 
@@ -10,9 +10,11 @@ You rarely need to open a file to find a bind.
 - `SUPER + SPACE` opens the Leader menu, which lists every other menu.
 - Entering any menu shows its keys in the which-key overlay.
 
-All three read the same descriptions you write next to each bind, so anything you add shows up in them automatically.
+All three read the description written next to each bind, so anything you add shows up in them too.
 
-## How the files are laid out
+## Where the shipped binds live
+
+Open these to see how a bind is written or which menu a key belongs to:
 
 ```
 keymaps/
@@ -26,15 +28,43 @@ keymaps/
     power.lua          lock, sleep, power
     mouse.lua          mouse binds
   submaps/             menus: press one key to enter, then another to act
-    leader/  apps/  go/  system/  delete/  windows/
+    leader/  apps/  go/  system/  delete/  windows/  monitors/
     groups/  cursor/  resize/  move/  zoom/  bar/
 ```
 
-A global bind fires the moment you press it. A submap is a menu: its entry key switches the keyboard into that menu, where plain keys such as `F` or `SHIFT + S` do things, and then it exits.
+A global bind fires the moment you press it. A submap is a menu: its entry key switches the keyboard into that menu, where plain keys such as `F` or `SHIFT + S` do things. Each submap's name, which you need for changing it, is the `name` field at the top of its file: `Applications`, `Windows`, `Leader` and so on.
+
+## Setting up your keymap file
+
+`hyprland.lua` runs `custom/init.lua` last, after every shipped bind is registered. Load your keymap file from there:
+
+```lua
+-- ~/.config/hypr/custom/init.lua
+require("custom.keymaps")
+```
+
+Then start `~/.config/hypr/custom/keymaps.lua` with the helpers the examples below use:
+
+```lua
+-- ~/.config/hypr/custom/keymaps.lua
+local Bind = require("lib.key.bind")
+local Submap = require("lib.key.submap")
+local Cmd = require("lib.actions.cmd")
+```
+
+Apply every change with:
+
+```
+hyprctl reload
+```
+
+## Key names
+
+Keys are written as modifiers and a key name joined by ` + `, for example `"CTRL + SHIFT + ESCAPE"`. Key names are Hyprland's: letters and digits as they are, and names such as `RETURN`, `SPACE`, `TAB`, `SLASH`, `PERIOD`, `BRACKETLEFT`. A key tester such as `wev` (not installed by default) prints the name of any key you press.
 
 ## The leader key
 
-Most global binds start with one modifier, the leader. It is `SUPER` by default. To change it for one machine, set it in your machine profile:
+Most global binds start with one modifier, the leader. It is `SUPER` by default. To change it for one machine, set it in that machine's profile:
 
 ```lua
 -- config/machines/<hostname>.lua
@@ -43,88 +73,92 @@ return {
 }
 ```
 
-Every bind written with `Bind.leader_key` and every submap entered with `Config.leader .. " + ..."` follows it. See `config/machines/README.md` for how profiles work.
-
-## Changing or removing a bind
-
-Find the line, edit the key, save, and reload:
-
-```
-hyprctl reload
-```
-
-Global binds look like this, in `keymaps/global/shortcuts.lua`:
-
-```lua
-Bind.leader_fn("RETURN", Cmd.open_term(),    "Terminal")
-Bind.leader_cmd("E",     FILES,              "File Manager")
-Bind.fn("CTRL + SHIFT + ESCAPE", Cmd.term("btop"), "Task Manager")
-```
-
-The first argument is the key, the second what it does, the third the description shown in search and which-key. To move the terminal to `SUPER + BACKSPACE`, change `"RETURN"` to `"BACKSPACE"`. To remove a bind, delete the line or comment it out with `--`.
-
-Keys are written as modifiers and a key name joined by ` + `, for example `"CTRL + SHIFT + ESCAPE"`. Key names are Hyprland's: letters and digits as they are, and names such as `RETURN`, `SPACE`, `TAB`, `SLASH`, `PERIOD`, `BRACKETLEFT`. A key tester such as `wev` (not installed by default) prints the name of any key you press.
+Every `Bind.leader_*` helper and every menu entered with `Config.leader .. " + ..."` follows it, yours included. See `config/machines/README.md` for how profiles work.
 
 ## Adding a bind
 
-Pick the helper that matches what the key should do. All of them come from `lib/key/bind.lua`.
+Pick the helper that matches what the key should do:
 
 | Helper | Use it for |
 | --- | --- |
-| `Bind.leader_cmd(key, "command", "Description")` | Running a shell command, with the leader |
-| `Bind.leader_fn(key, action, "Description")` | Running one of the built-in actions, with the leader |
+| `Bind.leader_cmd(key, "command", "Description")` | A shell command, with the leader |
+| `Bind.leader_fn(key, action, "Description")` | One of the built-in actions, with the leader |
 | `Bind.cmd(key, "command", "Description")` | A shell command with no leader, so you write the modifiers yourself |
 | `Bind.fn(key, action, "Description")` | An action with no leader |
 
-For example, to open a calculator on `SUPER + F9` and a file on `CTRL + ALT + N`:
+For example, a calculator on `SUPER + F9` and a notes file on `CTRL + ALT + N`:
 
 ```lua
 Bind.leader_cmd("F9", "qalculate-gtk", "Calculator")
 Bind.cmd("CTRL + ALT + N", "kitty -e nvim ~/notes.md", "Notes")
 ```
 
-The built-in actions live in `lib/actions/`, grouped by subject: `window.lua`, `workspace.lua`, `apps.lua`, `cmd.lua`, `menu.lua`, `media.lua` and others. The ones you will reach for most:
+The third argument is the description shown in search and which-key. The built-in actions live in `lib/actions/`, grouped by subject (`window.lua`, `workspace.lua`, `apps.lua`, `cmd.lua`, `menu.lua`, `media.lua` and others). The ones you will reach for most:
 
 | Action | Does |
 | --- | --- |
 | `Cmd.run("command")` | Runs a command |
 | `Cmd.term("command")` | Runs it in your terminal |
+| `Cmd.open_term()` | Opens your terminal |
 | `Cmd.bottom_terminal("command")` | Runs it in a terminal that drops in at the bottom of the screen |
-| `Apps.open("command")` | Starts an app |
-| `Apps.focus_or_launch(app)` | Jumps to the app if it is open, otherwise starts it |
 
-A bind that should also work while you are inside a menu takes one more argument:
+A bind that should also work while you are inside a menu passes its options in place of the description. This replaces the calculator line above, rather than adding to it:
 
 ```lua
-Bind.leader_key("S", Window.toggle_special("scratchpad"), { submap_universal = true, desc = "Toggle Scratchpad" })
+Bind.leader_cmd("F9", "qalculate-gtk", { submap_universal = true, desc = "Calculator" })
 ```
 
-## Adding a key to a menu
+## Changing or removing a shipped bind
 
-Each submap is a list of rows: key, action, description. To add an app to the Applications menu (`SUPER + A`), add a row to `keymaps/submaps/apps/init.lua`:
+Binding a key that is already bound does not replace it: Hyprland keeps both binds and runs both. So remove the shipped one first, then bind yours. To move the terminal from `SUPER + RETURN` to `SUPER + BACKSPACE`:
 
 ```lua
-binds = {
-  { "F", Apps.open("firefox"),  "Firefox" },
-  { "Z", Apps.open("zathura"),  "PDF viewer" },   -- new
-},
+Bind.leader_unbind("RETURN")
+Bind.leader_fn("BACKSPACE", Cmd.open_term(), "Terminal")
 ```
 
-After a reload, `SUPER + A` then `Z` opens it, and the row appears in which-key.
+To drop a bind without replacing it, unbind it and stop there:
+
+```lua
+Bind.leader_unbind("CTRL + RETURN")   -- no more SSH picker on SUPER + CTRL + RETURN
+```
+
+`Bind.leader_unbind(key)` is `Bind.unbind("SUPER + " .. key)` with your leader in place of `SUPER`. Keys match the way they were bound, ignoring case and spaces. Both return how many binds they removed, so a `0` means the key was written differently or is not one of this config's binds. On Hyprland 0.56 and older an unbound key is disabled rather than removed, so it stops firing but still appears in `SUPER + /`; `custom/README.md` explains why.
+
+## Changing a key inside a menu
+
+Pass the submap's name to `Bind.unbind` to remove a key from that menu only; the same key in other menus is untouched. Then add your own with `Bind.submap`, which adds to an existing menu:
+
+```lua
+-- In the Windows menu, H focuses left instead of what it did before.
+Bind.unbind("H", "Windows")
+Bind.submap("Windows", function()
+  Bind.key("H", hl.dsp.focus({ direction = "left" }), "Focus left")
+end)
+```
+
+Some menus, such as Applications and Leader, are one-shot: they close after any key. A bind you add this way does not close the menu on its own, so finish its action with `Submap.reset()`. To add a PDF viewer to the Applications menu (`SUPER + A`) on `Z`:
+
+```lua
+Bind.submap("Applications", function()
+  Bind.key("Z", function()
+    hl.dispatch(hl.dsp.exec_cmd("zathura"))
+    Submap.reset()
+  end, "PDF viewer")
+end)
+```
+
+Menus that stay open until you press `ESCAPE`, such as Windows, Resize and Move, need no `Submap.reset()`; each one's `catchall` field says which kind it is (see the table below).
 
 ## Making a menu of your own
 
-Create `keymaps/submaps/notes/init.lua`:
+`Submap.define` builds a menu from rows of key, action and description:
 
 ```lua
-local Config = require("config")
-local Cmd = require("lib.actions.cmd")
-local Submap = require("lib.key.submap")
-
 Submap.define({
   name = "Notes",
   desc = "+Notes",
-  enter = Config.leader .. " + SHIFT + N",
+  enter = Bind.leader .. " + SHIFT + N",
 
   escape = "reset",
   catchall = "reset",
@@ -136,42 +170,34 @@ Submap.define({
 }).setup()
 ```
 
-Then load it by adding one line to `keymaps/submaps/init.lua`:
-
-```lua
-require("keymaps.submaps.notes")
-```
-
-What the fields mean:
+`SUPER + SHIFT + N` then `T` opens today's note. What the fields mean:
 
 | Field | Meaning |
 | --- | --- |
-| `name` | The submap's name in Hyprland |
+| `name` | The submap's name in Hyprland, and the name `Bind.unbind` and `Bind.submap` take |
 | `desc` | The label shown when you enter it. A leading `+` marks it as a menu |
-| `enter` | The key that opens it. Check it is not already taken, with `SUPER + /` |
+| `enter` | The key that opens it. Check it is free with `SUPER + /` first |
 | `escape` | What `ESCAPE` does. `"reset"` leaves all menus, `"previous"` goes back one, a submap name jumps to that one |
-| `catchall` | What an unlisted key does. `"reset"` makes the menu one-shot: it closes after any key. `"stay"` keeps it open until you escape, for menus you press repeatedly, such as resize |
+| `catchall` | What an unlisted key does. `"reset"` makes the menu one-shot: it closes after any key, and its rows close it for you. `"stay"` keeps it open until you escape, for menus you press repeatedly |
 
-In a one-shot menu, a row can opt out and keep the menu open by adding `{ keep = true }` as a fourth item.
+In a one-shot menu, a row can stay open instead by adding `{ keep = true }` as a fourth item.
 
-To reach your menu from the Leader menu as well, add a row to `keymaps/submaps/leader/init.lua` that switches to it:
+To reach your menu from the Leader menu as well, add a row there that switches to it. `Submap.switch` moves straight into your menu, so this row needs no `Submap.reset()`:
 
 ```lua
-{ "SHIFT + N", Submap.switch("Notes"), "+Notes", { keep = true } },
+Bind.submap("Leader", function()
+  Bind.key("SHIFT + N", Submap.switch("Notes"), "+Notes")
+end)
 ```
 
-## Keeping your changes through updates
+## Keeping your changes
 
-The keymap files are tracked in the repo, so your edits are changes to tracked files. `git pull` will stop if upstream touched the same lines. Two ways to live with that:
-
-- Keep your changes on your own branch or fork and merge upstream into it.
-- Keep additions in files of your own, such as the `notes` submap above. A new file never conflicts; only the one `require` line you added can.
-
-Machine-specific values, such as the leader key or your default terminal, belong in `config/machines/<hostname>.lua`, which git ignores.
+Everything in `custom/` except its README is gitignored, so updates never touch your keymap file, and it is never committed to this repo. To keep it under version control and carry it between machines, store it in a repo of your own and link it in; see "Keeping your files" in `custom/README.md`. A machine-specific leader belongs in that machine's profile under `config/machines/`, linked the same way.
 
 ## When a bind does not work
 
-- Reload first: `hyprctl reload`. If nothing you changed takes effect, look for a Lua error: a mistake in one keymap file can stop the files after it from loading.
-- Check for a clash. If two binds use the same key, search it with `SUPER + /`.
-- Check the key name. `SLASH` is not `/`, and `RETURN` is not `ENTER`.
-- Inside a menu, plain keys belong to the menu. A global bind only works there if it was marked `submap_universal`.
+- **Nothing changed:** run `hyprctl reload`, and check that `custom/init.lua` requires `custom.keymaps`. A Lua error in your file shows up as a Hyprland error on reload.
+- **The old action still fires as well:** the shipped bind is still there. Unbind it before binding the key again; `Bind.unbind` returning `0` means the key did not match.
+- **A key does nothing:** check the key name. `SLASH` is not `/`, and `RETURN` is not `ENTER`.
+- **A global bind does nothing inside a menu:** inside a menu, plain keys belong to the menu. A global bind works there only with `submap_universal = true`.
+- **A key you added to a menu leaves the menu open:** end its action with `Submap.reset()`.

@@ -101,24 +101,20 @@ To skip the rotator on a machine, set `wallpaper_enabled = false` in its profile
 
 ## Keybinds
 
-Binding a key that is already bound doesn't replace it: Hyprland keeps both and runs both. To override one of this config's binds, remove it first with `Bind.unbind`, then bind your own:
+[Changing keybinds](../../../../../docs/keybinds.md) is the full guide: adding binds, replacing shipped ones, changing a key inside one menu, and building menus of your own, all from `custom/keymaps.lua`. The short version:
 
 ```lua
--- custom/keymaps.lua
+-- custom/keymaps.lua, required from custom/init.lua
 local Bind = require("lib.key.bind")
 
--- Global: SUPER + SHIFT + O opens your launcher instead of the session picker.
+-- Binding a taken key runs both binds, so remove the shipped one first.
 Bind.leader_unbind("SHIFT + O")
 Bind.leader_cmd("SHIFT + O", "my-launcher", "My launcher")
 
--- Inside a submap: H in the Windows submap only; H in every other submap is untouched.
+-- Inside one submap only: H in Windows; H elsewhere is untouched.
 Bind.unbind("H", "Windows")
 Bind.submap("Windows", function() Bind.key("H", hl.dsp.focus({ direction = "left" }), "Focus left") end)
 ```
-
-- `Bind.unbind(keys, submap)` removes the binds for those keys in that one submap. Leave `submap` out, or pass `"reset"`, for the global map. Keys match the way they were bound, ignoring case and spaces, so `Bind.unbind("SUPER + H")` and `Bind.leader_unbind("H")` are the same. It returns how many binds it removed.
-- `Bind.submap(name, fn)` adds binds to a submap, or defines a new one; use it instead of `hl.define_submap` so `Bind.unbind` can find those binds later. A bind added to a one-shot submap such as Leader doesn't leave it on its own; call `require("lib.key.submap").reset()` at the end of its action.
-- The submap names are the `name` fields under `keymaps/submaps/`, and the `SUPER + /` picker lists every bind in the current submap.
 
 ### Why not `hl.unbind`
 
