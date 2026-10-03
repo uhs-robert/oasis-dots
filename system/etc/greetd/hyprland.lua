@@ -63,6 +63,33 @@ hl.bind("SUPER + Q", restart_login)
 hl.bind("SUPER + T", hl.dsp.exec_cmd("mkdir -p " .. RUNTIME_DIR .. "/qs-greeter; touch " .. RUNTIME_DIR .. "/qs-greeter/fallback; pkill -x qs; sleep 1; pkill -9 -x qs"))
 
 ---- [MONITORS] ----
+local function resolve_primary()
+	local connected = {}
+	local pipe = io.popen("ls -d /sys/class/drm/card*-* 2>/dev/null | sort")
+	if pipe then
+		for path in pipe:lines() do
+			local file = io.open(path .. "/status")
+			local status = file and file:read("*l")
+			if file then
+				file:close()
+			end
+			local name = path:match("card%d+%-(.+)$")
+			if name and status == "connected" then
+				table.insert(connected, name)
+			end
+		end
+		pipe:close()
+	end
+	for _, name in ipairs(connected) do
+		if name:match("^eDP") then
+			return name
+		end
+	end
+	return connected[1] or "eDP-1"
+end
+
+PRIMARY = resolve_primary()
+
 -- MAIN
 hl.monitor({
 	output = "desc:BOE 0x0C8E",
@@ -77,7 +104,7 @@ hl.monitor({
 	mode = "preferred",
 	position = "auto",
 	scale = 1,
-	mirror = "eDP-1",
+	mirror = PRIMARY,
 })
 
 ---- [ADMIN TERMINAL FULLSCREEN] ----
