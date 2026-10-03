@@ -171,7 +171,7 @@ Options:
   --evening-hour H        Static start hour for evening
   --night-hour H          Static start hour for night
   --no-location           Disable location-based timing
-  --location              Follow the sun using an IP location lookup
+  --location              Follow the sun (Quickshell cache first, then online lookups)
   --latitude LAT          Manual latitude
   --longitude LON         Manual longitude
   --coordinates LAT,LON   Manual coordinates
