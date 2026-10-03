@@ -269,8 +269,11 @@ Popup {
     // Latest request per setting, run in order after the current one exits.
     property var modify_queue: []
 
-    function start_modify(req) {
-        root.setting_error = "";
+    property var modify_current: null
+
+    function start_modify(req, idle) {
+        if (idle) root.setting_error = "";
+        root.modify_current = req;
         modify_proc.command = ["sh", "-c", root.modify_script, "sh", req.uuid, req.reapply ? "1" : "0"].concat(req.props);
         modify_proc.running = true;
     }
@@ -279,14 +282,15 @@ Popup {
         if (!root.profile) return;
         const req = { uuid: root.profile.uuid, props: props, reapply: reapply };
         if (!modify_proc.running) {
-            root.start_modify(req);
+            root.start_modify(req, root.modify_queue.length === 0);
             return;
         }
         root.modify_queue = root.modify_queue.filter(q => q.uuid !== req.uuid || q.props[0] !== props[0]).concat([req]);
     }
 
     function queued_value(key) {
-        const q = root.modify_queue.find(r => root.profile && r.uuid === root.profile.uuid && r.props[0] === key);
+        const mine = r => root.profile && r.uuid === root.profile.uuid && r.props[0] === key;
+        const q = root.modify_queue.find(mine) || (root.modify_current && mine(root.modify_current) ? root.modify_current : null);
         return q ? q.props[1] : "";
     }
 
@@ -294,7 +298,7 @@ Popup {
         const req = root.modify_queue[0];
         if (!req) return;
         root.modify_queue = root.modify_queue.slice(1);
-        root.start_modify(req);
+        root.start_modify(req, false);
     }
 
     function activate_setting(i) {
@@ -364,10 +368,14 @@ Popup {
 
     Process {
         id: modify_proc
-        onExited: root.next_modify()
+        onExited: {
+            root.modify_current = null;
+            root.next_modify();
+        }
         stdout: StdioCollector {
             onStreamFinished: {
-                root.setting_error = text.trim().replace(/^Error: /, "");
+                const err = text.trim().replace(/^Error: /, "");
+                if (err !== "") root.setting_error = err;
                 root.fetch_details();
             }
         }
