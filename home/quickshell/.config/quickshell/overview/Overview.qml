@@ -610,6 +610,11 @@ PanelWindow {
             if (root.current_address === "") return true;
             ThemeAudio.play("confirm");
             root.share_window(root.current_address);
+        } else if (k === Qt.Key_S && (event.modifiers & Qt.ShiftModifier)) {
+            const before = root.cursor_key();
+            root.toggle_special();
+            if (root.special && root.tiles.length === 0) root.select_focused_workspace();
+            root.play_if_moved(before);
         } else if (k === Qt.Key_S || k === Qt.Key_R) {
             ThemeAudio.play("confirm");
             root.share_monitor(k === Qt.Key_R);
@@ -838,7 +843,7 @@ PanelWindow {
 
     readonly property string footer_text: root.help_open ? "? back · Esc back · q " + (root.share_mode ? "cancel share" : "close")
         : root.typing ? "Enter " + (root.share_mode ? "share" : root.carrying ? "drop here" : "focus") + " · Tab/Down next · Shift+Tab/Up previous · Esc " + (root.from_search && root.query === "" ? "close" : "clear") + " · ? help"
-        : root.share_mode ? "hjkl move · Ctrl+hjkl/1-9 monitor · Tab window · Enter share window · s screen · r region · / search · f view · ? help · Esc cancel"
+        : root.share_mode ? "hjkl move · Ctrl+hjkl/1-9 monitor · Tab window · Enter share window · s screen · r region · S special · / search · f view · ? help · Esc cancel"
         : root.swap_address !== "" ? "m swap · Enter swap · Tab other window · hjkl workspace · Esc cancel · ? help"
         : root.carrying ? "hjkl workspace · Ctrl+hjkl/1-9 monitor · Tab window · m drop · Enter drop · Esc cancel · ? help"
         : root.marks.length > 0 ? "Space mark · V mark all · m move " + root.marks.length + " · x close " + root.marks.length + " · hjkl move · Esc clear marks · ? help"
@@ -846,7 +851,7 @@ PanelWindow {
 
     readonly property string normal_help: "h/j/k/l move between workspaces · Arrows move between workspaces · Ctrl+h/j/k/l or Ctrl+Arrows jump to the next monitor that way · Ctrl+1-9 jump to that monitor number, as SUPER+Ctrl+1-9 counts them · Tab next window · Shift+Tab previous window · Enter focus window, or the workspace if empty · m pick up window, or every marked window · x close window, or every marked window · Space/v mark or unmark window · V mark or unmark all in workspace · / search windows by class, title or workspace · 1-9 select workspace by id, type 12 quickly for workspace 12, or the nth special workspace · s toggle special workspaces · f toggle filmstrip view, j/k there jump monitors · Click focus window or workspace"
     readonly property string carry_help: "h/j/k/l choose target workspace · Arrows choose target workspace · Ctrl+h/j/k/l choose target monitor · Ctrl+1-9 target monitor by number · 1-9 target workspace by id, type 12 quickly for workspace 12 · s toggle special workspaces · Tab/Shift+Tab choose a window in the same workspace to swap with · m drop there, or swap with the SWAP window · Enter drop there, or swap · f toggle filmstrip view · Click drop on workspace · Esc cancel, marks come back"
-    readonly property string share_help: "Only windows the share can capture are shown · h/j/k/l move between workspaces · Arrows move between workspaces · Ctrl+h/j/k/l or Ctrl+Arrows jump to the next monitor that way · Ctrl+1-9 jump to that monitor number · Tab next window · Shift+Tab previous window · Enter share the selected window · Click share a window · s share the whole monitor of the selected workspace · r share a region of that monitor, Esc there comes back here · / search shareable windows by class, title or workspace · 1-9 select workspace by id · f toggle filmstrip view, j/k there jump monitors · Esc/q cancel the share"
+    readonly property string share_help: "Only windows the share can capture are shown · h/j/k/l move between workspaces · Arrows move between workspaces · Ctrl+h/j/k/l or Ctrl+Arrows jump to the next monitor that way · Ctrl+1-9 jump to that monitor number · Tab next window · Shift+Tab previous window · Enter share the selected window · Click share a window · s share the whole monitor of the selected workspace · r share a region of that monitor, Esc there comes back here · S toggle special workspaces · / search shareable windows by class, title or workspace · 1-9 select workspace by id, or the nth special workspace · f toggle filmstrip view, j/k there jump monitors · Esc/q cancel the share"
     readonly property string help_text: root.typing ? "Type to search " + (root.share_mode ? "shareable " : "") + "windows by class, title or workspace · Enter " + (root.share_mode ? "share the highlighted window" : "focus the highlighted window, or drop the carried window on its workspace") + " · Tab/Down next match · Shift+Tab/Up previous match · Backspace delete, clears when empty · Esc clear search, or close when it is empty"
         : root.share_mode ? (root.query !== "" ? "Esc clear search · " : "") + root.share_help
         : root.carrying ? root.carry_help
