@@ -3,6 +3,7 @@ pragma Singleton
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import Quickshell.Networking
 import Quickshell.Hyprland
 
 // Official (checkupdates) and AUR (paru -Qua) update counts, ported from the Waybar
@@ -15,6 +16,7 @@ Singleton {
     readonly property int total: official.length + aur.length
 
     property bool checking: false
+    readonly property bool offline: Networking.connectivity === NetworkConnectivity.None
     property bool pending_refresh: false
     property string error: ""
     property double last_checked: 0
@@ -33,6 +35,8 @@ Singleton {
 
     Component.onCompleted: root.refresh_if_due()
 
+    onOfflineChanged: if (!root.offline) root.refresh_if_due()
+
     Timer {
         interval: 60000
         running: true
@@ -45,6 +49,7 @@ Singleton {
     }
 
     function refresh() {
+        if (root.offline) return;
         if (root.checking) {
             root.pending_refresh = true;
             return;
