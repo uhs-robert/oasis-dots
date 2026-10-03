@@ -18,10 +18,8 @@ local Closed = require("lib.closed_windows")
 local function init()
   Config.setup(Machines.merge(Default))
 
-  local has_hyprvim, hyprvim = pcall(require, "lua.plugins.hyprvim")
-  if not has_hyprvim then require("lib.missing_repos").add("hyprvim (repos/hyprvim)") end
-  if has_hyprvim then
-    hyprvim.setup({
+  if package.searchpath("lua.plugins.hyprvim", package.path) then
+    require("lua.plugins.hyprvim").setup({
       -- keys = { leader = "SUPER", activate = "V", exit = "ESCAPE" },
       -- The clone tracks main and is pulled by `just update-repos` (run by topgrade).
       updates = { channel = "off" },
@@ -33,6 +31,8 @@ local function init()
       prompt = { frontend = "quickshell" },
       close_handler = Closed.close_addresses,
     })
+  else
+    require("lib.missing_repos").add("hyprvim (repos/hyprvim)")
   end
 
   -- Last on purpose: custom/init.lua is the user's own entrypoint, run once everything above is loaded.

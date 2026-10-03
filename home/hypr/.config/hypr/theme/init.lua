@@ -23,14 +23,19 @@ local on_fallback = false
 --- Loads the palette for Config.theme, or the embedded fallback, into Theme.colors.
 --- @return table colors Palette color table
 Theme.load = function()
-  local ok, colors = pcall(require, "theme.colors." .. Config.theme)
-  on_fallback = not ok
-  if on_fallback then
-    MissingRepos.add("theme palette " .. Config.theme .. " (repos/oasis.nvim)")
-    colors = require("theme.fallback")
+  local name = "theme.colors." .. Config.theme
+  on_fallback = not package.searchpath(name, package.path)
+  if not on_fallback then
+    Theme.colors = require(name)
+    return Theme.colors
   end
-  Theme.colors = colors
-  return colors
+  if package.searchpath("theme.colors.oasis_moonlight", package.path) then
+    MissingRepos.add("palette " .. Config.theme .. " not found")
+  else
+    MissingRepos.add("theme palettes (repos/oasis.nvim)")
+  end
+  Theme.colors = require("theme.fallback")
+  return Theme.colors
 end
 
 --- Runs generators against the active palette (Hyprland only on fallback), reloading affected services.
