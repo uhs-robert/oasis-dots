@@ -17,6 +17,19 @@ do_stow() {
   done
 }
 
+# Copies each *.template.* in the given packages to its generated name when absent.
+seed_generated_defaults() {
+  local pkg tpl target
+  for pkg in "$@"; do
+    [[ -d "$DOTFILES_DIR/home/$pkg" ]] || continue
+    while IFS= read -r tpl; do
+      target="${tpl/.template./.}"
+      [[ -e "$HOME/${target#"$DOTFILES_DIR/home/$pkg/"}" ]] && continue
+      cp "$tpl" "$HOME/${target#"$DOTFILES_DIR/home/$pkg/"}" && info "Seeded default ${target##*/}"
+    done < <(find "$DOTFILES_DIR/home/$pkg" -name '*.template.*' -type f)
+  done
+}
+
 prompt_optional() {
   echo ""
   if [[ $OPT_YES -eq 1 ]]; then
