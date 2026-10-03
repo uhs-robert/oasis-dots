@@ -18,14 +18,11 @@ end
 --- @field apply fun() Runs all generators against the active palette
 local Theme = {}
 
-local on_fallback = false
-
 --- Loads the palette for Config.theme, or the embedded fallback, into Theme.colors.
 --- @return table colors Palette color table
 Theme.load = function()
   local name = "theme.colors." .. Config.theme
-  on_fallback = not package.searchpath(name, package.path)
-  if not on_fallback then
+  if package.searchpath(name, package.path) then
     Theme.colors = require(name)
     return Theme.colors
   end
@@ -38,15 +35,8 @@ Theme.load = function()
   return Theme.colors
 end
 
---- Runs generators against the active palette (Hyprland only on fallback), reloading affected services.
-Theme.apply = function()
-  local c = Theme.colors or Theme.load()
-  if on_fallback then
-    Generate.hyprland(c)
-  else
-    Generate.all(c)
-  end
-end
+--- Runs generators against the active palette, reloading affected services.
+Theme.apply = function() Generate.all(Theme.colors or Theme.load()) end
 
 Theme.load()
 Theme.apply()
