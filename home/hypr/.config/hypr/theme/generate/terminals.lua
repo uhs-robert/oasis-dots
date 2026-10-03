@@ -73,11 +73,5 @@ return function(_c)
       )
     )
   end
-  -- tmux-oasis sets its colours with `set -o`, so the old ones must be cleared before re-sourcing.
-  if changed.tmux then
-    os.execute(
-      "{ tmux show -g | awk '/^@thm_/ {print $1}' | while read -r o; do tmux set -gu \"$o\"; done;"
-        .. " tmux source-file ~/.tmux.conf; } >/dev/null 2>&1 &"
-    )
-  end
+  if changed.tmux then os.execute("tmux source-file ~/.tmux.conf >/dev/null 2>&1 &") end
 end
