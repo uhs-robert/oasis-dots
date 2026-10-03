@@ -54,7 +54,15 @@ Popup {
     readonly property int air_hours: Math.min(24, WeatherState.aq_hours.length)
 
     readonly property bool on_sun_moon: root.current_tab === 0 && root.daily_sub === root.sun_moon_sub
-    readonly property int day_span: Math.max(1, daily_view.fit_days)
+    property int day_span: 5
+    property real hourly_scroll_x: 0
+
+    Binding {
+        target: root
+        property: "day_span"
+        value: Math.max(1, daily_loader.item.fit_days)
+        when: daily_loader.item !== null
+    }
 
     function sync_day_window() {
         const n = root.day_span;
@@ -102,7 +110,7 @@ Popup {
         n = Math.max(1, n);
         if (jump) root.hour_cursor = is_hourly_tab ? root.shifted_hour_cursor(dir) : (dir < 0 ? 0 : n - 1);
         else root.hour_cursor = Math.max(0, Math.min(n - 1, root.hour_cursor + dir));
-        if (is_hourly_tab && hourly_view) hourly_view.scroll_to_cursor();
+        if (is_hourly_tab && hourly_loader.item) hourly_loader.item.scroll_to_cursor();
     }
 
     function move_alert_cursor(dir, jump) {
@@ -111,8 +119,8 @@ Popup {
             root.alert_cursor = dir < 0 ? 0 : n - 1;
         } else if (WeatherState.alerts.length > 1) {
             root.alert_cursor = root.wrap_index(root.alert_cursor, dir, 0, WeatherState.alerts.length);
-        } else if (alerts_view) {
-            alerts_view.scroll_detail(dir);
+        } else if (alerts_loader.item) {
+            alerts_loader.item.scroll_detail(dir);
         }
     }
 
@@ -127,7 +135,7 @@ Popup {
         root.day_cursor = 0;
         root.hour_cursor = 0;
         root.alert_cursor = 0;
-        if (hourly_view) hourly_view.scroll_to_cursor();
+        if (hourly_loader.item) hourly_loader.item.scroll_to_cursor();
     }
 
     function go_end() {
@@ -137,7 +145,7 @@ Popup {
             root.hour_cursor = Math.max(0, root.air_hours - 1);
         } else if (root.current_tab === 1) {
             root.hour_cursor = Math.max(0, WeatherState.hours.length - 1);
-            if (hourly_view) hourly_view.scroll_to_cursor();
+            if (hourly_loader.item) hourly_loader.item.scroll_to_cursor();
         } else if (root.on_alerts_tab) {
             root.alert_cursor = Math.max(0, WeatherState.alerts.length - 1);
         }
@@ -154,7 +162,7 @@ Popup {
         root.hour_cursor = idx;
         root.set_tab(1);
         if (root.on_air) root.current_sub = 0;
-        if (hourly_view) hourly_view.scroll_to_cursor();
+        if (hourly_loader.item) hourly_loader.item.scroll_to_cursor();
     }
 
     function fmt_temp(t) {
@@ -470,47 +478,65 @@ Popup {
                 Layout.fillWidth: true
                 Layout.preferredHeight: root.content_height
 
-                DailyView {
-                    id: daily_view
+                Loader {
+                    id: daily_loader
                     anchors.fill: parent
-                    visible: root.current_tab === 0 && !root.on_sun_moon
-                    day_cursor: root.day_cursor
-                    first_day: root.day_first
-                    sub: root.daily_sub
-                    on_select: function (i) { root.day_cursor = i; ThemeAudio.play("cursor"); }
+                    active: root.current_tab === 0
+                    sourceComponent: DailyView {
+                        anchors.fill: parent
+                        visible: !root.on_sun_moon
+                        day_cursor: root.day_cursor
+                        first_day: root.day_first
+                        sub: root.daily_sub
+                        on_select: function (i) { root.day_cursor = i; ThemeAudio.play("cursor"); }
+                    }
                 }
 
-                HourlyView {
-                    id: hourly_view
+                Loader {
+                    id: hourly_loader
                     anchors.fill: parent
-                    visible: root.current_tab === 1 && !root.on_air
-                    hour_cursor: root.hour_cursor
-                    sub: root.hourly_sub
-                    on_select: function (i) { root.hour_cursor = i; ThemeAudio.play("cursor"); }
+                    active: root.current_tab === 1 && !root.on_air
+                    sourceComponent: HourlyView {
+                        anchors.fill: parent
+                        hour_cursor: root.hour_cursor
+                        sub: root.hourly_sub
+                        scroll_x: root.hourly_scroll_x
+                        on_scroll: function (x) { root.hourly_scroll_x = x; }
+                        on_select: function (i) { root.hour_cursor = i; ThemeAudio.play("cursor"); }
+                    }
                 }
 
-                AirView {
+                Loader {
                     anchors.fill: parent
-                    visible: root.on_air
-                    hour_cursor: root.hour_cursor
-                    on_select: function (i) { root.hour_cursor = i; ThemeAudio.play("cursor"); }
+                    active: root.on_air
+                    sourceComponent: AirView {
+                        anchors.fill: parent
+                        hour_cursor: root.hour_cursor
+                        on_select: function (i) { root.hour_cursor = i; ThemeAudio.play("cursor"); }
+                    }
                 }
 
-                SunMoonView {
+                Loader {
                     anchors.fill: parent
-                    visible: root.on_sun_moon
-                    day_cursor: root.day_cursor
-                    first_day: root.day_first
-                    day_span: root.day_span
-                    on_select: function (i) { root.day_cursor = i; ThemeAudio.play("cursor"); }
+                    active: root.on_sun_moon
+                    sourceComponent: SunMoonView {
+                        anchors.fill: parent
+                        day_cursor: root.day_cursor
+                        first_day: root.day_first
+                        day_span: root.day_span
+                        on_select: function (i) { root.day_cursor = i; ThemeAudio.play("cursor"); }
+                    }
                 }
 
-                AlertsView {
-                    id: alerts_view
+                Loader {
+                    id: alerts_loader
                     anchors.fill: parent
-                    visible: root.on_alerts_tab
-                    alert_cursor: root.alert_cursor
-                    on_select: function (i) { root.alert_cursor = i; ThemeAudio.play("cursor"); }
+                    active: root.on_alerts_tab
+                    sourceComponent: AlertsView {
+                        anchors.fill: parent
+                        alert_cursor: root.alert_cursor
+                        on_select: function (i) { root.alert_cursor = i; ThemeAudio.play("cursor"); }
+                    }
                 }
             }
 
