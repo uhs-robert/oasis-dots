@@ -119,15 +119,19 @@ Trigger the picker with `SUPER + SHIFT + O`.
 
 ## Wallpaper
 
-`extensions/wallpaper/` is a time-of-day wallpaper rotation system built on hyprpaper. It picks wallpapers from a different folder for each part of the day (morning, day, evening, night), switching at fixed hours or at the sun's position for your location, and rotates on a configurable interval. Location and sun times come from the Quickshell bar's weather cache when it is there, so following the sun needs no lookup of its own.
+`extensions/wallpaper/` is a wallpaper rotation system built on hyprpaper. It picks from folders that match the season, the part of the day and the weather, switching periods at fixed hours or at the sun's position for your location. Location, sun times and weather come from the Quickshell bar's weather cache, so it needs no lookups of its own.
 
-Season folders are optional. `Winter/Morning`, `Winter/Day` and so on join the pool only while that season is current, alongside the any-season ones in `All/`, so summer never shows a winter wallpaper. Seasons follow the calendar months and flip in the southern hemisphere.
+The collection has one layout, `<Season>/<Period>/<Weather>/`, under `~/Pictures/Wallpapers/Pixel Art`:
 
-Weather folders work the same way. `Weather/Rain`, `Weather/Snow`, `Weather/Storm`, `Weather/Fog` and `Weather/Overcast` only show while that weather is current, and are favoured over the rest while they match. Nest one inside a period folder to require all three: `Autumn/Night/Rain` shows only on rainy autumn nights, `All/Night/Rain` on rainy nights in any season. The weather is read from the Quickshell bar's cache, so it needs the bar running.
+- Season: `Any`, `Spring`, `Summer`, `Fall` or `Winter`. `Any` shows in every season. Seasons follow the calendar months and flip in the southern hemisphere.
+- Period: `Dawn`, `Day`, `Evening` or `Night`. Always required.
+- Weather: `Rain` (including storms), `Snow` or `Cloudy` (overcast or fog). Optional, and only inside a period. Images there show only in that weather, and are favoured while it lasts.
 
-A new period rotates as it starts, and recently shown wallpapers are skipped so small folders do not repeat. `SUPER + Q` then `W` skips to the next set. Run `lua ~/.config/hypr/extensions/wallpaper/init.lua --audit` to list each folder's size and the images no folder uses.
+So `Fall/Night/Rain` shows only on rainy fall nights, and `Any/Day` on any day in any weather. Keep the image files at the top and link them into folders with `ln -sr`; one image can sit in several folders.
 
-Configure directories and timing in `extensions/wallpaper/config.lua`.
+A new period rotates as it starts, and recently shown wallpapers are skipped so small folders do not repeat. `SUPER + Q` then `W` skips to the next set. Run `lua ~/.config/hypr/extensions/wallpaper/init.lua --audit` to list each folder's size, the images no folder uses and any folder outside the layout.
+
+Configure the root folder and timing in `extensions/wallpaper/config.lua`.
 
 ## Theme
 

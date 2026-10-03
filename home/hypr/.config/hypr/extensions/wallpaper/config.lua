@@ -3,61 +3,32 @@
 -- Adjust paths to your own collections. Leave values as nil to use defaults.
 
 local home = os.getenv("HOME") or ""
-local base = home .. "/Pictures/Wallpapers/Pixel Art"
 local cache_home = os.getenv("XDG_CACHE_HOME") or (home .. "/.cache")
-
---- @param root string
-local function period_dirs(root)
-  return {
-    morning = root .. "/Morning",
-    day = root .. "/Day",
-    evening = root .. "/Evening",
-    night = root .. "/Night",
-  }
-end
 
 return {
   -- Feature toggles
   rotation_enabled = true, -- Set to false to apply wallpaper once and exit
-  time_of_day_enabled = true, -- Set to false to use only default_wallpaper_dir (no period switching)
-  seasons_enabled = true, -- Set to false to ignore season_dirs (only used when time_of_day_enabled = true)
-  weather_enabled = true, -- Set to false to ignore weather_dirs (only used when time_of_day_enabled = true)
+  time_of_day_enabled = true, -- Set to false to rotate through every image in wallpaper_dir
+  seasons_enabled = true, -- Set to false to use only the Any season (only used when time_of_day_enabled = true)
+  weather_enabled = true, -- Set to false to skip weather folders (only used when time_of_day_enabled = true)
 
   -- Rotation settings
   interval_minutes = 15, -- Rotation cadence (only used when rotation_enabled = true)
   history_size = 12, -- Recently shown wallpapers to avoid repeating; 0 allows repeats
 
-  -- Wallpaper directories
-  default_wallpaper_dir = base, -- Default/fallback directory
-
-  -- Specify directories to use based on time of day in every season (only used when time_of_day_enabled = true)
-  dirs = period_dirs(base .. "/All"),
-
-  -- Season directories, added to the time-of-day pool only while that season is current
-  season_dirs = {
-    spring = period_dirs(base .. "/Spring"),
-    summer = period_dirs(base .. "/Summer"),
-    autumn = period_dirs(base .. "/Autumn"),
-    winter = period_dirs(base .. "/Winter"),
-  },
+  -- Layout: <Season>/<Period>/<Weather>/ with Season Any|Spring|Summer|Fall|Winter,
+  -- Period Dawn|Day|Evening|Night and an optional Weather Rain|Snow|Cloudy
+  wallpaper_dir = home .. "/Pictures/Wallpapers/Pixel Art",
 
   -- Month each season starts (northern hemisphere; flipped when the latitude is southern)
   season_start_months = {
     spring = 3,
     summer = 6,
-    autumn = 9,
+    fall = 9,
     winter = 12,
   },
 
-  -- Weather directories, used at any time of day only while that weather is current.
-  -- A subfolder of the same name inside a period folder (Autumn/Night/Rain) also needs that period and season.
-  weather_dirs = {
-    rain = base .. "/Weather/Rain",
-    snow = base .. "/Weather/Snow",
-    storm = base .. "/Weather/Storm",
-    fog = base .. "/Weather/Fog",
-    overcast = base .. "/Weather/Overcast",
-  },
+  -- Weather
   weather_chance = 0.6, -- Odds that each monitor shows a weather wallpaper while one matches
   weather_cache = cache_home .. "/quickshell/weather.json", -- Written by the Quickshell bar
   weather_max_age_minutes = 60, -- Ignore the cache when the bar has not refreshed it for this long
@@ -65,7 +36,7 @@ return {
   -- Static period start hours (24h integers, only used when time_of_day_enabled = true)
   -- Overridden when location_enabled is also true
   start_hours = {
-    morning = 6,
+    dawn = 6,
     day = 11,
     evening = 16,
     night = 19,

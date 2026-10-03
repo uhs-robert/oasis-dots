@@ -236,14 +236,14 @@ function Solar.update_periods(cfg, state, util)
   if sunrise and sunset then
     state.sunrise = sunrise
     state.sunset = sunset
-    cfg.start_hours.morning = math.max(0, sunrise - 0.25)
+    cfg.start_hours.dawn = math.max(0, sunrise - 0.25)
     cfg.start_hours.day = sunrise + 4
     cfg.start_hours.evening = math.max(0, sunset - 2.75)
     cfg.start_hours.night = math.min(23.75, sunset + 0.25)
     util.log(
       string.format(
-        "Adjusted periods (h): morning=%.2f day=%.2f evening=%.2f night=%.2f",
-        cfg.start_hours.morning,
+        "Adjusted periods (h): dawn=%.2f day=%.2f evening=%.2f night=%.2f",
+        cfg.start_hours.dawn,
         cfg.start_hours.day,
         cfg.start_hours.evening,
         cfg.start_hours.night
