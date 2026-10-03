@@ -119,23 +119,9 @@ Trigger the picker with `SUPER + SHIFT + O`.
 
 ## Wallpaper
 
-`extensions/wallpaper/` is a wallpaper rotation system built on hyprpaper. It picks from folders that match the season, the part of the day and the weather, switching periods at fixed hours or at the sun's position for your location. Location, sun times and weather come from the Quickshell bar's weather cache, so it needs no lookups of its own.
+`extensions/wallpaper/` rotates wallpapers through hyprpaper, picking from folders that match the season, the part of the day and the weather. No wallpapers ship with this repo, since the images are other artists' copyrighted work; bring your own collection in one layout, `<Season>/<Period>/<Weather>/`, such as `Fall/Night/Rain`.
 
-No wallpapers ship with this repo, since the images are other artists' copyrighted work. Bring your own in one layout, `<Season>/<Period>/<Weather>/`, under `~/Pictures/Wallpapers/Pixel Art`:
-
-- Season: `Any`, `Spring`, `Summer`, `Fall` or `Winter`. `Any` shows in every season. Seasons follow the calendar months and flip in the southern hemisphere.
-- Period: `Dawn`, `Day`, `Evening` or `Night`. Always required.
-- Weather: `Rain` (including storms), `Snow` or `Cloudy` (overcast or fog). Optional, and only inside a period. Images there show only in that weather, and are favoured while it lasts.
-
-So `Fall/Night/Rain` shows only on rainy fall nights, and `Any/Day` on any day in any weather. Keep the image files at the top and link them into folders with `ln -sr`; one image can sit in several folders.
-
-A new period rotates as it starts, and recently shown wallpapers are skipped so small folders do not repeat. `SUPER + Q` then `W` skips to the next set. Run `lua ~/.config/hypr/extensions/wallpaper/init.lua --audit` to list each folder's size, the images no folder uses and any folder outside the layout.
-
-Configure the root folder and timing in `extensions/wallpaper/config.lua`.
-
-By default the periods switch at the fixed hours in `start_hours` and nothing touches the network. Set `location_enabled = true` to follow the sun instead. At session start and every `refresh_interval_seconds` (4 hours) the rotator then asks `ipinfo.io` for this machine's public IP and its coordinates, and reads today's sunrise and sunset from `api.open-meteo.com` unless `sunwait` is installed. If the lookup fails it falls back to the system timezone and then to the static hours. Setting `manual_lat` and `manual_lon` skips the `ipinfo.io` calls but still needs `location_enabled = true`, and still uses `open-meteo.com` without `sunwait`.
-
-To turn the lookup on for one machine, set `wallpaper_location = true` in its profile under `config/machines/`; autostart then starts the rotator with `--location`. The rotator runs as its own process, so nothing else in `Config` or `custom/` reaches it: its other settings live in `extensions/wallpaper/config.lua` or come from flags (see `--help`).
+See [`extensions/wallpaper/README.md`](extensions/wallpaper/README.md) for setting up a collection, how it picks, settings and troubleshooting.
 
 ## Theme
 

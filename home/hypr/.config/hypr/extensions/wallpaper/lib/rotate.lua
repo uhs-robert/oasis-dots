@@ -3,6 +3,7 @@
 
 local script_dir = (debug.getinfo(1, "S").source:sub(2):match("(.*/)") or "./")
 local default_config = dofile(script_dir .. "../config.lua")
+local CUSTOM_DIR = script_dir .. "../../../custom/"
 
 local Solar = require("wallpaper.lib.solar") ---@class Solar
 local Apply = require("wallpaper.lib.apply") ---@class Apply
@@ -155,7 +156,7 @@ local function parse_args(argv)
       print([[
 Options:
   --once, -o              Run one cycle and exit
-  --audit                 List folder sizes and images in no folder, then exit
+  --audit                 Check folder sizes, unused images and stray folders, then exit
   --monitor NAME          Apply to one specific monitor only (implies --once)
   --verbose, -v           Verbose logging
   --config PATH           Use alternate config file
@@ -170,7 +171,7 @@ Options:
   --evening-hour H        Static start hour for evening
   --night-hour H          Static start hour for night
   --no-location           Disable location-based timing
-  --location              Follow the sun using an IP location lookup
+  --location              Follow the sun (Quickshell cache first, then online lookups)
   --latitude LAT          Manual latitude
   --longitude LON         Manual longitude
   --coordinates LAT,LON   Manual coordinates
@@ -184,22 +185,35 @@ end
 
 -- -------- config load --------
 
---- Load and merge configuration. Reads the user config file (or the default),
---- deep-merges it with `default_config`, then applies `overrides` on top.
+--- Return true if `path` can be opened for reading.
+--- @param path string
+--- @return boolean
+local function readable(path)
+  local f = io.open(path, "r")
+  if not f then return false end
+  f:close()
+  return true
+end
+
+--- Load and merge configuration. Layers `default_config`, then the user file
+--- (`--config PATH`, else `custom/wallpaper.lua` when present), then `overrides`.
 --- @param opts table|nil `{ config_path?: string }`
 --- @param overrides table|nil CLI-derived overrides to layer last
 --- @return table merged config
 local function load_config(opts, overrides)
   opts = opts or {}
-  local default_path = script_dir .. "../config.lua"
-  local cfg_path = opts.config_path or default_path
+  local cfg_path = opts.config_path
+  if not cfg_path and readable(CUSTOM_DIR .. "wallpaper.lua") then cfg_path = CUSTOM_DIR .. "wallpaper.lua" end
 
   local user_cfg = {}
-  local ok, result = pcall(dofile, cfg_path)
-  if ok and type(result) == "table" then
-    user_cfg = result
-  else
-    io.stderr:write("Warning: could not load config at " .. cfg_path .. "; using defaults\n")
+  if cfg_path then
+    local ok, result = pcall(dofile, cfg_path)
+    if ok and type(result) == "table" then
+      user_cfg = result
+    else
+      io.stderr:write("Warning: could not load config at " .. cfg_path .. "; using defaults\n")
+      if not ok then io.stderr:write(tostring(result) .. "\n") end
+    end
   end
 
   local cfg = merge(default_config, user_cfg)
@@ -292,7 +306,7 @@ end
 
 -- -------- hyprpaper --------
 
---- Start hyprpaper in the background if it is not already running.
+--- Start hyprpaper in the background if it is not already running, with `custom/hyprpaper.conf` when present.
 --- @param cfg table wallpaper config (used for logging)
 --- @param util table shared utility object
 local function ensure_hyprpaper(cfg, util)
@@ -301,6 +315,8 @@ local function ensure_hyprpaper(cfg, util)
     util.log("Starting hyprpaper...", cfg)
     local cmd = util.signature and string.format("HYPRLAND_INSTANCE_SIGNATURE=%s hyprpaper", util.signature)
       or "hyprpaper"
+    local conf = CUSTOM_DIR .. "hyprpaper.conf"
+    if readable(conf) then cmd = string.format("%s -c '%s'", cmd, conf) end
     os.execute(cmd .. " >/dev/null 2>&1 &")
     util.sleep(1)
   end
