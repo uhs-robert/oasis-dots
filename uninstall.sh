@@ -97,7 +97,6 @@ remove_system_files() {
     /etc/greetd/config.toml
     /etc/greetd/kitty.conf
     /etc/greetd/hyprland.lua
-    /etc/greetd/hyprland.lua.bak
     /etc/greetd/admin_user
     /usr/local/bin/qs-greeter
     /etc/tuigreet/config.toml
@@ -121,6 +120,9 @@ remove_system_files() {
     fi
   done
   sudo rmdir /usr/local/share/betterbird-autoconfig 2>/dev/null || true
+  if [[ -f /etc/greetd/hyprland.lua.bak ]]; then
+    sudo mv /etc/greetd/hyprland.lua.bak /etc/greetd/hyprland.lua && success "Restored /etc/greetd/hyprland.lua from its pre-install backup"
+  fi
 
   local dirs=(/etc/greetd/quickshell /var/lib/qs-greeter)
   for d in "${dirs[@]}"; do
