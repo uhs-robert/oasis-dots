@@ -80,6 +80,9 @@ Singleton {
     // A pending XDPH share request: the fifo share-picker reads, and XDPH's window ids by Hyprland address.
     property string share_reply: ""
     property var share_ids: ({})
+    readonly property bool sharing: root.share_reply !== ""
+    // The overview picks the share; resume keeps its selection when coming back from the region selector.
+    signal share_requested(bool resume)
 
     property bool recording: false
     property double record_start_ms: 0
@@ -184,7 +187,7 @@ Singleton {
     // list is XDPH_WINDOW_SHARING_LIST: id[HC>]class[HT>]title[HE>]address[HA>], repeated.
     function start_share(list, reply) {
         if (root.phase === "capture" || root.scrolling) return false;
-        root.send_share("");
+        root.cancel();
         const ids = {};
         for (const entry of list.split("[HA>]")) {
             const m = entry.match(/^(\d+)\[HC>\][\s\S]*\[HE>\](\w+)$/);
@@ -192,30 +195,53 @@ Singleton {
         }
         root.share_ids = ids;
         root.share_reply = reply;
-        root.select(false, "share", "window");
+        root.share_requested(false);
         return true;
     }
 
+    // XDPH's id for a Hyprland address (hex, no 0x), or "" when the window cannot be shared.
+    function share_id_of(address) {
+        return root.share_ids[Number("0x" + address)] || "";
+    }
+
+    // Clears the reply before writing, so the request is answered once and later calls do nothing.
     function send_share(selection) {
         const reply = root.share_reply;
         root.share_reply = "";
         if (reply !== "") Quickshell.execDetached(["sh", "-c", "[ -p \"$2\" ] && printf '%s\\n' \"$1\" > \"$2\"", "sh", selection, reply]);
     }
 
+    function share_region(screen_name) {
+        if (!root.sharing) return;
+        if (root.phase === "capture" || root.scrolling) return root.send_share("");
+        const mon = Hyprland.focusedMonitor;
+        root.focus_screen = mon && root.screen_of(mon.name) ? mon.name : screen_name;
+        root.start_select(false, "share", "region", screen_name);
+    }
+
+    // Back to the share overview with the request still pending.
+    function share_back() {
+        root.cancel(true);
+        if (root.sharing) root.share_requested(true);
+    }
+
     // Regions are output-local: XDPH hands them straight to capture_output_region.
     function share_selection() {
         const s = root.screen_of(root.sel_screen);
         const r = root.sel_rect;
-        const t = root.targets[root.target_index];
         const whole = r.x <= 0 && r.y <= 0 && r.width >= s.width && r.height >= s.height;
-        if (root.mode === "window") root.send_share(t && t.share_id ? "window:" + t.share_id : "");
-        else if (root.mode === "screen" || whole) root.send_share("screen:" + s.name);
-        else root.send_share("region:" + s.name + "@" + [r.x, r.y, r.width, r.height].map(Math.round).join(","));
+        root.send_share(whole ? "screen:" + s.name : "region:" + s.name + "@" + [r.x, r.y, r.width, r.height].map(Math.round).join(","));
         root.cancel();
     }
 
-    function switch_mode(mode) {
-        if (root.phase === "select" && root.mode !== mode) root.start_select(root.frozen, root.preset, mode, root.sel_screen || root.cursor_screen);
+    // Just under share-picker's read timeout, so the picker closes before the script gives up.
+    Timer {
+        interval: 590000
+        running: root.sharing
+        onTriggered: {
+            root.send_share("");
+            if (root.preset === "share" && root.phase !== "") root.cancel();
+        }
     }
 
     function window_targets(monitors, clients) {
@@ -233,9 +259,7 @@ Singleton {
             const y0 = Math.max(c.at[1], s.y);
             const x1 = Math.min(c.at[0] + c.size[0], s.x + s.width);
             const y1 = Math.min(c.at[1] + c.size[1], s.y + s.height);
-            const share_id = root.preset === "share" ? root.share_ids[Number(c.address)] || "" : "";
-            if (root.preset === "share" && share_id === "") continue;
-            if (x1 - x0 >= 2 && y1 - y0 >= 2) list.push({ screen: s.name, rect: Qt.rect(x0 - s.x, y0 - s.y, x1 - x0, y1 - y0), label: c.class || c.title || "", share_id: share_id });
+            if (x1 - x0 >= 2 && y1 - y0 >= 2) list.push({ screen: s.name, rect: Qt.rect(x0 - s.x, y0 - s.y, x1 - x0, y1 - y0), label: c.class || c.title || "" });
         }
         return list;
     }
@@ -305,9 +329,10 @@ Singleton {
         }
     }
 
-    function cancel() {
+    // keep_share leaves a pending share request unanswered.
+    function cancel(keep_share) {
         if (root.scrolling) return root.stop_scroll();
-        root.send_share("");
+        if (!keep_share) root.send_share("");
         if (root.phase === "capture") root.grab_cancelled = true;
         capture_opaque_delay.stop();
         grab_delay.stop();
