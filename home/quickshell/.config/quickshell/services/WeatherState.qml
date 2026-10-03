@@ -3,6 +3,7 @@ pragma Singleton
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import Quickshell.Networking
 import "../theme"
 import "Astro.js" as Astro
 
@@ -32,6 +33,7 @@ Singleton {
 
     property bool has_data: false
     property bool loading: false
+    readonly property bool offline: Networking.connectivity === NetworkConnectivity.None
     property bool stale: false
     property string error: ""
 
@@ -149,6 +151,8 @@ Singleton {
         root.refresh_if_due();
     }
 
+    onOfflineChanged: if (!root.offline) root.refresh_if_due()
+
     // Checks every minute so the refresh follows the data's age, not process uptime.
     Timer {
         interval: 60000
@@ -166,7 +170,7 @@ Singleton {
 
     // A non-forced call within min_refresh_gap_ms of the last success is a no-op.
     function refresh(force) {
-        if (root.loading) return;
+        if (root.loading || root.offline) return;
         const now = Date.now();
         if (!force && root.last_success_ms > 0 && (now - root.last_success_ms) < root.min_refresh_gap_ms) return;
         root.loading = true;
@@ -291,6 +295,7 @@ Singleton {
 
     function fail(msg) {
         root.loading = false;
+        if (root.offline) return;
         root.stale = root.has_data;
         root.error = msg;
         if (!root.warned_once) {
