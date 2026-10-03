@@ -131,7 +131,7 @@ So `Fall/Night/Rain` shows only on rainy fall nights, and `Any/Day` on any day i
 
 A new period rotates as it starts, and recently shown wallpapers are skipped so small folders do not repeat. `SUPER + Q` then `W` skips to the next set. Run `lua ~/.config/hypr/extensions/wallpaper/init.lua --audit` to list each folder's size, the images no folder uses and any folder outside the layout.
 
-Configure the root folder and timing in `extensions/wallpaper/config.lua`.
+The defaults live in `extensions/wallpaper/config.lua`. Override them in `custom/wallpaper.lua`, and supply your own hyprpaper config as `custom/hyprpaper.conf`; see `custom/README.md`. `wallpaper_enabled = false` in a machine profile turns the rotator off for that machine.
 
 By default the periods switch at the fixed hours in `start_hours` and nothing touches the network. Set `location_enabled = true` to follow the sun instead. At session start and every `refresh_interval_seconds` (4 hours) the rotator then asks `ipinfo.io` for this machine's public IP and its coordinates, and reads today's sunrise and sunset from `api.open-meteo.com` unless `sunwait` is installed. If the lookup fails it falls back to the system timezone and then to the static hours. Setting `manual_lat` and `manual_lon` skips the `ipinfo.io` calls but still needs `location_enabled = true`, and still uses `open-meteo.com` without `sunwait`.
 

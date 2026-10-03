@@ -40,6 +40,7 @@ local Utils = require("lib.utils") ---@class Utils
 --- @field vim_mode boolean Use H/J/K/L as directional inputs in keybinds (default: true)
 --- @field use_uwsm boolean Enable uwsm session management (default: false)
 --- @field path_prepend string[] Extra PATH entries placed ahead of the inherited PATH (default: {})
+--- @field wallpaper_enabled boolean Start the wallpaper rotator at login and on monitor hotplug (default: true)
 --- @field wallpaper_location boolean Let the wallpaper rotator look up this machine's location online (default: false)
 --- @field drm_devices string|nil DRM device path(s) for AQ_DRM_DEVICES; nil = unset (default: nil)
 --- @field is_laptop boolean|nil Whether the system running is a laptop or desktop (default: nil)
@@ -58,6 +59,7 @@ Config.defaults = {
   vim_mode = true,
   use_uwsm = false,
   path_prepend = {},
+  wallpaper_enabled = true,
   wallpaper_location = false,
   drm_devices = nil,
   is_laptop = nil,

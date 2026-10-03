@@ -26,7 +26,7 @@ return {
 }
 ```
 
-`wallpaper_location = true` lets the wallpaper rotator follow the sun, which sends this machine's IP to `ipinfo.io`; see the wallpaper section of the main README.
+`wallpaper_enabled = false` keeps the wallpaper rotator from starting on this machine, for a static setup in `custom/hyprpaper.conf`. `wallpaper_location = true` lets the wallpaper rotator follow the sun, which sends this machine's IP to `ipinfo.io`; see the wallpaper section of the main README.
 
 Monitor settings saved from the Settings panel live in `~/.local/state/hypr/monitors.json`, keyed by monitor description (or connector name). Their fields win over the profile's `monitors` per monitor, and a missing or corrupt file is ignored.
 

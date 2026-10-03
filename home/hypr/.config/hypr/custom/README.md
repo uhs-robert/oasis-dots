@@ -4,6 +4,18 @@ This directory is your own Hyprland config, run after this one. Once `hyprland.l
 
 Everything in this directory other than `README.md` and `.gitignore` is gitignored, so your files stay local and never show up in `git status`.
 
+## Keeping your files
+
+Being gitignored keeps your files out of this repo, not out of version control. To track them and carry them between machines, keep them in a repo of your own and link each file in:
+
+```bash
+ln -s ~/my-dots/hypr/custom/init.lua      ~/.config/hypr/custom/init.lua
+ln -s ~/my-dots/hypr/custom/wallpaper.lua ~/.config/hypr/custom/wallpaper.lua
+ln -s ~/my-dots/hypr/machines/laptop.lua  ~/.config/hypr/config/machines/laptop.lua
+```
+
+Link files, not the `custom/` directory itself: this README and `.gitignore` are tracked here and must stay in place. A loop in your own installer that links every file in those folders keeps new ones picked up.
+
 ## What goes where
 
 - **Hardware and `Config` values** (monitors, DRM devices, GPU options, default apps) belong in `config/machines/<hostname>.lua`. The subsystems read `Config` while they load, so changing it from here is too late for them. See `config/machines/README.md`.
@@ -68,6 +80,24 @@ Sessions.add("💼 Work", {
 
 Sessions.remove("🎮 Game")
 ```
+
+## Wallpaper
+
+The wallpaper rotator runs as its own process, so it reads its settings from files here rather than from `custom/init.lua`. Both are optional:
+
+- `custom/wallpaper.lua` returns a table merged over `extensions/wallpaper/config.lua`, so it only needs the values you change.
+- `custom/hyprpaper.conf` replaces the shipped `hyprpaper.conf` when the rotator starts hyprpaper. Keep `ipc = true` in it, since the rotator sets wallpapers over IPC.
+
+```lua
+-- custom/wallpaper.lua
+return {
+  wallpaper_dir = os.getenv("HOME") .. "/Pictures/Walls",
+  interval_minutes = 30,
+  weather_chance = 0.4,
+}
+```
+
+To skip the rotator on a machine, set `wallpaper_enabled = false` in its profile under `config/machines/`; hyprpaper then needs starting from `custom/init.lua`, with your `custom/hyprpaper.conf`.
 
 ## Keybinds
 

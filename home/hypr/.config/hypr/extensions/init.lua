@@ -2,6 +2,7 @@
 
 --- Apply wallpaper to a monitor when it is added.
 local function enable_wallpaper_rotation()
+  if not require("config").wallpaper_enabled then return end
   hl.on(
     "monitor.added",
     function(mon) hl.exec_cmd("lua ~/.config/hypr/extensions/wallpaper/init.lua --monitor " .. mon.name) end
