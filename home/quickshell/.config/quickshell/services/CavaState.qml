@@ -12,6 +12,10 @@ Singleton {
 
     readonly property int bar_count: 48
     property var levels: root.zeros()
+    // Line-mode levels: fast rise, slow fall, blended with neighbours; updated once per frame for every bar.
+    property var line_levels: root.zeros()
+    property var smoothed: root.zeros()
+    property double last_ms: 0
     // Lualine bars count the screens showing their strip; with none, cava does not run.
     property int lualine_viewers: 0
     readonly property bool wanted: MediaState.playing && Power.on_ac && (!Style.bar_lualine || root.lualine_viewers > 0)
@@ -49,6 +53,7 @@ Singleton {
         Component.onCompleted: config_file.setText(root.config_text)
     }
 
+    onLevelsChanged: if (Style.cava_line) root.smooth_levels()
     onWantedChanged: root.sync()
     Component.onCompleted: Qt.callLater(root.sync)
 
@@ -87,6 +92,25 @@ Singleton {
         id: restart_timer
         interval: root.restart_delay_ms
         onTriggered: if (root.wanted) cava_proc.running = true
+    }
+
+    function smooth_levels() {
+        const now = Date.now();
+        const dt = root.last_ms > 0 ? Math.min(0.05, Math.max(0.001, (now - root.last_ms) / 1000)) : 0.016;
+        root.last_ms = now;
+        const target = root.levels;
+        const n = target.length;
+        const prev = root.smoothed;
+        const next = new Array(n);
+        for (let i = 0; i < n; i++) {
+            const cur = prev[i] || 0;
+            const k = target[i] > cur ? 30 : 14;
+            next[i] = cur + (target[i] - cur) * (1 - Math.exp(-k * dt));
+        }
+        const out = new Array(n);
+        for (let i = 0; i < n; i++) out[i] = next[Math.max(0, i - 1)] * 0.25 + next[i] * 0.5 + next[Math.min(n - 1, i + 1)] * 0.25;
+        root.smoothed = next;
+        root.line_levels = out;
     }
 
     function parse_line(line) {
