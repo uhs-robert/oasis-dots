@@ -1,5 +1,6 @@
 // home/quickshell/.config/quickshell/services/BundledFonts.qml
 import QtQuick
+import Qt.labs.folderlistmodel
 import "../theme"
 
 // Registers the fonts the active style and lock skin use now, then the rest once startup settles.
@@ -60,11 +61,13 @@ Item {
     function register(family) {
         const files = root.family_files[family];
         if (!files) return;
-        for (const file of files) {
-            if (root.seen[file]) continue;
-            root.seen[file] = true;
-            fonts.append({ file: file });
-        }
+        for (const file of files) root.register_file(file);
+    }
+
+    function register_file(file) {
+        if (root.seen[file]) return;
+        root.seen[file] = true;
+        fonts.append({ file: file });
     }
 
     function register_wanted() {
@@ -78,8 +81,25 @@ Item {
         interval: 2000
         running: true
         onTriggered: {
-            root.rest = Object.keys(root.family_files);
-            drip.start();
+            lister.active = true;
+        }
+    }
+
+    // Read once after startup so a font missing from the map still loads.
+    Loader {
+        id: lister
+        active: false
+        sourceComponent: FolderListModel {
+            folder: Qt.resolvedUrl("../fonts")
+            nameFilters: ["*.ttf", "*.otf"]
+            showDirs: false
+            onStatusChanged: if (status === FolderListModel.Ready) {
+                const names = [];
+                for (let i = 0; i < count; i++) names.push(get(i, "fileName"));
+                root.rest = names;
+                drip.start();
+                Qt.callLater(() => lister.active = false);
+            }
         }
     }
 
@@ -89,7 +109,7 @@ Item {
         repeat: true
         onTriggered: {
             if (root.rest.length === 0) stop();
-            else root.register(root.rest.shift());
+            else root.register_file(root.rest.shift());
         }
     }
 
