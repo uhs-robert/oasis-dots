@@ -36,6 +36,7 @@ Singleton {
     readonly property bool offline: Networking.connectivity === NetworkConnectivity.None
     property bool stale: false
     property string error: ""
+    readonly property bool failed: !root.has_data && root.error !== ""
 
     property double last_success_ms: 0
     property bool warned_once: false
@@ -67,9 +68,21 @@ Singleton {
 
     function apply_settings() {
         const merged = Object.assign({}, root.default_settings, root.base_settings, root.local_settings);
-        const changed = root.has_data && JSON.stringify(root.settings) !== JSON.stringify(merged);
+        const changed = (root.has_data || root.error !== "") && JSON.stringify(root.settings) !== JSON.stringify(merged);
         root.settings = merged;
         if (changed) root.refresh(true);
+    }
+
+    // Writes to weather.local.json; a null value drops the key so the tracked default applies.
+    function set_settings(changes) {
+        const next = Object.assign({}, root.local_settings);
+        for (const key in changes) {
+            if (changes[key] === null) delete next[key];
+            else next[key] = changes[key];
+        }
+        root.local_settings = next;
+        root.apply_settings();
+        local_settings_file.setText(JSON.stringify(next, null, 2) + "\n");
     }
 
     function parse_settings(file, name) {
@@ -307,6 +320,10 @@ Singleton {
     function fail(msg) {
         root.loading = false;
         if (root.offline) return;
+        if (root.fetch_key !== JSON.stringify(root.settings)) {
+            root.refresh(true);
+            return;
+        }
         root.stale = root.has_data;
         root.error = msg;
         if (!root.warned_once) {
@@ -375,9 +392,21 @@ Singleton {
         root.save_cache();
     }
 
-    // US National Weather Service active alerts for this point. A failure or a non-US
-    // location (404/empty) just means no alerts; it never marks the forecast stale.
+    // Rough US, Alaska, Hawaii and territory bounds; outside them api.weather.gov has nothing to say.
+    function in_alerts_region(lat, lon) {
+        const boxes = [[24, 50, -125, -66], [51, 72, -180, -129], [51, 55, 172, 180], [18, 23, -161, -154], [17, 19, -68, -64], [13, 14, 144, 146], [-15, -14, -171, -169]];
+        return boxes.some(b => lat >= b[0] && lat <= b[1] && lon >= b[2] && lon <= b[3]);
+    }
+
+    // US National Weather Service alerts, US-only. A failure or a non-US location just
+    // means no alerts and never marks the forecast stale.
     function fetch_alerts(lat, lon) {
+        if (!root.in_alerts_region(lat, lon)) {
+            root.alerts = [];
+            root.alerts_has_data = true;
+            root.alerts_error = "";
+            return;
+        }
         const key = root.fetch_key;
         const xhr = new XMLHttpRequest();
         xhr.timeout = root.request_timeout_ms;
