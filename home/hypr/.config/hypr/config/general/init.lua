@@ -20,9 +20,9 @@ hl.config({
   decoration = {
     rounding = 0,
     active_opacity = 1,
-    inactive_opacity = 0.5,
-    dim_inactive = true,
-    dim_strength = 0.2,
+    inactive_opacity = Config.appearance.inactive_opacity,
+    dim_inactive = Config.appearance.dim_inactive,
+    dim_strength = Config.appearance.dim_strength,
     shadow = {
       enabled = not IS_LAPTOP,
       range = 4,
@@ -38,7 +38,9 @@ hl.config({
 
   input = {
     numlock_by_default = false,
-    kb_layout = "us",
+    kb_layout = Config.input.kb_layout,
+    kb_variant = Config.input.kb_variant,
+    kb_options = Config.input.kb_options,
     follow_mouse = 1,
     mouse_refocus = false,
     sensitivity = 0,

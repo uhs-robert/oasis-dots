@@ -26,6 +26,15 @@ return {
 }
 ```
 
+`input` sets the keyboard layout (`kb_layout`, default `"us"`, plus `kb_variant` and `kb_options`), and `appearance` sets `inactive_opacity` (default `0.5`), `dim_inactive` (default `true`) and `dim_strength` (default `0.2`) for unfocused windows:
+
+```lua
+return {
+  input = { kb_layout = "us", kb_variant = "dvorak", kb_options = "caps:escape" },
+  appearance = { inactive_opacity = 0.9, dim_inactive = false },
+}
+```
+
 `wallpaper_enabled = false` keeps the wallpaper rotator from starting on this machine, for a static setup in `custom/hyprpaper.conf`. `wallpaper_location = true` lets the wallpaper rotator follow the sun. It reads the location from the Quickshell bar's weather cache and only goes online (`ipinfo.io`, `open-meteo.com`) without a fresh one; see `extensions/wallpaper/README.md`.
 
 Monitor settings saved from the Settings panel live in `~/.local/state/hypr/monitors.json`, keyed by monitor description (or connector name). Their fields win over the profile's `monitors` per monitor, and a missing or corrupt file is ignored.
