@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# After PRs are merged: update main, check it, restart the stowed bar if Quickshell changed, and clean up worktrees and branches.
+# Usage: ship-batch.sh [<pr>...]; merges the PRs in order, then updates main, checks it and restarts what changed.
 set -euo pipefail
 
-repo=$(git -C "$(dirname "$0")" rev-parse --show-toplevel)
+repo=$(git -C "$(dirname "$0")" worktree list --porcelain | awk '/^worktree /{print substr($0, 10); exit}')
 ipc="$HOME/.config/hypr/scripts/qs-ipc"
 
 die() {
@@ -12,6 +12,7 @@ die() {
 
 [[ $(git -C "$repo" branch --show-current) == main ]] || die "the main checkout is not on main; switch it back first"
 before=$(git -C "$repo" rev-parse HEAD)
+(($# == 0)) || (cd "$repo" && "$HOME/.claude/skills/merge-prs/merge-prs.sh" "$@") || die "merge-prs failed; nothing after the merge ran"
 git -C "$repo" pull -q --ff-only
 after=$(git -C "$repo" rev-parse HEAD)
 (cd "$repo" && just check) || die "just check fails on main after the merge; fix it before anything else"
@@ -54,13 +55,4 @@ if [[ $before != "$after" ]] && ! git -C "$repo" diff --quiet "$before" "$after"
   fi
 fi
 
-git -C "$repo" worktree prune
-while read -r path branch; do
-  [[ $path == "$repo" ]] && continue
-  if [[ -n $branch ]] && git -C "$repo" merge-base --is-ancestor "$branch" main; then
-    git -C "$repo" worktree remove --force "$path" && echo "ship-batch: removed merged worktree $path"
-  fi
-done < <(git -C "$repo" worktree list --porcelain | awk '/^worktree /{p=$2} /^branch /{sub("refs/heads/","",$2); print p, $2} /^detached/{print p, ""}')
-git -C "$repo" worktree prune
-git -C "$repo" branch --merged main --format='%(refname:short)' | grep -v -e '^main$' -e '^assets$' | xargs -r git -C "$repo" branch -d
 echo "ship-batch: main is at $(git -C "$repo" log --oneline -1)"
