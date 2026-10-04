@@ -621,16 +621,10 @@ PanelWindow {
                     GradientStop { position: 1; color: root.st.lcd_bottom }
                 }
 
-                Repeater {
-                    model: root.lcd ? Math.max(0, Math.ceil(lcd_panel.height / 3)) : 0
-
-                    Rectangle {
-                        required property int index
-                        y: index * 3
-                        width: lcd_panel.width
-                        height: 1
-                        color: root.st.lcd_scan
-                    }
+                Scanlines {
+                    anchors.fill: parent
+                    color: root.st.lcd_scan
+                    period: 3
                 }
 
                 CornerBrackets {
@@ -945,22 +939,12 @@ PanelWindow {
             }
 
             // Static scanlines; nothing animates them.
-            Item {
+            Scanlines {
                 visible: root.st.scanlines && root.st.frame_octagon <= 0
                 anchors.fill: parent
                 anchors.margins: root.frame_radius > 0 ? root.st.frame_border_width : 0
-
-                Repeater {
-                    model: root.st.scanlines && root.st.frame_octagon <= 0 ? Math.max(0, Math.ceil(parent.height / root.st.scanline_period)) : 0
-
-                    Rectangle {
-                        required property int index
-                        y: index * root.st.scanline_period
-                        width: parent.width
-                        height: 1
-                        color: root.st.scanline_color
-                    }
-                }
+                color: root.st.scanline_color
+                period: root.st.scanline_period
             }
 
             Dither {

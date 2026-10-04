@@ -116,16 +116,11 @@ PanelWindow {
             }
 
             // Static scanlines; nothing animates them.
-            Repeater {
-                model: Style.scanlines ? Math.ceil(tab.height / Style.scanline_period) : 0
-
-                Rectangle {
-                    required property int index
-                    y: index * Style.scanline_period
-                    width: tab.width
-                    height: 1
-                    color: Qt.alpha(root.shown_color, 0.08)
-                }
+            Scanlines {
+                visible: Style.scanlines
+                anchors.fill: parent
+                color: Qt.alpha(root.shown_color, 0.08)
+                period: Style.scanline_period
             }
 
             // Under a capsule the tab's top border gives way so its fill meets the line.
