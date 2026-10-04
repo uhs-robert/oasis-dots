@@ -69,7 +69,7 @@ User overrides live in two gitignored places, and tracked files must stay generi
 
 Keep keys consistent across surfaces; new popups, pickers and skins follow these:
 
-- Popups (`components/Popup.qml`): Tab/Shift+Tab step the top tabs, `[`/`]` step the bottom views; a popup with only one level answers both. Number keys pick a tab. Clock: Tab and `[`/`]` cycle timezones.
+- Popups (`components/Popup.qml`; keys in `components/popup/PopupKeys.qml`): Tab/Shift+Tab step the top tabs, `[`/`]` step the bottom views; a popup with only one level answers both. Number keys pick a tab. Clock: Tab and `[`/`]` cycle timezones.
 - Overviews (workspace and share picker): `s` selects a whole screen, Tab/Shift+Tab switch regular and special workspaces, `[`/`]` cycle windows, `f` toggles the view; in the share picker `r` opens the region selector and Esc there comes back.
 - Lock and greeter input is a vim model owned by the shared router (`Lock.key`, `Greeter.key`): NORMAL while nothing is typed, where `h/j/k/l` navigate skin menus and `h`/`l` do nothing on vertical lists; `i` or any other printable key enters INSERT (`-- INSERT --` shows bottom-left); Esc on an empty buffer returns to NORMAL. The skin contract is in the Quickshell README.
 - Times use `TimeFormat` and `ClockSettings` (Settings > Clock); state paths use `theme/Paths.qml` and `lib/state.lua` instead of recomputing XDG dirs.
