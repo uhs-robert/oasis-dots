@@ -36,19 +36,19 @@ local LISTERS = {
   window = [[hyprctl clients -j | jq -r 'map(select(.mapped)) | sort_by(.focusHistoryID)[] | "\(.class): \(.title)  \(.address)"']],
 }
 
---- Return the shell command that emulates a mode with the dmenu picker.
+--- Return the shell command that emulates a mode with the dmenu picker, which gets `-p '<mode>: '`.
 --- @param mode string
 --- @param opts Menu.ShowOpts
 --- @return string
 local function emulated_cmd(mode, opts)
-  local picker = DMENU_CMD .. " -p '" .. mode .. "'"
+  local picker = DMENU_CMD .. " -p '" .. mode .. ": '"
   if mode == "window" then
     local focus = [[hyprctl dispatch "hl.dsp.focus({ window = 'address:{}' })"]]
-    return LISTERS.window .. " | " .. picker .. " | grep -o '0x[0-9a-f]*$' | xargs -r -I{} " .. focus
+    return LISTERS.window .. " | " .. picker .. " | grep -o '0x[0-9a-f]*$' | xargs -r -d '\\n' -I{} " .. focus
   end
   local run = opts.run or "setsid -f sh -c '{}'"
   if mode == "ssh" then run = "setsid -f " .. TERM_CMD .. " -e ssh {}" end
-  return (LISTERS[mode] or LISTERS.run) .. " | " .. picker .. " | xargs -r -I{} " .. run
+  return (LISTERS[mode] or LISTERS.run) .. " | " .. picker .. " | xargs -r -d '\\n' -I{} " .. run
 end
 
 --- Return the shell command that opens the menu in the given show mode.
@@ -63,6 +63,7 @@ local function show_cmd(mode, opts)
   end
   local native = NATIVE[MENU:match("[^/]+$")]
   if native and native[mode] and not opts.run then return MENU .. native[mode] end
+  if mode == "drun" then return ":" end
   return emulated_cmd(mode, opts)
 end
 

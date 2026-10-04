@@ -28,7 +28,7 @@ local Utils = require("lib.utils") ---@class Utils
 --- @field editor string Editor command (default: "nvim")
 --- @field gui_file_manager string GUI file manager command (default: "thunar")
 --- @field tui_file_manager string TUI file manager command (default: "yazi")
---- @field menu string Menu binary; launcher, run, ssh, window and cli menus are native for rofi, partly for wofi and fuzzel, else dmenu-emulated (default: "rofi")
+--- @field menu string Menu binary; launcher, run, ssh, window and cli menus are native for rofi, partly for wofi and fuzzel; emulated modes use dmenu_cmd with -p '<mode>: ', and drun on other menus opens only the Quickshell apps picker (default: "rofi")
 --- @field dmenu_cmd string Full dmenu-picker invocation; defaults exist for rofi, fuzzel and wofi, set it for any other menu (default: per menu, "rofi -name rofiDmenu -i -dmenu")
 --- @field display_manager string Display/monitor manager command (default: "wdisplays")
 
