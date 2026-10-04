@@ -138,8 +138,16 @@ Popup {
             const m = Fuzzy.score_item(terms, item);
             if (m) out.push({ item: item, positions: m.positions, score: m.score + bonus, order: i });
         }
-        if (!(keep_order && terms.length === 0)) out.sort((a, b) => b.score - a.score || (keep_order ? a.order - b.order : (terms.length > 0 ? a.item.label.length - b.item.label.length : 0) || a.item.label.localeCompare(b.item.label)));
+        if (cap > 0 && out.length > cap && !(keep_order && terms.length === 0)) {
+            const cutoff = out.map(r => r.score).sort((a, b) => b - a)[cap - 1];
+            return root.sort_ranked(out.filter(r => r.score >= cutoff), terms, keep_order).slice(0, cap);
+        }
+        if (!(keep_order && terms.length === 0)) root.sort_ranked(out, terms, keep_order);
         return cap > 0 ? out.slice(0, cap) : out;
+    }
+
+    function sort_ranked(out, terms, keep_order) {
+        return out.sort((a, b) => b.score - a.score || (keep_order ? a.order - b.order : (terms.length > 0 ? a.item.label.length - b.item.label.length : 0) || a.item.label.localeCompare(b.item.label)));
     }
 
     function set_insert(on) {

@@ -31,11 +31,23 @@ function bonus_at(text, i) {
     return 0;
 }
 
+const lower_cache = new Map();
+
+function lower_of(text) {
+    let lower = lower_cache.get(text);
+    if (lower === undefined) {
+        if (lower_cache.size > 20000) lower_cache.clear();
+        lower = text.toLowerCase();
+        lower_cache.set(text, lower);
+    }
+    return lower;
+}
+
 // Scores one lowercase term against text; null when it does not match in order.
 function match(term, text) {
     const n = term.length;
     if (n === 0) return { score: 0, positions: [] };
-    const lower = text.toLowerCase();
+    const lower = lower_of(text);
     let pi = 0;
     let end = -1;
     for (let i = 0; i < lower.length; i++) {
