@@ -13,6 +13,7 @@ Item {
     property var entries: []
     // Called with (item, entry) once a module loads.
     property var wire: null
+    property var module_props: ({})
     property color fill: Style.bar_side_bg
     property color hover_fill: Qt.tint(root.fill, Qt.alpha(Theme.ui_visual_bg, 0.75))
     // The previous section's fill behind the lead arrow; transparent draws none.
@@ -201,7 +202,7 @@ Item {
                         id: loader
                         x: parent.pad_left
                         anchors.verticalCenter: parent.verticalCenter
-                        source: cell.modelData.url
+                        Component.onCompleted: setSource(cell.modelData.url, root.module_props)
                         onLoaded: {
                             if (item.hasOwnProperty("on_accent")) item.on_accent = Qt.binding(() => root.accent);
                             if (root.wire) root.wire(item, cell.modelData);

@@ -55,6 +55,7 @@ Item {
     // The oasis horizon decorates the center island when it holds the clock; that clock makes room for it and lends it the time.
     readonly property bool clock_horizon: Style.bar_clock_layout === "horizon" && root.center_entries.some(e => e.base === "clock")
     property var horizon_clock: null
+    readonly property var module_props: ({ compact: root.compact, screen_name: root.screen_name, bar_height: root.bar_height })
 
     // Sets island/screen/stat properties a module declares, after the Loader instantiates it.
     function wire_module(item, entry, island) {
@@ -114,7 +115,7 @@ Item {
                 visible: !item || item.shown === undefined || item.shown
                 // Keeps the start button close to the workspace pills it launches into.
                 Layout.rightMargin: modelData.base === "start" && !Style.bar_lualine ? -8 : 0
-                Component.onCompleted: setSource(modelData.url, { compact: root.compact, screen_name: root.screen_name, bar_height: root.bar_height })
+                Component.onCompleted: setSource(modelData.url, root.module_props)
                 onLoaded: root.wire_module(item, modelData, left_island)
             }
         }
@@ -201,7 +202,7 @@ Item {
                 required property var modelData
                 // Reads the module's own `shown`, not `visible`: a hidden Loader would report its child hidden too.
                 visible: !item || item.shown === undefined || item.shown
-                Component.onCompleted: setSource(modelData.url, { compact: root.compact, screen_name: root.screen_name, bar_height: root.bar_height })
+                Component.onCompleted: setSource(modelData.url, root.module_props)
                 onLoaded: root.wire_module(item, modelData, center_island)
             }
         }
@@ -261,7 +262,7 @@ Item {
                 required property var modelData
                 // Reads the module's own `shown`, not `visible`: a hidden Loader would report its child hidden too.
                 visible: !item || item.shown === undefined || item.shown
-                Component.onCompleted: setSource(modelData.url, { compact: root.compact, screen_name: root.screen_name, bar_height: root.bar_height })
+                Component.onCompleted: setSource(modelData.url, root.module_props)
                 onLoaded: root.wire_module(item, modelData, right_island)
             }
         }
@@ -279,6 +280,7 @@ Item {
                     height: right_island.height
                     entries: root.lualine_entries.filter(e => root.lualine_section(e.base) === "x")
                     wire: parent.wire
+                    module_props: root.module_props
                     fill: Theme.bg_mantle
                     screen_name: root.screen_name
                 }
@@ -288,6 +290,7 @@ Item {
                     height: right_island.height
                     entries: root.lualine_entries.filter(e => root.lualine_section(e.base) === "y")
                     wire: parent.wire
+                    module_props: root.module_props
                     fill: Theme.ui_visual_bg
                     hover_fill: Qt.tint(Theme.ui_visual_bg, Qt.alpha(Theme.theme_primary, 0.3))
                     lead_bg: x_section.shown ? x_section.end_fill : "transparent"
@@ -298,6 +301,7 @@ Item {
                     height: right_island.height
                     entries: root.lualine_entries.filter(e => root.lualine_section(e.base) === "z")
                     wire: parent.wire
+                    module_props: root.module_props
                     fill: SubmapState.bar_color
                     accent: true
                     // The mode chip's hover tint.
