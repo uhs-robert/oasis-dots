@@ -100,19 +100,24 @@ update-repos:
     done
 
 # Stage the Quickshell greeter (lock skins, theme, fonts, your lock style) and print its sudo install commands; --install runs them, --from DIR stages from that Quickshell config dir
+[positional-arguments]
 greeter-sync *ARGS:
     #!/usr/bin/env bash
     set -euo pipefail
     source lib/greeter.sh
     stage="${XDG_CACHE_HOME:-$HOME/.cache}/dotfiles/greeter"
-    args=({{ARGS}})
+    args=("$@")
     from=""
     for i in "${!args[@]}"; do
-      [[ ${args[i]} == --from ]] && from=${args[i+1]:-}
+      if [[ ${args[i]} == --from ]]; then
+        from=${args[i+1]:-}
+        [[ -n $from ]] || { echo "greeter-sync: --from needs a directory" >&2; exit 1; }
+        [[ -d $from/lock/skins && -f $from/theme/Theme.qml ]] || { echo "greeter-sync: $from is not a Quickshell config dir" >&2; exit 1; }
+      fi
     done
-    skin=$(stage_greeter "$stage" "$PWD" "$from")
+    skin=$(stage_greeter "$stage" "$PWD" "$from") || { echo "greeter-sync: staging failed" >&2; exit 1; }
     echo "Staged greeter in $stage (skin: $skin)"
-    if [[ " {{ARGS}} " == *" --install "* ]]; then
+    if [[ " ${args[*]} " == *" --install "* ]]; then
       while read -r cmd; do echo "+ $cmd"; eval "$cmd"; done < <(greeter_install_cmds "$stage" "$PWD")
     else
       echo "Install with:"

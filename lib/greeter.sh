@@ -3,7 +3,7 @@
 
 GREETER_DEST=/etc/greetd/quickshell
 # Data only (greeter.json, theme.json), owned by the installing user and readable by group greeter; the bar keeps it current.
-GREETER_DATA="${QS_GREETER_DATA:-/var/lib/qs-greeter}"
+GREETER_DATA=/var/lib/qs-greeter
 # Skins whose imported audio lives in $XDG_DATA_HOME/quickshell/<skin>-audio and is copied into the staged tree.
 GREETER_AUDIO_SKINS=(ff7 ocarina mgs2 goldeneye)
 
@@ -17,9 +17,9 @@ stage_greeter() {
 
   rm -rf "$dest"
   mkdir -p "$dest/lock/skins" "$dest/theme" "$dest/fonts"
-  cp -r "$repo/system/etc/greetd/quickshell/." "$dest/"
-  cp -r "$qs/lock/skins/." "$dest/lock/skins/"
-  cp "$qs/lock/Tints.js" "$dest/lock/"
+  cp -r "$repo/system/etc/greetd/quickshell/." "$dest/" || return 1
+  cp -r "$qs/lock/skins/." "$dest/lock/skins/" || return 1
+  cp "$qs/lock/Tints.js" "$dest/lock/" || return 1
   [[ -f "$qs/VERSION" ]] && cp "$qs/VERSION" "$dest/"
   local skin audio_dir
   for skin in "${GREETER_AUDIO_SKINS[@]}"; do
@@ -36,13 +36,15 @@ stage_greeter() {
     mkdir -p "$dest/lock/skins/goldeneye/frames"
     cp -rL "$frames_dir/." "$dest/lock/skins/goldeneye/frames/"
   fi
-  cp "$qs/theme/Theme.qml" "$qs/theme/Style.qml" "$qs/theme/Paths.qml" "$qs/theme/Watch.js" "$dest/theme/"
-  if jq -e 'type == "object"' "$state_dir/theme.json" &>/dev/null; then
+  cp "$qs/theme/Theme.qml" "$qs/theme/Style.qml" "$qs/theme/Paths.qml" "$qs/theme/Watch.js" "$dest/theme/" || return 1
+  if [[ -n ${3:-} && -f "$3/theme/theme.json" ]]; then
+    cp "$3/theme/theme.json" "$dest/theme/" || return 1
+  elif jq -e 'type == "object"' "$state_dir/theme.json" &>/dev/null; then
     cp "$state_dir/theme.json" "$dest/theme/"
   elif [[ -f "$live/theme/theme.json" ]]; then
     cp "$live/theme/theme.json" "$dest/theme/"
   fi
-  cp "$qs"/fonts/*.ttf "$qs"/fonts/OFL-*.txt "$dest/fonts/"
+  cp "$qs"/fonts/*.ttf "$qs"/fonts/OFL-*.txt "$dest/fonts/" || return 1
 
   local style=oasis lock=follow tint=primary music=on session=Hyprland watch=Theme
   local login_screen=follow login_tint=follow login_music=follow
@@ -75,15 +77,15 @@ stage_greeter() {
 greeter_install_cmds() {
   local stage=$1 repo=$2
   local seed_theme=":"
-  [[ -f "$stage/theme/theme.json" ]] && seed_theme="install -m 640 '$stage/theme/theme.json' $GREETER_DATA/theme.json"
+  [[ -f "$stage/theme/theme.json" ]] && seed_theme="install -m 640 '$stage/theme/theme.json' '$GREETER_DATA/theme.json'"
   printf '%s\n' \
     "[ ! -f /etc/greetd/hyprland.lua ] || [ -f /etc/greetd/hyprland.lua.bak ] || sudo cp /etc/greetd/hyprland.lua /etc/greetd/hyprland.lua.bak" \
     "sudo rsync -rlpt --delete --chown=root:root --chmod=D755,F644 '$stage/' '$GREETER_DEST/'" \
     "sudo install -Dm755 '$repo/system/usr/local/bin/qs-greeter' /usr/local/bin/qs-greeter" \
     "sudo install -Dm644 '$repo/system/etc/greetd/hyprland.lua' /etc/greetd/hyprland.lua" \
     "printf '%s\\n' '${GREETER_USER:-$USER}' | sudo tee /etc/greetd/admin_user >/dev/null" \
-    "sudo install -d -m 2750 -o '$USER' -g greeter $GREETER_DATA" \
-    "install -m 640 '$stage/greeter.json' $GREETER_DATA/greeter.json" \
+    "sudo install -d -m 2750 -o '$USER' -g greeter '$GREETER_DATA'" \
+    "install -m 640 '$stage/greeter.json' '$GREETER_DATA/greeter.json'" \
     "$seed_theme" \
     "[ ! -f '$HOME/.face' ] || install -D -m 640 '$HOME/.face' '$GREETER_DATA/faces/$USER'"
 }

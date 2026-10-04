@@ -128,7 +128,8 @@ install_greetd() {
   if confirm "Use the Quickshell greeter (your lock screen style; tuigreet stays as fallback)?"; then
     local stage
     stage=$(mktemp -d)
-    info "Greeter skin: $(stage_greeter "$stage" "$DOTFILES_DIR")"
+    skin=$(stage_greeter "$stage" "$DOTFILES_DIR") || die "Staging the greeter failed"
+    info "Greeter skin: $skin"
     while read -r cmd; do eval "$cmd"; done < <(greeter_install_cmds "$stage" "$DOTFILES_DIR")
     rm -rf "$stage"
     success "Quickshell greeter installed (F10 or SUPER+T switches to tuigreet)"
