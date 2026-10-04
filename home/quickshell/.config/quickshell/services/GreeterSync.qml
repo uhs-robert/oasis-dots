@@ -12,7 +12,11 @@ Scope {
     readonly property string face_path: Quickshell.env("HOME") + "/.face"
 
     function write() {
-        if (!LoginScreen.sync || !LoginScreen.installed) return;
+        if (!LoginScreen.sync) return;
+        if (!LoginScreen.installed) {
+            LoginScreen.probe();
+            return;
+        }
         const data = {
             user: Quickshell.env("USER") || "",
             lock_style: LoginScreen.resolved_screen,
