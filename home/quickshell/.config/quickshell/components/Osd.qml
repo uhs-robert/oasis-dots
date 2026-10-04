@@ -1,7 +1,6 @@
 // home/quickshell/.config/quickshell/components/Osd.qml
 import QtQuick
 import QtQuick.Effects
-import QtQuick.Shapes
 import QtQuick.Layouts
 import Quickshell
 import Quickshell.Hyprland
@@ -267,8 +266,9 @@ PanelWindow {
         }
     }
 
-    Rectangle {
+    StyledFrame {
         id: frame
+        st: Style
 
         readonly property int pad_x: Style.px(16)
         readonly property int pad_y: Style.px(10)
@@ -283,218 +283,159 @@ PanelWindow {
         height: header_height + body.implicitHeight + pad_y * 2 + Style.slant_room
         // Sized console art makes the frame near square, where a pill radius would round it into a circle; framed art keeps the frame radius.
         radius: Style.rounded && !Style.frame_visor && !(root.console_osd && (root.console_osd.size || root.console_osd.framed)) ? height / 2 : Style.frame_radius
-        color: Style.frame_chamfer > 0 || Style.frame_visor || Style.custom_frame ? "transparent" : Style.frame_follows_island ? Style.pal.bg_core : Style.frame_color
-        border.width: Style.frame_visor || Style.frame_chamfer > 0 || Style.custom_frame ? 0 : Style.frame_border_width
-        border.color: Style.frame_border_color
+        island_color: Style.pal.bg_core
+        glow_fit_height: false
 
-        VisorGlass {
-            anchors.fill: parent
-        }
-
-        Shape {
-            id: frame_glow
-            visible: Style.frame_glow.a > 0
-            anchors.fill: parent
-            anchors.margins: Style.frame_border_width
-
-            ShapePath {
-                strokeWidth: -1
-                fillGradient: RadialGradient {
-                    centerX: frame_glow.width / 2
-                    centerY: 0
-                    focalX: frame_glow.width / 2
-                    focalY: 0
-                    centerRadius: frame_glow.width * 0.6
-                    focalRadius: 0
-                    GradientStop { position: 0; color: Style.frame_glow }
-                    GradientStop { position: 0.72; color: Style.frame_color }
-                }
-                PathRectangle { width: frame_glow.width; height: frame_glow.height }
+        Loader {
+            active: root.banded
+            x: Style.inset_pad + Style.frame_border_width
+            y: x
+            width: frame.width - x * 2
+            height: frame.band_height
+            sourceComponent: TitleStrip {
+                title: root.title
+                closable: false
             }
         }
 
-        FrameShade {
-            anchors.fill: parent
-            anchors.margins: Style.frame_border_width
-            top_radius: Math.max(0, frame.radius - Style.frame_border_width)
-            bottom_radius: top_radius
-            chamfer: Style.frame_chamfer
+        Rectangle {
+            id: title_tab
+            visible: Style.show_title && !(root.console_osd && root.console_osd.untitled)
+            opacity: root.banded || Style.border_title ? 0 : 1
+            x: (Style.fade_fills || Style.rounded ? frame.radius : 0) + Style.inset_pad
+            y: (Style.fade_fills ? Style.frame_border_width : 0) + frame.top_rule + Style.inset_pad
+            width: Style.fade_fills ? Math.max(title_text.implicitWidth + 20 + title_index.space, body.implicitWidth + frame.pad_x * 2 - frame.radius * 2) : title_text.implicitWidth + 20 + title_index.space
+            height: Math.max(title_text.implicitHeight, title_index.space > 0 ? title_index.implicitHeight : 0) + 4
+            color: Style.fade_fills ? "transparent" : Style.title_bg
+
+            FadeFill {
+                visible: Style.fade_fills
+                fill: Style.title_bg
+            }
+
+            TitleIndex {
+                id: title_index
+                x: 10
+                anchors.verticalCenter: parent.verticalCenter
+                name: root.showing_vox ? "" : root.kind
+            }
+
+            Text {
+                id: title_text
+                anchors.centerIn: Style.fade_fills ? undefined : parent
+                anchors.horizontalCenterOffset: title_index.space / 2
+                x: 10 + title_index.space
+                y: (parent.height - height) / 2
+                text: Style.title_prefix + Style.title_text(root.title) + Style.title_suffix
+                color: Style.title_fg
+                font.family: Style.title_font_family
+                font.pixelSize: Style.title_size > 0 ? Style.title_size : Style.fs(-2)
+                font.weight: Style.title_weight > 0 ? Style.title_weight : Style.title_font_family === Style.font_family ? Font.Bold : Font.Normal
+                font.letterSpacing: Style.title_spacing
+            }
         }
 
-        CustomFrame {
-            anchors.fill: parent
+        Loader {
+            active: Style.border_title && Style.show_title
+            x: 12
+            y: -root.float_top
+            sourceComponent: Neovim.BorderTitle {
+                title: Style.title_text(root.title)
+            }
         }
 
-        FrameInset {
-            top_radius: frame.radius
-            bottom_radius: frame.radius
-        }
-
-        Sheen {
-            color_top: Style.frame_float > 0 ? Style.sheen : "transparent"
-            corner: frame.radius
-            edge: Style.frame_border_width
-        }
-
-        Item {
-            id: glow_layer
-            readonly property bool layered: Style.glow || Style.text_shadow.a > 0
-            anchors.fill: parent
-            layer.enabled: glow_layer.layered
-            opacity: glow_layer.layered ? 0 : 1
-
+        RowLayout {
+            id: body
+            x: frame.pad_x
+            y: frame.header_height + frame.pad_y
+            spacing: Style.px(10)
 
             Loader {
-                active: root.banded
-                x: Style.inset_pad + Style.frame_border_width
-                y: x
-                width: frame.width - x * 2
-                height: frame.band_height
-                sourceComponent: TitleStrip {
-                    title: root.title
-                    closable: false
+                Layout.alignment: Qt.AlignVCenter
+                Layout.preferredWidth: Style.px(84)
+                Layout.preferredHeight: Style.px(84)
+                Layout.rightMargin: Style.px(6)
+                active: root.ring_layout
+                visible: root.ring_layout
+                sourceComponent: RingGauge {
+                    value: root.level
+                    label: String(root.percent)
+                    unit: "%"
+                    opacity: root.muted ? 0.5 : 1
                 }
             }
 
-            Rectangle {
-                id: title_tab
-                visible: Style.show_title && !(root.console_osd && root.console_osd.untitled)
-                opacity: root.banded || Style.border_title ? 0 : 1
-                x: (Style.fade_fills || Style.rounded ? frame.radius : 0) + Style.inset_pad
-                y: (Style.fade_fills ? Style.frame_border_width : 0) + frame.top_rule + Style.inset_pad
-                width: Style.fade_fills ? Math.max(title_text.implicitWidth + 20 + title_index.space, body.implicitWidth + frame.pad_x * 2 - frame.radius * 2) : title_text.implicitWidth + 20 + title_index.space
-                height: Math.max(title_text.implicitHeight, title_index.space > 0 ? title_index.implicitHeight : 0) + 4
-                color: Style.fade_fills ? "transparent" : Style.title_bg
+            Loader {
+                id: console_osd_loader
+                active: !!root.console_osd
+                visible: active
+                Layout.alignment: Qt.AlignVCenter
+                Layout.preferredWidth: root.console_osd && root.console_osd.size ? root.console_osd.size : -1
+                Layout.preferredHeight: root.console_osd && root.console_osd.size ? root.console_osd.size : -1
+                sourceComponent: root.console_osd ? root.console_osd.art : null
+            }
 
-                FadeFill {
-                    visible: Style.fade_fills
-                    fill: Style.title_bg
+            Text {
+                visible: !root.replaced("glyph")
+                Layout.alignment: Qt.AlignVCenter
+                Layout.preferredWidth: Theme.glyph_size + 4
+                horizontalAlignment: Text.AlignHCenter
+                text: root.glyph
+                color: !root.showing_vox ? Style.pal.primary : root.vox_recording ? Style.pal.label : Style.pal.warning
+                opacity: !root.showing_vox && root.muted ? 0.5 : 1
+                font.family: Theme.font_family
+                font.pixelSize: Theme.glyph_size
+            }
+
+            Item {
+                visible: !root.replaced("meter")
+                Layout.alignment: Qt.AlignVCenter
+                Layout.preferredWidth: root.showing_vox ? Style.px(260) : Style.px(180)
+                Layout.preferredHeight: root.showing_vox ? Style.px(44) : root.visor_wave ? Style.px(24) : meter.implicitHeight
+
+                Modern.CapsuleSlider {
+                    visible: root.visor_wave
+                    width: parent.width
+                    height: parent.height
+                    value: root.level
+                    muted: root.muted
+                    interactive: false
+                    show_readout: false
+                    node: root.sink
+                    peaks_on: root.visor_wave && root.wanted && root.visible && Power.on_ac
                 }
 
-                TitleIndex {
-                    id: title_index
-                    x: 10
+                Meter {
+                    id: meter
+                    // Volume OSD matches the Volume popup's art (hearts on NES); brightness keeps its own.
+                    art_key: root.kind === "volume" ? "volume" : "osd"
+                    visible: !root.showing_vox && !root.visor_wave
+                    width: parent.width
                     anchors.verticalCenter: parent.verticalCenter
-                    name: root.showing_vox ? "" : root.kind
+                    value: root.showing_vox ? 0 : root.level
+                    hot_from: root.showing_vox ? 1 : 0.9
+                    opacity: !root.showing_vox && root.muted ? 0.35 : 1
                 }
 
-                Text {
-                    id: title_text
-                    anchors.centerIn: Style.fade_fills ? undefined : parent
-                    anchors.horizontalCenterOffset: title_index.space / 2
-                    x: 10 + title_index.space
-                    y: (parent.height - height) / 2
-                    text: Style.title_prefix + Style.title_text(root.title) + Style.title_suffix
-                    color: Style.title_fg
-                    font.family: Style.title_font_family
-                    font.pixelSize: Style.title_size > 0 ? Style.title_size : Style.fs(-2)
-                    font.weight: Style.title_weight > 0 ? Style.title_weight : Style.title_font_family === Style.font_family ? Font.Bold : Font.Normal
-                    font.letterSpacing: Style.title_spacing
+                Waveform {
+                    id: waveform
+                    visible: root.showing_vox
+                    anchors.fill: parent
+                    frozen: !root.vox_recording
+                    running: root.showing_vox && root.visible && !root.replaced("meter")
                 }
             }
 
-            Loader {
-                active: Style.border_title && Style.show_title
-                x: 12
-                y: -root.float_top
-                sourceComponent: Neovim.BorderTitle {
-                    title: Style.title_text(root.title)
-                }
-            }
-
-            RowLayout {
-                id: body
-                x: frame.pad_x
-                y: frame.header_height + frame.pad_y
-                spacing: Style.px(10)
-
-                Loader {
-                    Layout.alignment: Qt.AlignVCenter
-                    Layout.preferredWidth: Style.px(84)
-                    Layout.preferredHeight: Style.px(84)
-                    Layout.rightMargin: Style.px(6)
-                    active: root.ring_layout
-                    visible: root.ring_layout
-                    sourceComponent: RingGauge {
-                        value: root.level
-                        label: String(root.percent)
-                        unit: "%"
-                        opacity: root.muted ? 0.5 : 1
-                    }
-                }
-
-                Loader {
-                    id: console_osd_loader
-                    active: !!root.console_osd
-                    visible: active
-                    Layout.alignment: Qt.AlignVCenter
-                    Layout.preferredWidth: root.console_osd && root.console_osd.size ? root.console_osd.size : -1
-                    Layout.preferredHeight: root.console_osd && root.console_osd.size ? root.console_osd.size : -1
-                    sourceComponent: root.console_osd ? root.console_osd.art : null
-                }
-
-                Text {
-                    visible: !root.replaced("glyph")
-                    Layout.alignment: Qt.AlignVCenter
-                    Layout.preferredWidth: Theme.glyph_size + 4
-                    horizontalAlignment: Text.AlignHCenter
-                    text: root.glyph
-                    color: !root.showing_vox ? Style.pal.primary : root.vox_recording ? Style.pal.label : Style.pal.warning
-                    opacity: !root.showing_vox && root.muted ? 0.5 : 1
-                    font.family: Theme.font_family
-                    font.pixelSize: Theme.glyph_size
-                }
-
-                Item {
-                    visible: !root.replaced("meter")
-                    Layout.alignment: Qt.AlignVCenter
-                    Layout.preferredWidth: root.showing_vox ? Style.px(260) : Style.px(180)
-                    Layout.preferredHeight: root.showing_vox ? Style.px(44) : root.visor_wave ? Style.px(24) : meter.implicitHeight
-
-                    Modern.CapsuleSlider {
-                        visible: root.visor_wave
-                        width: parent.width
-                        height: parent.height
-                        value: root.level
-                        muted: root.muted
-                        interactive: false
-                        show_readout: false
-                        node: root.sink
-                        peaks_on: root.visor_wave && root.wanted && root.visible && Power.on_ac
-                    }
-
-                    Meter {
-                        id: meter
-                        // Volume OSD matches the Volume popup's art (hearts on NES); brightness keeps its own.
-                        art_key: root.kind === "volume" ? "volume" : "osd"
-                        visible: !root.showing_vox && !root.visor_wave
-                        width: parent.width
-                        anchors.verticalCenter: parent.verticalCenter
-                        value: root.showing_vox ? 0 : root.level
-                        hot_from: root.showing_vox ? 1 : 0.9
-                        opacity: !root.showing_vox && root.muted ? 0.35 : 1
-                    }
-
-                    Waveform {
-                        id: waveform
-                        visible: root.showing_vox
-                        anchors.fill: parent
-                        frozen: !root.vox_recording
-                        running: root.showing_vox && root.visible && !root.replaced("meter")
-                    }
-                }
-
-                Text {
-                    visible: !root.ring_layout && !root.replaced("percent")
-                    Layout.alignment: Qt.AlignVCenter
-                    Layout.preferredWidth: percent_metrics.width
-                    horizontalAlignment: Text.AlignRight
-                    text: root.showing_vox ? root.elapsed : root.percent + "%"
-                    color: root.showing_vox && !root.vox_recording ? Style.pal.warning : !root.showing_vox && root.muted ? Style.text_muted : root.hud_layout ? Style.text_primary : Style.pal.fg
-                    font.family: Style.number_font
-                    font.pixelSize: percent_metrics.font.pixelSize
-                    font.bold: Style.number_font !== Style.font_family
-                }
+            Text {
+                visible: !root.ring_layout && !root.replaced("percent")
+                Layout.alignment: Qt.AlignVCenter
+                Layout.preferredWidth: percent_metrics.width
+                horizontalAlignment: Text.AlignRight
+                text: root.showing_vox ? root.elapsed : root.percent + "%"
+                color: root.showing_vox && !root.vox_recording ? Style.pal.warning : !root.showing_vox && root.muted ? Style.text_muted : root.hud_layout ? Style.text_primary : Style.pal.fg
+                font.family: Style.number_font
+                font.pixelSize: percent_metrics.font.pixelSize
+                font.bold: Style.number_font !== Style.font_family
             }
         }
 
@@ -574,65 +515,7 @@ PanelWindow {
             }
         }
 
-        // Rebuilt per style, as in Popup.qml: hidden MultiEffects stopped drawing after a style switch.
-        Loader {
-            anchors.fill: glow_layer
-            active: Style.glow
-            sourceComponent: Item {
-                MultiEffect {
-                    anchors.fill: parent
-                    source: glow_layer
-                    autoPaddingEnabled: false
-                    blurEnabled: true
-                    blur: 0.5
-                    blurMax: 12
-                    brightness: 0.2
-                    colorization: 1
-                    colorizationColor: Style.glow_color
-                }
-
-                MultiEffect {
-                    anchors.fill: parent
-                    source: glow_layer
-                    autoPaddingEnabled: false
-                    colorization: Style.glow_tint
-                    colorizationColor: Style.pal.primary_light
-                }
-            }
-        }
-
-        Loader {
-            anchors.fill: glow_layer
-            active: !Style.glow && Style.text_shadow.a > 0
-            sourceComponent: MultiEffect {
-                source: glow_layer
-                autoPaddingEnabled: false
-                shadowEnabled: true
-                shadowBlur: 0
-                shadowOpacity: 1
-                shadowColor: Style.text_shadow
-                shadowHorizontalOffset: 2
-                shadowVerticalOffset: 2
-            }
-        }
-
-        Scanlines {
-            visible: Style.scanlines && Style.frame_octagon <= 0
-            anchors.fill: parent
-            anchors.margins: frame.radius > 0 ? Style.frame_border_width : 0
-            color: Style.scanline_color
-            period: Style.scanline_period
-        }
-
-        Dither {
-            anchors.fill: parent
-            anchors.margins: Style.frame_border_width
-            color: Style.dither
-            radius: frame.radius
-            top_radius: frame.radius
-        }
-
-        Rectangle {
+        overlay: Rectangle {
             visible: Style.frame_top_rule
             x: frame.radius
             width: frame.width - frame.radius * 2
