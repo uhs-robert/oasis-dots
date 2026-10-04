@@ -177,7 +177,7 @@ resolve_loop() {
   if [[ -n $manual_start ]]; then
     read -r s e < <(python3 -c "import sys; print(round(float(sys.argv[1]) * $rate), round(float(sys.argv[2]) * $rate))" "$manual_start" "$manual_end")
     how=override mode=snap
-  elif ((!redetect)) && read -r s e < <(read_tags "$file") && [[ -n ${s:-} ]]; then
+  elif ((! redetect)) && read -r s e < <(read_tags "$file") && [[ -n ${s:-} ]]; then
     read -r s e < <(python3 -c "import sys; r = $rate / int(sys.argv[3]); print(round(int(sys.argv[1]) * r), round(int(sys.argv[2]) * r))" "$s" "$e" "$sr")
     how=tags mode=keep
   else
