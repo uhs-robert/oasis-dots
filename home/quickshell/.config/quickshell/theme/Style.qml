@@ -47,6 +47,18 @@ Singleton {
 
     readonly property var styles: Styles.build(Theme, root.version)
 
+    // Quickshell only watches JS that QML imports directly, so edits to the style files reload the shell here.
+    Instantiator {
+        model: Styles.sources
+        delegate: FileView {
+            required property string modelData
+            path: Qt.resolvedUrl("styles/" + modelData)
+            watchChanges: true
+            printErrors: false
+            onFileChanged: Quickshell.reload(false)
+        }
+    }
+
     readonly property var base_active: root.styles[root.name] || root.styles["oasis"]
     readonly property var active: {
         const opts = root.theme_values[root.styles[root.name] ? root.name : "oasis"];

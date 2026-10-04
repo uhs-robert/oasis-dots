@@ -18,6 +18,9 @@
 .import "modern.js" as Modern
 .import "neovim.js" as Neovim
 
+// Watched by Style.qml for hot reload, relative to this folder.
+var sources = ["../StyleSchema.js", "index.js", "watch.js", "terminal.js", "crt.js", "nes.js", "snes.js", "ps1.js", "goldeneye.js", "metroid.js", "ps2.js", "tie.js", "reticle.js", "halflife.js", "gameboy.js", "ff7.js", "oasis.js", "modern.js", "neovim.js"];
+
 // Every style's raw token set by name: the schema defaults with the style's overrides laid over them.
 function build(t, version) {
     const pal = WatchTokens.palette(t);
