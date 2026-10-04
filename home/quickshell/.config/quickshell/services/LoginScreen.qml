@@ -33,9 +33,13 @@ Singleton {
         return name === "follow" || name === "simple" || LockSkins.names.indexOf(name) >= 0;
     }
 
+    function probe() {
+        if (!probe_proc.running) probe_proc.running = true;
+    }
+
     function set_sync(on) {
         root.sync = on;
-        if (on) probe_proc.running = true;
+        if (on) root.probe();
         root.save();
     }
 
