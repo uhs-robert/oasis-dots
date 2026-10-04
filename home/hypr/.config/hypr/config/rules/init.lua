@@ -61,6 +61,7 @@ local set_layer_rules = function()
   register({ name = "quickshell_osd",    match = { namespace = "quickshell-osd" },    no_anim = true })
   register({ name = "quickshell_whichkey", match = { namespace = "quickshell-whichkey" }, no_anim = true })
   register({ name = "quickshell_region", match = { namespace = "quickshell-region" }, no_anim = true })
+  register({ name = "quickshell_zoom",   match = { namespace = "quickshell-zoom" },   no_anim = true, no_screen_share = true })
 
   -- Conditionally enabled
   register({ name = "rofi_popin",        match = { namespace = "rofi" },              animation = "popin 80%" })
