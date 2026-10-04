@@ -260,8 +260,8 @@ Item {
         const n = Math.round(v);
         return (n < 0 ? "-" : "") + String(Math.abs(n)).padStart(4, "0");
     }
-    width: root.skinned ? root.skin.implicitWidth : root.duckhunt ? root.dh_width : root.goldeneye ? root.ge_rim : root.scopeitem ? root.si_pad * 2 + root.si_body_w : root.scanvisor ? root.sv_pad * 2 + root.view : root.tvosd ? root.tv_width : root.tiecomp ? root.tc_width : root.tmux ? root.tmux_w : root.materia ? root.mat_width : root.pokemon ? root.pk_width : root.view + root.pad * 2 + (root.jrpg ? root.jrpg_drop : 0)
-    height: root.skinned ? root.skin.implicitHeight : root.duckhunt ? root.dh_lens_size + root.dh_gap + root.dh_hud_h + root.dh_gap + root.dh_score_h : root.goldeneye ? root.ge_rim + root.ge_strip_gap + root.ge_strip_h : root.scope ? root.view + root.pad * 2 + root.header_h + root.foot_h : root.jrpg ? root.pad + root.header_h + root.view + root.jrpg_gap + root.jrpg_stats_h + root.pad + root.jrpg_drop : root.scopeitem ? root.si_pad + root.si_ruler_h + root.view + root.si_foot_gap + root.si_foot_h + root.si_pad : root.scanvisor ? root.sv_pad + root.sv_header_h + root.sv_header_gap + root.view + root.sv_card_gap + sv_card_col.implicitHeight + root.sv_pad : root.tvosd ? root.tv_pad_y * 2 + root.tv_header_h + root.tv_lens_gap * 2 + root.view + tv_rows_col.implicitHeight : root.tiecomp ? root.tc_pad_y * 2 + root.tc_header_h + root.tc_lens_gap * 2 + root.view + tc_rows_col.implicitHeight : root.tmux ? root.tmux_pad * 2 + root.tmux_line_h * 3 + root.tmux_gap * 2 + root.view : root.nvimfloat ? root.pad + root.header_h + root.view + root.nv_foot_gap + root.nv_row_h + root.nv_cmd_h + root.pad : root.materia ? root.mat_pad_y * 2 + root.mat_header_h + root.view + root.mat_row_gap + mat_rows_col.implicitHeight : root.pokemon ? root.pk_pad * 2 + root.pk_header_h + root.pk_lens_gap * 2 + root.view + root.pk_stats_h + root.pk_divider_gap * 2 + root.pk_divider_h + root.pk_msg_h : root.view + root.pad * 2 + coords.implicitHeight + 4 + (root.pixel_mode ? swatch_row.height + 4 : 0)
+    width: root.skinned ? root.skin.implicitWidth : root.duckhunt ? root.dh_width : root.goldeneye ? root.ge_rim : root.scopeitem ? root.si_pad * 2 + root.si_body_w : root.tvosd ? root.tv_width : root.tiecomp ? root.tc_width : root.tmux ? root.tmux_w : root.materia ? root.mat_width : root.pokemon ? root.pk_width : root.view + root.pad * 2 + (root.jrpg ? root.jrpg_drop : 0)
+    height: root.skinned ? root.skin.implicitHeight : root.duckhunt ? root.dh_lens_size + root.dh_gap + root.dh_hud_h + root.dh_gap + root.dh_score_h : root.goldeneye ? root.ge_rim + root.ge_strip_gap + root.ge_strip_h : root.scope ? root.view + root.pad * 2 + root.header_h + root.foot_h : root.jrpg ? root.pad + root.header_h + root.view + root.jrpg_gap + root.jrpg_stats_h + root.pad + root.jrpg_drop : root.scopeitem ? root.si_pad + root.si_ruler_h + root.view + root.si_foot_gap + root.si_foot_h + root.si_pad : root.tvosd ? root.tv_pad_y * 2 + root.tv_header_h + root.tv_lens_gap * 2 + root.view + tv_rows_col.implicitHeight : root.tiecomp ? root.tc_pad_y * 2 + root.tc_header_h + root.tc_lens_gap * 2 + root.view + tc_rows_col.implicitHeight : root.tmux ? root.tmux_pad * 2 + root.tmux_line_h * 3 + root.tmux_gap * 2 + root.view : root.nvimfloat ? root.pad + root.header_h + root.view + root.nv_foot_gap + root.nv_row_h + root.nv_cmd_h + root.pad : root.materia ? root.mat_pad_y * 2 + root.mat_header_h + root.view + root.mat_row_gap + mat_rows_col.implicitHeight : root.pokemon ? root.pk_pad * 2 + root.pk_header_h + root.pk_lens_gap * 2 + root.view + root.pk_stats_h + root.pk_divider_gap * 2 + root.pk_divider_h + root.pk_msg_h : root.view + root.pad * 2 + coords.implicitHeight + 4 + (root.pixel_mode ? swatch_row.height + 4 : 0)
     x: root.at.x + root.gap + root.width <= root.area_width ? root.at.x + root.gap : root.at.x - root.flip_gap - root.width
     y: root.at.y + root.gap + root.height <= root.area_height ? root.at.y + root.gap : root.at.y - root.gap - root.height
 
@@ -361,13 +361,6 @@ Item {
         antialiasing: false
     }
 
-    ScanGlass {
-        visible: root.scanvisor
-        anchors.fill: parent
-        corner: 12
-        sheen: true
-    }
-
     Ff7Parts.Ff7Window {
         visible: root.materia
         anchors.fill: parent
@@ -419,12 +412,12 @@ Item {
     LoupeLens {
         id: lens_content
         loupe: root
-        x: root.duckhunt ? root.dh_lens_x + root.dh_pad : root.goldeneye ? (root.ge_rim - root.view) / 2 : root.scopeitem ? root.si_pad : root.scanvisor ? root.sv_pad : root.tvosd ? root.tv_pad_x : root.tiecomp ? root.tc_pad_x : root.tmux ? root.tmux_pad : root.materia ? root.mat_pad_x : root.pokemon ? (root.pk_width - root.view) / 2 : root.pad
-        y: root.duckhunt ? root.dh_pad : root.goldeneye ? (root.ge_rim - root.view) / 2 : root.scopeitem ? root.si_pad + root.si_ruler_h : root.scanvisor ? root.sv_pad + root.sv_header_h + root.sv_header_gap : root.tvosd ? root.tv_pad_y + root.tv_header_h + root.tv_lens_gap : root.tiecomp ? root.tc_pad_y + root.tc_header_h + root.tc_lens_gap : root.tmux ? root.tmux_pad + root.tmux_line_h + root.tmux_gap : root.materia ? root.mat_pad_y + root.mat_header_h : root.pokemon ? root.pk_pad + root.pk_header_h + root.pk_lens_gap : root.pad + root.header_h
+        x: root.duckhunt ? root.dh_lens_x + root.dh_pad : root.goldeneye ? (root.ge_rim - root.view) / 2 : root.scopeitem ? root.si_pad : root.tvosd ? root.tv_pad_x : root.tiecomp ? root.tc_pad_x : root.tmux ? root.tmux_pad : root.materia ? root.mat_pad_x : root.pokemon ? (root.pk_width - root.view) / 2 : root.pad
+        y: root.duckhunt ? root.dh_pad : root.goldeneye ? (root.ge_rim - root.view) / 2 : root.scopeitem ? root.si_pad + root.si_ruler_h : root.tvosd ? root.tv_pad_y + root.tv_header_h + root.tv_lens_gap : root.tiecomp ? root.tc_pad_y + root.tc_header_h + root.tc_lens_gap : root.tmux ? root.tmux_pad + root.tmux_line_h + root.tmux_gap : root.materia ? root.mat_pad_y + root.mat_header_h : root.pokemon ? root.pk_pad + root.pk_header_h + root.pk_lens_gap : root.pad + root.header_h
         visible: !root.skinned && !root.goldeneye
         layer.enabled: root.goldeneye && !root.skinned
         grid_color: root.scanvisor ? Qt.alpha(Theme.cyan, 0.14) : Qt.alpha(Theme.bg_shadow, 0.35)
-        center_color: root.duckhunt ? Theme.fg_strong : root.scope ? Style.picker_hud : root.scanvisor ? (root.sv_complete ? Theme.bright_green : Theme.bright_yellow) : root.tvosd ? Theme.bright_green : root.tiecomp ? Theme.red : root.tmux ? Theme.ui_match_bg : root.nvimfloat ? Theme.fg_core : root.materia ? Theme.fg_strong : root.pokemon ? Style.shade_1 : Style.caret_color
+        center_color: root.duckhunt ? Theme.fg_strong : root.scope ? Style.picker_hud : root.tvosd ? Theme.bright_green : root.tiecomp ? Theme.red : root.tmux ? Theme.ui_match_bg : root.nvimfloat ? Theme.fg_core : root.materia ? Theme.fg_strong : root.pokemon ? Style.shade_1 : Style.caret_color
 
         Repeater {
             model: root.tiecomp ? Math.ceil(root.view / 3) : 0
@@ -606,167 +599,6 @@ Item {
                 color: Theme.fg_strong
                 font.family: Style.font_family
                 font.pixelSize: Style.fs(-6)
-            }
-        }
-    }
-
-    Item {
-        id: sv_header
-        visible: root.scanvisor
-        x: root.sv_pad
-        y: root.sv_pad
-        width: root.view
-        height: root.sv_header_h
-
-        Text {
-            anchors.left: parent.left
-            anchors.verticalCenter: parent.verticalCenter
-            text: "SCAN VISOR"
-            color: Theme.bright_cyan
-            font.family: Style.font_family
-            font.pixelSize: Style.fs(-6)
-            font.letterSpacing: 1.5
-        }
-
-        Row {
-            anchors.right: parent.right
-            anchors.verticalCenter: parent.verticalCenter
-            spacing: 3
-
-            Repeater {
-                model: root.scanvisor ? Screenshot.zoom_levels : []
-
-                Rectangle {
-                    id: sv_tank
-                    required property int modelData
-                    width: 9
-                    height: 9
-                    color: sv_tank.modelData <= root.zoom ? Theme.bright_cyan : "transparent"
-                    border.width: 1
-                    border.color: Theme.bright_cyan
-                }
-            }
-        }
-    }
-
-    Item {
-        id: sv_card
-        visible: root.scanvisor
-        readonly property real lens_bottom: root.sv_pad + root.sv_header_h + root.sv_header_gap + root.view
-        x: root.sv_pad
-        y: sv_card.lens_bottom + root.sv_card_gap
-        width: root.view
-
-        Rectangle {
-            x: 0
-            y: -(root.sv_card_gap - 6)
-            width: parent.width
-            height: 1
-            color: Qt.alpha(Theme.bright_cyan, 0.25)
-        }
-
-        Column {
-            id: sv_card_col
-            width: sv_card.width
-            spacing: 4
-
-            Text {
-                text: root.pixel_mode ? (root.sv_complete ? "LOGBOOK // PIGMENT" : "SCANNING " + Math.round(root.scan_step / root.scan_steps * 100) + "%") : "LOGBOOK // AREA"
-                color: root.pixel_mode ? (root.sv_complete ? Theme.bright_green : Theme.bright_yellow) : Theme.bright_green
-                font.family: Style.font_family
-                font.pixelSize: 10
-                font.letterSpacing: 1.5
-            }
-
-            Row {
-                visible: root.pixel_mode
-                spacing: 6
-
-                Rectangle {
-                    anchors.verticalCenter: parent.verticalCenter
-                    width: 12
-                    height: 12
-                    border.width: 1
-                    border.color: Theme.fg_muted
-                    color: root.sv_complete && Screenshot.pixel_hex !== "" ? Screenshot.pixel_hex : "transparent"
-                }
-
-                Text {
-                    anchors.verticalCenter: parent.verticalCenter
-                    text: root.sv_complete && Screenshot.pixel_hex !== "" ? Screenshot.pixel_hex : "#------"
-                    color: Theme.fg_strong
-                    font.family: Style.number_font
-                    font.pixelSize: Style.fs(-3)
-                }
-            }
-
-            Text {
-                visible: !root.pixel_mode
-                text: root.has_sel ? Math.round(root.sel.width) + " x " + Math.round(root.sel.height) : root.ge_pad4(root.screen_x + root.at.x) + " " + root.ge_pad4(root.screen_y + root.at.y)
-                color: Theme.fg_strong
-                font.family: Style.number_font
-                font.pixelSize: Style.fs(-3)
-            }
-
-            Repeater {
-                model: root.pixel_mode ? [{ label: "R", value: root.sv_rgb[0], color: Theme.red }, { label: "G", value: root.sv_rgb[1], color: Theme.bright_green }, { label: "B", value: root.sv_rgb[2], color: Theme.blue }] : []
-
-                Item {
-                    id: sv_row
-                    required property var modelData
-                    width: sv_card_col.width
-                    height: 12
-
-                    Text {
-                        id: sv_row_label
-                        anchors.left: parent.left
-                        anchors.verticalCenter: parent.verticalCenter
-                        width: 10
-                        text: sv_row.modelData.label
-                        color: Theme.fg_dim
-                        font.family: Style.font_family
-                        font.pixelSize: Style.fs(-7)
-                    }
-
-                    Text {
-                        id: sv_row_value
-                        anchors.right: parent.right
-                        anchors.verticalCenter: parent.verticalCenter
-                        width: 24
-                        horizontalAlignment: Text.AlignRight
-                        text: root.sv_complete ? String(sv_row.modelData.value) : "---"
-                        color: Theme.fg_strong
-                        font.family: Style.mono_font
-                        font.pixelSize: Style.fs(-7)
-                    }
-
-                    Rectangle {
-                        anchors.left: sv_row_label.right
-                        anchors.leftMargin: 4
-                        anchors.right: sv_row_value.left
-                        anchors.rightMargin: 4
-                        anchors.verticalCenter: parent.verticalCenter
-                        height: 4
-                        color: Qt.alpha(Theme.bg_shadow, 0.7)
-                        border.width: 1
-                        border.color: Qt.alpha(sv_row.modelData.color, 0.4)
-
-                        Rectangle {
-                            x: 1
-                            y: 1
-                            width: Math.max(0, (parent.width - 2) * (root.sv_complete ? sv_row.modelData.value / 255 : 0))
-                            height: parent.height - 2
-                            color: sv_row.modelData.color
-                        }
-                    }
-                }
-            }
-
-            Text {
-                text: root.pixel_mode ? "POS " + root.ge_pad4(root.screen_x + root.at.x) + " " + root.ge_pad4(root.screen_y + root.at.y) : root.has_sel ? "FRAMING" : "STANDBY"
-                color: Theme.fg_dim
-                font.family: Style.font_family
-                font.pixelSize: Style.fs(-7)
             }
         }
     }
