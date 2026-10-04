@@ -55,11 +55,17 @@ Singleton {
 
         function onRawEvent(event) {
             if (["openwindow", "closewindow", "movewindow", "workspace", "focusedmon"].includes(event.name)) {
-                root.refresh();
+                if (!refresh_soon.running) refresh_soon.start();
             } else if (["createworkspacev2", "destroyworkspacev2", "moveworkspacev2", "configreloaded", "monitoraddedv2"].includes(event.name)) {
                 ids_refresh.restart();
             }
         }
+    }
+
+    Timer {
+        id: refresh_soon
+        interval: 40
+        onTriggered: root.refresh()
     }
 
     Timer {

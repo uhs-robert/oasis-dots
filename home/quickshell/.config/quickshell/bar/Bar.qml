@@ -13,7 +13,7 @@ Item {
 
     property string screen_name: ""
     property var rule: null
-    readonly property bool compact: BarConfig.compact_for(root.rule, root.screen_name)
+    readonly property bool compact: BarConfig.compact_for(root.rule)
     readonly property int bar_height: BarConfig.height_for(root.rule)
     readonly property real center_width: center_island.body_item.width
     // Lualine has no center island; its modules move into the right island's sections.
@@ -283,7 +283,7 @@ Item {
         sheen_color: Style.sheen
         cap_left_fill: Style.bar_lualine && LualineState.right_first_fill[root.screen_name] ? LualineState.right_first_fill[root.screen_name] : "transparent"
         cap_left: true
-        visible: root.right_entries.length > 0
+        visible: root.right_side.length > 0
 
         onClicked: if (!Style.bar_lualine && root.right_entries.some(e => e.base === "clock")) Popups.toggle("clock", right_island.body_item, right_island.bg_color, root.screen_name)
 

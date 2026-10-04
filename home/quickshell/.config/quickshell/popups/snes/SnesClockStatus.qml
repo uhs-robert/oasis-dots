@@ -34,7 +34,7 @@ Item {
         spacing: 4
 
         Repeater {
-            model: [["DATE", Qt.formatDate(root.now, "ddd MMM d yyyy")], ["TIME", Qt.formatTime(root.now, "HH:mm") + (Timezones.abbrev !== "" ? " " + Timezones.abbrev : "")]]
+            model: [["DATE", Qt.formatDate(root.now, "ddd MMM d yyyy")], ["TIME", TimeFormat.format(root.now) + (Timezones.abbrev !== "" ? " " + Timezones.abbrev : "")]]
 
             RowLayout {
                 required property var modelData

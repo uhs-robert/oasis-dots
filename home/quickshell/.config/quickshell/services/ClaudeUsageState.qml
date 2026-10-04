@@ -71,7 +71,7 @@ Singleton {
     Connections {
         target: KeeptabsState
         function onTooltipChanged() {
-            const count = KeeptabsState.tooltip.split("\n").filter(l => l.startsWith("DONE")).length;
+            const count = KeeptabsState.count("DONE");
             if (count > root.done_count && Power.on_ac) root.refresh(true);
             root.done_count = count;
         }

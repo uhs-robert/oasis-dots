@@ -33,8 +33,13 @@ Singleton {
         return name === "follow" || name === "simple" || LockSkins.names.indexOf(name) >= 0;
     }
 
+    function probe() {
+        if (!probe_proc.running) probe_proc.running = true;
+    }
+
     function set_sync(on) {
         root.sync = on;
+        if (on) root.probe();
         root.save();
     }
 
@@ -89,6 +94,7 @@ Singleton {
     }
 
     Process {
+        id: probe_proc
         running: true
         command: ["test", "-d", "/var/lib/qs-greeter", "-a", "-w", "/var/lib/qs-greeter"]
         onExited: code => root.installed = code === 0

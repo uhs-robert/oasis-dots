@@ -38,7 +38,7 @@ Item {
 
         SequentialAnimation {
             id: pulse_animation
-            running: VoxtypeState.recording
+            running: VoxtypeState.recording && Power.on_ac
             loops: Animation.Infinite
             onRunningChanged: if (!running) glyph.opacity = 1
 
@@ -73,7 +73,7 @@ Item {
         }
 
         RotationAnimation on rotation {
-            running: ring.visible
+            running: ring.visible && Power.on_ac
             loops: Animation.Infinite
             from: 0
             to: 360

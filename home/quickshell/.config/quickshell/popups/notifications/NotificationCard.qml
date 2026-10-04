@@ -80,7 +80,7 @@ Item {
         if (diff_s < 86400) return Math.floor(diff_s / 3600) + "h";
         const d = new Date(ms);
         const now = new Date();
-        if (d.toDateString() === now.toDateString()) return Qt.formatTime(d, "HH:mm");
+        if (d.toDateString() === now.toDateString()) return TimeFormat.format(d);
         if (Date.now() - ms < 7 * 86400000) return Qt.formatDate(d, "ddd");
         return Qt.formatDate(d, "MMM d");
     }

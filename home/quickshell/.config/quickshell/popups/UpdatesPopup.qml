@@ -168,7 +168,7 @@ Popup {
                 Text {
                     width: Math.min(implicitWidth, parent.width)
                     elide: Text.ElideRight
-                    text: UpdatesState.checking ? "Checking…" : UpdatesState.error ? UpdatesState.error : (UpdatesState.last_checked > 0 ? "Checked " + Qt.formatTime(new Date(UpdatesState.last_checked), "HH:mm") : "Never checked")
+                    text: UpdatesState.checking ? "Checking…" : UpdatesState.error ? UpdatesState.error : (UpdatesState.last_checked > 0 ? "Checked " + TimeFormat.format(new Date(UpdatesState.last_checked)) : "Never checked")
                     color: UpdatesState.error && !UpdatesState.checking ? Style.pal.warning : root.st.text_muted
                     font.family: root.st.font_family
                     font.pixelSize: root.st.fs(-3)
