@@ -78,7 +78,7 @@ Keep keys consistent across surfaces; new popups, pickers and skins follow these
 
 ## Agent tooling
 
-`.claude/settings.json` adds three hooks: killing `qs` is refused unless the lock reports `unlocked`; a git command that changes `home/quickshell` in the live checkout restarts the stowed bar (hot-reload keeps stale code); and `just check` runs before a turn ends when tracked files have uncommitted changes. Repo skills: `test-bar` (put branches on the live bar, swap the Hyprland config when they touch it, `status`, `probe` IPC calls and `capture.sh` layer screenshots, then restore), `lock-preview` (skins on eDP-1) and `ship-batch` (merge and clean up). Worktrees have no `repos/`, so run `just check` in the real checkout before merging.
+`.claude/settings.json` adds three hooks: killing `qs` is refused unless the lock reports `unlocked`; a git command that changes `home/quickshell` in the live checkout restarts the stowed bar (hot-reload keeps stale code); and `just check` runs before a turn ends when tracked files have uncommitted changes. Repo skills: `test-bar` (put branches on the live bar, swap the Hyprland config when they touch it, `status`, `probe` IPC calls and `capture.sh` layer screenshots, then restore), `lock-preview` (skins on eDP-1) and `ship-batch` (merge through the global `merge-prs` skill, then check `main` and restart what changed). Worktrees have no `repos/`, so run `just check` in the real checkout before merging.
 
 ## Betterbird / tbkeys
 
