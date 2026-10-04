@@ -261,7 +261,7 @@ Item {
         return (n < 0 ? "-" : "") + String(Math.abs(n)).padStart(4, "0");
     }
     width: root.skinned ? root.skin.implicitWidth : root.duckhunt ? root.dh_width : root.goldeneye ? root.ge_rim : root.scopeitem ? root.si_pad * 2 + root.si_body_w : root.tvosd ? root.tv_width : root.tiecomp ? root.tc_width : root.tmux ? root.tmux_w : root.materia ? root.mat_width : root.pokemon ? root.pk_width : root.view + root.pad * 2 + (root.jrpg ? root.jrpg_drop : 0)
-    height: root.skinned ? root.skin.implicitHeight : root.duckhunt ? root.dh_lens_size + root.dh_gap + root.dh_hud_h + root.dh_gap + root.dh_score_h : root.goldeneye ? root.ge_rim + root.ge_strip_gap + root.ge_strip_h : root.scope ? root.view + root.pad * 2 + root.header_h + root.foot_h : root.jrpg ? root.pad + root.header_h + root.view + root.jrpg_gap + root.jrpg_stats_h + root.pad + root.jrpg_drop : root.scopeitem ? root.si_pad + root.si_ruler_h + root.view + root.si_foot_gap + root.si_foot_h + root.si_pad : root.tvosd ? root.tv_pad_y * 2 + root.tv_header_h + root.tv_lens_gap * 2 + root.view + tv_rows_col.implicitHeight : root.tiecomp ? root.tc_pad_y * 2 + root.tc_header_h + root.tc_lens_gap * 2 + root.view + tc_rows_col.implicitHeight : root.tmux ? root.tmux_pad * 2 + root.tmux_line_h * 3 + root.tmux_gap * 2 + root.view : root.nvimfloat ? root.pad + root.header_h + root.view + root.nv_foot_gap + root.nv_row_h + root.nv_cmd_h + root.pad : root.materia ? root.mat_pad_y * 2 + root.mat_header_h + root.view + root.mat_row_gap + mat_rows_col.implicitHeight : root.pokemon ? root.pk_pad * 2 + root.pk_header_h + root.pk_lens_gap * 2 + root.view + root.pk_stats_h + root.pk_divider_gap * 2 + root.pk_divider_h + root.pk_msg_h : root.view + root.pad * 2 + coords.implicitHeight + 4 + (root.pixel_mode ? swatch_row.height + 4 : 0)
+    height: root.skinned ? root.skin.implicitHeight : root.duckhunt ? root.dh_lens_size + root.dh_gap + root.dh_hud_h + root.dh_gap + root.dh_score_h : root.goldeneye ? root.ge_rim + root.ge_strip_gap + root.ge_strip_h : root.scope ? root.view + root.pad * 2 + root.header_h + root.foot_h : root.jrpg ? root.pad + root.header_h + root.view + root.jrpg_gap + root.jrpg_stats_h + root.pad + root.jrpg_drop : root.scopeitem ? root.si_pad + root.si_ruler_h + root.view + root.si_foot_gap + root.si_foot_h + root.si_pad : root.tvosd ? root.tv_pad_y * 2 + root.tv_header_h + root.tv_lens_gap * 2 + root.view + tv_rows_col.implicitHeight : root.tiecomp ? root.tc_pad_y * 2 + root.tc_header_h + root.tc_lens_gap * 2 + root.view + tc_rows_col.implicitHeight : root.tmux ? root.tmux_pad * 2 + root.tmux_line_h * 3 + root.tmux_gap * 2 + root.view : root.materia ? root.mat_pad_y * 2 + root.mat_header_h + root.view + root.mat_row_gap + mat_rows_col.implicitHeight : root.pokemon ? root.pk_pad * 2 + root.pk_header_h + root.pk_lens_gap * 2 + root.view + root.pk_stats_h + root.pk_divider_gap * 2 + root.pk_divider_h + root.pk_msg_h : root.view + root.pad * 2 + coords.implicitHeight + 4 + (root.pixel_mode ? swatch_row.height + 4 : 0)
     x: root.at.x + root.gap + root.width <= root.area_width ? root.at.x + root.gap : root.at.x - root.flip_gap - root.width
     y: root.at.y + root.gap + root.height <= root.area_height ? root.at.y + root.gap : root.at.y - root.gap - root.height
 
@@ -417,7 +417,7 @@ Item {
         visible: !root.skinned && !root.goldeneye
         layer.enabled: root.goldeneye && !root.skinned
         grid_color: root.scanvisor ? Qt.alpha(Theme.cyan, 0.14) : Qt.alpha(Theme.bg_shadow, 0.35)
-        center_color: root.duckhunt ? Theme.fg_strong : root.scope ? Style.picker_hud : root.tvosd ? Theme.bright_green : root.tiecomp ? Theme.red : root.tmux ? Theme.ui_match_bg : root.nvimfloat ? Theme.fg_core : root.materia ? Theme.fg_strong : root.pokemon ? Style.shade_1 : Style.caret_color
+        center_color: root.duckhunt ? Theme.fg_strong : root.scope ? Style.picker_hud : root.tvosd ? Theme.bright_green : root.tiecomp ? Theme.red : root.tmux ? Theme.ui_match_bg : root.materia ? Theme.fg_strong : root.pokemon ? Style.shade_1 : Style.caret_color
 
         Repeater {
             model: root.tiecomp ? Math.ceil(root.view / 3) : 0
@@ -600,178 +600,6 @@ Item {
                 font.family: Style.font_family
                 font.pixelSize: Style.fs(-6)
             }
-        }
-    }
-
-    Rectangle {
-        visible: root.nvimfloat
-        z: -1
-        anchors.fill: parent
-        radius: 6
-        color: Theme.bg_crust
-        border.width: 1
-        border.color: Theme.theme_primary
-    }
-
-    Rectangle {
-        visible: root.nvimfloat
-        x: 12
-        y: -1
-        width: nv_title_text.implicitWidth + 12
-        height: 16
-        radius: 3
-        color: Theme.theme_secondary
-
-        Text {
-            id: nv_title_text
-            anchors.centerIn: parent
-            text: root.pixel_mode ? (Screenshot.pixel_hex !== "" ? Screenshot.pixel_hex : "#------") : "Region"
-            color: Theme.bg_crust
-            font.family: Style.mono_font
-            font.bold: true
-            font.pixelSize: Style.fs(-6)
-        }
-    }
-
-    Text {
-        visible: root.nvimfloat
-        anchors.right: parent.right
-        anchors.rightMargin: 12
-        y: 2
-        text: root.zoom + "x"
-        color: Theme.theme_primary_light
-        font.family: Style.mono_font
-        font.pixelSize: Style.fs(-6)
-    }
-
-    Item {
-        id: nv_lualine
-        visible: root.nvimfloat
-        x: root.pad
-        y: root.pad + root.header_h + root.view + root.nv_foot_gap
-        width: root.view
-        height: root.nv_row_h
-
-        readonly property string mode: root.pixel_mode ? "NORMAL" : root.has_sel ? "V-BLOCK" : "VISUAL"
-        readonly property color mode_color: root.pixel_mode ? Theme.theme_primary : Theme.magenta
-
-        Rectangle {
-            id: nv_mode_chip
-            height: parent.height
-            width: nv_mode_text.implicitWidth + 16
-            color: nv_lualine.mode_color
-
-            Text {
-                id: nv_mode_text
-                anchors.centerIn: parent
-                text: nv_lualine.mode
-                color: Theme.bg_crust
-                font.family: Style.font_family
-                font.bold: true
-                font.pixelSize: Style.fs(-7)
-            }
-        }
-
-        Shape {
-            id: nv_mode_arrow
-            x: nv_mode_chip.width
-            width: 10
-            height: nv_lualine.height
-            ShapePath {
-                fillColor: nv_lualine.mode_color
-                strokeWidth: -1
-                startX: 0
-                startY: 0
-                PathLine {
-                    x: 10
-                    y: nv_lualine.height / 2
-                }
-                PathLine {
-                    x: 0
-                    y: nv_lualine.height
-                }
-                PathLine {
-                    x: 0
-                    y: 0
-                }
-            }
-        }
-
-        Rectangle {
-            visible: root.pixel_mode
-            x: nv_mode_arrow.x + nv_mode_arrow.width
-            height: parent.height
-            width: 26
-            color: Theme.bg_surface
-
-            Rectangle {
-                anchors.centerIn: parent
-                width: 12
-                height: 12
-                color: Screenshot.pixel_hex !== "" ? Screenshot.pixel_hex : "transparent"
-            }
-        }
-
-        Text {
-            visible: !root.pixel_mode
-            x: nv_mode_arrow.x + nv_mode_arrow.width + 6
-            anchors.verticalCenter: parent.verticalCenter
-            text: "▦"
-            color: Theme.theme_primary_light
-            font.pixelSize: Style.fs(-6)
-        }
-
-        Text {
-            id: nv_z_text
-            anchors.right: parent.right
-            height: parent.height
-            verticalAlignment: Text.AlignVCenter
-            text: Math.round(root.at.y) + ":" + Math.round(root.at.x)
-            color: Theme.bg_crust
-            font.family: Style.mono_font
-            font.bold: true
-            font.pixelSize: Style.fs(-7)
-
-            Rectangle {
-                z: -1
-                anchors.fill: parent
-                anchors.leftMargin: -8
-                color: Theme.theme_primary_strong
-            }
-        }
-    }
-
-    Row {
-        id: nv_cmdline
-        visible: root.nvimfloat
-        x: root.pad
-        y: nv_lualine.y + nv_lualine.height + 2
-        width: root.view
-        height: root.nv_cmd_h
-        spacing: 4
-
-        Text {
-            anchors.verticalCenter: parent.verticalCenter
-            text: root.pixel_mode ? ":hi" : root.has_sel ? ":'<,'>" : ":"
-            color: Theme.magenta
-            font.family: Style.mono_font
-            font.pixelSize: Style.fs(-6)
-        }
-
-        Text {
-            anchors.verticalCenter: parent.verticalCenter
-            text: root.pixel_mode ? "Pick" : "Screenshot"
-            color: Theme.fg_core
-            font.family: Style.mono_font
-            font.pixelSize: Style.fs(-6)
-        }
-
-        Text {
-            anchors.verticalCenter: parent.verticalCenter
-            text: root.pixel_mode ? "guifg=" + (Screenshot.pixel_hex !== "" ? Screenshot.pixel_hex : "#------") : root.has_sel ? Math.round(root.sel.width) + "x" + Math.round(root.sel.height) : ""
-            color: Theme.theme_secondary
-            font.family: Style.mono_font
-            font.pixelSize: Style.fs(-6)
         }
     }
 
