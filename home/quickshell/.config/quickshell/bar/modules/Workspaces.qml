@@ -67,10 +67,26 @@ Item {
         return list;
     }
 
-    function icon_for(cls) {
-        const entry = DesktopEntries.heuristicLookup(cls);
-        return Quickshell.iconPath(entry ? entry.icon : cls, "application-x-executable");
+    readonly property var workspace_by_id: root.workspace_list.reduce((map, w) => { map[w.id] = w; return map; }, ({}))
+
+    // Pills are keyed by workspace id so a change does not rebuild the whole row.
+    ListModel {
+        id: pill_ids
     }
+
+    function sync_pills() {
+        const ids = root.workspace_list.map(w => w.id);
+        for (let i = pill_ids.count - 1; i >= 0; i--) {
+            if (ids.indexOf(pill_ids.get(i).ws_id) < 0) pill_ids.remove(i);
+        }
+        ids.forEach((id, i) => {
+            if (i < pill_ids.count && pill_ids.get(i).ws_id === id) return;
+            pill_ids.insert(i, { ws_id: id });
+        });
+    }
+
+    onWorkspace_listChanged: root.sync_pills()
+    Component.onCompleted: root.sync_pills()
 
     function class_of(toplevel) {
         if (toplevel.wayland && toplevel.wayland.appId) return toplevel.wayland.appId;
@@ -92,11 +108,6 @@ Item {
             "if [ -z \"$already\" ]; then hyprctl eval \"hl.config({ cursor = { no_warps = false } })\" >/dev/null 2>&1; fi";
         Quickshell.execDetached(["sh", "-c", cmd]);
     }
-
-    function close_toplevel(address) {
-        Quickshell.execDetached(["hyprctl", "dispatch", "hl.dsp.window.close({ window = 'address:0x" + address + "' })"]);
-    }
-
 
     MouseArea {
         anchors.fill: parent
@@ -172,11 +183,12 @@ Item {
         }
 
         Repeater {
-            model: root.dial || root.stars || root.buffers ? [] : root.workspace_list
+            model: root.dial || root.stars || root.buffers ? null : pill_ids
 
             Rectangle {
                 id: pill
-                required property var modelData
+                required property int ws_id
+                readonly property var modelData: root.workspace_by_id[pill.ws_id] || ({ id: pill.ws_id, name: String(pill.ws_id), focused: false, active: false, lastIpcObject: {} })
 
                 readonly property bool is_empty: pill.toplevels.length === 0
                 readonly property bool diamond: Style.bar_workspace_diamond && is_empty && !root.map && !root.party && !root.slots
@@ -423,7 +435,7 @@ Item {
                 }
 
                 Timer {
-                    running: root.party && pill.modelData.focused && !pill.ball
+                    running: root.party && pill.modelData.focused && !pill.ball && Power.on_ac
                     interval: 500
                     repeat: true
                     onTriggered: pill.hop = !pill.hop

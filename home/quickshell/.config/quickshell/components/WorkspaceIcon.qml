@@ -27,7 +27,7 @@ Item {
         anchors.centerIn: parent
         implicitSize: root.glyph
         opacity: root.icon_opacity
-        source: root.host ? root.host.icon_for(root.host.class_of(root.modelData)) : ""
+        source: WindowState.icon_for(root.modelData)
     }
 
     MouseArea {
@@ -35,7 +35,7 @@ Item {
         acceptedButtons: Qt.LeftButton | Qt.MiddleButton
         onClicked: mouse => {
             if (mouse.button === Qt.LeftButton) root.host.focus_toplevel(root.workspace_id, root.modelData.address);
-            else root.host.close_toplevel(root.modelData.address);
+            else WindowState.close(root.modelData.address);
         }
     }
 
