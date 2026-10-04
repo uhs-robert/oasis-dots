@@ -18,9 +18,6 @@ install_aur_packages() {
   bootstrap_paru
   info "Installing AUR packages..."
   mapfile -t pkgs < <(read_manifest arch-aur.ini SHELL CLI)
-  if paru -S --needed --noconfirm "${pkgs[@]}"; then
-    success "AUR packages installed"
-  else
-    warn "Some AUR packages failed to build; continuing"
-  fi
+  install_with_retry paru "${pkgs[@]}"
+  success "AUR packages processed"
 }
