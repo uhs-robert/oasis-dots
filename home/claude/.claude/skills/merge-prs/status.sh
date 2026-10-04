@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Read-only repo status: open PRs, other worktrees, unmerged branches, untracked top-level entries, main checkout.
 set -uo pipefail
+export GIT_OPTIONAL_LOCKS=0
 
 worktrees=$(git worktree list --porcelain 2>/dev/null) || {
   echo "status: not inside a git repository" >&2
@@ -68,8 +69,7 @@ while IFS= read -r b; do
 done < <(git for-each-ref --format='%(refname:short)' refs/heads)
 [[ -z $lines ]] || section "Unmerged branches" <<<"${lines%$'\n'}"
 
-untracked=$(git status --porcelain --untracked-files=normal | sed -n 's/^?? //p' | grep -v / || true)
-untracked+=$(git status --porcelain --untracked-files=normal | sed -n 's/^?? \([^/]*\)\/.*/\1\//p')
+untracked=$(git status --porcelain --untracked-files=normal | sed -n 's/^?? \([^/]*\/\{0,1\}\).*/\1/p' | sort -u)
 [[ -z $untracked ]] || section "Untracked in main checkout" <<<"$untracked"
 
 cur=$(git branch --show-current)
