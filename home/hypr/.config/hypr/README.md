@@ -34,6 +34,8 @@ hyprctl reload
 
 On its own it still expects a few neighbours: the bar, popups and lock screen come from the `quickshell` package, the pickers fall back to `rofi`, and some binds call tools like `wl-kbptr`, `wlrctl` and `hyprpaper` (see `packages/arch.ini` and `packages/arch-aur.ini`). Moving the folder by hand instead of stowing it breaks those symlinks.
 
+Stow links `~/.config/hypr` as a whole directory into the checkout, so files this config generates land inside the repo and are gitignored: your machine profile (`config/machines/<hostname>.lua`), `custom/`, `theme.conf`, `scripts/term` and `theme/.current_theme`. The generators also write the rofi, foot, yazi, kitty and ghostty theme files into those packages' stowed config dirs, and `systemctl --user enable` adds `.wants` links under `home/systemd/`. Quickshell's `theme.json` and the Settings panel state go to `~/.local/state/`, outside the checkout.
+
 #### 2. Set up your machine
 
 With the Quickshell shell running, most of this is in its Settings panel (`SUPER + SPACE` then `S`): Displays sets resolution, refresh rate, scale and arrangement with a keep-or-revert countdown, Default apps picks the terminal, editor and file managers, and Power sets idle timeouts and lid actions. Those choices are saved as state under `~/.local/state/hypr/`, and the display and app choices win over the machine profile below.
