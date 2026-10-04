@@ -99,14 +99,17 @@ Item {
         return entry && entry.name ? entry.name : cls ? cls.split(".").pop() : "window";
     }
 
-    // Mirrors hypr-focus-workspaces.lua: focus the workspace then the window, holding cursor:no_warps.
+    // Focus the workspace then the window in one eval, holding cursor:no_warps and restoring the configured value.
     function focus_toplevel(ws_id, address) {
-        Hyprland.dispatch("hl.dsp.focus({ workspace = '" + ws_id + "' })");
-        const cmd = "already=$(hyprctl getoption cursor:no_warps -j | grep -o '\"bool\": *true'); " +
-            "if [ -z \"$already\" ]; then hyprctl eval \"hl.config({ cursor = { no_warps = true } })\" >/dev/null 2>&1; fi; " +
-            "hyprctl dispatch \"hl.dsp.focus({ window = 'address:0x" + address + "' })\"; " +
-            "if [ -z \"$already\" ]; then hyprctl eval \"hl.config({ cursor = { no_warps = false } })\" >/dev/null 2>&1; fi";
-        Quickshell.execDetached(["sh", "-c", cmd]);
+        if (!/^[0-9a-fA-F]+$/.test(address || "")) return;
+        const lua = "local nw = hl.get_config('cursor.no_warps'); " +
+            "hl.config({ cursor = { no_warps = true } }); " +
+            "pcall(function() " +
+            "hl.dispatch(hl.dsp.focus({ workspace = '" + ws_id + "' })); " +
+            "hl.dispatch(hl.dsp.focus({ window = 'address:0x" + address + "' })) " +
+            "end); " +
+            "hl.config({ cursor = { no_warps = nw == true } })";
+        Quickshell.execDetached(["hyprctl", "eval", lua]);
     }
 
     MouseArea {
