@@ -127,7 +127,7 @@ Every popup uses the same keys. `?` shows the full list for the popup you're in.
 | `?`              | Key help                                 |
 | `q` / `Esc`      | Close                                    |
 
-Console styles draw controller buttons in place of keys in the footers and help.
+Console styles draw controller buttons in place of keys in the footers and help. Each console is one entry in `components/KeyHints.js` (`controllers`): the path of its button component and the key to button map. A button component is an `Item` with `button` (a name from the map), `size` and, for the Game Boy shades, `shades`.
 
 The main binds that open things (the leader is `SUPER`):
 

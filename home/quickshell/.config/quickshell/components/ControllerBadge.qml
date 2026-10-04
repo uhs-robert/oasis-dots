@@ -3,7 +3,7 @@ import QtQuick
 import "../theme"
 import "KeyHints.js" as KeyHints
 
-// A key drawn as the console's buttons (components/<console>/<Console>Button.qml); unmapped parts stay key text.
+// A key drawn as the console's buttons, registered in KeyHints.controllers; unmapped parts stay key text.
 Row {
     id: root
 
@@ -16,7 +16,7 @@ Row {
     property string font_family: Style.mono_font
     property real font_size: Style.fs(-5)
     readonly property var parts: KeyHints.controller_parts(root.controller, root.key, root.desc)
-    readonly property string button_url: root.controller === "" ? "" : Qt.resolvedUrl(root.controller + "/" + root.controller.charAt(0).toUpperCase() + root.controller.slice(1) + "Button.qml")
+    readonly property string button_url: KeyHints.button_path(root.controller) === "" ? "" : Qt.resolvedUrl(KeyHints.button_path(root.controller))
 
     spacing: 2
 
