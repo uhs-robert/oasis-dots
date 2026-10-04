@@ -129,11 +129,7 @@ Singleton {
         }
     }
 
-    readonly property string cache_dir: {
-        const xdg = Quickshell.env("XDG_CACHE_HOME");
-        const base = xdg && xdg !== "" ? xdg : (Quickshell.env("HOME") + "/.cache");
-        return base + "/quickshell";
-    }
+    readonly property string cache_dir: Paths.cache_dir
 
     Process {
         id: ensure_cache_dir

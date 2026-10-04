@@ -2331,10 +2331,7 @@ Singleton {
         if (style_name in root.styles) root.name = style_name;
     }
 
-    readonly property string state_dir: {
-        const xdg = Quickshell.env("XDG_STATE_HOME");
-        return (xdg && xdg !== "" ? xdg : Quickshell.env("HOME") + "/.local/state") + "/quickshell";
-    }
+    readonly property string state_dir: Paths.state_dir
 
     Process {
         id: ensure_state_dir

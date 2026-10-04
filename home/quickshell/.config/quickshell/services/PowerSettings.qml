@@ -4,15 +4,13 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import Quickshell.Services.UPower
+import "../theme"
 
 // Power choices saved in power.json under the Hyprland state dir; power.sh turns them into hypridle, logind and power-profile settings.
 Singleton {
     id: root
 
-    readonly property string state_dir: {
-        const xdg = Quickshell.env("XDG_STATE_HOME");
-        return (xdg && xdg !== "" ? xdg : Quickshell.env("HOME") + "/.local/state") + "/hypr";
-    }
+    readonly property string state_dir: Paths.hypr_state_dir
 
     readonly property bool laptop: !!UPower.displayDevice && UPower.displayDevice.ready && UPower.displayDevice.isLaptopBattery
 

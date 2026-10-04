@@ -32,7 +32,7 @@ Singleton {
     // A pack without one of these plays the other kind instead; lock and unlock have none and stay silent.
     readonly property var fallbacks: ({ error: "cancel" })
     readonly property var volumes: [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
-    readonly property string data_dir: (Quickshell.env("XDG_DATA_HOME") || Quickshell.env("HOME") + "/.local/share") + "/quickshell"
+    readonly property string data_dir: Paths.data_dir
     readonly property string user_dir: root.data_dir + "/sounds"
     // Game packs, offered once imported; names maps a kind to the file base, and a kind left out uses the style's own sound.
     readonly property var games: ({
