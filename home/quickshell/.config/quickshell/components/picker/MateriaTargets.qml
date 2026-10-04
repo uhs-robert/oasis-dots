@@ -29,7 +29,7 @@ Item {
     readonly property real slot_spacing: 10
     readonly property int max_slots: 8
 
-    readonly property var palette: [Theme.green, Theme.bright_yellow, Theme.magenta, Theme.blue, Theme.red, Theme.cyan, Theme.bright_magenta, Theme.bright_blue]
+    readonly property var slot_palette: [Theme.green, Theme.bright_yellow, Theme.magenta, Theme.blue, Theme.red, Theme.cyan, Theme.bright_magenta, Theme.bright_blue]
 
     // Windows on this screen, or every output in screen mode.
     readonly property var slot_targets: root.full ? Screenshot.targets : Screenshot.targets.filter(t => t.screen === root.screen_name)
@@ -174,7 +174,7 @@ Item {
 
                             Ff7.MateriaSlot {
                                 anchors.fill: parent
-                                color: root.palette[(slot_item.index + root.first_slot) % root.palette.length]
+                                color: root.slot_palette[(slot_item.index + root.first_slot) % root.slot_palette.length]
                                 lit: slot_item.index === root.shown_cur
                                 raised: slot_item.index === root.shown_cur
                             }

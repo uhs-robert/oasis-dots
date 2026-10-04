@@ -27,11 +27,11 @@ Popup {
     jumps_enabled: true
     cursor_state: root.selected
 
-    readonly property var device: UPower.displayDevice
-    readonly property bool has_battery: !!device && device.ready && device.isLaptopBattery
-    readonly property real percent: has_battery ? device.percentage * 100 : 0
-    readonly property int state: has_battery ? device.state : UPowerDeviceState.Unknown
-    readonly property real rate: has_battery ? device.changeRate : 0
+    readonly property var battery_device: UPower.displayDevice
+    readonly property bool has_battery: !!battery_device && battery_device.ready && battery_device.isLaptopBattery
+    readonly property real percent: has_battery ? battery_device.percentage * 100 : 0
+    readonly property int state: has_battery ? battery_device.state : UPowerDeviceState.Unknown
+    readonly property real rate: has_battery ? battery_device.changeRate : 0
 
     readonly property string state_label: {
         if (state === UPowerDeviceState.Charging || state === UPowerDeviceState.PendingCharge) return "Charging";
@@ -47,8 +47,8 @@ Popup {
     }
 
     readonly property string time_label: {
-        if (has_battery && device.timeToEmpty > 0) return format_time(device.timeToEmpty) + " remaining";
-        if (has_battery && device.timeToFull > 0) return format_time(device.timeToFull) + " until full";
+        if (has_battery && battery_device.timeToEmpty > 0) return format_time(battery_device.timeToEmpty) + " remaining";
+        if (has_battery && battery_device.timeToFull > 0) return format_time(battery_device.timeToFull) + " until full";
         return "";
     }
 
@@ -227,14 +227,14 @@ Popup {
                         Layout.fillWidth: true
                         spacing: 10
                         visible: healthy || (root.ppd_available && !!profile)
-                        readonly property bool healthy: !!root.device && root.device.healthSupported
+                        readonly property bool healthy: !!root.battery_device && root.battery_device.healthSupported
 
                         Goldeneye.ReadoutLine {
                             Layout.fillWidth: true
                             Layout.preferredWidth: 1
                             visible: parent.healthy
                             label: "HEALTH"
-                            digits: root.device && root.device.healthSupported ? String(Math.round(root.device.healthPercentage)) : ""
+                            digits: root.battery_device && root.battery_device.healthSupported ? String(Math.round(root.battery_device.healthPercentage)) : ""
                             unit: "%"
                         }
 
@@ -414,7 +414,7 @@ Popup {
                 visible: root.st.level_layout !== "capsule"
                 Layout.fillWidth: true
                 Layout.topMargin: 6
-                height: Style.px(22)
+                Layout.preferredHeight: Style.px(22)
                 selected: !!root.nav_rows[root.selected] && root.nav_rows[root.selected].kind === "brightness"
 
                 WheelHandler {
@@ -459,7 +459,7 @@ Popup {
                 id: kbd_row
                 visible: Backlight.has_kbd && root.st.level_layout !== "capsule"
                 Layout.fillWidth: true
-                height: Style.px(22)
+                Layout.preferredHeight: Style.px(22)
                 selected: !!root.nav_rows[root.selected] && root.nav_rows[root.selected].kind === "kbd"
 
                 WheelHandler {
