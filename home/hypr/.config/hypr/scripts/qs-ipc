@@ -2,5 +2,6 @@
 # hypr/.config/hypr/scripts/qs-ipc
 # Runs `qs ipc` against the running bar, whether it was started from the stowed config or a worktree.
 # Assumes the bar was launched as `qs` or `quickshell` (any path as argv0) with `-n`/`--no-duplicate`.
-pid=$(pgrep -nf '^([^ ]*/)?(qs|quickshell) (.* )?(-n|--no-duplicate)( |$)')
+# Throwaway instances launched from /tmp (offscreen renders, tests) are never the bar.
+pid=$(pgrep -af '^([^ ]*/)?(qs|quickshell) (.* )?(-n|--no-duplicate)( |$)' | grep -v -- " -p ${TMPDIR:-/tmp}/" | tail -1 | cut -d' ' -f1)
 if [ -n "$pid" ]; then exec qs ipc --pid "$pid" "$@"; else exec qs ipc "$@"; fi
