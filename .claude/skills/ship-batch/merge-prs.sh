@@ -12,7 +12,7 @@ default=$(gh repo view --json defaultBranchRef --jq .defaultBranchRef.name) || d
 
 for pr in "$@"; do
   head=$(gh pr view "$pr" --json headRefName --jq .headRefName) || die "cannot read PR $pr"
-  children=$(gh pr list --base "$head" --state open --json number --jq '.[].number') || die "cannot list PRs based on $head"
+  children=$(gh pr list --limit 1000 --base "$head" --state open --json number --jq '.[].number') || die "cannot list PRs based on $head"
   for child in $children; do
     gh pr edit "$child" --base "$default" >/dev/null || die "cannot retarget $child"
     echo "$child retargeted from $head to $default"
