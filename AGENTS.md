@@ -72,11 +72,12 @@ Keep keys consistent across surfaces; new popups, pickers and skins follow these
 - Popups (`components/Popup.qml`): Tab/Shift+Tab step the top tabs, `[`/`]` step the bottom views; a popup with only one level answers both. Number keys pick a tab. Clock: Tab and `[`/`]` cycle timezones.
 - Overviews (workspace and share picker): `s` selects a whole screen, Tab/Shift+Tab switch regular and special workspaces, `[`/`]` cycle windows, `f` toggles the view; in the share picker `r` opens the region selector and Esc there comes back.
 - Lock and greeter input is a vim model owned by the shared router (`Lock.key`, `Greeter.key`): NORMAL while nothing is typed, where `h/j/k/l` navigate skin menus and `h`/`l` do nothing on vertical lists; `i` or any other printable key enters INSERT (`-- INSERT --` shows bottom-left); Esc on an empty buffer returns to NORMAL. The skin contract is in the Quickshell README.
+- Full-screen interactive modes (pickers, zoom) follow `RegionSelector`: Quickshell owns keyboard and pointer, loads the skin cursor through `picker/cursors`, and has a `?` help box; never a Hyprland submap.
 - Times use `TimeFormat` and `ClockSettings` (Settings > Clock); state paths use `theme/Paths.qml` and `lib/state.lua` instead of recomputing XDG dirs.
 
 ## Agent tooling
 
-`.claude/settings.json` adds three hooks: killing `qs` is refused unless the lock reports `unlocked`; a git command that changes `home/quickshell` in the live checkout restarts the stowed bar (hot-reload keeps stale code); and `just check` runs before a turn ends when tracked files have uncommitted changes. Repo skills: `test-bar` (put branches on the live bar and restore it), `lock-preview` (skins on eDP-1) and `ship-batch` (merge and clean up). Worktrees have no `repos/`, so run `just check` in the real checkout before merging.
+`.claude/settings.json` adds three hooks: killing `qs` is refused unless the lock reports `unlocked`; a git command that changes `home/quickshell` in the live checkout restarts the stowed bar (hot-reload keeps stale code); and `just check` runs before a turn ends when tracked files have uncommitted changes. Repo skills: `test-bar` (put branches on the live bar, swap the Hyprland config when they touch it, `status`, `probe` IPC calls and `capture.sh` layer screenshots, then restore), `lock-preview` (skins on eDP-1) and `ship-batch` (merge and clean up). Worktrees have no `repos/`, so run `just check` in the real checkout before merging.
 
 ## Betterbird / tbkeys
 
