@@ -233,6 +233,7 @@ Singleton {
     readonly property color footer_key_bg: root.active.footer_key_bg
     readonly property string footer_separator: root.active.footer_separator
     readonly property bool footer_rule_solid: root.active.footer_rule_solid
+    readonly property bool footer_tanks: root.active.footer_tanks
     readonly property string osd_layout: root.active.osd_layout
     readonly property string level_layout: root.active.level_layout
     readonly property string card_layout: root.active.card_layout
