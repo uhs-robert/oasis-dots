@@ -231,12 +231,17 @@ print_manual_steps() {
       rm -rf ~/.tmuxifier
 
 EOF
+  # Only the checkouts repos/ links to, never all of $GITHUB_DIR, which holds unrelated work.
+  local repo_paths=("$REPOS_DIR") link
+  for link in "$REPOS_DIR"/*; do
+    if [[ -L "$link" ]]; then repo_paths+=("$(readlink -f "$link")"); fi
+  done
   local rm_cmd
-  rm_cmd=$(printf 'rm -rf %q %q' "$DOTFILES_DIR/repos" "$GITHUB_DIR")
+  rm_cmd="rm -rf$(printf ' %q' "${repo_paths[@]}")"
   cat <<EOF
-    Cloned repos (repos/ in the dotfiles checkout, plus $GITHUB_DIR for --dev installs)
+    Cloned repos (repos/ in the dotfiles checkout, plus the $GITHUB_DIR checkouts it links to)
       $rm_cmd
-      Review both first, may include work you want to keep.
+      Review each first, linked checkouts may hold work you want to keep.
 
 EOF
 }
