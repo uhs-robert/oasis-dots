@@ -1035,7 +1035,7 @@ Item {
                                         anchors.right: parent.right
                                         spacing: 22
                                         Lbl { text: "Time"; font.pixelSize: 26 }
-                                        SText { text: root.ctx ? root.ctx.time_text : ""; font.pixelSize: 26; width: 110; horizontalAlignment: Text.AlignRight }
+                                        SText { text: root.ctx ? root.ctx.time_text : ""; font.pixelSize: 26; width: 130; horizontalAlignment: Text.AlignRight }
                                     }
                                     Row {
                                         anchors.right: parent.right
