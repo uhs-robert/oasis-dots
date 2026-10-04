@@ -11,6 +11,8 @@ Singleton {
     id: root
 
     property var rules: []
+    property bool has_good_rules: false
+    readonly property var emergency_rules: [{ match: "*", compact: true, left: ["workspaces"], center: ["clock"], right: ["tray"] }]
     property var warned_modules: ({})
     property var state: BarLayout.normalize(null)
     property bool warned_state: false
@@ -26,11 +28,12 @@ Singleton {
                 const parsed = JSON.parse(text());
                 if (!Array.isArray(parsed)) throw new Error("bars.json must be a JSON array of rules");
                 root.rules = parsed;
+                root.has_good_rules = true;
             } catch (e) {
-                console.warn("BarConfig: invalid bars.json, keeping last config (" + e + ")");
+                root.rules_failed("invalid (" + e + ")");
             }
         }
-        onLoadFailed: error => console.warn("BarConfig: failed to load bars.json (" + error + "), keeping last config")
+        onLoadFailed: error => root.rules_failed("unreadable (" + error + ")")
     }
 
     FileView {
@@ -50,6 +53,17 @@ Singleton {
             }
         }
         onLoadFailed: error => root.state = BarLayout.normalize(null)
+    }
+
+    function rules_failed(reason) {
+        const message = "bars.json " + reason;
+        if (root.has_good_rules) {
+            console.warn("BarConfig: " + message + ", keeping last config");
+            return;
+        }
+        console.warn("BarConfig: " + message + ", showing the emergency bar");
+        root.rules = root.emergency_rules;
+        Quickshell.execDetached(["notify-send", "-u", "critical", "Quickshell bar", message + ". Showing a minimal bar until it is fixed."]);
     }
 
     function set_state(next) {
