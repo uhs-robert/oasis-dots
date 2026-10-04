@@ -99,11 +99,14 @@ Popup {
         return weeks;
     }
 
-    readonly property int week_start: Qt.locale().firstDayOfWeek % 7
+    readonly property int week_start: {
+        const choice = WeatherState.settings.week_start;
+        return choice === "sunday" ? 0 : choice === "monday" ? 1 : Qt.locale().firstDayOfWeek % 7;
+    }
     readonly property var weeks: build_weeks()
     readonly property var weekday_headers: {
         const loc = Qt.locale();
-        return [0, 1, 2, 3, 4, 5, 6].map(d => loc.dayName((week_start + d) % 7, Locale.ShortFormat).slice(0, 2));
+        return [0, 1, 2, 3, 4, 5, 6].map(d => loc.dayName((week_start + d) % 7 || 7, Locale.ShortFormat).slice(0, 2));
     }
 
     readonly property var flat_cells: {
