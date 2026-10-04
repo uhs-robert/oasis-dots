@@ -54,7 +54,7 @@ Singleton {
     readonly property var imported_games: Object.keys(root.game_urls).filter(key => Object.keys(root.game_urls[key]).length > 0)
     readonly property string music_name: Style.lock_name in Style.styles ? Style.lock_name : Style.saved_name
     // These lock skins bring their own music.
-    readonly property var own_music_skins: ["ff7", "goldeneye", "mgs2", "ocarina"]
+    readonly property var own_music_skins: Object.keys(Style.lock_skins).filter(key => Style.lock_skins[key].own_music)
     readonly property bool own_music: root.own_music_skins.indexOf(Style.lock_name) >= 0
     readonly property bool music_on: root.lock_active && root.music && Style.lock_music && !root.own_music
     readonly property string music_url: music_pack.find("music", ["ogg", "wav", "mp3"])

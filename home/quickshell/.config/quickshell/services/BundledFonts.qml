@@ -34,14 +34,11 @@ Item {
     })
 
     // Families hardcoded by a lock skin or style component rather than read from a Style token.
-    readonly property var lock_families: ({
-        crt: ["VT323"],
-        tie: ["B612 Mono", "Oxanium"],
-        mgs2: ["Barlow Condensed"],
-        ff7: ["Nunito"],
-        ocarina: ["Rounded Mplus 1c", "Belleza", "Cormorant SC", "Cinzel"],
-        goldeneye: ["Michroma", "Share Tech Mono", "DSEG7 Classic"]
-    })
+    readonly property var lock_families: {
+        const out = {};
+        for (const key of Object.keys(Style.lock_skins)) out[key] = Style.lock_skins[key].fonts || [];
+        return out;
+    }
     readonly property var style_families: ({
         ps1: ["DSEG7 Classic"],
         ps2: ["Exo 2"],
