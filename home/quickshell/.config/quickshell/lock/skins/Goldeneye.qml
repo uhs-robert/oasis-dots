@@ -514,6 +514,11 @@ Item {
                     }
                     for (const f of todo) next[next.indexOf(-1)] = f;
                     sheet.held = next;
+                    for (let i = 0; i < sheet.slots; i++) {
+                        const c = colors.itemAt(i), m = masks.itemAt(i);
+                        if (c) c.frame = next[i];
+                        if (m) m.frame = next[i];
+                    }
                 }
 
                 function slot_ready(list, s, f) {
@@ -542,13 +547,13 @@ Item {
                     Image {
                         id: arm
                         required property int index
-                        readonly property int frame: sheet.held[arm.index]
+                        property int frame: -1
                         source: arm.frame >= 0 ? root.frames_dir + "/arm_" + String(arm.frame).padStart(2, "0") + ".jpg" : ""
                         sourceSize.width: Math.round(Math.min(1020, 1020 * stage.k))
                         cache: false
                         asynchronous: true
                         visible: false
-                        onStatusChanged: sheet.sync()
+                        onStatusChanged: Qt.callLater(sheet.sync)
                     }
                 }
 
@@ -559,13 +564,13 @@ Item {
                     Image {
                         id: cut
                         required property int index
-                        readonly property int frame: sheet.held[cut.index]
+                        property int frame: -1
                         source: cut.frame >= 0 ? root.frames_dir + "/mask_" + String(cut.frame).padStart(2, "0") + ".png" : ""
                         sourceSize.width: Math.round(Math.min(1020, 1020 * stage.k))
                         cache: false
                         asynchronous: true
                         visible: false
-                        onStatusChanged: sheet.sync()
+                        onStatusChanged: Qt.callLater(sheet.sync)
                     }
                 }
 
