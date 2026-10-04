@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
-# Builds the GoldenEye lock skin's intro frames and bezel plate from a capture of the pause watch (needs ffmpeg, PIL and numpy).
-# Usage: goldeneye-frames [VIDEO]   (default: downloads the whole reference capture, an hour long, with yt-dlp into ~/.cache/goldeneye-frames)
-# Writes lock/skins/goldeneye/frames/: arm_NN.jpg (matted onto black) with mask_NN.png, plate.jpg and count.txt (gitignored, game footage).
+# Usage: goldeneye-frames [VIDEO]   Builds the GoldenEye lock skin's intro frames and bezel plate (needs ffmpeg, PIL, numpy; yt-dlp without VIDEO).
+# Without VIDEO it seeks into the reference capture over the network and reads only the intro and plate seconds, or reuses a ~/.cache/goldeneye-frames/ref.mp4 left by older versions. Writes ${XDG_DATA_HOME:-~/.local/share}/quickshell/goldeneye-frames/.
 import importlib.util
 import os
 import shutil
@@ -35,20 +34,18 @@ PANEL_LEFT = [(294, 118), (272, 144), (250, 168), (232, 200), (212, 232), (200, 
 DOTS = [(230, 200), (788, 200), (230, 520), (788, 520)]
 DOT_SPRITE = (350, 635)
 BARS = [(163, 188), (832, 857)]
-OUT = Path(__file__).resolve().parent.parent / "lock" / "skins" / "goldeneye" / "frames"
+OUT = Path(os.environ.get("XDG_DATA_HOME") or Path.home() / ".local" / "share") / "quickshell" / "goldeneye-frames"
 
 
 def fetch(video):
     if video:
-        return video
-    cache = Path(os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache")) / "goldeneye-frames"
-    cache.mkdir(parents=True, exist_ok=True)
-    path = cache / "ref.mp4"
-    if not path.exists():
-        require([("yt-dlp", "yt-dlp")], [])
-        print("goldeneye-frames: downloading an hour of 720p video, roughly 1 GB, to " + str(path), file=sys.stderr)
-        subprocess.run(["yt-dlp", "-f", "bestvideo[height<=720]", "-o", str(path), URL], check=True)
-    return str(path)
+        return video, False
+    cached = Path(os.environ.get("XDG_CACHE_HOME") or Path.home() / ".cache") / "goldeneye-frames" / "ref.mp4"
+    if cached.exists():
+        return str(cached), False
+    require([("yt-dlp", "yt-dlp")], [])
+    out = subprocess.run(["yt-dlp", "-f", "bestvideo[height<=720]", "-g", URL], check=True, capture_output=True, text=True)
+    return out.stdout.split()[0], True
 
 
 def extract(video, tmp):
@@ -211,8 +208,17 @@ def mirror_corner(img):
     return img * (1 - w[..., None]) + img[::-1] * w[..., None]
 
 
-def plate(tmp, video):
-    subprocess.run(["ffmpeg", "-v", "error", "-ss", str(PLATE_START), "-t", str(PLATE_N * PLATE_STEP), "-i", video, "-vf", f"fps=1/{PLATE_STEP:g},crop={CROP[2] - CROP[0]}:{CROP[3]}:{CROP[0]}:0", f"{tmp}/p%03d.png"], check=True)
+def sample_plates(tmp, video, remote):
+    crop = f"crop={CROP[2] - CROP[0]}:{CROP[3]}:{CROP[0]}:0"
+    if not remote:
+        subprocess.run(["ffmpeg", "-v", "error", "-ss", str(PLATE_START), "-t", str(PLATE_N * PLATE_STEP), "-i", video, "-vf", f"fps=1/{PLATE_STEP:g},{crop}", f"{tmp}/p%03d.png"], check=True)
+        return
+    for k in range(PLATE_N):
+        subprocess.run(["ffmpeg", "-v", "error", "-ss", str(PLATE_START + k * PLATE_STEP), "-i", video, "-frames:v", "1", "-vf", crop, f"{tmp}/p{k + 1:03d}.png"], check=True)
+
+
+def plate(tmp, video, remote):
+    sample_plates(tmp, video, remote)
     stack = np.stack([np.asarray(Image.open(p).convert("RGB")) for p in sorted(Path(tmp).glob("p*.png"))])
     out = np.zeros(stack.shape[1:], np.float32)
     for y in range(0, out.shape[0], 40):
@@ -241,7 +247,7 @@ def publish(tmp_path, name):
 
 
 def main():
-    video = fetch(sys.argv[1] if len(sys.argv) > 1 else "")
+    video, remote = fetch(sys.argv[1] if len(sys.argv) > 1 else "")
     OUT.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory() as tmp:
         extract(video, tmp)
@@ -256,7 +262,7 @@ def main():
             save(f * alpha[..., None], work / f"arm_{n:02d}.jpg")
             Image.fromarray((alpha * 255).astype(np.uint8)).save(work / f"mask_{n:02d}.png", optimize=True)
             n += 1
-        save(plate(tmp, video), work / "plate.jpg")
+        save(plate(tmp, video, remote), work / "plate.jpg")
         (work / "count.txt").write_text(f"{n}\n")
         keep = {p.name for p in work.iterdir()}
         for name in sorted(keep, key=lambda x: x == "count.txt"):
