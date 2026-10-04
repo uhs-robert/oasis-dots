@@ -3,7 +3,7 @@ import QtQuick
 import QtQuick.Shapes
 import "../../theme"
 
-// A bar island cut like the Prime combat visor: notched bracket ends, energy-tank ticks, a crosshair under the center.
+// A bar island cut like the Prime combat visor: notched bracket ends.
 Item {
     id: root
 
@@ -13,14 +13,12 @@ Item {
     property color bg_color: Theme.bg_crust
     property real border_width: 1
     property color border_color: Theme.theme_primary
-    property bool marks_shown: true
 
     readonly property real h: root.height
     readonly property real w: root.width
     readonly property real bx0: root.cap_left ? root.cap : 0
     readonly property real bx1: root.cap_right ? root.w - root.cap : root.w
     readonly property real cx: root.w / 2
-    readonly property bool center: root.cap_left && root.cap_right
     // The notch step: how far out along the cap it starts and ends, and its height.
     readonly property real u0: root.cap * 0.42
     readonly property real u1: root.cap * 0.64
@@ -36,12 +34,6 @@ Item {
             ? " L " + (root.bx1 + root.u0) + " " + v + " L " + (root.bx1 + root.u1) + " " + v + " L " + (root.bx1 + c - i) + " 0"
             : " L " + root.w + " " + (h - i);
         return closed ? d + " L " + root.w + " 0 L 0 0 Z" : d;
-    }
-
-    readonly property string rail_path: {
-        const y = root.h - root.border_width - 3.5, a = root.bx0 + 6, b = root.bx1 - 6;
-        if (root.center) return "M " + a + " " + y + " L " + (root.cx - 12) + " " + y + " M " + (root.cx + 12) + " " + y + " L " + b + " " + y;
-        return "M " + a + " " + y + " L " + b + " " + y;
     }
 
     readonly property string teeth_path: {
@@ -95,40 +87,10 @@ Item {
             PathSvg { path: root.outline(root.border_width / 2, false) }
         }
 
-        // Energy-tank squares along the bottom edge.
-        ShapePath {
-            strokeWidth: 3
-            strokeColor: Qt.alpha(Theme.theme_primary, 0.32)
-            fillColor: "transparent"
-            capStyle: ShapePath.FlatCap
-            strokeStyle: ShapePath.DashLine
-            dashPattern: [1, 1]
-            PathSvg { path: root.rail_path }
-        }
-
         ShapePath {
             strokeWidth: -1
             fillColor: Qt.alpha(Theme.theme_primary, 0.8)
             PathSvg { path: root.teeth_path }
-        }
-    }
-
-    Shape {
-        visible: root.center
-        anchors.fill: parent
-        opacity: root.marks_shown ? 1 : 0
-        preferredRendererType: Shape.CurveRenderer
-
-        Behavior on opacity {
-            NumberAnimation { duration: 250; easing.type: Easing.InOutCubic }
-        }
-
-        ShapePath {
-            strokeWidth: 1
-            strokeColor: Qt.alpha(Theme.theme_primary, 0.85)
-            fillColor: "transparent"
-            capStyle: ShapePath.FlatCap
-            PathSvg { path: "M " + root.cx + " " + (root.h - 2) + " L " + root.cx + " " + (root.h - 8) + " M " + (root.cx - 4) + " " + (root.h - 5) + " L " + (root.cx + 4) + " " + (root.h - 5) }
         }
     }
 }
