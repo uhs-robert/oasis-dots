@@ -26,7 +26,9 @@ Hyprland starts it with `qs -n` (see `home/hypr/.config/hypr/config/autostart/`)
 | `assets/`     | Weather icons                                                                              |
 | `bars.json`   | Tracked bar layout per monitor, matched by description or connector name                   |
 
-Weather reads `weather.json`, with untracked per-machine overrides (real coordinates, say) in `weather.local.json`. With `latitude` and `longitude` set to `"auto"` the location comes from an IP lookup over HTTPS (ipwho.is), cached and repeated at most once a day.
+Settings > Weather sets the location, units, time format and forecast days. Automatic looks the place up from your IP address over HTTPS (ipwho.is), cached and repeated at most once a day; Manual takes a latitude, longitude and optional place name. Changes apply at once and are saved to `weather.local.json` (untracked) next to the tracked `weather.json` defaults, which it overrides. You can still edit either file by hand: `latitude` and `longitude` (a number or `"auto"`), `location_name` (replaces the looked-up name), `unit` (`fahrenheit` or `celsius`, which also picks mph or km/h and inches or mm), `time_format` (`12h` or `24h`) and `days` (1 to 16).
+
+Weather alerts come from the US National Weather Service (api.weather.gov), so the Alerts tab only appears for US locations; elsewhere no alert request is made. When no forecast has loaded and the last fetch failed, the bar shows `n/a` and the tooltip and popup header give the reason; with data already loaded it keeps showing it as stale.
 
 ## Bar layout
 
@@ -81,7 +83,7 @@ The panel drops from the center of the bar. Open it with `SUPER + SPACE` then `S
 | Group        | Sections                           |
 | ------------ | ---------------------------------- |
 | Appearance   | Style, Colors, Theme options       |
-| Bar          | Bar modules                        |
+| Bar          | Bar modules, Weather               |
 | System       | Displays, Default apps, Power      |
 | Sound        | Theme audio                        |
 | Lock & Login | Lock screen, Login screen          |
