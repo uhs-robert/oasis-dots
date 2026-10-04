@@ -2,6 +2,7 @@
 import QtQuick
 import Quickshell
 import "../../theme"
+import ".."
 
 // An MGS codec portrait: the app icon in a green scanlined frame, with CALL blinking a few times on arrival.
 Column {
@@ -41,16 +42,10 @@ Column {
             font.pixelSize: root.size * 0.5
         }
 
-        Repeater {
-            model: Math.ceil(root.size / 3)
-
-            Rectangle {
-                required property int index
-                y: index * 3
-                width: root.size
-                height: 1
-                color: Qt.alpha(Theme.bg_shadow, 0.25)
-            }
+        Scanlines {
+            width: root.size
+            height: root.size
+            color: Qt.alpha(Theme.bg_shadow, 0.25)
         }
     }
 
