@@ -12,6 +12,7 @@ Singleton {
 
     property var rules: []
     property bool has_good_rules: false
+    property bool rules_loaded: false
     readonly property var emergency_rules: [{ match: "*", compact: true, left: ["workspaces"], center: ["clock"], right: ["tray"] }]
     property var warned_modules: ({})
     property var state: BarLayout.normalize(null)
@@ -29,6 +30,7 @@ Singleton {
                 if (!Array.isArray(parsed)) throw new Error("bars.json must be a JSON array of rules");
                 root.rules = parsed;
                 root.has_good_rules = true;
+                root.rules_loaded = true;
             } catch (e) {
                 root.rules_failed("invalid (" + e + ")");
             }
@@ -56,6 +58,7 @@ Singleton {
     }
 
     function rules_failed(reason) {
+        root.rules_loaded = true;
         const message = "bars.json " + reason;
         if (root.has_good_rules) {
             console.warn("BarConfig: " + message + ", keeping last config");
@@ -119,6 +122,7 @@ Singleton {
 
     // The tracked rule with the state file's layout merged in, or null (with a warning) when nothing matches.
     function rule_for(screen) {
+        if (!root.rules_loaded) return null;
         const tracked = root.tracked_rule_for(screen);
         if (!tracked) {
             console.warn("BarConfig: no bars.json rule matched screen \"" + screen.name + "\"; no bar shown");
