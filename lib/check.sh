@@ -33,14 +33,8 @@ else
   echo 'skip: stylua not installed'
 fi
 
-if ! command -v luacheck >/dev/null 2>&1; then
-  echo 'skip: luacheck not installed'
-elif ! echo 'local _ = 1' | luacheck - >/dev/null 2>&1; then
-  echo 'skip: luacheck does not run on this Lua version'
-else
-  luacheck home/hypr/.config/hypr system/etc/greetd || record luacheck
-fi
-
+sh ./lib/check-lua.sh || record luacheck
+sh ./lib/check-qml.sh || record qmllint
 sh ./lib/check-packages.sh || record packages
 sh ./lib/check-symlinks.sh || record symlinks
 git diff --check HEAD || record 'git-diff-check'
