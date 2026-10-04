@@ -147,7 +147,7 @@ music() {
     s=$(awk -v t="$1" -v r="$sr" 'BEGIN { printf "%d", t * r + 0.5 }')
     e=$(awk -v t="$2" -v r="$sr" 'BEGIN { printf "%d", t * r + 0.5 }')
     write_meta "$file" LOOPSTART="$s" LOOPLENGTH="$((e - s))" LOOPEND= || true
-  elif ((! redetect)) && read -r s e < <(read_tags "$file") && [[ -n ${s:-} ]]; then
+  elif ((!redetect)) && read -r s e < <(read_tags "$file") && [[ -n ${s:-} ]]; then
     :
   elif read -r s e < <(detect_loop "$file") && [[ -n ${s:-} ]]; then
     write_meta "$file" LOOPSTART="$s" LOOPLENGTH="$((e - s))" LOOPEND= || true

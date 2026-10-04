@@ -693,7 +693,7 @@ restore() {
 cleanup() {
   local status=$?
   trap - EXIT
-  if ((! DRY)); then
+  if ((!DRY)); then
     stop_recorder
     restore_ui
     if ((weather_created)); then restore_weather; fi
