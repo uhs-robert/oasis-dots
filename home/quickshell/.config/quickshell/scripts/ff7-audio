@@ -84,6 +84,8 @@ for l in range(int(40 * fps), int(200 * fps)):
 if best < 0:
     sys.exit("ff7-audio: no loop found in the Prelude")
 l0 = int(lag / fps * rate)
+if 120 * rate + l0 + 3000 + 4 * rate > len(x):
+    sys.exit("ff7-audio: the Prelude is too short to confirm its loop")
 seg = 4 * rate
 votes = []
 for t in (60, 90, 120):

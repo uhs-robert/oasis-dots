@@ -101,6 +101,7 @@ Item {
         const enter = !ctrl && (event.key === Qt.Key_Return || event.key === Qt.Key_Enter);
         const up = event.key === Qt.Key_Up || event.key === Qt.Key_Down;
         const printable = !ctrl && event.text !== "" && event.text.charCodeAt(0) > 32 && event.text.charCodeAt(0) !== 127;
+        const typed = !ctrl && event.text !== "" && event.text.charCodeAt(0) >= 32 && event.text.charCodeAt(0) !== 127;
         if (root.screen === "pw") {
             if (event.key !== Qt.Key_Escape) return false;
             c.scene = "files:" + root.user_index;
@@ -130,7 +131,7 @@ Item {
                 root.cue("cancel");
                 return true;
             }
-            if (printable) {
+            if (typed) {
                 const u = root.users[root.file_sel];
                 if (u && u.name !== c.user && typeof c.user_request === "function") c.user_request(u.name);
                 c.scene = "pw";
