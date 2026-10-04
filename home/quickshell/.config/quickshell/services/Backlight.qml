@@ -47,13 +47,16 @@ Singleton {
 
     // brightnessctl clamps at 1% floor so a scroll or key never blacks out the screen.
     function bump(delta) {
-        const cmd = delta > 0 ? ["brightnessctl", "set", "5%+"] : ["brightnessctl", "-n1", "set", "5%-"];
+        if (!root.has_device) return;
+        const dev = root.device_dir.split("/").pop();
+        const cmd = delta > 0 ? ["brightnessctl", "-d", dev, "set", "5%+"] : ["brightnessctl", "-d", dev, "-n1", "set", "5%-"];
         root.enqueue(cmd, "");
     }
 
     function set_percent(pct) {
+        if (!root.has_device) return;
         const clamped = Math.max(1, Math.min(100, Math.round(pct)));
-        root.enqueue(["brightnessctl", "set", clamped + "%"], "screen");
+        root.enqueue(["brightnessctl", "-d", root.device_dir.split("/").pop(), "set", clamped + "%"], "screen");
     }
 
     function kbd_bump(delta) {
@@ -70,7 +73,7 @@ Singleton {
 
     Process {
         id: find_proc
-        command: ["sh", "-c", "ls /sys/class/backlight 2>/dev/null | head -1"]
+        command: ["sh", "-c", "command -v brightnessctl >/dev/null && brightnessctl -m -c backlight info 2>/dev/null | cut -d, -f1 | head -1"]
         running: true
         stdout: StdioCollector {
             onStreamFinished: {
