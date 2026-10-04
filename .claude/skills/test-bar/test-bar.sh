@@ -211,7 +211,7 @@ case ${1:-} in
     ;;
   remove)
     dir="$bars/${2:?usage: test-bar.sh remove <name>}"
-    pgrep -af "^qs .*-p $dir" >/dev/null && die "that test bar is running; run test-bar.sh restore first"
+    pgrep -af "^qs .*-p $dir/" >/dev/null && die "that test bar is running; run test-bar.sh restore first"
     if [[ -f $hypr_bar && $(<"$hypr_bar") == "${2}" ]]; then
       require_unlocked
       hypr_restore
