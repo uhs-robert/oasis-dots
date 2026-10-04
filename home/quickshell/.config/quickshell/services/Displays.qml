@@ -5,16 +5,14 @@ import Quickshell
 import Quickshell.Io
 import Quickshell.Hyprland
 import "DisplayLayout.js" as DisplayLayout
+import "../theme"
 
 // Monitor state, live apply through hyprctl, and the keep-or-revert countdown; it outlives the settings panel.
 Singleton {
     id: root
 
     readonly property int window: 15
-    readonly property string state_path: {
-        const xdg = Quickshell.env("XDG_STATE_HOME");
-        return (xdg && xdg !== "" ? xdg : Quickshell.env("HOME") + "/.local/state") + "/hypr/monitors.json";
-    }
+    readonly property string state_path: Paths.hypr_state_dir + "/monitors.json"
 
     property var monitors: []
     property bool pending: false

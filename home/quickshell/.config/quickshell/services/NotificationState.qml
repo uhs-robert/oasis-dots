@@ -340,6 +340,7 @@ Singleton {
     Process {
         id: ensure_state_dir
         command: ["mkdir", "-p", root.state_dir]
+        onExited: state_file.reload()
     }
 
     FileView {
@@ -364,7 +365,6 @@ Singleton {
 
     Component.onCompleted: {
         ensure_state_dir.running = true;
-        state_file.reload();
         root.restore_tracked();
     }
 

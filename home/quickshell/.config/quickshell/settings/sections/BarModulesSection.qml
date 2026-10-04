@@ -24,7 +24,7 @@ SettingsPane {
     readonly property var tracked: root.view_screen ? BarConfig.tracked_rule_for(root.view_screen) : null
     readonly property var view_layout: BarLayout.layout_of(BarLayout.effective(root.tracked, BarConfig.state, root.monitor_key))
     readonly property int top_count: root.target_screen ? (root.has_own ? 3 : 2) : 1
-    readonly property bool own_compact: root.has_own && BarConfig.compact_for(BarConfig.state.monitors[root.monitor_key], root.target)
+    readonly property bool own_compact: root.has_own && BarConfig.compact_for(BarConfig.state.monitors[root.monitor_key])
     readonly property var entries: {
         const out = [];
         for (const side of BarLayout.sides) {
@@ -70,7 +70,7 @@ SettingsPane {
         }
         const eff = BarLayout.effective(root.tracked, BarConfig.state, root.monitor_key);
         if (!eff) return;
-        BarConfig.set_state(BarLayout.set_own(BarConfig.state, root.monitor_key, eff, BarConfig.compact_for(eff, root.target_screen.name)));
+        BarConfig.set_state(BarLayout.set_own(BarConfig.state, root.monitor_key, eff, BarConfig.compact_for(eff)));
     }
 
     function toggle_compact() {

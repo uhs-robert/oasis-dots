@@ -6,7 +6,6 @@ import "../components"
 import "../components/metroid" as Metroid
 import "../services"
 import "../theme"
-import "../theme/Watch.js" as Watch
 
 Item {
     id: root
@@ -53,9 +52,14 @@ Item {
     // goldeneye: chamfered watch islands, the center one with case lugs, and a white tick at each end.
     readonly property bool octagon: Style.bar_island_shape === "octagon" && !root.capsule && !root.visor && !root.lualine
     readonly property real lug: root.octagon && root.center ? 4 : 0
-    readonly property color tick_color: Style.bar_center_bg.hslLightness > 0.6 ? Theme.fg_core : Watch.white
+    readonly property color tick_color: Style.bar_tick_color
     readonly property int cap_width: root.octagon ? Math.round(height * 0.3) : root.lualine ? Math.round(height * 0.4) : root.visor ? Math.round(height * 0.8) : height / 2
     readonly property real pad: root.capsule ? Style.bar_capsule_pad : root.lualine ? (root.center ? 10 : 0) : root.octagon ? 10 : 8
+
+    readonly property real oct_x0: root.lug
+    readonly property real oct_x1: root.width - root.lug
+    readonly property real oct_c: root.cap_width
+    readonly property real oct_i: root.border_width / 2
 
     signal clicked
 
@@ -116,28 +120,30 @@ Item {
     }
 
     // The popup style's shade and dither, behind the modules and clipped to the slants.
-    Shape {
-        visible: root.shaded && !root.visor && !root.capsule && !root.octagon
+    Loader {
         anchors.fill: parent
-        preferredRendererType: Shape.CurveRenderer
+        active: root.shaded && !root.visor && !root.capsule && !root.octagon
+        sourceComponent: Shape {
+            preferredRendererType: Shape.CurveRenderer
 
-        ShapePath {
-            strokeWidth: -1
-            // The left island mirrors the shade so its light edge faces the screen centre like the right one.
-            fillGradient: LinearGradient {
-                x1: root.shade_vertical ? 0 : root.cap_right && !root.cap_left ? root.width : 0
-                y1: 0
-                x2: root.shade_vertical ? 0 : root.cap_right && !root.cap_left ? 0 : root.width
-                y2: root.height
-                GradientStop { position: 0; color: root.shade_color }
-                GradientStop { position: 1; color: root.bg_color }
+            ShapePath {
+                strokeWidth: -1
+                // The left island mirrors the shade so its light edge faces the screen centre like the right one.
+                fillGradient: LinearGradient {
+                    x1: root.shade_vertical ? 0 : root.cap_right && !root.cap_left ? root.width : 0
+                    y1: 0
+                    x2: root.shade_vertical ? 0 : root.cap_right && !root.cap_left ? 0 : root.width
+                    y2: root.height
+                    GradientStop { position: 0; color: root.shade_color }
+                    GradientStop { position: 1; color: root.bg_color }
+                }
+                startX: 0
+                startY: 0
+                PathLine { x: root.width; y: 0 }
+                PathLine { x: root.width - (root.cap_right ? root.cap_width : 0); y: root.height }
+                PathLine { x: root.cap_left ? root.cap_width : 0; y: root.height }
+                PathLine { x: 0; y: 0 }
             }
-            startX: 0
-            startY: 0
-            PathLine { x: root.width; y: 0 }
-            PathLine { x: root.width - (root.cap_right ? root.cap_width : 0); y: root.height }
-            PathLine { x: root.cap_left ? root.cap_width : 0; y: root.height }
-            PathLine { x: 0; y: 0 }
         }
     }
 
@@ -156,52 +162,49 @@ Item {
     }
 
     // The octagon: chamfered corners on the open ends, the screen-edge ends square; fill, rim and the case lugs.
-    Shape {
-        id: octagon_shape
-        visible: root.octagon
+    Loader {
         anchors.fill: parent
-        preferredRendererType: Shape.CurveRenderer
-
-        readonly property real x0: root.lug
-        readonly property real x1: root.width - root.lug
-        readonly property real c: root.cap_width
-        readonly property real i: root.border_width / 2
-
-        ShapePath {
-            strokeWidth: -1
-            fillColor: root.bg_color
-            PathPolyline {
-                path: {
-                    const x0 = octagon_shape.x0, x1 = octagon_shape.x1, c = octagon_shape.c, h = root.height;
-                    const l = root.cap_left, r = root.cap_right;
-                    return [l ? Qt.point(x0 + c, 0) : Qt.point(x0, 0), r ? Qt.point(x1 - c, 0) : Qt.point(x1, 0), r ? Qt.point(x1, c) : Qt.point(x1, 0), r ? Qt.point(x1, h - c) : Qt.point(x1, h), r ? Qt.point(x1 - c, h) : Qt.point(x1, h), l ? Qt.point(x0 + c, h) : Qt.point(x0, h), l ? Qt.point(x0, h - c) : Qt.point(x0, h), l ? Qt.point(x0, c) : Qt.point(x0, 0)];
+        active: root.octagon
+        sourceComponent: Shape {
+            preferredRendererType: Shape.CurveRenderer
+            ShapePath {
+                strokeWidth: -1
+                fillColor: root.bg_color
+                PathPolyline {
+                    path: {
+                        const x0 = root.oct_x0, x1 = root.oct_x1, c = root.oct_c, h = root.height;
+                        const l = root.cap_left, r = root.cap_right;
+                        return [l ? Qt.point(x0 + c, 0) : Qt.point(x0, 0), r ? Qt.point(x1 - c, 0) : Qt.point(x1, 0), r ? Qt.point(x1, c) : Qt.point(x1, 0), r ? Qt.point(x1, h - c) : Qt.point(x1, h), r ? Qt.point(x1 - c, h) : Qt.point(x1, h), l ? Qt.point(x0 + c, h) : Qt.point(x0, h), l ? Qt.point(x0, h - c) : Qt.point(x0, h), l ? Qt.point(x0, c) : Qt.point(x0, 0)];
+                    }
                 }
             }
         }
     }
 
     // The rim sits above the island's content so a module that fills the height cannot cover it.
-    Shape {
-        visible: root.octagon
+    Loader {
         anchors.fill: parent
         z: 2
-        preferredRendererType: Shape.CurveRenderer
+        active: root.octagon
+        sourceComponent: Shape {
+            preferredRendererType: Shape.CurveRenderer
 
-        ShapePath {
-            strokeWidth: root.border_width > 0 ? root.border_width : -1
-            strokeColor: root.border_color
-            fillColor: "transparent"
-            capStyle: ShapePath.FlatCap
-            joinStyle: ShapePath.MiterJoin
-            PathPolyline {
-                path: {
-                    const x0 = octagon_shape.x0, x1 = octagon_shape.x1, c = octagon_shape.c, h = root.height, i = octagon_shape.i;
-                    const pts = [];
-                    if (root.cap_left) pts.push(Qt.point(x0 + c, i), Qt.point(x0 + i, c), Qt.point(x0 + i, h - c), Qt.point(x0 + c, h - i));
-                    else pts.push(Qt.point(x0, h - i));
-                    if (root.cap_right) pts.push(Qt.point(x1 - c, h - i), Qt.point(x1 - i, h - c), Qt.point(x1 - i, c), Qt.point(x1 - c, i));
-                    else pts.push(Qt.point(x1, h - i));
-                    return pts;
+            ShapePath {
+                strokeWidth: root.border_width > 0 ? root.border_width : -1
+                strokeColor: root.border_color
+                fillColor: "transparent"
+                capStyle: ShapePath.FlatCap
+                joinStyle: ShapePath.MiterJoin
+                PathPolyline {
+                    path: {
+                        const x0 = root.oct_x0, x1 = root.oct_x1, c = root.oct_c, h = root.height, i = root.oct_i;
+                        const pts = [];
+                        if (root.cap_left) pts.push(Qt.point(x0 + c, i), Qt.point(x0 + i, c), Qt.point(x0 + i, h - c), Qt.point(x0 + c, h - i));
+                        else pts.push(Qt.point(x0, h - i));
+                        if (root.cap_right) pts.push(Qt.point(x1 - c, h - i), Qt.point(x1 - i, h - c), Qt.point(x1 - i, c), Qt.point(x1 - c, i));
+                        else pts.push(Qt.point(x1, h - i));
+                        return pts;
+                    }
                 }
             }
         }
@@ -238,11 +241,14 @@ Item {
         }
     }
 
-    Dither {
+    Loader {
         anchors.fill: parent
-        slant_left: root.cap_left ? root.cap_width : 0
-        slant_right: root.cap_right ? root.cap_width : 0
-        color: root.dither_color
+        active: root.dither_color.a > 0
+        sourceComponent: Dither {
+            slant_left: root.cap_left ? root.cap_width : 0
+            slant_right: root.cap_right ? root.cap_width : 0
+            color: root.dither_color
+        }
     }
 
     Rectangle {
@@ -286,41 +292,45 @@ Item {
     }
 
     // Caps overlap the body by 1px so fractional scaling (1.6 on the laptop) leaves no seam.
-    Shape {
-        visible: root.cap_left && !root.capsule && !root.octagon
+    Loader {
         width: root.cap_width + 1
         height: root.height
-        preferredRendererType: Shape.CurveRenderer
+        active: root.cap_left && !root.capsule && !root.octagon
+        sourceComponent: Shape {
+            preferredRendererType: Shape.CurveRenderer
 
-        ShapePath {
-            strokeWidth: -1
-            fillColor: root.cap_left_fill.a > 0 ? root.cap_left_fill : root.shaded ? "transparent" : root.bg_color
-            PathPolyline {
-                path: {
-                    const c = root.cap_width, h = root.height;
-                    if (!root.lualine) return [Qt.point(0, 0), Qt.point(c + 1, 0), Qt.point(c + 1, h), Qt.point(c, h), Qt.point(0, 0)];
-                    if (root.center) return [Qt.point(c, 0), Qt.point(c + 1, 0), Qt.point(c + 1, h), Qt.point(0, h), Qt.point(c, 0)];
-                    return [Qt.point(c, 0), Qt.point(c + 1, 0), Qt.point(c + 1, h), Qt.point(c, h), Qt.point(0, h / 2), Qt.point(c, 0)];
+            ShapePath {
+                strokeWidth: -1
+                fillColor: root.cap_left_fill.a > 0 ? root.cap_left_fill : root.shaded ? "transparent" : root.bg_color
+                PathPolyline {
+                    path: {
+                        const c = root.cap_width, h = root.height;
+                        if (!root.lualine) return [Qt.point(0, 0), Qt.point(c + 1, 0), Qt.point(c + 1, h), Qt.point(c, h), Qt.point(0, 0)];
+                        if (root.center) return [Qt.point(c, 0), Qt.point(c + 1, 0), Qt.point(c + 1, h), Qt.point(0, h), Qt.point(c, 0)];
+                        return [Qt.point(c, 0), Qt.point(c + 1, 0), Qt.point(c + 1, h), Qt.point(c, h), Qt.point(0, h / 2), Qt.point(c, 0)];
+                    }
                 }
             }
         }
     }
 
-    Shape {
-        visible: root.cap_right && !root.capsule && !root.octagon
+    Loader {
         x: root.width - root.cap_width - 1
         width: root.cap_width + 1
         height: root.height
-        preferredRendererType: Shape.CurveRenderer
+        active: root.cap_right && !root.capsule && !root.octagon
+        sourceComponent: Shape {
+            preferredRendererType: Shape.CurveRenderer
 
-        ShapePath {
-            strokeWidth: -1
-            fillColor: root.cap_right_fill.a > 0 ? root.cap_right_fill : root.shaded ? "transparent" : root.bg_color
-            PathPolyline {
-                path: {
-                    const c = root.cap_width, h = root.height;
-                    if (!root.lualine || root.center) return [Qt.point(0, 0), Qt.point(c + 1, 0), Qt.point(1, h), Qt.point(0, h), Qt.point(0, 0)];
-                    return [Qt.point(0, 0), Qt.point(1, 0), Qt.point(c + 1, h / 2), Qt.point(1, h), Qt.point(0, h), Qt.point(0, 0)];
+            ShapePath {
+                strokeWidth: -1
+                fillColor: root.cap_right_fill.a > 0 ? root.cap_right_fill : root.shaded ? "transparent" : root.bg_color
+                PathPolyline {
+                    path: {
+                        const c = root.cap_width, h = root.height;
+                        if (!root.lualine || root.center) return [Qt.point(0, 0), Qt.point(c + 1, 0), Qt.point(1, h), Qt.point(0, h), Qt.point(0, 0)];
+                        return [Qt.point(0, 0), Qt.point(1, 0), Qt.point(c + 1, h / 2), Qt.point(1, h), Qt.point(0, h), Qt.point(0, 0)];
+                    }
                 }
             }
         }
@@ -348,55 +358,59 @@ Item {
     }
 
     // Traces the slants and bottom edge; the sides on the screen edge stay open.
-    Shape {
-        visible: root.border_width > 0 && !root.visor && !root.capsule && !root.octagon
+    Loader {
         anchors.fill: parent
-        preferredRendererType: Shape.CurveRenderer
+        active: root.border_width > 0 && !root.visor && !root.capsule && !root.octagon
+        sourceComponent: Shape {
+            preferredRendererType: Shape.CurveRenderer
 
-        ShapePath {
-            strokeWidth: root.border_width
-            strokeColor: root.border_color
-            fillColor: "transparent"
-            capStyle: ShapePath.FlatCap
-            joinStyle: ShapePath.MiterJoin
+            ShapePath {
+                strokeWidth: root.border_width
+                strokeColor: root.border_color
+                fillColor: "transparent"
+                capStyle: ShapePath.FlatCap
+                joinStyle: ShapePath.MiterJoin
 
-            PathPolyline {
-                path: {
-                    const w = root.width, h = root.height, c = root.cap_width, i = root.border_width / 2;
-                    const pts = [];
-                    pts.push(root.cap_left ? Qt.point(i, 0) : Qt.point(0, h - i));
-                    if (root.cap_left) pts.push(Qt.point(c + i, h - i));
-                    if (root.cap_right) pts.push(Qt.point(w - c - i, h - i));
-                    pts.push(root.cap_right ? Qt.point(w - i, 0) : Qt.point(w, h - i));
-                    return pts;
+                PathPolyline {
+                    path: {
+                        const w = root.width, h = root.height, c = root.cap_width, i = root.border_width / 2;
+                        const pts = [];
+                        pts.push(root.cap_left ? Qt.point(i, 0) : Qt.point(0, h - i));
+                        if (root.cap_left) pts.push(Qt.point(c + i, h - i));
+                        if (root.cap_right) pts.push(Qt.point(w - c - i, h - i));
+                        pts.push(root.cap_right ? Qt.point(w - i, 0) : Qt.point(w, h - i));
+                        return pts;
+                    }
                 }
             }
         }
     }
 
-    Shape {
-        visible: root.inset_width > 0 && root.inset_color.a > 0 && !root.capsule && !root.octagon
+    Loader {
         anchors.fill: parent
-        preferredRendererType: Shape.CurveRenderer
+        active: root.inset_width > 0 && root.inset_color.a > 0 && !root.capsule && !root.octagon
+        sourceComponent: Shape {
+            preferredRendererType: Shape.CurveRenderer
 
-        ShapePath {
-            strokeWidth: root.inset_width
-            strokeColor: root.inset_color
-            fillColor: "transparent"
-            capStyle: ShapePath.FlatCap
-            joinStyle: ShapePath.MiterJoin
+            ShapePath {
+                strokeWidth: root.inset_width
+                strokeColor: root.inset_color
+                fillColor: "transparent"
+                capStyle: ShapePath.FlatCap
+                joinStyle: ShapePath.MiterJoin
 
-            PathPolyline {
-                path: {
-                    const w = root.width, h = root.height, off = root.inset_gap + root.inset_width / 2;
-                    const slope = root.cap_width / h;
-                    const shift = off * Math.sqrt(1 + slope * slope);
-                    const pts = [];
-                    if (root.cap_left) pts.push(Qt.point(shift, 0), Qt.point(shift + (h - off) * slope, h - off));
-                    else pts.push(Qt.point(0, h - off));
-                    if (root.cap_right) pts.push(Qt.point(w - shift - (h - off) * slope, h - off), Qt.point(w - shift, 0));
-                    else pts.push(Qt.point(w, h - off));
-                    return pts;
+                PathPolyline {
+                    path: {
+                        const w = root.width, h = root.height, off = root.inset_gap + root.inset_width / 2;
+                        const slope = root.cap_width / h;
+                        const shift = off * Math.sqrt(1 + slope * slope);
+                        const pts = [];
+                        if (root.cap_left) pts.push(Qt.point(shift, 0), Qt.point(shift + (h - off) * slope, h - off));
+                        else pts.push(Qt.point(0, h - off));
+                        if (root.cap_right) pts.push(Qt.point(w - shift - (h - off) * slope, h - off), Qt.point(w - shift, 0));
+                        else pts.push(Qt.point(w, h - off));
+                        return pts;
+                    }
                 }
             }
         }
