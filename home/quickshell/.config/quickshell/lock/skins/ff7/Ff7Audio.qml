@@ -4,8 +4,8 @@ import Qt.labs.folderlistmodel
 import Quickshell
 import "../sound"
 
-// The FF7 skin's music and sound effects (made by scripts/ff7-audio): the skin's own audio/ when it holds
-// files (the greeter's staged copy, or an older in-tree import), else the user's data dir; a missing file stays silent.
+// The FF7 skin's music and sound effects (made by scripts/ff7-audio): the user's data dir when it holds
+// files, else the skin's own audio/ (the greeter's staged copy, or an older in-tree import); a missing file stays silent.
 Item {
     id: audio
 
@@ -17,11 +17,11 @@ Item {
     property real title_level: 0
     property bool fx_used: false
     readonly property string data_dir: "file://" + (Quickshell.env("XDG_DATA_HOME") || (Quickshell.env("HOME") + "/.local/share")) + "/quickshell/ff7-audio"
-    readonly property bool local_has_files: local_listing.count > 0
-    readonly property string base: audio.local_has_files ? Qt.resolvedUrl("audio") : audio.data_dir
+    readonly property bool data_has_files: data_listing.count > 0
+    readonly property string base: audio.data_has_files ? audio.data_dir : Qt.resolvedUrl("audio").toString().replace(/\/$/, "")
     readonly property var files: {
         const out = {};
-        const listing = audio.local_has_files ? local_listing : data_listing;
+        const listing = audio.data_has_files ? data_listing : local_listing;
         for (let i = 0; i < listing.count; i++) out[listing.get(i, "fileName")] = true;
         return out;
     }
@@ -54,7 +54,7 @@ Item {
 
     FolderListModel {
         id: data_listing
-        folder: audio.local_has_files ? "" : audio.data_dir
+        folder: audio.data_dir
         nameFilters: ["*.ogg", "*.wav"]
         showDirs: false
     }

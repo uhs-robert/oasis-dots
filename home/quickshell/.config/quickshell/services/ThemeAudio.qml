@@ -214,7 +214,7 @@ Singleton {
             }
 
             readonly property FolderListModel legacy: FolderListModel {
-                folder: root.games[game_dir.modelData].legacy_dir || ""
+                folder: root.games[game_dir.modelData].legacy_dir || Qt.resolvedUrl("../sounds/none")
                 nameFilters: ["*.wav", "*.ogg", "*.mp3"]
                 showDirs: false
             }
