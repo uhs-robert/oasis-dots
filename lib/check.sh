@@ -62,8 +62,8 @@ step conflicts sh ./lib/check-conflicts.sh
 if [ -n "$failed" ]; then
   printf 'FAILED:%s\n' "$failed" >&2
   for name in $failed; do
-    printf '\n== %s (last 40 lines)\n' "$name" >&2
-    tail -n 40 "$logs/$name.log" >&2
+    printf '\n== %s (last 25 lines)\n' "$name" >&2
+    tail -n 25 "$logs/$name.log" >&2
   done
   exit 1
 fi
