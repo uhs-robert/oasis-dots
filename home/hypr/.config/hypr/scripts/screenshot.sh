@@ -80,7 +80,7 @@ notify_saved() {
     choice="$(timeout 600 notify-send --action=open=Open --action=folder="Show in folder" --wait "$title" "$file")" || true
     case "$choice" in
     open) xdg-open "$file" ;;
-    folder) "$SCRIPT_DIR/term" -e yazi "$file" ;;
+    folder) "$HOME/.local/state/hypr/bin/term" -e yazi "$file" ;;
     esac
   ) >/dev/null 2>&1 &
 }
@@ -101,7 +101,7 @@ notify_scroll_text() {
     open)
       saved="$SCREENSHOT_DIR/ocr-$(timestamp).txt"
       cp -- "$text" "$saved"
-      "$SCRIPT_DIR/term" -e "${EDITOR:-nvim}" "$saved"
+      "$HOME/.local/state/hypr/bin/term" -e "${EDITOR:-nvim}" "$saved"
       ;;
     image) wl-copy --type image/png <"$image" ;;
     esac

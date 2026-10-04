@@ -33,7 +33,7 @@ PickerProvider {
         const e = item.entry;
         if (!e) return;
         if (e.runInTerminal) {
-            const context = { command: ["sh", "-c", "t=~/.config/hypr/scripts/term; [ -x \"$t\" ] || t=\"${TERMINAL:-kitty}\"; exec \"$t\" \"$@\"", "sh", "-e"].concat(Array.from(e.command)) };
+            const context = { command: ["sh", "-c", "t=~/.local/state/hypr/bin/term; [ -x \"$t\" ] || t=\"${TERMINAL:-kitty}\"; exec \"$t\" \"$@\"", "sh", "-e"].concat(Array.from(e.command)) };
             if (e.workingDirectory !== "") context.workingDirectory = e.workingDirectory;
             Quickshell.execDetached(context);
         } else {

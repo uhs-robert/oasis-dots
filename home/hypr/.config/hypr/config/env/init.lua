@@ -25,6 +25,7 @@ local function build_path()
     HOME .. "/go/bin",
     HOME .. "/.tmuxifier/bin",
     HOME .. "/.config/hypr/scripts",
+    HOME .. "/.local/state/hypr/bin",
   }) do
     dirs[#dirs + 1] = dir
   end
