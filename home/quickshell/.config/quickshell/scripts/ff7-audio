@@ -2,6 +2,9 @@
 # Imports the FF7 lock skin's audio into $XDG_DATA_HOME/quickshell/ff7-audio: the Prelude as an intro plus a sample-exact loop, and the menu sound effects.
 # Usage: ff7-audio [--loop-start SEC] [--out DIR] SOURCE_DIR   (music/*Prelude*, fx/{Cursor,Back,Denied,Loading}.*, fx/*save-load*)
 set -euo pipefail
+# shellcheck source=lib/audio-loop.sh
+source "$(dirname -- "$(readlink -f -- "${BASH_SOURCE[0]}")")/lib/audio-loop.sh"
+audio_name=ff7-audio
 
 src=""
 loop_start=48
@@ -26,25 +29,11 @@ while (($#)); do
     ;;
   esac
 done
-[[ -n $src ]] || {
-  echo "ff7-audio: a source is required (see --help)" >&2
-  exit 1
-}
-[[ $loop_start =~ ^[0-9]+(\.[0-9]+)?$ ]] || {
-  echo "ff7-audio: --loop-start must be a number of seconds" >&2
-  exit 1
-}
+audio_require_src
+[[ $loop_start =~ ^[0-9]+(\.[0-9]+)?$ ]] || audio_die "--loop-start must be a number of seconds"
 
-for tool in ffmpeg python3; do
-  command -v "$tool" >/dev/null || {
-    echo "ff7-audio: $tool is required" >&2
-    exit 1
-  }
-done
-python3 -c 'import numpy' 2>/dev/null || {
-  echo "ff7-audio: python numpy is required" >&2
-  exit 1
-}
+audio_require ffmpeg python3
+audio_require_numpy python
 
 # Prints the first file under $src/$1 whose name matches glob $2, ignoring case.
 find_src() {
