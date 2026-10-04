@@ -140,6 +140,8 @@ Item {
     readonly property color tile_off: root.tinted ? root.rgba(root.ramp.tile_off) : "#06200a"
     readonly property color panel_top: root.tinted ? root.rgba(root.ramp.panel_top) : Qt.rgba(Watch.panel_top[0], Watch.panel_top[1], Watch.panel_top[2], Watch.panel_top[3])
     readonly property color panel_bottom: root.tinted ? root.rgba(root.ramp.panel_bottom) : Qt.rgba(Watch.panel_bottom[0], Watch.panel_bottom[1], Watch.panel_bottom[2], Watch.panel_bottom[3])
+    readonly property var panel_edge: [[294, 118], [272, 144], [250, 168], [232, 200], [212, 232], [200, 264], [194, 296], [188, 340], [188, 380], [194, 420], [204, 460], [214, 492], [234, 524], [251, 556], [274, 580], [294, 603]]
+    readonly property var panel_outline: root.panel_edge.map(p => Qt.point(p[0], p[1])).concat(root.panel_edge.slice().reverse().map(p => Qt.point(1020 - p[0], p[1])))
     readonly property string head_font: Watch.head_font
     readonly property string mono_font: Watch.mono_font
     readonly property string digit_font: Watch.digit_font
@@ -149,13 +151,18 @@ Item {
     property bool intro_busy: false
     // Loaded while the intro runs and from the first key on, so the unlock can start at once.
     readonly property bool frames_on: root.has_frames && root.motion && (root.intro_busy || root.typed > 0 || root.checking || root.granted)
+    // Without footage a drawn arm plays the same intro, unless Qt Quick 3D is missing.
+    property bool arm_ok: true
+    readonly property bool drawn: !root.has_frames && root.arm_ok
+    readonly property bool intro_on: root.has_frames || root.drawn
+    readonly property bool arm_on: root.drawn && root.motion && (root.intro_busy || root.typed > 0 || root.checking || root.granted)
     property int motion_dir: 0
     readonly property bool has_frames: root.n_frames > 0
     readonly property int frame_at: Math.max(0, Math.min(root.n_frames - 1, Math.floor(root.intro_t / 0.88 * root.n_frames)))
-    readonly property real face_alpha: root.has_frames ? Math.max(0, Math.min(1, (root.intro_t - 0.84) / 0.16)) : root.intro_t
+    readonly property real face_alpha: root.intro_on ? Math.max(0, Math.min(1, (root.intro_t - 0.84) / 0.16)) : root.intro_t
 
     readonly property string backdrop_file: root.ctx && root.ctx.backdrops && !root.login ? root.ctx.backdrops[root.screen_name] || "" : ""
-    readonly property real backdrop_alpha: root.has_frames ? 1 - root.ease(0.42, 0.8, root.intro_t) : 0
+    readonly property real backdrop_alpha: root.intro_on ? 1 - root.ease(0.42, 0.8, root.intro_t) : 0
 
     property real burst_level: 0
     property int noise_step: 0
@@ -186,14 +193,25 @@ Item {
     // Starts the frames once they have loaded (or 600 ms have passed) so the first frame is not black.
     function play_motion(dir) {
         root.motion_dir = dir;
-        root.intro_busy = dir > 0 && root.has_frames;
+        root.intro_busy = dir > 0 && root.intro_on;
         frames_wait.since = Date.now();
         frames_wait.cap = dir > 0 ? 600 : 250;
-        if (root.has_frames && !root.frames_ready()) frames_wait.restart();
+        if (root.intro_on && !root.frames_ready()) frames_wait.restart();
         else root.begin_motion();
     }
 
+    // Without Qt Quick 3D the intro is skipped, as it was before the drawn arm.
+    function drop_arm() {
+        root.arm_ok = false;
+        if (!root.intro_busy) return;
+        frames_wait.stop();
+        motion_anim.stop();
+        root.intro_busy = false;
+        root.intro_t = 1;
+    }
+
     function frames_ready() {
+        if (!root.has_frames) return !root.drawn || (!!arm_loader.item && arm_loader.item.ready);
         return !!frames_loader.item && frames_loader.item.ready >= root.n_frames * 2;
     }
 
@@ -318,7 +336,7 @@ Item {
     Component.onCompleted: {
         root.claim_sound();
         if (root.granted) root.intro_t = 0;
-        else if (root.motion && root.has_frames) {
+        else if (root.motion && root.intro_on) {
             root.intro_t = 0;
             root.play_motion(1);
         } else if (root.motion) {
@@ -524,6 +542,26 @@ Item {
                     visible: !!color_src && !!mask_src && sheet.ready >= sheet.total * 2
                     fragmentShader: Qt.resolvedUrl("goldeneye/frame.frag.qsb")
                 }
+            }
+        }
+
+        Loader {
+            id: arm_loader
+            active: root.arm_on
+            visible: root.intro_t < 1
+            width: root.width / stage.k
+            height: root.height / stage.k
+            x: (1020 - width) / 2
+            y: (720 - height) / 2
+            source: Qt.resolvedUrl("goldeneye/ArmIntro.qml")
+            onStatusChanged: if (arm_loader.status === Loader.Error) Qt.callLater(root.drop_arm)
+            onLoaded: {
+                arm_loader.item.t = Qt.binding(() => root.intro_t);
+                arm_loader.item.reach = Qt.binding(() => 1 - root.ease(0.55, 0.78, root.intro_t));
+                arm_loader.item.now = Qt.binding(() => root.now);
+                arm_loader.item.panel_outline = root.panel_outline;
+                arm_loader.item.panel_top = Qt.binding(() => root.panel_top);
+                arm_loader.item.panel_bottom = Qt.binding(() => root.panel_bottom);
             }
         }
 
@@ -856,9 +894,6 @@ Item {
 
     // The panel's translucent green octagon over the bezel: the dots and the white bars show through its edge.
     component Panel: Item {
-        id: panel
-        readonly property var edge: [[294, 118], [272, 144], [250, 168], [232, 200], [212, 232], [200, 264], [194, 296], [188, 340], [188, 380], [194, 420], [204, 460], [214, 492], [234, 524], [251, 556], [274, 580], [294, 603]]
-        readonly property var outline: panel.edge.map(p => Qt.point(p[0], p[1])).concat(panel.edge.slice().reverse().map(p => Qt.point(1020 - p[0], p[1])))
         anchors.fill: parent
 
         Shape {
@@ -873,7 +908,7 @@ Item {
                     GradientStop { position: 0; color: root.panel_top }
                     GradientStop { position: 1; color: root.panel_bottom }
                 }
-                PathPolyline { path: panel.outline }
+                PathPolyline { path: root.panel_outline }
             }
         }
 
