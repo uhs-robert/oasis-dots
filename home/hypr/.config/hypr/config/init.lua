@@ -258,7 +258,7 @@ local function write_term_wrapper(term_cmd)
   if not f then return end
   f:write("#!/bin/sh\nexec " .. term_cmd .. ' "$@"\n')
   f:close()
-  os.execute("chmod +x " .. path)
+  os.execute("chmod +x '" .. path .. "'")
 end
 
 --- Derives fields that are dependent upon other config values.
