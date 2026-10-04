@@ -4,12 +4,18 @@ local Config = require("config") ---@class Config
 local Generate = require("theme.generate") ---@class Generate
 local MissingRepos = require("lib.missing_repos") ---@class MissingRepos
 
--- Restore last theme selected via switch.lua if the state file exists.
-local state = io.open(os.getenv("HOME") .. "/.config/hypr/theme/.current_theme", "r")
-if state then
-  local saved = state:read("*line")
-  state:close()
-  if saved and saved ~= "" then Config.theme = saved end
+-- Restore the theme last selected via switch.lua; the old stowed-tree path is read for one release.
+local HOME = os.getenv("HOME")
+for _, path in ipairs({ HOME .. "/.local/state/hypr/theme", HOME .. "/.config/hypr/theme/.current_theme" }) do
+  local state = io.open(path, "r")
+  if state then
+    local saved = state:read("*line")
+    state:close()
+    if saved and saved ~= "" then
+      Config.theme = saved
+      break
+    end
+  end
 end
 
 --- @class Theme
