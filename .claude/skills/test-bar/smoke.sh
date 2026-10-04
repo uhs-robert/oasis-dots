@@ -72,6 +72,7 @@ orig_style=$(q style get)
 restore() {
   hyprctl eval 'hl.dispatch(hl.dsp.submap("reset"))' >/dev/null 2>&1 || true
   q popup close >/dev/null 2>&1 || true
+  q screenshot close >/dev/null 2>&1 || true
   # A style set can be dropped while the previous one is still applying, so retry until it reads back.
   local _
   for _ in {1..10}; do
@@ -130,6 +131,10 @@ for style in "${styles[@]}"; do
   echo "smoke: $style"
   q style set "$style" >/dev/null
   sleep 1.3
+  if [[ $(q style get) != "$style" ]]; then
+    missing+=("MISS $style style (unknown name, or it did not apply)")
+    continue
+  fi
 
   q popup open battery >/dev/null
   wait_layer quickshell-popup && {
