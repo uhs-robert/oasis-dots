@@ -8,43 +8,63 @@ repo_dir=$(dirname -- "$script_dir")
 
 cd "$repo_dir" || exit 1
 
+logs=$(mktemp -d) || exit 1
+trap 'rm -rf "$logs"' EXIT
+trap 'exit 1' INT TERM
+
 failed=''
 
 record() {
-  failed="$failed $1"
+  case " $failed " in
+  *" $1 "*) ;;
+  *) failed="$failed $1" ;;
+  esac
+}
+
+# Shows a step's output live and keeps it, so a failure can be repeated after the summary.
+step() {
+  name=$1
+  shift
+  { "$@" 2>&1 || echo "$?" >"$logs/$name.failed"; } | tee -a "$logs/$name.log"
+  [ ! -e "$logs/$name.failed" ] || record "$name"
 }
 
 # Optional tooling: skip when absent so validation stays dependency-light.
 if command -v shellcheck >/dev/null 2>&1; then
-  shellcheck install.sh uninstall.sh lib/*.sh demo/*.sh || record shellcheck
-  shellcheck -x -P SCRIPTDIR home/quickshell/.config/quickshell/scripts/lib/*.sh home/quickshell/.config/quickshell/scripts/ff7-audio home/quickshell/.config/quickshell/scripts/goldeneye-audio home/quickshell/.config/quickshell/scripts/mgs2-audio home/quickshell/.config/quickshell/scripts/ocarina-audio || record shellcheck
+  step shellcheck shellcheck install.sh uninstall.sh lib/*.sh demo/*.sh
+  step shellcheck shellcheck -x -P SCRIPTDIR home/quickshell/.config/quickshell/scripts/lib/*.sh home/quickshell/.config/quickshell/scripts/ff7-audio home/quickshell/.config/quickshell/scripts/goldeneye-audio home/quickshell/.config/quickshell/scripts/mgs2-audio home/quickshell/.config/quickshell/scripts/ocarina-audio
 else
   echo 'skip: shellcheck not installed'
 fi
 
 if command -v shfmt >/dev/null 2>&1; then
-  shfmt -i 2 -d install.sh uninstall.sh lib/*.sh demo/*.sh home/quickshell/.config/quickshell/scripts/lib/*.sh home/quickshell/.config/quickshell/scripts/ff7-audio home/quickshell/.config/quickshell/scripts/goldeneye-audio home/quickshell/.config/quickshell/scripts/mgs2-audio home/quickshell/.config/quickshell/scripts/ocarina-audio || record shfmt
+  step shfmt shfmt -i 2 -d install.sh uninstall.sh lib/*.sh demo/*.sh home/quickshell/.config/quickshell/scripts/lib/*.sh home/quickshell/.config/quickshell/scripts/ff7-audio home/quickshell/.config/quickshell/scripts/goldeneye-audio home/quickshell/.config/quickshell/scripts/mgs2-audio home/quickshell/.config/quickshell/scripts/ocarina-audio
 else
   echo 'skip: shfmt not installed'
 fi
 
 if command -v stylua >/dev/null 2>&1; then
-  stylua --respect-ignores --check home/hypr/.config/hypr || record stylua
+  step stylua stylua --respect-ignores --check home/hypr/.config/hypr
 else
   echo 'skip: stylua not installed'
 fi
 
-sh ./lib/check-lua.sh || record luacheck
-sh ./lib/check-qml.sh || record qmllint
-sh ./lib/check-lock-skins.sh || record lock-skins
-sh ./lib/check-style-exports.sh || record style-exports
-sh ./lib/check-packages.sh || record packages
-sh ./lib/check-symlinks.sh || record symlinks
-git diff --check HEAD || record 'git-diff-check'
-sh ./lib/check-whitespace.sh || record whitespace
+step luacheck sh ./lib/check-lua.sh
+step qmllint sh ./lib/check-qml.sh
+step lock-skins sh ./lib/check-lock-skins.sh
+step style-exports sh ./lib/check-style-exports.sh
+step packages sh ./lib/check-packages.sh
+step symlinks sh ./lib/check-symlinks.sh
+step git-diff-check git diff --check HEAD
+step whitespace sh ./lib/check-whitespace.sh
+step conflicts sh ./lib/check-conflicts.sh
 
 if [ -n "$failed" ]; then
   printf 'FAILED:%s\n' "$failed" >&2
+  for name in $failed; do
+    printf '\n== %s (last 40 lines)\n' "$name" >&2
+    tail -n 40 "$logs/$name.log" >&2
+  done
   exit 1
 fi
 
