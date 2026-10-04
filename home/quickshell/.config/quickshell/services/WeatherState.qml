@@ -17,6 +17,7 @@ Singleton {
         longitude: "auto",
         unit: "fahrenheit",
         time_format: "12h",
+        week_start: "locale",
         days: 7
     })
 
