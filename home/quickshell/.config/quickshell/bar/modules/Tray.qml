@@ -6,33 +6,17 @@ import Quickshell.Services.SystemTray
 import "../../theme"
 import "../../services"
 
-Item {
+BarModule {
     id: root
-
-    property bool compact: false
-    property string screen_name: ""
-    property Item island: null
-    property color island_color: Theme.bg_core
+    module_name: "tray"
 
     readonly property int count: SystemTray.items.values.length
     readonly property bool needs_attention: SystemTray.items.values.some(i => i.status === Status.NeedsAttention)
-    readonly property string tooltip_text: root.count + " tray app" + (root.count === 1 ? "" : "s")
+    tooltip_text: root.count + " tray app" + (root.count === 1 ? "" : "s")
 
-    readonly property bool shown: root.count > 0
-    visible: shown
+    shown: root.count > 0
     implicitWidth: root.shown ? row.implicitWidth : 0
     implicitHeight: row.implicitHeight
-
-    onIslandChanged: if (root.island) Popups.register_default("tray", root.island, root.island_color, root.screen_name, root)
-    Component.onDestruction: Popups.unregister("tray", root.screen_name, root)
-
-    Rectangle {
-        anchors.fill: parent
-        anchors.margins: -4
-        radius: Style.bar_radius(4)
-        color: Style.bar_hover_bg
-        opacity: hover_handler.hovered ? 0.5 : 0
-    }
 
     RowLayout {
         id: row
@@ -63,16 +47,8 @@ Item {
         }
     }
 
-    HoverHandler {
-        id: hover_handler
-        onHoveredChanged: {
-            if (hovered) Tooltip.show(root, root.tooltip_text, "tray");
-            else Tooltip.hide(root);
-        }
-    }
-
     MouseArea {
         anchors.fill: parent
-        onClicked: Popups.toggle("tray", root.island, root.island_color, root.screen_name)
+        onClicked: root.toggle_popup()
     }
 }
