@@ -112,14 +112,10 @@ Item {
             opacity: root.join
         }
 
-        Loader {
-            anchors.fill: parent
-            active: root.capsule && root.sheen_color.a > 0
-            sourceComponent: Sheen {
-                color_top: root.sheen_color
-                corner: root.capsule_radius
-                edge: root.border_width
-            }
+        Sheen {
+            color_top: root.sheen_color
+            corner: root.capsule_radius
+            edge: root.border_width
         }
     }
 
