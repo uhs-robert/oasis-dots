@@ -96,6 +96,14 @@ ShellRoot {
         }
     }
 
+    Variants {
+        model: Zoom.active ? Quickshell.screens : []
+
+        delegate: Component {
+            ZoomLoupe {}
+        }
+    }
+
     LazyPopup {
         name: "clock"
         ClockPopup {}
@@ -182,6 +190,7 @@ ShellRoot {
     GreeterSync {}
     PowerIpc {}
     ScreenshotIpc {}
+    ZoomIpc {}
     LockPreview {
         id: lock_preview
     }

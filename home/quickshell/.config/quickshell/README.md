@@ -172,6 +172,7 @@ qs-ipc show        # list every target and function
 | `overview`      | `open`, `close`, `toggle`, `search`, `move_follow`, `move_silent`                                           |
 | `notifications` | `open`, `close`, `toggle_dnd`, `clear_all`, `dismiss_latest`, `dismiss_all`, `focus_toast`, `has_toast` |
 | `screenshot`    | `open`, `close`, `toggle`, `select`, `pick`, `share`, `stop_recording` and the recording callbacks |
+| `zoom`          | `start`, `stop`, `step <delta>`, `size <delta>`, `full`               |
 | `lock`          | `lock`, `state`, `preview <style>`, `preview_close`                   |
 | `power`         | `confirm <lock\|logout\|reboot\|poweroff>`                            |
 | `brightness`    | `refresh`                                                             |

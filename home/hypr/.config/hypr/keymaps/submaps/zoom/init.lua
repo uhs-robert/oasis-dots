@@ -1,43 +1,66 @@
 --- Magnifier Zoom submap
---- Creates a cursor zoom like a glass magnifier
+--- Drives the Quickshell zoom loupe and moves the pointer under it
 
 local Config = require("config") ---@class Config
+local Scripts = require("lib.scripts") ---@class Scripts
 local Submap = require("lib.key.submap") ---@class Submap
 
--- Magnifier Zoom
-local MAX_ZOOM = 10
-local MIN_ZOOM = 1
-local ZOOM_TOGGLE_FACTOR = 1.5
+local REPEAT = { repeating = true }
 
----@param offset number | nil
----@return nil
-local function zoom(offset)
-  local current = hl.get_config("cursor.zoom_factor")
-  if offset ~= nil then
-    current = current + offset
-  elseif current ~= MIN_ZOOM then
-    current = MIN_ZOOM
-  else
-    current = ZOOM_TOGGLE_FACTOR
+---@param args string
+---@return fun()
+local function zoom(args)
+  return function() hl.exec_cmd(Scripts.qs_ipc .. " call zoom " .. args) end
+end
+
+---@param dx number
+---@param dy number
+---@return fun()
+local function nudge(dx, dy)
+  return function()
+    local pos = hl.get_cursor_pos()
+    if pos then hl.dispatch(hl.dsp.cursor.move({ x = pos.x + dx, y = pos.y + dy })) end
   end
-  current = math.max(MIN_ZOOM, math.min(MAX_ZOOM, current))
-  hl.config({ cursor = { zoom_factor = current } })
+end
+
+---@return table[]
+local function move_binds()
+  local keys = { { "h", -1, 0 }, { "j", 0, 1 }, { "k", 0, -1 }, { "l", 1, 0 } }
+  local tiers = {
+    { "", 10, "10px" },
+    { "SHIFT + ", 100, "100px" },
+    { "CTRL + ", 1, "1px" },
+    { "CTRL + SHIFT + ", 300, "300px" },
+  }
+  local rows = {}
+  for _, tier in ipairs(tiers) do
+    for _, k in ipairs(keys) do
+      local desc = "Move " .. k[1] .. " " .. tier[3]
+      table.insert(rows, { tier[1] .. k[1], nudge(k[2] * tier[2], k[3] * tier[2]), desc, REPEAT })
+    end
+  end
+  return rows
+end
+
+local binds = {
+  { "i", zoom("step 1"), "Zoom In", REPEAT },
+  { "o", zoom("step -1"), "Zoom Out", REPEAT },
+  { "bracketright", zoom("size 1"), "Bigger Loupe", REPEAT },
+  { "bracketleft", zoom("size -1"), "Smaller Loupe", REPEAT },
+  { "f", zoom("full"), "Full Screen" },
+}
+for _, row in ipairs(move_binds()) do
+  table.insert(binds, row)
 end
 
 Submap.define({
   name = "Zoom",
   desc = "+Zoom",
   enter = Config.leader .. " + Z",
-  on_enter = function() zoom() end,
-  on_exit = function() hl.config({ cursor = { zoom_factor = MIN_ZOOM } }) end,
+  on_enter = zoom("start"),
+  on_exit = zoom("stop"),
 
   escape = "reset",
   catchall = "stay",
-
-  -- stylua: ignore start
-  binds = {
-    { "w", function () zoom(0.5) end, "Zoom In", { repeating = true } },
-    { "s", function () zoom(-0.5) end, "Zoom Out", { repeating = true } }
-  },
-  -- stylua: ignore end
+  binds = binds,
 }).setup()
