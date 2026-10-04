@@ -47,19 +47,23 @@ copy_sources() {
 # shellcheck disable=SC2016
 folder_imports() {
   xargs -r -d '\n' awk '
-    match($0, /^[[:space:]]*import[[:space:]]+"[^"]+"/) {
-      target = substr($0, RSTART, RLENGTH)
-      sub(/^[^"]*"/, "", target)
-      sub(/"$/, "", target)
-      if (target ~ /\.m?js$/) next
-      alias = "-"
-      if (match($0, /"[[:space:]]+as[[:space:]]+[A-Za-z_][A-Za-z0-9_]*/)) {
-        alias = substr($0, RSTART, RLENGTH)
-        sub(/.*[[:space:]]/, "", alias)
+    {
+      n = split($0, statement, ";")
+      for (i = 1; i <= n; i++) {
+        if (!match(statement[i], /^[[:space:]]*import[[:space:]]+"[^"]+"/)) continue
+        target = substr(statement[i], RSTART, RLENGTH)
+        sub(/^[^"]*"/, "", target)
+        sub(/"$/, "", target)
+        if (target ~ /\.m?js$/) continue
+        alias = "-"
+        if (match(statement[i], /"[[:space:]]+as[[:space:]]+[A-Za-z_][A-Za-z0-9_]*/)) {
+          alias = substr(statement[i], RSTART, RLENGTH)
+          sub(/.*[[:space:]]/, "", alias)
+        }
+        dir = FILENAME
+        sub(/\/[^\/]*$/, "", dir)
+        print alias " " dir "/" target
       }
-      dir = FILENAME
-      sub(/\/[^\/]*$/, "", dir)
-      print alias " " dir "/" target
     }
   '
 }
@@ -98,15 +102,56 @@ write_qmldirs() {
   done <"$1"
 }
 
-# Prints the first line of file $1 that instantiates a type of the unregistered folder $2.
+# Prints "<line> <name>" for the first use of a type in $types, or member access on a singleton in $singletons.
+# shellcheck disable=SC2016
+first_use_awk='
+  function strip(line, out, i, c, quote) {
+    out = ""
+    for (i = 1; i <= length(line); i++) {
+      c = substr(line, i, 1)
+      if (in_block) {
+        if (c == "*" && substr(line, i + 1, 1) == "/") { in_block = 0; i++ }
+        continue
+      }
+      if (quote != "") {
+        if (c == "\\") i++
+        else if (c == quote) { quote = ""; out = out c }
+        continue
+      }
+      if (c == "/" && substr(line, i + 1, 1) == "/") break
+      if (c == "/" && substr(line, i + 1, 1) == "*") { in_block = 1; i++; continue }
+      if (c == "\"" || c == "\047" || c == "`") quote = c
+      out = out c
+    }
+    return out
+  }
+  BEGIN {
+    instance = "(^|[^.A-Za-z0-9_])(" types ")[[:space:]]*\\{"
+    declared = "(^|[^A-Za-z0-9_])property[[:space:]]+(list[[:space:]]*<[[:space:]]*)?(" types ")([^A-Za-z0-9_]|$)"
+    member = singletons == "" ? "" : "(^|[^.A-Za-z0-9_])(" singletons ")[[:space:]]*\\."
+  }
+  {
+    text = strip($0)
+    if (match(text, instance) || match(text, declared) || member != "" && match(text, member)) {
+      name = substr(text, RSTART, RLENGTH)
+      sub(/^[^A-Za-z_]+/, "", name)
+      sub(/^property[[:space:]]+(list[[:space:]]*<[[:space:]]*)?/, "", name)
+      sub(/[^A-Za-z0-9_].*$/, "", name)
+      print FNR " " name
+      exit
+    }
+  }
+'
+
+# Reports the first use in file $1 of a type from the unregistered folder $2.
 report_unregistered_use() {
-  names=$(find "$2" -maxdepth 1 -name '[A-Z]*.qml' -printf '%f\n' | sed 's/\.qml$//' | paste -sd '|' -)
-  [ -n "$names" ] || return 0
-  hit=$(grep -nE "(^|[^.[:alnum:]_])($names)[[:space:]]*\\{" "$1" | grep -vE '^[0-9]+:[[:space:]]*//' | head -n 1)
+  types=$(find "$2" -maxdepth 1 -name '[A-Z]*.qml' -printf '%f\n' | sed 's/\.qml$//' | paste -sd '|' -)
+  [ -n "$types" ] || return 0
+  singletons=$(grep -l '^pragma Singleton' "$2"/[A-Z]*.qml | sed 's|.*/||; s/\.qml$//' | paste -sd '|' -)
+  hit=$(awk -v types="$types" -v singletons="$singletons" "$first_use_awk" "$1")
   [ -n "$hit" ] || return 0
-  type=$(printf '%s\n' "${hit#*:}" | grep -oE "($names)[[:space:]]*\\{" | head -n 1 | sed 's/[[:space:]]*{$//')
-  printf '%s:%s: %s is not a type at runtime: nothing reached from shell.qml imports %s/, so Quickshell will not register its types; import it from the file that loads %s (#531)\n' \
-    "${1#"$3"/}" "${hit%%:*}" "$type" "${2#"$3"/}" "$(basename "$1")"
+  printf '%s:%s: %s will not resolve at runtime: nothing reached from shell.qml imports %s/, so Quickshell will not register its types; import %s/ from a file Quickshell reaches from shell.qml (for example the one that loads %s) (#531)\n' \
+    "${1#"$3"/}" "${hit%% *}" "${hit#* }" "${2#"$3"/}" "${2#"$3"/}" "$(basename "$1")"
 }
 
 # Flags files outside the registered folders that use their siblings, or an unregistered folder imported without "as".
