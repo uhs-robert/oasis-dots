@@ -58,7 +58,10 @@ Submap.define({
   desc = "+Zoom",
   enter = Config.leader .. " + Z",
   on_enter = zoom("start"),
-  on_exit = zoom("stop"),
+  on_exit = function()
+    hl.config({ cursor = { zoom_factor = 1 } })
+    zoom("stop")()
+  end,
 
   escape = "reset",
   catchall = "stay",
