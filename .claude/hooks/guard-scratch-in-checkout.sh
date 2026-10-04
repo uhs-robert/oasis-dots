@@ -23,13 +23,14 @@ blocked() {
   rel=${1#"$root"/}
   first=${rel%%/*}
   [[ $first != .claude ]] || return 1
-  [[ $rel == "$first" || ! -e $root/$first ]]
+  [[ ! -e $root/$first ]]
 }
 
 targets_of() {
   local -a pos=()
   local skip=0 arg
   for arg in "${@:2}"; do
+    [[ $arg == "#"* || $arg =~ ^[0-9\&]*[\<\>] ]] && break
     if ((skip)); then
       skip=0
       continue
@@ -57,13 +58,27 @@ targets_of() {
   esac
 }
 
+strip_heredocs() {
+  awk '
+    skip { line = $0; if (tabs) sub(/^\t+/, "", line); if (line == word) skip = 0; next }
+    { print }
+    match($0, /<<[-~]?[ ]*["\x27]?[A-Za-z_][A-Za-z_0-9]*["\x27]?/) {
+      w = substr($0, RSTART, RLENGTH); tabs = (w ~ /^<<-/)
+      sub(/^<<[-~]?[ ]*["\x27]?/, "", w); sub(/["\x27]$/, "", w); word = w; skip = 1
+    }'
+}
+
 cur=$cwd
+close=")"
 while IFS= read -r segment; do
   read -ra words <<<"$segment"
   ((${#words[@]})) || continue
+  words[0]=${words[0]#[({]}
+  words[-1]=${words[-1]%"$close"}
+  [[ -n ${words[0]} ]] || continue
   kind=""
   case ${words[0]} in
-  cd)
+  cd | pushd)
     if ((${#words[@]} > 1)) && next=$(resolve "${words[1]}"); then cur=$next; fi
     continue
     ;;
@@ -91,5 +106,5 @@ while IFS= read -r segment; do
       exit 2
     fi
   done < <(targets_of "$kind" "${args[@]}")
-done < <(tr -s "&|;" "\n" <<<"$cmd")
+done < <(strip_heredocs <<<"$cmd" | sed 's/>&/>/g; s/&>/>/g' | tr -s "&|;" "\n")
 exit 0
