@@ -2008,7 +2008,7 @@ Singleton {
     readonly property bool hand_cursor: root.active.hand_cursor
     // Meters as one continuous gauge (AtbBar) instead of segments.
     readonly property bool meter_solid: root.active.meter_solid
-    // Key badges, footers and help draw this console's buttons (KeyHints.controller_maps, components/<console>/<Console>Button.qml).
+    // Key badges, footers and help draw this console's buttons (KeyHints.controllers).
     readonly property string controller: root.active.controller
     // Meter art by popup name (or "osd"): a component path relative to components/ that replaces the segments.
     readonly property var meter_art: root.active.meter_art
