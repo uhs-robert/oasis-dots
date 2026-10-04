@@ -20,7 +20,36 @@ local Menu = {}
 --- @class Menu.ShowOpts
 --- @field theme? string Filename (without path) of the rofi theme in the themes dir.
 --- @field layer_rule? string Layer rule name to enable for the duration.
---- @field args? string Extra arguments appended to the menu invocation.
+--- @field args? string Extra arguments appended to the rofi invocation.
+--- @field run? string Launch template for the picked entry in emulated run mode, `{}` standing for it.
+
+--- Native menu modes per tool, as args appended to the binary; other modes are emulated over the dmenu picker.
+local NATIVE = {
+  fuzzel = { drun = "" },
+  wofi = { drun = " --show drun -i", run = " --show run -i" },
+}
+
+--- Shell commands that emit the entries of an emulated mode, one per line.
+local LISTERS = {
+  run = [[printf %s "$PATH" | tr : '\n' | xargs -I{} find {} -maxdepth 1 -executable ! -type d -printf '%f\n' 2>/dev/null | sort -u]],
+  ssh = [[awk 'tolower($1) == "host" { for (i = 2; i <= NF; i++) if ($i !~ /[*?!]/) print $i }' ~/.ssh/config 2>/dev/null | sort -u]],
+  window = [[hyprctl clients -j | jq -r 'map(select(.mapped)) | sort_by(.focusHistoryID)[] | "\(.class): \(.title)  \(.address)"']],
+}
+
+--- Return the shell command that emulates a mode with the dmenu picker, which gets `-p '<mode>: '`.
+--- @param mode string
+--- @param opts Menu.ShowOpts
+--- @return string
+local function emulated_cmd(mode, opts)
+  local picker = DMENU_CMD .. " -p '" .. mode .. ": '"
+  if mode == "window" then
+    local focus = [[hyprctl dispatch "hl.dsp.focus({ window = 'address:{}' })"]]
+    return LISTERS.window .. " | " .. picker .. " | grep -o '0x[0-9a-f]*$' | xargs -r -d '\\n' -I{} " .. focus
+  end
+  local run = opts.run or "setsid -f sh -c '{}'"
+  if mode == "ssh" then run = "setsid -f " .. TERM_CMD .. " -e ssh {}" end
+  return (LISTERS[mode] or LISTERS.run) .. " | " .. picker .. " | xargs -r -d '\\n' -I{} " .. run
+end
 
 --- Return the shell command that opens the menu in the given show mode.
 --- @param mode string
@@ -28,8 +57,14 @@ local Menu = {}
 --- @return string
 local function show_cmd(mode, opts)
   opts = opts or {}
-  local theme_arg = opts.theme and (" -theme " .. THEME_DIR .. opts.theme) or ""
-  return MENU .. " -i -show " .. mode .. theme_arg .. (opts.args and (" " .. opts.args) or "")
+  if IS_ROFI then
+    local theme_arg = opts.theme and (" -theme " .. THEME_DIR .. opts.theme) or ""
+    return MENU .. " -i -show " .. mode .. theme_arg .. (opts.args and (" " .. opts.args) or "")
+  end
+  local native = NATIVE[MENU:match("[^/]+$")]
+  if native and native[mode] and not opts.run then return MENU .. native[mode] end
+  if mode == "drun" then return ":" end
+  return emulated_cmd(mode, opts)
 end
 
 --- Return an action that opens the menu in the given show mode.
@@ -96,7 +131,8 @@ end
 --- @return fun()
 function Menu.cli()
   local inner = "env NO_FASTFETCH=1 " .. SHELL .. " -i -c '{cmd}; exec " .. SHELL .. " -i'"
-  return Menu.show("run", { args = '-run-command "' .. TERM_CMD .. " -e " .. inner .. '"' })
+  local run = TERM_CMD .. " -e " .. inner
+  return Menu.show("run", { args = '-run-command "' .. run .. '"', run = "setsid -f " .. run:gsub("{cmd}", "{}") })
 end
 
 --- Return an action that opens the tmux session picker.
