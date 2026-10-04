@@ -1,0 +1,8 @@
+{
+  "crt": { "fonts": ["VT323"] },
+  "tie": { "fonts": ["B612 Mono", "Oxanium"] },
+  "ff7": { "fonts": ["Nunito"], "audio": true, "own_music": true },
+  "goldeneye": { "fonts": ["Michroma", "Share Tech Mono", "DSEG7 Classic"], "audio": true, "own_music": true },
+  "ocarina": { "label": "Ocarina", "lock_only": true, "fonts": ["Rounded Mplus 1c", "Belleza", "Cormorant SC", "Cinzel"], "audio": true, "own_music": true },
+  "mgs2": { "label": "MGS2", "lock_only": true, "fonts": ["Barlow Condensed"], "audio": true, "own_music": true }
+}

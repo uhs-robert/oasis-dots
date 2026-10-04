@@ -26,6 +26,10 @@ Singleton {
         return root.files.indexOf(root.file_for(style_name)) >= 0;
     }
 
+    function meta(style_name) {
+        return Style.lock_skins[style_name] || {};
+    }
+
     function url_for(style_name) {
         return root.has(style_name) ? Qt.resolvedUrl("../lock/skins/" + root.file_for(style_name)) : Qt.resolvedUrl("../lock/LockScreen.qml");
     }
