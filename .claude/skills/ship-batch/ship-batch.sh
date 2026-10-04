@@ -17,8 +17,9 @@ after=$(git -C "$repo" rev-parse HEAD)
 (cd "$repo" && just check) || die "just check fails on main after the merge; fix it before anything else"
 
 qs_dir=home/quickshell/.config/quickshell
-greeter_paths="^($qs_dir/(lock/skins/|lock/Tints\.js$|theme/|fonts/|VERSION$)|system/etc/greetd/|system/usr/local/bin/qs-greeter$)"
-if git -C "$repo" diff --name-only "$before" "$after" | grep -Eq "$greeter_paths"; then
+greeter_paths="^($qs_dir/(lock/skins/|lock/Tints\.js$|theme/|fonts/|VERSION$)|system/etc/greetd/(quickshell/|hyprland\.lua$)|system/usr/local/bin/qs-greeter$|lib/greeter\.sh$|justfile$)"
+changed=$(git -C "$repo" diff --name-only "$before" "$after")
+if grep -Eq "$greeter_paths" <<<"$changed"; then
   if sudo -n true 2>/dev/null; then
     (cd "$repo" && just greeter-sync --install) || die "greeter-sync failed"
     echo "ship-batch: synced the greeter"
@@ -26,6 +27,8 @@ if git -C "$repo" diff --name-only "$before" "$after" | grep -Eq "$greeter_paths
     echo "ship-batch: greeter files changed; run: just greeter-sync --install"
   fi
 fi
+other_greetd=$(grep -E '^system/etc/greetd/' <<<"$changed" | grep -Ev "$greeter_paths" | paste -sd' ' || true)
+[[ -z $other_greetd ]] || echo "ship-batch: $other_greetd changed; deploy with: just system-apply"
 
 if [[ $before != "$after" ]] && ! git -C "$repo" diff --quiet "$before" "$after" -- home/hypr; then
   hyprctl reload >/dev/null
