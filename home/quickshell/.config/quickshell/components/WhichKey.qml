@@ -2,7 +2,6 @@
 pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Effects
-import QtQuick.Shapes
 import QtQuick.Layouts
 import Quickshell
 import Quickshell.Hyprland
@@ -170,8 +169,9 @@ PanelWindow {
         }
     }
 
-    Rectangle {
+    StyledFrame {
         id: frame
+        st: Style
         x: root.shadow_pad
         y: root.shadow_pad + root.float_top
 
@@ -185,7 +185,6 @@ PanelWindow {
         readonly property real band_height: Math.max(26, title_tab.height + 4)
         readonly property real header_height: frame.banded ? frame.band_height + 4 + Style.inset_pad : root.float_title ? root.float_top : title_tab.height + frame.ring_pad
 
-
         // Wide enough for the whole title in the header variant the style draws.
         readonly property real header_min: frame.banded ? (band_loader.item ? band_loader.item.min_width : 0) + (Style.inset_pad + Style.frame_border_width) * 2
             : root.float_title ? (border_loader.item ? border_loader.item.implicitWidth : 0) + 24
@@ -193,304 +192,188 @@ PanelWindow {
         width: Math.max(body.implicitWidth + pad_x * 2, frame.header_min) + Style.slant_room
         height: top_edge + header_height + body.implicitHeight + pad_y * 2 + Style.slant_room
         radius: Style.frame_radius
-        color: Style.frame_chamfer > 0 || Style.frame_visor || Style.custom_frame ? "transparent" : Style.frame_follows_island ? Style.pal.bg_mantle : Style.frame_color
-        border.width: Style.frame_visor || Style.frame_chamfer > 0 || Style.custom_frame ? 0 : Style.frame_border_width
-        border.color: Style.frame_border_color
+        island_color: Style.pal.bg_mantle
+        inset_top_offset: frame.top_edge - Style.frame_border_width
 
-        VisorGlass {
-            anchors.fill: parent
-        }
+        decor: [
+            Rectangle {
+                x: frame.radius
+                width: frame.width - frame.radius * 2
+                height: Style.accent_height
+                color: Style.accent_color
+            },
 
-        Shape {
-            id: frame_glow
-            visible: Style.frame_glow.a > 0
-            anchors.fill: parent
-            anchors.margins: Style.frame_border_width
-
-            ShapePath {
-                strokeWidth: -1
-                fillGradient: RadialGradient {
-                    centerX: frame_glow.width / 2
-                    centerY: 0
-                    focalX: frame_glow.width / 2
-                    focalY: 0
-                    centerRadius: Math.max(frame_glow.width * 0.6, Math.min(frame_glow.height, 420))
-                    focalRadius: 0
-                    GradientStop { position: 0; color: Style.frame_glow }
-                    GradientStop { position: 0.72; color: Style.frame_color }
+            Loader {
+                anchors.fill: parent
+                active: root.watch
+                sourceComponent: Goldeneye.PopupPanel {
+                    st: Style
+                    edge: 5
                 }
-                PathRectangle { width: frame_glow.width; height: frame_glow.height }
             }
-        }
+        ]
 
-        FrameShade {
-            anchors.fill: parent
-            anchors.margins: Style.frame_border_width
-            top_radius: Math.max(0, frame.radius - Style.frame_border_width)
-            bottom_radius: top_radius
-            chamfer: Style.frame_chamfer
-        }
-
-        CustomFrame {
-            anchors.fill: parent
-        }
-
-        FrameInset {
-            top_radius: frame.radius
-            bottom_radius: frame.radius
-            top_offset: frame.top_edge - Style.frame_border_width
-        }
-
-        Sheen {
-            color_top: Style.frame_float > 0 ? Style.sheen : "transparent"
-            corner: frame.radius
-            edge: Style.frame_border_width
+        Loader {
+            id: band_loader
+            active: frame.banded
+            x: Style.inset_pad + Style.frame_border_width
+            y: x
+            width: frame.width - x * 2
+            height: frame.band_height
+            sourceComponent: TitleStrip {
+                title: root.title
+                title_color: root.tinted ? root.header_color : "transparent"
+                closable: false
+            }
         }
 
         Rectangle {
-            x: frame.radius
-            width: frame.width - frame.radius * 2
-            height: Style.accent_height
-            color: Style.accent_color
-        }
+            id: title_tab
+            opacity: frame.banded || root.float_title ? 0 : 1
+            x: frame.title_x + Style.inset_pad
+            y: frame.top_edge + frame.ring_pad
+            width: Style.fade_fills ? frame.width - frame.title_x * 2 : title_text.implicitWidth + 20
+            height: title_text.implicitHeight + 4
+            color: !Style.show_title || Style.fade_fills ? "transparent" : root.tinted && root.filled_title ? root.header_color : Style.title_bg
 
-        Loader {
-            anchors.fill: parent
-            active: root.watch
-            sourceComponent: Goldeneye.PopupPanel {
-                st: Style
-                edge: 5
-            }
-        }
-
-        Item {
-            id: glow_layer
-            readonly property bool layered: Style.glow || Style.text_shadow.a > 0
-            anchors.fill: parent
-            layer.enabled: glow_layer.layered
-            opacity: glow_layer.layered ? 0 : 1
-
-
-            Loader {
-                id: band_loader
-                active: frame.banded
-                x: Style.inset_pad + Style.frame_border_width
-                y: x
-                width: frame.width - x * 2
-                height: frame.band_height
-                sourceComponent: TitleStrip {
-                    title: root.title
-                    title_color: root.tinted ? root.header_color : "transparent"
-                    closable: false
-                }
-            }
-
-            Rectangle {
-                id: title_tab
-                opacity: frame.banded || root.float_title ? 0 : 1
-                x: frame.title_x + Style.inset_pad
-                y: frame.top_edge + frame.ring_pad
-                width: Style.fade_fills ? frame.width - frame.title_x * 2 : title_text.implicitWidth + 20
-                height: title_text.implicitHeight + 4
-                color: !Style.show_title || Style.fade_fills ? "transparent" : root.tinted && root.filled_title ? root.header_color : Style.title_bg
-
-                FadeFill {
-                    visible: Style.show_title && Style.fade_fills
-                    fill: root.tinted && root.filled_title ? Qt.alpha(root.header_color, Style.title_bg.a) : Style.title_bg
-                }
-
-                Text {
-                    id: title_text
-                    x: 10
-                    y: (parent.height - height) / 2
-                    text: Style.title_prefix + Style.title_text(root.title) + (Style.caret_phase ? Style.title_suffix : " ".repeat(Style.title_suffix.length))
-                    color: !root.tinted ? (Style.show_title ? Style.title_fg : Style.accent_color) : !Style.show_title || !root.filled_title ? root.header_color : Style.fade_fills ? Style.title_fg : Style.pal.bg_crust
-                    font.family: Style.title_font_family
-                    font.pixelSize: Style.title_size > 0 ? Style.title_size : Style.fs(-2)
-                    font.weight: Style.title_weight > 0 ? Style.title_weight : Style.title_font_family === Style.font_family ? Font.Bold : Font.Normal
-                    font.letterSpacing: Style.show_title ? Style.title_spacing : 0
-                }
-            }
-
-            Loader {
-                id: border_loader
-                active: root.float_title
-                x: 12
-                y: -root.float_top
-                sourceComponent: Neovim.BorderTitle {
-                    title: Style.title_text(root.title)
-                    fill: root.tinted ? root.header_color : Style.title_bg
-                    ink: root.tinted ? Style.pal.bg_crust : Style.title_fg
-                }
+            FadeFill {
+                visible: Style.show_title && Style.fade_fills
+                fill: root.tinted && root.filled_title ? Qt.alpha(root.header_color, Style.title_bg.a) : Style.title_bg
             }
 
             Text {
-                id: readout
-                visible: Style.show_title && Style.title_readout !== ""
-                anchors.right: parent.right
-                anchors.rightMargin: frame.title_x + 10
-                y: title_tab.y + (title_tab.height - height) / 2
-                text: Style.title_readout.replace("{code}", root.title.slice(0, 3))
-                color: Style.title_readout_fg.a > 0 ? Style.title_readout_fg : Style.text_muted
-                font.family: Style.font_family
-                font.pixelSize: Style.fs(-5)
+                id: title_text
+                x: 10
+                y: (parent.height - height) / 2
+                text: Style.title_prefix + Style.title_text(root.title) + (Style.caret_phase ? Style.title_suffix : " ".repeat(Style.title_suffix.length))
+                color: !root.tinted ? (Style.show_title ? Style.title_fg : Style.accent_color) : !Style.show_title || !root.filled_title ? root.header_color : Style.fade_fills ? Style.title_fg : Style.pal.bg_crust
+                font.family: Style.title_font_family
+                font.pixelSize: Style.title_size > 0 ? Style.title_size : Style.fs(-2)
+                font.weight: Style.title_weight > 0 ? Style.title_weight : Style.title_font_family === Style.font_family ? Font.Bold : Font.Normal
+                font.letterSpacing: Style.show_title ? Style.title_spacing : 0
+            }
+        }
+
+        Loader {
+            id: border_loader
+            active: root.float_title
+            x: 12
+            y: -root.float_top
+            sourceComponent: Neovim.BorderTitle {
+                title: Style.title_text(root.title)
+                fill: root.tinted ? root.header_color : Style.title_bg
+                ink: root.tinted ? Style.pal.bg_crust : Style.title_fg
+            }
+        }
+
+        Text {
+            id: readout
+            visible: Style.show_title && Style.title_readout !== ""
+            anchors.right: parent.right
+            anchors.rightMargin: frame.title_x + 10
+            y: title_tab.y + (title_tab.height - height) / 2
+            text: Style.title_readout.replace("{code}", root.title.slice(0, 3))
+            color: Style.title_readout_fg.a > 0 ? Style.title_readout_fg : Style.text_muted
+            font.family: Style.font_family
+            font.pixelSize: Style.fs(-5)
+            font.letterSpacing: 1
+        }
+
+        ColumnLayout {
+            id: body
+            x: frame.pad_x
+            y: frame.top_edge + frame.header_height + frame.pad_y
+            spacing: Style.px(6)
+
+            Text {
+                visible: root.watch
+                Layout.fillWidth: true
+                elide: Text.ElideRight
+                text: "MODE: " + (SubmapState.submap_name !== "" ? SubmapState.submap_name : root.payload.title || "").toUpperCase()
+                color: Style.text_muted
+                font.family: Style.title_font_family
+                font.pixelSize: Style.fs(-6)
                 font.letterSpacing: 1
             }
 
-            ColumnLayout {
-                id: body
-                x: frame.pad_x
-                y: frame.top_edge + frame.header_height + frame.pad_y
-                spacing: Style.px(6)
+            GridLayout {
+                columns: root.columns
+                columnSpacing: Style.px(24)
+                rowSpacing: 0
 
-                Text {
-                    visible: root.watch
-                    Layout.fillWidth: true
-                    elide: Text.ElideRight
-                    text: "MODE: " + (SubmapState.submap_name !== "" ? SubmapState.submap_name : root.payload.title || "").toUpperCase()
-                    color: Style.text_muted
-                    font.family: Style.title_font_family
-                    font.pixelSize: Style.fs(-6)
-                    font.letterSpacing: 1
-                }
+                Repeater {
+                    model: root.items
 
-                GridLayout {
-                    columns: root.columns
-                    columnSpacing: Style.px(24)
-                    rowSpacing: 0
+                    Item {
+                        id: row
+                        required property var modelData
 
-                    Repeater {
-                        model: root.items
+                        Layout.preferredWidth: root.key_width + Style.px(8) + root.arrow_space + desc_text.width
+                        Layout.preferredHeight: root.row_height
 
-                        Item {
-                            id: row
-                            required property var modelData
-
-                            Layout.preferredWidth: root.key_width + Style.px(8) + root.arrow_space + desc_text.width
-                            Layout.preferredHeight: root.row_height
-
-                            Rectangle {
-                                visible: root.watch
-                                anchors.verticalCenter: parent.verticalCenter
-                                width: root.key_box
-                                height: root.row_height - Style.px(4)
-                                color: row.modelData.group ? Style.pal.fg_strong : Style.selection_bg
-                                border.width: 1
-                                border.color: row.modelData.destructive ? Style.pal.error : Style.selection_border
-
-                                Text {
-                                    anchors.centerIn: parent
-                                    text: row.modelData.key
-                                    color: row.modelData.group ? Style.pal.bg_core : row.modelData.destructive ? Style.pal.error : Style.pal.fg_strong
-                                    font.family: Style.mono_font
-                                    font.pixelSize: root.key_size
-                                    font.bold: true
-                                }
-                            }
-
-                            KeyBadge {
-                                visible: !root.watch
-                                anchors.verticalCenter: parent.verticalCenter
-                                key: row.modelData.key
-                                desc: row.modelData.desc || ""
-                                font_px: Style.whichkey_size
-                            }
+                        Rectangle {
+                            visible: root.watch
+                            anchors.verticalCenter: parent.verticalCenter
+                            width: root.key_box
+                            height: root.row_height - Style.px(4)
+                            color: row.modelData.group ? Style.pal.fg_strong : Style.selection_bg
+                            border.width: 1
+                            border.color: row.modelData.destructive ? Style.pal.error : Style.selection_border
 
                             Text {
-                                visible: root.arrow_space > 0
-                                x: root.key_width + Style.px(5)
-                                anchors.verticalCenter: parent.verticalCenter
-                                text: Style.whichkey_arrow
-                                color: Style.text_muted
-                                font.family: Style.font_family
-                                font.pixelSize: root.text_size
+                                anchors.centerIn: parent
+                                text: row.modelData.key
+                                color: row.modelData.group ? Style.pal.bg_core : row.modelData.destructive ? Style.pal.error : Style.pal.fg_strong
+                                font.family: Style.mono_font
+                                font.pixelSize: root.key_size
+                                font.bold: true
                             }
+                        }
 
-                            Text {
-                                id: desc_text
-                                x: root.key_width + Style.px(8) + root.arrow_space
-                                anchors.verticalCenter: parent.verticalCenter
-                                width: Math.min(implicitWidth, root.desc_max_width)
-                                elide: Text.ElideRight
-                                text: row.modelData.desc
-                                color: root.watch && row.modelData.destructive ? Style.pal.error : row.modelData.group ? Style.accent_color : Style.pal.fg
-                                font.family: root.watch && row.modelData.group ? Style.title_font_family : Style.font_family
-                                font.pixelSize: root.watch && row.modelData.group ? Style.fs(-6) : root.text_size
-                                font.capitalization: root.watch && row.modelData.group ? Font.AllUppercase : Font.MixedCase
-                                font.bold: row.modelData.group === true && !root.watch
-                            }
+                        KeyBadge {
+                            visible: !root.watch
+                            anchors.verticalCenter: parent.verticalCenter
+                            key: row.modelData.key
+                            desc: row.modelData.desc || ""
+                            font_px: Style.whichkey_size
+                        }
+
+                        Text {
+                            visible: root.arrow_space > 0
+                            x: root.key_width + Style.px(5)
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: Style.whichkey_arrow
+                            color: Style.text_muted
+                            font.family: Style.font_family
+                            font.pixelSize: root.text_size
+                        }
+
+                        Text {
+                            id: desc_text
+                            x: root.key_width + Style.px(8) + root.arrow_space
+                            anchors.verticalCenter: parent.verticalCenter
+                            width: Math.min(implicitWidth, root.desc_max_width)
+                            elide: Text.ElideRight
+                            text: row.modelData.desc
+                            color: root.watch && row.modelData.destructive ? Style.pal.error : row.modelData.group ? Style.accent_color : Style.pal.fg
+                            font.family: root.watch && row.modelData.group ? Style.title_font_family : Style.font_family
+                            font.pixelSize: root.watch && row.modelData.group ? Style.fs(-6) : root.text_size
+                            font.capitalization: root.watch && row.modelData.group ? Font.AllUppercase : Font.MixedCase
+                            font.bold: row.modelData.group === true && !root.watch
                         }
                     }
                 }
+            }
 
-                MenuFooter {
-                    visible: root.has_footer
-                    Layout.fillWidth: true
-                    centered: true
-                    text: root.footer_hint
-                }
+            MenuFooter {
+                visible: root.has_footer
+                Layout.fillWidth: true
+                centered: true
+                text: root.footer_hint
             }
         }
 
-        // Rebuilt per style, as in Popup.qml: hidden MultiEffects stopped drawing after a style switch.
-        Loader {
-            anchors.fill: glow_layer
-            active: Style.glow
-            sourceComponent: Item {
-                MultiEffect {
-                    anchors.fill: parent
-                    source: glow_layer
-                    autoPaddingEnabled: false
-                    blurEnabled: true
-                    blur: 0.5
-                    blurMax: 12
-                    brightness: 0.2
-                    colorization: 1
-                    colorizationColor: Style.glow_color
-                }
-
-                MultiEffect {
-                    anchors.fill: parent
-                    source: glow_layer
-                    autoPaddingEnabled: false
-                    colorization: Style.glow_tint
-                    colorizationColor: Style.pal.primary_light
-                }
-            }
-        }
-
-        Loader {
-            anchors.fill: glow_layer
-            active: !Style.glow && Style.text_shadow.a > 0
-            sourceComponent: MultiEffect {
-                source: glow_layer
-                autoPaddingEnabled: false
-                shadowEnabled: true
-                shadowBlur: 0
-                shadowOpacity: 1
-                shadowColor: Style.text_shadow
-                shadowHorizontalOffset: 2
-                shadowVerticalOffset: 2
-            }
-        }
-
-        Scanlines {
-            visible: Style.scanlines && Style.frame_octagon <= 0
-            anchors.fill: parent
-            anchors.margins: frame.radius > 0 ? Style.frame_border_width : 0
-            color: Style.scanline_color
-            period: Style.scanline_period
-        }
-
-        Dither {
-            anchors.fill: parent
-            anchors.margins: Style.frame_border_width
-            color: Style.dither
-            radius: frame.radius
-            top_radius: frame.radius
-        }
-
-        Loader {
+        overlay: Loader {
             id: burst_loader
             anchors.fill: parent
             anchors.margins: 5
