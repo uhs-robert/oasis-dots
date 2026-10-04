@@ -1,9 +1,9 @@
-// home/quickshell/.config/quickshell/components/picker/TieTargets.qml
+// home/quickshell/.config/quickshell/components/picker/targets/Tiecomp.qml
 pragma ComponentBehavior: Bound
 import QtQuick
-import "../../theme"
-import "../../services"
-import ".."
+import "../../../theme"
+import "../../../services"
+import "../.."
 
 // TIE targeting-computer dressing for the window/screen/region target: faint green ticks on
 // every other window, red lock-on brackets that step closed on the target, and a glass card.
@@ -45,8 +45,6 @@ Item {
     property int lock_step: root.lock_steps.length - 1
     readonly property real grow: root.lock_steps[root.lock_step]
     readonly property real card_w: 264
-
-    visible: root.mine || root.target_mode
 
     function relock() {
         step_timer.stop();

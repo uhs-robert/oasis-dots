@@ -1,15 +1,16 @@
-// home/quickshell/.config/quickshell/components/picker/MateriaCursor.qml
+// home/quickshell/.config/quickshell/components/picker/cursors/Materia.qml
 pragma ComponentBehavior: Bound
 import QtQuick
-import "../../theme"
-import "../../services"
-import ".."
+import "../../../theme"
+import "../../../services"
+import "../.."
 
 // FF7 battle targeting: the materia glove points at the pixel, fingertip just left of it.
 Item {
     id: root
 
     required property string screen_name
+    required property point origin
     required property bool target_mode
 
     readonly property point at: Screenshot.cursor_point

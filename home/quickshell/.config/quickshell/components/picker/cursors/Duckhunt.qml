@@ -1,14 +1,15 @@
-// home/quickshell/.config/quickshell/components/picker/ZapperCursor.qml
+// home/quickshell/.config/quickshell/components/picker/cursors/Duckhunt.qml
 pragma ComponentBehavior: Bound
 import QtQuick
-import "../../theme"
-import "../../services"
+import "../../../theme"
+import "../../../services"
 
 // NES Zapper reticle: a white ring with four white arms, each outlined in black.
 Item {
     id: root
 
     required property string screen_name
+    required property point origin
     required property bool target_mode
 
     readonly property point at: Screenshot.cursor_point

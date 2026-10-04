@@ -1,8 +1,9 @@
-// home/quickshell/.config/quickshell/components/picker/ScanVisorTargets.qml
+// home/quickshell/.config/quickshell/components/picker/targets/Scanvisor.qml
 pragma ComponentBehavior: Bound
 import QtQuick
-import "../../theme"
-import "../../services"
+import "../../../theme"
+import "../../../services"
+import "../.."
 import ".."
 
 // Metroid Prime scan visor dressing for the window/screen/region target: cyan brackets that
@@ -37,8 +38,6 @@ Item {
         const n = Math.round(v);
         return (n < 0 ? "-" : "") + String(Math.abs(n)).padStart(4, "0");
     }
-
-    visible: root.mine || root.target_mode
 
     function relock() {
         step_timer.stop();

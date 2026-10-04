@@ -1,8 +1,9 @@
-// home/quickshell/.config/quickshell/components/picker/DuckHuntTargets.qml
+// home/quickshell/.config/quickshell/components/picker/targets/Duckhunt.qml
 pragma ComponentBehavior: Bound
 import QtQuick
-import "../../theme"
-import "../../services"
+import "../../../theme"
+import "../../../services"
+import "../.."
 import ".."
 
 // Duck Hunt dressing for the window/screen/region target: a white frame with a dark outer
@@ -44,8 +45,6 @@ Item {
         return out;
     }
     readonly property var capped_items: root.list_items.slice(0, 10)
-
-    visible: root.mine || root.target_mode
 
     Rectangle {
         visible: root.mine

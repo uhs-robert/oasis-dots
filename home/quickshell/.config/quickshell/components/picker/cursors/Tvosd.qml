@@ -1,8 +1,8 @@
-// home/quickshell/.config/quickshell/components/picker/TvOsdCursor.qml
+// home/quickshell/.config/quickshell/components/picker/cursors/Tvosd.qml
 pragma ComponentBehavior: Bound
 import QtQuick
-import "../../theme"
-import "../../services"
+import "../../../theme"
+import "../../../services"
 
 // CRT TV on-screen-display reticle: a chunky green phosphor crosshair with a soft
 // glow and a dark outline, matching the picture-menu look of the OSD loupe.
@@ -10,6 +10,7 @@ Item {
     id: root
 
     required property string screen_name
+    required property point origin
     required property bool target_mode
 
     readonly property point at: Screenshot.cursor_point

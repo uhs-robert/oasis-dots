@@ -1,9 +1,9 @@
-// home/quickshell/.config/quickshell/components/picker/ScanVisorCursor.qml
+// home/quickshell/.config/quickshell/components/picker/cursors/Scanvisor.qml
 pragma ComponentBehavior: Bound
 import QtQuick
-import "../../theme"
-import "../../services"
-import ".."
+import "../../../theme"
+import "../../../services"
+import "../.."
 
 // Metroid Prime scan visor reticle: cyan corner brackets that close in once the
 // cursor rests, then a 6-step scan sweep that turns the point and readout green.
@@ -11,6 +11,7 @@ Item {
     id: root
 
     required property string screen_name
+    required property point origin
     required property bool target_mode
 
     readonly property point at: Screenshot.cursor_point

@@ -1,8 +1,9 @@
-// home/quickshell/.config/quickshell/components/picker/TvOsdTargets.qml
+// home/quickshell/.config/quickshell/components/picker/targets/Tvosd.qml
 pragma ComponentBehavior: Bound
 import QtQuick
-import "../../theme"
-import "../../services"
+import "../../../theme"
+import "../../../services"
+import "../.."
 import ".."
 
 // CRT TV on-screen-display dressing for the window/screen/region target: a glowing
@@ -55,8 +56,6 @@ Item {
         if (raw === "") return String(index + 1).padStart(2, "0");
         return /[0-9]/.test(raw) ? raw.padStart(2, "0") : raw;
     }
-
-    visible: root.mine || root.target_mode
 
     Rectangle {
         id: frame_glow

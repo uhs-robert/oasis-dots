@@ -1,8 +1,8 @@
-// home/quickshell/.config/quickshell/components/picker/NvimCursor.qml
+// home/quickshell/.config/quickshell/components/picker/cursors/Nvimfloat.qml
 pragma ComponentBehavior: Bound
 import QtQuick
-import "../../theme"
-import "../../services"
+import "../../../theme"
+import "../../../services"
 
 // Neovim picker skin: a cursorline/cursorcolumn band pair through the point and a
 // reverse-video block cursor, like moving the cursor in a Neovim buffer.
@@ -10,6 +10,7 @@ Item {
     id: root
 
     required property string screen_name
+    required property point origin
     required property bool target_mode
 
     readonly property point at: Screenshot.cursor_point

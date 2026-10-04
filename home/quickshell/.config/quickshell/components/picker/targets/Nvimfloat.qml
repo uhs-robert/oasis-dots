@@ -1,9 +1,9 @@
-// home/quickshell/.config/quickshell/components/picker/NvimTargets.qml
+// home/quickshell/.config/quickshell/components/picker/targets/Nvimfloat.qml
 pragma ComponentBehavior: Bound
 import QtQuick
-import "../../theme"
-import "../../services"
-import "../neovim" as Nvim
+import "../../../theme"
+import "../../../services"
+import "../../neovim" as Nvim
 
 // Neovim dressing for the window/screen/region target: window-picker letter tiles, a float with a
 // winbar on the pick, a tabline of outputs, and a visual-block highlight for regions.
@@ -11,6 +11,7 @@ Item {
     id: root
 
     required property string screen_name
+    required property point origin
     required property rect sel
     required property bool mine
     required property bool target_mode
@@ -27,8 +28,6 @@ Item {
     readonly property real fy: root.ty + root.inset
     readonly property real fw: root.tw - root.inset * 2
     readonly property real fh: root.th - root.inset * 2
-
-    visible: root.mine || root.target_mode
 
     Repeater {
         model: root.target_mode && !root.full ? Screenshot.targets : []
