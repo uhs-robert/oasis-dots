@@ -192,7 +192,6 @@ Item {
         cap_left: true
         cap_right: true
         tab_joined: SubmapState.active && !root.has_mode_chip
-        wave_shown: MediaState.playing
         visible: root.has_center
 
         onClicked: if (root.center_entries.some(e => e.base === "clock")) Popups.toggle("clock", center_island.body_item, center_island.bg_color, root.screen_name)

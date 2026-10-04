@@ -26,8 +26,6 @@ Item {
     property color inset_color: "transparent"
     // Metroid Prime visor glass cut into notched bracket ends (VisorIsland) instead of slants.
     property bool visor: false
-    // Cava plays along the bottom edge; the visor's crosshair makes way for it.
-    property bool wave_shown: false
     // A capsule this many px inside the island's top and ends, resting on its bottom edge; sheen_color lights its top edge.
     property real capsule_inset: 0
     property color sheen_color: "transparent"
@@ -157,7 +155,6 @@ Item {
             bg_color: root.bg_color
             border_width: root.border_width
             border_color: root.border_color
-            marks_shown: !root.wave_shown
         }
     }
 
