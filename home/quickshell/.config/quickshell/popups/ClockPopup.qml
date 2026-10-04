@@ -32,7 +32,7 @@ Popup {
     readonly property bool nes: root.st.console_views === "nes"
     readonly property string hud_title: {
         const d = Timezones.shift(hud_clock.date);
-        return "WORLD " + (d.getMonth() + 1) + "-" + d.getDate() + "  TIME " + Qt.formatTime(d, "HH:mm");
+        return "WORLD " + (d.getMonth() + 1) + "-" + d.getDate() + "  TIME " + TimeFormat.format(d);
     }
 
     SystemClock {
