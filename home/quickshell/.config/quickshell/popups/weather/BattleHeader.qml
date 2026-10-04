@@ -85,10 +85,10 @@ Item {
                 }
 
                 Text {
-                    visible: WeatherState.stale
+                    visible: WeatherState.stale || WeatherState.failed
                     Layout.fillWidth: true
                     elide: Text.ElideRight
-                    text: "STALE DATA"
+                    text: WeatherState.failed ? "NO DATA: " + WeatherState.error : "STALE DATA"
                     color: Theme.warning
                     font.family: Style.font_family
                     font.pixelSize: Style.fs(-5)

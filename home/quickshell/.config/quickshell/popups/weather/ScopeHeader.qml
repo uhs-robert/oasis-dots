@@ -50,7 +50,7 @@ ColumnLayout {
             readonly property real size: Math.round(Math.max(96, Math.min(148, root.width * 0.4)))
             readonly property real c: scope.size / 2
             readonly property real r: scope.c - 1
-            readonly property real wind_max: WeatherState.settings.unit === "celsius" ? 60 : 40
+            readonly property real wind_max: WeatherState.metric ? 60 : 40
             readonly property real wind_len: root.has ? scope.r * 0.66 * Math.max(0.12, Math.min(1, root.cur.wind_speed / scope.wind_max)) : 0
             readonly property real wind_rad: root.has ? root.cur.wind_dir * Math.PI / 180 : 0
             readonly property point tip: Qt.point(scope.c + Math.sin(scope.wind_rad) * scope.wind_len, scope.c - Math.cos(scope.wind_rad) * scope.wind_len)
@@ -383,10 +383,10 @@ ColumnLayout {
     }
 
     Text {
-        visible: WeatherState.stale
+        visible: WeatherState.stale || WeatherState.failed
         Layout.fillWidth: true
         elide: Text.ElideRight
-        text: "STALE DATA" + (WeatherState.error ? ": " + WeatherState.error : "")
+        text: (WeatherState.failed ? "NO DATA" : "STALE DATA") + (WeatherState.error ? ": " + WeatherState.error : "")
         color: Theme.warning
         font.family: Style.mono_font
         font.pixelSize: Style.fs(-4)

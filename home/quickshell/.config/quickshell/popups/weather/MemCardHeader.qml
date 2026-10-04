@@ -78,7 +78,7 @@ ColumnLayout {
                     spacing: 8
 
                     Text {
-                        text: root.has ? Math.round(root.cur.temp) + "°" + WeatherState.unit_symbol() : "--°"
+                        text: root.has ? Math.round(root.cur.temp) + "°" + WeatherState.unit_symbol() : WeatherState.failed ? "n/a" : "--°"
                         color: root.has ? Style.text_strong : Style.text_dim
                         font.family: Style.font_family
                         font.pixelSize: Style.fs(12)
@@ -143,10 +143,10 @@ ColumnLayout {
                 }
 
                 Text {
-                    visible: WeatherState.stale
+                    visible: WeatherState.stale || WeatherState.failed
                     Layout.fillWidth: true
                     elide: Text.ElideRight
-                    text: "STALE DATA" + (WeatherState.error ? ": " + WeatherState.error : "")
+                    text: (WeatherState.failed ? "NO DATA" : "STALE DATA") + (WeatherState.error ? ": " + WeatherState.error : "")
                     color: Theme.warning
                     font.family: Style.font_family
                     font.pixelSize: Style.fs(-5)

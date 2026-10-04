@@ -5,7 +5,7 @@ import "../theme"
 import "../services"
 
 // A section of ChoiceRows; each row is { label, values: () => [...], text: v => string, value: () => current, set: v => void, pick?: bool }.
-// Enter or a click opens a filterable list of a row's values; `pick: false` keeps a row cycling and `cycle: false` stops h/l from stepping it.
+// Enter or a click opens a filterable list of a row's values; `pick: false` keeps a row cycling and `cycle: false` stops h/l from stepping it, and `activate: () => void` replaces Enter or a click.
 SettingsPane {
     id: root
 
@@ -58,7 +58,9 @@ SettingsPane {
     }
 
     function activate(index, delta) {
-        if (root.pickable(index)) root.open_picker(index);
+        const row = root.rows[index];
+        if (row && row.activate) row.activate();
+        else if (root.pickable(index)) root.open_picker(index);
         else root.step(index, delta);
     }
 

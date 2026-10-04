@@ -11,7 +11,7 @@ RowLayout {
 
     readonly property var cur: WeatherState.current
     // The ring fills with the temperature over 0-100 °F in either unit.
-    readonly property real fahrenheit: !WeatherState.has_data ? 0 : WeatherState.settings.unit === "celsius" ? root.cur.temp * 9 / 5 + 32 : root.cur.temp
+    readonly property real fahrenheit: !WeatherState.has_data ? 0 : WeatherState.metric ? root.cur.temp * 9 / 5 + 32 : root.cur.temp
 
     function fmt_temp(t) {
         return Math.round(t) + "°" + WeatherState.unit_symbol();
@@ -24,7 +24,7 @@ RowLayout {
         Layout.preferredHeight: Layout.preferredWidth
         Layout.alignment: Qt.AlignVCenter
         value: Math.max(0, Math.min(1, root.fahrenheit / 100))
-        label: WeatherState.has_data ? root.fmt_temp(root.cur.temp) : "--°"
+        label: WeatherState.has_data ? root.fmt_temp(root.cur.temp) : WeatherState.failed ? "n/a" : "--°"
         unit: "NOW"
         label_size: width * 0.24
     }

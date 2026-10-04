@@ -36,6 +36,9 @@ Singleton {
     readonly property bool offline: Networking.connectivity === NetworkConnectivity.None
     property bool stale: false
     property string error: ""
+    property string data_unit: ""
+    readonly property bool metric: (root.data_unit !== "" ? root.data_unit : root.settings.unit) === "celsius"
+    readonly property bool failed: !root.has_data && root.error !== ""
 
     property double last_success_ms: 0
     property bool warned_once: false
@@ -67,9 +70,21 @@ Singleton {
 
     function apply_settings() {
         const merged = Object.assign({}, root.default_settings, root.base_settings, root.local_settings);
-        const changed = root.has_data && JSON.stringify(root.settings) !== JSON.stringify(merged);
+        const changed = (root.has_data || root.error !== "") && JSON.stringify(root.settings) !== JSON.stringify(merged);
         root.settings = merged;
         if (changed) root.refresh(true);
+    }
+
+    // Writes to weather.local.json; a null value drops the key so the tracked default applies.
+    function set_settings(changes) {
+        const next = Object.assign({}, root.local_settings);
+        for (const key in changes) {
+            if (changes[key] === null) delete next[key];
+            else next[key] = changes[key];
+        }
+        root.local_settings = next;
+        root.apply_settings();
+        local_settings_file.setText(JSON.stringify(next, null, 2) + "\n");
     }
 
     function parse_settings(file, name) {
@@ -307,6 +322,10 @@ Singleton {
     function fail(msg) {
         root.loading = false;
         if (root.offline) return;
+        if (root.fetch_key !== JSON.stringify(root.settings)) {
+            root.refresh(true);
+            return;
+        }
         root.stale = root.has_data;
         root.error = msg;
         if (!root.warned_once) {
@@ -375,9 +394,21 @@ Singleton {
         root.save_cache();
     }
 
-    // US National Weather Service active alerts for this point. A failure or a non-US
-    // location (404/empty) just means no alerts; it never marks the forecast stale.
+    // Rough US, Alaska, Hawaii and territory bounds; outside them api.weather.gov has nothing to say.
+    function in_alerts_region(lat, lon) {
+        const boxes = [[24, 50, -125, -66], [51, 72, -180, -129], [51, 55, 172, 180], [18, 23, -161, -154], [17, 19, -68, -64], [13, 21, 144, 147], [22, 29, -179, -160], [-15, -14, -171, -169]];
+        return boxes.some(b => lat >= b[0] && lat <= b[1] && lon >= b[2] && lon <= b[3]);
+    }
+
+    // US National Weather Service alerts, US-only. A failure or a non-US location just
+    // means no alerts and never marks the forecast stale.
     function fetch_alerts(lat, lon) {
+        if (!root.in_alerts_region(lat, lon)) {
+            root.alerts = [];
+            root.alerts_has_data = true;
+            root.alerts_error = "";
+            return;
+        }
         const key = root.fetch_key;
         const xhr = new XMLHttpRequest();
         xhr.timeout = root.request_timeout_ms;
@@ -469,6 +500,7 @@ Singleton {
             root.alerts = parsed.alerts;
             root.alerts_has_data = true;
         }
+        root.data_unit = parsed.data_unit || root.settings.unit;
         root.has_data = true;
     }
 
@@ -488,6 +520,7 @@ Singleton {
             lat: root.lat,
             lon: root.lon,
             geo_ms: root.geo_ms,
+            data_unit: root.data_unit,
             aq_current: root.aq_current,
             aq_hours: root.aq_hours,
             alerts: root.alerts,
@@ -619,6 +652,7 @@ Singleton {
             utc_offset: blob.utc_offset_seconds || 0,
             lat: lat,
             lon: lon,
+            data_unit: root.settings.unit,
             settings_key: JSON.stringify(root.settings)
         };
     }
@@ -850,7 +884,7 @@ Singleton {
     // --- Temperature and precipitation bands (ported from Temperature / Precipitation) ---
 
     function temp_color(temp) {
-        const unit_c = root.settings.unit === "celsius";
+        const unit_c = root.metric;
         const very_cold = unit_c ? 5 : 41;
         const cold = unit_c ? 18 : 65;
         const chilly = unit_c ? 19 : 66;
@@ -870,7 +904,7 @@ Singleton {
     }
 
     function unit_symbol() {
-        return root.settings.unit === "celsius" ? "C" : "F";
+        return root.metric ? "C" : "F";
     }
 
     function format_hour(date) {
@@ -894,16 +928,16 @@ Singleton {
     }
 
     function wind_unit() {
-        return root.settings.unit === "celsius" ? "km/h" : "mph";
+        return root.metric ? "km/h" : "mph";
     }
 
     function pressure_display(hpa) {
-        if (root.settings.unit === "celsius") return Math.round(hpa) + " hPa";
+        if (root.metric) return Math.round(hpa) + " hPa";
         return (hpa * 0.0295299831).toFixed(2) + " inHg";
     }
 
     function visibility_display(meters) {
-        if (root.settings.unit === "celsius") return (meters / 1000).toFixed(1) + " km";
+        if (root.metric) return (meters / 1000).toFixed(1) + " km";
         return (meters / 1609.344).toFixed(1) + " mi";
     }
 
