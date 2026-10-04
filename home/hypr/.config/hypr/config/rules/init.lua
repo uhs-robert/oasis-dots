@@ -62,6 +62,7 @@ local set_layer_rules = function()
   register({ name = "quickshell_whichkey", match = { namespace = "quickshell-whichkey" }, no_anim = true })
   register({ name = "quickshell_region", match = { namespace = "quickshell-region" }, no_anim = true })
   register({ name = "quickshell_zoom",   match = { namespace = "quickshell-zoom" },   no_anim = true, no_screen_share = true })
+  register({ name = "quickshell_zoom_reticle", match = { namespace = "quickshell-zoom-reticle" }, no_anim = true })
 
   -- Conditionally enabled
   register({ name = "rofi_popin",        match = { namespace = "rofi" },              animation = "popin 80%" })
@@ -265,12 +266,19 @@ function Rules.toggle(name)
   return hl.dsp.no_op()
 end
 
---- Forces every window opaque for the screenshot selector, skipping the fade so captures never see it mid-way.
+--- Forces every window opaque and undimmed for the screenshot selector and zoom, skipping the fade so captures never see it mid-way.
 --- @param on boolean
 function Rules.set_capture_opaque(on)
   hl.animation({ leaf = "fadeSwitch", enabled = not on, speed = FADE_SPEED, bezier = "smooth" })
   local r = Rules.window_rules["capture-opaque"]
   if r then r:set_enabled(on) end
+  if on and Rules.saved_dim == nil then
+    Rules.saved_dim = hl.get_config("decoration.dim_inactive")
+    hl.config({ decoration = { dim_inactive = false } })
+  elseif not on and Rules.saved_dim ~= nil then
+    hl.config({ decoration = { dim_inactive = Rules.saved_dim } })
+    Rules.saved_dim = nil
+  end
 
   return hl.dsp.no_op()
 end

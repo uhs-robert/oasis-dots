@@ -14,7 +14,8 @@ Item {
     required property point origin
     required property bool target_mode
 
-    readonly property point at: Screenshot.cursor_point
+    property point at: Screenshot.cursor_point
+    property bool shown: Screenshot.phase === "select" && Screenshot.cursor_screen === root.screen_name
     readonly property int cx: Math.round(root.at.x)
     readonly property int cy: Math.round(root.at.y)
     readonly property int move_half: 22
@@ -27,7 +28,7 @@ Item {
     readonly property int half: root.scanning ? root.rest_half : root.move_half
     readonly property color scan_color: root.complete ? Theme.bright_green : Theme.bright_yellow
 
-    visible: Style.picker_skin === "scanvisor" && Screenshot.phase === "select" && Screenshot.cursor_screen === root.screen_name && !root.target_mode
+    visible: Style.picker_skin === "scanvisor" && root.shown && !root.target_mode
 
     function reset_scan() {
         root.scan_step = -1;
