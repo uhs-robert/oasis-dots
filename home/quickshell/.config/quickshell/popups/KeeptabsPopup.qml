@@ -20,6 +20,7 @@ Popup {
     property var sessions: []
     property int selected: 0
     property bool stale: false
+    property bool pick_failed: false
     readonly property int content_height: Style.px(300)
 
     tabs: ["Agents", "Usage"]
@@ -59,9 +60,12 @@ Popup {
     Process {
         id: fetch_proc
         command: ["sh", "-c", "exec ~/.local/bin/keeptabs-pick --json"]
-        onExited: if (root.stale) {
-            root.stale = false;
-            root.refresh();
+        onExited: code => {
+            root.pick_failed = code !== 0;
+            if (root.stale) {
+                root.stale = false;
+                root.refresh();
+            }
         }
         stdout: StdioCollector {
             onStreamFinished: {
@@ -184,7 +188,7 @@ Popup {
                 Text {
                     anchors.centerIn: parent
                     visible: root.current_tab === 0 && root.sessions.length === 0
-                    text: "No agent sessions"
+                    text: root.pick_failed ? "keeptabs-pick not available" : "No agent sessions"
                     color: root.st.text_dim
                     font.family: root.st.font_family
                     font.pixelSize: root.st.fs(-2)
