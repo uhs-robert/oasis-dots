@@ -14,6 +14,9 @@ Singleton {
     property bool ui: false
     property bool notify: false
     property bool music: false
+    // The Audio settings page is open: it previews sounds and lists packs even with every category off.
+    property int settings_open: 0
+    readonly property bool packs_wanted: root.ui || root.notify || root.music || root.settings_open > 0
     property real music_volume: 0.5
     property real fx_volume: 0.5
     // The user's pack for every style; "" follows the style (its preset, else its own).
@@ -67,6 +70,7 @@ Singleton {
     // A FolderListModel keeps its old rows when pointed at a missing folder, so rows from elsewhere are dropped.
     function listing(model) {
         const out = {};
+        if (!model) return out;
         const prefix = String(model.folder).replace(/\/?$/, "/");
         for (let i = 0; i < model.count; i++) {
             const url = String(model.get(i, "fileUrl"));
@@ -156,11 +160,12 @@ Singleton {
         property string style_name: ""
         property string user_dir: ""
         property string choice: ""
+        property bool active: true
         readonly property var game: root.games[pack.choice] || null
 
-        readonly property var shipped_urls: root.listing(shipped)
-        readonly property var user_urls: root.listing(mine)
-        readonly property var chosen_urls: pack.game ? (root.game_urls[pack.choice] || ({})) : root.listing(other)
+        readonly property var shipped_urls: root.listing(shipped.item)
+        readonly property var user_urls: root.listing(mine.item)
+        readonly property var chosen_urls: pack.game ? (root.game_urls[pack.choice] || ({})) : root.listing(other.item)
 
         // The user's files beat the chosen pack, which beats the style's own.
         function find(base, exts) {
@@ -174,32 +179,41 @@ Singleton {
             return "";
         }
 
-        FolderListModel {
+        Loader {
             id: shipped
-            folder: Qt.resolvedUrl("../sounds/" + (pack.style_name || "none"))
-            nameFilters: ["*.wav", "*.ogg", "*.mp3"]
-            showDirs: false
+            active: pack.active
+            sourceComponent: FolderListModel {
+                folder: Qt.resolvedUrl("../sounds/" + (pack.style_name || "none"))
+                nameFilters: ["*.wav", "*.ogg", "*.mp3"]
+                showDirs: false
+            }
         }
 
-        FolderListModel {
+        Loader {
             id: mine
-            // A game pack takes no overrides; otherwise they belong to the chosen pack.
-            folder: "file://" + pack.user_dir + "/" + (pack.game ? "none" : pack.choice || pack.style_name || "none")
-            nameFilters: ["*.wav", "*.ogg", "*.mp3"]
-            showDirs: false
+            active: pack.active
+            sourceComponent: FolderListModel {
+                // A game pack takes no overrides; otherwise they belong to the chosen pack.
+                folder: "file://" + pack.user_dir + "/" + (pack.game ? "none" : pack.choice || pack.style_name || "none")
+                nameFilters: ["*.wav", "*.ogg", "*.mp3"]
+                showDirs: false
+            }
         }
 
-        FolderListModel {
+        Loader {
             id: other
-            folder: Qt.resolvedUrl("../sounds/" + (!pack.game && pack.choice ? pack.choice : "none"))
-            nameFilters: ["*.wav", "*.ogg", "*.mp3"]
-            showDirs: false
+            active: pack.active
+            sourceComponent: FolderListModel {
+                folder: Qt.resolvedUrl("../sounds/" + (!pack.game && pack.choice ? pack.choice : "none"))
+                nameFilters: ["*.wav", "*.ogg", "*.mp3"]
+                showDirs: false
+            }
         }
     }
 
     Instantiator {
         id: game_dirs
-        model: Object.keys(root.games)
+        model: root.packs_wanted ? Object.keys(root.games) : []
         delegate: QtObject {
             id: game_dir
             required property string modelData
@@ -221,9 +235,9 @@ Singleton {
         }
     }
 
-    Pack { id: ui_pack; user_dir: root.user_dir; style_name: Style.saved_name; choice: root.pack_for(Style.saved_name) }
-    Pack { id: login_pack; user_dir: root.user_dir; style_name: root.login_name }
-    Pack { id: music_pack; user_dir: root.user_dir; style_name: root.music_on ? root.music_name : "" }
+    Pack { id: ui_pack; active: root.ui || root.notify || root.settings_open > 0; user_dir: root.user_dir; style_name: Style.saved_name; choice: root.pack_for(Style.saved_name) }
+    Pack { id: login_pack; active: root.music; user_dir: root.user_dir; style_name: root.login_name }
+    Pack { id: music_pack; active: root.music_on; user_dir: root.user_dir; style_name: root.music_on ? root.music_name : "" }
 
     // One pw-play per effect, a few at once: an idle mpv opened a new stream per file and dropped short or fast-repeated sounds.
     Instantiator {
