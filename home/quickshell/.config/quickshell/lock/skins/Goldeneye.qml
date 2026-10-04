@@ -2,6 +2,7 @@
 pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Shapes
+import Quickshell
 import Quickshell.Io
 import "../../theme"
 import "goldeneye" as GE
@@ -28,12 +29,21 @@ Item {
         printErrors: false
     }
     readonly property string version: root.version_file.text().trim() || "0.0"
-    property FileView frame_count: FileView {
+    readonly property string data_path: (Quickshell.env("XDG_DATA_HOME") || (Quickshell.env("HOME") + "/.local/share")) + "/quickshell/goldeneye-frames"
+    readonly property string local_dir: Qt.resolvedUrl("goldeneye/frames").toString().replace(/\/$/, "")
+    property FileView data_count: FileView {
+        path: root.data_path + "/count.txt"
+        blockLoading: true
+        printErrors: false
+    }
+    property FileView local_count: FileView {
         path: Qt.resolvedUrl("goldeneye/frames/count.txt")
         blockLoading: true
         printErrors: false
     }
-    readonly property int n_frames: parseInt(root.frame_count.text()) || 0
+    readonly property bool data_has_frames: (parseInt(root.data_count.text()) || 0) > 0
+    readonly property string frames_dir: root.data_has_frames ? "file://" + root.data_path : root.local_dir
+    readonly property int n_frames: parseInt((root.data_has_frames ? root.data_count : root.local_count).text()) || 0
 
     readonly property bool has_music: true
     readonly property bool sound_on: !!root.ctx && root.ctx.sound === true
@@ -474,7 +484,7 @@ Item {
                     Image {
                         id: arm
                         required property int index
-                        source: Qt.resolvedUrl("goldeneye/frames/arm_" + String(arm.index).padStart(2, "0") + ".jpg")
+                        source: root.frames_dir + "/arm_" + String(arm.index).padStart(2, "0") + ".jpg"
                         sourceSize.width: Math.round(Math.min(1020, 1020 * stage.k))
                         cache: false
                         asynchronous: true
@@ -490,7 +500,7 @@ Item {
                     Image {
                         id: cut
                         required property int index
-                        source: Qt.resolvedUrl("goldeneye/frames/mask_" + String(cut.index).padStart(2, "0") + ".png")
+                        source: root.frames_dir + "/mask_" + String(cut.index).padStart(2, "0") + ".png"
                         sourceSize.width: Math.round(Math.min(1020, 1020 * stage.k))
                         cache: false
                         asynchronous: true
@@ -525,7 +535,7 @@ Item {
             Image {
                 id: plate
                 anchors.fill: parent
-                source: root.has_frames ? Qt.resolvedUrl("goldeneye/frames/plate.jpg") : ""
+                source: root.has_frames ? root.frames_dir + "/plate.jpg" : ""
                 sourceSize.width: Math.round(Math.min(1020, 1020 * stage.k))
                 cache: false
                 asynchronous: true
