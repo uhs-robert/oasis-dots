@@ -18,3 +18,5 @@ Only after the owner has approved the merge. Run from anywhere inside the repo, 
 - The main checkout is pulled only when it is on the default branch with no tracked changes.
 
 It stops at the first failure with the reason. On a stacked-PR rebase conflict it prints the commands to rebase that PR by hand; do that, then rerun with the PRs not yet merged. Report each output line that needs the owner (skipped worktrees, skipped pull, stale local branches).
+
+As the final step, and whenever the owner asks what is left, run `~/.claude/skills/merge-prs/status.sh` from anywhere in the repo: a read-only summary of your open PRs, other worktrees, unmerged local branches, untracked files and the main checkout. It also runs the repo's executable `.claude/status.d/*.sh` scripts and prints each one's output under its name.
