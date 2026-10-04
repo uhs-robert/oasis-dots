@@ -3,15 +3,16 @@
 
 GREETER_DEST=/etc/greetd/quickshell
 # Data only (greeter.json, theme.json), owned by the installing user and readable by group greeter; the bar keeps it current.
-GREETER_DATA=/var/lib/qs-greeter
+GREETER_DATA="${QS_GREETER_DATA:-/var/lib/qs-greeter}"
 # Skins whose imported audio lives in $XDG_DATA_HOME/quickshell/<skin>-audio and is copied into the staged tree.
 GREETER_AUDIO_SKINS=(ff7 ocarina mgs2 goldeneye)
 
 # Builds the greeter tree in $1 from the repo at $2 plus this user's theme and lock style; prints the resolved skin.
+# $3 is a Quickshell config dir to stage skins and theme from instead of the repo's, e.g. a worktree's.
 stage_greeter() {
   local dest=$1 repo=$2
-  local qs="$repo/home/quickshell/.config/quickshell"
-  local live="${XDG_CONFIG_HOME:-$HOME/.config}/quickshell"
+  local qs="${3:-$repo/home/quickshell/.config/quickshell}"
+  local live="${3:-${XDG_CONFIG_HOME:-$HOME/.config}/quickshell}"
   local state_dir="${XDG_STATE_HOME:-$HOME/.local/state}/quickshell"
 
   rm -rf "$dest"

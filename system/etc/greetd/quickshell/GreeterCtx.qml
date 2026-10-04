@@ -61,7 +61,7 @@ QtObject {
 
     // The user's picture: the one the bar syncs into the data dir, else AccountsService's.
     function face_urls(name) {
-        return ["file:///var/lib/qs-greeter/faces/" + name, "file:///var/lib/AccountsService/icons/" + name];
+        return ["file://" + Greeter.data_dir + "/faces/" + name, "file:///var/lib/AccountsService/icons/" + name];
     }
 
     readonly property var tint_pair: Tints.pair(Theme, root.tint)
