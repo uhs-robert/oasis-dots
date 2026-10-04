@@ -136,7 +136,6 @@ var tokens = [
     tok("footer_key_bg", "color", "transparent", "Footer keys drawn as filled caps in footer_key_fg on this color."),
     tok("footer_separator", "string", " \u00b7 ", ""),
     tok("footer_rule_solid", "bool", false, ""),
-    tok("footer_tanks", "bool", false, "Energy tanks along the footer rule.", {export: false}),
     tok("osd_layout", "string", "", 'Alternate layouts: "" keeps the default; osd "ring", "hud", "rpg", "alert", "glow", "horizon" or "tile", weather "ring", "scope", "watch", "memcard", "battle", "mode7", "wttr", "weatherstar", "towers", "scan", "hev", "pokedex", "status", "oasis", "hero" or "lsp", cards "rule", "pixel", "dq", "dialogue", "dialog", "oasis", "tile" or "notify".'),
     tok("level_layout", "string", "", 'Level rows: "capsule" draws them as tall capsule sliders with live peaks, "slant" and "visor" the same with slanted ends or visor glass (Volume popup and OSD only); "" keeps the shared slider.'),
     tok("card_layout", "string", "", ""),
