@@ -54,10 +54,8 @@ The target may be an issue or PR URL/number, repository URL/name, or omitted.
    - Verify correctness, acceptance criteria, regressions, architecture, scope, DRYness, edge cases, tests, and repository conventions.
 
 7. Have Codex independently review the actual issue and diff for bugs, regressions, missed requirements, unnecessary complexity, and weak tests.
-   - From the worktree, run it in the background: `codex exec review --base <base> --json -o <review.md> > <events.jsonl>`, both files in a scratch directory outside the worktree.
-   - Codex writes `-o` only at the end, so watch `<events.jsonl>` for progress. Treat the run as stalled if that file does not grow for 2 minutes, and as failed if it exits non-zero or leaves `<review.md>` empty.
-   - Kill a stalled or failed run and retry with fresh files, at most 2 retries. Cap each run at 15 minutes.
-   - If Codex still fails, continue without it and state that in the final report.
+   - From the worktree, run `~/.claude/skills/orchestrator/codex-review.sh <base> <scratch dir outside the worktree>` as one background Bash call. It handles stall detection, timeouts, and retries.
+   - Exit 0 → read the review path it prints. Exit 2 → continue without Codex and state that in the final report.
 
 8. Evaluate every material review finding yourself. Classify it as valid, partially valid, invalid, or out of scope. Do not blindly apply reviewer suggestions.
 
