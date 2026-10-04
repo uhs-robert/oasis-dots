@@ -1,15 +1,16 @@
-// home/quickshell/.config/quickshell/components/picker/JrpgCursor.qml
+// home/quickshell/.config/quickshell/components/picker/cursors/Jrpg.qml
 pragma ComponentBehavior: Bound
 import QtQuick
-import "../../theme"
-import "../../services"
-import ".."
+import "../../../theme"
+import "../../../services"
+import "../.."
 
 // JRPG battle targeting: a bobbing white glove points at the target pixel, which blinks.
 Item {
     id: root
 
     required property string screen_name
+    required property point origin
     required property bool target_mode
 
     readonly property point at: Screenshot.cursor_point

@@ -1,9 +1,9 @@
-// home/quickshell/.config/quickshell/components/picker/PokemonTargets.qml
+// home/quickshell/.config/quickshell/components/picker/targets/Pokemon.qml
 pragma ComponentBehavior: Bound
 import QtQuick
-import "../../theme"
-import "../../services"
-import ".."
+import "../../../theme"
+import "../../../services"
+import "../.."
 
 // Game Boy party dressing for the window/screen/region target: a double-bordered pick frame and
 // a party-menu box listing windows or outputs with HP-style size bars.
@@ -11,6 +11,7 @@ Item {
     id: root
 
     required property string screen_name
+    required property point origin
     required property rect sel
     required property bool mine
     required property bool target_mode
@@ -44,8 +45,6 @@ Item {
     readonly property int first_row: Math.max(0, Math.min(root.list_items.length - root.max_rows, root.cur_row - Math.floor(root.max_rows / 2)))
     readonly property var shown_items: root.list_items.slice(root.first_row, root.first_row + root.max_rows)
     readonly property real menu_h: party_menu_col.implicitHeight + 16
-
-    visible: root.mine || root.target_mode
 
     function area_ratio(r) {
         return (r.width * r.height) / (root.width * root.height);

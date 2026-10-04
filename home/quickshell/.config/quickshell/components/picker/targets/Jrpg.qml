@@ -1,10 +1,10 @@
-// home/quickshell/.config/quickshell/components/picker/JrpgTargets.qml
+// home/quickshell/.config/quickshell/components/picker/targets/Jrpg.qml
 pragma ComponentBehavior: Bound
 import QtQuick
-import "../../theme"
-import "../../services"
-import ".."
-import "../snes" as SnesParts
+import "../../../theme"
+import "../../../services"
+import "../.."
+import "../../snes" as SnesParts
 
 // SNES JRPG dressing for the window/screen/region target: a SNES-window frame on the pick, dotted
 // outlines on the rest, a bobbing glove pointing at the pick, and a battle-menu style target list.
@@ -12,6 +12,7 @@ Item {
     id: root
 
     required property string screen_name
+    required property point origin
     required property rect sel
     required property bool mine
     required property bool target_mode
@@ -37,8 +38,6 @@ Item {
     readonly property var shown_rows: root.menu_targets.slice(root.first_row, root.first_row + root.max_rows)
     readonly property real menu_h: 30 + root.shown_rows.length * root.row_h + 10
     readonly property bool menu_right: root.tx + root.tw / 2 < root.width / 2
-
-    visible: root.mine || root.target_mode
 
     function size_label(r) {
         return Math.round(r.width) + " x " + Math.round(r.height);
