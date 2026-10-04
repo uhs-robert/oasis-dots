@@ -74,7 +74,7 @@ And control Hyprland via `:`, like Vim's **Command Mode**:
 ### And Even More
 
 - **Mouse from the keyboard:** `SUPER + C` enters the Cursor submap: `hjkl` moves the pointer (`SHIFT` for fast, `CTRL` for single pixels), `SPACE` clicks, `e`/`y` scroll, and `f` or `t` drop [wl-kbptr](https://github.com/moverest/wl-kbptr) hint labels on screen to click anything in a couple of keystrokes.
-- **Screen sharing:** the share picker opens the workspace overview with only shareable windows, so you pick a window, a whole monitor or a region by keyboard.
+- **Screen sharing:** the share picker opens the workspace overview with only shareable windows, so you pick a window, a whole monitor (`s`) or a region (`r`) by keyboard.
 - **Scrolling capture:** grab a page longer than the screen and OCR it to text in one pass.
 - **Displays:** arrange monitors in Settings with `hjkl`, with a countdown that reverts anything you don't confirm.
 
@@ -89,7 +89,7 @@ Styles transform the appearance of the bar, popups, menus, pickers, fonts, sound
 Pick a style in `Settings > Style` (`SUPER + SPACE` then `S`) and it swaps live.
 
 > [!NOTE]
-> **Styles include:** Oasis, Modern, CRT, NES, Game Boy, SNES, PSX, FF7, GoldenEye, PS2, TIE Fighter, Half-Life and Metroid.
+> **Styles include:** Oasis, Modern, Neovim, Terminal, CRT, NES, Game Boy, SNES, PSX, FF7, GoldenEye, PS2, TIE Fighter, Half-Life, Metroid and Reticle.
 
 ### 🍫 Bar Style Examples
 
@@ -187,7 +187,9 @@ Styles influence every popup. Each card below shows a different popup and a diff
 
 ## 🔒 Lock screens
 
-Each style can bring its own lock screen, and the login screen reuses it.
+Each style can bring its own lock screen, and the login screen reuses it. The skins are Oasis Gear Solid 2, The Legend of Oasis, Final Fantasy VII, GoldenEye 007 (the pause watch), CRT terminal and TIE Fighter.
+
+Password entry works like Vim. While nothing is typed you are in NORMAL mode, where `h`/`j`/`k`/`l` move through a skin's menus. `i` or any other printable key starts typing and shows `-- INSERT --` bottom-left; `Esc` on an empty password goes back to NORMAL.
 
 <table>
   <tr>
@@ -219,7 +221,7 @@ Clone the repo to `~/dotfiles`; topgrade's git step pulls it from there. `~/.con
 git clone https://github.com/uhs-robert/oasis-dots.git ~/dotfiles
 cd ~/dotfiles
 ./install.sh        # full install (Arch only)
-./install.sh -m     # minimal (skip optional components)
+./install.sh -m     # minimal (skip AUR, Rust, system files and services)
 ./install.sh --server # headless: shell/CLI/dev packages and configs only
 ./install.sh -y     # auto-confirm all prompts
 ./uninstall.sh      # remove symlinks
@@ -234,7 +236,7 @@ When it finishes, reboot. Without greetd you can instead log out and run `start-
 
 It uses `sudo` for these; the flags in brackets skip them.
 
-- Packages through pacman and paru [`--no-aur` for paru], the `rustup` toolchain with both stable and nightly [`--no-cargo`] and the latest Maple Mono NF release, unpinned, in `/usr/local/share/fonts`. The installer also reminds you that the hyprlock font "The Last Shuriken" is manual.
+- Packages through pacman and paru [`--no-aur` for paru], the `rustup` toolchain with both stable and nightly [`--no-cargo`] and the latest Maple Mono NF release, unpinned, in `/usr/local/share/fonts`.
 - `/etc`: `vtrgb-oasis`, `keyd/default.conf` and two pacman hooks; `/usr/local/bin` and `/usr/local/share/betterbird-autoconfig` for the voxtype GPU and Betterbird autoconfig helpers, which also patch `/opt/betterbird` when it exists [`--no-system-files`].
 - `/root`: links root's `.zshrc`, `.zsh_plugins.txt`, Neovim and Yazi config to yours, and adds `yazi-root` and a `/usr/local/sbin/yazi` wrapper, after a prompt [`--no-system-files`].
 - greetd, after a prompt: `/etc/greetd`, `/etc/tuigreet`, `/usr/local/bin/tuigreet-oasis`, the Quickshell greeter in `/etc/greetd/quickshell`, `/usr/local/bin/qs-greeter` and `/var/lib/qs-greeter`, then enables `greetd` [`--no-services`].
