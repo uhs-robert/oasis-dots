@@ -7,6 +7,7 @@ ipc=${SMOKE_QS_IPC:-$(git -C "$here" rev-parse --show-toplevel)/home/hypr/.confi
 fail_pattern='ERROR|TypeError|ReferenceError|Binding loop|is not a type|Could not set initial property|File not found|is not installed|Cannot assign'
 out=""
 dry_run=0
+self_test=0
 styles=()
 missing=()
 
@@ -25,7 +26,11 @@ while (($# > 0)); do
     dry_run=1
     shift
     ;;
-  -*) die "usage: smoke.sh [--out DIR] [--dry-run] [style...]" ;;
+  --self-test)
+    self_test=1
+    shift
+    ;;
+  -*) die "usage: smoke.sh [--out DIR] [--dry-run] [--self-test] [style...]" ;;
   *)
     styles+=("$1")
     shift
@@ -33,6 +38,45 @@ while (($# > 0)); do
   esac
 done
 ((${#styles[@]} > 0)) || styles=(ps1 goldeneye metroid neovim)
+# Exit 0 when the capture is blank: under 1% of pixels differ from the grab of what lies behind it.
+is_blank() {
+  python3 - "$1" "$2" <<'PY'
+import sys
+from PIL import Image, ImageChops
+a, b = (Image.open(f).convert("RGB") for f in sys.argv[1:3])
+if a.size != b.size:
+    sys.exit(1)
+diff = ImageChops.difference(a, b).convert("L").point(lambda v: 255 if v > 16 else 0)
+changed = diff.histogram()[255]
+sys.exit(0 if changed < 0.01 * a.size[0] * a.size[1] else 1)
+PY
+}
+
+if ((self_test)); then
+  tmp=$(mktemp -d)
+  trap 'rm -rf "$tmp"' EXIT
+  python3 - "$tmp" <<'PY'
+import sys
+from PIL import Image, ImageDraw
+d = sys.argv[1]
+base = Image.new("RGB", (200, 100), (30, 30, 40))
+base.save(d + "/a.png")
+base.save(d + "/same.png")
+other = base.copy()
+ImageDraw.Draw(other).rectangle((20, 20, 120, 80), fill=(220, 220, 220))
+other.save(d + "/other.png")
+PY
+  status=0
+  if is_blank "$tmp/a.png" "$tmp/same.png"; then echo "ok: identical images read as blank"; else
+    echo "FAIL: identical images not blank"
+    status=1
+  fi
+  if is_blank "$tmp/a.png" "$tmp/other.png"; then
+    echo "FAIL: different images read as blank"
+    status=1
+  else echo "ok: different images read as ok"; fi
+  exit "$status"
+fi
 out=${out:-${XDG_CACHE_HOME:-$HOME/.cache}/dotfiles/smoke/$(date +%Y%m%d-%H%M%S)}
 
 region_styles=()
@@ -100,15 +144,42 @@ wait_layer() {
 }
 
 wait_gone() {
-  for _ in $(seq 30); do
+  for _ in $(seq 100); do
     [[ -z $(layer_geom "$1") ]] && return 0
     sleep 0.1
   done
   return 1
 }
 
-shoot() {
+last_rect=""
+
+# Grabs last_rect again once the surface is gone; records a blank capture as a miss.
+check_blank() {
   local style=$1 surface=$2 ns=$3
+  local rect=$last_rect
+  last_rect=""
+  [[ -n $rect ]] || return 0
+  wait_gone "$ns" || {
+    missing+=("MISS $style $surface-close")
+    return 0
+  }
+  sleep 0.3
+  mkdir -p "$out/behind"
+  grim -g "$rect" "$out/behind/${style}_$surface.png"
+  if is_blank "$out/${style}_$surface.png" "$out/behind/${style}_$surface.png"; then
+    missing+=("MISS $style $surface-blank")
+  fi
+}
+
+shoot() {
+  local style=$1 surface=$2 ns=$3 x y w h x0 y0
+  read -r x y w h <<<"$(layer_geom "$ns")"
+  last_rect=""
+  if [[ -n $w ]]; then
+    x0=$((x < 4 ? 0 : x - 4))
+    y0=$((y < 4 ? 0 : y - 4))
+    last_rect="$x0,$y0 $((w + (x - x0) + 4))x$((h + (y - y0) + 4))"
+  fi
   hyprctl layers -j >"$out/${style}_$surface.layers.json"
   "$here/capture.sh" "$ns" --pad 4 --out "$out/${style}_$surface.png" >/dev/null || missing+=("MISS $style $surface")
   [[ -n $(layer_geom "$ns") ]] || missing+=("MISS $style $surface-gone")
@@ -122,9 +193,10 @@ region_shot() {
   }
   sleep 1
   read -r cx cy < <(hyprctl cursorpos | tr -d ',')
-  grim -g "$((cx < 300 ? 0 : cx - 300)),$((cy < 270 ? 0 : cy - 270)) 600x540" "$out/${style}_$surface.png"
+  last_rect="$((cx < 300 ? 0 : cx - 300)),$((cy < 270 ? 0 : cy - 270)) 600x540"
+  grim -g "$last_rect" "$out/${style}_$surface.png"
   wtype -k Escape
-  wait_gone quickshell-region || missing+=("MISS $style $surface-close")
+  check_blank "$style" "$surface" quickshell-region
 }
 
 for style in "${styles[@]}"; do
@@ -142,6 +214,7 @@ for style in "${styles[@]}"; do
     shoot "$style" popup quickshell-popup
   } || missing+=("MISS $style popup")
   q popup close >/dev/null
+  check_blank "$style" popup quickshell-popup
   sleep 0.3
 
   wpctl set-volume @DEFAULT_AUDIO_SINK@ 1%+
@@ -150,6 +223,7 @@ for style in "${styles[@]}"; do
     shoot "$style" osd quickshell-osd
   } || missing+=("MISS $style osd")
   wpctl set-volume @DEFAULT_AUDIO_SINK@ 1%-
+  check_blank "$style" osd quickshell-osd
 
   hyprctl eval 'hl.dispatch(hl.dsp.submap("Leader"))' >/dev/null
   wait_layer quickshell-whichkey && {
@@ -157,6 +231,7 @@ for style in "${styles[@]}"; do
     shoot "$style" whichkey quickshell-whichkey
   } || missing+=("MISS $style whichkey")
   hyprctl eval 'hl.dispatch(hl.dsp.submap("reset"))' >/dev/null
+  check_blank "$style" whichkey quickshell-whichkey
   sleep 0.3
 
   if is_region_style "$style"; then
