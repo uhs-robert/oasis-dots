@@ -16,8 +16,28 @@ Singleton {
     readonly property var names: root.order.filter(n => n in root.styles).concat(Object.keys(root.styles).filter(n => root.order.indexOf(n) < 0))
     readonly property var labels: ({ crt: "CRT", nes: "NES", snes: "SNES", gameboy: "Gameboy", goldeneye: "Goldeneye", ps1: "PSX", ff7: "FFVII", ps2: "PS2", halflife: "Half Life", tie: "Tie Fighter", modern: "Modern" })
 
+    FileView {
+        id: skin_index
+        path: Qt.resolvedUrl("../lock/skins/index.json")
+        blockLoading: true
+        printErrors: false
+    }
+
+    // Per-skin metadata from lock/skins/index.json.
+    readonly property var lock_skins: {
+        try {
+            return JSON.parse(skin_index.text());
+        } catch (e) {
+            return {};
+        }
+    }
+
     // Lock screens with no bar style of their own yet, name to label; never in `names`.
-    readonly property var lock_only: ({ ocarina: "Ocarina", mgs2: "MGS2" })
+    readonly property var lock_only: {
+        const out = {};
+        for (const key of Object.keys(root.lock_skins)) if (root.lock_skins[key].lock_only) out[key] = root.lock_skins[key].label;
+        return out;
+    }
     readonly property var lock_only_names: Object.keys(root.lock_only)
 
     function label(style_name) {
