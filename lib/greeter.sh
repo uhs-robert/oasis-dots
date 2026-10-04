@@ -30,7 +30,7 @@ stage_greeter() {
     fi
   done
   local frames_dir="${XDG_DATA_HOME:-$HOME/.local/share}/quickshell/goldeneye-frames"
-  if [[ -f "$frames_dir/count.txt" ]]; then
+  if (($(cat "$frames_dir/count.txt" 2>/dev/null || echo 0) > 0)); then
     rm -rf "${dest:?}/lock/skins/goldeneye/frames"
     mkdir -p "$dest/lock/skins/goldeneye/frames"
     cp -r "$frames_dir/." "$dest/lock/skins/goldeneye/frames/"
