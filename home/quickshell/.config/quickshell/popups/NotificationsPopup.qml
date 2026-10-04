@@ -17,7 +17,7 @@ Popup {
     fit_island: true
     title_value: String(NotificationState.unread).padStart(2, "0") + "/" + String(NotificationState.history.length).padStart(2, "0")
     body_height: content.implicitHeight + 24
-    key_help: "[ ] tabs · 1-3 select · Tab order · j/k move · gg/G first/last · h/l action · H/L or 0/$ body/last · Enter open · d/x dismiss · C clear all · t dnd"
+    key_help: "Tab tabs · 1-3 select · [ ] order · j/k move · gg/G first/last · h/l action · H/L or 0/$ body/last · Enter open · d/x dismiss · C clear all · t dnd"
 
     readonly property int content_height: Style.px(460)
     tabs: ["All", "Apps", "Critical"]

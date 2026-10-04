@@ -19,7 +19,7 @@ Popup {
     fit_island: true
     title_value: WeatherState.has_data ? root.day_span + "D" : ""
     body_height: content.implicitHeight + 24
-    key_help: "[ ] tabs · 1-" + root.tabs.length + " select · Tab view · h/l move · H/L jump · gg/0 now · G/$ end · r refresh" + (root.has_alerts ? " · a alerts" : "")
+    key_help: "Tab tabs · 1-" + root.tabs.length + " select · [ ] view · h/l move · H/L jump · gg/0 now · G/$ end · r refresh" + (root.has_alerts ? " · a alerts" : "")
 
     readonly property var base_tab_names: ["Daily", "Hourly"]
     readonly property bool has_alerts: WeatherState.alerts.length > 0

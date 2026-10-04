@@ -17,7 +17,7 @@ Popup {
     preferred_width: 520
     fit_island: true
     body_height: content.implicitHeight + 24
-    key_help: "Tab views · j/k move · gg/G ends · r refresh · u upgrade · q close"
+    key_help: "Tab/[ ] views · j/k move · gg/G ends · r refresh · u upgrade · q close"
 
     readonly property int content_height: Style.px(320)
     readonly property bool nes: root.st.console_views === "nes"
