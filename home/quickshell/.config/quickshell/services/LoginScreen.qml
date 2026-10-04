@@ -35,6 +35,7 @@ Singleton {
 
     function set_sync(on) {
         root.sync = on;
+        if (on) probe_proc.running = true;
         root.save();
     }
 
@@ -89,6 +90,7 @@ Singleton {
     }
 
     Process {
+        id: probe_proc
         running: true
         command: ["test", "-d", "/var/lib/qs-greeter", "-a", "-w", "/var/lib/qs-greeter"]
         onExited: code => root.installed = code === 0
