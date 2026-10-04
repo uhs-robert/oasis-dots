@@ -2,7 +2,6 @@
 pragma Singleton
 pragma ComponentBehavior: Bound
 import QtQuick
-import Qt.labs.folderlistmodel
 import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
@@ -70,7 +69,10 @@ Singleton {
     // A manual lock starts its music right away; an automatic one (`auto`) waits for the first key.
     function lock(auto) {
         if (persist.locked) return "locked";
-        if (capture.running) return "ok";
+        if (capture.running) {
+            if (!auto) root.arm_on_engage = true;
+            return "ok";
+        }
         root.arm_on_engage = !auto;
         Popups.close();
         if (!root.wants_backdrop()) return root.engage({});
@@ -207,13 +209,7 @@ Singleton {
 
     // The style's skins/<Name>.qml, else the generic screen; `style_name` defaults to the lock's own.
     function skin_url(style_name) {
-        const name = style_name || Style.lock_name;
-        if (name === "simple") return Qt.resolvedUrl("LockScreen.qml");
-        const file = name.charAt(0).toUpperCase() + name.slice(1) + ".qml";
-        for (let i = 0; i < skin_files.count; i++) {
-            if (skin_files.get(i, "fileName") === file) return Qt.resolvedUrl("skins/" + file);
-        }
-        return Qt.resolvedUrl("LockScreen.qml");
+        return LockSkins.url_for(style_name || Style.lock_name);
     }
 
     // True when `skin` defines handle_key(event) and it returns exactly true; a throwing skin takes nothing.
@@ -436,13 +432,6 @@ Singleton {
         id: capture
         prefix: "qs-lock"
         onFinished: files => root.engage(files)
-    }
-
-    FolderListModel {
-        id: skin_files
-        folder: Qt.resolvedUrl("skins")
-        nameFilters: ["*.qml"]
-        showDirs: false
     }
 
     Binding {
