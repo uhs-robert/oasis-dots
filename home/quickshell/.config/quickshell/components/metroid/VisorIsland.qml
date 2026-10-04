@@ -3,7 +3,7 @@ import QtQuick
 import QtQuick.Shapes
 import "../../theme"
 
-// A bar island cut like the Prime combat visor: notched bracket ends, energy-tank ticks, a crosshair under the center.
+// A bar island cut like the Prime combat visor: notched bracket ends and a crosshair under the center.
 Item {
     id: root
 
@@ -36,12 +36,6 @@ Item {
             ? " L " + (root.bx1 + root.u0) + " " + v + " L " + (root.bx1 + root.u1) + " " + v + " L " + (root.bx1 + c - i) + " 0"
             : " L " + root.w + " " + (h - i);
         return closed ? d + " L " + root.w + " 0 L 0 0 Z" : d;
-    }
-
-    readonly property string rail_path: {
-        const y = root.h - root.border_width - 3.5, a = root.bx0 + 6, b = root.bx1 - 6;
-        if (root.center) return "M " + a + " " + y + " L " + (root.cx - 12) + " " + y + " M " + (root.cx + 12) + " " + y + " L " + b + " " + y;
-        return "M " + a + " " + y + " L " + b + " " + y;
     }
 
     readonly property string teeth_path: {
@@ -93,17 +87,6 @@ Item {
             capStyle: ShapePath.FlatCap
             joinStyle: ShapePath.MiterJoin
             PathSvg { path: root.outline(root.border_width / 2, false) }
-        }
-
-        // Energy-tank squares along the bottom edge.
-        ShapePath {
-            strokeWidth: 3
-            strokeColor: Qt.alpha(Theme.theme_primary, 0.32)
-            fillColor: "transparent"
-            capStyle: ShapePath.FlatCap
-            strokeStyle: ShapePath.DashLine
-            dashPattern: [1, 1]
-            PathSvg { path: root.rail_path }
         }
 
         ShapePath {
