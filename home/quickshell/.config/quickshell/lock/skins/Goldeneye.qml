@@ -213,7 +213,7 @@ Item {
 
     function frames_ready() {
         if (!root.has_frames) return !root.drawn || (!!arm_loader.item && arm_loader.item.ready);
-        return !!frames_loader.item && frames_loader.item.ready >= root.n_frames * 2;
+        return !!frames_loader.item && frames_loader.item.settled;
     }
 
     function begin_motion() {
@@ -493,38 +493,84 @@ Item {
             anchors.fill: parent
             sourceComponent: Item {
                 id: sheet
-                property int ready: 0
-                readonly property int total: root.n_frames
+                readonly property int slots: 4
+                readonly property int cur: root.frame_at
+                property int shown: -1
+                property int shown_slot: -1
+                readonly property bool settled: sheet.shown === sheet.cur
+
+                property var held: [-1, -1, -1, -1]
+
+                // The slot showing `shown` is never reassigned; the others hold cur-1..cur+1.
+                function plan() {
+                    const next = [-1, -1, -1, -1];
+                    if (sheet.shown_slot >= 0) next[sheet.shown_slot] = sheet.shown;
+                    const todo = [];
+                    for (const f of [sheet.cur - 1, sheet.cur, sheet.cur + 1]) {
+                        if (f < 0 || f >= root.n_frames || next.indexOf(f) >= 0) continue;
+                        const s = sheet.held.indexOf(f);
+                        if (s >= 0 && next[s] < 0) next[s] = f;
+                        else todo.push(f);
+                    }
+                    for (const f of todo) next[next.indexOf(-1)] = f;
+                    sheet.held = next;
+                    for (let i = 0; i < sheet.slots; i++) {
+                        const c = colors.itemAt(i), m = masks.itemAt(i);
+                        if (c) c.frame = next[i];
+                        if (m) m.frame = next[i];
+                    }
+                }
+
+                function slot_ready(list, s, f) {
+                    const it = list.itemAt(s);
+                    return !!it && it.frame === f && it.status === Image.Ready;
+                }
+
+                function sync() {
+                    const s = sheet.held.indexOf(sheet.cur);
+                    if (s < 0 || !sheet.slot_ready(colors, s, sheet.cur) || !sheet.slot_ready(masks, s, sheet.cur)) return;
+                    sheet.shown_slot = s;
+                    sheet.shown = sheet.cur;
+                }
+
+                onCurChanged: {
+                    sheet.plan();
+                    sheet.sync();
+                }
+                onShownChanged: sheet.plan()
+                Component.onCompleted: sheet.plan()
 
                 Repeater {
                     id: colors
-                    model: sheet.total
+                    model: sheet.slots
 
                     Image {
                         id: arm
                         required property int index
-                        source: root.frames_dir + "/arm_" + String(arm.index).padStart(2, "0") + ".jpg"
+                        property int frame: -1
+                        source: arm.frame >= 0 ? root.frames_dir + "/arm_" + String(arm.frame).padStart(2, "0") + ".jpg" : ""
                         sourceSize.width: Math.round(Math.min(1020, 1020 * stage.k))
                         cache: false
                         asynchronous: true
                         visible: false
-                        onStatusChanged: if (arm.status === Image.Ready) sheet.ready += 1
+                        onStatusChanged: Qt.callLater(sheet.sync)
                     }
                 }
 
                 Repeater {
                     id: masks
-                    model: sheet.total
+                    model: sheet.slots
 
                     Image {
                         id: cut
                         required property int index
-                        source: root.frames_dir + "/mask_" + String(cut.index).padStart(2, "0") + ".png"
+                        property int frame: -1
+                        source: cut.frame >= 0 ? root.frames_dir + "/mask_" + String(cut.frame).padStart(2, "0") + ".png" : ""
                         sourceSize.width: Math.round(Math.min(1020, 1020 * stage.k))
                         cache: false
                         asynchronous: true
                         visible: false
-                        onStatusChanged: if (cut.status === Image.Ready) sheet.ready += 1
+                        onStatusChanged: Qt.callLater(sheet.sync)
                     }
                 }
 
@@ -538,9 +584,9 @@ Item {
                     property real span_y: height / 720
                     property real reach: 1 - root.ease(0.55, 0.78, root.intro_t)
                     property real hue_shift: root.tinted && Watch.sat_of(root.hue_src) > 0 ? Math.max(0, root.hue_src.hslHue) * 6.283185 - 2.094395 : 0
-                    property variant color_src: colors.count > 0 ? colors.itemAt(root.frame_at) : null
-                    property variant mask_src: masks.count > 0 ? masks.itemAt(root.frame_at) : null
-                    visible: !!color_src && !!mask_src && sheet.ready >= sheet.total * 2
+                    property variant color_src: colors.itemAt(sheet.shown_slot)
+                    property variant mask_src: masks.itemAt(sheet.shown_slot)
+                    visible: !!color_src && !!mask_src && color_src.status === Image.Ready && mask_src.status === Image.Ready
                     fragmentShader: Qt.resolvedUrl("goldeneye/frame.frag.qsb")
                 }
             }
