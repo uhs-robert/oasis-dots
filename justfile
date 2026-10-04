@@ -75,7 +75,7 @@ lint:
 check:
     sh ./lib/check.sh
 
-# Clone or link external repos into repos/ without a full install; pass --dev to use ~/Development
+# Clone or link external repos into repos/ without a full install; pass --dev to use $GITHUB_DIR (default ~/Development)
 repos *ARGS:
     #!/usr/bin/env bash
     set -euo pipefail
