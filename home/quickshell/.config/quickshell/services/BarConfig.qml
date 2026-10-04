@@ -10,18 +10,7 @@ import "BarLayout.js" as BarLayout
 Singleton {
     id: root
 
-    // Every monitor gets the same layout for now; bars.json can split this by name/description later.
-    readonly property var default_rules: [
-        {
-            match: "*",
-            compact: false,
-            left: ["start", "workspaces"],
-            center: ["clock"],
-            right: ["tray", "volume", "battery", "system", "network", "bluetooth"]
-        }
-    ]
-
-    property var rules: default_rules
+    property var rules: []
     property var warned_modules: ({})
     property var state: BarLayout.normalize(null)
     property bool warned_state: false
@@ -29,6 +18,7 @@ Singleton {
     FileView {
         id: config_file
         path: Quickshell.shellDir + "/bars.json"
+        blockLoading: true
         watchChanges: true
         onFileChanged: reload()
         onLoaded: {
@@ -40,7 +30,7 @@ Singleton {
                 console.warn("BarConfig: invalid bars.json, keeping last config (" + e + ")");
             }
         }
-        onLoadFailed: error => console.warn("BarConfig: failed to load bars.json (" + error + "), using defaults")
+        onLoadFailed: error => console.warn("BarConfig: failed to load bars.json (" + error + "), keeping last config")
     }
 
     FileView {
