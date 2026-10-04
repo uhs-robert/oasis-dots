@@ -101,7 +101,9 @@ wait_gone() {
 
 shoot() {
   local style=$1 surface=$2 ns=$3
+  hyprctl layers -j >"$out/${style}_$surface.layers.json"
   "$here/capture.sh" "$ns" --pad 4 --out "$out/${style}_$surface.png" >/dev/null || missing+=("MISS $style $surface")
+  [[ -n $(layer_geom "$ns") ]] || missing+=("MISS $style $surface-gone")
 }
 
 region_shot() {
@@ -123,7 +125,10 @@ for style in "${styles[@]}"; do
   sleep 1.3
 
   q popup open battery >/dev/null
-  wait_layer quickshell-popup && shoot "$style" popup quickshell-popup || missing+=("MISS $style popup")
+  wait_layer quickshell-popup && {
+    sleep 0.6
+    shoot "$style" popup quickshell-popup
+  } || missing+=("MISS $style popup")
   q popup close >/dev/null
   sleep 0.3
 
