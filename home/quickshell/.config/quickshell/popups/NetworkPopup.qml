@@ -1069,7 +1069,7 @@ Popup {
 
             Rectangle {
                 Layout.fillWidth: true
-                height: Style.px(26)
+                Layout.preferredHeight: Style.px(26)
                 radius: Style.radius(4)
                 color: Style.pal.bg_surface
 

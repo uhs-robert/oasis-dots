@@ -21,17 +21,17 @@ Item {
     readonly property var device: UPower.displayDevice
     readonly property bool has_battery: !!device && device.ready && device.isLaptopBattery
     readonly property real percent: has_battery ? device.percentage * 100 : 0
-    readonly property int state: has_battery ? device.state : UPowerDeviceState.Unknown
-    readonly property bool charging: state === UPowerDeviceState.Charging || state === UPowerDeviceState.PendingCharge
+    readonly property int power_state: has_battery ? device.state : UPowerDeviceState.Unknown
+    readonly property bool charging: power_state === UPowerDeviceState.Charging || power_state === UPowerDeviceState.PendingCharge
     readonly property var level_glyphs: ["", "", "", "", ""]
 
-    readonly property bool shown: has_battery && Math.round(percent) < 100 && state !== UPowerDeviceState.FullyCharged
+    readonly property bool shown: has_battery && Math.round(percent) < 100 && power_state !== UPowerDeviceState.FullyCharged
     visible: shown
     implicitWidth: shown ? row.implicitWidth : 0
     implicitHeight: row.implicitHeight
 
     readonly property string glyph: {
-        if (state === UPowerDeviceState.FullyCharged) return "󱟢";
+        if (power_state === UPowerDeviceState.FullyCharged) return "󱟢";
         if (charging) return "";
         if (percent <= 20) return level_glyphs[0];
         if (percent <= 40) return level_glyphs[1];
@@ -41,7 +41,7 @@ Item {
     }
 
     readonly property color glyph_color: {
-        if (charging || state === UPowerDeviceState.FullyCharged) return Theme.theme_primary;
+        if (charging || power_state === UPowerDeviceState.FullyCharged) return Theme.theme_primary;
         if (percent <= 20) return Theme.theme_label;
         if (percent <= 50) return Theme.warning;
         return Theme.theme_primary;
