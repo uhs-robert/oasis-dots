@@ -43,6 +43,8 @@ PanelWindow {
     property bool share_mode: false
     // The selection when r handed off to the region selector, restored when Esc there comes back.
     property var share_resume: null
+    // Share mode's s: the selected tile's whole monitor is the pick, until s or Esc goes back to windows.
+    property bool screen_pick: false
 
     readonly property var model: root.visible ? root.build(Hyprland.monitors.values, Hyprland.workspaces.values, Hyprland.toplevels.values, root.special, root.share_mode) : ({ groups: [], tiles: [] })
     readonly property var groups: root.model.groups
@@ -110,8 +112,13 @@ PanelWindow {
     readonly property var aim: {
         const tile = root.selected_tile;
         const r = root.filmstrip ? root.layout.big : root.layout.tile_rects[root.selected_index];
-        if (!tile || !r || r.w <= 0) return null;
+        if (!tile) return null;
         const g = root.groups[tile.group];
+        if (root.screen_pick) {
+            const gr = root.layout.group_rects[tile.group];
+            return g && gr && gr.w > 0 ? { x: gr.x, y: gr.y, w: gr.w, h: gr.h, cls: "SCREEN", place: g.name, real: { x: g.x, y: g.y, w: g.w, h: g.h } } : null;
+        }
+        if (!r || r.w <= 0) return null;
         const w = tile.windows.find(x => x.address === root.current_address);
         const place = (g ? g.name + " : " : "") + tile.name;
         if (!w) return { x: r.x, y: r.y, w: r.w, h: r.h, cls: tile.is_new ? "NEW" : "EMPTY", place: place, real: g ? { x: g.x, y: g.y, w: g.w, h: g.h } : null };
@@ -204,6 +211,7 @@ PanelWindow {
         root.share_mode = sharing;
         if (sharing) root.share_resume = null;
         root.special = resume ? resume.special : on_special !== "" && !sharing;
+        root.screen_pick = !!resume && resume.screen_pick;
         root.picked = [];
         root.carry_exit = "";
         root.from_search = false;
@@ -246,6 +254,7 @@ PanelWindow {
         const was_sharing = root.share_mode;
         root.wanted = false;
         root.share_mode = false;
+        root.screen_pick = false;
         root.typing = false;
         root.help_open = false;
         reveal_anim.stop();
@@ -598,14 +607,48 @@ PanelWindow {
     function share_monitor(region) {
         const g = root.selected_tile ? root.groups[root.selected_tile.group] : null;
         if (!g) return;
-        if (region) root.share_resume = { key: root.selected_key, address: root.current_address, filmstrip: root.filmstrip, special: root.special };
+        if (region) root.share_resume = { key: root.selected_key, address: root.current_address, filmstrip: root.filmstrip, special: root.special, screen_pick: root.screen_pick };
         root.hide_overview(true);
         if (region) Screenshot.share_region(g.name);
         else Screenshot.send_share("screen:" + g.name);
     }
 
+    // Directions step between monitors; ?, f and q fall through to the usual handling, the rest is swallowed.
+    function handle_screen_key(event) {
+        const k = event.key;
+        const dir = root.direction_of(k);
+        if (k === Qt.Key_Return || k === Qt.Key_Enter || k === Qt.Key_R) {
+            ThemeAudio.play("confirm");
+            root.share_monitor(k === Qt.Key_R);
+        } else if (k === Qt.Key_Escape || (k === Qt.Key_S && !(event.modifiers & Qt.ShiftModifier))) {
+            ThemeAudio.play("cancel");
+            root.screen_pick = false;
+        } else if (dir) {
+            const before = root.cursor_key();
+            root.move_monitor(dir[0], dir[1]);
+            root.play_if_moved(before);
+        } else if (root.is_help_key(event) || k === Qt.Key_F || k === Qt.Key_Q) {
+            return false;
+        }
+        return true;
+    }
+
+    // A click on the picked monitor shares it; a click on another monitor moves the pick there.
+    function screen_clicked(group, index) {
+        const g = root.groups[group];
+        if (!g) return;
+        if (root.selected_tile && root.selected_tile.group === group) {
+            ThemeAudio.play("confirm");
+            root.share_monitor(false);
+            return;
+        }
+        ThemeAudio.play("cursor");
+        root.select(index ?? g.tiles.find(i => root.tiles[i].shown_on_monitor) ?? g.tiles[0]);
+    }
+
     function handle_share_key(event) {
         const k = event.key;
+        if (root.screen_pick) return root.handle_screen_key(event);
         if (k === Qt.Key_Return || k === Qt.Key_Enter) {
             if (root.current_address === "") return true;
             ThemeAudio.play("confirm");
@@ -615,9 +658,12 @@ PanelWindow {
             root.toggle_special();
             if (root.special && root.tiles.length === 0) root.select_focused_workspace();
             root.play_if_moved(before);
-        } else if (k === Qt.Key_S || k === Qt.Key_R) {
+        } else if (k === Qt.Key_S) {
+            ThemeAudio.play("cursor");
+            root.screen_pick = true;
+        } else if (k === Qt.Key_R) {
             ThemeAudio.play("confirm");
-            root.share_monitor(k === Qt.Key_R);
+            root.share_monitor(true);
         } else if (k !== Qt.Key_M && k !== Qt.Key_X && k !== Qt.Key_V && k !== Qt.Key_Space) {
             return false;
         }
@@ -827,6 +873,7 @@ PanelWindow {
     // A click on a tile's background focuses the workspace itself rather than one of its windows.
     // In share mode a window click shares it and a background click only selects.
     function tile_clicked(index, address) {
+        if (root.screen_pick) return root.screen_clicked(root.tiles[index] ? root.tiles[index].group : -1, index);
         ThemeAudio.play(root.share_mode && address === "" ? "cursor" : "confirm");
         root.select(index, address);
         if (root.share_mode) {
@@ -843,6 +890,7 @@ PanelWindow {
 
     readonly property string footer_text: root.help_open ? "? back · Esc back · q " + (root.share_mode ? "cancel share" : "close")
         : root.typing ? "Enter " + (root.share_mode ? "share" : root.carrying ? "drop here" : "focus") + " · Tab/Down next · Shift+Tab/Up previous · Esc " + (root.from_search && root.query === "" ? "close" : "clear") + " · ? help"
+        : root.screen_pick ? "Enter share screen · hjkl/Ctrl+hjkl/Ctrl+1-9 monitor · r region · s/Esc back · f view · ? help · q cancel"
         : root.share_mode ? "hjkl move · Ctrl+hjkl/1-9 monitor · Tab/] window · Enter share window · s screen · r region · S special · / search · f view · ? help · Esc cancel"
         : root.swap_address !== "" ? "m swap · Enter swap · Tab/] other window · hjkl workspace · Esc cancel · ? help"
         : root.carrying ? "hjkl workspace · Ctrl+hjkl/1-9 monitor · Tab/] window · m drop · Enter drop · Esc cancel · ? help"
@@ -851,8 +899,10 @@ PanelWindow {
 
     readonly property string normal_help: "h/j/k/l move between workspaces · Arrows move between workspaces · Ctrl+h/j/k/l or Ctrl+Arrows jump to the next monitor that way · Ctrl+1-9 jump to that monitor number, as SUPER+Ctrl+1-9 counts them · Tab/] next window · Shift+Tab/[ previous window · Enter focus window, or the workspace if empty · m pick up window, or every marked window · x close window, or every marked window · Space/v mark or unmark window · V mark or unmark all in workspace · / search windows by class, title or workspace · 1-9 select workspace by id, type 12 quickly for workspace 12, or the nth special workspace · s toggle special workspaces · f toggle filmstrip view, j/k there jump monitors · Click focus window or workspace"
     readonly property string carry_help: "h/j/k/l choose target workspace · Arrows choose target workspace · Ctrl+h/j/k/l choose target monitor · Ctrl+1-9 target monitor by number · 1-9 target workspace by id, type 12 quickly for workspace 12 · s toggle special workspaces · Tab/] and Shift+Tab/[ choose a window in the same workspace to swap with · m drop there, or swap with the SWAP window · Enter drop there, or swap · f toggle filmstrip view · Click drop on workspace · Esc cancel, marks come back"
-    readonly property string share_help: "Only windows the share can capture are shown · h/j/k/l move between workspaces · Arrows move between workspaces · Ctrl+h/j/k/l or Ctrl+Arrows jump to the next monitor that way · Ctrl+1-9 jump to that monitor number · Tab/] next window · Shift+Tab/[ previous window · Enter share the selected window · Click share a window · s share the whole monitor of the selected workspace · r share a region of that monitor, Esc there comes back here · S toggle special workspaces · / search shareable windows by class, title or workspace · 1-9 select workspace by id, or the nth special workspace · f toggle filmstrip view, j/k there jump monitors · Esc/q cancel the share"
+    readonly property string screen_help: "The whole monitor is the pick · Enter share it · Click share it, or click another monitor to pick that one · h/j/k/l, Arrows, Ctrl+h/j/k/l or Ctrl+Arrows pick the next monitor that way · Ctrl+1-9 pick that monitor number · r share a region of this monitor instead, Esc there comes back here · s/Esc back to window selection · f toggle filmstrip view · q cancel the share"
+    readonly property string share_help:"Only windows the share can capture are shown · h/j/k/l move between workspaces · Arrows move between workspaces · Ctrl+h/j/k/l or Ctrl+Arrows jump to the next monitor that way · Ctrl+1-9 jump to that monitor number · Tab/] next window · Shift+Tab/[ previous window · Enter share the selected window · Click share a window · s select the whole monitor of the selected workspace, then Enter shares it ·r share a region of that monitor, Esc there comes back here · S toggle special workspaces · / search shareable windows by class, title or workspace · 1-9 select workspace by id, or the nth special workspace · f toggle filmstrip view, j/k there jump monitors · Esc/q cancel the share"
     readonly property string help_text: root.typing ? "Type to search " + (root.share_mode ? "shareable " : "") + "windows by class, title or workspace · Enter " + (root.share_mode ? "share the highlighted window" : "focus the highlighted window, or drop the carried window on its workspace") + " · Tab/Down next match · Shift+Tab/Up previous match · Backspace delete, clears when empty · Esc clear search, or close when it is empty"
+        : root.screen_pick ? root.screen_help
         : root.share_mode ? (root.query !== "" ? "Esc clear search · " : "") + root.share_help
         : root.carrying ? root.carry_help
         : root.marks.length > 0 ? "Esc clear all marks · " + root.normal_help
@@ -868,6 +918,7 @@ PanelWindow {
         }
         if (root.carrying) return root.picked.length > 1 ? "MOVE " + root.picked.length + " windows" : "MOVE " + lead.toUpperCase();
         const tile = root.selected_tile;
+        if (root.screen_pick && tile && root.groups[tile.group]) return "SCREEN " + root.groups[tile.group].name + " · whole monitor";
         if (!tile) return root.special ? "no special workspaces" : "";
         const mon = root.groups[tile.group] ? root.groups[tile.group].name : "";
         return (root.marks.length > 0 ? root.marks.length + " marked · " : "") + mon + " · " + (tile.is_new ? (root.special ? "empty special " : "new workspace ") + tile.name : (root.special ? "special " : "workspace ") + tile.name + " · " + tile.windows.length + " window" + (tile.windows.length === 1 ? "" : "s"));
@@ -952,7 +1003,7 @@ PanelWindow {
         scale: 0.97 + 0.03 * root.reveal
         title: root.share_mode ? "SHARE" : root.special ? "SPECIAL" : "OVERVIEW"
         status: root.status_text
-        status_color: root.carrying || root.marks.length > 0 || root.query !== "" ? Style.text_accent : Style.text_muted
+        status_color: root.screen_pick || root.carrying || root.marks.length > 0 || root.query !== "" ? Style.text_accent : Style.text_muted
         footer: root.footer_text
 
         FocusScope {
@@ -1059,6 +1110,30 @@ PanelWindow {
                         color: group.holds_selection ? Style.text_primary : Style.section_fg
                     }
                 }
+
+                // The screen pick: the whole monitor framed like a selected window.
+                Rectangle {
+                    visible: root.screen_pick && group.holds_selection
+                    anchors.fill: parent
+                    radius: Style.radius(8)
+                    color: Qt.alpha(Style.caret_color, 0.08)
+                    border.width: 2
+                    border.color: Style.caret_color
+
+                    CornerBrackets {
+                        anchors.fill: parent
+                        color: Style.selection_brackets
+                        inset: 3
+                        arm: Math.min(16, parent.width / 4)
+                        all_corners: true
+                    }
+                }
+
+                MouseArea {
+                    anchors.fill: parent
+                    enabled: root.screen_pick
+                    onClicked: root.screen_clicked(group.index)
+                }
             }
         }
 
@@ -1078,8 +1153,8 @@ PanelWindow {
                 height: tile.rect.h
                 visible: tile.rect.w > 0 && tile.x + tile.width > 0 && tile.x < frame.body.width
                 entry: tile.modelData
-                selected: tile.index === root.selected_index
-                selected_address: root.current_address
+                selected: tile.index === root.selected_index && !root.screen_pick
+                selected_address: root.screen_pick ? "" : root.current_address
                 picked: root.picked_set
                 picked_toplevel: root.picked_toplevel
                 picked_count: root.picked.length
@@ -1088,7 +1163,7 @@ PanelWindow {
                 drop_target: tile.selected && root.can_drop
                 matches: root.matches
                 shown: root.visible
-                live: tile.selected && !root.filmstrip
+                live: tile.index === root.selected_index && !root.filmstrip
 
                 onTile_clicked: root.tile_clicked(tile.index, "")
                 onWindow_clicked: address => root.tile_clicked(tile.index, address)
@@ -1109,8 +1184,8 @@ PanelWindow {
             width: big_tile.rect.w
             height: big_tile.rect.h
             entry: root.selected_tile
-            selected: true
-            selected_address: root.current_address
+            selected: !root.screen_pick
+            selected_address: root.screen_pick ? "" : root.current_address
             picked: root.picked_set
             picked_toplevel: root.picked_toplevel
             picked_count: root.picked.length
