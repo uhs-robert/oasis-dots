@@ -360,7 +360,7 @@ PanelWindow {
         if (short_class.toLowerCase() === "firefox") t = t.replace(/^XXX\s*/, "");
         const m = /\s+[—-]\s+([^—-]+)$/.exec(t);
         const app = short_class.toLowerCase();
-        return m && app !== "" && m[1].toLowerCase().includes(app) ? t.slice(0, m.index) : t;
+        return m && app !== "" && m[1].trim().toLowerCase().split(/\s+/).pop() === app ? t.slice(0, m.index) : t;
     }
 
     // Every window, most recent first, minus the carried ones and, in share mode, the unshareable ones.
