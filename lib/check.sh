@@ -34,6 +34,7 @@ else
 fi
 
 sh ./lib/check-lua.sh || record luacheck
+sh ./lib/check-qml.sh || record qmllint
 sh ./lib/check-packages.sh || record packages
 sh ./lib/check-symlinks.sh || record symlinks
 git diff --check HEAD || record 'git-diff-check'
