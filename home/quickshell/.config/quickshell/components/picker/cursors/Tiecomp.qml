@@ -13,7 +13,8 @@ Item {
     required property point origin
     required property bool target_mode
 
-    readonly property point at: Screenshot.cursor_point
+    property point at: Screenshot.cursor_point
+    property bool shown: Screenshot.phase === "select" && Screenshot.cursor_screen === root.screen_name
     readonly property int cx: Math.round(root.at.x)
     readonly property int cy: Math.round(root.at.y)
     readonly property int ring_r: 14
@@ -26,7 +27,7 @@ Item {
         [root.ring_r + root.tick_gap, -1, root.tick_len, 2]
     ]
 
-    visible: Style.picker_skin === "tiecomp" && Screenshot.phase === "select" && Screenshot.cursor_screen === root.screen_name && !root.target_mode
+    visible: Style.picker_skin === "tiecomp" && root.shown && !root.target_mode
 
     Rectangle {
         x: root.cx - root.ring_r - 1

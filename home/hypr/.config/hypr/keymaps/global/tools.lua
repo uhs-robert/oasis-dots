@@ -8,6 +8,7 @@ local screenshot = function(action) return action and Scripts.screenshot .. " --
 Bind.cmd("Print",    screenshot(),         "Screenshot", { submap_universal = true })
 Bind.leader_cmd("I", screenshot(),         "Screenshot")
 Bind.leader_cmd("P", screenshot("pixel"),  "Color Picker")
+Bind.leader_cmd("Z", Scripts.qs_ipc .. " call zoom toggle", "Zoom")
 
 -- Speech to Text
 Bind.cmd("CTRL + PERIOD",  Scripts.voxtype, "Speech to Text")

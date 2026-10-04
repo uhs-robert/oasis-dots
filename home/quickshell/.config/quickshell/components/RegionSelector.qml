@@ -430,15 +430,21 @@ PanelWindow {
             function load() {
                 if (cursor_loader.skin === "")
                     return;
-                cursor_loader.setSource(Qt.resolvedUrl("picker/cursors/" + cursor_loader.skin.charAt(0).toUpperCase() + cursor_loader.skin.slice(1) + ".qml"), {
+                const props = {
                     screen_name: Qt.binding(() => root.screen_name),
                     origin: Qt.binding(() => Qt.point(root.modelData.x, root.modelData.y)),
                     target_mode: Qt.binding(() => root.target_mode)
-                });
+                };
+                if (cursor_loader.skin === "scope") {
+                    props.box_w = Qt.binding(() => Screenshot.lens_on ? Math.ceil(picker_loupe.sample_half) * 2 + 5 : 58);
+                    props.box_h = Qt.binding(() => Screenshot.lens_on ? Math.ceil(picker_loupe.sample_half) * 2 + 5 : 38);
+                }
+                cursor_loader.setSource(Qt.resolvedUrl("picker/cursors/" + cursor_loader.skin.charAt(0).toUpperCase() + cursor_loader.skin.slice(1) + ".qml"), props);
             }
         }
 
         Loupe {
+            id: picker_loupe
             visible: Screenshot.lens_on && Screenshot.phase === "select" && Screenshot.cursor_screen === root.screen_name && (root.pixel_mode ? root.frame_ready : frozen_view.hasContent)
             at: Screenshot.cursor_point
             source: root.pixel_mode ? frame_image : frozen_view

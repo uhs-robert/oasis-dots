@@ -13,11 +13,12 @@ Item {
     required property point origin
     required property bool target_mode
 
-    readonly property point at: Screenshot.cursor_point
+    property point at: Screenshot.cursor_point
+    property bool shown: Screenshot.phase === "select" && Screenshot.cursor_screen === root.screen_name
     readonly property int cx: Math.round(root.at.x)
     readonly property int cy: Math.round(root.at.y)
 
-    visible: Style.picker_skin === "nvimfloat" && Screenshot.phase === "select" && Screenshot.cursor_screen === root.screen_name && !root.target_mode
+    visible: Style.picker_skin === "nvimfloat" && root.shown && !root.target_mode
 
     Rectangle {
         x: 0
