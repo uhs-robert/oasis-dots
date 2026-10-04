@@ -31,8 +31,15 @@ Scope {
         root.pending = root.pending.concat([command]).slice(-8);
     }
 
+    // Null until the one-time probe for mpv and setpriv answers.
+    property var available: null
+    property int retry_ms: 1000
+    property int quick_fails: 0
+    property double started_ms: 0
+    readonly property int max_quick_fails: 6
+
     function sync() {
-        if (root.wanted && !proc.running) {
+        if (root.wanted && root.available === true && root.quick_fails < root.max_quick_fails && !proc.running) {
             proc.command = ["setpriv", "--pdeathsig", "TERM", "mpv", "--no-config", "--no-video", "--no-terminal", "--really-quiet", "--gapless-audio=yes", "--volume=" + root.mpv_volume, "--input-ipc-server=" + root.sock].concat(root.args);
             proc.running = true;
         } else if (!root.wanted && proc.running) {
@@ -40,7 +47,13 @@ Scope {
         }
     }
 
-    onWantedChanged: root.sync()
+    onWantedChanged: {
+        if (!root.wanted) {
+            root.quick_fails = 0;
+            root.retry_ms = 1000;
+        }
+        root.sync();
+    }
     onMpv_volumeChanged: root.send(["set_property", "volume", root.mpv_volume])
     Component.onCompleted: root.sync()
     Component.onDestruction: {
@@ -49,15 +62,41 @@ Scope {
     }
 
     Process {
+        id: probe
+        command: ["sh", "-c", "command -v mpv >/dev/null && command -v setpriv >/dev/null"]
+        running: true
+        onExited: code => {
+            root.available = code === 0;
+            if (code !== 0) console.warn("mpv audio: mpv or setpriv missing, staying silent");
+            root.sync();
+        }
+    }
+
+    Process {
         id: proc
+        onStarted: root.started_ms = Date.now()
         onRunningChanged: {
             if (proc.running) return;
             link.active = false;
             root.pending = [];
             Quickshell.execDetached(["rm", "-f", root.sock]);
         }
-        // A start with no audio sink exits at once; try again while still wanted.
-        onExited: if (root.wanted) retry.restart()
+        onExited: {
+            if (!root.wanted) return;
+            if (Date.now() - root.started_ms < 10000) {
+                root.quick_fails++;
+                if (root.quick_fails >= root.max_quick_fails) {
+                    console.warn("mpv audio: exits quickly, giving up");
+                    return;
+                }
+                retry.interval = root.retry_ms;
+                root.retry_ms = Math.min(root.retry_ms * 2, 60000);
+            } else {
+                root.quick_fails = 0;
+                root.retry_ms = 1000;
+            }
+            retry.restart();
+        }
     }
 
     Timer {

@@ -15,6 +15,7 @@ Item {
     readonly property real music_volume: audio.music_setting * 0.8
     readonly property real fx_volume: 0.4
     property real title_level: 0
+    property bool fx_used: false
     property real fairy_level: 0
     readonly property string data_dir: "file://" + (Quickshell.env("XDG_DATA_HOME") || (Quickshell.env("HOME") + "/.local/share")) + "/quickshell/ocarina-audio"
     readonly property bool local_has_files: local_listing.count > 0
@@ -32,7 +33,9 @@ Item {
 
     function play(name) {
         const url = audio.file(name + ".wav");
-        if (url !== "") fx.queue(["loadfile", url, "replace"]);
+        if (url === "") return;
+        fx.queue(["loadfile", url, "replace"]);
+        audio.fx_used = true;
     }
 
     function track_args(name) {
@@ -42,6 +45,7 @@ Item {
 
     // `to` is set here, not bound: a binding on track may not have updated yet when this handler runs.
     onTrackChanged: {
+        if (audio.track !== "") audio.fx_used = true;
         title_fade.to = audio.track === "title" ? 1 : 0;
         title_fade.restart();
         fairy_fade.to = audio.track === "fairy" ? 1 : 0;
@@ -90,7 +94,7 @@ Item {
 
     MpvProcess {
         id: fx
-        wanted: true
+        wanted: audio.fx_used
         args: ["--idle=yes"]
         volume: audio.fx_volume
     }
