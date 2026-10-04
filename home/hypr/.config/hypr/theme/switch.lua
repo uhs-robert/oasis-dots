@@ -8,7 +8,6 @@ local HOME = os.getenv("HOME")
 local COLORS_DIR = HOME .. "/.config/hypr/theme/colors"
 local STATE_DIR = HOME .. "/.local/state/hypr"
 local STATE_FILE = STATE_DIR .. "/theme"
-local LEGACY_FILE = HOME .. "/.config/hypr/theme/.current_theme"
 local SET = arg[1] == "--set" and arg[2] or nil
 local DMENU = (not SET and arg[1]) or "rofi -name rofiDmenu -i -dmenu"
 
@@ -45,17 +44,6 @@ local function save(name)
   local f = assert(io.open(STATE_FILE, "w"))
   f:write(name)
   f:close()
-
-  -- Quickshell still watches the legacy file; keep it in sync only where it already exists.
-  local legacy = io.open(LEGACY_FILE, "r")
-  if legacy then
-    legacy:close()
-    local lf = io.open(LEGACY_FILE, "w")
-    if lf then
-      lf:write(name)
-      lf:close()
-    end
-  end
 end
 
 --- Reloads Hyprland.
