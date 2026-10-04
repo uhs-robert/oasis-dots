@@ -358,7 +358,9 @@ PanelWindow {
     function clean_title(title, short_class) {
         let t = title || "";
         if (short_class.toLowerCase() === "firefox") t = t.replace(/^XXX\s*/, "");
-        return t.replace(/\s+[—-]\s+(Mozilla Firefox|Betterbird|Slack|qutebrowser)$/, "");
+        const m = /\s+[—-]\s+([^—-]+)$/.exec(t);
+        const app = short_class.toLowerCase();
+        return m && app !== "" && m[1].toLowerCase().includes(app) ? t.slice(0, m.index) : t;
     }
 
     // Every window, most recent first, minus the carried ones and, in share mode, the unshareable ones.
