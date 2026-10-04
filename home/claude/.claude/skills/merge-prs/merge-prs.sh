@@ -76,14 +76,17 @@ fetch() {
   git fetch -q --prune origin || die "git fetch origin failed"
 }
 
-remote_sha() {
-  git rev-parse --verify -q "refs/remotes/origin/$1" || die "origin/$1 not found"
+list_children() {
+  gh pr list --limit 1000 --base "$1" --state open --json number,headRefName,headRefOid,isCrossRepository \
+    --jq '.[] | [.number, .headRefName, .headRefOid, .isCrossRepository] | @tsv' || die "cannot list PRs based on $1"
 }
 
+# A local branch is safe to drop when merging it into the PR head changes nothing.
 clean_local() {
   local pr=$1 head=$2 head_oid=$3 wt
   git worktree prune
-  if git show-ref --verify -q "refs/heads/$head" && ! git merge-base --is-ancestor "refs/heads/$head" "$head_oid"; then
+  if git show-ref --verify -q "refs/heads/$head" &&
+    [[ $(git merge-tree --write-tree "$head_oid" "refs/heads/$head" 2>/dev/null) != "$(git rev-parse "$head_oid^{tree}")" ]]; then
     echo "kept $head: local commits not in PR #$pr"
     return
   fi
@@ -108,50 +111,59 @@ clean_local() {
 }
 
 rebase_child() {
-  local child=$1 child_head=$2 old_child=$3 base=$4 old_parent=$5
+  local child=$1 child_head=$2 old_child=$3 onto=$4 label=$5 upstream=$6 grandchildren new_child line
+  local number gc_head gc_oid gc_cross
+  git cat-file -e "$old_child^{commit}" 2>/dev/null || die "$child head $old_child is not on origin/$child_head"
+  grandchildren=$(list_children "$child_head") || exit 1
   tmp_root=$(mktemp -d "${TMPDIR:-/tmp}/merge-prs.XXXXXX")
   git worktree add -q --detach "$tmp_root/wt" "$old_child" || die "cannot create a worktree for $child_head"
-  if ! git -C "$tmp_root/wt" rebase -q --onto "origin/$base" "$old_parent" >/dev/null 2>&1; then
+  if ! git -C "$tmp_root/wt" rebase -q --onto "$onto" "$upstream" >/dev/null 2>&1; then
     git -C "$tmp_root/wt" rebase --abort || true
     remove_tmp
-    die "$child ($child_head) conflicts rebasing onto $base; rebase it by hand, then rerun for the remaining PRs:
-  git fetch origin && git rebase --onto origin/$base $old_parent origin/$child_head
+    die "$child ($child_head) conflicts rebasing onto $label; rebase it and any PRs stacked on it by hand, then rerun for the remaining PRs:
+  git fetch origin && git rebase --onto $onto $upstream $old_child
   git push --force-with-lease=$child_head:$old_child origin HEAD:$child_head"
   fi
+  new_child=$(git -C "$tmp_root/wt" rev-parse HEAD)
   git -C "$tmp_root/wt" push -q --force-with-lease="$child_head:$old_child" origin "HEAD:refs/heads/$child_head" ||
     die "cannot push the rebased $child_head"
   remove_tmp
-  echo "$child rebased onto $base"
+  echo "$child rebased onto $label"
   if git show-ref --verify -q "refs/heads/$child_head"; then
     echo "local branch $child_head is now behind the rebased origin/$child_head"
   fi
+
+  local -a lines=()
+  [[ -z $grandchildren ]] || mapfile -t lines <<<"$grandchildren"
+  for line in "${lines[@]}"; do
+    IFS=$'\t' read -r number gc_head gc_oid gc_cross <<<"$line"
+    if [[ $gc_cross == true ]]; then
+      echo "child #$number is from a fork; rebase it onto $child_head by hand"
+    else
+      rebase_child "$number" "$gc_head" "$gc_oid" "$new_child" "$child_head" "$old_child"
+    fi
+  done
 }
 
 merge_pr() {
-  local pr=$1 info head base state cross head_oid children_info="" number child_head child_sha
-  local children=() child_heads=() child_shas=()
+  local pr=$1 info head base state cross head_oid children_info="" line number child_head child_oid child_cross
+  local -a lines=()
   info=$(gh pr view "$pr" --json headRefName,headRefOid,baseRefName,state,isCrossRepository \
     --jq '[.headRefName, .headRefOid, .baseRefName, .state, .isCrossRepository] | @tsv') || die "cannot read PR $pr"
   IFS=$'\t' read -r head head_oid base state cross <<<"$info"
   [[ $state == OPEN ]] || die "PR $pr is $state"
   if [[ $cross != true ]]; then
-    children_info=$(gh pr list --limit 1000 --base "$head" --state open --json number,headRefName \
-      --jq '.[] | "\(.number)\t\(.headRefName)"') || die "cannot list PRs based on $head"
+    children_info=$(list_children "$head") || exit 1
   fi
+  [[ -z $children_info ]] || mapfile -t lines <<<"$children_info"
 
   fetch
   if [[ $cross != true ]]; then
     git cat-file -e "$head_oid^{commit}" 2>/dev/null || die "PR $pr head $head_oid is not on origin/$head"
   fi
-  while IFS=$'\t' read -r number child_head; do
-    [[ -n $number ]] || continue
-    children+=("$number")
-    child_heads+=("$child_head")
-    child_sha=$(remote_sha "$child_head")
-    child_shas+=("$child_sha")
-  done <<<"$children_info"
 
-  for number in "${children[@]}"; do
+  for line in "${lines[@]}"; do
+    IFS=$'\t' read -r number _ <<<"$line"
     gh pr edit "$number" --base "$base" >/dev/null || die "cannot retarget $number to $base"
     echo "$number retargeted to $base"
   done
@@ -170,8 +182,13 @@ merge_pr() {
     clean_local "$pr" "$head" "$head_oid"
   fi
   [[ $method != merge ]] || return 0
-  for i in "${!children[@]}"; do
-    rebase_child "${children[i]}" "${child_heads[i]}" "${child_shas[i]}" "$base" "$head_oid"
+  for line in "${lines[@]}"; do
+    IFS=$'\t' read -r number child_head child_oid child_cross <<<"$line"
+    if [[ $child_cross == true ]]; then
+      echo "child #$number is from a fork; rebase it onto $base by hand"
+    else
+      rebase_child "$number" "$child_head" "$child_oid" "origin/$base" "$base" "$head_oid"
+    fi
   done
 }
 

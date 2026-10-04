@@ -12,7 +12,7 @@ Only after the owner has approved the merge. Run from anywhere inside the repo, 
 ```
 
 - The method defaults to the first of rebase, squash, merge the repo allows; `--method` forces one.
-- PRs based on a merged head are retargeted to its base before the merge, and after a rebase or squash merge they are rebased onto that base and force-pushed with a lease.
+- PRs based on a merged head are retargeted to its base before the merge, and after a rebase or squash merge they are rebased onto that base and force-pushed with a lease, along with any PRs stacked on them. Fork children are retargeted but left for a manual rebase.
 - Clean worktrees of merged branches are removed and the branches deleted; dirty ones, and branches with commits the PR lacks, are kept with a warning. Fork PRs skip local cleanup. `--keep-branch` keeps the remote branch and skips local cleanup.
 - The main checkout is pulled only when it is on the default branch with no tracked changes.
 
