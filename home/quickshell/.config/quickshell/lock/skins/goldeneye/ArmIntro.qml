@@ -16,7 +16,7 @@ Item {
     property color panel_top: "transparent"
     property color panel_bottom: "transparent"
     property bool ready: false
-    readonly property real res: 0.5
+    property real res: 0.5
     readonly property real dref: 1400
     readonly property real u: Math.max(0, Math.min(31, root.t / 0.88 * 31))
     readonly property var pose: root.pose_at(root.u)
@@ -25,7 +25,7 @@ Item {
         property real span_x: root.width / 1020
         property real span_y: root.height / 720
         property real reach: root.reach
-        property real clip: Math.max(0, Math.min(1, root.u - 29.5))
+        property real crop: Math.max(0, Math.min(1, root.u - 29.5))
         fragmentShader: Qt.resolvedUrl("arm.frag.qsb")
     }
 

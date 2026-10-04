@@ -208,6 +208,7 @@ Item {
         motion_anim.stop();
         root.intro_busy = false;
         root.intro_t = 1;
+        root.sfx("lock_close");
     }
 
     function frames_ready() {
@@ -468,7 +469,7 @@ Item {
     // The desktop as it was when the lock engaged, behind the arm until the watch fills the screen.
     Image {
         anchors.fill: parent
-        source: root.backdrop_file !== "" && (root.intro_t < 1 || root.frames_on) ? root.backdrop_file : ""
+        source: root.backdrop_file !== "" && (root.intro_t < 1 || root.frames_on || root.arm_on) ? root.backdrop_file : ""
         cache: false
         asynchronous: true
         fillMode: Image.Stretch
@@ -557,6 +558,7 @@ Item {
             onStatusChanged: if (arm_loader.status === Loader.Error) Qt.callLater(root.drop_arm)
             onLoaded: {
                 arm_loader.item.t = Qt.binding(() => root.intro_t);
+                arm_loader.item.res = Qt.binding(() => Math.min(1, 0.5 * stage.k));
                 arm_loader.item.reach = Qt.binding(() => 1 - root.ease(0.55, 0.78, root.intro_t));
                 arm_loader.item.now = Qt.binding(() => root.now);
                 arm_loader.item.panel_outline = root.panel_outline;
