@@ -81,7 +81,7 @@ Four lock screens are modelled on games, and the shell can use those games' own 
 
 The source is the last argument and is required, for example `scripts/mgs2-audio ~/Music/mgs2`. Run a script with `--help` for the file names it expects.
 
-Until you import, a lock screen simply has no game music or effects. Every importer needs `ffmpeg` and `python3` with `numpy`. All but `ff7-audio` also need `ffprobe` and `jq`, and `goldeneye-audio`, `mgs2-audio` and `ocarina-audio` need `pipx` to find loop points unless you pass them. Playing the result needs `mpv`. On Arch: `pacman -S ffmpeg jq python-numpy python-pipx mpv`. The GoldenEye intro frames come from `scripts/goldeneye-frames`, which also needs `yt-dlp` and `python-pillow`, and downloads about an hour of video (roughly 1 GB) unless you give it one.
+Until you import, a lock screen simply has no game music or effects. Every importer needs `ffmpeg` and `python3` with `numpy`. All but `ff7-audio` also need `ffprobe` and `jq`, and `goldeneye-audio` and `ocarina-audio` need `pipx` to find loop points unless you pass them. Playing the result needs `mpv`. On Arch: `pacman -S ffmpeg jq python-numpy python-pipx mpv`. The GoldenEye intro frames come from `scripts/goldeneye-frames`, which also needs `yt-dlp` and `python-pillow`, and downloads about an hour of video (roughly 1 GB) unless you give it one.
 
 Once imported, FFVII, MGS2 and Ocarina also appear in the Effects pack list, so their menu sounds can be used for the whole shell. An imported pack is used as it is: files in `~/.local/share/quickshell/sounds/` do not override it. Where an imported pack has no file for a sound, the current style's own is used.
 
