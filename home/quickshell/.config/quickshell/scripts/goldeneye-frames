@@ -19,7 +19,7 @@ def require(tools, modules):
         sys.exit(f"{os.path.basename(sys.argv[0])}: missing " + ", ".join(missing))
 
 
-require([("ffmpeg", "ffmpeg")] + ([] if len(sys.argv) > 1 else [("yt-dlp", "yt-dlp")]), [("numpy", "python-numpy"), ("PIL", "python-pillow")])
+require([("ffmpeg", "ffmpeg")], [("numpy", "python-numpy"), ("PIL", "python-pillow")])
 
 import numpy as np
 from PIL import Image, ImageDraw
@@ -45,6 +45,7 @@ def fetch(video):
     cache.mkdir(parents=True, exist_ok=True)
     path = cache / "ref.mp4"
     if not path.exists():
+        require([("yt-dlp", "yt-dlp")], [])
         print("goldeneye-frames: downloading an hour of 720p video, roughly 1 GB, to " + str(path), file=sys.stderr)
         subprocess.run(["yt-dlp", "-f", "bestvideo[height<=720]", "-o", str(path), URL], check=True)
     return str(path)
