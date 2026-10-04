@@ -60,6 +60,9 @@ Singleton {
     readonly property var zoom_levels: [2, 4, 8, 16]
     property int zoom_index: 1
     readonly property int zoom: root.zoom_levels[root.zoom_index]
+    readonly property var lens_sizes: [128, 176, 240, 320, 416]
+    property int lens_index: 1
+    readonly property int lens_size: root.lens_sizes[root.lens_index]
     // The selector's cursor, moved by the mouse and by hjkl; keys_moved draws it while the pointer rests.
     property string cursor_screen: ""
     property point cursor_point: Qt.point(0, 0)
@@ -452,6 +455,10 @@ Singleton {
 
     function step_zoom(delta) {
         root.zoom_index = Math.max(0, Math.min(root.zoom_levels.length - 1, root.zoom_index + delta));
+    }
+
+    function step_lens(delta) {
+        root.lens_index = Math.max(0, Math.min(root.lens_sizes.length - 1, root.lens_index + delta));
     }
 
     // Global logical geometry in slurp's "x,y wxh" form.
