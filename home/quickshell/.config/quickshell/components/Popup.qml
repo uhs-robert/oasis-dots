@@ -218,17 +218,15 @@ PanelWindow {
         } else if (event.key === Qt.Key_Q) {
             ThemeAudio.play("cancel");
             Popups.close();
-        } else if (tabs.length > 0 && event.key === Qt.Key_BracketLeft) {
-            step_tab(-1);
-            root.play_if_moved(before);
-        } else if (tabs.length > 0 && event.key === Qt.Key_BracketRight) {
-            step_tab(1);
+        } else if (event.key === Qt.Key_BracketLeft || event.key === Qt.Key_BracketRight) {
+            const step = event.key === Qt.Key_BracketLeft ? -1 : 1;
+            if (sub_views.length > 0) step_sub(step); else step_tab(step);
             root.play_if_moved(before);
         } else if (event.key >= Qt.Key_1 && event.key < Qt.Key_1 + Math.min(9, tabs.length)) {
             set_tab(event.key - Qt.Key_1);
             root.play_if_moved(before);
-        } else if ((event.key === Qt.Key_Tab || event.key === Qt.Key_Backtab) && (tabs.length > 0 || sub_views.length > 0)) {
-            step_sub(back ? -1 : 1);
+        } else if (event.key === Qt.Key_Tab || event.key === Qt.Key_Backtab) {
+            if (tabs.length > 0) step_tab(back ? -1 : 1); else step_sub(back ? -1 : 1);
             root.play_if_moved(before);
         } else if (line_ends_enabled && (event.key === Qt.Key_0 || event.text === "$")) {
             if (event.key === Qt.Key_0) line_start(); else line_end();
