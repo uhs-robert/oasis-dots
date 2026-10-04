@@ -81,8 +81,12 @@ remote_sha() {
 }
 
 clean_local() {
-  local head=$1 wt
+  local pr=$1 head=$2 head_oid=$3 wt
   git worktree prune
+  if git show-ref --verify -q "refs/heads/$head" && ! git merge-base --is-ancestor "refs/heads/$head" "$head_oid"; then
+    echo "kept $head: local commits not in PR #$pr"
+    return
+  fi
   wt=$(git worktree list --porcelain | awk -v line="branch refs/heads/$head" '/^worktree /{p=substr($0, 10)} $0 == line {print p; exit}')
   if [[ $wt == "$main_dir" ]]; then
     echo "kept branch $head: checked out in the main checkout $wt"
@@ -124,17 +128,21 @@ rebase_child() {
 }
 
 merge_pr() {
-  local pr=$1 info head base state children_info old_parent number child_head child_sha
+  local pr=$1 info head base state cross head_oid children_info="" number child_head child_sha
   local children=() child_heads=() child_shas=()
-  info=$(gh pr view "$pr" --json headRefName,baseRefName,state --jq '[.headRefName, .baseRefName, .state] | @tsv') ||
-    die "cannot read PR $pr"
-  IFS=$'\t' read -r head base state <<<"$info"
+  info=$(gh pr view "$pr" --json headRefName,headRefOid,baseRefName,state,isCrossRepository \
+    --jq '[.headRefName, .headRefOid, .baseRefName, .state, .isCrossRepository] | @tsv') || die "cannot read PR $pr"
+  IFS=$'\t' read -r head head_oid base state cross <<<"$info"
   [[ $state == OPEN ]] || die "PR $pr is $state"
-  children_info=$(gh pr list --limit 1000 --base "$head" --state open --json number,headRefName \
-    --jq '.[] | "\(.number)\t\(.headRefName)"') || die "cannot list PRs based on $head"
+  if [[ $cross != true ]]; then
+    children_info=$(gh pr list --limit 1000 --base "$head" --state open --json number,headRefName \
+      --jq '.[] | "\(.number)\t\(.headRefName)"') || die "cannot list PRs based on $head"
+  fi
 
   fetch
-  old_parent=$(remote_sha "$head")
+  if [[ $cross != true ]]; then
+    git cat-file -e "$head_oid^{commit}" 2>/dev/null || die "PR $pr head $head_oid is not on origin/$head"
+  fi
   while IFS=$'\t' read -r number child_head; do
     [[ -n $number ]] || continue
     children+=("$number")
@@ -148,7 +156,7 @@ merge_pr() {
     echo "$number retargeted to $base"
   done
 
-  local merge_args=("--$method" --repo "$slug")
+  local merge_args=("--$method" --repo "$slug" --match-head-commit "$head_oid")
   $keep_branch || merge_args+=(--delete-branch)
   gh pr merge "$pr" "${merge_args[@]}" >/dev/null || die "merge of $pr failed"
   state=$(gh pr view "$pr" --json state --jq .state) || die "cannot read the state of $pr"
@@ -156,10 +164,14 @@ merge_pr() {
   echo "$pr merged ($method)"
 
   fetch
-  $keep_branch || clean_local "$head"
+  if [[ $cross == true ]]; then
+    echo "PR #$pr is from a fork; skipped local cleanup"
+  elif ! $keep_branch; then
+    clean_local "$pr" "$head" "$head_oid"
+  fi
   [[ $method != merge ]] || return 0
   for i in "${!children[@]}"; do
-    rebase_child "${children[i]}" "${child_heads[i]}" "${child_shas[i]}" "$base" "$old_parent"
+    rebase_child "${children[i]}" "${child_heads[i]}" "${child_shas[i]}" "$base" "$head_oid"
   done
 }
 
