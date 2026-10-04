@@ -352,7 +352,7 @@ Popup {
                     Layout.fillWidth: true
 
                     Text {
-                        text: WeatherState.has_data ? root.fmt_temp(WeatherState.current.temp) : "--°"
+                        text: WeatherState.has_data ? root.fmt_temp(WeatherState.current.temp) : WeatherState.failed ? "n/a" : "--°"
                         color: WeatherState.has_data ? WeatherState.temp_color(WeatherState.current.temp) : Style.text_dim
                         font.family: Style.number_font
                         font.pixelSize: Style.fs(12)

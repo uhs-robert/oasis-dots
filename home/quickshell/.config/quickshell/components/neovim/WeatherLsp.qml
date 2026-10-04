@@ -86,7 +86,7 @@ ColumnLayout {
 
                 Text {
                     id: temp_text
-                    text: WeatherState.has_data ? root.fmt_temp(WeatherState.current.temp) : "--°"
+                    text: WeatherState.has_data ? root.fmt_temp(WeatherState.current.temp) : WeatherState.failed ? "n/a" : "--°"
                     color: Style.text_strong
                     font.family: Style.number_font
                     font.pixelSize: Style.fs(15)
