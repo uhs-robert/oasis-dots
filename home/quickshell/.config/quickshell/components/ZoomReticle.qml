@@ -174,7 +174,7 @@ PanelWindow {
         anchors.fill: parent
         z: -1
         hoverEnabled: true
-        cursorShape: Zoom.full ? Qt.ArrowCursor : Qt.BlankCursor
+        cursorShape: Qt.BlankCursor
         onWheel: wheel => Zoom.step(wheel.angleDelta.y > 0 ? 1 : wheel.angleDelta.y < 0 ? -1 : 0)
         onPositionChanged: mouse => {
             if (mouse.x === root.last_mouse.x && mouse.y === root.last_mouse.y) return;
