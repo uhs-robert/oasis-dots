@@ -260,8 +260,8 @@ Item {
         const n = Math.round(v);
         return (n < 0 ? "-" : "") + String(Math.abs(n)).padStart(4, "0");
     }
-    width: root.skinned ? root.skin.implicitWidth : root.duckhunt ? root.dh_width : root.goldeneye ? root.ge_rim : root.scopeitem ? root.si_pad * 2 + root.si_body_w : root.pokemon ? root.pk_width : root.view + root.pad * 2 + (root.jrpg ? root.jrpg_drop : 0)
-    height: root.skinned ? root.skin.implicitHeight : root.duckhunt ? root.dh_lens_size + root.dh_gap + root.dh_hud_h + root.dh_gap + root.dh_score_h : root.goldeneye ? root.ge_rim + root.ge_strip_gap + root.ge_strip_h : root.scope ? root.view + root.pad * 2 + root.header_h + root.foot_h : root.jrpg ? root.pad + root.header_h + root.view + root.jrpg_gap + root.jrpg_stats_h + root.pad + root.jrpg_drop : root.scopeitem ? root.si_pad + root.si_ruler_h + root.view + root.si_foot_gap + root.si_foot_h + root.si_pad : root.pokemon ? root.pk_pad * 2 + root.pk_header_h + root.pk_lens_gap * 2 + root.view + root.pk_stats_h + root.pk_divider_gap * 2 + root.pk_divider_h + root.pk_msg_h : root.view + root.pad * 2 + coords.implicitHeight + 4 + (root.pixel_mode ? swatch_row.height + 4 : 0)
+    width: root.skinned ? root.skin.implicitWidth : root.goldeneye ? root.ge_rim : root.scopeitem ? root.si_pad * 2 + root.si_body_w : root.pokemon ? root.pk_width : root.view + root.pad * 2 + (root.jrpg ? root.jrpg_drop : 0)
+    height: root.skinned ? root.skin.implicitHeight : root.goldeneye ? root.ge_rim + root.ge_strip_gap + root.ge_strip_h : root.scope ? root.view + root.pad * 2 + root.header_h + root.foot_h : root.jrpg ? root.pad + root.header_h + root.view + root.jrpg_gap + root.jrpg_stats_h + root.pad + root.jrpg_drop : root.scopeitem ? root.si_pad + root.si_ruler_h + root.view + root.si_foot_gap + root.si_foot_h + root.si_pad : root.pokemon ? root.pk_pad * 2 + root.pk_header_h + root.pk_lens_gap * 2 + root.view + root.pk_stats_h + root.pk_divider_gap * 2 + root.pk_divider_h + root.pk_msg_h : root.view + root.pad * 2 + coords.implicitHeight + 4 + (root.pixel_mode ? swatch_row.height + 4 : 0)
     x: root.at.x + root.gap + root.width <= root.area_width ? root.at.x + root.gap : root.at.x - root.flip_gap - root.width
     y: root.at.y + root.gap + root.height <= root.area_height ? root.at.y + root.gap : root.at.y - root.gap - root.height
 
@@ -292,18 +292,6 @@ Item {
     }
 
     Rectangle {
-        visible: root.duckhunt
-        x: root.dh_lens_x
-        y: 0
-        width: root.dh_lens_size
-        height: root.dh_lens_size
-        radius: 6
-        color: Theme.bg_shadow
-        border.width: 3
-        border.color: Theme.green
-    }
-
-    Rectangle {
         visible: root.pokemon
         anchors.fill: parent
         color: Style.shade_0
@@ -325,31 +313,13 @@ Item {
     LoupeLens {
         id: lens_content
         loupe: root
-        x: root.duckhunt ? root.dh_lens_x + root.dh_pad : root.goldeneye ? (root.ge_rim - root.view) / 2 : root.scopeitem ? root.si_pad : root.pokemon ? (root.pk_width - root.view) / 2 : root.pad
-        y: root.duckhunt ? root.dh_pad : root.goldeneye ? (root.ge_rim - root.view) / 2 : root.scopeitem ? root.si_pad + root.si_ruler_h : root.pokemon ? root.pk_pad + root.pk_header_h + root.pk_lens_gap : root.pad + root.header_h
+        x: root.goldeneye ? (root.ge_rim - root.view) / 2 : root.scopeitem ? root.si_pad : root.pokemon ? (root.pk_width - root.view) / 2 : root.pad
+        y: root.goldeneye ? (root.ge_rim - root.view) / 2 : root.scopeitem ? root.si_pad + root.si_ruler_h : root.pokemon ? root.pk_pad + root.pk_header_h + root.pk_lens_gap : root.pad + root.header_h
         visible: !root.skinned && !root.goldeneye
         layer.enabled: root.goldeneye && !root.skinned
         grid_color: root.scanvisor ? Qt.alpha(Theme.cyan, 0.14) : Qt.alpha(Theme.bg_shadow, 0.35)
-        center_color: root.duckhunt ? Theme.fg_strong : root.scope ? Style.picker_hud : root.pokemon ? Style.shade_1 : Style.caret_color
+        center_color: root.scope ? Style.picker_hud : root.pokemon ? Style.shade_1 : Style.caret_color
 
-    }
-
-    Rectangle {
-        visible: root.duckhunt
-        x: lens_content.x
-        y: lens_content.y + lens_content.height - 16
-        width: lens_content.width
-        height: 16
-        gradient: Gradient {
-            GradientStop {
-                position: 0
-                color: "transparent"
-            }
-            GradientStop {
-                position: 1
-                color: Qt.alpha(Theme.green, 0.35)
-            }
-        }
     }
 
     Rectangle {
@@ -384,185 +354,6 @@ Item {
         color: Style.text_fg
         font.family: Style.mono_font
         font.pixelSize: Style.fs(-4)
-    }
-
-    Item {
-        id: dh_hud_row
-        visible: root.duckhunt
-        x: 0
-        y: root.dh_lens_size + root.dh_gap
-        width: root.dh_width
-        height: root.dh_hud_h
-
-        Rectangle {
-            id: dh_zoom_box
-            x: 0
-            y: 0
-            height: parent.height
-            width: dh_zoom_row.implicitWidth + 16
-            radius: 6
-            color: Theme.bg_shadow
-            border.width: 3
-            border.color: Theme.green
-
-            Row {
-                id: dh_zoom_row
-                anchors.centerIn: parent
-
-                Text {
-                    text: "R="
-                    color: Theme.bright_green
-                    font.family: Style.font_family
-                    font.pixelSize: 10
-                }
-
-                Text {
-                    text: String(root.zoom)
-                    color: Theme.fg_strong
-                    font.family: Style.font_family
-                    font.pixelSize: 10
-                }
-            }
-        }
-
-        Rectangle {
-            id: dh_shot_box
-            x: dh_zoom_box.x + dh_zoom_box.width + 8
-            y: 0
-            height: parent.height
-            width: dh_shot_col.implicitWidth + 16
-            radius: 6
-            color: Theme.bg_shadow
-            border.width: 3
-            border.color: Theme.green
-
-            Column {
-                id: dh_shot_col
-                anchors.centerIn: parent
-                spacing: 2
-
-                Row {
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    spacing: 3
-
-                    Repeater {
-                        model: 3
-
-                        Rectangle {
-                            width: 5
-                            height: 11
-                            topLeftRadius: 2
-                            topRightRadius: 2
-                            color: Theme.bright_yellow
-                        }
-                    }
-                }
-
-                Text {
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    text: "SHOT"
-                    color: Theme.bright_green
-                    font.family: Style.font_family
-                    font.pixelSize: 10
-                }
-            }
-        }
-
-        Rectangle {
-            id: dh_hit_box
-            x: dh_shot_box.x + dh_shot_box.width + 8
-            y: 0
-            width: Math.max(0, parent.width - dh_hit_box.x)
-            height: parent.height
-            radius: 6
-            color: Theme.bg_shadow
-            border.width: 3
-            border.color: Theme.green
-            clip: true
-
-            Row {
-                anchors.left: parent.left
-                anchors.leftMargin: 8
-                anchors.verticalCenter: parent.verticalCenter
-                spacing: 2
-
-                Text {
-                    text: "HIT"
-                    color: Theme.bright_green
-                    font.family: Style.font_family
-                    font.pixelSize: 10
-                }
-
-                Repeater {
-                    model: dh_hud_row.visible ? 10 : 0
-
-                    DuckIcon {
-                        id: hit_duck
-                        required property int index
-                        fill: Screenshot.recent_picks[hit_duck.index] ? Screenshot.recent_picks[hit_duck.index] : Theme.fg_muted
-                    }
-                }
-            }
-        }
-    }
-
-    Rectangle {
-        id: dh_score_box
-        visible: root.duckhunt
-        y: root.dh_lens_size + root.dh_gap * 2 + root.dh_hud_h
-        x: root.dh_width - dh_score_box.width
-        width: dh_score_col.implicitWidth + 16
-        height: root.dh_score_h
-        radius: 6
-        color: Theme.bg_shadow
-        border.width: 3
-        border.color: Theme.green
-
-        Column {
-            id: dh_score_col
-            anchors.centerIn: parent
-            spacing: 2
-
-            Row {
-                anchors.horizontalCenter: parent.horizontalCenter
-                visible: root.pixel_mode
-                spacing: 4
-
-                Rectangle {
-                    width: 10
-                    height: 10
-                    anchors.verticalCenter: parent.verticalCenter
-                    color: Screenshot.pixel_hex !== "" ? Screenshot.pixel_hex : Theme.bg_shadow
-                    border.width: 1
-                    border.color: Theme.fg_strong
-                }
-
-                Text {
-                    anchors.verticalCenter: parent.verticalCenter
-                    text: Screenshot.pixel_hex !== "" ? Screenshot.pixel_hex.substring(1) : "------"
-                    color: Theme.fg_strong
-                    font.family: Style.font_family
-                    font.pixelSize: 10
-                }
-            }
-
-            Text {
-                anchors.horizontalCenter: parent.horizontalCenter
-                visible: !root.pixel_mode
-                text: root.has_sel ? Math.round(root.sel.width) + "x" + Math.round(root.sel.height) : String(Math.round(root.screen_x + root.at.x)).padStart(4, "0") + String(Math.round(root.screen_y + root.at.y)).padStart(4, "0")
-                color: Theme.fg_strong
-                font.family: Style.font_family
-                font.pixelSize: 10
-            }
-
-            Text {
-                anchors.horizontalCenter: parent.horizontalCenter
-                text: "SCORE"
-                color: Theme.bright_green
-                font.family: Style.font_family
-                font.pixelSize: 10
-            }
-        }
     }
 
     Column {
