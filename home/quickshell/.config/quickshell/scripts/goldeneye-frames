@@ -2,6 +2,7 @@
 # Builds the GoldenEye lock skin's intro frames and bezel plate from a capture of the pause watch (needs ffmpeg, PIL and numpy).
 # Usage: goldeneye-frames [VIDEO]   (default: downloads the whole reference capture, an hour long, with yt-dlp into ~/.cache/goldeneye-frames)
 # Writes lock/skins/goldeneye/frames/: arm_NN.jpg (matted onto black) with mask_NN.png, plate.jpg and count.txt (gitignored, game footage).
+import importlib.util
 import os
 import shutil
 import subprocess
@@ -9,6 +10,16 @@ import sys
 import tempfile
 from collections import deque
 from pathlib import Path
+
+
+def require(tools, modules):
+    missing = [f"{name} (pacman -S {pkg})" for name, pkg in tools if not shutil.which(name)]
+    missing += [f"python module {name} (pacman -S {pkg})" for name, pkg in modules if importlib.util.find_spec(name) is None]
+    if missing:
+        sys.exit(f"{os.path.basename(sys.argv[0])}: missing " + ", ".join(missing))
+
+
+require([("ffmpeg", "ffmpeg")] + ([] if len(sys.argv) > 1 else [("yt-dlp", "yt-dlp")]), [("numpy", "python-numpy"), ("PIL", "python-pillow")])
 
 import numpy as np
 from PIL import Image, ImageDraw
@@ -34,6 +45,7 @@ def fetch(video):
     cache.mkdir(parents=True, exist_ok=True)
     path = cache / "ref.mp4"
     if not path.exists():
+        print("goldeneye-frames: downloading an hour of 720p video, roughly 1 GB, to " + str(path), file=sys.stderr)
         subprocess.run(["yt-dlp", "-f", "bestvideo[height<=720]", "-o", str(path), URL], check=True)
     return str(path)
 
