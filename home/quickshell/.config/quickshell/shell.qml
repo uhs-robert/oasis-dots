@@ -17,7 +17,10 @@ import "./settings"
 ShellRoot {
     id: root
 
-    Component.onDestruction: Screenshot.set_capture_opaque(false)
+    Component.onDestruction: {
+        Screenshot.set_capture_opaque(false);
+        Screenshot.send_share("");
+    }
 
     BundledFonts {}
 
