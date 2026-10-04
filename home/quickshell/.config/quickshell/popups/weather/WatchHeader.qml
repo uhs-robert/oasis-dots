@@ -15,7 +15,7 @@ Item {
     readonly property bool has: WeatherState.has_data && !!root.cur
     readonly property int aqi: WeatherState.aq_has_data && WeatherState.aq_current ? WeatherState.aq_current.aqi : -1
     // Temperature fills its eight segments over 0-100 °F in either unit; humidity fills the blue ones.
-    readonly property real fahrenheit: !root.has ? 0 : WeatherState.metric ? root.cur.temp * 9 / 5 + 32 : root.cur.temp
+    readonly property real fahrenheit: !root.has ? 0 : WeatherState.temp_f(root.cur.temp)
     readonly property real health_level: Math.max(0, Math.min(1, root.fahrenheit / 100))
     readonly property real armour_level: root.has ? Math.max(0, Math.min(1, root.cur.humidity / 100)) : 0
     readonly property string digits: root.has ? String(Math.round(root.cur.temp)) : "--"

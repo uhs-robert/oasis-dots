@@ -66,9 +66,3 @@ function day_colors(dates) {
     if (dates.length <= colors.length) walk([]);
     return best;
 }
-
-const compass = ["N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE", "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW"];
-
-function direction(deg) {
-    return compass[Math.round(((deg % 360) + 360) % 360 / 22.5) % 16];
-}

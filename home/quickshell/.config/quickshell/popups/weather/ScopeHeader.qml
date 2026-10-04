@@ -22,19 +22,14 @@ ColumnLayout {
     readonly property var blip_hours: WeatherState.hours.slice(0, 12)
     readonly property int pop_max: root.blip_hours.reduce((m, h) => Math.max(m, h.pop), 0)
     readonly property bool is_open: Popups.open_name === "weather"
-    readonly property var compass: ["N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE", "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW"]
 
     readonly property var readouts: !root.has ? [] : [
-        { label: "WND", value: Math.round(root.cur.wind_speed) + " " + root.bearing(root.cur.wind_dir), color: root.vec },
+        { label: "WND", value: Math.round(root.cur.wind_speed) + " " + WeatherState.compass_label(root.cur.wind_dir), color: root.vec },
         { label: "HUM", value: root.cur.humidity + "%", color: root.readout },
         { label: "UV", value: root.cur.uv_index.toFixed(1), color: root.cur.uv_index >= 8 ? root.lock : root.readout },
         { label: "AQI", value: root.aqi >= 0 ? String(root.aqi) : "--", color: root.aqi > 150 ? root.lock : root.readout },
         { label: "PRECIP", value: root.pop_max + "%", color: root.readout }
     ]
-
-    function bearing(deg) {
-        return root.compass[Math.round((((deg % 360) + 360) % 360) / 22.5) % 16];
-    }
 
     onIs_openChanged: root.is_open ? sweep_anim.restart() : sweep_anim.stop()
     Component.onCompleted: if (root.is_open) sweep_anim.restart()
