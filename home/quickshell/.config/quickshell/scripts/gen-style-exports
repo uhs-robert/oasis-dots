@@ -1,0 +1,170 @@
+#!/usr/bin/env python3
+"""Writes Style.qml's token exports from the tok() lines in theme/StyleSchema.js; --check only compares."""
+
+import argparse
+import difflib
+import os
+import re
+import sys
+
+QS_DIR = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
+SCHEMA = os.path.join(QS_DIR, "theme", "StyleSchema.js")
+STYLE = os.path.join(QS_DIR, "theme", "Style.qml")
+TYPES = {"bool", "int", "real", "string", "color", "var"}
+BEGIN = "    // BEGIN generated"
+END = "    // END generated"
+
+
+class SchemaError(Exception):
+    pass
+
+
+def split_args(text, where):
+    """Splits text at top-level commas, keeping strings and brackets intact."""
+    args, depth, quote, start, i = [], 0, None, 0, 0
+    while i < len(text):
+        ch = text[i]
+        if quote:
+            if ch == "\\":
+                i += 1
+            elif ch == quote:
+                quote = None
+        elif ch in "\"'`":
+            quote = ch
+        elif ch in "([{":
+            depth += 1
+        elif ch in ")]}":
+            depth -= 1
+            if depth < 0:
+                raise SchemaError(f"{where}: unbalanced '{ch}'")
+        elif ch == "," and depth == 0:
+            args.append(text[start:i].strip())
+            start = i + 1
+        i += 1
+    if quote or depth:
+        raise SchemaError(f"{where}: unterminated string or bracket")
+    args.append(text[start:].strip())
+    return args
+
+
+def string_literal(text, where):
+    m = re.fullmatch(r'"((?:[^"\\]|\\.)*)"|\'((?:[^\'\\]|\\.)*)\'', text)
+    if not m:
+        raise SchemaError(f"{where}: expected a string literal, got {text!r}")
+    body = m.group(1) if m.group(1) is not None else m.group(2)
+    return re.sub(r"\\(.)", r"\1", body)
+
+
+def options(text, where):
+    if not (text.startswith("{") and text.endswith("}")):
+        raise SchemaError(f"{where}: options must be an object literal")
+    opts = {}
+    for part in split_args(text[1:-1], where):
+        m = re.fullmatch(r"(\w+):\s*(.+)", part, re.S)
+        if not m:
+            raise SchemaError(f"{where}: bad option {part!r}")
+        key, value = m.groups()
+        if key in opts:
+            raise SchemaError(f"{where}: duplicate option {key}")
+        if key in ("expr", "via"):
+            opts[key] = string_literal(value, where)
+        elif key == "export":
+            if value != "false":
+                raise SchemaError(f"{where}: export only takes false")
+            opts[key] = False
+        else:
+            raise SchemaError(f"{where}: unknown option {key}")
+    return opts
+
+
+def parse_schema(path):
+    lines = open(path, encoding="utf-8").read().split("\n")
+    try:
+        start = lines.index("var tokens = [")
+        end = lines.index("];", start)
+    except ValueError:
+        raise SchemaError(f"{path}: no 'var tokens = [' ... '];' block")
+    tokens, seen = [], set()
+    for n in range(start + 1, end):
+        where = f"{path}:{n + 1}"
+        line = lines[n].strip()
+        if not line or line.startswith("//"):
+            continue
+        m = re.fullmatch(r"tok\((.*)\),?", line)
+        if not m:
+            raise SchemaError(f"{where}: expected one tok(...) per line")
+        args = split_args(m.group(1), where)
+        if len(args) not in (4, 5):
+            raise SchemaError(f"{where}: tok takes 4 or 5 arguments, got {len(args)}")
+        name = string_literal(args[0], where)
+        kind = string_literal(args[1], where)
+        string_literal(args[3], where)
+        opts = options(args[4], where) if len(args) == 5 else {}
+        if not re.fullmatch(r"[a-z][a-z0-9_]*", name):
+            raise SchemaError(f"{where}: bad token name {name!r}")
+        if name in seen:
+            raise SchemaError(f"{where}: duplicate token {name}")
+        if kind not in TYPES:
+            raise SchemaError(f"{where}: unknown type {kind!r}")
+        if not args[2]:
+            raise SchemaError(f"{where}: missing default")
+        if "expr" in opts and "via" in opts:
+            raise SchemaError(f"{where}: expr and via are exclusive")
+        if opts.get("via", "bar") != "bar":
+            raise SchemaError(f"{where}: via only takes \"bar\"")
+        if opts.get("export", True) is False and ("expr" in opts or "via" in opts):
+            raise SchemaError(f"{where}: an internal token takes no expr or via")
+        if args[2] == "null" and opts.get("export", True) and "expr" not in opts:
+            raise SchemaError(f"{where}: an exported token without a default needs an expr")
+        seen.add(name)
+        tokens.append((name, kind, opts))
+    if not tokens:
+        raise SchemaError(f"{path}: no tokens")
+    return tokens
+
+
+def export_lines(tokens):
+    out = []
+    for name, kind, opts in tokens:
+        if opts.get("export", True) is False:
+            continue
+        expr = opts.get("expr") or f"root.{opts.get('via', 'active')}.{name}"
+        out.append(f"    readonly property {kind} {name}: {expr}")
+    return out
+
+
+def render(style_text, body):
+    lines = style_text.split("\n")
+    begins = [i for i, line in enumerate(lines) if line.startswith(BEGIN)]
+    ends = [i for i, line in enumerate(lines) if line == END]
+    if len(begins) != 1 or len(ends) != 1 or ends[0] < begins[0]:
+        raise SchemaError(f"{STYLE}: needs one '{BEGIN.strip()}' line and one '{END.strip()}' after it")
+    return "\n".join(lines[: begins[0] + 1] + body + lines[ends[0] :])
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--check", action="store_true", help="fail if Style.qml is out of date instead of writing it")
+    args = parser.parse_args()
+    try:
+        body = export_lines(parse_schema(SCHEMA))
+        current = open(STYLE, encoding="utf-8").read()
+        wanted = render(current, body)
+    except SchemaError as e:
+        print(f"gen-style-exports: {e}", file=sys.stderr)
+        return 1
+    if wanted == current:
+        return 0
+    if args.check:
+        diff = difflib.unified_diff(current.split("\n"), wanted.split("\n"), "Style.qml", "generated", lineterm="", n=0)
+        print("gen-style-exports: Style.qml is out of date with StyleSchema.js; run scripts/gen-style-exports", file=sys.stderr)
+        print("\n".join(list(diff)[:40]), file=sys.stderr)
+        return 1
+    with open(STYLE, "w", encoding="utf-8") as f:
+        f.write(wanted)
+    print(f"gen-style-exports: wrote {len(body)} exports to Style.qml")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
