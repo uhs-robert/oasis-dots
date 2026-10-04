@@ -6,9 +6,10 @@ import Quickshell.Wayland
 import "../theme"
 import "../services"
 import "Search.js" as Search
-import "../picker/Fuzzy.js" as Fuzzy
+import "popup/fuzzy_rows.js" as FuzzyRows
 import "neovim" as Neovim
 import "goldeneye" as Goldeneye
+import "popup"
 
 PanelWindow {
     id: root
@@ -91,36 +92,12 @@ PanelWindow {
     property bool search_opens_typing: true
     signal search_accept()
     readonly property bool search_shown: root.search_enabled && (root.search_starts_open ? root.search_typing : (root.search_typing || root.search_query !== ""))
-    readonly property var search_matches: root.search_shown ? (root.search_starts_open ? root.fuzzy_matches(root.search_rows, root.search_query) : Search.matches(root.search_rows, root.search_query)) : []
+    readonly property var search_matches: root.search_shown ? (root.search_starts_open ? FuzzyRows.fuzzy_matches(root.search_rows, root.search_query) : Search.matches(root.search_rows, root.search_query)) : []
 
-    function fuzzy_matches(rows, query) {
-        const terms = Fuzzy.terms_of(query);
-        if (terms.length === 0) return [];
-        const found = [];
-        for (let i = 0; i < rows.length; i++) if (Fuzzy.score_item(terms, { label: rows[i] })) found.push(i);
-        return found;
-    }
-
-    // Highest-scoring row, or -1 when nothing matches.
-    function fuzzy_best(rows, query) {
-        const terms = Fuzzy.terms_of(query);
-        if (terms.length === 0) return -1;
-        let best = -1;
-        let best_score = -Infinity;
-        for (let i = 0; i < rows.length; i++) {
-            const m = Fuzzy.score_item(terms, { label: rows[i] });
-            if (m && m.score > best_score) {
-                best_score = m.score;
-                best = i;
-            }
-        }
-        return best;
-    }
     // The base footer is hidden in some styles; it then overlays the content's bottom edge while searching.
     readonly property bool search_overlay: root.search_shown && !root.has_footer && root.footer_hint !== ""
 
     property var sub_memory: ({})
-    property double last_g_ms: 0
 
     onTabsChanged: if (current_tab >= tabs.length) current_tab = 0
     onCurrent_tabChanged: current_sub = sub_memory[current_tab] || 0
@@ -194,60 +171,13 @@ PanelWindow {
     // Deferred so the help view's visibility has already followed help_open.
     onHelp_openChanged: Qt.callLater(root.focus_active_view)
 
-    // Runs after the popup's own handlers: keys reach it only when nothing deeper accepted them.
     function handle_shared_key(event) {
-        const focus_item = content_scope.Window.activeFocusItem;
-        if (focus_item && "cursorPosition" in focus_item) return;
-        const back = event.key === Qt.Key_Backtab || (event.modifiers & Qt.ShiftModifier);
-        const before = root.cursor_key();
-        if (root.key_help !== "" && root.is_help_key(event)) {
-            help_open = true;
-        } else if (root.search_enabled && (event.key === Qt.Key_Slash || event.text === "/")) {
-            if (root.search_starts_open) root.enter_search(); else root.open_search();
-        } else if (root.search_starts_open && event.key === Qt.Key_I) {
-            root.enter_search();
-        } else if (root.search_enabled && root.search_query !== "" && event.key === Qt.Key_N) {
-            root.step_search(back ? -1 : 1);
-            root.play_if_moved(before);
-        } else if (event.key === Qt.Key_Backspace && Popups.back_name !== "") {
-            ThemeAudio.play("cancel");
-            Popups.back();
-        } else if ((event.modifiers & Qt.ControlModifier) && (event.key === Qt.Key_H || event.key === Qt.Key_L)) {
-            Popups.walk(event.key === Qt.Key_L ? 1 : -1);
-        } else if (event.key === Qt.Key_Q) {
-            ThemeAudio.play("cancel");
-            Popups.close();
-        } else if (event.key === Qt.Key_BracketLeft || event.key === Qt.Key_BracketRight) {
-            const step = event.key === Qt.Key_BracketLeft ? -1 : 1;
-            if (sub_views.length > 0) step_sub(step); else step_tab(step);
-            root.play_if_moved(before);
-        } else if (event.key >= Qt.Key_1 && event.key < Qt.Key_1 + Math.min(9, tabs.length)) {
-            set_tab(event.key - Qt.Key_1);
-            root.play_if_moved(before);
-        } else if (event.key === Qt.Key_Tab || event.key === Qt.Key_Backtab) {
-            if (tabs.length > 0) step_tab(back ? -1 : 1); else step_sub(back ? -1 : 1);
-            root.play_if_moved(before);
-        } else if (line_ends_enabled && (event.key === Qt.Key_0 || event.text === "$")) {
-            if (event.key === Qt.Key_0) line_start(); else line_end();
-            root.play_if_moved(before);
-        } else if (jumps_enabled && event.key === Qt.Key_G) {
-            if (event.modifiers & Qt.ShiftModifier) {
-                jump_last();
-                root.play_if_moved(before);
-            } else {
-                const now_ms = Date.now();
-                if (now_ms - last_g_ms < 500) {
-                    last_g_ms = 0;
-                    jump_first();
-                    root.play_if_moved(before);
-                } else {
-                    last_g_ms = now_ms;
-                }
-            }
-        } else {
-            return;
-        }
-        event.accepted = true;
+        keys.handle(event, content_scope.Window.activeFocusItem);
+    }
+
+    PopupKeys {
+        id: keys
+        popup: root
     }
 
     // Set by popups whose layout is fluid: from a side island they take exactly the island body's width.
@@ -344,9 +274,9 @@ PanelWindow {
     readonly property real title_gap: root.st.title_rule.a > 0 ? 6 : 0
     readonly property bool stripped: root.st.title_strip.a > 0
     readonly property bool banded: root.stripped
-    readonly property real band_height: Math.max(26, title_tab.height + 4)
-    readonly property real engraving_height: root.st.frame_engraving !== "" ? Math.ceil(engraving_metrics.height) + 4 : 0
-    readonly property real header_height: (has_title ? (root.banded ? root.band_height + 8 : title_tab.height + title_gap) + root.st.inset_pad : 0) + root.st.lcd_margin * 2 + root.device_top
+    readonly property real band_height: Math.max(26, title_block.tab_height + 4)
+    readonly property real engraving_height: decor.engraving_height
+    readonly property real header_height: (has_title ? (root.banded ? root.band_height + 8 : title_block.tab_height + title_gap) + root.st.inset_pad : 0) + root.st.lcd_margin * 2 + root.device_top
     // Console inset rings also clear a content-drawn footer.
     readonly property real footer_height: (has_footer ? base_footer.implicitHeight + 10 + root.st.inset_pad : root.st.console_views !== "" && root.st.frame_inset_width > 0 ? root.st.inset_pad : 0) + root.st.lcd_margin * 2 + engraving_height + root.device_bottom + Style.slant_room
     property real line_progress: 0
@@ -521,223 +451,42 @@ PanelWindow {
             device: root.device
 
             decor: [
-                Loader {
-                    anchors.fill: parent
-                    active: root.st.border_title
-                    sourceComponent: Neovim.FloatFrame {
-                        st: root.st
-                        title: root.has_title ? root.shown_title : ""
-                        status: root.st.title_status ? root.title_value : ""
-                        chip_height: root.has_title ? title_tab.height : 0
-                        radius: root.frame_radius
-                    }
-                },
-
-                // Under a capsule the top border gives way, so the capsule's fill runs straight into the frame's.
-                Rectangle {
-                    visible: root.island_capsule && !root.dock_bottom && root.st.frame_border_width > 0
-                    x: root.edge_x(root.island_width) + root.st.frame_border_width
-                    width: root.island_width - root.st.frame_border_width * 2
-                    height: root.st.frame_border_width
-                    color: root.st.frame_shade.a > 0 ? root.st.frame_shade : root.st.frame_color
-                },
-
-                Loader {
-                    anchors.fill: parent
-                    active: root.device
-                    sourceComponent: DeviceShell {
-                        room_side: root.device_side
-                        room_top: root.device_top
-                        room_bottom: root.device_bottom
-                    }
-                },
-
-                // The watch face: a shaded panel with static scan rows, and the engraving on the bezel below it.
-                Rectangle {
-                    id: lcd_panel
-                    readonly property real edge: root.st.inset_pad + root.st.lcd_margin
-                    visible: root.lcd && !root.st.frame_watch
-                    x: lcd_panel.edge
-                    y: lcd_panel.edge
-                    width: parent.width - lcd_panel.edge * 2
-                    height: parent.height - lcd_panel.edge * 2 - root.engraving_height
-                    radius: root.st.lcd_radius
-                    border.width: 1
-                    border.color: root.st.lcd_border
-                    clip: true
-                    gradient: Gradient {
-                        GradientStop { position: 0; color: root.st.lcd_top }
-                        GradientStop { position: 1; color: root.st.lcd_bottom }
-                    }
-
-                    Scanlines {
-                        anchors.fill: parent
-                        color: root.st.lcd_scan
-                        period: 3
-                    }
-
-                    CornerBrackets {
-                        anchors.fill: parent
-                        color: root.st.lcd_brackets
-                        inset: 5
-                        arm: 14
-                        all_corners: true
-                    }
-                },
-
-                Loader {
-                    anchors.fill: parent
-                    active: root.st.frame_watch
-                    sourceComponent: Goldeneye.PopupPanel {
-                        st: root.st
-                    }
-                },
-
-                Text {
-                    id: engraving
-                    visible: root.st.frame_engraving !== ""
-                    x: lcd_panel.edge + 6
-                    anchors.bottom: parent.bottom
-                    anchors.bottomMargin: root.st.inset_pad + 2
-                    text: root.st.frame_engraving
-                    color: root.st.frame_border_color
-                    font.family: Style.title_font_family
-                    font.pixelSize: 9
-                    font.letterSpacing: 2.5
-                },
-
-                FontMetrics {
-                    id: engraving_metrics
-                    font: engraving.font
+                PopupDecor {
+                    id: decor
+                    st: root.st
+                    has_title: root.has_title
+                    shown_title: root.shown_title
+                    title_value: root.title_value
+                    chip_height: root.has_title ? title_block.tab_height : 0
+                    frame_radius: root.frame_radius
+                    island_capsule: root.island_capsule
+                    island_width: root.island_width
+                    capsule_x: root.edge_x(root.island_width)
+                    dock_bottom: root.dock_bottom
+                    device: root.device
+                    room_side: root.device_side
+                    room_top: root.device_top
+                    room_bottom: root.device_bottom
+                    lcd: root.lcd
                 }
             ]
 
-            Loader {
-                active: root.has_title && root.banded
-                x: root.st.inset_pad + root.st.frame_border_width
-                y: x
-                width: parent.width - x * 2
-                height: root.band_height
-                sourceComponent: TitleStrip {
-                    title: root.title
-                    readout_value: root.title_value
-                    closable: !root.passive
-                }
-            }
-
-            Rectangle {
-                id: title_tab
-                visible: root.has_title && !root.banded && !root.st.border_title
-                x: (root.st.fade_fills ? root.st.frame_border_width : 0) + root.st.inset_pad + root.st.lcd_margin * 2 + root.device_side
-                y: (root.st.fade_fills ? root.st.frame_border_width : 0) + root.st.inset_pad + root.st.lcd_margin * 2 + root.device_top
-                readonly property real reticle_space: root.st.title_reticle.a > 0 ? title_text.implicitHeight + 4 : 0
-                readonly property real lead_space: title_tab.reticle_space + title_index.space
-                width: root.st.fade_fills ? parent.width - root.st.frame_border_width * 2 : Math.min(Math.ceil(Math.max(title_metrics.width, title_metrics.advanceWidth)) + 20 + title_tab.lead_space, parent.width - title_tab.x * 2)
-                height: Math.max(title_text.implicitHeight, title_index.space > 0 ? title_index.implicitHeight : 0) + 4
-                color: root.st.fade_fills ? "transparent" : root.st.title_bg
-
-                Reticle {
-                    visible: title_tab.reticle_space > 0
-                    x: 6
-                    anchors.verticalCenter: parent.verticalCenter
-                    width: title_tab.reticle_space - 4
-                    height: width
-                    color: root.st.title_reticle
-                    center_color: root.st.caret_color
-                }
-
-                FadeFill {
-                    visible: root.st.fade_fills
-                    fill: root.st.title_bg
-                }
-
-                TitleIndex {
-                    id: title_index
-                    x: 10 + title_tab.reticle_space
-                    anchors.verticalCenter: parent.verticalCenter
-                    st: root.st
-                    name: root.popup_name
-                }
-
-                TextMetrics {
-                    id: title_metrics
-                    font: title_text.font
-                    text: title_text.text
-                }
-
-                Text {
-                    id: title_text
-                    anchors.centerIn: root.st.fade_fills ? undefined : parent
-                    anchors.horizontalCenterOffset: title_tab.lead_space / 2
-                    x: 10 + title_tab.lead_space
-                    y: (parent.height - height) / 2
-                    width: Math.min(Math.ceil(Math.max(title_metrics.width, title_metrics.advanceWidth)), parent.width - 20 - title_tab.lead_space)
-                    elide: Text.ElideRight
-                    text: root.st.title_prefix + root.shown_title + (Style.caret_phase ? root.st.title_suffix : " ".repeat(root.st.title_suffix.length))
-                    color: root.st.title_fg
-                    font.family: root.st.title_font_family
-                    font.pixelSize: root.st.title_size > 0 ? root.st.title_size : root.st.fs(-2)
-                    font.weight: root.st.title_weight > 0 ? root.st.title_weight : root.st.title_font_family === root.st.font_family ? Font.Bold : Font.Normal
-                    font.letterSpacing: root.st.title_spacing
-                }
-            }
-
-            Text {
-                id: title_readout
-                // Dropped on narrow popups rather than drawn over the title.
-                visible: root.has_title && root.st.title_readout !== "" && title_tab.x + (root.st.fade_fills ? 10 + title_tab.lead_space + title_text.implicitWidth : title_tab.width) + 12 <= parent.width - anchors.rightMargin - implicitWidth
-                anchors.right: parent.right
-                anchors.rightMargin: (root.lcd ? root.st.lcd_margin * 2 : 12) + root.st.inset_pad + root.device_side
-                y: title_tab.y + (title_tab.height - height) / 2
-                text: root.st.title_readout.replace("{code}", root.title.slice(0, 3))
-                color: root.st.title_readout_fg.a > 0 ? root.st.title_readout_fg : root.st.text_muted
-                font.family: root.st.font_family
-                font.pixelSize: root.st.fs(-5)
-                font.letterSpacing: 1
-            }
-
-            // Plain sentence-case titles carry the live title value at the right, like a status line.
-            Text {
-                visible: root.has_title && !root.banded && root.st.title_status && !root.st.border_title && root.st.title_readout === "" && root.title_value !== "" && title_tab.x + title_tab.width + 12 <= parent.width - anchors.rightMargin - implicitWidth
-                anchors.right: parent.right
-                anchors.rightMargin: title_readout.anchors.rightMargin + 4
-                y: title_tab.y + (title_tab.height - height) / 2
-                text: root.title_value
-                color: root.st.text_muted
-                font.family: root.st.mono_font
-                font.pixelSize: root.st.fs(-3)
-            }
-
-            Loader {
-                active: root.has_title && !root.banded && !root.passive && root.st.console_views === "ps2"
-                visible: title_tab.x + title_tab.width + 10 <= x
-                anchors.right: parent.right
-                anchors.rightMargin: title_readout.anchors.rightMargin
-                y: title_tab.y + (title_tab.height - height) / 2
-                source: active ? "ps2/AnalogLed.qml" : ""
-                onLoaded: item.lit = Qt.binding(() => root.wanted && frame.layer_item.Window.active)
-            }
-
-            Rectangle {
-                visible: root.has_title && root.st.title_trail.a > 0 && width > 8
-                x: title_tab.x + (root.st.fade_fills ? 10 + title_tab.lead_space + title_text.implicitWidth + 12 : title_tab.width)
-                y: title_tab.y + Math.round(title_tab.height / 2)
-                width: (title_readout.visible ? title_readout.x - 12 : parent.width - title_readout.anchors.rightMargin) - x
-                height: 1
-                gradient: Gradient {
-                    orientation: Gradient.Horizontal
-                    GradientStop { position: 0; color: root.st.title_trail }
-                    GradientStop { position: 1; color: Qt.alpha(root.st.title_trail, 0) }
-                }
-            }
-
-            Rectangle {
-                visible: root.has_title && root.st.title_rule.a > 0
-                x: title_tab.x
-                y: title_tab.y + title_tab.height + 2
-                width: parent.width - title_tab.x * 2
-                height: 1
-                color: root.st.title_rule
+            PopupTitle {
+                id: title_block
+                st: root.st
+                title: root.title
+                shown_title: root.shown_title
+                title_value: root.title_value
+                popup_name: root.popup_name
+                passive: root.passive
+                has_title: root.has_title
+                banded: root.banded
+                band_height: root.band_height
+                lcd: root.lcd
+                device_side: root.device_side
+                device_top: root.device_top
+                wanted: root.wanted
+                layer_item: frame.layer_item
             }
 
             Rectangle {
@@ -776,7 +525,7 @@ PanelWindow {
                 onTextChanged: {
                     root.search_query = text;
                     if (root.search_typing && text !== "") {
-                        const i = root.search_starts_open ? root.fuzzy_best(root.search_rows, text) : Search.best(root.search_rows, text);
+                        const i = root.search_starts_open ? FuzzyRows.fuzzy_best(root.search_rows, text) : Search.best(root.search_rows, text);
                         if (i >= 0) root.search_select(i);
                     }
                 }
