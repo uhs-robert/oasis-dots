@@ -92,8 +92,8 @@ for tree in shell greeter; do
   greeter) prefix=$greeter_dir depth=1 ;;
   esac
   report="$stage/$tree.json"
-  wanted=$(cd "$stage/$tree" && find . -maxdepth "$depth" -name '*.qml' | wc -l)
-  (cd "$stage/$tree" && find . -maxdepth "$depth" -name '*.qml' -exec "$qmllint_bin" --ignore-settings --json - {} +) >"$report" 2>/dev/null
+  wanted=$(cd "$stage/$tree" && find . -maxdepth "$depth" \( -name '*.qml' -o -name '*.js' -o -name '*.mjs' \) | wc -l)
+  (cd "$stage/$tree" && find . -maxdepth "$depth" \( -name '*.qml' -o -name '*.js' -o -name '*.mjs' \) -exec "$qmllint_bin" --ignore-settings --json - {} +) >"$report" 2>/dev/null
   linted=$(jq -s '[.[].files[]] | length' "$report" 2>/dev/null) || linted=0
   if [ "$linted" -ne "$wanted" ]; then
     echo "qmllint: linted $linted of $wanted files in $prefix" >&2
