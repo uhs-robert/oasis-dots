@@ -1,8 +1,8 @@
-// home/quickshell/.config/quickshell/components/picker/ScopeCursor.qml
+// home/quickshell/.config/quickshell/components/picker/cursors/Scope.qml
 pragma ComponentBehavior: Bound
 import QtQuick
-import "../../theme"
-import "../../services"
+import "../../../theme"
+import "../../../services"
 
 // MGS binocular reticle for the PS1 picker skin: gapped full-screen hairlines, a box reticle
 // with a small aim crosshair, and X/Y readouts at the line ends.

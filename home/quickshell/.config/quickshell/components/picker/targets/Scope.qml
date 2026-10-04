@@ -1,8 +1,9 @@
-// home/quickshell/.config/quickshell/components/picker/ScopeTargets.qml
+// home/quickshell/.config/quickshell/components/picker/targets/Scope.qml
 pragma ComponentBehavior: Bound
 import QtQuick
-import "../../theme"
-import "../../services"
+import "../../../theme"
+import "../../../services"
+import "../.."
 import ".."
 
 // PS1 scope dressing for the window/screen/region target: dashed olive outlines on the rest,
@@ -11,6 +12,7 @@ Item {
     id: root
 
     required property string screen_name
+    required property point origin
     required property rect sel
     required property bool mine
     required property bool target_mode
@@ -28,8 +30,6 @@ Item {
     readonly property int box_inset: root.full ? 6 : -2
     readonly property int tick_o: root.full ? 12 : -8
     readonly property int label_margin: root.full ? 26 : 4
-
-    visible: root.mine || root.target_mode
 
     Repeater {
         model: root.target_mode ? Screenshot.targets : []
