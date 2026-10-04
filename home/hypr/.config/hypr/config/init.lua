@@ -251,7 +251,9 @@ end
 --- @param term_cmd string
 local function write_term_wrapper(term_cmd)
   local home = os.getenv("HOME")
-  local path = home .. "/.config/hypr/scripts/term"
+  local dir = home .. "/.local/state/hypr/bin"
+  local path = dir .. "/term"
+  os.execute("mkdir -p '" .. dir .. "'")
   local f = io.open(path, "w")
   if not f then return end
   f:write("#!/bin/sh\nexec " .. term_cmd .. ' "$@"\n')

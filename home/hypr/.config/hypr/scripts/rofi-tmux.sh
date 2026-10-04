@@ -52,6 +52,6 @@ if [[ -n "$address" ]]; then
   exit 0
 fi
 
-term=~/.config/hypr/scripts/term
+term=~/.local/state/hypr/bin/term
 [ -x "$term" ] || term="$term_name"
 "$term" -e tmuxifier load-session "$session" &

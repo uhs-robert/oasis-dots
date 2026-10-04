@@ -10,6 +10,6 @@ for arg in "$@"; do
   esac
 done
 
-term=~/.config/hypr/scripts/term
+term=~/.local/state/hypr/bin/term
 [ -x "$term" ] || term="${TERMINAL:-kitty}"
 exec "$term" -e "$CMD"
