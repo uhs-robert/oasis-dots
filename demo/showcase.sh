@@ -51,6 +51,7 @@ T_KEEPTABS_HOLD=${T_KEEPTABS_HOLD:-2.0}
 DEMO_FAST=${DEMO_FAST:-5}
 T_KEEPTABS_STEP=${T_KEEPTABS_STEP:-0.35}
 T_SETTINGS_HOLD=${T_SETTINGS_HOLD:-0.6}
+T_SETTINGS_STEP=${T_SETTINGS_STEP:-0.35}
 T_OUTRO_HOLD=${T_OUTRO_HOLD:-4.5}
 
 scenes=(login work overview styles move_window keybinds tmux screenshot to_hdmi keeptabs settings outro)
@@ -922,9 +923,9 @@ scene_overview() {
   pause "$T_OVERVIEW_JUMP"
   press "CTRL + H" ^h
   pause "$T_OVERVIEW_JUMP"
-  press "TAB" @Tab
+  press "]" @bracketright
   pause "$T_OVERVIEW_JUMP"
-  press "SHIFT + TAB" +@Tab
+  press "[" @bracketleft
   pause "$T_OVERVIEW_JUMP"
   press "ENTER" @Return
   wait_layer_gone quickshell-overview
@@ -1082,7 +1083,7 @@ move_marked_windows() {
   pause "$T_OVERVIEW_JUMP"
   if ((DRY)); then n=1; else n=$(tab_count "$dest" slack || echo 0); fi
   while ((n > 0)); do
-    press "TAB" @Tab
+    press "]" @bracketright
     pause "$T_OVERVIEW_STEP"
     n=$((n - 1))
   done
@@ -1150,10 +1151,13 @@ scene_settings() {
   leader_chord S qs_ipc call popup open settings
   wait_layer quickshell-popup
   pause "$T_SETTINGS_HOLD"
-  for pair in "1:Style" "2:Colors" "3:Theme options" "4:Bar modules" "9:Lock screen"; do
+  for pair in "1:Style" "2:Colors" "3:Theme options" "4:Bar modules" "5:Clock" "9:Power"; do
     press "${pair%%:*}" "${pair%%:*}"
     pause "$T_SETTINGS_HOLD"
   done
+  # Number keys stop at 9; Lock screen sits two entries below Power.
+  press "J" j
+  pause "$T_SETTINGS_STEP"
   press "J" j
   pause "$T_SETTINGS_HOLD"
   press "Q" q
