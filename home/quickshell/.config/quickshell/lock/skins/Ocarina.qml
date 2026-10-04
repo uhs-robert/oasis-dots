@@ -14,8 +14,6 @@ Item {
 
     readonly property bool animate: !!root.ctx && root.ctx.animate
     readonly property string phase: root.ctx ? root.ctx.phase : "idle"
-    // The screensaver phase's effect.
-    readonly property string saver_effect: "clouds"
 
     property FileView os_release: FileView {
         path: "/etc/os-release"
@@ -266,7 +264,7 @@ Item {
             root.cue("cancel");
             return true;
         }
-        if (!ctrl && (event.key === Qt.Key_Return || event.key === Qt.Key_Enter || (event.key === Qt.Key_Space && !in_opts))) {
+        if (!ctrl && (event.key === Qt.Key_Return || event.key === Qt.Key_Enter || (event.key === Qt.Key_Space && !in_opts && !on_file))) {
             root.cue(on_file ? "decide" : "start");
             if (on_file) root.file_activate();
             else c.scene = c.scene === "lit" ? "file" : "lit";

@@ -98,7 +98,7 @@ Item {
         const c = root.ctx;
         if (!root.can_step || c.buffer_length > 0 || c.checking || c.granted) return false;
         const ctrl = (event.modifiers & Qt.ControlModifier) && !(event.modifiers & Qt.AltModifier);
-        const enter = !ctrl && (event.key === Qt.Key_Return || event.key === Qt.Key_Enter || event.key === Qt.Key_Space);
+        const enter = !ctrl && (event.key === Qt.Key_Return || event.key === Qt.Key_Enter);
         const up = event.key === Qt.Key_Up || event.key === Qt.Key_Down;
         const printable = !ctrl && event.text !== "" && event.text.charCodeAt(0) > 32 && event.text.charCodeAt(0) !== 127;
         if (root.screen === "pw") {
@@ -138,12 +138,13 @@ Item {
             return false;
         }
         if (root.screen !== "title") return false;
+        const go = enter || (!ctrl && event.key === Qt.Key_Space);
         if (up) {
             c.scene = root.on_new ? "" : "title:new";
             root.cue("cursor");
             return true;
         }
-        if (enter) {
+        if (go) {
             if (root.on_new) {
                 root.cue("buzzer");
             } else {
