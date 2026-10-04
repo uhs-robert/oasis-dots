@@ -72,7 +72,14 @@ orig_style=$(q style get)
 restore() {
   hyprctl eval 'hl.dispatch(hl.dsp.submap("reset"))' >/dev/null 2>&1 || true
   q popup close >/dev/null 2>&1 || true
-  q style set "$orig_style" >/dev/null 2>&1 || true
+  # A style set can be dropped while the previous one is still applying, so retry until it reads back.
+  local _
+  for _ in {1..10}; do
+    q style set "$orig_style" >/dev/null 2>&1 || true
+    sleep 0.4
+    [[ $(q style get 2>/dev/null) == "$orig_style" ]] && return
+  done
+  echo "smoke: could not restore style '$orig_style'; run: qs ipc call style set $orig_style" >&2
 }
 trap restore EXIT
 
