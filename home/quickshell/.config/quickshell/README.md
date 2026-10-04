@@ -26,7 +26,7 @@ Hyprland starts it with `qs -n` (see `home/hypr/.config/hypr/config/autostart/`)
 | `assets/`     | Weather icons                                                                              |
 | `bars.json`   | Tracked bar layout per monitor, matched by description or connector name                   |
 
-Settings > Weather sets the location, units, time format and forecast days. Automatic looks the place up from your IP address over HTTPS (ipwho.is), cached and repeated at most once a day; Manual takes a latitude, longitude and optional place name. Changes apply at once and are saved to `weather.local.json` (untracked) next to the tracked `weather.json` defaults, which it overrides. You can still edit either file by hand: `latitude` and `longitude` (a number or `"auto"`), `location_name` (replaces the looked-up name), `unit` (`fahrenheit` or `celsius`, which also picks mph or km/h and inches or mm), `time_format` (`12h` or `24h`) and `days` (1 to 16).
+Settings > Weather sets the location, units, time format and forecast days. Automatic looks the place up from your IP address over HTTPS (ipwho.is), cached and repeated at most once a day; Manual takes a latitude, longitude and optional place name. Changes apply at once and are saved to `weather.local.json` (untracked) next to the tracked `weather.json` defaults, which it overrides. You can still edit either file by hand: `latitude` and `longitude` (a number or `"auto"`), `location_name` (replaces the looked-up name), `unit` (`fahrenheit` or `celsius`, which also picks mph or km/h and inches or mm), `time_format` (`12h` or `24h`) and `days` (1 to 16). `time_format` also sets the clock times in the Updates, Keeptabs, calendar and notification popups.
 
 Weather alerts come from the US National Weather Service (api.weather.gov), so the Alerts tab only appears for US locations; elsewhere no alert request is made. When no forecast has loaded and the last fetch failed, the bar shows `n/a` and the tooltip and popup header give the reason; with data already loaded it keeps showing it as stale.
 
@@ -107,7 +107,7 @@ What you set here is saved as state under `~/.local/state` (or `$XDG_STATE_HOME`
 
 The calendar clock cycles through the local zone plus any listed in `quickshell/timezones.json`, for example `["America/Los_Angeles", "America/Denver"]`; there is no Settings page for it.
 
-Notification history lives in Quickshell's own per-config state folder (`~/.local/state/quickshell/by-shell/<id>/notifications.json`).
+Notification history is kept in memory only (the last 100) and is gone when the shell restarts. Quickshell's own per-config state folder (`~/.local/state/quickshell/by-shell/<id>/notifications.json`) holds just the Do Not Disturb flag, as `{ "dnd": true }`.
 
 ## Keys
 
@@ -211,6 +211,31 @@ It installs to `/etc/greetd/quickshell` with its data in `/var/lib/qs-greeter`, 
 **A picker provider.** Subclass `picker/PickerProvider.qml`: set `name` and `items`, implement `refresh()` and `activate()`, and it registers itself. Add it to `shell.qml` next to the other providers. To open it from Hyprland, bind `Menu.picker("<name>", "<rofi fallback>")` from `lib/actions/menu.lua`, so the bind still works without the bar.
 
 **A lock skin.** Add `lock/skins/<Style>.qml` (first letter capitalized). It shows up in Settings > Lock screen and in the greeter once it exists. For a skin with no bar style, also add it to `lock_only` in `theme/Style.qml`. The greeter stages only `lock/skins/`, `lock/Tints.js`, `theme/` and `fonts/`, so a skin imports nothing from `components/` or `services/`; pieces a bar style shares with its skin (the GoldenEye watch colors, segment arcs and panel) live in the skin's own folder and the style imports them from there.
+
+## Tools
+
+Everything below is optional. A missing tool only disables the feature next to it. `hyprctl` (Hyprland) is required throughout.
+
+| Tool | Used for |
+| --- | --- |
+| `brightnessctl` | Screen and keyboard brightness sliders and keys |
+| `cava` | Audio bars in the bar, lock screen and media popup |
+| `checkupdates` (pacman-contrib), `paru` | The `updates` module's official and AUR counts |
+| `keeptabs-status` (keeptabs) | The `keeptabs` module |
+| `voxtype` | The `voxtype` module and dictation overlays |
+| `grim`, `slurp`, `wf-recorder`, `wl-copy` | Screenshot and recording tools, copying the result |
+| `cliphist`, `wl-copy` | The clipboard picker |
+| `wtype`, `wl-copy` | The emoji picker |
+| `zoxide` | The directories picker |
+| `tmux` | The tmux overview and the tmux targets picker |
+| `nmcli` (NetworkManager), `nm-connection-editor` | The network popup and its editor |
+| `blueman-manager` | The Bluetooth module's manager |
+| `pw-play` (PipeWire), `mpv` | Interface sounds, and lock and login music |
+| `jq` | Staging the login screen (`just greeter-sync`) |
+| `notify-send` | Error notices from the screenshot, usage and bar-layout checks |
+| `ffmpeg` | The audio and frame import scripts in `scripts/` |
+
+The Nerd Font set in `theme/theme.json` draws every icon. `install.sh` installs it, and the shell logs a warning at startup when it is missing.
 
 ## Development
 
