@@ -70,10 +70,14 @@ local function command_exists(cmd)
   return r == true or r == 0
 end
 
---- Return the current HYPRLAND_INSTANCE_SIGNATURE by reading /tmp/hypr/, or nil.
+--- Return HYPRLAND_INSTANCE_SIGNATURE from the environment, else the newest instance in $XDG_RUNTIME_DIR/hypr, or nil.
 --- @return string|nil
 local function detect_signature()
-  local sig = run_cmd("ls -1 /tmp/hypr 2>/dev/null | head -n 1")
+  local env_sig = os.getenv("HYPRLAND_INSTANCE_SIGNATURE")
+  if env_sig and env_sig ~= "" then return env_sig end
+  local runtime = os.getenv("XDG_RUNTIME_DIR")
+  if not runtime or runtime == "" then return nil end
+  local sig = run_cmd(string.format("ls -1t '%s/hypr' 2>/dev/null | head -n 1", runtime))
   if sig then sig = sig:match("([^\n]+)") end
   return sig
 end
