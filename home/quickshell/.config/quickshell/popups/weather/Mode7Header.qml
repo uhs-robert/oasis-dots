@@ -50,7 +50,7 @@ Item {
 
             Text {
                 Layout.alignment: Qt.AlignVCenter
-                text: root.has ? Math.round(root.cur.temp) + "°" + WeatherState.unit_symbol() : "--°"
+                text: root.has ? Math.round(root.cur.temp) + "°" + WeatherState.unit_symbol() : WeatherState.failed ? "n/a" : "--°"
                 color: root.has ? Theme.fg_strong : Style.text_dim
                 font.family: Style.font_family
                 font.pixelSize: Style.font_size * 2

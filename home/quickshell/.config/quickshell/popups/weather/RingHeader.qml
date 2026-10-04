@@ -24,7 +24,7 @@ RowLayout {
         Layout.preferredHeight: Layout.preferredWidth
         Layout.alignment: Qt.AlignVCenter
         value: Math.max(0, Math.min(1, root.fahrenheit / 100))
-        label: WeatherState.has_data ? root.fmt_temp(root.cur.temp) : "--°"
+        label: WeatherState.has_data ? root.fmt_temp(root.cur.temp) : WeatherState.failed ? "n/a" : "--°"
         unit: "NOW"
         label_size: width * 0.24
     }

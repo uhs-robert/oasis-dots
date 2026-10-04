@@ -32,7 +32,8 @@ RowsSection {
             value: () => root.cfg[key] === undefined ? "" : String(root.cfg[key]),
             set: v => {},
             cycle: false,
-            edit: key
+            edit: key,
+            activate: () => root.start_edit(root.rows.find(r => r.edit === key))
         };
     }
 
