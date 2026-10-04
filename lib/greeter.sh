@@ -23,7 +23,8 @@ stage_greeter() {
   local skin audio_dir
   for skin in "${GREETER_AUDIO_SKINS[@]}"; do
     audio_dir="${XDG_DATA_HOME:-$HOME/.local/share}/quickshell/$skin-audio"
-    if [[ -d "$audio_dir" ]]; then
+    if [[ -d "$audio_dir" && -n "$(ls -A "$audio_dir")" ]]; then
+      rm -rf "${dest:?}/lock/skins/$skin/audio"
       mkdir -p "$dest/lock/skins/$skin/audio"
       cp -r "$audio_dir/." "$dest/lock/skins/$skin/audio/"
     fi
