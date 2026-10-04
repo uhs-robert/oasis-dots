@@ -88,8 +88,8 @@ Item {
 
     // Bar and popup glyphs are Nerd Font codepoints; `lib/fonts.sh` installs Maple Mono NF and `arch.ini` the JetBrains and Symbols ones; other machines may lack them.
     function warn_missing_symbols() {
-        const installed = Qt.fontFamilies();
-        const missing = [Theme.font_family, "JetBrainsMono Nerd Font", "Symbols Nerd Font"].filter(f => installed.indexOf(f) < 0);
+        const installed = Qt.fontFamilies().map(f => f.replace(/ \[[^\]]*\]$/, "").toLowerCase());
+        const missing = [Theme.font_family, "JetBrainsMono Nerd Font", "Symbols Nerd Font"].filter(f => installed.indexOf(f.toLowerCase()) < 0);
         if (missing.length > 0) console.warn("BundledFonts: font(s) not installed, icons may show as boxes: " + missing.join(", "));
     }
 
