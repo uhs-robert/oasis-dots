@@ -4,7 +4,7 @@ The desktop shell for this Hyprland setup, written for [Quickshell](https://quic
 
 Tested with Quickshell 0.3.1 (the `quickshell` package in the Arch repos); the installer warns if yours is older.
 
-Hyprland starts it with `qs -n` (see `home/hypr/.config/hypr/config/autostart/`). Hyprland binds reach it over IPC. When it isn't running, the pickers fall back to rofi and the lock to hyprlock.
+Hyprland starts it with `qs -n` (see `home/hypr/.config/hypr/config/autostart/`). Hyprland binds reach it over IPC. When it isn't running, the pickers fall back to the menu in `Config.app.menu` (rofi by default; fuzzel and wofi also work through `Config.app.dmenu_cmd`, see `home/hypr/.config/hypr/config/init.lua`) and the lock to hyprlock.
 
 ## Layout
 
@@ -20,6 +20,7 @@ Hyprland starts it with `qs -n` (see `home/hypr/.config/hypr/config/autostart/`)
 | `settings/`   | The Settings panel and its sections                                                        |
 | `lock/`       | The session lock, the simple lock screen and the styled lock skins in `skins/`             |
 | `overview/`   | The workspace overview                                                                     |
+| `tmux_overview/` | Every tmux session and window in one view, each window drawn from its panes' captured text |
 | `fonts/`      | Bundled OFL fonts, registered for the whole shell                                          |
 | `sounds/`     | UI sound packs                                                                             |
 | `scripts/`    | Helpers the shell runs: greeter data, lock backdrop, audio importers, sound generator; `gen-style-exports` for `Style.qml` |
@@ -103,6 +104,7 @@ What you set here is saved as state under `~/.local/state` (or `$XDG_STATE_HOME`
 | `quickshell/greeter.json`                 | Login screen choices                             |
 | `quickshell/picker_usage.json`            | Picker ranking by use                            |
 | `quickshell/timezones.json`               | Extra clock zones, a JSON array of IANA names    |
+| `quickshell/clock.json`                   | Time format and first day of week                |
 | `hypr/monitors.json`                      | Display settings, read by Hyprland               |
 | `hypr/apps.json`                          | Default apps, read by Hyprland                   |
 | `hypr/power.json`                         | Idle and power settings, read by Hyprland        |
@@ -117,9 +119,9 @@ Every popup uses the same keys. `?` shows the full list for the popup you're in.
 
 | Key              | Action                                   |
 | ---------------- | ---------------------------------------- |
-| `[` / `]`        | Previous / next tab                      |
+| `Tab` / `Shift + Tab` | Next / previous tab                 |
 | `1`-`9`          | Jump to a tab                            |
-| `Tab`            | Next sub-view (`Shift + Tab` back)       |
+| `[` / `]`        | Previous / next sub-view at the bottom   |
 | `j` / `k`        | Move down / up                           |
 | `h` / `l`        | Change a value, or move left / right     |
 | `gg` / `G`       | First / last row                         |
@@ -128,6 +130,8 @@ Every popup uses the same keys. `?` shows the full list for the popup you're in.
 | `Backspace`      | Back to the popup you came from          |
 | `?`              | Key help                                 |
 | `q` / `Esc`      | Close                                    |
+
+A popup with only one level of views answers both `Tab` and `[`/`]`. In the clock popup, `Tab` and `[`/`]` cycle the time zones.
 
 Console styles draw controller buttons in place of keys in the footers and help. Each console is one entry in `components/KeyHints.js` (`controllers`): the path of its button component and the key to button map. A button component is an `Item` with `button` (a name from the map), `size` and, for the Game Boy shades, `shades`.
 
@@ -145,10 +149,17 @@ The main binds that open things (the leader is `SUPER`):
 | `SUPER + CTRL + E`                    | Emoji picker                                       |
 | `ALT + TAB`, `SUPER + TAB`            | Workspace overview (also the top-left hot corner)  |
 | `Print`, `SUPER + I`                  | Screenshot and recording tool                      |
-| `SUPER + [` / `]`                     | Focus the previous / next notification toast      |
+| `SUPER + [` / `]`                     | Previous / next notification toast, or floating window when no toast shows |
+| `ALT + GRAVE`                         | Tmux overview                                      |
+| `SUPER + Z`                           | Zoom                                               |
+| `SUPER + P`                           | Color picker                                       |
+| `SUPER + U`                           | Restore the last closed window                     |
+| `ALT + M`                             | Mute                                               |
 | `SUPER + Q`, then `N`                 | Notification center                                |
 
 All binds live in `home/hypr/.config/hypr/keymaps/`.
+
+In the workspace overview, `[`/`]` cycle windows, `Tab`/`Shift + Tab` toggle the special workspaces, `s` picks a whole screen and `f` toggles the view. The share picker is the same overview with only shareable windows; there `r` opens the region selector, and Esc in it comes back.
 
 ## IPC
 
@@ -170,16 +181,17 @@ qs-ipc show        # list every target and function
 | `settings`      | `open <section>`, `toggle`                                            |
 | `style`         | `set`, `cycle`, `get`, `set_lock`, `set_lock_tint`, `set_lock_backdrop`, `toggle_cava_line` and their getters |
 | `overview`      | `open`, `close`, `toggle`, `search`, `move_follow`, `move_silent`                                           |
+| `tmux-overview` | `open`, `close`, `toggle`, `search`                                   |
 | `notifications` | `open`, `close`, `toggle_dnd`, `clear_all`, `dismiss_latest`, `dismiss_all`, `focus_toast`, `has_toast` |
 | `screenshot`    | `open`, `close`, `toggle`, `select`, `pick`, `share`, `stop_recording` and the recording callbacks |
 | `zoom`          | `start`, `stop`, `toggle`, `step <delta>`, `size <delta>`, `full`     |
-| `lock`          | `lock`, `state`, `preview <style>`, `preview_close`                   |
+| `lock`          | `lock`, `lock_auto` (music waits for the first key), `state`, `preview <style>`, `preview_close` |
 | `power`         | `confirm <lock\|logout\|reboot\|poweroff>`                            |
 | `brightness`    | `refresh`                                                             |
 | `transition`    | `play <kind or style>`                                                |
 | `hyprvim_whichkey`, `hyprvim_prompt` | The HyprVim which-key HUD and `:` prompt          |
 
-Popup names are the `LazyPopup` names in `shell.qml`: `start`, `settings`, `power`, `clock`, `volume`, `battery`, `bluetooth`, `system`, `tray`, `network`, `keeptabs`, `weather`, `updates`, `media`, `screenshot`, `notifications`.
+Popup names are the `LazyPopup` names in `shell.qml`: `start`, `settings`, `power`, `clock`, `volume`, `battery`, `bluetooth`, `system`, `tray`, `network`, `keeptabs`, `weather`, `updates`, `media`, `screenshot`, `notifications`, `picker`.
 
 ## Lock screen and greeter
 
@@ -273,4 +285,4 @@ The bundled fonts are all under the SIL Open Font License. `fonts/README.md` lis
 
 The sounds in `sounds/<style>/` are synthesized by `scripts/synth-sounds` (numpy and ffmpeg), one hand-built patch per style. `sounds/mgs2/` is an extra pack tied to no style. To use your own, drop `cursor`, `confirm`, `cancel`, `notify`, `error`, `lock` or `unlock` files (`.wav` or `.ogg`) into `~/.local/share/quickshell/sounds/<pack>/`, where `<pack>` is the style or pack name. They win file by file. [Custom sounds and music](../../../../docs/sounds.md) walks through it, along with lock music and the game lock screens' audio.
 
-Settings > Audio picks one effects pack for every style: follow the style (the default), any style's sounds, the synthesized MGS2 pack, or an imported game pack (FFVII, MGS2, Ocarina). When following the style, FFVII uses the imported FFVII pack once there is one, and every other style its own. No music ships: lock and login music plays only from your own `music.ogg`, `music.wav` or `music.mp3` in `~/.local/share/quickshell/sounds/<style>/`.
+Settings > Theme audio (in the Sound group) picks one effects pack for every style: follow the style (the default), any style's sounds, the synthesized MGS2 pack, or an imported game pack (FFVII, MGS2, Ocarina). When following the style, FFVII uses the imported FFVII pack once there is one, and every other style its own. No music ships: lock and login music plays only from your own `music.ogg`, `music.wav` or `music.mp3` in `~/.local/share/quickshell/sounds/<style>/`.

@@ -28,7 +28,7 @@ keymaps/
     power.lua          lock, sleep, power
     mouse.lua          mouse binds
   submaps/             submaps: press one key to enter, then another to act
-    leader/  apps/  go/  system/  delete/  windows/  monitors/
+    leader/  apps/  go/  system/  delete/  windows/
     groups/  cursor/  resize/  move/  bar/
 ```
 

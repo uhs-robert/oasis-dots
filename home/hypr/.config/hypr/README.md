@@ -32,7 +32,7 @@ just stow hypr    # link home/hypr into ~/.config/hypr
 hyprctl reload
 ```
 
-On its own it still expects a few neighbours: the bar, popups and lock screen come from the `quickshell` package, the pickers fall back to `rofi`, and some binds call tools like `wl-kbptr`, `wlrctl` and `hyprpaper` (see `packages/arch.ini` and `packages/arch-aur.ini`). Moving the folder by hand instead of stowing it breaks those symlinks.
+On its own it still expects a few neighbours: the bar, popups and lock screen come from the `quickshell` package, the pickers fall back to the menu in `Config.app.menu` (`rofi` by default; `fuzzel` and `wofi` also work, with `Config.app.dmenu_cmd` for anything else), and some binds call tools like `wl-kbptr`, `wlrctl` and `hyprpaper` (see `packages/arch.ini` and `packages/arch-aur.ini`). Moving the folder by hand instead of stowing it breaks those symlinks.
 
 Stow links `~/.config/hypr` as a whole directory into the checkout, so files this config generates land inside the repo and are gitignored: your machine profile (`config/machines/<hostname>.lua`), `custom/`, and `theme.conf`. The generators also write the rofi, foot, yazi, kitty and ghostty theme files into those packages' stowed config dirs, and `systemctl --user enable` adds `.wants` links under `home/systemd/`. Quickshell's `theme.json`, the Settings panel state, the selected palette (`hypr/theme`) and the `term` launcher wrapper (`hypr/bin/term`, on `PATH`) go to `$XDG_STATE_HOME` (default `~/.local/state`), outside the checkout.
 
@@ -54,7 +54,7 @@ return {
 }
 ```
 
-The loader picks this up automatically by hostname; see `config/machines/README.md` for details. Anything in `config/machines/` other than `default.lua`, `init.lua`, and its README is gitignored, so your profile stays local.
+The loader picks this up automatically by hostname; see `config/machines/README.md` for details, including `Config.input` (keyboard layout) and `Config.appearance` (inactive window opacity and dimming). Anything in `config/machines/` other than `default.lua`, `init.lua`, and its README is gitignored, so your profile stays local.
 
 > [!TIP]
 > All available options and their defaults are documented in `config/init.lua`.
@@ -142,4 +142,4 @@ Pick a palette from Settings > Colors in the Quickshell panel, with a live previ
 
 ## Desktop shell
 
-The bar, popups, notifications, pickers, workspace overview, lock screen and greeter are one Quickshell config. Hyprland starts it at login and talks to it through `scripts/qs-ipc`, falling back to rofi or hyprlock when it isn't running. See the [Quickshell README](../../../quickshell/.config/quickshell/README.md) for styles, settings, keys and IPC.
+The bar, popups, notifications, pickers, workspace overview, lock screen and greeter are one Quickshell config. Hyprland starts it at login and talks to it through `scripts/qs-ipc`, falling back to the `Config.app.menu` launcher (rofi by default) or hyprlock when it isn't running. See the [Quickshell README](../../../quickshell/.config/quickshell/README.md) for styles, settings, keys and IPC.
