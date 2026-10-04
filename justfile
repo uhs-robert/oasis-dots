@@ -108,7 +108,9 @@ greeter-sync *ARGS:
     stage="${XDG_CACHE_HOME:-$HOME/.cache}/dotfiles/greeter"
     args=("$@")
     from=""
+    install=0
     for i in "${!args[@]}"; do
+      [[ ${args[i]} == --install ]] && install=1
       if [[ ${args[i]} == --from ]]; then
         from=${args[i+1]:-}
         [[ -n $from ]] || { echo "greeter-sync: --from needs a directory" >&2; exit 1; }
@@ -117,7 +119,7 @@ greeter-sync *ARGS:
     done
     skin=$(stage_greeter "$stage" "$PWD" "$from") || { echo "greeter-sync: staging failed" >&2; exit 1; }
     echo "Staged greeter in $stage (skin: $skin)"
-    if [[ " ${args[*]} " == *" --install "* ]]; then
+    if ((install)); then
       while read -r cmd; do echo "+ $cmd"; eval "$cmd"; done < <(greeter_install_cmds "$stage" "$PWD")
     else
       echo "Install with:"
