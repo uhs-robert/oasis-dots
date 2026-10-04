@@ -184,9 +184,10 @@ In abc12345..., we started moving away from archived records. Then we tried to r
 
 When asked to commit:
 
-1. Read the diff carefully.
-2. Identify the _story_: what was the state before, what changed, why.
-3. Pick the type and scope by intent; use the scope names the repo's history already uses.
-4. Draft the subject in imperative mood, under 72 chars.
-5. Write body following the narrative arc, one line per paragraph.
-6. Add enrichment (cross-refs, diagrams, benchmarks) where it helps, then footers.
+1. If the commit changes code and the hierarchical-documentation pass hasn't run on it yet, run that skill first. Use its commit message notes as input: additions feed the design reasoning and scope sections, removals mark fix-up commits to squash, keepers must survive into the final message.
+2. Read the diff carefully.
+3. Identify the _story_: what was the state before, what changed, why.
+4. Pick the type and scope by intent; use the scope names the repo's history already uses.
+5. Draft the subject in imperative mood, under 72 chars.
+6. Write body following the narrative arc, one line per paragraph.
+7. Add enrichment (cross-refs, diagrams, benchmarks) where it helps, then footers.

@@ -59,7 +59,8 @@
     "caveman@caveman": true
   },
   "skillOverrides": {
-    "caveman:caveman-commit": "off"
+    "caveman:caveman-commit": "off",
+    "simplify": "off"
   },
   "extraKnownMarketplaces": {
     "caveman": {
