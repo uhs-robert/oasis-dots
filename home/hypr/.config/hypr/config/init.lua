@@ -12,6 +12,16 @@ local Utils = require("lib.utils") ---@class Utils
 --- @field hypr_theme string Hyprcursor theme name (default: "hyprcursor-bibata-original-classic")
 --- @field size integer Cursor size in pixels (default: 24)
 
+--- @class Config.Input
+--- @field kb_layout string XKB layout (default: "us")
+--- @field kb_variant string|nil XKB variant, e.g. "dvorak"; nil = unset (default: nil)
+--- @field kb_options string|nil XKB options, e.g. "caps:escape"; nil = unset (default: nil)
+
+--- @class Config.Appearance
+--- @field inactive_opacity number Opacity of unfocused windows, 0 to 1 (default: 0.5)
+--- @field dim_inactive boolean Dim unfocused windows (default: true)
+--- @field dim_strength number Dim amount for unfocused windows, 0 to 1 (default: 0.2)
+
 --- @class Config.App
 --- @field term string Terminal emulator (default: auto-detected)
 --- @field term_cmd string Terminal emulator command (default: auto-detected)
@@ -46,6 +56,8 @@ local Utils = require("lib.utils") ---@class Utils
 --- @field is_laptop boolean|nil Whether the system running is a laptop or desktop (default: nil)
 --- @field nvidia Config.Nvidia
 --- @field cursor Config.Cursor
+--- @field input Config.Input
+--- @field appearance Config.Appearance
 --- @field app Config.App
 --- @field monitors Config.Monitor[] Ordered list of monitors; position in list maps to jump index 1–9
 --- @field devices HL.DeviceSpec[] Per-device configs applied via hl.device() on startup (default: {})
@@ -71,6 +83,16 @@ Config.defaults = {
     theme = "xcursor-bibata-original-classic",
     hypr_theme = "hyprcursor-bibata-original-classic",
     size = 24,
+  },
+  input = {
+    kb_layout = "us",
+    kb_variant = nil,
+    kb_options = nil,
+  },
+  appearance = {
+    inactive_opacity = 0.5,
+    dim_inactive = true,
+    dim_strength = 0.2,
   },
   app = {
     term = nil,
