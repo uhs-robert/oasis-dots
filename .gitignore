@@ -189,3 +189,6 @@ home/ghostty/.config/ghostty/oasis-theme.conf
 
 # Local installer overrides (GITHUB_DIR, GITHUB_ORG)
 /install.local
+
+# Claude Code agent worktrees
+/.claude/worktrees/
