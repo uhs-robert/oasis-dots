@@ -166,11 +166,11 @@ Item {
                 }
 
                 Text {
-                    visible: WeatherState.stale
+                    visible: WeatherState.stale || WeatherState.failed
                     Layout.fillWidth: true
                     Layout.minimumWidth: 0
                     elide: Text.ElideRight
-                    text: "STALE DATA" + (WeatherState.error ? ": " + WeatherState.error : "")
+                    text: (WeatherState.failed ? "NO DATA" : "STALE DATA") + (WeatherState.error ? ": " + WeatherState.error : "")
                     color: Style.pal.error
                     font.family: W.mono_font
                     font.pixelSize: Style.fs(-4)

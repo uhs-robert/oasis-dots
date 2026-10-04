@@ -95,7 +95,7 @@ ColumnLayout {
 
                 Text {
                     anchors.baseline: temp_text.baseline
-                    text: WeatherState.has_data ? WeatherState.current.cond : WeatherState.loading ? "Loading…" : "Unavailable"
+                    text: WeatherState.has_data ? WeatherState.current.cond : WeatherState.loading ? "Loading…" : "Unavailable" + (WeatherState.error ? ": " + WeatherState.error : "")
                     color: WeatherState.has_data || WeatherState.loading ? Style.text_fg : Theme.warning
                     font.family: Style.font_family
                     font.pixelSize: Style.fs(-1)
