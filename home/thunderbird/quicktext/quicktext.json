@@ -1,0 +1,172 @@
+{
+  "templates": {
+    "groups": [
+      {
+        "name": "Greetings",
+        "protected": false
+      },
+      {
+        "name": "Templates",
+        "protected": false
+      },
+      {
+        "name": "Scripts",
+        "protected": false
+      }
+    ],
+    "texts": [
+      [
+        {
+          "name": "Hey",
+          "text": "<p>Hey [[TO=firstname]],</p>\n<p>[[CURSOR]]</p>\n<p>[[INPUT=Closing Text|select|[[SCRIPT=GetClosingList]]]],</p>",
+          "shortcut": "3",
+          "type": "text/html",
+          "keyword": "hey",
+          "subject": "",
+          "attachments": ""
+        },
+        {
+          "name": "Hey Good [Morning]",
+          "text": "<p>Hey [[TO=firstname]] [[SCRIPT=GoodMorning|lower]],</p>\n<p>[[CURSOR]]</p>\n<p>[[INPUT=Closing Text|select|[[SCRIPT=GetClosingList]]]],</p>",
+          "shortcut": "1",
+          "type": "text/html",
+          "keyword": "",
+          "subject": "",
+          "attachments": ""
+        },
+        {
+          "name": "Good [Morning]",
+          "text": "<p>[[SCRIPT=GoodMorning|upper]] [[TO=firstname]],</p>\n<p>[[CURSOR]]</p>\n<p>[[INPUT=Closing Text|select|[[SCRIPT=GetClosingList]]]],</p>",
+          "shortcut": "2",
+          "type": "text/html",
+          "keyword": "gm",
+          "subject": "",
+          "attachments": ""
+        },
+        {
+          "name": "Closing Only",
+          "text": "[[INPUT=Closing Text|select|[[SCRIPT=GetClosingList]]]],[[CURSOR]]",
+          "shortcut": "9",
+          "type": "text/plain",
+          "keyword": "gc",
+          "subject": "",
+          "attachments": ""
+        }
+      ],
+      [
+        {
+          "name": "Step Guide",
+          "text": "Hey [[TO=firstname]] [[SCRIPT=GoodMorning|lower]],\n<br /><br />\n\nHere is the process on [[INPUT=Process Description|text]]. [[CURSOR]]\n\n<h2>Steps:</h2>\n<ol>\n<li></li>\n<li></li>\n<li></li>\n</ol>\n\n<h2>Screenshots:</h2>\n<ul>\n<li></li>\n<li></li>\n<li></li>\n</ul>\n\n[[INPUT=Closing Text|select|Hope this helps;Looking forward to our conversation;If there are any questions or concerns then please let me know]],\n<br /><br />",
+          "shortcut": "",
+          "type": "text/html",
+          "keyword": "",
+          "subject": "",
+          "attachments": ""
+        }
+      ],
+      [
+        {
+          "name": "Clean Subject Line",
+          "text": "[[SCRIPT=CleanSubject]]",
+          "shortcut": "0",
+          "type": "text/plain",
+          "keyword": "",
+          "subject": "",
+          "attachments": ""
+        },
+        {
+          "name": "Add Recipients",
+          "text": "[[SCRIPT=AddRecipients|[[INPUT=Add Recipients|select|to;cc;bcc;reply-to]]|[[INPUT=Add Names (seperated by semi-colon)]]]]",
+          "shortcut": "4",
+          "type": "text/plain",
+          "keyword": "",
+          "subject": "",
+          "attachments": ""
+        },
+        {
+          "name": "Remove Recipients",
+          "text": "[[SCRIPT=RemoveRecipients|[[INPUT=Type|select|to;cc;bcc;reply-to;all]]]]",
+          "shortcut": "5",
+          "type": "text/plain",
+          "keyword": "",
+          "subject": "",
+          "attachments": ""
+        },
+        {
+          "name": "Get Recipients",
+          "text": "[[SCRIPT=GetRecipients]]",
+          "shortcut": "6",
+          "type": "text/plain",
+          "keyword": "",
+          "subject": "",
+          "attachments": ""
+        },
+        {
+          "name": "Add Date Offset",
+          "text": "[[SCRIPT=DateOffset|[[INPUT=Month Offset]]|[[INPUT=Day Offset]]|[[INPUT=Date Format|select|numeric;short;long;yearmonth;year;monthname;weekday]]]]",
+          "shortcut": "",
+          "type": "text/plain",
+          "keyword": "",
+          "subject": "",
+          "attachments": ""
+        },
+        {
+          "name": "Convert Text to...",
+          "text": "[[SCRIPT=ConvertTextTo|[[INPUT=Select conversion type|select|lower;upper;title]]|[[SELECTION]]]]",
+          "shortcut": "",
+          "type": "text/plain",
+          "keyword": "",
+          "subject": "",
+          "attachments": ""
+        }
+      ]
+    ]
+  },
+  "scripts": [
+    {
+      "name": "GoodMorning",
+      "script": "// default values for variables\nconst variables = this.quicktext.variables;\nif(variables.length < 1) variables[0] = \"lower\"; // style to use is 'upper' or 'lower\nlet style = variables[0];\n\n// Set prefix\nlet prefix = \"Good\";\nif (style !== 'upper') prefix = prefix.toLowerCase();\n\n// Set time of day\nconst date = new Date();\nif (date.getHours() < 12) return `${prefix} morning`;\nif (date.getHours() < 16) return `${prefix} afternoon`;\nif (date.getHours() < 21) return `${prefix} evening`;\n\nreturn `${prefix} evening`;\n",
+      "protected": false
+    },
+    {
+      "name": "CleanSubject",
+      "script": "// scripts/CleanSubject.js\n\n// get subject from email if possible\nlet { subject } = await this.compose.getComposeDetails();\n\n// detect first prefix\nlet firstPrefix = \"\";\nif (subject.toLowerCase().startsWith(\"re: \")) firstPrefix = \"Re: \";\nif (subject.toLowerCase().startsWith(\"fwd: \")) firstPrefix = \"Fwd: \";\n\n// search and remove all prefixes\nlet previousLength = 0;\nwhile (previousLength != subject.length) {\n  // repeat the process if something gets shortened\n  previousLength = subject.length;\n\n  subject = subject.replace(/^(re:\\s|r:\\s|aw:\\s|antw:\\s|antwort:\\s)/i, \"\"); // replace \"Re: \", \"R: \", \"Aw: \", \"Antw: \", \"Antwort: \"\n  subject = subject.replace(/^(fwd:\\s|fw:\\s|wg:\\s|wt:\\s|wtrlt:\\s)/i, \"\"); // replace \"Fwd: \", \"Fw: \", \"Wg: \", \"Wt: \", \"Wtrlt: \"\n  subject = subject.replace(/^(Re-\\d:\\s|Re\\[\\d\\]:\\s)/i, \"\"); // replace \"Re-1: \", \"Re-2: \", \"Re[1]: \", \"Re[2]: \"\n  subject = subject.replace(\n    /^(\\*\\*\\*\\*SPAM\\*\\*\\*\\*\\s|\\[SPAM\\]\\s|\\[SPAM\\?\\s\\]\\s)/i,\n    \"\",\n  ); // replace \"****Spam**** \", \"[Spam] \", \"[Spam? ] \"\n  subject = subject.replace(/^(Automatische Antwort:\\s)/i, \"\"); // replace \"Automatische Antwort: \"\n  subject = subject.replace(\n    /^(\\[Extern]\\s-\\s|\\[Extern]\\s|\\[Extern]:\\s|Extern:\\s)/i,\n    \"\",\n  ); // replace \"[Extern] - \", \"[Extern] \", \"[Extern]: \", \"Extern: \"\n  subject = subject.replace(/^(\\[Probable Suspicious URLs\\]\\s)/i, \"\"); // replace \"[Probable Suspicious URLs] \"\n  subject = subject.trim();\n}\n\n// reuse first prefix and change subject\nawait this.compose.setComposeDetails({ subject: firstPrefix + subject });\n",
+      "protected": false
+    },
+    {
+      "name": "DateOffset",
+      "script": "// scripts/DateOffset.js\n\n// default values for this.quicktext.variables\nif (this.quicktext.variables.length < 1) this.quicktext.variables[0] = \"0\"; // number of months to add or subtract\nif (this.quicktext.variables.length < 2) this.quicktext.variables[1] = \"0\"; // number of days to add or subtract\nif (this.quicktext.variables.length < 3) this.quicktext.variables[2] = \"short\"; // format to use\n\n// get the current date with an offset (specified by the this.quicktext.variables)\nlet date = new Date();\nlet dayOffset = date.getDate() - 1;\nlet dateOffset = new Date(date.getFullYear(), date.getMonth(), 1);\ndateOffset.setMonth(\n  dateOffset.getMonth() + parseInt(this.quicktext.variables[0]),\n);\ndateOffset.setDate(\n  dateOffset.getDate() + dayOffset + parseInt(this.quicktext.variables[1]),\n);\n\n// options described here: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Date/toLocaleDateString\nlet options = { year: \"numeric\", month: \"long\", day: \"numeric\" };\nif (this.quicktext.variables[2].toLowerCase() == \"numeric\")\n  options = { year: \"numeric\", month: \"2-digit\", day: \"2-digit\" };\nif (this.quicktext.variables[2].toLowerCase() == \"short\")\n  options = { year: \"numeric\", month: \"long\", day: \"numeric\" };\nif (this.quicktext.variables[2].toLowerCase() == \"long\")\n  options = { weekday: \"long\", year: \"numeric\", month: \"long\", day: \"2-digit\" };\nif (this.quicktext.variables[2].toLowerCase() == \"yearmonth\")\n  options = { year: \"numeric\", month: \"long\" };\nif (this.quicktext.variables[2].toLowerCase() == \"year\")\n  options = { year: \"numeric\" };\nif (this.quicktext.variables[2].toLowerCase() == \"monthname\")\n  options = { month: \"long\" };\nif (this.quicktext.variables[2].toLowerCase() == \"weekday\")\n  options = { weekday: \"long\" };\n\n// return result; undefined instead of \"en-EN\" or \"de-DE\" should use the users language by default\nreturn dateOffset.toLocaleDateString(undefined, options);\n",
+      "protected": false
+    },
+    {
+      "name": "RemoveRecipients",
+      "script": "// scripts/RemoveRecipients.js\n\nlet type = this.quicktext.variables[0];\nlet details = {};\n\nif (type == \"to\" || type == \"all\") {\n  details.to = [];\n}\n\nif (type == \"cc\" || type == \"all\") {\n  details.cc = [];\n}\n\nif (type == \"bcc\" || type == \"all\") {\n  details.bcc = [];\n}\n\nif (type == \"reply-to\" || type == \"all\") {\n  details.replyTo = [];\n}\nawait this.compose.setComposeDetails(details);\n",
+      "protected": false
+    },
+    {
+      "name": "SetSubject",
+      "script": "// scripts/SetSubject.js\n\nlet subject = this.quicktext.variables[0];\nthis.compose.setComposeDetails({ subject });\n",
+      "protected": false
+    },
+    {
+      "name": "AddRecipients",
+      "script": "// scripts/AddRecipients.js\nlet type = this.quicktext.variables[0];\nlet adresses = this.quicktext.variables[1].split(\";\");\n\nif (!type || ![\"to\", \"cc\", \"bcc\", \"reply-to\"].includes(type)) {\n  return;\n}\n\nif (type == \"reply-to\") {\n  type = \"replyTo\";\n}\n\nlet details = await this.compose.getComposeDetails();\nlet recipients = new Set([...details[type], ...adresses].map((e) => e.trim()));\nawait this.compose.setComposeDetails({\n  [type]: Array.from(recipients),\n});\n",
+      "protected": false
+    },
+    {
+      "name": "GetRecipients",
+      "script": "// scripts/GetRecipients.js\n\nlet result = \"\";\n\nlet { to, cc, bcc, replyTo } = await this.compose.getComposeDetails();\n\nfor (let toAddress of to) {\n  result += \"To: \" + toAddress + \"\\r\\n\";\n}\n\nfor (let ccAddress of cc) {\n  result += \"CC: \" + ccAddress + \"\\r\\n\";\n}\n\nfor (let bccAddress of bcc) {\n  result += \"BCC: \" + bccAddress + \"\\r\\n\";\n}\n\nfor (let replyToAddress of replyTo) {\n  result += \"Reply to: \" + replyToAddress + \"\\r\\n\";\n}\n\nreturn result;\n",
+      "protected": false
+    },
+    {
+      "name": "ConvertTextTo",
+      "script": "// scripts/ConvertTextTo.js\n\n// Variables\nconst variables = this.quicktext.variables;\nconst type = variables[0];\nlet text = variables[1];\n\n// Transformation functions\nconst transformations = {\n  upper: (str) => str.toUpperCase(),\n  lower: (str) => str.toLowerCase(),\n  title: (str) =>\n    str\n      .split(\" \")\n      .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())\n      .join(\" \"),\n};\n\n// Perform the transformation\nif (transformations[type]) text = transformations[type](text);\n\n// Return\nreturn text;\n",
+      "protected": false
+    },
+    {
+      "name": "GetClosingList",
+      "script": "// scripts/GetClosingList.js\n\nconst closing = [\n  \"Thanks\",\n  \"Thanks for bringing this to my attention\",\n  \"I appreciate your help\",\n  \"I hope this helps\",\n  \"I'll be in touch soon\",\n  \"Looking forward to our conversation\",\n  \"Please let me know what you think\",\n  \"Looking forward to hearing back from you soon\",\n  \"If there are any questions or concerns then please let me know\",\n  \"Thanks for your consideration\",\n];\n\nreturn closing.join(\"; \");\n",
+      "protected": false
+    }
+  ]
+}
