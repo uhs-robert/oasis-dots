@@ -8,6 +8,9 @@ import "../components"
 import "../theme"
 import "../services"
 import "Fuzzy.js" as Fuzzy
+import "hyprvim"
+import "hyprvim/PromptSpec.js" as Spec
+import "hyprvim/VimMotions.js" as Vim
 
 // HyprVim's prompt bar over its `hyprvim_prompt` IPC target, docked at the bottom in the active style.
 // HyprVim stays authoritative: the bar only edits a line, then writes it to result_path and dispatches the callback.
@@ -65,11 +68,11 @@ Popup {
     readonly property var memo: ({ key: "", cur: "", matched: [] })
 
     readonly property string query_text: root.cycle_base !== null ? root.cycle_base : input.text
-    readonly property var ctx: root.context_of(root.query_text)
-    readonly property var arg_spec: root.ctx.kind === "arg" ? root.arg_spec_for(root.ctx.cmd, root.ctx.pos) : null
+    readonly property var ctx: Spec.context_of(root.spec, root.query_text)
+    readonly property var arg_spec: root.ctx.kind === "arg" ? Spec.arg_spec_for(root.spec, root.ctx.cmd, root.ctx.pos) : null
     // While Tab previews a command, the hint already speaks for its first argument.
-    readonly property var hint_ctx: root.cycle_base !== null && root.ctx.kind === "command" ? root.context_of(input.text) : root.ctx
-    readonly property var hint_spec: root.hint_ctx.kind === "arg" ? root.arg_spec_for(root.hint_ctx.cmd, root.hint_ctx.pos) : null
+    readonly property var hint_ctx: root.cycle_base !== null && root.ctx.kind === "command" ? Spec.context_of(root.spec, input.text) : root.ctx
+    readonly property var hint_spec: root.hint_ctx.kind === "arg" ? Spec.arg_spec_for(root.spec, root.hint_ctx.cmd, root.hint_ctx.pos) : null
     readonly property string hint: root.hint_spec && root.hint_spec.hint ? root.hint_spec.hint : ""
     readonly property bool loading: root.ctx.kind === "shell" && root.shell_items === null || !!root.arg_spec && !!root.arg_spec.source && root.source_cache[root.source_key()] === undefined
     readonly property var items: root.candidates(root.ctx, root.source_cache, root.shell_items)
@@ -79,13 +82,13 @@ Popup {
     // The usage column sits between name and description; a narrow bar collapses it to a dim ellipsis.
     readonly property bool usage_column: root.ctx.kind === "command" && root.items.some(e => !!e.item.usage)
     readonly property bool hint_shown: !root.is_output && (root.hint !== "" || root.loading || root.warn_text !== "")
-    readonly property real output_height: Math.min(output_view.contentHeight + 8, Math.round(root.screen_height * 0.45))
+    readonly property real output_height: Math.min(output_pane.content_height + 8, Math.round(root.screen_height * 0.45))
 
     readonly property real menu_height: root.menu_slots * root.row_height + 8
     // The surface holds the tallest input layout from open; the panel grows inside it as the menu appears.
     reserve_height: root.is_output ? 0 : root.input_height + hint_text.height + 6 + root.menu_height + 24
     body_height: root.is_output
-        ? output_label.height + 8 + root.output_height + 24
+        ? output_pane.label_height + 8 + root.output_height + 24
         : root.input_height + (root.hint_reserved ? hint_text.height + 6 : 0) + (root.menu_shown ? root.menu_height : 0) + 24
 
     onCtxChanged: root.request_sources()
@@ -146,7 +149,7 @@ Popup {
             onStreamFinished: {
                 if (!root.session) return;
                 const next = Object.assign({}, root.source_cache);
-                next[source_proc.key] = root.parse_source(text);
+                next[source_proc.key] = Spec.parse_source(text);
                 root.source_cache = next;
                 root.run_next_source();
             }
@@ -199,7 +202,7 @@ Popup {
             output_file.path = parsed.output_path || "";
             const text = output_file.text() || "";
             root.output_text = text.length > root.max_output ? text.slice(0, root.max_output) + "\n[output truncated]" : text.replace(/\n+$/, "");
-            output_view.contentY = 0;
+            output_pane.to_top();
         }
         root.set_text(parsed.text || "");
         root.snapshot();
@@ -231,7 +234,7 @@ Popup {
 
     function focus_body() {
         if (!root.is_open) return;
-        if (root.is_output) output_scope.forceActiveFocus();
+        if (root.is_output) output_pane.forceActiveFocus();
         else if (root.insert) input.forceActiveFocus();
         else input_scope.forceActiveFocus();
     }
@@ -279,52 +282,6 @@ Popup {
         input.cursorPosition = Math.min(Math.max(0, pos - 1), root.normal_max());
     }
 
-    // Vim word classes: blank, keyword characters, other punctuation.
-    function char_class(c) {
-        return /\s/.test(c) ? 0 : /\w/.test(c) ? 1 : 2;
-    }
-
-    function word_forward(t, p) {
-        const n = t.length;
-        const c = p < n ? root.char_class(t[p]) : 0;
-        if (c !== 0) while (p < n && root.char_class(t[p]) === c) p++;
-        while (p < n && root.char_class(t[p]) === 0) p++;
-        return p;
-    }
-
-    function word_end(t, p) {
-        const n = t.length;
-        p++;
-        while (p < n && root.char_class(t[p]) === 0) p++;
-        if (p >= n) return Math.max(0, n - 1);
-        const c = root.char_class(t[p]);
-        while (p + 1 < n && root.char_class(t[p + 1]) === c) p++;
-        return p;
-    }
-
-    function word_back(t, p) {
-        if (p <= 0) return 0;
-        p--;
-        while (p > 0 && root.char_class(t[p]) === 0) p--;
-        const c = root.char_class(t[p]);
-        while (p > 0 && root.char_class(t[p - 1]) === c) p--;
-        return p;
-    }
-
-    // Where a motion lands from p, and whether an operator over it includes the landing character.
-    function motion(ch, t, p) {
-        const n = t.length;
-        if (ch === "h") return { to: Math.max(0, p - 1), incl: false };
-        if (ch === "l") return { to: Math.min(n, p + 1), incl: false };
-        if (ch === "w") return { to: root.word_forward(t, p), incl: false };
-        if (ch === "b") return { to: root.word_back(t, p), incl: false };
-        if (ch === "e") return { to: root.word_end(t, p), incl: true };
-        if (ch === "0") return { to: 0, incl: false };
-        if (ch === "^") return { to: Math.max(0, t.search(/\S/)), incl: false };
-        if (ch === "$") return { to: Math.max(0, n - 1), incl: true };
-        return null;
-    }
-
     function remove(from, to) {
         const t = input.text;
         if (from >= to || from >= t.length) return;
@@ -340,7 +297,7 @@ Popup {
         let to = t.length;
         if (ch !== op) {
             // cw on a word changes to its end, as in vim.
-            const m = op === "c" && ch === "w" && p < t.length && root.char_class(t[p]) !== 0 ? { to: root.word_end(t, p), incl: true } : root.motion(ch, t, p);
+            const m = op === "c" && ch === "w" && p < t.length && Vim.char_class(t[p]) !== 0 ? { to: Vim.word_end(t, p), incl: true } : Vim.motion(ch, t, p);
             if (!m) return;
             from = Math.min(p, m.to);
             to = Math.min(t.length, Math.max(p, m.to) + (m.incl ? 1 : 0));
@@ -366,56 +323,6 @@ Popup {
         input.cursorPosition = p;
     }
 
-    // What the cursor is completing: a command name, a command's Nth argument, or a shell command after `!`.
-    function context_of(line) {
-        let head = "";
-        let seg = line;
-        if (root.spec.chain && !/^(?:!|silent\s+!|%?s\/)/.test(line)) {
-            const cut = line.lastIndexOf("|");
-            if (cut >= 0) {
-                const rest = line.slice(cut + 1);
-                const lead = rest.match(/^\s*/)[0];
-                head = line.slice(0, cut + 1) + lead;
-                seg = rest.slice(lead.length);
-            }
-        }
-        const shell = seg.match(/^((?:silent\s+)?!)(\S*)$/);
-        if (shell) return root.spec.shell_source ? { kind: "shell", head: head + shell[1], cur: shell[2] } : { kind: "none" };
-        if (/^(?:silent\s+)?!/.test(seg) || /^%?s\//.test(seg)) return { kind: "none" };
-        const space = seg.indexOf(" ");
-        if (space < 0) return { kind: "command", head: head, cur: seg };
-        const words = seg.slice(space + 1).split(/\s+/).filter(w => w !== "");
-        const trailing = /\s$/.test(seg);
-        const cur = trailing ? "" : words[words.length - 1] || "";
-        const pos = trailing ? words.length + 1 : words.length;
-        return { kind: "arg", head: head + seg.slice(0, seg.length - cur.length), cmd: seg.slice(0, space), pos: pos, cur: cur, prev: words.slice(0, pos - 1).join(" ") };
-    }
-
-    function canonical(cmd) {
-        const args = root.spec.args || {};
-        if (args[cmd]) return cmd;
-        const entry = (root.spec.completions || []).find(c => (c.aliases || []).indexOf(cmd) >= 0);
-        return entry ? entry.name : cmd;
-    }
-
-    function arg_spec_for(cmd, pos) {
-        const positions = (root.spec.args || {})[root.canonical(cmd)];
-        return positions && pos >= 1 && pos <= positions.length ? positions[pos - 1] : null;
-    }
-
-    function entry_for(cmd) {
-        return (root.spec.completions || []).find(c => c.name === cmd || (c.aliases || []).indexOf(cmd) >= 0) || null;
-    }
-
-    // First required argument the line leaves empty, or 0. A spec without min_args never holds Enter.
-    function missing_pos(c) {
-        if (c.kind !== "command" && c.kind !== "arg") return 0;
-        const entry = root.entry_for(c.kind === "command" ? c.cur : c.cmd);
-        const need = entry && entry.min_args > 0 ? entry.min_args : 0;
-        const filled = c.kind === "command" ? 0 : c.cur !== "" ? c.pos : c.pos - 1;
-        return filled < need ? filled + 1 : 0;
-    }
-
     function settle() {
         root.cycle_base = null;
         root.selected = -1;
@@ -426,8 +333,8 @@ Popup {
     // Enter runs the line unless its command still needs an argument; then it steps toward that argument.
     function press_enter() {
         const line = input.text;
-        const c = root.context_of(line);
-        const need = root.missing_pos(c);
+        const c = Spec.context_of(root.spec, line);
+        const need = Spec.missing_pos(root.spec, c);
         if (root.cycle_base !== null && root.selected >= 0 && (!root.insert || need > 0 || root.ctx.kind === "arg")) {
             root.settle();
             return;
@@ -439,14 +346,14 @@ Popup {
         if (!/\s$/.test(line)) root.set_text(line + " ");
         root.settle();
         const cmd = c.kind === "command" ? c.cur : c.cmd;
-        const entry = root.entry_for(cmd);
-        const spec = root.arg_spec_for(cmd, need);
+        const entry = Spec.entry_for(root.spec, cmd);
+        const spec = Spec.arg_spec_for(root.spec, cmd, need);
         root.warn_text = entry && entry.usage ? ":" + cmd + " needs: " + entry.usage : ":" + cmd + " arg " + need + " needs: " + (spec && spec.hint ? spec.hint : "a value");
         warn_timer.restart();
     }
 
     function source_key() {
-        return root.ctx.kind === "arg" ? root.canonical(root.ctx.cmd) + "|" + root.ctx.pos + "|" + root.ctx.prev : "";
+        return root.ctx.kind === "arg" ? Spec.canonical(root.spec, root.ctx.cmd) + "|" + root.ctx.pos + "|" + root.ctx.prev : "";
     }
 
     function request_sources() {
@@ -471,18 +378,6 @@ Popup {
         source_proc.environment = { HV_ARGS: next.prev };
         source_proc.command = ["bash", "-c", next.source];
         source_proc.running = true;
-    }
-
-    // "value<TAB>description[<TAB>insert]" lines; a line with no value is not a candidate.
-    function parse_source(text) {
-        const out = [];
-        for (const line of text.split("\n")) {
-            const f = line.split("\t");
-            const value = f[0].trim();
-            if (value === "") continue;
-            out.push({ label: value, description: f[1] || "", insert: (f[2] || value) + " " });
-        }
-        return out;
     }
 
     // Matching is monotonic: whatever matches a longer query also matched its prefix.
@@ -527,9 +422,9 @@ Popup {
             return list.slice(0, root.max_items).map(item => ({ item: item, positions: [...Array(ctx.cur.length).keys()] }));
         }
         if (ctx.kind !== "arg") return [];
-        const spec = root.arg_spec_for(ctx.cmd, ctx.pos);
+        const spec = Spec.arg_spec_for(root.spec, ctx.cmd, ctx.pos);
         if (!spec) return [];
-        const key = root.canonical(ctx.cmd) + "|" + ctx.pos + "|" + ctx.prev;
+        const key = Spec.canonical(root.spec, ctx.cmd) + "|" + ctx.pos + "|" + ctx.prev;
         const sourced = spec.source ? cache[key] : undefined;
         let list = (spec.values || []).map(v => ({ label: v[0], description: v[1] || "", insert: v[0] + " " }));
         if (sourced) list = list.concat(sourced);
@@ -670,7 +565,7 @@ Popup {
             else if (op === "g" && t === "g") root.select_item(0);
             else if (op === "d" || op === "c") root.operate(op, t);
         } else if (k === Qt.Key_Left || k === Qt.Key_Right || "hlwbe0^$".indexOf(t) >= 0 && t !== "") {
-            const m = root.motion(k === Qt.Key_Left ? "h" : k === Qt.Key_Right ? "l" : t, input.text, p);
+            const m = Vim.motion(k === Qt.Key_Left ? "h" : k === Qt.Key_Right ? "l" : t, input.text, p);
             input.cursorPosition = Math.min(m.to, root.normal_max());
         } else if (t === "x") {
             root.remove(p, p + 1);
@@ -707,13 +602,8 @@ Popup {
         event.accepted = true;
     }
 
-    function scroll_output(dy) {
-        const max = Math.max(0, output_view.contentHeight - output_view.height);
-        output_view.contentY = Math.max(0, Math.min(max, output_view.contentY + dy));
-    }
-
-    onJump_first: output_view.contentY = 0
-    onJump_last: root.scroll_output(output_view.contentHeight)
+    onJump_first: output_pane.to_top()
+    onJump_last: output_pane.scroll(output_pane.content_height)
     jumps_enabled: root.is_output
 
     Item {
@@ -731,95 +621,29 @@ Popup {
             // NORMAL keys; the text input has focus only in INSERT.
             Keys.onPressed: event => root.handle_normal_key(event)
 
-            // Fixed slots over a window of items: typing rebinds rows instead of recreating them.
-            Column {
+            CompletionMenu {
                 id: menu
                 anchors.left: parent.left
                 anchors.right: parent.right
                 anchors.bottom: input_bar.top
                 anchors.bottomMargin: 6 + (root.hint_reserved ? hint_text.height + 6 : 0)
                 visible: root.menu_shown
-
-                readonly property real label_width: Math.max(Style.px(160), menu.width * 0.3)
-                readonly property bool usage_wide: menu.width >= Style.px(720)
-                readonly property real usage_width: !root.usage_column ? 0 : menu.usage_wide ? Math.max(Style.px(150), menu.width * 0.2) : Style.px(14)
-
-                WheelHandler {
-                    acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
-                    onWheel: event => root.scroll_menu(event.angleDelta.y < 0 ? 1 : -1)
+                st: root.st
+                items: root.items
+                menu_top: root.menu_top
+                menu_rows: root.menu_rows
+                menu_slots: root.menu_slots
+                built: root.menu_reserved
+                selected: root.selected
+                usage_column: root.usage_column
+                row_height: root.row_height
+                onPicked: i => {
+                    root.apply(i);
+                    root.settle();
+                    input.forceActiveFocus();
                 }
-
-                Repeater {
-                    model: root.menu_reserved ? root.menu_slots : 0
-
-                    delegate: Item {
-                        id: menu_slot
-                        required property int index
-                        width: menu.width
-                        height: root.row_height
-                        visible: menu_slot.index < root.menu_rows
-
-                        MenuRow {
-                            id: row
-                            readonly property int item_index: root.menu_top + menu_slot.index
-                            readonly property var entry: root.items[row.item_index] || ({ item: { label: "", description: "" }, positions: [] })
-
-                            width: menu.width
-                            height: root.row_height - 2
-                            selected: row.item_index === root.selected
-
-                            Text {
-                                id: row_label
-                                x: 8 + row.inset
-                                anchors.verticalCenter: parent.verticalCenter
-                                width: Math.min(implicitWidth, menu.label_width)
-                                elide: Text.ElideRight
-                                textFormat: Text.StyledText
-                                text: Fuzzy.highlight(row.entry.item.label, row.entry.positions, String(row.fg(root.st.text_accent)))
-                                color: row.fg(root.st.text_fg)
-                                font.family: root.st.mono_font
-                                font.pixelSize: root.st.fs(-1)
-                            }
-
-                            Text {
-                                x: 8 + row.inset + menu.label_width + 16
-                                width: menu.usage_width
-                                anchors.verticalCenter: parent.verticalCenter
-                                visible: menu.usage_width > 0 && !!row.entry.item.usage
-                                elide: Text.ElideRight
-                                text: menu.usage_wide ? row.entry.item.usage || "" : "…"
-                                color: row.fg(root.st.text_muted)
-                                opacity: 0.7
-                                font.family: root.st.mono_font
-                                font.pixelSize: root.st.fs(-3)
-                            }
-
-                            Text {
-                                anchors.left: parent.left
-                                anchors.leftMargin: 8 + row.inset + menu.label_width + 16 + (menu.usage_width > 0 ? menu.usage_width + 12 : 0)
-                                anchors.right: parent.right
-                                anchors.rightMargin: 8
-                                anchors.verticalCenter: parent.verticalCenter
-                                elide: Text.ElideRight
-                                text: row.entry.item.description
-                                color: row.fg(root.st.text_muted)
-                                font.family: root.st.font_family
-                                font.pixelSize: root.st.fs(-3)
-                            }
-
-                            MouseArea {
-                                anchors.fill: parent
-                                onClicked: {
-                                    root.apply(row.item_index);
-                                    root.settle();
-                                    input.forceActiveFocus();
-                                }
-                            }
-                        }
-                    }
-                }
+                onScrolled: d => root.scroll_menu(d)
             }
-
             Text {
                 id: hint_text
                 anchors.left: parent.left
@@ -935,57 +759,15 @@ Popup {
             }
         }
 
-        FocusScope {
-            id: output_scope
+        OutputPane {
+            id: output_pane
             anchors.fill: parent
+            st: root.st
             visible: root.is_output
             focus: root.is_output
-
-            Keys.onPressed: event => {
-                const ctrl = event.modifiers & Qt.ControlModifier;
-                const k = event.key;
-                const line = root.st.fs(4);
-                if (k === Qt.Key_Return || k === Qt.Key_Enter) Popups.close();
-                else if (k === Qt.Key_J || k === Qt.Key_Down) root.scroll_output(line);
-                else if (k === Qt.Key_K || k === Qt.Key_Up) root.scroll_output(-line);
-                else if (ctrl && k === Qt.Key_D || k === Qt.Key_PageDown) root.scroll_output(output_view.height / 2);
-                else if (ctrl && k === Qt.Key_U || k === Qt.Key_PageUp) root.scroll_output(-output_view.height / 2);
-                else return;
-                event.accepted = true;
-            }
-
-            Text {
-                id: output_label
-                width: parent.width
-                elide: Text.ElideRight
-                text: (root.spec.label || "") + (root.spec.text || "")
-                color: root.st.text_accent
-                font.family: root.st.mono_font
-                font.pixelSize: root.st.fs(-2)
-                font.bold: true
-            }
-
-            Flickable {
-                id: output_view
-                y: output_label.height + 8
-                width: parent.width
-                height: root.output_height
-                clip: true
-                contentWidth: width
-                contentHeight: output_text.implicitHeight
-                boundsBehavior: Flickable.StopAtBounds
-
-                Text {
-                    id: output_text
-                    width: output_view.width
-                    textFormat: Text.PlainText
-                    wrapMode: Text.WrapAtWordBoundaryOrAnywhere
-                    text: root.output_text
-                    color: root.st.text_fg
-                    font.family: root.st.mono_font
-                    font.pixelSize: root.st.fs(-3)
-                }
-            }
+            label: (root.spec.label || "") + (root.spec.text || "")
+            text: root.output_text
+            max_height: Math.round(root.screen_height * 0.45)
         }
     }
 }
