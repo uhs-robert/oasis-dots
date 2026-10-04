@@ -5,6 +5,9 @@
 # Effects, in SOURCE_DIR or its fx/: back, select, error, submit, transition_wipe, transition_left and transition_right; a missing file stays silent.
 # Usage: mgs2-audio [--title-loop START END] [--menu-loop START END] [--redetect] [--out DIR] SOURCE_DIR   (seconds; overrides are tagged too)
 set -euo pipefail
+# shellcheck source=lib/audio-loop.sh
+source "$(dirname -- "$(readlink -f -- "${BASH_SOURCE[0]}")")/lib/audio-loop.sh"
+audio_name=mgs2-audio
 
 src=""
 title_loop=()
@@ -39,25 +42,11 @@ while (($#)); do
     ;;
   esac
 done
-[[ -n $src ]] || {
-  echo "mgs2-audio: a source is required (see --help)" >&2
-  exit 1
-}
+audio_require_src
 
-for tool in ffmpeg ffprobe jq python3; do
-  command -v "$tool" >/dev/null || {
-    echo "mgs2-audio: $tool is required" >&2
-    exit 1
-  }
-done
-python3 -c 'import numpy' 2>/dev/null || {
-  echo "mgs2-audio: python3 numpy is required" >&2
-  exit 1
-}
-[[ -d $src ]] || {
-  echo "mgs2-audio: no source directory $src" >&2
-  exit 1
-}
+audio_require ffmpeg ffprobe jq python3
+audio_require_numpy
+[[ -d $src ]] || audio_die "no source directory $src"
 rate=44100
 mkdir -p "$out"
 
@@ -72,37 +61,6 @@ find_src() {
       return 0
     fi
   done
-}
-
-# Prints the source's sample rate.
-src_rate() {
-  ffprobe -v error -select_streams a:0 -show_entries stream=sample_rate -of csv=p=0 "$1"
-}
-
-# Prints "start end" in source samples from the file's loop tags, or nothing.
-read_tags() {
-  ffprobe -v error -show_entries format_tags:stream_tags -of json "$1" |
-    jq -r '[.format.tags, (.streams // [])[].tags] | map(select(. != null)) | add // {} | with_entries(.key |= ascii_upcase)
-      | (.LOOPSTART // "" | tonumber? // null) as $s | (.LOOPLENGTH // "" | tonumber? // null) as $l | (.LOOPEND // "" | tonumber? // null) as $e
-      | if $s == null then empty elif $l != null then "\($s) \($s + $l)" elif $e != null then "\($s) \($e)" else empty end'
-}
-
-# Sets KEY=VALUE tags on $1 without touching its audio: copy with new tags, check the decoded audio is identical, then swap in; an empty value removes the tag.
-write_meta() {
-  local file=$1 tmp before after scope='' kv
-  local args=()
-  shift
-  [[ ${file##*.} == ogg ]] && scope=:s:a:0
-  for kv in "$@"; do args+=("-metadata$scope" "$kv"); done
-  tmp=$(mktemp "$(dirname "$file")/.mgs2-tags.XXXXXX.${file##*.}") || return 1
-  if ffmpeg -v error -y -i "$file" -map 0 -c copy -map_metadata 0 "${args[@]}" "$tmp" &&
-    before=$(ffmpeg -v error -i "$file" -map 0:a -f md5 -) && after=$(ffmpeg -v error -i "$tmp" -map 0:a -f md5 -) &&
-    [[ -n $before && $before == "$after" ]] && touch -r "$file" "$tmp" && mv -f "$tmp" "$file"; then
-    return 0
-  fi
-  rm -f "$tmp"
-  echo "mgs2-audio: could not tag $file; left it untouched" >&2
-  return 1
 }
 
 # Prints "start end" in source samples for a loop found from the track's own repeats, or nothing when it has no clean one.

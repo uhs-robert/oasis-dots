@@ -17,7 +17,7 @@ Personal Arch Linux dotfiles deployed with GNU Stow. Three deployment targets, e
 ```bash
 just                  # list recipes
 just check            # full validation (run before committing)
-just lint             # shellcheck install.sh uninstall.sh lib/*.sh demo/*.sh
+just lint             # shellcheck install.sh uninstall.sh lib/*.sh demo/*.sh and the Quickshell audio importers
 just stow <pkg>       # symlink one package into ~
 just restow <pkg>     # fix stale/broken links
 just unstow <pkg>
@@ -32,9 +32,9 @@ just update-repos     # pull non-linked clones in repos/
 ./install.sh --server # headless install, no desktop packages/configs/services
 ```
 
-`just check` runs `lib/check.sh`: shellcheck and `shfmt -i 2` (installer, `lib/`, `demo/`), `stylua` on `home/hypr/.config/hypr`, `luacheck` on the Hyprland and greetd Lua (`lib/check-lua.sh`; luacheck 1.2.0 crashes under Lua 5.5, so it falls back to `lua5.4`/`lua5.3`/`luajit` with LuaFileSystem for that interpreter, e.g. the `luacheck` or `lua54-filesystem` package), QML linting of the Quickshell config and greeter (`lib/check-qml.sh`: Qt 6 `qmllint` from `qt6-declarative` at `/usr/lib/qt6/bin`, since `/usr/bin/qmllint` is Qt 5's, run on a staged copy with the `qmldir` files Quickshell generates so singletons resolve; it fails on syntax errors, unknown types or imports, unknown or misspelled properties and names, type-incompatible assignments, writes to read-only properties, and duplicate or cyclic declarations, but not on style warnings, members read through untyped `parent`/`Loader.item`, or known gaps in Quickshell's type info; needs `jq`), duplicate-package detection, tracked-symlink validation, and trailing-whitespace scan. Optional tools are skipped when absent rather than failing. There is no single-test runner; the checks are all-or-nothing and report every failure in one pass.
+`just check` runs `lib/check.sh`: shellcheck and `shfmt -i 2` (installer, `lib/`, `demo/`, and the Quickshell audio importers `scripts/lib/*.sh`, `ff7-audio`, `goldeneye-audio`, `mgs2-audio`, `ocarina-audio`), `stylua` on `home/hypr/.config/hypr`, `luacheck` on the Hyprland and greetd Lua (`lib/check-lua.sh`; luacheck 1.2.0 crashes under Lua 5.5, so it falls back to `lua5.4`/`lua5.3`/`luajit` with LuaFileSystem for that interpreter, e.g. the `luacheck` or `lua54-filesystem` package), QML linting of the Quickshell config and greeter (`lib/check-qml.sh`: Qt 6 `qmllint` from `qt6-declarative` at `/usr/lib/qt6/bin`, since `/usr/bin/qmllint` is Qt 5's, run on a staged copy with the `qmldir` files Quickshell generates so singletons resolve; it fails on syntax errors, unknown types or imports, unknown or misspelled properties and names, type-incompatible assignments, writes to read-only properties, and duplicate or cyclic declarations, but not on style warnings, members read through untyped `parent`/`Loader.item`, or known gaps in Quickshell's type info; needs `jq`), duplicate-package detection, tracked-symlink validation, and trailing-whitespace scan. Optional tools are skipped when absent rather than failing. There is no single-test runner; the checks are all-or-nothing and report every failure in one pass.
 
-Formatting scope is deliberately narrow — whitespace and stylua checks only cover `install.sh`, `uninstall.sh`, `justfile`, `lib/`, `packages/`, and `home/hypr/`. Everything else under `home/` is vendored or hand-maintained upstream config; do not reformat it.
+Formatting scope is deliberately narrow — whitespace and stylua checks only cover `install.sh`, `uninstall.sh`, `justfile`, `lib/`, `packages/`, `home/hypr/`, and shfmt covers the Quickshell audio importers (`scripts/*-audio`, `scripts/lib/`). Everything else under `home/` is vendored or hand-maintained upstream config; do not reformat it.
 
 ## Installer architecture
 
