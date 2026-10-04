@@ -17,8 +17,6 @@ Item {
     readonly property real u: root.portrait ? Math.min(root.width / 58, root.height / 100) : Math.min(root.width, root.height * 16 / 9) / 100
     readonly property bool animate: !!root.ctx && root.ctx.animate
     readonly property string phase: root.ctx ? root.ctx.phase : "idle"
-    // The screensaver phase's effect: "matrix" or "starfield".
-    readonly property string saver_effect: "starfield"
 
     readonly property color vec: root.phase === "wrong" ? Theme.red : root.phase === "unlock" ? Theme.green : (root.ctx ? root.ctx.tint_base : Theme.yellow)
     readonly property color hot: root.phase === "wrong" ? Theme.bright_red : root.phase === "unlock" ? Theme.bright_green : (root.ctx ? root.ctx.tint_bright : Theme.bright_yellow)
