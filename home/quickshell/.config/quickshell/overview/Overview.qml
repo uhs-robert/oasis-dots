@@ -99,11 +99,12 @@ PanelWindow {
         strip: Style.px(150)
     })
     readonly property var layout: Layout.compute(root.filmstrip, root.groups, root.tiles, frame.body.width - root.list_width, frame.body.height, root.metrics, root.selected_index)
-    readonly property int window_total: root.tiles.reduce((n, t) => n + t.windows.length, 0)
+    readonly property int window_total: (root.tiles || []).reduce((n, t) => n + t.windows.length, 0)
     // The selected window's place among all windows, tile by tile.
     readonly property int window_at: {
+        const tiles = root.tiles || [];
         let n = 0;
-        for (let i = 0; i < Math.min(root.selected_index, root.tiles.length); i++) n += root.tiles[i].windows.length;
+        for (let i = 0; i < Math.min(root.selected_index, tiles.length); i++) n += tiles[i].windows.length;
         const at = root.tab_order.findIndex(w => w.address === root.current_address);
         return at < 0 ? 0 : n + at + 1;
     }
