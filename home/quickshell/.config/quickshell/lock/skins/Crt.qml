@@ -23,6 +23,8 @@ Item {
     readonly property color ph_dim: Qt.tint(Theme.bg_shadow, Qt.alpha(root.tint_base, 0.72))
     readonly property color ph_hot: Qt.tint(root.ph, Qt.alpha(Theme.fg_strong, 0.15))
     readonly property string font: "VT323"
+    readonly property string mode_font: root.font
+    readonly property color mode_color: root.ph
     readonly property bool animate: !!root.ctx && root.ctx.animate
     readonly property string phase: root.ctx ? root.ctx.phase : "idle"
     readonly property bool dimmed: root.phase === "wrong" || root.phase === "unlock"

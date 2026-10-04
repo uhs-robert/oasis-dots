@@ -20,6 +20,8 @@ QtObject {
     property string prompt: ""
     property bool caps_lock: false
     property bool typing: false
+    // INSERT mode: every key types the password and skins get no navigation keys.
+    property bool insert: false
     // PAM accepted; the skin plays its unlock before the session opens.
     property bool granted: false
     property bool saver: false

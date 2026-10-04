@@ -10,6 +10,7 @@ import "../services"
 import "../theme"
 // Skins load by URL; importing the folder lets Quickshell register the component folders they import.
 import "skins"
+import "skins/ui"
 
 // The session lock: one surface per screen, unlocked only by a PAM success.
 Singleton {
@@ -53,6 +54,7 @@ Singleton {
     property int unlock_ms: 0
     property bool saver: false
     property bool music_armed: false
+    property bool insert: false
     property bool arm_on_engage: false
     readonly property string flag_script: Quickshell.shellDir + "/scripts/lock-flag"
     readonly property var backdrop_files: {
@@ -138,6 +140,7 @@ Singleton {
 
     function reset_input() {
         root.buffer = "";
+        root.insert = false;
         root.pending = "";
         root.checking = false;
         root.failed = false;
@@ -170,6 +173,7 @@ Singleton {
         root.checking = false;
         root.pending = "";
         root.prompt = "";
+        root.insert = false;
         root.failed = true;
         root.message = text;
         ThemeAudio.play_lock("error");
@@ -223,7 +227,7 @@ Singleton {
         }
     }
 
-    // `skin` is the focused screen's skin; it may take a key only while the buffer is empty and PAM waits on nothing.
+    // NORMAL mode (not insert) offers keys to `skin` while the buffer is empty and PAM waits on nothing; `i` or any typed key enters INSERT, Esc on an empty buffer leaves it.
     function key(event, skin) {
         root.wake();
         root.arm_music();
@@ -238,11 +242,23 @@ Singleton {
         }
         root.typing = true;
         typing_timer.restart();
-        if (!root.checking && root.buffer === "" && root.prompt === "" && root.skin_takes(event, skin)) {
+        const ctrl = (event.modifiers & Qt.ControlModifier) && !(event.modifiers & Qt.AltModifier);
+        const was_insert = root.insert;
+        if (event.key === Qt.Key_Escape && root.insert && root.buffer === "" && !root.checking) root.insert = false;
+        const normal = !root.insert && !root.checking && root.buffer === "" && root.prompt === "";
+        if (normal && root.skin_takes(event, skin)) {
             event.accepted = true;
             return;
         }
-        const ctrl = (event.modifiers & Qt.ControlModifier) && !(event.modifiers & Qt.AltModifier);
+        if (was_insert && !root.insert) {
+            event.accepted = true;
+            return;
+        }
+        if (normal && !ctrl && event.text === "i") {
+            root.insert = true;
+            event.accepted = true;
+            return;
+        }
         if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
             root.submit();
         } else if (root.checking) {
@@ -257,6 +273,7 @@ Singleton {
             const t = event.text;
             if (t.toUpperCase() !== t.toLowerCase()) root.caps_lock = (t === t.toUpperCase()) !== !!(event.modifiers & Qt.ShiftModifier);
             root.buffer += t;
+            root.insert = true;
             root.failed = false;
         } else {
             return;
@@ -362,6 +379,13 @@ Singleton {
                 focus: true
                 Keys.onPressed: event => root.key(event, screen_loader.item)
 
+                ModeIndicator {
+                    z: 1000
+                    skin: screen_loader.item
+                    ctx: live_ctx
+                    font_fallback: Style.mono_font
+                }
+
                 Loader {
                     id: screen_loader
                     anchors.fill: parent
@@ -456,6 +480,7 @@ Singleton {
         prompt: root.prompt
         caps_lock: root.caps_lock
         typing: root.typing
+        insert: root.insert
         granted: root.granted
         saver: root.saver && Power.on_ac
         animate: Power.on_ac

@@ -146,6 +146,8 @@ Item {
 
     readonly property string logo_font: "Barlow Condensed"
     readonly property string ui_font: "Liberation Sans"
+    readonly property string mode_font: root.ui_font
+    readonly property color mode_color: root.item_on
     readonly property color line_color: "#9eaca3"
     readonly property color item_on: "#d3dbd4"
     readonly property color item_off: "#4a544c"
@@ -312,15 +314,15 @@ Item {
         return root.code_labels.map(() => r() * 30);
     }
 
-    // Enter steps title, menu, DATA LOAD and NAME ENTRY; Escape steps back; j/k or arrows move; a printable key jumps to NAME ENTRY and still types.
+    // Enter steps title, menu, DATA LOAD and NAME ENTRY; Escape steps back; h/j/k/l or arrows move; a printable key jumps to NAME ENTRY and still types.
     function handle_key(event) {
         const c = root.ctx;
         if (!root.can_step || c.buffer_length > 0 || c.checking || c.granted) return false;
         const ctrl = (event.modifiers & Qt.ControlModifier) && !(event.modifiers & Qt.AltModifier);
         const enter = !ctrl && (event.key === Qt.Key_Return || event.key === Qt.Key_Enter);
         const listing = root.screen === "menu" || root.screen === "load";
-        const down = event.key === Qt.Key_Down || (listing && !ctrl && event.text === "j");
-        const up = event.key === Qt.Key_Up || (listing && !ctrl && event.text === "k");
+        const down = event.key === Qt.Key_Down || (listing && !ctrl && (event.text === "j" || event.text === "l"));
+        const up = event.key === Qt.Key_Up || (listing && !ctrl && (event.text === "k" || event.text === "h"));
         if (root.screen === "name") {
             if (event.key === Qt.Key_Escape) {
                 c.scene = "load";

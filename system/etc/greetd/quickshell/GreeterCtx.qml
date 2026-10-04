@@ -18,6 +18,7 @@ QtObject {
     property string prompt: ""
     property bool caps_lock: false
     property bool typing: false
+    property bool insert: false
     property bool granted: false
     property bool saver: false
     property bool animate: !UPower.onBattery
