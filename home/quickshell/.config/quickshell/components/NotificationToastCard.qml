@@ -304,16 +304,11 @@ Rectangle {
     }
 
     // Static scanlines; nothing animates them.
-    Repeater {
-        model: Style.scanlines && Style.frame_octagon <= 0 ? Math.ceil(root.height / Style.scanline_period) : 0
-
-        Rectangle {
-            required property int index
-            y: index * Style.scanline_period
-            width: root.width
-            height: 1
-            color: Qt.alpha(Style.pal.primary, 0.05)
-        }
+    Scanlines {
+        visible: Style.scanlines && Style.frame_octagon <= 0
+        anchors.fill: parent
+        color: Qt.alpha(Style.pal.primary, 0.05)
+        period: Style.scanline_period
     }
 
     Dither {
