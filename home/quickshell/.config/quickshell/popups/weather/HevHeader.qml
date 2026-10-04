@@ -15,7 +15,6 @@ ColumnLayout {
     readonly property bool wide: root.width >= 300
     readonly property int aqi: WeatherState.aq_has_data && WeatherState.aq_current ? WeatherState.aq_current.aqi : -1
     readonly property real humidity: root.has ? Math.max(0, Math.min(100, root.cur.humidity)) : 0
-    readonly property var compass: ["N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE", "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW"]
     readonly property color hl: Style.text_primary
     readonly property color hl_t: Style.text_muted
 
@@ -211,7 +210,7 @@ ColumnLayout {
         Layout.fillWidth: true
         Layout.topMargin: 2
         elide: Text.ElideRight
-        text: root.has ? root.cur.cond + " · Feels like " + Math.round(root.cur.feels) + "°" + WeatherState.unit_symbol() + " · Wind " + Math.round(root.cur.wind_speed) + " " + WeatherState.wind_unit() + " " + root.compass[Math.round(((root.cur.wind_dir % 360) + 360) % 360 / 22.5) % 16] : ""
+        text: root.has ? root.cur.cond + " · Feels like " + Math.round(root.cur.feels) + "°" + WeatherState.unit_symbol() + " · Wind " + Math.round(root.cur.wind_speed) + " " + WeatherState.wind_unit() + " " + WeatherState.compass_label(root.cur.wind_dir) : ""
         color: root.hl_t
         font.family: Style.font_family
         font.pixelSize: Style.fs(-3)

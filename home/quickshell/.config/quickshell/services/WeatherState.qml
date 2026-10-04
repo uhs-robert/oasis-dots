@@ -927,6 +927,26 @@ Singleton {
         return root.wind_dir_names[idx];
     }
 
+    readonly property var compass_names: ["N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE", "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW"]
+
+    function compass_label(deg) {
+        return root.compass_names[Math.round(((deg % 360) + 360) % 360 / 22.5) % 16];
+    }
+
+    function temp_f(temp) {
+        return root.metric ? temp * 9 / 5 + 32 : temp;
+    }
+
+    function cond_text(with_error) {
+        if (root.has_data && root.current) return root.current.cond;
+        if (root.loading) return "Loading…";
+        return "Unavailable" + (with_error && root.error ? ": " + root.error : "");
+    }
+
+    function stale_text() {
+        return "Stale data" + (root.error ? ": " + root.error : "");
+    }
+
     function wind_unit() {
         return root.metric ? "km/h" : "mph";
     }

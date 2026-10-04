@@ -76,7 +76,7 @@ ColumnLayout {
                     Layout.fillWidth: true
                     Layout.minimumWidth: 0
                     elide: Text.ElideRight
-                    text: WeatherState.has_data ? WeatherState.current.cond : WeatherState.loading ? "Loading…" : "Unavailable"
+                    text: WeatherState.cond_text(false)
                     color: WeatherState.has_data || WeatherState.loading ? Style.text_strong : Theme.warning
                     font.family: Style.font_family
                     font.pixelSize: Style.fs(2)
@@ -98,7 +98,7 @@ ColumnLayout {
                 visible: WeatherState.location_name !== "" || WeatherState.stale || WeatherState.failed
                 Layout.fillWidth: true
                 elide: Text.ElideRight
-                text: WeatherState.failed ? WeatherState.error : WeatherState.stale ? "Stale data" + (WeatherState.error ? ": " + WeatherState.error : "") : WeatherState.location_name
+                text: WeatherState.failed ? WeatherState.error : WeatherState.stale ? WeatherState.stale_text() : WeatherState.location_name
                 color: WeatherState.stale || WeatherState.failed ? Theme.warning : Style.text_muted
                 font.family: Style.font_family
                 font.pixelSize: Style.fs(-2)

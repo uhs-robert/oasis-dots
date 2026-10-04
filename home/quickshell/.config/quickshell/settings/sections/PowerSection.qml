@@ -54,7 +54,7 @@ RowsSection {
 
     footer: Text {
         Layout.fillWidth: true
-        text: "Idle times count from the last input. Saved to ~/.local/state/hypr/power.json"
+        text: "Idle times count from the last input. Saved to " + PowerSettings.state_dir + "/power.json"
         wrapMode: Text.WordWrap
         color: root.st.text_dim
         font.family: root.st.font_family

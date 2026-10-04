@@ -84,7 +84,7 @@ Popup {
 
     function build_weeks() {
         const first = new Date(view_year, view_month, 1);
-        const start_offset = (first.getDay() + 6) % 7;
+        const start_offset = (first.getDay() - week_start + 7) % 7;
         const start = new Date(view_year, view_month, 1 - start_offset);
         const weeks = [];
         for (let w = 0; w < 6; w++) {
@@ -94,13 +94,20 @@ Popup {
                 cur.setDate(start.getDate() + w * 7 + d);
                 days.push(cur);
             }
-            weeks.push({ week_num: week_number(days[0]), days: days });
+            weeks.push({ week_num: week_number(days[(4 - week_start + 7) % 7]), days: days });
         }
         return weeks;
     }
 
+    readonly property int week_start: {
+        const choice = ClockSettings.week_start;
+        return choice === "sunday" ? 0 : choice === "monday" ? 1 : Qt.locale().firstDayOfWeek % 7;
+    }
     readonly property var weeks: build_weeks()
-    readonly property var weekday_headers: ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"]
+    readonly property var weekday_headers: {
+        const loc = Qt.locale();
+        return [0, 1, 2, 3, 4, 5, 6].map(d => loc.dayName((week_start + d) % 7 || 7, Locale.ShortFormat).slice(0, 2));
+    }
 
     readonly property var flat_cells: {
         const cells = [];
@@ -220,7 +227,7 @@ Popup {
                 Component {
                     id: ps2_clock
                     Ps2.ClockScreen {
-                        running: root.visible
+                        running: root.is_open
                     }
                 }
             }
