@@ -63,113 +63,6 @@ Item {
     // Lifestream: ribbons of braided strands flowing across the screen behind the sword.
     readonly property bool stream_on: root.screen === "saver"
     property real stream_t: 0
-    // Canvas resolution against the screen; the glow hides the upscale.
-    readonly property real stream_res: 0.5
-    readonly property var stream: {
-        let seed = 7;
-        const rnd = () => {
-            seed = (seed * 16807) % 2147483647;
-            return (seed - 1) / 2147483646;
-        };
-        const bands = [
-            { y: 300, amp: 70, k: 0.0042, w: 0.35, spread: 46, twist: 0.0031, tilt: -0.06, n: 11, ph: 0.4 },
-            { y: 520, amp: 105, k: 0.0033, w: 0.28, spread: 62, twist: 0.0026, tilt: 0.05, n: 14, ph: 2.1 },
-            { y: 720, amp: 60, k: 0.0048, w: 0.4, spread: 38, twist: 0.0036, tilt: -0.03, n: 9, ph: 4.2 }
-        ];
-        for (const b of bands) {
-            b.strands = [];
-            for (let i = 0; i < b.n; i++) b.strands.push({ o: (i / (b.n - 1) - 0.5) * 2, wob: 3 + rnd() * 8, f: rnd() * 6, lit: 0.35 + rnd() * 0.65 });
-            b.sparks = [];
-            for (let i = 0; i < 55; i++) b.sparks.push({ u: rnd(), o: (rnd() * 2 - 1) * 1.5, v: 40 + rnd() * 70, tw: rnd() * 6, size: 0.8 + rnd() * 1.8 });
-        }
-        const motes = [];
-        for (let i = 0; i < 70; i++) motes.push({ x: rnd() * 1600, y: rnd() * 900, v: 10 + rnd() * 26, sway: 10 + rnd() * 40, f: 0.2 + rnd() * 0.5, size: 0.8 + rnd() * 1.8 });
-        return { bands: bands, motes: motes };
-    }
-
-    // A band's y at design x for strand offset o.
-    function band_at(b, x, o, wob, f, t) {
-        const centre = b.y + (x - 800) * b.tilt + b.amp * Math.sin(b.k * x - b.w * t + b.ph) + b.amp * 0.35 * Math.sin(b.k * 2.3 * x + b.w * 0.6 * t);
-        const pinch = Math.cos(b.twist * x - b.w * 1.4 * t + b.ph * 2);
-        return centre + b.spread * o * pinch + wob * Math.sin(x * 0.011 + f + t * 0.7);
-    }
-
-    function paint_stream(ctx, w, h) {
-        ctx.reset();
-        const k = Math.max(w / 1600, h / 900);
-        const ox = (w - 1600 * k) / 2;
-        const oy = (h - 900 * k) / 2;
-        const t = root.stream_t;
-        const green = String(Theme.ok), teal = String(Theme.hint), white = String(root.white);
-        ctx.globalCompositeOperation = "lighter";
-        ctx.lineCap = "round";
-        ctx.lineJoin = "round";
-        ctx.fillStyle = green;
-        for (const m of root.stream.motes) {
-            const y = ((m.y - m.v * t) % 900 + 900) % 900;
-            const x = m.x + Math.sin(t * m.f + m.x) * m.sway;
-            ctx.globalAlpha = 0.25 + 0.25 * Math.sin(t * m.f * 3 + m.y);
-            ctx.beginPath();
-            ctx.arc(ox + x * k, oy + y * k, m.size * k, 0, Math.PI * 2);
-            ctx.fill();
-        }
-        const fade = (c) => {
-            const g = ctx.createLinearGradient(0, 0, w, 0);
-            g.addColorStop(0, "transparent");
-            g.addColorStop(0.12, c);
-            g.addColorStop(0.88, c);
-            g.addColorStop(1, "transparent");
-            return g;
-        };
-        const step = 40;
-        const trace = (b, o, wob, f) => {
-            ctx.beginPath();
-            for (let x = -40; x <= 1640; x += step) {
-                const y = oy + root.band_at(b, x, o, wob, f, t) * k;
-                if (x === -40) ctx.moveTo(ox + x * k, y);
-                else ctx.lineTo(ox + x * k, y);
-            }
-        };
-        for (const b of root.stream.bands) {
-            ctx.lineCap = "butt";
-            ctx.strokeStyle = fade(green);
-            ctx.globalAlpha = 0.07;
-            ctx.lineWidth = b.spread * 1.6 * k;
-            trace(b, 0, 0, 0);
-            ctx.stroke();
-            ctx.globalAlpha = 0.1;
-            ctx.lineWidth = b.spread * 0.6 * k;
-            trace(b, 0, 0, 0);
-            ctx.stroke();
-            ctx.lineCap = "round";
-            for (const s of b.strands) {
-                ctx.strokeStyle = fade(s.lit > 0.85 ? white : s.lit > 0.55 ? teal : green);
-                ctx.globalAlpha = 0.18 * s.lit;
-                ctx.lineWidth = 5 * k;
-                trace(b, s.o, s.wob, s.f);
-                ctx.stroke();
-                ctx.globalAlpha = 0.75 * s.lit;
-                ctx.lineWidth = 1.3 * k;
-                trace(b, s.o, s.wob, s.f);
-                ctx.stroke();
-            }
-            for (const [color, bright] of [[green, false], [white, true]]) {
-                ctx.fillStyle = color;
-                ctx.globalAlpha = bright ? 0.9 : 0.7;
-                ctx.beginPath();
-                b.sparks.forEach((p, i) => {
-                    if ((i % 4 === 0) !== bright) return;
-                    const x = ((p.u * 1760 + p.v * t) % 1760) - 80;
-                    const y = root.band_at(b, x, p.o, 0, 0, t);
-                    const r = p.size * k * (0.6 + 0.4 * Math.sin(t * 2.5 + p.tw));
-                    if (r <= 0) return;
-                    ctx.moveTo(ox + x * k + r, oy + y * k);
-                    ctx.arc(ox + x * k, oy + y * k, r, 0, Math.PI * 2);
-                });
-                ctx.fill();
-            }
-        }
-    }
 
     // PS1-style 4x4 ordered dither: whole screen pixels, drawn in design units under a stage's scale of `k`.
     readonly property int dither_px: Math.max(1, Math.round(root.height / 540))
@@ -598,7 +491,6 @@ Item {
         transformOrigin: Item.Center
 
         Loader {
-            id: saver_back_loader
             anchors.fill: parent
             active: root.stream_on
             sourceComponent: saver_back_view
@@ -910,8 +802,6 @@ Item {
         id: saver_back_view
 
         Item {
-            function repaint() { stream_back.requestPaint(); }
-
             Stage {
                 cover: true
 
@@ -937,14 +827,14 @@ Item {
                 }
             }
 
-            Canvas {
-                id: stream_back
-                width: parent.width * root.stream_res
-                height: parent.height * root.stream_res
-                scale: 1 / root.stream_res
-                transformOrigin: Item.TopLeft
-                onPaint: root.paint_stream(stream_back.getContext("2d"), stream_back.width, stream_back.height)
-                Component.onCompleted: stream_back.requestPaint()
+            ShaderEffect {
+                anchors.fill: parent
+                property real t: root.stream_t
+                property vector2d res: Qt.vector2d(width, height)
+                property color green: Theme.ok
+                property color teal: Theme.hint
+                property color white: root.white
+                fragmentShader: Qt.resolvedUrl("ff7/lifestream.frag.qsb")
             }
         }
     }
@@ -1563,20 +1453,10 @@ Item {
         }
     }
 
-    Timer {
-        interval: 40
-        repeat: true
+    FrameAnimation {
+        id: stream_clock
         running: root.stream_on && root.animate
-        property double start: 0
-        onRunningChanged: if (running) start = Date.now() - root.stream_t * 1000
-        onTriggered: root.stream_t = (Date.now() - start) / 1000
-    }
-
-    onStream_tChanged: {
-        if (saver_back_loader.item) saver_back_loader.item.repaint();
-    }
-    onStream_onChanged: {
-        if (root.stream_on && saver_back_loader.item) saver_back_loader.item.repaint();
+        onTriggered: root.stream_t += Math.min(stream_clock.frameTime, 0.1)
     }
 
     property int saver_spot: 0
