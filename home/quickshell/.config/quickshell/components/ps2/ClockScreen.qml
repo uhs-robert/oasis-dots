@@ -49,7 +49,7 @@ Item {
         spacing: 4
 
         Text {
-            text: root.pad2(root.now.getHours() % 12 || 12) + ":" + root.pad2(root.now.getMinutes())
+            text: TimeFormat.digits(root.now, false)
             color: Theme.fg_strong
             font.family: Style.font_family
             font.pixelSize: Style.font_size * 3
@@ -72,7 +72,8 @@ Item {
             }
 
             Text {
-                text: root.now.getHours() < 12 ? "AM" : "PM"
+                visible: !TimeFormat.h24
+                text: TimeFormat.meridiem(root.now)
                 color: Theme.theme_primary_light
                 font.family: Style.font_family
                 font.pixelSize: Style.fs(-5)

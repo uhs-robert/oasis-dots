@@ -99,7 +99,7 @@ Rectangle {
                 spacing: 8
 
                 Text {
-                    text: Qt.formatTime(root.now, "HH:mm")
+                    text: TimeFormat.format(root.now)
                     color: Style.text_strong
                     font.family: Style.font_family
                     font.pixelSize: Style.fs(12)
