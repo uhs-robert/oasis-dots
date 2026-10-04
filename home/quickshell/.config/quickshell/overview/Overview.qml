@@ -1,7 +1,6 @@
 // home/quickshell/.config/quickshell/overview/Overview.qml
 pragma ComponentBehavior: Bound
 import QtQuick
-import Quickshell
 import Quickshell.Hyprland
 import Quickshell.Io
 import Quickshell.Wayland
@@ -9,34 +8,18 @@ import "../components"
 import "../theme"
 import "../services"
 import "Layout.js" as Layout
-import "../picker/Fuzzy.js" as Fuzzy
 
 // Every monitor's workspaces in one full-screen view on the focused monitor: pick, focus and move windows by key.
-PanelWindow {
+OverviewBase {
     id: root
 
-    property bool wanted: false
-    property string held_screen_name: ""
-    // The filmstrip view instead of the mini-map, until the overview closes.
-    property bool filmstrip: false
     // Special workspaces instead of regular ones, until toggled back or the overview closes.
     property bool special: false
     // Special workspaces that keep a tile even when Hyprland has dropped them for being empty.
     readonly property var pinned_specials: ["scratchpad"]
-    property real reveal: 0
 
-    property string selected_key: ""
     property string selected_address: ""
-    // Carried window addresses, and the marks they came from so Esc can put them back.
-    property var picked: []
-    property bool picked_from_marks: false
-    property var marks: []
-    property bool typing: false
-    property bool help_open: false
-    property string query: ""
     property var monitor_slots: []
-    property int hit: 0
-    property bool from_search: false
     // "follow" or "silent" while a carry opened from a bind ends with the overview closing after the drop.
     property string carry_exit: ""
     // Answering Screenshot's pending share request: only shareable windows show, and picking changes nothing.
@@ -47,17 +30,11 @@ PanelWindow {
     property bool screen_pick: false
 
     readonly property var model: root.visible ? root.build(Hyprland.monitors.values, Hyprland.workspaces.values, Hyprland.toplevels.values, root.special, root.share_mode) : ({ groups: [], tiles: [] })
-    readonly property var groups: root.model.groups
-    readonly property var tiles: root.model.tiles
-    readonly property var tile_index_of: {
-        const out = {};
-        root.tiles.forEach((t, i) => out[t.key] = i);
-        return out;
-    }
+    groups: root.model.groups
+    tiles: root.model.tiles
 
-    // Tile delegates live per workspace key; closed windows drop out of marks and the carried set, even ones in the other mode.
-    onTilesChanged: {
-        Layout.sync_keys(tile_slots, root.tiles.map(t => t.key));
+    // Closed windows drop out of marks and the carried set, even ones in the other mode.
+    onTiles_synced: {
         const known = {};
         for (const t of Hyprland.toplevels.values) known[t.address] = true;
         if (root.tiles.length === 0) return;
@@ -65,40 +42,14 @@ PanelWindow {
         if (root.picked.some(a => !known[a])) root.picked = root.picked.filter(a => known[a]);
     }
 
-    ListModel {
-        id: tile_slots
-    }
-    readonly property int selected_index: Math.max(0, root.tiles.findIndex(t => t.key === root.selected_key))
-    readonly property var selected_tile: root.tiles[root.selected_index] || null
     readonly property var tab_order: root.selected_tile ? root.reading_order(root.selected_tile.windows) : []
     readonly property string current_address: root.tab_order.some(w => w.address === root.selected_address) ? root.selected_address : root.tab_order.length > 0 ? root.tab_order[0].address : ""
-    readonly property bool carrying: root.picked.length > 0
-    readonly property var picked_set: root.to_set(root.picked)
     readonly property var picked_toplevel: root.carrying ? WindowState.find(root.picked[0]) : null
-    readonly property var mark_numbers: {
-        const out = {};
-        root.marks.forEach((a, i) => out[a] = i + 1);
-        return out;
-    }
     // One window carried inside its own workspace, selection on another window there: m/Enter swaps them.
     readonly property string swap_address: root.picked.length === 1 && !!root.selected_tile && root.selected_tile.windows.some(w => w.address === root.picked[0]) && root.current_address !== root.picked[0] ? root.current_address : ""
     readonly property bool can_drop: root.carrying && root.swap_address === "" && !!root.selected_tile && root.picked.some(a => !root.selected_tile.windows.some(w => w.address === a))
-    readonly property var nav_order: Layout.flat(Layout.flat(Layout.bands(root.groups)).map(g => root.groups[g].tiles))
-    readonly property var ranked: root.typing ? root.rank(root.window_entries(), root.query) : []
-    readonly property int hit_index: Math.min(root.hit, root.ranked.length - 1)
-    readonly property var hit_entry: root.ranked[root.hit_index] || null
+    ranked: root.typing ? root.rank(root.window_entries(), root.query) : []
     readonly property var matches: root.query === "" ? null : root.to_set(root.ranked.map(e => e.address))
-    readonly property int match_count: root.ranked.length
-    readonly property real list_width: root.typing ? Math.min(Style.px(460), frame.body.width * 0.34) : 0
-
-    readonly property var metrics: ({
-        gap: Style.px(10),
-        pad: Style.px(10),
-        label: Style.fs(-3) + Style.px(12),
-        group_gap: Style.px(22),
-        strip: Style.px(150)
-    })
-    readonly property var layout: Layout.compute(root.filmstrip, root.groups, root.tiles, frame.body.width - root.list_width, frame.body.height, root.metrics, root.selected_index)
     readonly property int window_total: (root.tiles || []).reduce((n, t) => n + t.windows.length, 0)
     // The selected window's place among all windows, tile by tile.
     readonly property int window_at: {
@@ -108,7 +59,6 @@ PanelWindow {
         const at = root.tab_order.findIndex(w => w.address === root.current_address);
         return at < 0 ? 0 : n + at + 1;
     }
-    readonly property bool animate_moves: root.filmstrip && Power.on_ac && root.reveal === 1
     // The selected window (or the whole tile when empty) in body coordinates, for the scope skin.
     readonly property var aim: {
         const tile = root.selected_tile;
@@ -128,18 +78,13 @@ PanelWindow {
         return { x: r.x + 2 + w.rx * cw, y: r.y + 2 + w.ry * ch, w: Math.max(4, w.rw * cw), h: Math.max(4, w.rh * ch), cls: w.label.toUpperCase(), place: place, real: w.real };
     }
 
-    screen: Quickshell.screens.find(s => s.name === root.held_screen_name) || null
-    visible: false
-    color: "transparent"
-    anchors.top: true
-    anchors.bottom: true
-    anchors.left: true
-    anchors.right: true
-    exclusiveZone: 0
-    exclusionMode: ExclusionMode.Ignore
-    WlrLayershell.namespace: "quickshell-overview"
-    WlrLayershell.layer: WlrLayer.Overlay
-    WlrLayershell.keyboardFocus: root.wanted ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
+    layer_namespace: "quickshell-overview"
+    title: root.share_mode ? "SHARE" : root.special ? "SPECIAL" : "OVERVIEW"
+    status_accent: root.screen_pick || root.carrying || root.marks.length > 0 || root.query !== ""
+    help_close_desc: root.share_mode ? "cancel share" : "close overview"
+    cursor_sub: root.current_address
+    group_label: (g, i) => g.name + (g.focused ? " · focused" : "")
+    dismiss: () => root.hide_overview()
 
     // Exclusive focus alone still lets Hyprland run binds; this skips them all so a share pick moves nothing.
     ShortcutInhibitor {
@@ -199,10 +144,7 @@ PanelWindow {
         const sharing = entry === "share" || entry === "share_resume";
         if (sharing && !Screenshot.sharing) return;
         if (root.wanted && !sharing) return;
-        Popups.close();
-        const mon = Hyprland.focusedMonitor;
-        const target = (mon && Quickshell.screens.find(s => s.name === mon.name)) || Quickshell.screens[0];
-        root.held_screen_name = target ? target.name : "";
+        const mon = root.hold_focused_screen();
         root.refresh();
         slots_proc.running = true;
         root.filmstrip = false;
@@ -213,13 +155,8 @@ PanelWindow {
         if (sharing) root.share_resume = null;
         root.special = resume ? resume.special : on_special !== "" && !sharing;
         root.screen_pick = !!resume && resume.screen_pick;
-        root.picked = [];
         root.carry_exit = "";
-        root.from_search = false;
-        root.marks = [];
-        root.help_open = false;
-        digit_timer.stop();
-        root.clear_filter();
+        root.reset_common();
         const ws = Hyprland.focusedWorkspace;
         root.selected_key = root.special ? "sp:" + on_special.slice(8) : ws ? "ws:" + ws.id : "";
         root.selected_address = WindowState.active_address;
@@ -231,14 +168,7 @@ PanelWindow {
         root.wanted = true;
         root.visible = true;
         if (resume && root.tile_index_of[resume.key] === undefined) root.select_focused_workspace();
-        reveal_anim.stop();
-        if (Power.on_ac) {
-            reveal_anim.to = 1;
-            reveal_anim.start();
-        } else {
-            root.reveal = 1;
-        }
-        keys.forceActiveFocus();
+        root.reveal_open();
         if (entry === "search") {
             root.start_filter(true);
         } else if (entry === "move" && WindowState.find(WindowState.active_address)) {
@@ -256,29 +186,13 @@ PanelWindow {
         root.wanted = false;
         root.share_mode = false;
         root.screen_pick = false;
-        root.typing = false;
-        root.help_open = false;
-        reveal_anim.stop();
-        if (was_sharing) {
-            root.reveal = 0;
-            root.visible = false;
-            if (!keep_share) Screenshot.send_share("");
-        } else if (Power.on_ac && root.visible) {
-            reveal_anim.to = 0;
-            reveal_anim.start();
-        } else {
-            root.reveal = 0;
-            root.visible = false;
-        }
+        root.conceal(was_sharing);
+        if (was_sharing && !keep_share) Screenshot.send_share("");
     }
 
     function refresh() {
         WindowState.refresh();
         Hyprland.refreshMonitors();
-    }
-
-    function reading_order(windows) {
-        return windows.slice().sort((a, b) => a.ry - b.ry || a.rx - b.rx);
     }
 
     function logical_size(m) {
@@ -389,49 +303,27 @@ PanelWindow {
         return out;
     }
 
-    function rank(entries, query) {
-        const terms = Fuzzy.terms_of(query);
-        if (terms.length === 0) return entries;
-        const scored = [];
-        for (const e of entries) {
-            const s = Fuzzy.score_item(terms, e);
-            if (s) scored.push({ entry: e, score: s.score });
-        }
-        scored.sort((a, b) => b.score - a.score || a.entry.recency - b.entry.recency);
-        return scored.map(s => s.entry);
-    }
-
     // Puts the tile selection on the window, switching between regular and special mode when it lives in the other one.
-    function select_entry(entry) {
+    select_entry: function (entry) {
         if (!entry) return;
         const is_special = entry.ws_name.startsWith("special:");
         if (is_special !== root.special) {
             root.special = is_special;
-            digit_timer.stop();
+            root.stop_digits();
         }
         const at = root.tile_index_of[is_special ? "sp:" + entry.ws_name.slice(8) : "ws:" + entry.ws_id];
         if (at !== undefined) root.select(at, entry.address);
     }
 
-    function set_hit(i) {
-        root.hit = i;
-        root.select_entry(root.hit_entry);
-    }
-
     // An empty query starts on the window before the current one when searching, else on the selected window.
-    function reset_hit() {
+    reset_hit: function () {
         const list = root.ranked;
         let at = 0;
         if (root.query === "") at = root.from_search ? (list.length >= 2 && list[0].address === WindowState.active_address ? 1 : 0) : Math.max(0, list.findIndex(e => e.address === root.current_address));
         root.set_hit(at);
     }
 
-    function step_hit(delta) {
-        const n = root.ranked.length;
-        if (n > 0) root.set_hit((root.hit_index + delta + n) % n);
-    }
-
-    function accept_hit() {
+    accept_hit: function () {
         const entry = root.hit_entry;
         if (!entry) return;
         root.select_entry(entry);
@@ -441,7 +333,7 @@ PanelWindow {
         else root.activate_address(entry.address);
     }
 
-    function select(index, address) {
+    select: function (index, address) {
         const tile = root.tiles[index];
         if (!tile) return;
         root.selected_key = tile.key;
@@ -454,25 +346,15 @@ PanelWindow {
         }
     }
 
-    function move(dx, dy) {
+    filmstrip_vertical: function (dy) {
         const from = root.selected_index;
         let to = -1;
-        if (root.filmstrip) {
-            const order = root.layout.order;
-            if (dx !== 0) {
-                const at = order.indexOf(from);
-                to = at >= 0 ? order[at + dx] : -1;
-            } else {
-                const band_order = Layout.flat(Layout.bands(root.groups));
-                const tile = root.tiles[from];
-                const g = band_order.indexOf(tile.group) + dy;
-                if (g >= 0 && g < band_order.length) {
-                    const target = root.groups[band_order[g]].tiles;
-                    to = target[Math.min(root.groups[tile.group].tiles.indexOf(from), target.length - 1)];
-                }
-            }
-        } else {
-            to = Layout.neighbor(root.layout.tile_rects, from, dx, dy);
+        const band_order = Layout.flat(Layout.bands(root.groups));
+        const tile = root.tiles[from];
+        const g = band_order.indexOf(tile.group) + dy;
+        if (g >= 0 && g < band_order.length) {
+            const target = root.groups[band_order[g]].tiles;
+            to = target[Math.min(root.groups[tile.group].tiles.indexOf(from), target.length - 1)];
         }
         if (to !== undefined && to >= 0) root.select(to);
     }
@@ -502,34 +384,11 @@ PanelWindow {
         root.selected_address = order[(at + delta + order.length) % order.length].address;
     }
 
-    function cursor_key() {
-        return root.selected_key + "|" + root.current_address;
-    }
-    function play_if_moved(before) {
-        if (root.cursor_key() !== before) ThemeAudio.play("cursor");
-    }
-
     // Special mode has no usable ids, so digits count tiles in hjkl order there.
-    function jump(id) {
+    jump: function (id) {
         const i = root.special ? (id >= 1 && id <= root.nav_order.length ? root.nav_order[id - 1] : -1) : root.tiles.findIndex(t => !t.is_new && t.id === id);
         if (i >= 0) root.select(i);
         return i >= 0;
-    }
-
-    // Digits typed in quick succession name one workspace, so 1 then 2 lands on 12 when it exists.
-    function type_digit(d) {
-        const before = root.cursor_key();
-        const joined = digit_timer.running ? digit_timer.typed + d : "";
-        if (joined !== "" && root.jump(parseInt(joined))) {
-            digit_timer.typed = joined;
-        } else if (d !== "0") {
-            root.jump(parseInt(d));
-            digit_timer.typed = d;
-        } else {
-            return;
-        }
-        root.play_if_moved(before);
-        digit_timer.restart();
     }
 
     function shown_special(monitor) {
@@ -567,7 +426,7 @@ PanelWindow {
 
     function toggle_special() {
         root.special = !root.special;
-        digit_timer.stop();
+        root.stop_digits();
         const here = root.tiles.findIndex(t => t.windows.some(w => w.address === WindowState.active_address));
         if (here >= 0) {
             root.select(here, WindowState.active_address);
@@ -579,7 +438,7 @@ PanelWindow {
         }
     }
 
-    function activate() {
+    activate: function () {
         const tile = root.selected_tile;
         if (!tile) return;
         const address = root.current_address;
@@ -595,8 +454,7 @@ PanelWindow {
         // The first focus warps the cursor onto the window, so follow_mouse lands there when the overview unmaps.
         WindowState.focus(address);
         root.hide_overview();
-        focus_timer.address = address;
-        focus_timer.restart();
+        root.focus_later(address);
     }
 
     function share_window(address) {
@@ -692,24 +550,18 @@ PanelWindow {
         return true;
     }
 
-    function to_set(list) {
-        const out = {};
-        for (const a of list) out[a] = true;
-        return out;
-    }
-
     function alive(list) {
         return list.filter(a => WindowState.find(a) !== null);
     }
 
-    function toggle_mark() {
+    toggle_mark: function () {
         const a = root.current_address;
         if (a === "") return;
         root.marks = root.marks.indexOf(a) >= 0 ? root.marks.filter(m => m !== a) : root.marks.concat([a]);
     }
 
     // Marks every window in the selected workspace, or unmarks them all when they already are.
-    function toggle_mark_all() {
+    toggle_mark_all: function () {
         const here = root.tab_order.map(w => w.address);
         if (here.length === 0) return;
         const all = here.every(a => root.marks.indexOf(a) >= 0);
@@ -717,7 +569,7 @@ PanelWindow {
     }
 
     // Closes every marked window, or the selected one; selection steps to the next window.
-    function close_windows() {
+    close_selected: function () {
         const marked = root.alive(root.marks);
         const doomed = marked.length > 0 ? marked : root.current_address !== "" ? [root.current_address] : [];
         if (doomed.length === 0) return;
@@ -730,7 +582,7 @@ PanelWindow {
         refresh_timer.restart();
     }
 
-    function pick() {
+    pick: function () {
         const marked = root.alive(root.marks);
         if (marked.length > 0) {
             root.picked = marked;
@@ -744,14 +596,14 @@ PanelWindow {
         }
     }
 
-    function cancel_pick() {
+    cancel_pick: function () {
         root.carry_exit = "";
         if (root.picked_from_marks) root.marks = root.alive(root.picked);
         root.picked = [];
     }
 
     // Swaps inside a workspace, else moves every carried window there; a fresh slot is then sent to its monitor.
-    function drop() {
+    drop: function () {
         const tile = root.selected_tile;
         const carried = root.alive(root.picked);
         const swap_with = root.swap_address;
@@ -780,86 +632,28 @@ PanelWindow {
         refresh_timer.restart();
         if (exit === "") return;
         root.hide_overview();
-        if (exit === "follow") {
-            focus_timer.address = moving[0];
-            focus_timer.restart();
-        }
+        if (exit === "follow") root.focus_later(moving[0]);
     }
 
-    function start_filter(from_search) {
-        root.from_search = from_search;
-        root.typing = true;
-        filter_input.forceActiveFocus();
-        filter_input.cursorPosition = filter_input.text.length;
-        root.reset_hit();
-    }
-
-    function clear_filter() {
-        root.typing = false;
-        filter_input.text = "";
-        if (root.visible) keys.forceActiveFocus();
-    }
-
-    function show_help() {
-        root.help_open = true;
-        key_help.forceActiveFocus();
-    }
-
-    function hide_help() {
-        root.help_open = false;
-        if (root.typing) filter_input.forceActiveFocus();
-        else keys.forceActiveFocus();
-    }
-
-    function is_help_key(event) {
-        return event.key === Qt.Key_Question || event.text === "?";
-    }
-
-    function direction_of(k) {
-        if (k === Qt.Key_H || k === Qt.Key_Left) return [-1, 0];
-        if (k === Qt.Key_L || k === Qt.Key_Right) return [1, 0];
-        if (k === Qt.Key_K || k === Qt.Key_Up) return [0, -1];
-        if (k === Qt.Key_J || k === Qt.Key_Down) return [0, 1];
-        return null;
-    }
-
-    function handle_key(event) {
+    pre_key: function (event) {
         const before = root.cursor_key();
         const k = event.key;
-        if (event.modifiers & Qt.AltModifier) return;
         if (event.modifiers & Qt.ControlModifier) {
             const dir = root.direction_of(k);
             if (dir) root.move_monitor(dir[0], dir[1]);
             else if (k >= Qt.Key_0 && k <= Qt.Key_9) root.jump_monitor(k === Qt.Key_0 ? 10 : k - Qt.Key_0);
-            else return;
+            else return "stop";
             root.play_if_moved(before);
-            event.accepted = true;
-            return;
+            return "done";
         }
-        if (root.screen_pick && root.handle_screen_key(event)) {
-            event.accepted = true;
-            return;
-        }
-        if (root.share_mode && root.handle_share_key(event)) {
-            event.accepted = true;
-            return;
-        }
-        if (root.is_help_key(event)) {
-            root.show_help();
-        } else if (k === Qt.Key_Escape) {
-            ThemeAudio.play("cancel");
-            if (root.carrying) root.cancel_pick();
-            else if (root.marks.length > 0) root.marks = [];
-            else if (root.query !== "") root.clear_filter();
-            else root.hide_overview();
-        } else if (k === Qt.Key_Q) {
-            ThemeAudio.play("cancel");
-            root.hide_overview();
-        } else if (root.direction_of(k)) {
-            const dir = root.direction_of(k);
-            root.move(dir[0], dir[1]);
-            root.play_if_moved(before);
-        } else if (k === Qt.Key_BracketRight || k === Qt.Key_BracketLeft) {
+        if (root.screen_pick && root.handle_screen_key(event)) return "done";
+        if (root.share_mode && root.handle_share_key(event)) return "done";
+        return "";
+    }
+
+    extra_key: function (event, before) {
+        const k = event.key;
+        if (k === Qt.Key_BracketRight || k === Qt.Key_BracketLeft) {
             root.cycle_window(k === Qt.Key_BracketRight ? 1 : -1);
             root.play_if_moved(before);
         } else if (k === Qt.Key_Tab || k === Qt.Key_Backtab) {
@@ -869,33 +663,10 @@ PanelWindow {
         } else if (k === Qt.Key_S) {
             ThemeAudio.play("cursor");
             root.screen_pick = true;
-        } else if (k === Qt.Key_Return || k === Qt.Key_Enter) {
-            ThemeAudio.play("confirm");
-            if (root.carrying) root.drop();
-            else root.activate();
-        } else if (k === Qt.Key_M) {
-            ThemeAudio.play("confirm");
-            if (root.carrying) root.drop();
-            else root.pick();
-        } else if (!root.carrying && (k === Qt.Key_Space || (k === Qt.Key_V && !(event.modifiers & Qt.ShiftModifier)))) {
-            root.toggle_mark();
-            ThemeAudio.play("confirm");
-        } else if (!root.carrying && k === Qt.Key_V) {
-            root.toggle_mark_all();
-            ThemeAudio.play("confirm");
-        } else if (!root.carrying && k === Qt.Key_X) {
-            root.close_windows();
-            ThemeAudio.play("confirm");
-        } else if (k === Qt.Key_F) {
-            root.filmstrip = !root.filmstrip;
-        } else if (k === Qt.Key_Slash || event.text === "/") {
-            root.start_filter(false);
-        } else if (k >= Qt.Key_0 && k <= Qt.Key_9) {
-            root.type_digit(String(k - Qt.Key_0));
         } else {
-            return;
+            return false;
         }
-        event.accepted = true;
+        return true;
     }
 
     // A click on a tile's background focuses the workspace itself rather than one of its windows.
@@ -916,7 +687,7 @@ PanelWindow {
         }
     }
 
-    readonly property string footer_text: root.help_open ? "? back · Esc back · q " + (root.share_mode ? "cancel share" : "close")
+    footer_text: root.help_open ? "? back · Esc back · q " + (root.share_mode ? "cancel share" : "close")
         : root.typing ? "Enter " + (root.share_mode ? "share" : root.carrying ? "drop here" : "focus") + " · Tab/Down next · Shift+Tab/Up previous · Esc " + (root.from_search && root.query === "" ? "close" : "clear") + " · ? help"
         : root.screen_pick ? (root.share_mode ? "Enter share screen · hjkl/Ctrl+hjkl/Ctrl+1-9 monitor · r region · s/Esc back · f view · ? help · q cancel"
             : (root.carrying ? "m/Enter drop on screen" : "Enter focus screen") + " · hjkl/Ctrl+hjkl/Ctrl+1-9 monitor · s/Esc back · f view · ? help · q close")
@@ -932,7 +703,7 @@ PanelWindow {
     readonly property string screen_help: root.share_mode ? "The whole monitor is the pick · Enter share it · Click share it, or click another monitor to pick that one · " + root.screen_moves + " · r share a region of this monitor instead, Esc there comes back here · s/Esc back to window selection · f toggle filmstrip view · q cancel the share"
         : "The whole monitor is the pick · " + (root.carrying ? "m/Enter drop the carried windows on its visible workspace · Click drop them there" : "Enter focus it and close · Click focus it") + ", or click another monitor to pick that one · " + root.screen_moves + " · s/Esc back to the selected workspace · f toggle filmstrip view · q close"
     readonly property string share_help: "Only windows the share can capture are shown · h/j/k/l move between workspaces · Arrows move between workspaces · Ctrl+h/j/k/l or Ctrl+Arrows jump to the next monitor that way · Ctrl+1-9 jump to that monitor number · ] next window · [ previous window · Enter share the selected window · Click share a window · s pick the whole monitor of the selected workspace, Enter then shares it · r share a region of that monitor, Esc there comes back here · Tab/Shift+Tab toggle special workspaces ·/ search shareable windows by class, title or workspace · 1-9 select workspace by id, or the nth special workspace · f toggle filmstrip view, j/k there jump monitors · Esc/q cancel the share"
-    readonly property string help_text: root.typing ? "Type to search " + (root.share_mode ? "shareable " : "") + "windows by class, title or workspace · Enter " + (root.share_mode ? "share the highlighted window" : "focus the highlighted window, or drop the carried window on its workspace") + " · Tab/Down next match · Shift+Tab/Up previous match · Backspace delete, clears when empty · Esc clear search, or close when it is empty"
+    help_text: root.typing ? "Type to search " + (root.share_mode ? "shareable " : "") + "windows by class, title or workspace · Enter " + (root.share_mode ? "share the highlighted window" : "focus the highlighted window, or drop the carried window on its workspace") + " · Tab/Down next match · Shift+Tab/Up previous match · Backspace delete, clears when empty · Esc clear search, or close when it is empty"
         : root.screen_pick ? root.screen_help
         : root.share_mode ? (root.query !== "" ? "Esc clear search · " : "") + root.share_help
         : root.carrying ? root.carry_help
@@ -940,7 +711,7 @@ PanelWindow {
         : root.query !== "" ? "Esc clear search · " + root.normal_help
         : root.normal_help
 
-    readonly property string status_text: {
+    status_text: {
         if (root.typing || root.query !== "") return "/" + root.query + (root.typing ? "_" : "") + "  " + root.match_count + " match" + (root.match_count === 1 ? "" : "es");
         const lead = root.picked_toplevel ? WindowState.short_class(root.picked_toplevel) : "window";
         const picked_tile = root.selected_tile;
@@ -956,15 +727,6 @@ PanelWindow {
         return (root.marks.length > 0 ? root.marks.length + " marked · " : "") + mon + " · " + (tile.is_new ? (root.special ? "empty special " : "new workspace ") + tile.name : (root.special ? "special " : "workspace ") + tile.name + " · " + tile.windows.length + " window" + (tile.windows.length === 1 ? "" : "s"));
     }
 
-    NumberAnimation {
-        id: reveal_anim
-        target: root
-        property: "reveal"
-        duration: 170
-        easing.type: Easing.OutCubic
-        onFinished: if (!root.wanted) root.visible = false
-    }
-
     // Hyprland owns the slot order, and hyprctl eval prints nothing back, so the slots go through a file.
     Process {
         id: slots_proc
@@ -972,12 +734,6 @@ PanelWindow {
         stdout: StdioCollector {
             onStreamFinished: root.monitor_slots = text.trim().split(/\s+/)
         }
-    }
-
-    Timer {
-        id: digit_timer
-        property string typed: ""
-        interval: 600
     }
 
     Timer {
@@ -1001,13 +757,6 @@ PanelWindow {
         onTriggered: Hyprland.dispatch("hl.dsp.focus({ monitor = '" + monitor_timer.name + "' })")
     }
 
-    Timer {
-        id: focus_timer
-        property string address: ""
-        interval: 60
-        onTriggered: WindowState.focus(focus_timer.address)
-    }
-
     Connections {
         target: Hyprland
         enabled: root.visible
@@ -1017,279 +766,135 @@ PanelWindow {
         }
     }
 
-    Rectangle {
-        id: scrim
-        anchors.fill: parent
-        color: Qt.alpha(Theme.bg_crust, 0.6)
-        opacity: root.reveal
+    under_tiles: Repeater {
+        model: root.groups
 
-        MouseArea {
-            anchors.fill: parent
-            onClicked: {
-                ThemeAudio.play("cancel");
-                root.hide_overview();
+        Item {
+            id: group
+            required property int index
+            readonly property var rect: root.layout.group_rects[group.index] || ({ x: 0, y: 0, w: 0, h: 0 })
+            readonly property bool holds_selection: !!root.selected_tile && root.selected_tile.group === group.index
+
+            x: group.rect.x
+            y: group.rect.y
+            width: group.rect.w
+            height: group.rect.h
+
+            Behavior on x {
+                enabled: root.animate_moves
+                NumberAnimation { duration: 160; easing.type: Easing.OutCubic }
+            }
+
+            // The screen pick: the whole monitor framed like a selected window.
+            Rectangle {
+                visible: root.screen_pick && group.holds_selection
+                anchors.fill: parent
+                radius: Style.radius(8)
+                color: Qt.alpha(Style.caret_color, 0.08)
+                border.width: 2
+                border.color: Style.caret_color
+
+                CornerBrackets {
+                    anchors.fill: parent
+                    color: Style.selection_brackets
+                    inset: 3
+                    arm: Math.min(16, parent.width / 4)
+                    all_corners: true
+                }
+            }
+
+            MouseArea {
+                anchors.fill: parent
+                enabled: root.screen_pick
+                onClicked: root.screen_clicked(group.index)
             }
         }
     }
 
-    OverviewFrame {
-        id: frame
-        x: Style.px(36)
-        y: Style.px(30)
-        width: parent.width - x * 2
-        height: parent.height - y * 2
-        opacity: root.reveal
-        scale: 0.97 + 0.03 * root.reveal
-        title: root.share_mode ? "SHARE" : root.special ? "SPECIAL" : "OVERVIEW"
-        status: root.status_text
-        status_color: root.screen_pick || root.carrying || root.marks.length > 0 || root.query !== "" ? Style.text_accent : Style.text_muted
-        footer: root.footer_text
-
-        FocusScope {
-            id: keys
-            anchors.fill: parent
-            focus: true
-            Keys.onPressed: event => root.handle_key(event)
-        }
-
-        TextInput {
-            id: filter_input
-            width: 0
-            height: 0
-            opacity: 0
-            maximumLength: 64
-            onTextChanged: {
-                root.query = text;
-                if (root.typing) root.reset_hit();
-            }
-            Keys.onPressed: event => {
-                const before = root.cursor_key();
-                const k = event.key;
-                if (root.is_help_key(event)) {
-                    root.show_help();
-                } else if (k === Qt.Key_Escape) {
-                    ThemeAudio.play("cancel");
-                    if (root.from_search && root.query === "") root.hide_overview();
-                    else root.clear_filter();
-                } else if (k === Qt.Key_Return || k === Qt.Key_Enter) {
-                    ThemeAudio.play("confirm");
-                    root.accept_hit();
-                } else if (k === Qt.Key_Tab || k === Qt.Key_Down) {
-                    root.step_hit(1);
-                    root.play_if_moved(before);
-                } else if (k === Qt.Key_Backtab || k === Qt.Key_Up) {
-                    root.step_hit(-1);
-                    root.play_if_moved(before);
-                } else if (k === Qt.Key_Backspace && filter_input.text === "") {
-                    ThemeAudio.play("cancel");
-                    root.clear_filter();
-                } else {
-                    return;
-                }
-                event.accepted = true;
-            }
-        }
-
-        Repeater {
-            model: root.groups
-
-            Item {
-                id: group
-                required property var modelData
-                required property int index
-                readonly property var rect: root.layout.group_rects[group.index] || ({ x: 0, y: 0, w: 0, h: 0 })
-                readonly property bool holds_selection: !!root.selected_tile && root.selected_tile.group === group.index
-
-                x: group.rect.x
-                y: group.rect.y
-                width: group.rect.w
-                height: group.rect.h
-
-                Behavior on x {
-                    enabled: root.animate_moves
-                    NumberAnimation { duration: 160; easing.type: Easing.OutCubic }
-                }
-
-                Rectangle {
-                    visible: !root.filmstrip
-                    anchors.fill: parent
-                    radius: Style.radius(8)
-                    color: Qt.alpha(Theme.bg_mantle, 0.5)
-                    border.width: 1
-                    border.color: group.holds_selection ? Qt.alpha(Style.caret_color, 0.6) : Qt.alpha(Theme.ui_border, 0.6)
-                }
-
-                Dither {
-                    visible: !root.filmstrip && color.a > 0
-                    anchors.fill: parent
-                    anchors.margins: 1
-                    color: Style.dither
-                    radius: Style.radius(8)
-                    top_radius: Style.radius(8)
-                }
-
-                Rectangle {
-                    visible: root.filmstrip
-                    y: root.metrics.label - Style.px(4)
-                    width: parent.width
-                    height: 1
-                    color: group.holds_selection ? Style.caret_color : Theme.ui_border
-                }
-
-                Item {
-                    x: root.metrics.pad
-                    y: root.filmstrip ? 0 : Style.px(6)
-                    width: parent.width - root.metrics.pad * 2
-                    height: section.implicitHeight
-                    clip: true
-
-                    MenuSection {
-                        id: section
-                        label: group.modelData.name + (group.modelData.focused ? " · focused" : "")
-                        color: group.holds_selection ? Style.text_primary : Style.section_fg
-                    }
-                }
-
-                // The screen pick: the whole monitor framed like a selected window.
-                Rectangle {
-                    visible: root.screen_pick && group.holds_selection
-                    anchors.fill: parent
-                    radius: Style.radius(8)
-                    color: Qt.alpha(Style.caret_color, 0.08)
-                    border.width: 2
-                    border.color: Style.caret_color
-
-                    CornerBrackets {
-                        anchors.fill: parent
-                        color: Style.selection_brackets
-                        inset: 3
-                        arm: Math.min(16, parent.width / 4)
-                        all_corners: true
-                    }
-                }
-
-                MouseArea {
-                    anchors.fill: parent
-                    enabled: root.screen_pick
-                    onClicked: root.screen_clicked(group.index)
-                }
-            }
-        }
-
-        Repeater {
-            model: tile_slots
-
-            WorkspaceTile {
-                id: tile
-                required property string key
-                readonly property int index: root.tile_index_of[tile.key] !== undefined ? root.tile_index_of[tile.key] : -1
-                readonly property var modelData: root.tiles[tile.index] || null
-                readonly property var rect: root.layout.tile_rects[tile.index] || ({ x: 0, y: 0, w: 0, h: 0 })
-
-                x: tile.rect.x
-                y: tile.rect.y
-                width: tile.rect.w
-                height: tile.rect.h
-                visible: tile.rect.w > 0 && tile.x + tile.width > 0 && tile.x < frame.body.width
-                entry: tile.modelData
-                selected: tile.index === root.selected_index && !root.screen_pick
-                selected_address: root.screen_pick ? "" : root.current_address
-                picked: root.picked_set
-                picked_toplevel: root.picked_toplevel
-                picked_count: root.picked.length
-                marks: root.mark_numbers
-                swap_address: tile.selected ? root.swap_address : ""
-                drop_target: tile.selected && root.can_drop
-                matches: root.matches
-                shown: root.visible
-                live: tile.index === root.selected_index && !root.filmstrip
-
-                onTile_clicked: root.tile_clicked(tile.index, "")
-                onWindow_clicked: address => root.tile_clicked(tile.index, address)
-
-                Behavior on x {
-                    enabled: root.animate_moves
-                    NumberAnimation { duration: 160; easing.type: Easing.OutCubic }
-                }
-            }
-        }
+    Repeater {
+        model: root.tile_slots
 
         WorkspaceTile {
-            id: big_tile
-            readonly property var rect: root.layout.big || ({ x: 0, y: 0, w: 0, h: 0 })
-            visible: root.filmstrip && !!root.layout.big
-            x: big_tile.rect.x
-            y: big_tile.rect.y
-            width: big_tile.rect.w
-            height: big_tile.rect.h
-            entry: root.selected_tile
-            selected: !root.screen_pick
+            id: tile
+            required property string key
+            readonly property int index: root.tile_index_of[tile.key] !== undefined ? root.tile_index_of[tile.key] : -1
+            readonly property var modelData: root.tiles[tile.index] || null
+            readonly property var rect: root.layout.tile_rects[tile.index] || ({ x: 0, y: 0, w: 0, h: 0 })
+
+            x: tile.rect.x
+            y: tile.rect.y
+            width: tile.rect.w
+            height: tile.rect.h
+            visible: tile.rect.w > 0 && tile.x + tile.width > 0 && tile.x < root.body.width
+            entry: tile.modelData
+            selected: tile.index === root.selected_index && !root.screen_pick
             selected_address: root.screen_pick ? "" : root.current_address
             picked: root.picked_set
             picked_toplevel: root.picked_toplevel
             picked_count: root.picked.length
             marks: root.mark_numbers
-            swap_address: root.swap_address
-            drop_target: root.can_drop
+            swap_address: tile.selected ? root.swap_address : ""
+            drop_target: tile.selected && root.can_drop
             matches: root.matches
-            shown: root.visible && root.filmstrip
-            live: true
+            shown: root.visible
+            live: tile.index === root.selected_index && !root.filmstrip
 
-            onTile_clicked: root.tile_clicked(root.selected_index, "")
-            onWindow_clicked: address => root.tile_clicked(root.selected_index, address)
-        }
+            onTile_clicked: root.tile_clicked(tile.index, "")
+            onWindow_clicked: address => root.tile_clicked(tile.index, address)
 
-        ScopeAim {
-            anchors.fill: parent
-            aim: root.help_open ? null : root.aim
-            cls: root.aim ? root.aim.cls : ""
-            place: root.aim ? root.aim.place : ""
-            real: root.aim ? root.aim.real : null
-            glide: Power.on_ac && root.reveal === 1
-        }
-
-        AmmoCounter {
-            visible: Style.ammo_counter && root.window_total > 0
-            anchors.right: parent.right
-            anchors.bottom: parent.bottom
-            anchors.margins: 12
-            index: root.window_at
-            total: root.window_total
-        }
-
-        LockAim {
-            anchors.fill: parent
-            aim: root.help_open ? null : root.aim
-            animate: Power.on_ac && root.reveal === 1
-        }
-
-        SearchList {
-            visible: root.typing
-            x: frame.body.width - width
-            width: root.list_width
-            height: frame.body.height
-            entries: root.ranked
-            current: root.hit_index
-            onChosen: index => {
-                root.set_hit(index);
-                root.accept_hit();
+            Behavior on x {
+                enabled: root.animate_moves
+                NumberAnimation { duration: 160; easing.type: Easing.OutCubic }
             }
         }
+    }
 
-        // The full key list for the current mode, drawn over the tiles.
-        Rectangle {
-            visible: root.help_open
-            anchors.fill: parent
-            color: Style.frame_color.a > 0.5 ? Style.frame_color : Theme.bg_crust
+    WorkspaceTile {
+        id: big_tile
+        readonly property var rect: root.layout.big || ({ x: 0, y: 0, w: 0, h: 0 })
+        visible: root.filmstrip && !!root.layout.big
+        x: big_tile.rect.x
+        y: big_tile.rect.y
+        width: big_tile.rect.w
+        height: big_tile.rect.h
+        entry: root.selected_tile
+        selected: !root.screen_pick
+        selected_address: root.screen_pick ? "" : root.current_address
+        picked: root.picked_set
+        picked_toplevel: root.picked_toplevel
+        picked_count: root.picked.length
+        marks: root.mark_numbers
+        swap_address: root.swap_address
+        drop_target: root.can_drop
+        matches: root.matches
+        shown: root.visible && root.filmstrip
+        live: true
 
-            KeyHelp {
-                id: key_help
-                anchors.fill: parent
-                text: root.help_text
-                general: [{ key: "?", desc: "back" }, { key: "Esc", desc: "back" }, { key: "q", desc: root.share_mode ? "cancel share" : "close overview" }]
-                onBack: root.hide_help()
-                onClose_requested: root.hide_overview()
-            }
-        }
+        onTile_clicked: root.tile_clicked(root.selected_index, "")
+        onWindow_clicked: address => root.tile_clicked(root.selected_index, address)
+    }
+
+    ScopeAim {
+        anchors.fill: parent
+        aim: root.help_open ? null : root.aim
+        cls: root.aim ? root.aim.cls : ""
+        place: root.aim ? root.aim.place : ""
+        real: root.aim ? root.aim.real : null
+        glide: Power.on_ac && root.reveal === 1
+    }
+
+    AmmoCounter {
+        visible: Style.ammo_counter && root.window_total > 0
+        anchors.right: parent.right
+        anchors.bottom: parent.bottom
+        anchors.margins: 12
+        index: root.window_at
+        total: root.window_total
+    }
+
+    LockAim {
+        anchors.fill: parent
+        aim: root.help_open ? null : root.aim
+        animate: Power.on_ac && root.reveal === 1
     }
 }
