@@ -74,7 +74,7 @@ Four lock screens are modelled on games, and the shell can use those games' own 
 
 | Script | Give it | Writes to |
 | --- | --- | --- |
-| `ff7-audio` | A folder with `music/` (the Prelude) and `fx/` (the menu sounds) | `lock/skins/ff7/audio/` in the config |
+| `ff7-audio` | A folder with `music/` (the Prelude) and `fx/` (the menu sounds) | `~/.local/share/quickshell/ff7-audio/` |
 | `mgs2-audio` | A folder with the title and menu themes and the menu sounds | `~/.local/share/quickshell/mgs2-audio/` |
 | `ocarina-audio` | A folder with the title and fairy fountain tracks and the menu sounds | `~/.local/share/quickshell/ocarina-audio/` |
 | `goldeneye-audio` | The watch theme, as one audio file | `~/.local/share/quickshell/goldeneye-audio/` |
