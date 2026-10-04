@@ -56,3 +56,4 @@ if [[ $before != "$after" ]] && ! git -C "$repo" diff --quiet "$before" "$after"
 fi
 
 echo "ship-batch: main is at $(git -C "$repo" log --oneline -1)"
+(cd "$repo" && "$HOME/.claude/skills/merge-prs/status.sh") || true
