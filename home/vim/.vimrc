@@ -1,6 +1,6 @@
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 " [Maintainer]
-"   Robert Hill - @uhs-robert <https://github/.com/uhs-robert/vim>
+"   Robert Hill - @uhs-robert <https://github.com/uhs-robert/vim-rc>
 "   Last Change: 2025 Aug 15
 "
 " [Instructions]
