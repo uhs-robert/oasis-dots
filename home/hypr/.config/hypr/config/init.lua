@@ -28,9 +28,8 @@ local Utils = require("lib.utils") ---@class Utils
 --- @field editor string Editor command (default: "nvim")
 --- @field gui_file_manager string GUI file manager command (default: "thunar")
 --- @field tui_file_manager string TUI file manager command (default: "yazi")
---- @field menu string Menu binary; rofi, fuzzel and wofi get their own flags, others get "--dmenu" (default: "rofi")
---- @field menu_cmd string Full app-launcher invocation (default: per menu, "rofi -name rofiMenu")
---- @field dmenu_cmd string Full dmenu-picker invocation (default: per menu, "rofi -name rofiDmenu -i -dmenu")
+--- @field menu string Menu binary; the launcher, run, ssh, window and cli menus are rofi-only (default: "rofi")
+--- @field dmenu_cmd string Full dmenu-picker invocation; defaults exist for rofi, fuzzel and wofi, set it for any other menu (default: per menu, "rofi -name rofiDmenu -i -dmenu")
 --- @field display_manager string Display/monitor manager command (default: "wdisplays")
 
 --- @class Config.Monitor
@@ -101,7 +100,6 @@ Config.defaults = {
     gui_file_manager = "thunar",
     tui_file_manager = "yazi",
     menu = "rofi",
-    menu_cmd = nil,
     dmenu_cmd = nil,
     display_manager = "wdisplays",
   },
@@ -235,19 +233,17 @@ local function resolve_monitors(monitors, is_laptop)
   return monitors
 end
 
-local MENU_FLAGS = {
-  rofi = { menu = " -name rofiMenu", dmenu = " -name rofiDmenu -i -dmenu" },
-  fuzzel = { menu = " --app-id fuzzelMenu", dmenu = " --app-id fuzzelDmenu --dmenu" },
-  wofi = { menu = " --show drun", dmenu = " --dmenu -i" },
+local DMENU_FLAGS = {
+  rofi = " -name rofiDmenu -i -dmenu",
+  fuzzel = " --dmenu",
+  wofi = " --dmenu -i",
 }
 
---- Fills in menu_cmd and dmenu_cmd defaults derived from app.menu when absent.
+--- Fills in the dmenu_cmd default derived from app.menu when absent.
 --- @param app Config.App
 local function fill_menu_cmds(app)
   local m = app.menu
-  local flags = MENU_FLAGS[m:match("[^/]+$")] or { menu = "", dmenu = " --dmenu" }
-  if not app.menu_cmd then app.menu_cmd = m .. flags.menu end
-  if not app.dmenu_cmd then app.dmenu_cmd = m .. flags.dmenu end
+  if not app.dmenu_cmd then app.dmenu_cmd = m .. (DMENU_FLAGS[m:match("[^/]+$")] or "") end
 end
 
 --- Writes a thin wrapper script so any subprocess can call `term -e cmd`

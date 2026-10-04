@@ -132,7 +132,7 @@ end
 --- @return fun()
 function Menu.zoxide(app)
   local picker = DMENU_CMD .. (IS_ROFI and " -theme-str 'listview { columns: 1; }'" or "") .. " -p 'Directory'"
-  local fm = FILE_MANAGER == "yazi" and "type y >/dev/null 2>&1 && y || yazi" or FILE_MANAGER
+  local fm = FILE_MANAGER == "yazi" and "if type y >/dev/null 2>&1; then y; else yazi; fi" or FILE_MANAGER
   local shell = SHELL .. ' -i -c \'cd "{}" && ' .. (app or fm) .. "; exec " .. SHELL .. " -i'"
   local class = app and "" or (" --class " .. FILE_MANAGER)
   local open = TERM_CMD .. class .. " -e " .. shell
