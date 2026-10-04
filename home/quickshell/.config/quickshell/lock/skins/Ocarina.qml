@@ -188,6 +188,7 @@ Item {
     }
 
     readonly property string ui_font: "Rounded Mplus 1c"
+    readonly property string mode_font: root.ui_font
     readonly property string key_font: "Belleza"
 
     readonly property var stars: root.scatter(5, 90, rnd => ({ x: rnd() * 1600, y: Math.pow(rnd(), 1.5) * 520, r: 0.8 + rnd() * 1.5, a: 0.35 + rnd() * 0.6 }))
@@ -239,17 +240,20 @@ Item {
         }
         const on_file = root.screen === "file";
         const in_opts = root.in_options;
-        if (on_file && !in_opts && (event.key === Qt.Key_Up || event.key === Qt.Key_Down)) {
+        const letter = ctrl ? "" : event.text;
+        const down = event.key === Qt.Key_Down || letter === "j" || letter === "l";
+        const vertical = down || event.key === Qt.Key_Up || letter === "k" || letter === "h";
+        if (on_file && !in_opts && vertical) {
             const i = root.file_items.indexOf(root.file_item);
-            const next = root.file_items[(i + (event.key === Qt.Key_Down ? 1 : root.file_items.length - 1)) % root.file_items.length];
+            const next = root.file_items[(i + (down ? 1 : root.file_items.length - 1)) % root.file_items.length];
             c.scene = next === "file1" ? "file" : "file:" + next;
             root.cue("move");
             return true;
         }
-        if (in_opts && (event.key === Qt.Key_Up || event.key === Qt.Key_Down)) {
+        if (in_opts && vertical) {
             const items = root.opt_items;
             const i = items.indexOf(root.opt_item);
-            const next = items[(i + (event.key === Qt.Key_Down ? 1 : items.length - 1)) % items.length];
+            const next = items[(i + (down ? 1 : items.length - 1)) % items.length];
             c.scene = "opt:" + next;
             root.cue("move");
             return true;

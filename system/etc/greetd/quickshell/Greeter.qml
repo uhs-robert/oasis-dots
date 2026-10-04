@@ -81,6 +81,7 @@ Singleton {
     }
 
     property string buffer: ""
+    property bool insert: false
     property string pending: ""
     property bool checking: false
     property bool failed: false
@@ -112,6 +113,7 @@ Singleton {
         prompt: root.prompt
         caps_lock: root.caps_lock
         typing: root.typing
+        insert: root.insert
         granted: root.granted
         saver: root.saver && !UPower.onBattery
         user: root.user
@@ -191,6 +193,7 @@ Singleton {
         root.checking = false;
         root.pending = "";
         root.prompt = "";
+        root.insert = false;
         root.fail_count += 1;
         root.failed = true;
         root.message = text || "Wrong password";
@@ -253,7 +256,7 @@ Singleton {
         }
     }
 
-    // `skin` may take a key only while the buffer is empty and greetd waits on nothing.
+    // NORMAL mode (not insert) offers keys to `skin` while the buffer is empty and greetd waits on nothing; `i` or any typed key enters INSERT, Esc on an empty buffer leaves it.
     function key(event, skin) {
         root.wake();
         if (root.granted) {
@@ -270,11 +273,23 @@ Singleton {
             event.accepted = true;
             return;
         }
-        if (!root.checking && root.buffer === "" && root.prompt === "" && root.skin_takes(event, skin)) {
+        const ctrl = (event.modifiers & Qt.ControlModifier) && !(event.modifiers & Qt.AltModifier);
+        const was_insert = root.insert;
+        if (event.key === Qt.Key_Escape && root.insert && root.buffer === "" && !root.checking) root.insert = false;
+        const normal = !root.insert && !root.checking && root.buffer === "" && root.prompt === "";
+        if (normal && root.skin_takes(event, skin)) {
             event.accepted = true;
             return;
         }
-        const ctrl = (event.modifiers & Qt.ControlModifier) && !(event.modifiers & Qt.AltModifier);
+        if (was_insert && !root.insert) {
+            event.accepted = true;
+            return;
+        }
+        if (normal && !ctrl && event.text === "i") {
+            root.insert = true;
+            event.accepted = true;
+            return;
+        }
         if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
             root.submit();
         } else if (event.key === Qt.Key_F2) {
@@ -297,6 +312,7 @@ Singleton {
             const t = event.text;
             if (t.toUpperCase() !== t.toLowerCase()) root.caps_lock = (t === t.toUpperCase()) !== !!(event.modifiers & Qt.ShiftModifier);
             root.buffer += t;
+            root.insert = true;
             root.failed = false;
         } else {
             return;

@@ -24,6 +24,8 @@ Item {
     readonly property color vec_faint: Qt.alpha(root.vec, 0.3)
     readonly property string body_font: "B612 Mono"
     readonly property string head_font: "Oxanium"
+    readonly property string mode_font: root.body_font
+    readonly property color mode_color: root.hot
 
     function up(s) {
         return String(s || "").toUpperCase();

@@ -52,6 +52,8 @@ Item {
 
     readonly property string ui_font: "Nunito"
     readonly property color white: Theme.fg_strong
+    readonly property string mode_font: root.ui_font
+    readonly property color mode_color: root.white
     readonly property color shadow: Theme.bg_shadow
     readonly property color label: Qt.tint(Theme.blue, Qt.alpha(Theme.theme_primary_light, 0.8))
     readonly property color dim: Qt.tint(Theme.fg_dim, Qt.alpha(Theme.fg_strong, 0.6))
@@ -99,7 +101,9 @@ Item {
         if (!root.can_step || c.buffer_length > 0 || c.checking || c.granted) return false;
         const ctrl = (event.modifiers & Qt.ControlModifier) && !(event.modifiers & Qt.AltModifier);
         const enter = !ctrl && (event.key === Qt.Key_Return || event.key === Qt.Key_Enter);
-        const up = event.key === Qt.Key_Up || event.key === Qt.Key_Down;
+        const letter = ctrl ? "" : event.text;
+        const down = event.key === Qt.Key_Down || letter === "j" || letter === "l";
+        const up = down || event.key === Qt.Key_Up || letter === "k" || letter === "h";
         const printable = !ctrl && event.text !== "" && event.text.charCodeAt(0) > 32 && event.text.charCodeAt(0) !== 127;
         const typed = !ctrl && event.text !== "" && event.text.charCodeAt(0) >= 32 && event.text.charCodeAt(0) !== 127;
         if (root.screen === "pw") {
@@ -110,7 +114,7 @@ Item {
         }
         if (root.screen === "files") {
             if (up) {
-                const step = event.key === Qt.Key_Down ? 1 : root.slot_count - 1;
+                const step = down ? 1 : root.slot_count - 1;
                 c.scene = "files:" + (root.file_sel + step) % root.slot_count;
                 root.cue("cursor");
                 return true;

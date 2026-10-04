@@ -58,6 +58,7 @@ Scope {
     function reset() {
         fake.forced_phase = "";
         fake.buffer_length = 0;
+        fake.insert = false;
         fake.checking = false;
         fake.failed = false;
         fake.fail_count = 0;
@@ -93,6 +94,7 @@ Scope {
 
     function fake_fail() {
         fake.buffer_length = 0;
+        fake.insert = false;
         fake.fail_count += 1;
         fake.message = "Wrong password";
         fake.failed = true;
@@ -101,6 +103,7 @@ Scope {
 
     function fake_unlock() {
         fake.buffer_length = 0;
+        fake.insert = false;
         fake.granted = true;
         const ms = loader.item && typeof loader.item.unlock_ms === "number" ? loader.item.unlock_ms : 0;
         replay.interval = ms + 900;
@@ -153,12 +156,14 @@ Scope {
                 const phases = { "1": "idle", "2": "typing", "3": "wrong", "4": "unlock", "5": "saver" };
                 if (event.key === Qt.Key_Escape || event.text === "q") root.close();
                 else if (event.text in phases) root.phase(phases[event.text]);
-                else if (!fake.granted && fake.buffer_length === 0 && Lock.skin_takes(event, loader.item)) {
+                else if (!fake.granted && !fake.insert && fake.buffer_length === 0 && Lock.skin_takes(event, loader.item)) {
                 } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
                     if (event.modifiers & Qt.ShiftModifier) root.fake_unlock();
                     else root.fake_fail();
                 } else if (event.key === Qt.Key_Backspace) fake.buffer_length = Math.max(0, fake.buffer_length - 1);
+                else if (!fake.insert && fake.buffer_length === 0 && event.text === "i") fake.insert = true;
                 else if (event.text !== "") {
+                    fake.insert = true;
                     fake.saver = false;
                     fake.failed = false;
                     fake.buffer_length += 1;
