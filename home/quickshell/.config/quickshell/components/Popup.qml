@@ -275,7 +275,7 @@ PanelWindow {
     readonly property bool stripped: root.st.title_strip.a > 0
     readonly property bool banded: root.stripped
     readonly property real band_height: Math.max(26, title_tab.height + 4)
-    readonly property real engraving_height: root.st.frame_engraving !== "" ? Math.ceil(engraving_metrics.height) + 4 : 0
+    readonly property real engraving_height: decor.engraving_height
     readonly property real header_height: (has_title ? (root.banded ? root.band_height + 8 : title_tab.height + title_gap) + root.st.inset_pad : 0) + root.st.lcd_margin * 2 + root.device_top
     // Console inset rings also clear a content-drawn footer.
     readonly property real footer_height: (has_footer ? base_footer.implicitHeight + 10 + root.st.inset_pad : root.st.console_views !== "" && root.st.frame_inset_width > 0 ? root.st.inset_pad : 0) + root.st.lcd_margin * 2 + engraving_height + root.device_bottom + Style.slant_room
@@ -451,94 +451,23 @@ PanelWindow {
             device: root.device
 
             decor: [
-                Loader {
-                    anchors.fill: parent
-                    active: root.st.border_title
-                    sourceComponent: Neovim.FloatFrame {
-                        st: root.st
-                        title: root.has_title ? root.shown_title : ""
-                        status: root.st.title_status ? root.title_value : ""
-                        chip_height: root.has_title ? title_tab.height : 0
-                        radius: root.frame_radius
-                    }
-                },
-
-                // Under a capsule the top border gives way, so the capsule's fill runs straight into the frame's.
-                Rectangle {
-                    visible: root.island_capsule && !root.dock_bottom && root.st.frame_border_width > 0
-                    x: root.edge_x(root.island_width) + root.st.frame_border_width
-                    width: root.island_width - root.st.frame_border_width * 2
-                    height: root.st.frame_border_width
-                    color: root.st.frame_shade.a > 0 ? root.st.frame_shade : root.st.frame_color
-                },
-
-                Loader {
-                    anchors.fill: parent
-                    active: root.device
-                    sourceComponent: DeviceShell {
-                        room_side: root.device_side
-                        room_top: root.device_top
-                        room_bottom: root.device_bottom
-                    }
-                },
-
-                // The watch face: a shaded panel with static scan rows, and the engraving on the bezel below it.
-                Rectangle {
-                    id: lcd_panel
-                    readonly property real edge: root.st.inset_pad + root.st.lcd_margin
-                    visible: root.lcd && !root.st.frame_watch
-                    x: lcd_panel.edge
-                    y: lcd_panel.edge
-                    width: parent.width - lcd_panel.edge * 2
-                    height: parent.height - lcd_panel.edge * 2 - root.engraving_height
-                    radius: root.st.lcd_radius
-                    border.width: 1
-                    border.color: root.st.lcd_border
-                    clip: true
-                    gradient: Gradient {
-                        GradientStop { position: 0; color: root.st.lcd_top }
-                        GradientStop { position: 1; color: root.st.lcd_bottom }
-                    }
-
-                    Scanlines {
-                        anchors.fill: parent
-                        color: root.st.lcd_scan
-                        period: 3
-                    }
-
-                    CornerBrackets {
-                        anchors.fill: parent
-                        color: root.st.lcd_brackets
-                        inset: 5
-                        arm: 14
-                        all_corners: true
-                    }
-                },
-
-                Loader {
-                    anchors.fill: parent
-                    active: root.st.frame_watch
-                    sourceComponent: Goldeneye.PopupPanel {
-                        st: root.st
-                    }
-                },
-
-                Text {
-                    id: engraving
-                    visible: root.st.frame_engraving !== ""
-                    x: lcd_panel.edge + 6
-                    anchors.bottom: parent.bottom
-                    anchors.bottomMargin: root.st.inset_pad + 2
-                    text: root.st.frame_engraving
-                    color: root.st.frame_border_color
-                    font.family: Style.title_font_family
-                    font.pixelSize: 9
-                    font.letterSpacing: 2.5
-                },
-
-                FontMetrics {
-                    id: engraving_metrics
-                    font: engraving.font
+                PopupDecor {
+                    id: decor
+                    st: root.st
+                    has_title: root.has_title
+                    shown_title: root.shown_title
+                    title_value: root.title_value
+                    chip_height: root.has_title ? title_tab.height : 0
+                    frame_radius: root.frame_radius
+                    island_capsule: root.island_capsule
+                    island_width: root.island_width
+                    capsule_x: root.edge_x(root.island_width)
+                    dock_bottom: root.dock_bottom
+                    device: root.device
+                    room_side: root.device_side
+                    room_top: root.device_top
+                    room_bottom: root.device_bottom
+                    lcd: root.lcd
                 }
             ]
 
