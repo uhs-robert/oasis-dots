@@ -18,6 +18,7 @@ QtObject {
     property string prompt: ""
     property bool caps_lock: false
     property bool typing: false
+    property bool insert: false
     property bool granted: false
     property bool saver: false
     property bool animate: !UPower.onBattery
@@ -61,7 +62,7 @@ QtObject {
 
     // The user's picture: the one the bar syncs into the data dir, else AccountsService's.
     function face_urls(name) {
-        return ["file:///var/lib/qs-greeter/faces/" + name, "file:///var/lib/AccountsService/icons/" + name];
+        return ["file://" + Greeter.data_dir + "/faces/" + name, "file:///var/lib/AccountsService/icons/" + name];
     }
 
     readonly property var tint_pair: Tints.pair(Theme, root.tint)

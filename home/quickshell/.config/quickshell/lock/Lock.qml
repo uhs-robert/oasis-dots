@@ -2,7 +2,6 @@
 pragma Singleton
 pragma ComponentBehavior: Bound
 import QtQuick
-import Qt.labs.folderlistmodel
 import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
@@ -11,6 +10,7 @@ import "../services"
 import "../theme"
 // Skins load by URL; importing the folder lets Quickshell register the component folders they import.
 import "skins"
+import "skins/ui"
 
 // The session lock: one surface per screen, unlocked only by a PAM success.
 Singleton {
@@ -54,6 +54,7 @@ Singleton {
     property int unlock_ms: 0
     property bool saver: false
     property bool music_armed: false
+    property bool insert: false
     property bool arm_on_engage: false
     readonly property string flag_script: Quickshell.shellDir + "/scripts/lock-flag"
     readonly property var backdrop_files: {
@@ -70,7 +71,10 @@ Singleton {
     // A manual lock starts its music right away; an automatic one (`auto`) waits for the first key.
     function lock(auto) {
         if (persist.locked) return "locked";
-        if (capture.running) return "ok";
+        if (capture.running) {
+            if (!auto) root.arm_on_engage = true;
+            return "ok";
+        }
         root.arm_on_engage = !auto;
         Popups.close();
         if (!root.wants_backdrop()) return root.engage({});
@@ -136,6 +140,7 @@ Singleton {
 
     function reset_input() {
         root.buffer = "";
+        root.insert = false;
         root.pending = "";
         root.checking = false;
         root.failed = false;
@@ -168,6 +173,7 @@ Singleton {
         root.checking = false;
         root.pending = "";
         root.prompt = "";
+        root.insert = false;
         root.failed = true;
         root.message = text;
         ThemeAudio.play_lock("error");
@@ -207,13 +213,7 @@ Singleton {
 
     // The style's skins/<Name>.qml, else the generic screen; `style_name` defaults to the lock's own.
     function skin_url(style_name) {
-        const name = style_name || Style.lock_name;
-        if (name === "simple") return Qt.resolvedUrl("LockScreen.qml");
-        const file = name.charAt(0).toUpperCase() + name.slice(1) + ".qml";
-        for (let i = 0; i < skin_files.count; i++) {
-            if (skin_files.get(i, "fileName") === file) return Qt.resolvedUrl("skins/" + file);
-        }
-        return Qt.resolvedUrl("LockScreen.qml");
+        return LockSkins.url_for(style_name || Style.lock_name);
     }
 
     // True when `skin` defines handle_key(event) and it returns exactly true; a throwing skin takes nothing.
@@ -227,7 +227,7 @@ Singleton {
         }
     }
 
-    // `skin` is the focused screen's skin; it may take a key only while the buffer is empty and PAM waits on nothing.
+    // NORMAL mode (not insert) offers keys to `skin` while the buffer is empty and PAM waits on nothing; `i` or any typed key enters INSERT, Esc on an empty buffer leaves it.
     function key(event, skin) {
         root.wake();
         root.arm_music();
@@ -242,11 +242,23 @@ Singleton {
         }
         root.typing = true;
         typing_timer.restart();
-        if (!root.checking && root.buffer === "" && root.prompt === "" && root.skin_takes(event, skin)) {
+        const ctrl = (event.modifiers & Qt.ControlModifier) && !(event.modifiers & Qt.AltModifier);
+        const was_insert = root.insert;
+        if (event.key === Qt.Key_Escape && root.insert && root.buffer === "" && !root.checking) root.insert = false;
+        const normal = !root.insert && !root.checking && root.buffer === "" && root.prompt === "";
+        if (normal && root.skin_takes(event, skin)) {
             event.accepted = true;
             return;
         }
-        const ctrl = (event.modifiers & Qt.ControlModifier) && !(event.modifiers & Qt.AltModifier);
+        if (was_insert && !root.insert) {
+            event.accepted = true;
+            return;
+        }
+        if (normal && !ctrl && event.text === "i") {
+            root.insert = true;
+            event.accepted = true;
+            return;
+        }
         if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
             root.submit();
         } else if (root.checking) {
@@ -261,6 +273,7 @@ Singleton {
             const t = event.text;
             if (t.toUpperCase() !== t.toLowerCase()) root.caps_lock = (t === t.toUpperCase()) !== !!(event.modifiers & Qt.ShiftModifier);
             root.buffer += t;
+            root.insert = true;
             root.failed = false;
         } else {
             return;
@@ -366,6 +379,13 @@ Singleton {
                 focus: true
                 Keys.onPressed: event => root.key(event, screen_loader.item)
 
+                ModeIndicator {
+                    z: 1000
+                    skin: screen_loader.item
+                    ctx: live_ctx
+                    font_fallback: Style.mono_font
+                }
+
                 Loader {
                     id: screen_loader
                     anchors.fill: parent
@@ -438,13 +458,6 @@ Singleton {
         onFinished: files => root.engage(files)
     }
 
-    FolderListModel {
-        id: skin_files
-        folder: Qt.resolvedUrl("skins")
-        nameFilters: ["*.qml"]
-        showDirs: false
-    }
-
     Binding {
         target: ThemeAudio
         property: "lock_active"
@@ -467,6 +480,7 @@ Singleton {
         prompt: root.prompt
         caps_lock: root.caps_lock
         typing: root.typing
+        insert: root.insert
         granted: root.granted
         saver: root.saver && Power.on_ac
         animate: Power.on_ac

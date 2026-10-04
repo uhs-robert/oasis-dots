@@ -61,7 +61,7 @@ Delete the state file to go back to the tracked layout.
 
 ## Styles
 
-A style changes how the whole shell looks and behaves: fonts, frames, meters, key hints, transitions, sounds, even which views a popup shows. Colors never come from a style. They always come from the active Oasis palette, so every style works with every theme. The one deliberate exception is the game iconography of `goldeneye` (and its Classic mode), which keeps the pause watch's own colors under every palette (see below).
+A style changes how the whole shell looks and behaves: fonts, frames, meters, key hints, transitions, sounds, even which views a popup shows. Colors never come from a style. They always come from the active Oasis palette, so every style works with every theme. The one deliberate exception is the game iconography of `goldeneye` (and its Classic mode), which keeps the pause watch's own colors under every palette (see below). The lock-only skins (`Mgs2`, `Ocarina`) are exempt as well: they draw their game's fixed palette and ignore the lock tint.
 
 The styles, in picker order: `oasis` (the default), `modern`, `neovim`, `terminal`, `crt`, `nes`, `gameboy`, `snes`, `ps1`, `ff7`, `goldeneye`, `ps2`, `tie`, `halflife`, `metroid` and `reticle`. Everyday styles come first, then consoles by release year, then sci-fi.
 
@@ -184,7 +184,7 @@ Popup names are the `LazyPopup` names in `shell.qml`: `start`, `settings`, `powe
 
 `~/.config/hypr/scripts/lock-screen.sh` (used by hypridle and the Power menu; hypridle passes `--auto`) locks with this shell and falls back to hyprlock when the bar isn't running or can't lock. If qs restarts while locked, the new instance takes the lock over.
 
-Settings > Lock screen picks the lock: `follow` (the lock skin of the current style), `simple` (a plain card over a pixelated or blurred desktop), or any skin by name. Skins live in `lock/skins/` as `Crt`, `Ff7`, `Goldeneye`, `Mgs2`, `Ocarina` and `Tie`. `Ocarina` and `Mgs2` are lock-only and have no bar style. A style without a skin gets the simple screen. Tints recolor the skins (primary, secondary, green, amber, white). Once the password is accepted, any key skips the skin's unlock animation, on the lock and the login screen alike.
+Settings > Lock screen picks the lock: `follow` (the lock skin of the current style), `simple` (a plain card over a pixelated or blurred desktop), or any skin by name. Skins live in `lock/skins/` as `Crt`, `Ff7`, `Goldeneye`, `Mgs2`, `Ocarina` and `Tie`. `Ocarina` and `Mgs2` are lock-only and have no bar style. A style without a skin gets the simple screen. Tints recolor the skins (primary, secondary, green, amber, white). Once the password is accepted, any key skips the skin's unlock animation, on the lock and the login screen alike. Skins with a game menu (`Ff7`, `Goldeneye`, `Mgs2`, `Ocarina`) offer Reboot and Shut down on the locked screen, each needing a second press to confirm; this is deliberate, so a locked machine can still be restarted. The `Mgs2` skin draws its menus in the system's Liberation Sans (`ttf-liberation`, in `packages/arch.ini`), so it falls back to the default font without it.
 
 The FF7, GoldenEye, MGS2 and Ocarina skins can play game music and effects, which aren't in the repo. Import your own copies with `scripts/ff7-audio`, `scripts/goldeneye-audio`, `scripts/mgs2-audio` and `scripts/ocarina-audio`. Each takes the folder (or, for GoldenEye, the file) holding your copies as its argument. The MGS2 skin's effects are the exception: synthesized stand-ins ship in `lock/skins/mgs2/fx/` (from `scripts/synth-sounds mgs2-skin`), and an imported file of the same name replaces each one. The GoldenEye skin ships its lock and unlock chirps, the pause-watch static and typing, cursor, confirm, cancel and error clicks in `lock/skins/goldeneye/fx/` the same way (from `scripts/synth-sounds goldeneye-skin`, the clicks reusing the GoldenEye theme pack's).
 
@@ -202,7 +202,7 @@ just greeter-sync --install  # stage and install it
 just greeter-preview         # try it in a window with a fake greetd
 ```
 
-It installs to `/etc/greetd/quickshell` with its data in `/var/lib/qs-greeter`, which the bar keeps current as your theme and choices change (Settings > Login screen > Sync to greeter). `/usr/local/bin/qs-greeter` falls back to tuigreet when the greeter is missing, fails to start or crashes. Press `F10` or `SUPER + T` at the login screen to switch to tuigreet yourself.
+`just greeter-sync --from DIR` stages the skins, theme files and fonts from another Quickshell config dir (for example a worktree's `home/quickshell/.config/quickshell`) instead of the repo's, and takes `DIR/theme/theme.json` over your saved theme when it has one. It installs to `/etc/greetd/quickshell` with its data in `/var/lib/qs-greeter`, which the bar keeps current as your theme and choices change (Settings > Login screen > Sync to greeter). `/usr/local/bin/qs-greeter` falls back to tuigreet when the greeter is missing, fails to start or crashes. Press `F10` or `SUPER + T` at the login screen to switch to tuigreet yourself.
 
 ## Extending
 
@@ -212,7 +212,17 @@ It installs to `/etc/greetd/quickshell` with its data in `/var/lib/qs-greeter`, 
 
 **A picker provider.** Subclass `picker/PickerProvider.qml`: set `name` and `items`, implement `refresh()` and `activate()`, and it registers itself. Add it to `shell.qml` next to the other providers. To open it from Hyprland, bind `Menu.picker("<name>", "<rofi fallback>")` from `lib/actions/menu.lua`, so the bind still works without the bar.
 
-**A lock skin.** Add `lock/skins/<Style>.qml` (first letter capitalized). It shows up in Settings > Lock screen and in the greeter once it exists. For a skin with no bar style, also add it to `lock_only` in `theme/Style.qml`. The greeter stages only `lock/skins/`, `lock/Tints.js`, `theme/` and `fonts/`, so a skin imports nothing from `components/` or `services/`; pieces a bar style shares with its skin (the GoldenEye watch colors, segment arcs and panel) live in the skin's own folder and the style imports them from there.
+**A lock skin.** Add `lock/skins/<Style>.qml` (first letter capitalized). `services/LockSkins.qml` is the only registry: it lists the folder, and the lock, the greeter staging, Settings and the thumbnails all resolve skins through it. The skin shows up in Settings > Lock screen and in the greeter once it exists. For a skin with no bar style, also add it to `lock_only` in `theme/Style.qml`. The greeter stages only `lock/skins/`, `lock/Tints.js`, `theme/` and `fonts/`, so a skin imports nothing from `components/` or `services/`; pieces a bar style shares with its skin (the GoldenEye watch colors, segment arcs and panel) live in the skin's own folder and the style imports them from there.
+
+The skin contract:
+
+- The root item has `property var ctx` (the `LockCtx`, set at load) and draws everything from it: auth state, `phase`, `buffer_length`, tint, clock and status. A skin never sees or stores the password and starts no processes beyond its own audio.
+- Optional `readonly property int unlock_ms`: how long the unlock animation runs before the session opens (clamped to 0-4000 ms; 0 when absent).
+- Optional `function handle_key(event)`: the shared router (`Lock.key`, `Greeter.key`) owns a vim-style mode, `ctx.insert`. In NORMAL mode (the default, and after a failed attempt or a relock) keys reach `handle_key` first, only while the password buffer is empty and nothing is pending; return exactly `true` to consume one. Skins may use `h`/`j`/`k`/`l` (matching their arrows), Enter, Space on a title screen, Escape and Tab for navigation, and every menu that moves with arrows should accept `h`/`j`/`k`/`l` too. `i` enters INSERT without typing anything, and any other printable key the skin leaves alone enters INSERT and is typed as the first password character, so a skin must return `false` for those (it may step its own scene, e.g. to a password screen). In INSERT mode, or while the buffer is non-empty or a check runs, skins get no keys and every printable key goes to the password; Escape on an empty buffer returns to NORMAL (and is then offered to the skin). A password starting with `i` therefore needs the key twice. A skin must not take keyboard focus: the lock and greeter hold it so a broken skin still takes the password.
+- Optional mode indicator: the shared layer draws `-- INSERT --` bottom-left only in INSERT mode, in `mode_color` (default the lock tint) and `mode_font` (default the shell mono font) when the skin sets them. Set `readonly property string mode_indicator` to `"own"` (the skin draws it from `ctx.insert`) or `"none"` to hide the shared one; the default is `"shared"`.
+- Optional audio: play only when `ctx.sound` is set and the skin is the `ctx.sound_owner`, gate music on `ctx.music_armed !== false`, send effects with `ctx.cue(name)`, and let `ctx.power_request` only ask, since only a `power_live` ctx acts on it. Imported audio lives in `$XDG_DATA_HOME/quickshell/<skin>-audio`; assets inside the skin's folder are staged with it.
+- Honour `ctx.animate` (loops stop off AC) and `ctx.saver`.
+
 
 ## Tools
 

@@ -13,8 +13,6 @@ Item {
     id: root
 
     property var ctx: null
-    // Fills the screen edge to edge instead of framing the tube in a TV bezel.
-    readonly property bool full_bleed: true
     readonly property int unlock_ms: 1150
 
     readonly property bool portrait: root.height > root.width
@@ -25,8 +23,8 @@ Item {
     readonly property color ph_dim: Qt.tint(Theme.bg_shadow, Qt.alpha(root.tint_base, 0.72))
     readonly property color ph_hot: Qt.tint(root.ph, Qt.alpha(Theme.fg_strong, 0.15))
     readonly property string font: "VT323"
-    // The screensaver phase's effect: "matrix" or "starfield".
-    readonly property string saver_effect: "matrix"
+    readonly property string mode_font: root.font
+    readonly property color mode_color: root.ph
     readonly property bool animate: !!root.ctx && root.ctx.animate
     readonly property string phase: root.ctx ? root.ctx.phase : "idle"
     readonly property bool dimmed: root.phase === "wrong" || root.phase === "unlock"
@@ -84,16 +82,23 @@ Item {
         return (h > 0 ? h + "H " + String(mins % 60).padStart(2, "0") + "M" : mins + "M") + " AGO";
     }
 
+    property real uptime_mins: NaN
+
     FileView {
         id: uptime_file
         path: "/proc/uptime"
-        blockLoading: true
+        onLoaded: root.uptime_mins = Math.floor(parseFloat(uptime_file.text()) / 60)
     }
 
-    // Rereads /proc/uptime on each clock tick passed in.
-    function uptime_text(now) {
-        uptime_file.reload();
-        const mins = Math.floor(parseFloat(uptime_file.text()) / 60);
+    Timer {
+        interval: 60000
+        repeat: true
+        running: true
+        onTriggered: uptime_file.reload()
+    }
+
+    function uptime_text() {
+        const mins = root.uptime_mins;
         if (isNaN(mins)) return "UNKNOWN";
         const d = Math.floor(mins / 1440);
         const h = Math.floor(mins % 1440 / 60);
@@ -144,20 +149,7 @@ Item {
 
     Item {
         id: glass
-        readonly property real radius: root.full_bleed ? 0 : root.u * 3.6
-
-        x: root.full_bleed ? 0 : root.width * 0.034
-        y: root.full_bleed ? 0 : root.height * 0.026
-        width: root.width - x * 2
-        height: root.height - y * 2
-        // Clipped to the rounded screen so the bezel shows through the corners.
-        layer.enabled: true
-        layer.effect: MultiEffect {
-            maskEnabled: true
-            maskSource: glass_mask
-            maskThresholdMin: 0.5
-            maskSpreadAtMin: 1
-        }
+        anchors.fill: parent
 
         Shape {
             anchors.fill: parent
@@ -175,7 +167,7 @@ Item {
                     GradientStop { position: 0; color: Qt.tint(Theme.bg_shadow, Qt.alpha(root.tint_base, 0.09)) }
                     GradientStop { position: 0.85; color: Theme.bg_shadow }
                 }
-                PathRectangle { width: glass.width; height: glass.height; radius: glass.radius }
+                PathRectangle { width: glass.width; height: glass.height }
             }
         }
 
@@ -317,7 +309,7 @@ Item {
                                 if (c.has_event) rows.push(["NEXT", root.up(c.event_time + " " + c.event_title)]);
                                 rows.push(["AUDIO", c.has_media ? root.up(c.media_title) + " [" + root.up(c.media_status) + "]" : "IDLE"]);
                                 rows.push(["SESSION", "LOCKED " + root.locked_for(c.now)]);
-                                rows.push(["UPTIME", root.uptime_text(c.now)]);
+                                rows.push(["UPTIME", root.uptime_text()]);
                                 const cells = [];
                                 for (const r of rows) cells.push({ text: r[0], key: true }, { text: r[1], key: false });
                                 return cells;
@@ -530,7 +522,7 @@ Item {
                     GradientStop { position: 0.68; color: "transparent" }
                     GradientStop { position: 1; color: Qt.alpha(Theme.bg_shadow, 0.7) }
                 }
-                PathRectangle { width: glass.width; height: glass.height; radius: glass.radius }
+                PathRectangle { width: glass.width; height: glass.height }
             }
 
             ShapePath {
@@ -544,58 +536,10 @@ Item {
                     GradientStop { position: 0.22; color: Qt.alpha(Theme.fg_strong, 0.06) }
                     GradientStop { position: 0.4; color: "transparent" }
                 }
-                PathRectangle { width: glass.width; height: glass.height; radius: glass.radius }
+                PathRectangle { width: glass.width; height: glass.height }
             }
         }
 
-    }
-
-    Rectangle {
-        id: glass_mask
-        x: glass.x
-        y: glass.y
-        width: glass.width
-        height: glass.height
-        radius: glass.radius
-        color: Theme.bg_shadow
-        visible: false
-        layer.enabled: true
-    }
-
-    // Repaints the bezel over the glass's square corners with the bezel's own gradient, in case the mask is not applied.
-    Shape {
-        anchors.fill: parent
-        preferredRendererType: Shape.CurveRenderer
-
-        ShapePath {
-            strokeWidth: -1
-            fillRule: ShapePath.OddEvenFill
-            fillGradient: RadialGradient {
-                centerX: root.width / 2
-                centerY: root.height * 0.4
-                focalX: centerX
-                focalY: centerY
-                centerRadius: Math.max(root.width, root.height) * 0.75
-                focalRadius: 0
-                GradientStop { position: 0; color: Qt.tint(Theme.bg_shadow, Qt.alpha(Theme.bg_surface, 0.6)) }
-                GradientStop { position: 1; color: Theme.bg_shadow }
-            }
-            PathRectangle { x: glass.x; y: glass.y; width: glass.width; height: glass.height }
-            PathRectangle { x: glass.x; y: glass.y; width: glass.width; height: glass.height; radius: glass.radius }
-        }
-    }
-
-    // The rim, outside the clipped glass so its stroke is not cut in half.
-    Rectangle {
-        visible: !root.full_bleed
-        x: glass.x
-        y: glass.y
-        width: glass.width
-        height: glass.height
-        radius: glass.radius
-        color: "transparent"
-        border.width: Math.max(2, root.u * 0.35)
-        border.color: Qt.tint(Theme.bg_shadow, Qt.alpha(Theme.bg_surface, 0.7))
     }
 
     SequentialAnimation {
@@ -661,34 +605,14 @@ Item {
         Item {
             id: saver
 
-            Loader {
+            MatrixRain {
                 anchors.fill: parent
-                sourceComponent: root.saver_effect === "starfield" ? starfield : matrix
-            }
-
-            Component {
-                id: starfield
-
-                Starfield {
-                    running: root.animate
-                    color: root.ph_hot
-                    dim_color: root.ph_dim
-                    count: 320
-                    render_scale: 0.5
-                }
-            }
-
-            Component {
-                id: matrix
-
-                MatrixRain {
-                    running: root.animate
-                    color: Theme.theme_primary_strong
-                    trail_color: Theme.theme_primary_strong
-                    font_family: root.font
-                    glyph_size: root.u * 2.2
-                    characters: "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#$%&*+=<>:;?!/|"
-                }
+                running: root.animate
+                color: Theme.theme_primary_strong
+                trail_color: Theme.theme_primary_strong
+                font_family: root.font
+                glyph_size: root.u * 2.2
+                characters: "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#$%&*+=<>:;?!/|"
             }
 
             Rectangle {

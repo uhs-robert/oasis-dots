@@ -1,6 +1,7 @@
 // /etc/greetd/quickshell/GreeterSurface.qml
 import QtQuick
 import "theme"
+import "lock/skins/ui"
 
 // One screen of the greeter: the lock skin for the saved lock style, else the simple screen, with the session and power keys under it.
 Item {
@@ -15,6 +16,13 @@ Item {
     Rectangle {
         anchors.fill: parent
         color: Theme.bg_shadow
+    }
+
+    ModeIndicator {
+        z: 1000
+        skin: skin_loader.item
+        ctx: Greeter.ctx
+        font_fallback: "Share Tech Mono"
     }
 
     Loader {
