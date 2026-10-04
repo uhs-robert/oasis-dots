@@ -191,7 +191,7 @@ Item {
                 Layout.fillWidth: true
                 icon: WeatherState.sun_rise_icon
                 label: "Sunrise"
-                time: root.day ? root.day.sunrise : ""
+                time: root.day ? WeatherState.fmt_hm(root.day.sunrise) : ""
             }
 
             SunEnd {
@@ -199,7 +199,7 @@ Item {
                 Layout.fillWidth: true
                 icon: WeatherState.sun_set_icon
                 label: "Sunset"
-                time: root.day ? root.day.sunset : ""
+                time: root.day ? WeatherState.fmt_hm(root.day.sunset) : ""
             }
         }
 

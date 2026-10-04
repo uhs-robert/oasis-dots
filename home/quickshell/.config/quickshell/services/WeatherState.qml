@@ -548,6 +548,12 @@ Singleton {
         return idx === -1 ? "" : iso.substr(idx + 1, 5);
     }
 
+    // Displays a stored "HH:MM" in the Settings > Clock format.
+    function fmt_hm(hm) {
+        const m = /^(\d{1,2}):(\d{2})$/.exec(hm || "");
+        return m ? TimeFormat.format(new Date(2000, 0, 1, Number(m[1]), Number(m[2]))) : (hm || "");
+    }
+
     // `current` doesn't reliably carry every field on every Open-Meteo revision; the
     // hourly entry nearest to now is a robust fallback source for all of them.
     function current_hour_index(hourly, now_local) {
