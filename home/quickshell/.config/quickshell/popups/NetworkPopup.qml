@@ -38,6 +38,8 @@ Popup {
         return null;
     }
 
+    readonly property string no_wifi_reason: Networking.backend === NetworkBackendType.None ? "NetworkManager not running" : !root.wifi_device ? "No Wi-Fi adapter" : ""
+
     // goldeneye: the link in the watch's mission wording, with a dial header and segment signal bars.
     readonly property bool link_watch: root.st.link_style === "watch"
     readonly property bool link_scanning: !!root.wifi_device && root.wifi_device.scannerEnabled
@@ -482,6 +484,7 @@ Popup {
     }
 
     function toggle_wifi() {
+        if (root.no_wifi_reason !== "") return;
         ThemeAudio.play("confirm");
         Networking.wifiEnabled = !Networking.wifiEnabled;
     }
@@ -651,8 +654,9 @@ Popup {
                 }
 
                 ToggleRow {
-                    label: root.link_watch ? "UPLINK" : "Wi-Fi"
-                    checked: Networking.wifiEnabled
+                    label: root.no_wifi_reason !== "" ? root.no_wifi_reason : root.link_watch ? "UPLINK" : "Wi-Fi"
+                    checked: root.no_wifi_reason === "" && Networking.wifiEnabled
+                    show_state: root.no_wifi_reason === ""
                     selected: root.selected === -1
                     onToggled: {
                         root.selected = -1;

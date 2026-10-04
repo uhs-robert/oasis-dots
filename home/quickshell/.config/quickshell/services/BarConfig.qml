@@ -10,18 +10,10 @@ import "BarLayout.js" as BarLayout
 Singleton {
     id: root
 
-    // Every monitor gets the same layout for now; bars.json can split this by name/description later.
-    readonly property var default_rules: [
-        {
-            match: "*",
-            compact: false,
-            left: ["start", "workspaces"],
-            center: ["clock"],
-            right: ["tray", "volume", "battery", "system", "network", "bluetooth"]
-        }
-    ]
-
-    property var rules: default_rules
+    property var rules: []
+    property bool has_good_rules: false
+    property bool rules_loaded: false
+    readonly property var emergency_rules: [{ match: "*", compact: true, left: ["workspaces"], center: ["clock"], right: ["tray"] }]
     property var warned_modules: ({})
     property var state: BarLayout.normalize(null)
     property bool warned_state: false
@@ -29,6 +21,7 @@ Singleton {
     FileView {
         id: config_file
         path: Quickshell.shellDir + "/bars.json"
+        blockLoading: true
         watchChanges: true
         onFileChanged: reload()
         onLoaded: {
@@ -36,11 +29,13 @@ Singleton {
                 const parsed = JSON.parse(text());
                 if (!Array.isArray(parsed)) throw new Error("bars.json must be a JSON array of rules");
                 root.rules = parsed;
+                root.has_good_rules = true;
+                root.rules_loaded = true;
             } catch (e) {
-                console.warn("BarConfig: invalid bars.json, keeping last config (" + e + ")");
+                root.rules_failed("invalid (" + e + ")");
             }
         }
-        onLoadFailed: error => console.warn("BarConfig: failed to load bars.json (" + error + "), using defaults")
+        onLoadFailed: error => root.rules_failed("unreadable (" + error + ")")
     }
 
     FileView {
@@ -60,6 +55,18 @@ Singleton {
             }
         }
         onLoadFailed: error => root.state = BarLayout.normalize(null)
+    }
+
+    function rules_failed(reason) {
+        root.rules_loaded = true;
+        const message = "bars.json " + reason;
+        if (root.has_good_rules) {
+            console.warn("BarConfig: " + message + ", keeping last config");
+            return;
+        }
+        console.warn("BarConfig: " + message + ", showing the emergency bar");
+        root.rules = root.emergency_rules;
+        Quickshell.execDetached(["notify-send", "-u", "critical", "Quickshell bar", message + ". Showing a minimal bar until it is fixed."]);
     }
 
     function set_state(next) {
@@ -115,6 +122,7 @@ Singleton {
 
     // The tracked rule with the state file's layout merged in, or null (with a warning) when nothing matches.
     function rule_for(screen) {
+        if (!root.rules_loaded) return null;
         const tracked = root.tracked_rule_for(screen);
         if (!tracked) {
             console.warn("BarConfig: no bars.json rule matched screen \"" + screen.name + "\"; no bar shown");
