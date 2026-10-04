@@ -104,6 +104,14 @@ ShellRoot {
         }
     }
 
+    Variants {
+        model: Zoom.active ? Quickshell.screens : []
+
+        delegate: Component {
+            ZoomReticle {}
+        }
+    }
+
     LazyPopup {
         name: "clock"
         ClockPopup {}

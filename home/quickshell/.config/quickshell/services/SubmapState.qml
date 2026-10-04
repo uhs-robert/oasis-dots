@@ -27,7 +27,6 @@ Singleton {
         "Quick Click": Theme.syntax_macro,
         "Resize": Theme.syntax_builtin_func,
         "Move": Theme.syntax_preproc,
-        "Zoom": Theme.bright_cyan,
         "Monitors": Theme.syntax_bracket,
         "Bar": Theme.theme_primary_light,
         "YANK": Theme.syntax_special,

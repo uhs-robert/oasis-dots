@@ -13,13 +13,14 @@ Item {
     required property point origin
     required property bool target_mode
 
-    readonly property point at: Screenshot.cursor_point
+    property point at: Screenshot.cursor_point
+    property bool shown: Screenshot.phase === "select" && Screenshot.cursor_screen === root.screen_name
     readonly property int cx: Math.round(root.at.x)
     readonly property int cy: Math.round(root.at.y)
     readonly property real glove_w: 36
     readonly property real glove_h: Math.round(root.glove_w * 14 / 22)
 
-    visible: Style.picker_skin === "materia" && Screenshot.phase === "select" && Screenshot.cursor_screen === root.screen_name && !root.target_mode
+    visible: Style.picker_skin === "materia" && root.shown && !root.target_mode
 
     Timer {
         id: bob_timer

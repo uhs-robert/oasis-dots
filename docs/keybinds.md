@@ -29,7 +29,7 @@ keymaps/
     mouse.lua          mouse binds
   submaps/             submaps: press one key to enter, then another to act
     leader/  apps/  go/  system/  delete/  windows/  monitors/
-    groups/  cursor/  resize/  move/  zoom/  bar/
+    groups/  cursor/  resize/  move/  bar/
 ```
 
 A global bind fires the moment you press it. A submap is a separate set of binds: its entry key switches the keyboard into it, where plain keys such as `F` or `SHIFT + S` do things, and which-key lists those binds as you enter it. Each submap's name, which you need for changing it, is the `name` field at the top of its file: `Applications`, `Windows`, `Leader` and so on.

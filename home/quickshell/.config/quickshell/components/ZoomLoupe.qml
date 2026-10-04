@@ -6,7 +6,7 @@ import Quickshell.Wayland
 import "../services"
 import "picker"
 
-// One per screen: the zoom submap's live loupe, shown on the monitor under the pointer.
+// One per screen: zoom mode's live loupe, shown on the monitor under the pointer.
 PanelWindow {
     id: root
 
@@ -33,6 +33,14 @@ PanelWindow {
     WlrLayershell.namespace: "quickshell-zoom"
     WlrLayershell.layer: WlrLayer.Overlay
     WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
+
+    Binding {
+        target: Zoom
+        property: "sample_scale"
+        value: loupe.sample_scale
+        when: root.mine
+        restoreMode: Binding.RestoreNone
+    }
 
     // Screen-sized and shifted so the loupe lands on its screen spot inside the small surface.
     Item {
@@ -66,9 +74,10 @@ PanelWindow {
             sel: Qt.rect(0, 0, 0, 0)
             pixel_image: ""
             frame_size: Qt.size(0, 0)
-            scan_complete: true
-            scan_step: 0
-            scan_steps: 1
+            scan_complete: Zoom.scan_complete
+            scan_step: Zoom.scan_step
+            scan_steps: Zoom.scan_steps
+            min_gap: Math.ceil((loupe.half + 1) / loupe.sample_scale) + root.edge + 4
         }
     }
 }
