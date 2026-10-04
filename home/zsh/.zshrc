@@ -182,18 +182,6 @@ alias lla='ls -la'
 alias lt='ls --tree'
 # Lsd end
 
-# Worktool
-if command -v worktool >/dev/null; then
-	eval "$(worktool completion zsh)"
-	compdef _worktool worktool
-fi
-
-if [[ -n ${SSH_CONNECTION:-} || -n ${SSH_CLIENT:-} ]]; then
-	alias ns='worktool'
-else
-	alias ns='ssh worktool'
-fi
-
 
 # tdf, oasis moonlight dark
 alias tdf='tdf -w 1E2A38 -b F5F5DC'
@@ -227,3 +215,6 @@ export INTELLI_SEARCH_HOTKEY='^G'
 export PATH="$INTELLI_HOME/bin:$PATH"
 [[ -f ~/.config/secrets/intellishell.env ]] && source ~/.config/secrets/intellishell.env
 command -v intelli-shell >/dev/null && eval "$(intelli-shell init zsh)"
+
+# Machine-local additions kept outside this repo
+[[ -f ~/.zshrc.local ]] && source ~/.zshrc.local

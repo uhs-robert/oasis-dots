@@ -37,7 +37,6 @@ prepend_keymap = [
   { on = [ "g", "l", ], run = "shell 'yazi-lazygit-cd' --block --confirm=false", desc = "Lazygit" },
   { on = [ "g", "m", ], run = "cd /run/media/$USER/", desc = "Go to media (usb)" },
   { on = [ "g", "~", ], run = "cd /data/", desc = "Go to Media Files" },
-  { on = [ "g", "N", ], run = "cd ~/Development/uphill/worktool/", desc = "Go to worktool" },
   { on = [ "g", "n", ], run = "cd ~/Documents/Notes/", desc = "Go to Notes" },
   { on = [ "g", "p", ], run = "cd ~/Pictures/", desc = "Go to Pictures" },
   { on = [ "g", "r" ], run = 'shell -- ya emit cd "$(git rev-parse --show-toplevel 2>/dev/null || pwd)"', desc = "Go to git root" },

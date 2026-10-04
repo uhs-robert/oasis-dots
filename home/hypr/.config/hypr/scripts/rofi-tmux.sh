@@ -27,8 +27,6 @@ pretty_name="$(
 
 case "$session" in
 config) pretty_name="Config" ;;
-client-portal) pretty_name="Client Portal" ;;
-oasis-swap) pretty_name="Oasis Swap" ;;
 music) pretty_name="Music" ;;
 esac
 
