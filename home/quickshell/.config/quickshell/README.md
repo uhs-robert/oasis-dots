@@ -37,7 +37,7 @@ Weather alerts come from the US National Weather Service (api.weather.gov), so t
 | Key | Meaning |
 | --- | --- |
 | `match` | `"*"` for every monitor, or `{ "name": "DP-*", "description": "*Dell*" }`. Both keys are optional globs (`*`, `?`) and must all match. `{}` or any string other than `"*"` never matches. `name` is the connector, `description` is Hyprland's monitor description (`hyprctl monitors`) |
-| `compact` | Tighter bar that hides every `system` module. Defaults to true on `eDP*` connectors, false elsewhere |
+| `compact` | Tighter bar that hides every `system` module. Defaults to false |
 | `height` | Bar height in pixels. Defaults to the style's bar height, else 34 |
 | `bar` | `false` shows no bar on matching monitors |
 | `left`, `center`, `right` | Module names, in draw order. Repeats within one list are dropped (a module in both `left` and `right` draws twice), unknown names are skipped with a warning. Lualine styles draw `center` inside the right island and re-sort it with `right` into their x/y/z sections, so the listed order only holds within a section |
