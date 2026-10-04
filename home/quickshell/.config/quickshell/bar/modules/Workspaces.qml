@@ -104,8 +104,10 @@ Item {
         if (!/^[0-9a-fA-F]+$/.test(address || "")) return;
         const lua = "local nw = hl.get_config('cursor.no_warps'); " +
             "hl.config({ cursor = { no_warps = true } }); " +
+            "pcall(function() " +
             "hl.dispatch(hl.dsp.focus({ workspace = '" + ws_id + "' })); " +
-            "hl.dispatch(hl.dsp.focus({ window = 'address:0x" + address + "' })); " +
+            "hl.dispatch(hl.dsp.focus({ window = 'address:0x" + address + "' })) " +
+            "end); " +
             "hl.config({ cursor = { no_warps = nw == true } })";
         Quickshell.execDetached(["hyprctl", "eval", lua]);
     }
