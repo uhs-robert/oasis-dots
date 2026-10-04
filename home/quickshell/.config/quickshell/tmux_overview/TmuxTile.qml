@@ -26,6 +26,7 @@ Item {
     readonly property color text_glow: Style.glow ? Qt.alpha(Theme.theme_primary, 0.3) : Style.text_shadow
     readonly property real label_px: Math.max(9, Math.min(Style.fs(-3), root.height * 0.16))
     readonly property real ref_px: 10
+    readonly property real min_row_px: 4
 
     signal pane_clicked(string pane_id)
     signal tile_clicked()
@@ -74,6 +75,7 @@ Item {
                 required property var modelData
                 readonly property bool is_selected: root.selected && pane.modelData.pane_id === root.selected_pane
                 readonly property string html: root.previews[pane.modelData.pane_id] || ""
+                readonly property bool readable: root.selected || (pane.height - pane.border.width * 2) / Math.max(1, pane.modelData.rows) >= root.min_row_px
 
                 x: Math.round(pane.modelData.rx * canvas.width)
                 y: Math.round(pane.modelData.ry * canvas.height)
@@ -86,8 +88,8 @@ Item {
                 border.color: pane.is_selected ? Style.caret_color : Qt.alpha(Theme.ui_border, 0.8)
                 clip: true
 
-                Item {
-                    visible: root.shown && pane.html !== ""
+                Loader {
+                    active: root.shown && pane.html !== "" && pane.readable
                     x: pane.border.width
                     y: pane.border.width
                     width: pane.modelData.cols * metrics.averageCharacterWidth
@@ -97,13 +99,26 @@ Item {
                         yScale: (pane.height - pane.border.width * 2) / Math.max(1, pane.modelData.rows * metrics.lineSpacing)
                     }
 
-                    Text {
+                    sourceComponent: Text {
                         text: "<div style=\"white-space:pre\">" + pane.html + "</div>"
                         textFormat: Text.RichText
                         color: Theme.fg_core
                         font.family: Style.mono_font
                         font.pixelSize: root.ref_px
                     }
+                }
+
+                Text {
+                    visible: root.shown && pane.html !== "" && !pane.readable && pane.height >= 12 && pane.width >= 24
+                    anchors.centerIn: parent
+                    width: pane.width - 6
+                    horizontalAlignment: Text.AlignHCenter
+                    elide: Text.ElideRight
+                    textFormat: Text.PlainText
+                    text: pane.modelData.cmd
+                    color: Qt.alpha(Theme.fg_core, 0.5)
+                    font.family: Style.mono_font
+                    font.pixelSize: 9
                 }
 
                 CornerBrackets {
