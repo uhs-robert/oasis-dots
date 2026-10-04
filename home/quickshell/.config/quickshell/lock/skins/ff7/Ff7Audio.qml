@@ -13,6 +13,7 @@ Item {
     readonly property real music_volume: audio.music_setting * 0.8
     readonly property real fx_volume: 0.4
     property real title_level: 0
+    property bool fx_used: false
     readonly property var files: {
         const out = {};
         for (let i = 0; i < listing.count; i++) out[listing.get(i, "fileName")] = true;
@@ -26,11 +27,14 @@ Item {
 
     function play(name) {
         const url = audio.file(audio.fx_files[name] || "");
-        if (url !== "") fx.queue(["loadfile", url, "replace"]);
+        if (url === "") return;
+        fx.queue(["loadfile", url, "replace"]);
+        audio.fx_used = true;
     }
 
     // `to` is set here, not bound: a binding on track may not have updated yet when this handler runs.
     onTrackChanged: {
+        if (audio.track !== "") audio.fx_used = true;
         title_fade.to = audio.track === "title" ? 1 : 0;
         title_fade.restart();
     }
@@ -58,7 +62,7 @@ Item {
 
     MpvProcess {
         id: fx
-        wanted: true
+        wanted: audio.fx_used
         args: ["--idle=yes"]
         volume: audio.fx_volume
     }
