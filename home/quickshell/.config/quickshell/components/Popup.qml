@@ -9,6 +9,7 @@ import "Search.js" as Search
 import "popup/fuzzy_rows.js" as FuzzyRows
 import "neovim" as Neovim
 import "goldeneye" as Goldeneye
+import "popup"
 
 PanelWindow {
     id: root
@@ -97,7 +98,6 @@ PanelWindow {
     readonly property bool search_overlay: root.search_shown && !root.has_footer && root.footer_hint !== ""
 
     property var sub_memory: ({})
-    property double last_g_ms: 0
 
     onTabsChanged: if (current_tab >= tabs.length) current_tab = 0
     onCurrent_tabChanged: current_sub = sub_memory[current_tab] || 0
@@ -171,60 +171,13 @@ PanelWindow {
     // Deferred so the help view's visibility has already followed help_open.
     onHelp_openChanged: Qt.callLater(root.focus_active_view)
 
-    // Runs after the popup's own handlers: keys reach it only when nothing deeper accepted them.
     function handle_shared_key(event) {
-        const focus_item = content_scope.Window.activeFocusItem;
-        if (focus_item && "cursorPosition" in focus_item) return;
-        const back = event.key === Qt.Key_Backtab || (event.modifiers & Qt.ShiftModifier);
-        const before = root.cursor_key();
-        if (root.key_help !== "" && root.is_help_key(event)) {
-            help_open = true;
-        } else if (root.search_enabled && (event.key === Qt.Key_Slash || event.text === "/")) {
-            if (root.search_starts_open) root.enter_search(); else root.open_search();
-        } else if (root.search_starts_open && event.key === Qt.Key_I) {
-            root.enter_search();
-        } else if (root.search_enabled && root.search_query !== "" && event.key === Qt.Key_N) {
-            root.step_search(back ? -1 : 1);
-            root.play_if_moved(before);
-        } else if (event.key === Qt.Key_Backspace && Popups.back_name !== "") {
-            ThemeAudio.play("cancel");
-            Popups.back();
-        } else if ((event.modifiers & Qt.ControlModifier) && (event.key === Qt.Key_H || event.key === Qt.Key_L)) {
-            Popups.walk(event.key === Qt.Key_L ? 1 : -1);
-        } else if (event.key === Qt.Key_Q) {
-            ThemeAudio.play("cancel");
-            Popups.close();
-        } else if (event.key === Qt.Key_BracketLeft || event.key === Qt.Key_BracketRight) {
-            const step = event.key === Qt.Key_BracketLeft ? -1 : 1;
-            if (sub_views.length > 0) step_sub(step); else step_tab(step);
-            root.play_if_moved(before);
-        } else if (event.key >= Qt.Key_1 && event.key < Qt.Key_1 + Math.min(9, tabs.length)) {
-            set_tab(event.key - Qt.Key_1);
-            root.play_if_moved(before);
-        } else if (event.key === Qt.Key_Tab || event.key === Qt.Key_Backtab) {
-            if (tabs.length > 0) step_tab(back ? -1 : 1); else step_sub(back ? -1 : 1);
-            root.play_if_moved(before);
-        } else if (line_ends_enabled && (event.key === Qt.Key_0 || event.text === "$")) {
-            if (event.key === Qt.Key_0) line_start(); else line_end();
-            root.play_if_moved(before);
-        } else if (jumps_enabled && event.key === Qt.Key_G) {
-            if (event.modifiers & Qt.ShiftModifier) {
-                jump_last();
-                root.play_if_moved(before);
-            } else {
-                const now_ms = Date.now();
-                if (now_ms - last_g_ms < 500) {
-                    last_g_ms = 0;
-                    jump_first();
-                    root.play_if_moved(before);
-                } else {
-                    last_g_ms = now_ms;
-                }
-            }
-        } else {
-            return;
-        }
-        event.accepted = true;
+        keys.handle(event, content_scope.Window.activeFocusItem);
+    }
+
+    PopupKeys {
+        id: keys
+        popup: root
     }
 
     // Set by popups whose layout is fluid: from a side island they take exactly the island body's width.
