@@ -4,6 +4,7 @@ import QtQuick
 import QtQuick.Shapes
 import Quickshell.Io
 import "mgs2/Art.js" as Art
+import "ui/Menu.js" as Menu
 
 // Metal Gear Solid 2 recast for the Oasis desktop: the title, the main menu, DATA LOAD picks the user, NAME ENTRY takes the password.
 Item {
@@ -72,27 +73,22 @@ Item {
     readonly property var menu_labels: ({ load: "LOAD GAME", options: "OPTIONS", reboot: "REBOOT", poweroff: "SHUT DOWN" })
     readonly property var menu_descs: ({ load: "Load your saved data and sign in.", options: "Session and firmware setup.", reboot: "Restart the computer.", poweroff: "Turn off the computer." })
     readonly property bool in_menu: root.scene === "menu" || root.scene.startsWith("menu:")
-    readonly property string menu_item: root.scene.startsWith("menu:") ? root.scene.split(":")[1] : "load"
-    readonly property string menu_note: root.scene.startsWith("menu:") ? (root.scene.split(":")[2] || "") : ""
+    readonly property string menu_item: Menu.item_of(root.scene, "menu:", "load")
+    readonly property string menu_note: Menu.note_of(root.scene, "menu:")
     readonly property var power_words: ({ reboot: "reboot", poweroff: "shut down" })
 
     // The Options list's cursor and note live in the scene as "opt:<item>:<note>". Greeter-only entries are hidden on the lock.
     readonly property bool ctx_login: !!root.ctx && root.ctx.login === true
-    readonly property var opt_items: root.ctx_login ? ["session", "safe", "text", "firmware", "back"] : ["firmware", "back"]
+    readonly property var opt_items: Menu.opt_items(root.ctx_login)
     readonly property bool in_options: root.scene.startsWith("opt:")
-    readonly property string opt_item: root.in_options ? root.scene.split(":")[1] : (root.opt_items[0] || "")
-    readonly property string opt_note: root.in_options ? (root.scene.split(":")[2] || "") : ""
+    readonly property string opt_item: Menu.item_of(root.scene, "opt:", root.opt_items[0] || "")
+    readonly property string opt_note: Menu.note_of(root.scene, "opt:")
     readonly property var opt_words: ({ firmware: "reboot to firmware setup", text: "switch to the text login" })
     readonly property var opt_descs: ({ session: "Pick the session to start.", safe: "Start the safe session.", text: "Switch to the text login.", firmware: "Restart into firmware setup.", back: "Return to the main menu." })
+    readonly property var opt_labels: ({ session: "SESSION ", safe: "SAFE SESSION", text: "TEXT LOGIN", firmware: "FIRMWARE SETUP", back: "BACK" })
 
     function opt_label(item) {
-        switch (item) {
-        case "session": return "SESSION " + (root.ctx && "session_name" in root.ctx ? root.ctx.session_name : "");
-        case "safe": return "SAFE SESSION";
-        case "text": return "TEXT LOGIN";
-        case "firmware": return "FIRMWARE SETUP";
-        default: return "BACK";
-        }
+        return Menu.opt_label(root.ctx, item, root.opt_labels);
     }
 
     // DATA LOAD rows: the greeter's login users, else only this user; the cursor lives in the scene as "load:<index>".
@@ -317,9 +313,9 @@ Item {
     // Enter steps title, menu, DATA LOAD and NAME ENTRY; Escape steps back; h/j/k/l or arrows move; a printable key jumps to NAME ENTRY and still types.
     function handle_key(event) {
         const c = root.ctx;
-        if (!root.can_step || c.buffer_length > 0 || c.checking || c.granted) return false;
-        const ctrl = (event.modifiers & Qt.ControlModifier) && !(event.modifiers & Qt.AltModifier);
-        const enter = !ctrl && (event.key === Qt.Key_Return || event.key === Qt.Key_Enter);
+        if (Menu.blocked(c)) return false;
+        const ctrl = Menu.ctrl(event);
+        const enter = Menu.enter(event, ctrl);
         const listing = root.screen === "menu" || root.screen === "load";
         const down = event.key === Qt.Key_Down || (listing && !ctrl && event.text === "j");
         const up = event.key === Qt.Key_Up || (listing && !ctrl && event.text === "k");
@@ -332,10 +328,8 @@ Item {
             return false;
         }
         if (root.screen === "menu" && (up || down)) {
-            const items = root.in_options ? root.opt_items : root.menu_items;
-            const at = items.indexOf(root.in_options ? root.opt_item : root.menu_item);
-            const next = items[(at + (down ? 1 : items.length - 1)) % items.length];
-            c.scene = (root.in_options ? "opt:" : "menu:") + next;
+            if (root.in_options) c.scene = "opt:" + Menu.cycle(root.opt_items, root.opt_item, down);
+            else c.scene = "menu:" + Menu.cycle(root.menu_items, root.menu_item, down);
             root.cue("select");
             return true;
         }
@@ -351,7 +345,7 @@ Item {
         }
         if (root.screen === "load" && (up || down)) {
             if (root.users.length > 1) {
-                c.scene = "load:" + ((root.load_sel + (down ? 1 : root.users.length - 1)) % root.users.length);
+                c.scene = "load:" + Menu.wrap(root.load_sel, root.users.length, down);
                 root.cue("select");
             }
             return true;
@@ -372,7 +366,7 @@ Item {
             root.cue("submit");
             return true;
         }
-        if (!ctrl && event.text !== "" && event.text.charCodeAt(0) >= 32 && event.text.charCodeAt(0) !== 127) c.scene = "name";
+        if (Menu.printable(event, ctrl)) c.scene = "name";
         return false;
     }
 
@@ -397,34 +391,14 @@ Item {
             c.scene = "load";
         } else if (item === "options") {
             c.scene = "opt:" + root.opt_items[0];
-        } else if (root.menu_note === "armed") {
-            c.scene = "menu:" + item + (c.power_live ? ":running" : ":preview");
-            if (c.power_live) c.power_request(item);
         } else {
-            c.scene = "menu:" + item + ":armed";
+            Menu.power_step(c, "menu:", item, root.menu_note);
         }
     }
 
     // Firmware and text login need a second press while the note shows; previews only show a note.
     function opt_activate() {
-        const c = root.ctx;
-        const item = root.opt_item;
-        if (item === "back") {
-            c.scene = "menu:options";
-        } else if (item === "session") {
-            if ("session_request" in c) c.session_request();
-        } else if (item === "safe") {
-            if ("safe_request" in c) c.safe_request();
-            c.scene = "name";
-        } else if (root.opt_note === "armed") {
-            c.scene = "opt:" + item + (c.power_live ? ":running" : ":preview");
-            if (c.power_live) {
-                if (item === "firmware") c.power_request("firmware");
-                else if (item === "text" && "fallback_request" in c) c.fallback_request();
-            }
-        } else {
-            c.scene = "opt:" + item + ":armed";
-        }
+        Menu.opt_step(root.ctx, root.opt_item, root.opt_note, "menu:options", "name");
     }
 
     clip: true
@@ -473,12 +447,8 @@ Item {
         id: note_timer
         interval: 4000
         onTriggered: {
-            if (!root.can_step || root.screen !== "menu") return;
-            if (root.in_options) {
-                if (root.opt_note !== "") root.ctx.scene = "opt:" + root.opt_item;
-            } else if (root.menu_note !== "") {
-                root.ctx.scene = "menu:" + root.menu_item;
-            }
+            const to = root.can_step && root.screen === "menu" ? Menu.note_cleared(root.scene, ["opt:", "menu:"]) : "";
+            if (to !== "") root.ctx.scene = to;
         }
     }
 
