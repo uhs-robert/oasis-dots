@@ -4,6 +4,8 @@
 GREETER_DEST=/etc/greetd/quickshell
 # Data only (greeter.json, theme.json), owned by the installing user and readable by group greeter; the bar keeps it current.
 GREETER_DATA=/var/lib/qs-greeter
+# Skins whose imported audio lives in $XDG_DATA_HOME/quickshell/<skin>-audio and is copied into the staged tree.
+GREETER_AUDIO_SKINS=(ff7 ocarina mgs2 goldeneye)
 
 # Builds the greeter tree in $1 from the repo at $2 plus this user's theme and lock style; prints the resolved skin.
 stage_greeter() {
@@ -19,9 +21,10 @@ stage_greeter() {
   cp "$qs/lock/Tints.js" "$dest/lock/"
   [[ -f "$qs/VERSION" ]] && cp "$qs/VERSION" "$dest/"
   local skin audio_dir
-  for skin in ocarina mgs2 goldeneye; do
+  for skin in "${GREETER_AUDIO_SKINS[@]}"; do
     audio_dir="${XDG_DATA_HOME:-$HOME/.local/share}/quickshell/$skin-audio"
-    if [[ -d "$audio_dir" ]]; then
+    if [[ -d "$audio_dir" && -n "$(ls -A "$audio_dir")" ]]; then
+      rm -rf "${dest:?}/lock/skins/$skin/audio"
       mkdir -p "$dest/lock/skins/$skin/audio"
       cp -r "$audio_dir/." "$dest/lock/skins/$skin/audio/"
     fi
