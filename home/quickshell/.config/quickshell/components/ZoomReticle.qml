@@ -6,7 +6,6 @@ import Quickshell
 import Quickshell.Wayland
 import "../theme"
 import "../services"
-import "picker"
 
 // One per screen while zoom is on: owns keyboard and pointer, and draws the skin's reticle with the loupe's sampled area cut out.
 PanelWindow {
@@ -44,7 +43,7 @@ PanelWindow {
     Binding {
         target: Zoom
         property: "scan_step"
-        value: scan_cursor.scan_step
+        value: cursor_loader.item?.scan_step ?? -1
         when: root.mine
     }
 
@@ -76,105 +75,30 @@ PanelWindow {
             maskSpreadAtMin: 1
         }
 
-        ScopeCursor {
+        Loader {
+            id: cursor_loader
+            readonly property string skin: Style.picker_skin
             anchors.fill: parent
-            box_w: root.hole_half * 2 + 5
-            box_h: root.hole_half * 2 + 5
-            at: Zoom.cursor_point
-            shown: true
-            screen_name: root.modelData.name
-            origin: Qt.point(root.modelData.x, root.modelData.y)
-            target_mode: false
-        }
+            active: cursor_loader.skin !== ""
+            onSkinChanged: cursor_loader.load()
+            Component.onCompleted: cursor_loader.load()
 
-        JrpgCursor {
-            anchors.fill: parent
-            at: Zoom.cursor_point
-            shown: true
-            screen_name: root.modelData.name
-            target_mode: false
-        }
-
-        LockOnCursor {
-            anchors.fill: parent
-            at: Zoom.cursor_point
-            shown: true
-            screen_name: root.modelData.name
-            target_mode: false
-        }
-
-        ScopeItemCursor {
-            anchors.fill: parent
-            at: Zoom.cursor_point
-            shown: true
-            screen_name: root.modelData.name
-            origin: Qt.point(root.modelData.x, root.modelData.y)
-            target_mode: false
-        }
-
-        ScanVisorCursor {
-            id: scan_cursor
-            anchors.fill: parent
-            at: Zoom.cursor_point
-            shown: true
-            screen_name: root.modelData.name
-            target_mode: false
-        }
-
-        NvimCursor {
-            anchors.fill: parent
-            at: Zoom.cursor_point
-            shown: true
-            screen_name: root.modelData.name
-            target_mode: false
-        }
-
-        TmuxCursor {
-            anchors.fill: parent
-            at: Zoom.cursor_point
-            shown: true
-            screen_name: root.modelData.name
-            target_mode: false
-        }
-
-        TvOsdCursor {
-            anchors.fill: parent
-            at: Zoom.cursor_point
-            shown: true
-            screen_name: root.modelData.name
-            target_mode: false
-        }
-
-        TieCursor {
-            anchors.fill: parent
-            at: Zoom.cursor_point
-            shown: true
-            screen_name: root.modelData.name
-            target_mode: false
-        }
-
-        MateriaCursor {
-            anchors.fill: parent
-            at: Zoom.cursor_point
-            shown: true
-            screen_name: root.modelData.name
-            target_mode: false
-        }
-
-        ZapperCursor {
-            anchors.fill: parent
-            at: Zoom.cursor_point
-            shown: true
-            screen_name: root.modelData.name
-            target_mode: false
-        }
-
-        PokemonCursor {
-            anchors.fill: parent
-            at: Zoom.cursor_point
-            shown: true
-            screen_name: root.modelData.name
-            target_mode: false
+            function load() {
+                if (cursor_loader.skin === "")
+                    return;
+                const props = {
+                    at: Qt.binding(() => Zoom.cursor_point),
+                    shown: true,
+                    screen_name: Qt.binding(() => root.screen_name),
+                    origin: Qt.binding(() => Qt.point(root.modelData.x, root.modelData.y)),
+                    target_mode: false
+                };
+                if (cursor_loader.skin === "scope") {
+                    props.box_w = Qt.binding(() => root.hole_half * 2 + 5);
+                    props.box_h = Qt.binding(() => root.hole_half * 2 + 5);
+                }
+                cursor_loader.setSource(Qt.resolvedUrl("picker/cursors/" + cursor_loader.skin.charAt(0).toUpperCase() + cursor_loader.skin.slice(1) + ".qml"), props);
+            }
         }
     }
 
