@@ -37,7 +37,8 @@ stage_greeter() {
     mkdir -p "$dest/lock/skins/goldeneye/frames"
     cp -rL "$frames_dir/." "$dest/lock/skins/goldeneye/frames/"
   fi
-  cp "$qs/theme/Theme.qml" "$qs/theme/Style.qml" "$qs/theme/Paths.qml" "$qs/theme/Watch.js" "$dest/theme/" || return 1
+  cp "$qs/theme/Theme.qml" "$qs/theme/Style.qml" "$qs/theme/StyleSchema.js" "$qs/theme/Paths.qml" "$qs/theme/Watch.js" "$dest/theme/" || return 1
+  cp -r "$qs/theme/styles" "$dest/theme/" || return 1
   if [[ -n ${3:-} && -f "$3/theme/theme.json" ]]; then
     cp "$3/theme/theme.json" "$dest/theme/" || return 1
   elif jq -e 'type == "object"' "$state_dir/theme.json" &>/dev/null; then
