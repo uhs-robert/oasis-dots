@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Installs MapleMono NF system-wide.
+# Installs the latest MapleMono NF release system-wide (unpinned, needs sudo).
 
 _SYSTEM_FONTS_DIR="/usr/local/share/fonts"
 _MAPLE_API="https://api.github.com/repos/subframe7536/maple-font/releases/latest"
@@ -49,10 +49,10 @@ _install_maple_mono_nf() {
 
 install_fonts() {
   info "Installing custom fonts..."
+  warn "Note: 'The Last Shuriken' (used in hyprlock) requires manual installation"
   require_cmd curl unzip jq
 
   _install_maple_mono_nf
 
   success "Fonts installed"
-  warn "Note: 'The Last Shuriken' (used in hyprlock) requires manual installation"
 }

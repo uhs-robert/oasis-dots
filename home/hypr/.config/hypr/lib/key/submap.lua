@@ -270,12 +270,7 @@ function Submap.define(spec)
       if normalize_escape(spec) ~= false then
         Bind.key("ESCAPE", M.exit, "Exit " .. spec.name)
         local back_opts = catchall == "reset" and { release = true } or nil
-        Bind.key(
-          "BackSpace",
-          M.back,
-          (Submap.previous and "Back to " .. Submap.previous or "Exit " .. spec.name),
-          back_opts
-        )
+        Bind.key("BackSpace", M.back, "Back", back_opts)
       end
 
       bind_catchall(catchall, M.exit, spec)

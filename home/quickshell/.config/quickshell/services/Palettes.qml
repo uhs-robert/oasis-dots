@@ -9,6 +9,10 @@ Singleton {
     id: root
 
     readonly property string home: Quickshell.env("HOME")
+    readonly property string state_dir: {
+        const xdg = Quickshell.env("XDG_STATE_HOME");
+        return (xdg && xdg !== "" ? xdg : root.home + "/.local/state") + "/hypr";
+    }
     readonly property string switch_script: root.home + "/.config/hypr/theme/switch.lua"
     // Palette name to { key: "#hex" }.
     property var colors: ({})
@@ -53,7 +57,7 @@ Singleton {
 
     FileView {
         id: current_file
-        path: root.home + "/.config/hypr/theme/.current_theme"
+        path: root.state_dir + "/theme"
         watchChanges: true
         printErrors: false
         onFileChanged: reload()

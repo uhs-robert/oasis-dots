@@ -77,7 +77,7 @@ Plugins are managed by `ya pkg`, with `home/yazi/.config/yazi/package.toml` as t
 
 ## External repos
 
-This repo has no submodules. `lib/repos.sh` sets up every repo in `repos.ini` (`owner/name` entries) plus the Neovim config under the gitignored `repos/` directory. By default each is cloned there over HTTPS. With `./install.sh --dev`, or when `$GITHUB_DIR/<section>/<name>` already exists, the checkout lives under `$GITHUB_DIR` and `repos/<name>` is a symlink to it, so there is only ever one copy. `just update-repos` pulls the non-linked clones.
+This repo has no submodules. `lib/repos.sh` sets up every repo in `repos.ini` (`owner/name` entries) plus the Neovim config under the gitignored `repos/` directory. By default each is cloned there over HTTPS. `$GITHUB_DIR` (default `~/Development`) and `$GITHUB_ORG` (default `uhs-robert`) can be overridden by the environment or an ignored `install.local` in the repo root (environment wins); `lib/distro.sh` reads it. With `./install.sh --dev`, or when `$GITHUB_DIR/<section>/<name>` already exists, the checkout lives under `$GITHUB_DIR` and `repos/<name>` is a symlink to it, so there is only ever one copy. `just update-repos` pulls the non-linked clones.
 
 `lib/check-symlinks.sh` fails on a tracked symlink that dangles or points outside the repo; links into a `repos/` clone that is not set up yet are skipped.
 
