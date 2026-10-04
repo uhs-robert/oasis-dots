@@ -241,8 +241,9 @@ Item {
         const on_file = root.screen === "file";
         const in_opts = root.in_options;
         const letter = ctrl ? "" : event.text;
-        const down = event.key === Qt.Key_Down || letter === "j" || letter === "l";
-        const vertical = down || event.key === Qt.Key_Up || letter === "k" || letter === "h";
+        const down = event.key === Qt.Key_Down || letter === "j";
+        const vertical = down || event.key === Qt.Key_Up || letter === "k";
+        if ((on_file || in_opts) && (letter === "h" || letter === "l")) return true;
         if (on_file && !in_opts && vertical) {
             const i = root.file_items.indexOf(root.file_item);
             const next = root.file_items[(i + (down ? 1 : root.file_items.length - 1)) % root.file_items.length];

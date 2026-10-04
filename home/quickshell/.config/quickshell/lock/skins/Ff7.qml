@@ -102,10 +102,11 @@ Item {
         const ctrl = (event.modifiers & Qt.ControlModifier) && !(event.modifiers & Qt.AltModifier);
         const enter = !ctrl && (event.key === Qt.Key_Return || event.key === Qt.Key_Enter);
         const letter = ctrl ? "" : event.text;
-        const down = event.key === Qt.Key_Down || letter === "j" || letter === "l";
-        const up = down || event.key === Qt.Key_Up || letter === "k" || letter === "h";
+        const down = event.key === Qt.Key_Down || letter === "j";
+        const up = down || event.key === Qt.Key_Up || letter === "k";
         const printable = !ctrl && event.text !== "" && event.text.charCodeAt(0) > 32 && event.text.charCodeAt(0) !== 127;
         const typed = !ctrl && event.text !== "" && event.text.charCodeAt(0) >= 32 && event.text.charCodeAt(0) !== 127;
+        if (root.screen !== "pw" && (letter === "h" || letter === "l")) return true;
         if (root.screen === "pw") {
             if (event.key !== Qt.Key_Escape) return false;
             c.scene = "files:" + root.user_index;

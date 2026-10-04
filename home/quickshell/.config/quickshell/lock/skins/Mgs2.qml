@@ -321,8 +321,9 @@ Item {
         const ctrl = (event.modifiers & Qt.ControlModifier) && !(event.modifiers & Qt.AltModifier);
         const enter = !ctrl && (event.key === Qt.Key_Return || event.key === Qt.Key_Enter);
         const listing = root.screen === "menu" || root.screen === "load";
-        const down = event.key === Qt.Key_Down || (listing && !ctrl && (event.text === "j" || event.text === "l"));
-        const up = event.key === Qt.Key_Up || (listing && !ctrl && (event.text === "k" || event.text === "h"));
+        const down = event.key === Qt.Key_Down || (listing && !ctrl && event.text === "j");
+        const up = event.key === Qt.Key_Up || (listing && !ctrl && event.text === "k");
+        if (listing && !ctrl && (event.text === "h" || event.text === "l")) return true;
         if (root.screen === "name") {
             if (event.key === Qt.Key_Escape) {
                 c.scene = "load";
@@ -371,7 +372,7 @@ Item {
             root.cue("submit");
             return true;
         }
-        if (!ctrl && event.text !== "" && event.text.charCodeAt(0) > 32 && event.text.charCodeAt(0) !== 127) c.scene = "name";
+        if (!ctrl && event.text !== "" && event.text.charCodeAt(0) >= 32 && event.text.charCodeAt(0) !== 127) c.scene = "name";
         return false;
     }
 
