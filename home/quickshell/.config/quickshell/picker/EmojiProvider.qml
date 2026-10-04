@@ -12,7 +12,7 @@ PickerProvider {
     title: "Emoji"
     placeholder: "Search characters"
     columns: 4
-    verb: "type"
+    verb: root.missing.indexOf("wtype") >= 0 ? "type (wtype missing)" : "type"
     max_results: 300
     actions: [{ key: "y", desc: "copy" }]
 
@@ -88,7 +88,6 @@ PickerProvider {
 
     function reason(set) {
         if (root.data_dir === "") return "rofimoji not installed";
-        if (root.missing.indexOf("wtype") >= 0) return "wtype missing";
         if (set === "fontawesome" && root.missing.indexOf("fc-list") >= 0) return "fc-list missing";
         if (set === "fontawesome" && root.missing.indexOf("font-awesome") >= 0) return "Font Awesome 7 not installed";
         return "";
@@ -141,6 +140,10 @@ PickerProvider {
 
     // Types from a timer so the picker's close has run before wtype targets the focused window.
     function activate(item) {
+        if (root.missing.indexOf("wtype") >= 0) {
+            Quickshell.execDetached(["notify-send", "Emoji picker", "wtype missing, y copies instead"]);
+            return;
+        }
         root.pending_glyph = item.glyph;
         type_timer.restart();
     }
