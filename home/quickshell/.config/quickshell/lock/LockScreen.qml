@@ -49,11 +49,7 @@ Item {
         precision: SystemClock.Minutes
     }
 
-    readonly property string time_text: {
-        const d = clock.date;
-        const m = d.getMinutes();
-        return (d.getHours() % 12 || 12) + ":" + (m < 10 ? "0" + m : m);
-    }
+    readonly property string time_text: TimeFormat.format(clock.date).replace(/\s?[ap]m$/, "")
 
     function begin() {
         if (root.started) return;
@@ -235,7 +231,8 @@ Item {
 
             Text {
                 anchors.baseline: time_label.baseline
-                text: clock.date.getHours() < 12 ? "AM" : "PM"
+                visible: !TimeFormat.h24
+                text: TimeFormat.meridiem(clock.date)
                 color: Qt.alpha(root.clock_color, 0.75)
                 font.family: Style.font_family
                 font.pixelSize: Style.fs(6)

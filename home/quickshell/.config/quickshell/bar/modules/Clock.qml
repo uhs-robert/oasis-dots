@@ -37,20 +37,12 @@ Row {
     readonly property bool show_seconds: !root.compact && Power.on_ac
     readonly property var shifted: Timezones.shift(clock.date)
 
-    function pad2(n) {
-        return n < 10 ? "0" + n : "" + n;
-    }
-
     // Styles with a clock chip draw the digits on it and the zone beside it.
     readonly property bool chip: Style.bar_clock_bg.a > 0
     readonly property bool capsule: Style.bar_clock_layout === "capsule"
     // Lualine: bold digits, the zone and date dimmed after them.
     readonly property bool lualine: Style.bar_lualine
-    readonly property string digits_text: {
-        const d = root.shifted;
-        const hm = pad2(d.getHours() % 12 || 12) + ":" + pad2(d.getMinutes());
-        return root.show_seconds ? hm + ":" + pad2(d.getSeconds()) : hm;
-    }
+    readonly property string digits_text: TimeFormat.digits(root.shifted, root.show_seconds)
     readonly property string zone_text: root.compact ? "" : Timezones.is_local ? Qt.formatDateTime(root.shifted, "t") : Timezones.abbrev
     readonly property string time_text: root.zone_text === "" ? root.digits_text : root.digits_text + " " + root.zone_text
 
@@ -119,7 +111,7 @@ Row {
             x: parent.pad
             anchors.verticalCenter: parent.verticalCenter
             width: Math.max(implicitWidth, Math.ceil(time_metrics.advanceWidth))
-            text: root.on_accent ? root.digits_text + " " + (root.shifted.getHours() < 12 ? "AM" : "PM") : root.chip || root.lualine ? root.digits_text : root.time_text
+            text: root.on_accent ? (TimeFormat.h24 ? root.digits_text : root.digits_text + " " + TimeFormat.meridiem(root.shifted)) : root.chip || root.lualine ? root.digits_text : root.time_text
             color: root.on_accent ? root.ink : root.chip || root.lualine ? Style.bar_clock_fg : Style.bar_fg
             font.family: root.chip ? Style.bar_clock_font : Style.bar_font_family
             font.features: { "tnum": 1 }

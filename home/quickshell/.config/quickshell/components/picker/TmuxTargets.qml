@@ -27,7 +27,7 @@ Item {
         }
         return out;
     }
-    property string clock_text: Qt.formatTime(new Date(), "hh:mm")
+    property string clock_text: TimeFormat.format(new Date())
 
     visible: root.mine || root.target_mode
 
@@ -35,7 +35,7 @@ Item {
         interval: 30000
         running: root.screen_mode && root.target_mode
         repeat: true
-        onTriggered: root.clock_text = Qt.formatTime(new Date(), "hh:mm")
+        onTriggered: root.clock_text = TimeFormat.format(new Date())
     }
 
     Repeater {
