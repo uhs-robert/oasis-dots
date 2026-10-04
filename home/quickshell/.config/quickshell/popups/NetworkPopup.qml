@@ -7,11 +7,9 @@ import Quickshell.Networking
 import "../components"
 import "../theme"
 import "../services"
-import "../components/nes" as Nes
-import "../components/snes" as Snes
-import "../components/ps1" as Ps1
-import "../components/ps2" as Ps2
 import "../components/goldeneye" as Goldeneye
+import "network"
+import "network/Network.js" as Net
 
 Popup {
     id: root
@@ -65,27 +63,8 @@ Popup {
     // The MGS codec: signal read out as a 140.xx frequency.
     readonly property bool codec: root.st.console_views === "ps1"
     readonly property bool ps2: root.st.console_views === "ps2"
-    readonly property var wifi_glyphs: ["󰤯", "󰤟", "󰤢", "󰤥", "󰤨"]
 
-    function signal_glyph(strength) {
-        if (strength <= 0.2) return root.wifi_glyphs[0];
-        if (strength <= 0.4) return root.wifi_glyphs[1];
-        if (strength <= 0.6) return root.wifi_glyphs[2];
-        if (strength <= 0.8) return root.wifi_glyphs[3];
-        return root.wifi_glyphs[4];
-    }
-
-    // Dedupe scan results by SSID, keeping the strongest signal, sorted best-first.
-    function build_network_list() {
-        if (!root.wifi_device) return [];
-        const by_name = {};
-        for (const n of root.wifi_device.networks.values) {
-            if (!by_name[n.name] || n.signalStrength > by_name[n.name].signalStrength) by_name[n.name] = n;
-        }
-        return Object.values(by_name).sort((a, b) => b.signalStrength - a.signalStrength);
-    }
-
-    readonly property var wifi_networks: root.build_network_list()
+    readonly property var wifi_networks: Net.build_network_list(root.wifi_device ? root.wifi_device.networks.values : [])
     readonly property var nav_rows: root.wifi_networks.concat([{ advanced: true }])
 
     // -1 is the Wi-Fi switch above the list.
@@ -168,78 +147,14 @@ Popup {
         root.fetch_details();
     }
 
-    readonly property string details_script: "nmcli -t -e no -m multiline -f IN-USE,SSID,BSSID,BAND,CHAN,FREQ,SIGNAL,SECURITY device wifi list ifname \"$1\" --rescan no; "
-        + "echo @@DEV; nmcli -t -e no -f GENERAL.HWADDR,GENERAL.CON-UUID,CAPABILITIES.SPEED,IP4,IP6 device show \"$1\"; "
-        + "echo @@SAVED; u=$(nmcli -t -f UUID,TYPE connection show | sed -n 's/:802-11-wireless$//p'); "
-        + "[ -z \"$u\" ] || nmcli -t -e no -f connection.uuid,connection.id,connection.timestamp,connection.autoconnect,connection.metered,ipv4.dns,802-11-wireless.ssid connection show $u"
-
-    // Errors go to stdout so one collector sees them; reapply runs only for the active profile and keeps the link up.
-    readonly property string modify_script: "u=$1; r=$2; shift 2; "
-        + "out=$(nmcli connection modify uuid \"$u\" \"$@\" 2>&1) || { printf '%s' \"${out:-nmcli modify failed}\"; exit 1; }; "
-        + "[ \"$r\" = 1 ] || exit 0; "
-        + "d=$(nmcli -g GENERAL.DEVICES connection show uuid \"$u\"); "
-        + "out=$(nmcli device reapply \"$d\" 2>&1) || { printf '%s' \"${out:-nmcli reapply failed}\"; exit 1; }"
-
     function fetch_details() {
         if (!root.is_open || !root.on_details || !root.details_target || !root.wifi_device || !root.wifi_device.name) return;
         if (details_proc.running) {
             root.details_stale = true;
             return;
         }
-        details_proc.command = ["sh", "-c", root.details_script, "sh", root.wifi_device.name];
+        details_proc.command = ["sh", "-c", Net.details_script, "sh", root.wifi_device.name];
         details_proc.running = true;
-    }
-
-    function parse_details(text) {
-        const aps = [];
-        const saved = [];
-        const dev = { ipv4: [], ipv6: [], dns: [], gateway: "", mac: "", speed: "", con_uuid: "" };
-        let section = "aps";
-        for (const line of text.split("\n")) {
-            if (line === "@@DEV" || line === "@@SAVED") {
-                section = line;
-                continue;
-            }
-            const i = line.indexOf(":");
-            if (i < 0) continue;
-            const key = line.slice(0, i).replace(/\[\d+\]$/, "");
-            const value = line.slice(i + 1);
-            if (section === "aps") {
-                if (key === "IN-USE") aps.push({ in_use: value === "*" });
-                else if (aps.length > 0) aps[aps.length - 1][key] = value;
-            } else if (section === "@@DEV") {
-                if (key === "IP4.ADDRESS") dev.ipv4.push(value);
-                else if (key === "IP6.ADDRESS" && !value.startsWith("fe80:")) dev.ipv6.push(value);
-                else if (key === "IP4.DNS" || key === "IP6.DNS") dev.dns.push(value);
-                else if (key === "IP4.GATEWAY") dev.gateway = value;
-                else if (key === "GENERAL.HWADDR") dev.mac = value;
-                else if (key === "GENERAL.CON-UUID") dev.con_uuid = value;
-                else if (key === "CAPABILITIES.SPEED") dev.speed = value;
-            } else if (key === "connection.uuid") {
-                saved.push({ uuid: value });
-            } else if (saved.length > 0) {
-                saved[saved.length - 1][key] = value;
-            }
-        }
-
-        const ssid = root.details_ssid;
-        const matches = aps.filter(a => a.SSID === ssid).sort((a, b) => Number(b.SIGNAL) - Number(a.SIGNAL));
-        const ap = matches.find(a => a.in_use) || matches[0] || null;
-        const profiles = saved.filter(c => c["802-11-wireless.ssid"] === ssid).sort((a, b) => Number(b["connection.timestamp"]) - Number(a["connection.timestamp"]));
-        const p = profiles.find(c => c.uuid === dev.con_uuid) || profiles[0] || null;
-        root.details = {
-            loaded: true,
-            ap: ap,
-            dev: dev,
-            profile: p ? {
-                uuid: p.uuid,
-                name: p["connection.id"] || "",
-                active: p.uuid === dev.con_uuid,
-                autoconnect: p["connection.autoconnect"] === "yes",
-                metered: p["connection.metered"] || "unknown",
-                dns: (p["ipv4.dns"] || "").split(",").map(d => d.trim()).filter(d => d !== "")
-            } : null
-        };
     }
 
     readonly property var detail_rows: {
@@ -276,7 +191,7 @@ Popup {
     function start_modify(req, idle) {
         if (idle) root.setting_error = "";
         root.modify_current = req;
-        modify_proc.command = ["sh", "-c", root.modify_script, "sh", req.uuid, req.reapply ? "1" : "0"].concat(req.props);
+        modify_proc.command = ["sh", "-c", Net.modify_script, "sh", req.uuid, req.reapply ? "1" : "0"].concat(req.props);
         modify_proc.running = true;
     }
 
@@ -327,7 +242,7 @@ Popup {
         root.dns_text = pending ? pending.props[1].split(",").filter(d => d !== "").join(" ") : root.profile.dns.join(" ");
         root.setting_error = "";
         root.dns_edit_mode = true;
-        dns_input.forceActiveFocus();
+        details_pane.focus_dns();
     }
 
     function finish_dns_edit(apply) {
@@ -369,7 +284,7 @@ Popup {
             root.fetch_details();
         }
         stdout: StdioCollector {
-            onStreamFinished: root.parse_details(text)
+            onStreamFinished: root.details = Net.parse_details(text, root.details_ssid)
         }
     }
 
@@ -421,20 +336,14 @@ Popup {
     Process {
         id: wifi_ip_proc
         stdout: StdioCollector {
-            onStreamFinished: {
-                const m = text.match(/inet (\d+\.\d+\.\d+\.\d+)/);
-                root.wifi_ipv4 = m ? m[1] : "";
-            }
+            onStreamFinished: root.wifi_ipv4 = Net.parse_ipv4(text)
         }
     }
 
     Process {
         id: wired_ip_proc
         stdout: StdioCollector {
-            onStreamFinished: {
-                const m = text.match(/inet (\d+\.\d+\.\d+\.\d+)/);
-                root.wired_ipv4 = m ? m[1] : "";
-            }
+            onStreamFinished: root.wired_ipv4 = Net.parse_ipv4(text)
         }
     }
 
@@ -511,7 +420,7 @@ Popup {
         anchors.right: parent.right
         anchors.top: parent.top
         anchors.margins: 12
-        implicitHeight: root.password_mode ? password_column.implicitHeight : view_column.implicitHeight
+        implicitHeight: root.password_mode ? password_pane.implicitHeight : view_column.implicitHeight
         focus: true
 
         Keys.onPressed: event => {
@@ -579,128 +488,32 @@ Popup {
             visible: !root.password_mode
 
             ColumnLayout {
-                id: main_column
                 Layout.fillWidth: true
                 spacing: 6
                 visible: !root.on_details
 
-                Loader {
-                    active: root.ps2
-                    visible: active
+                WifiHeader {
                     Layout.fillWidth: true
-                    sourceComponent: Column {
-                        readonly property var wifi: root.active_wifi_network
-                        readonly property bool wired: !!root.wired_device && root.wired_device.connected
-                        spacing: 0
-
-                        Ps2.ConfigRow {
-                            width: parent.width
-                            label: "Connection"
-                            value: parent.wifi ? parent.wifi.name : parent.wired ? "Wired: " + root.wired_device.name : "Not connected"
-                            value_color: parent.wifi || parent.wired ? Style.pal.fg_strong : root.st.text_muted
-                        }
-
-                        Ps2.ConfigRow {
-                            visible: !!parent.wifi
-                            width: parent.width
-                            label: "Signal"
-                            value: parent.wifi ? Math.round(parent.wifi.signalStrength * 100) + "%" : ""
-                            level: parent.wifi ? parent.wifi.signalStrength : -1
-                        }
-
-                        Ps2.ConfigRow {
-                            visible: text_ip !== ""
-                            readonly property string text_ip: parent.wifi ? root.wifi_ipv4 : parent.wired ? root.wired_ipv4 : ""
-                            width: parent.width
-                            label: "IP Address"
-                            value: text_ip
-                        }
-                    }
-                }
-
-                Loader {
-                    active: root.link_watch
-                    visible: active
-                    Layout.fillWidth: true
-                    Layout.bottomMargin: 4
-                    sourceComponent: Goldeneye.GaugeHeader {
-                        readonly property var net: root.active_wifi_network
-                        size: Style.px(100)
-                        value: net ? net.signalStrength : 0
-                        readout: net ? "" : "--"
-                        label: "SIGNAL"
-
-                        Goldeneye.ReadoutLine {
-                            Layout.fillWidth: true
-                            label: root.link_state
-                            alert: root.link_state === "NO UPLINK"
-                            text: net ? net.name : root.link_wired ? "Wired: " + root.wired_device.name : ""
-                        }
-
-                        Goldeneye.ReadoutLine {
-                            Layout.fillWidth: true
-                            visible: text !== ""
-                            label: "ADDRESS"
-                            text: net ? root.wifi_ipv4 : root.link_wired ? root.wired_ipv4 : ""
-                        }
-
-                        Goldeneye.ReadoutLine {
-                            Layout.fillWidth: true
-                            visible: text !== ""
-                            label: "SPEED"
-                            text: root.details.dev && root.details.dev.speed && root.details.dev.speed !== "unknown" ? root.details.dev.speed : ""
-                        }
-                    }
-                }
-
-                ToggleRow {
-                    label: root.no_wifi_reason !== "" ? root.no_wifi_reason : root.link_watch ? "UPLINK" : "Wi-Fi"
-                    checked: root.no_wifi_reason === "" && Networking.wifiEnabled
-                    show_state: root.no_wifi_reason === ""
-                    selected: root.selected === -1
-                    onToggled: {
+                    st: root.st
+                    wifi: root.active_wifi_network
+                    wired_device: root.wired_device
+                    wifi_ipv4: root.wifi_ipv4
+                    wired_ipv4: root.wired_ipv4
+                    link_state: root.link_state
+                    link_watch: root.link_watch
+                    link_wired: root.link_wired
+                    codec: root.codec
+                    ps2: root.ps2
+                    speed: root.details.dev && root.details.dev.speed && root.details.dev.speed !== "unknown" ? root.details.dev.speed : ""
+                    status_text: root.status_text
+                    no_wifi_reason: root.no_wifi_reason
+                    wifi_enabled: Networking.wifiEnabled
+                    toggle_selected: root.selected === -1
+                    onToggle_clicked: {
                         root.selected = -1;
                         root.forget_confirm = false;
                         root.toggle_wifi();
                     }
-                }
-
-                Loader {
-                    active: root.codec && !!root.active_wifi_network
-                    visible: active
-                    Layout.fillWidth: true
-                    sourceComponent: Ps1.CodecPanel {
-                        ssid: root.active_wifi_network ? root.active_wifi_network.name : ""
-                        strength: root.active_wifi_network ? root.active_wifi_network.signalStrength : 0
-                        detail: root.wifi_ipv4
-                    }
-                }
-
-                Text {
-                    visible: !root.codec && !!root.active_wifi_network && !root.ps2 && !root.link_watch
-                    text: root.active_wifi_network
-                        ? root.active_wifi_network.name + "  " + Math.round(root.active_wifi_network.signalStrength * 100) + "%"
-                            + (root.wifi_ipv4 ? "  " + root.wifi_ipv4 : "")
-                        : ""
-                    color: root.st.text_accent
-                    font.family: root.st.font_family
-                    font.pixelSize: root.st.fs(-2)
-                }
-
-                Text {
-                    visible: !!root.wired_device && root.wired_device.connected && !root.ps2 && !root.link_watch
-                    text: root.wired_device ? "Wired: " + root.wired_device.name + (root.wired_ipv4 ? "  " + root.wired_ipv4 : "") : ""
-                    color: root.st.text_accent
-                    font.family: root.st.font_family
-                    font.pixelSize: root.st.fs(-2)
-                }
-
-                Text {
-                    visible: root.status_text !== "" && !root.link_watch
-                    text: root.status_text
-                    color: root.st.text_muted
-                    font.family: root.st.font_family
-                    font.pixelSize: root.st.fs(-3)
                 }
 
                 Text {
@@ -726,321 +539,43 @@ Popup {
                         scanning: root.link_watch && root.link_scanning
                     }
 
-                    delegate: MenuRow {
+                    delegate: WifiRow {
                         id: net_row
-                        required property var modelData
-                        required property int index
-
-                        readonly property bool is_advanced: !!net_row.modelData.advanced
-
                         width: network_list.width
-                        height: Style.px(24)
+                        popup_st: root.st
                         selected: net_row.index === root.selected
-
-                        Loader {
-                            active: root.ps2
-                            anchors.fill: parent
-                            z: -1
-                            sourceComponent: Ps2.Block {
-                                selected: net_row.selected
-                                radius: 4
-                            }
-                        }
-
-                        RowLayout {
-                            anchors.fill: parent
-                            anchors.leftMargin: 6 + net_row.inset
-                            anchors.rightMargin: 6 + net_row.key_space
-                            spacing: 6
-
-                            // NES signal art in place of the glyph; SNES puts its gauge at the row's end.
-                            Loader {
-                                id: signal_art
-                                readonly property Component view: ({ nes: nes_signal })[root.st.console_views] || null
-                                active: !net_row.is_advanced && !!view
-                                visible: active
-                                sourceComponent: view
-
-                                Component {
-                                    id: nes_signal
-                                    Nes.CoinMeter {
-                                        size: 12
-                                        value: net_row.modelData.signalStrength || 0
-                                    }
-                                }
-                            }
-
-                            Goldeneye.SegmentStrip {
-                                visible: root.link_watch && !net_row.is_advanced
-                                value: net_row.modelData.signalStrength || 0
-                            }
-
-                            Text {
-                                visible: !net_row.is_advanced && !signal_art.active && root.st.console_views !== "snes" && !root.link_watch
-                                text: root.signal_glyph(net_row.modelData.signalStrength || 0)
-                                color: net_row.fg(net_row.modelData.connected ? root.st.text_primary : root.st.text_fg)
-                                font.family: root.st.font_family
-                                font.pixelSize: root.st.fs(-1)
-                            }
-
-                            RowLabel {
-                                Layout.fillWidth: true
-                                elide: Text.ElideRight
-                                label: net_row.is_advanced ? "Advanced…" : net_row.modelData.name
-                                color: net_row.fg(net_row.modelData.connected ? root.st.text_accent : root.st.text_fg)
-                                font.family: root.st.font_family
-                                font.pixelSize: root.st.fs(-1)
-                            }
-
-                            Text {
-                                visible: (root.codec || root.st.console_views === "nes") && !net_row.is_advanced
-                                text: Math.round((net_row.modelData.signalStrength || 0) * 100) + "%"
-                                color: net_row.fg(root.st.text_muted)
-                                font.family: root.st.font_family
-                                font.pixelSize: root.st.fs(-3)
-                            }
-
-                            Text {
-                                visible: !net_row.is_advanced && net_row.modelData.security !== WifiSecurityType.Open
-                                text: ""
-                                color: net_row.fg(root.st.text_muted)
-                                font.family: root.st.font_family
-                                font.pixelSize: root.st.fs(-2)
-                            }
-
-                            Text {
-                                visible: !net_row.is_advanced && net_row.modelData.known
-                                text: ""
-                                color: net_row.fg(root.st.text_muted)
-                                font.family: root.st.font_family
-                                font.pixelSize: root.st.fs(-2)
-                            }
-
-                            Loader {
-                                active: !net_row.is_advanced && root.st.console_views === "snes"
-                                visible: active
-                                Layout.preferredWidth: Style.px(36)
-                                Layout.alignment: Qt.AlignVCenter
-                                sourceComponent: Snes.SnesGauge {
-                                    implicitHeight: 7
-                                    value: net_row.modelData.signalStrength || 0
-                                }
-                            }
-                        }
-
-                        MouseArea {
-                            anchors.fill: parent
-                            onClicked: {
-                                root.selected = net_row.index;
-                                root.forget_confirm = false;
-                                if (net_row.is_advanced) root.open_advanced();
-                                else root.connect_to(net_row.modelData);
-                            }
+                        link_watch: root.link_watch
+                        codec: root.codec
+                        ps2: root.ps2
+                        onActivated: {
+                            root.selected = net_row.index;
+                            root.forget_confirm = false;
+                            if (net_row.is_advanced) root.open_advanced();
+                            else root.connect_to(net_row.modelData);
                         }
                     }
                 }
             }
 
-            ColumnLayout {
-                id: details_column
+            DetailsPane {
+                id: details_pane
                 Layout.fillWidth: true
-                spacing: 6
                 visible: root.on_details
-
-                Text {
-                    visible: !root.details_target
-                    Layout.fillWidth: true
-                    wrapMode: Text.Wrap
-                    text: "Select a network in the list to see its details"
-                    color: root.st.text_muted
-                    font.family: root.st.font_family
-                    font.pixelSize: root.st.fs(-2)
-                }
-
-                Repeater {
-                    model: root.detail_rows
-
-                    Item {
-                        id: detail_row
-                        required property var modelData
-
-                        Layout.fillWidth: true
-                        implicitHeight: Math.max(detail_label.implicitHeight, detail_value.implicitHeight)
-
-                        Text {
-                            id: detail_label
-                            text: detail_row.modelData.label
-                            color: root.st.text_muted
-                            font.family: root.st.font_family
-                            font.pixelSize: root.st.fs(-2)
-                        }
-
-                        Text {
-                            id: detail_value
-                            x: detail_label.implicitWidth + 12
-                            width: Math.max(0, detail_row.width - x)
-                            horizontalAlignment: Text.AlignRight
-                            wrapMode: detail_row.modelData.wrap ? Text.Wrap : Text.NoWrap
-                            elide: detail_row.modelData.wrap ? Text.ElideNone : Text.ElideRight
-                            text: detail_row.modelData.value
-                            color: root.st.text_fg
-                            font.family: root.st.font_family
-                            font.pixelSize: root.st.fs(-2)
-                        }
-                    }
-                }
-
-                MenuSection {
-                    visible: !!root.details_target
-                    Layout.fillWidth: true
-                    topPadding: 4
-                    label: "Settings"
-                }
-
-                Text {
-                    visible: !!root.details_target && !root.profile
-                    Layout.fillWidth: true
-                    wrapMode: Text.Wrap
-                    text: !root.details_target || !root.details_target.known ? "Connect to edit settings" : root.details.loaded ? "No saved profile found" : "Loading…"
-                    color: root.st.text_muted
-                    font.family: root.st.font_family
-                    font.pixelSize: root.st.fs(-2)
-                }
-
-                ToggleRow {
-                    visible: !!root.profile
-                    label: "Autoconnect"
-                    toggle_key: ""
-                    checked: !!root.profile && root.profile.autoconnect
-                    selected: root.setting_selected === 0
-                    onToggled: root.activate_setting(0)
-                }
-
-                ToggleRow {
-                    visible: !!root.profile
-                    label: "Metered"
-                    toggle_key: ""
-                    checked: !!root.profile && root.profile.metered === "yes"
-                    state_label: root.profile ? root.metered_labels[root.profile.metered] || "Auto" : ""
-                    selected: root.setting_selected === 1
-                    onToggled: root.activate_setting(1)
-                }
-
-                MenuRow {
-                    id: dns_row
-                    readonly property real pad: dns_row.st.toggle_brackets ? 6 : 0
-                    visible: !!root.profile && !root.dns_edit_mode
-                    Layout.fillWidth: true
-                    implicitHeight: Math.max(dns_row.st.toggle_brackets ? Style.px(22) : 0, Math.max(dns_label.implicitHeight, dns_value.implicitHeight) + dns_row.pad)
-                    selected: root.setting_selected === 2
-
-                    Text {
-                        id: dns_label
-                        x: dns_row.pad + dns_row.inset
-                        y: dns_value.y
-                        text: "DNS"
-                        color: dns_row.fg(root.st.text_strong)
-                        font.family: root.st.font_family
-                        font.pixelSize: root.st.fs(-1)
-                    }
-
-                    Text {
-                        id: dns_value
-                        x: dns_label.x + dns_label.implicitWidth + 12
-                        y: (dns_row.height - height) / 2
-                        width: Math.max(0, dns_row.width - x - dns_row.pad - dns_row.key_space)
-                        horizontalAlignment: Text.AlignRight
-                        wrapMode: Text.Wrap
-                        text: root.profile && root.profile.dns.length > 0 ? root.profile.dns.join("\n") : "Auto"
-                        color: dns_row.fg(root.profile && root.profile.dns.length > 0 ? root.st.text_fg : root.st.toggle_off)
-                        font.family: root.st.font_family
-                        font.pixelSize: root.st.fs(-2)
-                    }
-
-                    MouseArea {
-                        anchors.fill: parent
-                        onClicked: root.activate_setting(2)
-                    }
-                }
-
-                ColumnLayout {
-                    visible: root.dns_edit_mode
-                    Layout.fillWidth: true
-                    spacing: 6
-
-                    Text {
-                        Layout.fillWidth: true
-                        elide: Text.ElideRight
-                        text: "DNS for " + root.details_ssid
-                        color: root.st.text_strong
-                        font.family: root.st.font_family
-                        font.pixelSize: root.st.fs(-1)
-                    }
-
-                    Rectangle {
-                        Layout.fillWidth: true
-                        implicitHeight: Style.px(26)
-                        radius: Style.radius(4)
-                        color: Style.pal.bg_surface
-
-                        TextInput {
-                            id: dns_input
-                            anchors.fill: parent
-                            anchors.margins: 6
-                            clip: true
-                            color: root.st.text_fg
-                            font.family: root.st.font_family
-                            font.pixelSize: root.st.fs(-1)
-                            text: root.dns_text
-                            onTextChanged: root.dns_text = text
-
-                            Keys.onPressed: event => {
-                                if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
-                                    root.finish_dns_edit(true);
-                                    event.accepted = true;
-                                } else if (event.key === Qt.Key_Escape) {
-                                    root.finish_dns_edit(false);
-                                    event.accepted = true;
-                                } else if (event.key === Qt.Key_Tab || event.key === Qt.Key_Backtab) {
-                                    event.accepted = true;
-                                }
-                            }
-                        }
-                    }
-
-                    Text {
-                        Layout.fillWidth: true
-                        wrapMode: Text.Wrap
-                        text: "Separate with spaces; leave blank for automatic"
-                        color: root.st.text_muted
-                        font.family: root.st.font_family
-                        font.pixelSize: root.st.fs(-3)
-                    }
-
-                    MenuFooter {
-                        Layout.fillWidth: true
-                        wrap: true
-                        text: "Enter apply · Esc cancel"
-                    }
-                }
-
-                Text {
-                    visible: modify_proc.running
-                    text: root.profile && root.profile.active ? "Applying…" : "Saving…"
-                    color: root.st.text_muted
-                    font.family: root.st.font_family
-                    font.pixelSize: root.st.fs(-3)
-                }
-
-                Text {
-                    visible: root.setting_error !== ""
-                    Layout.fillWidth: true
-                    wrapMode: Text.Wrap
-                    text: root.setting_error
-                    color: Style.pal.warning
-                    font.family: root.st.font_family
-                    font.pixelSize: root.st.fs(-3)
-                }
+                st: root.st
+                target: root.details_target
+                ssid: root.details_ssid
+                loaded: !!root.details.loaded
+                profile: root.profile
+                rows: root.detail_rows
+                setting_selected: root.setting_selected
+                dns_edit_mode: root.dns_edit_mode
+                dns_text: root.dns_text
+                saving: modify_proc.running
+                setting_error: root.setting_error
+                metered_labels: root.metered_labels
+                onActivate: i => root.activate_setting(i)
+                onDns_edited: t => root.dns_text = t
+                onDns_finished: apply => root.finish_dns_edit(apply)
             }
 
             TabRows {
@@ -1056,66 +591,22 @@ Popup {
             }
         }
 
-        ColumnLayout {
-            id: password_column
+        PasswordPane {
+            id: password_pane
             anchors.left: parent.left
             anchors.right: parent.right
             anchors.top: parent.top
-            spacing: 8
             visible: root.password_mode
-
-            Text {
-                text: root.password_target ? "Password for " + root.password_target.name : ""
-                color: root.st.text_strong
-                font.family: root.st.font_family
-                font.pixelSize: root.st.fs(-1)
-            }
-
-            Rectangle {
-                Layout.fillWidth: true
-                Layout.preferredHeight: Style.px(26)
-                radius: Style.radius(4)
-                color: Style.pal.bg_surface
-
-                TextInput {
-                    id: password_input
-                    anchors.fill: parent
-                    anchors.margins: 6
-                    focus: root.password_mode
-                    echoMode: root.password_visible ? TextInput.Normal : TextInput.Password
-                    color: root.st.text_fg
-                    font.family: root.st.font_family
-                    font.pixelSize: root.st.fs(-1)
-                    text: root.password_text
-                    onTextChanged: root.password_text = text
-
-                    Keys.onPressed: event => {
-                        if (event.key === Qt.Key_Tab) {
-                            root.password_visible = !root.password_visible;
-                            event.accepted = true;
-                        } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
-                            root.submit_password();
-                            event.accepted = true;
-                        } else if (event.key === Qt.Key_Escape) {
-                            root.cancel_password();
-                            event.accepted = true;
-                        }
-                    }
-                }
-            }
-
-            MenuFooter {
-                Layout.fillWidth: true
-                text: "Tab show/hide · Enter connect · Esc cancel"
-            }
-
-            Text {
-                visible: root.status_text !== ""
-                text: root.status_text
-                color: root.st.text_muted
-                font.family: root.st.font_family
-                font.pixelSize: root.st.fs(-3)
-            }
+            st: root.st
+            target_name: root.password_target ? root.password_target.name : ""
+            text: root.password_text
+            reveal: root.password_visible
+            status_text: root.status_text
+            active: root.password_mode
+            onEdited: t => root.password_text = t
+            onToggle_reveal: root.password_visible = !root.password_visible
+            onSubmit: root.submit_password()
+            onCancel: root.cancel_password()
         }
     }
 }
