@@ -70,18 +70,6 @@ local function command_exists(cmd)
   return r == true or r == 0
 end
 
---- Return HYPRLAND_INSTANCE_SIGNATURE from the environment, else the newest instance in $XDG_RUNTIME_DIR/hypr, or nil.
---- @return string|nil
-local function detect_signature()
-  local env_sig = os.getenv("HYPRLAND_INSTANCE_SIGNATURE")
-  if env_sig and env_sig ~= "" then return env_sig end
-  local runtime = os.getenv("XDG_RUNTIME_DIR")
-  if not runtime or runtime == "" then return nil end
-  local sig = run_cmd(string.format("ls -1t '%s/hypr' 2>/dev/null | head -n 1", runtime))
-  if sig then sig = sig:match("([^\n]+)") end
-  return sig
-end
-
 --- Sleep for `seconds` (fractional seconds supported).
 --- @param seconds number
 local function sleep(seconds) os.execute(string.format("sleep %.3f", seconds)) end
@@ -347,7 +335,7 @@ function Rotate.start(opts)
     run_cmd = run_cmd,
     command_exists = command_exists,
     sleep = sleep,
-    signature = detect_signature(),
+    signature = Apply.detect_signature(),
   }
 
   math.randomseed(os.time())

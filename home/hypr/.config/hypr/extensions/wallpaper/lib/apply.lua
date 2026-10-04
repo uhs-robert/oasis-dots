@@ -3,6 +3,7 @@
 
 --- @class Apply
 --- @field to_monitors fun(cfg: table, util: table, opts?: { exclude?: table<string, boolean>, reserved?: table<string, boolean>, history?: string[] }): boolean, table<string, string> Apply wallpapers to all active monitors (or cfg.target_monitor if set); returns ok plus a map of monitor name to the wallpaper path applied
+--- @field detect_signature fun(): string|nil Current Hyprland instance signature from the environment or the runtime dir
 --- @field list_images fun(dir: string, skip?: string[]): string[] Public wrapper around list_images for external callers
 --- @field folder fun(name: string): string Folder name for a period, season or weather key
 --- @field PERIODS string[] Period keys in day order
@@ -284,6 +285,20 @@ local function parse_monitors_json(out)
   return uniq
 end
 
+--- Return HYPRLAND_INSTANCE_SIGNATURE from the environment, else the newest instance in $XDG_RUNTIME_DIR/hypr, or nil.
+--- @return string|nil
+function Apply.detect_signature()
+  local env_sig = os.getenv("HYPRLAND_INSTANCE_SIGNATURE")
+  if env_sig and env_sig ~= "" then return env_sig end
+  local runtime = os.getenv("XDG_RUNTIME_DIR")
+  if not runtime or runtime == "" then return nil end
+  local p = io.popen(string.format("ls -1t '%s/hypr' 2>/dev/null | head -n 1", runtime))
+  if not p then return nil end
+  local sig = p:read("*l")
+  p:close()
+  return (sig and sig ~= "") and sig or nil
+end
+
 --- Run a hyprctl command, retrying with an auto-detected HYPRLAND_INSTANCE_SIGNATURE if needed.
 --- @param cmd string hyprctl subcommand and arguments
 --- @param util table shared utility object with `run_cmd`, `log`, and optional `signature`
@@ -294,9 +309,8 @@ local function hyprctl(cmd, util)
   local out = util.run_cmd(base .. "hyprctl " .. cmd .. " 2>/dev/null")
   if out and out:match("%S") and not out:match("socket timeout") then return out end
 
-  -- Try to auto-detect a signature from /tmp/hypr/*
-  local sig = util.run_cmd("ls -1 /tmp/hypr 2>/dev/null | head -n 1")
-  if sig then sig = sig:match("([^\n]+)") end
+  -- Try to auto-detect a signature
+  local sig = Apply.detect_signature()
 
   if sig and sig ~= "" then
     local env_cmd = string.format("HYPRLAND_INSTANCE_SIGNATURE=%s hyprctl %s 2>/dev/null", sig, cmd)
