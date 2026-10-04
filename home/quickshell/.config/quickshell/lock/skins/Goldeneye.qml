@@ -213,7 +213,7 @@ Item {
 
     function frames_ready() {
         if (!root.has_frames) return !root.drawn || (!!arm_loader.item && arm_loader.item.ready);
-        return !!frames_loader.item && frames_loader.item.ready >= root.n_frames * 2;
+        return !!frames_loader.item && frames_loader.item.settled;
     }
 
     function begin_motion() {
@@ -493,38 +493,61 @@ Item {
             anchors.fill: parent
             sourceComponent: Item {
                 id: sheet
-                property int ready: 0
-                readonly property int total: root.n_frames
+                readonly property int slots: 3
+                readonly property int cur: root.frame_at
+                property int shown: -1
+                readonly property bool settled: sheet.shown === sheet.cur
+
+                // Slot s holds the one frame of cur-1..cur+1 with index % slots == s.
+                function frame_of(s) {
+                    const base = sheet.cur - 1;
+                    const i = base + (((s - base) % sheet.slots) + sheet.slots) % sheet.slots;
+                    return i >= 0 && i < root.n_frames ? i : -1;
+                }
+
+                function slot_ready(list, s) {
+                    const it = list.itemAt(s);
+                    return !!it && it.status === Image.Ready;
+                }
+
+                function sync() {
+                    const s = sheet.cur % sheet.slots;
+                    if (sheet.slot_ready(colors, s) && sheet.slot_ready(masks, s)) sheet.shown = sheet.cur;
+                }
+
+                onCurChanged: sheet.sync()
 
                 Repeater {
                     id: colors
-                    model: sheet.total
+                    model: sheet.slots
 
                     Image {
                         id: arm
                         required property int index
-                        source: root.frames_dir + "/arm_" + String(arm.index).padStart(2, "0") + ".jpg"
+                        readonly property int frame: sheet.frame_of(arm.index)
+                        source: arm.frame >= 0 ? root.frames_dir + "/arm_" + String(arm.frame).padStart(2, "0") + ".jpg" : ""
                         sourceSize.width: Math.round(Math.min(1020, 1020 * stage.k))
                         cache: false
                         asynchronous: true
                         visible: false
-                        onStatusChanged: if (arm.status === Image.Ready) sheet.ready += 1
+                        onStatusChanged: sheet.sync()
                     }
                 }
 
                 Repeater {
                     id: masks
-                    model: sheet.total
+                    model: sheet.slots
 
                     Image {
                         id: cut
                         required property int index
-                        source: root.frames_dir + "/mask_" + String(cut.index).padStart(2, "0") + ".png"
+                        readonly property int frame: sheet.frame_of(cut.index)
+                        source: cut.frame >= 0 ? root.frames_dir + "/mask_" + String(cut.frame).padStart(2, "0") + ".png" : ""
                         sourceSize.width: Math.round(Math.min(1020, 1020 * stage.k))
                         cache: false
                         asynchronous: true
                         visible: false
-                        onStatusChanged: if (cut.status === Image.Ready) sheet.ready += 1
+                        onStatusChanged: sheet.sync()
                     }
                 }
 
@@ -538,9 +561,9 @@ Item {
                     property real span_y: height / 720
                     property real reach: 1 - root.ease(0.55, 0.78, root.intro_t)
                     property real hue_shift: root.tinted && Watch.sat_of(root.hue_src) > 0 ? Math.max(0, root.hue_src.hslHue) * 6.283185 - 2.094395 : 0
-                    property variant color_src: colors.count > 0 ? colors.itemAt(root.frame_at) : null
-                    property variant mask_src: masks.count > 0 ? masks.itemAt(root.frame_at) : null
-                    visible: !!color_src && !!mask_src && sheet.ready >= sheet.total * 2
+                    property variant color_src: sheet.shown >= 0 ? colors.itemAt(sheet.shown % sheet.slots) : null
+                    property variant mask_src: sheet.shown >= 0 ? masks.itemAt(sheet.shown % sheet.slots) : null
+                    visible: !!color_src && !!mask_src && color_src.status === Image.Ready && mask_src.status === Image.Ready
                     fragmentShader: Qt.resolvedUrl("goldeneye/frame.frag.qsb")
                 }
             }
