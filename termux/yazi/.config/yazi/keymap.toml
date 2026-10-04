@@ -5,7 +5,7 @@ prepend_keymap = [
   { on = ["g", "x"], run = 'shell -- ya emit cd "$(git -C "$(dirname "$(readlink -f "$HOME/.config/yazi/yazi.toml")")" rev-parse --show-toplevel)"', desc = "Dotfiles checkout" },
   { on = ["g", "d"], run = 'cd ~/Downloads/', desc = "Downloads" },
   { on = ["g", "r"], run = 'shell -- ya emit cd "$(git rev-parse --show-toplevel 2>/dev/null || pwd)"', desc = "Git root" },
-  { on = ["g", "u"], run = 'cd ~/Development/', desc = "Development" },
+  { on = ["g", "u"], run = 'shell -- ya emit cd "${GITHUB_DIR:-$HOME/Development}"', desc = "Development" },
   { on = ["g", "y"], run = "cd ~/.config/yazi", desc = "Yazi config" },
   { on = ["g", "l"], run = "shell --block -- lazygit", desc = "LazyGit" },
   { on = ["g", "w"], run = "plugin vcs-files", desc = "Git changes" },

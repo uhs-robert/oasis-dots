@@ -12,4 +12,5 @@ pull_predefined = false
 # Git's --ff-only leaves divergent local work for manual resolution.
 arguments = "--ff-only"
 # Limit discovery to checkout directories and Zsh plugins, avoiding ~/storage.
+# Topgrade expands only ~ here, not $GITHUB_DIR; edit if your checkouts live elsewhere.
 repos = ["~/dotfiles", "~/Development/**/.git/..", "~/.local/share/zsh/plugins/*"]

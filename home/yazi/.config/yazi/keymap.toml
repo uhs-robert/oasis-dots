@@ -41,7 +41,7 @@ prepend_keymap = [
   { on = [ "g", "p", ], run = "cd ~/Pictures/", desc = "Go to Pictures" },
   { on = [ "g", "r" ], run = 'shell -- ya emit cd "$(git rev-parse --show-toplevel 2>/dev/null || pwd)"', desc = "Go to git root" },
   { on = [ "g", "s", ], run = "cd ~/.local/share/Steam/steamapps/common/", desc = "Go to Steam Apps" },
-  { on = [ "g", "u", ], run = "cd ~/Development/", desc = "Go to Development" },
+  { on = [ "g", "u", ], run = 'shell -- ya emit cd "${GITHUB_DIR:-$HOME/Development}"', desc = "Go to Development" },
   { on = [ "g", "v", ], run = "cd ~/Videos/", desc = "Go to Videos" },
   { on = [ "g", "w", ], run = "plugin vcs-files", desc = "Show Git file changes" },
   { on = [ "g", "x", ], run = "cd ~/dotfiles/", desc = "Go to dotfiles" },
