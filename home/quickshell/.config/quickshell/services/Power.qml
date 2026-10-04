@@ -2,6 +2,7 @@
 pragma Singleton
 import QtQuick
 import Quickshell
+import Quickshell.Io
 import Quickshell.Services.UPower
 import "../theme"
 
@@ -9,6 +10,20 @@ Singleton {
     id: root
 
     readonly property bool on_ac: !UPower.onBattery
+
+    property bool ppd_available: false
+
+    function probe_ppd() {
+        ppd_check_proc.running = true;
+    }
+
+    // busctl exits non-zero when the daemon is not D-Bus activatable.
+    Process {
+        id: ppd_check_proc
+        command: ["busctl", "--system", "introspect", "org.freedesktop.UPower.PowerProfiles", "/org/freedesktop/UPower/PowerProfiles"]
+        running: true
+        onExited: code => root.ppd_available = code === 0
+    }
 
     readonly property var actions: ["lock", "logout", "reboot", "poweroff"]
     readonly property var labels: ({ lock: "Lock", logout: "Logout", reboot: "Reboot", poweroff: "Power Off" })

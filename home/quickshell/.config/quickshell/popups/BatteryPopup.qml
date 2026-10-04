@@ -52,7 +52,7 @@ Popup {
         return "";
     }
 
-    property bool ppd_available: false
+    readonly property bool ppd_available: Power.ppd_available
     readonly property bool nes: root.st.console_views === "nes"
     readonly property real status_indent: root.nes ? 22 : 0
     readonly property real percent_width: percent_metrics.height > 0 ? Math.max(32, Math.ceil(percent_metrics.advanceWidth("100%"))) : 32
@@ -80,7 +80,7 @@ Popup {
     readonly property bool is_open: Popups.open_name === "battery"
     onIs_openChanged: if (is_open) {
         root.selected = 0;
-        ppd_check_proc.running = true;
+        if (!Power.ppd_available) Power.probe_ppd();
         Backlight.refresh();
     }
     search_enabled: true
@@ -90,19 +90,12 @@ Popup {
     onJump_first: root.selected = 0
     onJump_last: root.selected = Math.max(0, root.nav_rows.length - 1)
 
-    // Sysfs brightness has no inotify; poll while the popup is visible.
+    // Sysfs brightness has no inotify; catch writers other than the shell.
     Timer {
-        interval: 1000
+        interval: 5000
         running: root.is_open
         repeat: true
         onTriggered: Backlight.refresh()
-    }
-
-    // busctl exits non-zero when the daemon is not D-Bus activatable.
-    Process {
-        id: ppd_check_proc
-        command: ["busctl", "--system", "introspect", "org.freedesktop.UPower.PowerProfiles", "/org/freedesktop/UPower/PowerProfiles"]
-        onExited: code => root.ppd_available = code === 0
     }
 
     // The wheel steps a backlight row like h/l, one snap step per notch.
