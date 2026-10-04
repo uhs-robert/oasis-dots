@@ -1,9 +1,10 @@
-// home/quickshell/.config/quickshell/components/picker/ScopeItemTargets.qml
+// home/quickshell/.config/quickshell/components/picker/targets/Scopeitem.qml
 pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Shapes
-import "../../theme"
-import "../../services"
+import "../../../theme"
+import "../../../services"
+import "../.."
 import ".."
 
 // PS2 scope item dressing for the window/screen/region target: corner brackets, global X/Y
@@ -36,8 +37,6 @@ Item {
         const n = Math.round(v);
         return (n < 0 ? "-" : "") + String(Math.abs(n)).padStart(4, "0");
     }
-
-    visible: root.mine || root.target_mode
 
     Repeater {
         model: root.target_mode ? Screenshot.targets : []

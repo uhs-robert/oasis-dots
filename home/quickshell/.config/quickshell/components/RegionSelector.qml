@@ -8,6 +8,8 @@ import Quickshell.Wayland
 import "../theme"
 import "../services"
 import "picker"
+import "picker/cursors" as Cursors
+import "picker/targets" as Targets
 
 // One per screen while Screenshot.selecting: drag a region, then pick an action from the toolbar.
 PanelWindow {
@@ -29,7 +31,8 @@ PanelWindow {
     readonly property bool target_mode: Screenshot.mode === "window" || Screenshot.mode === "screen"
     // A region for the share overview's pending request: Esc goes back there instead of cancelling.
     readonly property bool sharing: Screenshot.preset === "share"
-    readonly property bool skinned_targets: ["scope", "jrpg", "goldeneye", "scopeitem", "scanvisor", "tvosd", "tmux", "nvimfloat", "tiecomp", "materia", "duckhunt", "pokemon"].includes(Style.picker_skin)
+    readonly property bool skinned_targets: targets_loader.status === Loader.Ready
+    readonly property bool skinned_cursor: cursor_loader.status === Loader.Ready
     property bool help_open: false
     readonly property string delay_label: Screenshot.delay_s > 0 ? "Delay " + Screenshot.delay_s + "s" : "No delay"
     readonly property string tier_keys: "hjkl move 10px · H/J/K/L move 100px · C-hjkl move 1px · C-H/J/K/L move 300px"
@@ -240,118 +243,26 @@ PanelWindow {
             }
         }
 
-        ScopeTargets {
+        Loader {
+            id: targets_loader
+            readonly property string skin: Style.picker_skin
             anchors.fill: parent
-            visible: Style.picker_skin === "scope" && !root.pixel_mode
-            screen_name: root.screen_name
-            sel: root.sel
-            mine: root.mine
-            target_mode: root.target_mode
-        }
+            visible: !root.pixel_mode
+            active: targets_loader.skin !== ""
+            onSkinChanged: targets_loader.load()
+            Component.onCompleted: targets_loader.load()
 
-        JrpgTargets {
-            anchors.fill: parent
-            visible: Style.picker_skin === "jrpg" && !root.pixel_mode
-            screen_name: root.screen_name
-            sel: root.sel
-            mine: root.mine
-            target_mode: root.target_mode
-        }
-
-        LockOnTargets {
-            anchors.fill: parent
-            visible: Style.picker_skin === "goldeneye" && !root.pixel_mode
-            screen_name: root.screen_name
-            sel: root.sel
-            mine: root.mine
-            target_mode: root.target_mode
-        }
-
-        ScopeItemTargets {
-            anchors.fill: parent
-            visible: Style.picker_skin === "scopeitem" && !root.pixel_mode
-            screen_name: root.screen_name
-            sel: root.sel
-            mine: root.mine
-            target_mode: root.target_mode
-            origin: Qt.point(root.modelData.x, root.modelData.y)
-        }
-
-        ScanVisorTargets {
-            anchors.fill: parent
-            visible: Style.picker_skin === "scanvisor" && !root.pixel_mode
-            screen_name: root.screen_name
-            origin: Qt.point(root.modelData.x, root.modelData.y)
-            sel: root.sel
-            mine: root.mine
-            target_mode: root.target_mode
-        }
-
-        NvimTargets {
-            anchors.fill: parent
-            visible: Style.picker_skin === "nvimfloat" && !root.pixel_mode
-            screen_name: root.screen_name
-            sel: root.sel
-            mine: root.mine
-            target_mode: root.target_mode
-        }
-
-        TmuxTargets {
-            anchors.fill: parent
-            visible: Style.picker_skin === "tmux" && !root.pixel_mode
-            screen_name: root.screen_name
-            origin: Qt.point(root.modelData.x, root.modelData.y)
-            sel: root.sel
-            mine: root.mine
-            target_mode: root.target_mode
-        }
-
-        TvOsdTargets {
-            anchors.fill: parent
-            visible: Style.picker_skin === "tvosd" && !root.pixel_mode
-            screen_name: root.screen_name
-            origin: Qt.point(root.modelData.x, root.modelData.y)
-            sel: root.sel
-            mine: root.mine
-            target_mode: root.target_mode
-        }
-
-        TieTargets {
-            anchors.fill: parent
-            visible: Style.picker_skin === "tiecomp" && !root.pixel_mode
-            screen_name: root.screen_name
-            origin: Qt.point(root.modelData.x, root.modelData.y)
-            sel: root.sel
-            mine: root.mine
-            target_mode: root.target_mode
-        }
-
-        MateriaTargets {
-            anchors.fill: parent
-            visible: Style.picker_skin === "materia" && !root.pixel_mode
-            screen_name: root.screen_name
-            sel: root.sel
-            mine: root.mine
-            target_mode: root.target_mode
-        }
-
-        DuckHuntTargets {
-            anchors.fill: parent
-            visible: Style.picker_skin === "duckhunt" && !root.pixel_mode
-            screen_name: root.screen_name
-            origin: Qt.point(root.modelData.x, root.modelData.y)
-            sel: root.sel
-            mine: root.mine
-            target_mode: root.target_mode
-        }
-
-        PokemonTargets {
-            anchors.fill: parent
-            visible: Style.picker_skin === "pokemon" && !root.pixel_mode
-            screen_name: root.screen_name
-            sel: root.sel
-            mine: root.mine
-            target_mode: root.target_mode
+            function load() {
+                if (targets_loader.skin === "")
+                    return;
+                targets_loader.setSource(Qt.resolvedUrl("picker/targets/" + targets_loader.skin.charAt(0).toUpperCase() + targets_loader.skin.slice(1) + ".qml"), {
+                    screen_name: Qt.binding(() => root.screen_name),
+                    origin: Qt.binding(() => Qt.point(root.modelData.x, root.modelData.y)),
+                    sel: Qt.binding(() => root.sel),
+                    mine: Qt.binding(() => root.mine),
+                    target_mode: Qt.binding(() => root.target_mode)
+                });
+            }
         }
 
         Rectangle {
@@ -475,7 +386,7 @@ PanelWindow {
             id: key_cursor
             readonly property point at: Screenshot.cursor_point
             readonly property int arm: 12
-            readonly property bool hide_arms: Style.picker_skin !== "" && !root.target_mode
+            readonly property bool hide_arms: root.skinned_cursor && !root.target_mode
             visible: Screenshot.phase === "select" && Screenshot.cursor_screen === root.screen_name && (Screenshot.keys_moved || Screenshot.anchored)
 
             Item {
@@ -508,79 +419,23 @@ PanelWindow {
             }
         }
 
-        ScopeCursor {
+        Loader {
+            id: cursor_loader
+            readonly property string skin: Style.picker_skin
             anchors.fill: parent
-            screen_name: root.screen_name
-            origin: Qt.point(root.modelData.x, root.modelData.y)
-            target_mode: root.target_mode
-        }
+            active: cursor_loader.skin !== ""
+            onSkinChanged: cursor_loader.load()
+            Component.onCompleted: cursor_loader.load()
 
-        JrpgCursor {
-            anchors.fill: parent
-            screen_name: root.screen_name
-            target_mode: root.target_mode
-        }
-
-        LockOnCursor {
-            anchors.fill: parent
-            screen_name: root.screen_name
-            target_mode: root.target_mode
-        }
-
-        ScopeItemCursor {
-            anchors.fill: parent
-            screen_name: root.screen_name
-            origin: Qt.point(root.modelData.x, root.modelData.y)
-            target_mode: root.target_mode
-        }
-
-        ScanVisorCursor {
-            id: scan_cursor
-            anchors.fill: parent
-            screen_name: root.screen_name
-            target_mode: root.target_mode
-        }
-
-        NvimCursor {
-            anchors.fill: parent
-            screen_name: root.screen_name
-            target_mode: root.target_mode
-        }
-
-        TmuxCursor {
-            anchors.fill: parent
-            screen_name: root.screen_name
-            target_mode: root.target_mode
-        }
-
-        TvOsdCursor {
-            anchors.fill: parent
-            screen_name: root.screen_name
-            target_mode: root.target_mode
-        }
-
-        TieCursor {
-            anchors.fill: parent
-            screen_name: root.screen_name
-            target_mode: root.target_mode
-        }
-
-        MateriaCursor {
-            anchors.fill: parent
-            screen_name: root.screen_name
-            target_mode: root.target_mode
-        }
-
-        ZapperCursor {
-            anchors.fill: parent
-            screen_name: root.screen_name
-            target_mode: root.target_mode
-        }
-
-        PokemonCursor {
-            anchors.fill: parent
-            screen_name: root.screen_name
-            target_mode: root.target_mode
+            function load() {
+                if (cursor_loader.skin === "")
+                    return;
+                cursor_loader.setSource(Qt.resolvedUrl("picker/cursors/" + cursor_loader.skin.charAt(0).toUpperCase() + cursor_loader.skin.slice(1) + ".qml"), {
+                    screen_name: Qt.binding(() => root.screen_name),
+                    origin: Qt.binding(() => Qt.point(root.modelData.x, root.modelData.y)),
+                    target_mode: Qt.binding(() => root.target_mode)
+                });
+            }
         }
 
         Loupe {
@@ -598,9 +453,9 @@ PanelWindow {
             sel: root.sel
             pixel_image: root.pixel_image
             frame_size: frame_image.sourceSize
-            scan_complete: scan_cursor.complete
-            scan_step: scan_cursor.scan_step
-            scan_steps: scan_cursor.scan_steps
+            scan_complete: cursor_loader.item?.complete ?? false
+            scan_step: cursor_loader.item?.scan_step ?? -1
+            scan_steps: cursor_loader.item?.scan_steps ?? 6
         }
 
         Rectangle {
@@ -677,7 +532,7 @@ PanelWindow {
         anchors.fill: parent
         z: -1
         enabled: Screenshot.phase === "select" || Screenshot.phase === "toolbar"
-        cursorShape: Style.picker_skin !== "" && Screenshot.phase === "select" && !root.target_mode && root.chrome_shown ? Qt.BlankCursor : Qt.CrossCursor
+        cursorShape: root.skinned_cursor && Screenshot.phase === "select" && !root.target_mode && root.chrome_shown ? Qt.BlankCursor : Qt.CrossCursor
         hoverEnabled: true
         onWheel: wheel => Screenshot.step_zoom(wheel.angleDelta.y > 0 ? 1 : wheel.angleDelta.y < 0 ? -1 : 0)
         onPressed: mouse => {

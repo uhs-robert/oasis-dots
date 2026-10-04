@@ -1,10 +1,11 @@
-// home/quickshell/.config/quickshell/components/picker/LockOnCursor.qml
+// home/quickshell/.config/quickshell/components/picker/cursors/Goldeneye.qml
 pragma ComponentBehavior: Bound
 import QtQuick
-import "../../theme"
-import "../../services"
+import "../../../theme"
+import "../../../services"
+import "../.."
 import ".."
-import "../../theme/Watch.js" as W
+import "../../../theme/Watch.js" as W
 
 // Perfect Dark reticle for the Goldeneye picker skin: a four-tick crosshair with a center dot,
 // plus red corner brackets that step inward once the cursor has held still for ~220ms.
@@ -12,6 +13,7 @@ Item {
     id: root
 
     required property string screen_name
+    required property point origin
     required property bool target_mode
 
     readonly property point at: Screenshot.cursor_point

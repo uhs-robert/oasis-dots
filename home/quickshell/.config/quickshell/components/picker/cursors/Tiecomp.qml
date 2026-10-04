@@ -1,8 +1,8 @@
-// home/quickshell/.config/quickshell/components/picker/TieCursor.qml
+// home/quickshell/.config/quickshell/components/picker/cursors/Tiecomp.qml
 pragma ComponentBehavior: Bound
 import QtQuick
-import "../../theme"
-import "../../services"
+import "../../../theme"
+import "../../../services"
 
 // TIE targeting-computer reticle: a thin cockpit ring with a center dot and four
 // outboard ticks at N/E/S/W, crisp green over a faint dark outline for contrast.
@@ -10,6 +10,7 @@ Item {
     id: root
 
     required property string screen_name
+    required property point origin
     required property bool target_mode
 
     readonly property point at: Screenshot.cursor_point

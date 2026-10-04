@@ -1,15 +1,16 @@
-// home/quickshell/.config/quickshell/components/picker/PokemonCursor.qml
+// home/quickshell/.config/quickshell/components/picker/cursors/Pokemon.qml
 pragma ComponentBehavior: Bound
 import QtQuick
-import "../../theme"
-import "../../services"
-import ".."
+import "../../../theme"
+import "../../../services"
+import "../.."
 
 // Game Boy party ▶ arrow pointing at the sampled pixel, tip a few px short of it, plus a tiny dot on the pixel.
 Item {
     id: root
 
     required property string screen_name
+    required property point origin
     required property bool target_mode
 
     readonly property point at: Screenshot.cursor_point

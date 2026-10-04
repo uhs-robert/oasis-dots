@@ -1,9 +1,9 @@
-// home/quickshell/.config/quickshell/components/picker/ScopeItemCursor.qml
+// home/quickshell/.config/quickshell/components/picker/cursors/Scopeitem.qml
 pragma ComponentBehavior: Bound
 import QtQuick
-import "../../theme"
-import "../../services"
-import ".."
+import "../../../theme"
+import "../../../services"
+import "../.."
 
 // MGS2 scope item reticle for the PS2 picker skin: blue corner brackets around a
 // center dot, with a small zero-padded global-X readout above.

@@ -1,11 +1,11 @@
-// home/quickshell/.config/quickshell/components/picker/LockOnTargets.qml
+// home/quickshell/.config/quickshell/components/picker/targets/Goldeneye.qml
 pragma ComponentBehavior: Bound
 import QtQuick
-import "../../theme"
-import "../../services"
-import ".."
-import "../goldeneye" as Goldeneye
-import "../../theme/Watch.js" as W
+import "../../../theme"
+import "../../../services"
+import "../.."
+import "../../goldeneye" as Goldeneye
+import "../../../theme/Watch.js" as W
 
 // GoldenEye dressing for the window/screen/region target: red lock-on brackets that
 // step closed when the target changes, a TARGET/AREA panel, and an OASIS WATCH readout.
@@ -13,6 +13,7 @@ Item {
     id: root
 
     required property string screen_name
+    required property point origin
     required property rect sel
     required property bool mine
     required property bool target_mode
@@ -30,8 +31,6 @@ Item {
     property int lock_step: root.lock_steps.length - 1
     readonly property real grow: root.lock_steps[root.lock_step]
     readonly property real base: root.full ? 10 : -6
-
-    visible: root.mine || root.target_mode
 
     function relock() {
         step_timer.stop();

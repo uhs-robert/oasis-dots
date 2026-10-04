@@ -1,10 +1,10 @@
-// home/quickshell/.config/quickshell/components/picker/MateriaTargets.qml
+// home/quickshell/.config/quickshell/components/picker/targets/Materia.qml
 pragma ComponentBehavior: Bound
 import QtQuick
-import "../../theme"
-import "../../services"
-import ".."
-import "../ff7" as Ff7
+import "../../../theme"
+import "../../../services"
+import "../.."
+import "../../ff7" as Ff7
 
 // FF7 dressing for the window/screen/region target: a materia-window border on the pick, a centered
 // help-bar naming it, and a weapon bar of linked materia slots for the windows or outputs on this screen.
@@ -12,6 +12,7 @@ Item {
     id: root
 
     required property string screen_name
+    required property point origin
     required property rect sel
     required property bool mine
     required property bool target_mode
@@ -39,8 +40,6 @@ Item {
     readonly property int shown_cur: root.cur_slot - root.first_slot
 
     readonly property string help_label: root.region ? root.size_label(root.sel) : (Screenshot.targets[Screenshot.target_index] ? Screenshot.targets[Screenshot.target_index].label : "")
-
-    visible: root.mine || root.target_mode
 
     function size_label(r) {
         return Math.round(r.width) + " x " + Math.round(r.height);

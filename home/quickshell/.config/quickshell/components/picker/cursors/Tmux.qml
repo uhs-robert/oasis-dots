@@ -1,8 +1,8 @@
-// home/quickshell/.config/quickshell/components/picker/TmuxCursor.qml
+// home/quickshell/.config/quickshell/components/picker/cursors/Tmux.qml
 pragma ComponentBehavior: Bound
 import QtQuick
-import "../../theme"
-import "../../services"
+import "../../../theme"
+import "../../../services"
 
 // tmux copy-mode cursor for the Terminal picker skin: a blinking 9x17 block
 // over the point, and a top-right position/size tag in the status bar colors.
@@ -10,6 +10,7 @@ Item {
     id: root
 
     required property string screen_name
+    required property point origin
     required property bool target_mode
 
     readonly property point at: Screenshot.cursor_point
