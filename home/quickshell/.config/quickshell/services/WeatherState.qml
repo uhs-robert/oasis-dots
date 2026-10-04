@@ -16,7 +16,6 @@ Singleton {
         latitude: "auto",
         longitude: "auto",
         unit: "fahrenheit",
-        time_format: "12h",
         days: 7
     })
 
@@ -122,6 +121,10 @@ Singleton {
             const parsed = root.parse_settings(local_settings_file, "weather.local.json");
             if (parsed) root.local_settings = parsed;
             root.apply_settings();
+            if (parsed && parsed.time_format !== undefined) {
+                ClockSettings.migrate_time_format(parsed.time_format);
+                root.set_settings({ time_format: null });
+            }
         }
         onLoadFailed: error => {
             root.local_settings = {};
@@ -696,7 +699,7 @@ Singleton {
         const shifted = new Date(date.getTime() + root.utc_offset * 1000);
         const h = shifted.getUTCHours(), m = shifted.getUTCMinutes();
         const mm = m < 10 ? "0" + m : "" + m;
-        if (root.settings.time_format === "12h") {
+        if (!TimeFormat.h24) {
             let hh = h % 12;
             if (hh === 0) hh = 12;
             return hh + ":" + mm + (h < 12 ? "am" : "pm");
@@ -903,13 +906,7 @@ Singleton {
 
     function format_hour(date) {
         const d = date instanceof Date ? date : new Date(date);
-        if (root.settings.time_format === "12h") {
-            let h = d.getHours() % 12;
-            if (h === 0) h = 12;
-            return h + (d.getHours() < 12 ? "am" : "pm");
-        }
-        const hh = d.getHours();
-        return hh < 10 ? "0" + hh : "" + hh;
+        return TimeFormat.hour(d);
     }
 
     // --- Wind, pressure, visibility, UV and AQI: units and bands ---

@@ -13,11 +13,20 @@ Singleton {
         return (xdg && xdg !== "" ? xdg : Quickshell.env("HOME") + "/.local/state") + "/quickshell";
     }
 
-    readonly property var choices: ({ week_start: ["locale", "monday", "sunday"] })
-    readonly property var defaults: ({ week_start: "locale" })
+    readonly property var choices: ({ week_start: ["locale", "monday", "sunday"], time_format: ["locale", "12h", "24h"] })
+    readonly property var defaults: ({ week_start: "locale", time_format: "locale" })
 
     property var values: root.defaults
+    property bool has_time_format: false
     readonly property string week_start: root.values.week_start
+    readonly property string time_format: root.values.time_format
+
+    // One-time carry-over of the old weather time_format; a saved choice wins.
+    function migrate_time_format(value) {
+        if (root.has_time_format || !root.valid("time_format", value)) return;
+        root.has_time_format = true;
+        root.set("time_format", value);
+    }
 
     function valid(key, value) {
         return !!root.choices[key] && root.choices[key].indexOf(value) >= 0;
@@ -61,10 +70,14 @@ Singleton {
                     if (root.valid(key, data[key])) next[key] = data[key];
                 }
                 root.values = next;
+                root.has_time_format = root.valid("time_format", data.time_format);
             } catch (e) {
                 console.warn("ClockSettings: invalid clock.json (" + e + ")");
             }
         }
-        onLoadFailed: error => root.values = root.defaults
+        onLoadFailed: error => {
+            root.values = root.defaults;
+            root.has_time_format = false;
+        }
     }
 }
