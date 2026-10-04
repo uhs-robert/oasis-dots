@@ -58,6 +58,9 @@
     "lua-lsp@claude-plugins-official": true,
     "caveman@caveman": true
   },
+  "skillOverrides": {
+    "caveman:caveman-commit": "off"
+  },
   "extraKnownMarketplaces": {
     "caveman": {
       "source": {
