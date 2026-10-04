@@ -235,7 +235,7 @@ Everything below is optional. A missing tool only disables the feature next to i
 | `notify-send` | Error notices from the screenshot, usage and bar-layout checks |
 | `ffmpeg` | The audio and frame import scripts in `scripts/` |
 
-The Nerd Font set in `theme/theme.json` draws every icon. `install.sh` installs it, and the shell logs a warning at startup when it is missing.
+The Nerd Font set in `theme/theme.json` draws every icon. `install.sh` installs Maple Mono NF (`lib/fonts.sh`) and the JetBrains and Symbols Nerd Fonts (`arch.ini`), and the shell logs a warning at startup when it is missing.
 
 ## Development
 
