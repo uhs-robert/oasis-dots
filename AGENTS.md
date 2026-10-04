@@ -65,6 +65,19 @@ An `[MANUAL]` section's comment lines in `arch.ini` are printed as post-install 
 
 User overrides live in two gitignored places, and tracked files must stay generic: `Config` values (hardware, default apps) in `config/machines/<hostname>.lua`, and everything built on the loaded library (binds, rules, launcher sessions) in `custom/`, whose `custom/init.lua` `hyprland.lua` requires last if present. Never auto-load other files in `custom/` from the Hyprland config. The one exception is the wallpaper rotator, a separate process that `custom/init.lua` cannot reach: it reads `custom/wallpaper.lua` and `custom/hyprpaper.conf` itself when present. Register binds through `lib/key/bind.lua` (`Bind.key`, `Bind.submap`), never raw `hl.bind` or `hl.define_submap`, so `Bind.unbind` can remove a key from one submap (hyprwm/Hyprland#15040). `Bind.unbind` and `Bind.submap` are public API for `custom/`; keep their signatures stable.
 
+## Quickshell key conventions
+
+Keep keys consistent across surfaces; new popups, pickers and skins follow these:
+
+- Popups (`components/Popup.qml`): Tab/Shift+Tab step the top tabs, `[`/`]` step the bottom views; a popup with only one level answers both. Number keys pick a tab. Clock: Tab and `[`/`]` cycle timezones.
+- Overviews (workspace and share picker): `s` selects a whole screen, Tab/Shift+Tab switch regular and special workspaces, `[`/`]` cycle windows, `f` toggles the view; in the share picker `r` opens the region selector and Esc there comes back.
+- Lock and greeter input is a vim model owned by the shared router (`Lock.key`, `Greeter.key`): NORMAL while nothing is typed, where `h/j/k/l` navigate skin menus and `h`/`l` do nothing on vertical lists; `i` or any other printable key enters INSERT (`-- INSERT --` shows bottom-left); Esc on an empty buffer returns to NORMAL. The skin contract is in the Quickshell README.
+- Times use `TimeFormat` and `ClockSettings` (Settings > Clock); state paths use `theme/Paths.qml` and `lib/state.lua` instead of recomputing XDG dirs.
+
+## Agent tooling
+
+`.claude/settings.json` adds three hooks: killing `qs` is refused unless the lock reports `unlocked`; a git command that changes `home/quickshell` in the live checkout restarts the stowed bar (hot-reload keeps stale code); and `just check` runs before a turn ends when tracked files have uncommitted changes. Repo skills: `test-bar` (put branches on the live bar and restore it), `lock-preview` (skins on eDP-1) and `ship-batch` (merge and clean up). Worktrees have no `repos/`, so run `just check` in the real checkout before merging.
+
 ## Betterbird / tbkeys
 
 `home/thunderbird/.config/tbkeys/*.js` are loaded in a fixed dependency order by `system/opt/betterbird/betterbird.cfg` — later modules may call earlier ones, never the reverse. `core.js` runs the previous load's teardown hooks and recreates `window.tk` from scratch. See `home/thunderbird/README.md` for the full module responsibility table; put new behavior in the module that owns that responsibility rather than reimplementing primitives.
