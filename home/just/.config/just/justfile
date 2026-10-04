@@ -79,7 +79,7 @@ zsh:
 # Search
 
 todo:
-    @result="$(rg --line-number --column --no-heading 'TODO|FIXME|HACK' ~/Development | \
+    @result="$(rg --line-number --column --no-heading 'TODO|FIXME|HACK' "${GITHUB_DIR:-$HOME/Development}" | \
       fzf --delimiter ':' \
           --preview 'bat --style=numbers --color=always --highlight-line {2} {1}' \
           --preview-window=right:60%)"; \
@@ -89,7 +89,7 @@ todo:
     nvim "+$line" "$file"
 
 repos:
-    @dir="$(fd -H '^\.git$' ~/Development -t d | sed 's|/.git$||' | fzf)"; \
+    @dir="$(fd -H '^\.git$' "${GITHUB_DIR:-$HOME/Development}" -t d | sed 's|/.git$||' | fzf)"; \
     [ -z "$dir" ] && exit 0; \
     yazi "$dir"
 

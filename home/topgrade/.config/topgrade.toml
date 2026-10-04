@@ -277,6 +277,7 @@ show_arch_news = false
 max_concurrency = 5
 
 # Additional git repositories to pull or fetch
+# Topgrade expands only ~ here, not $GITHUB_DIR; edit if your checkouts live elsewhere.
 repos = ["~/dotfiles", "~/Development/external/", "~/Development/forks/"]
 
 # Set to `false` to skip pulling/fetching the predefined git repos
