@@ -2,9 +2,22 @@
 # Synthesizes each pack's sounds into sounds/<pack>/ (a style, or an extra pack such as mgs2): cursor, confirm, cancel, notify, and where made error, lock and unlock (ogg). Also writes lock skin effects (mgs2-skin, goldeneye-skin). Needs numpy and ffmpeg.
 # Usage: synth-sounds [--out DIR] [NAME...]   (no names means all; files in ~/.local/share/quickshell/sounds/<style>/ override these)
 import argparse
+import importlib.util
+import os
+import shutil
 import subprocess
 import sys
 from pathlib import Path
+
+
+def require(tools, modules):
+    missing = [f"{name} (pacman -S {pkg})" for name, pkg in tools if not shutil.which(name)]
+    missing += [f"python module {name} (pacman -S {pkg})" for name, pkg in modules if importlib.util.find_spec(name) is None]
+    if missing:
+        sys.exit(f"{os.path.basename(sys.argv[0])}: missing " + ", ".join(missing))
+
+
+require([("ffmpeg", "ffmpeg")], [("numpy", "python-numpy")])
 
 import numpy as np
 
