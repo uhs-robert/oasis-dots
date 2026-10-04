@@ -6,12 +6,11 @@ import Quickshell.Services.UPower
 import "../components"
 import "../theme"
 import "../services"
-import "../components/modern" as Modern
 import "../components/nes" as Nes
 import "snes" as Snes
 import "../components/ps1" as Ps1
 import "../components/ps2" as Ps2
-import "../components/goldeneye" as Goldeneye
+import "battery"
 
 Popup {
     id: root
@@ -39,16 +38,9 @@ Popup {
         return "Discharging";
     }
 
-    function format_time(seconds) {
-        if (seconds <= 0) return "";
-        const h = Math.floor(seconds / 3600);
-        const m = Math.round((seconds % 3600) / 60);
-        return h > 0 ? (h + "h " + m + "m") : (m + "m");
-    }
-
     readonly property string time_label: {
-        if (has_battery && battery_device.timeToEmpty > 0) return format_time(battery_device.timeToEmpty) + " remaining";
-        if (has_battery && battery_device.timeToFull > 0) return format_time(battery_device.timeToFull) + " until full";
+        if (has_battery && battery_device.timeToEmpty > 0) return Power.format_time(battery_device.timeToEmpty) + " remaining";
+        if (has_battery && battery_device.timeToFull > 0) return Power.format_time(battery_device.timeToFull) + " until full";
         return "";
     }
 
@@ -65,6 +57,13 @@ Popup {
         ];
         if (PowerProfiles.hasPerformanceProfile) list.push({ label: "Performance", value: PowerProfile.Performance, key: "p" });
         return list;
+    }
+
+    readonly property var current_profile: root.profiles.find(p => p.value === PowerProfiles.profile)
+
+    function row_kind(index) {
+        const row = root.nav_rows[index];
+        return row ? row.kind : "";
     }
 
     // Keyboard nav walks brightness, keyboard backlight (if present), then profiles.
@@ -185,67 +184,14 @@ Popup {
                 Layout.fillWidth: true
                 Layout.preferredHeight: active ? Style.px(100) : 0
                 Layout.bottomMargin: 6
-                sourceComponent: Goldeneye.GaugeHeader {
-                    readonly property bool is_low: root.percent <= 20 && root.state_label === "Discharging"
-                    readonly property var profile: root.profiles.find(p => p.value === PowerProfiles.profile)
-                    size: Style.px(100)
-                    value: root.percent / 100
-                    low: is_low
-                    label: "BATTERY"
-
-                    Goldeneye.ReadoutLine {
-                        Layout.fillWidth: true
-                        label: "STATUS"
-                        alert: is_low
-                        text: root.state_label
-                    }
-
-                    RowLayout {
-                        Layout.fillWidth: true
-                        spacing: 10
-                        visible: root.rate > 0 || root.time_label !== ""
-
-                        Goldeneye.ReadoutLine {
-                            Layout.fillWidth: true
-                            Layout.preferredWidth: 1
-                            visible: root.rate > 0
-                            label: "DRAW"
-                            digits: root.rate.toFixed(1)
-                            unit: "W"
-                        }
-
-                        Goldeneye.ReadoutLine {
-                            Layout.fillWidth: true
-                            Layout.preferredWidth: 1
-                            visible: root.time_label !== ""
-                            label: root.state_label === "Charging" ? "TO FULL" : "LEFT"
-                            text: root.time_label.replace(" remaining", "").replace(" until full", "")
-                        }
-                    }
-
-                    RowLayout {
-                        Layout.fillWidth: true
-                        spacing: 10
-                        visible: healthy || (root.ppd_available && !!profile)
-                        readonly property bool healthy: !!root.battery_device && root.battery_device.healthSupported
-
-                        Goldeneye.ReadoutLine {
-                            Layout.fillWidth: true
-                            Layout.preferredWidth: 1
-                            visible: parent.healthy
-                            label: "HEALTH"
-                            digits: root.battery_device && root.battery_device.healthSupported ? String(Math.round(root.battery_device.healthPercentage)) : ""
-                            unit: "%"
-                        }
-
-                        Goldeneye.ReadoutLine {
-                            Layout.fillWidth: true
-                            Layout.preferredWidth: 1
-                            visible: root.ppd_available && !!profile
-                            label: "PROFILE"
-                            text: profile ? profile.label : ""
-                        }
-                    }
+                sourceComponent: WatchGauge {
+                    percent: root.percent
+                    state_label: root.state_label
+                    rate: root.rate
+                    time_label: root.time_label
+                    device: root.battery_device
+                    ppd_available: root.ppd_available
+                    profile_label: root.current_profile ? root.current_profile.label : ""
                 }
             }
 
@@ -363,141 +309,34 @@ Popup {
                 font.pixelSize: root.st.fs(-1)
             }
 
-            Loader {
-                active: root.st.level_layout === "capsule"
-                visible: active
-                Layout.fillWidth: true
-                Layout.topMargin: 6
-                sourceComponent: Modern.CapsuleSlider {
-                    glow: true
-                    glyph: "󰃠"
-                    label: "Brightness"
-                    value: Backlight.percent / 100
-                    selected: !!root.nav_rows[root.selected] && root.nav_rows[root.selected].kind === "brightness"
-                    onMoved: v => Backlight.set_percent(Math.max(1, Math.round(v * 100)))
-
-                    WheelHandler {
-                        acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
-                        onWheel: event => {
-                            root.wheel_adjust("brightness", event);
-                            event.accepted = true;
-                        }
-                    }
-                }
-            }
-
-            Loader {
-                active: root.st.level_layout === "capsule" && Backlight.has_kbd
-                visible: active
-                Layout.fillWidth: true
-                Layout.topMargin: 4
-                sourceComponent: Modern.CapsuleSlider {
-                    glow: true
-                    glyph: "󰌌"
-                    label: "Keyboard"
-                    value: Backlight.kbd_percent / 100
-                    selected: !!root.nav_rows[root.selected] && root.nav_rows[root.selected].kind === "kbd"
-                    onMoved: v => Backlight.kbd_set_percent(Math.round(v * 100))
-
-                    WheelHandler {
-                        acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
-                        onWheel: event => {
-                            root.wheel_adjust("kbd", event);
-                            event.accepted = true;
-                        }
-                    }
-                }
-            }
-
-            MenuRow {
+            LevelRow {
                 id: brightness_row
-                visible: root.st.level_layout !== "capsule"
-                Layout.fillWidth: true
-                Layout.topMargin: 6
-                Layout.preferredHeight: Style.px(22)
-                selected: !!root.nav_rows[root.selected] && root.nav_rows[root.selected].kind === "brightness"
-
-                WheelHandler {
-                    acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
-                    onWheel: event => {
-                        root.wheel_adjust("brightness", event);
-                        event.accepted = true;
-                    }
-                }
-
-                RowLayout {
-                    anchors.fill: parent
-                    anchors.leftMargin: 6 + brightness_row.inset
-                    anchors.rightMargin: 6 + brightness_row.key_space
-                    spacing: 8
-
-                    Text {
-                        text: "󰃠"
-                        color: brightness_row.fg(root.st.text_primary)
-                        font.family: root.st.font_family
-                        font.pixelSize: root.st.font_size
-                    }
-
-                    Slider {
-                        Layout.fillWidth: true
-                        on_selection: brightness_row.selected
-                        value: Backlight.percent / 100
-                        onMoved: v => Backlight.set_percent(Math.round(v * 100))
-                    }
-
-                    Text {
-                        Layout.preferredWidth: root.percent_width
-                        text: Backlight.percent + "%"
-                        color: brightness_row.fg(root.st.text_fg)
-                        font.family: root.st.font_family
-                        font.pixelSize: root.st.fs(-1)
-                    }
-                }
+                st: root.st
+                glyph: "󰃠"
+                label: "Brightness"
+                percent: Backlight.percent
+                selected: root.row_kind(root.selected) === "brightness"
+                percent_width: root.percent_width
+                capsule: root.st.level_layout === "capsule"
+                floor: root.st.level_layout === "capsule" ? 1 : 0
+                top_gap: 6
+                onMoved: pct => Backlight.set_percent(pct)
+                onWheeled: event => root.wheel_adjust("brightness", event)
             }
 
-            MenuRow {
+            LevelRow {
                 id: kbd_row
-                visible: Backlight.has_kbd && root.st.level_layout !== "capsule"
-                Layout.fillWidth: true
-                Layout.preferredHeight: Style.px(22)
-                selected: !!root.nav_rows[root.selected] && root.nav_rows[root.selected].kind === "kbd"
-
-                WheelHandler {
-                    acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
-                    onWheel: event => {
-                        root.wheel_adjust("kbd", event);
-                        event.accepted = true;
-                    }
-                }
-
-                RowLayout {
-                    anchors.fill: parent
-                    anchors.leftMargin: 6 + kbd_row.inset
-                    anchors.rightMargin: 6 + kbd_row.key_space
-                    spacing: 8
-
-                    Text {
-                        text: "󰌌"
-                        color: kbd_row.fg(root.st.text_primary)
-                        font.family: root.st.font_family
-                        font.pixelSize: root.st.font_size
-                    }
-
-                    Slider {
-                        Layout.fillWidth: true
-                        on_selection: kbd_row.selected
-                        value: Backlight.kbd_percent / 100
-                        onMoved: v => Backlight.kbd_set_percent(Math.round(v * 100))
-                    }
-
-                    Text {
-                        Layout.preferredWidth: root.percent_width
-                        text: Backlight.kbd_percent + "%"
-                        color: kbd_row.fg(root.st.text_fg)
-                        font.family: root.st.font_family
-                        font.pixelSize: root.st.fs(-1)
-                    }
-                }
+                visible: Backlight.has_kbd
+                st: root.st
+                glyph: "󰌌"
+                label: "Keyboard"
+                percent: Backlight.kbd_percent
+                selected: root.row_kind(root.selected) === "kbd"
+                percent_width: root.percent_width
+                capsule: root.st.level_layout === "capsule"
+                top_gap: root.st.level_layout === "capsule" ? 4 : 0
+                onMoved: pct => Backlight.kbd_set_percent(pct)
+                onWheeled: event => root.wheel_adjust("kbd", event)
             }
 
             Text {

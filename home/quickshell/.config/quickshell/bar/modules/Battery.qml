@@ -42,17 +42,10 @@ BarModule {
         return Theme.theme_primary;
     }
 
-    function format_time(seconds) {
-        if (seconds <= 0) return "";
-        const h = Math.floor(seconds / 3600);
-        const m = Math.round((seconds % 3600) / 60);
-        return h > 0 ? (h + "h " + m + "m") : (m + "m");
-    }
-
     tooltip_text: {
         if (!has_battery) return "";
-        if (device.timeToEmpty > 0) return format_time(device.timeToEmpty) + " remaining";
-        if (device.timeToFull > 0) return format_time(device.timeToFull) + " until full";
+        if (device.timeToEmpty > 0) return Power.format_time(device.timeToEmpty) + " remaining";
+        if (device.timeToFull > 0) return Power.format_time(device.timeToFull) + " until full";
         return Math.round(percent) + "%";
     }
 
