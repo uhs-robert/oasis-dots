@@ -260,8 +260,8 @@ Item {
         const n = Math.round(v);
         return (n < 0 ? "-" : "") + String(Math.abs(n)).padStart(4, "0");
     }
-    width: root.skinned ? root.skin.implicitWidth : root.duckhunt ? root.dh_width : root.goldeneye ? root.ge_rim : root.scopeitem ? root.si_pad * 2 + root.si_body_w : root.materia ? root.mat_width : root.pokemon ? root.pk_width : root.view + root.pad * 2 + (root.jrpg ? root.jrpg_drop : 0)
-    height: root.skinned ? root.skin.implicitHeight : root.duckhunt ? root.dh_lens_size + root.dh_gap + root.dh_hud_h + root.dh_gap + root.dh_score_h : root.goldeneye ? root.ge_rim + root.ge_strip_gap + root.ge_strip_h : root.scope ? root.view + root.pad * 2 + root.header_h + root.foot_h : root.jrpg ? root.pad + root.header_h + root.view + root.jrpg_gap + root.jrpg_stats_h + root.pad + root.jrpg_drop : root.scopeitem ? root.si_pad + root.si_ruler_h + root.view + root.si_foot_gap + root.si_foot_h + root.si_pad : root.materia ? root.mat_pad_y * 2 + root.mat_header_h + root.view + root.mat_row_gap + mat_rows_col.implicitHeight : root.pokemon ? root.pk_pad * 2 + root.pk_header_h + root.pk_lens_gap * 2 + root.view + root.pk_stats_h + root.pk_divider_gap * 2 + root.pk_divider_h + root.pk_msg_h : root.view + root.pad * 2 + coords.implicitHeight + 4 + (root.pixel_mode ? swatch_row.height + 4 : 0)
+    width: root.skinned ? root.skin.implicitWidth : root.duckhunt ? root.dh_width : root.goldeneye ? root.ge_rim : root.scopeitem ? root.si_pad * 2 + root.si_body_w : root.pokemon ? root.pk_width : root.view + root.pad * 2 + (root.jrpg ? root.jrpg_drop : 0)
+    height: root.skinned ? root.skin.implicitHeight : root.duckhunt ? root.dh_lens_size + root.dh_gap + root.dh_hud_h + root.dh_gap + root.dh_score_h : root.goldeneye ? root.ge_rim + root.ge_strip_gap + root.ge_strip_h : root.scope ? root.view + root.pad * 2 + root.header_h + root.foot_h : root.jrpg ? root.pad + root.header_h + root.view + root.jrpg_gap + root.jrpg_stats_h + root.pad + root.jrpg_drop : root.scopeitem ? root.si_pad + root.si_ruler_h + root.view + root.si_foot_gap + root.si_foot_h + root.si_pad : root.pokemon ? root.pk_pad * 2 + root.pk_header_h + root.pk_lens_gap * 2 + root.view + root.pk_stats_h + root.pk_divider_gap * 2 + root.pk_divider_h + root.pk_msg_h : root.view + root.pad * 2 + coords.implicitHeight + 4 + (root.pixel_mode ? swatch_row.height + 4 : 0)
     x: root.at.x + root.gap + root.width <= root.area_width ? root.at.x + root.gap : root.at.x - root.flip_gap - root.width
     y: root.at.y + root.gap + root.height <= root.area_height ? root.at.y + root.gap : root.at.y - root.gap - root.height
 
@@ -322,63 +322,15 @@ Item {
         antialiasing: false
     }
 
-    Ff7Parts.Ff7Window {
-        visible: root.materia
-        anchors.fill: parent
-    }
-
-    Item {
-        id: mat_header
-        visible: root.materia
-        x: root.mat_pad_x
-        y: root.mat_pad_y
-        width: root.mat_width - root.mat_pad_x * 2
-        height: 22
-
-        MateriaOrb {
-            id: mat_orb
-            visible: root.pixel_mode
-            anchors.left: parent.left
-            anchors.verticalCenter: parent.verticalCenter
-            width: 22
-            height: 22
-            color: Screenshot.pixel_hex !== "" ? Screenshot.pixel_hex : Theme.fg_muted
-        }
-
-        Text {
-            anchors.left: root.pixel_mode ? mat_orb.right : parent.left
-            anchors.leftMargin: root.pixel_mode ? 8 : 0
-            anchors.verticalCenter: parent.verticalCenter
-            text: root.pixel_mode ? (Screenshot.pixel_hex !== "" ? Screenshot.pixel_hex : "#------") + " Materia" : "Area Materia"
-            color: Theme.fg_strong
-            style: Text.Raised
-            styleColor: Style.text_shadow
-            font.family: Style.font_family
-            font.pixelSize: Style.fs(-4)
-        }
-    }
-
-    Rectangle {
-        visible: root.materia
-        x: lens_content.x - 2
-        y: lens_content.y - 2
-        width: lens_content.width + 4
-        height: lens_content.height + 4
-        radius: 4
-        color: "transparent"
-        border.width: 2
-        border.color: Style.frame_border_color
-    }
-
     LoupeLens {
         id: lens_content
         loupe: root
-        x: root.duckhunt ? root.dh_lens_x + root.dh_pad : root.goldeneye ? (root.ge_rim - root.view) / 2 : root.scopeitem ? root.si_pad : root.materia ? root.mat_pad_x : root.pokemon ? (root.pk_width - root.view) / 2 : root.pad
-        y: root.duckhunt ? root.dh_pad : root.goldeneye ? (root.ge_rim - root.view) / 2 : root.scopeitem ? root.si_pad + root.si_ruler_h : root.materia ? root.mat_pad_y + root.mat_header_h : root.pokemon ? root.pk_pad + root.pk_header_h + root.pk_lens_gap : root.pad + root.header_h
+        x: root.duckhunt ? root.dh_lens_x + root.dh_pad : root.goldeneye ? (root.ge_rim - root.view) / 2 : root.scopeitem ? root.si_pad : root.pokemon ? (root.pk_width - root.view) / 2 : root.pad
+        y: root.duckhunt ? root.dh_pad : root.goldeneye ? (root.ge_rim - root.view) / 2 : root.scopeitem ? root.si_pad + root.si_ruler_h : root.pokemon ? root.pk_pad + root.pk_header_h + root.pk_lens_gap : root.pad + root.header_h
         visible: !root.skinned && !root.goldeneye
         layer.enabled: root.goldeneye && !root.skinned
         grid_color: root.scanvisor ? Qt.alpha(Theme.cyan, 0.14) : Qt.alpha(Theme.bg_shadow, 0.35)
-        center_color: root.duckhunt ? Theme.fg_strong : root.scope ? Style.picker_hud : root.materia ? Theme.fg_strong : root.pokemon ? Style.shade_1 : Style.caret_color
+        center_color: root.duckhunt ? Theme.fg_strong : root.scope ? Style.picker_hud : root.pokemon ? Style.shade_1 : Style.caret_color
 
     }
 
@@ -432,92 +384,6 @@ Item {
         color: Style.text_fg
         font.family: Style.mono_font
         font.pixelSize: Style.fs(-4)
-    }
-
-    Column {
-        id: mat_rows_col
-        visible: root.materia
-        x: root.mat_pad_x
-        y: root.mat_pad_y + root.mat_header_h + root.view + root.mat_row_gap
-        width: root.mat_width - root.mat_pad_x * 2
-        spacing: 4
-
-        Repeater {
-            model: root.materia ? root.mat_rows : []
-
-            Column {
-                id: mat_row
-                required property var modelData
-                width: mat_rows_col.width
-                spacing: 2
-
-                Item {
-                    width: parent.width
-                    height: 14
-
-                    Text {
-                        anchors.left: parent.left
-                        anchors.verticalCenter: parent.verticalCenter
-                        text: mat_row.modelData.label
-                        color: Theme.theme_primary_light
-                        font.family: Style.font_family
-                        font.pixelSize: Style.fs(-6)
-                    }
-
-                    Text {
-                        anchors.right: parent.right
-                        anchors.verticalCenter: parent.verticalCenter
-                        text: mat_row.modelData.value
-                        color: Theme.fg_strong
-                        font.family: Style.font_family
-                        font.pixelSize: Style.fs(-6)
-                    }
-                }
-
-                Rectangle {
-                    visible: mat_row.modelData.bar
-                    width: parent.width
-                    height: 5
-                    color: Theme.bg_shadow
-                    border.width: 1
-                    border.color: Theme.fg_muted
-
-                    Rectangle {
-                        x: 1
-                        y: 1
-                        width: Math.max(0, (parent.width - 2) * Math.max(0, Math.min(1, mat_row.modelData.ratio)))
-                        height: parent.height - 2
-                        gradient: Gradient {
-                            GradientStop { position: 0; color: mat_row.modelData.color }
-                            GradientStop { position: 1; color: Theme.fg_strong }
-                        }
-                    }
-                }
-            }
-        }
-
-        Item {
-            width: mat_rows_col.width
-            height: 14
-
-            Text {
-                anchors.left: parent.left
-                anchors.verticalCenter: parent.verticalCenter
-                text: "Lv"
-                color: Theme.theme_primary_light
-                font.family: Style.font_family
-                font.pixelSize: Style.fs(-6)
-            }
-
-            Text {
-                anchors.right: parent.right
-                anchors.verticalCenter: parent.verticalCenter
-                text: String(Screenshot.zoom_index + 1)
-                color: Theme.fg_strong
-                font.family: Style.font_family
-                font.pixelSize: Style.fs(-6)
-            }
-        }
     }
 
     Item {
