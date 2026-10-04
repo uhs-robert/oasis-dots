@@ -144,6 +144,33 @@ Singleton {
         root.active.position = target;
     }
 
+    function step_player(delta) {
+        if (root.players.length === 0) return;
+        const idx = root.players.indexOf(root.active);
+        const next_idx = (idx + delta + root.players.length) % root.players.length;
+        root.select(root.players[next_idx]);
+    }
+
+    function seek_ratio(ratio) {
+        if (!root.active || !root.active.canSeek || !root.active.positionSupported) return;
+        const length = root.length_of(root.active);
+        root.active.position = Math.max(0, Math.min(length, ratio * length));
+    }
+
+    function toggle_shuffle() {
+        if (!root.active || !root.active.shuffleSupported) return;
+        root.active.shuffle = !root.active.shuffle;
+    }
+
+    // Cycles None -> Playlist -> Track -> None.
+    function cycle_loop() {
+        if (!root.active || !root.active.loopSupported) return;
+        const cur = root.active.loopState;
+        if (cur === MprisLoopState.None) root.active.loopState = MprisLoopState.Playlist;
+        else if (cur === MprisLoopState.Playlist) root.active.loopState = MprisLoopState.Track;
+        else root.active.loopState = MprisLoopState.None;
+    }
+
     // MprisPlayer.position doesn't push updates on its own; poll it while a popup is open.
     Timer {
         interval: 1000
