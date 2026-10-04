@@ -31,14 +31,18 @@ launch() {
   sleep 6
 }
 
+fail_pattern='ERROR|TypeError|ReferenceError|Binding loop|is not a type|Could not set initial property|File not found|is not installed|Cannot assign'
+# shellcheck disable=SC2016
+load_hint='a QML type or file failed to load; for `X is not a type` on a folder loaded by URL, add `import "<folder>"` to the loader file (see #531)'
+
 verify() {
   local log=$1
   pgrep -af '^qs ' || die "qs is not running after launch; read the log with: $log"
   local errors
-  errors=$($log 2>&1 | grep -E 'ERROR|TypeError|ReferenceError|Binding loop' || true)
+  errors=$($log 2>&1 | sed 's/\x1b\[[0-9;]*m//g' | grep -E "$fail_pattern" || true)
   [[ -z $errors ]] || {
     echo "$errors" >&2
-    die "the bar started but logged errors (above)"
+    die "the bar started but logged errors (above); $load_hint"
   }
   $log 2>&1 | grep -q 'Configuration Loaded' || die "no 'Configuration Loaded' in the log yet"
   echo "test-bar: loaded cleanly"
@@ -139,7 +143,7 @@ probe() {
     sleep 0.4
   done
   sleep 1.5
-  local new warns errors repeated
+  local new warns errors repeated load_fails
   new=$(qs log --pid "$pid" 2>&1 | tail -n +"$((before + 1))" | sed 's/\x1b\[[0-9;]*m//g')
   warns=$(grep -E '^ *WARN' <<<"$new" | sort | uniq -c | sort -rn || true)
   errors=$(grep -E '^ *ERROR' <<<"$new" | sort | uniq -c | sort -rn || true)
@@ -150,7 +154,11 @@ probe() {
   echo "-- quickshell layers"
   hyprctl layers -j | jq -r '.[].levels[][] | select(.namespace | startswith("quickshell-")) | "\(.namespace) \(.x),\(.y) \(.w)x\(.h)"'
   repeated=$(awk '$1 > 5' <<<"$warns")
-  if [[ -n $errors ]]; then
+  load_fails=$(grep -E "$fail_pattern" <<<"$new" | grep -vE '^ *ERROR' || true)
+  if [[ -n $load_fails ]]; then
+    echo "$load_fails" >&2
+    die "$load_hint"
+  elif [[ -n $errors ]]; then
     die "new ERROR lines in the log"
   elif [[ -n $repeated ]]; then
     die "a WARN repeated more than 5 times"
