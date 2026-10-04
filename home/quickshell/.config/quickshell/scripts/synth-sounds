@@ -567,13 +567,14 @@ def ps1():
     high = tone(t, [(1482, 1), (2964, 0.9)]) * window(t, 0, 0.036, 0.003)
     trill = mix_at([(i * 0.038, low if i % 2 == 0 else high) for i in range(8)], 0.31)
     ring = mix_at([(0, trill), (0.435, trill)], 0.75)
+    mgs2_set = mgs2()
     return {
         "cursor": finish(np.concatenate([buzz(0.1, first=1.0), np.zeros(480)]), 0.34),
         "confirm": finish(lowpass(reverb(select, 0.5, 0.25), 14000), 0.2),
         "cancel": finish(lowpass(reverb(back, 0.6, 0.3), 14000), 0.2),
         "notify": finish(lowpass(reverb(ring, 0.5, 0.2), 12000), 0.24),
         # MGS1 shares MGS2's menu sound design, so these are the MGS2 recreations.
-        **{kind: mgs2()[kind] for kind in ("error", "lock", "unlock")},
+        **{kind: mgs2_set[kind] for kind in ("error", "lock", "unlock")},
     }
 
 

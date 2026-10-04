@@ -52,6 +52,8 @@ Item {
 
     readonly property string ui_font: "Nunito"
     readonly property color white: Theme.fg_strong
+    readonly property string mode_font: root.ui_font
+    readonly property color mode_color: root.white
     readonly property color shadow: Theme.bg_shadow
     readonly property color label: Qt.tint(Theme.blue, Qt.alpha(Theme.theme_primary_light, 0.8))
     readonly property color dim: Qt.tint(Theme.fg_dim, Qt.alpha(Theme.fg_strong, 0.6))
@@ -98,9 +100,13 @@ Item {
         const c = root.ctx;
         if (!root.can_step || c.buffer_length > 0 || c.checking || c.granted) return false;
         const ctrl = (event.modifiers & Qt.ControlModifier) && !(event.modifiers & Qt.AltModifier);
-        const enter = !ctrl && (event.key === Qt.Key_Return || event.key === Qt.Key_Enter || event.key === Qt.Key_Space);
-        const up = event.key === Qt.Key_Up || event.key === Qt.Key_Down;
+        const enter = !ctrl && (event.key === Qt.Key_Return || event.key === Qt.Key_Enter);
+        const letter = ctrl ? "" : event.text;
+        const down = event.key === Qt.Key_Down || letter === "j";
+        const up = down || event.key === Qt.Key_Up || letter === "k";
         const printable = !ctrl && event.text !== "" && event.text.charCodeAt(0) > 32 && event.text.charCodeAt(0) !== 127;
+        const typed = !ctrl && event.text !== "" && event.text.charCodeAt(0) >= 32 && event.text.charCodeAt(0) !== 127;
+        if (root.screen !== "pw" && (letter === "h" || letter === "l")) return true;
         if (root.screen === "pw") {
             if (event.key !== Qt.Key_Escape) return false;
             c.scene = "files:" + root.user_index;
@@ -109,7 +115,7 @@ Item {
         }
         if (root.screen === "files") {
             if (up) {
-                const step = event.key === Qt.Key_Down ? 1 : root.slot_count - 1;
+                const step = down ? 1 : root.slot_count - 1;
                 c.scene = "files:" + (root.file_sel + step) % root.slot_count;
                 root.cue("cursor");
                 return true;
@@ -130,7 +136,7 @@ Item {
                 root.cue("cancel");
                 return true;
             }
-            if (printable) {
+            if (typed) {
                 const u = root.users[root.file_sel];
                 if (u && u.name !== c.user && typeof c.user_request === "function") c.user_request(u.name);
                 c.scene = "pw";
@@ -138,12 +144,13 @@ Item {
             return false;
         }
         if (root.screen !== "title") return false;
+        const go = enter || (!ctrl && event.key === Qt.Key_Space);
         if (up) {
             c.scene = root.on_new ? "" : "title:new";
             root.cue("cursor");
             return true;
         }
-        if (enter) {
+        if (go) {
             if (root.on_new) {
                 root.cue("buzzer");
             } else {

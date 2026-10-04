@@ -30,6 +30,10 @@ done
   echo "ff7-audio: a source is required (see --help)" >&2
   exit 1
 }
+[[ $loop_start =~ ^[0-9]+(\.[0-9]+)?$ ]] || {
+  echo "ff7-audio: --loop-start must be a number of seconds" >&2
+  exit 1
+}
 
 for tool in ffmpeg python3; do
   command -v "$tool" >/dev/null || {
@@ -60,6 +64,8 @@ import sys
 import numpy as np
 x = np.frombuffer(sys.stdin.buffer.read(), dtype=np.float32).astype(np.float64)
 rate = int(sys.argv[1])
+if len(x) < 130 * rate:
+    sys.exit("ff7-audio: the Prelude must be at least 130 s long to find its loop")
 env_rate, n, hop = 11025, 2048, 512
 y = x[::rate // env_rate][: int(250 * env_rate)]
 frames = np.lib.stride_tricks.sliding_window_view(y, n)[::hop] * np.hanning(n)
@@ -75,7 +81,11 @@ for l in range(int(40 * fps), int(200 * fps)):
     v = (s[:m] * s[l:]).sum(axis=1).mean()
     if v > best:
         best, lag = v, l
+if best < 0:
+    sys.exit("ff7-audio: no loop found in the Prelude")
 l0 = int(lag / fps * rate)
+if 120 * rate + l0 + 3000 + 4 * rate > len(x):
+    sys.exit("ff7-audio: the Prelude is too short to confirm its loop")
 seg = 4 * rate
 votes = []
 for t in (60, 90, 120):
@@ -85,7 +95,7 @@ for t in (60, 90, 120):
 print(int(np.median(votes)))
 ' "$rate")
 
-start=$(python3 -c "print(round($loop_start * $rate))")
+start=$(python3 -c 'import sys; print(round(float(sys.argv[1]) * int(sys.argv[2])))' "$loop_start" "$rate")
 mkdir -p "$out"
 ffmpeg -v error -y -i "$prelude" -ar "$rate" -af "atrim=end_sample=$start" -c:a libvorbis -q:a 6 "$out/title_intro.ogg"
 ffmpeg -v error -y -i "$prelude" -ar "$rate" -af "atrim=start_sample=$start:end_sample=$((start + loop_samples)),asetpts=N/SR/TB" -c:a libvorbis -q:a 6 "$out/title_loop.ogg"
@@ -107,4 +117,4 @@ fx 'denied.*' buzzer.wav
 fx 'loading.*' loading.wav
 fx '*save-load*' loaded.wav
 
-printf 'ff7-audio: loop %s samples (%.3fs) from %ss into %s\n' "$loop_samples" "$(python3 -c "print($loop_samples / $rate)")" "$loop_start" "$out"
+printf 'ff7-audio: loop %s samples (%.3fs) from %ss into %s\n' "$loop_samples" "$(python3 -c 'import sys; print(int(sys.argv[1]) / int(sys.argv[2]))' "$loop_samples" "$rate")" "$loop_start" "$out"
