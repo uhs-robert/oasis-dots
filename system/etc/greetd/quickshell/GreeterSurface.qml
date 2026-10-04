@@ -2,6 +2,9 @@
 import QtQuick
 import "theme"
 import "lock/skins/ui"
+// Unused here; Quickshell registers only imported folders, and the skins loaded by URL need these.
+import "lock/skins" as Skins
+import "lock/skins/sound" as Sound
 
 // One screen of the greeter: the lock skin for the saved lock style, else the simple screen, with the session and power keys under it.
 Item {
