@@ -14,22 +14,22 @@ local function read_saved(path)
   return (saved and saved ~= "") and saved or nil
 end
 
--- Restore the theme last selected via switch.lua; a legacy stowed-tree file is migrated once.
+-- Restore the theme last selected via switch.lua; always write the file so Quickshell can watch it.
 local state_dir = require("lib.state")()
 local state_file = state_dir .. "/theme"
 local saved = read_saved(state_file)
-if not saved then
+if saved then
+  Config.theme = saved
+else
   saved = read_saved(os.getenv("HOME") .. "/.config/hypr/theme/.current_theme")
-  if saved then
-    os.execute("mkdir -p '" .. state_dir .. "'")
-    local out = io.open(state_file, "w")
-    if out then
-      out:write(saved)
-      out:close()
-    end
+  if saved then Config.theme = saved end
+  os.execute("mkdir -p '" .. state_dir .. "'")
+  local out = io.open(state_file, "w")
+  if out then
+    out:write(Config.theme)
+    out:close()
   end
 end
-if saved then Config.theme = saved end
 
 --- @class Theme
 --- @field colors table Cached palette color table for the active theme
