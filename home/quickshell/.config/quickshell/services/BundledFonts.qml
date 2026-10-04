@@ -86,7 +86,7 @@ Item {
         }
     }
 
-    // Bar and popup glyphs are Nerd Font codepoints; `arch.ini` installs the fonts, other machines may lack them.
+    // Bar and popup glyphs are Nerd Font codepoints; `lib/fonts.sh` installs Maple Mono NF and `arch.ini` the JetBrains and Symbols ones; other machines may lack them.
     function warn_missing_symbols() {
         const installed = Qt.fontFamilies();
         const missing = [Theme.font_family, "JetBrainsMono Nerd Font", "Symbols Nerd Font"].filter(f => installed.indexOf(f) < 0);
