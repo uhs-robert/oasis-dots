@@ -124,7 +124,7 @@ remove_system_files() {
     sudo mv /etc/greetd/hyprland.lua.bak /etc/greetd/hyprland.lua && success "Restored /etc/greetd/hyprland.lua from its pre-install backup"
   fi
 
-  local dirs=(/etc/greetd/quickshell /var/lib/qs-greeter)
+  local dirs=(/etc/greetd/quickshell "${QS_GREETER_DATA:-/var/lib/qs-greeter}")
   for d in "${dirs[@]}"; do
     if [[ -d "$d" ]]; then
       sudo rm -rf "$d" && success "Removed $d"

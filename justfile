@@ -99,13 +99,18 @@ update-repos:
       fi
     done
 
-# Stage the Quickshell greeter (lock skins, theme, fonts, your lock style) and print its sudo install commands; --install runs them
+# Stage the Quickshell greeter (lock skins, theme, fonts, your lock style) and print its sudo install commands; --install runs them, --from DIR stages from that Quickshell config dir
 greeter-sync *ARGS:
     #!/usr/bin/env bash
     set -euo pipefail
     source lib/greeter.sh
     stage="${XDG_CACHE_HOME:-$HOME/.cache}/dotfiles/greeter"
-    skin=$(stage_greeter "$stage" "$PWD")
+    args=({{ARGS}})
+    from=""
+    for i in "${!args[@]}"; do
+      [[ ${args[i]} == --from ]] && from=${args[i+1]:-}
+    done
+    skin=$(stage_greeter "$stage" "$PWD" "$from")
     echo "Staged greeter in $stage (skin: $skin)"
     if [[ " {{ARGS}} " == *" --install "* ]]; then
       while read -r cmd; do echo "+ $cmd"; eval "$cmd"; done < <(greeter_install_cmds "$stage" "$PWD")

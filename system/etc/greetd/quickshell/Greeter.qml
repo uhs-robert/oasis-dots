@@ -12,10 +12,11 @@ Singleton {
 
     readonly property bool preview: !Greetd.available
     readonly property string state_dir: Quickshell.env("QS_GREETER_STATE") || ""
+    readonly property string data_dir: Quickshell.env("QS_GREETER_DATA") || "/var/lib/qs-greeter"
 
     // The bar keeps /var/lib/qs-greeter/greeter.json current; the copy from the last greeter-sync covers a missing or bad one.
     property FileView live_settings_file: FileView {
-        path: "/var/lib/qs-greeter/greeter.json"
+        path: root.data_dir + "/greeter.json"
         blockLoading: true
         printErrors: false
     }

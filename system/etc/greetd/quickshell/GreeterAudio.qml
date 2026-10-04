@@ -13,7 +13,7 @@ Scope {
 
     MediaPlayer {
         id: player
-        source: root.wanted ? "file:///var/lib/qs-greeter/" + root.file : ""
+        source: root.wanted ? "file://" + Greeter.data_dir + "/" + root.file : ""
         loops: MediaPlayer.Infinite
         audioOutput: AudioOutput {
             volume: root.level
