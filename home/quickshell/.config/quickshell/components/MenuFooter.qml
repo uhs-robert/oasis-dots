@@ -19,7 +19,7 @@ Item {
     readonly property bool arrows: root.st.footer_arrow !== ""
     // Tabs that show their number already teach "1-N select".
     readonly property string filtered_text: root.st.tab_keys ? root.text.split(" · ").filter(g => !/^1-\d select$/.test(g)).join(" · ") : root.text
-    readonly property int rule_gap: root.st.footer_rule ? (root.st.footer_moon ? 11 : root.st.footer_tanks ? 8 : 5) : 0
+    readonly property int rule_gap: root.st.footer_rule ? (root.st.footer_moon ? 11 : 5) : 0
     readonly property var groups: KeyHints.parse(root.filtered_text)
     // While the enclosing popup searches, its query line takes this footer's place at the same height.
     readonly property var popup: {
@@ -60,13 +60,12 @@ Item {
         spacing: 3
         clip: true
 
-        // footer_tanks draws the rule as a row of energy-tank squares.
         Repeater {
-            model: root.st.footer_rule && !root.st.footer_rule_solid ? Math.max(0, Math.ceil(root.width / (root.st.footer_tanks ? 6 : 7))) : 0
+            model: root.st.footer_rule && !root.st.footer_rule_solid ? Math.max(0, Math.ceil(root.width / 7)) : 0
 
             Rectangle {
-                width: root.st.footer_tanks ? 3 : 4
-                height: root.st.footer_tanks ? 3 : 1
+                width: 4
+                height: 1
                 color: root.st.footer_rule_color
             }
         }
