@@ -10,11 +10,12 @@ die() {
 }
 
 ns=${1:-}
-[[ -n $ns ]] || die "usage: capture.sh <namespace> [--pad N] [--reveal] [--out PATH]"
+[[ -n $ns ]] || die "usage: capture.sh <namespace> [--pad N] [--reveal] [--out PATH] [--rect-file PATH]"
 shift
 pad=0
 reveal=0
 out=""
+rect_file=""
 while (($# > 0)); do
   case $1 in
     --pad)
@@ -27,6 +28,10 @@ while (($# > 0)); do
       ;;
     --out)
       out=${2:?--out needs a path}
+      shift 2
+      ;;
+    --rect-file)
+      rect_file=${2:?--rect-file needs a path}
       shift 2
       ;;
     *) die "unknown argument: $1" ;;
@@ -65,5 +70,6 @@ if ((reveal)); then
 fi
 
 out=${out:-${XDG_RUNTIME_DIR:-/tmp}/capture-$ns-$(date +%H%M%S).png}
+[[ -z $rect_file ]] || echo "$x0,$y0 ${w0}x$h0" >"$rect_file"
 grim -g "$x0,$y0 ${w0}x$h0" "$out"
 echo "$out"
