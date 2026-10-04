@@ -319,6 +319,7 @@ Singleton {
     readonly property bool slant_frame: root.active.slant_frame
     readonly property int slant_room: root.slant_frame ? 8 : 0
     readonly property bool footer_moon: root.active.footer_moon
+    readonly property bool footer_compass: root.active.footer_compass
     readonly property color selection_edge: root.active.selection_edge
     readonly property bool chip_tabs: root.active.chip_tabs
     readonly property bool title_case: root.active.title_case

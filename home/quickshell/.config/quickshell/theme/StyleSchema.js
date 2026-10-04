@@ -224,6 +224,7 @@ var tokens = [
     tok("slant_frame", "bool", false, "Frames drawn by SlantFrame: flat top, bottom corners cut at the bar islands' slant, a sand horizon along the foot."),
     tok("slant_room", "int", null, "Extra room under a frame's content so the long cut clears the footer.", {expr: "root.slant_frame ? 8 : 0"}),
     tok("footer_moon", "bool", false, "A small sand crescent at the right end of the footer rule."),
+    tok("footer_compass", "bool", false, "A visor heading tape in place of the dashed footer rule."),
     tok("selection_edge", "color", "transparent", "A lit edge down the left of the selected row."),
     tok("chip_tabs", "bool", false, "Sub-view chips drawn as tabs that fill their row."),
     tok("title_case", "bool", false, 'Popup, OSD and which-key titles in title case ("NETWORK" to "Network", see title_text); title_size 0 keeps font_size - 2.'),
