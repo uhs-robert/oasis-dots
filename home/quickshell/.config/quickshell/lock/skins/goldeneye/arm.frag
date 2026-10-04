@@ -9,7 +9,7 @@ layout(std140, binding = 0) uniform buf {
     float span_x;
     float span_y;
     float reach;
-    float clip;
+    float crop;
 };
 layout(binding = 1) uniform sampler2D source;
 
@@ -25,6 +25,6 @@ void main() {
     if (beyond.x + beyond.y > 0.0) c *= reach;
     vec2 q = p * vec2(1020.0, 720.0);
     float d = max(max(side(q, vec2(63.0, 0.0), vec2(0.0, 115.0)), side(q, vec2(1020.0, 152.0), vec2(960.0, 0.0))), max(side(q, vec2(960.0, 720.0), vec2(1020.0, 568.0)), side(q, vec2(0.0, 617.0), vec2(130.0, 720.0))));
-    c *= 1.0 - clip * clamp(0.5 + d, 0.0, 1.0);
+    c *= 1.0 - crop * clamp(0.5 + d, 0.0, 1.0);
     fragColor = c * qt_Opacity;
 }
