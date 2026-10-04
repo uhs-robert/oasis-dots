@@ -5,6 +5,8 @@ import "../theme"
 import "../services"
 import "../services/BarLayout.js" as BarLayout
 import "../services/BarModules.js" as BarModules
+// Keeps bar/modules in the Quickshell scan; modules load by URL and need BarModule.
+import "modules"
 import "../components/oasis" as Oasis
 import "../components/neovim" as Neovim
 
