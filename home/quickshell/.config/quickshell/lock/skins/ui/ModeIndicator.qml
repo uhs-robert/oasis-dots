@@ -11,7 +11,7 @@ Text {
 
     readonly property string choice: root.skin && root.skin.mode_indicator ? root.skin.mode_indicator : "shared"
 
-    visible: !!root.ctx && root.ctx.insert && !root.ctx.granted && root.choice === "shared"
+    visible: !!root.ctx && root.ctx.insert && !root.ctx.granted && !root.ctx.saver && root.choice === "shared"
     enabled: false
     anchors.left: parent.left
     anchors.bottom: parent.bottom
