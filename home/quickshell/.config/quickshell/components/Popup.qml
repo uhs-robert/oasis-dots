@@ -6,7 +6,7 @@ import Quickshell.Wayland
 import "../theme"
 import "../services"
 import "Search.js" as Search
-import "../picker/Fuzzy.js" as Fuzzy
+import "popup/fuzzy_rows.js" as FuzzyRows
 import "neovim" as Neovim
 import "goldeneye" as Goldeneye
 
@@ -91,31 +91,8 @@ PanelWindow {
     property bool search_opens_typing: true
     signal search_accept()
     readonly property bool search_shown: root.search_enabled && (root.search_starts_open ? root.search_typing : (root.search_typing || root.search_query !== ""))
-    readonly property var search_matches: root.search_shown ? (root.search_starts_open ? root.fuzzy_matches(root.search_rows, root.search_query) : Search.matches(root.search_rows, root.search_query)) : []
+    readonly property var search_matches: root.search_shown ? (root.search_starts_open ? FuzzyRows.fuzzy_matches(root.search_rows, root.search_query) : Search.matches(root.search_rows, root.search_query)) : []
 
-    function fuzzy_matches(rows, query) {
-        const terms = Fuzzy.terms_of(query);
-        if (terms.length === 0) return [];
-        const found = [];
-        for (let i = 0; i < rows.length; i++) if (Fuzzy.score_item(terms, { label: rows[i] })) found.push(i);
-        return found;
-    }
-
-    // Highest-scoring row, or -1 when nothing matches.
-    function fuzzy_best(rows, query) {
-        const terms = Fuzzy.terms_of(query);
-        if (terms.length === 0) return -1;
-        let best = -1;
-        let best_score = -Infinity;
-        for (let i = 0; i < rows.length; i++) {
-            const m = Fuzzy.score_item(terms, { label: rows[i] });
-            if (m && m.score > best_score) {
-                best_score = m.score;
-                best = i;
-            }
-        }
-        return best;
-    }
     // The base footer is hidden in some styles; it then overlays the content's bottom edge while searching.
     readonly property bool search_overlay: root.search_shown && !root.has_footer && root.footer_hint !== ""
 
@@ -776,7 +753,7 @@ PanelWindow {
                 onTextChanged: {
                     root.search_query = text;
                     if (root.search_typing && text !== "") {
-                        const i = root.search_starts_open ? root.fuzzy_best(root.search_rows, text) : Search.best(root.search_rows, text);
+                        const i = root.search_starts_open ? FuzzyRows.fuzzy_best(root.search_rows, text) : Search.best(root.search_rows, text);
                         if (i >= 0) root.search_select(i);
                     }
                 }
