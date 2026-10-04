@@ -11,7 +11,7 @@ RowLayout {
 
     readonly property var cur: WeatherState.current
     // The ring fills with the temperature over 0-100 °F in either unit.
-    readonly property real fahrenheit: !WeatherState.has_data ? 0 : WeatherState.settings.unit === "celsius" ? root.cur.temp * 9 / 5 + 32 : root.cur.temp
+    readonly property real fahrenheit: !WeatherState.has_data ? 0 : WeatherState.metric ? root.cur.temp * 9 / 5 + 32 : root.cur.temp
 
     function fmt_temp(t) {
         return Math.round(t) + "°" + WeatherState.unit_symbol();

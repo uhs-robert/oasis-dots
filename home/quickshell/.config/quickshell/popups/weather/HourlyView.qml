@@ -173,7 +173,7 @@ Item {
     readonly property string readout: {
         const r = root.cursor_row;
         if (!r) return "";
-        const parts = [WeatherState.format_hour(new Date(r.dt)), Math.round(r.temp) + "°" + WeatherState.unit_symbol(), r.pop + "% pop", r.precip.toFixed(2) + (WeatherState.settings.unit === "celsius" ? " mm" : " in"), r.cond];
+        const parts = [WeatherState.format_hour(new Date(r.dt)), Math.round(r.temp) + "°" + WeatherState.unit_symbol(), r.pop + "% pop", r.precip.toFixed(2) + (WeatherState.metric ? " mm" : " in"), r.cond];
         return parts.join(" · ");
     }
 

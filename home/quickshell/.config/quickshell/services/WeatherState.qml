@@ -36,6 +36,8 @@ Singleton {
     readonly property bool offline: Networking.connectivity === NetworkConnectivity.None
     property bool stale: false
     property string error: ""
+    property string data_unit: ""
+    readonly property bool metric: (root.data_unit !== "" ? root.data_unit : root.settings.unit) === "celsius"
     readonly property bool failed: !root.has_data && root.error !== ""
 
     property double last_success_ms: 0
@@ -394,7 +396,7 @@ Singleton {
 
     // Rough US, Alaska, Hawaii and territory bounds; outside them api.weather.gov has nothing to say.
     function in_alerts_region(lat, lon) {
-        const boxes = [[24, 50, -125, -66], [51, 72, -180, -129], [51, 55, 172, 180], [18, 23, -161, -154], [17, 19, -68, -64], [13, 14, 144, 146], [-15, -14, -171, -169]];
+        const boxes = [[24, 50, -125, -66], [51, 72, -180, -129], [51, 55, 172, 180], [18, 23, -161, -154], [17, 19, -68, -64], [13, 21, 144, 147], [22, 29, -179, -160], [-15, -14, -171, -169]];
         return boxes.some(b => lat >= b[0] && lat <= b[1] && lon >= b[2] && lon <= b[3]);
     }
 
@@ -498,6 +500,7 @@ Singleton {
             root.alerts = parsed.alerts;
             root.alerts_has_data = true;
         }
+        root.data_unit = parsed.data_unit || root.settings.unit;
         root.has_data = true;
     }
 
@@ -517,6 +520,7 @@ Singleton {
             lat: root.lat,
             lon: root.lon,
             geo_ms: root.geo_ms,
+            data_unit: root.data_unit,
             aq_current: root.aq_current,
             aq_hours: root.aq_hours,
             alerts: root.alerts,
@@ -648,6 +652,7 @@ Singleton {
             utc_offset: blob.utc_offset_seconds || 0,
             lat: lat,
             lon: lon,
+            data_unit: root.settings.unit,
             settings_key: JSON.stringify(root.settings)
         };
     }
@@ -879,7 +884,7 @@ Singleton {
     // --- Temperature and precipitation bands (ported from Temperature / Precipitation) ---
 
     function temp_color(temp) {
-        const unit_c = root.settings.unit === "celsius";
+        const unit_c = root.metric;
         const very_cold = unit_c ? 5 : 41;
         const cold = unit_c ? 18 : 65;
         const chilly = unit_c ? 19 : 66;
@@ -899,7 +904,7 @@ Singleton {
     }
 
     function unit_symbol() {
-        return root.settings.unit === "celsius" ? "C" : "F";
+        return root.metric ? "C" : "F";
     }
 
     function format_hour(date) {
@@ -923,16 +928,16 @@ Singleton {
     }
 
     function wind_unit() {
-        return root.settings.unit === "celsius" ? "km/h" : "mph";
+        return root.metric ? "km/h" : "mph";
     }
 
     function pressure_display(hpa) {
-        if (root.settings.unit === "celsius") return Math.round(hpa) + " hPa";
+        if (root.metric) return Math.round(hpa) + " hPa";
         return (hpa * 0.0295299831).toFixed(2) + " inHg";
     }
 
     function visibility_display(meters) {
-        if (root.settings.unit === "celsius") return (meters / 1000).toFixed(1) + " km";
+        if (root.metric) return (meters / 1000).toFixed(1) + " km";
         return (meters / 1609.344).toFixed(1) + " mi";
     }
 
