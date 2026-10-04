@@ -13,7 +13,8 @@ Item {
     required property point origin
     required property bool target_mode
 
-    readonly property point at: Screenshot.cursor_point
+    property point at: Screenshot.cursor_point
+    property bool shown: Screenshot.phase === "select" && Screenshot.cursor_screen === root.screen_name
     readonly property int cx: Math.round(root.at.x)
     readonly property int cy: Math.round(root.at.y)
     // Arms run from 7px to 17px off-center on each axis, 3px thick.
@@ -24,7 +25,7 @@ Item {
         [-1, 7, 3, 10]
     ]
 
-    visible: Style.picker_skin === "tvosd" && Screenshot.phase === "select" && Screenshot.cursor_screen === root.screen_name && !root.target_mode
+    visible: Style.picker_skin === "tvosd" && root.shown && !root.target_mode
 
     Repeater {
         model: root.arms

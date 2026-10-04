@@ -13,16 +13,19 @@ Item {
     required property point origin
     required property bool target_mode
 
-    readonly property point at: Screenshot.cursor_point
+    property point at: Screenshot.cursor_point
+    property bool shown: Screenshot.phase === "select" && Screenshot.cursor_screen === root.screen_name
     readonly property int cx: Math.round(root.at.x)
     readonly property int cy: Math.round(root.at.y)
     readonly property int gx: Math.round(root.origin.x + root.at.x)
     readonly property int gy: Math.round(root.origin.y + root.at.y)
     readonly property color hud: Style.picker_hud
-    readonly property int h_gap: 34
-    readonly property int v_gap: 24
+    property int box_w: 58
+    property int box_h: 38
+    readonly property int h_gap: Math.max(34, root.box_w / 2 + 5)
+    readonly property int v_gap: Math.max(24, root.box_h / 2 + 5)
 
-    visible: Style.picker_skin === "scope" && Screenshot.phase === "select" && Screenshot.cursor_screen === root.screen_name && !root.target_mode
+    visible: Style.picker_skin === "scope" && root.shown && !root.target_mode
 
     Rectangle {
         x: 0
@@ -57,10 +60,10 @@ Item {
     }
 
     Rectangle {
-        x: root.cx - 29
-        y: root.cy - 19
-        width: 58
-        height: 38
+        x: root.cx - Math.floor(root.box_w / 2)
+        y: root.cy - Math.floor(root.box_h / 2)
+        width: root.box_w
+        height: root.box_h
         color: "transparent"
         border.width: 2
         border.color: root.hud

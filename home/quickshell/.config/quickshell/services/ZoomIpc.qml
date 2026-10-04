@@ -12,6 +12,10 @@ IpcHandler {
         Zoom.stop();
     }
 
+    function toggle(): void {
+        Zoom.toggle();
+    }
+
     function step(delta: int): void {
         Zoom.step(delta);
     }

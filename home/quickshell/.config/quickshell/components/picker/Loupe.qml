@@ -37,6 +37,7 @@ Item {
     // Odd, so one buffer pixel sits in the center.
     readonly property int count: Math.floor(loupe.lens / loupe.zoom) % 2 === 0 ? Math.floor(loupe.lens / loupe.zoom) + 1 : Math.floor(loupe.lens / loupe.zoom)
     readonly property int half: (loupe.count - 1) / 2
+    readonly property real sample_half: (loupe.half + 1) / loupe.sample_scale
     readonly property real view: loupe.count * loupe.zoom
     readonly property int bx: Math.floor(loupe.at.x * loupe.sample_scale)
     readonly property int by: Math.floor(loupe.at.y * loupe.sample_scale)
@@ -46,7 +47,10 @@ Item {
     readonly property bool scopeitem: Style.picker_skin === "scopeitem"
     readonly property bool scanvisor: Style.picker_skin === "scanvisor"
     readonly property bool nvimfloat: Style.picker_skin === "nvimfloat"
-    readonly property real gap: loupe.pokemon ? 34 : loupe.duckhunt ? 34 : loupe.materia ? 34 : loupe.tvosd || loupe.tiecomp ? 32 : loupe.scanvisor ? 40 : loupe.tmux ? 30 : loupe.nvimfloat ? 30 : loupe.scope || loupe.jrpg || loupe.goldeneye || loupe.scopeitem ? 36 : 28
+    // Zoom mode raises it so the loupe never sits inside the area it magnifies.
+    property real min_gap: 0
+    readonly property real gap: Math.max(loupe.min_gap, loupe.skin_gap)
+    readonly property real skin_gap: loupe.pokemon ? 34 : loupe.duckhunt ? 34 : loupe.materia ? 34 : loupe.tvosd || loupe.tiecomp ? 32 : loupe.scanvisor ? 40 : loupe.tmux ? 30 : loupe.nvimfloat ? 30 : loupe.scope || loupe.jrpg || loupe.goldeneye || loupe.scopeitem ? 36 : 28
     readonly property bool materia: Style.picker_skin === "materia"
     readonly property bool duckhunt: Style.picker_skin === "duckhunt"
     readonly property real nv_row_h: 20
@@ -244,7 +248,7 @@ Item {
     }
     width: loupe.duckhunt ? loupe.dh_width : loupe.goldeneye ? loupe.ge_rim : loupe.scopeitem ? loupe.si_pad * 2 + loupe.si_body_w : loupe.scanvisor ? loupe.sv_pad * 2 + loupe.view : loupe.tvosd ? loupe.tv_width : loupe.tiecomp ? loupe.tc_width : loupe.tmux ? loupe.tmux_w : loupe.materia ? loupe.mat_width : loupe.pokemon ? loupe.pk_width : loupe.view + loupe.pad * 2 + (loupe.jrpg ? loupe.jrpg_drop : 0)
     height: loupe.duckhunt ? loupe.dh_lens_size + loupe.dh_gap + loupe.dh_hud_h + loupe.dh_gap + loupe.dh_score_h : loupe.goldeneye ? loupe.ge_rim + loupe.ge_strip_gap + loupe.ge_strip_h : loupe.scope ? loupe.view + loupe.pad * 2 + loupe.header_h + loupe.foot_h : loupe.jrpg ? loupe.pad + loupe.header_h + loupe.view + loupe.jrpg_gap + loupe.jrpg_stats_h + loupe.pad + loupe.jrpg_drop : loupe.scopeitem ? loupe.si_pad + loupe.si_ruler_h + loupe.view + loupe.si_foot_gap + loupe.si_foot_h + loupe.si_pad : loupe.scanvisor ? loupe.sv_pad + loupe.sv_header_h + loupe.sv_header_gap + loupe.view + loupe.sv_card_gap + sv_card_col.implicitHeight + loupe.sv_pad : loupe.tvosd ? loupe.tv_pad_y * 2 + loupe.tv_header_h + loupe.tv_lens_gap * 2 + loupe.view + tv_rows_col.implicitHeight : loupe.tiecomp ? loupe.tc_pad_y * 2 + loupe.tc_header_h + loupe.tc_lens_gap * 2 + loupe.view + tc_rows_col.implicitHeight : loupe.tmux ? loupe.tmux_pad * 2 + loupe.tmux_line_h * 3 + loupe.tmux_gap * 2 + loupe.view : loupe.nvimfloat ? loupe.pad + loupe.header_h + loupe.view + loupe.nv_foot_gap + loupe.nv_row_h + loupe.nv_cmd_h + loupe.pad : loupe.materia ? loupe.mat_pad_y * 2 + loupe.mat_header_h + loupe.view + loupe.mat_row_gap + mat_rows_col.implicitHeight : loupe.pokemon ? loupe.pk_pad * 2 + loupe.pk_header_h + loupe.pk_lens_gap * 2 + loupe.view + loupe.pk_stats_h + loupe.pk_divider_gap * 2 + loupe.pk_divider_h + loupe.pk_msg_h : loupe.view + loupe.pad * 2 + coords.implicitHeight + 4 + (loupe.pixel_mode ? swatch_row.height + 4 : 0)
-    x: loupe.at.x + loupe.gap + loupe.width <= loupe.area_width ? loupe.at.x + loupe.gap : loupe.at.x - (loupe.jrpg ? 66 : loupe.gap) - loupe.width
+    x: loupe.at.x + loupe.gap + loupe.width <= loupe.area_width ? loupe.at.x + loupe.gap : loupe.at.x - (loupe.jrpg ? Math.max(66, loupe.min_gap) : loupe.gap) - loupe.width
     y: loupe.at.y + loupe.gap + loupe.height <= loupe.area_height ? loupe.at.y + loupe.gap : loupe.at.y - loupe.gap - loupe.height
 
     Rectangle {
@@ -1061,6 +1065,8 @@ Item {
             }
 
             Text {
+                id: scope_label
+                visible: 26 + foot_left.spacing + scope_label.implicitWidth + 8 + swatch_row.width <= scope_foot.width
                 anchors.verticalCenter: parent.verticalCenter
                 text: loupe.pixel_mode ? "SCOPE" : "CAMERA"
                 color: Style.text_fg
