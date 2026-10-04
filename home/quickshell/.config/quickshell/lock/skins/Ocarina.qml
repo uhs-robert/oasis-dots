@@ -4,6 +4,7 @@ import QtQuick
 import QtQuick.Effects
 import QtQuick.Shapes
 import Quickshell.Io
+import "ui/Menu.js" as Menu
 
 // Ocarina of Time: the title over a clock-driven sky; PRESS START leads to file select, then name entry takes the password.
 Item {
@@ -52,26 +53,21 @@ Item {
 
     // File select's cursor and note live in the scene as "file:<item>:<note>" so every output agrees.
     readonly property var file_items: ["file1", "reboot", "poweroff", "options"]
-    readonly property string file_item: root.scene.startsWith("file:") ? root.scene.split(":")[1] : "file1"
-    readonly property string file_note: root.scene.startsWith("file:") ? (root.scene.split(":")[2] || "") : ""
+    readonly property string file_item: Menu.item_of(root.scene, "file:", "file1")
+    readonly property string file_note: Menu.note_of(root.scene, "file:")
     readonly property var power_words: ({ reboot: "reboot", poweroff: "shut down" })
 
     // The Options menu's cursor and note live in the scene as "opt:<item>:<note>". Greeter-only entries are hidden on the lock.
     readonly property bool ctx_login: !!root.ctx && root.ctx.login === true
-    readonly property var opt_items: root.ctx_login ? ["session", "safe", "text", "firmware", "back"] : ["firmware", "back"]
+    readonly property var opt_items: Menu.opt_items(root.ctx_login)
     readonly property bool in_options: root.scene.startsWith("opt:")
-    readonly property string opt_item: root.in_options ? root.scene.split(":")[1] : (root.opt_items[0] || "")
-    readonly property string opt_note: root.in_options ? (root.scene.split(":")[2] || "") : ""
+    readonly property string opt_item: Menu.item_of(root.scene, "opt:", root.opt_items[0] || "")
+    readonly property string opt_note: Menu.note_of(root.scene, "opt:")
     readonly property var opt_words: ({ firmware: "reboot to firmware setup", text: "switch to the text login" })
+    readonly property var opt_labels: ({ session: "Session: ", safe: "Safe session", text: "Text login", firmware: "Firmware setup", back: "Back" })
 
     function opt_label(item) {
-        switch (item) {
-        case "session": return "Session: " + (root.ctx && "session_name" in root.ctx ? root.ctx.session_name : "");
-        case "safe": return "Safe session";
-        case "text": return "Text login";
-        case "firmware": return "Firmware setup";
-        default: return "Back";
-        }
+        return Menu.opt_label(root.ctx, item, root.opt_labels);
     }
 
     // The title stays on show under the PRESS START fade to white; the view follows `screen` otherwise.
@@ -229,8 +225,8 @@ Item {
     // Enter or Space ignites the title, then steps to file select and name entry; Escape steps back; a printable key jumps to name entry and still types.
     function handle_key(event) {
         const c = root.ctx;
-        if (!root.can_step || c.buffer_length > 0 || c.checking || c.granted) return false;
-        const ctrl = (event.modifiers & Qt.ControlModifier) && !(event.modifiers & Qt.AltModifier);
+        if (Menu.blocked(c)) return false;
+        const ctrl = Menu.ctrl(event);
         if (c.scene === "name") {
             if (event.key === Qt.Key_Escape) {
                 c.scene = "file";
@@ -245,21 +241,17 @@ Item {
         const vertical = down || event.key === Qt.Key_Up || letter === "k";
         if ((on_file || in_opts) && (letter === "h" || letter === "l")) return true;
         if (on_file && !in_opts && vertical) {
-            const i = root.file_items.indexOf(root.file_item);
-            const next = root.file_items[(i + (down ? 1 : root.file_items.length - 1)) % root.file_items.length];
+            const next = Menu.cycle(root.file_items, root.file_item, down);
             c.scene = next === "file1" ? "file" : "file:" + next;
             root.cue("move");
             return true;
         }
         if (in_opts && vertical) {
-            const items = root.opt_items;
-            const i = items.indexOf(root.opt_item);
-            const next = items[(i + (down ? 1 : items.length - 1)) % items.length];
-            c.scene = "opt:" + next;
+            c.scene = "opt:" + Menu.cycle(root.opt_items, root.opt_item, down);
             root.cue("move");
             return true;
         }
-        if (in_opts && !ctrl && (event.key === Qt.Key_Return || event.key === Qt.Key_Enter)) {
+        if (in_opts && Menu.enter(event, ctrl)) {
             root.cue("decide");
             root.opt_activate();
             return true;
@@ -269,7 +261,7 @@ Item {
             root.cue("cancel");
             return true;
         }
-        if (!ctrl && (event.key === Qt.Key_Return || event.key === Qt.Key_Enter || (event.key === Qt.Key_Space && !in_opts && !on_file))) {
+        if (Menu.enter(event, ctrl) || (!ctrl && event.key === Qt.Key_Space && !in_opts && !on_file)) {
             root.cue(on_file ? "decide" : "start");
             if (on_file) root.file_activate();
             else c.scene = c.scene === "lit" ? "file" : "lit";
@@ -280,7 +272,7 @@ Item {
             root.cue("cancel");
             return true;
         }
-        if (!ctrl && event.text !== "" && event.text.charCodeAt(0) >= 32 && event.text.charCodeAt(0) !== 127) c.scene = "name";
+        if (Menu.printable(event, ctrl)) c.scene = "name";
         return false;
     }
 
@@ -300,34 +292,14 @@ Item {
             c.scene = "name";
         } else if (item === "options") {
             c.scene = "opt:" + root.opt_items[0];
-        } else if (root.file_note === "armed") {
-            c.scene = "file:" + item + (c.power_live ? ":running" : ":preview");
-            if (c.power_live) c.power_request(item);
         } else {
-            c.scene = "file:" + item + ":armed";
+            Menu.power_step(c, "file:", item, root.file_note);
         }
     }
 
     // Firmware and text login need a second press while the note shows, like Reboot/Shut down; previews only show a note.
     function opt_activate() {
-        const c = root.ctx;
-        const item = root.opt_item;
-        if (item === "back") {
-            c.scene = "file:options";
-        } else if (item === "session") {
-            if ("session_request" in c) c.session_request();
-        } else if (item === "safe") {
-            if ("safe_request" in c) c.safe_request();
-            c.scene = "name";
-        } else if (root.opt_note === "armed") {
-            c.scene = "opt:" + item + (c.power_live ? ":running" : ":preview");
-            if (c.power_live) {
-                if (item === "firmware") c.power_request("firmware");
-                else if (item === "text" && "fallback_request" in c) c.fallback_request();
-            }
-        } else {
-            c.scene = "opt:" + item + ":armed";
-        }
+        Menu.opt_step(root.ctx, root.opt_item, root.opt_note, "file:options", "name");
     }
 
     clip: true
@@ -373,12 +345,8 @@ Item {
         id: note_timer
         interval: 4000
         onTriggered: {
-            if (!root.can_step || root.screen !== "file") return;
-            if (root.in_options) {
-                if (root.opt_note !== "") root.ctx.scene = "opt:" + root.opt_item;
-            } else if (root.file_note !== "") {
-                root.ctx.scene = "file:" + root.file_item;
-            }
+            const to = root.can_step && root.screen === "file" ? Menu.note_cleared(root.scene, ["opt:", "file:"]) : "";
+            if (to !== "") root.ctx.scene = to;
         }
     }
 
