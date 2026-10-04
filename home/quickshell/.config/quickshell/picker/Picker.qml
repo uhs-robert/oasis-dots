@@ -456,7 +456,7 @@ Popup {
             Text {
                 visible: root.results.length === 0
                 anchors.centerIn: grid
-                text: root.provider && root.provider.items.length > 0 ? "No matches" : "Nothing to pick"
+                text: root.provider && root.provider.items.length > 0 ? "No matches" : root.provider ? root.provider.empty_text : "Nothing to pick"
                 color: root.st.text_muted
                 font.family: root.st.font_family
                 font.pixelSize: root.st.fs(-2)

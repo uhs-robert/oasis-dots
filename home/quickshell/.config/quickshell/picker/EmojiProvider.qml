@@ -16,7 +16,16 @@ PickerProvider {
     max_results: 300
     actions: [{ key: "y", desc: "copy" }]
 
-    readonly property string data_dir: "/usr/lib/python3.*/site-packages/picker/data"
+    property string data_dir: ""
+    property bool probed: false
+    property string probe_arg: ""
+    // Tools the probe did not find.
+    property var missing: []
+    readonly property string probe_script: "d=$(python3 -c 'import picker, os; print(os.path.join(os.path.dirname(picker.__file__), \"data\"))' 2>/dev/null); "
+        + "[ -f \"$d/nerd_font.csv\" ] || d=$(ls -d /usr/lib/python3*/site-packages/picker/data 2>/dev/null | tail -n 1); "
+        + "[ -f \"$d/nerd_font.csv\" ] || d=; printf '%s\\n' \"$d\"; "
+        + "for t in wtype fc-list; do command -v $t >/dev/null 2>&1 || printf '%s\\n' $t; done; "
+        + "command -v fc-list >/dev/null 2>&1 && ! fc-list 'Font Awesome 7 Free' | grep -q . && echo font-awesome"
     readonly property var globs: ({
         emoji: "emojis_*.csv",
         nerd_font: "nerd_font.csv",
@@ -77,8 +86,16 @@ PickerProvider {
         return out;
     }
 
+    function reason(set) {
+        if (root.data_dir === "") return "rofimoji not installed";
+        if (root.missing.indexOf("wtype") >= 0) return "wtype missing";
+        if (set === "fontawesome" && root.missing.indexOf("fc-list") >= 0) return "fc-list missing";
+        if (set === "fontawesome" && root.missing.indexOf("font-awesome") >= 0) return "Font Awesome 7 not installed";
+        return "";
+    }
+
     function load(set) {
-        if (load_proc.running) return;
+        if (load_proc.running || root.reason(set) !== "") return;
         root.loading_set = set;
         const charsets = (root.set_fonts[set] || []).map(f => "; printf '\\036'; fc-list -f '%{charset}\\n' '" + f.pattern + "'").join("");
         load_proc.command = ["sh", "-c", "cat " + root.data_dir + "/" + root.globs[set] + charsets];
@@ -98,13 +115,20 @@ PickerProvider {
     }
 
     function refresh(arg) {
-        root.select_tab(Math.max(0, root.sets.indexOf(arg)));
+        if (root.probed) {
+            root.select_tab(Math.max(0, root.sets.indexOf(arg)));
+            return;
+        }
+        root.probe_arg = arg;
+        probe_proc.running = true;
     }
 
     function select_tab(i) {
         const set = root.sets[i];
         root.tab = i;
         root.set_name = set;
+        const why = root.reason(set);
+        root.empty_text = why !== "" ? why : "Nothing to pick";
         if (root.cache[set] !== undefined) {
             root.items = root.cache[set];
             return;
@@ -131,6 +155,20 @@ PickerProvider {
         id: type_timer
         interval: 150
         onTriggered: Quickshell.execDetached(["wtype", "--", root.pending_glyph])
+    }
+
+    Process {
+        id: probe_proc
+        command: ["sh", "-c", root.probe_script]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                const lines = text.split("\n");
+                root.data_dir = lines[0];
+                root.missing = lines.slice(1).filter(l => l !== "");
+                root.probed = true;
+                root.refresh(root.probe_arg);
+            }
+        }
     }
 
     Process {

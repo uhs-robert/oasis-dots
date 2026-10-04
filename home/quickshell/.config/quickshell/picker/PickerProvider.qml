@@ -24,6 +24,8 @@ Scope {
     // Selected row on open and whenever the query is cleared.
     property int initial_index: 0
     property string verb: "open"
+    // Shown in place of the list when there are no items.
+    property string empty_text: "Nothing to pick"
     // Normal-mode keys run on the selected item: [{ key, desc }] handled by run_action.
     property var actions: []
     // Drawn beside the list with `entry` set to the selected item.
