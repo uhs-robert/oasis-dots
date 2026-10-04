@@ -213,7 +213,7 @@ Each style can bring its own lock screen, and the login screen reuses it.
 
 ## 📦 Full Install (Automated)
 
-Clone the repo to `~/dotfiles`; topgrade's git step pulls it from there.
+Clone the repo to `~/dotfiles`; topgrade's git step pulls it from there. `~/.config/hypr` and `~/.config/quickshell` are symlinks into this checkout, so keep it in place and do not move or delete it after installing (`uninstall.sh` also expects it at `~/dotfiles`).
 
 ```bash
 git clone https://github.com/uhs-robert/oasis-dots.git ~/dotfiles
@@ -234,7 +234,7 @@ When it finishes, reboot. Without greetd you can instead log out and run `start-
 
 It uses `sudo` for these; the flags in brackets skip them.
 
-- Packages through pacman and paru [`--no-aur` for paru], the `rustup` toolchain [`--no-cargo`] and Maple Mono NF in `/usr/local/share/fonts`.
+- Packages through pacman and paru [`--no-aur` for paru], the `rustup` toolchain with both stable and nightly [`--no-cargo`] and the latest Maple Mono NF release, unpinned, in `/usr/local/share/fonts`. The installer also reminds you that the hyprlock font "The Last Shuriken" is manual.
 - `/etc`: `vtrgb-oasis`, `keyd/default.conf` and two pacman hooks; `/usr/local/bin` and `/usr/local/share/betterbird-autoconfig` for the voxtype GPU and Betterbird autoconfig helpers, which also patch `/opt/betterbird` when it exists [`--no-system-files`].
 - `/root`: links root's `.zshrc`, `.zsh_plugins.txt`, Neovim and Yazi config to yours, and adds `yazi-root` and a `/usr/local/sbin/yazi` wrapper, after a prompt [`--no-system-files`].
 - greetd, after a prompt: `/etc/greetd`, `/etc/tuigreet`, `/usr/local/bin/tuigreet-oasis`, the Quickshell greeter in `/etc/greetd/quickshell`, `/usr/local/bin/qs-greeter` and `/var/lib/qs-greeter`, then enables `greetd` [`--no-services`].
@@ -275,6 +275,8 @@ just update-repos      # pull the copies in repos/ (linked dev clones are skippe
 ```
 
 topgrade runs `just update-repos` as a custom command, so a normal `topgrade` keeps the repos current. HyprVim's own updater is turned off because its clone tracks `main` and is pulled the same way.
+
+Forks can change the dev directory (default `~/Development`) and the GitHub owner that `--dev` clones over SSH (default `uhs-robert`) with `GITHUB_DIR` and `GITHUB_ORG`, either in the environment (`GITHUB_DIR=~/src ./install.sh --dev`) or in an ignored `install.local` at the repo root holding plain `GITHUB_DIR=...` and `GITHUB_ORG=...` lines. The environment wins over the file.
 
 A repo that already exists under `~/Development/<section>/<name>` is always linked rather than cloned again. `~/.local/share/dotfiles/repos` points at `repos/` for shell and Hyprland configs that need a fixed path.
 

@@ -217,7 +217,7 @@ install_xone() {
 
 # Prompts for native vs Flatpak Steam; optionally installs xone afterwards.
 install_steam() {
-  confirm "Install Steam?" || return 0
+  confirm "Install Steam? Native Steam enables [multilib] and runs a full pacman -Syu" || return 0
 
   if [[ $OPT_YES -eq 1 ]]; then
     method=native
