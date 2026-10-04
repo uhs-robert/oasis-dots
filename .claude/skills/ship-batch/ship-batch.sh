@@ -16,6 +16,17 @@ git -C "$repo" pull -q --ff-only
 after=$(git -C "$repo" rev-parse HEAD)
 (cd "$repo" && just check) || die "just check fails on main after the merge; fix it before anything else"
 
+qs_dir=home/quickshell/.config/quickshell
+greeter_paths="^($qs_dir/(lock/skins/|lock/Tints\.js$|theme/|fonts/|VERSION$)|system/etc/greetd/|system/usr/local/bin/qs-greeter$)"
+if git -C "$repo" diff --name-only "$before" "$after" | grep -Eq "$greeter_paths"; then
+  if sudo -n true 2>/dev/null; then
+    (cd "$repo" && just greeter-sync --install) || die "greeter-sync failed"
+    echo "ship-batch: synced the greeter"
+  else
+    echo "ship-batch: greeter files changed; run: just greeter-sync --install"
+  fi
+fi
+
 if [[ $before != "$after" ]] && ! git -C "$repo" diff --quiet "$before" "$after" -- home/hypr; then
   hyprctl reload >/dev/null
   errors=$(hyprctl configerrors)
@@ -29,7 +40,10 @@ if [[ $before != "$after" ]] && ! git -C "$repo" diff --quiet "$before" "$after"
     state=$(timeout 3 "$ipc" call lock state 2>/dev/null || true)
     [[ $state == unlocked ]] || die "Quickshell changed but the lock state is '${state:-unknown}'; restart the bar once unlocked"
     pkill -x qs || true
-    for _ in $(seq 20); do pgrep -x qs >/dev/null || break; sleep 0.2; done
+    for _ in $(seq 20); do
+      pgrep -x qs >/dev/null || break
+      sleep 0.2
+    done
     hyprctl dispatch "hl.dsp.exec_cmd('qs -n')" >/dev/null
     sleep 6
     pgrep -x qs >/dev/null || die "qs did not come back; read 'qs log'"
