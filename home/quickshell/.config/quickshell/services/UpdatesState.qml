@@ -176,7 +176,7 @@ Singleton {
     // window to a running instance and exit at once, so the refresh waits on topgrade itself.
     Process {
         id: upgrade_proc
-        command: ["env", "-u", "TMUX", "-u", "TMUX_PANE", "sh", "-c", "t=\"$HOME/.local/state/hypr/bin/term\"; [ -x \"$t\" ] || t=\"${TERMINAL:-kitty}\"; exec \"$t\" --class " + root.upgrade_class + " -e topgrade"]
+        command: ["env", "-u", "TMUX", "-u", "TMUX_PANE", "sh", "-c", "t=\"${XDG_STATE_HOME:-$HOME/.local/state}/hypr/bin/term\"; [ -x \"$t\" ] || t=\"${TERMINAL:-kitty}\"; exec \"$t\" --class " + root.upgrade_class + " -e topgrade"]
         onExited: upgrade_watch.start()
     }
 

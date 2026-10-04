@@ -10,6 +10,6 @@ for arg in "$@"; do
   esac
 done
 
-term=~/.local/state/hypr/bin/term
+term="${XDG_STATE_HOME:-$HOME/.local/state}/hypr/bin/term"
 [ -x "$term" ] || term="${TERMINAL:-kitty}"
 exec "$term" -e "$CMD"

@@ -4,19 +4,32 @@ local Config = require("config") ---@class Config
 local Generate = require("theme.generate") ---@class Generate
 local MissingRepos = require("lib.missing_repos") ---@class MissingRepos
 
--- Restore the theme last selected via switch.lua; the old stowed-tree path is read for one release.
-local HOME = os.getenv("HOME")
-for _, path in ipairs({ HOME .. "/.local/state/hypr/theme", HOME .. "/.config/hypr/theme/.current_theme" }) do
-  local state = io.open(path, "r")
-  if state then
-    local saved = state:read("*line")
-    state:close()
-    if saved and saved ~= "" then
-      Config.theme = saved
-      break
+--- @param path string
+--- @return string|nil
+local function read_saved(path)
+  local f = io.open(path, "r")
+  if not f then return nil end
+  local saved = f:read("*line")
+  f:close()
+  return (saved and saved ~= "") and saved or nil
+end
+
+-- Restore the theme last selected via switch.lua; a legacy stowed-tree file is migrated once.
+local state_dir = require("lib.state")()
+local state_file = state_dir .. "/theme"
+local saved = read_saved(state_file)
+if not saved then
+  saved = read_saved(os.getenv("HOME") .. "/.config/hypr/theme/.current_theme")
+  if saved then
+    os.execute("mkdir -p '" .. state_dir .. "'")
+    local out = io.open(state_file, "w")
+    if out then
+      out:write(saved)
+      out:close()
     end
   end
 end
+if saved then Config.theme = saved end
 
 --- @class Theme
 --- @field colors table Cached palette color table for the active theme
