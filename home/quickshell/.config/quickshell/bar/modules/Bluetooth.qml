@@ -5,13 +5,9 @@ import Quickshell.Bluetooth as QsBt
 import "../../theme"
 import "../../services"
 
-Item {
+BarModule {
     id: root
-
-    property bool compact: false
-    property string screen_name: ""
-    property Item island: null
-    property color island_color: Theme.bg_core
+    module_name: "bluetooth"
 
     readonly property var adapter: QsBt.Bluetooth.defaultAdapter
     readonly property bool has_adapter: !!adapter
@@ -19,8 +15,7 @@ Item {
     readonly property var connected_devices: has_adapter ? adapter.devices.values.filter(d => d.connected) : []
     readonly property bool any_connected: connected_devices.length > 0
 
-    readonly property bool shown: has_adapter
-    visible: shown
+    shown: has_adapter
     implicitWidth: has_adapter ? row.implicitWidth : 0
     implicitHeight: row.implicitHeight
 
@@ -32,7 +27,7 @@ Item {
         return Style.bar_fg;
     }
 
-    readonly property string tooltip_text: {
+    tooltip_text: {
         if (!root.has_adapter) return "No adapter";
         const lines = [root.adapter.name];
         if (root.any_connected) {
@@ -41,17 +36,6 @@ Item {
             lines.push("No devices connected");
         }
         return lines.join("\n");
-    }
-
-    onIslandChanged: if (root.island) Popups.register_default("bluetooth", root.island, root.island_color, root.screen_name, root)
-    Component.onDestruction: Popups.unregister("bluetooth", root.screen_name, root)
-
-    Rectangle {
-        anchors.fill: parent
-        anchors.margins: -4
-        radius: Style.bar_radius(4)
-        color: Style.bar_hover_bg
-        opacity: hover_handler.hovered ? 0.5 : 0
     }
 
     Row {
@@ -68,14 +52,6 @@ Item {
         }
     }
 
-    HoverHandler {
-        id: hover_handler
-        onHoveredChanged: {
-            if (hovered) Tooltip.show(root, root.tooltip_text, "bluetooth");
-            else Tooltip.hide(root);
-        }
-    }
-
     MouseArea {
         anchors.fill: parent
         acceptedButtons: Qt.LeftButton | Qt.RightButton
@@ -83,7 +59,7 @@ Item {
             if (mouse.button === Qt.RightButton) {
                 Quickshell.execDetached(["blueman-manager"]);
             } else {
-                Popups.toggle("bluetooth", root.island, root.island_color, root.screen_name);
+                root.toggle_popup();
             }
         }
     }

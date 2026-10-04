@@ -6,12 +6,10 @@ import Quickshell.Networking
 import "../../theme"
 import "../../services"
 
-Item {
+BarModule {
     id: root
-
-    property string screen_name: ""
-    property Item island: null
-    property color island_color: Theme.bg_core
+    module_name: "network"
+    wash: false
 
     readonly property var wifi_device: {
         for (const d of Networking.devices.values) if (d.type === DeviceType.Wifi) return d;
@@ -49,7 +47,7 @@ Item {
 
     readonly property bool net_connected: root.wired_connected || root.wifi_connected
 
-    readonly property string net_tooltip: {
+    tooltip_text: {
         if (root.wired_connected) return "Wired: " + root.wired_device.name;
         if (root.wifi_connected && root.active_wifi_network) {
             return root.active_wifi_network.name + " (" + Math.round(root.active_wifi_network.signalStrength * 100) + "%)";
@@ -60,9 +58,6 @@ Item {
 
     implicitWidth: net_row.implicitWidth
     implicitHeight: net_row.implicitHeight
-
-    onIslandChanged: if (root.island) Popups.register_default("network", root.island, root.island_color, root.screen_name, root)
-    Component.onDestruction: Popups.unregister("network", root.screen_name, root)
 
     RowLayout {
         id: net_row
@@ -84,14 +79,8 @@ Item {
         acceptedButtons: Qt.LeftButton | Qt.RightButton
         onClicked: mouse => {
             if (mouse.button === Qt.RightButton) Quickshell.execDetached(["nm-connection-editor"]);
-            else Popups.toggle("network", root.island, root.island_color, root.screen_name);
+            else root.toggle_popup();
         }
     }
 
-    HoverHandler {
-        onHoveredChanged: {
-            if (hovered) Tooltip.show(root, root.net_tooltip, "network");
-            else Tooltip.hide(root);
-        }
-    }
 }

@@ -5,21 +5,16 @@ import "../../theme"
 import "../../services"
 import "../../components"
 
-Item {
+BarModule {
     id: root
-
-    property bool compact: false
-    property string screen_name: ""
-    property Item island: null
-    property color island_color: Theme.bg_core
+    module_name: "media"
 
     WheelStepper {
         id: wheel_stepper
     }
 
     readonly property var player: MediaState.active
-    readonly property bool shown: !!root.player
-    visible: shown
+    shown: !!root.player
     implicitWidth: shown ? row.implicitWidth : 0
     implicitHeight: row.implicitHeight
 
@@ -30,24 +25,13 @@ Item {
         return artist ? artist + " — " + title : title;
     }
 
-    readonly property string tooltip_text: {
+    tooltip_text: {
         if (!root.player) return "";
         const lines = [root.player.trackTitle || "Unknown title"];
         if (root.player.trackArtist) lines.push(root.player.trackArtist);
         if (root.player.trackAlbum) lines.push(root.player.trackAlbum);
         lines.push(root.player.identity || "");
         return lines.join("\n");
-    }
-
-    onIslandChanged: if (root.island) Popups.register_default("media", root.island, root.island_color, root.screen_name, root)
-    Component.onDestruction: Popups.unregister("media", root.screen_name, root)
-
-    Rectangle {
-        anchors.fill: parent
-        anchors.margins: -4
-        radius: Style.bar_radius(4)
-        color: Style.bar_hover_bg
-        opacity: hover_handler.hovered ? 0.5 : 0
     }
 
     RowLayout {
@@ -81,14 +65,6 @@ Item {
         }
     }
 
-    HoverHandler {
-        id: hover_handler
-        onHoveredChanged: {
-            if (hovered) Tooltip.show(root, root.tooltip_text, "media");
-            else Tooltip.hide(root);
-        }
-    }
-
     MouseArea {
         anchors.fill: parent
         acceptedButtons: Qt.LeftButton | Qt.MiddleButton
@@ -96,7 +72,7 @@ Item {
             if (mouse.button === Qt.MiddleButton) {
                 MediaState.toggle();
             } else {
-                Popups.toggle("media", root.island, root.island_color, root.screen_name);
+                root.toggle_popup();
             }
         }
         onWheel: wheel => {
