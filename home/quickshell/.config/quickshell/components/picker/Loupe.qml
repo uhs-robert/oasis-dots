@@ -10,6 +10,7 @@ import "../snes" as SnesParts
 import "../ff7" as Ff7Parts
 import "../goldeneye" as Goldeneye
 import "../../theme/Watch.js" as Watch
+import "loupe" as LoupeSkins
 
 // The region selector's magnifier: a zoomed, skinned view of `source` around `at`, placed beside the cursor.
 Item {
@@ -41,6 +42,11 @@ Item {
     readonly property real view: root.count * root.zoom
     readonly property int bx: Math.floor(root.at.x * root.sample_scale)
     readonly property int by: Math.floor(root.at.y * root.sample_scale)
+    readonly property bool skinned: skin_loader.status === Loader.Ready
+    readonly property var skin: root.skinned ? skin_loader.item : null
+    readonly property bool own_readout: root.skinned && root.skin.own_readout
+    readonly property real flip_gap: root.skinned ? root.skin.flip_gap : root.jrpg ? Math.max(66, root.min_gap) : root.gap
+    readonly property var rgb: root.parse_rgb(Screenshot.pixel_hex)
     readonly property bool scope: Style.picker_skin === "scope"
     readonly property bool jrpg: Style.picker_skin === "jrpg"
     readonly property bool goldeneye: Style.picker_skin === "goldeneye"
@@ -49,7 +55,7 @@ Item {
     readonly property bool nvimfloat: Style.picker_skin === "nvimfloat"
     // Zoom mode raises it so the loupe never sits inside the area it magnifies.
     property real min_gap: 0
-    readonly property real gap: Math.max(root.min_gap, root.skin_gap)
+    readonly property real gap: Math.max(root.min_gap, root.skinned ? root.skin.gap : root.skin_gap)
     readonly property real skin_gap: root.pokemon ? 34 : root.duckhunt ? 34 : root.materia ? 34 : root.tvosd || root.tiecomp ? 32 : root.scanvisor ? 40 : root.tmux ? 30 : root.nvimfloat ? 30 : root.scope || root.jrpg || root.goldeneye || root.scopeitem ? 36 : 28
     readonly property bool materia: Style.picker_skin === "materia"
     readonly property bool duckhunt: Style.picker_skin === "duckhunt"
@@ -246,9 +252,17 @@ Item {
             { label: "Pos", value: Math.round(root.screen_x + root.at.x) + ", " + Math.round(root.screen_y + root.at.y), ratio: 0, color: "transparent", bar: false }
         ];
     }
-    width: root.duckhunt ? root.dh_width : root.goldeneye ? root.ge_rim : root.scopeitem ? root.si_pad * 2 + root.si_body_w : root.scanvisor ? root.sv_pad * 2 + root.view : root.tvosd ? root.tv_width : root.tiecomp ? root.tc_width : root.tmux ? root.tmux_w : root.materia ? root.mat_width : root.pokemon ? root.pk_width : root.view + root.pad * 2 + (root.jrpg ? root.jrpg_drop : 0)
-    height: root.duckhunt ? root.dh_lens_size + root.dh_gap + root.dh_hud_h + root.dh_gap + root.dh_score_h : root.goldeneye ? root.ge_rim + root.ge_strip_gap + root.ge_strip_h : root.scope ? root.view + root.pad * 2 + root.header_h + root.foot_h : root.jrpg ? root.pad + root.header_h + root.view + root.jrpg_gap + root.jrpg_stats_h + root.pad + root.jrpg_drop : root.scopeitem ? root.si_pad + root.si_ruler_h + root.view + root.si_foot_gap + root.si_foot_h + root.si_pad : root.scanvisor ? root.sv_pad + root.sv_header_h + root.sv_header_gap + root.view + root.sv_card_gap + sv_card_col.implicitHeight + root.sv_pad : root.tvosd ? root.tv_pad_y * 2 + root.tv_header_h + root.tv_lens_gap * 2 + root.view + tv_rows_col.implicitHeight : root.tiecomp ? root.tc_pad_y * 2 + root.tc_header_h + root.tc_lens_gap * 2 + root.view + tc_rows_col.implicitHeight : root.tmux ? root.tmux_pad * 2 + root.tmux_line_h * 3 + root.tmux_gap * 2 + root.view : root.nvimfloat ? root.pad + root.header_h + root.view + root.nv_foot_gap + root.nv_row_h + root.nv_cmd_h + root.pad : root.materia ? root.mat_pad_y * 2 + root.mat_header_h + root.view + root.mat_row_gap + mat_rows_col.implicitHeight : root.pokemon ? root.pk_pad * 2 + root.pk_header_h + root.pk_lens_gap * 2 + root.view + root.pk_stats_h + root.pk_divider_gap * 2 + root.pk_divider_h + root.pk_msg_h : root.view + root.pad * 2 + coords.implicitHeight + 4 + (root.pixel_mode ? swatch_row.height + 4 : 0)
-    x: root.at.x + root.gap + root.width <= root.area_width ? root.at.x + root.gap : root.at.x - (root.jrpg ? Math.max(66, root.min_gap) : root.gap) - root.width
+    function parse_rgb(hex) {
+        if (hex.length < 7) return [0, 0, 0];
+        return [parseInt(hex.substr(1, 2), 16), parseInt(hex.substr(3, 2), 16), parseInt(hex.substr(5, 2), 16)];
+    }
+    function pad4(v) {
+        const n = Math.round(v);
+        return (n < 0 ? "-" : "") + String(Math.abs(n)).padStart(4, "0");
+    }
+    width: root.skinned ? root.skin.implicitWidth : root.duckhunt ? root.dh_width : root.goldeneye ? root.ge_rim : root.scopeitem ? root.si_pad * 2 + root.si_body_w : root.scanvisor ? root.sv_pad * 2 + root.view : root.tvosd ? root.tv_width : root.tiecomp ? root.tc_width : root.tmux ? root.tmux_w : root.materia ? root.mat_width : root.pokemon ? root.pk_width : root.view + root.pad * 2 + (root.jrpg ? root.jrpg_drop : 0)
+    height: root.skinned ? root.skin.implicitHeight : root.duckhunt ? root.dh_lens_size + root.dh_gap + root.dh_hud_h + root.dh_gap + root.dh_score_h : root.goldeneye ? root.ge_rim + root.ge_strip_gap + root.ge_strip_h : root.scope ? root.view + root.pad * 2 + root.header_h + root.foot_h : root.jrpg ? root.pad + root.header_h + root.view + root.jrpg_gap + root.jrpg_stats_h + root.pad + root.jrpg_drop : root.scopeitem ? root.si_pad + root.si_ruler_h + root.view + root.si_foot_gap + root.si_foot_h + root.si_pad : root.scanvisor ? root.sv_pad + root.sv_header_h + root.sv_header_gap + root.view + root.sv_card_gap + sv_card_col.implicitHeight + root.sv_pad : root.tvosd ? root.tv_pad_y * 2 + root.tv_header_h + root.tv_lens_gap * 2 + root.view + tv_rows_col.implicitHeight : root.tiecomp ? root.tc_pad_y * 2 + root.tc_header_h + root.tc_lens_gap * 2 + root.view + tc_rows_col.implicitHeight : root.tmux ? root.tmux_pad * 2 + root.tmux_line_h * 3 + root.tmux_gap * 2 + root.view : root.nvimfloat ? root.pad + root.header_h + root.view + root.nv_foot_gap + root.nv_row_h + root.nv_cmd_h + root.pad : root.materia ? root.mat_pad_y * 2 + root.mat_header_h + root.view + root.mat_row_gap + mat_rows_col.implicitHeight : root.pokemon ? root.pk_pad * 2 + root.pk_header_h + root.pk_lens_gap * 2 + root.view + root.pk_stats_h + root.pk_divider_gap * 2 + root.pk_divider_h + root.pk_msg_h : root.view + root.pad * 2 + coords.implicitHeight + 4 + (root.pixel_mode ? swatch_row.height + 4 : 0)
+    x: root.at.x + root.gap + root.width <= root.area_width ? root.at.x + root.gap : root.at.x - root.flip_gap - root.width
     y: root.at.y + root.gap + root.height <= root.area_height ? root.at.y + root.gap : root.at.y - root.gap - root.height
 
     Rectangle {
@@ -258,6 +272,23 @@ Item {
         color: Style.frame_color
         border.width: Math.max(1, Style.frame_border_width)
         border.color: Style.frame_border_color
+    }
+
+    Loader {
+        id: skin_loader
+        readonly property string name: Style.picker_skin
+        onNameChanged: skin_loader.load()
+        Component.onCompleted: skin_loader.load()
+
+        function load() {
+            if (skin_loader.name === "") {
+                skin_loader.source = "";
+                return;
+            }
+            skin_loader.setSource(Qt.resolvedUrl("loupe/" + skin_loader.name.charAt(0).toUpperCase() + skin_loader.name.slice(1) + ".qml"), {
+                loupe: Qt.binding(() => root)
+            });
+        }
     }
 
     OctagonFrame {
@@ -335,15 +366,6 @@ Item {
         anchors.fill: parent
         corner: 12
         sheen: true
-    }
-
-    Rectangle {
-        visible: root.scope
-        anchors.fill: parent
-        radius: 0
-        color: Qt.alpha(Style.frame_color, 0.82)
-        border.width: 1
-        border.color: Qt.alpha(Style.picker_hud, 0.7)
     }
 
     Rectangle {
@@ -507,18 +529,6 @@ Item {
         font.pixelSize: Style.fs(-6)
     }
 
-    Text {
-        id: zoomhead
-        visible: root.scope
-        anchors.top: parent.top
-        anchors.topMargin: 6
-        anchors.horizontalCenter: parent.horizontalCenter
-        text: "- ZOOM LEVEL - -  " + root.zoom * 100 + " -"
-        color: Style.picker_hud
-        font.family: Style.font_family
-        font.pixelSize: Style.fs(-6)
-    }
-
     Item {
         id: si_ruler
         visible: root.scopeitem
@@ -595,22 +605,10 @@ Item {
         loupe: root
         x: root.duckhunt ? root.dh_lens_x + root.dh_pad : root.goldeneye ? (root.ge_rim - root.view) / 2 : root.scopeitem ? root.si_pad : root.scanvisor ? root.sv_pad : root.tvosd ? root.tv_pad_x : root.tiecomp ? root.tc_pad_x : root.tmux ? root.tmux_pad : root.materia ? root.mat_pad_x : root.pokemon ? (root.pk_width - root.view) / 2 : root.pad
         y: root.duckhunt ? root.dh_pad : root.goldeneye ? (root.ge_rim - root.view) / 2 : root.scopeitem ? root.si_pad + root.si_ruler_h : root.scanvisor ? root.sv_pad + root.sv_header_h + root.sv_header_gap : root.tvosd ? root.tv_pad_y + root.tv_header_h + root.tv_lens_gap : root.tiecomp ? root.tc_pad_y + root.tc_header_h + root.tc_lens_gap : root.tmux ? root.tmux_pad + root.tmux_line_h + root.tmux_gap : root.materia ? root.mat_pad_y + root.mat_header_h : root.pokemon ? root.pk_pad + root.pk_header_h + root.pk_lens_gap : root.pad + root.header_h
-        visible: !root.goldeneye
-        layer.enabled: root.goldeneye
+        visible: !root.skinned && !root.goldeneye
+        layer.enabled: root.goldeneye && !root.skinned
         grid_color: root.scanvisor ? Qt.alpha(Theme.cyan, 0.14) : Qt.alpha(Theme.bg_shadow, 0.35)
         center_color: root.duckhunt ? Theme.fg_strong : root.scope ? Style.picker_hud : root.jrpg ? (jrpg_blink.alt ? Theme.theme_secondary : Theme.fg_strong) : root.goldeneye ? Theme.theme_label : root.scopeitem ? Theme.theme_secondary : root.scanvisor ? (root.sv_complete ? Theme.bright_green : Theme.bright_yellow) : root.tvosd ? Theme.bright_green : root.tiecomp ? Theme.red : root.tmux ? Theme.ui_match_bg : root.nvimfloat ? Theme.fg_core : root.materia ? Theme.fg_strong : root.pokemon ? Style.shade_1 : Style.caret_color
-
-        Repeater {
-            model: root.scope ? Math.ceil(root.view / 3) : 0
-
-            Rectangle {
-                required property int index
-                y: index * 3
-                width: root.view
-                height: 1
-                color: Qt.rgba(0, 0, 0, 0.18)
-            }
-        }
 
         Repeater {
             model: root.scopeitem ? Math.ceil(root.view / 3) : 0
@@ -662,55 +660,6 @@ Item {
             arm: 14
             thickness: 1.5
             all_corners: true
-        }
-
-        Repeater {
-            model: root.scope ? Math.floor(root.view / 11) + 1 : 0
-
-            Rectangle {
-                required property int index
-                x: root.view - 3
-                y: index * 11
-                width: 3
-                height: 1
-                color: Qt.alpha(Style.picker_hud, 0.7)
-            }
-        }
-
-        Rectangle {
-            visible: root.scope
-            x: 0
-            y: lens_content.center_px.y + lens_content.center_px.height / 2
-            width: Math.max(0, lens_content.center_px.x)
-            height: 1
-            color: Qt.alpha(Style.picker_hud, 0.45)
-        }
-
-        Rectangle {
-            visible: root.scope
-            x: lens_content.center_px.x + lens_content.center_px.width
-            y: lens_content.center_px.y + lens_content.center_px.height / 2
-            width: Math.max(0, root.view - x)
-            height: 1
-            color: Qt.alpha(Style.picker_hud, 0.45)
-        }
-
-        Rectangle {
-            visible: root.scope
-            x: lens_content.center_px.x + lens_content.center_px.width / 2
-            y: 0
-            width: 1
-            height: Math.max(0, lens_content.center_px.y)
-            color: Qt.alpha(Style.picker_hud, 0.45)
-        }
-
-        Rectangle {
-            visible: root.scope
-            x: lens_content.center_px.x + lens_content.center_px.width / 2
-            y: lens_content.center_px.y + lens_content.center_px.height
-            width: 1
-            height: Math.max(0, root.view - y)
-            color: Qt.alpha(Style.picker_hud, 0.45)
         }
 
         Canvas {
@@ -895,24 +844,11 @@ Item {
     LoupeReadout {
         id: swatch_row
         loupe: root
-        visible: root.scope ? true : root.pixel_mode
-        opacity: root.jrpg || root.goldeneye || root.scopeitem || root.scanvisor || root.tvosd || root.tmux || root.nvimfloat || root.tiecomp || root.materia || root.duckhunt || root.pokemon ? 0 : 1
-        anchors.horizontalCenter: !root.scope ? parent.horizontalCenter : undefined
-        anchors.bottom: !root.scope ? coords.top : undefined
+        visible: !root.own_readout && root.pixel_mode
+        opacity: root.skinned || root.jrpg || root.goldeneye || root.scopeitem || root.scanvisor || root.tvosd || root.tmux || root.nvimfloat || root.tiecomp || root.materia || root.duckhunt || root.pokemon ? 0 : 1
+        anchors.horizontalCenter: parent.horizontalCenter
+        anchors.bottom: coords.top
         anchors.bottomMargin: 2
-        anchors.right: root.scope ? scope_foot.right : undefined
-        anchors.verticalCenter: root.scope ? scope_foot.verticalCenter : undefined
-        hex_color: root.scope ? Style.picker_hud : Style.text_fg
-
-        Text {
-            id: scope_read
-            visible: root.scope && !root.pixel_mode
-            anchors.verticalCenter: parent.verticalCenter
-            text: "X" + Math.round(root.screen_x + root.at.x) + " Y" + Math.round(root.screen_y + root.at.y)
-            color: Style.picker_hud
-            font.family: Style.mono_font
-            font.pixelSize: Style.fs(-3)
-        }
     }
 
     Text {
@@ -925,68 +861,6 @@ Item {
         color: Style.text_fg
         font.family: Style.mono_font
         font.pixelSize: Style.fs(-4)
-    }
-
-    Item {
-        id: scope_foot
-        visible: root.scope
-        x: root.pad
-        y: root.pad + root.header_h + root.view + (root.foot_h - foot_left.height) / 2
-        width: root.view
-        height: foot_left.height
-
-        Row {
-            id: foot_left
-            anchors.left: parent.left
-            anchors.verticalCenter: parent.verticalCenter
-            spacing: 6
-
-            Item {
-                width: 26
-                height: 14
-                anchors.verticalCenter: parent.verticalCenter
-
-                Rectangle {
-                    x: 1
-                    y: 2
-                    width: 10
-                    height: 10
-                    radius: 5
-                    color: "transparent"
-                    border.width: 2
-                    border.color: Theme.red
-                }
-
-                Rectangle {
-                    x: 15
-                    y: 2
-                    width: 10
-                    height: 10
-                    radius: 5
-                    color: "transparent"
-                    border.width: 2
-                    border.color: Theme.red
-                }
-
-                Rectangle {
-                    x: 10
-                    y: 5
-                    width: 6
-                    height: 3
-                    color: Theme.red
-                }
-            }
-
-            Text {
-                id: scope_label
-                visible: 26 + foot_left.spacing + scope_label.implicitWidth + 8 + swatch_row.width <= scope_foot.width
-                anchors.verticalCenter: parent.verticalCenter
-                text: root.pixel_mode ? "SCOPE" : "CAMERA"
-                color: Style.text_fg
-                font.family: Style.font_family
-                font.pixelSize: Style.fs(-6)
-            }
-        }
     }
 
     Column {
