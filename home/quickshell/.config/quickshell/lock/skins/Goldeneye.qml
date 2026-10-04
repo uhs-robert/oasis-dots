@@ -935,6 +935,8 @@ Item {
         property real rows: 720
         property real minutes: 0
         anchors.fill: parent
+        layer.enabled: true
+        layer.smooth: true
         fragmentShader: Qt.resolvedUrl("goldeneye/plate.frag.qsb")
     }
 }

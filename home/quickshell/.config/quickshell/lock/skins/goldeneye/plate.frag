@@ -13,22 +13,28 @@ layout(std140, binding = 0) uniform buf {
 
 const vec2 C = vec2(510.0, 360.0);
 
+vec2 edge(vec2 acc, vec2 p, vec2 vi, vec2 vj) {
+    vec2 e = vj - vi;
+    vec2 w = p - vi;
+    vec2 b = w - e * clamp(dot(w, e) / max(dot(e, e), 1e-4), 0.0, 1.0);
+    bool c1 = p.y >= vi.y;
+    bool c2 = p.y < vj.y;
+    bool c3 = e.x * w.y > e.y * w.x;
+    float flip = (c1 && c2 && c3) || (!c1 && !c2 && !c3) ? -1.0 : 1.0;
+    return vec2(min(acc.x, dot(b, b)), acc.y * flip);
+}
+
 float sd_poly(vec2 p, vec2 v0, vec2 v1, vec2 v2, vec2 v3, vec2 v4, vec2 v5, vec2 v6, vec2 v7) {
-    vec2 v[8] = vec2[8](v0, v1, v2, v3, v4, v5, v6, v7);
-    float d = dot(p - v[0], p - v[0]);
-    float s = 1.0;
-    for (int i = 0; i < 8; i++) {
-        int j = i == 0 ? 7 : i - 1;
-        vec2 e = v[j] - v[i];
-        vec2 w = p - v[i];
-        vec2 b = w - e * clamp(dot(w, e) / max(dot(e, e), 1e-4), 0.0, 1.0);
-        d = min(d, dot(b, b));
-        bool c1 = p.y >= v[i].y;
-        bool c2 = p.y < v[j].y;
-        bool c3 = e.x * w.y > e.y * w.x;
-        if ((c1 && c2 && c3) || (!c1 && !c2 && !c3)) s = -s;
-    }
-    return s * sqrt(d);
+    vec2 acc = vec2(dot(p - v0, p - v0), 1.0);
+    acc = edge(acc, p, v0, v7);
+    acc = edge(acc, p, v1, v0);
+    acc = edge(acc, p, v2, v1);
+    acc = edge(acc, p, v3, v2);
+    acc = edge(acc, p, v4, v3);
+    acc = edge(acc, p, v5, v4);
+    acc = edge(acc, p, v6, v5);
+    acc = edge(acc, p, v7, v6);
+    return acc.y * sqrt(acc.x);
 }
 
 float cover(float d) {
@@ -72,6 +78,15 @@ float sd_ray(vec2 p, float a, float r0, float r1, float w) {
 
 vec3 over(vec3 base, vec3 col, float a) {
     return mix(base, col, a);
+}
+
+vec3 segment(vec3 col, vec2 p, float mid, float hw, vec3 warm, vec3 cold, float shade) {
+    col = over(col, warm * shade, cover(sd_sector(p, mid - hw, mid + hw, 360.0, 431.5)));
+    return over(col, cold * shade, cover(sd_sector(p, 180.0 - mid - hw, 180.0 - mid + hw, 360.0, 431.5)));
+}
+
+vec3 tick(vec3 col, vec2 p, float a) {
+    return over(col, vec3(0.97), cover(sd_ray(p, a, 445.0, 510.0, 7.0)));
 }
 
 vec3 bar(vec3 base, vec2 p, vec2 a, vec2 b) {
@@ -118,15 +133,15 @@ void main() {
     col = mix(col, vec3(metal), off_plate * cover(516.0 - length(p - C)));
     col *= cover(sd_poly(p, vec2(145.0, -150.0), vec2(901.0, -150.0), vec2(1020.0, 152.0), vec2(1020.0, 568.0), vec2(901.0, 870.0), vec2(319.0, 870.0), vec2(0.0, 617.0), vec2(0.0, 115.0)));
 
-    vec3 warm[8] = vec3[8](vec3(0.969, 0.114, 0.039), vec3(0.969, 0.231, 0.059), vec3(0.969, 0.388, 0.094), vec3(0.961, 0.514, 0.118), vec3(0.961, 0.6, 0.133), vec3(0.961, 0.682, 0.153), vec3(0.961, 0.757, 0.169), vec3(0.961, 0.827, 0.184));
-    vec3 cold[8] = vec3[8](vec3(0.031, 0.039, 0.157), vec3(0.051, 0.055, 0.161), vec3(0.071, 0.078, 0.161), vec3(0.082, 0.094, 0.153), vec3(0.078, 0.102, 0.149), vec3(0.098, 0.114, 0.157), vec3(0.102, 0.125, 0.157), vec3(0.102, 0.129, 0.153));
-    float mids[8] = float[8](225.5, 205.4, 185.4, 170.4, 160.4, 150.4, 140.4, 130.4);
-    for (int i = 0; i < 8; i++) {
-        float hw = i < 3 ? 7.6 : 2.55;
-        float shade = 1.0 + grain * 0.05;
-        col = over(col, warm[i] * shade, cover(sd_sector(p, mids[i] - hw, mids[i] + hw, 360.0, 431.5)));
-        col = over(col, cold[i] * shade, cover(sd_sector(p, 180.0 - mids[i] - hw, 180.0 - mids[i] + hw, 360.0, 431.5)));
-    }
+    float shade = 1.0 + grain * 0.05;
+    col = segment(col, p, 225.5, 7.6, vec3(0.969, 0.114, 0.039), vec3(0.031, 0.039, 0.157), shade);
+    col = segment(col, p, 205.4, 7.6, vec3(0.969, 0.231, 0.059), vec3(0.051, 0.055, 0.161), shade);
+    col = segment(col, p, 185.4, 7.6, vec3(0.969, 0.388, 0.094), vec3(0.071, 0.078, 0.161), shade);
+    col = segment(col, p, 170.4, 2.55, vec3(0.961, 0.514, 0.118), vec3(0.082, 0.094, 0.153), shade);
+    col = segment(col, p, 160.4, 2.55, vec3(0.961, 0.6, 0.133), vec3(0.078, 0.102, 0.149), shade);
+    col = segment(col, p, 150.4, 2.55, vec3(0.961, 0.682, 0.153), vec3(0.098, 0.114, 0.157), shade);
+    col = segment(col, p, 140.4, 2.55, vec3(0.961, 0.757, 0.169), vec3(0.102, 0.125, 0.157), shade);
+    col = segment(col, p, 130.4, 2.55, vec3(0.961, 0.827, 0.184), vec3(0.102, 0.129, 0.153), shade);
 
     if (minutes > 0.0) {
         vec2 d = p - C;
@@ -137,10 +152,14 @@ void main() {
         col = over(col, vec3(0.93), cover(tick) * minutes);
     }
 
-    float ticks[8] = float[8](0.0, 30.0, 90.0, 150.0, 180.0, 210.0, 270.0, 330.0);
-    for (int i = 0; i < 8; i++) {
-        col = over(col, vec3(0.97), cover(sd_ray(p, ticks[i], 445.0, 510.0, 7.0)));
-    }
+    col = tick(col, p, 0.0);
+    col = tick(col, p, 30.0);
+    col = tick(col, p, 90.0);
+    col = tick(col, p, 150.0);
+    col = tick(col, p, 180.0);
+    col = tick(col, p, 210.0);
+    col = tick(col, p, 270.0);
+    col = tick(col, p, 330.0);
 
     col = over(col, vec3(0.97), cover(sd_box(p, vec2(166.0, 366.0), vec2(186.0, 373.0))));
     col = over(col, vec3(0.92), cover(sd_box(p, vec2(163.0, 344.0), vec2(188.0, 370.0))));
@@ -150,10 +169,14 @@ void main() {
     col = bar(col, p, vec2(516.0, 22.0), vec2(545.0, 102.0));
     col = bar(col, p, vec2(498.0, 621.0), vec2(522.0, 699.0));
 
-    vec2 studs[8] = vec2[8](vec2(350.0, 85.5), vec2(669.0, 85.5), vec2(231.0, 201.0), vec2(789.0, 201.0), vec2(231.0, 521.0), vec2(789.0, 521.0), vec2(351.0, 636.5), vec2(669.0, 638.0));
-    for (int i = 0; i < 8; i++) {
-        col = stud(col, p, studs[i]);
-    }
+    col = stud(col, p, vec2(350.0, 85.5));
+    col = stud(col, p, vec2(669.0, 85.5));
+    col = stud(col, p, vec2(231.0, 201.0));
+    col = stud(col, p, vec2(789.0, 201.0));
+    col = stud(col, p, vec2(231.0, 521.0));
+    col = stud(col, p, vec2(789.0, 521.0));
+    col = stud(col, p, vec2(351.0, 636.5));
+    col = stud(col, p, vec2(669.0, 638.0));
 
     fragColor = vec4(col, 1.0) * qt_Opacity;
 }
