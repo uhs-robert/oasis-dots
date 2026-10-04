@@ -1,7 +1,6 @@
 // home/quickshell/.config/quickshell/components/Popup.qml
 import QtQuick
 import QtQuick.Effects
-import QtQuick.Shapes
 import Quickshell
 import Quickshell.Wayland
 import "../theme"
@@ -503,458 +502,340 @@ PanelWindow {
             }
         }
 
-        Item {
+        StyledFrame {
+            id: frame
+            st: root.st
             width: root.width
             height: root.panel_height - root.line_height - (root.dock_bottom ? 0 : root.st.frame_drop)
+            radius: root.frame_radius
+            top_left_radius: root.top_left_radius
+            top_right_radius: root.top_right_radius
+            inner_top_radius: 0
+            corner_radii: true
+            island_color: root.held_color
+            clear_fill: root.device || root.st.border_title
+            clear_border: root.st.border_title
+            visor_top_cut: root.top_radius > 0 ? 6 : 0
+            sheen_on: root.floating
+            tint_color: Theme.theme_primary_light
+            device: root.device
 
-            // Reads as the island unfolding downward: its color, joined flush under the accent line.
-            Rectangle {
-                anchors.fill: parent
-                color: root.st.frame_chamfer > 0 || root.st.frame_visor || root.st.custom_frame || root.device || root.st.border_title ? "transparent" : root.st.frame_follows_island ? root.held_color : root.st.frame_color
-                topLeftRadius: root.top_left_radius
-                topRightRadius: root.top_right_radius
-                bottomLeftRadius: root.frame_radius
-                bottomRightRadius: root.frame_radius
-                border.width: root.st.frame_visor || root.st.frame_chamfer > 0 || root.st.custom_frame || root.st.border_title ? 0 : root.st.frame_border_width
-                border.color: root.st.frame_border_color
-            }
-
-            Loader {
-                anchors.fill: parent
-                active: root.st.border_title
-                sourceComponent: Neovim.FloatFrame {
-                    st: root.st
-                    title: root.has_title ? root.shown_title : ""
-                    status: root.st.title_status ? root.title_value : ""
-                    chip_height: root.has_title ? title_tab.height : 0
-                    radius: root.frame_radius
-                }
-            }
-
-            VisorGlass {
-                anchors.fill: parent
-                top_cut: root.top_radius > 0 ? 6 : 0
-            }
-
-            Shape {
-                id: frame_glow
-                visible: root.st.frame_glow.a > 0
-                anchors.fill: parent
-                anchors.margins: root.st.frame_border_width
-
-                ShapePath {
-                    strokeWidth: -1
-                    fillGradient: RadialGradient {
-                        centerX: frame_glow.width / 2
-                        centerY: 0
-                        focalX: frame_glow.width / 2
-                        focalY: 0
-                        centerRadius: Math.max(frame_glow.width * 0.6, Math.min(frame_glow.height, 420))
-                        focalRadius: 0
-                        GradientStop { position: 0; color: root.st.frame_glow }
-                        GradientStop { position: 0.72; color: root.st.frame_color }
+            decor: [
+                Loader {
+                    anchors.fill: parent
+                    active: root.st.border_title
+                    sourceComponent: Neovim.FloatFrame {
+                        st: root.st
+                        title: root.has_title ? root.shown_title : ""
+                        status: root.st.title_status ? root.title_value : ""
+                        chip_height: root.has_title ? title_tab.height : 0
+                        radius: root.frame_radius
                     }
-                    PathRectangle { width: frame_glow.width; height: frame_glow.height }
+                },
+
+                // Under a capsule the top border gives way, so the capsule's fill runs straight into the frame's.
+                Rectangle {
+                    visible: root.island_capsule && !root.dock_bottom && root.st.frame_border_width > 0
+                    x: root.edge_x(root.island_width) + root.st.frame_border_width
+                    width: root.island_width - root.st.frame_border_width * 2
+                    height: root.st.frame_border_width
+                    color: root.st.frame_shade.a > 0 ? root.st.frame_shade : root.st.frame_color
+                },
+
+                Loader {
+                    anchors.fill: parent
+                    active: root.device
+                    sourceComponent: DeviceShell {
+                        room_side: root.device_side
+                        room_top: root.device_top
+                        room_bottom: root.device_bottom
+                    }
+                },
+
+                // The watch face: a shaded panel with static scan rows, and the engraving on the bezel below it.
+                Rectangle {
+                    id: lcd_panel
+                    readonly property real edge: root.st.inset_pad + root.st.lcd_margin
+                    visible: root.lcd && !root.st.frame_watch
+                    x: lcd_panel.edge
+                    y: lcd_panel.edge
+                    width: parent.width - lcd_panel.edge * 2
+                    height: parent.height - lcd_panel.edge * 2 - root.engraving_height
+                    radius: root.st.lcd_radius
+                    border.width: 1
+                    border.color: root.st.lcd_border
+                    clip: true
+                    gradient: Gradient {
+                        GradientStop { position: 0; color: root.st.lcd_top }
+                        GradientStop { position: 1; color: root.st.lcd_bottom }
+                    }
+
+                    Scanlines {
+                        anchors.fill: parent
+                        color: root.st.lcd_scan
+                        period: 3
+                    }
+
+                    CornerBrackets {
+                        anchors.fill: parent
+                        color: root.st.lcd_brackets
+                        inset: 5
+                        arm: 14
+                        all_corners: true
+                    }
+                },
+
+                Loader {
+                    anchors.fill: parent
+                    active: root.st.frame_watch
+                    sourceComponent: Goldeneye.PopupPanel {
+                        st: root.st
+                    }
+                },
+
+                Text {
+                    id: engraving
+                    visible: root.st.frame_engraving !== ""
+                    x: lcd_panel.edge + 6
+                    anchors.bottom: parent.bottom
+                    anchors.bottomMargin: root.st.inset_pad + 2
+                    text: root.st.frame_engraving
+                    color: root.st.frame_border_color
+                    font.family: Style.title_font_family
+                    font.pixelSize: 9
+                    font.letterSpacing: 2.5
+                },
+
+                FontMetrics {
+                    id: engraving_metrics
+                    font: engraving.font
                 }
-            }
-
-            FrameShade {
-                anchors.fill: parent
-                anchors.margins: root.st.frame_border_width
-                top_left_radius: Math.max(0, root.top_left_radius - root.st.frame_border_width)
-                top_right_radius: Math.max(0, root.top_right_radius - root.st.frame_border_width)
-                bottom_radius: Math.max(0, root.frame_radius - root.st.frame_border_width)
-                chamfer: root.st.frame_chamfer
-            }
-
-            // Under a capsule the top border gives way, so the capsule's fill runs straight into the frame's.
-            Rectangle {
-                visible: root.island_capsule && !root.dock_bottom && root.st.frame_border_width > 0
-                x: root.edge_x(root.island_width) + root.st.frame_border_width
-                width: root.island_width - root.st.frame_border_width * 2
-                height: root.st.frame_border_width
-                color: root.st.frame_shade.a > 0 ? root.st.frame_shade : root.st.frame_color
-            }
-
-            Sheen {
-                color_top: root.floating ? root.st.sheen : "transparent"
-                corner: root.top_radius
-                edge: root.st.frame_border_width
-            }
-
-            CustomFrame {
-                anchors.fill: parent
-                device: root.device
-                top_radius: 0
-                bottom_radius: root.frame_radius
-            }
+            ]
 
             Loader {
-                anchors.fill: parent
-                active: root.device
-                sourceComponent: DeviceShell {
-                    room_side: root.device_side
-                    room_top: root.device_top
-                    room_bottom: root.device_bottom
+                active: root.has_title && root.banded
+                x: root.st.inset_pad + root.st.frame_border_width
+                y: x
+                width: parent.width - x * 2
+                height: root.band_height
+                sourceComponent: TitleStrip {
+                    title: root.title
+                    readout_value: root.title_value
+                    closable: !root.passive
                 }
             }
 
-            FrameInset {
-                bottom_radius: root.frame_radius
-            }
-
-            // The watch face: a shaded panel with static scan rows, and the engraving on the bezel below it.
             Rectangle {
-                id: lcd_panel
-                readonly property real edge: root.st.inset_pad + root.st.lcd_margin
-                visible: root.lcd && !root.st.frame_watch
-                x: lcd_panel.edge
-                y: lcd_panel.edge
-                width: parent.width - lcd_panel.edge * 2
-                height: parent.height - lcd_panel.edge * 2 - root.engraving_height
-                radius: root.st.lcd_radius
-                border.width: 1
-                border.color: root.st.lcd_border
-                clip: true
-                gradient: Gradient {
-                    GradientStop { position: 0; color: root.st.lcd_top }
-                    GradientStop { position: 1; color: root.st.lcd_bottom }
+                id: title_tab
+                visible: root.has_title && !root.banded && !root.st.border_title
+                x: (root.st.fade_fills ? root.st.frame_border_width : 0) + root.st.inset_pad + root.st.lcd_margin * 2 + root.device_side
+                y: (root.st.fade_fills ? root.st.frame_border_width : 0) + root.st.inset_pad + root.st.lcd_margin * 2 + root.device_top
+                readonly property real reticle_space: root.st.title_reticle.a > 0 ? title_text.implicitHeight + 4 : 0
+                readonly property real lead_space: title_tab.reticle_space + title_index.space
+                width: root.st.fade_fills ? parent.width - root.st.frame_border_width * 2 : Math.min(Math.ceil(Math.max(title_metrics.width, title_metrics.advanceWidth)) + 20 + title_tab.lead_space, parent.width - title_tab.x * 2)
+                height: Math.max(title_text.implicitHeight, title_index.space > 0 ? title_index.implicitHeight : 0) + 4
+                color: root.st.fade_fills ? "transparent" : root.st.title_bg
+
+                Reticle {
+                    visible: title_tab.reticle_space > 0
+                    x: 6
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: title_tab.reticle_space - 4
+                    height: width
+                    color: root.st.title_reticle
+                    center_color: root.st.caret_color
                 }
 
-                Scanlines {
-                    anchors.fill: parent
-                    color: root.st.lcd_scan
-                    period: 3
+                FadeFill {
+                    visible: root.st.fade_fills
+                    fill: root.st.title_bg
                 }
 
-                CornerBrackets {
-                    anchors.fill: parent
-                    color: root.st.lcd_brackets
-                    inset: 5
-                    arm: 14
-                    all_corners: true
-                }
-            }
-
-            Loader {
-                anchors.fill: parent
-                active: root.st.frame_watch
-                sourceComponent: Goldeneye.PopupPanel {
+                TitleIndex {
+                    id: title_index
+                    x: 10 + title_tab.reticle_space
+                    anchors.verticalCenter: parent.verticalCenter
                     st: root.st
+                    name: root.popup_name
+                }
+
+                TextMetrics {
+                    id: title_metrics
+                    font: title_text.font
+                    text: title_text.text
+                }
+
+                Text {
+                    id: title_text
+                    anchors.centerIn: root.st.fade_fills ? undefined : parent
+                    anchors.horizontalCenterOffset: title_tab.lead_space / 2
+                    x: 10 + title_tab.lead_space
+                    y: (parent.height - height) / 2
+                    width: Math.min(Math.ceil(Math.max(title_metrics.width, title_metrics.advanceWidth)), parent.width - 20 - title_tab.lead_space)
+                    elide: Text.ElideRight
+                    text: root.st.title_prefix + root.shown_title + (Style.caret_phase ? root.st.title_suffix : " ".repeat(root.st.title_suffix.length))
+                    color: root.st.title_fg
+                    font.family: root.st.title_font_family
+                    font.pixelSize: root.st.title_size > 0 ? root.st.title_size : root.st.fs(-2)
+                    font.weight: root.st.title_weight > 0 ? root.st.title_weight : root.st.title_font_family === root.st.font_family ? Font.Bold : Font.Normal
+                    font.letterSpacing: root.st.title_spacing
                 }
             }
 
             Text {
-                id: engraving
-                visible: root.st.frame_engraving !== ""
-                x: lcd_panel.edge + 6
+                id: title_readout
+                // Dropped on narrow popups rather than drawn over the title.
+                visible: root.has_title && root.st.title_readout !== "" && title_tab.x + (root.st.fade_fills ? 10 + title_tab.lead_space + title_text.implicitWidth : title_tab.width) + 12 <= parent.width - anchors.rightMargin - implicitWidth
+                anchors.right: parent.right
+                anchors.rightMargin: (root.lcd ? root.st.lcd_margin * 2 : 12) + root.st.inset_pad + root.device_side
+                y: title_tab.y + (title_tab.height - height) / 2
+                text: root.st.title_readout.replace("{code}", root.title.slice(0, 3))
+                color: root.st.title_readout_fg.a > 0 ? root.st.title_readout_fg : root.st.text_muted
+                font.family: root.st.font_family
+                font.pixelSize: root.st.fs(-5)
+                font.letterSpacing: 1
+            }
+
+            // Plain sentence-case titles carry the live title value at the right, like a status line.
+            Text {
+                visible: root.has_title && !root.banded && root.st.title_status && !root.st.border_title && root.st.title_readout === "" && root.title_value !== "" && title_tab.x + title_tab.width + 12 <= parent.width - anchors.rightMargin - implicitWidth
+                anchors.right: parent.right
+                anchors.rightMargin: title_readout.anchors.rightMargin + 4
+                y: title_tab.y + (title_tab.height - height) / 2
+                text: root.title_value
+                color: root.st.text_muted
+                font.family: root.st.mono_font
+                font.pixelSize: root.st.fs(-3)
+            }
+
+            Loader {
+                active: root.has_title && !root.banded && !root.passive && root.st.console_views === "ps2"
+                visible: title_tab.x + title_tab.width + 10 <= x
+                anchors.right: parent.right
+                anchors.rightMargin: title_readout.anchors.rightMargin
+                y: title_tab.y + (title_tab.height - height) / 2
+                source: active ? "ps2/AnalogLed.qml" : ""
+                onLoaded: item.lit = Qt.binding(() => root.wanted && frame.layer_item.Window.active)
+            }
+
+            Rectangle {
+                visible: root.has_title && root.st.title_trail.a > 0 && width > 8
+                x: title_tab.x + (root.st.fade_fills ? 10 + title_tab.lead_space + title_text.implicitWidth + 12 : title_tab.width)
+                y: title_tab.y + Math.round(title_tab.height / 2)
+                width: (title_readout.visible ? title_readout.x - 12 : parent.width - title_readout.anchors.rightMargin) - x
+                height: 1
+                gradient: Gradient {
+                    orientation: Gradient.Horizontal
+                    GradientStop { position: 0; color: root.st.title_trail }
+                    GradientStop { position: 1; color: Qt.alpha(root.st.title_trail, 0) }
+                }
+            }
+
+            Rectangle {
+                visible: root.has_title && root.st.title_rule.a > 0
+                x: title_tab.x
+                y: title_tab.y + title_tab.height + 2
+                width: parent.width - title_tab.x * 2
+                height: 1
+                color: root.st.title_rule
+            }
+
+            Rectangle {
+                visible: root.search_overlay
+                z: 2
+                anchors.left: parent.left
+                anchors.right: parent.right
                 anchors.bottom: parent.bottom
-                anchors.bottomMargin: root.st.inset_pad + 2
-                text: root.st.frame_engraving
-                color: root.st.frame_border_color
-                font.family: Style.title_font_family
-                font.pixelSize: 9
-                font.letterSpacing: 2.5
-            }
-
-            FontMetrics {
-                id: engraving_metrics
-                font: engraving.font
-            }
-
-            // Everything drawn on the frame; styles with a glow or text shadow render it as one layer.
-            Item {
-                id: glow_layer
-                readonly property bool layered: root.st.glow || root.st.text_shadow.a > 0
-                anchors.fill: parent
-                layer.enabled: glow_layer.layered
-                opacity: glow_layer.layered ? 0 : 1
-
-
-                Loader {
-                    active: root.has_title && root.banded
-                    x: root.st.inset_pad + root.st.frame_border_width
-                    y: x
-                    width: parent.width - x * 2
-                    height: root.band_height
-                    sourceComponent: TitleStrip {
-                        title: root.title
-                        readout_value: root.title_value
-                        closable: !root.passive
-                    }
-                }
-
-                Rectangle {
-                    id: title_tab
-                    visible: root.has_title && !root.banded && !root.st.border_title
-                    x: (root.st.fade_fills ? root.st.frame_border_width : 0) + root.st.inset_pad + root.st.lcd_margin * 2 + root.device_side
-                    y: (root.st.fade_fills ? root.st.frame_border_width : 0) + root.st.inset_pad + root.st.lcd_margin * 2 + root.device_top
-                    readonly property real reticle_space: root.st.title_reticle.a > 0 ? title_text.implicitHeight + 4 : 0
-                    readonly property real lead_space: title_tab.reticle_space + title_index.space
-                    width: root.st.fade_fills ? parent.width - root.st.frame_border_width * 2 : Math.min(Math.ceil(Math.max(title_metrics.width, title_metrics.advanceWidth)) + 20 + title_tab.lead_space, parent.width - title_tab.x * 2)
-                    height: Math.max(title_text.implicitHeight, title_index.space > 0 ? title_index.implicitHeight : 0) + 4
-                    color: root.st.fade_fills ? "transparent" : root.st.title_bg
-
-                    Reticle {
-                        visible: title_tab.reticle_space > 0
-                        x: 6
-                        anchors.verticalCenter: parent.verticalCenter
-                        width: title_tab.reticle_space - 4
-                        height: width
-                        color: root.st.title_reticle
-                        center_color: root.st.caret_color
-                    }
-
-                    FadeFill {
-                        visible: root.st.fade_fills
-                        fill: root.st.title_bg
-                    }
-
-                    TitleIndex {
-                        id: title_index
-                        x: 10 + title_tab.reticle_space
-                        anchors.verticalCenter: parent.verticalCenter
-                        st: root.st
-                        name: root.popup_name
-                    }
-
-                    TextMetrics {
-                        id: title_metrics
-                        font: title_text.font
-                        text: title_text.text
-                    }
-
-                    Text {
-                        id: title_text
-                        anchors.centerIn: root.st.fade_fills ? undefined : parent
-                        anchors.horizontalCenterOffset: title_tab.lead_space / 2
-                        x: 10 + title_tab.lead_space
-                        y: (parent.height - height) / 2
-                        width: Math.min(Math.ceil(Math.max(title_metrics.width, title_metrics.advanceWidth)), parent.width - 20 - title_tab.lead_space)
-                        elide: Text.ElideRight
-                        text: root.st.title_prefix + root.shown_title + (Style.caret_phase ? root.st.title_suffix : " ".repeat(root.st.title_suffix.length))
-                        color: root.st.title_fg
-                        font.family: root.st.title_font_family
-                        font.pixelSize: root.st.title_size > 0 ? root.st.title_size : root.st.fs(-2)
-                        font.weight: root.st.title_weight > 0 ? root.st.title_weight : root.st.title_font_family === root.st.font_family ? Font.Bold : Font.Normal
-                        font.letterSpacing: root.st.title_spacing
-                    }
-                }
-
-                Text {
-                    id: title_readout
-                    // Dropped on narrow popups rather than drawn over the title.
-                    visible: root.has_title && root.st.title_readout !== "" && title_tab.x + (root.st.fade_fills ? 10 + title_tab.lead_space + title_text.implicitWidth : title_tab.width) + 12 <= parent.width - anchors.rightMargin - implicitWidth
-                    anchors.right: parent.right
-                    anchors.rightMargin: (root.lcd ? root.st.lcd_margin * 2 : 12) + root.st.inset_pad + root.device_side
-                    y: title_tab.y + (title_tab.height - height) / 2
-                    text: root.st.title_readout.replace("{code}", root.title.slice(0, 3))
-                    color: root.st.title_readout_fg.a > 0 ? root.st.title_readout_fg : root.st.text_muted
-                    font.family: root.st.font_family
-                    font.pixelSize: root.st.fs(-5)
-                    font.letterSpacing: 1
-                }
-
-                // Plain sentence-case titles carry the live title value at the right, like a status line.
-                Text {
-                    visible: root.has_title && !root.banded && root.st.title_status && !root.st.border_title && root.st.title_readout === "" && root.title_value !== "" && title_tab.x + title_tab.width + 12 <= parent.width - anchors.rightMargin - implicitWidth
-                    anchors.right: parent.right
-                    anchors.rightMargin: title_readout.anchors.rightMargin + 4
-                    y: title_tab.y + (title_tab.height - height) / 2
-                    text: root.title_value
-                    color: root.st.text_muted
-                    font.family: root.st.mono_font
-                    font.pixelSize: root.st.fs(-3)
-                }
-
-                Loader {
-                    active: root.has_title && !root.banded && !root.passive && root.st.console_views === "ps2"
-                    visible: title_tab.x + title_tab.width + 10 <= x
-                    anchors.right: parent.right
-                    anchors.rightMargin: title_readout.anchors.rightMargin
-                    y: title_tab.y + (title_tab.height - height) / 2
-                    source: active ? "ps2/AnalogLed.qml" : ""
-                    onLoaded: item.lit = Qt.binding(() => root.wanted && glow_layer.Window.active)
-                }
-
-                Rectangle {
-                    visible: root.has_title && root.st.title_trail.a > 0 && width > 8
-                    x: title_tab.x + (root.st.fade_fills ? 10 + title_tab.lead_space + title_text.implicitWidth + 12 : title_tab.width)
-                    y: title_tab.y + Math.round(title_tab.height / 2)
-                    width: (title_readout.visible ? title_readout.x - 12 : parent.width - title_readout.anchors.rightMargin) - x
-                    height: 1
-                    gradient: Gradient {
-                        orientation: Gradient.Horizontal
-                        GradientStop { position: 0; color: root.st.title_trail }
-                        GradientStop { position: 1; color: Qt.alpha(root.st.title_trail, 0) }
-                    }
-                }
-
-                Rectangle {
-                    visible: root.has_title && root.st.title_rule.a > 0
-                    x: title_tab.x
-                    y: title_tab.y + title_tab.height + 2
-                    width: parent.width - title_tab.x * 2
-                    height: 1
-                    color: root.st.title_rule
-                }
-
-                Rectangle {
-                    visible: root.search_overlay
-                    z: 2
-                    anchors.left: parent.left
-                    anchors.right: parent.right
-                    anchors.bottom: parent.bottom
-                    anchors.margins: root.st.frame_border_width
-                    height: base_footer.implicitHeight + 8
-                    color: root.st.frame_follows_island ? root.held_color : root.st.frame_color
-                    bottomLeftRadius: root.st.frame_radius
-                    bottomRightRadius: root.st.frame_radius
-                }
-
-                MenuFooter {
-                    id: base_footer
-                    visible: root.has_footer || root.search_overlay
-                    z: root.search_overlay ? 2 : 0
-                    anchors.left: parent.left
-                    anchors.right: parent.right
-                    anchors.bottom: parent.bottom
-                    anchors.leftMargin: 12 + root.st.lcd_margin + root.device_side
-                    anchors.rightMargin: 12 + root.st.lcd_margin + root.device_side
-                    anchors.bottomMargin: (root.search_overlay ? 4 : 8) + root.st.inset_pad + root.st.lcd_margin * 2 + root.engraving_height + root.device_bottom + Style.slant_room
-                    text: root.footer_override !== "" ? root.footer_override : (root.key_help !== "" ? root.help_hint : root.footer_hint)
-                }
-
-                // Takes the typed query off screen; MenuFooter draws it in the footer line.
-                TextInput {
-                    id: search_input
-                    width: 0
-                    height: 0
-                    opacity: 0
-                    maximumLength: 64
-                    onTextChanged: {
-                        root.search_query = text;
-                        if (root.search_typing && text !== "") {
-                            const i = root.search_starts_open ? root.fuzzy_best(root.search_rows, text) : Search.best(root.search_rows, text);
-                            if (i >= 0) root.search_select(i);
-                        }
-                    }
-
-                    Keys.onPressed: event => {
-                        if (event.key === Qt.Key_Escape) {
-                            ThemeAudio.play("cancel");
-                            if (root.search_starts_open) root.accept_search();
-                            else root.clear_search();
-                        } else if (event.key === Qt.Key_Backspace && search_input.text === "") {
-                            if (!root.search_starts_open) {
-                                ThemeAudio.play("cancel");
-                                root.clear_search();
-                            } else return;
-                        } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
-                            ThemeAudio.play("confirm");
-                            if (root.search_starts_open) root.search_accept();
-                            else root.accept_search();
-                        } else if (event.key === Qt.Key_Down || event.key === Qt.Key_Up) {
-                            const before = root.cursor_key();
-                            root.step_search(event.key === Qt.Key_Down ? 1 : -1);
-                            root.play_if_moved(before);
-                        } else {
-                            return;
-                        }
-                        event.accepted = true;
-                    }
-                }
-
-                FocusScope {
-                    id: content_scope
-                    anchors.fill: parent
-                    anchors.topMargin: root.header_height
-                    anchors.bottomMargin: root.footer_height
-                    anchors.leftMargin: root.st.lcd_margin + root.device_side
-                    anchors.rightMargin: root.st.lcd_margin + root.device_side
-                    focus: true
-                    opacity: root.help_open ? 0 : 1
-
-                    Keys.onEscapePressed: {
-                        ThemeAudio.play("cancel");
-                        if (root.search_query !== "") root.clear_search();
-                        else Popups.close();
-                    }
-                    Keys.onPressed: event => root.handle_shared_key(event)
-                }
-
-                KeyHelp {
-                    id: key_help_view
-                    anchors.fill: content_scope
-                    visible: root.help_open
-                    text: root.key_help
-                    tab_count: root.tabs.length
-                    has_views: root.sub_views.length > 0
-                    searchable: root.search_enabled
-                    onBack: root.help_open = false
-                }
-            }
-
-            // Phosphor bloom: a blurred copy in the glow color under a lightly tinted sharp copy.
-            // Loaders rebuild the effects per style; MultiEffects left hidden across a style switch stopped drawing.
-            Loader {
-                anchors.fill: glow_layer
-                active: root.st.glow
-                sourceComponent: Item {
-                    MultiEffect {
-                        anchors.fill: parent
-                        source: glow_layer
-                        autoPaddingEnabled: false
-                        blurEnabled: true
-                        blur: 0.5
-                        blurMax: 12
-                        brightness: 0.2
-                        colorization: 1
-                        colorizationColor: root.st.glow_color
-                    }
-
-                    MultiEffect {
-                        anchors.fill: parent
-                        source: glow_layer
-                        autoPaddingEnabled: false
-                        colorization: root.st.glow_tint
-                        colorizationColor: Theme.theme_primary_light
-                    }
-                }
-            }
-
-            Loader {
-                anchors.fill: glow_layer
-                active: !root.st.glow && root.st.text_shadow.a > 0
-                sourceComponent: MultiEffect {
-                    source: glow_layer
-                    autoPaddingEnabled: false
-                    shadowEnabled: true
-                    shadowBlur: 0
-                    shadowOpacity: 1
-                    shadowColor: root.st.text_shadow
-                    shadowHorizontalOffset: 2
-                    shadowVerticalOffset: 2
-                }
-            }
-
-            // Static scanlines; nothing animates them.
-            Scanlines {
-                visible: root.st.scanlines && root.st.frame_octagon <= 0
-                anchors.fill: parent
-                anchors.margins: root.frame_radius > 0 ? root.st.frame_border_width : 0
-                color: root.st.scanline_color
-                period: root.st.scanline_period
-            }
-
-            Dither {
-                anchors.fill: parent
                 anchors.margins: root.st.frame_border_width
-                color: root.st.dither
-                radius: root.frame_radius
+                height: base_footer.implicitHeight + 8
+                color: root.st.frame_follows_island ? root.held_color : root.st.frame_color
+                bottomLeftRadius: root.st.frame_radius
+                bottomRightRadius: root.st.frame_radius
             }
 
-            Loader {
+            MenuFooter {
+                id: base_footer
+                visible: root.has_footer || root.search_overlay
+                z: root.search_overlay ? 2 : 0
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.bottom: parent.bottom
+                anchors.leftMargin: 12 + root.st.lcd_margin + root.device_side
+                anchors.rightMargin: 12 + root.st.lcd_margin + root.device_side
+                anchors.bottomMargin: (root.search_overlay ? 4 : 8) + root.st.inset_pad + root.st.lcd_margin * 2 + root.engraving_height + root.device_bottom + Style.slant_room
+                text: root.footer_override !== "" ? root.footer_override : (root.key_help !== "" ? root.help_hint : root.footer_hint)
+            }
+
+            // Takes the typed query off screen; MenuFooter draws it in the footer line.
+            TextInput {
+                id: search_input
+                width: 0
+                height: 0
+                opacity: 0
+                maximumLength: 64
+                onTextChanged: {
+                    root.search_query = text;
+                    if (root.search_typing && text !== "") {
+                        const i = root.search_starts_open ? root.fuzzy_best(root.search_rows, text) : Search.best(root.search_rows, text);
+                        if (i >= 0) root.search_select(i);
+                    }
+                }
+
+                Keys.onPressed: event => {
+                    if (event.key === Qt.Key_Escape) {
+                        ThemeAudio.play("cancel");
+                        if (root.search_starts_open) root.accept_search();
+                        else root.clear_search();
+                    } else if (event.key === Qt.Key_Backspace && search_input.text === "") {
+                        if (!root.search_starts_open) {
+                            ThemeAudio.play("cancel");
+                            root.clear_search();
+                        } else return;
+                    } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
+                        ThemeAudio.play("confirm");
+                        if (root.search_starts_open) root.search_accept();
+                        else root.accept_search();
+                    } else if (event.key === Qt.Key_Down || event.key === Qt.Key_Up) {
+                        const before = root.cursor_key();
+                        root.step_search(event.key === Qt.Key_Down ? 1 : -1);
+                        root.play_if_moved(before);
+                    } else {
+                        return;
+                    }
+                    event.accepted = true;
+                }
+            }
+
+            FocusScope {
+                id: content_scope
+                anchors.fill: parent
+                anchors.topMargin: root.header_height
+                anchors.bottomMargin: root.footer_height
+                anchors.leftMargin: root.st.lcd_margin + root.device_side
+                anchors.rightMargin: root.st.lcd_margin + root.device_side
+                focus: true
+                opacity: root.help_open ? 0 : 1
+
+                Keys.onEscapePressed: {
+                    ThemeAudio.play("cancel");
+                    if (root.search_query !== "") root.clear_search();
+                    else Popups.close();
+                }
+                Keys.onPressed: event => root.handle_shared_key(event)
+            }
+
+            KeyHelp {
+                id: key_help_view
+                anchors.fill: content_scope
+                visible: root.help_open
+                text: root.key_help
+                tab_count: root.tabs.length
+                has_views: root.sub_views.length > 0
+                searchable: root.search_enabled
+                onBack: root.help_open = false
+            }
+
+            overlay: Loader {
                 id: burst_loader
                 anchors.fill: parent
                 anchors.margins: root.st.inset_pad + root.st.lcd_margin
