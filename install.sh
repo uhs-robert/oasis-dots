@@ -37,7 +37,7 @@ Options:
   --no-cargo           Skip Rust/rustup install
   --no-system-files    Skip system files (/etc, /usr/local) and root links
   --no-services        Skip service setup (shell, keyd, Steam, Nvidia, voxtype)
-  --dev                Clone repos into $GITHUB_DIR for editing and link them
+  --dev                Clone repos into $GITHUB_DIR (default ~/Development) for editing and link them
   --server             Headless install: shell/CLI/dev packages and configs only
   -y, --yes            Auto-confirm all prompts
   -h, --help           Show this help message

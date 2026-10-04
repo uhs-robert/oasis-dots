@@ -186,3 +186,6 @@ home/foot/.config/foot/foot.ini
 home/yazi/.config/yazi/theme.toml
 home/kitty/.config/kitty/oasis-theme.conf
 home/ghostty/.config/ghostty/oasis-theme.conf
+
+# Local installer overrides (GITHUB_DIR, GITHUB_ORG)
+/install.local

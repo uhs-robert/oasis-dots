@@ -4,12 +4,31 @@ local Config = require("config") ---@class Config
 local Generate = require("theme.generate") ---@class Generate
 local MissingRepos = require("lib.missing_repos") ---@class MissingRepos
 
--- Restore last theme selected via switch.lua if the state file exists.
-local state = io.open(os.getenv("HOME") .. "/.config/hypr/theme/.current_theme", "r")
-if state then
-  local saved = state:read("*line")
-  state:close()
-  if saved and saved ~= "" then Config.theme = saved end
+--- @param path string
+--- @return string|nil
+local function read_saved(path)
+  local f = io.open(path, "r")
+  if not f then return nil end
+  local saved = f:read("*line")
+  f:close()
+  return (saved and saved ~= "") and saved or nil
+end
+
+-- Restore the theme last selected via switch.lua; always write the file so Quickshell can watch it.
+local state_dir = require("lib.state")()
+local state_file = state_dir .. "/theme"
+local saved = read_saved(state_file)
+if saved then
+  Config.theme = saved
+else
+  saved = read_saved(os.getenv("HOME") .. "/.config/hypr/theme/.current_theme")
+  if saved then Config.theme = saved end
+  os.execute("mkdir -p '" .. state_dir .. "'")
+  local out = io.open(state_file, "w")
+  if out then
+    out:write(Config.theme)
+    out:close()
+  end
 end
 
 --- @class Theme

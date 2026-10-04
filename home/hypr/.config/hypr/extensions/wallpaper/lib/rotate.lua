@@ -70,14 +70,6 @@ local function command_exists(cmd)
   return r == true or r == 0
 end
 
---- Return the current HYPRLAND_INSTANCE_SIGNATURE by reading /tmp/hypr/, or nil.
---- @return string|nil
-local function detect_signature()
-  local sig = run_cmd("ls -1 /tmp/hypr 2>/dev/null | head -n 1")
-  if sig then sig = sig:match("([^\n]+)") end
-  return sig
-end
-
 --- Sleep for `seconds` (fractional seconds supported).
 --- @param seconds number
 local function sleep(seconds) os.execute(string.format("sleep %.3f", seconds)) end
@@ -343,7 +335,7 @@ function Rotate.start(opts)
     run_cmd = run_cmd,
     command_exists = command_exists,
     sleep = sleep,
-    signature = detect_signature(),
+    signature = Apply.detect_signature(),
   }
 
   math.randomseed(os.time())

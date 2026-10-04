@@ -20,6 +20,7 @@ local function build_path()
     dirs[#dirs + 1] = dir
   end
   for _, dir in ipairs({
+    require("lib.state")() .. "/bin",
     HOME .. "/.local/bin",
     HOME .. "/.cargo/bin",
     HOME .. "/go/bin",
