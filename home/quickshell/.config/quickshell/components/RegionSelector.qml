@@ -33,13 +33,13 @@ PanelWindow {
     readonly property color dim_color: Qt.alpha(Theme.bg_shadow, 0.6)
     readonly property bool pixel_mode: Screenshot.mode === "pixel"
     readonly property bool target_mode: Screenshot.mode === "window" || Screenshot.mode === "screen"
+    // A region for the share overview's pending request: Esc goes back there instead of cancelling.
     readonly property bool sharing: Screenshot.preset === "share"
-    readonly property string share_keys: "W window · S screen · R region"
     readonly property bool skinned_targets: ["scope", "jrpg", "goldeneye", "scopeitem", "scanvisor", "tvosd", "tmux", "nvimfloat", "tiecomp", "materia", "duckhunt", "pokemon"].includes(Style.picker_skin)
     property bool help_open: false
     readonly property string delay_label: Screenshot.delay_s > 0 ? "Delay " + Screenshot.delay_s + "s" : "No delay"
     readonly property string tier_keys: "hjkl move 10px · H/J/K/L move 100px · C-hjkl move 1px · C-H/J/K/L move 300px"
-    readonly property string help_text: Screenshot.phase === "toolbar" ? "h/l move · Tab/S-Tab next/prev · c copy · s save · a annotate · o ocr · t scroll text · i scroll image · r record" + (Screenshot.frozen ? "" : " · d delay off/3s/5s/10s") + " · Enter run · Esc/Backspace adjust selection · q cancel" : root.pixel_mode ? root.tier_keys + " · Enter pick · click pick · m loupe · i/o or +/- zoom · q/Esc cancel" : root.target_mode ? "hjkl nearest " + Screenshot.mode + " · Tab/S-Tab cycle · " + (root.sharing ? root.share_keys : "d delay off/3s/5s/10s") + " · Enter pick · click pick · m loupe · i/o or +/- zoom · q/Esc cancel" : root.tier_keys + " · space anchor, then confirm · v set or drop anchor · O swap ends · drag select" + (root.sharing ? " · " + root.share_keys : "") + " · Enter confirm, whole screen without a selection · m loupe · i/o or +/- zoom · Esc drop anchor, then cancel · q cancel"
+    readonly property string help_text: Screenshot.phase === "toolbar" ? "h/l move · Tab/S-Tab next/prev · c copy · s save · a annotate · o ocr · t scroll text · i scroll image · r record" + (Screenshot.frozen ? "" : " · d delay off/3s/5s/10s") + " · Enter run · Esc/Backspace adjust selection · q cancel" : root.pixel_mode ? root.tier_keys + " · Enter pick · click pick · m loupe · i/o or +/- zoom · q/Esc cancel" : root.target_mode ? "hjkl nearest " + Screenshot.mode + " · Tab/S-Tab cycle · d delay off/3s/5s/10s · Enter pick · click pick · m loupe · i/o or +/- zoom · q/Esc cancel" : root.tier_keys + " · space anchor, then confirm · v set or drop anchor · O swap ends · drag select · Enter confirm, whole screen without a selection · m loupe · i/o or +/- zoom · Esc drop anchor, then " + (root.sharing ? "back to the share overview · q cancel the share" : "cancel · q cancel")
 
     function cursor_key() {
         return Screenshot.target_index + "|" + Screenshot.tool_index;
@@ -111,6 +111,12 @@ PanelWindow {
     WlrLayershell.layer: WlrLayer.Overlay
     // Exclusive would make Hyprland send every screen's pointer input to this one surface.
     WlrLayershell.keyboardFocus: root.keyboard_owner ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
+
+    // Hyprland skips every bind while this holds focus, so SUPER+hjkl cannot move focus off a share pick.
+    ShortcutInhibitor {
+        window: root
+        enabled: root.sharing && root.keyboard_owner
+    }
 
     property point press_point: Qt.point(0, 0)
     property point last_mouse: Qt.point(-1, -1)
@@ -2957,7 +2963,7 @@ PanelWindow {
                 anchors.centerIn: parent
                 width: Math.min(implicitWidth, root.width - 56)
                 wrap: false
-                text: (root.sharing ? "Share " + Screenshot.mode + " · " + root.share_keys + " · " : "") + (root.target_mode && Screenshot.phase === "select" ? "hjkl/Tab " + Screenshot.mode + (root.sharing ? "" : " · d " + root.delay_label.toLowerCase()) + " · Enter pick · Esc cancel" : root.pixel_mode ? "hjkl move · Enter pick · m loupe · i/o zoom · Esc cancel" : Screenshot.phase === "toolbar" ? "h/l move · Enter run · c copy · s save · a annotate · o ocr · t scroll text · i scroll image · r record" + (Screenshot.frozen ? "" : " · d delay") + " · Esc/Backspace adjust · q cancel" : Screenshot.anchored ? "hjkl extend · O swap ends · v/Esc drop anchor · Space/Enter " + (Screenshot.preset !== "" ? Screenshot.preset : "confirm") : "drag/hjkl cursor · v/space anchor · Enter full screen · m loupe · i/o zoom · Esc cancel") + " · ? help"
+                text: (root.sharing ? "Share region · " : "") + (root.target_mode && Screenshot.phase === "select" ? "hjkl/Tab " + Screenshot.mode + " · d " + root.delay_label.toLowerCase() + " · Enter pick · Esc cancel" : root.pixel_mode ? "hjkl move · Enter pick · m loupe · i/o zoom · Esc cancel" : Screenshot.phase === "toolbar" ? "h/l move · Enter run · c copy · s save · a annotate · o ocr · t scroll text · i scroll image · r record" + (Screenshot.frozen ? "" : " · d delay") + " · Esc/Backspace adjust · q cancel" : Screenshot.anchored ? "hjkl extend · O swap ends · v/Esc drop anchor · Space/Enter " + (Screenshot.preset !== "" ? Screenshot.preset : "confirm") : "drag/hjkl cursor · v/space anchor · Enter full screen · m loupe · i/o zoom · " + (root.sharing ? "Esc back · q cancel" : "Esc cancel")) + " · ? help"
             }
         }
     }
@@ -3054,6 +3060,7 @@ PanelWindow {
                 ThemeAudio.play("cancel");
                 if (toolbar) Screenshot.reselect();
                 else if (Screenshot.anchored) Screenshot.clear_anchor();
+                else if (root.sharing) Screenshot.share_back();
                 else Screenshot.cancel();
             } else if (event.key === Qt.Key_Q) {
                 ThemeAudio.play("cancel");
@@ -3069,9 +3076,7 @@ PanelWindow {
             } else if (root.pixel_mode && (event.key === Qt.Key_Return || event.key === Qt.Key_Enter)) {
                 ThemeAudio.play("confirm");
                 Screenshot.pick_pixel();
-            } else if (!toolbar && root.sharing && shift && [Qt.Key_W, Qt.Key_S, Qt.Key_R].includes(event.key)) {
-                Screenshot.switch_mode({ [Qt.Key_W]: "window", [Qt.Key_S]: "screen", [Qt.Key_R]: "region" }[event.key]);
-            } else if ((toolbar || root.target_mode) && !root.sharing && !Screenshot.frozen && event.key === Qt.Key_D) {
+            } else if ((toolbar || root.target_mode) && !Screenshot.frozen && event.key === Qt.Key_D) {
                 Screenshot.cycle_delay();
             } else if (!toolbar && root.target_mode && dir) {
                 Screenshot.step_target(dir[0], dir[1]);
