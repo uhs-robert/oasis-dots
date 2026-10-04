@@ -20,7 +20,7 @@ Singleton {
     property var sessions: ["Hyprland"]
     // False when /var/lib/qs-greeter is missing or not writable, so nothing reaches the greeter.
     property bool installed: false
-    readonly property string data_dir: Quickshell.env("QS_GREETER_DATA") || "/var/lib/qs-greeter"
+    readonly property string data_dir: "/var/lib/qs-greeter"
 
     readonly property string resolved_screen: {
         const name = root.screen === "follow" ? Style.lock_style : root.screen;

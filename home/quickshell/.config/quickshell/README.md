@@ -202,7 +202,7 @@ just greeter-sync --install  # stage and install it
 just greeter-preview         # try it in a window with a fake greetd
 ```
 
-`just greeter-sync --from DIR` stages the skins and `theme.json` from another Quickshell config dir (for example a worktree's `home/quickshell/.config/quickshell`) instead of the repo's skins plus your live theme. It installs to `/etc/greetd/quickshell` with its data in `/var/lib/qs-greeter` (override with `QS_GREETER_DATA`, read by the bar, the greeter and `qs-greeter`), which the bar keeps current as your theme and choices change (Settings > Login screen > Sync to greeter). `/usr/local/bin/qs-greeter` falls back to tuigreet when the greeter is missing, fails to start or crashes. Press `F10` or `SUPER + T` at the login screen to switch to tuigreet yourself.
+`just greeter-sync --from DIR` stages the skins, theme files and fonts from another Quickshell config dir (for example a worktree's `home/quickshell/.config/quickshell`) instead of the repo's, and takes `DIR/theme/theme.json` over your saved theme when it has one. It installs to `/etc/greetd/quickshell` with its data in `/var/lib/qs-greeter`, which the bar keeps current as your theme and choices change (Settings > Login screen > Sync to greeter). `/usr/local/bin/qs-greeter` falls back to tuigreet when the greeter is missing, fails to start or crashes. Press `F10` or `SUPER + T` at the login screen to switch to tuigreet yourself.
 
 ## Extending
 

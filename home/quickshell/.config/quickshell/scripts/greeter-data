@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Writes the greeter's data files (greeter.json, theme.json, faces/$USER) into /var/lib/qs-greeter when that directory exists and is writable.
 # Usage: greeter-data <greeter.json text> <theme.json path> [face path] [music path]
-dir=${QS_GREETER_DATA:-/var/lib/qs-greeter}
+dir=/var/lib/qs-greeter
 [[ -d "$dir" && -w "$dir" ]] || exit 0
 umask 027
 
