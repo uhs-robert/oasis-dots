@@ -16,13 +16,13 @@ Hyprland starts it with `qs -n` (see `home/hypr/.config/hypr/config/autostart/`)
 | `picker/`     | The fuzzy picker, its providers (apps, clipboard, dirs, emoji, keybinds) and the HyprVim `:` prompt |
 | `services/`   | Singletons that hold state (media, network, weather, notifications...) and the IPC handlers |
 | `components/` | Shared widgets, with per-style pieces in their own folders (`nes/`, `ps1/`, `oasis/`...)   |
-| `theme/`      | `Theme.qml` (colors from the Oasis theme), `Style.qml` (every style's tokens) and `Paths.qml` (XDG dirs) |
+| `theme/`      | `Theme.qml` (colors from the Oasis theme), `Style.qml` (the active style's tokens), `StyleSchema.js` (every token's type, default and doc), `styles/` (one file per style) and `Paths.qml` (XDG dirs) |
 | `settings/`   | The Settings panel and its sections                                                        |
 | `lock/`       | The session lock, the simple lock screen and the styled lock skins in `skins/`             |
 | `overview/`   | The workspace overview                                                                     |
 | `fonts/`      | Bundled OFL fonts, registered for the whole shell                                          |
 | `sounds/`     | UI sound packs                                                                             |
-| `scripts/`    | Helpers the shell runs: greeter data, lock backdrop, audio importers, sound generator      |
+| `scripts/`    | Helpers the shell runs: greeter data, lock backdrop, audio importers, sound generator; `gen-style-exports` for `Style.qml` |
 | `assets/`     | Weather icons                                                                              |
 | `bars.json`   | Tracked bar layout per monitor, matched by description or connector name                   |
 
@@ -207,7 +207,9 @@ just greeter-preview         # try it in a window with a fake greetd
 
 ## Extending
 
-**A style.** Add its token set to `styles` in `theme/Style.qml` (most build on the shared `terminal` base with `Object.assign`), then add its name to `order`, and to `labels` if the label isn't just the capitalized name. Shared popup components take their palette colors from `Style.pal`, which defaults to the Oasis palette; a style can remap it (goldeneye does). Optional extras: a transition in `components/transitions/Kinds.js`, a sound pack in `sounds/<style>/` (a patch in `scripts/synth-sounds`) and a lock skin.
+**A style.** Add `theme/styles/<name>.js` with an `overrides(t, ctx)` that returns the tokens it changes from the schema defaults (`t` is `Theme`), import it in `theme/styles/index.js` and add it to the object `build()` returns there and to `sources` (the files Style.qml watches for hot reload), then add its name to `order` in `theme/Style.qml`, and to `labels` if the label isn't just the capitalized name. Shared popup components take their palette colors from `Style.pal`, which defaults to the Oasis palette; a style can remap it (goldeneye does). Optional extras: a transition in `components/transitions/Kinds.js`, a sound pack in `sounds/<style>/` (a patch in `scripts/synth-sounds`) and a lock skin.
+
+**A style token.** Add one `tok(...)` line to `theme/StyleSchema.js` with its export type, default, a one-line doc and any options (`expr` for a computed export, `via: "bar"`, `export: false` for an internal key), then run `scripts/gen-style-exports` to rewrite the generated property lines in `Style.qml`. `just check` fails while they are out of date.
 
 **A Settings section.** Write `settings/sections/<Name>Section.qml`, usually a `RowsSection` with a list of rows, and add an entry to `list` in `settings/Sections.js`. The sidebar, search and IPC pick it up from there.
 
