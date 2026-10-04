@@ -11,7 +11,7 @@ RowLayout {
 
     readonly property var cur: WeatherState.current
     // The ring fills with the temperature over 0-100 °F in either unit.
-    readonly property real fahrenheit: !WeatherState.has_data ? 0 : WeatherState.metric ? root.cur.temp * 9 / 5 + 32 : root.cur.temp
+    readonly property real fahrenheit: !WeatherState.has_data ? 0 : WeatherState.temp_f(root.cur.temp)
 
     function fmt_temp(t) {
         return Math.round(t) + "°" + WeatherState.unit_symbol();
@@ -38,7 +38,7 @@ RowLayout {
         Callout {
             Layout.fillWidth: true
             label: "Condition"
-            value: WeatherState.has_data ? root.cur.cond : WeatherState.loading ? "Loading…" : "Unavailable"
+            value: WeatherState.cond_text(false)
             value_color: WeatherState.has_data || WeatherState.loading ? Style.text_strong : Theme.warning
         }
 

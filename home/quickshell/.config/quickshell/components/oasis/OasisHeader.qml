@@ -57,7 +57,7 @@ RowLayout {
         Text {
             Layout.fillWidth: true
             elide: Text.ElideRight
-            text: WeatherState.has_data ? root.cur.cond : WeatherState.loading ? "Loading…" : "Unavailable"
+            text: WeatherState.cond_text(false)
             color: WeatherState.has_data || WeatherState.loading ? Theme.fg_strong : Theme.warning
             font.family: Style.font_family
             font.pixelSize: Style.fs(1)
