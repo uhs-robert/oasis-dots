@@ -89,7 +89,7 @@ ColumnLayout {
                     wrapMode: Text.WordWrap
                     maximumLineCount: 2
                     elide: Text.ElideRight
-                    text: root.has ? root.cur.cond : WeatherState.loading ? "Loading…" : "Unavailable"
+                    text: WeatherState.cond_text(false)
                     color: root.has || WeatherState.loading ? Theme.fg_strong : Theme.warning
                     font.family: Style.font_family
                     font.pixelSize: Style.fs(1)

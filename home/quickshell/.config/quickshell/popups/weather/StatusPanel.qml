@@ -30,7 +30,7 @@ ColumnLayout {
     }
     readonly property var stats: root.has ? [
         ["FEELS", Math.round(root.cur.feels), root.unit],
-        ["WIND", Math.round(root.cur.wind_speed), WeatherState.wind_unit() + " " + Materia.direction(root.cur.wind_dir)],
+        ["WIND", Math.round(root.cur.wind_speed), WeatherState.wind_unit() + " " + WeatherState.compass_label(root.cur.wind_dir)],
         ["UV", root.cur.uv_index.toFixed(1), ""],
         ["AQI", root.aqi >= 0 ? root.aqi : "--", root.aqi >= 0 ? WeatherState.aqi_band(root.aqi).label.toLowerCase() : ""]
     ] : []
@@ -331,7 +331,7 @@ ColumnLayout {
         visible: WeatherState.location_name !== "" || WeatherState.stale
         Layout.fillWidth: true
         elide: Text.ElideRight
-        text: WeatherState.stale ? "Stale data" + (WeatherState.error ? ": " + WeatherState.error : "") : WeatherState.location_name
+        text: WeatherState.stale ? WeatherState.stale_text() : WeatherState.location_name
         color: WeatherState.stale ? Style.pal.warning : Style.pal.primary_light
         font.pixelSize: Style.fs(-4)
     }

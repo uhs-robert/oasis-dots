@@ -15,14 +15,13 @@ RowLayout {
     readonly property bool threat: WeatherState.alerts.length > 0
     readonly property int aqi: WeatherState.aq_has_data && WeatherState.aq_current ? WeatherState.aq_current.aqi : -1
     readonly property color lock_color: root.threat ? Theme.theme_label : Theme.theme_primary
-    readonly property var compass: ["N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE", "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW"]
     readonly property var phrases: ({ partly_cloudy: "broken cloud layer", overcast: "overcast cloud layer", fog: "dense fog bank", drizzle: "light drizzle", rain: "active rainfall", heavy_rain: "heavy rainfall", freezing_rain: "freezing precipitation", snow: "snowfall", heavy_snow: "heavy snowfall", thunderstorm: "electrical storm activity" })
 
     readonly property string log_line: {
         if (!root.has) return WeatherState.loading ? "Acquiring atmospheric data." : "No atmospheric data" + (WeatherState.error ? ": " + WeatherState.error : "") + ".";
         const key = WeatherState.weather_color_keys[Math.round(root.cur.code)] || "";
         const phrase = root.phrases[key] || (key === "clear" ? (root.cur.is_day ? "clear sky, no cloud layer" : "clear night sky") : root.cur.cond.toLowerCase());
-        const dir = root.compass[Math.round(((root.cur.wind_dir % 360) + 360) % 360 / 22.5) % 16];
+        const dir = WeatherState.compass_label(root.cur.wind_dir);
         return "Atmospheric analysis: " + phrase + ". Humidity " + root.cur.humidity + "%. Wind " + Math.round(root.cur.wind_speed) + " " + WeatherState.wind_unit() + " " + dir + "." + (root.aqi >= 0 ? " Air quality index " + root.aqi + "." : "");
     }
 
@@ -126,7 +125,7 @@ RowLayout {
             visible: WeatherState.stale
             Layout.fillWidth: true
             elide: Text.ElideRight
-            text: "Stale data" + (WeatherState.error ? ": " + WeatherState.error : "")
+            text: WeatherState.stale_text()
             color: Theme.warning
             font.family: Style.font_family
             font.pixelSize: Style.fs(-5)

@@ -362,7 +362,7 @@ Popup {
                     Text {
                         Layout.fillWidth: true
                         elide: Text.ElideRight
-                        text: WeatherState.has_data ? WeatherState.current.cond : WeatherState.loading ? "Loading…" : "Unavailable: " + WeatherState.error
+                        text: WeatherState.cond_text(true)
                         color: WeatherState.has_data || WeatherState.loading ? Style.pal.fg : Style.pal.warning
                         font.family: Style.font_family
                         font.pixelSize: Style.fs(1)
@@ -397,7 +397,7 @@ Popup {
                     wrapMode: Text.Wrap
                     maximumLineCount: 3
                     elide: Text.ElideRight
-                    text: "Stale data" + (WeatherState.error ? ": " + WeatherState.error : "")
+                    text: WeatherState.stale_text()
                     color: Style.pal.warning
                     font.family: Style.font_family
                     font.pixelSize: Style.fs(-3)

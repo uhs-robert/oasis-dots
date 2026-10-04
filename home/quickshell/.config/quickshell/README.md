@@ -42,7 +42,7 @@ Weather alerts come from the US National Weather Service (api.weather.gov), so t
 | `bar` | `false` shows no bar on matching monitors |
 | `left`, `center`, `right` | Module names, in draw order. Repeats within one list are dropped (a module in both `left` and `right` draws twice), unknown names are skipped with a warning. Lualine styles draw `center` inside the right island and re-sort it with `right` into their x/y/z sections, so the listed order only holds within a section |
 
-Modules: `start` (Start button), `workspaces`, `clock` (calendar popup), `tray`, `volume`, `battery`, `bluetooth`, `network`, `weather`, `keeptabs` (AI agent sessions busy, done or waiting, jump to one; hidden while none run), `updates` (pending package updates), `voxtype` (dictation status), `recording` (screen recording chip), `notifications` (center and Do Not Disturb), `media` (now playing, not in the default layout) and `system`. `system` takes an argument, `system:cpu`, `system:memory` or `system:temperature`, and can be listed more than once with different arguments; bare `system` starts on `cpu`.
+Modules: `start` (Start button), `workspaces`, `clock` (calendar popup), `tray`, `volume`, `battery`, `bluetooth`, `network`, `weather`, `keeptabs` (optional: needs the keeptabs tools in `~/.local/bin` and, for its usage tab, the `claude` CLI; shows AI agent sessions busy, done or waiting and jumps to one; hidden while none run or when keeptabs is not installed, and removable from `bars.json`), `updates` (pending package updates), `voxtype` (dictation status), `recording` (screen recording chip), `notifications` (center and Do Not Disturb), `media` (now playing, not in the default layout) and `system`. `system` takes an argument, `system:cpu`, `system:memory` or `system:temperature`, and can be listed more than once with different arguments; bare `system` starts on `cpu`.
 
 ```json
 [
@@ -83,10 +83,12 @@ The panel drops from the center of the bar. Open it with `SUPER + SPACE` then `S
 | Group        | Sections                           |
 | ------------ | ---------------------------------- |
 | Appearance   | Style, Colors, Theme options       |
-| Bar          | Bar modules, Weather               |
+| Bar          | Bar modules, Clock, Weather        |
 | System       | Displays, Default apps, Power      |
 | Sound        | Theme audio                        |
 | Lock & Login | Lock screen, Login screen          |
+
+Settings > Clock sets the calendar's first day of week: follow the locale (the default), Monday or Sunday. It saves to `clock.json` in the Quickshell state folder (`$XDG_STATE_HOME/quickshell/`, or `~/.local/state/quickshell/`).
 
 What you set here is saved as state under `~/.local/state` (or `$XDG_STATE_HOME`). State wins over the tracked defaults, so the repo stays clean while each machine keeps its own choices. Delete a file to fall back to the defaults.
 
@@ -127,7 +129,7 @@ Every popup uses the same keys. `?` shows the full list for the popup you're in.
 | `?`              | Key help                                 |
 | `q` / `Esc`      | Close                                    |
 
-Console styles draw controller buttons in place of keys in the footers and help.
+Console styles draw controller buttons in place of keys in the footers and help. Each console is one entry in `components/KeyHints.js` (`controllers`): the path of its button component and the key to button map. A button component is an `Item` with `button` (a name from the map), `size` and, for the Game Boy shades, `shades`.
 
 The main binds that open things (the leader is `SUPER`):
 

@@ -26,7 +26,7 @@ RowsSection {
 
     footer: Text {
         Layout.fillWidth: true
-        text: "Terminal, editor and file managers reload Hyprland when changed. Saved to ~/.local/state/hypr/apps.json"
+        text: "Terminal, editor and file managers reload Hyprland when changed. Saved to " + DefaultApps.state_dir + "/apps.json"
         wrapMode: Text.WordWrap
         color: root.st.text_dim
         font.family: root.st.font_family
