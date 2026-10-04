@@ -76,6 +76,7 @@ parse_args() {
 
 main() {
   parse_args "$@"
+  trap print_failed_packages EXIT
 
   echo ""
   info "Oasis dotfiles install: $DISTRO"

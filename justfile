@@ -3,13 +3,17 @@
 default:
     @just --list
 
+system_excludes := "--exclude=/etc/tuigreet/config.toml --exclude=/etc/greetd/quickshell/ --exclude=/etc/greetd/hyprland.lua --exclude=/usr/local/bin/qs-greeter --exclude=/opt/"
+
 # Show pending changes between system/ and / (dry run, no sudo)
 system-diff:
-    rsync -rlptv --omit-dir-times --chown=root:root --dry-run system/ /
+    rsync -rlptv --omit-dir-times --chown=root:root --dry-run {{system_excludes}} system/ /
+    @echo "Skipped installer-managed files: greeter via just greeter-sync --install; tuigreet config and Betterbird via install.sh"
 
 # Copy system/ into / for real, e.g. /etc, /usr/local/bin (needs sudo)
 system-apply:
-    sudo rsync -rlptv --omit-dir-times --chown=root:root system/ /
+    sudo rsync -rlptv --omit-dir-times --chown=root:root {{system_excludes}} system/ /
+    @echo "Skipped installer-managed files: greeter via just greeter-sync --install; tuigreet config and Betterbird via install.sh"
 
 # Symlink one package from home/ into ~
 stow name:

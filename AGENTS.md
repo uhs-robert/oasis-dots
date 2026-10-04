@@ -23,8 +23,8 @@ just restow <pkg>     # fix stale/broken links
 just unstow <pkg>
 just stow-core        # packages under [CORE] in packages/stow.ini
 just stow-optional    # packages under [OPTIONAL]
-just system-diff      # dry-run rsync of system/ into / (no sudo)
-just system-apply     # apply system/ into / (sudo)
+just system-diff      # dry-run rsync of system/ into / (no sudo); skips installer-managed files
+just system-apply     # apply system/ into / (sudo); skips installer-managed files (greeter via `just greeter-sync --install`, tuigreet config and Betterbird via `install.sh`)
 just sync-root-yazi   # regenerate root's Yazi keymap
 just repos [--dev]    # set up repos/ without a full install
 just update-repos     # pull non-linked clones in repos/
