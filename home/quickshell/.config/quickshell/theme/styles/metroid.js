@@ -44,6 +44,7 @@ function overrides(t, ctx) {
         label_spacing: 2.5,
         footer_fg: Qt.tint(t.fg_dim, Qt.alpha(t.theme_primary_light, 0.4)),
         footer_rule: true,
+        footer_compass: true,
         footer_rule_color: Qt.alpha(t.theme_primary, 0.35),
         title_reticle: Qt.alpha(t.theme_primary, 0.8),
         meter_off: Qt.alpha(t.theme_primary, 0.06),
