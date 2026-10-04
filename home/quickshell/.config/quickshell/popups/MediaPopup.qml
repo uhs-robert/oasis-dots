@@ -9,10 +9,7 @@ import "../theme"
 import "../services"
 import "media" as Media
 import "weather" as Weather
-import "snes" as Snes
 import "../components/ps1" as Ps1
-import "../components/ps2" as Ps2
-import "../components/goldeneye" as Goldeneye
 
 Popup {
     id: root
@@ -45,41 +42,14 @@ Popup {
         return root.players.indexOf(p);
     }
 
-    function step_player(delta) {
-        if (root.players.length === 0) return;
-        const idx = root.player_index(root.player);
-        const next_idx = (idx + delta + root.players.length) % root.players.length;
-        MediaState.select(root.players[next_idx]);
-    }
-
-    function seek_ratio(ratio) {
-        if (!root.player || !root.player.canSeek || !root.player.positionSupported) return;
-        const length = MediaState.length_of(root.player);
-        root.player.position = Math.max(0, Math.min(length, ratio * length));
-    }
-
-    function toggle_shuffle() {
-        if (!root.player || !root.player.shuffleSupported) return;
-        root.player.shuffle = !root.player.shuffle;
-    }
-
-    // Cycles None -> Playlist -> Track -> None.
-    function cycle_loop() {
-        if (!root.player || !root.player.loopSupported) return;
-        const cur = root.player.loopState;
-        if (cur === MprisLoopState.None) root.player.loopState = MprisLoopState.Playlist;
-        else if (cur === MprisLoopState.Playlist) root.player.loopState = MprisLoopState.Track;
-        else root.player.loopState = MprisLoopState.None;
-    }
-
     function handle_key(event) {
         const before = root.cursor_key();
         if (event.key === Qt.Key_Backtab || (event.key === Qt.Key_Tab && (event.modifiers & Qt.ShiftModifier))) {
-            root.step_player(-1);
+            MediaState.step_player(-1);
             root.play_if_moved(before);
             event.accepted = true;
         } else if (event.key === Qt.Key_Tab) {
-            root.step_player(1);
+            MediaState.step_player(1);
             root.play_if_moved(before);
             event.accepted = true;
         } else if (event.key === Qt.Key_Space || event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
@@ -97,11 +67,11 @@ Popup {
             ThemeAudio.play((event.modifiers & Qt.ShiftModifier) ? "confirm" : "cursor");
             event.accepted = true;
         } else if (event.key === Qt.Key_S) {
-            root.toggle_shuffle();
+            MediaState.toggle_shuffle();
             ThemeAudio.play("confirm");
             event.accepted = true;
         } else if (event.key === Qt.Key_R) {
-            root.cycle_loop();
+            MediaState.cycle_loop();
             ThemeAudio.play("confirm");
             event.accepted = true;
         }
@@ -162,78 +132,12 @@ Popup {
                 Layout.fillWidth: true
                 spacing: 14
 
-                Item {
-                    id: art_container
+                Media.AlbumArt {
                     Layout.preferredWidth: 168
                     Layout.preferredHeight: 168
                     Layout.alignment: Qt.AlignTop
-
-                    Rectangle {
-                        id: art_shadow_source
-                        anchors.fill: parent
-                        radius: Style.radius(12)
-                        color: Style.pal.bg_shadow
-                        visible: false
-                        layer.enabled: true
-                    }
-
-                    MultiEffect {
-                        anchors.fill: parent
-                        anchors.topMargin: 8
-                        visible: art_image.has_art && art_image.status === Image.Ready
-                        source: art_shadow_source
-                        blurEnabled: true
-                        blur: 0.6
-                        blurMax: 32
-                        opacity: 0.55
-                        z: -1
-                    }
-
-                    Rectangle {
-                        anchors.fill: parent
-                        radius: Style.radius(12)
-                        color: Style.pal.bg_surface
-                        visible: !art_image.has_art || art_image.status !== Image.Ready
-                    }
-
-                    Text {
-                        anchors.centerIn: parent
-                        visible: !art_image.has_art || art_image.status !== Image.Ready
-                        text: "\u{f001}"
-                        color: Style.text_dim
-                        font.family: Style.font_family
-                        font.pixelSize: 48
-                    }
-
-                    Rectangle {
-                        id: art_mask
-                        anchors.fill: parent
-                        radius: Style.radius(12)
-                        visible: false
-                        layer.enabled: true
-                    }
-
-                    Image {
-                        id: art_image
-                        readonly property bool has_art: root.has_art
-                        anchors.fill: parent
-                        visible: false
-                        source: root.player ? root.player.trackArtUrl : ""
-                        sourceSize.width: width * 2
-                        fillMode: Image.PreserveAspectCrop
-                        asynchronous: true
-                        layer.enabled: true
-                    }
-
-                    MultiEffect {
-                        anchors.fill: parent
-                        visible: art_image.has_art && art_image.status === Image.Ready
-                        source: art_image
-                        maskEnabled: true
-                        maskSource: art_mask
-                        maskThresholdMin: 0.5
-                        maskSpreadAtMin: 1.0
-                    }
+                    source: root.player ? root.player.trackArtUrl : ""
+                    has_art: root.has_art
                 }
 
                 ColumnLayout {
@@ -321,111 +225,9 @@ Popup {
                     Item { Layout.fillHeight: true }
 
                     // --- Progress bar: click or drag to seek ---
-                    Item {
-                        id: progress_item
-                        Layout.fillWidth: true
-                        Layout.preferredHeight: progress_item.sound_test ? 30 : 16
-
-                        readonly property bool sound_test: Style.console_views === "snes"
-                        readonly property real track_length: MediaState.length_of(root.player)
-                        readonly property bool has_length: track_length > 0
-                        readonly property real ratio: progress_item.has_length
-                            ? Math.max(0, Math.min(1, root.player.position / progress_item.track_length)) : 0
-                        readonly property bool knob_active: seek_area.containsMouse || seek_area.pressed
-
-                        Rectangle {
-                            anchors.verticalCenter: parent.verticalCenter
-                            width: parent.width
-                            height: 6
-                            radius: Style.radius(3)
-                            color: Style.pal.bg_surface
-                            visible: progress_item.has_length && !Style.segmented_levels && !progress_item.sound_test
-                        }
-
-                        Rectangle {
-                            anchors.verticalCenter: parent.verticalCenter
-                            width: parent.width * progress_item.ratio
-                            height: 6
-                            radius: Style.radius(3)
-                            color: Style.pal.primary
-                            visible: progress_item.has_length && !Style.segmented_levels && !progress_item.sound_test
-                        }
-
-                        Meter {
-                            anchors.left: parent.left
-                            anchors.right: parent.right
-                            anchors.verticalCenter: parent.verticalCenter
-                            visible: progress_item.has_length && Style.segmented_levels && !progress_art.item && !Style.track_bars
-                            segment_count: 40
-                            implicitHeight: Style.console_views === "nes" ? 16 : Style.px(8)
-                            value: progress_item.ratio
-                        }
-
-                        Goldeneye.BarRow {
-                            anchors.left: parent.left
-                            anchors.right: parent.right
-                            anchors.verticalCenter: parent.verticalCenter
-                            height: Style.px(12)
-                            visible: progress_item.has_length && Style.track_bars
-                            value: progress_item.ratio
-                        }
-
-                        // Console progress art; its track_x/track_width, when set, bound the seek area.
-                        Loader {
-                            id: progress_art
-                            anchors.left: parent.left
-                            anchors.right: parent.right
-                            anchors.verticalCenter: parent.verticalCenter
-                            height: progress_item.sound_test ? parent.height : implicitHeight
-                            visible: progress_item.has_length || progress_item.sound_test
-                            sourceComponent: ({ snes: snes_progress, ps2: ps2_progress })[Style.console_views] || null
-                        }
-
-                        Component {
-                            id: snes_progress
-                            Snes.SnesSoundTest {
-                                ratio: progress_item.ratio
-                                track: root.player && root.player.metadata ? String(root.player.metadata["xesam:trackNumber"] || "") : ""
-                            }
-                        }
-
-                        Component {
-                            id: ps2_progress
-                            Ps2.SphereTrack {
-                                sphere: Style.px(8)
-                                value: progress_item.ratio
-                            }
-                        }
-
-                        Rectangle {
-                            id: knob
-                            readonly property int base_size: 12
-                            width: progress_item.knob_active ? base_size + 3 : base_size
-                            height: width
-                            radius: width / 2
-                            anchors.verticalCenter: parent.verticalCenter
-                            x: Math.max(0, Math.min(parent.width - width, parent.width * progress_item.ratio - width / 2))
-                            color: Style.pal.primary
-                            visible: progress_item.has_length && !Style.segmented_levels && !progress_item.sound_test
-                            opacity: progress_item.knob_active ? 1 : 0
-                            border.width: 2
-                            border.color: Style.pal.bg_core
-
-                            Behavior on width { NumberAnimation { duration: 90; easing.type: Easing.OutCubic } }
-                            Behavior on opacity { NumberAnimation { duration: 120 } }
-                        }
-
-                        MouseArea {
-                            id: seek_area
-                            readonly property var art: progress_art.item
-                            x: art && art.track_x !== undefined ? art.track_x : 0
-                            width: art && art.track_width !== undefined ? art.track_width : parent.width
-                            height: parent.height
-                            hoverEnabled: true
-                            enabled: !!root.player && root.player.canSeek && root.player.positionSupported
-                            onPressed: mouse => root.seek_ratio(mouse.x / width)
-                            onPositionChanged: mouse => { if (pressed) root.seek_ratio(Math.max(0, Math.min(1, mouse.x / width))); }
-                        }
+                    Media.SeekBar {
+                        id: seek_bar
+                        player: root.player
                     }
 
                     Loader {
@@ -435,12 +237,12 @@ Popup {
                         sourceComponent: Ps1.CdTransport {
                             player: root.player
                             time_text: root.player ? root.fmt_time(root.player.position) : "0:00"
-                            length_text: progress_item.has_length ? root.fmt_time(progress_item.track_length) : ""
+                            length_text: seek_bar.has_length ? root.fmt_time(seek_bar.track_length) : ""
                             onPrevious: MediaState.previous()
                             onNext: MediaState.next()
                             onToggle: MediaState.toggle()
-                            onShuffle: root.toggle_shuffle()
-                            onLoop: root.cycle_loop()
+                            onShuffle: MediaState.toggle_shuffle()
+                            onLoop: MediaState.cycle_loop()
                         }
                     }
 
@@ -450,7 +252,7 @@ Popup {
                         Layout.preferredHeight: 14
 
                         Text {
-                            visible: progress_item.has_length
+                            visible: seek_bar.has_length
                             text: root.player ? root.fmt_time(root.player.position) : "0:00"
                             color: Style.text_dim
                             font.family: Style.font_family
@@ -460,7 +262,7 @@ Popup {
                         Item { Layout.fillWidth: true }
 
                         Text {
-                            text: progress_item.has_length ? root.fmt_time(progress_item.track_length) : "Live"
+                            text: seek_bar.has_length ? root.fmt_time(seek_bar.track_length) : "Live"
                             color: Style.text_dim
                             font.family: Style.font_family
                             font.pixelSize: Style.fs(-4)
@@ -479,7 +281,7 @@ Popup {
                             diameter: 32
                             icon: "\u{f04b3}"
                             active: !!root.player && root.player.shuffle
-                            onActivated: root.toggle_shuffle()
+                            onActivated: MediaState.toggle_shuffle()
                         }
 
                         Media.RoundButton {
@@ -510,46 +312,12 @@ Popup {
                             icon: (!!root.player && root.player.loopState !== MprisLoopState.None) ? "\u{f0456}" : "\u{f0457}"
                             active: !!root.player && root.player.loopState !== MprisLoopState.None
                             badge: (!!root.player && root.player.loopState === MprisLoopState.Track) ? "1" : ""
-                            onActivated: root.cycle_loop()
+                            onActivated: MediaState.cycle_loop()
                         }
                     }
 
                     // --- Subtle cava visualizer along the bottom edge ---
-                    Item {
-                        id: cava_strip
-                        Layout.fillWidth: true
-                        Layout.preferredHeight: 18
-                        Layout.topMargin: 4
-
-                        readonly property int bar_count: 28
-                        readonly property bool active: MediaState.playing
-
-                        RowLayout {
-                            anchors.fill: parent
-                            spacing: 3
-
-                            Repeater {
-                                model: cava_strip.bar_count
-
-                                Rectangle {
-                                    id: cava_bar
-                                    required property int index
-                                    readonly property int src_index: Math.floor(cava_bar.index * CavaState.bar_count / cava_strip.bar_count)
-                                    readonly property real level: CavaState.levels[cava_bar.src_index] || 0
-
-                                    Layout.fillWidth: true
-                                    Layout.alignment: Qt.AlignBottom
-                                    height: cava_strip.active ? Math.max(2, cava_bar.level * 18) : 2
-                                    radius: Style.radius(1)
-                                    color: Style.pal.primary
-                                    opacity: cava_strip.active ? 0.25 : 0
-
-                                    Behavior on height { NumberAnimation { duration: 90 } }
-                                    Behavior on opacity { NumberAnimation { duration: 200 } }
-                                }
-                            }
-                        }
-                    }
+                    Media.CavaStrip {}
                 }
             }
 
