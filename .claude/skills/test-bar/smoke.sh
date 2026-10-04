@@ -38,16 +38,19 @@ while (($# > 0)); do
   esac
 done
 ((${#styles[@]} > 0)) || styles=(ps1 goldeneye metroid neovim)
-# Exit 0 when the capture is blank: under 1% of pixels differ from the grab of what lies behind it.
+# Exit 0 when the capture is blank (under 1% of pixels differ from what lies behind it), 1 when not, 2 when it cannot compare.
 is_blank() {
   python3 - "$1" "$2" <<'PY'
 import sys
-from PIL import Image, ImageChops
-a, b = (Image.open(f).convert("RGB") for f in sys.argv[1:3])
-if a.size != b.size:
-    sys.exit(1)
-diff = ImageChops.difference(a, b).convert("L").point(lambda v: 255 if v > 16 else 0)
-changed = diff.histogram()[255]
+try:
+    from PIL import Image, ImageChops
+    a, b = (Image.open(f).convert("RGB") for f in sys.argv[1:3])
+    if a.size != b.size:
+        sys.exit(2)
+    diff = ImageChops.difference(a, b).convert("L").point(lambda v: 255 if v > 16 else 0)
+    changed = diff.histogram()[255]
+except Exception:
+    sys.exit(2)
 sys.exit(0 if changed < 0.01 * a.size[0] * a.size[1] else 1)
 PY
 }
@@ -71,10 +74,18 @@ PY
     echo "FAIL: identical images not blank"
     status=1
   fi
-  if is_blank "$tmp/a.png" "$tmp/other.png"; then
-    echo "FAIL: different images read as blank"
+  rc=0
+  is_blank "$tmp/a.png" "$tmp/other.png" || rc=$?
+  if ((rc == 1)); then echo "ok: different images read as ok"; else
+    echo "FAIL: different images not read as ok"
     status=1
-  else echo "ok: different images read as ok"; fi
+  fi
+  rc=0
+  is_blank "$tmp/a.png" "$tmp/missing.png" || rc=$?
+  if ((rc == 2)); then echo "ok: unreadable image reads as a check error"; else
+    echo "FAIL: unreadable image not a check error"
+    status=1
+  fi
   exit "$status"
 fi
 out=${out:-${XDG_CACHE_HOME:-$HOME/.cache}/dotfiles/smoke/$(date +%Y%m%d-%H%M%S)}
@@ -166,22 +177,22 @@ check_blank() {
   sleep 0.3
   mkdir -p "$out/behind"
   grim -g "$rect" "$out/behind/${style}_$surface.png"
-  if is_blank "$out/${style}_$surface.png" "$out/behind/${style}_$surface.png"; then
-    missing+=("MISS $style $surface-blank")
-  fi
+  local rc=0
+  is_blank "$out/${style}_$surface.png" "$out/behind/${style}_$surface.png" || rc=$?
+  case $rc in
+  0) missing+=("MISS $style $surface-blank") ;;
+  1) ;;
+  *) missing+=("MISS $style $surface-check") ;;
+  esac
 }
 
 shoot() {
-  local style=$1 surface=$2 ns=$3 x y w h x0 y0
-  read -r x y w h <<<"$(layer_geom "$ns")"
+  local style=$1 surface=$2 ns=$3
   last_rect=""
-  if [[ -n $w ]]; then
-    x0=$((x < 4 ? 0 : x - 4))
-    y0=$((y < 4 ? 0 : y - 4))
-    last_rect="$x0,$y0 $((w + (x - x0) + 4))x$((h + (y - y0) + 4))"
-  fi
+  rm -f "$out/.rect"
   hyprctl layers -j >"$out/${style}_$surface.layers.json"
-  "$here/capture.sh" "$ns" --pad 4 --out "$out/${style}_$surface.png" >/dev/null || missing+=("MISS $style $surface")
+  "$here/capture.sh" "$ns" --pad 4 --rect-file "$out/.rect" --out "$out/${style}_$surface.png" >/dev/null || missing+=("MISS $style $surface")
+  [[ ! -s $out/.rect ]] || last_rect=$(<"$out/.rect")
   [[ -n $(layer_geom "$ns") ]] || missing+=("MISS $style $surface-gone")
 }
 
