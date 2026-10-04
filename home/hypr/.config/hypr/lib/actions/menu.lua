@@ -10,6 +10,8 @@ local MENU = Config.app.menu
 local DMENU_CMD = Config.app.dmenu_cmd
 local TERM_CMD = Config.app.term_cmd
 local FILE_MANAGER = Config.app.tui_file_manager
+local SHELL = (os.getenv("SHELL") or "zsh"):match("[^/]+$")
+local IS_ROFI = MENU:match("[^/]+$") == "rofi"
 local THEME_DIR = "~/.config/" .. MENU .. "/themes/"
 
 --- @class Menu
@@ -93,7 +95,7 @@ end
 --- Return an action that picks a $PATH executable and runs it in a terminal.
 --- @return fun()
 function Menu.cli()
-  local inner = [==[zsh -c \"export NO_FASTFETCH=1; exec zsh -i -c '{cmd}; exec zsh -i'\"]==]
+  local inner = "env NO_FASTFETCH=1 " .. SHELL .. " -i -c '{cmd}; exec " .. SHELL .. " -i'"
   return Menu.show("run", { args = '-run-command "' .. TERM_CMD .. " -e " .. inner .. '"' })
 end
 
@@ -105,7 +107,10 @@ function Menu.tmux() return Cmd.run(Scripts.rofi_tmux) end
 --- @return fun()
 function Menu.agents()
   local open = Scripts.qs_ipc .. " call popup open keeptabs"
-  return Cmd.run("sh -c 'out=$(" .. open .. ' 2>&1) && [ -z "$out" ] || exec ~/.local/bin/keeptabs-pick\'')
+  local pick = "~/.local/bin/keeptabs-pick"
+  return Cmd.run(
+    "sh -c 'out=$(" .. open .. ' 2>&1) && [ -z "$out" ] || { [ -x ' .. pick .. " ] && exec " .. pick .. "; }'"
+  )
 end
 
 --- Return an action that picks a clipboard history entry and copies it back.
@@ -126,8 +131,9 @@ end
 --- @param app? string
 --- @return fun()
 function Menu.zoxide(app)
-  local picker = DMENU_CMD .. " -theme-str 'listview { columns: 1; }' -p 'Directory'"
-  local shell = [[zsh -i -c 'cd "{}" && ]] .. (app or "y") .. [[; exec zsh -i']]
+  local picker = DMENU_CMD .. (IS_ROFI and " -theme-str 'listview { columns: 1; }'" or "") .. " -p 'Directory'"
+  local fm = FILE_MANAGER == "yazi" and "if type y >/dev/null 2>&1; then y; else yazi; fi" or FILE_MANAGER
+  local shell = SHELL .. ' -i -c \'cd "{}" && ' .. (app or fm) .. "; exec " .. SHELL .. " -i'"
   local class = app and "" or (" --class " .. FILE_MANAGER)
   local open = TERM_CMD .. class .. " -e " .. shell
   local rofi = "zoxide query -l | " .. picker .. " | xargs -r -I{} " .. open
@@ -137,7 +143,10 @@ end
 
 --- Return an action that picks a character and types it into the focused window.
 --- @return fun()
-function Menu.emoji() return Menu.picker("emoji", "rofimoji --action type --selector-args '-name rofiDmenu'") end
+function Menu.emoji()
+  local args = IS_ROFI and " --selector-args '-name rofiDmenu'" or ""
+  return Menu.picker("emoji", "rofimoji --action type" .. args)
+end
 
 --- Return an action that picks a Bitwarden entry (see ~/.config/rofi-rbw.rc).
 --- @return fun()

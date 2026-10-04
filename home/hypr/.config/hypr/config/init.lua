@@ -12,15 +12,24 @@ local Utils = require("lib.utils") ---@class Utils
 --- @field hypr_theme string Hyprcursor theme name (default: "hyprcursor-bibata-original-classic")
 --- @field size integer Cursor size in pixels (default: 24)
 
+--- @class Config.Input
+--- @field kb_layout string XKB layout (default: "us")
+--- @field kb_variant string|nil XKB variant, e.g. "dvorak"; nil = unset (default: nil)
+--- @field kb_options string|nil XKB options, e.g. "caps:escape"; nil = unset (default: nil)
+
+--- @class Config.Appearance
+--- @field inactive_opacity number Opacity of unfocused windows, 0 to 1 (default: 0.5)
+--- @field dim_inactive boolean Dim unfocused windows (default: true)
+--- @field dim_strength number Dim amount for unfocused windows, 0 to 1 (default: 0.2)
+
 --- @class Config.App
 --- @field term string Terminal emulator (default: auto-detected)
 --- @field term_cmd string Terminal emulator command (default: auto-detected)
 --- @field editor string Editor command (default: "nvim")
 --- @field gui_file_manager string GUI file manager command (default: "thunar")
 --- @field tui_file_manager string TUI file manager command (default: "yazi")
---- @field menu string Menu binary (default: "rofi")
---- @field menu_cmd string Full app-launcher invocation (default: "rofi -name rofiMenu")
---- @field dmenu_cmd string Full dmenu-picker invocation (default: "rofi -name rofiDmenu -i -dmenu")
+--- @field menu string Menu binary; the launcher, run, ssh, window and cli menus are rofi-only (default: "rofi")
+--- @field dmenu_cmd string Full dmenu-picker invocation; defaults exist for rofi, fuzzel and wofi, set it for any other menu (default: per menu, "rofi -name rofiDmenu -i -dmenu")
 --- @field display_manager string Display/monitor manager command (default: "wdisplays")
 
 --- @class Config.Monitor
@@ -46,6 +55,8 @@ local Utils = require("lib.utils") ---@class Utils
 --- @field is_laptop boolean|nil Whether the system running is a laptop or desktop (default: nil)
 --- @field nvidia Config.Nvidia
 --- @field cursor Config.Cursor
+--- @field input Config.Input
+--- @field appearance Config.Appearance
 --- @field app Config.App
 --- @field monitors Config.Monitor[] Ordered list of monitors; position in list maps to jump index 1–9
 --- @field devices HL.DeviceSpec[] Per-device configs applied via hl.device() on startup (default: {})
@@ -72,6 +83,16 @@ Config.defaults = {
     hypr_theme = "hyprcursor-bibata-original-classic",
     size = 24,
   },
+  input = {
+    kb_layout = "us",
+    kb_variant = nil,
+    kb_options = nil,
+  },
+  appearance = {
+    inactive_opacity = 0.5,
+    dim_inactive = true,
+    dim_strength = 0.2,
+  },
   app = {
     term = nil,
     term_cmd = nil,
@@ -79,7 +100,6 @@ Config.defaults = {
     gui_file_manager = "thunar",
     tui_file_manager = "yazi",
     menu = "rofi",
-    menu_cmd = nil,
     dmenu_cmd = nil,
     display_manager = "wdisplays",
   },
@@ -213,12 +233,17 @@ local function resolve_monitors(monitors, is_laptop)
   return monitors
 end
 
---- Fills in menu_cmd and dmenu_cmd defaults derived from app.menu when absent.
+local DMENU_FLAGS = {
+  rofi = " -name rofiDmenu -i -dmenu",
+  fuzzel = " --dmenu",
+  wofi = " --dmenu -i",
+}
+
+--- Fills in the dmenu_cmd default derived from app.menu when absent.
 --- @param app Config.App
 local function fill_menu_cmds(app)
   local m = app.menu
-  if not app.menu_cmd then app.menu_cmd = m .. " -name rofiMenu" end
-  if not app.dmenu_cmd then app.dmenu_cmd = m .. " -name rofiDmenu -i -dmenu" end
+  if not app.dmenu_cmd then app.dmenu_cmd = m .. (DMENU_FLAGS[m:match("[^/]+$")] or "") end
 end
 
 --- Writes a thin wrapper script so any subprocess can call `term -e cmd`
