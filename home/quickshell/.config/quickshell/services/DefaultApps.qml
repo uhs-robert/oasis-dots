@@ -3,15 +3,13 @@ pragma Singleton
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import "../theme"
 
 // Default apps saved in apps.json under the Hyprland state dir; Hyprland reads `app`, apps.sh applies `mime` through xdg-mime.
 Singleton {
     id: root
 
-    readonly property string state_dir: {
-        const xdg = Quickshell.env("XDG_STATE_HOME");
-        return (xdg && xdg !== "" ? xdg : Quickshell.env("HOME") + "/.local/state") + "/hypr";
-    }
+    readonly property string state_dir: Paths.hypr_state_dir
 
     // Config.app keys; an empty choice leaves the machine profile's value.
     readonly property var app_keys: [

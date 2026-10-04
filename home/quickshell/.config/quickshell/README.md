@@ -16,7 +16,7 @@ Hyprland starts it with `qs -n` (see `home/hypr/.config/hypr/config/autostart/`)
 | `picker/`     | The fuzzy picker, its providers (apps, clipboard, dirs, emoji, keybinds) and the HyprVim `:` prompt |
 | `services/`   | Singletons that hold state (media, network, weather, notifications...) and the IPC handlers |
 | `components/` | Shared widgets, with per-style pieces in their own folders (`nes/`, `ps1/`, `oasis/`...)   |
-| `theme/`      | `Theme.qml` (colors from the Oasis theme) and `Style.qml` (every style's tokens)          |
+| `theme/`      | `Theme.qml` (colors from the Oasis theme), `Style.qml` (every style's tokens) and `Paths.qml` (XDG dirs) |
 | `settings/`   | The Settings panel and its sections                                                        |
 | `lock/`       | The session lock, the simple lock screen and the styled lock skins in `skins/`             |
 | `overview/`   | The workspace overview                                                                     |

@@ -107,10 +107,7 @@ Singleton {
     // QS_THEME_JSON (set by the greeter) wins and disables the lookup below; if it is missing or invalid the bundled theme.json is used.
     property string override_path: Quickshell.env("QS_THEME_JSON") || ""
     readonly property bool greeter: (Quickshell.env("QS_THEME_JSON") || "") !== ""
-    readonly property string state_path: {
-        const xdg = Quickshell.env("XDG_STATE_HOME");
-        return (xdg && xdg !== "" ? xdg : Quickshell.env("HOME") + "/.local/state") + "/quickshell/theme.json";
-    }
+    readonly property string state_path: Paths.state_dir + "/theme.json"
     readonly property string shell_path: Quickshell.shellDir + "/theme/theme.json"
     property bool probed: false
     property bool state_ok: false
