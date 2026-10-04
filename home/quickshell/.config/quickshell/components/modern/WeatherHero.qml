@@ -95,11 +95,11 @@ ColumnLayout {
             }
 
             Text {
-                visible: WeatherState.location_name !== "" || WeatherState.stale
+                visible: WeatherState.location_name !== "" || WeatherState.stale || WeatherState.failed
                 Layout.fillWidth: true
                 elide: Text.ElideRight
-                text: WeatherState.stale ? "Stale data" + (WeatherState.error ? ": " + WeatherState.error : "") : WeatherState.location_name
-                color: WeatherState.stale ? Theme.warning : Style.text_muted
+                text: WeatherState.failed ? WeatherState.error : WeatherState.stale ? "Stale data" + (WeatherState.error ? ": " + WeatherState.error : "") : WeatherState.location_name
+                color: WeatherState.stale || WeatherState.failed ? Theme.warning : Style.text_muted
                 font.family: Style.font_family
                 font.pixelSize: Style.fs(-2)
             }

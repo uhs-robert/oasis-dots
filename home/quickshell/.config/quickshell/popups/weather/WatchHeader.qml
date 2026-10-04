@@ -15,7 +15,7 @@ Item {
     readonly property bool has: WeatherState.has_data && !!root.cur
     readonly property int aqi: WeatherState.aq_has_data && WeatherState.aq_current ? WeatherState.aq_current.aqi : -1
     // Temperature fills its eight segments over 0-100 °F in either unit; humidity fills the blue ones.
-    readonly property real fahrenheit: !root.has ? 0 : WeatherState.settings.unit === "celsius" ? root.cur.temp * 9 / 5 + 32 : root.cur.temp
+    readonly property real fahrenheit: !root.has ? 0 : WeatherState.metric ? root.cur.temp * 9 / 5 + 32 : root.cur.temp
     readonly property real health_level: Math.max(0, Math.min(1, root.fahrenheit / 100))
     readonly property real armour_level: root.has ? Math.max(0, Math.min(1, root.cur.humidity / 100)) : 0
     readonly property string digits: root.has ? String(Math.round(root.cur.temp)) : "--"
@@ -166,11 +166,11 @@ Item {
                 }
 
                 Text {
-                    visible: WeatherState.stale
+                    visible: WeatherState.stale || WeatherState.failed
                     Layout.fillWidth: true
                     Layout.minimumWidth: 0
                     elide: Text.ElideRight
-                    text: "STALE DATA" + (WeatherState.error ? ": " + WeatherState.error : "")
+                    text: (WeatherState.failed ? "NO DATA" : "STALE DATA") + (WeatherState.error ? ": " + WeatherState.error : "")
                     color: Style.pal.error
                     font.family: W.mono_font
                     font.pixelSize: Style.fs(-4)

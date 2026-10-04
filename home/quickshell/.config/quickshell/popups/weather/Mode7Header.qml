@@ -50,7 +50,7 @@ Item {
 
             Text {
                 Layout.alignment: Qt.AlignVCenter
-                text: root.has ? Math.round(root.cur.temp) + "°" + WeatherState.unit_symbol() : "--°"
+                text: root.has ? Math.round(root.cur.temp) + "°" + WeatherState.unit_symbol() : WeatherState.failed ? "n/a" : "--°"
                 color: root.has ? Theme.fg_strong : Style.text_dim
                 font.family: Style.font_family
                 font.pixelSize: Style.font_size * 2
@@ -122,13 +122,13 @@ Item {
         }
 
         RowLayout {
-            visible: WeatherState.location_name !== "" || WeatherState.stale
+            visible: WeatherState.location_name !== "" || WeatherState.stale || WeatherState.failed
             Layout.fillWidth: true
             spacing: 10
 
             Text {
-                text: WeatherState.stale ? "STALE" : "LOC"
-                color: WeatherState.stale ? Theme.warning : Theme.theme_primary_light
+                text: WeatherState.failed ? "ERROR" : WeatherState.stale ? "STALE" : "LOC"
+                color: WeatherState.stale || WeatherState.failed ? Theme.warning : Theme.theme_primary_light
                 font.family: Style.font_family
                 font.pixelSize: Style.fs(-6)
                 style: Text.Raised
@@ -140,8 +140,8 @@ Item {
                 Layout.minimumWidth: 0
                 horizontalAlignment: Text.AlignRight
                 elide: Text.ElideRight
-                text: WeatherState.stale ? (WeatherState.error || "Old data") : WeatherState.location_name
-                color: WeatherState.stale ? Theme.warning : Theme.fg_strong
+                text: WeatherState.stale || WeatherState.failed ? (WeatherState.error || "Old data") : WeatherState.location_name
+                color: WeatherState.stale || WeatherState.failed ? Theme.warning : Theme.fg_strong
                 font.family: Style.font_family
                 font.pixelSize: Style.fs(-6)
                 style: Text.Raised

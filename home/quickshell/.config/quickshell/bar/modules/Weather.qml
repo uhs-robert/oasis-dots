@@ -22,7 +22,7 @@ Item {
     readonly property bool has_data: WeatherState.has_data && !!current
 
     readonly property string tooltip_text: {
-        if (!has_data) return "Weather unavailable";
+        if (!has_data) return WeatherState.failed ? "Weather unavailable: " + WeatherState.error : "Weather unavailable";
         const lines = [];
         for (const a of WeatherState.alerts) lines.push(a.event);
         lines.push(current.cond, "Feels like " + Math.round(current.feels) + "°" + WeatherState.unit_symbol());
@@ -74,8 +74,8 @@ Item {
 
         Text {
             Layout.alignment: Qt.AlignVCenter
-            text: root.has_data ? Math.round(root.current.temp) + "°" + WeatherState.unit_symbol() : "--°"
-            color: root.has_data ? WeatherState.temp_color(root.current.temp) : Theme.fg_dim
+            text: root.has_data ? Math.round(root.current.temp) + "°" + WeatherState.unit_symbol() : WeatherState.failed ? "n/a" : "--°"
+            color: root.has_data ? WeatherState.temp_color(root.current.temp) : WeatherState.failed ? Theme.warning : Theme.fg_dim
             font.family: Style.bar_font_family
             style: Style.bar_text_style
             styleColor: Style.bar_glow_color

@@ -11,7 +11,7 @@ ColumnLayout {
 
     readonly property var cur: WeatherState.current
     readonly property bool has: WeatherState.has_data && !!root.cur
-    readonly property bool celsius: WeatherState.settings.unit === "celsius"
+    readonly property bool celsius: WeatherState.metric
     readonly property int text_px: Style.fs(-4)
     readonly property var art_colors: ({ y: Theme.yellow, c: Qt.tint(Theme.fg_core, Qt.alpha(Theme.fg_dim, 0.55)), d: Theme.fg_dim, r: Theme.blue, s: Theme.fg_strong, t: Theme.bright_yellow, f: Theme.fg_dim, u: Theme.fg_muted })
     readonly property var art: WttrArt.arts[root.has ? WttrArt.kind(root.cur.code) : "unknown"]
