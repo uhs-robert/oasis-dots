@@ -2,6 +2,7 @@
 import QtQuick
 import QtQuick.Layouts
 import "../../theme"
+import ".."
 import "Codec.js" as Codec
 
 // The MGS codec readout for the live connection: signal as a 140.xx frequency beside the SSID and real percent.
@@ -19,16 +20,10 @@ Rectangle {
     border.color: Qt.alpha(Theme.green, 0.6)
     clip: true
 
-    Repeater {
-        model: Math.ceil(root.height / 3)
-
-        Rectangle {
-            required property int index
-            y: index * 3
-            width: root.width
-            height: 1
-            color: Qt.alpha(Theme.green, 0.05)
-        }
+    Scanlines {
+        width: root.width
+        height: root.height
+        color: Qt.alpha(Theme.green, 0.05)
     }
 
     RowLayout {

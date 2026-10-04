@@ -19,16 +19,9 @@ Item {
         anchors.margins: root.edge
         clip: true
 
-        Repeater {
-            model: root.scan_rows ? Math.max(0, Math.ceil(parent.height / 3)) : 0
-
-            Rectangle {
-                required property int index
-                y: index * 3
-                width: parent.width
-                height: 1
-                color: Qt.alpha(Theme.bg_crust, 0.12)
-            }
+        Scanlines {
+            anchors.fill: parent
+            color: Qt.alpha(Theme.bg_crust, 0.12)
         }
     }
 

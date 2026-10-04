@@ -51,16 +51,11 @@ Item {
         clip: true
 
         // The original's unlit rows; the colour screens are clean.
-        Repeater {
-            model: root.st.device_model === "dmg" ? Math.max(0, Math.ceil(screen.height / 3)) : 0
-
-            Rectangle {
-                required property int index
-                y: index * 3
-                width: screen.width
-                height: 1
-                color: Qt.alpha(Theme.bg_crust, 0.12)
-            }
+        Scanlines {
+            visible: root.st.device_model === "dmg"
+            width: screen.width
+            height: screen.height
+            color: Qt.alpha(Theme.bg_crust, 0.12)
         }
 
         PixelBox {
