@@ -49,7 +49,6 @@ _install_maple_mono_nf() {
 
 install_fonts() {
   info "Installing custom fonts..."
-  warn "Note: 'The Last Shuriken' (used in hyprlock) requires manual installation"
   require_cmd curl unzip jq
 
   _install_maple_mono_nf
