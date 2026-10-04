@@ -436,7 +436,7 @@ Item {
                 maximumLineCount: 2
                 elide: Text.ElideRight
                 readonly property var selected: WeatherState.days[root.day_cursor]
-                text: selected ? selected.cond + " · " + selected.precip.toFixed(2) + (WeatherState.metric ? " mm" : " in") + " · " + (selected.sunrise || "—") + "–" + (selected.sunset || "—") : ""
+                text: selected ? selected.cond + " · " + selected.precip.toFixed(2) + (WeatherState.metric ? " mm" : " in") + " · " + (WeatherState.fmt_hm(selected.sunrise) || "—") + "–" + (WeatherState.fmt_hm(selected.sunset) || "—") : ""
                 color: Style.text_muted
                 font.family: Style.font_family
                 font.pixelSize: Style.fs(-3)
