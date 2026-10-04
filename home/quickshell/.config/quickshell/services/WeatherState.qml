@@ -665,15 +665,13 @@ Singleton {
         return phase < 0 ? phase + 1.0 : phase;
     }
 
+    readonly property var moon_names: ({
+        new: "New Moon", waxing_crescent: "Waxing Crescent", first_quarter: "First Quarter", waxing_gibbous: "Waxing Gibbous",
+        full: "Full Moon", waning_gibbous: "Waning Gibbous", last_quarter: "Last Quarter", waning_crescent: "Waning Crescent"
+    })
+
     function moon_name(phase) {
-        if (phase < 0.0625 || phase >= 0.9375) return "New Moon";
-        if (phase < 0.1875) return "Waxing Crescent";
-        if (phase < 0.3125) return "First Quarter";
-        if (phase < 0.4375) return "Waxing Gibbous";
-        if (phase < 0.5625) return "Full Moon";
-        if (phase < 0.6875) return "Waning Gibbous";
-        if (phase < 0.8125) return "Last Quarter";
-        return "Waning Crescent";
+        return root.moon_names[root.moon_phase_key(phase)];
     }
 
     // Location-clock midnight (as a UTC instant) for a "YYYY-MM-DD" date at this forecast location.
