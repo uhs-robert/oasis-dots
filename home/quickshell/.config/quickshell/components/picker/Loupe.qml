@@ -260,8 +260,8 @@ Item {
         const n = Math.round(v);
         return (n < 0 ? "-" : "") + String(Math.abs(n)).padStart(4, "0");
     }
-    width: root.skinned ? root.skin.implicitWidth : root.goldeneye ? root.ge_rim : root.scopeitem ? root.si_pad * 2 + root.si_body_w : root.pokemon ? root.pk_width : root.view + root.pad * 2 + (root.jrpg ? root.jrpg_drop : 0)
-    height: root.skinned ? root.skin.implicitHeight : root.goldeneye ? root.ge_rim + root.ge_strip_gap + root.ge_strip_h : root.scope ? root.view + root.pad * 2 + root.header_h + root.foot_h : root.jrpg ? root.pad + root.header_h + root.view + root.jrpg_gap + root.jrpg_stats_h + root.pad + root.jrpg_drop : root.scopeitem ? root.si_pad + root.si_ruler_h + root.view + root.si_foot_gap + root.si_foot_h + root.si_pad : root.pokemon ? root.pk_pad * 2 + root.pk_header_h + root.pk_lens_gap * 2 + root.view + root.pk_stats_h + root.pk_divider_gap * 2 + root.pk_divider_h + root.pk_msg_h : root.view + root.pad * 2 + coords.implicitHeight + 4 + (root.pixel_mode ? swatch_row.height + 4 : 0)
+    width: root.skinned ? root.skin.implicitWidth : root.goldeneye ? root.ge_rim : root.scopeitem ? root.si_pad * 2 + root.si_body_w : root.view + root.pad * 2 + (root.jrpg ? root.jrpg_drop : 0)
+    height: root.skinned ? root.skin.implicitHeight : root.goldeneye ? root.ge_rim + root.ge_strip_gap + root.ge_strip_h : root.scope ? root.view + root.pad * 2 + root.header_h + root.foot_h : root.jrpg ? root.pad + root.header_h + root.view + root.jrpg_gap + root.jrpg_stats_h + root.pad + root.jrpg_drop : root.scopeitem ? root.si_pad + root.si_ruler_h + root.view + root.si_foot_gap + root.si_foot_h + root.si_pad : root.view + root.pad * 2 + coords.implicitHeight + 4 + (root.pixel_mode ? swatch_row.height + 4 : 0)
     x: root.at.x + root.gap + root.width <= root.area_width ? root.at.x + root.gap : root.at.x - root.flip_gap - root.width
     y: root.at.y + root.gap + root.height <= root.area_height ? root.at.y + root.gap : root.at.y - root.gap - root.height
 
@@ -291,47 +291,16 @@ Item {
         }
     }
 
-    Rectangle {
-        visible: root.pokemon
-        anchors.fill: parent
-        color: Style.shade_0
-        border.width: 2
-        border.color: Style.shade_1
-        antialiasing: false
-    }
-
-    Rectangle {
-        visible: root.pokemon
-        anchors.fill: parent
-        anchors.margins: 3
-        color: "transparent"
-        border.width: 2
-        border.color: Style.shade_2
-        antialiasing: false
-    }
-
     LoupeLens {
         id: lens_content
         loupe: root
-        x: root.goldeneye ? (root.ge_rim - root.view) / 2 : root.scopeitem ? root.si_pad : root.pokemon ? (root.pk_width - root.view) / 2 : root.pad
-        y: root.goldeneye ? (root.ge_rim - root.view) / 2 : root.scopeitem ? root.si_pad + root.si_ruler_h : root.pokemon ? root.pk_pad + root.pk_header_h + root.pk_lens_gap : root.pad + root.header_h
+        x: root.goldeneye ? (root.ge_rim - root.view) / 2 : root.scopeitem ? root.si_pad : root.pad
+        y: root.goldeneye ? (root.ge_rim - root.view) / 2 : root.scopeitem ? root.si_pad + root.si_ruler_h : root.pad + root.header_h
         visible: !root.skinned && !root.goldeneye
         layer.enabled: root.goldeneye && !root.skinned
         grid_color: root.scanvisor ? Qt.alpha(Theme.cyan, 0.14) : Qt.alpha(Theme.bg_shadow, 0.35)
-        center_color: root.scope ? Style.picker_hud : root.pokemon ? Style.shade_1 : Style.caret_color
+        center_color: root.scope ? Style.picker_hud : Style.caret_color
 
-    }
-
-    Rectangle {
-        visible: root.pokemon
-        x: lens_content.x - 3
-        y: lens_content.y - 3
-        width: lens_content.width + 6
-        height: lens_content.height + 6
-        color: "transparent"
-        border.width: 3
-        border.color: Style.shade_1
-        antialiasing: false
     }
 
     LoupeReadout {
@@ -356,150 +325,4 @@ Item {
         font.pixelSize: Style.fs(-4)
     }
 
-    Column {
-        id: pk_header_col
-        visible: root.pokemon
-        x: root.pk_pad
-        y: root.pk_pad
-        width: root.pk_width - root.pk_pad * 2
-        spacing: 0
-
-        Text {
-            width: parent.width
-            height: root.pk_line_h
-            text: root.pixel_mode ? (Screenshot.pixel_hex !== "" ? Screenshot.pixel_hex : "#------") : "AREA"
-            color: Style.text_fg
-            font.family: Style.mono_font
-            font.pixelSize: 12
-        }
-
-        Item {
-            width: parent.width
-            height: root.pk_line_h
-
-            Text {
-                anchors.left: parent.left
-                anchors.verticalCenter: parent.verticalCenter
-                text: ":L" + root.zoom
-                color: Style.text_fg
-                font.family: Style.mono_font
-                font.pixelSize: 12
-            }
-
-            Text {
-                anchors.right: parent.right
-                anchors.verticalCenter: parent.verticalCenter
-                visible: !root.pixel_mode && root.has_sel
-                text: Math.round(root.sel.width) + "x" + Math.round(root.sel.height)
-                color: Style.text_fg
-                font.family: Style.mono_font
-                font.pixelSize: 12
-            }
-        }
-
-        Item {
-            id: pk_hp_row
-            width: parent.width
-            height: root.pk_line_h
-
-            Text {
-                id: pk_hp_label
-                anchors.left: parent.left
-                anchors.verticalCenter: parent.verticalCenter
-                text: "HP:"
-                color: Style.text_fg
-                font.family: Style.mono_font
-                font.pixelSize: 12
-            }
-
-            Rectangle {
-                id: pk_hp_bar
-                anchors.left: pk_hp_label.right
-                anchors.leftMargin: 6
-                anchors.right: parent.right
-                anchors.verticalCenter: parent.verticalCenter
-                height: 8
-                radius: 4
-                color: "transparent"
-                border.width: 1
-                border.color: Style.shade_1
-
-                Rectangle {
-                    x: 1
-                    y: 1
-                    width: Math.max(0, Math.round((pk_hp_bar.width - 2) * Math.min(1, root.pk_luma)))
-                    height: pk_hp_bar.height - 2
-                    radius: 3
-                    color: root.pk_hp_color(root.pk_luma)
-                }
-            }
-        }
-    }
-
-    Column {
-        id: pk_stats_col
-        visible: root.pokemon
-        x: root.pk_pad
-        y: root.pk_pad + root.pk_header_h + root.pk_lens_gap + root.view + root.pk_lens_gap
-        width: root.pk_width - root.pk_pad * 2
-        spacing: 0
-
-        Repeater {
-            model: root.pokemon ? root.pk_rows : []
-
-            Text {
-                required property string modelData
-                width: pk_stats_col.width
-                height: root.pk_line_h
-                text: modelData
-                color: Style.text_fg
-                font.family: Style.mono_font
-                font.pixelSize: 12
-            }
-        }
-    }
-
-    Column {
-        id: pk_divider
-        visible: root.pokemon
-        x: root.pk_pad
-        y: pk_stats_col.y + root.pk_stats_h + root.pk_divider_gap
-        width: root.pk_width - root.pk_pad * 2
-        spacing: 2
-
-        Rectangle {
-            width: parent.width
-            height: 1
-            color: Style.shade_1
-        }
-
-        Rectangle {
-            width: parent.width
-            height: 1
-            color: Style.shade_1
-        }
-    }
-
-    Column {
-        id: pk_message_col
-        visible: root.pokemon
-        x: root.pk_pad
-        y: pk_divider.y + root.pk_divider_h + root.pk_divider_gap
-        width: root.pk_width - root.pk_pad * 2
-        spacing: 0
-
-        Repeater {
-            model: root.pokemon ? root.pk_message : []
-
-            Text {
-                required property string modelData
-                width: pk_message_col.width
-                height: root.pk_line_h
-                text: modelData
-                color: Style.text_fg
-                font.family: Style.mono_font
-                font.pixelSize: 12
-            }
-        }
-    }
 }
