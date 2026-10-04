@@ -395,11 +395,6 @@ Item {
         color: Qt.alpha(Theme.fg_strong, 0.18)
     }
 
-    SnesParts.SnesWindow {
-        visible: root.jrpg
-        anchors.fill: parent
-    }
-
     Ff7Parts.Ff7Window {
         visible: root.materia
         anchors.fill: parent
@@ -503,32 +498,6 @@ Item {
         }
     }
 
-    Text {
-        id: jrpg_name_left
-        visible: root.jrpg
-        x: root.pad
-        y: root.pad
-        text: root.pixel_mode ? (Screenshot.pixel_hex !== "" ? Screenshot.pixel_hex : "#------") : "TARGET"
-        color: Theme.fg_strong
-        style: Text.Raised
-        styleColor: Style.text_shadow
-        font.family: Style.font_family
-        font.pixelSize: Style.fs(-5)
-    }
-
-    Text {
-        id: jrpg_name_right
-        visible: root.jrpg
-        x: root.pad + root.view - jrpg_name_right.implicitWidth
-        y: root.pad
-        text: "Lv " + root.zoom
-        color: Theme.theme_secondary
-        style: Text.Raised
-        styleColor: Style.text_shadow
-        font.family: Style.font_family
-        font.pixelSize: Style.fs(-6)
-    }
-
     Item {
         id: si_ruler
         visible: root.scopeitem
@@ -608,7 +577,7 @@ Item {
         visible: !root.skinned && !root.goldeneye
         layer.enabled: root.goldeneye && !root.skinned
         grid_color: root.scanvisor ? Qt.alpha(Theme.cyan, 0.14) : Qt.alpha(Theme.bg_shadow, 0.35)
-        center_color: root.duckhunt ? Theme.fg_strong : root.scope ? Style.picker_hud : root.jrpg ? (jrpg_blink.alt ? Theme.theme_secondary : Theme.fg_strong) : root.goldeneye ? Theme.theme_label : root.scopeitem ? Theme.theme_secondary : root.scanvisor ? (root.sv_complete ? Theme.bright_green : Theme.bright_yellow) : root.tvosd ? Theme.bright_green : root.tiecomp ? Theme.red : root.tmux ? Theme.ui_match_bg : root.nvimfloat ? Theme.fg_core : root.materia ? Theme.fg_strong : root.pokemon ? Style.shade_1 : Style.caret_color
+        center_color: root.duckhunt ? Theme.fg_strong : root.scope ? Style.picker_hud : root.goldeneye ? Theme.theme_label : root.scopeitem ? Theme.theme_secondary : root.scanvisor ? (root.sv_complete ? Theme.bright_green : Theme.bright_yellow) : root.tvosd ? Theme.bright_green : root.tiecomp ? Theme.red : root.tmux ? Theme.ui_match_bg : root.nvimfloat ? Theme.fg_core : root.materia ? Theme.fg_strong : root.pokemon ? Style.shade_1 : Style.caret_color
 
         Repeater {
             model: root.scopeitem ? Math.ceil(root.view / 3) : 0
@@ -746,17 +715,6 @@ Item {
     }
 
     Rectangle {
-        visible: root.jrpg
-        x: lens_content.x
-        y: lens_content.y
-        width: lens_content.width
-        height: lens_content.height
-        color: "transparent"
-        border.width: 2
-        border.color: Theme.theme_primary_light
-    }
-
-    Rectangle {
         visible: root.tvosd
         x: lens_content.x - 5
         y: lens_content.y - 5
@@ -830,15 +788,6 @@ Item {
         border.width: 3
         border.color: Style.shade_1
         antialiasing: false
-    }
-
-    Timer {
-        id: jrpg_blink
-        property bool alt: false
-        running: root.jrpg && root.visible
-        interval: 400
-        repeat: true
-        onTriggered: jrpg_blink.alt = !jrpg_blink.alt
     }
 
     LoupeReadout {
@@ -998,69 +947,6 @@ Item {
             color: Theme.fg_strong
             font.family: Style.mono_font
             font.pixelSize: Style.fs(-4)
-        }
-    }
-
-    Column {
-        id: jrpg_stats
-        visible: root.jrpg
-        x: root.pad
-        y: root.pad + root.header_h + root.view + root.jrpg_gap
-        width: root.view
-        spacing: 3
-
-        Repeater {
-            model: root.jrpg ? root.jrpg_rows : []
-
-            Item {
-                id: stat_row
-                required property var modelData
-                width: jrpg_stats.width
-                height: 14
-
-                Text {
-                    id: stat_label
-                    anchors.left: parent.left
-                    anchors.verticalCenter: parent.verticalCenter
-                    width: 12
-                    text: stat_row.modelData.label
-                    color: Theme.theme_primary_light
-                    font.family: Style.font_family
-                    font.pixelSize: Style.fs(-7)
-                }
-
-                Text {
-                    id: stat_value
-                    anchors.right: parent.right
-                    anchors.verticalCenter: parent.verticalCenter
-                    width: 30
-                    horizontalAlignment: Text.AlignRight
-                    text: String(stat_row.modelData.value)
-                    color: Theme.fg_strong
-                    font.family: Style.mono_font
-                    font.pixelSize: Style.fs(-7)
-                }
-
-                Rectangle {
-                    anchors.left: stat_label.right
-                    anchors.leftMargin: 4
-                    anchors.right: stat_value.left
-                    anchors.rightMargin: 4
-                    anchors.verticalCenter: parent.verticalCenter
-                    height: 6
-                    color: Theme.bg_shadow
-                    border.width: 1
-                    border.color: Theme.fg_muted
-
-                    Rectangle {
-                        x: 1
-                        y: 1
-                        width: Math.max(0, (parent.width - 2) * Math.max(0, Math.min(1, stat_row.modelData.ratio)))
-                        height: parent.height - 2
-                        color: stat_row.modelData.color
-                    }
-                }
-            }
         }
     }
 
