@@ -8,7 +8,7 @@ description: Open and merge the PRs for a batch of reviewed, owner-tested branch
 Only after the owner has tested the branches and said to merge.
 
 1. For each branch: rebase on `origin/main` if it is behind, push, and `gh pr create` with a short human body (what changed, why, anything a reviewer would miss, "Part of #N" or "Closes #N" on the last PR of a tracking issue, and a note if Codex could not run). No headings unless there are 3+ sections; no attribution lines.
-2. `gh pr merge <n> --merge --delete-branch` for each, checking the state afterwards.
+2. Run `.claude/skills/ship-batch/merge-prs.sh <n>...` in merge order. It retargets PRs stacked on each head branch to the default branch first (deleting the branch would otherwise close them), merges with `--delete-branch` and stops if a PR is not `MERGED`.
 3. Run `.claude/skills/ship-batch/ship-batch.sh` from anywhere in the repo. It pulls `main`, runs `just check` in the real checkout (worktrees have no `repos/`, so this catches what they miss), reloads Hyprland if `home/hypr` changed, restarts the stowed bar if `home/quickshell` changed and the lock is `unlocked`, runs `just greeter-sync --install` if the pull changed greeter files and sudo needs no password (otherwise it prints the command), then removes merged worktrees and branches.
 4. Tick the finished items in `review.md` and update its handoff if one exists.
 
