@@ -443,61 +443,6 @@ Item {
         border.color: Style.frame_border_color
     }
 
-    MultiEffect {
-        visible: root.goldeneye
-        anchors.fill: ge_rim_item
-        source: ge_rim_item
-        shadowEnabled: true
-        shadowColor: Qt.alpha(Theme.bg_shadow, 0.6)
-        shadowHorizontalOffset: 4
-        shadowVerticalOffset: 6
-        shadowBlur: 0.4
-    }
-
-    Item {
-        id: ge_rim_item
-        visible: root.goldeneye
-        layer.enabled: root.goldeneye
-        x: 0
-        y: 0
-        width: root.ge_rim
-        height: root.ge_rim
-
-        Rectangle {
-            anchors.fill: parent
-            radius: width / 2
-            color: Theme.bg_crust
-        }
-
-        Rectangle {
-            anchors.centerIn: parent
-            width: parent.width - 10
-            height: parent.height - 10
-            radius: width / 2
-            color: Qt.tint(Theme.bg_surface, Qt.alpha(Theme.bg_crust, 0.5))
-        }
-
-        Rectangle {
-            anchors.centerIn: parent
-            width: parent.width - 14
-            height: parent.height - 14
-            radius: width / 2
-            color: "transparent"
-            border.width: 1
-            border.color: Qt.alpha(Theme.fg_strong, 0.12)
-        }
-
-        Text {
-            anchors.top: parent.top
-            anchors.topMargin: 14
-            anchors.horizontalCenter: parent.horizontalCenter
-            text: "x" + root.zoom + ".0"
-            color: Theme.theme_label
-            font.family: Style.font_family
-            font.pixelSize: Style.fs(-5)
-        }
-    }
-
     Item {
         id: si_ruler
         visible: root.scopeitem
@@ -577,7 +522,7 @@ Item {
         visible: !root.skinned && !root.goldeneye
         layer.enabled: root.goldeneye && !root.skinned
         grid_color: root.scanvisor ? Qt.alpha(Theme.cyan, 0.14) : Qt.alpha(Theme.bg_shadow, 0.35)
-        center_color: root.duckhunt ? Theme.fg_strong : root.scope ? Style.picker_hud : root.goldeneye ? Theme.theme_label : root.scopeitem ? Theme.theme_secondary : root.scanvisor ? (root.sv_complete ? Theme.bright_green : Theme.bright_yellow) : root.tvosd ? Theme.bright_green : root.tiecomp ? Theme.red : root.tmux ? Theme.ui_match_bg : root.nvimfloat ? Theme.fg_core : root.materia ? Theme.fg_strong : root.pokemon ? Style.shade_1 : Style.caret_color
+        center_color: root.duckhunt ? Theme.fg_strong : root.scope ? Style.picker_hud : root.scopeitem ? Theme.theme_secondary : root.scanvisor ? (root.sv_complete ? Theme.bright_green : Theme.bright_yellow) : root.tvosd ? Theme.bright_green : root.tiecomp ? Theme.red : root.tmux ? Theme.ui_match_bg : root.nvimfloat ? Theme.fg_core : root.materia ? Theme.fg_strong : root.pokemon ? Style.shade_1 : Style.caret_color
 
         Repeater {
             model: root.scopeitem ? Math.ceil(root.view / 3) : 0
@@ -631,87 +576,6 @@ Item {
             all_corners: true
         }
 
-        Canvas {
-            id: ge_vignette
-            visible: root.goldeneye
-            anchors.fill: parent
-            onPaint: {
-                const ctx = ge_vignette.getContext("2d");
-                ctx.clearRect(0, 0, ge_vignette.width, ge_vignette.height);
-                const cx2 = ge_vignette.width / 2;
-                const cy2 = ge_vignette.height / 2;
-                const r = Math.max(cx2, cy2);
-                const grad = ctx.createRadialGradient(cx2, cy2, r * 0.62, cx2, cy2, r);
-                grad.addColorStop(0, Qt.alpha(Theme.bg_shadow, 0));
-                grad.addColorStop(1, Qt.alpha(Theme.bg_shadow, 1));
-                ctx.fillStyle = grad;
-                ctx.fillRect(0, 0, ge_vignette.width, ge_vignette.height);
-            }
-            Component.onCompleted: ge_vignette.requestPaint()
-        }
-
-        Rectangle {
-            visible: root.goldeneye
-            x: 0
-            y: lens_content.center_px.y + lens_content.center_px.height / 2
-            width: Math.max(0, lens_content.center_px.x - 3)
-            height: 1
-            color: Theme.bg_shadow
-        }
-
-        Rectangle {
-            visible: root.goldeneye
-            x: lens_content.center_px.x + lens_content.center_px.width + 3
-            y: lens_content.center_px.y + lens_content.center_px.height / 2
-            width: Math.max(0, root.view - x)
-            height: 1
-            color: Theme.bg_shadow
-        }
-
-        Rectangle {
-            visible: root.goldeneye
-            x: lens_content.center_px.x + lens_content.center_px.width / 2
-            y: 0
-            width: 1
-            height: Math.max(0, lens_content.center_px.y - 3)
-            color: Theme.bg_shadow
-        }
-
-        Rectangle {
-            visible: root.goldeneye
-            x: lens_content.center_px.x + lens_content.center_px.width / 2
-            y: lens_content.center_px.y + lens_content.center_px.height + 3
-            width: 1
-            height: Math.max(0, root.view - y)
-            color: Theme.bg_shadow
-        }
-
-        Rectangle {
-            visible: root.goldeneye
-            x: 0
-            y: (root.view - 30) / 2
-            width: 3
-            height: 30
-            color: Theme.bg_shadow
-        }
-
-        Rectangle {
-            visible: root.goldeneye
-            x: root.view - 3
-            y: (root.view - 30) / 2
-            width: 3
-            height: 30
-            color: Theme.bg_shadow
-        }
-
-        Rectangle {
-            visible: root.goldeneye
-            x: (root.view - 30) / 2
-            y: root.view - 3
-            width: 30
-            height: 3
-            color: Theme.bg_shadow
-        }
     }
 
     Rectangle {
@@ -752,30 +616,6 @@ Item {
                 color: Qt.alpha(Theme.green, 0.35)
             }
         }
-    }
-
-    Rectangle {
-        id: ge_lens_mask
-        visible: false
-        x: lens_content.x
-        y: lens_content.y
-        width: lens_content.width
-        height: lens_content.height
-        radius: width / 2
-        layer.enabled: true
-    }
-
-    MultiEffect {
-        visible: root.goldeneye
-        x: lens_content.x
-        y: lens_content.y
-        width: lens_content.width
-        height: lens_content.height
-        source: lens_content
-        maskEnabled: true
-        maskSource: ge_lens_mask
-        maskThresholdMin: 0.5
-        maskSpreadAtMin: 1.0
     }
 
     Rectangle {
@@ -1032,78 +872,6 @@ Item {
                 color: Theme.fg_strong
                 font.family: Style.font_family
                 font.pixelSize: Style.fs(-6)
-            }
-        }
-    }
-
-    Goldeneye.WatchReadout {
-        id: ge_strip
-        visible: root.goldeneye
-        x: (root.ge_rim - root.view) / 2
-        y: root.ge_rim + root.ge_strip_gap
-        width: root.view
-        height: root.ge_strip_h
-        status: root.pixel_mode ? "COLOR" : "CAMERA"
-
-        layer.enabled: root.goldeneye
-        layer.effect: MultiEffect {
-            shadowEnabled: true
-            shadowColor: Qt.alpha(Theme.bg_shadow, 0.6)
-            shadowHorizontalOffset: 4
-            shadowVerticalOffset: 6
-            shadowBlur: 0.4
-        }
-
-        Rectangle {
-            visible: root.pixel_mode
-            anchors.left: parent.left
-            anchors.leftMargin: 8
-            anchors.verticalCenter: parent.verticalCenter
-            width: 12
-            height: 12
-            border.width: 1
-            border.color: Style.wk.dim
-            color: Screenshot.pixel_hex !== "" ? Screenshot.pixel_hex : "transparent"
-        }
-
-        Text {
-            visible: root.pixel_mode || !root.has_sel
-            anchors.left: parent.left
-            anchors.leftMargin: root.pixel_mode ? 26 : 10
-            anchors.verticalCenter: parent.verticalCenter
-            text: root.pixel_mode ? (Screenshot.pixel_hex !== "" ? Screenshot.pixel_hex : "#------") : "READY"
-            color: Style.wk.lit
-            font.family: root.pixel_mode ? Watch.digit_font : Watch.mono_font
-            font.pixelSize: Style.fs(-3)
-        }
-
-        Goldeneye.SizeText {
-            visible: !root.pixel_mode && root.has_sel
-            anchors.left: parent.left
-            anchors.leftMargin: 10
-            anchors.verticalCenter: parent.verticalCenter
-            width_px: Math.round(root.sel.width)
-            height_px: Math.round(root.sel.height)
-        }
-
-        Column {
-            anchors.right: parent.right
-            anchors.rightMargin: 8
-            anchors.verticalCenter: parent.verticalCenter
-            spacing: 1
-
-            Text {
-                text: "X " + root.ge_pad4(root.screen_x + root.at.x)
-                color: Qt.alpha(Style.wk.mid, 0.75)
-                font.family: Watch.mono_font
-                font.pixelSize: Style.fs(-7)
-            }
-
-            Text {
-                text: "Y " + root.ge_pad4(root.screen_y + root.at.y)
-                color: Qt.alpha(Style.wk.mid, 0.75)
-                font.family: Watch.mono_font
-                font.pixelSize: Style.fs(-7)
             }
         }
     }
