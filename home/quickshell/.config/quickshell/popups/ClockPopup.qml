@@ -17,7 +17,7 @@ Popup {
     popup_name: "clock"
     title: root.nes ? root.hud_title : Qt.formatDate(new Date(root.view_year, root.view_month, 1), "MMM yyyy").toUpperCase()
     preferred_width: 320
-    footer_hint: "h/l month · j/k year · t/gg today · [ ] zone · q close"
+    footer_hint: "h/l month · j/k year · t/gg today · Tab/[ ] zone · q close"
     body_height: content.implicitHeight + 24
 
     property date today: new Date()
@@ -154,11 +154,11 @@ Popup {
                 root.view_year -= 1;
                 root.play_if_moved(before);
                 event.accepted = true;
-            } else if (event.key === Qt.Key_BracketRight) {
+            } else if (event.key === Qt.Key_BracketRight || event.key === Qt.Key_Tab) {
                 Timezones.cycle(1);
                 root.play_if_moved(before);
                 event.accepted = true;
-            } else if (event.key === Qt.Key_BracketLeft) {
+            } else if (event.key === Qt.Key_BracketLeft || event.key === Qt.Key_Backtab) {
                 Timezones.cycle(-1);
                 root.play_if_moved(before);
                 event.accepted = true;
