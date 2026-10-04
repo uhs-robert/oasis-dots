@@ -61,7 +61,6 @@ RowsSection {
         }
         rows.push(root.choice_row("Units", "unit", ["fahrenheit", "celsius"], { fahrenheit: "Imperial (°F, mph, in)", celsius: "Metric (°C, km/h, mm)" }));
         rows.push(root.choice_row("Time format", "time_format", ["12h", "24h"], { "12h": "12-hour", "24h": "24-hour" }));
-        rows.push(root.choice_row("First day of week", "week_start", ["locale", "monday", "sunday"], { locale: "Follow locale", monday: "Monday", sunday: "Sunday" }));
         rows.push({
             label: "Forecast days",
             values: () => [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16],

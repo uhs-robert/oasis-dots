@@ -100,7 +100,7 @@ Popup {
     }
 
     readonly property int week_start: {
-        const choice = WeatherState.settings.week_start;
+        const choice = ClockSettings.week_start;
         return choice === "sunday" ? 0 : choice === "monday" ? 1 : Qt.locale().firstDayOfWeek % 7;
     }
     readonly property var weeks: build_weeks()
