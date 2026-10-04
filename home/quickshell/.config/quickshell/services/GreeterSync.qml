@@ -12,7 +12,7 @@ Scope {
     readonly property string face_path: Quickshell.env("HOME") + "/.face"
 
     function write() {
-        if (!LoginScreen.sync) return;
+        if (!LoginScreen.sync || !LoginScreen.installed) return;
         const data = {
             user: Quickshell.env("USER") || "",
             lock_style: LoginScreen.resolved_screen,
@@ -48,6 +48,7 @@ Scope {
     Connections {
         target: LoginScreen
         function onSyncChanged() { root.schedule(); }
+        function onInstalledChanged() { root.schedule(); }
         function onResolved_screenChanged() { root.schedule(); }
         function onResolved_tintChanged() { root.schedule(); }
         function onResolved_musicChanged() { root.schedule(); }
