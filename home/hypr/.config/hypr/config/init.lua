@@ -250,9 +250,9 @@ end
 --- without knowing the emulator's flags.
 --- @param term_cmd string
 local function write_term_wrapper(term_cmd)
-  local home = os.getenv("HOME")
-  local dir = home .. "/.local/state/hypr/bin"
+  local dir = require("lib.state")() .. "/bin"
   local path = dir .. "/term"
+  os.remove(os.getenv("HOME") .. "/.config/hypr/scripts/term")
   os.execute("mkdir -p '" .. dir .. "'")
   local f = io.open(path, "w")
   if not f then return end

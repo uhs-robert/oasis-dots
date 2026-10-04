@@ -20,7 +20,6 @@ Singleton {
     property string current: ""
     // True once the palette list and the active name have both been read.
     property bool settled: false
-    property bool new_missing: false
     readonly property bool ready: root.settled && root.names.length > 0
     readonly property var swatch_keys: ["bg_core", "bg_surface", "fg_core", "theme_primary", "theme_secondary", "theme_accent", "green", "red", "blue", "magenta"]
 
@@ -39,7 +38,6 @@ Singleton {
         if (!(name in root.colors)) return false;
         root.current = name;
         Quickshell.execDetached([root.switch_script, "--set", name]);
-        if (root.new_missing) recheck.restart();
         return true;
     }
 
@@ -64,29 +62,7 @@ Singleton {
         printErrors: false
         onFileChanged: reload()
         onLoaded: {
-            root.new_missing = false;
             root.current = text().trim();
-            root.settled = true;
-        }
-        onLoadFailed: error => {
-            root.new_missing = true;
-            legacy_file.path = root.home + "/.config/hypr/theme/.current_theme";
-        }
-    }
-
-    // A missing state file cannot be watched, so look again after the first switch writes it.
-    Timer {
-        id: recheck
-        interval: 1500
-        onTriggered: current_file.reload()
-    }
-
-    // Pre-state-dir location, read only until the new file exists.
-    FileView {
-        id: legacy_file
-        printErrors: false
-        onLoaded: {
-            if (root.new_missing) root.current = text().trim();
             root.settled = true;
         }
         onLoadFailed: error => root.settled = true

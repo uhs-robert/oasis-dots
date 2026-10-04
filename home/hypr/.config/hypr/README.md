@@ -34,7 +34,7 @@ hyprctl reload
 
 On its own it still expects a few neighbours: the bar, popups and lock screen come from the `quickshell` package, the pickers fall back to `rofi`, and some binds call tools like `wl-kbptr`, `wlrctl` and `hyprpaper` (see `packages/arch.ini` and `packages/arch-aur.ini`). Moving the folder by hand instead of stowing it breaks those symlinks.
 
-Stow links `~/.config/hypr` as a whole directory into the checkout, so files this config generates land inside the repo and are gitignored: your machine profile (`config/machines/<hostname>.lua`), `custom/`, and `theme.conf`. The generators also write the rofi, foot, yazi, kitty and ghostty theme files into those packages' stowed config dirs, and `systemctl --user enable` adds `.wants` links under `home/systemd/`. Quickshell's `theme.json`, the Settings panel state, the selected palette (`~/.local/state/hypr/theme`) and the `term` launcher wrapper (`~/.local/state/hypr/bin/term`, on `PATH`) go to `~/.local/state/`, outside the checkout.
+Stow links `~/.config/hypr` as a whole directory into the checkout, so files this config generates land inside the repo and are gitignored: your machine profile (`config/machines/<hostname>.lua`), `custom/`, and `theme.conf`. The generators also write the rofi, foot, yazi, kitty and ghostty theme files into those packages' stowed config dirs, and `systemctl --user enable` adds `.wants` links under `home/systemd/`. Quickshell's `theme.json`, the Settings panel state, the selected palette (`hypr/theme`) and the `term` launcher wrapper (`hypr/bin/term`, on `PATH`) go to `$XDG_STATE_HOME` (default `~/.local/state`), outside the checkout.
 
 #### 2. Set up your machine
 
