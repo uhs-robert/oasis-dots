@@ -17,6 +17,13 @@ Singleton {
         ppd_check_proc.running = true;
     }
 
+    function format_time(seconds) {
+        if (seconds <= 0) return "";
+        const h = Math.floor(seconds / 3600);
+        const m = Math.round((seconds % 3600) / 60);
+        return h > 0 ? (h + "h " + m + "m") : (m + "m");
+    }
+
     // busctl exits non-zero when the daemon is not D-Bus activatable.
     Process {
         id: ppd_check_proc
