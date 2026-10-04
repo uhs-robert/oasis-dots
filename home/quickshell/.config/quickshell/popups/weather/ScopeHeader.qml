@@ -383,10 +383,10 @@ ColumnLayout {
     }
 
     Text {
-        visible: WeatherState.stale
+        visible: WeatherState.stale || WeatherState.failed
         Layout.fillWidth: true
         elide: Text.ElideRight
-        text: "STALE DATA" + (WeatherState.error ? ": " + WeatherState.error : "")
+        text: (WeatherState.failed ? "NO DATA" : "STALE DATA") + (WeatherState.error ? ": " + WeatherState.error : "")
         color: Theme.warning
         font.family: Style.mono_font
         font.pixelSize: Style.fs(-4)
