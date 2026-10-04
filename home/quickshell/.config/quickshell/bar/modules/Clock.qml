@@ -4,7 +4,6 @@ import Quickshell
 import "../../theme"
 import "../../services"
 import "../../components/modern" as Modern
-import "../../theme/Watch.js" as Watch
 
 Row {
     id: root
@@ -31,8 +30,12 @@ Row {
 
     SystemClock {
         id: clock
-        precision: root.compact ? SystemClock.Minutes : SystemClock.Seconds
+        precision: root.show_seconds ? SystemClock.Seconds : SystemClock.Minutes
     }
+
+    // Seconds tick once a second, so they are dropped on battery.
+    readonly property bool show_seconds: !root.compact && Power.on_ac
+    readonly property var shifted: Timezones.shift(clock.date)
 
     function pad2(n) {
         return n < 10 ? "0" + n : "" + n;
@@ -44,16 +47,16 @@ Row {
     // Lualine: bold digits, the zone and date dimmed after them.
     readonly property bool lualine: Style.bar_lualine
     readonly property string digits_text: {
-        const d = Timezones.shift(clock.date);
+        const d = root.shifted;
         const hm = pad2(d.getHours() % 12 || 12) + ":" + pad2(d.getMinutes());
-        return root.compact ? hm : hm + ":" + pad2(d.getSeconds());
+        return root.show_seconds ? hm + ":" + pad2(d.getSeconds()) : hm;
     }
-    readonly property string zone_text: root.compact ? "" : Timezones.is_local ? Qt.formatDateTime(Timezones.shift(clock.date), "t") : Timezones.abbrev
+    readonly property string zone_text: root.compact ? "" : Timezones.is_local ? Qt.formatDateTime(root.shifted, "t") : Timezones.abbrev
     readonly property string time_text: root.zone_text === "" ? root.digits_text : root.digits_text + " " + root.zone_text
 
     // A Mario HUD line: TIME and WORLD captions, the date as month-day.
     readonly property bool hud: Style.console_views === "nes"
-    readonly property string date_text: root.hud ? Qt.formatDateTime(Timezones.shift(clock.date), "M-d") : Qt.formatDateTime(Timezones.shift(clock.date), "ddd MMM dd")
+    readonly property string date_text: root.hud ? Qt.formatDateTime(root.shifted, "M-d") : Qt.formatDateTime(root.shifted, "ddd MMM dd")
 
     // Proportional fonts would resize the island every tick; tabular digits and a width floor hold it still.
     TextMetrics {
@@ -116,7 +119,7 @@ Row {
             x: parent.pad
             anchors.verticalCenter: parent.verticalCenter
             width: Math.max(implicitWidth, Math.ceil(time_metrics.advanceWidth))
-            text: root.on_accent ? root.digits_text + " " + (Timezones.shift(clock.date).getHours() < 12 ? "AM" : "PM") : root.chip || root.lualine ? root.digits_text : root.time_text
+            text: root.on_accent ? root.digits_text + " " + (root.shifted.getHours() < 12 ? "AM" : "PM") : root.chip || root.lualine ? root.digits_text : root.time_text
             color: root.on_accent ? root.ink : root.chip || root.lualine ? Style.bar_clock_fg : Style.bar_fg
             font.family: root.chip ? Style.bar_clock_font : Style.bar_font_family
             font.features: { "tnum": 1 }
@@ -147,7 +150,7 @@ Row {
         anchors.verticalCenter: parent.verticalCenter
         width: 3
         height: Style.bar_font_size + 2
-        color: Style.bar_center_bg.hslLightness > 0.6 ? Theme.fg_core : Watch.white
+        color: Style.bar_tick_color
     }
 
     Text {

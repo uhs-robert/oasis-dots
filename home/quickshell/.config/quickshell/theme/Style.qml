@@ -2095,6 +2095,8 @@ Singleton {
     readonly property color bar_clock_brackets: root.bar.bar_clock_brackets
     // "tick" draws the white watch bar between bar items in place of "|".
     readonly property string bar_separator: root.bar.bar_separator
+    // The watch tick and separator colour: white on a dark center island, the foreground on a light one.
+    readonly property color bar_tick_color: root.bar.bar_center_bg.hslLightness > 0.6 ? Theme.fg_core : Watch.white
     // "octagon" draws chamfered watch-case bar islands (the center one with lugs) with a white tick at each end.
     readonly property string bar_island_shape: root.bar.bar_island_shape
     // A tick scale rising from each island's bottom edge.

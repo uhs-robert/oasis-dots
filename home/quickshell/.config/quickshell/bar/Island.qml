@@ -6,7 +6,6 @@ import "../components"
 import "../components/metroid" as Metroid
 import "../services"
 import "../theme"
-import "../theme/Watch.js" as Watch
 
 Item {
     id: root
@@ -53,7 +52,7 @@ Item {
     // goldeneye: chamfered watch islands, the center one with case lugs, and a white tick at each end.
     readonly property bool octagon: Style.bar_island_shape === "octagon" && !root.capsule && !root.visor && !root.lualine
     readonly property real lug: root.octagon && root.center ? 4 : 0
-    readonly property color tick_color: Style.bar_center_bg.hslLightness > 0.6 ? Theme.fg_core : Watch.white
+    readonly property color tick_color: Style.bar_tick_color
     readonly property int cap_width: root.octagon ? Math.round(height * 0.3) : root.lualine ? Math.round(height * 0.4) : root.visor ? Math.round(height * 0.8) : height / 2
     readonly property real pad: root.capsule ? Style.bar_capsule_pad : root.lualine ? (root.center ? 10 : 0) : root.octagon ? 10 : 8
 
