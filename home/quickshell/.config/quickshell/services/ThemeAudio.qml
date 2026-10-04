@@ -33,7 +33,7 @@ Singleton {
     readonly property string user_dir: root.data_dir + "/sounds"
     // Game packs, offered once imported; names maps a kind to the file base, and a kind left out uses the style's own sound.
     readonly property var games: ({
-            "game:ff7": { label: "FFVII", replaces: "ff7", dir: Qt.resolvedUrl("../lock/skins/ff7/audio"), names: { cursor: "cursor", confirm: "cursor", cancel: "cancel", error: "buzzer" } },
+            "game:ff7": { label: "FFVII", replaces: "ff7", dir: "file://" + root.data_dir + "/ff7-audio", legacy_dir: Qt.resolvedUrl("../lock/skins/ff7/audio"), names: { cursor: "cursor", confirm: "cursor", cancel: "cancel", error: "buzzer" } },
             "game:mgs2": { label: "MGS2 (imported)", dir: "file://" + root.data_dir + "/mgs2-audio", names: { cursor: "select", confirm: "submit", cancel: "back", error: "error" } },
             "game:ocarina": { label: "Ocarina", dir: "file://" + root.data_dir + "/ocarina-audio", names: { cursor: "move", confirm: "decide", cancel: "cancel", notify: "letter", error: "error" } }
         })
@@ -200,14 +200,24 @@ Singleton {
     Instantiator {
         id: game_dirs
         model: Object.keys(root.games)
-        delegate: FolderListModel {
+        delegate: QtObject {
             id: game_dir
             required property string modelData
             readonly property string key: game_dir.modelData
-            readonly property var urls: root.listing(game_dir)
-            folder: root.games[game_dir.modelData].dir
-            nameFilters: ["*.wav", "*.ogg", "*.mp3"]
-            showDirs: false
+            readonly property var primary_urls: root.listing(primary)
+            readonly property var urls: Object.keys(game_dir.primary_urls).length > 0 ? game_dir.primary_urls : root.listing(legacy)
+
+            readonly property FolderListModel primary: FolderListModel {
+                folder: root.games[game_dir.modelData].dir
+                nameFilters: ["*.wav", "*.ogg", "*.mp3"]
+                showDirs: false
+            }
+
+            readonly property FolderListModel legacy: FolderListModel {
+                folder: root.games[game_dir.modelData].legacy_dir || ""
+                nameFilters: ["*.wav", "*.ogg", "*.mp3"]
+                showDirs: false
+            }
         }
     }
 
