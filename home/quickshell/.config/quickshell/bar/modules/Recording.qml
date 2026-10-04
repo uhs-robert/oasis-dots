@@ -4,28 +4,19 @@ import QtQuick.Layouts
 import "../../theme"
 import "../../services"
 
-Item {
+BarModule {
     id: root
-
-    property bool compact: false
+    module_name: "recording"
+    has_popup: false
 
     // A pending capture countdown takes the chip before the recording it may start.
     readonly property bool counting: Screenshot.countdown > 0
     readonly property bool scrolling: Screenshot.scrolling
-    readonly property bool shown: Screenshot.recording || root.counting || root.scrolling
-    readonly property string tip: root.scrolling ? "Scroll capture, " + Screenshot.scroll_frames + " frames\nClick or Print to stop" : root.counting ? "Capture in " + Screenshot.countdown + "s\nClick to cancel" : "Recording " + Screenshot.elapsed_text + "\nClick to stop"
-    onTipChanged: if (hover_handler.hovered) Tooltip.show(root, root.tip, "recording")
-    visible: shown
+    shown: Screenshot.recording || root.counting || root.scrolling
+    tooltip_text: root.scrolling ? "Scroll capture, " + Screenshot.scroll_frames + " frames\nClick or Print to stop" : root.counting ? "Capture in " + Screenshot.countdown + "s\nClick to cancel" : "Recording " + Screenshot.elapsed_text + "\nClick to stop"
+    onTooltip_textChanged: if (root.hovered) Tooltip.show(root, root.tooltip_text, "recording")
     implicitWidth: shown ? row.implicitWidth : 0
     implicitHeight: row.implicitHeight
-
-    Rectangle {
-        anchors.fill: parent
-        anchors.margins: -4
-        radius: Style.bar_radius(4)
-        color: Style.bar_hover_bg
-        opacity: hover_handler.hovered ? 0.5 : 0
-    }
 
     RowLayout {
         id: row
@@ -61,14 +52,6 @@ Item {
             style: Style.bar_text_style
             styleColor: Style.bar_glow_color
             font.pixelSize: Style.bar_font_size
-        }
-    }
-
-    HoverHandler {
-        id: hover_handler
-        onHoveredChanged: {
-            if (hovered) Tooltip.show(root, root.tip, "recording");
-            else Tooltip.hide(root);
         }
     }
 

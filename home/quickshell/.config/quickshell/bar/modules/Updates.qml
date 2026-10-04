@@ -5,38 +5,22 @@ import "../../theme"
 import "../../services"
 import "../../components"
 
-Item {
+BarModule {
     id: root
-
-    property bool compact: false
-    property string screen_name: ""
-    property Item island: null
-    property color island_color: Theme.bg_core
+    module_name: "updates"
 
     readonly property int official_count: UpdatesState.official.length
     readonly property int aur_count: UpdatesState.aur.length
 
-    readonly property bool shown: UpdatesState.available && (UpdatesState.total > 0 || UpdatesState.error !== "")
-    visible: shown
+    shown: UpdatesState.available && (UpdatesState.total > 0 || UpdatesState.error !== "")
     implicitWidth: shown ? row.implicitWidth : 0
     implicitHeight: row.implicitHeight
 
-    readonly property string tooltip_text: {
+    tooltip_text: {
         const lines = ["Official: " + root.official_count, "AUR: " + root.aur_count];
         if (UpdatesState.checking) lines.push("Checking…");
         else if (UpdatesState.error) lines.push(UpdatesState.error);
         return lines.join("\n");
-    }
-
-    onIslandChanged: if (root.island) Popups.register_default("updates", root.island, root.island_color, root.screen_name, root)
-    Component.onDestruction: Popups.unregister("updates", root.screen_name, root)
-
-    Rectangle {
-        anchors.fill: parent
-        anchors.margins: -4
-        radius: Style.bar_radius(4)
-        color: Style.bar_hover_bg
-        opacity: hover_handler.hovered ? 0.5 : 0
     }
 
     RowLayout {
@@ -68,14 +52,6 @@ Item {
         }
     }
 
-    HoverHandler {
-        id: hover_handler
-        onHoveredChanged: {
-            if (hovered) Tooltip.show(root, root.tooltip_text, "updates");
-            else Tooltip.hide(root);
-        }
-    }
-
     MouseArea {
         anchors.fill: parent
         acceptedButtons: Qt.LeftButton | Qt.RightButton
@@ -83,7 +59,7 @@ Item {
             if (mouse.button === Qt.RightButton) {
                 UpdatesState.refresh();
             } else {
-                Popups.toggle("updates", root.island, root.island_color, root.screen_name);
+                root.toggle_popup();
             }
         }
     }

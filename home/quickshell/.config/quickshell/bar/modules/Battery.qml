@@ -6,13 +6,9 @@ import "../../theme"
 import "../../services"
 import "../../components"
 
-Item {
+BarModule {
     id: root
-
-    property bool compact: false
-    property string screen_name: ""
-    property Item island: null
-    property color island_color: Theme.bg_core
+    module_name: "battery"
 
     WheelStepper {
         id: wheel_stepper
@@ -25,8 +21,7 @@ Item {
     readonly property bool charging: power_state === UPowerDeviceState.Charging || power_state === UPowerDeviceState.PendingCharge
     readonly property var level_glyphs: ["", "", "", "", ""]
 
-    readonly property bool shown: has_battery && Math.round(percent) < 100 && power_state !== UPowerDeviceState.FullyCharged
-    visible: shown
+    shown: has_battery && Math.round(percent) < 100 && power_state !== UPowerDeviceState.FullyCharged
     implicitWidth: shown ? row.implicitWidth : 0
     implicitHeight: row.implicitHeight
 
@@ -54,22 +49,11 @@ Item {
         return h > 0 ? (h + "h " + m + "m") : (m + "m");
     }
 
-    readonly property string tooltip_text: {
+    tooltip_text: {
         if (!has_battery) return "";
         if (device.timeToEmpty > 0) return format_time(device.timeToEmpty) + " remaining";
         if (device.timeToFull > 0) return format_time(device.timeToFull) + " until full";
         return Math.round(percent) + "%";
-    }
-
-    onIslandChanged: if (root.island) Popups.register_default("battery", root.island, root.island_color, root.screen_name, root)
-    Component.onDestruction: Popups.unregister("battery", root.screen_name, root)
-
-    Rectangle {
-        anchors.fill: parent
-        anchors.margins: -4
-        radius: Style.bar_radius(4)
-        color: Style.bar_hover_bg
-        opacity: hover_handler.hovered ? 0.5 : 0
     }
 
     RowLayout {
@@ -99,17 +83,9 @@ Item {
         }
     }
 
-    HoverHandler {
-        id: hover_handler
-        onHoveredChanged: {
-            if (hovered) Tooltip.show(root, root.tooltip_text, "battery");
-            else Tooltip.hide(root);
-        }
-    }
-
     MouseArea {
         anchors.fill: parent
-        onClicked: Popups.toggle("battery", root.island, root.island_color, root.screen_name)
+        onClicked: root.toggle_popup()
         onWheel: wheel => {
             const notches = wheel_stepper.consume(wheel.angleDelta.y || wheel.pixelDelta.y);
             if (notches === 0) return;

@@ -10,6 +10,7 @@ Row {
 
     property bool compact: false
     property string screen_name: ""
+    property int bar_height: 30
     property Item island: null
     property color island_color: "transparent"
     // Set by a lualine section with a strong fill (lualine_z); the clock then opens its own popup.

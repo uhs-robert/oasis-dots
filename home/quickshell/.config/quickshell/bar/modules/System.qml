@@ -4,14 +4,12 @@ import QtQuick.Layouts
 import "../../theme"
 import "../../services"
 
-Item {
+BarModule {
     id: root
+    module_name: "system"
+    wash: false
 
-    property bool compact: false
-    property string screen_name: ""
     property string stat: "cpu"
-    property Item island: null
-    property color island_color: Theme.bg_core
 
     readonly property string effective_stat: SystemStat.stat_for(root.screen_name, root.stat)
     readonly property bool show_temp: root.effective_stat === "temperature"
@@ -29,17 +27,13 @@ Item {
         return SysStats.cpu_percent + "%";
     }
 
-    readonly property string tooltip_text: "CPU " + SysStats.cpu_percent + "%  RAM " + SysStats.mem_percent + "%"
+    tooltip_text: "CPU " + SysStats.cpu_percent + "%  RAM " + SysStats.mem_percent + "%"
         + (SysStats.has_temp ? "  Temp " + SysStats.temp_c + "°C" : "")
 
-    readonly property bool shown: !root.compact && (!root.show_temp || SysStats.has_temp)
-    visible: shown
+    shown: !root.compact && (!root.show_temp || SysStats.has_temp)
     implicitWidth: root.shown ? row.implicitWidth : 0
     implicitHeight: row.implicitHeight
     opacity: root.dim ? 0.4 : 1
-
-    onIslandChanged: if (root.island) Popups.register_default("system", root.island, root.island_color, root.screen_name, root)
-    Component.onDestruction: Popups.unregister("system", root.screen_name, root)
 
     RowLayout {
         id: row
@@ -70,13 +64,7 @@ Item {
 
     MouseArea {
         anchors.fill: parent
-        onClicked: Popups.toggle("system", root.island, root.island_color, root.screen_name)
+        onClicked: root.toggle_popup()
     }
 
-    HoverHandler {
-        onHoveredChanged: {
-            if (hovered) Tooltip.show(root, root.tooltip_text, "system");
-            else Tooltip.hide(root);
-        }
-    }
 }

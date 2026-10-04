@@ -5,26 +5,18 @@ import Quickshell
 import "../../theme"
 import "../../services"
 
-Item {
+BarModule {
     id: root
-
-    property bool compact: false
+    module_name: "voxtype"
+    has_popup: false
+    tooltip_text: VoxtypeState.tooltip
 
     readonly property var glyphs: ({ idle: "", stopped: "" })
     readonly property color glyph_color: VoxtypeState.recording ? Theme.theme_label : VoxtypeState.transcribing ? Theme.warning : VoxtypeState.state === "stopped" ? Theme.fg_dim : Theme.theme_primary
 
-    readonly property bool shown: VoxtypeState.installed
-    visible: shown
+    shown: VoxtypeState.installed
     implicitWidth: shown ? glyph.implicitWidth : 0
     implicitHeight: glyph.implicitHeight
-
-    Rectangle {
-        anchors.fill: parent
-        anchors.margins: -4
-        radius: Style.bar_radius(4)
-        color: Style.bar_hover_bg
-        opacity: hover_handler.hovered ? 0.5 : 0
-    }
 
     Text {
         id: glyph
@@ -78,14 +70,6 @@ Item {
             from: 0
             to: 360
             duration: 1000
-        }
-    }
-
-    HoverHandler {
-        id: hover_handler
-        onHoveredChanged: {
-            if (hovered) Tooltip.show(root, VoxtypeState.tooltip, "voxtype");
-            else Tooltip.hide(root);
         }
     }
 
