@@ -3,6 +3,7 @@ import QtQuick
 import QtQuick.Shapes
 import "../../theme"
 import "../../services"
+import "../../services/BarModules.js" as BarModules
 
 // One lualine section of bar modules: a fill, an arrow in from the previous section, thin separators between components.
 // Hovered components light up as powerline segments, like the buffers.
@@ -119,7 +120,7 @@ Item {
                 // A click anywhere in the cell, lead and padding included, opens the module's popup.
                 function activate() {
                     const it = loader.item;
-                    if (!it || !it.island || cell.modelData.base === "voxtype") return;
+                    if (!it || !it.island || !BarModules.has_popup(cell.modelData.base)) return;
                     Popups.toggle(cell.modelData.base, it.island, it.island_color, it.screen_name || "");
                 }
 
@@ -200,7 +201,7 @@ Item {
                         id: loader
                         x: parent.pad_left
                         anchors.verticalCenter: parent.verticalCenter
-                        sourceComponent: cell.modelData.component
+                        source: cell.modelData.url
                         onLoaded: {
                             if (item.hasOwnProperty("on_accent")) item.on_accent = Qt.binding(() => root.accent);
                             if (root.wire) root.wire(item, cell.modelData);

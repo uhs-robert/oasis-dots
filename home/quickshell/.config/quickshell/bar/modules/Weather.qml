@@ -5,23 +5,17 @@ import Quickshell
 import "../../theme"
 import "../../services"
 
-Item {
+BarModule {
     id: root
+    module_name: "weather"
 
-    property bool compact: false
-    property string screen_name: ""
-    property Item island: null
-    property color island_color: Theme.bg_core
-
-    readonly property bool shown: true
-    visible: shown
     implicitWidth: row.implicitWidth
     implicitHeight: row.implicitHeight
 
     readonly property var current: WeatherState.current
     readonly property bool has_data: WeatherState.has_data && !!current
 
-    readonly property string tooltip_text: {
+    tooltip_text: {
         if (!has_data) return WeatherState.failed ? "Weather unavailable: " + WeatherState.error : "Weather unavailable";
         const lines = [];
         for (const a of WeatherState.alerts) lines.push(a.event);
@@ -29,17 +23,6 @@ Item {
         if (WeatherState.location_name) lines.push(WeatherState.location_name);
         if (WeatherState.stale) lines.push("Stale data" + (WeatherState.error ? ": " + WeatherState.error : ""));
         return lines.join("\n");
-    }
-
-    onIslandChanged: if (root.island) Popups.register_default("weather", root.island, root.island_color, root.screen_name, root)
-    Component.onDestruction: Popups.unregister("weather", root.screen_name, root)
-
-    Rectangle {
-        anchors.fill: parent
-        anchors.margins: -4
-        radius: Style.bar_radius(4)
-        color: Style.bar_hover_bg
-        opacity: hover_handler.hovered ? 0.5 : 0
     }
 
     RowLayout {
@@ -96,16 +79,8 @@ Item {
         }
     }
 
-    HoverHandler {
-        id: hover_handler
-        onHoveredChanged: {
-            if (hovered) Tooltip.show(root, root.tooltip_text, "weather");
-            else Tooltip.hide(root);
-        }
-    }
-
     MouseArea {
         anchors.fill: parent
-        onClicked: Popups.toggle("weather", root.island, root.island_color, root.screen_name)
+        onClicked: root.toggle_popup()
     }
 }

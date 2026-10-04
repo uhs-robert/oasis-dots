@@ -6,25 +6,17 @@ import "../../theme"
 import "../../services"
 import "../../components"
 
-Item {
+BarModule {
     id: root
+    module_name: "keeptabs"
 
-    property bool compact: false
-    property string screen_name: ""
-    property Item island: null
-    property color island_color: Theme.bg_core
-
-    readonly property bool shown: KeeptabsState.available
-    readonly property string tooltip_text: {
+    shown: KeeptabsState.available
+    tooltip_text: {
         const usage = ClaudeUsageState.rows.map(r => r.label + ": " + r.percent + "%").join("\n");
         return KeeptabsState.tooltip.replace(/\t/g, "  ") + (usage ? "\n\n" + usage : "");
     }
-    visible: shown
     implicitWidth: shown ? row.implicitWidth : 0
     implicitHeight: row.implicitHeight
-
-    onIslandChanged: if (root.island) Popups.register_default("keeptabs", root.island, root.island_color, root.screen_name, root)
-    Component.onDestruction: Popups.unregister("keeptabs", root.screen_name, root)
 
     // The animated glyph's centre, colour and free slot; delegates are rebuilt on every stream line, so they report it here.
     property var done_anchor: null
@@ -106,14 +98,6 @@ Item {
                 root.play_done(true);
             }
         }
-    }
-
-    Rectangle {
-        anchors.fill: parent
-        anchors.margins: -4
-        radius: Style.bar_radius(4)
-        color: Style.bar_hover_bg
-        opacity: hover_handler.hovered ? 0.5 : 0
     }
 
     // Folds keeptabs' "glyph count" runs into {glyph, count} groups so the count can sit as a badge.
@@ -236,16 +220,8 @@ Item {
         }
     }
 
-    HoverHandler {
-        id: hover_handler
-        onHoveredChanged: {
-            if (hovered) Tooltip.show(root, root.tooltip_text, "keeptabs");
-            else Tooltip.hide(root);
-        }
-    }
-
     MouseArea {
         anchors.fill: parent
-        onClicked: Popups.toggle("keeptabs", root.island, root.island_color, root.screen_name)
+        onClicked: root.toggle_popup()
     }
 }

@@ -1,13 +1,14 @@
 .pragma library
 
+.import "BarModules.js" as BarModules
+
 var sides = ["left", "center", "right"];
-// Keep in step with Bar.module_map.
-var known = ["start", "workspaces", "clock", "tray", "volume", "battery", "bluetooth", "system", "network", "weather", "keeptabs", "updates", "voxtype", "recording", "notifications", "media"];
+var known = BarModules.names;
 
 // Right-island section a lualine bar draws a module in.
 function lualine_section(entry) {
-    const base = entry.split(":")[0];
-    return base === "notifications" || base === "clock" ? "z" : ["network", "bluetooth", "recording", "voxtype"].indexOf(base) >= 0 ? "y" : "x";
+    const m = BarModules.find(entry.split(":")[0]);
+    return m ? m.section : "x";
 }
 
 function section_sorted(list) {
@@ -211,7 +212,10 @@ function purge(state, entry) {
 }
 
 // Arguments the modules that take one accept.
-var module_args = { system: ["cpu", "memory", "temperature"] };
+var module_args = BarModules.modules.reduce((out, m) => {
+    if (m.args.length > 0) out[m.name] = m.args;
+    return out;
+}, {});
 
 // The first `base:arg` not in `taken`, else "".
 function next_entry(base, taken) {

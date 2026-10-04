@@ -4,7 +4,7 @@ import QtQuick.Layouts
 import "../theme"
 import "../services"
 import "../services/BarLayout.js" as BarLayout
-import "modules"
+import "../services/BarModules.js" as BarModules
 import "../components/oasis" as Oasis
 import "../components/neovim" as Neovim
 
@@ -19,36 +19,17 @@ Item {
     // Lualine has no center island; its modules move into the right island's sections.
     readonly property bool has_center: !Style.bar_lualine && root.center_entries.length > 0
 
-    readonly property var module_map: ({
-        start: start_component,
-        workspaces: workspaces_component,
-        clock: clock_component,
-        tray: tray_component,
-        volume: volume_component,
-        battery: battery_component,
-        bluetooth: bluetooth_component,
-        system: system_component,
-        network: network_component,
-        weather: weather_component,
-        keeptabs: keeptabs_component,
-        updates: updates_component,
-        voxtype: voxtype_component,
-        recording: recording_component,
-        notifications: notifications_component,
-        media: media_component
-    })
-
     // Resolves a bars.json module list into loadable entries, skipping unknown names.
     function build_entries(names) {
         const list = [];
         for (const raw of names || []) {
             const parsed = BarConfig.parse_module(raw);
-            const component = root.module_map[parsed.base];
-            if (!component) {
+            const spec = BarModules.find(parsed.base);
+            if (!spec) {
                 BarConfig.warn_unknown_module(parsed.base);
                 continue;
             }
-            list.push({ base: parsed.base, arg: parsed.arg, component: component });
+            list.push({ base: parsed.base, arg: parsed.arg, url: Qt.resolvedUrl("modules/" + spec.file) });
         }
         return list;
     }
@@ -77,6 +58,9 @@ Item {
 
     // Sets island/screen/stat properties a module declares, after the Loader instantiates it.
     function wire_module(item, entry, island) {
+        item.compact = Qt.binding(() => root.compact);
+        item.screen_name = Qt.binding(() => root.screen_name);
+        item.bar_height = Qt.binding(() => root.bar_height);
         if (entry.base === "clock" && island === center_island) {
             root.horizon_clock = item;
             item.horizon = Qt.binding(() => root.clock_horizon);
@@ -86,23 +70,6 @@ Item {
         if (item.hasOwnProperty("island")) item.island = island.body_item;
         if (entry.arg && item.hasOwnProperty("stat")) item.stat = entry.arg;
     }
-
-    Component { id: start_component; StartButton { compact: root.compact; screen_name: root.screen_name; bar_height: root.bar_height } }
-    Component { id: workspaces_component; Workspaces { compact: root.compact; screen_name: root.screen_name; bar_height: root.bar_height } }
-    Component { id: clock_component; Clock { compact: root.compact; screen_name: root.screen_name } }
-    Component { id: tray_component; Tray { compact: root.compact; screen_name: root.screen_name } }
-    Component { id: volume_component; Volume { compact: root.compact; screen_name: root.screen_name } }
-    Component { id: battery_component; Battery { compact: root.compact; screen_name: root.screen_name } }
-    Component { id: bluetooth_component; Bluetooth { compact: root.compact; screen_name: root.screen_name } }
-    Component { id: system_component; System { compact: root.compact; screen_name: root.screen_name } }
-    Component { id: network_component; Network { screen_name: root.screen_name } }
-    Component { id: weather_component; Weather { compact: root.compact; screen_name: root.screen_name } }
-    Component { id: keeptabs_component; Keeptabs { compact: root.compact; screen_name: root.screen_name } }
-    Component { id: updates_component; Updates { compact: root.compact; screen_name: root.screen_name } }
-    Component { id: voxtype_component; Voxtype { compact: root.compact } }
-    Component { id: recording_component; Recording { compact: root.compact } }
-    Component { id: notifications_component; Notifications { compact: root.compact; screen_name: root.screen_name } }
-    Component { id: media_component; Media { compact: root.compact; screen_name: root.screen_name } }
 
     // Lualine is one full-width statusline: section c's fill runs behind the islands.
     Rectangle {
@@ -143,11 +110,11 @@ Item {
 
             Loader {
                 required property var modelData
-                sourceComponent: modelData.component
                 // Reads the module's own `shown`, not `visible`: a hidden Loader would report its child hidden too.
                 visible: !item || item.shown === undefined || item.shown
                 // Keeps the start button close to the workspace pills it launches into.
                 Layout.rightMargin: modelData.base === "start" && !Style.bar_lualine ? -8 : 0
+                Component.onCompleted: setSource(modelData.url, { compact: root.compact, screen_name: root.screen_name, bar_height: root.bar_height })
                 onLoaded: root.wire_module(item, modelData, left_island)
             }
         }
@@ -232,9 +199,9 @@ Item {
 
             Loader {
                 required property var modelData
-                sourceComponent: modelData.component
                 // Reads the module's own `shown`, not `visible`: a hidden Loader would report its child hidden too.
                 visible: !item || item.shown === undefined || item.shown
+                Component.onCompleted: setSource(modelData.url, { compact: root.compact, screen_name: root.screen_name, bar_height: root.bar_height })
                 onLoaded: root.wire_module(item, modelData, center_island)
             }
         }
@@ -292,9 +259,9 @@ Item {
 
             Loader {
                 required property var modelData
-                sourceComponent: modelData.component
                 // Reads the module's own `shown`, not `visible`: a hidden Loader would report its child hidden too.
                 visible: !item || item.shown === undefined || item.shown
+                Component.onCompleted: setSource(modelData.url, { compact: root.compact, screen_name: root.screen_name, bar_height: root.bar_height })
                 onLoaded: root.wire_module(item, modelData, right_island)
             }
         }
@@ -360,9 +327,9 @@ Item {
         else if (Style.bar_lualine && !root.lists_media) Popups.register_default("media", right_island.body_item, right_island.bg_color, root.screen_name);
     }
 
-    // Popup names in bar order for Ctrl+H/L walking; workspaces, voxtype and recording have no popup.
+    // Popup names in bar order for Ctrl+H/L walking.
     function popup_names(entries) {
-        return entries.filter(e => ["workspaces", "voxtype", "recording"].indexOf(e.base) < 0).map(e => e.base);
+        return entries.filter(e => BarModules.has_popup(e.base)).map(e => e.base);
     }
 
     function sync_popup_order() {
