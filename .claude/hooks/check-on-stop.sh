@@ -27,7 +27,8 @@ out=$(sed 's/\x1b\[[0-9;]*m//g' <<<"$out" | grep -v -E '\bOK$|^sh \./lib/check\.
 failing=$(grep -oE '[[:alnum:]_./-]+' <<<"$out" | sed -E 's/\.orig$//' | sort -u | while read -r p; do
   [[ -f $p ]] && git ls-files --error-unmatch -- "$p" >/dev/null 2>&1 && printf '%s\n' "$p"
 done)
-summary=$(tail -n 40 <<<"$out")
+summary=$(sed -n '/^FAILED:/,$p' <<<"$out" | head -n 160)
+[[ -n $summary ]] || summary=$(tail -n 40 <<<"$out")
 
 if [[ -n $failing ]] && ! grep -qxF -f <(printf '%s\n' "$failing") <<<"$changed"; then
   origins=$(while read -r p; do printf '%s: last changed in %s\n' "$p" "$(git log -1 --format='%h %s' -- "$p")"; done <<<"$failing")
