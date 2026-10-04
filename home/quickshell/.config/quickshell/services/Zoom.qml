@@ -13,10 +13,25 @@ Singleton {
     property string cursor_screen: ""
     property point cursor_point: Qt.point(0, 0)
     readonly property bool loupe_shown: root.active && !root.full
-    readonly property string socket_path: Quickshell.env("XDG_RUNTIME_DIR") + "/hypr/" + Quickshell.env("HYPRLAND_INSTANCE_SIGNATURE") + "/.socket.sock"
 
+    property real wanted_factor: 1
+
+    // One hyprctl at a time, so a stale factor can never land after a newer one.
     function set_factor(factor) {
-        Quickshell.execDetached(["hyprctl", "eval", "hl.config({ cursor = { zoom_factor = " + factor + " } })"]);
+        root.wanted_factor = factor;
+        if (!factor_proc.running) root.apply_factor();
+    }
+
+    function apply_factor() {
+        factor_proc.factor = root.wanted_factor;
+        factor_proc.command = ["hyprctl", "eval", "hl.config({ cursor = { zoom_factor = " + root.wanted_factor + " } })"];
+        factor_proc.running = true;
+    }
+
+    Process {
+        id: factor_proc
+        property real factor: 1
+        onExited: if (factor_proc.factor !== root.wanted_factor) root.apply_factor()
     }
 
     function start() {
@@ -62,31 +77,14 @@ Singleton {
         }
     }
 
-    // Hyprland answers one request per connection, then closes it.
-    Socket {
-        id: sock
-        path: root.socket_path
-        onConnectedChanged: {
-            if (!sock.connected) return;
-            sock.write("j/cursorpos");
-            sock.flush();
-        }
-        parser: StdioCollector {
-            onStreamFinished: {
-                sock.connected = false;
-                try {
-                    const pos = JSON.parse(this.text);
-                    root.place(pos.x, pos.y);
-                } catch (e) {}
+    Process {
+        running: root.loupe_shown
+        command: ["sh", "-c", "while :; do hyprctl cursorpos || exit; sleep 0.016; done"]
+        stdout: SplitParser {
+            onRead: line => {
+                const parts = line.split(",");
+                if (parts.length === 2) root.place(Number(parts[0]), Number(parts[1]));
             }
         }
-    }
-
-    Timer {
-        interval: 16
-        repeat: true
-        running: root.loupe_shown
-        triggeredOnStart: true
-        onTriggered: if (!sock.connected) sock.connected = true
     }
 }
