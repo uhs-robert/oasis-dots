@@ -137,9 +137,8 @@ Singleton {
         return rule && rule.height > 0 ? rule.height : Style.bar_height > 0 ? Style.bar_height : root.default_height;
     }
 
-    function compact_for(rule, screen_name) {
-        if (rule && rule.compact !== undefined) return rule.compact;
-        return screen_name.indexOf("eDP") === 0;
+    function compact_for(rule) {
+        return !!(rule && rule.compact);
     }
 
     // Splits "system:temperature" into { base: "system", arg: "temperature" }.
