@@ -69,14 +69,20 @@ write_qmldirs "$stage/shell"
 write_qmldirs "$stage/greeter"
 
 # Members read through parent, Loader.item and the like are typed QObject/QQuickItem, so a miss there is unknowable.
+# The gaps list types Quickshell's qmltypes leave unexported or wrongly mark uncreatable; all exist at runtime.
 # shellcheck disable=SC2016
 filter='
+  def qualifies: (.replacement // "") | test("\\.$|^pragma ComponentBehavior");
+  def gap: .message | test("^Type PanelWindow is not creatable|^Type margins is used|^Type \"BluetoothAdapter\" of property|^No type found for property \"(edges|gravity|adjustment)\"");
   .files[] | .filename as $file | .warnings[] | select(
-    (.id | IN("syntax", "import", "duplicated-name", "duplicate-property-binding", "alias-cycle", "read-only-property"))
-    or (.id == "missing-property"
-      and (.message | test("not found on type \"(QObject|QQuickItem|QJSPrimitiveValue)\"") | not))
-    or (.id == "unqualified" and .message == "Unqualified access" and ((.suggestions // []) | length) == 0)
-  ) | "\($file):\(.line):\(.column): \(.message) [\(.id)]"
+    (.id | IN("syntax", "import", "incompatible-type", "read-only-property", "required", "non-list-property",
+      "duplicated-name", "duplicate-property-binding", "duplicate-inline-component", "duplicate-enum-entries",
+      "alias-cycle", "inheritance-cycle", "unresolved-alias", "missing-enum-entry", "var-used-before-declaration"))
+    or (.id | IN("uncreatable-type", "unresolved-type", "missing-type")) and (gap | not)
+    or .id == "missing-property" and (.message | test("not found on type \"(QObject|QQuickItem|QJSPrimitiveValue)\"") | not)
+    or .id == "unqualified" and .message == "Unqualified access" and ([(.suggestions // [])[] | select(qualifies)] | length) == 0
+  ) | ([(.suggestions // [])[].message | select(startswith("Did you mean"))] | map(" " + .) | first // "") as $hint
+  | "\($file):\(.line):\(.column): \(.message)\($hint) [\(.id)]"
 '
 
 status=0
