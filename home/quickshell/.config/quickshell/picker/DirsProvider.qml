@@ -19,8 +19,8 @@ PickerProvider {
     readonly property string home: Quickshell.env("HOME")
     readonly property var term: ["sh", "-c", "t=~/.config/hypr/scripts/term; [ -x \"$t\" ] || t=\"${TERMINAL:-kitty}\"; exec \"$t\" \"$@\"", "sh"]
     property string file_manager_class: DefaultApps.app_value("tui_file_manager") || "yazi"
-    readonly property string open_script: "exec \"${SHELL:-sh}\" -i -c 'cd \"$1\" && if [ \"$2\" = yazi ] && type y >/dev/null 2>&1; then y; else \"$2\"; fi; exec \"${SHELL:-sh}\" -i' sh \"$1\" \"$2\""
-    readonly property string shell_script: "exec \"${SHELL:-sh}\" -i -c 'cd \"$1\" && exec \"${SHELL:-sh}\" -i' sh \"$1\""
+    readonly property string open_script: "s=${SHELL:-sh}; cd \"$1\" || exit; fm=$2; if [ \"$fm\" = yazi ] && \"$s\" -i -c 'type y' >/dev/null 2>&1; then fm=y; fi; exec \"$s\" -i -c \"$fm; exec \\\"$s\\\" -i\""
+    readonly property string shell_script: "s=${SHELL:-sh}; cd \"$1\" || exit; exec \"$s\" -i"
 
     function parse(text) {
         const out = [];
