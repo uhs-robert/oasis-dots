@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 # Installs the latest MapleMono NF release system-wide (unpinned, needs sudo).
+# Download failures only warn: install.sh runs under set -e, and a GitHub rate
+# limit or offline machine should not stop the stow step that follows.
 
 _SYSTEM_FONTS_DIR="/usr/local/share/fonts"
 _MAPLE_API="https://api.github.com/repos/subframe7536/maple-font/releases/latest"
@@ -19,11 +21,11 @@ _install_maple_mono_nf() {
 
   info "Fetching MapleMono NF release..."
   local version
-  version=$(_latest_tag "$_MAPLE_API")
-  [[ -z "$version" ]] && {
-    warn "Could not fetch MapleMono NF version"
-    return 1
-  }
+  version=$(_latest_tag "$_MAPLE_API") || version=""
+  if [[ -z "$version" || "$version" == null ]]; then
+    warn "Could not fetch MapleMono NF version, skipping"
+    return 0
+  fi
 
   local tmp staged
   tmp=$(mktemp -d)
@@ -40,8 +42,6 @@ _install_maple_mono_nf() {
     success "MapleMono NF installed system-wide"
   else
     warn "Failed to download or extract MapleMono NF from $url"
-    rm -rf "$tmp"
-    return 1
   fi
 
   rm -rf "$tmp"
