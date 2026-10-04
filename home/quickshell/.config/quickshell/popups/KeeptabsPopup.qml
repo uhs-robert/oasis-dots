@@ -14,8 +14,8 @@ Popup {
     preferred_width: 340
     body_height: content.implicitHeight + 24
     key_help: root.current_tab === 0
-        ? "[ ] tabs · 1-2 select · j/k move · gg/G first/last · Enter/click focus"
-        : "[ ] tabs · 1-2 select · r refresh"
+        ? "Tab tabs · 1-2 select · j/k move · gg/G first/last · Enter/click focus"
+        : "Tab tabs · 1-2 select · r refresh"
 
     property var sessions: []
     property int selected: 0
