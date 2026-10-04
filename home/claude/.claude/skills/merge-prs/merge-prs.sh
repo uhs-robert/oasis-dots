@@ -63,6 +63,9 @@ else
 fi
 
 tmp_root=""
+wait_s=${MERGE_PRS_WAIT:-600}
+poll_s=${MERGE_PRS_POLL:-10}
+known_heads=()
 remove_tmp() {
   [[ -n $tmp_root ]] || return 0
   git worktree remove --force "$tmp_root/wt" >/dev/null 2>&1 || true
@@ -81,12 +84,12 @@ list_children() {
     --jq '.[] | [.number, .headRefName, .headRefOid, .isCrossRepository] | @tsv' || die "cannot list PRs based on $1"
 }
 
-# A local branch is safe to drop when merging it into the PR head changes nothing.
+# A local branch is safe to drop when all its commits came from PR heads seen before this run rewrote them.
 clean_local() {
   local pr=$1 head=$2 head_oid=$3 wt
   git worktree prune
   if git show-ref --verify -q "refs/heads/$head" &&
-    [[ $(git merge-tree --write-tree "$head_oid" "refs/heads/$head" 2>/dev/null) != "$(git rev-parse "$head_oid^{tree}")" ]]; then
+    [[ -n $(git rev-list -n 1 "refs/heads/$head" --not "$head_oid" "${known_heads[@]}") ]]; then
     echo "kept $head: local commits not in PR #$pr"
     return
   fi
@@ -116,6 +119,7 @@ rebase_child() {
   git cat-file -e "$old_child^{commit}" 2>/dev/null || die "$child head $old_child is not on origin/$child_head"
   grandchildren=$(list_children "$child_head") || exit 1
   tmp_root=$(mktemp -d "${TMPDIR:-/tmp}/merge-prs.XXXXXX")
+  known_heads+=("$old_child")
   git worktree add -q --detach "$tmp_root/wt" "$old_child" || die "cannot create a worktree for $child_head"
   if ! git -C "$tmp_root/wt" rebase -q --onto "$onto" "$upstream" >/dev/null 2>&1; then
     git -C "$tmp_root/wt" rebase --abort || true
@@ -145,6 +149,25 @@ rebase_child() {
   done
 }
 
+pr_state() {
+  gh pr view "$1" --json state --jq .state || die "cannot read the state of $1"
+}
+
+not_merged() {
+  local pr=$1 state=$2 base=$3 head_oid=$4 line number child_head child_oid child_cross
+  local msg="#$pr is $state, not MERGED, after waiting ${wait_s}s; stopping"
+  shift 4
+  (($#)) && msg+=". Its children were retargeted to $base and still carry its commits; once it merges, rebase them by hand:"
+  for line in "$@"; do
+    IFS=$'\t' read -r number child_head child_oid child_cross <<<"$line"
+    [[ $child_cross != true ]] || continue
+    msg+=$'\n'"$number ($child_head):"
+    msg+=$'\n'"  git fetch origin && git rebase --onto origin/$base $head_oid $child_oid"
+    msg+=$'\n'"  git push --force-with-lease=$child_head:$child_oid origin HEAD:$child_head"
+  done
+  die "$msg"
+}
+
 merge_pr() {
   local pr=$1 info head base state cross head_oid children_info="" line number child_head child_oid child_cross
   local -a lines=()
@@ -158,6 +181,7 @@ merge_pr() {
   [[ -z $children_info ]] || mapfile -t lines <<<"$children_info"
 
   fetch
+  known_heads+=("$head_oid")
   if [[ $cross != true ]]; then
     git cat-file -e "$head_oid^{commit}" 2>/dev/null || die "PR $pr head $head_oid is not on origin/$head"
   fi
@@ -171,8 +195,16 @@ merge_pr() {
   local merge_args=("--$method" --repo "$slug" --match-head-commit "$head_oid")
   $keep_branch || merge_args+=(--delete-branch)
   gh pr merge "$pr" "${merge_args[@]}" >/dev/null || die "merge of $pr failed"
-  state=$(gh pr view "$pr" --json state --jq .state) || die "cannot read the state of $pr"
-  [[ $state == MERGED ]] || die "$pr is $state after the merge, stopping"
+  state=$(pr_state "$pr")
+  if [[ $state == OPEN ]]; then
+    echo "waiting for #$pr to merge (queued)"
+    local deadline=$((SECONDS + wait_s))
+    while [[ $state == OPEN ]] && ((SECONDS < deadline)); do
+      sleep "$poll_s"
+      state=$(pr_state "$pr")
+    done
+  fi
+  [[ $state == MERGED ]] || not_merged "$pr" "$state" "$base" "$head_oid" "${lines[@]}"
   echo "$pr merged ($method)"
 
   fetch
