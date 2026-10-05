@@ -18,6 +18,15 @@ IpcHandler {
         return Style.name;
     }
 
+    // The effects pack for every style; "" follows each style's own (Settings > Theme audio > Effects pack).
+    function set_effects_pack(name: string): string {
+        return ThemeAudio.set_pack(name) ? "ok" : "unknown";
+    }
+
+    function get_effects_pack(): string {
+        return ThemeAudio.choice;
+    }
+
     // A style name, "follow" to match the active style, or "simple" for the plain lock screen.
     function set_lock(name: string): string {
         return Style.set_lock_style(name) ? "ok" : "unknown";
