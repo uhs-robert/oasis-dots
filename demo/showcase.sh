@@ -12,7 +12,9 @@ qs_ipc_bin=$HOME/.config/hypr/scripts/qs-ipc
 hypr_state_dir=${XDG_STATE_HOME:-$HOME/.local/state}/hypr
 state_dir=${XDG_RUNTIME_DIR:-/tmp}/oasis-demo
 
-DEMO_OUTPUT=${DEMO_OUTPUT:-DP-8}
+# Connector names change when a dock re-enumerates (DP-8 came back as DP-7), so by default pick the output by
+# shape: the landscape 1920x1080 one.
+DEMO_OUTPUT=${DEMO_OUTPUT:-$(hyprctl monitors -j 2>/dev/null | jq -r '[.[] | select(.width == 1920 and .height == 1080 and .transform % 2 == 0)][0].name // "DP-8"' 2>/dev/null || echo DP-8)}
 DEMO_PASSWORD=${DEMO_PASSWORD:-oasisdemo}
 DEMO_FPS=${DEMO_FPS:-60}
 DEMO_OUT_DIR=${DEMO_OUT_DIR:-$HOME/Videos/Recordings}
@@ -657,9 +659,22 @@ restore_ui() {
   overlay_ipc clear 2>/dev/null || true
 }
 
+# wf-recorder finishes its file on SIGINT, but ignores it once its output is gone (a dock reset mid-take), and an
+# unbounded wait then hangs the exit handler before it restores anything.
 stop_recorder() {
   [[ -n $recorder_pid ]] || return 0
+  local i
   safe_kill INT "$recorder_pid"
+  for ((i = 0; i < 50; i++)); do
+    kill -0 "$recorder_pid" 2>/dev/null || break
+    sleep 0.1
+  done
+  if kill -0 "$recorder_pid" 2>/dev/null; then
+    log "showcase: wf-recorder ignored SIGINT; terminating it"
+    safe_kill TERM "$recorder_pid"
+    sleep 1
+    kill -0 "$recorder_pid" 2>/dev/null && safe_kill KILL "$recorder_pid"
+  fi
   wait "$recorder_pid" 2>/dev/null || true
   recorder_pid=""
 }
