@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
 # demo/stage-tmux.sh
-# The showcase's terminal stage, both rooted in this repo: `dotfiles` (Neovim's dashboard beside yazi) and
-# `agent` (Claude Code on Sonnet). The Demo launcher session opens a kitty on each.
+# The showcase's terminal stage, rooted in this repo: `dotfiles` (Neovim's dashboard beside yazi), `agent` (Claude
+# Code on Sonnet), and three single-app sessions for the layout beat: `monitor` (btop), `git` (lazygit) and
+# `readme` (glow). The Demo launcher session opens a kitty on each.
 #
-#   stage-tmux.sh dotfiles|agent   create the session if it is missing, then attach
-#   stage-tmux.sh kill             end both sessions
+#   stage-tmux.sh <session>   create the session if it is missing, then attach
+#   stage-tmux.sh kill        end every stage session
 
 set -euo pipefail
 
@@ -30,6 +31,13 @@ ensure_agent() {
   tmux new-session -d -s agent -n agent -c "$repo_dir" "$DEMO_AGENT_CMD"
 }
 
+# Inside tmux so `kill` closes their kitty windows without kitty's close prompt.
+ensure_app() {
+  local session=$1 cmd=$2
+  tmux has-session -t "=$session" 2>/dev/null && return 0
+  tmux new-session -d -s "$session" -n "$session" -c "$repo_dir" "$cmd"
+}
+
 case ${1:-} in
 dotfiles)
   ensure_dotfiles
@@ -39,13 +47,21 @@ agent)
   ensure_agent
   exec tmux attach -t =agent
   ;;
+monitor | git | readme)
+  case $1 in
+  monitor) ensure_app monitor btop ;;
+  git) ensure_app git lazygit ;;
+  readme) ensure_app readme "glow -p README.md" ;;
+  esac
+  exec tmux attach -t "=$1"
+  ;;
 kill)
-  for session in dotfiles agent; do
+  for session in dotfiles agent monitor git readme; do
     tmux kill-session -t "=$session" 2>/dev/null || true
   done
   ;;
 *)
-  echo "usage: stage-tmux.sh dotfiles|agent|kill" >&2
+  echo "usage: stage-tmux.sh dotfiles|agent|monitor|git|readme|kill" >&2
   exit 2
   ;;
 esac

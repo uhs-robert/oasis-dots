@@ -74,7 +74,7 @@ T_OUTRO_HOLD=${T_OUTRO_HOLD:-4.5}
 beats=(unlock session resize palettes turn move styles kickoff overview region prompt keeptabs outro)
 # The README hero is cut from these.
 hero_beats=(palettes turn styles)
-stage_classes=(kitty-tmux-dotfiles firefox kitty-tmux-agent)
+stage_classes=(kitty-tmux-dotfiles firefox kitty-tmux-agent kitty-tmux-monitor kitty-tmux-git kitty-tmux-readme)
 declare -A style_reveal_ms=([neovim]=400 [ps1]=500 [ff7]=500 [goldeneye]=500 [gameboy]=500 [metroid]=500 [tie]=500)
 
 DRY=0
@@ -776,18 +776,12 @@ cleanup() {
 # Ends the stage sessions (their kitty windows close with them) and closes the repo page the Demo session opened.
 reset_stage() {
   if ((DRY)); then
-    emit reset "kill tmux sessions dotfiles and agent, close firefox windows on $DEMO_OUTPUT"
+    emit reset "kill the stage's tmux sessions, close firefox windows on $DEMO_OUTPUT"
     return 0
   fi
   "$stage_tmux" kill
   sleep 1
   local addr
-  if [[ -f $state_dir/opened_windows ]]; then
-    while read -r addr; do
-      [[ -n $addr ]] && hyprctl eval "hl.dispatch(hl.dsp.window.close({ window = \"address:$addr\" }))" >/dev/null
-    done <"$state_dir/opened_windows"
-    rm -f "$state_dir/opened_windows"
-  fi
   for addr in $(hyprctl clients -j | jq -r --argjson m "$(out_id)" --arg prot "$protect_addrs" '
     ($prot | split(" ")) as $p | .[] | select(.monitor == $m and .class == "firefox" and (.address | IN($p[]) | not)) | .address'); do
     hyprctl eval "hl.dispatch(hl.dsp.window.close({ window = \"address:$addr\" }))" >/dev/null
@@ -983,30 +977,13 @@ beat_overview() {
   assert_active_class kitty-tmux-dotfiles
 }
 
-# A second window beside the editor, since Firefox has moved away and `:layout` needs something to re-tile. Its
-# address is kept so `reset` can close it.
-open_terminal() {
-  local before addr i
-  if ((DRY)); then
-    bind "SUPER + RETURN" 'require("lib.actions.cmd").open_term()()'
-    return 0
-  fi
-  before=$(hyprctl clients -j | jq -c '[.[].address]')
-  bind "SUPER + RETURN" 'require("lib.actions.cmd").open_term()()'
-  for ((i = 0; i < 50; i++)); do
-    addr=$(hyprctl clients -j | jq -r --argjson b "$before" '[.[] | select(.address | IN($b[]) | not)][0].address // empty')
-    [[ -n $addr ]] && break
-    sleep 0.1
-  done
-  [[ -n $addr ]] || die "the terminal did not open"
-  printf '%s\n' "$addr" >>"$state_dir/opened_windows"
-  pause "$T_MOVE_HOLD"
-}
-
 # HyprVim's `:` prompt, drawn by Quickshell: Enter on `layout` takes the command and lists its layouts, then
 # scrolling re-tiles the workspace live.
+# Slot 5 holds three windows from the Demo session; two half-width columns would look the same in scrolling as in
+# the split layout, three overflow and scroll.
 beat_prompt() {
-  open_terminal
+  bind "SUPER + 5" 'require("lib.actions.workspace").focus_local(5)()'
+  pause "$T_MOVE_HOLD"
   overlay_keys ":"
   pause "$T_LEAD"
   hypr_eval 'require("hyprvim.vim").command.prompt()'
