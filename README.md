@@ -222,7 +222,7 @@ Password entry works like Vim. While nothing is typed you are in NORMAL mode, wh
 The wallpaper picks itself by the season, the time of day and the current weather from the bar. Sort your own art into `<Season>/<Period>/<Weather>/` folders, such as `Fall/Evening/Rain`, and on a rainy fall evening each monitor has a 60% chance (`weather_chance`) of a rainy fall evening scene. No images ship with this repo; see the [wallpaper extension](home/hypr/.config/hypr/extensions/wallpaper/README.md) to set up a collection.
 
 <p align="center">
-  <a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/wallpaper-seasons.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/wallpaper-seasons.webp" width="100%" alt="One pixel-art scene of forest ruins through a fall day: dawn in rain, day, evening and night"></a>
+  <a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/wallpaper-fall-day.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/wallpaper-fall-day.webp" width="100%" alt="One pixel-art scene of forest ruins through a fall day: dawn in rain, day, evening and night"></a>
   <br>
   <sub>Haunted Ruins by <a href="https://www.markferrari.com/image-archives">Mark Ferrari</a></sub>
 </p>
