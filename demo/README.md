@@ -1,6 +1,6 @@
 # Showcase video kit
 
-A scripted take for the README video: `showcase.sh` drives the real desktop, and a standalone overlay (`overlay/`, run with `qs -p`) shows each keybind as key caps before it fires. It is separate from the live bar and never loaded by it. Run everything from a terminal on another output than `DEMO_OUTPUT` (default `DP-8`, a 1920x1080 output so nothing is scaled); the script refuses to type into that terminal or to start while it sits on the output.
+A scripted take for the README video: `showcase.sh` drives the real desktop, and a standalone overlay (`overlay/`, run with `qs -p`) shows each keybind as key caps before it fires. It is separate from the live bar and never loaded by it. Run everything from a terminal on another output than `DEMO_OUTPUT` (default: the landscape 1920x1080 output, so nothing is scaled; set it to a connector name to choose); the script refuses to type into that terminal or to start while it sits on the output.
 
 Needs `hyprctl`, `jq`, `wtype`, `qs`, `tmux`, `grim`, `python3` with PIL, plus `wf-recorder`, `ffmpeg` and `pactl` to record. Plug in first: style transitions and the keeptabs pulse are skipped on battery, so the script aborts there.
 
