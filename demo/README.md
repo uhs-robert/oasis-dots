@@ -2,7 +2,7 @@
 
 A scripted take for the README video: `showcase.sh` drives the real desktop, and a standalone overlay (`overlay/`, run with `qs -p`) shows each keybind as key caps before it fires. It is separate from the live bar and never loaded by it. Run everything from a terminal on another output than `DEMO_OUTPUT` (default `DP-8`, a 1920x1080 output so nothing is scaled); the script refuses to type into that terminal or to start while it sits on the output.
 
-Needs `hyprctl`, `jq`, `wtype`, `qs`, `tmux`, plus `wf-recorder`, `ffmpeg` and `pactl` to record. Plug in first: style transitions and the keeptabs pulse are skipped on battery, so the script aborts there.
+Needs `hyprctl`, `jq`, `wtype`, `qs`, `tmux`, `grim`, `python3` with PIL, plus `wf-recorder`, `ffmpeg` and `pactl` to record. Plug in first: style transitions and the keeptabs pulse are skipped on battery, so the script aborts there.
 
 ## The stage
 
@@ -17,7 +17,7 @@ Sessions.add("🌵 Demo", {
 })
 ```
 
-`stage-tmux.sh` builds the two tmux sessions in this repo: `dotfiles` (Neovim on README.md beside yazi) and `agent` (Claude Code on Sonnet, `DEMO_AGENT_CMD`). Their names are also the kitty titles, which the overview beat searches for.
+`stage-tmux.sh` builds the two tmux sessions in this repo: `dotfiles` (Neovim's dashboard beside yazi) and `agent` (Claude Code on Sonnet, `DEMO_AGENT_CMD`). Their names are also the kitty titles, which the overview beat searches for.
 
 ## Usage
 
@@ -35,6 +35,8 @@ demo/showcase.sh --dry-run record   # print every step without running it
 ```
 
 Beats after `session` expect its windows, and `keeptabs` waits for the agent that `kickoff` started. Rehearse a beat on its own, then `restore` and `reset` to start the take from an empty output.
+
+The region beat finds the dashboard logo in a screenshot of the output and steers the selector onto its exact edges (`DEMO_REGION_RECT="x y w h"` overrides the detection; the screenshot is kept in `$XDG_RUNTIME_DIR/oasis-demo/`).
 
 Each clip is filmed with the default sink's monitor as audio (`DEMO_AUDIO=none` for silence). `edit` speeds up the app start-up in the `session` clip and joins the rest with hard cuts, so one bad beat can be re-filmed alone and the folder edited again.
 
