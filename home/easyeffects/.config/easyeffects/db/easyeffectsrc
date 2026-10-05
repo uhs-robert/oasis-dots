@@ -1,9 +1,6 @@
 [Audio]
 activateMonitorChannelVolumes=true
 
-[EffectsPipelines]
-bypass=true
-
 [Spectrum]
 spectrumShape=lines
 
@@ -16,7 +13,7 @@ visiblePlugin=speex#0
 [StreamOutputs]
 mostUsedPresets=Klipsch Stereo
 outputDevice=alsa_output.usb-0c76_USB_Audio-00.analog-stereo
-plugins=equalizer#0,stereo_tools#0,bass_enhancer#0
+plugins=equalizer#0,bass_enhancer#0,limiter#0
 usedPresets=Klipsch Stereo:19
 visiblePage=pluginsPage
 visiblePlugin=equalizer#0
