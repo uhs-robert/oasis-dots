@@ -6,21 +6,24 @@ Needs `hyprctl`, `jq`, `wtype`, `qs`, `tmux`, `grim`, `python3` with PIL, plus `
 
 ## The stage
 
-The video opens on an empty `DEMO_OUTPUT` and launches a session named "Demo" from the session picker. That session is personal config, not part of this repo: add it in your `custom/sessions.lua` with the editor and the repo page on the output's first workspace, the agent on its second, and three app windows on its fifth for the `:layout` beat:
+The video opens on an empty `DEMO_OUTPUT` and launches a session named "Demo" from the session picker. That session is personal config, not part of this repo: add it in your `custom/sessions.lua` with Neovim beside yazi on the output's first workspace, the agent on its second, and three windows on its fifth for the `:layout` beat:
 
 ```lua
 local demo_stage = os.getenv("HOME") .. "/dotfiles/demo/stage-tmux.sh"
+local function demo_term(ws, session, delay)
+  return Sessions.term({ monitor = 2, ws = ws, exec = demo_stage .. " " .. session, class_suffix = "tmux-" .. session, delay = delay })
+end
 Sessions.add("🌵 Demo", {
-  Sessions.term({ monitor = 2, ws = 1, exec = demo_stage .. " dotfiles", class_suffix = "tmux-dotfiles" }),
-  { monitor = 2, ws = 1, cmd = "firefox --private-window https://github.com/uhs-robert/oasis-dots", class = "firefox", delay = 1500 },
-  Sessions.term({ monitor = 2, ws = 2, exec = demo_stage .. " agent", class_suffix = "tmux-agent", delay = 3000 }),
-  Sessions.term({ monitor = 2, ws = 5, exec = demo_stage .. " monitor", class_suffix = "tmux-monitor", delay = 3500 }),
-  Sessions.term({ monitor = 2, ws = 5, exec = demo_stage .. " git", class_suffix = "tmux-git", delay = 4000 }),
-  Sessions.term({ monitor = 2, ws = 5, exec = demo_stage .. " readme", class_suffix = "tmux-readme", delay = 4500 }),
+  demo_term(1, "dotfiles"),
+  demo_term(1, "files", 1000),
+  demo_term(2, "agent", 1500),
+  demo_term(5, "monitor", 2000),
+  demo_term(5, "git", 2500),
+  { monitor = 2, ws = 5, cmd = "firefox --private-window https://github.com/uhs-robert/oasis-dots", class = "firefox", delay = 3000 },
 })
 ```
 
-`stage-tmux.sh` builds the tmux sessions in this repo: `dotfiles` (Neovim's dashboard beside yazi on `home/`), `agent` (Claude Code on Sonnet, `DEMO_AGENT_CMD`), and `monitor` (btop), `git` (lazygit) and `readme` (glow). Their names are also the kitty titles, which the overview beat searches for.
+`stage-tmux.sh` builds one-pane tmux sessions in this repo: `dotfiles` (Neovim's dashboard), `files` (yazi on `home/`), `agent` (Claude Code on Sonnet, `DEMO_AGENT_CMD`), `monitor` (btop) and `git` (lazygit). Their names are also the kitty titles, which the overview beat searches for.
 
 ## Usage
 
