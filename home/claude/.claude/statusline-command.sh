@@ -36,7 +36,11 @@ if [ -n "$repo_root" ]; then
   fi
 fi
 
-badge=$(printf '%s' "$input" | bash "$HOME/.claude/plugins/marketplaces/caveman/src/hooks/caveman-statusline.sh")
+# Caveman's mode file outlives the plugin, so only ask it for a badge while the plugin is enabled.
+badge=""
+if jq -e '.enabledPlugins["caveman@caveman"] == true' "$HOME/.claude/settings.json" >/dev/null 2>&1; then
+  badge=$(printf '%s' "$input" | bash "$HOME/.claude/plugins/marketplaces/caveman/src/hooks/caveman-statusline.sh")
+fi
 
 sep=" \033[38;5;240m·\033[0m "
 printf '\033[38;5;250m%s\033[0m' "$(basename "$cwd")"
