@@ -234,7 +234,8 @@ EOF
   # Only the checkouts repos/ links to, never all of $GITHUB_DIR, which holds unrelated work.
   local repo_paths=("$REPOS_DIR") link
   for link in "$REPOS_DIR"/*; do
-    if [[ -L "$link" ]]; then repo_paths+=("$(readlink -f "$link")"); fi
+    # A link whose checkout was moved or deleted has nothing left to remove, and `readlink -f` would fail under `set -e`.
+    if [[ -L "$link" && -e "$link" ]]; then repo_paths+=("$(readlink -f "$link")"); fi
   done
   local rm_cmd
   rm_cmd="rm -rf$(printf ' %q' "${repo_paths[@]}")"
