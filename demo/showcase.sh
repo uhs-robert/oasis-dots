@@ -41,6 +41,8 @@ T_LOGIN_UNLOCK=${T_LOGIN_UNLOCK:-3.85}
 T_EMPTY_HOLD=${T_EMPTY_HOLD:-2.0}
 T_SESSION_TIMEOUT=${T_SESSION_TIMEOUT:-60}
 T_SESSION_HOLD=${T_SESSION_HOLD:-1.5}
+T_RESIZE_STEP=${T_RESIZE_STEP:-0.35}
+T_RESIZE_HOLD=${T_RESIZE_HOLD:-1.0}
 T_SETTINGS_HOLD=${T_SETTINGS_HOLD:-0.6}
 T_PALETTE_HOLD=${T_PALETTE_HOLD:-1.2}
 T_TURN_HOLD=${T_TURN_HOLD:-1.5}
@@ -58,7 +60,7 @@ T_KEEPTABS_HOLD=${T_KEEPTABS_HOLD:-1.2}
 T_ANSWER_HOLD=${T_ANSWER_HOLD:-3.0}
 T_OUTRO_HOLD=${T_OUTRO_HOLD:-4.5}
 
-beats=(unlock session palettes turn
+beats=(unlock session resize palettes turn
   montage_ps1 montage_ff7 montage_goldeneye montage_gameboy montage_metroid montage_tie montage_back
   kickoff overview prompt region keeptabs outro)
 # The README hero is cut from these.
@@ -755,6 +757,9 @@ beat_unlock() {
   pause "$T_EMPTY_HOLD"
 }
 
+# The picker opens on the focused monitor; the unlock beat leaves focus there, a standalone rehearsal may not.
+pre_session() { go_slot 1; }
+
 beat_session() {
   bind "SUPER + SHIFT + O" 'require("extensions.auto_launcher.launcher").show_picker()'
   wait_layer quickshell-popup
@@ -768,6 +773,24 @@ beat_session() {
   pause 1.5
   fast_end
   pause "$T_SESSION_HOLD"
+}
+
+pre_resize() { focus_class kitty-tmux-dotfiles; }
+
+# SUPER+R's Resize submap and its which-key, widening the editor. wtype would drop Hyprland out of the submap, so
+# each step runs the bind's own resize under its key caption.
+beat_resize() {
+  local i
+  bind "SUPER + R" 'hl.dispatch(hl.dsp.submap("Resize"))'
+  wait_layer quickshell-whichkey
+  pause "$T_RESIZE_HOLD"
+  for ((i = 0; i < 3; i++)); do
+    bind "SHIFT + L" 'hl.dispatch(hl.dsp.window.resize({ x = 100, y = 0, relative = true }))'
+    pause "$T_RESIZE_STEP"
+  done
+  bind "ESC" 'hl.dispatch(hl.dsp.submap("reset"))'
+  wait_layer_gone quickshell-whichkey
+  pause "$T_RESIZE_HOLD"
 }
 
 # Settings > Colors: Enter opens the palette list, typing filters it, Enter applies (and reloads Hyprland).
