@@ -1211,10 +1211,12 @@ beat_keeptabs() {
 }
 
 # Slot 2 holds the agent and slot 5 the layout beat's windows; slot 4 is still empty for the end card.
-# The card and the silent cut to the empty slot land together, so the windows give way straight to the card; a key
-# caption here would compete with the logo.
+# The card goes up first and the silent cut to the empty slot happens under it, so the windows give way straight to
+# the card; cutting first flashes the bare wallpaper while the card's surface maps. A key caption here would compete
+# with the logo.
 beat_outro() {
   overlay_card true
+  pause 0.3
   hypr_eval 'require("lib.actions.workspace").focus_local(4)()'
   pause "$T_OUTRO_HOLD"
 }
