@@ -942,11 +942,13 @@ show_volume() {
 }
 
 # One continuous clip on the bare desktop: per style, Settings switches it, the calendar and weather popups follow,
-# then the volume OSD.
+# then the volume OSD. The last style carries the rest of the take, so it only switches.
 beat_styles() {
-  local pair
-  for pair in $DEMO_STYLES; do
-    switch_style "${pair%%:*}" "${pair#*:}"
+  local pairs i
+  read -ra pairs <<<"$DEMO_STYLES"
+  for ((i = 0; i < ${#pairs[@]}; i++)); do
+    switch_style "${pairs[i]%%:*}" "${pairs[i]#*:}"
+    ((i == ${#pairs[@]} - 1)) && break
     show_popup clock
     show_popup weather
     show_volume
