@@ -50,7 +50,7 @@ T_LOGIN_CHAR_GAP=${T_LOGIN_CHAR_GAP:-0.1}
 T_LOGIN_UNLOCK=${T_LOGIN_UNLOCK:-3.85}
 T_EMPTY_HOLD=${T_EMPTY_HOLD:-0.5}
 T_SESSION_TIMEOUT=${T_SESSION_TIMEOUT:-60}
-T_SESSION_HOLD=${T_SESSION_HOLD:-1.5}
+T_SESSION_HOLD=${T_SESSION_HOLD:-0.3}
 T_RESIZE_STEP=${T_RESIZE_STEP:-0.35}
 T_RESIZE_HOLD=${T_RESIZE_HOLD:-1.0}
 T_SETTINGS_HOLD=${T_SETTINGS_HOLD:-0.6}
@@ -63,13 +63,13 @@ T_KICKOFF_HOLD=${T_KICKOFF_HOLD:-1.0}
 T_OVERVIEW_STEP=${T_OVERVIEW_STEP:-0.6}
 T_SEARCH_HOLD=${T_SEARCH_HOLD:-1.0}
 T_PROMPT_HOLD=${T_PROMPT_HOLD:-1.4}
-T_LAYOUT_HOLD=${T_LAYOUT_HOLD:-2.0}
+T_LAYOUT_HOLD=${T_LAYOUT_HOLD:-1.0}
 T_SHOT_STEP=${T_SHOT_STEP:-0.12}
 T_SHOT_KEY_GAP=${T_SHOT_KEY_GAP:-0.04}
 # DND is on for the take, so the copy toast never shows; only a beat's worth of hold.
 T_TOAST_HOLD=${T_TOAST_HOLD:-0.4}
 T_AGENT_TIMEOUT=${T_AGENT_TIMEOUT:-180}
-T_PULSE_HOLD=${T_PULSE_HOLD:-2.0}
+T_PULSE_HOLD=${T_PULSE_HOLD:-0}
 T_KEEPTABS_HOLD=${T_KEEPTABS_HOLD:-1.2}
 T_ANSWER_HOLD=${T_ANSWER_HOLD:-3.0}
 T_OUTRO_HOLD=${T_OUTRO_HOLD:-4.5}
@@ -1151,8 +1151,8 @@ pre_region() {
     return 0
   fi
   # Unfocused windows are translucent; wait out the fade so the screenshot shows the pane's own background. The
-  # overview beat has just focused the editor, so this is the tail of that fade.
-  pause 0.5
+  # screenshot flashes the yazi pane on camera, so a take passes the rect it found in rehearsal as DEMO_REGION_RECT.
+  [[ -n ${DEMO_REGION_RECT:-} ]] || pause 0.5
   local rect
   rect=$(logo_rect) || die "could not find the dashboard logo; set DEMO_REGION_RECT=\"x y w h\""
   log "showcase: logo at $rect"
@@ -1211,14 +1211,11 @@ beat_keeptabs() {
 }
 
 # Slot 2 holds the agent and slot 5 the layout beat's windows; slot 4 is still empty for the end card.
-# A silent cut to the empty slot under the end card; a key caption here would compete with the logo.
-pre_outro() {
-  hypr_eval 'require("lib.actions.workspace").focus_local(4)()'
-}
-
+# The card and the silent cut to the empty slot land together, so the windows give way straight to the card; a key
+# caption here would compete with the logo.
 beat_outro() {
-  pause 0.4
   overlay_card true
+  hypr_eval 'require("lib.actions.workspace").focus_local(4)()'
   pause "$T_OUTRO_HOLD"
 }
 

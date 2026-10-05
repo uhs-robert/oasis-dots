@@ -134,7 +134,7 @@ ShellRoot {
                 opacity: win.ready && root.card_on ? 1 : 0
 
                 Behavior on opacity {
-                    NumberAnimation { duration: 600; easing.type: Easing.OutCubic }
+                    NumberAnimation { duration: 200; easing.type: Easing.OutCubic }
                 }
             }
 
@@ -144,7 +144,7 @@ ShellRoot {
                 opacity: win.ready && root.card_on ? 1 : 0
 
                 Behavior on opacity {
-                    NumberAnimation { duration: 800; easing.type: Easing.OutCubic }
+                    NumberAnimation { duration: 300; easing.type: Easing.OutCubic }
                 }
 
                 Image {
