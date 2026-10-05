@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # demo/stage-tmux.sh
-# The showcase's terminal stage, both rooted in this repo: `dotfiles` (Neovim on README.md beside yazi) and
+# The showcase's terminal stage, both rooted in this repo: `dotfiles` (Neovim's dashboard beside yazi) and
 # `agent` (Claude Code on Sonnet). The Demo launcher session opens a kitty on each.
 #
 #   stage-tmux.sh dotfiles|agent   create the session if it is missing, then attach
@@ -15,9 +15,9 @@ DEMO_AGENT_CMD=${DEMO_AGENT_CMD:-claude --model sonnet}
 # searches for; keep them unique among open windows.
 ensure_dotfiles() {
   tmux has-session -t =dotfiles 2>/dev/null && return 0
-  tmux new-session -d -s dotfiles -n readme -c "$repo_dir" "nvim README.md"
-  tmux split-window -h -t =dotfiles:readme -c "$repo_dir" yazi
-  tmux select-pane -t =dotfiles:readme.0
+  tmux new-session -d -s dotfiles -n editor -c "$repo_dir" nvim
+  tmux split-window -h -t =dotfiles:editor -c "$repo_dir" yazi
+  tmux select-pane -t =dotfiles:editor.0
 }
 
 ensure_agent() {

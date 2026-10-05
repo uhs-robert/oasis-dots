@@ -531,7 +531,7 @@ audio_source() {
 }
 
 preflight() {
-  local t lock busy tools=(hyprctl jq wtype qs tmux awk)
+  local t lock busy tools=(hyprctl jq wtype qs tmux awk grim python3)
   [[ ${1:-} == record ]] && tools+=(wf-recorder ffmpeg ffprobe)
   [[ ${1:-} == record && $DEMO_AUDIO == default ]] && tools+=(pactl)
   for t in "${tools[@]}"; do
@@ -891,14 +891,15 @@ beat_overview() {
   assert_active_class kitty-tmux-dotfiles
 }
 
-# HyprVim's `:` prompt, drawn by Quickshell: complete `layout`, pick scrolling, and the workspace re-tiles live.
+# HyprVim's `:` prompt, drawn by Quickshell: Enter on `layout` takes the command and lists its layouts, then
+# scrolling re-tiles the workspace live.
 beat_prompt() {
   overlay_keys ":"
   pause "$T_LEAD"
   hypr_eval 'require("hyprvim.vim").command.prompt()'
   wait_layer quickshell-popup
-  type_text "layout "
-  press "TAB" @Tab
+  type_text "layout"
+  press "ENTER" @Return
   pause "$T_PROMPT_HOLD"
   type_text "scrolling"
   press "ENTER" @Return
@@ -906,29 +907,120 @@ beat_prompt() {
   pause "$T_LAYOUT_HOLD"
 }
 
-# Steer, anchor, extend, zoom in, nudge one pixel at a time, confirm, then copy for the toast.
+# The dashboard logo's rectangle on the output, monitor-local "x y w h", found off camera from a screenshot:
+# the first block of non-background rows in the Neovim pane. DEMO_REGION_RECT ("x y w h") overrides it.
+logo_rect() {
+  if [[ -n ${DEMO_REGION_RECT:-} ]]; then
+    printf '%s\n' "$DEMO_REGION_RECT"
+    return 0
+  fi
+  local shot=$state_dir/region-detect.png win pane
+  mkdir -p "$state_dir"
+  grim -o "$DEMO_OUTPUT" "$shot"
+  win=$(hyprctl clients -j | jq -r --argjson m "$(out_id)" --argjson mx "$(hyprctl monitors -j | jq --arg o "$DEMO_OUTPUT" '.[] | select(.name == $o) | .x')" --argjson my "$(hyprctl monitors -j | jq --arg o "$DEMO_OUTPUT" '.[] | select(.name == $o) | .y')" \
+    '[.[] | select(.class == "kitty-tmux-dotfiles" and .monitor == $m)][0] | "\(.at[0] - $mx) \(.at[1] - $my) \(.size[0]) \(.size[1])"')
+  [[ $win != "null" && -n $win ]] || die "no kitty-tmux-dotfiles window on $DEMO_OUTPUT"
+  pane=$(tmux display -p -t =dotfiles:editor.0 '#{pane_left} #{pane_width} #{window_width}')
+  python3 - "$shot" "$win" "$pane" <<'PY'
+import sys
+from PIL import Image
+shot, win, pane = sys.argv[1], [int(v) for v in sys.argv[2].split()], [int(v) for v in sys.argv[3].split()]
+wx, wy, ww, wh = win
+left, width, cols = pane
+# The Neovim pane's columns of the window, inset past the tmux status rows and the window border.
+x0 = wx + round(ww * left / cols) + 4
+x1 = wx + round(ww * (left + width) / cols) - 4
+y0, y1 = wy + round(wh * 0.06), wy + wh - round(wh * 0.06)
+im = Image.open(shot).convert("RGB").crop((x0, y0, x1, y1))
+px = im.load()
+w, h = im.size
+counts = {}
+for y in range(0, h, 4):
+    for x in range(0, w, 4):
+        counts[px[x, y]] = counts.get(px[x, y], 0) + 1
+bg = max(counts, key=counts.get)
+def busy(c):
+    return sum(abs(a - b) for a, b in zip(c, bg)) > 40
+rows = [any(busy(px[x, y]) for x in range(w)) for y in range(h)]
+top = next((y for y in range(h) if rows[y]), None)
+if top is None:
+    sys.exit("no logo found in the Neovim pane")
+# The logo ends at the first gap of more than 10 empty rows (the line before the dashboard's text).
+bottom, gap = top, 0
+for y in range(top, h):
+    if rows[y]:
+        bottom, gap = y, 0
+    else:
+        gap += 1
+        if gap > 10:
+            break
+cols_busy = [x for x in range(w) if any(busy(px[x, y]) for y in range(top, bottom + 1))]
+lx, rx = cols_busy[0], cols_busy[-1]
+print(x0 + lx, y0 + top, rx - lx + 1, bottom - top + 1)
+PY
+}
+
+# Key plan from the selector's start point to the logo: SHIFT steps of 100 px, plain 10, CTRL 1. Prints
+# "label token count" lines: to the top-left corner, anchor, zoom, then to the bottom-right corner.
+region_plan() {
+  local rect=$1 start=$2
+  python3 - "$rect" "$start" <<'PY'
+import sys
+x, y, w, h = [int(v) for v in sys.argv[1].split()]
+cx, cy = [int(float(v)) for v in sys.argv[2].split()]
+def steps(d, pos, neg):
+    key = pos if d >= 0 else neg
+    d = abs(d)
+    out = []
+    for size, mod, prefix in ((100, "SHIFT + ", "+"), (10, "", ""), (1, "CTRL + ", "^")):
+        n, d = divmod(d, size)
+        if n:
+            out.append(f"{mod}{key.upper()}|{prefix}{key}|{n}")
+    return out
+plan = steps(x - cx, "l", "h") + steps(y - cy, "j", "k")
+plan += ["V|v|1", "I|i|2"]
+plan += steps(w - 1, "l", "h") + steps(h - 1, "j", "k")
+print("\n".join(plan))
+PY
+}
+
+# The selector starts at the pointer when it is on the output, else at the output's centre.
+region_start() {
+  hyprctl cursorpos -j | jq -r --argjson m "$(hyprctl monitors -j | jq -c --arg o "$DEMO_OUTPUT" '.[] | select(.name == $o)')" '
+    if .x >= $m.x and .y >= $m.y and .x < $m.x + $m.width and .y < $m.y + $m.height
+    then "\(.x - $m.x) \(.y - $m.y)" else "\($m.width / 2) \($m.height / 2)" end'
+}
+
+region_steps=()
+
+pre_region() {
+  focus_class kitty-tmux-dotfiles
+  if ((DRY)); then
+    region_steps=("SHIFT + H|+h|3" "V|v|1" "I|i|2" "SHIFT + L|+l|4" "CTRL + L|^l|3")
+    return 0
+  fi
+  pause 0.5
+  local rect
+  rect=$(logo_rect) || die "could not find the dashboard logo; set DEMO_REGION_RECT=\"x y w h\""
+  log "showcase: logo at $rect"
+  mapfile -t region_steps < <(region_plan "$rect" "$(region_start)")
+}
+
+# Steer to the logo's top-left corner, anchor, zoom the loupe, extend to the bottom-right corner ending on
+# single-pixel nudges, confirm, then copy for the toast.
 beat_region() {
-  local key
+  local step label token count tokens
   ipc "PRINT" call screenshot select false toolbar
   wait_layer quickshell-region
   pause 1
-  for key in h h k k; do
-    press "SHIFT + ${key^^}" "+$key"
+  for step in "${region_steps[@]}"; do
+    IFS='|' read -r label token count <<<"$step"
+    tokens=()
+    while ((count-- > 0)); do tokens+=("$token"); done
+    press "$label" "${tokens[@]}"
     pause "$T_SHOT_STEP"
   done
-  press "V" v
-  for key in l l l j j; do
-    press "SHIFT + ${key^^}" "+$key"
-    pause "$T_SHOT_STEP"
-  done
-  press "I" i
-  pause "$T_SHOT_STEP"
-  press "I" i
   pause 0.6
-  for key in l l l; do
-    press "CTRL + L" "^$key"
-    pause 0.35
-  done
   press "SPACE" @space
   pause 0.6
   press "C" c
