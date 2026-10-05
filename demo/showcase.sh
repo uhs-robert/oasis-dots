@@ -71,10 +71,10 @@ T_KEEPTABS_HOLD=${T_KEEPTABS_HOLD:-1.2}
 T_ANSWER_HOLD=${T_ANSWER_HOLD:-3.0}
 T_OUTRO_HOLD=${T_OUTRO_HOLD:-4.5}
 
-beats=(unlock session resize palettes turn move styles kickoff overview region prompt keeptabs outro)
+beats=(unlock session resize palettes turn empty styles kickoff overview region prompt keeptabs outro)
 # The README hero is cut from these.
 hero_beats=(palettes turn styles)
-stage_classes=(kitty-tmux-dotfiles firefox kitty-tmux-agent kitty-tmux-monitor kitty-tmux-git kitty-tmux-readme)
+stage_classes=(kitty-tmux-dotfiles kitty-tmux-files kitty-tmux-agent kitty-tmux-monitor kitty-tmux-git firefox)
 declare -A style_reveal_ms=([neovim]=400 [ps1]=500 [ff7]=500 [goldeneye]=500 [gameboy]=500 [metroid]=500 [tie]=500)
 
 DRY=0
@@ -898,13 +898,8 @@ beat_turn() {
 
 post_turn() { qs_ipc call popup close; }
 
-# Firefox leaves for slot 3 (focus follows it), then an empty slot 4 gives the styles beat a bare desktop: the bar
-# and popups are the whole picture.
-pre_move() { focus_class firefox; }
-
-beat_move() {
-  bind "SUPER + SHIFT + 3" 'require("lib.actions.workspace").move_local(3)()'
-  pause "$T_MOVE_HOLD"
+# An empty slot 4 gives the styles beat a bare desktop: the bar and popups are the whole picture.
+beat_empty() {
   bind "SUPER + 4" 'require("lib.actions.workspace").focus_local(4)()'
   pause "$T_MOVE_HOLD"
 }
@@ -979,8 +974,8 @@ beat_overview() {
 
 # HyprVim's `:` prompt, drawn by Quickshell: Enter on `layout` takes the command and lists its layouts, then
 # scrolling re-tiles the workspace live.
-# Slot 5 holds three windows from the Demo session; two half-width columns would look the same in scrolling as in
-# the split layout, three overflow and scroll.
+# Slot 5 holds three windows from the Demo session (btop, lazygit and the repo page); two half-width columns would
+# look the same in scrolling as in the split layout, three overflow and scroll.
 beat_prompt() {
   bind "SUPER + 5" 'require("lib.actions.workspace").focus_local(5)()'
   pause "$T_MOVE_HOLD"
@@ -1010,8 +1005,8 @@ logo_rect() {
   win=$(hyprctl clients -j | jq -r --argjson m "$(out_id)" --argjson mx "$(hyprctl monitors -j | jq --arg o "$DEMO_OUTPUT" '.[] | select(.name == $o) | .x')" --argjson my "$(hyprctl monitors -j | jq --arg o "$DEMO_OUTPUT" '.[] | select(.name == $o) | .y')" \
     '[.[] | select(.class == "kitty-tmux-dotfiles" and .monitor == $m)][0] | "\(.at[0] - $mx) \(.at[1] - $my) \(.size[0]) \(.size[1])"')
   [[ $win != "null" && -n $win ]] || die "no kitty-tmux-dotfiles window on $DEMO_OUTPUT"
-  # Neovim is the left pane; pane-base-index varies between tmux configs, so find it by position.
-  pane=$(tmux list-panes -t =dotfiles:editor -F '#{pane_left} #{pane_width} #{window_width}' | awk '$1 == 0' | head -n 1)
+  # Neovim fills its session's only pane.
+  pane=$(tmux list-panes -t =dotfiles -F '#{pane_left} #{pane_width} #{window_width}' | head -n 1)
   python3 - "$shot" "$win" "$pane" <<'PY'
 import sys
 from PIL import Image
@@ -1150,7 +1145,7 @@ beat_keeptabs() {
   pause "$T_ANSWER_HOLD"
 }
 
-# Slot 2 holds the agent and slot 3 Firefox; the styles beat left slot 4 empty for the end card.
+# Slot 2 holds the agent and slot 5 the layout beat's windows; slot 4 is still empty for the end card.
 pre_outro() { go_slot 4; }
 
 beat_outro() {
