@@ -65,6 +65,8 @@ QtObject {
     readonly property real music_volume: ThemeAudio.music_volume
     // The login screen rather than the lock; skins may play more there.
     property bool login: false
+    // The lock preview: a skin can show what it otherwise keeps for the login screen, such as its title music.
+    property bool preview: false
     property var sound_owner: null
     // A skin's named sound effect, heard by the owner.
     signal cue(string name)

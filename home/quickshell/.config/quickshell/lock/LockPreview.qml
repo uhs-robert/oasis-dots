@@ -114,6 +114,7 @@ Scope {
         id: fake
         typing: true
         sound: true
+        preview: true
         tint: root.tint !== "" ? root.tint : Style.lock_tint
     }
 
