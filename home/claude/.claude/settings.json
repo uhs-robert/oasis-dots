@@ -30,7 +30,6 @@
       "Bash(wc:*)",
       "Read(~/.zshrc)"
     ],
-    "defaultMode": "default",
     "deny": [
       "Bash(git push --force:*)",
       "Bash(git push -f:*)",
@@ -47,40 +46,14 @@
       "Read(~/.config/gh/hosts.yml)",
       "Read(~/.gnupg/**)",
       "Read(~/.ssh/**)"
-    ]
+    ],
+    "defaultMode": "default"
   },
   "model": "opus",
-  "statusLine": {
-    "type": "command",
-    "command": "bash ~/.claude/statusline-command.sh"
-  },
-  "enabledPlugins": {
-    "lua-lsp@claude-plugins-official": true,
-    "caveman@caveman": true
-  },
   "skillOverrides": {
     "caveman:caveman-commit": "off",
     "simplify": "off"
   },
-  "extraKnownMarketplaces": {
-    "caveman": {
-      "source": {
-        "source": "github",
-        "repo": "JuliusBrussee/caveman"
-      }
-    }
-  },
-  "alwaysThinkingEnabled": true,
-  "effortLevel": "medium",
-  "promptSuggestionEnabled": false,
-  "tui": "fullscreen",
-  "skipDangerousModePermissionPrompt": true,
-  "theme": "dark-ansi",
-  "editorMode": "vim",
-  "preferredNotifChannel": "notifications_disabled",
-  "autoCompactEnabled": false,
-  "agentPushNotifEnabled": true,
-  "remoteControlAtStartup": true,
   "hooks": {
     "SessionStart": [
       {
@@ -184,5 +157,32 @@
         ]
       }
     ]
-  }
+  },
+  "statusLine": {
+    "type": "command",
+    "command": "bash ~/.claude/statusline-command.sh"
+  },
+  "enabledPlugins": {
+    "lua-lsp@claude-plugins-official": true,
+    "caveman@caveman": false
+  },
+  "extraKnownMarketplaces": {
+    "caveman": {
+      "source": {
+        "source": "github",
+        "repo": "JuliusBrussee/caveman"
+      }
+    }
+  },
+  "alwaysThinkingEnabled": true,
+  "effortLevel": "medium",
+  "promptSuggestionEnabled": false,
+  "tui": "fullscreen",
+  "skipDangerousModePermissionPrompt": true,
+  "theme": "dark-ansi",
+  "editorMode": "vim",
+  "preferredNotifChannel": "notifications_disabled",
+  "autoCompactEnabled": false,
+  "remoteControlAtStartup": true,
+  "agentPushNotifEnabled": true
 }
