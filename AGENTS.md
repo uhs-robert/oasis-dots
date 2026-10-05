@@ -63,6 +63,8 @@ An `[MANUAL]` section's comment lines in `arch.ini` are printed as post-install 
 
 `home/hypr/.config/hypr/` is Lua, not `hyprland.conf`. `hyprland.lua` is the entrypoint; it merges machine config (`config/machines/`) and loads the `hyprvim` plugin (Vim-modal window management with a which-key overlay). Subsystems live in `config/`, `keymaps/`, `extensions/`, `lib/`, `scripts/`, `theme/`. This tree is stylua-checked.
 
+Hyprland runs this Lua config, so drive it with the Lua API: `hyprctl keyword` fails, and `hyprctl dispatch` takes an `hl.dsp.*` expression (`hyprctl dispatch "hl.dsp.exec_cmd('qs -n')"`), not a dispatcher name like `exec` or `movecursor`. Use `hyprctl eval '...'` for anything else, including `hl.config({ ... })` in place of `keyword`.
+
 User overrides live in two gitignored places, and tracked files must stay generic: `Config` values (hardware, default apps) in `config/machines/<hostname>.lua`, and everything built on the loaded library (binds, rules, launcher sessions) in `custom/`, whose `custom/init.lua` `hyprland.lua` requires last if present. Never auto-load other files in `custom/` from the Hyprland config. The one exception is the wallpaper rotator, a separate process that `custom/init.lua` cannot reach: it reads `custom/wallpaper.lua` and `custom/hyprpaper.conf` itself when present. Register binds through `lib/key/bind.lua` (`Bind.key`, `Bind.submap`), never raw `hl.bind` or `hl.define_submap`, so `Bind.unbind` can remove a key from one submap (hyprwm/Hyprland#15040). `Bind.unbind` and `Bind.submap` are public API for `custom/`; keep their signatures stable.
 
 ## Quickshell key conventions
@@ -78,7 +80,7 @@ Keep keys consistent across surfaces; new popups, pickers and skins follow these
 
 ## Agent tooling
 
-`.claude/settings.json` adds three hooks: killing `qs` is refused unless the lock reports `unlocked`; a git command that changes `home/quickshell` in the live checkout restarts the stowed bar (hot-reload keeps stale code); and `just check` runs before a turn ends when tracked files have uncommitted changes. Repo skills: `test-bar` (put branches on the live bar, swap the Hyprland config when they touch it, `status`, `probe` IPC calls and `capture.sh` layer screenshots, then restore), `lock-preview` (skins on eDP-1) and `ship-batch` (merge through the global `merge-prs` skill, then check `main` and restart what changed). Worktrees have no `repos/`, so run `just check` in the real checkout before merging.
+Claude Code hooks live in `.claude/settings.json` and `.claude/hooks/`. Repo skills: `test-bar` (put branches on the live bar, swap the Hyprland config when they touch it, `status`, `probe` IPC calls and `capture.sh` layer screenshots, then restore), `lock-preview` (skins on eDP-1) and `ship-batch` (merge through the global `merge-prs` skill, then check `main` and restart what changed). Worktrees have no `repos/`, so run `just check` in the real checkout before merging.
 
 ## Betterbird / tbkeys
 
