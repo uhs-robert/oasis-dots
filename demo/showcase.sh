@@ -476,9 +476,10 @@ wait_clients() {
     emit wait "windows: $*"
     return 0
   fi
-  local deadline=$((SECONDS + timeout))
+  local deadline=$((SECONDS + timeout)) mon
+  mon=$(out_id)
   for cls in "$@"; do
-    until hyprctl clients -j | jq -e --arg c "$cls" 'any(.[]; .class == $c)' >/dev/null; do
+    until hyprctl clients -j | jq -e --arg c "$cls" --argjson m "$mon" 'any(.[]; .class == $c and .monitor == $m)' >/dev/null; do
       ((SECONDS < deadline)) || die "window $cls did not appear"
       sleep 0.5
     done
@@ -846,9 +847,10 @@ beat_session() {
   pause "$T_SETTINGS_HOLD"
   press "ENTER" @Return
   wait_layer_gone quickshell-popup
-  # The take is live (music plays throughout), so only the two windows the next beat needs are waited for; the
-  # agent, btop, lazygit and Firefox keep starting on their own workspaces.
-  wait_clients "$T_SESSION_TIMEOUT" kitty-tmux-dotfiles kitty-tmux-files
+  # Every window of the session, not just the editor: a window opening later would close the resize beat's
+  # which-key, since HyprVim hides the HUD on any window.open.
+  wait_clients "$T_SESSION_TIMEOUT" kitty-tmux-dotfiles kitty-tmux-files kitty-tmux-agent kitty-tmux-monitor \
+    kitty-tmux-git firefox
   pause "$T_SESSION_HOLD"
 }
 
