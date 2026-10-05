@@ -1023,11 +1023,9 @@ beat_prompt() {
   type_text "layout"
   press "ENTER" @Return
   pause "$T_PROMPT_HOLD"
-  # Tab starts at the item nearest the input and walks up (monocle, scrolling, master); Shift+Tab steps back onto
-  # scrolling. The first Enter settles the pick, the second runs the command.
+  # Tab walks the layouts from the top (dwindle, master, scrolling); the first Enter settles the pick, the second
+  # runs the command.
   press "TAB" @Tab @Tab @Tab
-  pause "$T_PROMPT_HOLD"
-  press "SHIFT + TAB" +@Tab
   pause "$T_PROMPT_HOLD"
   press "ENTER" @Return
   pause "$T_KEY_GAP"
