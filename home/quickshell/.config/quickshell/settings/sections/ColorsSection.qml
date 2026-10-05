@@ -19,6 +19,13 @@ RowsSection {
             value: () => Palettes.current,
             set: v => Palettes.apply(v),
             cycle: false
+        },
+        {
+            label: "Sync Neovim",
+            values: () => ["on", "off"],
+            text: v => v,
+            value: () => Palettes.nvim_sync ? "on" : "off",
+            set: v => Palettes.set_nvim_sync(v === "on")
         }
     ]
 
