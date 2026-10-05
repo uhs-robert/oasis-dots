@@ -140,12 +140,13 @@ Pick a palette from Settings > Colors in the Quickshell panel, with a live previ
 ~/.config/hypr/theme/switch.lua --set oasis_lagoon  # set one directly
 ```
 
-Neovim keeps its own colorscheme unless Settings > Colors > Sync Neovim is on (off by default). With it on, the matching oasis.nvim scheme (`oasis-lagoon` for `oasis_lagoon`) is written to `~/.local/state/hypr/nvim-colorscheme` and pushed to every running Neovim over its RPC socket. For new Neovim sessions to start in it, have your config read that file when it exists:
+Neovim keeps its own colorscheme unless Settings > Colors > Sync Neovim is on (off by default). With it on, the matching oasis.nvim scheme (`oasis-lagoon` for `oasis_lagoon`) is written to `~/.local/state/hypr/nvim-colorscheme` and pushed to every running Neovim over its RPC socket. For new Neovim sessions to start in it, have your config read that file when it exists and apply it once oasis.nvim is loaded:
 
 ```lua
 local f = io.open((vim.env.XDG_STATE_HOME or vim.env.HOME .. "/.local/state") .. "/hypr/nvim-colorscheme")
 local colorscheme = f and vim.trim(f:read("*a")) or "oasis"
 if f then f:close() end
+vim.cmd.colorscheme(colorscheme) -- or pass it to your plugin manager, e.g. LazyVim's `opts.colorscheme`
 ```
 
 ## Desktop shell
