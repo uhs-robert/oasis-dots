@@ -29,6 +29,10 @@ DEMO_PALETTES=${DEMO_PALETTES:-lagoon mirage sol moonlight}
 DEMO_STYLES=${DEMO_STYLES:-ff7:ffvii goldeneye:goldeneye gameboy:gameboy metroid:metroid tie:tie ps1:psx}
 # One image for the whole take; empty keeps whatever the output shows when `stage` runs.
 DEMO_WALLPAPER=${DEMO_WALLPAPER:-}
+# Background music for the cava bar once the unlock ends: an MPRIS player (default: the first one playerctl lists)
+# and where to start it, in seconds.
+DEMO_MUSIC_PLAYER=${DEMO_MUSIC_PLAYER:-}
+DEMO_MUSIC_AT=${DEMO_MUSIC_AT:-374}
 DEMO_PROTECT_PID=${DEMO_PROTECT_PID:-${KITTY_PID:-}}
 DEMO_WEATHER_FILE=${DEMO_WEATHER_FILE:-$HOME/.config/quickshell/weather.local.json}
 DEMO_FAST=${DEMO_FAST:-5}
@@ -40,7 +44,8 @@ T_KEY_GAP=${T_KEY_GAP:-0.1}
 T_SETTLE=${T_SETTLE:-0.3}
 T_TYPE_DELAY_MS=${T_TYPE_DELAY_MS:-70}
 T_CLIP_TAIL=${T_CLIP_TAIL:-0.3}
-T_LOGIN_INTRO=${T_LOGIN_INTRO:-0.5}
+# The title screen is the only page with music unless the imported MGS2 audio includes the menu theme.
+T_LOGIN_INTRO=${T_LOGIN_INTRO:-3.5}
 T_LOGIN_TITLE_TURN=${T_LOGIN_TITLE_TURN:-2.0}
 T_LOGIN_PAGE_TURN=${T_LOGIN_PAGE_TURN:-1.45}
 T_LOGIN_HOLD=${T_LOGIN_HOLD:-0.25}
@@ -64,7 +69,8 @@ T_PROMPT_HOLD=${T_PROMPT_HOLD:-1.4}
 T_LAYOUT_HOLD=${T_LAYOUT_HOLD:-2.0}
 T_SHOT_STEP=${T_SHOT_STEP:-0.12}
 T_SHOT_KEY_GAP=${T_SHOT_KEY_GAP:-0.04}
-T_TOAST_HOLD=${T_TOAST_HOLD:-1.8}
+# DND is on for the take, so the copy toast never shows; only a beat's worth of hold.
+T_TOAST_HOLD=${T_TOAST_HOLD:-0.4}
 T_AGENT_TIMEOUT=${T_AGENT_TIMEOUT:-180}
 T_PULSE_HOLD=${T_PULSE_HOLD:-2.0}
 T_KEEPTABS_HOLD=${T_KEEPTABS_HOLD:-1.2}
@@ -605,6 +611,32 @@ apply_theme() {
   sleep 1
 }
 
+music_player() {
+  if [[ -n $DEMO_MUSIC_PLAYER ]]; then printf '%s' "$DEMO_MUSIC_PLAYER"; else playerctl -l 2>/dev/null | head -n 1; fi
+}
+
+start_music() {
+  if ((DRY)); then
+    emit music "seek ${DEMO_MUSIC_PLAYER:-the first player} to ${DEMO_MUSIC_AT}s and play"
+    return 0
+  fi
+  local player
+  player=$(music_player)
+  [[ -n $player ]] || {
+    log "showcase: no MPRIS player; no background music"
+    return 0
+  }
+  playerctl -p "$player" position "$DEMO_MUSIC_AT" >/dev/null 2>&1 || true
+  playerctl -p "$player" play >/dev/null 2>&1 || true
+  printf '%s\n' "$player" >"$state_dir/music_player"
+}
+
+stop_music() {
+  [[ -f $state_dir/music_player ]] || return 0
+  playerctl -p "$(<"$state_dir/music_player")" pause >/dev/null 2>&1 || true
+  rm -f "$state_dir/music_player"
+}
+
 rotator_pid() { pgrep -f 'hypr/extensions/wallpaper/init.lua' | head -n 1 || true; }
 
 # The rotator would swap images mid-take (and a palette reload can make it), so it is paused with SIGSTOP and one
@@ -752,6 +784,7 @@ restore() {
     hyprctl reload >/dev/null
   fi
   stop_overlay
+  stop_music
   unpin_wallpaper
   rm -f "$state_dir/staged"
   restore_on_exit=0
@@ -820,6 +853,7 @@ beat_unlock() {
   pause "$T_LOGIN_UNLOCK"
   qs_ipc call lock preview_close
   wait_layer_gone quickshell-lock-preview 5
+  start_music
   pause "$T_EMPTY_HOLD"
 }
 
@@ -904,7 +938,9 @@ beat_empty() {
   pause "$T_MOVE_HOLD"
 }
 
-# Switch one style from Settings > Style: Enter opens the list, typing filters it, Enter applies.
+volume_steps=0
+
+# Settings through the Leader which-key, then Style's list: Enter opens it, typing filters it, Enter applies.
 switch_style() {
   local id=$1 query=$2
   leader_chord S qs_ipc call settings open style
@@ -914,33 +950,37 @@ switch_style() {
   press "ENTER" @Return
   wait_style "$id"
   pause "$T_STYLE_HOLD"
-  press "Q" q
-  wait_layer_gone quickshell-popup
+}
+
+# Opened straight over Settings, which the calendar replaces; no key caption, so the switch reads as one motion.
+show_calendar() {
+  qs_ipc call popup open clock
+  pause "$T_SURFACE_HOLD"
 }
 
 show_volume() {
   bind "SUPER + ALT + K" 'require("lib.actions.media").volume_up()()'
+  volume_steps=$((volume_steps + 1))
   pause "$T_SURFACE_HOLD"
-  # Back down off screen, so the take ends at the owner's volume.
-  hypr_eval 'require("lib.actions.media").volume_down()()'
 }
 
-show_calendar() {
-  leader_chord C qs_ipc call popup open clock
-  wait_layer quickshell-popup
-  pause "$T_SURFACE_HOLD"
-  press "Q" q
-  wait_layer_gone quickshell-popup
-}
-
-# One continuous clip on the bare desktop: each style is switched in Settings, then the volume OSD and the
-# calendar show what it changes, with the style's own sounds.
+# One continuous clip on the bare desktop: per style, Settings switches it, the calendar replaces Settings, and
+# the volume OSD follows, all with the style's own sounds.
 beat_styles() {
   local pair
   for pair in $DEMO_STYLES; do
     switch_style "${pair%%:*}" "${pair#*:}"
-    show_volume
     show_calendar
+    show_volume
+  done
+  qs_ipc call popup close
+}
+
+# Back to the owner's volume, off camera.
+post_styles() {
+  while ((volume_steps > 0)); do
+    hypr_eval 'require("lib.actions.media").volume_down()()'
+    volume_steps=$((volume_steps - 1))
   done
 }
 
@@ -954,7 +994,11 @@ beat_kickoff() {
   pause "$T_KICKOFF_HOLD"
 }
 
+# Hop monitors, then on slot 3 mark the window it lands on and the one before it, carry both onto Firefox's
+# slot 5 (the layout beat's three windows), and finally find the editor by name.
 beat_overview() {
+  local from to
+  if ((DRY)); then from=8 to=10; else from=$(slot_ws 3) to=$(slot_ws 5); fi
   ipc "SUPER + TAB" call overview open
   wait_layer quickshell-overview
   pause "$T_OVERVIEW_STEP"
@@ -962,7 +1006,19 @@ beat_overview() {
   pause "$T_OVERVIEW_STEP"
   press "CTRL + H" ^h
   pause "$T_OVERVIEW_STEP"
-  press "L" l
+  press "$(sed 's/./& /g; s/ $//' <<<"$from")" "$from"
+  pause "$T_OVERVIEW_STEP"
+  press "V" v
+  pause "$T_OVERVIEW_STEP"
+  press "[" @bracketleft
+  pause "$T_OVERVIEW_STEP"
+  press "V" v
+  pause "$T_OVERVIEW_STEP"
+  press "M" m
+  pause "$T_OVERVIEW_STEP"
+  press "$(sed 's/./& /g; s/ $//' <<<"$to")" "$to"
+  pause "$T_OVERVIEW_STEP"
+  press "M" m
   pause "$T_OVERVIEW_STEP"
   press "/" /
   type_text "$DEMO_SEARCH_TEXT"
@@ -972,10 +1028,10 @@ beat_overview() {
   assert_active_class kitty-tmux-dotfiles
 }
 
-# HyprVim's `:` prompt, drawn by Quickshell: Enter on `layout` takes the command and lists its layouts, then
-# scrolling re-tiles the workspace live.
-# Slot 5 holds three windows from the Demo session (btop, lazygit and the repo page); two half-width columns would
-# look the same in scrolling as in the split layout, three overflow and scroll.
+# HyprVim's `:` prompt, drawn by Quickshell: Enter on `layout` takes the command and lists its layouts, Tab walks
+# them, and scrolling re-tiles the workspace live. Slot 5 holds three windows by now (the repo page, plus btop and
+# lazygit carried in by the overview beat); two half-width columns would look the same in scrolling as in the split
+# layout, three overflow and scroll.
 beat_prompt() {
   bind "SUPER + 5" 'require("lib.actions.workspace").focus_local(5)()'
   pause "$T_MOVE_HOLD"
@@ -986,7 +1042,11 @@ beat_prompt() {
   type_text "layout"
   press "ENTER" @Return
   pause "$T_PROMPT_HOLD"
-  type_text "scrolling"
+  # Tab walks the layouts (dwindle, master, scrolling, monocle) and Shift+Tab steps back onto scrolling.
+  press "TAB" @Tab @Tab @Tab @Tab
+  pause "$T_PROMPT_HOLD"
+  press "SHIFT + TAB" +@Tab
+  pause "$T_PROMPT_HOLD"
   press "ENTER" @Return
   wait_layer_gone quickshell-popup
   pause "$T_LAYOUT_HOLD"
@@ -1064,8 +1124,10 @@ def steps(d, pos, neg):
             out.append(f"{mod}{key.upper()}|{prefix}{key}|{n}")
     return out
 plan = steps(x - cx, "l", "h") + steps(y - cy, "j", "k")
-plan += ["V|v|1", "I|i|2"]
+plan += ["V|v|1"]
 plan += steps(w - 1, "l", "h") + steps(h - 1, "j", "k")
+# The last step before confirming: a bigger loupe, zoomed in, to show the edge landing on the pixel.
+plan += ["]|]|2", "I|i|2"]
 print("\n".join(plan))
 PY
 }
@@ -1083,7 +1145,7 @@ region_steps=()
 pre_region() {
   focus_class kitty-tmux-dotfiles
   if ((DRY)); then
-    region_steps=("SHIFT + H|+h|3" "V|v|1" "I|i|2" "SHIFT + L|+l|4" "CTRL + L|^l|3")
+    region_steps=("SHIFT + H|+h|3" "V|v|1" "SHIFT + L|+l|4" "CTRL + L|^l|3" "]|]|2" "I|i|2")
     return 0
   fi
   # Unfocused windows are translucent; wait out the fade so the screenshot shows the pane's own background.
@@ -1094,8 +1156,8 @@ pre_region() {
   mapfile -t region_steps < <(region_plan "$rect" "$(region_start)")
 }
 
-# Steer to the logo's top-left corner, anchor, zoom the loupe, extend to the bottom-right corner ending on
-# single-pixel nudges, confirm, then copy for the toast.
+# Steer to the logo's top-left corner, anchor, extend to the bottom-right corner ending on single-pixel nudges,
+# enlarge and zoom the loupe on that final edge, confirm, then copy.
 beat_region() {
   local step label token count tokens
   # The plan runs to dozens of key presses; repeats of one key go quicker than the rest of the take.

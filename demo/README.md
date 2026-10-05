@@ -6,7 +6,7 @@ Needs `hyprctl`, `jq`, `wtype`, `qs`, `tmux`, `grim`, `python3` with PIL, plus `
 
 ## The stage
 
-The video opens on an empty `DEMO_OUTPUT` and launches a session named "Demo" from the session picker. That session is personal config, not part of this repo: add it in your `custom/sessions.lua` with Neovim beside yazi on the output's first workspace, the agent on its second, and three windows on its fifth for the `:layout` beat:
+The video opens on an empty `DEMO_OUTPUT` and launches a session named "Demo" from the session picker. That session is personal config, not part of this repo: add it in your `custom/sessions.lua` with Neovim beside yazi on the output's first workspace, the agent on its second, btop and lazygit on its third, and the repo page on its fifth (the overview beat carries the two onto it for the `:layout` beat):
 
 ```lua
 local demo_stage = os.getenv("HOME") .. "/dotfiles/demo/stage-tmux.sh"
@@ -17,8 +17,8 @@ Sessions.add("🌵 Demo", {
   demo_term(1, "dotfiles"),
   demo_term(1, "files", 1000),
   demo_term(2, "agent", 1500),
-  demo_term(5, "monitor", 2000),
-  demo_term(5, "git", 2500),
+  demo_term(3, "monitor", 2000),
+  demo_term(3, "git", 2500),
   { monitor = 2, ws = 5, cmd = "firefox --private-window https://github.com/uhs-robert/oasis-dots", class = "firefox", delay = 3000 },
 })
 ```
@@ -48,6 +48,6 @@ Each clip is filmed with the default sink's monitor as audio (`DEMO_AUDIO=none` 
 
 ## Tuning
 
-Everything is an environment variable with a default at the top of the script: `DEMO_OUTPUT`, `DEMO_PASSWORD` (letters only, no `q`), `DEMO_FPS`, `DEMO_OUT_DIR`, `DEMO_AUDIO`, `DEMO_LOCATION`, `DEMO_SESSION_QUERY`, `DEMO_SEARCH_TEXT`, `DEMO_AGENT_PROMPT`, `DEMO_START_STYLE`, `DEMO_PALETTES`, `DEMO_STYLES` (`id:filter` pairs), `DEMO_WALLPAPER` (one image for the whole take; empty pins whatever the output shows at `stage`), `DEMO_FAST_MAX`, and one `T_*` variable per delay, for example `T_SURFACE_HOLD=2 demo/showcase.sh beat styles`.
+Everything is an environment variable with a default at the top of the script: `DEMO_OUTPUT`, `DEMO_PASSWORD` (letters only, no `q`), `DEMO_FPS`, `DEMO_OUT_DIR`, `DEMO_AUDIO`, `DEMO_LOCATION`, `DEMO_SESSION_QUERY`, `DEMO_SEARCH_TEXT`, `DEMO_AGENT_PROMPT`, `DEMO_START_STYLE`, `DEMO_PALETTES`, `DEMO_STYLES` (`id:filter` pairs), `DEMO_WALLPAPER` (one image for the whole take; empty pins whatever the output shows at `stage`), `DEMO_MUSIC_PLAYER` and `DEMO_MUSIC_AT` (background music started when the unlock ends, for the cava bar), `DEMO_FAST_MAX`, and one `T_*` variable per delay, for example `T_SURFACE_HOLD=2 demo/showcase.sh beat styles`.
 
 The protected terminal is `DEMO_PROTECT_PID` (default `$KITTY_PID`). kitty shares one pid across its windows, so only the stage's own terminals (`kitty-tmux-dotfiles`, `kitty-tmux-agent`) are excluded, by class, and `DEMO_PROTECT_ADDR` pins exact window addresses.
