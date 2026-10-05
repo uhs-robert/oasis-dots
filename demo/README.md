@@ -34,7 +34,7 @@ demo/showcase.sh beat palettes      # rehearse one beat, with its off-camera set
 demo/showcase.sh all                # every beat, no recording
 demo/showcase.sh record             # stage, one continuous take into ~/Videos/Recordings/showcase-<time>/, restore, edit
 demo/showcase.sh edit <dir>         # loudness-normalise the take into showcase.mp4
-demo/showcase.sh hero <dir>         # the README hero (palettes, the turn and the styles beat) as hero.webp
+demo/showcase.sh hero <dir> [s-e ...] # the README hero as hero.webp: palettes through styles, or the given second ranges
 demo/showcase.sh restore            # put back style, palette, Sync Neovim, DND, sounds, weather and the wallpaper rotator
 demo/showcase.sh reset              # end the stage's tmux sessions and close its windows
 demo/showcase.sh --dry-run record   # print every step without running it

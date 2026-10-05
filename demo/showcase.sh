@@ -1288,19 +1288,33 @@ edit() {
   log "showcase: wrote $dir/showcase.mp4"
 }
 
-# The README hero: from the palettes beat to the end of the styles beat, as a looping animated WebP.
+# The README hero as a looping animated WebP: by default from the palettes beat to the end of the styles beat, or
+# the given "start-end" second ranges joined in order.
 hero() {
-  local dir=${1:?usage: showcase.sh hero <recording dir>} from to
+  local dir=${1:?usage: showcase.sh hero <recording dir> [start-end ...]} from to range i=0 trims="" inputs=""
+  shift
+  local ranges=("$@")
   if ((DRY)); then
-    emit hero "${hero_beats[0]} to the end of ${hero_beats[-1]} from $dir/showcase.mp4 -> $dir/hero.webp"
+    emit hero "${ranges[*]:-${hero_beats[0]} to the end of ${hero_beats[-1]}} from $dir/showcase.mp4 -> $dir/hero.webp"
     return 0
   fi
-  [[ -f $dir/marks.txt && -f $dir/showcase.mp4 ]] || die "need $dir/marks.txt and showcase.mp4 (run record)"
-  from=$(awk -v b="${hero_beats[0]}" '$1 == b { print $2 }' "$dir/marks.txt")
-  to=$(awk -v b="${hero_beats[-1]}" 'found { print $2; exit } $1 == b { found = 1 }' "$dir/marks.txt")
-  [[ -n $from && -n $to ]] || die "marks.txt lacks ${hero_beats[0]} or the beat after ${hero_beats[-1]}"
-  ffmpeg -y -loglevel error -ss "$from" -to "$to" -i "$dir/showcase.mp4" -an -vf "fps=12,scale=1000:-1:flags=lanczos" \
-    -c:v libwebp -quality 45 -compression_level 6 -loop 0 "$dir/hero.webp"
+  [[ -f $dir/showcase.mp4 ]] || die "need $dir/showcase.mp4 (run record)"
+  if ((${#ranges[@]} == 0)); then
+    [[ -f $dir/marks.txt ]] || die "need $dir/marks.txt (run record)"
+    from=$(awk -v b="${hero_beats[0]}" '$1 == b { print $2 }' "$dir/marks.txt")
+    to=$(awk -v b="${hero_beats[-1]}" 'found { print $2; exit } $1 == b { found = 1 }' "$dir/marks.txt")
+    [[ -n $from && -n $to ]] || die "marks.txt lacks ${hero_beats[0]} or the beat after ${hero_beats[-1]}"
+    ranges=("$from-$to")
+  fi
+  for range in "${ranges[@]}"; do
+    [[ $range =~ ^[0-9.]+-[0-9.]+$ ]] || die "bad range '$range' (want start-end in seconds)"
+    trims+="[0:v]trim=${range%-*}:${range#*-},setpts=PTS-STARTPTS[v$i];"
+    inputs+="[v$i]"
+    i=$((i + 1))
+  done
+  ffmpeg -y -loglevel error -i "$dir/showcase.mp4" -an \
+    -filter_complex "${trims}${inputs}concat=n=$i:v=1:a=0,fps=10,scale=1000:-1:flags=lanczos[out]" -map "[out]" \
+    -c:v libwebp -quality 30 -compression_level 6 -loop 0 "$dir/hero.webp"
   log "showcase: wrote $dir/hero.webp"
 }
 
@@ -1313,7 +1327,7 @@ usage: showcase.sh [--dry-run] <command>
   all              rehearse every beat in order, no recording
   record           stage, film every beat as one continuous take, restore, then edit
   edit <dir>       loudness-normalise a recording folder's take.mkv into showcase.mp4
-  hero <dir>       cut the README hero from a recording folder
+  hero <dir> [s-e ...]  cut the README hero from a recording folder, optionally from second ranges
   restore          undo stage: style, palette, Sync Neovim, DND, weather, layout
   reset            end the Demo session's tmux sessions and close its windows
   list             print beat names
