@@ -64,10 +64,10 @@ And control Hyprland via `:`, like Vim's **Command Mode**:
 
 <table>
   <tr>
-    <td><a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/prompt-menu.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/prompt-menu.webp" width="100%" alt="HyprVim command prompt with fuzzy menu"></a><br/><p align="center">HyprVim Command Mode with fuzzy completion</p></td>
+    <td><a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/prompt-menu-1080.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/prompt-menu-1080.webp" width="100%" alt="HyprVim command prompt with fuzzy menu"></a><br/><p align="center">HyprVim Command Mode with fuzzy completion</p></td>
   </tr>
   <tr>
-    <td><a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/prompt-args.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/prompt-args.webp" width="100%" alt="HyprVim command prompt with argument hints"></a><br/><p align="center">Includes flag hints to teach arguments as you use</p></td>
+    <td><a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/prompt-args-1080.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/prompt-args-1080.webp" width="100%" alt="HyprVim command prompt with argument hints"></a><br/><p align="center">Includes flag hints to teach arguments as you use</p></td>
   </tr>
 </table>
 
@@ -98,23 +98,23 @@ Just a few example bars:
 <table>
   <tr>
     <td width="15%" align="center"><strong>Oasis</strong><br><em>Default</em></td>
-    <td><a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/bar-oasis.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/bar-oasis.webp" width="100%" alt="Oasis bar"></a></td>
+    <td><a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/bar-oasis-1080.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/bar-oasis-1080.webp" width="100%" alt="Oasis bar"></a></td>
   </tr>
   <tr>
     <td width="15%" align="center"><strong>Modern</strong><br><em>Rounded</em></td>
-    <td><a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/bar-modern.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/bar-modern.webp" width="100%" alt="Modern bar"></a></td>
+    <td><a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/bar-modern-1080.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/bar-modern-1080.webp" width="100%" alt="Modern bar"></a></td>
   </tr>
   <tr>
     <td width="15%" align="center"><strong>Neovim</strong><br><em>Lualine-style</em></td>
-    <td><a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/bar-neovim.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/bar-neovim.webp" width="100%" alt="Neovim bar"></a></td>
+    <td><a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/bar-neovim-1080.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/bar-neovim-1080.webp" width="100%" alt="Neovim bar"></a></td>
   </tr>
   <tr>
     <td width="15%" align="center"><strong>Metroid</strong><br><em>Combat visor</em></td>
-    <td><a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/bar-metroid.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/bar-metroid.webp" width="100%" alt="Metroid bar"></a></td>
+    <td><a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/bar-metroid-1080.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/bar-metroid-1080.webp" width="100%" alt="Metroid bar"></a></td>
   </tr>
   <tr>
     <td width="15%" align="center"><strong>PSX</strong><br><em>Retro PSX</em></td>
-    <td><a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/bar-ps1.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/bar-ps1.webp" width="100%" alt="PSX bar"></a></td>
+    <td><a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/bar-ps1-1080.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/bar-ps1-1080.webp" width="100%" alt="PSX bar"></a></td>
   </tr>
 </table>
 
@@ -180,7 +180,7 @@ Styles influence every popup. Each card below shows a different popup and a diff
 <table>
   <tr>
     <td align="center" width="50%"><a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/tour-settings-crt.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/tour-settings-crt.webp" width="100%" alt="Settings"></a><br><strong>Settings (CRT)</strong><br><em>Settings menu: styles, colors, bar, displays, apps, power, etc</em></td>
-    <td align="center" width="50%"><a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/tour-overview-ps1.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/tour-overview-ps1.webp" width="100%" alt="Workspace overview"></a><br><strong>Workspace Overview (PSX)</strong><br><em>Monitors and workspaces selected via Metal Gear scope</em></td>
+    <td align="center" width="50%"><a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/tour-overview-ps1-1080.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/tour-overview-ps1-1080.webp" width="100%" alt="Workspace overview"></a><br><strong>Workspace Overview (PSX)</strong><br><em>Monitors and workspaces selected via Metal Gear scope</em></td>
   </tr>
   <tr>
     <td align="center" width="50%"><a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/tour-calendar-gameboy.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/tour-calendar-gameboy.webp" width="100%" alt="Calendar"></a><br><strong>Calendar (Gameboy)</strong><br><em>Calendar inside a Game Boy screen with time zones</em></td>
