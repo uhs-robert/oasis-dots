@@ -671,16 +671,16 @@ restore_weather() {
   rm -f "$state_dir/weather_created"
 }
 
-# The loupe's zoom persists between opens; walk it down so the region beat starts from the same step.
+# The loupe's size and zoom live in the bar for as long as it runs, so the region beat's `]` and `i` from a
+# previous take carry over. Walk both to their ends, then one step back to the defaults (176 px, 4x).
 reset_region_zoom() {
+  local key
   qs_ipc call screenshot select false toolbar
   wait_layer quickshell-region
   pause 1
-  send_token o
-  send_token o
-  send_token o
-  send_token o
-  send_token q
+  for key in @bracketleft @bracketleft @bracketleft @bracketleft @bracketright o o o o i q; do
+    send_token "$key"
+  done
   wait_layer_gone quickshell-region
 }
 
