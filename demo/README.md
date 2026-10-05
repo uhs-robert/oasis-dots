@@ -44,4 +44,4 @@ Each clip is filmed with the default sink's monitor as audio (`DEMO_AUDIO=none` 
 
 Everything is an environment variable with a default at the top of the script: `DEMO_OUTPUT`, `DEMO_PASSWORD` (letters only, no `q`), `DEMO_FPS`, `DEMO_OUT_DIR`, `DEMO_AUDIO`, `DEMO_LOCATION`, `DEMO_SESSION_QUERY`, `DEMO_SEARCH_TEXT`, `DEMO_AGENT_PROMPT`, `DEMO_START_STYLE`, `DEMO_PALETTES`, and one `T_*` variable per delay, for example `T_MONTAGE_HOLD=2.5 demo/showcase.sh beat montage_ff7`.
 
-The protected terminal is `DEMO_PROTECT_PID` (default `$KITTY_PID`). kitty shares one pid across its windows, so the stage terminals (`kitty-tmux-*`) are excluded by class, and `DEMO_PROTECT_ADDR` pins exact window addresses.
+The protected terminal is `DEMO_PROTECT_PID` (default `$KITTY_PID`). kitty shares one pid across its windows, so only the stage's own terminals (`kitty-tmux-dotfiles`, `kitty-tmux-agent`) are excluded, by class, and `DEMO_PROTECT_ADDR` pins exact window addresses.

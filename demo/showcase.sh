@@ -10,7 +10,6 @@ overlay_dir=$script_dir/overlay
 stage_tmux=$script_dir/stage-tmux.sh
 qs_ipc_bin=$HOME/.config/hypr/scripts/qs-ipc
 hypr_state_dir=${XDG_STATE_HOME:-$HOME/.local/state}/hypr
-qs_state_dir=${XDG_STATE_HOME:-$HOME/.local/state}/quickshell
 state_dir=${XDG_RUNTIME_DIR:-/tmp}/oasis-demo
 
 DEMO_OUTPUT=${DEMO_OUTPUT:-DP-8}
@@ -68,6 +67,8 @@ stage_classes=(kitty-tmux-dotfiles firefox kitty-tmux-agent)
 declare -A style_reveal_ms=([neovim]=400 [ps1]=500 [ff7]=500 [goldeneye]=500 [gameboy]=500 [metroid]=500 [tie]=500)
 
 DRY=0
+# Set while a stage is live but not yet restored, so a failing take puts the owner's settings back on exit.
+restore_on_exit=0
 expect_ns=""
 recorder_pid=""
 rec_t0=""
@@ -116,7 +117,8 @@ add_descendants() {
   done
 }
 
-# kitty shares one pid across its windows, so the demo terminals (kitty-tmux-*) are told apart by address.
+# kitty shares one pid across its windows, so the stage's own terminals are told apart by class; every other
+# window of the protected kitty, including the owner's other kitty-tmux-* sessions, stays protected.
 init_protection() {
   local pid=$$
   while [[ -n $pid && $pid -gt 1 ]]; do
@@ -127,7 +129,7 @@ init_protection() {
   if [[ -n $DEMO_PROTECT_PID ]]; then
     add_protected "$DEMO_PROTECT_PID"
     add_descendants "$DEMO_PROTECT_PID"
-    protect_addrs=$(hyprctl clients -j 2>/dev/null | jq -r --argjson p "$DEMO_PROTECT_PID" '[.[] | select(.pid == $p and (.class | startswith("kitty-tmux-") | not)) | .address] | join(" ")' || true)
+    protect_addrs=$(hyprctl clients -j 2>/dev/null | jq -r --argjson p "$DEMO_PROTECT_PID" --argjson stage "$(printf '%s\n' "${stage_classes[@]}" | jq -R . | jq -s .)" '[.[] | select(.pid == $p and (.class | IN($stage[]) | not)) | .address] | join(" ")' || true)
   fi
   [[ -z ${DEMO_PROTECT_ADDR:-} ]] || protect_addrs=$DEMO_PROTECT_ADDR
 }
@@ -550,7 +552,7 @@ preflight() {
   [[ -z $busy ]] || die "$DEMO_OUTPUT must start empty; close or move: $busy"
 }
 
-dnd_on() { jq -e '.dnd == true' "$qs_state_dir/notifications.json" >/dev/null 2>&1; }
+dnd_on() { [[ $(qs_query call notifications get_dnd) == true ]]; }
 
 save_state() {
   ((DRY)) && return 0
@@ -563,7 +565,7 @@ save_state() {
     '{style: $style, palette: $palette, sync: $sync, dnd: $dnd}' >"$state_dir/saved.json"
 }
 
-# NotificationsIpc only toggles, so compare with the saved state first.
+# NotificationsIpc only toggles, so compare with the current state first.
 set_dnd() {
   if ((DRY)); then
     emit dnd "$1"
@@ -624,6 +626,7 @@ reset_region_zoom() {
 }
 
 stage() {
+  restore_on_exit=1
   validate_config
   ((DRY)) || preflight "${1:-}"
   save_state
@@ -636,6 +639,8 @@ stage() {
   reset_region_zoom
   ensure_overlay
   ((DRY)) || : >"$state_dir/staged"
+  # A standalone stage stays up for rehearsal; only `record` restores it.
+  [[ ${1:-} == record ]] || restore_on_exit=0
 }
 
 restore_ui() {
@@ -681,14 +686,19 @@ restore() {
   fi
   stop_overlay
   rm -f "$state_dir/staged"
+  restore_on_exit=0
 }
 
 cleanup() {
   local status=$?
   trap - EXIT
   if ((! DRY)); then
-    stop_recorder
-    restore_ui
+    if ((restore_on_exit)); then
+      restore
+    else
+      stop_recorder
+      restore_ui
+    fi
   fi
   exit "$status"
 }
@@ -776,6 +786,15 @@ beat_palettes() {
     wait_palette "oasis_$name"
     pause "$T_PALETTE_HOLD"
   done
+}
+
+# Rehearsed alone, the turn needs Settings open in the Colors pane, where the palettes beat leaves it.
+pre_turn() {
+  if ((DRY)) || layer_open quickshell-popup; then return 0; fi
+  qs_ipc call settings open colors
+  wait_layer quickshell-popup
+  send_token @Return
+  pause "$T_SETTLE"
 }
 
 beat_turn() {
@@ -1124,27 +1143,48 @@ record() {
   edit "$dir"
 }
 
-# One clip to a normalised mp4: its fast ranges sped up (their audio dropped) and a stereo track always present,
-# so the concat step can join the clips without re-encoding.
+# One clip to a normalised mp4: its fast ranges sped up with silence over them, the rest at normal speed with
+# its own audio, and a stereo track always present, so the concat step can join the clips without re-encoding.
 normalise_clip() {
-  local raw=$1 out=$2 filter="" labels="" prev=0 n=0 r from to has_audio=0
+  local raw=$1 out=$2 filter="" pairs="" prev=0 n=0 r from to has_audio=0 a_out=""
   local -a ranges=()
   if [[ -s $raw.fast ]]; then mapfile -t ranges <"$raw.fast"; fi
   if ffprobe -v error -select_streams a -show_entries stream=index -of csv=p=0 "$raw" | grep -q .; then has_audio=1; fi
+  segment() {
+    local from=$1 to=$2 fast=$3 trim atrim
+    if [[ -n $to ]]; then
+      trim="trim=$from:$to"
+      atrim="atrim=$from:$to"
+    else
+      trim="trim=start=$from"
+      atrim="atrim=start=$from"
+    fi
+    if ((fast)); then
+      filter+="[0:v]$trim,setpts=(PTS-STARTPTS)/${DEMO_FAST}[v$n];"
+      ((has_audio)) && filter+="aevalsrc=0:c=stereo:s=48000:d=$(awk -v a="$from" -v b="$to" -v f="$DEMO_FAST" 'BEGIN { printf "%.3f", (b - a) / f }')[a$n];"
+    else
+      filter+="[0:v]$trim,setpts=PTS-STARTPTS[v$n];"
+      ((has_audio)) && filter+="[0:a]$atrim,asetpts=PTS-STARTPTS,aresample=48000,aformat=channel_layouts=stereo[a$n];"
+    fi
+    pairs+="[v$n]"
+    ((has_audio)) && pairs+="[a$n]"
+    n=$((n + 1))
+  }
   for r in "${ranges[@]}"; do
     [[ -n $r ]] || continue
     read -r from to <<<"$r"
-    filter+="[0:v]trim=$prev:$from,setpts=PTS-STARTPTS[s$n];"
-    filter+="[0:v]trim=$from:$to,setpts=(PTS-STARTPTS)/${DEMO_FAST}[s$((n + 1))];"
-    labels+="[s$n][s$((n + 1))]"
-    n=$((n + 2))
+    segment "$prev" "$from" 0
+    segment "$from" "$to" 1
     prev=$to
   done
-  filter+="[0:v]trim=start=$prev,setpts=PTS-STARTPTS[s$n];${labels}[s$n]concat=n=$((n + 1)):v=1,fps=${DEMO_FPS},format=yuv420p[v]"
-  if ((has_audio && ${#ranges[@]} == 0)); then
-    ffmpeg -y -loglevel error -i "$raw" -filter_complex "$filter;[0:a]aresample=48000,aformat=channel_layouts=stereo[a]" \
-      -map "[v]" -map "[a]" -c:v libx264 -preset slow -crf 18 -c:a aac -b:a 192k -shortest "$out"
+  segment "$prev" "" 0
+  if ((has_audio)); then
+    filter+="${pairs}concat=n=$n:v=1:a=1[vc][a];[vc]fps=${DEMO_FPS},format=yuv420p[v]"
+    a_out="[a]"
+    ffmpeg -y -loglevel error -i "$raw" -filter_complex "$filter" -map "[v]" -map "$a_out" \
+      -c:v libx264 -preset slow -crf 18 -c:a aac -b:a 192k "$out"
   else
+    filter+="${pairs}concat=n=$n:v=1[vc];[vc]fps=${DEMO_FPS},format=yuv420p[v]"
     ffmpeg -y -loglevel error -i "$raw" -f lavfi -i anullsrc=r=48000:cl=stereo -filter_complex "$filter" \
       -map "[v]" -map 1:a -c:v libx264 -preset slow -crf 18 -c:a aac -b:a 192k -shortest "$out"
   fi
