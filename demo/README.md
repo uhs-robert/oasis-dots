@@ -32,8 +32,8 @@ demo/showcase.sh list               # beat names
 demo/showcase.sh stage              # weather, DND, Moonlight with Sync Neovim, follow-style sounds, a pinned wallpaper, Neovim style, overlay
 demo/showcase.sh beat palettes      # rehearse one beat, with its off-camera setup
 demo/showcase.sh all                # every beat, no recording
-demo/showcase.sh record             # stage, one clip per beat into ~/Videos/Recordings/showcase-<time>/, restore, edit
-demo/showcase.sh edit <dir>         # cut a recording folder's clips into showcase.mp4
+demo/showcase.sh record             # stage, one continuous take into ~/Videos/Recordings/showcase-<time>/, restore, edit
+demo/showcase.sh edit <dir>         # loudness-normalise the take into showcase.mp4
 demo/showcase.sh hero <dir>         # the README hero (palettes, the turn and the styles beat) as hero.webp
 demo/showcase.sh restore            # put back style, palette, Sync Neovim, DND, sounds, weather and the wallpaper rotator
 demo/showcase.sh reset              # end the stage's tmux sessions and close its windows
@@ -44,10 +44,10 @@ Beats after `session` expect its windows, and `keeptabs` waits for the agent tha
 
 The region beat finds the dashboard logo in a screenshot of the output and steers the selector onto its exact edges (`DEMO_REGION_RECT="x y w h"` overrides the detection; the screenshot is kept in `$XDG_RUNTIME_DIR/oasis-demo/`).
 
-Each clip is filmed with the default sink's monitor as audio (`DEMO_AUDIO=none` for silence). `edit` speeds up the app start-up in the `session` clip and joins the rest with hard cuts, so one bad beat can be re-filmed alone and the folder edited again.
+The take is one continuous recording with the default sink's monitor as audio (`DEMO_AUDIO=none` for silence): background music plays throughout, so nothing is cut or sped up and every step runs on camera. `record` notes when each beat starts in `marks.txt`, which `hero` uses to cut its loop.
 
 ## Tuning
 
-Everything is an environment variable with a default at the top of the script: `DEMO_OUTPUT`, `DEMO_PASSWORD` (letters only, no `q`), `DEMO_FPS`, `DEMO_OUT_DIR`, `DEMO_AUDIO`, `DEMO_LOCATION`, `DEMO_SESSION_QUERY`, `DEMO_SEARCH_TEXT`, `DEMO_AGENT_PROMPT`, `DEMO_START_STYLE`, `DEMO_PALETTES`, `DEMO_STYLES` (`id:filter` pairs), `DEMO_WALLPAPER` (one image for the whole take; empty pins whatever the output shows at `stage`), `DEMO_MUSIC_PLAYER` and `DEMO_MUSIC_AT` (background music started when the unlock ends, for the cava bar), `DEMO_FAST_MAX`, and one `T_*` variable per delay, for example `T_SURFACE_HOLD=2 demo/showcase.sh beat styles`.
+Everything is an environment variable with a default at the top of the script: `DEMO_OUTPUT`, `DEMO_PASSWORD` (letters only, no `q`), `DEMO_FPS`, `DEMO_OUT_DIR`, `DEMO_AUDIO`, `DEMO_LOCATION`, `DEMO_SESSION_QUERY`, `DEMO_SEARCH_TEXT`, `DEMO_AGENT_PROMPT`, `DEMO_START_STYLE`, `DEMO_PALETTES`, `DEMO_STYLES` (`id:filter` pairs), `DEMO_WALLPAPER` (one image for the whole take; empty pins whatever the output shows at `stage`), `DEMO_MUSIC_PLAYER` and `DEMO_MUSIC_AT` (background music started when the unlock ends, for the cava bar), and one `T_*` variable per delay, for example `T_SURFACE_HOLD=2 demo/showcase.sh beat styles`.
 
 The protected terminal is `DEMO_PROTECT_PID` (default `$KITTY_PID`). kitty shares one pid across its windows, so only the stage's own terminals (`kitty-tmux-dotfiles`, `kitty-tmux-agent`) are excluded, by class, and `DEMO_PROTECT_ADDR` pins exact window addresses.
