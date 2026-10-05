@@ -25,9 +25,15 @@ DEMO_SEARCH_TEXT=${DEMO_SEARCH_TEXT:-dotfiles}
 DEMO_AGENT_PROMPT=${DEMO_AGENT_PROMPT:-summarize the dotfiles readme in three bullets}
 DEMO_START_STYLE=${DEMO_START_STYLE:-neovim}
 DEMO_PALETTES=${DEMO_PALETTES:-lagoon mirage sol moonlight}
+# Style id and the name typed into Settings > Style's filter, in the order the styles beat switches them.
+DEMO_STYLES=${DEMO_STYLES:-ff7:ffvii goldeneye:goldeneye gameboy:gameboy metroid:metroid tie:tie ps1:psx}
+# One image for the whole take; empty keeps whatever the output shows when `stage` runs.
+DEMO_WALLPAPER=${DEMO_WALLPAPER:-}
 DEMO_PROTECT_PID=${DEMO_PROTECT_PID:-${KITTY_PID:-}}
 DEMO_WEATHER_FILE=${DEMO_WEATHER_FILE:-$HOME/.config/quickshell/weather.local.json}
 DEMO_FAST=${DEMO_FAST:-5}
+# A sped-up stretch never plays longer than this; slow app start-up is mostly an unchanging screen.
+DEMO_FAST_MAX=${DEMO_FAST_MAX:-1.5}
 
 T_LEAD=${T_LEAD:-0.15}
 T_KEY_GAP=${T_KEY_GAP:-0.1}
@@ -40,7 +46,7 @@ T_LOGIN_PAGE_TURN=${T_LOGIN_PAGE_TURN:-1.45}
 T_LOGIN_HOLD=${T_LOGIN_HOLD:-0.25}
 T_LOGIN_CHAR_GAP=${T_LOGIN_CHAR_GAP:-0.1}
 T_LOGIN_UNLOCK=${T_LOGIN_UNLOCK:-3.85}
-T_EMPTY_HOLD=${T_EMPTY_HOLD:-2.0}
+T_EMPTY_HOLD=${T_EMPTY_HOLD:-0.5}
 T_SESSION_TIMEOUT=${T_SESSION_TIMEOUT:-60}
 T_SESSION_HOLD=${T_SESSION_HOLD:-1.5}
 T_RESIZE_STEP=${T_RESIZE_STEP:-0.35}
@@ -48,7 +54,9 @@ T_RESIZE_HOLD=${T_RESIZE_HOLD:-1.0}
 T_SETTINGS_HOLD=${T_SETTINGS_HOLD:-0.6}
 T_PALETTE_HOLD=${T_PALETTE_HOLD:-1.2}
 T_TURN_HOLD=${T_TURN_HOLD:-1.5}
-T_MONTAGE_HOLD=${T_MONTAGE_HOLD:-1.8}
+T_MOVE_HOLD=${T_MOVE_HOLD:-0.8}
+T_STYLE_HOLD=${T_STYLE_HOLD:-1.2}
+T_SURFACE_HOLD=${T_SURFACE_HOLD:-1.4}
 T_KICKOFF_HOLD=${T_KICKOFF_HOLD:-1.0}
 T_OVERVIEW_STEP=${T_OVERVIEW_STEP:-0.6}
 T_SEARCH_HOLD=${T_SEARCH_HOLD:-1.0}
@@ -63,11 +71,9 @@ T_KEEPTABS_HOLD=${T_KEEPTABS_HOLD:-1.2}
 T_ANSWER_HOLD=${T_ANSWER_HOLD:-3.0}
 T_OUTRO_HOLD=${T_OUTRO_HOLD:-4.5}
 
-beats=(unlock session resize palettes turn
-  montage_ps1 montage_ff7 montage_goldeneye montage_gameboy montage_metroid montage_tie montage_back
-  kickoff overview region prompt keeptabs outro)
+beats=(unlock session resize palettes turn move styles kickoff overview region prompt keeptabs outro)
 # The README hero is cut from these.
-hero_beats=(palettes turn montage_ps1 montage_ff7 montage_goldeneye montage_gameboy montage_metroid montage_tie montage_back)
+hero_beats=(palettes turn styles)
 stage_classes=(kitty-tmux-dotfiles firefox kitty-tmux-agent)
 declare -A style_reveal_ms=([neovim]=400 [ps1]=500 [ff7]=500 [goldeneye]=500 [gameboy]=500 [metroid]=500 [tie]=500)
 
@@ -461,7 +467,10 @@ wait_palette() {
     return 0
   fi
   for ((i = 0; i < 50; i++)); do
-    [[ $(current_palette) == "$name" ]] && return 0
+    if [[ $(current_palette) == "$name" ]]; then
+      apply_wallpaper
+      return 0
+    fi
     sleep 0.1
   done
   die "palette $name was not applied"
@@ -567,7 +576,8 @@ save_state() {
   dnd_on && dnd=true
   jq -n --arg style "$(qs_query call style get)" --arg palette "$(current_palette)" \
     --arg sync "$(cat "$hypr_state_dir/nvim_sync" 2>/dev/null || echo off)" --argjson dnd "$dnd" \
-    '{style: $style, palette: $palette, sync: $sync, dnd: $dnd}' >"$state_dir/saved.json"
+    --arg pack "$(qs_query call style get_effects_pack)" \
+    '{style: $style, palette: $palette, sync: $sync, dnd: $dnd, pack: $pack}' >"$state_dir/saved.json"
 }
 
 # NotificationsIpc only toggles, so compare with the current state first.
@@ -592,6 +602,40 @@ apply_theme() {
   "$HOME/.config/hypr/theme/switch.lua" --set "$palette"
   wait_palette "$palette"
   sleep 1
+}
+
+rotator_pid() { pgrep -f 'hypr/extensions/wallpaper/init.lua' | head -n 1 || true; }
+
+# The rotator would swap images mid-take (and a palette reload can make it), so it is paused with SIGSTOP and one
+# image is set on the output; `restore` resumes it.
+pin_wallpaper() {
+  if ((DRY)); then
+    emit wallpaper "pause the rotator, pin ${DEMO_WALLPAPER:-the current image} on $DEMO_OUTPUT"
+    return 0
+  fi
+  local pid image
+  pid=$(rotator_pid)
+  if [[ -n $pid ]]; then
+    kill -STOP "$pid"
+    printf '%s\n' "$pid" >"$state_dir/rotator_paused"
+  fi
+  image=${DEMO_WALLPAPER:-$(hyprctl hyprpaper listactive 2>/dev/null | awk -v o="$DEMO_OUTPUT: " 'index($0, o) == 1 { print substr($0, length(o) + 1) }')}
+  [[ -n $image ]] || return 0
+  printf '%s\n' "$image" >"$state_dir/wallpaper"
+  apply_wallpaper
+}
+
+apply_wallpaper() {
+  [[ -f $state_dir/wallpaper ]] || return 0
+  hyprctl hyprpaper wallpaper "$DEMO_OUTPUT, $(<"$state_dir/wallpaper")" >/dev/null 2>&1 || true
+}
+
+unpin_wallpaper() {
+  if [[ -f $state_dir/rotator_paused ]]; then
+    kill -CONT "$(<"$state_dir/rotator_paused")" 2>/dev/null || true
+    rm -f "$state_dir/rotator_paused"
+  fi
+  rm -f "$state_dir/wallpaper"
 }
 
 stage_weather() {
@@ -637,10 +681,13 @@ stage() {
   save_state
   stage_weather
   set_dnd true
+  # Each style's own sounds, whatever pack the owner normally uses.
+  qs_ipc call style set_effects_pack "" >/dev/null
   apply_theme oasis_moonlight on
   qs_ipc call style set "$DEMO_START_STYLE"
   wait_style "$DEMO_START_STYLE"
   go_slot 1
+  pin_wallpaper
   reset_region_zoom
   ensure_overlay
   ((DRY)) || : >"$state_dir/staged"
@@ -695,6 +742,7 @@ restore() {
     palette=$(jq -r .palette "$state_dir/saved.json")
     sync=$(jq -r .sync "$state_dir/saved.json")
     dnd=$(jq -r .dnd "$state_dir/saved.json")
+    "$qs_ipc_bin" call style set_effects_pack "$(jq -r '.pack // ""' "$state_dir/saved.json")" >/dev/null 2>&1 || true
     [[ -z $style ]] || "$qs_ipc_bin" call style set "$style" >/dev/null 2>&1 || true
     set_dnd "$dnd"
     if [[ -n $palette ]]; then apply_theme "$palette" "$sync"; else hyprctl reload >/dev/null; fi
@@ -703,6 +751,7 @@ restore() {
     hyprctl reload >/dev/null
   fi
   stop_overlay
+  unpin_wallpaper
   rm -f "$state_dir/staged"
   restore_on_exit=0
 }
@@ -732,6 +781,12 @@ reset_stage() {
   "$stage_tmux" kill
   sleep 1
   local addr
+  if [[ -f $state_dir/opened_windows ]]; then
+    while read -r addr; do
+      [[ -n $addr ]] && hyprctl eval "hl.dispatch(hl.dsp.window.close({ window = \"address:$addr\" }))" >/dev/null
+    done <"$state_dir/opened_windows"
+    rm -f "$state_dir/opened_windows"
+  fi
   for addr in $(hyprctl clients -j | jq -r --argjson m "$(out_id)" --arg prot "$protect_addrs" '
     ($prot | split(" ")) as $p | .[] | select(.monitor == $m and .class == "firefox" and (.address | IN($p[]) | not)) | .address'); do
     hyprctl eval "hl.dispatch(hl.dsp.window.close({ window = \"address:$addr\" }))" >/dev/null
@@ -848,76 +903,55 @@ beat_turn() {
 
 post_turn() { qs_ipc call popup close; }
 
-# One montage cut: the style is set off camera, then the clip shows its caption and one signature surface.
-montage_pre() {
-  qs_ipc call style set "$1"
-  wait_style "$1"
+# Firefox leaves for slot 3 (focus follows it), then an empty slot 4 gives the styles beat a bare desktop: the bar
+# and popups are the whole picture.
+pre_move() { focus_class firefox; }
+
+beat_move() {
+  bind "SUPER + SHIFT + 3" 'require("lib.actions.workspace").move_local(3)()'
+  pause "$T_MOVE_HOLD"
+  bind "SUPER + 4" 'require("lib.actions.workspace").focus_local(4)()'
+  pause "$T_MOVE_HOLD"
 }
 
-montage_caption() {
-  overlay_keys "$1"
-  pause 0.5
-}
-
-beat_montage_ps1() {
-  montage_caption "PSX"
-  ipc "SUPER + TAB" call overview open
-  wait_layer quickshell-overview
-  pause "$T_MONTAGE_HOLD"
-}
-post_montage_ps1() { qs_ipc call overview close; }
-
-pre_montage_ff7() { montage_pre ff7; }
-beat_montage_ff7() {
-  montage_caption "FFVII"
-  leader_chord W qs_ipc call popup open weather
+# Switch one style from Settings > Style: Enter opens the list, typing filters it, Enter applies.
+switch_style() {
+  local id=$1 query=$2
+  leader_chord S qs_ipc call settings open style
   wait_layer quickshell-popup
-  pause "$T_MONTAGE_HOLD"
+  press "ENTER" @Return
+  type_text "$query"
+  press "ENTER" @Return
+  wait_style "$id"
+  pause "$T_STYLE_HOLD"
+  press "Q" q
+  wait_layer_gone quickshell-popup
 }
-post_montage_ff7() { qs_ipc call popup close; }
 
-pre_montage_goldeneye() { montage_pre goldeneye; }
-beat_montage_goldeneye() {
-  montage_caption "GOLDENEYE"
-  leader_chord C qs_ipc call popup open clock
-  wait_layer quickshell-popup
-  pause "$T_MONTAGE_HOLD"
-}
-post_montage_goldeneye() { qs_ipc call popup close; }
-
-pre_montage_gameboy() { montage_pre gameboy; }
-beat_montage_gameboy() {
-  montage_caption "GAME BOY"
-  leader_chord C qs_ipc call popup open clock
-  wait_layer quickshell-popup
-  pause "$T_MONTAGE_HOLD"
-}
-post_montage_gameboy() { qs_ipc call popup close; }
-
-pre_montage_metroid() { montage_pre metroid; }
-beat_montage_metroid() {
-  montage_caption "METROID"
+show_volume() {
   bind "SUPER + ALT + K" 'require("lib.actions.media").volume_up()()'
-  pause "$T_MONTAGE_HOLD"
+  pause "$T_SURFACE_HOLD"
+  # Back down off screen, so the take ends at the owner's volume.
+  hypr_eval 'require("lib.actions.media").volume_down()()'
 }
-post_montage_metroid() { hypr_eval 'require("lib.actions.media").volume_down()()'; }
 
-pre_montage_tie() { montage_pre tie; }
-beat_montage_tie() {
-  montage_caption "TIE FIGHTER"
-  overlay_keys "SUPER + SPACE"
-  pause "$T_LEAD"
-  hypr_eval 'hl.dispatch(hl.dsp.submap("Leader"))'
-  wait_layer quickshell-whichkey
-  pause "$T_MONTAGE_HOLD"
+show_calendar() {
+  leader_chord C qs_ipc call popup open clock
+  wait_layer quickshell-popup
+  pause "$T_SURFACE_HOLD"
+  press "Q" q
+  wait_layer_gone quickshell-popup
 }
-post_montage_tie() { hypr_eval 'hl.dispatch(hl.dsp.submap("reset"))'; }
 
-beat_montage_back() {
-  montage_caption "PSX"
-  qs_ipc call style set ps1
-  wait_style ps1
-  pause 0.8
+# One continuous clip on the bare desktop: each style is switched in Settings, then the volume OSD and the
+# calendar show what it changes, with the style's own sounds.
+beat_styles() {
+  local pair
+  for pair in $DEMO_STYLES; do
+    switch_style "${pair%%:*}" "${pair#*:}"
+    show_volume
+    show_calendar
+  done
 }
 
 pre_kickoff() { focus_class kitty-tmux-agent; }
@@ -948,9 +982,30 @@ beat_overview() {
   assert_active_class kitty-tmux-dotfiles
 }
 
+# A second window beside the editor, since Firefox has moved away and `:layout` needs something to re-tile. Its
+# address is kept so `reset` can close it.
+open_terminal() {
+  local before addr i
+  if ((DRY)); then
+    bind "SUPER + RETURN" 'require("lib.actions.cmd").open_term()()'
+    return 0
+  fi
+  before=$(hyprctl clients -j | jq -c '[.[].address]')
+  bind "SUPER + RETURN" 'require("lib.actions.cmd").open_term()()'
+  for ((i = 0; i < 50; i++)); do
+    addr=$(hyprctl clients -j | jq -r --argjson b "$before" '[.[] | select(.address | IN($b[]) | not)][0].address // empty')
+    [[ -n $addr ]] && break
+    sleep 0.1
+  done
+  [[ -n $addr ]] || die "the terminal did not open"
+  printf '%s\n' "$addr" >>"$state_dir/opened_windows"
+  pause "$T_MOVE_HOLD"
+}
+
 # HyprVim's `:` prompt, drawn by Quickshell: Enter on `layout` takes the command and lists its layouts, then
 # scrolling re-tiles the workspace live.
 beat_prompt() {
+  open_terminal
   overlay_keys ":"
   pause "$T_LEAD"
   hypr_eval 'require("hyprvim.vim").command.prompt()'
@@ -1117,8 +1172,8 @@ beat_keeptabs() {
   pause "$T_ANSWER_HOLD"
 }
 
-# The agent has slot 2, so the end card goes over an empty slot 3.
-pre_outro() { go_slot 3; }
+# Slot 2 holds the agent and slot 3 Firefox; the styles beat left slot 4 empty for the end card.
+pre_outro() { go_slot 4; }
 
 beat_outro() {
   pause 0.4
@@ -1204,8 +1259,10 @@ normalise_clip() {
       atrim="atrim=start=$from"
     fi
     if ((fast)); then
-      filter+="[0:v]$trim,setpts=(PTS-STARTPTS)/${DEMO_FAST}[v$n];"
-      ((has_audio)) && filter+="aevalsrc=0:c=stereo:s=48000:d=$(awk -v a="$from" -v b="$to" -v f="$DEMO_FAST" 'BEGIN { printf "%.3f", (b - a) / f }')[a$n];"
+      local factor
+      factor=$(awk -v a="$from" -v b="$to" -v f="$DEMO_FAST" -v m="$DEMO_FAST_MAX" 'BEGIN { x = (b - a) / m; printf "%.3f", (x > f ? x : f) }')
+      filter+="[0:v]$trim,setpts=(PTS-STARTPTS)/${factor}[v$n];"
+      ((has_audio)) && filter+="aevalsrc=0:c=stereo:s=48000:d=$(awk -v a="$from" -v b="$to" -v f="$factor" 'BEGIN { printf "%.3f", (b - a) / f }')[a$n];"
     else
       filter+="[0:v]$trim,setpts=PTS-STARTPTS[v$n];"
       ((has_audio)) && filter+="[0:a]$atrim,asetpts=PTS-STARTPTS,aresample=48000,aformat=channel_layouts=stereo[a$n];"
@@ -1250,7 +1307,10 @@ edit() {
     normalise_clip "$raw" "$cut"
     printf "file '%s'\n" "$cut" >>"$list"
   done
-  ffmpeg -y -loglevel error -f concat -safe 0 -i "$list" -c copy -movflags +faststart "$dir/showcase.mp4"
+  # The UI sounds and lock music arrive quiet (both play at 0.7, music is normalised to -18 LUFS); lift the
+  # whole track to a normal listening level.
+  ffmpeg -y -loglevel error -f concat -safe 0 -i "$list" -c:v copy -af loudnorm=I=-16:TP=-1.5:LRA=11 \
+    -c:a aac -b:a 192k -movflags +faststart "$dir/showcase.mp4"
   log "showcase: wrote $dir/showcase.mp4"
 }
 

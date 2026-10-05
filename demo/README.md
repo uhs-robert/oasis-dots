@@ -23,13 +23,13 @@ Sessions.add("🌵 Demo", {
 
 ```sh
 demo/showcase.sh list               # beat names
-demo/showcase.sh stage              # weather, DND, Moonlight with Sync Neovim, Neovim style, overlay
+demo/showcase.sh stage              # weather, DND, Moonlight with Sync Neovim, follow-style sounds, a pinned wallpaper, Neovim style, overlay
 demo/showcase.sh beat palettes      # rehearse one beat, with its off-camera setup
 demo/showcase.sh all                # every beat, no recording
 demo/showcase.sh record             # stage, one clip per beat into ~/Videos/Recordings/showcase-<time>/, restore, edit
 demo/showcase.sh edit <dir>         # cut a recording folder's clips into showcase.mp4
-demo/showcase.sh hero <dir>         # the README hero (palettes, the turn and the montage) as hero.webp
-demo/showcase.sh restore            # put back style, palette, Sync Neovim, DND and weather; reload Hyprland
+demo/showcase.sh hero <dir>         # the README hero (palettes, the turn and the styles beat) as hero.webp
+demo/showcase.sh restore            # put back style, palette, Sync Neovim, DND, sounds, weather and the wallpaper rotator
 demo/showcase.sh reset              # end the stage's tmux sessions and close its windows
 demo/showcase.sh --dry-run record   # print every step without running it
 ```
@@ -42,6 +42,6 @@ Each clip is filmed with the default sink's monitor as audio (`DEMO_AUDIO=none` 
 
 ## Tuning
 
-Everything is an environment variable with a default at the top of the script: `DEMO_OUTPUT`, `DEMO_PASSWORD` (letters only, no `q`), `DEMO_FPS`, `DEMO_OUT_DIR`, `DEMO_AUDIO`, `DEMO_LOCATION`, `DEMO_SESSION_QUERY`, `DEMO_SEARCH_TEXT`, `DEMO_AGENT_PROMPT`, `DEMO_START_STYLE`, `DEMO_PALETTES`, and one `T_*` variable per delay, for example `T_MONTAGE_HOLD=2.5 demo/showcase.sh beat montage_ff7`.
+Everything is an environment variable with a default at the top of the script: `DEMO_OUTPUT`, `DEMO_PASSWORD` (letters only, no `q`), `DEMO_FPS`, `DEMO_OUT_DIR`, `DEMO_AUDIO`, `DEMO_LOCATION`, `DEMO_SESSION_QUERY`, `DEMO_SEARCH_TEXT`, `DEMO_AGENT_PROMPT`, `DEMO_START_STYLE`, `DEMO_PALETTES`, `DEMO_STYLES` (`id:filter` pairs), `DEMO_WALLPAPER` (one image for the whole take; empty pins whatever the output shows at `stage`), `DEMO_FAST_MAX`, and one `T_*` variable per delay, for example `T_SURFACE_HOLD=2 demo/showcase.sh beat styles`.
 
 The protected terminal is `DEMO_PROTECT_PID` (default `$KITTY_PID`). kitty shares one pid across its windows, so only the stage's own terminals (`kitty-tmux-dotfiles`, `kitty-tmux-agent`) are excluded, by class, and `DEMO_PROTECT_ADDR` pins exact window addresses.
