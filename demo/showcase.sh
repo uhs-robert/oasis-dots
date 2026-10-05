@@ -929,9 +929,9 @@ switch_style() {
   pause "$T_STYLE_HOLD"
 }
 
-# Opened straight over Settings, which the weather popup replaces; no key caption, so the switch reads as one motion.
-show_weather() {
-  qs_ipc call popup open weather
+# Opened straight over IPC with no key caption: the calendar replaces Settings, then the weather replaces the calendar.
+show_popup() {
+  qs_ipc call popup open "$1"
   pause "$T_SURFACE_HOLD"
 }
 
@@ -941,13 +941,14 @@ show_volume() {
   pause "$T_SURFACE_HOLD"
 }
 
-# One continuous clip on the bare desktop: per style, Settings switches it, the weather popup replaces Settings,
-# and the volume OSD follows.
+# One continuous clip on the bare desktop: per style, Settings switches it, the calendar and weather popups follow,
+# then the volume OSD.
 beat_styles() {
   local pair
   for pair in $DEMO_STYLES; do
     switch_style "${pair%%:*}" "${pair#*:}"
-    show_weather
+    show_popup clock
+    show_popup weather
     show_volume
   done
   qs_ipc call popup close
