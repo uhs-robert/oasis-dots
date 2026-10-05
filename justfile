@@ -136,10 +136,10 @@ greeter-preview:
     stage_greeter "$stage" "$PWD" >/dev/null
     env -u GREETD_SOCK -u QS_GREETER_STATE qs -p "$stage"
 
-# Rehearse one showcase scene; `demo/showcase.sh list` prints the names
-demo-scene name:
-    demo/showcase.sh scene {{name}}
+# Rehearse one showcase beat; `demo/showcase.sh list` prints the names
+demo-beat name:
+    demo/showcase.sh beat {{name}}
 
-# Stage the desktop, record every showcase scene, and encode the MP4
+# Stage the desktop, film one clip per showcase beat, and cut them into the MP4
 demo-record:
     demo/showcase.sh record
