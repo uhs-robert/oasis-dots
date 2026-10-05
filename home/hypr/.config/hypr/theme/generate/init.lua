@@ -6,6 +6,7 @@
 --- @field conf      fun(c: table) Writes theme.conf with rgb/rgba variables
 --- @field terminals fun(c: table) Updates Ghostty/Kitty/Foot theme configs
 --- @field quickshell fun(c: table) Writes theme.json to $XDG_STATE_HOME/quickshell/
+--- @field nvim      fun(c: table) Syncs the oasis.nvim colorscheme when Sync Neovim is on
 local Generate = {}
 
 Generate.hyprland = require("theme.generate.hyprland")
@@ -13,6 +14,7 @@ Generate.rofi = require("theme.generate.rofi")
 Generate.conf = require("theme.generate.conf")
 Generate.terminals = require("theme.generate.terminals")
 Generate.quickshell = require("theme.generate.quickshell")
+Generate.nvim = require("theme.generate.nvim")
 
 --- Runs all generators with the provided color table.
 --- @param c table Palette color table from theme.colors.*
@@ -22,6 +24,7 @@ Generate.all = function(c)
   Generate.conf(c)
   Generate.terminals(c)
   Generate.quickshell(c)
+  Generate.nvim(c)
 end
 
 return Generate

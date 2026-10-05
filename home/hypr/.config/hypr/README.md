@@ -129,7 +129,7 @@ See [`extensions/wallpaper/README.md`](extensions/wallpaper/README.md) for setti
 
 ## Theme
 
-The colors come from the Oasis palettes in `theme/colors/`. Picking one saves it, reloads Hyprland and reruns every generator in `theme/generate/` (Hyprland, rofi, the terminals and Quickshell, whose `theme.json` lands in `~/.local/state/quickshell/`).
+The colors come from the Oasis palettes in `theme/colors/`. Picking one saves it, reloads Hyprland and reruns every generator in `theme/generate/` (Hyprland, rofi, the terminals, Quickshell, whose `theme.json` lands in `~/.local/state/quickshell/`, and Neovim when synced).
 
 The rofi `colors.rasi`, foot `foot.ini` and yazi `theme.toml` are generated and gitignored. Edit their tracked `colors.template.rasi`, `foot.template.ini` and `theme.template.toml` instead; the installer copies each one into place when the generated file is missing. Deploy these packages with `just stow <pkg>` (or the installer), not bare `stow`, so that step runs.
 
@@ -138,6 +138,14 @@ Pick a palette from Settings > Colors in the Quickshell panel, with a live previ
 ```bash
 ~/.config/hypr/theme/switch.lua                     # rofi picker (the fallback)
 ~/.config/hypr/theme/switch.lua --set oasis_lagoon  # set one directly
+```
+
+Neovim keeps its own colorscheme unless Settings > Colors > Sync Neovim is on (off by default). With it on, the matching oasis.nvim scheme (`oasis-lagoon` for `oasis_lagoon`) is written to `~/.local/state/hypr/nvim-colorscheme` and pushed to every running Neovim over its RPC socket. For new Neovim sessions to start in it, have your config read that file when it exists:
+
+```lua
+local f = io.open((vim.env.XDG_STATE_HOME or vim.env.HOME .. "/.local/state") .. "/hypr/nvim-colorscheme")
+local colorscheme = f and vim.trim(f:read("*a")) or "oasis"
+if f then f:close() end
 ```
 
 ## Desktop shell

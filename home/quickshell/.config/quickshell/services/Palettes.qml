@@ -18,6 +18,8 @@ Singleton {
     property var colors: ({})
     readonly property var names: Object.keys(root.colors)
     property string current: ""
+    // Settings > Colors > Sync Neovim; theme/generate/nvim.lua reads the same flag file.
+    property bool nvim_sync: false
     // True once the palette list and the active name have both been read.
     property bool settled: false
     readonly property bool ready: root.settled && root.names.length > 0
@@ -39,6 +41,12 @@ Singleton {
         root.current = name;
         Quickshell.execDetached([root.switch_script, "--set", name]);
         return true;
+    }
+
+    // Writes the flag before rerunning the switcher, so the generators see the new value.
+    function set_nvim_sync(on) {
+        root.nvim_sync = on;
+        Quickshell.execDetached(["sh", "-c", 'printf "%s\\n" "$1" > "$2" && { [ -z "$4" ] || exec "$3" --set "$4"; }', "sh", on ? "on" : "off", root.state_dir + "/nvim_sync", root.switch_script, root.current]);
     }
 
     Process {
@@ -66,6 +74,14 @@ Singleton {
             root.settled = true;
         }
         onLoadFailed: error => root.settled = true
+    }
+
+    FileView {
+        path: root.state_dir + "/nvim_sync"
+        watchChanges: true
+        printErrors: false
+        onFileChanged: reload()
+        onLoaded: root.nvim_sync = text().trim() === "on"
     }
 
     Component.onCompleted: loader.running = true
