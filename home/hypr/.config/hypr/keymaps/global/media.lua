@@ -13,7 +13,7 @@ Bind.leader_key("ALT + J",     Media.volume_down(), "Volume Down",      OPTS.rep
 Bind.leader_key("ALT + K",     Media.volume_up(),   "Volume Up",        OPTS.repeating)
 Bind.leader_key("ALT + L",     Media.next(),        "Next Track",       OPTS.oneshot)
 Bind.leader_key("ALT + SPACE", Media.play_pause(),  "Play/Pause Media", OPTS.oneshot)
-Bind.key("ALT + M",            Media.mute(),        "Mute",             OPTS.oneshot)
+Bind.leader_key("ALT + M",            Media.mute(),        "Mute",             OPTS.oneshot)
 
 -- Keyboard Binds
 Bind.key("XF86AudioRaiseVolume",  Media.volume_up(),       "Volume Up",       OPTS.repeating)
