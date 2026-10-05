@@ -161,7 +161,7 @@ ShellRoot {
                 Text {
                     anchors.horizontalCenter: parent.horizontalCenter
                     topPadding: 24 * win.k
-                    text: "Oasis Dots"
+                    text: "Dotfiles"
                     color: "#f4f7f9"
                     font.family: root.sans_family
                     font.pixelSize: 120 * win.k
@@ -170,7 +170,7 @@ ShellRoot {
 
                 Text {
                     anchors.horizontalCenter: parent.horizontalCenter
-                    text: "Hyprland + QuickShell"
+                    text: "Hyprland + HyprVim + QuickShell"
                     color: "#c3cdd4"
                     font.family: root.sans_family
                     font.pixelSize: 64 * win.k

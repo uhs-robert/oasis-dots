@@ -929,9 +929,9 @@ switch_style() {
   pause "$T_STYLE_HOLD"
 }
 
-# Opened straight over Settings, which the calendar replaces; no key caption, so the switch reads as one motion.
-show_calendar() {
-  qs_ipc call popup open clock
+# Opened straight over Settings, which the weather popup replaces; no key caption, so the switch reads as one motion.
+show_weather() {
+  qs_ipc call popup open weather
   pause "$T_SURFACE_HOLD"
 }
 
@@ -941,13 +941,13 @@ show_volume() {
   pause "$T_SURFACE_HOLD"
 }
 
-# One continuous clip on the bare desktop: per style, Settings switches it, the calendar replaces Settings, and
-# the volume OSD follows, all with the style's own sounds.
+# One continuous clip on the bare desktop: per style, Settings switches it, the weather popup replaces Settings,
+# and the volume OSD follows.
 beat_styles() {
   local pair
   for pair in $DEMO_STYLES; do
     switch_style "${pair%%:*}" "${pair#*:}"
-    show_calendar
+    show_weather
     show_volume
   done
   qs_ipc call popup close
@@ -1191,8 +1191,9 @@ beat_keeptabs() {
 }
 
 # Slot 2 holds the agent and slot 5 the layout beat's windows; slot 4 is still empty for the end card.
+# A silent cut to the empty slot under the end card; a key caption here would compete with the logo.
 pre_outro() {
-  bind "SUPER + 4" 'require("lib.actions.workspace").focus_local(4)()'
+  hypr_eval 'require("lib.actions.workspace").focus_local(4)()'
 }
 
 beat_outro() {
