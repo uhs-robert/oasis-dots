@@ -814,10 +814,9 @@ beat_palettes() {
 # Rehearsed alone, the turn needs Settings open in the Colors pane, where the palettes beat leaves it.
 pre_turn() {
   if ((DRY)) || layer_open quickshell-popup; then return 0; fi
+  # Opening on a section already focuses its pane, which is where the palettes beat leaves Settings.
   qs_ipc call settings open colors
   wait_layer quickshell-popup
-  send_token @Return
-  pause "$T_SETTLE"
 }
 
 beat_turn() {
