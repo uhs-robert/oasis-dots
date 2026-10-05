@@ -935,8 +935,9 @@ show_popup() {
   pause "$T_SURFACE_HOLD"
 }
 
+# No key caption either, so the bar's volume OSD plays without the overlay over it.
 show_volume() {
-  bind "SUPER + ALT + K" 'require("lib.actions.media").volume_up()()'
+  hypr_eval 'require("lib.actions.media").volume_up()()'
   volume_steps=$((volume_steps + 1))
   pause "$T_SURFACE_HOLD"
 }
@@ -976,6 +977,20 @@ beat_kickoff() {
   send -d 40 "$DEMO_AGENT_PROMPT"
   press "ENTER" @Return
   pause "$T_KICKOFF_HOLD"
+}
+
+# kitty does not tell tmux when focus moves to another of its own OS windows, so tmux keeps flagging the agent's
+# client as focused, and keeptabs files the answer as already seen (idle) instead of done. Hand tmux the focus-out
+# sequence kitty skipped.
+post_kickoff() {
+  local pid sock win
+  ((DRY)) && return 0
+  pid=$(hyprctl clients -j | jq -r '[.[] | select(.class == "kitty-tmux-agent")][0].pid // empty')
+  sock="$XDG_RUNTIME_DIR/kitty-$pid"
+  [[ -n $pid && -S $sock ]] || die "no kitty socket for the agent window"
+  win=$(kitten @ --to "unix:$sock" ls | jq -r '[.[] | select(.wm_class == "kitty-tmux-agent") | .tabs[].windows[].id][0] // empty')
+  [[ -n $win ]] || die "no kitty window for the agent"
+  kitten @ --to "unix:$sock" send-text --match "id:$win" '\x1b[O'
 }
 
 # Hop monitors, then on slot 3 mark the window it lands on and the one before it, carry both onto Firefox's
