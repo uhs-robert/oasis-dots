@@ -27,6 +27,15 @@ IpcHandler {
         return ThemeAudio.choice;
     }
 
+    // Interface sounds (cursor, confirm, cancel), Settings > Theme audio > Interface sounds.
+    function set_ui_sounds(on: bool): void {
+        ThemeAudio.set_flag("ui", on);
+    }
+
+    function get_ui_sounds(): bool {
+        return ThemeAudio.ui;
+    }
+
     // A style name, "follow" to match the active style, or "simple" for the plain lock screen.
     function set_lock(name: string): string {
         return Style.set_lock_style(name) ? "ok" : "unknown";
