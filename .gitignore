@@ -192,3 +192,6 @@ home/ghostty/.config/ghostty/oasis-theme.conf
 
 # Claude Code agent worktrees
 /.claude/worktrees/
+
+# Release notes drafted locally and pasted into the GitHub release
+/RELEASE.md
