@@ -323,7 +323,9 @@ Item {
         // Keybind power confirms drop from the center island, else wherever the clock sits.
         const power_island = root.has_center ? center_island : island || right_island;
         Popups.register_default("power", power_island.body_item, power_island.bg_color, root.screen_name);
-        Popups.register_default("settings", power_island.body_item, power_island.bg_color, root.screen_name);
+        // Settings drops from the screen's center even under lualine, whose center island is hidden but still centered.
+        const settings_island = root.has_center || Style.bar_lualine ? center_island : power_island;
+        Popups.register_default("settings", settings_island.body_item, settings_island.bg_color, root.screen_name);
         // Without a media module in bars.json, the media popup drops from the center island.
         Popups.unregister("media", root.screen_name, center_island.body_item);
         Popups.unregister("media", root.screen_name, right_island.body_item);
