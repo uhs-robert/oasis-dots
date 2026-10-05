@@ -15,6 +15,8 @@
 
 <p align="center">
   <a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/hero-v4.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/hero-v4.webp" width="100%" alt="Switching palettes, then the FF7, GoldenEye and Game Boy styles opening the same calendar, weather and volume popups"></a>
+  <br>
+  <a href="https://github.com/uhs-robert/oasis-dots/releases/tag/v1.0.0">Watch the full showcase with sound</a>
 </p>
 
 ## 🖥️ Overview
