@@ -26,7 +26,7 @@ DEMO_AGENT_PROMPT=${DEMO_AGENT_PROMPT:-summarize the dotfiles readme in three bu
 DEMO_START_STYLE=${DEMO_START_STYLE:-neovim}
 DEMO_PALETTES=${DEMO_PALETTES:-lagoon mirage sol moonlight}
 # Style id and the name typed into Settings > Style's filter, in the order the styles beat switches them.
-DEMO_STYLES=${DEMO_STYLES:-ff7:ffvii goldeneye:goldeneye gameboy:gameboy metroid:metroid tie:tie ps1:psx}
+DEMO_STYLES=${DEMO_STYLES:-ff7:ffvii goldeneye:goldeneye gameboy:gameboy metroid:metroid oasis:oasis ps1:psx}
 # One image for the whole take; empty keeps whatever the output shows when `stage` runs.
 DEMO_WALLPAPER=${DEMO_WALLPAPER:-}
 # Background music for the cava bar once the unlock ends: an MPRIS player (default: the first one playerctl lists)
@@ -35,15 +35,12 @@ DEMO_MUSIC_PLAYER=${DEMO_MUSIC_PLAYER:-}
 DEMO_MUSIC_AT=${DEMO_MUSIC_AT:-374}
 DEMO_PROTECT_PID=${DEMO_PROTECT_PID:-${KITTY_PID:-}}
 DEMO_WEATHER_FILE=${DEMO_WEATHER_FILE:-$HOME/.config/quickshell/weather.local.json}
-DEMO_FAST=${DEMO_FAST:-5}
-# A sped-up stretch never plays longer than this; slow app start-up is mostly an unchanging screen.
-DEMO_FAST_MAX=${DEMO_FAST_MAX:-1.5}
 
 T_LEAD=${T_LEAD:-0.15}
 T_KEY_GAP=${T_KEY_GAP:-0.1}
 T_SETTLE=${T_SETTLE:-0.3}
 T_TYPE_DELAY_MS=${T_TYPE_DELAY_MS:-70}
-T_CLIP_TAIL=${T_CLIP_TAIL:-0.3}
+T_TAIL=${T_TAIL:-0.5}
 # Long enough to hear the MGS2 title theme, which the preview plays on its title screen.
 T_LOGIN_INTRO=${T_LOGIN_INTRO:-3.5}
 T_LOGIN_TITLE_TURN=${T_LOGIN_TITLE_TURN:-2.0}
@@ -81,7 +78,7 @@ beats=(unlock session resize palettes turn empty styles kickoff overview region 
 # The README hero is cut from these.
 hero_beats=(palettes turn styles)
 stage_classes=(kitty-tmux-dotfiles kitty-tmux-files kitty-tmux-agent kitty-tmux-monitor kitty-tmux-git firefox)
-declare -A style_reveal_ms=([neovim]=400 [ps1]=500 [ff7]=500 [goldeneye]=500 [gameboy]=500 [metroid]=500 [tie]=500)
+declare -A style_reveal_ms=([neovim]=400 [ps1]=500 [ff7]=500 [goldeneye]=500 [gameboy]=500 [metroid]=500 [tie]=500 [oasis]=600)
 
 DRY=0
 # Set while a stage is live but not yet restored, so a failing take puts the owner's settings back on exit.
@@ -89,8 +86,8 @@ restore_on_exit=0
 expect_ns=""
 recorder_pid=""
 rec_t0=""
-fast_from=""
-fast_ranges=()
+# Seconds into the take at which each beat starts, for `hero` to cut its loop from the one continuous file.
+beat_marks=()
 protect_pids=" "
 protect_addrs=""
 
@@ -110,17 +107,6 @@ pause() {
 }
 
 now_rel() { awk -v a="$(date +%s.%N)" -v b="$rec_t0" 'BEGIN { printf "%.2f", a - b }'; }
-
-# Marks a stretch of the current clip for `edit` to play DEMO_FAST times faster, such as apps starting.
-fast_begin() {
-  [[ -z $rec_t0 ]] || fast_from=$(now_rel)
-}
-
-fast_end() {
-  [[ -n $rec_t0 && -n $fast_from ]] || return 0
-  fast_ranges+=("$fast_from $(now_rel)")
-  fast_from=""
-}
 
 ### protection ###
 
@@ -499,15 +485,6 @@ wait_clients() {
   done
 }
 
-wait_browser_loaded() {
-  ((DRY)) && return 0
-  local i
-  for ((i = 0; i < 40; i++)); do
-    hyprctl clients -j | jq -e '[.[] | select(.class == "firefox") | .title] | length > 0 and all(.[]; test("GitHub"))' >/dev/null && return 0
-    sleep 0.5
-  done
-}
-
 agent_pane() { tmux list-panes -t =agent -F '#{pane_id}' 2>/dev/null | head -n 1 || true; }
 
 agent_state() {
@@ -767,6 +744,7 @@ restore() {
     return 0
   fi
   stop_recorder
+  undo_volume
   restore_ui
   restore_weather
   if [[ -f $state_dir/saved.json ]]; then
@@ -868,11 +846,9 @@ beat_session() {
   pause "$T_SETTINGS_HOLD"
   press "ENTER" @Return
   wait_layer_gone quickshell-popup
-  fast_begin
-  wait_clients "$T_SESSION_TIMEOUT" "${stage_classes[@]}"
-  wait_browser_loaded
-  pause 1.5
-  fast_end
+  # The take is live (music plays throughout), so only the two windows the next beat needs are waited for; the
+  # agent, btop, lazygit and Firefox keep starting on their own workspaces.
+  wait_clients "$T_SESSION_TIMEOUT" kitty-tmux-dotfiles kitty-tmux-files
   pause "$T_SESSION_HOLD"
 }
 
@@ -912,11 +888,11 @@ beat_palettes() {
   done
 }
 
-# Rehearsed alone, the turn needs Settings open in the Colors pane, where the palettes beat leaves it.
+# The last palette reload can close Settings; reopen it on the Colors pane, on camera like any other key.
 pre_turn() {
   if ((DRY)) || layer_open quickshell-popup; then return 0; fi
   # Opening on a section already focuses its pane, which is where the palettes beat leaves Settings.
-  qs_ipc call settings open colors
+  leader_chord S qs_ipc call settings open colors
   wait_layer quickshell-popup
 }
 
@@ -977,15 +953,19 @@ beat_styles() {
   qs_ipc call popup close
 }
 
-# Back to the owner's volume, off camera.
-post_styles() {
+# Back to the owner's volume once the recorder has stopped; `restore` calls it.
+undo_volume() {
   while ((volume_steps > 0)); do
     hypr_eval 'require("lib.actions.media").volume_down()()'
     volume_steps=$((volume_steps - 1))
   done
 }
 
-pre_kickoff() { focus_class kitty-tmux-agent; }
+pre_kickoff() {
+  bind "SUPER + 2" 'require("lib.actions.workspace").focus_local(2)()'
+  pause "$T_MOVE_HOLD"
+  focus_class kitty-tmux-agent
+}
 
 # Starts the agent's task; it runs while the next beats play, and keeptabs reports it done at the end.
 beat_kickoff() {
@@ -1152,8 +1132,9 @@ pre_region() {
     region_steps=("SHIFT + H|+h|3" "V|v|1" "SHIFT + L|+l|4" "CTRL + L|^l|3" "]|]|2" "I|i|2")
     return 0
   fi
-  # Unfocused windows are translucent; wait out the fade so the screenshot shows the pane's own background.
-  pause 1
+  # Unfocused windows are translucent; wait out the fade so the screenshot shows the pane's own background. The
+  # overview beat has just focused the editor, so this is the tail of that fade.
+  pause 0.5
   local rect
   rect=$(logo_rect) || die "could not find the dashboard logo; set DEMO_REGION_RECT=\"x y w h\""
   log "showcase: logo at $rect"
@@ -1212,7 +1193,9 @@ beat_keeptabs() {
 }
 
 # Slot 2 holds the agent and slot 5 the layout beat's windows; slot 4 is still empty for the end card.
-pre_outro() { go_slot 4; }
+pre_outro() {
+  bind "SUPER + 4" 'require("lib.actions.workspace").focus_local(4)()'
+}
 
 beat_outro() {
   pause 0.4
@@ -1224,8 +1207,6 @@ post_outro() { overlay_card false; }
 
 ### recording ###
 
-clip_path() { printf '%s/%02d-%s.mkv' "$1" "$2" "$3"; }
-
 start_recorder() {
   local file=$1 source args=()
   source=$(audio_source)
@@ -1235,7 +1216,6 @@ start_recorder() {
     return 0
   fi
   rec_t0=$(date +%s.%N)
-  fast_ranges=()
   wf-recorder -o "$DEMO_OUTPUT" -r "$DEMO_FPS" "${args[@]}" -f "$file" >/dev/null 2>&1 &
   recorder_pid=$!
   sleep 0.6
@@ -1254,121 +1234,54 @@ run_beat() {
   run_hook "post_$name"
 }
 
-record_beat() {
-  local dir=$1 index=$2 name=$3 file
-  file=$(clip_path "$dir" "$index" "$name")
-  printf '== record %s -> %s\n' "$name" "$file"
-  run_hook "pre_$name"
-  start_recorder "$file"
-  "beat_$name"
-  pause "$T_CLIP_TAIL"
-  stop_recorder
-  if ! ((DRY)) && ((${#fast_ranges[@]})); then printf '%s\n' "${fast_ranges[@]}" >"$file.fast"; fi
-  fast_ranges=()
-  rec_t0=""
-  run_hook "post_$name"
-}
-
+# One continuous take: background music plays throughout, so nothing may be cut or sped up. The recorder starts
+# with the lock preview already up and stops after the end card; every other hook runs on camera.
 record() {
-  local dir i
+  local dir name
   dir=$DEMO_OUT_DIR/showcase-$(date +%Y-%m-%d_%Hh%Mm%Ss)
   ((DRY)) || mkdir -p "$dir"
   stage record
-  for i in "${!beats[@]}"; do
-    record_beat "$dir" "$i" "${beats[i]}"
+  pre_unlock
+  start_recorder "$dir/take.mkv"
+  for name in "${beats[@]}"; do
+    printf '== %s\n' "$name"
+    ((DRY)) || beat_marks+=("$name $(now_rel)")
+    [[ $name == unlock ]] || run_hook "pre_$name"
+    "beat_$name"
+    run_hook "post_$name"
   done
+  pause "$T_TAIL"
+  stop_recorder
+  ((DRY)) || printf '%s\n' "${beat_marks[@]}" >"$dir/marks.txt"
   restore
   edit "$dir"
 }
 
-# One clip to a normalised mp4: its fast ranges sped up with silence over them, the rest at normal speed with
-# its own audio, and a stereo track always present, so the concat step can join the clips without re-encoding.
-normalise_clip() {
-  local raw=$1 out=$2 filter="" pairs="" prev=0 n=0 r from to has_audio=0 a_out=""
-  local -a ranges=()
-  if [[ -s $raw.fast ]]; then mapfile -t ranges <"$raw.fast"; fi
-  if ffprobe -v error -select_streams a -show_entries stream=index -of csv=p=0 "$raw" | grep -q .; then has_audio=1; fi
-  segment() {
-    local from=$1 to=$2 fast=$3 trim atrim
-    if [[ -n $to ]]; then
-      trim="trim=$from:$to"
-      atrim="atrim=$from:$to"
-    else
-      trim="trim=start=$from"
-      atrim="atrim=start=$from"
-    fi
-    if ((fast)); then
-      local factor
-      factor=$(awk -v a="$from" -v b="$to" -v f="$DEMO_FAST" -v m="$DEMO_FAST_MAX" 'BEGIN { x = (b - a) / m; printf "%.3f", (x > f ? x : f) }')
-      filter+="[0:v]$trim,setpts=(PTS-STARTPTS)/${factor}[v$n];"
-      ((has_audio)) && filter+="aevalsrc=0:c=stereo:s=48000:d=$(awk -v a="$from" -v b="$to" -v f="$factor" 'BEGIN { printf "%.3f", (b - a) / f }')[a$n];"
-    else
-      filter+="[0:v]$trim,setpts=PTS-STARTPTS[v$n];"
-      ((has_audio)) && filter+="[0:a]$atrim,asetpts=PTS-STARTPTS,aresample=48000,aformat=channel_layouts=stereo[a$n];"
-    fi
-    pairs+="[v$n]"
-    ((has_audio)) && pairs+="[a$n]"
-    n=$((n + 1))
-  }
-  for r in "${ranges[@]}"; do
-    [[ -n $r ]] || continue
-    read -r from to <<<"$r"
-    segment "$prev" "$from" 0
-    segment "$from" "$to" 1
-    prev=$to
-  done
-  segment "$prev" "" 0
-  if ((has_audio)); then
-    filter+="${pairs}concat=n=$n:v=1:a=1[vc][a];[vc]fps=${DEMO_FPS},format=yuv420p[v]"
-    a_out="[a]"
-    ffmpeg -y -loglevel error -i "$raw" -filter_complex "$filter" -map "[v]" -map "$a_out" \
-      -c:v libx264 -preset slow -crf 18 -c:a aac -b:a 192k "$out"
-  else
-    filter+="${pairs}concat=n=$n:v=1[vc];[vc]fps=${DEMO_FPS},format=yuv420p[v]"
-    ffmpeg -y -loglevel error -i "$raw" -f lavfi -i anullsrc=r=48000:cl=stereo -filter_complex "$filter" \
-      -map "[v]" -map 1:a -c:v libx264 -preset slow -crf 18 -c:a aac -b:a 192k -shortest "$out"
-  fi
-}
-
-# Joins a recording folder's clips, in beat order, into showcase.mp4 beside them.
+# The take's audio arrives quiet (lock music and the background track); lift it to a normal listening level.
 edit() {
-  local dir=${1:?usage: showcase.sh edit <recording dir>} raw cut list
+  local dir=${1:?usage: showcase.sh edit <recording dir>}
   if ((DRY)); then
-    emit edit "normalise each clip in $dir, concat to $dir/showcase.mp4"
+    emit edit "loudness-normalise $dir/take.mkv into $dir/showcase.mp4"
     return 0
   fi
-  [[ -d $dir ]] || die "no such recording dir: $dir"
-  mkdir -p "$dir/cut"
-  list=$dir/cut/list.txt
-  : >"$list"
-  for raw in "$dir"/[0-9][0-9]-*.mkv; do
-    cut=$dir/cut/$(basename "${raw%.mkv}").mp4
-    normalise_clip "$raw" "$cut"
-    printf "file '%s'\n" "$cut" >>"$list"
-  done
-  # The UI sounds and lock music arrive quiet (both play at 0.7, music is normalised to -18 LUFS); lift the
-  # whole track to a normal listening level.
-  ffmpeg -y -loglevel error -f concat -safe 0 -i "$list" -c:v copy -af loudnorm=I=-16:TP=-1.5:LRA=11 \
-    -c:a aac -b:a 192k -movflags +faststart "$dir/showcase.mp4"
+  [[ -f $dir/take.mkv ]] || die "no take.mkv in $dir"
+  ffmpeg -y -loglevel error -i "$dir/take.mkv" -vf "fps=${DEMO_FPS},format=yuv420p" -af loudnorm=I=-16:TP=-1.5:LRA=11 \
+    -c:v libx264 -preset slow -crf 18 -c:a aac -b:a 192k -movflags +faststart "$dir/showcase.mp4"
   log "showcase: wrote $dir/showcase.mp4"
 }
 
-# The README hero: the palette, turn and montage cuts as a looping animated WebP.
+# The README hero: from the palettes beat to the end of the styles beat, as a looping animated WebP.
 hero() {
-  local dir=${1:?usage: showcase.sh hero <recording dir>} name list clip
+  local dir=${1:?usage: showcase.sh hero <recording dir>} from to
   if ((DRY)); then
-    emit hero "${hero_beats[*]} from $dir/cut -> $dir/hero.webp"
+    emit hero "${hero_beats[0]} to the end of ${hero_beats[-1]} from $dir/showcase.mp4 -> $dir/hero.webp"
     return 0
   fi
-  [[ -d $dir/cut ]] || die "run edit first: no $dir/cut"
-  list=$dir/cut/hero.txt
-  : >"$list"
-  for name in "${hero_beats[@]}"; do
-    clip=$(compgen -G "$dir/cut/[0-9][0-9]-$name.mp4" | head -n 1 || true)
-    [[ -n $clip ]] || die "missing clip for $name"
-    printf "file '%s'\n" "$clip" >>"$list"
-  done
-  ffmpeg -y -loglevel error -f concat -safe 0 -i "$list" -an -vf "fps=12,scale=1000:-1:flags=lanczos" \
+  [[ -f $dir/marks.txt && -f $dir/showcase.mp4 ]] || die "need $dir/marks.txt and showcase.mp4 (run record)"
+  from=$(awk -v b="${hero_beats[0]}" '$1 == b { print $2 }' "$dir/marks.txt")
+  to=$(awk -v b="${hero_beats[-1]}" 'found { print $2; exit } $1 == b { found = 1 }' "$dir/marks.txt")
+  [[ -n $from && -n $to ]] || die "marks.txt lacks ${hero_beats[0]} or the beat after ${hero_beats[-1]}"
+  ffmpeg -y -loglevel error -ss "$from" -to "$to" -i "$dir/showcase.mp4" -an -vf "fps=12,scale=1000:-1:flags=lanczos" \
     -c:v libwebp -quality 45 -compression_level 6 -loop 0 "$dir/hero.webp"
   log "showcase: wrote $dir/hero.webp"
 }
@@ -1380,9 +1293,9 @@ usage: showcase.sh [--dry-run] <command>
   stage            prepare $DEMO_OUTPUT: weather, DND, Moonlight with Sync Neovim, $DEMO_START_STYLE style, overlay
   beat <name>      rehearse one beat (with its off-camera setup); see: list
   all              rehearse every beat in order, no recording
-  record           stage, film one clip per beat, restore, then edit
-  edit <dir>       cut a recording folder's clips into showcase.mp4
-  hero <dir>       cut the README hero from an edited recording folder
+  record           stage, film every beat as one continuous take, restore, then edit
+  edit <dir>       loudness-normalise a recording folder's take.mkv into showcase.mp4
+  hero <dir>       cut the README hero from a recording folder
   restore          undo stage: style, palette, Sync Neovim, DND, weather, layout
   reset            end the Demo session's tmux sessions and close its windows
   list             print beat names
