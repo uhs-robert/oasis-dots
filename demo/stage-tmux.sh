@@ -19,7 +19,8 @@ ensure_dotfiles() {
   # OASIS_DEMO keeps the dashboard's recent files and projects (personal paths) off camera. Panes are addressed
   # by id because pane-base-index varies between tmux configs.
   editor_pane=$(tmux new-session -d -P -F '#{pane_id}' -s dotfiles -n editor -c "$repo_dir" "OASIS_DEMO=1 nvim")
-  tmux split-window -h -t "$editor_pane" -c "$repo_dir" yazi
+  # yazi opens on the shell's own config: the repo root would show untracked notes in the listing.
+  tmux split-window -h -t "$editor_pane" -c "$repo_dir/home/quickshell/.config/quickshell" yazi
   tmux select-pane -t "$editor_pane"
 }
 
