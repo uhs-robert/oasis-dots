@@ -1019,7 +1019,8 @@ pre_region() {
     region_steps=("SHIFT + H|+h|3" "V|v|1" "I|i|2" "SHIFT + L|+l|4" "CTRL + L|^l|3")
     return 0
   fi
-  pause 0.5
+  # Unfocused windows are translucent; wait out the fade so the screenshot shows the pane's own background.
+  pause 1
   local rect
   rect=$(logo_rect) || die "could not find the dashboard logo; set DEMO_REGION_RECT=\"x y w h\""
   log "showcase: logo at $rect"
@@ -1075,7 +1076,8 @@ beat_keeptabs() {
   pause "$T_ANSWER_HOLD"
 }
 
-pre_outro() { go_slot 2; }
+# The agent has slot 2, so the end card goes over an empty slot 3.
+pre_outro() { go_slot 3; }
 
 beat_outro() {
   pause 0.4

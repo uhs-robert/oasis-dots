@@ -6,18 +6,18 @@ Needs `hyprctl`, `jq`, `wtype`, `qs`, `tmux`, `grim`, `python3` with PIL, plus `
 
 ## The stage
 
-The video opens on an empty `DEMO_OUTPUT` and launches a session named "Demo" from the session picker. That session is personal config, not part of this repo: add it in your `custom/sessions.lua` with three windows on one workspace of the output, so `:layout` has something to re-tile:
+The video opens on an empty `DEMO_OUTPUT` and launches a session named "Demo" from the session picker. That session is personal config, not part of this repo: add it in your `custom/sessions.lua` with the editor and the repo page on the output's first workspace, so `:layout` has something to re-tile, and the agent on its second:
 
 ```lua
 local demo_stage = os.getenv("HOME") .. "/dotfiles/demo/stage-tmux.sh"
 Sessions.add("🌵 Demo", {
   Sessions.term({ monitor = 2, ws = 1, exec = demo_stage .. " dotfiles", class_suffix = "tmux-dotfiles" }),
   { monitor = 2, ws = 1, cmd = "firefox --private-window https://github.com/uhs-robert/oasis-dots", class = "firefox", delay = 1500 },
-  Sessions.term({ monitor = 2, ws = 1, exec = demo_stage .. " agent", class_suffix = "tmux-agent", delay = 3000 }),
+  Sessions.term({ monitor = 2, ws = 2, exec = demo_stage .. " agent", class_suffix = "tmux-agent", delay = 3000 }),
 })
 ```
 
-`stage-tmux.sh` builds the two tmux sessions in this repo: `dotfiles` (Neovim's dashboard beside yazi) and `agent` (Claude Code on Sonnet, `DEMO_AGENT_CMD`). Their names are also the kitty titles, which the overview beat searches for.
+`stage-tmux.sh` builds the two tmux sessions in this repo: `dotfiles` (Neovim's dashboard beside yazi on `home/`) and `agent` (Claude Code on Sonnet, `DEMO_AGENT_CMD`). Their names are also the kitty titles, which the overview beat searches for.
 
 ## Usage
 
