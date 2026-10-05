@@ -939,7 +939,8 @@ logo_rect() {
   win=$(hyprctl clients -j | jq -r --argjson m "$(out_id)" --argjson mx "$(hyprctl monitors -j | jq --arg o "$DEMO_OUTPUT" '.[] | select(.name == $o) | .x')" --argjson my "$(hyprctl monitors -j | jq --arg o "$DEMO_OUTPUT" '.[] | select(.name == $o) | .y')" \
     '[.[] | select(.class == "kitty-tmux-dotfiles" and .monitor == $m)][0] | "\(.at[0] - $mx) \(.at[1] - $my) \(.size[0]) \(.size[1])"')
   [[ $win != "null" && -n $win ]] || die "no kitty-tmux-dotfiles window on $DEMO_OUTPUT"
-  pane=$(tmux display -p -t =dotfiles:editor.0 '#{pane_left} #{pane_width} #{window_width}')
+  # Neovim is the left pane; pane-base-index varies between tmux configs, so find it by position.
+  pane=$(tmux list-panes -t =dotfiles:editor -F '#{pane_left} #{pane_width} #{window_width}' | awk '$1 == 0' | head -n 1)
   python3 - "$shot" "$win" "$pane" <<'PY'
 import sys
 from PIL import Image

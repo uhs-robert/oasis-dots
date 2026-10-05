@@ -15,10 +15,12 @@ DEMO_AGENT_CMD=${DEMO_AGENT_CMD:-claude --model sonnet}
 # searches for; keep them unique among open windows.
 ensure_dotfiles() {
   tmux has-session -t =dotfiles 2>/dev/null && return 0
-  # OASIS_DEMO keeps the dashboard's recent files and projects (personal paths) off camera.
-  tmux new-session -d -s dotfiles -n editor -c "$repo_dir" "OASIS_DEMO=1 nvim"
-  tmux split-window -h -t =dotfiles:editor -c "$repo_dir" yazi
-  tmux select-pane -t =dotfiles:editor.0
+  local editor_pane
+  # OASIS_DEMO keeps the dashboard's recent files and projects (personal paths) off camera. Panes are addressed
+  # by id because pane-base-index varies between tmux configs.
+  editor_pane=$(tmux new-session -d -P -F '#{pane_id}' -s dotfiles -n editor -c "$repo_dir" "OASIS_DEMO=1 nvim")
+  tmux split-window -h -t "$editor_pane" -c "$repo_dir" yazi
+  tmux select-pane -t "$editor_pane"
 }
 
 ensure_agent() {
