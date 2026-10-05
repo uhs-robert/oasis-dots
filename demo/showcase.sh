@@ -44,7 +44,7 @@ T_KEY_GAP=${T_KEY_GAP:-0.1}
 T_SETTLE=${T_SETTLE:-0.3}
 T_TYPE_DELAY_MS=${T_TYPE_DELAY_MS:-70}
 T_CLIP_TAIL=${T_CLIP_TAIL:-0.3}
-# The title screen is the only page with music unless the imported MGS2 audio includes the menu theme.
+# Long enough to hear the MGS2 title theme, which the preview plays on its title screen.
 T_LOGIN_INTRO=${T_LOGIN_INTRO:-3.5}
 T_LOGIN_TITLE_TURN=${T_LOGIN_TITLE_TURN:-2.0}
 T_LOGIN_PAGE_TURN=${T_LOGIN_PAGE_TURN:-1.45}
@@ -583,8 +583,8 @@ save_state() {
   dnd_on && dnd=true
   jq -n --arg style "$(qs_query call style get)" --arg palette "$(current_palette)" \
     --arg sync "$(cat "$hypr_state_dir/nvim_sync" 2>/dev/null || echo off)" --argjson dnd "$dnd" \
-    --arg pack "$(qs_query call style get_effects_pack)" \
-    '{style: $style, palette: $palette, sync: $sync, dnd: $dnd, pack: $pack}' >"$state_dir/saved.json"
+    --arg pack "$(qs_query call style get_effects_pack)" --arg ui "$(qs_query call style get_ui_sounds)" \
+    '{style: $style, palette: $palette, sync: $sync, dnd: $dnd, pack: $pack, ui: $ui}' >"$state_dir/saved.json"
 }
 
 # NotificationsIpc only toggles, so compare with the current state first.
@@ -714,8 +714,8 @@ stage() {
   save_state
   stage_weather
   set_dnd true
-  # Each style's own sounds, whatever pack the owner normally uses.
-  qs_ipc call style set_effects_pack "" >/dev/null
+  # Interface sounds stay off for the take; the lock music and the background music carry the audio.
+  qs_ipc call style set_ui_sounds false
   apply_theme oasis_moonlight on
   qs_ipc call style set "$DEMO_START_STYLE"
   wait_style "$DEMO_START_STYLE"
@@ -776,6 +776,7 @@ restore() {
     sync=$(jq -r .sync "$state_dir/saved.json")
     dnd=$(jq -r .dnd "$state_dir/saved.json")
     "$qs_ipc_bin" call style set_effects_pack "$(jq -r '.pack // ""' "$state_dir/saved.json")" >/dev/null 2>&1 || true
+    [[ $(jq -r '.ui // ""' "$state_dir/saved.json") != true ]] || "$qs_ipc_bin" call style set_ui_sounds true >/dev/null 2>&1 || true
     [[ -z $style ]] || "$qs_ipc_bin" call style set "$style" >/dev/null 2>&1 || true
     set_dnd "$dnd"
     if [[ -n $palette ]]; then apply_theme "$palette" "$sync"; else hyprctl reload >/dev/null; fi
@@ -1042,11 +1043,14 @@ beat_prompt() {
   type_text "layout"
   press "ENTER" @Return
   pause "$T_PROMPT_HOLD"
-  # Tab walks the layouts (dwindle, master, scrolling, monocle) and Shift+Tab steps back onto scrolling.
-  press "TAB" @Tab @Tab @Tab @Tab
+  # Tab starts at the item nearest the input and walks up (monocle, scrolling, master); Shift+Tab steps back onto
+  # scrolling. The first Enter settles the pick, the second runs the command.
+  press "TAB" @Tab @Tab @Tab
   pause "$T_PROMPT_HOLD"
   press "SHIFT + TAB" +@Tab
   pause "$T_PROMPT_HOLD"
+  press "ENTER" @Return
+  pause "$T_KEY_GAP"
   press "ENTER" @Return
   wait_layer_gone quickshell-popup
   pause "$T_LAYOUT_HOLD"
