@@ -52,7 +52,8 @@ T_OVERVIEW_STEP=${T_OVERVIEW_STEP:-0.6}
 T_SEARCH_HOLD=${T_SEARCH_HOLD:-1.0}
 T_PROMPT_HOLD=${T_PROMPT_HOLD:-1.4}
 T_LAYOUT_HOLD=${T_LAYOUT_HOLD:-2.0}
-T_SHOT_STEP=${T_SHOT_STEP:-0.18}
+T_SHOT_STEP=${T_SHOT_STEP:-0.12}
+T_SHOT_KEY_GAP=${T_SHOT_KEY_GAP:-0.04}
 T_TOAST_HOLD=${T_TOAST_HOLD:-1.8}
 T_AGENT_TIMEOUT=${T_AGENT_TIMEOUT:-180}
 T_PULSE_HOLD=${T_PULSE_HOLD:-2.0}
@@ -62,7 +63,7 @@ T_OUTRO_HOLD=${T_OUTRO_HOLD:-4.5}
 
 beats=(unlock session resize palettes turn
   montage_ps1 montage_ff7 montage_goldeneye montage_gameboy montage_metroid montage_tie montage_back
-  kickoff overview prompt region keeptabs outro)
+  kickoff overview region prompt keeptabs outro)
 # The README hero is cut from these.
 hero_beats=(palettes turn montage_ps1 montage_ff7 montage_goldeneye montage_gameboy montage_metroid montage_tie montage_back)
 stage_classes=(kitty-tmux-dotfiles firefox kitty-tmux-agent)
@@ -1033,6 +1034,7 @@ region_start() {
     then "\(.x - $m.x) \(.y - $m.y)" else "\($m.width / 2) \($m.height / 2)" end'
 }
 
+# Runs before the prompt beat: `:layout scrolling` narrows the editor and would crop the logo.
 region_steps=()
 
 pre_region() {
@@ -1053,6 +1055,8 @@ pre_region() {
 # single-pixel nudges, confirm, then copy for the toast.
 beat_region() {
   local step label token count tokens
+  # The plan runs to dozens of key presses; repeats of one key go quicker than the rest of the take.
+  local T_KEY_GAP=$T_SHOT_KEY_GAP
   ipc "PRINT" call screenshot select false toolbar
   wait_layer quickshell-region
   pause 1
