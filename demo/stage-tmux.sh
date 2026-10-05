@@ -20,7 +20,8 @@ ensure_dotfiles() {
   # by id because pane-base-index varies between tmux configs.
   editor_pane=$(tmux new-session -d -P -F '#{pane_id}' -s dotfiles -n editor -c "$repo_dir" "OASIS_DEMO=1 nvim")
   # yazi opens on the Stow packages rather than the repo root, which holds untracked notes.
-  tmux split-window -h -t "$editor_pane" -c "$repo_dir/home" yazi
+  # A narrow yazi leaves Neovim room for the dashboard logo once the resize beat widens the window.
+  tmux split-window -h -l 35% -t "$editor_pane" -c "$repo_dir/home" yazi
   tmux select-pane -t "$editor_pane"
 }
 
