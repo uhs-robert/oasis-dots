@@ -6,8 +6,11 @@ cmd=$(jq -r '.tool_input.command // empty')
 
 live=$(readlink -f "$HOME/.config/quickshell" 2>/dev/null) || exit 0
 repo=$(git -C "$live" rev-parse --show-toplevel 2>/dev/null) || exit 0
-moved_at=$(git -C "$repo" log -g -1 --format=%ct HEAD 2>/dev/null) || exit 0
-((moved_at >= $(date +%s) - 120)) || exit 0
+# When HEAD moved here (the reflog entry), not the commit's own date: a PR merged on GitHub
+# an hour ago and pulled now must still count.
+moved_at=$(git -C "$repo" log -g -1 --date=unix --format=%gd HEAD 2>/dev/null) || exit 0
+moved_at=${moved_at//[^0-9]/}
+[[ -n $moved_at ]] && ((moved_at >= $(date +%s) - 120)) || exit 0
 git -C "$repo" diff --quiet 'HEAD@{1}' HEAD -- home/quickshell 2>/dev/null && exit 0
 
 say() { jq -n --arg c "$1" '{systemMessage: $c, hookSpecificOutput: {hookEventName: "PostToolUse", additionalContext: $c}}'; }
