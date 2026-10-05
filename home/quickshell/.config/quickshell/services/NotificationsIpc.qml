@@ -8,6 +8,10 @@ IpcHandler {
         NotificationState.toggle_dnd();
     }
 
+    function get_dnd(): bool {
+        return NotificationState.dnd;
+    }
+
     function clear_all(): void {
         NotificationState.clear_all();
     }
