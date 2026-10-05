@@ -419,7 +419,8 @@ go_slot() {
   hypr_eval "hl.dispatch(hl.dsp.focus({ workspace = $(slot_ws "$1") }))"
 }
 
-class_addr() { hyprctl clients -j | jq -r --arg c "$1" '[.[] | select(.class == $c)][0].address // empty'; }
+# Only the output's own windows: the owner's other Firefox windows share the class.
+class_addr() { hyprctl clients -j | jq -r --arg c "$1" --argjson m "$(out_id)" '[.[] | select(.class == $c and .monitor == $m)][0].address // empty'; }
 
 focus_class() {
   local cls=$1 addr i
