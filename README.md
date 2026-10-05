@@ -14,7 +14,7 @@
 <p align="center">Oasis-themed dotfiles for Arch Linux and Hyprland using Quickshell.</p>
 
 <p align="center">
-  <a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/hero-v2.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/hero-v2.webp" width="100%" alt="Switching styles, the Leader menu, the overview and a region selection with zoom"></a>
+  <a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/hero-v3.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/hero-v3.webp" width="100%" alt="Switching styles, the Leader menu, the overview and a region selection with zoom"></a>
 </p>
 
 ## 🖥️ Overview
@@ -154,6 +154,9 @@ Just a few example weather modules:
     <td align="center" width="33%"><a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/weather-tie.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/weather-tie.webp" width="100%" alt="TIE Fighter"></a><br><strong>TIE Fighter</strong></td>
     <td align="center" width="33%"><a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/weather-metroid.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/weather-metroid.webp" width="100%" alt="Metroid"></a><br><strong>Metroid</strong></td>
   </tr>
+  <tr>
+    <td align="center" width="33%"><a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/weather-reticle.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/weather-reticle.webp" width="100%" alt="Reticle"></a><br><strong>Reticle</strong></td>
+  </tr>
 </table>
 
 </details>
@@ -208,6 +211,7 @@ Password entry works like Vim. While nothing is typed you are in NORMAL mode, wh
   </tr>
   <tr>
     <td align="center" width="50%"><a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/lock-tie.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/lock-tie.webp" width="100%" alt="TIE Fighter"></a><br><strong>TIE Fighter</strong><br><em>Targeting computer and clearance code</em></td>
+    <td align="center" width="50%"><a href="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/lock-goldeneye.webp"><img src="https://raw.githubusercontent.com/uhs-robert/oasis-dots/assets/docs/lock-goldeneye.webp" width="100%" alt="GoldenEye 007"></a><br><strong>GoldenEye 007</strong><br><em>The pause watch, raised on the arm before you type</em></td>
   </tr>
 </table>
 
