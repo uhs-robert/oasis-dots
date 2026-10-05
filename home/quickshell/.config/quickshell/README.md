@@ -4,7 +4,7 @@ The desktop shell for this Hyprland setup, written for [Quickshell](https://quic
 
 Tested with Quickshell 0.3.1 (the `quickshell` package in the Arch repos); the installer warns if yours is older.
 
-Hyprland starts it with `qs -n` (see `home/hypr/.config/hypr/config/autostart/`). Hyprland binds reach it over IPC. When it isn't running, the pickers fall back to the menu in `Config.app.menu` (rofi by default; fuzzel and wofi also work through `Config.app.dmenu_cmd`, see `home/hypr/.config/hypr/config/init.lua`) and the lock to hyprlock.
+Hyprland starts it with `qs -n` (see `home/hypr/.config/hypr/config/autostart/`). Hyprland binds reach it over IPC. When it isn't running, the pickers fall back to the menu in `Config.app.menu` (rofi by default; what fuzzel, wofi and other menus cover is in `home/hypr/.config/hypr/README.md`) and the lock to hyprlock.
 
 ## Layout
 
