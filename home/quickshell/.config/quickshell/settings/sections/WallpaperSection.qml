@@ -1,5 +1,6 @@
 // home/quickshell/.config/quickshell/settings/sections/WallpaperSection.qml
 import QtQuick
+import Quickshell
 import QtQuick.Layouts
 import "../../theme"
 import "../../services"
@@ -141,13 +142,14 @@ RowsSection {
                     id: card
                     required property var modelData
 
-                    Layout.fillWidth: true
-                    Layout.preferredWidth: 1
+                    Layout.fillWidth: false
+                    Layout.preferredWidth: Style.px(176)
+                    Layout.alignment: Qt.AlignTop
                     spacing: 2
 
                     Rectangle {
                         Layout.fillWidth: true
-                        Layout.preferredHeight: Math.round(width * 9 / 16)
+                        Layout.preferredHeight: Style.px(99)
                         color: Theme.bg_shadow
                         border.width: 1
                         border.color: Qt.alpha(root.st.text_muted, 0.4)
@@ -168,7 +170,7 @@ RowsSection {
                     Text {
                         Layout.fillWidth: true
                         text: card.modelData.title + (card.modelData.path !== "" ? " · " + WallpaperSettings.base_name(card.modelData.path) : "")
-                        elide: Text.ElideMiddle
+                        elide: Text.ElideRight
                         color: root.st.text_dim
                         font.family: root.st.font_family
                         font.pixelSize: root.st.fs(-3)
@@ -180,8 +182,8 @@ RowsSection {
         Text {
             visible: !root.picking
             Layout.fillWidth: true
-            text: "Collection: " + WallpaperSettings.collection + ". Saved to " + Paths.hypr_state_dir + "/wallpaper.json"
-            wrapMode: Text.WrapAnywhere
+            text: "Collection  " + WallpaperSettings.collection.replace(Quickshell.env("HOME"), "~")
+            elide: Text.ElideMiddle
             color: root.st.text_dim
             font.family: root.st.font_family
             font.pixelSize: root.st.fs(-3)
