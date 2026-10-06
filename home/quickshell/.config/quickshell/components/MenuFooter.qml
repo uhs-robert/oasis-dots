@@ -15,12 +15,16 @@ Item {
     property string text: ""
     property bool wrap: root.st.footer_wrap
     property bool centered: false
+    // Off for a hint line inside a pane, which has its own rule and keeps showing while the popup searches.
+    property bool ruled: true
+    property bool follows_search: true
     readonly property int text_px: root.st.footer_size > 0 ? root.st.footer_size : root.st.fs(-4)
     readonly property int small_px: root.st.footer_size > 0 ? root.st.footer_size : root.st.fs(-5)
     readonly property bool arrows: root.st.footer_arrow !== ""
     // Tabs that show their number already teach "1-N select".
     readonly property string filtered_text: root.st.tab_keys ? root.text.split(" · ").filter(g => !/^1-\d select$/.test(g)).join(" · ") : root.text
-    readonly property int rule_gap: root.st.footer_rule ? (root.st.footer_moon ? 11 : root.st.footer_compass ? 10 : 5) : 0
+    readonly property bool show_rule: root.ruled && root.st.footer_rule
+    readonly property int rule_gap: root.show_rule ? (root.st.footer_moon ? 11 : root.st.footer_compass ? 10 : 5) : 0
     readonly property var groups: KeyHints.parse(root.filtered_text)
     // While the enclosing popup searches, its query line takes this footer's place at the same height.
     readonly property var popup: {
@@ -29,7 +33,7 @@ Item {
         }
         return null;
     }
-    readonly property bool searching: !!root.popup && root.popup.search_shown
+    readonly property bool searching: root.follows_search && !!root.popup && root.popup.search_shown
     readonly property int match_count: root.searching ? root.popup.search_matches.length : 0
     readonly property int match_position: root.searching ? root.popup.search_matches.indexOf(root.popup.search_cursor) : -1
     // Vim-modal popups (search_starts_open) show an INSERT chip and a mode-specific hint in the query line.
@@ -41,7 +45,7 @@ Item {
     clip: !root.wrap
 
     Loader {
-        active: root.st.footer_rule && root.st.footer_moon
+        active: root.show_rule && root.st.footer_moon
         width: parent.width
         sourceComponent: Oasis.MoonRule {
             color: root.st.footer_rule_color
@@ -49,7 +53,7 @@ Item {
     }
 
     Loader {
-        active: root.st.footer_rule && root.st.footer_compass
+        active: root.show_rule && root.st.footer_compass
         width: parent.width
         sourceComponent: Metroid.CompassRule {
             color: root.st.footer_rule_color
@@ -57,20 +61,20 @@ Item {
     }
 
     Rectangle {
-        visible: root.st.footer_rule && root.st.footer_rule_solid && !root.st.footer_moon
+        visible: root.show_rule && root.st.footer_rule_solid && !root.st.footer_moon
         width: parent.width
         height: 1
         color: root.st.footer_rule_color
     }
 
     Row {
-        visible: root.st.footer_rule && !root.st.footer_rule_solid && !root.st.footer_compass
+        visible: root.show_rule && !root.st.footer_rule_solid && !root.st.footer_compass
         width: parent.width
         spacing: 3
         clip: true
 
         Repeater {
-            model: root.st.footer_rule && !root.st.footer_rule_solid && !root.st.footer_compass ? Math.max(0, Math.ceil(root.width / 7)) : 0
+            model: root.show_rule && !root.st.footer_rule_solid && !root.st.footer_compass ? Math.max(0, Math.ceil(root.width / 7)) : 0
 
             Rectangle {
                 width: 4
