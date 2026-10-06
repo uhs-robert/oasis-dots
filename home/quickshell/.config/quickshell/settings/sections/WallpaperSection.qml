@@ -16,11 +16,14 @@ RowsSection {
     property var awaiting: null
     readonly property string hint: WallpaperSettings.notice !== "" ? WallpaperSettings.notice : WallpaperSettings.alive ? "" : "The rotator is not running; changes apply when it starts."
 
+    section_keys: "o open folder"
     footer_hint: root.current_monitor ? "j/k move · h/l change · Enter image · p pin current · r rotate " + root.current_monitor.name + " · o open folder · Esc sections · q close" : "j/k move · h/l change · Enter list · r rotate all · o open folder · Esc sections · q close"
 
-    function toggle_row(label, key) {
+    function toggle_row(label, key, desc) {
         return {
             label: label,
+            desc: desc,
+            keys: "h/l toggle · r rotate all",
             values: () => ["on", "off"],
             text: v => v,
             value: () => WallpaperSettings.effective(key) ? "on" : "off",
@@ -31,6 +34,8 @@ RowsSection {
     function monitor_row(m) {
         return {
             label: m.model !== "" ? m.name + " · " + m.model : m.name,
+            desc: "Automatic follows the rotation. Pinned keeps one image on this screen.",
+            keys: "h/l mode · Enter choose image · p pin current · r rotate " + m.name,
             values: () => ["auto", "pinned"],
             text: v => v === "pinned" ? "Pinned" : "Automatic",
             value: () => m.key in WallpaperSettings.pins ? "pinned" : "auto",
@@ -41,9 +46,11 @@ RowsSection {
     }
 
     rows: [
-        root.toggle_row("Automatic rotation", "rotation"),
+        root.toggle_row("Automatic rotation", "rotation", "Change wallpapers on a timer. Off keeps each image until you rotate."),
         {
             label: "Interval",
+            desc: "Minutes between rotations. A new part of the day also rotates.",
+            keys: "h/l change · Enter list · r rotate all",
             values: () => {
                 const now = WallpaperSettings.effective("interval_minutes");
                 const all = WallpaperSettings.interval_choices.indexOf(now) >= 0 ? WallpaperSettings.interval_choices : WallpaperSettings.interval_choices.concat([now]);
@@ -53,9 +60,9 @@ RowsSection {
             value: () => WallpaperSettings.effective("interval_minutes"),
             set: v => WallpaperSettings.set_value("interval_minutes", v)
         },
-        root.toggle_row("Time of day", "time_of_day_enabled"),
-        root.toggle_row("Seasons", "seasons_enabled"),
-        root.toggle_row("Weather", "weather_enabled")
+        root.toggle_row("Time of day", "time_of_day_enabled", "Use the Dawn, Day, Evening or Night folder. Off uses the whole collection."),
+        root.toggle_row("Seasons", "seasons_enabled", "Add the current season's folder to Any. Off uses only Any."),
+        root.toggle_row("Weather", "weather_enabled", "Mix in the Rain, Snow or Cloudy folder while that weather is current.")
     ].concat(root.monitors.map(m => root.monitor_row(m)))
 
     function pin_current(m) {
@@ -133,23 +140,26 @@ RowsSection {
                     const m = root.current_monitor;
                     if (!m) return [];
                     const entry = WallpaperSettings.live[m.name];
-                    const out = [{ title: "Showing", path: entry && typeof entry.path === "string" ? entry.path : "" }];
-                    if (m.key in WallpaperSettings.pins) out.push({ title: "Pinned", path: WallpaperSettings.pins[m.key] });
-                    return out;
+                    const pinned = m.key in WallpaperSettings.pins;
+                    return [
+                        { title: "Showing", path: entry && typeof entry.path === "string" ? entry.path : "" },
+                        { title: pinned ? "Pinned" : "Not pinned", path: pinned ? WallpaperSettings.pins[m.key] : "" }
+                    ];
                 }
 
                 ColumnLayout {
                     id: card
                     required property var modelData
 
-                    Layout.fillWidth: false
-                    Layout.preferredWidth: Style.px(176)
+                    // Equal halves: the shared preferred width splits the row evenly.
+                    Layout.fillWidth: true
+                    Layout.preferredWidth: 1
                     Layout.alignment: Qt.AlignTop
                     spacing: 2
 
                     Rectangle {
                         Layout.fillWidth: true
-                        Layout.preferredHeight: Style.px(99)
+                        Layout.preferredHeight: Math.round(width * 9 / 16)
                         color: Theme.bg_shadow
                         border.width: 1
                         border.color: Qt.alpha(root.st.text_muted, 0.4)
