@@ -17,13 +17,13 @@ RowsSection {
     readonly property string hint: WallpaperSettings.notice !== "" ? WallpaperSettings.notice : WallpaperSettings.alive ? "" : "The rotator is not running; changes apply when it starts."
 
     section_keys: "o open folder"
-    footer_hint: root.current_monitor ? "j/k move · h/l change · Enter image · p pin current · r rotate " + root.current_monitor.name + " · o open folder · Esc sections · q close" : "j/k move · h/l change · Enter list · r rotate all · o open folder · Esc sections · q close"
+    footer_hint: root.current_monitor ? "j/k move · H/L change · Enter image · p pin current · r rotate " + root.current_monitor.name + " · o open folder · h/Esc sections · q close" : "j/k move · H/L change · Enter list · r rotate all · o open folder · h/Esc sections · q close"
 
     function toggle_row(label, key, desc) {
         return {
             label: label,
             desc: desc,
-            keys: "h/l toggle · r rotate all",
+            keys: "H/L toggle · r rotate all",
             values: () => ["on", "off"],
             text: v => v,
             value: () => WallpaperSettings.effective(key) ? "on" : "off",
@@ -35,7 +35,7 @@ RowsSection {
         return {
             label: m.model !== "" ? m.name + " · " + m.model : m.name,
             desc: "Automatic follows the rotation. Pinned keeps one image on this screen.",
-            keys: "h/l mode · Enter choose image · p pin current · r rotate " + m.name,
+            keys: "H/L mode · Enter choose image · p pin current · r rotate " + m.name,
             values: () => ["auto", "pinned"],
             text: v => v === "pinned" ? "Pinned" : "Automatic",
             value: () => m.key in WallpaperSettings.pins ? "pinned" : "auto",
@@ -50,7 +50,7 @@ RowsSection {
         {
             label: "Interval",
             desc: "Minutes between rotations. A new part of the day also rotates.",
-            keys: "h/l change · Enter list · r rotate all",
+            keys: "H/L change · Enter list · r rotate all",
             values: () => {
                 const now = WallpaperSettings.effective("interval_minutes");
                 const all = WallpaperSettings.interval_choices.indexOf(now) >= 0 ? WallpaperSettings.interval_choices : WallpaperSettings.interval_choices.concat([now]);
