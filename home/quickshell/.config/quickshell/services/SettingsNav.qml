@@ -19,10 +19,10 @@ Singleton {
 
     // Opens on `screen` without taking keyboard or pointer input; false when that screen does not exist.
     function show(section_id, screen_name) {
+        // Checked before `requested` is set, since setting it switches an open popup's section at once.
+        if (!Quickshell.screens.some(s => s.name === screen_name)) return false;
         root.requested = section_id;
-        const opened = Popups.open_on("settings", screen_name, true);
-        if (!opened) root.requested = "";
-        return opened;
+        return Popups.open_on("settings", screen_name, true);
     }
 
     function command(name, value) {

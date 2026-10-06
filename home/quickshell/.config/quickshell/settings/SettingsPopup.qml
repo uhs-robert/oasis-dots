@@ -112,7 +112,9 @@ Popup {
         const pane = root.pane;
         if (!root.is_open || !root.in_pane || !pane) return;
         if (name === "back") {
+            const editing = pane.editing === true || (typeof pane.edit_key === "string" && pane.edit_key !== "");
             if (pane.picking) pane.hide_picker();
+            else if (editing && typeof pane.end_edit === "function") pane.end_edit();
             else root.leave_pane();
             return;
         }

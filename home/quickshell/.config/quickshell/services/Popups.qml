@@ -120,28 +120,35 @@ Singleton {
             open_screen_name = found ? found.screen_name : (screen_name || (Hyprland.focusedMonitor ? Hyprland.focusedMonitor.name : ""));
             if (found && !back) back = found.back_to || "";
         }
-        root.hands_off = !!hands_off;
         load_name = name;
         open_name = name;
         back_name = back;
+        // After open_name moves, so a hands-off popup being replaced keeps its latched flag through its close animation.
+        root.hands_off = !!hands_off;
     }
 
     // Opens on the named screen, never the focused one: anchored to that bar's module when it has one, else unanchored.
     // False when no such screen exists.
     function open_on(name, screen_name, hands_off) {
         if (!Quickshell.screens.some(s => s.name === screen_name)) return false;
+        // An open popup only latches its screen as it opens, so moving it to another screen means closing and reopening.
+        if (root.open_name === name && root.open_screen_name !== screen_name) {
+            root.close();
+            Qt.callLater(() => root.open_on(name, screen_name, hands_off));
+            return true;
+        }
         const found = root.find_in_screen(screen_name, name);
         if (found) {
             root.open(name, found.item, root.anchor_color(found), screen_name, found.back_to, hands_off);
             return true;
         }
-        root.hands_off = !!hands_off;
         open_anchor = null;
         open_color = Theme.bg_mantle;
         open_screen_name = screen_name;
         load_name = name;
         open_name = name;
         back_name = "";
+        root.hands_off = !!hands_off;
         return true;
     }
 
