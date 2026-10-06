@@ -578,9 +578,20 @@ function Rotate.start(opts)
     end
 
     local new_pins = SettingsPage.usable(decoded, cfg, util)
-    local changed = {}
-    for _, mon in ipairs(Apply.list_monitors(cfg, util)) do
-      if new_pins[mon.description] ~= before_pins[mon.description] then changed[mon.name] = true end
+    local changed, newly_pinned = {}, {}
+    local monitors = Apply.list_monitors(cfg, util)
+    for _, mon in ipairs(monitors) do
+      local pin = new_pins[mon.description]
+      if pin ~= before_pins[mon.description] then
+        changed[mon.name] = true
+        if pin then newly_pinned[pin] = true end
+      end
+    end
+    -- An automatic monitor already showing a newly pinned image re-picks, so the two never match.
+    for _, mon in ipairs(monitors) do
+      if not new_pins[mon.description] and newly_pinned[APPLIED_WALLPAPERS[mon.name] or ""] then
+        changed[mon.name] = true
+      end
     end
     if next(changed) then cycle("partial", changed) end
     if before.rotation ~= cfg.rotation or before.interval_minutes ~= cfg.interval_minutes then schedule() end
