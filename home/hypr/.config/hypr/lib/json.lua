@@ -90,4 +90,52 @@ function Json.decode(str)
   return value
 end
 
+local ENCODE_ESCAPES =
+  { ['"'] = '\\"', ["\\"] = "\\\\", ["\b"] = "\\b", ["\f"] = "\\f", ["\n"] = "\\n", ["\r"] = "\\r", ["\t"] = "\\t" }
+
+local function encode_string(str)
+  local escaped = str:gsub('[%c"\\]', function(ch) return ENCODE_ESCAPES[ch] or string.format("\\u%04x", ch:byte()) end)
+  return '"' .. escaped .. '"'
+end
+
+local function is_array(tbl)
+  local count = 0
+  for _ in pairs(tbl) do
+    count = count + 1
+  end
+  return count > 0 and count == #tbl
+end
+
+local function encode_value(value)
+  local kind = type(value)
+  if kind == "string" then return encode_string(value) end
+  if kind == "number" then
+    return value == math.floor(value) and string.format("%d", value) or string.format("%.14g", value)
+  end
+  if kind == "boolean" then return tostring(value) end
+  if kind ~= "table" then return "null" end
+  local parts = {}
+  if is_array(value) then
+    for _, item in ipairs(value) do
+      parts[#parts + 1] = encode_value(item)
+    end
+    return "[" .. table.concat(parts, ",") .. "]"
+  end
+  local keys = {}
+  for key in pairs(value) do
+    keys[#keys + 1] = tostring(key)
+  end
+  table.sort(keys)
+  for _, key in ipairs(keys) do
+    parts[#parts + 1] = encode_string(key) .. ":" .. encode_value(value[key])
+  end
+  return "{" .. table.concat(parts, ",") .. "}"
+end
+
+--- Encode a table, string, number or boolean as compact JSON with sorted object keys.
+--- An empty table becomes `{}`.
+--- @param value any
+--- @return string
+function Json.encode(value) return encode_value(value) end
+
 return Json

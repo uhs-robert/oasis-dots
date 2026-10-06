@@ -8,6 +8,9 @@ local CUSTOM_DIR = script_dir .. "../../../custom/"
 local Solar = require("wallpaper.lib.solar") ---@class Solar
 local Apply = require("wallpaper.lib.apply") ---@class Apply
 local Audit = require("wallpaper.lib.audit") ---@class Audit
+local SettingsPage = require("wallpaper.lib.settings_page") ---@class SettingsPage
+
+local POLL_SECONDS = 2
 
 --- @class Rotate
 --- @field start fun(opts?: { argv?: string[], lock_path?: string, once?: boolean, start_hyprpaper?: boolean }): boolean, string|nil Main entry point; parses args, loads config, runs one cycle or the rotation loop
@@ -187,12 +190,32 @@ local function readable(path)
   return true
 end
 
+--- Layer the Settings page values over `cfg`, skipping keys a CLI flag set.
+--- A key the page no longer sets falls back to its value from the config files.
+--- @param cfg table wallpaper config, changed in place; `cfg.file_settings` holds the config-file values
+--- @param settings table result of `SettingsPage.settings`
+--- @param overrides table CLI-derived overrides
+local function apply_settings(cfg, settings, overrides)
+  for _, key in ipairs(SettingsPage.SETTING_KEYS) do
+    if overrides[key] == nil then
+      if settings[key] ~= nil then
+        cfg[key] = settings[key]
+      else
+        cfg[key] = cfg.file_settings[key]
+      end
+    end
+  end
+  cfg.interval_seconds = cfg.interval_minutes * 60
+end
+
 --- Load and merge configuration. Layers `default_config`, then the user file
---- (`--config PATH`, else `custom/wallpaper.lua` when present), then `overrides`.
+--- (`--config PATH`, else `custom/wallpaper.lua` when present), then the Settings
+--- page state, then `overrides`.
 --- @param opts table|nil `{ config_path?: string }`
---- @param overrides table|nil CLI-derived overrides to layer last
+--- @param overrides table CLI-derived overrides to layer last
+--- @param settings table result of `SettingsPage.settings`
 --- @return table merged config
-local function load_config(opts, overrides)
+local function load_config(opts, overrides, settings)
   opts = opts or {}
   local cfg_path = opts.config_path
   if not cfg_path and readable(CUSTOM_DIR .. "wallpaper.lua") then cfg_path = CUSTOM_DIR .. "wallpaper.lua" end
@@ -209,9 +232,13 @@ local function load_config(opts, overrides)
   end
 
   local cfg = merge(default_config, user_cfg)
-  cfg = merge(cfg, overrides or {})
+  cfg = merge(cfg, overrides)
   cfg.interval_minutes = cfg.interval_minutes or 15
-  cfg.interval_seconds = cfg.interval_minutes * 60
+  cfg.file_settings = {}
+  for _, key in ipairs(SettingsPage.SETTING_KEYS) do
+    cfg.file_settings[key] = cfg[key]
+  end
+  apply_settings(cfg, settings, overrides)
   return cfg
 end
 
@@ -324,7 +351,9 @@ function Rotate.start(opts)
   local cli, overrides = parse_args(opts.argv or arg)
   if cli.help then return true end
 
-  local cfg = load_config({ config_path = cli.config_path }, overrides)
+  local settings_raw, settings_state = SettingsPage.read()
+  local cfg = load_config({ config_path = cli.config_path }, overrides, SettingsPage.settings(settings_state or {}))
+  settings_state = settings_state or {}
   if cli.audit then
     Audit.run(cfg)
     return true
@@ -379,6 +408,9 @@ function Rotate.start(opts)
   -- no two monitors ever share a wallpaper.
   local APPLIED_WALLPAPERS = {}
 
+  -- SettingsPage in effect at the last cycle, so a settings change can tell which monitors changed.
+  local active_pins = {}
+
   local function covered_set()
     local set = {}
     for mon in pairs(APPLIED_WALLPAPERS) do
@@ -387,39 +419,95 @@ function Rotate.start(opts)
     return set
   end
 
-  local function reserved_set()
+  --- @param repicked table<string, boolean>|nil monitors about to get a new image; their current one is free
+  local function reserved_set(repicked)
     local set = {}
-    for _, path in pairs(APPLIED_WALLPAPERS) do
-      set[path] = true
+    for mon, path in pairs(APPLIED_WALLPAPERS) do
+      if not (repicked and repicked[mon]) then set[path] = true end
     end
     return set
   end
 
-  --- @param mode "full"|"settle" full re-randomizes every monitor (distinct set);
-  --- settle only fills monitors not yet in `APPLIED_WALLPAPERS`, avoiding live wallpapers.
-  local function cycle(mode)
+  local loop_pid = (not one_shot) and tonumber(self_pid()) or nil
+
+  --- Write the status file: what is live on each connected monitor, merged over the previous
+  --- status so a one-shot run keeps the entries it did not touch.
+  --- @param applied table<string, string> monitor name to path set by the cycle that just ran
+  local function publish_status(applied)
+    local previous = SettingsPage.read_status()
+    local previous_monitors = type(previous.monitors) == "table" and previous.monitors or {}
+    local pid = loop_pid or previous.pid
+    local monitors_status = {}
+    for _, mon in ipairs(Apply.list_monitors(cfg, util)) do
+      local path = applied[mon.name] or (previous_monitors[mon.name] or {}).path
+      if path then
+        monitors_status[mon.name] =
+          { description = mon.description, path = path, pinned = active_pins[mon.description] ~= nil }
+      end
+    end
+    SettingsPage.write_status({
+      collection = cfg.wallpaper_dir,
+      running = loop_pid ~= nil or (pid ~= nil and pid_alive(tostring(pid))),
+      pid = pid,
+      settings = {
+        rotation = cfg.rotation,
+        interval_minutes = cfg.interval_minutes,
+        time_of_day_enabled = cfg.time_of_day_enabled,
+        seasons_enabled = cfg.seasons_enabled,
+        weather_enabled = cfg.weather_enabled,
+      },
+      monitors = monitors_status,
+      updated = os.time(),
+    })
+  end
+
+  --- Apply wallpapers and record the result.
+  --- @param mode "full"|"settle"|"partial" full re-randomizes every monitor (distinct set);
+  --- settle only fills monitors not yet in `APPLIED_WALLPAPERS`, avoiding live wallpapers;
+  --- partial re-picks only the monitors in `only` (or the `--monitor` target), avoiding live wallpapers.
+  --- @param only table<string, boolean>|nil monitors a partial cycle re-picks
+  local function cycle(mode, only)
     maybe_refresh()
+    active_pins = SettingsPage.usable(settings_state, cfg, util)
     local history = cfg.history_size > 0 and read_history() or {}
-    local cycle_opts = { history = history }
+    local cycle_opts = { history = history, pins = active_pins }
     if mode == "settle" then
       cycle_opts.exclude = covered_set()
       cycle_opts.reserved = reserved_set()
+    elseif mode == "partial" then
+      cycle_opts.only = only
+      cycle_opts.reserved = reserved_set(only or (cfg.target_monitor and { [cfg.target_monitor] = true }))
     end
-    local ok, applied = Apply.to_monitors(cfg, util, cycle_opts)
+    local ok, applied, pinned = Apply.to_monitors(cfg, util, cycle_opts)
     if not ok then util.log("Wallpaper application failed; will retry.", cfg) end
-    if cfg.history_size > 0 then write_history(history, applied, cfg.history_size) end
-    if mode == "settle" then
+    if cfg.history_size > 0 then
+      local shown = {}
+      for mon, path in pairs(applied) do
+        if not pinned[mon] then shown[mon] = path end
+      end
+      write_history(history, shown, cfg.history_size)
+    end
+    if mode == "full" then
+      APPLIED_WALLPAPERS = applied -- full refresh replaces the map
+    else
       for mon, path in pairs(applied) do
         APPLIED_WALLPAPERS[mon] = path
       end
-    else
-      APPLIED_WALLPAPERS = applied -- full refresh replaces the map
     end
+    publish_status(applied)
     return ok
   end
 
   if one_shot then
-    cycle("full")
+    if cfg.target_monitor then
+      -- A lone monitor must not copy what the others show.
+      for mon, entry in pairs(SettingsPage.read_status().monitors or {}) do
+        if type(entry) == "table" and entry.path then APPLIED_WALLPAPERS[mon] = entry.path end
+      end
+      cycle("partial")
+    else
+      cycle("full")
+    end
     return true
   end
 
@@ -443,11 +531,68 @@ function Rotate.start(opts)
     cycle("settle")
   end
 
+  local due
+  local function schedule()
+    due = os.time() + math.max(1, math.min(cfg.interval_seconds, Apply.seconds_to_period_change(cfg)))
+  end
+  schedule()
+
+  --- React to a changed settings file: new pins show at once, released monitors get a fresh
+  --- pick, and a changed pool or schedule setting adjusts the rotation.
+  local function apply_settings_change()
+    local raw, decoded = SettingsPage.read()
+    if raw == settings_raw then return end
+    settings_raw = raw
+    if not decoded then
+      util.log("wallpaper.json is not valid JSON; keeping the previous settings", cfg)
+      return
+    end
+    local before = {
+      rotation = cfg.rotation,
+      interval_minutes = cfg.interval_minutes,
+      time_of_day_enabled = cfg.time_of_day_enabled,
+      seasons_enabled = cfg.seasons_enabled,
+      weather_enabled = cfg.weather_enabled,
+    }
+    local before_pins = active_pins
+    settings_state = decoded
+    apply_settings(cfg, SettingsPage.settings(decoded), overrides)
+    util.log("wallpaper.json changed; settings reloaded", cfg)
+
+    local pool_changed = before.time_of_day_enabled ~= cfg.time_of_day_enabled
+      or before.seasons_enabled ~= cfg.seasons_enabled
+      or before.weather_enabled ~= cfg.weather_enabled
+    if cfg.time_of_day_enabled and not before.time_of_day_enabled then refresh_solar() end
+
+    if pool_changed and cfg.rotation then
+      cycle("full")
+      schedule()
+      return
+    end
+
+    local new_pins = SettingsPage.usable(decoded, cfg, util)
+    local changed = {}
+    for _, mon in ipairs(Apply.list_monitors(cfg, util)) do
+      if new_pins[mon.description] ~= before_pins[mon.description] then changed[mon.name] = true end
+    end
+    if next(changed) then cycle("partial", changed) end
+    if before.rotation ~= cfg.rotation or before.interval_minutes ~= cfg.interval_minutes then schedule() end
+    if not next(changed) then
+      active_pins = new_pins
+      publish_status({})
+    end
+  end
+
   -- Rotation loop (startup already did the first cycle). Wakes early for a
-  -- period change so the new period's wallpapers show on time.
+  -- period change so the new period's wallpapers show on time, and polls the
+  -- settings file in short slices since there is no file watcher.
   while true do
-    util.sleep(math.max(1, math.min(cfg.interval_seconds, Apply.seconds_to_period_change(cfg))))
-    cycle("full")
+    util.sleep(POLL_SECONDS)
+    apply_settings_change()
+    if cfg.rotation and os.time() >= due then
+      cycle("full")
+      schedule()
+    end
   end
 end
 

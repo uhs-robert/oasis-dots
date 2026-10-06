@@ -8,6 +8,7 @@ local cache_home = os.getenv("XDG_CACHE_HOME") or (home .. "/.cache")
 return {
   -- Feature toggles
   rotation_enabled = true, -- Set to false to apply wallpaper once and exit
+  rotation = true, -- Set to false to keep the process alive without timed rotation (Settings page toggle)
   time_of_day_enabled = true, -- Set to false to rotate through every image in wallpaper_dir
   seasons_enabled = true, -- Set to false to use only the Any season (only used when time_of_day_enabled = true)
   weather_enabled = true, -- Set to false to skip weather folders (only used when time_of_day_enabled = true)
