@@ -96,7 +96,11 @@ RowsSection {
     onExtra_key: event => {
         if (event.key === Qt.Key_P && root.current_monitor) root.pin_current(root.current_monitor);
         else if (event.key === Qt.Key_R) root.rotate(root.current_monitor);
-        else if (event.key === Qt.Key_O) WallpaperSettings.open_collection();
+        else if (event.key === Qt.Key_O) {
+            // Closing first hands keyboard focus back, so the file manager window takes it when it maps.
+            Popups.close();
+            DefaultApps.open_folder(WallpaperSettings.collection);
+        }
         else return;
         event.accepted = true;
     }

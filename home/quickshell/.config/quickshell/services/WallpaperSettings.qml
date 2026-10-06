@@ -85,13 +85,6 @@ Singleton {
         Quickshell.execDetached(["sh", "-c", "exec lua \"$HOME/.config/hypr/extensions/wallpaper/init.lua\" \"$@\"", "sh"].concat(args));
     }
 
-    // Opens the collection in the TUI file manager from Settings > Default apps, inside the configured terminal, as Leader + Shift + E does.
-    // Both choices live in Hyprland's Lua config, hence the eval.
-    function open_collection() {
-        const quoted = "'" + root.collection.replace(/'/g, "'\\''") + "'";
-        Quickshell.execDetached(["hyprctl", "eval", "require('lib.actions.cmd').term(require('config').app.tui_file_manager .. ' ' .. " + JSON.stringify(quoted) + ")()"]);
-    }
-
     function url_of(path) {
         return "file://" + path.split("/").map(encodeURIComponent).join("/");
     }
