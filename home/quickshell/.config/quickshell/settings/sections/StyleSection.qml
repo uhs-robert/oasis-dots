@@ -9,7 +9,7 @@ import ".."
 RowsSection {
     id: root
 
-    footer_hint: "j/k move · Enter list · c cava line · Esc sections · q close"
+    footer_hint: "j/k move · Enter list · c cava line · h/Esc sections · q close"
     rows: [
         {
             label: "Style",

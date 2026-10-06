@@ -5,7 +5,7 @@ import "../theme"
 import "../services"
 
 // A section of ChoiceRows; each row is { label, values: () => [...], text: v => string, value: () => current, set: v => void, pick?: bool }.
-// Enter or a click opens a filterable list of a row's values; `pick: false` keeps a row cycling and `cycle: false` stops h/l from stepping it, and `activate: () => void` replaces Enter or a click.
+// Enter or a click opens a filterable list of a row's values; `pick: false` keeps a row cycling and `cycle: false` stops H/L from stepping it, and `activate: () => void` replaces Enter or a click.
 SettingsPane {
     id: root
 
@@ -25,7 +25,7 @@ SettingsPane {
 
     onCursorChanged: if (root.live) ThemeAudio.play("cursor")
 
-    footer_hint: "j/k move · h/l change · Enter list · Esc sections · q close"
+    footer_hint: "j/k move · H/L change · Enter list · h/Esc sections · q close"
     search_rows: root.rows.map(r => r.label)
     search_cursor: root.cursor
     implicitHeight: col.implicitHeight
@@ -79,7 +79,8 @@ SettingsPane {
         if (event.accepted) return;
         if (event.key === Qt.Key_J) root.cursor = root.wrap_index(root.cursor, 1, root.rows.length);
         else if (event.key === Qt.Key_K) root.cursor = root.wrap_index(root.cursor, -1, root.rows.length);
-        else if (event.key === Qt.Key_H) root.step(root.cursor, -1);
+        // Plain h is left for the popup, which goes back to the sidebar.
+        else if (event.key === Qt.Key_H && (event.modifiers & Qt.ShiftModifier)) root.step(root.cursor, -1);
         else if (event.key === Qt.Key_L || event.key === Qt.Key_Space) root.step(root.cursor, 1);
         else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) root.activate(root.cursor, 1);
         else {

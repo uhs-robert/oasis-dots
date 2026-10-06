@@ -102,7 +102,7 @@ RowsSection {
 
     rows: root.build_rows()
     onRowsChanged: root.cursor = Math.min(root.cursor, root.rows.length - 1)
-    footer_hint: root.edit_key !== "" ? "Enter save · Ctrl+u clear · Esc cancel" : "j/k move · h/l change · Enter edit or list · Esc sections · q close"
+    footer_hint: root.edit_key !== "" ? "Enter save · Ctrl+u clear · Esc cancel" : "j/k move · H/L change · Enter edit or list · h/Esc sections · q close"
 
     onFirst_key: event => {
         if (root.edit_key !== "") return;

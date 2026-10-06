@@ -125,7 +125,7 @@ Popup {
         // Runs after the section: Esc, h and Tab it did not use go back to the sidebar.
         Keys.onPressed: event => {
             if (!root.in_pane || (event.modifiers & Qt.ControlModifier)) return;
-            const leave = event.key === Qt.Key_H || event.key === Qt.Key_Tab || event.key === Qt.Key_Backtab || (event.key === Qt.Key_Escape && root.search_query === "");
+            const leave = (event.key === Qt.Key_H && !(event.modifiers & Qt.ShiftModifier)) || event.key === Qt.Key_Tab || event.key === Qt.Key_Backtab || (event.key === Qt.Key_Escape && root.search_query === "");
             if (!leave) return;
             root.leave_pane();
             event.accepted = true;

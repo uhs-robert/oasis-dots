@@ -23,7 +23,7 @@ RowsSection {
         return out;
     }
 
-    footer_hint: root.arranging ? "hjkl nudge · HJKL fine · Enter done · Esc done · q close" : Displays.pending ? "j/k move · h/l change · Enter keep · Esc revert · q close" : "j/k move · h/l change · Enter list · Esc sections · q close"
+    footer_hint: root.arranging ? "hjkl nudge · HJKL fine · Enter done · Esc done · q close" : Displays.pending ? "j/k move · H/L change · Enter keep · Esc revert · q close" : "j/k move · H/L change · Enter list · h/Esc sections · q close"
 
     rows: {
         const m = root.mon;

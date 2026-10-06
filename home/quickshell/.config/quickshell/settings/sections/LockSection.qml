@@ -9,7 +9,7 @@ import ".."
 RowsSection {
     id: root
 
-    footer_hint: "j/k move · h/l change · Enter list · p full view · Esc sections · q close"
+    footer_hint: "j/k move · H/L change · Enter list · p full view · h/Esc sections · q close"
     rows: [
         {
             label: "Screen",
