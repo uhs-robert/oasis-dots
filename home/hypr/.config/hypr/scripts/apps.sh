@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # hypr/.config/hypr/scripts/apps.sh
-# Default apps: `dump` prints the choices as JSON, `apply` sets xdg-mime defaults from the state file.
+# Default apps: `dump` prints the choices as JSON, `apply` sets xdg-mime defaults from the state file,
+# `open-folder PATH` opens PATH in the Directories default.
 
 state="${XDG_STATE_HOME:-$HOME/.local/state}/hypr/apps.json"
 data_dirs=("${XDG_DATA_HOME:-$HOME/.local/share}")
@@ -88,11 +89,39 @@ apply() {
   done
 }
 
+# xdg-open ignores Terminal=true outside a full desktop, so a TUI default such as yazi would start with no window.
+# This runs a terminal entry in the configured terminal through Hyprland, and anything else straight through Hyprland.
+open_folder() {
+  local path=$1 id file exec_line terminal quoted cmd lua
+  id=$(xdg-mime query default inode/directory 2>/dev/null)
+  file=$([ -n "$id" ] && desktop_file "$id")
+  if [ -z "$file" ]; then
+    exec xdg-open "$path"
+  fi
+  exec_line=$(sed -n '/^\[Desktop Entry\]/,/^\[/{s/^Exec=//p}' "$file" | head -n1)
+  terminal=$(sed -n '/^\[Desktop Entry\]/,/^\[/{s/^Terminal=//p}' "$file" | head -n1)
+  quoted=$(printf '%q' "$path")
+  if [[ "$exec_line" =~ %[fFuU] ]]; then
+    cmd=$(sed -E "s/%[fFuU]/$(printf '%s' "$quoted" | sed 's/[\/&]/\\&/g')/" <<<"$exec_line")
+  else
+    cmd="$exec_line $quoted"
+  fi
+  cmd=$(sed -E 's/ ?%[a-zA-Z]//g' <<<"$cmd")
+  cmd=$(jq -Rn --arg c "$cmd" '$c')
+  if [ "$terminal" = "true" ]; then
+    lua="require('lib.actions.cmd').term($cmd)()"
+  else
+    lua="hl.exec_cmd($cmd)"
+  fi
+  hyprctl eval "$lua" >/dev/null
+}
+
 case "${1:-}" in
 dump) dump ;;
 apply) apply ;;
+open-folder) open_folder "$2" ;;
 *)
-  echo "usage: apps.sh dump|apply" >&2
+  echo "usage: apps.sh dump|apply|open-folder PATH" >&2
   exit 2
   ;;
 esac

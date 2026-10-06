@@ -50,6 +50,11 @@ Singleton {
         return list;
     }
 
+    // Shows `path` in the Directories default, the same app other programs open folders with.
+    function open_folder(path) {
+        Quickshell.execDetached(["sh", "-c", "exec \"$HOME/.config/hypr/scripts/apps.sh\" open-folder \"$1\"", "sh", path]);
+    }
+
     function mime_value(group) {
         if (root.mime[group]) return root.mime[group];
         const entry = root.found.mime[group];
