@@ -14,6 +14,9 @@ Singleton {
     property var open_anchor: null
     property color open_color: Theme.bg_mantle
     property string open_screen_name: ""
+    // While set, the open popup and the scrim take no keyboard focus and no pointer input, so IPC can show one on a screen the owner is not using.
+    // Cleared by every open() that does not ask for it, and by close().
+    property bool hands_off: false
     // Popup name to reopen on Backspace, e.g. "start" for popups opened from the Start menu.
     property string back_name: ""
     // The Power action the "power" popup asks to confirm.
@@ -103,7 +106,7 @@ Singleton {
         }
     }
 
-    function open(name, anchor_item, color, screen_name, back_to) {
+    function open(name, anchor_item, color, screen_name, back_to, hands_off) {
         let back = back_to || "";
         if (anchor_item) {
             open_anchor = anchor_item;
@@ -117,9 +120,29 @@ Singleton {
             open_screen_name = found ? found.screen_name : (screen_name || (Hyprland.focusedMonitor ? Hyprland.focusedMonitor.name : ""));
             if (found && !back) back = found.back_to || "";
         }
+        root.hands_off = !!hands_off;
         load_name = name;
         open_name = name;
         back_name = back;
+    }
+
+    // Opens on the named screen, never the focused one: anchored to that bar's module when it has one, else unanchored.
+    // False when no such screen exists.
+    function open_on(name, screen_name, hands_off) {
+        if (!Quickshell.screens.some(s => s.name === screen_name)) return false;
+        const found = root.find_in_screen(screen_name, name);
+        if (found) {
+            root.open(name, found.item, root.anchor_color(found), screen_name, found.back_to, hands_off);
+            return true;
+        }
+        root.hands_off = !!hands_off;
+        open_anchor = null;
+        open_color = Theme.bg_mantle;
+        open_screen_name = screen_name;
+        load_name = name;
+        open_name = name;
+        back_name = "";
+        return true;
     }
 
     function close() {
@@ -128,6 +151,8 @@ Singleton {
         open_anchor = null;
         open_screen_name = "";
         back_name = "";
+        // After open_name clears, so the closing popup keeps ignoring input through its close animation.
+        hands_off = false;
     }
 
     // Reopens the popup that opened the current one, keeping the same anchor/color/screen.

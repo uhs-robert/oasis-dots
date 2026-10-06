@@ -15,7 +15,7 @@ The owner tests every Quickshell change on their real bar before merging. Do it 
 .claude/skills/test-bar/test-bar.sh remove <name>
 .claude/skills/test-bar/test-bar.sh status                   # running qs, test bar HEAD vs its branch tips, hypr swapped or not
 .claude/skills/test-bar/test-bar.sh probe "zoom start" ...   # IPC calls, then new log WARN/ERROR and quickshell layers
-.claude/skills/test-bar/capture.sh <namespace> [--pad N] [--reveal] [--out PATH]
+.claude/skills/test-bar/capture.sh <namespace> [--pad N] [--reveal] [--screen NAME] [--out PATH]
 .claude/skills/test-bar/smoke.sh [--out DIR] [--dry-run] [--self-test] [style...]   # one live pass (popup, OSD, which-key, region) per style, contact sheet, log check; --self-test runs the blank check on synthetic images
 ```
 
@@ -26,7 +26,8 @@ Test bars live in `~/.cache/dotfiles/test-bars/<name>`. Rules:
 - To add a fix to a running test bar, rebuild it (`remove`, then `up`). Do not merge into a running test bar's worktree while another process rebases the branch; that raced once and left conflict markers on the live bar.
 - Do not rely on hot-reload after merging into the test worktree; it kept stale code twice. `swap` again instead.
 - After `up`, run `probe` with the feature's IPC entry and read its output before telling the owner it is ready. `probe` exits 1 on a new ERROR, a WARN repeated more than 5 times, or a load failure such as `X is not a type` (also checked by `verify`).
-- `capture.sh` crops one layer by namespace (the one under the cursor if several); `--reveal` lifts `no_screen_share` for the shot so overlays show. Use it to check overlays yourself when the owner allows self-tests.
+- `capture.sh` crops one layer by namespace (the one under the cursor if several, or on `--screen NAME`); `--reveal` lifts `no_screen_share` for the shot so overlays show. Use it to check overlays yourself when the owner allows self-tests.
+- Looking at Settings without touching the owner's input: `qs -p <bar> ipc call settings view wallpaper DP-8` (or `probe "settings view wallpaper DP-8" "settings cursor 6" "settings activate"`) opens it on that screen with no keyboard focus and no pointer input, then `settings cursor N`, `settings step 1` (changes the live setting), `settings activate`, `settings back`, `capture.sh quickshell-popup --screen DP-8`, and `settings hide`. A workspace switch still closes it.
 - Tell the owner exactly what to try, then wait for their verdict. Visual self-tests only with the owner's OK (or when they are away); then run `smoke.sh` once and show the sheet (it records `MISS <style> <surface>-blank` when a capture matches what lies behind it), never exhaustive sweeps. Simulated `wtype` keys drop Hyprland out of any submap, so `smoke.sh` enters submaps with `hyprctl eval`.
 - Screenshots: crop to the popup or bar with `grim -g` from `hyprctl layers -j` geometry, and delete them afterwards. Lock previews belong on eDP-1 (see the `lock-preview` skill).
 - When done: `restore`, then `remove`.

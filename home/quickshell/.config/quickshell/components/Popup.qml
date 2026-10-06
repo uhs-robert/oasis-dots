@@ -247,13 +247,23 @@ PanelWindow {
     visible: false
     WlrLayershell.namespace: "quickshell-popup"
     WlrLayershell.layer: WlrLayer.Overlay
-    WlrLayershell.keyboardFocus: root.passive ? WlrKeyboardFocus.None : root.hold_keyboard ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.OnDemand
-    mask: root.passive ? no_input : root.reserving || root.shadow_room > 0 ? panel_input : null
+    WlrLayershell.keyboardFocus: root.passive || root.held_hands_off ? WlrKeyboardFocus.None : root.hold_keyboard ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.OnDemand
+    mask: root.passive || root.held_hands_off ? no_input : root.reserving || root.shadow_room > 0 ? panel_input : null
     // The soft shadow's room under the frame; it passes clicks through to the scrim like the reserve does.
     readonly property real shadow_room: !root.dock_bottom && root.st.frame_shadow.a > 0 ? root.st.frame_drop : 0
 
     Region {
         id: no_input
+    }
+
+    // Popups.hands_off as of the open, held through the close animation because close() clears the flag first.
+    property bool held_hands_off: false
+
+    Connections {
+        target: Popups
+        function onHands_offChanged() {
+            if (root.wanted) root.held_hands_off = Popups.hands_off;
+        }
     }
 
     // The transparent reserve above the panel passes clicks through to the scrim below, which closes the popup.
@@ -317,6 +327,7 @@ PanelWindow {
             held_anchor = Popups.open_anchor;
             held_screen_name = Popups.open_screen_name;
             held_color = Popups.open_color;
+            held_hands_off = Popups.hands_off;
             help_open = false;
             if (!root.search_starts_open || !root.search_opens_typing) clear_search();
             visible = true;
@@ -361,6 +372,7 @@ PanelWindow {
             script: {
                 root.visible = false;
                 root.held_anchor = null;
+                root.held_hands_off = false;
                 root.help_open = false;
             }
         }

@@ -10,12 +10,13 @@ die() {
 }
 
 ns=${1:-}
-[[ -n $ns ]] || die "usage: capture.sh <namespace> [--pad N] [--reveal] [--out PATH] [--rect-file PATH]"
+[[ -n $ns ]] || die "usage: capture.sh <namespace> [--pad N] [--reveal] [--screen NAME] [--out PATH] [--rect-file PATH]"
 shift
 pad=0
 reveal=0
 out=""
 rect_file=""
+screen=""
 while (($# > 0)); do
   case $1 in
     --pad)
@@ -25,6 +26,10 @@ while (($# > 0)); do
     --reveal)
       reveal=1
       shift
+      ;;
+    --screen)
+      screen=${2:?--screen needs a monitor name}
+      shift 2
       ;;
     --out)
       out=${2:?--out needs a path}
@@ -51,7 +56,10 @@ geom=$(
 [[ -n $geom ]] || die "no layer with namespace '$ns' (see: hyprctl layers -j)"
 
 pick=$(head -1 <<<"$geom")
-if (($(wc -l <<<"$geom") > 1)); then
+if [[ -n $screen ]]; then
+  pick=$(awk -v m="$screen" '$5 == m { print; exit }' <<<"$geom")
+  [[ -n $pick ]] || die "no '$ns' layer on screen '$screen'"
+elif (($(wc -l <<<"$geom") > 1)); then
   mon=$(hyprctl monitors -j | jq -r --argjson cx "$cx" --argjson cy "$cy" '.[] | . as $m | (if .transform % 2 == 1 then [.height, .width] else [.width, .height] end | map(. / $m.scale)) as [$w, $h] | select(.x <= $cx and $cx < .x + $w and .y <= $cy and $cy < .y + $h) | .name')
   pick=$(awk -v m="$mon" '$5 == m { print; exit }' <<<"$geom")
   [[ -n $pick ]] || pick=$(head -1 <<<"$geom")
