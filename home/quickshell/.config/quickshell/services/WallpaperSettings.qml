@@ -120,11 +120,12 @@ Singleton {
     }
 
     onStatusChanged: root.check_alive()
-    onWatchingChanged: if (root.watching) root.check_alive()
 
+    // Also runs the first check: one made while the singleton is still being built never reports back.
     Timer {
         interval: 5000
         repeat: true
+        triggeredOnStart: true
         running: root.watching
         onTriggered: root.check_alive()
     }
