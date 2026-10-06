@@ -39,8 +39,8 @@ if [ -n "$duplicates" ]; then
   exit 1
 fi
 
-# home/ dirs that are not stow packages: phone and browser imports, personal images, and a package awaiting a manifest.
-unstowed="android images org.freedesktop.FileManager1.common tabliss vimium"
+# home/ dirs that are not stow packages: browser imports, personal images, and a package awaiting a manifest.
+unstowed="images org.freedesktop.FileManager1.common tabliss vimium"
 
 stow_entries=$(awk '/^[[:space:]]*($|#|\[)/ { next } { print $1 }' "$pkg_dir/stow.ini" | sort -u)
 

@@ -345,9 +345,10 @@ Vim-style keybindings for Betterbird through the tbkeys add-on, with a Neovim co
 
 Companion setups that live in their own repositories and install separately from these dotfiles.
 
-| Tool   | Extra                                                      |
-| ------ | ---------------------------------------------------------- |
-| Termux | [oasis-termux](https://github.com/uhs-robert/oasis-termux) |
+| Tool      | Extra                                                                                                  |
+| --------- | ------------------------------------------------------------------------------------------------------ |
+| HeliBoard | [oasis-termux/extras/heliboard](https://github.com/uhs-robert/oasis-termux/tree/main/extras/heliboard) |
+| Termux    | [oasis-termux](https://github.com/uhs-robert/oasis-termux)                                             |
 
 ## 📜 License
 
