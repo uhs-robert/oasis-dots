@@ -3,17 +3,17 @@
 default:
     @just --list
 
-system_excludes := "--exclude=/etc/tuigreet/config.toml --exclude=/etc/greetd/quickshell/ --exclude=/etc/greetd/hyprland.lua --exclude=/usr/local/bin/qs-greeter --exclude=/opt/"
+system_excludes := "--exclude=/etc/tuigreet/config.toml --exclude=/etc/greetd/quickshell/ --exclude=/etc/greetd/hyprland.lua --exclude=/usr/local/bin/qs-greeter --exclude=/opt/ --exclude=/etc/ssh/"
 
 # Show pending changes between system/ and / (dry run, no sudo)
 system-diff:
     rsync -rlptv --omit-dir-times --chown=root:root --dry-run {{system_excludes}} system/ /
-    @echo "Skipped installer-managed files: greeter via just greeter-sync --install; tuigreet config and Betterbird via install.sh"
+    @echo "Skipped installer-managed files: greeter via just greeter-sync --install; SSH server via just ssh-server; tuigreet config and Betterbird via install.sh"
 
 # Copy system/ into / for real, e.g. /etc, /usr/local/bin (needs sudo)
 system-apply:
     sudo rsync -rlptv --omit-dir-times --chown=root:root {{system_excludes}} system/ /
-    @echo "Skipped installer-managed files: greeter via just greeter-sync --install; tuigreet config and Betterbird via install.sh"
+    @echo "Skipped installer-managed files: greeter via just greeter-sync --install; SSH server via just ssh-server; tuigreet config and Betterbird via install.sh"
 
 # Symlink one package from home/ into ~
 stow name:
@@ -75,6 +75,14 @@ lint:
 # Validate formatting, package manifests, and whitespace; run optional tooling when available
 check:
     sh ./lib/check.sh
+
+# Opt in to an SSH server reachable only over Tailscale, key login only (needs sudo)
+ssh-server:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    DOTFILES_DIR="$PWD"
+    for lib in output distro packages tailnet-ssh; do source "lib/$lib.sh"; done
+    setup_tailnet_ssh
 
 # Clone or link external repos into repos/ without a full install; pass --dev to use $GITHUB_DIR (default ~/Development)
 repos *ARGS:

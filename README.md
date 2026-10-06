@@ -260,6 +260,7 @@ It uses `sudo` for these; the flags in brackets skip them.
 - Steam, after a prompt: native Steam enables `[multilib]` in `/etc/pacman.conf` and runs a full `pacman -Syu`, Flatpak Steam installs `flatpak` and adds a system-wide Flathub remote; the optional xone driver builds a DKMS kernel module [`--no-services`].
 - Nvidia drivers, after a prompt [`--no-services`].
 - voxtype adds you to the `input` group [`--no-services`].
+- An SSH server, after a prompt that `-y` never answers: installs `tailscale` and `openssh`, adds `/etc/ssh/sshd_config.d/10-tailnet-only.conf` (key login only, no root, Tailscale addresses only) and enables `tailscaled` and `sshd` [`--no-services`]. Run it later with `just ssh-server`.
 
 </details>
 
@@ -335,6 +336,7 @@ just install          # run install.sh
 just uninstall        # run uninstall.sh
 just sync-root-yazi   # regenerate root's Yazi keymap from the user's
 just update-repos     # pull the external repos cloned into repos/
+just ssh-server       # opt in to an SSH server reachable only over Tailscale
 ```
 
 ## ✉️ Betterbird / tbkeys

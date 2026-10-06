@@ -22,7 +22,7 @@ as those should be removed manually.
 
 Options:
   --no-system-files    Skip removal of system files (/etc/greetd, etc.)
-  --no-services        Skip disabling services (greetd, keyd, voxtype)
+  --no-services        Skip disabling services (greetd, keyd, sshd, voxtype)
   -y, --yes            Auto-confirm all prompts
   -h, --help           Show this help message
 EOF
@@ -91,7 +91,7 @@ remove_repo_links() {
 # a pacman hook pointing at a removed script.
 remove_system_files() {
   [[ $OPT_SYSTEM_FILES -eq 0 ]] && return
-  confirm "Remove installed system files (/etc/greetd, /var/lib/qs-greeter, /etc/tuigreet, /etc/vtrgb-oasis, /etc/keyd, pacman hooks, betterbird autoconfig, etc.)?" || return
+  confirm "Remove installed system files (/etc/greetd, /var/lib/qs-greeter, /etc/tuigreet, /etc/vtrgb-oasis, /etc/keyd, pacman hooks, betterbird autoconfig, the Tailscale-only sshd config, etc.)?" || return
 
   local files=(
     /etc/greetd/config.toml
@@ -111,6 +111,7 @@ remove_system_files() {
     /usr/local/share/betterbird-autoconfig/betterbird.cfg
     /opt/betterbird/defaults/pref/autoconfig.js
     /opt/betterbird/betterbird.cfg
+    /etc/ssh/sshd_config.d/10-tailnet-only.conf
   )
   for f in "${files[@]}"; do
     if [[ -f "$f" ]]; then
@@ -175,7 +176,7 @@ remove_root_symlinks() {
   fi
 }
 
-# Prompts to disable greetd, keyd, and voxtype if they are currently enabled.
+# Prompts to disable greetd, keyd, sshd and voxtype if they are currently enabled.
 disable_services() {
   [[ $OPT_SERVICES -eq 0 ]] && return
 
@@ -185,6 +186,11 @@ disable_services() {
 
   if systemctl is-enabled keyd &>/dev/null; then
     confirm "Disable keyd?" && sudo systemctl disable --now keyd && success "keyd disabled"
+  fi
+
+  # Only an sshd that `just ssh-server` set up: disabling one this repo never touched could cut off remote access.
+  if [[ -f /etc/ssh/sshd_config.d/10-tailnet-only.conf ]] && systemctl is-enabled sshd &>/dev/null; then
+    confirm "Disable the SSH server (sshd) set up by just ssh-server?" && sudo systemctl disable --now sshd && success "sshd disabled"
   fi
 
   if systemctl --user is-enabled voxtype &>/dev/null 2>&1; then
