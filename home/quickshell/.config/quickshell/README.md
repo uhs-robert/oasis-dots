@@ -85,11 +85,13 @@ The panel drops from the center of the bar. Open it with `SUPER + SPACE` then `S
 | ------------ | ---------------------------------- |
 | Appearance   | Style, Colors, Theme options       |
 | Bar          | Bar modules, Clock, Weather        |
-| System       | Displays, Default apps, Power      |
+| System       | Displays, Default apps, Power, Input |
 | Sound        | Theme audio                        |
 | Lock & Login | Lock screen, Login screen          |
 
 Settings > Clock sets the time format and the calendar's first day of week. Time format is the locale's convention (the default), 12-hour or 24-hour, and every clock follows it: the bar clock in each style, the clock popup, weather hours and the Updates, Keeptabs and notification times. Lock-screen skins with a fixed game-style clock keep their own format. First day of week follows the locale (the default), or is Monday or Sunday. An old `time_format` in `weather.local.json` is carried over once and then removed. It saves to `clock.json` in the Quickshell state folder (`$XDG_STATE_HOME/quickshell/`, or `~/.local/state/quickshell/`).
+
+Settings > Input picks the mode pickers, settings lists and type-to-search popups open in: INSERT (the default) to start typing at once, or NORMAL to start on the vim keys, where `i` or `/` starts typing. The HyprVim prompt always opens in INSERT, the clipboard's delete mode always in NORMAL, and the lock and greeter keep their own model. It saves to `input.json` in the Quickshell state folder.
 
 What you set here is saved as state under `~/.local/state` (or `$XDG_STATE_HOME`). State wins over the tracked defaults, so the repo stays clean while each machine keeps its own choices. Delete a file to fall back to the defaults.
 
@@ -105,6 +107,7 @@ What you set here is saved as state under `~/.local/state` (or `$XDG_STATE_HOME`
 | `quickshell/picker_usage.json`            | Picker ranking by use                            |
 | `quickshell/timezones.json`               | Extra clock zones, a JSON array of IANA names    |
 | `quickshell/clock.json`                   | Time format and first day of week                |
+| `quickshell/input.json`                   | Start mode for pickers and search popups         |
 | `hypr/monitors.json`                      | Display settings, read by Hyprland               |
 | `hypr/apps.json`                          | Default apps, read by Hyprland                   |
 | `hypr/power.json`                         | Idle and power settings, read by Hyprland        |

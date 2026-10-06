@@ -3,6 +3,7 @@ import QtQuick
 import QtQuick.Layouts
 import "../components"
 import "../theme"
+import "../services"
 import "../picker/Fuzzy.js" as Fuzzy
 
 // A fuzzy-filtered list of a row's options; items are { label }, picked(index) reports the position in items.
@@ -49,7 +50,7 @@ ColumnLayout {
         root.query = "";
         const at = root.results.findIndex(r => r.index === root.current);
         root.cursor = Math.max(0, at);
-        root.set_insert(true);
+        root.set_insert(InputSettings.starts_insert);
     }
 
     function set_insert(on) {
