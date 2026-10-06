@@ -14,12 +14,14 @@ RowsSection {
 
     rows: [{
         label: "Time format",
+        desc: "Used by every clock and popup time. Follow locale uses your system's convention.",
         values: () => ClockSettings.choices.time_format,
         text: v => root.formats[v] || String(v),
         value: () => ClockSettings.time_format,
         set: v => ClockSettings.set("time_format", v)
     }, {
         label: "First day of week",
+        desc: "The calendar's first column. Follow locale uses your system's convention.",
         values: () => ClockSettings.choices.week_start,
         text: v => root.names[v] || String(v),
         value: () => ClockSettings.week_start,
@@ -28,7 +30,7 @@ RowsSection {
 
     footer: Text {
         Layout.fillWidth: true
-        text: "Time format applies to every clock and popup time; first day sets the calendar's first column. Saved to " + ClockSettings.state_dir + "/clock.json"
+        text: "Saved to " + ClockSettings.state_dir + "/clock.json"
         wrapMode: Text.WordWrap
         color: root.st.text_dim
         font.family: root.st.font_family

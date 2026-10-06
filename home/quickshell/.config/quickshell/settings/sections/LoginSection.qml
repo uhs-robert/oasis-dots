@@ -12,6 +12,7 @@ RowsSection {
     rows: [
         {
             label: "Sync to greeter",
+            desc: "Keep the login screen in step with these choices. Off leaves it as it is.",
             values: () => ["on", "off"],
             text: v => v,
             value: () => LoginScreen.sync ? "on" : "off",
@@ -19,6 +20,7 @@ RowsSection {
         },
         {
             label: "Screen",
+            desc: "The login design. Follow lock screen uses the Lock screen setting.",
             values: () => ["follow", "simple"].concat(LockSkins.names),
             text: v => v === "follow" ? "Follow lock screen" : v === "simple" ? "Simple" : Style.label(v),
             value: () => LoginScreen.screen,
@@ -26,6 +28,7 @@ RowsSection {
         },
         {
             label: "Tint",
+            desc: "Recolors the skin. Follow lock screen uses the Lock screen tint.",
             values: () => ["follow"].concat(Style.lock_tints),
             text: v => v === "follow" ? "Follow lock screen" : root.cap(v),
             value: () => LoginScreen.tint,
@@ -33,6 +36,7 @@ RowsSection {
         },
         {
             label: "Music",
+            desc: "Play your own music file at login. Follow lock screen uses the lock's Music.",
             values: () => LoginScreen.musics,
             text: v => v === "follow" ? "Follow lock screen" : v,
             value: () => LoginScreen.music,
@@ -40,6 +44,7 @@ RowsSection {
         },
         {
             label: "Session",
+            desc: "The Wayland session the login screen starts, from the installed sessions.",
             values: () => LoginScreen.sessions,
             text: v => v,
             value: () => LoginScreen.session,

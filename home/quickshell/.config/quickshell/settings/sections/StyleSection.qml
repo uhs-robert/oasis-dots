@@ -13,6 +13,7 @@ RowsSection {
     rows: [
         {
             label: "Style",
+            desc: "The shell's look: fonts, frames, meters and sounds. Colors come from the palette.",
             values: () => Style.names,
             text: v => Style.label(v) + (v === Style.saved_name ? " (active)" : ""),
             value: () => Style.saved_name,
@@ -21,6 +22,8 @@ RowsSection {
         },
         {
             label: "Cava line",
+            desc: "Draw the bar's audio visualizer as a smooth line. Off draws separate bars.",
+            keys: "H/L or c toggle · Enter list",
             values: () => ["on", "off"],
             text: v => v,
             value: () => Style.cava_line ? "on" : "off",
@@ -28,6 +31,7 @@ RowsSection {
         },
         {
             label: "Hot corners",
+            desc: "Moving the pointer into the top-left screen corner opens the workspace overview.",
             values: () => ["on", "off"],
             text: v => v,
             value: () => HotCorners.enabled ? "on" : "off",

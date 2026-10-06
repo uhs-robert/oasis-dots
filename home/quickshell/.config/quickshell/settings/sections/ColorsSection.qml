@@ -14,6 +14,7 @@ RowsSection {
     rows: [
         {
             label: "Palette",
+            desc: "The Oasis palette for the shell, Hyprland and terminal apps. Applies at once.",
             values: () => Palettes.ready ? Palettes.names : [],
             text: v => Palettes.label(v) + (v === Palettes.current ? " (active)" : ""),
             value: () => Palettes.current,
@@ -22,6 +23,7 @@ RowsSection {
         },
         {
             label: "Sync Neovim",
+            desc: "Switch Neovim's colorscheme along with the palette. Off leaves Neovim alone.",
             values: () => ["on", "off"],
             text: v => v,
             value: () => Palettes.nvim_sync ? "on" : "off",

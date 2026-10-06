@@ -23,6 +23,7 @@ RowsSection {
         return out;
     }
 
+    description_keys: root.arranging ? "hjkl nudge · HJKL fine · Enter done" : Displays.pending ? "Enter keep · Esc revert" : root.keys_of(root.described_row)
     footer_hint: root.arranging ? "hjkl nudge · HJKL fine · Enter done · Esc done · q close" : Displays.pending ? "j/k move · H/L change · Enter keep · Esc revert · q close" : "j/k move · H/L change · Enter list · h/Esc sections · q close"
 
     rows: {
@@ -30,6 +31,7 @@ RowsSection {
         const out = [
             {
                 label: "Monitor",
+                desc: "The monitor the rows below change. The map shows how the screens are laid out.",
                 values: () => root.list.map((x, i) => i),
                 text: i => root.short_name(root.list[i]),
                 value: () => root.sel,
@@ -41,6 +43,7 @@ RowsSection {
             out.push(
                 {
                     label: "Resolution",
+                    desc: "Applies at once, then reverts unless you keep it before the countdown ends.",
                     values: () => DisplayLayout.resolutions(root.mon),
                     text: v => v,
                     value: () => root.mon.width + "x" + root.mon.height,
@@ -48,6 +51,7 @@ RowsSection {
                 },
                 {
                     label: "Refresh rate",
+                    desc: "Refresh rate for the current resolution. Applies at once, then asks to keep it.",
                     values: () => DisplayLayout.refreshes(root.mon),
                     text: v => v + " Hz",
                     value: () => root.mon.refresh,
@@ -55,6 +59,7 @@ RowsSection {
                 },
                 {
                     label: "Scale",
+                    desc: "Interface scale for this monitor. Larger makes text and windows bigger.",
                     values: () => DisplayLayout.scales.indexOf(root.mon.scale) >= 0 ? DisplayLayout.scales : DisplayLayout.scales.concat([root.mon.scale]).sort((a, b) => a - b),
                     text: v => String(v),
                     value: () => root.mon.scale,
@@ -62,6 +67,7 @@ RowsSection {
                 },
                 {
                     label: "Orientation",
+                    desc: "Rotate or flip this monitor's picture.",
                     values: () => root.mon.transform > 3 ? DisplayLayout.rotations.concat([root.mon.transform]) : DisplayLayout.rotations,
                     text: v => DisplayLayout.transform_text(v),
                     value: () => root.mon.transform,
@@ -69,6 +75,8 @@ RowsSection {
                 },
                 {
                     label: "Position",
+                    desc: "Where this screen sits next to the others. You can also drag it on the map.",
+                    keys: "H/L or Enter arrange",
                     values: () => ["arrange"],
                     text: v => root.arranging ? "hjkl to nudge" : root.mon.x + ", " + root.mon.y,
                     value: () => "arrange",
@@ -78,6 +86,7 @@ RowsSection {
         }
         out.push({
             label: "Enabled",
+            desc: "Turn this monitor on or off. The last enabled monitor cannot be turned off.",
             values: () => ["on", "off"],
             text: v => v,
             value: () => root.mon.disabled ? "off" : "on",
