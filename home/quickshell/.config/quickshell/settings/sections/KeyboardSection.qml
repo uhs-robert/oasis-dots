@@ -14,6 +14,7 @@ RowsSection {
 
     rows: [{
         label: "Layout",
+        desc: "Keyboard layout for every keyboard. Enter opens the list to search.",
         values: () => {
             const codes = HyprInput.layouts.map(l => l.code);
             const current = HyprInput.value("kb_layout");
@@ -25,6 +26,7 @@ RowsSection {
         cycle: false
     }, {
         label: "Variant",
+        desc: "Variant of the layout, such as dvorak or intl. None uses the plain layout.",
         values: () => [""].concat((HyprInput.variants[HyprInput.value("kb_layout")] || []).map(v => v.code)),
         text: v => HyprInput.variant_name(HyprInput.value("kb_layout"), v),
         value: () => HyprInput.value("kb_variant"),
@@ -32,6 +34,7 @@ RowsSection {
         cycle: false
     }, {
         label: "Caps Lock as Escape",
+        desc: "Caps Lock sends Escape. Replaces any other caps: option.",
         values: () => [false, true],
         text: v => v ? "On" : "Off",
         value: () => HyprInput.value("caps_escape"),
@@ -39,12 +42,14 @@ RowsSection {
         pick: false
     }, {
         label: "Repeat rate",
+        desc: "Characters per second while a key is held.",
         values: () => Choices.with_current(root.repeat_rates, HyprInput.value("repeat_rate")),
         text: v => v + " per second",
         value: () => HyprInput.value("repeat_rate"),
         set: v => HyprInput.set("repeat_rate", v)
     }, {
         label: "Repeat delay",
+        desc: "How long a key is held before it starts repeating.",
         values: () => Choices.with_current(root.repeat_delays, HyprInput.value("repeat_delay")),
         text: v => v + " ms",
         value: () => HyprInput.value("repeat_delay"),
@@ -53,7 +58,7 @@ RowsSection {
 
     footer: Text {
         Layout.fillWidth: true
-        text: "Applies at once and wins over the machine profile's input values. Caps Lock as Escape replaces any other caps: option. Saved to " + HyprInput.state_dir + "/input.json"
+        text: "Applies at once and wins over the machine profile's input values. Saved to " + HyprInput.state_dir + "/input.json"
         wrapMode: Text.WordWrap
         color: root.st.text_dim
         font.family: root.st.font_family
