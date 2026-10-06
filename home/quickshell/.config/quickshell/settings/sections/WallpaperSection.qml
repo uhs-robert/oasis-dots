@@ -19,7 +19,7 @@ RowsSection {
     readonly property string hint: WallpaperSettings.notice !== "" ? WallpaperSettings.notice : WallpaperSettings.alive ? "" : "The rotator is not running; changes apply when it starts."
 
     section_keys: "o open folder"
-    footer_hint: root.editing ? "Enter save · empty resets · Ctrl+u clear · Esc cancel" : root.current_monitor ? "j/k move · H/L change · Enter image · p pin current · r rotate " + root.current_monitor.name + " · o open folder · h/Esc sections · q close" : "j/k move · H/L change · Enter list · r rotate all · o open folder · h/Esc sections · q close"
+    footer_hint: root.editing ? "Enter save · empty resets · Ctrl+u clear · Esc cancel" : root.current_monitor ? "j/k move · H/L change · Enter image · p pin/unpin · r rotate " + root.current_monitor.name + " · o open folder · h/Esc sections · q close" : "j/k move · H/L change · Enter list · r rotate all · o open folder · h/Esc sections · q close"
 
     function toggle_row(label, key, desc) {
         return {
@@ -37,7 +37,7 @@ RowsSection {
         return {
             label: m.model !== "" ? m.name + " · " + m.model : m.name,
             desc: "Automatic follows the rotation. Pinned keeps one image on this screen.",
-            keys: "H/L mode · Enter choose image · p pin current · r rotate " + m.name,
+            keys: "H/L mode · Enter choose image · p pin/unpin · r rotate " + m.name,
             values: () => ["auto", "pinned"],
             text: v => v === "pinned" ? "Pinned" : "Automatic",
             value: () => m.key in WallpaperSettings.pins ? "pinned" : "auto",
@@ -107,6 +107,11 @@ RowsSection {
         root.end_edit();
     }
 
+    function toggle_pin(m) {
+        if (m.key in WallpaperSettings.pins) WallpaperSettings.clear_pin(m.key);
+        else root.pin_current(m);
+    }
+
     function pin_current(m) {
         if (m.key in WallpaperSettings.pins) return;
         WallpaperSettings.pin_current(m);
@@ -144,7 +149,7 @@ RowsSection {
     }
 
     onExtra_key: event => {
-        if (event.key === Qt.Key_P && root.current_monitor) root.pin_current(root.current_monitor);
+        if (event.key === Qt.Key_P && root.current_monitor) root.toggle_pin(root.current_monitor);
         else if (event.key === Qt.Key_R) root.rotate(root.current_monitor);
         else if (event.key === Qt.Key_O) {
             // Closing first hands keyboard focus back, so the file manager window takes it when it maps.
