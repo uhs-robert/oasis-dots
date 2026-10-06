@@ -429,6 +429,8 @@ function Rotate.start(opts)
   end
 
   local loop_pid = (not one_shot) and tonumber(self_pid()) or nil
+  -- The status text this process last wrote; any other text means a one-shot run changed wallpapers.
+  local own_status_text
 
   --- Write the status file: what is live on each connected monitor, merged over the previous
   --- status so a one-shot run keeps the entries it did not touch.
@@ -445,7 +447,7 @@ function Rotate.start(opts)
           { description = mon.description, path = path, pinned = active_pins[mon.description] ~= nil }
       end
     end
-    SettingsPage.write_status({
+    own_status_text = SettingsPage.write_status({
       collection = cfg.wallpaper_dir,
       running = loop_pid ~= nil or (pid ~= nil and pid_alive(tostring(pid))),
       pid = pid,
@@ -583,11 +585,27 @@ function Rotate.start(opts)
     end
   end
 
+  --- Take over what a one-shot run (`--once` from Settings or SUPER+Q W, or a hotplug `--monitor`)
+  --- applied, so later picks avoid those images and a manual rotation restarts the interval.
+  local function adopt_outside_changes()
+    local text = SettingsPage.read_status_text()
+    if not text or text == own_status_text then return end
+    own_status_text = text
+    local monitors_status = SettingsPage.read_status().monitors
+    if type(monitors_status) ~= "table" then return end
+    APPLIED_WALLPAPERS = {}
+    for mon, entry in pairs(monitors_status) do
+      if type(entry) == "table" and type(entry.path) == "string" then APPLIED_WALLPAPERS[mon] = entry.path end
+    end
+    schedule()
+  end
+
   -- Rotation loop (startup already did the first cycle). Wakes early for a
   -- period change so the new period's wallpapers show on time, and polls the
   -- settings file in short slices since there is no file watcher.
   while true do
     util.sleep(POLL_SECONDS)
+    adopt_outside_changes()
     apply_settings_change()
     if cfg.rotation and os.time() >= due then
       cycle("full")
