@@ -26,6 +26,7 @@ local function init()
       which_key = {
         frontend = "quickshell",
         quickshell_ipc = Scripts.qs_ipc,
+        delay_ms = Config.input.which_key_delay_ms,
         auto_show = { disabled = { "NORMAL", "INSERT", "VISUAL", "V-LINE", "Cursor" } },
       },
       prompt = { frontend = "quickshell" },

@@ -2,6 +2,7 @@
 --- Applies global Hyprland options: layout, decoration, input, cursor, animations, and misc.
 
 local Config = require("config") ---@class Config
+local Input = require("config.input")
 
 local IS_LAPTOP = Config.is_laptop
 local ENABLE_NVIDIA = Config.nvidia.enable
@@ -36,18 +37,7 @@ hl.config({
     },
   },
 
-  input = {
-    numlock_by_default = false,
-    kb_layout = Config.input.kb_layout,
-    kb_variant = Config.input.kb_variant,
-    kb_options = Config.input.kb_options,
-    follow_mouse = 1,
-    mouse_refocus = false,
-    sensitivity = 0,
-    touchpad = {
-      natural_scroll = false,
-    },
-  },
+  input = Input.options(Config.input),
 
   cursor = {
     no_hardware_cursors = ENABLE_NVIDIA and 1 or 2,

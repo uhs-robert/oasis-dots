@@ -11,12 +11,22 @@ Singleton {
 
     readonly property string state_dir: Paths.state_dir
 
-    readonly property var choices: ({ start_mode: ["insert", "normal"] })
-    readonly property var defaults: ({ start_mode: "insert" })
+    readonly property var choices: ({ start_mode: ["insert", "normal"], remember_query: [false, true] })
+    readonly property var defaults: ({ start_mode: "insert", remember_query: false })
 
     property var values: root.defaults
     // Pickers, settings lists and type-to-search popups open in INSERT when true; the HyprVim prompt always does.
     readonly property bool starts_insert: root.values.start_mode === "insert"
+    // Last query per picker or settings list, for this session only; recall gives "" unless remember_query is on.
+    property var last_queries: ({})
+
+    function remember(key, text) {
+        root.last_queries[key] = text;
+    }
+
+    function recall(key) {
+        return root.values.remember_query ? root.last_queries[key] || "" : "";
+    }
 
     function valid(key, value) {
         return !!root.choices[key] && root.choices[key].indexOf(value) >= 0;

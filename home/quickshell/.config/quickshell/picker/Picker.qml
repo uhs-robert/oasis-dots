@@ -68,8 +68,10 @@ Popup {
     // Reset once hidden so an open finds the empty-query results already laid out.
     onVisibleChanged: if (!visible) root.reset()
     onIs_openChanged: if (is_open) {
+        const recalled = root.provider ? InputSettings.recall("picker:" + root.provider.name) : "";
         if (root.provider) root.current_tab = root.provider.tab;
         root.reset();
+        query_input.text = recalled;
         root.set_insert(InputSettings.starts_insert && (!root.provider || root.provider.starts_insert));
     }
     Component.onCompleted: root.sync_slots()
@@ -314,7 +316,10 @@ Popup {
                 selectionColor: root.st.selection_bg
                 font.family: root.st.font_family
                 font.pixelSize: root.st.fs(-1)
-                onTextChanged: root.query = text
+                onTextChanged: {
+                    root.query = text;
+                    if (root.is_open && root.provider) InputSettings.remember("picker:" + root.provider.name, text);
+                }
                 // A static caret: the default one blinks for as long as the picker is open.
                 cursorDelegate: Rectangle {
                     width: 2
