@@ -26,7 +26,7 @@ return {
 }
 ```
 
-`input` sets the keyboard layout (`kb_layout`, default `"us"`, plus `kb_variant` and `kb_options`), and `appearance` sets `inactive_opacity` (default `0.5`), `dim_inactive` (default `true`) and `dim_strength` (default `0.2`) for unfocused windows:
+`input` sets the keyboard layout (`kb_layout`, default `"us"`, plus `kb_variant` and `kb_options`), `caps_escape`, key repeat (`repeat_rate`, `repeat_delay`), the pointer (`sensitivity`, `follow_mouse`), the touchpad (`natural_scroll`, `tap_to_click`, `disable_while_typing`) and `which_key_delay_ms`; defaults are in `config/init.lua`. And `appearance` sets `inactive_opacity` (default `0.5`), `dim_inactive` (default `true`) and `dim_strength` (default `0.2`) for unfocused windows:
 
 ```lua
 return {
@@ -36,6 +36,8 @@ return {
 ```
 
 `wallpaper_enabled = false` keeps the wallpaper rotator from starting on this machine, for a static setup in `custom/hyprpaper.conf`. `wallpaper_location = true` lets the wallpaper rotator follow the sun. It reads the location from the Quickshell bar's weather cache and only goes online (`ipinfo.io`, `open-meteo.com`) without a fresh one; see `extensions/wallpaper/README.md`.
+
+Input settings saved from the Settings panel live in `~/.local/state/hypr/input.json` and win over the profile's `input` values; per-device `devices` entries still win for their device.
 
 Monitor settings saved from the Settings panel live in `~/.local/state/hypr/monitors.json`, keyed by monitor description (or connector name). Their fields win over the profile's `monitors` per monitor, and a missing or corrupt file is ignored.
 

@@ -16,6 +16,15 @@ local Utils = require("lib.utils") ---@class Utils
 --- @field kb_layout string XKB layout (default: "us")
 --- @field kb_variant string|nil XKB variant, e.g. "dvorak"; nil = unset (default: nil)
 --- @field kb_options string|nil XKB options, e.g. "caps:escape"; nil = unset (default: nil)
+--- @field caps_escape boolean|nil Force Caps Lock as Escape on or off over kb_options; nil = leave kb_options alone (default: nil)
+--- @field repeat_rate integer Key repeats per second (default: 25)
+--- @field repeat_delay integer Milliseconds held before a key repeats (default: 600)
+--- @field sensitivity number Pointer speed, -1 to 1 (default: 0)
+--- @field follow_mouse integer Focus on pointer move: 0 off, 1 always, 2 cursor only, 3 detached (default: 1)
+--- @field natural_scroll boolean Touchpad natural scrolling (default: false)
+--- @field tap_to_click boolean Touchpad tap to click (default: true)
+--- @field disable_while_typing boolean Touchpad off while typing (default: true)
+--- @field which_key_delay_ms integer Milliseconds before the which-key overlay shows (default: 0)
 
 --- @class Config.Appearance
 --- @field inactive_opacity number Opacity of unfocused windows, 0 to 1 (default: 0.5)
@@ -87,6 +96,15 @@ Config.defaults = {
     kb_layout = "us",
     kb_variant = nil,
     kb_options = nil,
+    caps_escape = nil,
+    repeat_rate = 25,
+    repeat_delay = 600,
+    sensitivity = 0,
+    follow_mouse = 1,
+    natural_scroll = false,
+    tap_to_click = true,
+    disable_while_typing = true,
+    which_key_delay_ms = 0,
   },
   appearance = {
     inactive_opacity = 0.5,

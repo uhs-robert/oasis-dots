@@ -1,5 +1,6 @@
 local Utils = require("lib.utils") ---@class Utils
 local Json = require("lib.json") ---@class Json
+local Input = require("config.input")
 
 local Machines = {}
 
@@ -85,6 +86,9 @@ function Machines.merge(shared)
     Utils.deep_extend(merged.app, app)
     if app.term then merged.app.term_cmd = nil end
   end
+
+  merged.input = merged.input or {}
+  Utils.deep_extend(merged.input, Input.state())
 
   return merged
 end
