@@ -50,11 +50,16 @@ SettingsPane {
         const row = root.rows[index];
         const values = row.values();
         root.cursor = index;
+        root.open_list(row.label, values, values.map(v => row.text(v)), row.value(), v => row.set(v));
+    }
+
+    // Opens the list over arbitrary values (not just a row's), with an optional image url per value.
+    function open_list(title, values, labels, current, on_pick, thumbs) {
         root.pick_values = values;
-        root.show_picker(picker, row.label, values.map(v => row.text(v)), values.indexOf(row.value()), i => {
-            row.set(values[i]);
+        root.show_picker(picker, title, labels, values.indexOf(current), i => {
+            on_pick(values[i]);
             ThemeAudio.play("confirm");
-        });
+        }, thumbs);
     }
 
     function activate(index, delta) {

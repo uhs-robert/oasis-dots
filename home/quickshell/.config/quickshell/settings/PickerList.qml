@@ -6,7 +6,8 @@ import "../theme"
 import "../services"
 import "../picker/Fuzzy.js" as Fuzzy
 
-// A fuzzy-filtered list of a row's options; items are { label }, picked(index) reports the position in items.
+// A fuzzy-filtered list of a row's options; items are { label, thumb? }, picked(index) reports the position in items.
+// An item's thumb is an image url shown beside its label; a list with thumbs shows fewer, taller rows.
 ColumnLayout {
     id: root
 
@@ -18,14 +19,15 @@ ColumnLayout {
     property int cursor: 0
     property bool insert: true
     property real last_g_ms: 0
-    readonly property int window_size: 8
+    readonly property bool has_thumbs: root.items.length > 0 && !!root.items[0].thumb
+    readonly property int window_size: root.has_thumbs ? 6 : 8
 
     readonly property var results: {
         const terms = Fuzzy.terms_of(root.query);
         const out = [];
         for (let i = 0; i < root.items.length; i++) {
             const m = terms.length === 0 ? { score: 0, positions: [] } : Fuzzy.score_item(terms, { label: root.items[i].label });
-            if (m) out.push({ index: i, label: root.items[i].label, score: m.score, positions: m.positions });
+            if (m) out.push({ index: i, label: root.items[i].label, thumb: root.items[i].thumb || "", score: m.score, positions: m.positions });
         }
         if (terms.length > 0) out.sort((a, b) => b.score - a.score || a.index - b.index);
         return out;
@@ -200,7 +202,7 @@ ColumnLayout {
             readonly property int at: root.first_shown + entry.index
 
             Layout.fillWidth: true
-            Layout.preferredHeight: Style.px(28)
+            Layout.preferredHeight: Style.px(root.has_thumbs ? 40 : 28)
             base_radius: 6
             selected: entry.at === root.cursor
 
@@ -218,6 +220,18 @@ ColumnLayout {
                     color: entry.fg(root.st.toggle_on)
                     font.family: root.st.font_family
                     font.pixelSize: root.st.font_size
+                }
+
+                Image {
+                    visible: root.has_thumbs
+                    Layout.preferredWidth: Style.px(56)
+                    Layout.preferredHeight: Style.px(32)
+                    source: entry.modelData.thumb
+                    // Decoding at display size keeps a few hundred full-size wallpapers from stalling the shell.
+                    sourceSize: Qt.size(Math.round(Style.px(56) * 2), Math.round(Style.px(32) * 2))
+                    fillMode: Image.PreserveAspectCrop
+                    asynchronous: true
+                    cache: true
                 }
 
                 Text {

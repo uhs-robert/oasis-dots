@@ -83,7 +83,7 @@ The panel drops from the center of the bar. Open it with `SUPER + SPACE` then `S
 
 | Group        | Sections                           |
 | ------------ | ---------------------------------- |
-| Appearance   | Style, Colors, Theme options       |
+| Appearance   | Style, Colors, Wallpaper, Theme options |
 | Bar          | Bar modules, Clock, Weather        |
 | System       | Displays, Default apps, Power      |
 | Input        | Typing, Keyboard, Mouse & touchpad |
@@ -95,6 +95,8 @@ Settings > Clock sets the time format and the calendar's first day of week. Time
 Settings > Input > Typing picks the mode pickers, settings lists and type-to-search popups open in: INSERT (the default) to start typing at once, or NORMAL to start on the vim keys, where `i` or `/` starts typing. The HyprVim prompt always opens in INSERT, the clipboard's delete mode always in NORMAL, and the lock and greeter keep their own model. Remember last search refills each picker and settings list with its last query until the shell restarts. These save to `input.json` in the Quickshell state folder. Which-key delay sets how long a leader key waits before its overlay shows; it is HyprVim's `which_key.delay_ms`, read once at setup, so changing it reloads Hyprland.
 
 Settings > Input > Keyboard and Mouse & touchpad set the XKB layout and variant, Caps Lock as Escape, key repeat, pointer speed, focus follows mouse, natural scrolling, tap to click and disable while typing. They save to `hypr/input.json` with the which-key delay, win over the machine profile's `input` values, and apply live through `config/input` in the Hyprland config. A row you have not changed shows Hyprland's current value.
+
+Settings > Wallpaper drives the wallpaper rotator (`hypr/.config/hypr/extensions/wallpaper`). The top rows switch automatic rotation, the interval and the time-of-day, season and weather folders on or off; each connected monitor then cycles between Automatic and Pinned. `h`/`l` on a monitor row pins the image it shows now (or goes back to Automatic), `p` pins the current image, and `Enter` opens a searchable list of the collection with thumbnails to pin any image. It saves only what you change to `wallpaper.json` in the Hyprland state folder, pins keyed by monitor description, and reads what the rotator is actually using from its `wallpaper-status.json`. The rotator picks the file up within a few seconds; without it running the section says so.
 
 What you set here is saved as state under `~/.local/state` (or `$XDG_STATE_HOME`). State wins over the tracked defaults, so the repo stays clean while each machine keeps its own choices. Delete a file to fall back to the defaults.
 
@@ -112,6 +114,8 @@ What you set here is saved as state under `~/.local/state` (or `$XDG_STATE_HOME`
 | `quickshell/clock.json`                   | Time format and first day of week                |
 | `quickshell/input.json`                   | Start mode for pickers and search popups         |
 | `hypr/monitors.json`                      | Display settings, read by Hyprland               |
+| `hypr/wallpaper.json`                     | Wallpaper rotation settings and per-monitor pins, read by the rotator |
+| `hypr/wallpaper-status.json`              | What the rotator is doing, written by the rotator |
 | `hypr/apps.json`                          | Default apps, read by Hyprland                   |
 | `hypr/power.json`                         | Idle and power settings, read by Hyprland        |
 | `hypr/input.json`                         | Keyboard, mouse, touchpad and which-key delay, read by Hyprland |
