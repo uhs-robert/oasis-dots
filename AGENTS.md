@@ -24,7 +24,7 @@ just unstow <pkg>
 just stow-core        # packages under [CORE] in packages/stow.ini
 just stow-optional    # packages under [OPTIONAL]
 just system-diff      # dry-run rsync of system/ into / (no sudo); skips installer-managed files
-just system-apply     # apply system/ into / (sudo); skips installer-managed files (greeter via `just greeter-sync --install`, tuigreet config and Betterbird via `install.sh`)
+just system-apply     # apply system/ into / (sudo); skips installer-managed files (greeter via `just greeter-sync --install`, SSH server via `just ssh-server`, tuigreet config and Betterbird via `install.sh`)
 just sync-root-yazi   # regenerate root's Yazi keymap
 just repos [--dev]    # set up repos/ without a full install
 just update-repos     # pull non-linked clones in repos/
@@ -48,6 +48,7 @@ New install behavior belongs in the matching lib function, not inline in `instal
 
 - `arch.ini` / `arch-aur.ini` / `pipx.ini` / `luarocks.ini` / `devtools.ini` — package names.
 - `nvidia.ini` — Nvidia driver packages, read by `install_nvidia` only after its prompt (`[USERSPACE]` plus `[DKMS]` or `[MODULE]`).
+- `ssh-server.ini` — packages for the Tailscale-only SSH server, read by `setup_tailnet_ssh` only after its prompt.
 - `stow.ini` — dotfile package names (`[CORE]` auto-stowed, `[OPTIONAL]` fzf-selected, `[SERVER]` used instead of `[CORE]` under `--server`).
 - `repos.ini` — git repositories to clone.
 

@@ -10,6 +10,7 @@ source "$DOTFILES_DIR/lib/arch.sh"
 source "$DOTFILES_DIR/lib/rust.sh"
 source "$DOTFILES_DIR/lib/stow.sh"
 source "$DOTFILES_DIR/lib/services.sh"
+source "$DOTFILES_DIR/lib/tailnet-ssh.sh"
 source "$DOTFILES_DIR/lib/greeter.sh"
 source "$DOTFILES_DIR/lib/repos.sh"
 source "$DOTFILES_DIR/lib/fonts.sh"
@@ -36,7 +37,7 @@ Options:
   --no-aur             Skip AUR packages
   --no-cargo           Skip Rust/rustup install
   --no-system-files    Skip system files (/etc, /usr/local) and root links
-  --no-services        Skip service setup (shell, keyd, Steam, Nvidia, voxtype)
+  --no-services        Skip service setup (shell, keyd, Steam, Nvidia, voxtype, SSH server)
   --dev                Clone repos into $GITHUB_DIR (default ~/Development) for editing and link them
   --server             Headless install: shell/CLI/dev packages and configs only
   -y, --yes            Auto-confirm all prompts
@@ -124,6 +125,7 @@ main() {
   if [[ $OPT_SYSTEM_FILES -eq 1 ]]; then install_system_files; fi
   if [[ $OPT_SERVER -eq 1 && $OPT_SERVICES -eq 1 ]]; then
     set_default_shell
+    setup_tailnet_ssh
   elif [[ $OPT_SERVER -eq 0 && $OPT_SERVICES -eq 1 ]]; then
     install_greetd
     set_default_shell
@@ -132,6 +134,7 @@ main() {
     install_steam
     install_nvidia
     setup_voxtype
+    setup_tailnet_ssh
   fi
 
   print_manual_installs
