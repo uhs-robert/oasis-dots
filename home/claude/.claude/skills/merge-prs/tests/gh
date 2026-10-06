@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+# Fake gh for merge-prs.sh: one PR whose fields live in $GH_STATE, backed by the bare repo $ORIGIN.
+set -euo pipefail
+state_file=$GH_STATE
+get() { awk -F= -v k="$1" '$1==k{print substr($0, length(k)+2)}' "$state_file"; }
+put() { grep -v "^$1=" "$state_file" > "$state_file.new" || true; printf '%s=%s\n' "$1" "$2" >> "$state_file.new"; mv "$state_file.new" "$state_file"; }
+head_oid() { git -C "$ORIGIN" rev-parse -q --verify "refs/heads/$(get head)" || echo gone; }
+args="$*"
+case "$args" in
+"repo view"*) printf 'me/repo\tmain\ttrue\ttrue\ttrue\n' ;;
+"pr list"*) : ;;
+"pr view"*"headRefName,headRefOid,baseRefName,state,isCrossRepository"*)
+  printf '%s\t%s\t%s\t%s\tfalse\n' "$(get head)" "$(head_oid)" "$(get base)" "$(get state)" ;;
+"pr view"*"headRefOid,mergeable"*)
+  oid=$(head_oid)
+  if [[ $oid == "$(get conflicting_oid)" ]]; then m=CONFLICTING; else m=MERGEABLE; fi
+  printf '%s\t%s\n' "$oid" "$m" ;;
+"pr view"*"--json state"*) get state ;;
+"pr merge"*)
+  [[ $args == *"--match-head-commit $(head_oid)"* ]] || { echo "Head branch was modified" >&2; exit 1; }
+  [[ $(get conflicting_oid) != "$(head_oid)" ]] || { echo "not mergeable" >&2; exit 1; }
+  w=$(mktemp -d); git clone -q "$ORIGIN" "$w/c"
+  git -C "$w/c" -c user.name=t -c user.email=t@t cherry-pick "origin/main..origin/$(get head)" >/dev/null
+  git -C "$w/c" push -q origin HEAD:main
+  [[ $args != *--delete-branch* ]] || git -C "$ORIGIN" branch -q -D "$(get head)"
+  rm -rf "$w"; put state MERGED ;;
+*) echo "fake gh: unhandled: $args" >&2; exit 1 ;;
+esac

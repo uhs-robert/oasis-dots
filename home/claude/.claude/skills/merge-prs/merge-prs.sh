@@ -63,6 +63,7 @@ else
 fi
 
 tmp_root=""
+rebased_oid=""
 wait_s=${MERGE_PRS_WAIT:-600}
 poll_s=${MERGE_PRS_POLL:-10}
 known_heads=()
@@ -95,8 +96,19 @@ clean_local() {
   fi
   wt=$(git worktree list --porcelain | awk -v line="branch refs/heads/$head" '/^worktree /{p=substr($0, 10)} $0 == line {print p; exit}')
   if [[ $wt == "$main_dir" ]]; then
-    echo "kept branch $head: checked out in the main checkout $wt"
-    return
+    if [[ -n $(git -C "$main_dir" status --porcelain --untracked-files=no) ]]; then
+      echo "kept branch $head: checked out in the main checkout $wt, which has uncommitted changes"
+      return
+    fi
+    # The PR is already merged here, so a failed switch (say, the default branch held by another worktree)
+    # must not abort the PRs still queued in this run.
+    local switch_err
+    if ! switch_err=$(git -C "$main_dir" switch -q "$default" 2>&1); then
+      echo "kept branch $head: the main checkout $wt could not switch to $default: ${switch_err##*$'\n'}"
+      return
+    fi
+    echo "switched $main_dir to $default"
+    wt=""
   fi
   if [[ -n $wt ]]; then
     if [[ -n $(git -C "$wt" status --porcelain) ]]; then
@@ -149,6 +161,44 @@ rebase_child() {
   done
 }
 
+# GitHub recomputes mergeability lazily after a push; merging before it settles fails with "Head branch was modified".
+await_mergeable() {
+  local pr=$1 oid=$2 info="" deadline=$((SECONDS + 60))
+  while :; do
+    info=$(gh pr view "$pr" --json headRefOid,mergeable --jq '[.headRefOid, .mergeable] | @tsv') ||
+      die "cannot read the mergeability of $pr"
+    [[ $info == "$oid"$'\t'@(MERGEABLE|CONFLICTING) ]] && break
+    ((SECONDS < deadline)) || break
+    sleep 2
+  done
+  printf '%s\n' "${info#*$'\t'}"
+}
+
+# A PR stacked on a parent that was rebase- or squash-merged outside this run still carries the parent's old commits,
+# so GitHub reports it as conflicting. Rebasing onto the base drops them, because git skips commits whose changes are
+# already there; a rebase that drops nothing means a real conflict, which stays with the owner.
+rebase_stale_head() {
+  local pr=$1 head=$2 old=$3 base=$4 before after
+  tmp_root=$(mktemp -d "${TMPDIR:-/tmp}/merge-prs.XXXXXX")
+  git worktree add -q --detach "$tmp_root/wt" "$old" || die "cannot create a worktree for $head"
+  before=$(git rev-list --count "origin/$base..$old")
+  if ! git -C "$tmp_root/wt" rebase -q "origin/$base" >/dev/null 2>&1; then
+    git -C "$tmp_root/wt" rebase --abort || true
+    remove_tmp
+    die "#$pr conflicts with $base; rebase $head onto origin/$base by hand, then rerun for the remaining PRs"
+  fi
+  after=$(git -C "$tmp_root/wt" rev-list --count "origin/$base..HEAD")
+  if ((after >= before)); then
+    remove_tmp
+    die "#$pr conflicts with $base and carries no commits already merged there; resolve it by hand, then rerun for the remaining PRs"
+  fi
+  rebased_oid=$(git -C "$tmp_root/wt" rev-parse HEAD)
+  git -C "$tmp_root/wt" push -q --force-with-lease="$head:$old" origin "HEAD:refs/heads/$head" ||
+    die "cannot push the rebased $head"
+  remove_tmp
+  echo "#$pr rebased onto $base, dropping $((before - after)) commit(s) already merged there"
+}
+
 pr_state() {
   gh pr view "$1" --json state --jq .state || die "cannot read the state of $1"
 }
@@ -191,6 +241,13 @@ merge_pr() {
     gh pr edit "$number" --base "$base" >/dev/null || die "cannot retarget $number to $base"
     echo "$number retargeted to $base"
   done
+
+  if [[ $(await_mergeable "$pr" "$head_oid") == CONFLICTING && $cross != true ]]; then
+    rebase_stale_head "$pr" "$head" "$head_oid" "$base"
+    head_oid=$rebased_oid
+    known_heads+=("$head_oid")
+    await_mergeable "$pr" "$head_oid" >/dev/null
+  fi
 
   local merge_args=("--$method" --repo "$slug" --match-head-commit "$head_oid")
   $keep_branch || merge_args+=(--delete-branch)
