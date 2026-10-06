@@ -23,6 +23,14 @@ require_unlocked() {
   [[ $state == unlocked ]] || die "lock state is '${state:-unknown}'; Quickshell runs the lock screen, so it is not restarted until it reports 'unlocked'"
 }
 
+# The owner may be mid-test on another bar; refuse to replace it unless asked to.
+guard_live_bar() {
+  local name=$1 replace=$2 live
+  live=$(pgrep -af "^qs .*-p $bars/" | sed -n "s|.*-p $bars/\([^/]*\)/.*|\1|p" | head -n 1)
+  [[ -z $live || $live == "$name" || $replace == 1 ]] && return 0
+  die "test bar '$live' is running and the owner may be testing it; include its branches ($(tr '\n' ' ' <"$bars/$live.branches" 2>/dev/null)) in this bar, or pass --replace once the owner agrees"
+}
+
 # Launch through Hyprland so qs does not inherit this shell's TMUX environment.
 launch() {
   pkill -x qs || true
@@ -192,6 +200,13 @@ build() {
   echo "test-bar: built $dir from $*"
 }
 
+replace=0
+args=()
+for arg in "$@"; do
+  if [[ $arg == --replace ]]; then replace=1; else args+=("$arg"); fi
+done
+set -- "${args[@]}"
+
 case ${1:-} in
   build)
     shift
@@ -200,6 +215,7 @@ case ${1:-} in
   swap)
     dir="$bars/${2:?usage: test-bar.sh swap <name>}"
     [[ -d $dir ]] || die "no test bar at $dir"
+    guard_live_bar "$2" "$replace"
     require_unlocked
     hypr_swap "${2}" "$dir"
     launch "qs -n -p $dir/$qs_rel"
@@ -208,8 +224,11 @@ case ${1:-} in
   up)
     name=${2:?usage: test-bar.sh up <name> <branch>...}
     shift 2
+    guard_live_bar "$name" "$replace"
     build "$name" "$@"
-    "$0" swap "$name"
+    swap_args=("$name")
+    ((replace)) && swap_args+=(--replace)
+    "$0" swap "${swap_args[@]}"
     ;;
   restore)
     require_unlocked
@@ -237,6 +256,6 @@ case ${1:-} in
     probe "$@"
     ;;
   *)
-    die "usage: test-bar.sh {up <name> <branch>...|build <name> <branch>...|swap <name>|restore|remove <name>|status|probe <ipc call>...}"
+    die "usage: test-bar.sh {up <name> <branch>... [--replace]|build <name> <branch>...|swap <name> [--replace]|restore|remove <name>|status|probe <ipc call>...}"
     ;;
 esac
