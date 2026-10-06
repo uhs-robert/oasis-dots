@@ -26,7 +26,8 @@ require_unlocked() {
 # The owner may be mid-test on another bar; refuse to replace it unless asked to.
 guard_live_bar() {
   local name=$1 replace=$2 live
-  live=$(pgrep -af "^qs .*-p $bars/" | sed -n "s|.*-p $bars/\([^/]*\)/.*|\1|p" | head -n 1)
+  # pgrep exits 1 when no test bar runs, which pipefail would turn into a silent exit.
+  live=$( (pgrep -af "^qs .*-p $bars/" || true) | sed -n "s|.*-p $bars/\([^/]*\)/.*|\1|p" | head -n 1)
   [[ -z $live || $live == "$name" || $replace == 1 ]] && return 0
   die "test bar '$live' is running and the owner may be testing it; include its branches ($(tr '\n' ' ' <"$bars/$live.branches" 2>/dev/null)) in this bar, or pass --replace once the owner agrees"
 }
