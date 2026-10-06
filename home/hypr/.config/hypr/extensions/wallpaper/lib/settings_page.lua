@@ -7,7 +7,7 @@ local state_dir = require("lib.state")
 --- @class SettingsPage
 --- @field SETTING_KEYS string[] Keys taken from the settings state file
 --- @field read fun(): string|nil, table|nil Raw settings state text (nil when no file) and its decoded table (nil when the text is not a JSON object)
---- @field settings fun(state: table): table Validated subset of `SETTING_KEYS` found in `state`
+--- @field settings fun(state: table, ignored?: fun(msg: string)): table Validated subset of `SETTING_KEYS` found in `state`; `ignored` hears about values dropped
 --- @field usable fun(state: table, cfg: table, util: table): table<string, string> SettingsPage whose image can be read, by monitor description
 --- @field read_status fun(): table Last status written, or an empty table
 --- @field read_status_text fun(): string|nil Status file text as written, nil when absent
@@ -15,9 +15,19 @@ local state_dir = require("lib.state")
 local SettingsPage = {}
 
 SettingsPage.SETTING_KEYS =
-  { "rotation", "interval_minutes", "time_of_day_enabled", "seasons_enabled", "weather_enabled" }
+  { "rotation", "interval_minutes", "time_of_day_enabled", "seasons_enabled", "weather_enabled", "wallpaper_dir" }
 
 local BOOLEAN_KEYS = { rotation = true, time_of_day_enabled = true, seasons_enabled = true, weather_enabled = true }
+
+--- Opening "<path>/." succeeds only for a directory, which plain Lua cannot test otherwise.
+local function directory_path(value)
+  if type(value) ~= "string" or value == "" then return nil end
+  local path = value:gsub("^~(/?)", function(slash) return (os.getenv("HOME") or "") .. slash end):gsub("(.)/+$", "%1")
+  local f = io.open(path .. "/.", "r")
+  if not f then return nil end
+  f:close()
+  return path
+end
 
 local function path_of(name) return state_dir() .. "/" .. name end
 
@@ -36,7 +46,7 @@ function SettingsPage.read()
   return raw, type(decoded) == "table" and decoded or nil
 end
 
-function SettingsPage.settings(state)
+function SettingsPage.settings(state, ignored)
   local out = {}
   for _, key in ipairs(SettingsPage.SETTING_KEYS) do
     local value = state[key]
@@ -44,6 +54,9 @@ function SettingsPage.settings(state)
       out[key] = value
     elseif key == "interval_minutes" and type(value) == "number" and value > 0 then
       out[key] = value
+    elseif key == "wallpaper_dir" and value ~= nil then
+      out[key] = directory_path(value)
+      if not out[key] and ignored then ignored("wallpaper_dir ignored; not a directory: " .. tostring(value)) end
     end
   end
   return out

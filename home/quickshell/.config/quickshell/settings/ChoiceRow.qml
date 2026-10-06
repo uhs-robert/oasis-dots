@@ -35,6 +35,9 @@ MenuRow {
         }
 
         Text {
+            // A long value (a path) shortens in the middle instead of pushing the label out.
+            Layout.maximumWidth: root.width * 0.65
+            elide: Text.ElideMiddle
             text: root.st.toggle_brackets ? "[" + root.value_text.toUpperCase() + "]" : root.selected ? "‹ " + root.value_text + " ›" : root.value_text
             color: root.fg(root.selected ? root.st.toggle_on : root.st.text_dim)
             font.family: root.st.font_family

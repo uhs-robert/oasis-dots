@@ -8,6 +8,7 @@ import "../picker/Fuzzy.js" as Fuzzy
 
 // A fuzzy-filtered list of a row's options; items are { label, thumb? }, picked(index) reports the position in items.
 // An item's thumb is an image url shown beside its label; a list with thumbs shows fewer, taller rows.
+// A host that sets available_height gets as many rows as fit it; the list never reports that height back through its own implicit size, so it cannot grow its container.
 ColumnLayout {
     id: root
 
@@ -20,7 +21,14 @@ ColumnLayout {
     property bool insert: true
     property real last_g_ms: 0
     readonly property bool has_thumbs: root.items.length > 0 && !!root.items[0].thumb
-    readonly property int window_size: root.has_thumbs ? 6 : 8
+    property real available_height: 0
+    readonly property real row_height: Style.px(root.has_thumbs ? 40 : 28)
+    // Everything but the rows: title, filter box, the position counter and the gaps between them.
+    readonly property real chrome_height: title_text.implicitHeight + Style.px(28) + counter_text.implicitHeight + 4 * root.spacing
+    readonly property int default_window: root.has_thumbs ? 6 : 8
+    // What a host that does not fill the list should reserve for it.
+    readonly property real default_height: root.chrome_height + Math.min(root.default_window, Math.max(1, root.results.length)) * (root.row_height + root.spacing)
+    readonly property int window_size: root.available_height > 0 ? Math.max(3, Math.floor((root.available_height - root.chrome_height) / (root.row_height + root.spacing))) : root.default_window
 
     readonly property var results: {
         const terms = Fuzzy.terms_of(root.query);
@@ -112,6 +120,7 @@ ColumnLayout {
     }
 
     Text {
+        id: title_text
         Layout.fillWidth: true
         text: root.title
         color: root.st.text_accent
@@ -202,7 +211,7 @@ ColumnLayout {
             readonly property int at: root.first_shown + entry.index
 
             Layout.fillWidth: true
-            Layout.preferredHeight: Style.px(root.has_thumbs ? 40 : 28)
+            Layout.preferredHeight: root.row_height
             base_radius: 6
             selected: entry.at === root.cursor
 
@@ -265,6 +274,7 @@ ColumnLayout {
     }
 
     Text {
+        id: counter_text
         visible: root.results.length > root.window_size
         Layout.fillWidth: true
         text: (root.cursor + 1) + " / " + root.results.length

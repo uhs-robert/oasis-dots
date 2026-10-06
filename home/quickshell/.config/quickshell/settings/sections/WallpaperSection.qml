@@ -9,15 +9,17 @@ import ".."
 RowsSection {
     id: root
 
-    readonly property int top_count: 5
+    readonly property int top_count: 6
     readonly property var monitors: Displays.monitors.filter(m => !m.disabled)
     readonly property var current_monitor: root.cursor >= root.top_count ? root.monitors[root.cursor - root.top_count] || null : null
     // Set while the collection is being listed, so the image list opens for the monitor that asked.
     property var awaiting: null
+    property bool editing: false
+    readonly property string home_dir: Quickshell.env("HOME")
     readonly property string hint: WallpaperSettings.notice !== "" ? WallpaperSettings.notice : WallpaperSettings.alive ? "" : "The rotator is not running; changes apply when it starts."
 
     section_keys: "o open folder"
-    footer_hint: root.current_monitor ? "j/k move · H/L change · Enter image · p pin current · r rotate " + root.current_monitor.name + " · o open folder · h/Esc sections · q close" : "j/k move · H/L change · Enter list · r rotate all · o open folder · h/Esc sections · q close"
+    footer_hint: root.editing ? "Enter save · empty resets · Ctrl+u clear · Esc cancel" : root.current_monitor ? "j/k move · H/L change · Enter image · p pin current · r rotate " + root.current_monitor.name + " · o open folder · h/Esc sections · q close" : "j/k move · H/L change · Enter list · r rotate all · o open folder · h/Esc sections · q close"
 
     function toggle_row(label, key, desc) {
         return {
@@ -62,8 +64,43 @@ RowsSection {
         },
         root.toggle_row("Time of day", "time_of_day_enabled", "Use the Dawn, Day, Evening or Night folder. Off uses the whole collection."),
         root.toggle_row("Seasons", "seasons_enabled", "Add the current season's folder to Any. Off uses only Any."),
-        root.toggle_row("Weather", "weather_enabled", "Mix in the Rain, Snow or Cloudy folder while that weather is current.")
+        root.toggle_row("Weather", "weather_enabled", "Mix in the Rain, Snow or Cloudy folder while that weather is current."),
+        {
+            label: "Collection",
+            desc: "Folder the wallpapers come from. Enter types a new path; empty goes back to the default.",
+            keys: "Enter edit · empty resets",
+            values: () => [],
+            text: v => root.tilde(v),
+            value: () => WallpaperSettings.collection,
+            set: v => {},
+            cycle: false,
+            activate: () => root.start_edit()
+        }
     ].concat(root.monitors.map(m => root.monitor_row(m)))
+
+    function tilde(path) {
+        return path === root.home_dir || path.startsWith(root.home_dir + "/") ? "~" + path.substring(root.home_dir.length) : path;
+    }
+
+    function start_edit() {
+        root.editing = true;
+        input.text = root.tilde(WallpaperSettings.collection);
+        input.forceActiveFocus();
+        input.selectAll();
+    }
+
+    function end_edit() {
+        root.editing = false;
+        root.forceActiveFocus();
+    }
+
+    function commit_edit() {
+        const text = input.text.trim();
+        if (text === "") WallpaperSettings.clear_value("wallpaper_dir");
+        else WallpaperSettings.set_value("wallpaper_dir", text);
+        WallpaperSettings.say(text === "" ? "Collection reset to the default" : "Collection saved; the rotator ignores a folder that does not exist");
+        root.end_edit();
+    }
 
     function pin_current(m) {
         if (m.key in WallpaperSettings.pins) return;
@@ -91,6 +128,14 @@ RowsSection {
             return;
         }
         root.open_list("Pin image on " + m.name, images, images.map(p => WallpaperSettings.base_name(p)), WallpaperSettings.pins[m.key], p => WallpaperSettings.set_pin(m.key, p), images.map(p => WallpaperSettings.url_of(p)));
+    }
+
+    onFirst_key: event => {
+        if (root.editing) return;
+        const open = event.key === Qt.Key_Return || event.key === Qt.Key_Enter || event.key === Qt.Key_L || event.key === Qt.Key_Space;
+        if (root.cursor !== root.top_count - 1 || !open) return;
+        root.start_edit();
+        event.accepted = true;
     }
 
     onExtra_key: event => {
@@ -134,73 +179,120 @@ RowsSection {
         Layout.fillWidth: true
         spacing: 4
 
-        RowLayout {
-            visible: !root.picking && !!root.current_monitor
+        Rectangle {
+            id: edit_box
+            visible: root.editing
             Layout.fillWidth: true
-            spacing: 8
+            Layout.preferredHeight: Style.px(28)
+            radius: 6
+            color: "transparent"
+            border.width: 1
+            border.color: root.st.text_accent
 
-            Repeater {
-                model: {
-                    const m = root.current_monitor;
-                    if (!m) return [];
-                    const entry = WallpaperSettings.live[m.name];
-                    const pinned = m.key in WallpaperSettings.pins;
-                    return [
-                        { title: "Showing", path: entry && typeof entry.path === "string" ? entry.path : "" },
-                        { title: pinned ? "Pinned" : "Not pinned", path: pinned ? WallpaperSettings.pins[m.key] : "" }
-                    ];
-                }
+            TextInput {
+                id: input
+                anchors.fill: parent
+                anchors.leftMargin: 8
+                anchors.rightMargin: 8
+                verticalAlignment: TextInput.AlignVCenter
+                maximumLength: 256
+                clip: true
+                color: root.st.text_fg
+                selectionColor: root.st.text_accent
+                font.family: root.st.font_family
+                font.pixelSize: root.st.font_size
+                onActiveFocusChanged: if (!input.activeFocus && root.editing) root.editing = false
 
-                ColumnLayout {
-                    id: card
-                    required property var modelData
-
-                    // Equal halves: the shared preferred width splits the row evenly.
-                    Layout.fillWidth: true
-                    Layout.preferredWidth: 1
-                    Layout.alignment: Qt.AlignTop
-                    spacing: 2
-
-                    Rectangle {
-                        Layout.fillWidth: true
-                        Layout.preferredHeight: Math.round(width * 9 / 16)
-                        color: Theme.bg_shadow
-                        border.width: 1
-                        border.color: Qt.alpha(root.st.text_muted, 0.4)
-                        radius: Style.px(4)
-                        clip: true
-
-                        Image {
-                            anchors.fill: parent
-                            anchors.margins: 1
-                            source: card.modelData.path !== "" ? WallpaperSettings.url_of(card.modelData.path) : ""
-                            sourceSize: Qt.size(480, 270)
-                            fillMode: Image.PreserveAspectCrop
-                            asynchronous: true
-                            cache: true
-                        }
-                    }
-
-                    Text {
-                        Layout.fillWidth: true
-                        text: card.modelData.title + (card.modelData.path !== "" ? " · " + WallpaperSettings.base_name(card.modelData.path) : "")
-                        elide: Text.ElideRight
-                        color: root.st.text_dim
-                        font.family: root.st.font_family
-                        font.pixelSize: root.st.fs(-3)
-                    }
+                Keys.onPressed: event => {
+                    if (event.key === Qt.Key_Escape) root.end_edit();
+                    else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) root.commit_edit();
+                    else if ((event.modifiers & Qt.ControlModifier) && event.key === Qt.Key_U) input.text = "";
+                    else return;
+                    event.accepted = true;
                 }
             }
         }
 
-        Text {
-            visible: !root.picking
+        // One preview of the selected monitor's image, marked when it is the pin. Its height is capped by the pane's free space, but the cap stays out of the implicit height so the pane cannot grow by it.
+        Item {
+            id: preview
+            readonly property var monitor: root.current_monitor
+            readonly property bool pinned: !!preview.monitor && preview.monitor.key in WallpaperSettings.pins
+            readonly property var entry: preview.monitor ? WallpaperSettings.live[preview.monitor.name] : undefined
+            readonly property string path: preview.pinned ? WallpaperSettings.pins[preview.monitor.key] : preview.entry && typeof preview.entry.path === "string" ? preview.entry.path : ""
+            readonly property real wanted: Math.round(width * 9 / 16)
+            readonly property real free: root.height - root.footer_top - (root.editing ? edit_box.height + 4 : 0) - root.description_height - preview_label.implicitHeight - 6
+
+            visible: !root.picking && !!preview.monitor
             Layout.fillWidth: true
-            text: "Collection  " + WallpaperSettings.collection.replace(Quickshell.env("HOME"), "~")
-            elide: Text.ElideMiddle
-            color: root.st.text_dim
-            font.family: root.st.font_family
-            font.pixelSize: root.st.fs(-3)
+            Layout.preferredHeight: preview.wanted + preview_label.implicitHeight + 2
+
+            Rectangle {
+                id: frame
+                width: parent.width
+                height: Math.max(0, Math.min(preview.wanted, preview.free))
+                color: Theme.bg_shadow
+                border.width: 1
+                border.color: preview.pinned ? root.st.text_accent : Qt.alpha(root.st.text_muted, 0.4)
+                radius: Style.px(4)
+                clip: true
+
+                Image {
+                    anchors.fill: parent
+                    anchors.margins: 1
+                    source: preview.path !== "" ? WallpaperSettings.url_of(preview.path) : ""
+                    sourceSize: Qt.size(960, 540)
+                    fillMode: Image.PreserveAspectCrop
+                    asynchronous: true
+                    cache: true
+                }
+
+                Rectangle {
+                    visible: preview.pinned
+                    anchors.left: parent.left
+                    anchors.top: parent.top
+                    anchors.margins: 6
+                    width: badge_row.implicitWidth + 12
+                    height: badge_row.implicitHeight + 6
+                    radius: Style.px(4)
+                    color: Qt.alpha(Theme.bg_shadow, 0.85)
+                    border.width: 1
+                    border.color: root.st.text_accent
+
+                    Row {
+                        id: badge_row
+                        anchors.centerIn: parent
+                        spacing: 4
+
+                        Text {
+                            text: "\uf08d"
+                            color: root.st.text_accent
+                            font.family: root.st.font_family
+                            font.pixelSize: root.st.fs(-3)
+                        }
+
+                        Text {
+                            text: "Pinned"
+                            color: root.st.text_accent
+                            font.family: root.st.font_family
+                            font.pixelSize: root.st.fs(-3)
+                        }
+                    }
+                }
+            }
+
+            Text {
+                id: preview_label
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.top: frame.bottom
+                anchors.topMargin: 2
+                text: (preview.pinned ? "Pinned" : "Showing") + (preview.path !== "" ? " · " + WallpaperSettings.base_name(preview.path) : "")
+                elide: Text.ElideRight
+                color: root.st.text_dim
+                font.family: root.st.font_family
+                font.pixelSize: root.st.fs(-3)
+            }
         }
     }
 }
