@@ -78,6 +78,18 @@ Singleton {
         resolve_proc.running = true;
     }
 
+    // New images for every automatic monitor, or just `monitor_name`; the same one-shot run as SUPER+Q W.
+    function rotate(monitor_name) {
+        const args = monitor_name ? ["--monitor", monitor_name] : ["--once"];
+        Quickshell.execDetached(["sh", "-c", "exec lua \"$HOME/.config/hypr/extensions/wallpaper/init.lua\" \"$@\"", "sh"].concat(args));
+    }
+
+    // Opens the collection in the file manager chosen in Settings > Default apps, which only Hyprland's Lua config knows.
+    function open_collection() {
+        const quoted = "'" + root.collection.replace(/'/g, "'\\''") + "'";
+        Quickshell.execDetached(["hyprctl", "eval", "hl.exec_cmd(require('config').app.gui_file_manager .. ' ' .. " + JSON.stringify(quoted) + ")"]);
+    }
+
     function url_of(path) {
         return "file://" + path.split("/").map(encodeURIComponent).join("/");
     }

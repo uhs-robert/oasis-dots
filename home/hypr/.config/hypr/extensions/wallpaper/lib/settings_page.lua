@@ -10,7 +10,8 @@ local state_dir = require("lib.state")
 --- @field settings fun(state: table): table Validated subset of `SETTING_KEYS` found in `state`
 --- @field usable fun(state: table, cfg: table, util: table): table<string, string> SettingsPage whose image can be read, by monitor description
 --- @field read_status fun(): table Last status written, or an empty table
---- @field write_status fun(status: table) Replace the status file atomically
+--- @field read_status_text fun(): string|nil Status file text as written, nil when absent
+--- @field write_status fun(status: table): string Replace the status file atomically; returns the text written
 local SettingsPage = {}
 
 SettingsPage.SETTING_KEYS =
@@ -63,8 +64,10 @@ function SettingsPage.usable(state, cfg, util)
   return out
 end
 
+function SettingsPage.read_status_text() return read_file(path_of("wallpaper-status.json")) end
+
 function SettingsPage.read_status()
-  local decoded = Json.decode(read_file(path_of("wallpaper-status.json")) or "")
+  local decoded = Json.decode(SettingsPage.read_status_text() or "")
   return type(decoded) == "table" and decoded or {}
 end
 
@@ -72,11 +75,13 @@ function SettingsPage.write_status(status)
   local path = path_of("wallpaper-status.json")
   os.execute(string.format("mkdir -p '%s'", state_dir()))
   local tmp = path .. ".tmp"
+  local text = Json.encode(status) .. "\n"
   local f = io.open(tmp, "w")
-  if not f then return end
-  f:write(Json.encode(status), "\n")
+  if not f then return text end
+  f:write(text)
   f:close()
   os.rename(tmp, path)
+  return text
 end
 
 return SettingsPage

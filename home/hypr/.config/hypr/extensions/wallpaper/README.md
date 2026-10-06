@@ -125,7 +125,7 @@ Other places that shape it:
 
 - `wallpaper_enabled = false` in a machine profile stops the rotator from starting on that machine.
 - `~/.config/hypr/custom/hyprpaper.conf` replaces the shipped `hyprpaper.conf` when the rotator starts hyprpaper. Keep `ipc = true` in it, since the rotator sets wallpapers over IPC.
-- `SUPER + Q` then `W` skips to the next set.
+- `SUPER + Q` then `W`, or `r` in the Settings page, skips to the next set; the running rotator takes it over and restarts its interval.
 
 Files under `custom/` are gitignored; to track them in your own repo, see `custom/README.md`.
 

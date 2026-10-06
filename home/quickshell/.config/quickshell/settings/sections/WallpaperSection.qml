@@ -15,7 +15,7 @@ RowsSection {
     property var awaiting: null
     readonly property string hint: WallpaperSettings.notice !== "" ? WallpaperSettings.notice : WallpaperSettings.alive ? "" : "The rotator is not running; changes apply when it starts."
 
-    footer_hint: root.current_monitor ? "j/k move · h/l change · Enter image · p pin current · Esc sections · q close" : "j/k move · h/l change · Enter list · Esc sections · q close"
+    footer_hint: root.current_monitor ? "j/k move · h/l change · Enter image · p pin current · r rotate " + root.current_monitor.name + " · o open folder · Esc sections · q close" : "j/k move · h/l change · Enter list · r rotate all · o open folder · Esc sections · q close"
 
     function toggle_row(label, key) {
         return {
@@ -62,6 +62,15 @@ RowsSection {
         WallpaperSettings.pin_current(m);
     }
 
+    function rotate(m) {
+        if (m && m.key in WallpaperSettings.pins) {
+            WallpaperSettings.say(m.name + " is pinned; set it to Automatic to rotate it");
+            return;
+        }
+        WallpaperSettings.rotate(m ? m.name : "");
+        WallpaperSettings.say(m ? "New image for " + m.name : "New images for the automatic monitors");
+    }
+
     function choose_image(m) {
         root.awaiting = m;
         WallpaperSettings.list_images();
@@ -77,8 +86,10 @@ RowsSection {
     }
 
     onExtra_key: event => {
-        if (event.key !== Qt.Key_P || !root.current_monitor) return;
-        root.pin_current(root.current_monitor);
+        if (event.key === Qt.Key_P && root.current_monitor) root.pin_current(root.current_monitor);
+        else if (event.key === Qt.Key_R) root.rotate(root.current_monitor);
+        else if (event.key === Qt.Key_O) WallpaperSettings.open_collection();
+        else return;
         event.accepted = true;
     }
 
