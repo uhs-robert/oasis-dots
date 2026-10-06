@@ -33,7 +33,7 @@ SettingsPane {
     footer_hint: "j/k move · H/L change · Enter list · h/Esc sections · q close"
     search_rows: root.rows.map(r => r.label)
     search_cursor: root.cursor
-    implicitHeight: col.implicitHeight
+    implicitHeight: col.implicitHeight + (description_block.visible ? description_block.implicitHeight + 12 : 0)
 
     function step(index, delta) {
         const row = root.rows[index];
@@ -166,56 +166,58 @@ SettingsPane {
             Layout.topMargin: 6
             spacing: 4
         }
+    }
 
-        // Fixed at two lines each so moving between rows does not resize the pane.
-        ColumnLayout {
-            visible: root.has_descriptions && !root.picking
+    // Pinned to the bottom of the pane, and fixed at two lines each so moving between rows does not resize it.
+    ColumnLayout {
+        id: description_block
+        visible: root.has_descriptions && !root.picking
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.bottom: parent.bottom
+        spacing: 2
+
+        Rectangle {
             Layout.fillWidth: true
-            Layout.topMargin: 6
-            spacing: 2
+            Layout.preferredHeight: 1
+            color: Qt.alpha(root.st.text_muted, 0.4)
+        }
 
-            Rectangle {
-                Layout.fillWidth: true
-                Layout.preferredHeight: 1
-                color: Qt.alpha(root.st.text_muted, 0.4)
-            }
+        Text {
+            Layout.fillWidth: true
+            Layout.preferredHeight: description_metrics.height * 2
+            text: root.described_row && root.described_row.desc ? root.described_row.desc : ""
+            wrapMode: Text.WordWrap
+            maximumLineCount: 2
+            elide: Text.ElideRight
+            verticalAlignment: Text.AlignTop
+            color: root.st.text_fg
+            font.family: root.st.font_family
+            font.pixelSize: root.st.fs(-2)
 
-            Text {
-                Layout.fillWidth: true
-                Layout.preferredHeight: description_metrics.height * 2
-                text: root.described_row && root.described_row.desc ? root.described_row.desc : ""
-                wrapMode: Text.WordWrap
-                maximumLineCount: 2
-                elide: Text.ElideRight
-                verticalAlignment: Text.AlignTop
-                color: root.st.text_fg
+            FontMetrics {
+                id: description_metrics
                 font.family: root.st.font_family
                 font.pixelSize: root.st.fs(-2)
-
-                FontMetrics {
-                    id: description_metrics
-                    font.family: root.st.font_family
-                    font.pixelSize: root.st.fs(-2)
-                }
             }
+        }
 
-            Text {
-                Layout.fillWidth: true
-                Layout.preferredHeight: keys_metrics.height * 2
-                text: root.keys_of(root.described_row)
-                wrapMode: Text.WordWrap
-                maximumLineCount: 2
-                elide: Text.ElideRight
-                verticalAlignment: Text.AlignTop
-                color: root.st.text_accent
+        Text {
+            Layout.fillWidth: true
+            Layout.preferredHeight: keys_metrics.height * 2
+            text: root.keys_of(root.described_row)
+            wrapMode: Text.WordWrap
+            maximumLineCount: 2
+            elide: Text.ElideRight
+            verticalAlignment: Text.AlignTop
+            color: root.st.text_accent
+            font.family: root.st.font_family
+            font.pixelSize: root.st.fs(-3)
+
+            FontMetrics {
+                id: keys_metrics
                 font.family: root.st.font_family
                 font.pixelSize: root.st.fs(-3)
-
-                FontMetrics {
-                    id: keys_metrics
-                    font.family: root.st.font_family
-                    font.pixelSize: root.st.fs(-3)
-                }
             }
         }
     }
