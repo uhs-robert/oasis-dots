@@ -352,7 +352,9 @@ function Rotate.start(opts)
   if cli.help then return true end
 
   local settings_raw, settings_state = SettingsPage.read()
-  local cfg = load_config({ config_path = cli.config_path }, overrides, SettingsPage.settings(settings_state or {}))
+  local function log_ignored(msg) log(msg, { verbose = overrides.verbose }) end
+  local cfg =
+    load_config({ config_path = cli.config_path }, overrides, SettingsPage.settings(settings_state or {}, log_ignored))
   settings_state = settings_state or {}
   if cli.audit then
     Audit.run(cfg)
@@ -457,6 +459,7 @@ function Rotate.start(opts)
         time_of_day_enabled = cfg.time_of_day_enabled,
         seasons_enabled = cfg.seasons_enabled,
         weather_enabled = cfg.weather_enabled,
+        wallpaper_dir = cfg.wallpaper_dir,
       },
       monitors = monitors_status,
       updated = os.time(),
@@ -555,15 +558,17 @@ function Rotate.start(opts)
       time_of_day_enabled = cfg.time_of_day_enabled,
       seasons_enabled = cfg.seasons_enabled,
       weather_enabled = cfg.weather_enabled,
+      wallpaper_dir = cfg.wallpaper_dir,
     }
     local before_pins = active_pins
     settings_state = decoded
-    apply_settings(cfg, SettingsPage.settings(decoded), overrides)
+    apply_settings(cfg, SettingsPage.settings(decoded, function(msg) util.log(msg, cfg) end), overrides)
     util.log("wallpaper.json changed; settings reloaded", cfg)
 
     local pool_changed = before.time_of_day_enabled ~= cfg.time_of_day_enabled
       or before.seasons_enabled ~= cfg.seasons_enabled
       or before.weather_enabled ~= cfg.weather_enabled
+      or before.wallpaper_dir ~= cfg.wallpaper_dir
     if cfg.time_of_day_enabled and not before.time_of_day_enabled then refresh_solar() end
 
     if pool_changed and cfg.rotation then

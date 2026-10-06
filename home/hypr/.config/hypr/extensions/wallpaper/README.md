@@ -110,7 +110,9 @@ return {
 | `location_enabled` | `false` | Follow the sun; see Location above |
 | `manual_lat`, `manual_lon` | unset | Fixed coordinates, used first |
 
-Settings > Appearance > Wallpaper in the Quickshell bar sets rotation on or off, the interval, and the time of day, season and weather toggles, and pins an image to a monitor. It writes `~/.local/state/hypr/wallpaper.json` (under `$XDG_STATE_HOME`), which the rotator re-reads every couple of seconds, so those changes need no restart. Precedence, lowest to highest: `config.lua`, `custom/wallpaper.lua`, the Settings page, command-line flags.
+Settings > Appearance > Wallpaper in the Quickshell bar sets rotation on or off, the interval, the time of day, season and weather toggles and the collection folder (`wallpaper_dir`), and pins an image to a monitor. It writes `~/.local/state/hypr/wallpaper.json` (under `$XDG_STATE_HOME`), which the rotator re-reads every couple of seconds, so those changes need no restart. Precedence, lowest to highest: `config.lua`, `custom/wallpaper.lua`, the Settings page, command-line flags.
+
+A `wallpaper_dir` saved by the page must name an existing folder (a leading `~` is expanded), otherwise it is ignored; clearing it in the page goes back to the value from the config files. Changing it counts like a pool toggle and, with rotation on, picks new images at once.
 
 A pin is stored against the monitor's description (`hyprctl -j monitors`), so it follows the screen across ports. A pinned monitor keeps its image and is left out of every pick; no other monitor shows the same image while the pool allows. A pin whose file is missing is ignored. With rotation off the process keeps running but stops timed rotation; startup, a plugged-in monitor and `SUPER + Q` then `W` still pick for unpinned monitors. The rotator also writes `wallpaper-status.json` beside it for the page to read.
 

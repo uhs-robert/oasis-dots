@@ -12,7 +12,7 @@ Singleton {
 
     readonly property string settings_path: Paths.hypr_state_dir + "/wallpaper.json"
     readonly property string status_path: Paths.hypr_state_dir + "/wallpaper-status.json"
-    readonly property var defaults: ({ rotation: true, interval_minutes: 15, time_of_day_enabled: true, seasons_enabled: true, weather_enabled: true })
+    readonly property var defaults: ({ rotation: true, interval_minutes: 15, time_of_day_enabled: true, seasons_enabled: true, weather_enabled: true, wallpaper_dir: "" })
     readonly property var interval_choices: [5, 10, 15, 30, 60, 120]
     readonly property string default_collection: Quickshell.env("HOME") + "/Pictures/Wallpapers/Pixel Art"
     readonly property var image_extensions: ["png", "jpg", "jpeg", "webp", "bmp"]
@@ -46,6 +46,14 @@ Singleton {
 
     function set_value(key, value) {
         root.saved = Object.assign({}, root.saved, { [key]: value });
+        save_timer.restart();
+    }
+
+    // Removes a key, so the rotator falls back to the config-file value.
+    function clear_value(key) {
+        const next = Object.assign({}, root.saved);
+        delete next[key];
+        root.saved = next;
         save_timer.restart();
     }
 

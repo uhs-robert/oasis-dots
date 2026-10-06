@@ -33,6 +33,9 @@ SettingsPane {
     footer_hint: "j/k move · H/L change · Enter list · h/Esc sections · q close"
     search_rows: root.rows.map(r => r.label)
     search_cursor: root.cursor
+    // Layout facts a section needs to size its own content against the pinned description.
+    readonly property real footer_top: footer_col.y
+    readonly property real description_height: description_block.visible ? description_block.implicitHeight + 12 : 0
     implicitHeight: col.implicitHeight + (description_block.visible ? description_block.implicitHeight + 12 : 0)
 
     function step(index, delta) {
@@ -128,12 +131,24 @@ SettingsPane {
             spacing: 4
         }
 
-        PickerList {
-            id: picker
+        // Reserves the list's default height; the list itself may be taller and overflows into the pane's spare height.
+        Item {
+            id: picker_slot
             visible: root.picking
-            st: root.st
-            onPicked: index => root.finish_picker(index)
-            onClosed: root.hide_picker()
+            Layout.fillWidth: true
+            Layout.preferredHeight: picker.default_height
+
+            PickerList {
+                id: picker
+                anchors.left: parent.left
+                anchors.top: parent.top
+                anchors.right: parent.right
+                visible: root.picking
+                st: root.st
+                available_height: Math.max(0, root.height - picker_slot.y - 4)
+                onPicked: index => root.finish_picker(index)
+                onClosed: root.hide_picker()
+            }
         }
 
         Repeater {
@@ -186,7 +201,7 @@ SettingsPane {
 
         Text {
             Layout.fillWidth: true
-            Layout.preferredHeight: description_metrics.height * 2
+            Layout.preferredHeight: Math.ceil(description_metrics.lineSpacing) * 2
             text: root.described_row && root.described_row.desc ? root.described_row.desc : ""
             wrapMode: Text.WordWrap
             maximumLineCount: 2
@@ -205,7 +220,7 @@ SettingsPane {
 
         Text {
             Layout.fillWidth: true
-            Layout.preferredHeight: keys_metrics.height * 2
+            Layout.preferredHeight: Math.ceil(keys_metrics.lineSpacing) * 2
             text: root.keys_of(root.described_row)
             wrapMode: Text.WordWrap
             maximumLineCount: 2
