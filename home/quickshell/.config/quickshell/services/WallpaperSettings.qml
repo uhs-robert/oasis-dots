@@ -30,7 +30,12 @@ Singleton {
 
     readonly property var pins: root.saved.pins && typeof root.saved.pins === "object" ? root.saved.pins : ({})
     readonly property var live: root.status.monitors && typeof root.status.monitors === "object" ? root.status.monitors : ({})
-    readonly property string collection: typeof root.status.collection === "string" && root.status.collection !== "" ? root.status.collection : root.default_collection
+    // The saved folder first, so the row, the image list and `o` follow an edit at once, even with the rotator stopped.
+    readonly property string collection: {
+        const saved = root.expand(root.saved.wallpaper_dir);
+        if (saved !== "") return saved;
+        return typeof root.status.collection === "string" && root.status.collection !== "" ? root.status.collection : root.default_collection;
+    }
     readonly property bool has_status: typeof root.status.pid === "number"
 
     signal images_ready
@@ -91,6 +96,22 @@ Singleton {
     function rotate(monitor_name) {
         const args = monitor_name ? ["--monitor", monitor_name] : ["--once"];
         Quickshell.execDetached(["sh", "-c", "exec lua \"$HOME/.config/hypr/extensions/wallpaper/init.lua\" \"$@\"", "sh"].concat(args));
+    }
+
+    function expand(path) {
+        if (typeof path !== "string" || path === "") return "";
+        const home = Quickshell.env("HOME");
+        const full = path === "~" ? home : path.startsWith("~/") ? home + path.slice(1) : path;
+        return full.length > 1 ? full.replace(/\/+$/, "") : full;
+    }
+
+    // Saves `path` as the collection only once it is known to be a folder, matching what the rotator accepts.
+    function set_collection(path) {
+        const full = root.expand(path);
+        if (full === "" || folder_proc.running) return;
+        folder_proc.path = path;
+        folder_proc.command = ["test", "-d", full];
+        folder_proc.running = true;
     }
 
     function url_of(path) {
@@ -156,6 +177,19 @@ Singleton {
         id: save_proc
         onExited: code => {
             if (code !== 0) root.say("Could not save wallpaper settings");
+        }
+    }
+
+    Process {
+        id: folder_proc
+        property string path: ""
+        onExited: code => {
+            if (code === 0) {
+                root.set_value("wallpaper_dir", folder_proc.path);
+                root.say("Collection saved");
+            } else {
+                root.say("No folder at " + folder_proc.path);
+            }
         }
     }
 

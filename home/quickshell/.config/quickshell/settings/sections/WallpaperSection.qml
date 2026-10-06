@@ -96,9 +96,12 @@ RowsSection {
 
     function commit_edit() {
         const text = input.text.trim();
-        if (text === "") WallpaperSettings.clear_value("wallpaper_dir");
-        else WallpaperSettings.set_value("wallpaper_dir", text);
-        WallpaperSettings.say(text === "" ? "Collection reset to the default" : "Collection saved; the rotator ignores a folder that does not exist");
+        if (text === "") {
+            WallpaperSettings.clear_value("wallpaper_dir");
+            WallpaperSettings.say("Collection reset to the default");
+        } else {
+            WallpaperSettings.set_collection(text);
+        }
         root.end_edit();
     }
 
