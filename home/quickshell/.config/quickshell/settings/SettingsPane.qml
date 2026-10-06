@@ -94,7 +94,7 @@ FocusScope {
 
         Text {
             Layout.fillWidth: true
-            Layout.preferredHeight: Math.ceil(description_metrics.lineSpacing) * 2
+            Layout.preferredHeight: description_two_lines.implicitHeight
             text: root.description
             wrapMode: Text.WordWrap
             maximumLineCount: 2
@@ -104,8 +104,11 @@ FocusScope {
             font.family: root.st.font_family
             font.pixelSize: root.st.fs(-2)
 
-            FontMetrics {
-                id: description_metrics
+            // Two real lines in the same font, since a style's font can render taller than its FontMetrics say.
+            Text {
+                id: description_two_lines
+                visible: false
+                text: "x\nx"
                 font.family: root.st.font_family
                 font.pixelSize: root.st.fs(-2)
             }
@@ -113,7 +116,7 @@ FocusScope {
 
         Text {
             Layout.fillWidth: true
-            Layout.preferredHeight: Math.ceil(keys_metrics.lineSpacing) * 2
+            Layout.preferredHeight: keys_two_lines.implicitHeight
             text: root.hint_keys(root.description_keys)
             wrapMode: Text.WordWrap
             maximumLineCount: 2
@@ -123,8 +126,10 @@ FocusScope {
             font.family: root.st.font_family
             font.pixelSize: root.st.fs(-3)
 
-            FontMetrics {
-                id: keys_metrics
+            Text {
+                id: keys_two_lines
+                visible: false
+                text: "x\nx"
                 font.family: root.st.font_family
                 font.pixelSize: root.st.fs(-3)
             }
