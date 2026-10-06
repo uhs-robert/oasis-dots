@@ -14,6 +14,8 @@ SettingsPane {
 
     property int cursor: 0
     property string target: ""
+    // Row under the pointer, in cursor numbering; -1 when none.
+    property int hovered_index: -1
 
     readonly property var screens: Array.from(Quickshell.screens)
     readonly property var target_screen: root.screens.find(s => s.name === root.target) || null
@@ -35,11 +37,63 @@ SettingsPane {
         return out;
     }
     readonly property int total: root.top_count + root.entries.length
+    readonly property int described_index: root.hovered_index >= 0 && root.hovered_index < root.total ? root.hovered_index : root.cursor
+    readonly property var module_notes: ({
+            start: "Start button that opens the Start menu.",
+            workspaces: "Workspace buttons for each monitor.",
+            clock: "Time and date; opens the calendar popup.",
+            tray: "Tray icons of running apps.",
+            volume: "Volume level; opens the volume popup.",
+            battery: "Battery level and charging state.",
+            bluetooth: "Bluetooth status; opens its popup.",
+            system: "System readout, starting on CPU.",
+            "system:cpu": "CPU usage readout.",
+            "system:memory": "Memory usage readout.",
+            "system:temperature": "Temperature readout.",
+            network: "Network status; opens the network popup.",
+            weather: "Current weather; opens the forecast popup.",
+            keeptabs: "AI agent sessions busy, done or waiting. Hidden while none run.",
+            updates: "Count of pending package updates.",
+            voxtype: "Dictation status.",
+            recording: "A chip shown while the screen is recording.",
+            notifications: "Notification center and Do Not Disturb.",
+            media: "Now playing; opens the media popup."
+        })
 
     footer_hint: "j/k move · Enter target list · Space show/hide · J/K reorder · H/L side · a add argument · x remove · l/H target · / find · h/Esc sections · q close"
     search_rows: ["Editing target"].concat(root.target_screen ? ["Own layout"] : [], root.has_own ? ["Compact"] : [], root.entries.map(e => e.entry))
     search_cursor: root.cursor
-    implicitHeight: col.implicitHeight
+    described: true
+    description: root.describe(root.described_index)
+    description_keys: root.keys_for(root.described_index)
+    implicitHeight: col.implicitHeight + root.description_space
+
+    function describe(index) {
+        if (index === 0) return "The monitor whose bar you edit. All monitors edits the layout they share.";
+        if (index === 1 && root.target_screen) return "On gives this monitor its own copy of the layout. Off goes back to the shared one.";
+        if (index === 2 && root.has_own) return "A tighter bar that hides the system modules on this monitor.";
+        const item = root.entries[index - root.top_count];
+        if (!item) return "";
+        const note = root.module_notes[item.entry] || root.module_notes[BarConfig.parse_module(item.entry).base] || "";
+        return note + (item.side === "hidden" ? " Hidden." : "");
+    }
+
+    function keys_for(index) {
+        if (index === 0) return "H/L change · Enter list";
+        if (index < root.top_count) return "Enter toggle";
+        const item = root.entries[index - root.top_count];
+        if (!item) return "";
+        const base = BarConfig.parse_module(item.entry).base;
+        const keys = item.side === "hidden" ? ["Enter show"] : ["Enter hide", "J/K reorder", "H/L side"];
+        if (BarLayout.module_args[base]) keys.push("a add argument");
+        if (item.entry.indexOf(":") >= 0) keys.push("x remove");
+        return keys.join(" · ");
+    }
+
+    function hover(index, on) {
+        if (on) root.hovered_index = index;
+        else if (root.hovered_index === index) root.hovered_index = -1;
+    }
 
     function target_values() {
         return [""].concat(root.screens.map(s => s.name));
@@ -195,6 +249,7 @@ SettingsPane {
             selected: root.live && root.cursor === 0
             label: "Editing target"
             value_text: root.target_text(root.target)
+            onHoveredChanged: root.hover(0, hovered)
             onStepped: {
                 root.focus_pane();
                 root.cursor = 0;
@@ -207,6 +262,7 @@ SettingsPane {
             selected: root.live && root.cursor === 1
             label: "Own layout"
             value_text: root.has_own ? "on" : "off"
+            onHoveredChanged: root.hover(1, hovered)
             onStepped: {
                 root.focus_pane();
                 root.cursor = 1;
@@ -219,6 +275,7 @@ SettingsPane {
             selected: root.live && root.cursor === 2
             label: "Compact"
             value_text: root.own_compact ? "on" : "off"
+            onHoveredChanged: root.hover(2, hovered)
             onStepped: {
                 root.focus_pane();
                 root.cursor = 2;
@@ -280,6 +337,8 @@ SettingsPane {
 
                     MouseArea {
                         anchors.fill: parent
+                        hoverEnabled: true
+                        onContainsMouseChanged: root.hover(root.top_count + item.index, containsMouse)
                         onClicked: {
                             root.focus_pane();
                             root.cursor = root.top_count + item.index;

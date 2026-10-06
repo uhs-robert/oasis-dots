@@ -9,10 +9,12 @@ import ".."
 RowsSection {
     id: root
 
+    section_keys: "p full view"
     footer_hint: "j/k move · H/L change · Enter list · p full view · h/Esc sections · q close"
     rows: [
         {
             label: "Screen",
+            desc: "The lock design. Follow bar style uses the current style's skin; Simple is a plain card.",
             values: () => ["follow", "simple"].concat(LockSkins.names),
             text: v => v === "follow" ? "Follow bar style" : v === "simple" ? "Simple" : Style.label(v),
             value: () => Style.lock_style,
@@ -20,6 +22,7 @@ RowsSection {
         },
         {
             label: "Tint",
+            desc: "Recolors the skin. Skins with a fixed game palette ignore it.",
             values: () => Style.lock_tints,
             text: v => root.cap(v),
             value: () => Style.lock_tint,
@@ -27,6 +30,7 @@ RowsSection {
         },
         {
             label: "Simple backdrop",
+            desc: "What the Simple screen shows behind its card: a pixelated or blurred desktop, or nothing.",
             values: () => Style.lock_backdrops,
             text: v => root.cap(v),
             value: () => Style.lock_backdrop,
@@ -34,6 +38,7 @@ RowsSection {
         },
         {
             label: "Music",
+            desc: "Play your own music file while locked. Needs Theme audio > Lock music on too.",
             values: () => ["on", "off"],
             text: v => v,
             value: () => Style.lock_music ? "on" : "off",

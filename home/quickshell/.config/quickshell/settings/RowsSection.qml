@@ -6,7 +6,8 @@ import "../services"
 
 // A section of ChoiceRows; each row is { label, values: () => [...], text: v => string, value: () => current, set: v => void, pick?: bool }.
 // Enter or a click opens a filterable list of a row's values; `pick: false` keeps a row cycling and `cycle: false` stops H/L from stepping it, and `activate: () => void` replaces Enter or a click.
-// A row's optional `desc` (text) and `keys` (hint) show below the section for the selected or hovered row; `section_keys` follow every row's keys.
+// A row's `desc` (text) and optional `keys` (hint) fill the pane's description block for the selected or hovered row; `section_keys` follow every row's keys.
+// The block shows once any row has a `desc`, so give every row one.
 SettingsPane {
     id: root
 
@@ -35,8 +36,11 @@ SettingsPane {
     search_cursor: root.cursor
     // Layout facts a section needs to size its own content against the pinned description.
     readonly property real footer_top: footer_col.y
-    readonly property real description_height: description_block.visible ? description_block.implicitHeight + 12 : 0
-    implicitHeight: col.implicitHeight + (description_block.visible ? description_block.implicitHeight + 12 : 0)
+    readonly property real description_height: root.description_space
+    described: root.has_descriptions
+    description: root.described_row && root.described_row.desc ? root.described_row.desc : ""
+    description_keys: root.keys_of(root.described_row)
+    implicitHeight: col.implicitHeight + root.description_space
 
     function step(index, delta) {
         const row = root.rows[index];
@@ -75,12 +79,13 @@ SettingsPane {
         let keys = row.keys;
         if (keys === undefined) {
             const parts = [];
-            if (row.cycle !== false) parts.push("H/L change");
-            if (row.activate || row.pick !== false && row.values().length >= root.pick_min) parts.push("Enter list");
+            const values = row.values();
+            const is_toggle = values.length === 2 && values[0] === "on";
+            if (row.cycle !== false) parts.push(is_toggle ? "H/L toggle" : "H/L change");
+            if (row.activate || row.pick !== false && values.length >= root.pick_min) parts.push("Enter list");
             keys = parts.join(" · ");
         }
-        // No-break spaces inside each hint, so a wrap never splits a key from what it does.
-        return [keys, root.section_keys].filter(k => k !== "").join(" · ").split(" · ").map(k => k.replace(/ /g, "\u00a0")).join(" · ");
+        return [keys, root.section_keys].filter(k => k !== "").join(" · ");
     }
 
     function activate(index, delta) {
@@ -183,60 +188,6 @@ SettingsPane {
             Layout.fillWidth: true
             Layout.topMargin: 6
             spacing: 4
-        }
-    }
-
-    // Pinned to the bottom of the pane, and fixed at two lines each so moving between rows does not resize it.
-    ColumnLayout {
-        id: description_block
-        visible: root.has_descriptions && !root.picking
-        anchors.left: parent.left
-        anchors.right: parent.right
-        anchors.bottom: parent.bottom
-        spacing: 2
-
-        Rectangle {
-            Layout.fillWidth: true
-            Layout.preferredHeight: 1
-            color: Qt.alpha(root.st.text_muted, 0.4)
-        }
-
-        Text {
-            Layout.fillWidth: true
-            Layout.preferredHeight: Math.ceil(description_metrics.lineSpacing) * 2
-            text: root.described_row && root.described_row.desc ? root.described_row.desc : ""
-            wrapMode: Text.WordWrap
-            maximumLineCount: 2
-            elide: Text.ElideRight
-            verticalAlignment: Text.AlignTop
-            color: root.st.text_fg
-            font.family: root.st.font_family
-            font.pixelSize: root.st.fs(-2)
-
-            FontMetrics {
-                id: description_metrics
-                font.family: root.st.font_family
-                font.pixelSize: root.st.fs(-2)
-            }
-        }
-
-        Text {
-            Layout.fillWidth: true
-            Layout.preferredHeight: Math.ceil(keys_metrics.lineSpacing) * 2
-            text: root.keys_of(root.described_row)
-            wrapMode: Text.WordWrap
-            maximumLineCount: 2
-            elide: Text.ElideRight
-            verticalAlignment: Text.AlignTop
-            color: root.st.text_accent
-            font.family: root.st.font_family
-            font.pixelSize: root.st.fs(-3)
-
-            FontMetrics {
-                id: keys_metrics
-                font.family: root.st.font_family
-                font.pixelSize: root.st.fs(-3)
-            }
         }
     }
 }

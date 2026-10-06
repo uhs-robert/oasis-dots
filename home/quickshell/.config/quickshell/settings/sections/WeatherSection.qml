@@ -13,9 +13,10 @@ RowsSection {
     property string edit_key: ""
     property bool edit_invalid: false
 
-    function choice_row(label, key, choices, names) {
+    function choice_row(label, key, desc, choices, names) {
         return {
             label: label,
+            desc: desc,
             values: () => choices,
             text: v => names[v] || String(v),
             value: () => root.cfg[key],
@@ -24,9 +25,11 @@ RowsSection {
         };
     }
 
-    function text_row(label, key, empty) {
+    function text_row(label, key, empty, desc) {
         return {
             label: label,
+            desc: desc,
+            keys: "Enter edit",
             values: () => [],
             text: v => v === "" ? empty : v,
             value: () => root.cfg[key] === undefined ? "" : String(root.cfg[key]),
@@ -48,6 +51,8 @@ RowsSection {
     function build_rows() {
         const rows = [{
             label: "Location",
+            desc: "Automatic looks the place up by IP address. Manual uses the coordinates below.",
+            keys: "H/L change",
             values: () => ["auto", "manual"],
             text: v => v === "auto" ? "Automatic (IP lookup)" : "Manual",
             value: () => root.manual ? "manual" : "auto",
@@ -55,13 +60,14 @@ RowsSection {
             pick: false
         }];
         if (root.manual) {
-            rows.push(root.text_row("Latitude", "latitude", ""));
-            rows.push(root.text_row("Longitude", "longitude", ""));
-            rows.push(root.text_row("Place name", "location_name", "Coordinates only"));
+            rows.push(root.text_row("Latitude", "latitude", "", "Degrees north, negative for south, from -90 to 90."));
+            rows.push(root.text_row("Longitude", "longitude", "", "Degrees east, negative for west, from -180 to 180."));
+            rows.push(root.text_row("Place name", "location_name", "Coordinates only", "The name shown for the location. Blank shows the coordinates only."));
         }
-        rows.push(root.choice_row("Units", "unit", ["fahrenheit", "celsius"], { fahrenheit: "Imperial (°F, mph, in)", celsius: "Metric (°C, km/h, mm)" }));
+        rows.push(root.choice_row("Units", "unit", "Imperial or metric for temperature, wind speed and rain or snow depth.", ["fahrenheit", "celsius"], { fahrenheit: "Imperial (°F, mph, in)", celsius: "Metric (°C, km/h, mm)" }));
         rows.push({
             label: "Forecast days",
+            desc: "How many days of forecast the weather popup lists, from 1 to 16.",
             values: () => [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16],
             text: v => String(v),
             value: () => Math.max(1, Math.min(16, Number(root.cfg.days) || 7)),
@@ -103,6 +109,7 @@ RowsSection {
     }
 
     rows: root.build_rows()
+    description_keys: root.edit_key !== "" ? "Enter save · Ctrl+u clear · Esc cancel" : root.keys_of(root.described_row)
     onRowsChanged: root.cursor = Math.min(root.cursor, root.rows.length - 1)
     footer_hint: root.edit_key !== "" ? "Enter save · Ctrl+u clear · Esc cancel" : "j/k move · H/L change · Enter edit or list · h/Esc sections · q close"
 
