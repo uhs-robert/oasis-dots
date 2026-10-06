@@ -39,9 +39,6 @@ if [ -n "$duplicates" ]; then
   exit 1
 fi
 
-# home/ dirs that are not stow packages: browser imports, personal images, and a package awaiting a manifest.
-unstowed="images org.freedesktop.FileManager1.common tabliss vimium"
-
 stow_entries=$(awk '/^[[:space:]]*($|#|\[)/ { next } { print $1 }' "$pkg_dir/stow.ini" | sort -u)
 
 status=0
@@ -51,7 +48,6 @@ for entry in $stow_entries; do
   status=1
 done
 for dir in $(git -C "$repo_dir" ls-files home | cut -d/ -f2 | sort -u); do
-  case " $unstowed " in *" $dir "*) continue ;; esac
   printf '%s\n' "$stow_entries" | grep -qx -- "$dir" && continue
   echo "home/$dir is not listed in stow.ini" >&2
   status=1

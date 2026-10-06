@@ -255,7 +255,7 @@ It uses `sudo` for these; the flags in brackets skip them.
 - Packages through pacman and paru [`--no-aur` for paru], the `rustup` toolchain with both stable and nightly [`--no-cargo`] and the latest Maple Mono NF release, unpinned, in `/usr/local/share/fonts`.
 - `/etc`: `vtrgb-oasis`, `keyd/default.conf` and two pacman hooks; `/usr/local/bin` and `/usr/local/share/betterbird-autoconfig` for the voxtype GPU and Betterbird autoconfig helpers, which also patch `/opt/betterbird` when it exists [`--no-system-files`].
 - `/root`: links root's `.zshrc`, `.zsh_plugins.txt`, Neovim and Yazi config to yours, and adds `yazi-root` and a `/usr/local/sbin/yazi` wrapper, after a prompt [`--no-system-files`].
-- greetd, after a prompt: `/etc/greetd`, `/etc/tuigreet`, `/usr/local/bin/tuigreet-oasis`, the Quickshell greeter in `/etc/greetd/quickshell`, `/usr/local/bin/qs-greeter` and `/var/lib/qs-greeter`, then enables `greetd` [`--no-services`].
+- greetd, after a prompt: `/etc/greetd`, `/etc/tuigreet`, `/usr/local/bin/tuigreet-oasis`, the Quickshell greeter in `/etc/greetd/quickshell`, `/usr/local/bin/qs-greeter` and `/var/lib/qs-greeter`, then enables `greetd` [`--no-services`]. Save a picture as `~/.face` first and it becomes your avatar on the login screen.
 - Your login shell is changed to zsh, and `keyd` and `power-profiles-daemon` are enabled [`--no-services`].
 - Steam, after a prompt: native Steam enables `[multilib]` in `/etc/pacman.conf` and runs a full `pacman -Syu`, Flatpak Steam installs `flatpak` and adds a system-wide Flathub remote; the optional xone driver builds a DKMS kernel module [`--no-services`].
 - Nvidia drivers, after a prompt [`--no-services`].
@@ -343,12 +343,14 @@ Vim-style keybindings for Betterbird through the tbkeys add-on, with a Neovim co
 
 ## 🍭 Extras
 
-Companion setups that live in their own repositories and install separately from these dotfiles.
+Configs you import into other apps by hand, and companion setups that live in their own repositories. None of them are stowed.
 
 | Tool      | Extra                                                                                                  |
 | --------- | ------------------------------------------------------------------------------------------------------ |
 | HeliBoard | [oasis-termux/extras/heliboard](https://github.com/uhs-robert/oasis-termux/tree/main/extras/heliboard) |
+| Tabliss   | [extras/tabliss](extras/tabliss)                                                                       |
 | Termux    | [oasis-termux](https://github.com/uhs-robert/oasis-termux)                                             |
+| Vimium    | [extras/vimium](extras/vimium)                                                                         |
 
 ## 📜 License
 
