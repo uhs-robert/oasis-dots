@@ -107,10 +107,28 @@ Popup {
         return true;
     }
 
+    // Drives the pane the way its keys would; a pane without the matching property or function ignores the command.
+    function run_pane_command(name, value) {
+        const pane = root.pane;
+        if (!root.is_open || !root.in_pane || !pane) return;
+        if (name === "back") {
+            if (pane.picking) pane.hide_picker();
+            else root.leave_pane();
+            return;
+        }
+        if (pane.picking || typeof pane.cursor !== "number") return;
+        if (name === "cursor") pane.cursor = value;
+        else if (name === "step" && typeof pane.step === "function") pane.step(pane.cursor, value);
+        else if (name === "activate" && typeof pane.activate === "function") pane.activate(pane.cursor, 1);
+    }
+
     Connections {
         target: SettingsNav
         function onRequestedChanged() {
             if (root.is_open && SettingsNav.requested !== "") root.apply_request();
+        }
+        function onPane_command(name, value) {
+            root.run_pane_command(name, value);
         }
     }
 

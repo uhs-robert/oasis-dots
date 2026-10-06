@@ -57,6 +57,17 @@ verify() {
   echo "test-bar: loaded cleanly"
 }
 
+# Restarts the wallpaper rotator after a hypr swap or restore, only if one is running; the new one reads the re-pointed config.
+restart_rotator() {
+  # Anchored on the lua process, so a shell whose command line mentions the path is never killed.
+  # pgrep exits 1 with no match, which pipefail and set -e would turn into a silent exit.
+  pgrep -f '^lua .*wallpaper/init[.]lua' >/dev/null || return 0
+  pkill -f '^lua .*wallpaper/init[.]lua' || true
+  for _ in $(seq 20); do pgrep -f '^lua .*wallpaper/init[.]lua' >/dev/null || break; sleep 0.2; done
+  hyprctl dispatch "hl.dsp.exec_cmd('lua ~/.config/hypr/extensions/wallpaper/init.lua')" >/dev/null
+  echo "rotator: restarted"
+}
+
 hypr_point() {
   ln -sfn "$1" "$hypr_link"
   hyprctl reload >/dev/null
@@ -72,6 +83,7 @@ hypr_restore() {
   hypr_point "$(<"$hypr_orig")"
   rm -f "$hypr_orig" "$hypr_bar"
   echo "hypr: restored"
+  restart_rotator
 }
 
 hypr_copy_ignored() {
@@ -106,6 +118,7 @@ hypr_swap() {
   echo "$orig" >"$hypr_orig"
   echo "$name" >"$hypr_bar"
   echo "hypr: swapped"
+  restart_rotator
 }
 
 status() {

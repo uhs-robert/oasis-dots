@@ -18,6 +18,11 @@ PanelWindow {
     WlrLayershell.namespace: "quickshell-scrim"
     WlrLayershell.layer: WlrLayer.Top
     WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
+    mask: Popups.hands_off ? no_input : null
+
+    Region {
+        id: no_input
+    }
 
     MouseArea {
         anchors.fill: parent
