@@ -61,10 +61,14 @@ verify() {
 restart_rotator() {
   # Anchored on the lua process, so a shell whose command line mentions the path is never killed.
   # pgrep exits 1 with no match, which pipefail and set -e would turn into a silent exit.
-  pgrep -f '^lua .*wallpaper/init[.]lua' >/dev/null || return 0
+  local pid cmd
+  pid=$( (pgrep -f '^lua .*wallpaper/init[.]lua' || true) | head -n 1)
+  [[ -n $pid ]] || return 0
+  # Restarted with its own arguments, such as --location from autostart, read before it exits.
+  cmd=$(tr '\0' ' ' <"/proc/$pid/cmdline")
   pkill -f '^lua .*wallpaper/init[.]lua' || true
   for _ in $(seq 20); do pgrep -f '^lua .*wallpaper/init[.]lua' >/dev/null || break; sleep 0.2; done
-  hyprctl dispatch "hl.dsp.exec_cmd('lua ~/.config/hypr/extensions/wallpaper/init.lua')" >/dev/null
+  hyprctl dispatch "hl.dsp.exec_cmd($(jq -Rn --arg c "${cmd% }" '$c'))" >/dev/null
   echo "rotator: restarted"
 }
 
