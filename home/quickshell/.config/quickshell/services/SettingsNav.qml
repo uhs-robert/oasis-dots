@@ -21,6 +21,12 @@ Singleton {
     function show(section_id, screen_name) {
         // Checked before `requested` is set, since setting it switches an open popup's section at once.
         if (!Quickshell.screens.some(s => s.name === screen_name)) return false;
+        // Moving an open Settings to another screen closes it first; the section is requested only once it reopens, or the closing popup would use it up.
+        if (Popups.open_name === "settings" && Popups.open_screen_name !== screen_name) {
+            Popups.close();
+            Qt.callLater(() => root.show(section_id, screen_name));
+            return true;
+        }
         root.requested = section_id;
         return Popups.open_on("settings", screen_name, true);
     }
