@@ -2,6 +2,7 @@
 import QtQuick
 import QtQuick.Layouts
 import "../theme"
+import "../components"
 
 // Base of a settings section; the popup loads one and hands itself in as `popup`.
 FocusScope {
@@ -32,11 +33,6 @@ FocusScope {
 
     // -1 for gg, 1 for G.
     function jump(delta) {
-    }
-
-    // No-break spaces inside each hint, so a wrap never splits a key from what it does.
-    function hint_keys(text) {
-        return text.split(" · ").map(k => k.replace(/ /g, "\u00a0")).join(" · ");
     }
 
     function wrap_index(i, delta, count) {
@@ -114,24 +110,21 @@ FocusScope {
             }
         }
 
-        Text {
+        // The same key badges as the popup footer, so keys look alike everywhere in each style.
+        MenuFooter {
             Layout.fillWidth: true
-            Layout.preferredHeight: keys_two_lines.implicitHeight
-            text: root.hint_keys(root.description_keys)
-            wrapMode: Text.WordWrap
-            maximumLineCount: 2
-            elide: Text.ElideRight
-            verticalAlignment: Text.AlignTop
-            color: root.st.text_accent
-            font.family: root.st.font_family
-            font.pixelSize: root.st.fs(-3)
+            Layout.preferredHeight: Math.max(implicitHeight, keys_two_lines.implicitHeight)
+            text: root.description_keys
+            wrap: true
+            ruled: false
+            follows_search: false
 
             Text {
                 id: keys_two_lines
                 visible: false
                 text: "x\nx"
                 font.family: root.st.font_family
-                font.pixelSize: root.st.fs(-3)
+                font.pixelSize: parent.text_px
             }
         }
     }
