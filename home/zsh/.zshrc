@@ -21,6 +21,8 @@ setopt AUTO_CD
 setopt CORRECT
 setopt PROMPT_SUBST
 setopt INTERACTIVE_COMMENTS
+# Coding agents pass globs like grep --include=*.lua unquoted; let an unmatched glob through as text, the way bash does.
+[[ -n $CLAUDECODE ]] && setopt NO_NOMATCH
 
 ZSH_AUTOSUGGEST_STRATEGY=(history completion)
 
