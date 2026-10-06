@@ -90,6 +90,8 @@ RowsSection {
     }
 
     function end_edit() {
+        // The section is a focus scope: unless the field gives up its scoped focus, forceActiveFocus hands it straight back to the hidden field and keys go nowhere.
+        input.focus = false;
         root.editing = false;
         root.forceActiveFocus();
     }
