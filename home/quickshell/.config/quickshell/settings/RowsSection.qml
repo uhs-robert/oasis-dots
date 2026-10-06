@@ -184,7 +184,7 @@ SettingsPane {
 
         ColumnLayout {
             id: footer_col
-            visible: footer_col.children.length > 0
+            visible: footer_col.visibleChildren.length > 0
             Layout.fillWidth: true
             Layout.topMargin: 6
             spacing: 4

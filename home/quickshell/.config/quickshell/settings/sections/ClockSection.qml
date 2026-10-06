@@ -27,13 +27,4 @@ RowsSection {
         value: () => ClockSettings.week_start,
         set: v => ClockSettings.set("week_start", v)
     }]
-
-    footer: Text {
-        Layout.fillWidth: true
-        text: "Saved to " + ClockSettings.state_dir + "/clock.json"
-        wrapMode: Text.WordWrap
-        color: root.st.text_dim
-        font.family: root.st.font_family
-        font.pixelSize: root.st.fs(-3)
-    }
 }

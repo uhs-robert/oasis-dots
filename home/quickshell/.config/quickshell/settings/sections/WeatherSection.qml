@@ -51,7 +51,7 @@ RowsSection {
     function build_rows() {
         const rows = [{
             label: "Location",
-            desc: "Automatic looks the place up by IP address. Manual uses the coordinates below.",
+            desc: "Automatic looks you up by IP (ipwho.is); Manual uses coordinates. Alerts come from the US NWS, US only.",
             keys: "H/L change",
             values: () => ["auto", "manual"],
             text: v => v === "auto" ? "Automatic (IP lookup)" : "Manual",
@@ -159,15 +159,6 @@ RowsSection {
                     event.accepted = true;
                 }
             }
-        }
-
-        Text {
-            Layout.fillWidth: true
-            text: "Automatic looks you up by IP address (ipwho.is). Weather alerts come from the US National Weather Service, so they only appear in the US. Saved to weather.local.json"
-            wrapMode: Text.WordWrap
-            color: root.st.text_dim
-            font.family: root.st.font_family
-            font.pixelSize: root.st.fs(-3)
         }
     }
 }

@@ -32,7 +32,7 @@ RowsSection {
         },
         {
             label: "Lock music",
-            desc: "Allow your own music file to play on the lock and login screens. See the note below.",
+            desc: "Plays your music.ogg/wav/mp3 from ~/.local/share/quickshell/sounds/<pack>/ at lock and login.",
             values: () => ["on", "off"],
             text: v => v,
             value: () => ThemeAudio.music ? "on" : "off",
@@ -56,7 +56,7 @@ RowsSection {
         },
         {
             label: "Effects pack",
-            desc: "The sound set for every style. Follow style uses each style's own pack.",
+            desc: "Sound set for every style; Follow style uses its own. Your wav/ogg files in sounds/<pack>/ replace a pack's.",
             values: () => ThemeAudio.pack_options(),
             text: v => v === "" ? "Follow style (" + ThemeAudio.pack_label(ThemeAudio.default_pack(Style.saved_name)) + ")" : ThemeAudio.pack_label(v),
             value: () => ThemeAudio.valid_pack(ThemeAudio.choice) ? ThemeAudio.choice : "",
@@ -86,14 +86,5 @@ RowsSection {
             ThemeAudio.preview(preview_timer.order[preview_timer.step]);
             preview_timer.step += 1;
         }
-    }
-
-    footer: Text {
-        Layout.fillWidth: true
-        text: "Imported game packs appear once imported. Your own wav/ogg files in ~/.local/share/quickshell/sounds/<pack>/ (cursor, confirm, cancel, notify) replace that pack's. Lock and login music only plays from your own music.ogg/wav/mp3 there, with the Lock screen's Music on."
-        wrapMode: Text.WordWrap
-        color: root.st.text_dim
-        font.family: root.st.font_family
-        font.pixelSize: root.st.fs(-3)
     }
 }
