@@ -17,7 +17,6 @@ local function is_boolean(v) return type(v) == "boolean" end
 local VALID = {
   kb_layout = function(v) return type(v) == "string" and v:match("^[%w_,-]+$") ~= nil end,
   kb_variant = function(v) return type(v) == "string" and v:match("^[%w_,-]*$") ~= nil end,
-  caps_escape = is_boolean,
   repeat_rate = integer_in(1, 100),
   repeat_delay = integer_in(100, 2000),
   sensitivity = function(v) return type(v) == "number" and v >= -1 and v <= 1 end,
@@ -45,21 +44,6 @@ function Input.state()
   return out
 end
 
---- XKB options with Caps Lock as Escape forced on or off; nil leaves the profile's options alone.
---- Turning it on drops any other `caps:` option, since XKB applies only one.
---- @param options string|nil
---- @param caps_escape boolean|nil
---- @return string
-function Input.kb_options(options, caps_escape)
-  if caps_escape == nil then return options or "" end
-  local kept = {}
-  for opt in (options or ""):gmatch("[^,]+") do
-    if not (opt == "caps:escape" or (caps_escape and opt:match("^caps:"))) then kept[#kept + 1] = opt end
-  end
-  if caps_escape then kept[#kept + 1] = "caps:escape" end
-  return table.concat(kept, ",")
-end
-
 --- The `input` table for hl.config.
 --- @param input Config.Input
 --- @return table
@@ -68,7 +52,7 @@ function Input.options(input)
     numlock_by_default = false,
     kb_layout = input.kb_layout,
     kb_variant = input.kb_variant or "",
-    kb_options = Input.kb_options(input.kb_options, input.caps_escape),
+    kb_options = input.kb_options or "",
     repeat_rate = input.repeat_rate,
     repeat_delay = input.repeat_delay,
     follow_mouse = input.follow_mouse,
