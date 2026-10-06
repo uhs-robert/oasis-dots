@@ -33,7 +33,7 @@ git ls-files -s | sed -n 's/^120000 [^	]*	//p' | {
     resolved=$(realpath -m -s -- "$(dirname -- "$link")/$target")
 
     case "$resolved" in
-    "$repo_dir"/repos/* | "$repo_dir"/termux/repos/*)
+    "$repo_dir"/repos/*)
       clone=$(printf '%s\n' "$resolved/" | sed 's|^\(.*/repos/[^/]*\)/.*|\1|')
       [ -e "$clone" ] || continue
       ;;

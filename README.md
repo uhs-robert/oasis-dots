@@ -341,9 +341,13 @@ just update-repos     # pull the external repos cloned into repos/
 
 Vim-style keybindings for Betterbird through the tbkeys add-on, with a Neovim compose bridge. See [home/thunderbird/README.md](home/thunderbird/README.md).
 
-## 📱 Termux
+## 🍭 Extras
 
-For a standalone mobile SSH setup, see [termux/README.md](termux/README.md). It uses its own installer and Stow packages, independent of the desktop setup.
+Companion setups that live in their own repositories and install separately from these dotfiles.
+
+| Tool   | Extra                                                      |
+| ------ | ---------------------------------------------------------- |
+| Termux | [oasis-termux](https://github.com/uhs-robert/oasis-termux) |
 
 ## 📜 License
 
