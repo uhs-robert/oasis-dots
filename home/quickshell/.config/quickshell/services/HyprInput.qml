@@ -12,11 +12,10 @@ Singleton {
 
     readonly property string state_dir: Paths.hypr_state_dir
 
-    // Hyprland option behind each key; caps_escape is read out of kb_options.
+    // Hyprland option behind each key.
     readonly property var options: ({
         kb_layout: "input:kb_layout",
         kb_variant: "input:kb_variant",
-        caps_escape: "input:kb_options",
         repeat_rate: "input:repeat_rate",
         repeat_delay: "input:repeat_delay",
         sensitivity: "input:sensitivity",
@@ -27,7 +26,7 @@ Singleton {
     })
 
     // Config.input's defaults until getoption answers; which_key_delay_ms is HyprVim's, not a Hyprland option, so it stays the default.
-    readonly property var fallback: ({ kb_layout: "us", kb_variant: "", caps_escape: false, repeat_rate: 25, repeat_delay: 600, sensitivity: 0, follow_mouse: 1, natural_scroll: false, tap_to_click: true, disable_while_typing: true, which_key_delay_ms: 0 })
+    readonly property var fallback: ({ kb_layout: "us", kb_variant: "", repeat_rate: 25, repeat_delay: 600, sensitivity: 0, follow_mouse: 1, natural_scroll: false, tap_to_click: true, disable_while_typing: true, which_key_delay_ms: 0 })
     property var live: root.fallback
     property var saved: ({})
     property bool reload_pending: false
@@ -42,7 +41,6 @@ Singleton {
         switch (key) {
         case "kb_layout": return typeof v === "string" && /^[A-Za-z0-9_,-]+$/.test(v);
         case "kb_variant": return typeof v === "string" && /^[A-Za-z0-9_,-]*$/.test(v);
-        case "caps_escape":
         case "natural_scroll":
         case "tap_to_click":
         case "disable_while_typing": return typeof v === "boolean";
@@ -88,7 +86,7 @@ Singleton {
                 const raw = o.str !== undefined ? (o.str === "[[EMPTY]]" ? "" : o.str) : o.int !== undefined ? o.int : o.float !== undefined ? o.float : o.bool;
                 for (const key in root.options) {
                     if (root.options[key] !== o.option) continue;
-                    next[key] = key === "caps_escape" ? raw.split(",").indexOf("caps:escape") >= 0 : raw;
+                    next[key] = raw;
                 }
             } catch (e) {
                 console.warn("HyprInput: unreadable getoption output (" + e + ")");

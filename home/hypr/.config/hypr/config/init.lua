@@ -15,8 +15,7 @@ local Utils = require("lib.utils") ---@class Utils
 --- @class Config.Input
 --- @field kb_layout string XKB layout (default: "us")
 --- @field kb_variant string|nil XKB variant, e.g. "dvorak"; nil = unset (default: nil)
---- @field kb_options string|nil XKB options, e.g. "caps:escape"; nil = unset (default: nil)
---- @field caps_escape boolean|nil Force Caps Lock as Escape on or off over kb_options; nil = leave kb_options alone (default: nil)
+--- @field kb_options string|nil XKB options, e.g. "compose:ralt"; nil = unset (default: nil)
 --- @field repeat_rate integer Key repeats per second (default: 25)
 --- @field repeat_delay integer Milliseconds held before a key repeats (default: 600)
 --- @field sensitivity number Pointer speed, -1 to 1 (default: 0)
@@ -96,7 +95,6 @@ Config.defaults = {
     kb_layout = "us",
     kb_variant = nil,
     kb_options = nil,
-    caps_escape = nil,
     repeat_rate = 25,
     repeat_delay = 600,
     sensitivity = 0,
