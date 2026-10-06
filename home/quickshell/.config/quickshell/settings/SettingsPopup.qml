@@ -236,12 +236,14 @@ Popup {
             color: Qt.alpha(root.st.text_muted, 0.4)
         }
 
+        // Spans the body's full height so a section can pin content, such as row descriptions, to the bottom.
         Loader {
             id: pane_loader
             anchors.left: divider.right
             anchors.leftMargin: 8
             anchors.right: parent.right
             anchors.top: parent.top
+            anchors.bottom: parent.bottom
         }
 
         NumberAnimation {
