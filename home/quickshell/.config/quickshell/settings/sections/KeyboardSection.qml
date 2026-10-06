@@ -73,7 +73,9 @@ RowsSection {
         set: v => HyprInput.set("repeat_delay", v)
     }]
 
+    // Settings keeps a loaded section across closes, so keyd's state is checked again on every open.
     Component.onCompleted: keyd_state.running = true
+    onLiveChanged: if (root.live && !keyd_state.running) keyd_state.running = true
 
     Process {
         id: keyd_state
@@ -86,6 +88,9 @@ RowsSection {
     FileView {
         path: root.keyd_path
         printErrors: false
+        watchChanges: true
+        onFileChanged: reload()
         onLoaded: root.keyd_sections = Keyd.parse(text())
+        onLoadFailed: error => root.keyd_sections = []
     }
 }
