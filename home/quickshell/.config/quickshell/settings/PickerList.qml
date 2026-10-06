@@ -148,7 +148,8 @@ ColumnLayout {
             maximumLength: 64
             clip: true
             color: root.st.text_fg
-            selectionColor: root.st.text_accent
+            selectionColor: root.st.selection_bg
+            selectedTextColor: root.st.selection_inverse ? root.st.selection_fg : root.st.text_fg
             font.family: root.st.font_family
             font.pixelSize: root.st.font_size
             onTextChanged: {
