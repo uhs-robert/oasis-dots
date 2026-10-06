@@ -4,10 +4,11 @@ Guidance for coding agents working in this repository. `CLAUDE.md` is a pointer 
 
 ## Overview
 
-Personal Arch Linux dotfiles deployed with GNU Stow. Two deployment targets, each independent:
+Personal Arch Linux dotfiles deployed with GNU Stow. Two deployment targets, each independent, plus extras that are never deployed:
 
 - `home/<package>/` — Stow packages symlinked into `~`. Directory layout under a package mirrors `$HOME` exactly (`home/kitty/.config/kitty/` becomes `~/.config/kitty/`).
 - `system/` — files rsynced into `/` (`/etc`, `/opt`, `/usr/local/bin`). Not stowed; copied.
+- `extras/` — configs imported by hand into other apps (browser extensions). Never stowed or copied; keep anything Stow-shaped in `home/`.
 
 `.stowrc` pins `--dir=home --target=~`, so a bare `stow <package>` from the repo root works.
 
