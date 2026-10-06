@@ -167,10 +167,12 @@ SettingsPane {
                     if (row.hovered) root.hovered_row = row.index;
                     else if (root.hovered_row === row.index) root.hovered_row = -1;
                 }
+                // A row whose Enter does something else (activate) still steps on a click, so the mouse can change its value.
                 onStepped: delta => {
                     root.focus_pane();
                     root.cursor = row.index;
-                    root.activate(row.index, delta);
+                    if (row.modelData.activate && row.modelData.cycle !== false) root.step(row.index, delta);
+                    else root.activate(row.index, delta);
                 }
             }
         }
