@@ -8,6 +8,7 @@ import "Sections.js" as Sections
 
 Popup {
     id: root
+    hold_keyboard: true
 
     popup_name: "settings"
     title: "SETTINGS"
