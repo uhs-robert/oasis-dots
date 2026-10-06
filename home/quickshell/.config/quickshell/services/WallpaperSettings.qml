@@ -20,7 +20,8 @@ Singleton {
     // wallpaper.json as last read or written; keys this UI does not know are kept when saving.
     property var saved: ({})
     property var status: ({})
-    property bool alive: false
+    // Assumed until a check says otherwise, so the not-running hint does not flash on every open.
+    property bool alive: true
     // True while a Settings section is showing, which is when the rotator's pid is worth polling.
     property bool watching: false
     property var images: []
