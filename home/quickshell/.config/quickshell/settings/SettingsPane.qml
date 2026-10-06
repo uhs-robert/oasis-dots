@@ -35,10 +35,10 @@ FocusScope {
         return text.charAt(0).toUpperCase() + text.slice(1);
     }
 
-    // Opens `list` (a PickerList) over `labels`; on_pick gets the chosen index.
-    function show_picker(list, title, labels, current, on_pick) {
+    // Opens `list` (a PickerList) over `labels`, with an image url per label when `thumbs` is given; on_pick gets the chosen index.
+    function show_picker(list, title, labels, current, on_pick, thumbs) {
         list.title = title;
-        list.items = labels.map(l => ({ label: l }));
+        list.items = labels.map((l, i) => ({ label: l, thumb: thumbs ? thumbs[i] : "" }));
         list.current = current;
         root.pick_list = list;
         root.pick_done = on_pick;

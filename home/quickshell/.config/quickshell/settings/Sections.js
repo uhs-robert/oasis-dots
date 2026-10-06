@@ -4,6 +4,7 @@
 var list = [
     { id: "style", group: "Appearance", label: "Style", glyph: "󰏘", keywords: "theme bar cava paint hot corners overview", source: "sections/StyleSection.qml" },
     { id: "colors", group: "Appearance", label: "Colors", glyph: "󰸌", keywords: "color scheme palette oasis theme swatch", source: "sections/ColorsSection.qml" },
+    { id: "wallpaper", group: "Appearance", label: "Wallpaper", glyph: "󰋩", keywords: "background image rotate rotation interval pin pinned monitor season time of day weather hyprpaper", source: "sections/WallpaperSection.qml" },
     { id: "theme", group: "Appearance", label: "Theme options", glyph: "󰒓", keywords: "scanlines glow dither font effects style options", source: "sections/ThemeOptionsSection.qml" },
     { id: "bar", group: "Bar", label: "Bar modules", glyph: "󰕮", keywords: "modules hide show order reorder monitor layout panel", source: "sections/BarModulesSection.qml" },
     { id: "clock", group: "Bar", label: "Clock", glyph: "󰥔", keywords: "calendar week first day monday sunday locale time", source: "sections/ClockSection.qml" },
