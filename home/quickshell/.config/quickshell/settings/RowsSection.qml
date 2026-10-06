@@ -76,7 +76,8 @@ SettingsPane {
             if (row.activate || row.pick !== false && row.values().length >= root.pick_min) parts.push("Enter list");
             keys = parts.join(" · ");
         }
-        return [keys, root.section_keys].filter(k => k !== "").join(" · ");
+        // No-break spaces inside each hint, so a wrap never splits a key from what it does.
+        return [keys, root.section_keys].filter(k => k !== "").join(" · ").split(" · ").map(k => k.replace(/ /g, "\u00a0")).join(" · ");
     }
 
     function activate(index, delta) {
