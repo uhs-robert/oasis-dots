@@ -27,9 +27,8 @@ gui:
       - "#F7F4F2"
     searchingActiveBorderColor:
       - "#F0E68C"
-
-  authorColors:
-    "*": "#F0E68C"
+    authorColors:
+      "*": "#F0E68C"
 update:
   method: never
 os:
