@@ -2,7 +2,8 @@
 -- Period resolution, file selection, and hyprpaper application
 
 --- @class Apply
---- @field to_monitors fun(cfg: table, util: table, opts?: { exclude?: table<string, boolean>, reserved?: table<string, boolean>, history?: string[] }): boolean, table<string, string> Apply wallpapers to all active monitors (or cfg.target_monitor if set); returns ok plus a map of monitor name to the wallpaper path applied
+--- @field to_monitors fun(cfg: table, util: table, opts?: { exclude?: table<string, boolean>, only?: table<string, boolean>, reserved?: table<string, boolean>, history?: string[], pins?: table<string, string> }): boolean, table<string, string>, table<string, boolean> Apply wallpapers to all active monitors (or cfg.target_monitor if set); returns ok, a map of monitor name to the wallpaper path applied, and the set of monitors that got a pin
+--- @field list_monitors fun(cfg: table, util: table): { name: string, description: string }[] Active monitors; description is empty when only the text fallback worked
 --- @field detect_signature fun(skip_env?: boolean): string|nil Current Hyprland instance signature from the environment or the runtime dir
 --- @field list_images fun(dir: string, skip?: string[]): string[] Public wrapper around list_images for external callers
 --- @field folder fun(name: string): string Folder name for a period, season or weather key
@@ -10,6 +11,8 @@
 --- @field SEASONS string[] Season keys, without `any`
 --- @field WEATHERS string[] Weather keys
 --- @field seconds_to_period_change fun(cfg: table): number Seconds until the next time-of-day period starts
+local Json = require("lib.json") ---@class Json
+
 local Apply = {}
 
 local PERIODS = { "dawn", "day", "evening", "night" }
@@ -266,23 +269,19 @@ local function label_of(period, season, weather)
   return label
 end
 
---- Parse `hyprctl -j monitors` JSON output and return unique monitor names.
---- Only names containing a dash (and not purely numeric) are kept.
+--- Parse `hyprctl -j monitors` JSON output into monitors.
 --- @param out string|nil raw JSON string
---- @return string[] monitor names
+--- @return { name: string, description: string }[]
 local function parse_monitors_json(out)
+  local decoded = out and Json.decode(out)
   local mons = {}
-  if not out then return mons end
-  -- Iterate monitor objects; keep only plausible monitor names (contain a dash, not just digits)
-  for block in out:gmatch("{(.-)}") do
-    local name = block:match('"name"%s*:%s*"([^"]+)"')
-    if name and name:find("%-") and not name:match("^%d+$") then mons[name] = true end
+  if type(decoded) ~= "table" then return mons end
+  for _, mon in ipairs(decoded) do
+    if type(mon) == "table" and type(mon.name) == "string" then
+      table.insert(mons, { name = mon.name, description = type(mon.description) == "string" and mon.description or "" })
+    end
   end
-  local uniq = {}
-  for name, _ in pairs(mons) do
-    table.insert(uniq, name)
-  end
-  return uniq
+  return mons
 end
 
 --- Return HYPRLAND_INSTANCE_SIGNATURE from the environment, else the newest instance in $XDG_RUNTIME_DIR/hypr, or nil.
@@ -325,18 +324,16 @@ local function hyprctl(cmd, util)
   return out
 end
 
---- Return the list of active monitor names via hyprctl.
+--- Return the active monitors via hyprctl.
 --- Tries JSON output first, falls back to text parsing.
 --- @param cfg table wallpaper config (used for logging)
 --- @param util table shared utility object
---- @return string[] monitor names
+--- @return { name: string, description: string }[]
 local function monitors(cfg, util)
-  -- Prefer JSON output for reliability
   local out_json = hyprctl("-j monitors", util)
   local mons = parse_monitors_json(out_json)
 
   if #mons == 0 then
-    -- Fallback to text parsing
     local out_txt = hyprctl("monitors | awk '/Monitor/ {print $2}'", util)
     local set = {}
     if out_txt then
@@ -345,7 +342,7 @@ local function monitors(cfg, util)
       end
     end
     for name, _ in pairs(set) do
-      table.insert(mons, name)
+      table.insert(mons, { name = name, description = "" })
     end
 
     if #mons == 0 and (out_json or out_txt) then
@@ -358,106 +355,150 @@ local function monitors(cfg, util)
   return mons
 end
 
+--- Set `img` on monitor `mon` through hyprpaper.
+--- @param util table shared utility object with `signature` and `log`
+--- @param cfg table wallpaper config
+--- @param mon string monitor name
+--- @param img string absolute image path
+--- @return boolean ok
+local function set_wallpaper(util, cfg, mon, img)
+  local f = io.open(img, "r")
+  if not f then
+    util.log(string.format("Skipping missing file: %s", img), cfg)
+    return false
+  end
+  f:close()
+  local base = util.signature and ("HYPRLAND_INSTANCE_SIGNATURE=" .. util.signature .. " ") or ""
+  local rc = os.execute(string.format("%shyprctl hyprpaper wallpaper '%s, %s' >/dev/null 2>&1", base, mon, img))
+  if rc ~= 0 and rc ~= true then
+    util.log(string.format("hyprpaper wallpaper failed (rc=%s) for %s on %s", tostring(rc), img, mon), cfg)
+    return false
+  end
+  return true
+end
+
 --- Apply wallpapers to all active monitors (or `cfg.target_monitor` if set).
---- Resolves the pool from the current time-of-day period, season and weather,
---- picks one image per monitor, then sets each via hyprpaper.
+--- Monitors whose description has a pin get that image; the rest get a pick from the pool
+--- resolved from the current period, season and weather, which avoids every pinned image.
 --- @param cfg table wallpaper config
 --- @param util table shared utility object
---- @param opts table|nil `{ exclude?, reserved?, history? }`; monitors in `exclude` are skipped (startup settle); paths in `reserved` (live on other monitors) and `history` (recently shown, oldest first) are avoided when picking
---- @return boolean ok true on success, false if nothing could be applied
+--- @param opts table|nil `{ exclude?, only?, reserved?, history?, pins? }`; monitors in `exclude` are skipped (startup settle) and, when `only` is set, monitors outside it are too; paths in `reserved` (live on other monitors) and `history` (recently shown, oldest first) are avoided when picking; `pins` maps monitor description to image path
+--- @return boolean ok false when a monitor needed a pick and the pool had none, or nothing could be applied
 --- @return table<string, string> applied map of monitor name to the wallpaper path set this call
+--- @return table<string, boolean> pinned monitors in `applied` that got a pin
 function Apply.to_monitors(cfg, util, opts)
-  local period, season, weather = context(cfg)
-  local files, dirs
-  local favored = {}
+  opts = opts or {}
+  local pins = opts.pins or {}
 
-  if cfg.time_of_day_enabled then
-    files, dirs, favored = resolve_pool(cfg, period, season, weather)
-  else
-    local dir = cfg.force_dir or cfg.wallpaper_dir
-    files, dirs = dir and list_images(dir) or {}, { dir }
-  end
-
-  local label = label_of(period, season, weather)
-  local dir_list = table.concat(dirs, ", ")
-  if #files + #favored == 0 then
-    util.log("No wallpapers found in " .. dir_list .. " (period " .. label .. ")", cfg)
-    return false, {}
-  end
-
-  local mons = monitors(cfg, util)
-  if #mons == 0 then
+  local all_mons = monitors(cfg, util)
+  if #all_mons == 0 then
     util.log("No monitors found via hyprctl monitors", cfg)
-    return false, {}
+    return false, {}, {}
   end
 
+  local mons = all_mons
   if cfg.target_monitor then
-    local found = false
-    for _, name in ipairs(mons) do
-      if name == cfg.target_monitor then
-        found = true
-        break
-      end
+    mons = {}
+    for _, mon in ipairs(all_mons) do
+      if mon.name == cfg.target_monitor then mons = { mon } end
     end
-    if not found then
+    if #mons == 0 then
       util.log("Target monitor " .. cfg.target_monitor .. " not in active monitor list; skipping", cfg)
-      return true, {}
-    end
-
-    -- Always (re)apply the current period to this monitor.
-    mons = { cfg.target_monitor }
-  end
-
-  -- Drop already-covered monitors (startup settle re-runs to catch late monitors
-  -- without re-randomizing the ones already set).
-  if opts and opts.exclude then
-    local filtered = {}
-    for _, name in ipairs(mons) do
-      if not opts.exclude[name] then table.insert(filtered, name) end
-    end
-    mons = filtered
-    if #mons == 0 then return true, {} end
-  end
-
-  local picks = pick_wallpapers(files, #mons, {
-    reserved = opts and opts.reserved,
-    history = opts and opts.history,
-    favored = favored,
-    chance = cfg.weather_chance,
-  })
-
-  util.log(
-    string.format("Period %s -> %s; monitors=%d; pool=%d; weather=%d", label, dir_list, #mons, #files, #favored),
-    cfg
-  )
-  if cfg.verbose then
-    for i, img in ipairs(picks) do
-      util.log(string.format("  pick[%d]=%s", i, img), cfg)
+      return true, {}, {}
     end
   end
 
-  local applied = {}
-  for i, mon in ipairs(mons) do
-    local img = picks[i]
-    if img then
-      img = img:gsub("[\r\n]", "")
-      local f = io.open(img, "r")
-      if not f then
-        util.log(string.format("Skipping missing file: %s", img), cfg)
-      else
-        f:close()
-        local base = util.signature and ("HYPRLAND_INSTANCE_SIGNATURE=" .. util.signature .. " ") or ""
-        local rc = os.execute(string.format("%shyprctl hyprpaper wallpaper '%s, %s' >/dev/null 2>&1", base, mon, img))
-        if rc ~= 0 and rc ~= true then
-          util.log(string.format("hyprpaper wallpaper failed (rc=%s) for %s on %s", tostring(rc), img, mon), cfg)
-        else
-          applied[mon] = img
-        end
+  -- Startup settle re-runs and pin changes skip monitors that need no new image.
+  local wanted = {}
+  for _, mon in ipairs(mons) do
+    if not (opts.exclude and opts.exclude[mon.name]) and not (opts.only and not opts.only[mon.name]) then
+      table.insert(wanted, mon)
+    end
+  end
+  if #wanted == 0 then return true, {}, {} end
+
+  local pinned_paths, auto_names = {}, {}
+  for _, mon in ipairs(wanted) do
+    if pins[mon.description] then
+      pinned_paths[mon.name] = pins[mon.description]
+    else
+      table.insert(auto_names, mon.name)
+    end
+  end
+
+  local picks, pool_ok = {}, true
+  if #auto_names > 0 then
+    local period, season, weather = context(cfg)
+    local files, dirs
+    local favored = {}
+    if cfg.time_of_day_enabled then
+      files, dirs, favored = resolve_pool(cfg, period, season, weather)
+    else
+      local dir = cfg.force_dir or cfg.wallpaper_dir
+      files, dirs = dir and list_images(dir) or {}, { dir }
+    end
+
+    local label = label_of(period, season, weather)
+    local dir_list = table.concat(dirs, ", ")
+    if #files + #favored == 0 then
+      util.log("No wallpapers found in " .. dir_list .. " (period " .. label .. ")", cfg)
+      pool_ok = false
+    else
+      local reserved = {}
+      for path in pairs(opts.reserved or {}) do
+        reserved[path] = true
       end
+      for _, path in pairs(pins) do
+        reserved[path] = true
+      end
+      picks = pick_wallpapers(files, #auto_names, {
+        reserved = reserved,
+        history = opts.history,
+        favored = favored,
+        chance = cfg.weather_chance,
+      })
+      util.log(
+        string.format(
+          "Period %s -> %s; monitors=%d; pool=%d; weather=%d",
+          label,
+          dir_list,
+          #auto_names,
+          #files,
+          #favored
+        ),
+        cfg
+      )
     end
   end
-  return true, applied
+
+  local targets = {}
+  for mon, path in pairs(pinned_paths) do
+    util.log(string.format("  pin %s=%s", mon, path), cfg)
+    targets[mon] = path
+  end
+  for i, mon in ipairs(auto_names) do
+    if picks[i] then
+      util.log(string.format("  pick[%d]=%s", i, picks[i]), cfg)
+      targets[mon] = picks[i]
+    end
+  end
+
+  local applied, pinned = {}, {}
+  for mon, img in pairs(targets) do
+    img = img:gsub("[\r\n]", "")
+    if set_wallpaper(util, cfg, mon, img) then
+      applied[mon] = img
+      pinned[mon] = pinned_paths[mon] and true or nil
+    end
+  end
+  return pool_ok, applied, pinned
 end
+
+--- Active monitors with their descriptions.
+--- @param cfg table wallpaper config
+--- @param util table shared utility object
+--- @return { name: string, description: string }[]
+function Apply.list_monitors(cfg, util) return monitors(cfg, util) end
 
 --- Public wrapper around `list_images` for external callers.
 --- @param dir string directory to scan
