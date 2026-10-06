@@ -9,10 +9,10 @@ RowsSection {
     id: root
 
     readonly property var notes: ({
-            term: "Terminal that Hyprland binds and terminal programs open in. Machine default keeps the config's.",
-            editor: "Editor that Hyprland binds launch. Machine default keeps the config's.",
-            gui_file_manager: "Graphical file manager that its Hyprland bind opens.",
-            tui_file_manager: "Terminal file manager, such as yazi, opened in your terminal.",
+            term: "Terminal that Hyprland binds and terminal programs open in. Reloads Hyprland when changed.",
+            editor: "Editor that Hyprland binds launch. Reloads Hyprland when changed.",
+            gui_file_manager: "Graphical file manager its Hyprland bind opens. Reloads Hyprland when changed.",
+            tui_file_manager: "Terminal file manager, such as yazi, run in your terminal. Reloads Hyprland when changed.",
             web: "Opens web links and pages.",
             mail: "Opens mailto links and mail.",
             pdf: "Opens PDF files.",
@@ -40,13 +40,4 @@ RowsSection {
             })))
 
     Component.onCompleted: DefaultApps.refresh()
-
-    footer: Text {
-        Layout.fillWidth: true
-        text: "Terminal, editor and file managers reload Hyprland when changed. Saved to " + DefaultApps.state_dir + "/apps.json"
-        wrapMode: Text.WordWrap
-        color: root.st.text_dim
-        font.family: root.st.font_family
-        font.pixelSize: root.st.fs(-3)
-    }
 }

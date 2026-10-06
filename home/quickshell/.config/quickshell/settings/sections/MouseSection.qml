@@ -27,7 +27,7 @@ RowsSection {
 
     rows: [{
         label: "Pointer speed",
-        desc: "Pointer acceleration from -1 (slowest) to +1 (fastest); 0 is the default.",
+        desc: "Pointer acceleration, -1 (slowest) to +1 (fastest). Beats the machine profile.",
         values: () => Choices.with_current(root.speeds, HyprInput.value("sensitivity")),
         text: v => (v > 0 ? "+" : "") + v.toFixed(1),
         value: () => HyprInput.value("sensitivity"),
@@ -41,13 +41,4 @@ RowsSection {
         value: () => HyprInput.value("follow_mouse"),
         set: v => HyprInput.set("follow_mouse", v)
     }, root.toggle("Natural scrolling (touchpad)", "natural_scroll", "Content follows your fingers on the touchpad, as on a phone."), root.toggle("Tap to click", "tap_to_click", "A tap on the touchpad clicks, without pressing it down."), root.toggle("Disable touchpad while typing", "disable_while_typing", "Ignore the touchpad while keys are being typed, so a palm does not move the pointer.")]
-
-    footer: Text {
-        Layout.fillWidth: true
-        text: "Applies at once and wins over the machine profile's input values. Saved to " + HyprInput.state_dir + "/input.json"
-        wrapMode: Text.WordWrap
-        color: root.st.text_dim
-        font.family: root.st.font_family
-        font.pixelSize: root.st.fs(-3)
-    }
 }

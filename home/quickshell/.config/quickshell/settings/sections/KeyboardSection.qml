@@ -14,7 +14,7 @@ RowsSection {
 
     rows: [{
         label: "Layout",
-        desc: "Keyboard layout for every keyboard. Enter opens the list to search.",
+        desc: "Keyboard layout for every keyboard. Applies at once; beats the machine profile.",
         values: () => {
             const codes = HyprInput.layouts.map(l => l.code);
             const current = HyprInput.value("kb_layout");
@@ -55,13 +55,4 @@ RowsSection {
         value: () => HyprInput.value("repeat_delay"),
         set: v => HyprInput.set("repeat_delay", v)
     }]
-
-    footer: Text {
-        Layout.fillWidth: true
-        text: "Applies at once and wins over the machine profile's input values. Saved to " + HyprInput.state_dir + "/input.json"
-        wrapMode: Text.WordWrap
-        color: root.st.text_dim
-        font.family: root.st.font_family
-        font.pixelSize: root.st.fs(-3)
-    }
 }

@@ -14,7 +14,7 @@ RowsSection {
 
     rows: [{
         label: "Start typing in",
-        desc: "Mode pickers, settings lists and search popups open in. NORMAL starts on the vim keys.",
+        desc: "Mode pickers and search popups open in. From NORMAL, i or / types; HyprVim prompt is always INSERT.",
         values: () => InputSettings.choices.start_mode,
         text: v => root.modes[v] || String(v),
         value: () => InputSettings.values.start_mode,
@@ -35,13 +35,4 @@ RowsSection {
         value: () => HyprInput.value("which_key_delay_ms"),
         set: v => HyprInput.set("which_key_delay_ms", v)
     }]
-
-    footer: Text {
-        Layout.fillWidth: true
-        text: "From NORMAL, i or / starts typing. The HyprVim prompt always opens in INSERT. Saved to " + InputSettings.state_dir + "/input.json and " + HyprInput.state_dir + "/input.json"
-        wrapMode: Text.WordWrap
-        color: root.st.text_dim
-        font.family: root.st.font_family
-        font.pixelSize: root.st.fs(-3)
-    }
 }

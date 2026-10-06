@@ -63,7 +63,8 @@ RowsSection {
 
     footer: Text {
         Layout.fillWidth: true
-        text: LoginScreen.installed ? "Saved to " + LoginScreen.data_dir : "Greeter not installed: run just greeter-sync --install"
+        visible: !LoginScreen.installed
+        text: "Greeter not installed: run just greeter-sync --install"
         wrapMode: Text.WordWrap
         color: root.st.text_dim
         font.family: root.st.font_family
