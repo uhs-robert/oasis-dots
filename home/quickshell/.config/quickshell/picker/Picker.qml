@@ -70,7 +70,7 @@ Popup {
     onIs_openChanged: if (is_open) {
         if (root.provider) root.current_tab = root.provider.tab;
         root.reset();
-        root.set_insert(!root.provider || root.provider.starts_insert);
+        root.set_insert(InputSettings.starts_insert && (!root.provider || root.provider.starts_insert));
     }
     Component.onCompleted: root.sync_slots()
 
