@@ -10,7 +10,7 @@ RowsSection {
 
     readonly property string card_name: root.highlighted_value ?? Palettes.current
 
-    footer_hint: "j/k move · Enter list · Esc sections · q close"
+    footer_hint: "j/k move · Enter list · h/Esc sections · q close"
     rows: [
         {
             label: "Palette",

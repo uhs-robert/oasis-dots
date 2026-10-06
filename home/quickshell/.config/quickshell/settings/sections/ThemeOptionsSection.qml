@@ -7,7 +7,7 @@ import ".."
 RowsSection {
     id: root
 
-    footer_hint: "j/k move · h/l change · r reset style · Esc sections · q close"
+    footer_hint: "j/k move · H/L change · r reset style · h/Esc sections · q close"
     rows: Style.settings.map(def => root.row_for(def))
 
     function number_values(def) {

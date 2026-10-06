@@ -36,7 +36,7 @@ SettingsPane {
     }
     readonly property int total: root.top_count + root.entries.length
 
-    footer_hint: "j/k move · Enter target list · Space show/hide · J/K reorder · H/L side · a add argument · x remove · h/l target · / find · Esc sections · q close"
+    footer_hint: "j/k move · Enter target list · Space show/hide · J/K reorder · H/L side · a add argument · x remove · l/H target · / find · h/Esc sections · q close"
     search_rows: ["Editing target"].concat(root.target_screen ? ["Own layout"] : [], root.has_own ? ["Compact"] : [], root.entries.map(e => e.entry))
     search_cursor: root.cursor
     implicitHeight: col.implicitHeight
@@ -161,13 +161,13 @@ SettingsPane {
         else if (event.key === Qt.Key_K && !(shift && on_module)) root.cursor = root.wrap_index(root.cursor, -1, root.total);
         else if (event.key === Qt.Key_J) root.move_module(1);
         else if (event.key === Qt.Key_K) root.move_module(-1);
-        else if (event.key === Qt.Key_H && shift) root.shift_side(-1);
-        else if (event.key === Qt.Key_L && shift) root.shift_side(1);
-        else if (root.cursor === 0 && (event.key === Qt.Key_H || event.key === Qt.Key_L)) root.cycle_target(event.key === Qt.Key_H ? -1 : 1);
+        else if (on_module && shift && event.key === Qt.Key_H) root.shift_side(-1);
+        else if (on_module && shift && event.key === Qt.Key_L) root.shift_side(1);
+        else if (root.cursor === 0 && ((shift && event.key === Qt.Key_H) || event.key === Qt.Key_L)) root.cycle_target(event.key === Qt.Key_H ? -1 : 1);
         else if (root.cursor === 0 && (event.key === Qt.Key_Return || event.key === Qt.Key_Enter)) root.open_target_picker();
         else if (root.cursor === 0 && event.key === Qt.Key_Space) root.cycle_target(1);
         else if (root.target_screen && root.cursor === 1 && (event.key === Qt.Key_L || event.key === Qt.Key_Return || event.key === Qt.Key_Enter || event.key === Qt.Key_Space)) root.toggle_own();
-        else if (root.has_own && root.cursor === 2 && (event.key === Qt.Key_H || event.key === Qt.Key_L || event.key === Qt.Key_Return || event.key === Qt.Key_Enter || event.key === Qt.Key_Space)) root.toggle_compact();
+        else if (root.has_own && root.cursor === 2 && (event.key === Qt.Key_L || event.key === Qt.Key_Return || event.key === Qt.Key_Enter || event.key === Qt.Key_Space)) root.toggle_compact();
         else if (on_module && !shift && event.key === Qt.Key_A) root.add_argument();
         else if (on_module && !shift && event.key === Qt.Key_X) root.remove_argument();
         else if (on_module && (event.key === Qt.Key_Return || event.key === Qt.Key_Enter || event.key === Qt.Key_Space)) root.toggle_module();

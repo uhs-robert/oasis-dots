@@ -11,7 +11,7 @@ RowsSection {
     Component.onCompleted: ThemeAudio.settings_open += 1
     Component.onDestruction: ThemeAudio.settings_open -= 1
 
-    footer_hint: "j/k move · h/l change · p test sounds · Esc sections · q close"
+    footer_hint: "j/k move · H/L change · p test sounds · h/Esc sections · q close"
     rows: [
         {
             label: "Interface sounds",
