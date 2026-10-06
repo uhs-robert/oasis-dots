@@ -10,6 +10,7 @@ MenuRow {
 
     property string label: ""
     property string value_text: ""
+    readonly property bool hovered: mouse_area.containsMouse
 
     signal stepped(int delta)
 
@@ -42,7 +43,9 @@ MenuRow {
     }
 
     MouseArea {
+        id: mouse_area
         anchors.fill: parent
+        hoverEnabled: true
         onClicked: mouse => root.stepped(mouse.x < root.width / 2 ? -1 : 1)
     }
 }

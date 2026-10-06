@@ -6,6 +6,7 @@ import "../services"
 
 // A section of ChoiceRows; each row is { label, values: () => [...], text: v => string, value: () => current, set: v => void, pick?: bool }.
 // Enter or a click opens a filterable list of a row's values; `pick: false` keeps a row cycling and `cycle: false` stops H/L from stepping it, and `activate: () => void` replaces Enter or a click.
+// A row's optional `desc` (text) and `keys` (hint) show below the section for the selected or hovered row; `section_keys` follow every row's keys.
 SettingsPane {
     id: root
 
@@ -13,6 +14,10 @@ SettingsPane {
     property int cursor: 0
     property int pick_min: 2
     property var pick_values: []
+    property string section_keys: ""
+    property int hovered_row: -1
+    readonly property var described_row: root.rows[root.hovered_row >= 0 ? root.hovered_row : root.cursor] || null
+    readonly property bool has_descriptions: root.rows.some(r => !!r.desc)
     // The value under the open list's cursor, undefined when no list is open.
     readonly property var highlighted_value: root.picking && picker.highlighted >= 0 ? root.pick_values[picker.highlighted] : undefined
     default property alias header: header_col.data
@@ -60,6 +65,18 @@ SettingsPane {
             on_pick(values[i]);
             ThemeAudio.play("confirm");
         }, thumbs);
+    }
+
+    function keys_of(row) {
+        if (!row) return root.section_keys;
+        let keys = row.keys;
+        if (keys === undefined) {
+            const parts = [];
+            if (row.cycle !== false) parts.push("H/L change");
+            if (row.activate || row.pick !== false && row.values().length >= root.pick_min) parts.push("Enter list");
+            keys = parts.join(" · ");
+        }
+        return [keys, root.section_keys].filter(k => k !== "").join(" · ");
     }
 
     function activate(index, delta) {
@@ -130,6 +147,10 @@ SettingsPane {
                 selected: root.live && row.index === root.cursor
                 label: row.modelData.label
                 value_text: row.modelData.text(row.modelData.value())
+                onHoveredChanged: {
+                    if (row.hovered) root.hovered_row = row.index;
+                    else if (root.hovered_row === row.index) root.hovered_row = -1;
+                }
                 onStepped: delta => {
                     root.focus_pane();
                     root.cursor = row.index;
@@ -144,6 +165,58 @@ SettingsPane {
             Layout.fillWidth: true
             Layout.topMargin: 6
             spacing: 4
+        }
+
+        // Fixed at two lines each so moving between rows does not resize the pane.
+        ColumnLayout {
+            visible: root.has_descriptions && !root.picking
+            Layout.fillWidth: true
+            Layout.topMargin: 6
+            spacing: 2
+
+            Rectangle {
+                Layout.fillWidth: true
+                Layout.preferredHeight: 1
+                color: Qt.alpha(root.st.text_muted, 0.4)
+            }
+
+            Text {
+                Layout.fillWidth: true
+                Layout.preferredHeight: description_metrics.height * 2
+                text: root.described_row && root.described_row.desc ? root.described_row.desc : ""
+                wrapMode: Text.WordWrap
+                maximumLineCount: 2
+                elide: Text.ElideRight
+                verticalAlignment: Text.AlignTop
+                color: root.st.text_fg
+                font.family: root.st.font_family
+                font.pixelSize: root.st.fs(-2)
+
+                FontMetrics {
+                    id: description_metrics
+                    font.family: root.st.font_family
+                    font.pixelSize: root.st.fs(-2)
+                }
+            }
+
+            Text {
+                Layout.fillWidth: true
+                Layout.preferredHeight: keys_metrics.height * 2
+                text: root.keys_of(root.described_row)
+                wrapMode: Text.WordWrap
+                maximumLineCount: 2
+                elide: Text.ElideRight
+                verticalAlignment: Text.AlignTop
+                color: root.st.text_accent
+                font.family: root.st.font_family
+                font.pixelSize: root.st.fs(-3)
+
+                FontMetrics {
+                    id: keys_metrics
+                    font.family: root.st.font_family
+                    font.pixelSize: root.st.fs(-3)
+                }
+            }
         }
     }
 }
