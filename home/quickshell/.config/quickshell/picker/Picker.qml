@@ -72,7 +72,10 @@ Popup {
         if (root.provider) root.current_tab = root.provider.tab;
         root.reset();
         query_input.text = recalled;
-        root.set_insert(InputSettings.starts_insert && (!root.provider || root.provider.starts_insert));
+        // The bottom dock always opens typing; only island-anchored pickers follow the start mode setting.
+        // Reads Popups.open_anchor, not dock_bottom: held_anchor may still be stale when this handler runs first.
+        const docks_bottom = Popups.open_anchor === null;
+        root.set_insert((docks_bottom || InputSettings.starts_insert) && (!root.provider || root.provider.starts_insert));
     }
     Component.onCompleted: root.sync_slots()
 

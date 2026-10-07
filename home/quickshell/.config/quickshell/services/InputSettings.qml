@@ -15,7 +15,7 @@ Singleton {
     readonly property var defaults: ({ start_mode: "insert", remember_query: false })
 
     property var values: root.defaults
-    // Pickers, settings lists and type-to-search popups open in INSERT when true; the HyprVim prompt always does.
+    // Island pickers, settings lists and type-to-search popups open in INSERT when true; bottom-docked pickers and the HyprVim prompt always do.
     readonly property bool starts_insert: root.values.start_mode === "insert"
     // Last query per picker or settings list, for this session only; recall gives "" unless remember_query is on.
     property var last_queries: ({})

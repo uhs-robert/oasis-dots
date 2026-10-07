@@ -14,7 +14,7 @@ RowsSection {
 
     rows: [{
         label: "Start typing in",
-        desc: "Mode pickers and search popups open in. From NORMAL, i or / types; HyprVim prompt is always INSERT.",
+        desc: "Mode island pickers and search popups open in. From NORMAL, i or / types; bottom pickers and the HyprVim prompt are always INSERT.",
         values: () => InputSettings.choices.start_mode,
         text: v => root.modes[v] || String(v),
         value: () => InputSettings.values.start_mode,
