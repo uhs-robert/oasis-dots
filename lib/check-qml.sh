@@ -183,17 +183,19 @@ for tree in shell greeter; do
 done
 
 # Members read through parent, Loader.item and the like are typed QObject/QQuickItem, so a miss there is unknowable.
+# Qt 6.12 moved a suggestion's replacement text from .replacement into documentEdits (both are read) and writes Loader.item and itemAt() receivers without quotes.
 # The gaps list types Quickshell's qmltypes leave unexported or wrongly mark uncreatable; all exist at runtime.
 # shellcheck disable=SC2016
 filter='
-  def qualifies: (.replacement // "") | test("\\.$|^pragma ComponentBehavior");
+  def qualifies: [.replacement // empty, (.documentEdits // [])[].replacement] | any(test("\\.$|^pragma ComponentBehavior"));
+  def untyped_miss: .message | test("not found on type \"(QObject|QQuickItem|QJSPrimitiveValue)\"|::item with type (QObject|QQuickItem)$|returning QQuickItem$");
   def gap: .message | test("^Type PanelWindow is not creatable|^Type margins is used|^Type \"BluetoothAdapter\" of property|^No type found for property \"(edges|gravity|adjustment)\"");
   .files[] | .filename as $file | .warnings[] | select(
     (.id | IN("syntax", "import", "incompatible-type", "read-only-property", "required", "non-list-property",
       "duplicated-name", "duplicate-property-binding", "duplicate-inline-component", "duplicate-enum-entries",
       "alias-cycle", "inheritance-cycle", "unresolved-alias", "missing-enum-entry", "var-used-before-declaration"))
     or (.id | IN("uncreatable-type", "unresolved-type", "missing-type")) and (gap | not)
-    or .id == "missing-property" and (.message | test("not found on type \"(QObject|QQuickItem|QJSPrimitiveValue)\"") | not)
+    or .id == "missing-property" and (untyped_miss | not)
     or .id == "unqualified" and .message == "Unqualified access" and ([(.suggestions // [])[] | select(qualifies)] | length) == 0
   ) | ([(.suggestions // [])[].message | select(startswith("Did you mean"))] | map(" " + .) | first // "") as $hint
   | "\($file):\(.line):\(.column): \(.message)\($hint) [\(.id)]"
@@ -211,7 +213,14 @@ for tree in shell greeter; do
   fi
   report="$stage/$tree.json"
   wanted=$(cd "$stage/$tree" && find . -maxdepth "$depth" \( -name '*.qml' -o -name '*.js' -o -name '*.mjs' \) | wc -l)
-  (cd "$stage/$tree" && find . -maxdepth "$depth" \( -name '*.qml' -o -name '*.js' -o -name '*.mjs' \) -exec "$qmllint_bin" --ignore-settings --json - {} +) >"$report" 2>/dev/null
+  (
+    cd "$stage/$tree" || exit 1
+    # Qt 6.12 imports only the qmldirs named with -i (one flag each, absolute like the linted files so the two paths compare equal), not the one beside the linted file.
+    set -- "$qmllint_bin" --ignore-settings --json -
+    find "$PWD" -name qmldir >"$stage/$tree.qmldirs"
+    while IFS= read -r qmldir; do set -- "$@" -i "$qmldir"; done <"$stage/$tree.qmldirs"
+    find "$PWD" -maxdepth "$depth" \( -name '*.qml' -o -name '*.js' -o -name '*.mjs' \) -exec "$@" {} +
+  ) >"$report" 2>/dev/null
   linted=$(jq -s '[.[].files[]] | length' "$report" 2>/dev/null) || linted=0
   if [ "$linted" -ne "$wanted" ]; then
     echo "qmllint: linted $linted of $wanted files in $prefix" >&2
