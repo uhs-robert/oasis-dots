@@ -262,6 +262,10 @@ PanelWindow {
         if (root.visible) keys.forceActiveFocus();
     }
 
+    function focus_keys() {
+        keys.forceActiveFocus();
+    }
+
     function show_help() {
         root.help_open = true;
         key_help.forceActiveFocus();
