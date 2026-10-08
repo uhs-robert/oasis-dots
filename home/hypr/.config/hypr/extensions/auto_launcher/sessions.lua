@@ -228,17 +228,19 @@ function M.get_sessions()
   return apps_by_name
 end
 
---- Writes every session to `out_path` as `{ "sessions": { "<name>": { source, sequential, windows } } }`
---- so Settings can list Lua sessions beside saved ones. Fields that are not plain data are dropped.
+--- Writes the Lua sessions to `out_path` as `{ "sessions": { "<name>": { sequential, windows } } }`
+--- so Settings can list them beside saved ones. Fields that are not plain data are dropped.
+--- Saved sessions are left out: Settings reads sessions.json itself, and a copy here would outlive
+--- a delete or rename there until the next export.
 --- @param out_path string
 function M.export(out_path)
   local exported = {}
-  for name, info in pairs(M.resolve()) do
+  for name, apps in pairs(sessions()) do
     local windows = {}
-    for _, app in ipairs(info.apps) do
+    for _, app in ipairs(apps) do
       windows[#windows + 1] = M.sanitize_entry(app)
     end
-    exported[name] = { source = info.source, sequential = info.sequential, windows = Json.array(windows) }
+    exported[name] = { sequential = sequential_names[name] == true, windows = Json.array(windows) }
   end
   local file = assert(io.open(out_path, "w"))
   file:write(Json.encode({ sessions = exported }))
