@@ -178,7 +178,7 @@ function Capture.draft(addresses, out_path)
 
   local entries = Capture.build(windows, Provenance.load(), Capture.proc_cmd, Config.ws_per_monitor)
   local file = assert(io.open(out_path, "w"))
-  file:write(Json.encode({ windows = entries }))
+  file:write(Json.encode({ windows = Json.array(entries) }))
   file:close()
 end
 
