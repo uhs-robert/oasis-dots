@@ -288,18 +288,19 @@ function Submap.define(spec)
       local raw_binds = apply_individual_oneshots(resolve_binds(spec.binds) or {}, M.exit)
       local binds = catchall == "reset" and wrap_oneshot(raw_binds, M.exit) or raw_binds
       -- In a oneshot submap, keys that stay in the submap still need release, or the catchall's key-up exits it.
-      local stay_opts = catchall == "reset" and { release = true } or nil
+      -- A fresh table per bind, since Bind.key writes the description into the opts it is given.
+      local function stay_opts() return catchall == "reset" and { release = true } or nil end
 
       Bind.keys(binds or {})
 
       if normalize_escape(spec) ~= false then
         Bind.key("ESCAPE", M.exit, "Exit " .. spec.name)
-        Bind.key("BackSpace", M.back, "Back", stay_opts)
+        Bind.key("BackSpace", M.back, "Back", stay_opts())
       end
 
       -- No description, so which-key does not list the toggle as a row in every submap.
       if not binds_use_key(raw_binds, whichkey_toggle_key) then
-        Bind.key(whichkey_toggle_key, toggle_whichkey, stay_opts)
+        Bind.key(whichkey_toggle_key, toggle_whichkey, stay_opts())
       end
 
       bind_catchall(catchall, M.exit, spec)

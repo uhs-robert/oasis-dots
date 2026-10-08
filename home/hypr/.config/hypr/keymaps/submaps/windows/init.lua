@@ -139,8 +139,6 @@ Submap.define({
       }
     end
 
-    local wk_toggle = function() require("lua.plugins.hyprvim").whichkey.toggle() end
-
     -- stylua: ignore start
     local keys = {
       { "R",             Submap.switch("Resize"),              "+Resize" },
@@ -153,7 +151,6 @@ Submap.define({
       { "P",             for_selected(Window.pseudo_toggle()), "Toggle Pseudo" },
       { "MINUS",         for_selected(Window.layout_toggle()), "Toggle Split" },
       { "RETURN",        Window.pass_to_active(),              "Confirm Selection" },
-      { "SHIFT + SLASH", wk_toggle,                            "WhichKey" },
       { "SPACE",         select_toggle,                        "Select Window" },
       { "S",             swap_selected,                        "Swap with Selected" },
     }
