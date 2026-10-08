@@ -1,3 +1,4 @@
+// home/quickshell/.config/quickshell/services/SessionStore.qml
 pragma Singleton
 import QtQuick
 import Quickshell
@@ -23,11 +24,14 @@ Singleton {
     property string notice: ""
     // The newest content waiting for the writer; only the latest matters.
     property string queued_content: ""
+    // Sessions announced as saved once the write carrying them succeeds.
+    property var queued_names: []
+    property var writing_names: []
 
     readonly property var sessions: SessionJson.merge(root.document, root.lua_sessions)
     readonly property var names: root.sessions.map(s => s.name)
 
-    // A saved session is written; the new or changed one is named.
+    // A saved session's write has finished; the new or changed one is named.
     signal saved(string name)
     signal failed(string message)
     // Settings asks the overview to start save mode; `target` is the session to replace, or empty for a new one.
@@ -59,6 +63,8 @@ Singleton {
     // Empty when `name` is usable for a saved session; `except` is the session being renamed.
     function name_problem(name, except) {
         if (name.trim() === "") return "Name cannot be empty";
+        // Assigning it on a plain object sets the prototype instead of adding a session.
+        if (name.trim() === "__proto__") return "That name is reserved";
         const saved_names = Object.keys(root.document.sessions);
         if (name.trim() !== except && saved_names.indexOf(name.trim()) >= 0) return "A saved session is already called " + name.trim();
         return "";
@@ -68,13 +74,15 @@ Singleton {
         if (!lua_proc.running) lua_proc.running = true;
     }
 
-    function commit(next) {
+    // `saved_name`, when given, is announced through `saved` after the write lands.
+    function commit(next, saved_name) {
         if (root.load_error !== "") {
             root.fail("sessions.json cannot be read (" + root.load_error + "); fix it before saving");
             return false;
         }
         root.document = next;
         root.queued_content = SessionJson.encode(next);
+        if (saved_name) root.queued_names = root.queued_names.concat([saved_name]);
         root.flush();
         return true;
     }
@@ -83,6 +91,8 @@ Singleton {
         if (write_proc.running || root.queued_content === "") return;
         write_proc.command = [root.state_write, root.path, root.queued_content];
         root.queued_content = "";
+        root.writing_names = root.queued_names;
+        root.queued_names = [];
         write_proc.running = true;
     }
 
@@ -92,15 +102,11 @@ Singleton {
             root.fail(problem);
             return false;
         }
-        const ok = root.commit(SessionJson.set_session(root.document, name.trim(), windows));
-        if (ok) root.saved(name.trim());
-        return ok;
+        return root.commit(SessionJson.set_session(root.document, name.trim(), windows), name.trim());
     }
 
     function replace_windows(name, windows) {
-        const ok = root.commit(SessionJson.set_session(root.document, name, windows));
-        if (ok) root.saved(name);
-        return ok;
+        return root.commit(SessionJson.set_session(root.document, name, windows), name);
     }
 
     function rename(name, new_name) {
@@ -165,12 +171,16 @@ Singleton {
             id: write_errors
         }
         onExited: code => {
+            const written = root.writing_names;
+            root.writing_names = [];
             if (code !== 0) {
                 const detail = write_errors.text.trim();
                 root.queued_content = "";
+                root.queued_names = [];
                 root.fail("Could not save sessions.json" + (detail !== "" ? ": " + detail : ""));
                 sessions_file.reload();
             } else {
+                for (const name of written) root.saved(name);
                 root.flush();
             }
         }
