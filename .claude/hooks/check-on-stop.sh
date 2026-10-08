@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # Stop: run `just check` when tracked files have uncommitted changes or HEAD moved since the last passing run.
+# Skips a tree it already ran on without blocking, so a pre-existing failure doesn't rerun the suite every turn.
 set -u
 input=$(cat)
 [[ $(jq -r '.stop_hook_active // false' <<<"$input") == true ]] && exit 0
@@ -10,9 +11,13 @@ ok_file=$(git rev-parse --git-path claude-check-ok)
 last_ok=$(cat "$ok_file" 2>/dev/null)
 dirty=$(git status --porcelain --untracked-files=no)
 [[ -z $dirty && $head == "$last_ok" ]] && exit 0
+seen_file=$(git rev-parse --git-path claude-check-seen)
+tree_state="$head $(git diff HEAD | sha1sum | cut -d' ' -f1)"
+[[ $(cat "$seen_file" 2>/dev/null) == "$tree_state" ]] && exit 0
 
 if out=$(timeout 180 just check 2>&1); then
   printf '%s\n' "$head" >"$ok_file"
+  printf '%s\n' "$tree_state" >"$seen_file"
   exit 0
 fi
 
@@ -36,6 +41,7 @@ if [[ -n $failing ]] && ! grep -qxF -f <(printf '%s\n' "$failing") <<<"$changed"
   origins=$(while read -r p; do printf '%s: last changed in %s\n' "$p" "$(git log -1 --format='%h %s' -- "$p")"; done <<<"$failing")
   jq -n --arg m "'just check' fails, but only in files this session did not change. Pre-existing failure, not blocking:
 $origins" '{systemMessage: $m}'
+  printf '%s\n' "$tree_state" >"$seen_file"
   exit 0
 fi
 
