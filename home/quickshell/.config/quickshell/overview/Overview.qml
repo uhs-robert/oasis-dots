@@ -625,10 +625,9 @@ OverviewBase {
             root.name_error = problem;
             return;
         }
-        if (root.save_target !== "" && !SessionStore.rename(root.save_target, name)) return;
         root.save_pending = true;
         root.name_error = "";
-        SessionStore.save_capture(root.alive(root.marks), name, root.save_target !== "" ? name : "");
+        SessionStore.save_capture(root.alive(root.marks), name, root.save_target);
     }
 
     // Marking keys pass through to the shared handling; anything that would move, close or focus a window is swallowed.

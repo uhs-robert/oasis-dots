@@ -105,8 +105,15 @@ Singleton {
         return root.commit(SessionJson.set_session(root.document, name.trim(), windows), name.trim());
     }
 
-    function replace_windows(name, windows) {
-        return root.commit(SessionJson.set_session(root.document, name, windows), name);
+    // Replaces the windows of `name` and renames it to `new_name` in one write, so a failed capture leaves both untouched.
+    function replace_session(name, new_name, windows) {
+        const problem = root.name_problem(new_name, name);
+        if (problem !== "") {
+            root.fail(problem);
+            return false;
+        }
+        const renamed = new_name.trim() === name ? root.document : SessionJson.rename_session(root.document, name, new_name.trim());
+        return root.commit(SessionJson.set_session(renamed, new_name.trim(), windows), new_name.trim());
     }
 
     function rename(name, new_name) {
@@ -133,7 +140,7 @@ Singleton {
     }
 
     // Captures the windows at `addresses` (Quickshell's, without 0x) and saves them as a new session called `name`,
-    // or over the windows of `replace` when that is not empty. Emits saved or failed.
+    // or, when `replace` is not empty, over that session's windows, renaming it to `name`. Emits saved or failed.
     function save_capture(addresses, name, replace) {
         if (capture_proc.running) {
             root.fail("A save is already running");
@@ -203,7 +210,7 @@ Singleton {
                     root.fail("None of the marked windows could be captured");
                     return;
                 }
-                if (capture_proc.replace !== "") root.replace_windows(capture_proc.replace, windows);
+                if (capture_proc.replace !== "") root.replace_session(capture_proc.replace, capture_proc.name, windows);
                 else root.save_new(capture_proc.name, windows);
             }
         }
