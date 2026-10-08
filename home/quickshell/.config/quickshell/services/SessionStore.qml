@@ -254,10 +254,15 @@ Singleton {
                 console.warn("SessionStore: invalid sessions.json (" + e + ")");
             }
         }
+        // Only a missing file starts empty; an unreadable one blocks writes like a malformed one, so a save cannot overwrite it.
         onLoadFailed: error => {
             if (write_proc.running || root.queued_content !== "") return;
-            root.document = SessionJson.empty_document();
-            root.load_error = "";
+            if (error === FileViewError.FileNotFound) {
+                root.document = SessionJson.empty_document();
+                root.load_error = "";
+            } else {
+                root.load_error = FileViewError.toString(error);
+            }
         }
     }
 
