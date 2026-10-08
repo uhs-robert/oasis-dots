@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Replays the stale-stack and real-conflict cases against merge-prs.sh with a local origin and the fake gh.
+# Replays the stale-stack, real-conflict and review-gate cases against merge-prs.sh with a local origin and the fake gh.
 set -uo pipefail
 here=$(cd "$(dirname "$0")" && pwd)
 script=${1:-$here/../merge-prs.sh}
@@ -58,6 +58,39 @@ check "stops with an error" "[[ $code != 0 ]]"
 check "names the conflict" "grep -q 'conflicts with main' <<<\"\$out\""
 check "leaves the PR branch untouched" "[[ \$(git -C '$ORIGIN' rev-parse child) == '$before' ]]"
 check "keeps the PR open" "grep -q '^state=OPEN' '$GH_STATE'"
+
+echo "== review gate: unresolved thread"
+setup
+echo "open_threads=2" >> "$GH_STATE"
+out=$(PATH="$here:$PATH" "$script" 7 2>&1); code=$?
+show "$out"
+check "stops with an error" "[[ $code != 0 ]]"
+check "names the threads" "grep -q '#7: 2 unresolved review thread' <<<\"\$out\""
+check "keeps the PR open" "grep -q '^state=OPEN' '$GH_STATE'"
+
+echo "== review gate: Codex review failed"
+setup
+printf 'codex=Failed\ncodex_commit=abc1234\n' >> "$GH_STATE"
+out=$(PATH="$here:$PATH" "$script" 7 2>&1); code=$?
+show "$out"
+check "stops with an error" "[[ $code != 0 ]]"
+check "says how to rerun Codex" "grep -q '@codex review' <<<\"\$out\""
+
+echo "== review gate: Codex review of an older commit"
+setup
+printf 'codex=Completed\ncodex_commit=abc1234\n' >> "$GH_STATE"
+out=$(PATH="$here:$PATH" "$script" 7 2>&1); code=$?
+show "$out"
+check "exits 0" "[[ $code == 0 ]]"
+check "notes the unreviewed commits" "grep -q 'covers abc1234, not the head' <<<\"\$out\""
+
+echo "== review gate: skipped by the owner"
+setup
+echo "open_threads=1" >> "$GH_STATE"
+out=$(PATH="$here:$PATH" "$script" --skip-review-gate 7 2>&1); code=$?
+show "$out"
+check "exits 0" "[[ $code == 0 ]]"
+check "merges" "grep -q '^7 merged (rebase)' <<<\"\$out\""
 
 echo "$pass passed, $fail failed"
 ((fail == 0))

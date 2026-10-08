@@ -8,9 +8,10 @@ description: Merge approved GitHub PRs in order, keep PRs stacked on them open a
 Only after the owner has approved the merge. Run from anywhere inside the repo, PRs in merge order:
 
 ```bash
-~/.claude/skills/merge-prs/merge-prs.sh [--method rebase|squash|merge] [--keep-branch] <pr>...
+~/.claude/skills/merge-prs/merge-prs.sh [--method rebase|squash|merge] [--keep-branch] [--skip-review-gate] <pr>...
 ```
 
+- Before merging anything it checks every PR, and stops naming each problem if one has an unresolved review thread or a Codex review that is still running or failed (fix it, or comment `@codex review` and wait, then rerun). A Codex review of an older commit than the head is only noted, since rebases and follow-up commits make that routine; mention the note to the owner. `--skip-review-gate` is for when the owner explicitly waived the review.
 - The method defaults to the first of rebase, squash, merge the repo allows; `--method` forces one.
 - PRs based on a merged head are retargeted to its base before the merge, and after a rebase or squash merge they are rebased onto that base and force-pushed with a lease, along with any PRs stacked on them. Fork children are retargeted but left for a manual rebase.
 - A PR that GitHub reports as conflicting only because it still carries commits of a parent already merged outside the run is rebased onto its base, dropping those commits, and force-pushed with a lease; any other conflict stops the run.

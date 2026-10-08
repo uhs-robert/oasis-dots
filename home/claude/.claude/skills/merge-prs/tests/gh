@@ -9,6 +9,9 @@ args="$*"
 case "$args" in
 "repo view"*) printf 'me/repo\tmain\ttrue\ttrue\ttrue\n' ;;
 "pr list"*) : ;;
+"api graphql"*)
+  printf '%s\t%s\t%s\t%s\n' "$(get open_threads || true)" "$(get codex || true)" "$(get codex_commit || true)" "$(head_oid)" |
+    awk -F'\t' -v OFS='\t' '{ if ($1 == "") $1 = 0; if ($2 == "") $2 = "none"; if ($3 == "") $3 = "-"; print }' ;;
 "pr view"*"headRefName,headRefOid,baseRefName,state,isCrossRepository"*)
   printf '%s\t%s\t%s\t%s\tfalse\n' "$(get head)" "$(head_oid)" "$(get base)" "$(get state)" ;;
 "pr view"*"headRefOid,mergeable"*)

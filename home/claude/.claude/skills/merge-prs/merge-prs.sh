@@ -2,7 +2,7 @@
 # Merge PRs in order, carrying stacked PRs over to each base, then clean up local worktrees and branches.
 set -euo pipefail
 
-usage="usage: merge-prs.sh [--method rebase|squash|merge] [--keep-branch] <pr>..."
+usage="usage: merge-prs.sh [--method rebase|squash|merge] [--keep-branch] [--skip-review-gate] <pr>..."
 
 die() {
   echo "merge-prs: $*" >&2
@@ -11,6 +11,7 @@ die() {
 
 method=""
 keep_branch=false
+review_gate=true
 prs=()
 while (($#)); do
   case $1 in
@@ -25,6 +26,10 @@ while (($#)); do
     ;;
   --keep-branch)
     keep_branch=true
+    shift
+    ;;
+  --skip-review-gate)
+    review_gate=false
     shift
     ;;
   -h | --help)
@@ -61,6 +66,46 @@ else
   done
   [[ -n $method ]] || die "$slug allows no merge method"
 fi
+
+# One query per PR: unresolved review threads, and the Codex summary comment's status and reviewed commit, if the repo uses Codex.
+# shellcheck disable=SC2016 # GraphQL and jq variables, not shell ones.
+review_query='query($owner: String!, $name: String!, $number: Int!) {
+  repository(owner: $owner, name: $name) { pullRequest(number: $number) {
+    headRefOid
+    reviewThreads(first: 100) { nodes { isResolved } }
+    comments(last: 100) { nodes { body } }
+  } }
+}'
+# shellcheck disable=SC2016
+review_jq='.data.repository.pullRequest as $p
+  | ([$p.comments.nodes[] | select(.body | contains("codex-pull-request-review-summary"))] | last | .body // "") as $codex
+  | [([$p.reviewThreads.nodes[] | select(.isResolved | not)] | length),
+     ($codex | capture("\\*\\*(?<s>Running|Completed|Failed)\\*\\*").s // "none"),
+     ($codex | capture("\\| `(?<c>[0-9a-f]{7,40})` \\|").c // "-"),
+     $p.headRefOid] | @tsv'
+
+# Checks every PR before merging any, so a run never stops halfway through a stack over a review it could have seen up front.
+check_reviews() {
+  local pr number info open status reviewed head
+  local -a problems=()
+  for pr in "${prs[@]}"; do
+    number=${pr#\#}
+    info=$(gh api graphql -F owner="${slug%%/*}" -F name="${slug#*/}" -F number="$number" -f query="$review_query" \
+      --jq "$review_jq") || die "cannot read the review state of #$number"
+    IFS=$'\t' read -r open status reviewed head <<<"$info"
+    ((open == 0)) || problems+=("#$number: $open unresolved review thread(s); answer and resolve them")
+    case $status in
+    Running) problems+=("#$number: the Codex review is still running; wait for it to finish") ;;
+    Failed) problems+=("#$number: the Codex review failed at $reviewed; comment \"@codex review\" on the PR and wait for it") ;;
+    Completed)
+      [[ $head == "$reviewed"* ]] ||
+        echo "note: #$number's Codex review covers $reviewed, not the head ${head:0:7}; later commits were not reviewed by Codex"
+      ;;
+    esac
+  done
+  ((${#problems[@]} == 0)) && return 0
+  die "not merging:"$'\n'"$(printf '  %s\n' "${problems[@]}")"$'\n'"Rerun with --skip-review-gate only if the owner waived the review."
+}
 
 tmp_root=""
 rebased_oid=""
@@ -280,6 +325,8 @@ merge_pr() {
     fi
   done
 }
+
+! $review_gate || check_reviews
 
 for pr in "${prs[@]}"; do
   merge_pr "$pr"
