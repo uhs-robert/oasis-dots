@@ -23,7 +23,7 @@ local state_dir = require("lib.state")
 --- @field delay integer|nil milliseconds to wait before launching
 --- @field special string|nil special workspace name without the `special:` prefix; replaces monitor/ws
 --- @field float boolean|nil float the window before size/pos are applied
---- @field guessed boolean|nil set by capture when cmd was reconstructed from /proc; ignored by the launcher
+--- @field guessed boolean|nil set by capture when cmd was reconstructed from /proc; the launcher still runs cmd, the flag only tells Settings to mark it for checking
 
 --- @class SessionInfo
 --- @field apps AppEntry[]
