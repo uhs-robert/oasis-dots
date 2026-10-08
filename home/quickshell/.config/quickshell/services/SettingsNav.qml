@@ -8,6 +8,8 @@ Singleton {
     id: root
 
     property string requested: ""
+    // A saved session the Sessions section opens on, set before the popup opens.
+    property string requested_session: ""
 
     // A command for the open popup's pane: "cursor", "step", "activate" or "back"; `value` is the row index or step delta.
     signal pane_command(string name, int value)
