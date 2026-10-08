@@ -176,6 +176,43 @@ mkdir -p "$stage/greeter/theme"
 cp "$qs_dir/theme/Theme.qml" "$qs_dir/theme/Style.qml" "$qs_dir/theme/StyleSchema.js" "$qs_dir/theme/Paths.qml" "$qs_dir/theme/Watch.js" "$stage/greeter/theme/"
 cp -r "$qs_dir/theme/styles" "$stage/greeter/theme/"
 
+# Quickshell 0.3.2 gives each module one-line opaque stubs (no members) for types another module defines, and qmllint
+# resolves a name to whichever stub it meets first, so every member of QuickshellScreenInfo, ObjectModel or Anchors reads
+# as missing. A copy of the installed module without those stubs keeps the real types; it only wins under --bare, which
+# drops the default import paths so the copy can be listed ahead of the system one.
+qs_module=''
+qt_qml_dir=''
+for import_dir in $("$(dirname -- "$qmllint_bin")/qtpaths6" --query QT_INSTALL_QML 2>/dev/null) /usr/lib/qt6/qml; do
+  if [ -d "$import_dir/Quickshell" ]; then
+    qs_module=$stage/qml
+    qt_qml_dir=$import_dir
+    mkdir -p "$qs_module"
+    cp -r "$import_dir/Quickshell" "$qs_module/"
+    find "$qs_module" -name '*.qmltypes' >"$stage/qmltypes"
+    # Names of multi-line, non-opaque Components: a one-line stub is dropped only when one of these defines it, since
+    # some types (QList<NMSettings*> and the like) are declared nowhere but in their stub.
+    # shellcheck disable=SC2016
+    xargs -r -d '\n' awk '
+      /^    Component \{$/ { in_component = 1; opaque = 0; name = ""; next }
+      in_component && /^        isTypeOpaque: true/ { opaque = 1 }
+      in_component && /^        name: "/ { name = $0; sub(/^[^"]*"/, "", name); sub(/".*$/, "", name) }
+      in_component && /^    \}$/ { if (!opaque && name != "") print name; in_component = 0 }
+    ' <"$stage/qmltypes" | sort -u >"$stage/qmltypes.concrete"
+    while IFS= read -r types_file; do
+      # shellcheck disable=SC2016
+      awk -v concrete="$stage/qmltypes.concrete" '
+        BEGIN { while ((getline line <concrete) > 0) defined[line] = 1 }
+        /^[[:space:]]*Component \{ isTypeOpaque: true;.*\}[[:space:]]*$/ {
+          name = $0; sub(/.*name: "/, "", name); sub(/".*$/, "", name)
+          if (name in defined) next
+        }
+        { print }
+      ' "$types_file" >"$types_file.tmp" && mv "$types_file.tmp" "$types_file"
+    done <"$stage/qmltypes"
+    break
+  fi
+done
+
 status=0
 for tree in shell greeter; do
   list_reached_dirs "$stage/$tree" "$stage/$tree.reached"
@@ -184,17 +221,19 @@ done
 
 # Members read through parent, Loader.item and the like are typed QObject/QQuickItem, so a miss there is unknowable.
 # Qt 6.12 moved a suggestion's replacement text from .replacement into documentEdits (both are read) and writes Loader.item and itemAt() receivers without quotes.
-# The gaps list types Quickshell's qmltypes leave unexported or wrongly mark uncreatable; all exist at runtime.
+# The gaps list types Quickshell's qmltypes leave unexported or wrongly mark uncreatable; all exist at runtime. Edges and
+# PopupAdjustment flags have no type of their own (0.3.2 declares them only as opaque stubs), so an int assigned to one
+# reads as incompatible.
 # shellcheck disable=SC2016
 filter='
   def qualifies: [.replacement // empty, (.documentEdits // [])[].replacement] | any(test("\\.$|^pragma ComponentBehavior"));
   def untyped_miss: .message | test("not found on type \"(QObject|QQuickItem|QJSPrimitiveValue)\"|::item with type (QObject|QQuickItem)$|returning QQuickItem$");
-  def gap: .message | test("^Type PanelWindow is not creatable|^Type margins is used|^Type \"BluetoothAdapter\" of property|^No type found for property \"(edges|gravity|adjustment)\"");
+  def gap: .message | test("^Type PanelWindow is not creatable|^Type margins is used|^Type \"BluetoothAdapter\" of property|^No type found for property \"(edges|gravity|adjustment)\"|^Cannot assign binding of type int to (Edges|PopupAdjustment)::Flags$");
   .files[] | .filename as $file | .warnings[] | select(
-    (.id | IN("syntax", "import", "incompatible-type", "read-only-property", "required", "non-list-property",
+    (.id | IN("syntax", "import", "read-only-property", "required", "non-list-property",
       "duplicated-name", "duplicate-property-binding", "duplicate-inline-component", "duplicate-enum-entries",
       "alias-cycle", "inheritance-cycle", "unresolved-alias", "missing-enum-entry", "var-used-before-declaration"))
-    or (.id | IN("uncreatable-type", "unresolved-type", "missing-type")) and (gap | not)
+    or (.id | IN("incompatible-type", "uncreatable-type", "unresolved-type", "missing-type")) and (gap | not)
     or .id == "missing-property" and (untyped_miss | not)
     or .id == "unqualified" and .message == "Unqualified access" and ([(.suggestions // [])[] | select(qualifies)] | length) == 0
   ) | ([(.suggestions // [])[].message | select(startswith("Did you mean"))] | map(" " + .) | first // "") as $hint
@@ -217,6 +256,7 @@ for tree in shell greeter; do
     cd "$stage/$tree" || exit 1
     # Qt 6.12 imports only the qmldirs named with -i (one flag each, absolute like the linted files so the two paths compare equal), not the one beside the linted file.
     set -- "$qmllint_bin" --ignore-settings --json -
+    [ -n "$qs_module" ] && set -- "$@" --bare -I "$qs_module" -I "$qt_qml_dir"
     find "$PWD" -name qmldir >"$stage/$tree.qmldirs"
     while IFS= read -r qmldir; do set -- "$@" -i "$qmldir"; done <"$stage/$tree.qmldirs"
     find "$PWD" -maxdepth "$depth" \( -name '*.qml' -o -name '*.js' -o -name '*.mjs' \) -exec "$@" {} +
