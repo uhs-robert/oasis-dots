@@ -101,8 +101,11 @@ hypr_copy_ignored() {
 
 # Without its profile, Hyprland reloads with this machine's monitors at automatic positions.
 require_machine_profile() {
-  local profile
-  profile="$hypr_rel/config/machines/${HOSTNAME:-$(</etc/hostname)}.lua"
+  local host profile
+  # Named the way config/machines/init.lua names it: whitespace trimmed, cut at the first dot.
+  host=${HOSTNAME:-$(</etc/hostname)}
+  host=${host//[[:space:]]/}
+  profile="$hypr_rel/config/machines/${host%%.*}.lua"
   if [[ -e $repo/$profile && ! -e $1/$profile ]]; then die "$1 has no $profile; refusing the hypr swap"; fi
 }
 
