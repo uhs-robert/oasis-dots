@@ -35,8 +35,8 @@ hash = "3070b579618c4831f5d7ca4293c1c275"
 
 [[plugin.deps]]
 use = "uhs-robert/sshfs"
-rev = "a8b8903"
-hash = "8c1b36103121a66b37308afaf7124575"
+rev = "d940246"
+hash = "dd97de8717529412b492b6fb88ac63"
 
 [[plugin.deps]]
 use = "uhs-robert/steam-appid"
