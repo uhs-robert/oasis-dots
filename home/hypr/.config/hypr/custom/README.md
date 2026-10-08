@@ -85,7 +85,7 @@ Entry fields: `monitor`, `ws`, `cmd`, `class` or `title` (how the launcher finds
 
 - `special = "scratchpad"` launches onto `special:scratchpad` instead of `monitor`/`ws`, which are then not needed.
 - `float = true` floats the window before `size` and `pos` apply.
-- `guessed = true` marks a command reconstructed from `/proc` when a session was saved; the launcher ignores it.
+- `guessed = true` marks a command reconstructed from `/proc` when a session was saved. The launcher runs the command as written either way; the flag only makes Settings mark it for you to check.
 
 Lua sessions launch every entry at once. `Sessions.add(name, apps, { sequential = true })` instead launches tiled entries one at a time, in order, each window taking focus so the layout comes out the same every run; floating and special entries still launch at once.
 
