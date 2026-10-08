@@ -166,7 +166,8 @@ Singleton {
     // goes through here: a window that maps while the popup holds the keyboard is left unfocused, and the layer
     // closing then hands focus back to the window that had it before.
     function after_close(fn) {
-        if (root.open_name === "") return fn();
+        // A non-empty queue means the layer is still closing, so a second call waits too.
+        if (root.open_name === "" && root.after_close_queue.length === 0) return fn();
         root.after_close_queue = root.after_close_queue.concat([fn]);
         root.close();
         after_close_fallback.restart();
