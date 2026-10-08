@@ -265,6 +265,18 @@ local function binds_use_key(rows, key)
   return false
 end
 
+--- Bind the which-key toggle in the submap being registered.
+--- @param catchall "stay"|"reset"|false|fun(ctx: SubmapContext)
+local function bind_whichkey_toggle(catchall)
+  -- No description, so which-key does not list the toggle as a row in every submap.
+  Bind.key(whichkey_toggle_key, toggle_whichkey)
+
+  -- A oneshot submap's catchall exits on any key-up nothing else claims, and Hyprland lets only a non-release
+  -- bind claim one: a matching release bind still runs alongside the catchall. These no-ops claim both key-ups
+  -- the chord leaves behind, in either order, since ignore_mods matches the bare `/` once Shift is up.
+  if catchall == "reset" then Bind.key({ "SLASH", "Shift_L", "Shift_R" }, hl.dsp.no_op(), { ignore_mods = true }) end
+end
+
 --- Declare a submap and return a handle with enter/exit/setup methods.
 --- Call handle.setup() once during startup to register all binds.
 --- @param spec SubmapSpec
@@ -287,21 +299,16 @@ function Submap.define(spec)
       local catchall = normalize_catchall(spec)
       local raw_binds = apply_individual_oneshots(resolve_binds(spec.binds) or {}, M.exit)
       local binds = catchall == "reset" and wrap_oneshot(raw_binds, M.exit) or raw_binds
-      -- In a oneshot submap, keys that stay in the submap still need release, or the catchall's key-up exits it.
-      -- A fresh table per bind, since Bind.key writes the description into the opts it is given.
-      local function stay_opts() return catchall == "reset" and { release = true } or nil end
 
       Bind.keys(binds or {})
 
       if normalize_escape(spec) ~= false then
         Bind.key("ESCAPE", M.exit, "Exit " .. spec.name)
-        Bind.key("BackSpace", M.back, "Back", stay_opts())
+        local back_opts = catchall == "reset" and { release = true } or nil
+        Bind.key("BackSpace", M.back, "Back", back_opts)
       end
 
-      -- No description, so which-key does not list the toggle as a row in every submap.
-      if not binds_use_key(raw_binds, whichkey_toggle_key) then
-        Bind.key(whichkey_toggle_key, toggle_whichkey, stay_opts())
-      end
+      if not binds_use_key(raw_binds, whichkey_toggle_key) then bind_whichkey_toggle(catchall) end
 
       bind_catchall(catchall, M.exit, spec)
     end)
