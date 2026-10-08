@@ -28,9 +28,8 @@ changed=$({
   [[ -n $base ]] && git diff --name-only "$base" HEAD
 } | sort -u)
 
-shopt -s extglob
-out=${out//$'\e['*([0-9;])m/}
-out=$(grep -v -E '\bOK$|^sh \./lib/check\.sh$' <<<"$out")
+# sed, not ${out//$'\e['*([0-9;])m/}: bash's extglob substitution is superlinear and spun for minutes on 14 KB.
+out=$(sed -E $'s/\e\\[[0-9;]*m//g' <<<"$out" | grep -v -E '\bOK$|^sh \./lib/check\.sh$')
 failing=$(grep -oE '[[:alnum:]_./-]+' <<<"$out" | sed -E 's/\.orig$//' | sort -u | while read -r p; do
   [[ -f $p ]] && git ls-files --error-unmatch -- "$p" >/dev/null 2>&1 && printf '%s\n' "$p"
 done)
