@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Stop: run `just check` when tracked files have uncommitted changes or HEAD moved since the last passing run.
+# Stop: run `just check` when tracked files have uncommitted changes or HEAD's tree has not passed in any worktree.
 # Skips a tree it already ran on without blocking, so a pre-existing failure doesn't rerun the suite every turn.
 set -u
 input=$(cat)
@@ -9,14 +9,26 @@ cd "$dir" || exit 0
 head=$(git rev-parse HEAD 2>/dev/null) || exit 0
 ok_file=$(git rev-parse --git-path claude-check-ok)
 last_ok=$(cat "$ok_file" 2>/dev/null)
+# Keyed on tree and shared across worktrees, so merging or pulling commits that already passed in their own
+# worktree does not rerun the suite just because a rebase merge gave them new hashes.
+head_tree=$(git rev-parse 'HEAD^{tree}')
+passed_trees=$(git rev-parse --git-common-dir)/claude-check-passed-trees
 dirty=$(git status --porcelain --untracked-files=no)
-[[ -z $dirty && $head == "$last_ok" ]] && exit 0
+[[ -z $dirty ]] && grep -qxF "$head_tree" "$passed_trees" 2>/dev/null && exit 0
 seen_file=$(git rev-parse --git-path claude-check-seen)
 tree_state="$head $(git diff HEAD | sha1sum | cut -d' ' -f1)"
 [[ $(cat "$seen_file" 2>/dev/null) == "$tree_state" ]] && exit 0
 
 if out=$(timeout 180 just check 2>&1); then
   printf '%s\n' "$head" >"$ok_file"
+  # A dirty pass checked the working tree, not HEAD's tree, so only a clean pass vouches for it.
+  if [[ -z $dirty ]]; then
+    {
+      grep -vxF "$head_tree" "$passed_trees" 2>/dev/null
+      printf '%s\n' "$head_tree"
+    } | tail -n 200 >"$passed_trees.tmp" &&
+      mv "$passed_trees.tmp" "$passed_trees"
+  fi
   printf '%s\n' "$tree_state" >"$seen_file"
   exit 0
 fi
