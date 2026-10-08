@@ -238,7 +238,7 @@ function M.export(out_path)
     for _, app in ipairs(info.apps) do
       windows[#windows + 1] = M.sanitize_entry(app)
     end
-    exported[name] = { source = info.source, sequential = info.sequential, windows = windows }
+    exported[name] = { source = info.source, sequential = info.sequential, windows = Json.array(windows) }
   end
   local file = assert(io.open(out_path, "w"))
   file:write(Json.encode({ sessions = exported }))

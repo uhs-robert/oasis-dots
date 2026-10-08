@@ -98,7 +98,11 @@ local function encode_string(str)
   return '"' .. escaped .. '"'
 end
 
+--- Metatable tagging a table that must encode as a JSON array even when empty.
+local ARRAY_MT = {}
+
 local function is_array(tbl)
+  if getmetatable(tbl) == ARRAY_MT then return true end
   local count = 0
   for _ in pairs(tbl) do
     count = count + 1
@@ -132,8 +136,13 @@ local function encode_value(value)
   return "{" .. table.concat(parts, ",") .. "}"
 end
 
+--- Marks `tbl` (default a new table) to encode as a JSON array, so an empty one becomes `[]` rather than `{}`.
+--- @param tbl table|nil
+--- @return table
+function Json.array(tbl) return setmetatable(tbl or {}, ARRAY_MT) end
+
 --- Encode a table, string, number or boolean as compact JSON with sorted object keys.
---- An empty table becomes `{}`.
+--- An empty table becomes `{}` unless marked with `Json.array`.
 --- @param value any
 --- @return string
 function Json.encode(value) return encode_value(value) end
