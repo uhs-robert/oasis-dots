@@ -242,6 +242,29 @@ local function bind_catchall(catchall, exit_fn, spec)
   end
 end
 
+--- Toggle the which-key HUD without changing submap.
+local function toggle_whichkey() require("lua.plugins.hyprvim").whichkey.toggle() end
+
+local whichkey_toggle_key = "SHIFT + SLASH"
+
+--- Whether any bind row already uses the key, compared the way Hyprland does (case and whitespace ignored).
+--- @param rows table[]
+--- @param key  string
+--- @return boolean
+local function binds_use_key(rows, key)
+  local wanted = key:gsub("%s+", ""):lower()
+
+  for _, row in ipairs(rows) do
+    local keys = type(row[1]) == "table" and row[1] or { row[1] }
+
+    for _, candidate in ipairs(keys) do
+      if candidate:gsub("%s+", ""):lower() == wanted then return true end
+    end
+  end
+
+  return false
+end
+
 --- Declare a submap and return a handle with enter/exit/setup methods.
 --- Call handle.setup() once during startup to register all binds.
 --- @param spec SubmapSpec
@@ -264,13 +287,19 @@ function Submap.define(spec)
       local catchall = normalize_catchall(spec)
       local raw_binds = apply_individual_oneshots(resolve_binds(spec.binds) or {}, M.exit)
       local binds = catchall == "reset" and wrap_oneshot(raw_binds, M.exit) or raw_binds
+      -- In a oneshot submap, keys that stay in the submap still need release, or the catchall's key-up exits it.
+      local stay_opts = catchall == "reset" and { release = true } or nil
 
       Bind.keys(binds or {})
 
       if normalize_escape(spec) ~= false then
         Bind.key("ESCAPE", M.exit, "Exit " .. spec.name)
-        local back_opts = catchall == "reset" and { release = true } or nil
-        Bind.key("BackSpace", M.back, "Back", back_opts)
+        Bind.key("BackSpace", M.back, "Back", stay_opts)
+      end
+
+      -- No description, so which-key does not list the toggle as a row in every submap.
+      if not binds_use_key(raw_binds, whichkey_toggle_key) then
+        Bind.key(whichkey_toggle_key, toggle_whichkey, stay_opts)
       end
 
       bind_catchall(catchall, M.exit, spec)

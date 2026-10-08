@@ -9,6 +9,7 @@ You rarely need to open a file to find a bind.
 - `SUPER + /` searches every bind in the mode you are in and runs the one you pick. Submaps are listed first, each with a `+` in front of its name, so it doubles as a map of the submaps you can enter from here.
 - `SUPER + SHIFT + /` opens which-key from anywhere, showing every bind in the current submap at a glance, or the global binds when you are in none.
 - Entering a submap also shows its binds in which-key.
+- Inside a submap, `?` hides or shows which-key without leaving it.
 
 All of them read the description written next to each bind, so anything you add shows up in them too.
 
