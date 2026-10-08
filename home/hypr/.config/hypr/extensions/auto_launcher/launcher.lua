@@ -182,14 +182,28 @@ end
 --- @return boolean
 local function is_chained(app) return not app.float and not app.special end
 
+--- The workspace each monitor shows, focused monitor's last so refocusing them in order ends on it.
+--- @return integer[]
+local function shown_workspaces()
+  local focused = hl.get_active_workspace()
+  local ids = {}
+  for _, m in ipairs(hl.get_monitors() or {}) do
+    local ws_id = m.active_workspace and m.active_workspace.id
+    if ws_id and not (focused and focused.id == ws_id) then ids[#ids + 1] = ws_id end
+  end
+  if focused then ids[#ids + 1] = focused.id end
+  return ids
+end
+
 --- Launches the chained entries one at a time. Each new window takes focus, and the window last placed on the same
---- workspace is refocused first, so dwindle's `force_split = 2` splits the same window on every run. The window that
---- had focus before the session is refocused at the end.
+--- workspace is refocused first, so dwindle's `force_split = 2` splits the same window on every run. At the end every
+--- monitor goes back to the workspace it showed before the session, and the window that had focus is refocused.
 --- @param chain AppEntry[]
 --- @param claimed table<string, boolean>
 local function run_chain(chain, claimed)
   local original = hl.get_active_window()
   local original_address = original and original.address
+  local original_workspaces = shown_workspaces()
   local index = 0
   local last_placed = {} -- workspace id to the address of the window most recently placed there
 
@@ -197,6 +211,9 @@ local function run_chain(chain, claimed)
     index = index + 1
     local app = chain[index]
     if not app then
+      for _, ws_id in ipairs(original_workspaces) do
+        hl.dispatch(hl.dsp.focus({ workspace = ws_id }))
+      end
       if original_address and find_window(original_address) then
         hl.dispatch(hl.dsp.focus({ window = "address:" .. original_address }))
       end
