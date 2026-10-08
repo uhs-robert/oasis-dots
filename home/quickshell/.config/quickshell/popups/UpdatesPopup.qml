@@ -70,8 +70,7 @@ Popup {
 
     function run_selected_upgrade() {
         ThemeAudio.play("confirm");
-        UpdatesState.run_upgrade();
-        Popups.close();
+        Popups.after_close(UpdatesState.run_upgrade);
     }
 
     function handle_key(event) {

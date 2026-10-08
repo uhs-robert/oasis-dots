@@ -162,6 +162,23 @@ Singleton {
         hands_off = false;
     }
 
+    // Closes the popup, then runs `fn` once Hyprland has unmapped its layer. Anything that opens a window from a popup
+    // goes through here: a window that maps while the popup holds the keyboard is left unfocused, and the layer
+    // closing then hands focus back to the window that had it before.
+    function after_close(fn) {
+        if (root.open_name === "") return fn();
+        root.after_close_queue = root.after_close_queue.concat([fn]);
+        root.close();
+        after_close_fallback.restart();
+    }
+
+    function run_after_close_queue() {
+        after_close_fallback.stop();
+        const queue = root.after_close_queue;
+        root.after_close_queue = [];
+        for (const fn of queue) fn();
+    }
+
     // Reopens the popup that opened the current one, keeping the same anchor/color/screen.
     function back() {
         if (root.back_name === "") return;
@@ -172,6 +189,23 @@ Singleton {
     function toggle(name, anchor_item, color, screen_name) {
         if (open_name === name) close();
         else open(name, anchor_item, color, screen_name);
+    }
+
+    property var after_close_queue: []
+
+    Connections {
+        target: Hyprland
+        enabled: root.after_close_queue.length > 0
+        function onRawEvent(event) {
+            if (event.name === "closelayer" && event.data === "quickshell-popup") root.run_after_close_queue();
+        }
+    }
+
+    // In case the closelayer event never arrives, the action still runs, just without the focus guarantee.
+    Timer {
+        id: after_close_fallback
+        interval: 1000
+        onTriggered: root.run_after_close_queue()
     }
 
     // Keybind workspace switches never touch the scrim, so close here too.
