@@ -133,7 +133,7 @@ RowsSection {
             row.session_name = s.name;
             rows.push(row);
         }
-        rows.push(root.action_row("Edit sessions.json", "Opens the saved sessions file in your editor. Changes show up here when you save it.", "Enter edit file", SessionStore.open_in_editor, "Enter"));
+        rows.push(root.action_row("Edit sessions.json", "Closes Settings and opens the saved sessions file in your editor. Changes show up here when you save it.", "Enter edit file", root.open_editor, "Enter"));
         return rows;
     }
 
@@ -243,6 +243,10 @@ RowsSection {
         root.open_session(name);
     }
 
+    function open_editor() {
+        Popups.after_close(SessionStore.open_in_editor);
+    }
+
     function start_save(target) {
         SessionStore.request_save(target);
     }
@@ -323,7 +327,7 @@ RowsSection {
 
     onExtra_key: event => {
         if (event.key === Qt.Key_N) root.start_save("");
-        else if (event.key === Qt.Key_E) SessionStore.open_in_editor();
+        else if (event.key === Qt.Key_E) root.open_editor();
         else if (event.key === Qt.Key_X) root.delete_key();
         else if (event.key === Qt.Key_R) root.rename_key();
         else if (event.key === Qt.Key_U) root.update_key();
