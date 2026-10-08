@@ -1,21 +1,47 @@
 #!/usr/bin/env bash
-# Fake gh for merge-prs.sh: one PR whose fields live in $GH_STATE, backed by the bare repo $ORIGIN.
+# Fake gh for merge-prs.sh, backed by the bare repo $ORIGIN. Each PR's fields live in $GH_STATE.<number>, or in
+# $GH_STATE for a single-PR test. A PR with lag_reads=N reports stale_oid as its head for N reads after a push,
+# the way GitHub can for a moment after a force-push.
 set -euo pipefail
+args="$*"
+number=""
+case "$args" in
+"pr view "* | "pr merge "* | "pr edit "*) number=$3 ;;
+"api graphql"*) number=$(grep -o 'number=[0-9]*' <<<"$args" | cut -d= -f2) ;;
+esac
 state_file=$GH_STATE
+[[ -n $number && -f $GH_STATE.$number ]] && state_file=$GH_STATE.$number
 get() { awk -F= -v k="$1" '$1==k{print substr($0, length(k)+2)}' "$state_file"; }
 put() { grep -v "^$1=" "$state_file" > "$state_file.new" || true; printf '%s=%s\n' "$1" "$2" >> "$state_file.new"; mv "$state_file.new" "$state_file"; }
 head_oid() { git -C "$ORIGIN" rev-parse -q --verify "refs/heads/$(get head)" || echo gone; }
-args="$*"
+reported_oid() {
+  local oid lag
+  oid=$(head_oid)
+  lag=$(get lag_reads)
+  if [[ -n $lag && $lag -gt 0 && $oid != "$(get stale_oid)" ]]; then
+    put lag_reads $((lag - 1))
+    oid=$(get stale_oid)
+  fi
+  echo "$oid"
+}
 case "$args" in
 "repo view"*) printf 'me/repo\tmain\ttrue\ttrue\ttrue\n' ;;
-"pr list"*) : ;;
+"pr list"*)
+  base=$(sed -E 's/.*--base ([^ ]+).*/\1/' <<<"$args")
+  for f in "$GH_STATE".*; do
+    [[ -f $f && $f != *.new ]] || continue
+    state_file=$f
+    [[ $(get base) == "$base" && $(get state) == OPEN ]] || continue
+    printf '%s\t%s\t%s\tfalse\n' "${f##*.}" "$(get head)" "$(head_oid)"
+  done ;;
+"pr edit"*) put base "$(sed -E 's/.*--base ([^ ]+).*/\1/' <<<"$args")" ;;
 "api graphql"*)
   printf '%s\t%s\t%s\t%s\n' "$(get open_threads || true)" "$(get codex || true)" "$(get codex_commit || true)" "$(head_oid)" |
     awk -F'\t' -v OFS='\t' '{ if ($1 == "") $1 = 0; if ($2 == "") $2 = "none"; if ($3 == "") $3 = "-"; print }' ;;
 "pr view"*"headRefName,headRefOid,baseRefName,state,isCrossRepository"*)
-  printf '%s\t%s\t%s\t%s\tfalse\n' "$(get head)" "$(head_oid)" "$(get base)" "$(get state)" ;;
+  printf '%s\t%s\t%s\t%s\tfalse\n' "$(get head)" "$(reported_oid)" "$(get base)" "$(get state)" ;;
 "pr view"*"headRefOid,mergeable"*)
-  oid=$(head_oid)
+  oid=$(reported_oid)
   if [[ $oid == "$(get conflicting_oid)" ]]; then m=CONFLICTING; else m=MERGEABLE; fi
   printf '%s\t%s\n' "$oid" "$m" ;;
 "pr view"*"--json state"*) get state ;;

@@ -112,6 +112,9 @@ rebased_oid=""
 wait_s=${MERGE_PRS_WAIT:-600}
 poll_s=${MERGE_PRS_POLL:-10}
 known_heads=()
+# Head commits this run force-pushed, by branch. GitHub can keep reporting the old head for a moment after a push, so
+# merging a PR rebased earlier in the run waits for this commit instead of trusting the first head GitHub reports.
+declare -A pushed_heads=()
 remove_tmp() {
   [[ -n $tmp_root ]] || return 0
   git worktree remove --force "$tmp_root/wt" >/dev/null 2>&1 || true
@@ -188,6 +191,7 @@ rebase_child() {
   new_child=$(git -C "$tmp_root/wt" rev-parse HEAD)
   git -C "$tmp_root/wt" push -q --force-with-lease="$child_head:$old_child" origin "HEAD:refs/heads/$child_head" ||
     die "cannot push the rebased $child_head"
+  pushed_heads[$child_head]=$new_child
   remove_tmp
   echo "$child rebased onto $label"
   if git show-ref --verify -q "refs/heads/$child_head"; then
@@ -240,6 +244,7 @@ rebase_stale_head() {
   rebased_oid=$(git -C "$tmp_root/wt" rev-parse HEAD)
   git -C "$tmp_root/wt" push -q --force-with-lease="$head:$old" origin "HEAD:refs/heads/$head" ||
     die "cannot push the rebased $head"
+  pushed_heads[$head]=$rebased_oid
   remove_tmp
   echo "#$pr rebased onto $base, dropping $((before - after)) commit(s) already merged there"
 }
@@ -270,6 +275,7 @@ merge_pr() {
     --jq '[.headRefName, .headRefOid, .baseRefName, .state, .isCrossRepository] | @tsv') || die "cannot read PR $pr"
   IFS=$'\t' read -r head head_oid base state cross <<<"$info"
   [[ $state == OPEN ]] || die "PR $pr is $state"
+  head_oid=${pushed_heads[$head]:-$head_oid}
   if [[ $cross != true ]]; then
     children_info=$(list_children "$head") || exit 1
   fi

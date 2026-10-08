@@ -92,5 +92,23 @@ show "$out"
 check "exits 0" "[[ $code == 0 ]]"
 check "merges" "grep -q '^7 merged (rebase)' <<<\"\$out\""
 
+echo "== stack merged in one run, GitHub slow to report the rebased child"
+root=$(mktemp -d); export ORIGIN=$root/origin.git GH_STATE=$root/state
+git init -q --bare -b main "$ORIGIN"
+g clone -q "$ORIGIN" "$root/main" 2>/dev/null; cd "$root/main" || exit 1
+echo a > a; g add a; g commit -qm A; g push -q origin main
+g switch -qc parent; echo p > p; g add p; g commit -qm P; g push -q origin parent
+g switch -qc child; echo c > c; g add c; g commit -qm C; g push -q origin child
+g switch -q main
+: > "$GH_STATE"
+printf 'head=parent\nbase=main\nstate=OPEN\n' > "$GH_STATE.7"
+printf 'head=child\nbase=parent\nstate=OPEN\nstale_oid=%s\nlag_reads=3\n' "$(git rev-parse child)" > "$GH_STATE.8"
+out=$(PATH="$here:$PATH" "$script" 7 8 2>&1); code=$?
+show "$out"
+check "exits 0" "[[ $code == 0 ]]"
+check "rebases the child" "grep -q '^8 rebased onto main' <<<\"\$out\""
+check "merges the child" "grep -q '^8 merged (rebase)' <<<\"\$out\""
+check "main has A, P and C" "[[ \$(git -C '$ORIGIN' log --format=%s main) == \$'C\nP\nA' ]]"
+
 echo "$pass passed, $fail failed"
 ((fail == 0))
