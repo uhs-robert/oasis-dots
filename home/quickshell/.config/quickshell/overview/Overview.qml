@@ -98,7 +98,7 @@ OverviewBase {
     // Exclusive focus alone still lets Hyprland run binds; this skips them all so a share pick moves nothing.
     ShortcutInhibitor {
         window: root
-        enabled: root.share_mode
+        enabled: root.share_mode || root.save_mode
     }
 
     Connections {
