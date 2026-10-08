@@ -21,6 +21,8 @@ Singleton {
     property string load_error: ""
     property var lua_sessions: ({})
     property int ws_per_monitor: 5
+    // Config.app.editor as Hyprland resolved it, so "Machine default" in Settings opens the machine profile's editor.
+    property string machine_editor: ""
     property string notice: ""
     // The newest content waiting for the writer; only the latest matters.
     property string queued_content: ""
@@ -161,7 +163,7 @@ Singleton {
 
     // Opens sessions.json in the configured editor inside the configured terminal, creating an empty file first.
     function open_in_editor() {
-        const editor = DefaultApps.app_value("editor") || Quickshell.env("EDITOR") || "nvim";
+        const editor = DefaultApps.app_value("editor") || root.machine_editor || Quickshell.env("EDITOR") || "nvim";
         Quickshell.execDetached(["sh", "-c", "[ -e \"$2\" ] || \"$3\" \"$2\" \"$4\" || exit 1; t=\"${XDG_STATE_HOME:-$HOME/.local/state}/hypr/bin/term\"; [ -x \"$t\" ] || t=\"${TERMINAL:-kitty}\"; exec \"$t\" -e \"$1\" \"$2\"",
             "sh", editor, root.path, root.state_write, SessionJson.encode(SessionJson.empty_document())]);
     }
@@ -217,17 +219,18 @@ Singleton {
     }
 
     // Hyprland owns the Lua sessions and its workspace count, and hyprctl eval prints nothing back, so both go through files.
-    // The first line is workspaces per monitor, the rest the export.
+    // The first line is workspaces per monitor, the second the machine editor, the rest the export.
     Process {
         id: lua_proc
-        command: ["sh", "-c", "d=\"${XDG_RUNTIME_DIR:-/tmp}\"; e=\"$d/qs-sessions-export.json\"; w=\"$d/qs-sessions-ws.txt\"; rm -f \"$e\" \"$w\"; hyprctl eval \"require('extensions.auto_launcher.sessions').export('$e')\" >/dev/null 2>&1; hyprctl eval \"local f = io.open('$w', 'w'); f:write(tostring(require('config').ws_per_monitor)); f:close()\" >/dev/null 2>&1; cat \"$w\" 2>/dev/null; echo; cat \"$e\" 2>/dev/null; rm -f \"$e\" \"$w\""]
+        command: ["sh", "-c", "d=\"${XDG_RUNTIME_DIR:-/tmp}\"; e=\"$d/qs-sessions-export.json\"; w=\"$d/qs-sessions-ws.txt\"; rm -f \"$e\" \"$w\"; hyprctl eval \"require('extensions.auto_launcher.sessions').export('$e')\" >/dev/null 2>&1; hyprctl eval \"local f = io.open('$w', 'w'); local c = require('config'); f:write(tostring(c.ws_per_monitor) .. '\\n' .. tostring(c.app.editor or '')); f:close()\" >/dev/null 2>&1; cat \"$w\" 2>/dev/null; echo; cat \"$e\" 2>/dev/null; rm -f \"$e\" \"$w\""]
         stdout: StdioCollector {
             onStreamFinished: {
                 const lines = text.split("\n");
                 const per_monitor = parseInt(lines[0]);
                 if (per_monitor > 0) root.ws_per_monitor = per_monitor;
+                root.machine_editor = (lines[1] || "").trim();
                 try {
-                    const data = JSON.parse(lines.slice(1).join("\n"));
+                    const data = JSON.parse(lines.slice(2).join("\n"));
                     root.lua_sessions = data && typeof data.sessions === "object" && data.sessions ? data.sessions : {};
                 } catch (e) {
                     root.lua_sessions = {};
