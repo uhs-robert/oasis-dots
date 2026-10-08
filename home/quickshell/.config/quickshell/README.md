@@ -100,6 +100,8 @@ Settings > Input > Keyboard and Mouse & touchpad set the XKB layout and variant,
 
 Keyboard also lists the remaps keyd applies below Hyprland, such as Caps Lock and Left Ctrl as Escape on tap and Ctrl on hold, and Tab as the vim layer on hold. They are read-only rows built at runtime from `/etc/keyd/default.conf` (installed from `system/etc/keyd/default.conf`), so they follow edits to it; Enter on the Tab row lists the vim layer's keys. They show only while the `keyd` service is active and the file is readable. To change a remap, edit that file and run `sudo keyd reload`; XKB options such as `caps:escape` do nothing for keys keyd has already remapped.
 
+Settings > Sessions (System group) manages the layouts the launcher picker lists. Save current layout opens the overview in save mode: every window, regular and special, starts marked, `Space`/`v` and `V` unmark and mark, `Tab` switches between regular and special workspaces, and `Enter` asks for a name (prefilled with `Session N`). Nothing can be moved, closed or focused there, and `Esc` or `q` closes without saving. The windows are captured by the Hyprland side (`capture.lua`), written to `sessions.json` in the Hyprland state folder through `hypr/scripts/state-write`, and Settings opens on the new session. A saved session opens to its windows: rename it, delete it (a second `Enter` confirms), replace its windows with the current ones (the same save mode, targeting that session), or open `sessions.json` in your Default apps editor inside your terminal (`e`). A window row opens its placement (monitor and workspace, or a special workspace), command, launch delay and whether its size and position are kept. A command marked guessed was read from `/proc` and may need fixing, for example a single-instance terminal reports its server process. Lua sessions from `custom/sessions.lua` are listed read-only with a Lua marker, unless a saved session of the same name shadows them. The file is watched, so a hand edit in Neovim shows up at once; a file that does not parse blocks saving from Settings until fixed. `qs ipc call overview save_session ""` starts save mode directly, and a session name there replaces that session's windows.
+
 Settings > Wallpaper drives the wallpaper rotator (`hypr/.config/hypr/extensions/wallpaper`). The top rows switch automatic rotation, the interval and the time-of-day, season and weather folders on or off, and `Enter` on Collection types a different wallpaper folder (empty goes back to the default); each connected monitor then cycles between Automatic and Pinned. `l` or `H`/`L` on a monitor row pins the image it shows now (or goes back to Automatic), `p` pins the image showing now or unpins a pinned monitor, `Enter` opens a searchable list of the collection with thumbnails to pin any image, filling the height of the section. `r` gives the selected monitor a new image, or every automatic monitor from the top rows (the same as `SUPER + Q` then `W`), and `o` closes Settings and opens the collection in the Default apps > Directories app; a terminal app such as yazi runs in your terminal. A monitor row shows one preview of its image, badged when it is the pin. It saves only what you change to `wallpaper.json` in the Hyprland state folder, pins keyed by monitor description, and reads what the rotator is actually using from its `wallpaper-status.json`. The rotator picks the file up within a few seconds; without it running the section says so.
 
 What you set here is saved as state under `~/.local/state` (or `$XDG_STATE_HOME`). State wins over the tracked defaults, so the repo stays clean while each machine keeps its own choices. Delete a file to fall back to the defaults.
@@ -122,6 +124,7 @@ What you set here is saved as state under `~/.local/state` (or `$XDG_STATE_HOME`
 | `hypr/wallpaper-status.json`              | What the rotator is doing, written by the rotator |
 | `hypr/apps.json`                          | Default apps, read by Hyprland                   |
 | `hypr/power.json`                         | Idle and power settings, read by Hyprland        |
+| `hypr/sessions.json`                      | Saved sessions for the launcher picker, written by Settings > Sessions |
 | `hypr/input.json`                         | Keyboard, mouse, touchpad and which-key delay, read by Hyprland |
 
 The calendar clock cycles through the local zone plus any listed in `quickshell/timezones.json`, for example `["America/Los_Angeles", "America/Denver"]`; there is no Settings page for it.
@@ -174,7 +177,7 @@ The main binds that open things (the leader is `SUPER`):
 
 All binds live in `home/hypr/.config/hypr/keymaps/`.
 
-In the workspace overview, `[`/`]` cycle windows, `Tab`/`Shift + Tab` toggle the special workspaces, `s` picks a whole screen and `f` toggles the view. The share picker is the same overview with only shareable windows; there `r` opens the region selector, and Esc in it comes back.
+In the workspace overview, `[`/`]` cycle windows, `Tab`/`Shift + Tab` toggle the special workspaces, `s` picks a whole screen and `f` toggles the view. Save mode (from Settings > Sessions) is the same overview with every window marked and no moving or closing. The share picker is the same overview with only shareable windows; there `r` opens the region selector, and Esc in it comes back.
 
 ## IPC
 
@@ -195,7 +198,7 @@ qs-ipc show        # list every target and function
 | `picker`        | `open <name>`, `open_with <name> <mode>`, `toggle <name>`, `close`    |
 | `settings`      | `open <section>`, `toggle`                                            |
 | `style`         | `set`, `cycle`, `get`, `set_lock`, `set_lock_tint`, `set_lock_backdrop`, `toggle_cava_line` and their getters |
-| `overview`      | `open`, `close`, `toggle`, `search`, `move_follow`, `move_silent`                                           |
+| `overview`      | `open`, `close`, `toggle`, `search`, `move_follow`, `move_silent`, `save_session <name>`                         |
 | `tmux-overview` | `open`, `close`, `toggle`, `search`                                   |
 | `notifications` | `open`, `close`, `toggle_dnd`, `clear_all`, `dismiss_latest`, `dismiss_all`, `focus_toast`, `has_toast` |
 | `screenshot`    | `open`, `close`, `toggle`, `select`, `pick`, `share`, `stop_recording` and the recording callbacks |

@@ -24,6 +24,14 @@ OverviewBase {
     property string carry_exit: ""
     // Answering Screenshot's pending share request: only shareable windows show, and picking changes nothing.
     property bool share_mode: false
+    // Choosing windows to save as a session: every window starts marked, and nothing can be moved or closed.
+    property bool save_mode: false
+    // The saved session whose windows the save replaces, or "" for a new one.
+    property string save_target: ""
+    // The name popup is open over the marking.
+    property bool naming: false
+    property bool save_pending: false
+    property string name_error: ""
     // The selection when r handed off to the region selector, restored when Esc there comes back.
     property var share_resume: null
     // s: the selected tile's whole monitor is the pick, until s or Esc goes back to the same tile.
@@ -50,6 +58,7 @@ OverviewBase {
     readonly property bool can_drop: root.carrying && root.swap_address === "" && !!root.selected_tile && root.picked.some(a => !root.selected_tile.windows.some(w => w.address === a))
     ranked: root.typing ? root.rank(root.window_entries(), root.query) : []
     readonly property var matches: root.query === "" ? null : root.to_set(root.ranked.map(e => e.address))
+    readonly property int save_total: WindowState.windows.filter(t => !!t.workspace).length
     readonly property int window_total: (root.tiles || []).reduce((n, t) => n + t.windows.length, 0)
     // The selected window's place among all windows, tile by tile.
     readonly property int window_at: {
@@ -79,9 +88,9 @@ OverviewBase {
     }
 
     layer_namespace: "quickshell-overview"
-    title: root.share_mode ? "SHARE" : root.special ? "SPECIAL" : "OVERVIEW"
+    title: root.save_mode ? "SAVE SESSION" : root.share_mode ? "SHARE" : root.special ? "SPECIAL" : "OVERVIEW"
     status_accent: root.screen_pick || root.carrying || root.marks.length > 0 || root.query !== ""
-    help_close_desc: root.share_mode ? "cancel share" : "close overview"
+    help_close_desc: root.share_mode ? "cancel share" : root.save_mode ? "close without saving" : "close overview"
     cursor_sub: root.current_address
     group_label: (g, i) => g.name + (g.focused ? " · focused" : "")
     dismiss: () => root.hide_overview()
@@ -104,8 +113,38 @@ OverviewBase {
         }
     }
 
+    Connections {
+        target: SessionStore
+
+        function onSave_requested(target) {
+            root.save_target = target;
+            root.show_overview("save", false);
+        }
+
+        function onSaved(name) {
+            if (!root.save_pending) return;
+            root.save_pending = false;
+            root.hide_overview();
+            settings_timer.name = name;
+            settings_timer.restart();
+        }
+
+        function onFailed(message) {
+            if (!root.save_pending) return;
+            root.save_pending = false;
+            root.name_error = message;
+        }
+    }
+
     IpcHandler {
         target: "overview"
+
+        // Marks every window to save as a session; `target_name` is a saved session to replace, or empty for a new one.
+        function save_session(target_name: string): string {
+            root.save_target = target_name;
+            root.show_overview("save", false);
+            return "ok";
+        }
 
         function open(): string {
             root.show_overview("", false);
@@ -142,8 +181,10 @@ OverviewBase {
     // entry "share" or "share_resume" takes over an open overview, since the request must be answered.
     function show_overview(entry, follow) {
         const sharing = entry === "share" || entry === "share_resume";
+        const saving = entry === "save";
         if (sharing && !Screenshot.sharing) return;
-        if (root.wanted && !sharing) return;
+        if (saving && Screenshot.sharing) return;
+        if (root.wanted && !sharing && !saving) return;
         const mon = root.hold_focused_screen();
         root.refresh();
         slots_proc.running = true;
@@ -152,6 +193,10 @@ OverviewBase {
         const on_special = mon ? root.shown_special(mon) || (active_ws && (active_ws.name || "").startsWith("special:") ? active_ws.name : "") : "";
         const resume = entry === "share_resume" ? root.share_resume : null;
         root.share_mode = sharing;
+        root.save_mode = saving;
+        root.naming = false;
+        root.save_pending = false;
+        root.name_error = "";
         if (sharing) root.share_resume = null;
         root.special = resume ? resume.special : on_special !== "" && !sharing;
         root.screen_pick = !!resume && resume.screen_pick;
@@ -169,7 +214,9 @@ OverviewBase {
         root.visible = true;
         if (resume && root.tile_index_of[resume.key] === undefined) root.select_focused_workspace();
         root.reveal_open();
-        if (entry === "search") {
+        if (saving) {
+            root.marks = WindowState.windows.filter(t => !!t.workspace).map(t => t.address);
+        } else if (entry === "search") {
             root.start_filter(true);
         } else if (entry === "move" && WindowState.find(WindowState.active_address)) {
             root.picked = [WindowState.active_address];
@@ -185,6 +232,9 @@ OverviewBase {
         const was_sharing = root.share_mode;
         root.wanted = false;
         root.share_mode = false;
+        root.save_mode = false;
+        root.naming = false;
+        root.save_pending = false;
         root.screen_pick = false;
         root.conceal(was_sharing);
         if (was_sharing && !keep_share) Screenshot.send_share("");
@@ -550,14 +600,63 @@ OverviewBase {
         return true;
     }
 
+    function start_naming() {
+        if (root.alive(root.marks).length === 0) return;
+        root.naming = true;
+        root.name_error = "";
+        name_input.text = root.save_target !== "" ? root.save_target : SessionStore.default_name();
+        name_input.forceActiveFocus();
+        name_input.selectAll();
+    }
+
+    function stop_naming() {
+        // The popup field is inside a focus scope: unless it gives up its scoped focus, focus_keys hands it straight back and keys go nowhere.
+        name_input.focus = false;
+        root.naming = false;
+        root.name_error = "";
+        root.focus_keys();
+    }
+
+    function confirm_save() {
+        const name = name_input.text.trim();
+        const problem = SessionStore.name_problem(name, root.save_target);
+        if (root.save_pending) return;
+        if (problem !== "") {
+            root.name_error = problem;
+            return;
+        }
+        if (root.save_target !== "" && !SessionStore.rename(root.save_target, name)) return;
+        root.save_pending = true;
+        root.name_error = "";
+        SessionStore.save_capture(root.alive(root.marks), name, root.save_target !== "" ? name : "");
+    }
+
+    // Marking keys pass through to the shared handling; anything that would move, close or focus a window is swallowed.
+    function handle_save_key(event) {
+        const k = event.key;
+        if (k === Qt.Key_Return || k === Qt.Key_Enter) {
+            ThemeAudio.play("confirm");
+            root.start_naming();
+        } else if (k === Qt.Key_Escape) {
+            ThemeAudio.play("cancel");
+            root.hide_overview();
+        } else if (k !== Qt.Key_M && k !== Qt.Key_X && k !== Qt.Key_S && k !== Qt.Key_Slash && event.text !== "/") {
+            return false;
+        }
+        return true;
+    }
+
     function alive(list) {
         return list.filter(a => WindowState.find(a) !== null);
     }
 
-    toggle_mark: function () {
-        const a = root.current_address;
+    function mark_address(a) {
         if (a === "") return;
         root.marks = root.marks.indexOf(a) >= 0 ? root.marks.filter(m => m !== a) : root.marks.concat([a]);
+    }
+
+    toggle_mark: function () {
+        root.mark_address(root.current_address);
     }
 
     // Marks every window in the selected workspace, or unmarks them all when they already are.
@@ -648,6 +747,7 @@ OverviewBase {
         }
         if (root.screen_pick && root.handle_screen_key(event)) return "done";
         if (root.share_mode && root.handle_share_key(event)) return "done";
+        if (root.save_mode && root.handle_save_key(event)) return "done";
         return "";
     }
 
@@ -672,6 +772,12 @@ OverviewBase {
     // A click on a tile's background focuses the workspace itself rather than one of its windows.
     // In share mode a window click shares it and a background click only selects.
     function tile_clicked(index, address) {
+        if (root.save_mode) {
+            ThemeAudio.play(address === "" ? "cursor" : "confirm");
+            root.select(index, address);
+            root.mark_address(address);
+            return;
+        }
         if (root.screen_pick) return root.screen_clicked(root.tiles[index] ? root.tiles[index].group : -1, index);
         ThemeAudio.play(root.share_mode && address === "" ? "cursor" : "confirm");
         root.select(index, address);
@@ -687,7 +793,8 @@ OverviewBase {
         }
     }
 
-    footer_text: root.help_open ? "? back · Esc back · q " + (root.share_mode ? "cancel share" : "close")
+    footer_text: root.help_open ? "? back · Esc back · q " + (root.share_mode ? "cancel share" : root.save_mode ? "close without saving" : "close")
+        : root.save_mode ? (root.naming ? "Enter save · Esc back to marking" : "Space mark · V mark all here · Enter name and save · hjkl move · ]/[ window · Tab special · f view · ? help · Esc cancel")
         : root.typing ? "Enter " + (root.share_mode ? "share" : root.carrying ? "drop here" : "focus") + " · Tab/Down next · Shift+Tab/Up previous · Esc " + (root.from_search && root.query === "" ? "close" : "clear") + " · ? help"
         : root.screen_pick ? (root.share_mode ? "Enter share screen · hjkl/Ctrl+hjkl/Ctrl+1-9 monitor · r region · s/Esc back · f view · ? help · q cancel"
             : (root.carrying ? "m/Enter drop on screen" : "Enter focus screen") + " · hjkl/Ctrl+hjkl/Ctrl+1-9 monitor · s/Esc back · f view · ? help · q close")
@@ -702,8 +809,10 @@ OverviewBase {
     readonly property string screen_moves: "h/j/k/l, Arrows, Ctrl+h/j/k/l or Ctrl+Arrows pick the next monitor that way · Ctrl+1-9 pick that monitor number"
     readonly property string screen_help: root.share_mode ? "The whole monitor is the pick · Enter share it · Click share it, or click another monitor to pick that one · " + root.screen_moves + " · r share a region of this monitor instead, Esc there comes back here · s/Esc back to window selection · f toggle filmstrip view · q cancel the share"
         : "The whole monitor is the pick · " + (root.carrying ? "m/Enter drop the carried windows on its visible workspace · Click drop them there" : "Enter focus it and close · Click focus it") + ", or click another monitor to pick that one · " + root.screen_moves + " · s/Esc back to the selected workspace · f toggle filmstrip view · q close"
+    readonly property string save_help: "Every window starts marked, and Enter saves the marked ones as a session · Space/v mark or unmark window · V mark or unmark all in workspace · Enter name the session, then Enter again to save it · Nothing is moved, closed or focused here · h/j/k/l move between workspaces · Arrows move between workspaces · Ctrl+h/j/k/l or Ctrl+Arrows jump to the next monitor that way · Ctrl+1-9 jump to that monitor number · ] next window · [ previous window · 1-9 select workspace by id, or the nth special workspace · Tab/Shift+Tab toggle special workspaces · f toggle filmstrip view · Click mark or unmark window · Esc/q close without saving"
     readonly property string share_help: "Only windows the share can capture are shown · h/j/k/l move between workspaces · Arrows move between workspaces · Ctrl+h/j/k/l or Ctrl+Arrows jump to the next monitor that way · Ctrl+1-9 jump to that monitor number · ] next window · [ previous window · Enter share the selected window · Click share a window · s pick the whole monitor of the selected workspace, Enter then shares it · r share a region of that monitor, Esc there comes back here · Tab/Shift+Tab toggle special workspaces ·/ search shareable windows by class, title or workspace · 1-9 select workspace by id, or the nth special workspace · f toggle filmstrip view, j/k there jump monitors · Esc/q cancel the share"
-    help_text: root.typing ? "Type to search " + (root.share_mode ? "shareable " : "") + "windows by class, title or workspace · Enter " + (root.share_mode ? "share the highlighted window" : "focus the highlighted window, or drop the carried window on its workspace") + " · Tab/Down next match · Shift+Tab/Up previous match · Backspace delete, clears when empty · Esc clear search, or close when it is empty"
+    help_text: root.save_mode ? root.save_help
+        : root.typing ? "Type to search " + (root.share_mode ? "shareable " : "") + "windows by class, title or workspace · Enter " + (root.share_mode ? "share the highlighted window" : "focus the highlighted window, or drop the carried window on its workspace") + " · Tab/Down next match · Shift+Tab/Up previous match · Backspace delete, clears when empty · Esc clear search, or close when it is empty"
         : root.screen_pick ? root.screen_help
         : root.share_mode ? (root.query !== "" ? "Esc clear search · " : "") + root.share_help
         : root.carrying ? root.carry_help
@@ -713,6 +822,7 @@ OverviewBase {
 
     status_text: {
         if (root.typing || root.query !== "") return "/" + root.query + (root.typing ? "_" : "") + "  " + root.match_count + " match" + (root.match_count === 1 ? "" : "es");
+        if (root.save_mode) return (root.save_target !== "" ? "UPDATE " + root.save_target.toUpperCase() : "SAVE SESSION") + " · " + root.marks.length + " of " + root.save_total + " windows marked";
         const lead = root.picked_toplevel ? WindowState.short_class(root.picked_toplevel) : "window";
         const picked_tile = root.selected_tile;
         if (root.screen_pick && picked_tile && root.groups[picked_tile.group]) return (root.carrying ? "MOVE " + (root.picked.length > 1 ? root.picked.length + " windows" : lead.toUpperCase()) + " to " : "SCREEN ") + root.groups[picked_tile.group].name + " · whole monitor";
@@ -733,6 +843,17 @@ OverviewBase {
         command: ["sh", "-c", "f=\"$XDG_RUNTIME_DIR/qs-monitor-slots\"; hyprctl eval \"local W = require('lib.workspaces'); local t = {}; for i = 1, 10 do t[i] = W.get_monitor_for_slot(i) or '-' end; local f = io.open('$f', 'w'); f:write(table.concat(t, ' ')); f:close()\" >/dev/null && cat \"$f\""]
         stdout: StdioCollector {
             onStreamFinished: root.monitor_slots = text.trim().split(/\s+/)
+        }
+    }
+
+    // Opens Settings once the overview has dropped its exclusive keyboard grab.
+    Timer {
+        id: settings_timer
+        property string name: ""
+        interval: 80
+        onTriggered: {
+            SettingsNav.requested_session = settings_timer.name;
+            SettingsNav.open("sessions");
         }
     }
 
@@ -896,5 +1017,97 @@ OverviewBase {
         anchors.fill: parent
         aim: root.help_open ? null : root.aim
         animate: Power.on_ac && root.reveal === 1
+    }
+
+    // Names the session being saved; Enter saves and Esc goes back to marking.
+    Item {
+        id: name_popup
+        visible: root.naming
+        anchors.fill: parent
+        z: 20
+
+        MouseArea {
+            anchors.fill: parent
+        }
+
+        Rectangle {
+            anchors.fill: parent
+            color: Qt.alpha(Theme.bg_crust, 0.6)
+        }
+
+        Rectangle {
+            anchors.centerIn: parent
+            width: Math.min(parent.width - Style.px(40), Style.px(440))
+            height: name_column.implicitHeight + Style.px(28)
+            radius: Style.radius(8)
+            color: Theme.bg_mantle
+            border.width: 1
+            border.color: Style.caret_color
+
+            Column {
+                id: name_column
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.top: parent.top
+                anchors.margins: Style.px(14)
+                spacing: Style.px(8)
+
+                Text {
+                    text: root.save_target !== "" ? "Update session" : "Name this session"
+                    color: Style.text_primary
+                    font.family: Style.font_family
+                    font.pixelSize: Style.fs(-1)
+                }
+
+                Rectangle {
+                    width: parent.width
+                    height: Style.px(30)
+                    radius: 6
+                    color: "transparent"
+                    border.width: 1
+                    border.color: root.name_error !== "" ? Style.text_primary : Style.text_accent
+
+                    TextInput {
+                        id: name_input
+                        anchors.fill: parent
+                        anchors.leftMargin: 8
+                        anchors.rightMargin: 8
+                        verticalAlignment: TextInput.AlignVCenter
+                        maximumLength: 64
+                        clip: true
+                        color: Style.text_fg
+                        selectionColor: Style.selection_bg
+                        selectedTextColor: Style.selection_inverse ? Style.selection_fg : Style.text_fg
+                        font.family: Style.font_family
+                        font.pixelSize: Style.font_size
+                        onTextEdited: root.name_error = ""
+
+                        Keys.onPressed: event => {
+                            if (event.key === Qt.Key_Escape) {
+                                ThemeAudio.play("cancel");
+                                root.stop_naming();
+                            } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
+                                ThemeAudio.play("confirm");
+                                root.confirm_save();
+                            } else if ((event.modifiers & Qt.ControlModifier) && event.key === Qt.Key_U) {
+                                name_input.text = "";
+                            } else {
+                                return;
+                            }
+                            event.accepted = true;
+                        }
+                    }
+                }
+
+                Text {
+                    width: parent.width
+                    text: root.name_error !== "" ? root.name_error : root.save_pending ? "Saving..." : root.marks.length + " window" + (root.marks.length === 1 ? "" : "s") + " · Enter save · Esc back to marking"
+                    wrapMode: Text.WordWrap
+                    color: root.name_error !== "" ? Style.text_primary : Style.text_muted
+                    font.family: Style.font_family
+                    font.pixelSize: Style.fs(-2)
+                }
+            }
+        }
     }
 }

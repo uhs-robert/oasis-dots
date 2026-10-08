@@ -93,6 +93,8 @@ Lua sessions launch every entry at once. `Sessions.add(name, apps, { sequential 
 
 Sessions saved from Settings live in `~/.local/state/hypr/sessions.json` (`$XDG_STATE_HOME/hypr`), re-read each time the picker opens. They launch sequentially and win over a Lua session of the same name. A symlink there is followed, so it can point at a backup copy. A missing file means no saved sessions; a malformed one raises a notification.
 
+Settings > Sessions saves and edits them: Save current layout marks the open windows in the overview and captures them (their launch commands come from the entries that opened them when known, else are guessed from `/proc`), and each saved session's windows can be re-placed, re-commanded or dropped there. Lua sessions are listed read-only, and the file can be opened in your editor from the same page.
+
 ```json
 {
   "version": 1,
