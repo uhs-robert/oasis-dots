@@ -26,7 +26,7 @@ Popup {
     jumps_enabled: !root.password_mode && !root.forget_confirm && !root.dns_edit_mode
     cursor_state: [root.selected, root.setting_selected]
 
-    readonly property string list_help: "Tab details · j/k move · gg/G first/last · Enter connect · f forget · t toggle · r scan · q close"
+    readonly property string list_help: "Tab details · j/k move · gg/G first/last · Enter connect · x forget · t toggle · r scan · q close"
     readonly property string details_help: root.profile
         ? "Tab/Esc list · j/k move · gg/G first/last · t/Enter toggle · Enter edit DNS · r refresh · q close"
         : "Tab/Esc list · r refresh · q close"
@@ -466,7 +466,7 @@ Popup {
                 root.start_scan();
                 ThemeAudio.play("confirm");
                 event.accepted = true;
-            } else if (event.key === Qt.Key_F && row && !row.advanced && row.known) {
+            } else if (event.key === Qt.Key_X && row && !row.advanced && row.known) {
                 root.forget_target = row;
                 root.forget_confirm = true;
                 ThemeAudio.play("confirm");
