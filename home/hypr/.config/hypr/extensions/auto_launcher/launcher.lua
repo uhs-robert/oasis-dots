@@ -46,6 +46,37 @@ local function snapshot_addresses()
   return addrs
 end
 
+--- @param address string
+--- @return { x: number, y: number }|nil
+local function current_size(address)
+  for _, w in ipairs(hl.get_windows() or {}) do
+    if w.address == address then return w.size end
+  end
+end
+
+--- Resizes a window to `size` ({w, h}).
+--- A tiled window's relative resize moves its free edge, so a window against the bottom or right of the monitor
+--- shrinks on a positive delta. The new size reads back right after the dispatch; any axis that moved away from the
+--- target is reversed.
+--- @param address string
+--- @param size [integer, integer]
+local function resize_to(address, size)
+  local start_size = current_size(address)
+  if not start_size then return end
+  local window = "address:" .. address
+  local dx, dy = size[1] - start_size.x, size[2] - start_size.y
+  hl.dispatch(hl.dsp.window.resize({ window = window, x = dx, y = dy, relative = true }))
+
+  local result_size = current_size(address)
+  if not result_size then return end
+  -- An axis that went the wrong way moved by -d; twice d in the opposite direction lands it on the target.
+  local correction_x = math.abs(size[1] - result_size.x) > math.abs(dx) and -2 * dx or 0
+  local correction_y = math.abs(size[2] - result_size.y) > math.abs(dy) and -2 * dy or 0
+  if correction_x ~= 0 or correction_y ~= 0 then
+    hl.dispatch(hl.dsp.window.resize({ window = window, x = correction_x, y = correction_y, relative = true }))
+  end
+end
+
 --- Polls for the app's new window, moves it to the target workspace, and applies size/position.
 --- Backstop for single-instance apps, whose server-owned pid the exec rule can't bind to.
 --- @param app AppEntry
@@ -66,14 +97,7 @@ local function place_when_ready(app, workspace, before, claimed)
         t:set_enabled(false)
         local window = "address:" .. w.address
         hl.dispatch(hl.dsp.window.move({ window = window, workspace = workspace, follow = false }))
-        if app.size then
-          hl.dispatch(hl.dsp.window.resize({
-            window = window,
-            x = app.size[1] - w.size.x,
-            y = app.size[2] - w.size.y,
-            relative = true,
-          }))
-        end
+        if app.size then resize_to(w.address, app.size) end
         if app.pos then
           hl.dispatch(hl.dsp.window.move({
             window = window,
