@@ -18,22 +18,24 @@ RowsSection {
     // "rename", "command" or "special" while the field is open.
     property string edit_key: ""
     property bool edit_invalid: false
-    // The destructive row waiting for a second Enter, as "delete:<name>" or "remove:<index>".
-    property string armed: ""
+    // A delete or remove waiting for y/n, as { question, verb, run }; null when nothing is asked.
+    property var pending: null
 
     readonly property var session: SessionStore.find(root.session_name)
     readonly property var entry: root.session && root.window_index >= 0 ? root.session.windows[root.window_index] || null : null
     readonly property var delay_steps: [0, 250, 500, 1000, 2000, 5000]
-    readonly property string hint: SessionStore.load_error !== "" ? "sessions.json cannot be read (" + SessionStore.load_error + "); fix it with Edit sessions.json." : SessionStore.notice
+    readonly property string hint: root.pending ? root.pending.question : SessionStore.load_error !== "" ? "sessions.json cannot be read (" + SessionStore.load_error + "); fix it with Edit sessions.json." : SessionStore.notice
     readonly property string breadcrumb: root.view === "list" ? "" : root.session_name + (root.view === "window" && root.entry ? " > " + root.window_label(root.entry) : "")
 
     section_keys: "n save layout · e edit file"
     rows: root.build_rows()
-    description_keys: root.edit_key !== "" ? "Enter save · Ctrl+u clear · Esc cancel" : root.keys_of(root.described_row)
-    footer_hint: root.edit_key !== "" ? "Enter save · Ctrl+u clear · Esc cancel" : root.armed !== "" ? "Enter confirm · any other key cancels" : root.view === "list" ? "j/k move · Enter open · n save layout · e edit file · h/Esc sections · q close" : "j/k move · H/L change · Enter edit · h/Esc back · q close"
+    description_keys: root.edit_key !== "" ? "Enter save · Ctrl+u clear · Esc cancel" : root.pending ? "y " + root.pending.verb + " · n keep" : root.keys_of(root.described_row)
+    footer_hint: root.edit_key !== "" ? "Enter save · Ctrl+u clear · Esc cancel" : root.pending ? "y " + root.pending.verb + " · n keep" : root.view === "list" ? "j/k move · Enter open · r rename · u update · x delete · n save layout · e edit file · h/Esc sections · q close" : root.view === "session" ? "j/k move · Enter edit · r rename · u update · x delete or remove · h/Esc back · q close" : "j/k move · H/L change · Enter edit · x remove · h/Esc back · q close"
     onRowsChanged: root.cursor = Math.max(0, Math.min(root.cursor, root.rows.length - 1))
     onSessionChanged: Qt.callLater(root.check_view)
     onEntryChanged: Qt.callLater(root.check_view)
+    // A rename started from the list borrows session_name only while the field is open.
+    onEdit_keyChanged: if (root.edit_key === "" && root.view === "list") root.session_name = ""
 
     function range(count) {
         const out = [];
@@ -61,18 +63,59 @@ RowsSection {
         return { label: label, desc: desc, values: () => values, text: text, value: value, set: set, pick: false };
     }
 
-    // The first Enter arms the row and the second runs it.
-    function confirm_row(label, desc, key, run) {
-        const row = root.action_row(label, desc, "Enter twice to confirm", () => {
-            if (root.armed === key) {
-                root.armed = "";
-                run();
-            } else {
-                root.armed = key;
-            }
-        }, "");
-        row.text = () => root.armed === key ? "Enter to confirm" : "Enter";
-        return row;
+    function ask(question, verb, run) {
+        root.pending = { question: question, verb: verb, run: run };
+        ThemeAudio.play("confirm");
+    }
+
+    function ask_delete_session(name) {
+        root.ask("Delete " + name + "? y/n", "delete", () => {
+            SessionStore.remove(name);
+            if (root.view !== "list") root.go_up();
+        });
+    }
+
+    function ask_remove_window(index) {
+        const name = root.session_name;
+        const w = root.session ? root.session.windows[index] : null;
+        if (!w) return;
+        root.ask("Remove " + root.window_label(w) + " from " + name + "? y/n", "remove", () => {
+            SessionStore.remove_window(name, index);
+            if (root.view === "window") root.go_up();
+        });
+    }
+
+    // The saved session the letter keys act on: the row under the cursor in the list, else the open one. Null for a Lua session, with a notice.
+    function editable_target() {
+        const row = root.rows[root.cursor];
+        const name = root.view === "list" ? row && row.session_name : root.session_name;
+        const s = name ? SessionStore.find(name) : null;
+        if (s && s.read_only) {
+            SessionStore.say(s.name + " is a Lua session; edit custom/sessions.lua to change it");
+            return null;
+        }
+        return s;
+    }
+
+    function delete_key() {
+        const s = root.editable_target();
+        if (!s) return;
+        const row = root.rows[root.cursor];
+        if (root.view === "window") root.ask_remove_window(root.window_index);
+        else if (root.view === "session" && row && row.window_index !== undefined) root.ask_remove_window(row.window_index);
+        else root.ask_delete_session(s.name);
+    }
+
+    function rename_key() {
+        const s = root.editable_target();
+        if (!s) return;
+        root.session_name = s.name;
+        root.start_edit("rename");
+    }
+
+    function update_key() {
+        const s = root.editable_target();
+        if (s) root.start_save(s.name);
     }
 
     function build_rows() {
@@ -86,7 +129,9 @@ RowsSection {
         for (const s of SessionStore.sessions) {
             const count = s.windows.length + (s.windows.length === 1 ? " window" : " windows");
             const desc = s.read_only ? "A Lua session from custom/sessions.lua. It is read-only here; edit that file to change it." : "A saved session. Enter opens its windows to edit them.";
-            rows.push(root.action_row(s.name, desc, "Enter open", () => root.open_session(s.name), s.read_only ? "Lua · " + count : count));
+            const row = root.action_row(s.name, desc, s.read_only ? "Enter open" : "Enter open · r rename · u update · x delete", () => root.open_session(s.name), s.read_only ? "Lua · " + count : count);
+            row.session_name = s.name;
+            rows.push(row);
         }
         rows.push(root.action_row("Edit sessions.json", "Opens the saved sessions file in your editor. Changes show up here when you save it.", "Enter edit file", SessionStore.open_in_editor, "Enter"));
         return rows;
@@ -97,17 +142,15 @@ RowsSection {
         if (!s) return [];
         const rows = [];
         if (!s.read_only) {
-            rows.push(root.text_row("Name", "The name the picker lists. Enter renames the session.", "rename", s.name));
-            rows.push(root.action_row("Update from current windows", "Opens the overview with every window marked; saving replaces this session's windows with the marked ones.", "Enter update", () => root.start_save(s.name), "Enter"));
-            rows.push(root.confirm_row("Delete session", "Removes " + s.name + " from sessions.json.", "delete:" + s.name, () => {
-                SessionStore.remove(s.name);
-                root.go_up();
-            }));
+            rows.push(root.action_row("Name", "The name the picker lists. Enter or r renames the session.", "Enter or r rename", () => root.start_edit("rename"), s.name));
+            rows.push(root.action_row("Update from current windows", "Opens the overview with every window marked; saving replaces this session's windows with the marked ones.", "Enter or u update", () => root.start_save(s.name), "Enter"));
+            rows.push(root.action_row("Delete session", "Removes " + s.name + " from sessions.json, after a y/n prompt.", "Enter or x delete", () => root.ask_delete_session(s.name), "Enter"));
         }
         s.windows.forEach((w, i) => {
             const guessed = w.guessed === true;
             const lead = s.read_only ? "Defined in custom/sessions.lua. " : guessed ? "Guessed from /proc, check it. " : "";
-            const row = root.action_row(root.window_label(w), lead + String(w.cmd || ""), s.read_only ? "" : "Enter edit window", () => root.open_window(i), root.placement_text(w) + (guessed ? " · guessed" : ""));
+            const row = root.action_row(root.window_label(w), lead + String(w.cmd || ""), s.read_only ? "" : "Enter edit window · x remove", () => root.open_window(i), root.placement_text(w) + (guessed ? " · guessed" : ""));
+            row.window_index = i;
             if (s.read_only) {
                 row.activate = undefined;
                 row.keys = "Read-only";
@@ -139,17 +182,14 @@ RowsSection {
         const has_geometry = w.size !== undefined || w.pos !== undefined;
         rows.push(root.choice_row("Keep size and position", "Off drops the saved size and position, so the layout places the window. To capture them again, use Update from current windows.", ["on", "off"], v => v, () => has_geometry ? "on" : "off",
             v => v === "off" ? patch({ size: null, pos: null }) : SessionStore.say("Use Update from current windows to capture size and position again")));
-        rows.push(root.confirm_row("Remove window", "Removes this window from the session.", "remove:" + index, () => {
-            SessionStore.remove_window(name, index);
-            root.go_up();
-        }));
+        rows.push(root.action_row("Remove window", "Removes this window from the session, after a y/n prompt.", "Enter or x remove", () => root.ask_remove_window(index), "Enter"));
         return rows;
     }
 
     function enter_level(next_view) {
         root.parents = root.parents.concat([root.cursor]);
         root.view = next_view;
-        root.armed = "";
+        root.pending = null;
         root.cursor = 0;
     }
 
@@ -174,7 +214,7 @@ RowsSection {
             root.view = "list";
             root.session_name = "";
         }
-        root.armed = "";
+        root.pending = null;
         root.cursor = last;
     }
 
@@ -251,15 +291,24 @@ RowsSection {
     onFirst_key: event => {
         if (root.edit_key !== "") return;
         const key = event.key;
-        const confirm = key === Qt.Key_Return || key === Qt.Key_Enter;
-        const back = key === Qt.Key_Escape || (key === Qt.Key_H && !(event.modifiers & Qt.ShiftModifier));
-        if (root.armed !== "" && !confirm) {
-            root.armed = "";
-            if (back) {
-                event.accepted = true;
+        // The prompt holds every key but q, which still closes the popup, as in the Network and Bluetooth forget prompts.
+        if (root.pending) {
+            if (key === Qt.Key_Q) {
+                root.pending = null;
                 return;
             }
+            if (key === Qt.Key_Y) {
+                const run = root.pending.run;
+                root.pending = null;
+                run();
+            } else if (key === Qt.Key_N || key === Qt.Key_Escape) {
+                root.pending = null;
+                ThemeAudio.play("cancel");
+            }
+            event.accepted = true;
+            return;
         }
+        const back = key === Qt.Key_Escape || (key === Qt.Key_H && !(event.modifiers & Qt.ShiftModifier));
         if (root.view !== "list" && back) {
             root.go_up();
             event.accepted = true;
@@ -275,6 +324,9 @@ RowsSection {
     onExtra_key: event => {
         if (event.key === Qt.Key_N) root.start_save("");
         else if (event.key === Qt.Key_E) SessionStore.open_in_editor();
+        else if (event.key === Qt.Key_X) root.delete_key();
+        else if (event.key === Qt.Key_R) root.rename_key();
+        else if (event.key === Qt.Key_U) root.update_key();
         else return;
         event.accepted = true;
     }
@@ -307,7 +359,7 @@ RowsSection {
         Layout.fillWidth: true
         text: root.hint
         wrapMode: Text.WordWrap
-        color: root.st.text_accent
+        color: root.pending ? Style.pal.error : root.st.text_accent
         font.family: root.st.font_family
         font.pixelSize: root.st.fs(-2)
     }
