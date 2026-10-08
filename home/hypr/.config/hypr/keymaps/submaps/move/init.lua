@@ -19,7 +19,6 @@ Submap.define({
     -- stylua: ignore start
     local keys = {
       { "F", Window.float_toggle(), "Toggle Floating" },
-      { "SHIFT + SLASH", function() require("lua.plugins.hyprvim").whichkey.toggle() end, "WhichKey" },
     }
     -- stylua: ignore end
 

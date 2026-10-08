@@ -93,8 +93,6 @@ local cursor_mode = Submap.define({
       { "ALT + J",        Cursor.send_key("DOWN"),  "Arrow Down",  { repeating = true } },
       { "ALT + K",        Cursor.send_key("UP"),    "Arrow Up",    { repeating = true } },
       { "ALT + L",        Cursor.send_key("RIGHT"), "Arrow Right", { repeating = true } },
-      -- WhichKey
-      { "SHIFT + SLASH",  function() require("lua.plugins.hyprvim").whichkey.toggle() end, "WhichKey" },
     }
     -- stylua: ignore end
 
@@ -154,8 +152,6 @@ local quick_click = Submap.define({
       { "T",                  Cursor.kbptr("tile_click"),                         "Tiling Click" },
       { "SHIFT + T",          Cursor.kbptr("tile_r_click", { exit = false }),     "Tile Right Click" },
       { "CTRL + T",           Cursor.kbptr("tile_move"),                          "Tiling Move" },
-      -- WhichKey
-      { "SHIFT + SLASH",  function() require("lua.plugins.hyprvim").whichkey.toggle() end, "WhichKey" },
     }
     -- stylua: ignore end
 

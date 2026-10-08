@@ -28,8 +28,6 @@ Submap.define({
       right = Window.group_move_or_create("r"),
     }
 
-    local wk_toggle = function() require("lua.plugins.hyprvim").whichkey.toggle() end
-
     -- stylua: ignore start
     local keys = {
       { "SPACE",                          Window.group_toggle(),      "Toggle Group" },
@@ -37,7 +35,6 @@ Submap.define({
       { { "SHIFT + TAB", "BRACKETLEFT" }, Window.group_prev(),        "Previous Group Window" },
       { "X",                              Window.group_move_out(),    "Move Out of Group" },
       { "SHIFT + X",                      Window.group_lock_toggle(), "Toggle Group Lock" },
-      { "SHIFT + SLASH",                  wk_toggle,                  "WhichKey" },
     }
     -- stylua: ignore end
 
