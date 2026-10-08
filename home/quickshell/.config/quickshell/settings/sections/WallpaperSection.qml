@@ -152,9 +152,7 @@ RowsSection {
         if (event.key === Qt.Key_P && root.current_monitor) root.toggle_pin(root.current_monitor);
         else if (event.key === Qt.Key_R) root.rotate(root.current_monitor);
         else if (event.key === Qt.Key_O) {
-            // Closing first hands keyboard focus back, so the file manager window takes it when it maps.
-            Popups.close();
-            DefaultApps.open_folder(WallpaperSettings.collection);
+            Popups.after_close(() => DefaultApps.open_folder(WallpaperSettings.collection));
         }
         else return;
         event.accepted = true;

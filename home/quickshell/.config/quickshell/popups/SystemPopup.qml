@@ -63,8 +63,7 @@ Popup {
 
     function open_btop() {
         ThemeAudio.play("confirm");
-        Quickshell.execDetached(["sh", "-c", "t=\"${XDG_STATE_HOME:-$HOME/.local/state}/hypr/bin/term\"; [ -x \"$t\" ] || t=\"${TERMINAL:-kitty}\"; exec \"$t\" -e btop"]);
-        Popups.close();
+        Popups.after_close(() => Quickshell.execDetached(["sh", "-c", "t=\"${XDG_STATE_HOME:-$HOME/.local/state}/hypr/bin/term\"; [ -x \"$t\" ] || t=\"${TERMINAL:-kitty}\"; exec \"$t\" -e btop"]));
     }
 
     Item {
