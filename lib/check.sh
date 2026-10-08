@@ -31,14 +31,14 @@ step() {
 
 # Optional tooling: skip when absent so validation stays dependency-light.
 if command -v shellcheck >/dev/null 2>&1; then
-  step shellcheck shellcheck install.sh uninstall.sh lib/*.sh demo/*.sh
+  step shellcheck shellcheck install.sh uninstall.sh lib/*.sh demo/*.sh home/hypr/.config/hypr/scripts/state-write
   step shellcheck shellcheck -x -P SCRIPTDIR home/quickshell/.config/quickshell/scripts/lib/*.sh home/quickshell/.config/quickshell/scripts/ff7-audio home/quickshell/.config/quickshell/scripts/goldeneye-audio home/quickshell/.config/quickshell/scripts/mgs2-audio home/quickshell/.config/quickshell/scripts/ocarina-audio
 else
   echo 'skip: shellcheck not installed'
 fi
 
 if command -v shfmt >/dev/null 2>&1; then
-  step shfmt shfmt -i 2 -d install.sh uninstall.sh lib/*.sh demo/*.sh home/quickshell/.config/quickshell/scripts/lib/*.sh home/quickshell/.config/quickshell/scripts/ff7-audio home/quickshell/.config/quickshell/scripts/goldeneye-audio home/quickshell/.config/quickshell/scripts/mgs2-audio home/quickshell/.config/quickshell/scripts/ocarina-audio
+  step shfmt shfmt -i 2 -d install.sh uninstall.sh lib/*.sh demo/*.sh home/hypr/.config/hypr/scripts/state-write home/quickshell/.config/quickshell/scripts/lib/*.sh home/quickshell/.config/quickshell/scripts/ff7-audio home/quickshell/.config/quickshell/scripts/goldeneye-audio home/quickshell/.config/quickshell/scripts/mgs2-audio home/quickshell/.config/quickshell/scripts/ocarina-audio
 else
   echo 'skip: shfmt not installed'
 fi

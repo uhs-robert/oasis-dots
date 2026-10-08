@@ -1,0 +1,28 @@
+#!/bin/sh
+# Atomically writes CONTENT to PATH, keeping a symlinked PATH a symlink.
+# Usage: state-write <path> <content>
+# A symlink is followed to its real file so a backup copy it points at is updated in place; a dangling link is an
+# error, since mkdir -p on its target would invent directories inside the backup.
+set -eu
+
+if [ "$#" -ne 2 ]; then
+  echo "usage: state-write <path> <content>" >&2
+  exit 2
+fi
+
+path=$1
+content=$2
+
+if [ -L "$path" ]; then
+  target=$(readlink -f -- "$path") || target=''
+  if [ -z "$target" ] || [ ! -d "$(dirname -- "$target")" ]; then
+    echo "state-write: $path is a dangling symlink" >&2
+    exit 1
+  fi
+else
+  target=$path
+  mkdir -p -- "$(dirname -- "$target")"
+fi
+
+printf '%s' "$content" >"$target.tmp"
+mv -- "$target.tmp" "$target"
