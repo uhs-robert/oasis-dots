@@ -2,7 +2,8 @@
 # Build a throwaway Quickshell test bar from branches, swap the live bar to it, and restore the stowed bar.
 set -euo pipefail
 
-repo=$(git -C "$(dirname "$0")" rev-parse --show-toplevel)
+# The main checkout even when run from a linked worktree, since only it holds the gitignored files a test bar copies.
+repo=$(dirname "$(git -C "$(dirname "$0")" rev-parse --path-format=absolute --git-common-dir)")
 qs_rel=home/quickshell/.config/quickshell
 bars="${XDG_CACHE_HOME:-$HOME/.cache}/dotfiles/test-bars"
 ipc="$repo/home/hypr/.config/hypr/scripts/qs-ipc"
@@ -98,6 +99,13 @@ hypr_copy_ignored() {
   done < <(git -C "$repo" status --short --ignored "$hypr_rel" | awk '$1 == "!!" { sub(/\/$/, "", $2); print $2 }')
 }
 
+# Without its profile, Hyprland reloads with this machine's monitors at automatic positions.
+require_machine_profile() {
+  local profile
+  profile="$hypr_rel/config/machines/${HOSTNAME:-$(</etc/hostname)}.lua"
+  if [[ -e $repo/$profile && ! -e $1/$profile ]]; then die "$1 has no $profile; refusing the hypr swap"; fi
+}
+
 hypr_swap() {
   local name=$1 dir=$2
   if [[ -z $(git -C "$dir" diff --name-only origin/main...HEAD -- home/hypr) ]]; then
@@ -107,6 +115,7 @@ hypr_swap() {
   local orig errors live
   orig=$(readlink "$hypr_link") || die "$hypr_link is not a symlink; refusing the hypr swap"
   hypr_copy_ignored "$dir"
+  require_machine_profile "$dir"
   [[ -f $hypr_orig ]] && orig=$(<"$hypr_orig")
   # Worktrees have no repos/, and hyprvim and the theme symlinks resolve through it.
   live=$(cd "$(dirname "$hypr_link")" && git -C "$orig" rev-parse --show-toplevel) || die "cannot find the live checkout behind $orig"

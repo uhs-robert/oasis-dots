@@ -5,7 +5,7 @@ description: Put one or more unmerged Quickshell branches on the owner's live ba
 
 # Test bar
 
-The owner tests every Quickshell change on their real bar before merging. Do it with `test-bar.sh` in this directory, never by hand: it merges the branches into a throwaway worktree, copies the gitignored assets (theme.json, FF7 audio, weather.local.json), runs `just check`, refuses to touch `qs` unless the lock reports `unlocked`, launches through Hyprland so `qs` does not inherit this shell's TMUX, and fails loudly on load errors.
+The owner tests every Quickshell change on their real bar before merging. Do it with `test-bar.sh` in this directory, never by hand: it merges the branches into a throwaway worktree, copies the gitignored assets (theme.json, FF7 audio, weather.local.json) from the main checkout even when run from a worktree, runs `just check`, refuses to touch `qs` unless the lock reports `unlocked`, launches through Hyprland so `qs` does not inherit this shell's TMUX, and fails loudly on load errors.
 
 ```
 .claude/skills/test-bar/test-bar.sh up <name> <branch>...   # build and swap in one step
@@ -19,7 +19,7 @@ The owner tests every Quickshell change on their real bar before merging. Do it 
 .claude/skills/test-bar/smoke.sh [--out DIR] [--dry-run] [--self-test] [style...]   # one live pass (popup, OSD, which-key, region) per style, contact sheet, log check; --self-test runs the blank check on synthetic images
 ```
 
-When the branches touch `home/hypr`, `swap` also copies the gitignored Hyprland files (machine config, `custom/`, theme state) into the test worktree, re-points `~/.config/hypr` at it, reloads Hyprland and rolls back if `hyprctl configerrors` reports anything. It prints `hypr: swapped` or `hypr: unchanged`; `restore` (and `remove` of that bar) prints `hypr: restored`. All of it needs lock state `unlocked`.
+When the branches touch `home/hypr`, `swap` also copies the gitignored Hyprland files (machine config, `custom/`, theme state) into the test worktree, re-points `~/.config/hypr` at it, reloads Hyprland and rolls back if `hyprctl configerrors` reports anything. It refuses to swap when this machine's profile under `config/machines/` did not make it into the copy, since Hyprland would otherwise reload with the monitors at automatic positions. It prints `hypr: swapped` or `hypr: unchanged`; `restore` (and `remove` of that bar) prints `hypr: restored`. All of it needs lock state `unlocked`.
 
 Test bars live in `~/.cache/dotfiles/test-bars/<name>`. Rules:
 
