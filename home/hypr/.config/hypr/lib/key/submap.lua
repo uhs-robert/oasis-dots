@@ -274,7 +274,11 @@ local function bind_whichkey_toggle(catchall)
   -- A oneshot submap's catchall exits on any key-up nothing else claims, and Hyprland lets only a non-release
   -- bind claim one: a matching release bind still runs alongside the catchall. These no-ops claim both key-ups
   -- the chord leaves behind, in either order, since ignore_mods matches the bare `/` once Shift is up.
-  if catchall == "reset" then Bind.key({ "SLASH", "Shift_L", "Shift_R" }, hl.dsp.no_op(), { ignore_mods = true }) end
+  -- transparent, because Hyprland shadows a bind while its key is held during another bind, which would skip
+  -- these exactly when the chord's other key comes up.
+  if catchall == "reset" then
+    Bind.key({ "SLASH", "Shift_L", "Shift_R" }, hl.dsp.no_op(), { ignore_mods = true, transparent = true })
+  end
 end
 
 --- Declare a submap and return a handle with enter/exit/setup methods.
