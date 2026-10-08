@@ -100,8 +100,6 @@ __pycache__/
 home/yazi/.config/yazi/plugins/*
 !home/yazi/.config/yazi/plugins/folder-rules.yazi/
 !home/yazi/.config/yazi/plugins/folder-rules.yazi/**
-!home/yazi/.config/yazi/plugins/lazygit.yazi/
-!home/yazi/.config/yazi/plugins/lazygit.yazi/**
 
 # ────────────────────────────────────────────────
 # ⚠️ Security: Hidden sensitive config

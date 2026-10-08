@@ -94,7 +94,7 @@ Claude Code hooks live in `.claude/settings.json` and `.claude/hooks/`. Repo ski
 
 ## Yazi packages
 
-Plugins are managed by `ya pkg`, with `home/yazi/.config/yazi/package.toml` as the manifest. Package-managed plugin directories are gitignored; only local plugins (`folder-rules.yazi`, `lazygit.yazi`) are tracked. Never hand-edit package metadata or copy upstream plugin files — run `ya pkg add/delete/upgrade` and commit the resulting `package.toml`.
+Plugins are managed by `ya pkg`, with `home/yazi/.config/yazi/package.toml` as the manifest. Package-managed plugin directories are gitignored; only the local `folder-rules.yazi` plugin is tracked. Never hand-edit package metadata or copy upstream plugin files — run `ya pkg add/delete/upgrade` and commit the resulting `package.toml`.
 
 ## External repos
 
