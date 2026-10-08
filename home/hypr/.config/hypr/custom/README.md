@@ -81,6 +81,33 @@ Sessions.add("💼 Work", {
 Sessions.remove("🎮 Game")
 ```
 
+Entry fields: `monitor`, `ws`, `cmd`, `class` or `title` (how the launcher finds the window it opened), `size`, `pos`, `delay`, plus:
+
+- `special = "scratchpad"` launches onto `special:scratchpad` instead of `monitor`/`ws`, which are then not needed.
+- `float = true` floats the window before `size` and `pos` apply.
+- `guessed = true` marks a command reconstructed from `/proc` when a session was saved; the launcher ignores it.
+
+Lua sessions launch every entry at once. `Sessions.add(name, apps, { sequential = true })` instead launches tiled entries one at a time, in order, each window taking focus so the layout comes out the same every run; floating and special entries still launch at once.
+
+### Saved sessions
+
+Sessions saved from Settings live in `~/.local/state/hypr/sessions.json` (`$XDG_STATE_HOME/hypr`), re-read each time the picker opens. They launch sequentially and win over a Lua session of the same name. A symlink there is followed, so it can point at a backup copy. A missing file means no saved sessions; a malformed one raises a notification.
+
+```json
+{
+  "version": 1,
+  "sessions": {
+    "Work": {
+      "windows": [
+        { "monitor": 1, "ws": 1, "cmd": "firefox --new-window", "class": "org.mozilla.firefox" },
+        { "monitor": 1, "ws": 1, "cmd": "kitty --class k-notes", "class": "k-notes", "size": [900, 1000], "guessed": true },
+        { "special": "scratchpad", "cmd": "slack", "class": "slack", "float": true, "size": [1064, 461], "pos": [100, 80] }
+      ]
+    }
+  }
+}
+```
+
 ## Wallpaper
 
 The wallpaper rotator runs as its own process, so it reads its settings from files here rather than from `custom/init.lua`. Both are optional:
