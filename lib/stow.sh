@@ -89,6 +89,7 @@ install_nvim_config() {
   fi
   ensure_repo "$spec" personal
   [[ -d "$dest" ]] || return 0
+  enable_repo_hooks
   mkdir -p "$HOME/.config"
   ln -s "$dest" "$target"
   success "Linked $dest → $target"

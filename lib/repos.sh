@@ -46,8 +46,24 @@ clone_repos() {
   done
   mkdir -p "$(dirname "$REPOS_LINK")"
   ln -sfn "$REPOS_DIR" "$REPOS_LINK"
+  enable_repo_hooks
   link_keeptabs
   warn_unresolved_repo_links
+}
+
+# A repo's tracked .githooks/ (neovim regenerates its README plugin list there) only runs once that
+# repo's own core.hooksPath points at it. A hooksPath already set by hand is left alone.
+enable_repo_hooks() {
+  local dir
+  for dir in "$REPOS_DIR"/*/; do
+    [[ -d "${dir}.githooks" ]] || continue
+    [[ -n "$(git -C "$dir" config --local core.hooksPath)" ]] && continue
+    if git -C "$dir" config --local core.hooksPath .githooks; then
+      success "Enabled git hooks in repos/$(basename "$dir")"
+    else
+      warn "Failed to enable git hooks in repos/$(basename "$dir")"
+    fi
+  done
 }
 
 # Hyprland loads without these, but falls back to a built-in palette and no hyprvim.
