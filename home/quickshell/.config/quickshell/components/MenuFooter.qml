@@ -99,7 +99,7 @@ Item {
                 id: group
                 required property var modelData
                 required property int index
-                readonly property bool pad: root.st.controller !== "" && KeyHints.controller_parts(root.st.controller, group.modelData.key, group.modelData.desc).length > 0
+                readonly property bool pad: root.st.controller !== "" && KeyHints.controller_parts(root.st.controller, group.modelData.key, group.modelData.desc, root.st.controller_glyphs).length > 0
                 spacing: root.st.footer_size > 0 && !root.arrows ? Math.round(root.text_px * 0.75) : 4
 
                 Loader {
@@ -110,6 +110,7 @@ Item {
                         controller: root.st.controller
                         key: group.modelData.key
                         desc: group.modelData.desc
+                        glyphs: root.st.controller_glyphs
                         size: Math.round(desc_text.implicitHeight)
                         text_color: root.st.footer_key_fg
                         font_family: root.st.font_family

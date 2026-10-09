@@ -16,6 +16,7 @@ function overrides(t, ctx) {
             shade_2: g2,
             shade_3: g3,
             controller: "gameboy",
+            workspace_art: "party",
             pixel_border: g2,
             text_muted: g2,
             text_dim: g2,

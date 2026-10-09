@@ -31,7 +31,7 @@ Item {
     // Super Mario World overworld: level dots on a dotted trail, app icons above them.
     readonly property bool map: Style.console_views === "snes"
     // Pokemon party: a Poke Ball per workspace, the shown ones open into a party box under a cursor, the active app hopping.
-    readonly property bool party: Style.controller === "gameboy"
+    readonly property bool party: Style.workspace_art === "party"
     // GoldenEye watch dial: workspace ticks on one arc replace the pills.
     readonly property bool dial: Style.workspace_art === "dial"
     // Oasis night sky: a star per workspace on a low constellation, apps under their star.

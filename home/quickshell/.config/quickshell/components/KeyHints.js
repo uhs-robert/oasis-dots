@@ -36,22 +36,37 @@ function button_for(map, key, desc) {
     return map[key === "Esc" && desc && !/\bclose\b/.test(desc) ? "Backspace" : key];
 }
 
-// A key (glyphs allowed) as [{ button } | { text }] parts, "/" text between halves; [] when nothing maps.
-function controller_parts(controller, key, desc) {
+// Directions and shoulders read as what they do on a keyboard; face and menu buttons only mean something once you know their key.
+const self_evident = ["dpad_v", "dpad_h", "dpad_up", "dpad_down", "dpad_left", "dpad_right", "l", "r", "lr", "l1", "r1"];
+
+// A key (glyphs allowed) as [{ button, label? } | { text }] parts, "/" text between halves; [] when nothing maps.
+// glyphs is Style.controller_glyphs: "dpad" keeps other buttons as key text, "labeled" gives them their key as label.
+function controller_parts(controller, key, desc, glyphs) {
     const map = controllers[controller] ? controllers[controller].keys : null;
     if (!map || !key || key.indexOf("+") >= 0) return [];
     let k = key;
     for (const g in glyph_names) k = k.split(g).join(glyph_names[g]);
-    if (button_for(map, k, desc) !== undefined) return [{ button: button_for(map, k, desc) }];
+    const part_for = p => {
+        const b = button_for(map, p, desc);
+        const evident = self_evident.indexOf(b) >= 0;
+        if (b === undefined || (glyphs === "dpad" && !evident)) return { text: p };
+        return glyphs === "labeled" && !evident ? { button: b, label: p } : { button: b };
+    };
+    const whole = part_for(k);
+    if (whole.button) return [whole];
     const pieces = k === "/" ? ["/"] : k === "[ ]" ? ["[", "]"] : k.split("/");
     const parts = [];
     let hit = false;
     for (const p of pieces) {
-        const b = button_for(map, p, desc);
-        if (b !== undefined) hit = true;
-        if (b !== undefined && parts.length > 0 && parts[parts.length - 1].button === b) continue;
+        const next = part_for(p);
+        if (next.button) hit = true;
+        const last = parts[parts.length - 1];
+        if (next.button && last && last.button === next.button) {
+            if (last.label) last.label += "/" + p;
+            continue;
+        }
         if (parts.length > 0 && k !== "[ ]") parts.push({ text: "/" });
-        parts.push(b !== undefined ? { button: b } : { text: p });
+        parts.push(next);
     }
     return hit ? parts : [];
 }

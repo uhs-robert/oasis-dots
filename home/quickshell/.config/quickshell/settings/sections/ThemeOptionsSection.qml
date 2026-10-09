@@ -29,6 +29,7 @@ RowsSection {
             meter_bloom: "A blurred copy of each meter drawn behind it.",
             caret_blink: "Blink the text cursor in search and input fields.",
             fade_fills: "Selection and title fills fade out to the right.",
+            controller_glyphs: "Console buttons in place of keys. Labeled adds the key beside face and menu buttons; D-pad draws only directions and shoulders.",
             watch_colors: "Theme tints the watch from your palette. Classic is the fixed lock-skin green.",
             font_family: "Font for popups and most text. Each style has its own default.",
             bar_font_family: "Font for the bar. Each style has its own default.",
