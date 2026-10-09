@@ -170,42 +170,52 @@ local set_window_rules = function()
   return rules
 end
 
---- Tags a shared window so it shows opaque and undimmed; name is its title at share start.
---- @param active boolean
+--- @param w table
+--- @return boolean
+local function has_shared_tag(w)
+  local tags = type(w.tags) == "table" and table.concat(w.tags, ",") or (w.tags or "")
+  return string.find("," .. tags .. ",", ",shared,", 1, true) ~= nil
+end
+
+--- Tags the window titled `name` so it shows opaque and undimmed; a window already tagged is left alone.
 --- @param name string
-local function tag_shared_window(active, name)
+local function tag_shared_window(name)
   for _, w in ipairs(hl.get_windows() or {}) do
-    local tags = type(w.tags) == "table" and table.concat(w.tags, ",") or (w.tags or "")
-    local tagged = string.find("," .. tags .. ",", ",shared,", 1, true) ~= nil
-    if active and w.title == name then
-      hl.dispatch(hl.dsp.window.tag({ window = "address:" .. w.address, tag = "+shared" }))
+    if w.title == name then
+      if not has_shared_tag(w) then
+        hl.dispatch(hl.dsp.window.tag({ window = "address:" .. w.address, tag = "+shared" }))
+      end
       return
-    elseif not active and tagged then
-      hl.dispatch(hl.dsp.window.tag({ window = "address:" .. w.address, tag = "-shared" }))
     end
   end
 end
 
+local function untag_shared_windows()
+  for _, w in ipairs(hl.get_windows() or {}) do
+    if has_shared_tag(w) then hl.dispatch(hl.dsp.window.tag({ window = "address:" .. w.address, tag = "-shared" })) end
+  end
+end
+
+--- Monitor name -> its opaque rule, for the monitors shared during the live share.
 local shared_monitors = {}
 
---- Shows every window on a shared monitor opaque and undimmed while any share of it runs.
---- @param active boolean
+--- Shows every window on the monitor opaque and undimmed; one rule per monitor for the whole share.
 --- @param name string
-local function set_shared_monitor(active, name)
-  local entry = shared_monitors[name] or { count = 0 }
-  entry.count = math.max(0, entry.count + (active and 1 or -1))
-  if entry.count > 0 and not entry.rule then
-    entry.rule = hl.window_rule({
-      name = "shared-monitor-" .. name,
-      match = { workspace = "m[" .. name .. "]" },
-      opacity = "1.0 override 1.0 override",
-      no_dim = true,
-    })
-  elseif entry.count == 0 and entry.rule then
-    entry.rule:set_enabled(false)
-    entry.rule = nil
+local function share_monitor(name)
+  if shared_monitors[name] then return end
+  shared_monitors[name] = hl.window_rule({
+    name = "shared-monitor-" .. name,
+    match = { workspace = "m[" .. name .. "]" },
+    opacity = "1.0 override 1.0 override",
+    no_dim = true,
+  })
+end
+
+local function unshare_monitors()
+  for _, rule in pairs(shared_monitors) do
+    rule:set_enabled(false)
   end
-  shared_monitors[name] = entry
+  shared_monitors = {}
 end
 
 --- Quickshell layers whose window thumbnails open toplevel captures of their own.
@@ -221,21 +231,64 @@ local function thumbnails_open()
   return false
 end
 
---- Toggles browser opacity when a screenshare session starts or stops, and clears the shared window's effects.
---- Browsers dim when inactive by default; override to full opacity during capture.
+--- Browsers dim when inactive by default; override to full opacity during a share.
+--- @param opacity string
+local function set_browser_opacity(opacity)
+  for _, browser in ipairs(browser_rules) do
+    hl.window_rule({ name = browser.name, match = { class = browser.class }, opacity = opacity })
+  end
+end
+
+-- Whether a portal share runs, as reported by Quickshell watching xdph's PipeWire node. The
+-- screenshare.state event can't say: it goes false between frames of a static screen (flapping every
+-- second) and fires for Quickshell's own thumbnail captures. A config reload resets this to false,
+-- and Quickshell resends the live state on reload.
+local portal_share_live = false
+
+--- "<share_type>:<name>" -> target Hyprland currently copies frames for. The share's first frame can
+--- arrive before Quickshell reports it live, and a busy screen never sends another, so going live
+--- applies whatever is already sharing.
+local sharing_targets = {}
+
+--- screenshare.state share_type for a single window; monitor and region shares carry a monitor name.
+local WINDOW_SHARE = 1
+
+--- @param share_type integer
+--- @param name string
+local function apply_share_target(share_type, name)
+  if share_type ~= WINDOW_SHARE then
+    share_monitor(name)
+  elseif not thumbnails_open() then
+    tag_shared_window(name)
+  end
+end
+
+--- Applies the rules for a share target once live, naming it as the events arrive.
+--- Ignores `active = false` while live: that is a gap between frames, not the end of the share.
 local set_screenshare_handler = function()
   hl.on("screenshare.state", function(active, share_type, name)
-    if share_type == 1 and thumbnails_open() then return end
-    if share_type == 1 then
-      tag_shared_window(active, name)
-    else
-      set_shared_monitor(active, name)
-    end
-    local opacity = active and "1.0 1.0 override" or BROWSER_OPACITY
-    for _, browser in ipairs(browser_rules) do
-      hl.window_rule({ name = browser.name, match = { class = browser.class }, opacity = opacity })
-    end
+    sharing_targets[share_type .. ":" .. name] = active and { share_type = share_type, name = name } or nil
+    if portal_share_live and active then apply_share_target(share_type, name) end
   end)
+end
+
+--- Starts or ends the share's effects; repeating the current state does nothing, so resends cause no fade.
+--- @param on boolean
+local function set_live(on)
+  if on == portal_share_live then return end
+  portal_share_live = on
+  if on then
+    set_browser_opacity("1.0 1.0 override")
+    for _, target in pairs(sharing_targets) do
+      apply_share_target(target.share_type, target.name)
+    end
+  else
+    -- Drops targets whose stop never arrived, such as a window renamed mid-share.
+    sharing_targets = {}
+    unshare_monitors()
+    untag_shared_windows()
+    set_browser_opacity(BROWSER_OPACITY)
+  end
 end
 
 --- @param name string
@@ -330,6 +383,15 @@ _G.LayerRules = {
 -- Global functions which are accessible externally via `hyprctl dispatch "WindowRules"`
 _G.WindowRules = {
   capture_opaque = function(on) return Rules.set_capture_opaque(on) end,
+}
+
+-- Global functions which are accessible externally via `hyprctl dispatch "ScreenShare"`
+_G.ScreenShare = {
+  set_live = function(on)
+    set_live(on)
+
+    return hl.dsp.no_op()
+  end,
 }
 
 local function init()

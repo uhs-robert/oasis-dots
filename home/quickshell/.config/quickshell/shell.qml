@@ -196,6 +196,7 @@ ShellRoot {
     StyleIpc {}
     SettingsIpc {}
     GreeterSync {}
+    ScreenShare {}
     PowerIpc {}
     ScreenshotIpc {}
     ZoomIpc {}
