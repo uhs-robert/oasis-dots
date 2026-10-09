@@ -182,7 +182,7 @@ handle_pixel_at() {
   }
   color="${color:0:7}"
   wl-copy "$color"
-  notify-send "Picked Color" "$color"
+  notify-send --transient "Picked Color" "$color"
   printf '%s\n' "$color"
 }
 
@@ -200,7 +200,7 @@ handle_image() {
   case "$action" in
   copy)
     wl-copy --type image/png <"$image"
-    notify-send "Screenshot Copied" "Image copied to clipboard"
+    notify-send --transient "Screenshot Copied" "Image copied to clipboard"
     ;;
   save)
     cp -- "$image" "$filename"
@@ -225,7 +225,7 @@ handle_image() {
     local ocr_text
     if ocr_text=$(tesseract "$image" - 2>/dev/null); then
       printf '%s' "$ocr_text" | wl-copy
-      notify-send "OCR Complete" "Text copied to clipboard"
+      notify-send --transient "OCR Complete" "Text copied to clipboard"
     else
       notify-send "OCR Failed" "Tesseract failed to process image"
     fi
@@ -283,7 +283,7 @@ handle_text_ocr() {
   # OCR
   if ocr_text=$(tesseract "$tmpfile" - 2>/dev/null); then
     echo "$ocr_text" | wl-copy
-    notify-send "OCR Complete" "Text copied to clipboard"
+    notify-send --transient "OCR Complete" "Text copied to clipboard"
   else
     notify-send "OCR Failed" "Tesseract failed to process image"
   fi
