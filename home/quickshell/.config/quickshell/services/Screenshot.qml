@@ -481,6 +481,7 @@ Singleton {
             root.recent_picks = [...root.recent_picks, hex].slice(-10);
             root.cancel();
             Quickshell.execDetached(["wl-copy", hex]);
+            Quickshell.execDetached(["notify-send", "Picked Color", hex]);
             return;
         }
         root.pending_action = "pixel";
