@@ -147,7 +147,7 @@ handle_recording() {
   $RECORDER -g "$region" -f "$filename" &
   rec_pid=$!
   [[ "$("$SCRIPT_DIR/qs-ipc" call screenshot recording_started "$rec_pid" 2>/dev/null)" == ok ]] ||
-    notify-send "Recording begin" "Open the recorder again to stop."
+    notify-send --transient "Recording begin" "Open the recorder again to stop."
   wait "$rec_pid" || true
   qs_call recording_stopped
   [[ -s "$filename" ]] || {
