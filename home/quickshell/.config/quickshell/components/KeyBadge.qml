@@ -22,14 +22,18 @@ Rectangle {
     readonly property bool pad: root.st.controller !== "" && KeyHints.controller_parts(root.st.controller, root.key, root.desc, root.glyphs).length > 0
     readonly property bool tinted: root.on_fill && root.st.key_bg.a === 0 && !root.orb
 
-    implicitWidth: root.pad ? pad_loader.implicitWidth : Math.max(implicitHeight, key_text.implicitWidth + 8)
-    implicitHeight: root.pad ? Math.max(key_text.implicitHeight + 2, pad_loader.implicitHeight) : key_text.implicitHeight + 2
+    readonly property bool pixel_ring: root.st.pixel_border.a > 0
+    // Pixel fonts have no internal leading, so the cap grows with its ring or the ring covers the glyph.
+    readonly property int ring_width: root.pixel_ring ? 2 : 1
+
+    implicitWidth: root.pad ? pad_loader.implicitWidth : Math.max(implicitHeight, key_text.implicitWidth + 6 + root.ring_width * 2)
+    implicitHeight: root.pad ? Math.max(key_text.implicitHeight + 2, pad_loader.implicitHeight) : key_text.implicitHeight + root.ring_width * 2
     width: implicitWidth
     height: implicitHeight
     radius: root.st.key_round ? height / 2 : Style.radius(3)
     readonly property bool orb: root.st.materia.key !== undefined && !root.pad
     color: root.orb || root.pad || root.plain ? "transparent" : root.st.key_bg
-    border.width: root.orb || root.pad || root.plain ? 0 : root.st.pixel_border.a > 0 ? 2 : 1
+    border.width: root.orb || root.pad || root.plain ? 0 : root.ring_width
     border.color: root.tinted ? root.st.tab_active_fg : root.st.key_border
 
     Sheen {
@@ -82,7 +86,8 @@ Rectangle {
         text: root.key
         color: root.tinted ? root.st.tab_active_fg : root.st.key_fg
         font.family: root.st.mono_font
-        font.pixelSize: root.font_px > 0 ? root.font_px : root.st.fs(-5)
+        // Pixel styles draw on an 8px grid; off it the glyph blurs and overflows the ring.
+        font.pixelSize: root.font_px > 0 ? root.font_px : root.pixel_ring ? Math.max(8, Math.floor(root.st.fs(-5) / 8) * 8) : root.st.fs(-5)
         font.bold: root.orb || root.st.mono_font === root.st.font_family
     }
 }
