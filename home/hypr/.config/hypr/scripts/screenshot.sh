@@ -73,40 +73,15 @@ get_windows() {
   hyprctl clients -j | jq -r '.[] | select(.at and .size) | "\(.at[0]),\(.at[1]) \(.size[0])x\(.size[1])"'
 }
 
-# Notify about a saved file with Open and Show in folder actions, in the background so the script never waits.
-notify_saved() {
-  local title="$1" file="$2"
-  (
-    choice="$(timeout 600 notify-send --action=open=Open --action=folder="Show in folder" --wait "$title" "$file")" || true
-    case "$choice" in
-    open) xdg-open "$file" ;;
-    folder) "${XDG_STATE_HOME:-$HOME/.local/state}/hypr/bin/term" -e yazi "$file" ;;
-    esac
-  ) >/dev/null 2>&1 &
-}
-
-# Copy OCR text from a scroll capture; the notification offers save, open and copy image, then both files are removed.
-notify_scroll_text() {
+# Copy OCR text from a scroll capture, then remove both files.
+copy_scroll_text() {
   local text="$1" image="$2"
-  if ! grep -q '[^[:space:]]' "$text"; then
+  if grep -q '[^[:space:]]' "$text"; then
+    wl-copy <"$text"
+  else
     notify-send "OCR Failed" "No text found"
-    rm -f -- "$text" "$image"
-    return 0
   fi
-  wl-copy <"$text"
-  (
-    choice="$(timeout 600 notify-send --action=save="Save text" --action=open=Open --action=image="Copy image" --wait "OCR Complete" "Text copied to clipboard")" || true
-    case "$choice" in
-    save) cp -- "$text" "$SCREENSHOT_DIR/ocr-$(timestamp).txt" ;;
-    open)
-      saved="$SCREENSHOT_DIR/ocr-$(timestamp).txt"
-      cp -- "$text" "$saved"
-      "${XDG_STATE_HOME:-$HOME/.local/state}/hypr/bin/term" -e "${EDITOR:-nvim}" "$saved"
-      ;;
-    image) wl-copy --type image/png <"$image" ;;
-    esac
-    rm -f -- "$text" "$image"
-  ) >/dev/null 2>&1 &
+  rm -f -- "$text" "$image"
 }
 
 # Capture a screenshot via hyprshot, annotate with satty if available, save to SCREENSHOT_DIR, and copy to clipboard.
@@ -127,7 +102,6 @@ handle_screenshot() {
     return 0
   }
   wl-copy <"$filename"
-  notify_saved "Screenshot Saved" "$filename"
 }
 
 # Record a screen region with wf-recorder, save to RECORDING_DIR, and copy to clipboard.
@@ -142,11 +116,11 @@ handle_recording() {
     notify-send "Recording Cancelled" "No region selected"
     exit 1
   }
-  notify-send "Recording begin" "Open the recorder again to stop."
   local rec_pid
   $RECORDER -g "$region" -f "$filename" &
   rec_pid=$!
-  qs_call recording_started "$rec_pid"
+  [[ "$("$SCRIPT_DIR/qs-ipc" call screenshot recording_started "$rec_pid" 2>/dev/null)" == ok ]] ||
+    notify-send "Recording begin" "Open the recorder again to stop."
   wait "$rec_pid" || true
   qs_call recording_stopped
   [[ -s "$filename" ]] || {
@@ -155,7 +129,6 @@ handle_recording() {
     exit 1
   }
   wl-copy <"$filename"
-  notify_saved "Recording Saved!" "$filename"
 }
 
 # Open the Quickshell region selector; false when no bar answers. preset: toolbar, ocr or record.
@@ -181,7 +154,6 @@ handle_pixel_at() {
   }
   color="${color:0:7}"
   wl-copy "$color"
-  notify-send "Picked Color" "$color"
   printf '%s\n' "$color"
 }
 
@@ -199,24 +171,20 @@ handle_image() {
   case "$action" in
   copy)
     wl-copy --type image/png <"$image"
-    notify-send "Screenshot Copied" "Image copied to clipboard"
     ;;
   save)
     cp -- "$image" "$filename"
     wl-copy --type image/png <"$filename"
-    notify_saved "Screenshot Saved" "$filename"
     ;;
   annotate)
     if want satty; then
       satty -f "$image" -o "$filename"
       if [[ -f "$filename" ]]; then
         wl-copy --type image/png <"$filename"
-        notify_saved "Screenshot Saved" "$filename"
       fi
     else
       cp -- "$image" "$filename"
       wl-copy --type image/png <"$filename"
-      notify_saved "Screenshot Saved" "$filename"
     fi
     ;;
   ocr)
@@ -224,7 +192,6 @@ handle_image() {
     local ocr_text
     if ocr_text=$(tesseract "$image" - 2>/dev/null); then
       printf '%s' "$ocr_text" | wl-copy
-      notify-send "OCR Complete" "Text copied to clipboard"
     else
       notify-send "OCR Failed" "Tesseract failed to process image"
     fi
@@ -263,7 +230,7 @@ handle_region_args() {
     exit 1
   }
   if [[ -n "$text" ]]; then
-    notify_scroll_text "$text" "$image"
+    copy_scroll_text "$text" "$image"
     return 0
   fi
   handle_image "$image" "$action"
@@ -282,7 +249,6 @@ handle_text_ocr() {
   # OCR
   if ocr_text=$(tesseract "$tmpfile" - 2>/dev/null); then
     echo "$ocr_text" | wl-copy
-    notify-send "OCR Complete" "Text copied to clipboard"
   else
     notify-send "OCR Failed" "Tesseract failed to process image"
   fi
