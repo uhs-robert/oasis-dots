@@ -312,6 +312,7 @@ Singleton {
     readonly property bool hand_cursor: root.active.hand_cursor
     readonly property bool meter_solid: root.active.meter_solid
     readonly property string controller: root.active.controller
+    readonly property string controller_glyphs: root.active.controller_glyphs
     readonly property var meter_art: root.active.meter_art
     readonly property string toast_enter: root.active.toast_enter
     readonly property string console_views: root.active.console_views
@@ -469,6 +470,7 @@ Singleton {
         if (b.meter_bloom === true) flag("meter_bloom", "Meter bloom");
         if (b.caret_blink === true) flag("caret_blink", "Caret blink");
         if (b.fade_fills === true) flag("fade_fills", "Fade fills");
+        if (b.controller) out.push({ key: "controller_glyphs", label: "Controller glyphs", type: "choice", default: b.controller_glyphs, choices: ["all", "labeled", "dpad", "off"], labels: { all: "All", labeled: "Labeled", dpad: "D-pad", off: "Off" } });
         if (b.watch_classic) out.push({ key: "watch_colors", label: "Watch colours", type: "choice", default: "Theme", choices: ["Theme", "Classic"] });
         out.push({ key: "font_family", label: "Font", type: "choice", default: b.font_family, choices: root.font_choices });
         out.push({ key: "bar_font_family", label: "Bar font", type: "choice", default: b.bar_font_family, choices: root.font_choices });
@@ -511,7 +513,7 @@ Singleton {
         return typeof value === "number" && isFinite(value) && value >= def.min && value <= def.max;
     }
 
-    // A style's tokens with its picked model's and the saved option values laid over them; dither is a colour, so off blanks it.
+    // A style's tokens with its picked model's and the saved option values laid over them; dither is a colour, so off blanks it, and glyphs off blanks the controller.
     function with_options(base, opts) {
         const o = Object.assign({}, base, base.models ? base.models[opts.device_model] : null);
         for (const k in opts) {
@@ -519,6 +521,7 @@ Singleton {
             else o[k] = opts[k];
         }
         if (o.watch_colors === "Classic" && o.watch_classic) Object.assign(o, o.watch_classic);
+        if (o.controller_glyphs === "off") o.controller = "";
         return o;
     }
 
