@@ -88,6 +88,8 @@ Singleton {
     signal share_requested(bool resume)
 
     property bool recording: false
+    // Recording chips on the bars; screenshot.sh notifies that a recording began only when none can show it.
+    property int recording_chips: 0
     property double record_start_ms: 0
     property int elapsed_s: 0
     readonly property string elapsed_text: {
@@ -479,7 +481,6 @@ Singleton {
             root.recent_picks = [...root.recent_picks, hex].slice(-10);
             root.cancel();
             Quickshell.execDetached(["wl-copy", hex]);
-            Quickshell.execDetached(["notify-send", "Picked Color", hex]);
             return;
         }
         root.pending_action = "pixel";

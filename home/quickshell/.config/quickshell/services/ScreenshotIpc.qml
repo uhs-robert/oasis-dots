@@ -44,8 +44,10 @@ IpcHandler {
         Screenshot.stop_recording();
     }
 
-    function recording_started(pid: string): void {
+    // "ok" when a bar shows the recording chip.
+    function recording_started(pid: string): string {
         Screenshot.recording_started(pid);
+        return Screenshot.recording_chips > 0 ? "ok" : "no_chip";
     }
 
     function recording_stopped(): void {

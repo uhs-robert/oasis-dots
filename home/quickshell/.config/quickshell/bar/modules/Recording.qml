@@ -18,6 +18,9 @@ BarModule {
     implicitWidth: shown ? row.implicitWidth : 0
     implicitHeight: row.implicitHeight
 
+    Component.onCompleted: Screenshot.recording_chips++
+    Component.onDestruction: Screenshot.recording_chips--
+
     RowLayout {
         id: row
         anchors.verticalCenter: parent.verticalCenter
