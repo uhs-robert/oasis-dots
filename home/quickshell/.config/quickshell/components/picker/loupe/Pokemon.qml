@@ -46,9 +46,9 @@ Item {
 
     Rectangle {
         anchors.fill: parent
-        color: Style.shade_0
+        color: Style.picker_shades[0]
         border.width: 2
-        border.color: Style.shade_1
+        border.color: Style.picker_shades[1]
         antialiasing: false
     }
 
@@ -57,7 +57,7 @@ Item {
         anchors.margins: 3
         color: "transparent"
         border.width: 2
-        border.color: Style.shade_2
+        border.color: Style.picker_shades[2]
         antialiasing: false
     }
 
@@ -66,7 +66,7 @@ Item {
         loupe: root.loupe
         x: (root.pk_width - root.loupe.view) / 2
         y: root.pk_pad + root.pk_header_h + root.pk_lens_gap
-        center_color: Style.shade_1
+        center_color: Style.picker_shades[1]
     }
 
     Rectangle {
@@ -76,7 +76,7 @@ Item {
         height: lens.height + 6
         color: "transparent"
         border.width: 3
-        border.color: Style.shade_1
+        border.color: Style.picker_shades[1]
         antialiasing: false
     }
 
@@ -145,7 +145,7 @@ Item {
                 radius: 4
                 color: "transparent"
                 border.width: 1
-                border.color: Style.shade_1
+                border.color: Style.picker_shades[1]
 
                 Rectangle {
                     x: 1
@@ -191,13 +191,13 @@ Item {
         Rectangle {
             width: parent.width
             height: 1
-            color: Style.shade_1
+            color: Style.picker_shades[1]
         }
 
         Rectangle {
             width: parent.width
             height: 1
-            color: Style.shade_1
+            color: Style.picker_shades[1]
         }
     }
 

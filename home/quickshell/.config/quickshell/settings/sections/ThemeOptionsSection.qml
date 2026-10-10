@@ -31,6 +31,7 @@ RowsSection {
             fade_fills: "Selection and title fills fade out to the right.",
             controller_glyphs: "Console buttons in place of keys. Labeled adds the key beside face and menu buttons; D-pad draws only directions and shoulders.",
             watch_colors: "Theme tints the watch from your palette. Classic is the fixed lock-skin green.",
+            picker_skin: "The screenshot picker's cursor, magnifier and target list. Shared is the plain look; any other skin is borrowed from a style and takes your palette.",
             font_family: "Font for popups and most text. Each style has its own default.",
             bar_font_family: "Font for the bar. Each style has its own default.",
             font_size: "Base text size in pixels; other sizes scale from it."
