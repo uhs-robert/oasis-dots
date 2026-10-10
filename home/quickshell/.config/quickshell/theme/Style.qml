@@ -15,29 +15,32 @@ Singleton {
     // Everyday styles, then consoles by release year, then sci-fi.
     readonly property var order: ["oasis", "modern", "neovim", "terminal", "crt", "nes", "gameboy", "snes", "ps1", "ff7", "goldeneye", "ps2", "tie", "halflife", "metroid", "reticle"]
     readonly property var names: root.order.filter(n => n in root.styles).concat(Object.keys(root.styles).filter(n => root.order.indexOf(n) < 0))
-    // Picker skins any style can borrow (Theme options), drawn in the borrowing style's palette and fonts; "" is the shared look.
+    // Picker skins any style can borrow (Theme options), drawn in the borrowing style's palette and fonts; "" is the plain look.
     readonly property var picker_skins: ["", "goldeneye", "nvimfloat", "scanvisor", "pokemon", "scope", "duckhunt", "materia", "tmux", "tvosd", "jrpg", "tiecomp", "scopeitem"]
-    readonly property var picker_skin_labels: ({ "": "Shared", goldeneye: "GoldenEye", nvimfloat: "Neovim float", scanvisor: "Scan visor", pokemon: "Pokemon", scope: "Scope", duckhunt: "Duck Hunt", materia: "Materia", tmux: "Tmux", tvosd: "TV OSD", jrpg: "JRPG", tiecomp: "TIE computer", scopeitem: "Scope item" })
-    // Overview treatments any style can borrow (Theme options); "" is the shared look.
+    // Overview treatments any style can borrow (Theme options); "" is the plain look.
     readonly property var overview_skins: ["", "goldeneye", "scope"]
-    readonly property var overview_skin_labels: ({ "": "Shared", goldeneye: "GoldenEye", scope: "Scope" })
     // Workspace indicator arts any style can borrow (Theme options); "" is the style's own pills.
     readonly property var workspace_arts: ["", "dial", "materia", "doors", "constellation", "buffers", "party"]
-    readonly property var workspace_art_labels: ({ "": "Pills", dial: "Watch dial", materia: "Materia", doors: "Doors", constellation: "Constellation", buffers: "Buffers", party: "Party" })
-    // OSD layouts any style can borrow (Theme options); "" is the shared OSD. "watch" also brings the dial header to the Volume and Battery popups, which read the same token.
+    // OSD layouts any style can borrow (Theme options); "" is the plain OSD. "watch" also brings the dial header to the Volume and Battery popups, which read the same token.
     readonly property var osd_layouts: ["", "ring", "hud", "rpg", "alert", "glow", "horizon", "tile", "watch"]
-    readonly property var osd_layout_labels: ({ "": "Shared", ring: "Ring", hud: "HUD", rpg: "RPG", alert: "Alert mark", glow: "Glow ring", horizon: "Horizon", tile: "Tile", watch: "Watch dial" })
     // Weather layouts any style can borrow; the header token picks the header and every Daily view that goes with it, so one choice cannot mismatch. watch, scan, battle and hev are left out: they also reword the alert banner and the Alerts tab in their style's fiction.
     readonly property var weather_layouts: ["", "ring", "scope", "memcard", "mode7", "wttr", "weatherstar", "towers", "pokedex", "status", "oasis", "hero", "lsp"]
-    readonly property var weather_layout_labels: ({ "": "Shared", ring: "Ring", scope: "Scope", memcard: "Memory card", mode7: "Mode 7", wttr: "wttr.in", weatherstar: "Weather Star", towers: "Towers", pokedex: "Pokedex", status: "Status panel", oasis: "Oasis", hero: "Hero", lsp: "LSP", watch: "Watch", battle: "Battle", scan: "Scan visor", hev: "HEV" })
     // Keeptabs animations any style can borrow (Theme options), drawn in the bar's colours and fonts.
     readonly property var done_anims: ["hearts", "pixel", "lcd", "hev_pickup", "levelup", "fanfare"]
-    readonly property var done_anim_labels: ({ hearts: "Hearts", pixel: "Pixel", lcd: "LCD", hev_pickup: "Health pickup", levelup: "Level up", fanfare: "Fanfare" })
     readonly property var wait_anims: ["bubble", "cursor", "pressanykey", "advance", "hand", "alert", "rumble", "transmission", "scan", "comms", "ping", "hev_alert", "exclaim", "atb"]
-    readonly property var wait_anim_labels: ({ bubble: "Bubble", cursor: "Cursor", pressanykey: "Press any key", advance: "Advance", hand: "Hand", alert: "Alert", rumble: "Rumble", transmission: "Transmission", scan: "Scan", comms: "Comms", ping: "Ping", hev_alert: "HEV alert", exclaim: "Exclaim", atb: "ATB" })
     // Toast arrivals any style can borrow (Theme options); "" is the plain fade-in.
     readonly property var toast_enters: ["", "type", "mode7", "wobble", "bloom"]
-    readonly property var toast_enter_labels: ({ "": "Fade", type: "Type", mode7: "Mode 7", wobble: "Wobble", bloom: "Bloom" })
+    // What each borrowable choice draws, by row then value; the first value of each row is the plain look. Labels add the styles that draw it natively.
+    readonly property var borrow_names: ({
+            picker_skin: { "": "Crosshair", goldeneye: "Sniper Scope", nvimfloat: "Floating Window", scanvisor: "Scan Visor", pokemon: "Party Menu", scope: "MGS1 Scope", duckhunt: "Duck Hunt", materia: "Materia", tmux: "Tmux Panes", tvosd: "TV OSD", jrpg: "JRPG Menu", tiecomp: "Targeting Computer", scopeitem: "MGS2 Scope" },
+            overview_skin: { "": "Plain", goldeneye: "Night Vision", scope: "MGS1 Scope" },
+            workspace_art: { "": "Pills", dial: "Watch Dial", materia: "Materia", doors: "Doors", constellation: "Constellation", buffers: "Buffers", party: "Party" },
+            osd_layout: { "": "Bar", ring: "Ring", hud: "HUD", rpg: "RPG", alert: "Alert Mark", glow: "Glow Ring", horizon: "Horizon", tile: "Tile", watch: "Watch Dial" },
+            weather_header: { "": "Plain", ring: "Ring", scope: "Targeting Scope", memcard: "Memory Card", mode7: "Mode 7", wttr: "wttr.in", weatherstar: "Weather Star", towers: "Towers", pokedex: "Pokedex", status: "Status Screen", oasis: "Oasis", hero: "Hero", lsp: "LSP Hover", watch: "Watch", battle: "Battle", scan: "Scan Visor", hev: "HEV Suit" },
+            done_anim: { hearts: "Hearts", pixel: "Pixel", lcd: "LCD", hev_pickup: "Health Pickup", levelup: "Level Up", fanfare: "Victory Fanfare" },
+            wait_anim: { bubble: "Bubble", cursor: "Blinking Cursor", pressanykey: "Press Any Key", advance: "Text Advance", hand: "Pointing Hand", alert: "Alert", rumble: "Rumble", transmission: "Transmission", scan: "Scan", comms: "Comms", ping: "Radar Ping", hev_alert: "HEV Alert", exclaim: "Exclamation", atb: "ATB Gauge" },
+            toast_enter: { "": "Fade", type: "Typewriter", mode7: "Mode 7", wobble: "Wobble", bloom: "Bloom" }
+        })
     readonly property var labels: ({ crt: "CRT", nes: "NES", snes: "SNES", gameboy: "Gameboy", goldeneye: "Goldeneye", ps1: "PSX", ff7: "FFVII", ps2: "PS2", halflife: "Half Life", tie: "Tie Fighter", modern: "Modern" })
 
     FileView {
@@ -498,6 +501,16 @@ Singleton {
         return !native || choices.indexOf(native) >= 0 ? choices : choices.concat([native]);
     }
 
+    function borrow_labels(key, choices) {
+        const out = {};
+        choices.forEach((v, i) => {
+            const name = root.borrow_names[key][v];
+            const owners = i === 0 ? "" : root.names.filter(n => root.styles[n][key] === v).map(n => root.label(n)).join(", ");
+            out[v] = owners === "" || owners === name ? name : name + " (" + owners + ")";
+        });
+        return out;
+    }
+
     function settings_for(style_name) {
         const b = root.styles[style_name];
         if (!b) return [];
@@ -515,14 +528,14 @@ Singleton {
         if (b.fade_fills === true) flag("fade_fills", "Fade fills");
         if (b.controller) out.push({ key: "controller_glyphs", label: "Controller glyphs", type: "choice", default: b.controller_glyphs, choices: ["all", "labeled", "dpad", "off"], labels: { all: "All", labeled: "Labeled", dpad: "D-pad", off: "Off" } });
         if (b.watch_classic) out.push({ key: "watch_colors", label: "Watch colours", type: "choice", default: "Theme", choices: ["Theme", "Classic"] });
-        out.push({ key: "picker_skin", label: "Picker skin", type: "choice", default: b.picker_skin || "", choices: root.picker_skins, labels: root.picker_skin_labels });
-        out.push({ key: "overview_skin", label: "Overview skin", type: "choice", default: b.overview_skin || "", choices: root.overview_skins, labels: root.overview_skin_labels });
-        out.push({ key: "osd_layout", label: "OSD layout", type: "choice", default: b.osd_layout || "", choices: root.osd_layouts, labels: root.osd_layout_labels });
-        out.push({ key: "weather_header", label: "Weather layout", type: "choice", default: b.weather_header || "", choices: root.with_native(root.weather_layouts, b.weather_header), labels: root.weather_layout_labels });
-        out.push({ key: "done_anim", label: "Done animation", type: "choice", default: b.done_anim || "hearts", choices: root.done_anims, labels: root.done_anim_labels });
-        out.push({ key: "wait_anim", label: "Waiting animation", type: "choice", default: b.wait_anim || "bubble", choices: root.wait_anims, labels: root.wait_anim_labels });
-        out.push({ key: "toast_enter", label: "Toast arrival", type: "choice", default: b.toast_enter || "", choices: root.toast_enters, labels: root.toast_enter_labels });
-        out.push({ key: "workspace_art", label: "Workspaces", type: "choice", default: b.workspace_art || "", choices: root.workspace_arts, labels: root.workspace_art_labels });
+        out.push({ key: "picker_skin", label: "Picker skin", type: "choice", default: b.picker_skin || "", choices: root.picker_skins, labels: root.borrow_labels("picker_skin", root.picker_skins) });
+        out.push({ key: "overview_skin", label: "Overview skin", type: "choice", default: b.overview_skin || "", choices: root.overview_skins, labels: root.borrow_labels("overview_skin", root.overview_skins) });
+        out.push({ key: "osd_layout", label: "OSD layout", type: "choice", default: b.osd_layout || "", choices: root.osd_layouts, labels: root.borrow_labels("osd_layout", root.osd_layouts) });
+        out.push({ key: "weather_header", label: "Weather layout", type: "choice", default: b.weather_header || "", choices: root.with_native(root.weather_layouts, b.weather_header), labels: root.borrow_labels("weather_header", root.with_native(root.weather_layouts, b.weather_header)) });
+        out.push({ key: "done_anim", label: "Done animation", type: "choice", default: b.done_anim || "hearts", choices: root.done_anims, labels: root.borrow_labels("done_anim", root.done_anims) });
+        out.push({ key: "wait_anim", label: "Waiting animation", type: "choice", default: b.wait_anim || "bubble", choices: root.wait_anims, labels: root.borrow_labels("wait_anim", root.wait_anims) });
+        out.push({ key: "toast_enter", label: "Toast arrival", type: "choice", default: b.toast_enter || "", choices: root.toast_enters, labels: root.borrow_labels("toast_enter", root.toast_enters) });
+        out.push({ key: "workspace_art", label: "Workspaces", type: "choice", default: b.workspace_art || "", choices: root.workspace_arts, labels: root.borrow_labels("workspace_art", root.workspace_arts) });
         out.push({ key: "font_family", label: "Font", type: "choice", default: b.font_family, choices: root.font_choices });
         out.push({ key: "bar_font_family", label: "Bar font", type: "choice", default: b.bar_font_family, choices: root.font_choices });
         out.push({ key: "font_size", label: "Text size", type: "number", default: b.font_size, min: 8, max: 32, step: 1 });
