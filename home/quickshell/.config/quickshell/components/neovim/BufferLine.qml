@@ -23,6 +23,13 @@ Item {
     implicitWidth: row.implicitWidth
     implicitHeight: root.bar_height
 
+    // This is the only writer of the fills, which the chip and island cap keep reading while the lualine bar is on.
+    Component.onDestruction: {
+        if (!root.host) return;
+        LualineState.set_first_fill(root.host.screen_name, Qt.rgba(0, 0, 0, 0));
+        LualineState.set_last_fill(root.host.screen_name, Qt.rgba(0, 0, 0, 0));
+    }
+
     Row {
         id: row
         height: root.height
