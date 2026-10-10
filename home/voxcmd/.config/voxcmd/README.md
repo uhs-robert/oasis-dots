@@ -22,7 +22,8 @@ voxcmd list                       # integrations and their verbs
 2. Replacement files in `replacements.d/` rewrite whole words, for words the speech model keeps getting wrong.
 3. Each integration's verbs are tried in order against the whole phrase; the first match per integration counts.
 4. A verb with a target whose integration lists candidates for that action fuzzy-matches the target against them (`fzf --filter`); an exact label wins outright.
-5. One option runs (after a Yes/No picker if the integration sets `confirm=1`). Several open a picker, the Quickshell one when the bar is running and `rofi -dmenu` otherwise; cancelling does nothing. None sends a "no match" notification.
+5. A target that matches none of the candidates runs the action the integration names for that case in `no_match_actions`, if any.
+6. One option runs (after a Yes/No picker if the integration sets `confirm=1`). Several open a picker, the Quickshell one when the bar is running and `rofi -dmenu` otherwise; cancelling does nothing. None sends a "no match" notification.
 
 A notification reports what ran, or the last lines of the error.
 
@@ -50,6 +51,15 @@ declare -A actions=(
 candidates() {
   hyprctl clients -j | jq -c 'map({id: .address, label: "\(.class) \(.title)"})'
 }
+```
+
+An integration whose targets are open-ended can catch a target that matches no candidate instead of letting it end as "no match":
+
+```bash
+# Optional. Maps an action to the one to run when its target matches no candidate; that action gets $target and an empty $id.
+declare -A no_match_actions=(
+  [open_project]='create_project'
+)
 ```
 
 Patterns are bash ERE, so there are no non-capturing groups; voxcmd finds the target's group by counting the `(` before the placeholder, which is why only one placeholder is allowed. Order verbs from specific to general, as `media.sh` does with `play` before `play {target}`. Integration files are plain shell, so helper functions defined in the file are available to its commands.
