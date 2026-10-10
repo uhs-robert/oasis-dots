@@ -81,15 +81,18 @@ load_integration() {
   unset -f candidates
   name="" confirm=0
   local -a verbs=()
-  local -A actions=()
+  local -A actions=() no_match_actions=()
   # shellcheck disable=SC1090
   source "$1"
   name="${name:-$(basename "$1" .sh)}"
   integration_verbs=("${verbs[@]}")
-  declare -gA integration_actions=()
+  declare -gA integration_actions=() integration_no_match_actions=()
   local key
   for key in "${!actions[@]}"; do
     integration_actions[$key]="${actions[$key]}"
+  done
+  for key in "${!no_match_actions[@]}"; do
+    integration_no_match_actions[$key]="${no_match_actions[$key]}"
   done
 }
 
@@ -119,7 +122,8 @@ match_verbs() {
 }
 
 # Expands one match into runnable options. A verb with a target placeholder whose integration prints candidates
-# for the action (even an empty list) yields one option per candidate the target fuzzy-matches, possibly none;
+# for the action (even an empty list) yields one option per candidate the target fuzzy-matches, possibly none,
+# or, when it matches none and the integration maps the action in no_match_actions, that action with an empty id;
 # otherwise the target text itself is the id.
 resolve_match() {
   local match="$1" file action target has_target
@@ -151,11 +155,16 @@ resolve_match() {
             fzf --filter="$target" "$fuzzy_mode" --delimiter=$'\t' --nth=2.. |
             jq -R -s -c 'split("\n") | map(select(. != "") | split("\t") | {id: .[0], label: .[1:] | join("\t")})')
         done
+        if [ "$(jq length <<<"$options")" = 0 ] && [ -n "${integration_no_match_actions[$action]-}" ]; then
+          action="${integration_no_match_actions[$action]}"
+          command="${integration_actions[$action]-}"
+          options=$(jq -c -n --arg target "$target" '[{id: "", label: $target}]')
+        fi
       fi
     fi
-    jq -c --argjson match "$match" --arg command "$command" --arg confirm "$confirm" \
+    jq -c --argjson match "$match" --arg action "$action" --arg command "$command" --arg confirm "$confirm" \
       --argjson candidates "$candidates_json" \
-      '.[] | $match + {id, label, command: $command, confirm: ($confirm == "1"), candidates: ($candidates | length)}' <<<"$options"
+      '.[] | $match + {action: $action, id, label, command: $command, confirm: ($confirm == "1"), candidates: ($candidates | length)}' <<<"$options"
   )
 }
 
