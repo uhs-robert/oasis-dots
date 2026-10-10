@@ -8,7 +8,7 @@ function tok(name, type, value, doc, opts) {
 
 var tokens = [
     tok("pal", "var", (t, c) => c.pal, ""),
-    tok("wk", "var", (t, c) => c.classic_tokens.wk, "The watch's colour ramp and panel gradient for the current mode (the classic green or tinted from the palette)."),
+    tok("wk", "var", (t, c) => c.theme_tokens.wk, "The watch's colour ramp and panel gradient for the current mode: tinted from the palette, or the classic green when goldeneye's Watch colours is Classic."),
     tok("watch_mode", "string", null, "The saved Watch colours choice, whatever the current style is (the lock skin reads it).", {expr: '(root.theme_values.goldeneye || {}).watch_colors || "Theme"'}),
     tok("text_muted", "color", t => t.fg_muted, ""),
     tok("text_dim", "color", t => t.fg_dim, ""),
@@ -140,9 +140,9 @@ var tokens = [
     tok("level_layout", "string", "", 'Level rows: "capsule" draws them as tall capsule sliders with live peaks, "slant" and "visor" the same with slanted ends or visor glass (Volume popup and OSD only); "" keeps the shared slider.'),
     tok("card_layout", "string", "", ""),
     tok("weather_header", "string", "", ""),
-    tok("picker_skin", "string", "", 'Picker cursor/loupe treatment: "" keeps the shared look, "scope" swaps in the MGS binocular skin.'),
+    tok("picker_skin", "string", "", 'Picker and region cursor/loupe/target treatment, one of Style.picker_skins: "" keeps the shared look, "scope" swaps in the MGS binocular skin.'),
     tok("picker_hud", "color", t => t.theme_secondary, ""),
-    tok("picker_hint_keys", "string", "", "", {expr: 'root.active.picker_hint_keys || ""'}),
+    tok("picker_hint_keys", "string", "", "Keys that pick a target by position, live only under the skins that draw them (a borrowed keyless skin would leave them as invisible shortcuts); those fall back to the digits 1-9.", {expr: '["nvimfloat", "tmux", "tvosd"].indexOf(root.active.picker_skin) >= 0 ? (root.active.picker_hint_keys || "123456789") : ""'}),
     tok("bar_pill_square", "bool", false, "Square-cornered workspace pills; bar_workspace_diamond also turns the empty ones into diamonds.", {via: "bar"}),
     tok("bar_font_family", "string", "JetBrainsMono Nerd Font", "", {via: "bar"}),
     tok("bar_font_size", "int", t => t.font_size, "", {via: "bar"}),

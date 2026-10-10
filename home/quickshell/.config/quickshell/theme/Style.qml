@@ -15,6 +15,9 @@ Singleton {
     // Everyday styles, then consoles by release year, then sci-fi.
     readonly property var order: ["oasis", "modern", "neovim", "terminal", "crt", "nes", "gameboy", "snes", "ps1", "ff7", "goldeneye", "ps2", "tie", "halflife", "metroid", "reticle"]
     readonly property var names: root.order.filter(n => n in root.styles).concat(Object.keys(root.styles).filter(n => root.order.indexOf(n) < 0))
+    // Picker skins any style can borrow (Theme options), drawn in the borrowing style's palette and fonts; "" is the shared look.
+    readonly property var picker_skins: ["", "goldeneye", "nvimfloat", "scanvisor", "pokemon", "scope", "duckhunt", "materia", "tmux", "tvosd", "jrpg", "tiecomp", "scopeitem"]
+    readonly property var picker_skin_labels: ({ "": "Shared", goldeneye: "GoldenEye", nvimfloat: "Neovim float", scanvisor: "Scan visor", pokemon: "Pokemon", scope: "Scope", duckhunt: "Duck Hunt", materia: "Materia", tmux: "Tmux", tvosd: "TV OSD", jrpg: "JRPG", tiecomp: "TIE computer", scopeitem: "Scope item" })
     readonly property var labels: ({ crt: "CRT", nes: "NES", snes: "SNES", gameboy: "Gameboy", goldeneye: "Goldeneye", ps1: "PSX", ff7: "FFVII", ps2: "PS2", halflife: "Half Life", tie: "Tie Fighter", modern: "Modern" })
 
     FileView {
@@ -97,6 +100,9 @@ Singleton {
         const v = root.type_scale[k];
         return root.font_size + (v !== undefined ? v : k);
     }
+
+    // The four pixel-art shades for the pokemon picker skin: the style's own, else the host palette dark to light (the other shade consumers treat transparent as off, so the token itself stays unset).
+    readonly property var picker_shades: root.shade_0.a > 0 ? [root.shade_0, root.shade_1, root.shade_2, root.shade_3] : [Theme.bg_mantle, Theme.fg_muted, Theme.fg_dim, Theme.fg_strong]
 
     // Toggled by the open popup's blink timer; the caret is solid whenever it rests true.
     property bool caret_phase: true
@@ -239,7 +245,7 @@ Singleton {
     readonly property string weather_header: root.active.weather_header
     readonly property string picker_skin: root.active.picker_skin
     readonly property color picker_hud: root.active.picker_hud
-    readonly property string picker_hint_keys: root.active.picker_hint_keys || ""
+    readonly property string picker_hint_keys: ["nvimfloat", "tmux", "tvosd"].indexOf(root.active.picker_skin) >= 0 ? (root.active.picker_hint_keys || "123456789") : ""
     readonly property bool bar_pill_square: root.bar.bar_pill_square
     readonly property string bar_font_family: root.bar.bar_font_family
     readonly property int bar_font_size: root.bar.bar_font_size
@@ -473,6 +479,7 @@ Singleton {
         if (b.fade_fills === true) flag("fade_fills", "Fade fills");
         if (b.controller) out.push({ key: "controller_glyphs", label: "Controller glyphs", type: "choice", default: b.controller_glyphs, choices: ["all", "labeled", "dpad", "off"], labels: { all: "All", labeled: "Labeled", dpad: "D-pad", off: "Off" } });
         if (b.watch_classic) out.push({ key: "watch_colors", label: "Watch colours", type: "choice", default: "Theme", choices: ["Theme", "Classic"] });
+        out.push({ key: "picker_skin", label: "Picker skin", type: "choice", default: b.picker_skin || "", choices: root.picker_skins, labels: root.picker_skin_labels });
         out.push({ key: "font_family", label: "Font", type: "choice", default: b.font_family, choices: root.font_choices });
         out.push({ key: "bar_font_family", label: "Bar font", type: "choice", default: b.bar_font_family, choices: root.font_choices });
         out.push({ key: "font_size", label: "Text size", type: "number", default: b.font_size, min: 8, max: 32, step: 1 });
