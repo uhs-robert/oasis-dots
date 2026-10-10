@@ -5,12 +5,13 @@ set -euo pipefail
 
 LAYOUT_DIR="$HOME/.tmuxifier/layouts"
 
-session="$(
+# A layout name argument skips the picker, for callers that already chose (voxcmd's tmux integration).
+session="${1:-$(
   find -L "$LAYOUT_DIR" -maxdepth 1 -type f -name "*.session.sh" |
     sed -E 's|.*/([^/]+)\.session\.sh$|\1|' |
     sort |
     rofi -dmenu -p "Project"
-)"
+)}"
 
 [[ -z "$session" ]] && exit 0
 
