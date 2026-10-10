@@ -73,7 +73,7 @@ Item {
 
             DashedOutline {
                 anchors.fill: parent
-                color: Qt.alpha(Style.picker_shades[2], 0.55)
+                color: Qt.alpha(Style.pixel_shades[2], 0.55)
             }
         }
     }
@@ -90,7 +90,7 @@ Item {
             anchors.fill: parent
             color: "transparent"
             border.width: 2
-            border.color: Style.picker_shades[1]
+            border.color: Style.pixel_shades[1]
         }
 
         Rectangle {
@@ -98,7 +98,7 @@ Item {
             anchors.margins: 4
             color: "transparent"
             border.width: 2
-            border.color: Style.picker_shades[2]
+            border.color: Style.pixel_shades[2]
         }
 
         Rectangle {
@@ -106,7 +106,7 @@ Item {
             anchors.margins: -3
             color: "transparent"
             border.width: 2
-            border.color: Style.picker_shades[3]
+            border.color: Style.pixel_shades[3]
         }
     }
 
@@ -117,9 +117,9 @@ Item {
         y: root.height - area_box.height - 24
         width: area_text.implicitWidth + 20
         height: area_text.implicitHeight + 16
-        color: Style.picker_shades[0]
+        color: Style.pixel_shades[0]
         border.width: 1
-        border.color: Style.picker_shades[1]
+        border.color: Style.pixel_shades[1]
         antialiasing: false
 
         Rectangle {
@@ -127,7 +127,7 @@ Item {
             anchors.margins: 2
             color: "transparent"
             border.width: 1
-            border.color: Style.picker_shades[2]
+            border.color: Style.pixel_shades[2]
             antialiasing: false
         }
 
@@ -148,9 +148,9 @@ Item {
         y: root.height - party_box.height - 24
         width: root.box_w
         height: root.menu_h
-        color: Style.picker_shades[0]
+        color: Style.pixel_shades[0]
         border.width: 1
-        border.color: Style.picker_shades[1]
+        border.color: Style.pixel_shades[1]
         antialiasing: false
 
         Rectangle {
@@ -158,7 +158,7 @@ Item {
             anchors.margins: 2
             color: "transparent"
             border.width: 1
-            border.color: Style.picker_shades[2]
+            border.color: Style.pixel_shades[2]
             antialiasing: false
         }
 
@@ -242,7 +242,7 @@ Item {
                             radius: 4
                             color: "transparent"
                             border.width: 1
-                            border.color: Style.picker_shades[2]
+                            border.color: Style.pixel_shades[2]
 
                             Rectangle {
                                 x: 1
@@ -279,13 +279,13 @@ Item {
                     Rectangle {
                         width: parent.width
                         height: 1
-                        color: Style.picker_shades[1]
+                        color: Style.pixel_shades[1]
                     }
 
                     Rectangle {
                         width: parent.width
                         height: 1
-                        color: Style.picker_shades[1]
+                        color: Style.pixel_shades[1]
                     }
                 }
             }

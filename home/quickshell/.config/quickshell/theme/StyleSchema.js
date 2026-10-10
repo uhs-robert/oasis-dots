@@ -220,7 +220,7 @@ var tokens = [
     tok("meter_art", "var", () => ({}), 'Meter art by popup name (or "osd"): a component path relative to components/ that replaces the segments.'),
     tok("toast_enter", "string", "", 'Toast arrival: "" fades in; "type" slides and types, "mode7" zooms from a tilted plane, "wobble" settles, "bloom" glows, each once.'),
     tok("console_views", "string", "", "Popups, toasts and bar modules swap in this console's views (\"nes\", \"snes\", \"ps1\", \"ps2\"); \"\" keeps the shared ones."),
-    tok("workspace_art", "string", "", 'Bar workspace indicator art ("dial", "materia", "doors", "constellation", "buffers", "party"); "" keeps pills.'),
+    tok("workspace_art", "string", "", 'Bar workspace indicator art ("dial", "materia", "doors", "constellation", "buffers", "party"), one of Style.workspace_arts; "" keeps pills.'),
     tok("slant_frame", "bool", false, "Frames drawn by SlantFrame: flat top, bottom corners cut at the bar islands' slant, a sand horizon along the foot."),
     tok("slant_room", "int", null, "Extra room under a frame's content so the long cut clears the footer.", {expr: "root.slant_frame ? 8 : 0"}),
     tok("footer_moon", "bool", false, "A small sand crescent at the right end of the footer rule."),

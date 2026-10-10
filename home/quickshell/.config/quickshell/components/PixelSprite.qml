@@ -8,7 +8,7 @@ Canvas {
 
     property var rows: []
     property int pixel: 2
-    property var colors: [Style.shade_0, Style.shade_1, Style.shade_2, Style.shade_3]
+    property var colors: Style.pixel_shades
     readonly property int columns: root.rows.length > 0 ? root.rows[0].length : 0
 
     implicitWidth: root.columns * root.pixel

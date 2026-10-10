@@ -21,6 +21,9 @@ Singleton {
     // Overview treatments any style can borrow (Theme options); "" is the shared look.
     readonly property var overview_skins: ["", "goldeneye", "scope"]
     readonly property var overview_skin_labels: ({ "": "Shared", goldeneye: "GoldenEye", scope: "Scope" })
+    // Workspace indicator arts any style can borrow (Theme options); "" is the style's own pills.
+    readonly property var workspace_arts: ["", "dial", "materia", "doors", "constellation", "buffers", "party"]
+    readonly property var workspace_art_labels: ({ "": "Pills", dial: "Watch dial", materia: "Materia", doors: "Doors", constellation: "Constellation", buffers: "Buffers", party: "Party" })
     readonly property var labels: ({ crt: "CRT", nes: "NES", snes: "SNES", gameboy: "Gameboy", goldeneye: "Goldeneye", ps1: "PSX", ff7: "FFVII", ps2: "PS2", halflife: "Half Life", tie: "Tie Fighter", modern: "Modern" })
 
     FileView {
@@ -104,8 +107,11 @@ Singleton {
         return root.font_size + (v !== undefined ? v : k);
     }
 
-    // The four pixel-art shades for the pokemon picker skin: the style's own, else the host palette dark to light (the other shade consumers treat transparent as off, so the token itself stays unset).
-    readonly property var picker_shades: root.shade_0.a > 0 ? [root.shade_0, root.shade_1, root.shade_2, root.shade_3] : [Theme.bg_mantle, Theme.fg_muted, Theme.fg_dim, Theme.fg_strong]
+    // The four pixel-art shades (Pokemon picker skin, party workspaces): the style's own, else the host palette dark to light (the other shade consumers treat transparent as off, so the token itself stays unset).
+    readonly property var pixel_shades: root.shade_0.a > 0 ? [root.shade_0, root.shade_1, root.shade_2, root.shade_3] : [Theme.bg_mantle, Theme.fg_muted, Theme.fg_dim, Theme.fg_strong]
+
+    // Materia workspace slot colours by name: the style's own, else the palette (the other materia consumers treat a missing role as "no orb", so the token itself stays empty).
+    readonly property var materia_days: root.materia.days || ({ red: Theme.theme_label, green: Theme.ok, purple: Theme.magenta, blue: Theme.info, yellow: Theme.theme_secondary })
 
     // Toggled by the open popup's blink timer; the caret is solid whenever it rests true.
     property bool caret_phase: true
@@ -483,6 +489,7 @@ Singleton {
         if (b.watch_classic) out.push({ key: "watch_colors", label: "Watch colours", type: "choice", default: "Theme", choices: ["Theme", "Classic"] });
         out.push({ key: "picker_skin", label: "Picker skin", type: "choice", default: b.picker_skin || "", choices: root.picker_skins, labels: root.picker_skin_labels });
         out.push({ key: "overview_skin", label: "Overview skin", type: "choice", default: b.overview_skin || "", choices: root.overview_skins, labels: root.overview_skin_labels });
+        out.push({ key: "workspace_art", label: "Workspaces", type: "choice", default: b.workspace_art || "", choices: root.workspace_arts, labels: root.workspace_art_labels });
         out.push({ key: "font_family", label: "Font", type: "choice", default: b.font_family, choices: root.font_choices });
         out.push({ key: "bar_font_family", label: "Bar font", type: "choice", default: b.bar_font_family, choices: root.font_choices });
         out.push({ key: "font_size", label: "Text size", type: "number", default: b.font_size, min: 8, max: 32, step: 1 });

@@ -10,11 +10,11 @@ PixelSprite {
     property bool full: true
     property bool lit: false
     readonly property bool mono: Style.device_model === "dmg"
-    readonly property color line: root.lit ? Style.shade_3 : root.mono ? Style.shade_2 : Theme.fg_dim
+    readonly property color line: root.lit ? Style.pixel_shades[3] : root.mono ? Style.pixel_shades[2] : Theme.fg_dim
 
     pixel: 1
     colors: !root.full ? [root.line, root.line, root.line, root.line]
-        : root.mono ? [Style.shade_0, Style.shade_2, Style.shade_3, Style.shade_3]
+        : root.mono ? [Style.pixel_shades[0], Style.pixel_shades[2], Style.pixel_shades[3], Style.pixel_shades[3]]
         : [Theme.bg_crust, Theme.red, Theme.fg_strong, Qt.tint(Theme.red, Qt.alpha(Theme.fg_strong, 0.6))]
     rows: root.full ? [
         "....000000....",

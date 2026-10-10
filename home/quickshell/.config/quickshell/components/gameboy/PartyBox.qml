@@ -8,9 +8,9 @@ Rectangle {
 
     property bool selected: false
 
-    color: Style.shade_0
+    color: Style.pixel_shades[0]
     border.width: 1
-    border.color: root.selected ? Style.shade_3 : Style.shade_1
+    border.color: root.selected ? Style.pixel_shades[3] : Style.pixel_shades[1]
     antialiasing: false
 
     Rectangle {
@@ -18,7 +18,7 @@ Rectangle {
         anchors.margins: 2
         color: "transparent"
         border.width: 1
-        border.color: root.selected ? Style.shade_3 : Style.shade_2
+        border.color: root.selected ? Style.pixel_shades[3] : Style.pixel_shades[2]
         antialiasing: false
     }
 }
