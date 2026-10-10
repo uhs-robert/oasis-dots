@@ -3,6 +3,7 @@ import QtQuick
 import QtQuick.Layouts
 import "../../components"
 import "../../theme"
+import "../../components/KeyHints.js" as KeyHints
 
 // A pill button for the notifications header: icon + label + a keycap-style key hint.
 Rectangle {
@@ -48,11 +49,14 @@ Rectangle {
             id: key_cap
             visible: root.key_hint !== ""
             readonly property bool orb: Style.materia.key !== undefined
-            implicitWidth: key_cap.orb ? Math.max(16, key_label.implicitWidth + 8) : key_label.implicitWidth + 8
-            implicitHeight: 16
+            readonly property bool pixel_ring: Style.pixel_border.a > 0
+            readonly property int ring_width: KeyHints.cap_ring_width(Style)
+            implicitWidth: key_cap.orb ? Math.max(16, key_label.implicitWidth + 8) : key_label.implicitWidth + 6 + key_cap.ring_width * 2
+            // Other styles keep the fixed 16px cap; a pixel ring's 16px text needs more.
+            implicitHeight: key_cap.pixel_ring ? Math.max(16, key_label.implicitHeight + key_cap.ring_width * 2) : 16
             radius: Style.key_round ? height / 2 : Style.radius(3)
             color: key_cap.orb ? "transparent" : root.active ? Style.pal.bg_core : Style.key_bg
-            border.width: key_cap.orb ? 0 : 1
+            border.width: key_cap.orb ? 0 : key_cap.ring_width
             border.color: root.active ? Style.pal.border : Style.key_border
 
             MateriaOrb {
@@ -67,8 +71,8 @@ Rectangle {
                 text: root.key_hint
                 color: root.active && !key_cap.orb ? Style.pal.primary : Style.key_fg
                 font.bold: key_cap.orb || Style.mono_font === Style.font_family
-                font.family: Style.mono_font
-                font.pixelSize: Style.fs(-5)
+                font.family: KeyHints.cap_font_family(Style)
+                font.pixelSize: KeyHints.cap_font_px(Style)
             }
         }
     }
