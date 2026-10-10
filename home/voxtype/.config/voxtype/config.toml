@@ -97,7 +97,7 @@ mode = "local"
 flash_attention = true
 on_demand_loading = false
 gpu_isolation = false
-initial_prompt = "Working in Arch Linux on Hyprland with Neovim, tmux, yazi, and Qutebrowser. Ran `pacman -Syu` and `paru -S` from the AUR, then `hyprctl reload`. Checked `git rebase -i main`, `docker compose up -d`, `rg --hidden`, `fd -e ts`, and `chmod +x ./scripts/deploy.sh`. Voxtype pipes to ydotool. Also using LazyGit, Tridactyl, Which Key, topgrade, Claude Code, Ollama, Zellij, kitty, fzf, zoxide, ripgrep, jq, systemd, Wayland, GTK4, Rust, TypeScript, Python, Kubernetes, Postgres, Redis, Nginx, SSH, and JSON. Sometimes I just talk through an idea out loud, thinking about what to build next and why it matters."
+initial_prompt = "Working in Arch Linux on Hyprland with Neovim, tmux, yazi, Qutebrowser, LazyGit, Tridactyl, Which Key, Claude Code, Ollama, kitty, fzf, ripgrep, jq, systemd, Wayland, Rust, TypeScript, Python, Postgres, the AUR, and Voxtype. Ran `pacman -Syu` and `hyprctl reload`. Sometimes I just talk through an idea out loud."
 eager_processing = false
 
 # Number of CPU threads for inference (omit for auto-detection)
