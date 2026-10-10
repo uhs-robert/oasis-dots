@@ -26,10 +26,12 @@ Item {
     property bool compact: false
     property int bar_height: 30
 
+    // A chosen workspace art replaces the console styles' own pill art, so it is not drawn under a borrowed one.
+    readonly property bool pills_are_console: Style.workspace_art === ""
     // Final Fantasy Tactics map: an isometric tile per workspace, stretching so every app stands on it.
-    readonly property bool slots: Style.console_views === "ps1"
+    readonly property bool slots: root.pills_are_console && Style.console_views === "ps1"
     // Super Mario World overworld: level dots on a dotted trail, app icons above them.
-    readonly property bool map: Style.console_views === "snes"
+    readonly property bool map: root.pills_are_console && Style.console_views === "snes"
     // Pokemon party: a Poke Ball per workspace, the shown ones open into a party box under a cursor, the active app hopping.
     readonly property bool party: Style.workspace_art === "party"
     // GoldenEye watch dial: workspace ticks on one arc replace the pills.
@@ -194,12 +196,14 @@ Item {
                 readonly property var modelData: root.workspace_by_id[pill.ws_id] || ({ id: pill.ws_id, name: String(pill.ws_id), focused: false, active: false, lastIpcObject: {} })
 
                 readonly property bool is_empty: pill.toplevels.length === 0
-                readonly property bool diamond: Style.bar_workspace_diamond && is_empty && !root.map && !root.party && !root.slots
+                // Pill art that draws its own shape; the style's pill geometry and overlays (diamond, square, ring, materia orb) would distort it when borrowed.
+                readonly property bool art: root.materia || root.doors || root.party
+                readonly property bool diamond: Style.bar_workspace_diamond && is_empty && !root.map && !pill.art && !root.slots
                 readonly property bool map: root.map
                 readonly property int glyph: map ? (modelData.focused ? 17 : 14) : root.icon_size
                 // Mario ? blocks; the focused workspace is the one already hit.
-                readonly property bool qblock: Style.console_views === "nes"
-                readonly property bool ps2: Style.console_views === "ps2"
+                readonly property bool qblock: root.pills_are_console && Style.console_views === "nes"
+                readonly property bool ps2: root.pills_are_console && Style.console_views === "ps2"
                 readonly property var toplevels: WindowState.windows_on(modelData)
                 readonly property int cursor_gap: root.party && modelData.focused ? root.party_gap : 0
                 readonly property bool ball: root.party && (is_empty || !modelData.active)
@@ -218,12 +222,12 @@ Item {
                 height: pill.dot ? 11 : root.pill_height
                 y: (root.pill_height - height) / 2
                 width: root.materia ? (is_empty ? root.slot_size : icons.implicitWidth) : root.doors ? (modelData.active && !is_empty ? icons.implicitWidth + height - 4 : height) : root.party ? cursor_gap + (pill.ball ? 16 : icons.implicitWidth + 10) : pill.map ? Math.max(22, icons.implicitWidth + 8) : root.slots ? (is_empty ? root.tile_face * 2 + 4 : icons.implicitWidth + root.tile_face + 6) : is_empty ? height : icons.implicitWidth + (modelData.active ? 22 : 12) + Style.bar_pill_pad * 2
-                radius: pill.map || root.party || root.slots ? 0 : Style.bar_pill_square || pill.qblock ? 0 : height / 2
+                radius: pill.map || root.party || root.slots ? 0 : (Style.bar_pill_square && !pill.art) || pill.qblock ? 0 : height / 2
                 rotation: pill.diamond ? 45 : 0
                 scale: pill.diamond ? 0.75 : 1
                 antialiasing: pill.diamond || radius > 0
                 color: root.materia || root.doors || pill.qblock || pill.ps2 || root.slots || pill.map || root.party ? "transparent" : pill.dot ? "transparent" : modelData.focused ? Style.bar_workspace_focused : modelData.active ? Style.bar_workspace_active : Style.bar_workspace_idle
-                border.width: !root.materia && !root.slots && !pill.map && !root.party && Style.bar_workspace_ring.a > 0 && !(Style.bar_workspace_diamond && !is_empty && modelData.focused) ? 1 : 0
+                border.width: !pill.art && !root.slots && !pill.map && Style.bar_workspace_ring.a > 0 && !(Style.bar_workspace_diamond && !is_empty && modelData.focused) ? 1 : 0
                 border.color: Style.bar_workspace_ring
 
                 Behavior on width {
@@ -409,7 +413,7 @@ Item {
                 }
 
                 MateriaOrb {
-                    visible: pill.modelData.focused && Style.materia.workspace !== undefined && !root.materia
+                    visible: pill.modelData.focused && Style.materia.workspace !== undefined && !pill.art
                     anchors.fill: parent
                     radius: pill.radius
                     glow: false
@@ -420,7 +424,7 @@ Item {
                     anchors.fill: parent
                     anchors.leftMargin: pill.cursor_gap
                     radius: parent.radius
-                    color: root.party ? Style.shade_3 : Theme.fg_core
+                    color: root.party ? Style.pixel_shades[3] : Theme.fg_core
                     opacity: !root.slots && !root.materia && !pill.dot && !pill.modelData.active && pill_hover.hovered ? 0.1 : 0
 
                     Behavior on opacity {
@@ -493,7 +497,7 @@ Item {
                                 anchors.fill: parent
                                 lit: pill.modelData.focused
                                 raised: pill.modelData.active || pill_hover.hovered
-                                color: visible ? (Style.materia.days || {})[Materia.slot_names(pill.toplevels.map(t => root.class_of(t)))[icon_item.index]] || "transparent" : "transparent"
+                                color: visible ? Style.materia_days[Materia.slot_names(pill.toplevels.map(t => root.class_of(t)))[icon_item.index]] || "transparent" : "transparent"
                             }
                         }
                     }
