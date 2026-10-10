@@ -8,5 +8,6 @@ prompt_files=("${XDG_CONFIG_HOME:-$HOME/.config}/voxtype/prompt.d/"*.txt)
 ((${#prompt_files[@]})) || exec voxtype daemon "$@"
 
 base_prompt="$(voxtype config get whisper.initial_prompt)"
-local_vocabulary="$(cat "${prompt_files[@]}" | tr -s '[:space:]' ' ')"
+# awk 1 ends every file with a newline, so a file without one cannot glue its last word to the next file's first.
+local_vocabulary="$(awk 1 "${prompt_files[@]}" | tr -s '[:space:]' ' ')"
 exec voxtype --initial-prompt "$base_prompt ${local_vocabulary% }" daemon "$@"
