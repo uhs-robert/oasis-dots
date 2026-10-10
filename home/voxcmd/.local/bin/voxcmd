@@ -1,0 +1,456 @@
+#!/usr/bin/env bash
+# voxcmd: route a spoken command to an action declared by a drop-in integration.
+# Integration and replacement formats: ~/.config/voxcmd/README.md
+set -euo pipefail
+
+usage() {
+  cat <<'EOF'
+Usage:
+  voxcmd <text...>            route text as a spoken command
+  voxcmd --dry-run <text...>  show what would run, without running it
+  voxcmd listen               start a voxtype recording; on the next call, stop it and route the transcript
+                              (as a reply when a voxcmd picker is open)
+  voxcmd --reply <text...>    answer the open voxcmd picker: a choice, an ordinal, or cancel
+  voxcmd --dry-run --reply <text...>
+  voxcmd list                 list integrations and their verbs
+EOF
+}
+
+config_dir="${VOXCMD_CONFIG_DIR:-${XDG_CONFIG_HOME:-$HOME/.config}/voxcmd}"
+runtime_dir="${XDG_RUNTIME_DIR:-/tmp}/voxcmd"
+voxtype_state_file="${XDG_RUNTIME_DIR:-/tmp}/voxtype/state"
+# Written by voxcmd-pick while it waits: {pid, fifo, label, choices: [{id, label}]}.
+pending_pick_file="$runtime_dir/pending-pick.json"
+voxcmd_pick="$(dirname "$(readlink -f "$0")")/voxcmd-pick"
+dry_run=0
+
+notify() {
+  if [ "$dry_run" = 1 ] || ! command -v notify-send >/dev/null; then
+    printf '%s: %s\n' "$1" "$2" >&2
+  else
+    notify-send -a voxcmd "$1" "$2"
+  fi
+}
+
+integration_files() {
+  local file
+  for file in "$config_dir"/integrations.d/*.sh; do
+    if [ -f "$file" ]; then printf '%s\n' "$file"; fi
+  done
+}
+
+normalize() {
+  local text="${1,,}"
+  text="${text//\'/}"
+  text=$(tr -c 'a-z0-9\n' ' ' <<<"$text" | tr -s ' ')
+  text="${text#" "}"
+  printf '%s' "${text%" "}"
+}
+
+apply_replacements() {
+  local text=" $1 " file line spoken canonical
+  for file in "$config_dir"/replacements.d/*; do
+    [ -f "$file" ] || continue
+    while IFS= read -r line || [ -n "$line" ]; do
+      [[ "$line" =~ ^[[:space:]]*(#|$) ]] && continue
+      [[ "$line" == *=* ]] || continue
+      spoken=$(normalize "${line%%=*}")
+      canonical=$(normalize "${line#*=}")
+      [ -n "$spoken" ] || continue
+      text="${text// "$spoken" / "$canonical" }"
+    done <"$file"
+  done
+  text="${text#" "}"
+  printf '%s' "${text%" "}"
+}
+
+# Turns a verb pattern into an anchored ERE and the capture group holding the target (0 when none).
+# Bash ERE has no named or non-capturing groups, so the target group is found by counting the "(" before it.
+compile_pattern() {
+  local pattern="^($1)\$" placeholder group_regex before opens
+  for placeholder in '{target}' '{number}'; do
+    [[ "$pattern" == *"$placeholder"* ]] || continue
+    [ "$placeholder" = '{target}' ] && group_regex='(.+)' || group_regex='([0-9]+)'
+    before="${pattern%%"$placeholder"*}"
+    before="${before//\\(/}"
+    opens="${before//[^(]/}"
+    printf '%s\t%s\n' "${pattern/"$placeholder"/"$group_regex"}" "$((${#opens} + 1))"
+    return
+  done
+  printf '%s\t0\n' "$pattern"
+}
+
+# Callers source each integration in its own subshell so their variables and functions never collide.
+# A `declare` in a file sourced from a function is local to that function, so the arrays are copied out to globals.
+load_integration() {
+  unset -f candidates
+  name="" confirm=0
+  local -a verbs=()
+  local -A actions=() no_match_actions=()
+  # shellcheck disable=SC1090
+  source "$1"
+  name="${name:-$(basename "$1" .sh)}"
+  integration_verbs=("${verbs[@]}")
+  declare -gA integration_actions=() integration_no_match_actions=()
+  local key
+  for key in "${!actions[@]}"; do
+    integration_actions[$key]="${actions[$key]}"
+  done
+  for key in "${!no_match_actions[@]}"; do
+    integration_no_match_actions[$key]="${no_match_actions[$key]}"
+  done
+}
+
+# Prints one JSON match per integration: its first verb that matches the whole text.
+match_verbs() {
+  local text="$1" file
+  while IFS= read -r file; do
+    (
+      load_integration "$file"
+      local entry action pattern compiled regex group
+      for entry in "${integration_verbs[@]}"; do
+        read -r action pattern <<<"$entry"
+        compiled=$(compile_pattern "$pattern")
+        regex="${compiled%$'\t'*}"
+        group="${compiled##*$'\t'}"
+        if [[ "$text" =~ $regex ]]; then
+          local target=""
+          [ "$group" = 0 ] || target="${BASH_REMATCH[$group]}"
+          jq -n -c --arg file "$file" --arg name "$name" --arg action "$action" --arg target "$target" \
+            --argjson has_target "$([ "$group" = 0 ] && echo false || echo true)" \
+            '{file: $file, name: $name, action: $action, target: $target, has_target: $has_target}'
+          break
+        fi
+      done
+    )
+  done < <(integration_files)
+}
+
+# Expands one match into runnable options. A verb with a target placeholder whose integration prints candidates
+# for the action (even an empty list) yields one option per candidate the target fuzzy-matches, possibly none,
+# or, when it matches none and the integration maps the action in no_match_actions, that action with an empty id;
+# otherwise the target text itself is the id.
+resolve_match() {
+  local match="$1" file action target has_target
+  file=$(jq -r .file <<<"$match")
+  action=$(jq -r .action <<<"$match")
+  target=$(jq -r .target <<<"$match")
+  has_target=$(jq -r .has_target <<<"$match")
+  (
+    load_integration "$file"
+    local candidates_json="" command="${integration_actions[$action]-}" options
+    if [ "$has_target" = true ] && declare -F candidates >/dev/null; then
+      candidates_json=$(candidates "$action" || true)
+    fi
+    if [ -z "$candidates_json" ]; then
+      candidates_json="[]"
+      options=$(jq -c -n --arg target "$target" '[{id: $target, label: $target}]')
+    else
+      candidates_json=$(jq -c 'map({id: (.id | tostring), label: (.label // .id | tostring)})' <<<"$candidates_json")
+      if [ -z "$target" ]; then
+        options="$candidates_json"
+      else
+        options=$(jq -c --arg target "$target" 'map(select((.label | ascii_downcase) == $target))' <<<"$candidates_json")
+        # Fuzzy matching alone lets a short target hit long labels by scattered letters, so substring matches
+        # win when there are any.
+        local fuzzy_mode
+        for fuzzy_mode in --exact --no-exact; do
+          [ "$(jq length <<<"$options")" = 0 ] || break
+          options=$(jq -r '.[] | "\(.id)\t\(.label)"' <<<"$candidates_json" |
+            fzf --filter="$target" "$fuzzy_mode" --delimiter=$'\t' --nth=2.. |
+            jq -R -s -c 'split("\n") | map(select(. != "") | split("\t") | {id: .[0], label: .[1:] | join("\t")})')
+        done
+        if [ "$(jq length <<<"$options")" = 0 ] && [ -n "${integration_no_match_actions[$action]-}" ]; then
+          action="${integration_no_match_actions[$action]}"
+          command="${integration_actions[$action]-}"
+          options=$(jq -c -n --arg target "$target" '[{id: "", label: $target}]')
+        fi
+      fi
+    fi
+    jq -c --argjson match "$match" --arg action "$action" --arg command "$command" --arg confirm "$confirm" \
+      --argjson candidates "$candidates_json" \
+      '.[] | $match + {action: $action, id, label, command: $command, confirm: ($confirm == "1"), candidates: ($candidates | length)}' <<<"$options"
+  )
+}
+
+# ---- LLM hook (stub) -------------------------------------------------------------------------------------------
+# Off unless VOXCMD_LLM_CMD is set; voxcmd itself never calls a model. When no verb matches, the command gets JSON on
+# stdin, {transcript, integrations: [{name, actions, verbs}]}, and must print {integration, action, target}. Its
+# answer is resolved like a verb match, so candidates and confirmation still apply.
+llm_match() {
+  [ -n "${VOXCMD_LLM_CMD:-}" ] || return 0
+  local transcript="$1" catalog file reply
+  catalog=$(while IFS= read -r file; do
+    (
+      load_integration "$file"
+      jq -n -c --arg file "$file" --arg name "$name" --args '{file: $file, name: $name, verbs: $ARGS.positional}' "${integration_verbs[@]}"
+    )
+  done < <(integration_files) | jq -s -c 'map({file, name, actions: [.verbs[] | split(" ")[0]], verbs: [.verbs[] | sub("^[^ ]+ +"; "")]})')
+  reply=$(jq -n -c --arg transcript "$transcript" --argjson catalog "$catalog" \
+    '{transcript: $transcript, integrations: [$catalog[] | {name, actions, verbs}]}' |
+    sh -c "$VOXCMD_LLM_CMD") || return 0
+  jq -c --argjson catalog "$catalog" \
+    'first($catalog[] as $i | select($i.name == .integration and (.action | IN($i.actions[])))
+      | {file: $i.file, name: $i.name, action, target: (.target // ""), has_target: ((.target // "") != "")}) // empty' <<<"$reply" 2>/dev/null || true
+}
+# ----------------------------------------------------------------------------------------------------------------
+
+option_label() {
+  jq -r '"\(.name): \(.action | gsub("_"; " "))" + (if .label != "" and .label != .action then " \(.label)" else "" end)' <<<"$1"
+}
+
+run_option() {
+  local option="$1" file command id target label output
+  file=$(jq -r .file <<<"$option")
+  command=$(jq -r .command <<<"$option")
+  # shellcheck disable=SC2034 # id and target are read by the action's command
+  id=$(jq -r .id <<<"$option")
+  target=$(jq -r .target <<<"$option")
+  label=$(option_label "$option")
+  if [ -z "$command" ]; then
+    notify "voxcmd error" "$label has no command"
+    return 1
+  fi
+  if [ "$(jq -r .confirm <<<"$option")" = true ]; then
+    [ "$("$voxcmd_pick" "Run $label?" '["Yes","No"]')" = Yes ] || return 0
+  fi
+  if output=$(
+    load_integration "$file"
+    set +eu
+    eval "$command" 2>&1
+  ); then
+    notify "voxcmd" "$label${output:+: $(tail -n 1 <<<"$output")}"
+  else
+    notify "voxcmd failed" "$label${output:+: $(tail -n 3 <<<"$output")}"
+    return 1
+  fi
+}
+
+print_dry_run() {
+  local transcript="$1" text="$2" options="$3" count
+  count=$(jq length <<<"$options")
+  printf 'transcript:  %s\nnormalized:  %s\n' "$transcript" "$text"
+  case "$count" in
+  0) printf 'result:      no match\n' ;;
+  1) printf 'result:      run\n' ;;
+  *) printf 'result:      ask with the picker (%s options)\n' "$count" ;;
+  esac
+  jq -r 'to_entries[] | .key as $n | .value |
+    "option \($n + 1):    \(.name) (\(.file | split("/") | last)) action=\(.action) target=\(.target | @sh) id=\(.id | @sh) label=\(.label | @sh)",
+    "             candidates offered: \(.candidates), confirm: \(.confirm)",
+    "             command: \(.command)"' <<<"$options"
+}
+
+route() {
+  local transcript="$*" text matches options count choices picked
+  text=$(apply_replacements "$(normalize "$transcript")")
+  matches=$(match_verbs "$text")
+  [ -n "$matches" ] || matches=$(llm_match "$text")
+  options=$(while IFS= read -r match; do
+    if [ -n "$match" ]; then resolve_match "$match"; fi
+  done <<<"$matches" | jq -s -c .)
+  count=$(jq length <<<"$options")
+
+  if [ "$dry_run" = 1 ]; then
+    print_dry_run "$transcript" "$text" "$options"
+    return 0
+  fi
+  case "$count" in
+  0)
+    notify "voxcmd: no match" "\"$transcript\""
+    return 1
+    ;;
+  1) run_option "$(jq -c '.[0]' <<<"$options")" ;;
+  *)
+    choices=$(while IFS= read -r option; do
+      jq -n -c --arg id "$(jq -r .index <<<"$option")" --arg label "$(option_label "$option")" '{id: $id, label: $label}'
+    done < <(jq -c 'to_entries[] | .value + {index: .key}' <<<"$options") | jq -s -c .)
+    picked=$("$voxcmd_pick" "Which command?" "$choices") || return 0
+    run_option "$(jq -c --argjson i "$picked" '.[$i]' <<<"$options")"
+    ;;
+  esac
+}
+
+# ---- Voice replies to an open picker ----------------------------------------------------------------------------
+
+# Prints the pending pick's state while its voxcmd-pick still waits on its FIFO. A stale file is left alone: a new
+# pick may be about to replace it.
+pending_pick() {
+  local state pid fifo
+  state=$(cat "$pending_pick_file" 2>/dev/null) || return 1
+  pid=$(jq -r '.pid // empty' <<<"$state" 2>/dev/null) || return 1
+  fifo=$(jq -r '.fifo // empty' <<<"$state" 2>/dev/null) || return 1
+  [ -n "$pid" ] && [ -p "$fifo" ] && grep -qs voxcmd-pick "/proc/$pid/cmdline" || return 1
+  printf '%s' "$state"
+}
+
+# Prints the 1-based position an ordinal reply names ("two", "the second one", "number 3", "last"), else nothing.
+ordinal_position() {
+  local text="$1" count="$2" word
+  [[ "$text" =~ ^((pick|choose|select|take|use|go with|the|number|option|choice|item|entry) )*([a-z0-9]+)( one)?$ ]] || return 0
+  word="${BASH_REMATCH[3]}"
+  case "$word" in
+  one | first | 1st) echo 1 ;;
+  two | second | 2nd) echo 2 ;;
+  three | third | 3rd) echo 3 ;;
+  four | fourth) echo 4 ;;
+  five | fifth) echo 5 ;;
+  six | sixth) echo 6 ;;
+  seven | seventh) echo 7 ;;
+  eight | eighth) echo 8 ;;
+  nine | ninth) echo 9 ;;
+  ten | tenth) echo 10 ;;
+  last) echo "$count" ;;
+  *) if [[ "$word" =~ ^([0-9]+)(st|nd|rd|th)?$ ]]; then echo "$((10#${BASH_REMATCH[1]}))"; fi ;;
+  esac
+}
+
+# Prints "cancel", "pick<TAB><displayed label>", or "unclear<TAB><why>" for a normalized reply. Labels match like
+# candidate targets: exact, then substring, then fuzzy, and only a single hit counts.
+match_reply() {
+  local text="$1" choices="$2" count position spoken_labels hits fuzzy_mode
+  count=$(jq length <<<"$choices")
+  if [[ "$text" =~ ^(cancel|never ?mind|none( of (them|these|those))?|nothing|forget it)$ ]]; then
+    echo cancel
+    return
+  fi
+  position=$(ordinal_position "$text" "$count")
+  if [ -n "$position" ]; then
+    if [ "$position" -ge 1 ] && [ "$position" -le "$count" ]; then
+      printf 'pick\t%s\n' "$(jq -r --argjson i "$((position - 1))" '.[$i].label' <<<"$choices")"
+    else
+      printf 'unclear\tthere are only %s choices\n' "$count"
+    fi
+    return
+  fi
+  # displayed label <TAB> label without its number, normalized like the reply
+  spoken_labels=$(jq -r '.[].label' <<<"$choices" | while IFS= read -r label; do
+    printf '%s\t%s\n' "$label" "$(normalize "${label#*. }")"
+  done)
+  hits=$(awk -F'\t' -v text="$text" '$2 == text' <<<"$spoken_labels")
+  for fuzzy_mode in --exact --no-exact; do
+    [ -z "$hits" ] || break
+    hits=$(fzf --filter="$text" "$fuzzy_mode" --delimiter=$'\t' --nth=2 <<<"$spoken_labels" || true)
+  done
+  case "$(grep -c . <<<"$hits")" in
+  0) printf 'unclear\tno choice matches\n' ;;
+  1) printf 'pick\t%s\n' "${hits%%$'\t'*}" ;;
+  *) printf 'unclear\t%s choices match\n' "$(grep -c . <<<"$hits")" ;;
+  esac
+}
+
+# Answers the open voxcmd-pick as if the choice had been picked in it; voxcmd-pick then closes the picker.
+reply() {
+  local transcript="$*" text state verdict
+  text=$(apply_replacements "$(normalize "$transcript")")
+  if ! state=$(pending_pick); then
+    notify "voxcmd" "No picker is waiting for a reply"
+    return 1
+  fi
+  verdict=$(match_reply "$text" "$(jq -c .choices <<<"$state")")
+  if [ "$dry_run" = 1 ]; then
+    printf 'transcript:  %s\nnormalized:  %s\npicker:      %s\nresult:      %s\n' \
+      "$transcript" "$text" "$(jq -r .label <<<"$state")" "${verdict/$'\t'/: }"
+    return 0
+  fi
+  case "$verdict" in
+  unclear*)
+    notify "voxcmd: which one?" "\"$transcript\": ${verdict#*$'\t'}. Say a choice, a number, or cancel."
+    return 1
+    ;;
+  esac
+  # An empty line reads as a cancel, like Esc. The timeout covers a voxcmd-pick that exits between check and write.
+  local answer=""
+  [ "$verdict" = cancel ] || answer="${verdict#*$'\t'}"
+  # shellcheck disable=SC2016 # expanded by the inner sh
+  timeout 2 sh -c 'printf "%s\n" "$1" >"$2"' sh "$answer" "$(jq -r .fifo <<<"$state")"
+}
+# ----------------------------------------------------------------------------------------------------------------
+
+voxtype_state() { cat "$voxtype_state_file" 2>/dev/null || echo idle; }
+
+# Toggle: the first call starts a recording into a file and leaves a watcher waiting for voxtype to finish it;
+# the second call stops the recording, and the watcher routes the transcript, or replies with it when a voxcmd
+# picker was open as the recording started.
+listen() {
+  local transcript="$runtime_dir/transcript.txt" marker="$runtime_dir/listening" transcript_handler=route
+  mkdir -p "$runtime_dir"
+  if [ -e "$marker" ] && [ "$(voxtype_state)" != idle ]; then
+    voxtype record stop
+    return
+  fi
+  # An idle voxtype with the marker still present means the watcher was killed before cleaning up.
+  rm -f "$marker"
+  if [ "$(voxtype_state)" != idle ]; then
+    notify "voxcmd" "voxtype is busy ($(voxtype_state))"
+    return 1
+  fi
+  if pending_pick >/dev/null; then transcript_handler=reply; fi
+  rm -f "$transcript"
+  touch "$marker"
+  if ! voxtype record start --file="$transcript"; then
+    rm -f "$marker"
+    notify "voxcmd error" "voxtype record start failed"
+    return 1
+  fi
+  setsid "$0" _watch "$transcript" "$marker" "$transcript_handler" </dev/null >/dev/null 2>&1 &
+}
+
+# Polled every 0.2s. Recording plus transcription can outlast voxtype's max_duration_secs; 10 minutes covers both.
+watch_poll_interval=0.2
+watch_max_polls=3000
+watch_start_grace_polls=50
+watch_file_grace_polls=10
+
+watch_recording() {
+  local transcript="$1" marker="$2" transcript_handler="$3" recording_seen=0 polls=0
+  # Expanded now: the trap fires after this function returns, when the local is gone.
+  # shellcheck disable=SC2064
+  trap "rm -f '$marker'" EXIT
+  while [ "$polls" -lt "$watch_max_polls" ]; do
+    polls=$((polls + 1))
+    if [ "$(voxtype_state)" != idle ]; then
+      recording_seen=1
+    elif [ "$recording_seen" = 1 ] || [ "$polls" -gt "$watch_start_grace_polls" ]; then
+      break
+    fi
+    sleep "$watch_poll_interval"
+  done
+  # voxtype may write the file a moment after it reports idle.
+  for ((polls = 0; polls < watch_file_grace_polls; polls++)); do
+    [ -s "$transcript" ] && break
+    sleep "$watch_poll_interval"
+  done
+  [ -s "$transcript" ] || exit 0
+  "$transcript_handler" "$(cat "$transcript")"
+}
+
+case "${1:-}" in
+"" | -h | --help) usage ;;
+--dry-run)
+  shift
+  dry_run=1
+  if [ "${1:-}" = --reply ]; then
+    shift
+    reply "$@"
+  else
+    route "$@"
+  fi
+  ;;
+--reply)
+  shift
+  reply "$@"
+  ;;
+listen) listen ;;
+_watch) watch_recording "$2" "$3" "$4" ;;
+list)
+  while IFS= read -r file; do
+    (
+      load_integration "$file"
+      printf '%s (%s)\n' "$name" "$file"
+      printf '  %s\n' "${integration_verbs[@]}"
+    )
+  done < <(integration_files)
+  ;;
+*) route "$@" ;;
+esac

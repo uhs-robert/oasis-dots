@@ -1,0 +1,77 @@
+#!/usr/bin/env bash
+# voxcmd-pick: blocking choice picker for shell callers.
+# Usage: voxcmd-pick <label> <choices-json>
+# Choices are a JSON array of strings or {id, label} objects. Prints the picked id (the string itself for
+# plain strings) and exits 0; exits 1 on cancel. Uses the Quickshell "choices" picker when the bar is running,
+# else rofi -dmenu. While it waits, `voxcmd --reply` can answer it through the pending-pick state file.
+set -euo pipefail
+
+label="${1:?usage: voxcmd-pick <label> <choices-json>}"
+choices_json="${2:?usage: voxcmd-pick <label> <choices-json>}"
+# Give up eventually so a bar that dies mid-pick cannot leave callers blocked forever.
+pick_timeout="${VOXCMD_PICK_TIMEOUT:-300}"
+pending_pick_file="${XDG_RUNTIME_DIR:-/tmp}/voxcmd/pending-pick.json"
+hypr_scripts="${XDG_CONFIG_HOME:-$HOME/.config}/hypr/scripts"
+
+choices=$(jq -c 'map(if type == "string" then {id: ., label: .} else {id: (.id | tostring), label: (.label // .id | tostring)} end)' <<<"$choices_json")
+# Both pickers hand back the picked label, not its position. Numbering makes every label unique, so each maps back to
+# one id, and gives voice replies an ordinal to say; a label shared by several choices also gets the id appended, so
+# the user can tell them apart.
+choices=$(jq -c '(group_by(.label) | map(select(length > 1) | .[0].label)) as $shared_labels
+  | map(if .label | IN($shared_labels[]) then .label += " (\(.id))" else . end)
+  | to_entries | map(.value + {label: "\(.key + 1). \(.value.label)"})' <<<"$choices")
+
+work_dir=$(mktemp -d "${XDG_RUNTIME_DIR:-/tmp}/voxcmd-pick.XXXXXX")
+reader_pid=""
+cleanup() {
+  # A newer pick may have replaced the state file; only remove our own.
+  if [ "$(jq -r .pid "$pending_pick_file" 2>/dev/null)" = "$$" ]; then rm -f "$pending_pick_file"; fi
+  # A reader still blocked opening the FIFO would otherwise wait out the whole timeout.
+  if [ -n "$reader_pid" ]; then kill "$reader_pid" 2>/dev/null || true; fi
+  rm -rf "$work_dir"
+}
+trap cleanup EXIT
+trap 'exit 1' INT TERM HUP
+result_fifo="$work_dir/result"
+spec="$work_dir/spec.json"
+labels="$work_dir/labels"
+mkfifo "$result_fifo"
+jq -r '.[].label' <<<"$choices" >"$labels"
+# No id: ChoicesProvider then only writes the pick to result_path and skips the Hyprland prompt callback.
+jq -n --arg label "$label" --arg result_path "$result_fifo" --argjson choices "$choices" \
+  '{label: $label, result_path: $result_path, choices: [$choices[].label]}' >"$spec"
+
+# Opening the FIFO for writing happens before rofi runs, so even a missing rofi closes it and reads as a cancel.
+printf -v rofi_fallback 'rofi -dmenu -i -p %q < %q > %q' "$label" "$labels" "$result_fifo"
+if [ -x "$hypr_scripts/qs-picker" ]; then
+  "$hypr_scripts/qs-picker" choices "$rofi_fallback" "$spec" &
+else
+  sh -c "$rofi_fallback" &
+fi
+# qs-picker exits as soon as the bar takes the pick, so this is still running at the end only when it is rofi.
+picker_pid=$!
+
+mkdir -p "$(dirname "$pending_pick_file")"
+jq -n --argjson pid $$ --arg fifo "$result_fifo" --arg label "$label" --argjson choices "$choices" \
+  '{pid: $pid, fifo: $fifo, label: $label, choices: $choices}' >"$work_dir/pending-pick.json"
+mv -f "$work_dir/pending-pick.json" "$pending_pick_file"
+
+# The first line, not EOF: rofi keeps the FIFO open for writing while a voice reply arrives through it.
+# Read in the background because bash runs the signal traps only once a foreground child exits, and `wait` returns early.
+timeout "$pick_timeout" head -n 1 "$result_fifo" >"$work_dir/picked" &
+reader_pid=$!
+wait "$reader_pid" || true
+reader_pid=""
+picked=$(cat "$work_dir/picked")
+# Removed before closing: closing the Quickshell picker writes a cancel to the FIFO, which must find it gone.
+cleanup
+if kill -0 "$picker_pid" 2>/dev/null; then
+  pkill -P "$picker_pid" 2>/dev/null || true
+  kill "$picker_pid" 2>/dev/null || true
+elif [ -x "$hypr_scripts/qs-ipc" ]; then
+  # A no-op unless a voice reply or the timeout ended the pick while the picker was still open.
+  "$hypr_scripts/qs-ipc" call picker close >/dev/null 2>&1 || true
+fi
+
+[ -n "$picked" ] || exit 1
+jq -r --arg picked "$picked" 'first(.[] | select(.label == $picked) | .id) // empty' <<<"$choices" | grep . || exit 1

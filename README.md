@@ -324,6 +324,10 @@ printf '[user]\n\tname = NAME\n\temail = EMAIL\n' > ~/.config/git/identity
 
 Plugin management with `ya pkg` and a root Yazi that stays in sync with your keymap. See [home/yazi/.config/yazi/README.md](home/yazi/.config/yazi/README.md).
 
+## 🎙️ Voice Commands
+
+`voxcmd` turns a voxtype recording into a command: `CTRL + SHIFT + PERIOD` starts listening, pressing it again runs what you said, like "next track" or "volume to 40". Commands come from drop-in shell integrations, with media and volume shipped as the example. See [home/voxcmd/.config/voxcmd/README.md](home/voxcmd/.config/voxcmd/README.md).
+
 ## 🛠️ Justfile
 
 Common tasks are wrapped in a `justfile` (run with [`just`](https://github.com/casey/just)). With `just`, you can just run:

@@ -35,6 +35,7 @@ Submap.define({
 
       -- Commands
       { "PERIOD",        Cmd.run(Scripts.voxtype),                        "Speech to Text" },
+      { "SHIFT + PERIOD", Cmd.run(Scripts.voxcmd_listen),                "Voice Command" },
 
       -- Submaps
       { "G",             Submap.switch("Groups"),                         "+Groups",        KEEP },

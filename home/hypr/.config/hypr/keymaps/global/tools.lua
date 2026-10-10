@@ -11,8 +11,9 @@ Bind.leader_cmd("P", screenshot("pixel"),  "Color Picker")
 Bind.leader_cmd("Z", Scripts.qs_ipc .. " call zoom toggle", "Zoom")
 
 -- Speech to Text
-Bind.cmd("CTRL + PERIOD",  Scripts.voxtype, "Speech to Text")
-Bind.cmd("CTRL + ALT + A", Scripts.voxtype, "Speech to Text")
+Bind.cmd("CTRL + PERIOD",         Scripts.voxtype,        "Speech to Text")
+Bind.cmd("CTRL + ALT + A",        Scripts.voxtype,        "Speech to Text")
+Bind.cmd("CTRL + SHIFT + PERIOD", Scripts.voxcmd_listen,  "Voice Command")
 
 -- Clipboard History
 Bind.leader_fn("CTRL + V",         Menu.clipboard(),        "Clipboard History")
