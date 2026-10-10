@@ -84,6 +84,7 @@ function overrides(t, ctx) {
         bar_workspace_idle: "transparent",
         bar_workspace_ring: vec,
         bar_workspace_diamond: true,
+        workspace_art: "diamonds",
         bar_pill_square: true,
         bar_clock_brackets: lock,
         bar_hover_bg: Qt.alpha(vec, 0.15),

@@ -75,6 +75,7 @@ function overrides(t, ctx) {
         bar_workspace_active: hl,
         bar_workspace_idle: hl_f,
         bar_workspace_ring: hl_d,
+        workspace_art: "squares",
         bar_pill_square: true,
         bar_hover_bg: hl_d
     };
