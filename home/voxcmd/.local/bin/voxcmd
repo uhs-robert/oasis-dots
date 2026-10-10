@@ -147,7 +147,7 @@ resolve_match() {
     load_integration "$file"
     local candidates_json="" command="${integration_actions[$action]-}" options
     if [ "$has_target" = true ] && declare -F candidates >/dev/null; then
-      candidates_json=$(candidates "$action" || true)
+      candidates_json=$(candidates "$action" "$target" || true)
     fi
     if [ -z "$candidates_json" ]; then
       candidates_json="[]"

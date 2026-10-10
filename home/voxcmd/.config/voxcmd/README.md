@@ -52,7 +52,8 @@ declare -A actions=(
   [focus]='hyprctl dispatch "hl.dsp.focus({ window = \"address:$id\" })"'
 )
 
-# Optional. Called with the action name for verbs with a target; prints a JSON array of {id, label}.
+# Optional. Called with the action name and the spoken target for verbs with a target; prints a JSON array of
+# {id, label}. The target lets it list only what that phrase can mean, or [] to leave the phrase to a fallback.
 # Printing nothing means "no candidates, use the target text"; printing [] means nothing can match.
 candidates() {
   hyprctl clients -j | jq -c 'map({id: .address, label: "\(.class) \(.title)"})'
