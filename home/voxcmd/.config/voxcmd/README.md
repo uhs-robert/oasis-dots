@@ -1,6 +1,6 @@
 # voxcmd
 
-Voice commands on top of [voxtype](https://github.com/peteonrails/voxtype). Speak a phrase, voxcmd matches it against the verbs your integrations declare and runs the action. Four integrations ship: `media.sh` (playerctl and pamixer), `apps.sh` (open apps, focus, move and close windows), `timers.sh` (timers and reminders as systemd user timers) and `keybinds.sh` (any described Hyprland keybind); everything else is a drop-in file you write.
+Voice commands on top of [voxtype](https://github.com/peteonrails/voxtype). Speak a phrase, voxcmd matches it against the verbs your integrations declare and runs the action. Five integrations ship: `media.sh` (playerctl and pamixer), `apps.sh` (open apps, focus, move and close windows), `timers.sh` (timers and reminders as systemd user timers), `devices.sh` (audio output and input with wpctl, Bluetooth with bluetoothctl) and `keybinds.sh` (any described Hyprland keybind); everything else is a drop-in file you write.
 
 | Key                                | Does                                                                     |
 | ---------------------------------- | ------------------------------------------------------------------------ |
@@ -182,6 +182,22 @@ Strong matches hide weak ones.
 - The label is the unit's Description (`Timer: 5 minutes`, `Reminder: Call the bank`), which is how list and cancel find it. `systemctl --user list-timers 'voxcmd-timer-*'` shows the same set.
 - Timers live in the user's systemd manager: they outlast voxcmd, but not a logout or reboot.
 - Confirmations and the list give the time it rings, in the bar's Settings > Clock time format, with the day when it is not today: "Timer set: 1 minute, rings at 3:47pm", "Reminder tomorrow 9:00am: Call the bank".
+
+### Devices
+
+`devices.sh` switches the default audio output and input and connects Bluetooth devices.
+
+| Say                                                               | Does                                                   |
+| ----------------------------------------------------------------- | ------------------------------------------------------ |
+| "switch audio to X", "switch output to X", "use X", "output to X" | `wpctl set-default` on the matching sink               |
+| "use the X microphone", "switch mic to X", "set the input to X"   | `wpctl set-default` on the matching source             |
+| "connect X", "reconnect X", "disconnect X"                        | `bluetoothctl connect`/`disconnect` on a paired device |
+| "bluetooth on", "turn off bluetooth", "enable bluetooth"          | `bluetoothctl power on`/`off`                          |
+
+- Sinks and sources come from `pw-dump`, labelled by description plus the device's active route or form factor, `USB Audio Analog Stereo (Speakers)` or `MOMENTUM 3 (Headphones)`, so "use the speakers" and "switch audio to headphones" work without naming the card. Only devices whose label holds every spoken word are offered, so "use the headset" with no headset matches nothing rather than an HDMI output by scattered letters. Several matches open the picker.
+- Playing streams follow the new default through WirePlumber's `linking.follow-default-target`; a stream an app pinned to a device stays where it is.
+- Bluetooth devices come from `bluetoothctl devices Paired`, labelled with their kind from BlueZ's icon (`Headphones`, `Keyboard`, `Mouse`, ...). `connect` powers the adapter on first.
+- Plain "switch to X" is left to app switching, so output switching always says what it switches.
 
 ### Keybinds
 
