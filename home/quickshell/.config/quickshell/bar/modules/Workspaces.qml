@@ -36,10 +36,14 @@ Item {
     readonly property bool dial: Style.workspace_art === "dial"
     // Oasis night sky: a star per workspace on a low constellation, apps under their star.
     readonly property bool stars: Style.workspace_art === "constellation"
-    // Modern's plain pills, drawn whatever the host style; Style.styles holds them in the current palette, typed like the Style exports.
-    readonly property bool dots: Style.workspace_art === "dots"
-    // The pill look every plain-pill read comes from: the host's own, or Modern's when its pills are borrowed.
-    readonly property var pill_tokens: root.dots && Style.name !== "modern" ? Style.resolve(Style.styles.modern) : Style
+    // Where every plain-pill read comes from: the owning style's pills when a named set is borrowed, a plain round pill in the host's colours when "Pills" is picked over a style whose own look is an art or pill set, else the host itself. Styles with a plain "" look keep their own pills (ring, squares) under "". Style.styles holds each style in the current palette, typed like the Style exports.
+    readonly property var pill_tokens: {
+        const art = Style.workspace_art;
+        const owner = Style.workspace_pill_owners[art];
+        if (owner) return owner === Style.name ? Style : Style.resolve(Style.styles[owner]);
+        if (art === "" && Style.base_active.workspace_art !== "") return Style.resolve(Object.assign({}, Style.active, Style.plain_pill_shape));
+        return Style;
+    }
     readonly property int party_gap: 8
     // FF7 weapon slot bar: apps are materia orbs in sockets linked in pairs.
     readonly property bool materia: Style.workspace_art === "materia"
