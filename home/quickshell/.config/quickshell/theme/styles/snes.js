@@ -7,6 +7,7 @@ function overrides(t, ctx) {
         weather_header: "mode7",
         controller: "snes",
         console_views: "snes",
+        workspace_art: "map",
         osd_layout: "rpg",
         card_layout: "dialogue",
         toast_enter: "mode7",

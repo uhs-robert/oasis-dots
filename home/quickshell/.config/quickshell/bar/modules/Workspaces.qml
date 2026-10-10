@@ -26,12 +26,10 @@ Item {
     property bool compact: false
     property int bar_height: 30
 
-    // A chosen workspace art replaces the console styles' own pill art, so it is not drawn under a borrowed one.
-    readonly property bool pills_are_console: Style.workspace_art === ""
     // Final Fantasy Tactics map: an isometric tile per workspace, stretching so every app stands on it.
-    readonly property bool slots: root.pills_are_console && Style.console_views === "ps1"
+    readonly property bool slots: Style.workspace_art === "slots"
     // Super Mario World overworld: level dots on a dotted trail, app icons above them.
-    readonly property bool map: root.pills_are_console && Style.console_views === "snes"
+    readonly property bool map: Style.workspace_art === "map"
     // Pokemon party: a Poke Ball per workspace, the shown ones open into a party box under a cursor, the active app hopping.
     readonly property bool party: Style.workspace_art === "party"
     // GoldenEye watch dial: workspace ticks on one arc replace the pills.
@@ -197,13 +195,13 @@ Item {
 
                 readonly property bool is_empty: pill.toplevels.length === 0
                 // Pill art that draws its own shape; the style's pill geometry and overlays (diamond, square, ring, materia orb) would distort it when borrowed.
-                readonly property bool art: root.materia || root.doors || root.party
-                readonly property bool diamond: Style.bar_workspace_diamond && is_empty && !root.map && !pill.art && !root.slots
+                readonly property bool art: root.materia || root.doors || root.party || root.map || root.slots || pill.qblock || pill.ps2
+                readonly property bool diamond: Style.bar_workspace_diamond && is_empty && !pill.art
                 readonly property bool map: root.map
                 readonly property int glyph: map ? (modelData.focused ? 17 : 14) : root.icon_size
                 // Mario ? blocks; the focused workspace is the one already hit.
-                readonly property bool qblock: root.pills_are_console && Style.console_views === "nes"
-                readonly property bool ps2: root.pills_are_console && Style.console_views === "ps2"
+                readonly property bool qblock: Style.workspace_art === "qblock"
+                readonly property bool ps2: Style.workspace_art === "ps2"
                 readonly property var toplevels: WindowState.windows_on(modelData)
                 readonly property int cursor_gap: root.party && modelData.focused ? root.party_gap : 0
                 readonly property bool ball: root.party && (is_empty || !modelData.active)
@@ -227,7 +225,7 @@ Item {
                 scale: pill.diamond ? 0.75 : 1
                 antialiasing: pill.diamond || radius > 0
                 color: root.materia || root.doors || pill.qblock || pill.ps2 || root.slots || pill.map || root.party ? "transparent" : pill.dot ? "transparent" : modelData.focused ? Style.bar_workspace_focused : modelData.active ? Style.bar_workspace_active : Style.bar_workspace_idle
-                border.width: !pill.art && !root.slots && !pill.map && Style.bar_workspace_ring.a > 0 && !(Style.bar_workspace_diamond && !is_empty && modelData.focused) ? 1 : 0
+                border.width: !pill.art && Style.bar_workspace_ring.a > 0 && !(Style.bar_workspace_diamond && !is_empty && modelData.focused) ? 1 : 0
                 border.color: Style.bar_workspace_ring
 
                 Behavior on width {

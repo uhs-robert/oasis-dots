@@ -65,6 +65,7 @@ function overrides(t, ctx) {
         osd_layout: "glow",
         controller: "ps2",
         console_views: "ps2",
+        workspace_art: "ps2",
         toast_enter: "bloom",
         picker_skin: "scopeitem"
     };
