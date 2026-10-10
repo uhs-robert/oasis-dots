@@ -10,9 +10,9 @@ Item {
 
     property string text: ""
     // Light inner ring and outer ring; an alert box sets both to its warning colour.
-    property color inner: root.st.shade_3
-    property color outer: root.st.shade_2
-    property color text_color: root.st.shade_3
+    property color inner: Style.pixel_shades[3]
+    property color outer: Style.pixel_shades[2]
+    property color text_color: Style.pixel_shades[3]
     property color prompt_color: root.inner
     property int font_size: root.st.fs(-4)
     property bool rich: false
@@ -41,8 +41,8 @@ Item {
 
     PixelBox {
         anchors.fill: parent
-        fill: root.st.shade_0
-        rings: [root.outer, root.st.shade_0, root.inner]
+        fill: Style.pixel_shades[0]
+        rings: [root.outer, Style.pixel_shades[0], root.inner]
     }
 
     Text {

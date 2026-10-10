@@ -89,7 +89,7 @@ Item {
         visible: root.selected
         anchors.fill: parent
         fill: "transparent"
-        rings: [Style.shade_3, "transparent", Style.shade_3]
+        rings: [Style.pixel_shades[3], "transparent", Style.pixel_shades[3]]
     }
 
     Column {
@@ -106,14 +106,14 @@ Item {
                 visible: root.selected
                 anchors.verticalCenter: parent.verticalCenter
                 text: "▶"
-                color: Style.shade_3
+                color: Style.pixel_shades[3]
                 font.family: Style.font_family
                 font.pixelSize: Style.font_size
             }
 
             Text {
                 text: root.day ? (root.day_index === 0 ? "TODAY" : root.day.weekday.toUpperCase()) : ""
-                color: root.selected ? Style.shade_3 : Style.shade_2
+                color: root.selected ? Style.pixel_shades[3] : Style.pixel_shades[2]
                 font.family: Style.font_family
                 font.pixelSize: root.text_size
             }
@@ -128,8 +128,8 @@ Item {
 
             PixelBox {
                 anchors.fill: parent
-                fill: Style.shade_3
-                rings: root.selected ? [Style.shade_0, Style.shade_3, Style.shade_0] : ["transparent", Style.shade_2, Style.shade_0]
+                fill: Style.pixel_shades[3]
+                rings: root.selected ? [Style.pixel_shades[0], Style.pixel_shades[3], Style.pixel_shades[0]] : ["transparent", Style.pixel_shades[2], Style.pixel_shades[0]]
             }
 
             PixelSprite {
@@ -159,14 +159,14 @@ Item {
             PixelTemp {
                 anchors.horizontalCenter: parent.horizontalCenter
                 value: root.day ? root.day.max : 0
-                color: Style.shade_3
+                color: Style.pixel_shades[3]
                 font_size: root.hi_size
             }
 
             PixelTemp {
                 anchors.horizontalCenter: parent.horizontalCenter
                 value: root.day ? root.day.min : 0
-                color: Style.shade_2
+                color: Style.pixel_shades[2]
                 font_size: root.text_size
             }
         }
@@ -175,7 +175,7 @@ Item {
             id: pop_text
             anchors.horizontalCenter: parent.horizontalCenter
             text: root.day ? root.day.pop + "%" : ""
-            color: Style.shade_2
+            color: Style.pixel_shades[2]
             font.family: Style.font_family
             font.pixelSize: root.text_size
         }

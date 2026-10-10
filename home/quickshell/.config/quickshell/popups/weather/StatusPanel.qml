@@ -214,7 +214,7 @@ ColumnLayout {
                     visible: root.has
                     Layout.preferredWidth: 15
                     Layout.preferredHeight: 15
-                    color: root.has ? Materia.color(Style.materia, WeatherState.weather_color_keys, root.cur.code) : "transparent"
+                    color: root.has ? Materia.color(Style.materia_palette, WeatherState.weather_color_keys, root.cur.code) : "transparent"
                 }
 
                 Text {

@@ -402,14 +402,14 @@ Item {
             Text {
                 Layout.fillWidth: true
                 text: "HI LO °" + WeatherState.unit_symbol() + " · RAIN %"
-                color: Style.shade_2
+                color: Style.pixel_shades[2]
                 font.family: Style.font_family
                 font.pixelSize: Style.fs(-5)
             }
 
             Text {
                 text: Math.round(root.week_low) + "–" + Math.round(root.week_high) + "°" + WeatherState.unit_symbol()
-                color: Style.shade_2
+                color: Style.pixel_shades[2]
                 font.family: Style.font_family
                 font.pixelSize: Style.fs(-5)
             }

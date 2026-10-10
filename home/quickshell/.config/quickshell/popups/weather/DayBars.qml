@@ -58,7 +58,7 @@ ColumnLayout {
             anchors.horizontalCenter: parent.horizontalCenter
             width: root.thin_range ? 1 : parent.width * 0.3
             radius: Style.radius(2)
-            color: root.ladder ? (root.selected ? Style.selection_brackets : Style.text_primary) : !Style.range_line ? Style.chart_fill : root.selected ? Style.text_accent : Style.text_strong
+            color: root.ladder ? (root.selected ? (Style.selection_brackets.a > 0 ? Style.selection_brackets : Theme.theme_label) : Style.text_primary) : !Style.range_line ? Style.chart_fill : root.selected ? Style.text_accent : Style.text_strong
             border.width: Style.chart_outline.a > 0 && !root.ladder ? 1 : 0
             border.color: Style.chart_outline
             y: root.top_y

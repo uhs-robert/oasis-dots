@@ -57,8 +57,8 @@ ColumnLayout {
 
             PixelBox {
                 anchors.fill: parent
-                fill: Style.shade_0
-                rings: [Style.shade_2, Style.shade_0, Style.shade_3]
+                fill: Style.pixel_shades[0]
+                rings: [Style.pixel_shades[2], Style.pixel_shades[0], Style.pixel_shades[3]]
             }
 
             Image {
@@ -66,7 +66,7 @@ ColumnLayout {
                 anchors.margins: 6
                 fillMode: Image.Tile
                 smooth: false
-                source: "data:image/svg+xml;utf8," + encodeURIComponent("<svg xmlns='http://www.w3.org/2000/svg' width='4' height='4'><rect width='1' height='1' fill='" + Style.shade_1 + "'/></svg>")
+                source: "data:image/svg+xml;utf8," + encodeURIComponent("<svg xmlns='http://www.w3.org/2000/svg' width='4' height='4'><rect width='1' height='1' fill='" + Style.pixel_shades[1] + "'/></svg>")
             }
 
             PixelSprite {
@@ -86,7 +86,7 @@ ColumnLayout {
 
             Text {
                 text: "No." + (root.has ? String(root.cur.code).padStart(3, "0") : "---")
-                color: Style.shade_2
+                color: Style.pixel_shades[2]
                 font.family: Style.title_font_family
                 font.pixelSize: 8
             }
@@ -96,7 +96,7 @@ ColumnLayout {
                 Layout.minimumWidth: 0
                 elide: Text.ElideRight
                 text: root.name
-                color: root.has || WeatherState.loading ? Style.shade_3 : Theme.warning
+                color: root.has || WeatherState.loading ? Style.pixel_shades[3] : Theme.warning
                 font.family: Style.title_font_family
                 font.pixelSize: name_metrics.advanceWidth(root.name) <= root.width - root.box - 12 ? 16 : 8
             }
@@ -105,7 +105,7 @@ ColumnLayout {
                 Layout.fillWidth: true
                 Layout.topMargin: 2
                 Layout.preferredHeight: 2
-                color: Style.shade_2
+                color: Style.pixel_shades[2]
             }
 
             GridLayout {
@@ -117,7 +117,7 @@ ColumnLayout {
 
                 Text {
                     text: "TEMP"
-                    color: Style.shade_2
+                    color: Style.pixel_shades[2]
                     font.family: Style.font_family
                     font.pixelSize: root.stat_px
                 }
@@ -128,14 +128,14 @@ ColumnLayout {
                     PixelTemp {
                         value: root.has ? root.cur.temp : 0
                         unit: WeatherState.unit_symbol()
-                        color: Style.shade_3
+                        color: Style.pixel_shades[3]
                         font_size: root.stat_px
                     }
 
                     Text {
                         visible: root.roomy
                         text: "feels"
-                        color: Style.shade_3
+                        color: Style.pixel_shades[3]
                         font.family: Style.font_family
                         font.pixelSize: root.stat_px
                     }
@@ -144,28 +144,28 @@ ColumnLayout {
                         visible: root.roomy
                         value: root.has ? root.cur.feels : 0
                         unit: WeatherState.unit_symbol()
-                        color: Style.shade_3
+                        color: Style.pixel_shades[3]
                         font_size: root.stat_px
                     }
                 }
 
                 Text {
                     text: "HUM"
-                    color: Style.shade_2
+                    color: Style.pixel_shades[2]
                     font.family: Style.font_family
                     font.pixelSize: root.stat_px
                 }
 
                 Text {
                     text: root.has ? root.cur.humidity + "%" : ""
-                    color: Style.shade_3
+                    color: Style.pixel_shades[3]
                     font.family: Style.font_family
                     font.pixelSize: root.stat_px
                 }
 
                 Text {
                     text: "WIND"
-                    color: Style.shade_2
+                    color: Style.pixel_shades[2]
                     font.family: Style.font_family
                     font.pixelSize: root.stat_px
                 }
@@ -174,7 +174,7 @@ ColumnLayout {
                     Layout.fillWidth: true
                     elide: Text.ElideRight
                     text: root.has ? Math.round(root.cur.wind_speed) + " " + WeatherState.wind_unit() + " " + WeatherState.wind_dir_label(root.cur.wind_dir) : ""
-                    color: Style.shade_3
+                    color: Style.pixel_shades[3]
                     font.family: Style.font_family
                     font.pixelSize: root.stat_px
                 }

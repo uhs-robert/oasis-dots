@@ -24,6 +24,12 @@ Singleton {
     // Workspace indicator arts any style can borrow (Theme options); "" is the style's own pills.
     readonly property var workspace_arts: ["", "dial", "materia", "doors", "constellation", "buffers", "party"]
     readonly property var workspace_art_labels: ({ "": "Pills", dial: "Watch dial", materia: "Materia", doors: "Doors", constellation: "Constellation", buffers: "Buffers", party: "Party" })
+    // OSD layouts any style can borrow (Theme options); "" is the shared OSD. "watch" also brings the dial header to the Volume and Battery popups, which read the same token.
+    readonly property var osd_layouts: ["", "ring", "hud", "rpg", "alert", "glow", "horizon", "tile", "watch"]
+    readonly property var osd_layout_labels: ({ "": "Shared", ring: "Ring", hud: "HUD", rpg: "RPG", alert: "Alert mark", glow: "Glow ring", horizon: "Horizon", tile: "Tile", watch: "Watch dial" })
+    // Weather layouts any style can borrow; the header token picks the header and every Daily view that goes with it, so one choice cannot mismatch. watch, scan, battle and hev are left out: they also reword the alert banner and the Alerts tab in their style's fiction.
+    readonly property var weather_layouts: ["", "ring", "scope", "memcard", "mode7", "wttr", "weatherstar", "towers", "pokedex", "status", "oasis", "hero", "lsp"]
+    readonly property var weather_layout_labels: ({ "": "Shared", ring: "Ring", scope: "Scope", memcard: "Memory card", mode7: "Mode 7", wttr: "wttr.in", weatherstar: "Weather Star", towers: "Towers", pokedex: "Pokedex", status: "Status panel", oasis: "Oasis", hero: "Hero", lsp: "LSP", watch: "Watch", battle: "Battle", scan: "Scan visor", hev: "HEV" })
     readonly property var labels: ({ crt: "CRT", nes: "NES", snes: "SNES", gameboy: "Gameboy", goldeneye: "Goldeneye", ps1: "PSX", ff7: "FFVII", ps2: "PS2", halflife: "Half Life", tie: "Tie Fighter", modern: "Modern" })
 
     FileView {
@@ -110,8 +116,17 @@ Singleton {
     // The four pixel-art shades (Pokemon picker skin, party workspaces): the style's own, else the host palette dark to light (the other shade consumers treat transparent as off, so the token itself stays unset).
     readonly property var pixel_shades: root.shade_0.a > 0 ? [root.shade_0, root.shade_1, root.shade_2, root.shade_3] : [Theme.bg_mantle, Theme.fg_muted, Theme.fg_dim, Theme.fg_strong]
 
-    // Materia workspace slot colours by name: the style's own, else the palette (the other materia consumers treat a missing role as "no orb", so the token itself stays empty).
-    readonly property var materia_days: root.materia.days || ({ red: Theme.theme_label, green: Theme.ok, purple: Theme.magenta, blue: Theme.info, yellow: Theme.theme_secondary })
+    // Materia colours the workspace slots and the weather status panel read: the style's own roles over palette ones (the other materia consumers treat a missing role as "no orb", so the token itself stays empty).
+    readonly property var materia_palette: Object.assign({
+        alert: Theme.theme_label,
+        clear: Theme.theme_secondary,
+        cloud: Theme.theme_primary_light,
+        rain: Theme.info,
+        storm: Theme.theme_label,
+        snow: Theme.fg_strong,
+        fog: Theme.fg_dim,
+        days: { red: Theme.theme_label, green: Theme.ok, purple: Theme.magenta, blue: Theme.info, yellow: Theme.theme_secondary }
+    }, root.materia)
 
     // Toggled by the open popup's blink timer; the caret is solid whenever it rests true.
     property bool caret_phase: true
@@ -470,6 +485,11 @@ Singleton {
         return Object.keys(seen).sort();
     }
 
+    // Watch, battle, scan and hev reword the alert banner in their style's fiction, so only that style offers its own.
+    function with_native(choices, native) {
+        return !native || choices.indexOf(native) >= 0 ? choices : choices.concat([native]);
+    }
+
     function settings_for(style_name) {
         const b = root.styles[style_name];
         if (!b) return [];
@@ -489,6 +509,8 @@ Singleton {
         if (b.watch_classic) out.push({ key: "watch_colors", label: "Watch colours", type: "choice", default: "Theme", choices: ["Theme", "Classic"] });
         out.push({ key: "picker_skin", label: "Picker skin", type: "choice", default: b.picker_skin || "", choices: root.picker_skins, labels: root.picker_skin_labels });
         out.push({ key: "overview_skin", label: "Overview skin", type: "choice", default: b.overview_skin || "", choices: root.overview_skins, labels: root.overview_skin_labels });
+        out.push({ key: "osd_layout", label: "OSD layout", type: "choice", default: b.osd_layout || "", choices: root.osd_layouts, labels: root.osd_layout_labels });
+        out.push({ key: "weather_header", label: "Weather layout", type: "choice", default: b.weather_header || "", choices: root.with_native(root.weather_layouts, b.weather_header), labels: root.weather_layout_labels });
         out.push({ key: "workspace_art", label: "Workspaces", type: "choice", default: b.workspace_art || "", choices: root.workspace_arts, labels: root.workspace_art_labels });
         out.push({ key: "font_family", label: "Font", type: "choice", default: b.font_family, choices: root.font_choices });
         out.push({ key: "bar_font_family", label: "Bar font", type: "choice", default: b.bar_font_family, choices: root.font_choices });
