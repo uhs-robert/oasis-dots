@@ -256,10 +256,10 @@ local WINDOW_SHARE = 1
 --- @param share_type integer
 --- @param name string
 local function apply_share_target(share_type, name)
-  if share_type ~= WINDOW_SHARE then
-    share_monitor(name)
-  elseif not thumbnails_open() then
+  if share_type == WINDOW_SHARE then
     tag_shared_window(name)
+  else
+    share_monitor(name)
   end
 end
 
@@ -267,15 +267,19 @@ end
 --- Ignores `active = false` while live: that is a gap between frames, not the end of the share.
 local set_screenshare_handler = function()
   hl.on("screenshare.state", function(active, share_type, name)
+    -- Filtered before recording: the picker hides as the share starts, while its thumbnails' sessions
+    -- still count as sharing for another 500 ms.
+    if share_type == WINDOW_SHARE and thumbnails_open() then return end
     sharing_targets[share_type .. ":" .. name] = active and { share_type = share_type, name = name } or nil
     if portal_share_live and active then apply_share_target(share_type, name) end
   end)
 end
 
---- Starts or ends the share's effects; repeating the current state does nothing, so resends cause no fade.
+--- Starts or ends the share's effects; repeating true does nothing, so resends cause no fade.
 --- @param on boolean
 local function set_live(on)
-  if on == portal_share_live then return end
+  -- A repeated false still cleans up: a share that ended during a config reload leaves its windows tagged.
+  if on and portal_share_live then return end
   portal_share_live = on
   if on then
     set_browser_opacity("1.0 1.0 override")
