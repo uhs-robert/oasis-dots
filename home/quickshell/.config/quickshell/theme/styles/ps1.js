@@ -5,6 +5,7 @@ function overrides(t, ctx) {
         controller: "ps1",
         toast_enter: "wobble",
         console_views: "ps1",
+        workspace_art: "slots",
         osd_layout: "alert",
         wait_anim: "alert",
         done_anim: "pixel",
