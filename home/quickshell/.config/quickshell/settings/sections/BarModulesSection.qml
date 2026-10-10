@@ -53,6 +53,7 @@ SettingsPane {
             network: "Network status; opens the network popup.",
             weather: "Current weather; opens the forecast popup.",
             keeptabs: "AI agent sessions busy, done or waiting. Hidden while none run.",
+            cmdstatus: "Status pills from your own commands in custom/command-status.json. Hidden without any.",
             updates: "Count of pending package updates.",
             voxtype: "Dictation status.",
             recording: "A chip shown while the screen is recording.",

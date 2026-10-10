@@ -200,6 +200,7 @@ ShellRoot {
     PowerIpc {}
     ScreenshotIpc {}
     ZoomIpc {}
+    CommandStatusIpc {}
     LockPreview {
         id: lock_preview
     }
