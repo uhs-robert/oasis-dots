@@ -35,6 +35,8 @@ guard_live_bar() {
 
 # Launch through Hyprland so qs does not inherit this shell's TMUX environment.
 launch() {
+  # A stale HYPRLAND_INSTANCE_SIGNATURE would let pkill stop the bar and the relaunch below fail.
+  hyprctl version >/dev/null 2>&1 || die "hyprctl cannot reach Hyprland (stale HYPRLAND_INSTANCE_SIGNATURE?); not stopping qs"
   pkill -x qs || true
   for _ in $(seq 20); do pgrep -x qs >/dev/null || break; sleep 0.2; done
   hyprctl dispatch "hl.dsp.exec_cmd('$1')" >/dev/null
