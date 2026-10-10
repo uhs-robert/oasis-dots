@@ -564,6 +564,17 @@ Singleton {
         return true;
     }
 
+    function reset_option(key) {
+        const mine = Object.assign({}, root.theme_values[root.saved_name] || {});
+        if (!(key in mine)) return;
+        delete mine[key];
+        const all = Object.assign({}, root.theme_values);
+        if (Object.keys(mine).length > 0) all[root.saved_name] = mine;
+        else delete all[root.saved_name];
+        root.theme_values = all;
+        root.save_options();
+    }
+
     function reset_options() {
         const all = Object.assign({}, root.theme_values);
         delete all[root.saved_name];
