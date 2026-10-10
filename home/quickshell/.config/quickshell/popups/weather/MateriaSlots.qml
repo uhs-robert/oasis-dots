@@ -179,7 +179,7 @@ Item {
                     width: root.socket_size * 0.67
                     height: width
                     glow: false
-                    color: (Style.materia.days || {})[root.orb_colors[slot.index]] || "transparent"
+                    color: Style.materia_palette.days[root.orb_colors[slot.index]] || "transparent"
                 }
             }
 

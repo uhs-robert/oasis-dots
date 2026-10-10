@@ -13,7 +13,7 @@ Item {
     property int more: Math.max(0, WeatherState.alerts.length - 1)
     signal clicked()
 
-    readonly property color orb_color: Style.materia.alert !== undefined ? Style.materia.alert : Theme.theme_label
+    readonly property color orb_color: Style.materia_palette.alert
 
     implicitHeight: body.implicitHeight + 12
 

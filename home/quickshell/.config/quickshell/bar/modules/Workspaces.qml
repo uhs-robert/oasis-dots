@@ -497,7 +497,7 @@ Item {
                                 anchors.fill: parent
                                 lit: pill.modelData.focused
                                 raised: pill.modelData.active || pill_hover.hovered
-                                color: visible ? Style.materia_days[Materia.slot_names(pill.toplevels.map(t => root.class_of(t)))[icon_item.index]] || "transparent" : "transparent"
+                                color: visible ? Style.materia_palette.days[Materia.slot_names(pill.toplevels.map(t => root.class_of(t)))[icon_item.index]] || "transparent" : "transparent"
                             }
                         }
                     }

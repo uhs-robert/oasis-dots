@@ -114,7 +114,7 @@ ColumnLayout {
         border.width: 1
         border.color: Qt.alpha(Theme.theme_label, 0.24)
         gradient: Gradient {
-            GradientStop { position: 0; color: Qt.tint(Style.frame_shade, Qt.alpha(Theme.theme_label, 0.15)) }
+            GradientStop { position: 0; color: Qt.tint(Style.frame_shade.a > 0 ? Style.frame_shade : Style.frame_color, Qt.alpha(Theme.theme_label, 0.15)) }
             GradientStop { position: 1; color: Qt.tint(Style.frame_color, Qt.alpha(Theme.theme_label, 0.09)) }
         }
 
