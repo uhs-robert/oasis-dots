@@ -1,12 +1,14 @@
 -- home/hypr/.config/hypr/lib/scripts.lua
 
 local HYPR = "~/.config/hypr/scripts/"
+local BIN = "~/.local/bin/"
 
 --- @class Scripts
 local Scripts = {
   -- stylua: ignore start
   screenshot            = HYPR    .. "screenshot.sh",
   voxtype               = HYPR    .. "voxtype-with-media-pause.sh",
+  voxcmd_listen         = BIN     .. "voxcmd listen",
   focus_media_player    = HYPR    .. "focus-media-player.sh",
   focus_toast_or_float  = HYPR    .. "focus-toast-or-float.sh",
   focus_topgrade        = HYPR    .. "focus-topgrade.sh",

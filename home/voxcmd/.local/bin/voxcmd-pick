@@ -1,0 +1,38 @@
+#!/usr/bin/env bash
+# voxcmd-pick: blocking choice picker for shell callers.
+# Usage: voxcmd-pick <label> <choices-json>
+# Choices are a JSON array of strings or {id, label} objects. Prints the picked id (the string itself for
+# plain strings) and exits 0; exits 1 on cancel. Uses the Quickshell "choices" picker when the bar is running,
+# else rofi -dmenu.
+set -euo pipefail
+
+label="${1:?usage: voxcmd-pick <label> <choices-json>}"
+choices_json="${2:?usage: voxcmd-pick <label> <choices-json>}"
+# Give up eventually so a bar that dies mid-pick cannot leave callers blocked forever.
+pick_timeout="${VOXCMD_PICK_TIMEOUT:-300}"
+
+choices=$(jq -c 'map(if type == "string" then {id: ., label: .} else {id: (.id | tostring), label: (.label // .id | tostring)} end)' <<<"$choices_json")
+
+work_dir=$(mktemp -d "${XDG_RUNTIME_DIR:-/tmp}/voxcmd-pick.XXXXXX")
+trap 'rm -rf "$work_dir"' EXIT
+result_fifo="$work_dir/result"
+spec="$work_dir/spec.json"
+labels="$work_dir/labels"
+mkfifo "$result_fifo"
+jq -r '.[].label' <<<"$choices" >"$labels"
+# No id: ChoicesProvider then only writes the pick to result_path and skips the Hyprland prompt callback.
+jq -n --arg label "$label" --arg result_path "$result_fifo" --argjson choices "$choices" \
+  '{label: $label, result_path: $result_path, choices: [$choices[].label]}' >"$spec"
+
+# Opening the FIFO for writing happens before rofi runs, so even a missing rofi closes it and reads as a cancel.
+printf -v rofi_fallback 'rofi -dmenu -i -p %q < %q > %q' "$label" "$labels" "$result_fifo"
+qs_picker="${XDG_CONFIG_HOME:-$HOME/.config}/hypr/scripts/qs-picker"
+if [ -x "$qs_picker" ]; then
+  "$qs_picker" choices "$rofi_fallback" "$spec" &
+else
+  sh -c "$rofi_fallback" &
+fi
+
+picked=$(timeout "$pick_timeout" cat "$result_fifo" || true)
+[ -n "$picked" ] || exit 1
+jq -r --arg picked "$picked" 'first(.[] | select(.label == $picked) | .id) // empty' <<<"$choices" | grep . || exit 1
