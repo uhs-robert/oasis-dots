@@ -38,12 +38,13 @@ Item {
         return e.filter(g => root.own_keys.indexOf(g.key) < 0);
     }
 
+    readonly property int cap_ring: KeyHints.cap_ring_width(root.st)
     readonly property real key_column: {
-        if (root.st.controller !== "") return Math.min(list.width * 0.5, Math.max(key_metrics.height + 2, measure.implicitWidth));
-        const h = key_metrics.height + 2;
+        if (root.st.controller !== "") return Math.min(list.width * 0.5, Math.max(key_metrics.height + root.cap_ring * 2, measure.implicitWidth));
+        const h = key_metrics.height + root.cap_ring * 2;
         let w = 0;
         for (const g of root.own_entries.concat(root.general_entries)) w = Math.max(w, key_metrics.advanceWidth(KeyHints.with_glyphs(g.key)));
-        return Math.min(list.width * 0.45, Math.max(h, w + 8));
+        return Math.min(list.width * 0.45, Math.max(h, w + 6 + root.cap_ring * 2));
     }
     // Controller rows share the tallest badge's height so button and key rows keep one pitch.
     readonly property real pad_row_height: {
@@ -96,8 +97,8 @@ Item {
 
     FontMetrics {
         id: key_metrics
-        font.family: root.st.mono_font
-        font.pixelSize: root.st.fs(-5)
+        font.family: KeyHints.cap_font_family(root.st)
+        font.pixelSize: KeyHints.cap_font_px(root.st)
         font.bold: root.st.mono_font === root.st.font_family
     }
 

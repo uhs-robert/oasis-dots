@@ -27,6 +27,8 @@ function overrides(t, ctx) {
             // Silkscreen and Press Start 2P sit on an 8px grid; 16 is Silkscreen's 2x size.
             font_family: "Silkscreen",
             font_size: 16,
+            // Footer keys match the key caps' 16px instead of fs(-4), which falls off the grid.
+            footer_size: 16,
             title_font_family: "Press Start 2P",
             number_font: "Press Start 2P",
             mono_font: "Press Start 2P",

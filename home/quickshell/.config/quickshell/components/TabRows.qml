@@ -3,6 +3,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Layouts
 import "../theme"
+import "KeyHints.js" as KeyHints
 
 // A row of MenuTabs sized to their labels that wraps into balanced rows when one row cannot hold them; `chips` centers pill chips instead.
 ColumnLayout {
@@ -39,13 +40,14 @@ ColumnLayout {
 
     FontMetrics {
         id: key_metrics
-        font.family: root.st.mono_font
-        font.pixelSize: root.st.fs(-5)
+        font.family: KeyHints.cap_font_family(root.st)
+        font.pixelSize: KeyHints.cap_font_px(root.st)
         font.bold: root.st.mono_font === root.st.font_family
     }
 
+    readonly property int cap_ring: KeyHints.cap_ring_width(root.st)
     // Mirrors MenuTab and KeyBadge sizing so rows can be split before the tabs exist.
-    readonly property real key_space: root.st.tab_keys && !root.chips ? Math.max(key_metrics.height + 2, key_metrics.advanceWidth("9") + 8) + 6 : 0
+    readonly property real key_space: root.st.tab_keys && !root.chips ? Math.max(key_metrics.height + root.cap_ring * 2, key_metrics.advanceWidth("9") + 6 + root.cap_ring * 2) + 6 : 0
 
     readonly property real bracket_space: root.st.tab_brackets.a > 0 && !root.chips ? label_metrics.advanceWidth("[]") + 4 : 0
 
