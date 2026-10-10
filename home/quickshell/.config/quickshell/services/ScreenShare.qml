@@ -8,7 +8,8 @@ import Quickshell.Services.Pipewire
 Scope {
     id: root
 
-    readonly property bool live: Pipewire.nodes.values.some(n => n.name === "xdg-desktop-portal-hyprland")
+    // wf-recorder captures without the portal, so a recording counts as a share of its own.
+    readonly property bool live: Screenshot.recording || Pipewire.nodes.values.some(n => n.name === "xdg-desktop-portal-hyprland")
 
     function send(on) {
         Hyprland.dispatch("ScreenShare.set_live(" + on + ")");
@@ -16,11 +17,8 @@ Scope {
 
     onLiveChanged: root.send(root.live)
 
-    // A reload rebuilds Hyprland's rules and forgets the state; Hyprland ignores a repeat of what it has.
+    // A reload rebuilds Hyprland's rules and forgets the state; Hyprland ignores a repeat of true. No teardown on destruction: a Quickshell reload would land it after the new generation's resend, and a quit is cleaned up here on the next start.
     Component.onCompleted: root.send(root.live)
-
-    // Detached because the Hyprland socket may be gone by the time teardown runs. Leaving the share's rules on after the shell quits would stick until the next reload.
-    Component.onDestruction: Quickshell.execDetached(["hyprctl", "dispatch", "ScreenShare.set_live(false)"])
 
     Connections {
         target: Hyprland
