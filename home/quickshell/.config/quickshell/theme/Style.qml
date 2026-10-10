@@ -18,6 +18,9 @@ Singleton {
     // Picker skins any style can borrow (Theme options), drawn in the borrowing style's palette and fonts; "" is the shared look.
     readonly property var picker_skins: ["", "goldeneye", "nvimfloat", "scanvisor", "pokemon", "scope", "duckhunt", "materia", "tmux", "tvosd", "jrpg", "tiecomp", "scopeitem"]
     readonly property var picker_skin_labels: ({ "": "Shared", goldeneye: "GoldenEye", nvimfloat: "Neovim float", scanvisor: "Scan visor", pokemon: "Pokemon", scope: "Scope", duckhunt: "Duck Hunt", materia: "Materia", tmux: "Tmux", tvosd: "TV OSD", jrpg: "JRPG", tiecomp: "TIE computer", scopeitem: "Scope item" })
+    // Overview treatments any style can borrow (Theme options); "" is the shared look.
+    readonly property var overview_skins: ["", "goldeneye", "scope"]
+    readonly property var overview_skin_labels: ({ "": "Shared", goldeneye: "GoldenEye", scope: "Scope" })
     readonly property var labels: ({ crt: "CRT", nes: "NES", snes: "SNES", gameboy: "Gameboy", goldeneye: "Goldeneye", ps1: "PSX", ff7: "FFVII", ps2: "PS2", halflife: "Half Life", tie: "Tie Fighter", modern: "Modern" })
 
     FileView {
@@ -144,8 +147,7 @@ Singleton {
     readonly property string frame_engraving: root.active.frame_engraving
     readonly property bool frame_watch: root.active.frame_watch
     readonly property string link_style: root.active.link_style
-    readonly property bool ammo_counter: root.active.ammo_counter
-    readonly property bool night_vision: root.active.night_vision
+    readonly property string overview_skin: root.active.overview_skin
     readonly property bool toast_mission: root.active.toast_mission
     readonly property bool track_bars: root.active.track_bars
     readonly property string open_fx: root.active.open_fx
@@ -480,6 +482,7 @@ Singleton {
         if (b.controller) out.push({ key: "controller_glyphs", label: "Controller glyphs", type: "choice", default: b.controller_glyphs, choices: ["all", "labeled", "dpad", "off"], labels: { all: "All", labeled: "Labeled", dpad: "D-pad", off: "Off" } });
         if (b.watch_classic) out.push({ key: "watch_colors", label: "Watch colours", type: "choice", default: "Theme", choices: ["Theme", "Classic"] });
         out.push({ key: "picker_skin", label: "Picker skin", type: "choice", default: b.picker_skin || "", choices: root.picker_skins, labels: root.picker_skin_labels });
+        out.push({ key: "overview_skin", label: "Overview skin", type: "choice", default: b.overview_skin || "", choices: root.overview_skins, labels: root.overview_skin_labels });
         out.push({ key: "font_family", label: "Font", type: "choice", default: b.font_family, choices: root.font_choices });
         out.push({ key: "bar_font_family", label: "Bar font", type: "choice", default: b.bar_font_family, choices: root.font_choices });
         out.push({ key: "font_size", label: "Text size", type: "number", default: b.font_size, min: 8, max: 32, step: 1 });

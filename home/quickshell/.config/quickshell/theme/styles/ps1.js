@@ -10,6 +10,7 @@ function overrides(t, ctx) {
         done_anim: "pixel",
         weather_header: "memcard",
         picker_skin: "scope",
+        overview_skin: "scope",
         picker_hud: Qt.tint(t.green, Qt.alpha(t.theme_secondary, 0.35)),
         // Muted text brightened; the shaded, dithered frame swallows the theme greys.
         text_muted: Qt.tint(t.fg_dim, Qt.alpha(t.fg_core, 0.35)),
