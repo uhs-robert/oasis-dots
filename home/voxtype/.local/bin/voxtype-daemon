@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+# voxtype/.local/bin/voxtype-daemon
+# Starts the voxtype daemon with config.toml's initial prompt plus every prompt.d/*.txt appended.
+# prompt.d holds machine-local vocabulary (client names and the like) that must stay out of the public config.
+# Whisper keeps only the last ~224 prompt tokens, so appended words survive and the base prompt is trimmed from the front.
+shopt -s nullglob
+prompt_files=("${XDG_CONFIG_HOME:-$HOME/.config}/voxtype/prompt.d/"*.txt)
+((${#prompt_files[@]})) || exec voxtype daemon "$@"
+
+base_prompt="$(voxtype config get whisper.initial_prompt)"
+# awk 1 ends every file with a newline, so a file without one cannot glue its last word to the next file's first.
+local_vocabulary="$(awk 1 "${prompt_files[@]}" | tr -s '[:space:]' ' ')"
+exec voxtype --initial-prompt "$base_prompt ${local_vocabulary% }" daemon "$@"
