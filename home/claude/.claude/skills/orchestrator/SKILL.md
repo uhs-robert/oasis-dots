@@ -1,7 +1,7 @@
 ---
 
 name: orchestrator
-description: Orchestrate implementation work from investigation through pull request. Work in a git worktree. Work from an existing PR or GitHub issue when provided, or create an issue first when given only a repository or working from the current repository. Delegate implementation to sub-agents, independently review the result, obtain an external Codex review, resolve valid findings efficiently, and deliver a PR ready for human review.
+description: Orchestrate implementation work from investigation through pull request. Work in a git worktree. Work from an existing PR or GitHub issue when provided, or create an issue first when given only a repository or working from the current repository. Delegate implementation to sub-agents, independently review the result, obtain an external review (Codex, or Opus when Codex is unavailable), resolve valid findings efficiently, and deliver a PR ready for human review.
 argument-hint: "[issue-pr-or-repo]"
 arguments:
 
@@ -53,9 +53,10 @@ The target may be an issue or PR URL/number, repository URL/name, or omitted.
 6. Independently review the resulting diff.
    - Verify correctness, acceptance criteria, regressions, architecture, scope, DRYness, edge cases, tests, and repository conventions.
 
-7. Have Codex independently review the actual issue and diff for bugs, regressions, missed requirements, unnecessary complexity, and weak tests.
-   - From the worktree, run `~/.claude/skills/orchestrator/codex-review.sh <base> <scratch dir outside the worktree>` as one background Bash call. It handles stall detection, timeouts, and retries.
-   - Exit 0 → read the review path it prints. Exit 2 → continue without Codex and state that in the final report.
+7. Get an external review of the actual issue and diff for bugs, regressions, missed requirements, unnecessary complexity, and weak tests. Codex first; an Opus subagent when Codex is unavailable.
+   - From the worktree, run `~/.claude/skills/orchestrator/codex-review.sh <base> <scratch dir outside the worktree>` as one background Bash call. It handles stall detection, timeouts, and retries, and gives up at once on a usage limit.
+   - Exit 0 → read the review path it prints.
+   - Exit 2 → spawn a read-only `general-purpose` agent with `model: opus` as the external reviewer. Give it the worktree path, the issue, how to get the diff (`git diff <base>...HEAD`), the root cause and design, and the same review dimensions. Name the risky areas to probe (ordering and races, lifecycle and reload paths, behavior the change silently dropped). Tell it not to edit, commit, push or comment, and require findings ranked by severity, each with file:line, a concrete failure scenario, confidence (confirmed/plausible) and a suggested fix. In the final report, name which reviewer ran and quote the line Codex printed after `codex unavailable:`.
 
 8. Evaluate every material review finding yourself. Classify it as valid, partially valid, invalid, or out of scope. Do not blindly apply reviewer suggestions.
 
@@ -65,7 +66,7 @@ The target may be an issue or PR URL/number, repository URL/name, or omitted.
    - substantial → Sonnet
    - Sonnet fails after a corrected retry, or needs subtle correctness reasoning → Opus
 
-   Re-run Codex only if remediation materially changes the implementation.
+   Re-run the external review (Codex, or the Opus fallback) only if remediation materially changes the implementation.
 
 10. Final validation:
     - relevant tests/checks pass

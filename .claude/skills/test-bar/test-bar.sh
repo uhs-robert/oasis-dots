@@ -118,13 +118,20 @@ hypr_swap() {
     return 0
   fi
   local orig errors live
+  # hypr_point reloads through hyprctl; a stale HYPRLAND_INSTANCE_SIGNATURE would fail it after the link moved.
+  hyprctl version >/dev/null 2>&1 || die "hyprctl cannot reach Hyprland (stale HYPRLAND_INSTANCE_SIGNATURE?); hypr link untouched"
   orig=$(readlink "$hypr_link") || die "$hypr_link is not a symlink; refusing the hypr swap"
   hypr_copy_ignored "$dir"
   require_machine_profile "$dir"
   [[ -f $hypr_orig ]] && orig=$(<"$hypr_orig")
+  # Recording a test bar as the original would make restore point back at it, and remove delete what Hyprland reads.
+  [[ $orig != "$bars"/* ]] || die "$hypr_link already points into test-bars ($orig); point it back at the stowed config first"
   # Worktrees have no repos/, and hyprvim and the theme symlinks resolve through it.
   live=$(cd "$(dirname "$hypr_link")" && git -C "$orig" rev-parse --show-toplevel) || die "cannot find the live checkout behind $orig"
   [[ -e $dir/repos ]] || ln -s "$live/repos" "$dir/repos"
+  # Recorded before the link moves, so a failure past this point still leaves restore able to undo it.
+  echo "$orig" >"$hypr_orig"
+  echo "$name" >"$hypr_bar"
   hypr_point "$dir/$hypr_rel"
   errors=$(hypr_errors)
   if [[ -n $errors ]]; then
@@ -133,8 +140,6 @@ hypr_swap() {
     echo "$errors" >&2
     die "Hyprland reported config errors on the test bar (above); hypr link restored"
   fi
-  echo "$orig" >"$hypr_orig"
-  echo "$name" >"$hypr_bar"
   echo "hypr: swapped"
   restart_rotator
 }

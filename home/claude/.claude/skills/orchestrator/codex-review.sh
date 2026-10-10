@@ -32,6 +32,17 @@ fi
 mkdir -p "$outdir" || exit 2
 reason=""
 
+# Codex exits 1 for every failure; the cause is only in its event stream or stderr.
+failure_message() {
+  local dir=$1 msg=""
+  if command -v jq >/dev/null 2>&1; then
+    msg=$(jq -r 'select(.type == "turn.failed" or .type == "error") | .error.message // .message // empty' \
+      "$dir/events.jsonl" 2>/dev/null | tail -n 1)
+  fi
+  [ -n "$msg" ] || msg=$(tail -n 1 "$dir/stderr.log" 2>/dev/null)
+  printf '%s' "$msg"
+}
+
 run_attempt() {
   local dir=$1 start last_size=0 size last_growth now
   mkdir -p "$dir"
@@ -51,6 +62,9 @@ run_attempt() {
       pid=""
       if [ "$code" -ne 0 ]; then
         reason="exit $code"
+        local msg
+        msg=$(failure_message "$dir")
+        [ -z "$msg" ] || reason="$reason: $msg"
         return 1
       fi
       if [ ! -s "$dir/review.md" ]; then
@@ -88,6 +102,8 @@ for n in $(seq 1 "$max_attempts"); do
     exit 0
   fi
   echo "codex review: attempt $n/$max_attempts failed ($reason)" >&2
+  # Retrying cannot outlast a usage limit; it resets hours later.
+  case $reason in *"usage limit"*) break ;; esac
 done
 
 echo "codex unavailable: $reason"
