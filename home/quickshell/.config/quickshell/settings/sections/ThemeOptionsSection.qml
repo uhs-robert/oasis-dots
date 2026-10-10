@@ -7,8 +7,8 @@ import ".."
 RowsSection {
     id: root
 
-    section_keys: "r reset style"
-    footer_hint: "j/k move · H/L change · r reset style · h/Esc sections · q close"
+    section_keys: "r reset value · R reset all"
+    footer_hint: "j/k move · H/L change · r reset value · R reset all · h/Esc sections · q close"
     rows: Style.settings.map(def => root.row_for(def))
 
     function number_values(def) {
@@ -58,7 +58,8 @@ RowsSection {
 
     onExtra_key: event => {
         if (event.key !== Qt.Key_R) return;
-        Style.reset_options();
+        if (event.modifiers & Qt.ShiftModifier) Style.reset_options();
+        else if (Style.settings[root.cursor]) Style.reset_option(Style.settings[root.cursor].key);
         event.accepted = true;
     }
 
