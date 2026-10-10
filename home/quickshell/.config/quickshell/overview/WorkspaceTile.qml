@@ -116,7 +116,7 @@ Item {
                     anchors.fill: parent
                     anchors.margins: win.border.width
                     toplevel: win.modelData.toplevel
-                    tint: Style.night_vision && !win.is_selected
+                    tint: Style.overview_skin === "goldeneye" && !win.is_selected
                     active: root.shown
                     live: root.live && win.index < root.live_cap
                     icon_size: Math.min(width, height) * 0.45

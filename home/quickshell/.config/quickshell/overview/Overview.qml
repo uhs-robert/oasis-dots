@@ -1004,7 +1004,7 @@ OverviewBase {
     }
 
     AmmoCounter {
-        visible: Style.ammo_counter && root.window_total > 0
+        visible: Style.overview_skin === "goldeneye" && root.window_total > 0
         anchors.right: parent.right
         anchors.bottom: parent.bottom
         anchors.margins: 12

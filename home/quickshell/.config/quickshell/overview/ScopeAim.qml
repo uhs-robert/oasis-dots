@@ -26,7 +26,7 @@ Item {
     readonly property real cx: Math.round(root.tx + root.tw / 2)
     readonly property real cy: Math.round(root.ty + root.th / 2)
 
-    visible: Style.picker_skin === "scope" && !!root.aim
+    visible: Style.overview_skin === "scope" && !!root.aim
 
     Behavior on tx {
         enabled: root.glide

@@ -25,7 +25,7 @@ Item {
     property int lock_step: root.lock_steps.length - 1
     readonly property real grow: root.lock_steps[root.lock_step]
 
-    visible: Style.picker_skin === "goldeneye" && !!root.aim
+    visible: Style.overview_skin === "goldeneye" && !!root.aim
 
     function relock() {
         step_timer.stop();
