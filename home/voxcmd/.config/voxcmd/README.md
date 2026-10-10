@@ -1,6 +1,6 @@
 # voxcmd
 
-Voice commands on top of [voxtype](https://github.com/peteonrails/voxtype). Speak a phrase, voxcmd matches it against the verbs your integrations declare and runs the action. Seven integrations ship: `media.sh` (playerctl and pamixer), `apps.sh` (open apps, focus, move and close windows), `timers.sh` (timers and reminders as systemd user timers), `devices.sh` (audio output, input and per-app volume with wpctl, Bluetooth with bluetoothctl), `system.sh` (brightness, power profile, do not disturb, auto-lock), `answers.sh` (math, time and date questions, and the weather popup) and `keybinds.sh` (any described Hyprland keybind); everything else is a drop-in file you write.
+Voice commands on top of [voxtype](https://github.com/peteonrails/voxtype). Speak a phrase, voxcmd matches it against the verbs your integrations declare and runs the action. Eight integrations ship: `media.sh` (playerctl and pamixer), `apps.sh` (open apps, focus, move and close windows), `timers.sh` (timers and reminders as systemd user timers), `devices.sh` (audio output, input and per-app volume with wpctl, Bluetooth with bluetoothctl), `system.sh` (brightness, power profile, do not disturb, auto-lock), `answers.sh` (math, time and date questions, and the weather popup), `keeptabs.sh` (coding agents tracked by keeptabs) and `keybinds.sh` (any described Hyprland keybind); everything else is a drop-in file you write.
 
 | Key                                | Does                                                                     |
 | ---------------------------------- | ------------------------------------------------------------------------ |
@@ -271,6 +271,18 @@ Brightness and do not disturb send no notification when they work ([silent](#sil
 - Math is read from `$raw_transcript`, since normalizing drops `%`, `×`, `/` and decimal points. Number words become digits ("two hundred thirty point five"), and `times`, `divided by`, `plus`, `minus`, `squared`, `cubed`, `to the power of`, `square root of`, `percent of`, `half of`, `factorial` and `modulo` become qalc syntax.
 - "what's" and "how much is" count as math only when a number follows, so "what's up" is left for the other integrations. Without a `to` (from "to", "in" or "into") qalc runs with units off, so a word it cannot place fails instead of becoming a unit.
 - Weather opens the popup the Leader `W` (Weather) bind opens, with `~/.config/hypr/scripts/qs-ipc call popup open weather`, so it needs the Quickshell bar running.
+
+### Agents
+
+`keeptabs.sh` jumps to the coding agents [keeptabs](https://github.com/uhs-robert/keeptabs) tracks, through `keeptabs-pick --focus` like the bar's keeptabs popup, so the agent's window, tmux pane and nvim terminal all come forward.
+
+| Say                                                          | Does                                                                      |
+| ------------------------------------------------------------ | ------------------------------------------------------------------------- |
+| "jump to the waiting agent", "go to the agent that needs me" | the agent that has waited longest for input; says so when none is waiting |
+| "next agent", "go to the next agent"                         | the waiting agent, else the longest-finished one                          |
+| "go to agent X", "go to the X agent"                         | the agent whose title, project or agent name matches X                    |
+
+An "agent X" that matches nothing says so instead of falling through to the keybinds.
 
 ## Voice Help
 
