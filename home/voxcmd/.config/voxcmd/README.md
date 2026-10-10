@@ -7,10 +7,14 @@ Voice commands on top of [voxtype](https://github.com/peteonrails/voxtype). Spea
 | `CTRL + SHIFT + PERIOD`  | Start listening; press again to stop and run the command |
 | Leader, `SHIFT + PERIOD` | Same, from the leader menu                               |
 
+While a voxcmd picker is open, the same key records a reply to it instead of a new command (see [Picker](#picker)).
+
 ```bash
 voxcmd listen                     # toggle: start a voxtype recording, or stop it and route the transcript
 voxcmd "next track"               # route text directly
 voxcmd --dry-run "volume to 40"   # show the match, candidates and command without running anything
+voxcmd --reply "the second one"   # answer the open voxcmd picker, as a spoken reply would
+voxcmd --dry-run --reply "two"    # show which choice a reply would pick
 voxcmd list                       # integrations and their verbs
 ```
 
@@ -23,7 +27,7 @@ voxcmd list                       # integrations and their verbs
 3. Each integration's verbs are tried in order against the whole phrase; the first match per integration counts.
 4. A verb with a target whose integration lists candidates for that action fuzzy-matches the target against them (`fzf --filter`); an exact label wins outright.
 5. A target that matches none of the candidates runs the action the integration names for that case in `no_match_actions`, if any.
-6. One option runs (after a Yes/No picker if the integration sets `confirm=1`). Several open a picker, the Quickshell one when the bar is running and `rofi -dmenu` otherwise; cancelling does nothing. None sends a "no match" notification.
+6. One option runs (after a Yes/No picker if the integration sets `confirm=1`). Several open a picker, the Quickshell one when the bar is running and `rofi -dmenu` otherwise, which can also be [answered by voice](#answering-by-voice); cancelling does nothing. None sends a "no match" notification.
 
 A notification reports what ran, followed by the last line the command printed, if any, or the last lines of the error.
 
@@ -84,4 +88,18 @@ Off by default and a stub: voxcmd never calls a model. Set `VOXCMD_LLM_CMD` to a
 
 ## Picker
 
-`voxcmd-pick <label> <choices-json>` is the blocking picker voxcmd uses, usable on its own. Choices are strings or `{id, label}` objects; it prints the picked id and exits 1 on cancel.
+`voxcmd-pick <label> <choices-json>` is the blocking picker voxcmd uses, usable on its own. Choices are strings or `{id, label}` objects; it prints the picked id and exits 1 on cancel. Labels are shown numbered (`1. Acme Labs`); the number never reaches the printed id.
+
+### Answering by voice
+
+Press the Voice Command key while a voxcmd picker is open and speak a reply. It can be:
+
+- a choice's label, matched like targets are (exact, then substring, then fuzzy); it must single out one choice;
+- an ordinal: `two`, `the second one`, `number 3`, `first`, `last`;
+- `cancel`, `never mind` or `none`, which cancel like Esc.
+
+The reply picks as if the choice had been clicked and closes the picker. A reply that matches nothing or several choices leaves the picker open and sends a notification; press the key again to retry.
+
+While it waits, `voxcmd-pick` keeps `$XDG_RUNTIME_DIR/voxcmd/pending-pick.json` (`{pid, fifo, label, choices}`) and removes it when the pick ends however it ends. A file whose owner is gone is ignored. The reply goes into the picker's result FIFO, so `voxcmd-pick` closes the picker itself afterwards: the Quickshell one over `qs-ipc call picker close`, rofi by ending it.
+
+Hyprland still runs binds while the Quickshell picker has the keyboard. rofi asks the compositor to inhibit shortcuts while it is open, and Hyprland honours that unless `binds:disable_keybind_grabbing` is set, so with the rofi fallback the key does nothing until rofi closes; pick with the keyboard or mouse there.
