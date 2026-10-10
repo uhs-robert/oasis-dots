@@ -35,6 +35,8 @@ RowsSection {
             overview_skin: "The workspace overview's extras: GoldenEye adds the window counter, night-vision tint and crosshair; Scope the MGS reticle.",
             osd_layout: "The volume and brightness OSD. Shared is the plain bar; the others are borrowed from a style and take your palette. Watch dial also adds the dial header to the Volume and Battery popups.",
             weather_header: "The weather popup's header and Daily view. Shared is the plain header; the others are borrowed from a style and take your palette.",
+            done_anim: "How the bar's keeptabs module celebrates a finished session. Borrowed from a style, drawn in your palette.",
+            wait_anim: "How the bar's keeptabs module cues a session waiting on you. Borrowed from a style, drawn in your palette.",
             workspace_art: "How the bar draws workspaces. Pills is the style's own; any other art is borrowed from a style and takes your palette.",
             font_family: "Font for popups and most text. Each style has its own default.",
             bar_font_family: "Font for the bar. Each style has its own default.",

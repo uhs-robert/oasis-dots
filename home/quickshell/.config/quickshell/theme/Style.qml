@@ -30,6 +30,11 @@ Singleton {
     // Weather layouts any style can borrow; the header token picks the header and every Daily view that goes with it, so one choice cannot mismatch. watch, scan, battle and hev are left out: they also reword the alert banner and the Alerts tab in their style's fiction.
     readonly property var weather_layouts: ["", "ring", "scope", "memcard", "mode7", "wttr", "weatherstar", "towers", "pokedex", "status", "oasis", "hero", "lsp"]
     readonly property var weather_layout_labels: ({ "": "Shared", ring: "Ring", scope: "Scope", memcard: "Memory card", mode7: "Mode 7", wttr: "wttr.in", weatherstar: "Weather Star", towers: "Towers", pokedex: "Pokedex", status: "Status panel", oasis: "Oasis", hero: "Hero", lsp: "LSP", watch: "Watch", battle: "Battle", scan: "Scan visor", hev: "HEV" })
+    // Keeptabs animations any style can borrow (Theme options), drawn in the bar's colours and fonts.
+    readonly property var done_anims: ["hearts", "pixel", "lcd", "hev_pickup", "levelup", "fanfare"]
+    readonly property var done_anim_labels: ({ hearts: "Hearts", pixel: "Pixel", lcd: "LCD", hev_pickup: "Health pickup", levelup: "Level up", fanfare: "Fanfare" })
+    readonly property var wait_anims: ["bubble", "cursor", "pressanykey", "advance", "hand", "alert", "rumble", "transmission", "scan", "comms", "ping", "hev_alert", "exclaim", "atb"]
+    readonly property var wait_anim_labels: ({ bubble: "Bubble", cursor: "Cursor", pressanykey: "Press any key", advance: "Advance", hand: "Hand", alert: "Alert", rumble: "Rumble", transmission: "Transmission", scan: "Scan", comms: "Comms", ping: "Ping", hev_alert: "HEV alert", exclaim: "Exclaim", atb: "ATB" })
     readonly property var labels: ({ crt: "CRT", nes: "NES", snes: "SNES", gameboy: "Gameboy", goldeneye: "Goldeneye", ps1: "PSX", ff7: "FFVII", ps2: "PS2", halflife: "Half Life", tie: "Tie Fighter", modern: "Modern" })
 
     FileView {
@@ -511,6 +516,8 @@ Singleton {
         out.push({ key: "overview_skin", label: "Overview skin", type: "choice", default: b.overview_skin || "", choices: root.overview_skins, labels: root.overview_skin_labels });
         out.push({ key: "osd_layout", label: "OSD layout", type: "choice", default: b.osd_layout || "", choices: root.osd_layouts, labels: root.osd_layout_labels });
         out.push({ key: "weather_header", label: "Weather layout", type: "choice", default: b.weather_header || "", choices: root.with_native(root.weather_layouts, b.weather_header), labels: root.weather_layout_labels });
+        out.push({ key: "done_anim", label: "Done animation", type: "choice", default: b.done_anim || "hearts", choices: root.done_anims, labels: root.done_anim_labels });
+        out.push({ key: "wait_anim", label: "Waiting animation", type: "choice", default: b.wait_anim || "bubble", choices: root.wait_anims, labels: root.wait_anim_labels });
         out.push({ key: "workspace_art", label: "Workspaces", type: "choice", default: b.workspace_art || "", choices: root.workspace_arts, labels: root.workspace_art_labels });
         out.push({ key: "font_family", label: "Font", type: "choice", default: b.font_family, choices: root.font_choices });
         out.push({ key: "bar_font_family", label: "Bar font", type: "choice", default: b.bar_font_family, choices: root.font_choices });
