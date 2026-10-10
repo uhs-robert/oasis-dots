@@ -43,6 +43,7 @@ if [[ $before != "$after" ]] && ! git -C "$repo" diff --quiet "$before" "$after"
   else
     state=$(timeout 3 "$ipc" call lock state 2>/dev/null || true)
     [[ $state == unlocked ]] || die "Quickshell changed but the lock state is '${state:-unknown}'; restart the bar once unlocked"
+    hyprctl version >/dev/null 2>&1 || die "hyprctl cannot reach Hyprland (stale HYPRLAND_INSTANCE_SIGNATURE?); restart the bar by hand"
     pkill -x qs || true
     for _ in $(seq 20); do
       pgrep -x qs >/dev/null || break
