@@ -23,8 +23,8 @@ Singleton {
     readonly property var workspace_arts: ["", "dial", "materia", "doors", "constellation", "buffers", "party", "qblock", "map", "slots", "ps2"]
     // OSD layouts any style can borrow (Theme options); "" is the plain OSD. "watch" also brings the dial header to the Volume and Battery popups, which read the same token.
     readonly property var osd_layouts: ["", "ring", "hud", "rpg", "alert", "glow", "horizon", "tile", "watch"]
-    // Weather layouts any style can borrow; the header token picks the header and every Daily view that goes with it, so one choice cannot mismatch. watch, scan, battle and hev are left out: they also reword the alert banner and the Alerts tab in their style's fiction.
-    readonly property var weather_layouts: ["", "ring", "scope", "memcard", "mode7", "wttr", "weatherstar", "towers", "pokedex", "status", "oasis", "hero", "lsp"]
+    // Weather layouts any style can borrow; the header token picks the header and every Daily view that goes with it, so one choice cannot mismatch. watch, battle, scan and hev also reword the alert banner and the Alerts tab in their style's fiction, which comes along when borrowed.
+    readonly property var weather_layouts: ["", "ring", "scope", "memcard", "mode7", "wttr", "weatherstar", "towers", "pokedex", "status", "oasis", "hero", "lsp", "watch", "battle", "scan", "hev"]
     // Keeptabs animations any style can borrow (Theme options), drawn in the bar's colours and fonts.
     readonly property var done_anims: ["hearts", "pixel", "lcd", "hev_pickup", "levelup", "fanfare"]
     readonly property var wait_anims: ["bubble", "cursor", "pressanykey", "advance", "hand", "alert", "rumble", "transmission", "scan", "comms", "ping", "hev_alert", "exclaim", "atb"]
@@ -496,10 +496,6 @@ Singleton {
         return Object.keys(seen).sort();
     }
 
-    // Watch, battle, scan and hev reword the alert banner in their style's fiction, so only that style offers its own.
-    function with_native(choices, native) {
-        return !native || choices.indexOf(native) >= 0 ? choices : choices.concat([native]);
-    }
 
     function borrow_labels(key, choices) {
         const out = {};
@@ -531,7 +527,7 @@ Singleton {
         out.push({ key: "picker_skin", label: "Picker skin", type: "choice", default: b.picker_skin || "", choices: root.picker_skins, labels: root.borrow_labels("picker_skin", root.picker_skins) });
         out.push({ key: "overview_skin", label: "Overview skin", type: "choice", default: b.overview_skin || "", choices: root.overview_skins, labels: root.borrow_labels("overview_skin", root.overview_skins) });
         out.push({ key: "osd_layout", label: "OSD layout", type: "choice", default: b.osd_layout || "", choices: root.osd_layouts, labels: root.borrow_labels("osd_layout", root.osd_layouts) });
-        out.push({ key: "weather_header", label: "Weather layout", type: "choice", default: b.weather_header || "", choices: root.with_native(root.weather_layouts, b.weather_header), labels: root.borrow_labels("weather_header", root.with_native(root.weather_layouts, b.weather_header)) });
+        out.push({ key: "weather_header", label: "Weather layout", type: "choice", default: b.weather_header || "", choices: root.weather_layouts, labels: root.borrow_labels("weather_header", root.weather_layouts) });
         out.push({ key: "done_anim", label: "Done animation", type: "choice", default: b.done_anim || "hearts", choices: root.done_anims, labels: root.borrow_labels("done_anim", root.done_anims) });
         out.push({ key: "wait_anim", label: "Waiting animation", type: "choice", default: b.wait_anim || "bubble", choices: root.wait_anims, labels: root.borrow_labels("wait_anim", root.wait_anims) });
         out.push({ key: "toast_enter", label: "Toast arrival", type: "choice", default: b.toast_enter || "", choices: root.toast_enters, labels: root.borrow_labels("toast_enter", root.toast_enters) });
