@@ -16,7 +16,7 @@ FocusScope {
     property var pick_done: null
     readonly property string shown_hint: root.picking ? (root.pick_list && !root.pick_list.insert ? "Enter pick · j/k move · gg/G first/last · i insert · Esc close" : "Enter pick · Up/Down or Ctrl+n/p move · Esc normal") : root.footer_hint
     // A section that sets `described` shows `description` and `description_keys` for its selected or hovered item in a block pinned to the pane bottom.
-    // It reserves two lines of each so moving between items does not resize the pane; sections add `description_space` to their implicitHeight.
+    // It reserves three lines of description and two of keys so moving between items does not resize the pane (wide pixel fonts such as NES's wrap a two-line note to three); sections add `description_space` to their implicitHeight.
     property bool described: false
     property string description: ""
     property string description_keys: ""
@@ -90,21 +90,21 @@ FocusScope {
 
         Text {
             Layout.fillWidth: true
-            Layout.preferredHeight: description_two_lines.implicitHeight
+            Layout.preferredHeight: description_three_lines.implicitHeight
             text: root.description
             wrapMode: Text.WordWrap
-            maximumLineCount: 2
+            maximumLineCount: 3
             elide: Text.ElideRight
             verticalAlignment: Text.AlignTop
             color: root.st.text_fg
             font.family: root.st.font_family
             font.pixelSize: root.st.fs(-2)
 
-            // Two real lines in the same font, since a style's font can render taller than its FontMetrics say.
+            // Three real lines in the same font, since a style's font can render taller than its FontMetrics say.
             Text {
-                id: description_two_lines
+                id: description_three_lines
                 visible: false
-                text: "x\nx"
+                text: "x\nx\nx"
                 font.family: root.st.font_family
                 font.pixelSize: root.st.fs(-2)
             }
