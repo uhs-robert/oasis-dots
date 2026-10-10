@@ -43,7 +43,7 @@ Weather alerts come from the US National Weather Service (api.weather.gov), so t
 | `bar` | `false` shows no bar on matching monitors |
 | `left`, `center`, `right` | Module names, in draw order. Repeats within one list are dropped (a module in both `left` and `right` draws twice), unknown names are skipped with a warning. Lualine styles draw `center` inside the right island and re-sort it with `right` into their x/y/z sections, so the listed order only holds within a section |
 
-Modules (the registry is `services/BarModules.js`): `start` (Start button), `workspaces`, `clock` (calendar popup), `tray`, `volume`, `battery`, `bluetooth`, `network`, `weather`, `keeptabs` (optional: needs the keeptabs tools in `~/.local/bin` and, for its usage tab, the `claude` CLI; shows AI agent sessions busy, done or waiting and jumps to one; hidden while none run or when keeptabs is not installed, and removable from `bars.json`), `updates` (pending package updates), `voxtype` (dictation status), `recording` (screen recording chip), `notifications` (center and Do Not Disturb), `media` (now playing, not in the default layout) and `system`. `system` takes an argument, `system:cpu`, `system:memory` or `system:temperature`, and can be listed more than once with different arguments; bare `system` starts on `cpu`.
+Modules (the registry is `services/BarModules.js`): `start` (Start button), `workspaces`, `clock` (calendar popup), `tray`, `volume`, `battery`, `bluetooth`, `network`, `weather`, `keeptabs` (optional: needs the keeptabs tools in `~/.local/bin` and, for its usage tab, the `claude` CLI; shows AI agent sessions busy, done or waiting and jumps to one; hidden while none run or when keeptabs is not installed, and removable from `bars.json`), `cmdstatus` (status pills from your own commands, see Command status below; hidden without any), `updates` (pending package updates), `voxtype` (dictation status), `recording` (screen recording chip), `notifications` (center and Do Not Disturb), `media` (now playing, not in the default layout) and `system`. `system` takes an argument, `system:cpu`, `system:memory` or `system:temperature`, and can be listed more than once with different arguments; bare `system` starts on `cpu`.
 
 ```json
 [
@@ -59,6 +59,33 @@ Settings > Bar modules edits the layout without touching the tracked file. It sa
 - `monitors` holds one full `left`/`center`/`right` layout (and `compact`) per monitor, keyed by `<description> @ <connector>`, or by the connector alone when the monitor has no description. After a connector change, the only saved key with the same description is reused. It replaces the rule's lists outright, so later edits to the tracked file no longer reach that monitor. `height` and `bar` always come from the rule.
 
 Delete the state file to go back to the tracked layout.
+
+### Command status
+
+The `cmdstatus` module shows a small pill per command you declare in `custom/command-status.json` (gitignored, see `custom/README.md`), so a machine-local tool can put its state on the bar without living in this repo. It sits after `keeptabs` in the default layout and draws nothing until the file has an entry. A monitor with its own layout in Settings > Bar modules needs it added there.
+
+```json
+[
+  { "id": "timer", "command": "~/.local/bin/timer-status", "interval": 10, "on_click": "~/.local/bin/timer-toggle", "on_right_click": ["xdg-open", "https://example.com"] }
+]
+```
+
+| Key | Meaning |
+| --- | ------- |
+| `id` | Unique name; the tooltip title and the IPC handle |
+| `command` | A string run through `sh -c` (so `~` and pipes work), or an argv array |
+| `interval` | Seconds between runs (default 30). `0` runs once when the module appears, then only on a click or IPC refresh |
+| `on_click`, `on_right_click` | Optional commands for left and right click; the status command reruns once they exit |
+
+The command prints one line of JSON (the last line counts):
+
+```json
+{ "text": "1:24", "tooltip": "Running since 09:10", "class": "active", "hidden": false }
+```
+
+`class` is `idle` (bar text color), `active` (primary), `warn` or `error`, and anything else reads as `idle`. `hidden: true` drops the pill until the next run says otherwise. A non-zero exit or output that is not a JSON object shows an alert glyph in the error color, with the exit code and the last lines of stderr, or the parse error, in its tooltip. Text is plain, not markup.
+
+Commands run asynchronously and only while a `cmdstatus` module is on a bar. A run still going when the next one is due is skipped, so a slow command never stacks up. The file is watched, so edits apply at once. After changing state from a script, `qs-ipc call cmdstatus refresh <id>` reruns that entry now instead of waiting for its interval.
 
 ## Styles
 
@@ -206,6 +233,7 @@ qs-ipc show        # list every target and function
 | `lock`          | `lock`, `lock_auto` (music waits for the first key), `state`, `preview <style>`, `preview_close` |
 | `power`         | `confirm <lock\|logout\|reboot\|poweroff>`                            |
 | `brightness`    | `refresh`                                                             |
+| `cmdstatus`     | `refresh <id>` (`""` refreshes every entry)                          |
 | `transition`    | `play <kind or style>`                                                |
 | `hyprvim_whichkey`, `hyprvim_prompt` | The HyprVim which-key HUD and `:` prompt          |
 
