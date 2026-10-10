@@ -214,7 +214,7 @@ run_option() {
     set +eu
     eval "$command" 2>&1
   ); then
-    notify "voxcmd" "$label"
+    notify "voxcmd" "$label${output:+: $(tail -n 1 <<<"$output")}"
   else
     notify "voxcmd failed" "$label${output:+: $(tail -n 3 <<<"$output")}"
     return 1
