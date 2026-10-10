@@ -19,6 +19,7 @@ MenuRow {
     base_radius: 6
 
     RowLayout {
+        id: row_layout
         anchors.left: parent.left
         anchors.leftMargin: 8 + root.inset
         anchors.right: parent.right
@@ -27,6 +28,7 @@ MenuRow {
         spacing: 8
 
         RowLabel {
+            id: row_label
             Layout.fillWidth: true
             label: root.label
             color: root.fg(root.st.text_fg)
@@ -35,8 +37,8 @@ MenuRow {
         }
 
         Text {
-            // A long value (a path) shortens in the middle instead of pushing the label out.
-            Layout.maximumWidth: root.width * 0.65
+            // A long value (a path, a borrowed skin shared by several styles) shortens in the middle instead of running into the label.
+            Layout.maximumWidth: Math.max(0, Math.min(root.width * 0.65, row_layout.width - row_label.implicitWidth - row_layout.spacing))
             elide: Text.ElideMiddle
             text: root.st.toggle_brackets ? "[" + root.value_text.toUpperCase() + "]" : root.selected ? "‹ " + root.value_text + " ›" : root.value_text
             color: root.fg(root.selected ? root.st.toggle_on : root.st.text_dim)
