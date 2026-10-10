@@ -12,6 +12,10 @@ choices_json="${2:?usage: voxcmd-pick <label> <choices-json>}"
 pick_timeout="${VOXCMD_PICK_TIMEOUT:-300}"
 
 choices=$(jq -c 'map(if type == "string" then {id: ., label: .} else {id: (.id | tostring), label: (.label // .id | tostring)} end)' <<<"$choices_json")
+# Both pickers hand back the picked label, not its position, so a label shared by several choices gets each one's id
+# appended; otherwise only the first of them could ever be picked.
+choices=$(jq -c '(group_by(.label) | map(select(length > 1) | .[0].label)) as $shared_labels
+  | map(if .label | IN($shared_labels[]) then .label += " (\(.id))" else . end)' <<<"$choices")
 
 work_dir=$(mktemp -d "${XDG_RUNTIME_DIR:-/tmp}/voxcmd-pick.XXXXXX")
 trap 'rm -rf "$work_dir"' EXIT
