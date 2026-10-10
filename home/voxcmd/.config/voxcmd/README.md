@@ -1,6 +1,6 @@
 # voxcmd
 
-Voice commands on top of [voxtype](https://github.com/peteonrails/voxtype). Speak a phrase, voxcmd matches it against the verbs your integrations declare and runs the action. Five integrations ship: `media.sh` (playerctl and pamixer), `apps.sh` (open apps, focus, move and close windows), `timers.sh` (timers and reminders as systemd user timers), `devices.sh` (audio output, input and per-app volume with wpctl, Bluetooth with bluetoothctl) and `keybinds.sh` (any described Hyprland keybind); everything else is a drop-in file you write.
+Voice commands on top of [voxtype](https://github.com/peteonrails/voxtype). Speak a phrase, voxcmd matches it against the verbs your integrations declare and runs the action. Six integrations ship: `media.sh` (playerctl and pamixer), `apps.sh` (open apps, focus, move and close windows), `timers.sh` (timers and reminders as systemd user timers), `devices.sh` (audio output, input and per-app volume with wpctl, Bluetooth with bluetoothctl), `system.sh` (brightness, power profile, do not disturb, auto-lock) and `keybinds.sh` (any described Hyprland keybind); everything else is a drop-in file you write.
 
 | Key                                | Does                                                                     |
 | ---------------------------------- | ------------------------------------------------------------------------ |
@@ -241,6 +241,21 @@ As a fallback it never sees a phrase another integration takes. Starting the phr
 - Opening and focusing are [silent](#silent-actions), since the window that opens or takes focus shows it; moving and closing still say what they did.
 - Tab on its Voice Help entries lists every installed app; picking one opens it like "open <app>".
 - A target with the word `session` or `agent` in it matches nothing, so "switch to the X session" and "go to the X agent" are left to the integrations for those.
+
+### System
+
+`system.sh` sets system values through what the keys and the bar already use, so the OSD and bar stay in sync:
+
+| Say                                                                          | Does                                                                                   |
+| ---------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| "brightness 40", "set brightness to 40 percent"                              | `brightnessctl set 40%` (clamped to 1-100), then `qs-ipc call brightness refresh` for the OSD |
+| "brightness up" / "down" (optionally "by 20"), "brighter", "dimmer"          | 10% steps by default, like the brightness keys                                         |
+| "brightness max" / "min", "full brightness"                                  | 100% / 1%                                                                              |
+| "power saver", "balanced", "performance mode", "set power profile to X"      | `powerprofilesctl set`; X is matched against the profiles the machine offers           |
+| "do not disturb on" / "off", "silence notifications", "notifications on"     | The bar's do not disturb, over `qs-ipc` `notifications get_dnd` / `toggle_dnd`         |
+| "keep the screen awake", "caffeine on" / "off", "enable" / "disable autolock" | Stops or starts hypridle with `toggle-autolock.sh`, like the System submap's auto-lock key |
+
+Only the laptop backlight is driven; external monitors are not (no DDC/CI). A spoken power profile lasts until the next AC or battery change, when `power.sh` applies the one chosen in Settings, unless that is "keep".
 
 ## Voice Help
 
