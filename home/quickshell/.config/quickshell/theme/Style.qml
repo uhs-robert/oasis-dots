@@ -20,7 +20,7 @@ Singleton {
     // Overview treatments any style can borrow (Theme options); "" is the plain look.
     readonly property var overview_skins: ["", "goldeneye", "scope"]
     // Workspace indicator arts any style can borrow (Theme options); "" is the style's own pills.
-    readonly property var workspace_arts: ["", "dial", "materia", "doors", "constellation", "buffers", "party", "qblock", "map", "slots", "ps2"]
+    readonly property var workspace_arts: ["", "dots", "dial", "materia", "doors", "constellation", "buffers", "party", "qblock", "map", "slots", "ps2"]
     // OSD layouts any style can borrow (Theme options); "" is the plain OSD. "watch" also brings the dial header to the Volume and Battery popups, which read the same token.
     readonly property var osd_layouts: ["", "ring", "hud", "rpg", "alert", "glow", "horizon", "tile", "watch"]
     // Weather layouts any style can borrow; the header token picks the header and every Daily view that goes with it, so one choice cannot mismatch. watch, battle, scan and hev also reword the alert banner and the Alerts tab in their style's fiction, which comes along when borrowed.
@@ -34,7 +34,7 @@ Singleton {
     readonly property var borrow_names: ({
             picker_skin: { "": "Crosshair", goldeneye: "Sniper Scope", nvimfloat: "Floating Window", scanvisor: "Scan Visor", pokemon: "Party Menu", scope: "MGS1 Scope", duckhunt: "Duck Hunt", materia: "Materia", tmux: "Tmux Panes", tvosd: "TV OSD", jrpg: "JRPG Menu", tiecomp: "Targeting Computer", scopeitem: "MGS2 Scope" },
             overview_skin: { "": "Plain", goldeneye: "Night Vision", scope: "MGS1 Scope" },
-            workspace_art: { "": "Pills", dial: "Watch Dial", materia: "Materia", doors: "Doors", constellation: "Constellation", buffers: "Buffers", party: "Party", qblock: "? Blocks", map: "World Map", slots: "Tactics Tiles", ps2: "Memory Cubes" },
+            workspace_art: { "": "Pills", dots: "Dots", dial: "Watch Dial", materia: "Materia", doors: "Doors", constellation: "Constellation", buffers: "Buffers", party: "Party", qblock: "? Blocks", map: "World Map", slots: "Tactics Tiles", ps2: "Memory Cubes" },
             osd_layout: { "": "Bar", ring: "Ring", hud: "HUD", rpg: "RPG", alert: "Alert Mark", glow: "Glow Ring", horizon: "Horizon", tile: "Tile", watch: "Watch Dial" },
             weather_header: { "": "Plain", ring: "Ring", scope: "Targeting Scope", memcard: "Memory Card", mode7: "Mode 7", wttr: "wttr.in", weatherstar: "Weather Star", towers: "Towers", pokedex: "Pokedex", status: "Status Screen", oasis: "Oasis", hero: "Hero", lsp: "LSP Hover", watch: "Watch", battle: "Battle", scan: "Scan Visor", hev: "HEV Suit" },
             done_anim: { hearts: "Hearts", pixel: "Pixel", lcd: "LCD", hev_pickup: "Health Pickup", levelup: "Level Up", fanfare: "Victory Fanfare" },
