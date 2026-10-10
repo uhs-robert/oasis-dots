@@ -84,13 +84,15 @@ compile_pattern() {
 # A `declare` in a file sourced from a function is local to that function, so the arrays are copied out to globals.
 load_integration() {
   unset -f candidates
-  name="" confirm=0
-  local -a verbs=()
+  name="" confirm=0 fallback=0 target_match=fuzzy
+  local -a verbs=() confirm_labels=() match_ignore_words=()
   local -A actions=() no_match_actions=()
   # shellcheck disable=SC1090
   source "$1"
   name="${name:-$(basename "$1" .sh)}"
   integration_verbs=("${verbs[@]}")
+  integration_confirm_labels=("${confirm_labels[@]}")
+  integration_match_ignore_words=("${match_ignore_words[@]}")
   declare -gA integration_actions=() integration_no_match_actions=()
   local key
   for key in "${!actions[@]}"; do
@@ -101,12 +103,16 @@ load_integration() {
   done
 }
 
-# Prints one JSON match per integration: its first verb that matches the whole text.
+# Prints one JSON match per integration of the tier ("normal" or "fallback"): its first verb that matches the whole
+# text.
 match_verbs() {
-  local text="$1" file
+  local text="$1" tier="$2" file
   while IFS= read -r file; do
     (
       load_integration "$file"
+      local integration_tier=normal
+      [ "$fallback" != 1 ] || integration_tier=fallback
+      [ "$integration_tier" = "$tier" ] || exit 0
       local entry action pattern compiled regex group
       for entry in "${integration_verbs[@]}"; do
         read -r action pattern <<<"$entry"
@@ -118,7 +124,8 @@ match_verbs() {
           [ "$group" = 0 ] || target="${BASH_REMATCH[$group]}"
           jq -n -c --arg file "$file" --arg name "$name" --arg action "$action" --arg target "$target" \
             --argjson has_target "$([ "$group" = 0 ] && echo false || echo true)" \
-            '{file: $file, name: $name, action: $action, target: $target, has_target: $has_target}'
+            --argjson fallback "$([ "$fallback" = 1 ] && echo true || echo false)" \
+            '{file: $file, name: $name, action: $action, target: $target, has_target: $has_target, fallback: $fallback}'
           break
         fi
       done
@@ -127,7 +134,7 @@ match_verbs() {
 }
 
 # Expands one match into runnable options. A verb with a target placeholder whose integration prints candidates
-# for the action (even an empty list) yields one option per candidate the target fuzzy-matches, possibly none,
+# for the action (even an empty list) yields one option per candidate the target matches, possibly none,
 # or, when it matches none and the integration maps the action in no_match_actions, that action with an empty id;
 # otherwise the target text itself is the id.
 resolve_match() {
@@ -146,37 +153,83 @@ resolve_match() {
       candidates_json="[]"
       options=$(jq -c -n --arg target "$target" '[{id: $target, label: $target}]')
     else
-      candidates_json=$(jq -c 'map({id: (.id | tostring), label: (.label // .id | tostring)})' <<<"$candidates_json")
+      candidates_json=$(jq -c 'map({id: (.id | tostring), label: (.label // .id | tostring)}
+        + if .match_text then {match_text: (.match_text | tostring)} else {} end)' <<<"$candidates_json")
       if [ -z "$target" ]; then
         options="$candidates_json"
+      elif [ "$target_match" = words ]; then
+        options=$(word_match "$target" "$candidates_json" "${integration_match_ignore_words[@]}")
       else
-        options=$(jq -c --arg target "$target" 'map(select((.label | ascii_downcase) == $target))' <<<"$candidates_json")
-        # Fuzzy matching alone lets a short target hit long labels by scattered letters, so substring matches
-        # win when there are any.
-        local fuzzy_mode
-        for fuzzy_mode in --exact --no-exact; do
-          [ "$(jq length <<<"$options")" = 0 ] || break
-          options=$(jq -r '.[] | "\(.id)\t\(.label)"' <<<"$candidates_json" |
-            fzf --filter="$target" "$fuzzy_mode" --delimiter=$'\t' --nth=2.. |
-            jq -R -s -c 'split("\n") | map(select(. != "") | split("\t") | {id: .[0], label: .[1:] | join("\t")})')
-        done
-        if [ "$(jq length <<<"$options")" = 0 ] && [ -n "${integration_no_match_actions[$action]-}" ]; then
-          action="${integration_no_match_actions[$action]}"
-          command="${integration_actions[$action]-}"
-          options=$(jq -c -n --arg target "$target" '[{id: "", label: $target}]')
-        fi
+        options=$(fuzzy_match "$target" "$candidates_json")
+      fi
+      if [ -n "$target" ] && [ "$(jq length <<<"$options")" = 0 ] && [ -n "${integration_no_match_actions[$action]-}" ]; then
+        action="${integration_no_match_actions[$action]}"
+        command="${integration_actions[$action]-}"
+        options=$(jq -c -n --arg target "$target" '[{id: "", label: $target}]')
       fi
     fi
     jq -c --argjson match "$match" --arg action "$action" --arg command "$command" --arg confirm "$confirm" \
-      --argjson candidates "$candidates_json" \
-      '.[] | $match + {action: $action, id, label, command: $command, confirm: ($confirm == "1"), candidates: ($candidates | length)}' <<<"$options"
+      --argjson candidates "$candidates_json" --args \
+      '($ARGS.positional) as $confirm_labels | .[]
+        | $match + {action: $action, id, label, command: $command, weak: (.weak // false),
+            confirm: ($confirm == "1" or (.label as $label | any($confirm_labels[]; . as $re | $label | test($re; "i")))),
+            candidates: ($candidates | length)}' "${integration_confirm_labels[@]}" <<<"$options"
   )
 }
 
+# Candidates whose label (or match_text) is the target, else those containing it, else those fuzzy-matching it.
+# Fuzzy matching alone lets a short target hit long labels by scattered letters, so substring matches win when
+# there are any.
+fuzzy_match() {
+  local target="$1" candidates_json="$2" options fuzzy_mode
+  options=$(jq -c --arg target "$target" 'map(select((.match_text // .label | ascii_downcase) == $target))' <<<"$candidates_json")
+  for fuzzy_mode in --exact --no-exact; do
+    [ "$(jq length <<<"$options")" = 0 ] || break
+    options=$(jq -r 'to_entries[] | "\(.key)\t\(.value.match_text // .value.label)"' <<<"$candidates_json" |
+      fzf --filter="$target" "$fuzzy_mode" --delimiter=$'\t' --nth=2.. |
+      jq -R -s -c --argjson candidates "$candidates_json" 'split("\n") | map(select(. != "") | split("\t")[0] | tonumber | $candidates[.])')
+  done
+  printf '%s\n' "$options"
+}
+
+# Word matching for integrations with target_match=words, strict enough that stray speech matches nothing. Both
+# sides drop filler and the integration's match_ignore_words, turn number words into digits and singularize. A
+# target with the same words as a candidate (in any order, or the same letters run together, "full screen" for
+# "fullscreen") is a strong match. Otherwise a target is a weak match when it covers at least half of a candidate's
+# words with nothing left over, or holds all of them plus one more word; weak matches always go through the picker.
+word_match() {
+  local target="$1" candidates_json="$2"
+  shift 2
+  jq -c --arg target "$target" --args '
+    {"one": "1", "two": "2", "three": "3", "four": "4", "five": "5", "six": "6", "seven": "7", "eight": "8", "nine": "9", "ten": "10"} as $digits
+    | ["the", "a", "an", "my", "this", "that", "please", "to", "of", "on", "in", "for", "it"] as $filler
+    | def singular: if length > 3 and endswith("s") and (endswith("ss") | not) then .[:-1] else . end;
+      ($filler + $ARGS.positional | map(ascii_downcase | singular)) as $ignored
+    | def words: ascii_downcase | gsub("\u0027"; "") | [splits("[^a-z0-9]+") | select(. != "") | ($digits[.] // .) | singular]
+        | map(select(IN($ignored[]) | not));
+      # A spoken word names a candidate word when it is that word, or a long enough piece of a compound ("screen").
+      def names($candidate_word): . as $spoken_word | $spoken_word == $candidate_word or ($spoken_word | length) >= 4 and ($candidate_word | contains($spoken_word));
+      ($target | words) as $spoken
+    | if $spoken == [] then [] else
+        map(. as $candidate | ($candidate.match_text // $candidate.label | words) as $named
+          | select($named != [])
+          | ($spoken | map(select(. as $s | any($named[]; . as $n | $s | names($n))))) as $spoken_matched
+          | ($named | map(select(. as $n | any($spoken[]; names($n))))) as $named_matched
+          | (($spoken | unique) == ($named | unique) or ($spoken | join("")) == ($named | join(""))) as $strong
+          | (($spoken_matched | length) == ($spoken | length) and ($named_matched | length) * 2 >= ($named | length)) as $covers_half
+          | (all($named[]; IN($spoken[])) and ($spoken | length) - ($spoken_matched | length) <= 1) as $holds_all_plus_one
+          | select($strong or $covers_half or $holds_all_plus_one)
+          | $candidate + {weak: ($strong | not), misses: (($named | length) - ($named_matched | length) + ($spoken | length) - ($spoken_matched | length))})
+        | if any(.[]; .weak | not) then map(select(.weak | not)) else sort_by(.misses, (.label | length)) | .[:10] end
+        | map(del(.misses))
+      end' "$@" <<<"$candidates_json"
+}
+
 # ---- LLM hook (stub) -------------------------------------------------------------------------------------------
-# Off unless VOXCMD_LLM_CMD is set; voxcmd itself never calls a model. When no verb matches, the command gets JSON on
-# stdin, {transcript, integrations: [{name, actions, verbs}]}, and must print {integration, action, target}. Its
-# answer is resolved like a verb match, so candidates and confirmation still apply.
+# Off unless VOXCMD_LLM_CMD is set; voxcmd itself never calls a model. When no normal integration has anything to
+# run, the command gets JSON on stdin, {transcript, integrations: [{name, actions, verbs}]}, and must print
+# {integration, action, target}. Its answer is resolved like a verb match, so candidates and confirmation still
+# apply. Fallback integrations are tried only after it.
 llm_match() {
   [ -n "${VOXCMD_LLM_CMD:-}" ] || return 0
   local transcript="$1" catalog file reply
@@ -230,45 +283,56 @@ print_dry_run() {
   local transcript="$1" text="$2" options="$3" count
   count=$(jq length <<<"$options")
   printf 'transcript:  %s\nnormalized:  %s\n' "$transcript" "$text"
-  case "$count" in
-  0) printf 'result:      no match\n' ;;
-  1) printf 'result:      run\n' ;;
-  *) printf 'result:      ask with the picker (%s options)\n' "$count" ;;
-  esac
+  if [ "$count" = 0 ]; then
+    printf 'result:      no match\n'
+  elif needs_pick "$options"; then
+    printf 'result:      ask with the picker (%s options%s)\n' "$count" "$([ "$count" -gt 1 ] || echo ', weak match')"
+  else
+    printf 'result:      run\n'
+  fi
   jq -r 'to_entries[] | .key as $n | .value |
-    "option \($n + 1):    \(.name) (\(.file | split("/") | last)) action=\(.action) target=\(.target | @sh) id=\(.id | @sh) label=\(.label | @sh)",
-    "             candidates offered: \(.candidates), confirm: \(.confirm)",
+    "option \($n + 1):    \(.name) (\(.file | split("/") | last))\(if .fallback then " [fallback]" else "" end) action=\(.action) target=\(.target | @sh) id=\(.id | @sh) label=\(.label | @sh)",
+    "             candidates offered: \(.candidates), weak: \(.weak), confirm: \(.confirm)",
     "             command: \(.command)"' <<<"$options"
 }
 
-route() {
-  local transcript="$*" text matches options count choices picked
-  text=$(apply_replacements "$(normalize "$transcript")")
-  matches=$(match_verbs "$text")
-  [ -n "$matches" ] || matches=$(llm_match "$text")
-  options=$(while IFS= read -r match; do
+# A single option runs unless it is a weak match, which the user picks like any ambiguity.
+needs_pick() {
+  [ "$(jq 'length > 1 or any(.[]; .weak)' <<<"$1")" = true ]
+}
+
+resolve_matches() {
+  while IFS= read -r match; do
     if [ -n "$match" ]; then resolve_match "$match"; fi
-  done <<<"$matches" | jq -s -c .)
+  done <<<"$1" | jq -s -c .
+}
+
+# Normal integrations first, then the LLM hook, then fallback integrations, each only when the ones before it left
+# nothing to run, so a catch-all fallback never competes with a real verb.
+route() {
+  local transcript="$*" text options count choices picked
+  text=$(apply_replacements "$(normalize "$transcript")")
+  options=$(resolve_matches "$(match_verbs "$text" normal)")
+  [ "$(jq length <<<"$options")" != 0 ] || options=$(resolve_matches "$(llm_match "$text")")
+  [ "$(jq length <<<"$options")" != 0 ] || options=$(resolve_matches "$(match_verbs "$text" fallback)")
   count=$(jq length <<<"$options")
 
   if [ "$dry_run" = 1 ]; then
     print_dry_run "$transcript" "$text" "$options"
     return 0
   fi
-  case "$count" in
-  0)
+  if [ "$count" = 0 ]; then
     notify "voxcmd: no match" "\"$transcript\""
     return 1
-    ;;
-  1) run_option "$(jq -c '.[0]' <<<"$options")" ;;
-  *)
+  elif ! needs_pick "$options"; then
+    run_option "$(jq -c '.[0]' <<<"$options")"
+  else
     choices=$(while IFS= read -r option; do
       jq -n -c --arg id "$(jq -r .index <<<"$option")" --arg label "$(option_label "$option")" '{id: $id, label: $label}'
     done < <(jq -c 'to_entries[] | .value + {index: .key}' <<<"$options") | jq -s -c .)
     picked=$("$voxcmd_pick" "Which command?" "$choices") || return 0
     run_option "$(jq -c --argjson i "$picked" '.[$i]' <<<"$options")"
-    ;;
-  esac
+  fi
 }
 
 # ---- Voice replies to an open picker ----------------------------------------------------------------------------
@@ -447,7 +511,7 @@ list)
   while IFS= read -r file; do
     (
       load_integration "$file"
-      printf '%s (%s)\n' "$name" "$file"
+      printf '%s (%s)%s\n' "$name" "$file" "$([ "$fallback" != 1 ] || echo ' [fallback]')"
       printf '  %s\n' "${integration_verbs[@]}"
     )
   done < <(integration_files)
