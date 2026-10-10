@@ -202,6 +202,7 @@ ShellRoot {
     ScreenshotIpc {}
     ZoomIpc {}
     SoundIpc {}
+    CommandStatusIpc {}
     LockPreview {
         id: lock_preview
     }

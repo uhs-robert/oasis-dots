@@ -15,6 +15,7 @@ Item {
     property color island_color: Theme.bg_core
     property bool shown: true
     property string tooltip_text: ""
+    property string tooltip_title: module_name
     property bool wash: true
     readonly property alias hovered: hover_handler.hovered
 
@@ -38,7 +39,7 @@ Item {
     HoverHandler {
         id: hover_handler
         onHoveredChanged: {
-            if (hovered) Tooltip.show(root, root.tooltip_text, root.module_name);
+            if (hovered) Tooltip.show(root, root.tooltip_text, root.tooltip_title);
             else Tooltip.hide(root);
         }
     }
