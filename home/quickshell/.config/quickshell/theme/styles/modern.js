@@ -116,6 +116,7 @@ function overrides(t, ctx) {
         bar_workspace_gap: 10,
         bar_clock_layout: "capsule",
         bar_start_well: well,
+        workspace_art: "dots",
         bar_workspace_focused: accent,
         bar_workspace_shade: accent_top,
         bar_workspace_active: Qt.alpha(t.theme_primary, 0.35),
