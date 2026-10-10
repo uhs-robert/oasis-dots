@@ -46,7 +46,7 @@ function overrides(t, ctx) {
         chip_brackets: false,
         marker_fill: false,
         bar_font_family: "Michroma",
-        bar_font_size: t.font_size - 3,
+        bar_font_size: t.font_size - 1,
         bar_caps: true,
         bar_letter_spacing: 1.5,
         bar_side_bg: t.bg_crust,

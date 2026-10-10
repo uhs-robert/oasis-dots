@@ -10,6 +10,9 @@ function overrides(t, ctx) {
         // Press Start 2P draws on an 8px grid and runs 1em wide; 14 sits between its 1.5x and 2x sizes, with a wider frame.
         font_family: "Press Start 2P",
         font_size: 14,
+        // Press Start 2P is wide and has no leading, so fs(-5) and fs(-4) shrink keys past legible.
+        key_size: 12,
+        footer_size: 12,
         scale: 1.2,
         popup_min_width: 295,
         frame_color: t.bg_crust,

@@ -12,6 +12,8 @@ function overrides(t, ctx) {
         // One 16px scale like the notification panel: -1/-2 text is primary, -3/-4 meta, -5 and smaller tags.
         font_size: t.popup_font_size + 1,
         type_scale: ({ "-1": 0, "-2": 0, "-3": -4, "-5": -6, "-7": -6, "-8": -6 }),
+        // type_scale takes -5 text to 10px, too small for a bare key letter.
+        key_size: 13,
         scale: 1.1,
         rounded: false,
         border_title: true,

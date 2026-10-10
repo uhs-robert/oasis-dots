@@ -17,6 +17,9 @@ function overrides(t, ctx) {
         // Silkscreen sits on an 8px grid; 16 is its 2x size.
         font_family: "Silkscreen",
         font_size: 16,
+        // Keys and footers at Silkscreen's 2x; fs(-5) and fs(-4) fall off its 8px grid and blur.
+        key_size: 16,
+        footer_size: 16,
         frame_color: t.bg_crust,
         frame_shade: t.bg_mantle,
         shade_vertical: true,
