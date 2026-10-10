@@ -352,6 +352,7 @@ Singleton {
     readonly property string footer_arrow: root.active.footer_arrow
     readonly property bool footer_italic: root.active.footer_italic
     readonly property int footer_size: root.active.footer_size
+    readonly property int key_size: root.active.key_size
     readonly property string whichkey_arrow: root.active.whichkey_arrow
     readonly property int whichkey_size: root.active.whichkey_size
     readonly property var type_scale: root.active.type_scale || ({})

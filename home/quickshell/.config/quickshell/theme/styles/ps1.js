@@ -15,7 +15,7 @@ function overrides(t, ctx) {
         text_muted: Qt.tint(t.fg_dim, Qt.alpha(t.fg_core, 0.35)),
         text_dim: Qt.tint(t.fg_dim, Qt.alpha(t.fg_core, 0.6)),
         font_family: "Terminess Nerd Font",
-        font_size: t.popup_font_size + 6,
+        font_size: t.popup_font_size + 7,
         frame_color: t.bg_crust,
         frame_shade: t.bg_mantle,
         frame_radius: 10,

@@ -21,7 +21,7 @@ const glyph_names = Object.keys(key_glyphs).reduce((m, k) => {
 }, {});
 
 // Key cap text and ring, shared by the caps (KeyBadge, HeaderButton) and the layouts that reserve room for them.
-// A pixel ring (Game Boy) gets a 2px ring and the body font on its 8px grid; Press Start 2P read too large at 16px, and off the grid both fonts blur.
+// A pixel ring (Game Boy) gets a 2px ring and the body font; Press Start 2P read too large there at a legible size.
 function cap_ring_width(st) {
     return st.pixel_border.a > 0 ? 2 : 1;
 }
@@ -31,7 +31,7 @@ function cap_font_family(st) {
 }
 
 function cap_font_px(st) {
-    return st.pixel_border.a > 0 ? Math.ceil(st.fs(-5) / 8) * 8 : st.fs(-5);
+    return st.key_size > 0 ? st.key_size : st.fs(-5);
 }
 
 // Per console (Style.controller): button component (takes button, size, shades) and key -> button map, whole or by "/" halves.

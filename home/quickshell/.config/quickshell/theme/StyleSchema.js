@@ -257,6 +257,7 @@ var tokens = [
     tok("footer_arrow", "string", "", "Drawn between each footer key and its description."),
     tok("footer_italic", "bool", false, ""),
     tok("footer_size", "int", 0, "Footer text size in px; 0 keeps the popup-derived sizes."),
+    tok("key_size", "int", 0, "Key cap and tab jump key text size in px; 0 keeps fs(-5)."),
     tok("whichkey_arrow", "string", "", ""),
     tok("whichkey_size", "int", 0, "Which-key keys and labels in px; 0 keeps the popup-derived sizes."),
     tok("type_scale", "var", () => ({}), "Maps a text role's offset from font_size to the style's own (e.g. {\"-2\": 0} lifts -2 text to full size); unlisted offsets pass through.", {expr: "root.active.type_scale || ({})"}),
