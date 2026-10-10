@@ -25,7 +25,7 @@ voxcmd list                       # integrations and their verbs
 5. A target that matches none of the candidates runs the action the integration names for that case in `no_match_actions`, if any.
 6. One option runs (after a Yes/No picker if the integration sets `confirm=1`). Several open a picker, the Quickshell one when the bar is running and `rofi -dmenu` otherwise; cancelling does nothing. None sends a "no match" notification.
 
-A notification reports what ran, or the last lines of the error.
+A notification reports what ran, followed by the last line the command printed, if any, or the last lines of the error.
 
 ## Integrations
 
@@ -42,6 +42,7 @@ verbs=(
 )
 
 # Commands are eval'd with $id (the chosen candidate's id, else the target) and $target (the spoken text).
+# The last line a command prints is appended to the notification, so it can say what actually happened.
 declare -A actions=(
   [focus]='hyprctl dispatch "hl.dsp.focus({ window = \"address:$id\" })"'
 )
