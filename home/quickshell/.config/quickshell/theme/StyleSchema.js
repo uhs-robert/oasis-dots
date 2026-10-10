@@ -218,7 +218,7 @@ var tokens = [
     tok("controller", "string", "", "Key badges, footers and help draw this console's buttons (KeyHints.controllers); Controller glyphs Off blanks it, so read it for glyphs only."),
     tok("controller_glyphs", "string", "dpad", 'Which keys draw as controller buttons: "all", "labeled" (the key beside each button the d-pad and shoulders cannot explain), "dpad" (only those) or "off".'),
     tok("meter_art", "var", () => ({}), 'Meter art by popup name (or "osd"): a component path relative to components/ that replaces the segments.'),
-    tok("toast_enter", "string", "", 'Toast arrival: "" fades in; "type" slides and types, "mode7" zooms from a tilted plane, "wobble" settles, "bloom" glows, each once.'),
+    tok("toast_enter", "string", "", 'Toast arrival (Style.toast_enters): "" fades in; "type" slides and types, "mode7" zooms from a tilted plane, "wobble" settles, "bloom" glows, each once.'),
     tok("console_views", "string", "", "Popups, toasts and bar modules swap in this console's views (\"nes\", \"snes\", \"ps1\", \"ps2\"); \"\" keeps the shared ones."),
     tok("workspace_art", "string", "", 'Bar workspace indicator art ("dial", "materia", "doors", "constellation", "buffers", "party"), one of Style.workspace_arts; "" keeps pills.'),
     tok("slant_frame", "bool", false, "Frames drawn by SlantFrame: flat top, bottom corners cut at the bar islands' slant, a sand horizon along the foot."),

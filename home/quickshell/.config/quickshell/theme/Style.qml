@@ -35,6 +35,9 @@ Singleton {
     readonly property var done_anim_labels: ({ hearts: "Hearts", pixel: "Pixel", lcd: "LCD", hev_pickup: "Health pickup", levelup: "Level up", fanfare: "Fanfare" })
     readonly property var wait_anims: ["bubble", "cursor", "pressanykey", "advance", "hand", "alert", "rumble", "transmission", "scan", "comms", "ping", "hev_alert", "exclaim", "atb"]
     readonly property var wait_anim_labels: ({ bubble: "Bubble", cursor: "Cursor", pressanykey: "Press any key", advance: "Advance", hand: "Hand", alert: "Alert", rumble: "Rumble", transmission: "Transmission", scan: "Scan", comms: "Comms", ping: "Ping", hev_alert: "HEV alert", exclaim: "Exclaim", atb: "ATB" })
+    // Toast arrivals any style can borrow (Theme options); "" is the plain fade-in.
+    readonly property var toast_enters: ["", "type", "mode7", "wobble", "bloom"]
+    readonly property var toast_enter_labels: ({ "": "Fade", type: "Type", mode7: "Mode 7", wobble: "Wobble", bloom: "Bloom" })
     readonly property var labels: ({ crt: "CRT", nes: "NES", snes: "SNES", gameboy: "Gameboy", goldeneye: "Goldeneye", ps1: "PSX", ff7: "FFVII", ps2: "PS2", halflife: "Half Life", tie: "Tie Fighter", modern: "Modern" })
 
     FileView {
@@ -518,6 +521,7 @@ Singleton {
         out.push({ key: "weather_header", label: "Weather layout", type: "choice", default: b.weather_header || "", choices: root.with_native(root.weather_layouts, b.weather_header), labels: root.weather_layout_labels });
         out.push({ key: "done_anim", label: "Done animation", type: "choice", default: b.done_anim || "hearts", choices: root.done_anims, labels: root.done_anim_labels });
         out.push({ key: "wait_anim", label: "Waiting animation", type: "choice", default: b.wait_anim || "bubble", choices: root.wait_anims, labels: root.wait_anim_labels });
+        out.push({ key: "toast_enter", label: "Toast arrival", type: "choice", default: b.toast_enter || "", choices: root.toast_enters, labels: root.toast_enter_labels });
         out.push({ key: "workspace_art", label: "Workspaces", type: "choice", default: b.workspace_art || "", choices: root.workspace_arts, labels: root.workspace_art_labels });
         out.push({ key: "font_family", label: "Font", type: "choice", default: b.font_family, choices: root.font_choices });
         out.push({ key: "bar_font_family", label: "Bar font", type: "choice", default: b.bar_font_family, choices: root.font_choices });
