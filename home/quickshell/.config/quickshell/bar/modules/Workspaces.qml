@@ -39,7 +39,9 @@ Item {
     readonly property bool stars: Style.workspace_art === "constellation"
     // Dragon Quest slime party: a slime leads each workspace's apps, a crowned king on the focused one.
     readonly property bool slimes: Style.workspace_art === "slimes"
-    readonly property int slime_pixel: compact ? 1 : 2
+    // Pixel art drops to 1x on a bar too short for the 2x pill, e.g. Neovim's fixed 24px bar borrowing it.
+    readonly property bool small_art: compact || (Style.bar_height > 0 && Style.bar_height < 32)
+    readonly property int slime_pixel: small_art ? 1 : 2
     // Nes.SlimePill's 2px edge inset and its slime; the icons follow 2px on and keep 2px off the far edge.
     readonly property int slime_lead: Slimes.SIZE * slime_pixel + 2
     // Where every plain-pill read comes from: the owning style's pills when a named set is borrowed, a plain round pill in the host's colours when "Pills" is picked over a style whose own look is an art or pill set, else the host itself. Styles with a plain "" look keep their own pills (ring, squares) under "". Style.styles holds each style in the current palette, typed like the Style exports.
@@ -58,8 +60,8 @@ Item {
     readonly property bool doors: Style.workspace_art === "doors"
     // Lualine buffers: numbered tabs with their apps, full bar height.
     readonly property bool buffers: Style.workspace_art === "buffers"
-    readonly property int icon_size: materia ? (compact ? 10 : 12) : doors ? (compact ? 12 : 14) : party || slimes ? (compact ? 14 : 16) : slots ? (compact ? 15 : 17) : compact ? 16 : 19
-    readonly property int pill_height: materia ? slot_size : doors ? (compact ? 26 : 30) : map ? 34 : slots ? (compact ? 26 : 30) : party ? (compact ? 22 : 26) : slimes ? (compact ? 22 : 30) : root.pill_tokens.bar_pill_height > 0 ? root.pill_tokens.bar_pill_height - (compact ? 4 : 0) : compact ? 20 : 22
+    readonly property int icon_size: materia ? (compact ? 10 : 12) : doors ? (compact ? 12 : 14) : party ? (compact ? 14 : 16) : slimes ? (small_art ? 14 : 16) : slots ? (compact ? 15 : 17) : compact ? 16 : 19
+    readonly property int pill_height: materia ? slot_size : doors ? (compact ? 26 : 30) : map ? 34 : slots ? (compact ? 26 : 30) : party ? (compact ? 22 : 26) : slimes ? (small_art ? 22 : 30) : root.pill_tokens.bar_pill_height > 0 ? root.pill_tokens.bar_pill_height - (compact ? 4 : 0) : compact ? 20 : 22
     readonly property int tile_face: compact ? 8 : 10
     readonly property int tile_depth: compact ? 2 : 3
 
