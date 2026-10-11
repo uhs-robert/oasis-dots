@@ -404,49 +404,76 @@ Popup {
                 }
             }
 
-            // --- Active-alert banner ---
+            // --- Active-alert banner: the event over when it ends, like the FF7 battle message ---
             Rectangle {
+                id: alert_banner
                 readonly property bool shown: root.has_alerts && !root.own_alert
+                readonly property var alert: WeatherState.alerts.length > 0 ? WeatherState.alerts[0] : null
+                readonly property int more: Math.max(0, WeatherState.alerts.length - 1)
+                readonly property color severity_color: alert_banner.alert ? WeatherState.alert_color(alert_banner.alert.severity) : Style.text_dim
+                readonly property color alert_color: root.mission || root.threat ? Style.pal.label : alert_banner.severity_color
                 Layout.fillWidth: true
-                Layout.preferredHeight: shown ? 28 : 0
+                Layout.preferredHeight: shown ? banner_lines.implicitHeight + 12 : 0
                 visible: shown
                 radius: Style.pill_chips ? height / 2 : Style.radius(4)
-                readonly property color alert_color: root.mission || root.threat ? Style.pal.label : WeatherState.alerts.length > 0 ? WeatherState.alert_color(WeatherState.alerts[0].severity) : Style.text_dim
                 color: Style.boxed_cards ? Qt.alpha(alert_color, 0.1) : Style.pal.bg_surface
                 border.width: Style.boxed_cards ? 1 : 0
                 border.color: alert_color
 
-                RowLayout {
-                    anchors.fill: parent
-                    anchors.margins: 6
-                    spacing: 8
+                ColumnLayout {
+                    id: banner_lines
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    anchors.verticalCenter: parent.verticalCenter
+                    anchors.leftMargin: Style.pill_chips ? 12 : 6
+                    anchors.rightMargin: anchors.leftMargin
+                    spacing: 1
 
-                    Rectangle {
-                        Layout.preferredWidth: 8
-                        Layout.preferredHeight: 8
-                        radius: Style.radius(4)
-                        color: WeatherState.alerts.length > 0 ? WeatherState.alert_color(WeatherState.alerts[0].severity) : Style.text_dim
-                    }
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 8
 
-                    Text {
-                        visible: (root.mission || root.threat) && main_column.width >= 340
-                        text: root.mission ? "MISSION CRITICAL" : "THREAT DETECTED"
-                        color: Style.pal.label
-                        font.family: root.mission ? Style.title_font_family : Style.font_family
-                        font.pixelSize: Style.fs(-6)
-                        font.letterSpacing: 1
+                        Rectangle {
+                            id: severity_dot
+                            Layout.preferredWidth: 8
+                            Layout.preferredHeight: 8
+                            radius: Style.radius(4)
+                            color: alert_banner.severity_color
+                        }
+
+                        Text {
+                            visible: (root.mission || root.threat) && main_column.width >= 340
+                            text: root.mission ? "MISSION CRITICAL" : "THREAT DETECTED"
+                            color: Style.pal.label
+                            font.family: root.mission ? Style.title_font_family : Style.font_family
+                            font.pixelSize: Style.fs(-6)
+                            font.letterSpacing: 1
+                        }
+
+                        Text {
+                            Layout.fillWidth: true
+                            Layout.minimumWidth: 0
+                            elide: Text.ElideRight
+                            text: !alert_banner.alert ? "" : root.mission ? "AVOID " + alert_banner.alert.event.toUpperCase() : alert_banner.alert.event
+                            color: root.mission || root.threat ? Style.pal.label : alert_banner.severity_color
+                            font.family: Style.font_family
+                            font.pixelSize: Style.fs(-2)
+                            font.bold: true
+                        }
                     }
 
                     Text {
                         Layout.fillWidth: true
+                        Layout.minimumWidth: 0
+                        Layout.leftMargin: severity_dot.Layout.preferredWidth + 8
+                        visible: text !== ""
                         elide: Text.ElideRight
-                        text: WeatherState.alerts.length === 0 ? ""
-                            : root.mission ? (WeatherState.alerts.length > 1 ? "+" + (WeatherState.alerts.length - 1) + "  " : "") + "AVOID " + WeatherState.alerts[0].event.toUpperCase()
-                            : WeatherState.alerts[0].event + " · until " + root.fmt_alert_time(WeatherState.alerts[0].ends) + (WeatherState.alerts.length > 1 ? "  +" + (WeatherState.alerts.length - 1) + " more" : "")
-                        color: root.mission || root.threat ? Style.pal.label : WeatherState.alerts.length > 0 ? WeatherState.alert_color(WeatherState.alerts[0].severity) : Style.pal.fg
+                        text: !alert_banner.alert ? "" : [alert_banner.alert.ends ? "until " + root.fmt_alert_time(alert_banner.alert.ends) : "", alert_banner.more > 0 ? "+" + alert_banner.more + " more" : ""].filter(s => s !== "").join("  ")
+                        color: root.mission || root.threat ? Qt.alpha(Style.pal.label, 0.75) : Style.text_muted
                         font.family: Style.font_family
-                        font.pixelSize: Style.fs(-2)
-                        font.bold: true
+                        font.pixelSize: Style.fs(-4)
+                        font.capitalization: root.mission || root.threat ? Font.AllUppercase : Font.MixedCase
+                        font.letterSpacing: root.mission || root.threat ? 1 : 0
                     }
                 }
 
