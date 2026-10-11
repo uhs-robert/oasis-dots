@@ -66,12 +66,10 @@ local function with_prefix(prefix, key)
   return prefix .. " + " .. key
 end
 
---- Register one or more keys to a single action.
---- @param keys   string|string[]         Key string(s); multiples register the same action for each
---- @param action HL.Dispatcher|function  Dispatcher or Lua function
---- @param desc   string|HL.BindOptions|nil  Description string, or opts table (desc is then omitted)
---- @param opts   HL.BindOptions|nil
-function Bind.key(keys, action, desc, opts)
+--- @param desc string|HL.BindOptions|nil  Description string, or opts table (desc is then omitted)
+--- @param opts HL.BindOptions|nil
+--- @return HL.BindOptions
+local function bind_options(desc, opts)
   if type(desc) == "table" and opts == nil then
     opts = desc
     desc = nil
@@ -83,8 +81,37 @@ function Bind.key(keys, action, desc, opts)
     opts.desc = desc --[[@as string]]
   end
 
+  return opts
+end
+
+--- Register one or more keys to a single action.
+--- @param keys   string|string[]         Key string(s); multiples register the same action for each
+--- @param action HL.Dispatcher|function  Dispatcher or Lua function
+--- @param desc   string|HL.BindOptions|nil  Description string, or opts table (desc is then omitted)
+--- @param opts   HL.BindOptions|nil
+function Bind.key(keys, action, desc, opts)
+  opts = bind_options(desc, opts)
   for _, key in ipairs(as_list(keys)) do
     track(key, hl.bind(key, action, opts))
+  end
+end
+
+--- Register a key for as long as some state lasts, e.g. from `hyprctl eval`; the returned function removes it.
+--- Not tracked, so Bind.unbind never touches it.
+--- Before Hyprland 0.57, removing a bind drops every bind with the same modifiers and exact key string from every
+--- submap, so spell `key` unlike the other binds of that key ("Escape" next to their "ESCAPE").
+--- @param key    string
+--- @param action HL.Dispatcher|function
+--- @param desc   string|HL.BindOptions|nil
+--- @param opts   HL.BindOptions|nil
+--- @return fun() remove  Safe to call more than once
+function Bind.temporary(key, action, desc, opts)
+  local handle = hl.bind(key, action, bind_options(desc, opts))
+  return function()
+    -- A method on a handle whose bind is already gone (hl.unbind of the same key) dereferences null in
+    -- Hyprland 0.56; only tostring checks.
+    if handle and tostring(handle) ~= "HL.Keybind(expired)" then handle:remove() end
+    handle = nil
   end
 end
 

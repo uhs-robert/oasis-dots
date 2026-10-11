@@ -6,12 +6,16 @@ Voice commands on top of [voxtype](https://github.com/peteonrails/voxtype). Spea
 | ------------------------ | -------------------------------------------------------- |
 | `CTRL + SHIFT + PERIOD`  | Start listening; press again to stop and run the command |
 | Leader, `SHIFT + PERIOD` | Same, from the leader menu                               |
+| `ESCAPE` while listening | Cancel: discard the recording and run nothing            |
 | Leader, `CTRL + SLASH`   | [Voice Help](#voice-help): pick from example phrases     |
 
 While a voxcmd picker is open, the same key records a reply to it instead of a new command (see [Picker](#picker)).
 
+Escape is bound only from the start of a recording until voxtype has finished transcribing it, as "Cancel Voice Command" in the global map, so Keybind Help lists it then; every other key keeps working, and Escape is back to normal once the recording ends however it ends. A press that finds no voxcmd recording (say the watcher was killed) only removes the bind, and never cancels plain dictation.
+
 ```bash
 voxcmd listen                     # toggle: start a voxtype recording, or stop it and route the transcript
+voxcmd cancel                     # discard the recording listen started, running nothing
 voxcmd "next track"               # route text directly
 voxcmd --dry-run "volume to 40"   # show the match, candidates and command without running anything
 voxcmd --reply "the second one"   # answer the open voxcmd picker, as a spoken reply would
@@ -113,7 +117,7 @@ Strong matches hide weak ones.
 `keybinds.sh` is a fallback integration over `hyprctl binds -j`, so any phrase no other integration takes is matched against keybind descriptions: "close window", "toggle fullscreen", "go to workspace two". `run`, `press`, `keybind`, `do` and `trigger` are ignored words, so "run close window" is the same phrase.
 
 - Binds from every submap are offered, one per description, preferring the global one; a submap bind is labelled with its submap, `Lock (System)`. Submap navigation (`+Name`, `Back`, `Exit <submap>`), one-character descriptions and lid switches are left out.
-- `excluded_descriptions` hides the voice binds themselves and anything about passwords or secrets; edit the list in the file.
+- `excluded_descriptions` hides the voice binds themselves (Cancel Voice Command included) and anything about passwords or secrets; edit the list in the file.
 - `confirm_labels` asks before closing, killing, locking, logging out, powering off, rebooting, suspending, deleting or clearing.
 - A bind runs like Keybind Help runs it: the submap is reset, then `hyprctl eval 'debug.getregistry()[<arg>]()'`.
 
