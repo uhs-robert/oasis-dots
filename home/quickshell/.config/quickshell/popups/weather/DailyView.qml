@@ -45,7 +45,7 @@ Item {
 
     readonly property bool lsp_columns: false && Style.weather_header === "lsp" && root.sub === 0
 
-    readonly property bool scan_columns: false && Style.weather_header === "scan" && root.sub === 0
+    readonly property bool scan_columns: Style.weather_header === "scan" && root.sub === 0
 
     readonly property bool battle_columns: false && Style.weather_header === "battle" && root.sub === 0
 
