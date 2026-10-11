@@ -10,7 +10,6 @@ Usage:
   voxcmd --dry-run <text...>  show what would run, without running it
   voxcmd listen               start a voxtype recording; on the next call, stop it and route the transcript
                               (as a reply when a voxcmd picker is open)
-  voxcmd cancel               discard the recording listen started, running nothing (Escape while it records)
   voxcmd --reply <text...>    answer the open voxcmd picker: a choice, an ordinal, or cancel
   voxcmd --dry-run --reply <text...>
   voxcmd list                 list integrations and their verbs
@@ -21,9 +20,6 @@ EOF
 config_dir="${VOXCMD_CONFIG_DIR:-${XDG_CONFIG_HOME:-$HOME/.config}/voxcmd}"
 runtime_dir="${XDG_RUNTIME_DIR:-/tmp}/voxcmd"
 voxtype_state_file="${XDG_RUNTIME_DIR:-/tmp}/voxtype/state"
-listen_transcript_file="$runtime_dir/transcript.txt"
-# Holds the watcher's PID from the start of a listen recording until voxtype finishes it.
-listening_marker="$runtime_dir/listening"
 # Written by voxcmd-pick while it waits: {pid, fifo, label, choices: [{id, label}]}.
 pending_pick_file="$runtime_dir/pending-pick.json"
 voxcmd_self="$(readlink -f "$0")"
@@ -503,67 +499,27 @@ voxtype_state() { cat "$voxtype_state_file" 2>/dev/null || echo idle; }
 # the second call stops the recording, and the watcher routes the transcript, or replies with it when a voxcmd
 # picker was open as the recording started.
 listen() {
-  local transcript_handler=route
+  local transcript="$runtime_dir/transcript.txt" marker="$runtime_dir/listening" transcript_handler=route
   mkdir -p "$runtime_dir"
-  if [ -e "$listening_marker" ] && [ "$(voxtype_state)" != idle ]; then
+  if [ -e "$marker" ] && [ "$(voxtype_state)" != idle ]; then
     voxtype record stop
     return
   fi
   # An idle voxtype with the marker still present means the watcher was killed before cleaning up.
-  rm -f "$listening_marker"
+  rm -f "$marker"
   if [ "$(voxtype_state)" != idle ]; then
     notify "voxcmd" "voxtype is busy ($(voxtype_state))"
     return 1
   fi
   if pending_pick >/dev/null; then transcript_handler=reply; fi
-  rm -f "$listen_transcript_file"
-  touch "$listening_marker"
-  if ! voxtype record start --file="$listen_transcript_file"; then
-    rm -f "$listening_marker"
+  rm -f "$transcript"
+  touch "$marker"
+  if ! voxtype record start --file="$transcript"; then
+    rm -f "$marker"
     notify "voxcmd error" "voxtype record start failed"
     return 1
   fi
-  setsid "$0" _watch "$transcript_handler" </dev/null >/dev/null 2>&1 &
-}
-
-# The Escape bind is Hyprland's (lib/voxcmd.lua in the hypr config); without Hyprland there is none to toggle.
-set_cancel_bind() {
-  command -v hyprctl >/dev/null || return 0
-  hyprctl eval "require('lib.voxcmd').$1_cancel()" >/dev/null 2>&1 || true
-}
-
-# Prints the watcher's PID while the marker names a live one.
-listening_watcher() {
-  local pid
-  pid=$(cat "$listening_marker" 2>/dev/null) || return 1
-  [ -n "$pid" ] && grep -qs _watch "/proc/$pid/cmdline" || return 1
-  printf '%s' "$pid"
-}
-
-# Escape while listen's recording runs or transcribes. The bind can outlive the recording (a killed watcher, a
-# crashed voxtype), so a press that finds nothing to cancel only removes it, and never cancels a recording
-# voxcmd did not start. Once voxtype is idle the watcher is routing a finished transcript, which is left alone.
-cancel_listening() {
-  local watcher
-  if watcher=$(listening_watcher); then
-    case "$(voxtype status 2>/dev/null)" in
-    idle) ;;
-    stopped)
-      # voxtype died mid-recording, so there is nothing of its to cancel.
-      kill "$watcher" 2>/dev/null || true
-      rm -f "$listening_marker" "$listen_transcript_file"
-      ;;
-    *)
-      # The watcher goes first, so a transcript that lands before voxtype takes the cancel is never routed.
-      kill "$watcher" 2>/dev/null || true
-      voxtype record cancel || true
-      rm -f "$listening_marker" "$listen_transcript_file"
-      ;;
-    esac
-  else
-    rm -f "$listening_marker"
-  fi
-  set_cancel_bind disarm
+  setsid "$0" _watch "$transcript" "$marker" "$transcript_handler" </dev/null >/dev/null 2>&1 &
 }
 
 # Polled every 0.2s. Recording plus transcription can outlast voxtype's max_duration_secs; 10 minutes covers both.
@@ -572,14 +528,11 @@ watch_max_polls=3000
 watch_start_grace_polls=50
 watch_file_grace_polls=10
 
-# Arms the Escape bind for as long as the recording runs or transcribes, then routes the transcript.
 watch_recording() {
-  local transcript_handler="$1" recording_seen=0 polls=0
-  printf '%s\n' "$$" >"$listening_marker"
-  # TERM is voxcmd cancel; exiting on it runs the EXIT trap.
-  trap 'end_listening' EXIT
-  trap 'exit 143' TERM
-  set_cancel_bind arm
+  local transcript="$1" marker="$2" transcript_handler="$3" recording_seen=0 polls=0
+  # Expanded now: the trap fires after this function returns, when the local is gone.
+  # shellcheck disable=SC2064
+  trap "rm -f '$marker'" EXIT
   while [ "$polls" -lt "$watch_max_polls" ]; do
     polls=$((polls + 1))
     if [ "$(voxtype_state)" != idle ]; then
@@ -589,22 +542,13 @@ watch_recording() {
     fi
     sleep "$watch_poll_interval"
   done
-  end_listening
   # voxtype may write the file a moment after it reports idle.
   for ((polls = 0; polls < watch_file_grace_polls; polls++)); do
-    [ -s "$listen_transcript_file" ] && break
+    [ -s "$transcript" ] && break
     sleep "$watch_poll_interval"
   done
-  [ -s "$listen_transcript_file" ] || exit 0
-  "$transcript_handler" "$(cat "$listen_transcript_file")"
-}
-
-# Only while the marker is still this watcher's: by the time a slow route exits, a newer listen may own it (a voice
-# reply to the route's picker), and disarming then would take that recording's Escape.
-end_listening() {
-  [ "$(cat "$listening_marker" 2>/dev/null)" = "$$" ] || return 0
-  rm -f "$listening_marker"
-  set_cancel_bind disarm
+  [ -s "$transcript" ] || exit 0
+  "$transcript_handler" "$(cat "$transcript")"
 }
 
 case "${1:-}" in
@@ -624,9 +568,8 @@ case "${1:-}" in
   reply "$@"
   ;;
 listen) listen ;;
-cancel) cancel_listening ;;
 help) voice_help ;;
-_watch) watch_recording "$2" ;;
+_watch) watch_recording "$2" "$3" "$4" ;;
 list)
   while IFS= read -r file; do
     (
