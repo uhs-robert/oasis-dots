@@ -1,6 +1,6 @@
 # voxcmd
 
-Voice commands on top of [voxtype](https://github.com/peteonrails/voxtype). Speak a phrase, voxcmd matches it against the verbs your integrations declare and runs the action. Two integrations ship: `media.sh` (playerctl and pamixer) and `keybinds.sh` (any described Hyprland keybind); everything else is a drop-in file you write.
+Voice commands on top of [voxtype](https://github.com/peteonrails/voxtype). Speak a phrase, voxcmd matches it against the verbs your integrations declare and runs the action. Three integrations ship: `media.sh` (playerctl and pamixer), `apps.sh` (open apps, focus, move and close windows) and `keybinds.sh` (any described Hyprland keybind); everything else is a drop-in file you write.
 
 | Key                                | Does                                                                     |
 | ---------------------------------- | ------------------------------------------------------------------------ |
@@ -179,6 +179,24 @@ As a fallback it never sees a phrase another integration takes. Starting the phr
 - Tab on its Voice Help entries lists every submap (`Submap: Cursor`), "Exit submap" and every offered bind; picking one runs it as saying it would.
 - A bind runs like Keybind Help runs it: the submap is reset, then `hyprctl eval 'debug.getregistry()[<arg>]()'`.
 - A submap is entered like its `+Name` bind enters it, by `hyprctl eval` calling `enter` on the Submap module that registered it (the Hyprland config's `lib.key.submap` or hyprvim's), so its enter hooks and which-key run. Exiting calls their `reset`, which runs the current submap's exit hook.
+
+### Apps
+
+`apps.sh` opens installed apps and works on open windows, with word matching:
+
+| Say                                                            | Does                                                               |
+| -------------------------------------------------------------- | ------------------------------------------------------------------ |
+| "open firefox", "launch slack", "start thunar"                 | focuses the app's most recent window if it has one, else starts it |
+| "open new firefox", "open a new kitty"                         | always starts it                                                   |
+| "focus slack", "switch to firefox", "go to tmux config"        | focuses the window                                                 |
+| "move slack to workspace 3", "send firefox to workspace three" | moves the window there, leaving focus where it is                  |
+| "close slack", "close the firefox window"                      | closes the window, after a Yes/No                                  |
+
+- Apps are the desktop entries in `$XDG_DATA_HOME` and `$XDG_DATA_DIRS` (the first copy of an id wins), leaving out `NoDisplay`, `Hidden` and entries `OnlyShowIn`/`NotShowIn` keep off this desktop. An app matches by its `Name` and by the last part of its id (`code`, `nautilus`). It starts like the Quickshell apps picker starts it: the `Exec` line without field codes, in `Path`, and `Terminal=true` apps in the Hyprland config's terminal wrapper.
+- An app counts as running when a window's class is its `StartupWMClass`, its id or the last part of its id.
+- Windows come from `hyprctl clients -j` and match by app name (the desktop entry's `Name`, else the class) or by title. Several matching windows open the picker, labelled with their titles.
+- `window`, `app`, `application` and `program` are ignored words, so "close window" and "open application" are left to the keybinds. A phrase that is a described keybind ("close browsers", "focus left", "go to workspace 2", "start menu") is left to them too, even when a window or app would match it, and so is "open X" when X is a bind's whole description and names no app ("open files" for a `Files` bind; "open firefox" stays here).
+- A target with the word `session` or `agent` in it matches nothing, so "switch to the X session" and "go to the X agent" are left to the integrations for those.
 
 ## Voice Help
 
