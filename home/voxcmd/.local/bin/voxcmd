@@ -330,6 +330,10 @@ resolve_matches() {
 # Phrases that open Voice Help before any integration is tried, so the keybinds fallback never takes them.
 help_phrases='^(what can i say|voice help|show voice commands)$'
 
+# Phrases that throw the command away silently, for a false start that still got recorded. A pending picker never
+# sees them here: listen sends a recording made while it waits to reply, where "cancel" closes the picker.
+discard_phrases='^(never ?mind|cancel|forget it|nothing)$'
+
 # Normal integrations first, then the LLM hook, then fallback integrations, each only when the ones before it left
 # nothing to run, so a catch-all fallback never competes with a real verb.
 route() {
@@ -345,6 +349,12 @@ route() {
       voice_help
     fi
     return
+  fi
+  if [[ "$text" =~ $discard_phrases ]]; then
+    if [ "$dry_run" = 1 ]; then
+      printf 'transcript:  %s\nnormalized:  %s\nresult:      built-in, discarded\n' "$transcript" "$text"
+    fi
+    return 0
   fi
   options=$(resolve_matches "$(match_verbs "$text" normal)")
   [ "$(jq length <<<"$options")" != 0 ] || options=$(resolve_matches "$(llm_match "$text")")
