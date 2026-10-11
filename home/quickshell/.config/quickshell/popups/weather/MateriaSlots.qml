@@ -34,8 +34,6 @@ Item {
         ["RAIN", d => d.pop + "%"]
     ]
 
-    readonly property var orb_colors: Materia.day_colors(root.days.map(d => d.date))
-
     // Widest row label ("RAIN"), plus a pad for its letter-spacing.
     readonly property real label_w: Math.max(40, label_metrics.tightBoundingRect.width + root.rows.reduce((m, r) => Math.max(m, r[0].length), 0) + 12)
     readonly property int n: Math.max(1, root.days.length)
@@ -179,7 +177,7 @@ Item {
                     width: root.socket_size * 0.67
                     height: width
                     glow: false
-                    color: Style.materia_palette.days[root.orb_colors[slot.index]] || "transparent"
+                    color: Materia.color(Style.materia_palette, WeatherState.weather_color_keys, slot.modelData.code)
                 }
             }
 
