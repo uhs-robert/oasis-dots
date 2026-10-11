@@ -23,7 +23,7 @@ Item {
     // Temperature ranges as 1px altitude ladders with rungs.
     readonly property bool ladder: Style.weather_header === "scope"
     readonly property bool thin_range: Style.range_line || root.ladder
-    // GoldenEye: a facility line over the columns, day names in briefing caps.
+    // GoldenEye: day names in briefing caps.
     readonly property bool mission: Style.weather_header === "watch"
     // PS1: each column headed by its memory card save block in place of the icon.
     readonly property bool save_blocks: Style.weather_header === "memcard"
@@ -173,13 +173,6 @@ Item {
     ColumnLayout {
         anchors.fill: parent
         spacing: 6
-
-        Loader {
-            Layout.fillWidth: true
-            active: root.mission
-            visible: active
-            sourceComponent: FacilityHeader {}
-        }
 
         Text {
             visible: root.ws_panels && root.window_days.length > 0
