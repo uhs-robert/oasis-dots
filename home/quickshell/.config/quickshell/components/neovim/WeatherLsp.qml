@@ -6,7 +6,8 @@ import Quickshell
 import "../../theme"
 import "../../services"
 
-// Weather as a Neovim buffer: a winbar breadcrumb, the conditions, and the first alert as an LSP diagnostic on the location line.
+// Weather as a Neovim buffer: a winbar breadcrumb, the conditions, the first alert as an LSP diagnostic on the location line,
+// and today's vitals as a hover float.
 ColumnLayout {
     id: root
 
@@ -18,6 +19,24 @@ ColumnLayout {
     signal alert_clicked()
 
     spacing: 6
+
+    readonly property int hover_px: Style.fs(-3)
+    readonly property real hover_key_px: hover_metrics.advanceWidth("rain ")
+    readonly property real hover_lead_px: hover_metrics.advanceWidth("-10 ")
+    readonly property real hover_tail_px: hover_metrics.advanceWidth(" 100 °F")
+    // Gauge cells fill what the key, low and high columns leave inside the float's padding.
+    readonly property int gauge_cells: Math.max(5, Math.min(16, Math.floor((root.width - 20 - root.hover_key_px - root.hover_lead_px - root.hover_tail_px) / hover_metrics.advanceWidth("▰"))))
+    readonly property var gauges: !WeatherState.has_vitals ? [] : [
+        { key: "temp", lead: String(Math.round(WeatherState.today_low)), lead_color: WeatherState.temp_color(WeatherState.today_low), tail: " " + Math.round(WeatherState.today_high) + " °" + WeatherState.unit_symbol(), vital: WeatherState.vital("temp") },
+        { key: "hum", lead: "", lead_color: Style.text_fg, tail: " " + WeatherState.vital("hum").value + "%", vital: WeatherState.vital("hum") },
+        { key: "rain", lead: "", lead_color: Style.text_fg, tail: " " + WeatherState.today_pop + "%", vital: WeatherState.vital("rain") }
+    ]
+    readonly property var readouts: !WeatherState.has_vitals ? [] : ["wind", "uv", "aqi"].map(k => WeatherState.vital(k)).filter(v => v.key !== "aqi" || WeatherState.aqi_now >= 0)
+
+    // The temp gauge marks a position in today's range, so it lights through now's cell; the others fill to an amount.
+    function lit_cells(gauge) {
+        return gauge.key === "temp" ? Math.round(gauge.vital.fill * (root.gauge_cells - 1)) + 1 : Math.round(gauge.vital.fill * root.gauge_cells);
+    }
 
     function fmt_temp(t) {
         return Math.round(t) + "°" + WeatherState.unit_symbol();
@@ -205,6 +224,128 @@ ColumnLayout {
 
         TapHandler {
             onTapped: root.alert_clicked()
+        }
+    }
+
+    FontMetrics {
+        id: hover_metrics
+        font.family: Style.font_family
+        font.pixelSize: root.hover_px
+    }
+
+    Item {
+        visible: WeatherState.has_vitals
+        Layout.fillWidth: true
+        implicitHeight: hover_body.implicitHeight + 12
+
+        FloatFrame {
+            anchors.fill: parent
+            chip_height: 0
+            fill: Qt.tint(Style.frame_color, Qt.alpha(Style.text_fg, 0.04))
+        }
+
+        ColumnLayout {
+            id: hover_body
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.top: parent.top
+            anchors.leftMargin: 10
+            anchors.rightMargin: 10
+            anchors.topMargin: 6
+            spacing: 1
+
+            Repeater {
+                model: root.gauges
+
+                Row {
+                    id: gauge_row
+                    required property var modelData
+                    readonly property int lit: root.lit_cells(gauge_row.modelData)
+
+                    Text {
+                        width: root.hover_key_px
+                        text: gauge_row.modelData.key
+                        color: Style.text_primary
+                        font.family: Style.font_family
+                        font.pixelSize: root.hover_px
+                    }
+
+                    Text {
+                        width: root.hover_lead_px
+                        horizontalAlignment: Text.AlignRight
+                        rightPadding: hover_metrics.advanceWidth(" ")
+                        text: gauge_row.modelData.lead
+                        color: gauge_row.modelData.lead_color
+                        font.family: Style.font_family
+                        font.pixelSize: root.hover_px
+                    }
+
+                    Text {
+                        text: "▰".repeat(gauge_row.lit)
+                        color: gauge_row.modelData.vital.color
+                        font.family: Style.font_family
+                        font.pixelSize: root.hover_px
+                    }
+
+                    Text {
+                        text: "▱".repeat(root.gauge_cells - gauge_row.lit)
+                        color: Style.text_muted
+                        font.family: Style.font_family
+                        font.pixelSize: root.hover_px
+                    }
+
+                    Text {
+                        text: gauge_row.modelData.tail
+                        color: gauge_row.modelData.key === "temp" ? WeatherState.temp_color(WeatherState.today_high) : Style.text_fg
+                        font.family: Style.font_family
+                        font.pixelSize: root.hover_px
+                    }
+                }
+            }
+
+            Rectangle {
+                Layout.fillWidth: true
+                Layout.topMargin: 3
+                Layout.bottomMargin: 3
+                implicitHeight: 1
+                color: Style.frame_border_color
+            }
+
+            Flow {
+                Layout.fillWidth: true
+                spacing: 14
+
+                Repeater {
+                    model: root.readouts
+
+                    Row {
+                        id: readout
+                        required property var modelData
+                        spacing: hover_metrics.advanceWidth(" ")
+
+                        Text {
+                            text: readout.modelData.label.toLowerCase()
+                            color: Style.text_primary
+                            font.family: Style.font_family
+                            font.pixelSize: root.hover_px
+                        }
+
+                        Text {
+                            text: readout.modelData.value + (readout.modelData.unit !== "" ? " " + readout.modelData.unit : "")
+                            color: readout.modelData.color
+                            font.family: Style.font_family
+                            font.pixelSize: root.hover_px
+                        }
+
+                        Text {
+                            text: readout.modelData.detail
+                            color: Style.text_dim
+                            font.family: Style.font_family
+                            font.pixelSize: root.hover_px
+                        }
+                    }
+                }
+            }
         }
     }
 }
