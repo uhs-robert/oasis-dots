@@ -1,6 +1,6 @@
 # voxcmd
 
-Voice commands on top of [voxtype](https://github.com/peteonrails/voxtype). Speak a phrase, voxcmd matches it against the verbs your integrations declare and runs the action. Three integrations ship: `media.sh` (playerctl and pamixer), `apps.sh` (open apps, focus, move and close windows) and `keybinds.sh` (any described Hyprland keybind); everything else is a drop-in file you write.
+Voice commands on top of [voxtype](https://github.com/peteonrails/voxtype). Speak a phrase, voxcmd matches it against the verbs your integrations declare and runs the action. Four integrations ship: `media.sh` (playerctl and pamixer), `apps.sh` (open apps, focus, move and close windows), `timers.sh` (timers and reminders as systemd user timers) and `keybinds.sh` (any described Hyprland keybind); everything else is a drop-in file you write.
 
 | Key                                | Does                                                                     |
 | ---------------------------------- | ------------------------------------------------------------------------ |
@@ -163,6 +163,25 @@ An integration with `fallback=1` is tried only when the normal integrations, and
 - anything else is no match, so stray speech does nothing.
 
 Strong matches hide weak ones.
+
+### Timers
+
+`timers.sh` sets timers and reminders as transient systemd user timers, `voxcmd-timer-<id>`, which ring with a critical `notify-send` (it stays up until dismissed, and the bar plays its notification sound if Settings > Sound > Theme audio has it on).
+
+| Say | Does |
+| --- | --- |
+| "set a timer for 5 minutes", "timer 90 seconds", "set a 10 minute timer" | A timer; words after the time name it: "timer 10 minutes for the pasta" |
+| "remind me in 20 minutes to call the bank", "remind me to stretch at 3 pm" | A reminder, the time before "to" or after the text |
+| "list timers", "what timers are running", "how much time is left" | Lists them in the notification |
+| "cancel the timer", "cancel the reminder about the bank", "cancel the pasta timer" | Cancels one; several running open the picker |
+| "cancel all timers" | Cancels every voxcmd timer |
+
+- Durations take digits or number words, units of seconds, minutes and hours, and combinations: "an hour and a half", "two and a half minutes", "half an hour", "1 hour 30". The transcript has lost its punctuation by then, so "1.5 hours" arrives as `1 5 hours` and reads as 1.5.
+- Clock times are "3 pm", "3:30 p.m.", "15:30", "three thirty pm", "noon", "midnight", optionally "today" or "tomorrow". A time already past today means tomorrow; with no am or pm, whichever of the morning and evening time comes next.
+- Everything is scheduled at a wall-clock time (`--on-calendar`), timers too, so one that falls due while the machine sleeps rings on resume instead of late.
+- The label is the unit's Description (`Timer: 5 minutes`, `Reminder: Call the bank`), which is how list and cancel find it. `systemctl --user list-timers 'voxcmd-timer-*'` shows the same set.
+- Timers live in the user's systemd manager: they outlast voxcmd, but not a logout or reboot.
+- Times are shown in the bar's Settings > Clock time format.
 
 ### Keybinds
 
