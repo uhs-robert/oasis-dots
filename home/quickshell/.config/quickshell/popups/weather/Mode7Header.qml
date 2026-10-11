@@ -13,7 +13,19 @@ Item {
     readonly property var cur: WeatherState.current
     readonly property bool has: WeatherState.has_data && !!root.cur
     readonly property bool roomy: root.width >= 330
-    readonly property var rows: root.has ? [["FEELS", Math.round(root.cur.feels) + "°"], ["HUM", root.cur.humidity + "%"], ["WIND", Math.round(root.cur.wind_speed) + " " + WeatherState.wind_unit().toUpperCase()], ["UV", root.cur.uv_index.toFixed(1)]] : []
+    readonly property var rows: WeatherState.vitals.filter(v => ["feels", "wind", "uv", "aqi"].indexOf(v.key) >= 0).map(v => [v.label, root.readout_text(v)])
+    readonly property var gauges: !WeatherState.has_vitals ? [] : [
+        { label: "TEMP", value: Math.round(WeatherState.current.temp) + "°", fill: WeatherState.temp_range_pos, range: true },
+        { label: "HUM", value: WeatherState.current.humidity + "%", fill: WeatherState.current.humidity / 100, range: false },
+        { label: "RAIN", value: WeatherState.today_pop + "%", fill: WeatherState.today_pop / 100, range: false }
+    ]
+
+    // The EPA's own short name keeps the longest AQI band on one line.
+    function readout_text(vital) {
+        if (vital.key === "feels") return vital.value + "°";
+        const detail = vital.detail.replace("Unhealthy for Sensitive Groups", "USG");
+        return [vital.value, vital.unit, detail].filter(part => part !== "").join(" ").toUpperCase();
+    }
 
     implicitHeight: body.implicitHeight + 24
 
@@ -75,8 +87,102 @@ Item {
             }
         }
 
+        // Status-screen gauges: TEMP spans today's low to high with a notch at now; HUM and RAIN fill from empty.
         GridLayout {
-            visible: root.has
+            visible: WeatherState.has_vitals
+            Layout.fillWidth: true
+            Layout.topMargin: 2
+            columns: 5
+            columnSpacing: 8
+            rowSpacing: 5
+
+            Repeater {
+                model: root.gauges
+
+                Text {
+                    id: gauge_label
+                    required property var modelData
+                    required property int index
+                    Layout.row: gauge_label.index
+                    Layout.column: 0
+                    text: gauge_label.modelData.label
+                    color: Theme.theme_primary_light
+                    font.family: Style.font_family
+                    font.pixelSize: Style.fs(-6)
+                    style: Text.Raised
+                    styleColor: Style.text_shadow
+                }
+            }
+
+            Repeater {
+                model: root.gauges
+
+                Text {
+                    id: gauge_value
+                    required property var modelData
+                    required property int index
+                    Layout.row: gauge_value.index
+                    Layout.column: 1
+                    Layout.alignment: Qt.AlignRight
+                    text: gauge_value.modelData.value
+                    color: Theme.fg_strong
+                    font.family: Style.font_family
+                    font.pixelSize: Style.fs(-6)
+                    style: Text.Raised
+                    styleColor: Style.text_shadow
+                }
+            }
+
+            Text {
+                Layout.row: 0
+                Layout.column: 2
+                text: Math.round(WeatherState.today_low) + "°"
+                color: Theme.theme_primary_light
+                font.family: Style.font_family
+                font.pixelSize: Style.fs(-6)
+                style: Text.Raised
+                styleColor: Style.text_shadow
+            }
+
+            Repeater {
+                model: root.gauges
+
+                Snes.SnesGauge {
+                    id: gauge_bar
+                    required property var modelData
+                    required property int index
+                    Layout.row: gauge_bar.index
+                    Layout.column: gauge_bar.modelData.range ? 3 : 2
+                    Layout.columnSpan: gauge_bar.modelData.range ? 1 : 3
+                    Layout.fillWidth: true
+                    Layout.alignment: Qt.AlignVCenter
+                    value: gauge_bar.modelData.fill
+
+                    Rectangle {
+                        visible: gauge_bar.modelData.range
+                        x: Math.round(1 + gauge_bar.inner_w * gauge_bar.v) - 1
+                        y: -2
+                        width: 2
+                        height: gauge_bar.height + 4
+                        color: Theme.fg_strong
+                    }
+                }
+            }
+
+            Text {
+                Layout.row: 0
+                Layout.column: 4
+                text: Math.round(WeatherState.today_high) + "°"
+                color: Theme.theme_primary_light
+                font.family: Style.font_family
+                font.pixelSize: Style.fs(-6)
+                style: Text.Raised
+                styleColor: Style.text_shadow
+            }
+        }
+
+        GridLayout {
+            visible: WeatherState.has_vitals
             Layout.fillWidth: true
             columns: root.roomy ? 4 : 2
             columnSpacing: 10
@@ -110,7 +216,9 @@ Item {
                     Layout.row: Math.floor(row_value.index / (root.roomy ? 2 : 1))
                     Layout.column: 2 * (row_value.index % (root.roomy ? 2 : 1)) + 1
                     Layout.fillWidth: true
+                    Layout.minimumWidth: 0
                     horizontalAlignment: Text.AlignRight
+                    elide: Text.ElideRight
                     text: row_value.modelData[1]
                     color: Theme.fg_strong
                     font.family: Style.font_family
