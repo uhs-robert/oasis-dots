@@ -16,6 +16,13 @@ verbs=(
   "switch  open (the )?{target} (tmux )?session"
 )
 
+examples=(
+  "switch to the <name> session"
+  "open session <name>"
+  "new session <name>"
+  "attach <name>"
+)
+
 declare -A actions=(
   [switch]='focus_or_attach "$id"'
   [new]='open_terminal tmux new-session -A -s "$target"'

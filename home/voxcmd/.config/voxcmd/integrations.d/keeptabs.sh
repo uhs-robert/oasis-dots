@@ -12,6 +12,13 @@ verbs=(
   "focus         (jump|go|switch) to (the )?{target} agent"
 )
 
+examples=(
+  "jump to the waiting agent"
+  "go to the agent that needs me"
+  "next agent"
+  "go to the <name> agent"
+)
+
 declare -A actions=(
   [jump_waiting]='focus_first_in_state waiting'
   [jump_next]='focus_first_in_state waiting done'
