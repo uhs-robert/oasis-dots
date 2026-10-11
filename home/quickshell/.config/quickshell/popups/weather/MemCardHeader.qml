@@ -11,6 +11,25 @@ ColumnLayout {
 
     readonly property var cur: WeatherState.current
     readonly property bool has: WeatherState.has_data && !!root.cur
+    readonly property int aqi: WeatherState.aqi_now
+    // Each readout is [label, value, band, band colour]; AQI drops out when there is no reading.
+    readonly property var readouts: !root.has ? [] : [
+        ["WIND", Math.round(root.cur.wind_speed) + " " + WeatherState.wind_unit().toUpperCase() + " " + WeatherState.compass_label(root.cur.wind_dir), "", Style.text_fg],
+        ["UV", root.cur.uv_index.toFixed(1), WeatherState.uv_band(root.cur.uv_index).label.toUpperCase(), WeatherState.uv_color(root.cur.uv_index)]
+    ].concat(root.aqi >= 0 ? [["AQI", String(root.aqi), WeatherState.aqi_band(root.aqi).label.toUpperCase(), WeatherState.aqi_color(root.aqi)]] : [])
+
+    component GaugeLabel: Text {
+        color: Theme.theme_primary_light
+        font.family: Style.font_family
+        font.pixelSize: Style.fs(-5)
+    }
+
+    component GaugeValue: Text {
+        Layout.alignment: Qt.AlignRight | Qt.AlignVCenter
+        color: Style.text_fg
+        font.family: Style.font_family
+        font.pixelSize: Style.fs(-5)
+    }
 
     spacing: 6
 
@@ -119,26 +138,101 @@ ColumnLayout {
                     spacing: 10
 
                     Repeater {
-                        model: root.has ? [["HUM", root.cur.humidity + "%"], ["WIND", Math.round(root.cur.wind_speed) + " " + WeatherState.wind_unit().toUpperCase()], ["UV", root.cur.uv_index.toFixed(1)]] : []
+                        model: root.readouts
 
                         Row {
+                            id: readout
                             required property var modelData
                             spacing: 4
 
                             Text {
-                                text: parent.modelData[0]
+                                text: readout.modelData[0]
                                 color: Theme.theme_primary_light
                                 font.family: Style.font_family
                                 font.pixelSize: Style.fs(-5)
                             }
 
                             Text {
-                                text: parent.modelData[1]
+                                text: readout.modelData[1]
                                 color: Style.text_fg
                                 font.family: Style.font_family
                                 font.pixelSize: Style.fs(-5)
                             }
+
+                            Text {
+                                visible: readout.modelData[2] !== ""
+                                text: readout.modelData[2]
+                                color: readout.modelData[3]
+                                font.family: Style.font_family
+                                font.pixelSize: Style.fs(-5)
+                            }
                         }
+                    }
+                }
+
+                GridLayout {
+                    visible: WeatherState.has_vitals
+                    Layout.fillWidth: true
+                    Layout.topMargin: 4
+                    columns: 4
+                    columnSpacing: 6
+                    rowSpacing: 4
+
+                    GaugeLabel {
+                        text: "TEMP"
+                    }
+
+                    GaugeValue {
+                        text: Math.round(WeatherState.today_low) + "°"
+                        color: WeatherState.temp_color(WeatherState.today_low)
+                    }
+
+                    BlockGauge {
+                        Layout.fillWidth: true
+                        Layout.alignment: Qt.AlignVCenter
+                        value: WeatherState.temp_range_pos
+                        fill_color: WeatherState.has_vitals ? WeatherState.temp_color(root.cur.temp) : Theme.theme_primary_light
+                        mark_last: true
+                    }
+
+                    GaugeValue {
+                        text: Math.round(WeatherState.today_high) + "°"
+                        color: WeatherState.temp_color(WeatherState.today_high)
+                    }
+
+                    GaugeLabel {
+                        text: "HUM"
+                    }
+
+                    // Only TEMP has a low end; the empty cell keeps every gauge starting at the same x.
+                    Item {}
+
+                    BlockGauge {
+                        Layout.fillWidth: true
+                        Layout.alignment: Qt.AlignVCenter
+                        value: root.has ? root.cur.humidity / 100 : 0
+                        fill_color: Theme.theme_primary_light
+                    }
+
+                    GaugeValue {
+                        text: root.has ? root.cur.humidity + "%" : ""
+                    }
+
+                    GaugeLabel {
+                        text: "RAIN"
+                    }
+
+                    Item {}
+
+                    BlockGauge {
+                        Layout.fillWidth: true
+                        Layout.alignment: Qt.AlignVCenter
+                        value: WeatherState.today_pop / 100
+                        fill_color: Theme.info
+                    }
+
+                    GaugeValue {
+                        text: WeatherState.today_pop + "%"
                     }
                 }
 
