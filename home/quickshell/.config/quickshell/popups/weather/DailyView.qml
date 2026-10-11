@@ -23,7 +23,7 @@ Item {
     // Temperature ranges as 1px altitude ladders with rungs.
     readonly property bool ladder: Style.weather_header === "scope"
     readonly property bool thin_range: Style.range_line || root.ladder
-    // GoldenEye: a facility line over the columns, each lettered as an objective.
+    // GoldenEye: a facility line over the columns, day names in briefing caps.
     readonly property bool mission: Style.weather_header === "watch"
     // PS1: each column headed by its memory card save block in place of the icon.
     readonly property bool save_blocks: Style.weather_header === "memcard"
@@ -63,7 +63,7 @@ Item {
 
     function day_label(day, i) {
         const ddd = Qt.formatDate(new Date(day.date + "T00:00:00"), "ddd").toUpperCase();
-        if (root.mission) return String.fromCharCode(97 + i) + ") " + ddd;
+        if (root.mission) return day.weekday.toUpperCase();
         if (root.dq) return i === 0 ? "NOW" : ddd;
         return day.weekday;
     }
@@ -89,7 +89,6 @@ Item {
     // Columns that fit without clipping their widest label, capped at five.
     readonly property int fit_days: {
         const f = [label_metrics.font, table_metrics.font];
-        const mission_w = root.mission ? Math.max(label_metrics.advanceWidth("a) WED"), small_metrics.advanceWidth("PROGRESS") + 8) : 0;
         const dq_w = root.dq ? 2 * (small_metrics.advanceWidth(Style.row_cursor) + 3) : 0;
         if (root.hev_slots) return Math.max(1, Math.min(5, 1 + Math.floor((root.width - 100) / 52)));
         const col = Style.weather_header === "wttr" ? table_metrics.advanceWidth("─") * 8 - 4
@@ -97,7 +96,7 @@ Item {
             : root.dq ? Math.max(label_metrics.advanceWidth("100%"), label_metrics.advanceWidth("WED") + dq_w) + 16
             // Room for a 3x-scale 24x18 photo (72x54) plus its frame.
             : root.camera ? 24 * 3 + 18 + 8
-            : Math.max(label_metrics.advanceWidth("Today"), label_metrics.advanceWidth("100%"), mission_w) + 8;
+            : Math.max(label_metrics.advanceWidth("Today"), label_metrics.advanceWidth("100%")) + 8;
         // Reserve room for the row-label column ("RAIN" is the widest), matching MateriaSlots' own label_w.
         const status_label_w = Math.max(40, small_metrics.advanceWidth("RAIN") + 12);
         const room = Style.weather_header === "status" ? root.width - status_label_w : root.width + 4;
@@ -381,7 +380,6 @@ Item {
                         label: root.day_label(day_col.modelData, day_col.day_index)
                         col_w: day_col.width
                         dq: root.dq
-                        mission: root.mission
                         save_blocks: root.save_blocks
                         ladder: root.ladder
                         thin_range: root.thin_range
