@@ -1,7 +1,6 @@
 // home/quickshell/.config/quickshell/popups/WeatherPopup.qml
 import QtQuick
 import QtQuick.Layouts
-import Quickshell
 import "../components"
 import "../theme"
 import "../services"
@@ -331,77 +330,9 @@ Popup {
                 on_open: function () { root.open_alerts(); }
             }
 
-            RowLayout {
+            PlainHeader {
                 visible: Style.weather_header === ""
                 Layout.fillWidth: true
-                spacing: 14
-
-                Image {
-                    Layout.preferredWidth: Math.min(72, Math.max(40, main_column.width / 5))
-                    Layout.preferredHeight: Layout.preferredWidth
-                    readonly property real dpr: QsWindow.window ? QsWindow.window.devicePixelRatio : 1
-                    source: WeatherState.has_data ? WeatherState.icon_source(WeatherState.current.code, WeatherState.current.is_day) : ""
-                    visible: WeatherState.has_data
-                    sourceSize.width: Math.ceil(144 * dpr)
-                    sourceSize.height: Math.ceil(144 * dpr)
-                    smooth: true
-                }
-
-                ColumnLayout {
-                    spacing: 0
-                    Layout.fillWidth: true
-
-                    Text {
-                        text: WeatherState.has_data ? root.fmt_temp(WeatherState.current.temp) : WeatherState.failed ? "n/a" : "--°"
-                        color: WeatherState.has_data ? WeatherState.temp_color(WeatherState.current.temp) : Style.text_dim
-                        font.family: Style.number_font
-                        font.pixelSize: Style.fs(12)
-                        font.bold: true
-                    }
-
-                    Text {
-                        Layout.fillWidth: true
-                        elide: Text.ElideRight
-                        text: WeatherState.cond_text(true)
-                        color: WeatherState.has_data || WeatherState.loading ? Style.pal.fg : Style.pal.warning
-                        font.family: Style.font_family
-                        font.pixelSize: Style.fs(1)
-                    }
-
-                    Text {
-                        visible: WeatherState.has_data
-                        Layout.fillWidth: true
-                        elide: Text.ElideRight
-                        text: "Feels like " + (WeatherState.has_data ? root.fmt_temp(WeatherState.current.feels) : "")
-                        color: Style.text_muted
-                        font.family: Style.font_family
-                        font.pixelSize: Style.fs(-2)
-                    }
-
-                    Text {
-                        visible: WeatherState.location_name !== ""
-                        elide: Text.ElideRight
-                        Layout.fillWidth: true
-                        text: WeatherState.location_name
-                        color: Style.text_dim
-                        font.family: Style.font_family
-                        font.pixelSize: Style.fs(-2)
-                    }
-                }
-
-                Text {
-                    visible: WeatherState.stale
-                    Layout.alignment: Qt.AlignTop
-                    Layout.maximumWidth: main_column.width / 3
-                    horizontalAlignment: Text.AlignRight
-                    wrapMode: Text.Wrap
-                    maximumLineCount: 3
-                    elide: Text.ElideRight
-                    text: WeatherState.stale_text()
-                    color: Style.pal.warning
-                    font.family: Style.font_family
-                    font.pixelSize: Style.fs(-3)
-                }
             }
 
             // --- Active-alert banner: the event over when it ends, like the FF7 battle message ---
