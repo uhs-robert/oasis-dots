@@ -311,6 +311,9 @@ resolve_matches() {
 # nothing to run, so a catch-all fallback never competes with a real verb.
 route() {
   local transcript="$*" text options count choices picked
+  # Global, not local: the integration contract promises it to candidates() and to every action.
+  # shellcheck disable=SC2034 # read by integrations
+  raw_transcript="$transcript"
   text=$(apply_replacements "$(normalize "$transcript")")
   options=$(resolve_matches "$(match_verbs "$text" normal)")
   [ "$(jq length <<<"$options")" != 0 ] || options=$(resolve_matches "$(llm_match "$text")")

@@ -46,14 +46,16 @@ verbs=(
   "focus  (focus|switch to|go to) {target}"
 )
 
-# Commands are eval'd with $id (the chosen candidate's id, else the target) and $target (the spoken text).
+# Commands are eval'd with $id (the chosen candidate's id, else the target), $target (the spoken text) and
+# $raw_transcript (the transcript before normalization and replacements, with its punctuation, digits and symbols).
 # The last line a command prints is appended to the notification, so it can say what actually happened.
 declare -A actions=(
   [focus]='hyprctl dispatch "hl.dsp.focus({ window = \"address:$id\" })"'
 )
 
 # Optional. Called with the action name and the spoken target for verbs with a target; prints a JSON array of
-# {id, label}. The target lets it list only what that phrase can mean, or [] to leave the phrase to a fallback.
+# {id, label}. The target lets it list only what that phrase can mean, or [] to leave the phrase to a fallback;
+# $raw_transcript is set here too.
 # Printing nothing means "no candidates, use the target text"; printing [] means nothing can match.
 candidates() {
   hyprctl clients -j | jq -c 'map({id: .address, label: "\(.class) \(.title)"})'
