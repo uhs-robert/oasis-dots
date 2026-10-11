@@ -997,6 +997,34 @@ Singleton {
         return root.color_for_key(root.aqi_band(aqi).color_key);
     }
 
+    // --- Today's vitals: the Status panel's numbers, for every weather layout to draw its own way ---
+
+    readonly property var today: root.days.length > 0 ? root.days[0] : null
+    readonly property bool has_vitals: root.has_data && !!root.current && !!root.today
+    readonly property int aqi_now: root.aq_has_data && root.aq_current ? root.aq_current.aqi : -1
+    // The observed temperature can fall outside the forecast's min/max, so the range stretches to hold it.
+    readonly property real today_low: root.has_vitals ? Math.min(root.today.min, root.current.temp) : 0
+    readonly property real today_high: root.has_vitals ? Math.max(root.today.max, root.current.temp) : 0
+    // Where now sits between today's low (0) and high (1).
+    readonly property real temp_range_pos: !root.has_vitals ? 0 : root.today_high > root.today_low ? (root.current.temp - root.today_low) / (root.today_high - root.today_low) : 0.5
+    readonly property int today_pop: root.has_vitals ? root.today.pop : 0
+
+    // One entry per stat, in Status panel order. `fill` is 0-1 for a gauge, -1 for a plain readout;
+    // UV fills over 0-11 and AQI over 0-300, the tops of their scales' everyday bands.
+    readonly property var vitals: !root.has_vitals ? [] : [
+        { key: "temp", label: "TEMP", value: String(Math.round(root.current.temp)), unit: "°" + root.unit_symbol(), detail: Math.round(root.today_low) + "–" + Math.round(root.today_high), fill: root.temp_range_pos, color: root.temp_color(root.current.temp) },
+        { key: "hum", label: "HUM", value: String(root.current.humidity), unit: "%", detail: "", fill: root.current.humidity / 100, color: Style.pal.blue },
+        { key: "rain", label: "RAIN", value: String(root.today_pop), unit: "%", detail: "today", fill: root.today_pop / 100, color: root.pop_color(root.today_pop) },
+        { key: "feels", label: "FEELS", value: String(Math.round(root.current.feels)), unit: "°" + root.unit_symbol(), detail: "", fill: -1, color: root.temp_color(root.current.feels) },
+        { key: "wind", label: "WIND", value: String(Math.round(root.current.wind_speed)), unit: root.wind_unit(), detail: root.compass_label(root.current.wind_dir), fill: -1, color: Style.pal.fg },
+        { key: "uv", label: "UV", value: root.current.uv_index.toFixed(1), unit: "", detail: root.uv_band(root.current.uv_index).label, fill: Math.min(1, root.current.uv_index / 11), color: root.uv_color(root.current.uv_index) },
+        { key: "aqi", label: "AQI", value: root.aqi_now >= 0 ? String(root.aqi_now) : "--", unit: "", detail: root.aqi_now >= 0 ? root.aqi_band(root.aqi_now).label : "", fill: root.aqi_now >= 0 ? Math.min(1, root.aqi_now / 300) : -1, color: root.aqi_now >= 0 ? root.aqi_color(root.aqi_now) : Style.text_dim }
+    ]
+
+    function vital(key) {
+        return root.vitals.find(v => v.key === key) || null;
+    }
+
     function color_for_key(key) {
         switch (key) {
         case "green": return Style.pal.green;
