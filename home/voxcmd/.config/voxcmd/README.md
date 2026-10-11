@@ -11,7 +11,7 @@ Voice commands on top of [voxtype](https://github.com/peteonrails/voxtype). Spea
 
 While a voxcmd picker is open, the same key records a reply to it instead of a new command (see [Picker](#picker)).
 
-Cancel Voice stops whatever voxtype is recording or transcribing, a voxcmd command or plain Speech to Text dictation alike, and the next Voice Command key press starts a fresh recording. It is silent, since the bar's voxtype indicator shows the recording ending, and does nothing when nothing is recording.
+Cancel Voice stops whatever voxtype is recording or transcribing, a voxcmd command or plain Speech to Text dictation alike, and the next Voice Command key press starts a fresh recording. It is silent, since the bar's voxtype indicator shows the recording ending, and does nothing when nothing is recording. Saying "never mind", "cancel", "forget it" or "nothing" as the whole command also runs nothing, without a "no match" notification.
 
 ```bash
 voxcmd listen                     # toggle: start a voxtype recording, or stop it and route the transcript
@@ -30,7 +30,7 @@ voxcmd help                       # pick from the integrations' example phrases
 
 1. The transcript is lowercased, punctuation is dropped and whitespace collapsed: `"Set volume to 40%."` becomes `set volume to 40`.
 2. Replacement files in `replacements.d/` rewrite whole words, for words the speech model keeps getting wrong.
-   "What can I say", "voice help" and "show voice commands" then open [Voice Help](#voice-help) before any integration is tried.
+   "What can I say", "voice help" and "show voice commands" then open [Voice Help](#voice-help) before any integration is tried, and "never mind", "cancel", "forget it" and "nothing" end there, running nothing.
 3. Each integration's verbs are tried in order against the whole phrase; the first match per integration counts.
 4. A verb with a target whose integration lists candidates for that action matches the target against them: fuzzy (`fzf --filter`, an exact label winning outright) or, for an integration with `target_match=words`, [word matching](#word-matching).
 5. A target that matches none of the candidates runs the action the integration names for that case in `no_match_actions`, if any.
@@ -153,6 +153,8 @@ Press the Voice Command key while a voxcmd picker is open and speak a reply. It 
 - a choice's label, matched like targets are (exact, then substring, then fuzzy); it must single out one choice;
 - an ordinal: `two`, `the second one`, `number 3`, `first`, `last`;
 - `cancel`, `never mind` or `none`, which cancel like Esc.
+
+A recording started while a picker waits is always a reply, so `cancel` there closes the picker rather than being discarded as a command.
 
 The reply picks as if the choice had been clicked and closes the picker. A reply that matches nothing or several choices leaves the picker open and sends a notification; press the key again to retry.
 
