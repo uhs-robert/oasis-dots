@@ -2,38 +2,55 @@
 pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Layouts
+import "../../components"
 import "../../theme"
 import "../../services"
 import "../../lock/skins/goldeneye" as Watch
 import "../../theme/Watch.js" as W
 
-// The current conditions as the classic pause watch: warm segments left filling up from today's low toward its high,
-// blue humidity segments right, a green panel between.
+// The current conditions as the classic pause watch: warm segments left spanning today's low to high with now picked out,
+// blue segments right for today's chance of rain, a green panel between, and a strip of LCD bars for TEMP, HUM and RAIN below.
 Item {
     id: root
 
     readonly property var cur: WeatherState.current
     readonly property bool has: WeatherState.has_data && !!root.cur
-    readonly property int aqi: WeatherState.aq_has_data && WeatherState.aq_current ? WeatherState.aq_current.aqi : -1
-    // At today's low one segment stays lit, so the arc still marks where now sits.
-    readonly property int health_lit: WeatherState.has_vitals ? Math.max(1, Math.round(WeatherState.temp_range_pos * 8)) : 0
-    readonly property real armour_level: root.has ? Math.max(0, Math.min(1, root.cur.humidity / 100)) : 0
+    readonly property int aqi: WeatherState.aqi_now
     readonly property string digits: root.has ? String(Math.round(root.cur.temp)) : "--"
     readonly property real arc_w: 30
+    readonly property real arc_thickness: 11
     readonly property real pad: 12
+    readonly property real face_h: Math.round(Math.max(120, Math.min(150, root.width * 0.3)))
+    readonly property real strip_h: 46
 
-    readonly property string aqi_reading: root.aqi >= 0 ? root.aqi + " " + WeatherState.aqi_band(root.aqi).label.toUpperCase() : "--"
-    readonly property string rain_reading: WeatherState.has_vitals ? WeatherState.today_pop + "%" : "--"
+    // Counted from the bottom of the warm arc: the segment holding now, and how many are lit up to it.
+    readonly property int now_segment: Math.min(W.warm.length - 1, Math.floor(WeatherState.temp_range_pos * W.warm.length))
+    readonly property int range_lit: WeatherState.has_vitals ? root.now_segment + 1 : 0
+    // SegmentArc indexes from the top, so now is the highest lit segment; the run under it dims so now reads as a marker, not a fill.
+    readonly property var range_colors: W.warm.map((c, i) => {
+        const now_index = W.warm.length - 1 - root.now_segment;
+        if (i === now_index) return W.white;
+        return i > now_index ? String(Qt.alpha(c, 0.5)) : c;
+    })
+    readonly property int rain_lit: WeatherState.has_vitals ? Math.round(WeatherState.today_pop / 100 * W.cold_lit.length) : 0
 
     readonly property var readouts: !root.has ? [] : [
-        { label: "HUM", value: root.cur.humidity + "%" },
-        { label: "RAIN", value: root.rain_reading },
         { label: "WIND", value: Math.round(root.cur.wind_speed) + " " + WeatherState.wind_dir_label(root.cur.wind_dir) },
         { label: "UV", value: root.cur.uv_index.toFixed(1) + " " + WeatherState.uv_band(root.cur.uv_index).label.toUpperCase() },
-        { label: "AQI", value: root.aqi_reading }
+        { label: "AQI", value: root.aqi >= 0 ? root.aqi + " " + WeatherState.aqi_band(root.aqi).label.toUpperCase() : "--" }
     ]
 
-    implicitHeight: Math.round(Math.max(130, Math.min(170, root.width * 0.36)))
+    // Where the arcs' end segments sit, mirroring SegmentArc's geometry at its default 112° span over 8 segments, so the labels hug them.
+    readonly property real arc_end_angle: (56 - 7) * Math.PI / 180
+    readonly property real arc_h: root.face_h - 16
+    readonly property real arc_a: root.arc_w - root.arc_thickness / 2
+    readonly property real arc_b: root.arc_h / 2 - root.arc_thickness / 2
+    readonly property real arc_end_inset: root.arc_w - root.arc_a * Math.cos(root.arc_end_angle)
+    readonly property real arc_end_half_len: Math.hypot(root.arc_a * Math.sin(root.arc_end_angle), root.arc_b * Math.cos(root.arc_end_angle)) * (7 * Math.PI / 180)
+    readonly property real arc_top_tip: 8 + root.arc_h / 2 - root.arc_b * Math.sin(root.arc_end_angle) - root.arc_end_half_len
+    readonly property real arc_bottom_tip: 8 + root.arc_h / 2 + root.arc_b * Math.sin(root.arc_end_angle) + root.arc_end_half_len
+
+    implicitHeight: root.face_h + (WeatherState.has_vitals ? root.strip_h + 6 : 0)
 
     Rectangle {
         anchors.fill: parent
@@ -47,22 +64,47 @@ Item {
         x: 6
         y: 8
         width: root.arc_w
-        height: root.height - 16
-        thickness: 11
-        colors: W.warm
+        height: root.arc_h
+        thickness: root.arc_thickness
+        colors: root.range_colors
         from_bottom: true
-        lit: root.health_lit
+        lit: root.range_lit
+    }
+
+    ArcEndLabel {
+        visible: WeatherState.has_vitals
+        center_x: 6 + root.arc_end_inset
+        above: true
+        text: String(Math.round(WeatherState.today_high))
+    }
+
+    ArcEndLabel {
+        visible: WeatherState.has_vitals
+        center_x: 6 + root.arc_end_inset
+        text: String(Math.round(WeatherState.today_low))
     }
 
     Watch.SegmentArc {
         x: root.width - root.arc_w - 6
         y: 8
         width: root.arc_w
-        height: root.height - 16
-        thickness: 11
+        height: root.arc_h
+        thickness: root.arc_thickness
         mirror: true
         colors: W.cold_lit
-        lit: Math.round(root.armour_level * 8)
+        lit: root.rain_lit
+    }
+
+    ArcEndLabel {
+        visible: WeatherState.has_vitals
+        center_x: root.width - 6 - root.arc_end_inset
+        above: true
+        text: WeatherState.today_pop + "%"
+    }
+
+    ArcEndLabel {
+        center_x: root.width - 6 - root.arc_end_inset
+        text: "RAIN"
     }
 
     Repeater {
@@ -80,7 +122,7 @@ Item {
 
     Rectangle {
         x: root.width / 2 - 2.5
-        y: root.height - 8
+        y: root.face_h - 8
         width: 5
         height: 6
         color: W.white
@@ -91,7 +133,7 @@ Item {
         x: root.arc_w + 12
         y: 11
         width: root.width - x * 2
-        height: root.height - 22
+        height: root.face_h - 22
         cut: 12
         notch_w: 6
         notch_h: 18
@@ -160,17 +202,6 @@ Item {
                 }
 
                 Text {
-                    visible: WeatherState.has_vitals
-                    Layout.fillWidth: true
-                    Layout.minimumWidth: 0
-                    elide: Text.ElideRight
-                    text: "LO " + Math.round(WeatherState.today_low) + "° HI " + Math.round(WeatherState.today_high) + "°"
-                    color: Style.wk.soft
-                    font.family: W.mono_font
-                    font.pixelSize: Style.fs(-4)
-                }
-
-                Text {
                     visible: root.has
                     Layout.fillWidth: true
                     Layout.minimumWidth: 0
@@ -181,13 +212,13 @@ Item {
                     font.pixelSize: Style.fs(-4)
                 }
 
-                // The readout column drops out on a narrow panel; keep rain and air on one line here instead.
+                // The readout column drops out on a narrow panel; its readings run on one line here instead.
                 Text {
                     visible: root.has && !readout_column.visible
                     Layout.fillWidth: true
                     Layout.minimumWidth: 0
                     elide: Text.ElideRight
-                    text: "RAIN " + root.rain_reading + " AQI " + root.aqi_reading
+                    text: root.readouts.map(r => r.label + " " + r.value).join("  ")
                     color: Style.wk.soft
                     font.family: W.mono_font
                     font.pixelSize: Style.fs(-4)
@@ -250,5 +281,145 @@ Item {
                 }
             }
         }
+    }
+
+    Watch.PanelShape {
+        visible: WeatherState.has_vitals
+        x: 10
+        y: root.face_h
+        width: root.width - 20
+        height: root.strip_h
+        cut: 8
+        notches: false
+        top_color: Style.wk.panel_top
+        edge: Style.wk.edge
+        bottom_color: Style.wk.panel_bottom
+
+        RowLayout {
+            anchors.fill: parent
+            anchors.leftMargin: 12
+            anchors.rightMargin: 12
+            anchors.topMargin: 5
+            anchors.bottomMargin: 6
+            spacing: root.width >= 300 ? 16 : 10
+
+            LcdBar {
+                label: "TEMP"
+                value: root.has ? Math.round(root.cur.temp) + "°" : "--"
+                low: String(Math.round(WeatherState.today_low))
+                high: String(Math.round(WeatherState.today_high))
+                fill: WeatherState.temp_range_pos
+                marks_now: true
+            }
+
+            LcdBar {
+                label: "HUM"
+                value: root.has ? root.cur.humidity + "%" : "--"
+                fill: root.has ? root.cur.humidity / 100 : 0
+            }
+
+            LcdBar {
+                label: "RAIN"
+                value: WeatherState.today_pop + "%"
+                fill: WeatherState.today_pop / 100
+            }
+        }
+    }
+
+    // A small numeral printed on the bezel just past one end of an arc.
+    component ArcEndLabel: Text {
+        property real center_x: 0
+        property bool above: false
+        x: Math.round(center_x - width / 2)
+        y: Math.round(above ? Math.max(2, root.arc_top_tip - height) : Math.min(root.face_h - height - 2, root.arc_bottom_tip))
+        color: Style.wk.soft
+        font.family: W.mono_font
+        font.pixelSize: Style.fs(-6)
+    }
+
+    // A labelled LCD segment bar; with `marks_now` the segment holding `fill` lights brighter than the run below it.
+    component LcdBar: ColumnLayout {
+        id: lcd_bar
+        property string label: ""
+        property string value: ""
+        property string low: ""
+        property string high: ""
+        property real fill: 0
+        property bool marks_now: false
+        readonly property int now_segment: Math.min(lcd_segments.count - 1, Math.floor(lcd_bar.fill * lcd_segments.count))
+
+        Layout.fillWidth: true
+        Layout.preferredWidth: 1
+        Layout.minimumWidth: 0
+        spacing: 3
+
+        RowLayout {
+            Layout.fillWidth: true
+            spacing: 4
+
+            Text {
+                text: lcd_bar.label
+                color: Style.wk.soft
+                font.family: W.mono_font
+                font.pixelSize: Style.fs(-5)
+                font.letterSpacing: 1
+            }
+
+            Item { Layout.fillWidth: true }
+
+            Text {
+                text: lcd_bar.value
+                color: Style.wk.lit
+                font.family: W.mono_font
+                font.pixelSize: Style.fs(-4)
+            }
+        }
+
+        RowLayout {
+            Layout.fillWidth: true
+            spacing: 4
+
+            LcdEnd {
+                visible: lcd_bar.low !== ""
+                text: lcd_bar.low
+            }
+
+            Item {
+                Layout.fillWidth: true
+                Layout.minimumWidth: 20
+                Layout.preferredHeight: 7
+
+                SegBar {
+                    id: lcd_segments
+                    anchors.fill: parent
+                    count: 10
+                    gap: 2
+                    last_lit: lcd_bar.marks_now ? lcd_bar.now_segment - 1 : Math.round(lcd_bar.fill * count) - 1
+                    on_color: lcd_bar.marks_now ? Style.wk.dim : Style.wk.mid
+                    off_color: Qt.alpha(Style.wk.dim, 0.25)
+                }
+
+                SegBar {
+                    visible: lcd_bar.marks_now
+                    anchors.fill: parent
+                    count: lcd_segments.count
+                    gap: lcd_segments.gap
+                    first_lit: lcd_bar.now_segment
+                    last_lit: lcd_bar.now_segment
+                    on_color: W.white
+                }
+            }
+
+            LcdEnd {
+                visible: lcd_bar.high !== ""
+                text: lcd_bar.high
+            }
+        }
+    }
+
+    component LcdEnd: Text {
+        color: Style.wk.soft
+        font.family: W.mono_font
+        font.pixelSize: Style.fs(-5)
     }
 }
