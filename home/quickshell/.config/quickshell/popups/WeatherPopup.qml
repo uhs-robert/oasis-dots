@@ -434,9 +434,10 @@ Popup {
                 }
             }
 
+            // Alerts has no sub-views, so it takes over the chip slot below and the popup keeps its height.
             Item {
                 Layout.fillWidth: true
-                Layout.preferredHeight: root.content_height
+                Layout.preferredHeight: root.content_height + (root.on_alerts_tab ? sub_tabs.Layout.preferredHeight + main_column.spacing : 0)
 
                 Loader {
                     id: daily_loader
@@ -502,10 +503,11 @@ Popup {
                 }
             }
 
-            // --- Sub-view chips (Daily/Hourly), under the content; the slot keeps its height on Alerts ---
+            // --- Sub-view chips (Daily/Hourly), under the content ---
             Item {
                 Layout.fillWidth: true
                 Layout.preferredHeight: sub_tabs.Layout.preferredHeight
+                visible: !root.on_alerts_tab
 
                 TabRows {
                     id: sub_tabs
