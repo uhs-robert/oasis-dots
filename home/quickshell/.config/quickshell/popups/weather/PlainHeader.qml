@@ -223,10 +223,22 @@ ColumnLayout {
                     Layout.fillWidth: true
                     Layout.minimumWidth: 0
                     elide: Text.ElideRight
-                    text: readout.modelData.value + (readout.modelData.unit !== "" ? " " + readout.modelData.unit : "") + (readout.modelData.detail !== "" ? " · " + readout.modelData.detail : "")
+                    text: readout.modelData.value + (readout.modelData.unit !== "" ? " " + readout.modelData.unit : "")
                     color: readout.modelData.color
                     font.family: Style.font_family
                     font.pixelSize: Style.fs(-3)
+                }
+
+                // The band gets its own line: beside the value, "Moderate" no longer fits a quarter of 440px.
+                Text {
+                    visible: readout.modelData.detail !== ""
+                    Layout.fillWidth: true
+                    Layout.minimumWidth: 0
+                    elide: Text.ElideRight
+                    text: readout.modelData.detail
+                    color: Style.text_muted
+                    font.family: Style.font_family
+                    font.pixelSize: Style.fs(-4)
                 }
             }
         }
