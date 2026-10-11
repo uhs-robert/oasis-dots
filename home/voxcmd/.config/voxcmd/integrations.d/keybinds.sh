@@ -29,6 +29,7 @@ declare -A actions=(
 # and anything near passwords or secrets.
 excluded_descriptions=(
   "voice command"
+  "cancel voice"
   "voice help"
   "speech to text"
   "voxtype"
