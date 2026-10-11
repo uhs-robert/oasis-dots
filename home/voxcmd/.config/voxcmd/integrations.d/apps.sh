@@ -30,6 +30,14 @@ verbs=(
   "close     (${action_verbs[close]}) {target}"
 )
 
+examples=(
+  "open <app>"
+  "open a new <app>"
+  "focus <window>"
+  "move <window> to workspace <number>"
+  "close <window>"
+)
+
 declare -A actions=(
   [open_new]='start_app "$id"'
   [open]='open_app "$id"'
