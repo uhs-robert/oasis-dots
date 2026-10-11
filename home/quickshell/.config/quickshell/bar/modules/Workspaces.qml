@@ -18,6 +18,7 @@ import "../../components/ps1" as Ps1
 import "../../components/ps2" as Ps2
 import "../../components/snes" as Snes
 import "../../components/ff7/Materia.js" as Materia
+import "../../components/nes/Slimes.js" as Slimes
 
 Item {
     id: root
@@ -36,6 +37,11 @@ Item {
     readonly property bool dial: Style.workspace_art === "dial"
     // Oasis night sky: a star per workspace on a low constellation, apps under their star.
     readonly property bool stars: Style.workspace_art === "constellation"
+    // Dragon Quest slime party: a slime leads each workspace's apps, a crowned king on the focused one.
+    readonly property bool slimes: Style.workspace_art === "slimes"
+    readonly property int slime_pixel: compact ? 1 : 2
+    // Nes.SlimePill's 2px edge inset and its slime; the icons follow 2px on and keep 2px off the far edge.
+    readonly property int slime_lead: Slimes.SIZE * slime_pixel + 2
     // Where every plain-pill read comes from: the owning style's pills when a named set is borrowed, a plain round pill in the host's colours when "Pills" is picked over a style whose own look is an art or pill set, else the host itself. Styles with a plain "" look keep their own pills (ring, squares) under "". Style.styles holds each style in the current palette, typed like the Style exports.
     readonly property var pill_tokens: {
         const art = Style.workspace_art;
@@ -52,8 +58,8 @@ Item {
     readonly property bool doors: Style.workspace_art === "doors"
     // Lualine buffers: numbered tabs with their apps, full bar height.
     readonly property bool buffers: Style.workspace_art === "buffers"
-    readonly property int icon_size: materia ? (compact ? 10 : 12) : doors ? (compact ? 12 : 14) : party ? (compact ? 14 : 16) : slots ? (compact ? 15 : 17) : compact ? 16 : 19
-    readonly property int pill_height: materia ? slot_size : doors ? (compact ? 26 : 30) : map ? 34 : slots ? (compact ? 26 : 30) : party ? (compact ? 22 : 26) : root.pill_tokens.bar_pill_height > 0 ? root.pill_tokens.bar_pill_height - (compact ? 4 : 0) : compact ? 20 : 22
+    readonly property int icon_size: materia ? (compact ? 10 : 12) : doors ? (compact ? 12 : 14) : party || slimes ? (compact ? 14 : 16) : slots ? (compact ? 15 : 17) : compact ? 16 : 19
+    readonly property int pill_height: materia ? slot_size : doors ? (compact ? 26 : 30) : map ? 34 : slots ? (compact ? 26 : 30) : party ? (compact ? 22 : 26) : slimes ? (compact ? 22 : 30) : root.pill_tokens.bar_pill_height > 0 ? root.pill_tokens.bar_pill_height - (compact ? 4 : 0) : compact ? 20 : 22
     readonly property int tile_face: compact ? 8 : 10
     readonly property int tile_depth: compact ? 2 : 3
 
@@ -203,7 +209,7 @@ Item {
 
                 readonly property bool is_empty: pill.toplevels.length === 0
                 // Pill art that draws its own shape; the style's pill geometry and overlays (diamond, square, ring, materia orb) would distort it when borrowed.
-                readonly property bool art: root.materia || root.doors || root.party || root.map || root.slots || pill.qblock || pill.ps2
+                readonly property bool art: root.materia || root.doors || root.party || root.map || root.slots || pill.qblock || pill.ps2 || root.slimes
                 readonly property bool diamond: root.pill_tokens.bar_workspace_diamond && is_empty && !pill.art
                 readonly property bool map: root.map
                 readonly property int glyph: map ? (modelData.focused ? 17 : 14) : root.icon_size
@@ -212,10 +218,12 @@ Item {
                 readonly property bool ps2: Style.workspace_art === "ps2"
                 readonly property var toplevels: WindowState.windows_on(modelData)
                 readonly property int cursor_gap: root.party && modelData.focused ? root.party_gap : 0
+                // Room left of the icons for the party cursor or the slime.
+                readonly property int icon_lead: root.slimes ? root.slime_lead : pill.cursor_gap
                 readonly property bool ball: root.party && (is_empty || !modelData.active)
                 property bool hop: false
                 // Plain pills: the style's own art is drawn by none of the branches above.
-                readonly property bool plain: !root.materia && !root.doors && !pill.qblock && !pill.ps2 && !root.slots && !pill.map && !root.party && !pill.diamond
+                readonly property bool plain: !root.materia && !root.doors && !pill.qblock && !pill.ps2 && !root.slots && !pill.map && !root.party && !root.slimes && !pill.diamond
                 readonly property bool dot: pill.plain && pill.is_empty && !pill.modelData.active && root.pill_tokens.bar_workspace_dot.a > 0
 
                 // Hovered dots grow and light a core, the only hint they can be clicked.
@@ -227,12 +235,12 @@ Item {
 
                 height: pill.dot ? 11 : root.pill_height
                 y: (root.pill_height - height) / 2
-                width: root.materia ? (is_empty ? root.slot_size : icons.implicitWidth) : root.doors ? (modelData.active && !is_empty ? icons.implicitWidth + height - 4 : height) : root.party ? cursor_gap + (pill.ball ? 16 : icons.implicitWidth + 10) : pill.map ? Math.max(22, icons.implicitWidth + 8) : root.slots ? (is_empty ? root.tile_face * 2 + 4 : icons.implicitWidth + root.tile_face + 6) : is_empty ? height : icons.implicitWidth + (modelData.active ? 22 : 12) + root.pill_tokens.bar_pill_pad * 2
-                radius: pill.map || root.party || root.slots ? 0 : (root.pill_tokens.bar_pill_square && !pill.art) || pill.qblock ? 0 : height / 2
+                width: root.materia ? (is_empty ? root.slot_size : icons.implicitWidth) : root.doors ? (modelData.active && !is_empty ? icons.implicitWidth + height - 4 : height) : root.party ? cursor_gap + (pill.ball ? 16 : icons.implicitWidth + 10) : pill.map ? Math.max(22, icons.implicitWidth + 8) : root.slimes ? pill.icon_lead + (is_empty ? 2 : icons.implicitWidth + 4) : root.slots ? (is_empty ? root.tile_face * 2 + 4 : icons.implicitWidth + root.tile_face + 6) : is_empty ? height : icons.implicitWidth + (modelData.active ? 22 : 12) + root.pill_tokens.bar_pill_pad * 2
+                radius: pill.map || root.party || root.slots || root.slimes ? 0 : (root.pill_tokens.bar_pill_square && !pill.art) || pill.qblock ? 0 : height / 2
                 rotation: pill.diamond ? 45 : 0
                 scale: pill.diamond ? 0.75 : 1
                 antialiasing: pill.diamond || radius > 0
-                color: root.materia || root.doors || pill.qblock || pill.ps2 || root.slots || pill.map || root.party ? "transparent" : pill.dot ? "transparent" : modelData.focused ? root.pill_tokens.bar_workspace_focused : modelData.active ? root.pill_tokens.bar_workspace_active : root.pill_tokens.bar_workspace_idle
+                color: root.materia || root.doors || pill.qblock || pill.ps2 || root.slots || pill.map || root.party || root.slimes ? "transparent" : pill.dot ? "transparent" : modelData.focused ? root.pill_tokens.bar_workspace_focused : modelData.active ? root.pill_tokens.bar_workspace_active : root.pill_tokens.bar_workspace_idle
                 border.width: !pill.art && root.pill_tokens.bar_workspace_ring.a > 0 && !(root.pill_tokens.bar_workspace_diamond && !is_empty && modelData.focused) ? 1 : 0
                 border.color: root.pill_tokens.bar_workspace_ring
 
@@ -243,7 +251,7 @@ Item {
                     ColorAnimation { duration: 280; easing.type: Easing.InOutCubic }
                 }
 
-                // Console pill art: NES ? blocks, PS1 Tactics tiles, PS2 save cubes and lit blocks, SNES map dots, Game Boy Poke Balls and party rows.
+                // Console pill art: NES ? blocks and slimes, PS1 Tactics tiles, PS2 save cubes and lit blocks, SNES map dots, Game Boy Poke Balls and party rows.
                 Loader {
                     anchors.fill: parent
                     z: pill.map ? 1 : 0
@@ -258,7 +266,7 @@ Item {
                         }
                     }
 
-                    sourceComponent: root.materia ? ff7_slots : root.doors ? metroid_door : pill.qblock ? nes_qblock : root.slots ? ps1_card : pill.ps2 ? (pill.is_empty ? ps2_cube : ps2_block) : pill.map ? snes_dot : root.party ? gb_party : null
+                    sourceComponent: root.materia ? ff7_slots : root.doors ? metroid_door : pill.qblock ? nes_qblock : root.slimes ? nes_slime : root.slots ? ps1_card : pill.ps2 ? (pill.is_empty ? ps2_cube : ps2_block) : pill.map ? snes_dot : root.party ? gb_party : null
 
                     Component {
                         id: ff7_slots
@@ -353,6 +361,16 @@ Item {
                         Nes.QBlock {
                             kind: pill.modelData.focused ? "hit" : "q"
                             mark: pill.is_empty
+                        }
+                    }
+
+                    Component {
+                        id: nes_slime
+                        Nes.SlimePill {
+                            pixel: root.slime_pixel
+                            empty: pill.is_empty
+                            active: pill.modelData.active
+                            focused: pill.modelData.focused
                         }
                     }
 
@@ -480,7 +498,9 @@ Item {
                     anchors.horizontalCenter: pill.map || root.slots ? parent.horizontalCenter : undefined
                     anchors.top: pill.map || root.slots ? parent.top : undefined
                     anchors.topMargin: root.slots ? pill.height - root.tile_depth - root.tile_face / 2 + 1 - pill.glyph : pill.modelData.focused ? 1 : 3
-                    anchors.horizontalCenterOffset: pill.cursor_gap / 2
+                    anchors.horizontalCenterOffset: pill.icon_lead / 2
+                    // Level with the slime's eyes, which sit low in the pill above its underline.
+                    anchors.verticalCenterOffset: root.slimes ? 2 : 0
                     spacing: root.materia ? 6 : pill.map ? 1 : 2
 
                     Repeater {
@@ -494,7 +514,7 @@ Item {
                             workspace_id: pill.modelData.id
                             glyph: pill.glyph
                             icon_opacity: pill.map && !pill.modelData.focused ? 0.6 : 1
-                            width: root.materia ? root.slot_size : pill.glyph + (root.doors || root.slots || pill.map || root.party ? 0 : 4)
+                            width: root.materia ? root.slot_size : pill.glyph + (root.doors || root.slots || pill.map || root.party || root.slimes ? 0 : 4)
                             height: width
                             transform: Translate { y: pill.hop && Hyprland.activeToplevel === icon_item.modelData ? -2 : 0 }
 
