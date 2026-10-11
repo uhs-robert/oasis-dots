@@ -374,7 +374,7 @@ Popup {
 
                         Text {
                             visible: (root.mission || root.threat) && main_column.width >= 340
-                            text: root.mission ? "MISSION CRITICAL" : "THREAT DETECTED"
+                            text: root.mission ? "ALERT:" : "THREAT DETECTED"
                             color: Style.pal.label
                             font.family: root.mission ? Style.title_font_family : Style.font_family
                             font.pixelSize: Style.fs(-6)
@@ -385,7 +385,7 @@ Popup {
                             Layout.fillWidth: true
                             Layout.minimumWidth: 0
                             elide: Text.ElideRight
-                            text: !alert_banner.alert ? "" : root.mission ? "AVOID " + alert_banner.alert.event.toUpperCase() : alert_banner.alert.event
+                            text: !alert_banner.alert ? "" : root.mission ? alert_banner.alert.event.toUpperCase() : alert_banner.alert.event
                             color: root.mission || root.threat ? Style.pal.label : alert_banner.severity_color
                             font.family: Style.font_family
                             font.pixelSize: Style.fs(-2)
