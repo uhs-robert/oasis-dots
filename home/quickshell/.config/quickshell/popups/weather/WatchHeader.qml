@@ -229,8 +229,10 @@ Item {
 
             ColumnLayout {
                 id: readout_column
+                // The value cap reads this rather than the column's own width, which its rows feed back into.
+                readonly property real readout_w: Math.min(160, panel.width * 0.4)
                 visible: root.has && panel.width >= 260
-                Layout.preferredWidth: Math.min(160, panel.width * 0.4)
+                Layout.preferredWidth: readout_column.readout_w
                 Layout.alignment: Qt.AlignVCenter
                 spacing: 1
 
@@ -261,7 +263,7 @@ Item {
                         }
 
                         Text {
-                            Layout.maximumWidth: readout_column.width * 0.75
+                            Layout.maximumWidth: readout_column.readout_w * 0.75
                             elide: Text.ElideRight
                             text: readout_row.modelData.value
                             color: Style.wk.lit
