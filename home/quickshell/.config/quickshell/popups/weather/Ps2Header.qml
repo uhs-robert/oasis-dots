@@ -13,10 +13,24 @@ ColumnLayout {
     readonly property bool has: WeatherState.has_data && !!root.cur
     readonly property int aqi: WeatherState.aq_has_data && WeatherState.aq_current ? WeatherState.aq_current.aqi : -1
     readonly property var stats: !root.has ? [] : [
-        ["Humidity", root.cur.humidity + "%"],
-        ["Wind", Math.round(root.cur.wind_speed) + " " + WeatherState.wind_unit() + " " + WeatherState.wind_dir_label(root.cur.wind_dir)],
-        ["UV", root.cur.uv_index.toFixed(1)]
-    ].concat(root.aqi >= 0 ? [["AQI", String(root.aqi)]] : [])
+        { label: "Wind", value: Math.round(root.cur.wind_speed) + " " + WeatherState.wind_unit() + " " + WeatherState.wind_dir_label(root.cur.wind_dir), band: "", band_color: Theme.fg_strong },
+        { label: "UV", value: root.cur.uv_index.toFixed(1), band: WeatherState.uv_band(root.cur.uv_index).label, band_color: WeatherState.uv_color(root.cur.uv_index) }
+    ].concat(root.aqi >= 0 ? [{ label: "AQI", value: String(root.aqi), band: WeatherState.aqi_band(root.aqi).label, band_color: WeatherState.aqi_color(root.aqi) }] : [])
+
+    component GaugeLabel: Text {
+        color: Theme.theme_primary_light
+        font.family: Style.font_family
+        font.pixelSize: Style.fs(-5)
+        font.capitalization: Font.AllUppercase
+        font.letterSpacing: 1
+    }
+
+    component GaugeValue: Text {
+        Layout.alignment: Qt.AlignRight | Qt.AlignVCenter
+        color: Theme.fg_strong
+        font.family: Style.font_family
+        font.pixelSize: Style.fs(-2)
+    }
 
     spacing: 6
 
@@ -133,6 +147,72 @@ ColumnLayout {
         }
     }
 
+    GridLayout {
+        visible: WeatherState.has_vitals
+        Layout.fillWidth: true
+        Layout.topMargin: 3
+        columns: 4
+        columnSpacing: 9
+        rowSpacing: 7
+
+        GaugeLabel {
+            text: "Temp"
+        }
+
+        Text {
+            Layout.alignment: Qt.AlignRight | Qt.AlignVCenter
+            text: Math.round(WeatherState.today_low) + "°"
+            color: WeatherState.temp_color(WeatherState.today_low)
+            font.family: Style.font_family
+            font.pixelSize: Style.fs(-3)
+        }
+
+        GlassBar {
+            Layout.fillWidth: true
+            value: WeatherState.temp_range_pos
+            fill_color: WeatherState.has_vitals ? WeatherState.temp_color(root.cur.temp) : Theme.info
+        }
+
+        GaugeValue {
+            text: Math.round(WeatherState.today_high) + "°"
+            color: WeatherState.temp_color(WeatherState.today_high)
+            font.pixelSize: Style.fs(-3)
+        }
+
+        GaugeLabel {
+            text: "Humidity"
+        }
+
+        // Only the Temp row has a low end; the empty cell keeps every bar starting at the same x.
+        Item {}
+
+        GlassBar {
+            Layout.fillWidth: true
+            value: root.has ? root.cur.humidity / 100 : 0
+            fill_color: Theme.theme_primary_light
+        }
+
+        GaugeValue {
+            text: root.has ? root.cur.humidity + "%" : ""
+        }
+
+        GaugeLabel {
+            text: "Rain today"
+        }
+
+        Item {}
+
+        GlassBar {
+            Layout.fillWidth: true
+            value: WeatherState.today_pop / 100
+            fill_color: Theme.info
+        }
+
+        GaugeValue {
+            text: WeatherState.today_pop + "%"
+        }
+    }
+
     Flow {
         visible: root.has
         Layout.fillWidth: true
@@ -148,7 +228,7 @@ ColumnLayout {
 
                 Text {
                     anchors.baseline: value_text.baseline
-                    text: stat.modelData[0]
+                    text: stat.modelData.label
                     color: Theme.theme_primary_light
                     font.family: Style.font_family
                     font.pixelSize: Style.fs(-5)
@@ -158,10 +238,19 @@ ColumnLayout {
 
                 Text {
                     id: value_text
-                    text: stat.modelData[1]
+                    text: stat.modelData.value
                     color: Theme.fg_strong
                     font.family: Style.font_family
                     font.pixelSize: Style.fs(-2)
+                }
+
+                Text {
+                    visible: stat.modelData.band !== ""
+                    anchors.baseline: value_text.baseline
+                    text: stat.modelData.band
+                    color: stat.modelData.band_color
+                    font.family: Style.font_family
+                    font.pixelSize: Style.fs(-4)
                 }
             }
         }
