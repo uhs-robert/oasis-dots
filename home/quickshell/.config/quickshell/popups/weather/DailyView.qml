@@ -43,7 +43,7 @@ Item {
     // Each layout's own Temp & Precip column; the placeholders stay off (false &&) until their column draws something.
     readonly property bool watch_columns: false && Style.weather_header === "watch" && root.sub === 0
 
-    readonly property bool lsp_columns: false && Style.weather_header === "lsp" && root.sub === 0
+    readonly property bool lsp_columns: Style.weather_header === "lsp" && root.sub === 0
 
     readonly property bool scan_columns: false && Style.weather_header === "scan" && root.sub === 0
 
