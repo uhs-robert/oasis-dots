@@ -25,8 +25,8 @@ declare -A actions=(
   [run]='run_keybind "$id"'
 )
 
-# Binds whose description contains any of these (case-insensitive) are never offered: the voice keys themselves,
-# and anything near passwords or secrets.
+# Binds whose description contains any of these (case-insensitive) are never offered: the voice keys themselves
+# (Cancel Voice Command too), and anything near passwords or secrets.
 excluded_descriptions=(
   "voice command"
   "voice help"
