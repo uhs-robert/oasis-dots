@@ -6,6 +6,7 @@ Voice commands on top of [voxtype](https://github.com/peteonrails/voxtype). Spea
 | ------------------------ | -------------------------------------------------------- |
 | `CTRL + SHIFT + PERIOD`  | Start listening; press again to stop and run the command |
 | Leader, `SHIFT + PERIOD` | Same, from the leader menu                               |
+| Leader, `CTRL + SLASH`   | [Voice Help](#voice-help): pick from example phrases     |
 
 While a voxcmd picker is open, the same key records a reply to it instead of a new command (see [Picker](#picker)).
 
@@ -16,6 +17,7 @@ voxcmd --dry-run "volume to 40"   # show the match, candidates and command witho
 voxcmd --reply "the second one"   # answer the open voxcmd picker, as a spoken reply would
 voxcmd --dry-run --reply "two"    # show which choice a reply would pick
 voxcmd list                       # integrations and their verbs
+voxcmd help                       # pick from the integrations' example phrases
 ```
 
 `listen` records with `voxtype record start --file=...`, so the transcript is written to a file instead of being typed. Dictation keeps working as before.
@@ -24,11 +26,12 @@ voxcmd list                       # integrations and their verbs
 
 1. The transcript is lowercased, punctuation is dropped and whitespace collapsed: `"Set volume to 40%."` becomes `set volume to 40`.
 2. Replacement files in `replacements.d/` rewrite whole words, for words the speech model keeps getting wrong.
+   "What can I say", "voice help" and "show voice commands" then open [Voice Help](#voice-help) before any integration is tried.
 3. Each integration's verbs are tried in order against the whole phrase; the first match per integration counts.
 4. A verb with a target whose integration lists candidates for that action matches the target against them: fuzzy (`fzf --filter`, an exact label winning outright) or, for an integration with `target_match=words`, [word matching](#word-matching).
 5. A target that matches none of the candidates runs the action the integration names for that case in `no_match_actions`, if any.
 6. If nothing so far can run, the [LLM hook](#llm-hook) gets a turn, then the [fallback integrations](#fallback-integrations) go through steps 3 to 5.
-7. One option runs (after a Yes/No picker if the integration sets `confirm=1` or the option's label matches its `confirm_labels`). Several, or a single weak word match, open a picker, the Quickshell one when the bar is running and `rofi -dmenu` otherwise, which can also be [answered by voice](#answering-by-voice); cancelling does nothing. None sends a "no match" notification.
+7. One option runs (after a Yes/No picker if the integration sets `confirm=1` or the option's label matches its `confirm_labels`). Several, or a single weak word match, open a picker, the Quickshell one when the bar is running and `rofi -dmenu` otherwise, which can also be [answered by voice](#answering-by-voice); cancelling does nothing. None sends a "no match" notification with a Voice Help button.
 
 A notification reports what ran, followed by the last line the command printed, if any, or the last lines of the error.
 
@@ -51,6 +54,11 @@ verbs=(
 # The last line a command prints is appended to the notification, so it can say what actually happened.
 declare -A actions=(
   [focus]='hyprctl dispatch "hl.dsp.focus({ window = \"address:$id\" })"'
+)
+
+# Optional. Example phrases for Voice Help, with placeholders in angle brackets.
+examples=(
+  "focus <window title>"
 )
 
 # Optional. Called with the action name and the spoken target for verbs with a target; prints a JSON array of
@@ -108,6 +116,12 @@ Strong matches hide weak ones.
 - `excluded_descriptions` hides the voice binds themselves and anything about passwords or secrets; edit the list in the file.
 - `confirm_labels` asks before closing, killing, locking, logging out, powering off, rebooting, suspending, deleting or clearing.
 - A bind runs like Keybind Help runs it: the submap is reset, then `hyprctl eval 'debug.getregistry()[<arg>]()'`.
+
+## Voice Help
+
+`voxcmd help` (leader `CTRL + SLASH`, saying "voice help" or "what can I say", or the button on a "no match" notification) shows every integration's `examples` in the picker, labelled with the integration's name and with fallback integrations last. Picking a phrase without placeholders runs it as if it had been spoken. A phrase with a placeholder (`set volume to <number>`) cannot be completed from a click, so it comes back as a "Say: ..." notification instead.
+
+The button works with any notification daemon that supports actions, the bar's included: `notify-send --action` waits for the notification to close, so a detached process waits on it instead of voxcmd.
 
 ## Replacements
 

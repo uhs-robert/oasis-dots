@@ -13,6 +13,7 @@ Usage:
   voxcmd --reply <text...>    answer the open voxcmd picker: a choice, an ordinal, or cancel
   voxcmd --dry-run --reply <text...>
   voxcmd list                 list integrations and their verbs
+  voxcmd help                 pick from the integrations' example phrases; one without placeholders runs
 EOF
 }
 
@@ -21,7 +22,8 @@ runtime_dir="${XDG_RUNTIME_DIR:-/tmp}/voxcmd"
 voxtype_state_file="${XDG_RUNTIME_DIR:-/tmp}/voxtype/state"
 # Written by voxcmd-pick while it waits: {pid, fifo, label, choices: [{id, label}]}.
 pending_pick_file="$runtime_dir/pending-pick.json"
-voxcmd_pick="$(dirname "$(readlink -f "$0")")/voxcmd-pick"
+voxcmd_self="$(readlink -f "$0")"
+voxcmd_pick="$(dirname "$voxcmd_self")/voxcmd-pick"
 dry_run=0
 
 notify() {
@@ -30,6 +32,18 @@ notify() {
   else
     notify-send -a voxcmd "$1" "$2"
   fi
+}
+
+# The notification carries a Voice Help button. notify-send waits for the notification to close to report a
+# clicked action, so a detached waiter holds it instead of voxcmd.
+notify_no_match() {
+  if [ "$dry_run" = 1 ] || ! command -v notify-send >/dev/null; then
+    notify "$1" "$2"
+    return
+  fi
+  # shellcheck disable=SC2016 # expanded by the inner sh
+  setsid sh -c '[ "$(notify-send -a voxcmd --action=help="Voice Help" "$1" "$2")" = help ] && exec "$3" help' \
+    sh "$1" "$2" "$voxcmd_self" </dev/null >/dev/null 2>&1 &
 }
 
 integration_files() {
@@ -85,12 +99,13 @@ compile_pattern() {
 load_integration() {
   unset -f candidates
   name="" confirm=0 fallback=0 target_match=fuzzy
-  local -a verbs=() confirm_labels=() match_ignore_words=()
+  local -a verbs=() examples=() confirm_labels=() match_ignore_words=()
   local -A actions=() no_match_actions=()
   # shellcheck disable=SC1090
   source "$1"
   name="${name:-$(basename "$1" .sh)}"
   integration_verbs=("${verbs[@]}")
+  integration_examples=("${examples[@]}")
   integration_confirm_labels=("${confirm_labels[@]}")
   integration_match_ignore_words=("${match_ignore_words[@]}")
   declare -gA integration_actions=() integration_no_match_actions=()
@@ -307,6 +322,9 @@ resolve_matches() {
   done <<<"$1" | jq -s -c .
 }
 
+# Phrases that open Voice Help before any integration is tried, so the keybinds fallback never takes them.
+help_phrases='^(what can i say|voice help|show voice commands)$'
+
 # Normal integrations first, then the LLM hook, then fallback integrations, each only when the ones before it left
 # nothing to run, so a catch-all fallback never competes with a real verb.
 route() {
@@ -315,6 +333,14 @@ route() {
   # shellcheck disable=SC2034 # read by integrations
   raw_transcript="$transcript"
   text=$(apply_replacements "$(normalize "$transcript")")
+  if [[ "$text" =~ $help_phrases ]]; then
+    if [ "$dry_run" = 1 ]; then
+      printf 'transcript:  %s\nnormalized:  %s\nresult:      built-in, opens Voice Help\n' "$transcript" "$text"
+    else
+      voice_help
+    fi
+    return
+  fi
   options=$(resolve_matches "$(match_verbs "$text" normal)")
   [ "$(jq length <<<"$options")" != 0 ] || options=$(resolve_matches "$(llm_match "$text")")
   [ "$(jq length <<<"$options")" != 0 ] || options=$(resolve_matches "$(match_verbs "$text" fallback)")
@@ -325,7 +351,7 @@ route() {
     return 0
   fi
   if [ "$count" = 0 ]; then
-    notify "voxcmd: no match" "\"$transcript\""
+    notify_no_match "voxcmd: no match" "\"$transcript\""
     return 1
   elif ! needs_pick "$options"; then
     run_option "$(jq -c '.[0]' <<<"$options")"
@@ -335,6 +361,39 @@ route() {
     done < <(jq -c 'to_entries[] | .value + {index: .key}' <<<"$options") | jq -s -c .)
     picked=$("$voxcmd_pick" "Which command?" "$choices") || return 0
     run_option "$(jq -c --argjson i "$picked" '.[$i]' <<<"$options")"
+  fi
+}
+
+# The replacements are quoted because bash 5.2 reads an unquoted & there as the matched text.
+markup_escape() {
+  local text="${1//&/"&amp;"}"
+  text="${text//</"&lt;"}"
+  printf '%s' "${text//>/"&gt;"}"
+}
+
+# Every integration's example phrases in the picker, grouped by integration with the fallbacks last. A phrase
+# without placeholders runs as if spoken; one with a <placeholder> cannot be completed from a click, so it is
+# shown as a notification to say instead.
+example_placeholder='<[^>]+>'
+voice_help() {
+  local choices file picked
+  choices=$(while IFS= read -r file; do
+    (
+      load_integration "$file"
+      jq -n -c --arg name "$name" --argjson fallback "$([ "$fallback" = 1 ] && echo true || echo false)" --args \
+        '$ARGS.positional | map({id: ., label: "\($name): \(.)", fallback: $fallback})' "${integration_examples[@]}"
+    )
+  done < <(integration_files) | jq -s -c 'add // [] | sort_by(.fallback) | map(del(.fallback))')
+  if [ "$(jq length <<<"$choices")" = 0 ]; then
+    notify "voxcmd" "No integration declares examples"
+    return 1
+  fi
+  picked=$("$voxcmd_pick" "Voice Help" "$choices") || return 0
+  if [[ "$picked" =~ $example_placeholder ]]; then
+    # Notification bodies are markup, which would swallow the placeholder as a tag.
+    notify "voxcmd" "Say: $(markup_escape "$picked")"
+  else
+    route "$picked"
   fi
 }
 
@@ -509,6 +568,7 @@ case "${1:-}" in
   reply "$@"
   ;;
 listen) listen ;;
+help) voice_help ;;
 _watch) watch_recording "$2" "$3" "$4" ;;
 list)
   while IFS= read -r file; do

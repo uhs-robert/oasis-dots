@@ -21,6 +21,16 @@ verbs=(
   "pause_on     (pause|stop) {target}"
 )
 
+examples=(
+  "play pause"
+  "next track"
+  "previous track"
+  "volume up by <number>"
+  "set volume to <number>"
+  "mute"
+  "pause <player>"
+)
+
 declare -A actions=(
   [toggle]='playerctl play-pause'
   [play]='playerctl play'
