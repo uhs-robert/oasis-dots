@@ -47,7 +47,7 @@ Item {
 
     readonly property bool scan_columns: false && Style.weather_header === "scan" && root.sub === 0
 
-    readonly property bool battle_columns: false && Style.weather_header === "battle" && root.sub === 0
+    readonly property bool battle_columns: Style.weather_header === "battle" && root.sub === 0
 
     readonly property bool memcard_columns: false && Style.weather_header === "memcard" && root.sub === 0
 
