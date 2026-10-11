@@ -72,6 +72,7 @@ function overrides(t, ctx) {
         scanline_color: Qt.alpha(vec, 0.05),
         chart_fill: Qt.alpha(vec, 0.09),
         chart_outline: vec,
+        weather_icon_tint: vec,
         weather_header: "scope",
         bar_font_family: "B612 Mono",
         bar_font_size: t.font_size + 1,

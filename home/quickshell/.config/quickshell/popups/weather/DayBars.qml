@@ -221,15 +221,10 @@ ColumnLayout {
         Layout.preferredWidth: icon_box.size
         Layout.preferredHeight: icon_box.size
 
-        Image {
+        WeatherIcon {
             anchors.centerIn: parent
-            width: icon_box.size
-            height: icon_box.size
-            readonly property real dpr: QsWindow.window ? QsWindow.window.devicePixelRatio : 1
-            sourceSize.width: Math.ceil(root.icon_size * 2 * dpr)
-            sourceSize.height: Math.ceil(root.icon_size * 2 * dpr)
-            source: WeatherState.icon_source(root.day.code, true)
-            smooth: true
+            size: icon_box.size
+            code: root.day.code
         }
     }
 

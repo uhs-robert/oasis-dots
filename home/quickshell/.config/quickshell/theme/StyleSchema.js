@@ -126,6 +126,7 @@ var tokens = [
     tok("meter_bloom", "bool", false, "A blurred copy of the whole meter behind it."),
     tok("chart_slant", "real", 0, "Leans chart bars like meter_slant."),
     tok("chart_fill", "color", t => t.yellow, ""),
+    tok("weather_icon_tint", "color", "transparent", "Recolors the weather condition icons to this one color, for HUD styles; transparent keeps their own colors."),
     tok("corner_scale", "real", 1, "Multiplies every radius a rounded style draws."),
     tok("mono_font", "string", "", "Readouts, keys and ids; empty uses font_family.", {expr: "root.active.mono_font || root.font_family"}),
     tok("selection_rule", "color", "transparent", "A 1px rule under the selected row."),
