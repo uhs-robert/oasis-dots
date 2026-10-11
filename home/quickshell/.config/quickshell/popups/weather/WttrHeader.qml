@@ -29,12 +29,39 @@ ColumnLayout {
         return kmh < 10 ? Theme.ok : kmh < 25 ? Theme.yellow : kmh < 45 ? Theme.bright_yellow : Theme.red;
     }
 
+    readonly property real key_px: text_metrics.advanceWidth("precip ")
+    // Bars give up cells before the value column runs out of room; unkeyed rows also carry their key after the value.
+    readonly property int bar_cells: Math.max(4, Math.min(10, Math.floor((root.width - art_text.implicitWidth - 12 - (root.keyed ? root.key_px : 0) - text_metrics.advanceWidth("[] 100%" + (root.keyed ? "" : " rain"))) / text_metrics.advanceWidth("█"))))
+
+    function key_suffix(key) {
+        return root.keyed ? ["", ""] : [" " + key, Style.text_muted];
+    }
+
+    function bar(vital) {
+        const lit = Math.round(vital.fill * root.bar_cells);
+        return WttrArt.runs([["[", Theme.fg_dim], ["█".repeat(lit), vital.color], ["░".repeat(root.bar_cells - lit), Theme.fg_dim], ["] ", Theme.fg_dim], [vital.value + vital.unit, ""], root.key_suffix(vital.key)]);
+    }
+
+    // Today's low to high with a dot where now sits; the line is lit up to it.
+    function range_line() {
+        const at = Math.round(WeatherState.temp_range_pos * (root.bar_cells - 1));
+        const now_color = WeatherState.temp_color(root.cur.temp);
+        return WttrArt.runs([[String(Math.round(WeatherState.today_low)) + " ", WeatherState.temp_color(WeatherState.today_low)], ["━".repeat(at), now_color], ["●", Theme.fg_strong], ["━".repeat(root.bar_cells - 1 - at), Theme.fg_dim], [" " + Math.round(WeatherState.today_high), WeatherState.temp_color(WeatherState.today_high)], [" °" + WeatherState.unit_symbol(), ""]]);
+    }
+
+    function readout(vital) {
+        return WttrArt.runs([[vital.value + " ", vital.color], [vital.detail.toLowerCase(), ""], root.key_suffix(vital.key)]);
+    }
+
+    readonly property bool show_vitals: root.has && WeatherState.has_vitals
     readonly property var rows: !root.has ? [] : [
-        ["temp", WttrArt.runs([[root.signed(root.cur.temp), WeatherState.temp_color(root.cur.temp)], ["(", ""], [String(Math.round(root.cur.feels)), WeatherState.temp_color(root.cur.feels)], [") °" + WeatherState.unit_symbol(), ""]])],
+        ["temp", WttrArt.runs([[root.signed(root.cur.temp), WeatherState.temp_color(root.cur.temp)], ["(", ""], [String(Math.round(root.cur.feels)), WeatherState.temp_color(root.cur.feels)], [") °" + WeatherState.unit_symbol(), ""]])]
+    ].concat(root.show_vitals ? [["range", root.range_line()]] : [], [
         ["wind", WttrArt.runs([[root.arrows[Math.round(((root.cur.wind_dir % 360) + 360) % 360 / 45) % 8] + " ", Theme.fg_strong], [String(Math.round(root.cur.wind_speed)), root.wind_color(root.cur.wind_speed)], [" " + WeatherState.wind_unit(), ""]])],
-        ["hum", WttrArt.runs([[root.cur.humidity + "%", ""]])],
+        ["hum", root.show_vitals ? root.bar(WeatherState.vital("hum")) : WttrArt.runs([[root.cur.humidity + "%", ""]])]
+    ], root.show_vitals ? [["rain", root.bar(WeatherState.vital("rain"))]] : [], [
         ["precip", WttrArt.runs([[root.celsius ? root.cur.precip.toFixed(1) + " mm" : root.cur.precip.toFixed(2) + " in", ""]])]
-    ]
+    ], root.show_vitals ? [["uv", root.readout(WeatherState.vital("uv"))]] : [], root.show_vitals && WeatherState.aqi_now >= 0 ? [["aqi", root.readout(WeatherState.vital("aqi"))]] : [])
 
     spacing: 4
 
@@ -106,7 +133,7 @@ ColumnLayout {
 
                     Text {
                         visible: root.keyed
-                        Layout.preferredWidth: text_metrics.advanceWidth("precip ")
+                        Layout.preferredWidth: root.key_px
                         text: kv.modelData[0]
                         color: Style.text_muted
                         font.family: Style.font_family
