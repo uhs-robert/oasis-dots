@@ -6,7 +6,8 @@ import "../../components"
 import "../../theme"
 import "../../services"
 
-// The HEV suit readout: a health cross beside TEMP, the suit shield and an angled bar for HUM, then an HEV voice line.
+// The HEV suit readout: a health cross beside TEMP over its range for the day, the suit shield and an angled bar for HUM,
+// RAIN, UV and AQI as the lower row of readouts, then an HEV voice line.
 ColumnLayout {
     id: root
 
@@ -34,35 +35,55 @@ ColumnLayout {
         Layout.fillWidth: true
         spacing: root.wide ? 14 : 10
 
-        GridLayout {
-            columns: 2
-            columnSpacing: 8
-            rowSpacing: 3
+        ColumnLayout {
+            Layout.alignment: Qt.AlignTop
+            spacing: 4
 
-            Shape {
-                id: cross
-                readonly property real zoom: root.wide ? 1.25 : 1
-                Layout.preferredWidth: 24 * zoom
-                Layout.preferredHeight: 24 * zoom
-                Layout.alignment: Qt.AlignVCenter
-                preferredRendererType: Shape.CurveRenderer
+            RowLayout {
+                spacing: 8
 
-                ShapePath {
-                    strokeWidth: -1
-                    fillColor: root.hl
-                    scale: Qt.size(cross.zoom, cross.zoom)
-                    PathSvg { path: "M8.5 1h7v7.5H23v7h-7.5V23h-7v-7.5H1v-7h7.5z" }
+                Shape {
+                    id: cross
+                    readonly property real zoom: root.wide ? 1.25 : 1
+                    Layout.preferredWidth: 24 * zoom
+                    Layout.preferredHeight: 24 * zoom
+                    Layout.alignment: Qt.AlignVCenter
+                    preferredRendererType: Shape.CurveRenderer
+
+                    ShapePath {
+                        strokeWidth: -1
+                        fillColor: root.hl
+                        scale: Qt.size(cross.zoom, cross.zoom)
+                        PathSvg { path: "M8.5 1h7v7.5H23v7h-7.5V23h-7v-7.5H1v-7h7.5z" }
+                    }
+                }
+
+                Readout {
+                    value: root.has ? String(Math.round(root.cur.temp)) : "--"
+                    unit: "°" + WeatherState.unit_symbol()
+                    size: root.wide ? 46 : 36
                 }
             }
 
-            Readout {
-                value: root.has ? String(Math.round(root.cur.temp)) : "--"
-                unit: "°" + WeatherState.unit_symbol()
-                size: root.wide ? 46 : 36
+            // Today's low to high, lit up to where now sits.
+            RowLayout {
+                visible: WeatherState.has_vitals
+                Layout.fillWidth: true
+                spacing: 5
+
+                RangeEnd { text: Math.round(WeatherState.today_low) + "°" }
+
+                SkewBar {
+                    Layout.fillWidth: true
+                    Layout.minimumWidth: 50
+                    cells: 8
+                    value: WeatherState.temp_range_pos
+                }
+
+                RangeEnd { text: Math.round(WeatherState.today_high) + "°" }
             }
 
             CapsLabel {
-                Layout.columnSpan: 2
                 text: "TEMP"
             }
         }
@@ -137,6 +158,60 @@ ColumnLayout {
             CapsLabel {
                 text: "HUM"
             }
+        }
+    }
+
+    RowLayout {
+        visible: WeatherState.has_vitals
+        Layout.fillWidth: true
+        Layout.topMargin: 6
+        spacing: root.wide ? 14 : 10
+
+        ColumnLayout {
+            Layout.fillWidth: true
+            Layout.preferredWidth: 1
+            Layout.minimumWidth: 0
+            Layout.alignment: Qt.AlignTop
+            spacing: 4
+
+            Readout {
+                value: String(WeatherState.today_pop)
+                unit: "%"
+                size: root.wide ? 28 : 24
+            }
+
+            SkewBar {
+                Layout.fillWidth: true
+                Layout.maximumWidth: 150
+                Layout.leftMargin: 5
+                value: WeatherState.today_pop / 100
+            }
+
+            CapsLabel {
+                text: "RAIN"
+            }
+        }
+
+        Rectangle {
+            Layout.fillHeight: true
+            Layout.preferredWidth: 1
+            color: Style.hairline
+        }
+
+        BandReadout {
+            vital: WeatherState.vital("uv")
+            alarm: root.has && root.cur.uv_index >= 8
+        }
+
+        Rectangle {
+            Layout.fillHeight: true
+            Layout.preferredWidth: 1
+            color: Style.hairline
+        }
+
+        BandReadout {
+            vital: WeatherState.vital("aqi")
+            alarm: root.aqi > 100
         }
     }
 
@@ -267,5 +342,46 @@ ColumnLayout {
         font.pixelSize: Style.fs(-6)
         font.bold: true
         font.letterSpacing: 3.2
+    }
+
+    component RangeEnd: Text {
+        color: root.hl_t
+        font.family: Style.number_font
+        font.pixelSize: Style.fs(-5)
+        font.bold: true
+    }
+
+    // A number with its band under it; the band turns to the warning color at the levels the HEV voice announces.
+    component BandReadout: ColumnLayout {
+        id: band_readout
+        property var vital: null
+        property bool alarm: false
+        // Equal thirds with RAIN, whatever each number's width.
+        Layout.fillWidth: true
+        Layout.preferredWidth: 1
+        Layout.minimumWidth: 0
+        Layout.alignment: Qt.AlignTop
+        spacing: 4
+
+        Readout {
+            value: band_readout.vital ? band_readout.vital.value : "--"
+            size: root.wide ? 28 : 24
+        }
+
+        Text {
+            Layout.fillWidth: true
+            Layout.minimumWidth: 0
+            elide: Text.ElideRight
+            text: band_readout.vital && band_readout.vital.detail !== "" ? band_readout.vital.detail.toUpperCase() : "NO DATA"
+            color: band_readout.alarm ? Theme.theme_label : root.hl
+            font.family: Style.font_family
+            font.pixelSize: Style.fs(-5)
+            font.bold: true
+            font.letterSpacing: 1
+        }
+
+        CapsLabel {
+            text: band_readout.vital ? band_readout.vital.label : ""
+        }
     }
 }
