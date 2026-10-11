@@ -128,39 +128,6 @@ function monster(code) {
     return MONSTERS[kind(code)];
 }
 
-// The Daily range is a slime tower: one slime per slot, each sitting SLIME_STEP rows above the last so its base hides the curl below.
-// Same palette as the monsters; the dark outline keeps stacked slimes apart.
-// var, not const: BattleDayColumn reads these, and QML only sees a library's var and function declarations.
-var SLIME_SIZE = 12;
+// The Daily range is a slime tower of Slimes.js sprites: each sits SLIME_STEP rows above the last so its base hides the curl below; their dark outline keeps stacked slimes apart.
+// var, not const: BattleDayColumn reads it, and QML only sees a library's var and function declarations.
 var SLIME_STEP = 9;
-
-var SLIME = [
-    "......0.....",
-    ".....040....",
-    "....0440....",
-    "...045440...",
-    "..04544440..",
-    ".0454444440.",
-    "044114411440",
-    "044104410440",
-    "044044440440",
-    "044400004440",
-    ".0444444440.",
-    "..00000000.."
-];
-
-// Caps the selected day's tower: the curl gives way to a gold crown.
-var KING_SLIME = [
-    "...0.00.0...",
-    "..02022020..",
-    "..02222220..",
-    "..02722720..",
-    "..02222220..",
-    ".0454444440.",
-    "044114411440",
-    "044104410440",
-    "044044440440",
-    "044400004440",
-    ".0444444440.",
-    "..00000000.."
-];

@@ -5,6 +5,7 @@ import "../../components"
 import "../../theme"
 import "../../services"
 import "NesSprites.js" as NesSprites
+import "../../components/nes/Slimes.js" as Slimes
 
 // One day as a Dragon Quest enemy: its weather monster, a tower of slimes from low to high, an MP-style rain gauge and its name.
 Item {
@@ -100,7 +101,7 @@ Item {
             readonly property real text_h: hi_text.height + 2
             readonly property real stack_h: height - 2 * text_h
             // Double-size slimes only while they fit the column and still leave enough slots to tell days apart.
-            readonly property int slime_pixel: root.inner_w >= 2 * NesSprites.SLIME_SIZE && slots_at(2) >= 6 ? 2 : 1
+            readonly property int slime_pixel: root.inner_w >= 2 * Slimes.SIZE && slots_at(2) >= 6 ? 2 : 1
             readonly property int slime_step: NesSprites.SLIME_STEP * slime_pixel
             readonly property int slots: slots_at(slime_pixel)
             readonly property int lo_slot: root.day ? Math.round(root.scale_frac(root.day.min) * (slots - 1)) : 0
@@ -108,11 +109,11 @@ Item {
             readonly property real floor_y: height - text_h
 
             function slots_at(pixel: int): int {
-                return Math.max(1, Math.floor((stack_h - NesSprites.SLIME_SIZE * pixel) / (NesSprites.SLIME_STEP * pixel)) + 1);
+                return Math.max(1, Math.floor((stack_h - Slimes.SIZE * pixel) / (NesSprites.SLIME_STEP * pixel)) + 1);
             }
 
             function slime_y(slot: int): real {
-                return floor_y - slot * slime_step - NesSprites.SLIME_SIZE * slime_pixel;
+                return floor_y - slot * slime_step - Slimes.SIZE * slime_pixel;
             }
 
             PixelTemp {
@@ -143,7 +144,7 @@ Item {
                         y: range_area.slime_y(slot)
                         pixel: range_area.slime_pixel
                         colors: root.slime_colors(slot / Math.max(1, range_area.slots - 1))
-                        rows: root.selected && slot === range_area.hi_slot ? NesSprites.KING_SLIME : NesSprites.SLIME
+                        rows: root.selected && slot === range_area.hi_slot ? Slimes.KING_SLIME : Slimes.SLIME
                     }
                 }
             }
