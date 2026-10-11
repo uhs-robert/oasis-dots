@@ -326,7 +326,7 @@ Plugin management with `ya pkg` and a root Yazi that stays in sync with your key
 
 ## 🎙️ Voice Commands
 
-`voxcmd` turns a voxtype recording into a command: `CTRL + SHIFT + PERIOD` starts listening, pressing it again runs what you said, like "next track" or "volume to 40", and Escape throws the recording away. Commands come from drop-in shell integrations, with media and volume shipped as the example. See [home/voxcmd/.config/voxcmd/README.md](home/voxcmd/.config/voxcmd/README.md).
+`voxcmd` turns a voxtype recording into a command: `CTRL + SHIFT + PERIOD` starts listening, pressing it again runs what you said, like "next track" or "volume to 40". Commands come from drop-in shell integrations, with media and volume shipped as the example. See [home/voxcmd/.config/voxcmd/README.md](home/voxcmd/.config/voxcmd/README.md).
 
 ## 🛠️ Justfile
 
