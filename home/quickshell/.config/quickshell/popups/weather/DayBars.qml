@@ -16,7 +16,6 @@ ColumnLayout {
     property string label: ""
     property real col_w: 0
     property bool dq: false
-    property bool mission: false
     property bool save_blocks: false
     property bool ladder: false
     property bool thin_range: false
@@ -254,18 +253,5 @@ ColumnLayout {
             font.family: Style.font_family
             font.pixelSize: Style.fs(-5)
         }
-    }
-
-    Text {
-        visible: root.mission
-        opacity: root.day_index === 0 ? 1 : 0
-        Layout.fillWidth: true
-        horizontalAlignment: Text.AlignHCenter
-        wrapMode: Text.WordWrap
-        text: "IN PROGRESS"
-        color: Style.accent_color
-        font.family: Style.font_family
-        font.pixelSize: Style.fs(-5)
-        font.letterSpacing: 1
     }
 }
