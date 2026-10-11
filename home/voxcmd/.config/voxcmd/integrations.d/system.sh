@@ -24,6 +24,16 @@ verbs=(
   "autolock_off     keep (the )?(screen|display|computer|system) (awake|on)|stay awake|((turn|switch) on )?caffeine( mode)?( on)?|(disable|turn off) (the )?(auto ?lock|idle lock)|auto ?lock off|dont (auto ?)?lock( the screen)?"
 )
 
+examples=(
+  "set brightness to <number>"
+  "brightness up"
+  "power saver mode"
+  "performance mode"
+  "do not disturb on"
+  "do not disturb off"
+  "keep the screen awake"
+)
+
 declare -A actions=(
   [brightness_max]='set_brightness 100%'
   [brightness_min]='set_brightness 1%'
