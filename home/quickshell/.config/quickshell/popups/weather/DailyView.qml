@@ -49,7 +49,7 @@ Item {
 
     readonly property bool battle_columns: Style.weather_header === "battle" && root.sub === 0
 
-    readonly property bool memcard_columns: false && Style.weather_header === "memcard" && root.sub === 0
+    readonly property bool memcard_columns: Style.weather_header === "memcard" && root.sub === 0
 
     readonly property bool mode7_columns: false && Style.weather_header === "mode7" && root.sub === 0
 
