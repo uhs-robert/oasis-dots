@@ -19,6 +19,14 @@ verbs=(
   "remind      ((set|add|create|make)( me)? )?(a |an )?(new )?reminder {target}"
 )
 
+examples=(
+  "set a timer for <minutes> minutes"
+  "remind me in <minutes> minutes to <text>"
+  "list my timers"
+  "what timers do i have"
+  "cancel the <name> timer"
+)
+
 declare -A actions=(
   [timer]='start_timer "$target"'
   [remind]='start_reminder "$target"'
