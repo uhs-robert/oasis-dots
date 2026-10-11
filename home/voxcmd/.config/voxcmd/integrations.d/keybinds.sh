@@ -13,6 +13,14 @@ verbs=(
   "run  {target}"
 )
 
+# A few common binds rather than the whole list, which "<any keybind description>" stands for.
+examples=(
+  "toggle fullscreen"
+  "close window"
+  "go to workspace <number>"
+  "<any keybind description>"
+)
+
 declare -A actions=(
   [run]='run_keybind "$id"'
 )
@@ -21,6 +29,7 @@ declare -A actions=(
 # and anything near passwords or secrets.
 excluded_descriptions=(
   "voice command"
+  "voice help"
   "speech to text"
   "voxtype"
   "password"
