@@ -7,29 +7,33 @@ import "../../services"
 import "../../lock/skins/goldeneye" as Watch
 import "../../theme/Watch.js" as W
 
-// The current conditions as the classic pause watch: warm temperature segments left, blue humidity segments right, a green panel between.
+// The current conditions as the classic pause watch: warm segments left filling up from today's low toward its high,
+// blue humidity segments right, a green panel between.
 Item {
     id: root
 
     readonly property var cur: WeatherState.current
     readonly property bool has: WeatherState.has_data && !!root.cur
     readonly property int aqi: WeatherState.aq_has_data && WeatherState.aq_current ? WeatherState.aq_current.aqi : -1
-    // Temperature fills its eight segments over 0-100 °F in either unit; humidity fills the blue ones.
-    readonly property real fahrenheit: !root.has ? 0 : WeatherState.temp_f(root.cur.temp)
-    readonly property real health_level: Math.max(0, Math.min(1, root.fahrenheit / 100))
+    // At today's low one segment stays lit, so the arc still marks where now sits.
+    readonly property int health_lit: WeatherState.has_vitals ? Math.max(1, Math.round(WeatherState.temp_range_pos * 8)) : 0
     readonly property real armour_level: root.has ? Math.max(0, Math.min(1, root.cur.humidity / 100)) : 0
     readonly property string digits: root.has ? String(Math.round(root.cur.temp)) : "--"
     readonly property real arc_w: 30
     readonly property real pad: 12
 
+    readonly property string aqi_reading: root.aqi >= 0 ? root.aqi + " " + WeatherState.aqi_band(root.aqi).label.toUpperCase() : "--"
+    readonly property string rain_reading: WeatherState.has_vitals ? WeatherState.today_pop + "%" : "--"
+
     readonly property var readouts: !root.has ? [] : [
         { label: "HUM", value: root.cur.humidity + "%" },
+        { label: "RAIN", value: root.rain_reading },
         { label: "WIND", value: Math.round(root.cur.wind_speed) + " " + WeatherState.wind_dir_label(root.cur.wind_dir) },
-        { label: "UV", value: root.cur.uv_index.toFixed(1) },
-        { label: "AQI", value: root.aqi >= 0 ? String(root.aqi) : "--" }
+        { label: "UV", value: root.cur.uv_index.toFixed(1) + " " + WeatherState.uv_band(root.cur.uv_index).label.toUpperCase() },
+        { label: "AQI", value: root.aqi_reading }
     ]
 
-    implicitHeight: Math.round(Math.max(120, Math.min(150, root.width * 0.3)))
+    implicitHeight: Math.round(Math.max(130, Math.min(170, root.width * 0.36)))
 
     Rectangle {
         anchors.fill: parent
@@ -46,7 +50,8 @@ Item {
         height: root.height - 16
         thickness: 11
         colors: W.warm
-        lit: Math.round(root.health_level * 8)
+        from_bottom: true
+        lit: root.health_lit
     }
 
     Watch.SegmentArc {
@@ -155,11 +160,34 @@ Item {
                 }
 
                 Text {
+                    visible: WeatherState.has_vitals
+                    Layout.fillWidth: true
+                    Layout.minimumWidth: 0
+                    elide: Text.ElideRight
+                    text: "LO " + Math.round(WeatherState.today_low) + "° HI " + Math.round(WeatherState.today_high) + "°"
+                    color: Style.wk.soft
+                    font.family: W.mono_font
+                    font.pixelSize: Style.fs(-4)
+                }
+
+                Text {
                     visible: root.has
                     Layout.fillWidth: true
                     Layout.minimumWidth: 0
                     elide: Text.ElideRight
                     text: "FEELS LIKE " + (root.has ? Math.round(root.cur.feels) + "°" + WeatherState.unit_symbol() : "")
+                    color: Style.wk.soft
+                    font.family: W.mono_font
+                    font.pixelSize: Style.fs(-4)
+                }
+
+                // The readout column drops out on a narrow panel; keep rain and air on one line here instead.
+                Text {
+                    visible: root.has && !readout_column.visible
+                    Layout.fillWidth: true
+                    Layout.minimumWidth: 0
+                    elide: Text.ElideRight
+                    text: "RAIN " + root.rain_reading + " AQI " + root.aqi_reading
                     color: Style.wk.soft
                     font.family: W.mono_font
                     font.pixelSize: Style.fs(-4)
@@ -178,6 +206,7 @@ Item {
             }
 
             ColumnLayout {
+                id: readout_column
                 visible: root.has && panel.width >= 260
                 Layout.preferredWidth: Math.min(160, panel.width * 0.4)
                 Layout.alignment: Qt.AlignVCenter
@@ -210,6 +239,8 @@ Item {
                         }
 
                         Text {
+                            Layout.maximumWidth: readout_column.width * 0.75
+                            elide: Text.ElideRight
                             text: readout_row.modelData.value
                             color: Style.wk.lit
                             font.family: W.mono_font
