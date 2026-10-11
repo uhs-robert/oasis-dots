@@ -40,7 +40,21 @@ Item {
     readonly property bool dunes: Style.weather_header === "oasis" && root.sub === 0
     // Modern: raised day columns with a pill label and a range track.
     readonly property bool pill_columns: Style.weather_header === "hero" && root.sub === 0
+    // Each layout's own Temp & Precip column; the placeholders stay off (false &&) until their column draws something.
+    readonly property bool watch_columns: false && Style.weather_header === "watch" && root.sub === 0
+
+    readonly property bool lsp_columns: false && Style.weather_header === "lsp" && root.sub === 0
+
+    readonly property bool scan_columns: false && Style.weather_header === "scan" && root.sub === 0
+
+    readonly property bool battle_columns: false && Style.weather_header === "battle" && root.sub === 0
+
+    readonly property bool memcard_columns: false && Style.weather_header === "memcard" && root.sub === 0
+
+    readonly property bool mode7_columns: false && Style.weather_header === "mode7" && root.sub === 0
+
     readonly property bool custom_column: root.ws_panels || root.tower_columns || root.camera || root.dunes || root.pill_columns
+        || root.watch_columns || root.lsp_columns || root.scan_columns || root.battle_columns || root.memcard_columns || root.mode7_columns
     // NES: each column in a Dragon Quest window with a cursor on the selected day.
     readonly property bool dq: Style.weather_header === "battle"
     // SNES: columns standing on a Mode 7 floor.
@@ -355,6 +369,90 @@ Item {
                         sourceComponent: WsDayPanel {
                             day: day_col.modelData
                             selected: day_col.day_index === root.day_cursor
+                        }
+                    }
+
+                    Loader {
+                        active: root.watch_columns
+                        anchors.fill: parent
+                        sourceComponent: WatchDayColumn {
+                            day: day_col.modelData
+                            day_index: day_col.day_index
+                            label: root.day_label(day_col.modelData, day_col.day_index)
+                            selected: day_col.day_index === root.day_cursor
+                            col_w: day_col.width
+                            scale_min: root.week_temp_range.min
+                            scale_max: root.week_temp_range.max
+                        }
+                    }
+
+                    Loader {
+                        active: root.lsp_columns
+                        anchors.fill: parent
+                        sourceComponent: LspDayColumn {
+                            day: day_col.modelData
+                            day_index: day_col.day_index
+                            label: root.day_label(day_col.modelData, day_col.day_index)
+                            selected: day_col.day_index === root.day_cursor
+                            col_w: day_col.width
+                            scale_min: root.week_temp_range.min
+                            scale_max: root.week_temp_range.max
+                        }
+                    }
+
+                    Loader {
+                        active: root.scan_columns
+                        anchors.fill: parent
+                        sourceComponent: ScanDayColumn {
+                            day: day_col.modelData
+                            day_index: day_col.day_index
+                            label: root.day_label(day_col.modelData, day_col.day_index)
+                            selected: day_col.day_index === root.day_cursor
+                            col_w: day_col.width
+                            scale_min: root.week_temp_range.min
+                            scale_max: root.week_temp_range.max
+                        }
+                    }
+
+                    Loader {
+                        active: root.battle_columns
+                        anchors.fill: parent
+                        sourceComponent: BattleDayColumn {
+                            day: day_col.modelData
+                            day_index: day_col.day_index
+                            label: root.day_label(day_col.modelData, day_col.day_index)
+                            selected: day_col.day_index === root.day_cursor
+                            col_w: day_col.width
+                            scale_min: root.week_temp_range.min
+                            scale_max: root.week_temp_range.max
+                        }
+                    }
+
+                    Loader {
+                        active: root.memcard_columns
+                        anchors.fill: parent
+                        sourceComponent: MemCardDayColumn {
+                            day: day_col.modelData
+                            day_index: day_col.day_index
+                            label: root.day_label(day_col.modelData, day_col.day_index)
+                            selected: day_col.day_index === root.day_cursor
+                            col_w: day_col.width
+                            scale_min: root.week_temp_range.min
+                            scale_max: root.week_temp_range.max
+                        }
+                    }
+
+                    Loader {
+                        active: root.mode7_columns
+                        anchors.fill: parent
+                        sourceComponent: Mode7DayColumn {
+                            day: day_col.modelData
+                            day_index: day_col.day_index
+                            label: root.day_label(day_col.modelData, day_col.day_index)
+                            selected: day_col.day_index === root.day_cursor
+                            col_w: day_col.width
+                            scale_min: root.week_temp_range.min
+                            scale_max: root.week_temp_range.max
                         }
                     }
 

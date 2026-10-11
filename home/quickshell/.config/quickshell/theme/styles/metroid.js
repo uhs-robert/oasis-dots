@@ -6,6 +6,7 @@ function overrides(t, ctx) {
         level_layout: "visor",
         wait_anim: "scan",
         weather_header: "scan",
+        weather_icon_tint: t.theme_primary_light,
         // Greys lifted toward primary_light so they read on the visor glass.
         text_muted: Qt.tint(t.fg_dim, Qt.alpha(t.theme_primary_light, 0.4)),
         text_dim: Qt.tint(t.fg_dim, Qt.alpha(t.theme_primary_light, 0.65)),

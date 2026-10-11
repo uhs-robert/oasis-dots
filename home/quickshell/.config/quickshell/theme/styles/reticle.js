@@ -78,6 +78,7 @@ function overrides(t, ctx) {
         osd_layout: "ring",
         weather_header: "ring",
         range_line: true,
+        weather_icon_tint: t.theme_primary_light,
         bar_font_family: "Jura",
         bar_font_size: t.font_size + 1,
         bar_letter_spacing: 1.5,

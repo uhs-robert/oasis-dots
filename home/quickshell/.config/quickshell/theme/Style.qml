@@ -277,6 +277,7 @@ Singleton {
     readonly property bool meter_bloom: root.active.meter_bloom
     readonly property real chart_slant: root.active.chart_slant
     readonly property color chart_fill: root.active.chart_fill
+    readonly property color weather_icon_tint: root.active.weather_icon_tint
     readonly property real corner_scale: root.active.corner_scale
     readonly property string mono_font: root.active.mono_font || root.font_family
     readonly property color selection_rule: root.active.selection_rule
