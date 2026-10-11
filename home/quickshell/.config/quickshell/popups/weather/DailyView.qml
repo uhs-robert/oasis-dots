@@ -51,7 +51,7 @@ Item {
 
     readonly property bool memcard_columns: false && Style.weather_header === "memcard" && root.sub === 0
 
-    readonly property bool mode7_columns: false && Style.weather_header === "mode7" && root.sub === 0
+    readonly property bool mode7_columns: Style.weather_header === "mode7" && root.sub === 0
 
     readonly property bool custom_column: root.ws_panels || root.tower_columns || root.camera || root.dunes || root.pill_columns
         || root.watch_columns || root.lsp_columns || root.scan_columns || root.battle_columns || root.memcard_columns || root.mode7_columns
