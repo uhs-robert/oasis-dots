@@ -17,7 +17,7 @@ Item {
     property var on_detail_scroll: function (y) {}
 
     readonly property var alerts: WeatherState.alerts
-    // GoldenEye: alerts in the watch's red briefing caps, under a facility line, with PRIORITY and ORDERS.
+    // GoldenEye: alerts in the watch's red briefing caps, with PRIORITY and ORDERS.
     readonly property bool objectives: Style.weather_header === "watch"
     // Alerts as Dragon Quest encounter lines.
     readonly property bool encounter: Style.weather_header === "battle"
@@ -52,13 +52,6 @@ Item {
     ColumnLayout {
         anchors.fill: parent
         spacing: 8
-
-        Loader {
-            Layout.fillWidth: true
-            active: root.objectives
-            visible: active
-            sourceComponent: FacilityHeader {}
-        }
 
         Text {
             visible: root.threat && root.alerts.length > 0
