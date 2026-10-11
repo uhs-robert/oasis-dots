@@ -50,10 +50,16 @@ Item {
     readonly property real arc_top_tip: 8 + root.arc_h / 2 - root.arc_b * Math.sin(root.arc_end_angle) - root.arc_end_half_len
     readonly property real arc_bottom_tip: 8 + root.arc_h / 2 + root.arc_b * Math.sin(root.arc_end_angle) + root.arc_end_half_len
 
-    implicitHeight: root.face_h + (WeatherState.has_vitals ? root.strip_h + 6 : 0)
+    readonly property real frame_h: root.face_h + (WeatherState.has_vitals ? root.strip_h + 6 : 0)
+    readonly property string facility: "FACILITY: " + (WeatherState.location_name !== "" ? WeatherState.location_name.toUpperCase() : "UNKNOWN")
+
+    implicitHeight: facility_line.anchors.topMargin + facility_line.implicitHeight
 
     Rectangle {
-        anchors.fill: parent
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.top: parent.top
+        height: root.frame_h
         radius: 10
         color: Style.wk.frame
         border.width: 2
@@ -158,26 +164,11 @@ Item {
                 Row {
                     spacing: 4
 
-                    Item {
-                        width: ghost.implicitWidth
-                        height: ghost.implicitHeight
-
-                        Text {
-                            id: ghost
-                            anchors.right: parent.right
-                            text: "8".repeat(Math.max(2, root.digits.length))
-                            color: Qt.alpha(Style.wk.lit, 0.1)
-                            font.family: W.digit_font
-                            font.pixelSize: Style.font_size * 2 + 4
-                        }
-
-                        Text {
-                            anchors.right: parent.right
-                            text: root.digits
-                            color: root.has ? Style.wk.lit : Style.wk.dim
-                            font.family: W.digit_font
-                            font.pixelSize: Style.font_size * 2 + 4
-                        }
+                    Text {
+                        text: root.digits
+                        color: root.has ? Style.wk.lit : Style.wk.dim
+                        font.family: W.digit_font
+                        font.pixelSize: Style.font_size * 2 + 4
                     }
 
                     Text {
@@ -414,6 +405,32 @@ Item {
                 visible: lcd_bar.high !== ""
                 text: lcd_bar.high
             }
+        }
+    }
+
+    // The briefing's facility line sits under the watch, so it shows on every tab instead of heading Daily and Alerts.
+    ColumnLayout {
+        id: facility_line
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.top: parent.top
+        anchors.topMargin: root.frame_h + 6
+        spacing: 4
+
+        Text {
+            Layout.fillWidth: true
+            Layout.minimumWidth: 0
+            elide: Text.ElideRight
+            text: root.facility
+            color: Style.text_fg
+            font.family: Style.font_family
+            font.pixelSize: Style.fs(-4)
+        }
+
+        Rectangle {
+            Layout.fillWidth: true
+            Layout.preferredHeight: 1
+            color: Qt.alpha(Style.accent_color, 0.3)
         }
     }
 
