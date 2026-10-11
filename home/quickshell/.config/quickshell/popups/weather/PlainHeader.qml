@@ -11,7 +11,9 @@ import "../../services"
 ColumnLayout {
     id: root
 
-    readonly property bool roomy: root.width >= 340
+    // Children size from the popup column's width, not this layout's own: reading root.width while this layout arranges them makes it rearrange again.
+    readonly property real header_w: parent ? parent.width : 0
+    readonly property bool roomy: root.header_w >= 340
     readonly property var temp_vital: WeatherState.vital("temp")
     readonly property var hum_vital: WeatherState.vital("hum")
     readonly property var rain_vital: WeatherState.vital("rain")
@@ -109,7 +111,7 @@ ColumnLayout {
         spacing: 14
 
         Image {
-            Layout.preferredWidth: Math.min(72, Math.max(40, root.width / 5))
+            Layout.preferredWidth: Math.min(72, Math.max(40, root.header_w / 5))
             Layout.preferredHeight: Layout.preferredWidth
             readonly property real dpr: QsWindow.window ? QsWindow.window.devicePixelRatio : 1
             source: WeatherState.has_data ? WeatherState.icon_source(WeatherState.current.code, WeatherState.current.is_day) : ""
@@ -165,7 +167,7 @@ ColumnLayout {
         Text {
             visible: WeatherState.stale
             Layout.alignment: Qt.AlignTop
-            Layout.maximumWidth: root.width / 3
+            Layout.maximumWidth: root.header_w / 3
             horizontalAlignment: Text.AlignRight
             wrapMode: Text.Wrap
             maximumLineCount: 3

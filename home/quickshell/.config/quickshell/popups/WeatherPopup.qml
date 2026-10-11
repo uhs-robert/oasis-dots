@@ -330,9 +330,11 @@ Popup {
                 on_open: function () { root.open_alerts(); }
             }
 
+            // A zero preferred width keeps the header's width-dependent children from feeding back into the column's width.
             PlainHeader {
                 visible: Style.weather_header === ""
                 Layout.fillWidth: true
+                Layout.preferredWidth: 0
             }
 
             // --- Active-alert banner: the event over when it ends, like the FF7 battle message ---
