@@ -14,22 +14,23 @@ ColumnLayout {
     readonly property var cur: WeatherState.current
     readonly property bool has: WeatherState.has_data && !!root.cur
     readonly property bool alert: WeatherState.alerts.length > 0
-    readonly property int aqi: WeatherState.aq_has_data && WeatherState.aq_current ? WeatherState.aq_current.aqi : -1
+    readonly property int aqi: WeatherState.aqi_now
     readonly property color vec: Style.text_primary
     readonly property color lock: Style.selection_brackets.a > 0 ? Style.selection_brackets : Theme.theme_label
     readonly property color readout: Style.text_accent
     readonly property color ring: root.alert ? root.lock : root.vec
     readonly property var blip_hours: WeatherState.hours.slice(0, 12)
-    readonly property int pop_max: root.blip_hours.reduce((m, h) => Math.max(m, h.pop), 0)
     readonly property bool is_open: Popups.open_name === "weather"
 
+    // A row with a `fill` (0-1) draws a tick gauge in place of its dotted leader; `lo` heads the gauge for a range.
     readonly property var readouts: !root.has ? [] : [
+        { label: "TMP", lo: Math.round(WeatherState.today_low) + "°", value: Math.round(WeatherState.today_high) + "°", color: root.readout, fill: WeatherState.temp_range_pos, marked: true, shown: WeatherState.has_vitals },
         { label: "WND", value: Math.round(root.cur.wind_speed) + " " + WeatherState.compass_label(root.cur.wind_dir), color: root.vec },
-        { label: "HUM", value: root.cur.humidity + "%", color: root.readout },
-        { label: "UV", value: root.cur.uv_index.toFixed(1), color: root.cur.uv_index >= 8 ? root.lock : root.readout },
-        { label: "AQI", value: root.aqi >= 0 ? String(root.aqi) : "--", color: root.aqi > 150 ? root.lock : root.readout },
-        { label: "PRECIP", value: root.pop_max + "%", color: root.readout }
-    ]
+        { label: "HUM", value: root.cur.humidity + "%", color: root.readout, fill: root.cur.humidity / 100 },
+        { label: "UV", value: root.cur.uv_index.toFixed(1) + " " + WeatherState.uv_band(root.cur.uv_index).label.toUpperCase(), color: root.cur.uv_index >= 8 ? root.lock : root.readout },
+        { label: "AQI", value: root.aqi >= 0 ? root.aqi + " " + WeatherState.aqi_band(root.aqi).label.toUpperCase() : "--", color: root.aqi > 150 ? root.lock : root.readout },
+        { label: "RAIN TODAY", value: WeatherState.today_pop + "%", color: root.readout, fill: WeatherState.today_pop / 100, shown: WeatherState.has_vitals }
+    ].filter(r => r.shown !== false)
 
     onIs_openChanged: root.is_open ? sweep_anim.restart() : sweep_anim.stop()
     Component.onCompleted: if (root.is_open) sweep_anim.restart()
@@ -315,6 +316,7 @@ ColumnLayout {
                 RowLayout {
                     id: readout_row
                     required property var modelData
+                    readonly property bool is_gauge: readout_row.modelData.fill !== undefined
                     Layout.fillWidth: true
                     spacing: 3
 
@@ -326,6 +328,16 @@ ColumnLayout {
                     }
 
                     Text {
+                        visible: readout_row.modelData.lo !== undefined
+                        Layout.leftMargin: 3
+                        text: readout_row.modelData.lo || ""
+                        color: readout_row.modelData.color
+                        font.family: Style.mono_font
+                        font.pixelSize: Style.fs(-4)
+                    }
+
+                    Text {
+                        visible: !readout_row.is_gauge
                         Layout.fillWidth: true
                         Layout.preferredWidth: 0
                         clip: true
@@ -335,7 +347,22 @@ ColumnLayout {
                         font.pixelSize: Style.fs(-4)
                     }
 
+                    TickGauge {
+                        visible: readout_row.is_gauge
+                        Layout.fillWidth: true
+                        Layout.preferredWidth: 0
+                        Layout.leftMargin: 3
+                        Layout.rightMargin: 3
+                        Layout.alignment: Qt.AlignVCenter
+                        value: readout_row.is_gauge ? readout_row.modelData.fill : 0
+                        color: readout_row.modelData.color
+                        marked: readout_row.modelData.marked === true
+                        mark_color: root.lock
+                    }
+
                     Text {
+                        Layout.minimumWidth: 0
+                        elide: Text.ElideRight
                         text: readout_row.modelData.value
                         color: readout_row.modelData.color
                         font.family: Style.mono_font
