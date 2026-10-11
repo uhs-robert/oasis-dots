@@ -17,7 +17,7 @@ Item {
     property var on_detail_scroll: function (y) {}
 
     readonly property var alerts: WeatherState.alerts
-    // Alerts as red "avoid" objectives under a mission line.
+    // GoldenEye: alerts in the watch's red briefing caps, under a facility line, with PRIORITY and ORDERS.
     readonly property bool objectives: Style.weather_header === "watch"
     // Alerts as Dragon Quest encounter lines.
     readonly property bool encounter: Style.weather_header === "battle"
@@ -57,7 +57,7 @@ Item {
             Layout.fillWidth: true
             active: root.objectives
             visible: active
-            sourceComponent: MissionHeader {}
+            sourceComponent: FacilityHeader {}
         }
 
         Text {
@@ -140,7 +140,7 @@ Item {
                             visible: !root.encounter
                             Layout.fillWidth: true
                             elide: Text.ElideRight
-                            text: root.objectives ? "OBJECTIVE: AVOID " + alert_row.modelData.event.toUpperCase() : alert_row.modelData.event
+                            text: root.objectives ? "ALERT: " + alert_row.modelData.event.toUpperCase() : alert_row.modelData.event
                             color: alert_row.fg(root.objectives || root.threat ? Style.pal.label : alert_row.index === root.alert_cursor ? Style.pal.secondary : Style.pal.fg)
                             font.family: Style.font_family
                             font.pixelSize: Style.fs(-2)

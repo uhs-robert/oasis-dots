@@ -23,7 +23,7 @@ Item {
     // Temperature ranges as 1px altitude ladders with rungs.
     readonly property bool ladder: Style.weather_header === "scope"
     readonly property bool thin_range: Style.range_line || root.ladder
-    // GoldenEye: a mission line over the columns, each lettered as an objective.
+    // GoldenEye: a facility line over the columns, each lettered as an objective.
     readonly property bool mission: Style.weather_header === "watch"
     // PS1: each column headed by its memory card save block in place of the icon.
     readonly property bool save_blocks: Style.weather_header === "memcard"
@@ -179,7 +179,7 @@ Item {
             Layout.fillWidth: true
             active: root.mission
             visible: active
-            sourceComponent: MissionHeader {}
+            sourceComponent: FacilityHeader {}
         }
 
         Text {
