@@ -20,6 +20,15 @@ verbs=(
 
 # set-default moves only the streams following the default (WirePlumber's linking.follow-default-target), never
 # one an app pinned to a device. connect powers the adapter on first, so "connect my headphones" works while it is off.
+examples=(
+  "turn bluetooth on"
+  "turn bluetooth off"
+  "connect <device>"
+  "disconnect <device>"
+  "switch output to <device>"
+  "use the <device> mic"
+)
+
 declare -A actions=(
   [bluetooth_on]='bluetoothctl power on'
   [bluetooth_off]='bluetoothctl power off'
