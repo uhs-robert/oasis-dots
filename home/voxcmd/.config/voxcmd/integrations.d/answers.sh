@@ -25,6 +25,15 @@ verbs=(
 
 # Math reads $raw_transcript rather than a {target}: normalizing drops "%", "×", "/" and decimal points, so
 # "2.5%" would reach qalc as "2 5".
+examples=(
+  "what time is it"
+  "what's the date"
+  "what's the weather"
+  "will it rain today"
+  "what's <number> percent of <number>"
+  "convert <amount> <unit> to <unit>"
+)
+
 declare -A actions=(
   [time]='answer_time'
   [date]='date "+%A, %B %-d, %Y"'
