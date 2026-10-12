@@ -17,6 +17,9 @@ Item {
     // The week's coldest low and warmest high, shared by every column so ranges compare across days.
     property real scale_min: 0
     property real scale_max: 1
+    // 0 temp and rain; 1 wind, 2 UV, 3 sunshine fill one stack of save blocks. wind_max is the week's strongest gust.
+    property int sub: 0
+    property real wind_max: 1
 
     readonly property bool has_day: !!root.day
     readonly property real temp_lo: root.has_day ? root.day.min : 0
@@ -24,6 +27,20 @@ Item {
     readonly property int pop: root.has_day ? Math.max(0, Math.min(100, root.day.pop || 0)) : 0
     readonly property int rain_blocks: 5
     readonly property int rain_used: Math.ceil(root.pop * root.rain_blocks / 100)
+
+    readonly property var uv_short: ({ "Moderate": "MOD", "Very High": "V.HIGH", "Extreme": "EXT" })
+
+    // The stat stack's fill (0-1), the figure over it, its footnote and its block colours.
+    readonly property var stat: {
+        const d = root.day;
+        if (!d) return { fill: 0, value: "", foot: "", color_at: f => Style.pal.cyan };
+        if (root.sub === 1) return { fill: d.wind_speed_max / root.wind_max, value: String(Math.round(d.wind_speed_max)), foot: "G" + Math.round(d.wind_gusts_max) + " " + WeatherState.compass_label(d.wind_dir), color_at: f => Style.pal.cyan };
+        if (root.sub === 2) {
+            const band = WeatherState.uv_band(d.uv_max).label;
+            return { fill: d.uv_max / 12, value: d.uv_max.toFixed(1), foot: (root.uv_short[band] || band).toUpperCase(), color_at: f => WeatherState.uv_color(f * 12) };
+        }
+        return { fill: d.sunshine_hours / 14, value: d.sunshine_hours.toFixed(1), foot: "HRS", color_at: f => Style.pal.yellow };
+    }
 
     function scale_pos(v) {
         return (v - root.scale_min) / Math.max(0.01, root.scale_max - root.scale_min);
@@ -63,6 +80,7 @@ Item {
 
         Item {
             id: range_area
+            visible: root.sub === 0
             Layout.fillWidth: true
             Layout.fillHeight: true
 
@@ -103,7 +121,41 @@ Item {
             }
         }
 
+        Item {
+            id: stat_area
+            visible: root.sub > 0
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+
+            readonly property real text_h: stat_value.implicitHeight + 1
+
+            SaveStack {
+                id: stat_stack
+                anchors.horizontalCenter: parent.horizontalCenter
+                y: stat_area.text_h
+                width: Math.max(8, Math.min(26, root.col_w * 0.38))
+                height: Math.max(30, stat_area.height - stat_area.text_h)
+                low: 0
+                high: root.stat.fill
+                selected: root.selected
+                block_color: root.stat.color_at
+            }
+
+            Text {
+                id: stat_value
+                anchors.horizontalCenter: parent.horizontalCenter
+                y: Math.max(0, stat_stack.y + stat_stack.high_y - implicitHeight - 1)
+                text: root.stat.value
+                color: root.selected ? Style.text_strong : root.stat.color_at(Math.min(1, root.stat.fill))
+                font.family: Style.font_family
+                font.pixelSize: Style.fs(-3)
+                style: Text.Raised
+                styleColor: Style.text_shadow
+            }
+        }
+
         Row {
+            visible: root.sub === 0
             Layout.alignment: Qt.AlignHCenter
             Layout.topMargin: 2
             spacing: 2
@@ -130,8 +182,8 @@ Item {
             Layout.fillWidth: true
             horizontalAlignment: Text.AlignHCenter
             elide: Text.ElideRight
-            text: root.pop + "%"
-            color: root.pop > 0 ? Theme.info : Style.text_muted
+            text: root.sub === 0 ? root.pop + "%" : root.stat.foot
+            color: root.sub > 0 ? (root.selected ? Style.text_fg : Style.text_muted) : root.pop > 0 ? Theme.info : Style.text_muted
             font.family: Style.font_family
             font.pixelSize: Style.fs(-5)
         }
