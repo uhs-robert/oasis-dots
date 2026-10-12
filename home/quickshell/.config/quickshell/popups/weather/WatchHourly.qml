@@ -85,9 +85,14 @@ Item {
         return best;
     }
 
+    // Temperature takes its actual band so a cold page never reads hot; the bar lengths still fill the page's own range.
+    function bar_color(row, norm) {
+        return root.sub === 0 ? WeatherState.temp_color(row.temp) : root.ramp_color(norm);
+    }
+
     function ramp_color(norm) {
         const i = Math.max(0, Math.min(7, Math.round(norm * 7)));
-        if (root.sub === 0 || root.sub === 3) return W.warm[7 - i];
+        if (root.sub === 3) return W.warm[7 - i];
         return root.sub === 2 ? Style.wk.bar_on : W.cold_lit[i];
     }
 
@@ -160,7 +165,7 @@ Item {
                     y: -root.bar_base - slot.len
                     width: root.tick_w
                     height: slot.len
-                    color: slot.at_cursor ? W.white : root.ramp_color(slot.norm)
+                    color: slot.at_cursor ? W.white : root.bar_color(slot.row, slot.norm)
                     opacity: slot.at_cursor ? 1 : 0.3 + 0.7 * slot.norm
                 }
 
@@ -263,7 +268,7 @@ Item {
             Text {
                 Layout.alignment: Qt.AlignHCenter
                 text: root.cursor_row ? root.big_value(root.cursor_row) : "--"
-                color: root.cursor_row ? root.ramp_color(root.norm_of(root.cursor_row)) : Style.wk.dim
+                color: root.cursor_row ? root.bar_color(root.cursor_row, root.norm_of(root.cursor_row)) : Style.wk.dim
                 font.family: W.digit_font
                 font.pixelSize: Style.fs(9)
             }
