@@ -6,6 +6,7 @@ function overrides(t, ctx) {
     return {
         workspace_art: "buffers",
         weather_header: "lsp",
+        keeptabs_layout: "lsp",
         card_layout: "notify",
         wait_anim: "cursor",
         font_family: "Maple Mono NF",

@@ -4,6 +4,7 @@ function overrides(t, ctx) {
     return {
         wait_anim: "rumble",
         weather_header: "towers",
+        keeptabs_layout: "towers",
         done_anim: "pixel",
         // Muted text lifted so it still reads on the lit selection pill.
         text_muted: Qt.tint(t.fg_muted, Qt.alpha(t.theme_primary_light, 0.35)),

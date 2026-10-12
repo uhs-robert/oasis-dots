@@ -140,6 +140,7 @@ var tokens = [
     tok("level_layout", "string", "", 'Level rows: "capsule" draws them as tall capsule sliders with live peaks, "slant" and "visor" the same with slanted ends or visor glass (Volume popup and OSD only); "" keeps the shared slider.'),
     tok("card_layout", "string", "", ""),
     tok("weather_header", "string", "", ""),
+    tok("keeptabs_layout", "string", "", 'KeepTabs popup layout, one of Style.keeptabs_layouts: "" keeps the plain Agents and Usage lists.'),
     tok("picker_skin", "string", "", 'Picker and region cursor/loupe/target treatment, one of Style.picker_skins: "" keeps the shared look, "scope" swaps in the MGS binocular skin.'),
     tok("picker_hud", "color", t => t.theme_secondary, ""),
     tok("picker_hint_keys", "string", "", "Keys that pick a target by position, live only under the skins that draw them (a borrowed keyless skin would leave them as invisible shortcuts); those fall back to the digits 1-9.", {expr: '["nvimfloat", "tmux", "tvosd"].indexOf(root.active.picker_skin) >= 0 ? (root.active.picker_hint_keys || "123456789") : ""'}),

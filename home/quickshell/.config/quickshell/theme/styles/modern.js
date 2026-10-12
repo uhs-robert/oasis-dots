@@ -98,6 +98,7 @@ function overrides(t, ctx) {
         level_layout: "capsule",
         card_layout: "tile",
         weather_header: "hero",
+        keeptabs_layout: "hero",
         bar_font_family: "Geist",
         bar_font_size: t.font_size,
         bar_side_bg: l0,

@@ -38,6 +38,8 @@ Singleton {
     readonly property var osd_layouts: ["", "ring", "hud", "rpg", "alert", "glow", "horizon", "tile", "watch"]
     // Weather layouts any style can borrow; the header token picks the header and every Daily view that goes with it, so one choice cannot mismatch. watch, battle, scan and hev also reword the alert banner and the Alerts tab in their style's fiction, which comes along when borrowed.
     readonly property var weather_layouts: ["", "ring", "scope", "memcard", "mode7", "wttr", "weatherstar", "towers", "pokedex", "status", "oasis", "hero", "lsp", "watch", "battle", "scan", "hev"]
+    // KeepTabs popup layouts any style can borrow; the key is the weather layout of the same game or tool, and "" is the plain lists.
+    readonly property var keeptabs_layouts: ["", "battle", "mode7", "pokedex", "status", "memcard", "towers", "watch", "scan", "hev", "scope", "ring", "oasis", "wttr", "lsp", "weatherstar", "hero"]
     // Keeptabs animations any style can borrow (Theme options), drawn in the bar's colours and fonts.
     readonly property var done_anims: ["hearts", "pixel", "lcd", "hev_pickup", "levelup", "fanfare"]
     readonly property var wait_anims: ["bubble", "cursor", "pressanykey", "advance", "hand", "alert", "rumble", "transmission", "scan", "comms", "ping", "hev_alert", "exclaim", "atb"]
@@ -50,6 +52,7 @@ Singleton {
             workspace_art: { "": "Pills", dots: "Dots", diamonds: "Diamonds", squares: "Squares", dial: "Watch Dial", materia: "Materia", doors: "Doors", constellation: "Constellation", buffers: "Buffers", party: "Party", slimes: "Slime Party", qblock: "? Blocks", map: "World Map", slots: "Tactics Tiles", ps2: "Memory Cubes" },
             osd_layout: { "": "Bar", ring: "Ring", hud: "HUD", rpg: "RPG", alert: "Alert Mark", glow: "Glow Ring", horizon: "Horizon", tile: "Tile", watch: "Watch Dial" },
             weather_header: { "": "Plain", ring: "Ring", scope: "Targeting Scope", memcard: "Memory Card", mode7: "Mode 7", wttr: "wttr.in", weatherstar: "Weather Star", towers: "Towers", pokedex: "Pokedex", status: "Status Screen", oasis: "Oasis", hero: "Hero", lsp: "LSP Hover", watch: "Watch", battle: "Battle", scan: "Scan Visor", hev: "HEV Suit" },
+            keeptabs_layout: { "": "Plain", battle: "Party", mode7: "Battle", pokedex: "Party", status: "Menu", memcard: "Memory Card", towers: "Browser", watch: "Mission Status", scan: "Logbook", hev: "Weapon Select", scope: "Targeting", ring: "Roster", oasis: "Caravan", wttr: "htop", lsp: "Trouble", weatherstar: "Observations", hero: "Live Activities" },
             done_anim: { hearts: "Hearts", pixel: "Pixel", lcd: "LCD", hev_pickup: "Health Pickup", levelup: "Level Up", fanfare: "Victory Fanfare" },
             wait_anim: { bubble: "Bubble", cursor: "Blinking Cursor", pressanykey: "Press Any Key", advance: "Text Advance", hand: "Pointing Hand", alert: "Alert", rumble: "Rumble", transmission: "Transmission", scan: "Scan", comms: "Comms", ping: "Radar Ping", hev_alert: "HEV Alert", exclaim: "Exclamation", atb: "ATB Gauge" },
             toast_enter: { "": "Fade", type: "Typewriter", mode7: "Mode 7", wobble: "Wobble", bloom: "Bloom" }
@@ -291,6 +294,7 @@ Singleton {
     readonly property string level_layout: root.active.level_layout
     readonly property string card_layout: root.active.card_layout
     readonly property string weather_header: root.active.weather_header
+    readonly property string keeptabs_layout: root.active.keeptabs_layout
     readonly property string picker_skin: root.active.picker_skin
     readonly property color picker_hud: root.active.picker_hud
     readonly property string picker_hint_keys: ["nvimfloat", "tmux", "tvosd"].indexOf(root.active.picker_skin) >= 0 ? (root.active.picker_hint_keys || "123456789") : ""
@@ -542,6 +546,7 @@ Singleton {
         out.push({ key: "overview_skin", label: "Overview skin", type: "choice", default: b.overview_skin || "", choices: root.overview_skins, labels: root.borrow_labels("overview_skin", root.overview_skins) });
         out.push({ key: "osd_layout", label: "OSD layout", type: "choice", default: b.osd_layout || "", choices: root.osd_layouts, labels: root.borrow_labels("osd_layout", root.osd_layouts) });
         out.push({ key: "weather_header", label: "Weather layout", type: "choice", default: b.weather_header || "", choices: root.weather_layouts, labels: root.borrow_labels("weather_header", root.weather_layouts) });
+        out.push({ key: "keeptabs_layout", label: "KeepTabs layout", type: "choice", default: b.keeptabs_layout || "", choices: root.keeptabs_layouts, labels: root.borrow_labels("keeptabs_layout", root.keeptabs_layouts) });
         out.push({ key: "done_anim", label: "Done animation", type: "choice", default: b.done_anim || "hearts", choices: root.done_anims, labels: root.borrow_labels("done_anim", root.done_anims) });
         out.push({ key: "wait_anim", label: "Waiting animation", type: "choice", default: b.wait_anim || "bubble", choices: root.wait_anims, labels: root.borrow_labels("wait_anim", root.wait_anims) });
         out.push({ key: "toast_enter", label: "Toast arrival", type: "choice", default: b.toast_enter || "", choices: root.toast_enters, labels: root.borrow_labels("toast_enter", root.toast_enters) });

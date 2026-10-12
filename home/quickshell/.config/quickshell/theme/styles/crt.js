@@ -4,6 +4,7 @@ function overrides(t, ctx) {
     return {
         wait_anim: "pressanykey",
         weather_header: "weatherstar",
+        keeptabs_layout: "weatherstar",
         text_muted: Qt.tint(t.fg_dim, Qt.alpha(t.theme_primary_light, 0.35)),
         text_dim: Qt.tint(t.fg_dim, Qt.alpha(t.theme_primary_light, 0.6)),
         // VT323 is tall and narrow; 24 matches the old cap height with room to spare across.

@@ -39,6 +39,7 @@ function overrides(t, ctx) {
         meter_palette: "bezel",
         chart_slant: 0.21,
         weather_header: "watch",
+        keeptabs_layout: "watch",
         title_bg: "transparent",
         title_spacing: 2,
         title_readout: "OASIS WATCH v" + ctx.version,

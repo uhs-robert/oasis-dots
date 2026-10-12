@@ -12,6 +12,7 @@ function overrides(t, ctx) {
         wait_anim: "atb",
         done_anim: "fanfare",
         weather_header: "status",
+        keeptabs_layout: "status",
         picker_skin: "materia",
         text_muted: Qt.tint(t.fg_dim, Qt.alpha(t.theme_primary_light, 0.5)),
         text_dim: t.theme_primary_light,

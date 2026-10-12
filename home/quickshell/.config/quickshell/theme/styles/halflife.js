@@ -12,6 +12,7 @@ function overrides(t, ctx) {
         wait_anim: "hev_alert",
         done_anim: "hev_pickup",
         weather_header: "hev",
+        keeptabs_layout: "hev",
         osd_layout: "hud",
         text_muted: hl_t,
         text_dim: Qt.alpha(hl, 0.85),

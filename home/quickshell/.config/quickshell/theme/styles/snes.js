@@ -5,6 +5,7 @@ function overrides(t, ctx) {
         wait_anim: "hand",
         done_anim: "pixel",
         weather_header: "mode7",
+        keeptabs_layout: "mode7",
         controller: "snes",
         console_views: "snes",
         workspace_art: "map",
