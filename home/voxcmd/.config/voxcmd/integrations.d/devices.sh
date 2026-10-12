@@ -77,7 +77,9 @@ candidates() {
   app_*)
     # "set the volume to 20" reaches app_volume_set with the app "the". labels_containing_words offers every device
     # for an articles-only target, which suits "use the microphone" but would put every playing app in a picker here.
-    if names_only_articles "$target"; then
+    # "make the volume 40" can also skip the optional {set} and land here with "make" as the app, and /usr/bin/make
+    # exists, so a set word on its own is never an app.
+    if names_only_articles "$target" || intent_forms set | grep -qxF -- "$target"; then
       echo '[]'
     else
       playing_apps | labels_containing_words "$target" | or_idle_app "$target"
