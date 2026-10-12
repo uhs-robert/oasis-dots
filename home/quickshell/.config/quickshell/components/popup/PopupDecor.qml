@@ -12,6 +12,7 @@ Item {
     required property bool has_title
     required property string shown_title
     required property string title_value
+    required property bool title_status
     required property real chip_height
     required property real frame_radius
     required property bool island_capsule
@@ -33,7 +34,7 @@ Item {
         sourceComponent: Neovim.FloatFrame {
             st: root.st
             title: root.has_title ? root.shown_title : ""
-            status: root.st.title_status ? root.title_value : ""
+            status: root.title_status ? root.title_value : ""
             chip_height: root.chip_height
             radius: root.frame_radius
         }

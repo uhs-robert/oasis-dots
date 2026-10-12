@@ -10,6 +10,7 @@ Item {
     required property string title
     required property string shown_title
     required property string title_value
+    required property bool title_status
     required property string popup_name
     required property bool passive
     required property bool has_title
@@ -110,7 +111,7 @@ Item {
 
     // Plain sentence-case titles carry the live title value at the right, like a status line.
     Text {
-        visible: root.has_title && !root.banded && root.st.title_status && !root.st.border_title && root.st.title_readout === "" && root.title_value !== "" && title_tab.x + title_tab.width + 12 <= parent.width - anchors.rightMargin - implicitWidth
+        visible: root.has_title && !root.banded && root.title_status && !root.st.border_title && root.st.title_readout === "" && root.title_value !== "" && title_tab.x + title_tab.width + 12 <= parent.width - anchors.rightMargin - implicitWidth
         anchors.right: parent.right
         anchors.rightMargin: title_readout.anchors.rightMargin + 4
         y: title_tab.y + (title_tab.height - height) / 2
