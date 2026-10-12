@@ -39,7 +39,7 @@ fi
 
 if [[ $before != "$after" ]] && ! git -C "$repo" diff --quiet "$before" "$after" -- home/quickshell; then
   if pgrep -af '^qs .*-p ' >/dev/null; then
-    echo "ship-batch: a test bar is running; restore it with the test-bar skill"
+    echo "ship-batch: a test bar is running; restore it with the owner-test-bar skill"
   else
     state=$(timeout 3 "$ipc" call lock state 2>/dev/null || true)
     [[ $state == unlocked ]] || die "Quickshell changed but the lock state is '${state:-unknown}'; restart the bar once unlocked"

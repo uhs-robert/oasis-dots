@@ -13,7 +13,7 @@ hypr_orig="$bars/.hypr_orig"
 hypr_bar="$bars/.hypr_bar"
 
 die() {
-  echo "test-bar: $*" >&2
+  echo "owner-test-bar: $*" >&2
   exit 1
 }
 
@@ -57,7 +57,7 @@ verify() {
     die "the bar started but logged errors (above); $load_hint"
   }
   $log 2>&1 | grep -q 'Configuration Loaded' || die "no 'Configuration Loaded' in the log yet"
-  echo "test-bar: loaded cleanly"
+  echo "owner-test-bar: loaded cleanly"
 }
 
 # Restarts the wallpaper rotator after a hypr swap or restore, only if one is running; the new one reads the re-pointed config.
@@ -176,7 +176,7 @@ status() {
 }
 
 probe() {
-  (($# > 0)) || die "usage: test-bar.sh probe \"<ipc call args>\"..."
+  (($# > 0)) || die "usage: owner-test-bar.sh probe \"<ipc call args>\"..."
   require_unlocked
   local pid before call
   pid=$(pgrep -nx qs) || die "qs is not running"
@@ -222,9 +222,9 @@ copy_assets() {
 build() {
   local name=$1
   shift
-  (($# > 0)) || die "usage: test-bar.sh build <name> <branch>..."
+  (($# > 0)) || die "usage: owner-test-bar.sh build <name> <branch>..."
   local dir="$bars/$name"
-  [[ -e $dir ]] && die "$dir exists; remove it first with: test-bar.sh remove $name"
+  [[ -e $dir ]] && die "$dir exists; remove it first with: owner-test-bar.sh remove $name"
   git -C "$repo" fetch -q origin || true
   git -C "$repo" worktree add -q --detach "$dir" origin/main
   local branch
@@ -234,7 +234,7 @@ build() {
   copy_assets "$dir"
   printf '%s\n' "$@" >"$dir.branches"
   (cd "$dir" && just check >/dev/null) || die "just check fails on the combined build in $dir"
-  echo "test-bar: built $dir from $*"
+  echo "owner-test-bar: built $dir from $*"
 }
 
 replace=0
@@ -250,7 +250,7 @@ case ${1:-} in
     build "$@"
     ;;
   swap)
-    dir="$bars/${2:?usage: test-bar.sh swap <name>}"
+    dir="$bars/${2:?usage: owner-test-bar.sh swap <name>}"
     [[ -d $dir ]] || die "no test bar at $dir"
     guard_live_bar "$2" "$replace"
     require_unlocked
@@ -259,7 +259,7 @@ case ${1:-} in
     verify "qs log -p $dir/$qs_rel"
     ;;
   up)
-    name=${2:?usage: test-bar.sh up <name> <branch>...}
+    name=${2:?usage: owner-test-bar.sh up <name> <branch>...}
     shift 2
     guard_live_bar "$name" "$replace"
     build "$name" "$@"
@@ -274,8 +274,8 @@ case ${1:-} in
     verify "qs log"
     ;;
   remove)
-    dir="$bars/${2:?usage: test-bar.sh remove <name>}"
-    pgrep -af "^qs .*-p $dir/" >/dev/null && die "that test bar is running; run test-bar.sh restore first"
+    dir="$bars/${2:?usage: owner-test-bar.sh remove <name>}"
+    pgrep -af "^qs .*-p $dir/" >/dev/null && die "that test bar is running; run owner-test-bar.sh restore first"
     if [[ -f $hypr_bar && $(<"$hypr_bar") == "${2}" ]]; then
       require_unlocked
       hypr_restore
@@ -283,10 +283,10 @@ case ${1:-} in
     git -C "$repo" worktree remove --force "$dir"
     git -C "$repo" worktree prune
     rm -f "$dir.branches"
-    echo "test-bar: removed $dir"
+    echo "owner-test-bar: removed $dir"
     ;;
   rebuild)
-    name=${2:?usage: test-bar.sh rebuild <name>}
+    name=${2:?usage: owner-test-bar.sh rebuild <name>}
     dir="$bars/$name"
     [[ -f $dir.branches ]] || die "no test bar '$name' to rebuild"
     mapfile -t branches <"$dir.branches"
@@ -307,6 +307,6 @@ case ${1:-} in
     probe "$@"
     ;;
   *)
-    die "usage: test-bar.sh {up <name> <branch>... [--replace]|build <name> <branch>...|swap <name> [--replace]|restore|rebuild <name>|remove <name>|status|probe <ipc call>...}"
+    die "usage: owner-test-bar.sh {up <name> <branch>... [--replace]|build <name> <branch>...|swap <name> [--replace]|restore|rebuild <name>|remove <name>|status|probe <ipc call>...}"
     ;;
 esac
