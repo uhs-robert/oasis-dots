@@ -1,0 +1,95 @@
+phrase	expected	note
+play pause	Media/toggle
+pause the music	Media/pause
+next track	Media/next
+volume up by 10	Media/volume_up
+set volume to 20	Media/volume_set
+set the volume to 20	Media/volume_set	failed live, works now
+make volume to 40	Media/volume_set	failed live, works now
+mute	Media/mute
+pause firefox	none	no player runs in the sandbox
+open firefox	Apps/open
+open a new kitty	Apps/open_new
+focus slack	Apps/focus
+take me to firefox	Apps/focus	failed live, works now
+move firefox to workspace 3	Apps/move
+close slack	Apps/close
+resize the window to 1200 by 800	Apps/resize
+make it 400 pixels tall	Apps/resize
+set the width to 900	Apps/resize
+make it wider by 200	Apps/resize
+increase width by 400	Apps/grow	failed live, works now
+decrease height by 300	Apps/shrink	failed live, works now
+pre-size to 1200 by 800	Apps/resize	failed live, works now
+resize horizontally by 300	Apps/resize	failed live, works now
+shrink it by 50 pixels	Apps/shrink
+resize firefox to 1000 by 700	Apps/resize
+1200 by 800	Apps/resize_spoken_size	a size alone resizes the active window
+make it bigger	Apps/resize	no amount: the how-much hint
+set timer for one minute	Timers/timer	failed live, works now
+set a timer for 3 pm	Timers/timer	failed live, works now
+start a timer for acme	none	failed live, works now; a private integration's verb, so none without it
+set a timer for 5 minutes	Timers/timer
+remind me in 10 minutes to stretch	Timers/remind
+list my timers	Timers/list
+cancel the pasta timer	Timers/cancel
+cancel all timers	Timers/cancel_all
+turn bluetooth on	Devices/bluetooth_on
+connect my headphones	none	no paired Bluetooth device in the sandbox
+switch output to headphones	Devices/output
+use the microphone	Devices/input
+turn firefox down	Devices/app_volume_down
+set firefox volume to 30	Devices/app_volume_set
+mute firefox	Devices/app_mute
+brightness up	System/brightness_up
+set brightness to 40	System/brightness_set
+power saver mode	System/power_saver
+do not disturb on	System/dnd_on
+do not disturb off	System/dnd_off
+activate caffeine	System/autolock_off
+set power profile to balanced	System/profile
+what time is it	Answers/time
+what's the date	Answers/date
+what time is it in tokyo	Answers/zone_now	failed live, works now
+how far ahead is london	Answers/zone_offset
+what is 3 pm eastern in tokyo	Answers/zone_convert
+what's the weather	Answers/weather
+what's 15 percent of 80	Answers/calculate
+convert 5 miles to kilometers	Answers/calculate
+go to the waiting agent	Agents/jump_waiting
+go to the done agent	Agents/jump_done	failed live, works now
+next agent	Agents/jump_next
+go to the frontend agent	Agents/not_found	no agent is tracked in the sandbox
+go to the dotfiles session	Tmux/switch
+open session notes	Tmux/not_found	no such session or layout
+new session scratch	Tmux/new
+attach dotfiles	Tmux/switch
+clear notifications	Notifications/clear
+read the last notification	Notifications/read_last
+open notifications	Notifications/open
+start recording	Recording/record_screen
+record this window	Recording/record_window
+is it recording	Recording/status
+stop recording	Recording/stop
+toggle fullscreen	Keybinds/run
+close window	Keybinds/run
+go to workspace 2	Keybinds/run
+cursor mode	Keybinds/enter_submap
+activate cursor mode	Keybinds/enter_submap	failed live, works now
+activate resize submap	Keybinds/enter_submap
+exit submap	Keybinds/exit_submap
+press toggle fullscreen	Keybinds/run	forced to Keybinds
+lock computer	Keybinds/run	failed live, works now
+never mind	builtin	failed live, works now
+cancel	builtin
+what can i say	builtin
+banana pancake orchestra	none	nonsense
+the quick brown fox jumps	none	nonsense
+purple elephants dancing	none	nonsense
+hello there	none	nonsense
+seventeen trombones	none	nonsense
+lorem ipsum dolor sit amet	none	nonsense
+flibbertigibbet	none	nonsense
+asdf qwerty	none	nonsense
+my cat likes tuna	none	nonsense
+why is the sky blue	none	nonsense

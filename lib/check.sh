@@ -47,7 +47,7 @@ agent_script_files=$(agent_scripts)
 
 # Optional tooling: skip when absent so validation stays dependency-light.
 if command -v shellcheck >/dev/null 2>&1; then
-  step shellcheck shellcheck install.sh uninstall.sh lib/*.sh demo/*.sh home/hypr/.config/hypr/scripts/state-write
+  step shellcheck shellcheck install.sh uninstall.sh lib/*.sh demo/*.sh home/hypr/.config/hypr/scripts/state-write home/voxcmd/tests/*.sh
   step shellcheck shellcheck -x -P SCRIPTDIR home/quickshell/.config/quickshell/scripts/lib/*.sh home/quickshell/.config/quickshell/scripts/ff7-audio home/quickshell/.config/quickshell/scripts/goldeneye-audio home/quickshell/.config/quickshell/scripts/mgs2-audio home/quickshell/.config/quickshell/scripts/ocarina-audio
   # shellcheck disable=SC2086 # newline-separated tracked paths, none contain spaces
   [ -z "$agent_script_files" ] || step shellcheck shellcheck -x -P SCRIPTDIR $agent_script_files
@@ -56,7 +56,7 @@ else
 fi
 
 if command -v shfmt >/dev/null 2>&1; then
-  step shfmt shfmt -i 2 -d install.sh uninstall.sh lib/*.sh demo/*.sh home/hypr/.config/hypr/scripts/state-write home/quickshell/.config/quickshell/scripts/lib/*.sh home/quickshell/.config/quickshell/scripts/ff7-audio home/quickshell/.config/quickshell/scripts/goldeneye-audio home/quickshell/.config/quickshell/scripts/mgs2-audio home/quickshell/.config/quickshell/scripts/ocarina-audio
+  step shfmt shfmt -i 2 -d install.sh uninstall.sh lib/*.sh demo/*.sh home/hypr/.config/hypr/scripts/state-write home/voxcmd/tests/*.sh home/quickshell/.config/quickshell/scripts/lib/*.sh home/quickshell/.config/quickshell/scripts/ff7-audio home/quickshell/.config/quickshell/scripts/goldeneye-audio home/quickshell/.config/quickshell/scripts/mgs2-audio home/quickshell/.config/quickshell/scripts/ocarina-audio
   # shellcheck disable=SC2086 # newline-separated tracked paths, none contain spaces
   [ -z "$agent_script_files" ] || step shfmt shfmt -i 2 -d $agent_script_files
 else
@@ -74,6 +74,12 @@ step qmllint sh ./lib/check-qml.sh
 step lock-skins sh ./lib/check-lock-skins.sh
 step style-exports sh ./lib/check-style-exports.sh
 step time-format sh ./lib/check-time-format.sh
+# voxcmd routes with jq and fzf, so without them every phrase would read as no match.
+if command -v jq >/dev/null 2>&1 && command -v fzf >/dev/null 2>&1; then
+  step voxcmd-phrases bash ./home/voxcmd/tests/run-phrases.sh
+else
+  echo 'skip: voxcmd phrases need jq and fzf'
+fi
 step packages sh ./lib/check-packages.sh
 step symlinks sh ./lib/check-symlinks.sh
 step git-diff-check git diff --check HEAD

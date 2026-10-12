@@ -1,0 +1,14 @@
+[
+  {"id": 40, "type": "PipeWire:Interface:Device",
+   "info": {"props": {}, "params": {"Route": [
+     {"direction": "Output", "device": 1, "description": "Speakers"},
+     {"direction": "Input", "device": 2, "description": "Microphone"}]}}},
+  {"id": 50, "type": "PipeWire:Interface:Node",
+   "info": {"props": {"media.class": "Audio/Sink", "node.description": "Built-in Audio Analog Stereo",
+     "device.id": 40, "card.profile.device": 1}}},
+  {"id": 51, "type": "PipeWire:Interface:Node",
+   "info": {"props": {"media.class": "Audio/Sink", "node.description": "WH-1000XM4", "device.form-factor": "headphone"}}},
+  {"id": 52, "type": "PipeWire:Interface:Node",
+   "info": {"props": {"media.class": "Audio/Source", "node.description": "Built-in Audio Analog Stereo",
+     "device.id": 40, "card.profile.device": 2}}}
+]

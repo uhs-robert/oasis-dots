@@ -1,0 +1,8 @@
+[
+  {"address": "0x1001", "mapped": true, "class": "firefox", "initialClass": "firefox", "title": "Mozilla Firefox",
+   "size": [1200, 1000], "floating": false, "monitor": 0, "workspace": {"id": 1, "name": "1"}, "focusHistoryID": 1},
+  {"address": "0x1002", "mapped": true, "class": "Slack", "initialClass": "Slack", "title": "general - Acme - Slack",
+   "size": [700, 1000], "floating": false, "monitor": 0, "workspace": {"id": 2, "name": "2"}, "focusHistoryID": 2},
+  {"address": "0x1003", "mapped": true, "class": "kitty", "initialClass": "kitty", "title": "zsh",
+   "size": [700, 1000], "floating": false, "monitor": 0, "workspace": {"id": 1, "name": "1"}, "focusHistoryID": 0}
+]
