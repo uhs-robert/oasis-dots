@@ -40,6 +40,8 @@ declare -A actions=(
   [weather]='open_weather_popup'
   [calculate]='answer_calculation "$raw_transcript"'
 )
+# The popup is the answer; a success toast would cover it.
+silent_actions=(weather)
 
 # Follows the bar's Settings > Clock time format, where "locale" means the locale's own 12 or 24 hour choice.
 answers_time_format() {
