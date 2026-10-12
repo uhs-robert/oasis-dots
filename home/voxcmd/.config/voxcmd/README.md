@@ -1,6 +1,6 @@
 # voxcmd
 
-Voice commands on top of [voxtype](https://github.com/peteonrails/voxtype). Speak a phrase, voxcmd matches it against the verbs your integrations declare and runs the action. Five integrations ship: `media.sh` (playerctl and pamixer), `apps.sh` (open apps, focus, move and close windows), `timers.sh` (timers and reminders as systemd user timers), `devices.sh` (audio output and input with wpctl, Bluetooth with bluetoothctl) and `keybinds.sh` (any described Hyprland keybind); everything else is a drop-in file you write.
+Voice commands on top of [voxtype](https://github.com/peteonrails/voxtype). Speak a phrase, voxcmd matches it against the verbs your integrations declare and runs the action. Five integrations ship: `media.sh` (playerctl and pamixer), `apps.sh` (open apps, focus, move and close windows), `timers.sh` (timers and reminders as systemd user timers), `devices.sh` (audio output, input and per-app volume with wpctl, Bluetooth with bluetoothctl) and `keybinds.sh` (any described Hyprland keybind); everything else is a drop-in file you write.
 
 | Key                                | Does                                                                     |
 | ---------------------------------- | ------------------------------------------------------------------------ |
@@ -185,7 +185,7 @@ Strong matches hide weak ones.
 
 ### Devices
 
-`devices.sh` switches the default audio output and input and connects Bluetooth devices.
+`devices.sh` switches the default audio output and input, sets the volume of single apps and connects Bluetooth devices.
 
 | Say                                                               | Does                                                   |
 | ----------------------------------------------------------------- | ------------------------------------------------------ |
@@ -193,11 +193,17 @@ Strong matches hide weak ones.
 | "use the X microphone", "switch mic to X", "set the input to X"   | `wpctl set-default` on the matching source             |
 | "connect X", "reconnect X", "disconnect X"                        | `bluetoothctl connect`/`disconnect` on a paired device |
 | "bluetooth on", "turn off bluetooth", "enable bluetooth"          | `bluetoothctl power on`/`off`                          |
+| "turn Spotify down", "turn up Firefox", "Firefox volume up by 20" | `wpctl set-volume` on the app's streams, 10% a step    |
+| "Spotify volume 30", "set Firefox volume to 50 percent"           | `wpctl set-volume` on the app's streams                |
+| "mute Firefox", "unmute Spotify"                                  | `wpctl set-mute` on the app's streams                  |
 
 - Sinks and sources come from `pw-dump`, labelled by description plus the device's active route or form factor, `USB Audio Analog Stereo (Speakers)` or `MOMENTUM 3 (Headphones)`, so "use the speakers" and "switch audio to headphones" work without naming the card. Only devices whose label holds every spoken word are offered, so "use the headset" with no headset matches nothing rather than an HDMI output by scattered letters. Several matches open the picker.
 - Playing streams follow the new default through WirePlumber's `linking.follow-default-target`; a stream an app pinned to a device stays where it is.
 - Bluetooth devices come from `bluetoothctl devices Paired`, labelled with their kind from BlueZ's icon (`Headphones`, `Keyboard`, `Mouse`, ...). `connect` powers the adapter on first.
 - Plain "switch to X" is left to app switching, so output switching always says what it switches.
+- An app has a volume only while it plays something: its PipeWire playback streams are what change, and an app with none has nothing to set. "turn Spotify down" with Spotify paused or closed says Spotify is not playing anything; a name that is no running app or command, such as "turn brightness down", is left to the other integrations.
+- Apps are named by `application.name` and matched on their binary too, so an Electron app that calls itself Chromium still answers to its own name. All of an app's streams (every Firefox tab) change together.
+- Volume is clamped to 0..100% of the stream's own volume, never boosted. Plain "volume up", "turn it up", "mute" and "volume 40" stay with Media, which sets the system volume.
 
 ### Keybinds
 
