@@ -29,6 +29,9 @@ declare -A actions=(
   [not_found]='echo "no tmux session or layout matches \"$target\""; false'
 )
 
+# Tab on these examples in Voice Help lists every running session and layout, and picking one switches to it.
+help_action=switch
+
 # Without it, an unmatched "attach X" falls through to the keybinds fallback and could run an unrelated bind.
 declare -A no_match_actions=(
   [switch]='not_found'

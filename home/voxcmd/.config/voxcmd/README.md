@@ -285,6 +285,7 @@ Brightness and do not disturb send no notification when they work ([silent](#sil
 
 - Next and previous step through every tracked agent in `keeptabs-pick`'s order (waiting, done, running, idle, oldest first within each). The focused agent is the one whose window, tmux pane and nvim terminal keeptabs' own `session_focused` says has focus; with none focused, next starts at the first agent and previous at the last.
 - An "agent X" that matches nothing says so instead of falling through to the keybinds.
+- Tab on its Voice Help entries lists every tracked agent; picking one jumps to it.
 
 ### Tmux
 
@@ -295,7 +296,7 @@ Brightness and do not disturb send no notification when they work ([silent](#sil
 | "switch to the X session", "switch to session X", "open the X session", "attach X" | focus or open the session                                  |
 | "new session X", "open a new session X"                                            | a terminal on a new session X (attached if X already runs) |
 
-X is matched against running sessions (`tmux list-sessions`) and the tmuxifier layouts in `~/.tmuxifier/layouts`, a layout by the `session_name` it sets or its file name. A layout goes through the Project picker's script (`hypr/scripts/rofi-tmux.sh <layout>`), which focuses its terminal or loads it in a new one. A running session without a layout focuses the terminal titled with its name, else opens a terminal attached to it. An X that matches nothing says so instead of falling through to the keybinds.
+X is matched against running sessions (`tmux list-sessions`) and the tmuxifier layouts in `~/.tmuxifier/layouts`, a layout by the `session_name` it sets or its file name. A layout goes through the Project picker's script (`hypr/scripts/rofi-tmux.sh <layout>`), which focuses its terminal or loads it in a new one. A running session without a layout focuses the terminal titled with its name, else opens a terminal attached to it. An X that matches nothing says so instead of falling through to the keybinds. Tab on its Voice Help entries lists every running session and layout; picking one switches to it.
 
 ## Voice Help
 
