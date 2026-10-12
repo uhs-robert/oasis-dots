@@ -5,17 +5,20 @@ description: Run the full Quickshell bar in an invisible, isolated nested Hyprla
 
 # Shadow bar
 
-`shadow.sh` runs a copy of the bar inside a nested Hyprland on a headless host compositor. Nothing appears on the owner's screen, and nothing reaches their Hyprland, bar, input or session bus. Use it instead of `test-bar` self-tests whenever you only need to look at or drive a surface; `test-bar` stays the way to hand a branch to the owner.
+`shadow.sh` runs a copy of the bar inside a nested Hyprland on a headless host compositor. Nothing appears on the owner's screen, and nothing reaches their Hyprland, bar, input or session bus. It is the only way for agents to look at or drive a surface; `test-bar` is for putting a branch on the owner's real screen for the owner to try.
 
 ```
 .claude/skills/shadow/shadow.sh up <name> [<branch>...]   # bar from the main checkout, or from branches merged on origin/main
 .claude/skills/shadow/shadow.sh ipc <name> popup open weather   # qs ipc call; `ipc <name> show` lists targets
 .claude/skills/shadow/shadow.sh keys <name> 2              # wtype args, e.g. `-k Tab`, `-M ctrl -k l -m ctrl`
+.claude/skills/shadow/shadow.sh voxtype <name> recording   # idle|recording|transcribing: the only way to raise the OSD, since there is no PipeWire
 .claude/skills/shadow/shadow.sh hyprctl <name> layers -j
 .claude/skills/shadow/shadow.sh shot <name> [<layer namespace>] [--pad N] [--out PATH]   # no namespace: whole 1920x1080 output
 .claude/skills/shadow/shadow.sh status [<name>]
 .claude/skills/shadow/shadow.sh down <name>
 ```
+
+`smoke.sh [--out DIR] [--name SHADOW] [--dry-run] [--self-test] [style...]` runs one pass per style on a shadow (its own `smoke`, brought up and down unless `--name` names a running one): popup, OSD (voxtype recording), which-key and the region selector, then a contact sheet `sheet.png` and a log check. It records `MISS <style> <surface>-blank` when a capture matches what lies behind it. The which-key HUD is fed a fixture payload through its `hyprvim_whichkey` IPC target because the shadow loads no HyprVim, so it shows the HUD's drawing in each style, not the owner's real key rows. The volume and brightness OSDs cannot be raised (no PipeWire, no backlight writes).
 
 `<name>` is at most 8 characters (lowercase, digits, dashes): Hyprland's socket path under `/tmp/shadow-$UID-<name>` must fit 107 chars. With branches, `up` runs `test-bar.sh build <name>s <branch>...` (worktree, merge, `just check`; it never touches the live bar) and `down` removes that test bar again. Without branches it copies the main checkout's config, which may be behind `origin/main`; pass `main` to get `origin/main`. Either way the bar runs from a `cp -rL` copy in `~/.cache/dotfiles/shadow/<name>/qs`, so editing or removing the source does not change it; run `down` and `up` again to pick up changes. Shots default to `~/.cache/dotfiles/shadow/<name>/shots/`; Read them, and delete the ones you don't need.
 
@@ -24,7 +27,7 @@ description: Run the full Quickshell bar in an invisible, isolated nested Hyprla
 ## What is isolated, and what is not
 
 - Every process starts from `env -i` with a minimal environment: throwaway HOME `~/.cache/dotfiles/shadow/<name>/home` (wiped on each `up`, XDG config/state/cache/data under it), runtime dir `/tmp/shadow-$UID-<name>` (0700), a private session bus, no PipeWire socket (the bar's PipeWire connect error is expected and ignored), `HYPRLAND_NO_SD_VARS=1`, and `LIBSEAT_BACKEND=seatd` pointed at a socket that does not exist, so nothing asks logind for the seat or opens `/dev/input`. Clients get `WAYLAND_DISPLAY` as an absolute socket path inside the runtime dir and only the shadow's own `HYPRLAND_INSTANCE_SIGNATURE`; `keys`, `ipc` and `shot` refuse to run unless that socket exists there.
-- The HOME is seeded with copies of the non-secret files the bar reads: the Quickshell and Hyprland state JSON (`theme.json`, `theme_options.json`, `bars.json`, `wallpaper.json`, ...), the weather cache, GoldenEye frames and the fontconfig file; the owner's user fonts are read in place. Bar actions that run `~/.config/hypr/scripts/*` find nothing there and do nothing, and `PATH` is a stub dir plus the system dirs, so `~/.local/bin` tools such as `keeptabs-status` are not run. `TMUX_TMPDIR` points at the runtime dir, so the tmux overview sees a private, empty tmux server rather than the owner's sessions.
+- The HOME is seeded with copies of the non-secret files the bar reads: the Quickshell and Hyprland state JSON (`theme.json`, `theme_options.json`, `bars.json`, `wallpaper.json`, ...), the weather cache and the fontconfig file, plus the GoldenEye footage frames only when `SHADOW_GOLDENEYE_FRAMES=1` is set for `up` (without them the GoldenEye skins draw their fallback); the owner's user fonts are read in place. Bar actions that run `~/.config/hypr/scripts/*` find nothing there and do nothing, and `PATH` is a stub dir plus the system dirs, so `~/.local/bin` tools such as `keeptabs-status` are not run. `TMUX_TMPDIR` points at the runtime dir, so the tmux overview sees a private, empty tmux server rather than the owner's sessions.
 - The system D-Bus is real: NetworkManager, BlueZ, UPower and power profiles are the machine's own. Network, Bluetooth or power actions in the shadow act on the real machine, so don't trigger them unless that is the point. The stubs below catch the command-line tools, but the bar's Quickshell services (Bluetooth, network, UPower) talk to the system bus directly and are not stubbed.
 - The shadow shares the owner's PID namespace and hardware, so the commands below, which the bar can run and which act on the whole machine, are stubs in `~/.cache/dotfiles/shadow/<name>/shim/` (first on `PATH`). Each logs the call to `logs/shim.log` and exits 0; the read-only calls listed pass through to the real tool. Check `shim.log` to see what an action would have run.
 

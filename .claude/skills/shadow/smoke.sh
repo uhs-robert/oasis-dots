@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# One bounded live pass on the running bar: per style, shoot the popup, OSD, which-key and region selector, then build a contact sheet.
+# One bounded pass on a shadow bar: per style, shoot the popup, OSD, which-key and region selector, then build a contact sheet.
 set -euo pipefail
 
-here=$(dirname "$0")
-ipc=${SMOKE_QS_IPC:-$(git -C "$here" rev-parse --show-toplevel)/home/hypr/.config/hypr/scripts/qs-ipc}
+shadow="$(dirname "$0")/shadow.sh"
+name=smoke
 fail_pattern='ERROR|TypeError|ReferenceError|Binding loop|is not a type|Could not set initial property|File not found|is not installed|Cannot assign'
 out=""
 dry_run=0
@@ -30,7 +30,11 @@ while (($# > 0)); do
     self_test=1
     shift
     ;;
-  -*) die "usage: smoke.sh [--out DIR] [--dry-run] [--self-test] [style...]" ;;
+  --name)
+    name=${2:?--name needs a shadow name}
+    shift 2
+    ;;
+  -*) die "usage: smoke.sh [--out DIR] [--name SHADOW] [--dry-run] [--self-test] [style...]" ;;
   *)
     styles+=("$1")
     shift
@@ -39,12 +43,16 @@ while (($# > 0)); do
 done
 ((${#styles[@]} > 0)) || styles=(ps1 goldeneye metroid neovim)
 # Exit 0 when the capture is blank (under 1% of pixels differ from what lies behind it), 1 when not, 2 when it cannot compare.
+# The optional third argument "x y w h" crops the second image, which is then a whole-output shot.
 is_blank() {
-  python3 - "$1" "$2" <<'PY'
+  python3 - "$@" <<'PY'
 import sys
 try:
     from PIL import Image, ImageChops
     a, b = (Image.open(f).convert("RGB") for f in sys.argv[1:3])
+    if len(sys.argv) > 3:
+        x, y, w, h = map(int, sys.argv[3].split())
+        b = b.crop((x, y, x + w, y + h))
     if a.size != b.size:
         sys.exit(2)
     diff = ImageChops.difference(a, b).convert("L").point(lambda v: 255 if v > 16 else 0)
@@ -103,31 +111,31 @@ is_region_style() { [[ " ${region_styles[*]} " == *" $1 "* ]]; }
 if ((dry_run)); then
   echo "smoke: out $out"
   for s in "${styles[@]}"; do
-    echo "smoke: $s: style set, popup battery, osd, which-key$(is_region_style "$s" && echo ', region (pixel, select)')"
+    echo "smoke: $s: style set, popup battery, osd (voxtype recording), which-key (fixture payload)$(is_region_style "$s" && echo ', region (pixel, select)')"
   done
-  state=$(timeout 3 "$ipc" call lock state 2>/dev/null || true)
-  echo "smoke: lock state '${state:-unknown}' (would $([[ $state == unlocked ]] && echo run || echo refuse))"
+  "$shadow" status "$name" | head -1
   exit 0
 fi
 
-state=$(timeout 3 "$ipc" call lock state 2>/dev/null || true)
-[[ $state == unlocked ]] || die "lock state is '${state:-unknown}'; not running unless it reports 'unlocked'"
+started_shadow=0
+if [[ $("$shadow" status "$name") == "$name: down" ]]; then
+  "$shadow" up "$name" >&2
+  started_shadow=1
+fi
 
-line=$(pgrep -af '^qs -n' | tail -1 || true)
-[[ -n $line ]] || die "no running 'qs -n' bar"
-qs_path=$(sed -n 's/.* -p \([^ ]*\).*/\1/p' <<<"$line" | head -1)
-qs_args=()
-[[ -n $qs_path ]] && qs_args=(-p "$qs_path")
-
-q() { qs ipc "${qs_args[@]}" call "$@"; }
-qlog() { qs log "${qs_args[@]}" 2>&1 | sed 's/\x1b\[[0-9;]*m//g'; }
+q() { "$shadow" ipc "$name" "$@"; }
+sh_hyprctl() { "$shadow" hyprctl "$name" "$@"; }
+qlog() { sed 's/\x1b\[[0-9;]*m//g' "${XDG_CACHE_HOME:-$HOME/.cache}/dotfiles/shadow/$name/logs/qs.log"; }
 
 orig_style=$(q style get)
 # shellcheck disable=SC2329
 restore() {
-  hyprctl eval 'hl.dispatch(hl.dsp.submap("reset"))' >/dev/null 2>&1 || true
   q popup close >/dev/null 2>&1 || true
   q screenshot close >/dev/null 2>&1 || true
+  if ((started_shadow)); then
+    "$shadow" down "$name" >&2 || true
+    return
+  fi
   # A style set can be dropped while the previous one is still applying, so retry until it reads back.
   local _
   for _ in {1..10}; do
@@ -135,16 +143,23 @@ restore() {
     sleep 0.4
     [[ $(q style get 2>/dev/null) == "$orig_style" ]] && return
   done
-  echo "smoke: could not restore style '$orig_style'; run: qs ipc call style set $orig_style" >&2
+  echo "smoke: could not restore style '$orig_style'; run: shadow.sh ipc $name style set $orig_style" >&2
 }
 trap restore EXIT
 
 mkdir -p "$out"
 log_start=$(qlog | wc -l)
 
-layer_geom() {
-  hyprctl layers -j | jq -r --arg ns "$1" '[.[].levels[][] | select(.namespace == $ns)] | first // empty | "\(.x) \(.y) \(.w) \(.h)"'
+# "x y w h" of a layer grown by pad, clamped at the output's top-left corner like shadow.sh shot.
+layer_rect() {
+  sh_hyprctl layers -j | jq -r --arg ns "$1" --argjson pad "${2:-0}" '
+    [.[].levels[][] | select(.namespace == $ns)] | first // empty
+    | (if .x - $pad < 0 then 0 else .x - $pad end) as $x0
+    | (if .y - $pad < 0 then 0 else .y - $pad end) as $y0
+    | "\($x0) \($y0) \(.w + .x - $x0 + $pad) \(.h + .y - $y0 + $pad)"'
 }
+
+layer_geom() { layer_rect "$1"; }
 
 wait_layer() {
   for _ in $(seq 30); do
@@ -164,7 +179,7 @@ wait_gone() {
 
 last_rect=""
 
-# Grabs last_rect again once the surface is gone; records a blank capture as a miss.
+# Shoots the whole output once the surface is gone and compares the surface's rect with it; records a blank capture as a miss.
 check_blank() {
   local style=$1 surface=$2 ns=$3
   local rect=$last_rect
@@ -176,9 +191,9 @@ check_blank() {
   }
   sleep 0.3
   mkdir -p "$out/behind"
-  grim -g "$rect" "$out/behind/${style}_$surface.png"
+  "$shadow" shot "$name" --out "$out/behind/${style}_$surface.png" >/dev/null
   local rc=0
-  is_blank "$out/${style}_$surface.png" "$out/behind/${style}_$surface.png" || rc=$?
+  is_blank "$out/${style}_$surface.png" "$out/behind/${style}_$surface.png" "$rect" || rc=$?
   case $rc in
   0) missing+=("MISS $style $surface-blank") ;;
   1) ;;
@@ -188,11 +203,9 @@ check_blank() {
 
 shoot() {
   local style=$1 surface=$2 ns=$3
-  last_rect=""
-  rm -f "$out/.rect"
-  hyprctl layers -j >"$out/${style}_$surface.layers.json"
-  "$here/capture.sh" "$ns" --pad 4 --rect-file "$out/.rect" --out "$out/${style}_$surface.png" >/dev/null || missing+=("MISS $style $surface")
-  [[ ! -s $out/.rect ]] || last_rect=$(<"$out/.rect")
+  last_rect=$(layer_rect "$ns" 4)
+  sh_hyprctl layers -j >"$out/${style}_$surface.layers.json"
+  "$shadow" shot "$name" "$ns" --pad 4 --out "$out/${style}_$surface.png" >/dev/null || missing+=("MISS $style $surface")
   [[ -n $(layer_geom "$ns") ]] || missing+=("MISS $style $surface-gone")
 }
 
@@ -203,12 +216,37 @@ region_shot() {
     return 0
   }
   sleep 1
-  read -r cx cy < <(hyprctl cursorpos | tr -d ',')
-  last_rect="$((cx < 300 ? 0 : cx - 300)),$((cy < 270 ? 0 : cy - 270)) 600x540"
-  grim -g "$last_rect" "$out/${style}_$surface.png"
-  wtype -k Escape
+  read -r cx cy < <(sh_hyprctl cursorpos | tr -d ',')
+  last_rect="$((cx < 300 ? 0 : cx - 300)) $((cy < 270 ? 0 : cy - 270)) 600 540"
+  "$shadow" shot "$name" --out "$out/${style}_$surface.png" >/dev/null
+  python3 - "$out/${style}_$surface.png" "$last_rect" <<'PY'
+import sys
+from PIL import Image
+x, y, w, h = map(int, sys.argv[2].split())
+Image.open(sys.argv[1]).crop((x, y, x + w, y + h)).save(sys.argv[1])
+PY
+  "$shadow" keys "$name" -k Escape
   check_blank "$style" "$surface" quickshell-region
 }
+
+# The shadow loads no HyprVim, so the HUD is fed a payload of the shape HyprVim writes (keys, groups, a destructive row, footer).
+whichkey_payload="$out/whichkey.json"
+cat >"$whichkey_payload" <<'JSON'
+{
+  "title": "Leader",
+  "position": "bottom-right",
+  "columns": 2,
+  "items": [
+    { "key": "a", "desc": "Apps", "group": true },
+    { "key": "b", "desc": "Browser" },
+    { "key": "t", "desc": "Terminal" },
+    { "key": "w", "desc": "Windows", "group": true },
+    { "key": "f", "desc": "Fullscreen" },
+    { "key": "q", "desc": "Close window", "destructive": true }
+  ],
+  "footer": [{ "key": "ESC", "desc": "close" }, { "key": "BS", "desc": "back" }]
+}
+JSON
 
 for style in "${styles[@]}"; do
   echo "smoke: $style"
@@ -228,20 +266,20 @@ for style in "${styles[@]}"; do
   check_blank "$style" popup quickshell-popup
   sleep 0.3
 
-  wpctl set-volume @DEFAULT_AUDIO_SINK@ 1%+
+  "$shadow" voxtype "$name" recording
   wait_layer quickshell-osd && {
     sleep 0.3
     shoot "$style" osd quickshell-osd
   } || missing+=("MISS $style osd")
-  wpctl set-volume @DEFAULT_AUDIO_SINK@ 1%-
+  "$shadow" voxtype "$name" idle
   check_blank "$style" osd quickshell-osd
 
-  hyprctl eval 'hl.dispatch(hl.dsp.submap("Leader"))' >/dev/null
+  q hyprvim_whichkey open "$whichkey_payload" >/dev/null
   wait_layer quickshell-whichkey && {
     sleep 0.3
     shoot "$style" whichkey quickshell-whichkey
   } || missing+=("MISS $style whichkey")
-  hyprctl eval 'hl.dispatch(hl.dsp.submap("reset"))' >/dev/null
+  q hyprvim_whichkey close >/dev/null
   check_blank "$style" whichkey quickshell-whichkey
   sleep 0.3
 
@@ -277,7 +315,8 @@ echo "sheet: $sheet"
 
 new=$(qlog | tail -n +"$((log_start + 1))")
 echo "-- new WARN/ERROR lines"
-grep -E '^ *(WARN|ERROR)' <<<"$new" || echo none
+# Qt's text-input warning fires on every layer surface that closes in a headless nested compositor.
+grep -E '^ *(WARN|ERROR)' <<<"$new" | grep -v 'qt.qpa.wayland.textinput' || echo none
 status=0
 if grep -qE "$fail_pattern" <<<"$new"; then
   echo "smoke: log has load failures or errors; for 'X is not a type' on a folder loaded by URL, add import \"<folder>\" to the loader file (see #531)" >&2

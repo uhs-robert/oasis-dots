@@ -84,7 +84,7 @@ Keep keys consistent across surfaces; new popups, pickers and skins follow these
 
 ## Agent tooling
 
-Claude Code hooks live in `.claude/settings.json` and `.claude/hooks/`. Repo skills: `test-bar` (put branches on the live bar, swap the Hyprland config when they touch it, `status`, `probe` IPC calls and `capture.sh` layer screenshots, then restore), `lock-preview` (skins on eDP-1) and `ship-batch` (merge through the global `merge-prs` skill, then check `main` and restart what changed). To look at or drive a Quickshell surface or branch yourself (IPC, keys, screenshots), use `shadow`, which runs the bar in an invisible nested Hyprland, rather than self-testing on the owner's live bar. Worktrees have no `repos/`, so run `just check` in the real checkout before merging.
+Claude Code hooks live in `.claude/settings.json` and `.claude/hooks/`. Repo skills: `shadow` (runs the bar in an invisible nested Hyprland: IPC, keys, screenshots, and `smoke.sh`, a per-style contact sheet; the way agents look at or drive a Quickshell surface or branch), `lock-preview` (lock skins, built on `shadow`), `test-bar` (put branches on the owner's live bar for the owner to try, swap the Hyprland config when they touch it, `status`, `probe` IPC calls and `capture.sh` layer screenshots of a test bar the owner is using, then restore) and `ship-batch` (merge through the global `merge-prs` skill, then check `main` and restart what changed). Agents never self-test on the owner's live bar. Worktrees have no `repos/`, so run `just check` in the real checkout before merging.
 
 ## Betterbird / tbkeys
 
