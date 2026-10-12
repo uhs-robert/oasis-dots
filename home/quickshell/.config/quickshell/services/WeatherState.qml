@@ -961,7 +961,7 @@ Singleton {
     function temp_color(temp) {
         const unit_c = root.metric;
         const very_cold = unit_c ? 5 : 41;
-        const cold = unit_c ? 18 : 65;
+        const cold = unit_c ? 13 : 55;
         const chilly = unit_c ? 19 : 66;
         const neutral = unit_c ? 24 : 76;
         const warm = unit_c ? 29 : 85;

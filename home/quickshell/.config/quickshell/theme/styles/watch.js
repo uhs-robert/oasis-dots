@@ -45,6 +45,7 @@ function palette(t) {
     };
 }
 
+// The weather-band slots (cyan through red) come from the ramp's bands; the theme ramp has none, so those keep the palette's own colours.
 function tokens(pal, r) {
     return {
         wk: { lit: r.lit, mid: r.mid, soft: r.soft, dim: r.dim, bar_on: r.bar_on, bar_off: r.bar_off, panel_top: r.panel_top, panel_bottom: r.panel_bottom, edge: r.edge, frame: r.frame, rim: r.rim },
@@ -78,16 +79,10 @@ function tokens(pal, r) {
             magenta: Watch.cold_lit[2],
             bright_yellow: Watch.warm[7],
             bright_blue: Watch.cold_lit[6],
-            bright_green: r.lit,
             bright_magenta: Watch.cold_lit[4],
             bright_red: Watch.red,
-            cyan: Watch.cold_lit[5],
-            bright_cyan: Watch.cold_lit[7],
-            red: Watch.red,
-            green: r.state,
-            yellow: Watch.warm[5],
             blue: Watch.cold_lit[4]
-        }),
+        }, r.bands),
         text_fg: r.mid,
         text_strong: r.lit,
         text_primary: r.lit,
@@ -137,7 +132,8 @@ function classic_ramp() {
         panel_bottom: Qt.rgba(Watch.panel_bottom[0], Watch.panel_bottom[1], Watch.panel_bottom[2], Watch.panel_bottom[3]),
         frame: Watch.black, rim: Watch.rim, edge: "transparent", shadow: Watch.black, ink: Watch.black, crust: Watch.black, mantle: "#031505", surface: "#0a2a10", clock_bg: "#04200a",
         state: Watch.white, accent: Watch.green, info: Watch.cold_lit[5], secondary: Watch.cold_lit[6], secondary_strong: Watch.cold_lit[4],
-        error: Watch.red, warning: Watch.warm[5], today: Watch.red
+        error: Watch.red, warning: Watch.warm[5], today: Watch.red,
+        bands: { bright_cyan: Watch.cold_lit[7], cyan: Watch.cold_lit[5], bright_green: Watch.green, green: Watch.white, yellow: Watch.warm[5], red: Watch.red }
     };
 }
 
