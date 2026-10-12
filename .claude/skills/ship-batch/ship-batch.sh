@@ -12,7 +12,8 @@ die() {
 
 [[ $(git -C "$repo" branch --show-current) == main ]] || die "the main checkout is not on main; switch it back first"
 before=$(git -C "$repo" rev-parse HEAD)
-(($# == 0)) || (cd "$repo" && "$HOME/.claude/skills/merge-prs/merge-prs.sh" "$@") || die "merge-prs failed; nothing after the merge ran"
+# The owner already said to merge, so a Codex review still running is waited out rather than failing the batch.
+(($# == 0)) || (cd "$repo" && "$HOME/.claude/skills/merge-prs/merge-prs.sh" --wait-review "$@") || die "merge-prs failed; nothing after the merge ran"
 git -C "$repo" pull -q --ff-only
 after=$(git -C "$repo" rev-parse HEAD)
 (cd "$repo" && just check) || die "just check fails on main after the merge; fix it before anything else"
