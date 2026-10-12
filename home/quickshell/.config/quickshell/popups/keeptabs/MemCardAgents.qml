@@ -21,12 +21,30 @@ Item {
 
     readonly property int card_blocks: 15
     readonly property int columns: 5
+    readonly property bool moves_across: true
     readonly property int page: Math.floor(Math.max(0, root.selected) / root.card_blocks)
     readonly property int page_count: Math.max(1, Math.ceil(root.sessions.length / root.card_blocks))
     readonly property var current: root.sessions[root.selected] || null
     readonly property bool has_context: root.current !== null && root.current.context_pct !== null && root.current.context_pct !== undefined
     readonly property bool animating: Popups.open_name === "keeptabs" && root.visible
     readonly property var colors: ({ error: Style.pal.error, ok: Style.pal.ok, warning: Style.pal.warning, text_primary: root.st.text_primary, text_dim: root.st.text_dim })
+
+    // h/l step one cell, j/k one row. A row step off the end keeps the column: past the last row it wraps to the top
+    // row, and from above a short last row it clamps to the last session (up from the top row lands on the last
+    // session in that column).
+    function nav_target(i, dx, dy) {
+        const n = root.sessions.length;
+        const cols = root.columns;
+        if (n === 0) return 0;
+        if (dx !== 0) return ((i + dx) % n + n) % n;
+        if (dy > 0) {
+            if (i + cols < n) return i + cols;
+            return Math.floor(i / cols) === Math.floor((n - 1) / cols) ? i % cols : n - 1;
+        }
+        if (i >= cols) return i - cols;
+        const last_row_start = Math.floor((n - 1) / cols) * cols;
+        return last_row_start + i < n ? last_row_start + i : last_row_start - cols + i;
+    }
 
     // The card shows the page holding `selected`, so there is nothing to scroll.
     function ensure_visible(i) {}
