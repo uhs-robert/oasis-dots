@@ -24,8 +24,8 @@ Item {
     // How full a severity's HP-style bar is: the worse the alert, the fuller.
     readonly property var severity_level: ({ Extreme: 1, Severe: 0.75, Moderate: 0.5, Minor: 0.25 })
 
-    readonly property int row_h: 20
-    readonly property int line_h: 12
+    readonly property int row_h: 24
+    readonly property int line_h: 20
     // The text box pages in whole lines; h/l move it this many at a time.
     readonly property int page_lines: 3
 
@@ -60,7 +60,7 @@ Item {
         text: "NO ACTIVE ALERTS"
         color: root.shades[2]
         font.family: Style.font_family
-        font.pixelSize: 8
+        font.pixelSize: 16
     }
 
     ColumnLayout {
@@ -71,15 +71,15 @@ Item {
         TextBox {
             Layout.fillWidth: true
             rich: true
-            font_size: 8
+            font_size: 16
             readonly property string event: root.selected ? root.selected.event.toUpperCase().replace(/&/g, "&amp;").replace(/</g, "&lt;") : ""
             text: "A wild <b>" + event + "</b> appeared!" + (root.alerts.length > 1 ? " (" + (Math.min(root.alerts.length - 1, root.alert_cursor) + 1) + "/" + root.alerts.length + ")" : "")
         }
 
-        // At most three rows show; the rest scroll so the text keeps most of the height.
+        // At most two rows show; the rest scroll so the text keeps most of the height.
         PixelBox {
             Layout.fillWidth: true
-            Layout.preferredHeight: Math.min(3, root.alerts.length) * (root.row_h + alert_list.spacing) - alert_list.spacing + 2 * edge + 8
+            Layout.preferredHeight: Math.min(2, root.alerts.length) * (root.row_h + alert_list.spacing) - alert_list.spacing + 2 * edge + 8
             fill: root.shades[0]
             rings: [root.shades[2], root.shades[0]]
 
@@ -130,7 +130,7 @@ Item {
                         text: alert_row.modelData.event.toUpperCase()
                         color: alert_row.current ? root.shades[3] : root.shades[2]
                         font.family: Style.font_family
-                        font.pixelSize: 8
+                        font.pixelSize: 16
                     }
 
                     Text {
@@ -141,7 +141,7 @@ Item {
                         text: alert_row.modelData.severity.toUpperCase()
                         color: alert_row.current ? root.shades[3] : root.shades[2]
                         font.family: Style.font_family
-                        font.pixelSize: 8
+                        font.pixelSize: 16
                     }
 
                     DexStatBar {
@@ -196,7 +196,7 @@ Item {
                         text: root.selected ? root.selected.headline || root.selected.event : ""
                         color: root.shades[3]
                         font.family: Style.font_family
-                        font.pixelSize: 8
+                        font.pixelSize: 16
                     }
 
                     Text {
@@ -207,7 +207,7 @@ Item {
                         text: root.selected ? root.fmt_time(root.selected.onset).toUpperCase() + " – " + root.fmt_time(root.selected.ends).toUpperCase() + " · " + root.selected.area : ""
                         color: root.shades[2]
                         font.family: Style.font_family
-                        font.pixelSize: 8
+                        font.pixelSize: 16
                     }
 
                     Text {
@@ -219,7 +219,7 @@ Item {
                         text: root.selected ? root.unwrap(root.selected.description) : ""
                         color: root.shades[3]
                         font.family: Style.font_family
-                        font.pixelSize: 8
+                        font.pixelSize: 16
                     }
 
                     Text {
@@ -232,7 +232,7 @@ Item {
                         text: root.selected ? "What to do: " + root.unwrap(root.selected.instruction) : ""
                         color: root.shades[3]
                         font.family: Style.font_family
-                        font.pixelSize: 8
+                        font.pixelSize: 16
                     }
                 }
             }
