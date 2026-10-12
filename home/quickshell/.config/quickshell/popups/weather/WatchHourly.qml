@@ -5,8 +5,9 @@ import "../../theme"
 import "../../services"
 import "../../theme/Watch.js" as W
 
-// Hourly as the pause watch's 24-hour dial: the cursor's half-day (AM or PM of its date) around the bezel, each hour a bar growing outward from the band's inner edge whose length and
-// brightness carry the sub's value, the hand on the cursor hour and its readings on the face.
+// Hourly as the pause watch's dial: 12-hour pages counted from the forecast's first hour, so the bezel is always full and a page may start at any clock hour. Each hour is a bar at its
+// real clock position growing outward from the band's inner edge, its length and brightness carrying the sub's value; the hand sits on the cursor hour and its readings on the face.
+// A seam notch marks the page's start, which tells 8 a.m. from 8 p.m. The page follows the cursor, so crossing its edge flips pages.
 // sub: 0 temp, 1 precip (chance + amount), 2 wind, 3 UV, 4 humidity. h/l move the hour cursor, H/L a day; the popup owns the cursor.
 Item {
     id: root
@@ -22,9 +23,9 @@ Item {
     readonly property var sub_names: ["Temp", "Precip", "Wind", "UV", "Humid"]
     readonly property var hours: WeatherState.hours
     readonly property var cursor_row: root.hours[root.hour_cursor]
-    readonly property int half_first_hour: root.cursor_row && root.cursor_row.hour >= 12 ? 12 : 0
-    // Index of the half's first hour; negative when the forecast starts partway through the half.
-    readonly property int window_start: root.hour_cursor - (root.cursor_row ? root.cursor_row.hour - root.half_first_hour : 0)
+    readonly property int page_start: Math.floor(root.hour_cursor / 12) * 12
+    // Clock hour of hours[0]; empty slots past the forecast's end continue counting from it.
+    readonly property int first_clock_hour: root.hours.length ? root.hours[0].hour : 0
     readonly property real tick_min: 3
     readonly property real tick_w: 26
     // Room left above the tallest bar for the peak hour's printed value.
@@ -35,9 +36,9 @@ Item {
     function scroll_to_cursor() {}
     function request_scroll() {}
 
-    readonly property var window_rows: root.hours.slice(Math.max(0, root.window_start), root.window_start + 12)
+    readonly property var window_rows: root.hours.slice(root.page_start, root.page_start + 12)
 
-    // Temp scales to the shown half-day's own range, padded, so its shape fills the band; the rest use fixed ranges
+    // Temp scales to the shown page's own range, padded, so its shape fills the band; the rest use fixed ranges
     // so 80% rain is long on any day.
     function range_of(pick, floor_span) {
         if (!root.window_rows.length) return { lo: 0, hi: floor_span };
@@ -77,7 +78,7 @@ Item {
         for (let i = 0; i < root.window_rows.length; i++) {
             const v = root.norm_of(root.window_rows[i]);
             if (v > best_v) {
-                best = i + Math.max(0, -root.window_start);
+                best = i;
                 best_v = v;
             }
         }
@@ -113,10 +114,21 @@ Item {
         }
     }
 
+    function day_name(row, format) {
+        return Qt.formatDate(new Date(row.date + "T00:00:00"), format).toUpperCase();
+    }
+
+    function short_hour(row) {
+        return WeatherState.format_hour(new Date(row.dt)).toUpperCase();
+    }
+
+    // The page's span: the first day with its date, since forecasts run past a week, and the second day only when the page crosses midnight.
     function date_text() {
-        if (!root.cursor_row) return "";
-        const day = Qt.formatDate(new Date(root.cursor_row.date + "T00:00:00"), "ddd d").toUpperCase();
-        return day + (root.half_first_hour === 12 ? " PM" : " AM");
+        if (!root.window_rows.length) return "";
+        const first = root.window_rows[0];
+        const last = root.window_rows[root.window_rows.length - 1];
+        const end_day = last.date === first.date ? "" : root.day_name(last, "ddd") + " ";
+        return root.day_name(first, "ddd d") + " " + root.short_hour(first) + "\u2013" + end_day + root.short_hour(last);
     }
 
     WatchFace {
@@ -131,13 +143,27 @@ Item {
             Item {
                 id: slot
                 required property int index
-                readonly property var row: root.window_start + slot.index >= 0 ? root.hours[root.window_start + slot.index] : undefined
-                readonly property bool at_cursor: root.window_start + slot.index === root.hour_cursor
+                readonly property var row: root.hours[root.page_start + slot.index]
+                readonly property bool at_cursor: root.page_start + slot.index === root.hour_cursor
                 readonly property bool is_peak: slot.index === root.peak_index
-                readonly property real hour: root.half_first_hour + slot.index
+                readonly property real hour: slot.row ? slot.row.hour : (root.first_clock_hour + root.page_start + slot.index) % 24
                 readonly property real norm: slot.row ? Math.max(0, Math.min(1, root.norm_of(slot.row))) : 0
                 readonly property real len: root.tick_min + slot.norm * root.bar_span
                 rotation: face.angle_of(slot.hour)
+
+                // Half a slot before the page's first hour.
+                Item {
+                    visible: slot.index === 0 && root.hours.length > 0
+                    rotation: -180 / 12
+
+                    Rectangle {
+                        x: -1
+                        y: -face.bezel_r
+                        width: 2
+                        height: face.band
+                        color: Style.wk.lit
+                    }
+                }
 
                 Rectangle {
                     visible: slot.at_cursor
@@ -216,7 +242,7 @@ Item {
                     width: 56
                     height: face.band
                     enabled: !!slot.row
-                    onClicked: root.on_select(root.window_start + slot.index)
+                    onClicked: root.on_select(root.page_start + slot.index)
                 }
             }
         }
