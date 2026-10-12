@@ -16,6 +16,10 @@ Item {
     // The week's coldest low and warmest high, shared by every column so ranges compare across days.
     property real scale_min: 0
     property real scale_max: 1
+    // 0 temp range, 1 wind, 2 UV, 3 sunshine: the bar is the range on sub 0, otherwise an amount rising from the baseline.
+    property int sub: 0
+    // The week's strongest gust, so wind bars compare across days.
+    property real wind_max: 1
 
     readonly property var condition_glyphs: ({
         clear: "\u{f0599}",
@@ -54,13 +58,26 @@ Item {
     readonly property int cells: Math.max(1, Math.floor((root.track_bottom - root.track_top) / root.cell_h))
     readonly property real track_base: root.track_top + root.cells * root.cell_h
 
+    readonly property real amount: !root.day ? 0 : root.sub === 1 ? root.day.wind_speed_max : root.sub === 2 ? root.day.uv_max : root.day.sunshine_hours
+    readonly property real amount_full: root.sub === 1 ? Math.max(1, root.wind_max) : root.sub === 2 ? 12 : 14
+    readonly property real gust_frac: root.day && root.sub === 1 ? Math.min(1, root.day.wind_gusts_max / root.amount_full) : 0
+    readonly property color amount_color: root.sub === 1 ? Style.pal.cyan : root.sub === 2 ? WeatherState.uv_color(root.amount) : Style.pal.yellow
+    readonly property real amount_top: root.track_base - root.hi_eighth / 8 * root.cell_h
+
+    readonly property var wind_arrows: ["↓", "↙", "←", "↖", "↑", "↗", "→", "↘"]
+
+    function arrow_of(deg) {
+        return root.wind_arrows[Math.round(((deg % 360) + 360) % 360 / 45) % 8];
+    }
+
     function frac(t) {
         return Math.max(0, Math.min(1, (t - root.scale_min) / Math.max(0.01, root.scale_max - root.scale_min)));
     }
 
     // The low snaps to a whole cell because only lower-eighth blocks exist; the high keeps eighth precision.
-    readonly property int lo_cell: root.day ? Math.min(root.cells - 1, Math.floor(root.frac(root.day.min) * root.cells)) : 0
-    readonly property int hi_eighth: root.day ? Math.max(root.lo_cell * 8 + 1, Math.round(root.frac(root.day.max) * root.cells * 8)) : 1
+    readonly property int lo_cell: root.day && root.sub === 0 ? Math.min(root.cells - 1, Math.floor(root.frac(root.day.min) * root.cells)) : 0
+    readonly property int hi_eighth: !root.day ? 1 : root.sub === 0 ? Math.max(root.lo_cell * 8 + 1, Math.round(root.frac(root.day.max) * root.cells * 8))
+        : root.amount <= 0 ? 0 : Math.max(1, Math.round(Math.min(1, root.amount / root.amount_full) * root.cells * 8))
     readonly property int bar_cells: Math.ceil(root.hi_eighth / 8) - root.lo_cell
 
     FontMetrics {
@@ -157,8 +174,8 @@ Item {
                 y: root.track_base - (cell.cell_index + 1) * root.cell_h
                 height: root.cell_h
                 verticalAlignment: Text.AlignBottom
-                text: root.lower_eighths[Math.min(8, root.hi_eighth - cell.cell_index * 8)]
-                color: WeatherState.temp_color(root.scale_min + (cell.cell_index + 0.5) / root.cells * (root.scale_max - root.scale_min))
+                text: root.lower_eighths[Math.max(0, Math.min(8, root.hi_eighth - cell.cell_index * 8))]
+                color: root.sub === 0 ? WeatherState.temp_color(root.scale_min + (cell.cell_index + 0.5) / root.cells * (root.scale_max - root.scale_min)) : root.amount_color
                 opacity: root.selected ? 1 : 0.75
                 font.family: Style.mono_font
                 font.pixelSize: Style.fs(-2)
@@ -166,13 +183,25 @@ Item {
         }
     }
 
-    InlayHint {
+    // Gusts: a tick above the sustained-speed bar, the way a diagnostic underline marks the worst case.
+    Rectangle {
+        visible: root.sub === 1 && root.day && root.day.wind_gusts_max > root.day.wind_speed_max
         anchors.horizontalCenter: parent.horizontalCenter
-        y: root.track_base - root.hi_eighth / 8 * root.cell_h - height - 3
-        text: root.day ? Math.round(root.day.max) + "°" : ""
+        width: Math.max(8, cell_metrics.advanceWidth("█") + 4)
+        height: 2
+        y: root.track_base - root.gust_frac * root.cells * root.cell_h
+        color: Style.pal.bright_cyan
     }
 
     InlayHint {
+        anchors.horizontalCenter: parent.horizontalCenter
+        y: Math.max(root.track_top - height - 2, (root.sub === 1 ? root.track_base - root.gust_frac * root.cells * root.cell_h : root.amount_top) - height - 3)
+        text: !root.day ? "" : root.sub === 0 ? Math.round(root.day.max) + "°" : root.sub === 1 ? Math.round(root.day.wind_speed_max) + "/" + Math.round(root.day.wind_gusts_max)
+            : root.sub === 2 ? root.day.uv_max.toFixed(1) : root.day.sunshine_hours.toFixed(1) + "h"
+    }
+
+    InlayHint {
+        visible: root.sub === 0
         anchors.horizontalCenter: parent.horizontalCenter
         y: root.track_base - root.lo_cell * root.cell_h + 3
         text: root.day ? Math.round(root.day.min) + "°" : ""
@@ -180,22 +209,24 @@ Item {
 
     Rectangle {
         id: rain
-        readonly property bool wet: !!root.day && root.day.pop > 0
+        readonly property bool wet: root.sub === 2 ? !!root.day && root.day.uv_max >= 3 : root.sub === 1 ? !!root.day : root.sub === 0 && !!root.day && root.day.pop > 0
+        readonly property color tone: root.sub === 2 ? WeatherState.uv_color(root.amount) : root.sub === 1 ? Style.pal.cyan : Style.pal.info
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.bottom: parent.bottom
         anchors.bottomMargin: 6
         width: Math.min(root.width - 2, rain_text.implicitWidth + 8)
         height: rain_text.implicitHeight + 2
         radius: 3
-        color: rain.wet ? Qt.alpha(Style.pal.info, 0.13) : "transparent"
+        color: rain.wet ? Qt.alpha(rain.tone, 0.13) : "transparent"
 
         Text {
             id: rain_text
             anchors.centerIn: parent
             width: Math.min(implicitWidth, parent.width - 4)
             elide: Text.ElideRight
-            text: "\u{f0597} " + (root.day ? root.day.pop : 0) + "%"
-            color: rain.wet ? Style.pal.info : Style.text_muted
+            text: !root.day ? "" : root.sub === 1 ? root.arrow_of(root.day.wind_dir) + " " + WeatherState.wind_dir_label(root.day.wind_dir)
+                : root.sub === 2 ? WeatherState.uv_band(root.day.uv_max).label : "\u{f0597} " + root.day.pop + "%"
+            color: rain.wet ? rain.tone : Style.text_muted
             font.family: Style.font_family
             font.pixelSize: Style.fs(-4)
         }
