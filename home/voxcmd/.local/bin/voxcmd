@@ -30,9 +30,8 @@ voxcmd_self="$(readlink -f "$0")"
 voxcmd_pick="$(dirname "$voxcmd_self")/voxcmd-pick"
 voxcmd_confirm="$(dirname "$voxcmd_self")/voxcmd-confirm"
 voxcmd_autostop="$(dirname "$voxcmd_self")/voxcmd-autostop"
-# Helpers integrations source ("$voxcmd_share_dir/spoken-time.sh"), found from voxcmd's real path so a stowed or
+# Helpers integrations and print_errors source ("$voxcmd_share_dir/spoken-time.sh"), found from voxcmd's real path so a stowed or
 # checked-out voxcmd reads its own copy. Not in integrations.d/, where every file is loaded as an integration.
-# shellcheck disable=SC2034 # read by integrations
 voxcmd_share_dir="$(dirname "$voxcmd_self")/../share/voxcmd"
 dry_run=0
 # 1 while routing a transcript from `voxcmd listen`, so a confirmation or a one-choice picker listens for its answer
@@ -1006,7 +1005,10 @@ print_errors() {
     echo "voxcmd: bar not running" >&2
     exit 1
   fi
-  jq -r '.[] | "\(.time | sub("\\.[0-9]+Z$"; "Z") | fromdateiso8601 | strflocaltime("%F %T"))  \(.summary): \(.body | gsub("\n"; " "))"' <<<"$json"
+  # shellcheck source-path=SCRIPTDIR/../share/voxcmd source=spoken-time.sh
+  source "$voxcmd_share_dir/spoken-time.sh"
+  jq -r --arg time_format "%F $(clock_time_format)" \
+    '.[] | "\(.time | sub("\\.[0-9]+Z$"; "Z") | fromdateiso8601 | strflocaltime($time_format))  \(.summary): \(.body | gsub("\n"; " "))"' <<<"$json"
 }
 
 load_local_intents

@@ -29,7 +29,7 @@ voxcmd errors 5                   # the last 5 voxcmd notifications the bar kept
 
 `listen` records with `voxtype record start --file=...`, so the transcript is written to a file instead of being typed. Dictation keeps working as before.
 
-`errors` reads the bar's notification history (`qs-ipc call notifications history N voxcmd`) and prints one line per notification: local time, summary and body. voxcmd sends what ran, answers and hints as transient notifications, which the bar never keeps, so these are its errors ("voxcmd failed", "voxcmd error", voxtype not ready). It prints "bar not running" and exits 1 when the IPC call fails.
+`errors` reads the bar's notification history (`qs-ipc call notifications history N voxcmd`) and prints one line per notification: local date and time (in the Settings > Clock format), summary and body. voxcmd sends what ran, answers and hints as transient notifications, which the bar never keeps, so these are its errors ("voxcmd failed", "voxcmd error", voxtype not ready). It prints "bar not running" and exits 1 when the IPC call fails.
 
 ## Auto-stop
 
