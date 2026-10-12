@@ -55,23 +55,27 @@ Item {
         return root.sub === 0 ? row.feels : root.sub === 2 ? row.wind_gusts : null;
     }
 
-    // Grid lines land on round values, and the axis extends to the outer ones so the line never leaves the panel.
+    // Grid lines land on round values; the padded data range snaps outward to them, so the line fills most of the panel.
     readonly property var axis: {
         const hrs = WeatherState.hours;
         if (hrs.length === 0) return { min: 0, max: 1, ticks: [0, 1] };
         if (root.sub === 1 || root.sub === 4) return { min: 0, max: 100, ticks: [0, 25, 50, 75, 100] };
-        let lo = 0, hi = 1;
+        // Feels-like and gusts share the scale, so they count toward it or they would draw off the panel.
+        const values = hrs.map(root.value_of).concat(hrs.map(root.secondary_of).filter(v => v !== null && v !== undefined));
+        let lo = Math.min(...values), hi = Math.max(...values);
+        const pad = Math.max(2, (hi - lo) * 0.15);
+        lo -= pad;
+        hi += pad;
+        if (root.sub === 2) lo = Math.max(0, lo);
         if (root.sub === 3) {
-            hi = Math.max(12, ...hrs.map(root.value_of));
-        } else {
-            const all = hrs.map(root.value_of).concat(hrs.map(root.secondary_of).filter(v => v !== null));
-            lo = Math.min(...all);
-            hi = Math.max(...all);
+            lo = 0;
+            hi = Math.max(12, hi);
         }
-        const raw_step = Math.max(1, (hi - lo) / 4);
-        const mag = Math.pow(10, Math.floor(Math.log10(raw_step)));
-        const step = [1, 2, 5, 10].map(m => m * mag).find(s => s >= raw_step);
-        const first = root.sub === 3 ? 0 : Math.floor(lo / step) * step;
+        // Smallest round step that keeps the grid to five intervals once the ends snap outward to it.
+        const steps = [1, 2, 5, 10, 20, 50, 100];
+        const fits = s => Math.ceil(hi / s) - Math.floor(lo / s) <= 5;
+        const step = steps.find(fits) || steps[steps.length - 1];
+        const first = Math.floor(lo / step) * step;
         const last = Math.ceil(hi / step) * step;
         const ticks = [];
         for (let v = first; v <= last + step / 2; v += step) ticks.push(v);
