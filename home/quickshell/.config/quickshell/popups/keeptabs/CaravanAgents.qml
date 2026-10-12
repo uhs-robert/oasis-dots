@@ -42,14 +42,14 @@ Item {
         ShapePath {
             strokeWidth: -1
             fillColor: Qt.alpha(glyph.sand, 0.2)
-            scale: Qt.size(glyph.width / 12, glyph.height / 12)
+            scale: Qt.size(glyph.implicitWidth / 12, glyph.implicitHeight / 12)
             PathSvg { path: glyph.waiting ? "M0 6a6 6 0 1 0 12 0a6 6 0 1 0 -12 0" : "M0 0" }
         }
 
         ShapePath {
             strokeWidth: -1
             fillColor: glyph.mood === "waiting" ? glyph.sand : glyph.tone
-            scale: Qt.size(glyph.width / 12, glyph.height / 12)
+            scale: Qt.size(glyph.implicitWidth / 12, glyph.implicitHeight / 12)
             PathSvg {
                 path: glyph.mood === "done" ? "M6 0Q7.08 4.92 12 6Q7.08 7.08 6 12Q4.92 7.08 0 6Q4.92 4.92 6 0Z"
                     : glyph.mood === "running" ? "M9.5 0.8A6 6 0 1 0 9.5 11.2A5.2 5.2 0 0 1 9.5 0.8Z"
