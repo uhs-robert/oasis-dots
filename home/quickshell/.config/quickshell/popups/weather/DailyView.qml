@@ -63,7 +63,7 @@ Item {
     // Terminal: `curl wttr.in`, the window as one box-drawn table.
     readonly property bool wttr_table: Style.weather_header === "wttr" && root.sub === 0
     // Half-Life: HL1 weapon-slot buckets, the selected day open wider.
-    readonly property bool hev_slots: Style.weather_header === "hev" && root.sub === 0
+    readonly property bool hev_slots: Style.weather_header === "hev"
     // FF7: the days as linked materia slots.
     readonly property bool materia_slots: Style.weather_header === "status" && root.sub === 0
     // Views that draw the whole window themselves instead of the day row.
@@ -222,6 +222,7 @@ Item {
                 days: root.window_days
                 first_day: root.first_day
                 day_cursor: root.day_cursor
+                sub: root.sub
                 on_select: root.on_select
             }
         }
