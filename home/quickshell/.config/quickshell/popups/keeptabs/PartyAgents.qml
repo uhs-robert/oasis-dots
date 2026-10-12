@@ -23,6 +23,7 @@ Item {
     property var on_activate: function (id) {}
     property bool draws_footer: false
 
+    readonly property bool moves_across: true
     readonly property int page_size: 4
     readonly property int page: Math.floor(root.selected / root.page_size)
     readonly property int page_count: Math.max(1, Math.ceil(root.sessions.length / root.page_size))
@@ -144,6 +145,12 @@ Item {
             font.family: member.st.font_family
             font.pixelSize: member.st.fs(-5)
         }
+    }
+
+    // h/l and j/k both step one member through the whole list, so the strip pages when the step crosses its edge.
+    function nav_target(i, dx, dy) {
+        const n = root.sessions.length;
+        return n === 0 ? 0 : ((i + dx + dy) % n + n) % n;
     }
 
     // The strip is derived from `selected`, so there is nothing to scroll.
