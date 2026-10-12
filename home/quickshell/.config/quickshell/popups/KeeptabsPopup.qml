@@ -65,7 +65,7 @@ Popup {
 
         pokedex: { prefix: "Pkmn", views: [] },
 
-        ring: { prefix: "Roster", views: [] },
+        ring: { prefix: "Roster", views: ["Agents", "Usage"] },
 
         scan: { prefix: "Logbook", views: [] },
 
