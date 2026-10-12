@@ -267,9 +267,11 @@ As a fallback it never sees a phrase another integration takes. Starting the phr
 | "resize the window to 400 pixels high", "make it 800 wide", "set the height to 400" | resizes the active window, keeping the size it does not name |
 | "resize to 1200 by 800", "1200 by 800", "make it 1200x800"     | resizes the active window to that size                             |
 | "make it taller by 100", "grow the window 200 pixels wider", "shrink it by 50 pixels", "make it narrower by 100" | resizes the active window by that much; grow and shrink without a direction change both |
-| "resize firefox to 1200 by 800", "make slack 800 wide"         | resizes the named window                                           |
+| "increase width by 400", "decrease the height by 300", "add 200 to the width", "make it 200 more pixels wide", "make it 100 pixels narrower" | changes one dimension of the active window by that much |
+| "resize horizontally by 300", "grow horizontally by 300", "shrink vertically by 100", "increase the height to 600" | horizontally is the width, vertically the height; "to" sets the size |
+| "resize firefox to 1200 by 800", "make slack 800 wide", "increase slack's height by 200" | resizes the named window                                |
 
-Opening, focusing and closing take every form of the `{open}`, `{focus}` and `{close}` [intents](#intents), and resizing every form of `{set}` ("make", "change", "adjust") as well as "resize", "grow", "enlarge" and "shrink".
+Opening, focusing and closing take every form of the `{open}`, `{focus}` and `{close}` [intents](#intents), and resizing every form of `{set}` ("make", "change", "adjust") as well as "resize"; growing takes "grow", "enlarge", "increase", "expand", "extend", "raise" and "add", shrinking "shrink", "decrease", "reduce" and "lower".
 
 - Apps are the desktop entries in `$XDG_DATA_HOME` and `$XDG_DATA_DIRS` (the first copy of an id wins), leaving out `NoDisplay`, `Hidden` and entries `OnlyShowIn`/`NotShowIn` keep off this desktop. An app matches by its `Name` and by the last part of its id (`code`, `nautilus`). It starts like the Quickshell apps picker starts it: the `Exec` line without field codes, in `Path`, and `Terminal=true` apps in the Hyprland config's terminal wrapper.
 - An app counts as running when a window's class is its `StartupWMClass`, its id or the last part of its id.
@@ -278,7 +280,8 @@ Opening, focusing and closing take every form of the `{open}`, `{focus}` and `{c
 - Opening, focusing and resizing are [silent](#silent-actions), since the window that opens, takes focus or changes size shows it; moving and closing still say what they did.
 - Sizes are logical pixels, the ones `hyprctl clients -j` reports: on a monitor scaled 1.6, "400 high" covers 640 device pixels. Amounts are read as digits, as voxtype writes them ("1,200" too); number words are not. No size goes below 100 or past the window's monitor.
 - A resize goes through `hl.dsp.window.resize` with the window's address, relative to its current size. A floating window takes the size as asked. A tiled window's size belongs to the layout: the resize moves its split, so the windows beside it give or take the space, and a dimension with no split along it (the height of a window in a single row) does not change. Which edge of the split moves shows only in the result, so a resize that went the wrong way, or was blocked that way, is sent the other way. The window is never floated to force a size. A size the layout or the monitor limited says so in a transient notification ("Slack: height stayed 686 (the tiled layout limits it)"), since that is no failure; only a missing window, a bad size or a dispatch error fails.
-- "resize left", "resize submap", "reset size" and other phrases with no size are left to the Resize submap's keybinds.
+- "resize left", "resize submap", "reset size" and other phrases with no size are left to the Resize submap's keybinds. A resize of the active window that says which way but not how much ("resize horizontally and increase", "make it bigger") answers with a hint to say how much. After grow, shrink and the like, a bare amount needs its "by" or "pixels" ("shrink it by 50"), so "add slack to workspace 2" is no resize.
+- The shipped `replacements.d/resize` turns Whisper's "pre-size", "presize" and "re-size" into "resize".
 - Tab on its Voice Help entries lists every installed app; picking one opens it like "open <app>".
 - A target with the word `session` or `agent` in it matches nothing, so "switch to the X session" and "go to the X agent" are left to the integrations for those.
 

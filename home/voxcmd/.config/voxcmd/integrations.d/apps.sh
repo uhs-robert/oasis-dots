@@ -26,8 +26,8 @@ verbs=(
   "move      (${move_verbs}) {target}"
   "close     {close} {target}"
   "resize    (resize|{set}) {target}"
-  "grow      (grow|enlarge) {target}"
-  "shrink    shrink {target}"
+  "grow      (grow|enlarge|increase|expand|extend|raise|add) {target}"
+  "shrink    (shrink|decrease|reduce|lower) {target}"
   "resize_spoken_size  [0-9]+( [0-9]{3})?( (by|x) |x)[0-9]+( [0-9]{3})?( pixels?| px)?"
 )
 
@@ -41,6 +41,9 @@ examples=(
   "make it <number> pixels tall"
   "set the width to <number>"
   "make it wider by <number>"
+  "increase the width by <number>"
+  "decrease the height by <number>"
+  "grow horizontally by <number>"
   "shrink it by <number> pixels"
   "resize <window> to <width> by <height>"
 )
@@ -51,9 +54,9 @@ declare -A actions=(
   [focus]='focus_window "$id"'
   [move]='move_window "$id"'
   [close]='close_window "$id"'
-  [resize]='resize_window "$id"'
-  [grow]='resize_window "$id"'
-  [shrink]='resize_window "$id"'
+  [resize]='resize_option "$id"'
+  [grow]='resize_option "$id"'
+  [shrink]='resize_option "$id"'
   [resize_spoken_size]='resize_active_to_spoken_size "$raw_transcript"'
 )
 
@@ -358,7 +361,7 @@ close_window() {
 min_window_size=100
 
 # Words that point at the active window rather than name one: "make it 400 tall", "resize the window to ...".
-active_window_words="the|a|this|that|current|active|focused|selected|window|it|its|my"
+active_window_words="the|a|this|that|current|active|focused|selected|window|windows|it|its|my"
 
 # Splits text into size_words, one word each, with "400px" read as "400 px" and "1200x800" as "1200 x 800".
 split_size_words() {
@@ -435,8 +438,9 @@ read_named_dimension() {
   size_kind=exact
 }
 
-# Sets change_width and change_height to the sign a comparative gives each dimension ("narrower" is -1 0), and
-# advances past it. "in height", "vertically" and the like name a dimension without a direction, as 1.
+# Sets change_width and change_height to the sign a word gives each dimension ("narrower" is -1 0), and advances
+# past it. A comparative carries its direction; a dimension named without one ("width", "in height", "vertically")
+# grows unless a word after it says otherwise ("horizontally decreased"), and grow and shrink override both.
 read_change_word() {
   local word="${size_words[size_at]-}" next="${size_words[size_at + 1]-}"
   size_at=$((size_at + 1))
@@ -447,8 +451,8 @@ read_change_word() {
   narrower | thinner) change_width=-1 change_height=0 ;;
   bigger | larger) change_width=1 change_height=1 ;;
   smaller) change_width=-1 change_height=-1 ;;
-  vertically) change_width=0 change_height=1 ;;
-  horizontally) change_width=1 change_height=0 ;;
+  height | vertically) change_width=0 change_height=1 ;;
+  width | horizontally) change_width=1 change_height=0 ;;
   in)
     size_at=$((size_at + 1))
     case "$next" in
@@ -459,10 +463,31 @@ read_change_word() {
     ;;
   *) return 1 ;;
   esac
+  case "${size_words[size_at]-}" in
+  increase | increased | grow | grown | more)
+    size_at=$((size_at + 1))
+    change_width="${change_width#-}" change_height="${change_height#-}"
+    ;;
+  decrease | decreased | reduce | reduced | shrink | shrunk | less)
+    size_at=$((size_at + 1))
+    change_width=$((-${change_width#-})) change_height=$((-${change_height#-}))
+    ;;
+  esac
 }
 
-# "taller by 100", "100 pixels wider", and after grow or shrink also "by 50" alone, which changes both dimensions.
-# Grow and shrink set the direction themselves, so "shrink it 100 narrower" and "shrink it 100 wider" agree.
+# "200 more pixels wide": with "more", "wide", "tall" and "high" name a change rather than an exact size.
+read_more_word() {
+  case "${size_words[size_at]-}" in
+  wide) change_width=1 change_height=0 ;;
+  tall | high) change_width=0 change_height=1 ;;
+  *) return 1 ;;
+  esac
+  size_at=$((size_at + 1))
+}
+
+# "taller by 100", "width by 400", "horizontally by 300", "100 pixels wider", "200 more pixels wide", "200 to the
+# width", and after grow or shrink also "by 50" alone, which changes both dimensions. Grow and shrink set the
+# direction themselves, so "shrink it 100 narrower" and "shrink it 100 wider" agree.
 read_size_change() {
   local verb="$1" amount start="$size_at"
   change_width="" change_height=""
@@ -472,14 +497,27 @@ read_size_change() {
     read_pixels || return 1
   else
     size_at="$start"
-    skip_size_word 'by'
+    local said_by=0
+    [ "${size_words[size_at]-}" = by ] && said_by=1 && size_at=$((size_at + 1))
     read_pixels || return 1
-    if [ "$size_at" -lt "${#size_words[@]}" ]; then
+    if [ "${size_words[size_at]-}" = more ]; then
+      size_at=$((size_at + 1))
+      skip_size_word 'pixels?|px'
+      read_more_word || read_change_word || return 1
+    elif [ "${size_words[size_at]-}" = to ]; then
+      size_at=$((size_at + 1))
+      skip_size_word 'the|its'
+      [[ "${size_words[size_at]-}" =~ ^(width|height)$ ]] || return 1
+      read_change_word || return 1
+    elif [ "$size_at" -lt "${#size_words[@]}" ]; then
       read_change_word || return 1
     elif [ "$verb" = resize ]; then
       return 1
-    else
+    elif [ "$said_by" = 1 ] || [[ "${size_words[size_at - 1]}" =~ ^(pixels?|px)$ ]]; then
+      # A bare number needs its "by" or "pixels": "add slack to workspace 2" is no resize by 2.
       change_width=1 change_height=1
+    else
+      return 1
     fi
   fi
   amount="$pixels"
@@ -490,16 +528,18 @@ read_size_change() {
   size_kind=delta size_width=$((change_width * amount)) size_height=$((change_height * amount))
 }
 
-# True when size_words from size_at to the end are a size the verb ("resize", "grow" or "shrink") can take.
+# True when size_words from size_at to the end are a size the verb ("resize", "grow" or "shrink") can take. After
+# grow or shrink an exact size needs its "to" ("increase the height to 600", "shrink it to 800 wide"), since "grow it
+# 200 wide" means by 200.
 read_size() {
   local verb="$1" start="$size_at"
   size_kind="" size_width="" size_height=""
-  if [ "$verb" = resize ]; then
+  if [ "$verb" = resize ] || [ "${size_words[size_at]-}" = to ]; then
     { read_exact_size && [ "$size_at" = "${#size_words[@]}" ]; } && return
     size_at="$start"
-    { read_named_dimension && [ "$size_at" = "${#size_words[@]}" ]; } && return
-    size_at="$start"
   fi
+  { read_named_dimension && [ "$size_at" = "${#size_words[@]}" ]; } && return
+  size_at="$start"
   read_size_change "$verb" && [ "$size_at" = "${#size_words[@]}" ]
 }
 
@@ -517,6 +557,18 @@ parse_resize_target() {
     return 0
   done
   return 1
+}
+
+# "resize horizontally and increase", "make it bigger": a resize of the active window that says which way but not how
+# much, answered with a hint rather than a silent "no match". Every word must be one a resize uses, so "lower the
+# volume", "make the font bigger" and "resize left" (a keybind) are left alone.
+names_size_without_amount() {
+  local word names_dimension=1
+  for word in $1; do
+    [[ "$word" =~ ^(width|height|size|horizontally|vertically|taller|shorter|higher|wider|narrower|broader|thinner|bigger|larger|smaller)$ ]] && names_dimension=0 && continue
+    [[ "$word" =~ ^($active_window_words|and|by|in|to|pixels?|px|more|less|increase|increased|decrease|decreased)$ ]] || return 1
+  done
+  return "$names_dimension"
 }
 
 # The size part of a resize option's id, "<kind> <width> <height>", which resize_window() reads back.
@@ -551,10 +603,14 @@ size_description() {
 # word matching compares the window part while the size rides along in the id, as move_candidates() does.
 resize_candidates() {
   local verb="$1" target="$2" size description spoken_size active_address
-  parse_resize_target "$verb" "$target" || {
-    echo '[]'
+  if ! parse_resize_target "$verb" "$target"; then
+    if names_size_without_amount "$target"; then
+      jq -n -c --arg target "$target" '[{id: "how-much", label: "how much?", match_text: $target}]'
+    else
+      echo '[]'
+    fi
     return
-  }
+  fi
   size=$(size_id)
   description=$(size_description)
   if [ -z "$size_window" ]; then
@@ -592,6 +648,15 @@ resize_active_to_spoken_size() {
     return 1
   }
   resize_window "$address $(size_id)"
+}
+
+# Runs a resize option: a size, or the "how-much" hint names_size_without_amount() offers.
+resize_option() {
+  if [ "$1" = how-much ]; then
+    notify-send --transient --app-name=voxcmd "Say how much, e.g. \"increase width by 200\""
+    return 0
+  fi
+  resize_window "$1"
 }
 
 # Prints "<width> <height> <floating> <monitor width> <monitor height>" for a window, the monitor's size in
