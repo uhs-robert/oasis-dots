@@ -41,6 +41,10 @@ for bar in "$bars_dir"/*/; do
   echo "$line"
 done
 
+# In a subshell: the script sets -e, which this one does not want.
+# shellcheck disable=SC2016
+bash -c 'source "$1" && voxcmd_status' _ "$(dirname "$0")/../skills/owner-test-bar/owner-test-bar.sh" 2>/dev/null || echo "voxcmd: unknown"
+
 dest=/etc/greetd/quickshell
 if [[ ! -d $dest ]] || ! command -v jq >/dev/null; then
   echo "greeter: unknown"
