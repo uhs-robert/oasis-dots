@@ -63,6 +63,9 @@ running_timers() {
 # instead of ending as "no match".
 candidates() {
   case "$1" in
+  # A timer that names no time prints [], leaving the phrase to other integrations: "start a timer for acme" is
+  # a time tracker's client. A clock time keeps it as plainly meant here, though start_timer only takes durations.
+  timer) split_duration "$2" >/dev/null || parse_when "$2" >/dev/null || echo '[]' ;;
   cancel)
     local timers
     timers=$(running_timers)
@@ -99,20 +102,26 @@ schedule() {
     -- "${ringer[@]}" "$kind" "$text"
 }
 
-start_timer() {
+# Prints "<seconds> <label>" from the longest leading run of words that reads as a duration; whatever follows is
+# the timer's name. Fails when none does, or the duration is zero.
+split_duration() {
   local -a words
   read -ra words <<<"$1"
-  local count seconds="" label
-  # The longest leading run of words that reads as a duration; whatever follows is the timer's name.
+  local count seconds
   for ((count = ${#words[@]}; count > 0; count--)); do
     seconds=$(parse_duration "${words[*]:0:count}") && break
-    seconds=""
   done
-  if [ -z "$seconds" ] || [ "$seconds" -le 0 ]; then
+  [ "$count" -gt 0 ] && [ "$seconds" -gt 0 ] || return 1
+  echo "$seconds ${words[*]:count}"
+}
+
+start_timer() {
+  local split seconds label
+  if ! split=$(split_duration "$1"); then
     echo "no duration in \"$1\""
     return 1
   fi
-  label="${words[*]:count}"
+  read -r seconds label <<<"$split"
   label=$(sed -E 's/^(for|called|named|labell?ed) //; s/^the //' <<<"$label")
   label="${label^}"
   local length due
