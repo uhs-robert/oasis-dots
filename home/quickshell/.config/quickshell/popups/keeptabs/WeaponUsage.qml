@@ -19,6 +19,8 @@ Item {
     readonly property var colors: ({ error: Style.pal.error, ok: Style.pal.ok, warning: Style.pal.warning, text_primary: root.st.text_primary, text_dim: root.st.text_dim })
     readonly property color hl: Style.text_primary
     readonly property color hl_t: Style.text_muted
+    // Other styles leave these tokens transparent, so a borrowed layout falls back to the palette.
+    readonly property color hairline: Style.hairline.a > 0 ? Style.hairline : Qt.alpha(Style.pal.fg_strong, 0.55)
 
     readonly property var rows: ClaudeUsageState.rows
     readonly property var session_row: root.rows.find(r => /session/i.test(r.label)) || null
@@ -204,7 +206,7 @@ Item {
         Rectangle {
             Layout.fillWidth: true
             Layout.preferredHeight: 1
-            color: Style.hairline
+            color: root.hairline
         }
 
         RowLayout {
@@ -220,7 +222,7 @@ Item {
             Rectangle {
                 Layout.fillHeight: true
                 Layout.preferredWidth: 1
-                color: Style.hairline
+                color: root.hairline
             }
 
             Gauge {
@@ -278,7 +280,7 @@ Item {
 
                         ShapePath {
                             strokeWidth: 1.5
-                            strokeColor: Style.hairline
+                            strokeColor: root.hairline
                             fillColor: "transparent"
                             PathSvg { path: "M12 1.5 22 5.5v8.5c0 6-4.4 10.4-10 12.5C6.4 24.4 2 20 2 14V5.5z" }
                         }
