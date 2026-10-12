@@ -26,6 +26,10 @@ transcript_file="$runtime_dir/transcript.txt"
 voxcmd_self="$(readlink -f "$0")"
 voxcmd_pick="$(dirname "$voxcmd_self")/voxcmd-pick"
 voxcmd_autostop="$(dirname "$voxcmd_self")/voxcmd-autostop"
+# Helpers integrations source ("$voxcmd_share_dir/spoken-time.sh"), found from voxcmd's real path so a stowed or
+# checked-out voxcmd reads its own copy. Not in integrations.d/, where every file is loaded as an integration.
+# shellcheck disable=SC2034 # read by integrations
+voxcmd_share_dir="$(dirname "$voxcmd_self")/../share/voxcmd"
 dry_run=0
 
 # notify info|error <summary> <body>. Info (what ran, answers, hints) is transient: the bar shows it but keeps it
