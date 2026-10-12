@@ -9,6 +9,7 @@ function overrides(t, ctx) {
             wait_anim: "exclaim",
             done_anim: "levelup",
             weather_header: "pokedex",
+            keeptabs_layout: "pokedex",
             card_layout: "pixel",
             picker_skin: "pokemon",
             shade_0: g0,

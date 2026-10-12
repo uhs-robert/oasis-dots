@@ -40,10 +40,59 @@ Popup {
     search_cursor: root.selected
     onSearch_select: index => {
         root.selected = index;
-        session_list.positionViewAtIndex(index, ListView.Contain);
+        root.ensure_visible(index);
     }
     onJump_first: root.go_first()
     onJump_last: root.go_last()
+
+    // Views a layout draws itself, as keeptabs/<prefix><View>.qml for Agents or Usage; any other view falls back
+    // to the shared one. The blank lines keep each layout's line its own hunk, so style PRs that each flip one line
+    // merge without conflicts.
+    readonly property var layout_views: ({
+        battle: { prefix: "Party", views: [] },
+
+        hero: { prefix: "Activities", views: [] },
+
+        hev: { prefix: "Weapon", views: [] },
+
+        lsp: { prefix: "Trouble", views: [] },
+
+        memcard: { prefix: "MemCard", views: [] },
+
+        mode7: { prefix: "Ff6", views: [] },
+
+        oasis: { prefix: "Caravan", views: [] },
+
+        pokedex: { prefix: "Pkmn", views: [] },
+
+        ring: { prefix: "Roster", views: [] },
+
+        scan: { prefix: "Logbook", views: [] },
+
+        scope: { prefix: "Target", views: [] },
+
+        status: { prefix: "Ff7Menu", views: [] },
+
+        towers: { prefix: "Browser", views: [] },
+
+        watch: { prefix: "Mission", views: [] },
+
+        weatherstar: { prefix: "Observations", views: [] },
+
+        wttr: { prefix: "Htop", views: [] }
+    })
+
+    function view_url(view, shared) {
+        const own = root.layout_views[Style.keeptabs_layout];
+        const file = own && own.views.includes(view) ? own.prefix + view : shared;
+        return Qt.resolvedUrl("keeptabs/" + file + ".qml");
+    }
+
+    // The shared MenuFooter is hidden only while the visible tab's view draws its own key help.
+    readonly property bool view_draws_footer: {
+        const loader = root.current_tab === 0 ? agents_loader : usage_loader;
+        return loader.item ? loader.item.draws_footer === true : false;
+    }
 
     function refresh() {
         if (!root.is_open) return;
@@ -78,32 +127,8 @@ Popup {
         }
     }
 
-    function state_color(state) {
-        if (state === "waiting") return Style.pal.error;
-        if (state === "done") return Style.pal.ok;
-        if (state === "running") return root.st.text_primary;
-        return root.st.text_dim;
-    }
-
-    // Below 60% the primary color, 60-85% a warning, above that an error.
-    function context_bar_color(pct) {
-        if (pct >= 85) return Style.pal.error;
-        if (pct >= 60) return Style.pal.warning;
-        return root.st.text_primary;
-    }
-
-    function fmt_tokens(n) {
-        if (n === null || n === undefined) return "0";
-        if (n >= 1000000) return (n / 1000000).toFixed(1).replace(/\.0$/, "") + "M";
-        if (n >= 1000) return Math.round(n / 1000) + "k";
-        return String(n);
-    }
-
-    function age(since) {
-        const s = Math.floor(Date.now() / 1000) - since;
-        if (s < 60) return s + "s";
-        if (s < 3600) return Math.floor(s / 60) + "m";
-        return Math.floor(s / 3600) + "h";
+    function ensure_visible(index) {
+        if (agents_loader.item) agents_loader.item.ensure_visible(index);
     }
 
     function focus_session(id) {
@@ -115,19 +140,19 @@ Popup {
     function move_selected(delta) {
         if (root.sessions.length === 0) return;
         root.selected = root.wrap_index(root.selected, delta, 0, root.sessions.length);
-        session_list.positionViewAtIndex(root.selected, ListView.Contain);
+        root.ensure_visible(root.selected);
     }
 
     function go_first() {
         if (root.sessions.length === 0) return;
         root.selected = 0;
-        session_list.positionViewAtIndex(root.selected, ListView.Contain);
+        root.ensure_visible(root.selected);
     }
 
     function go_last() {
         if (root.sessions.length === 0) return;
         root.selected = root.sessions.length - 1;
-        session_list.positionViewAtIndex(root.selected, ListView.Contain);
+        root.ensure_visible(root.selected);
     }
 
     function handle_key(event) {
@@ -185,238 +210,45 @@ Popup {
                 Layout.fillWidth: true
                 Layout.preferredHeight: root.content_height
 
-                Text {
-                    anchors.centerIn: parent
-                    visible: root.current_tab === 0 && root.sessions.length === 0
-                    text: root.pick_exit === 0 ? "No agent sessions" : root.pick_exit === 127 ? "keeptabs-pick not available" : "keeptabs-pick failed"
-                    color: root.st.text_dim
-                    font.family: root.st.font_family
-                    font.pixelSize: root.st.fs(-2)
-                }
-
-                ListView {
-                    id: session_list
+                Loader {
+                    id: agents_loader
                     anchors.fill: parent
-                    visible: root.current_tab === 0 && root.sessions.length > 0
-                    clip: true
-                    spacing: 4
-                    model: root.sessions
-                    currentIndex: root.selected
+                    visible: root.current_tab === 0
+                    readonly property url url: root.view_url("Agents", "AgentsView")
+                    onUrlChanged: agents_loader.load()
+                    Component.onCompleted: agents_loader.load()
 
-                    delegate: MenuRow {
-                        id: session_row
-                        required property var modelData
-                        required property int index
-                        readonly property bool has_context: session_row.modelData.context_pct !== null && session_row.modelData.context_pct !== undefined
-
-                        width: session_list.width
-                        height: Style.px(46)
-                        selected: session_row.index === root.selected
-
-                        ColumnLayout {
-                            anchors.fill: parent
-                            anchors.leftMargin: 6 + session_row.inset
-                            anchors.rightMargin: 6 + session_row.key_space
-                            anchors.topMargin: 3
-                            anchors.bottomMargin: 3
-                            spacing: 2
-
-                            RowLayout {
-                                Layout.fillWidth: true
-                                spacing: 8
-
-                                Text {
-                                    text: (session_row.modelData.state || "idle").toUpperCase()
-                                    color: session_row.fg(root.state_color(session_row.modelData.state))
-                                    font.family: root.st.font_family
-                                    font.pixelSize: root.st.fs(-2)
-                                    font.bold: true
-                                }
-
-                                RowLabel {
-                                    Layout.fillWidth: true
-                                    Layout.minimumWidth: 0
-                                    elide: Text.ElideRight
-                                    label: session_row.modelData.title || "Untitled"
-                                    color: session_row.fg(root.st.text_fg)
-                                    font.family: root.st.font_family
-                                    font.pixelSize: root.st.fs(-1)
-                                }
-                            }
-
-                            RowLayout {
-                                Layout.fillWidth: true
-                                spacing: 6
-
-                                RowLabel {
-                                    Layout.fillWidth: true
-                                    Layout.minimumWidth: 0
-                                    elide: Text.ElideRight
-                                    label: (session_row.modelData.agent || "claude") + " · " + (session_row.modelData.project || "") + " · " + (session_row.modelData.where || "") + " · " + root.age(session_row.modelData.since)
-                                    color: session_row.fg(root.st.text_muted)
-                                    font.family: root.st.font_family
-                                    font.pixelSize: root.st.fs(-3)
-                                }
-
-                                Text {
-                                    visible: session_row.has_context
-                                    text: session_row.has_context ? session_row.modelData.context_pct + "% · " + root.fmt_tokens(session_row.modelData.context_used) + "/" + root.fmt_tokens(session_row.modelData.context_window) : ""
-                                    color: session_row.fg(root.st.text_dim)
-                                    font.family: root.st.font_family
-                                    font.pixelSize: root.st.fs(-4)
-                                }
-                            }
-
-                            Meter {
-                                Layout.fillWidth: true
-                                visible: session_row.has_context && root.st.segmented_levels
-                                implicitHeight: 4
-                                segment_count: 40
-                                value: session_row.has_context ? session_row.modelData.context_pct / 100 : 0
-                                on_color: session_row.has_context ? root.context_bar_color(session_row.modelData.context_pct) : root.st.meter_on
-                                on_selection: session_row.selected
-                            }
-
-                            Rectangle {
-                                Layout.fillWidth: true
-                                Layout.preferredHeight: session_row.has_context ? 3 : 0
-                                visible: session_row.has_context && !root.st.segmented_levels
-                                radius: Style.radius(1.5)
-                                color: Style.pal.bg_surface
-
-                                Rectangle {
-                                    width: session_row.has_context ? parent.width * Math.max(0, Math.min(100, session_row.modelData.context_pct)) / 100 : 0
-                                    height: parent.height
-                                    radius: Style.radius(1.5)
-                                    color: session_row.has_context ? root.context_bar_color(session_row.modelData.context_pct) : "transparent"
-                                }
-                            }
-                        }
-
-                        MouseArea {
-                            anchors.fill: parent
-                            onClicked: {
-                                root.selected = session_row.index;
-                                root.focus_session(session_row.modelData.id);
-                            }
-                        }
+                    function load() {
+                        agents_loader.setSource(agents_loader.url, {
+                            sessions: Qt.binding(() => root.sessions),
+                            selected: Qt.binding(() => root.selected),
+                            pick_exit: Qt.binding(() => root.pick_exit),
+                            st: Qt.binding(() => root.st),
+                            on_select: function (i) { root.selected = i; },
+                            on_activate: function (id) { root.focus_session(id); }
+                        });
                     }
                 }
 
-                ColumnLayout {
+                Loader {
+                    id: usage_loader
                     anchors.fill: parent
                     visible: root.current_tab === 1
-                    spacing: 8
+                    readonly property url url: root.view_url("Usage", "UsageView")
+                    onUrlChanged: usage_loader.load()
+                    Component.onCompleted: usage_loader.load()
 
-                    Text {
-                        Layout.fillWidth: true
-                        Layout.minimumWidth: 0
-                        elide: Text.ElideRight
-                        text: ClaudeUsageState.loading ? "Loading…" : ClaudeUsageState.error ? ClaudeUsageState.error : (ClaudeUsageState.updated > 0 ? "Claude usage · updated " + TimeFormat.format(new Date(ClaudeUsageState.updated)) : "Claude usage")
-                        color: ClaudeUsageState.error && !ClaudeUsageState.loading ? Style.pal.warning : root.st.text_muted
-                        font.family: root.st.font_family
-                        font.pixelSize: root.st.fs(-2)
-                        font.bold: true
-                    }
-
-                    Text {
-                        Layout.alignment: Qt.AlignHCenter
-                        Layout.topMargin: 24
-                        visible: ClaudeUsageState.rows.length === 0 && !ClaudeUsageState.loading
-                        text: ClaudeUsageState.error ? "" : "No usage data yet"
-                        color: root.st.text_dim
-                        font.family: root.st.font_family
-                        font.pixelSize: root.st.fs(-1)
-                    }
-
-                    ListView {
-                        Layout.fillWidth: true
-                        Layout.fillHeight: true
-                        visible: ClaudeUsageState.rows.length > 0
-                        clip: true
-                        spacing: 6
-                        model: ClaudeUsageState.rows
-
-                        delegate: Rectangle {
-                            id: usage_row
-                            required property var modelData
-
-                            width: ListView.view.width
-                            height: 56
-                            radius: Style.radius(4)
-                            color: "transparent"
-
-                            ColumnLayout {
-                                anchors.fill: parent
-                                anchors.margins: 6
-                                spacing: 4
-
-                                RowLayout {
-                                    Layout.fillWidth: true
-                                    spacing: 8
-
-                                    Text {
-                                        Layout.fillWidth: true
-                                        Layout.minimumWidth: 0
-                                        elide: Text.ElideRight
-                                        text: usage_row.modelData.label
-                                        color: root.st.text_fg
-                                        font.bold: true
-                                        font.family: root.st.font_family
-                                        font.pixelSize: root.st.fs(-1)
-                                    }
-
-                                    Text {
-                                        text: usage_row.modelData.percent + "% used"
-                                        color: root.context_bar_color(usage_row.modelData.percent)
-                                        font.bold: true
-                                        font.family: root.st.font_family
-                                        font.pixelSize: root.st.fs(-2)
-                                    }
-                                }
-
-                                Meter {
-                                    Layout.fillWidth: true
-                                    visible: root.st.segmented_levels
-                                    segment_count: 40
-                                    implicitHeight: Style.px(8)
-                                    value: usage_row.modelData.percent / 100
-                                    on_color: root.context_bar_color(usage_row.modelData.percent)
-                                }
-
-                                Rectangle {
-                                    Layout.fillWidth: true
-                                    Layout.preferredHeight: 8
-                                    visible: !root.st.segmented_levels
-                                    radius: Style.radius(4)
-                                    color: Style.pal.bg_surface
-
-                                    Rectangle {
-                                        width: parent.width * Math.max(0, Math.min(100, usage_row.modelData.percent)) / 100
-                                        height: parent.height
-                                        radius: Style.radius(4)
-                                        color: root.context_bar_color(usage_row.modelData.percent)
-                                    }
-                                }
-
-                                Text {
-                                    Layout.fillWidth: true
-                                    Layout.minimumWidth: 0
-                                    elide: Text.ElideRight
-                                    visible: usage_row.modelData.resets !== ""
-                                    text: "resets " + usage_row.modelData.resets
-                                    color: root.st.text_dim
-                                    font.family: root.st.font_family
-                                    font.pixelSize: root.st.fs(-3)
-                                }
-                            }
-                        }
+                    function load() {
+                        usage_loader.setSource(usage_loader.url, {
+                            st: Qt.binding(() => root.st)
+                        });
                     }
                 }
             }
 
             MenuFooter {
                 Layout.fillWidth: true
+                visible: !root.view_draws_footer
                 text: root.help_hint
             }
         }

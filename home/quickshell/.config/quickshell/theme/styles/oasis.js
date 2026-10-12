@@ -14,6 +14,7 @@ function overrides(t, ctx) {
         workspace_art: "constellation",
         bar_clock_layout: "horizon",
         weather_header: "oasis",
+        keeptabs_layout: "oasis",
         osd_layout: "horizon",
         level_layout: "slant",
         card_layout: "oasis",

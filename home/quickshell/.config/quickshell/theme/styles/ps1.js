@@ -10,6 +10,7 @@ function overrides(t, ctx) {
         wait_anim: "alert",
         done_anim: "pixel",
         weather_header: "memcard",
+        keeptabs_layout: "memcard",
         picker_skin: "scope",
         overview_skin: "scope",
         picker_hud: Qt.tint(t.green, Qt.alpha(t.theme_secondary, 0.35)),

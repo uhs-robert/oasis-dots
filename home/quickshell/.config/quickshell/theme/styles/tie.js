@@ -74,6 +74,7 @@ function overrides(t, ctx) {
         chart_outline: vec,
         weather_icon_tint: vec,
         weather_header: "scope",
+        keeptabs_layout: "scope",
         bar_font_family: "B612 Mono",
         bar_font_size: t.font_size + 1,
         bar_side_bg: t.bg_crust,

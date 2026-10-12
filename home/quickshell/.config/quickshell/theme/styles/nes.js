@@ -5,6 +5,7 @@ function overrides(t, ctx) {
         wait_anim: "advance",
         done_anim: "pixel",
         weather_header: "battle",
+        keeptabs_layout: "battle",
         text_muted: Qt.tint(t.fg_dim, Qt.alpha(t.fg_core, 0.35)),
         text_dim: Qt.tint(t.fg_dim, Qt.alpha(t.fg_core, 0.6)),
         // Press Start 2P draws on an 8px grid and runs 1em wide; 14 sits between its 1.5x and 2x sizes, with a wider frame.

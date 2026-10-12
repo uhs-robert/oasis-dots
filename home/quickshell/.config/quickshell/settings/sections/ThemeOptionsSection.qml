@@ -35,6 +35,7 @@ RowsSection {
             overview_skin: "Overview extras: Night Vision's counter, tint and lock-on, or MGS1 Scope's reticle.",
             osd_layout: "Volume and brightness OSD. Watch Dial also adds dials to Volume and Battery.",
             weather_header: "Weather header and Daily view, from any style, drawn in your palette.",
+            keeptabs_layout: "KeepTabs Agents and Usage screens, from any style, drawn in your palette.",
             done_anim: "The keeptabs celebration when a session finishes, from any style.",
             wait_anim: "The keeptabs cue when a session waits on you, from any style.",
             toast_enter: "How notification toasts arrive, from any style.",
