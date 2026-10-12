@@ -64,6 +64,25 @@ integration_files() {
   done
 }
 
+# Runs "<function> <args...> <line>" for each non-empty line of stdin, all at once, and prints their outputs in the
+# order of the lines. Integrations query live state (windows, audio devices, agents), so they run side by side rather
+# than waiting on each other; each run writes its own file so the output keeps the order of the lines.
+for_each_line_in_parallel() {
+  local run_dir line run_count=0 run_index
+  local -a run_pids=()
+  run_dir=$(mktemp -d "${XDG_RUNTIME_DIR:-/tmp}/voxcmd-runs.XXXXXX")
+  while IFS= read -r line; do
+    [ -n "$line" ] || continue
+    "$@" "$line" >"$run_dir/$run_count" &
+    run_pids+=("$!")
+    run_count=$((run_count + 1))
+  done
+  # Only these runs: a bare wait would also wait on a caller's own background jobs.
+  [ "${#run_pids[@]}" = 0 ] || wait "${run_pids[@]}" || true
+  for ((run_index = 0; run_index < run_count; run_index++)); do cat "$run_dir/$run_index"; done
+  rm -rf "$run_dir"
+}
+
 normalize() {
   local text="${1,,}"
   text="${text//\'/}"
@@ -195,18 +214,21 @@ match_loaded_verbs() {
   done
 }
 
-# Prints one JSON match per integration of the tier ("normal" or "fallback").
+# Prints the JSON match for one integration, if it is of the tier ("normal" or "fallback") and a verb matches.
+match_integration_verbs() {
+  local text="$1" tier="$2" file="$3"
+  (
+    load_integration "$file"
+    local integration_tier=normal
+    [ "$fallback" != 1 ] || integration_tier=fallback
+    [ "$integration_tier" = "$tier" ] || exit 0
+    match_loaded_verbs "$text" "$file"
+  )
+}
+
+# Prints one JSON match per integration of the tier.
 match_verbs() {
-  local text="$1" tier="$2" file
-  while IFS= read -r file; do
-    (
-      load_integration "$file"
-      local integration_tier=normal
-      [ "$fallback" != 1 ] || integration_tier=fallback
-      [ "$integration_tier" = "$tier" ] || exit 0
-      match_loaded_verbs "$text" "$file"
-    )
-  done < <(integration_files)
+  integration_files | for_each_line_in_parallel match_integration_verbs "$1" "$2"
 }
 
 # Prints "<file><TAB><rest of the text>" for the first integration whose force_prefixes starts the text.
@@ -440,9 +462,7 @@ needs_pick() {
 }
 
 resolve_matches() {
-  while IFS= read -r match; do
-    if [ -n "$match" ]; then resolve_match "$match"; fi
-  done <<<"$1" | jq -s -c .
+  for_each_line_in_parallel resolve_match <<<"$1" | jq -s -c .
 }
 
 # Phrases that open Voice Help before any integration is tried, so the keybinds fallback never takes them.
@@ -510,31 +530,28 @@ markup_escape() {
   printf '%s' "${text//>/"&gt;"}"
 }
 
+# Prints one integration's Voice Help group: its examples and what Tab lists for it.
+help_group() {
+  local file="$1"
+  (
+    load_integration "$file"
+    # On stdin: a keybinds list is too long for an argument.
+    help_runnables "$file" | jq -c --arg file "$file" --arg name "$name" \
+      --argjson fallback "$([ "$fallback" = 1 ] && echo true || echo false)" --args \
+      '{key: ($file | split("/") | last | rtrimstr(".sh")), name: $name, fallback: $fallback, examples: $ARGS.positional, runnables: .}' \
+      "${integration_examples[@]}"
+  )
+}
+
 # Every integration's example phrases in the picker, grouped by integration with the fallbacks last. A phrase
 # without placeholders runs as if spoken; one with a <placeholder> cannot be completed from a click, so it is
 # shown as a notification to say instead. Tab on an integration that lists its help choices shows them, and picking
 # one runs it like a spoken match would. Picked ids are "say:<phrase>" or "run:<index into the runnable options>".
 example_placeholder='<[^>]+>'
 voice_help() {
-  local groups choices expansions runnables picked file group_dir group_count=0 group_index
-  # Integrations list in parallel, since several query live state (audio devices, agents, windows); each writes its
-  # own file so the groups keep their order.
-  group_dir=$(mktemp -d "${XDG_RUNTIME_DIR:-/tmp}/voxcmd-help.XXXXXX")
-  while IFS= read -r file; do
-    (
-      load_integration "$file"
-      # On stdin: a keybinds list is too long for an argument.
-      help_runnables "$file" | jq -c --arg file "$file" --arg name "$name" \
-        --argjson fallback "$([ "$fallback" = 1 ] && echo true || echo false)" --args \
-        '{key: ($file | split("/") | last | rtrimstr(".sh")), name: $name, fallback: $fallback, examples: $ARGS.positional, runnables: .}' \
-        "${integration_examples[@]}"
-    ) >"$group_dir/$group_count" &
-    group_count=$((group_count + 1))
-  done < <(integration_files)
-  wait
-  groups=$(for ((group_index = 0; group_index < group_count; group_index++)); do cat "$group_dir/$group_index"; done |
+  local groups choices expansions runnables picked
+  groups=$(integration_files | for_each_line_in_parallel help_group |
     jq -s -c 'sort_by(.fallback) | map(select(.examples != [] or .runnables != []))')
-  rm -rf "$group_dir"
   if [ "$(jq 'map(.examples[]) | length' <<<"$groups")" = 0 ]; then
     notify info "voxcmd" "No integration declares examples"
     return 1
