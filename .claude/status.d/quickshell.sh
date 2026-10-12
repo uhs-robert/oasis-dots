@@ -17,12 +17,15 @@ for bar in "$bars_dir"/*/; do
   [[ -n $running && $running == "${bar%/}"* ]] && mark=" (running)"
   notes=()
   open=0
+  # A bar built by hand has no branch record.
+  branches_file=${bar%/}.branches
+  [[ -f $branches_file ]] || branches_file=/dev/null
   while IFS= read -r branch; do
     [[ -n $branch ]] || continue
     pr=$(awk -v b="$branch" '$1 == b { print $3 " " $2; exit }' <<<"$pr_states")
     [[ $pr == *OPEN || -z $pr ]] && open=1
     notes+=("$branch: ${pr:-no PR}")
-  done <"${bar%/}.branches" 2>/dev/null
+  done <"$branches_file"
   line="test bar: $name$mark"
   if ((${#notes[@]})); then
     joined=$(printf ', %s' "${notes[@]}")
