@@ -3,6 +3,8 @@
 
 name="Apps"
 confirm=0
+# The window that opens or takes focus is the feedback; moving and closing keep their toast.
+silent_actions=(open open_new focus)
 # App names and window classes are short, so a fuzzy hit on scattered letters would run the wrong thing.
 target_match=words
 # "close the firefox window" is "close firefox"; a target of only these words ("close window", "open application")
