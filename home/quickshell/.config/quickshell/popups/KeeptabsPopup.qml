@@ -53,7 +53,7 @@ Popup {
 
         hero: { prefix: "Activities", views: ["Agents", "Usage"] },
 
-        hev: { prefix: "Weapon", views: [] },
+        hev: { prefix: "Weapon", views: ["Agents", "Usage"] },
 
         lsp: { prefix: "Trouble", views: ["Agents", "Usage"] },
 
