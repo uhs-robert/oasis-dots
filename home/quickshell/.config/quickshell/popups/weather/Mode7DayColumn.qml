@@ -5,11 +5,15 @@ import "../../theme"
 import "../../services"
 import "../../components/snes" as Snes
 
-// One day as a 16-bit gauge pillar standing on the Mode 7 floor: lit from the day's low to its high, rain on a plinth at its foot.
+// One day as a 16-bit gauge pillar standing on the Mode 7 floor, a plinth at its foot.
+// Temp & Precip: lit from the day's low to its high, rain on the plinth. Wind, UV and Sunshine: lit from the floor up to the value.
 Item {
     id: root
 
     property var day: null
+    property int sub: 0
+    // The week's strongest gust, shared by every column so wind pillars compare across days.
+    property real wind_max: 1
     property int day_index: 0
     property string label: ""
     property bool selected: false
@@ -31,15 +35,54 @@ Item {
     readonly property real lo_room: root.text_px + 6
     readonly property real scale_top_y: icon_box.y + icon_box.height + 14 + root.text_px + root.cap_h / 2
     readonly property real span_h: Math.max(10, root.floor_y - root.lo_room - root.scale_top_y)
-    readonly property real hi_y: Math.round(root.temp_y(root.day ? root.day.max : root.scale_min))
-    readonly property real lo_y: Math.max(root.hi_y + 2, Math.round(root.temp_y(root.day ? root.day.min : root.scale_min)))
+    readonly property bool is_range: root.sub === 0
+    readonly property real hi_y: Math.round(root.is_range ? root.temp_y(root.day ? root.day.max : root.scale_min) : root.level_y(root.level))
+    readonly property real lo_y: root.is_range ? Math.max(root.hi_y + 2, Math.round(root.temp_y(root.day ? root.day.min : root.scale_min))) : root.floor_y
+    // The pillar's empty track runs up to the scale top on single-value subs, so a short value reads as short.
+    readonly property real track_top_y: root.is_range ? root.hi_y : Math.round(root.scale_top_y)
     readonly property real pop: root.day ? Math.max(0, Math.min(1, (root.day.pop || 0) / 100)) : 0
 
-    readonly property color gauge_fill: Style.pal.primary_strong
-    readonly property color gauge_shade: Qt.tint(Style.pal.primary_light, Qt.alpha(Style.pal.fg_strong, 0.3))
+    // Wind against the week's strongest gust, UV against the top of the scale, sunshine against a 14 hour day.
+    readonly property real level: {
+        if (!root.day) return 0;
+        const raw = [0, root.day.wind_speed_max / Math.max(1, root.wind_max), root.day.uv_max / 12, root.day.sunshine_hours / 14][root.sub];
+        return Math.max(0, Math.min(1, raw));
+    }
+    readonly property real gust_level: root.day ? Math.max(0, Math.min(1, root.day.wind_gusts_max / Math.max(1, root.wind_max))) : 0
+    // Share of the daylight that was sunny, for the sunshine plinth.
+    readonly property real sunny_share: {
+        const rise = root.day ? root.hm_minutes(root.day.sunrise) : -1;
+        const set = root.day ? root.hm_minutes(root.day.sunset) : -1;
+        if (rise < 0 || set <= rise) return 0;
+        return Math.max(0, Math.min(1, root.day.sunshine_hours * 60 / (set - rise)));
+    }
+    readonly property color base_color: [Style.pal.primary_strong, Style.pal.cyan, root.day ? WeatherState.uv_color(root.day.uv_max) : Style.pal.green, Style.pal.yellow][root.sub]
+    readonly property color gauge_fill: root.base_color
+    readonly property color gauge_shade: root.is_range ? Qt.tint(Style.pal.primary_light, Qt.alpha(Style.pal.fg_strong, 0.3)) : Qt.tint(root.base_color, Qt.alpha(Style.pal.fg_strong, 0.4))
+
+    readonly property string value_text: {
+        if (!root.day) return "";
+        return [Math.round(root.day.max) + "°", String(Math.round(root.day.wind_speed_max)), root.day.uv_max.toFixed(1), root.day.sunshine_hours.toFixed(1) + "h"][root.sub];
+    }
+    readonly property string plinth_text: {
+        if (!root.day) return "";
+        return [(root.day.pop || 0) + "%", String(Math.round(root.day.wind_gusts_max)), WeatherState.uv_band(root.day.uv_max).label.toUpperCase(), Math.round(root.sunny_share * 100) + "%"][root.sub];
+    }
+    readonly property real plinth_fill: [root.pop, root.gust_level, root.level, root.sunny_share][root.sub]
+    // Darkened so the plinth's white readout stays legible over a yellow or cyan fill.
+    readonly property color plinth_color: root.is_range ? Style.pal.info : Qt.darker(root.base_color, 2)
 
     // Stepped, not eased: SNES menu cursors jump whole pixels.
     property int bob: 0
+
+    function hm_minutes(hm) {
+        const parts = (hm || "").split(":");
+        return parts.length === 2 ? parseInt(parts[0], 10) * 60 + parseInt(parts[1], 10) : -1;
+    }
+
+    function level_y(frac) {
+        return root.floor_y - Math.max(0.03, frac) * (root.floor_y - root.scale_top_y);
+    }
 
     function temp_y(temp) {
         const frac = Math.max(0, Math.min(1, (temp - root.scale_min) / Math.max(0.01, root.scale_max - root.scale_min)));
@@ -114,7 +157,9 @@ Item {
         shadowOpacity: 0.9
     }
 
+    // Above the pillar's empty track, which on single-value subs reaches past the value.
     Column {
+        z: 1
         visible: root.selected
         anchors.horizontalCenter: parent.horizontalCenter
         y: root.hi_y - root.cap_h / 2 - root.text_px - 13 + root.bob
@@ -133,10 +178,11 @@ Item {
     }
 
     Text {
+        z: 1
         width: root.width
         y: root.hi_y - root.cap_h / 2 - root.text_px - 3
         horizontalAlignment: Text.AlignHCenter
-        text: root.day ? Math.round(root.day.max) + "°" : ""
+        text: root.value_text
         color: Style.pal.fg_strong
         font.family: Style.font_family
         font.pixelSize: root.text_px
@@ -146,9 +192,9 @@ Item {
 
     Item {
         x: Math.round((root.width - root.pillar_w) / 2)
-        y: root.hi_y
+        y: root.track_top_y
         width: root.pillar_w
-        height: root.floor_y - root.hi_y + 2
+        height: root.floor_y - root.track_top_y + 2
 
         Rectangle {
             visible: root.selected
@@ -171,6 +217,7 @@ Item {
         Rectangle {
             id: range_fill
             x: 1
+            y: root.hi_y - root.track_top_y
             width: parent.width - 2
             height: root.lo_y - root.hi_y
             gradient: Gradient {
@@ -208,7 +255,7 @@ Item {
         }
 
         Rectangle {
-            y: -root.cap_h / 2
+            y: root.hi_y - root.track_top_y - root.cap_h / 2
             width: parent.width
             height: root.cap_h
             radius: height / 2
@@ -224,7 +271,18 @@ Item {
         }
     }
 
+    // The day's strongest gust, as a notch across the pillar at that level.
+    Rectangle {
+        visible: root.sub === 1 && root.gust_level > root.level
+        anchors.horizontalCenter: parent.horizontalCenter
+        y: Math.round(root.level_y(root.gust_level))
+        width: root.pillar_w + 8
+        height: 2
+        color: Style.pal.fg_strong
+    }
+
     Text {
+        visible: root.is_range
         width: root.width
         y: root.lo_y + 2
         horizontalAlignment: Text.AlignHCenter
@@ -241,7 +299,7 @@ Item {
         id: plinth
         x: Math.round((root.width - width) / 2)
         y: root.floor_y
-        width: Math.min(root.width, Math.max(root.pillar_w + 12, rain_text.implicitWidth + 12))
+        width: Math.min(root.width, Math.max(root.pillar_w + 12, plinth_label.implicitWidth + 12 + (wind_arrow.visible ? wind_arrow.width + 2 : 0)))
         height: root.plinth_h - 4
         radius: 3
         drop: 2
@@ -250,18 +308,30 @@ Item {
         Rectangle {
             x: 3
             y: 3
-            width: Math.max(0, plinth.panel.width - 6) * root.pop
+            width: Math.max(0, plinth.panel.width - 6) * root.plinth_fill
             height: plinth.panel.height - 6
             gradient: Gradient {
-                GradientStop { position: 0; color: Qt.tint(Style.pal.info, Qt.alpha(Style.pal.fg_strong, 0.35)) }
-                GradientStop { position: 1; color: Style.pal.info }
+                GradientStop { position: 0; color: Qt.tint(root.plinth_color, Qt.alpha(Style.pal.fg_strong, 0.35)) }
+                GradientStop { position: 1; color: root.plinth_color }
             }
         }
 
         Text {
-            id: rain_text
+            id: wind_arrow
+            visible: root.sub === 1
+            x: 5
+            anchors.verticalCenter: plinth.panel.verticalCenter
+            text: "▲"
+            rotation: root.day ? root.day.wind_dir : 0
+            color: Style.pal.fg_strong
+            font.pixelSize: root.small_px
+        }
+
+        Text {
+            id: plinth_label
             anchors.centerIn: plinth.panel
-            text: root.day ? (root.day.pop || 0) + "%" : ""
+            anchors.horizontalCenterOffset: wind_arrow.visible ? wind_arrow.width / 2 + 1 : 0
+            text: root.plinth_text
             color: Style.pal.fg_strong
             font.family: Style.font_family
             font.pixelSize: root.small_px
