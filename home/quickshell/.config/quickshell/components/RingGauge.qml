@@ -61,7 +61,8 @@ Item {
         }
 
         ShapePath {
-            strokeWidth: 1
+            // Below this the dot ring collapses into a smudge under the readout.
+            strokeWidth: root.r > 12 ? 1 : -1
             strokeColor: Qt.alpha(root.color, 0.2)
             fillColor: "transparent"
             capStyle: ShapePath.FlatCap

@@ -82,57 +82,45 @@ Item {
             readonly property real cx: 4 + root.outer_radius + 4
             readonly property real cy: area.height / 2
 
-            Shape {
-                anchors.fill: parent
-                preferredRendererType: Shape.CurveRenderer
+            // Repeater delegates must be Items, so each usage row is its own Shape holding its three paths.
+            Repeater {
+                model: root.rows
 
-                // Each layer is its own Repeater of ShapePaths: a Shape draws only paths that are its direct children.
-                Repeater {
-                    model: root.rows
+                Shape {
+                    id: ring
+                    required property var modelData
+                    required property int index
+                    anchors.fill: parent
+                    preferredRendererType: Shape.CurveRenderer
 
                     ShapePath {
-                        id: track
-                        required property int index
                         strokeWidth: root.ring_width
                         strokeColor: Qt.alpha(root.st.text_strong, 0.12)
                         fillColor: "transparent"
                         capStyle: ShapePath.FlatCap
-                        PathAngleArc { centerX: area.cx; centerY: area.cy; radiusX: root.ring_radius(track.index); radiusY: root.ring_radius(track.index); startAngle: 0; sweepAngle: 360 }
+                        PathAngleArc { centerX: area.cx; centerY: area.cy; radiusX: root.ring_radius(ring.index); radiusY: root.ring_radius(ring.index); startAngle: 0; sweepAngle: 360 }
                     }
-                }
-
-                Repeater {
-                    model: root.rows
 
                     ShapePath {
-                        id: lit
-                        required property var modelData
-                        required property int index
-                        strokeWidth: lit.modelData.percent > 0 ? root.ring_width : -1
-                        strokeColor: Fmt.context_bar_color(lit.modelData.percent, root.colors)
+                        strokeWidth: ring.modelData.percent > 0 ? root.ring_width : -1
+                        strokeColor: Fmt.context_bar_color(ring.modelData.percent, root.colors)
                         fillColor: "transparent"
                         capStyle: ShapePath.FlatCap
                         PathAngleArc {
                             centerX: area.cx
                             centerY: area.cy
-                            radiusX: root.ring_radius(lit.index)
-                            radiusY: root.ring_radius(lit.index)
+                            radiusX: root.ring_radius(ring.index)
+                            radiusY: root.ring_radius(ring.index)
                             startAngle: -90
-                            sweepAngle: 360 * root.clamp_fraction(lit.modelData.percent)
+                            sweepAngle: 360 * root.clamp_fraction(ring.modelData.percent)
                         }
                     }
-                }
-
-                Repeater {
-                    model: root.rows
 
                     ShapePath {
-                        id: leader
-                        required property int index
                         strokeWidth: 1
                         strokeColor: root.hairline
                         fillColor: "transparent"
-                        PathPolyline { path: root.leader_points(leader.index, area.cx, area.cy) }
+                        PathPolyline { path: root.leader_points(ring.index, area.cx, area.cy) }
                     }
                 }
             }
