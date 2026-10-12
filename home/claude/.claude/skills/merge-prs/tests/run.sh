@@ -92,6 +92,38 @@ show "$out"
 check "exits 0" "[[ $code == 0 ]]"
 check "merges" "grep -q '^7 merged (rebase)' <<<\"\$out\""
 
+echo "== --check: clean PR"
+setup
+out=$(PATH="$here:$PATH" "$script" --check 7 2>&1); code=$?
+show "$out"
+check "exits 0" "[[ $code == 0 ]]"
+check "does not merge" "grep -q '^state=OPEN' '$GH_STATE' && ! grep -q merged <<<\"\$out\""
+
+echo "== --check: unresolved thread"
+setup
+echo "open_threads=2" >> "$GH_STATE"
+out=$(PATH="$here:$PATH" "$script" --check 7 2>&1); code=$?
+show "$out"
+check "fails" "[[ $code != 0 ]]"
+check "names the threads" "grep -q '#7: 2 unresolved review thread' <<<\"\$out\""
+check "does not merge" "grep -q '^state=OPEN' '$GH_STATE'"
+
+echo "== --check: Codex review running"
+setup
+printf 'codex=Running\ncodex_commit=abc1234\n' >> "$GH_STATE"
+out=$(PATH="$here:$PATH" "$script" --check 7 2>&1); code=$?
+show "$out"
+check "fails" "[[ $code != 0 ]]"
+check "says the review is running" "grep -q '#7: the Codex review is still running' <<<\"\$out\""
+check "does not merge" "grep -q '^state=OPEN' '$GH_STATE'"
+
+echo "== --check: refuses merge options"
+setup
+out=$(PATH="$here:$PATH" "$script" --check --keep-branch 7 2>&1); code=$?
+show "$out"
+check "fails" "[[ $code != 0 ]]"
+check "says why" "grep -q 'cannot be combined' <<<\"\$out\""
+
 echo "== stack merged in one run, GitHub slow to report the rebased child"
 root=$(mktemp -d); export ORIGIN=$root/origin.git GH_STATE=$root/state
 git init -q --bare -b main "$ORIGIN"

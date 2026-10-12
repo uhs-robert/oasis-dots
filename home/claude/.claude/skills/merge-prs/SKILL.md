@@ -12,6 +12,7 @@ Only after the owner has approved the merge. Run from anywhere inside the repo, 
 ```
 
 - Before merging anything it checks every PR, and stops naming each problem if one has an unresolved review thread or a Codex review that is still running or failed (fix it, or comment `@codex review` and wait, then rerun). A Codex review of an older commit than the head is only noted, since rebases and follow-up commits make that routine; mention the note to the owner. `--skip-review-gate` is for when the owner explicitly waived the review.
+- `merge-prs.sh --check <pr>...` runs only that gate and exits 0 when every PR passes: use it before telling the owner a PR is ready. It changes nothing, and cannot be combined with `--method`, `--keep-branch` or `--skip-review-gate`.
 - The method defaults to the first of rebase, squash, merge the repo allows; `--method` forces one.
 - PRs based on a merged head are retargeted to its base before the merge, and after a rebase or squash merge they are rebased onto that base and force-pushed with a lease, along with any PRs stacked on them. Fork children are retargeted but left for a manual rebase.
 - A PR that GitHub reports as conflicting only because it still carries commits of a parent already merged outside the run is rebased onto its base, dropping those commits, and force-pushed with a lease; any other conflict stops the run.

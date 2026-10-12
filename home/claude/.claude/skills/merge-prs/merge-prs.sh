@@ -2,7 +2,8 @@
 # Merge PRs in order, carrying stacked PRs over to each base, then clean up local worktrees and branches.
 set -euo pipefail
 
-usage="usage: merge-prs.sh [--method rebase|squash|merge] [--keep-branch] [--skip-review-gate] <pr>..."
+usage="usage: merge-prs.sh [--method rebase|squash|merge] [--keep-branch] [--skip-review-gate] <pr>...
+       merge-prs.sh --check <pr>..."
 
 die() {
   echo "merge-prs: $*" >&2
@@ -12,6 +13,7 @@ die() {
 method=""
 keep_branch=false
 review_gate=true
+check_only=false
 prs=()
 while (($#)); do
   case $1 in
@@ -32,6 +34,10 @@ while (($#)); do
     review_gate=false
     shift
     ;;
+  --check)
+    check_only=true
+    shift
+    ;;
   -h | --help)
     echo "$usage"
     exit 0
@@ -45,6 +51,9 @@ while (($#)); do
 done
 ((${#prs[@]})) || die "$usage"
 [[ -z $method || $method =~ ^(rebase|squash|merge)$ ]] || die "$usage"
+# --check only reads; options that steer a merge are refused rather than silently ignored.
+! $check_only || [[ -z $method && $keep_branch == false && $review_gate == true ]] ||
+  die "--check cannot be combined with --method, --keep-branch or --skip-review-gate"
 
 worktrees=$(git worktree list --porcelain) || die "not inside a git repository"
 main_dir=$(awk '/^worktree /{print substr($0, 10); exit}' <<<"$worktrees")
@@ -54,17 +63,19 @@ repo_info=$(gh repo view --json nameWithOwner,defaultBranchRef,rebaseMergeAllowe
   --jq '[.nameWithOwner, .defaultBranchRef.name, .rebaseMergeAllowed, .squashMergeAllowed, .mergeCommitAllowed] | @tsv') ||
   die "cannot read the repository settings"
 IFS=$'\t' read -r slug default rebase_ok squash_ok merge_ok <<<"$repo_info"
-declare -A allowed=([rebase]=$rebase_ok [squash]=$squash_ok [merge]=$merge_ok)
-if [[ -n $method ]]; then
-  [[ ${allowed[$method]} == true ]] || die "$method merges are not allowed in $slug"
-else
-  for candidate in rebase squash merge; do
-    if [[ ${allowed[$candidate]} == true ]]; then
-      method=$candidate
-      break
-    fi
-  done
-  [[ -n $method ]] || die "$slug allows no merge method"
+if ! $check_only; then
+  declare -A allowed=([rebase]=$rebase_ok [squash]=$squash_ok [merge]=$merge_ok)
+  if [[ -n $method ]]; then
+    [[ ${allowed[$method]} == true ]] || die "$method merges are not allowed in $slug"
+  else
+    for candidate in rebase squash merge; do
+      if [[ ${allowed[$candidate]} == true ]]; then
+        method=$candidate
+        break
+      fi
+    done
+    [[ -n $method ]] || die "$slug allows no merge method"
+  fi
 fi
 
 # One query per PR: unresolved review threads, and the Codex summary comment's status and reviewed commit, if the repo uses Codex.
@@ -104,6 +115,9 @@ check_reviews() {
     esac
   done
   ((${#problems[@]} == 0)) && return 0
+  if $check_only; then
+    die "not ready:"$'\n'"$(printf '  %s\n' "${problems[@]}")"
+  fi
   die "not merging:"$'\n'"$(printf '  %s\n' "${problems[@]}")"$'\n'"Rerun with --skip-review-gate only if the owner waived the review."
 }
 
@@ -331,6 +345,12 @@ merge_pr() {
     fi
   done
 }
+
+if $check_only; then
+  check_reviews
+  echo "ready: no unresolved review threads and no Codex review running or failed"
+  exit 0
+fi
 
 ! $review_gate || check_reviews
 
