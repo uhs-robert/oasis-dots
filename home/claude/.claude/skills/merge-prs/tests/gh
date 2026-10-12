@@ -41,6 +41,16 @@ case "$args" in
   ;;
 "pr edit"*) put base "$(sed -E 's/.*--base ([^ ]+).*/\1/' <<<"$args")" ;;
 "api graphql"*)
+  # codex_running_reads=N reports the Codex review as running for N reads, then completed.
+  runs=$(get codex_running_reads || true)
+  if [[ -n $runs ]]; then
+    if ((runs > 0)); then
+      put codex_running_reads $((runs - 1))
+      put codex Running
+    else
+      put codex Completed
+    fi
+  fi
   printf '%s\t%s\t%s\t%s\n' "$(get open_threads || true)" "$(get codex || true)" "$(get codex_commit || true)" "$(head_oid)" |
     awk -F'\t' -v OFS='\t' '{ if ($1 == "") $1 = 0; if ($2 == "") $2 = "none"; if ($3 == "") $3 = "-"; print }'
   ;;

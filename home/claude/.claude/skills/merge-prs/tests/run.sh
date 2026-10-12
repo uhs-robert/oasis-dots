@@ -158,6 +158,24 @@ check "fails" "[[ $code != 0 ]]"
 check "says the review is running" "grep -q '#7: the Codex review is still running' <<<\"\$out\""
 check "does not merge" "grep -q '^state=OPEN' '$GH_STATE'"
 
+echo "== --wait-review: Codex review finishes while waiting"
+setup
+printf 'codex_running_reads=2\ncodex_commit=abc1234\n' >>"$GH_STATE"
+out=$(PATH="$here:$PATH" MERGE_PRS_REVIEW_POLL=0 "$script" --check --wait-review 7 2>&1)
+code=$?
+show "$out"
+check "passes" "[[ $code == 0 ]]"
+check "says it is waiting" "grep -q 'waiting up to' <<<\"\$out\""
+
+echo "== --wait-review: Codex review outlasts the wait"
+setup
+printf 'codex_running_reads=99\ncodex_commit=abc1234\n' >>"$GH_STATE"
+out=$(PATH="$here:$PATH" MERGE_PRS_REVIEW_POLL=1 MERGE_PRS_REVIEW_WAIT=2 "$script" --check --wait-review 7 2>&1)
+code=$?
+show "$out"
+check "fails" "[[ $code != 0 ]]"
+check "says how long it waited" "grep -q 'still running after 2s' <<<\"\$out\""
+
 echo "== --check: refuses merge options"
 setup
 out=$(PATH="$here:$PATH" "$script" --check --keep-branch 7 2>&1)

@@ -2,8 +2,8 @@
 # Merge PRs in order, carrying stacked PRs over to each base, then clean up local worktrees and branches.
 set -euo pipefail
 
-usage="usage: merge-prs.sh [--method rebase|squash|merge] [--keep-branch] [--skip-review-gate] <pr>...
-       merge-prs.sh --check <pr>..."
+usage="usage: merge-prs.sh [--method rebase|squash|merge] [--keep-branch] [--skip-review-gate] [--wait-review] <pr>...
+       merge-prs.sh --check [--wait-review] <pr>..."
 
 die() {
   echo "merge-prs: $*" >&2
@@ -13,6 +13,7 @@ die() {
 method=""
 keep_branch=false
 review_gate=true
+wait_review=false
 check_only=false
 prs=()
 while (($#)); do
@@ -36,6 +37,10 @@ while (($#)); do
     ;;
   --check)
     check_only=true
+    shift
+    ;;
+  --wait-review)
+    wait_review=true
     shift
     ;;
   -h | --help)
@@ -95,18 +100,41 @@ review_jq='.data.repository.pullRequest as $p
      ($codex | capture("\\| `(?<c>[0-9a-f]{7,40})` \\|").c // "-"),
      $p.headRefOid] | @tsv'
 
+review_wait_s=${MERGE_PRS_REVIEW_WAIT:-1200}
+review_poll_s=${MERGE_PRS_REVIEW_POLL:-20}
+
+read_review() {
+  gh api graphql -F owner="${slug%%/*}" -F name="${slug#*/}" -F number="$1" -f query="$review_query" \
+    --jq "$review_jq" || die "cannot read the review state of #$1"
+}
+
 # Checks every PR before merging any, so a run never stops halfway through a stack over a review it could have seen up front.
 check_reviews() {
-  local pr number info open status reviewed head
+  local pr number info open status reviewed head waited
   local -a problems=()
   for pr in "${prs[@]}"; do
     number=${pr#\#}
-    info=$(gh api graphql -F owner="${slug%%/*}" -F name="${slug#*/}" -F number="$number" -f query="$review_query" \
-      --jq "$review_jq") || die "cannot read the review state of #$number"
+    info=$(read_review "$number")
     IFS=$'\t' read -r open status reviewed head <<<"$info"
+    waited=0
+    if [[ $status == Running ]] && $wait_review; then
+      echo "merge-prs: waiting up to ${review_wait_s}s for #$number's Codex review" >&2
+      while [[ $status == Running ]] && ((waited < review_wait_s)); do
+        sleep "$review_poll_s"
+        waited=$((waited + review_poll_s))
+        info=$(read_review "$number")
+        IFS=$'\t' read -r open status reviewed head <<<"$info"
+      done
+    fi
     ((open == 0)) || problems+=("#$number: $open unresolved review thread(s); answer and resolve them")
     case $status in
-    Running) problems+=("#$number: the Codex review is still running; wait for it to finish") ;;
+    Running)
+      if ((waited)); then
+        problems+=("#$number: the Codex review is still running after ${waited}s; rerun with --wait-review once it finishes")
+      else
+        problems+=("#$number: the Codex review is still running; wait for it to finish, or rerun with --wait-review")
+      fi
+      ;;
     Failed) problems+=("#$number: the Codex review failed at $reviewed; comment \"@codex review\" on the PR and wait for it") ;;
     Completed)
       [[ $head == "$reviewed"* ]] ||
