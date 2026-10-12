@@ -1,14 +1,20 @@
 #!/usr/bin/env bash
 # voxcmd-pick: blocking choice picker for shell callers.
-# Usage: voxcmd-pick <label> <choices-json> [<expansions-json>]
+# Usage: voxcmd-pick [--listen] <label> <choices-json> [<expansions-json>]
 # Choices are a JSON array of strings or {id, label, expand} objects. Prints the picked id (the string itself for
 # plain strings) and exits 0; exits 1 on cancel. Uses the Quickshell "choices" picker when the bar is running,
 # else rofi -dmenu. While it waits, `voxcmd --reply` can answer it through the pending-pick state file.
 # Expansions are {key: {title, choices}}: Tab on a choice whose expand names a key shows that list instead, and
 # Backspace on an empty search comes back; ids are shared with the top-level choices. rofi shows only the top level.
+# --listen starts the voice reply's recording just before the picker shows, for a pick asked about a spoken command.
 set -euo pipefail
 
-usage='usage: voxcmd-pick <label> <choices-json> [<expansions-json>]'
+usage='usage: voxcmd-pick [--listen] <label> <choices-json> [<expansions-json>]'
+listen=0
+if [ "${1:-}" = --listen ]; then
+  listen=1
+  shift
+fi
 label="${1:?$usage}"
 choices_json="${2:?$usage}"
 expansions_json="${3:-"{}"}"
@@ -16,6 +22,8 @@ expansions_json="${3:-"{}"}"
 pick_timeout="${VOXCMD_PICK_TIMEOUT:-300}"
 pending_pick_file="${XDG_RUNTIME_DIR:-/tmp}/voxcmd/pending-pick.json"
 hypr_scripts="${XDG_CONFIG_HOME:-$HOME/.config}/hypr/scripts"
+voxtype_state_file="${XDG_RUNTIME_DIR:-/tmp}/voxtype/state"
+voxcmd="$(dirname "$(readlink -f "$0")")/voxcmd"
 
 # Both pickers hand back the picked label, not its position. Numbering makes every label in a list unique, so each
 # maps back to one id, and gives voice replies an ordinal to say; a label shared by several choices also gets the id
@@ -60,6 +68,23 @@ jq -n --arg label "$label" --arg result_path "$result_fifo" --arg view_path "$vi
     choices: $choices | map(if .expand then {label, expand} else .label end),
     expansions: $expansions | map_values({title, choices: [.choices[].label]})}' >"$spec"
 
+# Written before the picker shows, so a reply recording started now or by the voice key goes to this pick.
+mkdir -p "$(dirname "$pending_pick_file")"
+jq -n --argjson pid $$ --arg fifo "$result_fifo" --arg label "$label" --argjson choices "$choices" \
+  --argjson expansions "$expansions" --arg view "$view_file" \
+  '{pid: $pid, fifo: $fifo, label: $label, choices: $choices, expansions: $expansions, view: $view}' >"$work_dir/pending-pick.json"
+mv -f "$work_dir/pending-pick.json" "$pending_pick_file"
+
+# Only from idle, never stopping a recording someone else started, and before the picker shows so the microphone is
+# live when the question appears: an answer said the moment it shows is otherwise half lost. Up to 2s for voxtype to
+# report it.
+if [ "$listen" = 1 ] && "$voxcmd" listen --start-only; then
+  for ((polls = 0; polls < 40; polls++)); do
+    [ "$(cat "$voxtype_state_file" 2>/dev/null)" != recording ] || break
+    sleep 0.05
+  done
+fi
+
 # Opening the FIFO for writing happens before rofi runs, so even a missing rofi closes it and reads as a cancel.
 printf -v rofi_fallback 'rofi -dmenu -i -p %q < %q > %q' "$label" "$labels" "$result_fifo"
 if [ -x "$hypr_scripts/qs-picker" ]; then
@@ -69,12 +94,6 @@ else
 fi
 # qs-picker exits as soon as the bar takes the pick, so this is still running at the end only when it is rofi.
 picker_pid=$!
-
-mkdir -p "$(dirname "$pending_pick_file")"
-jq -n --argjson pid $$ --arg fifo "$result_fifo" --arg label "$label" --argjson choices "$choices" \
-  --argjson expansions "$expansions" --arg view "$view_file" \
-  '{pid: $pid, fifo: $fifo, label: $label, choices: $choices, expansions: $expansions, view: $view}' >"$work_dir/pending-pick.json"
-mv -f "$work_dir/pending-pick.json" "$pending_pick_file"
 
 # The first line, not EOF: rofi keeps the FIFO open for writing while a voice reply arrives through it.
 # Read in the background because bash runs the signal traps only once a foreground child exits, and `wait` returns early.

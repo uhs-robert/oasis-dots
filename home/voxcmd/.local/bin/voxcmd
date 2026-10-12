@@ -481,7 +481,7 @@ print_dry_run() {
   if [ "$count" = 0 ]; then
     printf 'result:      no match\n'
   elif needs_pick "$options"; then
-    printf 'result:      ask with the picker (%s options%s)\n' "$count" "$([ "$count" -gt 1 ] || echo ', weak match')"
+    printf 'result:      ask with the picker (%s options%s)\n' "$count" "$([ "$count" -gt 1 ] || echo ', weak match, listens for the reply when spoken')"
   else
     printf 'result:      run\n'
   fi
@@ -553,7 +553,10 @@ route() {
     choices=$(while IFS= read -r option; do
       jq -n -c --arg id "$(jq -r .index <<<"$option")" --arg label "$(option_label "$option")" '{id: $id, label: $label}'
     done < <(jq -c 'to_entries[] | .value + {index: .key}' <<<"$options") | jq -s -c .)
-    picked=$("$voxcmd_pick" "Which command?" "$choices") || return 0
+    # A single weak match asks only "this one?", so a spoken command gets its answer by voice too, as a confirmation does.
+    local -a pick_flags=()
+    [ "$came_by_voice" = 0 ] || [ "$count" != 1 ] || pick_flags+=(--listen)
+    picked=$("$voxcmd_pick" "${pick_flags[@]}" "Which command?" "$choices") || return 0
     run_option "$(jq -c --argjson i "$picked" '.[$i]' <<<"$options")"
   fi
 }
@@ -665,12 +668,41 @@ ordinal_position() {
   esac
 }
 
+# Prints the lines of spoken_labels ("<displayed label><TAB><normalized label>") whose label shares the most words
+# with the reply, none when it shares none. Words are compared by stem, so "locked" names "Lock" and "closing" names
+# "Close", and the reply's other words do not count against a label: a reply to "Lock (System)" may say "lock
+# computer" or "lock it", and needs no "system".
+labels_sharing_most_words() {
+  local text="$1" spoken_labels="$2"
+  jq -R -s -r --arg text "$text" '
+    ["the", "a", "an", "my", "this", "that", "it", "one", "please", "to", "of", "on", "in", "for",
+      "pick", "choose", "select", "take", "use", "go", "with", "do", "run"] as $filler
+    | def stem: if length > 5 and endswith("ing") then .[:-3]
+        elif length > 4 and (endswith("ed") or endswith("es")) then .[:-2]
+        elif length > 3 and endswith("s") and (endswith("ss") | not) then .[:-1]
+        else . end
+        | if length > 3 and endswith("e") then .[:-1] else . end;
+      def stems: [splits(" ") | select(. != "" and (IN($filler[]) | not)) | stem] | unique;
+      ($text | stems) as $spoken
+    | [split("\n")[] | select(. != "") | . as $line | split("\t")[1]
+        | {line: $line, shared: (stems | map(select(IN($spoken[]))) | length)}]
+    | (map(.shared) | max // 0) as $most
+    | if $most == 0 then empty else .[] | select(.shared == $most) | .line end' <<<"$spoken_labels"
+}
+
+# Replies that take or turn down the only choice without naming it: a picker with one choice (a weak match's) only
+# asks whether that is the one meant.
+single_choice_yes='^(yes|yeah|yep|yup|sure|okay|ok|do it|go ahead|(that|this)( one)?|thats it|thats the one)( please)?$'
+single_choice_no='^(no|nope|nah|dont|do not)( thanks| thank you)?$'
+
 # Prints "cancel", "pick<TAB><displayed label>", or "unclear<TAB><why>" for a normalized reply. Labels match like
-# candidate targets: exact, then substring, then fuzzy, and only a single hit counts.
+# candidate targets: exact, then by the words they share with the reply, then substring, then fuzzy, and only a
+# single hit counts. Shared words that tie are left for the substring and fuzzy passes to settle.
 match_reply() {
-  local text="$1" choices="$2" count position spoken_labels hits fuzzy_mode
+  local text="$1" choices="$2" count position spoken_labels hits word_hits="" fuzzy_mode
   count=$(jq length <<<"$choices")
-  if [[ "$text" =~ ^(cancel|never ?mind|none( of (them|these|those))?|nothing|forget it)$ ]]; then
+  if [[ "$text" =~ ^(cancel|never ?mind|none( of (them|these|those))?|nothing|forget it)$ ]] ||
+    { [ "$count" = 1 ] && [[ "$text" =~ $single_choice_no ]]; }; then
     echo cancel
     return
   fi
@@ -688,10 +720,16 @@ match_reply() {
     printf '%s\t%s\n' "$label" "$(normalize "${label#*. }")"
   done)
   hits=$(awk -F'\t' -v text="$text" '$2 == text' <<<"$spoken_labels")
+  if [ -z "$hits" ] && [ "$count" = 1 ] && [[ "$text" =~ $single_choice_yes ]]; then hits="$spoken_labels"; fi
+  if [ -z "$hits" ]; then
+    word_hits=$(labels_sharing_most_words "$text" "$spoken_labels")
+    [ "$(grep -c . <<<"$word_hits")" != 1 ] || hits="$word_hits"
+  fi
   for fuzzy_mode in --exact --no-exact; do
     [ -z "$hits" ] || break
     hits=$(fzf --filter="$text" "$fuzzy_mode" --delimiter=$'\t' --nth=2 <<<"$spoken_labels" || true)
   done
+  [ -n "$hits" ] || hits="$word_hits"
   case "$(grep -c . <<<"$hits")" in
   0) printf 'unclear\tno choice matches\n' ;;
   1) printf 'pick\t%s\n' "${hits%%$'\t'*}" ;;
