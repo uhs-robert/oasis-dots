@@ -187,7 +187,8 @@ voxcmd_swap() {
     voxcmd_restore
     return 0
   fi
-  local bin=$dir/$voxcmd_rel/.local/bin config=$dir/$voxcmd_rel/.config/voxcmd file target link
+  local bin=$dir/$voxcmd_rel/.local/bin config=$dir/$voxcmd_rel/.config/voxcmd file target link main_bin
+  main_bin=$(readlink -m "$repo/$voxcmd_rel/.local/bin")
   [[ -L $voxcmd_config_link ]] || die "$voxcmd_config_link is not a symlink (stow unfolded it?); refusing the voxcmd swap"
   for file in "$bin"/*; do
     target=$voxcmd_bin_dir/${file##*/}
@@ -199,6 +200,12 @@ voxcmd_swap() {
   # Links left by a previous test build that this one does not have, such as a script only it added.
   voxcmd_test_links | while read -r link; do
     [[ $(readlink -m "$link") == "$dir"/* ]] || rm -f "$link"
+  done
+  # Main's links for scripts this build deleted or renamed, which would otherwise keep running main's copy. Restore
+  # restows them.
+  for link in "$voxcmd_bin_dir"/*; do
+    [[ -L $link && $(readlink -m "$link") == "$main_bin"/* && ! -e $bin/${link##*/} ]] || continue
+    rm -f "$link"
   done
   mkdir -p "$voxcmd_bin_dir"
   for file in "$bin"/*; do
