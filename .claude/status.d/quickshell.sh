@@ -7,12 +7,30 @@ bars_dir="$HOME/.cache/dotfiles/test-bars"
 
 running=$(pgrep -af '^qs -n' | sed -n 's/.* -p \([^ ]*\).*/\1/p' | head -1)
 echo "qs: ${running:-stowed bar}"
+# "branch STATE #n" per PR, newest first, so a branch reused for a later PR reads as its latest one.
+pr_states=$(gh pr list --state all --limit 300 --json number,state,headRefName \
+  --jq '.[] | "\(.headRefName) \(.state) #\(.number)"' 2>/dev/null) || pr_states=""
 for bar in "$bars_dir"/*/; do
   [[ -d $bar ]] || continue
   name=$(basename "$bar")
   mark=""
   [[ -n $running && $running == "${bar%/}"* ]] && mark=" (running)"
-  echo "test bar: $name$mark"
+  notes=()
+  open=0
+  while IFS= read -r branch; do
+    [[ -n $branch ]] || continue
+    pr=$(awk -v b="$branch" '$1 == b { print $3 " " $2; exit }' <<<"$pr_states")
+    [[ $pr == *OPEN || -z $pr ]] && open=1
+    notes+=("$branch: ${pr:-no PR}")
+  done <"${bar%/}.branches" 2>/dev/null
+  line="test bar: $name$mark"
+  if ((${#notes[@]})); then
+    joined=$(printf ', %s' "${notes[@]}")
+    line+=" [${joined:2}]"
+  fi
+  # Every branch merged or closed: nothing left to test on it.
+  ((${#notes[@]} && !open)) && [[ -n $pr_states ]] && line+=" -> stale; run: .claude/skills/test-bar/test-bar.sh remove $name"
+  echo "$line"
 done
 
 dest=/etc/greetd/quickshell
