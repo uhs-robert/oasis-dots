@@ -85,7 +85,7 @@ Item {
                             text: "MEMORY CARD " + (slot.index + 1)
                             color: Theme.theme_primary_light
                             font.family: root.st.font_family
-                            font.pixelSize: Style.fs(-5)
+                            font.pixelSize: root.st.fs(-5)
                         }
 
                         Text {
@@ -95,7 +95,7 @@ Item {
                             text: slot.modelData.label
                             color: Style.text_strong
                             font.family: root.st.font_family
-                            font.pixelSize: Style.fs(-3)
+                            font.pixelSize: root.st.fs(-3)
                             style: Text.Raised
                             styleColor: Style.text_shadow
                         }
@@ -104,7 +104,7 @@ Item {
                             text: slot.modelData.percent + "%"
                             color: slot.fill
                             font.family: root.st.font_family
-                            font.pixelSize: Style.fs(-3)
+                            font.pixelSize: root.st.fs(-3)
                             font.bold: true
                         }
                     }
@@ -138,10 +138,12 @@ Item {
                         spacing: 8
 
                         Text {
+                            id: free_text
+                            Layout.minimumWidth: implicitWidth
                             text: "FREE " + (root.card_blocks - slot.used_blocks) + " BLOCKS"
                             color: root.st.text_muted
                             font.family: root.st.font_family
-                            font.pixelSize: Style.fs(-5)
+                            font.pixelSize: root.st.fs(-5)
                         }
 
                         Item {
@@ -151,7 +153,7 @@ Item {
                         // The reset time as a small date panel.
                         Ps1.BiosPanel {
                             visible: slot.modelData.resets !== ""
-                            Layout.maximumWidth: parent.width * 0.7
+                            Layout.maximumWidth: parent.width - free_text.implicitWidth - 16
                             Layout.preferredWidth: reset_text.implicitWidth + 12
                             Layout.preferredHeight: reset_text.implicitHeight + 6
 
@@ -166,7 +168,7 @@ Item {
                                 text: "RESETS " + slot.modelData.resets
                                 color: Style.text_fg
                                 font.family: root.st.font_family
-                                font.pixelSize: Style.fs(-5)
+                                font.pixelSize: root.st.fs(-5)
                             }
                         }
                     }
