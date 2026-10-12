@@ -37,7 +37,7 @@ Options:
   --no-aur             Skip AUR packages
   --no-cargo           Skip Rust/rustup install
   --no-system-files    Skip system files (/etc, /usr/local) and root links
-  --no-services        Skip service setup (shell, keyd, Steam, Nvidia, voxtype, SSH server)
+  --no-services        Skip service setup (shell, keyd, Steam, Nvidia, voxtype, calendar timer, SSH server)
   --dev                Clone repos into $GITHUB_DIR (default ~/Development) for editing and link them
   --server             Headless install: shell/CLI/dev packages and configs only
   -y, --yes            Auto-confirm all prompts
@@ -134,6 +134,7 @@ main() {
     install_steam
     install_nvidia
     setup_voxtype
+    setup_calendar_timer
     setup_tailnet_ssh
   fi
 

@@ -1,0 +1,306 @@
+#!/usr/bin/env python3
+"""Fetch a private iCal feed and write normalized events to the calendar cache.
+
+Usage: calendar-sync [--now] [--ics FILE] [--at ISO8601]
+
+The feed address is a credential, so it is read from rbw into memory and never
+reaches argv, output, the cache or an error message.
+"""
+
+import argparse
+import base64
+import datetime as dt
+import json
+import os
+import re
+import subprocess
+import sys
+import tempfile
+import urllib.error
+import urllib.parse
+import urllib.request
+from pathlib import Path
+
+DEFAULT_RBW_ENTRY = "google-calendar-ical"
+DAYS_BEHIND = 7
+DAYS_AHEAD = 60
+MAX_FEED_BYTES = 32 * 1024 * 1024
+FETCH_TIMEOUT_SECONDS = 30
+
+MEET_URL_PATTERN = re.compile(r"https://meet\.google\.com/[\w/-]+(?:\?[\w=&%.-]+)?")
+GOOGLE_EVENT_ID_PATTERN = re.compile(r"^[a-z0-9_]+$")
+EMAIL_PATTERN = re.compile(r"^[^@/\s]+@[^@/\s]+$")
+
+
+class SyncError(Exception):
+    """A failure whose message is safe to write to disk."""
+
+
+def cache_dir():
+    base = os.environ.get("XDG_CACHE_HOME") or os.path.expanduser("~/.cache")
+    return Path(base) / "calendar"
+
+
+def inside_git_work_tree(path):
+    path = path.resolve()
+    return any((candidate / ".git").exists() for candidate in [path, *path.parents])
+
+
+def write_json_atomically(path, payload):
+    fd, tmp_name = tempfile.mkstemp(dir=path.parent, prefix=path.name + ".")
+    try:
+        with os.fdopen(fd, "w") as handle:
+            json.dump(payload, handle, indent=2, ensure_ascii=False)
+            handle.write("\n")
+        os.replace(tmp_name, path)
+    except BaseException:
+        Path(tmp_name).unlink(missing_ok=True)
+        raise
+
+
+def rbw_is_unlocked():
+    try:
+        result = subprocess.run(
+            ["rbw", "unlocked"],
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            timeout=10,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return False
+    return result.returncode == 0
+
+
+def read_feed_url():
+    entry = os.environ.get("CALENDAR_SYNC_RBW_ENTRY") or DEFAULT_RBW_ENTRY
+    try:
+        result = subprocess.run(
+            ["rbw", "get", entry],
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+            text=True,
+            timeout=15,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        raise SyncError("rbw entry could not be read")
+    url = result.stdout.strip()
+    if result.returncode != 0 or not url:
+        raise SyncError("rbw entry could not be read")
+    if url.startswith("webcal://"):
+        url = "https://" + url[len("webcal://") :]
+    if urllib.parse.urlsplit(url).scheme not in ("https", "file"):
+        raise SyncError("rbw entry is not an https address")
+    return url
+
+
+def fetch_feed(url):
+    try:
+        with urllib.request.urlopen(url, timeout=FETCH_TIMEOUT_SECONDS) as response:
+            body = response.read(MAX_FEED_BYTES + 1)
+    except urllib.error.HTTPError as err:
+        raise SyncError(f"fetch failed with HTTP {err.code}") from None
+    except Exception:
+        raise SyncError("fetch failed") from None
+    if len(body) > MAX_FEED_BYTES:
+        raise SyncError("feed is too large")
+    return body
+
+
+def google_calendar_id(feed_url, calendar):
+    """The id Google puts in an event page link, taken from the feed address
+    (.../calendar/ical/<id>/private-<token>/basic.ics) or else the calendar name."""
+    if feed_url:
+        parts = urllib.parse.urlsplit(feed_url)
+        segments = parts.path.split("/")
+        if parts.hostname == "calendar.google.com" and segments[1:3] == ["calendar", "ical"]:
+            candidate = urllib.parse.unquote(segments[3]) if len(segments) > 3 else ""
+            if EMAIL_PATTERN.match(candidate):
+                return candidate
+    name = str(calendar.get("X-WR-CALNAME", ""))
+    return name if EMAIL_PATTERN.match(name) else None
+
+
+def to_local_datetime(value):
+    """Dates become local midnight and floating times are taken as local."""
+    if isinstance(value, dt.datetime):
+        return value.astimezone()
+    return dt.datetime.combine(value, dt.time()).astimezone()
+
+
+def instance_suffix(value):
+    if isinstance(value, dt.datetime):
+        return to_local_datetime(value).astimezone(dt.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    return value.strftime("%Y%m%d")
+
+
+def day_view_url(start):
+    return f"https://calendar.google.com/calendar/r/day/{start.year}/{start.month}/{start.day}"
+
+
+def google_event_url(uid, suffix, calendar_id):
+    if not calendar_id or not uid.endswith("@google.com"):
+        return None
+    event_id = uid[: -len("@google.com")]
+    if not GOOGLE_EVENT_ID_PATTERN.match(event_id):
+        return None
+    if suffix:
+        event_id += "_" + suffix
+    raw = f"{event_id} {calendar_id}".encode()
+    eid = base64.urlsafe_b64encode(raw).decode().rstrip("=")
+    return "https://calendar.google.com/calendar/event?eid=" + eid
+
+
+def find_meet_url(component):
+    conference = component.get("X-GOOGLE-CONFERENCE")
+    if conference:
+        return str(conference)
+    for field in ("LOCATION", "DESCRIPTION", "URL"):
+        match = MEET_URL_PATTERN.search(str(component.get(field, "")))
+        if match:
+            return match.group(0)
+    return None
+
+
+def mailto_address(value):
+    return re.sub(r"^mailto:", "", str(value), flags=re.IGNORECASE)
+
+
+def attendee_addresses(component):
+    raw = component.get("ATTENDEE", [])
+    if not isinstance(raw, list):
+        raw = [raw]
+    return [mailto_address(item) for item in raw]
+
+
+def normalize_event(component, recurring_uids, calendar_id):
+    uid = str(component.get("UID", ""))
+    start_value = component.decoded("DTSTART")
+    end_value = component.get("DTEND") and component.decoded("DTEND")
+    all_day = not isinstance(start_value, dt.datetime)
+    if end_value is None:
+        end_value = start_value + (dt.timedelta(days=1) if all_day else dt.timedelta())
+    start = to_local_datetime(start_value)
+    end = to_local_datetime(end_value)
+
+    recurrence_id = component.get("RECURRENCE-ID")
+    # The library stamps RECURRENCE-ID on every occurrence it returns, so only
+    # the source feed says whether this event belongs to a series.
+    suffix = None
+    if uid in recurring_uids:
+        suffix = instance_suffix(recurrence_id.dt if recurrence_id is not None else start_value)
+
+    status = str(component.get("STATUS", "confirmed")).lower()
+    if status not in ("confirmed", "tentative", "cancelled"):
+        status = "confirmed"
+
+    organizer = component.get("ORGANIZER")
+    return {
+        "uid": f"{uid}#{suffix}" if suffix else uid,
+        "title": str(component.get("SUMMARY", "")),
+        "start": start.isoformat(),
+        "end": end.isoformat(),
+        "all_day": all_day,
+        "location": str(component.get("LOCATION", "")),
+        "meet_url": find_meet_url(component),
+        "event_url": google_event_url(uid, suffix, calendar_id) or day_view_url(start),
+        "status": status,
+        "organizer": mailto_address(organizer) if organizer else "",
+        "attendees": attendee_addresses(component),
+    }
+
+
+def expand_events(feed, window_start, window_end, feed_url):
+    # Imported here so --help and the lock check work without the libraries.
+    import icalendar
+    import recurring_ical_events
+
+    try:
+        calendar = icalendar.Calendar.from_ical(feed)
+        recurring_uids = {
+            str(item.get("UID", ""))
+            for item in calendar.walk("VEVENT")
+            if item.get("RRULE") is not None or item.get("RECURRENCE-ID") is not None
+        }
+        components = recurring_ical_events.of(calendar).between(window_start, window_end)
+        calendar_id = google_calendar_id(feed_url, calendar)
+        events = [normalize_event(item, recurring_uids, calendar_id) for item in components]
+    except Exception:
+        raise SyncError("feed could not be parsed") from None
+    events.sort(key=lambda event: (event["start"], event["title"]))
+    return events
+
+
+def poke_bar():
+    try:
+        subprocess.run(
+            ["qs-ipc", "call", "calendar", "refresh"],
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            timeout=5,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        pass
+
+
+def parse_args(argv):
+    parser = argparse.ArgumentParser(description="Sync the iCal feed into the calendar cache.")
+    parser.add_argument("--now", action="store_true", help="manual run: report the outcome instead of staying silent")
+    parser.add_argument("--ics", metavar="FILE", help="read this iCal file instead of fetching the feed")
+    parser.add_argument("--at", metavar="ISO8601", help="treat this as the current time (tests)")
+    return parser.parse_args(argv)
+
+
+def sync(args, directory):
+    feed_url = None
+    if args.ics:
+        feed = Path(args.ics).read_bytes()
+    else:
+        if not rbw_is_unlocked():
+            if args.now:
+                print("rbw is locked; unlock it and run again", file=sys.stderr)
+            return 0
+        feed_url = read_feed_url()
+        feed = fetch_feed(feed_url)
+
+    now = dt.datetime.fromisoformat(args.at) if args.at else dt.datetime.now()
+    now = now.astimezone()
+    events = expand_events(
+        feed, now - dt.timedelta(days=DAYS_BEHIND), now + dt.timedelta(days=DAYS_AHEAD), feed_url
+    )
+    write_json_atomically(
+        directory / "events.json",
+        {"updated": now.isoformat(timespec="seconds"), "source": "ical", "events": events},
+    )
+    (directory / "error.json").unlink(missing_ok=True)
+    poke_bar()
+    if args.now:
+        print(f"synced {len(events)} events")
+    return 0
+
+
+def main(argv):
+    args = parse_args(argv)
+    directory = cache_dir()
+    if inside_git_work_tree(directory):
+        print("calendar-sync: cache directory is inside a git work tree, refusing to run", file=sys.stderr)
+        return 2
+    directory.mkdir(mode=0o700, parents=True, exist_ok=True)
+    try:
+        return sync(args, directory)
+    except SyncError as err:
+        message = str(err)
+    except Exception as err:
+        message = f"unexpected {type(err).__name__}"
+    write_json_atomically(
+        directory / "error.json",
+        {"error": message, "at": dt.datetime.now().astimezone().isoformat(timespec="seconds")},
+    )
+    print(f"calendar-sync: {message}", file=sys.stderr)
+    return 1
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))

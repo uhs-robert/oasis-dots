@@ -328,6 +328,10 @@ Plugin management with `ya pkg` and a root Yazi that stays in sync with your key
 
 `voxcmd` turns a voxtype recording into a command: `SUPER + COMMA` starts listening and runs what you said, like "next track" or "volume to 40", once you pause. `SUPER + PERIOD` is plain Speech to Text, and either key stops whichever recording is running. Commands come from drop-in shell integrations, with media and volume shipped as the example. See [home/voxcmd/.config/voxcmd/README.md](home/voxcmd/.config/voxcmd/README.md).
 
+## 📅 Calendar
+
+`calendar-sync` copies your Google Calendar into a local cache every 5 minutes, from the calendar's private iCal address kept in rbw, for the bar and voice commands to read. See [home/calendar/README.md](home/calendar/README.md).
+
 ## 🛠️ Justfile
 
 Common tasks are wrapped in a `justfile` (run with [`just`](https://github.com/casey/just)). With `just`, you can just run:

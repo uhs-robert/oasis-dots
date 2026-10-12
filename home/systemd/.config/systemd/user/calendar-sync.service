@@ -1,0 +1,7 @@
+[Unit]
+Description=Sync the calendar feed into the local cache
+Documentation=https://github.com/uhs-robert/oasis-dots/issues/780
+
+[Service]
+Type=oneshot
+ExecStart=%h/.local/bin/calendar-sync
