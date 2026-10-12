@@ -107,9 +107,9 @@ click it	picker	filler and side words are no target: the Cursor binds keep it
 click here	none	not a click target; same as without the Click integration
 click and drag	none	not a click target; same as without the Click integration
 left click and hold	none	not a click target; same as without the Click integration
-click mode	Click/no_text	no text "mode" on the fixture screen; nothing else handles it yet
+click mode	Click/click_mode	Click's own verb, ahead of clicking on the text "mode"
 show hints	Click/show_hints
-start clicking	none	nothing handles it yet
+start clicking	Click/click_mode	Click's own verb
 click clear	Click/no_text	Clean is one edit away and must not be clicked for clear
 click enable	Click/no_text	Unable is one edit away and must not be clicked for enable
 click export	Click/no_text	Expert is one edit away and must not be clicked for export

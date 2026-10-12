@@ -1,16 +1,23 @@
 # shellcheck shell=bash disable=SC2034,SC2016,SC2154
 # Clicks visible text in the focused window by OCR: "click sign in", "right click settings", "double click readme", "triple click paragraph".
+# "click mode" opens a voice session where each spoken target is clicked without repeating "click".
 # Format: ~/.config/voxcmd/README.md
 
 name="Click"
 confirm=0
 target_match=words
 # The click itself is the feedback; only an error or a missing target shows a toast.
-silent_actions=(click right_click double_click triple_click show_hints no_text)
+silent_actions=(click right_click double_click triple_click show_hints no_text click_mode stop_clicking)
+# A target found nowhere is a turn that did nothing, which counts toward ending click mode.
+session_miss_actions=(no_text)
 
 # Every click verb needs a target, so a bare "click" or "right click" still reaches the Cursor submap's binds in
 # Keybinds. The optional "on" is a filler word, so "click on settings" and "click settings" mean the same.
+# The mode verbs come first, or "click mode" would be a click on the text "mode". "stop clicking" is here too because
+# Media's "stop {target}" would otherwise be the only place that hears it.
 verbs=(
+  "click_mode    ((start|enter|begin) )?(click|clicking) mode|start clicking"
+  "stop_clicking (stop|exit|end|leave) (clicking|click mode)"
   "right_click   right ?click( on)? {target}"
   "double_click  double ?click( on)? {target}"
   "triple_click  triple ?click( on)? {target}"
@@ -19,11 +26,13 @@ verbs=(
 )
 
 examples=(
+  "click mode"
   "click <text on screen>"
   "right click <text on screen>"
   "double click <text on screen>"
   "triple click <text on screen>"
   "show hints"
+  "stop clicking"
 )
 
 # Words that are not a target even beside a click verb: "click left", "click it", "click here", "click and drag" and
@@ -49,6 +58,8 @@ declare -A actions=(
   [double_click]='click_at "$id"'
   [triple_click]='click_at "$id"'
   [show_hints]='show_hints'
+  [click_mode]='session_begin click "$file" "Click mode"'
+  [stop_clicking]='session_end "done"'
   [no_text]='no_text'
 )
 
@@ -62,6 +73,19 @@ pick_box() {
   IFS=, read -r x y button left top width height <<<"$1"
   [ -n "${height:-}" ] || return 1
   echo "$left $top $width $height"
+}
+
+# A turn in click mode is a target ("sign in") or a click phrase ("right click settings"). Prints the phrase to route,
+# nothing when the turn names no target.
+session_rewrite() {
+  local text="$1"
+  if [[ "$text" =~ ^((left|right|double) )?click$ ]]; then
+    return
+  elif [[ "$text" =~ ^((left|right|double) )?click\  || "$text" == "clicking mode" || "$text" == "start clicking" ]]; then
+    printf '%s' "$text"
+  else
+    printf 'click %s' "$text"
+  fi
 }
 
 click_ocr="$voxcmd_share_dir/click-ocr"

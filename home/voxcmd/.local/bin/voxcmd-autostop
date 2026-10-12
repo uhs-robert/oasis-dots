@@ -9,6 +9,7 @@ Listens to the default source through pw-record (16 kHz mono s16) and exits with
 
 Settings: ~/.config/voxcmd/autostop.conf, overridden by VOXCMD_AUTOSTOP_* environment variables (voxcmd README).
 --pcm FILE (or -) reads raw PCM instead of the microphone, and --verbose logs the levels, for tuning and tests.
+--check exits 0 when a recording would be listened to, else 1 and prints why (voxcmd's sessions need auto-stop).
 """
 
 import argparse
@@ -18,6 +19,7 @@ import ctypes
 import math
 import os
 import select
+import shutil
 import signal
 import subprocess
 import sys
@@ -247,6 +249,7 @@ def main():
     parser.add_argument("--pcm", help="raw 16 kHz mono s16le PCM file, or - for stdin, instead of the microphone")
     parser.add_argument("--state-file", help="voxtype's state file; watched by default unless --pcm is given")
     parser.add_argument("--verbose", action="store_true", help="log the threshold and every frame's level to stderr")
+    parser.add_argument("--check", action="store_true", help="exit 0 if auto-stop is on and can listen, else 1 saying why")
     args = parser.parse_args()
 
     def log(message):
@@ -256,11 +259,19 @@ def main():
     try:
         settings = load_settings()
         if not is_true(settings["enabled"]):
+            if args.check:
+                print("auto-stop is turned off (enabled = false)")
+                return VERDICT_ERROR
             return VERDICT_NOTHING_TO_DO
         detector = SpeechThenSilence(settings, log)
     except ValueError as error:
-        print(f"voxcmd-autostop: {error}", file=sys.stderr)
+        print(f"voxcmd-autostop: {error}", file=sys.stdout if args.check else sys.stderr)
         return VERDICT_ERROR
+    if args.check:
+        if shutil.which("pw-record") is None:
+            print("pw-record is not installed")
+            return VERDICT_ERROR
+        return 0
 
     state_file = args.state_file
     if state_file is None and args.pcm is None:

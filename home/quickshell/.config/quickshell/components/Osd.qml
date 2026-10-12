@@ -73,7 +73,7 @@ PanelWindow {
         return !!root.console_osd && root.console_osd.hides.indexOf(part) >= 0;
     }
 
-    readonly property string title: root.showing_vox ? root.vox_phase.toUpperCase() : root.kind.toUpperCase()
+    readonly property string title: root.showing_vox ? root.vox_phase.toUpperCase() + (VoxSession.active ? " - " + VoxSession.label.toUpperCase() : "") : root.kind.toUpperCase()
 
     readonly property string elapsed: {
         const secs = Math.max(0, Math.floor((root.now_ms - root.vox_started_ms) / 1000));

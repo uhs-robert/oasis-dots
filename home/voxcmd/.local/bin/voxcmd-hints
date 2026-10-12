@@ -78,7 +78,7 @@ jq -n --arg label "$label" --arg result_path "$result_fifo" --argjson choices "$
 mkdir -p "$runtime_dir"
 jq -n --argjson pid $$ --arg fifo "$result_fifo" --arg label "$label" --argjson choices "$choices" \
   --arg listen_again "$([ "$listen" = 0 ] || echo "$listen_again_file")" \
-  '{pid: $pid, fifo: $fifo, label: $label, kind: "hints", choices: $choices | map({id, label}), expansions: {}, listen_again: $listen_again}' \
+  '{pid: $pid, fifo: $fifo, label: $label, kind: "hints", choices: $choices | map({id, label, box}), expansions: {}, listen_again: $listen_again}' \
   >"$work_dir/pending-pick.json"
 mv -f "$work_dir/pending-pick.json" "$pending_pick_file"
 
