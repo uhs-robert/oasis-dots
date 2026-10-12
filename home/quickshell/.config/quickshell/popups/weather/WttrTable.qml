@@ -5,6 +5,7 @@ import "../../services"
 import "WttrArt.js" as WttrArt
 
 // The Daily window as a box-drawn terminal table: one column per day, the selected column inverted.
+// sub 0 draws the temperature range; 1 wind, 2 UV and 3 sunshine draw vertical bars in eighth blocks instead.
 Item {
     id: root
 
@@ -13,6 +14,8 @@ Item {
     property int day_cursor: 0
     property real scale_min: 0
     property real scale_max: 1
+    property int sub: 0
+    property real wind_max: 1
     property var on_select: function (i) {}
 
     readonly property int text_px: Style.fs(-4)
@@ -26,6 +29,8 @@ Item {
     readonly property real cw: Math.max(root.glyph_w, root.width / root.line_chars)
     readonly property int bar_rows: Math.max(4, Math.floor(root.height / root.lh) - 10)
     readonly property var arrows: ["↓", "↙", "←", "↖", "↑", "↗", "→", "↘"]
+    readonly property var eighths: ["▁", "▂", "▃", "▄", "▅", "▆", "▇", "█"]
+    readonly property var uv_short: ["Low", "Mod", "High", "V.Hi", "Extr"]
     readonly property int bar_w: root.k >= 7 ? 3 : 1
     readonly property int sel: root.day_cursor - root.first_day
     readonly property color rule: Style.text_muted
@@ -84,6 +89,48 @@ Item {
         return [[ch.repeat(root.bar_w), String(WeatherState.temp_color(top - step / 2))]];
     }
 
+    // Bar row r of a meter filled to frac, with an optional lighter reach (wind gusts) above it and the label just over the top.
+    function meter(r, frac, reach, color, reach_color, label) {
+        const rows = root.bar_rows - 1;
+        const eighths_of = f => Math.round(Math.max(0, Math.min(1, f)) * rows * 8);
+        const fill = eighths_of(frac);
+        const top = Math.max(fill, eighths_of(reach));
+        const label_row = rows - Math.ceil(top / 8);
+        if (r === label_row) return [[label, String(color)]];
+        if (r < 1) return [["", ""]];
+        const level = Math.max(0, Math.min(8, fill - (rows - r) * 8));
+        if (level > 0) return [[root.eighths[level - 1].repeat(root.bar_w), String(color)]];
+        return (rows - r) * 8 < top ? [["░".repeat(root.bar_w), String(reach_color)]] : [["", ""]];
+    }
+
+    function daylight_share(day) {
+        const hm = t => { const p = (t || "").split(":"); return p.length === 2 ? parseInt(p[0], 10) * 60 + parseInt(p[1], 10) : null; };
+        const span = hm(day.sunset) - hm(day.sunrise);
+        return span > 0 ? Math.min(100, Math.round(day.sunshine_hours * 6000 / span)) : 0;
+    }
+
+    function arrow_of(day) {
+        return root.arrows[Math.round(((day.wind_dir % 360) + 360) % 360 / 45) % 8] + " ";
+    }
+
+    function bar_cell(day, r) {
+        switch (root.sub) {
+        case 1: return root.meter(r, day.wind_speed_max / root.wind_max, day.wind_gusts_max / root.wind_max, Style.pal.cyan, Style.text_muted, String(Math.round(day.wind_gusts_max)));
+        case 2: return root.meter(r, day.uv_max / 12, 0, WeatherState.uv_color(day.uv_max), Style.text_muted, day.uv_max.toFixed(1));
+        case 3: return root.meter(r, day.sunshine_hours / 14, 0, Theme.yellow, Style.text_muted, day.sunshine_hours.toFixed(1) + "h");
+        default: return root.bar(day, r);
+        }
+    }
+
+    function summary_cell(day) {
+        switch (root.sub) {
+        case 2: return [[root.uv_short[WeatherState.uv_bands.indexOf(WeatherState.uv_band(day.uv_max))], String(WeatherState.uv_color(day.uv_max))]];
+        case 3: return [[root.daylight_share(day) + "%", String(Theme.yellow)]];
+        case 1: return [[root.arrow_of(day), String(Style.text_strong)], [Math.round(day.wind_speed_max) + "/" + Math.round(day.wind_gusts_max), String(Style.text_fg)]];
+        default: return [[root.arrow_of(day), String(Style.text_strong)], [String(Math.round(day.wind_speed_max)), String(Style.text_fg)]];
+        }
+    }
+
     readonly property var lines: {
         if (root.days.length === 0) return [];
         const out = [
@@ -93,10 +140,10 @@ Item {
             root.row(d => root.mini(d, 0)),
             root.row(d => root.mini(d, 1))
         ];
-        for (let r = 0; r < root.bar_rows; r++) out.push(root.row(d => root.bar(d, r)));
+        for (let r = 0; r < root.bar_rows; r++) out.push(root.row(d => root.bar_cell(d, r)));
         out.push(root.border("├", "┼", "┤"));
         out.push(root.row(d => [[d.pop + "%", String(d.pop > 0 ? Theme.blue : Style.text_muted)]]));
-        out.push(root.row(d => [[root.arrows[Math.round(((d.wind_dir % 360) + 360) % 360 / 45) % 8] + " ", String(Style.text_strong)], [String(Math.round(d.wind_speed_max)), String(Style.text_fg)]]));
+        out.push(root.row(d => root.summary_cell(d)));
         out.push(root.border("└", "┴", "┘"));
         return out;
     }
