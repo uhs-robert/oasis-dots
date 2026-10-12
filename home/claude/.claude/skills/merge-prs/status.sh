@@ -69,14 +69,18 @@ while IFS= read -r b; do
 done < <(git for-each-ref --format='%(refname:short)' refs/heads)
 [[ -z $lines ]] || section "Unmerged branches" <<<"${lines%$'\n'}"
 
-# Remote branches whose PR closed without merging; merge-prs deletes merged ones, so these are what gets left behind.
+# Remote branches whose latest PR closed without merging; merge-prs deletes merged ones, so these are what gets left behind.
+# All states, newest first: a head reused by a newer open PR must not come up for deletion.
 lines=""
-while IFS=' ' read -r b n; do
-  [[ -n $b ]] || continue
+seen=" "
+while IFS=' ' read -r b n state; do
+  [[ -n $b && $seen != *" $b "* ]] || continue
+  seen+="$b "
+  [[ $state == CLOSED ]] || continue
   git show-ref --verify -q "refs/remotes/origin/$b" || continue
   lines+="$b (#$n closed): git push origin --delete $b"$'\n'
-done < <(gh pr list --author @me --state closed --limit 100 --json number,headRefName,mergedAt \
-  --jq '.[] | select(.mergedAt == null) | "\(.headRefName) \(.number)"' 2>/dev/null)
+done < <(gh pr list --author @me --state all --limit 200 --json number,headRefName,state \
+  --jq '.[] | "\(.headRefName) \(.number) \(.state)"' 2>/dev/null)
 [[ -z $lines ]] || section "Branches of closed PRs" <<<"${lines%$'\n'}"
 
 untracked=$(git status --porcelain --untracked-files=normal | sed -n 's/^?? \([^/]*\/\{0,1\}\).*/\1/p' | sort -u)
