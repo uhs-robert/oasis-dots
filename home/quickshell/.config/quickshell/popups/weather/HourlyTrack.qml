@@ -94,6 +94,8 @@ Item {
     }
 
     onSubChanged: root.request_paint()
+    // Painters mark or skip the cursor hour, so a cursor move repaints like a sub change.
+    onHour_cursorChanged: root.request_paint()
 
     Flickable {
         id: flick
