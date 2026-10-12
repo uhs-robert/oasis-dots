@@ -19,6 +19,9 @@ Item {
     // The week's coldest low and warmest high, shared by every column so ranges compare across days.
     property real scale_min: 0
     property real scale_max: 1
+    // 0 temp and rain; 1 wind, 2 UV, 3 sunshine show one stat as a vertical gauge. wind_max is the week's strongest gust.
+    property int sub: 0
+    property real wind_max: 1
 
     // Clears the DqWindow frame DailyView draws behind the column (2px border, 3px gap, 1px inner line).
     readonly property int frame_pad: 8
@@ -26,7 +29,11 @@ Item {
     readonly property int sprite_pixel: Math.max(1, Math.min(3, Math.floor(root.inner_w / 16)))
     readonly property real pop: root.day ? Math.max(0, Math.min(100, root.day.pop)) : 0
 
-    readonly property var nes_colors: [Style.pal.bg_crust, Style.pal.fg_strong, Style.pal.yellow, Style.pal.bright_yellow, Style.pal.blue, Style.pal.bright_blue, Style.pal.fg_dim, Style.pal.red, Style.pal.fg_muted]
+    readonly property var nes_colors: palette.colors
+
+    BattlePalette {
+        id: palette
+    }
 
     // Slimes warm from blue through she-slime orange to red as their slot climbs the week's scale.
     readonly property var slime_tiers: [root.recolor_slime(Style.pal.blue, Style.pal.bright_blue), root.recolor_slime(Style.pal.bright_yellow, Style.pal.yellow), root.recolor_slime(Style.pal.red, Style.pal.bright_yellow)]
@@ -40,6 +47,20 @@ Item {
 
     function slime_colors(frac: real): var {
         return root.slime_tiers[frac < 0.5 ? 0 : frac < 0.8 ? 1 : 2];
+    }
+
+    readonly property var uv_short: ({ "Moderate": "MOD", "Very High": "V.HIGH", "Extreme": "EXT" })
+
+    // The gauge's stat: how full it is, the tick standing out of it (-1 for none), its colour and the figure above it.
+    readonly property var stat: {
+        const d = root.day;
+        if (!d) return { fill: 0, tick: -1, color: Style.pal.fg_strong, value: "", foot: "" };
+        if (root.sub === 1) return { fill: d.wind_speed_max / root.wind_max, tick: d.wind_gusts_max / root.wind_max, color: Style.pal.cyan, value: String(Math.round(d.wind_speed_max)), foot: "G" + Math.round(d.wind_gusts_max) };
+        if (root.sub === 2) {
+            const band = WeatherState.uv_band(d.uv_max).label;
+            return { fill: d.uv_max / 12, tick: -1, color: WeatherState.uv_color(d.uv_max), value: d.uv_max.toFixed(1), foot: (root.uv_short[band] || band).toUpperCase() };
+        }
+        return { fill: d.sunshine_hours / 14, tick: -1, color: Style.pal.yellow, value: d.sunshine_hours.toFixed(1), foot: "HRS" };
     }
 
     function scale_frac(v) {
@@ -95,6 +116,7 @@ Item {
         // Whole slime slots on the shared scale, so towers in neighbouring columns line up slime for slime.
         Item {
             id: range_area
+            visible: root.sub === 0
             Layout.fillWidth: true
             Layout.fillHeight: true
 
@@ -155,6 +177,82 @@ Item {
                 value: root.day ? root.day.min : 0
                 color: root.selected ? Style.pal.fg_strong : Style.text_dim
                 font_size: Style.fs(-4)
+            }
+        }
+
+        // Wind, UV or sunshine as the enemy's HP: the figure over a vertical gauge, with a footnote line.
+        Item {
+            id: stat_area
+            visible: root.sub > 0
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+
+            readonly property real fill: Math.max(0, Math.min(1, root.stat.fill))
+            readonly property real gauge_h: stat_text.height > 0 ? height - stat_text.height - foot_text.height - 12 : 0
+            readonly property int bar_w: 14
+
+            Row {
+                id: stat_text
+                anchors.horizontalCenter: parent.horizontalCenter
+                spacing: 4
+
+                Text {
+                    visible: root.sub === 1 && !!root.day
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: "▲"
+                    rotation: root.day ? root.day.wind_dir : 0
+                    color: Style.pal.cyan
+                    font.pixelSize: Style.fs(-4)
+                }
+
+                Text {
+                    text: root.stat.value
+                    color: root.selected ? root.stat.color : Qt.alpha(root.stat.color, 0.6)
+                    font.family: Style.font_family
+                    font.pixelSize: Style.fs(-3)
+                }
+            }
+
+            Rectangle {
+                id: stat_gauge
+                anchors.horizontalCenter: parent.horizontalCenter
+                y: stat_text.height + 4
+                width: stat_area.bar_w
+                height: Math.max(8, stat_area.gauge_h)
+                color: Style.pal.bg_crust
+                border.width: 1
+                border.color: root.selected ? Style.pal.fg_strong : Style.text_muted
+
+                Rectangle {
+                    x: 2
+                    width: parent.width - 4
+                    height: Math.round((parent.height - 4) * stat_area.fill)
+                    y: parent.height - 2 - height
+                    color: root.stat.color
+                    opacity: root.selected ? 1 : 0.55
+                }
+
+                Rectangle {
+                    visible: root.stat.tick >= 0
+                    x: -2
+                    width: parent.width + 4
+                    height: 2
+                    y: parent.height - 2 - Math.round((parent.height - 4) * Math.min(1, root.stat.tick)) - 1
+                    color: Style.pal.fg_strong
+                }
+            }
+
+            Text {
+                id: foot_text
+                anchors.horizontalCenter: parent.horizontalCenter
+                anchors.bottom: parent.bottom
+                width: Math.min(implicitWidth, parent.width)
+                horizontalAlignment: Text.AlignHCenter
+                elide: Text.ElideRight
+                text: root.stat.foot
+                color: Style.text_muted
+                font.family: Style.font_family
+                font.pixelSize: Style.fs(-6)
             }
         }
 

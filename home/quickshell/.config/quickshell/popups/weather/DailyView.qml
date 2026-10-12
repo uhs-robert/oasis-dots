@@ -47,7 +47,7 @@ Item {
 
     readonly property bool scan_columns: Style.weather_header === "scan" && root.sub === 0
 
-    readonly property bool battle_columns: Style.weather_header === "battle" && root.sub === 0
+    readonly property bool battle_columns: Style.weather_header === "battle"
 
     readonly property bool memcard_columns: Style.weather_header === "memcard" && root.sub === 0
 
@@ -422,6 +422,8 @@ Item {
                         active: root.battle_columns
                         anchors.fill: parent
                         sourceComponent: BattleDayColumn {
+                            sub: root.sub
+                            wind_max: root.wind_max
                             day: day_col.modelData
                             day_index: day_col.day_index
                             label: root.day_label(day_col.modelData, day_col.day_index)

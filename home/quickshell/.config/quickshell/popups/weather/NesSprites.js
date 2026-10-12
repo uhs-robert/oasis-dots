@@ -1,6 +1,6 @@
 .pragma library
 
-// Dragon Quest style "weather monsters", 16x16. Rows index into BattleDayColumn's NES palette:
+// Dragon Quest style "weather monsters", 16x16. Rows index into BattlePalette:
 // 0 dark, 1 white, 2 yellow, 3 orange, 4 blue, 5 light blue, 6 grey, 7 red, 8 storm grey; "." is clear.
 
 function kind(code) {
@@ -131,3 +131,39 @@ function monster(code) {
 // The Daily range is a slime tower of Slimes.js sprites: each sits SLIME_STEP rows above the last so its base hides the curl below; their dark outline keeps stacked slimes apart.
 // var, not const: BattleDayColumn reads it, and QML only sees a library's var and function declarations.
 var SLIME_STEP = 9;
+
+// A 9x9 sun for the inn's arc: 2 gold body, 3 bright rays.
+var SUN_PIXEL = [
+    "....3....",
+    ".3.....3.",
+    "...222...",
+    "..22222..",
+    "3.22222.3",
+    "..22222..",
+    "...222...",
+    ".3.....3.",
+    "....3...."
+];
+
+// A 9x9 moon lit by `phase` (0 new, 0.5 full): 1 lit, 8 shadow.
+function moon(phase) {
+    var theta = 2 * Math.PI * phase;
+    var edge = Math.cos(theta);
+    var rows = [];
+    for (var y = 0; y < 9; y++) {
+        var row = "";
+        for (var x = 0; x < 9; x++) {
+            var nx = (x - 4) / 4.4;
+            var ny = (y - 4) / 4.4;
+            if (nx * nx + ny * ny > 1) {
+                row += ".";
+                continue;
+            }
+            var px = nx / Math.sqrt(Math.max(0.0001, 1 - ny * ny));
+            var lit = phase <= 0.5 ? px >= edge : px <= -edge;
+            row += lit ? "1" : "8";
+        }
+        rows.push(row);
+    }
+    return rows;
+}
