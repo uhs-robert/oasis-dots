@@ -112,7 +112,7 @@ ColumnLayout {
         Layout.fillWidth: true
         Layout.fillHeight: true
         Layout.preferredHeight: root.bar_area_h
-        visible: root.sub === 1
+        visible: root.sub === 1 && !root.ladder
 
         Text {
             anchors.horizontalCenter: parent.horizontalCenter
@@ -155,7 +155,7 @@ ColumnLayout {
         Layout.fillWidth: true
         Layout.fillHeight: true
         Layout.preferredHeight: root.bar_area_h
-        visible: root.sub === 2
+        visible: root.sub === 2 && !root.ladder
 
         Rectangle {
             anchors.bottom: parent.bottom
@@ -181,7 +181,7 @@ ColumnLayout {
         Layout.fillWidth: true
         Layout.fillHeight: true
         Layout.preferredHeight: root.bar_area_h
-        visible: root.sub === 3
+        visible: root.sub === 3 && !root.ladder
 
         Rectangle {
             anchors.bottom: parent.bottom
@@ -200,6 +200,52 @@ ColumnLayout {
             color: Style.pal.yellow
             font.family: Style.font_family
             font.pixelSize: Style.fs(-3)
+        }
+    }
+
+    Loader {
+        active: root.ladder && root.sub === 1
+        visible: active
+        Layout.fillWidth: true
+        Layout.fillHeight: true
+        Layout.preferredHeight: root.bar_area_h
+        sourceComponent: ScopeDayGauge {
+            anchors.fill: parent
+            value: root.day.wind_speed_max / root.wind_max
+            mark: root.day.wind_gusts_max / root.wind_max
+            caption: "▲ " + WeatherState.compass_label(root.day.wind_dir)
+            value_text: Math.round(root.day.wind_speed_max)
+            mark_text: Math.round(root.day.wind_gusts_max)
+        }
+    }
+
+    Loader {
+        active: root.ladder && root.sub === 2
+        visible: active
+        Layout.fillWidth: true
+        Layout.fillHeight: true
+        Layout.preferredHeight: root.bar_area_h
+        sourceComponent: ScopeDayGauge {
+            anchors.fill: parent
+            readonly property color band_color: root.day.uv_max >= 8 ? mark_color : Style.text_primary
+            value: root.day.uv_max / 12
+            color: band_color
+            caption: ["LOW", "MOD", "HIGH", "V.HIGH", "EXTR"][WeatherState.uv_bands.indexOf(WeatherState.uv_band(root.day.uv_max))]
+            value_text: root.day.uv_max.toFixed(1)
+        }
+    }
+
+    Loader {
+        active: root.ladder && root.sub === 3
+        visible: active
+        Layout.fillWidth: true
+        Layout.fillHeight: true
+        Layout.preferredHeight: root.bar_area_h
+        sourceComponent: ScopeDayGauge {
+            anchors.fill: parent
+            value: root.day.sunshine_hours / 14
+            caption: "SUN"
+            value_text: root.day.sunshine_hours.toFixed(1) + "h"
         }
     }
 
