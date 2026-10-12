@@ -14,8 +14,15 @@ force_prefixes=(press keybind "key bind")
 # "launch" are here because launcher binds are named for what they open ("Terminal"), so "open terminal" is that bind.
 match_ignore_words=(run press keybind key bind shortcut "do" trigger open launch)
 
+# Candidate labels name what runs ("Close Window", "Submap: Cursor"), so pickers leave the action word out.
+action_labels=0
+
+# Submap phrases before the catch-all, so "cursor mode" enters the Cursor submap rather than matching binds.
 verbs=(
-  "run  {target}"
+  "exit_submap   (exit|leave|reset|quit) (the )?(current )?submap( mode)?"
+  "enter_submap  ((enter|open|switch to) )?(the )?submap {target}"
+  "enter_submap  ((enter|open|switch to) )?(the )?{target} (submap|mode)"
+  "run           {target}"
 )
 
 # A few common binds rather than the whole list, which "<any keybind description>" stands for.
@@ -23,15 +30,20 @@ examples=(
   "toggle fullscreen"
   "close window"
   "go to workspace <number>"
+  "cursor mode"
+  "<submap name> submap"
+  "exit submap"
   "<any keybind description>"
   "press <keybind description>"
 )
 
 declare -A actions=(
   [run]='run_keybind "$id"'
+  [enter_submap]='run_keybind "$id"'
+  [exit_submap]='exit_submap'
 )
 
-# Tab on these examples in Voice Help lists every bind candidates() offers, and picking one runs it.
+# Tab on these examples in Voice Help lists every submap and every bind help_choices() offers, and picking one runs it.
 help_action=run
 
 # Binds whose description contains any of these (case-insensitive) are never offered: the voice keys themselves,
@@ -60,43 +72,107 @@ confirm_labels=(
   '\b(suspend|hibernate|sleep)\b'
   '^lock\b'
   '\block (screen|session)\b'
-  '\bdelete\b'
+  # Not the Delete submaps, whose entry deletes nothing.
+  '^(?!Submap: ).*\bdelete\b'
   '\bclear\b'
 )
 
-# Described binds from every submap, one per description (the global one when there is one), labelled with the
-# submap they live in. Left out besides the exclusions: submap navigation ("+Name" entries, "Back", "Exit <submap>"),
-# one-character descriptions (hyprvim's mark and register letters), and lid and other switch binds.
+# The lists the actions choose from, as {binds, submaps, mode_binds}. binds are the described binds from every submap,
+# one per description (the global one when there is one), labelled with the submap they live in. Left out besides the
+# exclusions: submap navigation ("+Name" entries, "Back", "Exit <submap>"), one-character descriptions (hyprvim's mark
+# and register letters), and lid and other switch binds. submaps are every submap with a bind, entered by name.
+# mode_binds are the binds named "<X> mode" that are not a submap ("Command mode (:)"): enter_submap claims every
+# "X mode" phrase, so it offers these too or "command mode" could never run its bind.
 # An unreachable Hyprland prints [] rather than nothing, which would turn the spoken text itself into the bind id.
-candidates() {
+bind_lists() {
   local binds
   binds=$(hyprctl binds -j) || binds='[]'
   jq -c --args '
     ($ARGS.positional | map(ascii_downcase)) as $excluded
-    | to_entries
-    | map(.value + {order: .key})
-    | map(select(.has_description and .dispatcher == "__lua" and (.mouse | not) and (.key | startswith("switch:") | not)))
-    | map(select(.description as $description | ($description | ascii_downcase) as $lowered
-        | ($description | length) > 1
-        and ($description | startswith("+") | not)
-        and ($lowered != "back" and ($lowered | startswith("back to ") | not))
-        and $lowered != ("exit " + (.submap | ascii_downcase))
-        and (any($excluded[]; . as $word | $lowered | contains($word)) | not)))
-    | group_by(.description | ascii_downcase)
-    | map(min_by([.submap != "", .order]))
-    | sort_by(.order)
-    | map({id: .arg, label: (.description + if .submap != "" then " (\(.submap))" else "" end), match_text: .description})
-  ' "${excluded_descriptions[@]}" <<<"$binds" 2>/dev/null || echo '[]'
+    | ([.[].submap | select(. != "")] | unique) as $submap_names
+    | ($submap_names | map(ascii_downcase)) as $lowered_submap_names
+    | (to_entries
+      | map(.value + {order: .key})
+      | map(select(.has_description and .dispatcher == "__lua" and (.mouse | not) and (.key | startswith("switch:") | not)))
+      | map(select(.description as $description | ($description | ascii_downcase) as $lowered
+          | ($description | length) > 1
+          and ($description | startswith("+") | not)
+          and ($lowered != "back" and ($lowered | startswith("back to ") | not))
+          and $lowered != ("exit " + (.submap | ascii_downcase))
+          and (any($excluded[]; . as $word | $lowered | contains($word)) | not)))
+      | group_by(.description | ascii_downcase)
+      | map(min_by([.submap != "", .order]))
+      | sort_by(.order)
+      | map({id: .arg, label: (.description + if .submap != "" then " (\(.submap))" else "" end), match_text: .description})
+    ) as $binds
+    | {
+        binds: $binds,
+        submaps: ($submap_names | map({id: "submap:\(.)", label: "Submap: \(.)", match_text: .})),
+        mode_binds: ($binds | map((.match_text | sub("\\s*\\([^)]*\\)$"; "")) as $bare
+          | select($bare | test(" mode$"; "i"))
+          | ($bare | sub(" mode$"; ""; "i")) as $mode
+          | select($mode | ascii_downcase | IN($lowered_submap_names[]) | not)
+          | . + {match_text: $mode}))
+      }
+  ' "${excluded_descriptions[@]}" <<<"$binds" 2>/dev/null || echo '{}'
 }
 
-# Dispatched like Keybind Help does: leave any active submap first, then call the bind through the Lua registry.
+candidates() {
+  case "$1" in
+  enter_submap) bind_lists | jq -c '(.submaps // []) + (.mode_binds // [])' ;;
+  *) bind_lists | jq -c '.binds // []' ;;
+  esac
+}
+
+help_choices() {
+  bind_lists | jq -c '(.submaps // []) + [{id: "", label: "Exit submap", action: "exit_submap"}] + (.binds // [])'
+}
+
+# A bind is dispatched like Keybind Help does: leave any active submap first, then call the bind through the Lua
+# registry. A "submap:<name>" id enters that submap the way its "+Name" bind does, through whichever Submap module
+# registered it (the repo's or hyprvim's), so its enter hooks and which-key run; hyprvim's own activation bind clears
+# the pending count first, so this does too.
 run_keybind() {
+  if [[ "$1" == submap:* ]]; then
+    local submap_name="${1#submap:}"
+    if ! [[ "$submap_name" =~ ^[A-Za-z0-9\ _-]+$ ]]; then
+      echo "not a submap: $submap_name"
+      return 1
+    fi
+    hyprctl_eval "
+      local name = \"$submap_name\"
+      local repo_submaps = package.loaded['lib.key.submap']
+      if repo_submaps and repo_submaps.registry[name] then return repo_submaps.enter(name) end
+      local hyprvim_submaps = package.loaded['hyprvim.lib.submap']
+      if hyprvim_submaps and hyprvim_submaps.registry[name] then
+        require('hyprvim.vim').count.clear()
+        return hyprvim_submaps.enter(name)
+      end
+      error('no submap named ' .. name)"
+    return
+  fi
   if ! [[ "$1" =~ ^[0-9]+$ ]]; then
     echo "not a keybind: $1"
     return 1
   fi
+  hyprctl_eval 'hl.dispatch(hl.dsp.submap("reset"))' && hyprctl_eval "debug.getregistry()[$1]()"
+}
+
+# Back to the global map like the Exit binds, through both Submap modules so the current submap's exit hook runs
+# (Cursor restores the cursor settings).
+exit_submap() {
+  hyprctl_eval "
+    local hyprvim_submaps = package.loaded['hyprvim.lib.submap']
+    if hyprvim_submaps and hyprvim_submaps.current ~= 'reset' then hyprvim_submaps.reset() end
+    local repo_submaps = package.loaded['lib.key.submap']
+    if repo_submaps then return repo_submaps.reset() end
+    hl.dispatch(hl.dsp.submap('reset'))"
+}
+
+# hyprctl eval prints "ok" on success, which would become the notification text, and the error otherwise.
+hyprctl_eval() {
   local output
-  output=$(hyprctl eval 'hl.dispatch(hl.dsp.submap("reset"))' && hyprctl eval "debug.getregistry()[$1]()") || {
+  output=$(hyprctl eval "$1") || {
     echo "$output"
     return 1
   }

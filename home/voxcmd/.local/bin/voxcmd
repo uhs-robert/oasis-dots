@@ -105,7 +105,7 @@ compile_pattern() {
 # A `declare` in a file sourced from a function is local to that function, so the arrays are copied out to globals.
 load_integration() {
   unset -f candidates help_choices
-  name="" confirm=0 fallback=0 silent=0 target_match=fuzzy help_action=""
+  name="" confirm=0 fallback=0 silent=0 target_match=fuzzy help_action="" action_labels=1
   local -a verbs=() examples=() confirm_labels=() match_ignore_words=() silent_actions=() force_prefixes=()
   local -A actions=() no_match_actions=()
   # shellcheck disable=SC1090
@@ -247,10 +247,10 @@ runnable_options() {
       --argjson silent "$(action_is_silent "$key" && echo true || echo false)" '{key: $key, value: {command: $command, silent: $silent}}'
   done | jq -s -c from_entries)
   jq -c --argjson match "$match" --arg action "$action" --argjson commands "$commands" --arg confirm "$confirm" \
-    --argjson only_action "$([ "${#integration_actions[@]}" = 1 ] && echo true || echo false)" \
+    --argjson label_omits_action "$({ [ "${#integration_actions[@]}" = 1 ] || [ "$action_labels" = 0 ]; } && echo true || echo false)" \
     --argjson candidates "$candidate_count" --args \
     '($ARGS.positional) as $confirm_labels | .[] | (.action // $action) as $action
-      | $match + {action: $action, only_action: $only_action, id, label, command: ($commands[$action].command // ""),
+      | $match + {action: $action, label_omits_action: $label_omits_action, id, label, command: ($commands[$action].command // ""),
           weak: (.weak // false), silent: ($commands[$action].silent // false),
           confirm: ($confirm == "1" or (.label as $label | any($confirm_labels[]; . as $re | $label | test($re; "i")))),
           candidates: $candidates}' "${integration_confirm_labels[@]}"
@@ -328,9 +328,10 @@ llm_match() {
 # ----------------------------------------------------------------------------------------------------------------
 
 # An integration's only action says nothing the integration name doesn't ("Keybinds: run Terminal"), so the label
-# shows just the candidate then ("Keybinds: Terminal").
+# shows just the candidate then ("Keybinds: Terminal"), as it does for an integration with action_labels=0, whose
+# candidate labels already say what runs.
 option_label() {
-  jq -r 'if .only_action and .label != "" then "\(.name): \(.label)"
+  jq -r 'if .label_omits_action and .label != "" then "\(.name): \(.label)"
     else "\(.name): \(.action | gsub("_"; " "))" + (if .label != "" and .label != .action then " \(.label)" else "" end) end' <<<"$1"
 }
 
