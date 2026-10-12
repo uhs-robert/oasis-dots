@@ -158,6 +158,14 @@ The calendar clock cycles through the local zone plus any listed in `quickshell/
 
 Notification history is kept in memory only (the last 100) and is gone when the shell restarts. Quickshell's own per-config state folder (`~/.local/state/quickshell/by-shell/<id>/notifications.json`) holds just the Do Not Disturb flag, as `{ "dnd": true }`.
 
+`qs-ipc call notifications history <count> <app>` prints that history as a JSON array, newest first: the newest `count` entries (`0` or less for all), only those from `app` when it is not `""`. Each entry is `get_last`'s fields plus the time it arrived, its urgency and whether the center has been opened since:
+
+```json
+[{"time": "2026-10-12T14:03:07.512Z", "app": "voxcmd", "summary": "voxcmd failed", "body": "Lock", "icon": "", "urgency": "normal", "read": false}]
+```
+
+Transient notifications (`notify-send --transient`) are shown as toasts but never kept, so the history holds only notifications sent without that hint; voxcmd, for one, sends only its errors that way. Notifications an app closes or replaces leave the history too.
+
 ## Keys
 
 Every popup uses the same keys. `?` shows the full list for the popup you're in.
@@ -228,7 +236,7 @@ qs-ipc show        # list every target and function
 | `sound`         | `play <kind>`: a Theme audio sound if its category is on; `play alarm` always rings |
 | `overview`      | `open`, `close`, `toggle`, `search`, `move_follow`, `move_silent`, `save_session <name>`                         |
 | `tmux-overview` | `open`, `close`, `toggle`, `search`                                   |
-| `notifications` | `open`, `close`, `toggle_dnd`, `get_dnd`, `get_last` (the newest history entry as JSON), `clear_all`, `dismiss_latest`, `dismiss_all`, `focus_toast`, `has_toast` |
+| `notifications` | `open`, `close`, `toggle_dnd`, `get_dnd`, `get_last` (the newest history entry as JSON), `history <count> <app>` (see below), `clear_all`, `dismiss_latest`, `dismiss_all`, `focus_toast`, `has_toast` |
 | `screenshot`    | `open`, `close`, `toggle`, `select`, `pick`, `share`, `stop_recording` and the recording callbacks |
 | `zoom`          | `start`, `stop`, `toggle`, `step <delta>`, `size <delta>`, `full`     |
 | `lock`          | `lock`, `lock_auto` (music waits for the first key), `state`, `preview <style>`, `preview_close` |

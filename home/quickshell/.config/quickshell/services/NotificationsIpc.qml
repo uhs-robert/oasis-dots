@@ -1,5 +1,6 @@
 // home/quickshell/.config/quickshell/services/NotificationsIpc.qml
 import Quickshell.Io
+import Quickshell.Services.Notifications
 
 IpcHandler {
     id: root
@@ -37,12 +38,33 @@ IpcHandler {
         return NotificationState.focus_toast(direction) ? "toast" : "none";
     }
 
+    function fields_of(n) {
+        return { app: n.appName, summary: n.summary, body: n.body, icon: n.appIcon || root.icon_name_of(n.image) };
+    }
+
+    function urgency_name_of(urgency) {
+        return urgency === NotificationUrgency.Critical ? "critical" : urgency === NotificationUrgency.Low ? "low" : "normal";
+    }
+
     // The newest history entry as {app, summary, body, icon}, or "" when the history is empty.
     function get_last(): string {
         const latest = NotificationState.history[0];
         if (!latest || !latest.notification) return "";
-        const n = latest.notification;
-        return JSON.stringify({ app: n.appName, summary: n.summary, body: n.body, icon: n.appIcon || root.icon_name_of(n.image) });
+        return JSON.stringify(root.fields_of(latest.notification));
+    }
+
+    // The newest `count` history entries (all of them when count <= 0), newest first, only app's when app is not "":
+    // a JSON array of get_last's fields plus time (ISO, UTC), urgency and read. Transient notifications never reach
+    // the history, so this holds only the ones the bar keeps.
+    function history(count: int, app: string): string {
+        const matching = NotificationState.history.filter(e => e.notification && (app === "" || e.notification.appName === app));
+        const newest = count > 0 ? matching.slice(0, count) : matching;
+        return JSON.stringify(newest.map(root.history_fields_of));
+    }
+
+    function history_fields_of(entry) {
+        const n = entry.notification;
+        return Object.assign({ time: new Date(entry.time).toISOString() }, root.fields_of(n), { urgency: root.urgency_name_of(n.urgency), read: entry.read });
     }
 
     function has_toast(): bool {
