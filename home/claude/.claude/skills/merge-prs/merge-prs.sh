@@ -110,7 +110,7 @@ read_review() {
 
 # Checks every PR before merging any, so a run never stops halfway through a stack over a review it could have seen up front.
 check_reviews() {
-  local pr number info open status reviewed head waited
+  local pr number info open status reviewed head waited started
   local -a problems=()
   for pr in "${prs[@]}"; do
     number=${pr#\#}
@@ -119,9 +119,11 @@ check_reviews() {
     waited=0
     if [[ $status == Running ]] && $wait_review; then
       echo "merge-prs: waiting up to ${review_wait_s}s for #$number's Codex review" >&2
+      # Timed by the clock rather than by summing sleeps, so a zero poll interval still stops at the limit.
+      started=$SECONDS
       while [[ $status == Running ]] && ((waited < review_wait_s)); do
         sleep "$review_poll_s"
-        waited=$((waited + review_poll_s))
+        waited=$((SECONDS - started))
         info=$(read_review "$number")
         IFS=$'\t' read -r open status reviewed head <<<"$info"
       done
