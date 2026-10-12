@@ -5,8 +5,9 @@
 
 name="Recording"
 confirm=0
-# A started recording shows on the bar's recording chip, or screenshot.sh says so when no bar shows it.
-silent_actions=(record_screen record_window pick_window record_region)
+# A started recording shows on the bar's recording chip, or screenshot.sh says so when no bar shows it; a stopped one
+# gets screenshot.sh's "Recording Saved!".
+silent_actions=(record_screen record_window pick_window record_region stop)
 
 screenshot_tool="${XDG_CONFIG_HOME:-$HOME/.config}/hypr/scripts/screenshot.sh"
 
@@ -75,7 +76,7 @@ start_recording() {
 stop_recording() {
   local pid file waited
   if ! pid=$(recorder_pid); then
-    echo "not recording"
+    notify-send --transient --app-name=voxcmd "Not recording"
     return
   fi
   file=$(recording_file "$pid")
@@ -92,7 +93,6 @@ stop_recording() {
     echo "wf-recorder wrote no video"
     return 1
   fi
-  echo "saved $file"
 }
 
 recording_status() {

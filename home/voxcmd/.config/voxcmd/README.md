@@ -323,11 +323,11 @@ Both are [silent](#silent-actions) when they work, since the session's terminal 
 | "record this window", "record the current window"     | records the focused window (`--record-focused`)                           |
 | "record a window"                                     | picks a window to record (`--record-window`)                              |
 | "record a region", "record an area"                   | opens the region selector to record (`--record-region`)                   |
-| "stop recording", "end the recording"                 | stops it and says where the file was saved                                |
+| "stop recording", "end the recording"                 | stops it; screenshot.sh says where the file was saved                     |
 | "is it recording", "am I recording"                   | how long it has run and the file it writes                                |
 
-- Starting is [silent](#silent-actions), since the recording chip shows it (screenshot.sh notifies when no bar shows one); starting while a recording runs says "Already recording" with its file instead.
-- Any `wf-recorder` counts as the recording, as on the bar's chip, so the demo recorder's takes are stopped and reported too.
+- Starting and stopping are [silent](#silent-actions), since the recording chip shows a start (screenshot.sh notifies when no bar shows one) and screenshot.sh sends "Recording Saved!" when it stops; starting while a recording runs says "Already recording" with its file instead, and stopping with none running says "Not recording".
+- Any `wf-recorder` counts as the recording, as on the bar's chip, so the demo recorder's takes are stopped too, without a "Recording Saved!", which only screenshot.sh's own recordings get.
 - Plain "stop" stays with Media, and "cancel the recording" matches nothing: "cancel" means discard to voxcmd, and stopping keeps the file.
 
 ## Voice Help
