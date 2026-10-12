@@ -3,6 +3,7 @@ import QtQuick
 import Quickshell
 import "../../theme"
 import "../../services"
+import "../../components"
 import "../../components/modern" as Modern
 
 Row {
@@ -47,9 +48,29 @@ Row {
     readonly property string zone_text: root.compact ? "" : Timezones.is_local ? Qt.formatDateTime(root.shifted, "t") : Timezones.abbrev
     readonly property string time_text: root.zone_text === "" ? root.digits_text : root.digits_text + " " + root.zone_text
 
-    // A Mario HUD line: TIME and WORLD captions, the date as month-day.
-    readonly property bool hud: Style.console_views === "nes"
-    readonly property string date_text: root.hud ? Qt.formatDateTime(root.shifted, "M-d") : Qt.formatDateTime(root.shifted, "ddd MMM dd")
+    readonly property string date_text: Qt.formatDateTime(root.shifted, "ddd MMM dd")
+
+    // nes: a Dragon Quest window holding a pixel sun or moon, the time, and the date in the secondary colour.
+    readonly property bool dq: Style.console_views === "nes" && !root.capsule
+
+    function minute_of(hhmm) {
+        const m = /^(\d{1,2}):(\d{2})/.exec(hhmm || "");
+        return m ? Number(m[1]) * 60 + Number(m[2]) : -1;
+    }
+
+    // Sunrise and sunset are in the weather location's clock, so its minute is taken there; without weather, day is 06:00 to 18:00 in the shown zone.
+    readonly property bool daytime: {
+        if (!root.dq) return true;
+        const rise = root.minute_of(WeatherState.sunrise);
+        const set = root.minute_of(WeatherState.sunset);
+        if (WeatherState.has_data && rise >= 0 && set > rise) {
+            const there = new Date(clock.date.getTime() + WeatherState.utc_offset * 1000);
+            const now = there.getUTCHours() * 60 + there.getUTCMinutes();
+            return now >= rise && now < set;
+        }
+        const now = root.shifted.getHours() * 60 + root.shifted.getMinutes();
+        return now >= 360 && now < 1080;
+    }
 
     // Proportional fonts would resize the island every tick; tabular digits and a width floor hold it still.
     TextMetrics {
@@ -89,13 +110,12 @@ Row {
         font.pixelSize: Style.bar_clock_size || Style.bar_glyph_size
     }
 
-    Text {
-        visible: root.hud && !root.capsule
+    PixelSprite {
+        visible: root.dq
         anchors.verticalCenter: parent.verticalCenter
-        text: "TIME"
-        color: Theme.theme_primary
-        font.family: Style.bar_font_family
-        font.pixelSize: Style.bar_font_size
+        pixel: 1
+        colors: [Theme.theme_secondary_strong, Theme.theme_secondary]
+        rows: root.daytime ? [".....11.....", ".1...11...1.", "..1......1..", "....0000....", "...011110...", "11.011110.11", "11.011110.11", "...011110...", "....0000....", "..1......1..", ".1...11...1.", ".....11....."] : ["....0000....", "..00111100..", ".0111110000.", ".0111100....", "011110......", "011110......", "011110......", "011110......", ".0111100....", ".0111110000.", "..00111100..", "....0000...."]
     }
 
     Rectangle {
@@ -147,9 +167,9 @@ Row {
     }
 
     Text {
-        visible: !root.compact && !root.capsule && !root.on_accent && Style.bar_separator === ""
+        visible: !root.compact && !root.capsule && !root.on_accent && !root.dq && Style.bar_separator === ""
         anchors.verticalCenter: parent.verticalCenter
-        text: root.hud ? " WORLD" : root.lualine ? "\u00b7" : "|"
+        text: root.lualine ? "\u00b7" : "|"
         color: root.on_accent ? Qt.alpha(root.ink, 0.6) : root.lualine || root.horizon ? Style.text_muted : Theme.theme_primary
         font.family: Style.bar_font_family
         style: Style.bar_text_style
@@ -160,7 +180,7 @@ Row {
     }
 
     Text {
-        visible: !root.compact && !root.capsule && !root.on_accent
+        visible: !root.compact && !root.capsule && !root.on_accent && !root.dq
         anchors.verticalCenter: parent.verticalCenter
         text: root.date_text
         color: root.on_accent ? Qt.alpha(root.ink, 0.75) : root.lualine || root.horizon ? Style.text_dim : Style.bar_fg
@@ -177,6 +197,14 @@ Row {
         anchors.verticalCenter: parent.verticalCenter
         text: "]"
         color: Style.bar_clock_brackets
+        font: time_label.font
+    }
+
+    Text {
+        visible: root.dq && !root.compact
+        anchors.verticalCenter: parent.verticalCenter
+        text: "  " + Qt.formatDateTime(root.shifted, "MMM d").toUpperCase()
+        color: Theme.theme_secondary
         font: time_label.font
     }
 }
