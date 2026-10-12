@@ -163,6 +163,8 @@ Item {
             id: track
             Layout.fillWidth: true
             Layout.fillHeight: true
+            // The shared view has always kept a 4px gap under the hour labels.
+            Layout.bottomMargin: 4
             hour_cursor: root.hour_cursor
             sub: root.sub
             on_select: i => root.on_select(i)
