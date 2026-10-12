@@ -76,8 +76,6 @@ QtObject {
     }
     readonly property date now: root.clock.date
     readonly property string time_text: TimeFormat.format(root.now)
-    readonly property string time_12: (root.now.getHours() % 12 || 12) + ":" + Qt.formatTime(root.now, "mm")
-    readonly property string ampm: root.now.getHours() < 12 ? "AM" : "PM"
     readonly property string date_text: Qt.formatDate(root.now, "dddd, MMMM d")
 
     readonly property string user: Quickshell.env("USER") || ""
