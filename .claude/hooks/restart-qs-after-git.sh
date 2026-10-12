@@ -66,7 +66,10 @@ if [[ $state != unlocked ]] && pgrep -x qs >/dev/null; then
 fi
 
 pkill -x qs
-for _ in 1 2 3 4 5 6 7 8 9 10; do pgrep -x qs >/dev/null || break; sleep 0.2; done
+for _ in 1 2 3 4 5 6 7 8 9 10; do
+  pgrep -x qs >/dev/null || break
+  sleep 0.2
+done
 hyprctl dispatch "hl.dsp.exec_cmd('qs -n')" >/dev/null 2>&1
 sleep 3
 if pgrep -x qs >/dev/null; then

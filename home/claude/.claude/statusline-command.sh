@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# shellcheck disable=SC2154 # cwd and thinking are assigned by the eval below
 input=$(cat)
 
 eval "$(printf '%s' "$input" | jq -r '
@@ -22,7 +23,10 @@ if [ -n "$repo_root" ]; then
   if [ -z "$(find "$cache" -newermt "-$ttl seconds" 2>/dev/null)" ]; then
     lock="$cache.lock"
     if mkdir "$lock" 2>/dev/null; then
-      ( bash "$cfg/pr-context.sh" "$repo_root" "$branch" "$cache"; rmdir "$lock" ) >/dev/null 2>&1 &
+      (
+        bash "$cfg/pr-context.sh" "$repo_root" "$branch" "$cache"
+        rmdir "$lock"
+      ) >/dev/null 2>&1 &
       disown 2>/dev/null
     fi
   fi

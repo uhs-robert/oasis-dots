@@ -29,7 +29,7 @@ for bar in "$bars_dir"/*/; do
     line+=" [${joined:2}]"
   fi
   # Every branch merged or closed: nothing left to test on it.
-  if ((${#notes[@]} && !open)) && [[ -n $pr_states ]]; then
+  if ((${#notes[@]} && ! open)) && [[ -n $pr_states ]]; then
     # remove refuses a running bar, so a live one is restored first.
     cmd=".claude/skills/owner-test-bar/owner-test-bar.sh remove $name"
     [[ -n $mark ]] && cmd=".claude/skills/owner-test-bar/owner-test-bar.sh restore && $cmd"

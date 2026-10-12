@@ -18,5 +18,5 @@ if [ -z "$label" ]; then
   fi
 fi
 
-printf '%s' "$(printf '%s' "$label" | tr -d '\000-\037' | head -c 60)" > "$cache.tmp" 2>/dev/null
+printf '%s' "$(printf '%s' "$label" | tr -d '\000-\037' | head -c 60)" >"$cache.tmp" 2>/dev/null
 mv -f "$cache.tmp" "$cache" 2>/dev/null
