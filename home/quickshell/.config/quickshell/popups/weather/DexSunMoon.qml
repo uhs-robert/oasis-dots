@@ -7,7 +7,7 @@ import "../../services"
 import "PixelArt.js" as PixelArt
 
 // The Pokégear clock and a Pokédex entry for the day's sun: MORN / DAY / NITE over a 24-hour strip, the sun's hours in a text box,
-// and the moon phase beside a Clefairy, which dances at the full moon as it does on Mt. Moon. The day strip is the Pokégear's tabs.
+// and the moon phase drawn large on Mt. Moon with a one-line entry for its state. The day strip is the Pokégear's tabs.
 Item {
     id: root
 
@@ -23,7 +23,12 @@ Item {
     readonly property var moon_times: root.day ? WeatherState.moon_times_for_date(root.day.date) : ({ rise: null, set: null })
     readonly property real moon_phase: root.day ? WeatherState.moon_phase_for_date(root.day.date) : 0
     readonly property string next_full: root.day ? WeatherState.next_full_moon_label(root.day.date) : ""
-    readonly property bool full_moon: WeatherState.moon_phase_key(root.moon_phase) === "full"
+    readonly property string moon_flavour: {
+        const key = WeatherState.moon_phase_key(root.moon_phase);
+        if (key === "new") return "No moon tonight.";
+        if (key === "full") return "The moon is full tonight.";
+        return key.indexOf("waxing") === 0 ? "The moon is waxing." : "The moon is waning.";
+    }
 
     // The location clock only moves on the minute.
     property int clock_tick: 0
@@ -303,25 +308,8 @@ Item {
 
                 PixelSprite {
                     Layout.alignment: Qt.AlignVCenter
-                    pixel: 4
+                    pixel: 8
                     rows: PixelArt.moon_phase(root.moon_phase)
-                }
-
-                PixelSprite {
-                    id: clefairy
-                    Layout.alignment: Qt.AlignVCenter
-                    pixel: 3
-                    rows: PixelArt.clefairy()
-                    property bool hopped: false
-                    transform: Translate { y: clefairy.hopped ? -6 : 0 }
-
-                    Timer {
-                        running: root.full_moon && root.visible && Power.on_ac
-                        interval: 400
-                        repeat: true
-                        onTriggered: clefairy.hopped = !clefairy.hopped
-                        onRunningChanged: if (!running) clefairy.hopped = false
-                    }
                 }
 
                 ColumnLayout {
@@ -337,6 +325,15 @@ Item {
                         color: root.shades[3]
                         font.family: Style.font_family
                         font.pixelSize: 16
+                    }
+
+                    Text {
+                        Layout.fillWidth: true
+                        wrapMode: Text.WordWrap
+                        text: root.moon_flavour
+                        color: root.shades[2]
+                        font.family: Style.font_family
+                        font.pixelSize: 8
                     }
 
                     InfoLine {
