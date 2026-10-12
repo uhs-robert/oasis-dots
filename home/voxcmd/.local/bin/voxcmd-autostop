@@ -115,6 +115,8 @@ class SpeechThenSilence:
         self.speech_secs = 0.0
         self.loud_run_frames = 0
         self.quiet_secs = 0.0
+        # Every level until speech is heard, rescored against each new threshold; dropped once speech is heard.
+        self.levels_before_speech = []
 
     def threshold_db(self):
         if self.fixed_threshold_db is not None:
@@ -124,15 +126,11 @@ class SpeechThenSilence:
         room_db = sorted(self.room_levels)[int(len(self.room_levels) * ROOM_PERCENTILE)]
         return max(room_db + self.margin_db, MIN_AUTO_THRESHOLD_DB)
 
-    def feed(self, frame):
-        level_db = frame_level_db(frame)
-        self.elapsed_secs += FRAME_SECS
-        if level_db > DIGITAL_SILENCE_DB:
-            self.room_levels.append(level_db)
-        if self.fixed_threshold_db is None and self.elapsed_secs < CALIBRATION_SECS:
-            return None
-        threshold_db = self.threshold_db()
-        if level_db >= threshold_db:
+    def speech_heard(self):
+        return self.speech_secs >= MIN_SPEECH_SECS
+
+    def count_frame(self, loud):
+        if loud:
             self.loud_run_frames += 1
         else:
             self.loud_run_frames = 0
@@ -145,14 +143,39 @@ class SpeechThenSilence:
             self.quiet_secs = 0.0
         else:
             self.quiet_secs += FRAME_SECS
-        speech_heard = self.speech_secs >= MIN_SPEECH_SECS
+
+    def rescore_before_speech(self, threshold_db):
+        """A word said as the recording starts is first taken for the room, which puts the threshold above it. Once
+        quieter frames show the real room, scoring every frame again counts that word, so a lone "yes" is not lost."""
+        self.speech_secs = 0.0
+        self.loud_run_frames = 0
+        self.quiet_secs = 0.0
+        for level_db in self.levels_before_speech:
+            self.count_frame(level_db >= threshold_db)
+        if self.speech_heard():
+            self.levels_before_speech = []
+
+    def feed(self, frame):
+        level_db = frame_level_db(frame)
+        self.elapsed_secs += FRAME_SECS
+        if level_db > DIGITAL_SILENCE_DB:
+            self.room_levels.append(level_db)
+        if not self.speech_heard():
+            self.levels_before_speech.append(level_db)
+        if self.fixed_threshold_db is None and self.elapsed_secs < CALIBRATION_SECS:
+            return None
+        threshold_db = self.threshold_db()
+        if self.speech_heard():
+            self.count_frame(level_db >= threshold_db)
+        else:
+            self.rescore_before_speech(threshold_db)
         self.log(
             f"{self.elapsed_secs:6.2f}s level {level_db:6.1f} threshold {threshold_db:6.1f} dBFS"
             f" speech {self.speech_secs:.2f}s quiet {self.quiet_secs:.2f}s"
         )
-        if speech_heard and self.quiet_secs >= self.silence_secs:
+        if self.speech_heard() and self.quiet_secs >= self.silence_secs:
             return VERDICT_SILENCE
-        if not speech_heard and self.elapsed_secs >= self.no_speech_secs:
+        if not self.speech_heard() and self.elapsed_secs >= self.no_speech_secs:
             return VERDICT_NO_SPEECH
         return None
 
