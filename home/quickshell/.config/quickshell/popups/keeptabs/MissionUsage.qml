@@ -8,7 +8,7 @@ import "../../services"
 import "../../theme"
 import "../../theme/Watch.js" as W
 
-// GoldenEye's usage as the watch's gauges: a dial per limit with when it resets. Inputs as in UsageView.
+// GoldenEye's usage in the bar's own dress: per limit a caps label, the percent in seven-segment digits on the clock chip, a warm segment strip and when it resets. Inputs as in UsageView.
 Item {
     id: root
 
@@ -65,55 +65,73 @@ Item {
                 boundsBehavior: Flickable.StopAtBounds
                 model: ClaudeUsageState.rows
 
-                delegate: Item {
+                delegate: ColumnLayout {
                     id: limit
                     required property var modelData
 
                     width: limit_list.width
-                    height: Math.max(Style.px(76), limit_text.implicitHeight + 8)
+                    spacing: 3
 
-                    Goldeneye.GaugeDial {
-                        id: dial
-                        anchors.left: parent.left
-                        anchors.leftMargin: 4
-                        anchors.verticalCenter: parent.verticalCenter
-                        size: Style.px(70)
-                        value: limit.modelData.percent / 100
+                    Text {
+                        Layout.fillWidth: true
+                        Layout.minimumWidth: 0
+                        elide: Text.ElideRight
+                        text: limit.modelData.label.toUpperCase()
+                        color: limit.modelData.percent > 100 ? Style.pal.error : Style.wk.soft
+                        font.family: W.head_font
+                        font.pixelSize: root.st.fs(-5)
+                        font.letterSpacing: 1
                     }
 
-                    ColumnLayout {
-                        id: limit_text
-                        anchors.left: dial.right
-                        anchors.leftMargin: 14
-                        anchors.right: parent.right
-                        anchors.rightMargin: 6
-                        anchors.verticalCenter: parent.verticalCenter
-                        spacing: 4
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 8
+
+                        // The bar clock's dark chip; the palette panel stands in where the current style has none.
+                        Rectangle {
+                            Layout.preferredWidth: percent_text.implicitWidth + 14
+                            Layout.preferredHeight: percent_text.implicitHeight + 6
+                            radius: 2
+                            color: Style.bar_clock_bg.a > 0 ? Style.bar_clock_bg : Style.wk.panel_top
+
+                            Text {
+                                id: percent_text
+                                anchors.centerIn: parent
+                                                text: String(Math.round(limit.modelData.percent))
+                                color: limit.modelData.percent > 100 ? Style.pal.error : Style.wk.lit
+                                font.family: W.digit_font
+                                font.pixelSize: root.st.fs(3)
+                            }
+                        }
 
                         Text {
-                            Layout.fillWidth: true
-                            Layout.minimumWidth: 0
-                            elide: Text.ElideRight
-                            text: limit.modelData.label.toUpperCase()
-                            color: Style.wk.lit
+                            text: "%"
+                            color: Style.wk.mid
                             font.family: W.mono_font
-                            font.pixelSize: root.st.fs(-1)
+                            font.pixelSize: root.st.fs(-2)
                         }
 
-                        Goldeneye.ReadoutLine {
-                            Layout.fillWidth: true
-                            label: "USED"
-                            digits: String(Math.round(limit.modelData.percent))
-                            unit: "%"
-                            alert: limit.modelData.percent > 100
-                        }
+                        Item { Layout.fillWidth: true }
 
-                        Goldeneye.ReadoutLine {
-                            Layout.fillWidth: true
-                            visible: limit.modelData.resets !== ""
-                            label: "RESETS"
-                            text: limit.modelData.resets.toUpperCase()
+                        Goldeneye.SegmentStrip {
+                            Layout.alignment: Qt.AlignVCenter
+                            Layout.rightMargin: 4
+                            count: 14
+                            seg_width: 7
+                            seg_height: 14
+                            value: Math.min(1, limit.modelData.percent / 100)
                         }
+                    }
+
+                    Text {
+                        Layout.fillWidth: true
+                        Layout.minimumWidth: 0
+                        visible: limit.modelData.resets !== ""
+                        elide: Text.ElideRight
+                        text: ("Resets " + limit.modelData.resets).toUpperCase()
+                        color: Style.wk.soft
+                        font.family: W.mono_font
+                        font.pixelSize: root.st.fs(-3)
                     }
                 }
             }
