@@ -233,6 +233,7 @@ qs-ipc show        # list every target and function
 | `zoom`          | `start`, `stop`, `toggle`, `step <delta>`, `size <delta>`, `full`     |
 | `lock`          | `lock`, `lock_auto` (music waits for the first key), `state`, `preview <style>`, `preview_close` |
 | `power`         | `confirm <lock\|logout\|reboot\|poweroff>`                            |
+| `confirm`       | `ask <question> <result_path>`: drop the yes/no card from the center island; it writes `yes` or `no` to the path (No, Esc, the scrim and 10s without an answer are all `no`, the countdown waiting while voxtype records or transcribes); `dismiss <result_path>` closes that card without writing. `voxcmd-confirm` is the shell wrapper |
 | `weather`       | `preview <fixture\|off>`, `previewing`: overlay a `services/WeatherFixture.js` fixture on the live data (see Weather views) |
 | `brightness`    | `refresh`                                                             |
 | `cmdstatus`     | `refresh <id>` (`""` refreshes every entry)                          |

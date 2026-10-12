@@ -125,6 +125,10 @@ ShellRoot {
         PowerPopup {}
     }
     LazyPopup {
+        name: "confirm"
+        ConfirmPopup {}
+    }
+    LazyPopup {
         name: "settings"
         SettingsPopup {
             previewer: lock_preview
@@ -199,6 +203,7 @@ ShellRoot {
     GreeterSync {}
     ScreenShare {}
     PowerIpc {}
+    ConfirmIpc {}
     ScreenshotIpc {}
     ZoomIpc {}
     SoundIpc {}
