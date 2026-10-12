@@ -22,6 +22,9 @@
 #   SANDBOX_EXTRA_STUBS        space-separated commands to stub as well, such as the ones an extra integration calls
 #   SANDBOX_SHOW_CALLS=1       print the stub call log to stderr when the command ends
 #   SANDBOX_DIR                set for the command: the sandbox root, with the call log at $SANDBOX_DIR/calls.log
+#
+# HOME, XDG_STATE_HOME and XDG_CACHE_HOME are empty dirs in the sandbox, so the caller's tmuxifier layouts, timers
+# and state never change a route.
 set -euo pipefail
 
 tests_dir=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
@@ -36,7 +39,7 @@ trap 'rm -rf "$sandbox_dir"' EXIT
 stub_dir="$sandbox_dir/bin"
 config_home="$sandbox_dir/config"
 mkdir -p "$stub_dir" "$config_home/voxcmd/integrations.d" "$config_home/voxcmd/replacements.d" \
-  "$config_home/hypr/scripts" "$sandbox_dir/runtime"
+  "$config_home/hypr/scripts" "$sandbox_dir/runtime" "$sandbox_dir/home"
 chmod 700 "$sandbox_dir/runtime"
 : >"$sandbox_dir/calls.log"
 
@@ -48,14 +51,14 @@ if [ -n "${VOXCMD_EXTRA_INTEGRATIONS:-}" ]; then
 fi
 
 # One stub for every command, dispatched on the name it is called by. Passing through restores the real PATH and
-# runtime dir, which Hyprland's and PipeWire's sockets live under.
+# runtime dir, which Hyprland's and PipeWire's sockets live under, and the real HOME.
 cat >"$stub_dir/.stub" <<'EOF'
 #!/bin/sh
 name=${0##*/}
 log() { printf '%s\n' "$name $*" >>"$SANDBOX_DIR/calls.log"; }
 pass_through() {
-  PATH=$SANDBOX_REAL_PATH XDG_RUNTIME_DIR=$SANDBOX_REAL_XDG_RUNTIME_DIR
-  export PATH XDG_RUNTIME_DIR
+  PATH=$SANDBOX_REAL_PATH XDG_RUNTIME_DIR=$SANDBOX_REAL_XDG_RUNTIME_DIR HOME=$SANDBOX_REAL_HOME
+  export PATH XDG_RUNTIME_DIR HOME
   command -v "$name" >/dev/null 2>&1 || exit 1
   exec "$name" "$@"
 }
@@ -143,6 +146,10 @@ done
 export SANDBOX_DIR="$sandbox_dir"
 export SANDBOX_REAL_PATH="$PATH"
 export SANDBOX_REAL_XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
+export SANDBOX_REAL_HOME="$HOME"
+export HOME="$sandbox_dir/home"
+export XDG_STATE_HOME="$sandbox_dir/home/.local/state"
+export XDG_CACHE_HOME="$sandbox_dir/home/.cache"
 export PATH="$stub_dir:$package_dir/.local/bin:$PATH"
 export XDG_RUNTIME_DIR="$sandbox_dir/runtime"
 export XDG_CONFIG_HOME="$config_home"
