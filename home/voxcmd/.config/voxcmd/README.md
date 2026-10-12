@@ -188,7 +188,7 @@ An integration with `fallback=1` is tried only when the normal integrations, and
 `target_match=words` is for long candidate lists where a fuzzy hit on scattered letters would run the wrong thing. Both the target and each candidate are lowercased and split into words; filler (`the`, `a`, `to`, `please`, ...) and `match_ignore_words` are dropped, number words become digits and plurals singular. Then:
 
 - **strong**: the same words in any order, or the same letters run together (`full screen` for `fullscreen`). A single strong match runs.
-- **weak**: the target's words all name words of the candidate and cover at least half of them (`close` for `Close Window`), or the target holds every candidate word plus one more (`open terminal` for `Terminal`). A spoken word of four letters or more also names a candidate word containing it. Weak matches always open the picker, the best ten first, even when there is only one.
+- **weak**: the target's words all name words of the candidate and cover at least half of them (`close` for `Close Window`), or the target holds every candidate word plus one more (`open terminal` for `Terminal`). A spoken word of four letters or more also names a candidate word containing it. Weak matches always open the picker, the best ten first, even when there is only one. A single weak match from a spoken command [listens for the answer](#answering-by-voice) on its own.
 - anything else is no match, so stray speech does nothing.
 
 Strong matches hide weak ones.
@@ -430,7 +430,7 @@ Off by default and a stub: voxcmd never calls a model. Set `VOXCMD_LLM_CMD` to a
 
 ## Picker
 
-`voxcmd-pick <label> <choices-json> [<expansions-json>]` is the blocking picker voxcmd uses, usable on its own. Choices are strings or `{id, label}` objects; it prints the picked id and exits 1 on cancel. Labels are shown numbered (`1. Acme Labs`); the number never reaches the printed id.
+`voxcmd-pick [--listen] <label> <choices-json> [<expansions-json>]` is the blocking picker voxcmd uses, usable on its own. Choices are strings or `{id, label}` objects; it prints the picked id and exits 1 on cancel. Labels are shown numbered (`1. Acme Labs`); the number never reaches the printed id.
 
 Expansions are `{key: {title, choices}}`, and a choice with `expand: key` opens that list on Tab in the Quickshell picker; its ids come back like any other. The picker writes the key it shows to a view file, so a voice reply answers from the list on screen.
 
@@ -438,9 +438,12 @@ Expansions are `{key: {title, choices}}`, and a choice with `expand: key` opens 
 
 Press the Voice Command key while a voxcmd picker is open and speak a reply; the recording stops itself after it, like a command. It can be:
 
-- a choice's label, matched like targets are (exact, then substring, then fuzzy); it must single out one choice;
+- a choice's label: the whole label, else the choice sharing the most words with the reply, else a substring, else fuzzy; it must single out one choice. Words compare by stem and the reply's other words do not count, so "locked", "lock it" and "lock computer" all pick `Keybinds: Lock (System)`, which needs no "system";
 - an ordinal: `two`, `the second one`, `number 3`, `first`, `last`;
+- with a single choice, `yes`, `yeah`, `sure`, `that one` or `do it` to take it, and `no` or `nope` to cancel;
 - `cancel`, `never mind` or `none`, which cancel like Esc.
+
+A picker with a single choice, which a [weak match](#word-matching) opens, asked about a command that came by voice (from `voxcmd listen`) listens for the reply without the key: voxcmd passes `--listen`, and `voxcmd-pick` starts the reply recording (`voxcmd listen --start-only`, only while voxtype is idle) just before the picker shows. It stops itself like any reply, and silence cancels it and leaves the picker waiting for a key or the Voice Command key. Answering by key while it records leaves it running, and its transcript then finds no picker.
 
 A recording started while a picker waits is always a reply, so `cancel` there closes the picker rather than being discarded as a command.
 
