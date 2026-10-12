@@ -11,6 +11,8 @@ Singleton {
     property string open_name: ""
     // The open popup once it has finished drawing in; empty while it animates, and while nothing is open.
     property string settled_name: ""
+    // A popup still animating out after close(); its layer is mapped until this clears.
+    property string closing_name: ""
     // Set just before open_name, so a LazyPopup builds its popup closed and sees the open as a change.
     property string load_name: ""
     property var open_anchor: null
@@ -157,6 +159,11 @@ Singleton {
     function mark_settled(name, settled) {
         if (settled) settled_name = name;
         else if (settled_name === name) settled_name = "";
+    }
+
+    function mark_closing(name, closing) {
+        if (closing) closing_name = name;
+        else if (closing_name === name) closing_name = "";
     }
 
     function close() {

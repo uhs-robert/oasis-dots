@@ -118,9 +118,10 @@ PanelWindow {
     IpcHandler {
         target: "osd"
 
-        // "closed", "opening <what>" while it slides in, or "open <what>" once drawn; <what> is volume, brightness or voxtype.
+        // "opening <what>" while it slides in, "open <what>" once drawn, "closing <what>" while it slides out, then "closed";
+        // <what> is volume, brightness or voxtype.
         function state(): string {
-            if (!root.wanted) return "closed";
+            if (!root.wanted) return root.visible ? "closing " + root.shown_what : "closed";
             return (root.settled ? "open " : "opening ") + root.shown_what;
         }
     }
