@@ -1,10 +1,10 @@
 # shellcheck shell=bash disable=SC2034,SC2016
-# Opens installed apps and focuses, moves or closes Hyprland windows. Format: ~/.config/voxcmd/README.md
+# Opens installed apps and focuses, moves, resizes or closes Hyprland windows. Format: ~/.config/voxcmd/README.md
 
 name="Apps"
 confirm=0
-# The window that opens or takes focus is the feedback; moving and closing keep their toast.
-silent_actions=(open open_new focus)
+# The window that opens, takes focus or changes size is the feedback; moving and closing keep their toast.
+silent_actions=(open open_new focus resize grow shrink resize_spoken_size)
 # App names and window classes are short, so a fuzzy hit on scattered letters would run the wrong thing.
 target_match=words
 # "close the firefox window" is "close firefox"; a target of only these words ("close window", "open application")
@@ -16,13 +16,19 @@ match_ignore_words=("${ignored_words[@]}")
 # Moving has no shared intent; its words are kept here for the keybind check in candidates() as well.
 move_verbs="move|send|put"
 
-# move's target is "<window> to workspace <n>": one placeholder carries both, and candidates() splits it.
+# move's target is "<window> to workspace <n>" and a resize's "<window> to 1200 by 800": one placeholder carries
+# both, and candidates() splits it. A resize target that names no size ("resize left") offers nothing, which
+# leaves it to the Resize submap's keybinds.
 verbs=(
   "open_new  {open} (a )?new {target}"
   "open      {open} {target}"
   "focus     {focus} {target}"
   "move      (${move_verbs}) {target}"
   "close     {close} {target}"
+  "resize    (resize|{set}) {target}"
+  "grow      (grow|enlarge) {target}"
+  "shrink    shrink {target}"
+  "resize_spoken_size  [0-9]+( [0-9]{3})?( (by|x) |x)[0-9]+( [0-9]{3})?( pixels?| px)?"
 )
 
 examples=(
@@ -31,6 +37,12 @@ examples=(
   "focus <window>"
   "move <window> to workspace <number>"
   "close <window>"
+  "resize the window to <width> by <height>"
+  "make it <number> pixels tall"
+  "set the width to <number>"
+  "make it wider by <number>"
+  "shrink it by <number> pixels"
+  "resize <window> to <width> by <height>"
 )
 
 declare -A actions=(
@@ -39,6 +51,10 @@ declare -A actions=(
   [focus]='focus_window "$id"'
   [move]='move_window "$id"'
   [close]='close_window "$id"'
+  [resize]='resize_window "$id"'
+  [grow]='resize_window "$id"'
+  [shrink]='resize_window "$id"'
+  [resize_spoken_size]='resize_active_to_spoken_size "$raw_transcript"'
 )
 
 # Only close labels read "<app> window: <title>", so only closing asks first.
@@ -52,6 +68,12 @@ help_choices() {
 
 candidates() {
   local action="$1" target="$2"
+  case "$action" in
+  resize | grow | shrink)
+    resize_candidates "$action" "$target"
+    return
+    ;;
+  esac
   if spoken_as_keybind "$action" "$target" || names_session_or_agent "$target" || launches_keybind "$action" "$target"; then
     echo '[]'
     return
@@ -324,6 +346,369 @@ move_window() {
 close_window() {
   window_address "$1" || return 1
   hypr_dispatch "hl.dsp.window.close({ window = 'address:$1' })"
+}
+
+# ---- Resizing --------------------------------------------------------------------------------------------------
+
+# Sizes are logical pixels, the ones hyprctl reports and the resize dispatcher takes, so on a monitor scaled 1.6 a
+# window "400 high" covers 640 device pixels.
+
+# No size goes below this or past the window's monitor: a window resized to 1x1 or far wider than any screen can
+# crash its app (kitty does), and none of it could be seen anyway.
+min_window_size=100
+
+# Words that point at the active window rather than name one: "make it 400 tall", "resize the window to ...".
+active_window_words="the|a|this|that|current|active|focused|selected|window|it|its|my"
+
+# Splits text into size_words, one word each, with "400px" read as "400 px" and "1200x800" as "1200 x 800".
+split_size_words() {
+  local word
+  size_words=()
+  for word in $1; do
+    if [[ "$word" =~ ^([0-9]+)(px)$ || "$word" =~ ^([0-9]+)(x)([0-9]+)$ ]]; then
+      size_words+=("${BASH_REMATCH[@]:1}")
+    else
+      size_words+=("$word")
+    fi
+  done
+}
+
+# Advances size_at past the word there when it is one of the alternatives in $1, an ERE alternation.
+skip_size_word() {
+  [[ "${size_words[size_at]-}" =~ ^($1)$ ]] && size_at=$((size_at + 1))
+  return 0
+}
+
+# Reads an amount at size_words[size_at] into pixels, with an optional "pixels" after it. Amounts come as digits,
+# and normalizing turned "1,200" into "1 200", which reads as 1200.
+read_pixels() {
+  local word="${size_words[size_at]-}" next="${size_words[size_at + 1]-}"
+  [[ "$word" =~ ^[0-9]+$ ]] || return 1
+  pixels=$((10#$word))
+  size_at=$((size_at + 1))
+  if [[ "$word" =~ ^[0-9]{1,3}$ && "$next" =~ ^[0-9]{3}$ ]]; then
+    pixels=$((pixels * 1000 + 10#$next))
+    size_at=$((size_at + 1))
+  fi
+  skip_size_word 'pixels?|px'
+}
+
+# "to 1200 by 800", "800 wide", "400 pixels high"; a dimension left unnamed is "-", keeping the window's own.
+read_exact_size() {
+  skip_size_word 'to|at|of'
+  read_pixels || return 1
+  local first="$pixels" word="${size_words[size_at]-}"
+  size_at=$((size_at + 1))
+  case "$word" in
+  by | x | times)
+    read_pixels || return 1
+    size_width="$first" size_height="$pixels"
+    ;;
+  high | tall) size_width=- size_height="$first" ;;
+  wide) size_width="$first" size_height=- ;;
+  *) return 1 ;;
+  esac
+  size_kind=exact
+}
+
+# "height to 400", "width of 800", "size to 1200 by 800".
+read_named_dimension() {
+  local dimension="${size_words[size_at]-}"
+  size_at=$((size_at + 1))
+  skip_size_word 'is'
+  skip_size_word 'to|at|of'
+  case "$dimension" in
+  height | width)
+    read_pixels || return 1
+    if [ "$dimension" = height ]; then size_width=- size_height="$pixels"; else size_width="$pixels" size_height=-; fi
+    ;;
+  size | dimensions)
+    read_pixels || return 1
+    local first="$pixels"
+    [[ "${size_words[size_at]-}" =~ ^(by|x|times)$ ]] || return 1
+    size_at=$((size_at + 1))
+    read_pixels || return 1
+    size_width="$first" size_height="$pixels"
+    ;;
+  *) return 1 ;;
+  esac
+  size_kind=exact
+}
+
+# Sets change_width and change_height to the sign a comparative gives each dimension ("narrower" is -1 0), and
+# advances past it. "in height", "vertically" and the like name a dimension without a direction, as 1.
+read_change_word() {
+  local word="${size_words[size_at]-}" next="${size_words[size_at + 1]-}"
+  size_at=$((size_at + 1))
+  case "$word" in
+  taller | higher) change_width=0 change_height=1 ;;
+  shorter) change_width=0 change_height=-1 ;;
+  wider | broader) change_width=1 change_height=0 ;;
+  narrower | thinner) change_width=-1 change_height=0 ;;
+  bigger | larger) change_width=1 change_height=1 ;;
+  smaller) change_width=-1 change_height=-1 ;;
+  vertically) change_width=0 change_height=1 ;;
+  horizontally) change_width=1 change_height=0 ;;
+  in)
+    size_at=$((size_at + 1))
+    case "$next" in
+    height) change_width=0 change_height=1 ;;
+    width) change_width=1 change_height=0 ;;
+    *) return 1 ;;
+    esac
+    ;;
+  *) return 1 ;;
+  esac
+}
+
+# "taller by 100", "100 pixels wider", and after grow or shrink also "by 50" alone, which changes both dimensions.
+# Grow and shrink set the direction themselves, so "shrink it 100 narrower" and "shrink it 100 wider" agree.
+read_size_change() {
+  local verb="$1" amount start="$size_at"
+  change_width="" change_height=""
+  if read_change_word; then
+    [ "${size_words[size_at]-}" = by ] || return 1
+    size_at=$((size_at + 1))
+    read_pixels || return 1
+  else
+    size_at="$start"
+    skip_size_word 'by'
+    read_pixels || return 1
+    if [ "$size_at" -lt "${#size_words[@]}" ]; then
+      read_change_word || return 1
+    elif [ "$verb" = resize ]; then
+      return 1
+    else
+      change_width=1 change_height=1
+    fi
+  fi
+  amount="$pixels"
+  case "$verb" in
+  grow) change_width="${change_width#-}" change_height="${change_height#-}" ;;
+  shrink) change_width=$((-${change_width#-})) change_height=$((-${change_height#-})) ;;
+  esac
+  size_kind=delta size_width=$((change_width * amount)) size_height=$((change_height * amount))
+}
+
+# True when size_words from size_at to the end are a size the verb ("resize", "grow" or "shrink") can take.
+read_size() {
+  local verb="$1" start="$size_at"
+  size_kind="" size_width="" size_height=""
+  if [ "$verb" = resize ]; then
+    { read_exact_size && [ "$size_at" = "${#size_words[@]}" ]; } && return
+    size_at="$start"
+    { read_named_dimension && [ "$size_at" = "${#size_words[@]}" ]; } && return
+    size_at="$start"
+  fi
+  read_size_change "$verb" && [ "$size_at" = "${#size_words[@]}" ]
+}
+
+# Splits a spoken resize target into the window it names (size_window, empty for the active window) and the size
+# after it, read into size_kind, size_width and size_height. The size starts at the earliest word it can, so the
+# "to" in "firefox to 1200 by 800" goes with the size.
+parse_resize_target() {
+  local verb="$1" target="$2" start
+  split_size_words "$target"
+  for ((start = 0; start < ${#size_words[@]}; start++)); do
+    size_at="$start"
+    read_size "$verb" || continue
+    size_window="${size_words[*]:0:start}"
+    [[ " $size_window " =~ ^(\ ($active_window_words))*\ $ ]] && size_window=""
+    return 0
+  done
+  return 1
+}
+
+# The size part of a resize option's id, "<kind> <width> <height>", which resize_window() reads back.
+size_id() {
+  printf '%s %s %s' "$size_kind" "$size_width" "$size_height"
+}
+
+# How a resize option's label states the size: "to 1200x800", "100 taller".
+size_description() {
+  if [ "$size_kind" = exact ]; then
+    if [ "$size_width" = - ]; then
+      echo "to $size_height high"
+    elif [ "$size_height" = - ]; then
+      echo "to $size_width wide"
+    else
+      echo "to ${size_width}x$size_height"
+    fi
+    return
+  fi
+  local width="${size_width#-}" height="${size_height#-}"
+  if [ "$width" != 0 ] && [ "$height" != 0 ]; then
+    [ "$size_width" -gt 0 ] && echo "$width bigger" || echo "$width smaller"
+  elif [ "$width" != 0 ]; then
+    [ "$size_width" -gt 0 ] && echo "$width wider" || echo "$width narrower"
+  else
+    [ "$size_height" -gt 0 ] && echo "$height taller" || echo "$height shorter"
+  fi
+}
+
+# A size spoken without a window ("make it 400 tall") is the active window's: one candidate, matched by the
+# target itself. A named one ("resize firefox to 1200 by 800") offers every window as "<app> <size words>", so
+# word matching compares the window part while the size rides along in the id, as move_candidates() does.
+resize_candidates() {
+  local verb="$1" target="$2" size description spoken_size active_address
+  parse_resize_target "$verb" "$target" || {
+    echo '[]'
+    return
+  }
+  size=$(size_id)
+  description=$(size_description)
+  if [ -z "$size_window" ]; then
+    active_address=$(hyprctl activewindow -j 2>/dev/null | jq -r '.address // empty')
+    windows | jq -c --arg address "$active_address" --arg size "$size" --arg description "$description" --arg target "$target" '
+      map(select(.address == $address) | {id: "\(.address) \($size)", label: "\(.app): \(.title) \($description)", match_text: $target})'
+    return
+  fi
+  # The window words are the target's first words, which split_size_words leaves alone, so what follows them is
+  # the size as spoken. A window named by no word at all (a title of "~") is left out: its match text would be the
+  # size alone, which any spoken name plus the size holds.
+  spoken_size="${target#"$size_window "}"
+  windows | jq -c --arg size "$size" --arg description "$description" --arg suffix " $spoken_size" '
+    def plain: ascii_downcase | [splits("[^a-z0-9]+") | select(. != "")] | join(" ");
+    map("\(.app): \(.title) \($description)" as $label
+      | (select((.app | plain) != "") | {id: "\(.address) \($size)", label: $label, match_text: (.app + $suffix)}),
+        (select((.title | plain) != "" and (.title | plain) != (.app | plain))
+          | {id: "\(.address) \($size)", label: $label, match_text: (.title + $suffix)}))'
+}
+
+# "1200 by 800" said alone resizes the active window. The verb has no target to carry the size, so it is read from
+# the transcript.
+resize_active_to_spoken_size() {
+  local spoken address
+  spoken=$(tr '[:upper:]' '[:lower:]' <<<"$1" | tr -c 'a-z0-9\n' ' ')
+  split_size_words "$spoken"
+  size_at=0
+  if ! read_size resize || [ "$size_kind" != exact ]; then
+    echo "not a size: $1"
+    return 1
+  fi
+  address=$(hyprctl activewindow -j 2>/dev/null | jq -r '.address // empty')
+  [ -n "$address" ] || {
+    echo "no active window"
+    return 1
+  }
+  resize_window "$address $(size_id)"
+}
+
+# Prints "<width> <height> <floating> <monitor width> <monitor height> <class>" for a window, the monitor's size in
+# logical pixels like the window's.
+window_geometry() {
+  {
+    hyprctl clients -j 2>/dev/null
+    hyprctl monitors -j 2>/dev/null
+  } | jq -r -s --arg address "$1" '
+    .[1] as $monitors
+    | first(.[0][] | select(.address == $address)) as $window
+    | first($monitors[] | select(.id == $window.monitor)) as $monitor
+    | ([$monitor.width, $monitor.height] | map(. / $monitor.scale | floor)) as $logical
+    | (if $monitor.transform % 2 == 1 then $logical | reverse else $logical end) as $monitor_size
+    | "\($window.size[0]) \($window.size[1]) \($window.floating) \($monitor_size[0]) \($monitor_size[1]) \($window.class)"
+  ' 2>/dev/null
+}
+
+window_size() {
+  hyprctl clients -j 2>/dev/null | jq -r --arg address "$1" 'first(.[] | select(.address == $address)) | "\(.size[0]) \(.size[1])"'
+}
+
+clamp_size() {
+  local size="$1" most="$2"
+  [ "$size" -lt "$min_window_size" ] && size="$min_window_size"
+  [ "$size" -gt "$most" ] && size="$most"
+  echo "$size"
+}
+
+# Resizes to the id's size, "<address> exact <width> <height>" (a "-" keeps that dimension) or "<address> delta
+# <dx> <dy>". A tiled window's size is the layout's: the resize moves its split, and a dimension with no split along
+# it does not change, which is reported rather than floating the window to force it. Nothing changing fails; a
+# dimension that ended elsewhere than asked (the layout, the monitor's size) gets a notification of its own, since
+# success sends none.
+resize_window() {
+  local address kind width height
+  read -r address kind width height <<<"$1"
+  window_address "$address" || return 1
+  [[ "$kind" =~ ^(exact|delta)$ && "$width" =~ ^(-|-?[0-9]+)$ && "$height" =~ ^(-|-?[0-9]+)$ ]] || {
+    echo "not a size: ${1#* }"
+    return 1
+  }
+  local geometry start_width start_height floating monitor_width monitor_height class
+  geometry=$(window_geometry "$address")
+  [ -n "$geometry" ] || {
+    echo "no window $address"
+    return 1
+  }
+  read -r start_width start_height floating monitor_width monitor_height class <<<"$geometry"
+
+  local asked_width="$start_width" asked_height="$start_height"
+  if [ "$kind" = exact ]; then
+    [ "$width" = - ] || asked_width="$width"
+    [ "$height" = - ] || asked_height="$height"
+  else
+    asked_width=$((start_width + width)) asked_height=$((start_height + height))
+  fi
+  local target_width target_height
+  target_width=$(clamp_size "$asked_width" "$monitor_width")
+  target_height=$(clamp_size "$asked_height" "$monitor_height")
+  [ "$asked_width" = "$start_width" ] && target_width="$start_width"
+  [ "$asked_height" = "$start_height" ] && target_height="$start_height"
+
+  local dx=$((target_width - start_width)) dy=$((target_height - start_height))
+  if [ "$dx" = 0 ] && [ "$dy" = 0 ]; then
+    [ "$asked_width" = "$start_width" ] && [ "$asked_height" = "$start_height" ] && return 0
+    echo "$class stays ${start_width}x$start_height, the most its monitor holds"
+    return 1
+  fi
+  hypr_dispatch "hl.dsp.window.resize({ window = 'address:$address', x = $dx, y = $dy, relative = true })" || return 1
+
+  # A tiled window's relative resize moves its free edge, so one on the right or bottom of its split shrinks on a
+  # positive delta (an exact size does the same). A dimension that moved away from the target went by -d; twice d
+  # the other way lands it, as the Hyprland config's auto_launcher does.
+  local current_width current_height correction_x=0 correction_y=0
+  read -r current_width current_height <<<"$(window_size "$address")"
+  [ "$(abs $((target_width - current_width)))" -gt "$(abs "$dx")" ] && correction_x=$((-2 * dx))
+  [ "$(abs $((target_height - current_height)))" -gt "$(abs "$dy")" ] && correction_y=$((-2 * dy))
+  if [ "$correction_x" != 0 ] || [ "$correction_y" != 0 ]; then
+    hypr_dispatch "hl.dsp.window.resize({ window = 'address:$address', x = $correction_x, y = $correction_y, relative = true })" || return 1
+    read -r current_width current_height <<<"$(window_size "$address")"
+  fi
+
+  local notes=() unchanged=0 asked=0 layout=""
+  [ "$floating" = true ] || layout=", the tiling layout sets it"
+  if [ "$asked_width" != "$start_width" ]; then
+    asked=$((asked + 1))
+    if [ "$current_width" = "$start_width" ]; then
+      unchanged=$((unchanged + 1))
+      notes+=("width stays $current_width$layout")
+    elif [ "$(abs $((current_width - asked_width)))" -gt 1 ]; then
+      notes+=("width is $current_width, not $asked_width")
+    fi
+  fi
+  if [ "$asked_height" != "$start_height" ]; then
+    asked=$((asked + 1))
+    if [ "$current_height" = "$start_height" ]; then
+      unchanged=$((unchanged + 1))
+      notes+=("height stays $current_height$layout")
+    elif [ "$(abs $((current_height - asked_height)))" -gt 1 ]; then
+      notes+=("height is $current_height, not $asked_height")
+    fi
+  fi
+  [ "${#notes[@]}" = 0 ] && return 0
+  local summary
+  summary="$class: $(printf '%s; ' "${notes[@]}")"
+  summary="${summary%; }"
+  if [ "$unchanged" = "$asked" ]; then
+    echo "$summary"
+    return 1
+  fi
+  # Silent on success, so a partial resize says what it could not do by itself; it is no failure.
+  notify-send --transient --app-name=voxcmd "Resized ${current_width}x$current_height" "$summary"
+}
+
+abs() {
+  echo "${1#-}"
 }
 
 # The id goes into a Lua string, so only a real address is let through.

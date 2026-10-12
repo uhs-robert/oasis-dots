@@ -1,6 +1,6 @@
 # voxcmd
 
-Voice commands on top of [voxtype](https://github.com/peteonrails/voxtype). Speak a phrase, voxcmd matches it against the verbs your integrations declare and runs the action. Eleven integrations ship: `media.sh` (playerctl and pamixer), `apps.sh` (open apps, focus, move and close windows), `timers.sh` (timers and reminders as systemd user timers), `devices.sh` (audio output, input and per-app volume with wpctl, Bluetooth with bluetoothctl), `system.sh` (brightness, power profile, do not disturb, auto-lock), `answers.sh` (math, time, time zone and date questions, and the weather popup), `keeptabs.sh` (coding agents tracked by keeptabs), `tmux.sh` (tmux sessions and tmuxifier layouts), `notifications.sh` (the bar's notification center), `recording.sh` (screen recording) and `keybinds.sh` (any described Hyprland keybind); everything else is a drop-in file you write.
+Voice commands on top of [voxtype](https://github.com/peteonrails/voxtype). Speak a phrase, voxcmd matches it against the verbs your integrations declare and runs the action. Eleven integrations ship: `media.sh` (playerctl and pamixer), `apps.sh` (open apps, focus, move, resize and close windows), `timers.sh` (timers and reminders as systemd user timers), `devices.sh` (audio output, input and per-app volume with wpctl, Bluetooth with bluetoothctl), `system.sh` (brightness, power profile, do not disturb, auto-lock), `answers.sh` (math, time, time zone and date questions, and the weather popup), `keeptabs.sh` (coding agents tracked by keeptabs), `tmux.sh` (tmux sessions and tmuxifier layouts), `notifications.sh` (the bar's notification center), `recording.sh` (screen recording) and `keybinds.sh` (any described Hyprland keybind); everything else is a drop-in file you write.
 
 | Key                                | Does                                                                     |
 | ---------------------------------- | ------------------------------------------------------------------------ |
@@ -264,14 +264,21 @@ As a fallback it never sees a phrase another integration takes. Starting the phr
 | "focus slack", "go to firefox", "take me to tmux config"       | focuses the window                                                 |
 | "move slack to workspace 3", "send firefox to workspace three" | moves the window there, leaving focus where it is                  |
 | "close slack", "quit the firefox window"                       | closes the window, after a confirm                                 |
+| "resize the window to 400 pixels high", "make it 800 wide", "set the height to 400" | resizes the active window, keeping the size it does not name |
+| "resize to 1200 by 800", "1200 by 800", "make it 1200x800"     | resizes the active window to that size                             |
+| "make it taller by 100", "grow the window 200 pixels wider", "shrink it by 50 pixels", "make it narrower by 100" | resizes the active window by that much; grow and shrink without a direction change both |
+| "resize firefox to 1200 by 800", "make slack 800 wide"         | resizes the named window                                           |
 
-Opening, focusing and closing take every form of the `{open}`, `{focus}` and `{close}` [intents](#intents).
+Opening, focusing and closing take every form of the `{open}`, `{focus}` and `{close}` [intents](#intents), and resizing every form of `{set}` ("make", "change", "adjust") as well as "resize", "grow", "enlarge" and "shrink".
 
 - Apps are the desktop entries in `$XDG_DATA_HOME` and `$XDG_DATA_DIRS` (the first copy of an id wins), leaving out `NoDisplay`, `Hidden` and entries `OnlyShowIn`/`NotShowIn` keep off this desktop. An app matches by its `Name` and by the last part of its id (`code`, `nautilus`). It starts like the Quickshell apps picker starts it: the `Exec` line without field codes, in `Path`, and `Terminal=true` apps in the Hyprland config's terminal wrapper.
 - An app counts as running when a window's class is its `StartupWMClass`, its id or the last part of its id.
 - Windows come from `hyprctl clients -j` and match by app name (the desktop entry's `Name`, else the class) or by title. Several matching windows open the picker, labelled with their titles.
 - `window`, `app`, `application` and `program` are ignored words, so "close window" and "open application" are left to the keybinds. A phrase that is a described keybind ("close browsers", "focus left", "go to workspace 2", "start menu") is left to them too, even when a window or app would match it, and so is "open X" when X is a bind's whole description and names no app ("open files" for a `Files` bind; "open firefox" stays here).
-- Opening and focusing are [silent](#silent-actions), since the window that opens or takes focus shows it; moving and closing still say what they did.
+- Opening, focusing and resizing are [silent](#silent-actions), since the window that opens, takes focus or changes size shows it; moving and closing still say what they did.
+- Sizes are logical pixels, the ones `hyprctl clients -j` reports: on a monitor scaled 1.6, "400 high" covers 640 device pixels. Amounts are read as digits, as voxtype writes them ("1,200" too); number words are not. No size goes below 100 or past the window's monitor.
+- A resize goes through `hl.dsp.window.resize` with the window's address, relative to its current size. A floating window takes the size as asked. A tiled window's size belongs to the layout: the resize moves its split, so the windows beside it give or take the space, and a dimension with no split along it (the height of a window in a single row) does not change. The window is never floated to force a size. A size that ended elsewhere than asked says so in a notification, and one where nothing changed fails.
+- "resize left", "resize submap", "reset size" and other phrases with no size are left to the Resize submap's keybinds.
 - Tab on its Voice Help entries lists every installed app; picking one opens it like "open <app>".
 - A target with the word `session` or `agent` in it matches nothing, so "switch to the X session" and "go to the X agent" are left to the integrations for those.
 
