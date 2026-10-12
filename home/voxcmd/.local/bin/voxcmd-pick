@@ -44,11 +44,16 @@ choices=$(jq -c --argjson expansions "$expansions" 'map(if .expand and ($expansi
 
 work_dir=$(mktemp -d "${XDG_RUNTIME_DIR:-/tmp}/voxcmd-pick.XXXXXX")
 reader_pid=""
+# Holds the PID of the watcher whose recording --listen started, while voxtype records or transcribes it.
+recording_owner_file="$work_dir/recording-owner"
 cleanup() {
   # A newer pick may have replaced the state file; only remove our own.
   if [ "$(jq -r .pid "$pending_pick_file" 2>/dev/null)" = "$$" ]; then rm -f "$pending_pick_file"; fi
   # A reader still blocked opening the FIFO would otherwise wait out the whole timeout.
   if [ -n "$reader_pid" ]; then kill "$reader_pid" 2>/dev/null || true; fi
+  # Picked by key, click or timeout while its reply recording still runs, as in voxcmd-confirm: the microphone goes
+  # off and the transcript is dropped. A no-op once a voice reply has answered.
+  if [ -e "$recording_owner_file" ]; then "$voxcmd" _cancel_owned_recording "$recording_owner_file" || true; fi
   rm -rf "$work_dir"
 }
 trap cleanup EXIT
@@ -78,9 +83,9 @@ mv -f "$work_dir/pending-pick.json" "$pending_pick_file"
 # Only from idle, never stopping a recording someone else started, and before the picker shows so the microphone is
 # live when the question appears: an answer said the moment it shows is otherwise half lost. Up to 2s for voxtype to
 # report it.
-if [ "$listen" = 1 ] && "$voxcmd" listen --start-only; then
+if [ "$listen" = 1 ] && VOXCMD_RECORDING_OWNER_FILE="$recording_owner_file" "$voxcmd" listen --start-only; then
   for ((polls = 0; polls < 40; polls++)); do
-    [ "$(cat "$voxtype_state_file" 2>/dev/null)" != recording ] || break
+    if [ "$(cat "$voxtype_state_file" 2>/dev/null)" = recording ] && [ -s "$recording_owner_file" ]; then break; fi
     sleep 0.05
   done
 fi

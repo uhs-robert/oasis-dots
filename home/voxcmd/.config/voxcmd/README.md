@@ -444,7 +444,7 @@ Press the Voice Command key while a voxcmd picker is open and speak a reply; the
 - with a single choice, `yes`, `yeah`, `sure`, `that one` or `do it` to take it, and `no` or `nope` to cancel;
 - `cancel`, `never mind` or `none`, which cancel like Esc.
 
-A picker with a single choice, which a [weak match](#word-matching) opens, asked about a command that came by voice (from `voxcmd listen`) listens for the reply without the key: voxcmd passes `--listen`, and `voxcmd-pick` starts the reply recording (`voxcmd listen --start-only`, only while voxtype is idle) just before the picker shows. It stops itself like any reply, and silence cancels it and leaves the picker waiting for a key or the Voice Command key. Answering by key while it records leaves it running, and its transcript then finds no picker.
+A picker with a single choice, which a [weak match](#word-matching) opens, asked about a command that came by voice (from `voxcmd listen`) listens for the reply without the key: voxcmd passes `--listen`, and `voxcmd-pick` starts the reply recording (`voxcmd listen --start-only`, only while voxtype is idle) just before the picker shows. It stops itself like any reply, and silence cancels it and leaves the picker waiting for a key or the Voice Command key. Answering by key, click or timeout cancels it if it is still recording or transcribing, as the [confirm card](#confirm) does, and leaves alone any recording started after it.
 
 A recording started while a picker waits is always a reply, so `cancel` there closes the picker rather than being discarded as a command.
 

@@ -34,10 +34,11 @@ voxcmd_autostop="$(dirname "$voxcmd_self")/voxcmd-autostop"
 # shellcheck disable=SC2034 # read by integrations
 voxcmd_share_dir="$(dirname "$voxcmd_self")/../share/voxcmd"
 dry_run=0
-# 1 while routing a transcript from `voxcmd listen`, so a confirmation listens for its answer too.
+# 1 while routing a transcript from `voxcmd listen`, so a confirmation or a one-choice picker listens for its answer
+# too.
 came_by_voice=0
-# Set by voxcmd-confirm for the recording it starts: the watcher keeps its PID there while voxtype records or
-# transcribes it, so a card answered by key cancels only its own recording.
+# Set by voxcmd-confirm and voxcmd-pick for the recording they start: the watcher keeps its PID there while voxtype
+# records or transcribes it, so a card or picker answered by key cancels only its own recording.
 recording_owner_file="${VOXCMD_RECORDING_OWNER_FILE:-}"
 # Debug trace of listening, routing and replies, shared with voxcmd-confirm: VOXCMD_DEBUG=1, or
 # create the file, turns it on.
@@ -844,7 +845,7 @@ listen() {
   local transcript_handler=route state start_only=0
   [ "${1:-}" != --start-only ] || start_only=1
   state=$(voxtype_state)
-  debug "listen: voxtype $state${recording_owner_file:+, for a confirm}$([ "$start_only" = 0 ] || echo ', start only')"
+  debug "listen: voxtype $state${recording_owner_file:+, for a reply}$([ "$start_only" = 0 ] || echo ', start only')"
   if [ "$start_only" = 1 ] && [ "$state" != idle ]; then return 1; fi
   case "$state" in
   recording)
@@ -981,14 +982,14 @@ release_recording_ownership() {
   fi
 }
 
-# For voxcmd-confirm once a key, click or timeout answers its card: discards whatever transcript its reply recording
-# still brings, and has the watcher cancel that recording on its next poll. Only the watcher can tell its recording
+# For voxcmd-confirm and voxcmd-pick once a key, click or timeout answers them: discards whatever transcript their
+# reply recording still brings, and has the watcher cancel that recording on its next poll. Only the watcher can tell its recording
 # from a dictation that started since: voxtype has no recording ids, and its state reads "recording" for both.
 cancel_owned_recording() {
   local owner_file="$1" watcher_pid
   watcher_pid=$(cat "$owner_file" 2>/dev/null) || return 0
   [ -n "$watcher_pid" ] && kill -0 "$watcher_pid" 2>/dev/null || return 0
-  debug "confirm answered without voice: discarding watcher $watcher_pid's recording"
+  debug "answered without voice: discarding watcher $watcher_pid's recording"
   touch "$(discard_flag_of "$watcher_pid")"
 }
 
