@@ -73,7 +73,7 @@ Popup {
 
         status: { prefix: "Ff7Menu", views: [] },
 
-        towers: { prefix: "Browser", views: [] },
+        towers: { prefix: "Browser", views: ["Agents", "Usage"] },
 
         watch: { prefix: "Mission", views: [] },
 
