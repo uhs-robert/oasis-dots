@@ -594,7 +594,7 @@ resize_active_to_spoken_size() {
   resize_window "$address $(size_id)"
 }
 
-# Prints "<width> <height> <floating> <monitor width> <monitor height> <class>" for a window, the monitor's size in
+# Prints "<width> <height> <floating> <monitor width> <monitor height>" for a window, the monitor's size in
 # logical pixels like the window's.
 window_geometry() {
   {
@@ -606,7 +606,7 @@ window_geometry() {
     | first($monitors[] | select(.id == $window.monitor)) as $monitor
     | ([$monitor.width, $monitor.height] | map(. / $monitor.scale | floor)) as $logical
     | (if $monitor.transform % 2 == 1 then $logical | reverse else $logical end) as $monitor_size
-    | "\($window.size[0]) \($window.size[1]) \($window.floating) \($monitor_size[0]) \($monitor_size[1]) \($window.class)"
+    | "\($window.size[0]) \($window.size[1]) \($window.floating) \($monitor_size[0]) \($monitor_size[1])"
   ' 2>/dev/null
 }
 
@@ -623,9 +623,9 @@ clamp_size() {
 
 # Resizes to the id's size, "<address> exact <width> <height>" (a "-" keeps that dimension) or "<address> delta
 # <dx> <dy>". A tiled window's size is the layout's: the resize moves its split, and a dimension with no split along
-# it does not change, which is reported rather than floating the window to force it. Nothing changing fails; a
-# dimension that ended elsewhere than asked (the layout, the monitor's size) gets a notification of its own, since
-# success sends none.
+# it, or none left to give, does not change. That is reported rather than floating the window to force it, and as
+# information, since the layout limiting a size is no failure; only a missing window, a bad size or a dispatch error
+# fails. Success sends nothing.
 resize_window() {
   local address kind width height
   read -r address kind width height <<<"$1"
@@ -634,13 +634,13 @@ resize_window() {
     echo "not a size: ${1#* }"
     return 1
   }
-  local geometry start_width start_height floating monitor_width monitor_height class
+  local geometry start_width start_height floating monitor_width monitor_height
   geometry=$(window_geometry "$address")
   [ -n "$geometry" ] || {
     echo "no window $address"
     return 1
   }
-  read -r start_width start_height floating monitor_width monitor_height class <<<"$geometry"
+  read -r start_width start_height floating monitor_width monitor_height <<<"$geometry"
 
   local asked_width="$start_width" asked_height="$start_height"
   if [ "$kind" = exact ]; then
@@ -649,62 +649,77 @@ resize_window() {
   else
     asked_width=$((start_width + width)) asked_height=$((start_height + height))
   fi
-  local target_width target_height
-  target_width=$(clamp_size "$asked_width" "$monitor_width")
-  target_height=$(clamp_size "$asked_height" "$monitor_height")
-  [ "$asked_width" = "$start_width" ] && target_width="$start_width"
-  [ "$asked_height" = "$start_height" ] && target_height="$start_height"
+  local target_width="$start_width" target_height="$start_height"
+  [ "$asked_width" = "$start_width" ] || target_width=$(clamp_size "$asked_width" "$monitor_width")
+  [ "$asked_height" = "$start_height" ] || target_height=$(clamp_size "$asked_height" "$monitor_height")
 
-  local dx=$((target_width - start_width)) dy=$((target_height - start_height))
-  if [ "$dx" = 0 ] && [ "$dy" = 0 ]; then
-    [ "$asked_width" = "$start_width" ] && [ "$asked_height" = "$start_height" ] && return 0
-    echo "$class stays ${start_width}x$start_height, the most its monitor holds"
-    return 1
-  fi
-  hypr_dispatch "hl.dsp.window.resize({ window = 'address:$address', x = $dx, y = $dy, relative = true })" || return 1
+  resize_axis "$address" x $((target_width - start_width)) || return 1
+  resize_axis "$address" y $((target_height - start_height)) || return 1
 
-  # A tiled window's relative resize moves its free edge, so one on the right or bottom of its split shrinks on a
-  # positive delta (an exact size does the same). A dimension that moved away from the target went by -d; twice d
-  # the other way lands it, as the Hyprland config's auto_launcher does.
-  local current_width current_height correction_x=0 correction_y=0
-  read -r current_width current_height <<<"$(window_size "$address")"
-  [ "$(abs $((target_width - current_width)))" -gt "$(abs "$dx")" ] && correction_x=$((-2 * dx))
-  [ "$(abs $((target_height - current_height)))" -gt "$(abs "$dy")" ] && correction_y=$((-2 * dy))
-  if [ "$correction_x" != 0 ] || [ "$correction_y" != 0 ]; then
-    hypr_dispatch "hl.dsp.window.resize({ window = 'address:$address', x = $correction_x, y = $correction_y, relative = true })" || return 1
-    read -r current_width current_height <<<"$(window_size "$address")"
-  fi
-
-  local notes=() unchanged=0 asked=0 layout=""
-  [ "$floating" = true ] || layout=", the tiling layout sets it"
-  if [ "$asked_width" != "$start_width" ]; then
-    asked=$((asked + 1))
-    if [ "$current_width" = "$start_width" ]; then
-      unchanged=$((unchanged + 1))
-      notes+=("width stays $current_width$layout")
-    elif [ "$(abs $((current_width - asked_width)))" -gt 1 ]; then
-      notes+=("width is $current_width, not $asked_width")
-    fi
-  fi
-  if [ "$asked_height" != "$start_height" ]; then
-    asked=$((asked + 1))
-    if [ "$current_height" = "$start_height" ]; then
-      unchanged=$((unchanged + 1))
-      notes+=("height stays $current_height$layout")
-    elif [ "$(abs $((current_height - asked_height)))" -gt 1 ]; then
-      notes+=("height is $current_height, not $asked_height")
-    fi
-  fi
+  local final_width final_height limit notes=()
+  read -r final_width final_height <<<"$(window_size "$address")"
+  [ "$floating" = true ] && limit="the monitor or the app limits it" || limit="the tiled layout limits it"
+  [ "$asked_width" = "$start_width" ] || size_note width "$start_width" "$final_width" "$asked_width"
+  [ "$asked_height" = "$start_height" ] || size_note height "$start_height" "$final_height" "$asked_height"
   [ "${#notes[@]}" = 0 ] && return 0
-  local summary
-  summary="$class: $(printf '%s; ' "${notes[@]}")"
-  summary="${summary%; }"
-  if [ "$unchanged" = "$asked" ]; then
-    echo "$summary"
-    return 1
+  local app message
+  app=$(window_app "$address")
+  message="${app:-The window}: $(printf '%s, ' "${notes[@]}")"
+  # Silent on success and not a failure either, so the action says it by itself, as recording.sh does.
+  notify-send --transient --app-name=voxcmd "${message%, } ($limit)"
+}
+
+# Adds to resize_window's notes when a dimension did not end where it was asked: "height stayed 686".
+size_note() {
+  local dimension="$1" start="$2" final="$3" asked="$4"
+  if [ "$final" = "$start" ]; then
+    notes+=("$dimension stayed $final")
+  elif [ "$(abs $((final - asked)))" -gt 1 ]; then
+    notes+=("$dimension is $final, not $asked")
   fi
-  # Silent on success, so a partial resize says what it could not do by itself; it is no failure.
-  notify-send --transient --app-name=voxcmd "Resized ${current_width}x$current_height" "$summary"
+}
+
+# Changes one dimension ("x" or "y") of a window by delta pixels, as far as it goes. A tiled window's resize moves
+# the edge it shares with its split, so one on the right or bottom of a split shrinks on a positive delta, an exact
+# size included. Whether this edge is such one shows only in the result: a resize that went the wrong way is undone
+# and sent the other way, and one that did nothing (the wrong way was blocked, say at the layout's minimum) is tried
+# the other way too, then undone if that went the wrong way as well.
+resize_axis() {
+  local address="$1" axis="$2" delta="$3" before after change remaining
+  [ "$delta" = 0 ] && return 0
+  before=$(window_dimension "$address" "$axis")
+  resize_by "$address" "$axis" "$delta" || return 1
+  after=$(window_dimension "$address" "$axis")
+  change=$((after - before))
+  if [ "$change" = 0 ]; then
+    resize_by "$address" "$axis" $((-delta)) || return 1
+    change=$(($(window_dimension "$address" "$axis") - before))
+    # Sending -delta moved it by -delta's sign: an edge that resizes as asked, and the way wanted was blocked.
+    if [ "$change" != 0 ] && [ "$((change > 0))" = "$((-delta > 0))" ]; then
+      resize_by "$address" "$axis" $((-change)) || return 1
+    fi
+  elif [ "$((change > 0))" != "$((delta > 0))" ]; then
+    # This edge resizes inverted, so sending -n changes the size by n.
+    remaining=$((delta - change))
+    resize_by "$address" "$axis" $((-remaining)) || return 1
+  fi
+}
+
+resize_by() {
+  local address="$1" axis="$2" pixels="$3" dx=0 dy=0
+  [ "$axis" = x ] && dx="$pixels" || dy="$pixels"
+  hypr_dispatch "hl.dsp.window.resize({ window = 'address:$address', x = $dx, y = $dy, relative = true })"
+}
+
+window_dimension() {
+  local width height
+  read -r width height <<<"$(window_size "$1")"
+  [ "$2" = x ] && echo "$width" || echo "$height"
+}
+
+# The window's app name as the picker shows it.
+window_app() {
+  windows | jq -r --arg address "$1" 'first(.[] | select(.address == $address) | .app) // empty'
 }
 
 abs() {
