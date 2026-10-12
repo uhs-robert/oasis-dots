@@ -123,7 +123,7 @@ Popup {
 
         watch: { prefix: "Watch", views: [] },
 
-        weatherstar: { prefix: "Ws", views: [] },
+        weatherstar: { prefix: "Ws", views: ["Hourly", "SunMoon"] },
 
         wttr: { prefix: "Wttr", views: [] }
     })

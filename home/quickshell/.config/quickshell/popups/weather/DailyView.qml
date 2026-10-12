@@ -28,7 +28,7 @@ Item {
     // PS1: each column headed by its memory card save block in place of the icon.
     readonly property bool save_blocks: Style.weather_header === "memcard"
     // CRT: WeatherStar 4000 "Extended Forecast" panels.
-    readonly property bool ws_panels: Style.weather_header === "weatherstar" && root.sub === 0
+    readonly property bool ws_panels: Style.weather_header === "weatherstar"
     // PS2: days as translucent towers on a dark floor.
     readonly property bool tower_columns: Style.weather_header === "towers" && root.sub === 0
     readonly property int tower_labels_h: Math.round(Style.font_size * 3.4)
@@ -370,6 +370,7 @@ Item {
                         sourceComponent: WsDayPanel {
                             day: day_col.modelData
                             selected: day_col.day_index === root.day_cursor
+                            sub: root.sub
                         }
                     }
 
