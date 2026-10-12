@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Synthesizes each pack's sounds into sounds/<pack>/ (a style, or an extra pack such as mgs2): cursor, confirm, cancel, notify, and where made error, lock and unlock (ogg). Also writes lock skin effects (mgs2-skin, goldeneye-skin). Needs numpy and ffmpeg.
+# Synthesizes each pack's sounds into sounds/<pack>/ (a style, or an extra pack such as mgs2): cursor, confirm, cancel, notify, and where made error, lock and unlock (ogg). Also writes lock skin effects (mgs2-skin, goldeneye-skin) and the default sounds/alarm.ogg (alarm). Needs numpy and ffmpeg.
 # Usage: synth-sounds [--out DIR] [NAME...]   (no names means all; files in ~/.local/share/quickshell/sounds/<style>/ override these)
 import argparse
 import importlib.util
@@ -995,6 +995,13 @@ def goldeneye():
     return {**goldeneye_clicks(), "error": skin["error"], "lock": skin["lock_close"], "unlock": skin["lock_open"]}
 
 
+def alarm():
+    """The alarm for a style with no pack of its own, or with theme audio off: a digital watch's four-beep burst, twice."""
+    burst = [(i * 0.12, beep(2093, 0.07)) for i in range(4)]
+    alarm = mix_at(burst + [(0.75 + at, part) for at, part in burst], 1.3)
+    return finish(lowpass(highpass(alarm, 400), 6000), 0.3)
+
+
 STYLES = {
     "oasis": oasis,
     "modern": modern,
@@ -1017,6 +1024,8 @@ STYLES = {
 
 # Lock skin effects, written as wav under the config root; QtMultimedia's SoundEffect plays nothing else.
 SKIN_FX = {"mgs2-skin": ("lock/skins/mgs2/fx", mgs2_skin), "goldeneye-skin": ("lock/skins/goldeneye/fx", goldeneye_skin)}
+# Single files under sounds/ that belong to no pack.
+LOOSE = {"alarm": alarm}
 
 if __name__ == "__main__":
     root = Path(__file__).resolve().parent.parent
@@ -1024,11 +1033,13 @@ if __name__ == "__main__":
     parser.add_argument("--out", type=Path)
     parser.add_argument("names", nargs="*", metavar="NAME")
     options = parser.parse_args()
-    unknown = [name for name in options.names if name not in STYLES and name not in SKIN_FX]
+    unknown = [name for name in options.names if name not in STYLES and name not in SKIN_FX and name not in LOOSE]
     if unknown:
         sys.exit("synth-sounds: unknown name " + ", ".join(unknown))
-    for name in options.names or list(STYLES) + list(SKIN_FX):
-        if name in STYLES:
+    for name in options.names or list(STYLES) + list(SKIN_FX) + list(LOOSE):
+        if name in LOOSE:
+            write_audio((options.out or root / "sounds") / f"{name}.ogg", LOOSE[name]())
+        elif name in STYLES:
             for kind, signal in STYLES[name]().items():
                 write_audio((options.out or root / "sounds") / name / f"{kind}.ogg", signal)
         else:

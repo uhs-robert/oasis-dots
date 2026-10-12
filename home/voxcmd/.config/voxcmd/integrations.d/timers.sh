@@ -76,18 +76,23 @@ candidates() {
 # Every timer is due at a wall-clock time, timers included: --on-active counts on the monotonic clock, which stops
 # while the machine sleeps, so a 20 minute timer across a suspend would ring late. A calendar time already past on
 # resume fires at once.
-# The unit runs notify-send by absolute path, resolved here, so the user manager's PATH does not matter.
-# Critical urgency keeps the notification up until dismissed, and the bar plays its notification sound for it.
+# The unit runs voxcmd-alarm (a critical notification and the style's alarm sound) by absolute path, resolved
+# here, so the user manager's PATH does not matter. Without it (voxcmd not restowed) the notification still
+# shows, silently.
 schedule() {
-  local kind="$1" text="$2" due="$3" notifier unit
-  notifier=$(command -v notify-send) || {
+  local kind="$1" text="$2" due="$3" path unit ringer=()
+  if path=$(command -v voxcmd-alarm); then
+    ringer=("$path")
+  elif path=$(command -v notify-send); then
+    ringer=("$path" --urgency=critical --app-name=voxcmd)
+  else
     echo "notify-send is not installed"
     return 1
-  }
+  fi
   unit="$unit_prefix$(date +%s%N | cut -c1-13)"
   systemd-run --user --quiet --collect --unit="$unit" --description="$kind: $text" \
     --on-calendar="$(date -d "@$due" '+%Y-%m-%d %H:%M:%S')" --timer-property=AccuracySec=1s \
-    -- "$notifier" --urgency=critical --app-name=voxcmd "$kind" "$text"
+    -- "${ringer[@]}" "$kind" "$text"
 }
 
 start_timer() {

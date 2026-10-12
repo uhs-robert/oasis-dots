@@ -28,9 +28,14 @@ Singleton {
     property real music_level: root.lock_armed ? 1 : 0
     Behavior on music_level { NumberAnimation { duration: 800 } }
 
-    readonly property var kinds: ["cursor", "confirm", "cancel", "notify", "error", "lock", "unlock"]
+    readonly property var kinds: ["cursor", "confirm", "cancel", "notify", "error", "lock", "unlock", "alarm"]
     // A pack without one of these plays the other kind instead; lock and unlock have none and stay silent.
-    readonly property var fallbacks: ({ error: "cancel" })
+    readonly property var fallbacks: ({ error: "cancel", alarm: "notify" })
+    // No pack ships an alarm, so it is the pack's closest sound: notify unless named here. Keyed by the pack the
+    // sound comes from: the chosen one, or the style's own under a game pack that lacks the stand-in.
+    readonly property var alarm_stand_ins: ({ goldeneye: "lock" })
+    // Rings when the pack has nothing to play, or is not loaded because interface and notification sounds are off.
+    readonly property string default_alarm_url: Qt.resolvedUrl("../sounds/alarm.ogg")
     readonly property var volumes: [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
     readonly property string data_dir: Paths.data_dir
     readonly property string user_dir: root.data_dir + "/sounds"
@@ -141,8 +146,23 @@ Singleton {
     property int voice: 0
     property real played_at: 0
 
+    // Timers and reminders ring with this whatever the category switches say: an alarm nobody hears is useless.
+    function play_alarm() {
+        root.preview("alarm");
+    }
+
+    function sound_url(kind) {
+        const exts = ["wav", "ogg"];
+        if (kind === "alarm") {
+            const style_stand_in = ui_pack.game ? root.alarm_stand_ins[Style.saved_name] : "";
+            const stand_in = root.alarm_stand_ins[ui_pack.choice] || style_stand_in || root.fallbacks.alarm;
+            return ui_pack.find("alarm", exts) || ui_pack.find(stand_in, exts) || ui_pack.find(root.fallbacks.alarm, exts) || root.default_alarm_url;
+        }
+        return ui_pack.find(kind, exts) || (root.fallbacks[kind] ? ui_pack.find(root.fallbacks[kind], exts) : "");
+    }
+
     function preview(kind) {
-        const url = ui_pack.find(kind, ["wav", "ogg"]) || (root.fallbacks[kind] ? ui_pack.find(root.fallbacks[kind], ["wav", "ogg"]) : "");
+        const url = root.sound_url(kind);
         const now = Date.now();
         if (url === "" || now - root.played_at < 30) return;
         root.played_at = now;
