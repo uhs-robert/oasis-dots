@@ -2,9 +2,11 @@
 import QtQuick
 import QtQuick.Layouts
 import "../../components"
+import "../../components/nes"
 import "../../theme"
 import "../../services"
 import "../weather" as Weather
+import "../../components/nes/Slimes.js" as Slimes
 import "KeeptabsFormat.js" as Fmt
 
 // The Agents tab as a Dragon Quest party: a strip of four member windows paging around the selection, a message
@@ -28,7 +30,7 @@ Item {
     readonly property string current_state: root.current ? (root.current.state || "idle") : "idle"
     readonly property bool has_context: root.current !== null && root.current.context_pct !== null && root.current.context_pct !== undefined
     readonly property bool low: root.has_context && root.current.context_pct >= 85
-    readonly property color orange: Style.pal.bright_yellow
+    readonly property color low_color: Style.pal.warning
     readonly property bool animating: Popups.open_name === "keeptabs" && root.visible
     property bool beat: false
 
@@ -40,6 +42,109 @@ Item {
         running: "is fighting.",
         idle: "is asleep. ZZZ"
     })
+
+    // One session as a Dragon Quest party member: a slime for its agent in a window named by the title, with H (context
+    // left), M (context used) and L (time in this state) beneath. The border turns warning-coloured as context runs out.
+    component PartyMemberWindow: Weather.DqWindow {
+        id: member
+
+        required property var session
+        property bool is_selected: false
+        // Flips on the popup's blink timer; waiting members hop with it.
+        property bool beat: false
+        property var st: Style
+
+        readonly property bool has_context: member.session.context_pct !== null && member.session.context_pct !== undefined
+        readonly property bool low: member.has_context && member.session.context_pct >= 85
+        readonly property string state_name: member.session.state || "idle"
+        readonly property bool codex: member.session.agent === "codex"
+        readonly property color low_color: Style.pal.warning
+        readonly property int pixel: 3
+
+        title: member.session.title || "Untitled"
+        color: member.state_name === "running" ? Style.pal.bg_surface : Theme.bg_crust
+        border.color: member.low ? member.low_color : Theme.fg_strong
+
+        function slime_colors(): var {
+            const body = member.state_name === "idle" ? Style.pal.fg_muted : member.codex ? Style.pal.red : Style.pal.blue;
+            const shine = member.state_name === "idle" ? Style.pal.fg_dim : member.codex ? Style.pal.bright_red : Style.pal.bright_blue;
+            return [Style.pal.bg_crust, Style.pal.fg_strong, Style.pal.yellow, Style.pal.bright_yellow, body, shine, Style.pal.fg_dim, Style.pal.red];
+        }
+
+        ColumnLayout {
+            anchors.fill: parent
+            anchors.margins: 8
+            anchors.topMargin: 10
+            spacing: 2
+
+            Item {
+                Layout.alignment: Qt.AlignHCenter
+                Layout.preferredWidth: Slimes.SIZE * member.pixel
+                Layout.preferredHeight: Slimes.SIZE * member.pixel + member.pixel
+
+                PixelSprite {
+                    y: member.state_name === "waiting" && member.beat ? 0 : member.pixel
+                    pixel: member.pixel
+                    colors: member.slime_colors()
+                    rows: member.state_name === "done" ? Slimes.KING_SLIME : Slimes.SLIME
+                }
+
+                Text {
+                    visible: member.state_name === "idle"
+                    anchors.right: parent.right
+                    anchors.top: parent.top
+                    text: "z"
+                    color: Theme.fg_strong
+                    font.family: member.st.font_family
+                    font.pixelSize: member.st.fs(-5)
+                    font.bold: true
+                }
+            }
+
+            Repeater {
+                model: [
+                    { key: "H", value: member.has_context ? Fmt.fmt_tokens(Math.max(0, member.session.context_window - member.session.context_used)) : "--", hot: false },
+                    { key: "M", value: member.has_context ? member.session.context_pct + "%" : "--", hot: member.low },
+                    { key: "L", value: Fmt.age(member.session.since), hot: false }
+                ]
+
+                delegate: RowLayout {
+                    id: stat
+                    required property var modelData
+                    Layout.fillWidth: true
+                    spacing: 2
+
+                    Text {
+                        text: stat.modelData.key
+                        color: member.is_selected ? Theme.fg_strong : member.st.text_dim
+                        font.family: member.st.font_family
+                        font.pixelSize: member.st.fs(-5)
+                    }
+
+                    Text {
+                        Layout.fillWidth: true
+                        Layout.minimumWidth: 0
+                        horizontalAlignment: Text.AlignRight
+                        elide: Text.ElideRight
+                        text: stat.modelData.value
+                        color: stat.modelData.hot ? member.low_color : member.is_selected ? Theme.fg_strong : member.st.text_muted
+                        font.family: member.st.font_family
+                        font.pixelSize: member.st.fs(-5)
+                    }
+                }
+            }
+        }
+
+        Text {
+            visible: member.is_selected
+            x: 7
+            y: 6
+            text: "▶"
+            color: Theme.fg_strong
+            font.family: member.st.font_family
+            font.pixelSize: member.st.fs(-5)
+        }
+    }
 
     // The strip is derived from `selected`, so there is nothing to scroll.
     function ensure_visible(i) {}
@@ -84,15 +189,12 @@ Item {
                     Layout.preferredWidth: 1
                     Layout.preferredHeight: Style.px(100)
 
-                    // By URL: Quickshell registers no types from this folder, so a sibling cannot be named (#531).
-                    Loader {
+                    PartyMemberWindow {
                         anchors.fill: parent
-                        Component.onCompleted: setSource(Qt.resolvedUrl("PartyMemberWindow.qml"), {
-                            session: Qt.binding(() => slot.modelData),
-                            is_selected: Qt.binding(() => slot.session_index === root.selected),
-                            beat: Qt.binding(() => root.beat),
-                            st: Qt.binding(() => root.st)
-                        })
+                        session: slot.modelData
+                        is_selected: slot.session_index === root.selected
+                        beat: root.beat
+                        st: root.st
                     }
 
                     MouseArea {
@@ -133,7 +235,7 @@ Item {
             Weather.DqWindow {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                border.color: root.low ? root.orange : Theme.fg_strong
+                border.color: root.low ? root.low_color : Theme.fg_strong
 
                 ColumnLayout {
                     anchors.fill: parent
@@ -166,8 +268,10 @@ Item {
                     Text {
                         Layout.fillWidth: true
                         Layout.minimumWidth: 0
+                        wrapMode: Text.Wrap
+                        maximumLineCount: 2
                         elide: Text.ElideRight
-                        text: root.current_state.toUpperCase() + " " + root.verbs[root.current_state] + " (" + Fmt.age(root.current ? root.current.since : 0) + ")"
+                        text: root.current_state.toUpperCase() + " " + (root.verbs[root.current_state] || root.verbs.idle) + " (" + Fmt.age(root.current ? root.current.since : 0) + ")"
                         color: Fmt.state_color(root.current_state, root.colors)
                         font.family: root.st.font_family
                         font.pixelSize: root.st.fs(-3)
@@ -181,7 +285,7 @@ Item {
                         elide: Text.ElideRight
                         visible: root.has_context
                         text: root.has_context ? "Context " + root.current.context_pct + "% · " + Fmt.fmt_tokens(root.current.context_used) + "/" + Fmt.fmt_tokens(root.current.context_window) : ""
-                        color: root.low ? root.orange : root.st.text_dim
+                        color: root.low ? root.low_color : root.st.text_dim
                         font.family: root.st.font_family
                         font.pixelSize: root.st.fs(-4)
                     }
@@ -190,7 +294,7 @@ Item {
                         Layout.fillWidth: true
                         visible: root.has_context
                         value: root.has_context ? root.current.context_pct / 100 : 0
-                        fill_color: root.low ? root.orange : Theme.fg_strong
+                        fill_color: root.low ? root.low_color : Theme.fg_strong
                     }
                 }
             }
