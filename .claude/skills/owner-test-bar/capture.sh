@@ -19,27 +19,27 @@ rect_file=""
 screen=""
 while (($# > 0)); do
   case $1 in
-    --pad)
-      pad=${2:?--pad needs a number}
-      shift 2
-      ;;
-    --reveal)
-      reveal=1
-      shift
-      ;;
-    --screen)
-      screen=${2:?--screen needs a monitor name}
-      shift 2
-      ;;
-    --out)
-      out=${2:?--out needs a path}
-      shift 2
-      ;;
-    --rect-file)
-      rect_file=${2:?--rect-file needs a path}
-      shift 2
-      ;;
-    *) die "unknown argument: $1" ;;
+  --pad)
+    pad=${2:?--pad needs a number}
+    shift 2
+    ;;
+  --reveal)
+    reveal=1
+    shift
+    ;;
+  --screen)
+    screen=${2:?--screen needs a monitor name}
+    shift 2
+    ;;
+  --out)
+    out=${2:?--out needs a path}
+    shift 2
+    ;;
+  --rect-file)
+    rect_file=${2:?--rect-file needs a path}
+    shift 2
+    ;;
+  *) die "unknown argument: $1" ;;
   esac
 done
 [[ $pad =~ ^[0-9]+$ ]] || die "--pad must be a non-negative integer"

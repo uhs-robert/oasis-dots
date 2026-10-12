@@ -38,7 +38,10 @@ launch() {
   # A stale HYPRLAND_INSTANCE_SIGNATURE would let pkill stop the bar and the relaunch below fail.
   hyprctl version >/dev/null 2>&1 || die "hyprctl cannot reach Hyprland (stale HYPRLAND_INSTANCE_SIGNATURE?); not stopping qs"
   pkill -x qs || true
-  for _ in $(seq 20); do pgrep -x qs >/dev/null || break; sleep 0.2; done
+  for _ in $(seq 20); do
+    pgrep -x qs >/dev/null || break
+    sleep 0.2
+  done
   hyprctl dispatch "hl.dsp.exec_cmd('$1')" >/dev/null
   sleep 6
 }
@@ -70,7 +73,10 @@ restart_rotator() {
   # Restarted with its own arguments, such as --location from autostart, read before it exits.
   cmd=$(tr '\0' ' ' <"/proc/$pid/cmdline")
   pkill -f '^lua .*wallpaper/init[.]lua' || true
-  for _ in $(seq 20); do pgrep -f '^lua .*wallpaper/init[.]lua' >/dev/null || break; sleep 0.2; done
+  for _ in $(seq 20); do
+    pgrep -f '^lua .*wallpaper/init[.]lua' >/dev/null || break
+    sleep 0.2
+  done
   hyprctl dispatch "hl.dsp.exec_cmd($(jq -Rn --arg c "${cmd% }" '$c'))" >/dev/null
   echo "rotator: restarted"
 }
@@ -245,68 +251,68 @@ done
 set -- "${args[@]}"
 
 case ${1:-} in
-  build)
-    shift
-    build "$@"
-    ;;
-  swap)
-    dir="$bars/${2:?usage: owner-test-bar.sh swap <name>}"
-    [[ -d $dir ]] || die "no test bar at $dir"
-    guard_live_bar "$2" "$replace"
-    require_unlocked
-    hypr_swap "${2}" "$dir"
-    launch "qs -n -p $dir/$qs_rel"
-    verify "qs log -p $dir/$qs_rel"
-    ;;
-  up)
-    name=${2:?usage: owner-test-bar.sh up <name> <branch>...}
-    shift 2
-    guard_live_bar "$name" "$replace"
-    build "$name" "$@"
-    swap_args=("$name")
-    ((replace)) && swap_args+=(--replace)
-    "$0" swap "${swap_args[@]}"
-    ;;
-  restore)
+build)
+  shift
+  build "$@"
+  ;;
+swap)
+  dir="$bars/${2:?usage: owner-test-bar.sh swap <name>}"
+  [[ -d $dir ]] || die "no test bar at $dir"
+  guard_live_bar "$2" "$replace"
+  require_unlocked
+  hypr_swap "${2}" "$dir"
+  launch "qs -n -p $dir/$qs_rel"
+  verify "qs log -p $dir/$qs_rel"
+  ;;
+up)
+  name=${2:?usage: owner-test-bar.sh up <name> <branch>...}
+  shift 2
+  guard_live_bar "$name" "$replace"
+  build "$name" "$@"
+  swap_args=("$name")
+  ((replace)) && swap_args+=(--replace)
+  "$0" swap "${swap_args[@]}"
+  ;;
+restore)
+  require_unlocked
+  hypr_restore
+  launch "qs -n"
+  verify "qs log"
+  ;;
+remove)
+  dir="$bars/${2:?usage: owner-test-bar.sh remove <name>}"
+  pgrep -af "^qs .*-p $dir/" >/dev/null && die "that test bar is running; run owner-test-bar.sh restore first"
+  if [[ -f $hypr_bar && $(<"$hypr_bar") == "${2}" ]]; then
     require_unlocked
     hypr_restore
-    launch "qs -n"
-    verify "qs log"
-    ;;
-  remove)
-    dir="$bars/${2:?usage: owner-test-bar.sh remove <name>}"
-    pgrep -af "^qs .*-p $dir/" >/dev/null && die "that test bar is running; run owner-test-bar.sh restore first"
-    if [[ -f $hypr_bar && $(<"$hypr_bar") == "${2}" ]]; then
-      require_unlocked
-      hypr_restore
-    fi
-    git -C "$repo" worktree remove --force "$dir"
-    git -C "$repo" worktree prune
-    rm -f "$dir.branches"
-    echo "owner-test-bar: removed $dir"
-    ;;
-  rebuild)
-    name=${2:?usage: owner-test-bar.sh rebuild <name>}
-    dir="$bars/$name"
-    [[ -f $dir.branches ]] || die "no test bar '$name' to rebuild"
-    mapfile -t branches <"$dir.branches"
-    # Checked before removal: once up refuses over another live bar, this bar and its branch record are already gone.
-    guard_live_bar "$name" "$replace"
-    # Removing a running bar's worktree would pull its files out from under qs, so the stowed bar takes over first.
-    if pgrep -af "^qs .*-p $dir/" >/dev/null; then "$0" restore; fi
-    "$0" remove "$name"
-    up_args=("$name" "${branches[@]}")
-    ((replace)) && up_args+=(--replace)
-    "$0" up "${up_args[@]}"
-    ;;
-  status)
-    status
-    ;;
-  probe)
-    shift
-    probe "$@"
-    ;;
-  *)
-    die "usage: owner-test-bar.sh {up <name> <branch>... [--replace]|build <name> <branch>...|swap <name> [--replace]|restore|rebuild <name>|remove <name>|status|probe <ipc call>...}"
-    ;;
+  fi
+  git -C "$repo" worktree remove --force "$dir"
+  git -C "$repo" worktree prune
+  rm -f "$dir.branches"
+  echo "owner-test-bar: removed $dir"
+  ;;
+rebuild)
+  name=${2:?usage: owner-test-bar.sh rebuild <name>}
+  dir="$bars/$name"
+  [[ -f $dir.branches ]] || die "no test bar '$name' to rebuild"
+  mapfile -t branches <"$dir.branches"
+  # Checked before removal: once up refuses over another live bar, this bar and its branch record are already gone.
+  guard_live_bar "$name" "$replace"
+  # Removing a running bar's worktree would pull its files out from under qs, so the stowed bar takes over first.
+  if pgrep -af "^qs .*-p $dir/" >/dev/null; then "$0" restore; fi
+  "$0" remove "$name"
+  up_args=("$name" "${branches[@]}")
+  ((replace)) && up_args+=(--replace)
+  "$0" up "${up_args[@]}"
+  ;;
+status)
+  status
+  ;;
+probe)
+  shift
+  probe "$@"
+  ;;
+*)
+  die "usage: owner-test-bar.sh {up <name> <branch>... [--replace]|build <name> <branch>...|swap <name> [--replace]|restore|rebuild <name>|remove <name>|status|probe <ipc call>...}"
+  ;;
 esac
