@@ -118,6 +118,20 @@ help_choices() {
 }
 ```
 
+An integration whose options sit on screen can ask several matches to be shown there instead of listed as text:
+
+```bash
+pick_command=voxcmd-hints   # a blocking picker called like voxcmd-pick, found beside voxcmd or on PATH
+
+# Prints "<left> <top> <width> <height>" in global logical pixels for an option id, or fails when it has none.
+pick_box() {
+  IFS=, read -r _ _ _ left top width height <<<"$1"
+  echo "$left $top $width $height"
+}
+```
+
+When every option of a pick comes from one integration with both, each choice gains `box: [left, top, width, height]` and `pick_command` asks it, with `Which one?`, instead of `voxcmd-pick`. A command that came by voice passes `--listen` to it whatever the number of options, since the user is looking at the choices. If any option has no box the text picker asks as usual. The command must be named `voxcmd-hints` (or `voxcmd-pick`/`voxcmd-confirm`) to be found by `voxcmd --reply`, which looks for those in the pending-pick owner's command line.
+
 Candidates may also carry `match_text`, the text the target is matched against when it should differ from the label shown (`keybinds.sh` matches the bare description and shows the submap after it).
 
 Optional settings for integrations whose actions differ in risk, or whose targets need stricter matching:
@@ -423,8 +437,8 @@ Switching takes any `{focus}` or `{open}` [intent](#intents) form before the ses
 
 - Only the focused window is read, since unfocused windows are dimmed and lose words to OCR. With no focused window the command fails with "no focused window".
 - A click verb always needs a target, so a bare "click" and "right click" still go to the Cursor submap's binds in Keybinds. So do "click left", "click it", "click here", "click and drag" and the like: a target of only filler words and `left`, `right`, `middle`, `here`, `and`, `drag` and `hold` is no target, and the screen is not even read. A real target found nowhere says `No "<text>" on screen` and does not fall through to Keybinds.
-- Matching is [word matching](#word-matching) against each run of words OCR read on one line (a wide gap starts a new run). One strong match clicks; the text on its own as a button beats the same words inside a longer run. Several matches, or any weak one ("settings" for an "Open Settings" link), open the [picker](#picker), whose labels give the text and where it is ("Next - top right"), and which is [answered by voice](#answering-by-voice) like any other. A stray phrase never clicks: a word OCR read one edit away from the spoken one ("Clone" for "close", "Summit" for "submit") is another word as often as a misread one, so it is never taken for the spoken word. Because of that, a word is kept down to confidence 40 (instead of 60) when it equals a spoken word, or the spoken letters joined, by look-alike letters: white text on a blue button often reads at 50 to 55 ("Newtask" for "new task"). A doubtful word that is only close to a spoken one is still dropped.
-- Tesseract reads a sentence as one run, so a link inside it ("2 tasks" in "2 tasks are flagged TODO.") is only part of a run and word matching drops the run. When no run matches whole, the words of a run that equal the spoken words, in order, are a candidate of their own, with the click point and box of just those words; one clicks, several open the picker. A run that matches whole always wins, so "tasks" with a "Tasks" heading on screen never clicks inside a sentence.
+- Matching is [word matching](#word-matching) against each run of words OCR read on one line (a wide gap starts a new run). One strong match clicks; the text on its own as a button beats the same words inside a longer run. Several matches, or any weak one ("settings" for an "Open Settings" link), [number the matches on screen](#click-hints), answered by number key, click or voice ("two"); only if the bar cannot draw them, or there are more than ten, does the [picker](#picker) ask, with labels giving the text and where it is ("Next - top right"). A stray phrase never clicks: a word OCR read one edit away from the spoken one ("Clone" for "close", "Summit" for "submit") is another word as often as a misread one, so it is never taken for the spoken word. Because of that, a word is kept down to confidence 40 (instead of 60) when it equals a spoken word, or the spoken letters joined, by look-alike letters: white text on a blue button often reads at 50 to 55 ("Newtask" for "new task"). A doubtful word that is only close to a spoken one is still dropped.
+- Tesseract reads a sentence as one run, so a link inside it ("2 tasks" in "2 tasks are flagged TODO.") is only part of a run and word matching drops the run. When no run matches whole, the words of a run that equal the spoken words, in order, are a candidate of their own, with the click point and box of just those words; one clicks, several are numbered on screen. A run that matches whole always wins, so "tasks" with a "Tasks" heading on screen never clicks inside a sentence.
 - Look-alike letters are forgiven: `l`, `I`, `1` and `|` compare equal, `0` and `O` too, so "sign ln" is "sign in". Any other misread letter is not: the OCR word stays what it is, and voxcmd's word matching calls it weak or drops it.
 - Text the window holds but the screen covers is not clicked: the capture is the window's own buffer, so candidates under a floating window above the focused one, a pinned window, or the monitor's reserved edges (the bar) are dropped. When every candidate is covered, a toast says `"<text>" is covered by another window`.
 - A click goes only to the window that was read, where it was: when another window has focus by the time of the click (a picker answered seconds later), or the window moved or changed size, nothing is clicked and a toast says `The window changed; say it again`. The same holds when the read is more than 60 s old.
@@ -435,6 +449,15 @@ Switching takes any `{focus}` or `{open}` [intent](#intents) form before the ses
 The pipeline is `click-ocr` (capture, gray, invert when the window is dark, tesseract; a window taller than 1000 px is cut into 4 to 6 overlapping strips read in parallel, each owning the lines whose box is centred in its rows) feeding `click-match.awk` (matching and the mapping to global coordinates), both in `~/.local/share/voxcmd/`. Typical time from speech end to click is under a second. The capture is by toplevel (`grim -T`, from the window's `stableId`), so translucent windows are read without the wallpaper behind them; it falls back to the window's screen region when that fails. The mapping takes the x and y scales from the captured image, not the monitor, and grim returns upright images on rotated monitors. A capture whose two scales differ by more than 2% is retaken as a screen region, and fails if that differs too. A word is matched against the spoken words one by one, or by letters joined ("Newtask" for "new task", "Read me" for "readme"); the spoken words replace OCR text only for look-alike equality.
 
 Needs `grim`, `tesseract` and `tesseract-data-eng`, `imagemagick`, `wlrctl` and `wl-kbptr` (all in `packages/`). Tests: `home/voxcmd/tests/run.sh` (a step of `just check`) runs in the test sandbox, where `grim`, `magick`, `tesseract`, `wlrctl` and `hyprctl` are stubs fed by fixtures, and runs voxcmd with `--dry-run` only.
+
+### Click hints
+
+`voxcmd-hints [--listen] <label> <choices-json>` is the picker `click.sh` uses for several matches (`pick_command`). Choices are `{id, label, box: [left, top, width, height]}`; it prints the picked id and exits 1 on cancel. The Quickshell bar draws a numbered keycap and an outline over each box (`qs-ipc call clickhints`, see the bar's README), and the other screens stay quiet. Answer by:
+
+- number keys `1`-`9` and `0` (box 10), or a click on a box; `Esc`, `q` or a click anywhere else cancels, and `?` lists the keys;
+- voice, as with any [picker](#answering-by-voice): "two", "the second one", a label's words, "cancel". With `--listen` (a spoken command) the reply recording starts just before the numbers appear, and an unclear reply listens once more. The overlay shows Listening or Transcribing, and its 10 s timeout waits while voxtype records.
+
+The overlay writes the number into the pick's FIFO, a voice reply the displayed label; either maps to the choice's id. While it waits, `voxcmd-hints` keeps the same `pending-pick.json` as `voxcmd-pick`, with `kind: "hints"`, `listen_again` and numbered labels. Without the bar, with more than ten choices, or when a choice has no box, it hands the pick to `voxcmd-pick`.
 
 ## Voice Help
 

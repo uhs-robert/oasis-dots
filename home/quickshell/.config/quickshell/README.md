@@ -242,6 +242,7 @@ qs-ipc show        # list every target and function
 | `lock`          | `lock`, `lock_auto` (music waits for the first key), `state`, `preview <style>`, `preview_close` |
 | `power`         | `confirm <lock\|logout\|reboot\|poweroff>`                            |
 | `confirm`       | `ask <question> <result_path>`: drop the yes/no card from the center island; it writes `yes` or `no` to the path (No, Esc, the scrim and 10s without an answer are all `no`, the countdown waiting while voxtype records or transcribes); `dismiss <result_path>` closes that card without writing. `voxcmd-confirm` is the shell wrapper |
+| `clickhints`    | `open <spec_path>`: numbered boxes over the screen from a JSON file `{label, choices: [{label, x, y, w, h}], result_path}` (global logical coordinates, at most ten); it writes the picked number, or an empty line for Esc, a click outside a box and 10s without an answer (the countdown waiting while voxtype records or transcribes), to the path, and returns `ok` (anything else means fall back to a text picker); `dismiss <result_path>` closes it without writing; `state` is `open` or `closed`. `voxcmd-hints` is the shell wrapper |
 | `weather`       | `preview <fixture\|off>`, `previewing`: overlay a `services/WeatherFixture.js` fixture on the live data (see Weather views) |
 | `brightness`    | `refresh`                                                             |
 | `cmdstatus`     | `refresh <id>` (`""` refreshes every entry)                          |

@@ -431,13 +431,13 @@ shot() {
 wait_surface() {
   set_name "${1:-}"
   shift
-  local usage="usage: shadow.sh wait <name> {popup <popup>|osd <volume|brightness|voxtype>|popup closed|osd closed} [--timeout SECONDS]"
+  local usage="usage: shadow.sh wait <name> {popup <popup>|osd <volume|brightness|voxtype>|popup closed|osd closed|clickhints open|clickhints closed} [--timeout SECONDS]"
   local target=${1:-} want=${2:-} timeout=5 state deadline
-  [[ $target =~ ^(popup|osd)$ && -n $want ]] || die "$usage"
+  [[ $target =~ ^(popup|osd|clickhints)$ && -n $want ]] || die "$usage"
   shift 2
   [[ ${1:-} != --timeout ]] || timeout=${2:?--timeout needs seconds}
   [[ $timeout =~ ^[0-9]+$ ]] || die "--timeout must be whole seconds"
-  [[ $want == closed ]] || want="open $want"
+  [[ $want == closed || $target == clickhints ]] || want="open $want"
   deadline=$(($(now_ms) + timeout * 1000))
   while :; do
     state=$(ipc "$name" "$target" state 2>&1) || die "$target state failed ($state); the bar may predate the $target state IPC"
@@ -557,7 +557,7 @@ down() {
   fi
 }
 
-usage="usage: shadow.sh {up <name> [--size WxH] [<branch>...]|ipc <name> <ipc call args>|keys <name> <wtype args>|voxtype <name> {idle|recording|transcribing}|hyprctl <name> <args>|wait <name> {popup|osd} {<what>|closed} [--timeout SECONDS]|shot <name> [<layer namespace>] [--pad N] [--out PATH]|status [<name>]|down <name> [--keep]}"
+usage="usage: shadow.sh {up <name> [--size WxH] [<branch>...]|ipc <name> <ipc call args>|keys <name> <wtype args>|voxtype <name> {idle|recording|transcribing}|hyprctl <name> <args>|wait <name> {popup|osd|clickhints} {<what>|open|closed} [--timeout SECONDS]|shot <name> [<layer namespace>] [--pad N] [--out PATH]|status [<name>]|down <name> [--keep]}"
 cmd=${1:-}
 (($# > 0)) && shift
 case $cmd in

@@ -22,8 +22,8 @@ EOF
 config_dir="${VOXCMD_CONFIG_DIR:-${XDG_CONFIG_HOME:-$HOME/.config}/voxcmd}"
 runtime_dir="${XDG_RUNTIME_DIR:-/tmp}/voxcmd"
 voxtype_state_file="${XDG_RUNTIME_DIR:-/tmp}/voxtype/state"
-# Written by voxcmd-pick or voxcmd-confirm while it waits: {pid, fifo, label, choices: [{id, label}]}, plus
-# {kind: "confirm", listen_again} from voxcmd-confirm.
+# Written by voxcmd-pick, voxcmd-confirm or voxcmd-hints while it waits: {pid, fifo, label, choices: [{id, label}]}, plus
+# {kind: "confirm", listen_again} from voxcmd-confirm and {kind: "hints", listen_again} from voxcmd-hints.
 pending_pick_file="$runtime_dir/pending-pick.json"
 transcript_file="$runtime_dir/transcript.txt"
 voxcmd_self="$(readlink -f "$0")"
@@ -37,7 +37,7 @@ dry_run=0
 # 1 while routing a transcript from `voxcmd listen`, so a confirmation or a one-choice picker listens for its answer
 # too.
 came_by_voice=0
-# Set by voxcmd-confirm and voxcmd-pick for the recording they start: the watcher keeps its PID there while voxtype
+# Set by voxcmd-confirm, voxcmd-pick and voxcmd-hints for the recording they start: the watcher keeps its PID there while voxtype
 # records or transcribes it, so a card or picker answered by key cancels only its own recording.
 recording_owner_file="${VOXCMD_RECORDING_OWNER_FILE:-}"
 # Debug trace of listening, routing and replies, shared with voxcmd-confirm: VOXCMD_DEBUG=1, or
@@ -189,8 +189,8 @@ compile_pattern() {
 # Callers source each integration in its own subshell so their variables and functions never collide.
 # A `declare` in a file sourced from a function is local to that function, so the arrays are copied out to globals.
 load_integration() {
-  unset -f candidates help_choices
-  name="" confirm=0 fallback=0 silent=0 target_match=fuzzy help_action="" action_labels=1
+  unset -f candidates help_choices pick_box
+  name="" confirm=0 fallback=0 silent=0 target_match=fuzzy help_action="" action_labels=1 pick_command=""
   local -a verbs=() examples=() confirm_labels=() match_ignore_words=() silent_actions=() force_prefixes=()
   local -A actions=() no_match_actions=()
   # shellcheck disable=SC1090
@@ -495,6 +495,35 @@ print_dry_run() {
     "             command: \(.command)"' <<<"$options"
 }
 
+# Prints the picker command and the choices to give it, one per line, when every option comes from one integration that
+# sets pick_command and its pick_box places each option on screen; else fails, and the text picker asks. pick_box prints
+# "<left> <top> <width> <height>" in global logical pixels for an option id, and each choice gains it as `box`. More
+# options than the picker has numbers for also fail, so the text picker lists them all.
+integration_pick() {
+  local options="$1" choices="$2" file max_options=10
+  file=$(jq -r 'map(.file) | unique | if length == 1 then .[0] else empty end' <<<"$options")
+  [ -n "$file" ] || return 1
+  [ "$(jq length <<<"$options")" -le "$max_options" ] || return 1
+  (
+    load_integration "$file"
+    [ -n "$pick_command" ] && declare -F pick_box >/dev/null || exit 1
+    local command_path="$pick_command" boxes="" id box
+    [[ "$command_path" == */* ]] || ! [ -x "$(dirname "$voxcmd_self")/$command_path" ] || command_path="$(dirname "$voxcmd_self")/$command_path"
+    while IFS= read -r id; do
+      box=$(pick_box "$id") || exit 1
+      [[ "$box" != *$'\n'* ]] || exit 1
+      boxes+="$box"$'\n'
+    done < <(jq -r '.[].id' <<<"$options")
+    printf '%s\n' "$command_path"
+    # Fails on a box line that is not four numbers, or a line count that is not the choices', so no box shifts onto
+    # another option.
+    jq -c -R -s --argjson choices "$choices" '
+      split("\n")[:-1] | map(split(" ") | map(tonumber)) as $boxes
+      | if ($boxes | length) != ($choices | length) or any($boxes[]; length != 4) then error("bad boxes") else . end
+      | [range(0; length) as $i | $choices[$i] + {box: $boxes[$i]}]' <<<"${boxes%$'\n'}"
+  )
+}
+
 # A single option runs unless it is a weak match, which the user picks like any ambiguity.
 needs_pick() {
   [ "$(jq 'length > 1 or any(.[]; .weak)' <<<"$1")" = true ]
@@ -558,9 +587,18 @@ route() {
       jq -n -c --arg id "$(jq -r .index <<<"$option")" --arg label "$(option_label "$option")" '{id: $id, label: $label}'
     done < <(jq -c 'to_entries[] | .value + {index: .key}' <<<"$options") | jq -s -c .)
     # A single weak match asks only "this one?", so a spoken command gets its answer by voice too, as a confirmation does.
+    # An integration's own picker (on-screen numbers) is always answered by voice, since the user is looking at it.
     local -a pick_flags=()
-    [ "$came_by_voice" = 0 ] || [ "$count" != 1 ] || pick_flags+=(--listen)
-    picked=$("$voxcmd_pick" "${pick_flags[@]}" "Which command?" "$choices") || return 0
+    local pick_command_path="$voxcmd_pick" pick_label="Which command?" hook
+    if hook=$(integration_pick "$options" "$choices"); then
+      pick_command_path="${hook%%$'\n'*}"
+      choices="${hook#*$'\n'}"
+      pick_label="Which one?"
+      [ "$came_by_voice" = 0 ] || pick_flags+=(--listen)
+    else
+      [ "$came_by_voice" = 0 ] || [ "$count" != 1 ] || pick_flags+=(--listen)
+    fi
+    picked=$("$pick_command_path" "${pick_flags[@]}" "$pick_label" "$choices") || return 0
     run_option "$(jq -c --argjson i "$picked" '.[$i]' <<<"$options")"
   fi
 }
@@ -640,14 +678,14 @@ help_runnables() {
 
 # ---- Voice replies to an open picker ----------------------------------------------------------------------------
 
-# Prints the pending pick's state while its voxcmd-pick or voxcmd-confirm still waits on its FIFO. A stale file is
+# Prints the pending pick's state while its voxcmd-pick, voxcmd-confirm or voxcmd-hints still waits on its FIFO. A stale file is
 # left alone: a new pick may be about to replace it.
 pending_pick() {
   local state pid fifo
   state=$(cat "$pending_pick_file" 2>/dev/null) || return 1
   pid=$(jq -r '.pid // empty' <<<"$state" 2>/dev/null) || return 1
   fifo=$(jq -r '.fifo // empty' <<<"$state" 2>/dev/null) || return 1
-  [ -n "$pid" ] && [ -p "$fifo" ] && grep -qsE 'voxcmd-(pick|confirm)' "/proc/$pid/cmdline" || return 1
+  [ -n "$pid" ] && [ -p "$fifo" ] && grep -qsE 'voxcmd-(pick|confirm|hints)' "/proc/$pid/cmdline" || return 1
   printf '%s' "$state"
 }
 
@@ -757,8 +795,8 @@ match_confirm_reply() {
   fi
 }
 
-# Answers the open voxcmd-pick as if the choice had been picked in it, or the open voxcmd-confirm; either then closes
-# its picker or card.
+# Answers the open voxcmd-pick or voxcmd-hints as if the choice had been picked in it, or the open voxcmd-confirm; each
+# then closes its picker or card. voxcmd-hints reads the displayed label's number.
 reply() {
   local transcript="$*" text state verdict shown_list_key shown_list
   text=$(apply_replacements "$(normalize "$transcript")")
@@ -782,7 +820,16 @@ reply() {
   fi
   case "$verdict" in
   unclear*)
-    notify info "voxcmd: which one?" "\"$transcript\": ${verdict#*$'\t'}. Say a choice, a number, or cancel."
+    # Only a picker that listens for its reply (voxcmd-hints) leaves a listen_again file; one rm of it succeeds, so
+    # one unclear reply gets the extra listen.
+    local listen_again
+    listen_again=$(jq -r '.listen_again // empty' <<<"$state")
+    if [ -n "$listen_again" ] && rm "$listen_again" 2>/dev/null; then
+      notify info "voxcmd: which one?" "\"$transcript\": ${verdict#*$'\t'}. Listening again."
+      listen --start-only
+    else
+      notify info "voxcmd: which one?" "\"$transcript\": ${verdict#*$'\t'}. Say a choice, a number, or cancel."
+    fi
     return 1
     ;;
   esac
