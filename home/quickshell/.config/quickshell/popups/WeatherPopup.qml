@@ -117,7 +117,7 @@ Popup {
 
         scope: { prefix: "Scope", views: [] },
 
-        status: { prefix: "Status", views: [] },
+        status: { prefix: "Status", views: ["Hourly", "SunMoon"] },
 
         towers: { prefix: "Tower", views: [] },
 
