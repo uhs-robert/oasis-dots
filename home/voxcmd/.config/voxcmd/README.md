@@ -1,6 +1,6 @@
 # voxcmd
 
-Voice commands on top of [voxtype](https://github.com/peteonrails/voxtype). Speak a phrase, voxcmd matches it against the verbs your integrations declare and runs the action. Eleven integrations ship: `media.sh` (playerctl and pamixer), `apps.sh` (open apps, focus, move and close windows), `timers.sh` (timers and reminders as systemd user timers), `devices.sh` (audio output, input and per-app volume with wpctl, Bluetooth with bluetoothctl), `system.sh` (brightness, power profile, do not disturb, auto-lock), `answers.sh` (math, time and date questions, and the weather popup), `keeptabs.sh` (coding agents tracked by keeptabs), `tmux.sh` (tmux sessions and tmuxifier layouts), `notifications.sh` (the bar's notification center), `recording.sh` (screen recording) and `keybinds.sh` (any described Hyprland keybind); everything else is a drop-in file you write.
+Voice commands on top of [voxtype](https://github.com/peteonrails/voxtype). Speak a phrase, voxcmd matches it against the verbs your integrations declare and runs the action. Eleven integrations ship: `media.sh` (playerctl and pamixer), `apps.sh` (open apps, focus, move and close windows), `timers.sh` (timers and reminders as systemd user timers), `devices.sh` (audio output, input and per-app volume with wpctl, Bluetooth with bluetoothctl), `system.sh` (brightness, power profile, do not disturb, auto-lock), `answers.sh` (math, time, time zone and date questions, and the weather popup), `keeptabs.sh` (coding agents tracked by keeptabs), `tmux.sh` (tmux sessions and tmuxifier layouts), `notifications.sh` (the bar's notification center), `recording.sh` (screen recording) and `keybinds.sh` (any described Hyprland keybind); everything else is a drop-in file you write.
 
 | Key                                | Does                                                                     |
 | ---------------------------------- | ------------------------------------------------------------------------ |
@@ -129,7 +129,7 @@ confirm_labels=('\bclose\b' '^lock\b')   # regexes (case-insensitive, jq syntax)
 
 Patterns are bash ERE, so there are no non-capturing groups; voxcmd finds the target's group by counting the `(` before the placeholder (an escaped `\(` does not count), which is why only one placeholder is allowed. Intents are expanded before that count, so they can sit anywhere in a pattern. Order verbs from specific to general, as `media.sh` does with `play` before `play {target}`. Integration files are plain shell, so helper functions defined in the file are available to its commands. voxcmd sources the file inside a function, though, so a `declare` at its top level is gone by the time a command runs: declare an array a helper reads with `declare -g`, as `spoken-time.sh` does for its number words.
 
-Helpers several integrations share live in `~/.local/share/voxcmd/`, since every file in `integrations.d/` is loaded as an integration; an integration sources one from `$voxcmd_share_dir`, which voxcmd resolves from its own real path. `spoken-time.sh` holds the spoken clock-time parser (`parse_clock`: "3 pm", "three thirty pm", "noon", "9 am tomorrow") and the bar's clock format (`clock_time_format`), used by `timers.sh`.
+Helpers several integrations share live in `~/.local/share/voxcmd/`, since every file in `integrations.d/` is loaded as an integration; an integration sources one from `$voxcmd_share_dir`, which voxcmd resolves from its own real path. `spoken-time.sh` holds the spoken clock-time parser (`parse_clock`: "3 pm", "three thirty pm", "noon", "9 am tomorrow") and the bar's clock format (`clock_time_format`), used by `timers.sh` and `answers.sh`.
 
 The tracked `integrations.d/` and `replacements.d/` ignore everything except what ships, so private integrations dropped into the stowed folders stay out of git.
 
@@ -290,18 +290,46 @@ Brightness and do not disturb send no notification when they work ([silent](#sil
 
 ### Answers
 
-`answers.sh` answers math, time and date questions in the notification and opens the bar's weather popup for weather questions, with filler such as `hey`, `um`, `can you tell me` and a trailing `please` allowed around them:
+`answers.sh` answers math, time, time zone and date questions in the notification and opens the bar's weather popup for weather questions, with filler such as `hey`, `um`, `can you tell me` and a trailing `please` allowed around them:
 
 | Say                                                                                                  | Answer                                                         |
 | ---------------------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
 | "what's 15 percent of 230", "calculate 12 times 37", "convert 5 miles to km", "how many feet in a mile" | `qalc -t` result, also copied with `wl-copy`                   |
 | "what time is it", "what's the time"                                                                 | the time, in the Settings > Clock format                       |
+| "what time is it in Tokyo", "what's the time in London"                                             | `5:09am tomorrow in Tokyo (13 hours ahead)`                    |
+| "what is 1 pm in Pacific time", "what is 1 pm Eastern in Pacific", "convert 3:30 pm Pacific to London time" | `1:00pm Eastern is 10:00am Pacific (3 hours behind)`           |
+| "what time is 9 am tomorrow in Tokyo"                                                                | `9:00am tomorrow in Tokyo is 8:00pm today here (13 hours behind)` |
+| "how far ahead is Tokyo", "what's the time difference with London"                                   | `London is 5 hours ahead, 9:09pm there`                        |
 | "what's the date", "what day is it"                                                                  | `Saturday, October 10, 2026`                                   |
 | "what's the weather", "how's the weather", "weather", "will it rain today", "do I need an umbrella"    | opens the Quickshell weather popup                             |
 
 - Math is read from `$raw_transcript`, since normalizing drops `%`, `×`, `/` and decimal points. Number words become digits ("two hundred thirty point five"), and `times`, `divided by`, `plus`, `minus`, `squared`, `cubed`, `to the power of`, `square root of`, `percent of`, `half of`, `factorial` and `modulo` become qalc syntax.
 - "what's" and "how much is" count as math only when a number follows, so "what's up" is left for the other integrations. Without a `to` (from "to", "in" or "into") qalc runs with units off, so a word it cannot place fails instead of becoming a unit.
+- Time zones are computed by GNU `date` under `TZ`, so daylight saving comes from tzdata, and answered in the Settings > Clock format, also copied with `wl-copy`. "here", "local" and "my time" (or no zone) mean the system zone (`timedatectl`). A zone is any of the aliases below, a zone in the clock popup's `~/.local/state/quickshell/timezones.json`, or any city in `/usr/share/zoneinfo` by its last part ("tokyo" is Asia/Tokyo, "new york" America/New_York); a trailing "time" is dropped. Anything else answers "No time zone called X".
+- "what time is <time> in <zone>" reads the time in that zone and answers here; "what is <time> in <zone>" and "convert <time> to <zone>" read it here, or in the zone named after it, and answer in the other. Days ("today", "tomorrow", a weekday) are against the local date and shown when either side is not today. A conversion needs am, pm, o'clock, noon, midnight or digit minutes ("15 30"), so "what's 15 in hex" stays math.
+
 - Weather opens the popup the Leader `W` (Weather) bind opens, with `~/.config/hypr/scripts/qs-ipc call popup open weather`, so it needs the Quickshell bar running.
+
+Time zone aliases (an unqualified "Central" is US Central):
+
+| Say                                  | Zone                |
+| ------------------------------------ | ------------------- |
+| Pacific, PT, PST, PDT                | America/Los_Angeles |
+| Mountain, MT, MST, MDT               | America/Denver      |
+| Arizona                              | America/Phoenix     |
+| Central, CT, CST, CDT                | America/Chicago     |
+| Eastern, ET, EST, EDT                | America/New_York    |
+| Alaska, AKST, AKDT                   | America/Anchorage   |
+| Hawaii, HST                          | Pacific/Honolulu    |
+| UTC, GMT, Zulu, Universal, Greenwich | UTC                 |
+| UK, British, BST                     | Europe/London       |
+| CET, CEST, Central European          | Europe/Paris        |
+| EET, EEST, Eastern European          | Europe/Athens       |
+| WET, Western European                | Europe/Lisbon       |
+| India, Indian, IST                   | Asia/Kolkata        |
+| Japan, JST                           | Asia/Tokyo          |
+| China                                | Asia/Shanghai       |
+| AEST, AEDT, Australian Eastern       | Australia/Sydney    |
 
 ### Agents
 
