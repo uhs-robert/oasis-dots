@@ -42,9 +42,9 @@ Item {
         return session.title || "Untitled";
     }
 
-    // Shades alone on the Original; green, yellow, red on the Color like the games' HP bar.
+    // Shades alone on the Original (darker as it drains, never the track's shade 1); green, yellow, red on the Color like the games' HP bar.
     function hp_color(left_pct) {
-        if (root.mono) return left_pct > 50 ? root.shades[3] : left_pct > 20 ? root.shades[2] : root.shades[1];
+        if (root.mono) return left_pct > 50 ? root.shades[2] : root.shades[3];
         return left_pct > 50 ? Style.pal.ok : left_pct > 20 ? Style.pal.warning : Style.pal.error;
     }
 
@@ -52,14 +52,15 @@ Item {
         return session.context_pct !== null && session.context_pct !== undefined;
     }
 
+    // Pokemon levels run 1-100, so the context percentage is the level.
     function level_of(session) {
-        return parseInt(Fmt.age(session.since));
+        return Math.max(1, Math.min(100, Math.round(session.context_pct)));
     }
 
     function message(session) {
         const name = root.short(root.title_of(session), 16);
         if (session.state === "waiting") return name + " wants to make a decision!";
-        if (session.state === "done") return name + " grew to level " + root.level_of(session) + "!";
+        if (session.state === "done") return root.has_context(session) ? name + " grew to level " + root.level_of(session) + "!" : name + " is done!";
         if (session.state === "idle") return name + " is fast asleep.";
         return root.title_of(session);
     }
@@ -100,7 +101,7 @@ Item {
                 readonly property bool picked: row.index === root.selected
                 readonly property bool known: root.has_context(row.modelData)
                 readonly property real left_pct: row.known ? Math.max(0, Math.min(100, 100 - row.modelData.context_pct)) : 0
-                readonly property bool alive: root.is_open && row.modelData.state === "running"
+                readonly property bool alive: root.is_open && root.visible && row.modelData.state === "running"
 
                 width: party_list.width
                 height: root.row_height
