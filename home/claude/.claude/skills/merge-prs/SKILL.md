@@ -18,6 +18,7 @@ Only after the owner has approved the merge. Run from anywhere inside the repo, 
 - Clean worktrees of merged branches are removed and the branches deleted, switching a clean main checkout off a merged branch to the default branch first; dirty ones, and branches with commits not in a PR head seen this run, are kept with a warning (stacks merged in one run clean up fully). Fork PRs skip local cleanup. `--keep-branch` keeps the remote branch and skips local cleanup.
 - A queued merge is polled for up to `MERGE_PRS_WAIT` seconds (default 600).
 - The main checkout is pulled only when it is on the default branch with no tracked changes.
+- Never append cleanup (`git branch -D`, `git push origin --delete`) after the script, and never put it behind `;` or a `| tail` pipe, which hides the merge's exit code. The script does its own cleanup; a failed merge followed by a remote branch delete closes the PR for good. Run any manual cleanup as a separate command after reading the result.
 
 It stops at the first failure with the reason. On a stacked-PR rebase conflict it prints the commands to rebase that PR by hand; do that, then rerun with the PRs not yet merged. Report each output line that needs the owner (skipped worktrees, skipped pull, stale local branches).
 
