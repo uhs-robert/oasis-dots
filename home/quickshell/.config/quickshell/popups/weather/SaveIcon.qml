@@ -11,6 +11,8 @@ Rectangle {
     property real code: -1
     property bool is_day: true
     property bool lit: false
+    // Replaces the weather icon, for a save that holds something else such as the moon.
+    property url icon_url: ""
 
     implicitWidth: root.size
     implicitHeight: root.size
@@ -25,7 +27,7 @@ Rectangle {
         height: width
         sourceSize.width: 16
         sourceSize.height: 16
-        source: root.code >= 0 ? WeatherState.icon_source(root.code, root.is_day) : ""
+        source: root.icon_url != "" ? root.icon_url : root.code >= 0 ? WeatherState.icon_source(root.code, root.is_day) : ""
         smooth: false
         mipmap: false
     }

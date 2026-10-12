@@ -49,7 +49,7 @@ Item {
 
     readonly property bool battle_columns: Style.weather_header === "battle"
 
-    readonly property bool memcard_columns: Style.weather_header === "memcard" && root.sub === 0
+    readonly property bool memcard_columns: Style.weather_header === "memcard"
 
     readonly property bool mode7_columns: Style.weather_header === "mode7"
 
@@ -447,6 +447,8 @@ Item {
                         active: root.memcard_columns
                         anchors.fill: parent
                         sourceComponent: MemCardDayColumn {
+                            sub: root.sub
+                            wind_max: root.wind_max
                             day: day_col.modelData
                             day_index: day_col.day_index
                             label: root.day_label(day_col.modelData, day_col.day_index)

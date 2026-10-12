@@ -13,6 +13,8 @@ Item {
     property real scale_min: 0
     property real scale_max: 1
     property bool selected: false
+    // Called with a block's place on the card (0-1) for its colour; unset, blocks take the temperature colour of their place on the scale.
+    property var block_color: null
 
     readonly property int card_blocks: 15
     readonly property int gap: 2
@@ -39,7 +41,8 @@ Item {
             required property int index
             readonly property bool is_used: block.index >= root.low_block && block.index <= root.high_block
             readonly property bool is_marked: block.index === root.high_block
-            readonly property color fill: WeatherState.temp_color(root.scale_min + (root.scale_max - root.scale_min) * block.index / (root.card_blocks - 1))
+            readonly property real place: block.index / (root.card_blocks - 1)
+            readonly property color fill: root.block_color ? root.block_color(block.place) : WeatherState.temp_color(root.scale_min + (root.scale_max - root.scale_min) * block.place)
 
             width: root.width
             height: root.block_h
