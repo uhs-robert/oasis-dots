@@ -32,7 +32,7 @@ prepend_keymap = [
   { on = [ "g", "M", ], run = "plugin sshfs -- jump", desc = "Jump to mount" },
   { on = [ "g", "S", ], run = "cd ~/.local/share/Steam/steamapps/compatdata/", desc = "Go to Steam Data" },
   { on = [ "g", "T", ], run = "cd /tmp", desc = "Go to /tmp" },
-  { on = [ "g", "X", ], run = "cd ~/dotfiles-private/", desc = "Go to private dotfiles" },
+  { on = [ "g", "X", ], run = "cd ~/.local/share/private-dotfiles/", desc = "Go to private dotfiles" },
   { on = [ "g", "F", ], run = "cd ~/.local/share/fonts/", desc = "Go to fonts" },
   { on = [ "g", "l", ], run = "shell 'yazi-lazygit-cd' --block --confirm=false", desc = "Lazygit" },
   { on = [ "g", "m", ], run = "cd /run/media/$USER/", desc = "Go to media (usb)" },
