@@ -47,7 +47,7 @@ agent_script_files=$(agent_scripts)
 
 # Optional tooling: skip when absent so validation stays dependency-light.
 if command -v shellcheck >/dev/null 2>&1; then
-  step shellcheck shellcheck install.sh uninstall.sh lib/*.sh demo/*.sh home/hypr/.config/hypr/scripts/state-write home/voxcmd/tests/*.sh
+  step shellcheck shellcheck install.sh uninstall.sh lib/*.sh demo/*.sh home/hypr/.config/hypr/scripts/state-write home/voxcmd/tests/*.sh home/calendar/tests/*.sh
   step shellcheck shellcheck -x -P SCRIPTDIR home/quickshell/.config/quickshell/scripts/lib/*.sh home/quickshell/.config/quickshell/scripts/ff7-audio home/quickshell/.config/quickshell/scripts/goldeneye-audio home/quickshell/.config/quickshell/scripts/mgs2-audio home/quickshell/.config/quickshell/scripts/ocarina-audio
   # shellcheck disable=SC2086 # newline-separated tracked paths, none contain spaces
   [ -z "$agent_script_files" ] || step shellcheck shellcheck -x -P SCRIPTDIR $agent_script_files
@@ -79,6 +79,12 @@ if command -v jq >/dev/null 2>&1 && command -v fzf >/dev/null 2>&1; then
   step voxcmd-phrases bash ./home/voxcmd/tests/run-phrases.sh
 else
   echo 'skip: voxcmd phrases need jq and fzf'
+fi
+# calendar-sync needs its two Python libraries; the test stubs rbw and qs-ipc.
+if python3 -c 'import icalendar, recurring_ical_events' >/dev/null 2>&1; then
+  step calendar-sync bash ./home/calendar/tests/run.sh
+else
+  echo 'skip: calendar-sync tests need python-icalendar and python-recurring-ical-events'
 fi
 step packages sh ./lib/check-packages.sh
 step symlinks sh ./lib/check-symlinks.sh

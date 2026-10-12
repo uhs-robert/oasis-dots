@@ -315,6 +315,16 @@ setup_voxtype() {
   success "voxtype configured"
 }
 
+# The units are stowed by the systemd package; the timer only enables them.
+setup_calendar_timer() {
+  if systemctl --user show-environment &>/dev/null; then
+    systemctl --user daemon-reload
+    systemctl --user is-enabled calendar-sync.timer &>/dev/null || systemctl --user enable --now calendar-sync.timer
+  else
+    warn "User systemd not available, enable the calendar timer after login: systemctl --user enable --now calendar-sync.timer"
+  fi
+}
+
 # Checks for the Lua-config Hyprland runtime, then says how to start the session the installer set up.
 print_next_steps() {
   if ! command -v start-hyprland &>/dev/null; then

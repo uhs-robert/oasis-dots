@@ -1,0 +1,9 @@
+[Unit]
+Description=Sync the calendar feed every 5 minutes
+
+[Timer]
+OnStartupSec=1min
+OnUnitActiveSec=5min
+
+[Install]
+WantedBy=timers.target
