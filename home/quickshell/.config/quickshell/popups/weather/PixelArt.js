@@ -158,3 +158,52 @@ function photo(code, index) {
     paint(g, kind(code, true), 3 + (index % 3) * 2, 1);
     return rows(g);
 }
+
+// The moon at `phase` (0 new, 0.5 full) as a 15x15 disc: lit side light, dark side a sparse dither.
+function moon_phase(phase) {
+    const size = 15, r = 7.5;
+    const k = Math.cos(2 * Math.PI * phase);
+    const norm = (x, y) => [(x - 7) / r, (y - 7) / r];
+    const inside = (x, y) => sq(norm(x, y)[0]) + sq(norm(x, y)[1]) <= 1;
+    const g = grid(size, size, null);
+    for (let y = 0; y < size; y++) {
+        for (let x = 0; x < size; x++) {
+            if (!inside(x, y)) continue;
+            const [nx, ny] = norm(x, y);
+            const chord = Math.sqrt(Math.max(0, 1 - ny * ny));
+            const lit = phase < 0.5 ? nx > k * chord : nx < -k * chord;
+            const rim = !inside(x - 1, y) || !inside(x + 1, y) || !inside(x, y - 1) || !inside(x, y + 1);
+            put(g, x, y, rim ? "2" : lit ? "3" : (x + y) % 2 ? "0" : "1");
+        }
+    }
+    return rows(g);
+}
+
+// A Clefairy, 20x20, built from overlapping ovals like the clouds: dark rim, light body, tipped ears, curled tail.
+function clefairy() {
+    const g = grid(20, 20, null);
+    const ovals = [
+        [10, 9.6, 6.8, 5.4], [10, 15.6, 4.2, 3.2],
+        [4.4, 3.6, 2.2, 3.4], [15.6, 3.6, 2.2, 3.4],
+        [5.2, 14.8, 1.8, 1.8], [14.8, 14.8, 1.8, 1.8],
+        [7.6, 19, 2, 0.9], [12.4, 19, 2, 0.9],
+        [17.8, 15.8, 1.6, 1.6]
+    ];
+    const inside = (x, y) => ovals.some(o => sq((x + 0.5 - o[0]) / o[2]) + sq((y + 0.5 - o[1]) / o[3]) <= 1);
+    for (let y = 0; y < 20; y++) {
+        for (let x = 0; x < 20; x++) {
+            if (!inside(x, y)) continue;
+            const rim = !inside(x - 1, y) || !inside(x + 1, y) || !inside(x, y - 1) || !inside(x, y + 1);
+            put(g, x, y, rim ? "0" : y <= 2 && (x < 7 || x > 12) ? "1" : "3");
+        }
+    }
+    // Head tuft, big eyes, cheeks, mouth and a dithered belly.
+    [[9, 2], [10, 2], [11, 3], [10, 4], [9, 4]].forEach(p => put(g, p[0], p[1], "0"));
+    [[6, 8], [7, 8], [6, 9], [7, 9], [12, 8], [13, 8], [12, 9], [13, 9]].forEach(p => put(g, p[0], p[1], "0"));
+    [[6, 8], [12, 8]].forEach(p => put(g, p[0], p[1], "3"));
+    [[4, 11], [5, 11], [14, 11], [15, 11]].forEach(p => put(g, p[0], p[1], "2"));
+    [[9, 11], [10, 11]].forEach(p => put(g, p[0], p[1], "0"));
+    for (let y = 15; y <= 16; y++) for (let x = 8; x <= 11; x++) if ((x + y) % 2 === 0) put(g, x, y, "2");
+    put(g, 17, 15, "2");
+    return rows(g);
+}

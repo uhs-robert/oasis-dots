@@ -14,6 +14,9 @@ Item {
     property bool selected: false
     property real scale_min: 0
     property real scale_max: 1
+    // 0 temp, 1 wind, 2 UV, 3 sunshine; the photo stays and the stats under it change.
+    property int sub: 0
+    property real wind_max: 1
     // Narrowest column width in the strip, so every photo picks the same scale.
     property real slot_w: root.width
 
@@ -62,8 +65,49 @@ Item {
     }
 
     // Space left over after the photo, dot bar and labels take their natural size, spread across the gaps between them.
-    readonly property real content_h: label_row.height + photo_box.height + dot_bar.height + temp_row.height + pop_text.height
-    readonly property real fill_spacing: Math.max(3, (root.avail_h - root.content_h) / 4)
+    readonly property real content_h: label_row.height + photo_box.height + (root.sub === 0 ? dot_bar.height + temp_row.height + pop_text.height : stat_col.height + (foot_text.visible ? foot_text.height : 0))
+    readonly property real fill_spacing: Math.max(3, (root.avail_h - root.content_h) / (root.sub === 0 ? 4 : foot_text.visible ? 3 : 2))
+    readonly property int value_size: Math.min(root.text_size, 24)
+
+    // Each stat is a name, a value with its unit and a bar on its own scale; the foot line carries direction, band or daylight share.
+    // The bands' full names overrun a narrow column at pixel-font size.
+    readonly property var band_names: ["LOW", "MOD", "HIGH", "V.HIGH", "EXTRM"]
+    readonly property var stats: {
+        const d = root.day;
+        if (!d) return [];
+        if (root.sub === 1) return [
+            { name: "SPD", value: String(Math.round(d.wind_speed_max)), unit: WeatherState.wind_unit().toUpperCase(), fill: d.wind_speed_max / root.wind_max },
+            { name: "GUST", value: String(Math.round(d.wind_gusts_max)), unit: "", fill: d.wind_gusts_max / root.wind_max }
+        ];
+        if (root.sub === 2) {
+            const bands = WeatherState.uv_bands;
+            const band = WeatherState.uv_band(d.uv_max);
+            return [
+                { name: "UV", value: d.uv_max.toFixed(1), unit: "", fill: d.uv_max / 11 },
+                { name: "BAND", value: root.band_names[bands.indexOf(band)], unit: "", fill: (bands.indexOf(band) + 1) / bands.length, small: true }
+            ];
+        }
+        if (root.sub === 3) return [
+            { name: "SUN", value: d.sunshine_hours.toFixed(1), unit: "H", fill: d.sunshine_hours / 14 },
+            { name: "OF DAY", value: root.daylight_share + "%", unit: "", fill: root.daylight_share / 100 }
+        ];
+        return [];
+    }
+    readonly property string foot: {
+        const d = root.day;
+        if (!d) return "";
+        if (root.sub === 1) return WeatherState.compass_label(d.wind_dir);
+        if (root.sub !== 3) return "";
+        const mins = root.daylight_minutes;
+        return mins > 0 ? Math.floor(mins / 60) + "H" + String(mins % 60).padStart(2, "0") : "";
+    }
+    readonly property int daylight_minutes: root.day ? root.minutes_of(root.day.sunset) - root.minutes_of(root.day.sunrise) : 0
+    readonly property int daylight_share: root.daylight_minutes > 0 ? Math.round(Math.min(1, root.day.sunshine_hours * 60 / root.daylight_minutes) * 100) : 0
+
+    function minutes_of(hm: string): int {
+        const parts = (hm || "").split(":");
+        return parts.length === 2 ? parseInt(parts[0], 10) * 60 + parseInt(parts[1], 10) : -1;
+    }
 
     function label_w(size: int): real {
         return arrow_metrics.advanceWidth + 2 + (size === 32 ? label_32.advanceWidth : label_24.advanceWidth);
@@ -143,6 +187,7 @@ Item {
 
         DotBar {
             id: dot_bar
+            visible: root.sub === 0
             anchors.horizontalCenter: parent.horizontalCenter
             low: root.day ? root.day.min : 0
             high: root.day ? root.day.max : 0
@@ -153,6 +198,7 @@ Item {
 
         Column {
             id: temp_row
+            visible: root.sub === 0
             anchors.horizontalCenter: parent.horizontalCenter
             spacing: 2
 
@@ -173,8 +219,69 @@ Item {
 
         Text {
             id: pop_text
+            visible: root.sub === 0
             anchors.horizontalCenter: parent.horizontalCenter
             text: root.day ? root.day.pop + "%" : ""
+            color: Style.pixel_shades[2]
+            font.family: Style.font_family
+            font.pixelSize: root.text_size
+        }
+        Column {
+            id: stat_col
+            visible: root.sub !== 0
+            width: root.avail_w - 2
+            anchors.horizontalCenter: parent.horizontalCenter
+            spacing: Math.max(4, root.fill_spacing / 2)
+
+            Repeater {
+                model: root.stats
+
+                Column {
+                    id: stat
+                    required property var modelData
+                    width: stat_col.width
+                    spacing: 2
+
+                    Text {
+                        text: stat.modelData.name
+                        color: Style.pixel_shades[2]
+                        font.family: Style.font_family
+                        font.pixelSize: 8
+                    }
+
+                    Row {
+                        spacing: 4
+
+                        Text {
+                            id: stat_value
+                            text: stat.modelData.value
+                            color: Style.pixel_shades[3]
+                            font.family: Style.font_family
+                            font.pixelSize: stat.modelData.small ? 16 : root.value_size
+                        }
+
+                        Text {
+                            anchors.baseline: stat_value.baseline
+                            text: stat.modelData.unit
+                            color: Style.pixel_shades[2]
+                            font.family: Style.font_family
+                            font.pixelSize: 8
+                        }
+                    }
+
+                    DexStatBar {
+                        width: parent.width
+                        value: stat.modelData.fill
+                    }
+                }
+            }
+        }
+
+        Text {
+            id: foot_text
+            visible: root.sub !== 0 && root.foot !== ""
+            anchors.horizontalCenter: parent.horizontalCenter
+            text: root.foot
             color: Style.pixel_shades[2]
             font.family: Style.font_family
             font.pixelSize: root.text_size

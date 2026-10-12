@@ -35,7 +35,7 @@ Item {
     // Metroid: scan brackets lock onto the selected day.
     readonly property bool scan: Style.weather_header === "scan"
     // Game Boy: days as a Game Boy Camera photo strip on the week's hi/lo dot scale.
-    readonly property bool camera: Style.weather_header === "pokedex" && root.sub === 0
+    readonly property bool camera: Style.weather_header === "pokedex"
     // Oasis: range pills over a horizon of weekday names, the selected day rising in sand.
     readonly property bool dunes: Style.weather_header === "oasis" && root.sub === 0
     // Modern: raised day columns with a pill label and a range track.
@@ -339,6 +339,8 @@ Item {
                             selected: day_col.day_index === root.day_cursor
                             scale_min: root.week_low
                             scale_max: root.week_high
+                            sub: root.sub
+                            wind_max: root.wind_max
                             slot_w: Math.floor((day_row.width - day_row.spacing * (root.window_days.length - 1)) / Math.max(1, root.window_days.length))
                         }
                     }
@@ -511,13 +513,14 @@ Item {
 
             Text {
                 Layout.fillWidth: true
-                text: "HI LO °" + WeatherState.unit_symbol() + " · RAIN %"
+                text: ["HI LO °" + WeatherState.unit_symbol() + " · RAIN %", "WIND " + WeatherState.wind_unit().toUpperCase() + " · GUST · FROM", "UV INDEX 0-11 · BAND", "SUN HOURS · SHARE OF DAY"][root.sub]
                 color: Style.pixel_shades[2]
                 font.family: Style.font_family
                 font.pixelSize: Style.fs(-5)
             }
 
             Text {
+                visible: root.sub === 0
                 text: Math.round(root.week_low) + "–" + Math.round(root.week_high) + "°" + WeatherState.unit_symbol()
                 color: Style.pixel_shades[2]
                 font.family: Style.font_family
