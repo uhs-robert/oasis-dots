@@ -140,7 +140,7 @@ silent=1                  # every action of this integration
 silent_actions=(weather)  # only these actions
 ```
 
-`keybinds.sh` is silent: a bind has a visible effect of its own, and many open bar popups. Opening Voice Help sends nothing either.
+`keybinds.sh` is silent: a bind has a visible effect of its own, and many open bar popups. So are `media.sh`'s volume and mute actions, since the bar's volume OSD shows the change; play, pause, next and previous still notify. Opening Voice Help sends nothing either.
 
 ### Force prefixes
 
