@@ -202,7 +202,7 @@ desktop_entry() {
 }
 
 # The app's most recently focused window: its class (or initial class) is the entry's StartupWMClass, its id, or
-# the last part of its id, ignoring case.
+# the last part of its id, ignoring case. A window outside the focus history has a negative ID and ranks last.
 app_window() {
   local clients
   clients=$(hyprctl clients -j 2>/dev/null) || return 0
@@ -210,7 +210,7 @@ app_window() {
     ($app.id | sub("\\.desktop$"; "")) as $id
     | ([$app.wm_class, $id, ($id | split(".") | last)] | map(select(. != "") | ascii_downcase)) as $classes
     | map(select(.mapped and ((.class, .initialClass) | ascii_downcase | IN($classes[]))))
-    | sort_by(.focusHistoryID) | first | .address // empty' <<<"$clients"
+    | sort_by(.focusHistoryID | if . < 0 then infinite else . end) | first | .address // empty' <<<"$clients"
 }
 
 # Started like the Quickshell apps picker starts them: the Exec line with its field codes dropped, in Path when set,
@@ -250,7 +250,7 @@ windows() {
       + ($apps | map(select(.wm_class != "") | {key: (.wm_class | ascii_downcase), value: .name}))
       | from_entries) as $app_names
     | map(select(.mapped and .class != ""))
-    | sort_by(.focusHistoryID)
+    | sort_by(.focusHistoryID | if . < 0 then infinite else . end)
     | map({address, app: ($app_names[.class | ascii_downcase] // (.class | split(".") | last)),
         title: (if (.title | length) > 60 then .title[:57] + "..." else .title end)})' <<<"$clients" 2>/dev/null || echo '[]'
 }
