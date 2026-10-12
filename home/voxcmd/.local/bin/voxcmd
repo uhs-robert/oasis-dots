@@ -290,10 +290,15 @@ resolve_match() {
 # integration; an entry's own .action overrides it.
 runnable_options() {
   local match="$1" action="$2" candidate_count="$3" key commands
-  commands=$(for key in "${!integration_actions[@]}"; do
-    jq -n -c --arg key "$key" --arg command "${integration_actions[$key]}" \
-      --argjson silent "$(action_is_silent "$key" && echo true || echo false)" '{key: $key, value: {command: $command, silent: $silent}}'
-  done | jq -s -c from_entries)
+  local -a action_triples=()
+  # One jq for all actions, passed as key, command, silent triples, rather than one per action: this runs for every
+  # integration on every route and Voice Help.
+  for key in "${!integration_actions[@]}"; do
+    action_triples+=("$key" "${integration_actions[$key]}" "$(action_is_silent "$key" && echo true || echo false)")
+  done
+  commands=$(jq -n -c --args '$ARGS.positional as $triples
+    | [range(0; $triples | length; 3) | {key: $triples[.], value: {command: $triples[. + 1], silent: ($triples[. + 2] == "true")}}]
+    | from_entries' "${action_triples[@]}")
   jq -c --argjson match "$match" --arg action "$action" --argjson commands "$commands" --arg confirm "$confirm" \
     --argjson label_omits_action "$({ [ "${#integration_actions[@]}" = 1 ] || [ "$action_labels" = 0 ]; } && echo true || echo false)" \
     --argjson candidates "$candidate_count" --args \
@@ -511,8 +516,11 @@ markup_escape() {
 # one runs it like a spoken match would. Picked ids are "say:<phrase>" or "run:<index into the runnable options>".
 example_placeholder='<[^>]+>'
 voice_help() {
-  local groups choices expansions runnables picked file
-  groups=$(while IFS= read -r file; do
+  local groups choices expansions runnables picked file group_dir group_count=0 group_index
+  # Integrations list in parallel, since several query live state (audio devices, agents, windows); each writes its
+  # own file so the groups keep their order.
+  group_dir=$(mktemp -d "${XDG_RUNTIME_DIR:-/tmp}/voxcmd-help.XXXXXX")
+  while IFS= read -r file; do
     (
       load_integration "$file"
       # On stdin: a keybinds list is too long for an argument.
@@ -520,8 +528,13 @@ voice_help() {
         --argjson fallback "$([ "$fallback" = 1 ] && echo true || echo false)" --args \
         '{key: ($file | split("/") | last | rtrimstr(".sh")), name: $name, fallback: $fallback, examples: $ARGS.positional, runnables: .}' \
         "${integration_examples[@]}"
-    )
-  done < <(integration_files) | jq -s -c 'sort_by(.fallback) | map(select(.examples != [] or .runnables != []))')
+    ) >"$group_dir/$group_count" &
+    group_count=$((group_count + 1))
+  done < <(integration_files)
+  wait
+  groups=$(for ((group_index = 0; group_index < group_count; group_index++)); do cat "$group_dir/$group_index"; done |
+    jq -s -c 'sort_by(.fallback) | map(select(.examples != [] or .runnables != []))')
+  rm -rf "$group_dir"
   if [ "$(jq 'map(.examples[]) | length' <<<"$groups")" = 0 ]; then
     notify info "voxcmd" "No integration declares examples"
     return 1
