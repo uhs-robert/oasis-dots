@@ -105,7 +105,7 @@ Popup {
 
         memcard: { prefix: "MemCard", views: ["Hourly", "SunMoon"] },
 
-        mode7: { prefix: "Mode7", views: ["Hourly", "SunMoon"] },
+        mode7: { prefix: "Mode7", views: ["Hourly", "SunMoon", "Air", "Alerts"] },
 
         oasis: { prefix: "Oasis", views: ["Hourly", "SunMoon"] },
 
