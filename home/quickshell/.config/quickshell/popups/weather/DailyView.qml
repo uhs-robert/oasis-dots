@@ -53,8 +53,11 @@ Item {
 
     readonly property bool mode7_columns: Style.weather_header === "mode7"
 
+    readonly property bool ring_columns: Style.weather_header === "ring"
+
     readonly property bool custom_column: root.ws_panels || root.tower_columns || root.camera || root.dunes || root.pill_columns
         || root.watch_columns || root.lsp_columns || root.scan_columns || root.battle_columns || root.memcard_columns || root.mode7_columns
+        || root.ring_columns
     // NES: each column in a Dragon Quest window with a cursor on the selected day.
     readonly property bool dq: Style.weather_header === "battle"
     // SNES: columns standing on a Mode 7 floor.
@@ -478,6 +481,22 @@ Item {
                             col_w: day_col.width
                             scale_min: root.week_temp_range.min
                             scale_max: root.week_temp_range.max
+                        }
+                    }
+
+                    Loader {
+                        active: root.ring_columns
+                        anchors.fill: parent
+                        sourceComponent: RingDayColumn {
+                            day: day_col.modelData
+                            day_index: day_col.day_index
+                            label: root.day_label(day_col.modelData, day_col.day_index)
+                            selected: day_col.day_index === root.day_cursor
+                            col_w: day_col.width
+                            scale_min: root.week_temp_range.min
+                            scale_max: root.week_temp_range.max
+                            sub: root.sub
+                            wind_max: root.wind_max
                         }
                     }
 
