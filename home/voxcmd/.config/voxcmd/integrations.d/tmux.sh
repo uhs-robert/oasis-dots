@@ -3,6 +3,8 @@
 
 name="Tmux"
 confirm=0
+# The session's terminal taking focus is the feedback.
+silent_actions=(switch new)
 
 # Every phrase names a session ("the X session", "session X", "attach X"), so "switch to X" stays the apps' verb.
 # "new session" comes first so "open a new session X" is not read as opening a session called "new session X".
