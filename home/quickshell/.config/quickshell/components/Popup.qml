@@ -32,6 +32,8 @@ PanelWindow {
     property string title: popup_name.toUpperCase()
     // A live value after the style's title readout, e.g. unread counts.
     property string title_value: ""
+    // Shows title_value at the right of the title; a popup can turn it on where its style does not.
+    property bool title_status: root.st.title_status
     // Passive popups (the tooltip shelf) show app text as it is.
     readonly property string shown_title: root.passive ? root.title : Style.title_text(root.title, root.st)
     property string footer_hint: ""
@@ -471,6 +473,7 @@ PanelWindow {
                     has_title: root.has_title
                     shown_title: root.shown_title
                     title_value: root.title_value
+                    title_status: root.title_status
                     chip_height: root.has_title ? title_block.tab_height : 0
                     frame_radius: root.frame_radius
                     island_capsule: root.island_capsule
@@ -491,6 +494,7 @@ PanelWindow {
                 title: root.title
                 shown_title: root.shown_title
                 title_value: root.title_value
+                title_status: root.title_status
                 popup_name: root.popup_name
                 passive: root.passive
                 has_title: root.has_title

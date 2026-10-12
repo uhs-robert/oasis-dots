@@ -15,7 +15,7 @@ Popup {
     id: root
 
     popup_name: "clock"
-    title: root.nes ? root.hud_title : Qt.formatDate(new Date(root.view_year, root.view_month, 1), "MMM yyyy").toUpperCase()
+    title: root.nes ? root.day_title : Qt.formatDate(new Date(root.view_year, root.view_month, 1), "MMM yyyy").toUpperCase()
     preferred_width: 320
     footer_hint: "h/l month · j/k year · t/gg today · Tab/[ ] zone · q close"
     body_height: content.implicitHeight + 24
@@ -28,15 +28,20 @@ Popup {
 
     readonly property bool bios: root.st.console_views === "ps1"
     readonly property bool is_open: Popups.open_name === "clock"
-    // A Mario HUD title with today's date and time; the viewed month moves into the body.
+    // A Dragon Quest adventure-log title, the day of the year ("DAY 284"), with the time at the right; the viewed month moves into the body.
     readonly property bool nes: root.st.console_views === "nes"
-    readonly property string hud_title: {
-        const d = Timezones.shift(hud_clock.date);
-        return "WORLD " + (d.getMonth() + 1) + "-" + d.getDate() + "  TIME " + TimeFormat.format(d);
+    readonly property date title_now: Timezones.shift(title_clock.date)
+    readonly property int day_of_year: {
+        const d = root.title_now;
+        // Rounded because a DST change makes one day 23 or 25 hours long.
+        return Math.round((new Date(d.getFullYear(), d.getMonth(), d.getDate()) - new Date(d.getFullYear(), 0, 1)) / 86400000) + 1;
     }
+    readonly property string day_title: "DAY " + root.day_of_year
+    title_status: root.nes || root.st.title_status
+    title_value: root.nes ? TimeFormat.format(root.title_now) : ""
 
     SystemClock {
-        id: hud_clock
+        id: title_clock
         enabled: root.nes && root.is_open
         precision: SystemClock.Minutes
     }
