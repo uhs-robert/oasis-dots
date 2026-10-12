@@ -64,7 +64,7 @@ running_timers() {
 candidates() {
   case "$1" in
   # A timer that names no time prints [], leaving the phrase to other integrations: "start a timer for acme" is
-  # a time tracker's client. A clock time keeps it as plainly meant here, though start_timer only takes durations.
+  # a time tracker's client.
   timer) split_duration "$2" >/dev/null || parse_when "$2" >/dev/null || echo '[]' ;;
   cancel)
     local timers
@@ -115,11 +115,12 @@ split_duration() {
   echo "$seconds ${words[*]:count}"
 }
 
+# A duration ("5 minutes for the pasta", "in 5 minutes"), or else a clock time ("3 pm", "noon tomorrow") to ring at.
 start_timer() {
   local split seconds label
-  if ! split=$(split_duration "$1"); then
-    echo "no duration in \"$1\""
-    return 1
+  if ! split=$(split_duration "${1#in }"); then
+    start_clock_timer "$1"
+    return
   fi
   read -r seconds label <<<"$split"
   label=$(sed -E 's/^(for|called|named|labell?ed) //; s/^the //' <<<"$label")
@@ -129,6 +130,24 @@ start_timer() {
   due=$(($(date +%s) + seconds))
   schedule Timer "${label:+$label, }$length" "$due" || return 1
   echo "Timer set: ${label:+$label, }$length, rings $(format_at "$due")"
+}
+
+# The Description holds the time of day alone ("Timer: 3:00pm"): the day it would carry goes stale overnight, and
+# describe_scheduled adds the current one from the due time.
+start_clock_timer() {
+  local due when time_of_day
+  if ! due=$(parse_when "$1"); then
+    echo "no duration or time in \"$1\""
+    return 1
+  fi
+  if [ "$due" -le "$(date +%s)" ]; then
+    echo "\"$1\" is in the past"
+    return 1
+  fi
+  when=$(format_due "$due")
+  time_of_day="${when##* }"
+  schedule Timer "$time_of_day" "$due" || return 1
+  echo "Timer set for $when"
 }
 
 # "in 20 minutes to call the bank", "at 3 pm to stretch", "to stretch at 3 pm", "about the oven in 5 minutes".
@@ -320,11 +339,13 @@ format_left() {
 }
 
 # A timer or reminder as the list, the cancel picker and a reminder's confirmation show it, from its unit's
-# Description ("Timer: 5 minutes", "Reminder: Call the bank"): "Timer: 5 minutes, rings at 3:47pm",
-# "Reminder at 3:00pm: Call the bank".
+# Description ("Timer: 5 minutes", "Timer: 3:00pm", "Reminder: Call the bank"): "Timer: 5 minutes, rings at
+# 3:47pm", "Timer at 3:00pm", "Reminder at 3:00pm: Call the bank".
 describe_scheduled() {
   local description="$1" due="$2" text="${1#*: }"
   case "$description" in
+  # A clock timer's text is a bare time; a duration timer's always ends in its length's unit.
+  Timer:\ [0-9]*:[0-9][0-9] | Timer:\ [0-9]*:[0-9][0-9][ap]m) echo "Timer $(format_at "$due")" ;;
   Timer:*) echo "Timer: $text, rings $(format_at "$due")" ;;
   Reminder:*) echo "Reminder $(format_at "$due"): $text" ;;
   *) echo "$description, $(format_at "$due")" ;;
