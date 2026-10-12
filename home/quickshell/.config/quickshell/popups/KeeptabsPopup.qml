@@ -55,7 +55,7 @@ Popup {
 
         hev: { prefix: "Weapon", views: [] },
 
-        lsp: { prefix: "Trouble", views: [] },
+        lsp: { prefix: "Trouble", views: ["Agents", "Usage"] },
 
         memcard: { prefix: "MemCard", views: [] },
 
