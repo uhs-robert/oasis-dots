@@ -290,10 +290,14 @@ case ${1:-} in
     dir="$bars/$name"
     [[ -f $dir.branches ]] || die "no test bar '$name' to rebuild"
     mapfile -t branches <"$dir.branches"
+    # Checked before removal: once up refuses over another live bar, this bar and its branch record are already gone.
+    guard_live_bar "$name" "$replace"
     # Removing a running bar's worktree would pull its files out from under qs, so the stowed bar takes over first.
     if pgrep -af "^qs .*-p $dir/" >/dev/null; then "$0" restore; fi
     "$0" remove "$name"
-    "$0" up "$name" "${branches[@]}"
+    up_args=("$name" "${branches[@]}")
+    ((replace)) && up_args+=(--replace)
+    "$0" up "${up_args[@]}"
     ;;
   status)
     status
