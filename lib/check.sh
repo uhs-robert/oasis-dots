@@ -29,16 +29,36 @@ step() {
   [ ! -e "$logs/$name.failed" ] || record "$name"
 }
 
+# Agent tooling shell scripts: tracked *.sh plus extension-less files with a
+# sh/bash shebang. Symlinks are skipped (their target is linted itself).
+# worktrees/ holds other agents' scratch copies and skills/synced/ is vendored.
+agent_scripts() {
+  git ls-files -- .claude home/claude/.claude ':!:.claude/worktrees' ':!:home/claude/.claude/skills/synced' |
+    while IFS= read -r file; do
+      [ -f "$file" ] && [ ! -L "$file" ] || continue
+      case "${file##*/}" in
+      *.sh) printf '%s\n' "$file" ;;
+      *.*) ;;
+      *) head -n 1 "$file" | grep -Eq '^#!.*[/ ](ba|da|z)?sh( |$)' && printf '%s\n' "$file" ;;
+      esac
+    done
+}
+agent_script_files=$(agent_scripts)
+
 # Optional tooling: skip when absent so validation stays dependency-light.
 if command -v shellcheck >/dev/null 2>&1; then
   step shellcheck shellcheck install.sh uninstall.sh lib/*.sh demo/*.sh home/hypr/.config/hypr/scripts/state-write
   step shellcheck shellcheck -x -P SCRIPTDIR home/quickshell/.config/quickshell/scripts/lib/*.sh home/quickshell/.config/quickshell/scripts/ff7-audio home/quickshell/.config/quickshell/scripts/goldeneye-audio home/quickshell/.config/quickshell/scripts/mgs2-audio home/quickshell/.config/quickshell/scripts/ocarina-audio
+  # shellcheck disable=SC2086 # newline-separated tracked paths, none contain spaces
+  [ -z "$agent_script_files" ] || step shellcheck shellcheck -x -P SCRIPTDIR $agent_script_files
 else
   echo 'skip: shellcheck not installed'
 fi
 
 if command -v shfmt >/dev/null 2>&1; then
   step shfmt shfmt -i 2 -d install.sh uninstall.sh lib/*.sh demo/*.sh home/hypr/.config/hypr/scripts/state-write home/quickshell/.config/quickshell/scripts/lib/*.sh home/quickshell/.config/quickshell/scripts/ff7-audio home/quickshell/.config/quickshell/scripts/goldeneye-audio home/quickshell/.config/quickshell/scripts/mgs2-audio home/quickshell/.config/quickshell/scripts/ocarina-audio
+  # shellcheck disable=SC2086 # newline-separated tracked paths, none contain spaces
+  [ -z "$agent_script_files" ] || step shfmt shfmt -i 2 -d $agent_script_files
 else
   echo 'skip: shfmt not installed'
 fi
