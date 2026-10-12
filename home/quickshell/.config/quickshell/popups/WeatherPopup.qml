@@ -115,7 +115,7 @@ Popup {
 
         scan: { prefix: "Scan", views: ["Hourly", "SunMoon"] },
 
-        scope: { prefix: "Scope", views: [] },
+        scope: { prefix: "Scope", views: ["Hourly", "SunMoon"] },
 
         status: { prefix: "Status", views: ["Hourly", "SunMoon"] },
 
