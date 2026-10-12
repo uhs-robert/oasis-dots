@@ -51,7 +51,7 @@ Item {
 
     readonly property bool memcard_columns: Style.weather_header === "memcard" && root.sub === 0
 
-    readonly property bool mode7_columns: Style.weather_header === "mode7" && root.sub === 0
+    readonly property bool mode7_columns: Style.weather_header === "mode7"
 
     readonly property bool custom_column: root.ws_panels || root.tower_columns || root.camera || root.dunes || root.pill_columns
         || root.watch_columns || root.lsp_columns || root.scan_columns || root.battle_columns || root.memcard_columns || root.mode7_columns
@@ -461,6 +461,8 @@ Item {
                         active: root.mode7_columns
                         anchors.fill: parent
                         sourceComponent: Mode7DayColumn {
+                            sub: root.sub
+                            wind_max: root.wind_max
                             day: day_col.modelData
                             day_index: day_col.day_index
                             label: root.day_label(day_col.modelData, day_col.day_index)
