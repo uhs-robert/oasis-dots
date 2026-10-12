@@ -1,0 +1,79 @@
+#!/usr/bin/env bash
+# voxcmd-confirm: blocking yes/no question for shell callers.
+# Usage: voxcmd-confirm [--listen] <question>
+# Exits 0 for yes, 1 for no, cancel or no answer. Uses the Quickshell confirm card when the bar is running, else
+# rofi -dmenu with Yes and No. While it waits, `voxcmd --reply` can answer it through the pending-pick state file, and
+# --listen starts that reply's recording as the card appears (for a command that came by voice), listening once more
+# after a reply that is neither yes nor no.
+set -euo pipefail
+
+usage='usage: voxcmd-confirm [--listen] <question>'
+listen=0
+if [ "${1:-}" = --listen ]; then
+  listen=1
+  shift
+fi
+question="${1:?$usage}"
+# The card cancels itself after 10s without an answer, waiting while voice is heard; this only covers a bar that
+# dies mid-question. rofi has no timeout of its own, so it gets the card's.
+bar_timeout="${VOXCMD_CONFIRM_TIMEOUT:-120}"
+rofi_timeout=10
+pending_pick_file="${XDG_RUNTIME_DIR:-/tmp}/voxcmd/pending-pick.json"
+hypr_scripts="${XDG_CONFIG_HOME:-$HOME/.config}/hypr/scripts"
+voxcmd="$(dirname "$(readlink -f "$0")")/voxcmd"
+
+work_dir=$(mktemp -d "${XDG_RUNTIME_DIR:-/tmp}/voxcmd-confirm.XXXXXX")
+reader_pid=""
+cleanup() {
+  # A newer pick may have replaced the state file; only remove our own.
+  if [ "$(jq -r .pid "$pending_pick_file" 2>/dev/null)" = "$$" ]; then rm -f "$pending_pick_file"; fi
+  if [ -n "$reader_pid" ]; then kill "$reader_pid" 2>/dev/null || true; fi
+  rm -rf "$work_dir"
+}
+trap cleanup EXIT
+trap 'exit 1' INT TERM HUP
+result_fifo="$work_dir/result"
+# Present while one more listen is left after an unclear reply; voxcmd removes it when it listens again.
+listen_again_file="$work_dir/listen-again"
+mkfifo "$result_fifo"
+
+# Shaped like voxcmd-pick's, and written before the card shows, so `voxcmd --reply` and `voxcmd listen` find it;
+# kind tells reply to match yes or no.
+mkdir -p "$(dirname "$pending_pick_file")"
+jq -n --argjson pid $$ --arg fifo "$result_fifo" --arg label "$question" --arg listen_again "$listen_again_file" \
+  '{pid: $pid, fifo: $fifo, label: $label, kind: "confirm", choices: [{id: "yes", label: "Yes"}, {id: "no", label: "No"}],
+    expansions: {}, listen_again: $listen_again}' >"$work_dir/pending-pick.json"
+mv -f "$work_dir/pending-pick.json" "$pending_pick_file"
+
+# The bar and a voice reply write "yes" or "no", rofi the picked label.
+picker_pid=""
+timeout_secs="$bar_timeout"
+if [ ! -x "$hypr_scripts/qs-ipc" ] || [ "$("$hypr_scripts/qs-ipc" call confirm ask "$question" "$result_fifo" 2>/dev/null)" != ok ]; then
+  timeout_secs="$rofi_timeout"
+  printf -v rofi_command 'printf "Yes\nNo\n" | rofi -dmenu -i -p %q > %q' "$question" "$result_fifo"
+  sh -c "$rofi_command" &
+  picker_pid=$!
+fi
+
+if [ "$listen" = 1 ]; then
+  : >"$listen_again_file"
+  "$voxcmd" listen || true
+fi
+
+# Read in the background so the signal traps run while it waits, as in voxcmd-pick.
+timeout "$timeout_secs" head -n 1 "$result_fifo" >"$work_dir/answer" &
+reader_pid=$!
+wait "$reader_pid" || true
+reader_pid=""
+answer=$(cat "$work_dir/answer")
+# Removed before dismissing, so nothing the bar writes afterwards can block on the FIFO.
+cleanup
+if [ -n "$picker_pid" ]; then
+  pkill -P "$picker_pid" 2>/dev/null || true
+  kill "$picker_pid" 2>/dev/null || true
+else
+  # A no-op unless a voice reply or the timeout ended the question while the card was still open.
+  "$hypr_scripts/qs-ipc" call confirm dismiss "$result_fifo" >/dev/null 2>&1 || true
+fi
+
+[ "${answer,,}" = yes ]

@@ -10,7 +10,7 @@ Usage:
   voxcmd --dry-run <text...>  show what would run, without running it
   voxcmd listen               start a voxtype recording that stops itself after speech and a pause, then route the
                               transcript (as a reply when a voxcmd picker is open); while voxtype records, stop it
-  voxcmd --reply <text...>    answer the open voxcmd picker: a choice, an ordinal, or cancel
+  voxcmd --reply <text...>    answer the open voxcmd picker (a choice, an ordinal, or cancel) or confirm card (yes or no)
   voxcmd --dry-run --reply <text...>
   voxcmd list                 list integrations and their verbs
   voxcmd help                 pick from the integrations' example phrases (Tab lists what one can run); one without placeholders runs
@@ -20,17 +20,21 @@ EOF
 config_dir="${VOXCMD_CONFIG_DIR:-${XDG_CONFIG_HOME:-$HOME/.config}/voxcmd}"
 runtime_dir="${XDG_RUNTIME_DIR:-/tmp}/voxcmd"
 voxtype_state_file="${XDG_RUNTIME_DIR:-/tmp}/voxtype/state"
-# Written by voxcmd-pick while it waits: {pid, fifo, label, choices: [{id, label}]}.
+# Written by voxcmd-pick or voxcmd-confirm while it waits: {pid, fifo, label, choices: [{id, label}]}, plus
+# {kind: "confirm", listen_again} from voxcmd-confirm.
 pending_pick_file="$runtime_dir/pending-pick.json"
 transcript_file="$runtime_dir/transcript.txt"
 voxcmd_self="$(readlink -f "$0")"
 voxcmd_pick="$(dirname "$voxcmd_self")/voxcmd-pick"
+voxcmd_confirm="$(dirname "$voxcmd_self")/voxcmd-confirm"
 voxcmd_autostop="$(dirname "$voxcmd_self")/voxcmd-autostop"
 # Helpers integrations source ("$voxcmd_share_dir/spoken-time.sh"), found from voxcmd's real path so a stowed or
 # checked-out voxcmd reads its own copy. Not in integrations.d/, where every file is loaded as an integration.
 # shellcheck disable=SC2034 # read by integrations
 voxcmd_share_dir="$(dirname "$voxcmd_self")/../share/voxcmd"
 dry_run=0
+# 1 while routing a transcript from `voxcmd listen`, so a confirmation listens for its answer too.
+came_by_voice=0
 
 # notify info|error <summary> <body>. Info (what ran, answers, hints) is transient: the bar shows it but keeps it
 # out of its history, which is left to errors.
@@ -410,6 +414,15 @@ option_label() {
     else "\(.name): \(.action | gsub("_"; " "))" + (if .label != "" and .label != .action then " \(.label)" else "" end) end' <<<"$1"
 }
 
+# The label without the integration's name, as a question: "Apps: close Slack window: Inbox" asks "Close Slack window:
+# Inbox?".
+confirm_question() {
+  local option="$1" label="$2" name
+  name=$(jq -r .name <<<"$option")
+  label="${label#"$name: "}"
+  printf '%s?' "${label^}"
+}
+
 run_option() {
   local option="$1" file command id target label output
   file=$(jq -r .file <<<"$option")
@@ -423,7 +436,9 @@ run_option() {
     return 1
   fi
   if [ "$(jq -r .confirm <<<"$option")" = true ]; then
-    [ "$("$voxcmd_pick" "Run $label?" '["Yes","No"]')" = Yes ] || return 0
+    local -a confirm_flags=()
+    [ "$came_by_voice" = 0 ] || confirm_flags=(--listen)
+    "$voxcmd_confirm" "${confirm_flags[@]}" "$(confirm_question "$option" "$label")" || return 0
   fi
   if output=$(
     load_integration "$file"
@@ -598,14 +613,14 @@ help_runnables() {
 
 # ---- Voice replies to an open picker ----------------------------------------------------------------------------
 
-# Prints the pending pick's state while its voxcmd-pick still waits on its FIFO. A stale file is left alone: a new
-# pick may be about to replace it.
+# Prints the pending pick's state while its voxcmd-pick or voxcmd-confirm still waits on its FIFO. A stale file is
+# left alone: a new pick may be about to replace it.
 pending_pick() {
   local state pid fifo
   state=$(cat "$pending_pick_file" 2>/dev/null) || return 1
   pid=$(jq -r '.pid // empty' <<<"$state" 2>/dev/null) || return 1
   fifo=$(jq -r '.fifo // empty' <<<"$state" 2>/dev/null) || return 1
-  [ -n "$pid" ] && [ -p "$fifo" ] && grep -qs voxcmd-pick "/proc/$pid/cmdline" || return 1
+  [ -n "$pid" ] && [ -p "$fifo" ] && grep -qsE 'voxcmd-(pick|confirm)' "/proc/$pid/cmdline" || return 1
   printf '%s' "$state"
 }
 
@@ -664,13 +679,32 @@ match_reply() {
   esac
 }
 
-# Answers the open voxcmd-pick as if the choice had been picked in it; voxcmd-pick then closes the picker.
+# Prints "yes", "no" or "unclear<TAB><why>" for a normalized reply to a yes/no question. Normalizing drops the
+# apostrophe, so "don't" arrives as "dont".
+confirm_yes_replies='^(yes|yeah|yep|confirm|do it|sure|okay|ok)( please)?$'
+confirm_no_replies='^(no|nope|cancel|never ?mind|stop|dont)$'
+match_confirm_reply() {
+  if [[ "$1" =~ $confirm_yes_replies ]]; then
+    echo yes
+  elif [[ "$1" =~ $confirm_no_replies ]]; then
+    echo no
+  else
+    printf 'unclear\tnot a yes or no\n'
+  fi
+}
+
+# Answers the open voxcmd-pick as if the choice had been picked in it, or the open voxcmd-confirm; either then closes
+# its picker or card.
 reply() {
   local transcript="$*" text state verdict shown_list_key shown_list
   text=$(apply_replacements "$(normalize "$transcript")")
   if ! state=$(pending_pick); then
     notify info "voxcmd" "No picker is waiting for a reply"
     return 1
+  fi
+  if [ "$(jq -r '.kind // empty' <<<"$state")" = confirm ]; then
+    reply_confirm "$transcript" "$text" "$state"
+    return
   fi
   # The list on screen: the top level, or the expansion Tab opened, whose picks go back prefixed with its key.
   shown_list_key=$(cat "$(jq -r '.view // empty' <<<"$state")" 2>/dev/null) || shown_list_key=""
@@ -693,6 +727,33 @@ reply() {
   [ "$verdict" = cancel ] || answer="${shown_list_key:+$shown_list_key$'\t'}${verdict#*$'\t'}"
   # shellcheck disable=SC2016 # expanded by the inner sh
   timeout 2 sh -c 'printf "%s\n" "$1" >"$2"' sh "$answer" "$(jq -r .fifo <<<"$state")"
+}
+
+# An unclear reply leaves the card open and, while voxcmd-confirm left a listen_again file, listens once more.
+reply_confirm() {
+  local transcript="$1" text="$2" state="$3" verdict listen_again
+  verdict=$(match_confirm_reply "$text")
+  if [ "$dry_run" = 1 ]; then
+    printf 'transcript:  %s\nnormalized:  %s\nconfirm:     %s\nresult:      %s\n' \
+      "$transcript" "$text" "$(jq -r .label <<<"$state")" "${verdict/$'\t'/: }"
+    return 0
+  fi
+  case "$verdict" in
+  unclear*)
+    listen_again=$(jq -r '.listen_again // empty' <<<"$state")
+    # Only one rm of the file succeeds, so only one unclear reply gets the extra listen.
+    if [ -n "$listen_again" ] && rm "$listen_again" 2>/dev/null; then
+      notify info "voxcmd: yes or no?" "\"$transcript\": listening again"
+      listen
+    else
+      notify info "voxcmd: yes or no?" "\"$transcript\": say yes or no, or press y or n."
+    fi
+    return 1
+    ;;
+  esac
+  # voxcmd-confirm reads anything but "yes" as a no.
+  # shellcheck disable=SC2016 # expanded by the inner sh
+  timeout 2 sh -c 'printf "%s\n" "$1" >"$2"' sh "$verdict" "$(jq -r .fifo <<<"$state")"
 }
 # ----------------------------------------------------------------------------------------------------------------
 
@@ -785,6 +846,7 @@ watch_recording() {
     sleep "$watch_poll_interval"
   done
   [ -s "$transcript_file" ] || exit 0
+  came_by_voice=1
   "$transcript_handler" "$(cat "$transcript_file")"
 }
 
