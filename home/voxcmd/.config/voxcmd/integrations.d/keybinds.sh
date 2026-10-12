@@ -10,8 +10,9 @@ silent=1
 target_match=words
 # "press toggle fullscreen" comes straight here even when another integration has a verb for "toggle fullscreen".
 force_prefixes=(press keybind "key bind")
-# Words that only say "run a keybind", ignored on both sides: "run close window" is "close window".
-match_ignore_words=(run press keybind key bind shortcut "do" trigger)
+# Words that only say "run a keybind", ignored on both sides: "run close window" is "close window". "open" and
+# "launch" are here because launcher binds are named for what they open ("Terminal"), so "open terminal" is that bind.
+match_ignore_words=(run press keybind key bind shortcut "do" trigger open launch)
 
 verbs=(
   "run  {target}"
