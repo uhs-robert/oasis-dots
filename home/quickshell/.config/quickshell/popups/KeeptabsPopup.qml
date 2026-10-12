@@ -75,7 +75,7 @@ Popup {
 
         towers: { prefix: "Browser", views: [] },
 
-        watch: { prefix: "Mission", views: [] },
+        watch: { prefix: "Mission", views: ["Agents", "Usage"] },
 
         weatherstar: { prefix: "Observations", views: [] },
 
