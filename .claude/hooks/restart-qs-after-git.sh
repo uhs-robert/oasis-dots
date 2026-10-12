@@ -13,7 +13,20 @@ words=$(awk '
     for (i = 1; i <= n; i++) {
       c = substr($0, i, 1)
       if (sq) { if (c == "\047") sq = 0; continue }
-      if (dq) { if (c == "\\") i++; else if (c == "\"") dq = 0; continue }
+      if (dq) {
+        if (c == "\\") i++;
+        else if (c == "\"") dq = 0;
+        else if (c == "$" && substr($0, i + 1, 1) == "(") {
+          # Command substitutions run even inside double quotes, so they stay; nested parens are counted.
+          depth = 0
+          for (; i <= n; i++) { ch = substr($0, i, 1); out = out ch; if (ch == "(") depth++; else if (ch == ")" && --depth == 0) break }
+          out = out " "
+        } else if (c == "`") {
+          for (i++; i <= n && substr($0, i, 1) != "`"; i++) out = out substr($0, i, 1)
+          out = out " "
+        }
+        continue
+      }
       if (c == "\\") { i++; continue }
       if (c == "\047") { sq = 1; continue }
       if (c == "\"") { dq = 1; continue }
@@ -26,9 +39,10 @@ words=$(awk '
     sub(/^<<[-~]?[ ]*["\047]?/, "", w); sub(/["\047]$/, "", w); word = w; skip = 1
   }' <<<"$cmd")
 git_opts='([[:space:]]+(-C[[:space:]]+[^[:space:]]+|-c[[:space:]]+[^[:space:]]+|--[a-z-]+(=[^[:space:]]*)?|-[a-zA-Z]))*'
-moves="(^|[;&|(\`[:space:]])git${git_opts}[[:space:]]+(switch|checkout|merge|pull|rebase|reset|restore|stash)([[:space:]]|$)"
-# merge-prs.sh fast-forwards the main checkout itself after merging.
-[[ $words =~ $moves || $words =~ merge-prs\.sh ]] || exit 0
+moves="(^|[;&|(\`[:space:]])git${git_opts}[[:space:]]+(switch|checkout|merge|pull|rebase|reset|restore|stash)([[:space:];&|)\`]|$)"
+# merge-prs.sh fast-forwards the main checkout itself after merging, so running it (not naming it) counts.
+merge_prs="(^|[;&|(\`])[[:space:]]*([^[:space:]]*/)?merge-prs\.sh([[:space:]]|$)"
+[[ $words =~ $moves || $words =~ $merge_prs ]] || exit 0
 
 live=$(readlink -f "$HOME/.config/quickshell" 2>/dev/null) || exit 0
 repo=$(git -C "$live" rev-parse --show-toplevel 2>/dev/null) || exit 0
