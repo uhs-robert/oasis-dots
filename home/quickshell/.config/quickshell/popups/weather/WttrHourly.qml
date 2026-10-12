@@ -119,35 +119,8 @@ Item {
     onGraph_rowsChanged: track.request_paint()
     onAxisChanged: track.request_paint()
 
-    function braille_bit(dot_x, dot_y) {
-        return dot_x === 0 ? [0x01, 0x02, 0x04, 0x40][dot_y] : [0x08, 0x10, 0x20, 0x80][dot_y];
-    }
-
-    // masks[hour][char_row][char] of braille bits for one series, a dot column at a time, joined vertically so steep runs stay connected.
     function plot_masks(hrs, value_of, dashed) {
-        const per = root.chars * 2;
-        const dot_rows = root.graph_rows * 4;
-        const masks = hrs.map(() => Array.from({ length: root.graph_rows }, () => new Array(root.chars).fill(0)));
-        const span = root.axis.max - root.axis.min || 1;
-        const y_of = v => Math.max(0, Math.min(dot_rows - 1, Math.round((root.axis.max - v) / span * (dot_rows - 1))));
-        let prev = -1;
-        for (let d = 0; d < hrs.length * per; d++) {
-            const t = (d + 0.5) / per - 0.5;
-            const i0 = Math.max(0, Math.min(hrs.length - 1, Math.floor(t)));
-            const i1 = Math.min(hrs.length - 1, i0 + 1);
-            const frac = Math.max(0, Math.min(1, t - i0));
-            const a = value_of(hrs[i0]), b = value_of(hrs[i1]);
-            const y = y_of(a + (b - a) * frac);
-            const hour = Math.floor(d / per);
-            const local = d % per;
-            const from = prev < 0 || dashed ? y : Math.min(prev, y);
-            const to = prev < 0 || dashed ? y : Math.max(prev, y);
-            if (!dashed || Math.floor(local / 2) % 2 === 0) {
-                for (let yy = from; yy <= to; yy++) masks[hour][yy >> 2][local >> 1] |= root.braille_bit(local & 1, yy & 3);
-            }
-            prev = y;
-        }
-        return masks;
+        return WttrArt.braille_masks(hrs.map(value_of), root.graph_rows, root.chars, root.axis.min, root.axis.max, dashed);
     }
 
     function paint(ctx, w, h) {
