@@ -1,6 +1,6 @@
 # voxcmd
 
-Voice commands on top of [voxtype](https://github.com/peteonrails/voxtype). Speak a phrase, voxcmd matches it against the verbs your integrations declare and runs the action. Ten integrations ship: `media.sh` (playerctl and pamixer), `apps.sh` (open apps, focus, move and close windows), `timers.sh` (timers and reminders as systemd user timers), `devices.sh` (audio output, input and per-app volume with wpctl, Bluetooth with bluetoothctl), `system.sh` (brightness, power profile, do not disturb, auto-lock), `answers.sh` (math, time and date questions, and the weather popup), `keeptabs.sh` (coding agents tracked by keeptabs), `tmux.sh` (tmux sessions and tmuxifier layouts), `notifications.sh` (the bar's notification center) and `keybinds.sh` (any described Hyprland keybind); everything else is a drop-in file you write.
+Voice commands on top of [voxtype](https://github.com/peteonrails/voxtype). Speak a phrase, voxcmd matches it against the verbs your integrations declare and runs the action. Eleven integrations ship: `media.sh` (playerctl and pamixer), `apps.sh` (open apps, focus, move and close windows), `timers.sh` (timers and reminders as systemd user timers), `devices.sh` (audio output, input and per-app volume with wpctl, Bluetooth with bluetoothctl), `system.sh` (brightness, power profile, do not disturb, auto-lock), `answers.sh` (math, time and date questions, and the weather popup), `keeptabs.sh` (coding agents tracked by keeptabs), `tmux.sh` (tmux sessions and tmuxifier layouts), `notifications.sh` (the bar's notification center), `recording.sh` (screen recording) and `keybinds.sh` (any described Hyprland keybind); everything else is a drop-in file you write.
 
 | Key                                | Does                                                                     |
 | ---------------------------------- | ------------------------------------------------------------------------ |
@@ -312,6 +312,23 @@ Both are [silent](#silent-actions) when they work, since the session's terminal 
 - The repeat is read with `notifications get_last` and sent again with `notify-send --transient`, so it adds no second copy to the history. Under do not disturb it goes out critical, which do not disturb lets through, so it stays up until dismissed.
 - The actions are [silent](#silent-actions), since each one's effect is its own feedback; an empty history says "No notifications".
 - Do not disturb ("silence notifications", "notifications on") belongs to `system.sh`.
+
+### Recording
+
+`recording.sh` records the screen through the screenshot tool's own flags (`~/.config/hypr/scripts/screenshot.sh`, the `Print` key), so recordings land in `~/Videos/Recordings` with the same names, the bar's recording chip shows them, and "Recording Saved!" arrives the same way:
+
+| Say                                                   | Does                                                                      |
+| ----------------------------------------------------- | ------------------------------------------------------------------------- |
+| "start recording", "record the screen"                | records the focused monitor at once (`--record-geometry`)                 |
+| "record this window", "record the current window"     | records the focused window (`--record-focused`)                           |
+| "record a window"                                     | picks a window to record (`--record-window`)                              |
+| "record a region", "record an area"                   | opens the region selector to record (`--record-region`)                   |
+| "stop recording", "end the recording"                 | stops it and says where the file was saved                                |
+| "is it recording", "am I recording"                   | how long it has run and the file it writes                                |
+
+- Starting is [silent](#silent-actions), since the recording chip shows it (screenshot.sh notifies when no bar shows one); starting while a recording runs says "Already recording" with its file instead.
+- Any `wf-recorder` counts as the recording, as on the bar's chip, so the demo recorder's takes are stopped and reported too.
+- Plain "stop" stays with Media, and "cancel the recording" matches nothing: "cancel" means discard to voxcmd, and stopping keeps the file.
 
 ## Voice Help
 
