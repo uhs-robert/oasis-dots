@@ -18,15 +18,16 @@ Popup {
     anim_scale: 0.3
     preferred_width: 320
     title: root.provider ? root.provider.title.toUpperCase() : "PICKER"
-    footer_hint: "Enter " + root.verb + " · Esc normal · q close"
-    footer_override: root.insert ? "Enter " + root.verb + " · Esc normal" : root.action_hint !== "" ? "Enter " + root.verb + " · " + root.action_hint + " · ? help · q close" : ""
-    key_help: ["Enter " + root.verb, "Up/Down move", "Ctrl+j/k move", "Tab/Shift+Tab next/prev"].concat(root.tabs.length > 0 ? ["Ctrl+Tab/Ctrl+Shift+Tab tabs"] : []).concat(["Ctrl+u clear", "Esc normal mode", "j/k rows", "h/l columns", "0/$ row ends", "gg/G first/last", "i/a insert", "/ search"]).concat(root.action_hint !== "" ? [root.action_hint] : []).concat(["q/Esc close"]).join(" · ")
+    footer_hint: "Enter " + root.verb + root.nesting_hint + " · Esc normal · q close"
+    footer_override: root.insert ? "Enter " + root.verb + root.nesting_hint + " · Esc normal" : root.action_hint !== "" ? "Enter " + root.verb + root.nesting_hint + " · " + root.action_hint + " · ? help · q close" : ""
+    key_help: ["Enter " + root.verb, "Up/Down move", "Ctrl+j/k move", root.provider && root.provider.expands ? "Tab expand, Shift+Tab prev" : "Tab/Shift+Tab next/prev"].concat(root.provider && root.provider.can_go_back ? ["Backspace on an empty search back"] : []).concat(root.tabs.length > 0 ? ["Ctrl+Tab/Ctrl+Shift+Tab tabs"] : []).concat(["Ctrl+u clear", "Esc normal mode", "j/k rows", "h/l columns", "0/$ row ends", "gg/G first/last", "i/a insert", "/ search"]).concat(root.action_hint !== "" ? [root.action_hint] : []).concat(["q/Esc close"]).join(" · ")
     jumps_enabled: !root.insert
     cursor_state: root.selected
     tabs: root.provider ? root.provider.tabs : []
 
     readonly property var provider: Pickers.provider
     readonly property string verb: root.provider ? root.provider.verb : "open"
+    readonly property string nesting_hint: !root.provider ? "" : root.provider.expands ? " · Tab expand" : root.provider.can_go_back ? " · Backspace back" : ""
     readonly property string action_hint: root.provider ? root.provider.actions.map(a => a.key + " " + a.desc).join(" · ") : ""
     readonly property bool is_open: Popups.open_name === "picker"
     readonly property int columns: root.dock_bottom && root.provider ? Math.max(1, root.provider.columns) : 1
@@ -40,6 +41,8 @@ Popup {
     property string query: ""
     property int selected: 0
     property bool insert: true
+    // { query, id } of each item Tab expanded, so going back restores the search and the row.
+    property var expanded_from: []
 
     readonly property var results: root.rank(root.provider ? root.provider.items : [], root.query)
     readonly property var selected_item: root.results.length > 0 ? root.results[Math.min(root.selected, root.results.length - 1)].item : null
@@ -102,6 +105,7 @@ Popup {
     }
 
     function reset() {
+        root.expanded_from = [];
         query_input.text = "";
         root.selected = root.first_index();
         grid.positionViewAtBeginning();
@@ -175,6 +179,29 @@ Popup {
         p.activate(item);
     }
 
+    // Like Tab completing a command in HyprVim's prompt: the list narrows to what lies under the item.
+    function expand_selected() {
+        const item = root.selected_item;
+        if (!item || !root.provider) return;
+        const from = { query: query_input.text, id: item.id };
+        if (!root.provider.expand(item)) return;
+        root.expanded_from = root.expanded_from.concat([from]);
+        query_input.text = "";
+        root.selected = 0;
+        grid.positionViewAtBeginning();
+        ThemeAudio.play("confirm");
+    }
+
+    function go_back() {
+        const from = root.expanded_from[root.expanded_from.length - 1] || { query: "", id: "" };
+        root.expanded_from = root.expanded_from.slice(0, -1);
+        root.provider.go_back();
+        query_input.text = from.query;
+        const row = root.results.findIndex(r => r.item.id === from.id);
+        if (row >= 0) root.selected = row;
+        ThemeAudio.play("cancel");
+    }
+
     // j/k keep the column and wrap top to bottom; a short last row lands on its last item.
     function line_ends(to_end) {
         const n = root.results.length;
@@ -231,6 +258,8 @@ Popup {
         } else if (ctrl && (k === Qt.Key_Tab || k === Qt.Key_Backtab) && root.tabs.length > 0) {
             root.step_tab(k === Qt.Key_Tab ? 1 : -1);
             root.play_if_moved(before);
+        } else if (k === Qt.Key_Tab && root.provider && root.provider.expands) {
+            root.expand_selected();
         } else if (k === Qt.Key_Tab) {
             root.step(1);
         } else if (k === Qt.Key_Backtab) {
@@ -239,6 +268,8 @@ Popup {
             query_input.text = "";
         } else if (root.insert || ctrl || (event.modifiers & Qt.AltModifier)) {
             return;
+        } else if (k === Qt.Key_Backspace && root.provider && root.provider.can_go_back) {
+            root.go_back();
         } else if (k === Qt.Key_Backspace && Popups.back_name !== "") {
             Popups.back();
         } else if (k === Qt.Key_J) {
@@ -335,6 +366,11 @@ Popup {
                 Keys.onPressed: event => {
                     const ctrl = event.modifiers & Qt.ControlModifier;
                     const k = event.key;
+                    if (k === Qt.Key_Backspace && query_input.text === "" && root.provider && root.provider.can_go_back) {
+                        root.go_back();
+                        event.accepted = true;
+                        return;
+                    }
                     if (k === Qt.Key_Backspace && query_input.text === "" && Popups.back_name !== "") {
                         Popups.back();
                         event.accepted = true;

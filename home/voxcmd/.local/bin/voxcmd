@@ -13,7 +13,7 @@ Usage:
   voxcmd --reply <text...>    answer the open voxcmd picker: a choice, an ordinal, or cancel
   voxcmd --dry-run --reply <text...>
   voxcmd list                 list integrations and their verbs
-  voxcmd help                 pick from the integrations' example phrases; one without placeholders runs
+  voxcmd help                 pick from the integrations' example phrases (Tab lists what one can run); one without placeholders runs
 EOF
 }
 
@@ -104,8 +104,8 @@ compile_pattern() {
 # Callers source each integration in its own subshell so their variables and functions never collide.
 # A `declare` in a file sourced from a function is local to that function, so the arrays are copied out to globals.
 load_integration() {
-  unset -f candidates
-  name="" confirm=0 fallback=0 silent=0 target_match=fuzzy
+  unset -f candidates help_choices
+  name="" confirm=0 fallback=0 silent=0 target_match=fuzzy help_action=""
   local -a verbs=() examples=() confirm_labels=() match_ignore_words=() silent_actions=() force_prefixes=()
   local -A actions=() no_match_actions=()
   # shellcheck disable=SC1090
@@ -212,7 +212,7 @@ resolve_match() {
   has_target=$(jq -r .has_target <<<"$match")
   (
     load_integration "$file"
-    local candidates_json="" command="${integration_actions[$action]-}" options
+    local candidates_json="" options
     if [ "$has_target" = true ] && declare -F candidates >/dev/null; then
       candidates_json=$(candidates "$action" "$target" || true)
     fi
@@ -231,19 +231,29 @@ resolve_match() {
       fi
       if [ -n "$target" ] && [ "$(jq length <<<"$options")" = 0 ] && [ -n "${integration_no_match_actions[$action]-}" ]; then
         action="${integration_no_match_actions[$action]}"
-        command="${integration_actions[$action]-}"
         options=$(jq -c -n --arg target "$target" '[{id: "", label: $target}]')
       fi
     fi
-    jq -c --argjson match "$match" --arg action "$action" --arg command "$command" --arg confirm "$confirm" \
-      --argjson only_action "$([ "${#integration_actions[@]}" = 1 ] && echo true || echo false)" \
-      --argjson silent "$(action_is_silent "$action" && echo true || echo false)" \
-      --argjson candidates "$candidates_json" --args \
-      '($ARGS.positional) as $confirm_labels | .[]
-        | $match + {action: $action, only_action: $only_action, id, label, command: $command, weak: (.weak // false), silent: $silent,
-            confirm: ($confirm == "1" or (.label as $label | any($confirm_labels[]; . as $re | $label | test($re; "i")))),
-            candidates: ($candidates | length)}' "${integration_confirm_labels[@]}" <<<"$options"
+    runnable_options "$match" "$action" "$(jq length <<<"$candidates_json")" <<<"$options"
   )
+}
+
+# Prints one runnable option per {id, label} on stdin, as run_option takes it, for an action of the loaded
+# integration; an entry's own .action overrides it.
+runnable_options() {
+  local match="$1" action="$2" candidate_count="$3" key commands
+  commands=$(for key in "${!integration_actions[@]}"; do
+    jq -n -c --arg key "$key" --arg command "${integration_actions[$key]}" \
+      --argjson silent "$(action_is_silent "$key" && echo true || echo false)" '{key: $key, value: {command: $command, silent: $silent}}'
+  done | jq -s -c from_entries)
+  jq -c --argjson match "$match" --arg action "$action" --argjson commands "$commands" --arg confirm "$confirm" \
+    --argjson only_action "$([ "${#integration_actions[@]}" = 1 ] && echo true || echo false)" \
+    --argjson candidates "$candidate_count" --args \
+    '($ARGS.positional) as $confirm_labels | .[] | (.action // $action) as $action
+      | $match + {action: $action, only_action: $only_action, id, label, command: ($commands[$action].command // ""),
+          weak: (.weak // false), silent: ($commands[$action].silent // false),
+          confirm: ($confirm == "1" or (.label as $label | any($confirm_labels[]; . as $re | $label | test($re; "i")))),
+          candidates: $candidates}' "${integration_confirm_labels[@]}"
 }
 
 # Candidates whose label (or match_text) is the target, else those containing it, else those fuzzy-matching it.
@@ -448,28 +458,63 @@ markup_escape() {
 
 # Every integration's example phrases in the picker, grouped by integration with the fallbacks last. A phrase
 # without placeholders runs as if spoken; one with a <placeholder> cannot be completed from a click, so it is
-# shown as a notification to say instead.
+# shown as a notification to say instead. Tab on an integration that lists its help choices shows them, and picking
+# one runs it like a spoken match would. Picked ids are "say:<phrase>" or "run:<index into the runnable options>".
 example_placeholder='<[^>]+>'
 voice_help() {
-  local choices file picked
-  choices=$(while IFS= read -r file; do
+  local groups choices expansions runnables picked file
+  groups=$(while IFS= read -r file; do
     (
       load_integration "$file"
-      jq -n -c --arg name "$name" --argjson fallback "$([ "$fallback" = 1 ] && echo true || echo false)" --args \
-        '$ARGS.positional | map({id: ., label: "\($name): \(.)", fallback: $fallback})' "${integration_examples[@]}"
+      # On stdin: a keybinds list is too long for an argument.
+      help_runnables "$file" | jq -c --arg file "$file" --arg name "$name" \
+        --argjson fallback "$([ "$fallback" = 1 ] && echo true || echo false)" --args \
+        '{key: ($file | split("/") | last | rtrimstr(".sh")), name: $name, fallback: $fallback, examples: $ARGS.positional, runnables: .}' \
+        "${integration_examples[@]}"
     )
-  done < <(integration_files) | jq -s -c 'add // [] | sort_by(.fallback) | map(del(.fallback))')
-  if [ "$(jq length <<<"$choices")" = 0 ]; then
+  done < <(integration_files) | jq -s -c 'sort_by(.fallback) | map(select(.examples != [] or .runnables != []))')
+  if [ "$(jq 'map(.examples[]) | length' <<<"$groups")" = 0 ]; then
     notify info "voxcmd" "No integration declares examples"
     return 1
   fi
-  picked=$("$voxcmd_pick" "Voice Help" "$choices") || return 0
-  if [[ "$picked" =~ $example_placeholder ]]; then
-    # Notification bodies are markup, which would swallow the placeholder as a tag.
-    notify info "voxcmd" "Say: $(markup_escape "$picked")"
-  else
-    route "$picked"
+  runnables=$(jq -c 'map(.runnables[])' <<<"$groups")
+  choices=$(jq -c 'map(. as $group | .examples[]
+    | {id: "say:\(.)", label: "\($group.name): \(.)"} + if $group.runnables != [] then {expand: $group.key} else {} end)' <<<"$groups")
+  # A run: id indexes $runnables, every group's runnables in group order, so each group's ids start past the ones before.
+  expansions=$(jq -c '(map(.runnables | length) | [foreach .[] as $count (0; . + $count)] | [0] + .) as $first_run_index
+    | to_entries | map(select(.value.runnables != []) | .key as $group_index | .value
+      | {key, value: {title: .name, choices: (.runnables | to_entries | map({id: "run:\(.key + $first_run_index[$group_index])", label: .value.label}))}})
+    | from_entries' <<<"$groups")
+  picked=$("$voxcmd_pick" "Voice Help" "$choices" "$expansions") || return 0
+  case "$picked" in
+  run:*) run_option "$(jq -c --argjson i "${picked#run:}" '.[$i]' <<<"$runnables")" ;;
+  *)
+    picked="${picked#say:}"
+    if [[ "$picked" =~ $example_placeholder ]]; then
+      # Notification bodies are markup, which would swallow the placeholder as a tag.
+      notify info "voxcmd" "Say: $(markup_escape "$picked")"
+    else
+      route "$picked"
+    fi
+    ;;
+  esac
+}
+
+# Prints the runnable options Tab shows in Voice Help for the loaded integration, [] when it lists none:
+# help_choices, else the candidates of help_action. An entry's own action overrides help_action. The target is the
+# label, what saying the entry would have captured, for actions that read it.
+help_runnables() {
+  local file="$1" listed=""
+  if declare -F help_choices >/dev/null; then
+    listed=$(help_choices || true)
+  elif [ -n "$help_action" ] && declare -F candidates >/dev/null; then
+    listed=$(candidates "$help_action" "" || true)
   fi
+  listed=$(jq -c --arg action "$help_action" 'if type == "array" then . else [] end
+    | map({id: (.id | tostring), label: (.label // .id | tostring), action: (.action // $action)} | select(.action != ""))' \
+    <<<"${listed:-[]}" 2>/dev/null) || listed='[]'
+  runnable_options "$(jq -n -c --arg file "$file" --arg name "$name" '{file: $file, name: $name, fallback: false, has_target: true}')" \
+    "$help_action" "$(jq length <<<"$listed")" <<<"$listed" | jq -s -c 'map(. + {target: .label})'
 }
 
 # ---- Voice replies to an open picker ----------------------------------------------------------------------------
@@ -542,16 +587,20 @@ match_reply() {
 
 # Answers the open voxcmd-pick as if the choice had been picked in it; voxcmd-pick then closes the picker.
 reply() {
-  local transcript="$*" text state verdict
+  local transcript="$*" text state verdict shown_list_key shown_list
   text=$(apply_replacements "$(normalize "$transcript")")
   if ! state=$(pending_pick); then
     notify info "voxcmd" "No picker is waiting for a reply"
     return 1
   fi
-  verdict=$(match_reply "$text" "$(jq -c .choices <<<"$state")")
+  # The list on screen: the top level, or the expansion Tab opened, whose picks go back prefixed with its key.
+  shown_list_key=$(cat "$(jq -r '.view // empty' <<<"$state")" 2>/dev/null) || shown_list_key=""
+  shown_list_key=$(jq -r --arg key "$shown_list_key" 'if $key != "" and (.expansions // {})[$key] then $key else "" end' <<<"$state")
+  shown_list=$(jq -c --arg key "$shown_list_key" 'if $key != "" then .expansions[$key] else {title: "", choices} end' <<<"$state")
+  verdict=$(match_reply "$text" "$(jq -c .choices <<<"$shown_list")")
   if [ "$dry_run" = 1 ]; then
     printf 'transcript:  %s\nnormalized:  %s\npicker:      %s\nresult:      %s\n' \
-      "$transcript" "$text" "$(jq -r .label <<<"$state")" "${verdict/$'\t'/: }"
+      "$transcript" "$text" "$(jq -r .label <<<"$state")${shown_list_key:+ > $(jq -r .title <<<"$shown_list")}" "${verdict/$'\t'/: }"
     return 0
   fi
   case "$verdict" in
@@ -562,7 +611,7 @@ reply() {
   esac
   # An empty line reads as a cancel, like Esc. The timeout covers a voxcmd-pick that exits between check and write.
   local answer=""
-  [ "$verdict" = cancel ] || answer="${verdict#*$'\t'}"
+  [ "$verdict" = cancel ] || answer="${shown_list_key:+$shown_list_key$'\t'}${verdict#*$'\t'}"
   # shellcheck disable=SC2016 # expanded by the inner sh
   timeout 2 sh -c 'printf "%s\n" "$1" >"$2"' sh "$answer" "$(jq -r .fifo <<<"$state")"
 }
