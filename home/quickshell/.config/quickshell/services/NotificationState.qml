@@ -33,27 +33,28 @@ Singleton {
     onToastsChanged: root.sync_toast_focus()
 
     // keepOnReload keeps the notifications but not the entries wrapping them: after a reload the server hands every kept
-    // notification to onNotification again, so arrival times are carried here and taken back by make_entry.
+    // notification to onNotification again, so each entry's arrival time and read flag are carried here and taken back
+    // by make_entry.
     PersistentProperties {
         id: persist
-        reloadableId: "notification_arrivals"
-        // JSON map of notification id to arrival time (ms).
-        property string arrivals: "{}"
+        reloadableId: "notification_entries"
+        // JSON map of notification id to { time (ms), read }.
+        property string entries: "{}"
 
         onLoaded: {
-            root.reload_arrivals = JSON.parse(persist.arrivals);
+            root.reload_entries = JSON.parse(persist.entries);
             reload_window.restart();
         }
     }
 
-    // Arrival times from before the reload, by id, until the server has handed the kept notifications back. Dropped after,
-    // so an app that later replaces a closed notification's id gets a fresh time.
-    property var reload_arrivals: ({})
+    // The entries from before the reload, by id, until the server has handed the kept notifications back. Dropped after,
+    // so an app that later replaces a closed notification's id gets a fresh, unread entry.
+    property var reload_entries: ({})
 
     Timer {
         id: reload_window
         interval: 1000
-        onTriggered: root.reload_arrivals = {}
+        onTriggered: root.reload_entries = {}
     }
 
     NotificationServer {
@@ -89,7 +90,7 @@ Singleton {
         if (!n.transient) {
             root.history = [entry].concat(root.history);
             root.trim_history();
-            root.save_arrival_times();
+            root.save_entries();
         }
         if (suppressed) return;
         root.toasts = [entry].concat(root.toasts);
@@ -98,17 +99,18 @@ Singleton {
     }
 
     function make_entry(n, read) {
-        const entry = { id: n.id, notification: n, time: root.reload_arrivals[n.id] ?? Date.now(), read: read, paused: false, on_closed: null };
-        delete root.reload_arrivals[n.id];
+        const kept = root.reload_entries[n.id];
+        delete root.reload_entries[n.id];
+        const entry = { id: n.id, notification: n, time: kept ? kept.time : Date.now(), read: kept ? kept.read : read, paused: false, on_closed: null };
         entry.on_closed = () => root.remove_entry(entry);
         n.closed.connect(entry.on_closed);
         return entry;
     }
 
-    function save_arrival_times() {
-        const arrivals = {};
-        for (const entry of root.history) arrivals[entry.id] = entry.time;
-        persist.arrivals = JSON.stringify(arrivals);
+    function save_entries() {
+        const entries = {};
+        for (const entry of root.history) entries[entry.id] = { time: entry.time, read: entry.read };
+        persist.entries = JSON.stringify(entries);
     }
 
     // Only visible toasts count down; queued ones wait for a slot so a burst never expires unseen.
@@ -359,6 +361,7 @@ Singleton {
     function mark_read() {
         for (const e of root.history) e.read = true;
         root.history = root.history.slice();
+        root.save_entries();
     }
 
     // Meeting invites open with a ~:~:~ rule; lines made only of punctuation carry nothing.
