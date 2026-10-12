@@ -7,6 +7,7 @@ function overrides(t, ctx) {
     const lock = t.theme_label;
     return {
         wait_anim: "comms",
+        done_anim: "lock",
         picker_skin: "tiecomp",
         text_muted: Qt.alpha(vec, 0.55),
         text_dim: Qt.alpha(vec, 0.7),

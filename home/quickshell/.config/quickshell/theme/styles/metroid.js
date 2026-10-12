@@ -5,6 +5,7 @@ function overrides(t, ctx) {
         workspace_art: "doors",
         level_layout: "visor",
         wait_anim: "scan",
+        done_anim: "item",
         weather_header: "scan",
         keeptabs_layout: "scan",
         weather_icon_tint: t.theme_primary_light,

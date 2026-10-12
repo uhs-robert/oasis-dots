@@ -41,8 +41,8 @@ Singleton {
     // KeepTabs popup layouts any style can borrow; the key is the weather layout of the same game or tool, and "" is the plain lists.
     readonly property var keeptabs_layouts: ["", "battle", "mode7", "pokedex", "status", "memcard", "towers", "watch", "scan", "hev", "scope", "ring", "oasis", "wttr", "lsp", "weatherstar", "hero"]
     // Keeptabs animations any style can borrow (Theme options), drawn in the bar's colours and fonts.
-    readonly property var done_anims: ["hearts", "pixel", "lcd", "hev_pickup", "levelup", "fanfare"]
-    readonly property var wait_anims: ["bubble", "cursor", "pressanykey", "advance", "hand", "alert", "rumble", "transmission", "scan", "comms", "ping", "hev_alert", "exclaim", "atb"]
+    readonly property var done_anims: ["hearts", "pixel", "lcd", "hev_pickup", "levelup", "fanfare", "item", "lock", "ring", "shooting_star"]
+    readonly property var wait_anims: ["bubble", "cursor", "pressanykey", "advance", "hand", "alert", "rumble", "transmission", "scan", "comms", "ping", "hev_alert", "exclaim", "atb", "mirage"]
     // Toast arrivals any style can borrow (Theme options); "" is the plain fade-in.
     readonly property var toast_enters: ["", "type", "mode7", "wobble", "bloom"]
     // What each borrowable choice draws, by row then value; the first value of each row is the plain look. Labels add the styles that draw it natively.
@@ -53,8 +53,8 @@ Singleton {
             osd_layout: { "": "Bar", ring: "Ring", hud: "HUD", rpg: "RPG", alert: "Alert Mark", glow: "Glow Ring", horizon: "Horizon", tile: "Tile", watch: "Watch Dial" },
             weather_header: { "": "Plain", ring: "Ring", scope: "Targeting Scope", memcard: "Memory Card", mode7: "Mode 7", wttr: "wttr.in", weatherstar: "Weather Star", towers: "Towers", pokedex: "Pokedex", status: "Status Screen", oasis: "Oasis", hero: "Hero", lsp: "LSP Hover", watch: "Watch", battle: "Battle", scan: "Scan Visor", hev: "HEV Suit" },
             keeptabs_layout: { "": "Plain", battle: "Party", mode7: "Battle", pokedex: "Party", status: "Menu", memcard: "Memory Card", towers: "Browser", watch: "Mission Status", scan: "Logbook", hev: "Weapon Select", scope: "Targeting", ring: "Roster", oasis: "Caravan", wttr: "htop", lsp: "Trouble", weatherstar: "Observations", hero: "Live Activities" },
-            done_anim: { hearts: "Hearts", pixel: "Pixel", lcd: "LCD", hev_pickup: "Health Pickup", levelup: "Level Up", fanfare: "Victory Fanfare" },
-            wait_anim: { bubble: "Bubble", cursor: "Blinking Cursor", pressanykey: "Press Any Key", advance: "Text Advance", hand: "Pointing Hand", alert: "Alert", rumble: "Rumble", transmission: "Transmission", scan: "Scan", comms: "Comms", ping: "Radar Ping", hev_alert: "HEV Alert", exclaim: "Exclamation", atb: "ATB Gauge" },
+            done_anim: { hearts: "Hearts", pixel: "Pixel", lcd: "LCD", hev_pickup: "Health Pickup", levelup: "Level Up", fanfare: "Victory Fanfare", item: "Item Acquired", lock: "Target Lock", ring: "Ring Lock", shooting_star: "Shooting Star" },
+            wait_anim: { bubble: "Bubble", cursor: "Blinking Cursor", pressanykey: "Press Any Key", advance: "Text Advance", hand: "Pointing Hand", alert: "Alert", rumble: "Rumble", transmission: "Transmission", scan: "Scan", comms: "Comms", ping: "Radar Ping", hev_alert: "HEV Alert", exclaim: "Exclamation", atb: "ATB Gauge", mirage: "Mirage" },
             toast_enter: { "": "Fade", type: "Typewriter", mode7: "Mode 7", wobble: "Wobble", bloom: "Bloom" }
         })
     readonly property var labels: ({ crt: "CRT", nes: "NES", snes: "SNES", gameboy: "Gameboy", goldeneye: "Goldeneye", ps1: "PSX", ff7: "FFVII", ps2: "PS2", halflife: "Half Life", tie: "Tie Fighter", modern: "Modern" })
