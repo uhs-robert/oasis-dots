@@ -142,7 +142,7 @@ clean_local() {
     echo "kept $head: local commits not in PR #$pr"
     return
   fi
-  wt=$(git worktree list --porcelain | awk -v line="branch refs/heads/$head" '/^worktree /{p=substr($0, 10)} $0 == line {print p; exit}')
+  wt=$(git worktree list --porcelain | awk -v line="branch refs/heads/$head" '/^worktree /{p=substr($0, 10)} !found && $0 == line {print p; found = 1}')
   if [[ $wt == "$main_dir" ]]; then
     if [[ -n $(git -C "$main_dir" status --porcelain --untracked-files=no) ]]; then
       echo "kept branch $head: checked out in the main checkout $wt, which has uncommitted changes"
