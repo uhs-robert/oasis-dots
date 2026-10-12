@@ -69,7 +69,9 @@ Singleton {
     // `synthetic` starts from the fixture base state instead of the live data.
     function preview_set(name, synthetic) {
         if (Fixture.names.indexOf(name) < 0) return false;
-        if (root.preview_name === "") {
+        const was_previewing = root.preview_name !== "";
+        const key_before = root.fetch_key;
+        if (!was_previewing) {
             const saved = {};
             for (const key of root.preview_fields) saved[key] = root[key];
             root.preview_saved = saved;
@@ -79,8 +81,18 @@ Singleton {
         // Invalidates in-flight air quality and alert fetches, which apply only while their key matches.
         root.fetch_key = "preview";
         if (!Fixture.apply(name, root, synthetic, Date.now())) {
+            // Before the first forecast lands there is nothing to overlay. A fresh preview hands the
+            // in-flight request its key back so startup isn't delayed; a switch falls back to the real data.
             root.restore_preview_fields();
+            root.preview_saved = null;
             root.preview_name = "";
+            if (was_previewing) {
+                root.fetch_key = "";
+                root.loading = false;
+                root.refresh(true);
+            } else {
+                root.fetch_key = key_before;
+            }
             return false;
         }
         root.preview_name = name;
