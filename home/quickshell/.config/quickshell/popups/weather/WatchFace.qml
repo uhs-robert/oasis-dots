@@ -15,7 +15,7 @@ Item {
     property color hand_color: Style.wk.lit
     property real hand_alpha: 1
     // Radial depth of the bezel band, measured in from the rim.
-    readonly property real band: 30
+    property real band: 30
     readonly property real label_pad: 16
     readonly property real bezel_r: Math.min(root.width, root.height) / 2 - root.label_pad
     readonly property real face_r: root.bezel_r - root.band - 6
