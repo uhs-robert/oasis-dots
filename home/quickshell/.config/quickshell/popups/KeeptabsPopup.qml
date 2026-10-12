@@ -57,7 +57,7 @@ Popup {
 
         lsp: { prefix: "Trouble", views: [] },
 
-        memcard: { prefix: "MemCard", views: [] },
+        memcard: { prefix: "MemCard", views: ["Agents", "Usage"] },
 
         mode7: { prefix: "Ff6", views: [] },
 
