@@ -21,6 +21,20 @@
 #   keeptabs-pick --json              SANDBOX_AGENTS_JSON
 #   systemctl list-timers|list-units  SANDBOX_TIMERS_JSON
 #   tmux list-sessions|has-session    SANDBOX_TMUX_SESSIONS (one name per line)
+#   qs-ipc call clickhints open|dismiss|state
+#                                     the bar's numbered overlay. open logs a "clickhints-open" line holding the
+#                                     pending-pick.json it finds and the spec file's JSON, then answers through the
+#                                     spec's result FIFO as the bar would. state prints open between open and dismiss.
+#                                       SANDBOX_CLICKHINTS_ANSWER  the line written to the FIFO (a number or a label;
+#                                                                  empty is a cancel)
+#                                       SANDBOX_CLICKHINTS_OPEN    what open prints, "ok" by default; anything else
+#                                                                  is a bar that refused the overlay
+#                                       SANDBOX_CLICKHINTS_HOLD=1  open prints ok and nobody answers, as a bar
+#                                                                  waiting on the user does
+#   voxcmd-pick, voxcmd-autostop      voxcmd finds these beside itself, not on PATH, so a test copies the package and
+#                                     symlinks its two onto $SANDBOX_DIR/bin's. voxcmd-pick logs and "picks" the first
+#                                     choice's id; voxcmd-autostop exits 1 (no verdict)
+#   setsid                            logs "setsid owner=$VOXCMD_RECORDING_OWNER_FILE <args>" and starts nothing
 #
 # Hyprland's dispatch, eval and keyword are logged and never sent.
 #
@@ -139,6 +153,21 @@ qs-ipc)
   log "$@"
   case "$*" in
   *get_dnd*) echo false ;;
+  *"call clickhints open"*)
+    if [ "${SANDBOX_CLICKHINTS_OPEN:-ok}" != ok ]; then
+      echo "$SANDBOX_CLICKHINTS_OPEN"
+      exit 0
+    fi
+    printf 'clickhints-open %s\n' "$(jq -c '{pending_kind: ., spec: input}' "$XDG_RUNTIME_DIR/voxcmd/pending-pick.json" "$4")" >>"$SANDBOX_DIR/calls.log"
+    : >"$SANDBOX_DIR/clickhints-open"
+    if [ -z "${SANDBOX_CLICKHINTS_HOLD-}" ]; then
+      fifo=$(jq -r .result_path "$4")
+      (printf '%s\n' "${SANDBOX_CLICKHINTS_ANSWER-}" >"$fifo") >/dev/null 2>&1 &
+    fi
+    echo ok
+    ;;
+  *"call clickhints dismiss"*) rm -f "$SANDBOX_DIR/clickhints-open" ;;
+  *"call clickhints state"*) if [ -e "$SANDBOX_DIR/clickhints-open" ]; then echo open; else echo closed; fi ;;
   *"confirm ask"* | *"sound play"*) echo ok ;;
   esac
   ;;
@@ -157,6 +186,13 @@ brightnessctl)
   log "$@"
   [ "${1-}" != -m ] || echo 'sandbox,backlight,50,50%,100'
   ;;
+voxcmd-pick)
+  log "$@"
+  for last; do :; done
+  printf '%s\n' "$last" | jq -r '.[0].id'
+  ;;
+voxcmd-autostop) exit 1 ;;
+setsid) log "owner=${VOXCMD_RECORDING_OWNER_FILE-} $*" ;;
 powerprofilesctl)
   log "$@"
   case "${1-}" in
@@ -175,6 +211,7 @@ stubbed_commands=(
   hyprctl pw-dump keeptabs-pick systemctl tmux
   systemd-run notify-send pamixer wpctl bluetoothctl playerctl brightnessctl powerprofilesctl
   grim tesseract magick wlrctl wl-kbptr wtype wl-copy voxtype wf-recorder xdg-open setsid rofi qs-ipc
+  voxcmd-pick voxcmd-autostop
 )
 read -ra extra_stubs <<<"${SANDBOX_EXTRA_STUBS:-}"
 for command_name in "${stubbed_commands[@]}" "${extra_stubs[@]}"; do ln -s .stub "$stub_dir/$command_name"; done

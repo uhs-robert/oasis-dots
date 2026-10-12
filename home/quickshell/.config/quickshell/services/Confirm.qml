@@ -27,7 +27,8 @@ Singleton {
     function answer(yes) {
         if (!root.asking) return;
         root.asking = false;
-        Quickshell.execDetached(["sh", "-c", "printf '%s\\n' \"$1\" > \"$2\"", "sh", yes ? "yes" : "no", root.result_path]);
+        // timeout: with no reader left on the FIFO the redirect would block forever.
+        Quickshell.execDetached(["timeout", "2", "sh", "-c", "printf '%s\\n' \"$1\" > \"$2\"", "sh", yes ? "yes" : "no", root.result_path]);
         if (Popups.open_name === "confirm") Popups.close();
     }
 

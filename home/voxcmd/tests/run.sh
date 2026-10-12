@@ -806,6 +806,196 @@ chmod +x "$root/noisy/grim"
 out=$(SANDBOX_GRIM_NO_TOPLEVEL=1 PATH="$root/noisy:$PATH" route "click sign in")
 check "stderr of the capture is not mixed into the OCR data" "grep -q '^result:      run' <<<\"\$out\" && ! grep -q 'warning' <<<\"\$out\""
 
+# ---- numbered on-screen picks: the integration hook, voxcmd-hints and its replies ---------------------------------------
+# A copy of the package whose voxcmd-pick and voxcmd-autostop are the sandbox's stubs, so nothing asks a real picker or
+# records audio; voxcmd-hints is the real one and finds the stub voxcmd-pick beside itself.
+
+echo "== numbered picks"
+pkg=$root/pkg
+mkdir -p "$pkg"
+cp -r "$package/.local" "$pkg/.local"
+ln -sf "$SANDBOX_DIR/bin/voxcmd-pick" "$pkg/.local/bin/voxcmd-pick"
+ln -sf "$SANDBOX_DIR/bin/voxcmd-autostop" "$pkg/.local/bin/voxcmd-autostop"
+pkg_voxcmd=$pkg/.local/bin/voxcmd
+action_log=$root/actions.log
+fake_pick=$root/fake-pick
+# shellcheck disable=SC2016 # the stub expands its own arguments
+printf '#!/bin/sh\necho "fake-pick $*" >> "%s"\necho 1\n' "$log" >"$fake_pick"
+chmod +x "$fake_pick"
+
+# new_config <name> <extra integration lines>: a config dir holding one integration whose two candidates have boxes in
+# their ids.
+new_config() {
+  local dir=$root/config-$1
+  mkdir -p "$dir/integrations.d" "$dir/replacements.d"
+  cat >"$dir/integrations.d/hinted.sh" <<STUB
+name="Hinted"
+verbs=("tap tap {target}")
+candidates() {
+  jq -n -c '[{id: "1,2,left,100,50,60,20", label: "Next - top"}, {id: "3,4,left,300,200,70,22", label: "Next - bottom"}]'
+}
+declare -A actions=([tap]='echo "\$id" >> "$action_log"')
+pick_command=$fake_pick
+$2
+STUB
+  echo "$dir"
+}
+# shellcheck disable=SC2016 # integration source, expanded when the integration runs
+box_function='pick_box() { IFS=, read -r _ _ _ left top width height <<<"$1"; [ -n "${height:-}" ] || return 1; echo "$left $top $width $height"; }'
+
+: >"$log"
+: >"$action_log"
+export VOXCMD_CONFIG_DIR
+VOXCMD_CONFIG_DIR=$(new_config boxed "$box_function")
+"$pkg_voxcmd" tap next >/dev/null 2>&1
+check "several matches ask the integration's pick command" "grep -q '^fake-pick Which one? ' '$log' && ! grep -q 'voxcmd-pick' '$log'"
+check "its choices carry each option's box" "grep -q '\"box\":\[100,50,60,20\]' '$log' && grep -q '\"box\":\[300,200,70,22\]' '$log'"
+check "a typed command does not listen" "! grep -q 'fake-pick --listen' '$log'"
+check "the pick's answer runs that option" "[[ \$(cat '$action_log') == '3,4,left,300,200,70,22' ]]"
+
+VOXCMD_CONFIG_DIR=$(new_config unboxed 'pick_box() { return 1; }')
+: >"$log"
+"$pkg_voxcmd" tap next >/dev/null 2>&1
+check "an option without a box falls back to the text picker" "grep -q '^voxcmd-pick Which command?' '$log' && ! grep -q fake-pick '$log'"
+# shellcheck disable=SC2016 # integration source, expanded when the integration runs
+VOXCMD_CONFIG_DIR=$(new_config garbled 'pick_box() { case "$1" in 3,*) echo "not a box" ;; *) echo "1 2 3 4" ;; esac; }')
+: >"$log"
+"$pkg_voxcmd" tap next >/dev/null 2>&1
+check "a pick_box that prints garbage for one option falls back to the text picker" "grep -q '^voxcmd-pick Which command?' '$log' && ! grep -q fake-pick '$log'"
+VOXCMD_CONFIG_DIR=$(new_config nofunction "")
+: >"$log"
+"$pkg_voxcmd" tap next >/dev/null 2>&1
+check "pick_command without pick_box falls back too" "grep -q '^voxcmd-pick ' '$log' && ! grep -q fake-pick '$log'"
+
+# A spoken command: _watch routes the transcript voxtype wrote, as `voxcmd listen` leaves it to do.
+VOXCMD_CONFIG_DIR=$(new_config boxed2 "$box_function")
+: >"$log"
+mkdir -p "$XDG_RUNTIME_DIR/voxtype" "$XDG_RUNTIME_DIR/voxcmd"
+echo recording >"$XDG_RUNTIME_DIR/voxtype/state"
+echo "tap next" >"$XDG_RUNTIME_DIR/voxcmd/transcript.txt"
+(
+  sleep 0.5
+  echo idle >"$XDG_RUNTIME_DIR/voxtype/state"
+) &
+"$pkg_voxcmd" _watch route >/dev/null 2>&1
+wait
+check "a spoken command passes --listen to the pick command" "grep -q '^fake-pick --listen Which one? ' '$log'"
+rm -f "$XDG_RUNTIME_DIR/voxtype/state"
+
+# voxcmd-hints: the sandbox's qs-ipc logs the pending state as it is when the overlay opens, then answers through the
+# result FIFO as the bar would, with SANDBOX_CLICKHINTS_ANSWER: a number, a label or nothing.
+hints=$pkg/.local/bin/voxcmd-hints
+hint_choices='[{"id":"a","label":"Next - top","box":[100,50,60,20]},{"id":"b","label":"Next - bottom","box":[300,200,70,22]}]'
+run_hints() { "$hints" "$@"; }
+export SANDBOX_CLICKHINTS_ANSWER=
+
+: >"$log"
+out=$(SANDBOX_CLICKHINTS_ANSWER=2 run_hints "Which one?" "$hint_choices")
+check "a number from the overlay prints that choice's id" "[[ $out == b ]]"
+check "the overlay's spec has global boxes and numbered labels" "grep -q '\"x\":300,\"y\":200,\"w\":70,\"h\":22' '$log' && grep -q '2. Next - bottom' '$log'"
+check "the pending state is written, with kind hints, before the overlay opens" "grep -q '\"pending_kind\":{\"pid\":[0-9]*,\"fifo\":\"[^\"]*\",\"label\":\"Which one?\",\"kind\":\"hints\"' '$log'"
+check "the pending state is removed afterwards" "[[ ! -e '$XDG_RUNTIME_DIR/voxcmd/pending-pick.json' ]]"
+check "the overlay is dismissed afterwards" "grep -q 'qs-ipc call clickhints dismiss' '$log'"
+out=$(SANDBOX_CLICKHINTS_ANSWER="1. Next - top" run_hints "Which one?" "$hint_choices")
+check "a voice reply's label prints that choice's id" "[[ $out == a ]]"
+check "an empty answer is a cancel" "! run_hints 'Which one?' '$hint_choices' >/dev/null"
+check "a number past the choices is a cancel" "! SANDBOX_CLICKHINTS_ANSWER=7 run_hints 'Which one?' '$hint_choices' >/dev/null"
+check "an answer of 0 is a cancel, not the last choice" "! SANDBOX_CLICKHINTS_ANSWER=0 run_hints 'Which one?' '$hint_choices' >/dev/null"
+: >"$log"
+out=$(SANDBOX_CLICKHINTS_OPEN=invalid run_hints "Which one?" "$hint_choices")
+check "a bar that refuses the overlay hands the pick to the text picker" "grep -q '^voxcmd-pick Which one? \[{\"id\":\"a\",\"label\":\"Next - top\"}' '$log' && [[ $out == a ]]"
+: >"$log"
+out=$(run_hints "Which one?" '[{"id":"a","label":"Next - top"}]')
+check "a choice without a box skips the overlay" "! grep -q clickhints '$log' && grep -q '^voxcmd-pick ' '$log' && [[ $out == a ]]"
+many=$(jq -n -c '[range(0; 12) | {id: tostring, label: "Item \(.)", box: [. * 10, 0, 8, 8]}]')
+: >"$log"
+out=$(SANDBOX_CLICKHINTS_ANSWER=10 run_hints "Which one?" "$many")
+check "more than ten choices fall back to the text picker, which lists them all" "! grep -q clickhints '$log' && grep -q '\"label\":\"Item 11\"' '$log' && [[ \$out == 0 ]]"
+
+# A signal or a silent bar ends the pick with the overlay still up, so it is dismissed on the way out.
+: >"$log"
+SANDBOX_CLICKHINTS_HOLD=1 "$hints" "Which one?" "$hint_choices" >/dev/null &
+waiter_pid=$!
+for _ in $(seq 100); do
+  grep -q 'clickhints open' "$log" && break
+  sleep 0.05
+done
+kill -TERM "$waiter_pid"
+wait "$waiter_pid" && waiter_status=0 || waiter_status=$?
+check "TERM exits 1 and dismisses the overlay" "[[ $waiter_status == 1 ]] && grep -q 'qs-ipc call clickhints dismiss' '$log'"
+: >"$log"
+start=$SECONDS
+SANDBOX_CLICKHINTS_HOLD=1 VOXCMD_HINTS_TIMEOUT=1 run_hints "Which one?" "$hint_choices" >/dev/null && timeout_status=0 || timeout_status=$?
+check "a reader timeout exits 1 and dismisses the overlay" "[[ $timeout_status == 1 ]] && grep -q 'qs-ipc call clickhints dismiss' '$log' && [[ $((SECONDS - start)) -lt 5 ]]"
+
+# --listen: the reply recording starts through voxcmd listen --start-only before the overlay opens.
+: >"$log"
+mkdir -p "$XDG_RUNTIME_DIR/voxtype"
+echo idle >"$XDG_RUNTIME_DIR/voxtype/state"
+SANDBOX_CLICKHINTS_ANSWER=1 run_hints --listen "Which one?" "$hint_choices" >/dev/null
+check "--listen starts the reply recording before the overlay opens" "[[ \$(grep -n 'voxtype record start' '$log' | head -1 | cut -d: -f1) -lt \$(grep -n 'clickhints open' '$log' | head -1 | cut -d: -f1) ]]"
+: >"$log"
+echo idle >"$XDG_RUNTIME_DIR/voxtype/state"
+SANDBOX_CLICKHINTS_HOLD=1 "$hints" --listen "Which one?" "$hint_choices" >/dev/null &
+waiter_pid=$!
+for _ in $(seq 100); do
+  grep -q 'clickhints open' "$log" && break
+  sleep 0.05
+done
+check "--listen hands the watcher the pick's recording owner file" "grep -Eq '^setsid owner=.*/voxcmd-hints\\.[^/]+/recording-owner ' '$log'"
+kill -TERM "$waiter_pid"
+wait "$waiter_pid" || true
+rm -f "$XDG_RUNTIME_DIR/voxtype/state"
+
+# Replies: the pending state of a waiting hints picker, owned by a process whose command line names voxcmd-hints.
+waiter=$root/voxcmd-hints
+cp /bin/sleep "$waiter"
+"$waiter" 60 &
+waiter_pid=$!
+reply_fifo=$root/reply-fifo
+mkfifo "$reply_fifo"
+listen_again=$root/listen-again
+jq -n -c --argjson pid "$waiter_pid" --arg fifo "$reply_fifo" --arg listen_again "$listen_again" \
+  '{pid: $pid, fifo: $fifo, label: "Which one?", kind: "hints", expansions: {}, listen_again: $listen_again,
+    choices: [{id: "a", label: "1. Next - top"}, {id: "b", label: "2. Next - bottom"}, {id: "c", label: "3. Settings - middle"}]}' \
+  >"$XDG_RUNTIME_DIR/voxcmd/pending-pick.json"
+reply_dry() { "$voxcmd" --dry-run --reply "$1" 2>&1; }
+check "a waiting voxcmd-hints is a pending pick that a reply finds" "grep -q 'picker:      Which one?' <<<\"\$(reply_dry two)\""
+check "an ordinal picks by number" "grep -q 'result:      pick: 2. Next - bottom' <<<\"\$(reply_dry 'the second one')\""
+check "a spoken number picks by number" "grep -q 'result:      pick: 3. ' <<<\"\$(reply_dry 3)\""
+check "label words pick" "grep -q 'result:      pick: 3. Settings - middle' <<<\"\$(reply_dry settings)\""
+check "a number past the choices is unclear" "grep -q 'unclear: there are only 3 choices' <<<\"\$(reply_dry 'number 8')\""
+check "cancel cancels" "grep -q 'result:      cancel' <<<\"\$(reply_dry 'never mind')\""
+
+: >"$log"
+touch "$listen_again"
+"$pkg_voxcmd" --reply "banana" >/dev/null 2>&1
+check "an unclear reply listens once more" "[[ ! -e '$listen_again' ]] && grep -q 'voxtype record start' '$log'"
+: >"$log"
+"$pkg_voxcmd" --reply "banana" >/dev/null 2>&1
+check "and only once" "! grep -q 'voxtype record start' '$log'"
+# The answer goes into the FIFO as the displayed label.
+(timeout 5 head -n 1 "$reply_fifo" >"$root/reply-answer") &
+reader=$!
+"$pkg_voxcmd" --reply "two" >/dev/null 2>&1
+wait "$reader"
+check "a reply writes the displayed label to the FIFO" "[[ \$(cat '$root/reply-answer') == '2. Next - bottom' ]]"
+kill "$waiter_pid" 2>/dev/null
+wait "$waiter_pid" 2>/dev/null
+rm -f "$XDG_RUNTIME_DIR/voxcmd/pending-pick.json"
+
+# click.sh's own pick_box, on the id format of its candidates.
+click_box() (
+  # shellcheck disable=SC2034 # read by click.sh
+  voxcmd_share_dir=$share_dir
+  # shellcheck disable=SC1091
+  source "$package/.config/voxcmd/integrations.d/click.sh"
+  pick_box "$1"
+)
+check "click.sh places an option from its id" "[[ \$(click_box '150,75,left,100,50,60,20') == '100 50 60 20' ]]"
+check "click.sh has no box for an id without one" "! click_box '150,75,left' >/dev/null"
+check "click.sh asks voxcmd-hints" "grep -q '^pick_command=voxcmd-hints' '$package/.config/voxcmd/integrations.d/click.sh'"
+
 echo
 echo "$pass passed, $fail failed"
 [[ $fail == 0 ]]

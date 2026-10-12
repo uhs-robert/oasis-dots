@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# One bounded pass on a shadow bar: per style, shoot the popup, OSD, which-key and region selector, then build a contact sheet.
+# One bounded pass on a shadow bar: per style, shoot the popup, OSD, which-key, click hints and region selector, then build a contact sheet.
 set -euo pipefail
 
 shadow="$(dirname "$0")/shadow.sh"
@@ -111,7 +111,7 @@ is_region_style() { [[ " ${region_styles[*]} " == *" $1 "* ]]; }
 if ((dry_run)); then
   echo "smoke: out $out"
   for s in "${styles[@]}"; do
-    echo "smoke: $s: style set, popup battery, osd (voxtype recording), which-key (fixture payload)$(is_region_style "$s" && echo ', region (pixel, select)')"
+    echo "smoke: $s: style set, popup battery, osd (voxtype recording), which-key (fixture payload), click hints (fixture boxes)$(is_region_style "$s" && echo ', region (pixel, select)')"
   done
   "$shadow" status "$name" | head -1
   exit 0
@@ -248,6 +248,20 @@ cat >"$whichkey_payload" <<'JSON'
 }
 JSON
 
+# Numbered boxes as voxcmd-hints sends them; the answer goes to /dev/null since nothing waits on it.
+hints_spec="$out/clickhints.json"
+cat >"$hints_spec" <<'JSON'
+{
+  "label": "Which one?",
+  "result_path": "/dev/null",
+  "choices": [
+    { "label": "1", "x": 320, "y": 260, "w": 90, "h": 20 },
+    { "label": "2", "x": 760, "y": 420, "w": 140, "h": 22 },
+    { "label": "3", "x": 1100, "y": 700, "w": 70, "h": 18 }
+  ]
+}
+JSON
+
 for style in "${styles[@]}"; do
   echo "smoke: $style"
   q style set "$style" >/dev/null
@@ -280,6 +294,14 @@ for style in "${styles[@]}"; do
   q hyprvim_whichkey close >/dev/null
   check_blank "$style" whichkey quickshell-whichkey
   sleep 0.3
+
+  q clickhints open "$hints_spec" >/dev/null
+  "$shadow" wait "$name" clickhints open >/dev/null && {
+    sleep 0.5
+    "$shadow" shot "$name" --out "$out/${style}_clickhints.png" >/dev/null || missing+=("MISS $style clickhints")
+  } || missing+=("MISS $style clickhints")
+  q clickhints dismiss /dev/null >/dev/null
+  "$shadow" wait "$name" clickhints closed >/dev/null || missing+=("MISS $style clickhints-close")
 
   if is_region_style "$style"; then
     q screenshot pick pixel "" >/dev/null

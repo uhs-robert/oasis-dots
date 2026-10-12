@@ -52,6 +52,18 @@ declare -A actions=(
   [no_text]='no_text'
 )
 
+# Several matches are numbered on screen over each text's box, not listed as text: voxcmd-hints draws them and pick_box
+# places an option from its id.
+pick_command=voxcmd-hints
+
+# $1 is an option id, "x,y,button,left,top,width,height"; prints the box as "left top width height".
+pick_box() {
+  local x y button left top width height
+  IFS=, read -r x y button left top width height <<<"$1"
+  [ -n "${height:-}" ] || return 1
+  echo "$left $top $width $height"
+}
+
 click_ocr="$voxcmd_share_dir/click-ocr"
 # Where click-ocr records the window it captured, and how long that record is trusted.
 click_target_file="${XDG_RUNTIME_DIR:-/tmp}/voxcmd/click-target"

@@ -112,6 +112,14 @@ ShellRoot {
         }
     }
 
+    Variants {
+        model: ClickHints.active ? Quickshell.screens : []
+
+        delegate: Component {
+            ClickHintsOverlay {}
+        }
+    }
+
     LazyPopup {
         name: "clock"
         ClockPopup {}
@@ -206,6 +214,7 @@ ShellRoot {
     ConfirmIpc {}
     ScreenshotIpc {}
     ZoomIpc {}
+    ClickHintsIpc {}
     SoundIpc {}
     CommandStatusIpc {}
     LockPreview {
