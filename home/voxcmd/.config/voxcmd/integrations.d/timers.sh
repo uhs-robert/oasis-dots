@@ -64,8 +64,8 @@ candidates() {
     timers=$(running_timers)
     [ "$(jq length <<<"$timers")" != 0 ] || return 0
     while IFS=$'\t' read -r unit description next; do
-      jq -n -c --arg id "$unit" --arg description "$description" --arg when "$(format_due "$((next / 1000000))")" \
-        '{id: $id, label: "\($description), \($when)", match_text: ($description | sub("^[A-Za-z]+: "; ""))}'
+      jq -n -c --arg id "$unit" --arg description "$description" --arg label "$(describe_scheduled "$description" "$((next / 1000000))")" \
+        '{id: $id, label: $label, match_text: ($description | sub("^[A-Za-z]+: "; ""))}'
     done < <(jq -r '.[] | [.unit, .description, .next] | @tsv' <<<"$timers") | jq -s -c .
     ;;
   esac
@@ -110,7 +110,7 @@ start_timer() {
   length=$(format_length "$seconds")
   due=$(($(date +%s) + seconds))
   schedule Timer "${label:+$label, }$length" "$due" || return 1
-  echo "Timer set: ${label:+$label, }$length, rings $(format_due "$due")"
+  echo "Timer set: ${label:+$label, }$length, rings $(format_at "$due")"
 }
 
 # "in 20 minutes to call the bank", "at 3 pm to stretch", "to stretch at 3 pm", "about the oven in 5 minutes".
@@ -151,7 +151,7 @@ start_reminder() {
     return 1
   fi
   schedule Reminder "$text" "$due" || return 1
-  echo "Reminder set: $text, $(format_due "$due")"
+  describe_scheduled "Reminder: $text" "$due"
 }
 
 # ---- Listing and cancelling ------------------------------------------------------------------------------------
@@ -165,7 +165,11 @@ list_timers() {
   fi
   # One line, since only the last line of output reaches the notification.
   jq -r '.[] | [.description, .next] | @tsv' <<<"$timers" | while IFS=$'\t' read -r description next; do
-    printf '%s, %s\n' "$description" "$(format_due "$((next / 1000000))")"
+    local due=$((next / 1000000))
+    case "$description" in
+    Timer:*) echo "$(describe_scheduled "$description" "$due"), $(format_left "$due")" ;;
+    *) describe_scheduled "$description" "$due" ;;
+    esac
   done | paste -sd ';' | sed 's/;/; /g'
 }
 
@@ -396,18 +400,52 @@ format_length() {
   echo "${parts[*]}"
 }
 
-# "at 15:04" or "tomorrow at 3:00pm", in the bar's Settings > Clock time format the way its TimeFormat reads it:
-# "locale" is 12-hour when the locale's time format has an AM/PM field.
+# "3:47pm", "tomorrow 9:00am", "Thu 9:00am" within the week, else "Oct 20 9:00am", in the bar's Settings > Clock
+# time format the way its TimeFormat reads it: "locale" is 12-hour when the locale's time format has an AM/PM field.
 format_due() {
   local due="$1" time_format format='%H:%M' day=""
   time_format=$(jq -r '.time_format // empty' "${XDG_STATE_HOME:-$HOME/.local/state}/quickshell/clock.json" 2>/dev/null)
   if [ "$time_format" = 12h ] || { [ "$time_format" != 24h ] && [[ "$(locale t_fmt 2>/dev/null)" == *%[pPrI]* ]]; }; then
     format='%-I:%M%P'
   fi
-  case "$(date -d "@$due" +%F)" in
-  "$(date +%F)") ;;
-  "$(date -d tomorrow +%F)") day="tomorrow " ;;
-  *) day="$(date -d "@$due" '+%a') " ;;
+  local due_day today
+  due_day=$(date -d "@$due" +%F) today=$(date +%F)
+  if [ "$due_day" = "$today" ]; then
+    day=""
+  elif [ "$due_day" = "$(date -d "$today +1 day" +%F)" ]; then
+    day="tomorrow "
+  elif [[ "$due_day" < "$(date -d "$today +7 days" +%F)" ]]; then
+    day="$(date -d "@$due" +%a) "
+  else
+    day="$(date -d "@$due" '+%b %-d') "
+  fi
+  echo "$day$(date -d "@$due" "+$format")"
+}
+
+# "at 3:47pm" today, "tomorrow 9:00am" otherwise: a day reads wrong after "at".
+format_at() {
+  local when
+  when=$(format_due "$1")
+  [[ "$when" == [0-9]* ]] && when="at $when"
+  echo "$when"
+}
+
+# "5 minutes left" for a timer due at the epoch $1, to the minute once there is more than one.
+format_left() {
+  local left=$(($1 - $(date +%s)))
+  [ "$left" -gt 60 ] && left=$((left / 60 * 60))
+  [ "$left" -gt 0 ] || left=1
+  echo "$(format_length "$left") left"
+}
+
+# A timer or reminder as the list, the cancel picker and a reminder's confirmation show it, from its unit's
+# Description ("Timer: 5 minutes", "Reminder: Call the bank"): "Timer: 5 minutes, rings at 3:47pm",
+# "Reminder at 3:00pm: Call the bank".
+describe_scheduled() {
+  local description="$1" due="$2" text="${1#*: }"
+  case "$description" in
+  Timer:*) echo "Timer: $text, rings $(format_at "$due")" ;;
+  Reminder:*) echo "Reminder $(format_at "$due"): $text" ;;
+  *) echo "$description, $(format_at "$due")" ;;
   esac
-  echo "${day}at $(date -d "@$due" "+$format")"
 }

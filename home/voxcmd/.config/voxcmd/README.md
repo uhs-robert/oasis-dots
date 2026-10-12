@@ -172,7 +172,7 @@ Strong matches hide weak ones.
 | --- | --- |
 | "set a timer for 5 minutes", "timer 90 seconds", "set a 10 minute timer" | A timer; words after the time name it: "timer 10 minutes for the pasta" |
 | "remind me in 20 minutes to call the bank", "remind me to stretch at 3 pm" | A reminder, the time before "to" or after the text |
-| "list timers", "what timers are running", "how much time is left" | Lists them in the notification |
+| "list timers", "what timers are running", "how much time is left" | Lists them in the notification, with when each rings and a timer's time left |
 | "cancel the timer", "cancel the reminder about the bank", "cancel the pasta timer" | Cancels one; several running open the picker |
 | "cancel all timers" | Cancels every voxcmd timer |
 
@@ -181,7 +181,7 @@ Strong matches hide weak ones.
 - Everything is scheduled at a wall-clock time (`--on-calendar`), timers too, so one that falls due while the machine sleeps rings on resume instead of late.
 - The label is the unit's Description (`Timer: 5 minutes`, `Reminder: Call the bank`), which is how list and cancel find it. `systemctl --user list-timers 'voxcmd-timer-*'` shows the same set.
 - Timers live in the user's systemd manager: they outlast voxcmd, but not a logout or reboot.
-- Times are shown in the bar's Settings > Clock time format.
+- Confirmations and the list give the time it rings, in the bar's Settings > Clock time format, with the day when it is not today: "Timer set: 1 minute, rings at 3:47pm", "Reminder tomorrow 9:00am: Call the bank".
 
 ### Keybinds
 
