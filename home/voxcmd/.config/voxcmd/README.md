@@ -1,6 +1,6 @@
 # voxcmd
 
-Voice commands on top of [voxtype](https://github.com/peteonrails/voxtype). Speak a phrase, voxcmd matches it against the verbs your integrations declare and runs the action. Eleven integrations ship: `media.sh` (playerctl and pamixer), `apps.sh` (open apps, focus, move, resize and close windows), `timers.sh` (timers and reminders as systemd user timers), `devices.sh` (audio output, input and per-app volume with wpctl, Bluetooth with bluetoothctl), `system.sh` (brightness, power profile, do not disturb, auto-lock), `answers.sh` (math, time, time zone and date questions, and the weather popup), `keeptabs.sh` (coding agents tracked by keeptabs), `tmux.sh` (tmux sessions and tmuxifier layouts), `notifications.sh` (the bar's notification center), `recording.sh` (screen recording) and `keybinds.sh` (any described Hyprland keybind); everything else is a drop-in file you write.
+Voice commands on top of [voxtype](https://github.com/peteonrails/voxtype). Speak a phrase, voxcmd matches it against the verbs your integrations declare and runs the action. The integrations that ship, and how to write your own as a drop-in file, are under [Integrations](#integrations).
 
 | Key                                | Does                                                                     |
 | ---------------------------------- | ------------------------------------------------------------------------ |
