@@ -597,10 +597,12 @@ Singleton {
         const all_hours = [];
         for (let i = 0; i < hourly.time.length; i++) {
             const dt = new Date(hourly.time[i]);
+            // Date and hour come straight from Open-Meteo's location-local "yyyy-MM-ddTHH:mm": Qt.formatDate on a
+            // Date takes the UTC date for an instant at exactly 00:00 UTC, which filed 8pm Eastern under tomorrow.
             all_hours.push({
                 dt: dt.toISOString(),
-                date: Qt.formatDate(dt, "yyyy-MM-dd"),
-                hour: dt.getHours(),
+                date: hourly.time[i].substr(0, 10),
+                hour: parseInt(hourly.time[i].substr(11, 2), 10),
                 temp: root.parse_num(hourly.temperature_2m[i], 0),
                 feels: root.parse_num(hourly.apparent_temperature ? hourly.apparent_temperature[i] : undefined, 0),
                 pop: Math.round(root.parse_num(hourly.precipitation_probability[i], 0)),
