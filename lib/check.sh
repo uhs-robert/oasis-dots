@@ -53,6 +53,7 @@ step luacheck sh ./lib/check-lua.sh
 step qmllint sh ./lib/check-qml.sh
 step lock-skins sh ./lib/check-lock-skins.sh
 step style-exports sh ./lib/check-style-exports.sh
+step time-format sh ./lib/check-time-format.sh
 step packages sh ./lib/check-packages.sh
 step symlinks sh ./lib/check-symlinks.sh
 step git-diff-check git diff --check HEAD
