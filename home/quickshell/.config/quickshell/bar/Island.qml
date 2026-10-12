@@ -51,8 +51,15 @@ Item {
     readonly property bool octagon: Style.bar_island_shape === "octagon" && !root.capsule && !root.visor && !root.lualine
     readonly property real lug: root.octagon && root.center ? 4 : 0
     readonly property color tick_color: Style.bar_tick_color
-    readonly property int cap_width: root.octagon ? Math.round(height * 0.3) : root.lualine ? Math.round(height * 0.4) : root.visor ? Math.round(height * 0.8) : height / 2
-    readonly property real pad: root.capsule ? Style.bar_capsule_pad : root.lualine ? (root.center ? 10 : 0) : root.octagon ? 10 : 8
+    // nes: a floating Dragon Quest window, its corners cut by one pixel step.
+    readonly property bool window: Style.bar_island_shape === "window" && !root.capsule && !root.visor && !root.lualine
+    readonly property int window_edge: root.border_width
+    readonly property real window_x: 4
+    readonly property real window_width: root.width - root.window_x * 2
+    readonly property real window_top: 1
+    readonly property real window_bottom: root.height - 1
+    readonly property int cap_width: root.window ? 0 : root.octagon ? Math.round(height * 0.3) : root.lualine ? Math.round(height * 0.4) : root.visor ? Math.round(height * 0.8) : height / 2
+    readonly property real pad: root.capsule ? Style.bar_capsule_pad : root.lualine ? (root.center ? 10 : 0) : root.window ? root.window_x + (root.center ? 16 : 6) : root.octagon ? 10 : 8
 
     readonly property real oct_x0: root.lug
     readonly property real oct_x1: root.width - root.lug
@@ -120,7 +127,7 @@ Item {
     // The popup style's shade and dither, behind the modules and clipped to the slants.
     Loader {
         anchors.fill: parent
-        active: root.shaded && !root.visor && !root.capsule && !root.octagon
+        active: root.shaded && !root.visor && !root.capsule && !root.octagon && !root.window
         sourceComponent: Shape {
             preferredRendererType: Shape.CurveRenderer
 
@@ -238,6 +245,29 @@ Item {
         }
     }
 
+    // The window's fill; its corner pixels stay clear.
+    Item {
+        visible: root.window
+        x: root.window_x
+        y: root.window_top
+        width: root.window_width
+        height: root.window_bottom - root.window_top
+
+        Rectangle {
+            x: root.window_edge
+            width: parent.width - root.window_edge * 2
+            height: parent.height
+            color: root.bg_color
+        }
+
+        Rectangle {
+            y: root.window_edge
+            width: parent.width
+            height: parent.height - root.window_edge * 2
+            color: root.bg_color
+        }
+    }
+
     Loader {
         anchors.fill: parent
         active: root.dither_color.a > 0
@@ -254,7 +284,7 @@ Item {
         x: root.capsule ? root.capsule_inset : root.lug + (cap_left ? root.cap_width : 0)
         height: root.height
         width: Math.ceil(layout.implicitWidth) + root.pad * 2
-        color: root.shaded || root.octagon ? "transparent" : root.bg_color
+        color: root.shaded || root.octagon || root.window ? "transparent" : root.bg_color
 
         // A tick scale rising from the bottom edge.
         Loader {
@@ -282,6 +312,7 @@ Item {
         RowLayout {
             id: layout
             x: root.pad
+            // A window's content centres on the window rather than the bar.
             y: root.capsule ? root.capsule_inset : 0
             height: parent.height - y
             spacing: root.lualine && !root.center ? 0 : Style.bar_module_gap
@@ -292,7 +323,7 @@ Item {
     Loader {
         width: root.cap_width + 1
         height: root.height
-        active: root.cap_left && !root.capsule && !root.octagon
+        active: root.cap_left && !root.capsule && !root.octagon && !root.window
         sourceComponent: Shape {
             preferredRendererType: Shape.CurveRenderer
 
@@ -315,7 +346,7 @@ Item {
         x: root.width - root.cap_width - 1
         width: root.cap_width + 1
         height: root.height
-        active: root.cap_right && !root.capsule && !root.octagon
+        active: root.cap_right && !root.capsule && !root.octagon && !root.window
         sourceComponent: Shape {
             preferredRendererType: Shape.CurveRenderer
 
@@ -335,11 +366,15 @@ Item {
 
     // Static scanlines clipped to the slants; nothing animates them.
     Item {
+        id: scanlines
         visible: root.scanline_color.a > 0
-        anchors.fill: parent
+        x: root.window ? root.window_x + root.window_edge : 0
+        y: root.window ? root.window_top + root.window_edge : 0
+        width: root.window ? root.window_width - root.window_edge * 2 : root.width
+        height: root.window ? root.window_bottom - root.window_top - root.window_edge * 2 : root.height
 
         Repeater {
-            model: root.scanline_color.a > 0 ? Math.ceil(root.height / root.scanline_period) : 0
+            model: root.scanline_color.a > 0 ? Math.ceil(scanlines.height / root.scanline_period) : 0
 
             Rectangle {
                 required property int index
@@ -347,7 +382,7 @@ Item {
 
                 x: root.cap_left ? slant : 0
                 y: index * root.scanline_period
-                width: root.width - x - (root.cap_right ? slant : 0)
+                width: scanlines.width - x - (root.cap_right ? slant : 0)
                 height: 1
                 color: root.scanline_color
             }
@@ -357,7 +392,7 @@ Item {
     // Traces the slants and bottom edge; the sides on the screen edge stay open.
     Loader {
         anchors.fill: parent
-        active: root.border_width > 0 && !root.visor && !root.capsule && !root.octagon
+        active: root.border_width > 0 && !root.visor && !root.capsule && !root.octagon && !root.window
         sourceComponent: Shape {
             preferredRendererType: Shape.CurveRenderer
 
@@ -385,7 +420,7 @@ Item {
 
     Loader {
         anchors.fill: parent
-        active: root.inset_width > 0 && root.inset_color.a > 0 && !root.capsule && !root.octagon
+        active: root.inset_width > 0 && root.inset_color.a > 0 && !root.capsule && !root.octagon && !root.window
         sourceComponent: Shape {
             preferredRendererType: Shape.CurveRenderer
 
@@ -409,6 +444,30 @@ Item {
                         return pts;
                     }
                 }
+            }
+        }
+    }
+
+    // The window's border sits above the content, like the octagon's rim.
+    Item {
+        visible: root.window
+        z: 2
+        x: root.window_x
+        y: root.window_top
+        width: root.window_width
+        height: root.window_bottom - root.window_top
+
+        // Top, bottom, left and right edges as [x, y, width, height], each stopping short of the corners.
+        Repeater {
+            model: [[root.window_edge, 0, parent.width - root.window_edge * 2, root.window_edge], [root.window_edge, parent.height - root.window_edge, parent.width - root.window_edge * 2, root.window_edge], [0, root.window_edge, root.window_edge, parent.height - root.window_edge * 2], [parent.width - root.window_edge, root.window_edge, root.window_edge, parent.height - root.window_edge * 2]]
+
+            Rectangle {
+                required property var modelData
+                x: modelData[0]
+                y: modelData[1]
+                width: modelData[2]
+                height: modelData[3]
+                color: root.border_color
             }
         }
     }

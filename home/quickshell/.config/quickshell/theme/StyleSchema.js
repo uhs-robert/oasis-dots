@@ -190,7 +190,7 @@ var tokens = [
     tok("bar_clock_brackets", "color", "transparent", "Brackets around the bar clock's time.", {via: "bar"}),
     tok("bar_separator", "string", "", '"tick" draws the white watch bar between bar items in place of "|".', {via: "bar"}),
     tok("bar_tick_color", "color", null, "The watch tick and separator colour: white on a dark center island, the foreground on a light one.", {expr: "root.bar.bar_center_bg.hslLightness > 0.6 ? Theme.fg_core : Watch.white"}),
-    tok("bar_island_shape", "string", "", '"octagon" draws chamfered watch-case bar islands (the center one with lugs) with a white tick at each end.', {via: "bar"}),
+    tok("bar_island_shape", "string", "", '"octagon" draws chamfered watch-case bar islands (the center one with lugs) with a white tick at each end; "window" draws floating Dragon Quest windows in bar_border_width and bar_border_color, whose top border can carry titles (the date and day of the year).', {via: "bar"}),
     tok("hairline", "color", "transparent", "Major and minor tick color for frame scales, rules and ruler meters."),
     tok("hairline_dim", "color", "transparent", ""),
     tok("frame_ticks", "string", "", '"top": a tick scale on the top edge, bottom rule and corner crosses; "left": a scale down the left side and a corner ring.'),
