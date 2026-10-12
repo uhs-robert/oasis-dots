@@ -196,6 +196,7 @@ As a fallback it never sees a phrase another integration takes. Starting the phr
 - An app counts as running when a window's class is its `StartupWMClass`, its id or the last part of its id.
 - Windows come from `hyprctl clients -j` and match by app name (the desktop entry's `Name`, else the class) or by title. Several matching windows open the picker, labelled with their titles.
 - `window`, `app`, `application` and `program` are ignored words, so "close window" and "open application" are left to the keybinds. A phrase that is a described keybind ("close browsers", "focus left", "go to workspace 2", "start menu") is left to them too, even when a window or app would match it, and so is "open X" when X is a bind's whole description and names no app ("open files" for a `Files` bind; "open firefox" stays here).
+- Tab on its Voice Help entries lists every installed app; picking one opens it like "open <app>".
 - A target with the word `session` or `agent` in it matches nothing, so "switch to the X session" and "go to the X agent" are left to the integrations for those.
 
 ## Voice Help

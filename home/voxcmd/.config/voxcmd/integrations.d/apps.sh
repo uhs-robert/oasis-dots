@@ -49,6 +49,12 @@ declare -A actions=(
 # Only close labels read "<app> window: <title>", so only closing asks first.
 confirm_labels=('^[^:]+ window(:|$)')
 
+# Tab on these examples in Voice Help lists every installed app, and picking one opens it like "open <app>".
+# Not candidates "open": its keybind checks would read the empty target as a phrase.
+help_choices() {
+  app_candidates | jq -c 'unique_by(.id) | sort_by(.label | ascii_downcase) | map({id, label, action: "open"})'
+}
+
 candidates() {
   local action="$1" target="$2"
   if spoken_as_keybind "$action" "$target" || names_session_or_agent "$target" || launches_keybind "$action" "$target"; then
