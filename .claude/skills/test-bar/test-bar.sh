@@ -285,6 +285,16 @@ case ${1:-} in
     rm -f "$dir.branches"
     echo "test-bar: removed $dir"
     ;;
+  rebuild)
+    name=${2:?usage: test-bar.sh rebuild <name>}
+    dir="$bars/$name"
+    [[ -f $dir.branches ]] || die "no test bar '$name' to rebuild"
+    mapfile -t branches <"$dir.branches"
+    # Removing a running bar's worktree would pull its files out from under qs, so the stowed bar takes over first.
+    if pgrep -af "^qs .*-p $dir/" >/dev/null; then "$0" restore; fi
+    "$0" remove "$name"
+    "$0" up "$name" "${branches[@]}"
+    ;;
   status)
     status
     ;;
@@ -293,6 +303,6 @@ case ${1:-} in
     probe "$@"
     ;;
   *)
-    die "usage: test-bar.sh {up <name> <branch>... [--replace]|build <name> <branch>...|swap <name> [--replace]|restore|remove <name>|status|probe <ipc call>...}"
+    die "usage: test-bar.sh {up <name> <branch>... [--replace]|build <name> <branch>...|swap <name> [--replace]|restore|rebuild <name>|remove <name>|status|probe <ipc call>...}"
     ;;
 esac

@@ -12,6 +12,7 @@ The owner tests every Quickshell change on their real bar before merging. Do it 
 .claude/skills/test-bar/test-bar.sh build <name> <branch>...
 .claude/skills/test-bar/test-bar.sh swap <name>
 .claude/skills/test-bar/test-bar.sh restore                  # back to the stowed bar on main
+.claude/skills/test-bar/test-bar.sh rebuild <name>           # pick up new commits: restore if running, remove, up with the same branches
 .claude/skills/test-bar/test-bar.sh remove <name>
 .claude/skills/test-bar/test-bar.sh status                   # running qs, test bar HEAD vs its branch tips, hypr swapped or not
 .claude/skills/test-bar/test-bar.sh probe "zoom start" ...   # IPC calls, then new log WARN/ERROR and quickshell layers
@@ -23,7 +24,7 @@ When the branches touch `home/hypr`, `swap` also copies the gitignored Hyprland 
 
 Test bars live in `~/.cache/dotfiles/test-bars/<name>`. Rules:
 
-- To add a fix to a running test bar, rebuild it (`remove`, then `up`). Do not merge into a running test bar's worktree while another process rebases the branch; that raced once and left conflict markers on the live bar.
+- To add a fix to a test bar, push or commit it to the branch and run `rebuild <name>` (restores the stowed bar if needed, removes, then `up` with the recorded branches). Do not merge into a running test bar's worktree while another process rebases the branch; that raced once and left conflict markers on the live bar.
 - Do not rely on hot-reload after merging into the test worktree; it kept stale code twice. `swap` again instead.
 - After `up`, run `probe` with the feature's IPC entry and read its output before telling the owner it is ready. `probe` exits 1 on a new ERROR, a WARN repeated more than 5 times, or a load failure such as `X is not a type` (also checked by `verify`).
 - `capture.sh` crops one layer by namespace (the one under the cursor if several, or on `--screen NAME`); `--reveal` lifts `no_screen_share` for the shot so overlays show. Use it to check overlays yourself when the owner allows self-tests.
