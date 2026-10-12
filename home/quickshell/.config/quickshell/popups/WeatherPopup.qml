@@ -109,7 +109,7 @@ Popup {
 
         oasis: { prefix: "Oasis", views: ["Hourly", "SunMoon"] },
 
-        pokedex: { prefix: "Dex", views: ["Hourly", "SunMoon"] },
+        pokedex: { prefix: "Dex", views: ["Hourly", "SunMoon", "Air", "Alerts"] },
 
         ring: { prefix: "Ring", views: ["Hourly", "SunMoon"] },
 
