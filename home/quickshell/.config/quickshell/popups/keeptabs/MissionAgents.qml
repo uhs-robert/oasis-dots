@@ -40,9 +40,9 @@ Item {
     }
 
     function status_color(state) {
-        if (state === "running") return Style.wk.lit;
+        if (state === "running") return Style.pal.info;
         if (state === "waiting") return Style.pal.error;
-        if (state === "done") return Style.wk.mid;
+        if (state === "done") return Style.pal.ok;
         return Style.wk.dim;
     }
 
@@ -146,7 +146,7 @@ Item {
                             Layout.fillWidth: true
                             Layout.minimumWidth: 0
                             elide: Text.ElideRight
-                            text: String.fromCharCode(97 + objective.index % 26) + ". " + (objective.modelData.title || "Untitled").toUpperCase()
+                            text: (objective.modelData.title || "Untitled").toUpperCase()
                             color: objective.fg(Style.wk.lit)
                             font.family: W.mono_font
                             font.pixelSize: root.st.fs(-2)
