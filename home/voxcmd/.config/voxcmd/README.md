@@ -200,6 +200,7 @@ Strong matches hide weak ones.
 | Say | Does |
 | --- | --- |
 | "set a timer for 5 minutes", "timer 90 seconds", "set a 10 minute timer" | A timer; words after the time name it: "timer 10 minutes for the pasta" |
+| "set a timer for 3 pm", "timer for three thirty", "set a timer for noon tomorrow" | A timer that rings at that time |
 | "remind me in 20 minutes to call the bank", "remind me to stretch at 3 pm" | A reminder, the time before "to" or after the text |
 | "list timers", "what timers are running", "how much time is left" | Lists them in the notification, with when each rings and a timer's time left |
 | "cancel the timer", "cancel the reminder about the bank", "cancel the pasta timer" | Cancels one; several running open the picker |
@@ -209,9 +210,9 @@ Strong matches hide weak ones.
 - A timer phrase that names no time, like "start a timer for acme", is left to the other integrations (a time tracker's "start a timer for <client>"), so with nothing else matching it is a "no match", not a timer.
 - Clock times are "3 pm", "3:30 p.m.", "15:30", "three thirty pm", "noon", "midnight", optionally "today" or "tomorrow". A time already past today means tomorrow; with no am or pm, whichever of the morning and evening time comes next.
 - Everything is scheduled at a wall-clock time (`--on-calendar`), timers too, so one that falls due while the machine sleeps rings on resume instead of late.
-- The label is the unit's Description (`Timer: 5 minutes`, `Reminder: Call the bank`), which is how list and cancel find it. `systemctl --user list-timers 'voxcmd-timer-*'` shows the same set.
+- The label is the unit's Description (`Timer: 5 minutes`, `Timer: 3:00pm`, `Reminder: Call the bank`), which is how list and cancel find it. `systemctl --user list-timers 'voxcmd-timer-*'` shows the same set.
 - Timers live in the user's systemd manager: they outlast voxcmd, but not a logout or reboot.
-- Confirmations and the list give the time it rings, in the bar's Settings > Clock time format, with the day when it is not today: "Timer set: 1 minute, rings at 3:47pm", "Reminder tomorrow 9:00am: Call the bank".
+- Confirmations and the list give the time it rings, in the bar's Settings > Clock time format, with the day when it is not today: "Timer set: 1 minute, rings at 3:47pm", "Timer set for 3:00pm", "Reminder tomorrow 9:00am: Call the bank".
 
 ### Devices
 
