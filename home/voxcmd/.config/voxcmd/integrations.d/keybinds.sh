@@ -12,16 +12,17 @@ target_match=words
 force_prefixes=(press keybind "key bind")
 # Words that only say "run a keybind", ignored on both sides: "run close window" is "close window". "open" and
 # "launch" are here because launcher binds are named for what they open ("Terminal"), so "open terminal" is that bind.
-match_ignore_words=(run press keybind key bind shortcut "do" trigger open launch)
+# "activate" and "engage" are the one-word {activate} forms that never start a description the way "start" or "enable" can.
+match_ignore_words=(run press keybind key bind shortcut "do" trigger open launch activate engage)
 
 # Candidate labels name what runs ("Close Window", "Submap: Cursor"), so pickers leave the action word out.
 action_labels=0
 
 # Submap phrases before the catch-all, so "cursor mode" enters the Cursor submap rather than matching binds.
 verbs=(
-  "exit_submap   (exit|leave|reset|quit) (the )?(current )?submap( mode)?"
-  "enter_submap  ((enter|open|switch to) )?(the )?submap {target}"
-  "enter_submap  ((enter|open|switch to) )?(the )?{target} (submap|mode)"
+  "exit_submap   ({deactivate}|reset|quit) (the )?(current )?submap( mode)?"
+  "enter_submap  (({activate}|{focus}|open) )?(the )?submap {target}"
+  "enter_submap  (({activate}|{focus}|open) )?(the )?{target} (submap|mode)"
   "run           {target}"
 )
 
@@ -31,7 +32,7 @@ examples=(
   "close window"
   "go to workspace <number>"
   "cursor mode"
-  "<submap name> submap"
+  "activate <submap name> submap"
   "exit submap"
   "<any keybind description>"
   "press <keybind description>"

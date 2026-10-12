@@ -10,16 +10,16 @@ silent_actions=(switch new)
 # "new session" comes first so "open a new session X" is not read as opening a session called "new session X".
 verbs=(
   "new     (start |create |open )?(a )?new (tmux )?session( called| named)? {target}"
-  "switch  (switch|go) to (the )?(tmux )?session {target}"
-  "switch  (switch|go) to (the )?{target} (tmux )?session"
+  "switch  {focus} (the )?(tmux )?session {target}"
+  "switch  {focus} (the )?{target} (tmux )?session"
   "switch  attach( to)?( the)? {target} (tmux )?session"
   "switch  attach( to)?( the)?( (tmux )?session)? {target}"
-  "switch  open (the )?(tmux )?session {target}"
-  "switch  open (the )?{target} (tmux )?session"
+  "switch  {open} (the )?(tmux )?session {target}"
+  "switch  {open} (the )?{target} (tmux )?session"
 )
 
 examples=(
-  "switch to the <name> session"
+  "go to the <name> session"
   "open session <name>"
   "new session <name>"
   "attach <name>"

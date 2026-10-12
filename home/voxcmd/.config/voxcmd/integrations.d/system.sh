@@ -11,19 +11,22 @@ hypr_scripts="${XDG_CONFIG_HOME:-$HOME/.config}/hypr/scripts"
 
 # Tried in order against the normalized transcript ("set brightness to 40%" arrives as "set brightness to 40").
 verbs=(
-  "brightness_max   (set )?(the )?(screen )?brightness( to)? (max|maximum|full)|(max|maximum|full) brightness"
-  "brightness_min   (set )?(the )?(screen )?brightness( to)? (min|minimum|lowest)|(min|minimum|lowest) brightness"
+  "brightness_max   ({set} )?(the )?(screen )?brightness( to)? (max|maximum|full)|(max|maximum|full) brightness"
+  "brightness_min   ({set} )?(the )?(screen )?brightness( to)? (min|minimum|lowest)|(min|minimum|lowest) brightness"
   "brightness_up    brighter|(increase|raise) (the )?(screen )?brightness|(turn )?(the )?(screen )?brightness up( by {number}( percent)?)?"
   "brightness_down  dimmer|darker|(decrease|lower) (the )?(screen )?brightness|(turn )?(the )?(screen )?brightness down( by {number}( percent)?)?"
-  "brightness_set   (set )?(the )?(screen )?brightness( to| at)? {number}( percent)?"
-  "power_saver      ((switch|change) to |use |enable |turn on )?(the )?(power|battery) sav(er|ing)( mode)?( on)?|low power mode"
-  "balanced         ((switch|change) to |use )?(the )?balanced( power)?( mode| profile)?"
-  "performance      ((switch|change) to |use |enable |turn on )?(the )?(high )?performance( mode| profile)?( on)?"
-  "profile          ((set|switch|change) )?(the )?power (profile|mode) to {target}"
-  "dnd_off          ((turn|switch) off |disable |end )(the )?(do not disturb|dnd)( mode)?|(do not disturb|dnd)( mode)? off|(unsilence|unmute|enable) (the )?notifications|(turn |switch )?(the )?notifications (back )?on"
-  "dnd_on           ((turn|switch) on |enable |start )?(the )?(do not disturb|dnd)( mode)?( on)?|(silence|mute|disable) (the )?notifications|(turn |switch )?(the )?notifications off"
-  "autolock_on      caffeine( mode)? off|(turn |switch )off (the )?caffeine( mode)?|(enable|turn on|start) (the )?(auto ?lock|idle lock)|auto ?lock on|let (the )?(screen|computer) (sleep|lock)"
-  "autolock_off     keep (the )?(screen|display|computer|system) (awake|on)|stay awake|((turn|switch) on )?caffeine( mode)?( on)?|(disable|turn off) (the )?(auto ?lock|idle lock)|auto ?lock off|dont (auto ?)?lock( the screen)?"
+  "brightness_set   ({set} )?(the )?(screen )?brightness( to| at)? {number}( percent)?"
+  "power_saver      ((switch|change) to |use |{activate} )?(the )?(power|battery) sav(er|ing)( mode)?( on)?|low power mode"
+  # Leaving power saver or performance has nowhere to go but the middle profile.
+  "balanced         ((switch|change) to |use |{activate} )?(the )?balanced( power)?( mode| profile)?|{deactivate} (the )?((power|battery) sav(er|ing)|(high )?performance|low power)( mode| profile)?"
+  "performance      ((switch|change) to |use |{activate} )?(the )?(high )?performance( mode| profile)?( on)?"
+  "profile          (({set}|switch) )?(the )?power (profile|mode) to {target}"
+  # The notifications phrases keep their own words: their verbs run the other way round ("disable notifications" turns
+  # do not disturb on), and {deactivate}'s "exit" or "leave" the notifications asks for no silence.
+  "dnd_off          {deactivate} (the )?(do not disturb|dnd)( mode)?|(do not disturb|dnd)( mode)? off|(unsilence|unmute|enable) (the )?notifications|(turn |switch )?(the )?notifications (back )?on"
+  "dnd_on           ({activate} )?(the )?(do not disturb|dnd)( mode)?( on)?|(silence|mute|disable) (the )?notifications|(turn |switch )?(the )?notifications off"
+  "autolock_on      caffeine( mode)? off|{deactivate} (the )?caffeine( mode)?|{activate} (the )?(auto ?lock|idle lock)|auto ?lock on|let (the )?(screen|computer) (sleep|lock)"
+  "autolock_off     keep (the )?(screen|display|computer|system) (awake|on)|stay awake|({activate} )?(the )?caffeine( mode)?( on)?|{deactivate} (the )?(auto ?lock|idle lock)|auto ?lock off|dont (auto ?)?lock( the screen)?"
 )
 
 examples=(
@@ -33,6 +36,7 @@ examples=(
   "performance mode"
   "do not disturb on"
   "do not disturb off"
+  "activate caffeine"
   "keep the screen awake"
 )
 

@@ -14,11 +14,11 @@ screenshot_tool="${XDG_CONFIG_HOME:-$HOME/.config}/hypr/scripts/screenshot.sh"
 # "stop" alone is left to Media; "stop recording" there would look for a player named "recording" and find none.
 verbs=(
   "status         (is it|is the screen|are we|am i|is something) (still )?recording|(is there a|any) (screen )?recording( running| going)?|recording status"
-  "stop           (stop|end|finish)( the| my)?( screen)? recording|stop recording( the screen)?"
+  "stop           {stop}( the| my)?( screen)? recording|stop recording( the screen)?"
   "record_window  record (this|the|my) window|record (the )?(current|focused|active) window"
   "pick_window    record a window"
   "record_region  record (a |an |the )?(region|area|selection|part of the screen)"
-  "record_screen  (start|begin)( a| the)?( screen)? recording( the screen)?|record (the |my |this )?(screen|display|monitor)"
+  "record_screen  {start}( a| the)?( screen)? recording( the screen)?|record (the |my |this )?(screen|display|monitor)"
 )
 
 examples=(

@@ -15,7 +15,7 @@ verbs=(
   "previous     (play )?(the )?(previous|last)( (song|track))?|go back( (a|one) (song|track))?"
   "volume_up    (turn )?(the )?(volume|sound) up( by {number}( percent)?)?|louder|turn it up"
   "volume_down  (turn )?(the )?(volume|sound) down( by {number}( percent)?)?|quieter|turn it down"
-  "volume_set   (set )?(the )?(volume|sound)( to| at)? {number}( percent)?"
+  "volume_set   ({set} )?(the )?(volume|sound)( to| at)? {number}( percent)?"
   "toggle_mute  toggle mute"
   "mute         mute( (the )?(sound|audio|volume))?"
   "unmute       unmute( (the )?(sound|audio|volume))?"

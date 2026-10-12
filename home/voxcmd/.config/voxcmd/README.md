@@ -219,7 +219,7 @@ Strong matches hide weak ones.
 | "switch audio to X", "switch output to X", "use X", "output to X" | `wpctl set-default` on the matching sink               |
 | "use the X microphone", "switch mic to X", "set the input to X"   | `wpctl set-default` on the matching source             |
 | "connect X", "reconnect X", "disconnect X"                        | `bluetoothctl connect`/`disconnect` on a paired device |
-| "bluetooth on", "turn off bluetooth", "enable bluetooth"          | `bluetoothctl power on`/`off`                          |
+| "bluetooth on", "turn off bluetooth", "activate bluetooth"        | `bluetoothctl power on`/`off`                          |
 | "turn Spotify down", "turn up Firefox", "Firefox volume up by 20" | `wpctl set-volume` on the app's streams, 5% a step     |
 | "Spotify volume 30", "set Firefox volume to 50 percent"           | `wpctl set-volume` on the app's streams                |
 | "mute Firefox", "unmute Spotify"                                  | `wpctl set-mute` on the app's streams                  |
@@ -235,13 +235,13 @@ Strong matches hide weak ones.
 
 ### Keybinds
 
-`keybinds.sh` is a fallback integration over `hyprctl binds -j`, so any phrase no other integration takes is matched against keybind descriptions: "close window", "toggle fullscreen", "go to workspace two". `run`, `press`, `keybind`, `do` and `trigger` are ignored words, so "run close window" is the same phrase.
+`keybinds.sh` is a fallback integration over `hyprctl binds -j`, so any phrase no other integration takes is matched against keybind descriptions: "close window", "toggle fullscreen", "go to workspace two". `run`, `press`, `keybind`, `do`, `trigger`, `activate` and `engage` are ignored words, so "run close window" and "activate toggle fullscreen" are the same phrase as the bare description.
 
 As a fallback it never sees a phrase another integration takes. Starting the phrase with "press", "keybind" or "key bind" ([force prefixes](#force-prefixes)) sends it here first and only: "press open terminal" runs the Open Terminal bind even when another integration has a verb for "open terminal".
 
 - Binds from every submap are offered, one per description, preferring the global one; a submap bind is labelled with its submap, `Lock (System)`. Submap navigation (`+Name`, `Back`, `Exit <submap>`), one-character descriptions and lid switches are left out; the phrases below take its place.
-- "submap X", "X submap", "X mode", "enter X mode" or "enter the X submap" enter the submap named X, word matched against the submap names which-key shows (`cursor mode` is Cursor, `normal mode` is hyprvim's NORMAL). A name shared by several submaps (Delete and hyprvim's DELETE) opens the picker; a name that is no submap is a "no match". "X mode" also reaches a bind named "X mode" that is not a submap (`command mode`). As a fallback, these lose to any other integration's verb, so "performance mode" still sets the power profile.
-- "exit submap", "leave the submap" or "reset submap" go back to the global map like the Exit binds. The voice key is not bound inside submaps, so these are for submaps that keep global keys, the CLI and Voice Help.
+- "submap X", "X submap", "X mode", "enter X mode", "activate X mode" or "go to the X submap" (any `{activate}` or `{focus}` [intent](#intents), or "open") enter the submap named X, word matched against the submap names which-key shows (`cursor mode` is Cursor, `normal mode` is hyprvim's NORMAL). A name shared by several submaps (Delete and hyprvim's DELETE) opens the picker; a name that is no submap is a "no match". "X mode" also reaches a bind named "X mode" that is not a submap (`command mode`). As a fallback, these lose to any other integration's verb, so "performance mode" still sets the power profile.
+- "exit submap", "leave the submap", "deactivate submap" (any `{deactivate}`) or "reset submap" go back to the global map like the Exit binds. The voice key is not bound inside submaps, so these are for submaps that keep global keys, the CLI and Voice Help.
 - `excluded_descriptions` hides the voice binds themselves and anything about passwords or secrets; edit the list in the file.
 - `confirm_labels` asks before closing, killing, locking, logging out, powering off, rebooting, suspending, deleting or clearing.
 - A bind that runs sends no notification ([silent](#silent-actions)); one that fails does.
@@ -255,11 +255,13 @@ As a fallback it never sees a phrase another integration takes. Starting the phr
 
 | Say                                                            | Does                                                               |
 | -------------------------------------------------------------- | ------------------------------------------------------------------ |
-| "open firefox", "launch slack", "start thunar"                 | focuses the app's most recent window if it has one, else starts it |
+| "open firefox", "launch slack", "bring up thunar"              | focuses the app's most recent window if it has one, else starts it |
 | "open new firefox", "open a new kitty"                         | always starts it                                                   |
-| "focus slack", "switch to firefox", "go to tmux config"        | focuses the window                                                 |
+| "focus slack", "go to firefox", "take me to tmux config"       | focuses the window                                                 |
 | "move slack to workspace 3", "send firefox to workspace three" | moves the window there, leaving focus where it is                  |
-| "close slack", "close the firefox window"                      | closes the window, after a Yes/No                                  |
+| "close slack", "quit the firefox window"                       | closes the window, after a Yes/No                                  |
+
+Opening, focusing and closing take every form of the `{open}`, `{focus}` and `{close}` [intents](#intents).
 
 - Apps are the desktop entries in `$XDG_DATA_HOME` and `$XDG_DATA_DIRS` (the first copy of an id wins), leaving out `NoDisplay`, `Hidden` and entries `OnlyShowIn`/`NotShowIn` keep off this desktop. An app matches by its `Name` and by the last part of its id (`code`, `nautilus`). It starts like the Quickshell apps picker starts it: the `Exec` line without field codes, in `Path`, and `Terminal=true` apps in the Hyprland config's terminal wrapper.
 - An app counts as running when a window's class is its `StartupWMClass`, its id or the last part of its id.
@@ -278,9 +280,9 @@ As a fallback it never sees a phrase another integration takes. Starting the phr
 | "brightness 40", "set brightness to 40 percent"                              | `brightnessctl set 40%` (clamped to 1-100), then `qs-ipc call brightness refresh` for the OSD |
 | "brightness up" / "down" (optionally "by 20"), "brighter", "dimmer"          | 10% steps by default, like the brightness keys                                         |
 | "brightness max" / "min", "full brightness"                                  | 100% / 1%                                                                              |
-| "power saver", "balanced", "performance mode", "set power profile to X"      | `powerprofilesctl set`; X is matched against the profiles the machine offers           |
-| "do not disturb on" / "off", "silence notifications", "notifications on"     | The bar's do not disturb, over `qs-ipc` `notifications get_dnd` / `toggle_dnd`         |
-| "keep the screen awake", "caffeine on" / "off", "enable" / "disable autolock" | Stops or starts hypridle with `toggle-autolock.sh`, like the System submap's auto-lock key |
+| "power saver", "balanced", "activate performance mode", "set power profile to X" | `powerprofilesctl set`; X is matched against the profiles the machine offers; "deactivate power saver" or "performance" goes back to balanced |
+| "do not disturb on" / "off", "enable" / "disable do not disturb", "silence notifications", "notifications on" | The bar's do not disturb, over `qs-ipc` `notifications get_dnd` / `toggle_dnd` |
+| "keep the screen awake", "activate" / "deactivate caffeine", "caffeine on" / "off", "enable" / "disable autolock" | Stops or starts hypridle with `toggle-autolock.sh`, like the System submap's auto-lock key |
 
 Brightness and do not disturb send no notification when they work ([silent](#silent-actions)), since the OSD and the bar's indicator show them; power profile and auto-lock still say what they set. Only the laptop backlight is driven; external monitors are not (no DDC/CI). A spoken power profile lasts until the next AC or battery change, when `power.sh` applies the one chosen in Settings, unless that is "keep".
 
@@ -305,10 +307,12 @@ Brightness and do not disturb send no notification when they work ([silent](#sil
 
 | Say                                                          | Does                                                                      |
 | ------------------------------------------------------------ | ------------------------------------------------------------------------- |
-| "jump to the waiting agent", "go to the agent that needs me" | the agent that has waited longest for input; says so when none is waiting |
-| "next agent", "go to the next agent", "jump to next agent"   | the agent after the focused one, whatever its state, wrapping around      |
-| "previous agent", "go to the previous agent"                 | the agent before the focused one                                          |
-| "go to agent X", "go to the X agent"                         | the agent whose title, project or agent name matches X                    |
+| "go to the waiting agent", "take me to the agent that needs me" | the agent that has waited longest for input; says so when none is waiting |
+| "next agent", "go to the next agent", "jump to next agent"      | the agent after the focused one, whatever its state, wrapping around      |
+| "previous agent", "go to the previous agent"                    | the agent before the focused one                                          |
+| "go to agent X", "go to the X agent"                            | the agent whose title, project or agent name matches X                    |
+
+Every phrase takes any `{focus}` [intent](#intents) form: "go to", "switch to", "jump to", "focus", "take me to".
 
 - Next and previous step through every tracked agent in `keeptabs-pick`'s order (waiting, done, running, idle, oldest first within each). The focused agent is the one whose window, tmux pane and nvim terminal keeptabs' own `session_focused` says has focus; with none focused, next starts at the first agent and previous at the last.
 - An "agent X" that matches nothing says so instead of falling through to the keybinds.
@@ -321,10 +325,10 @@ Brightness and do not disturb send no notification when they work ([silent](#sil
 
 | Say                                                                                | Does                                                       |
 | ---------------------------------------------------------------------------------- | ---------------------------------------------------------- |
-| "switch to the X session", "switch to session X", "open the X session", "attach X" | focus or open the session                                  |
+| "go to the X session", "switch to session X", "open the X session", "attach X"     | focus or open the session                                  |
 | "new session X", "open a new session X"                                            | a terminal on a new session X (attached if X already runs) |
 
-Both are [silent](#silent-actions) when they work, since the session's terminal shows it; an unknown session still says so. X is matched against running sessions (`tmux list-sessions`) and the tmuxifier layouts in `~/.tmuxifier/layouts`, a layout by the `session_name` it sets or its file name. A layout goes through the Project picker's script (`hypr/scripts/rofi-tmux.sh <layout>`), which focuses its terminal or loads it in a new one. A running session without a layout focuses the terminal titled with its name, else opens a terminal attached to it. An X that matches nothing says so instead of falling through to the keybinds. Tab on its Voice Help entries lists every running session and layout; picking one switches to it.
+Switching takes any `{focus}` or `{open}` [intent](#intents) form before the session ("take me to the X session", "launch session X"). Both are [silent](#silent-actions) when they work, since the session's terminal shows it; an unknown session still says so. X is matched against running sessions (`tmux list-sessions`) and the tmuxifier layouts in `~/.tmuxifier/layouts`, a layout by the `session_name` it sets or its file name. A layout goes through the Project picker's script (`hypr/scripts/rofi-tmux.sh <layout>`), which focuses its terminal or loads it in a new one. A running session without a layout focuses the terminal titled with its name, else opens a terminal attached to it. An X that matches nothing says so instead of falling through to the keybinds. Tab on its Voice Help entries lists every running session and layout; picking one switches to it.
 
 ### Notifications
 
@@ -334,7 +338,7 @@ Both are [silent](#silent-actions) when they work, since the session's terminal 
 | ------------------------------------------------------------ | ------------------------------------------------------------------------ |
 | "clear notifications", "dismiss all notifications"           | empties the notification center (`notifications clear_all`)              |
 | "read the last notification", "what was that notification"   | shows the newest history entry again as a toast, with its app and body   |
-| "open notifications", "show the notification center"         | opens the bar's notifications popup (`notifications open`)               |
+| "open notifications", "bring up the notification center"     | opens the bar's notifications popup (`notifications open`), any `{show}` |
 
 - The repeat is read with `notifications get_last` and sent again with `notify-send --transient`, so it adds no second copy to the history. Under do not disturb it goes out critical, which do not disturb lets through, so it stays up until dismissed.
 - The actions are [silent](#silent-actions), since each one's effect is its own feedback; an empty history says "No notifications".
@@ -346,11 +350,11 @@ Both are [silent](#silent-actions) when they work, since the session's terminal 
 
 | Say                                                   | Does                                                                      |
 | ----------------------------------------------------- | ------------------------------------------------------------------------- |
-| "start recording", "record the screen"                | records the focused monitor at once (`--record-geometry`)                 |
+| "start recording", "begin recording", "record the screen" | records the focused monitor at once (`--record-geometry`)             |
 | "record this window", "record the current window"     | records the focused window (`--record-focused`)                           |
 | "record a window"                                     | picks a window to record (`--record-window`)                              |
 | "record a region", "record an area"                   | opens the region selector to record (`--record-region`)                   |
-| "stop recording", "end the recording"                 | stops it; screenshot.sh says where the file was saved                     |
+| "stop recording", "finish the recording"              | stops it; screenshot.sh says where the file was saved                     |
 | "is it recording", "am I recording"                   | how long it has run and the file it writes                                |
 
 - Starting and stopping are [silent](#silent-actions), since the recording chip shows a start (screenshot.sh notifies when no bar shows one) and screenshot.sh sends "Recording Saved!" when it stops; starting while a recording runs says "Already recording" with its file instead, and stopping with none running says "Not recording".

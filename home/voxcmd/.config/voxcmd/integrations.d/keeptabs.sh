@@ -9,15 +9,15 @@ silent_actions=(focus)
 
 # The fixed phrases come before "go to the {target} agent", which would otherwise take "go to the next agent".
 verbs=(
-  "jump_waiting  (jump|go|switch) to (the )?(waiting|blocked) agent|(jump|go|switch) to the agent that (needs|wants) (me|my attention|attention|input)"
-  "jump_next     (jump to |go to |switch to )?(the )?next agent"
-  "jump_previous (jump to |go to |switch to )?(the )?(previous|prior) agent"
-  "focus         (jump|go|switch) to (the )?agent {target}"
-  "focus         (jump|go|switch) to (the )?{target} agent"
+  "jump_waiting  {focus} (the )?(waiting|blocked) agent|{focus} the agent that (needs|wants) (me|my attention|attention|input)"
+  "jump_next     ({focus} )?(the )?next agent"
+  "jump_previous ({focus} )?(the )?(previous|prior) agent"
+  "focus         {focus} (the )?agent {target}"
+  "focus         {focus} (the )?{target} agent"
 )
 
 examples=(
-  "jump to the waiting agent"
+  "go to the waiting agent"
   "go to the agent that needs me"
   "next agent"
   "go to the previous agent"
