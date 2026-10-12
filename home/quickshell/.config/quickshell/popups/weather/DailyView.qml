@@ -9,6 +9,7 @@ import "../../components/oasis" as Oasis
 import "../../components/modern" as Modern
 
 // One column per day in a window of up to five that the popup scrolls with day_cursor.
+// A style may restyle columns freely but days always run left to right, horizontal table style.
 // sub 0: temp band + precip chance. 1: wind. 2: UV. 3: sunshine.
 Item {
     id: root
