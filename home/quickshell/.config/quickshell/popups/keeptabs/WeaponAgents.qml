@@ -22,6 +22,11 @@ Item {
     readonly property var bucket_states: ["waiting", "done", "running", "idle"]
     readonly property color hl: Style.text_primary
     readonly property color hl_t: Style.text_muted
+    // Other styles leave these tokens transparent, so a borrowed layout falls back to the palette.
+    readonly property color hairline: Style.hairline.a > 0 ? Style.hairline : Qt.alpha(Style.pal.fg_strong, 0.55)
+    readonly property color hairline_dim: Style.hairline_dim.a > 0 ? Style.hairline_dim : Qt.alpha(Style.pal.fg_strong, 0.24)
+    readonly property color selection_bg: Style.selection_bg.a > 0 ? Style.selection_bg : Qt.alpha(Style.pal.primary, 0.18)
+    readonly property color meter_off: Style.meter_off.a > 0 ? Style.meter_off : Qt.alpha(Style.pal.fg_strong, 0.15)
     readonly property real gap: 4
     readonly property real bar_h: 18
     readonly property real closed_w: Math.floor((root.width - root.gap * 3) * 0.2)
@@ -90,7 +95,7 @@ Item {
                     height: root.bar_h
                     color: column.open ? root.hl : "transparent"
                     border.width: column.open ? 0 : 1
-                    border.color: Style.hairline_dim
+                    border.color: root.hairline_dim
 
                     Text {
                         id: header_number
@@ -109,7 +114,7 @@ Item {
                         x: header_number.width
                         width: 1
                         height: parent.height
-                        color: column.open ? Qt.alpha(Theme.bg_crust, 0.4) : Style.hairline_dim
+                        color: column.open ? Qt.alpha(Theme.bg_crust, 0.4) : root.hairline_dim
                     }
 
                     // Closed buckets are narrow; the name shrinks to fit rather than eliding to nothing.
@@ -137,6 +142,9 @@ Item {
                     clip: true
                     spacing: 3
                     model: column.modelData.items
+                    // Bound to the selection so a refresh that rebuilds the model keeps the selected weapon in view.
+                    currentIndex: column.modelData.items.findIndex(item => item.index === root.selected)
+                    onModelChanged: Qt.callLater(() => { if (bucket_list.currentIndex >= 0) bucket_list.positionViewAtIndex(bucket_list.currentIndex, ListView.Contain); })
                     boundsBehavior: Flickable.StopAtBounds
 
                     delegate: Rectangle {
@@ -149,9 +157,9 @@ Item {
 
                         width: bucket_list.width
                         height: weapon.current ? card.implicitHeight + 12 : Style.px(28)
-                        color: weapon.current ? Style.selection_bg : "transparent"
+                        color: weapon.current ? root.selection_bg : "transparent"
                         border.width: 1
-                        border.color: weapon.current ? Style.hairline : Style.hairline_dim
+                        border.color: weapon.current ? root.hairline : root.hairline_dim
 
                         // Closed weapon: the title and a sliver of ammo.
                         Text {
@@ -172,7 +180,7 @@ Item {
                             y: parent.height - 6
                             width: parent.width - 8
                             height: 2
-                            color: Style.meter_off
+                            color: root.meter_off
 
                             Rectangle {
                                 width: parent.width * weapon.pct / 100
@@ -227,7 +235,7 @@ Item {
                                 Layout.preferredHeight: 6
                                 Layout.topMargin: 2
                                 visible: weapon.has_context
-                                color: Style.meter_off
+                                color: root.meter_off
 
                                 Rectangle {
                                     width: parent.width * weapon.pct / 100
