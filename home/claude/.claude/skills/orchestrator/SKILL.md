@@ -87,4 +87,5 @@ The target may be an issue or PR URL/number, repository URL/name, or omitted.
     - validation performed
     - noteworthy review findings and dispositions
     - remaining risks
+    - before saying it is ready for human review, run `~/.claude/skills/merge-prs/merge-prs.sh --check <pr>` and resolve any thread or Codex problem it reports (answer and resolve the threads, or fix); only a passing check makes it ready
     - whether it is ready for human review
