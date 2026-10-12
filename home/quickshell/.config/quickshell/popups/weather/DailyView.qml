@@ -65,7 +65,7 @@ Item {
     // Half-Life: HL1 weapon-slot buckets, the selected day open wider.
     readonly property bool hev_slots: Style.weather_header === "hev"
     // FF7: the days as linked materia slots.
-    readonly property bool materia_slots: Style.weather_header === "status" && root.sub === 0
+    readonly property bool materia_slots: Style.weather_header === "status"
     // Views that draw the whole window themselves instead of the day row.
     readonly property bool row_replaced: root.wttr_table || root.hev_slots || root.materia_slots
 
@@ -111,8 +111,8 @@ Item {
             // Room for a 3x-scale 24x18 photo (72x54) plus its frame.
             : root.camera ? 24 * 3 + 18 + 8
             : Math.max(label_metrics.advanceWidth("Today"), label_metrics.advanceWidth("100%")) + 8;
-        // Reserve room for the row-label column ("RAIN" is the widest), matching MateriaSlots' own label_w.
-        const status_label_w = Math.max(40, small_metrics.advanceWidth("RAIN") + 12);
+        // Reserve room for the row-label column ("WIND" is the widest), matching MateriaSlots' own label_w.
+        const status_label_w = Math.max(40, small_metrics.advanceWidth("WIND") + 12);
         const room = Style.weather_header === "status" ? root.width - status_label_w : root.width + 4;
         return Math.max(1, Math.min(5, Math.floor(room / (col + 4))));
     }
@@ -235,6 +235,7 @@ Item {
             active: root.materia_slots
             visible: active
             sourceComponent: MateriaSlots {
+                sub: root.sub
                 days: root.window_days
                 first_day: root.first_day
                 day_cursor: root.day_cursor

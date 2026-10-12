@@ -7,13 +7,15 @@ import "../../theme"
 import "../../services"
 import "Materia.js" as Materia
 
-// The Daily window as a weapon's materia slots: one socket per day, linked in pairs, with icon, HI, LO and RAIN rows below.
+// The Daily window as a weapon's materia slots: one socket per day, linked in pairs, with icon and three stat rows below.
+// sub: 0 temp and rain (HI, LO, RAIN), 1 wind (WIND, GUST, DIR), 2 UV (UV, BAND, LV), 3 sunshine (SUN, DAY, LV).
 Item {
     id: root
 
     property var days: []
     property int first_day: 0
     property int day_cursor: 0
+    property int sub: 0
     property var on_select: function (i) {}
 
     // Band and rows share out the full available height instead of centering at a fixed size.
@@ -26,16 +28,41 @@ Item {
     readonly property real top_y: Math.max(0, (root.height - root.table_h) / 2)
     readonly property real socket_size: Math.max(24, Math.min(56, root.band_h * 0.75))
     readonly property int sel: root.day_cursor - root.first_day
-    readonly property var rows: [
-        ["", d => d.weekday],
-        ["", d => ""],
-        ["HI", d => Math.round(d.max) + "°"],
-        ["LO", d => Math.round(d.min) + "°"],
-        ["RAIN", d => d.pop + "%"]
+    readonly property var unit_labels: [
+        "",
+        WeatherState.wind_unit().toUpperCase(),
+        "",
+        "HRS"
     ]
+    readonly property var uv_short: ["LOW", "MOD", "HIGH", "VHI", "EXT"]
+    readonly property real wind_scale: Math.max(1, root.days.reduce((m, d) => Math.max(m, d.wind_gusts_max), 0))
+    // Each sub: three [label, text, color or null] rows, the last with the gauge beneath its text.
+    readonly property var sub_rows: [
+        [
+            ["HI", d => Math.round(d.max) + "°", null],
+            ["LO", d => Math.round(d.min) + "°", null],
+            ["RAIN", d => d.pop + "%", null]
+        ],
+        [
+            ["WIND", d => String(Math.round(d.wind_speed_max)), null],
+            ["GUST", d => String(Math.round(d.wind_gusts_max)), null],
+            ["DIR", d => WeatherState.compass_label(d.wind_dir), null]
+        ],
+        [
+            ["UV", d => d.uv_max.toFixed(1), d => WeatherState.uv_color(d.uv_max)],
+            ["BAND", d => root.uv_short[WeatherState.uv_bands.indexOf(WeatherState.uv_band(d.uv_max))], d => WeatherState.uv_color(d.uv_max)],
+            ["LV", d => Math.round(root.fill_of(d) * 100) + "%", null]
+        ],
+        [
+            ["SUN", d => d.sunshine_hours.toFixed(1), null],
+            ["DAY", d => root.daylight_hours(d).toFixed(1), null],
+            ["LV", d => Math.round(root.fill_of(d) * 100) + "%", null]
+        ]
+    ]
+    readonly property var rows: [[root.unit_labels[root.sub], d => d.weekday, null], ["", d => "", null]].concat(root.sub_rows[root.sub])
 
-    // Widest row label ("RAIN"), plus a pad for its letter-spacing.
-    readonly property real label_w: Math.max(40, label_metrics.tightBoundingRect.width + root.rows.reduce((m, r) => Math.max(m, r[0].length), 0) + 12)
+    // Widest row label across every sub ("WIND"), plus a pad for its letter-spacing; fixed so the columns hold still between subs.
+    readonly property real label_w: Math.max(40, label_metrics.tightBoundingRect.width + 4 + 12)
     readonly property int n: Math.max(1, root.days.length)
     readonly property real col_w: (root.width - root.label_w) / root.n
     readonly property real cell_pad: 8
@@ -44,6 +71,25 @@ Item {
     readonly property real weekday_scale: Math.min(1, (root.col_w - root.cell_pad) / Math.max(1, weekday_metrics.tightBoundingRect.width))
     readonly property real hilo_scale: Math.min(1, (root.col_w - root.cell_pad) / Math.max(1, temp_metrics.tightBoundingRect.width))
     readonly property real rain_scale: Math.min(1, (root.col_w - root.cell_pad) / Math.max(1, rain_metrics.tightBoundingRect.width))
+
+    function hm_minutes(hm) {
+        const parts = (hm || "").split(":");
+        return parts.length === 2 ? parseInt(parts[0], 10) * 60 + parseInt(parts[1], 10) : 0;
+    }
+
+    function daylight_hours(d) {
+        return Math.max(0, root.hm_minutes(d.sunset) - root.hm_minutes(d.sunrise)) / 60;
+    }
+
+    // The gauge under the last row: rain chance, wind against the week's strongest gust, UV against 11, sunshine against daylight.
+    function fill_of(d) {
+        const fills = [d.pop / 100, d.wind_speed_max / root.wind_scale, d.uv_max / 11, d.sunshine_hours / Math.max(1, root.daylight_hours(d))];
+        return Math.max(0, Math.min(1, fills[root.sub]));
+    }
+
+    function sub_color(d) {
+        return [Theme.info, Theme.theme_primary_light, WeatherState.uv_color(d.uv_max), Theme.theme_secondary][root.sub];
+    }
 
     function col_x(i) {
         return root.label_w + i * root.col_w;
@@ -66,7 +112,7 @@ Item {
         font.family: Style.font_family
         font.pixelSize: Math.round((Style.fs(-5)) * root.row_scale)
         font.weight: Font.ExtraBold
-        text: root.widest(root.rows.map(r => r[0]))
+        text: "WIND"
     }
 
     TextMetrics {
@@ -84,7 +130,7 @@ Item {
         font.family: Style.font_family
         font.pixelSize: Math.round((Style.fs(-3)) * root.row_scale)
         font.weight: Font.ExtraBold
-        text: root.widest([].concat(...Array.from(root.days || []).map(d => [Math.round(d.max) + "°", Math.round(d.min) + "°"])).concat(["-9°"]))
+        text: root.widest([].concat(...Array.from(root.days || []).map(d => [root.rows[2][1](d), root.rows[3][1](d)])).concat(root.sub === 0 ? ["-9°"] : []))
     }
 
     TextMetrics {
@@ -92,7 +138,7 @@ Item {
         font.family: Style.font_family
         font.pixelSize: Math.round((Style.fs(-4)) * root.row_scale)
         font.weight: Font.Bold
-        text: "100%"
+        text: root.widest([].concat(Array.from(root.days || []).map(d => root.rows[4][1](d))).concat(root.sub === 1 ? [] : ["100%"]))
     }
 
     Rectangle {
@@ -177,7 +223,7 @@ Item {
                     width: root.socket_size * 0.67
                     height: width
                     glow: false
-                    color: Materia.color(Style.materia_palette, WeatherState.weather_color_keys, slot.modelData.code)
+                    color: root.sub === 0 ? Materia.color(Style.materia_palette, WeatherState.weather_color_keys, slot.modelData.code) : root.sub_color(slot.modelData)
                 }
             }
 
@@ -201,8 +247,25 @@ Item {
                     width: slot.width
                     height: root.row_h
 
+                    Text {
+                        visible: cell.index === 1 && root.sub === 1
+                        anchors.centerIn: parent
+                        text: "▲"
+                        rotation: slot.modelData.wind_dir
+                        color: Theme.theme_primary_light
+                        font.pixelSize: Math.min(Style.font_size, root.row_h * 0.7)
+                    }
+
+                    MateriaOrb {
+                        visible: cell.index === 1 && root.sub >= 2
+                        anchors.centerIn: parent
+                        width: Math.min(26, root.row_h * 0.6, cell.width - root.cell_pad)
+                        height: width
+                        color: root.sub_color(slot.modelData)
+                    }
+
                     Image {
-                        visible: cell.index === 1
+                        visible: cell.index === 1 && root.sub === 0
                         anchors.centerIn: parent
                         width: Math.min(48, root.row_h - 2)
                         height: width
@@ -222,7 +285,7 @@ Item {
                         width: Math.min(implicitWidth, cell.width - 4)
                         elide: Text.ElideRight
                         text: cell.modelData[1](slot.modelData)
-                        color: cell.index === 2 || slot.selected && cell.index === 0 ? Theme.fg_strong : cell.index === 4 ? Style.text_fg : Theme.theme_primary_light
+                        color: cell.modelData[2] ? cell.modelData[2](slot.modelData) : cell.index === 2 || slot.selected && cell.index === 0 ? Theme.fg_strong : cell.index === 4 ? Style.text_fg : Theme.theme_primary_light
                         font.family: Style.font_family
                         font.pixelSize: Math.round((cell.index === 0 ? Style.fs(-3) : Style.font_size - (cell.index === 4 ? 4 : 3)) * root.row_scale * cell.col_scale)
                         font.weight: cell.index === 2 ? Font.ExtraBold : Font.Bold
@@ -235,9 +298,9 @@ Item {
                         anchors.bottomMargin: 2 * root.row_scale
                         width: Math.min(36 * root.row_scale, cell.width - root.cell_pad)
                         height: 4 * root.row_scale
-                        value: slot.modelData.pop / 100
-                        fill_color: Theme.info
-                        shade_color: Qt.tint(Theme.info, Qt.alpha(Theme.fg_strong, 0.55))
+                        value: root.fill_of(slot.modelData)
+                        fill_color: root.sub_color(slot.modelData)
+                        shade_color: Qt.tint(root.sub_color(slot.modelData), Qt.alpha(Theme.fg_strong, 0.55))
                     }
                 }
             }
