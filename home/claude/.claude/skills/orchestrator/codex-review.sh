@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Usage: codex-review.sh <base> <outdir>; run from the worktree.
+# Usage: codex-review.sh <base> <outdir>; run from a clean worktree. Exits 0 with the review path, 2 when codex is unavailable, 3 on uncommitted changes.
 set -u
 
 base=${1:?usage: codex-review.sh <base> <outdir>}
@@ -8,6 +8,12 @@ max_attempts=3
 poll_s=${CODEX_POLL_S:-5}
 stall_s=${CODEX_STALL_S:-120}
 timeout_s=${CODEX_TIMEOUT_S:-900}
+
+# `codex exec review --base` reads commits only, so a review of a dirty tree misses the change it was run for.
+if [ -n "$(git status --porcelain)" ]; then
+  echo "codex-review: the worktree has uncommitted changes, which codex review --base cannot see; commit first" >&2
+  exit 3
+fi
 
 pid=""
 
