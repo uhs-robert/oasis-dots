@@ -3,6 +3,9 @@
 
 name="Agents"
 confirm=0
+# The focused agent is the feedback. The jumps keep their toast: "no agent is waiting" is their only reply when
+# nothing moves, and silent would drop it.
+silent_actions=(focus)
 
 # The fixed phrases come before "go to the {target} agent", which would otherwise take "go to the next agent".
 verbs=(
