@@ -69,7 +69,7 @@ Popup {
 
         scan: { prefix: "Logbook", views: [] },
 
-        scope: { prefix: "Target", views: [] },
+        scope: { prefix: "Target", views: ["Agents", "Usage"] },
 
         status: { prefix: "Ff7Menu", views: ["Agents", "Usage"] },
 
