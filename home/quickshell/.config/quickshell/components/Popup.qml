@@ -26,7 +26,7 @@ PanelWindow {
     property real drawn_body_height: root.shown_body_height
     Behavior on drawn_body_height {
         enabled: root.reserving && root.visible && root.drop_progress === 1
-        NumberAnimation { duration: 150; easing.type: Easing.OutCubic }
+        NumberAnimation { id: body_grow; duration: 150; easing.type: Easing.OutCubic }
     }
     readonly property real panel_height: root.reserving ? Math.min(root.height, root.drawn_body_height + root.header_height + root.footer_height + root.st.frame_drop) : root.height
     property string title: popup_name.toUpperCase()
@@ -218,6 +218,11 @@ PanelWindow {
     implicitHeight: (root.reserving ? Math.max(reserve_height, shown_body_height) : shown_body_height) + header_height + footer_height + root.st.frame_drop
     default property alias content: content_scope.data
 
+    // Open with every entrance animation done, including the body growing to fit late-loading content; Popups reports it
+    // over IPC so a script can act on a popup only once it is fully drawn.
+    readonly property bool settled: root.wanted && !root.passive && root.drop_progress === 1 && !open_anim.running && !body_grow.running
+        && !(burst_loader.item && burst_loader.item.busy)
+    onSettledChanged: Popups.mark_settled(root.popup_name, root.settled)
     readonly property bool wanted: root.passive ? Tooltip.visible && Tooltip.island !== null && Popups.open_name === "" : Popups.open_name === root.popup_name && Popups.open_screen_name !== ""
 
     // Latched on open so the popup keeps its place and color while the close animation plays.
