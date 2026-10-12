@@ -32,7 +32,7 @@ voxcmd help                       # pick from the integrations' example phrases
 
 A voice command recording, a reply to a picker included, stops itself: `voxcmd-autostop` listens to the default source through `pw-record` and ends the recording once it has heard speech followed by `silence_secs` of quiet. Starting and then thinking for a moment does not stop it, since the pause only counts after speech. Nothing heard within `no_speech_secs` cancels the recording silently. A voice key still stops it early. Dictation has no auto-stop, because people pause while dictating.
 
-Speech is anything `margin_db` above the room, whose level is measured over the first 300ms and then followed over the last two seconds, so a fan or music never counts as speech for long; the threshold never goes below -45 dBFS. Loud sounds shorter than 90ms, like a key click, are not speech. Set `threshold_db` to a fixed level instead when the room fools it.
+Speech is anything `margin_db` above the room, whose level is measured over the first 300ms and then followed over the last two seconds, so a fan or music never counts as speech for long; the threshold never goes below -45 dBFS. A word said as the recording starts is first taken for the room, so until speech is heard every frame so far is scored again as the room level settles, and a lone "yes" at the start still counts. Loud sounds shorter than 90ms, like a key click, are not speech. Set `threshold_db` to a fixed level instead when the room fools it.
 
 Settings go in `~/.config/voxcmd/autostop.conf` (`name = value`, `#` comments; ignored by git), and the matching environment variable overrides each:
 
