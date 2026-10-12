@@ -63,7 +63,7 @@ Popup {
 
         oasis: { prefix: "Caravan", views: [] },
 
-        pokedex: { prefix: "Pkmn", views: [] },
+        pokedex: { prefix: "Pkmn", views: ["Agents", "Usage"] },
 
         ring: { prefix: "Roster", views: [] },
 
