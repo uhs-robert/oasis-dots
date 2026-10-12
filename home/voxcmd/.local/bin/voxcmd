@@ -106,7 +106,7 @@ compile_pattern() {
 load_integration() {
   unset -f candidates
   name="" confirm=0 fallback=0 silent=0 target_match=fuzzy
-  local -a verbs=() examples=() confirm_labels=() match_ignore_words=() silent_actions=()
+  local -a verbs=() examples=() confirm_labels=() match_ignore_words=() silent_actions=() force_prefixes=()
   local -A actions=() no_match_actions=()
   # shellcheck disable=SC1090
   source "$1"
@@ -116,6 +116,7 @@ load_integration() {
   integration_confirm_labels=("${confirm_labels[@]}")
   integration_match_ignore_words=("${match_ignore_words[@]}")
   integration_silent_actions=("${silent_actions[@]}")
+  integration_force_prefixes=("${force_prefixes[@]}")
   declare -gA integration_actions=() integration_no_match_actions=()
   local key
   for key in "${!actions[@]}"; do
@@ -126,8 +127,27 @@ load_integration() {
   done
 }
 
-# Prints one JSON match per integration of the tier ("normal" or "fallback"): its first verb that matches the whole
-# text.
+# Prints the JSON match for the first verb of the loaded integration that matches the whole text, if any.
+match_loaded_verbs() {
+  local text="$1" file="$2" entry action pattern compiled regex group
+  for entry in "${integration_verbs[@]}"; do
+    read -r action pattern <<<"$entry"
+    compiled=$(compile_pattern "$pattern")
+    regex="${compiled%$'\t'*}"
+    group="${compiled##*$'\t'}"
+    if [[ "$text" =~ $regex ]]; then
+      local target=""
+      [ "$group" = 0 ] || target="${BASH_REMATCH[$group]}"
+      jq -n -c --arg file "$file" --arg name "$name" --arg action "$action" --arg target "$target" \
+        --argjson has_target "$([ "$group" = 0 ] && echo false || echo true)" \
+        --argjson fallback "$([ "$fallback" = 1 ] && echo true || echo false)" \
+        '{file: $file, name: $name, action: $action, target: $target, has_target: $has_target, fallback: $fallback}'
+      return
+    fi
+  done
+}
+
+# Prints one JSON match per integration of the tier ("normal" or "fallback").
 match_verbs() {
   local text="$1" tier="$2" file
   while IFS= read -r file; do
@@ -136,24 +156,38 @@ match_verbs() {
       local integration_tier=normal
       [ "$fallback" != 1 ] || integration_tier=fallback
       [ "$integration_tier" = "$tier" ] || exit 0
-      local entry action pattern compiled regex group
-      for entry in "${integration_verbs[@]}"; do
-        read -r action pattern <<<"$entry"
-        compiled=$(compile_pattern "$pattern")
-        regex="${compiled%$'\t'*}"
-        group="${compiled##*$'\t'}"
-        if [[ "$text" =~ $regex ]]; then
-          local target=""
-          [ "$group" = 0 ] || target="${BASH_REMATCH[$group]}"
-          jq -n -c --arg file "$file" --arg name "$name" --arg action "$action" --arg target "$target" \
-            --argjson has_target "$([ "$group" = 0 ] && echo false || echo true)" \
-            --argjson fallback "$([ "$fallback" = 1 ] && echo true || echo false)" \
-            '{file: $file, name: $name, action: $action, target: $target, has_target: $has_target, fallback: $fallback}'
-          break
-        fi
-      done
+      match_loaded_verbs "$text" "$file"
     )
   done < <(integration_files)
+}
+
+# Prints "<file><TAB><rest of the text>" for the first integration whose force_prefixes starts the text.
+forcing_integration() {
+  local text="$1" file
+  while IFS= read -r file; do
+    (
+      load_integration "$file"
+      local prefix
+      for prefix in "${integration_force_prefixes[@]}"; do
+        prefix=$(normalize "$prefix")
+        if [ -n "$prefix" ] && [[ "$text" == "$prefix "?* ]]; then
+          printf '%s\t%s\n' "$file" "${text#"$prefix "}"
+          exit 0
+        fi
+      done
+      exit 1
+    ) && return 0
+  done < <(integration_files)
+  return 1
+}
+
+# Matches the text against one integration's verbs only, whatever its tier.
+match_forced_verbs() {
+  local text="$1" file="$2"
+  (
+    load_integration "$file"
+    match_loaded_verbs "$text" "$file"
+  )
 }
 
 # silent=1 covers every action of the integration, silent_actions only those listed.
@@ -315,9 +349,10 @@ run_option() {
 }
 
 print_dry_run() {
-  local transcript="$1" text="$2" options="$3" count
+  local transcript="$1" text="$2" options="$3" forced_file="${4:-}" count
   count=$(jq length <<<"$options")
   printf 'transcript:  %s\nnormalized:  %s\n' "$transcript" "$text"
+  [ -z "$forced_file" ] || printf 'forced to:   %s\n' "$(basename "$forced_file")"
   if [ "$count" = 0 ]; then
     printf 'result:      no match\n'
   elif needs_pick "$options"; then
@@ -349,10 +384,11 @@ help_phrases='^(what can i say|voice help|show voice commands)$'
 # sees them here: listen sends a recording made while it waits to reply, where "cancel" closes the picker.
 discard_phrases='^(never ?mind|cancel|forget it|nothing)$'
 
-# Normal integrations first, then the LLM hook, then fallback integrations, each only when the ones before it left
-# nothing to run, so a catch-all fallback never competes with a real verb.
+# A phrase starting with an integration's force prefix goes to that integration alone. Otherwise normal integrations
+# go first, then the LLM hook, then fallback integrations, each only when the ones before it left nothing to run, so a
+# catch-all fallback never competes with a real verb.
 route() {
-  local transcript="$*" text options count choices picked
+  local transcript="$*" text options count choices picked forcing="" forced_file=""
   # Global, not local: the integration contract promises it to candidates() and to every action.
   # shellcheck disable=SC2034 # read by integrations
   raw_transcript="$transcript"
@@ -371,13 +407,18 @@ route() {
     fi
     return 0
   fi
-  options=$(resolve_matches "$(match_verbs "$text" normal)")
-  [ "$(jq length <<<"$options")" != 0 ] || options=$(resolve_matches "$(llm_match "$text")")
-  [ "$(jq length <<<"$options")" != 0 ] || options=$(resolve_matches "$(match_verbs "$text" fallback)")
+  if forcing=$(forcing_integration "$text"); then
+    forced_file="${forcing%%$'\t'*}"
+    options=$(resolve_matches "$(match_forced_verbs "${forcing#*$'\t'}" "$forced_file")")
+  else
+    options=$(resolve_matches "$(match_verbs "$text" normal)")
+    [ "$(jq length <<<"$options")" != 0 ] || options=$(resolve_matches "$(llm_match "$text")")
+    [ "$(jq length <<<"$options")" != 0 ] || options=$(resolve_matches "$(match_verbs "$text" fallback)")
+  fi
   count=$(jq length <<<"$options")
 
   if [ "$dry_run" = 1 ]; then
-    print_dry_run "$transcript" "$text" "$options"
+    print_dry_run "$transcript" "$text" "$options" "$forced_file"
     return 0
   fi
   if [ "$count" = 0 ]; then

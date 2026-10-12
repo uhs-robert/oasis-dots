@@ -8,6 +8,8 @@ fallback=1
 # A bind's own effect is the feedback, often a bar popup that a success toast would cover.
 silent=1
 target_match=words
+# "press toggle fullscreen" comes straight here even when another integration has a verb for "toggle fullscreen".
+force_prefixes=(press keybind "key bind")
 # Words that only say "run a keybind", ignored on both sides: "run close window" is "close window".
 match_ignore_words=(run press keybind key bind shortcut "do" trigger)
 
@@ -21,6 +23,7 @@ examples=(
   "close window"
   "go to workspace <number>"
   "<any keybind description>"
+  "press <keybind description>"
 )
 
 declare -A actions=(
