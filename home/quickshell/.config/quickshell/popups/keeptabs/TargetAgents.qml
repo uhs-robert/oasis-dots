@@ -31,6 +31,11 @@ Item {
     // 0 while the brackets stand wide of the CMD window, 1 once they are locked on.
     property real lock_close: 1
 
+    // TIE paints the primary text green, the same as done, so running contacts take the info blue to stay distinct.
+    function iff_color(state) {
+        return state === "running" ? Theme.info : Fmt.state_color(state, root.colors);
+    }
+
     function ensure_visible(i) {
         contact_list.positionViewAtIndex(i, ListView.Contain);
     }
@@ -106,7 +111,7 @@ Item {
                         Layout.minimumWidth: 0
                         elide: Text.ElideRight
                         text: ((root.target ? root.target.state : "") || "idle").toUpperCase()
-                        color: Fmt.state_color(root.target ? root.target.state : "", root.colors)
+                        color: root.iff_color(root.target ? root.target.state : "")
                         font.family: root.st.font_family
                         font.pixelSize: root.st.fs(-3)
                         font.bold: true
@@ -190,7 +195,11 @@ Item {
 
             CornerBrackets {
                 anchors.fill: parent
-                anchors.margins: -Math.round(8 * (1 - root.lock_close))
+                // The CMD window sits at the top of the view, so only the other three sides open wide; the top would reach the tab row.
+                anchors.topMargin: 0
+                anchors.leftMargin: -Math.round(8 * (1 - root.lock_close))
+                anchors.rightMargin: anchors.leftMargin
+                anchors.bottomMargin: anchors.leftMargin
                 color: root.lock
                 inset: 0
                 arm: 10
@@ -221,7 +230,7 @@ Item {
                 required property var modelData
                 required property int index
                 readonly property bool is_selected: contact.index === root.selected
-                readonly property color iff: Fmt.state_color(contact.modelData.state, root.colors)
+                readonly property color iff: root.iff_color(contact.modelData.state)
                 readonly property bool has_pct: contact.modelData.context_pct !== null && contact.modelData.context_pct !== undefined
 
                 width: contact_list.width
