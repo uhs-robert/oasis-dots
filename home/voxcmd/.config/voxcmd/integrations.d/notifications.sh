@@ -52,5 +52,6 @@ show_last_notification() {
   } < <(jq -j '(.app, .summary, .body, .icon) | (. // "") + "\u0000"' <<<"$latest")
   [ -z "$icon" ] || icon_args=(--icon="$icon")
   [ "$("$qs_ipc" call notifications get_dnd)" = true ] && urgency=critical
-  notify-send --transient --urgency="$urgency" --app-name="${app:-Notification}" "${icon_args[@]}" -- "$summary" "$body"
+  # notify-send reads C escapes in the body (g_strcompress), so its backslashes are doubled to come out as stored.
+  notify-send --transient --urgency="$urgency" --app-name="${app:-Notification}" "${icon_args[@]}" -- "$summary" "${body//\\/\\\\}"
 }
