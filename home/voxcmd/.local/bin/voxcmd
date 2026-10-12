@@ -85,10 +85,54 @@ apply_replacements() {
   printf '%s' "${text%" "}"
 }
 
+# Intents: the spoken forms of a verb that several integrations share, written {open}, {focus}, ... in a verb pattern.
+# The verb only narrows what is meant and the noun after it decides, so one form may serve several intents ("start"
+# opens an app, activates caffeine and starts a recording). intents.local appends forms of its own.
+declare -A intents=(
+  [open]="open|launch|start|bring up|pull up"
+  [show]="show|display|open|bring up|pull up"
+  [focus]="focus|go to|switch to|jump to|take me to"
+  [activate]="activate|enter|turn on|switch on|enable|engage|start"
+  [deactivate]="deactivate|exit|leave|turn off|switch off|disable|disengage|end"
+  [close]="close|quit|kill"
+  [set]="set|change|make|adjust"
+  [start]="start|begin|kick off"
+  [stop]="stop|end|finish"
+)
+
+# intents.local lines are "intent = form, form"; a name that is no intent yet declares one. Forms are normalized
+# like the phrase, which also keeps regex syntax out of them.
+load_local_intents() {
+  local file="$config_dir/intents.local" line intent form
+  [ -f "$file" ] || return 0
+  while IFS= read -r line || [ -n "$line" ]; do
+    [[ "$line" =~ ^[[:space:]]*(#|$) ]] && continue
+    [[ "$line" == *=* ]] || continue
+    intent=$(normalize "${line%%=*}")
+    # Placeholders, not intents: an intent of that name would replace the placeholder.
+    [[ "$intent" =~ ^[a-z0-9]+$ && "$intent" != target && "$intent" != number ]] || continue
+    while IFS= read -r form; do
+      form=$(normalize "$form")
+      [ -z "$form" ] || intents[$intent]="${intents[$intent]:+${intents[$intent]}|}$form"
+    done < <(tr ',' '\n' <<<"${line#*=}")
+  done <"$file"
+}
+
+# The spoken forms of an intent, one per line, for integrations that rebuild phrases from them.
+intent_forms() {
+  local -a forms
+  IFS='|' read -ra forms <<<"${intents[$1]-}"
+  [ "${#forms[@]}" = 0 ] || printf '%s\n' "${forms[@]}"
+}
+
 # Turns a verb pattern into an anchored ERE and the capture group holding the target (0 when none).
-# Bash ERE has no named or non-capturing groups, so the target group is found by counting the "(" before it.
+# Bash ERE has no named or non-capturing groups, so the target group is found by counting the "(" before it. Intents
+# expand first, each into one group of plain words, so that count includes theirs.
 compile_pattern() {
-  local pattern="^($1)\$" placeholder group_regex before opens
+  local pattern="^($1)\$" intent placeholder group_regex before opens
+  for intent in "${!intents[@]}"; do
+    pattern="${pattern//"{$intent}"/"(${intents[$intent]})"}"
+  done
   for placeholder in '{target}' '{number}'; do
     [[ "$pattern" == *"$placeholder"* ]] || continue
     [ "$placeholder" = '{target}' ] && group_regex='(.+)' || group_regex='([0-9]+)'
@@ -709,6 +753,8 @@ watch_recording() {
   [ -s "$transcript_file" ] || exit 0
   "$transcript_handler" "$(cat "$transcript_file")"
 }
+
+load_local_intents
 
 case "${1:-}" in
 "" | -h | --help) usage ;;

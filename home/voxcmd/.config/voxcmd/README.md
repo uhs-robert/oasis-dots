@@ -69,9 +69,9 @@ name="Windows"     # shown in notifications and the picker; defaults to the file
 confirm=0          # 1 asks before running any of this integration's actions
 
 # "action  pattern": the pattern is an ERE matched against the whole normalized phrase.
-# {target} captures free text, {number} digits; at most one per pattern.
+# {target} captures free text, {number} digits; at most one per pattern. {focus} is an intent (see Intents).
 verbs=(
-  "focus  (focus|switch to|go to) {target}"
+  "focus  {focus} {target}"
 )
 
 # Commands are eval'd with $id (the chosen candidate's id, else the target), $target (the spoken text) and
@@ -127,9 +127,36 @@ action_labels=0                  # leave the action word out of picker labels, f
 confirm_labels=('\bclose\b' '^lock\b')   # regexes (case-insensitive, jq syntax) on the option's label; a match asks Yes/No
 ```
 
-Patterns are bash ERE, so there are no non-capturing groups; voxcmd finds the target's group by counting the `(` before the placeholder, which is why only one placeholder is allowed. Order verbs from specific to general, as `media.sh` does with `play` before `play {target}`. Integration files are plain shell, so helper functions defined in the file are available to its commands. voxcmd sources the file inside a function, though, so a `declare` at its top level is gone by the time a command runs: declare an array a helper reads with `declare -g`, as `timers.sh` does for its number words.
+Patterns are bash ERE, so there are no non-capturing groups; voxcmd finds the target's group by counting the `(` before the placeholder (an escaped `\(` does not count), which is why only one placeholder is allowed. Intents are expanded before that count, so they can sit anywhere in a pattern. Order verbs from specific to general, as `media.sh` does with `play` before `play {target}`. Integration files are plain shell, so helper functions defined in the file are available to its commands. voxcmd sources the file inside a function, though, so a `declare` at its top level is gone by the time a command runs: declare an array a helper reads with `declare -g`, as `timers.sh` does for its number words.
 
 The tracked `integrations.d/` and `replacements.d/` ignore everything except what ships, so private integrations dropped into the stowed folders stay out of git.
+
+### Intents
+
+Verbs that mean the same thing in several integrations are written once, as an intent in braces: `{open} {target}`, `({activate} )?(the )?caffeine`. voxcmd expands each to a group of its spoken forms, so a synonym added to an intent reaches every integration that uses it. The verb narrows, the noun decides: "start" opens an app, turns on caffeine and starts a recording, and the words after it pick which.
+
+| Intent         | Spoken forms                                                                  |
+| -------------- | ----------------------------------------------------------------------------- |
+| `{open}`       | open, launch, start, bring up, pull up                                        |
+| `{show}`       | show, display, open, bring up, pull up                                        |
+| `{focus}`      | focus, go to, switch to, jump to, take me to                                  |
+| `{activate}`   | activate, enter, turn on, switch on, enable, engage, start                    |
+| `{deactivate}` | deactivate, exit, leave, turn off, switch off, disable, disengage, end        |
+| `{close}`      | close, quit, kill                                                             |
+| `{set}`        | set, change, make, adjust                                                     |
+| `{start}`      | start, begin, kick off                                                        |
+| `{stop}`       | stop, end, finish                                                             |
+
+The list lives in `voxcmd` itself (`intents`). Words of an integration's own, like Media's "play" and "pause" or Timers' "remind me", stay in its patterns. `intent_forms <intent>` prints an intent's forms one per line, for an integration that rebuilds phrases from them (`apps.sh` checks "<form> <target>" against the keybinds).
+
+`~/.config/voxcmd/intents.local` (ignored by git) adds forms without editing the repo, one intent per line, normalized like the phrase:
+
+```
+focus = hop over to, zip to
+close = shut
+```
+
+A name that is no intent yet declares a new one for your own integrations; `target` and `number` are placeholders and cannot be intents.
 
 ### Silent actions
 
