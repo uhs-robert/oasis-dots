@@ -10,6 +10,7 @@ import "../../theme/Watch.js" as W
 
 // One Daily column as a strip of the pause watch's bezel: warm segments lit from the day's low to its high on the week's scale,
 // a thin cold strip beside it lit to the rain chance, readings in the LCD digits; the selected day sits in a watch-face panel.
+// sub 1 lights wind speed with a gust strip beside it, sub 2 the UV index, sub 3 the sunshine hours, the rain chance reads as text under every sub.
 Item {
     id: root
 
@@ -21,6 +22,9 @@ Item {
     // The week's coldest low and warmest high, shared by every column so ranges compare across days.
     property real scale_min: 0
     property real scale_max: 1
+    property int sub: 0
+    // The window's strongest gust, so wind columns compare across days.
+    property real wind_max: 1
 
     readonly property real span: Math.max(1, root.scale_max - root.scale_min)
     readonly property real lit_alpha: root.selected ? 1 : 0.6
@@ -33,6 +37,41 @@ Item {
     // Every column has the same height, so the count matches across days and the segments line up into week-wide temperature bands.
     readonly property int seg_count: Math.max(6, Math.min(24, Math.floor((strips.height + root.seg_gap) / (root.seg_h + root.seg_gap))))
     readonly property int rain_lit: root.day ? Math.round(root.day.pop / 100 * root.seg_count) : 0
+
+    readonly property string top_text: {
+        if (!root.day) return "--";
+        if (root.sub === 1) return String(Math.round(root.day.wind_speed_max));
+        if (root.sub === 2) return root.day.uv_max.toFixed(1);
+        if (root.sub === 3) return root.day.sunshine_hours.toFixed(1) + "h";
+        return String(Math.round(root.day.max));
+    }
+    readonly property string bottom_text: {
+        if (!root.day) return "--";
+        return String(Math.round(root.sub === 1 ? root.day.wind_gusts_max : root.day.min));
+    }
+
+    // Yellow at the cold end to red at the hot end, as the watch's warm bezel runs.
+    function warm_ramp(from_bottom) {
+        return W.warm[7 - Math.round(from_bottom * 7 / Math.max(1, root.seg_count - 1))];
+    }
+
+    function main_color(from_bottom) {
+        if (root.sub === 1) return Style.wk.bar_on;
+        if (root.sub === 3) return W.warm[6];
+        return root.warm_ramp(from_bottom);
+    }
+
+    function main_lit(from_bottom) {
+        if (!root.day) return false;
+        if (root.sub === 1) return root.fraction_lit(from_bottom, root.day.wind_speed_max / root.wind_max);
+        if (root.sub === 2) return root.fraction_lit(from_bottom, root.day.uv_max / 12);
+        if (root.sub === 3) return root.fraction_lit(from_bottom, root.day.sunshine_hours / 14);
+        return root.temp_lit(from_bottom);
+    }
+
+    function fraction_lit(from_bottom, fraction) {
+        return from_bottom < Math.round(Math.max(0, Math.min(1, fraction)) * root.seg_count);
+    }
 
     // Inclusive overlap, so a day whose low equals its high still lights the segment holding it.
     function temp_lit(from_bottom) {
@@ -93,7 +132,16 @@ Item {
         }
 
         DigitText {
-            text: root.day ? String(Math.round(root.day.max)) : "--"
+            text: root.top_text
+        }
+
+        Text {
+            visible: root.sub === 1
+            Layout.alignment: Qt.AlignHCenter
+            text: "▲"
+            rotation: root.day ? root.day.wind_dir : 0
+            color: root.text_color
+            font.pixelSize: Style.fs(-3)
         }
 
         Item {
@@ -109,22 +157,22 @@ Item {
 
                 SegmentColumn {
                     seg_w: root.warm_w
-                    // Yellow at the cold end to red at the hot end, as the watch's warm bezel runs.
-                    color_of: from_bottom => W.warm[7 - Math.round(from_bottom * 7 / Math.max(1, root.seg_count - 1))]
-                    lit_of: from_bottom => root.temp_lit(from_bottom)
+                    color_of: from_bottom => root.main_color(from_bottom)
+                    lit_of: from_bottom => root.main_lit(from_bottom)
                 }
 
                 SegmentColumn {
-                    visible: root.width >= 40
+                    visible: root.width >= 40 && root.sub <= 1
                     seg_w: root.cold_w
-                    color_of: from_bottom => W.cold_lit[Math.round(from_bottom * 7 / Math.max(1, root.seg_count - 1))]
-                    lit_of: from_bottom => from_bottom < root.rain_lit
+                    color_of: from_bottom => root.sub === 1 ? Style.wk.lit : W.cold_lit[Math.round(from_bottom * 7 / Math.max(1, root.seg_count - 1))]
+                    lit_of: from_bottom => root.sub === 1 ? root.fraction_lit(from_bottom, root.day ? root.day.wind_gusts_max / root.wind_max : 0) : from_bottom < root.rain_lit
                 }
             }
         }
 
         DigitText {
-            text: root.day ? String(Math.round(root.day.min)) : "--"
+            visible: root.sub <= 1
+            text: root.bottom_text
             opacity: 0.8
         }
 

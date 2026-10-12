@@ -41,7 +41,7 @@ Item {
     // Modern: raised day columns with a pill label and a range track.
     readonly property bool pill_columns: Style.weather_header === "hero" && root.sub === 0
     // Each layout's own Temp & Precip column; the placeholders stay off (false &&) until their column draws something.
-    readonly property bool watch_columns: Style.weather_header === "watch" && root.sub === 0
+    readonly property bool watch_columns: Style.weather_header === "watch"
 
     readonly property bool lsp_columns: Style.weather_header === "lsp" && root.sub === 0
 
@@ -383,6 +383,8 @@ Item {
                             label: root.day_label(day_col.modelData, day_col.day_index)
                             selected: day_col.day_index === root.day_cursor
                             col_w: day_col.width
+                            sub: root.sub
+                            wind_max: root.wind_max
                             scale_min: root.week_temp_range.min
                             scale_max: root.week_temp_range.max
                         }

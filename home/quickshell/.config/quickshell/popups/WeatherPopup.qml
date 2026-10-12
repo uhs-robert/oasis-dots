@@ -121,7 +121,7 @@ Popup {
 
         towers: { prefix: "Tower", views: [] },
 
-        watch: { prefix: "Watch", views: [] },
+        watch: { prefix: "Watch", views: ["Hourly", "SunMoon"] },
 
         weatherstar: { prefix: "Ws", views: ["Hourly", "SunMoon"] },
 
