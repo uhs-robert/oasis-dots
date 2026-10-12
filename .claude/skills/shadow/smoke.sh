@@ -258,7 +258,7 @@ for style in "${styles[@]}"; do
   fi
 
   q popup open battery >/dev/null
-  wait_layer quickshell-popup && "$shadow" wait "$name" battery >/dev/null && {
+  wait_layer quickshell-popup && "$shadow" wait "$name" popup battery >/dev/null && {
     shoot "$style" popup quickshell-popup
   } || missing+=("MISS $style popup")
   q popup close >/dev/null
@@ -266,8 +266,7 @@ for style in "${styles[@]}"; do
   sleep 0.3
 
   "$shadow" voxtype "$name" recording
-  wait_layer quickshell-osd && {
-    sleep 0.3
+  wait_layer quickshell-osd && "$shadow" wait "$name" osd voxtype >/dev/null && {
     shoot "$style" osd quickshell-osd
   } || missing+=("MISS $style osd")
   "$shadow" voxtype "$name" idle
