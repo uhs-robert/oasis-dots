@@ -4,6 +4,7 @@ import QtQuick.Effects
 import QtQuick.Layouts
 import Quickshell
 import Quickshell.Hyprland
+import Quickshell.Io
 import Quickshell.Wayland
 import Quickshell.Services.Pipewire
 import "../theme"
@@ -106,7 +107,22 @@ PanelWindow {
     WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
 
     Behavior on reveal {
-        NumberAnimation { duration: 140; easing.type: Easing.OutCubic }
+        NumberAnimation { id: reveal_anim; duration: 140; easing.type: Easing.OutCubic }
+    }
+
+    // Showing with its slide-in and any console art's entrance (the alert "!" pop) done, for scripts that act once it is drawn.
+    readonly property bool settled: root.wanted && root.reveal === 1 && !reveal_anim.running
+        && !(console_osd_loader.item && console_osd_loader.item.busy)
+    readonly property string shown_what: root.showing_vox ? "voxtype" : root.kind
+
+    IpcHandler {
+        target: "osd"
+
+        // "closed", "opening <what>" while it slides in, or "open <what>" once drawn; <what> is volume, brightness or voxtype.
+        function state(): string {
+            if (!root.wanted) return "closed";
+            return (root.settled ? "open " : "opening ") + root.shown_what;
+        }
     }
 
     function hold_screen() {
