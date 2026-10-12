@@ -373,6 +373,18 @@ keys() {
   "${client_env[@]}" sh -c 'case $WAYLAND_DISPLAY in "$0"/*) exec wtype "$@" ;; *) echo "shadow: WAYLAND_DISPLAY outside $0" >&2; exit 1 ;; esac' "$runtime" "$@"
 }
 
+# Exit 0 when under 1% of the image's pixels differ from its most common colour.
+is_uniform() {
+  python3 - "$1" <<'PY'
+import sys
+from PIL import Image
+im = Image.open(sys.argv[1]).convert("RGB")
+colors = im.getcolors(im.size[0] * im.size[1])
+top = max(colors)[0]
+sys.exit(0 if im.size[0] * im.size[1] - top < 0.01 * im.size[0] * im.size[1] else 1)
+PY
+}
+
 shot() {
   set_name "${1:-}"
   shift
@@ -409,6 +421,28 @@ shot() {
     "${client_env[@]}" grim -g "$x0,$y0 $((w + x - x0 + pad))x$((h + y - y0 + pad))" "$out"
   fi
   echo "$out"
+  # A drawn surface always has text or edges, so a near-uniform layer capture means nothing was drawn yet.
+  if [[ -n $ns ]] && is_uniform "$out"; then
+    die "'$ns' captured blank (still animating in, or its content failed to load; check logs/qs.log). For popups, run shadow.sh wait first"
+  fi
+}
+
+# Polls the popup IPC until the popup reports itself fully drawn (or closed), so a shot or key press never lands mid-animation.
+wait_popup() {
+  set_name "${1:-}"
+  shift
+  local want=${1:?usage: shadow.sh wait <name> <popup>|closed [--timeout SECONDS]} timeout=5 state deadline
+  shift
+  [[ ${1:-} != --timeout ]] || timeout=${2:?--timeout needs seconds}
+  [[ $timeout =~ ^[0-9]+$ ]] || die "--timeout must be whole seconds"
+  [[ $want == closed ]] || want="open $want"
+  deadline=$(($(now_ms) + timeout * 1000))
+  while :; do
+    state=$(ipc "$name" popup state 2>&1) || die "popup state failed ($state); the bar may predate the popup state IPC"
+    [[ $state == "$want" ]] && return 0
+    (($(now_ms) < deadline)) || die "popup is '$state' after ${timeout}s, not '$want'"
+    sleep 0.05
+  done
 }
 
 set_voxtype() {
@@ -521,7 +555,7 @@ down() {
   fi
 }
 
-usage="usage: shadow.sh {up <name> [--size WxH] [<branch>...]|ipc <name> <ipc call args>|keys <name> <wtype args>|voxtype <name> {idle|recording|transcribing}|hyprctl <name> <args>|shot <name> [<layer namespace>] [--pad N] [--out PATH]|status [<name>]|down <name> [--keep]}"
+usage="usage: shadow.sh {up <name> [--size WxH] [<branch>...]|ipc <name> <ipc call args>|keys <name> <wtype args>|voxtype <name> {idle|recording|transcribing}|hyprctl <name> <args>|wait <name> {<popup>|closed} [--timeout SECONDS]|shot <name> [<layer namespace>] [--pad N] [--out PATH]|status [<name>]|down <name> [--keep]}"
 cmd=${1:-}
 (($# > 0)) && shift
 case $cmd in
@@ -534,6 +568,7 @@ hyprctl)
   shift
   shadow_hyprctl "$@"
   ;;
+wait) wait_popup "$@" ;;
 shot) shot "$@" ;;
 status) status "$@" ;;
 down) down "$@" ;;

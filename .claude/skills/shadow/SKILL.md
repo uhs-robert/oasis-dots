@@ -10,6 +10,7 @@ description: Run the full Quickshell bar in an invisible, isolated nested Hyprla
 ```
 .claude/skills/shadow/shadow.sh up <name> [--size WxH] [<branch>...]   # default 1920x1080; bar from the main checkout, or from branches merged on origin/main
 .claude/skills/shadow/shadow.sh ipc <name> popup open weather   # qs ipc call; `ipc <name> show` lists targets
+.claude/skills/shadow/shadow.sh wait <name> weather          # until the popup is fully drawn (`closed` waits for none); default --timeout 5
 .claude/skills/shadow/shadow.sh keys <name> 2              # wtype args, e.g. `-k Tab`, `-M ctrl -k l -m ctrl`
 .claude/skills/shadow/shadow.sh voxtype <name> recording   # idle|recording|transcribing: the only way to raise the OSD, since there is no PipeWire
 .claude/skills/shadow/shadow.sh hyprctl <name> layers -j
@@ -22,7 +23,7 @@ description: Run the full Quickshell bar in an invisible, isolated nested Hyprla
 
 `--size WxH` sets the output size, e.g. `--size 1080x1920` for the owner's portrait monitor; use it instead of an offscreen render for odd sizes. It is recorded in the shadow's state, `status` prints it, and `shot` captures the output at that size. Layout-dependent checks (portrait lock, narrow bars) must run at the matching size.
 
-`<name>` is at most 8 characters (lowercase, digits, dashes): Hyprland's socket path under `/tmp/shadow-$UID-<name>` must fit 107 chars. With branches, `up` runs `owner-test-bar.sh build shadow-<name> <branch>...` (worktree, merge, `just check`; it never touches the live bar) and `down` removes that test bar again. Without branches it copies the main checkout's config, which may be behind `origin/main`; pass `main` to get `origin/main`. Either way the bar runs from a `cp -rL` copy in `~/.cache/dotfiles/shadow/<name>/qs`, so editing or removing the source does not change it; run `down` and `up` again to pick up changes. Shots default to `~/.cache/dotfiles/shadow/<name>/shots/`; Read them before `down`, which removes the shadow's whole folder (logs and shots included) unless given `--keep`. A failed `up` always keeps its logs.
+`<name>` is at most 8 characters (lowercase, digits, dashes): Hyprland's socket path under `/tmp/shadow-$UID-<name>` must fit 107 chars. With branches, `up` runs `owner-test-bar.sh build shadow-<name> <branch>...` (worktree, merge, `just check`; it never touches the live bar) and `down` removes that test bar again. Without branches it copies the main checkout's config, which may be behind `origin/main`; pass `main` to get `origin/main`. Either way the bar runs from a `cp -rL` copy in `~/.cache/dotfiles/shadow/<name>/qs`, so editing or removing the source does not change it; run `down` and `up` again to pick up changes. A layer `shot` that comes out near-uniform fails as blank (still animating in, or its content failed to load) and keeps the file. Shots default to `~/.cache/dotfiles/shadow/<name>/shots/`; Read them before `down`, which removes the shadow's whole folder (logs and shots included) unless given `--keep`. A failed `up` always keeps its logs.
 
 `up` takes about 2.5 s (plus ~20 s for a branch build and its `just check`), and a running shadow costs about 460 MB PSS and under 1% of a core idle. Run `down` when done.
 

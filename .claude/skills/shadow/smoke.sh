@@ -258,8 +258,7 @@ for style in "${styles[@]}"; do
   fi
 
   q popup open battery >/dev/null
-  wait_layer quickshell-popup && {
-    sleep 0.6
+  wait_layer quickshell-popup && "$shadow" wait "$name" battery >/dev/null && {
     shoot "$style" popup quickshell-popup
   } || missing+=("MISS $style popup")
   q popup close >/dev/null
