@@ -226,7 +226,7 @@ Item {
         anchors.bottom: parent.bottom
         anchors.leftMargin: center_island.capsule ? center_island.capsule_radius : 6
         anchors.rightMargin: center_island.capsule ? center_island.capsule_radius : 6
-        anchors.bottomMargin: center_island.capsule ? center_island.border_width + 1 : center_island.inset_color.a > 0 ? center_island.inset_gap + center_island.inset_width : 0
+        anchors.bottomMargin: center_island.capsule ? center_island.border_width + 1 : center_island.window ? center_island.height - center_island.window_bottom + center_island.window_edge : center_island.inset_color.a > 0 ? center_island.inset_gap + center_island.inset_width : 0
         active: MediaState.playing && root.has_center
     }
 
