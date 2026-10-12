@@ -5,6 +5,7 @@
 function overrides(t, ctx) {
     return {
         wait_anim: "ping",
+        done_anim: "ring",
         text_muted: Qt.alpha(t.fg_strong, 0.55),
         text_dim: Qt.alpha(t.fg_strong, 0.7),
         text_fg: Qt.alpha(t.fg_strong, 0.86),

@@ -22,10 +22,10 @@ Item {
     // These redraw the glyph themselves, so the module hides the real one while they play.
     readonly property bool hides_glyph: root.mode === "rumble" || root.mode === "transmission" || root.mode === "hev_alert" || root.mode === "atb"
     // Drawn beneath the glyph row so the glyph and its count badge stay on top.
-    readonly property bool under: ["pressanykey", "rumble", "transmission", "scan", "comms", "ping", "hev_alert"].indexOf(root.mode) !== -1
+    readonly property bool under: ["pressanykey", "rumble", "transmission", "scan", "comms", "ping", "hev_alert", "mirage"].indexOf(root.mode) !== -1
     readonly property real strength: root.nudge ? 0.6 : 1
     readonly property real half: root.glyph_size / 2
-    readonly property var durations: ({ bubble: [1200, 700], cursor: [1200, 600], pressanykey: [1400, 700], advance: [1400, 600], hand: [1200, 600], alert: [1000, 600], rumble: [1000, 450], transmission: [1200, 500], scan: [1300, 700], comms: [1200, 500], ping: [1400, 900], hev_alert: [900, 600], exclaim: [1000, 600], atb: [1600, 1000] })
+    readonly property var durations: ({ bubble: [1200, 700], cursor: [1200, 600], pressanykey: [1400, 700], advance: [1400, 600], hand: [1200, 600], alert: [1000, 600], rumble: [1000, 450], transmission: [1200, 500], scan: [1300, 700], comms: [1200, 500], ping: [1400, 900], hev_alert: [900, 600], exclaim: [1000, 600], atb: [1600, 1000], mirage: [1400, 800] })
     readonly property int duration: (root.durations[root.mode] || root.durations.bubble)[root.nudge ? 1 : 0]
     property real elapsed
     readonly property real tail: 1 - root.phase(root.duration - 150, 150)
@@ -73,7 +73,7 @@ Item {
     }
 
     Loader {
-        sourceComponent: ({ bubble: bubble_c, cursor: cursor_c, pressanykey: pressanykey_c, advance: advance_c, hand: hand_c, alert: alert_c, rumble: rumble_c, transmission: transmission_c, scan: scan_c, comms: comms_c, ping: ping_c, hev_alert: hev_alert_c, exclaim: exclaim_c, atb: atb_c })[root.mode] || bubble_c
+        sourceComponent: ({ bubble: bubble_c, cursor: cursor_c, pressanykey: pressanykey_c, advance: advance_c, hand: hand_c, alert: alert_c, rumble: rumble_c, transmission: transmission_c, scan: scan_c, comms: comms_c, ping: ping_c, hev_alert: hev_alert_c, exclaim: exclaim_c, atb: atb_c, mirage: mirage_c })[root.mode] || bubble_c
     }
 
     Component {
@@ -343,6 +343,52 @@ Item {
                 color: Style.pal.label
                 arm: 5
                 visible: root.step(120) % 2 === 0
+            }
+        }
+    }
+
+    // Heat shimmer: three wavy lines rise under the glyph, drifting sideways and fading in turn.
+    Component {
+        id: mirage_c
+
+        Item {
+            id: mirage
+            readonly property real reach: Math.max(4, Math.min(root.glyph_half + 3, root.room_left - 1, root.room_right - 1))
+            readonly property real base_y: Math.min(root.half + 1, root.room_down - 5)
+            readonly property int points: 14
+            // Staggered so the last line has finished fading before the nudge's shorter duration ends.
+            readonly property real stagger: root.nudge ? 100 : 180
+            readonly property real line_length: root.nudge ? 450 : 800
+
+            function wave(y0, shift) {
+                const out = [];
+                for (let i = 0; i <= mirage.points; i++) {
+                    const u = i / mirage.points;
+                    out.push(Qt.point(-mirage.reach + 2 * mirage.reach * u, y0 + 1.1 * Math.sin(u * 3 * Math.PI + shift)));
+                }
+                return out;
+            }
+
+            // A Repeater only takes Item delegates, so each line is its own Shape.
+            Repeater {
+                model: [0, 1, 2]
+
+                Shape {
+                    id: line
+                    required property int modelData
+                    readonly property real p: root.phase(line.modelData * mirage.stagger, mirage.line_length)
+                    preferredRendererType: Shape.CurveRenderer
+
+                    ShapePath {
+                        fillColor: "transparent"
+                        strokeColor: Qt.alpha(root.color, line.p > 0 && line.p < 1 ? 0.7 * root.strength * Math.sin(line.p * Math.PI) : 0)
+                        strokeWidth: 1
+
+                        PathPolyline {
+                            path: mirage.wave(mirage.base_y - line.modelData * 3 - 3 * line.p, root.elapsed / 90 + line.modelData * 1.7)
+                        }
+                    }
+                }
             }
         }
     }
