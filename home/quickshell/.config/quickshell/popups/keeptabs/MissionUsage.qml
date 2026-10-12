@@ -70,7 +70,7 @@ Item {
                     required property var modelData
 
                     width: limit_list.width
-                    height: Style.px(76)
+                    height: Math.max(Style.px(76), limit_text.implicitHeight + 8)
 
                     Goldeneye.GaugeDial {
                         id: dial
@@ -82,6 +82,7 @@ Item {
                     }
 
                     ColumnLayout {
+                        id: limit_text
                         anchors.left: dial.right
                         anchors.leftMargin: 14
                         anchors.right: parent.right

@@ -103,9 +103,9 @@ Item {
                 Goldeneye.ReadoutLine {
                     Layout.fillWidth: true
                     Layout.preferredWidth: 1
-                    label: "USED"
+                    label: root.has_context ? "USED / " + Fmt.fmt_tokens(root.current.context_window).toUpperCase() : "USED"
                     digits: root.used_parts.digits
-                    unit: root.has_context ? root.used_parts.suffix + "/" + Fmt.fmt_tokens(root.current.context_window) : ""
+                    unit: root.has_context ? root.used_parts.suffix : ""
                 }
             }
         }
