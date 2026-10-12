@@ -54,9 +54,9 @@ Item {
             id: card
             required property var modelData
             required property int index
-            readonly property string state: card.modelData.state || "idle"
+            readonly property string session_state: card.modelData.state || "idle"
             readonly property bool has_context: card.modelData.context_pct !== null && card.modelData.context_pct !== undefined
-            readonly property color accent: root.pill_color(card.state)
+            readonly property color accent: root.pill_color(card.session_state)
 
             width: session_list.width
             height: Style.px(52)
@@ -69,7 +69,7 @@ Item {
                 anchors.verticalCenter: parent.verticalCenter
                 size: Style.px(34)
                 glyph: (card.modelData.agent || "claude") === "claude" ? "\u{f06a9}" : "\u{f0169}"
-                dimmed: card.state === "idle"
+                dimmed: card.session_state === "idle"
             }
 
             ColumnLayout {
@@ -102,7 +102,7 @@ Item {
                         Layout.preferredWidth: pill_text.implicitWidth + 12
                         Layout.preferredHeight: pill_text.implicitHeight + 2
                         radius: height / 2
-                        color: card.state === "idle" ? "transparent" : Qt.alpha(card.accent, 0.2)
+                        color: card.session_state === "idle" ? "transparent" : Qt.alpha(card.accent, 0.2)
 
                         Row {
                             anchors.centerIn: parent
@@ -110,7 +110,7 @@ Item {
 
                             Text {
                                 id: spinner
-                                visible: card.state === "running"
+                                visible: card.session_state === "running"
                                 text: "\u{f021}"
                                 color: card.accent
                                 font.family: root.st.font_family
@@ -128,11 +128,11 @@ Item {
 
                             Text {
                                 id: pill_text
-                                text: card.state === "done" ? "\u{f00c} Done" : card.state === "waiting" ? "Waiting" : card.state === "running" ? "Running" : "Idle"
+                                text: card.session_state === "done" ? "\u{f00c} Done" : card.session_state === "waiting" ? "Waiting" : card.session_state === "running" ? "Running" : "Idle"
                                 color: card.accent
                                 font.family: root.st.font_family
                                 font.pixelSize: root.st.fs(-3)
-                                font.bold: card.state !== "idle"
+                                font.bold: card.session_state !== "idle"
                             }
                         }
                     }
@@ -146,7 +146,17 @@ Item {
                         Layout.fillWidth: true
                         Layout.minimumWidth: 0
                         elide: Text.ElideRight
-                        text: (card.modelData.agent || "claude") + " · " + (card.modelData.project || "") + " · " + (card.modelData.where || "") + " · " + Fmt.age(card.modelData.since)
+                        text: (card.modelData.agent || "claude") + " · " + (card.modelData.project || "") + " · " + (card.modelData.where || "")
+                        color: card.selected ? root.st.tab_active_fg : root.st.text_muted
+                        opacity: card.selected ? 0.75 : 1
+                        font.family: root.st.font_family
+                        font.pixelSize: root.st.fs(-3)
+                    }
+
+                    // Its own slot, so the age is never the part that gets elided.
+                    Text {
+                        horizontalAlignment: Text.AlignRight
+                        text: Fmt.age(card.modelData.since)
                         color: card.selected ? root.st.tab_active_fg : root.st.text_muted
                         opacity: card.selected ? 0.75 : 1
                         font.family: root.st.font_family
