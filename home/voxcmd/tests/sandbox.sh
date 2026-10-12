@@ -24,7 +24,10 @@
 #   qs-ipc call clickhints open|dismiss|state
 #                                     the bar's numbered overlay. open logs a "clickhints-open" line holding the
 #                                     pending-pick.json it finds and the spec file's JSON, then answers through the
-#                                     spec's result FIFO as the bar would. state prints open between open and dismiss.
+#                                     spec's result FIFO as the bar would. state prints what $SANDBOX_DIR/clickhints-state
+#                                     holds ("closed" when absent), which open sets to "open" and dismiss to "closed".
+#                                     "qs-ipc call popup state" does the same from $SANDBOX_DIR/popup-state, such as
+#                                     "open weather".
 #                                       SANDBOX_CLICKHINTS_ANSWER  the line written to the FIFO (a number or a label;
 #                                                                  empty is a cancel)
 #                                       SANDBOX_CLICKHINTS_OPEN    what open prints, "ok" by default; anything else
@@ -33,8 +36,22 @@
 #                                                                  waiting on the user does
 #   voxcmd-pick, voxcmd-autostop      voxcmd finds these beside itself, not on PATH, so a test copies the package and
 #                                     symlinks its two onto $SANDBOX_DIR/bin's. voxcmd-pick logs and "picks" the first
-#                                     choice's id; voxcmd-autostop exits 1 (no verdict)
-#   setsid                            logs "setsid owner=$VOXCMD_RECORDING_OWNER_FILE <args>" and starts nothing
+#                                     choice's id. voxcmd-autostop gives no verdict (exit 1) unless a voxtype turn is
+#                                     being recorded (see below); --check passes unless SANDBOX_AUTOSTOP_OFF holds the
+#                                     reason it is off
+#   setsid                            logs "setsid owner=$VOXCMD_RECORDING_OWNER_FILE <args>" and starts nothing,
+#                                     unless SANDBOX_SETSID_RUN=1, which also runs the command (a voice session's
+#                                     watcher)
+#   voxtype record start|stop|cancel  logged. With SANDBOX_VOXTYPE_TURNS (a file of queued turns, one per line) it
+#                                     also acts like voxtype: start takes the next turn, sets the state file under
+#                                     $XDG_RUNTIME_DIR/voxtype to recording, and a turn that is speech writes itself
+#                                     to the --file after SANDBOX_VOXTYPE_SPEAK_SECS (0.4) and goes idle. SILENCE (and
+#                                     an empty queue) is no speech, EMPTY is speech that transcribes to nothing, HOLD
+#                                     records until stopped or cancelled, FAIL is a start that fails. voxcmd-autostop
+#                                     then reads the turn from $SANDBOX_DIR/voxtype-turn: SILENCE is its no-speech
+#                                     exit (3) after half a second, any other turn waits on `$SANDBOX_AUTOSTOP_SLEEP 30`
+#                                     (default sleep; a copy under another name lets a test end leftovers by name).
+#                                     It logs its VOXCMD_AUTOSTOP_NO_SPEECH_SECS as "autostop no_speech_secs=<n>"
 #
 # Hyprland's dispatch, eval and keyword are logged and never sent.
 #
@@ -159,15 +176,16 @@ qs-ipc)
       exit 0
     fi
     printf 'clickhints-open %s\n' "$(jq -c '{pending_kind: ., spec: input}' "$XDG_RUNTIME_DIR/voxcmd/pending-pick.json" "$4")" >>"$SANDBOX_DIR/calls.log"
-    : >"$SANDBOX_DIR/clickhints-open"
+    echo open >"$SANDBOX_DIR/clickhints-state"
     if [ -z "${SANDBOX_CLICKHINTS_HOLD-}" ]; then
       fifo=$(jq -r .result_path "$4")
       (printf '%s\n' "${SANDBOX_CLICKHINTS_ANSWER-}" >"$fifo") >/dev/null 2>&1 &
     fi
     echo ok
     ;;
-  *"call clickhints dismiss"*) rm -f "$SANDBOX_DIR/clickhints-open" ;;
-  *"call clickhints state"*) if [ -e "$SANDBOX_DIR/clickhints-open" ]; then echo open; else echo closed; fi ;;
+  *"call clickhints dismiss"*) echo closed >"$SANDBOX_DIR/clickhints-state" ;;
+  *"call clickhints state"*) cat "$SANDBOX_DIR/clickhints-state" 2>/dev/null || echo closed ;;
+  *"call popup state"*) cat "$SANDBOX_DIR/popup-state" 2>/dev/null || echo closed ;;
   *"confirm ask"* | *"sound play"*) echo ok ;;
   esac
   ;;
@@ -191,8 +209,49 @@ voxcmd-pick)
   for last; do :; done
   printf '%s\n' "$last" | jq -r '.[0].id'
   ;;
-voxcmd-autostop) exit 1 ;;
-setsid) log "owner=${VOXCMD_RECORDING_OWNER_FILE-} $*" ;;
+voxcmd-autostop)
+  if [ "${1-}" = --check ]; then
+    [ -z "${SANDBOX_AUTOSTOP_OFF-}" ] || { echo "$SANDBOX_AUTOSTOP_OFF"; exit 1; }
+    exit 0
+  fi
+  [ -e "$SANDBOX_DIR/voxtype-turn" ] || exit 1
+  log "no_speech_secs=${VOXCMD_AUTOSTOP_NO_SPEECH_SECS:-default}"
+  if [ "$(cat "$SANDBOX_DIR/voxtype-turn")" = SILENCE ]; then
+    sleep 0.5
+    exit 3
+  fi
+  exec "${SANDBOX_AUTOSTOP_SLEEP:-sleep}" 30
+  ;;
+setsid)
+  log "owner=${VOXCMD_RECORDING_OWNER_FILE-} $*"
+  [ -z "${SANDBOX_SETSID_RUN-}" ] || exec "$@"
+  ;;
+voxtype)
+  log "$@"
+  [ -n "${SANDBOX_VOXTYPE_TURNS-}" ] || exit 0
+  state_file=$XDG_RUNTIME_DIR/voxtype/state
+  case "${1-} ${2-}" in
+  "record start")
+    file=${3#--file=}
+    turn=$(head -n 1 "$SANDBOX_VOXTYPE_TURNS")
+    sed -i 1d "$SANDBOX_VOXTYPE_TURNS"
+    [ -n "$turn" ] || turn=SILENCE
+    [ "$turn" != FAIL ] || exit 1
+    echo "$turn" >"$SANDBOX_DIR/voxtype-turn"
+    echo recording >"$state_file"
+    if [ "$turn" != SILENCE ] && [ "$turn" != HOLD ]; then
+      (
+        sleep "${SANDBOX_VOXTYPE_SPEAK_SECS:-0.4}"
+        if [ "$(cat "$state_file")" = recording ]; then
+          [ "$turn" = EMPTY ] || printf '%s' "$turn" >"$file"
+          echo idle >"$state_file"
+        fi
+      ) >/dev/null 2>&1 &
+    fi
+    ;;
+  "record cancel" | "record stop") echo idle >"$state_file" ;;
+  esac
+  ;;
 powerprofilesctl)
   log "$@"
   case "${1-}" in

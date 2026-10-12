@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
-# Tests for voxcmd's click support: the awk matcher on synthetic tesseract output, the coordinate mapping, click-ocr's
-# strips, and click.sh's routing through `voxcmd --dry-run`. Run from anywhere: home/voxcmd/tests/run.sh
+# Tests for voxcmd: the click matcher, mapping and OCR strips, click.sh routing, numbered-pick replies, and voice sessions
+# (click mode). Run from anywhere: home/voxcmd/tests/run.sh
 #
 # Nothing here clicks, moves the pointer or captures the screen: it runs inside sandbox.sh, whose stubs stand in for
 # grim, magick, tesseract, hyprctl, wlrctl, wl-kbptr and notify-send and log their calls, and voxcmd only ever runs
-# with --dry-run. All fixture text is made up.
+# with --dry-run, except in the session tests, which run it against the sandbox's voxtype, auto-stop and bar. All
+# fixture text is made up.
 # Fixtures are read by name inside the strings check evals.
 # shellcheck disable=SC2034
 set -uo pipefail
@@ -995,6 +996,395 @@ click_box() (
 check "click.sh places an option from its id" "[[ \$(click_box '150,75,left,100,50,60,20') == '100 50 60 20' ]]"
 check "click.sh has no box for an id without one" "! click_box '150,75,left' >/dev/null"
 check "click.sh asks voxcmd-hints" "grep -q '^pick_command=voxcmd-hints' '$package/.config/voxcmd/integrations.d/click.sh'"
+
+# ---- narrowing replies by box position ------------------------------------------------------------------------------
+
+echo "== direction replies"
+waiter=$root/voxcmd-hints
+"$waiter" 60 &
+waiter_pid=$!
+# Four boxes: two on the top row (the right one a few pixels lower), one lower left, one far lower right.
+jq -n -c --argjson pid "$waiter_pid" --arg fifo "$reply_fifo" \
+  '{pid: $pid, fifo: $fifo, label: "Which one?", kind: "hints", expansions: {},
+    choices: [{id: "a", label: "1. Next - top left", box: [100, 50, 60, 20]}, {id: "b", label: "2. Next - top right", box: [300, 53, 70, 20]},
+      {id: "c", label: "3. Next - bottom left", box: [100, 300, 80, 20]}, {id: "d", label: "4. Next - bottom right", box: [500, 400, 80, 20]}]}' \
+  >"$XDG_RUNTIME_DIR/voxcmd/pending-pick.json"
+check "'the top one' takes the topmost, and the left of a tie" "grep -q 'result:      pick: 1. ' <<<\"\$(reply_dry 'the top one')\""
+check "'top' alone is the same, though every label says 'top'" "grep -q 'result:      pick: 1. ' <<<\"\$(reply_dry top)\""
+check "'the bottom one' takes the lowest edge" "grep -q 'result:      pick: 4. ' <<<\"\$(reply_dry 'the bottom one')\""
+check "'the left one' takes the leftmost edge, the topmost of a tie" "grep -q 'result:      pick: 1. ' <<<\"\$(reply_dry 'the left one')\""
+check "'the right one' takes the rightmost edge" "grep -q 'result:      pick: 4. ' <<<\"\$(reply_dry 'the right one')\""
+check "'rightmost' and 'lower' are directions too" "grep -q 'pick: 4. ' <<<\"\$(reply_dry rightmost)\" && grep -q 'pick: 4. ' <<<\"\$(reply_dry lower)\""
+check "'the first one' and 'the last one' are still the numbers" "grep -q 'pick: 1. ' <<<\"\$(reply_dry 'the first one')\" && grep -q 'pick: 4. ' <<<\"\$(reply_dry 'the last one')\""
+jq -c '.choices |= map(del(.box))' "$XDG_RUNTIME_DIR/voxcmd/pending-pick.json" >"$root/nobox.json"
+mv "$root/nobox.json" "$XDG_RUNTIME_DIR/voxcmd/pending-pick.json"
+check "boxless choices cannot be told apart by direction" "grep -q 'result:      unclear' <<<\"\$(reply_dry 'the right one')\""
+kill "$waiter_pid" 2>/dev/null
+wait "$waiter_pid" 2>/dev/null
+rm -f "$XDG_RUNTIME_DIR/voxcmd/pending-pick.json"
+
+# ---- click mode phrases ---------------------------------------------------------------------------------------------
+
+echo "== click mode routing"
+all_config=$root/config-all
+mkdir -p "$all_config/integrations.d" "$all_config/replacements.d"
+find "$package/.config/voxcmd/integrations.d" -maxdepth 1 -type f -name '*.sh' -exec cp -t "$all_config/integrations.d/" {} +
+route_all() { VOXCMD_CONFIG_DIR=$all_config "$voxcmd" --dry-run "$1" 2>&1; }
+for phrase in "click mode" "start clicking" "clicking mode" "enter click mode"; do
+  out=$(route_all "$phrase")
+  check "'$phrase' opens click mode, alone" "grep -q 'result:      run' <<<\"\$out\" && grep -q 'Click (click.sh) action=click_mode' <<<\"\$out\" && [[ \$(grep -c '^option' <<<\"\$out\") == 1 ]]"
+done
+out=$(route_all "stop clicking")
+check "'stop clicking' ends click mode instead of pausing media" "grep -q 'Click (click.sh) action=stop_clicking' <<<\"\$out\" && [[ \$(grep -c '^option' <<<\"\$out\") == 1 ]]"
+out=$(route_all "click mode on")
+check "'click' followed by other text is still a click on that text" "! grep -q 'action=click_mode' <<<\"\$out\""
+# Every example that needs no screen text still goes where it did: nothing but Click's own examples reaches its mode verbs.
+stray=""
+while IFS= read -r phrase; do
+  out=$(route_all "$phrase")
+  if grep -q 'action=\(click_mode\|stop_clicking\)' <<<"$out"; then stray+="$phrase; "; fi
+done < <(grep -h -o '^  "[^"<]*"$' "$all_config"/integrations.d/*.sh | tr -d '"' | sed 's/^ *//' | grep -v -e 'click mode' -e 'stop clicking' -e '^click_mode' -e '^stop_clicking' | sort -u)
+check "no other example routes to click mode ($stray)" "[[ -z '$stray' ]]"
+
+session_rewrite_of() (
+  # shellcheck disable=SC2034 # read by click.sh
+  voxcmd_share_dir=$share_dir
+  # shellcheck disable=SC1091
+  source "$package/.config/voxcmd/integrations.d/click.sh"
+  session_rewrite "$1"
+)
+check "a bare target becomes a click" "[[ \$(session_rewrite_of 'sign in') == 'click sign in' ]]"
+check "a click phrase is routed as spoken" "[[ \$(session_rewrite_of 'right click settings') == 'right click settings' && \$(session_rewrite_of 'double click on readme') == 'double click on readme' ]]"
+check "a bare click names no target" "[[ -z \$(session_rewrite_of 'right click') && -z \$(session_rewrite_of click) ]]"
+check "the entry phrases are not read as targets" "[[ \$(session_rewrite_of 'clicking mode') == 'clicking mode' && \$(session_rewrite_of 'click mode') == 'click mode' ]]"
+# ---- voice sessions ---------------------------------------------------------------------------------------------------
+# A copy of the package whose voxcmd-autostop is the sandbox's stub, with the sandbox's setsid really starting the
+# watcher and its voxtype "hearing" the next line of $SANDBOX_VOXTYPE_TURNS ("SILENCE" and an empty queue are no
+# speech, "EMPTY" is speech that transcribes to nothing, "HOLD" keeps recording until stopped or cancelled, "FAIL" is a
+# record start that fails). Every run ends when no watcher is left, which is what proves the microphone stops
+# re-opening.
+
+echo "== voice sessions"
+sess_stubs=$root/sess-stubs
+sess_pkg=$root/sess-pkg
+mkdir -p "$sess_stubs" "$sess_pkg"
+cp -r "$package/.local" "$sess_pkg/.local"
+ln -sf "$SANDBOX_DIR/bin/voxcmd-autostop" "$sess_pkg/.local/bin/voxcmd-autostop"
+sess_voxcmd=$sess_pkg/.local/bin/voxcmd
+# The stub detector's long sleep, under its own name so the tests can end the ones a killed watcher leaves behind.
+stub_sleep=$root/stub-sleep
+cp "$(command -v sleep)" "$stub_sleep"
+trap 'pkill -f "$stub_sleep" 2>/dev/null; rm -rf "$root"' EXIT
+sess_turns=$root/turns
+# The numbered overlay: answers with the next line of $STUB_PICKS, a choice's index or CANCEL.
+export STUB_PICKS=$root/picks
+cat >"$sess_stubs/sess-hints" <<STUB
+#!/bin/sh
+echo "pick no_speech_secs=\${VOXCMD_AUTOSTOP_NO_SPEECH_SECS:-default}" >> "$log"
+answer=\$(head -n 1 "\$STUB_PICKS"); sed -i 1d "\$STUB_PICKS"
+[ "\$answer" != CANCEL ] || exit 1
+echo "\$answer"
+STUB
+chmod +x "$sess_stubs/sess-hints"
+hints_state=$SANDBOX_DIR/clickhints-state popup_state_file=$SANDBOX_DIR/popup-state
+
+# "both" is two targets, which the overlay asks about.
+sess_config=$root/config-sess
+mkdir -p "$sess_config/integrations.d" "$sess_config/replacements.d"
+cat >"$sess_config/integrations.d/sess.sh" <<STUB
+name="Sess"
+verbs=("begin_it start testing" "stop_it stop testing" "tap tap {target}")
+session_miss_actions=(none)
+pick_command=$sess_stubs/sess-hints
+candidates() {
+  case "\$2" in
+  missing) echo '[{"id": "zz", "label": "zz"}]' ;;
+  both) echo '[{"id": "both left", "label": "both left"}, {"id": "both right", "label": "both right"}]' ;;
+  *) jq -n -c --arg t "\$2" '[{id: \$t, label: \$t}]' ;;
+  esac
+}
+pick_box() { echo "0 0 10 10"; }
+declare -A no_match_actions=([tap]=none)
+declare -A actions=(
+  [begin_it]='session_begin test "\$file" "Test mode"'
+  [stop_it]='session_end done'
+  [tap]='echo "tap \$id" >> "$log"'
+  [none]='echo "tap nothing" >> "$log"'
+)
+session_rewrite() {
+  [ "\$1" != noise ] || return 0
+  printf 'tap %s' "\$1"
+}
+STUB
+
+sess_voxcmd_env() {
+  env SANDBOX_SETSID_RUN=1 SANDBOX_VOXTYPE_TURNS="$sess_turns" SANDBOX_AUTOSTOP_SLEEP="$stub_sleep" \
+    VOXCMD_CONFIG_DIR="$sess_config" VOXCMD_APP_SETTLE_SECS=0.05 \
+    "${sess_env[@]}" "$sess_voxcmd" "$@" >/dev/null 2>&1
+}
+# sess_start <turn>...: types "start testing" with these turns queued. $sess_env adds environment, $sess_overlay is
+# what the overlay reports from the start.
+sess_env=()
+sess_overlay=""
+sess_start() {
+  printf '%s\n' "$@" >"$sess_turns"
+  : >"$log"
+  rm -f "$XDG_RUNTIME_DIR/voxcmd/session.json" "$hints_state" "$popup_state_file"
+  [ -z "$sess_overlay" ] || echo "$sess_overlay" >"$hints_state"
+  mkdir -p "$XDG_RUNTIME_DIR/voxtype" "$XDG_RUNTIME_DIR/voxcmd"
+  echo idle >"$XDG_RUNTIME_DIR/voxtype/state"
+  sess_voxcmd_env start testing
+}
+# Waits for every watcher to finish; fails when one is alive after 20s, which would be a microphone that never closes.
+# A watcher handing over to its successor shows no command line for an instant while the successor execs, so absence has
+# to hold for a few polls in a row.
+sess_wait() {
+  local waited absent=0
+  for ((waited = 0; waited < 200; waited++)); do
+    if pgrep -f "$sess_voxcmd _watch" >/dev/null; then absent=0; else absent=$((absent + 1)); fi
+    [ "$absent" -lt 4 ] || return 0
+    sleep 0.1
+  done
+  return 1
+}
+sess_run() {
+  sess_start "$@"
+  sess_wait
+}
+# log_has_soon <pattern> [tenths]: the watcher starts in the background, so its log lines can land after listen has
+# returned.
+log_has_soon() {
+  local waited
+  for ((waited = 0; waited < ${2:-20}; waited++)); do
+    grep -q "$1" "$log" && return 0
+    sleep 0.1
+  done
+  return 1
+}
+taps() { grep -c '^tap ' "$log"; }
+record_starts() { grep -c '^voxtype record start' "$log"; }
+session_gone() { [[ ! -e $XDG_RUNTIME_DIR/voxcmd/session.json ]]; }
+ended_because() { grep -q "^notify-send .*Test mode ended $1" "$log"; }
+start_time_of() { sed 's/.*) //' "/proc/$1/stat" | awk '{print $20}'; }
+# Waits until the session's owner is a watcher that is recording.
+owner_is_recording() {
+  local waited owner
+  for ((waited = 0; waited < 50; waited++)); do
+    owner=$(jq -r .owner "$XDG_RUNTIME_DIR/voxcmd/session.json" 2>/dev/null)
+    if [ -n "$owner" ] && grep -qs _watch "/proc/$owner/cmdline" && [[ $(cat "$XDG_RUNTIME_DIR/voxtype/state") == recording ]]; then
+      return 0
+    fi
+    sleep 0.1
+  done
+  return 1
+}
+
+sess_run alpha beta "done"
+check "targets are tapped in turn" "[[ \$(grep '^tap ' '$log' | paste -sd,) == 'tap alpha,tap beta' ]]"
+check "it listens once more after each turn, and not after 'done'" "[[ \$(record_starts) == 3 ]]"
+check "an exit word clears the session and leaves the microphone idle" "session_gone && [[ \$(cat '$XDG_RUNTIME_DIR/voxtype/state') == idle ]]"
+check "session listens allow 10s of silence" "[[ \$(grep -c 'autostop no_speech_secs=10\$' '$log') == 3 ]]"
+check "no session listen asks for the default" "! grep -q 'no_speech_secs=default' '$log'"
+
+sess_env=(VOXCMD_AUTOSTOP_NO_SPEECH_SECS=4)
+sess_run alpha "done"
+check "the session's allowance wins over a user's auto-stop setting" "[[ \$(grep -c 'autostop no_speech_secs=10\$' '$log') == 2 ]]"
+sess_env=(VOXCMD_SESSION_NO_SPEECH_SECS=7)
+sess_run alpha "done"
+check "VOXCMD_SESSION_NO_SPEECH_SECS sets it" "[[ \$(grep -c 'autostop no_speech_secs=7\$' '$log') == 2 ]]"
+sess_env=()
+
+# While it is open, the session file names its kind and a live owner.
+sess_start alpha "done"
+check "an open session records its kind, label and a live owner" "[[ \$(jq -r '[.kind, .label, (.owner | tostring | test(\"^[0-9]+\$\"))] | join(\",\")' '$XDG_RUNTIME_DIR/voxcmd/session.json') == 'test,Test mode,true' ]]"
+sess_wait
+
+for word in "done" "Done." "stop clicking" "exit click mode" "that's all" "I'm done" "done clicking"; do
+  sess_run alpha "$word" gamma
+  check "'$word' ends the session and the microphone with it" "session_gone && [[ \$(taps) == 1 && \$(record_starts) == 2 ]]"
+done
+# Button labels: these are what the user wants clicked.
+for word in "cancel" "exit" "stop" "never mind"; do
+  sess_run "$word" "done"
+  check "'$word' is a target, not an exit" "[[ \$(grep '^tap ' '$log') == 'tap $word' && \$(record_starts) == 2 ]]"
+done
+
+sess_run alpha
+check "no speech ends the session instead of stopping silently" "session_gone && [[ \$(taps) == 1 && \$(record_starts) == 2 ]] && ended_because 'nothing was said'"
+sess_run
+check "no speech in the first listen ends it too" "session_gone && [[ \$(taps) == 0 && \$(record_starts) == 1 ]]"
+
+sess_run noise noise noise alpha
+check "three unusable turns in a row end it" "session_gone && [[ \$(taps) == 0 && \$(record_starts) == 3 ]] && ended_because 'nothing understood'"
+sess_run missing missing missing alpha
+check "three targets found nowhere end it" "session_gone && [[ \$(grep -c '^tap nothing' '$log') == 3 && \$(taps) == 3 ]]"
+sess_run EMPTY EMPTY EMPTY alpha
+check "so do three recordings that transcribe to nothing" "session_gone && [[ \$(taps) == 0 && \$(record_starts) == 3 ]]"
+sess_run noise noise alpha noise noise "done"
+check "a usable turn resets the count" "session_gone && [[ \$(grep -c '^tap alpha' '$log') == 1 && \$(record_starts) == 6 ]]"
+
+# The overlay inside a session: a pick is a turn that did something, a cancel (or timeout) one that did nothing.
+printf '%s\n' 0 CANCEL CANCEL CANCEL >"$STUB_PICKS"
+sess_run both both both both alpha
+check "an overlay pick clicks and the session carries on" "[[ \$(grep '^tap ' '$log') == 'tap both left' ]]"
+check "three cancelled overlays in a row end it" "session_gone && [[ \$(record_starts) == 4 ]] && ended_because 'nothing understood'"
+check "the overlay's own listen keeps auto-stop's usual allowance" "[[ \$(grep -c '^pick no_speech_secs=default\$' '$log') == 4 ]]"
+printf '%s\n' CANCEL CANCEL 1 >"$STUB_PICKS"
+sess_run both both both noise noise "done"
+check "a pick resets the count of cancelled overlays" "[[ \$(grep '^tap ' '$log') == 'tap both right' && \$(record_starts) == 6 ]] && ended_because done"
+
+# Caps that hold even while every turn does something.
+sess_env=(VOXCMD_SESSION_MAX_TURNS=3)
+sess_run alpha alpha alpha alpha alpha
+check "a session ends after VOXCMD_SESSION_MAX_TURNS turns" "session_gone && [[ \$(taps) == 3 && \$(record_starts) == 3 ]] && ended_because 'it reached 3 turns'"
+sess_env=(VOXCMD_SESSION_MAX_SECS=0)
+sess_run alpha alpha
+check "and after VOXCMD_SESSION_MAX_SECS" "session_gone && [[ \$(taps) == 1 && \$(record_starts) == 1 ]] && ended_because 'it reached its time limit'"
+sess_env=()
+check "by default it is 40 turns or 5 minutes" "grep -q 'VOXCMD_SESSION_MAX_SECS:-300}' '$package/.local/bin/voxcmd' && grep -q 'VOXCMD_SESSION_MAX_TURNS:-40}' '$package/.local/bin/voxcmd'"
+
+# Without auto-stop nothing would end an idle session.
+export SANDBOX_AUTOSTOP_OFF="auto-stop is turned off (enabled = false)"
+sess_run alpha
+check "no session opens while auto-stop is off" "session_gone && [[ \$(record_starts) == 0 ]] && grep -q '^notify-send .*--transient voxcmd: Test mode needs auto-stop auto-stop is turned off' '$log'"
+unset SANDBOX_AUTOSTOP_OFF
+autostop_check() { env -i PATH="$1" VOXCMD_CONFIG_DIR="$root/autostop-config" "${@:2}" "$(command -v python3)" "$package/.local/bin/voxcmd-autostop" --check; }
+mkdir -p "$root/autostop-config" "$root/pw-bin" "$root/no-pw-bin"
+printf '#!/bin/sh\n' >"$root/pw-bin/pw-record"
+chmod +x "$root/pw-bin/pw-record"
+check "autostop --check passes when it can listen" "autostop_check '$root/pw-bin' >/dev/null"
+check "and fails when turned off" "[[ \$(autostop_check '$root/pw-bin' VOXCMD_AUTOSTOP=false) == *'turned off'* ]] && ! autostop_check '$root/pw-bin' VOXCMD_AUTOSTOP=false >/dev/null"
+check "or when pw-record is missing" "[[ \$(autostop_check '$root/no-pw-bin') == *'pw-record is not installed'* ]]"
+echo "bogus = 1" >"$root/autostop-config/autostop.conf"
+check "or when its config is wrong" "[[ \$(autostop_check '$root/pw-bin') == *'unknown setting: bogus'* ]]"
+
+# A start that fails ends the session rather than leaving it open with no microphone.
+sess_run alpha FAIL
+check "a failed record start ends the session" "session_gone && [[ \$(taps) == 1 ]] && ended_because 'the microphone could not be opened'"
+sess_run FAIL
+check "so does one for the first turn" "session_gone && [[ \$(taps) == 0 ]] && ended_because 'the microphone could not be opened'"
+
+# The voice key pressed while a turn is still settling: that listen takes the session over, and the turn's own watcher
+# leaves it alone instead of ending it and discarding the user's recording. The overlay stays "open" so the first
+# watcher is held in its settle wait until the takeover is done.
+sess_overlay=open
+sess_env=(VOXCMD_UI_SETTLE_MAX_SECS=30)
+sess_start alpha beta
+log_has_soon '^qs-ipc call clickhints state' 50
+sess_voxcmd_env listen
+log_has_soon '^tap beta' 50
+echo closed >"$hints_state"
+sess_wait
+check "a voice key pressed during a turn takes the session over" "[[ \$(grep '^tap ' '$log' | paste -sd,) == 'tap alpha,tap beta' ]]"
+check "the turn's watcher does not listen again or cancel the new recording" "[[ \$(record_starts) == 3 ]] && ! grep -q 'microphone could not be opened' '$log' && ended_because 'nothing was said'"
+sess_overlay=""
+sess_env=()
+
+# Ending the session while its recording is open cancels that recording.
+sess_start HOLD
+owner_is_recording
+sess_voxcmd_env end-session
+sess_wait
+check "end-session while recording cancels it and closes the microphone" "session_gone && grep -q '^voxtype record cancel' '$log' && [[ \$(cat '$XDG_RUNTIME_DIR/voxtype/state') == idle && \$(record_starts) == 1 ]] && ended_because 'ended by request'"
+
+# Settling: the next listen waits for the overlay and popups. The stub bar reports what the files hold. Bounds are
+# loose, since a loaded machine stretches every sleep; they only tell a short wait from the long one.
+settle_ms() {
+  local started
+  started=$(date +%s%N)
+  env "$@" "$sess_voxcmd" _settle >/dev/null 2>&1
+  echo $((($(date +%s%N) - started) / 1000000))
+}
+rm -f "$hints_state" "$popup_state_file"
+check "a settled screen waits only the app's moment" "[[ \$(settle_ms VOXCMD_APP_SETTLE_SECS=0.3 VOXCMD_UI_SETTLE_MAX_SECS=20) -ge 300 && \$(settle_ms VOXCMD_APP_SETTLE_SECS=0.3 VOXCMD_UI_SETTLE_MAX_SECS=20) -lt 10000 ]]"
+echo open >"$hints_state"
+(sleep 0.6 && echo closed >"$hints_state") &
+check "an open overlay is waited out" "[[ \$(settle_ms VOXCMD_APP_SETTLE_SECS=0) -ge 450 ]]"
+wait
+for popup_state in "opening weather" "open weather" "closing weather"; do
+  echo "$popup_state" >"$popup_state_file"
+  (sleep 0.6 && echo closed >"$popup_state_file") &
+  check "a popup that is '$popup_state' is waited out" "[[ \$(settle_ms VOXCMD_APP_SETTLE_SECS=0) -ge 450 ]]"
+  wait
+done
+echo open >"$hints_state"
+check "a screen that never settles is waited on for a bounded time" "[[ \$(settle_ms VOXCMD_APP_SETTLE_SECS=0 VOXCMD_UI_SETTLE_MAX_SECS=1) -ge 1000 && \$(settle_ms VOXCMD_APP_SETTLE_SECS=0 VOXCMD_UI_SETTLE_MAX_SECS=1) -lt 10000 ]] && ! env VOXCMD_APP_SETTLE_SECS=0 VOXCMD_UI_SETTLE_MAX_SECS=0.5 '$sess_voxcmd' _settle"
+rm -f "$hints_state"
+check "no bar to ask counts as settled" "env XDG_CONFIG_HOME='$root/no-bar' VOXCMD_APP_SETTLE_SECS=0 '$sess_voxcmd' _settle"
+
+# In a session the bar is asked after the turn's action and before the microphone opens again.
+sess_run alpha "done"
+check "the screen is checked between a turn's action and the next listen" "[[ \$(awk '/^tap alpha/{a=NR} /qs-ipc call clickhints state/{if (a && !q) q=NR} /voxtype record start/{n++; if (n==2) r=NR} END{print (a && a < q && q < r) ? \"ok\" : \"no\"}' '$log') == ok ]]"
+
+# A stale session: its owner is gone, so the next listen routes normally and clears it.
+stale_listen() {
+  printf '%s\n' "tap hello" >"$sess_turns"
+  : >"$log"
+  echo idle >"$XDG_RUNTIME_DIR/voxtype/state"
+  jq -n -c --argjson owner "$1" --arg owner_start "$2" \
+    '{kind: "test", integration: "x", label: "Test mode", started: 0, owner: $owner, owner_start: $owner_start, unclear: 0, turns: 0}' \
+    >"$XDG_RUNTIME_DIR/voxcmd/session.json"
+  sess_voxcmd_env listen
+  sess_wait
+}
+stale_listen 999999 1
+check "a stale session is dropped and the command routes normally" "session_gone && [[ \$(grep '^tap ' '$log') == 'tap hello' && \$(record_starts) == 1 ]]"
+check "a normal listen keeps the default silence allowance" "grep -q 'no_speech_secs=default' '$log'"
+# A live process under the owner's PID is not the owner unless it started when the owner did.
+"$stub_sleep" 60 &
+reused_pid=$!
+stale_listen "$reused_pid" 1
+check "a reused owner PID does not keep the session" "session_gone && [[ \$(grep '^tap ' '$log') == 'tap hello' ]]"
+kill "$reused_pid" 2>/dev/null
+wait "$reused_pid" 2>/dev/null
+
+# The watcher dying mid-session takes the session with it.
+sess_start alpha alpha alpha
+pkill -TERM -f "$sess_voxcmd _watch"
+sess_wait
+check "a killed listener ends the session" "session_gone"
+# SIGKILL runs no trap, so the file stays, but the owner check reads it as no session.
+sess_start HOLD
+owner_is_recording
+pkill -KILL -f "$sess_voxcmd _watch"
+sess_wait
+check "a SIGKILLed listener leaves its file behind" "! session_gone"
+printf '%s\n' "tap hello" >"$sess_turns"
+: >"$log"
+echo idle >"$XDG_RUNTIME_DIR/voxtype/state"
+sess_voxcmd_env listen
+sess_wait
+check "and the next listen finds no session and routes normally" "session_gone && [[ \$(grep '^tap ' '$log') == 'tap hello' ]]"
+pkill -f "$stub_sleep"
+
+# A recording that belongs to a reply keeps its priority over the session.
+mkdir -p "$root/owner"
+cp /bin/sleep "$root/owner/voxcmd"
+"$root/owner/voxcmd" 60 &
+owner_pid=$!
+cp /bin/sleep "$root/voxcmd-hints"
+"$root/voxcmd-hints" 60 &
+waiter_pid=$!
+mkfifo "$root/pending-fifo"
+jq -n -c --argjson pid "$waiter_pid" --arg fifo "$root/pending-fifo" \
+  '{pid: $pid, fifo: $fifo, label: "Which one?", kind: "hints", expansions: {}, choices: [{id: "a", label: "1. A"}]}' >"$XDG_RUNTIME_DIR/voxcmd/pending-pick.json"
+jq -n -c --argjson owner "$owner_pid" --arg owner_start "$(start_time_of "$owner_pid")" \
+  '{kind: "test", integration: "x", label: "Test mode", started: 0, owner: $owner, owner_start: $owner_start, unclear: 0, turns: 0}' \
+  >"$XDG_RUNTIME_DIR/voxcmd/session.json"
+echo idle >"$XDG_RUNTIME_DIR/voxtype/state"
+: >"$log"
+"$pkg_voxcmd" listen >/dev/null 2>&1
+log_has_soon 'setsid '
+check "a pending picker's reply wins over the open session" "grep -q 'setsid .*_watch reply' '$log' && ! grep -q 'setsid .*_watch session_turn' '$log'"
+rm -f "$XDG_RUNTIME_DIR/voxcmd/pending-pick.json"
+: >"$log"
+echo idle >"$XDG_RUNTIME_DIR/voxtype/state"
+"$pkg_voxcmd" listen >/dev/null 2>&1
+log_has_soon 'setsid '
+check "with nothing pending, a live session's listen goes to the session" "grep -q 'setsid .*_watch session_turn' '$log'"
+kill "$owner_pid" "$waiter_pid" 2>/dev/null
+wait "$owner_pid" "$waiter_pid" 2>/dev/null
+rm -f "$XDG_RUNTIME_DIR/voxcmd/session.json" "$XDG_RUNTIME_DIR/voxtype/state"
 
 echo
 echo "$pass passed, $fail failed"

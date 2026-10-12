@@ -22,6 +22,7 @@ voxcmd "next track"               # route text directly
 voxcmd --dry-run "volume to 40"   # show the match, candidates and command without running anything
 voxcmd --reply "the second one"   # answer the open voxcmd picker or confirm card, as a spoken reply would
 voxcmd --dry-run --reply "two"    # show which choice a reply would pick
+voxcmd end-session                # end the open voice session (click mode), if any
 voxcmd list                       # integrations and their verbs
 voxcmd help                       # pick from the integrations' example phrases
 voxcmd errors 5                   # the last 5 voxcmd notifications the bar kept, newest first (default 10)
@@ -47,7 +48,7 @@ Settings go in `~/.config/voxcmd/autostop.conf` (`name = value`, `#` comments; i
 | `threshold_db`   | `VOXCMD_AUTOSTOP_THRESHOLD_DB`   | `auto`  | speech level in dBFS, e.g. `-35`; `auto` follows the room |
 | `margin_db`      | `VOXCMD_AUTOSTOP_MARGIN_DB`      | `12`    | with `auto`, how far above the room speech is             |
 
-To tune it, `voxcmd-autostop --verbose` prints each frame's level and the threshold. Run it while voxtype records, since it gives up after 3s otherwise, or on raw 16 kHz mono s16 audio with `--pcm FILE`. The microphone is released when the recording ends however it ends: stopped, cancelled, at voxtype's `max_duration_secs`, or with voxcmd gone.
+`voxcmd-autostop --check` exits 0 when auto-stop is on and can listen, else 1 saying why; a [voice session](#voice-sessions) asks it before opening. To tune it, `voxcmd-autostop --verbose` prints each frame's level and the threshold. Run it while voxtype records, since it gives up after 3s otherwise, or on raw 16 kHz mono s16 audio with `--pcm FILE`. The microphone is released when the recording ends however it ends: stopped, cancelled, at voxtype's `max_duration_secs`, or with voxcmd gone.
 
 ## How a phrase is routed
 
@@ -434,6 +435,8 @@ Switching takes any `{focus}` or `{open}` [intent](#intents) form before the ses
 | `double click <text>`                                  | Double-clicks it (two left clicks)                                    |
 | `triple click <text>`                                  | Triple-clicks it (three left clicks)                                  |
 | `show hints`, `show click hints`, `hint mode`          | Opens `wl-kbptr`'s floating hint mode, as the Cursor submap does; answer with keys |
+| `click mode`, `start clicking`, `clicking mode`        | Opens a [click mode](#click-mode) session: say targets without "click"  |
+| `stop clicking`, `exit click mode`                     | Ends it (inside the session, `done` and the other exit words do too)    |
 
 - Only the focused window is read, since unfocused windows are dimmed and lose words to OCR. With no focused window the command fails with "no focused window".
 - A click verb always needs a target, so a bare "click" and "right click" still go to the Cursor submap's binds in Keybinds. So do "click left", "click it", "click here", "click and drag" and the like: a target of only filler words and `left`, `right`, `middle`, `here`, `and`, `drag` and `hold` is no target, and the screen is not even read. A real target found nowhere says `No "<text>" on screen` and does not fall through to Keybinds.
@@ -449,6 +452,15 @@ Switching takes any `{focus}` or `{open}` [intent](#intents) form before the ses
 The pipeline is `click-ocr` (capture, gray, invert when the window is dark, tesseract; a window taller than 1000 px is cut into 4 to 6 overlapping strips read in parallel, each owning the lines whose box is centred in its rows) feeding `click-match.awk` (matching and the mapping to global coordinates), both in `~/.local/share/voxcmd/`. Typical time from speech end to click is under a second. The capture is by toplevel (`grim -T`, from the window's `stableId`), so translucent windows are read without the wallpaper behind them; it falls back to the window's screen region when that fails. The mapping takes the x and y scales from the captured image, not the monitor, and grim returns upright images on rotated monitors. A capture whose two scales differ by more than 2% is retaken as a screen region, and fails if that differs too. A word is matched against the spoken words one by one, or by letters joined ("Newtask" for "new task", "Read me" for "readme"); the spoken words replace OCR text only for look-alike equality.
 
 Needs `grim`, `tesseract` and `tesseract-data-eng`, `imagemagick`, `wlrctl` and `wl-kbptr` (all in `packages/`). Tests: `home/voxcmd/tests/run.sh` (a step of `just check`) runs in the test sandbox, where `grim`, `magick`, `tesseract`, `wlrctl` and `hyprctl` are stubs fed by fixtures, and runs voxcmd with `--dry-run` only.
+
+### Click mode
+
+"Click mode" opens a [voice session](#voice-sessions) in which what you say is a click target: "sign in" is "click sign in", "continue" is "click continue". "right click settings" and "double click readme" work as spoken. After each click voxcmd listens again, once the screen has settled. A bare "click" names no target and counts as not understood.
+
+- **Ending it:** say `done`, `done clicking`, `I'm done`, `stop clicking`, `exit click mode` or `that's all`; stay silent for about 10 s (`VOXCMD_SESSION_NO_SPEECH_SECS`); or give three turns in a row that did nothing (not understood, a target found nowhere, or an overlay cancelled). `cancel`, `exit`, `stop` and `never mind` are button labels, so in click mode they are clicked like any other target. It also ends after 5 minutes or 40 turns.
+- **Needs auto-stop:** silence is the only thing that ends an idle session, so with [auto-stop](#auto-stop) off or unable to listen, "click mode" says "Click mode needs auto-stop" and does not start.
+- **Ambiguous targets:** the [numbered overlay](#click-hints) shows and listens as usual, with auto-stop's own silence allowance; after the pick and the click the session carries on.
+- **Indicator:** while it is open the Voxtype bar module says "Click mode" beside its glyph and the voxtype OSD's title carries it too, so an open microphone is never invisible. Both read `$XDG_RUNTIME_DIR/voxcmd/session.json` and, while it is there, check every few seconds that `/proc/<owner>` still exists, so a listener killed outright does not leave the indicator up.
 
 ### Click hints
 
@@ -494,6 +506,7 @@ Press the Voice Command key while a voxcmd picker is open and speak a reply; the
 
 - a choice's label: the whole label, else the choice sharing the most words with the reply, else a substring, else fuzzy; it must single out one choice. Words compare by stem and the reply's other words do not count, so "locked", "lock it" and "lock computer" all pick `Keybinds: Lock (System)`, which needs no "system";
 - an ordinal: `two`, `the second one`, `number 3`, `first`, `last`;
+- a direction, for choices drawn on screen ([click hints](#click-hints)): `the top one`, `the bottom one`, `the left one`, `the right one` (also `topmost`, `lower`, ...). It goes by the boxes' edges, so a column of items lined up on the left has one leftmost; boxes whose edges are within half a text height tie, and a top or bottom tie goes to the leftmost, a left or right tie to the topmost. The numbers run in reading order, so `first` and `last` are the first and last in that order;
 - with a single choice, `yes`, `yeah`, `sure`, `that one` or `do it` to take it, and `no` or `nope` to cancel;
 - `cancel`, `never mind` or `none`, which cancel like Esc.
 
@@ -520,6 +533,17 @@ The reply is read by its words, so a natural reply works:
 3. Anything else, including an empty transcript or Whisper's "you" for a short clip, keeps the card open and listens once more; after a second unclear reply it waits for a key.
 
 While it waits, `voxcmd-confirm` keeps the same `pending-pick.json` as the picker, with `kind: "confirm"`, the `verb`, and `listen_again`, the file whose presence allows the one extra listen.
+
+## Voice sessions
+
+A session keeps the microphone re-opening after each spoken turn, so related commands need no repeated verb. [Click mode](#click-mode) is the only one so far; an integration opens one from an action with `session_begin <kind> "$file" "<label>"` and supplies `session_rewrite`, which prints the phrase to route for what was said (nothing when it names nothing usable). `session_miss_actions=(action ...)` lists actions that mean the turn found nothing to act on.
+
+- **State:** `$XDG_RUNTIME_DIR/voxcmd/session.json`, `{kind, integration, label, started, owner, owner_start, unclear, turns}`. `owner` is the PID of the listener that hears the next turn and `owner_start` its start time (field 22 of `/proc/<pid>/stat`), so a reused PID is not mistaken for it; each new listen takes it over. A session whose owner has died is stale: it is deleted the first time anything looks, and never keeps the microphone open. Every change holds `flock` on `session.lock` beside it.
+- **Routing:** while a session is open, `voxcmd listen` sends the transcript to the session instead of [routing](#how-a-phrase-is-routed) it, unless a picker or card is waiting for a reply, which keeps priority. Exit words end it before anything is routed. Pressing the Voice Command key while a turn is still being handled starts the next turn at once, and the turn's own listener leaves the session to it.
+- **Idle end:** a session listen allows `VOXCMD_SESSION_NO_SPEECH_SECS` (10 s) of silence, whatever auto-stop's `no_speech_secs` is; hearing nothing ends the session, with a notification, instead of cancelling silently. A recording that transcribes to nothing counts as an unusable turn. `session_begin` refuses to open a session when `voxcmd-autostop --check` fails.
+- **Never a loop:** three unusable turns in a row end it, a turn that ran nothing (a picker cancelled or timed out) counting as unusable; so do `VOXCMD_SESSION_MAX_TURNS` turns (40) or `VOXCMD_SESSION_MAX_SECS` (300) open, whichever comes first; a listen that cannot start ends it; a listener that dies mid-session ends it. Each says why in a transient notification.
+- **Settling:** after a turn voxcmd waits, for at most 2 s, until neither the click overlay (`qs-ipc call clickhints state`) nor a popup (`popup state`) is open or animating, then 0.3 s for the clicked app to draw, before listening again (`VOXCMD_UI_SETTLE_MAX_SECS`, `VOXCMD_APP_SETTLE_SECS`). A bar that does not answer counts as settled.
+- `voxcmd end-session` ends it by hand.
 
 ## Debug log
 
