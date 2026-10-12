@@ -18,7 +18,7 @@ Press `P` on that page to hear the current pack: it plays each sound in turn.
 
 ## Packs and sounds
 
-A pack is a folder holding up to seven files, one per situation:
+A pack is a folder holding up to eight files, one per situation:
 
 | File | Plays when |
 | --- | --- |
@@ -29,6 +29,9 @@ A pack is a folder holding up to seven files, one per situation:
 | `error` | Something fails, such as a wrong password or a failed screenshot |
 | `lock` | The session locks |
 | `unlock` | The password is accepted |
+| `alarm` | A voxcmd timer or reminder rings, even with Notification sound off |
+
+No pack ships an `alarm`, so each plays its closest sound until you add one: `notify` (codec rings for `ps1` and `mgs2`, the X-Wing urgent alert for `tie`), and the pause watch's chirp, `lock`, for `goldeneye`. With Interface sounds and Notification sound both off the pack is not loaded, so the alarm is the shipped `sounds/alarm.ogg`, a digital watch beep; a future style without a pack rings with it too.
 
 Each style has a pack of the same name: `oasis`, `modern`, `neovim`, `terminal`, `crt`, `nes`, `gameboy`, `snes`, `ps1`, `ff7`, `goldeneye`, `ps2`, `tie`, `halflife`, `metroid` and `reticle`. There is one extra pack that belongs to no style, `mgs2`.
 
@@ -44,7 +47,7 @@ Put your files in `~/.local/share/quickshell/sounds/<pack>/`, named after the so
 ```
 
 - `.wav` and `.ogg` both work.
-- Your files win one at a time. Replace only `cursor` and the pack's other six sounds stay as shipped.
+- Your files win one at a time. Replace only `cursor` and the pack's other sounds stay as shipped.
 - The folder name is the pack you want to change, not the style you happen to be using. If the Effects pack is set to NES, the `nes` folder applies under every style.
 - Nothing needs restarting. The shell notices new files.
 

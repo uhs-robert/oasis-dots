@@ -198,6 +198,7 @@ qs-ipc show        # list every target and function
 | `picker`        | `open <name>`, `open_with <name> <mode>`, `toggle <name>`, `close`    |
 | `settings`      | `open <section>`, `toggle`                                            |
 | `style`         | `set`, `cycle`, `get`, `set_lock`, `set_lock_tint`, `set_lock_backdrop`, `toggle_cava_line` and their getters |
+| `sound`         | `play <kind>`: a Theme audio sound if its category is on; `play alarm` always rings |
 | `overview`      | `open`, `close`, `toggle`, `search`, `move_follow`, `move_silent`, `save_session <name>`                         |
 | `tmux-overview` | `open`, `close`, `toggle`, `search`                                   |
 | `notifications` | `open`, `close`, `toggle_dnd`, `clear_all`, `dismiss_latest`, `dismiss_all`, `focus_toast`, `has_toast` |
@@ -308,6 +309,6 @@ To see a fixture in the live popup, `qs-ipc call weather preview alerts3` (then 
 
 The bundled fonts are all under the SIL Open Font License. `fonts/README.md` lists each one with its source and licence file. The weather icons in `assets/weather/` are MIT licensed (see its `LICENSE`).
 
-The sounds in `sounds/<style>/` are synthesized by `scripts/synth-sounds` (numpy and ffmpeg), one hand-built patch per style. `sounds/mgs2/` is an extra pack tied to no style. To use your own, drop `cursor`, `confirm`, `cancel`, `notify`, `error`, `lock` or `unlock` files (`.wav` or `.ogg`) into `~/.local/share/quickshell/sounds/<pack>/`, where `<pack>` is the style or pack name. They win file by file. [Custom sounds and music](../../../../docs/sounds.md) walks through it, along with lock music and the game lock screens' audio.
+The sounds in `sounds/<style>/` are synthesized by `scripts/synth-sounds` (numpy and ffmpeg), one hand-built patch per style. `sounds/mgs2/` is an extra pack tied to no style. `sounds/alarm.ogg`, a digital watch beep from the same script, is the alarm for a style with no pack and for Theme audio with interface and notification sounds both off. To use your own, drop `cursor`, `confirm`, `cancel`, `notify`, `error`, `lock`, `unlock` or `alarm` files (`.wav` or `.ogg`) into `~/.local/share/quickshell/sounds/<pack>/`, where `<pack>` is the style or pack name. They win file by file. [Custom sounds and music](../../../../docs/sounds.md) walks through it, along with lock music and the game lock screens' audio.
 
 Settings > Theme audio (in the Sound group) picks one effects pack for every style: follow the style (the default), any style's sounds, the synthesized MGS2 pack, or an imported game pack (FFVII, MGS2, Ocarina). When following the style, FFVII uses the imported FFVII pack once there is one, and every other style its own. No music ships: lock and login music plays only from your own `music.ogg`, `music.wav` or `music.mp3` in `~/.local/share/quickshell/sounds/<style>/`.

@@ -1,0 +1,48 @@
+#!/usr/bin/env bash
+# voxcmd-alarm: rings a voxcmd timer or reminder. Run by its systemd timer unit, not by hand.
+# Usage: voxcmd-alarm <summary> <body>
+# Shows a critical notification (it stays up and goes to history) and plays the alarm sound up to three times,
+# stopping once the notification is closed. The sound is the bar's style alarm (`sound play alarm`), whatever
+# Theme audio's notification switch says; without the bar, the shipped default through pw-play or paplay.
+set -uo pipefail
+
+summary="${1:?usage: voxcmd-alarm <summary> <body>}"
+body="${2-}"
+rings="${VOXCMD_ALARM_RINGS:-3}"
+ring_gap="${VOXCMD_ALARM_GAP:-5}"
+config_home="${XDG_CONFIG_HOME:-$HOME/.config}"
+qs_ipc="$config_home/hypr/scripts/qs-ipc"
+default_alarm="$config_home/quickshell/sounds/alarm.ogg"
+# Not shipped here; sound-theme-freedesktop's, for a machine without the Quickshell config.
+system_alarm=/usr/share/sounds/freedesktop/stereo/alarm-clock-elapsed.oga
+
+ring() {
+  # qs ipc exits 0 even when no bar answers, so the reply is what tells.
+  [ -x "$qs_ipc" ] && [ "$("$qs_ipc" call sound play alarm 2>/dev/null)" = ok ] && return
+  local file
+  for file in "$default_alarm" "$system_alarm"; do
+    [ -f "$file" ] || continue
+    if command -v pw-play >/dev/null; then
+      pw-play "$file" &
+    elif command -v paplay >/dev/null; then
+      paplay "$file" &
+    fi
+    return
+  done
+}
+
+# --wait holds notify-send until the notification closes: dismissed, cleared, or acted on. Hiding the toast
+# keeps it in history, so it keeps ringing until the rings run out.
+notify-send --wait --urgency=critical --app-name=voxcmd "$summary" "$body" >/dev/null 2>&1 &
+notification=$!
+
+for ((ring_count = 1; ring_count <= rings; ring_count++)); do
+  ring
+  [ "$ring_count" -lt "$rings" ] || break
+  sleep "$ring_gap"
+  kill -0 "$notification" 2>/dev/null || break
+done
+
+# SIGTERM leaves the notification up; notify-send closes it only on SIGINT.
+kill "$notification" 2>/dev/null
+wait

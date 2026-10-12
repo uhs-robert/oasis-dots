@@ -201,6 +201,7 @@ ShellRoot {
     PowerIpc {}
     ScreenshotIpc {}
     ZoomIpc {}
+    SoundIpc {}
     LockPreview {
         id: lock_preview
     }
