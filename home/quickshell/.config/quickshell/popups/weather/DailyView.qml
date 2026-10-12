@@ -39,7 +39,7 @@ Item {
     // Oasis: range pills over a horizon of weekday names, the selected day rising in sand.
     readonly property bool dunes: Style.weather_header === "oasis" && root.sub === 0
     // Modern: raised day columns with a pill label and a range track.
-    readonly property bool pill_columns: Style.weather_header === "hero" && root.sub === 0
+    readonly property bool pill_columns: Style.weather_header === "hero"
     // Each layout's own Temp & Precip column; the placeholders stay off (false &&) until their column draws something.
     readonly property bool watch_columns: Style.weather_header === "watch"
 
@@ -359,6 +359,8 @@ Item {
                         active: root.pill_columns
                         anchors.fill: parent
                         sourceComponent: Modern.DayColumn {
+                            sub: root.sub
+                            wind_max: root.wind_max
                             day: day_col.modelData
                             label: root.day_label(day_col.modelData, day_col.day_index)
                             selected: day_col.day_index === root.day_cursor
