@@ -56,7 +56,7 @@ git -C "$repo" diff --quiet 'HEAD@{1}' HEAD -- home/quickshell 2>/dev/null && ex
 say() { jq -n --arg c "$1" '{systemMessage: $c, hookSpecificOutput: {hookEventName: "PostToolUse", additionalContext: $c}}'; }
 
 if pgrep -af '^qs .*-p ' >/dev/null; then
-  say "Quickshell files changed in the live checkout ($repo), but a worktree test bar is running (qs -p ...), so the stowed bar was not restarted. Restore it with the test-bar skill when testing is done."
+  say "Quickshell files changed in the live checkout ($repo), but a worktree test bar is running (qs -p ...), so the stowed bar was not restarted. Restore it with the owner-test-bar skill when testing is done."
   exit 0
 fi
 state=$(timeout 3 "${QS_IPC:-$HOME/.config/hypr/scripts/qs-ipc}" call lock state 2>/dev/null)
