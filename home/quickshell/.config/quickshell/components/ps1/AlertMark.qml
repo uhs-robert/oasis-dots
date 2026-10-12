@@ -12,6 +12,8 @@ Item {
     implicitWidth: root.size * 0.8
     implicitHeight: root.size
 
+    readonly property bool busy: pop_anim.running
+
     function pop() {
         pop_anim.restart();
     }
