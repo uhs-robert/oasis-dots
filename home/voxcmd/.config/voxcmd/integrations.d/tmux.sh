@@ -55,8 +55,8 @@ layout_session_name() {
 }
 
 # Only "switch" has candidates; a new session's name is free text. One candidate per session: running sessions, and
-# the layouts the Project picker lists. A layout whose session is running stays a layout candidate, since loading it
-# again only attaches and its window title is the one rofi-tmux.sh knows how to find.
+# the layouts the Project picker lists. A layout whose session is running stays a layout candidate, and
+# focus_or_attach treats it as that session.
 candidates() {
   [ "$1" = switch ] || return 0
   local file stem session
@@ -79,8 +79,16 @@ candidates() {
 focus_or_attach() {
   case "$1" in
   layout:*)
+    # A running layout's terminal is titled with its session name (tmux's set-titles-string is #S), which
+    # rofi-tmux.sh's "Tmux <layout>" search misses, so it is found as a session instead.
+    local stem="${1#layout:}" session
+    session=$(layout_session_name "$layout_dir/$stem.session.sh")
+    if tmux has-session -t "=${session:-$stem}" 2>/dev/null; then
+      focus_or_attach "session:${session:-$stem}"
+      return
+    fi
     # Its terminal runs in the background; with the output captured, voxcmd would wait for that terminal to close.
-    "$layout_opener" "${1#layout:}" >/dev/null 2>&1
+    "$layout_opener" "$stem" >/dev/null 2>&1
     ;;
   session:*)
     local session="${1#session:}" address
