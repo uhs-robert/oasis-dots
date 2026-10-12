@@ -279,10 +279,12 @@ Brightness and do not disturb send no notification when they work ([silent](#sil
 | Say                                                          | Does                                                                      |
 | ------------------------------------------------------------ | ------------------------------------------------------------------------- |
 | "jump to the waiting agent", "go to the agent that needs me" | the agent that has waited longest for input; says so when none is waiting |
-| "next agent", "go to the next agent"                         | the waiting agent, else the longest-finished one                          |
+| "next agent", "go to the next agent", "jump to next agent"   | the agent after the focused one, whatever its state, wrapping around      |
+| "previous agent", "go to the previous agent"                 | the agent before the focused one                                          |
 | "go to agent X", "go to the X agent"                         | the agent whose title, project or agent name matches X                    |
 
-An "agent X" that matches nothing says so instead of falling through to the keybinds.
+- Next and previous step through every tracked agent in `keeptabs-pick`'s order (waiting, done, running, idle, oldest first within each). The focused agent is the one whose window, tmux pane and nvim terminal keeptabs' own `session_focused` says has focus; with none focused, next starts at the first agent and previous at the last.
+- An "agent X" that matches nothing says so instead of falling through to the keybinds.
 
 ### Tmux
 
