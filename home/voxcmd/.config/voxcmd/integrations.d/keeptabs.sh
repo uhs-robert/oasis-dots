@@ -3,13 +3,14 @@
 
 name="Agents"
 confirm=0
-# The focused agent is the feedback. The jumps keep their toast: "no agent is waiting" is their only reply when
-# nothing moves, and silent would drop it.
-silent_actions=(focus)
+# The focused agent is the feedback. The other jumps keep their toast: "no agent is waiting" is their only reply when
+# nothing moves, and silent would drop it. jump_done is silent and sends that reply itself.
+silent_actions=(focus jump_done)
 
 # The fixed phrases come before "go to the {target} agent", which would otherwise take "go to the next agent".
 verbs=(
   "jump_waiting  {focus} (the )?(waiting|blocked) agent|{focus} the agent that (needs|wants) (me|my attention|attention|input)"
+  "jump_done     {focus} (the )?(done|finished) agent|({focus} )?(the )?next (done|finished) agent|{focus} the agent that (finished|is done)"
   "jump_next     ({focus} )?(the )?next agent"
   "jump_previous ({focus} )?(the )?(previous|prior) agent"
   "focus         {focus} (the )?agent {target}"
@@ -19,6 +20,8 @@ verbs=(
 examples=(
   "go to the waiting agent"
   "go to the agent that needs me"
+  "go to the done agent"
+  "next done agent"
   "next agent"
   "go to the previous agent"
   "go to the <name> agent"
@@ -26,6 +29,7 @@ examples=(
 
 declare -A actions=(
   [jump_waiting]='focus_first_in_state waiting'
+  [jump_done]='focus_oldest_done'
   [jump_next]='focus_cycled_agent 1'
   [jump_previous]='focus_cycled_agent -1'
   [focus]='focus_agent "$id"'
@@ -57,14 +61,30 @@ agent_label() {
 
 # keeptabs-pick lists waiting sessions first, then done, running and idle, oldest first within a state, so the first
 # session in one of the given states is the one that has waited longest.
+first_agent_in_state() {
+  agent_sessions | jq -r --args 'first(.[] | select(.state | IN($ARGS.positional[])) | .id) // empty' "$@"
+}
+
 focus_first_in_state() {
   local id
-  id=$(agent_sessions | jq -r --args 'first(.[] | select(.state | IN($ARGS.positional[])) | .id) // empty' "$@")
+  id=$(first_agent_in_state "$@")
   if [ -z "$id" ]; then
     echo "no agent is $(printf '%s' "$*" | sed 's/ / or /g')"
     return 0
   fi
   focus_agent "$id" && agent_label "$id"
+}
+
+# keeptabs-pick --focus marks a done session seen, dropping it to idle, so saying it again reaches the next done one.
+focus_oldest_done() {
+  local id
+  id=$(first_agent_in_state "done")
+  if [ -z "$id" ]; then
+    # A silent action's output is dropped, and this is the answer, not a failure.
+    notify-send --transient --app-name=voxcmd "no agent is done"
+    return 0
+  fi
+  focus_agent "$id"
 }
 
 # Steps $1 (1 or -1) through keeptabs-pick's order from the focused agent, wrapping around. With none focused, "next"

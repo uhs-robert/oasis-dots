@@ -308,6 +308,7 @@ Brightness and do not disturb send no notification when they work ([silent](#sil
 | Say                                                          | Does                                                                      |
 | ------------------------------------------------------------ | ------------------------------------------------------------------------- |
 | "go to the waiting agent", "take me to the agent that needs me" | the agent that has waited longest for input; says so when none is waiting |
+| "go to the done agent", "next done agent", "go to the agent that finished" | the agent that finished longest ago; says so when none is done |
 | "next agent", "go to the next agent", "jump to next agent"      | the agent after the focused one, whatever its state, wrapping around      |
 | "previous agent", "go to the previous agent"                    | the agent before the focused one                                          |
 | "go to agent X", "go to the X agent"                            | the agent whose title, project or agent name matches X                    |
@@ -317,7 +318,8 @@ Every phrase takes any `{focus}` [intent](#intents) form: "go to", "switch to", 
 - Next and previous step through every tracked agent in `keeptabs-pick`'s order (waiting, done, running, idle, oldest first within each). The focused agent is the one whose window, tmux pane and nvim terminal keeptabs' own `session_focused` says has focus; with none focused, next starts at the first agent and previous at the last.
 - An "agent X" that matches nothing says so instead of falling through to the keybinds.
 - Tab on its Voice Help entries lists every tracked agent; picking one jumps to it.
-- "go to agent X" is [silent](#silent-actions), since the agent's window shows it worked. The jumps still notify with the agent they went to, because "no agent is waiting" is their only reply when nothing moves.
+- Jumping to a done agent marks it seen, so keeptabs drops it to idle and saying it again goes to the next oldest done agent, until "no agent is done".
+- "go to agent X" and the done jump are [silent](#silent-actions), since the agent's window shows it worked; "no agent is done" comes as its own transient notification. The other jumps still notify with the agent they went to, because "no agent is waiting" is their only reply when nothing moves.
 
 ### Tmux
 
