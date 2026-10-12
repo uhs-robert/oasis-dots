@@ -214,7 +214,7 @@ Item {
                 readonly property bool art: root.materia || root.doors || root.party || root.map || root.slots || pill.qblock || pill.ps2 || root.slimes
                 readonly property bool diamond: root.pill_tokens.bar_workspace_diamond && is_empty && !pill.art
                 readonly property bool map: root.map
-                readonly property int glyph: map ? (modelData.focused ? 17 : 14) : root.icon_size
+                readonly property int glyph: map ? 15 : root.icon_size
                 // Mario ? blocks; the focused workspace is the one already hit.
                 readonly property bool qblock: Style.workspace_art === "qblock"
                 readonly property bool ps2: Style.workspace_art === "ps2"
@@ -323,15 +323,10 @@ Item {
                         Item {
                             Snes.MapDot {
                                 anchors.horizontalCenter: parent.horizontalCenter
-                                y: 19
+                                y: 18
                                 selected: pill.modelData.focused
+                                shown: pill.modelData.active
                                 empty: pill.is_empty
-                            }
-
-                            Snes.MapStar {
-                                visible: pill.modelData.focused
-                                x: pill.is_empty ? parent.width / 2 + 5 : icons.x + icons.width - 3
-                                y: 0
                             }
                         }
                     }
@@ -499,7 +494,7 @@ Item {
                     anchors.centerIn: pill.map || root.slots ? undefined : parent
                     anchors.horizontalCenter: pill.map || root.slots ? parent.horizontalCenter : undefined
                     anchors.top: pill.map || root.slots ? parent.top : undefined
-                    anchors.topMargin: root.slots ? pill.height - root.tile_depth - root.tile_face / 2 + 1 - pill.glyph : pill.modelData.focused ? 1 : 3
+                    anchors.topMargin: root.slots ? pill.height - root.tile_depth - root.tile_face / 2 + 1 - pill.glyph : 2
                     anchors.horizontalCenterOffset: pill.icon_lead / 2
                     // Level with the slime's eyes, which sit low in the pill above its underline.
                     anchors.verticalCenterOffset: root.slimes ? 2 : 0
