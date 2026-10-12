@@ -5,8 +5,9 @@ import "../../theme"
 import "../../services"
 import "../../theme/Watch.js" as W
 
-// Hourly's Air sub-view as the pause watch's objectives screen: the cursor's half-day of US AQI around the 12-hour dial, each hour a bar in its AQI category colour,
-// the cursor hour's index on the LCD digits and the live pollutants below it as objectives, completed or failed by their category. h/l move the hour cursor.
+// Hourly's Air sub-view as the pause watch's objectives screen: US AQI in 12-hour pages of the 24 hours, each hour a bar in its AQI category colour at its real clock position,
+// the cursor hour's index on the LCD digits and the live pollutants below it as objectives, completed or failed by their category. h/l move the hour cursor, and crossing a page edge flips pages.
+// A seam notch marks the page's start, which tells 8 a.m. from 8 p.m.
 Item {
     id: root
 
@@ -21,11 +22,10 @@ Item {
     readonly property var current: WeatherState.aq_current || ({ aqi: 0, pm25: 0, pm10: 0, ozone: 0 })
     readonly property bool ready: WeatherState.aq_has_data && !!WeatherState.aq_current && root.slice.length > 0
 
-    readonly property date cursor_date: root.cursor_row ? new Date(root.cursor_row.dt) : new Date(0)
-    readonly property int cursor_hour: root.cursor_date.getHours()
-    readonly property int half_first_hour: root.cursor_hour >= 12 ? 12 : 0
-    // Index of the half's first hour; negative when the forecast starts partway through the half.
-    readonly property int window_start: root.cursor_index - (root.cursor_hour - root.half_first_hour)
+    readonly property int page_start: Math.floor(root.cursor_index / 12) * 12
+    readonly property var window_rows: root.slice.slice(root.page_start, root.page_start + 12)
+    // Clock hour of slice[0]; empty slots past the forecast's end continue counting from it.
+    readonly property int first_clock_hour: root.slice.length ? root.slice[0].hour : 0
 
     readonly property real tick_min: 3
     readonly property real tick_w: 26
@@ -33,18 +33,17 @@ Item {
     readonly property real label_room: 22
     readonly property real bar_base: face.bezel_r - face.band + 2
     readonly property real bar_span: face.band - 4 - root.label_room - root.tick_min
-    // One scale for all 24 hours so the AM and PM halves compare.
+    // One scale for all 24 hours so the pages compare.
     readonly property real aqi_top: Math.max(100, ...root.slice.map(r => r.aqi))
     readonly property real sensitive_radius: root.bar_base + root.tick_min + Math.min(1, 100 / root.aqi_top) * root.bar_span
 
     readonly property var peak_index: {
         let best = -1;
         let best_v = 0;
-        for (let i = 0; i < 12; i++) {
-            const row = root.slice[root.window_start + i];
-            if (root.window_start + i >= 0 && row && row.aqi > best_v) {
+        for (let i = 0; i < root.window_rows.length; i++) {
+            if (root.window_rows[i].aqi > best_v) {
                 best = i;
-                best_v = row.aqi;
+                best_v = root.window_rows[i].aqi;
             }
         }
         return best;
@@ -70,15 +69,11 @@ Item {
         return category === 0 ? Style.wk.lit : category === 1 ? W.warm[5] : W.red;
     }
 
-    function date_text() {
-        const day = Qt.formatDate(root.cursor_date, "ddd d").toUpperCase();
-        return day + (root.half_first_hour === 12 ? " PM" : " AM");
-    }
-
     WatchFace {
         id: face
         anchors.fill: parent
-        hand_hour: root.ready ? root.cursor_hour : -1
+        hand_hour: root.ready ? root.cursor_row.hour : -1
+        seam_hour: root.ready ? root.window_rows[0].hour : -1
         band: 58
 
         bezel: [
@@ -98,13 +93,14 @@ Item {
                 Item {
                     id: slot
                     required property int index
-                    readonly property int slice_index: root.window_start + slot.index
-                    readonly property var row: root.ready && slot.slice_index >= 0 ? root.slice[slot.slice_index] : undefined
+                    readonly property int slice_index: root.page_start + slot.index
+                    readonly property var row: root.ready ? root.slice[slot.slice_index] : undefined
                     readonly property bool at_cursor: root.ready && slot.slice_index === root.cursor_index
                     readonly property bool is_peak: slot.index === root.peak_index
                     readonly property real norm: slot.row ? Math.min(1, slot.row.aqi / root.aqi_top) : 0
                     readonly property real len: root.tick_min + slot.norm * root.bar_span
-                    rotation: face.angle_of(root.half_first_hour + slot.index)
+                    readonly property real hour: slot.row ? slot.row.hour : (root.first_clock_hour + slot.slice_index) % 24
+                    rotation: face.angle_of(slot.hour)
 
                     Rectangle {
                         visible: slot.at_cursor
@@ -202,7 +198,7 @@ Item {
                 Text {
                     id: date_label
                     anchors.centerIn: parent
-                    text: root.date_text()
+                    text: face.span_text(root.window_rows[0], root.window_rows[root.window_rows.length - 1])
                     color: Style.wk.mid
                     font.family: W.mono_font
                     font.pixelSize: Style.fs(-4)
@@ -212,7 +208,7 @@ Item {
 
             Text {
                 Layout.alignment: Qt.AlignHCenter
-                text: root.cursor_row ? WeatherState.format_hour(root.cursor_date) : ""
+                text: root.cursor_row ? TimeFormat.hour_of(root.cursor_row.hour) : ""
                 color: Style.wk.lit
                 font.family: W.mono_font
                 font.pixelSize: Style.fs(1)

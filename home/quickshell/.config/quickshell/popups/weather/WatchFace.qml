@@ -18,6 +18,8 @@ Item {
     property real hand_alpha: 1
     property int hours_per_turn: 12
     property real top_hour: 0
+    // Clock hour a page starts at; a notch sits half a slot before it. Below zero hides it.
+    property real seam_hour: -1
     // Radial depth of the bezel band, measured in from the rim.
     property real band: 30
     readonly property real label_pad: 16
@@ -56,6 +58,17 @@ Item {
         color: "transparent"
         border.width: 1
         border.color: Style.wk.edge
+    }
+
+    function day_name(row, format) {
+        return Qt.formatDate(new Date(row.date + "T00:00:00"), format).toUpperCase();
+    }
+
+    // A page's span from its first and last rows (with `date` and `hour`): the first day with its date, since forecasts run past a week, and the second day only when the page crosses midnight.
+    function span_text(first, last) {
+        if (!first || !last) return "";
+        const end_day = last.date === first.date ? "" : root.day_name(last, "ddd") + " ";
+        return root.day_name(first, "ddd d") + " " + TimeFormat.hour_of(first.hour).toUpperCase() + "\u2013" + end_day + TimeFormat.hour_of(last.hour).toUpperCase();
     }
 
     function numeral_text(hour) {
@@ -102,6 +115,21 @@ Item {
         id: bezel_layer
         x: root.cx
         y: root.cy
+    }
+
+    Item {
+        visible: root.seam_hour >= 0
+        x: root.cx
+        y: root.cy
+        rotation: root.angle_of(root.seam_hour) - 180 / root.hours_per_turn
+
+        Rectangle {
+            x: -1
+            y: -root.bezel_r
+            width: 2
+            height: root.band
+            color: Style.wk.lit
+        }
     }
 
     Item {
