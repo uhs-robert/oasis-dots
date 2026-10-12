@@ -67,7 +67,7 @@ Popup {
 
         ring: { prefix: "Roster", views: [] },
 
-        scan: { prefix: "Logbook", views: [] },
+        scan: { prefix: "Logbook", views: ["Agents", "Usage"] },
 
         scope: { prefix: "Target", views: [] },
 
