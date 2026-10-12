@@ -101,7 +101,7 @@ Popup {
 
         hev: { prefix: "Hev", views: ["Hourly", "SunMoon"] },
 
-        lsp: { prefix: "Lsp", views: ["Hourly", "SunMoon"] },
+        lsp: { prefix: "Lsp", views: ["Hourly", "SunMoon", "Air", "Alerts"] },
 
         memcard: { prefix: "MemCard", views: ["Hourly", "SunMoon"] },
 
