@@ -59,6 +59,15 @@ declare -A actions=(
   [app_unmute]='mute_app "$id" "$target" 0'
 )
 
+# Tab on these examples in Voice Help lists every output and input, and picking one makes it the default.
+# Bluetooth devices are left out: labelling them asks bluetoothctl about each one, too slow for opening help.
+help_choices() {
+  {
+    audio_nodes '^Audio/Sink$' Output | jq -c 'map({id, label: "Output: \(.label)", action: "output"})'
+    audio_nodes '^Audio/Source(/Virtual)?$' Input | jq -c 'map({id, label: "Input: \(.label)", action: "input"})'
+  } | jq -s -c 'add'
+}
+
 candidates() {
   local action="$1" target="$2"
   case "$action" in
