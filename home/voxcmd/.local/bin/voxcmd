@@ -236,10 +236,11 @@ resolve_match() {
       fi
     fi
     jq -c --argjson match "$match" --arg action "$action" --arg command "$command" --arg confirm "$confirm" \
+      --argjson only_action "$([ "${#integration_actions[@]}" = 1 ] && echo true || echo false)" \
       --argjson silent "$(action_is_silent "$action" && echo true || echo false)" \
       --argjson candidates "$candidates_json" --args \
       '($ARGS.positional) as $confirm_labels | .[]
-        | $match + {action: $action, id, label, command: $command, weak: (.weak // false), silent: $silent,
+        | $match + {action: $action, only_action: $only_action, id, label, command: $command, weak: (.weak // false), silent: $silent,
             confirm: ($confirm == "1" or (.label as $label | any($confirm_labels[]; . as $re | $label | test($re; "i")))),
             candidates: ($candidates | length)}' "${integration_confirm_labels[@]}" <<<"$options"
   )
@@ -316,8 +317,11 @@ llm_match() {
 }
 # ----------------------------------------------------------------------------------------------------------------
 
+# An integration's only action says nothing the integration name doesn't ("Keybinds: run Terminal"), so the label
+# shows just the candidate then ("Keybinds: Terminal").
 option_label() {
-  jq -r '"\(.name): \(.action | gsub("_"; " "))" + (if .label != "" and .label != .action then " \(.label)" else "" end)' <<<"$1"
+  jq -r 'if .only_action and .label != "" then "\(.name): \(.label)"
+    else "\(.name): \(.action | gsub("_"; " "))" + (if .label != "" and .label != .action then " \(.label)" else "" end) end' <<<"$1"
 }
 
 run_option() {
