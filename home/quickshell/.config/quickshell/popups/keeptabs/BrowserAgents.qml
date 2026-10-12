@@ -19,10 +19,29 @@ Item {
     property var on_activate: function (id) {}
     property bool draws_footer: false
 
+    readonly property int columns: 4
+    readonly property bool moves_across: true
     readonly property bool is_open: Popups.open_name === "keeptabs" && root.visible
     readonly property var current: root.sessions[root.selected] ?? null
     readonly property bool has_context: root.current !== null && root.current.context_pct !== null && root.current.context_pct !== undefined
     readonly property var colors: ({ error: Style.pal.error, ok: Style.pal.ok, warning: Style.pal.warning, text_primary: root.st.text_primary, text_dim: root.st.text_dim })
+
+    // h/l step one cell, j/k one row. A row step off the end keeps the column: past the last row it wraps to the top
+    // row, and from above a short last row it clamps to the last session (up from the top row lands on the last
+    // session in that column).
+    function nav_target(i, dx, dy) {
+        const n = root.sessions.length;
+        const cols = root.columns;
+        if (n === 0) return 0;
+        if (dx !== 0) return ((i + dx) % n + n) % n;
+        if (dy > 0) {
+            if (i + cols < n) return i + cols;
+            return Math.floor(i / cols) === Math.floor((n - 1) / cols) ? i % cols : n - 1;
+        }
+        if (i >= cols) return i - cols;
+        const last_row_start = Math.floor((n - 1) / cols) * cols;
+        return last_row_start + i < n ? last_row_start + i : last_row_start - cols + i;
+    }
 
     function ensure_visible(i) {
         cube_grid.positionViewAtIndex(i, GridView.Contain);
@@ -145,7 +164,7 @@ Item {
             boundsBehavior: Flickable.StopAtBounds
             model: root.sessions
             currentIndex: root.selected
-            cellWidth: Math.floor(width / 4)
+            cellWidth: Math.floor(width / root.columns)
             // Exactly two rows fit; more scroll.
             cellHeight: Math.floor(height / 2)
 
