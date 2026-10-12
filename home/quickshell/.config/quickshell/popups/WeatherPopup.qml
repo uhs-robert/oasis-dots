@@ -95,7 +95,7 @@ Popup {
     // every other view falls back to the shared one. The blank lines keep each layout's line its own hunk,
     // so style PRs that each flip one line merge without conflicts.
     readonly property var layout_views: ({
-        battle: { prefix: "Battle", views: ["Hourly", "SunMoon"] },
+        battle: { prefix: "Battle", views: ["Hourly", "SunMoon", "Air", "Alerts"] },
 
         hero: { prefix: "Hero", views: ["Hourly", "SunMoon"] },
 
