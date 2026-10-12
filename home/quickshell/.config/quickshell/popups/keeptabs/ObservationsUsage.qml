@@ -74,8 +74,10 @@ Item {
                             Layout.fillWidth: true
                             Layout.minimumWidth: 0
                             horizontalAlignment: Text.AlignHCenter
+                            wrapMode: Text.WordWrap
+                            maximumLineCount: 2
                             elide: Text.ElideRight
-                            text: cell.modelData.label
+                            text: cell.modelData.label.replace(/^Current /, "")
                             color: Theme.theme_secondary
                             font.family: root.st.font_family
                             font.pixelSize: root.st.fs(-3)
@@ -90,7 +92,7 @@ Item {
                             text: cell.modelData.percent + "%"
                             color: Fmt.context_bar_color(cell.modelData.percent, root.colors)
                             font.family: root.st.font_family
-                            font.pixelSize: Style.font_size * 2
+                            font.pixelSize: root.st.font_size * 2
                             style: Text.Outline
                             styleColor: Theme.bg_shadow
                         }
@@ -125,8 +127,9 @@ Item {
 
             Scanlines {
                 anchors.fill: parent
-                color: Qt.alpha(Theme.bg_shadow, 0.18)
-                period: 3
+                visible: root.st.scanlines
+                color: root.st.scanline_color
+                period: root.st.scanline_period
             }
         }
 
