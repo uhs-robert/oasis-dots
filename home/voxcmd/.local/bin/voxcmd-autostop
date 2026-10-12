@@ -1,0 +1,284 @@
+#!/usr/bin/env python3
+"""voxcmd-autostop: tell voxcmd when a voice command recording has heard speech and then a pause.
+
+Listens to the default source through pw-record (16 kHz mono s16) and exits with a verdict:
+  0  speech, then silence_secs of quiet: stop the recording
+  3  no speech within no_speech_secs: cancel it
+  4  nothing to do: the recording ended some other way, the audio ended, or auto-stop is off
+  1  error (pw-record missing, a bad setting)
+
+Settings: ~/.config/voxcmd/autostop.conf, overridden by VOXCMD_AUTOSTOP_* environment variables (voxcmd README).
+--pcm FILE (or -) reads raw PCM instead of the microphone, and --verbose logs the levels, for tuning and tests.
+"""
+
+import argparse
+import array
+import collections
+import ctypes
+import math
+import os
+import select
+import signal
+import subprocess
+import sys
+import time
+
+VERDICT_SILENCE = 0
+VERDICT_NO_SPEECH = 3
+VERDICT_NOTHING_TO_DO = 4
+VERDICT_ERROR = 1
+
+SAMPLE_RATE = 16000
+FRAME_SECS = 0.03
+FRAME_BYTES = int(SAMPLE_RATE * FRAME_SECS) * 2
+
+DEFAULT_SETTINGS = {
+    "enabled": "true",
+    "silence_secs": "1.0",
+    "no_speech_secs": "6",
+    "threshold_db": "auto",
+    "margin_db": "12",
+}
+
+# With threshold_db = auto, speech is margin_db above the room: a low percentile of the last ROOM_WINDOW_SECS, first
+# measured over CALIBRATION_SECS. Following the room this way keeps a fan or music from counting as speech forever,
+# and speech already under way when the recording starts still has quieter gaps between words.
+CALIBRATION_SECS = 0.3
+ROOM_WINDOW_SECS = 2.0
+ROOM_PERCENTILE = 0.1
+# A quiet laptop mic still picks up clicks and rustle above this; a voice close to it is well over.
+MIN_AUTO_THRESHOLD_DB = -45.0
+# pw-record's first buffers, and some mics between sounds, are digital silence, which says nothing about the room.
+DIGITAL_SILENCE_DB = -90.0
+# Loud frames count as speech only in runs this long: a syllable lasts longer than a key click or a tap on the desk.
+MIN_SPEECH_RUN_FRAMES = 3
+# Speech must add up to this before a pause can end the recording.
+MIN_SPEECH_SECS = 0.25
+STATE_POLL_SECS = 0.2
+# How long voxtype gets to report the recording it was asked to start.
+RECORDING_START_GRACE_SECS = 3.0
+
+
+def config_path():
+    config_dir = os.environ.get("VOXCMD_CONFIG_DIR") or os.path.join(
+        os.environ.get("XDG_CONFIG_HOME") or os.path.expanduser("~/.config"), "voxcmd"
+    )
+    return os.path.join(config_dir, "autostop.conf")
+
+
+def load_settings():
+    """`name = value` lines from autostop.conf (`#` starts a comment), then VOXCMD_AUTOSTOP_<NAME> overrides."""
+    settings = dict(DEFAULT_SETTINGS)
+    try:
+        with open(config_path()) as config_file:
+            for line in config_file:
+                line = line.split("#", 1)[0].strip()
+                if "=" in line:
+                    name, value = (part.strip() for part in line.split("=", 1))
+                    settings[name] = value
+    except FileNotFoundError:
+        pass
+    for name in DEFAULT_SETTINGS:
+        env_name = "VOXCMD_AUTOSTOP" if name == "enabled" else "VOXCMD_AUTOSTOP_" + name.upper()
+        if os.environ.get(env_name):
+            settings[name] = os.environ[env_name]
+    unknown = set(settings) - set(DEFAULT_SETTINGS)
+    if unknown:
+        raise ValueError("unknown setting: " + ", ".join(sorted(unknown)))
+    return settings
+
+
+def is_true(value):
+    return value.lower() not in ("0", "false", "no", "off")
+
+
+def frame_level_db(frame):
+    samples = array.array("h")
+    samples.frombytes(frame)
+    if sys.byteorder == "big":
+        samples.byteswap()
+    rms = math.sqrt(sum(sample * sample for sample in samples) / len(samples))
+    return 20 * math.log10(max(rms, 1.0) / 32768)
+
+
+class SpeechThenSilence:
+    """Fed 30ms frames; reports a verdict once one is reached. Time is counted in audio, not on the clock."""
+
+    def __init__(self, settings, log):
+        self.silence_secs = float(settings["silence_secs"])
+        self.no_speech_secs = float(settings["no_speech_secs"])
+        self.fixed_threshold_db = None if settings["threshold_db"] == "auto" else float(settings["threshold_db"])
+        self.margin_db = float(settings["margin_db"])
+        self.log = log
+        self.elapsed_secs = 0.0
+        self.room_levels = collections.deque(maxlen=round(ROOM_WINDOW_SECS / FRAME_SECS))
+        self.speech_secs = 0.0
+        self.loud_run_frames = 0
+        self.quiet_secs = 0.0
+
+    def threshold_db(self):
+        if self.fixed_threshold_db is not None:
+            return self.fixed_threshold_db
+        if not self.room_levels:
+            return MIN_AUTO_THRESHOLD_DB
+        room_db = sorted(self.room_levels)[int(len(self.room_levels) * ROOM_PERCENTILE)]
+        return max(room_db + self.margin_db, MIN_AUTO_THRESHOLD_DB)
+
+    def feed(self, frame):
+        level_db = frame_level_db(frame)
+        self.elapsed_secs += FRAME_SECS
+        if level_db > DIGITAL_SILENCE_DB:
+            self.room_levels.append(level_db)
+        if self.fixed_threshold_db is None and self.elapsed_secs < CALIBRATION_SECS:
+            return None
+        threshold_db = self.threshold_db()
+        if level_db >= threshold_db:
+            self.loud_run_frames += 1
+        else:
+            self.loud_run_frames = 0
+        # A run counts from its first frame once it is long enough.
+        if self.loud_run_frames == MIN_SPEECH_RUN_FRAMES:
+            self.speech_secs += MIN_SPEECH_RUN_FRAMES * FRAME_SECS
+        elif self.loud_run_frames > MIN_SPEECH_RUN_FRAMES:
+            self.speech_secs += FRAME_SECS
+        if self.loud_run_frames >= MIN_SPEECH_RUN_FRAMES:
+            self.quiet_secs = 0.0
+        else:
+            self.quiet_secs += FRAME_SECS
+        speech_heard = self.speech_secs >= MIN_SPEECH_SECS
+        self.log(
+            f"{self.elapsed_secs:6.2f}s level {level_db:6.1f} threshold {threshold_db:6.1f} dBFS"
+            f" speech {self.speech_secs:.2f}s quiet {self.quiet_secs:.2f}s"
+        )
+        if speech_heard and self.quiet_secs >= self.silence_secs:
+            return VERDICT_SILENCE
+        if not speech_heard and self.elapsed_secs >= self.no_speech_secs:
+            return VERDICT_NO_SPEECH
+        return None
+
+
+class RecordingState:
+    """voxtype's state file. Once its recording has been seen, anything else means it ended."""
+
+    def __init__(self, path):
+        self.path = path
+        self.started_at = time.monotonic()
+        self.recording_seen = False
+
+    def ended(self):
+        try:
+            with open(self.path) as state_file:
+                state = state_file.read().strip()
+        except OSError:
+            state = "idle"
+        if state == "recording":
+            self.recording_seen = True
+            return False
+        return self.recording_seen or time.monotonic() - self.started_at > RECORDING_START_GRACE_SECS
+
+
+def die_with_parent():
+    # PR_SET_PDEATHSIG: pw-record goes too if this process is killed without running its cleanup.
+    PR_SET_PDEATHSIG = 1
+    try:
+        ctypes.CDLL(None, use_errno=True).prctl(PR_SET_PDEATHSIG, signal.SIGKILL)
+    except (OSError, AttributeError):
+        pass
+
+
+def start_pw_record():
+    return subprocess.Popen(
+        ["pw-record", "--rate", str(SAMPLE_RATE), "--channels", "1", "--format", "s16", "--raw", "-"],
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.DEVNULL,
+        preexec_fn=die_with_parent,
+    )
+
+
+def wait_for_verdict(audio_fd, detector, recording_state):
+    pending = b""
+    next_state_poll = 0.0
+    while True:
+        now = time.monotonic()
+        if recording_state and now >= next_state_poll:
+            if recording_state.ended():
+                return VERDICT_NOTHING_TO_DO
+            next_state_poll = now + STATE_POLL_SECS
+        readable, _, _ = select.select([audio_fd], [], [], STATE_POLL_SECS)
+        if not readable:
+            continue
+        chunk = os.read(audio_fd, 4096)
+        if not chunk:
+            return VERDICT_NOTHING_TO_DO
+        pending += chunk
+        while len(pending) >= FRAME_BYTES:
+            frame, pending = pending[:FRAME_BYTES], pending[FRAME_BYTES:]
+            verdict = detector.feed(frame)
+            if verdict is not None:
+                return verdict
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument("--pcm", help="raw 16 kHz mono s16le PCM file, or - for stdin, instead of the microphone")
+    parser.add_argument("--state-file", help="voxtype's state file; watched by default unless --pcm is given")
+    parser.add_argument("--verbose", action="store_true", help="log the threshold and every frame's level to stderr")
+    args = parser.parse_args()
+
+    def log(message):
+        if args.verbose:
+            print(message, file=sys.stderr)
+
+    try:
+        settings = load_settings()
+        if not is_true(settings["enabled"]):
+            return VERDICT_NOTHING_TO_DO
+        detector = SpeechThenSilence(settings, log)
+    except ValueError as error:
+        print(f"voxcmd-autostop: {error}", file=sys.stderr)
+        return VERDICT_ERROR
+
+    state_file = args.state_file
+    if state_file is None and args.pcm is None:
+        state_file = os.path.join(os.environ.get("XDG_RUNTIME_DIR") or "/tmp", "voxtype", "state")
+    recording_state = RecordingState(state_file) if state_file else None
+
+    # Exit through `finally` on a signal, so pw-record never outlives this process.
+    def exit_on_signal(*_):
+        sys.exit(VERDICT_NOTHING_TO_DO)
+
+    for signal_number in (signal.SIGTERM, signal.SIGHUP, signal.SIGINT):
+        signal.signal(signal_number, exit_on_signal)
+
+    pw_record = None
+    audio_file = None
+    try:
+        if args.pcm is None:
+            try:
+                pw_record = start_pw_record()
+            except FileNotFoundError:
+                print("voxcmd-autostop: pw-record is not installed", file=sys.stderr)
+                return VERDICT_ERROR
+            audio_fd = pw_record.stdout.fileno()
+        elif args.pcm == "-":
+            audio_fd = sys.stdin.buffer.fileno()
+        else:
+            audio_file = open(args.pcm, "rb")
+            audio_fd = audio_file.fileno()
+        verdict = wait_for_verdict(audio_fd, detector, recording_state)
+        log(f"verdict {verdict}")
+        return verdict
+    finally:
+        if audio_file:
+            audio_file.close()
+        if pw_record:
+            pw_record.terminate()
+            try:
+                pw_record.wait(timeout=1)
+            except subprocess.TimeoutExpired:
+                pw_record.kill()
+
+
+if __name__ == "__main__":
+    sys.exit(main())

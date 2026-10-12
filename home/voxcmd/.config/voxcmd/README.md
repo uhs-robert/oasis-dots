@@ -4,7 +4,7 @@ Voice commands on top of [voxtype](https://github.com/peteonrails/voxtype). Spea
 
 | Key                                | Does                                                                     |
 | ---------------------------------- | ------------------------------------------------------------------------ |
-| `SUPER + COMMA`, Leader, `COMMA`   | Voice Command: listen until a voice key is pressed again, then run it    |
+| `SUPER + COMMA`, Leader, `COMMA`   | Voice Command: listen, stop [after a pause](#auto-stop), run the command |
 | `SUPER + PERIOD`, Leader, `PERIOD` | Speech to Text: dictate until a voice key is pressed again, then type it |
 | Leader, `CTRL + SLASH`             | [Voice Help](#voice-help): pick from example phrases                     |
 
@@ -17,7 +17,7 @@ While a voxcmd picker is open, Voice Command records a reply to it instead of a 
 Saying "never mind", "cancel", "forget it" or "nothing" as the whole command runs nothing, without a "no match" notification.
 
 ```bash
-voxcmd listen                     # start a recording, or stop whatever voxtype is recording
+voxcmd listen                     # start a recording that stops itself after speech and a pause; while voxtype records, stop it
 voxcmd "next track"               # route text directly
 voxcmd --dry-run "volume to 40"   # show the match, candidates and command without running anything
 voxcmd --reply "the second one"   # answer the open voxcmd picker, as a spoken reply would
@@ -27,6 +27,24 @@ voxcmd help                       # pick from the integrations' example phrases
 ```
 
 `listen` records with `voxtype record start --file=...`, so the transcript is written to a file instead of being typed. Dictation keeps working as before.
+
+## Auto-stop
+
+A voice command recording, a reply to a picker included, stops itself: `voxcmd-autostop` listens to the default source through `pw-record` and ends the recording once it has heard speech followed by `silence_secs` of quiet. Starting and then thinking for a moment does not stop it, since the pause only counts after speech. Nothing heard within `no_speech_secs` cancels the recording silently. A voice key still stops it early. Dictation has no auto-stop, because people pause while dictating.
+
+Speech is anything `margin_db` above the room, whose level is measured over the first 300ms and then followed over the last two seconds, so a fan or music never counts as speech for long; the threshold never goes below -45 dBFS. Loud sounds shorter than 90ms, like a key click, are not speech. Set `threshold_db` to a fixed level instead when the room fools it.
+
+Settings go in `~/.config/voxcmd/autostop.conf` (`name = value`, `#` comments; ignored by git), and the matching environment variable overrides each:
+
+| Setting          | Environment                      | Default | Meaning                                                   |
+| ---------------- | -------------------------------- | ------- | --------------------------------------------------------- |
+| `enabled`        | `VOXCMD_AUTOSTOP`                | `true`  | `false` (or `0`, `no`, `off`) stops only with a voice key |
+| `silence_secs`   | `VOXCMD_AUTOSTOP_SILENCE_SECS`   | `1.0`   | quiet after speech that ends the recording                |
+| `no_speech_secs` | `VOXCMD_AUTOSTOP_NO_SPEECH_SECS` | `6`     | cancel when no speech is heard by then                    |
+| `threshold_db`   | `VOXCMD_AUTOSTOP_THRESHOLD_DB`   | `auto`  | speech level in dBFS, e.g. `-35`; `auto` follows the room |
+| `margin_db`      | `VOXCMD_AUTOSTOP_MARGIN_DB`      | `12`    | with `auto`, how far above the room speech is             |
+
+To tune it, `voxcmd-autostop --verbose` prints each frame's level and the threshold. Run it while voxtype records, since it gives up after 3s otherwise, or on raw 16 kHz mono s16 audio with `--pcm FILE`. The microphone is released when the recording ends however it ends: stopped, cancelled, at voxtype's `max_duration_secs`, or with voxcmd gone.
 
 ## How a phrase is routed
 
@@ -150,7 +168,7 @@ Off by default and a stub: voxcmd never calls a model. Set `VOXCMD_LLM_CMD` to a
 
 ### Answering by voice
 
-Press the Voice Command key while a voxcmd picker is open and speak a reply. It can be:
+Press the Voice Command key while a voxcmd picker is open and speak a reply; the recording stops itself after it, like a command. It can be:
 
 - a choice's label, matched like targets are (exact, then substring, then fuzzy); it must single out one choice;
 - an ordinal: `two`, `the second one`, `number 3`, `first`, `last`;

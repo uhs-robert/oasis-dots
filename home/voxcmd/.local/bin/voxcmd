@@ -8,8 +8,8 @@ usage() {
 Usage:
   voxcmd <text...>            route text as a spoken command
   voxcmd --dry-run <text...>  show what would run, without running it
-  voxcmd listen               start a voxtype recording; on the next call, stop it and route the transcript
-                              (as a reply when a voxcmd picker is open); while voxtype records, only stop it
+  voxcmd listen               start a voxtype recording that stops itself after speech and a pause, then route the
+                              transcript (as a reply when a voxcmd picker is open); while voxtype records, stop it
   voxcmd --reply <text...>    answer the open voxcmd picker: a choice, an ordinal, or cancel
   voxcmd --dry-run --reply <text...>
   voxcmd list                 list integrations and their verbs
@@ -25,6 +25,7 @@ pending_pick_file="$runtime_dir/pending-pick.json"
 transcript_file="$runtime_dir/transcript.txt"
 voxcmd_self="$(readlink -f "$0")"
 voxcmd_pick="$(dirname "$voxcmd_self")/voxcmd-pick"
+voxcmd_autostop="$(dirname "$voxcmd_self")/voxcmd-autostop"
 dry_run=0
 
 notify() {
@@ -535,6 +536,30 @@ listen() {
   setsid "$0" _watch "$transcript_handler" </dev/null >/dev/null 2>&1 &
 }
 
+# voxcmd-autostop's VERDICT_* exit codes; any other exit leaves the recording alone.
+autostop_verdict_silence=0
+autostop_verdict_no_speech=3
+
+# Ends the recording once voxcmd-autostop hears speech and then a pause, or cancels it when nothing was said. The
+# detector exits by itself when the recording ends some other way; the TERM trap covers the watcher ending first.
+autostop_recording() {
+  local discard_flag="$1" detector_pid verdict=0
+  [ -x "$voxcmd_autostop" ] || return 0
+  "$voxcmd_autostop" &
+  detector_pid=$!
+  trap 'kill "$detector_pid" 2>/dev/null; exit 0' TERM
+  wait "$detector_pid" || verdict=$?
+  # A voice key may have stopped it in the meantime.
+  [ "$(voxtype_state)" = recording ] || return 0
+  case "$verdict" in
+  "$autostop_verdict_silence") voxtype record stop ;;
+  "$autostop_verdict_no_speech")
+    touch "$discard_flag"
+    voxtype record cancel
+    ;;
+  esac
+}
+
 # Polled every 0.2s. Recording plus transcription can outlast voxtype's max_duration_secs; 10 minutes covers both.
 watch_poll_interval=0.2
 watch_max_polls=3000
@@ -542,16 +567,27 @@ watch_start_grace_polls=50
 watch_file_grace_polls=10
 
 watch_recording() {
-  local transcript_handler="$1" recording_seen=0 polls=0
+  local transcript_handler="$1" recording_seen=0 polls=0 state autostop_pid discard_flag
+  # A voxtype that ignores the cancel could still write a transcript.
+  discard_flag="$runtime_dir/discard.$$"
+  autostop_recording "$discard_flag" &
+  autostop_pid=$!
+  # shellcheck disable=SC2064 # expanded now: the PID and path are fixed
+  trap "kill $autostop_pid 2>/dev/null; rm -f '$discard_flag'" EXIT
   while [ "$polls" -lt "$watch_max_polls" ]; do
     polls=$((polls + 1))
-    if [ "$(voxtype_state)" != idle ]; then
+    state=$(voxtype_state)
+    if [ "$state" != idle ]; then
       recording_seen=1
+      # Transcribing: the microphone is no longer needed.
+      [ "$state" = recording ] || kill "$autostop_pid" 2>/dev/null || true
     elif [ "$recording_seen" = 1 ] || [ "$polls" -gt "$watch_start_grace_polls" ]; then
       break
     fi
     sleep "$watch_poll_interval"
   done
+  kill "$autostop_pid" 2>/dev/null || true
+  [ ! -e "$discard_flag" ] || exit 0
   # voxtype may write the file a moment after it reports idle.
   for ((polls = 0; polls < watch_file_grace_polls; polls++)); do
     [ -s "$transcript_file" ] && break
