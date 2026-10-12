@@ -2,20 +2,22 @@
 
 Voice commands on top of [voxtype](https://github.com/peteonrails/voxtype). Speak a phrase, voxcmd matches it against the verbs your integrations declare and runs the action. Two integrations ship: `media.sh` (playerctl and pamixer) and `keybinds.sh` (any described Hyprland keybind); everything else is a drop-in file you write.
 
-| Key                      | Does                                                     |
-| ------------------------ | -------------------------------------------------------- |
-| `CTRL + SHIFT + PERIOD`  | Start listening; press again to stop and run the command |
-| Leader, `SHIFT + PERIOD` | Same, from the leader menu                               |
-| Leader, `COMMA`          | Cancel Voice: discard the recording and run nothing      |
-| Leader, `CTRL + SLASH`   | [Voice Help](#voice-help): pick from example phrases     |
+| Key                                | Does                                                                     |
+| ---------------------------------- | ------------------------------------------------------------------------ |
+| `SUPER + COMMA`, Leader, `COMMA`   | Voice Command: listen until a voice key is pressed again, then run it    |
+| `SUPER + PERIOD`, Leader, `PERIOD` | Speech to Text: dictate until a voice key is pressed again, then type it |
+| Leader, `CTRL + SLASH`             | [Voice Help](#voice-help): pick from example phrases                     |
 
-While a voxcmd picker is open, the same key records a reply to it instead of a new command (see [Picker](#picker)).
+`SUPER` is `Config.leader`, and Leader is the leader menu (`SUPER + SPACE`).
 
-Cancel Voice stops whatever voxtype is recording or transcribing, a voxcmd command or plain Speech to Text dictation alike, and the next Voice Command key press starts a fresh recording. It is silent, since the bar's voxtype indicator shows the recording ending, and does nothing when nothing is recording. Saying "never mind", "cancel", "forget it" or "nothing" as the whole command also runs nothing, without a "no match" notification.
+While voxtype records, any voice key only stops it, and the recording's own mode handles what was said: a voice command still runs, dictation is still typed. So `SUPER + COMMA` then `SUPER + PERIOD` runs a command, and `SUPER + PERIOD` then `SUPER + COMMA` types. A key pressed while voxtype transcribes does nothing. Speech to Text pauses playing media and resumes it when its recording ends, whichever key or timeout ends it.
+
+While a voxcmd picker is open, Voice Command records a reply to it instead of a new command (see [Picker](#picker)).
+
+Saying "never mind", "cancel", "forget it" or "nothing" as the whole command runs nothing, without a "no match" notification.
 
 ```bash
-voxcmd listen                     # toggle: start a voxtype recording, or stop it and route the transcript
-voxcmd cancel                     # cancel any voxtype recording or transcription; listen starts fresh after it
+voxcmd listen                     # start a recording, or stop whatever voxtype is recording
 voxcmd "next track"               # route text directly
 voxcmd --dry-run "volume to 40"   # show the match, candidates and command without running anything
 voxcmd --reply "the second one"   # answer the open voxcmd picker, as a spoken reply would

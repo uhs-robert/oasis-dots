@@ -35,8 +35,7 @@ Submap.define({
 
       -- Commands
       { "PERIOD",        Cmd.run(Scripts.voxtype),                        "Speech to Text" },
-      { "SHIFT + PERIOD", Cmd.run(Scripts.voxcmd_listen),                "Voice Command" },
-      { "COMMA",         Cmd.run(Scripts.voxcmd_cancel),                  "Cancel Voice" },
+      { "COMMA",         Cmd.run(Scripts.voxcmd_listen),                  "Voice Command" },
       -- SHIFT + SLASH would read as help, but every submap keeps it for the which-key toggle.
       { "CTRL + SLASH",  Cmd.run(Scripts.voxcmd_help),                    "Voice Help" },
 

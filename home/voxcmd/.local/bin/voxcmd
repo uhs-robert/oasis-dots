@@ -9,8 +9,7 @@ Usage:
   voxcmd <text...>            route text as a spoken command
   voxcmd --dry-run <text...>  show what would run, without running it
   voxcmd listen               start a voxtype recording; on the next call, stop it and route the transcript
-                              (as a reply when a voxcmd picker is open)
-  voxcmd cancel               cancel whatever voxtype is recording or transcribing, and any recording listen started
+                              (as a reply when a voxcmd picker is open); while voxtype records, only stop it
   voxcmd --reply <text...>    answer the open voxcmd picker: a choice, an ordinal, or cancel
   voxcmd --dry-run --reply <text...>
   voxcmd list                 list integrations and their verbs
@@ -24,9 +23,6 @@ voxtype_state_file="${XDG_RUNTIME_DIR:-/tmp}/voxtype/state"
 # Written by voxcmd-pick while it waits: {pid, fifo, label, choices: [{id, label}]}.
 pending_pick_file="$runtime_dir/pending-pick.json"
 transcript_file="$runtime_dir/transcript.txt"
-# Present from `listen` starting a recording until voxtype finishes it, so the next `listen` stops instead of
-# starting; holds the waiting watcher's PID once it runs.
-listening_marker="$runtime_dir/listening"
 voxcmd_self="$(readlink -f "$0")"
 voxcmd_pick="$(dirname "$voxcmd_self")/voxcmd-pick"
 dry_run=0
@@ -510,45 +506,33 @@ reply() {
 
 voxtype_state() { cat "$voxtype_state_file" 2>/dev/null || echo idle; }
 
-# Toggle: the first call starts a recording into a file and leaves a watcher waiting for voxtype to finish it;
-# the second call stops the recording, and the watcher routes the transcript, or replies with it when a voxcmd
-# picker was open as the recording started.
+# While voxtype records, whoever started it (voxcmd or Speech to Text), this only stops it, and the recording's
+# owner handles the transcript. Otherwise it starts a recording into a file and leaves a watcher to route the
+# transcript, or to reply with it when a voxcmd picker was open as the recording started.
 listen() {
-  local transcript_handler=route
-  mkdir -p "$runtime_dir"
-  if [ -e "$listening_marker" ] && [ "$(voxtype_state)" != idle ]; then
+  local transcript_handler=route state
+  state=$(voxtype_state)
+  case "$state" in
+  recording)
     voxtype record stop
     return
-  fi
-  # An idle voxtype with the marker still present means the watcher was killed before cleaning up.
-  rm -f "$listening_marker"
-  if [ "$(voxtype_state)" != idle ]; then
-    notify "voxcmd" "voxtype is busy ($(voxtype_state))"
+    ;;
+  # The transcript is already on its way to its owner.
+  transcribing) return 0 ;;
+  idle) ;;
+  *)
+    notify "voxcmd" "voxtype is not ready ($state)"
     return 1
-  fi
+    ;;
+  esac
+  mkdir -p "$runtime_dir"
   if pending_pick >/dev/null; then transcript_handler=reply; fi
   rm -f "$transcript_file"
-  touch "$listening_marker"
   if ! voxtype record start --file="$transcript_file"; then
-    rm -f "$listening_marker"
     notify "voxcmd error" "voxtype record start failed"
     return 1
   fi
   setsid "$0" _watch "$transcript_handler" </dev/null >/dev/null 2>&1 &
-}
-
-# Silent: the bar's voxtype indicator already shows the recording ending. The watcher goes first so it cannot
-# route a transcript voxtype finishes as it is cancelled. A watcher past the recording has released the marker
-# and is left alone, already running the command.
-cancel() {
-  local watcher_pid
-  watcher_pid=$(cat "$listening_marker" 2>/dev/null) || true
-  if [[ "$watcher_pid" =~ ^[0-9]+$ ]] && grep -qs _watch "/proc/$watcher_pid/cmdline"; then
-    kill "$watcher_pid" 2>/dev/null || true
-  fi
-  # voxtype before peteonrails/voxtype#606 leaves an idle cancel's trigger file behind to kill the next recording.
-  if [ "$(voxtype_state)" != idle ]; then voxtype record cancel >/dev/null 2>&1 || true; fi
-  rm -f "$listening_marker" "$transcript_file"
 }
 
 # Polled every 0.2s. Recording plus transcription can outlast voxtype's max_duration_secs; 10 minutes covers both.
@@ -557,18 +541,8 @@ watch_max_polls=3000
 watch_start_grace_polls=50
 watch_file_grace_polls=10
 
-# Only the watcher the marker names removes it: a slow route (one waiting on its picker) must not take the marker
-# of the reply now being recorded to that picker.
-release_listening_marker() {
-  [ "$(cat "$listening_marker" 2>/dev/null)" != "$$" ] || rm -f "$listening_marker"
-}
-
 watch_recording() {
   local transcript_handler="$1" recording_seen=0 polls=0
-  # Cancelled before this watcher started.
-  [ -e "$listening_marker" ] || exit 0
-  printf '%s\n' "$$" >"$listening_marker"
-  trap release_listening_marker EXIT
   while [ "$polls" -lt "$watch_max_polls" ]; do
     polls=$((polls + 1))
     if [ "$(voxtype_state)" != idle ]; then
@@ -578,8 +552,6 @@ watch_recording() {
     fi
     sleep "$watch_poll_interval"
   done
-  # Before routing, so `cancel` never kills a watcher that is running the command.
-  release_listening_marker
   # voxtype may write the file a moment after it reports idle.
   for ((polls = 0; polls < watch_file_grace_polls; polls++)); do
     [ -s "$transcript_file" ] && break
@@ -606,7 +578,6 @@ case "${1:-}" in
   reply "$@"
   ;;
 listen) listen ;;
-cancel) cancel ;;
 help) voice_help ;;
 _watch) watch_recording "$2" ;;
 list)
