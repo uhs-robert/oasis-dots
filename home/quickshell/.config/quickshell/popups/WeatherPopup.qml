@@ -113,7 +113,7 @@ Popup {
 
         ring: { prefix: "Ring", views: [] },
 
-        scan: { prefix: "Scan", views: [] },
+        scan: { prefix: "Scan", views: ["Hourly", "SunMoon"] },
 
         scope: { prefix: "Scope", views: [] },
 
