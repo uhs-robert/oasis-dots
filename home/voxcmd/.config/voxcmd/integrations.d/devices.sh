@@ -74,8 +74,20 @@ candidates() {
   output) audio_nodes '^Audio/Sink$' Output | labels_containing_words "$target" ;;
   input) audio_nodes '^Audio/Source(/Virtual)?$' Input | labels_containing_words "$target" ;;
   connect | disconnect) paired_bluetooth_devices | labels_containing_words "$target" ;;
-  app_*) playing_apps | labels_containing_words "$target" | or_idle_app "$target" ;;
+  app_*)
+    # "set the volume to 20" reaches app_volume_set with the app "the". labels_containing_words offers every device
+    # for an articles-only target, which suits "use the microphone" but would put every playing app in a picker here.
+    if names_only_articles "$target"; then
+      echo '[]'
+    else
+      playing_apps | labels_containing_words "$target" | or_idle_app "$target"
+    fi
+    ;;
   esac
+}
+
+names_only_articles() {
+  [[ " $1 " =~ ^(\ (the|a|an|my))*\ $ ]]
 }
 
 # Device labels are long ("Radeon High Definition Audio Controller Digital Stereo (HDMI)"), so voxcmd's fuzzy
