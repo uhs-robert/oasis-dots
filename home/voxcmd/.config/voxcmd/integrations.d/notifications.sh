@@ -12,7 +12,7 @@ qs_ipc="${XDG_CONFIG_HOME:-$HOME/.config}/hypr/scripts/qs-ipc"
 verbs=(
   "clear      (clear|dismiss|delete|remove)( all)?( of)?( the| my)? notifications|clear (the )?notification (center|history)"
   "read_last  (read|show|repeat)( me)? (the )?(last|latest|previous|most recent|newest) notification( again)?|what (was|did) (that|the last) notification( say)?"
-  "open       (open|show)( me)?( the| my)? notifications( center| popup| history)?|(open|show) (the )?notification (center|popup|history)"
+  "open       {show}( me)?( the| my)? notifications( center| popup| history)?|{show} (the )?notification (center|popup|history)"
 )
 
 examples=(

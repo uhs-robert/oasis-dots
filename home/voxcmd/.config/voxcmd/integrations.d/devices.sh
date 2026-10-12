@@ -8,12 +8,12 @@ confirm=0
 # "switch to X" belongs to app switching, so output switching always names the output: "switch audio to X",
 # "use X", "output to X". Input verbs come first so "use the X microphone" never reads as an output.
 verbs=(
-  "bluetooth_on   (turn )?bluetooth on|turn on (the )?bluetooth|enable bluetooth"
-  "bluetooth_off  (turn )?bluetooth off|turn off (the )?bluetooth|disable bluetooth"
+  "bluetooth_on   (turn )?bluetooth on|{activate} (the )?bluetooth"
+  "bluetooth_off  (turn )?bluetooth off|{deactivate} (the )?bluetooth"
   # The one target not last: the engine finds its group by counting "(", and the trailing word ends the capture.
   "input          (use|switch to) (the |my )?{target} (microphone|mic)"
-  "input          (switch|set|change|use) (the |my )?(microphone|mic|input)( to)? (the |my )?{target}"
-  "output         (switch|set|change) (the |my )?(audio|sound|output|speakers?)( output)? to (the |my )?{target}"
+  "input          (switch|{set}|use) (the |my )?(microphone|mic|input)( to)? (the |my )?{target}"
+  "output         (switch|{set}) (the |my )?(audio|sound|output|speakers?)( output)? to (the |my )?{target}"
   "output         (use|(audio |sound )?output to) (the |my )?{target}"
   "disconnect     disconnect( from)? (the |my )?{target}"
   "connect        (re)?connect( to)? (the |my )?{target}"
@@ -28,7 +28,7 @@ verbs=(
   "app_volume_down  turn (the )?{target} (down|quieter)( by [0-9]+( percent)?)?"
   "app_volume_down  turn down (the )?{target}( by [0-9]+( percent)?)?"
   "app_volume_down  (turn )?(the )?{target} (volume|sound) down( by [0-9]+( percent)?)?"
-  "app_volume_set   (set )?(the )?{target} (volume|sound)( to| at)? [0-9]+( percent)?"
+  "app_volume_set   ({set} )?(the )?{target} (volume|sound)( to| at)? [0-9]+( percent)?"
 )
 
 # set-default moves only the streams following the default (WirePlumber's linking.follow-default-target), never

@@ -13,23 +13,16 @@ target_match=words
 ignored_words=(window app application program)
 match_ignore_words=("${ignored_words[@]}")
 
-# Spoken verbs per action, shared by the patterns below and by the keybind check in candidates(). -g because voxcmd
-# sources this file from a function, which would make a plain declare local to it.
-declare -gA action_verbs=(
-  [open_new]="open new|launch new|start new"
-  [open]="open|launch|start"
-  [focus]="focus|switch to|go to"
-  [move]="move|send|put"
-  [close]="close"
-)
+# Moving has no shared intent; its words are kept here for the keybind check in candidates() as well.
+move_verbs="move|send|put"
 
 # move's target is "<window> to workspace <n>": one placeholder carries both, and candidates() splits it.
 verbs=(
-  "open_new  (${action_verbs[open]}) (a )?new {target}"
-  "open      (${action_verbs[open]}) {target}"
-  "focus     (${action_verbs[focus]}) {target}"
-  "move      (${action_verbs[move]}) {target}"
-  "close     (${action_verbs[close]}) {target}"
+  "open_new  {open} (a )?new {target}"
+  "open      {open} {target}"
+  "focus     {focus} {target}"
+  "move      (${move_verbs}) {target}"
+  "close     {close} {target}"
 )
 
 examples=(
@@ -92,13 +85,20 @@ names_keybind() {
   ' "$@" >/dev/null
 }
 
+# The spoken verbs of an action, one per line, as its pattern above accepts them.
+action_verbs() {
+  case "$1" in
+  open_new) intent_forms open | sed 's/$/ new/' ;;
+  move) tr '|' '\n' <<<"$move_verbs" ;;
+  open | focus | close) intent_forms "$1" ;;
+  esac
+}
+
 # True when "<verb> <target>" names a described keybind ("close browsers", "focus left", "go to workspace 2", "start
 # menu"): those belong to the keybinds fallback, which only gets a turn when this integration offers nothing.
 spoken_as_keybind() {
   local action="$1" target="$2" verb phrases=()
-  local -a spoken_verbs
-  IFS='|' read -ra spoken_verbs <<<"${action_verbs[$action]}"
-  for verb in "${spoken_verbs[@]}"; do phrases+=("$verb $target"); done
+  while IFS= read -r verb; do phrases+=("$verb $target"); done < <(action_verbs "$action")
   names_keybind "${phrases[@]}"
 }
 
