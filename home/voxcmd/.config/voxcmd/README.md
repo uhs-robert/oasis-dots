@@ -104,6 +104,17 @@ declare -A no_match_actions=(
 )
 ```
 
+An integration can also list everything it can run for [Voice Help](#voice-help)'s Tab:
+
+```bash
+help_action=focus   # Tab lists candidates "focus" "" and picking one runs focus on it
+
+# Optional. Lists the entries instead, as [{id, label, action}]; action defaults to help_action.
+help_choices() {
+  hyprctl clients -j | jq -c 'map({id: .address, label: .title})'
+}
+```
+
 Candidates may also carry `match_text`, the text the target is matched against when it should differ from the label shown (`keybinds.sh` matches the bare description and shows the submap after it).
 
 Optional settings for integrations whose actions differ in risk, or whose targets need stricter matching:
@@ -162,11 +173,14 @@ As a fallback it never sees a phrase another integration takes. Starting the phr
 - `excluded_descriptions` hides the voice binds themselves and anything about passwords or secrets; edit the list in the file.
 - `confirm_labels` asks before closing, killing, locking, logging out, powering off, rebooting, suspending, deleting or clearing.
 - A bind that runs sends no notification ([silent](#silent-actions)); one that fails does.
+- Tab on its Voice Help entries lists every offered bind; picking one runs it as "press <description>" would.
 - A bind runs like Keybind Help runs it: the submap is reset, then `hyprctl eval 'debug.getregistry()[<arg>]()'`.
 
 ## Voice Help
 
 `voxcmd help` (leader `CTRL + SLASH`, saying "voice help" or "what can I say", or the button on a "no match" notification) shows every integration's `examples` in the picker, labelled with the integration's name and with fallback integrations last. Picking a phrase without placeholders runs it as if it had been spoken. A phrase with a placeholder (`set volume to <number>`) cannot be completed from a click, so it comes back as a "Say: ..." notification instead.
+
+Tab on an entry of an integration that sets `help_action` or `help_choices` replaces the list with everything that integration can run, titled with its name (Keybinds: every described bind), like Tab completing a command in HyprVim's prompt. Such entries show `Tab: <name> (<count>)`; Tab on the others does nothing. The list searches like any picker list, picking an entry runs it like the spoken phrase would (asking first where the integration's `confirm_labels` say so), and Backspace on an empty search goes back to the examples with the search and row restored. The rofi fallback shows the examples only.
 
 The button works with any notification daemon that supports actions, the bar's included: `notify-send --action` waits for the notification to close, so a detached process waits on it instead of voxcmd.
 
@@ -187,7 +201,9 @@ Off by default and a stub: voxcmd never calls a model. Set `VOXCMD_LLM_CMD` to a
 
 ## Picker
 
-`voxcmd-pick <label> <choices-json>` is the blocking picker voxcmd uses, usable on its own. Choices are strings or `{id, label}` objects; it prints the picked id and exits 1 on cancel. Labels are shown numbered (`1. Acme Labs`); the number never reaches the printed id.
+`voxcmd-pick <label> <choices-json> [<expansions-json>]` is the blocking picker voxcmd uses, usable on its own. Choices are strings or `{id, label}` objects; it prints the picked id and exits 1 on cancel. Labels are shown numbered (`1. Acme Labs`); the number never reaches the printed id.
+
+Expansions are `{key: {title, choices}}`, and a choice with `expand: key` opens that list on Tab in the Quickshell picker; its ids come back like any other. The picker writes the key it shows to a view file, so a voice reply answers from the list on screen.
 
 ### Answering by voice
 
@@ -201,6 +217,6 @@ A recording started while a picker waits is always a reply, so `cancel` there cl
 
 The reply picks as if the choice had been clicked and closes the picker. A reply that matches nothing or several choices leaves the picker open and sends a notification; press the key again to retry.
 
-While it waits, `voxcmd-pick` keeps `$XDG_RUNTIME_DIR/voxcmd/pending-pick.json` (`{pid, fifo, label, choices}`) and removes it when the pick ends however it ends. A file whose owner is gone is ignored. The reply goes into the picker's result FIFO, so `voxcmd-pick` closes the picker itself afterwards: the Quickshell one over `qs-ipc call picker close`, rofi by ending it.
+While it waits, `voxcmd-pick` keeps `$XDG_RUNTIME_DIR/voxcmd/pending-pick.json` (`{pid, fifo, label, choices, expansions, view}`) and removes it when the pick ends however it ends. A file whose owner is gone is ignored. The reply goes into the picker's result FIFO, so `voxcmd-pick` closes the picker itself afterwards: the Quickshell one over `qs-ipc call picker close`, rofi by ending it.
 
 Hyprland still runs binds while the Quickshell picker has the keyboard. rofi asks the compositor to inhibit shortcuts while it is open, and Hyprland honours that unless `binds:disable_keybind_grabbing` is set, so with the rofi fallback the key does nothing until rofi closes; pick with the keyboard or mouse there.

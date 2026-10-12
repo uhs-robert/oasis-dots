@@ -31,6 +31,9 @@ declare -A actions=(
   [run]='run_keybind "$id"'
 )
 
+# Tab on these examples in Voice Help lists every bind candidates() offers, and picking one runs it.
+help_action=run
+
 # Binds whose description contains any of these (case-insensitive) are never offered: the voice keys themselves,
 # and anything near passwords or secrets.
 excluded_descriptions=(

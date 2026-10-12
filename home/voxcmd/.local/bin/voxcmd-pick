@@ -1,25 +1,38 @@
 #!/usr/bin/env bash
 # voxcmd-pick: blocking choice picker for shell callers.
-# Usage: voxcmd-pick <label> <choices-json>
-# Choices are a JSON array of strings or {id, label} objects. Prints the picked id (the string itself for
+# Usage: voxcmd-pick <label> <choices-json> [<expansions-json>]
+# Choices are a JSON array of strings or {id, label, expand} objects. Prints the picked id (the string itself for
 # plain strings) and exits 0; exits 1 on cancel. Uses the Quickshell "choices" picker when the bar is running,
 # else rofi -dmenu. While it waits, `voxcmd --reply` can answer it through the pending-pick state file.
+# Expansions are {key: {title, choices}}: Tab on a choice whose expand names a key shows that list instead, and
+# Backspace on an empty search comes back; ids are shared with the top-level choices. rofi shows only the top level.
 set -euo pipefail
 
-label="${1:?usage: voxcmd-pick <label> <choices-json>}"
-choices_json="${2:?usage: voxcmd-pick <label> <choices-json>}"
+usage='usage: voxcmd-pick <label> <choices-json> [<expansions-json>]'
+label="${1:?$usage}"
+choices_json="${2:?$usage}"
+expansions_json="${3:-"{}"}"
 # Give up eventually so a bar that dies mid-pick cannot leave callers blocked forever.
 pick_timeout="${VOXCMD_PICK_TIMEOUT:-300}"
 pending_pick_file="${XDG_RUNTIME_DIR:-/tmp}/voxcmd/pending-pick.json"
 hypr_scripts="${XDG_CONFIG_HOME:-$HOME/.config}/hypr/scripts"
 
-choices=$(jq -c 'map(if type == "string" then {id: ., label: .} else {id: (.id | tostring), label: (.label // .id | tostring)} end)' <<<"$choices_json")
-# Both pickers hand back the picked label, not its position. Numbering makes every label unique, so each maps back to
-# one id, and gives voice replies an ordinal to say; a label shared by several choices also gets the id appended, so
-# the user can tell them apart.
-choices=$(jq -c '(group_by(.label) | map(select(length > 1) | .[0].label)) as $shared_labels
+# Both pickers hand back the picked label, not its position. Numbering makes every label in a list unique, so each
+# maps back to one id, and gives voice replies an ordinal to say; a label shared by several choices also gets the id
+# appended, so the user can tell them apart. A tab would split the "<key><TAB><label>" an expanded pick comes back as.
+# shellcheck disable=SC2016 # a jq program
+normalize_choices='def normalize_choices:
+  map(if type == "string" then {id: ., label: .} else {id: (.id | tostring), label: (.label // .id | tostring)}
+      + if .expand then {expand: (.expand | tostring)} else {} end end
+    | .label |= gsub("\t"; " "))
+  | (group_by(.label) | map(select(length > 1) | .[0].label)) as $shared_labels
   | map(if .label | IN($shared_labels[]) then .label += " (\(.id))" else . end)
-  | to_entries | map(.value + {label: "\(.key + 1). \(.value.label)"})' <<<"$choices")
+  | to_entries | map(.value + {label: "\(.key + 1). \(.value.label)"});'
+choices=$(jq -c "$normalize_choices normalize_choices" <<<"$choices_json")
+expansions=$(jq -c "$normalize_choices"' with_entries(select(.key | test("\t") | not)
+  | .value |= {title: (.title // "" | tostring), choices: (.choices // [] | normalize_choices)})
+  | with_entries(select(.value.choices != []))' <<<"$expansions_json")
+choices=$(jq -c --argjson expansions "$expansions" 'map(if .expand and ($expansions[.expand] | not) then del(.expand) else . end)' <<<"$choices")
 
 work_dir=$(mktemp -d "${XDG_RUNTIME_DIR:-/tmp}/voxcmd-pick.XXXXXX")
 reader_pid=""
@@ -35,11 +48,17 @@ trap 'exit 1' INT TERM HUP
 result_fifo="$work_dir/result"
 spec="$work_dir/spec.json"
 labels="$work_dir/labels"
+# The expansion key the picker shows, empty for the top level, so a voice reply answers from what is on screen.
+view_file="$work_dir/view"
 mkfifo "$result_fifo"
+: >"$view_file"
 jq -r '.[].label' <<<"$choices" >"$labels"
 # No id: ChoicesProvider then only writes the pick to result_path and skips the Hyprland prompt callback.
-jq -n --arg label "$label" --arg result_path "$result_fifo" --argjson choices "$choices" \
-  '{label: $label, result_path: $result_path, choices: [$choices[].label]}' >"$spec"
+jq -n --arg label "$label" --arg result_path "$result_fifo" --arg view_path "$view_file" --argjson choices "$choices" \
+  --argjson expansions "$expansions" \
+  '{label: $label, result_path: $result_path, view_path: $view_path,
+    choices: $choices | map(if .expand then {label, expand} else .label end),
+    expansions: $expansions | map_values({title, choices: [.choices[].label]})}' >"$spec"
 
 # Opening the FIFO for writing happens before rofi runs, so even a missing rofi closes it and reads as a cancel.
 printf -v rofi_fallback 'rofi -dmenu -i -p %q < %q > %q' "$label" "$labels" "$result_fifo"
@@ -53,7 +72,8 @@ picker_pid=$!
 
 mkdir -p "$(dirname "$pending_pick_file")"
 jq -n --argjson pid $$ --arg fifo "$result_fifo" --arg label "$label" --argjson choices "$choices" \
-  '{pid: $pid, fifo: $fifo, label: $label, choices: $choices}' >"$work_dir/pending-pick.json"
+  --argjson expansions "$expansions" --arg view "$view_file" \
+  '{pid: $pid, fifo: $fifo, label: $label, choices: $choices, expansions: $expansions, view: $view}' >"$work_dir/pending-pick.json"
 mv -f "$work_dir/pending-pick.json" "$pending_pick_file"
 
 # The first line, not EOF: rofi keeps the FIFO open for writing while a voice reply arrives through it.
@@ -74,4 +94,11 @@ elif [ -x "$hypr_scripts/qs-ipc" ]; then
 fi
 
 [ -n "$picked" ] || exit 1
-jq -r --arg picked "$picked" 'first(.[] | select(.label == $picked) | .id) // empty' <<<"$choices" | grep . || exit 1
+# A pick from an expansion comes back as "<key><TAB><label>".
+picked_key="" picked_label="$picked"
+if [[ "$picked" == *$'\t'* ]]; then
+  picked_key="${picked%%$'\t'*}" picked_label="${picked#*$'\t'}"
+fi
+jq -r --arg key "$picked_key" --arg picked "$picked_label" --argjson expansions "$expansions" \
+  'first((if $key == "" then . else $expansions[$key].choices // [] end)[] | select(.label == $picked) | .id) // empty' \
+  <<<"$choices" | grep . || exit 1

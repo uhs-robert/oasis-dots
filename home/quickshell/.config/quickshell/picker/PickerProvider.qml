@@ -35,6 +35,10 @@ Scope {
     // Tab labels drawn above the query; the picker calls select_tab(i) on a switch, which must set `tab`.
     property var tabs: []
     property int tab: 0
+    // Tab completes like HyprVim's command line: on an item, expand(item) may swap in a list under it, and while
+    // can_go_back Backspace on an empty search calls go_back(). Tab steps rows unless `expands`.
+    property bool expands: false
+    property bool can_go_back: false
 
     // Called on every open with the opener's mode arg, so keep it cheap; an item's `icon_path` skips the picker's icon lookup.
     function refresh(arg) {}
@@ -44,6 +48,13 @@ Scope {
     function activate(item) {}
 
     function run_action(key, item) {}
+
+    // Returns whether it swapped in a new list.
+    function expand(item) {
+        return false;
+    }
+
+    function go_back() {}
 
     Component.onCompleted: Pickers.register(root)
 }
