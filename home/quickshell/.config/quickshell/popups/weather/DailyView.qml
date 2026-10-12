@@ -45,7 +45,7 @@ Item {
 
     readonly property bool lsp_columns: Style.weather_header === "lsp" && root.sub === 0
 
-    readonly property bool scan_columns: Style.weather_header === "scan" && root.sub === 0
+    readonly property bool scan_columns: Style.weather_header === "scan"
 
     readonly property bool battle_columns: Style.weather_header === "battle"
 
@@ -415,6 +415,8 @@ Item {
                             col_w: day_col.width
                             scale_min: root.week_temp_range.min
                             scale_max: root.week_temp_range.max
+                            sub: root.sub
+                            wind_max: root.wind_max
                         }
                     }
 
