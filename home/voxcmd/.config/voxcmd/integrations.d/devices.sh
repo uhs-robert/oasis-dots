@@ -193,7 +193,7 @@ report_app_volume() {
 
 # -l 1.0 stops a step at 100%; going down, wpctl already stops at 0.
 step_app_volume() {
-  local stream_ids="$1" app="$2" direction="$3" step=10 stream
+  local stream_ids="$1" app="$2" direction="$3" step=5 stream
   require_streams "$stream_ids" "$app" || return
   if [[ "${raw_transcript,,}" =~ \ by\ ([0-9]+) ]]; then step=$(clamp_percent "${BASH_REMATCH[1]}"); fi
   for stream in $stream_ids; do

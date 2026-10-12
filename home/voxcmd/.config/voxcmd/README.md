@@ -193,7 +193,7 @@ Strong matches hide weak ones.
 | "use the X microphone", "switch mic to X", "set the input to X"   | `wpctl set-default` on the matching source             |
 | "connect X", "reconnect X", "disconnect X"                        | `bluetoothctl connect`/`disconnect` on a paired device |
 | "bluetooth on", "turn off bluetooth", "enable bluetooth"          | `bluetoothctl power on`/`off`                          |
-| "turn Spotify down", "turn up Firefox", "Firefox volume up by 20" | `wpctl set-volume` on the app's streams, 10% a step    |
+| "turn Spotify down", "turn up Firefox", "Firefox volume up by 20" | `wpctl set-volume` on the app's streams, 5% a step     |
 | "Spotify volume 30", "set Firefox volume to 50 percent"           | `wpctl set-volume` on the app's streams                |
 | "mute Firefox", "unmute Spotify"                                  | `wpctl set-mute` on the app's streams                  |
 
