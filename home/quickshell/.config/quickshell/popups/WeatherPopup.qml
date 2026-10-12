@@ -107,7 +107,7 @@ Popup {
 
         mode7: { prefix: "Mode7", views: ["Hourly", "SunMoon"] },
 
-        oasis: { prefix: "Oasis", views: ["Hourly", "SunMoon"] },
+        oasis: { prefix: "Oasis", views: ["Hourly", "SunMoon", "Air", "Alerts"] },
 
         pokedex: { prefix: "Dex", views: ["Hourly", "SunMoon"] },
 
