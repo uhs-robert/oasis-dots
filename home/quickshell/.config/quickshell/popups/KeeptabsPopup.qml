@@ -79,7 +79,7 @@ Popup {
 
         weatherstar: { prefix: "Observations", views: [] },
 
-        wttr: { prefix: "Htop", views: [] }
+        wttr: { prefix: "Htop", views: ["Agents", "Usage"] }
     })
 
     function view_url(view, shared) {
