@@ -87,9 +87,13 @@ Singleton {
         return out;
     }
 
+    function error_result(id, why) {
+        return { text: root.error_glyph, tooltip: id + ": " + why, class: "error", hidden: false };
+    }
+
     // One line of {text, tooltip, class, hidden}; anything else is reported as the error state.
     function result_from_output(id, code, stdout, stderr) {
-        const fail = why => ({ text: root.error_glyph, tooltip: id + ": " + why, class: "error", hidden: false });
+        const fail = why => root.error_result(id, why);
         if (code !== 0) {
             const detail = stderr.trim().split("\n").slice(-3).join("\n");
             return fail("exited with code " + code + (detail ? "\n" + detail : ""));
@@ -149,6 +153,7 @@ Singleton {
             property int exit_code: 0
             property bool exited: false
             property bool drained: false
+            property bool click_exited: false
 
             // A run still going skips this refresh, so a slow command never stacks up.
             function run() {
@@ -166,6 +171,7 @@ Singleton {
             function click(right) {
                 const command = right ? runner.entry.on_right_click : runner.entry.on_click;
                 if (!command || runner.click_proc.running) return;
+                runner.click_exited = false;
                 runner.click_proc.command = command;
                 runner.click_proc.running = true;
             }
@@ -187,11 +193,24 @@ Singleton {
                     runner.exited = true;
                     runner.settle();
                 }
+                // A command that cannot start (a missing argv executable) stops running without exited or the end of
+                // stdout, so it would never settle.
+                onRunningChanged: {
+                    if (!runner.status_proc.running && !runner.exited)
+                        root.set_result(runner.entry.id, root.error_result(runner.entry.id, "could not start " + runner.entry.command[0]));
+                }
             }
 
             // A click usually changes what the status command reports, so it reruns once the click's command ends.
             readonly property Process click_proc: Process {
-                onExited: runner.run()
+                onExited: {
+                    runner.click_exited = true;
+                    runner.run();
+                }
+                onRunningChanged: {
+                    if (!runner.click_proc.running && !runner.click_exited)
+                        root.set_result(runner.entry.id, root.error_result(runner.entry.id, "could not start " + runner.click_proc.command[0]));
+                }
             }
 
             readonly property Timer poll: Timer {
