@@ -7,7 +7,7 @@ import "../../services"
 import "../weather"
 import "KeeptabsFormat.js" as Fmt
 
-// CRT: the WeatherStar 4000 "Latest Observations" page. A table pages seven sessions at a time, the page
+// CRT: the WeatherStar 4000 "Latest Observations" page. A table pages as many sessions as fit, the page
 // following `selected`; the selected session's detail sits in a "Local Forecast" band and the LDL crawl
 // scrolls the sessions that wait. Contract as in AgentsView.
 Item {
@@ -21,7 +21,9 @@ Item {
     property var on_activate: function (id) {}
     property bool draws_footer: false
 
-    readonly property int page_size: 7
+    // As many rows as the table panel holds (header and 2 px spacing included), so rows never squeeze when
+    // the crawl shows or the title wraps.
+    readonly property int page_size: Math.max(3, Math.floor((table_panel.height - 16 - table_header.implicitHeight - 2) / (root.row_h + 2)))
     readonly property int page_count: Math.max(1, Math.ceil(root.sessions.length / root.page_size))
     readonly property int page: Math.min(root.page_count - 1, Math.floor(Math.max(0, root.selected) / root.page_size))
     readonly property var visible_rows: root.sessions.slice(root.page * root.page_size, (root.page + 1) * root.page_size)
@@ -89,6 +91,7 @@ Item {
         }
 
         Item {
+            id: table_panel
             Layout.fillWidth: true
             Layout.fillHeight: true
             Layout.minimumHeight: 0
@@ -103,6 +106,7 @@ Item {
                 spacing: 2
 
                 RowLayout {
+                    id: table_header
                     Layout.fillWidth: true
                     Layout.leftMargin: 4
                     Layout.rightMargin: 4
@@ -238,8 +242,9 @@ Item {
 
             Scanlines {
                 anchors.fill: parent
-                color: Qt.alpha(Theme.bg_shadow, 0.18)
-                period: 3
+                visible: root.st.scanlines
+                color: root.st.scanline_color
+                period: root.st.scanline_period
             }
         }
 
@@ -299,7 +304,10 @@ Item {
         Item {
             id: crawl
             readonly property bool active: root.waiting_names.length > 0
-            readonly property bool running: crawl.active && Popups.open_name === "keeptabs"
+            // Held off for a frame whenever the text changes: a running NumberAnimation keeps its old `to` and
+            // `duration`, so the loop would jump at the seam.
+            property bool reset: false
+            readonly property bool running: crawl.active && root.visible && Popups.open_name === "keeptabs" && !crawl.reset
             readonly property int copies: crawl_metrics.advanceWidth > 0 ? Math.ceil(crawl.width / crawl_metrics.advanceWidth) + 1 : 1
 
             visible: crawl.active
@@ -317,6 +325,10 @@ Item {
                 font.family: root.st.font_family
                 font.pixelSize: root.st.fs(-4)
                 text: root.crawl_text
+                onAdvanceWidthChanged: {
+                    crawl.reset = true;
+                    Qt.callLater(() => crawl.reset = false);
+                }
             }
 
             Row {
