@@ -37,7 +37,7 @@ Item {
     // Game Boy: days as a Game Boy Camera photo strip on the week's hi/lo dot scale.
     readonly property bool camera: Style.weather_header === "pokedex"
     // Oasis: range pills over a horizon of weekday names, the selected day rising in sand.
-    readonly property bool dunes: Style.weather_header === "oasis" && root.sub === 0
+    readonly property bool dunes: Style.weather_header === "oasis"
     // Modern: raised day columns with a pill label and a range track.
     readonly property bool pill_columns: Style.weather_header === "hero"
     // Each layout's own Temp & Precip column; the placeholders stay off (false &&) until their column draws something.
@@ -353,6 +353,8 @@ Item {
                             selected: day_col.day_index === root.day_cursor
                             scale_min: root.window_temp_range.min
                             scale_max: root.window_temp_range.max
+                            sub: root.sub
+                            wind_max: root.wind_max
                             first: day_col.index === 0
                             last: day_col.index === root.window_days.length - 1
                             bleed: day_row.spacing / 2
