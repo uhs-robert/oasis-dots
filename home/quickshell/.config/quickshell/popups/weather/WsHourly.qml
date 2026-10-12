@@ -21,35 +21,12 @@ Item {
     readonly property var sub_names: ["Temperature", "Precipitation", "Wind", "UV Index", "Humidity"]
     readonly property var line_colors: [Theme.theme_secondary, Theme.fg_strong, Style.pal.bright_cyan, Theme.theme_label, Theme.theme_primary_light]
 
-    readonly property int hour_col_w: 56
-    readonly property int icon_row_h: 30
-    readonly property int label_row_h: 18
     readonly property int axis_w: Style.px(34)
     readonly property int plot_top: 30
     readonly property int amount_px: Style.fs(-4)
     readonly property real readout_h: Math.max(18, readout_text.implicitHeight)
-    readonly property int chart_h: flick.height - root.icon_row_h - root.label_row_h - 4
     readonly property int plot_bottom: root.sub === 1 ? root.amount_px + 6 : 0
-    readonly property real plot_h: Math.max(1, root.chart_h - root.plot_top - root.plot_bottom)
-
-    readonly property var day_boundaries: {
-        const list = [];
-        let last_date = null;
-        const today_str = WeatherState.location_date_str();
-        const hrs = WeatherState.hours;
-        for (let i = 0; i < hrs.length; i++) {
-            if (hrs[i].date !== last_date) {
-                const label = hrs[i].date === today_str ? "Today" : Qt.formatDate(new Date(hrs[i].date + "T00:00:00"), "ddd");
-                list.push({ index: i, label: label });
-                last_date = hrs[i].date;
-            }
-        }
-        return list;
-    }
-
-    function value_of(row) {
-        return [row.temp, row.pop, row.wind_speed, row.uv_index, row.humidity][root.sub];
-    }
+    readonly property real plot_h: Math.max(1, track.chart_h - root.plot_top - root.plot_bottom)
 
     function secondary_of(row) {
         return root.sub === 0 ? row.feels : root.sub === 2 ? row.wind_gusts : null;
@@ -61,7 +38,7 @@ Item {
         if (hrs.length === 0) return { min: 0, max: 1, ticks: [0, 1] };
         if (root.sub === 1 || root.sub === 4) return { min: 0, max: 100, ticks: [0, 25, 50, 75, 100] };
         // Feels-like and gusts share the scale, so they count toward it or they would draw off the panel.
-        const values = hrs.map(root.value_of).concat(hrs.map(root.secondary_of).filter(v => v !== null && v !== undefined));
+        const values = hrs.map(track.value_of).concat(hrs.map(root.secondary_of).filter(v => v !== null && v !== undefined));
         let lo = Math.min(...values), hi = Math.max(...values);
         const pad = Math.max(2, (hi - lo) * 0.15);
         lo -= pad;
@@ -92,21 +69,11 @@ Item {
     }
 
     function scroll_to_cursor() {
-        const cursor_x = root.hour_cursor * root.hour_col_w;
-        // Narrow views get a smaller lead so the two margins never overlap.
-        const margin = Math.max(0, Math.min(root.hour_col_w * 2, (flick.width - root.hour_col_w) / 2));
-        if (cursor_x < flick.contentX + margin) {
-            flick.contentX = Math.max(0, cursor_x - margin);
-        } else if (cursor_x + root.hour_col_w > flick.contentX + flick.width - margin) {
-            flick.contentX = Math.min(Math.max(0, flick.contentWidth - flick.width), cursor_x + root.hour_col_w - flick.width + margin);
-        }
+        track.scroll_to_cursor();
     }
 
-    property bool want_scroll: false
-
     function request_scroll() {
-        if (flick.width > 0) root.scroll_to_cursor();
-        else root.want_scroll = true;
+        track.request_scroll();
     }
 
     // The channel's lettering is white-on-blue with a dark drop shadow; canvas text has no outline style, so offset a dark copy.
@@ -120,9 +87,9 @@ Item {
     function paint(ctx, w, h) {
         ctx.reset();
         const hrs = WeatherState.hours;
-        if (hrs.length === 0 || root.chart_h <= 0) return;
+        if (hrs.length === 0 || track.chart_h <= 0) return;
 
-        const x_of = i => i * root.hour_col_w + root.hour_col_w / 2;
+        const x_of = track.x_of;
         const color = root.line_colors[root.sub];
         const base_y = root.plot_top + root.plot_h;
 
@@ -136,8 +103,8 @@ Item {
             ctx.lineTo(w, y);
             ctx.stroke();
         }
-        for (const b of root.day_boundaries) {
-            const x = Math.round(b.index * root.hour_col_w) + 0.5;
+        for (const b of track.day_boundaries) {
+            const x = Math.round(track.left_of(b.index)) + 0.5;
             ctx.beginPath();
             ctx.moveTo(x, 0);
             ctx.lineTo(x, h);
@@ -147,7 +114,7 @@ Item {
 
         ctx.font = Style.fs(-3) + "px \"" + Style.font_family + "\"";
         ctx.textAlign = "left";
-        for (const b of root.day_boundaries) root.shadowed_text(ctx, b.label, b.index * root.hour_col_w + 4, 13, Theme.theme_primary_light);
+        for (const b of track.day_boundaries) root.shadowed_text(ctx, b.label, track.left_of(b.index) + 4, 13, Theme.theme_primary_light);
 
         if (root.sub === 1) {
             ctx.beginPath();
@@ -180,7 +147,7 @@ Item {
         ctx.strokeStyle = Theme.bg_shadow;
         ctx.beginPath();
         for (let i = 0; i < hrs.length; i++) {
-            const x = x_of(i), y = root.y_of(root.value_of(hrs[i]));
+            const x = x_of(i), y = root.y_of(track.value_of(hrs[i]));
             if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
         }
         ctx.stroke();
@@ -190,7 +157,7 @@ Item {
 
         ctx.textAlign = "center";
         for (let i = 0; i < hrs.length; i++) {
-            const v = root.value_of(hrs[i]);
+            const v = track.value_of(hrs[i]);
             const label = root.sub === 3 ? v.toFixed(1) : Math.round(v) + (root.sub === 1 || root.sub === 4 ? "%" : root.sub === 0 ? "°" : "");
             root.shadowed_text(ctx, label, x_of(i), Math.max(root.plot_top - 2, root.y_of(v) - 8), Theme.fg_strong);
         }
@@ -288,8 +255,8 @@ Item {
                 }
             }
 
-            Flickable {
-                id: flick
+            HourlyTrack {
+                id: track
                 anchors.left: axis_col.right
                 anchors.leftMargin: 4
                 anchors.right: parent.right
@@ -298,114 +265,29 @@ Item {
                 anchors.topMargin: 4
                 anchors.bottom: parent.bottom
                 anchors.bottomMargin: 4
-                clip: true
-                contentWidth: WeatherState.hours.length * root.hour_col_w
-                contentHeight: height
-                boundsBehavior: Flickable.StopAtBounds
-                flickableDirection: Flickable.HorizontalFlick
-                onContentXChanged: root.on_scroll(flick.contentX)
-
-                onWidthChanged: {
-                    if (root.want_scroll && flick.width > 0) {
-                        root.want_scroll = false;
-                        root.scroll_to_cursor();
-                    }
-                }
-
-                Component.onCompleted: flick.contentX = root.scroll_x
-
-                Item {
-                    width: flick.contentWidth
-                    height: flick.contentHeight
-
+                hour_cursor: root.hour_cursor
+                sub: root.sub
+                on_select: i => root.on_select(i)
+                scroll_x: root.scroll_x
+                on_scroll: x => root.on_scroll(x)
+                paint: root.paint
+                arrow_color: Style.pal.bright_cyan
+                label_color: Theme.fg_strong
+                label_color_selected: Theme.theme_secondary
+                label_px: Style.fs(-3)
+                label_outline: Theme.bg_shadow
+                hidpi_icons: true
+                underlay: [
                     Rectangle {
                         visible: root.hour_cursor >= 0 && root.hour_cursor < WeatherState.hours.length
-                        x: root.hour_cursor * root.hour_col_w
-                        width: root.hour_col_w
+                        x: track.left_of(root.hour_cursor)
+                        width: track.hour_col_w
                         height: parent.height
                         color: Qt.alpha(Theme.theme_secondary, 0.14)
                         border.width: 2
                         border.color: Theme.theme_secondary
                     }
-
-                    Canvas {
-                        id: canvas
-                        width: parent.width
-                        height: root.chart_h
-                        onPaint: root.paint(getContext("2d"), width, height)
-                        onHeightChanged: requestPaint()
-
-                        Connections {
-                            target: WeatherState
-                            function onHoursChanged() { canvas.requestPaint(); }
-                        }
-                        Connections {
-                            target: Style
-                            function onFont_familyChanged() { canvas.requestPaint(); }
-                            function onFont_sizeChanged() { canvas.requestPaint(); }
-                            function onPalChanged() { canvas.requestPaint(); }
-                        }
-                        Connections {
-                            target: root
-                            function onSubChanged() { canvas.requestPaint(); }
-                        }
-                    }
-
-                    Repeater {
-                        model: WeatherState.hours
-
-                        Item {
-                            id: hour_col
-                            required property var modelData
-                            required property int index
-
-                            x: hour_col.index * root.hour_col_w
-                            y: root.chart_h + 4
-                            width: root.hour_col_w
-                            height: root.icon_row_h + root.label_row_h
-
-                            MouseArea {
-                                anchors.fill: parent
-                                onClicked: root.on_select(hour_col.index)
-                            }
-
-                            Image {
-                                visible: root.sub !== 2
-                                anchors.horizontalCenter: parent.horizontalCenter
-                                width: root.icon_row_h
-                                height: root.icon_row_h
-                                readonly property real dpr: QsWindow.window ? QsWindow.window.devicePixelRatio : 1
-                                sourceSize.width: Math.ceil(root.icon_row_h * 2 * dpr)
-                                sourceSize.height: Math.ceil(root.icon_row_h * 2 * dpr)
-                                source: WeatherState.icon_source(hour_col.modelData.code, hour_col.modelData.is_day)
-                                smooth: true
-                            }
-
-                            Text {
-                                visible: root.sub === 2
-                                anchors.horizontalCenter: parent.horizontalCenter
-                                anchors.verticalCenter: parent.verticalCenter
-                                anchors.verticalCenterOffset: -(root.label_row_h / 2)
-                                text: "▲"
-                                rotation: hour_col.modelData.wind_dir
-                                color: Style.pal.bright_cyan
-                                font.pixelSize: Style.font_size
-                            }
-
-                            Text {
-                                anchors.top: parent.top
-                                anchors.topMargin: root.icon_row_h
-                                anchors.horizontalCenter: parent.horizontalCenter
-                                text: WeatherState.format_hour(new Date(hour_col.modelData.dt))
-                                color: hour_col.index === root.hour_cursor ? Theme.theme_secondary : Theme.fg_strong
-                                font.family: Style.font_family
-                                font.pixelSize: Style.fs(-3)
-                                style: Text.Outline
-                                styleColor: Theme.bg_shadow
-                            }
-                        }
-                    }
-                }
+                ]
             }
         }
     }
