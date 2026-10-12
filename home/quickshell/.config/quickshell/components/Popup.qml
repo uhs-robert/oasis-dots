@@ -223,6 +223,9 @@ PanelWindow {
     readonly property bool settled: root.wanted && !root.passive && root.drop_progress === 1 && !open_anim.running && !body_grow.running
         && !(burst_loader.item && burst_loader.item.busy)
     onSettledChanged: Popups.mark_settled(root.popup_name, root.settled)
+    // Still mapped while it animates out; Popups reports it so "closed" means the layer is really gone.
+    readonly property bool closing: !root.passive && close_anim.running
+    onClosingChanged: Popups.mark_closing(root.popup_name, root.closing)
     readonly property bool wanted: root.passive ? Tooltip.visible && Tooltip.island !== null && Popups.open_name === "" : Popups.open_name === root.popup_name && Popups.open_screen_name !== ""
 
     // Latched on open so the popup keeps its place and color while the close animation plays.
