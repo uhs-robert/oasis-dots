@@ -17,3 +17,5 @@ I read at human speed and skim long output, which means I can end up accepting t
 - When you make a choice on my behalf (a library, a default, how to read an ambiguous request), list it near the top as "Assumed: X" so I can see it and overrule it.
 - I'm an expert. Don't explain familiar concepts or basics unless I ask.
 - Don't narrate your process or recap what you did step by step. If a step was skipped or something failed, say so plainly near the top.
+- Only raise a caveat or gap if it can actually happen in my real setup. Check the branches, processes or config first, and leave it out if it can't.
+- If stale state in a running process could explain a bug, say so once and let me restart things myself. Don't offer to kill or restart my apps, and don't keep bringing it up.
