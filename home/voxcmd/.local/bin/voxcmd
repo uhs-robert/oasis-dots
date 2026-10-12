@@ -15,6 +15,7 @@ Usage:
   voxcmd --dry-run --reply <text...>
   voxcmd list                 list integrations and their verbs
   voxcmd help                 pick from the integrations' example phrases (Tab lists what one can run); one without placeholders runs
+  voxcmd errors [N]           print the last N (default 10) voxcmd notifications the bar kept: its errors, as info is transient
 EOF
 }
 
@@ -993,6 +994,21 @@ cancel_owned_recording() {
   touch "$(discard_flag_of "$watcher_pid")"
 }
 
+# The bar keeps only voxcmd's errors in its history (see notify), so this lists the failures behind recent commands.
+print_errors() {
+  local count="${1:-10}" json
+  if ! [[ $count =~ ^[0-9]+$ ]]; then
+    usage >&2
+    exit 2
+  fi
+  if ! json=$("${XDG_CONFIG_HOME:-$HOME/.config}/hypr/scripts/qs-ipc" call notifications history "$count" voxcmd 2>/dev/null) ||
+    ! jq -e 'type == "array"' <<<"$json" >/dev/null 2>&1; then
+    echo "voxcmd: bar not running" >&2
+    exit 1
+  fi
+  jq -r '.[] | "\(.time | sub("\\.[0-9]+Z$"; "Z") | fromdateiso8601 | strflocaltime("%F %T"))  \(.summary): \(.body | gsub("\n"; " "))"' <<<"$json"
+}
+
 load_local_intents
 
 case "${1:-}" in
@@ -1013,6 +1029,7 @@ case "${1:-}" in
   ;;
 listen) listen "${2:-}" ;;
 help) voice_help ;;
+errors) print_errors "${2:-}" ;;
 _watch) watch_recording "$2" ;;
 _cancel_owned_recording) cancel_owned_recording "$2" ;;
 list)
