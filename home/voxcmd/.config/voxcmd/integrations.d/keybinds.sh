@@ -118,10 +118,29 @@ bind_lists() {
   ' "${excluded_descriptions[@]}" <<<"$binds" 2>/dev/null || echo '{}'
 }
 
+# Verbs that act on the whole machine, and the words that only name it: "lock the computer", "reboot the system" and
+# "power off my laptop" mean the Lock, Reboot and Power Off binds. Without this the object is a word the bind lacks,
+# which makes it a weak match and puts a picker before the confirmation.
+machine_verbs='lock|suspend|sleep|hibernate|reboot|log ?out|log off|power off|shut ?down'
+machine_words='computer|pc|laptop|machine|screen|system|session|desktop'
+
+# A machine verb said with a machine word matches a bind named for that verb alone, or for it and a machine word, as if
+# the bind said what was spoken. The verbs are compared without spaces, so "log out" is a Logout bind.
 candidates() {
   case "$1" in
   enter_submap) bind_lists | jq -c '(.submaps // []) + (.mode_binds // [])' ;;
-  *) bind_lists | jq -c '.binds // []' ;;
+  *)
+    bind_lists | jq -c --arg target "$2" --arg verbs "$machine_verbs" --arg machine_words "$machine_words" '
+      def squeezed: gsub("[^a-z]"; "");
+      ([$target | capture("^(?<verb>\($verbs))( (the|my|this))? (\($machine_words))$")] | .[0].verb // "") as $spoken_verb
+      | (.binds // [])
+      | if $spoken_verb == "" then . else
+          map((.match_text | ascii_downcase) as $description
+            | if ($description | test("^(\($verbs))( (\($machine_words)))?$"))
+                and ($description | sub(" (\($machine_words))$"; "") | squeezed) == ($spoken_verb | squeezed)
+              then .match_text = $target else . end)
+        end'
+    ;;
   esac
 }
 
