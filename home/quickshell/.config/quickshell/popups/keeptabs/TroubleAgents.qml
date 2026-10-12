@@ -49,7 +49,9 @@ Item {
         if (row === undefined) return;
         // The fold header scrolls in with its first session.
         const first_in_fold = row > 0 && root.layout_rows.rows[row - 1].kind === "header";
-        session_list.positionViewAtIndex(first_in_fold ? row - 1 : row, ListView.Contain);
+        // Header first, then the item, so a header below the viewport does not push the item out of view.
+        if (first_in_fold) session_list.positionViewAtIndex(row - 1, ListView.Contain);
+        session_list.positionViewAtIndex(row, ListView.Contain);
     }
 
     function escape_markup(text) {
@@ -114,7 +116,7 @@ Item {
                 anchors.verticalCenter: parent.verticalCenter
                 text: "▎"
                 color: Style.caret_color
-                font.family: Style.mono_font
+                font.family: root.st.mono_font
                 font.pixelSize: root.st.fs(-1)
             }
 
@@ -165,7 +167,7 @@ Item {
                     horizontalAlignment: Text.AlignHCenter
                     text: line.is_running ? root.spinner_frames[root.spinner_frame] : (root.state_signs[line.modelData.state] || "H")
                     color: line.sign_color
-                    font.family: Style.mono_font
+                    font.family: root.st.mono_font
                     font.pixelSize: root.st.fs(-2)
                     font.bold: true
                 }
@@ -178,7 +180,7 @@ Item {
                     textFormat: Text.StyledText
                     text: line.session ? root.escape_markup(line.session.title || "Untitled") + (line.session.where ? " <font color=\"" + Qt.alpha(root.st.text_dim, 1) + "\">[" + root.escape_markup(line.session.where) + "]</font>" : "") : ""
                     color: line.is_selected ? root.st.text_strong : root.st.text_fg
-                    font.family: Style.mono_font
+                    font.family: root.st.mono_font
                     font.pixelSize: root.st.fs(-2)
                 }
 
@@ -194,7 +196,7 @@ Item {
                         anchors.centerIn: parent
                         text: line.has_context ? "ctx:" + line.session.context_pct + "%" : ""
                         color: line.has_context ? Fmt.context_bar_color(line.session.context_pct, root.colors) : root.st.text_dim
-                        font.family: Style.mono_font
+                        font.family: root.st.mono_font
                         font.pixelSize: root.st.fs(-4)
                     }
                 }
@@ -204,7 +206,7 @@ Item {
                     horizontalAlignment: Text.AlignRight
                     text: line.session ? Fmt.age(line.session.since) : ""
                     color: root.st.text_muted
-                    font.family: Style.mono_font
+                    font.family: root.st.mono_font
                     font.pixelSize: root.st.fs(-4)
                 }
             }
@@ -222,11 +224,11 @@ Item {
 
     FontMetrics {
         id: age_metrics
-        font.family: Style.mono_font
+        font.family: root.st.mono_font
         font.pixelSize: root.st.fs(-4)
     }
 
-    // The selected session in full, like a Trouble preview: the title wrapped, then agent, project and tokens.
+    // The selected session in full, like a Trouble preview: the title wrapped, then agent, project, where and tokens.
     Item {
         id: detail
         anchors.left: parent.left
@@ -258,17 +260,19 @@ Item {
                 elide: Text.ElideRight
                 text: root.current ? (root.current.title || "Untitled") : ""
                 color: root.st.text_fg
-                font.family: Style.mono_font
+                font.family: root.st.mono_font
                 font.pixelSize: root.st.fs(-3)
             }
 
             Text {
                 Layout.fillWidth: true
                 Layout.minimumWidth: 0
+                wrapMode: Text.Wrap
+                maximumLineCount: 2
                 elide: Text.ElideRight
-                text: root.current ? (root.current.agent || "claude") + " · " + (root.current.project || "") + (root.current.context_pct !== null && root.current.context_pct !== undefined ? " · " + root.current.context_pct + "% · " + Fmt.fmt_tokens(root.current.context_used) + "/" + Fmt.fmt_tokens(root.current.context_window) : "") : ""
+                text: root.current ? (root.current.agent || "claude") + " · " + (root.current.project || "") + (root.current.where ? " · " + root.current.where : "") + (root.current.context_pct !== null && root.current.context_pct !== undefined ? " · " + root.current.context_pct + "% · " + Fmt.fmt_tokens(root.current.context_used) + "/" + Fmt.fmt_tokens(root.current.context_window) : "") : ""
                 color: root.st.text_dim
-                font.family: Style.mono_font
+                font.family: root.st.mono_font
                 font.pixelSize: root.st.fs(-4)
             }
         }
