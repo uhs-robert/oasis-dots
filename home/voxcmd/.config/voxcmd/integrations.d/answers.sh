@@ -119,9 +119,10 @@ answers_local_zone() {
 }
 
 # "new york" finds America/New_York: the region folders first, then the old names (Japan, Egypt), never the posix/
-# and right/ copies.
+# and right/ copies. Normalizing drops hyphens from speech, so a space matches either "_" or "-" ("port au prince"
+# finds America/Port-au-Prince).
 answers_zoneinfo_city() {
-  local file_name="${1// /_}" root=/usr/share/zoneinfo path
+  local file_name="${1// /[_-]}" root=/usr/share/zoneinfo path
   path=$(find "$root"/{Africa,America,Antarctica,Arctic,Asia,Atlantic,Australia,Europe,Indian,Pacific} \
     -iname "$file_name" \( -type f -o -type l \) 2>/dev/null | sort | head -n 1)
   [ -n "$path" ] || path=$(find "$root" -mindepth 1 \( -name posix -o -name right \) -prune -o \
