@@ -10,7 +10,7 @@ description: Run the full Quickshell bar in an invisible, isolated nested Hyprla
 ```
 .claude/skills/shadow/shadow.sh up <name> [--size WxH] [<branch>...]   # default 1920x1080; bar from the main checkout, or from branches merged on origin/main
 .claude/skills/shadow/shadow.sh ipc <name> popup open weather   # qs ipc call; `ipc <name> show` lists targets
-.claude/skills/shadow/shadow.sh wait <name> weather          # until the popup is fully drawn (`closed` waits for none); default --timeout 5
+.claude/skills/shadow/shadow.sh wait <name> popup weather    # until it is fully drawn; also `osd voxtype`, or `popup closed`; default --timeout 5
 .claude/skills/shadow/shadow.sh keys <name> 2              # wtype args, e.g. `-k Tab`, `-M ctrl -k l -m ctrl`
 .claude/skills/shadow/shadow.sh voxtype <name> recording   # idle|recording|transcribing: the only way to raise the OSD, since there is no PipeWire
 .claude/skills/shadow/shadow.sh hyprctl <name> layers -j
