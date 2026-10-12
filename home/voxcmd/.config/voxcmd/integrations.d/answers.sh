@@ -142,7 +142,10 @@ answers_spoken_math() {
   text="${text//[\'’]/}"
   text=$(sed -E -e ':comma' -e 's/([0-9]),([0-9])/\1\2/g' -e 't comma' \
     -e 's/([a-z])-([a-z])/\1 \2/g; s/%/ percent /g; s/[×✕∗]/ times /g; s/÷/ divided by /g; s/[−–]/-/g' \
-    -e 's/\.([^0-9]|$)/ \1/g; s#[^a-z0-9.+*/^()$€£-]# #g; s/ +/ /g' <<<"$text" | answers_number_words)
+    -e 's/\.([^0-9]|$)/ \1/g; s#[^a-z0-9.+*/^()$€£-]# #g; s/ +/ /g' <<<"$text")
+  # The raw transcript has not been through replacements.d, which routing used ("fort = four"); voxcmd's own
+  # apply_replacements runs them here, whole words only, so punctuation and decimals survive.
+  text=$(apply_replacements "$text" | answers_number_words)
   text=$(sed -E 's/([0-9]) point ([0-9])/\1.\2/g' <<<"$text")
   # "how many feet are in a mile" asks for "a mile to feet".
   text="${text/ are in / in }"
