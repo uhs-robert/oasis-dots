@@ -12,6 +12,8 @@ import "KeeptabsFormat.js" as Fmt
 //   on_activate(id)                    focus that session and close the popup
 //   ensure_visible(i)                  called by the popup after it moves `selected`, to scroll row i into view
 //   draws_footer                       true when the view draws its own key help, which hides the shared footer
+//   moves_across, nav_target(i, dx, dy) optional, for views laid out across as well as down: h/l then move too,
+//                                      and nav_target returns the session index a step of dx (h/l) or dy (j/k) lands on
 Item {
     id: root
 

@@ -14,7 +14,7 @@ Popup {
     preferred_width: 340
     body_height: content.implicitHeight + 24
     key_help: root.current_tab === 0
-        ? "Tab tabs · 1-2 select · j/k move · gg/G first/last · Enter/click focus"
+        ? "Tab tabs · 1-2 select · " + (root.view_moves_across ? "h/j/k/l move" : "j/k move") + " · gg/G first/last · Enter/click focus"
         : "Tab tabs · 1-2 select · r refresh"
 
     property var sessions: []
@@ -137,9 +137,17 @@ Popup {
         Popups.close();
     }
 
-    function move_selected(delta) {
+    // Grids and columns lay sessions out across as well as down, so their view picks the target of each move;
+    // the plain list only steps down and up, wrapping.
+    readonly property bool view_moves_across: agents_loader.item ? agents_loader.item.moves_across === true : false
+
+    function move_selected(dx, dy) {
         if (root.sessions.length === 0) return;
-        root.selected = root.wrap_index(root.selected, delta, 0, root.sessions.length);
+        const item = agents_loader.item;
+        const target = item && typeof item.nav_target === "function"
+            ? item.nav_target(root.selected, dx, dy)
+            : dx === 0 ? root.wrap_index(root.selected, dy, 0, root.sessions.length) : root.selected;
+        root.selected = Math.max(0, Math.min(root.sessions.length - 1, target));
         root.ensure_visible(root.selected);
     }
 
@@ -161,12 +169,12 @@ Popup {
             ClaudeUsageState.refresh(true);
             ThemeAudio.play("confirm");
             event.accepted = true;
-        } else if (root.current_tab === 0 && event.key === Qt.Key_J) {
-            root.move_selected(1);
+        } else if (root.current_tab === 0 && (event.key === Qt.Key_J || event.key === Qt.Key_K)) {
+            root.move_selected(0, event.key === Qt.Key_J ? 1 : -1);
             root.play_if_moved(before);
             event.accepted = true;
-        } else if (root.current_tab === 0 && event.key === Qt.Key_K) {
-            root.move_selected(-1);
+        } else if (root.current_tab === 0 && root.view_moves_across && !(event.modifiers & Qt.ControlModifier) && (event.key === Qt.Key_H || event.key === Qt.Key_L)) {
+            root.move_selected(event.key === Qt.Key_L ? 1 : -1, 0);
             root.play_if_moved(before);
             event.accepted = true;
         } else if (root.current_tab === 0 && (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) && root.sessions[root.selected]) {
