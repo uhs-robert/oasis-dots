@@ -255,7 +255,7 @@ As a fallback it never sees a phrase another integration takes. Starting the phr
 | "do not disturb on" / "off", "silence notifications", "notifications on"     | The bar's do not disturb, over `qs-ipc` `notifications get_dnd` / `toggle_dnd`         |
 | "keep the screen awake", "caffeine on" / "off", "enable" / "disable autolock" | Stops or starts hypridle with `toggle-autolock.sh`, like the System submap's auto-lock key |
 
-Only the laptop backlight is driven; external monitors are not (no DDC/CI). A spoken power profile lasts until the next AC or battery change, when `power.sh` applies the one chosen in Settings, unless that is "keep".
+Brightness and do not disturb send no notification when they work ([silent](#silent-actions)), since the OSD and the bar's indicator show them; power profile and auto-lock still say what they set. Only the laptop backlight is driven; external monitors are not (no DDC/CI). A spoken power profile lasts until the next AC or battery change, when `power.sh` applies the one chosen in Settings, unless that is "keep".
 
 ## Voice Help
 
