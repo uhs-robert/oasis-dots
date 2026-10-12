@@ -125,7 +125,7 @@ Popup {
 
         weatherstar: { prefix: "Ws", views: ["Hourly", "SunMoon"] },
 
-        wttr: { prefix: "Wttr", views: ["Hourly", "SunMoon"] }
+        wttr: { prefix: "Wttr", views: ["Hourly", "SunMoon", "Air", "Alerts"] }
     })
 
     function view_url(view, shared) {

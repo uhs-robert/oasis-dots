@@ -84,3 +84,34 @@ function line_runs(art, i, palette) {
 function markup(art, palette) {
     return art.lines.map((_, i) => runs(line_runs(art, i, palette))).join("<br>");
 }
+
+function braille_bit(dot_x, dot_y) {
+    return dot_x === 0 ? [0x01, 0x02, 0x04, 0x40][dot_y] : [0x08, 0x10, 0x20, 0x80][dot_y];
+}
+
+// masks[index][char_row][char] of braille bits for one series of values, a dot column at a time, joined vertically so steep runs stay connected.
+// Each value owns `chars` characters (two dot columns apiece) and the series is interpolated between them.
+function braille_masks(values, rows, chars, min, max, dashed) {
+    const per = chars * 2;
+    const dot_rows = rows * 4;
+    const masks = values.map(() => Array.from({ length: rows }, () => new Array(chars).fill(0)));
+    const span = max - min || 1;
+    const y_of = v => Math.max(0, Math.min(dot_rows - 1, Math.round((max - v) / span * (dot_rows - 1))));
+    let prev = -1;
+    for (let d = 0; d < values.length * per; d++) {
+        const t = (d + 0.5) / per - 0.5;
+        const i0 = Math.max(0, Math.min(values.length - 1, Math.floor(t)));
+        const i1 = Math.min(values.length - 1, i0 + 1);
+        const frac = Math.max(0, Math.min(1, t - i0));
+        const y = y_of(values[i0] + (values[i1] - values[i0]) * frac);
+        const index = Math.floor(d / per);
+        const local = d % per;
+        const from = prev < 0 || dashed ? y : Math.min(prev, y);
+        const to = prev < 0 || dashed ? y : Math.max(prev, y);
+        if (!dashed || Math.floor(local / 2) % 2 === 0) {
+            for (let yy = from; yy <= to; yy++) masks[index][yy >> 2][local >> 1] |= braille_bit(local & 1, yy & 3);
+        }
+        prev = y;
+    }
+    return masks;
+}
