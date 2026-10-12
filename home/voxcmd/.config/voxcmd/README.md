@@ -12,7 +12,7 @@ Voice commands on top of [voxtype](https://github.com/peteonrails/voxtype). Spea
 
 While voxtype records, any voice key only stops it, and the recording's own mode handles what was said: a voice command still runs, dictation is still typed. So `SUPER + COMMA` then `SUPER + PERIOD` runs a command, and `SUPER + PERIOD` then `SUPER + COMMA` types. A key pressed while voxtype transcribes does nothing. Speech to Text pauses playing media and resumes it when its recording ends, whichever key or timeout ends it.
 
-While a voxcmd picker is open, Voice Command records a reply to it instead of a new command (see [Picker](#picker)).
+While a voxcmd picker or confirm card is open, Voice Command records a reply to it instead of a new command (see [Picker](#picker) and [Confirm](#confirm)).
 
 Saying "never mind", "cancel", "forget it" or "nothing" as the whole command runs nothing, without a "no match" notification.
 
@@ -20,7 +20,7 @@ Saying "never mind", "cancel", "forget it" or "nothing" as the whole command run
 voxcmd listen                     # start a recording that stops itself after speech and a pause; while voxtype records, stop it
 voxcmd "next track"               # route text directly
 voxcmd --dry-run "volume to 40"   # show the match, candidates and command without running anything
-voxcmd --reply "the second one"   # answer the open voxcmd picker, as a spoken reply would
+voxcmd --reply "the second one"   # answer the open voxcmd picker or confirm card, as a spoken reply would
 voxcmd --dry-run --reply "two"    # show which choice a reply would pick
 voxcmd list                       # integrations and their verbs
 voxcmd help                       # pick from the integrations' example phrases
@@ -56,7 +56,7 @@ To tune it, `voxcmd-autostop --verbose` prints each frame's level and the thresh
 5. A verb with a target whose integration lists candidates for that action matches the target against them: fuzzy (`fzf --filter`, an exact label winning outright) or, for an integration with `target_match=words`, [word matching](#word-matching).
 6. A target that matches none of the candidates runs the action the integration names for that case in `no_match_actions`, if any.
 7. If nothing so far can run, the [LLM hook](#llm-hook) gets a turn, then the [fallback integrations](#fallback-integrations) go through steps 4 to 6.
-8. One option runs (after a Yes/No picker if the integration sets `confirm=1` or the option's label matches its `confirm_labels`). Several, or a single weak word match, open a picker, the Quickshell one when the bar is running and `rofi -dmenu` otherwise, which can also be [answered by voice](#answering-by-voice); cancelling does nothing. None sends a "no match" notification with a Voice Help button.
+8. One option runs (after a [confirm card](#confirm) if the integration sets `confirm=1` or the option's label matches its `confirm_labels`). Several, or a single weak word match, open a picker, the Quickshell one when the bar is running and `rofi -dmenu` otherwise, which can also be [answered by voice](#answering-by-voice); cancelling does nothing. None sends a "no match" notification with a Voice Help button.
 
 A notification reports what ran, followed by the last line the command printed, if any, or the last lines of the error. Only errors stay in the notification history: a failed action, an action with no command, voxtype not ready or failing to start. Everything else (what ran, answers, "no match", "which one?", "Say: ...") is sent with `--transient`, so the bar shows it and drops it. An action marked [silent](#silent-actions) sends nothing when it succeeds.
 
@@ -124,7 +124,7 @@ fallback=1                       # tried only when no other integration can run 
 target_match=words               # word matching instead of fzf; see below
 match_ignore_words=(run press)   # words dropped from both target and candidates before word matching
 action_labels=0                  # leave the action word out of picker labels, for candidate labels that already say what runs
-confirm_labels=('\bclose\b' '^lock\b')   # regexes (case-insensitive, jq syntax) on the option's label; a match asks Yes/No
+confirm_labels=('\bclose\b' '^lock\b')   # regexes (case-insensitive, jq syntax) on the option's label; a match asks first
 ```
 
 Patterns are bash ERE, so there are no non-capturing groups; voxcmd finds the target's group by counting the `(` before the placeholder (an escaped `\(` does not count), which is why only one placeholder is allowed. Intents are expanded before that count, so they can sit anywhere in a pattern. Order verbs from specific to general, as `media.sh` does with `play` before `play {target}`. Integration files are plain shell, so helper functions defined in the file are available to its commands. voxcmd sources the file inside a function, though, so a `declare` at its top level is gone by the time a command runs: declare an array a helper reads with `declare -g`, as `spoken-time.sh` does for its number words.
@@ -263,7 +263,7 @@ As a fallback it never sees a phrase another integration takes. Starting the phr
 | "open new firefox", "open a new kitty"                         | always starts it                                                   |
 | "focus slack", "go to firefox", "take me to tmux config"       | focuses the window                                                 |
 | "move slack to workspace 3", "send firefox to workspace three" | moves the window there, leaving focus where it is                  |
-| "close slack", "quit the firefox window"                       | closes the window, after a Yes/No                                  |
+| "close slack", "quit the firefox window"                       | closes the window, after a confirm                                 |
 
 Opening, focusing and closing take every form of the `{open}`, `{focus}` and `{close}` [intents](#intents).
 
@@ -438,4 +438,12 @@ The reply picks as if the choice had been clicked and closes the picker. A reply
 
 While it waits, `voxcmd-pick` keeps `$XDG_RUNTIME_DIR/voxcmd/pending-pick.json` (`{pid, fifo, label, choices, expansions, view}`) and removes it when the pick ends however it ends. A file whose owner is gone is ignored. The reply goes into the picker's result FIFO, so `voxcmd-pick` closes the picker itself afterwards: the Quickshell one over `qs-ipc call picker close`, rofi by ending it.
 
-Hyprland still runs binds while the Quickshell picker has the keyboard. rofi asks the compositor to inhibit shortcuts while it is open, and Hyprland honours that unless `binds:disable_keybind_grabbing` is set, so with the rofi fallback the key does nothing until rofi closes; pick with the keyboard or mouse there.
+Hyprland still runs binds while the Quickshell picker or confirm card has the keyboard. rofi asks the compositor to inhibit shortcuts while it is open, and Hyprland honours that unless `binds:disable_keybind_grabbing` is set, so with the rofi fallback the key does nothing until rofi closes; pick with the keyboard or mouse there.
+
+## Confirm
+
+`voxcmd-confirm [--listen] <question>` asks a yes/no question and exits 0 for yes, 1 for no, cancel or no answer. voxcmd uses it before an action that needs confirming, asking the option's label without the integration name ("Close Slack window: Inbox?"); it is usable on its own. With the bar running it drops a card from the center island of the focused monitor: `y` or Enter is yes, `n` or Esc is no, the buttons work too, and 10 seconds without an answer cancels. That countdown waits while voxtype records or transcribes, and starts over after. Without the bar it falls back to `rofi -dmenu` with Yes and No, which cancels after 10 seconds.
+
+A command that came by voice (from `voxcmd listen`, not the command line, Voice Help or a picker click) passes `--listen`: the card starts a reply recording as it appears, the same recording as Voice Command with the same auto-stop, and shows Listening while it records. Any voice key stops that recording early, as always. The reply is a yes for `yes`, `yeah`, `yep`, `confirm`, `do it`, `sure`, `okay` or `ok` (also with `please`), and a no for `no`, `nope`, `cancel`, `never mind`, `stop` or `don't`, each as the whole reply. Anything else keeps the card open and listens once more; after a second unclear reply it waits for a key. Silence ends the recording without an answer, so the card waits for a key. Without `--listen` the card does not listen, but the Voice Command key still records a reply to it.
+
+While it waits, `voxcmd-confirm` keeps the same `pending-pick.json` as the picker, with `kind: "confirm"` and `listen_again`, the file whose presence allows the one extra listen.
