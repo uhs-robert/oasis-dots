@@ -99,7 +99,8 @@ Item {
                         ["WHERE", root.current.where || "-"],
                         ["AGENT", root.current.agent || "claude"],
                         [root.state_label(root.current.state || "idle").toUpperCase(), Fmt.age(root.current.since)],
-                        ["CONTEXT", root.has_context ? root.current.context_pct + "% · " + Fmt.fmt_tokens(root.current.context_used) + "/" + Fmt.fmt_tokens(root.current.context_window) : "-"]
+                        ["CONTEXT", root.has_context ? root.current.context_pct + "%" : "-"],
+                        ["TOKENS", root.has_context ? Fmt.fmt_tokens(root.current.context_used) + "/" + Fmt.fmt_tokens(root.current.context_window) : "-"]
                     ] : []
 
                     ColumnLayout {
@@ -204,7 +205,7 @@ Item {
 
                             Text {
                                 text: party_item.hp_text
-                                color: party_item.critical ? Theme.theme_label : Theme.fg_strong
+                                color: party_item.critical ? Style.pal.warning : Theme.fg_strong
                                 style: Text.Raised
                                 styleColor: Style.text_shadow
                                 font.family: Style.number_font
