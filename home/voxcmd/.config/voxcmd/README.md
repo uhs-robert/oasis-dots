@@ -69,7 +69,7 @@ name="Windows"     # shown in notifications and the picker; defaults to the file
 confirm=0          # 1 asks before running any of this integration's actions
 
 # "action  pattern": the pattern is an ERE matched against the whole normalized phrase.
-# {target} captures free text, {number} digits; at most one per pattern, and put it last.
+# {target} captures free text, {number} digits; at most one per pattern.
 verbs=(
   "focus  (focus|switch to|go to) {target}"
 )
@@ -123,6 +123,7 @@ Optional settings for integrations whose actions differ in risk, or whose target
 fallback=1                       # tried only when no other integration can run the phrase
 target_match=words               # word matching instead of fzf; see below
 match_ignore_words=(run press)   # words dropped from both target and candidates before word matching
+action_labels=0                  # leave the action word out of picker labels, for candidate labels that already say what runs
 confirm_labels=('\bclose\b' '^lock\b')   # regexes (case-insensitive, jq syntax) on the option's label; a match asks Yes/No
 ```
 
@@ -169,18 +170,21 @@ Strong matches hide weak ones.
 
 As a fallback it never sees a phrase another integration takes. Starting the phrase with "press", "keybind" or "key bind" ([force prefixes](#force-prefixes)) sends it here first and only: "press open terminal" runs the Open Terminal bind even when another integration has a verb for "open terminal".
 
-- Binds from every submap are offered, one per description, preferring the global one; a submap bind is labelled with its submap, `Lock (System)`. Submap navigation (`+Name`, `Back`, `Exit <submap>`), one-character descriptions and lid switches are left out.
+- Binds from every submap are offered, one per description, preferring the global one; a submap bind is labelled with its submap, `Lock (System)`. Submap navigation (`+Name`, `Back`, `Exit <submap>`), one-character descriptions and lid switches are left out; the phrases below take its place.
+- "submap X", "X submap", "X mode", "enter X mode" or "enter the X submap" enter the submap named X, word matched against the submap names which-key shows (`cursor mode` is Cursor, `normal mode` is hyprvim's NORMAL). A name shared by several submaps (Delete and hyprvim's DELETE) opens the picker; a name that is no submap is a "no match". "X mode" also reaches a bind named "X mode" that is not a submap (`command mode`). As a fallback, these lose to any other integration's verb, so "performance mode" still sets the power profile.
+- "exit submap", "leave the submap" or "reset submap" go back to the global map like the Exit binds. The voice key is not bound inside submaps, so these are for submaps that keep global keys, the CLI and Voice Help.
 - `excluded_descriptions` hides the voice binds themselves and anything about passwords or secrets; edit the list in the file.
 - `confirm_labels` asks before closing, killing, locking, logging out, powering off, rebooting, suspending, deleting or clearing.
 - A bind that runs sends no notification ([silent](#silent-actions)); one that fails does.
-- Tab on its Voice Help entries lists every offered bind; picking one runs it as "press <description>" would.
+- Tab on its Voice Help entries lists every submap (`Submap: Cursor`), "Exit submap" and every offered bind; picking one runs it as saying it would.
 - A bind runs like Keybind Help runs it: the submap is reset, then `hyprctl eval 'debug.getregistry()[<arg>]()'`.
+- A submap is entered like its `+Name` bind enters it, by `hyprctl eval` calling `enter` on the Submap module that registered it (the Hyprland config's `lib.key.submap` or hyprvim's), so its enter hooks and which-key run. Exiting calls their `reset`, which runs the current submap's exit hook.
 
 ## Voice Help
 
 `voxcmd help` (leader `CTRL + SLASH`, saying "voice help" or "what can I say", or the button on a "no match" notification) shows every integration's `examples` in the picker, labelled with the integration's name and with fallback integrations last. Picking a phrase without placeholders runs it as if it had been spoken. A phrase with a placeholder (`set volume to <number>`) cannot be completed from a click, so it comes back as a "Say: ..." notification instead.
 
-Tab on an entry of an integration that sets `help_action` or `help_choices` replaces the list with everything that integration can run, titled with its name (Keybinds: every described bind), like Tab completing a command in HyprVim's prompt. Such entries show `Tab: <name> (<count>)`; Tab on the others does nothing. The list searches like any picker list, picking an entry runs it like the spoken phrase would (asking first where the integration's `confirm_labels` say so), and Backspace on an empty search goes back to the examples with the search and row restored. The rofi fallback shows the examples only.
+Tab on an entry of an integration that sets `help_action` or `help_choices` replaces the list with everything that integration can run, titled with its name (Keybinds: every submap and described bind), like Tab completing a command in HyprVim's prompt. Such entries show `Tab: <name> (<count>)`; Tab on the others does nothing. The list searches like any picker list, picking an entry runs it like the spoken phrase would (asking first where the integration's `confirm_labels` say so), and Backspace on an empty search goes back to the examples with the search and row restored. The rofi fallback shows the examples only.
 
 The button works with any notification daemon that supports actions, the bar's included: `notify-send --action` waits for the notification to close, so a detached process waits on it instead of voxcmd.
 
