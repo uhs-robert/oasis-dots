@@ -4,6 +4,8 @@
 
 name="System"
 confirm=0
+# The brightness OSD and the bar's DND indicator already show these; power profile and auto-lock have no such cue.
+silent_actions=(brightness_max brightness_min brightness_up brightness_down brightness_set dnd_on dnd_off)
 
 hypr_scripts="${XDG_CONFIG_HOME:-$HOME/.config}/hypr/scripts"
 
