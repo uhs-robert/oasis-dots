@@ -7,8 +7,8 @@ import "../../services"
 import "../../lock/skins/goldeneye" as Watch
 import "../../theme/Watch.js" as W
 
-// Daily's Sun & Moon sub-view on the pause watch's 24-hour dial: the selected day's daylight shaded on the bezel between
-// sunrise and sunset, today's sun as the hand, the moon in a date-window aperture on the face. The Daily day window runs above as a strip.
+// Daily's Sun & Moon sub-view on the pause watch's 24-hour dial laid out like a sundial, noon at the top: the selected day's daylight shaded on the bezel between
+// sunrise on the left and sunset on the right, today's sun as the hand, the moon in a date-window aperture on the face. The Daily day window runs above as a strip.
 Item {
     id: root
 
@@ -122,6 +122,8 @@ Item {
             id: face
             Layout.fillWidth: true
             Layout.fillHeight: true
+            hours_per_turn: 24
+            top_hour: 12
             hand_hour: root.is_today ? root.now_hour : -1
             hand_color: root.sun_color
             hand_alpha: root.sun_up ? 1 : 0.45
@@ -148,22 +150,6 @@ Item {
                             startAngle: root.has_daylight ? face.angle_of(root.rise_hour) - 90 : 0
                             sweepAngle: root.has_daylight ? (root.set_hour - root.rise_hour) / 24 * 360 : 0
                         }
-                    }
-                }
-
-                Repeater {
-                    model: 24
-
-                    Rectangle {
-                        required property int index
-                        readonly property bool major: index % 6 === 0
-                        x: -(major ? 2 : 1)
-                        y: -face.bezel_r + 2
-                        width: major ? 4 : 2
-                        height: major ? 10 : 6
-                        color: Style.wk.mid
-                        opacity: major ? 0.9 : 0.6
-                        transform: Rotation { origin.x: major ? 2 : 1; origin.y: face.bezel_r - 2; angle: face.angle_of(index) }
                     }
                 }
 

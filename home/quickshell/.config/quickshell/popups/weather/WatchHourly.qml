@@ -5,7 +5,7 @@ import "../../theme"
 import "../../services"
 import "../../theme/Watch.js" as W
 
-// Hourly as the pause watch's 24-hour dial: the cursor's day-long window around the bezel, each hour a bar growing outward from the band's inner edge whose length and
+// Hourly as the pause watch's 24-hour dial: the cursor's half-day (AM or PM of its date) around the bezel, each hour a bar growing outward from the band's inner edge whose length and
 // brightness carry the sub's value, the hand on the cursor hour and its readings on the face.
 // sub: 0 temp, 1 precip (chance + amount), 2 wind, 3 UV, 4 humidity. h/l move the hour cursor, H/L a day; the popup owns the cursor.
 Item {
@@ -21,22 +21,23 @@ Item {
 
     readonly property var sub_names: ["Temp", "Precip", "Wind", "UV", "Humid"]
     readonly property var hours: WeatherState.hours
-    readonly property int window_start: Math.floor(Math.max(0, root.hour_cursor) / 24) * 24
     readonly property var cursor_row: root.hours[root.hour_cursor]
-    readonly property var first_row: root.hours[root.window_start]
+    readonly property int half_first_hour: root.cursor_row && root.cursor_row.hour >= 12 ? 12 : 0
+    // Index of the half's first hour; negative when the forecast starts partway through the half.
+    readonly property int window_start: root.hour_cursor - (root.cursor_row ? root.cursor_row.hour - root.half_first_hour : 0)
     readonly property real tick_min: 3
-    readonly property real tick_w: 10
+    readonly property real tick_w: 26
     // Room left above the tallest bar for the peak hour's printed value.
-    readonly property real label_room: 14
+    readonly property real label_room: 20
     readonly property real bar_base: face.bezel_r - face.band + 2
     readonly property real bar_span: face.band - 4 - root.label_room - root.tick_min
 
     function scroll_to_cursor() {}
     function request_scroll() {}
 
-    readonly property var window_rows: root.hours.slice(root.window_start, root.window_start + 24)
+    readonly property var window_rows: root.hours.slice(Math.max(0, root.window_start), root.window_start + 12)
 
-    // Temp and wind scale to the shown day's own range, padded, so its shape fills the band; the rest use fixed ranges
+    // Temp scales to the shown half-day's own range, padded, so its shape fills the band; the rest use fixed ranges
     // so 80% rain is long on any day.
     function range_of(pick, floor_span) {
         if (!root.window_rows.length) return { lo: 0, hi: floor_span };
@@ -50,7 +51,8 @@ Item {
     }
 
     readonly property var temp_range: root.range_of(r => r.temp, 10)
-    readonly property var wind_range: root.range_of(r => Math.max(r.wind_speed, r.wind_gusts), 10)
+    // Wind starts at calm so a sustained speed under every gust still draws; the top leaves room for the gust notch.
+    readonly property var wind_range: ({ lo: 0, hi: Math.max(10, ...root.window_rows.map(r => Math.max(r.wind_speed, r.wind_gusts))) * 1.1 })
     readonly property real precip_max: Math.max(0.1, ...root.window_rows.map(r => r.precip))
     readonly property real uv_top: Math.max(11, ...root.window_rows.map(r => r.uv_index))
 
@@ -75,7 +77,7 @@ Item {
         for (let i = 0; i < root.window_rows.length; i++) {
             const v = root.norm_of(root.window_rows[i]);
             if (v > best_v) {
-                best = i;
+                best = i + Math.max(0, -root.window_start);
                 best_v = v;
             }
         }
@@ -112,37 +114,36 @@ Item {
     }
 
     function date_text() {
-        if (!root.cursor_row || !root.first_row) return "";
-        const day = d => Qt.formatDate(new Date(d + "T00:00:00"), "ddd d").toUpperCase();
-        const last = root.hours[Math.min(root.hours.length - 1, root.window_start + 23)];
-        return day(root.first_row.date) + (last.date !== root.first_row.date ? " > " + day(last.date) : "");
+        if (!root.cursor_row) return "";
+        const day = Qt.formatDate(new Date(root.cursor_row.date + "T00:00:00"), "ddd d").toUpperCase();
+        return day + (root.half_first_hour === 12 ? " PM" : " AM");
     }
 
     WatchFace {
         id: face
         anchors.fill: parent
         hand_hour: root.cursor_row ? root.cursor_row.hour : -1
-        band: 58
+        band: 60
 
         bezel: Repeater {
-            model: 24
+            model: 12
 
             Item {
                 id: slot
                 required property int index
-                readonly property var row: root.hours[root.window_start + slot.index]
+                readonly property var row: root.window_start + slot.index >= 0 ? root.hours[root.window_start + slot.index] : undefined
                 readonly property bool at_cursor: root.window_start + slot.index === root.hour_cursor
                 readonly property bool is_peak: slot.index === root.peak_index
-                readonly property real hour: slot.row ? slot.row.hour : ((root.first_row ? root.first_row.hour : 0) + slot.index) % 24
+                readonly property real hour: root.half_first_hour + slot.index
                 readonly property real norm: slot.row ? Math.max(0, Math.min(1, root.norm_of(slot.row))) : 0
                 readonly property real len: root.tick_min + slot.norm * root.bar_span
                 rotation: face.angle_of(slot.hour)
 
                 Rectangle {
                     visible: slot.at_cursor
-                    x: -16
+                    x: -30
                     y: -face.bezel_r + 2
-                    width: 32
+                    width: 60
                     height: face.band
                     radius: 3
                     color: Qt.alpha(Style.wk.lit, 0.18)
@@ -159,7 +160,7 @@ Item {
 
                 Rectangle {
                     visible: !!slot.row
-                    x: root.sub === 1 ? -root.tick_w : -root.tick_w / 2
+                    x: root.sub === 1 ? -root.tick_w / 2 - 3 : -root.tick_w / 2
                     y: -root.bar_base - slot.len
                     width: root.tick_w
                     height: slot.len
@@ -169,7 +170,7 @@ Item {
 
                 Rectangle {
                     visible: !!slot.row && slot.is_peak
-                    x: root.sub === 1 ? -root.tick_w : -root.tick_w / 2
+                    x: root.sub === 1 ? -root.tick_w / 2 - 3 : -root.tick_w / 2
                     y: -root.bar_base - slot.len - 2
                     width: root.tick_w
                     height: 2
@@ -178,9 +179,9 @@ Item {
 
                 Rectangle {
                     visible: !!slot.row && root.sub === 1
-                    x: 1
+                    x: root.tick_w / 2 - 1
                     y: -root.bar_base - (slot.row ? root.tick_min + Math.min(1, slot.row.precip / root.precip_max) * root.bar_span : 0)
-                    width: 3
+                    width: 5
                     height: slot.row ? root.tick_min + Math.min(1, slot.row.precip / root.precip_max) * root.bar_span : 0
                     color: Style.wk.lit
                     opacity: slot.at_cursor ? 1 : 0.7
@@ -210,9 +211,9 @@ Item {
                 }
 
                 MouseArea {
-                    x: -14
+                    x: -28
                     y: -face.bezel_r
-                    width: 28
+                    width: 56
                     height: face.band
                     enabled: !!slot.row
                     onClicked: root.on_select(root.window_start + slot.index)
@@ -222,7 +223,7 @@ Item {
 
         ColumnLayout {
             anchors.centerIn: parent
-            width: parent.width - 16
+            width: parent.width - 8
             spacing: 2
 
             Rectangle {

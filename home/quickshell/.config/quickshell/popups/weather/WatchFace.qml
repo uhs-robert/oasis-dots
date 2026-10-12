@@ -2,9 +2,11 @@
 import QtQuick
 import QtQuick.Shapes
 import "../../theme"
+import "../../services"
 import "../../theme/Watch.js" as W
 
-// The pause watch as a 24-hour dial: midnight at the top like a wall clock, noon at the bottom, numerals every three hours around a bezel
+// The pause watch as a dial of `hours_per_turn` hours (12 like a wall clock, or 24) with `top_hour` at the top, numerals at the four
+// quarters and a tick for each other hour, around a bezel
 // band that views fill, a pale hand inside the band, and the face for readouts. `bezel` children sit at the dial centre
 // and point up, so a view rotates each one to angle_of(hour).
 Item {
@@ -14,6 +16,8 @@ Item {
     property real hand_hour: -1
     property color hand_color: Style.wk.lit
     property real hand_alpha: 1
+    property int hours_per_turn: 12
+    property real top_hour: 0
     // Radial depth of the bezel band, measured in from the rim.
     property real band: 30
     readonly property real label_pad: 16
@@ -25,7 +29,8 @@ Item {
     property alias bezel: bezel_layer.data
 
     function angle_of(hour) {
-        return (hour / 24 * 360) % 360;
+        const n = root.hours_per_turn;
+        return (((hour - root.top_hour) % n + n) % n) / n * 360;
     }
 
     Rectangle {
@@ -53,21 +58,43 @@ Item {
         border.color: Style.wk.edge
     }
 
+    function numeral_text(hour) {
+        if (root.hours_per_turn === 12) return hour % 12 === 0 ? "12" : String(hour % 12);
+        return TimeFormat.hour(new Date(2000, 0, 1, hour));
+    }
+
     Repeater {
-        model: 8
+        model: 4
 
         Text {
             required property int index
-            readonly property real hour: index * 3
+            readonly property real hour: (root.top_hour + index * root.hours_per_turn / 4) % 24
             readonly property real theta: root.angle_of(hour) * Math.PI / 180
-            x: root.cx + (root.bezel_r + 10) * Math.sin(theta) - width / 2
-            y: root.cy - (root.bezel_r + 10) * Math.cos(theta) - height / 2
-            width: 20
+            // Side numerals reach out by half their width so "6pm" clears the rim like the top and bottom ones.
+            readonly property real reach: root.bezel_r + 8 + Math.abs(Math.sin(theta)) * implicitWidth / 2
+            x: root.cx + reach * Math.sin(theta) - width / 2
+            y: root.cy - reach * Math.cos(theta) - height / 2
+            width: implicitWidth
             horizontalAlignment: Text.AlignHCenter
-            text: (hour < 10 ? "0" : "") + hour
+            text: root.numeral_text(hour)
             color: Style.wk.dim
             font.family: W.mono_font
             font.pixelSize: Style.fs(-6)
+        }
+    }
+
+    Repeater {
+        model: root.hours_per_turn
+
+        Rectangle {
+            required property int index
+            visible: index % (root.hours_per_turn / 4) !== 0
+            x: root.cx - 1
+            y: root.cy - root.bezel_r - 7
+            width: 2
+            height: 5
+            color: Style.wk.dim
+            transform: Rotation { origin.x: 1; origin.y: root.bezel_r + 7; angle: index / root.hours_per_turn * 360 }
         }
     }
 
