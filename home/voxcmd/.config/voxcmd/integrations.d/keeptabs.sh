@@ -29,6 +29,9 @@ declare -A actions=(
   [not_found]='echo "no tracked agent matches \"$target\""; false'
 )
 
+# Tab on these examples in Voice Help lists every tracked agent, and picking one jumps to it.
+help_action=focus
+
 # Without it, an unmatched "go to agent X" falls through to the keybinds fallback and could run an unrelated bind.
 declare -A no_match_actions=(
   [focus]='not_found'
