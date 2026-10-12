@@ -3,6 +3,8 @@
 
 name="Media"
 confirm=0
+# The bar's volume OSD already shows the change; playback actions keep their toast.
+silent_actions=(volume_up volume_down volume_set mute unmute toggle_mute)
 
 # Tried in order against the normalized transcript, so the specific forms come before the {target} catch-alls.
 verbs=(
