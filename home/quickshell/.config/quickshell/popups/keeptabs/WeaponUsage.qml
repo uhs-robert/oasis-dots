@@ -209,8 +209,10 @@ Item {
             color: root.hairline
         }
 
+        // The divider's fillHeight would otherwise make the whole HUD row soak up the spare height.
         RowLayout {
             Layout.fillWidth: true
+            Layout.fillHeight: false
             spacing: 14
 
             Gauge {
@@ -239,7 +241,7 @@ Item {
         property string label: ""
         property var row: null
         property bool icon_cross: true
-        readonly property real left: root.remaining(gauge.row)
+        readonly property real remaining_pct: root.remaining(gauge.row)
         readonly property color tone: gauge.row ? Fmt.context_bar_color(gauge.row.percent, root.colors) : root.hl
 
         Layout.fillWidth: true
@@ -256,7 +258,7 @@ Item {
                 Layout.preferredWidth: 26
                 Layout.preferredHeight: 28
                 Layout.alignment: Qt.AlignVCenter
-                readonly property real fill_top: 28 * (1 - gauge.left / 100)
+                readonly property real fill_top: 28 * (1 - gauge.remaining_pct / 100)
 
                 Shape {
                     visible: gauge.icon_cross
@@ -291,6 +293,8 @@ Item {
                         y: icon.fill_top
                         width: parent.width
                         height: parent.height - icon.fill_top
+                        // A zero-height clip does not clip at all, so an empty shield would draw full.
+                        visible: height > 0
                         clip: true
 
                         Shape {
@@ -313,7 +317,7 @@ Item {
                 spacing: 2
 
                 Text {
-                    text: gauge.row ? String(Math.round(gauge.left)) : "--"
+                    text: gauge.row ? String(Math.round(gauge.remaining_pct)) : "--"
                     color: gauge.tone
                     font.family: Style.number_font
                     font.pixelSize: 34
@@ -335,7 +339,7 @@ Item {
             Layout.fillWidth: true
             Layout.rightMargin: 5
             cells: 10
-            value: gauge.left / 100
+            value: gauge.remaining_pct / 100
             on_color: gauge.tone
         }
 

@@ -47,6 +47,26 @@ Item {
         return known < 0 ? 3 : known;
     }
 
+    readonly property bool moves_across: true
+
+    // h/l jump between non-empty buckets, keeping the row within the bucket; j/k walk the weapons in menu order,
+    // stepping into the next bucket at an end like HL1's weapon scroll, so every session stays reachable with j/k.
+    function nav_target(i, dx, dy) {
+        const b = root.buckets.findIndex(bucket => bucket.items.some(item => item.index === i));
+        if (b < 0) return i;
+        if (dx !== 0) {
+            const row = root.buckets[b].items.findIndex(item => item.index === i);
+            const count = root.buckets.length;
+            for (let step = 1; step < count; step++) {
+                const items = root.buckets[((b + dx * step) % count + count) % count].items;
+                if (items.length > 0) return items[Math.min(row, items.length - 1)].index;
+            }
+            return i;
+        }
+        const order = root.buckets.reduce((all, bucket) => all.concat(bucket.items.map(item => item.index)), []);
+        return order[((order.indexOf(i) + dy) % order.length + order.length) % order.length];
+    }
+
     function ensure_visible(i) {
         for (let b = 0; b < root.buckets.length; b++) {
             const pos = root.buckets[b].items.findIndex(item => item.index === i);
@@ -145,6 +165,9 @@ Item {
                     // Bound to the selection so a refresh that rebuilds the model keeps the selected weapon in view.
                     currentIndex: column.modelData.items.findIndex(item => item.index === root.selected)
                     onModelChanged: Qt.callLater(() => { if (bucket_list.currentIndex >= 0) bucket_list.positionViewAtIndex(bucket_list.currentIndex, ListView.Contain); })
+                    // The selected weapon grows into its card after ensure_visible ran, and the scroll it set is clamped
+                    // to the old content height, so scroll again once the content has grown.
+                    onContentHeightChanged: if (bucket_list.currentIndex >= 0) bucket_list.positionViewAtIndex(bucket_list.currentIndex, ListView.Contain)
                     boundsBehavior: Flickable.StopAtBounds
 
                     delegate: Rectangle {
