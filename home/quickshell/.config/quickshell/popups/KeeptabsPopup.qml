@@ -51,7 +51,7 @@ Popup {
     readonly property var layout_views: ({
         battle: { prefix: "Party", views: ["Agents", "Usage"] },
 
-        hero: { prefix: "Activities", views: [] },
+        hero: { prefix: "Activities", views: ["Agents", "Usage"] },
 
         hev: { prefix: "Weapon", views: [] },
 
