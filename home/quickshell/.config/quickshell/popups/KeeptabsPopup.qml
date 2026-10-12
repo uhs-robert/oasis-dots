@@ -77,7 +77,7 @@ Popup {
 
         watch: { prefix: "Mission", views: ["Agents", "Usage"] },
 
-        weatherstar: { prefix: "Observations", views: [] },
+        weatherstar: { prefix: "Observations", views: ["Agents", "Usage"] },
 
         wttr: { prefix: "Htop", views: ["Agents", "Usage"] }
     })
