@@ -59,7 +59,7 @@ Popup {
 
         memcard: { prefix: "MemCard", views: [] },
 
-        mode7: { prefix: "Ff6", views: [] },
+        mode7: { prefix: "Ff6", views: ["Agents", "Usage"] },
 
         oasis: { prefix: "Caravan", views: [] },
 
