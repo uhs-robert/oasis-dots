@@ -1,0 +1,5 @@
+# Whisper splits "resize" when it is said alone or first: "Pre-size to 1200 by 800", "re-size". Hyphens are
+# dropped before these apply, so "pre size" also covers "pre-size".
+pre size = resize
+presize = resize
+re size = resize
