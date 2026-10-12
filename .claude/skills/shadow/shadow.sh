@@ -477,7 +477,8 @@ kill_session() {
   rm -f "$sid_file"
 }
 
-# Stops whatever of the shadow is running and removes its runtime dir and test bar; logs and shots stay.
+# Stops whatever of the shadow is running and removes its runtime dir and test bar; logs and shots stay (a failed
+# `up` keeps them for debugging, `down` removes them unless asked to keep them).
 teardown() {
   local component pid left
   for component in qs hypr host bus; do kill_session "$component"; done
@@ -503,11 +504,20 @@ teardown() {
 
 down() {
   set_name "${1:-}"
+  local keep=${2:-}
+  [[ -z $keep || $keep == --keep ]] || die "usage: shadow.sh down <name> [--keep]"
   teardown
-  echo "shadow: '$name' down, no process references $runtime"
+  # The throwaway HOME, the config copy and the shims are rebuilt on every `up`, so only logs and shots would be
+  # lost; without --keep the whole folder goes so stopped shadows don't pile up (about 21 MB each).
+  if [[ -z $keep && -n $name && $base == "$root/$name" ]]; then
+    rm -rf "$base"
+    echo "shadow: '$name' down and removed, no process references $runtime"
+  else
+    echo "shadow: '$name' down, no process references $runtime; logs and shots kept in $base"
+  fi
 }
 
-usage="usage: shadow.sh {up <name> [--size WxH] [<branch>...]|ipc <name> <ipc call args>|keys <name> <wtype args>|voxtype <name> {idle|recording|transcribing}|hyprctl <name> <args>|shot <name> [<layer namespace>] [--pad N] [--out PATH]|status [<name>]|down <name>}"
+usage="usage: shadow.sh {up <name> [--size WxH] [<branch>...]|ipc <name> <ipc call args>|keys <name> <wtype args>|voxtype <name> {idle|recording|transcribing}|hyprctl <name> <args>|shot <name> [<layer namespace>] [--pad N] [--out PATH]|status [<name>]|down <name> [--keep]}"
 cmd=${1:-}
 (($# > 0)) && shift
 case $cmd in

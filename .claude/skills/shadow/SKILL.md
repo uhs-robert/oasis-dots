@@ -15,14 +15,14 @@ description: Run the full Quickshell bar in an invisible, isolated nested Hyprla
 .claude/skills/shadow/shadow.sh hyprctl <name> layers -j
 .claude/skills/shadow/shadow.sh shot <name> [<layer namespace>] [--pad N] [--out PATH]   # no namespace: whole output at the shadow size
 .claude/skills/shadow/shadow.sh status [<name>]
-.claude/skills/shadow/shadow.sh down <name>
+.claude/skills/shadow/shadow.sh down <name> [--keep]
 ```
 
 `smoke.sh [--out DIR] [--name SHADOW] [--dry-run] [--self-test] [style...]` runs one pass per style on a shadow (its own `smoke`, brought up and down unless `--name` names a running one): popup, OSD (voxtype recording), which-key and the region selector, then a contact sheet `sheet.png` and a log check. It records `MISS <style> <surface>-blank` when a capture matches what lies behind it. The which-key HUD is fed a fixture payload through its `hyprvim_whichkey` IPC target because the shadow loads no HyprVim, so it shows the HUD's drawing in each style, not the owner's real key rows. The volume and brightness OSDs cannot be raised (no PipeWire, no backlight writes).
 
 `--size WxH` sets the output size, e.g. `--size 1080x1920` for the owner's portrait monitor; use it instead of an offscreen render for odd sizes. It is recorded in the shadow's state, `status` prints it, and `shot` captures the output at that size. Layout-dependent checks (portrait lock, narrow bars) must run at the matching size.
 
-`<name>` is at most 8 characters (lowercase, digits, dashes): Hyprland's socket path under `/tmp/shadow-$UID-<name>` must fit 107 chars. With branches, `up` runs `owner-test-bar.sh build <name>s <branch>...` (worktree, merge, `just check`; it never touches the live bar) and `down` removes that test bar again. Without branches it copies the main checkout's config, which may be behind `origin/main`; pass `main` to get `origin/main`. Either way the bar runs from a `cp -rL` copy in `~/.cache/dotfiles/shadow/<name>/qs`, so editing or removing the source does not change it; run `down` and `up` again to pick up changes. Shots default to `~/.cache/dotfiles/shadow/<name>/shots/`; Read them, and delete the ones you don't need.
+`<name>` is at most 8 characters (lowercase, digits, dashes): Hyprland's socket path under `/tmp/shadow-$UID-<name>` must fit 107 chars. With branches, `up` runs `owner-test-bar.sh build <name>s <branch>...` (worktree, merge, `just check`; it never touches the live bar) and `down` removes that test bar again. Without branches it copies the main checkout's config, which may be behind `origin/main`; pass `main` to get `origin/main`. Either way the bar runs from a `cp -rL` copy in `~/.cache/dotfiles/shadow/<name>/qs`, so editing or removing the source does not change it; run `down` and `up` again to pick up changes. Shots default to `~/.cache/dotfiles/shadow/<name>/shots/`; Read them before `down`, which removes the shadow's whole folder (logs and shots included) unless given `--keep`. A failed `up` always keeps its logs.
 
 `up` takes about 2.5 s (plus ~20 s for a branch build and its `just check`), and a running shadow costs about 460 MB PSS and under 1% of a core idle. Run `down` when done.
 
@@ -53,4 +53,4 @@ The nested Hyprland runs inside headless labwc, started with an empty config in 
 
 labwc renders on the first non-NVIDIA render node (nested GBM allocation fails on NVIDIA's); set `SHADOW_RENDER_NODE=/dev/dri/renderD...` to override. The nested Hyprland gets a generated config with one output (1920x1080 unless `--size` says otherwise, set by the Hyprland monitor rule and filled by the nested window), Xwayland off, and no autostarts. Its output starts disabled and is enabled by a reload after the host's first configure, since aquamarine otherwise commits a buffer before acking it.
 
-Logs: `~/.cache/dotfiles/shadow/<name>/logs/` (`qs.log`, `hypr.log`, `host.log`, `dbus.log`); Hyprland's full log is under the runtime dir while it runs.
+Logs: `~/.cache/dotfiles/shadow/<name>/logs/` (`qs.log`, `hypr.log`, `host.log`, `dbus.log`), gone after `down` unless `--keep`; Hyprland's full log is under the runtime dir while it runs.
