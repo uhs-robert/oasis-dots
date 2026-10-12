@@ -755,6 +755,17 @@ reply_confirm() {
 # ----------------------------------------------------------------------------------------------------------------
 
 voxtype_state() { cat "$voxtype_state_file" 2>/dev/null || echo idle; }
+# voxtype rewrites its state file in place on every transition and only then, so a new mtime means a new transition.
+# Read before the state, a write landing in between makes the marker look older than the state, never newer.
+voxtype_state_write_marker() { stat -c %.9Y "$voxtype_state_file" 2>/dev/null || echo none; }
+
+# A watcher polls, so it can miss voxtype going idle when a dictation starts within one poll. That shows as a new
+# write with the same state, or as recording after transcribing, since voxtype passes through idle for either.
+recording_ended_unseen() {
+  local last_state="$1" last_write_marker="$2" state="$3" write_marker="$4"
+  [ "$write_marker" != "$last_write_marker" ] || return 1
+  [ "$state" = "$last_state" ] || { [ "$last_state" = transcribing ] && [ "$state" = recording ]; }
+}
 
 # While voxtype records, whoever started it (voxcmd or Speech to Text), this only stops it, and the recording's
 # owner handles the transcript. Otherwise it starts a recording into a file and leaves a watcher to route the
@@ -831,6 +842,7 @@ discard_flag_of() { printf '%s/discard.%s' "$runtime_dir" "$1"; }
 
 watch_recording() {
   local transcript_handler="$1" recording_seen=0 polls=0 state last_state="" autostop_pid discard_flag
+  local write_marker last_write_marker="" cancel_sent=0
   # A voxtype that ignores the cancel could still write a transcript.
   discard_flag=$(discard_flag_of $$)
   autostop_recording "$discard_flag" &
@@ -843,13 +855,31 @@ watch_recording() {
   if [ -n "$recording_owner_file" ]; then echo $$ 2>/dev/null >"$recording_owner_file" || true; fi
   while [ "$polls" -lt "$watch_max_polls" ]; do
     polls=$((polls + 1))
+    write_marker=$(voxtype_state_write_marker)
     state=$(voxtype_state)
+    # voxtype truncates the file before writing the new state.
+    if [ -z "$state" ]; then
+      sleep "$watch_poll_interval"
+      continue
+    fi
     [ "$state" = "$last_state" ] || debug "watch: voxtype $state"
-    last_state="$state"
+    # Ended as surely as by an idle, and the recording now running is someone else's.
+    if [ "$recording_seen" = 1 ] && recording_ended_unseen "$last_state" "$last_write_marker" "$state" "$write_marker"; then
+      debug "watch: voxtype went idle and started another recording between polls"
+      break
+    fi
+    last_state="$state" last_write_marker="$write_marker"
     if [ "$state" != idle ]; then
       recording_seen=1
       # Transcribing: the microphone is no longer needed.
       [ "$state" = recording ] || kill "$autostop_pid" 2>/dev/null || true
+      # Checked against a fresh marker so the cancel never reaches a recording this poll has not seen.
+      if [ -e "$discard_flag" ] && [ "$cancel_sent" = 0 ] &&
+        [ "$(voxtype_state_write_marker)" = "$write_marker" ]; then
+        debug "watch: discarded while voxtype is $state, cancelling"
+        cancel_sent=1
+        voxtype record cancel || true
+      fi
     elif [ "$recording_seen" = 1 ] || [ "$polls" -gt "$watch_start_grace_polls" ]; then
       break
     fi
@@ -883,19 +913,15 @@ release_recording_ownership() {
   fi
 }
 
-# For voxcmd-confirm once a key, click or timeout answers its card: cancels the reply recording its watcher still
-# owns, recording or transcribing, and discards whatever transcript still comes. A dictation started after that
-# recording ended is never touched, since the watcher gives up ownership as voxtype goes idle.
+# For voxcmd-confirm once a key, click or timeout answers its card: discards whatever transcript its reply recording
+# still brings, and has the watcher cancel that recording on its next poll. Only the watcher can tell its recording
+# from a dictation that started since: voxtype has no recording ids, and its state reads "recording" for both.
 cancel_owned_recording() {
-  local owner_file="$1" watcher_pid state
+  local owner_file="$1" watcher_pid
   watcher_pid=$(cat "$owner_file" 2>/dev/null) || return 0
   [ -n "$watcher_pid" ] && kill -0 "$watcher_pid" 2>/dev/null || return 0
+  debug "confirm answered without voice: discarding watcher $watcher_pid's recording"
   touch "$(discard_flag_of "$watcher_pid")"
-  state=$(voxtype_state)
-  debug "confirm answered without voice: cancelling watcher $watcher_pid's recording (voxtype $state)"
-  case "$state" in
-  recording | transcribing) voxtype record cancel ;;
-  esac
 }
 
 load_local_intents
