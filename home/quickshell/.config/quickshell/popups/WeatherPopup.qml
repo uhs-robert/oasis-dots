@@ -99,7 +99,7 @@ Popup {
 
         hero: { prefix: "Hero", views: ["Hourly", "SunMoon"] },
 
-        hev: { prefix: "Hev", views: ["Hourly", "SunMoon"] },
+        hev: { prefix: "Hev", views: ["Hourly", "SunMoon", "Air", "Alerts"] },
 
         lsp: { prefix: "Lsp", views: ["Hourly", "SunMoon"] },
 
