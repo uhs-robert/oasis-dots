@@ -3,7 +3,7 @@
 set -euo pipefail
 
 # The main checkout even when run from a linked worktree, since only it holds the gitignored files a test bar copies.
-repo=$(dirname "$(git -C "$(dirname "$0")" rev-parse --path-format=absolute --git-common-dir)")
+repo=$(dirname "$(git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --path-format=absolute --git-common-dir)")
 qs_rel=home/quickshell/.config/quickshell
 bars="${XDG_CACHE_HOME:-$HOME/.cache}/dotfiles/test-bars"
 ipc="$repo/home/hypr/.config/hypr/scripts/qs-ipc"
@@ -11,6 +11,12 @@ hypr_link="$HOME/.config/hypr"
 hypr_rel=home/hypr/.config/hypr
 hypr_orig="$bars/.hypr_orig"
 hypr_bar="$bars/.hypr_bar"
+voxcmd_rel=home/voxcmd
+voxcmd_bin_dir="$HOME/.local/bin"
+voxcmd_config_link="$HOME/.config/voxcmd"
+# The private integrations dirs, which a private dotfiles repo links into per file.
+voxcmd_private_dirs=(integrations.d replacements.d)
+voxcmd_bar="$bars/.voxcmd_bar"
 
 die() {
   echo "owner-test-bar: $*" >&2
@@ -151,6 +157,104 @@ hypr_swap() {
   restart_rotator
 }
 
+# Every voxcmd link in ~ that resolves into a test bar, from a swap or a half-done one.
+voxcmd_test_links() {
+  local link
+  for link in "$voxcmd_bin_dir"/* "$voxcmd_config_link"; do
+    [[ -L $link && $(readlink -m "$link") == "$bars"/* ]] && echo "$link"
+  done
+  return 0
+}
+
+# Links the owner's private integrations into the test build, the same way their private dotfiles link them into the main checkout.
+voxcmd_link_private() {
+  local config=$1 sub source link
+  for sub in "${voxcmd_private_dirs[@]}"; do
+    [[ -d $config/$sub ]] || continue
+    # The main checkout's copy too, in case the live link points at a test bar that is already gone.
+    for source in "$voxcmd_config_link/$sub" "$repo/$voxcmd_rel/.config/voxcmd/$sub"; do
+      for link in "$source"/*; do
+        [[ -L $link && -e $link && ! -e $config/$sub/${link##*/} ]] || continue
+        ln -s "$(readlink -f "$link")" "$config/$sub/${link##*/}"
+      done
+    done
+  done
+}
+
+voxcmd_swap() {
+  local name=$1 dir=$2
+  if [[ -z $(git -C "$dir" diff --name-only origin/main...HEAD -- "$voxcmd_rel") ]]; then
+    voxcmd_restore
+    return 0
+  fi
+  local bin=$dir/$voxcmd_rel/.local/bin config=$dir/$voxcmd_rel/.config/voxcmd file target link
+  [[ -L $voxcmd_config_link ]] || die "$voxcmd_config_link is not a symlink (stow unfolded it?); refusing the voxcmd swap"
+  for file in "$bin"/*; do
+    target=$voxcmd_bin_dir/${file##*/}
+    [[ ! -e $target || -L $target ]] || die "$target is not a symlink; refusing the voxcmd swap"
+  done
+  voxcmd_link_private "$config"
+  # Recorded before any link moves, so restore knows to restow even if this stops halfway.
+  echo "$name" >"$voxcmd_bar"
+  # Links left by a previous test build that this one does not have, such as a script only it added.
+  voxcmd_test_links | while read -r link; do
+    [[ $(readlink -m "$link") == "$dir"/* ]] || rm -f "$link"
+  done
+  mkdir -p "$voxcmd_bin_dir"
+  for file in "$bin"/*; do
+    ln -sfn "$file" "$voxcmd_bin_dir/${file##*/}"
+  done
+  ln -sfn "$config" "$voxcmd_config_link"
+  echo "voxcmd: test build $name"
+}
+
+# Safe to rerun after an interrupted swap or restore: the record goes only once stow has relinked main.
+voxcmd_restore() {
+  local links
+  links=$(voxcmd_test_links)
+  if [[ -n $links || -f $voxcmd_bar ]]; then
+    command -v stow >/dev/null || die "stow is not installed; cannot relink voxcmd from main"
+    # stow refuses to replace links it does not own, so the test links go first.
+    [[ -z $links ]] || xargs -d '\n' rm -f <<<"$links"
+    # -d and -t absolute: stow run from inside home/ would target the repo itself.
+    stow -d "$repo/home" -t "$HOME" -R voxcmd
+    rm -f "$voxcmd_bar"
+  fi
+  echo "voxcmd: main"
+}
+
+# The test bars voxcmd's links point into, one per line.
+voxcmd_linked_bars() {
+  local link target
+  voxcmd_test_links | while read -r link; do
+    target=$(readlink -m "$link")
+    target=${target#"$bars"/}
+    echo "${target%%/*}"
+  done | sort -u
+}
+
+# Whether every voxcmd link a swap to this test bar makes is in place.
+voxcmd_fully_linked() {
+  local voxcmd=$bars/$1/$voxcmd_rel file
+  [[ $(readlink -m "$voxcmd_config_link") == "$voxcmd/.config/voxcmd" ]] || return 1
+  for file in "$voxcmd/.local/bin"/*; do
+    [[ $(readlink -m "$voxcmd_bin_dir/${file##*/}") == "$file" ]] || return 1
+  done
+}
+
+# Which voxcmd is live; also read by .claude/status.d/quickshell.sh.
+voxcmd_status() {
+  local names
+  names=$(voxcmd_linked_bars)
+  if [[ -z $names && ! -f $voxcmd_bar ]]; then
+    echo "voxcmd: main"
+  elif [[ -f $voxcmd_bar && $names == "$(<"$voxcmd_bar")" ]] && voxcmd_fully_linked "$names"; then
+    echo "voxcmd: test build $names"
+  else
+    echo "voxcmd: half swapped; run: .claude/skills/owner-test-bar/owner-test-bar.sh restore"
+  fi
+}
+
 status() {
   local line path name dir branch head state=current
   line=$(pgrep -af '^qs ' || true)
@@ -180,6 +284,7 @@ status() {
   else
     echo "hypr: stowed ($(readlink "$hypr_link"))"
   fi
+  voxcmd_status
 }
 
 probe() {
@@ -244,76 +349,87 @@ build() {
   echo "owner-test-bar: built $dir from $*"
 }
 
-replace=0
-args=()
-for arg in "$@"; do
-  if [[ $arg == --replace ]]; then replace=1; else args+=("$arg"); fi
-done
-set -- "${args[@]}"
+main() {
+  replace=0
+  args=()
+  for arg in "$@"; do
+    if [[ $arg == --replace ]]; then replace=1; else args+=("$arg"); fi
+  done
+  set -- "${args[@]}"
 
-case ${1:-} in
-build)
-  shift
-  build "$@"
-  ;;
-swap)
-  dir="$bars/${2:?usage: owner-test-bar.sh swap <name>}"
-  [[ -d $dir ]] || die "no test bar at $dir"
-  guard_live_bar "$2" "$replace"
-  require_unlocked
-  hypr_swap "${2}" "$dir"
-  launch "qs -n -p $dir/$qs_rel"
-  verify "qs log -p $dir/$qs_rel"
-  ;;
-up)
-  name=${2:?usage: owner-test-bar.sh up <name> <branch>...}
-  shift 2
-  guard_live_bar "$name" "$replace"
-  build "$name" "$@"
-  swap_args=("$name")
-  ((replace)) && swap_args+=(--replace)
-  "$0" swap "${swap_args[@]}"
-  ;;
-restore)
-  require_unlocked
-  hypr_restore
-  launch "qs -n"
-  verify "qs log"
-  ;;
-remove)
-  dir="$bars/${2:?usage: owner-test-bar.sh remove <name>}"
-  pgrep -af "^qs .*-p $dir/" >/dev/null && die "that test bar is running; run owner-test-bar.sh restore first"
-  if [[ -f $hypr_bar && $(<"$hypr_bar") == "${2}" ]]; then
+  case ${1:-} in
+  build)
+    shift
+    build "$@"
+    ;;
+  swap)
+    dir="$bars/${2:?usage: owner-test-bar.sh swap <name>}"
+    [[ -d $dir ]] || die "no test bar at $dir"
+    guard_live_bar "$2" "$replace"
+    require_unlocked
+    hypr_swap "${2}" "$dir"
+    voxcmd_swap "$2" "$dir"
+    launch "qs -n -p $dir/$qs_rel"
+    verify "qs log -p $dir/$qs_rel"
+    ;;
+  up)
+    name=${2:?usage: owner-test-bar.sh up <name> <branch>...}
+    shift 2
+    guard_live_bar "$name" "$replace"
+    build "$name" "$@"
+    swap_args=("$name")
+    ((replace)) && swap_args+=(--replace)
+    "$0" swap "${swap_args[@]}"
+    ;;
+  restore)
     require_unlocked
     hypr_restore
-  fi
-  git -C "$repo" worktree remove --force "$dir"
-  git -C "$repo" worktree prune
-  rm -f "$dir.branches"
-  echo "owner-test-bar: removed $dir"
-  ;;
-rebuild)
-  name=${2:?usage: owner-test-bar.sh rebuild <name>}
-  dir="$bars/$name"
-  [[ -f $dir.branches ]] || die "no test bar '$name' to rebuild"
-  mapfile -t branches <"$dir.branches"
-  # Checked before removal: once up refuses over another live bar, this bar and its branch record are already gone.
-  guard_live_bar "$name" "$replace"
-  # Removing a running bar's worktree would pull its files out from under qs, so the stowed bar takes over first.
-  if pgrep -af "^qs .*-p $dir/" >/dev/null; then "$0" restore; fi
-  "$0" remove "$name"
-  up_args=("$name" "${branches[@]}")
-  ((replace)) && up_args+=(--replace)
-  "$0" up "${up_args[@]}"
-  ;;
-status)
-  status
-  ;;
-probe)
-  shift
-  probe "$@"
-  ;;
-*)
-  die "usage: owner-test-bar.sh {up <name> <branch>... [--replace]|build <name> <branch>...|swap <name> [--replace]|restore|rebuild <name>|remove <name>|status|probe <ipc call>...}"
-  ;;
-esac
+    voxcmd_restore
+    launch "qs -n"
+    verify "qs log"
+    ;;
+  remove)
+    dir="$bars/${2:?usage: owner-test-bar.sh remove <name>}"
+    pgrep -af "^qs .*-p $dir/" >/dev/null && die "that test bar is running; run owner-test-bar.sh restore first"
+    if [[ -f $hypr_bar && $(<"$hypr_bar") == "${2}" ]]; then
+      require_unlocked
+      hypr_restore
+    fi
+    # The links decide too: a swap stopped halfway may have moved them for this bar under another bar's record.
+    if [[ -f $voxcmd_bar && $(<"$voxcmd_bar") == "$2" ]] || grep -qxF "$2" <<<"$(voxcmd_linked_bars)"; then
+      voxcmd_restore
+    fi
+    git -C "$repo" worktree remove --force "$dir"
+    git -C "$repo" worktree prune
+    rm -f "$dir.branches"
+    echo "owner-test-bar: removed $dir"
+    ;;
+  rebuild)
+    name=${2:?usage: owner-test-bar.sh rebuild <name>}
+    dir="$bars/$name"
+    [[ -f $dir.branches ]] || die "no test bar '$name' to rebuild"
+    mapfile -t branches <"$dir.branches"
+    # Checked before removal: once up refuses over another live bar, this bar and its branch record are already gone.
+    guard_live_bar "$name" "$replace"
+    # Removing a running bar's worktree would pull its files out from under qs, so the stowed bar takes over first.
+    if pgrep -af "^qs .*-p $dir/" >/dev/null; then "$0" restore; fi
+    "$0" remove "$name"
+    up_args=("$name" "${branches[@]}")
+    ((replace)) && up_args+=(--replace)
+    "$0" up "${up_args[@]}"
+    ;;
+  status)
+    status
+    ;;
+  probe)
+    shift
+    probe "$@"
+    ;;
+  *)
+    die "usage: owner-test-bar.sh {up <name> <branch>... [--replace]|build <name> <branch>...|swap <name> [--replace]|restore|rebuild <name>|remove <name>|status|probe <ipc call>...}"
+    ;;
+  esac
+}
+
+# Sourced (by status.d, or a test against a temp HOME), it only defines the functions.
+if [[ ${BASH_SOURCE[0]} == "$0" ]]; then main "$@"; fi

@@ -14,12 +14,14 @@ The owner tests every Quickshell change on their real bar before merging; this s
 .claude/skills/owner-test-bar/owner-test-bar.sh restore                  # back to the stowed bar on main
 .claude/skills/owner-test-bar/owner-test-bar.sh rebuild <name>           # pick up new commits: restore if running, remove, up with the same branches
 .claude/skills/owner-test-bar/owner-test-bar.sh remove <name>
-.claude/skills/owner-test-bar/owner-test-bar.sh status                   # running qs, test bar HEAD vs its branch tips, hypr swapped or not
+.claude/skills/owner-test-bar/owner-test-bar.sh status                   # running qs, test bar HEAD vs its branch tips, hypr and voxcmd swapped or not
 .claude/skills/owner-test-bar/owner-test-bar.sh probe "zoom start" ...   # IPC calls, then new log WARN/ERROR and quickshell layers
 .claude/skills/owner-test-bar/capture.sh <namespace> [--pad N] [--reveal] [--screen NAME] [--out PATH]
 ```
 
 When the branches touch `home/hypr`, `swap` also copies the gitignored Hyprland files (machine config, `custom/`, theme state) into the test worktree, re-points `~/.config/hypr` at it, reloads Hyprland and rolls back if `hyprctl configerrors` reports anything. It refuses to swap when this machine's profile under `config/machines/` did not make it into the copy, since Hyprland would otherwise reload with the monitors at automatic positions. It prints `hypr: swapped` or `hypr: unchanged`; `restore` (and `remove` of that bar) prints `hypr: restored`. All of it needs lock state `unlocked`.
+
+When the branches touch `home/voxcmd`, `swap` also points every `~/.local/bin` script of the test build's voxcmd and the `~/.config/voxcmd` link at the test build, after linking the owner's private integrations (the extra symlinks in the live `integrations.d/` and `replacements.d/` from private dotfiles) into the test build's copy. It prints `voxcmd: test build <name>`, or `voxcmd: main` when the branches leave voxcmd alone. `restore` (and `remove` of that bar) removes the test links and restows voxcmd from the main checkout, printing `voxcmd: main`; rerun `restore` if `status` reports voxcmd half swapped. Never relink voxcmd by hand: `stow` run from inside `home/` targets the repo itself.
 
 Test bars live in `~/.cache/dotfiles/test-bars/<name>`. Rules:
 
