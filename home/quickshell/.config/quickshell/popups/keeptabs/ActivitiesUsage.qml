@@ -110,75 +110,75 @@ Item {
                 interactive: legend_column.implicitHeight > legend_flick.height
                 boundsBehavior: Flickable.StopAtBounds
 
-            ColumnLayout {
-                id: legend_column
-                width: legend_flick.width
-                y: Math.max(0, (legend_flick.height - implicitHeight) / 2)
-                spacing: 10
+                ColumnLayout {
+                    id: legend_column
+                    width: legend_flick.width
+                    y: Math.max(0, (legend_flick.height - implicitHeight) / 2)
+                    spacing: 10
 
-                Repeater {
-                    model: root.rows
+                    Repeater {
+                        model: root.rows
 
-                    delegate: RowLayout {
-                        id: legend
-                        required property var modelData
-                        required property int index
-                        Layout.fillWidth: true
-                        spacing: 8
-
-                        Rectangle {
-                            Layout.preferredWidth: 6
-                            Layout.preferredHeight: Style.px(32)
-                            Layout.alignment: Qt.AlignTop
-                            radius: 3
-                            color: legend.index < 4 ? root.ring_color(legend.index, legend.modelData.percent) : root.st.text_dim
-                        }
-
-                        ColumnLayout {
+                        delegate: RowLayout {
+                            id: legend
+                            required property var modelData
+                            required property int index
                             Layout.fillWidth: true
-                            Layout.minimumWidth: 0
-                            spacing: 1
+                            spacing: 8
 
-                            RowLayout {
+                            Rectangle {
+                                Layout.preferredWidth: 6
+                                Layout.preferredHeight: Style.px(32)
+                                Layout.alignment: Qt.AlignTop
+                                radius: 3
+                                color: legend.index < 4 ? root.ring_color(legend.index, legend.modelData.percent) : root.st.text_dim
+                            }
+
+                            ColumnLayout {
                                 Layout.fillWidth: true
-                                spacing: 6
+                                Layout.minimumWidth: 0
+                                spacing: 1
+
+                                RowLayout {
+                                    Layout.fillWidth: true
+                                    spacing: 6
+
+                                    Text {
+                                        Layout.fillWidth: true
+                                        Layout.minimumWidth: 0
+                                        wrapMode: Text.WordWrap
+                                        maximumLineCount: 2
+                                        elide: Text.ElideRight
+                                        text: legend.modelData.label.replace(/^Current /, "")
+                                        color: root.st.text_fg
+                                        font.family: root.st.font_family
+                                        font.pixelSize: root.st.fs(-2)
+                                        font.bold: true
+                                    }
+
+                                    Text {
+                                        text: legend.modelData.percent + "%"
+                                        color: root.legend_color(legend.index, legend.modelData.percent)
+                                        font.family: root.st.mono_font
+                                        font.pixelSize: root.st.fs(-2)
+                                        font.bold: true
+                                    }
+                                }
 
                                 Text {
                                     Layout.fillWidth: true
                                     Layout.minimumWidth: 0
-                                    wrapMode: Text.WordWrap
-                                    maximumLineCount: 2
                                     elide: Text.ElideRight
-                                    text: legend.modelData.label.replace(/^Current /, "")
-                                    color: root.st.text_fg
+                                    visible: legend.modelData.resets !== ""
+                                    text: "Resets " + legend.modelData.resets
+                                    color: root.st.text_dim
                                     font.family: root.st.font_family
-                                    font.pixelSize: root.st.fs(-2)
-                                    font.bold: true
+                                    font.pixelSize: root.st.fs(-3)
                                 }
-
-                                Text {
-                                    text: legend.modelData.percent + "%"
-                                    color: root.legend_color(legend.index, legend.modelData.percent)
-                                    font.family: root.st.mono_font
-                                    font.pixelSize: root.st.fs(-2)
-                                    font.bold: true
-                                }
-                            }
-
-                            Text {
-                                Layout.fillWidth: true
-                                Layout.minimumWidth: 0
-                                elide: Text.ElideRight
-                                visible: legend.modelData.resets !== ""
-                                text: "Resets " + legend.modelData.resets
-                                color: root.st.text_dim
-                                font.family: root.st.font_family
-                                font.pixelSize: root.st.fs(-3)
                             }
                         }
                     }
                 }
-            }
             }
         }
     }
