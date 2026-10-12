@@ -1,6 +1,6 @@
 # voxcmd
 
-Voice commands on top of [voxtype](https://github.com/peteonrails/voxtype). Speak a phrase, voxcmd matches it against the verbs your integrations declare and runs the action. Nine integrations ship: `media.sh` (playerctl and pamixer), `apps.sh` (open apps, focus, move and close windows), `timers.sh` (timers and reminders as systemd user timers), `devices.sh` (audio output, input and per-app volume with wpctl, Bluetooth with bluetoothctl), `system.sh` (brightness, power profile, do not disturb, auto-lock), `answers.sh` (math, time and date questions, and the weather popup), `keeptabs.sh` (coding agents tracked by keeptabs), `tmux.sh` (tmux sessions and tmuxifier layouts) and `keybinds.sh` (any described Hyprland keybind); everything else is a drop-in file you write.
+Voice commands on top of [voxtype](https://github.com/peteonrails/voxtype). Speak a phrase, voxcmd matches it against the verbs your integrations declare and runs the action. Ten integrations ship: `media.sh` (playerctl and pamixer), `apps.sh` (open apps, focus, move and close windows), `timers.sh` (timers and reminders as systemd user timers), `devices.sh` (audio output, input and per-app volume with wpctl, Bluetooth with bluetoothctl), `system.sh` (brightness, power profile, do not disturb, auto-lock), `answers.sh` (math, time and date questions, and the weather popup), `keeptabs.sh` (coding agents tracked by keeptabs), `tmux.sh` (tmux sessions and tmuxifier layouts), `notifications.sh` (the bar's notification center) and `keybinds.sh` (any described Hyprland keybind); everything else is a drop-in file you write.
 
 | Key                                | Does                                                                     |
 | ---------------------------------- | ------------------------------------------------------------------------ |
@@ -298,6 +298,20 @@ Brightness and do not disturb send no notification when they work ([silent](#sil
 | "new session X", "open a new session X"                                            | a terminal on a new session X (attached if X already runs) |
 
 Both are [silent](#silent-actions) when they work, since the session's terminal shows it; an unknown session still says so. X is matched against running sessions (`tmux list-sessions`) and the tmuxifier layouts in `~/.tmuxifier/layouts`, a layout by the `session_name` it sets or its file name. A layout goes through the Project picker's script (`hypr/scripts/rofi-tmux.sh <layout>`), which focuses its terminal or loads it in a new one. A running session without a layout focuses the terminal titled with its name, else opens a terminal attached to it. An X that matches nothing says so instead of falling through to the keybinds. Tab on its Voice Help entries lists every running session and layout; picking one switches to it.
+
+### Notifications
+
+`notifications.sh` drives the Quickshell bar, which is the notification daemon, over `qs-ipc` (`~/.config/hypr/scripts/qs-ipc`), so it needs the bar running:
+
+| Say                                                          | Does                                                                     |
+| ------------------------------------------------------------ | ------------------------------------------------------------------------ |
+| "clear notifications", "dismiss all notifications"           | empties the notification center (`notifications clear_all`)              |
+| "read the last notification", "what was that notification"   | shows the newest history entry again as a toast, with its app and body   |
+| "open notifications", "show the notification center"         | opens the bar's notifications popup (`notifications open`)               |
+
+- The repeat is read with `notifications get_last` and sent again with `notify-send --transient`, so it adds no second copy to the history. Under do not disturb it goes out critical, which do not disturb lets through, so it stays up until dismissed.
+- The actions are [silent](#silent-actions), since each one's effect is its own feedback; an empty history says "No notifications".
+- Do not disturb ("silence notifications", "notifications on") belongs to `system.sh`.
 
 ## Voice Help
 
