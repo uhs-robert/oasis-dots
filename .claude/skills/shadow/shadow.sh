@@ -242,8 +242,12 @@ resolve_source() {
     echo "$repo/$qs_rel"
     return
   }
-  local bar="${name}s"
-  [[ -e $bars/$bar ]] && die "test bar '$bar' exists from an earlier shadow; remove it with: $test_bar remove $bar"
+  # Prefixed so a shadow's bar can never share a name with one the owner is testing.
+  local bar="shadow-$name"
+  if [[ -e $bars/$bar ]]; then
+    pgrep -af "^qs .*-p $bars/$bar/" >/dev/null && die "test bar '$bar' is the owner's live bar; pick another shadow name"
+    die "test bar '$bar' exists from an earlier shadow; remove it with: $test_bar remove $bar"
+  fi
   "$test_bar" build "$bar" "$@" >&2 || die "owner-test-bar.sh build $bar $* failed"
   echo "$bar" >"$base/test-bar"
   printf '%s\n' "$@" >"$base/branches"
