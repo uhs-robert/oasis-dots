@@ -42,22 +42,6 @@ Item {
                 font.family: root.st.font_family
                 font.pixelSize: root.st.fs(-2)
             }
-
-            Repeater {
-                model: ClaudeUsageState.rows
-
-                Text {
-                    required property var modelData
-                    width: help_col.width
-                    elide: Text.ElideRight
-                    visible: modelData.resets !== ""
-                    height: visible ? implicitHeight : 0
-                    text: modelData.label + " resets " + modelData.resets
-                    color: root.st.text_dim
-                    font.family: root.st.font_family
-                    font.pixelSize: root.st.fs(-3)
-                }
-            }
         }
     }
 
@@ -94,7 +78,7 @@ Item {
                 readonly property bool mastered: limit.pct >= 100
 
                 width: ListView.view.width
-                height: Style.px(40)
+                height: Math.max(Style.px(40), limit_col.implicitHeight + 6)
 
                 MateriaOrb {
                     id: orb
@@ -107,6 +91,7 @@ Item {
                 }
 
                 ColumnLayout {
+                    id: limit_col
                     anchors.left: orb.right
                     anchors.leftMargin: 10
                     anchors.right: parent.right
@@ -142,6 +127,19 @@ Item {
                         ticks: true
                         value: limit.pct / 100
                         fill_color: limit.mastered ? Style.pal.warning : Fmt.context_bar_color(limit.pct, root.colors)
+                    }
+
+                    Text {
+                        Layout.fillWidth: true
+                        Layout.minimumWidth: 0
+                        visible: limit.modelData.resets !== ""
+                        wrapMode: Text.Wrap
+                        maximumLineCount: 2
+                        elide: Text.ElideRight
+                        text: "resets " + limit.modelData.resets
+                        color: root.st.text_dim
+                        font.family: root.st.font_family
+                        font.pixelSize: root.st.fs(-3)
                     }
                 }
             }
