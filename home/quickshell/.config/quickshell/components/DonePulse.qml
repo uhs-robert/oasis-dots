@@ -364,7 +364,9 @@ Item {
         visible: !root.lcd || root.elapsed < root.blink_start || root.blink_step % 2 === 1
     }
 
+    // Above the pickup + and the energy tank, which come to rest over the badge.
     Text {
+        z: 1
         visible: root.count_color.a > 0 && !!root.slot && root.slot.badge
         x: root.slot ? root.slot.badge_x : 0
         y: root.slot ? root.slot.badge_y : 0
