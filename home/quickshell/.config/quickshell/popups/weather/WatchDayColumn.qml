@@ -55,7 +55,9 @@ Item {
         return W.warm[7 - Math.round(from_bottom * 7 / Math.max(1, root.seg_count - 1))];
     }
 
+    // A temperature segment takes the band of the temperature it stands for, so the warmest day of a cold week stays cold.
     function main_color(from_bottom) {
+        if (root.sub === 0) return WeatherState.temp_color(root.scale_min + (from_bottom + 0.5) * root.span / root.seg_count);
         if (root.sub === 1) return Style.wk.bar_on;
         if (root.sub === 3) return W.warm[6];
         return root.warm_ramp(from_bottom);
