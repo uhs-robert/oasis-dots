@@ -298,7 +298,7 @@ runnable_options() {
   done
   commands=$(jq -n -c --args '$ARGS.positional as $triples
     | [range(0; $triples | length; 3) | {key: $triples[.], value: {command: $triples[. + 1], silent: ($triples[. + 2] == "true")}}]
-    | from_entries' "${action_triples[@]}")
+    | from_entries' -- "${action_triples[@]}")
   jq -c --argjson match "$match" --arg action "$action" --argjson commands "$commands" --arg confirm "$confirm" \
     --argjson label_omits_action "$({ [ "${#integration_actions[@]}" = 1 ] || [ "$action_labels" = 0 ]; } && echo true || echo false)" \
     --argjson candidates "$candidate_count" --args \
