@@ -259,19 +259,18 @@ Brightness and do not disturb send no notification when they work ([silent](#sil
 
 ### Answers
 
-`answers.sh` answers questions in the notification, with filler such as `hey`, `um`, `can you tell me` and a trailing `please` allowed around them:
+`answers.sh` answers math, time and date questions in the notification and opens the bar's weather popup for weather questions, with filler such as `hey`, `um`, `can you tell me` and a trailing `please` allowed around them:
 
 | Say                                                                                                  | Answer                                                         |
 | ---------------------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
 | "what's 15 percent of 230", "calculate 12 times 37", "convert 5 miles to km", "how many feet in a mile" | `qalc -t` result, also copied with `wl-copy`                   |
 | "what time is it", "what's the time"                                                                 | the time, in the Settings > Clock format                       |
 | "what's the date", "what day is it"                                                                  | `Saturday, October 10, 2026`                                   |
-| "what's the weather", "how's the weather", "what's the temperature"                                  | current conditions, today's high and low, and the rain chance  |
-| "will it rain today", "do I need an umbrella"                                                        | the same, rain chance first                                    |
+| "what's the weather", "how's the weather", "weather", "will it rain today", "do I need an umbrella"    | opens the Quickshell weather popup                             |
 
 - Math is read from `$raw_transcript`, since normalizing drops `%`, `×`, `/` and decimal points. Number words become digits ("two hundred thirty point five"), and `times`, `divided by`, `plus`, `minus`, `squared`, `cubed`, `to the power of`, `square root of`, `percent of`, `half of`, `factorial` and `modulo` become qalc syntax.
 - "what's" and "how much is" count as math only when a number follows, so "what's up" is left for the other integrations. Without a `to` (from "to", "in" or "into") qalc runs with units off, so a word it cannot place fails instead of becoming a unit.
-- Weather comes from the cache the Quickshell weather module writes, `~/.cache/quickshell/weather.json`; voxcmd never fetches. A snapshot over three hours old says when it was taken.
+- Weather opens the popup the Leader `W` (Weather) bind opens, with `~/.config/hypr/scripts/qs-ipc call popup open weather`, so it needs the Quickshell bar running.
 
 ## Voice Help
 

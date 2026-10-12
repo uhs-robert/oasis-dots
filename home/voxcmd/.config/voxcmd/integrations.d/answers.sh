@@ -1,5 +1,5 @@
 # shellcheck shell=bash disable=SC2034,SC2016
-# Quick answers: spoken math through qalc, the time and date, and the weather the Quickshell bar already fetched.
+# Quick answers: spoken math through qalc and the time and date; weather questions open the bar's weather popup.
 # Format: ~/.config/voxcmd/README.md
 
 name="Answers"
@@ -16,7 +16,7 @@ answers_math_start='(the )?((square|cube) root of |(minus|negative) )?([0-9].*|(
 verbs=(
   "time       ${answers_lead}(${answers_whats} the( current)? time|the time|what time is it|do you (have|know) the time)${answers_today}${answers_tail}"
   "date       ${answers_lead}((${answers_whats} )?(the|todays|today s)( current)? date|what (day|date|day of the week|month|year) is (it|today)|${answers_whats} today|which day is (it|today))${answers_today}${answers_tail}"
-  "rain       ${answers_lead}((is|will|does) it (going to |gonna )?(rain|snow|be (rainy|wet|snowy|stormy))|(do|should) i (need|take|bring) an umbrella|(any|chance of) (rain|snow))( (today|tonight|later|this (morning|afternoon|evening)))*${answers_tail}"
+  "weather    ${answers_lead}((is|will|does) it (going to |gonna )?(rain|snow|be (rainy|wet|snowy|stormy))|(do|should) i (need|take|bring) an umbrella|(any|chance of) (rain|snow))( (today|tonight|later|this (morning|afternoon|evening)))*${answers_tail}"
   "weather    ${answers_lead}((${answers_whats}|how is|hows|how s) (the )?(weather|forecast|temperature)( (like|report))?|weather( (report|forecast))?|how (hot|cold|warm) is it)${answers_today}${answers_tail}"
   "calculate  ${answers_lead}(${answers_whats}|how much is|what does) ${answers_math_start}"
   "calculate  ${answers_lead}how many [a-z]+( [a-z]+)? (are )?(in|is|make) (a|an|one|[0-9]).*"
@@ -37,8 +37,7 @@ examples=(
 declare -A actions=(
   [time]='answer_time'
   [date]='date "+%A, %B %-d, %Y"'
-  [weather]='answer_weather'
-  [rain]='answer_weather rain'
+  [weather]='open_weather_popup'
   [calculate]='answer_calculation "$raw_transcript"'
 )
 
@@ -56,33 +55,14 @@ answer_time() {
   date "+$(answers_time_format)"
 }
 
-# Reads the cache WeatherState.qml writes after every fetch instead of fetching again. The cache's first day can be
-# yesterday's when the bar has not refreshed since midnight, so today is looked up by date.
-answer_weather() {
-  local question="${1:-weather}"
-  local cache_file="${XDG_CACHE_HOME:-$HOME/.cache}/quickshell/weather.json" updated_s updated_format
-  if ! jq -e '.current' "$cache_file" >/dev/null 2>&1; then
-    echo "no weather yet: the Quickshell weather module has not fetched any"
+# The same call as the Leader and Bar submaps' Weather bind (`Popups.open("weather")` in the Hyprland config).
+open_weather_popup() {
+  local qs_ipc="${XDG_CONFIG_HOME:-$HOME/.config}/hypr/scripts/qs-ipc"
+  if [ ! -x "$qs_ipc" ]; then
+    echo "no Quickshell bar: $qs_ipc is missing"
     return 1
   fi
-  updated_s=$(($(jq '.updated // 0' "$cache_file") / 1000))
-  updated_format=$(answers_time_format)
-  [ "$(date -d "@$updated_s" +%F)" = "$(date +%F)" ] || updated_format="%a %-d %b, $updated_format"
-  jq -r --arg question "$question" --arg today "$(date +%F)" --arg updated_text "$(date -d "@$updated_s" "+$updated_format")" \
-    --argjson now_ms "$(($(date +%s) * 1000))" '
-    (if .data_unit == "celsius" then "°C" else "°F" end) as $unit
-    | (.current | "\(.temp | round)\($unit)") as $temp
-    | (first(.days[]? | select(.date == $today)) // null) as $day
-    | (if $day then "high \($day.max | round)°, low \($day.min | round)°" else null end) as $range
-    | (if $day then "\($day.pop)% chance of rain today" else "No forecast for today" end) as $rain
-    # The bar refreshes every 15 minutes while it runs, so an older snapshot means the bar has not been running.
-    | (if $now_ms - (.updated // 0) > 3 * 3600 * 1000 then " (as of \($updated_text))" else "" end) as $age
-    | if $question == "rain" then
-        $rain + (if $day then " (\($day.cond | ascii_downcase))" else "" end)
-        + ". Now \(.current.cond | ascii_downcase), \($temp)" + (if $range then "; \($range)" else "" end) + $age
-      else
-        "\(.current.cond), \($temp)" + (if $range then "; \($range), \($rain)" else "" end) + $age
-      end' "$cache_file"
+  "$qs_ipc" call popup open weather
 }
 
 # Spoken words that qalc misreads as units ("times", "percent of", "squared"), rewritten into its syntax.
