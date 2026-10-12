@@ -103,7 +103,7 @@ Popup {
 
         lsp: { prefix: "Lsp", views: ["Hourly", "SunMoon", "Air", "Alerts"] },
 
-        memcard: { prefix: "MemCard", views: ["Hourly", "SunMoon"] },
+        memcard: { prefix: "MemCard", views: ["Hourly", "SunMoon", "Air", "Alerts"] },
 
         mode7: { prefix: "Mode7", views: ["Hourly", "SunMoon", "Air", "Alerts"] },
 
