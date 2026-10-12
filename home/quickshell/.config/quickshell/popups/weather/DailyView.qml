@@ -61,7 +61,7 @@ Item {
     readonly property bool mode7: Style.weather_header === "mode7"
     readonly property bool floor_shown: root.mode7 && root.visible && Popups.open_name === "weather"
     // Terminal: `curl wttr.in`, the window as one box-drawn table.
-    readonly property bool wttr_table: Style.weather_header === "wttr" && root.sub === 0
+    readonly property bool wttr_table: Style.weather_header === "wttr"
     // Half-Life: HL1 weapon-slot buckets, the selected day open wider.
     readonly property bool hev_slots: Style.weather_header === "hev"
     // FF7: the days as linked materia slots.
@@ -209,6 +209,8 @@ Item {
                 day_cursor: root.day_cursor
                 scale_min: root.week_temp_range.min
                 scale_max: root.week_temp_range.max
+                sub: root.sub
+                wind_max: root.wind_max
                 on_select: root.on_select
             }
         }
