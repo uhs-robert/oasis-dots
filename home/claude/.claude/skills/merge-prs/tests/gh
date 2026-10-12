@@ -6,7 +6,7 @@ set -euo pipefail
 args="$*"
 number=""
 case "$args" in
-"pr view "* | "pr merge "* | "pr edit "*) number=$3 ;;
+"pr view "* | "pr merge "* | "pr edit "* | "pr comment "*) number=$3 ;;
 "api graphql"*) number=$(grep -o 'number=[0-9]*' <<<"$args" | cut -d= -f2) ;;
 esac
 state_file=$GH_STATE
@@ -38,6 +38,23 @@ case "$args" in
     [[ $(get base) == "$base" && $(get state) == OPEN ]] || continue
     printf '%s\t%s\t%s\tfalse\n' "${f##*.}" "$(get head)" "$(head_oid)"
   done
+  ;;
+# Each side of a compare against main: reviewed_subjects/reviewed_files for the commit Codex reviewed, head_subjects/
+# head_files for anything else, as ;-separated lists.
+"api repos/"*"/compare/"*)
+  sha=$(sed -E 's|.*/compare/[^.]+\.\.\.([^ ]+).*|\1|' <<<"$args")
+  side="head"
+  [[ -n $(get codex_commit) && $sha == "$(get codex_commit)"* ]] && side=reviewed
+  case $args in
+  *commits*) get "${side}_subjects" | tr ';' '\n' ;;
+  *) get "${side}_files" | tr ';' '\n' ;;
+  esac
+  ;;
+# An @codex review runs for one read, then completes at the head.
+"pr comment"*)
+  put commented 1
+  put codex_running_reads 1
+  put codex_commit "$(head_oid | cut -c1-7)"
   ;;
 "pr edit"*) put base "$(sed -E 's/.*--base ([^ ]+).*/\1/' <<<"$args")" ;;
 "api graphql"*)

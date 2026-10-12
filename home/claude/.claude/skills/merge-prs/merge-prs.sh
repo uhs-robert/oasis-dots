@@ -108,9 +108,43 @@ read_review() {
     --jq "$review_jq" || die "cannot read the review state of #$1"
 }
 
+# Why the commits after Codex's review need a review of their own; prints nothing when they only fix what it covered.
+# Compares each side against the default branch, so commits picked up by a rebase after the review are not counted.
+rereview_reason() {
+  local reviewed=$1 head=$2 reviewed_subjects head_subjects covered changed new_work new_file
+  reviewed_subjects=$(gh api "repos/$slug/compare/$default...$reviewed" --jq '.commits[].commit.message | split("\n")[0]') ||
+    die "cannot compare $reviewed with $default"
+  head_subjects=$(gh api "repos/$slug/compare/$default...$head" --jq '.commits[].commit.message | split("\n")[0]') ||
+    die "cannot compare $head with $default"
+  new_work=$(grep -vxFf <(printf '%s\n' "$reviewed_subjects") <<<"$head_subjects" | grep -Ev '^(fix|test)(\([^)]*\))?!?: ' | head -n 1 || true)
+  if [[ -n $new_work ]]; then
+    echo "\"$new_work\" is not a fix or test"
+    return
+  fi
+  covered=$(gh api "repos/$slug/compare/$default...$reviewed" --jq '.files[].filename')
+  changed=$(gh api "repos/$slug/compare/$default...$head" --jq '.files[].filename')
+  new_file=$(grep -vxFf <(printf '%s\n' "$covered") <<<"$changed" | head -n 1 || true)
+  [[ -z $new_file ]] || echo "$new_file was not in the reviewed changes"
+}
+
+# Polls until the Codex review stops running and, given "head", until it covers the PR's head commit.
+# Timed by the clock rather than by summing sleeps, so a zero poll interval still stops at the limit.
+poll_review() {
+  local number=$1 until=${2:-} started=$SECONDS
+  while ((waited < review_wait_s)); do
+    if [[ $status != Running ]]; then
+      [[ $until == head && $status != Failed && $head != "$reviewed"* ]] || return 0
+    fi
+    sleep "$review_poll_s"
+    waited=$((SECONDS - started))
+    info=$(read_review "$number")
+    IFS=$'\t' read -r open status reviewed head <<<"$info"
+  done
+}
+
 # Checks every PR before merging any, so a run never stops halfway through a stack over a review it could have seen up front.
 check_reviews() {
-  local pr number info open status reviewed head waited started
+  local pr number info open status reviewed head waited reason
   local -a problems=()
   for pr in "${prs[@]}"; do
     number=${pr#\#}
@@ -119,14 +153,22 @@ check_reviews() {
     waited=0
     if [[ $status == Running ]] && $wait_review; then
       echo "merge-prs: waiting up to ${review_wait_s}s for #$number's Codex review" >&2
-      # Timed by the clock rather than by summing sleeps, so a zero poll interval still stops at the limit.
-      started=$SECONDS
-      while [[ $status == Running ]] && ((waited < review_wait_s)); do
-        sleep "$review_poll_s"
-        waited=$((SECONDS - started))
-        info=$(read_review "$number")
-        IFS=$'\t' read -r open status reviewed head <<<"$info"
-      done
+      poll_review "$number"
+    fi
+    # A fix that does what the review asked does not need another round; new work or new files after it do.
+    if [[ $status == Completed && $head != "$reviewed"* ]]; then
+      reason=$(rereview_reason "$reviewed" "$head")
+      if [[ -z $reason ]]; then
+        echo "note: #$number's Codex review covers $reviewed, not the head ${head:0:7}; the later commits only fix files it reviewed"
+      elif $wait_review && ! $check_only; then
+        echo "merge-prs: #$number changed since Codex reviewed $reviewed ($reason); requesting a review and waiting up to ${review_wait_s}s" >&2
+        gh pr comment "$number" --body "@codex review" >/dev/null || die "cannot request a Codex review on #$number"
+        poll_review "$number" head
+        [[ $status != Completed || $head == "$reviewed"* ]] ||
+          problems+=("#$number: Codex has not reviewed the head ${head:0:7} after ${waited}s; rerun with --wait-review once it has")
+      else
+        problems+=("#$number: commits since Codex reviewed $reviewed need their own review ($reason); rerun with --wait-review to request one and wait")
+      fi
     fi
     ((open == 0)) || problems+=("#$number: $open unresolved review thread(s); answer and resolve them")
     case $status in
@@ -138,10 +180,6 @@ check_reviews() {
       fi
       ;;
     Failed) problems+=("#$number: the Codex review failed at $reviewed; comment \"@codex review\" on the PR and wait for it") ;;
-    Completed)
-      [[ $head == "$reviewed"* ]] ||
-        echo "note: #$number's Codex review covers $reviewed, not the head ${head:0:7}; later commits were not reviewed by Codex"
-      ;;
     esac
   done
   ((${#problems[@]} == 0)) && return 0
