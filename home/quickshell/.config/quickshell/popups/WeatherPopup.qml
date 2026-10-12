@@ -97,7 +97,7 @@ Popup {
     readonly property var layout_views: ({
         battle: { prefix: "Battle", views: ["Hourly", "SunMoon"] },
 
-        hero: { prefix: "Hero", views: [] },
+        hero: { prefix: "Hero", views: ["Hourly", "SunMoon"] },
 
         hev: { prefix: "Hev", views: ["Hourly", "SunMoon"] },
 
