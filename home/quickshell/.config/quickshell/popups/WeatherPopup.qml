@@ -91,6 +91,49 @@ Popup {
     onLine_start: root.go_now()
     onLine_end: root.go_end()
 
+    // Views a layout draws itself, as weather/<prefix><View>.qml for Hourly, SunMoon, Air or Alerts;
+    // every other view falls back to the shared one. The blank lines keep each layout's line its own hunk,
+    // so style PRs that each flip one line merge without conflicts.
+    readonly property var layout_views: ({
+        battle: { prefix: "Battle", views: [] },
+
+        hero: { prefix: "Hero", views: [] },
+
+        hev: { prefix: "Hev", views: [] },
+
+        lsp: { prefix: "Lsp", views: [] },
+
+        memcard: { prefix: "MemCard", views: [] },
+
+        mode7: { prefix: "Mode7", views: [] },
+
+        oasis: { prefix: "Oasis", views: [] },
+
+        pokedex: { prefix: "Dex", views: [] },
+
+        ring: { prefix: "Ring", views: [] },
+
+        scan: { prefix: "Scan", views: [] },
+
+        scope: { prefix: "Scope", views: [] },
+
+        status: { prefix: "Status", views: [] },
+
+        towers: { prefix: "Tower", views: [] },
+
+        watch: { prefix: "Watch", views: [] },
+
+        weatherstar: { prefix: "Ws", views: [] },
+
+        wttr: { prefix: "Wttr", views: [] }
+    })
+
+    function view_url(view, shared) {
+        const own = root.layout_views[Style.weather_header];
+        const file = own && own.views.includes(view) ? own.prefix + view : shared;
+        return Qt.resolvedUrl("weather/" + file + ".qml");
+    }
+
     readonly property bool is_open: Popups.open_name === "weather"
     onIs_openChanged: if (is_open) { WeatherState.refresh_if_due(); root.go_now(); }
 
@@ -459,35 +502,52 @@ Popup {
                     id: hourly_loader
                     anchors.fill: parent
                     active: root.current_tab === 1 && !root.on_air
-                    sourceComponent: HourlyView {
-                        anchors.fill: parent
-                        hour_cursor: root.hour_cursor
-                        sub: root.hourly_sub
-                        scroll_x: root.hourly_scroll_x
-                        on_scroll: function (x) { root.hourly_scroll_x = x; }
-                        on_select: function (i) { root.hour_cursor = i; ThemeAudio.play("cursor"); }
+                    readonly property url url: root.view_url("Hourly", "HourlyView")
+                    onUrlChanged: hourly_loader.load()
+                    Component.onCompleted: hourly_loader.load()
+
+                    function load() {
+                        hourly_loader.setSource(hourly_loader.url, {
+                            hour_cursor: Qt.binding(() => root.hour_cursor),
+                            sub: Qt.binding(() => root.hourly_sub),
+                            scroll_x: Qt.binding(() => root.hourly_scroll_x),
+                            on_scroll: function (x) { root.hourly_scroll_x = x; },
+                            on_select: function (i) { root.hour_cursor = i; ThemeAudio.play("cursor"); }
+                        });
                     }
                 }
 
                 Loader {
+                    id: air_loader
                     anchors.fill: parent
                     active: root.on_air
-                    sourceComponent: AirView {
-                        anchors.fill: parent
-                        hour_cursor: root.hour_cursor
-                        on_select: function (i) { root.hour_cursor = i; ThemeAudio.play("cursor"); }
+                    readonly property url url: root.view_url("Air", "AirView")
+                    onUrlChanged: air_loader.load()
+                    Component.onCompleted: air_loader.load()
+
+                    function load() {
+                        air_loader.setSource(air_loader.url, {
+                            hour_cursor: Qt.binding(() => root.hour_cursor),
+                            on_select: function (i) { root.hour_cursor = i; ThemeAudio.play("cursor"); }
+                        });
                     }
                 }
 
                 Loader {
+                    id: sun_moon_loader
                     anchors.fill: parent
                     active: root.on_sun_moon
-                    sourceComponent: SunMoonView {
-                        anchors.fill: parent
-                        day_cursor: root.day_cursor
-                        first_day: root.day_first
-                        day_span: root.day_span
-                        on_select: function (i) { root.day_cursor = i; ThemeAudio.play("cursor"); }
+                    readonly property url url: root.view_url("SunMoon", "SunMoonView")
+                    onUrlChanged: sun_moon_loader.load()
+                    Component.onCompleted: sun_moon_loader.load()
+
+                    function load() {
+                        sun_moon_loader.setSource(sun_moon_loader.url, {
+                            day_cursor: Qt.binding(() => root.day_cursor),
+                            first_day: Qt.binding(() => root.day_first),
+                            day_span: Qt.binding(() => root.day_span),
+                            on_select: function (i) { root.day_cursor = i; ThemeAudio.play("cursor"); }
+                        });
                     }
                 }
 
@@ -495,12 +555,17 @@ Popup {
                     id: alerts_loader
                     anchors.fill: parent
                     active: root.on_alerts_tab
-                    sourceComponent: AlertsView {
-                        anchors.fill: parent
-                        alert_cursor: root.alert_cursor
-                        detail_y: root.alert_detail_y
-                        on_detail_scroll: function (y) { root.alert_detail_y = y; }
-                        on_select: function (i) { root.alert_cursor = i; ThemeAudio.play("cursor"); }
+                    readonly property url url: root.view_url("Alerts", "AlertsView")
+                    onUrlChanged: alerts_loader.load()
+                    Component.onCompleted: alerts_loader.load()
+
+                    function load() {
+                        alerts_loader.setSource(alerts_loader.url, {
+                            alert_cursor: Qt.binding(() => root.alert_cursor),
+                            detail_y: Qt.binding(() => root.alert_detail_y),
+                            on_detail_scroll: function (y) { root.alert_detail_y = y; },
+                            on_select: function (i) { root.alert_cursor = i; ThemeAudio.play("cursor"); }
+                        });
                     }
                 }
             }
