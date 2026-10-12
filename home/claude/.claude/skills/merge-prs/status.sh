@@ -69,6 +69,16 @@ while IFS= read -r b; do
 done < <(git for-each-ref --format='%(refname:short)' refs/heads)
 [[ -z $lines ]] || section "Unmerged branches" <<<"${lines%$'\n'}"
 
+# Remote branches whose PR closed without merging; merge-prs deletes merged ones, so these are what gets left behind.
+lines=""
+while IFS=' ' read -r b n; do
+  [[ -n $b ]] || continue
+  git show-ref --verify -q "refs/remotes/origin/$b" || continue
+  lines+="$b (#$n closed): git push origin --delete $b"$'\n'
+done < <(gh pr list --author @me --state closed --limit 100 --json number,headRefName,mergedAt \
+  --jq '.[] | select(.mergedAt == null) | "\(.headRefName) \(.number)"' 2>/dev/null)
+[[ -z $lines ]] || section "Branches of closed PRs" <<<"${lines%$'\n'}"
+
 untracked=$(git status --porcelain --untracked-files=normal | sed -n 's/^?? \([^/]*\/\{0,1\}\).*/\1/p' | sort -u)
 [[ -z $untracked ]] || section "Untracked in main checkout" <<<"$untracked"
 
