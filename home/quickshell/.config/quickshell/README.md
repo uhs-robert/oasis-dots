@@ -201,7 +201,7 @@ qs-ipc show        # list every target and function
 | `sound`         | `play <kind>`: a Theme audio sound if its category is on; `play alarm` always rings |
 | `overview`      | `open`, `close`, `toggle`, `search`, `move_follow`, `move_silent`, `save_session <name>`                         |
 | `tmux-overview` | `open`, `close`, `toggle`, `search`                                   |
-| `notifications` | `open`, `close`, `toggle_dnd`, `clear_all`, `dismiss_latest`, `dismiss_all`, `focus_toast`, `has_toast` |
+| `notifications` | `open`, `close`, `toggle_dnd`, `get_dnd`, `get_last` (the newest history entry as JSON), `clear_all`, `dismiss_latest`, `dismiss_all`, `focus_toast`, `has_toast` |
 | `screenshot`    | `open`, `close`, `toggle`, `select`, `pick`, `share`, `stop_recording` and the recording callbacks |
 | `zoom`          | `start`, `stop`, `toggle`, `step <delta>`, `size <delta>`, `full`     |
 | `lock`          | `lock`, `lock_auto` (music waits for the first key), `state`, `preview <style>`, `preview_close` |

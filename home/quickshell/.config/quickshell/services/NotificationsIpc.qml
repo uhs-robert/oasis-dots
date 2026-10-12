@@ -2,7 +2,15 @@
 import Quickshell.Io
 
 IpcHandler {
+    id: root
     target: "notifications"
+
+    // Untyped, so IpcHandler does not expose it. notify-send --icon arrives as the image hint, which Quickshell turns into an image://icon/ URL; other image://
+    // URLs are pixel data only the bar can draw.
+    function icon_name_of(image) {
+        const name = image.replace(/^image:\/\/icon\//, "");
+        return name.startsWith("image:") ? "" : name;
+    }
 
     function toggle_dnd(): void {
         NotificationState.toggle_dnd();
@@ -27,6 +35,14 @@ IpcHandler {
     function focus_toast(direction: string): string {
         if (!NotificationState.toast_focus && NotificationState.visible_toasts.length > 0 && Popups.open_name !== "") Popups.close();
         return NotificationState.focus_toast(direction) ? "toast" : "none";
+    }
+
+    // The newest history entry as {app, summary, body, icon}, or "" when the history is empty.
+    function get_last(): string {
+        const latest = NotificationState.history[0];
+        if (!latest || !latest.notification) return "";
+        const n = latest.notification;
+        return JSON.stringify({ app: n.appName, summary: n.summary, body: n.body, icon: n.appIcon || root.icon_name_of(n.image) });
     }
 
     function has_toast(): bool {
