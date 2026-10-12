@@ -82,13 +82,16 @@ candidates() {
 # matching finds the scattered letters of "headset" in them. Only devices whose label holds every spoken word are
 # offered: a word of four letters or more anywhere in the label, so "speaker" names "Speakers", a shorter one only as
 # a whole word, so "it" never names "Digital". Articles are not words here: "use the microphone" arrives as the
-# target "the" and should offer every microphone.
+# target "the" and should offer every microphone, so with only articles spoken each device's match_text becomes the
+# target, which voxcmd's own matching then accepts for all of them.
 labels_containing_words() {
   jq -c --arg target "$1" '
     def words: ascii_downcase | [splits("[^a-z0-9]+") | select(. != "")];
     ($target | words | map(select(IN("the", "a", "an", "my") | not))) as $spoken_words
-    | map(select((.match_text // .label | ascii_downcase) as $label | ($label | words) as $label_words
-        | all($spoken_words[]; . as $word | if ($word | length) >= 4 then $label | contains($word) else IN($label_words[]) end)))'
+    | if $spoken_words == [] then map(. + {match_text: $target}) else
+        map(select((.match_text // .label | ascii_downcase) as $label | ($label | words) as $label_words
+          | all($spoken_words[]; . as $word | if ($word | length) >= 4 then $label | contains($word) else IN($label_words[]) end)))
+      end'
 }
 
 # PipeWire nodes of a media class, labelled by description plus what the device's active route or form factor
