@@ -28,23 +28,28 @@ voxcmd_pick="$(dirname "$voxcmd_self")/voxcmd-pick"
 voxcmd_autostop="$(dirname "$voxcmd_self")/voxcmd-autostop"
 dry_run=0
 
+# notify info|error <summary> <body>. Info (what ran, answers, hints) is transient: the bar shows it but keeps it
+# out of its history, which is left to errors.
 notify() {
+  local kind="$1" summary="$2" body="$3"
   if [ "$dry_run" = 1 ] || ! command -v notify-send >/dev/null; then
-    printf '%s: %s\n' "$1" "$2" >&2
-  else
-    notify-send -a voxcmd "$1" "$2"
+    printf '%s: %s\n' "$summary" "$body" >&2
+    return
   fi
+  local -a flags=(-a voxcmd)
+  [ "$kind" = error ] || flags+=(--transient)
+  notify-send "${flags[@]}" "$summary" "$body"
 }
 
 # The notification carries a Voice Help button. notify-send waits for the notification to close to report a
 # clicked action, so a detached waiter holds it instead of voxcmd.
 notify_no_match() {
   if [ "$dry_run" = 1 ] || ! command -v notify-send >/dev/null; then
-    notify "$1" "$2"
+    notify info "$1" "$2"
     return
   fi
   # shellcheck disable=SC2016 # expanded by the inner sh
-  setsid sh -c '[ "$(notify-send -a voxcmd --action=help="Voice Help" "$1" "$2")" = help ] && exec "$3" help' \
+  setsid sh -c '[ "$(notify-send -a voxcmd --transient --action=help="Voice Help" "$1" "$2")" = help ] && exec "$3" help' \
     sh "$1" "$2" "$voxcmd_self" </dev/null >/dev/null 2>&1 &
 }
 
@@ -100,8 +105,8 @@ compile_pattern() {
 # A `declare` in a file sourced from a function is local to that function, so the arrays are copied out to globals.
 load_integration() {
   unset -f candidates
-  name="" confirm=0 fallback=0 target_match=fuzzy
-  local -a verbs=() examples=() confirm_labels=() match_ignore_words=()
+  name="" confirm=0 fallback=0 silent=0 target_match=fuzzy
+  local -a verbs=() examples=() confirm_labels=() match_ignore_words=() silent_actions=()
   local -A actions=() no_match_actions=()
   # shellcheck disable=SC1090
   source "$1"
@@ -110,6 +115,7 @@ load_integration() {
   integration_examples=("${examples[@]}")
   integration_confirm_labels=("${confirm_labels[@]}")
   integration_match_ignore_words=("${match_ignore_words[@]}")
+  integration_silent_actions=("${silent_actions[@]}")
   declare -gA integration_actions=() integration_no_match_actions=()
   local key
   for key in "${!actions[@]}"; do
@@ -150,6 +156,16 @@ match_verbs() {
   done < <(integration_files)
 }
 
+# silent=1 covers every action of the integration, silent_actions only those listed.
+action_is_silent() {
+  [ "$silent" = 1 ] && return 0
+  local silent_action
+  for silent_action in "${integration_silent_actions[@]}"; do
+    [ "$silent_action" = "$1" ] && return 0
+  done
+  return 1
+}
+
 # Expands one match into runnable options. A verb with a target placeholder whose integration prints candidates
 # for the action (even an empty list) yields one option per candidate the target matches, possibly none,
 # or, when it matches none and the integration maps the action in no_match_actions, that action with an empty id;
@@ -186,9 +202,10 @@ resolve_match() {
       fi
     fi
     jq -c --argjson match "$match" --arg action "$action" --arg command "$command" --arg confirm "$confirm" \
+      --argjson silent "$(action_is_silent "$action" && echo true || echo false)" \
       --argjson candidates "$candidates_json" --args \
       '($ARGS.positional) as $confirm_labels | .[]
-        | $match + {action: $action, id, label, command: $command, weak: (.weak // false),
+        | $match + {action: $action, id, label, command: $command, weak: (.weak // false), silent: $silent,
             confirm: ($confirm == "1" or (.label as $label | any($confirm_labels[]; . as $re | $label | test($re; "i")))),
             candidates: ($candidates | length)}' "${integration_confirm_labels[@]}" <<<"$options"
   )
@@ -278,7 +295,7 @@ run_option() {
   target=$(jq -r .target <<<"$option")
   label=$(option_label "$option")
   if [ -z "$command" ]; then
-    notify "voxcmd error" "$label has no command"
+    notify error "voxcmd error" "$label has no command"
     return 1
   fi
   if [ "$(jq -r .confirm <<<"$option")" = true ]; then
@@ -289,9 +306,10 @@ run_option() {
     set +eu
     eval "$command" 2>&1
   ); then
-    notify "voxcmd" "$label${output:+: $(tail -n 1 <<<"$output")}"
+    # A silent action's own effect (a bar popup it opens) is the feedback, which a toast would only cover.
+    [ "$(jq -r .silent <<<"$option")" = true ] || notify info "voxcmd" "$label${output:+: $(tail -n 1 <<<"$output")}"
   else
-    notify "voxcmd failed" "$label${output:+: $(tail -n 3 <<<"$output")}"
+    notify error "voxcmd failed" "$label${output:+: $(tail -n 3 <<<"$output")}"
     return 1
   fi
 }
@@ -309,7 +327,7 @@ print_dry_run() {
   fi
   jq -r 'to_entries[] | .key as $n | .value |
     "option \($n + 1):    \(.name) (\(.file | split("/") | last))\(if .fallback then " [fallback]" else "" end) action=\(.action) target=\(.target | @sh) id=\(.id | @sh) label=\(.label | @sh)",
-    "             candidates offered: \(.candidates), weak: \(.weak), confirm: \(.confirm)",
+    "             candidates offered: \(.candidates), weak: \(.weak), confirm: \(.confirm), silent: \(.silent)",
     "             command: \(.command)"' <<<"$options"
 }
 
@@ -397,13 +415,13 @@ voice_help() {
     )
   done < <(integration_files) | jq -s -c 'add // [] | sort_by(.fallback) | map(del(.fallback))')
   if [ "$(jq length <<<"$choices")" = 0 ]; then
-    notify "voxcmd" "No integration declares examples"
+    notify info "voxcmd" "No integration declares examples"
     return 1
   fi
   picked=$("$voxcmd_pick" "Voice Help" "$choices") || return 0
   if [[ "$picked" =~ $example_placeholder ]]; then
     # Notification bodies are markup, which would swallow the placeholder as a tag.
-    notify "voxcmd" "Say: $(markup_escape "$picked")"
+    notify info "voxcmd" "Say: $(markup_escape "$picked")"
   else
     route "$picked"
   fi
@@ -482,7 +500,7 @@ reply() {
   local transcript="$*" text state verdict
   text=$(apply_replacements "$(normalize "$transcript")")
   if ! state=$(pending_pick); then
-    notify "voxcmd" "No picker is waiting for a reply"
+    notify info "voxcmd" "No picker is waiting for a reply"
     return 1
   fi
   verdict=$(match_reply "$text" "$(jq -c .choices <<<"$state")")
@@ -493,7 +511,7 @@ reply() {
   fi
   case "$verdict" in
   unclear*)
-    notify "voxcmd: which one?" "\"$transcript\": ${verdict#*$'\t'}. Say a choice, a number, or cancel."
+    notify info "voxcmd: which one?" "\"$transcript\": ${verdict#*$'\t'}. Say a choice, a number, or cancel."
     return 1
     ;;
   esac
@@ -522,7 +540,7 @@ listen() {
   transcribing) return 0 ;;
   idle) ;;
   *)
-    notify "voxcmd" "voxtype is not ready ($state)"
+    notify error "voxcmd" "voxtype is not ready ($state)"
     return 1
     ;;
   esac
@@ -530,7 +548,7 @@ listen() {
   if pending_pick >/dev/null; then transcript_handler=reply; fi
   rm -f "$transcript_file"
   if ! voxtype record start --file="$transcript_file"; then
-    notify "voxcmd error" "voxtype record start failed"
+    notify error "voxcmd error" "voxtype record start failed"
     return 1
   fi
   setsid "$0" _watch "$transcript_handler" </dev/null >/dev/null 2>&1 &

@@ -57,7 +57,7 @@ To tune it, `voxcmd-autostop --verbose` prints each frame's level and the thresh
 6. If nothing so far can run, the [LLM hook](#llm-hook) gets a turn, then the [fallback integrations](#fallback-integrations) go through steps 3 to 5.
 7. One option runs (after a Yes/No picker if the integration sets `confirm=1` or the option's label matches its `confirm_labels`). Several, or a single weak word match, open a picker, the Quickshell one when the bar is running and `rofi -dmenu` otherwise, which can also be [answered by voice](#answering-by-voice); cancelling does nothing. None sends a "no match" notification with a Voice Help button.
 
-A notification reports what ran, followed by the last line the command printed, if any, or the last lines of the error.
+A notification reports what ran, followed by the last line the command printed, if any, or the last lines of the error. Only errors stay in the notification history: a failed action, an action with no command, voxtype not ready or failing to start. Everything else (what ran, answers, "no match", "which one?", "Say: ...") is sent with `--transient`, so the bar shows it and drops it. An action marked [silent](#silent-actions) sends nothing when it succeeds.
 
 ## Integrations
 
@@ -118,6 +118,17 @@ Patterns are bash ERE, so there are no non-capturing groups; voxcmd finds the ta
 
 The tracked `integrations.d/` and `replacements.d/` ignore everything except what ships, so private integrations dropped into the stowed folders stay out of git.
 
+### Silent actions
+
+An action whose effect is already its feedback, like opening a bar popup, sends no notification on success, since a toast would only cover what it opened. A failure still sends the error.
+
+```bash
+silent=1                  # every action of this integration
+silent_actions=(weather)  # only these actions
+```
+
+`keybinds.sh` is silent: a bind has a visible effect of its own, and many open bar popups. Opening Voice Help sends nothing either.
+
 ### Fallback integrations
 
 An integration with `fallback=1` is tried only when the normal integrations, and the LLM hook, leave nothing to run: either no verb matched or every match ran out of candidates. That lets a fallback declare a catch-all verb such as `{target}` without making every phrase ambiguous with the integrations that understand it. Fallbacks are matched among themselves like normal integrations.
@@ -139,6 +150,7 @@ Strong matches hide weak ones.
 - Binds from every submap are offered, one per description, preferring the global one; a submap bind is labelled with its submap, `Lock (System)`. Submap navigation (`+Name`, `Back`, `Exit <submap>`), one-character descriptions and lid switches are left out.
 - `excluded_descriptions` hides the voice binds themselves and anything about passwords or secrets; edit the list in the file.
 - `confirm_labels` asks before closing, killing, locking, logging out, powering off, rebooting, suspending, deleting or clearing.
+- A bind that runs sends no notification ([silent](#silent-actions)); one that fails does.
 - A bind runs like Keybind Help runs it: the submap is reset, then `hyprctl eval 'debug.getregistry()[<arg>]()'`.
 
 ## Voice Help

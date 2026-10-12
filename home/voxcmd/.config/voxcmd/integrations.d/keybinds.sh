@@ -5,6 +5,8 @@ name="Keybinds"
 confirm=0
 # Tried only when no other integration can run the phrase, so "close window" works without a verb.
 fallback=1
+# A bind's own effect is the feedback, often a bar popup that a success toast would cover.
+silent=1
 target_match=words
 # Words that only say "run a keybind", ignored on both sides: "run close window" is "close window".
 match_ignore_words=(run press keybind key bind shortcut "do" trigger)
