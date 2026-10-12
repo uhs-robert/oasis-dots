@@ -24,11 +24,12 @@ Item {
     readonly property real glyph_w: metrics.font.pixelSize > 0 ? Math.max(1, metrics.advanceWidth("M")) : 1
     readonly property real lh: Math.max(1, Math.floor(metrics.height))
     readonly property int cols: Math.floor(root.width / root.glyph_w)
-    // "  PID S CTX%  TOKENS  TIME+ " is 26 characters; the command gets the rest of the line.
-    readonly property int command_cols: Math.max(0, root.cols - 26)
+    // "    PID S CTX% TIME+ " is 21 characters; the command gets the rest of the line. The PID column is 7 wide
+    // because pid_max is 4194304.
+    readonly property int command_cols: Math.max(0, root.cols - 21)
     readonly property string inverse: String(Style.tab_active_fg)
     readonly property var state_letters: ({ running: "R", idle: "S", waiting: "D", done: "Z" })
-    readonly property var keys: [["/", "Search"], ["Enter", "Focus"], ["Tab", "Usage"], ["gg/G", "Ends"], ["q", "Close"]]
+    readonly property var keys: [["?", "Help"], ["/", "Search"], ["Enter", "Focus"], ["Tab", "Usage"], ["q", "Quit"]]
 
     readonly property var search_popup: {
         for (let p = root.parent; p; p = p.parent) {
@@ -38,13 +39,21 @@ Item {
     }
     readonly property bool searching: !!root.search_popup && root.search_popup.search_shown
 
+    readonly property var selected_session: root.sessions[root.selected] || null
+    readonly property string detail_text: {
+        const s = root.selected_session;
+        if (!s) return "";
+        const has_context = s.context_pct !== null && s.context_pct !== undefined;
+        return [s.agent || "claude", s.project || "", s.where || "", has_context ? Fmt.fmt_tokens(s.context_used) + "/" + Fmt.fmt_tokens(s.context_window) : ""].filter(part => part !== "").join(" · ");
+    }
+
     function ensure_visible(i) {
         session_list.positionViewAtIndex(i, ListView.Contain);
     }
 
     function pad_left(value, width) {
         const s = String(value);
-        return s.length >= width ? s.slice(0, width) : " ".repeat(width - s.length) + s;
+        return s.length >= width ? s.slice(s.length - width) : " ".repeat(width - s.length) + s;
     }
 
     function ellipsize(s, width) {
@@ -52,16 +61,14 @@ Item {
         return width <= 0 ? "" : s.slice(0, width - 1) + "…";
     }
 
-    // Project and title keep their room first; agent and where fill what is left and elide before them.
+    // The title keeps its room first and the project fills what is left; the rest is in the detail line.
     function command_runs(session, selected_row) {
-        const project = session.project ? session.project + "/" : "";
-        const head = root.ellipsize(project + (session.title || "Untitled"), root.command_cols);
+        const head = root.ellipsize(session.title || "Untitled", root.command_cols);
         const room = root.command_cols - head.length;
-        const tail = root.ellipsize(" " + [session.agent || "claude", session.where || ""].join(" ").trim(), room);
-        const cut = Math.min(project.length, head.length);
+        const tail = root.ellipsize(" " + (session.project || ""), room);
         const dim = selected_row ? root.inverse : String(root.st.text_dim);
         const bright = selected_row ? root.inverse : String(Style.text_strong);
-        return [[head.slice(0, cut), dim], [head.slice(cut), bright], [room >= 4 ? tail : "", dim]];
+        return [[head, bright], [room >= 4 ? tail : "", dim]];
     }
 
     function row_text(session, i, selected_row) {
@@ -71,10 +78,9 @@ Item {
         const state_color = selected_row ? root.inverse : String(Fmt.state_color(state, root.colors));
         const context_color = selected_row ? root.inverse : has_context ? String(Fmt.context_bar_color(session.context_pct, root.colors)) : String(root.st.text_dim);
         return WttrArt.runs([
-            [root.pad_left(session.pid || i + 1, 5) + " ", plain],
+            [root.pad_left(session.pid || i + 1, 7) + " ", plain],
             [(root.state_letters[state] || "S") + " ", state_color],
             [root.pad_left(has_context ? session.context_pct + "%" : "-", 4) + " ", context_color],
-            [root.pad_left(has_context ? Fmt.fmt_tokens(session.context_used) : "-", 6) + " ", plain],
             [root.pad_left(Fmt.age(session.since), 5) + " ", plain]
         ].concat(root.command_runs(session, selected_row)));
     }
@@ -93,7 +99,7 @@ Item {
 
         Text {
             height: root.lh
-            text: WttrArt.runs([[root.pad_left("PID", 5) + " S " + root.pad_left("CTX%", 4) + " " + root.pad_left("TOKENS", 6) + " " + root.pad_left("TIME+", 5) + " Command", root.inverse]])
+            text: WttrArt.runs([[root.pad_left("PID", 7) + " S " + root.pad_left("CTX%", 4) + " " + root.pad_left("TIME+", 5) + " Command", root.inverse]])
             textFormat: Text.StyledText
             color: Style.tab_active_fg
             font.family: root.st.mono_font
@@ -114,7 +120,7 @@ Item {
         id: session_list
         y: root.lh
         width: parent.width
-        height: Math.max(0, root.height - 2 * root.lh)
+        height: Math.max(0, root.height - 3 * root.lh)
         visible: root.sessions.length > 0
         clip: true
         model: root.sessions
@@ -156,6 +162,18 @@ Item {
         }
     }
 
+    Text {
+        y: root.height - 2 * root.lh
+        width: parent.width
+        height: root.lh
+        visible: root.sessions.length > 0
+        elide: Text.ElideRight
+        text: root.detail_text
+        color: root.st.text_dim
+        font.family: root.st.mono_font
+        font.pixelSize: root.text_px
+    }
+
     Row {
         y: root.height - root.lh
         width: parent.width
@@ -194,7 +212,7 @@ Item {
         }
     }
 
-    Row {
+    Item {
         y: root.height - root.lh
         width: parent.width
         height: root.lh
@@ -202,6 +220,7 @@ Item {
         visible: root.searching
 
         Rectangle {
+            id: search_chip
             width: search_key.implicitWidth
             height: root.lh
             color: Style.tab_active_bg
@@ -216,10 +235,34 @@ Item {
         }
 
         Text {
+            id: query_text
+            x: search_chip.width + root.glyph_w
+            width: Math.min(implicitWidth, Math.max(0, status_text.x - x - root.glyph_w))
+            elide: Text.ElideLeft
+            text: root.searching ? root.search_popup.search_query : ""
+            color: root.st.text_fg
+            font.family: root.st.mono_font
+            font.pixelSize: root.text_px
+        }
+
+        Rectangle {
+            visible: root.searching && root.search_popup.search_typing
+            opacity: Style.caret_phase ? 1 : 0
+            x: query_text.x + query_text.width + 1
+            y: 1
+            width: 2
+            height: Math.max(0, root.lh - 2)
+            color: root.st.caret_color
+        }
+
+        Text {
+            id: status_text
             readonly property int matches: root.searching ? root.search_popup.search_matches.length : 0
             readonly property int position: root.searching ? root.search_popup.search_matches.indexOf(root.search_popup.search_cursor) : -1
-            text: " " + (root.searching ? root.search_popup.search_query : "") + "▏" + (matches === 0 && root.search_popup.search_query !== "" ? "  no match" : root.search_popup.search_query !== "" ? "  " + (position >= 0 ? position + 1 : "-") + "/" + matches : "")
-            color: root.st.text_fg
+            readonly property bool no_match: root.searching && root.search_popup.search_query !== "" && matches === 0
+            anchors.right: parent.right
+            text: !root.searching || root.search_popup.search_query === "" ? "" : no_match ? "no match" : (position >= 0 ? position + 1 : "-") + "/" + matches
+            color: no_match ? Style.pal.warning : root.st.text_fg
             font.family: root.st.mono_font
             font.pixelSize: root.text_px
         }
