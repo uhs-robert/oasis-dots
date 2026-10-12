@@ -215,7 +215,8 @@ app_window() {
 
 # Started like the Quickshell apps picker starts them: the Exec line with its field codes dropped, in Path when set,
 # and Terminal=true apps inside the Hyprland config's terminal wrapper. setsid keeps the app off voxcmd's output
-# pipe, which would otherwise hold the notification until the app exits.
+# pipe, which would otherwise hold the notification until the app exits. setsid -f succeeds once it forks, so the
+# directory and program are checked before detaching to report a stale entry.
 start_entry() {
   local entry="$1" command directory terminal="" app_name
   command=$(jq -r .exec <<<"$entry" | sed -E 's/%[fFuUdDnNickvm]//g; s/%%/%/g')
@@ -225,10 +226,15 @@ start_entry() {
     terminal="${XDG_STATE_HOME:-$HOME/.local/state}/hypr/bin/term"
     [ -x "$terminal" ] || terminal="${TERMINAL:-kitty}"
   fi
-  setsid -f sh -c '
+  sh -c '
     [ -z "$1" ] || cd "$1" || exit
-    if [ -n "$2" ]; then exec "$2" -e sh -c "$3"; fi
-    eval "exec $3"' sh "$directory" "$terminal" "$command" </dev/null >/dev/null 2>&1 || {
+    if [ -n "$2" ]; then
+      command -v "$2" || exit
+      exec setsid -f "$2" -e sh -c "$3"
+    fi
+    eval "set -- $3"
+    command -v "$1" || exit
+    exec setsid -f "$@"' sh "$directory" "$terminal" "$command" </dev/null >/dev/null 2>&1 || {
     echo "could not start $app_name"
     return 1
   }
