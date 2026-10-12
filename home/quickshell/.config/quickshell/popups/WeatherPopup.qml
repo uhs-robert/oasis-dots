@@ -119,7 +119,7 @@ Popup {
 
         status: { prefix: "Status", views: ["Hourly", "SunMoon"] },
 
-        towers: { prefix: "Tower", views: ["Hourly", "SunMoon"] },
+        towers: { prefix: "Tower", views: ["Hourly", "SunMoon", "Air", "Alerts"] },
 
         watch: { prefix: "Watch", views: ["Hourly", "SunMoon"] },
 
