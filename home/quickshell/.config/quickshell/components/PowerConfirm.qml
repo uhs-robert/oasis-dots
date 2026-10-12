@@ -4,12 +4,16 @@ import QtQuick.Layouts
 import "../theme"
 import "../services"
 
-// The yes/no prompt for a Power action, shared by the Start menu and the keybind popup.
+// The yes/no prompt for a Power action, shared by the Start menu and the keybind popup, or for any question
+// (the confirm card) when `question` is set.
 RowLayout {
     id: root
 
     property var st: Style.for_item(root)
     property string action: ""
+    // Fills the row's width and wraps, so the row needs a width of its own.
+    property string question: ""
+    readonly property bool asks_question: root.question !== ""
     signal confirmed()
     signal cancelled()
 
@@ -37,11 +41,16 @@ RowLayout {
 
     ColumnLayout {
         visible: root.watch
+        Layout.fillWidth: root.asks_question
         spacing: 10
 
         Text {
             Layout.alignment: Qt.AlignHCenter
-            text: "ENTER AGAIN TO " + (root.words[root.action] || "CONTINUE")
+            Layout.fillWidth: root.asks_question
+            Layout.minimumWidth: 0
+            horizontalAlignment: Text.AlignHCenter
+            wrapMode: Text.Wrap
+            text: root.asks_question ? root.question.toUpperCase() : "ENTER AGAIN TO " + (root.words[root.action] || "CONTINUE")
             color: Style.pal.error
             font.family: root.st.title_font_family
             font.pixelSize: root.st.fs(-5)
@@ -83,8 +92,11 @@ RowLayout {
 
     Text {
         visible: !root.watch
-        text: (Power.glyphs[root.action] || "") + " " + (Power.labels[root.action] || "") + "?"
-        color: Power.color(root.action, root.st) || root.st.text_fg
+        Layout.fillWidth: root.asks_question
+        Layout.minimumWidth: 0
+        wrapMode: Text.Wrap
+        text: root.asks_question ? root.question : (Power.glyphs[root.action] || "") + " " + (Power.labels[root.action] || "") + "?"
+        color: root.asks_question ? root.st.text_fg : Power.color(root.action, root.st) || root.st.text_fg
         font.family: root.st.font_family
         font.pixelSize: root.st.font_size
     }
