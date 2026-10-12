@@ -71,7 +71,7 @@ Popup {
 
         scope: { prefix: "Target", views: [] },
 
-        status: { prefix: "Ff7Menu", views: [] },
+        status: { prefix: "Ff7Menu", views: ["Agents", "Usage"] },
 
         towers: { prefix: "Browser", views: [] },
 
