@@ -31,9 +31,18 @@ Singleton {
         return root.h24 ? "" : date.getHours() < 12 ? "AM" : "PM";
     }
 
-    // Hour-only forecast label: "3pm" or "15".
-    function hour(date) {
-        const h = date.getHours();
+    // Hour-only forecast label for a clock hour 0-23: "3pm" or "15".
+    function hour_of(h) {
         return root.h24 ? root.pad2(h) : (h % 12 || 12) + (h < 12 ? "am" : "pm");
+    }
+
+    function hour(date) {
+        return root.hour_of(date.getHours());
+    }
+
+    // Clock time from hour and minute numbers, for instants already read in another zone: "3:05pm" or "15:05".
+    function clock_of(h, m) {
+        const mm = root.pad2(m);
+        return root.h24 ? root.pad2(h) + ":" + mm : (h % 12 || 12) + ":" + mm + (h < 12 ? "am" : "pm");
     }
 }

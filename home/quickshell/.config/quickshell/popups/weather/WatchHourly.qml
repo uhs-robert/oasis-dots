@@ -114,27 +114,11 @@ Item {
         }
     }
 
-    function day_name(row, format) {
-        return Qt.formatDate(new Date(row.date + "T00:00:00"), format).toUpperCase();
-    }
-
-    function short_hour(row) {
-        return WeatherState.format_hour(new Date(row.dt)).toUpperCase();
-    }
-
-    // The page's span: the first day with its date, since forecasts run past a week, and the second day only when the page crosses midnight.
-    function date_text() {
-        if (!root.window_rows.length) return "";
-        const first = root.window_rows[0];
-        const last = root.window_rows[root.window_rows.length - 1];
-        const end_day = last.date === first.date ? "" : root.day_name(last, "ddd") + " ";
-        return root.day_name(first, "ddd d") + " " + root.short_hour(first) + "\u2013" + end_day + root.short_hour(last);
-    }
-
     WatchFace {
         id: face
         anchors.fill: parent
         hand_hour: root.cursor_row ? root.cursor_row.hour : -1
+        seam_hour: root.window_rows.length ? root.window_rows[0].hour : -1
         band: 60
 
         bezel: Repeater {
@@ -150,20 +134,6 @@ Item {
                 readonly property real norm: slot.row ? Math.max(0, Math.min(1, root.norm_of(slot.row))) : 0
                 readonly property real len: root.tick_min + slot.norm * root.bar_span
                 rotation: face.angle_of(slot.hour)
-
-                // Half a slot before the page's first hour.
-                Item {
-                    visible: slot.index === 0 && root.hours.length > 0
-                    rotation: -180 / 12
-
-                    Rectangle {
-                        x: -1
-                        y: -face.bezel_r
-                        width: 2
-                        height: face.band
-                        color: Style.wk.lit
-                    }
-                }
 
                 Rectangle {
                     visible: slot.at_cursor
@@ -263,7 +233,7 @@ Item {
                 Text {
                     id: date_label
                     anchors.centerIn: parent
-                    text: root.date_text()
+                    text: face.span_text(root.window_rows[0], root.window_rows[root.window_rows.length - 1])
                     color: Style.wk.mid
                     font.family: W.mono_font
                     font.pixelSize: Style.fs(-4)
@@ -283,7 +253,7 @@ Item {
                 }
 
                 Text {
-                    text: root.cursor_row ? WeatherState.format_hour(new Date(root.cursor_row.dt)) : ""
+                    text: root.cursor_row ? TimeFormat.hour_of(root.cursor_row.hour) : ""
                     color: Style.wk.lit
                     font.family: W.mono_font
                     font.pixelSize: Style.fs(3)

@@ -368,6 +368,18 @@ Singleton {
         xhr.send();
     }
 
+    // Cached air rows from before they carried location-local date and hour: dt was parsed from the location's wall-clock string as machine-local time, so the machine-local fields read it back.
+    function with_local_fields(row) {
+        if (row.date !== undefined && row.hour !== undefined) return row;
+        const d = new Date(row.dt);
+        const month = d.getMonth() + 1;
+        const day = d.getDate();
+        return Object.assign({}, row, {
+            date: d.getFullYear() + "-" + (month < 10 ? "0" : "") + month + "-" + (day < 10 ? "0" : "") + day,
+            hour: d.getHours()
+        });
+    }
+
     function handle_air_quality(blob) {
         const cur = blob.current || {};
         root.aq_current = {
@@ -383,7 +395,12 @@ Singleton {
         const now_local = new Date(cur.time || Date.now());
         const all = [];
         for (let i = 0; i < times.length; i++) {
-            all.push({ dt: new Date(times[i]).toISOString(), aqi: Math.round(root.parse_num(aqis[i], 0)) });
+            all.push({
+                dt: new Date(times[i]).toISOString(),
+                date: times[i].substr(0, 10),
+                hour: parseInt(times[i].substr(11, 2), 10),
+                aqi: Math.round(root.parse_num(aqis[i], 0))
+            });
         }
         let next = all.filter(h => new Date(h.dt) >= now_local);
         if (next.length === 0 && all.length > 0) next = all;
@@ -493,7 +510,7 @@ Singleton {
         root.lon = parsed.lon || root.lon;
         if (parsed.geo_ms !== undefined) root.geo_ms = parsed.geo_ms;
         if (parsed.aq_current !== undefined) root.aq_current = parsed.aq_current;
-        if (parsed.aq_hours !== undefined) root.aq_hours = parsed.aq_hours;
+        if (parsed.aq_hours !== undefined) root.aq_hours = parsed.aq_hours.map(root.with_local_fields);
         if (parsed.aq_current) root.aq_has_data = true;
         if (parsed.alerts !== undefined) {
             root.alerts = parsed.alerts;
@@ -706,13 +723,7 @@ Singleton {
         if (!date) return null;
         const shifted = new Date(date.getTime() + root.utc_offset * 1000);
         const h = shifted.getUTCHours(), m = shifted.getUTCMinutes();
-        const mm = m < 10 ? "0" + m : "" + m;
-        if (!TimeFormat.h24) {
-            let hh = h % 12;
-            if (hh === 0) hh = 12;
-            return hh + ":" + mm + (h < 12 ? "am" : "pm");
-        }
-        return (h < 10 ? "0" + h : "" + h) + ":" + mm;
+        return TimeFormat.clock_of(h, m);
     }
 
     function moon_times_for_date(date_str) {
