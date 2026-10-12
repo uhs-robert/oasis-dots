@@ -94,6 +94,8 @@ Item {
                     Text {
                         Layout.fillWidth: true
                         Layout.minimumWidth: 0
+                        wrapMode: Text.Wrap
+                        maximumLineCount: 2
                         elide: Text.ElideRight
                         visible: usage_row.modelData.resets !== ""
                         text: "The inn restores you at " + usage_row.modelData.resets
