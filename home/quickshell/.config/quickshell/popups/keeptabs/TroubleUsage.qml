@@ -30,7 +30,7 @@ Item {
             lines.push({ level: "WARNING", text: "no usage data yet", indent: false });
         }
         for (const row of ClaudeUsageState.rows) {
-            lines.push({ level: root.level_of(row), text: row.label + ": " + row.percent + "% used", indent: false });
+            lines.push({ level: root.level_of(row), text: row.percent + "% used · " + row.label, indent: false });
             if (row.resets !== "") lines.push({ level: "ADVICE", text: "resets " + row.resets, indent: true });
         }
         return lines;
@@ -52,7 +52,7 @@ Item {
                 anchors.centerIn: parent
                 text: "claude: usage"
                 color: Style.pal.info
-                font.family: Style.mono_font
+                font.family: root.st.mono_font
                 font.pixelSize: root.st.fs(-2)
                 font.bold: true
             }
@@ -65,7 +65,7 @@ Item {
             visible: ClaudeUsageState.updated > 0
             text: "updated " + (ClaudeUsageState.updated > 0 ? TimeFormat.format(new Date(ClaudeUsageState.updated)) : "")
             color: root.st.text_dim
-            font.family: Style.mono_font
+            font.family: root.st.mono_font
             font.pixelSize: root.st.fs(-3)
         }
 
@@ -91,7 +91,7 @@ Item {
                 Text {
                     text: "-"
                     color: root.st.text_dim
-                    font.family: Style.mono_font
+                    font.family: root.st.mono_font
                     font.pixelSize: root.st.fs(-2)
                 }
 
@@ -106,7 +106,7 @@ Item {
                         anchors.centerIn: parent
                         text: report_line.modelData.level + (report_line.modelData.level === "ADVICE" ? ":" : "")
                         color: root.level_colors[report_line.modelData.level]
-                        font.family: Style.mono_font
+                        font.family: root.st.mono_font
                         font.pixelSize: root.st.fs(-3)
                         font.bold: true
                     }
@@ -118,7 +118,7 @@ Item {
                     elide: Text.ElideRight
                     text: report_line.modelData.text
                     color: report_line.modelData.level === "ADVICE" ? root.st.text_muted : root.st.text_fg
-                    font.family: Style.mono_font
+                    font.family: root.st.mono_font
                     font.pixelSize: root.st.fs(-2)
                 }
             }
