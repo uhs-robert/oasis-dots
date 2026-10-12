@@ -194,6 +194,7 @@ ShellRoot {
     BrightnessIpc {}
     NotificationsIpc {}
     StyleIpc {}
+    WeatherIpc {}
     SettingsIpc {}
     GreeterSync {}
     ScreenShare {}

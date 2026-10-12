@@ -205,6 +205,7 @@ qs-ipc show        # list every target and function
 | `zoom`          | `start`, `stop`, `toggle`, `step <delta>`, `size <delta>`, `full`     |
 | `lock`          | `lock`, `lock_auto` (music waits for the first key), `state`, `preview <style>`, `preview_close` |
 | `power`         | `confirm <lock\|logout\|reboot\|poweroff>`                            |
+| `weather`       | `preview <fixture\|off>`, `previewing`: overlay a `services/WeatherFixture.js` fixture on the live data (see Weather views) |
 | `brightness`    | `refresh`                                                             |
 | `transition`    | `play <kind or style>`                                                |
 | `hyprvim_whichkey`, `hyprvim_prompt` | The HyprVim which-key HUD and `:` prompt          |
@@ -296,6 +297,12 @@ Starting it through Hyprland rather than from a shell keeps the terminal's envir
 The live log is at `$XDG_RUNTIME_DIR/quickshell/by-id/<id>/log.log`, or read it with `qs log -p <path>` (`-f` to follow). A QML error there means the config didn't load. `qmllint` doesn't catch these reliably, so check the log after every change.
 
 One rule for new code: nothing animates or polls on battery or while it isn't visible. Gate timers and animations on `Power.on_ac` and on the item being shown.
+
+## Weather views
+
+Test data lives in `services/WeatherFixture.js` (`base`, `alerts1`, `alerts3`, `aqi-bad`, `rain`, `night`), shaped like the data `WeatherState` builds.
+
+To see a fixture in the live popup, `qs-ipc call weather preview alerts3` (then open the popup), `qs-ipc call weather previewing`, and `qs-ipc call weather preview off`. While a preview is on, weather fetches are paused; `off` restores the real data and refetches.
 
 ## Fonts and sounds
 

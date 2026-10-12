@@ -6,6 +6,7 @@ import Quickshell.Io
 import Quickshell.Networking
 import "../theme"
 import "Astro.js" as Astro
+import "WeatherFixture.js" as Fixture
 
 // One shared Open-Meteo fetch for every bar. Ported from the Waybar Ruby weather
 // script (get_weather.rb) so the module has no Ruby dependency.
@@ -57,6 +58,50 @@ Singleton {
     property var alerts: []
     property bool alerts_has_data: false
     property string alerts_error: ""
+
+    // A fixture overlaid for testing (WeatherIpc, scripts/render-weather). While set, refresh() does nothing so a
+    // fetch cannot wipe it, and the real values wait in preview_saved for preview_off().
+    property string preview_name: ""
+    property var preview_saved: null
+    readonly property var fixture_names: Fixture.names
+    readonly property var preview_fields: ["current", "hours", "days", "location_name", "updated", "sunrise", "sunset", "moon", "utc_offset", "data_unit", "has_data", "aq_current", "aq_hours", "aq_has_data", "alerts", "alerts_has_data"]
+
+    // `synthetic` starts from the fixture base state instead of the live data.
+    function preview_set(name, synthetic) {
+        if (Fixture.names.indexOf(name) < 0) return false;
+        if (root.preview_name === "") {
+            const saved = {};
+            for (const key of root.preview_fields) saved[key] = root[key];
+            root.preview_saved = saved;
+        } else {
+            root.restore_preview_fields();
+        }
+        // Invalidates in-flight air quality and alert fetches, which apply only while their key matches.
+        root.fetch_key = "preview";
+        if (!Fixture.apply(name, root, synthetic, Date.now())) {
+            root.restore_preview_fields();
+            root.preview_name = "";
+            return false;
+        }
+        root.preview_name = name;
+        return true;
+    }
+
+    function restore_preview_fields() {
+        for (const key of root.preview_fields) root[key] = root.preview_saved[key];
+    }
+
+    function preview_off() {
+        if (root.preview_name === "") return;
+        root.restore_preview_fields();
+        root.preview_saved = null;
+        root.preview_name = "";
+        root.fetch_key = "";
+        // A location or forecast request in flight when the preview started was dropped without settling, so
+        // `loading` would still be true and refresh() would refuse to run.
+        root.loading = false;
+        root.refresh(true);
+    }
 
     readonly property int refresh_interval_ms: 900000
     readonly property int geo_interval_ms: 86400000
@@ -190,6 +235,7 @@ Singleton {
 
     // A non-forced call within min_refresh_gap_ms of the last success is a no-op.
     function refresh(force) {
+        if (root.preview_name !== "") return;
         if (root.offline) {
             if (force) root.pending_force = true;
             return;
@@ -243,6 +289,7 @@ Singleton {
 
     // A `location_name` setting replaces the looked-up place name, e.g. to keep a real city private.
     function fetch_forecast(lat, lon, location_name, geo_fresh) {
+        if (root.preview_name !== "") return;
         location_name = root.settings.location_name || location_name;
         root.lat = lat;
         root.lon = lon;
