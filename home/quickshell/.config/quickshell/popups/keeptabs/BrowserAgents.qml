@@ -19,7 +19,7 @@ Item {
     property var on_activate: function (id) {}
     property bool draws_footer: false
 
-    readonly property bool is_open: Popups.open_name === "keeptabs"
+    readonly property bool is_open: Popups.open_name === "keeptabs" && root.visible
     readonly property var current: root.sessions[root.selected] ?? null
     readonly property bool has_context: root.current !== null && root.current.context_pct !== null && root.current.context_pct !== undefined
     readonly property var colors: ({ error: Style.pal.error, ok: Style.pal.ok, warning: Style.pal.warning, text_primary: root.st.text_primary, text_dim: root.st.text_dim })
@@ -84,8 +84,19 @@ Item {
                 Layout.fillWidth: true
                 Layout.minimumWidth: 0
                 elide: Text.ElideRight
-                text: root.current ? (root.current.state || "idle").toUpperCase() + " · " + Fmt.age(root.current.since) + " · " + (root.current.agent || "claude") + " · " + (root.current.project || "") + " · " + (root.current.where || "") : ""
+                text: root.current ? (root.current.state || "idle").toUpperCase() + " · " + Fmt.age(root.current.since) : ""
                 color: root.current ? Fmt.state_color(root.current.state, root.colors) : Theme.theme_primary_light
+                font.family: root.st.font_family
+                font.pixelSize: root.st.fs(-4)
+                font.letterSpacing: 1
+            }
+
+            Text {
+                Layout.fillWidth: true
+                Layout.minimumWidth: 0
+                elide: Text.ElideMiddle
+                text: root.current ? (root.current.agent || "claude") + " · " + (root.current.project || "") + " · " + (root.current.where || "") : ""
+                color: Theme.theme_primary_light
                 font.family: root.st.font_family
                 font.pixelSize: root.st.fs(-4)
                 font.letterSpacing: 1
