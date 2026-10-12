@@ -84,6 +84,16 @@
             "command": "~/.local/bin/keeptabs-hook waiting claude"
           }
         ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/guard-zsh-modifiers.sh",
+            "timeout": 10
+          }
+        ]
       }
     ],
     "PostToolUse": [
