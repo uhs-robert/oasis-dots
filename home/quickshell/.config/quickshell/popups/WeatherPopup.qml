@@ -18,7 +18,7 @@ Popup {
     fit_island: true
     title_value: WeatherState.has_data ? root.day_span + "D" : ""
     body_height: content.implicitHeight + 24
-    key_help: "Tab tabs · 1-" + root.tabs.length + " select · [ ] view · h/l move · H/L jump · gg/0 now · G/$ end · r refresh" + (root.has_alerts ? " · a alerts" : "")
+    key_help: "Tab tabs · 1-" + root.tabs.length + " select · [ ] view · " + (root.on_alerts_tab ? "h/l alert · j/k scroll" : "h/l move") + " · H/L jump · gg/0 now · G/$ end · r refresh" + (root.has_alerts ? " · a alerts" : "")
 
     readonly property var base_tab_names: ["Daily", "Hourly"]
     readonly property bool has_alerts: WeatherState.alerts.length > 0
@@ -243,13 +243,9 @@ Popup {
             root.move_time(1, !!(event.modifiers & Qt.ShiftModifier));
             root.play_if_moved(before);
             event.accepted = true;
-        } else if (root.on_alerts_tab && event.key === Qt.Key_J) {
-            root.move_alert_cursor(1, false);
-            root.play_if_moved(before);
-            event.accepted = true;
-        } else if (root.on_alerts_tab && event.key === Qt.Key_K) {
-            root.move_alert_cursor(-1, false);
-            root.play_if_moved(before);
+        } else if (root.on_alerts_tab && (event.key === Qt.Key_J || event.key === Qt.Key_K)) {
+            // h/l pick the alert, so j/k are free to scroll its text however many alerts there are.
+            if (alerts_loader.item) alerts_loader.item.scroll_detail(event.key === Qt.Key_J ? 1 : -1);
             event.accepted = true;
         }
     }
