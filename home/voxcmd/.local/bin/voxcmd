@@ -10,6 +10,7 @@ Usage:
   voxcmd --dry-run <text...>  show what would run, without running it
   voxcmd listen               start a voxtype recording that stops itself after speech and a pause, then route the
                               transcript (as a reply when a voxcmd picker is open); while voxtype records, stop it
+  voxcmd listen --start-only  the same, but only when voxtype is idle: never stops a recording
   voxcmd --reply <text...>    answer the open voxcmd picker (a choice, an ordinal, or cancel) or confirm card (yes or no)
   voxcmd --dry-run --reply <text...>
   voxcmd list                 list integrations and their verbs
@@ -35,6 +36,18 @@ voxcmd_share_dir="$(dirname "$voxcmd_self")/../share/voxcmd"
 dry_run=0
 # 1 while routing a transcript from `voxcmd listen`, so a confirmation listens for its answer too.
 came_by_voice=0
+# Set by voxcmd-confirm for the recording it starts: the watcher keeps its PID there while voxtype records or
+# transcribes it, so a card answered by key cancels only its own recording.
+recording_owner_file="${VOXCMD_RECORDING_OWNER_FILE:-}"
+# Debug trace of listening, routing and replies, shared with voxcmd-confirm: VOXCMD_DEBUG=1, or
+# create the file, turns it on.
+debug_log_file="$runtime_dir/debug.log"
+
+debug() {
+  [ -n "${VOXCMD_DEBUG:-}" ] || [ -e "$debug_log_file" ] || return 0
+  mkdir -p "$runtime_dir"
+  printf '%s voxcmd[%s] %s\n' "$(date +%T.%3N)" "$$" "$*" >>"$debug_log_file"
+}
 
 # notify info|error <summary> <body>. Info (what ran, answers, hints) is transient: the bar shows it but keeps it
 # out of its history, which is left to errors.
@@ -415,7 +428,7 @@ option_label() {
 }
 
 # The label without the integration's name, as a question: "Apps: close Slack window: Inbox" asks "Close Slack window:
-# Inbox?".
+# Inbox?". Its first word is the verb a spoken "close it" answers yes with.
 confirm_question() {
   local option="$1" label="$2" name
   name=$(jq -r .name <<<"$option")
@@ -436,9 +449,16 @@ run_option() {
     return 1
   fi
   if [ "$(jq -r .confirm <<<"$option")" = true ]; then
-    local -a confirm_flags=()
-    [ "$came_by_voice" = 0 ] || confirm_flags=(--listen)
-    "$voxcmd_confirm" "${confirm_flags[@]}" "$(confirm_question "$option" "$label")" || return 0
+    local question
+    question=$(confirm_question "$option" "$label")
+    local -a confirm_flags=(--verb "$(normalize "${question%% *}")")
+    [ "$came_by_voice" = 0 ] || confirm_flags+=(--listen)
+    debug "confirm asks: $question (${confirm_flags[*]})"
+    if ! "$voxcmd_confirm" "${confirm_flags[@]}" "$question"; then
+      debug "confirm answered no: $label not run"
+      return 0
+    fi
+    debug "confirm answered yes: running $label"
   fi
   if output=$(
     load_integration "$file"
@@ -679,15 +699,17 @@ match_reply() {
   esac
 }
 
-# Prints "yes", "no" or "unclear<TAB><why>" for a normalized reply to a yes/no question. Normalizing drops the
-# apostrophe, so "don't" arrives as "dont".
-confirm_yes_replies='^(yes|yeah|yep|confirm|do it|sure|okay|ok)( please)?$'
-confirm_no_replies='^(no|nope|cancel|never ?mind|stop|dont)$'
+# Prints "yes", "no" or "unclear<TAB><why>" for a normalized reply to a yes/no question, given the question's verb.
+# A no word anywhere wins, so a mixed "yeah never mind" is the safe answer. Otherwise a reply leading with a yes word
+# or the verb ("close it", "close slack") is a yes. Normalizing drops the apostrophe, so "don't" arrives as "dont".
+confirm_no_words='(^| )(no|nope|nah|dont|do not|cancel|never ?mind|stop|forget it|leave it)( |$)'
+confirm_yes_words='^(yes|yeah|yep|yup|sure|okay|ok|confirm|do it|go ahead)( |$)'
 match_confirm_reply() {
-  if [[ "$1" =~ $confirm_yes_replies ]]; then
-    echo yes
-  elif [[ "$1" =~ $confirm_no_replies ]]; then
+  local text="$1" verb="${2:-}"
+  if [[ "$text" =~ $confirm_no_words ]]; then
     echo no
+  elif [[ "$text" =~ $confirm_yes_words ]] || { [ -n "$verb" ] && [[ "$text" =~ ^"$verb"( |$) ]]; }; then
+    echo yes
   else
     printf 'unclear\tnot a yes or no\n'
   fi
@@ -732,7 +754,8 @@ reply() {
 # An unclear reply leaves the card open and, while voxcmd-confirm left a listen_again file, listens once more.
 reply_confirm() {
   local transcript="$1" text="$2" state="$3" verdict listen_again
-  verdict=$(match_confirm_reply "$text")
+  verdict=$(match_confirm_reply "$text" "$(jq -r '.verb // empty' <<<"$state")")
+  debug "confirm reply \"$transcript\" ($text): ${verdict%%$'\t'*}"
   if [ "$dry_run" = 1 ]; then
     printf 'transcript:  %s\nnormalized:  %s\nconfirm:     %s\nresult:      %s\n' \
       "$transcript" "$text" "$(jq -r .label <<<"$state")" "${verdict/$'\t'/: }"
@@ -744,7 +767,7 @@ reply_confirm() {
     # Only one rm of the file succeeds, so only one unclear reply gets the extra listen.
     if [ -n "$listen_again" ] && rm "$listen_again" 2>/dev/null; then
       notify info "voxcmd: yes or no?" "\"$transcript\": listening again"
-      listen
+      listen --start-only
     else
       notify info "voxcmd: yes or no?" "\"$transcript\": say yes or no, or press y or n."
     fi
@@ -753,7 +776,11 @@ reply_confirm() {
   esac
   # voxcmd-confirm reads anything but "yes" as a no.
   # shellcheck disable=SC2016 # expanded by the inner sh
-  timeout 2 sh -c 'printf "%s\n" "$1" >"$2"' sh "$verdict" "$(jq -r .fifo <<<"$state")"
+  if timeout 2 sh -c 'printf "%s\n" "$1" >"$2"' sh "$verdict" "$(jq -r .fifo <<<"$state")"; then
+    debug "confirm reply written: $verdict"
+  else
+    debug "confirm reply not written: nobody read the FIFO"
+  fi
 }
 # ----------------------------------------------------------------------------------------------------------------
 
@@ -762,9 +789,14 @@ voxtype_state() { cat "$voxtype_state_file" 2>/dev/null || echo idle; }
 # While voxtype records, whoever started it (voxcmd or Speech to Text), this only stops it, and the recording's
 # owner handles the transcript. Otherwise it starts a recording into a file and leaves a watcher to route the
 # transcript, or to reply with it when a voxcmd picker was open as the recording started.
+# --start-only never stops anything and fails unless voxtype is idle: a recording voxcmd starts on its own (a confirm
+# card's) must not end one the user is making.
 listen() {
-  local transcript_handler=route state
+  local transcript_handler=route state start_only=0
+  [ "${1:-}" != --start-only ] || start_only=1
   state=$(voxtype_state)
+  debug "listen: voxtype $state${recording_owner_file:+, for a confirm}$([ "$start_only" = 0 ] || echo ', start only')"
+  if [ "$start_only" = 1 ] && [ "$state" != idle ]; then return 1; fi
   case "$state" in
   recording)
     voxtype record stop
@@ -786,6 +818,7 @@ listen() {
     return 1
   fi
   setsid "$0" _watch "$transcript_handler" </dev/null >/dev/null 2>&1 &
+  debug "listen: recording started, watcher $! will $transcript_handler"
 }
 
 # voxcmd-autostop's VERDICT_* exit codes; any other exit leaves the recording alone.
@@ -804,11 +837,16 @@ autostop_recording() {
   # A voice key may have stopped it in the meantime.
   [ "$(voxtype_state)" = recording ] || return 0
   case "$verdict" in
-  "$autostop_verdict_silence") voxtype record stop ;;
+  "$autostop_verdict_silence")
+    debug "autostop: speech then quiet, stopping"
+    voxtype record stop
+    ;;
   "$autostop_verdict_no_speech")
+    debug "autostop: no speech, cancelling"
     touch "$discard_flag"
     voxtype record cancel
     ;;
+  *) debug "autostop: verdict $verdict, recording left alone" ;;
   esac
 }
 
@@ -818,17 +856,26 @@ watch_max_polls=3000
 watch_start_grace_polls=50
 watch_file_grace_polls=10
 
+# The discard flag of the watcher with this PID: present, its transcript is thrown away.
+discard_flag_of() { printf '%s/discard.%s' "$runtime_dir" "$1"; }
+
 watch_recording() {
-  local transcript_handler="$1" recording_seen=0 polls=0 state autostop_pid discard_flag
+  local transcript_handler="$1" recording_seen=0 polls=0 state last_state="" autostop_pid discard_flag
   # A voxtype that ignores the cancel could still write a transcript.
-  discard_flag="$runtime_dir/discard.$$"
+  discard_flag=$(discard_flag_of $$)
   autostop_recording "$discard_flag" &
   autostop_pid=$!
-  # shellcheck disable=SC2064 # expanded now: the PID and path are fixed
-  trap "kill $autostop_pid 2>/dev/null; rm -f '$discard_flag'" EXIT
+  # The kill fails once auto-stop is done, and under errexit that would end the trap before the cleanup after it.
+  # shellcheck disable=SC2064 # expanded now: the PID and paths are fixed
+  trap "kill $autostop_pid 2>/dev/null || true; rm -f '$discard_flag'; release_recording_ownership" EXIT
+  # listen only starts a watcher for a recording it started from idle, so the recording is this watcher's from the
+  # start. The owner may already be gone, its file with it.
+  if [ -n "$recording_owner_file" ]; then echo $$ 2>/dev/null >"$recording_owner_file" || true; fi
   while [ "$polls" -lt "$watch_max_polls" ]; do
     polls=$((polls + 1))
     state=$(voxtype_state)
+    [ "$state" = "$last_state" ] || debug "watch: voxtype $state"
+    last_state="$state"
     if [ "$state" != idle ]; then
       recording_seen=1
       # Transcribing: the microphone is no longer needed.
@@ -838,16 +885,47 @@ watch_recording() {
     fi
     sleep "$watch_poll_interval"
   done
+  release_recording_ownership
   kill "$autostop_pid" 2>/dev/null || true
-  [ ! -e "$discard_flag" ] || exit 0
+  if [ -e "$discard_flag" ]; then
+    debug "watch: recording discarded"
+    exit 0
+  fi
   # voxtype may write the file a moment after it reports idle.
   for ((polls = 0; polls < watch_file_grace_polls; polls++)); do
     [ -s "$transcript_file" ] && break
     sleep "$watch_poll_interval"
   done
-  [ -s "$transcript_file" ] || exit 0
+  # Checked again: a key can answer the confirm this reply was for while voxtype finishes writing it.
+  if [ ! -s "$transcript_file" ] || [ -e "$discard_flag" ]; then
+    debug "watch: no transcript"
+    exit 0
+  fi
   came_by_voice=1
+  debug "watch: transcript \"$(cat "$transcript_file")\" goes to $transcript_handler"
   "$transcript_handler" "$(cat "$transcript_file")"
+}
+
+# Once voxtype is idle the recording is over, and anything it does next belongs to someone else.
+release_recording_ownership() {
+  if [ -n "$recording_owner_file" ] && [ "$(cat "$recording_owner_file" 2>/dev/null)" = $$ ]; then
+    rm -f "$recording_owner_file"
+  fi
+}
+
+# For voxcmd-confirm once a key, click or timeout answers its card: cancels the reply recording its watcher still
+# owns, recording or transcribing, and discards whatever transcript still comes. A dictation started after that
+# recording ended is never touched, since the watcher gives up ownership as voxtype goes idle.
+cancel_owned_recording() {
+  local owner_file="$1" watcher_pid state
+  watcher_pid=$(cat "$owner_file" 2>/dev/null) || return 0
+  [ -n "$watcher_pid" ] && kill -0 "$watcher_pid" 2>/dev/null || return 0
+  touch "$(discard_flag_of "$watcher_pid")"
+  state=$(voxtype_state)
+  debug "confirm answered without voice: cancelling watcher $watcher_pid's recording (voxtype $state)"
+  case "$state" in
+  recording | transcribing) voxtype record cancel ;;
+  esac
 }
 
 load_local_intents
@@ -868,9 +946,10 @@ case "${1:-}" in
   shift
   reply "$@"
   ;;
-listen) listen ;;
+listen) listen "${2:-}" ;;
 help) voice_help ;;
 _watch) watch_recording "$2" ;;
+_cancel_owned_recording) cancel_owned_recording "$2" ;;
 list)
   while IFS= read -r file; do
     (

@@ -1,33 +1,54 @@
 #!/usr/bin/env bash
 # voxcmd-confirm: blocking yes/no question for shell callers.
-# Usage: voxcmd-confirm [--listen] <question>
+# Usage: voxcmd-confirm [--listen] [--verb <verb>] <question>
 # Exits 0 for yes, 1 for no, cancel or no answer. Uses the Quickshell confirm card when the bar is running, else
 # rofi -dmenu with Yes and No. While it waits, `voxcmd --reply` can answer it through the pending-pick state file, and
-# --listen starts that reply's recording as the card appears (for a command that came by voice), listening once more
-# after a reply that is neither yes nor no.
+# --listen starts that reply's recording just before the card appears (for a command that came by voice), listening
+# once more after a reply that is neither yes nor no. A reply starting with the verb ("close it") is a yes.
 set -euo pipefail
 
-usage='usage: voxcmd-confirm [--listen] <question>'
+usage='usage: voxcmd-confirm [--listen] [--verb <verb>] <question>'
 listen=0
-if [ "${1:-}" = --listen ]; then
-  listen=1
+verb=""
+while [ $# -gt 1 ]; do
+  case "$1" in
+  --listen) listen=1 ;;
+  --verb)
+    verb="${2:?$usage}"
+    shift
+    ;;
+  *) break ;;
+  esac
   shift
-fi
+done
 question="${1:?$usage}"
 # The card cancels itself after 10s without an answer, waiting while voice is heard; this only covers a bar that
 # dies mid-question. rofi has no timeout of its own, so it gets the card's.
 bar_timeout="${VOXCMD_CONFIRM_TIMEOUT:-120}"
 rofi_timeout=10
-pending_pick_file="${XDG_RUNTIME_DIR:-/tmp}/voxcmd/pending-pick.json"
+runtime_dir="${XDG_RUNTIME_DIR:-/tmp}/voxcmd"
+pending_pick_file="$runtime_dir/pending-pick.json"
+voxtype_state_file="${XDG_RUNTIME_DIR:-/tmp}/voxtype/state"
+debug_log_file="$runtime_dir/debug.log"
 hypr_scripts="${XDG_CONFIG_HOME:-$HOME/.config}/hypr/scripts"
 voxcmd="$(dirname "$(readlink -f "$0")")/voxcmd"
 
+debug() {
+  [ -n "${VOXCMD_DEBUG:-}" ] || [ -e "$debug_log_file" ] || return 0
+  printf '%s voxcmd-confirm[%s] %s\n' "$(date +%T.%3N)" "$$" "$*" >>"$debug_log_file"
+}
+
 work_dir=$(mktemp -d "${XDG_RUNTIME_DIR:-/tmp}/voxcmd-confirm.XXXXXX")
 reader_pid=""
+# Holds the PID of the watcher whose recording this confirm started, while voxtype records or transcribes it.
+recording_owner_file="$work_dir/recording-owner"
 cleanup() {
   # A newer pick may have replaced the state file; only remove our own.
   if [ "$(jq -r .pid "$pending_pick_file" 2>/dev/null)" = "$$" ]; then rm -f "$pending_pick_file"; fi
   if [ -n "$reader_pid" ]; then kill "$reader_pid" 2>/dev/null || true; fi
+  # Answered by key, click or timeout while its reply recording still runs: the microphone goes off, and a later voice
+  # key starts a new command instead of only stopping this recording. A no-op once a voice reply has answered.
+  if [ -e "$recording_owner_file" ]; then "$voxcmd" _cancel_owned_recording "$recording_owner_file" || true; fi
   rm -rf "$work_dir"
 }
 trap cleanup EXIT
@@ -41,9 +62,29 @@ mkfifo "$result_fifo"
 # kind tells reply to match yes or no.
 mkdir -p "$(dirname "$pending_pick_file")"
 jq -n --argjson pid $$ --arg fifo "$result_fifo" --arg label "$question" --arg listen_again "$listen_again_file" \
+  --arg verb "$verb" \
   '{pid: $pid, fifo: $fifo, label: $label, kind: "confirm", choices: [{id: "yes", label: "Yes"}, {id: "no", label: "No"}],
-    expansions: {}, listen_again: $listen_again}' >"$work_dir/pending-pick.json"
+    expansions: {}, listen_again: $listen_again, verb: $verb}' >"$work_dir/pending-pick.json"
 mv -f "$work_dir/pending-pick.json" "$pending_pick_file"
+
+# Before the card shows, and only from idle (never stopping a recording someone else started), so the microphone is
+# already live when the question appears: a "yes" said the moment the card drops is otherwise lost, half of it before
+# voxtype starts recording and the rest heard as the room. Polled every 0.05s, up to 2s for voxtype to report it.
+reply_recording_live() {
+  [ "$(cat "$voxtype_state_file" 2>/dev/null)" = recording ] && [ -s "$recording_owner_file" ]
+}
+if [ "$listen" = 1 ]; then
+  : >"$listen_again_file"
+  if VOXCMD_RECORDING_OWNER_FILE="$recording_owner_file" "$voxcmd" listen --start-only; then
+    for ((polls = 0; polls < 40; polls++)); do
+      ! reply_recording_live || break
+      sleep 0.05
+    done
+    debug "reply recording live after $((polls * 50))ms: $question"
+  else
+    debug "voxtype busy, not listening: $question"
+  fi
+fi
 
 # The bar and a voice reply write "yes" or "no", rofi the picked label.
 picker_pid=""
@@ -54,11 +95,7 @@ if [ ! -x "$hypr_scripts/qs-ipc" ] || [ "$("$hypr_scripts/qs-ipc" call confirm a
   sh -c "$rofi_command" &
   picker_pid=$!
 fi
-
-if [ "$listen" = 1 ]; then
-  : >"$listen_again_file"
-  "$voxcmd" listen || true
-fi
+debug "asked${picker_pid:+ with rofi}: $question"
 
 # Read in the background so the signal traps run while it waits, as in voxcmd-pick.
 timeout "$timeout_secs" head -n 1 "$result_fifo" >"$work_dir/answer" &
@@ -66,6 +103,7 @@ reader_pid=$!
 wait "$reader_pid" || true
 reader_pid=""
 answer=$(cat "$work_dir/answer")
+debug "answer: ${answer:-none}"
 # Removed before dismissing, so nothing the bar writes afterwards can block on the FIFO.
 cleanup
 if [ -n "$picker_pid" ]; then
