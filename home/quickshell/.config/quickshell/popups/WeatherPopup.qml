@@ -111,7 +111,7 @@ Popup {
 
         pokedex: { prefix: "Dex", views: ["Hourly", "SunMoon"] },
 
-        ring: { prefix: "Ring", views: [] },
+        ring: { prefix: "Ring", views: ["Hourly", "SunMoon"] },
 
         scan: { prefix: "Scan", views: ["Hourly", "SunMoon"] },
 
