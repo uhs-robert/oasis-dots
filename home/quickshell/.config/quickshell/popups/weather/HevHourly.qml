@@ -18,9 +18,6 @@ Item {
 
     readonly property var channel_names: ["TEMP", "PRECIP", "WIND", "UV", "HUMID"]
 
-    readonly property int hour_col_w: 56
-    readonly property int icon_row_h: 28
-    readonly property int label_row_h: 18
     readonly property int legend_h: 18
     readonly property int bezel: 5
     readonly property color hl: Style.text_primary
@@ -28,31 +25,11 @@ Item {
     readonly property color phosphor: Style.pal.green
     readonly property color rain: Theme.info
     readonly property real readout_h: Math.max(26, readout_row.implicitHeight)
-    readonly property int chart_h: root.height - root.readout_h - 6 - 2 * root.bezel - root.legend_h - root.icon_row_h - root.label_row_h - 4
-
-    readonly property var day_boundaries: {
-        const list = [];
-        let last_date = null;
-        const today_str = WeatherState.location_date_str();
-        const hrs = WeatherState.hours;
-        for (let i = 0; i < hrs.length; i++) {
-            if (hrs[i].date !== last_date) {
-                const label = hrs[i].date === today_str ? "TODAY" : Qt.formatDate(new Date(hrs[i].date + "T00:00:00"), "ddd").toUpperCase();
-                list.push({ index: i, label: label });
-                last_date = hrs[i].date;
-            }
-        }
-        return list;
-    }
 
     readonly property var cursor_row: WeatherState.hours[root.hour_cursor]
 
     // Heavy rain in the forecast's own unit, so amount bars read the same in mm and inches.
     readonly property real precip_full_scale: WeatherState.metric ? 5 : 0.2
-
-    function value_of(row) {
-        return [row.temp, row.pop, row.wind_speed, row.uv_index, row.humidity][root.sub];
-    }
 
     function value_text(v) {
         if (root.sub === 3) return v.toFixed(1);
@@ -68,21 +45,11 @@ Item {
     }
 
     function scroll_to_cursor() {
-        const cursor_x = root.hour_cursor * root.hour_col_w;
-        // Narrow views get a smaller lead so the two margins never overlap.
-        const margin = Math.max(0, Math.min(root.hour_col_w * 2, (flick.width - root.hour_col_w) / 2));
-        if (cursor_x < flick.contentX + margin) {
-            flick.contentX = Math.max(0, cursor_x - margin);
-        } else if (cursor_x + root.hour_col_w > flick.contentX + flick.width - margin) {
-            flick.contentX = Math.min(Math.max(0, flick.contentWidth - flick.width), cursor_x + root.hour_col_w - flick.width + margin);
-        }
+        track.scroll_to_cursor();
     }
 
-    property bool want_scroll: false
-
     function request_scroll() {
-        if (flick.width > 0) root.scroll_to_cursor();
-        else root.want_scroll = true;
+        track.request_scroll();
     }
 
     function secondary_of(hrs) {
@@ -91,7 +58,7 @@ Item {
 
     // The dashed trace shares the scale, so gusts above the speeds stay on screen.
     function scale_range(hrs) {
-        const values = hrs.map(root.value_of).concat(root.secondary_of(hrs) || []);
+        const values = hrs.map(track.value_of).concat(root.secondary_of(hrs) || []);
         if (root.sub === 1 || root.sub === 4) return { lo: 0, hi: 100 };
         if (root.sub === 3) return { lo: 0, hi: Math.max(12, Math.max(...values) + 1) };
         let lo = Math.min(...values);
@@ -105,20 +72,20 @@ Item {
         const hrs = WeatherState.hours;
         if (hrs.length === 0) return;
 
-        const values = hrs.map(root.value_of);
+        const values = hrs.map(track.value_of);
         const range = root.scale_range(hrs);
         const top_pad = 20;
         const amount_px = Style.fs(-3);
         const bottom_pad = root.sub === 1 ? amount_px + 8 : 4;
         const plot_h = h - top_pad - bottom_pad;
         const y_of = v => top_pad + plot_h - ((v - range.lo) / (range.hi - range.lo || 1)) * plot_h;
-        const x_of = i => i * root.hour_col_w + root.hour_col_w / 2;
+        const x_of = track.x_of;
 
         // Graticule: hour columns, a heavier line every six hours, four horizontal divisions with tick marks on the centre line.
         ctx.lineWidth = 1;
         ctx.strokeStyle = root.hl;
         for (let i = 0; i <= hrs.length; i++) {
-            const x = Math.round(i * root.hour_col_w) + 0.5;
+            const x = Math.round(i * track.hour_col_w) + 0.5;
             ctx.globalAlpha = i < hrs.length && hrs[i].hour % 6 === 0 ? 0.2 : 0.08;
             ctx.beginPath();
             ctx.moveTo(x, 0);
@@ -136,7 +103,7 @@ Item {
         ctx.globalAlpha = 0.28;
         const mid_y = Math.round(top_pad + plot_h / 2);
         for (let i = 0; i < hrs.length * 4; i++) {
-            const x = Math.round(i * root.hour_col_w / 4) + 0.5;
+            const x = Math.round(i * track.hour_col_w / 4) + 0.5;
             ctx.beginPath();
             ctx.moveTo(x, mid_y - (i % 4 === 0 ? 4 : 2));
             ctx.lineTo(x, mid_y + (i % 4 === 0 ? 5 : 3));
@@ -144,8 +111,8 @@ Item {
         }
 
         ctx.globalAlpha = 0.6;
-        for (const b of root.day_boundaries) {
-            const x = Math.round(b.index * root.hour_col_w) + 0.5;
+        for (const b of track.day_boundaries) {
+            const x = Math.round(track.left_of(b.index)) + 0.5;
             ctx.beginPath();
             ctx.moveTo(x, 0);
             ctx.lineTo(x, h);
@@ -155,7 +122,7 @@ Item {
         ctx.fillStyle = root.hl_t;
         ctx.font = "bold " + Style.fs(-5) + "px \"" + Style.font_family + "\"";
         ctx.textAlign = "left";
-        for (const b of root.day_boundaries) ctx.fillText(b.label, b.index * root.hour_col_w + 4, 12);
+        for (const b of track.day_boundaries) ctx.fillText(b.label, track.left_of(b.index) + 4, 12);
 
         if (root.sub === 1) {
             ctx.fillStyle = root.rain;
@@ -256,7 +223,7 @@ Item {
 
             Text {
                 visible: !!root.cursor_row && root.sub !== 0
-                text: root.cursor_row ? root.value_text(root.value_of(root.cursor_row)) : ""
+                text: root.cursor_row ? root.value_text(track.value_of(root.cursor_row)) : ""
                 color: root.phosphor
                 font.family: Style.number_font
                 font.pixelSize: Style.fs(6)
@@ -338,132 +305,48 @@ Item {
                     }
                 }
 
-                Flickable {
-                    id: flick
+                HourlyTrack {
+                    id: track
                     y: root.legend_h
                     width: parent.width
                     height: parent.height - root.legend_h
-                    clip: true
-                    contentWidth: WeatherState.hours.length * root.hour_col_w
-                    contentHeight: height
-                    boundsBehavior: Flickable.StopAtBounds
-                    flickableDirection: Flickable.HorizontalFlick
-                    onContentXChanged: root.on_scroll(flick.contentX)
-
-                    onWidthChanged: {
-                        if (root.want_scroll && flick.width > 0) {
-                            root.want_scroll = false;
-                            root.scroll_to_cursor();
-                        }
-                    }
-
-                    Component.onCompleted: flick.contentX = root.scroll_x
-
-                    Item {
-                        width: flick.contentWidth
-                        height: flick.contentHeight
-
-                        Canvas {
-                            id: canvas
-                            width: parent.width
-                            height: root.chart_h
-                            onPaint: root.paint(getContext("2d"), width, height)
-
-                            Connections {
-                                target: WeatherState
-                                function onHoursChanged() { canvas.requestPaint(); }
-                            }
-                            Connections {
-                                target: Style
-                                function onFont_familyChanged() { canvas.requestPaint(); }
-                                function onFont_sizeChanged() { canvas.requestPaint(); }
-                                function onPalChanged() { canvas.requestPaint(); }
-                                function onText_primaryChanged() { canvas.requestPaint(); }
-                                function onText_mutedChanged() { canvas.requestPaint(); }
-                            }
-                            Connections {
-                                target: root
-                                function onSubChanged() { canvas.requestPaint(); }
-                            }
-                        }
-
+                    icon_row_h: 28
+                    hour_cursor: root.hour_cursor
+                    sub: root.sub
+                    on_select: i => root.on_select(i)
+                    scroll_x: root.scroll_x
+                    on_scroll: x => root.on_scroll(x)
+                    paint: root.paint
+                    caps_day_labels: true
+                    highlight: Component {
                         Rectangle {
-                            visible: root.hour_cursor >= 0 && root.hour_cursor < WeatherState.hours.length
-                            x: root.hour_cursor * root.hour_col_w
-                            width: root.hour_col_w
-                            height: root.chart_h
                             color: Style.selection_bg
                             border.width: 1
                             border.color: Style.selection_border
                         }
+                    }
+                    arrow_color: root.hl
+                    label_color: root.hl_t
+                    label_color_selected: root.hl
+                    label_font_family: Style.number_font
+                    label_px: Style.fs(-3)
+                    label_bold_selected: true
 
-                        Rectangle {
-                            y: root.chart_h
-                            width: parent.width
-                            height: 1
-                            color: Style.hairline
-                        }
+                    Rectangle {
+                        visible: root.hour_cursor >= 0 && root.hour_cursor < WeatherState.hours.length
+                        x: track.left_of(root.hour_cursor)
+                        width: track.hour_col_w
+                        height: track.chart_h
+                        color: Style.selection_bg
+                        border.width: 1
+                        border.color: Style.selection_border
+                    }
 
-                        Repeater {
-                            model: WeatherState.hours
-
-                            Item {
-                                id: hour_col
-                                required property var modelData
-                                required property int index
-
-                                x: hour_col.index * root.hour_col_w
-                                y: root.chart_h + 4
-                                width: root.hour_col_w
-                                height: root.icon_row_h + root.label_row_h
-
-                                MouseArea {
-                                    anchors.fill: parent
-                                    onClicked: root.on_select(hour_col.index)
-                                }
-
-                                Rectangle {
-                                    anchors.fill: parent
-                                    visible: hour_col.index === root.hour_cursor
-                                    color: Style.selection_bg
-                                    border.width: 1
-                                    border.color: Style.selection_border
-                                }
-
-                                Image {
-                                    visible: root.sub !== 2
-                                    anchors.horizontalCenter: parent.horizontalCenter
-                                    width: root.icon_row_h
-                                    height: root.icon_row_h
-                                    sourceSize.width: root.icon_row_h * 2
-                                    sourceSize.height: root.icon_row_h * 2
-                                    source: WeatherState.icon_source(hour_col.modelData.code, hour_col.modelData.is_day)
-                                    smooth: true
-                                }
-
-                                Text {
-                                    visible: root.sub === 2
-                                    anchors.horizontalCenter: parent.horizontalCenter
-                                    anchors.verticalCenter: parent.verticalCenter
-                                    anchors.verticalCenterOffset: -(root.label_row_h / 2)
-                                    text: "▲"
-                                    rotation: hour_col.modelData.wind_dir
-                                    color: root.hl
-                                    font.pixelSize: Style.font_size
-                                }
-
-                                Text {
-                                    anchors.top: parent.top
-                                    anchors.topMargin: root.icon_row_h
-                                    anchors.horizontalCenter: parent.horizontalCenter
-                                    text: WeatherState.format_hour(new Date(hour_col.modelData.dt))
-                                    color: hour_col.index === root.hour_cursor ? root.hl : root.hl_t
-                                    font.family: Style.number_font
-                                    font.pixelSize: Style.fs(-3)
-                                    font.bold: hour_col.index === root.hour_cursor
-                                }
-                            }
-                        }
+                    Rectangle {
+                        y: track.chart_h
+                        width: parent.width
+                        height: 1
+                        color: Style.hairline
                     }
                 }
             }
