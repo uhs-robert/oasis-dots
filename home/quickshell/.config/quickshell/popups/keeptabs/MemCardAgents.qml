@@ -25,7 +25,7 @@ Item {
     readonly property int page_count: Math.max(1, Math.ceil(root.sessions.length / root.card_blocks))
     readonly property var current: root.sessions[root.selected] || null
     readonly property bool has_context: root.current !== null && root.current.context_pct !== null && root.current.context_pct !== undefined
-    readonly property bool animating: Popups.open_name === "keeptabs"
+    readonly property bool animating: Popups.open_name === "keeptabs" && root.visible
     readonly property var colors: ({ error: Style.pal.error, ok: Style.pal.ok, warning: Style.pal.warning, text_primary: root.st.text_primary, text_dim: root.st.text_dim })
 
     // The card shows the page holding `selected`, so there is nothing to scroll.
@@ -125,39 +125,35 @@ Item {
                     }
                 }
             }
+        }
 
-            ColumnLayout {
+        // One label line under the card, so PAGE n/m never competes with the card for width.
+        RowLayout {
+            Layout.fillWidth: true
+            spacing: 12
+
+            Text {
+                text: "MEMORY CARD"
+                color: Theme.theme_primary_light
+                font.family: root.st.font_family
+                font.pixelSize: root.st.fs(-5)
+            }
+
+            Text {
+                text: "PAGE " + (root.page + 1) + "/" + root.page_count
+                color: root.st.text_muted
+                font.family: root.st.font_family
+                font.pixelSize: root.st.fs(-5)
+            }
+
+            Text {
                 Layout.fillWidth: true
                 Layout.minimumWidth: 0
-                Layout.alignment: Qt.AlignTop
-                spacing: 2
-
-                Text {
-                    Layout.fillWidth: true
-                    elide: Text.ElideRight
-                    text: "MEMORY CARD"
-                    color: Theme.theme_primary_light
-                    font.family: root.st.font_family
-                    font.pixelSize: Style.fs(-5)
-                }
-
-                Text {
-                    Layout.fillWidth: true
-                    elide: Text.ElideRight
-                    text: "PAGE " + (root.page + 1) + "/" + root.page_count
-                    color: root.st.text_muted
-                    font.family: root.st.font_family
-                    font.pixelSize: Style.fs(-5)
-                }
-
-                Text {
-                    Layout.fillWidth: true
-                    elide: Text.ElideRight
-                    text: "FREE " + Math.max(0, root.card_blocks - Math.max(0, root.sessions.length - root.page * root.card_blocks)) + " BLOCKS"
-                    color: root.st.text_dim
-                    font.family: root.st.font_family
-                    font.pixelSize: Style.fs(-5)
-                }
+                elide: Text.ElideRight
+                text: "FREE " + Math.max(0, root.card_blocks - Math.max(0, root.sessions.length - root.page * root.card_blocks)) + " BLOCKS"
+                color: root.st.text_dim
+                font.family: root.st.font_family
+                font.pixelSize: root.st.fs(-5)
             }
         }
 
@@ -186,8 +182,8 @@ Item {
             ColumnLayout {
                 visible: root.current !== null
                 anchors.fill: parent
-                anchors.margins: 8
-                spacing: 4
+                anchors.margins: 6
+                spacing: 2
 
                 RowLayout {
                     Layout.fillWidth: true
@@ -218,7 +214,7 @@ Item {
                             text: root.current ? (root.current.title || "Untitled") : ""
                             color: Style.text_strong
                             font.family: root.st.font_family
-                            font.pixelSize: Style.fs(-2)
+                            font.pixelSize: root.st.fs(-2)
                             style: Text.Raised
                             styleColor: Style.text_shadow
                         }
@@ -229,7 +225,7 @@ Item {
                             text: root.current ? (root.current.agent || "claude") + " · " + (root.current.project || "") : ""
                             color: Theme.theme_primary_light
                             font.family: root.st.font_family
-                            font.pixelSize: Style.fs(-4)
+                            font.pixelSize: root.st.fs(-4)
                         }
                     }
                 }
@@ -240,7 +236,7 @@ Item {
                     text: root.current ? (root.current.where || "") : ""
                     color: root.st.text_muted
                     font.family: root.st.font_family
-                    font.pixelSize: Style.fs(-4)
+                    font.pixelSize: root.st.fs(-4)
                 }
 
                 RowLayout {
@@ -251,7 +247,7 @@ Item {
                         text: (root.current ? (root.current.state || "idle") : "").toUpperCase()
                         color: root.current ? Fmt.state_color(root.current.state, root.colors) : root.st.text_dim
                         font.family: root.st.font_family
-                        font.pixelSize: Style.fs(-4)
+                        font.pixelSize: root.st.fs(-4)
                         font.bold: true
                     }
 
@@ -259,7 +255,7 @@ Item {
                         text: "FOR"
                         color: root.st.text_dim
                         font.family: root.st.font_family
-                        font.pixelSize: Style.fs(-5)
+                        font.pixelSize: root.st.fs(-5)
                     }
 
                     Ps1.Digits {
@@ -271,7 +267,7 @@ Item {
                         text: root.current ? root.age_unit(root.current.since) : ""
                         color: root.st.text_muted
                         font.family: root.st.font_family
-                        font.pixelSize: Style.fs(-4)
+                        font.pixelSize: root.st.fs(-4)
                     }
 
                     Item {
@@ -282,7 +278,7 @@ Item {
                         text: String(root.selected + 1).padStart(2, "0") + "/" + String(root.sessions.length).padStart(2, "0")
                         color: Theme.theme_primary_light
                         font.family: Style.mono_font
-                        font.pixelSize: Style.fs(-4)
+                        font.pixelSize: root.st.fs(-4)
                     }
                 }
 
@@ -298,7 +294,7 @@ Item {
                         text: "BLOCKS"
                         color: Theme.theme_primary_light
                         font.family: root.st.font_family
-                        font.pixelSize: Style.fs(-5)
+                        font.pixelSize: root.st.fs(-5)
                     }
 
                     Item {
@@ -330,7 +326,7 @@ Item {
                         text: root.has_context ? root.current.context_pct + "% " + Fmt.fmt_tokens(root.current.context_used) + "/" + Fmt.fmt_tokens(root.current.context_window) : "--"
                         color: root.st.text_fg
                         font.family: root.st.font_family
-                        font.pixelSize: Style.fs(-5)
+                        font.pixelSize: root.st.fs(-5)
                     }
                 }
             }
