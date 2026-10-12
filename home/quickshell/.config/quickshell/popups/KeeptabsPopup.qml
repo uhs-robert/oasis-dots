@@ -61,7 +61,7 @@ Popup {
 
         mode7: { prefix: "Ff6", views: [] },
 
-        oasis: { prefix: "Caravan", views: [] },
+        oasis: { prefix: "Caravan", views: ["Agents", "Usage"] },
 
         pokedex: { prefix: "Pkmn", views: [] },
 
