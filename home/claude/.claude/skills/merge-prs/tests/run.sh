@@ -170,11 +170,11 @@ check "says it is waiting" "grep -q 'waiting up to' <<<\"\$out\""
 echo "== --wait-review: Codex review outlasts the wait"
 setup
 printf 'codex_running_reads=99\ncodex_commit=abc1234\n' >>"$GH_STATE"
-out=$(PATH="$here:$PATH" MERGE_PRS_REVIEW_POLL=1 MERGE_PRS_REVIEW_WAIT=2 "$script" --check --wait-review 7 2>&1)
+out=$(PATH="$here:$PATH" MERGE_PRS_REVIEW_POLL=0 MERGE_PRS_REVIEW_WAIT=1 timeout 30 "$script" --check --wait-review 7 2>&1)
 code=$?
 show "$out"
 check "fails" "[[ $code != 0 ]]"
-check "says how long it waited" "grep -q 'still running after 2s' <<<\"\$out\""
+check "stops at the limit even with a zero poll interval" "[[ $code != 124 ]] && grep -q 'still running after 1s' <<<\"\$out\""
 
 echo "== --check: refuses merge options"
 setup
