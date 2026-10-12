@@ -2,7 +2,33 @@
 # PostToolUse(Bash): after a git command moves the live checkout, restart the stowed Quickshell if its files changed.
 set -u
 cmd=$(jq -r '.tool_input.command // empty')
-[[ $cmd =~ (^|[;&|[:space:]])git[[:space:]].*(switch|checkout|merge|pull|rebase|reset|restore|stash)([[:space:]]|$) ]] || exit 0
+[[ $cmd == *git* || $cmd == *merge-prs* ]] || exit 0
+
+# Commit messages, PR bodies and heredocs often say "merge" or "switch"; only command words count. Drop quoted
+# heredoc bodies and every quoted span (tracking quote state per character), then look for a git subcommand.
+words=$(awk '
+  skip { line = $0; if (tabs) sub(/^\t+/, "", line); if (line == word) skip = 0; next }
+  {
+    out = ""; n = length($0)
+    for (i = 1; i <= n; i++) {
+      c = substr($0, i, 1)
+      if (sq) { if (c == "\047") sq = 0; continue }
+      if (dq) { if (c == "\\") i++; else if (c == "\"") dq = 0; continue }
+      if (c == "\\") { i++; continue }
+      if (c == "\047") { sq = 1; continue }
+      if (c == "\"") { dq = 1; continue }
+      out = out c
+    }
+    print out
+  }
+  match($0, /<<[-~]?[ ]*["\047]?[A-Za-z_][A-Za-z_0-9]*["\047]?/) {
+    w = substr($0, RSTART, RLENGTH); tabs = (w ~ /^<<-/)
+    sub(/^<<[-~]?[ ]*["\047]?/, "", w); sub(/["\047]$/, "", w); word = w; skip = 1
+  }' <<<"$cmd")
+git_opts='([[:space:]]+(-C[[:space:]]+[^[:space:]]+|-c[[:space:]]+[^[:space:]]+|--[a-z-]+(=[^[:space:]]*)?|-[a-zA-Z]))*'
+moves="(^|[;&|(\`[:space:]])git${git_opts}[[:space:]]+(switch|checkout|merge|pull|rebase|reset|restore|stash)([[:space:]]|$)"
+# merge-prs.sh fast-forwards the main checkout itself after merging.
+[[ $words =~ $moves || $words =~ merge-prs\.sh ]] || exit 0
 
 live=$(readlink -f "$HOME/.config/quickshell" 2>/dev/null) || exit 0
 repo=$(git -C "$live" rev-parse --show-toplevel 2>/dev/null) || exit 0
