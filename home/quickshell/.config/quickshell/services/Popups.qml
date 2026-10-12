@@ -9,6 +9,8 @@ Singleton {
     id: root
 
     property string open_name: ""
+    // The open popup once it has finished drawing in; empty while it animates, and while nothing is open.
+    property string settled_name: ""
     // Set just before open_name, so a LazyPopup builds its popup closed and sees the open as a change.
     property string load_name: ""
     property var open_anchor: null
@@ -150,6 +152,11 @@ Singleton {
         back_name = "";
         root.hands_off = !!hands_off;
         return true;
+    }
+
+    function mark_settled(name, settled) {
+        if (settled) settled_name = name;
+        else if (settled_name === name) settled_name = "";
     }
 
     function close() {
