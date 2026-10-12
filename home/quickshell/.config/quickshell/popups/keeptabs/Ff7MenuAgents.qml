@@ -22,7 +22,7 @@ Item {
     property bool draws_footer: false
 
     readonly property var colors: ({ error: Style.pal.error, ok: Style.pal.ok, warning: Style.pal.warning, text_primary: root.st.text_primary, text_dim: root.st.text_dim })
-    readonly property int visible_rows: 4
+    readonly property int visible_rows: 3
     readonly property int window_gap: 6
     readonly property int pad: 8
     readonly property bool animating: root.visible && Popups.open_name === "keeptabs"
