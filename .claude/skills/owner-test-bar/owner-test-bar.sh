@@ -30,7 +30,8 @@ guard_live_bar() {
   # pgrep exits 1 when no test bar runs, which pipefail would turn into a silent exit.
   live=$( (pgrep -af "^qs .*-p $bars/" || true) | sed -n "s|.*-p $bars/\([^/]*\)/.*|\1|p" | head -n 1)
   [[ -z $live || $live == "$name" || $replace == 1 ]] && return 0
-  die "test bar '$live' is running and the owner may be testing it; include its branches ($(tr '\n' ' ' <"$bars/$live.branches" 2>/dev/null)) in this bar, or pass --replace once the owner agrees"
+  [[ -f $bars/$live.branches ]] || die "test bar '$live' is running and the owner may be testing it, but it has no branch record (built by hand?), so its branches cannot be included; pass --replace once the owner agrees"
+  die "test bar '$live' is running and the owner may be testing it; include its branches ($(paste -sd ' ' "$bars/$live.branches")) in this bar, or pass --replace once the owner agrees"
 }
 
 # Launch through Hyprland so qs does not inherit this shell's TMUX environment.
