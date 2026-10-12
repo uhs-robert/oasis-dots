@@ -121,6 +121,46 @@ show "$out"
 check "exits 0" "[[ $code == 0 ]]"
 check "notes the unreviewed commits" "grep -q 'covers abc1234, not the head' <<<\"\$out\""
 
+echo "== review gate: only fixes since the Codex review"
+setup
+printf 'codex=Completed\ncodex_commit=abc1234\nreviewed_subjects=feat: add x\nhead_subjects=feat: add x;fix(x): handle y;test: cover y\nreviewed_files=a;b\nhead_files=a;b\n' >>"$GH_STATE"
+out=$(PATH="$here:$PATH" "$script" 7 2>&1)
+code=$?
+show "$out"
+check "exits 0" "[[ $code == 0 ]]"
+check "notes the fixes" "grep -q 'only fix files it reviewed' <<<\"\$out\""
+check "does not request a review" "! grep -q '^commented=' '$GH_STATE'"
+
+echo "== review gate: new work since the Codex review"
+setup
+printf 'codex=Completed\ncodex_commit=abc1234\nreviewed_subjects=feat: add x\nhead_subjects=feat: add x;feat: add z\nreviewed_files=a\nhead_files=a\n' >>"$GH_STATE"
+out=$(PATH="$here:$PATH" "$script" 7 2>&1)
+code=$?
+show "$out"
+check "stops with an error" "[[ $code != 0 ]]"
+check "names the new work" "grep -q '\"feat: add z\" is not a fix' <<<\"\$out\""
+check "keeps the PR open" "grep -q '^state=OPEN' '$GH_STATE'"
+
+echo "== review gate: a fix that reaches a new file"
+setup
+printf 'codex=Completed\ncodex_commit=abc1234\nreviewed_subjects=feat: add x\nhead_subjects=feat: add x;fix: y\nreviewed_files=a\nhead_files=a;c\n' >>"$GH_STATE"
+out=$(PATH="$here:$PATH" "$script" --check 7 2>&1)
+code=$?
+show "$out"
+check "fails" "[[ $code != 0 ]]"
+check "names the file" "grep -q 'c was not in the reviewed changes' <<<\"\$out\""
+check "does not request a review under --check" "! grep -q '^commented=' '$GH_STATE'"
+
+echo "== --wait-review: new work gets a review requested and waited for"
+setup
+printf 'codex=Completed\ncodex_commit=abc1234\nreviewed_subjects=feat: add x\nhead_subjects=feat: add x;feat: add z\nreviewed_files=a\nhead_files=a\n' >>"$GH_STATE"
+out=$(PATH="$here:$PATH" MERGE_PRS_REVIEW_POLL=0 timeout 30 "$script" --wait-review 7 2>&1)
+code=$?
+show "$out"
+check "exits 0" "[[ $code == 0 ]]"
+check "requests a review" "grep -q '^commented=1' '$GH_STATE'"
+check "merges" "grep -q '^7 merged (rebase)' <<<\"\$out\""
+
 echo "== review gate: skipped by the owner"
 setup
 echo "open_threads=1" >>"$GH_STATE"
