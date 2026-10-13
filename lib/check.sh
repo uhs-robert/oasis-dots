@@ -19,7 +19,7 @@ cd "$repo_dir" || exit 1
 # Every step, longest first. The voxcmd steps are timing-sensitive, so they run one after another in a slot
 # of their own, ahead of the rest.
 voxcmd_steps='voxcmd-phrases voxcmd-click voxcmd-calendar'
-other_steps='check-scope qmllint shellcheck calendar-sync owner-test-bar shfmt stylua luacheck lock-skins style-exports time-format calendar-sync-syntax agent-hooks stale-shells-hook notification-markup packages symlinks git-diff-check whitespace conflicts'
+other_steps='check-scope qmllint shellcheck calendar-sync owner-test-bar ship-batch merge-prs shfmt stylua luacheck lock-skins style-exports time-format calendar-sync-syntax agent-hooks stale-shells-hook notification-markup packages symlinks git-diff-check whitespace conflicts'
 
 # Shell files by the group they are linted in. Symlinks are skipped (their target is linted itself).
 # worktrees/ holds other agents' scratch copies and skills/synced/ is vendored.
@@ -76,6 +76,8 @@ step_body() {
   agent-hooks) bash ./home/claude/.claude/hooks/tests/guard-masked-checks.sh ;;
   stale-shells-hook) bash ./home/claude/.claude/hooks/tests/stale-shells.sh ;;
   owner-test-bar) bash ./.claude/skills/owner-test-bar/tests/run.sh ;;
+  ship-batch) bash ./.claude/skills/ship-batch/tests/run.sh ;;
+  merge-prs) bash ./home/claude/.claude/skills/merge-prs/tests/run.sh ;;
   notification-markup) node ./home/quickshell/tests/notification_markup.js ;;
   packages) sh ./lib/check-packages.sh ;;
   symlinks) sh ./lib/check-symlinks.sh ;;
@@ -144,7 +146,7 @@ jobs=${CHECK_JOBS:-$(($(nproc 2>/dev/null || echo 2) / 2))}
 
 # What a changed path can affect. A step is dropped only when every changed path is claimed by some rule
 # here and none of them reaches it, so a path nobody claimed runs everything.
-scope_all=0 scope_lua=0 scope_qml=0 scope_node=0 scope_voxcmd=0 scope_calendar=0 scope_hooks=0 scope_bar=0 scope_checkscope=0
+scope_all=0 scope_lua=0 scope_qml=0 scope_node=0 scope_voxcmd=0 scope_calendar=0 scope_hooks=0 scope_bar=0 scope_ship=0 scope_checkscope=0
 scope_changed_files() {
   while IFS= read -r path; do
     case $path in
@@ -162,6 +164,7 @@ scope_changed_files() {
     home/calendar/*) scope_calendar=1 ;;
     home/claude/.claude/hooks/* | .claude/hooks/*) scope_hooks=1 ;;
     .claude/skills/owner-test-bar/*) scope_bar=1 ;;
+    .claude/skills/ship-batch/* | home/claude/.claude/skills/merge-prs/*) scope_ship=1 ;;
     system/etc/greetd/*) scope_lua=1 ;;
     # Only the steps that always run (whitespace, conflicts, symlinks, packages, git diff) look at these,
     # plus the shell linters for the shell files among them.
@@ -234,6 +237,7 @@ in_scope() {
   calendar-sync | calendar-sync-syntax) [ "$scope_calendar" = 1 ] ;;
   agent-hooks | stale-shells-hook) [ "$scope_hooks" = 1 ] ;;
   owner-test-bar) [ "$scope_bar" = 1 ] ;;
+  ship-batch | merge-prs) [ "$scope_ship" = 1 ] ;;
   notification-markup) [ "$scope_node" = 1 ] ;;
   esac
 }
