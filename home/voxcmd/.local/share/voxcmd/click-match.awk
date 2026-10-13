@@ -134,8 +134,8 @@ function hint_of(x, y,   column, row) {
 # direction of split: one OCR word for several spoken words, or several OCR words for one spoken word. Sets
 # span_first, span_last and span_exact (equal under look-alike comparison, not merely one edit away); a span that is
 # equal wins over an earlier one that is only close. Fillers count here: "sign in" is the letters "signin".
-function joined_span(   a, b, joined, close_first, close_last, has_low) {
-  for (a = 1; a <= run_n; a++) {
+function joined_span(from,   a, b, joined, close_first, close_last, has_low) {
+  for (a = from; a <= run_n; a++) {
     joined = ""
     has_low = 0
     for (b = a; b <= run_n; b++) {
@@ -226,15 +226,32 @@ function add_subspans(   start, i, j, finish) {
   }
 }
 
-# Matches the spoken words against the finished run; a hit is stored as a candidate.
-function flush_run(   j, i, found, used, match_text, picked_raw, matched) {
+# Matches the spoken words against the finished run and stores a candidate for every occurrence of them, so a run that
+# says "Settings or Settings" offers both and never lets voxcmd click the first of two identical labels.
+function flush_run(   word_hits, joined_from) {
   if (run_n > 0 && spans_only) {
     add_subspans()
   } else if (run_n > 0) {
-    first = last = ""
-    span_used = 0
     delete used
-    delete picked_raw
+    while (add_whole_run_candidate(0))
+      word_hits++
+    if (!word_hits)
+      for (joined_from = 1; add_whole_run_candidate(joined_from); joined_from = span_last + 1)
+        ;
+  }
+  run_n = 0
+  run_text = ""
+}
+
+# Finds the next occurrence of the spoken words in the run and stores it; returns 0 when there is none. With
+# joined_from 0 it matches word by word, each occurrence taking words not yet in used[], so occurrences come left to
+# right. With joined_from set it looks for a joined-letters span from that word on (see joined_span). Joined spans are
+# only tried when no word-by-word occurrence exists, as before, so a run is never reported twice for the same words.
+function add_whole_run_candidate(joined_from,   j, i, found, match_text, picked_raw, matched) {
+  first = last = ""
+  span_used = 0
+  delete picked_raw
+  if (!joined_from) {
     for (j = 1; j <= spoken_n; j++) {
       found = 0
       for (i = 1; i <= run_n && !found; i++)
@@ -250,32 +267,29 @@ function flush_run(   j, i, found, used, match_text, picked_raw, matched) {
       last = (last == "" || found > last) ? found : last
     }
     matched = j > spoken_n
-    if (!matched && joined_span()) {
-      matched = 1
-      span_used = span_exact
-      first = span_first
-      last = span_last
-      delete picked_raw
-    } else if (matched) {
+    if (matched)
       absorb_spoken_fillers()
-    }
-    if (matched) {
-      match_text = ""
-      for (i = 1; i <= run_n; i++) {
-        if (run_low[i] && (span_used ? (i < first || i > last) : !(i in used)))
-          continue
-        if (span_used && i == span_first)
-          match_text = match_text (match_text == "" ? "" : " ") spoken_words
-        else if (span_used && i > span_first && i <= span_last)
-          continue
-        else if (!run_skip[i])
-          match_text = match_text (match_text == "" ? "" : " ") ((i in picked_raw) ? picked_raw[i] : run_raw[i])
-      }
-      store_candidate(match_text)
-    }
+  } else if (joined_span(joined_from)) {
+    matched = 1
+    span_used = span_exact
+    first = span_first
+    last = span_last
   }
-  run_n = 0
-  run_text = ""
+  if (!matched)
+    return 0
+  match_text = ""
+  for (i = 1; i <= run_n; i++) {
+    if (run_low[i] && (span_used ? (i < first || i > last) : !(i in used)))
+      continue
+    if (span_used && i == span_first)
+      match_text = match_text (match_text == "" ? "" : " ") spoken_words
+    else if (span_used && i > span_first && i <= span_last)
+      continue
+    else if (!run_skip[i])
+      match_text = match_text (match_text == "" ? "" : " ") ((i in picked_raw) ? picked_raw[i] : run_raw[i])
+  }
+  store_candidate(match_text)
+  return 1
 }
 
 # Splits the finished tesseract line into runs at wide gaps, so a button beside another button is its own run.

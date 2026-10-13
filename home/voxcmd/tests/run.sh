@@ -92,6 +92,34 @@ out=$(match "$page" "settings")
 check "two runs hold 'settings'" "[[ \$(wc -l <<<\"\$out\") == 2 ]]"
 check "candidates are in reading order" "[[ \$(field \"\$out\" 2 | paste -sd' ') == '362 462' ]]"
 check "a run with extra words keeps them for weak matching" "[[ \$(field \"\$out\" 3 | tail -1) == 'open settings' ]]"
+# One run that holds the spoken words twice is two candidates, each with its own point and box.
+repeated=$(
+  window 0 0 1000 600 1000 600
+  strip 0 0 0 600
+  header
+  word 1 1 1 100 100 90 24 95 Settings
+  word 1 1 2 195 100 24 24 95 or
+  word 1 1 3 224 100 90 24 95 Settings
+  word 2 1 1 100 200 40 24 95 Edit
+  word 2 1 2 144 200 40 24 95 Edit
+  word 3 1 1 100 300 40 24 95 Sign
+  word 3 1 2 144 300 20 24 95 in
+  word 3 1 3 168 300 40 24 95 here
+  word 3 1 4 212 300 40 24 95 sign
+  word 3 1 5 256 300 20 24 95 in
+  word 4 1 1 100 500 80 24 90 Newtask
+  word 4 1 2 184 500 20 24 90 or
+  word 4 1 3 208 500 80 24 90 Newtask
+)
+out=$(match "$repeated" settings)
+check "'Settings or Settings' in one run is two candidates" "[[ \$(wc -l <<<\"\$out\") == 2 ]]"
+check "each has its own point and box" "[[ \$(field \"\$out\" 1 | paste -sd' ') == '145 269' && \$(field \"\$out\" 5 | paste -sd' ') == '100 224' ]]"
+out=$(match "$repeated" edit)
+check "adjacent 'Edit Edit' is two candidates" "[[ \$(wc -l <<<\"\$out\") == 2 ]]"
+out=$(match "$repeated" "sign in")
+check "a multi-word target twice in one run is two candidates" "[[ \$(wc -l <<<\"\$out\") == 2 && \$(field \"\$out\" 5 | paste -sd' ') == '100 212' ]]"
+out=$(match "$repeated" "new task")
+check "a joined span twice in one run is two candidates" "[[ \$(wc -l <<<\"\$out\") == 2 && \$(field \"\$out\" 5 | paste -sd' ') == '100 208' ]]"
 out=$(match "$page" "nothing like this")
 check "text absent from the screen matches nothing" "[[ -z \$out ]]"
 out=$(match "$page" "ghost")
@@ -555,6 +583,14 @@ SANDBOX_TESSERACT_TSV=$({
 })
 out=$(route "click 2 tasks")
 check "'2 tasks' in a sentence runs and clicks the sub-span's centre" "grep -q '^result:      run' <<<\"\$out\" && grep -q \"id='168,82,left,\" <<<\"\$out\""
+SANDBOX_TESSERACT_TSV=$({
+  header
+  word 1 1 1 80 40 90 24 95 Settings
+  word 1 1 2 175 40 24 24 95 or
+  word 1 1 3 204 40 90 24 95 Settings
+})
+out=$(route "click settings")
+check "one run saying 'Settings or Settings' asks with the picker instead of clicking" "grep -q 'ask with the picker (2 options' <<<\"\$out\""
 SANDBOX_TESSERACT_TSV=$({
   header
   word 1 1 1 80 40 60 24 95 Tasks
