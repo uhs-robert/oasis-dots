@@ -1025,6 +1025,13 @@ hints_reading_answer() {
     sleep 0.02
   done
 }
+wait_for_path() {
+  local deadline=$((SECONDS + 20))
+  until [ -e "$1" ]; do
+    ((SECONDS < deadline)) || return 1
+    sleep 0.02
+  done
+}
 : >"$log"
 SANDBOX_CLICKHINTS_HOLD=1 "$hints" "Which one?" "$hint_choices" >/dev/null &
 waiter_pid=$!
@@ -1036,6 +1043,18 @@ check "TERM exits 1 and dismisses the overlay" "[[ $waiter_status == 1 ]] && gre
 start=$SECONDS
 SANDBOX_CLICKHINTS_HOLD=1 VOXCMD_HINTS_TIMEOUT=0.2 run_hints "Which one?" "$hint_choices" >/dev/null && timeout_status=0 || timeout_status=$?
 check "a reader timeout exits 1 and dismisses the overlay" "[[ $timeout_status == 1 ]] && grep -q 'qs-ipc call clickhints dismiss' '$log' && [[ $((SECONDS - start)) -lt 5 ]]"
+
+# A signal during the open call itself: bash runs the trap only once the call returns, so the test sends TERM while the
+# stub holds the call, then releases it. The overlay was requested, so it must still be dismissed.
+: >"$log"
+open_block=$root/open-block
+SANDBOX_CLICKHINTS_HOLD=1 SANDBOX_CLICKHINTS_BLOCK=$open_block "$hints" "Which one?" "$hint_choices" >/dev/null &
+opening_pid=$!
+wait_for_path "$open_block.entered"
+kill -TERM "$opening_pid"
+: >"$open_block.release"
+wait "$opening_pid" && opening_status=0 || opening_status=$?
+check "TERM during the open call exits 1 and dismisses the overlay" "[[ $opening_status == 1 ]] && grep -q 'qs-ipc call clickhints dismiss' '$log'"
 
 # --listen: the reply recording starts through voxcmd listen --start-only before the overlay opens. The recording is
 # held, and the sandbox's setsid writes the owner file, so voxcmd-hints sees it live at once instead of waiting 2s for it.
