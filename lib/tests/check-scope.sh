@@ -205,8 +205,16 @@ case_firefox_extension() {
   expect_skipped qmllint luacheck shellcheck
 }
 
+case_firefox_policy() {
+  start_case 'Firefox policy installer'
+  echo '# x' >>lib/firefox-policy.sh
+  plan
+  expect_ran firefox-policy shellcheck
+  expect_skipped qmllint luacheck voxcmd-click check-scope
+}
+
 for case_fn in case_readme case_home_qml case_greeter_lua case_voxcmd_runner case_deleted_sourced_helper \
-  case_unmapped_path case_check_sh case_full_override case_check_scope_for_check_script case_check_scope_for_own_test case_firefox_extension; do
+  case_unmapped_path case_check_sh case_full_override case_check_scope_for_check_script case_check_scope_for_own_test case_firefox_extension case_firefox_policy; do
   report "$case_fn"
 done
 
