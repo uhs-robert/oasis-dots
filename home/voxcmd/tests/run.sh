@@ -1351,16 +1351,26 @@ check "a link number is typed as a count before Alt+F12" "[[ \"\$(typed | paste 
 : >"$log"
 out=$(SANDBOX_ACTIVEWINDOW_JSON=$(firefox_window 0x3001) "$firefox_tab" hints '1");alert(1);("')
 check "a link number is digits only" "[[ \$out == not\\ a\\ link\\ number:* && -z \$(typed) ]]"
-check "the rc binds Alt+F12 once, with 0 as the argument when no count is typed" "[[ \$(grep -c '^bind <A-F12> js -p .* 0\$' '$repo_rc') == 1 ]]"
+check "the rc binds Alt+F12 once, ending its code at the -d delimiter so a count arrives in JS_ARGS" "[[ \$(grep -c '^bind <A-F12> js -d€ .*€\$' '$repo_rc') == 1 ]]"
 check "and the voxhints and voxfollow commands are gone" "! grep -q 'voxhints\\|voxfollow' '$repo_rc'"
-rc_js=$(sed -n 's/^bind <A-F12> js -p \(.*\) 0$/\1/p' "$repo_rc")
+rc_command=$(sed -n 's/^bind <A-F12> \(js .*\)$/\1/p' "$repo_rc")
+rc_js=${rc_command#js -d€ }
 check "the rc's hints are numbered for one run, in the page's memory" "grep -q 'config.hintnames=\"numeric\";config.hintautoselect=\"false\"' <<<\"\$rc_js\" && ! grep -q 'config.set' <<<\"\$rc_js\""
 check "and the settings go back once the hint run ends" "grep -q 'tri.excmds.hint().then(restore,restore)' <<<\"\$rc_js\""
 if command -v node >/dev/null; then
   # The rc's code, run against a stand-in for Tridactyl and the page: what each number does with the hints on screen.
   cat >"$root/rc-js.js" <<'NODE'
-const body = process.argv[2]
-async function follow(JS_ARG, names) {
+// Tridactyl appends a count to the bound command and splits off JS_ARGS at the -d delimiter (js_helper in excmds.ts).
+const command = process.argv[2]
+function parse(count) {
+  const words = (count ? command + " " + count : command).split(" ").slice(1)
+  const separator = /^-d(.)/.exec(words.shift())[1]
+  const joined = words.join(" ")
+  const at = joined.indexOf(separator)
+  return { body: joined.slice(0, at), JS_ARGS: joined.slice(at + 1).split(" ") }
+}
+async function follow(count, names) {
+  const { body, JS_ARGS } = parse(count)
   const calls = []
   const tri = {
     config: { USERCONFIG: { hintnames: "own" } },
@@ -1373,10 +1383,10 @@ async function follow(JS_ARG, names) {
 }
 ;(async () => {
   const hints = ["1", "2", "12"]
-  console.log([await follow("0", hints), await follow("2", hints), await follow("12", hints), await follow("9", hints), await follow('1");x("', hints)].join(" "))
+  console.log([await follow("", hints), await follow("2", hints), await follow("12", hints), await follow("9", hints), await follow('1");x("', hints)].join(" "))
 })()
 NODE
-  out=$(node "$root/rc-js.js" "$rc_js")
+  out=$(node "$root/rc-js.js" "$rc_command")
   check "a count of 0 only shows hints, with the numbering set" "[[ \"\${out%% *}\" == ':numeric' ]]"
   check "a count follows the hint with that number, digit by digit" "[[ \"\$out\" == *' key2,select:numeric key1,key2,select:numeric '* ]]"
   check "a number with no hint leaves hint mode and follows nothing" "[[ \"\$out\" == *' reset:numeric reset:numeric' ]]"
