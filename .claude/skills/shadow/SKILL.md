@@ -12,11 +12,19 @@ description: Run the full Quickshell bar in an invisible, isolated nested Hyprla
 .claude/skills/shadow/shadow.sh ipc <name> popup open weather   # qs ipc call; `ipc <name> show` lists targets
 .claude/skills/shadow/shadow.sh wait <name> popup weather    # until it is fully drawn; also `osd voxtype`, `popup closed`, or `clickhints open`/`closed`; default --timeout 5
 .claude/skills/shadow/shadow.sh keys <name> 2              # wtype args, e.g. `-k Tab`, `-M ctrl -k l -m ctrl`
+.claude/skills/shadow/shadow.sh run <name> [VAR=value ...] -- <command> [args...]   # any app, detached, inside the shadow; prints its pid and log
+.claude/skills/shadow/shadow.sh env <name>                  # export lines for gdbus or a script to query the shadow's bus
 .claude/skills/shadow/shadow.sh voxtype <name> recording   # idle|recording|transcribing: the only way to raise the OSD, since there is no PipeWire
 .claude/skills/shadow/shadow.sh hyprctl <name> layers -j
 .claude/skills/shadow/shadow.sh shot <name> [<layer namespace>] [--pad N] [--out PATH]   # no namespace: whole output at the shadow size
 .claude/skills/shadow/shadow.sh status [<name>]
 .claude/skills/shadow/shadow.sh down <name> [--keep]
+```
+
+Use `run` for any app an agent needs in isolation (a browser with a throwaway profile, a terminal, an accessibility target). Never hand-write an env file and source it: `run` starts the command from the shadow's own environment (Wayland socket, session bus, `XDG_RUNTIME_DIR`, `HYPRLAND_INSTANCE_SIGNATURE`, throwaway HOME) after refusing unless the shadow is up and all of those point inside its runtime dir. It cannot override those variables or `HOME`. Output goes to `logs/run-<command>-<time>-<n>.log`, and `down` kills each started app's session before its sweep. `env` applies the same guard and prints the same variables as `export` lines, for read-only queries (`eval "$(shadow.sh env <name>)"` in a throwaway subshell, never the owner's shell).
+
+```
+.claude/skills/shadow/shadow.sh run demo GNOME_ACCESSIBILITY=1 -- firefox --no-remote --profile /tmp/ff-demo-profile
 ```
 
 `smoke.sh [--out DIR] [--name SHADOW] [--dry-run] [--self-test] [style...]` runs one pass per style on a shadow (its own `smoke`, brought up and down unless `--name` names a running one): popup, OSD (voxtype recording), which-key, the click-hints overlay (fixture boxes) and the region selector, then a contact sheet `sheet.png` and a log check. It records `MISS <style> <surface>-blank` when a capture matches what lies behind it. The which-key HUD is fed a fixture payload through its `hyprvim_whichkey` IPC target because the shadow loads no HyprVim, so it shows the HUD's drawing in each style, not the owner's real key rows. The volume and brightness OSDs cannot be raised (no PipeWire, no backlight writes).

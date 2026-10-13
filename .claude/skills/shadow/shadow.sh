@@ -88,7 +88,23 @@ set_client_env() {
   local wl_socket
   wl_socket="$runtime/$(<"$base/wl-socket")"
   [[ $wl_socket == "$runtime"/wayland-* && -S $wl_socket ]] || die "shadow socket $wl_socket is missing; refusing to send anything"
+  [[ -S $runtime/bus ]] || die "shadow bus $runtime/bus is missing; refusing to send anything"
   client_env=("${shadow_env[@]}" WAYLAND_DISPLAY="$wl_socket" HYPRLAND_INSTANCE_SIGNATURE="$signature" QT_QPA_PLATFORM=wayland)
+  assert_inside_runtime "${client_env[@]}"
+}
+
+# Refuses an environment whose bus, display or runtime dir is not inside this shadow's runtime dir.
+assert_inside_runtime() {
+  local entry seen=0
+  for entry in "$@"; do
+    case $entry in
+    DBUS_SESSION_BUS_ADDRESS=* | WAYLAND_DISPLAY=* | XDG_RUNTIME_DIR=*)
+      seen=$((seen + 1))
+      [[ ${entry#*=} =~ ^(unix:path=)?"$runtime"(/[^/]+)?$ ]] || die "${entry%%=*} points outside $runtime; refusing"
+      ;;
+    esac
+  done
+  ((seen == 3)) || die "environment lacks the bus, display or runtime dir; refusing"
 }
 
 shadow_hyprctl() {
@@ -373,6 +389,45 @@ keys() {
   "${client_env[@]}" sh -c 'case $WAYLAND_DISPLAY in "$0"/*) exec wtype "$@" ;; *) echo "shadow: WAYLAND_DISPLAY outside $0" >&2; exit 1 ;; esac' "$runtime" "$@"
 }
 
+# Starts a command detached in its own session inside the shadow, so `down` can kill it by session.
+run_app() {
+  set_name "${1:-}"
+  shift
+  local usage="usage: shadow.sh run <name> [VAR=value ...] -- <command> [args...]"
+  local extra=()
+  while (($# > 0)) && [[ $1 != -- ]]; do
+    [[ $1 =~ ^[A-Za-z_][A-Za-z0-9_]*= ]] || die "$1 is not VAR=value; $usage"
+    # These would point the app back at the owner's session or home.
+    [[ ${1%%=*} =~ ^(HOME|XDG_RUNTIME_DIR|DBUS_SESSION_BUS_ADDRESS|WAYLAND_DISPLAY|HYPRLAND_INSTANCE_SIGNATURE|DISPLAY)$ ]] &&
+      die "${1%%=*} is fixed by the shadow and cannot be overridden"
+    extra+=("$1")
+    shift
+  done
+  (($# > 1)) || die "$usage"
+  shift
+  set_client_env
+  mkdir -p "$logs"
+  local log
+  log="$logs/run-$(basename "$1")-$(date +%H%M%S)-$RANDOM.log"
+  setsid "${client_env[@]}" "${extra[@]}" "$@" >"$log" 2>&1 </dev/null &
+  local pid=$!
+  echo "$pid" >"$base/run-$pid.sid"
+  sleep 0.2
+  kill -0 "$pid" 2>/dev/null || echo "shadow: $1 already exited; see $log" >&2
+  echo "pid $pid"
+  echo "log $log"
+}
+
+# Export lines for read-only tools (gdbus, scripts) that talk to the shadow's bus and compositor.
+print_env() {
+  set_name "${1:-}"
+  set_client_env
+  local entry
+  for entry in "${client_env[@]:2}"; do
+    printf 'export %s=%q\n' "${entry%%=*}" "${entry#*=}"
+  done
+}
+
 # Exit 0 when under 1% of the image's pixels differ from its most common colour.
 is_uniform() {
   python3 - "$1" <<'PY'
@@ -521,6 +576,10 @@ kill_session() {
 # `up` keeps them for debugging, `down` removes them unless asked to keep them).
 teardown() {
   local component pid left
+  local run_sid
+  for run_sid in "$base"/run-*.sid; do
+    [[ -f $run_sid ]] && kill_session "$(basename "$run_sid" .sid)"
+  done
   for component in qs hypr host bus; do kill_session "$component"; done
   if mountpoint -q "$runtime/gvfs" 2>/dev/null; then fusermount -u "$runtime/gvfs" || fusermount -uz "$runtime/gvfs"; fi
   # Strays outside the recorded sessions (a service the bus activated, a daemonized child) get one sweep.
@@ -557,13 +616,15 @@ down() {
   fi
 }
 
-usage="usage: shadow.sh {up <name> [--size WxH] [<branch>...]|ipc <name> <ipc call args>|keys <name> <wtype args>|voxtype <name> {idle|recording|transcribing}|hyprctl <name> <args>|wait <name> {popup|osd|clickhints} {<what>|open|closed} [--timeout SECONDS]|shot <name> [<layer namespace>] [--pad N] [--out PATH]|status [<name>]|down <name> [--keep]}"
+usage="usage: shadow.sh {up <name> [--size WxH] [<branch>...]|ipc <name> <ipc call args>|keys <name> <wtype args>|run <name> [VAR=value ...] -- <command> [args...]|env <name>|voxtype <name> {idle|recording|transcribing}|hyprctl <name> <args>|wait <name> {popup|osd|clickhints} {<what>|open|closed} [--timeout SECONDS]|shot <name> [<layer namespace>] [--pad N] [--out PATH]|status [<name>]|down <name> [--keep]}"
 cmd=${1:-}
 (($# > 0)) && shift
 case $cmd in
 up) up "$@" ;;
 ipc) ipc "$@" ;;
 keys) keys "$@" ;;
+run) run_app "$@" ;;
+env) print_env "$@" ;;
 voxtype) set_voxtype "$@" ;;
 hyprctl)
   set_name "${1:-}"

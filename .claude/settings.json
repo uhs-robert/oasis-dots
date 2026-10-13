@@ -1,4 +1,10 @@
 {
+  "permissions": {
+    "allow": [
+      "Bash(.claude/skills/shadow/shadow.sh env:*)",
+      "Bash(.claude/skills/shadow/shadow.sh run:*)"
+    ]
+  },
   "hooks": {
     "PreToolUse": [
       {
