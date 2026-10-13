@@ -1,9 +1,11 @@
 .pragma library
 .import "GameboySprites.js" as Gameboy
+.import "NesSprites.js" as Nes
 
 // Pixel icon sets a bar style can draw in place of the Nerd Font glyphs: set name -> icon name -> variant -> sprite rows.
 var sets = {
-    "gameboy": Gameboy.sprites
+    "gameboy": Gameboy.sprites,
+    "nes": Nes.sprites
 };
 
 var names = Object.keys(sets);

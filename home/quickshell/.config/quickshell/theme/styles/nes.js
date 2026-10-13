@@ -51,6 +51,7 @@ function overrides(t, ctx) {
         toggle_off: Qt.tint(t.fg_dim, Qt.alpha(t.fg_core, 0.35)),
         bar_font_family: "Press Start 2P",
         bar_font_size: 14,
+        bar_icon_set: "nes",
         bar_meeting_marker: "encounter_sprite",
         bar_side_bg: t.bg_crust,
         bar_center_bg: t.bg_crust,
