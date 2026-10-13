@@ -93,6 +93,7 @@ fi
 # The hooks read their input with jq, and owner-test-bar keeps its claim in JSON.
 if command -v jq >/dev/null 2>&1; then
   step agent-hooks bash ./home/claude/.claude/hooks/tests/guard-masked-checks.sh
+  step stale-shells-hook bash ./home/claude/.claude/hooks/tests/stale-shells.sh
   step owner-test-bar bash ./.claude/skills/owner-test-bar/tests/run.sh
 else
   echo 'skip: agent hook and owner-test-bar tests need jq'
