@@ -27,6 +27,8 @@ Hyprland starts it with `qs -n` (see `home/hypr/.config/hypr/config/autostart/`)
 | `assets/`     | Weather icons                                                                              |
 | `bars.json`   | Tracked bar layout per monitor, matched by description or connector name                   |
 
+Settings > Calendar shows whether `calendar-sync` is connected and when it last synced. Enter offers Connect (or Reconnect), which opens your terminal on `calendar-sync setup`, and Sync now. The row asks `calendar-sync setup --check` once when the section opens, never on a timer, so a locked rbw or keyring shows as such without being prodded repeatedly.
+
 Settings > Weather sets the location, units and forecast days. Automatic looks the place up from your IP address over HTTPS (ipwho.is), cached and repeated at most once a day; Manual takes a latitude, longitude and optional place name. Changes apply at once and are saved to `weather.local.json` (untracked) next to the tracked `weather.json` defaults, which it overrides. You can still edit either file by hand: `latitude` and `longitude` (a number or `"auto"`), `location_name` (replaces the looked-up name), `unit` (`fahrenheit` or `celsius`, which also picks mph or km/h and inches or mm), and `days` (1 to 16).
 
 Weather alerts come from the US National Weather Service (api.weather.gov), so the Alerts tab only appears for US locations; elsewhere no alert request is made. When no forecast has loaded and the last fetch failed, the bar shows `n/a` and the tooltip and popup header give the reason; with data already loaded it keeps showing it as stale.
@@ -113,7 +115,7 @@ Every section ends with a block that describes the selected (or hovered) setting
 | Group        | Sections                           |
 | ------------ | ---------------------------------- |
 | Appearance   | Style, Colors, Wallpaper, Theme options |
-| Bar          | Bar modules, Clock, Weather        |
+| Bar          | Bar modules, Clock, Calendar, Weather |
 | System       | Displays, Default apps, Power      |
 | Input        | Typing, Keyboard, Mouse & touchpad |
 | Sound        | Theme audio                        |
