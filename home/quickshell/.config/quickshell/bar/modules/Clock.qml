@@ -31,17 +31,18 @@ Row {
     }
 
     // The next meeting is worth the bar's room only just before it starts; a meeting under way shows as a dot.
-    readonly property bool chip_shown: CalendarState.minutes_until_next > 0 && CalendarState.minutes_until_next <= CalendarState.chip_window_minutes
+    readonly property bool chip_shown: CalendarState.chip_event !== null
     // The title is cut, not the minutes, so the countdown always shows.
     readonly property string chip_text: {
-        const title = CalendarState.next_event_today ? CalendarState.next_event_today.title : "";
-        return (root.compact ? "" : (title.length > 18 ? title.slice(0, 17) + "\u2026" : title) + " ") + CalendarState.minutes_until_next + "m";
+        const next = CalendarState.chip_event;
+        if (!next) return "";
+        return (root.compact ? "" : (next.title.length > 18 ? next.title.slice(0, 17) + "\u2026" : next.title) + " ") + CalendarState.minutes_to(next) + "m";
     }
     readonly property string agenda_tip: {
         const span = e => TimeFormat.format(new Date(e.start_ms)) + " - " + TimeFormat.format(new Date(e.end_ms));
         if (CalendarState.in_meeting) return "Now: " + CalendarState.current_event.title + "\n" + span(CalendarState.current_event);
-        const next = CalendarState.next_event_today;
-        return next ? "Next: " + next.title + "\n" + span(next) + " (in " + CalendarState.minutes_until_next + " min)" : "";
+        const next = CalendarState.chip_event || CalendarState.next_event_today;
+        return next ? "Next: " + next.title + "\n" + span(next) + " (in " + CalendarState.minutes_to(next) + " min)" : "";
     }
     onAgenda_tipChanged: if (hover.hovered && root.agenda_tip !== "") Tooltip.show(root, root.agenda_tip, "calendar")
 
@@ -215,6 +216,30 @@ Row {
         font.letterSpacing: Style.bar_letter_spacing
     }
 
+    Rectangle {
+        id: meeting_dot
+        visible: CalendarState.in_meeting
+        anchors.verticalCenter: parent.verticalCenter
+        width: 6
+        height: 6
+        radius: 3
+        color: root.on_accent ? root.ink : Theme.theme_primary
+    }
+
+    Text {
+        id: chip_label
+        visible: root.chip_shown
+        anchors.verticalCenter: parent.verticalCenter
+        text: root.chip_text
+        color: root.on_accent ? root.ink : Theme.theme_primary
+        font.family: Style.bar_font_family
+        style: Style.bar_text_style
+        styleColor: Style.bar_glow_color
+        font.pixelSize: Style.bar_font_size
+        font.capitalization: Style.bar_capitalization
+        font.letterSpacing: Style.bar_letter_spacing
+    }
+
     Text {
         visible: Style.bar_clock_brackets.a > 0 && !root.capsule
         anchors.verticalCenter: parent.verticalCenter
@@ -231,25 +256,12 @@ Row {
         font: time_label.font
     }
 
-    Rectangle {
-        visible: CalendarState.in_meeting
-        anchors.verticalCenter: parent.verticalCenter
-        width: 6
-        height: 6
-        radius: 3
-        color: root.on_accent ? root.ink : Theme.theme_primary
-    }
+    // Popups sized from the clock island ignore the room the chip and dot take, so a meeting does not widen them.
+    readonly property real calendar_room: (meeting_dot.visible ? meeting_dot.width + root.spacing : 0) + (chip_label.visible ? chip_label.width + root.spacing : 0)
 
-    Text {
-        visible: root.chip_shown
-        anchors.verticalCenter: parent.verticalCenter
-        text: root.chip_text
-        color: root.on_accent ? root.ink : Theme.theme_primary
-        font.family: Style.bar_font_family
-        style: Style.bar_text_style
-        styleColor: Style.bar_glow_color
-        font.pixelSize: Style.bar_font_size
-        font.capitalization: Style.bar_capitalization
-        font.letterSpacing: Style.bar_letter_spacing
+    Binding {
+        target: root.island ? root.island.parent : null
+        property: "popup_trim"
+        value: root.calendar_room
     }
 }
