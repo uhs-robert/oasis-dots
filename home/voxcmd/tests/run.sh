@@ -1368,10 +1368,14 @@ stop_fake_host() {
   rm -f "$XDG_RUNTIME_DIR/voxcmd/firefox.sock"
 }
 mkdir -p "$XDG_RUNTIME_DIR/voxcmd"
+chmod 700 "$XDG_RUNTIME_DIR/voxcmd"
 : >"$debug_log"
 make_profile
-retitled_clients=$(jq -c 'map(if .address == "0x3002" then .title = "Cart - Example Shop — Mozilla Firefox" else . end)' <<<"$SANDBOX_CLIENTS_JSON")
-cart_window=$(jq -c '.[] | select(.address == "0x3002")' <<<"$retitled_clients")
+# Two windows show the same tab title; the extension marks the one holding the activated tab with the nonce.
+export VOXCMD_FIREFOX_NONCE=vxtest1
+marked_clients=$(jq -c 'map(if .address == "0x3001" then .title = "Cart - Example Shop — Mozilla Firefox" elif .address == "0x3002" then .title = "vxtest1 Cart - Example Shop — Mozilla Firefox" else . end)' <<<"$SANDBOX_CLIENTS_JSON")
+cart_window=$(jq -c '.[] | select(.address == "0x3002")' <<<"$marked_clients")
+reloading_clients=$(jq -c 'map(if .address == "0x3002" then .title = "vxtest1 (3) Cart - Example Shop — Mozilla Firefox" else . end)' <<<"$marked_clients")
 
 start_fake_host
 out=$("$firefox_tab" tabs)
@@ -1383,35 +1387,69 @@ check "a candidate carries the tab id and its title" "[[ \$(jq -r '[.[] | select
 check "candidates are listed by site name too" "jq -e 'any(.[]; .match_text == \"wiki example\" and .id == \"tab:12 Unloaded Wiki Page\")' <<<\"\$out\" >/dev/null"
 check "a window with no live tab is a candidate under the old id" "jq -e 'any(.[]; .id == \"0x3003 Private notes\")' <<<\"\$out\" >/dev/null"
 
+check "hidden tabs are left out, as the store's are" "! jq -e 'any(.[]; .tab_id == 31)' <<<\"\$(\"\$firefox_tab\" tabs)\" >/dev/null"
 : >"$log"
 : >"$live_requests"
-out=$(SANDBOX_CLIENTS_JSON=$retitled_clients SANDBOX_ACTIVEWINDOW_JSON=$cart_window "$firefox_tab" focus tab:22 "Cart - Example Shop")
-check "focus tab:<id> activates the tab through the extension" "[[ \$(jq -c '[.cmd, .tab_id]' <<<\"\$(tail -n 1 '$live_requests')\") == '[\"activate\",22]' ]]"
-check "then focuses the window whose title became the tab's" "grep -q \"^hyprctl dispatch hl.dsp.focus({ window = 'address:0x3002' })\" '$log'"
+out=$(SANDBOX_CLIENTS_JSON=$marked_clients SANDBOX_ACTIVEWINDOW_JSON=$cart_window "$firefox_tab" focus tab:22 "Cart - Example Shop")
+check "focus tab:<id> activates the tab through the extension, naming a nonce" "[[ \$(jq -c '[.cmd, .tab_id, .preface]' <<<\"\$(grep activate '$live_requests')\") == '[\"activate\",22,\"vxtest1\"]' ]]"
+check "then focuses the window carrying the nonce, not the other one with the same title" "grep -q \"^hyprctl dispatch hl.dsp.focus({ window = 'address:0x3002' })\" '$log' && ! grep -q \"address:0x3001\" '$log'"
+check "and gives the title back" "[[ \$(jq -c '[.cmd, .window_id]' <<<\"\$(tail -n 1 '$live_requests')\") == '[\"clear_preface\",2]' ]]"
 check "and types nothing" "[[ -z \$(typed) ]]"
 : >"$log"
-out=$(SANDBOX_CLIENTS_JSON=$retitled_clients SANDBOX_ACTIVEWINDOW_JSON=$cart_window "$firefox_tab" goto https://shop.example.com/)
-check "goto activates the most recent live tab on the site" "[[ \$(tail -n 1 '$live_requests') == *'\"tab_id\": 22'* ]] && [[ -z \$(typed) ]]"
+out=$(SANDBOX_CLIENTS_JSON=$reloading_clients SANDBOX_ACTIVEWINDOW_JSON=$cart_window "$firefox_tab" focus tab:22 "Cart - Example Shop")
+check "a title that changes while the tab loads does not matter" "grep -q \"address:0x3002\" '$log' && [[ -z \$(typed) ]]"
+: >"$log"
+out=$(SANDBOX_CLIENTS_JSON=$marked_clients SANDBOX_ACTIVEWINDOW_JSON=$cart_window "$firefox_tab" goto https://shop.example.com/)
+check "goto activates the most recent live tab on the site" "[[ \$(grep -c '\"tab_id\": 22' '$live_requests') == 3 ]] && [[ -z \$(typed) ]]"
 : >"$log"
 status=0
-out=$("$firefox_tab" focus tab:22 "Cart - Example Shop") || status=$?
-check "a window that never shows the activated tab is an error" "[[ \$status != 0 && \$out == 'no window shows the activated tab'* ]]"
+out=$(VOXCMD_FIREFOX_PREFACE_WAIT=0.2 SANDBOX_ACTIVEWINDOW_JSON=$inbox_window "$firefox_tab" focus tab:22 "Cart - Example Shop" 2>&1) || status=$?
+check "a window that never shows the nonce is no failure once the tab switched" "[[ \$status == 0 && -z \$(typed) ]] && ! grep -q 'dispatch' '$log'"
+status=0
+out=$(VOXCMD_FIREFOX_PREFACE_WAIT=0.2 "$firefox_tab" focus tab:22 "Cart - Example Shop" 2>&1) || status=$?
+check "but unfocused Firefox is said" "[[ \$status == 0 && \$out == *'could not be focused'* ]]"
+
+start_fake_host silent-activate
+: >"$log"
+: >"$debug_log"
+status=0
+out=$(VOXCMD_FIREFOX_HOST_TIMEOUT=0.3 SANDBOX_ACTIVEWINDOW_JSON=$inbox_window SANDBOX_SWITCHED_TITLE="Cart - Example Shop" "$firefox_tab" focus tab:22 "Cart - Example Shop") || status=$?
+check "an activation that times out is reported, not retried through the address bar" "[[ \$status != 0 && \$out == *'address bar was not tried'* && -z \$(typed) ]]"
+start_fake_host malformed-activate
+status=0
+out=$(SANDBOX_ACTIVEWINDOW_JSON=$inbox_window "$firefox_tab" focus tab:22 "Cart - Example Shop") || status=$?
+check "so is a malformed answer to it" "[[ \$status != 0 && \$out == *'malformed'* && -z \$(typed) ]]"
+start_fake_host malformed-tabs
+out=$("$firefox_tab" tabs)
+check "a malformed tab list falls back to the session store" "jq -e 'all(.[]; .tab_id == null) and length > 0' <<<\"\$out\" >/dev/null"
+
+start_fake_host
+chmod 755 "$XDG_RUNTIME_DIR/voxcmd"
+: >"$debug_log"
+out=$("$firefox_tab" tabs)
+check "a socket in a directory others can enter is not used" "jq -e 'all(.[]; .tab_id == null)' <<<\"\$out\" >/dev/null && grep -q 'private directory' '$debug_log'"
+chmod 700 "$XDG_RUNTIME_DIR/voxcmd"
+out=$(env -u XDG_RUNTIME_DIR "$firefox_tab" tabs)
+check "without XDG_RUNTIME_DIR nothing is looked for in /tmp" "jq -e 'all(.[]; .tab_id == null)' <<<\"\$out\" >/dev/null"
+out=$("$firefox_tab" tabs)
+check "a private directory is used" "jq -e 'any(.[]; .tab_id == 22)' <<<\"\$out\" >/dev/null"
 
 start_fake_host error
 : >"$log"
 : >"$debug_log"
-out=$(SANDBOX_ACTIVEWINDOW_JSON=$inbox_window SANDBOX_SWITCHED_TITLE="Cart - Example Shop" "$firefox_tab" focus tab:22 "Cart - Example Shop")
-check "an extension error falls back to the address bar" "[[ \"\$(typed | paste -sd'|')\" == '-M ctrl l -m ctrl|-- % Cart - Example Shop|-k Down|-k Return' ]]"
-check "the reason is in the debug trace" "grep -q 'answered with an error: refused' '$debug_log'"
+status=0
+out=$(SANDBOX_ACTIVEWINDOW_JSON=$inbox_window "$firefox_tab" focus tab:22 "Cart - Example Shop") || status=$?
+check "an error answer to an activation is reported, not retried through the address bar" "[[ \$status != 0 && \$out == *'answered with an error: refused'* && -z \$(typed) ]]"
 out=$("$firefox_tab" tabs)
-check "and tabs come from the session store" "jq -e 'all(.[]; .tab_id == null) and any(.[]; .title == \"Cart - Example Shop\")' <<<\"\$out\" >/dev/null"
+check "but an error answer to the tab list falls back to the session store" "jq -e 'all(.[]; .tab_id == null) and any(.[]; .title == \"Cart - Example Shop\")' <<<\"\$out\" >/dev/null"
+check "saying why in the debug trace" "grep -q 'answered with an error: refused' '$debug_log'"
 
 stop_fake_host
 : >"$log"
 : >"$debug_log"
 out=$(SANDBOX_ACTIVEWINDOW_JSON=$inbox_window SANDBOX_SWITCHED_TITLE="Cart - Example Shop" "$firefox_tab" focus tab:22 "Cart - Example Shop")
 check "with no socket a tab id is looked up by title and switched through the address bar" "[[ \"\$(typed | paste -sd'|')\" == '-M ctrl l -m ctrl|-- % Cart - Example Shop|-k Down|-k Return' ]]"
-check "saying why in the debug trace" "grep -q 'unreachable' '$debug_log'"
+check "saying why in the debug trace" "grep -q 'is not usable' '$debug_log'"
 python3 -c 'import socket,sys; s=socket.socket(socket.AF_UNIX); s.bind(sys.argv[1])' "$XDG_RUNTIME_DIR/voxcmd/firefox.sock"
 out=$("$firefox_tab" tabs)
 check "a stale socket nobody listens on is no extension either" "jq -e 'all(.[]; .tab_id == null) and length > 0' <<<\"\$out\" >/dev/null"
