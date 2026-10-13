@@ -16,7 +16,18 @@ before=$(git -C "$repo" rev-parse HEAD)
 (($# == 0)) || (cd "$repo" && "$HOME/.claude/skills/merge-prs/merge-prs.sh" --wait-review "$@") || die "merge-prs failed; nothing after the merge ran"
 git -C "$repo" pull -q --ff-only
 after=$(git -C "$repo" rev-parse HEAD)
-(cd "$repo" && just check) || die "just check fails on main after the merge; fix it before anything else"
+# Inductive, like the Stop hook's last_ok: a full pass of `before` plus a scoped pass over everything changed since
+# vouches for `after`. A `before` not recorded as passed (check-passed.sh also ignores a worktree's no-repos pass,
+# which skipped this checkout's repos/ symlinks) or CHECK_FULL=1 falls back to the full check.
+if [[ $before != "$after" ]]; then
+  if [[ -z ${CHECK_FULL:-} ]] && (cd "$repo" && lib/check-passed.sh is-passed "$before") &&
+    git -C "$repo" merge-base --is-ancestor "$before" "$after"; then
+    (cd "$repo" && lib/check.sh --changed "$before") || die "the check fails on main after the merge; fix it before anything else"
+  else
+    (cd "$repo" && just check) || die "just check fails on main after the merge; fix it before anything else"
+  fi
+  (cd "$repo" && lib/check-passed.sh record)
+fi
 
 qs_dir=home/quickshell/.config/quickshell
 greeter_paths="^($qs_dir/(lock/skins/|lock/Tints\.js$|theme/|fonts/|VERSION$)|system/etc/greetd/(quickshell/|hyprland\.lua$)|system/usr/local/bin/qs-greeter$|lib/greeter\.sh$|justfile$)"
