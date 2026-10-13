@@ -10,13 +10,14 @@
 
 The address is a credential: anyone holding it can read the whole calendar. It goes from rbw into memory only. It is never in a command line, a log, the cache or an error message. If it leaks, reset it in Google Calendar settings.
 
-To use another entry name, set `CALENDAR_SYNC_RBW_ENTRY`, for example in a drop-in: `systemctl --user edit calendar-sync.service`.
+Only https addresses are accepted. To use another entry name, set `CALENDAR_SYNC_RBW_ENTRY`, for example in a drop-in: `systemctl --user edit calendar-sync.service`.
 
 ## Behavior
 
 - When rbw is locked the timer does nothing and says nothing; it never opens a password prompt. The cache stays as it was and catches up on the first run after you unlock.
 - Events from 7 days back to 60 days ahead are written to `${XDG_CACHE_HOME:-~/.cache}/calendar/events.json`. Recurring events are expanded into one entry per occurrence.
-- On failure the last `events.json` is kept and `error.json` next to it holds a short, address-free message. The next good sync removes it.
+- With no rbw entry for the address, or without the two Python libraries, it also does nothing and says nothing (`--now` prints a hint).
+- On failure the last `events.json` is kept and `error.json` next to it holds a short, address-free message. The next good sync removes it. A network or HTTP failure still exits 0, so a laptop that goes offline does not leave the unit in `systemctl --failed`; a feed that cannot be parsed exits 1. Consumers should treat `error.json` as stale when its `at` is older than `events.json`'s `updated`.
 - The script refuses to run when the cache path is inside a git work tree, so event data cannot land in a checkout.
 - After each sync it runs `qs-ipc call calendar refresh` so the bar reloads at once. A bar without that target is ignored.
 

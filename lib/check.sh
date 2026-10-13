@@ -56,7 +56,7 @@ else
 fi
 
 if command -v shfmt >/dev/null 2>&1; then
-  step shfmt shfmt -i 2 -d install.sh uninstall.sh lib/*.sh demo/*.sh home/hypr/.config/hypr/scripts/state-write home/voxcmd/tests/*.sh home/quickshell/.config/quickshell/scripts/lib/*.sh home/quickshell/.config/quickshell/scripts/ff7-audio home/quickshell/.config/quickshell/scripts/goldeneye-audio home/quickshell/.config/quickshell/scripts/mgs2-audio home/quickshell/.config/quickshell/scripts/ocarina-audio
+  step shfmt shfmt -i 2 -d install.sh uninstall.sh lib/*.sh demo/*.sh home/hypr/.config/hypr/scripts/state-write home/voxcmd/tests/*.sh home/calendar/tests/*.sh home/quickshell/.config/quickshell/scripts/lib/*.sh home/quickshell/.config/quickshell/scripts/ff7-audio home/quickshell/.config/quickshell/scripts/goldeneye-audio home/quickshell/.config/quickshell/scripts/mgs2-audio home/quickshell/.config/quickshell/scripts/ocarina-audio
   # shellcheck disable=SC2086 # newline-separated tracked paths, none contain spaces
   [ -z "$agent_script_files" ] || step shfmt shfmt -i 2 -d $agent_script_files
 else
@@ -80,6 +80,8 @@ if command -v jq >/dev/null 2>&1 && command -v fzf >/dev/null 2>&1; then
 else
   echo 'skip: voxcmd phrases need jq and fzf'
 fi
+# The syntax check needs no libraries so it always runs; py_compile would drop a __pycache__ into the stow package.
+step calendar-sync-syntax python3 -c 'import ast, sys; ast.parse(open(sys.argv[1]).read())' ./home/calendar/.local/bin/calendar-sync
 # calendar-sync needs its two Python libraries; the test stubs rbw and qs-ipc.
 if python3 -c 'import icalendar, recurring_ical_events' >/dev/null 2>&1; then
   step calendar-sync bash ./home/calendar/tests/run.sh

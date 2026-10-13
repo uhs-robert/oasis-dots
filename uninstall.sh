@@ -22,7 +22,7 @@ as those should be removed manually.
 
 Options:
   --no-system-files    Skip removal of system files (/etc/greetd, etc.)
-  --no-services        Skip disabling services (greetd, keyd, sshd, voxtype)
+  --no-services        Skip disabling services (greetd, keyd, sshd, voxtype, calendar timer)
   -y, --yes            Auto-confirm all prompts
   -h, --help           Show this help message
 EOF
@@ -176,7 +176,7 @@ remove_root_symlinks() {
   fi
 }
 
-# Prompts to disable greetd, keyd, sshd and voxtype if they are currently enabled.
+# Prompts to disable greetd, keyd, sshd, voxtype and the calendar timer, and to remove the calendar cache, if they are currently enabled.
 disable_services() {
   [[ $OPT_SERVICES -eq 0 ]] && return
 
@@ -195,6 +195,16 @@ disable_services() {
 
   if systemctl --user is-enabled voxtype &>/dev/null 2>&1; then
     confirm "Disable voxtype?" && systemctl --user disable --now voxtype && success "voxtype disabled"
+  fi
+
+  if systemctl --user is-enabled calendar-sync.timer &>/dev/null 2>&1; then
+    confirm "Disable the calendar sync timer?" && systemctl --user disable --now calendar-sync.timer && success "calendar sync timer disabled"
+  fi
+
+  # The cache holds event titles and attendees, so offer to delete it with the timer.
+  local calendar_cache="${XDG_CACHE_HOME:-$HOME/.cache}/calendar"
+  if [[ -d "$calendar_cache" ]]; then
+    confirm "Remove the calendar cache ($calendar_cache)?" && rm -rf "$calendar_cache" && success "calendar cache removed"
   fi
 }
 
