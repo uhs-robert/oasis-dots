@@ -49,6 +49,8 @@ Modules (the registry is `services/BarModules.js`): `start` (Start button), `wor
 
 While a voxcmd voice session is open (`$XDG_RUNTIME_DIR/voxcmd/session.json`, ignored once its owner process is gone), the current mode (rapid, click, type...) hangs from the center island as a tab beside the Hyprland submap tab, tinted per mode `kind` from the theme's submap palette (`services/VoxSession.qml`). Its text is the file's `label`; the `voxtype` tooltip shows its `exit_hint`.
 
+While voxcmd's wake word listener holds the microphone (`$XDG_RUNTIME_DIR/voxcmd/wake.json` says `armed`; `voxcmd wake on` in the voxcmd README), the `voxtype` module shows a small dot beside its icon in the theme's secondary colour and its tooltip reads "Listening for \"hey jarvis\"" (`services/VoxWake.qml`). It is deliberately not the recording pulse or colour: it shows only while voxtype is idle, and goes while the listener is paused for media or a recording, or off. When the file says `ready` (the listener's trigger started a recording and voxtype reports `recording`), the dot turns the theme's `ok` colour and blinks three times as the cue to speak, then clears with the recording.
+
 ```json
 [
   { "match": { "name": "eDP-*" }, "compact": true, "left": ["start", "workspaces"], "center": ["clock"], "right": ["volume", "battery"] },
