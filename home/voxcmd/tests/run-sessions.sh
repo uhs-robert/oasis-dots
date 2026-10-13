@@ -503,6 +503,11 @@ check "'never mind' does too" "[[ \$(tab_calls) == 'hints,dismiss-hints' ]]"
 sess_run "done"
 dismissed_soon
 check "and so does the session's own 'done'" "[[ \$(tab_calls) == 'hints,dismiss-hints' ]]"
+for word in "exit" "Quit." "okay stop" "stop showing links" "exit link hints" "turn off the hints" "links off" "close links now"; do
+  sess_run "$word"
+  dismissed_soon
+  check "'$word' takes the hints down too" "session_gone && [[ \$(tab_calls) == 'hints,dismiss-hints' ]]"
+done
 
 : >"$root/links-fail"
 sess_run 3
