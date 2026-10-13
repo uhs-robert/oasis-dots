@@ -65,7 +65,7 @@ Singleton {
         bodySupported: true
         bodyMarkupSupported: true
         bodyHyperlinksSupported: false
-        bodyImagesSupported: true
+        bodyImagesSupported: false
         imageSupported: true
         actionsSupported: true
 
