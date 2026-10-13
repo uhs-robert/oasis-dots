@@ -39,9 +39,9 @@
 #                                     choice's id. voxcmd-autostop gives no verdict (exit 1) unless a voxtype turn is
 #                                     being recorded (see below); --check passes unless SANDBOX_AUTOSTOP_OFF holds the
 #                                     reason it is off
-#   setsid                            logs "setsid owner=$VOXCMD_RECORDING_OWNER_FILE <args>" and starts nothing,
-#                                     unless SANDBOX_SETSID_RUN=1, which also runs the command (a voice session's
-#                                     watcher)
+#   setsid                            logs "setsid owner=$VOXCMD_RECORDING_OWNER_FILE <args>" and starts nothing
+#                                     but writes its PID to that owner file, as a watcher would, unless
+#                                     SANDBOX_SETSID_RUN=1, which runs the command instead (a voice session's watcher)
 #   voxtype record start|stop|cancel  logged. With SANDBOX_VOXTYPE_TURNS (a file of queued turns, one per line) it
 #                                     also acts like voxtype: start takes the next turn, sets the state file under
 #                                     $XDG_RUNTIME_DIR/voxtype to recording, and a turn that is speech writes itself
@@ -52,7 +52,9 @@
 #                                     exit (3) after half a second, any other turn waits on `$SANDBOX_AUTOSTOP_SLEEP 30`
 #                                     (default sleep; a copy under another name lets a test end leftovers by name).
 #                                     It logs its VOXCMD_AUTOSTOP_NO_SPEECH_SECS as "autostop no_speech_secs=<n>",
-#                                     then "autostop min_speech_secs=<n> silence_secs=<n>" from the matching variables
+#                                     then "autostop min_speech_secs=<n> silence_secs=<n>" from the matching variables.
+#                                     With VOXCMD_DEBUG set, speech and SILENCE first wait for the watcher to log that it
+#                                     sees the recording, and SILENCE then exits at once.
 #
 # Hyprland's dispatch, eval and keyword are logged and never sent.
 #
@@ -96,6 +98,24 @@ cat >"$stub_dir/.stub" <<'EOF'
 #!/bin/sh
 name=${0##*/}
 log() { printf '%s\n' "$name $*" >>"$SANDBOX_DIR/calls.log"; }
+# With VOXCMD_DEBUG on, waits (10s at most) until a watcher has logged that it sees the recording the last voxtype
+# record start began, so a turn never ends before its watcher's first poll: that watcher would take it for a recording
+# that never started and wait out its start grace. Without the debug log there is no telling, so it waits $1 seconds.
+wait_for_watcher_to_see_recording() {
+  if [ -z "${VOXCMD_DEBUG-}" ]; then
+    sleep "$1"
+    return
+  fi
+  waited=0
+  while [ "$(recordings_watchers_saw)" -le "$(cat "$SANDBOX_DIR/recording-mark" 2>/dev/null || echo 0)" ] && [ "$waited" -lt 500 ]; do
+    sleep 0.02
+    waited=$((waited + 1))
+  done
+}
+recordings_watchers_saw() {
+  count=$(grep -c 'watch: voxtype recording$' "$XDG_RUNTIME_DIR/voxcmd/debug.log" 2>/dev/null)
+  echo "${count:-0}"
+}
 pass_through() {
   PATH=$SANDBOX_REAL_PATH XDG_RUNTIME_DIR=$SANDBOX_REAL_XDG_RUNTIME_DIR HOME=$SANDBOX_REAL_HOME
   export PATH XDG_RUNTIME_DIR HOME
@@ -219,7 +239,7 @@ voxcmd-autostop)
   log "no_speech_secs=${VOXCMD_AUTOSTOP_NO_SPEECH_SECS:-default}"
   log "min_speech_secs=${VOXCMD_AUTOSTOP_MIN_SPEECH_SECS:-default} silence_secs=${VOXCMD_AUTOSTOP_SILENCE_SECS:-default}"
   if [ "$(cat "$SANDBOX_DIR/voxtype-turn")" = SILENCE ]; then
-    sleep 0.5
+    wait_for_watcher_to_see_recording 0.5
     exit 3
   fi
   exec "${SANDBOX_AUTOSTOP_SLEEP:-sleep}" 30
@@ -227,6 +247,8 @@ voxcmd-autostop)
 setsid)
   log "owner=${VOXCMD_RECORDING_OWNER_FILE-} $*"
   [ -z "${SANDBOX_SETSID_RUN-}" ] || exec "$@"
+  # A watcher's first step, so a picker waiting for its reply recording's owner finds one.
+  [ -z "${VOXCMD_RECORDING_OWNER_FILE-}" ] || echo $$ >"$VOXCMD_RECORDING_OWNER_FILE"
   ;;
 voxtype)
   log "$@"
@@ -240,9 +262,11 @@ voxtype)
     [ -n "$turn" ] || turn=SILENCE
     [ "$turn" != FAIL ] || exit 1
     echo "$turn" >"$SANDBOX_DIR/voxtype-turn"
+    recordings_watchers_saw >"$SANDBOX_DIR/recording-mark"
     echo recording >"$state_file"
     if [ "$turn" != SILENCE ] && [ "$turn" != HOLD ]; then
       (
+        wait_for_watcher_to_see_recording 0
         sleep "${SANDBOX_VOXTYPE_SPEAK_SECS:-0.4}"
         if [ "$(cat "$state_file")" = recording ]; then
           [ "$turn" = EMPTY ] || printf '%s' "$turn" >"$file"
