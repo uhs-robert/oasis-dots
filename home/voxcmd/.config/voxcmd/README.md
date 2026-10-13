@@ -499,7 +499,7 @@ The overlay writes the number into the pick's FIFO, a voice reply the displayed 
 - Days are "today", "tomorrow" and weekday names; "next friday" is never today.
 - "my calendar" and "the calendar" always mean Google Calendar here; `apps.sh` leaves them alone, so an installed Calendar app does not turn "open my calendar" into a picker. "open calendar" still opens the app.
 - Joining says which meeting; the day view, a new meeting and the calendar stay [silent](#silent-actions), since the popup or the tab is the feedback.
-- A meeting link and "open my calendar" go through `open_page` in `calendar.sh`: with Firefox open, a tab already showing the page is focused (`firefox-tab goto`, as in [Firefox](#firefox)), else `xdg-open` as everywhere. The new-event form always opens fresh through `open_url`.
+- A meeting link and "open my calendar" go through `open_page` in `calendar.sh`: when Firefox is the default browser (`xdg-mime query default x-scheme-handler/https` is `firefox.desktop` or `firefox-esr.desktop`) and a window is open, a tab already showing the page is focused (`firefox-tab goto`, as in [Firefox](#firefox)). Any other browser, no Firefox window, or a failed focus opens it with `xdg-open` as everywhere, which can leave a duplicate tab. The new-event form always opens fresh through `open_url`.
 - `tests/run-calendar.sh` runs these phrases against a placeholder cache in `tests/sandbox.sh` and checks the URLs and calls.
 
 ### Firefox
