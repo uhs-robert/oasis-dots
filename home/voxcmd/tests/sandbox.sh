@@ -34,6 +34,8 @@
 #                                                                  is a bar that refused the overlay
 #                                       SANDBOX_CLICKHINTS_HOLD=1  open prints ok and nobody answers, as a bar
 #                                                                  waiting on the user does
+#                                       SANDBOX_CLICKHINTS_BLOCK=<path>  open blocks before answering: it creates
+#                                                                  <path>.entered, then waits for <path>.release
 #   voxcmd-pick, voxcmd-autostop      voxcmd finds these beside itself, not on PATH, so a test copies the package and
 #                                     symlinks its two onto $SANDBOX_DIR/bin's. voxcmd-pick logs and "picks" the first
 #                                     choice's id. voxcmd-autostop gives no verdict (exit 1) unless a voxtype turn is
@@ -195,6 +197,10 @@ qs-ipc)
     if [ "${SANDBOX_CLICKHINTS_OPEN:-ok}" != ok ]; then
       echo "$SANDBOX_CLICKHINTS_OPEN"
       exit 0
+    fi
+    if [ -n "${SANDBOX_CLICKHINTS_BLOCK-}" ]; then
+      : >"$SANDBOX_CLICKHINTS_BLOCK.entered"
+      until [ -e "$SANDBOX_CLICKHINTS_BLOCK.release" ]; do sleep 0.02; done
     fi
     printf 'clickhints-open %s\n' "$(jq -c '{pending_kind: ., spec: input}' "$XDG_RUNTIME_DIR/voxcmd/pending-pick.json" "$4")" >>"$SANDBOX_DIR/calls.log"
     echo open >"$SANDBOX_DIR/clickhints-state"

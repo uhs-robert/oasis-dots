@@ -43,7 +43,8 @@ fi
 work_dir=$(mktemp -d "${XDG_RUNTIME_DIR:-/tmp}/voxcmd-hints.XXXXXX")
 reader_pid=""
 child_pid=""
-# Set once the bar has the overlay up, so whatever ends this process takes it down again.
+# Set before the bar is asked for the overlay, not once it answers: a signal that lands during that call is only handled
+# after it returns, and must still take the overlay down. The bar ignores a dismiss for an overlay it never showed.
 overlay_open=0
 # Holds the PID of the watcher whose recording --listen started, while voxtype records or transcribes it.
 recording_owner_file="$work_dir/recording-owner"
@@ -97,14 +98,15 @@ fi
 
 # A bar that does not take the overlay hands the pick to the text picker, which takes over the pending-pick file and, for
 # the reply recording started above, the same recording owner.
+overlay_open=1
 if [ "$("$hypr_scripts/qs-ipc" call clickhints open "$spec" 2>/dev/null)" != ok ]; then
+  overlay_open=0
   "$voxcmd_pick" "$label" "$text_choices" &
   child_pid=$!
   trap 'kill "$child_pid" 2>/dev/null || true; exit 1' INT TERM HUP
   wait "$child_pid"
   exit
 fi
-overlay_open=1
 
 # The overlay and a number key write the box number, a voice reply the displayed label: "3" or "3. Next - top right".
 timeout "$bar_timeout" head -n 1 "$result_fifo" >"$work_dir/answer" &
