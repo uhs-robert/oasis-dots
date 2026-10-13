@@ -10,14 +10,13 @@
                                        exit 3 without doing anything when no Firefox window is open
   firefox-tab open [--here] <url>      open the url in a new tab, or the url or text in the focused tab
   firefox-tab search <text>            search the text with the default engine in a new tab
-  firefox-tab hints [number]           numbered link hints (Tridactyl's :voxhints), following that number when given
-                                       (:voxfollow <number>); both are defined in tridactylrc
+  firefox-tab hints [number]           numbered link hints (Tridactyl's <A-F12>, bound in tridactylrc), following that
+                                       number when given (typed as a count before the key)
   firefox-tab dismiss-hints            press Escape in the focused Firefox window, leaving hint mode
   firefox-tab new-tab | close-tab      press Ctrl+T or Ctrl+W in Firefox
   firefox-tab tridactyl                print how Tridactyl is loaded: store, temporary or none
 
-Tridactyl takes typed commands only, so tab selection and hints are typed with wtype, and only into a Firefox window
-that has focus. VOXCMD_FIREFOX_TRIDACTYL=on|off overrides the detection.
+Tab selection and hints are typed with wtype, and only into a Firefox window that has focus. VOXCMD_FIREFOX_TRIDACTYL=on|off overrides the detection.
 """
 import configparser
 import json
@@ -32,8 +31,10 @@ import tempfile
 import time
 
 PROFILE_ROOTS = ("~/.config/mozilla/firefox", "~/.mozilla/firefox")
-# Seconds between typed steps: Tridactyl's escape hatch and command line open asynchronously.
+# Seconds between typed steps: Tridactyl's escape hatch, command line and hint mode change state asynchronously.
 KEY_PAUSE = 0.25
+# The rc key that shows numbered link hints, as Tridactyl writes it; the wtype step in hints() sends the same key.
+HINTS_KEY = "<A-F12>"
 
 
 def fail(message):
@@ -526,30 +527,34 @@ def rc_files():
     return [path for path in map(os.path.expanduser, candidates) if os.path.isfile(path)][:1]
 
 
-def rc_defines(command):
-    """Whether Tridactyl's rc defines the command. Whether Firefox has loaded it cannot be read from the profile, so
-    this catches the usual miss, an rc without the command. A setup with no rc file is not judged."""
+def rc_binds(key):
+    """Whether Tridactyl's rc binds the key. Whether Firefox has loaded the rc cannot be read from the profile, so
+    this catches the usual miss, an rc without the bind. A setup with no rc file is not judged."""
     for path in rc_files():
         try:
             with open(path) as file:
-                return any(re.match(rf"\s*command!?\s+{command}\s", line) for line in file)
+                return any(re.match(rf"\s*bind!?\s+{re.escape(key)}\s", line) for line in file)
         except OSError:
             return True
     return True
 
 
 def hints(number):
-    """Types Tridactyl's :voxhints, or :voxfollow <number>, which the rc defines (home/tridactyl's tridactylrc): a
-    command line of the real JavaScript would be long to type, and Tridactyl cannot be asked whether a command exists."""
+    """Shows numbered link hints with Tridactyl's HINTS_KEY, which the rc binds (home/tridactyl's tridactylrc). The escape
+    hatch comes first to take focus back from the address bar or a page field, then Escape to leave hint, insert or
+    command mode. A number is typed as a count before the key, which follows that
+    hint, so no command line opens; the bind refuses a number with no hint."""
     if number and not re.fullmatch(r"[1-9][0-9]{0,3}", number):
         fail(f"not a link number: {number}")
     if tridactyl(profile_dir()) == "none":
         fail("link hints need Tridactyl")
-    command = "voxfollow" if number else "voxhints"
-    if not rc_defines(command):
-        fail(f"link hints need the {command} command in Tridactyl's tridactylrc")
+    if not rc_binds(HINTS_KEY):
+        fail(f"link hints need {HINTS_KEY} bound in Tridactyl's tridactylrc")
     focused_firefox(focus_recent=True)
-    tridactyl_command(f"{command} {number}".strip())
+    steps = [["-M", "alt", ",", "-m", "alt"], ["-k", "Escape"]]
+    if number:
+        steps.append(["--", number])
+    keys(*steps, ["-M", "alt", "-k", "F12", "-m", "alt"])
 
 
 def dismiss_hints():

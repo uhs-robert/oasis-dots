@@ -1,6 +1,6 @@
 # shellcheck shell=bash disable=SC2034,SC2016,SC2154
 # Focuses Firefox tabs, opens sites and follows links by number: "go to <tab>", "open <site> in firefox", "show links",
-# then "3" or "follow link 3". Link hints are Tridactyl's :voxhints and :voxfollow, defined in home/tridactyl's tridactylrc.
+# then "3" or "follow link 3". Link hints are Tridactyl's <A-F12> bind, defined in home/tridactyl's tridactylrc.
 # Opening a site without saying where is firefox-sites.sh, a fallback after the apps. Format: ~/.config/voxcmd/README.md
 
 name="Firefox"
@@ -127,7 +127,7 @@ focus_tab() {
 
 # The numbers are on screen, so the next utterance is probably one: a session that listens like a reply does ("3" is a
 # turn) and, whatever ends it without a link followed, takes the hints down again (session_ended). The marker says
-# the hints are still up. A Firefox that does not show them (no Tridactyl, no command) opens nothing to listen for.
+# the hints are still up. A Firefox that does not show them (no Tridactyl, no bind) opens nothing to listen for.
 links_marker="${XDG_RUNTIME_DIR:-/tmp}/voxcmd/links-shown"
 
 show_links() {
