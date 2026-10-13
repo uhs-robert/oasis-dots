@@ -135,6 +135,7 @@ The popup has two levels, both fully keyboard driven. At the grid level the curs
 | `H` / `L`, `J` / `K` (Shift) | Month, then year; the cursor keeps its day of the month |
 | `Enter` | Open day level for the cursor day (with a cache; an empty day shows "No events") |
 | `n` / `N` | Jump the cursor to the next / previous day that has events, anywhere in the cache (does nothing past the last one) |
+| `o` | Open the cursor day in Google Calendar's day view |
 | `c` | Create an event on the cursor day |
 | `t` / `gg` | Back to today |
 | `Tab`, `[` `]` | Time zone |
@@ -145,10 +146,13 @@ The popup has two levels, both fully keyboard driven. At the grid level the curs
 | `Enter` | Join the event's `join_url` (Google Meet or Teams), else open its Calendar page, else that day in Calendar |
 | `Esc`, `h`, `Left` | Back to the grid, same day |
 | `n` / `N` | Next / previous day with events; stays at day level and highlights that day's first open meeting |
+| `o` / `e` | Open the highlighted event in Google Calendar to view it (its `event_url`) or to edit it (`.../r/eventedit/<eid>`, the `eid` taken from `event_url`); with no `eid` or no event both open that day's view |
 | `c` | Create an event on that day: Google's form, in UTC, 9:00 to 10:00, or for today the next whole hour (9:00 tomorrow after 22:00) |
 | `q` | Close |
 
 Moving the cursor works without a calendar cache; the dots, the agenda and day level need one. Clicking a day equals moving to it and pressing Enter, and clicking an event highlights it, but nothing needs the mouse. `calendar open_day <date>` opens the popup at grid level on that date. The agenda area keeps one height across both levels and every day (the list shows eight rows at grid level and three beside the details at day level), so the popup never resizes.
+
+When `events.json` carries `window_start` and `window_end` (the span calendar-sync fetched, end exclusive), days outside it are drawn faded and show "Not synced" instead of "No events", and `n`/`N` stay inside it; older caches without them dim nothing.
 
 Links open with `firefox --new-tab`, or `xdg-open` when Firefox is not installed, and the script then focuses the Firefox window itself through `hyprctl`, since a launch without an activation token is not raised by Hyprland. Joining and creating share this path. Clicking a day selects it.
 
@@ -217,7 +221,7 @@ Every popup uses the same keys. `?` shows the full list for the popup you're in.
 | `?`              | Key help                                 |
 | `q` / `Esc`      | Close                                    |
 
-A popup with only one level of views answers both `Tab` and `[`/`]`. In the clock popup, `Tab` and `[`/`]` cycle the time zones. `h`/`l` and `j`/`k` move the cursor by a day and a week, `Shift` + `h`/`l`/`j`/`k` by a month and a year; `Enter` opens the cursor day's events, `n`/`N` jump between days with events and `c` creates an event (see Calendar).
+A popup with only one level of views answers both `Tab` and `[`/`]`. In the clock popup, `Tab` and `[`/`]` cycle the time zones. `h`/`l` and `j`/`k` move the cursor by a day and a week, `Shift` + `h`/`l`/`j`/`k` by a month and a year; `Enter` opens the cursor day's events, `n`/`N` jump between days with events, `o` and `e` open Calendar and `c` creates an event (see Calendar).
 
 Console styles draw controller buttons in place of keys in the footers and help. Each console is one entry in `components/KeyHints.js` (`controllers`): the path of its button component and the key to button map. A button component is an `Item` with `button` (a name from the map), `size` and, for the Game Boy shades, `shades`.
 

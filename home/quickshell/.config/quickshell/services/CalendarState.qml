@@ -24,6 +24,10 @@ Singleton {
     property double error_at_ms: 0
     readonly property string error: root.error_message !== "" && (!root.configured || root.error_at_ms >= root.updated_ms) ? root.error_message : ""
     property double updated_ms: 0
+    // The span calendar-sync fetched, start inclusive, end exclusive; 0 when an older cache does not say.
+    property double window_start_ms: 0
+    property double window_end_ms: 0
+    readonly property bool has_window: root.window_start_ms > 0 && root.window_end_ms > root.window_start_ms
     // Sorted by start; each has start_ms, end_ms and a day_keys list.
     property var events: []
     // "YYYY-MM-DD" -> that day's events.
@@ -107,8 +111,16 @@ Singleton {
         return index;
     }
 
+    // Whether any part of the day lies inside the synced window; every day counts when the cache has none.
+    function is_synced(date) {
+        if (!root.has_window) return true;
+        const first = new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
+        const next = new Date(date.getFullYear(), date.getMonth(), date.getDate() + 1).getTime();
+        return next > root.window_start_ms && first < root.window_end_ms;
+    }
+
     // Days that have events, oldest first.
-    readonly property var event_days: Object.keys(root.day_index).sort()
+    readonly property var event_days: Object.keys(root.day_index).filter(k => root.is_synced(root.parse_day(k))).sort()
 
     // The nearest day with events after (step 1) or before (step -1) `date`, searching the whole cache; null when there is none.
     function adjacent_event_day(date, step) {
@@ -166,6 +178,8 @@ Singleton {
                 root.events = list;
                 root.day_index = root.build_index(list);
                 root.updated_ms = Date.parse(data.updated) || 0;
+                root.window_start_ms = Date.parse(data.window_start) || 0;
+                root.window_end_ms = Date.parse(data.window_end) || 0;
                 root.configured = true;
             } catch (e) {
                 // A half-written or broken file keeps the last good events.
