@@ -694,7 +694,7 @@ exit 0
 
                                 Text {
                                     Layout.preferredWidth: Math.ceil(time_floor.advanceWidth)
-                                    text: agenda_row.modelData.all_day ? "all day" : TimeFormat.format(new Date(agenda_row.modelData.start_ms))
+                                    text: agenda_row.modelData.all_day ? "all day" : TimeFormat.format(Timezones.shift(new Date(agenda_row.modelData.start_ms)))
                                     color: agenda_row.live ? Style.pal.today : root.st.text_dim
                                     font.family: root.st.font_family
                                     font.pixelSize: root.st.fs(-1)
@@ -735,7 +735,7 @@ exit 0
 
                     Repeater {
                         model: root.chosen_event ? [
-                            { text: (root.chosen_event.all_day ? "All day" : TimeFormat.format(new Date(root.chosen_event.start_ms)) + " - " + TimeFormat.format(new Date(root.chosen_event.end_ms))) + (root.chosen_event.status === "tentative" ? " · Tentative" : ""), bold: false },
+                            { text: (root.chosen_event.all_day ? "All day" : TimeFormat.format(Timezones.shift(new Date(root.chosen_event.start_ms))) + " - " + TimeFormat.format(Timezones.shift(new Date(root.chosen_event.end_ms)))) + (root.chosen_event.status === "tentative" ? " · Tentative" : ""), bold: false },
                             { text: root.chosen_event.title, bold: true },
                             { text: root.chosen_event.location, bold: false },
                             { text: [root.chosen_event.organizer, root.chosen_event.guests > 0 ? root.chosen_event.guests + (root.chosen_event.guests === 1 ? " guest" : " guests") : ""].filter(t => t !== "").join(" · "), bold: false },

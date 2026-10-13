@@ -124,7 +124,7 @@ Every section ends with a block that describes the selected (or hovered) setting
 The clock shows your Google Calendar from a cache that `calendar-sync` writes to `$XDG_CACHE_HOME/calendar/events.json` (default `~/.cache/calendar/`); the shell never talks to Google. With no cache file nothing changes: no countdown, no dots, no timer, and the popup has no dots or agenda. The service (`services/CalendarState.qml`) reloads when the file changes, and `qs-ipc call calendar refresh` rereads it at once (a file that did not exist when the shell started is only noticed through that call or a restart). Cancelled events are ignored, and so are timed events over 12 hours for the chip and dot (out-of-office and conference blocks). The `join_url` field of an event holds a Google Meet or Microsoft Teams link. If `error.json` sits beside the cache, the events are the last good copy and the agenda header says so.
 
 - Bar clock: within 15 minutes of the next meeting's start (even across midnight), a hollow dot and the minutes left (`12m`) follow the date; while a meeting is in progress the dot is solid. Hovering shows the current or next event and its time. All-day events never count as meetings.
-- Clock popup: a dot under each day with events, and below the grid an agenda for the selected day (today by default). Times are in the local zone, whatever zone the popup is cycled to.
+- Clock popup: a dot under each day with events, and below the grid an agenda for the selected day (today by default). Event times follow the zone the popup is cycled to (as does the clock tooltip); events stay grouped by your local day.
 
 The popup has two levels, both fully keyboard driven. At the grid level the cursor day's agenda is a read-only preview.
 
