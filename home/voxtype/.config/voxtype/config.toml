@@ -312,8 +312,9 @@ layout = "wide"
 palette = "custom"
 
 [vad]
-enabled = false
-backend = "auto"
+# Silero (`voxtype setup vad`) drops recordings with no speech before Whisper invents text for them ("The End").
+enabled = true
+backend = "whisper"
 threshold = 0.5
 
 [parakeet]

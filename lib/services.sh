@@ -306,6 +306,8 @@ setup_voxtype() {
   else
     warn "Skipped model download, run later: voxtype setup model"
   fi
+  # Small, and config.toml enables VAD with it.
+  voxtype setup vad >/dev/null || warn "VAD model download failed, run later: voxtype setup vad"
   if systemctl --user show-environment &>/dev/null; then
     systemctl --user daemon-reload
     systemctl --user is-enabled voxtype &>/dev/null || systemctl --user enable --now voxtype
