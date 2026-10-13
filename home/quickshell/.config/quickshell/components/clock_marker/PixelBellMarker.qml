@@ -8,8 +8,10 @@ MarkerBase {
     id: root
 
     readonly property int gap: 6
-    readonly property color body_color: root.on_accent ? root.ink : Style.pixel_shades[3]
-    readonly property color shine_color: root.on_accent ? root.ink : Style.pixel_shades[2]
+    // The Original has no second hue, so the bell takes the shade below the date's; the Color model takes the theme secondary.
+    readonly property bool original: Style.device_model === "dmg"
+    readonly property color body_color: root.on_accent ? root.ink : root.original ? Style.pixel_shades[2] : Theme.theme_secondary
+    readonly property color shine_color: root.on_accent ? root.ink : Style.pixel_shades[3]
     readonly property var bell_rows: ["....0....", "...000...", "..01100..", ".0110000.", ".0110000.", "000000000", ".........", "...000..."]
 
     implicitWidth: Math.ceil(upcoming_bell.implicitWidth + root.gap + digits_width.advanceWidth)
