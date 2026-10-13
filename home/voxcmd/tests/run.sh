@@ -1405,6 +1405,11 @@ check "goto activates the most recent live tab on the site" "[[ \$(grep -c '\"ta
 status=0
 out=$(VOXCMD_FIREFOX_PREFACE_WAIT=0.2 SANDBOX_ACTIVEWINDOW_JSON=$inbox_window "$firefox_tab" focus tab:22 "Cart - Example Shop" 2>&1) || status=$?
 check "a window that never shows the nonce is no failure once the tab switched" "[[ \$status == 0 && -z \$(typed) ]] && ! grep -q 'dispatch' '$log'"
+check "but another Firefox window having focus is said, not taken for the tab's" "[[ \$out == *'could not be focused'* ]]"
+status=0
+plain_cart_window=$(jq -c '.title = "Cart - Example Shop — Mozilla Firefox"' <<<"$cart_window")
+out=$(VOXCMD_FIREFOX_PREFACE_WAIT=0.2 SANDBOX_ACTIVEWINDOW_JSON=$plain_cart_window "$firefox_tab" focus tab:22 "Cart - Example Shop" 2>&1) || status=$?
+check "while a focused Firefox window showing the tab counts" "[[ \$status == 0 && \$out != *'could not be focused'* ]]"
 status=0
 out=$(VOXCMD_FIREFOX_PREFACE_WAIT=0.2 "$firefox_tab" focus tab:22 "Cart - Example Shop" 2>&1) || status=$?
 check "but unfocused Firefox is said" "[[ \$status == 0 && \$out == *'could not be focused'* ]]"
