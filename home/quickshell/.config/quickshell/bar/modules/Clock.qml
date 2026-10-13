@@ -4,6 +4,7 @@ import Quickshell
 import "../../theme"
 import "../../services"
 import "../../components"
+import "../../components/clock_marker" as Marker
 import "../../components/modern" as Modern
 
 Row {
@@ -30,9 +31,8 @@ Row {
         onTapped: Popups.toggle("clock", root.island, root.island_color, root.screen_name)
     }
 
-    // Just before a meeting the bar shows a hollow dot and the minutes left; under way, a solid dot. The title is on hover.
+    // Just before a meeting the bar shows the minutes left; under way, a live mark in the style's own form. The title is on hover.
     readonly property bool chip_shown: CalendarState.chip_event !== null
-    readonly property string chip_text: root.chip_shown ? CalendarState.minutes_to(CalendarState.chip_event) + "m" : ""
     readonly property string agenda_tip: {
         // Times follow the zone the clock shows, as its digits do.
         const span = e => TimeFormat.format(Timezones.shift(new Date(e.start_ms))) + " - " + TimeFormat.format(Timezones.shift(new Date(e.end_ms)));
@@ -216,31 +216,27 @@ Row {
         font.letterSpacing: Style.bar_letter_spacing
     }
 
-    Rectangle {
-        id: meeting_dot
-        visible: CalendarState.in_meeting || root.chip_shown
-        anchors.verticalCenter: parent.verticalCenter
-        width: 6
-        height: 6
-        radius: 3
-        color: CalendarState.in_meeting ? border.color : "transparent"
-        border.width: 1
-        border.color: root.on_accent ? root.ink : Theme.theme_primary
+    // Carries the bar text's font, tabular digits included, to the meeting marker.
+    Text {
+        id: marker_font
+        visible: false
+        font.family: Style.bar_font_family
+        font.pixelSize: Style.bar_font_size
+        font.letterSpacing: Style.bar_letter_spacing
+        font.capitalization: Style.bar_capitalization
+        font.features: { "tnum": 1 }
     }
 
-    Text {
-        id: chip_label
-        visible: root.chip_shown
+    Marker.MeetingMarker {
+        id: meeting_marker
+        visible: CalendarState.in_meeting || root.chip_shown
         anchors.verticalCenter: parent.verticalCenter
-        text: root.chip_text
-        textFormat: Text.PlainText
-        color: root.on_accent ? root.ink : Theme.theme_primary
-        font.family: Style.bar_font_family
-        style: Style.bar_text_style
-        styleColor: Style.bar_glow_color
-        font.pixelSize: Style.bar_font_size
-        font.capitalization: Style.bar_capitalization
-        font.letterSpacing: Style.bar_letter_spacing
+        minutes: root.chip_shown ? CalendarState.minutes_to(CalendarState.chip_event) : 0
+        in_meeting: CalendarState.in_meeting
+        progress: root.chip_shown && !CalendarState.in_meeting ? Math.max(0, Math.min(1, 1 - meeting_marker.minutes / CalendarState.chip_window_minutes)) : 1
+        on_accent: root.on_accent
+        ink: root.ink
+        text_font: marker_font.font
     }
 
     Text {
@@ -259,8 +255,8 @@ Row {
         font: time_label.font
     }
 
-    // Popups sized from the clock island ignore the room the chip and dot take, so a meeting does not widen them.
-    readonly property real calendar_room: (meeting_dot.visible ? meeting_dot.width + root.spacing : 0) + (chip_label.visible ? chip_label.width + root.spacing : 0)
+    // Popups sized from the clock island ignore the room the marker takes, so a meeting does not widen them.
+    readonly property real calendar_room: meeting_marker.visible ? meeting_marker.width + root.spacing : 0
 
     Binding {
         target: root.island ? root.island.parent : null

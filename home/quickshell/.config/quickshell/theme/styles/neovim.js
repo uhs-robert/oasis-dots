@@ -77,6 +77,7 @@ function overrides(t, ctx) {
         toggle_on: t.ok,
         toggle_off: t.fg_dim,
         bar_lualine: true,
+        bar_meeting_marker: "mode_badge",
         bar_font_family: "Maple Mono NF",
         // Sized like the tmux status line in kitty: Maple Mono at 12pt.
         bar_font_size: 16,

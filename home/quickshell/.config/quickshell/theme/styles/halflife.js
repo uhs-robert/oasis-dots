@@ -67,6 +67,7 @@ function overrides(t, ctx) {
         bar_font_family: "Chakra Petch",
         bar_font_size: t.font_size + 1,
         bar_letter_spacing: 0.8,
+        bar_meeting_marker: "hev_readout",
         bar_side_bg: Qt.alpha(t.bg_core, 0.94),
         bar_center_bg: Qt.alpha(t.bg_core, 0.94),
         bar_fg: hl,

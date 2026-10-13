@@ -2,6 +2,7 @@
 
 function overrides(t, ctx) {
     return {
+        bar_meeting_marker: "bracket_tag",
         wait_anim: "cursor",
         weather_header: "wttr",
         keeptabs_layout: "wttr",

@@ -90,6 +90,7 @@ function overrides(t, ctx) {
         workspace_art: "diamonds",
         bar_pill_square: true,
         bar_clock_brackets: lock,
+        bar_meeting_marker: "bracket_readout",
         bar_hover_bg: Qt.alpha(vec, 0.15),
         small: {
             frame_octagon: 0,

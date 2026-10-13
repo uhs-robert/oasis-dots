@@ -341,6 +341,7 @@ Singleton {
     readonly property color chart_outline: root.active.chart_outline
     readonly property bool bar_workspace_diamond: root.bar.bar_workspace_diamond
     readonly property color bar_clock_brackets: root.bar.bar_clock_brackets
+    readonly property string bar_meeting_marker: root.bar.bar_meeting_marker
     readonly property string bar_separator: root.bar.bar_separator
     readonly property color bar_tick_color: root.bar.bar_center_bg.hslLightness > 0.6 ? Theme.fg_core : Watch.white
     readonly property string bar_island_shape: root.bar.bar_island_shape
