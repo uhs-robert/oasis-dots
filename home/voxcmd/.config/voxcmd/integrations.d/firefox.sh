@@ -156,10 +156,14 @@ session_ended() {
   "$firefox_tab" dismiss-hints
 }
 
-# A turn in the link session is a number ("3", "three", "link 3") or a way out; anything else names no link.
+# A turn in the link session is a number ("3", "three", "link 3") or a way out; anything else names no link. Only a
+# number is a target here, so any stop word is safe to take as leaving, with or without the hints named.
+links_exit_filler='(okay|ok|alright|please|now)'
+links_exit_object='(the )?(links|link hints|hints|link mode)'
+links_exit_words="^($links_exit_filler )*((cancel|never ?mind|stop|close|hide|dismiss|exit|quit|end|leave|done|turn off|stop showing)( $links_exit_object)?|$links_exit_object off)( $links_exit_filler)*$"
 session_rewrite() {
   local text="$1" number
-  if [[ "$text" =~ ^(cancel|never\ ?mind|stop|close|hide|dismiss)(\ (the\ )?(links|link\ hints))?$ ]]; then
+  if [[ "$text" =~ $links_exit_words ]]; then
     printf 'hide links'
     return
   fi
