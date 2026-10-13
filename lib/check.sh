@@ -174,8 +174,8 @@ else
   scope_label=full
 fi
 
-# The shell lists. Scoped, the independent linters see only changed files; groups linted with -x are
-# linted whole when any member changed, since a member can source another.
+# The shell lists. Scoped, shfmt sees only changed files, and shellcheck lints a list whole when any member changed,
+# since a member can source another.
 plain_shell_files >"$logs/plain.all"
 sourcing_shell_files >"$logs/sourcing.all"
 agent_shell_files >"$logs/agent.all"
@@ -188,10 +188,12 @@ if [ "$scope_all" = 1 ]; then
   cp "$logs/sourcing.all" "$logs/sourcing.fmt.list"
   cp "$logs/agent.all" "$logs/agent.fmt.list"
 else
-  grep -Fxf "$logs/changed" "$logs/plain.all" >"$logs/plain.list"
+  grep -Fxf "$logs/changed" "$logs/plain.all" >"$logs/plain.fmt.list"
   grep -Fxf "$logs/changed" "$logs/sourcing.all" >"$logs/sourcing.fmt.list"
   grep -Fxf "$logs/changed" "$logs/agent.all" >"$logs/agent.fmt.list"
-  cp "$logs/plain.list" "$logs/plain.fmt.list"
+  # A sourced file is read by shellcheck only when it is on the same command line (the test runners source their lib.sh),
+  # so a change to any of these lints all of them together, as a full run does.
+  if [ -s "$logs/plain.fmt.list" ] || [ -s "$logs/deleted" ]; then cp "$logs/plain.all" "$logs/plain.list"; else : >"$logs/plain.list"; fi
   # A deleted file is in no list any more, yet a member that sourced it now fails, so any deletion lints both groups.
   if [ -s "$logs/sourcing.fmt.list" ] || [ -s "$logs/deleted" ]; then cp "$logs/sourcing.all" "$logs/sourcing.list"; else : >"$logs/sourcing.list"; fi
   if [ -s "$logs/agent.fmt.list" ] || [ -s "$logs/deleted" ]; then cp "$logs/agent.all" "$logs/agent.list"; else : >"$logs/agent.list"; fi
