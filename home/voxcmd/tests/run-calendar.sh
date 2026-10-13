@@ -98,6 +98,17 @@ say "join my meeting"
 expect "Teams join link" "firefox --new-tab https://teams.microsoft.com/l/meetup-join/placeholder"
 expect "Teams says joining" "Joining Teams sync"
 
+write_cache "$(event m 'Sync <img src="https://example.com/x.png"> & plan' -300 600 https://meet.example.com/markup null)"
+say "join my meeting"
+expect "title markup is escaped" 'Joining Sync &lt;img src="https://example.com/x.png"&gt; &amp; plan'
+expect_absent "raw markup" "<img"
+write_cache "$(event n 'Sync <b>x</b>' -3600 -1800 null null)" "$(event o 'Sync <b>x</b>' 300 900 null null)"
+say "what's my next meeting"
+expect "next meeting title is escaped" "Sync &lt;b&gt;x&lt;/b&gt;"
+write_cache "$(event p 'Sync <b>x</b>' -300 600 null null)"
+say "join my meeting"
+expect "no-link message is escaped" "Sync &lt;b&gt;x&lt;/b&gt; has no meeting link"
+
 write_cache "$(event c "Review" -600 600 null https://calendar.example.com/review)"
 say "open my meeting"
 expect "event page when there is no Meet link" "firefox --new-tab https://calendar.example.com/review"
