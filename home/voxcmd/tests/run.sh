@@ -1338,21 +1338,22 @@ check "and types into the address bar" "[[ \"\$(typed | paste -sd'|')\" == '-M c
 out=$("$firefox_tab" close-tab)
 check "close-tab never closes a tab in a window not focused" "[[ \$out == 'Firefox is not focused' && -z \$(typed) ]]"
 
-# Link hints are two commands of Tridactyl's rc, so firefox-tab types their short names; the rc is the repo's own.
+# Link hints are one key bound in Tridactyl's rc, so firefox-tab only presses keys; the rc is the repo's own.
 repo_rc=$package/../tridactyl/.config/tridactyl/tridactylrc
 mkdir -p "$XDG_CONFIG_HOME/tridactyl"
 cp "$repo_rc" "$XDG_CONFIG_HOME/tridactyl/tridactylrc"
 : >"$log"
 out=$(SANDBOX_ACTIVEWINDOW_JSON=$(firefox_window 0x3001) "$firefox_tab" hints)
-check "show links types only :voxhints" "[[ \"\$(typed | paste -sd'|')\" == '-M alt , -m alt|-k Escape|:|-- voxhints|-k Return' ]]"
+check "show links presses the escape hatch, Escape, then Alt+F12, and opens no command line" "[[ \"\$(typed | paste -sd'|')\" == '-M alt , -m alt|-k Escape|-M alt -k F12 -m alt' ]]"
 : >"$log"
 out=$(SANDBOX_ACTIVEWINDOW_JSON=$(firefox_window 0x3001) "$firefox_tab" hints 12)
-check "a link number types only :voxfollow with it" "[[ \"\$(typed | paste -sd'|')\" == '-M alt , -m alt|-k Escape|:|-- voxfollow 12|-k Return' ]]"
+check "a link number is typed as a count before Alt+F12" "[[ \"\$(typed | paste -sd'|')\" == '-M alt , -m alt|-k Escape|-- 12|-M alt -k F12 -m alt' ]]"
 : >"$log"
 out=$(SANDBOX_ACTIVEWINDOW_JSON=$(firefox_window 0x3001) "$firefox_tab" hints '1");alert(1);("')
 check "a link number is digits only" "[[ \$out == not\\ a\\ link\\ number:* && -z \$(typed) ]]"
-check "the rc defines both commands" "grep -q '^command voxfollow js -p ' '$repo_rc' && grep -q '^command voxhints voxfollow 0\$' '$repo_rc'"
-rc_js=$(sed -n 's/^command voxfollow js -p //p' "$repo_rc")
+check "the rc binds Alt+F12 once, with 0 as the argument when no count is typed" "[[ \$(grep -c '^bind <A-F12> js -p .* 0\$' '$repo_rc') == 1 ]]"
+check "and the voxhints and voxfollow commands are gone" "! grep -q 'voxhints\\|voxfollow' '$repo_rc'"
+rc_js=$(sed -n 's/^bind <A-F12> js -p \(.*\) 0$/\1/p' "$repo_rc")
 check "the rc's hints are numbered for one run, in the page's memory" "grep -q 'config.hintnames=\"numeric\";config.hintautoselect=\"false\"' <<<\"\$rc_js\" && ! grep -q 'config.set' <<<\"\$rc_js\""
 check "and the settings go back once the hint run ends" "grep -q 'tri.excmds.hint().then(restore,restore)' <<<\"\$rc_js\""
 if command -v node >/dev/null; then
@@ -1376,18 +1377,18 @@ async function follow(JS_ARG, names) {
 })()
 NODE
   out=$(node "$root/rc-js.js" "$rc_js")
-  check "voxhints only shows hints, with the numbering set" "[[ \"\${out%% *}\" == ':numeric' ]]"
-  check "voxfollow follows the hint with that number, digit by digit" "[[ \"\$out\" == *' key2,select:numeric key1,key2,select:numeric '* ]]"
+  check "a count of 0 only shows hints, with the numbering set" "[[ \"\${out%% *}\" == ':numeric' ]]"
+  check "a count follows the hint with that number, digit by digit" "[[ \"\$out\" == *' key2,select:numeric key1,key2,select:numeric '* ]]"
   check "a number with no hint leaves hint mode and follows nothing" "[[ \"\$out\" == *' reset:numeric reset:numeric' ]]"
 fi
 : >"$log"
-printf 'command voxhints voxfollow 0\n' >"$XDG_CONFIG_HOME/tridactyl/tridactylrc"
+printf 'bind <A-F11> hint\n' >"$XDG_CONFIG_HOME/tridactyl/tridactylrc"
 out=$(SANDBOX_ACTIVEWINDOW_JSON=$(firefox_window 0x3001) "$firefox_tab" hints 3) || status=$?
-check "an rc without :voxfollow says so and types nothing" "[[ \$out == \"link hints need the voxfollow command in Tridactyl's tridactylrc\" && -z \$(typed) ]]"
+check "an rc without the Alt+F12 bind says so and types nothing" "[[ \$out == \"link hints need <A-F12> bound in Tridactyl's tridactylrc\" && -z \$(typed) ]]"
 rm "$XDG_CONFIG_HOME/tridactyl/tridactylrc"
 : >"$log"
 out=$(SANDBOX_ACTIVEWINDOW_JSON=$(firefox_window 0x3001) "$firefox_tab" hints)
-check "with no rc file nothing is judged, and :voxhints is typed" "[[ \"\$(typed | grep '^-- ')\" == '-- voxhints' ]]"
+check "with no rc file nothing is judged, and the key is typed" "[[ \"\$(typed | paste -sd'|')\" == '-M alt , -m alt|-k Escape|-M alt -k F12 -m alt' ]]"
 cp "$repo_rc" "$XDG_CONFIG_HOME/tridactyl/tridactylrc"
 : >"$log"
 out=$(SANDBOX_ACTIVEWINDOW_JSON=$(firefox_window 0x3001) "$firefox_tab" dismiss-hints)
