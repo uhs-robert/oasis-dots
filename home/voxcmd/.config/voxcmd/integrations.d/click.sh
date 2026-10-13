@@ -13,13 +13,19 @@ session_miss_actions=(no_text)
 # Labels are text read off the screen, so voxcmd's error toast, which the bar keeps in its history, leaves them out.
 private_labels=1
 
+# The ways out of click mode, as a command and as a turn inside it. Each names the mode, since a bare "stop", "exit" or
+# "close" is a button label and stays a target.
+click_exit_object='(the )?(clicking|click mode|clicking mode)'
+click_exit_phrase="((okay|ok|alright|please) )*((stop|exit|quit|end|leave|finish|close|turn off|switch off) $click_exit_object|$click_exit_object off)( please| now)?"
+session_exit_phrases="done clicking|im done clicking|done with $click_exit_object|$click_exit_phrase"
+
 # Every click verb needs a target, so a bare "click" or "right click" still reaches the Cursor submap's binds in
 # Keybinds. The optional "on" is a filler word, so "click on settings" and "click settings" mean the same.
 # The mode verbs come first, or "click mode" would be a click on the text "mode". "stop clicking" is here too because
-# Media's "stop {target}" would otherwise be the only place that hears it.
+# Media's "stop {target}" and System's "turn off {target}" would otherwise hear it.
 verbs=(
   "click_mode    ((start|enter|begin) )?(click|clicking) mode|start clicking"
-  "stop_clicking (stop|exit|end|leave) (clicking|click mode)"
+  "stop_clicking $click_exit_phrase"
   "right_click   right ?click( on)? {target}"
   "double_click  double ?click( on)? {target}"
   "triple_click  triple ?click( on)? {target}"

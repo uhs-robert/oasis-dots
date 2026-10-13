@@ -206,6 +206,7 @@ compile_pattern() {
 load_integration() {
   unset -f candidates help_choices pick_box session_rewrite session_ended
   name="" confirm=0 fallback=0 silent=0 target_match=fuzzy help_action="" action_labels=1 pick_command="" private_labels=0
+  session_exit_phrases=""
   local -a verbs=() examples=() confirm_labels=() match_ignore_words=() silent_actions=() force_prefixes=() session_miss_actions=()
   local -A actions=() no_match_actions=()
   # shellcheck disable=SC1090
@@ -985,8 +986,9 @@ reply_confirm() {
 # holds session_lock_file. The owner is the watcher that hears the next turn; a listen started by the voice key during a
 # turn takes it over, and the turn's watcher then leaves the session to it.
 
-# Only phrases nobody would click: "cancel", "exit", "stop" and "never mind" are button labels, so they are targets.
-session_exit_words='^(done|done clicking|im done|stop clicking|exit click mode|thats all)$'
+# Only phrases nobody would click: "cancel", "exit", "stop" and "never mind" are button labels, so they are targets. The
+# open session's integration adds its own as session_exit_phrases.
+session_exit_words='^(done|im done|thats all)$'
 # A turn is a whole thought and the user is reading the screen first, so longer than a command's default.
 session_no_speech_secs="${VOXCMD_SESSION_NO_SPEECH_SECS:-10}"
 # A session listens unprompted, mostly to the room, so it wants more speech and a longer pause than a command before it
@@ -1247,11 +1249,14 @@ session_turn() {
     return
   fi
   text=$(apply_replacements "$(normalize "$transcript")")
-  if [[ "$text" =~ $session_exit_words ]]; then
+  file=$(jq -r .integration <<<"$state")
+  if [[ "$text" =~ $session_exit_words ]] || (
+    load_integration "$file"
+    [ -n "$session_exit_phrases" ] && [[ "$text" =~ ^($session_exit_phrases)$ ]]
+  ); then
     session_end "done"
     return 0
   fi
-  file=$(jq -r .integration <<<"$state")
   rewritten=$(
     load_integration "$file"
     if declare -F session_rewrite >/dev/null; then session_rewrite "$text"; else printf '%s' "$text"; fi
