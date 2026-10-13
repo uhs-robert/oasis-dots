@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Tests for voxcmd: the click matcher, mapping and OCR strips, click.sh routing, numbered-pick replies and click mode's
-# phrases, with run-sessions.sh (voice sessions and auto-stop) alongside. Run from anywhere: home/voxcmd/tests/run.sh
+# phrases, with run-sessions.sh (voice sessions and auto-stop) and run-sequences.sh (several steps in one phrase) alongside. Run from anywhere: home/voxcmd/tests/run.sh
 #
 # Nothing here clicks, moves the pointer or captures the screen: it runs inside sandbox.sh, whose stubs stand in for
 # grim, magick, tesseract, hyprctl, wlrctl, wl-kbptr and notify-send and log their calls, and voxcmd only ever runs
@@ -13,21 +13,24 @@ here=$(cd "$(dirname "$0")" && pwd)
 package=$(cd "$here/.." && pwd)
 [ -z "${SANDBOX_DIR:-}" ] || [ -z "${SANDBOX_TESSERACT_TSV+set}" ] || unset SANDBOX_TESSERACT_TSV
 if [ -z "${SANDBOX_DIR:-}" ]; then
-  # The session tests mostly wait on their watchers, so they run beside these, in a sandbox of their own, and print
-  # once these are done. The last lines are the total and every failed check of both.
+  # The session and sequence tests mostly wait on their watchers and waits, so they run beside these, each in a sandbox of
+  # its own, and print once these are done. The last lines are the total and every failed check of all.
   outputs=$(mktemp -d)
   trap 'rm -rf "$outputs"' EXIT
   "$here/run-sessions.sh" >"$outputs/sessions" 2>&1 &
   sessions_pid=$!
+  "$here/run-sequences.sh" >"$outputs/sequences" 2>&1 &
+  sequences_pid=$!
   "$here/sandbox.sh" "$0" "$@" 2>&1 | tee "$outputs/click"
   click_status=${PIPESTATUS[0]}
-  sessions_status=0
+  sessions_status=0 sequences_status=0
   wait "$sessions_pid" || sessions_status=$?
-  cat "$outputs/sessions"
+  wait "$sequences_pid" || sequences_status=$?
+  cat "$outputs/sessions" "$outputs/sequences"
   awk '/^[0-9]+ passed, [0-9]+ failed$/ { passed += $1; failed += $3 } END { printf "\nin all: %d passed, %d failed\n", passed, failed }' \
-    "$outputs/click" "$outputs/sessions"
-  grep -h '^FAILED ' "$outputs/click" "$outputs/sessions"
-  [ "$click_status" = 0 ] && [ "$sessions_status" = 0 ]
+    "$outputs/click" "$outputs/sessions" "$outputs/sequences"
+  grep -h '^FAILED ' "$outputs/click" "$outputs/sessions" "$outputs/sequences"
+  [ "$click_status" = 0 ] && [ "$sessions_status" = 0 ] && [ "$sequences_status" = 0 ]
   exit
 fi
 share_dir=$package/.local/share/voxcmd

@@ -28,6 +28,11 @@ declare -A actions=(
   [open]='"$qs_ipc" call notifications open'
 )
 
+# A sequence's next step waits for the center to be drawn.
+declare -A step_waits=(
+  [open]='popup_is_open notifications'
+)
+
 clear_notifications() {
   "$qs_ipc" call notifications clear_all
 }

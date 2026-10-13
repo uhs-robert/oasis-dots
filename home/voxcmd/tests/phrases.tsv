@@ -195,3 +195,26 @@ jarvis open firefox	Apps/open	the wake word is stripped outside a session
 Jarvis, play pause	Media/toggle	the wake word is stripped outside a session
 jarvis rapid mode	Rapid/rapid_mode	the wake word is stripped outside a session
 Charvis, open firefox	Apps/open	the default wake word's common mishearing is an alias
+open firefox and then go to youtube	Apps/open > none	two steps; the second matches nothing in the sandbox
+open firefox and then open kitty	Apps/open > Apps/open	two steps
+Open Firefox, then list my timers	Apps/open > Timers/list	a comma before then splits
+open firefox then list my timers	none	a bare then never splits
+open firefox. Then list my timers	none	a bare then after a full stop never splits either
+open a new kitty and then list my timers and then set a timer for 5 minutes	Apps/open_new > Timers/list > Timers/timer	three steps
+Jarvis, open kitty and then list my timers	Apps/open > Timers/list	the wake word is stripped from the whole phrase first
+new meeting tomorrow at 3 pm called Design review and then lunch	Calendar/new	the event title takes the rest of the phrase
+remind me in 5 minutes to call mom and then email bob	Timers/remind	the reminder takes the rest of the phrase
+open kitty and then remind me to call mom and then email bob	Apps/open > Timers/remind	the free-text step takes the rest
+type mode and then open firefox	refused	a mode switch is only allowed as the last step
+open firefox and then type mode	Apps/open > Type/type_mode	a mode switch as the last step
+one and then two and then three and then four and then five and then six	refused	more than 5 steps
+open firefox and then list my timers and then	Apps/open > Timers/list	a trailing and then is dropped
+open firefox and then	Apps/open	a trailing and then leaves one step
+open kitty and then never mind and then list my timers	Apps/open > builtin	a discard step ends the rest
+open firefox. And then list my timers	Apps/open > Timers/list	a capitalised And then splits
+open firefox, And then list my timers	Apps/open > Timers/list	also after a comma
+OPEN FIREFOX AND THEN LIST MY TIMERS	Apps/open > Timers/list	whatever the case
+set a timer for 5 minutes and then list my timers	Timers/timer > Timers/list	a timer's duration is not free text
+open firefox and then what can i say and then list my timers	Apps/open > none	a Voice Help step is a no match and stops the rest
+open firefox and then jarvis and then list my timers	Apps/open > none	the wake word alone is a no match and stops the rest
+open firefox and then bogus words and then list my timers	Apps/open > none	a step that matches nothing stops the rest

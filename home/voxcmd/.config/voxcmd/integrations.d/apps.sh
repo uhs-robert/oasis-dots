@@ -63,6 +63,16 @@ declare -A actions=(
   [resize_spoken_size]='resize_active_to_spoken_size "$raw_transcript"'
 )
 
+# What a sequence's next step waits for. active_window_address and $active_before come from voxcmd. Starting an app
+# returns at the fork, so opening waits until its window has focus (or, for an app whose window class is not its
+# desktop id, until focus has moved off the window it started from); moving and resizing are done when they return.
+declare -A step_waits=(
+  [open]='app_window_focused "$id" || { [ -n "$(active_window_address)" ] && [ "$(active_window_address)" != "$active_before" ]; }'
+  [open_new]='[ -n "$(active_window_address)" ] && [ "$(active_window_address)" != "$active_before" ]'
+  [focus]='[ "$(active_window_address)" = "$id" ]'
+  [close]='! window_exists "$id"'
+)
+
 # Only close labels read "<app> window: <title>", so only closing asks first.
 confirm_labels=('^[^:]+ window(:|$)')
 
@@ -249,6 +259,18 @@ app_window() {
     | ([$app.wm_class, $id, ($id | split(".") | last)] | map(select(. != "") | ascii_downcase)) as $classes
     | map(select(.mapped and ((.class, .initialClass) | ascii_downcase | IN($classes[]))))
     | sort_by(.focusHistoryID | if . < 0 then infinite else . end) | first | .address // empty' <<<"$clients"
+}
+
+# Whether the app's most recently focused window is the active one.
+app_window_focused() {
+  local entry address
+  entry=$(desktop_entry "$1" 2>/dev/null) || return 1
+  address=$(app_window "$entry")
+  [ -n "$address" ] && [ "$address" = "$(active_window_address)" ]
+}
+
+window_exists() {
+  hyprctl clients -j 2>/dev/null | jq -e --arg address "$1" 'any(.[]; .address == $address)' >/dev/null
 }
 
 # Started like the Quickshell apps picker starts them: the Exec line with its field codes dropped, in Path when set,

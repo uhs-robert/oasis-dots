@@ -12,7 +12,11 @@
 #   hyprctl binds|clients|monitors|activewindow|activeworkspace|version -j
 #                                     SANDBOX_BINDS_JSON, SANDBOX_CLIENTS_JSON, ... (the JSON itself); activewindow
 #                                     is {} (no focused window) without its fixture, never the live window;
-#                                     SANDBOX_ACTIVEWINDOW_AFTER_WTYPE_JSON replaces it once wtype has been called
+#                                     SANDBOX_ACTIVEWINDOW_AFTER_WTYPE_JSON replaces it once wtype has been called,
+#                                     SANDBOX_ACTIVEWINDOW_AFTER_LAUNCH_JSON once setsid has been (an app started),
+#                                     SANDBOX_ACTIVEWINDOW_AFTER_FOCUS_JSON once a focus dispatch has been. With
+#                                     SANDBOX_ACTIVEWINDOW_GATE=<path> either flip waits for <path> to exist, and
+#                                     each query before that logs "activewindow gated", for a test to wait on
 #                                     SANDBOX_SWITCHED_TITLE retitles it once Return has been typed
 #                                     SANDBOX_ACTIVEWINDOW_BLOCK_AFTER_WTYPE=<path> makes the first query after wtype
 #                                     create <path>.entered and wait for <path>.release
@@ -31,7 +35,9 @@
 #                                     spec's result FIFO as the bar would. state prints what $SANDBOX_DIR/clickhints-state
 #                                     holds ("closed" when absent), which open sets to "open" and dismiss to "closed".
 #                                     "qs-ipc call popup state" does the same from $SANDBOX_DIR/popup-state, such as
-#                                     "open weather".
+#                                     "open weather". SANDBOX_POPUP_OPENS=1 makes "popup open <name>", "calendar
+#                                     open_day" (clock) and "notifications open" write "open <name>" there, as the bar
+#                                     would once the popup is drawn.
 #                                       SANDBOX_CLICKHINTS_ANSWER  the line written to the FIFO (a number or a label;
 #                                                                  empty is a cancel)
 #                                       SANDBOX_CLICKHINTS_OPEN    what open prints, "ok" by default; anything else
@@ -141,7 +147,19 @@ hyprctl)
     fi
     # SANDBOX_ACTIVEWINDOW_AFTER_WTYPE_JSON: the window that has focus once anything has been typed.
     # SANDBOX_SWITCHED_TITLE: the tab title Firefox's window shows once Return has been typed, as after a tab switch.
-    if [ -n "${SANDBOX_ACTIVEWINDOW_AFTER_WTYPE_JSON:-}" ] && grep -q '^wtype ' "$SANDBOX_DIR/calls.log" 2>/dev/null; then
+    flipped=
+    if [ -n "${SANDBOX_ACTIVEWINDOW_AFTER_LAUNCH_JSON:-}" ] && grep -q '^setsid ' "$SANDBOX_DIR/calls.log" 2>/dev/null; then
+      flipped=SANDBOX_ACTIVEWINDOW_AFTER_LAUNCH_JSON
+    elif [ -n "${SANDBOX_ACTIVEWINDOW_AFTER_FOCUS_JSON:-}" ] && grep -q '^hyprctl dispatch hl.dsp.focus' "$SANDBOX_DIR/calls.log" 2>/dev/null; then
+      flipped=SANDBOX_ACTIVEWINDOW_AFTER_FOCUS_JSON
+    fi
+    if [ -n "$flipped" ] && [ -n "${SANDBOX_ACTIVEWINDOW_GATE:-}" ] && [ ! -e "$SANDBOX_ACTIVEWINDOW_GATE" ]; then
+      echo "activewindow gated" >>"$SANDBOX_DIR/calls.log"
+      flipped=
+    fi
+    if [ -n "$flipped" ]; then
+      printenv "$flipped"
+    elif [ -n "${SANDBOX_ACTIVEWINDOW_AFTER_WTYPE_JSON:-}" ] && grep -q '^wtype ' "$SANDBOX_DIR/calls.log" 2>/dev/null; then
       printenv SANDBOX_ACTIVEWINDOW_AFTER_WTYPE_JSON
     elif [ -n "${SANDBOX_SWITCHED_TITLE:-}" ] && grep -q '^wtype -k Return' "$SANDBOX_DIR/calls.log" 2>/dev/null; then
       jq -c --arg title "$SANDBOX_SWITCHED_TITLE — Mozilla Firefox" '.title = $title' <<<"${SANDBOX_ACTIVEWINDOW_JSON:-{\}}"
@@ -212,6 +230,13 @@ tmux)
   ;;
 qs-ipc)
   log "$@"
+  if [ -n "${SANDBOX_POPUP_OPENS-}" ]; then
+    case "$*" in
+    *"call popup open "*) echo "open $4" >"$SANDBOX_DIR/popup-state" ;;
+    *"call calendar open_day"*) echo "open clock" >"$SANDBOX_DIR/popup-state" ;;
+    *"call notifications open"*) echo "open notifications" >"$SANDBOX_DIR/popup-state" ;;
+    esac
+  fi
   case "$*" in
   *get_dnd*) echo false ;;
   *"call clickhints open"*)
