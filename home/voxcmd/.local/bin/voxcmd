@@ -531,7 +531,7 @@ run_option() {
     question=$(confirm_question "$option" "$label")
     local -a confirm_flags=(--verb "$(normalize "${question%% *}")")
     [ "$came_by_voice" = 0 ] || confirm_flags+=(--listen)
-    debug "confirm asks: $question (${confirm_flags[*]})"
+    debug "confirm asks: $(confirm_question "$option" "$toast_label") (${confirm_flags[*]})"
     if ! "$voxcmd_confirm" "${confirm_flags[@]}" "$question"; then
       debug "confirm answered no: $toast_label not run"
       return 0
