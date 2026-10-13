@@ -220,6 +220,7 @@ expect_absent "calendar is silent" "notify-send"
 "$tests_dir/firefox-profile" "$HOME/.config/mozilla/firefox" store
 export SANDBOX_CLIENTS_JSON='[{"address": "0x3001", "mapped": true, "class": "firefox", "title": "Example Docs - Getting started — Mozilla Firefox", "focusHistoryID": 1, "workspace": {"id": 1}}]'
 export SANDBOX_ACTIVEWINDOW_JSON='{"address": "0x3001", "class": "firefox"}'
+export SANDBOX_DEFAULT_BROWSER=firefox.desktop
 write_cache "$(event w "Weekly sync" -600 600 https://notes.example.org/weekly null)"
 say "join my meeting"
 expect "a meeting link open in a tab focuses that tab" "-- tab Weekly sync notes"
@@ -230,6 +231,14 @@ expect "a page no tab shows opens in a new tab of Firefox" "firefox --new-tab ht
 expect_absent "not through xdg-open" "xdg-open"
 say "new meeting"
 expect "a new-event form is always opened fresh" "xdg-open https://calendar.google.com/calendar/render?action=TEMPLATE"
+
+SANDBOX_DEFAULT_BROWSER=librewolf.desktop say "join my meeting"
+expect "another default browser gets the link from xdg-open" "xdg-open https://notes.example.org/weekly"
+expect_absent "even with Firefox running, no tab is focused" "wtype"
+# The window never takes focus, so the tab focus fails, and the page still opens.
+SANDBOX_ACTIVEWINDOW_JSON='{"address": "0x1003", "class": "kitty"}' say "join my meeting"
+expect "a failed tab focus falls back to xdg-open" "xdg-open https://notes.example.org/weekly"
+expect_absent "with nothing typed" "wtype"
 
 # ---- spoken-time.sh day words ----------------------------------------------------------------------------------
 

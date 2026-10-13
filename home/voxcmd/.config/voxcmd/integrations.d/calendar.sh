@@ -64,12 +64,17 @@ open_url() {
   setsid -f xdg-open "$1" >/dev/null 2>&1 </dev/null
 }
 
-# A page that may already be open: with Firefox running, its tab is focused (firefox-tab goto, the same as "go to
-# <site>"), else the page opens as open_url does. A new-event form is always opened fresh, so it never uses this.
+# A page that may already be open: when Firefox is the default browser and runs, its tab is focused (firefox-tab goto,
+# the same as "go to <site>"). Any other browser, or no Firefox window, opens it as open_url does, and so does a failed
+# focus, which may then open a duplicate tab: the lesser harm next to opening nothing. A new-event form is always opened
+# fresh, so it never uses this.
 open_page() {
-  local status=0
-  "$voxcmd_share_dir/firefox-tab" goto --running "$1" >/dev/null 2>&1 || status=$?
-  [ "$status" != 3 ] || open_url "$1"
+  case "$(xdg-mime query default x-scheme-handler/https 2>/dev/null)" in
+  firefox.desktop | firefox-esr.desktop)
+    ! "$voxcmd_share_dir/firefox-tab" goto --running "$1" >/dev/null 2>&1 || return 0
+    ;;
+  esac
+  open_url "$1"
 }
 
 # Notification bodies are rendered as rich text by the bar, and anyone can send an invite with markup in its title.
