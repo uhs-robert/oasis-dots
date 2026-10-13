@@ -7,6 +7,7 @@ set -u
 #   lib/check.sh                  every step
 #   lib/check.sh --changed <base> only the steps the files changed since <base> can affect
 #
+# CHECK_PLAN_ONLY=1 prints the plan (the summary line, then each shellcheck list) and exits, running nothing.
 # CHECK_FULL=1 makes --changed run everything anyway. CHECK_JOBS sets how many steps run at once (default min(cores/2, 4)); 1 runs them
 # one after another with live output.
 script_dir=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
@@ -18,12 +19,12 @@ cd "$repo_dir" || exit 1
 # Every step, longest first. The voxcmd steps are timing-sensitive, so they run one after another in a slot
 # of their own, ahead of the rest.
 voxcmd_steps='voxcmd-phrases voxcmd-click voxcmd-calendar'
-other_steps='qmllint shellcheck calendar-sync owner-test-bar shfmt stylua luacheck lock-skins style-exports time-format calendar-sync-syntax agent-hooks stale-shells-hook notification-markup packages symlinks git-diff-check whitespace conflicts'
+other_steps='check-scope qmllint shellcheck calendar-sync owner-test-bar shfmt stylua luacheck lock-skins style-exports time-format calendar-sync-syntax agent-hooks stale-shells-hook notification-markup packages symlinks git-diff-check whitespace conflicts'
 
 # Shell files by the group they are linted in. Symlinks are skipped (their target is linted itself).
 # worktrees/ holds other agents' scratch copies and skills/synced/ is vendored.
 plain_shell_files() {
-  printf '%s\n' install.sh uninstall.sh lib/*.sh demo/*.sh home/hypr/.config/hypr/scripts/state-write home/voxcmd/tests/*.sh home/calendar/tests/*.sh
+  printf '%s\n' install.sh uninstall.sh lib/*.sh demo/*.sh home/hypr/.config/hypr/scripts/state-write home/voxcmd/tests/*.sh home/calendar/tests/*.sh lib/tests/*.sh
 }
 # Linted with -x, which follows `source`, so each is checked together with its libraries.
 sourcing_shell_files() {
@@ -59,6 +60,7 @@ step_body() {
     [ ! -s "$logs/agent.fmt.list" ] || xargs shfmt -i 2 -d <"$logs/agent.fmt.list" || status=1
     return $status
     ;;
+  check-scope) bash ./lib/tests/check-scope.sh ;;
   stylua) stylua --respect-ignores --check home/hypr/.config/hypr ;;
   luacheck) sh ./lib/check-lua.sh ;;
   qmllint) sh ./lib/check-qml.sh ;;
@@ -137,9 +139,12 @@ jobs=${CHECK_JOBS:-$(($(nproc 2>/dev/null || echo 2) / 2))}
 
 # What a changed path can affect. A step is dropped only when every changed path is claimed by some rule
 # here and none of them reaches it, so a path nobody claimed runs everything.
-scope_all=0 scope_lua=0 scope_qml=0 scope_node=0 scope_voxcmd=0 scope_calendar=0 scope_hooks=0 scope_bar=0
+scope_all=0 scope_lua=0 scope_qml=0 scope_node=0 scope_voxcmd=0 scope_calendar=0 scope_hooks=0 scope_bar=0 scope_checkscope=0
 scope_changed_files() {
   while IFS= read -r path; do
+    case $path in
+    lib/check-*.sh | lib/tests/check-scope.sh) scope_checkscope=1 ;;
+    esac
     case $path in
     lib/check.sh | lib/check-passed.sh | justfile | .claude/check-commands) scope_all=1 ;;
     lib/check-lua.sh | .luacheckrc | home/hypr/*) scope_lua=1 ;;
@@ -215,6 +220,7 @@ in_scope() {
   [ "$scope_all" = 1 ] && return 0
   case $1 in
   packages | symlinks | git-diff-check | whitespace | conflicts) true ;;
+  check-scope) [ "$scope_checkscope" = 1 ] ;;
   shellcheck) [ -s "$logs/plain.list" ] || [ -s "$logs/sourcing.list" ] || [ -s "$logs/agent.list" ] ;;
   shfmt) [ -s "$logs/plain.fmt.list" ] || [ -s "$logs/sourcing.fmt.list" ] || [ -s "$logs/agent.fmt.list" ] ;;
   stylua | luacheck) [ "$scope_lua" = 1 ] ;;
@@ -233,7 +239,9 @@ for name in $voxcmd_steps $other_steps; do
     skipped_by_scope="$skipped_by_scope $name"
     continue
   }
-  missing=$(tool_missing "$name")
+  missing=''
+  # The plan is the same on a machine without the tools, so the scope test does not depend on them.
+  [ -n "${CHECK_PLAN_ONLY:-}" ] || missing=$(tool_missing "$name")
   if [ -n "$missing" ]; then
     echo "$missing" >>"$logs/skips"
     continue
@@ -246,6 +254,11 @@ for name in $voxcmd_steps $other_steps; do
 done
 [ ! -s "$logs/skips" ] || sort -u "$logs/skips"
 echo "check: $scope_label; ran:$ran; skipped by scope:${skipped_by_scope:- none}"
+
+if [ -n "${CHECK_PLAN_ONLY:-}" ]; then
+  for group in plain sourcing agent; do sed "s|^|shellcheck $group: |" "$logs/$group.list"; done
+  exit 0
+fi
 
 export CHECK_LOGS="$logs" CHECK_JOBS="$jobs"
 if [ "$jobs" -le 1 ]; then
