@@ -6,8 +6,8 @@ set -u
 #
 #   lib/check.sh                  every step
 #   lib/check.sh --changed <base> only the steps the files changed since <base> can affect
+#   lib/check.sh --plan [--changed <base>] prints the plan (the summary line, then each shellcheck list) and exits 0, running nothing
 #
-# CHECK_PLAN_ONLY=1 prints the plan (the summary line, then each shellcheck list) and exits, running nothing.
 # CHECK_FULL=1 makes --changed run everything anyway. CHECK_JOBS sets how many steps run at once (default min(cores/2, 4)); 1 runs them
 # one after another with live output.
 script_dir=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
@@ -113,21 +113,26 @@ if [ "${1:-}" = --run-step ]; then
   exit 0
 fi
 
-changed_base=''
-case ${1:-} in
---changed)
-  [ $# -eq 2 ] || {
-    echo 'usage: lib/check.sh [--changed <base>]' >&2
+usage='usage: lib/check.sh [--plan] [--changed <base>]'
+changed_base='' plan_only=''
+while [ $# -gt 0 ]; do
+  case $1 in
+  --plan) plan_only=1 ;;
+  --changed)
+    [ $# -ge 2 ] || {
+      echo "$usage" >&2
+      exit 2
+    }
+    changed_base=$2
+    shift
+    ;;
+  *)
+    echo "$usage" >&2
     exit 2
-  }
-  changed_base=$2
-  ;;
-'') ;;
-*)
-  echo 'usage: lib/check.sh [--changed <base>]' >&2
-  exit 2
-  ;;
-esac
+    ;;
+  esac
+  shift
+done
 
 logs=$(mktemp -d) || exit 1
 trap 'rm -rf "$logs"' EXIT
@@ -241,7 +246,7 @@ for name in $voxcmd_steps $other_steps; do
   }
   missing=''
   # The plan is the same on a machine without the tools, so the scope test does not depend on them.
-  [ -n "${CHECK_PLAN_ONLY:-}" ] || missing=$(tool_missing "$name")
+  [ -n "$plan_only" ] || missing=$(tool_missing "$name")
   if [ -n "$missing" ]; then
     echo "$missing" >>"$logs/skips"
     continue
@@ -255,7 +260,7 @@ done
 [ ! -s "$logs/skips" ] || sort -u "$logs/skips"
 echo "check: $scope_label; ran:$ran; skipped by scope:${skipped_by_scope:- none}"
 
-if [ -n "${CHECK_PLAN_ONLY:-}" ]; then
+if [ -n "$plan_only" ]; then
   for group in plain sourcing agent; do sed "s|^|shellcheck $group: |" "$logs/$group.list"; done
   exit 0
 fi
