@@ -20,7 +20,8 @@ Item {
     readonly property alias count_item: count_text
 
     readonly property real badge_size: Style.bar_badge_size
-    readonly property real badge_rise: 3
+    // Sprites are drawn to the full glyph height, so a badge raised as far as a font glyph's would sit on a framed island's top border (NES).
+    readonly property real badge_rise: glyph_icon.rows ? 2 : 3
     // A font glyph's side bearing leaves room for the badge to tuck 1px in; a pixel sprite fills its box to the edge, so the badge steps a sprite pixel clear of it.
     readonly property real badge_overlap: glyph_icon.rows ? -glyph_icon.pixel : 1
 
