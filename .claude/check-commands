@@ -1,0 +1,3 @@
+# Check commands beyond the defaults in ~/.claude/hooks/guard-masked-checks.sh, one command or path pattern per line.
+home/voxcmd/tests/run-phrases.sh
+lib/check.sh
