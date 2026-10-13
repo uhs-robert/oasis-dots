@@ -47,6 +47,9 @@ const cases = [
   ["unterminated tag is text", "<b onclick=\"x", "&lt;b onclick=&quot;x"],
   ["not a tag", "1 <2 and 3> 2", "1 &lt;2 and 3&gt; 2"],
   ["depth capped, still balanced", "<b>".repeat(20) + "x", "<b>".repeat(8) + "x" + "</b>".repeat(8)],
+  ["self-closing b opens no scope", "<b/>plain", "plain"],
+  ["self-closing a opens no scope", "<a href=\"https://example.com\"/>plain", "plain"],
+  ["self-closing br still breaks", "a<br/>b", "a<br>b"],
   ["empty", "", ""],
   ["null", null, ""],
 ];

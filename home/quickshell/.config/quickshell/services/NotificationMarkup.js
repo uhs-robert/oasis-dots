@@ -77,6 +77,9 @@ function sanitize(body) {
             if (m) {
                 const closing = m[1] === "/";
                 const name = m[2].toLowerCase();
+                i += m[0].length;
+                // <b/> or <a href=".."/> opens no scope, so it must not format the text after it.
+                if (/\/\s*$/.test(m[3]) && name !== "br" && name !== "img") continue;
                 if (keep_tags[name]) {
                     if (closing) emit_close(name);
                     else emit_open(name, "<" + name + ">");
@@ -91,7 +94,6 @@ function sanitize(body) {
                 } else if (name === "img" && !closing) {
                     out += escape(attributes(m[3]).alt || "");
                 }
-                i += m[0].length;
                 continue;
             }
             out += "&lt;";
