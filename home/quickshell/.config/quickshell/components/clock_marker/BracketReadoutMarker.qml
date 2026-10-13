@@ -3,36 +3,29 @@ import QtQuick
 import "../../theme"
 
 // tie: a targeting-computer readout inside the clock brackets, · T-12 before a meeting and a blinking · LOCK during one.
-Item {
+MarkerBase {
     id: root
 
-    // Shared marker inputs; see MeetingMarker.
-    property int minutes: 0
-    property bool in_meeting: false
-    property real progress: 0
-    property bool on_accent: false
-    property color ink: "black"
-    property font text_font
-
-    implicitWidth: Math.ceil(root.in_meeting ? lock_width.advanceWidth : upcoming_width.advanceWidth)
+    implicitWidth: Math.ceil(Math.max(upcoming_width.advanceWidth, lock_width.advanceWidth))
     implicitHeight: label.implicitHeight
 
-    // Sized from the widest countdown, so the minutes ticking down do not resize the clock.
+    // The leading space matches the one after the dot, so the dot is as far from the date as from the countdown.
+    // Sized from the widest of both states, so the minutes ticking down and a meeting starting never resize the clock.
     TextMetrics {
         id: upcoming_width
         font: root.text_font
-        text: "\u00b7 T-00"
+        text: " · T-00"
     }
 
     TextMetrics {
         id: lock_width
         font: root.text_font
-        text: "\u00b7 LOCK"
+        text: " · LOCK"
     }
 
     Text {
         id: label
-        text: root.in_meeting ? "\u00b7 LOCK" : "\u00b7 T-" + root.minutes
+        text: root.in_meeting ? " · LOCK" : " · T-" + root.minutes
         textFormat: Text.PlainText
         color: root.on_accent ? root.ink : root.in_meeting ? Style.bar_clock_brackets : Style.bar_fg
         font: root.text_font

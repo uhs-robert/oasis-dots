@@ -3,24 +3,16 @@ import QtQuick
 import "../../theme"
 
 // ps2: the lit selection pill of the menus around the minutes, with a halo that breathes during a meeting.
-Item {
+MarkerBase {
     id: root
-
-    // Shared marker inputs; see MeetingMarker.
-    property int minutes: 0
-    property bool in_meeting: false
-    property real progress: 0
-    property bool on_accent: false
-    property color ink: "black"
-    property font text_font
 
     // 0..1 scale of the halo.
     property real breath: 1
 
-    implicitWidth: Math.ceil(root.in_meeting ? now_width.advanceWidth : upcoming_width.advanceWidth) + 16
+    implicitWidth: Math.ceil(Math.max(upcoming_width.advanceWidth, now_width.advanceWidth)) + 16
     implicitHeight: label.implicitHeight + 4
 
-    // Sized from the widest countdown, so the minutes ticking down do not resize the clock.
+    // Sized from the widest of both states, so the minutes ticking down and a meeting starting never resize the clock.
     TextMetrics {
         id: upcoming_width
         font: root.text_font

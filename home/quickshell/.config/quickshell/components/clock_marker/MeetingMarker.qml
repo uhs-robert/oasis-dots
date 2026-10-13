@@ -3,18 +3,8 @@ import QtQuick
 import "../../theme"
 
 // The bar clock's meeting marker: the countdown before a meeting and the in-meeting mark, drawn by the file Style.bar_meeting_marker names.
-Item {
+MarkerBase {
     id: root
-
-    // Minutes to the upcoming meeting; meaningless while in_meeting.
-    property int minutes: 0
-    property bool in_meeting: false
-    // 0..1 through the lead-in window, 1 during a meeting.
-    property real progress: 0
-    // The clock sits on a strong fill; markers draw in ink.
-    property bool on_accent: false
-    property color ink: "black"
-    property font text_font
 
     implicitWidth: loader.item ? loader.item.implicitWidth : 0
     implicitHeight: loader.item ? loader.item.implicitHeight : 0
