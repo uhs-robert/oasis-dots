@@ -44,12 +44,12 @@ Row {
         const next = CalendarState.chip_event || CalendarState.next_event_today;
         return next ? "Next: " + next.title + "\n" + span(next) + " (in " + CalendarState.minutes_to(next) + " min)" : "";
     }
-    onAgenda_tipChanged: if (hover.hovered && root.agenda_tip !== "") Tooltip.show(root, root.agenda_tip, "calendar")
+    onAgenda_tipChanged: if (hover.hovered && root.agenda_tip !== "") Tooltip.show(root, root.agenda_tip, "calendar", true)
 
     HoverHandler {
         id: hover
         onHoveredChanged: {
-            if (hovered && root.agenda_tip !== "") Tooltip.show(root, root.agenda_tip, "calendar");
+            if (hovered && root.agenda_tip !== "") Tooltip.show(root, root.agenda_tip, "calendar", true);
             else Tooltip.hide(root);
         }
     }
@@ -231,6 +231,7 @@ Row {
         visible: root.chip_shown
         anchors.verticalCenter: parent.verticalCenter
         text: root.chip_text
+        textFormat: Text.PlainText
         color: root.on_accent ? root.ink : Theme.theme_primary
         font.family: Style.bar_font_family
         style: Style.bar_text_style

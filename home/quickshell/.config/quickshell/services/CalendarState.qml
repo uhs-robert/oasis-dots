@@ -55,6 +55,11 @@ Singleton {
         return d && String(text).length === 10 ? d.getTime() : Date.parse(text);
     }
 
+    // Invites are written by strangers: one line, no stray whitespace.
+    function one_line(text) {
+        return String(text || "").replace(/\s+/g, " ").trim();
+    }
+
     function normalize(raw) {
         const out = [];
         for (const e of raw) {
@@ -67,12 +72,12 @@ Singleton {
             if (isNaN(end_ms) || end_ms <= start_ms) end_ms = all_day ? start_ms + 86400000 : start_ms;
             out.push({
                 uid: e.uid || "",
-                title: e.title || "(no title)",
+                title: root.one_line(e.title) || "(no title)",
                 start_ms: start_ms,
                 end_ms: end_ms,
                 all_day: all_day,
-                location: e.location || "",
-                organizer: e.organizer || "",
+                location: root.one_line(e.location),
+                organizer: root.one_line(e.organizer),
                 guests: Array.isArray(e.attendees) ? e.attendees.length : 0,
                 join_url: e.join_url || "",
                 event_url: e.event_url || "",

@@ -16,6 +16,7 @@ Popup {
         y: 8
         width: parent.width - 24
         text: Tooltip.text
+        textFormat: Tooltip.plain ? Text.PlainText : Text.AutoText
         wrapMode: Text.Wrap
         maximumLineCount: 12
         elide: Text.ElideRight
