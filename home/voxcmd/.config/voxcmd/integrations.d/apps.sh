@@ -69,8 +69,9 @@ help_choices() {
   app_candidates | jq -c 'unique_by(.id) | sort_by(.label | ascii_downcase) | map({id, label, action: "open"})'
 }
 
-# "my calendar" and "the calendar" are left to calendar.sh, which opens Google Calendar; an installed Calendar app
-# would otherwise turn "open my calendar" into a picker. "open calendar" still opens the app.
+# Opening or going to "my calendar" or "the calendar" is left to calendar.sh, which opens Google Calendar; an installed
+# Calendar app would otherwise turn "open my calendar" into a picker. "open calendar" still opens the app, and closing
+# "the calendar" still closes its window, since calendar.sh has nothing to close.
 candidates() {
   local action="$1" target="$2"
   case "$action" in
@@ -80,7 +81,7 @@ candidates() {
     ;;
   esac
   if spoken_as_keybind "$action" "$target" || names_session_or_agent "$target" || launches_keybind "$action" "$target" ||
-    [[ "$target" =~ ^(my|the)\ calendar$ ]]; then
+    { [[ "$action" =~ ^(open|open_new|focus)$ ]] && [[ "$target" =~ ^(my|the)\ calendar$ ]]; }; then
     echo '[]'
     return
   fi

@@ -121,6 +121,10 @@ say "join my meeting"
 expect "Teams join link" "xdg-open https://teams.microsoft.com/l/meetup-join/placeholder"
 expect "Teams says joining" "Joining Teams sync"
 
+write_cache "$(event u "" -300 600 https://meet.example.com/untitled null)"
+say "join my meeting"
+expect "an empty title reads as Untitled" "Joining Untitled"
+
 write_cache "$(event m 'Sync <img src="https://example.com/x.png"> & plan' -300 600 https://meet.example.com/markup null)"
 say "join my meeting"
 expect "title markup is escaped" 'Joining Sync &lt;img src="https://example.com/x.png"&gt; &amp; plan'
