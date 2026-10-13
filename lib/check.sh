@@ -143,6 +143,8 @@ scope_changed_files() {
     case $path in
     lib/check.sh | lib/check-passed.sh | justfile | .claude/check-commands) scope_all=1 ;;
     lib/check-lua.sh | .luacheckrc | home/hypr/*) scope_lua=1 ;;
+    # Ahead of the greeter's QML arm, since case takes only the first match.
+    system/etc/greetd/*.lua) scope_lua=1 scope_qml=1 ;;
     lib/check-qml.sh | lib/check-lock-skins.sh | lib/check-style-exports.sh | lib/check-time-format.sh | system/etc/greetd/quickshell/*) scope_qml=1 ;;
     home/quickshell/tests/*) scope_node=1 ;;
     home/quickshell/*) scope_qml=1 scope_node=1 ;;
