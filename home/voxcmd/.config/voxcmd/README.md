@@ -609,11 +609,11 @@ A session keeps the microphone re-opening after each spoken turn, so related com
 
 `SUPER + SHIFT + COMMA` (Leader, `SHIFT + COMMA`) runs `voxcmd stop`, the key for a voice session or overlay that will not end and a recording you no longer want. It does three things, each only when there is something to do:
 
-- Ends the open [voice session](#voice-sessions), reported as "stopped", which also takes down Firefox's link hints. This comes first, so the session's listener cannot open the microphone again, even when it is mid-turn: its turn is discarded and the session is gone when it looks.
-- Cancels the open picker, confirm card or link hints, as Esc does.
+- Ends the open [voice session](#voice-sessions), reported by its usual "ended: stopped" toast, which also takes down Firefox's link hints. This comes first, so the session's listener cannot open the microphone again, even when it is mid-turn: its turn is discarded and the session is gone when it looks. An action that turn is already running still finishes, but nothing it opens (a picker or confirm card) listens for a reply.
+- Cancels the open picker, confirm card or the numbered overlay, as Esc does.
 - Cancels a voxtype recording under way, or being transcribed, whichever key started it: Voice Command, a reply recording or Speech to Text. Nothing said is routed or typed, and Speech to Text resumes its paused media as it does when any recording ends.
 
-With nothing going on it does nothing and says nothing. `voxcmd end-session` still ends only the session.
+With no session, picker or recording open it does nothing and says nothing. `voxcmd end-session` still ends only the session.
 
 ## Debug log
 
