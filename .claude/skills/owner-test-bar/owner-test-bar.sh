@@ -464,7 +464,8 @@ build() {
   done
   copy_assets "$dir"
   printf '%s\n' "$@" >"$dir.branches"
-  (cd "$dir" && just check >/dev/null) || die "just check fails on the combined build in $dir"
+  # A tree already recorded as passing needs no run; otherwise only what the branches changed.
+  (cd "$dir" && { lib/check-passed.sh is-passed || lib/check.sh --changed origin/main; } >/dev/null) || die "the check fails on the combined build in $dir"
   echo "owner-test-bar: built $dir from $*"
 }
 
