@@ -12,8 +12,8 @@ The guide walks you through it in a terminal:
 
 1. It points you to Google Calendar > Settings > your calendar > Integrate calendar > "Secret address in iCal format" (the secret one, not the public one) and offers to open the settings page.
 2. You paste the address with hidden input. It converts `webcal://`, requires https, then fetches and parses it and prints "Found N events in the next 60 days", or a clear error without the address, so you can retry.
-3. You choose where to keep it. Only backends that work on your machine are listed; Enter picks Auto, the first of: rbw (installed and unlocked), the system keyring (`secret-tool` with a running Secret Service), or a private file at `${XDG_DATA_HOME:-~/.local/share}/calendar-sync/ical-url` (mode 0600 in a 0700 directory, refused inside a git work tree).
-4. It writes `${XDG_CONFIG_HOME:-~/.config}/calendar-sync/config` with the matching `url_command` (none is needed for the default rbw entry `google-calendar-ical`), asking before it replaces an existing one, and reads the address back through it to prove the round trip.
+3. You choose where to keep it. Only backends that work on your machine are listed; Enter picks Auto, the first of: rbw (installed and unlocked), the system keyring (`secret-tool`, with the default collection unlocked), or a private file at `${XDG_DATA_HOME:-~/.local/share}/calendar-sync/ical-url` (mode 0600 in a 0700 directory, refused inside a git work tree). A locked rbw is listed as locked and turns Auto off, so a lock never quietly sends the address somewhere weaker; unlock it and run setup again, or pick another. An existing rbw entry is updated in place with `rbw edit`, keeping its notes, and never removed. If an older copy of the address is left in another backend, setup says where and offers to delete the private file.
+4. It writes `${XDG_CONFIG_HOME:-~/.config}/calendar-sync/config` with the matching `url_command`, asking before it replaces an existing one, and reads the address back through it to prove the round trip.
 5. It enables the timer and runs the first sync.
 
 Nothing is half-written if you press Ctrl-C: the address is stored first, then the config, then the timer. The installer offers to run it when you chose the `calendar` package.
@@ -26,18 +26,20 @@ The package is optional: the installer enables the timer only when you chose `ca
 
 ```ini
 # pick one
-url_command = rbw get google-calendar-ical
+url_command = rbw get -- google-calendar-ical
 url_command = pass show calendar/google-ical
-url_command = secret-tool lookup service calendar-sync
+url_command = secret-tool lookup service calendar-sync key ical-url
 url_command = op read "op://Personal/Google Calendar/ical"
-url_command = cat ~/.config/calendar-sync/ical-address
+url_command = cat ~/.local/share/calendar-sync/ical-url
 ```
 
-The last one reads a file you keep yourself; make it `chmod 600` and keep it out of every repo.
+The last one is the file `setup` creates; keep such a file `chmod 600`, outside `~/.config` (which may be a stow link into a checkout) and outside every repo.
 
-The command runs through `sh -c` with no terminal, no stdin and its stderr discarded, and gets 20 seconds. A non-zero exit, empty output or a timeout counts as "not configured": the timer stays silent and `calendar-sync --now` prints a hint. The command therefore must not prompt. A manager that asks for a passphrase through gpg or pinentry must already be unlocked (for example by a running agent), or the run times out without ever showing the prompt. With `rbw get` (the default, or any command starting with `rbw `) a locked vault is detected first with `rbw unlocked`.
+The config is trusted like a script: before running it, `calendar-sync` requires that the file and its directory belong to you, are not writable by group or others, and are not inside a git work tree, and otherwise refuses with an error in `error.json`.
 
-`CALENDAR_SYNC_RBW_ENTRY` still changes the entry name of the default `rbw get` command, for example in a drop-in: `systemctl --user edit calendar-sync.service`. A `url_command` replaces it.
+The command runs through `sh -c` with no terminal, no stdin and its stderr discarded, and gets 20 seconds. A non-zero exit, empty output or a timeout counts as "not configured": the timer stays silent and `calendar-sync --now` prints a hint. The command therefore must not prompt: it has no terminal, but an agent-based manager can still pop a graphical pinentry, and the timeout only bounds the wait, so keep the manager unlocked. A command that starts with `rbw` (leading `VAR=value` words are skipped) gets an `rbw unlocked` check first. One that starts with `secret-tool` gets a check of the default keyring collection's `Locked` property over D-Bus (`busctl`, else `gdbus`); a locked or unreachable keyring is skipped quietly, so the keyring must be unlocked at login (for example by PAM) for the timer to use it. The command's output is capped at 64 KiB, and the unit has `TimeoutStartSec=2min` as a last bound.
+
+Without a config the command is `rbw get -- google-calendar-ical`.
 
 The address is a credential: anyone holding it can read the whole calendar. It goes from the command into memory only. It is never in a command line, a log, the cache or an error message. If it leaks, reset it in Google Calendar settings. Only https addresses are accepted.
 

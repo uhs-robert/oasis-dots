@@ -3,5 +3,6 @@ Description=Sync the calendar feed into the local cache
 Documentation=https://github.com/uhs-robert/oasis-dots/issues/780
 
 [Service]
+TimeoutStartSec=2min
 Type=oneshot
 ExecStart=%h/.local/bin/calendar-sync

@@ -16,12 +16,15 @@ import getpass
 import json
 import os
 import re
+import select
 import shlex
 import shutil
 import signal
+import stat
 import subprocess
 import sys
 import tempfile
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -29,6 +32,11 @@ from pathlib import Path
 
 DEFAULT_RBW_ENTRY = "google-calendar-ical"
 URL_COMMAND_TIMEOUT_SECONDS = 20
+MAX_COMMAND_OUTPUT_BYTES = 64 * 1024
+KILL_WAIT_SECONDS = 2
+KEYRING_STORE_TIMEOUT_SECONDS = 120
+LOCKED_RBW_EXIT_CODE = 3
+LOCKED_KEYRING_EXIT_CODE = 4
 DAYS_BEHIND = 7
 DAYS_AHEAD = 60
 MAX_FEED_BYTES = 32 * 1024 * 1024
@@ -83,10 +91,31 @@ def config_dir():
     return Path(base) / "calendar-sync"
 
 
+def is_private_to_me(path):
+    """Owned by me and not writable by group or others, judged on the link itself."""
+    info = path.lstat()
+    return info.st_uid == os.getuid() and not info.st_mode & (stat.S_IWGRP | stat.S_IWOTH)
+
+
+def require_trustworthy_config(config_path):
+    """The config names a command we will run, so anyone who can edit it can run code as me.
+
+    It must not sit in a git work tree either: a stow-folded link would make it
+    part of a checkout that other people's commits can change.
+    """
+    for item in (config_path.parent, config_path):
+        if not is_private_to_me(item) or inside_git_work_tree(item):
+            raise SyncError("the config file or its directory is writable by others or inside a git work tree")
+
+
 def configured_url_command():
     """The `url_command = ...` line of the config, which holds a command and never the address."""
+    path = config_dir() / "config"
+    if not os.path.lexists(path):
+        return None
+    require_trustworthy_config(path)
     try:
-        lines = (config_dir() / "config").read_text().splitlines()
+        lines = path.read_text().splitlines()
     except OSError:
         return None
     for line in lines:
@@ -97,12 +126,58 @@ def configured_url_command():
 
 
 def url_command():
-    entry = os.environ.get("CALENDAR_SYNC_RBW_ENTRY") or DEFAULT_RBW_ENTRY
-    return configured_url_command() or f"rbw get {shlex.quote(entry)}"
+    return configured_url_command() or f"rbw get -- {shlex.quote(DEFAULT_RBW_ENTRY)}"
+
+
+def command_program(command):
+    """Basename of the first word, after any leading VAR=value words."""
+    try:
+        words = shlex.split(command)
+    except ValueError:
+        return None
+    for word in words:
+        if not re.match(r"^[A-Za-z_][A-Za-z0-9_]*=", word):
+            return os.path.basename(word)
+    return None
 
 
 def needs_unlocked_rbw(command):
-    return command.startswith("rbw ")
+    return command_program(command) == "rbw"
+
+
+def needs_unlocked_keyring(command):
+    return command_program(command) == "secret-tool"
+
+
+KEYRING_LOCKED_QUERIES = (
+    [
+        "busctl", "--user", "get-property", "org.freedesktop.secrets",
+        "/org/freedesktop/secrets/aliases/default", "org.freedesktop.Secret.Collection", "Locked",
+    ],
+    [
+        "gdbus", "call", "--session", "--dest", "org.freedesktop.secrets",
+        "--object-path", "/org/freedesktop/secrets/aliases/default",
+        "--method", "org.freedesktop.DBus.Properties.Get", "org.freedesktop.Secret.Collection", "Locked",
+    ],
+)
+
+
+def keyring_is_unlocked():
+    """Asks the Secret Service over D-Bus, which never prompts, unlike secret-tool.
+
+    Unknown (no tool, no service) counts as locked, so the timer never raises an unlock dialog.
+    """
+    for query in KEYRING_LOCKED_QUERIES:
+        try:
+            result = subprocess.run(
+                query, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True, timeout=10
+            )
+        except (OSError, subprocess.TimeoutExpired):
+            continue
+        answer = result.stdout.lower()
+        if result.returncode == 0 and ("false" in answer or "true" in answer):
+            return "false" in answer
+    return False
 
 
 def rbw_is_unlocked():
@@ -119,28 +194,65 @@ def rbw_is_unlocked():
     return result.returncode == 0
 
 
+def stop_process_group(process):
+    if process.poll() is None:  # a reaped group's id may already belong to someone else
+        try:
+            os.killpg(process.pid, signal.SIGKILL)
+        except (ProcessLookupError, PermissionError):
+            pass
+    process.stdout.close()
+    try:
+        process.wait(timeout=KILL_WAIT_SECONDS)
+    except subprocess.TimeoutExpired:
+        pass
+
+
+def read_bounded_output(process, deadline):
+    """Reads stdout up to MAX_COMMAND_OUTPUT_BYTES, and gives up at the deadline.
+
+    A descendant that escapes the process group (setsid) can hold the pipe open
+    forever, so waiting for end-of-file, as communicate() does, is not an option.
+    """
+    chunks, total = [], 0
+    descriptor = process.stdout.fileno()
+    while True:
+        remaining = deadline - time.monotonic()
+        if remaining <= 0 or not select.select([descriptor], [], [], remaining)[0]:
+            raise NotConfigured("url_command timed out")
+        chunk = os.read(descriptor, 4096)
+        if not chunk:
+            return b"".join(chunks)
+        total += len(chunk)
+        if total > MAX_COMMAND_OUTPUT_BYTES:
+            raise NotConfigured("url_command printed too much")
+        chunks.append(chunk)
+
+
 def run_url_command(command):
     """Its output is the credential, so it is only ever returned, never printed."""
     timeout = float(os.environ.get("CALENDAR_SYNC_COMMAND_TIMEOUT") or URL_COMMAND_TIMEOUT_SECONDS)
-    # A new session detaches it from any terminal, so a password prompt cannot
-    # grab one; killing the whole group stops a hung child that holds the pipe.
+    deadline = time.monotonic() + timeout
+    # A new session detaches it from the terminal, but an agent-based manager
+    # can still pop a GUI pinentry; the timeout bounds that, and killing the
+    # process group stops a hung child.
     process = subprocess.Popen(
         ["sh", "-c", command],
         stdin=subprocess.DEVNULL,
         stdout=subprocess.PIPE,
         stderr=subprocess.DEVNULL,
-        text=True,
         start_new_session=True,
     )
     try:
-        output, _ = process.communicate(timeout=timeout)
+        output = read_bounded_output(process, deadline)
+        process.wait(timeout=max(deadline - time.monotonic(), 0.1))
     except subprocess.TimeoutExpired:
-        os.killpg(process.pid, signal.SIGKILL)
-        process.communicate()
-        raise NotConfigured("url_command timed out")
-    if process.returncode != 0 or not output.strip():
+        raise NotConfigured("url_command timed out") from None
+    finally:
+        stop_process_group(process)
+    text = output.decode(errors="replace").strip()
+    if process.returncode != 0 or not text:
         raise NotConfigured("url_command failed or printed nothing")
-    return output.strip()
+    return text
 
 
 def normalize_feed_url(url):
@@ -367,6 +479,8 @@ def sync(args, directory):
         command = url_command()
         if needs_unlocked_rbw(command) and not rbw_is_unlocked():
             return quiet_skip(args, "rbw is locked; unlock it and run again")
+        if needs_unlocked_keyring(command) and not keyring_is_unlocked():
+            return quiet_skip(args, "the keyring is locked; it should unlock at login")
         try:
             feed_url = read_feed_url(command)
         except NotConfigured as err:
@@ -391,25 +505,27 @@ def sync(args, directory):
 # --- guided setup ---------------------------------------------------------------
 
 GOOGLE_SETTINGS_URL = "https://calendar.google.com/calendar/r/settings"
-KEYRING_COMMAND = "secret-tool lookup service calendar-sync key ical-url"
 KEYRING_ATTRIBUTES = ["service", "calendar-sync", "key", "ical-url"]
+KEYRING_COMMAND = "secret-tool lookup " + " ".join(KEYRING_ATTRIBUTES)
 
 
 class SetupAborted(Exception):
-    """The user declined or cancelled; nothing further is written."""
+    """The user declined or cancelled, or a step failed; nothing further is written."""
 
 
 class Prompter:
     """Questions for `setup`.
 
     CALENDAR_SYNC_SETUP_ANSWERS names a file with one answer per line, which
-    replaces the terminal. It exists only so tests can drive setup; prompts are
+    replaces the terminal. It exists only so tests can drive setup, so it is
+    honored only together with CALENDAR_SYNC_ALLOW_FILE_URL=1; prompts are
     still printed, answers never are.
     """
 
     def __init__(self):
         scripted_path = os.environ.get("CALENDAR_SYNC_SETUP_ANSWERS")
-        self.scripted = Path(scripted_path).read_text().splitlines() if scripted_path else None
+        in_test_mode = os.environ.get("CALENDAR_SYNC_ALLOW_FILE_URL") == "1"
+        self.scripted = Path(scripted_path).read_text().splitlines() if scripted_path and in_test_mode else None
 
     def is_interactive(self):
         return self.scripted is not None or (sys.stdin.isatty() and sys.stdout.isatty())
@@ -430,42 +546,39 @@ class Prompter:
         return default if not answer else answer.startswith("y")
 
 
-def run_quietly(command, stdin_text=None, timeout=15):
-    """Runs a helper without showing its output; the address goes in on stdin, never argv."""
+def capture(command, stdin_text=None, timeout=15):
+    """Runs a helper and returns (exit code, stdout, stderr); callers must not print stdout."""
     try:
-        return subprocess.run(
+        result = subprocess.run(
             command,
             input=stdin_text,
             text=True,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
+            capture_output=True,
             stdin=None if stdin_text is not None else subprocess.DEVNULL,
             timeout=timeout,
-        ).returncode
-    except (OSError, subprocess.TimeoutExpired):
-        return 127
-
-
-def rbw_available():
-    return shutil.which("rbw") is not None and rbw_is_unlocked()
-
-
-def keyring_available():
-    """A Secret Service answers when the lookup exits silently; a missing service complains on stderr."""
-    if shutil.which("secret-tool") is None:
-        return False
-    try:
-        probe = subprocess.run(
-            ["secret-tool", "lookup", "service", "calendar-sync", "key", "availability-probe"],
-            stdin=subprocess.DEVNULL,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.PIPE,
-            text=True,
-            timeout=10,
         )
     except (OSError, subprocess.TimeoutExpired):
-        return False
-    return probe.returncode == 0 or not probe.stderr.strip()
+        return 127, "", ""
+    return result.returncode, result.stdout, result.stderr
+
+
+def run_quietly(command, stdin_text=None, timeout=15):
+    """Like capture, but only the exit code; the address goes in on stdin, never argv."""
+    return capture(command, stdin_text, timeout)[0]
+
+
+def tool_state(tool, is_unlocked):
+    if shutil.which(tool) is None:
+        return "missing"
+    return "unlocked" if is_unlocked() else "locked"
+
+
+def rbw_state():
+    return tool_state("rbw", rbw_is_unlocked)
+
+
+def keyring_state():
+    return tool_state("secret-tool", keyring_is_unlocked)
 
 
 def private_file_path():
@@ -477,9 +590,18 @@ def config_file_path():
     return config_dir() / "config"
 
 
+def ensure_private_directory(path):
+    """Creates it 0700, or tightens a directory of mine; one that is not mine is never used."""
+    path.mkdir(mode=0o700, parents=True, exist_ok=True)
+    info = path.lstat()
+    if info.st_uid != os.getuid() or not stat.S_ISDIR(info.st_mode):
+        raise SyncError("a calendar-sync directory exists but is not yours")
+    os.chmod(path, 0o700)
+
+
 def store_in_private_file(address):
     path = private_file_path()
-    path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+    ensure_private_directory(path.parent)
     fd, tmp_name = tempfile.mkstemp(dir=path.parent, prefix="ical-url.")
     try:
         with os.fdopen(fd, "w") as handle:
@@ -494,37 +616,67 @@ def store_in_private_file(address):
 
 def store_in_keyring(address):
     command = ["secret-tool", "store", "--label=calendar-sync iCal address", *KEYRING_ATTRIBUTES]
-    if run_quietly(command, stdin_text=address + "\n") != 0:
+    if run_quietly(command, stdin_text=address + "\n", timeout=KEYRING_STORE_TIMEOUT_SECONDS) != 0:
         raise SetupAborted("the keyring refused the address")
     return KEYRING_COMMAND, "the system keyring"
 
 
-def store_in_rbw(address, entry, replace_existing):
-    if replace_existing:
-        run_quietly(["rbw", "remove", entry])
-    if run_quietly(["rbw", "add", entry], stdin_text=address + "\n", timeout=60) != 0:
-        raise SetupAborted("rbw could not save the entry")
-    command = None if entry == DEFAULT_RBW_ENTRY else f"rbw get {shlex.quote(entry)}"
-    return command, f"rbw (entry {entry})"
+def rbw_entry_exists(entry):
+    code, _, error_text = capture(["rbw", "get", "--", entry])
+    if code == 0:
+        return True
+    message = error_text.lower()
+    if "multiple" in message:
+        raise SetupAborted(f"rbw has several entries named {entry}; rename or remove the extras first")
+    if "no entry" in message:
+        return False
+    raise SetupAborted("rbw could not look up the entry")
+
+
+def store_in_rbw(address, entry, entry_exists):
+    """Edits an existing entry in place, keeping its notes, so a failure can never lose it."""
+    if entry_exists:
+        code, notes, _ = capture(["rbw", "get", "--field", "notes", "--", entry])
+        if code != 0:
+            raise SetupAborted("rbw could not read the existing entry; it was left as it was")
+        command, body = ["rbw", "edit", "--", entry], address + "\n" + notes
+    else:
+        command, body = ["rbw", "add", "--", entry], address + "\n"
+    if run_quietly(command, stdin_text=body, timeout=60) != 0:
+        raise SetupAborted("rbw could not save the entry; any existing entry was left as it was")
+    return f"rbw get -- {shlex.quote(entry)}", f"rbw (entry {entry})"
 
 
 def choose_backend(prompter):
-    available = {"file": "a private file"}
-    if keyring_available():
-        available = {"keyring": "the system keyring (secret-tool)", **available}
-    if rbw_available():
-        available = {"rbw": "rbw", **available}
-    automatic = next(iter(available))
-    options = [("auto", f"Auto (recommended): {available[automatic]}")] + list(available.items())
+    rbw, keyring = rbw_state(), keyring_state()
+    usable = {}
+    if rbw == "unlocked":
+        usable["rbw"] = "rbw"
+    if keyring == "unlocked":
+        usable["keyring"] = "the system keyring (secret-tool)"
+    usable["file"] = "a private file"
+    if keyring == "locked":
+        print("The keyring is locked, so it is not offered; unlock it (it normally unlocks at login) to use it.")
+    # A lock must not quietly steer Auto to a weaker home for the address.
+    automatic = None if rbw == "locked" else next(iter(usable))
+    options = [("auto", f"Auto (recommended): {usable[automatic]}")] if automatic else []
+    if rbw == "locked":
+        print("rbw is installed but locked, so there is no Auto choice: unlock it and run setup again, or pick another.")
+        options.append(("rbw-locked", "rbw (locked, unlock it first)"))
+    options += list(usable.items())
     print("Where should the address be stored?")
     for number, (_, label) in enumerate(options, 1):
         print(f"  {number}) {label}")
     while True:
-        answer = prompter.ask("Choice [1]: ").lower()
+        answer = prompter.ask("Choice [1]: " if automatic else "Choice: ").lower()
         for number, (key, _) in enumerate(options, 1):
-            if answer in (str(number), key) or (not answer and number == 1):
+            if answer in (str(number), key) or (not answer and automatic and number == 1):
+                if key == "rbw-locked":
+                    print("Unlock rbw first (rbw unlock), then run calendar-sync setup again.")
+                    break
                 return automatic if key == "auto" else key
-        print("Pick one of the listed numbers or names.")
+        else:
+            print("Pick one of the listed numbers or names.")
 
 
 def check_not_in_work_tree(path, what):
@@ -573,11 +725,12 @@ def explain_where_the_address_lives(prompter):
 
 def write_config(command):
     path = config_file_path()
-    path.parent.mkdir(parents=True, exist_ok=True)
+    ensure_private_directory(path.parent)
     fd, tmp_name = tempfile.mkstemp(dir=path.parent, prefix="config.")
     try:
         with os.fdopen(fd, "w") as handle:
-            handle.write(f"# Written by calendar-sync setup. The command prints the address; it is not stored here.\nurl_command = {command}\n")
+            handle.write("# Written by calendar-sync setup. The command prints the address; it is not stored here.\n")
+            handle.write(f"url_command = {command}\n")
         os.replace(tmp_name, path)
     except BaseException:
         Path(tmp_name).unlink(missing_ok=True)
@@ -597,15 +750,18 @@ def enable_timer():
         print("Could not enable the timer; run: systemctl --user enable --now calendar-sync.timer")
 
 
-def connection_works():
+def connection_status():
+    """0 when the stored command yields an address, else 1, or a distinct code for a locked store."""
     command = url_command()
     if needs_unlocked_rbw(command) and not rbw_is_unlocked():
-        return False
+        return LOCKED_RBW_EXIT_CODE
+    if needs_unlocked_keyring(command) and not keyring_is_unlocked():
+        return LOCKED_KEYRING_EXIT_CODE
     try:
         read_feed_url(command)
     except (NotConfigured, SyncError):
-        return False
-    return True
+        return 1
+    return 0
 
 
 def plan_storage(prompter, backend):
@@ -618,20 +774,41 @@ def plan_storage(prompter, backend):
         print(f"A config already exists with: url_command = {existing}")
         if not prompter.confirm("Replace it?"):
             raise SetupAborted("kept the existing config")
-    entry, replace_existing = DEFAULT_RBW_ENTRY, False
+    entry, entry_exists = DEFAULT_RBW_ENTRY, False
     if backend == "rbw":
         entry = prompter.ask(f"rbw entry name [{DEFAULT_RBW_ENTRY}]: ") or DEFAULT_RBW_ENTRY
-        if run_quietly(["rbw", "get", entry]) == 0:
-            if not prompter.confirm(f"rbw already has an entry named {entry}. Replace it?"):
-                raise SetupAborted("left the existing rbw entry alone")
-            replace_existing = True
-    return entry, replace_existing
+        entry_exists = rbw_entry_exists(entry)
+        if entry_exists and not prompter.confirm(f"rbw already has an entry named {entry}. Update it with this address?"):
+            raise SetupAborted("left the existing rbw entry alone")
+    return entry, entry_exists
+
+
+def report_older_copies(prompter, backend, entry):
+    """Names where an earlier setup left the address, since moving it does not remove the old copy."""
+    old_file = private_file_path()
+    if backend != "file" and old_file.exists():
+        print(f"An older copy of the address is still in the private file {old_file}.")
+        if prompter.confirm("Delete it?"):
+            old_file.unlink()
+    if backend != "keyring" and keyring_state() == "unlocked" and run_quietly(["secret-tool", "lookup", *KEYRING_ATTRIBUTES]) == 0:
+        print("An older copy of the address is still in the keyring; remove it with: secret-tool clear service calendar-sync key ical-url")
+    if (backend != "rbw" or entry != DEFAULT_RBW_ENTRY) and rbw_state() == "unlocked":
+        if run_quietly(["rbw", "get", "--", DEFAULT_RBW_ENTRY]) == 0:
+            print(f"An older copy of the address is still in the rbw entry {DEFAULT_RBW_ENTRY}; remove it with: rbw remove -- {DEFAULT_RBW_ENTRY}")
+
+
+def store_address(backend, address, entry, entry_exists):
+    if backend == "rbw":
+        return store_in_rbw(address, entry, entry_exists)
+    if backend == "keyring":
+        return store_in_keyring(address)
+    return store_in_private_file(address)
 
 
 def run_setup(args):
     prompter = Prompter()
     if args.check:
-        return 0 if connection_works() else 1
+        return connection_status()
     if not prompter.is_interactive():
         print("calendar-sync setup needs a terminal; run it from a shell.", file=sys.stderr)
         return 2
@@ -643,18 +820,10 @@ def run_setup(args):
         explain_where_the_address_lives(prompter)
         address = read_valid_address(prompter, now)
         backend = choose_backend(prompter)
-        entry, replace_existing = plan_storage(prompter, backend)
-        if backend == "rbw":
-            command, where = store_in_rbw(address, entry, replace_existing)
-        elif backend == "keyring":
-            command, where = store_in_keyring(address)
-        else:
-            command, where = store_in_private_file(address)
+        entry, entry_exists = plan_storage(prompter, backend)
+        command, where = store_address(backend, address, entry, entry_exists)
         print(f"Stored the address in {where}.")
-        if command:
-            write_config(command)
-        else:
-            config_file_path().unlink(missing_ok=True)
+        write_config(command)
         try:
             round_trip_ok = read_feed_url(url_command()) == address
         except (NotConfigured, SyncError):
@@ -662,8 +831,15 @@ def run_setup(args):
         if not round_trip_ok:
             raise SetupAborted("the address could not be read back; check the stored entry")
         print("Read the address back through the stored command: ok.")
+        report_older_copies(prompter, backend, entry)
     except SetupAborted as err:
         print(f"Setup stopped: {err}.", file=sys.stderr)
+        return 1
+    except SyncError as err:
+        print(f"Setup stopped: {err}.", file=sys.stderr)
+        return 1
+    except (ValueError, OSError) as err:
+        print(f"Setup stopped: unexpected {type(err).__name__}.", file=sys.stderr)
         return 1
     except KeyboardInterrupt:
         print("\nSetup cancelled.", file=sys.stderr)
@@ -680,7 +856,11 @@ def main(argv):
     if inside_git_work_tree(directory):
         print("calendar-sync: cache directory is inside a git work tree, refusing to run", file=sys.stderr)
         return 2
-    directory.mkdir(mode=0o700, parents=True, exist_ok=True)
+    try:
+        ensure_private_directory(directory)
+    except SyncError:
+        print("calendar-sync: cache directory is not yours, refusing to run", file=sys.stderr)
+        return 2
     try:
         return sync(args, directory)
     except SyncError as err:
@@ -698,4 +878,9 @@ def main(argv):
 
 
 if __name__ == "__main__":
-    sys.exit(main(sys.argv[1:]))
+    try:
+        exit_status = main(sys.argv[1:])
+    except KeyboardInterrupt:
+        print("calendar-sync: interrupted", file=sys.stderr)
+        exit_status = 130
+    sys.exit(exit_status)

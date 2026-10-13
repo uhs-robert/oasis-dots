@@ -331,8 +331,14 @@ setup_calendar_timer() {
 offer_calendar_setup() {
   local calendar_sync="$HOME/.local/bin/calendar-sync"
   [[ -x "$calendar_sync" ]] || return 0
-  if "$calendar_sync" setup --check &>/dev/null; then
+  local check_status=0
+  "$calendar_sync" setup --check &>/dev/null || check_status=$?
+  if [[ $check_status -eq 0 ]]; then
     info "Calendar already connected"
+  elif [[ $check_status -eq 3 ]]; then
+    info "rbw is locked; run calendar-sync setup after unlocking"
+  elif [[ $check_status -eq 4 ]]; then
+    info "The keyring is locked; run calendar-sync setup after unlocking"
   elif [[ "${OPT_YES:-0}" -eq 0 && -t 0 && -t 1 ]] && confirm "Connect your Google Calendar now?"; then
     "$calendar_sync" setup || warn "Calendar setup did not finish; run calendar-sync setup to try again"
   else
