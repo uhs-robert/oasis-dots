@@ -119,6 +119,24 @@ Every section ends with a block that describes the selected (or hovered) setting
 | Sound        | Theme audio                        |
 | Lock & Login | Lock screen, Login screen          |
 
+### Calendar
+
+The clock shows your Google Calendar from a cache that `calendar-sync` writes to `$XDG_CACHE_HOME/calendar/events.json` (default `~/.cache/calendar/`); the shell never talks to Google. With no cache file nothing changes: no chip, no dots, no timer, and the popup keeps its old keys. The service (`services/CalendarState.qml`) reloads when the file changes, and `qs-ipc call calendar refresh` rereads it at once (the first time the file appears, the shell only notices through that call or a restart). Cancelled events are ignored. If `error.json` sits beside the cache, the events are the last good copy and the agenda header says so.
+
+- Bar clock: within 15 minutes of the next meeting's start, a chip such as `Design review 12m` follows the date (just `12m` on compact bars); while a meeting is in progress a dot shows. Hovering shows the current or next event and its time. All-day events never count as meetings.
+- Clock popup: a dot under each day with events, and below the grid an agenda for the selected day (today by default). Times are in the local zone, whatever zone the popup is cycled to.
+
+| Key | Action |
+| --- | --- |
+| `Left` / `Right`, `Up` / `Down` | Selected day, back or forward one day or one week (the month follows) |
+| `h` / `l`, `j` / `k` | Month and year, as before; the selection keeps its day of the month |
+| `,` / `.` | Previous or next event in the agenda |
+| `Enter` | Open the event's Meet link, else its Calendar page, else that day in Calendar |
+| `n` | New event on the selected day in Google Calendar (9:00 to 10:00, or the next hour for today) |
+| `t` / `gg` | Back to today |
+
+Links open with `firefox --new-tab`, or `xdg-open` when Firefox is not installed. Clicking a day selects it.
+
 Settings > Clock sets the time format and the calendar's first day of week. Time format is the locale's convention (the default), 12-hour or 24-hour, and every clock follows it: the bar clock in each style, the clock popup, weather hours and the Updates, Keeptabs and notification times. Lock-screen skins with a fixed game-style clock keep their own format. First day of week follows the locale (the default), or is Monday or Sunday. An old `time_format` in `weather.local.json` is carried over once and then removed. It saves to `clock.json` in the Quickshell state folder (`$XDG_STATE_HOME/quickshell/`, or `~/.local/state/quickshell/`).
 
 Settings > Input > Typing picks the mode pickers, settings lists and type-to-search popups open in: INSERT (the default) to start typing at once, or NORMAL to start on the vim keys, where `i` or `/` starts typing. The HyprVim prompt always opens in INSERT, the clipboard's delete mode always in NORMAL, and the lock and greeter keep their own model. Remember last search refills each picker and settings list with its last query until the shell restarts. These save to `input.json` in the Quickshell state folder. Which-key delay sets how long a leader key waits before its overlay shows; it is HyprVim's `which_key.delay_ms`, read once at setup, so changing it reloads Hyprland.
@@ -184,7 +202,7 @@ Every popup uses the same keys. `?` shows the full list for the popup you're in.
 | `?`              | Key help                                 |
 | `q` / `Esc`      | Close                                    |
 
-A popup with only one level of views answers both `Tab` and `[`/`]`. In the clock popup, `Tab` and `[`/`]` cycle the time zones.
+A popup with only one level of views answers both `Tab` and `[`/`]`. In the clock popup, `Tab` and `[`/`]` cycle the time zones. With a calendar cache present, the arrow keys move the selected day, `,` and `.` move between its events, `Enter` opens one and `n` starts a new event (see Calendar).
 
 Console styles draw controller buttons in place of keys in the footers and help. Each console is one entry in `components/KeyHints.js` (`controllers`): the path of its button component and the key to button map. A button component is an `Item` with `button` (a name from the map), `size` and, for the Game Boy shades, `shades`.
 
@@ -244,6 +262,7 @@ qs-ipc show        # list every target and function
 | `confirm`       | `ask <question> <result_path>`: drop the yes/no card from the center island; it writes `yes` or `no` to the path (No, Esc, the scrim and 10s without an answer are all `no`, the countdown waiting while voxtype records or transcribes); `dismiss <result_path>` closes that card without writing. `voxcmd-confirm` is the shell wrapper |
 | `clickhints`    | `open <spec_path>`: numbered boxes over the screen from a JSON file `{label, choices: [{label, x, y, w, h}], result_path}` (global logical coordinates, at most ten); it writes the picked number, or an empty line for Esc, a click outside a box and 10s without an answer (the countdown waiting while voxtype records or transcribes), to the path, and returns `ok` (anything else means fall back to a text picker); `dismiss <result_path>` closes it without writing; `state` is `open` or `closed`. `voxcmd-hints` is the shell wrapper |
 | `weather`       | `preview <fixture\|off>`, `previewing`: overlay a `services/WeatherFixture.js` fixture on the live data (see Weather views) |
+| `calendar`      | `refresh` (reread the calendar cache), `open_day <YYYY-MM-DD>` (open the clock popup on that day) |
 | `brightness`    | `refresh`                                                             |
 | `cmdstatus`     | `refresh <id>` (`""` refreshes every entry)                          |
 | `transition`    | `play <kind or style>`                                                |
