@@ -71,10 +71,13 @@ Singleton {
         const out = [];
         for (const e of raw) {
             if (!e || e.status === "cancelled") continue;
-            const start_ms = root.parse_time(e.start);
-            if (isNaN(start_ms)) continue;
             const all_day = e.all_day === true;
-            let end_ms = root.parse_time(e.end);
+            // An all-day event is a calendar date, not an instant: read its date part as local midnight, so a cache
+            // written in one zone does not shift the event onto the day before after travel.
+            const read = text => all_day ? root.parse_time(String(text || "").slice(0, 10)) : root.parse_time(text);
+            const start_ms = read(e.start);
+            if (isNaN(start_ms)) continue;
+            let end_ms = read(e.end);
             // Zero-length events still occupy their start day; an all-day end is the exclusive next day.
             if (isNaN(end_ms) || end_ms <= start_ms) end_ms = all_day ? start_ms + 86400000 : start_ms;
             out.push({
