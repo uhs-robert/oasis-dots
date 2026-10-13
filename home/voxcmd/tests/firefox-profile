@@ -1,14 +1,11 @@
 #!/usr/bin/env python3
 """Builds a made-up Firefox profile for the voxcmd tests, as firefox-tab finds one:
 
-  tests/firefox-profile <root> [store|temporary|stale|none]
+  tests/firefox-profile <root>
 
 <root> stands for ~/.config/mozilla/firefox. installs.ini names the profile, while profiles.ini marks another one
 Default=1, so the tests see installs.ini win. The session store is fixtures/firefox/sessionstore.json compressed as
 mozLz4, and places.sqlite is built from places.sql with places-wal.sql's rows left in its write-ahead log.
-
-The second argument is how Tridactyl is loaded (default none): "store" as an enabled add-on; "temporary" as a folder
-loaded for this run, whose storage changed after Firefox started; "stale" as that folder remembered from a run before.
 """
 import json
 import os
@@ -17,7 +14,6 @@ import sqlite3
 import struct
 import sys
 import tempfile
-import time
 
 fixtures = os.path.join(os.path.dirname(os.path.abspath(__file__)), "fixtures", "firefox")
 
@@ -95,39 +91,7 @@ def places(profile):
         connection.close()
 
 
-def tridactyl(root, profile, mode):
-    addons = [{"id": "other@example.org", "active": True}]
-    if mode == "store":
-        addons.append({"id": "tridactyl.vim@cmcaine.co.uk", "active": True})
-    else:
-        addons.append({"id": "tridactyl.vim.betas@cmcaine.co.uk", "active": False, "userDisabled": True})
-    write(os.path.join(profile, "extensions.json"), json.dumps({"addons": addons}))
-    build = os.path.join(root, "tridactyl-build")
-    uuid = "00000000-0000-4000-8000-000000000001"
-    write(
-        os.path.join(build, "manifest.json"),
-        json.dumps({"name": "Tridactyl", "applications": {"gecko": {"id": "tridactyl.vim.betas@cmcaine.co.uk"}}}),
-    )
-    prefs = [("browser.startup.page", 3)]
-    if mode in ("temporary", "stale"):
-        prefs.append(("devtools.aboutdebugging.tmpExtDirPath", build))
-    prefs.append(("extensions.webextensions.uuids", json.dumps({"tridactyl.vim.betas@cmcaine.co.uk": uuid})))
-    write(
-        os.path.join(profile, "prefs.js"),
-        "// Mozilla User Preferences\n" + "".join(f"user_pref({json.dumps(key)}, {json.dumps(value)});\n" for key, value in prefs),
-    )
-    # Firefox started 100 s ago; the add-on's storage changed 10 s ago, or an hour ago for a stale folder.
-    now = time.time()
-    lock = os.path.join(profile, "lock")
-    os.symlink("127.0.0.1:+4242", lock)
-    os.utime(lock, (now - 100, now - 100), follow_symlinks=False)
-    storage = os.path.join(profile, "storage", "default", f"moz-extension+++{uuid}^userContextId=4294967295", "idb")
-    write(os.path.join(storage, "data.sqlite"), "")
-    changed = now - 10 if mode == "temporary" else now - 3600
-    os.utime(os.path.join(storage, "data.sqlite"), (changed, changed))
-
-
-def main(root, mode="none"):
+def main(root):
     profile = os.path.join(root, "abcd1234.default-release")
     os.makedirs(os.path.join(profile, "sessionstore-backups"), exist_ok=True)
     os.makedirs(os.path.join(root, "zzzz9999.default"), exist_ok=True)
@@ -140,10 +104,9 @@ def main(root, mode="none"):
     with open(os.path.join(fixtures, "sessionstore.json")) as file:
         mozlz4(os.path.join(profile, "sessionstore-backups", "recovery.jsonlz4"), json.load(file))
     places(profile)
-    tridactyl(root, profile, mode)
 
 
 if __name__ == "__main__":
-    if len(sys.argv) not in (2, 3) or sys.argv[2:] not in ([], ["store"], ["temporary"], ["stale"], ["none"]):
+    if len(sys.argv) != 2:
         sys.exit(__doc__)
-    main(*sys.argv[1:])
+    main(sys.argv[1])

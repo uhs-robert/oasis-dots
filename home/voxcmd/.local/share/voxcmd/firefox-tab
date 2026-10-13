@@ -5,15 +5,14 @@
   firefox-tab places <word>...         bookmarks, history and origins whose title or url holds every word, as JSON
   firefox-tab candidates tabs|sites <target> [--raw <transcript>]
                                        voxcmd candidates ({id, label, match_text}) for a spoken target
-  firefox-tab focus <address> [title]  focus the window, then the tab titled so (with Tridactyl)
+  firefox-tab focus <address> [title]  focus the window, then the tab titled so (Firefox's tab search)
   firefox-tab goto [--running] <url>   focus a tab on the url's site, else open the url in a new tab; with --running,
                                        exit 3 without doing anything when no Firefox window is open
   firefox-tab open [--here] <url>      open the url in a new tab, or the url or text in the focused tab
   firefox-tab search <text>            search the text with the default engine in a new tab
   firefox-tab new-tab | close-tab      press Ctrl+T or Ctrl+W in Firefox
-  firefox-tab tridactyl                print how Tridactyl is loaded: store, temporary or none
 
-Keys are typed with wtype, and only into a Firefox window that has focus. VOXCMD_FIREFOX_TRIDACTYL=on|off overrides the detection.
+Keys are typed with wtype, and only into a Firefox window that has focus.
 """
 import configparser
 import json
@@ -28,7 +27,7 @@ import tempfile
 import time
 
 PROFILE_ROOTS = ("~/.config/mozilla/firefox", "~/.mozilla/firefox")
-# Seconds between typed steps: Tridactyl's escape hatch and command line change state asynchronously.
+# Seconds between typed steps: the address bar opens and lists its results asynchronously.
 KEY_PAUSE = 0.25
 
 
@@ -99,89 +98,6 @@ def mozlz4(path):
     if len(dst) != struct.unpack("<I", data[8:12])[0]:
         raise ValueError(f"{path} decoded to the wrong size")
     return json.loads(dst)
-
-
-def read_json(path, default):
-    try:
-        with open(path) as file:
-            return json.load(file)
-    except (OSError, ValueError):
-        return default
-
-
-def user_prefs(profile):
-    prefs = {}
-    try:
-        with open(os.path.join(profile, "prefs.js")) as file:
-            for line in file:
-                match = re.match(r'user_pref\("([^"]+)", (.*)\);$', line.strip())
-                if match:
-                    try:
-                        prefs[match[1]] = json.loads(match[2])
-                    except ValueError:
-                        pass
-    except OSError:
-        pass
-    return prefs
-
-
-def firefox_started(profile):
-    """When the running Firefox started: its profile lock is a symlink made at startup. None when it is not running."""
-    try:
-        return os.lstat(os.path.join(profile, "lock")).st_mtime
-    except OSError:
-        return None
-
-
-def tridactyl(profile):
-    """How Tridactyl is loaded: "store" (an enabled add-on), "temporary" (loaded from a folder) or "none".
-
-    A temporary add-on is in neither extensions.json nor any other file, and the folder prefs.js remembers outlives a
-    restart that dropped it. So the folder's add-on counts only when its storage changed since Firefox started: it
-    writes its settings on every start, when it reads the rc file.
-    """
-    forced = os.environ.get("VOXCMD_FIREFOX_TRIDACTYL", "")
-    if forced in ("on", "off"):
-        return "store" if forced == "on" else "none"
-    addons = read_json(os.path.join(profile, "extensions.json"), {}).get("addons", [])
-    if any(addon.get("id", "").startswith("tridactyl") and addon.get("active") for addon in addons):
-        return "store"
-    prefs = user_prefs(profile)
-    folder = prefs.get("devtools.aboutdebugging.tmpExtDirPath")
-    started = firefox_started(profile)
-    if not isinstance(folder, str) or started is None:
-        return "none"
-    manifest = read_json(os.path.join(folder, "manifest.json"), {})
-    gecko = (manifest.get("browser_specific_settings") or manifest.get("applications") or {}).get("gecko") or {}
-    addon_id = gecko.get("id", "")
-    if not addon_id.startswith("tridactyl"):
-        return "none"
-    uuid = read_json_string(prefs.get("extensions.webextensions.uuids", "{}")).get(addon_id)
-    storage = os.path.join(profile, "storage", "default")
-    if uuid and os.path.isdir(storage):
-        for entry in os.listdir(storage):
-            if entry.startswith(f"moz-extension+++{uuid}") and newest_change(os.path.join(storage, entry)) > started:
-                return "temporary"
-    return "none"
-
-
-def read_json_string(text):
-    try:
-        value = json.loads(text)
-    except (TypeError, ValueError):
-        return {}
-    return value if isinstance(value, dict) else {}
-
-
-def newest_change(folder):
-    newest = 0
-    for parent, _, files in os.walk(folder):
-        for name in files:
-            try:
-                newest = max(newest, os.stat(os.path.join(parent, name)).st_mtime)
-            except OSError:
-                pass
-    return newest
 
 
 # ---- Hyprland --------------------------------------------------------------------------------------------------
@@ -259,12 +175,6 @@ def keys(*steps):
             fail("focus left Firefox, so the rest was not typed")
         subprocess.run(["wtype", *step], check=True)
         time.sleep(KEY_PAUSE)
-
-
-def tridactyl_command(command):
-    """Types a Tridactyl ex command into the focused window: the escape hatch takes focus back from the address bar
-    or a page field, Escape leaves hint, insert or command mode, and ":" opens the command line."""
-    keys(["-M", "alt", ",", "-m", "alt"], ["-k", "Escape"], [":"], ["--", command], ["-k", "Return"])
 
 
 # ---- tabs ------------------------------------------------------------------------------------------------------
@@ -401,10 +311,24 @@ def site_candidates(target, transcript):
 
 
 def focus_tab(address, title):
+    """Focuses the window, then switches to the tab through Firefox's address bar: "% " limits its results to open tabs.
+
+    A title that matches no open tab would run Return as a web search in the current tab, so nothing is typed unless
+    the session store, read afresh, still has a tab with exactly that title. The selected tab is not typed for either:
+    the address bar leaves the page it is on out of its open-tab results, which would make it such a miss."""
     focus_window(address)
-    if title and tridactyl(profile_dir()) != "none":
-        # :tab searches the focused window's tabs, by exact title first; several matches open its own prompt.
-        tridactyl_command("tab " + printable(title))
+    title = printable(title)
+    if not title:
+        return
+    if title == printable(page_title(hyprctl_json("activewindow", {}).get("title", ""))):
+        return
+    try:
+        open_titles = {printable(tab["title"]) for tab in store_tabs(session_windows(profile_dir()))}
+    except (OSError, ValueError):
+        open_titles = set()
+    if title not in open_titles:
+        fail(f"no open tab is titled {title!r}, so nothing was typed")
+    keys(["-M", "ctrl", "l", "-m", "ctrl"], ["--", "% " + title], ["-k", "Return"])
 
 
 def goto(url, running_only):
@@ -432,7 +356,6 @@ def open_url(url, here):
     if here:
         url = printable(url)
         focused_firefox(focus_recent=False)
-        # Ctrl+L belongs to Firefox and no page or add-on takes it, so this works with Tridactyl or without.
         keys(["-M", "ctrl", "l", "-m", "ctrl"], ["--", url], ["-k", "Return"])
         return
     if not re.match(r"https?://", url):
@@ -540,8 +463,6 @@ def main(args):
     elif command == "close-tab":
         focused_firefox(focus_recent=False)
         keys(["-M", "ctrl", "w", "-m", "ctrl"])
-    elif command == "tridactyl":
-        print(tridactyl(profile_dir()))
     else:
         print(__doc__.strip(), file=sys.stderr)
         sys.exit(2)

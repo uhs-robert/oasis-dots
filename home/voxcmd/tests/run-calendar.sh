@@ -216,14 +216,14 @@ expect_absent "calendar is silent" "notify-send"
 
 # ---- With Firefox open --------------------------------------------------------------------------------------------
 
-# Window 0x3001 shows the first tab of the made-up profile's first window, where Tridactyl is a store add-on.
-"$tests_dir/firefox-profile" "$HOME/.config/mozilla/firefox" store
+# Window 0x3001 shows the first tab of the made-up profile's first window.
+"$tests_dir/firefox-profile" "$HOME/.config/mozilla/firefox"
 export SANDBOX_CLIENTS_JSON='[{"address": "0x3001", "mapped": true, "class": "firefox", "title": "Example Docs - Getting started — Mozilla Firefox", "focusHistoryID": 1, "workspace": {"id": 1}}]'
 export SANDBOX_ACTIVEWINDOW_JSON='{"address": "0x3001", "class": "firefox"}'
 export SANDBOX_DEFAULT_BROWSER=firefox.desktop
 write_cache "$(event w "Weekly sync" -600 600 https://notes.example.org/weekly null)"
 say "join my meeting"
-expect "a meeting link open in a tab focuses that tab" "-- tab Weekly sync notes"
+expect "a meeting link open in a tab focuses that tab" "-- % Weekly sync notes"
 expect_absent "and opens nothing" "xdg-open"
 expect "says which meeting" "Joining Weekly sync"
 say "open my calendar"

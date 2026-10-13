@@ -1235,8 +1235,7 @@ done
 section "firefox"
 firefox_tab=$share_dir/firefox-tab
 firefox_root=$HOME/.config/mozilla/firefox
-# A fresh profile, with Tridactyl loaded as $1 says (store, temporary, stale or none).
-make_profile() { rm -rf -- "${firefox_root:?}" && "$here/firefox-profile" "$firefox_root" "$1"; }
+make_profile() { rm -rf -- "${firefox_root:?}" && "$here/firefox-profile" "$firefox_root"; }
 # Window 0's selected tab titles 0x3001; window 1 shows a tab the store has not recorded as selected yet; the private
 # window is in no store; window 2 of the store is open nowhere.
 export SANDBOX_CLIENTS_JSON='[
@@ -1249,7 +1248,7 @@ SANDBOX_ACTIVEWINDOW_JSON=$(firefox_window 0x1003)
 export SANDBOX_ACTIVEWINDOW_JSON
 typed() { grep '^wtype ' "$log" | sed 's/^wtype //'; }
 
-make_profile none
+make_profile
 out=$("$firefox_tab" tabs)
 check "the profile installs.ini names is read, not profiles.ini's Default=1" "[[ \$(jq length <<<\"\$out\") -gt 0 ]]"
 check "the store decodes, matches and all, and hidden tabs are left out" "[[ \$(jq '[.[] | select(.window == 0)] | length' <<<\"\$out\") == 4 ]]"
@@ -1273,54 +1272,63 @@ check "a domain inside other words is not" "! grep -q 'https://node.js' <<<\"\$o
 out=$("$firefox_tab" candidates tabs "tubesite" --raw "go to tubesite")
 check "tabs are offered by their site's name, most recent first" "[[ \$(jq -r '[.[] | select(.match_text == \"tubesite\") | .label] | join(\"|\")' <<<\"\$out\") == 'Another cat video - TubeSite (tubesite.example)|Funny cat video - TubeSite (tubesite.example)' ]]"
 
-for mode in store temporary stale none; do
-  make_profile "$mode"
-  expected=$mode
-  [[ $mode != stale ]] || expected=none
-  check "Tridactyl loaded as $mode reads as $expected" "[[ \$(\"\$firefox_tab\" tridactyl) == $expected ]]"
-done
-check "VOXCMD_FIREFOX_TRIDACTYL overrides it" "[[ \$(VOXCMD_FIREFOX_TRIDACTYL=on \"\$firefox_tab\" tridactyl) == store ]]"
-
-make_profile temporary
+# The tab typed for is in another window or another tab than the focused window's current one (0x3002 shows the Inbox).
+inbox_window=$(firefox_window 0x3002)
 : >"$log"
-out=$(SANDBOX_ACTIVEWINDOW_JSON=$(firefox_window 0x3002) "$firefox_tab" focus 0x3002 "Inbox - Mailbox")
+out=$(SANDBOX_ACTIVEWINDOW_JSON=$inbox_window "$firefox_tab" focus 0x3002 "Cart - Example Shop")
 check "focus focuses the window" "grep -q \"^hyprctl dispatch hl.dsp.focus({ window = 'address:0x3002' })\" '$log'"
-check "then types :tab with the title through Tridactyl's escape hatch" "[[ \"\$(typed | paste -sd'|')\" == '-M alt , -m alt|-k Escape|:|-- tab Inbox - Mailbox|-k Return' ]]"
+check "then types Ctrl+L, % and the title, and Return" "[[ \"\$(typed | paste -sd'|')\" == '-M ctrl l -m ctrl|-- % Cart - Example Shop|-k Return' ]]"
+: >"$log"
+out=$(SANDBOX_ACTIVEWINDOW_JSON=$inbox_window "$firefox_tab" focus 0x3002 "Funny cat video - TubeSite")
+check "a tab of another window is typed for too" "[[ \"\$(typed | paste -sd'|')\" == '-M ctrl l -m ctrl|-- % Funny cat video - TubeSite|-k Return' ]]"
 : >"$log"
 status=0
-out=$("$firefox_tab" focus 0x3002 "Inbox - Mailbox") || status=$?
+out=$(SANDBOX_ACTIVEWINDOW_JSON=$inbox_window "$firefox_tab" focus 0x3002 "A tab closed since") || status=$?
+check "a title no open tab has is refused" "[[ \$status != 0 && \$out == *'nothing was typed'* ]]"
+check "and nothing is typed, as a miss would search the web in the current tab" "[[ -z \$(typed) ]] && grep -q 'hyprctl dispatch' '$log'"
+: >"$log"
+rm -rf -- "${firefox_root:?}"/*/sessionstore-backups
+out=$(SANDBOX_ACTIVEWINDOW_JSON=$inbox_window "$firefox_tab" focus 0x3002 "Cart - Example Shop") || true
+check "a store that is gone leaves nothing typed" "[[ -z \$(typed) ]] && [[ \$out == *'nothing was typed'* ]]"
+make_profile
+: >"$log"
+out=$(SANDBOX_ACTIVEWINDOW_JSON=$inbox_window "$firefox_tab" focus 0x3002 "Inbox - Mailbox")
+check "the tab the window shows is not typed for: the address bar skips it, and a miss would search" "[[ -z \$(typed) ]]"
+: >"$log"
+out=$(SANDBOX_ACTIVEWINDOW_JSON=$inbox_window "$firefox_tab" focus 0x3002 "")
+check "an empty title only focuses the window" "grep -q 'hyprctl dispatch' '$log' && [[ -z \$(typed) ]]"
+: >"$log"
+out=$(SANDBOX_ACTIVEWINDOW_JSON=$inbox_window "$firefox_tab" focus 0x3002 $' \n ')
+check "so does one of control characters alone" "[[ -z \$(typed) ]]"
+: >"$log"
+status=0
+out=$("$firefox_tab" focus 0x3002 "Cart - Example Shop") || status=$?
 check "nothing is typed when the window does not take focus" "[[ \$status != 0 && -z \$(typed) ]]"
 check "and it says so" "[[ \$out == 'the Firefox window did not take focus' ]]"
-make_profile temporary
 : >"$log"
 status=0
-out=$(SANDBOX_ACTIVEWINDOW_JSON=$(firefox_window 0x3002) SANDBOX_ACTIVEWINDOW_AFTER_WTYPE_JSON=$(firefox_window 0x1003) \
-  "$firefox_tab" focus 0x3002 "Inbox - Mailbox") || status=$?
+out=$(SANDBOX_ACTIVEWINDOW_JSON=$inbox_window SANDBOX_ACTIVEWINDOW_AFTER_WTYPE_JSON=$(firefox_window 0x1003) \
+  "$firefox_tab" focus 0x3002 "Cart - Example Shop") || status=$?
 check "typing stops when focus leaves Firefox after the first step" "[[ \$status != 0 && \$(typed | wc -l) == 1 ]]"
-check "so the title and Return are never typed" "! typed | grep -q 'Inbox\\|Return' && [[ \$out == 'focus left Firefox, so the rest was not typed' ]]"
+check "so the title and Return are never typed" "! typed | grep -q 'Cart\\|Return' && [[ \$out == 'focus left Firefox, so the rest was not typed' ]]"
 : >"$log"
 status=0
-out=$(SANDBOX_ACTIVEWINDOW_JSON=$(firefox_window 0x3002) SANDBOX_ACTIVEWINDOW_AFTER_WTYPE_JSON=$(firefox_window 0x3001) \
+out=$(SANDBOX_ACTIVEWINDOW_JSON=$inbox_window SANDBOX_ACTIVEWINDOW_AFTER_WTYPE_JSON=$(firefox_window 0x3001) \
   "$firefox_tab" open --here https://example.com/) || status=$?
 check "typing also stops when another Firefox window takes focus" "[[ \$status != 0 && \$(typed | wc -l) == 1 ]]"
 : >"$log"
-out=$(SANDBOX_ACTIVEWINDOW_JSON=$(firefox_window 0x3002) "$firefox_tab" focus 0x3002 $'Inbox\nrm -rf ~\x1b[31m - Mailbox')
-check "a title's newline and control characters are typed as spaces" "[[ \"\$(typed | paste -sd'|')\" == '-M alt , -m alt|-k Escape|:|-- tab Inbox rm -rf ~ [31m - Mailbox|-k Return' ]]"
-
-make_profile stale
-: >"$log"
-out=$(SANDBOX_ACTIVEWINDOW_JSON=$(firefox_window 0x3002) "$firefox_tab" focus 0x3002 "Inbox - Mailbox")
-check "without Tridactyl only the window is focused" "grep -q 'hyprctl dispatch' '$log' && [[ -z \$(typed) ]]"
+out=$(SANDBOX_ACTIVEWINDOW_JSON=$inbox_window "$firefox_tab" focus 0x3002 $'Notes\nrm -rf ~\x1b[31m - Wiki')
+check "a title's newline and control characters are typed as spaces" "[[ \"\$(typed | paste -sd'|')\" == '-M ctrl l -m ctrl|-- % Notes rm -rf ~ [31m - Wiki|-k Return' ]]"
 
 : >"$log"
 status=0
 SANDBOX_CLIENTS_JSON='[]' "$firefox_tab" goto --running https://tubesite.example >/dev/null || status=$?
 check "goto --running leaves a closed Firefox to the caller" "[[ \$status == 3 ]] && ! grep -q 'dispatch\\|firefox' '$log'"
 
-make_profile store
+make_profile
 : >"$log"
 out=$(SANDBOX_ACTIVEWINDOW_JSON=$(firefox_window 0x3001) "$firefox_tab" goto https://tubesite.example)
-check "goto focuses the most recent tab on the site" "[[ \"\$(typed | grep '^-- ')\" == '-- tab Another cat video - TubeSite' ]]"
+check "goto focuses the most recent tab on the site" "[[ \"\$(typed | grep '^-- ')\" == '-- % Another cat video - TubeSite' ]]"
 : >"$log"
 out=$("$firefox_tab" goto https://unopened.example/page)
 check "and opens a site no tab shows" "grep -q '^setsid owner= -f firefox --new-tab https://unopened.example/page' '$log'"
