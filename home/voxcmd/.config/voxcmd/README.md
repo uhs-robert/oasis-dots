@@ -36,19 +36,20 @@ voxcmd errors 5                   # the last 5 voxcmd notifications the bar kept
 
 A voice command recording, a reply to a picker included, stops itself: `voxcmd-autostop` listens to the default source through `pw-record` and ends the recording once it has heard speech followed by `silence_secs` of quiet. Starting and then thinking for a moment does not stop it, since the pause only counts after speech. Nothing heard within `no_speech_secs` cancels the recording silently. A voice key still stops it early. Dictation has no auto-stop, because people pause while dictating.
 
-Speech is anything `margin_db` above the room, whose level is measured over the first 300ms and then followed over the last two seconds, so a fan or music never counts as speech for long; the threshold never goes below -45 dBFS. A word said as the recording starts is first taken for the room, so until speech is heard every frame so far is scored again as the room level settles, and a lone "yes" at the start still counts. Loud sounds shorter than 90ms, like a key click, are not speech. Set `threshold_db` to a fixed level instead when the room fools it.
+Speech is anything `margin_db` above the room, whose level is measured over the first 300ms and then followed over the last two seconds, so a fan or music never counts as speech for long; the threshold never goes below -45 dBFS. A word said as the recording starts is first taken for the room, so until speech is heard every frame so far is scored again as the room level settles, and a lone "yes" at the start still counts. The frames are scored again before a pause ends the recording too: a microphone's first fraction of a second is often quieter than the room, which makes a steady fan sound like speech until the room level catches up, and against the real room that fan is no speech at all. Loud sounds shorter than 90ms, like a key click, are not speech, and speech must add up to `min_speech_secs` before a pause can end the recording. Speech short of that but at least 250ms is a short word: at `no_speech_secs` it is transcribed instead of cancelled. Set `threshold_db` to a fixed level instead when the room fools it.
 
 Settings go in `~/.config/voxcmd/autostop.conf` (`name = value`, `#` comments; ignored by git), and the matching environment variable overrides each:
 
-| Setting          | Environment                      | Default | Meaning                                                   |
-| ---------------- | -------------------------------- | ------- | --------------------------------------------------------- |
-| `enabled`        | `VOXCMD_AUTOSTOP`                | `true`  | `false` (or `0`, `no`, `off`) stops only with a voice key |
-| `silence_secs`   | `VOXCMD_AUTOSTOP_SILENCE_SECS`   | `1.0`   | quiet after speech that ends the recording                |
-| `no_speech_secs` | `VOXCMD_AUTOSTOP_NO_SPEECH_SECS` | `6`     | cancel when no speech is heard by then                    |
-| `threshold_db`   | `VOXCMD_AUTOSTOP_THRESHOLD_DB`   | `auto`  | speech level in dBFS, e.g. `-35`; `auto` follows the room |
-| `margin_db`      | `VOXCMD_AUTOSTOP_MARGIN_DB`      | `12`    | with `auto`, how far above the room speech is             |
+| Setting           | Environment                       | Default | Meaning                                                   |
+| ----------------- | --------------------------------- | ------- | --------------------------------------------------------- |
+| `enabled`         | `VOXCMD_AUTOSTOP`                 | `true`  | `false` (or `0`, `no`, `off`) stops only with a voice key |
+| `silence_secs`    | `VOXCMD_AUTOSTOP_SILENCE_SECS`    | `1.0`   | quiet after speech that ends the recording                |
+| `min_speech_secs` | `VOXCMD_AUTOSTOP_MIN_SPEECH_SECS` | `0.25`  | speech needed before a pause ends the recording           |
+| `no_speech_secs`  | `VOXCMD_AUTOSTOP_NO_SPEECH_SECS`  | `6`     | cancel when no speech is heard by then                    |
+| `threshold_db`    | `VOXCMD_AUTOSTOP_THRESHOLD_DB`    | `auto`  | speech level in dBFS, e.g. `-35`; `auto` follows the room |
+| `margin_db`       | `VOXCMD_AUTOSTOP_MARGIN_DB`       | `12`    | with `auto`, how far above the room speech is             |
 
-`voxcmd-autostop --check` exits 0 when auto-stop is on and can listen, else 1 saying why; a [voice session](#voice-sessions) asks it before opening. To tune it, `voxcmd-autostop --verbose` prints each frame's level and the threshold. Run it while voxtype records, since it gives up after 3s otherwise, or on raw 16 kHz mono s16 audio with `--pcm FILE`. The microphone is released when the recording ends however it ends: stopped, cancelled, at voxtype's `max_duration_secs`, or with voxcmd gone.
+`voxcmd-autostop --check` exits 0 when auto-stop is on and can listen, else 1 saying why; a [voice session](#voice-sessions) asks it before opening. To tune it, `voxcmd-autostop --verbose` prints each frame's level and the threshold. Run it while voxtype records, since it gives up after 3s otherwise, or on raw 16 kHz mono s16 audio with `--pcm FILE`. With the [debug log](#debug-log) on it appends a summary there: the room and threshold it calibrated, each run of frames it counted as speech (start, length, mean and peak level, the threshold then), speech it set aside as noise, and its verdict with the room, threshold and speech total at the end. The microphone is released when the recording ends however it ends: stopped, cancelled, at voxtype's `max_duration_secs`, or with voxcmd gone.
 
 ## How a phrase is routed
 
@@ -547,4 +548,4 @@ A session keeps the microphone re-opening after each spoken turn, so related com
 
 ## Debug log
 
-`VOXCMD_DEBUG=1`, or creating `$XDG_RUNTIME_DIR/voxcmd/debug.log`, makes voxcmd and `voxcmd-confirm` append a timestamped trace there: each listen and the voxtype state it found, the watcher's state changes, auto-stop's verdict, the transcript and where it went, a confirm's question, reply and answer, a cancelled reply recording, and whether the action ran. Delete the file to turn it off again.
+`VOXCMD_DEBUG=1`, or creating `$XDG_RUNTIME_DIR/voxcmd/debug.log`, makes voxcmd and `voxcmd-confirm` append a timestamped trace there: each listen and the voxtype state it found, the watcher's state changes, auto-stop's verdict and `voxcmd-autostop`'s own summary of what it heard (see [Auto-stop](#auto-stop)), the transcript and where it went, a confirm's question, reply and answer, a cancelled reply recording, and whether the action ran. Delete the file to turn it off again.
