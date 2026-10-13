@@ -7,14 +7,18 @@ then UTF-8 JSON. The host listens on $XDG_RUNTIME_DIR/voxcmd/firefox.sock, where
 A request is forwarded to the extension under a fresh id and answered by the reply carrying that id.
 The host ends when Firefox closes stdin, and touches nothing besides stdin, stdout and its socket.
 """
+import fcntl
 import json
 import os
 import socket
 import struct
 import sys
 import threading
+import time
 
 REPLY_TIMEOUT = 2.0
+# A host starting while its predecessor exits (an extension reload, a Firefox restart) waits this long for the lock.
+LOCK_WAIT = 3.0
 # A client that connects and sends nothing is dropped after this long.
 CLIENT_TIMEOUT = 5.0
 MAX_REQUEST_BYTES = 64 * 1024
@@ -124,23 +128,26 @@ def accept_clients(listener, extension, clients):
         clients.append(client)
 
 
-def socket_is_live(path):
-    probe = socket.socket(socket.AF_UNIX)
-    probe.settimeout(1.0)
-    try:
-        probe.connect(path)
-        return True
-    except OSError:
-        return False
-    finally:
-        probe.close()
+def take_lock(path):
+    """Holds the lock file for the host's life. Whoever holds it owns the socket path: binds it, and unlinks it on exit.
+    A flock goes with the process, so a crashed host leaves no stale owner, and a socket probe cannot race the way
+    check-then-unlink would when two hosts start together."""
+    os.makedirs(os.path.dirname(path), mode=0o700, exist_ok=True)
+    lock = os.open(path + ".lock", os.O_CREAT | os.O_RDWR, 0o600)
+    deadline = time.monotonic() + LOCK_WAIT
+    while True:
+        try:
+            fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            return lock
+        except OSError:
+            if time.monotonic() >= deadline:
+                raise SystemExit("another voxcmd Firefox host holds " + path)
+            time.sleep(0.05)
 
 
 def bind_socket(path):
-    os.makedirs(os.path.dirname(path), mode=0o700, exist_ok=True)
-    if os.path.exists(path):
-        if socket_is_live(path):
-            raise SystemExit("another voxcmd Firefox host holds " + path)
+    """Binds the path, which only the lock holder calls, so whatever is there is left by a host that has gone."""
+    if os.path.lexists(path):
         os.unlink(path)
     listener = socket.socket(socket.AF_UNIX)
     old_umask = os.umask(0o177)
@@ -157,7 +164,9 @@ def main():
     if not runtime_dir:
         raise SystemExit("XDG_RUNTIME_DIR is not set")
     path = os.path.join(runtime_dir, "voxcmd", "firefox.sock")
+    lock = take_lock(path)
     listener = bind_socket(path)
+    bound = os.stat(path).st_ino
     extension = Extension(sys.stdin.buffer, sys.stdout.buffer)
     clients = []
     threading.Thread(target=accept_clients, args=(listener, extension, clients), daemon=True).start()
@@ -165,13 +174,16 @@ def main():
         extension.pump()
     finally:
         listener.close()
+        # Only the socket this host bound: the path is never another host's while the lock is held, but a check costs nothing.
+        try:
+            if os.stat(path).st_ino == bound:
+                os.unlink(path)
+        except OSError:
+            pass
         # A client still waiting was just failed by pump; give it a moment to be told.
         for client in list(clients):
             client.join(1.0)
-        try:
-            os.unlink(path)
-        except OSError:
-            pass
+        os.close(lock)
 
 
 if __name__ == "__main__":
