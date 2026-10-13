@@ -339,5 +339,18 @@ check "names the branch" "grep -q 'check failed on b' <<<\"\$out\""
 check "does not push b" "[[ \$(git -C '$ORIGIN' rev-parse b) != \$(git rev-parse b) ]]"
 check "does not touch c" "[[ \$(git rev-parse c) == '$before_c' ]]"
 
+echo "== restack: the remote moves after the rebase starts"
+stack_setup
+echo more >fa2
+g add fa2
+g commit -qm a2
+moved=$(git rev-parse main)
+out=$("$restack" --check "git --git-dir='$ORIGIN' update-ref refs/heads/b $moved" a b c 2>&1)
+code=$?
+show "$out"
+check "stops with an error" "[[ \$code != 0 ]]"
+check "names the branch it could not push" "grep -q 'cannot push b' <<<\"\$out\""
+check "leaves the other push in place" "[[ \$(git -C '$ORIGIN' rev-parse b) == '$moved' ]]"
+
 echo "$pass passed, $fail failed"
 ((fail == 0))
