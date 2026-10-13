@@ -272,7 +272,7 @@ Row {
     TextMetrics {
         id: dq_gap_metrics
         font: time_label.font
-        text: "  "
+        text: " "
     }
 
     Divider {
