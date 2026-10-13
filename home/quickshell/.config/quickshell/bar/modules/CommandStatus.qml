@@ -30,7 +30,7 @@ BarModule {
         if (cls === "active") return Theme.theme_primary;
         if (cls === "warn") return Theme.warning;
         if (cls === "error") return Theme.error;
-        return Style.bar_fg;
+        return Theme.theme_secondary;
     }
 
     Row {
