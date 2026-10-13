@@ -36,9 +36,11 @@ Row {
     readonly property string agenda_tip: {
         // Times follow the zone the clock shows, as its digits do.
         const span = e => TimeFormat.format(Timezones.shift(new Date(e.start_ms))) + " - " + TimeFormat.format(Timezones.shift(new Date(e.end_ms)));
-        if (CalendarState.in_meeting) return "Now: " + CalendarState.current_event.title + "\n" + span(CalendarState.current_event);
-        const next = CalendarState.chip_event || CalendarState.next_event_today;
-        return next ? "Next: " + next.title + "\n" + span(next) + " (in " + CalendarState.minutes_to(next) + " min)" : "";
+        const now = CalendarState.in_meeting ? "Now: " + CalendarState.current_event.title + "\n" + span(CalendarState.current_event) : "";
+        // While a meeting is live only a meeting inside the countdown window counts as next.
+        const next = CalendarState.in_meeting ? CalendarState.chip_event : CalendarState.chip_event || CalendarState.next_event_today;
+        const later = next ? "Next: " + next.title + "\n" + span(next) + " (in " + CalendarState.minutes_to(next) + " min)" : "";
+        return now !== "" && later !== "" ? now + "\n" + later : now + later;
     }
     onAgenda_tipChanged: {
         if (!hover.hovered) return;
@@ -182,25 +184,49 @@ Row {
         font.letterSpacing: Style.bar_letter_spacing
     }
 
-    Rectangle {
-        visible: !root.compact && !root.capsule && !root.on_accent && Style.bar_separator === "tick"
+    // The style's divider between bar items: the watch tick, or a glyph (nes has none).
+    component Divider: Item {
+        id: sep
+        property bool shown: true
+        property string glyph: "|"
+        property color glyph_color: Theme.theme_primary
+        readonly property bool tick: Style.bar_separator === "tick"
+        readonly property bool glyph_drawn: !root.dq && Style.bar_separator === ""
+
+        visible: sep.shown && (sep.tick || sep.glyph_drawn)
         anchors.verticalCenter: parent.verticalCenter
-        width: 3
-        height: Style.bar_font_size + 2
-        color: Style.bar_tick_color
+        implicitWidth: sep.tick ? 3 : glyph_text.implicitWidth
+        implicitHeight: sep.tick ? Style.bar_font_size + 2 : glyph_text.implicitHeight
+        width: implicitWidth
+        height: implicitHeight
+
+        Rectangle {
+            visible: sep.tick
+            anchors.fill: parent
+            color: Style.bar_tick_color
+        }
+
+        Text {
+            id: glyph_text
+            visible: !sep.tick
+            anchors.centerIn: parent
+            text: sep.glyph
+            color: sep.glyph_color
+            font.family: Style.bar_font_family
+            style: Style.bar_text_style
+            styleColor: Style.bar_glow_color
+            font.pixelSize: Style.bar_font_size
+            font.capitalization: Style.bar_capitalization
+            font.letterSpacing: Style.bar_letter_spacing
+        }
     }
 
-    Text {
-        visible: !root.compact && !root.capsule && !root.on_accent && !root.dq && Style.bar_separator === ""
-        anchors.verticalCenter: parent.verticalCenter
-        text: root.lualine ? "\u00b7" : "|"
-        color: root.on_accent ? Qt.alpha(root.ink, 0.6) : root.lualine || root.horizon ? Style.text_muted : Theme.theme_primary
-        font.family: Style.bar_font_family
-        style: Style.bar_text_style
-        styleColor: Style.bar_glow_color
-        font.pixelSize: Style.bar_font_size
-        font.capitalization: Style.bar_capitalization
-        font.letterSpacing: Style.bar_letter_spacing
+    readonly property bool date_shown: !root.compact && !root.capsule && !root.on_accent
+
+    Divider {
+        shown: root.date_shown
+        glyph: root.lualine ? "\u00b7" : "|"
+        glyph_color: root.lualine || root.horizon ? Style.text_muted : Theme.theme_primary
     }
 
     Text {
@@ -235,13 +261,35 @@ Row {
         font: time_label.font
     }
 
+    // nes: the marker would otherwise sit against the Dragon Quest date.
+    Item {
+        id: dq_gap
+        visible: root.dq && !root.compact && meeting_marker.visible
+        width: Math.ceil(dq_gap_metrics.advanceWidth)
+        height: 1
+    }
+
+    TextMetrics {
+        id: dq_gap_metrics
+        font: time_label.font
+        text: "  "
+    }
+
+    Divider {
+        id: marker_separator
+        shown: Style.bar_meeting_separator && meeting_marker.visible && root.date_shown
+        glyph: "|"
+        glyph_color: Theme.theme_primary
+    }
+
     Marker.MeetingMarker {
         id: meeting_marker
         visible: CalendarState.in_meeting || root.chip_shown
         anchors.verticalCenter: parent.verticalCenter
         minutes: root.chip_shown ? CalendarState.minutes_to(CalendarState.chip_event) : 0
         in_meeting: CalendarState.in_meeting
-        progress: root.chip_shown && !CalendarState.in_meeting ? Math.max(0, Math.min(1, 1 - meeting_marker.minutes / CalendarState.chip_window_minutes)) : 1
+        upcoming: root.chip_shown
+        progress: root.chip_shown ? Math.max(0, Math.min(1, 1 - meeting_marker.minutes / CalendarState.chip_window_minutes)) : 1
         on_accent: root.on_accent
         ink: root.ink
         text_font: marker_font.font
@@ -256,7 +304,11 @@ Row {
     }
 
     // Popups sized from the clock island ignore the room the marker takes, so a meeting does not widen them.
-    readonly property real calendar_room: meeting_marker.visible ? meeting_marker.width + root.spacing : 0
+    readonly property real calendar_room: {
+        if (!meeting_marker.visible) return 0;
+        const extras = [marker_separator, dq_gap].filter(item => item.visible);
+        return extras.reduce((sum, item) => sum + item.width + root.spacing, meeting_marker.width + root.spacing);
+    }
 
     Binding {
         target: root.island ? root.island.parent : null

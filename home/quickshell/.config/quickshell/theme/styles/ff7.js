@@ -96,6 +96,7 @@ function overrides(t, ctx) {
         text_shadow: Qt.alpha(t.bg_crust, 0.85),
         bar_font_family: "Nunito",
         bar_meeting_marker: "atb_gauge",
+        bar_meeting_separator: true,
         bar_font_size: t.font_size + 2,
         bar_side_bg: win_end,
         bar_center_bg: win_end,

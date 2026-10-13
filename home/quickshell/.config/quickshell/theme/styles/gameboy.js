@@ -76,6 +76,7 @@ function overrides(t, ctx) {
             bar_font_family: "Silkscreen",
             bar_font_size: 16,
             bar_meeting_marker: "pixel_bell",
+            bar_meeting_separator: true,
             bar_side_bg: g1,
             bar_center_bg: g1,
             bar_fg: g3,

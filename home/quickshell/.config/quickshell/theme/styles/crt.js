@@ -45,7 +45,8 @@ function overrides(t, ctx) {
         bar_border_color: Qt.alpha(t.theme_primary, 0.5),
         bar_hover_bg: Qt.alpha(t.theme_primary, 0.4),
         bar_glow_color: Qt.alpha(t.theme_primary, 0.3),
-        bar_meeting_marker: "glow_flare",
+        bar_meeting_marker: "vt100_led",
+        bar_meeting_separator: true,
         bar_scanline_color: Qt.alpha(t.theme_primary, 0.07)
     };
 }
