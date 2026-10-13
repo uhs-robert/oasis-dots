@@ -64,6 +64,7 @@ function overrides(t, ctx) {
         bar_scanline_color: Qt.alpha(t.bg_shadow, 0.08),
         bar_font_family: "Silkscreen",
         bar_font_size: 16,
+        bar_icon_set: "snes",
         bar_meeting_marker: "reserve_box",
         bar_meeting_separator: true,
         bar_side_bg: t.bg_core,
