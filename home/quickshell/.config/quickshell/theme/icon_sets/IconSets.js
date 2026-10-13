@@ -3,23 +3,36 @@
 .import "NesSprites.js" as Nes
 .import "SnesSprites.js" as Snes
 .import "Ps1Sprites.js" as Ps1
+.import "OasisVectors.js" as Oasis
 
-// Pixel icon sets a bar style can draw in place of the Nerd Font glyphs: set name -> icon name -> variant -> sprite rows.
+// Icon sets a bar style can draw in place of the Nerd Font glyphs: set name -> icon name -> variant -> sprite rows or vector.
 var sets = {
     "gameboy": Gameboy.sprites,
     "nes": Nes.sprites,
     "snes": Snes.sprites,
-    "ps1": Ps1.sprites
+    "ps1": Ps1.sprites,
+    "oasis": Oasis.vectors
 };
 
 var names = Object.keys(sets);
 
-// The sprite rows, or null when the module should draw its glyph: no set, an icon or variant the set lacks, or one not drawn yet (an empty array).
-function sprite(set, name, variant) {
+// An entry is either sprite rows (an array of strings) or a vector: { w, h, body, accent?, fill_rule? }, drawn on a viewBox w wide and h (24) tall.
+function entry(set, name, variant) {
     const table = sets[set];
     const icon = table ? table[name] : undefined;
-    const rows = icon ? icon[variant] : undefined;
-    return rows && rows.length > 0 ? rows : null;
+    return icon ? icon[variant] : undefined;
+}
+
+// The sprite rows, or null when the module should draw its glyph: no set, an icon or variant the set lacks, one not drawn yet (an empty array), or a vector.
+function sprite(set, name, variant) {
+    const rows = entry(set, name, variant);
+    return Array.isArray(rows) && rows.length > 0 ? rows : null;
+}
+
+// The vector entry, or null when the set has no vector for this icon and variant.
+function vector(set, name, variant) {
+    const drawn = entry(set, name, variant);
+    return drawn && !Array.isArray(drawn) && drawn.body ? drawn : null;
 }
 
 // The widest and tallest sprite among all of an icon's variants, in sprite pixels, or null when the set does not draw it.
@@ -31,9 +44,25 @@ function extent(set, name) {
     let height = 0;
     for (const variant in icon) {
         const rows = icon[variant];
-        if (!rows || rows.length === 0) continue;
+        if (!Array.isArray(rows) || rows.length === 0) continue;
         columns = Math.max(columns, rows[0].length);
         height = Math.max(height, rows.length);
     }
     return columns > 0 ? { columns: columns, rows: height } : null;
+}
+
+// The widest and tallest vector among all of an icon's variants, in viewBox units, or null when the set draws no vector for it.
+function vector_extent(set, name) {
+    const table = sets[set];
+    const icon = table ? table[name] : undefined;
+    if (!icon) return null;
+    let width = 0;
+    let height = 0;
+    for (const variant in icon) {
+        const drawn = icon[variant];
+        if (!drawn || Array.isArray(drawn) || !drawn.body) continue;
+        width = Math.max(width, drawn.w);
+        height = Math.max(height, drawn.h);
+    }
+    return width > 0 ? { w: width, h: height } : null;
 }

@@ -1,10 +1,11 @@
 // home/quickshell/.config/quickshell/components/bar_icons/BarIcon.qml
 import QtQuick
+import QtQuick.Shapes
 import "../../theme"
 import ".."
 import "../../theme/icon_sets/IconSets.js" as IconSets
 
-// A bar module's icon: the pixel sprite Style.bar_icon_set draws for `name` and `variant`, else the module's Nerd Font `glyph`.
+// A bar module's icon: the pixel sprite or vector Style.bar_icon_set draws for `name` and `variant`, else the module's Nerd Font `glyph`.
 Item {
     id: root
 
@@ -20,19 +21,29 @@ Item {
     property bool fixed_slot: false
 
     readonly property var rows: IconSets.sprite(Style.bar_icon_set, root.name, root.variant)
+    readonly property var vector: IconSets.vector(Style.bar_icon_set, root.name, root.variant)
+    // Whether the set draws this icon (sprite or vector) rather than the Nerd Font glyph, which keeps a side bearing a drawn icon lacks.
+    readonly property bool drawn: !!root.rows || !!root.vector
     // A ~9-row sprite spans the glyph's height at a whole pixel size, so it stays crisp.
     readonly property int pixel: Math.max(1, Math.round(root.glyph_size / 9))
+    // Pixels per viewBox unit, from constants only: a Shape overwrites its own implicit size with its path bounds, so reading it back loops.
+    readonly property real unit: root.glyph_size * root.vector_fill / 24
+    // The vector's 24-unit height covers this share of glyph_size, matching a Nerd Font glyph's inked height.
+    readonly property real vector_fill: 1
+    // How far a count badge stays clear of a drawn icon's edge: one sprite pixel, or the same distance for a vector.
+    readonly property real clearance: root.vector ? root.glyph_size / 9 : root.pixel
 
     readonly property var extent: root.fixed_slot ? IconSets.extent(Style.bar_icon_set, root.name) : null
+    readonly property var vector_extent: root.fixed_slot ? IconSets.vector_extent(Style.bar_icon_set, root.name) : null
 
-    implicitWidth: !root.rows ? glyph_text.implicitWidth : root.extent ? root.extent.columns * root.pixel : sprite_loader.item ? sprite_loader.item.implicitWidth : 0
-    implicitHeight: !root.rows ? glyph_text.implicitHeight : root.extent ? root.extent.rows * root.pixel : sprite_loader.item ? sprite_loader.item.implicitHeight : 0
+    implicitWidth: root.vector ? (root.vector_extent ? root.vector_extent.w : root.vector.w) * root.unit : !root.rows ? glyph_text.implicitWidth : root.extent ? root.extent.columns * root.pixel : sprite_loader.item ? sprite_loader.item.implicitWidth : 0
+    implicitHeight: root.vector ? (root.vector_extent ? root.vector_extent.h : root.vector.h) * root.unit : !root.rows ? glyph_text.implicitHeight : root.extent ? root.extent.rows * root.pixel : sprite_loader.item ? sprite_loader.item.implicitHeight : 0
     width: implicitWidth
     height: implicitHeight
 
     Text {
         id: glyph_text
-        visible: !root.rows
+        visible: !root.drawn
         text: root.glyph
         color: root.tint
         font.family: root.font_family
@@ -49,6 +60,30 @@ Item {
             rows: root.rows
             pixel: root.pixel
             colors: [root.tint, root.highlight]
+        }
+    }
+
+    Shape {
+        visible: !!root.vector
+        anchors.centerIn: parent
+        width: root.vector ? root.vector.w * root.unit : 0
+        height: root.vector ? root.vector.h * root.unit : 0
+        preferredRendererType: Shape.CurveRenderer
+
+        ShapePath {
+            fillColor: root.tint
+            strokeColor: "transparent"
+            fillRule: root.vector && root.vector.fill_rule === "evenodd" ? ShapePath.OddEvenFill : ShapePath.WindingFill
+            scale: Qt.size(root.unit, root.unit)
+            PathSvg { path: root.vector ? root.vector.body : "" }
+        }
+
+        ShapePath {
+            fillColor: root.highlight
+            strokeColor: "transparent"
+            fillRule: root.vector && root.vector.fill_rule === "evenodd" ? ShapePath.OddEvenFill : ShapePath.WindingFill
+            scale: Qt.size(root.unit, root.unit)
+            PathSvg { path: root.vector && root.vector.accent ? root.vector.accent : "" }
         }
     }
 }
