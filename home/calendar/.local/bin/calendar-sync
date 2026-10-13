@@ -37,8 +37,9 @@ KILL_WAIT_SECONDS = 2
 KEYRING_STORE_TIMEOUT_SECONDS = 120
 LOCKED_RBW_EXIT_CODE = 3
 LOCKED_KEYRING_EXIT_CODE = 4
-DAYS_BEHIND = 7
-DAYS_AHEAD = 60
+DEFAULT_DAYS_BACK = 30
+DEFAULT_DAYS_AHEAD = 365
+MAX_WINDOW_DAYS = 3650
 MAX_FEED_BYTES = 32 * 1024 * 1024
 FETCH_TIMEOUT_SECONDS = 30
 
@@ -108,21 +109,55 @@ def require_trustworthy_config(config_path):
             raise SyncError("the config file or its directory is writable by others or inside a git work tree")
 
 
-def configured_url_command():
-    """The `url_command = ...` line of the config, which holds a command and never the address."""
+def read_config_values():
+    """The `key = value` lines of the config; the first of a repeated key wins, blank and `#` lines are skipped."""
     path = config_dir() / "config"
     if not os.path.lexists(path):
-        return None
+        return {}
     require_trustworthy_config(path)
     try:
         lines = path.read_text().splitlines()
     except OSError:
-        return None
+        return {}
+    values = {}
     for line in lines:
         key, separator, value = line.partition("=")
-        if separator and key.strip() == "url_command" and value.strip():
-            return value.strip()
-    return None
+        if separator and value.strip() and not key.strip().startswith("#"):
+            values.setdefault(key.strip(), value.strip())
+    return values
+
+
+def configured_url_command():
+    """The command, which prints the address and never holds it."""
+    return read_config_values().get("url_command")
+
+
+def window_days(values, key, default):
+    raw = values.get(key)
+    if raw is None:
+        return default
+    if not (raw.isascii() and raw.isdigit()) or int(raw) > MAX_WINDOW_DAYS:
+        raise SyncError(f"days_back and days_ahead must be whole numbers from 0 to {MAX_WINDOW_DAYS}")
+    return int(raw)
+
+
+def local_midnight(day):
+    return dt.datetime.combine(day, dt.time()).astimezone()
+
+
+def sync_window(now):
+    """Local midnight `days_back` days ago up to, excluding, local midnight after day `days_ahead`.
+
+    Whole days, so a consumer can tell a day it synced from one it never looked at.
+    """
+    values = read_config_values()
+    days_back = window_days(values, "days_back", DEFAULT_DAYS_BACK)
+    days_ahead = window_days(values, "days_ahead", DEFAULT_DAYS_AHEAD)
+    today = now.date()
+    return (
+        local_midnight(today - dt.timedelta(days=days_back)),
+        local_midnight(today + dt.timedelta(days=days_ahead + 1)),
+    )
 
 
 def url_command():
@@ -488,12 +523,17 @@ def sync(args, directory):
         feed = fetch_feed(feed_url)
 
     now = current_time(args)
-    events = expand_events(
-        feed, now - dt.timedelta(days=DAYS_BEHIND), now + dt.timedelta(days=DAYS_AHEAD), feed_url
-    )
+    window_start, window_end = sync_window(now)
+    events = expand_events(feed, window_start, window_end, feed_url)
     write_json_atomically(
         directory / "events.json",
-        {"updated": now.isoformat(timespec="seconds"), "source": "ical", "events": events},
+        {
+            "updated": now.isoformat(timespec="seconds"),
+            "source": "ical",
+            "window_start": window_start.isoformat(),
+            "window_end": window_end.isoformat(),
+            "events": events,
+        },
     )
     (directory / "error.json").unlink(missing_ok=True)
     poke_bar()
@@ -684,24 +724,25 @@ def check_not_in_work_tree(path, what):
         raise SetupAborted(f"{what} would be inside a git work tree; set XDG_DATA_HOME or XDG_CONFIG_HOME elsewhere")
 
 
-def validate_address(address, now):
-    """Fetches and parses the feed the way a sync does; returns the upcoming event count."""
+def validate_address(address, now, window_end):
+    """Fetches and parses the feed the way a sync does; returns the count from now to the window's end."""
     feed = fetch_feed(address)
-    events = expand_events(feed, now, now + dt.timedelta(days=DAYS_AHEAD), address)
+    events = expand_events(feed, now, window_end, address)
     return sum(1 for event in events if event["status"] != "cancelled")
 
 
-def read_valid_address(prompter, now):
+def read_valid_address(prompter, now, window_end):
     while True:
         try:
             address = normalize_feed_url(prompter.ask("Secret iCal address (input hidden): ", secret=True))
-            count = validate_address(address, now)
+            count = validate_address(address, now, window_end)
         except SyncError as err:
             print(f"That did not work: {err}.")
             if not prompter.confirm("Try again?", default=True):
                 raise SetupAborted("stopped before saving anything") from None
             continue
-        print(f"Found {count} events in the next {DAYS_AHEAD} days.")
+        days_ahead = (window_end.date() - now.date()).days - 1
+        print(f"Found {count} events in the next {days_ahead} days.")
         return address
 
 
@@ -723,14 +764,29 @@ def explain_where_the_address_lives(prompter):
             print(f"Could not open a browser; go to {GOOGLE_SETTINGS_URL}")
 
 
+SETUP_CONFIG_HEADER = "# Written by calendar-sync setup. The command prints the address; it is not stored here."
+
+
+def other_config_lines(path):
+    """Lines to carry over when setup replaces the command, so settings like days_ahead survive."""
+    if not os.path.lexists(path):
+        return []
+    return [
+        line
+        for line in path.read_text().splitlines()
+        if line.partition("=")[0].strip() != "url_command" and line != SETUP_CONFIG_HEADER
+    ]
+
+
 def write_config(command):
     path = config_file_path()
     ensure_private_directory(path.parent)
+    kept_lines = other_config_lines(path)
     fd, tmp_name = tempfile.mkstemp(dir=path.parent, prefix="config.")
     try:
         with os.fdopen(fd, "w") as handle:
-            handle.write("# Written by calendar-sync setup. The command prints the address; it is not stored here.\n")
-            handle.write(f"url_command = {command}\n")
+            handle.write(f"{SETUP_CONFIG_HEADER}\nurl_command = {command}\n")
+            handle.writelines(line + "\n" for line in kept_lines)
         os.replace(tmp_name, path)
     except BaseException:
         Path(tmp_name).unlink(missing_ok=True)
@@ -818,7 +874,8 @@ def run_setup(args):
     now = current_time(args)
     try:
         explain_where_the_address_lives(prompter)
-        address = read_valid_address(prompter, now)
+        _, window_end = sync_window(now)
+        address = read_valid_address(prompter, now, window_end)
         backend = choose_backend(prompter)
         entry, entry_exists = plan_storage(prompter, backend)
         command, where = store_address(backend, address, entry, entry_exists)

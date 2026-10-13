@@ -11,7 +11,7 @@ calendar-sync setup
 The guide walks you through it in a terminal:
 
 1. It points you to Google Calendar > Settings > your calendar > Integrate calendar > "Secret address in iCal format" (the secret one, not the public one) and offers to open the settings page.
-2. You paste the address with hidden input. It converts `webcal://`, requires https, then fetches and parses it and prints "Found N events in the next 60 days", or a clear error without the address, so you can retry.
+2. You paste the address with hidden input. It converts `webcal://`, requires https, then fetches and parses it and prints "Found N events in the next 365 days" (your configured window), or a clear error without the address, so you can retry.
 3. You choose where to keep it. Only backends that work on your machine are listed; Enter picks Auto, the first of: rbw (installed and unlocked), the system keyring (`secret-tool`, with the default collection unlocked), or a private file at `${XDG_DATA_HOME:-~/.local/share}/calendar-sync/ical-url` (mode 0600 in a 0700 directory, refused inside a git work tree). A locked rbw is listed as locked and turns Auto off, so a lock never quietly sends the address somewhere weaker; unlock it and run setup again, or pick another. An existing rbw entry is updated in place with `rbw edit`, keeping its notes, and never removed. If an older copy of the address is left in another backend, setup says where and offers to delete the private file.
 4. It writes `${XDG_CONFIG_HOME:-~/.config}/calendar-sync/config` with the matching `url_command`, asking before it replaces an existing one, and reads the address back through it to prove the round trip.
 5. It enables the timer and runs the first sync.
@@ -43,10 +43,23 @@ Without a config the command is `rbw get -- google-calendar-ical`.
 
 The address is a credential: anyone holding it can read the whole calendar. It goes from the command into memory only. It is never in a command line, a log, the cache or an error message. If it leaks, reset it in Google Calendar settings. Only https addresses are accepted.
 
+## The sync window
+
+Two optional keys in the same config file, `key = value` like `url_command`:
+
+```ini
+days_back = 30
+days_ahead = 365
+```
+
+They are whole numbers of days from 0 to 3650, defaulting to 30 and 365; anything else (a negative number, a fraction, text) makes the run fail with a fixed message in `error.json`. Setup does not ask about them, and replacing the command through setup keeps them.
+
+The window is whole local days: `window_start` is local midnight `days_back` days before today, and `window_end` is local midnight after day `days_ahead` from today, so it is exclusive (`days_ahead = 0` covers today only). An event is kept if it overlaps `[window_start, window_end)`. A long window costs more to expand for recurring events and makes `events.json` larger.
+
 ## Behavior
 
 - When rbw is locked, or the address command fails, prints nothing or times out, the timer does nothing and says nothing; it never opens a password prompt. The cache stays as it was and catches up on the first run after you unlock.
-- Events from 7 days back to 60 days ahead are written to `${XDG_CACHE_HOME:-~/.cache}/calendar/events.json`. Recurring events are expanded into one entry per occurrence.
+- Events inside the sync window (by default 30 days back to 365 days ahead, see "The sync window") are written to `${XDG_CACHE_HOME:-~/.cache}/calendar/events.json`. Recurring events are expanded into one entry per occurrence.
 - Without the two Python libraries it also does nothing and says nothing (`--now` prints a hint).
 - On failure the last `events.json` is kept and `error.json` next to it holds a short, address-free message. The next good sync removes it. A network or HTTP failure still exits 0, so a laptop that goes offline does not leave the unit in `systemctl --failed`; a feed that cannot be parsed exits 1. Consumers should treat `error.json` as stale when its `at` is older than `events.json`'s `updated`.
 - The script refuses to run when the cache path is inside a git work tree, so event data cannot land in a checkout.
@@ -64,13 +77,15 @@ calendar-sync --ics feed.ics       # read a file instead of rbw and the network
 ## events.json
 
 ```json
-{ "updated": "ISO8601", "source": "ical", "events": [
+{ "updated": "ISO8601", "source": "ical",
+  "window_start": "ISO8601", "window_end": "ISO8601", "events": [
   { "uid": "...", "title": "...", "start": "ISO8601", "end": "ISO8601", "all_day": false,
     "location": "...", "join_url": "https://meet.google.com/...|https://teams.microsoft.com/...|null",
     "event_url": "https://calendar.google.com/...", "status": "confirmed|tentative|cancelled",
     "organizer": "...", "attendees": ["..."] } ] }
 ```
 
+- `window_start` and `window_end` are the span that was synced (see below). A day outside it was not looked at, so a consumer should show it as unknown rather than as free. Consumers that ignore these two fields are unaffected.
 - Times carry the local UTC offset. An all-day event runs from local midnight of its first day to local midnight after its last (exclusive end).
 - `uid` is the feed's UID; an occurrence of a recurring event adds `#<original start>` so every entry is unique.
 - `join_url` is the link that joins the call, https only. A Google Meet link wins: `X-GOOGLE-CONFERENCE`, else a Meet link in the location, description or URL. Otherwise a Microsoft Teams link: `X-MICROSOFT-SKYPETEAMSMEETINGURL`, else a `teams.microsoft.com/l/meetup-join/` link in the description or location.
