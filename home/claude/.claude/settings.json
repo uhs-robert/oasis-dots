@@ -92,6 +92,11 @@
             "type": "command",
             "command": "~/.claude/hooks/guard-zsh-modifiers.sh",
             "timeout": 10
+          },
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/guard-masked-checks.sh",
+            "timeout": 10
           }
         ]
       }
