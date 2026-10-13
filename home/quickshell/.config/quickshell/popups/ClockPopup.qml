@@ -171,9 +171,8 @@ Popup {
     }
 
     // Opens the first candidate that is an https link, once the popup has let go of the keyboard. Joining and creating both
-    // come through here. Firefox handed a URL from a process without an activation token is not raised by the compositor,
-    // so after the launch the script focuses a Firefox window itself, as soon as one exists. The class is "firefox" on
-    // Arch's build and "org.mozilla.firefox" on others, so it matches either.
+    // come through here. A browser handed a URL from a process without an activation token is not raised by the compositor,
+    // so after the launch the script focuses the default browser's window itself, as soon as one exists.
     function open_first_link(candidates) {
         const url = candidates.find(u => /^https:\/\//.test(u));
         if (!url) return;
@@ -183,10 +182,24 @@ Popup {
     }
 
     readonly property string open_and_focus_script: `
-if command -v firefox >/dev/null; then firefox --new-tab "$1" & else exec xdg-open "$1"; fi
+xdg-open "$1" >/dev/null 2>&1 &
 command -v hyprctl >/dev/null && command -v jq >/dev/null || exit 0
+# The default browser (Settings > Default apps) names the window class to focus: its desktop entry's StartupWMClass,
+# else the entry's name.
+id=$(xdg-mime query default x-scheme-handler/https 2>/dev/null)
+[ -n "$id" ] || exit 0
+class=
+old_ifs=$IFS
+IFS=:
+for dir in \${XDG_DATA_HOME:-$HOME/.local/share}:\${XDG_DATA_DIRS:-/usr/local/share:/usr/share}; do
+  [ -f "$dir/applications/$id" ] || continue
+  class=$(sed -n 's/^StartupWMClass=//p' "$dir/applications/$id" | head -n 1)
+  break
+done
+IFS=$old_ifs
+[ -n "$class" ] || class=\${id%.desktop}
 for _ in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20; do
-  addr=$(hyprctl -j clients | jq -r '[.[] | select(.class | test("firefox"; "i"))] | sort_by(.focusHistoryID) | .[0].address // empty')
+  addr=$(hyprctl -j clients | jq -r --arg c "$class" '[.[] | select([.class, .initialClass] | map(ascii_downcase) | index($c | ascii_downcase))] | sort_by(.focusHistoryID) | .[0].address // empty')
   [ -n "$addr" ] && break
   sleep 0.25
 done
