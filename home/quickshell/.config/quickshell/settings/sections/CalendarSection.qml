@@ -122,7 +122,9 @@ RowsSection {
 
     Process {
         id: check_proc
-        command: ["sh", "-c", "command -v calendar-sync >/dev/null 2>&1 || exit 127; exec calendar-sync setup --check"]
+        // --check reports a missing rbw as locked, since rbw is the default store; without rbw it is just not connected,
+        // and Connect must stay on offer so setup can pick the keyring or a private file.
+        command: ["sh", "-c", "command -v calendar-sync >/dev/null 2>&1 || exit 127; calendar-sync setup --check; code=$?; [ $code -eq 3 ] && ! command -v rbw >/dev/null 2>&1 && exit 1; exit $code"]
         onExited: code => root.check_code = code
     }
 }
