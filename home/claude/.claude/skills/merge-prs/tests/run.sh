@@ -75,6 +75,13 @@ echo "== already-merged PR first in the list: the rest still merges"
 setup
 printf 'head=gone-branch\nbase=main\nstate=MERGED\n' >"$GH_STATE.7"
 mv "$GH_STATE" "$GH_STATE.8"
+# Its head is gone from origin, so unpushed work on the local branch must survive.
+g branch -q gone-branch main
+g switch -q gone-branch
+echo unpushed >unpushed
+g add unpushed
+g commit -qm unpushed
+g switch -q child
 out=$(PATH="$here:$PATH" "$script" 7 8 2>&1)
 code=$?
 show "$out"
@@ -82,6 +89,23 @@ check "exits 0" "[[ $code == 0 ]]"
 check "says #7 is already merged" "grep -q '^#7 already merged' <<<\"\$out\""
 check "merges #8" "grep -q '^8 merged (rebase)' <<<\"\$out\""
 check "deletes the local branch" "! git -C '$root/main' show-ref -q --verify refs/heads/child"
+check "keeps the branch whose head is unavailable" "git -C '$root/main' show-ref -q --verify refs/heads/gone-branch"
+check "says why it kept it" "grep -q 'kept gone-branch: the head of #7' <<<\"\$out\""
+
+echo "== already-merged parent: its child is retargeted and rebased"
+setup
+parent_oid=$(git rev-parse child~1)
+g push -q origin "$parent_oid:refs/heads/parent"
+printf 'head=parent\nbase=main\nstate=MERGED\n' >"$GH_STATE.7"
+mv "$GH_STATE" "$GH_STATE.8"
+printf 'head=child\nbase=parent\nstate=OPEN\n' >"$GH_STATE.8"
+out=$(PATH="$here:$PATH" "$script" 7 2>&1)
+code=$?
+show "$out"
+check "exits 0" "[[ $code == 0 ]]"
+check "retargets the child" "grep -q '^8 retargeted to main' <<<\"\$out\""
+check "rebases the child" "grep -q '^8 rebased onto main' <<<\"\$out\""
+check "the child no longer carries the parent commit" "[[ \$(git -C '$ORIGIN' log --format=%s main..child) == C ]]"
 
 echo "== closed PR is still refused"
 setup

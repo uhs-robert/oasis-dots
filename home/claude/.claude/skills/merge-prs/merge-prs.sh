@@ -219,10 +219,17 @@ list_children() {
 clean_local() {
   local pr=$1 head=$2 head_oid=$3 wt
   git worktree prune
-  if git show-ref --verify -q "refs/heads/$head" &&
-    [[ -n $(git rev-list -n 1 "refs/heads/$head" --not "$head_oid" "${known_heads[@]}") ]]; then
-    echo "kept $head: local commits not in PR #$pr"
-    return
+  if git show-ref --verify -q "refs/heads/$head"; then
+    local extra
+    # A failed rev-list (a head commit missing locally) must keep the branch, not read as "no extra commits".
+    if ! extra=$(git rev-list -n 1 "refs/heads/$head" --not "$head_oid" "${known_heads[@]}" 2>/dev/null); then
+      echo "kept $head: cannot compare its commits with PR #$pr"
+      return
+    fi
+    if [[ -n $extra ]]; then
+      echo "kept $head: local commits not in PR #$pr"
+      return
+    fi
   fi
   wt=$(git worktree list --porcelain | awk -v line="branch refs/heads/$head" '/^worktree /{p=substr($0, 10)} !found && $0 == line {print p; found = 1}')
   if [[ $wt == "$main_dir" ]]; then
@@ -350,6 +357,42 @@ not_merged() {
   die "$msg"
 }
 
+# An interrupted earlier run already merged it; finish what that run's tail would have done. Everything here needs the
+# PR's head commit locally: without it the branch cannot be shown to hold nothing the PR lacks, so it is kept.
+merge_pr_already_merged() {
+  local pr=$1 head=$2 head_oid=$3 base=$4 cross=$5 line number child_head child_oid child_cross
+  echo "#$pr already merged"
+  fetch
+  if [[ $cross == true ]]; then
+    echo "PR #$pr is from a fork; skipped local cleanup"
+    return 0
+  fi
+  if ! git cat-file -e "$head_oid^{commit}" 2>/dev/null; then
+    echo "kept $head: the head of #$pr ($head_oid) is not available locally, so its local commits cannot be checked"
+    return 0
+  fi
+  known_heads+=("$head_oid")
+  # Children still based on the head are the ones the interrupted run never retargeted and rebased.
+  local -a lines=()
+  local children_info
+  children_info=$(list_children "$head") || exit 1
+  [[ -z $children_info ]] || mapfile -t lines <<<"$children_info"
+  for line in "${lines[@]}"; do
+    IFS=$'\t' read -r number _ <<<"$line"
+    gh pr edit "$number" --base "$base" >/dev/null || die "cannot retarget $number to $base"
+    echo "$number retargeted to $base"
+  done
+  $keep_branch || clean_local "$pr" "$head" "$head_oid"
+  for line in "${lines[@]}"; do
+    IFS=$'\t' read -r number child_head child_oid child_cross <<<"$line"
+    if [[ $child_cross == true ]]; then
+      echo "child #$number is from a fork; rebase it onto $base by hand"
+    else
+      rebase_child "$number" "$child_head" "$child_oid" "origin/$base" "$base" "$head_oid"
+    fi
+  done
+}
+
 merge_pr() {
   local pr=$1 info head base state cross head_oid children_info="" line number child_head child_oid child_cross
   local -a lines=()
@@ -357,15 +400,7 @@ merge_pr() {
     --jq '[.headRefName, .headRefOid, .baseRefName, .state, .isCrossRepository] | @tsv') || die "cannot read PR $pr"
   IFS=$'\t' read -r head head_oid base state cross <<<"$info"
   if [[ $state == MERGED ]]; then
-    # An interrupted earlier run already merged it; finish what that run's tail would have done.
-    echo "#$pr already merged"
-    fetch
-    if [[ $cross == true ]]; then
-      echo "PR #$pr is from a fork; skipped local cleanup"
-    elif ! $keep_branch; then
-      known_heads+=("$head_oid")
-      clean_local "$pr" "$head" "$head_oid"
-    fi
+    merge_pr_already_merged "$pr" "$head" "$head_oid" "$base" "$cross"
     return 0
   fi
   [[ $state == OPEN ]] || die "PR $pr is $state"

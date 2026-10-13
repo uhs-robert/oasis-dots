@@ -13,6 +13,7 @@ die() {
 }
 
 [[ $(git -C "$repo" branch --show-current) == main ]] || die "the main checkout is not on main; switch it back first"
+take_lock "$repo" || die "another ship-batch is running in this repository; wait for it to finish"
 before=$(select_base "$repo")
 # The owner already said to merge, so a Codex review still running is waited out rather than failing the batch.
 (($# == 0)) || (cd "$repo" && "$HOME/.claude/skills/merge-prs/merge-prs.sh" --wait-review "$@") || die "merge-prs failed; nothing after the merge ran"
@@ -35,13 +36,9 @@ if [[ $before != "$after" ]]; then
   else
     (cd "$repo" && just check) || die "just check fails on main after the merge; fix it before anything else"
   fi
-  # Kept on failure or interruption so a rerun checks everything merged since.
-  finish_base "$repo"
   # With uncommitted changes in the main checkout the pass was of its working tree, not `after`'s, and the helper
   # refuses to record it; that must not stop the reloads and restarts below.
   (cd "$repo" && lib/check-passed.sh record) || true
-else
-  finish_base "$repo"
 fi
 
 qs_dir=home/quickshell/.config/quickshell
@@ -83,5 +80,7 @@ if [[ $before != "$after" ]] && ! git -C "$repo" diff --quiet "$before" "$after"
   fi
 fi
 
+# Only now: a failure or interruption anywhere above keeps the base, so a rerun repeats the check and the reloads.
+finish_base "$repo"
 echo "ship-batch: main is at $(git -C "$repo" log --oneline -1)"
 (cd "$repo" && "$HOME/.claude/skills/merge-prs/status.sh") || true

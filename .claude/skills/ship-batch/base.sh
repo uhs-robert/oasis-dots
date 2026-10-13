@@ -5,6 +5,15 @@ base_file() {
   echo "$(git -C "$1" rev-parse --path-format=absolute --git-common-dir)/ship-batch-base"
 }
 
+# One batch at a time per repository: a second run would resume from the first one's base and the first would delete it.
+# The lock lives on fd 9 until the process exits, so it also covers merge-prs and the checks it spawns.
+take_lock() {
+  local lock
+  lock="$(dirname "$(base_file "$1")")/ship-batch.lock"
+  exec 9>"$lock"
+  flock -n 9
+}
+
 # Prints the commit to check from. A base left by an unfinished run wins over HEAD, since that run may already
 # have merged and pulled, which would leave HEAD equal to the new main and nothing to check.
 select_base() {
