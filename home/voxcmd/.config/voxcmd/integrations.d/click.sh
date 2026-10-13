@@ -1,18 +1,19 @@
 # shellcheck shell=bash disable=SC2034,SC2016,SC2154
-# Clicks visible text in the focused window by OCR: "click sign in", "right click settings", "double click readme".
+# Clicks visible text in the focused window by OCR: "click sign in", "right click settings", "double click readme", "triple click paragraph".
 # Format: ~/.config/voxcmd/README.md
 
 name="Click"
 confirm=0
 target_match=words
 # The click itself is the feedback; only an error or a missing target shows a toast.
-silent_actions=(click right_click double_click show_hints no_text)
+silent_actions=(click right_click double_click triple_click show_hints no_text)
 
 # Every click verb needs a target, so a bare "click" or "right click" still reaches the Cursor submap's binds in
 # Keybinds. The optional "on" is a filler word, so "click on settings" and "click settings" mean the same.
 verbs=(
   "right_click   right ?click( on)? {target}"
   "double_click  double ?click( on)? {target}"
+  "triple_click  triple ?click( on)? {target}"
   "click         (left )?click( on)? {target}"
   "show_hints    {show} (the )?(click |keyboard |pointer )?hints|hint mode"
 )
@@ -21,6 +22,7 @@ examples=(
   "click <text on screen>"
   "right click <text on screen>"
   "double click <text on screen>"
+  "triple click <text on screen>"
   "show hints"
 )
 
@@ -38,12 +40,14 @@ declare -A no_match_actions=(
   [click]='no_text'
   [right_click]='no_text'
   [double_click]='no_text'
+  [triple_click]='no_text'
 )
 
 declare -A actions=(
   [click]='click_at "$id"'
   [right_click]='click_at "$id"'
   [double_click]='click_at "$id"'
+  [triple_click]='click_at "$id"'
   [show_hints]='show_hints'
   [no_text]='no_text'
 )
@@ -92,15 +96,36 @@ json_or() {
   answer=$("$@" 2>/dev/null) && jq -e . >/dev/null 2>&1 <<<"$answer" && printf '%s\n' "$answer" || printf '%s\n' "$default"
 }
 
+# click-match.awk's candidates for the spoken text $2 over click-ocr's output $3, as JSON for $1's button. A fourth
+# argument makes them the sub-spans of runs instead of whole runs.
+ocr_matches() {
+  CLICK_TARGET="$2" CLICK_SPANS="${4:-}" awk -f "$click_match" <<<"$3" |
+    jq -R -s -c --arg button "$1" '
+      split("\n") | map(select(. != "") | split("\t"))
+      | map({id: "\(.[0]),\(.[1]),\($button),\(.[4]),\(.[5]),\(.[6]),\(.[7])", match_text: .[2], label: .[3]})'
+}
+
+# Whether voxcmd's word matching keeps any of the whole-run candidates $2 for the spoken text $1. When it keeps none,
+# the target may be part of a longer run of words ("2 tasks" in a sentence), so candidates() looks for sub-spans.
+# word_match is voxcmd's own, rather than a copy that could drift from it.
+matches_whole_run() {
+  local -a ignored
+  read -ra ignored <<<"$ignored_target_words"
+  local kept
+  kept=$(word_match "$1" "$2" "${ignored[@]}" 2>/dev/null) || return 1
+  [ -n "$kept" ] && [ "$(jq length <<<"$kept")" != 0 ]
+}
+
 # The ocr candidates for the spoken text, as {id: "x,y,button,left,top,width,height", label, match_text}; the box is the
 # matched text's, for overlays that number the candidates. Voxcmd's word matching then decides
 # which are strong and which weak. A failure, or every candidate being covered, is one candidate whose id says so,
 # which click_at reports: an empty list would read as "not on screen".
 candidates() {
-  local button=left output error_file message found visible
+  local button=left output error_file message found spans visible
   case "$1" in
   right_click) button=right ;;
   double_click) button=double ;;
+  triple_click) button=triple ;;
   esac
   has_target_word "$2" || {
     echo '[]'
@@ -114,10 +139,11 @@ candidates() {
     return
   fi
   rm -f "$error_file"
-  found=$(CLICK_TARGET="$2" awk -f "$click_match" <<<"$output" |
-    jq -R -s -c --arg button "$button" '
-      split("\n") | map(select(. != "") | split("\t"))
-      | map({id: "\(.[0]),\(.[1]),\($button),\(.[4]),\(.[5]),\(.[6]),\(.[7])", match_text: .[2], label: .[3]})')
+  found=$(ocr_matches "$button" "$2" "$output")
+  if ! matches_whole_run "$2" "$found"; then
+    spans=$(ocr_matches "$button" "$2" "$output" spans)
+    [ "$spans" = '[]' ] || found=$spans
+  fi
   visible=$(drop_covered <<<"$found")
   if [ "$visible" = '[]' ] && [ "$found" != '[]' ]; then
     jq -n -c --arg target "$2" '[{id: "covered:", label: "covered", match_text: $target}]'
@@ -130,6 +156,14 @@ candidates() {
 # and the bar keeps error toasts in its history. Nothing is returned as a failure, so voxcmd adds no toast of its own.
 click_failed() {
   notify-send --app-name=voxcmd "voxcmd failed" "Click failed: $1"
+}
+
+# Left-clicks $1 times, stopping at the first failure.
+repeat_left_click() {
+  local click_number
+  for ((click_number = 0; click_number < $1; click_number++)); do
+    wlrctl pointer click left 2>&1 || return 1
+  done
 }
 
 # $1 is "x,y,button,left,top,width,height" in global logical coordinates; only the point is used here. Hyprland's Lua config has no movecursor dispatcher, and
@@ -152,12 +186,12 @@ click_at() {
     click_failed "$(tail -n 1 <<<"$moved")"
     return 0
   fi
-  if [ "$button" = double ]; then
-    # wlrctl has no double click.
-    clicked=$(wlrctl pointer click left 2>&1 && wlrctl pointer click left 2>&1)
-  else
-    clicked=$(wlrctl pointer click "$button" 2>&1)
-  fi || click_failed "$(tail -n 1 <<<"$clicked")"
+  case "$button" in
+  # wlrctl has no double or triple click.
+  double) clicked=$(repeat_left_click 2) ;;
+  triple) clicked=$(repeat_left_click 3) ;;
+  *) clicked=$(wlrctl pointer click "$button" 2>&1) ;;
+  esac || click_failed "$(tail -n 1 <<<"$clicked")"
   return 0
 }
 
