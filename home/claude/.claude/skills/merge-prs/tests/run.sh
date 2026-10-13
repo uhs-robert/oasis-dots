@@ -454,6 +454,107 @@ check "rebases the child past the parent's pre-merge commit" "grep -q '^8 rebase
 check "merges both" "grep -q '^7 merged (rebase)' <<<\"\$out\" && grep -q '^8 merged (rebase)' <<<\"\$out\""
 check "main has each commit once, the child built on the merged parent" "[[ \$(git -C '$ORIGIN' log --format=%s main) == \$'build: child\nC\nbuild: parent\nP\nA' ]]"
 
+# A repo whose src the pre-merge step minifies into out/src.min, a generated path. Source lines 2 and 7 are far enough
+# apart for two PRs to edit them without a source conflict, while both rebuild the one line of out/src.min.
+# shellcheck disable=SC2016
+minify='mkdir -p out; tr "\n" " " <src >out/src.min; git add -A out; git diff --cached --quiet || git -c user.name=t -c user.email=t@t commit -qm "build: minify"'
+init_build_repo() {
+  root=$(mktemp -d)
+  export ORIGIN=$root/origin.git GH_STATE=$root/state
+  git init -q --bare -b main "$ORIGIN"
+  g clone -q "$ORIGIN" "$root/main" 2>/dev/null
+  cd "$root/main" || exit 1
+  printf '1\n2\n3\n4\n5\n6\n7\n8\n' >src
+  mkdir out
+  tr '\n' ' ' <src >out/src.min
+  g add -A
+  g commit -qm A
+  g push -q origin main
+  : >"$GH_STATE"
+  printf '.claude\n' >>.git/info/exclude
+  mkdir -p .claude
+  printf 'out/\n' >.claude/generated-paths
+  pre_merge_hook "$minify"
+}
+edit_src() {
+  sed -i "s/^$1\$/$2/" src
+  g commit -qam "$3"
+}
+
+echo "== pre-merge: a head behind its base is rebased before the build"
+init_build_repo
+g switch -qc a main
+edit_src 2 2a "feat: a"
+g push -q origin a
+g switch -qc c main
+edit_src 7 7c "feat: c"
+g push -q origin c
+g switch -q main
+printf 'head=a\nbase=main\nstate=OPEN\nreal_merge=1\n' >"$GH_STATE.7"
+printf 'head=c\nbase=main\nstate=OPEN\nreal_merge=1\n' >"$GH_STATE.8"
+out=$(PATH="$here:$PATH" "$script" 7 8 2>&1)
+code=$?
+show "$out"
+check "exits 0" "[[ $code == 0 ]]"
+check "rebases #8 onto the merged #7" "grep -q '^#8 rebased onto main' <<<\"\$out\""
+check "merges both" "grep -q '^7 merged (rebase)' <<<\"\$out\" && grep -q '^8 merged (rebase)' <<<\"\$out\""
+check "main has both builds and both edits" "[[ \$(git -C '$ORIGIN' log --format=%s main) == \$'build: minify\nfeat: c\nbuild: minify\nfeat: a\nA' ]]"
+check "the output matches the merged source" "[[ \$(git -C '$ORIGIN' show main:out/src.min) == \$(git -C '$ORIGIN' show main:src | tr '\n' ' ') ]]"
+
+echo "== pre-merge: a branch carrying an outdated build commit is recovered"
+init_build_repo
+g switch -qc c main
+edit_src 7 7c "feat: c"
+eval "$minify"
+g push -q origin c
+g switch -q main
+edit_src 2 2a "feat: a"
+eval "$minify"
+g push -q origin main
+printf 'head=c\nbase=main\nstate=OPEN\nreal_merge=1\n' >"$GH_STATE"
+out=$(PATH="$here:$PATH" "$script" 7 2>&1)
+code=$?
+show "$out"
+check "exits 0" "[[ $code == 0 ]]"
+check "drops the generated-only commit" "grep -q 'dropping 1 generated-only commit(s) the pre-merge step rebuilds' <<<\"\$out\""
+check "the output matches the merged source" "[[ \$(git -C '$ORIGIN' show main:out/src.min) == \$(git -C '$ORIGIN' show main:src | tr '\n' ' ') ]]"
+
+echo "== pre-merge: a failing step leaves the children where they were"
+setup
+# The setup PR becomes the parent of a second PR on a copy of its branch.
+git -C "$ORIGIN" branch -q grandchild child
+mv "$GH_STATE" "$GH_STATE.7"
+printf 'head=grandchild\nbase=child\nstate=OPEN\n' >"$GH_STATE.8"
+pre_merge_hook "exit 1"
+out=$(PATH="$here:$PATH" "$script" 7 2>&1)
+code=$?
+show "$out"
+check "stops with an error" "[[ $code != 0 ]]"
+check "names the step" "grep -q 'pre-merge step failed on #7' <<<\"\$out\""
+check "does not retarget the child" "grep -q '^base=child' '$GH_STATE.8'"
+
+echo "== pre-merge: GitHub still reporting the old head is not taken for a settled state"
+setup
+pre_merge_hook "$commit_build"
+printf 'lag_reads=99\nstale_oid=%s\n' "$(git rev-parse child)" >>"$GH_STATE"
+out=$(PATH="$here:$PATH" MERGE_PRS_MERGEABLE_WAIT=1 timeout 60 "$script" 7 2>&1)
+code=$?
+show "$out"
+check "stops with an error" "[[ $code != 0 && $code != 124 ]]"
+check "says GitHub has not caught up" "grep -q 'GitHub has not caught up' <<<\"\$out\""
+check "does not merge" "grep -q '^state=OPEN' '$GH_STATE'"
+
+echo "== review gate: generated-only commit on a fork PR still needs a review"
+setup
+mkdir -p .claude
+printf 'public/\n' >.claude/generated-paths
+printf 'cross=true\ncodex=Completed\ncodex_commit=abc1234\nreviewed_subjects=feat: add x\nhead_subjects=feat: add x;build: rebuild public\nreviewed_files=a\nhead_files=a;public/x.js\ncommit_files_c2=public/x.js\n' >>"$GH_STATE"
+out=$(PATH="$here:$PATH" "$script" 7 2>&1)
+code=$?
+show "$out"
+check "stops with an error" "[[ $code != 0 ]]"
+check "names the commit" "grep -q '\"build: rebuild public\" is not a fix' <<<\"\$out\""
+
 echo "== --check: refuses merge options"
 setup
 out=$(PATH="$here:$PATH" "$script" --check --keep-branch 7 2>&1)
