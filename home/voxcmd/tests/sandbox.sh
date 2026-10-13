@@ -11,7 +11,8 @@
 #
 #   hyprctl binds|clients|monitors|activewindow|activeworkspace|version -j
 #                                     SANDBOX_BINDS_JSON, SANDBOX_CLIENTS_JSON, ... (the JSON itself); activewindow
-#                                     is {} (no focused window) without its fixture, never the live window
+#                                     is {} (no focused window) without its fixture, never the live window;
+#                                     SANDBOX_ACTIVEWINDOW_AFTER_WTYPE_JSON replaces it once wtype has been called
 #   tesseract                         SANDBOX_TESSERACT_TSV (the tsv itself; no words without it)
 #   grim, magick                      never real: grim writes a blank image the size of the activewindow fixture
 #                                     times SANDBOX_GRIM_SCALE (default 1), or SANDBOX_GRIM_SIZE ("W H"), and fails
@@ -127,7 +128,14 @@ pass_through() {
 case "$name" in
 hyprctl)
   case "${1-}" in
-  activewindow) printenv SANDBOX_ACTIVEWINDOW_JSON || echo '{}' ;;
+  activewindow)
+    # SANDBOX_ACTIVEWINDOW_AFTER_WTYPE_JSON: the window that has focus once anything has been typed.
+    if [ -n "${SANDBOX_ACTIVEWINDOW_AFTER_WTYPE_JSON:-}" ] && grep -q '^wtype ' "$SANDBOX_DIR/calls.log" 2>/dev/null; then
+      printenv SANDBOX_ACTIVEWINDOW_AFTER_WTYPE_JSON
+    else
+      printenv SANDBOX_ACTIVEWINDOW_JSON || echo '{}'
+    fi
+    ;;
   binds | clients | monitors | activeworkspace | version)
     printenv "SANDBOX_$(printf '%s' "$1" | tr '[:lower:]' '[:upper:]')_JSON" || pass_through "$@"
     ;;
