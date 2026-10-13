@@ -221,6 +221,7 @@ expect_absent "calendar is silent" "notify-send"
 export SANDBOX_CLIENTS_JSON='[{"address": "0x3001", "mapped": true, "class": "firefox", "title": "Example Docs - Getting started — Mozilla Firefox", "focusHistoryID": 1, "workspace": {"id": 1}}]'
 export SANDBOX_ACTIVEWINDOW_JSON='{"address": "0x3001", "class": "firefox"}'
 export SANDBOX_DEFAULT_BROWSER=firefox.desktop
+export SANDBOX_SWITCHED_TITLE="Weekly sync notes"
 write_cache "$(event w "Weekly sync" -600 600 https://notes.example.org/weekly null)"
 say "join my meeting"
 expect "a meeting link open in a tab focuses that tab" "-- % Weekly sync notes"

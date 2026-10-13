@@ -1275,12 +1275,16 @@ check "tabs are offered by their site's name, most recent first" "[[ \$(jq -r '[
 # The tab typed for is in another window or another tab than the focused window's current one (0x3002 shows the Inbox).
 inbox_window=$(firefox_window 0x3002)
 : >"$log"
-out=$(SANDBOX_ACTIVEWINDOW_JSON=$inbox_window "$firefox_tab" focus 0x3002 "Cart - Example Shop")
+out=$(SANDBOX_ACTIVEWINDOW_JSON=$inbox_window SANDBOX_SWITCHED_TITLE="Cart - Example Shop" "$firefox_tab" focus 0x3002 "Cart - Example Shop")
 check "focus focuses the window" "grep -q \"^hyprctl dispatch hl.dsp.focus({ window = 'address:0x3002' })\" '$log'"
-check "then types Ctrl+L, % and the title, and Return" "[[ \"\$(typed | paste -sd'|')\" == '-M ctrl l -m ctrl|-- % Cart - Example Shop|-k Return' ]]"
+check "then types Ctrl+L, % and the title, then Down and Return to pick the first open tab" "[[ \"\$(typed | paste -sd'|')\" == '-M ctrl l -m ctrl|-- % Cart - Example Shop|-k Down|-k Return' ]]"
 : >"$log"
-out=$(SANDBOX_ACTIVEWINDOW_JSON=$inbox_window "$firefox_tab" focus 0x3002 "Funny cat video - TubeSite")
-check "a tab of another window is typed for too" "[[ \"\$(typed | paste -sd'|')\" == '-M ctrl l -m ctrl|-- % Funny cat video - TubeSite|-k Return' ]]"
+status=0
+out=$(SANDBOX_ACTIVEWINDOW_JSON=$inbox_window "$firefox_tab" focus 0x3002 "Cart - Example Shop") || status=$?
+check "a tab switch that doesn't land presses Escape and fails" "[[ \$status != 0 && \$out == *'did not switch'* && \"\$(typed | tail -n 1)\" == '-k Escape' ]]"
+: >"$log"
+out=$(SANDBOX_ACTIVEWINDOW_JSON=$inbox_window SANDBOX_SWITCHED_TITLE="Funny cat video - TubeSite" "$firefox_tab" focus 0x3002 "Funny cat video - TubeSite")
+check "a tab of another window is typed for too" "[[ \"\$(typed | paste -sd'|')\" == '-M ctrl l -m ctrl|-- % Funny cat video - TubeSite|-k Down|-k Return' ]]"
 : >"$log"
 status=0
 out=$(SANDBOX_ACTIVEWINDOW_JSON=$inbox_window "$firefox_tab" focus 0x3002 "A tab closed since") || status=$?
@@ -1317,8 +1321,8 @@ out=$(SANDBOX_ACTIVEWINDOW_JSON=$inbox_window SANDBOX_ACTIVEWINDOW_AFTER_WTYPE_J
   "$firefox_tab" open --here https://example.com/) || status=$?
 check "typing also stops when another Firefox window takes focus" "[[ \$status != 0 && \$(typed | wc -l) == 1 ]]"
 : >"$log"
-out=$(SANDBOX_ACTIVEWINDOW_JSON=$inbox_window "$firefox_tab" focus 0x3002 $'Notes\nrm -rf ~\x1b[31m - Wiki')
-check "a title's newline and control characters are typed as spaces" "[[ \"\$(typed | paste -sd'|')\" == '-M ctrl l -m ctrl|-- % Notes rm -rf ~ [31m - Wiki|-k Return' ]]"
+out=$(SANDBOX_ACTIVEWINDOW_JSON=$inbox_window SANDBOX_SWITCHED_TITLE="Notes rm -rf ~ [31m - Wiki" "$firefox_tab" focus 0x3002 $'Notes\nrm -rf ~\x1b[31m - Wiki')
+check "a title's newline and control characters are typed as spaces" "[[ \"\$(typed | paste -sd'|')\" == '-M ctrl l -m ctrl|-- % Notes rm -rf ~ [31m - Wiki|-k Down|-k Return' ]]"
 
 : >"$log"
 status=0
