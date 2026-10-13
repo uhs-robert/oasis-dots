@@ -221,14 +221,6 @@ command knack_search_prompt js (()=>{const s=document.getSelection()?.toString()
 command logger_switch js (function(){const s=document.createElement('script');s.textContent='Logger?.switch?.()';(document.documentElement?document.documentElement:document.head).appendChild(s);s.remove();})()
 command knack_search_selection js window.wrappedJSObject?.knack_search?.open?.(document.getSelection()?.toString().trim() ?? '')
 
-"" -- VOICE (voxcmd types this key; see home/voxcmd/.config/voxcmd/README.md) --
-" <A-F12> shows numbered hints; a count before it (12<A-F12>) follows hint 12. A number with no hint leaves hint mode,
-" never following another. The numbering is set in this page's memory only and put back when the hint run ends, so
-" keyboard hints keep their own names. The code is one line because a bind takes one line. Tridactyl appends a count
-" to the end of the bound command, so -d€ ends the code and the count arrives in JS_ARGS; with no count, JS_ARGS holds
-" nothing and the number is 0.
-bind <A-F12> js -d€ (async()=>{const number=JS_ARGS.find(Boolean)||"0";const config=tri.config.USERCONFIG;const saved=["hintnames","hintautoselect"].map(key=>[key,key in config,config[key]]);config.hintnames="numeric";config.hintautoselect="false";const restore=()=>saved.forEach(([key,had,value])=>had?config[key]=value:delete config[key]);tri.excmds.hint().then(restore,restore);const keys=tri.hinting_content.getHintCommands();if(number==="0")return;if(!/^[1-9][0-9]{0,3}$/.test(number))return keys.reset();for(let i=0;i<40;i++){await new Promise(done=>setTimeout(done,50));const names=[...document.querySelectorAll(".TridactylHint")].map(hint=>hint.textContent);if(!names.length)continue;if(!names.includes(number))return keys.reset();for(const key of number)keys.pushKey(key);return keys.selectFocusedHint()}})()€
-
 unbind x
 bind xx tabclose
 bind xh knack_toggle_hidden
