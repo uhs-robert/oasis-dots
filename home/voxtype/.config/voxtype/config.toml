@@ -47,9 +47,12 @@ sample_rate = 16000
 
 # Maximum recording duration in seconds (safety limit)
 max_duration_secs = 300
-pause_media = true
-duck_media = false
-duck_media_volume_percent = 34
+# Voice commands and voice sessions (rapid, click, type mode) record once per phrase, so pausing would stop and start
+# the music on every phrase; they duck it instead. Speech to Text pauses media itself (voxtype-with-media-pause.sh).
+pause_media = false
+duck_media = true
+# Percent of its current loudness ducked media keeps.
+duck_media_volume_percent = 30
 duck_media_fade_ms = 150
 
 [audio.feedback]
