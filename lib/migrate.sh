@@ -13,11 +13,12 @@ _migrate_run() {
 # Paths under ~/.config/systemd that resolve into a package of the repo, whether the symlink is the path itself or one of its parents;
 # systemd ignores such drop-in and .wants directories.
 _folded_systemd_links() {
-  local base="$HOME/.config/systemd" path target
+  local base="$HOME/.config/systemd" path target packages_dir
+  packages_dir=$(readlink -f "$DOTFILES_DIR/home")
   while IFS= read -r path; do
     [[ -d "$path" ]] || continue
     target=$(readlink -f "$path")
-    [[ "$target" == */home/*/.config/systemd* && "$target" != "$HOME"/.config/* ]] && printf '%s\n' "$path"
+    [[ "$target" == "$packages_dir"/*/.config/systemd* ]] && printf '%s\n' "$path"
   done < <(
     printf '%s\n' "$base" "$base/user"
     find "$base/user" -maxdepth 1 -type l 2>/dev/null
@@ -35,11 +36,12 @@ _generated_systemd_files() {
 
 # Moves a folded ~/.config/systemd out of the repo, which the installer also does before stowing: unstow, move the generated files into ~, stow again unfolded.
 migrate_unfold_systemd() {
-  local link target pkg rel dest
+  local link target pkg rel dest packages_dir
+  packages_dir=$(readlink -f "$DOTFILES_DIR/home")
   local -a pkgs=()
   while IFS= read -r link; do
     target=$(readlink -f "$link")
-    pkg=${target#*/home/}
+    pkg=${target#"$packages_dir"/}
     pkgs+=("${pkg%%/*}")
     info "Folded: $link -> $target"
   done < <(_folded_systemd_links)
