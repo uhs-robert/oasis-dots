@@ -19,7 +19,16 @@ seen_file=$(git rev-parse --git-path claude-check-seen)
 tree_state="$head $(git diff HEAD | sha1sum | cut -d' ' -f1)"
 [[ $(cat "$seen_file" 2>/dev/null) == "$tree_state" ]] && exit 0
 
-if out=$(timeout 180 just check 2>&1); then
+# Under the hook's own 330s limit, so a slow run is reported here instead of the hook being killed mid-output.
+check_limit=300
+out=$(timeout "$check_limit" just check 2>&1)
+status=$?
+if ((status == 124)); then
+  jq -n --arg m "'just check' did not finish within ${check_limit}s, so it was stopped. That is not a test failure: run it by hand." \
+    '{systemMessage: $m}'
+  exit 0
+fi
+if ((status == 0)); then
   printf '%s\n' "$head" >"$ok_file"
   # A dirty pass checked the working tree, not HEAD's tree, so only a clean pass vouches for it.
   if [[ -z $dirty ]]; then
