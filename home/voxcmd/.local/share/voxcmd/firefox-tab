@@ -331,10 +331,12 @@ def activate_tab(tab_id, title):
             host_request({"cmd": "clear_preface", "window_id": result["window_id"], "preface": nonce})
         except HostError as error:
             debug(f"the title preface was not cleared now: {error}")
+    active = hyprctl_json("activewindow", {})
     if confirmed:
         debug(f"activated tab {tab_id}")
-    elif is_firefox(hyprctl_json("activewindow", {})):
-        debug(f"activated tab {tab_id}; its window was not found, but a Firefox window has focus")
+    elif is_firefox(active) and printable(page_title(active.get("title", ""))) == printable(result.get("title", "")):
+        # Without the marker, a focused Firefox window showing the tab's title is the best evidence it is the one.
+        debug(f"activated tab {tab_id}; its window was not marked, but a Firefox window showing it has focus")
     else:
         debug(f"activated tab {tab_id}; focus on its window is not confirmed")
         print("the tab switched, but its window could not be focused", file=sys.stderr)
