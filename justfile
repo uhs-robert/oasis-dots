@@ -106,7 +106,7 @@ sign-firefox-extension:
     export WEB_EXT_API_KEY WEB_EXT_API_SECRET
     artifacts=$(mktemp -d)
     trap 'rm -rf "$artifacts"' EXIT
-    npx --yes web-ext@8.3.0 sign --channel=unlisted --source-dir extras/voxcmd-firefox --artifacts-dir "$artifacts"
+    npx --yes web-ext@10.7.0 sign --channel=unlisted --source-dir extras/voxcmd-firefox --artifacts-dir "$artifacts"
     signed=$(find "$artifacts" -name '*.xpi' -print -quit)
     [[ -n $signed ]] || { echo "web-ext returned no signed .xpi" >&2; exit 1; }
     cp "$signed" extras/voxcmd-firefox.xpi
