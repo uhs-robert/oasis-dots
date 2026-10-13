@@ -312,9 +312,11 @@ NVIM_CONFIG_REPO=you/nvim ./install.sh
 If you don't want to install the full dotfiles then you may also manually stow the individual packages that you want. Theme files, HyprVim and the qutebrowser styles are symlinks into `repos/`, so run `just repos` first to set those up (see [External Repos](#-external-repos)).
 
 ```bash
-stow -d home <package>     # deploy a package
-stow -d home -D <package>  # remove a package
+just stow <package>     # deploy a package
+just unstow <package>   # remove a package
 ```
+
+Use `just` rather than plain `stow`: it stows `systemd` and `calendar` with `--no-folding`, since systemd ignores drop-in and `.wants` directories that are symlinks.
 
 The `git` package reads your `[user]` block from `~/.config/git/identity`, which is gitignored so each machine can use its own address. `./install.sh` prompts for it when missing; to write it by hand:
 
