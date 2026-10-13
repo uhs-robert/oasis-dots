@@ -206,6 +206,48 @@ check "exits 0" "[[ $code == 0 ]]"
 check "notes the fixes" "grep -q 'only fix files it reviewed' <<<\"\$out\""
 check "does not request a review" "! grep -q '^commented=' '$GH_STATE'"
 
+echo "== review gate: generated-only commit since the Codex review"
+setup
+mkdir -p .claude
+printf '# build output\n\npublic/\nmin/\n' >.claude/generated-paths
+printf 'codex=Completed\ncodex_commit=abc1234\nreviewed_subjects=feat: add x\nhead_subjects=feat: add x;build: rebuild public\nreviewed_files=a\nhead_files=a;public/x.js;min/y.js\ncommit_files_c2=public/x.js;min/y.js\n' >>"$GH_STATE"
+out=$(PATH="$here:$PATH" "$script" 7 2>&1)
+code=$?
+show "$out"
+check "exits 0" "[[ $code == 0 ]]"
+check "notes the generated paths" "grep -q 'only fix files it reviewed or touch generated paths' <<<\"\$out\""
+
+echo "== review gate: generated and other files in one commit since the Codex review"
+setup
+mkdir -p .claude
+printf 'public/\n' >.claude/generated-paths
+printf 'codex=Completed\ncodex_commit=abc1234\nreviewed_subjects=feat: add x\nhead_subjects=feat: add x;build: rebuild public\nreviewed_files=a\nhead_files=a;public/x.js;c\ncommit_files_c2=public/x.js;c\n' >>"$GH_STATE"
+out=$(PATH="$here:$PATH" "$script" 7 2>&1)
+code=$?
+show "$out"
+check "stops with an error" "[[ $code != 0 ]]"
+check "names the commit" "grep -q '\"build: rebuild public\" is not a fix' <<<\"\$out\""
+
+echo "== review gate: a fix that also adds generated files"
+setup
+mkdir -p .claude
+printf 'public/\n' >.claude/generated-paths
+printf 'codex=Completed\ncodex_commit=abc1234\nreviewed_subjects=feat: add x\nhead_subjects=feat: add x;fix: y\nreviewed_files=a\nhead_files=a;public/x.js\ncommit_files_c2=a;public/x.js\n' >>"$GH_STATE"
+out=$(PATH="$here:$PATH" "$script" --check 7 2>&1)
+code=$?
+show "$out"
+check "passes" "[[ $code == 0 ]]"
+check "does not note generated-only commits" "! grep -q 'touch generated paths' <<<\"\$out\""
+
+echo "== review gate: no generated-paths file leaves a build commit gated"
+setup
+printf 'codex=Completed\ncodex_commit=abc1234\nreviewed_subjects=feat: add x\nhead_subjects=feat: add x;build: rebuild public\nreviewed_files=a\nhead_files=a;public/x.js\ncommit_files_c2=public/x.js\n' >>"$GH_STATE"
+out=$(PATH="$here:$PATH" "$script" 7 2>&1)
+code=$?
+show "$out"
+check "stops with an error" "[[ $code != 0 ]]"
+check "names the commit" "grep -q '\"build: rebuild public\" is not a fix' <<<\"\$out\""
+
 echo "== review gate: new work since the Codex review"
 setup
 printf 'codex=Completed\ncodex_commit=abc1234\nreviewed_subjects=feat: add x\nhead_subjects=feat: add x;feat: add z\nreviewed_files=a\nhead_files=a\n' >>"$GH_STATE"
