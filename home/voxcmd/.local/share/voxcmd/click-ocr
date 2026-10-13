@@ -162,18 +162,20 @@ ocr_started=$EPOCHREALTIME
 # matches to be clicked without asking.
 # Each strip runs in a process group of its own (set -m), so killing the group also reaches a tesseract the strip
 # forks a moment after the kill. Killing a strip's children by parent pid misses that one, and on a loaded machine
-# it went on running after the run ended.
+# it went on running after the run ended. The groups are remembered from launch rather than read back from `jobs -p`:
+# under load that listing missed live strips, which then slept on after the run ended.
 set -m
+strip_pgids=()
 for ((i = 0; i < strips; i++)); do
   ocr_strip "$i" &
+  strip_pgids+=("$!")
 done
 set +m
 # The first strip to fail ends the run: the others are killed, children included, rather than left to finish.
 for ((i = 0; i < strips; i++)); do
   wait -n || {
-    for job in $(jobs -p); do
-      kill -- -"$job" 2>/dev/null
-    done
+    # Fails when every group is already gone, which set -e would turn into an exit without the message below.
+    kill -- "${strip_pgids[@]/#/-}" 2>/dev/null || true
     echo "ocr failed" >&2
     exit 1
   }
