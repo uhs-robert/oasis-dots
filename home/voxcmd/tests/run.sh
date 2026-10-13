@@ -687,6 +687,8 @@ run_click_at() { (
   source "$package/.config/voxcmd/integrations.d/click.sh"
   click_at "$1"
 ); }
+# A route reads the window, which records it for click_at.
+route "click sign in" >/dev/null
 : >"$log"
 run_click_at "error:no focused window"
 check "a failed capture is a generic error toast" "grep -q '^notify-send --app-name=voxcmd voxcmd failed Click failed: no focused window\$' '$log'"
@@ -709,6 +711,35 @@ chmod +x "$root/nowlrctl/wlrctl"
 PATH="$root/nowlrctl:$PATH" run_click_at "175,82,left,1,2,3,4"
 check "a failed click is a generic error toast with the tool's reason" "grep -q '^notify-send --app-name=voxcmd voxcmd failed Click failed: wlrctl: no seat\$' '$log'"
 check "no toast ever holds the screen text" "! grep -q -i 'sign' '$log'"
+
+echo "== the window changed before the click"
+target_file=$XDG_RUNTIME_DIR/voxcmd/click-target
+window_changed_toast='^notify-send --transient --app-name=voxcmd The window changed; say it again$'
+# click_at "175,82,left,..." with the focused window $1, logging what it did.
+click_in_window() {
+  : >"$log"
+  SANDBOX_ACTIVEWINDOW_JSON=$1 run_click_at "175,82,left,1,2,3,4"
+}
+route "click sign in" >/dev/null
+check "a route records the captured window" "jq -e '.window.address == \"0x2001\"' '$target_file' >/dev/null"
+check "the record is private" "[[ \$(stat -c %a \"\$XDG_RUNTIME_DIR/voxcmd\") == 700 ]]"
+click_in_window "$default_window"
+check "the same window clicks" "grep -q '^wlrctl pointer click left\$' '$log' && ! grep -q 'window changed' '$log'"
+click_in_window "$(jq -c '.address = "0x3001" | .stableId = "18000009"' <<<"$default_window")"
+check "another window focused does not click, and says so" "grep -q '$window_changed_toast' '$log' && ! grep -q -e cursor.move -e wlrctl '$log'"
+click_in_window "$(jq -c '.at = [300, 50]' <<<"$default_window")"
+check "the window moved does not click" "grep -q '$window_changed_toast' '$log' && ! grep -q -e cursor.move -e wlrctl '$log'"
+click_in_window "$(jq -c '.size = [400, 96]' <<<"$default_window")"
+check "the window resized does not click" "grep -q '$window_changed_toast' '$log' && ! grep -q -e cursor.move -e wlrctl '$log'"
+click_in_window '{}'
+check "no focused window does not click" "grep -q '$window_changed_toast' '$log' && ! grep -q wlrctl '$log'"
+jq -c '.captured_at -= 61' "$target_file" >"$target_file.old" && mv "$target_file.old" "$target_file"
+click_in_window "$default_window"
+check "a record older than a minute does not click" "grep -q '$window_changed_toast' '$log' && ! grep -q wlrctl '$log'"
+rm -f "$target_file"
+click_in_window "$default_window"
+check "no record does not click" "grep -q '$window_changed_toast' '$log' && ! grep -q wlrctl '$log'"
+route "click sign in" >/dev/null
 : >"$log"
 out=$(PATH="$root/nowlrctl:$PATH" route "click sign in")
 check "a click phrase under dry-run only routes" "! grep -q 'notify-send' '$log'"

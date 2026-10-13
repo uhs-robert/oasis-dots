@@ -16,7 +16,8 @@ dark_below=0.5
 # The x and y scales of a capture agree to within this fraction, or its pixels cannot be mapped to the screen.
 scale_tolerance=0.02
 
-window=$(hyprctl activewindow -j 2>/dev/null | jq -r 'if .at then "\(.at[0]) \(.at[1]) \(.size[0]) \(.size[1]) \(.stableId // "")" else empty end')
+active=$(hyprctl activewindow -j 2>/dev/null) || active='{}'
+window=$(jq -r 'if .at then "\(.at[0]) \(.at[1]) \(.size[0]) \(.size[1]) \(.stableId // "")" else empty end' <<<"$active" 2>/dev/null) || window=
 if [ -z "$window" ]; then
   echo "no focused window" >&2
   exit 2
@@ -70,6 +71,13 @@ scale_is_uniform || {
   echo "capture does not match the window's shape" >&2
   exit 1
 }
+
+# The window the coordinates below belong to, for click.sh's click_at: a picker can wait seconds before the click, and
+# by then another window, or this one moved, may sit under the point. Written whole, then renamed into place.
+target_dir="${XDG_RUNTIME_DIR:-/tmp}/voxcmd"
+mkdir -p -m 700 "$target_dir"
+jq -c --argjson captured_at "$(date +%s)" '{captured_at: $captured_at, window: .}' <<<"$active" >"$target_dir/click-target.$$"
+mv -f "$target_dir/click-target.$$" "$target_dir/click-target"
 
 overlap=$(((overlap_px * image_w + window_w / 2) / window_w))
 strips=1

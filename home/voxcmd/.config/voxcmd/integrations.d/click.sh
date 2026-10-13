@@ -53,6 +53,9 @@ declare -A actions=(
 )
 
 click_ocr="$voxcmd_share_dir/click-ocr"
+# Where click-ocr records the window it captured, and how long that record is trusted.
+click_target_file="${XDG_RUNTIME_DIR:-/tmp}/voxcmd/click-target"
+click_target_max_age=60
 click_match="$voxcmd_share_dir/click-match.awk"
 
 # Whether the spoken text holds a word that is neither filler nor ignored.
@@ -158,6 +161,18 @@ click_failed() {
   notify-send --app-name=voxcmd "voxcmd failed" "Click failed: $1"
 }
 
+# Whether the focused window is still the one click-ocr captured, at the same place and size, recently. Anything else
+# means the captured coordinates may now point at other content.
+target_window_unchanged() {
+  local current
+  [ -f "$click_target_file" ] || return 1
+  current=$(json_or '{}' hyprctl activewindow -j)
+  jq -e --argjson current "$current" --argjson now "$(date +%s)" --argjson max_age "$click_target_max_age" '
+    def identity: {id: (.stableId // .address), at, size};
+    $now - .captured_at <= $max_age and .window.at != null and (.window | identity) == ($current | identity)
+  ' "$click_target_file" >/dev/null 2>&1
+}
+
 # Left-clicks $1 times, stopping at the first failure.
 repeat_left_click() {
   local click_number
@@ -180,6 +195,10 @@ click_at() {
     return 0
     ;;
   esac
+  if ! target_window_unchanged; then
+    notify-send --transient --app-name=voxcmd "The window changed; say it again"
+    return 0
+  fi
   IFS=, read -r x y button _box <<<"$1"
   moved=$(hyprctl dispatch "hl.dsp.cursor.move({x=$x,y=$y})") || moved="hyprctl failed"
   if [ "$moved" != ok ]; then
