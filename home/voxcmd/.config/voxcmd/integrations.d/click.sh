@@ -93,6 +93,10 @@ click_ocr="$voxcmd_share_dir/click-ocr"
 click_target_file="${XDG_RUNTIME_DIR:-/tmp}/voxcmd/click-target"
 click_target_max_age=60
 click_match="$voxcmd_share_dir/click-match.awk"
+# What click-explain adds: click-ocr's flags, and the file the matcher, word matching and the covering check trace to.
+click_ocr_args=()
+explain_file=""
+explain_window_id=""
 
 # Whether the spoken text holds a word that is neither filler nor ignored.
 has_target_word() {
@@ -103,17 +107,27 @@ has_target_word() {
   return 1
 }
 
+# The window the candidates belong to: the focused one, or under click-explain's --window the client with that stableId.
+target_window_json() {
+  if [ -n "${explain_window_id:-}" ]; then
+    json_or '[]' hyprctl clients -j | jq -c --arg id "$explain_window_id" 'first(.[] | select(.stableId == $id)) // {}'
+  else
+    json_or '{}' hyprctl activewindow -j
+  fi
+}
+
 # Drops the candidates whose click point lies under something drawn above the focused window: its capture (grim -T)
 # is the window's own buffer, so OCR also reads text that is covered on screen. Covering is a floating window over a
 # tiled one, a pinned window over an unpinned one, and the monitor's reserved edges (the bar and other layer-shell
 # surfaces). Between two floating windows the order is unknown, and the focused one is raised, so neither covers.
-# Stdin and stdout are the candidate list; whatever hyprctl cannot answer covers nothing.
+# Stdin and stdout are the candidate list; whatever hyprctl cannot answer covers nothing. With $1 = mark nothing is
+# dropped: every candidate gains covered_by, the reason or null (click-explain).
 drop_covered() {
   local active clients monitors
-  active=$(json_or '{}' hyprctl activewindow -j)
+  active=$(target_window_json)
   clients=$(json_or '[]' hyprctl clients -j)
   monitors=$(json_or '[]' hyprctl monitors -j)
-  jq -c --argjson active "$active" --argjson clients "$clients" --argjson monitors "$monitors" '
+  jq -c --arg mark "${1:-}" --argjson active "$active" --argjson clients "$clients" --argjson monitors "$monitors" '
     def inside($x; $y; $left; $top; $width; $height):
       $x >= $left and $x < $left + $width and $y >= $top and $y < $top + $height;
     [$clients[] | select((.mapped // false) and ((.hidden // false) | not) and .at != null and .address != $active.address
@@ -121,11 +135,13 @@ drop_covered() {
         and (((.pinned // false) and (($active.pinned // false) | not)) or ((.floating // false) and (($active.floating // false) | not))))] as $above
     | [$monitors[] | (if (.transform // 0) % 2 == 1 then {w: .height, h: .width} else {w: .width, h: .height} end) as $pixels
         | {x, y, w: ($pixels.w / .scale), h: ($pixels.h / .scale), reserved: (.reserved // [0, 0, 0, 0])}] as $screens
-    | def covered($x; $y):
-        any($above[]; inside($x; $y; .at[0]; .at[1]; .size[0]; .size[1]))
-        or any($screens[]; inside($x; $y; .x; .y; .w; .h)
-          and ($x < .x + .reserved[0] or $y < .y + .reserved[1] or $x >= .x + .w - .reserved[2] or $y >= .y + .h - .reserved[3]));
-      map(select(.id | split(",") | covered(.[0] | tonumber; .[1] | tonumber) | not))'
+    | def covered_by($x; $y):
+        ([$above[] | select(inside($x; $y; .at[0]; .at[1]; .size[0]; .size[1]))] | if length > 0 then "another window" else null end)
+        // ([$screens[] | select(inside($x; $y; .x; .y; .w; .h)
+          and ($x < .x + .reserved[0] or $y < .y + .reserved[1] or $x >= .x + .w - .reserved[2] or $y >= .y + .h - .reserved[3]))]
+          | if length > 0 then "a reserved edge (the bar)" else null end);
+      def reason: .id | split(",") | covered_by(.[0] | tonumber; .[1] | tonumber);
+      if $mark == "mark" then map(. + {covered_by: reason}) else map(select(reason == null)) end'
 }
 
 # Prints a command's JSON answer, or the default when it fails or answers something else.
@@ -135,13 +151,31 @@ json_or() {
   answer=$("$@" 2>/dev/null) && jq -e . >/dev/null 2>&1 <<<"$answer" && printf '%s\n' "$answer" || printf '%s\n' "$default"
 }
 
+# click-match.awk over stdin; under click-explain its trace goes to the explain file.
+run_matcher() {
+  if [ -n "$explain_file" ]; then
+    awk -v explain=1 -f "$click_match" 2>>"$explain_file"
+  else
+    awk -f "$click_match"
+  fi
+}
+
 # click-match.awk's candidates for the spoken text $2 over click-ocr's output $3, as JSON for $1's button. A fourth
 # argument makes them the sub-spans of runs instead of whole runs.
 ocr_matches() {
-  CLICK_TARGET="$2" CLICK_SPANS="${4:-}" awk -f "$click_match" <<<"$3" |
+  CLICK_TARGET="$2" CLICK_SPANS="${4:-}" run_matcher <<<"$3" |
     jq -R -s -c --arg button "$1" '
       split("\n") | map(select(. != "") | split("\t"))
       | map({id: "\(.[0]),\(.[1]),\($button),\(.[4]),\(.[5]),\(.[6]),\(.[7])", match_text: .[2], label: .[3]})'
+}
+
+# Under click-explain, appends word_match's verdict on each of the candidates $2 for the spoken text $1 to the trace,
+# tagged with the matcher pass $3.
+trace_verdicts() {
+  local -a ignored
+  read -ra ignored <<<"$ignored_target_words"
+  word_match_trace=1 word_match "$1" "$2" "${ignored[@]}" 2>/dev/null |
+    jq -r --arg pass "$3" '.[]? | "~verdict\t\($pass)\t\(.id | split(",")[:2] | join(","))\t\(.kept)\t\(.verdict)"' >>"$explain_file"
 }
 
 # Whether voxcmd's word matching keeps any of the whole-run candidates $2 for the spoken text $1. When it keeps none,
@@ -171,18 +205,24 @@ candidates() {
     return
   }
   error_file=$(mktemp "${XDG_RUNTIME_DIR:-/tmp}/voxcmd-click-error.XXXXXX")
-  if ! output=$("$click_ocr" 2>"$error_file"); then
+  if ! output=$("$click_ocr" "${click_ocr_args[@]}" 2>"$error_file"); then
     message=$(tail -n 1 "$error_file")
     rm -f "$error_file"
     jq -n -c --arg target "$2" --arg message "${message:-capture failed}" '[{id: "error:\($message)", label: $message, match_text: $target}]'
     return
   fi
   rm -f "$error_file"
+  [ -z "${explain_file:-}" ] || grep '^#info' <<<"$output" >>"$explain_file"
   found=$(ocr_matches "$button" "$2" "$output")
+  [ -z "${explain_file:-}" ] || trace_verdicts "$2" "$found" whole
   if ! matches_whole_run "$2" "$found"; then
     spans=$(ocr_matches "$button" "$2" "$output" spans)
     [ "$spans" = '[]' ] || found=$spans
+    [ -z "${explain_file:-}" ] || trace_verdicts "$2" "$spans" spans
   fi
+  [ -z "${explain_file:-}" ] || printf '~used\t%s\n' "$([ "${spans:-[]}" != '[]' ] && [ "$found" = "$spans" ] && echo spans || echo whole)" >>"$explain_file"
+  [ -z "${explain_file:-}" ] || drop_covered mark <<<"$found" |
+    jq -r '.[] | "~covered\t\(.id | split(",")[:2] | join(","))\t\(.covered_by // "-")"' >>"$explain_file"
   visible=$(drop_covered <<<"$found")
   if [ "$visible" = '[]' ] && [ "$found" != '[]' ]; then
     jq -n -c --arg target "$2" '[{id: "covered:", label: "covered", match_text: $target}]'
@@ -248,6 +288,140 @@ click_at() {
   *) clicked=$(wlrctl pointer click "$button" 2>&1) ;;
   esac || click_failed "$(tail -n 1 <<<"$clicked")"
   return 0
+}
+
+# ---- click-explain ---------------------------------------------------------------------------------------------------
+# `voxcmd click-explain "<text>" [--window <stableId>]` runs candidates() as a click would, over the real capture, OCR,
+# matcher, word matching and covering check, with each stage tracing its decisions to $explain_file, then prints them.
+# It never routes, moves the pointer or notifies: the screen text goes to the terminal only, and the trace and capture
+# are deleted on exit.
+
+# Prints "kept strong (...)", "dropped: ..." and the like for the candidate at $2 from matcher pass $1, whose
+# match kind is $3.
+explain_verdict_text() {
+  local pass="$1" point="$2" kind="$3" verdict="${verdict_of[$1:$2]-}" lead="" text
+  [ "$kind" != span ] || lead="sub-span, "
+  [ "$kind" != joined ] || lead="joined letters, "
+  [ -n "$verdict" ] || {
+    printf '%sno verdict' "$lead"
+    return
+  }
+  if [ "${kept_of[$pass:$point]}" = true ]; then
+    text="kept ${verdict%%:*} (${verdict#*: })"
+    if [ "$pass" = "$used_pass" ] && [ "${covered_by_of[$point]:--}" != - ]; then
+      text="$text, then dropped: covered by ${covered_by_of[$point]}"
+    fi
+  elif [[ "$verdict" == dropped:* ]]; then
+    text="$verdict"
+  else
+    text="dropped: $verdict"
+  fi
+  printf '%s%s' "$lead" "$text"
+}
+
+# What voxcmd would do with the candidates left after covering ($1, JSON), as click would route them.
+explain_outcome() {
+  local visible="$1" options count first_id
+  local -a ignored
+  read -ra ignored <<<"$ignored_target_words"
+  first_id=$(jq -r '.[0].id // ""' <<<"$visible")
+  case "$first_id" in
+  error:*)
+    echo "capture or OCR failed (${first_id#error:}); a toast says \"Click failed\""
+    return
+    ;;
+  covered:*)
+    echo "covered: every candidate is under another window or a reserved edge"
+    return
+    ;;
+  esac
+  options=$(word_match "$target" "$visible" "${ignored[@]}")
+  count=$(jq length <<<"${options:-[]}")
+  if [ "$count" = 0 ]; then
+    echo "not on screen"
+  elif needs_pick "$options"; then
+    printf 'overlay with %s%s (the picker, if the bar cannot draw it or there are more than 10)\n' "$count" \
+      "$([ "$count" != 1 ] || echo ", a weak match: asks \"this one?\"")"
+  else
+    printf 'click at %s\n' "$(jq -r '.[0].id | split(",")[:2] | join(",")' <<<"$options")"
+  fi
+}
+
+# Prints the trace file for the target $1 and the candidates left after covering $2.
+explain_render() {
+  local target="$1" visible="$2" line pass="" run_id key
+  local -a field=()
+  local -A verdict_of=() kept_of=() covered_by_of=() info=() cands_of=()
+  local used_pass=whole
+  while IFS= read -r line; do
+    IFS=$'\t' read -r -a field <<<"$line"
+    case "${field[0]}" in
+    '~pass') pass="${field[1]}" ;;
+    '~verdict')
+      verdict_of["${field[1]}:${field[2]}"]="${field[4]}"
+      kept_of["${field[1]}:${field[2]}"]="${field[3]}"
+      ;;
+    '~covered') covered_by_of["${field[1]}"]="${field[2]}" ;;
+    '~used') used_pass="${field[1]}" ;;
+    '#info')
+      for key in "${field[@]:1}"; do info["${key%%=*}"]="${key#*=}"; done
+      ;;
+    esac
+  done <"$explain_file"
+
+  if [ -n "${info[mode]-}" ]; then
+    printf 'window   %s %s\n' "${info[class]:-?}" "${info[size]}"
+    printf 'capture  %s, image %s, scale x%s y%s, %s, %s strip(s), OCR %s ms\n' "${info[mode]}" "${info[image]}" "${info[scale_x]}" \
+      "${info[scale_y]}" "$([ "${info[inverted]}" = 1 ] && echo inverted || echo "not inverted")" "${info[strips]}" "${info[ocr_ms]}"
+  fi
+  printf 'target   "%s"\n' "$target"
+
+  declare -A pending=()
+  while IFS= read -r line; do
+    IFS=$'\t' read -r -a field <<<"$line"
+    case "${field[0]}" in
+    '~pass')
+      pass="${field[1]}"
+      if [ "$pass" = whole ]; then
+        echo "pass 1: whole runs"
+      else
+        echo "pass 2: sub-spans of runs (no whole run was kept by word matching)"
+      fi
+      ;;
+    '~drop') printf '  word "%s" (conf %s) near %s,%s: dropped, %s\n' "${field[2]}" "${field[1]}" "${field[3]}" "${field[4]}" "${field[5]}" ;;
+    '~cand') pending["$pass:${field[1]}"]+="${field[2]},${field[3]}"$'\t'"${field[4]}"$'\t'"${field[5]}"$'\n' ;;
+    '~run')
+      run_id="${field[1]}"
+      printf '  run %s: %s\n' "$run_id" "${field[2]}"
+      if [ -n "${pending[$pass:$run_id]-}" ]; then
+        while IFS=$'\t' read -r point kind text; do
+          [ -n "$point" ] || continue
+          printf '    candidate %s "%s": %s\n' "$point" "$text" "$(explain_verdict_text "$pass" "$point" "$kind")"
+        done <<<"${pending[$pass:$run_id]}"
+      else
+        printf '    %s\n' "${field[3]}"
+      fi
+      ;;
+    esac
+  done <"$explain_file"
+  printf 'outcome  %s\n' "$(explain_outcome "$visible")"
+}
+
+# Reads the trace of one click of $1 on the focused window, or on the client with stableId $2.
+explain_click() {
+  local target="$1" visible
+  explain_window_id="${2:-}"
+  if ! has_target_word "$target"; then
+    printf 'target   "%s"\noutcome  filler-only target: the screen is not read, and Keybinds'"'"' click binds get it\n' "$target"
+    return 0
+  fi
+  click_ocr_args=(--explain)
+  [ -z "$explain_window_id" ] || click_ocr_args+=(--window "$explain_window_id")
+  explain_file=$(mktemp "${XDG_RUNTIME_DIR:-/tmp}/voxcmd-explain.XXXXXX")
+  trap 'rm -f "$explain_file"' EXIT
+  trap 'rm -f "$explain_file"; exit 130' INT TERM
+  visible=$(candidates click "$target")
+  explain_render "$target" "$visible"
 }
 
 no_text() {

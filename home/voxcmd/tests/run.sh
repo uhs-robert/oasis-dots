@@ -733,6 +733,98 @@ SANDBOX_TESSERACT_TSV=$({
   word 1 1 2 136 40 24 24 95 in
 })
 
+section "click-explain"
+# `voxcmd click-explain` runs the same candidates() as a click, tracing; these check each reason line, and that it only
+# reads. The window is the covered-text section's: "Sign in" centred at 175,82 and "Settings" at 230,132.
+explain() { "$voxcmd" click-explain "$@" 2>&1; }
+SANDBOX_CLIENTS_JSON='[]'
+SANDBOX_TESSERACT_TSV=$({
+  header
+  word 1 1 1 80 40 48 24 95 Sign
+  word 1 1 2 136 40 24 24 95 in
+  word 2 1 1 160 120 96 24 95 Settings
+})
+rm -f "$XDG_RUNTIME_DIR/voxcmd/click-target"
+: >"$log"
+out=$(explain "sign in")
+check "the header names the window's size, capture mode, image size, scales, inversion, strips and OCR time" \
+  "grep -q '^window   .* 160x96' <<<\"\$out\" && grep -q '^capture  toplevel, image 256x154, scale x1.600 y1.604, not inverted, 1 strip(s), OCR [0-9]* ms' <<<\"\$out\""
+check "a strong run is kept and the outcome is the click point" "grep -q 'candidate 175,82 \"sign\": kept strong (same words)' <<<\"\$out\" && grep -q '^outcome  click at 175,82\$' <<<\"\$out\""
+check "a run with no spoken word is not listed" "! grep -q 'settings(' <<<\"\$out\""
+check "explain reads only: no click, no pointer move, no toast" "! grep -q 'wlrctl\|hyprctl dispatch\|hyprctl eval\|notify-send' '$log'"
+check "and it leaves no click target for a later click to trust" "[ ! -e '$XDG_RUNTIME_DIR/voxcmd/click-target' ]"
+check "the capture and the trace are deleted" "! ls '$XDG_RUNTIME_DIR' | grep -q 'voxcmd-click\|voxcmd-explain'"
+check "it agrees with the real route on where it clicks" "[[ \$(runs_at 'click sign in') == 175,82 ]]"
+
+SANDBOX_TESSERACT_TSV=$({
+  header
+  word 1 1 1 80 40 48 24 55 Sign
+  word 1 1 2 136 40 24 24 95 in
+  word 2 1 1 160 120 96 24 30 Settings
+})
+out=$(explain "settings")
+check "a word under the low floor is listed with its confidence and the rule" "grep -q 'word \"Settings\" (conf 30) near [0-9]*,[0-9]*: dropped, under 40, below even the low floor' <<<\"\$out\" && grep -q '^outcome  not on screen\$' <<<\"\$out\""
+out=$(explain "sign in")
+check "a spoken word at conf 55 is kept and shown with its confidence" "grep -q 'run 1: sign(55) in(95)' <<<\"\$out\" && grep -q 'kept strong' <<<\"\$out\""
+
+SANDBOX_TESSERACT_TSV=$({
+  header
+  word 1 1 1 10 40 12 24 95 2
+  word 1 1 2 26 40 40 24 95 tasks
+  word 1 1 3 70 40 30 24 95 are
+  word 1 1 4 104 40 60 24 95 flagged
+  word 1 1 5 168 40 50 24 95 today
+  word 1 1 6 222 40 28 24 95 now
+})
+out=$(explain "2 tasks")
+check "a link inside a sentence: the whole run fails the coverage rule" "grep -q 'dropped: coverage under half: 2 of 6' <<<\"\$out\""
+check "so the sub-span pass runs and keeps just the link" "grep -q '^pass 2: sub-spans' <<<\"\$out\" && grep -q 'candidate [0-9]*,[0-9]* \"2 tasks\": sub-span, kept strong' <<<\"\$out\" && grep -q '^outcome  click at ' <<<\"\$out\""
+
+SANDBOX_TESSERACT_TSV=$({
+  header
+  word 1 1 1 80 40 70 24 95 Clone
+})
+out=$(explain "close")
+check "a word one edit away is a near miss, dropped" "grep -q 'candidate [0-9]*,[0-9]* \"clone\": dropped: near miss only' <<<\"\$out\" && grep -q '^outcome  not on screen\$' <<<\"\$out\""
+
+SANDBOX_TESSERACT_TSV=$({
+  header
+  word 1 1 1 80 40 48 24 95 Open
+  word 1 1 2 136 40 96 24 95 Settings
+})
+out=$(explain "settings")
+check "a weak match is kept weak and goes to the overlay" "grep -q 'kept weak' <<<\"\$out\" && grep -q '^outcome  overlay with 1' <<<\"\$out\""
+
+SANDBOX_TESSERACT_TSV=$({
+  header
+  word 1 1 1 80 40 48 24 95 Sign
+  word 1 1 2 136 40 24 24 95 in
+})
+clients <<<"$(
+  client 0x2001 100 50 160 96 false false 1
+  client 0x3001 150 50 60 60 true false 1
+)"
+out=$(explain "sign in")
+check "a candidate under a floating window is kept by word matching but dropped as covered" "grep -q 'kept strong (same words), then dropped: covered by another window' <<<\"\$out\" && grep -q '^outcome  covered: ' <<<\"\$out\""
+SANDBOX_CLIENTS_JSON='[]'
+SANDBOX_MONITORS_JSON='[{"id": 0, "name": "DP-1", "width": 1920, "height": 1080, "scale": 1, "transform": 0, "x": 0, "y": 0, "reserved": [0, 100, 0, 0]}]'
+out=$(explain "sign in")
+check "the bar's reserved edge is named" "grep -q 'covered by a reserved edge (the bar)' <<<\"\$out\""
+SANDBOX_MONITORS_JSON='[{"id": 0, "name": "DP-1", "width": 1920, "height": 1080, "scale": 1, "transform": 0, "x": 0, "y": 0, "reserved": [0, 0, 0, 0]}]'
+
+out=$(explain "it")
+check "a filler-only target reads nothing and says so" "grep -q '^outcome  filler-only target' <<<\"\$out\""
+
+: >"$log"
+SANDBOX_CLIENTS_JSON='[{"address": "0x4001", "mapped": true, "class": "other", "stableId": "18000009", "at": [100, 50], "size": [160, 96], "floating": false, "pinned": false, "monitor": 0, "workspace": {"id": 1}}]'
+out=$(explain "sign in" --window 18000009)
+check "--window captures that client by stableId and names its class" "grep -q '^grim .*-T 18000009' '$log' && grep -q '^window   other ' <<<\"\$out\""
+out=$(explain "sign in" --window 99999)
+check "an unknown --window says so" "grep -q 'no such window' <<<\"\$out\""
+check "--window never read the focused window's buffer" "! grep -q '^grim .*-T 18000004' '$log'"
+SANDBOX_CLIENTS_JSON='[]'
+check "explain never clicked or moved across all of the above" "! grep -q 'wlrctl\|hyprctl dispatch\|hyprctl eval\|notify-send' '$log'"
+
 section "failures and toasts"
 # click_at as voxcmd would eval it, with the stubs logging instead of acting.
 run_click_at() { (

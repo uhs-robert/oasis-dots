@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 # OCR the focused window and print its word boxes for click-match.awk (the input format is described there).
+#   click-ocr --window <stableId>  reads that client instead of the focused one, as grim -T does
+#   click-ocr --explain            for voxcmd click-explain: adds a "#info" line (class, capture mode, scales, inversion,
+#                                  strips, OCR milliseconds) and leaves click-target alone, since nothing will click
 # The screenshot and the text it holds only ever live in a private directory under $XDG_RUNTIME_DIR, removed on exit.
 set -euo pipefail
 
@@ -16,13 +19,42 @@ dark_below=0.5
 # The x and y scales of a capture agree to within this fraction, or its pixels cannot be mapped to the screen.
 scale_tolerance=0.02
 
-active=$(hyprctl activewindow -j 2>/dev/null) || active='{}'
+window_id=""
+explain=0
+while [ $# -gt 0 ]; do
+  case "$1" in
+  --window)
+    window_id="${2:?--window needs a stableId}"
+    shift 2
+    ;;
+  --explain)
+    explain=1
+    shift
+    ;;
+  *)
+    echo "usage: click-ocr [--window <stableId>] [--explain]" >&2
+    exit 2
+    ;;
+  esac
+done
+
+if [ -n "$window_id" ]; then
+  active=$(hyprctl clients -j 2>/dev/null | jq -c --arg id "$window_id" 'first(.[] | select(.stableId == $id)) // empty' 2>/dev/null) || active=
+  [ -n "$active" ] || active='{}'
+else
+  active=$(hyprctl activewindow -j 2>/dev/null) || active='{}'
+fi
 window=$(jq -r 'if .at then "\(.at[0]) \(.at[1]) \(.size[0]) \(.size[1]) \(.stableId // "")" else empty end' <<<"$active" 2>/dev/null) || window=
 if [ -z "$window" ]; then
-  echo "no focused window" >&2
+  if [ -n "$window_id" ]; then
+    echo "no such window" >&2
+  else
+    echo "no focused window" >&2
+  fi
   exit 2
 fi
 read -r window_x window_y window_w window_h stable_id <<<"$window"
+window_class=$(jq -r '.class // ""' <<<"$active")
 if [ "$window_w" -le 0 ] || [ "$window_h" -le 0 ]; then
   echo "focused window has no size" >&2
   exit 2
@@ -56,14 +88,17 @@ scale_is_uniform() {
     'BEGIN { x = iw / gw; y = ih / gh; d = x > y ? x - y : y - x; exit !(d <= tolerance * (x > y ? x : y)) }'
 }
 
+capture_mode=toplevel
 if capture_toplevel; then
   read_image_size
   scale_is_uniform || {
     # A window buffer whose shape is not the window's (a client drawing at its own size) cannot be mapped to the screen.
+    capture_mode=region
     capture_region
     read_image_size
   }
 else
+  capture_mode=region
   capture_region
   read_image_size
 fi
@@ -74,10 +109,12 @@ scale_is_uniform || {
 
 # The window the coordinates below belong to, for click.sh's click_at: a picker can wait seconds before the click, and
 # by then another window, or this one moved, may sit under the point. Written whole, then renamed into place.
-target_dir="${XDG_RUNTIME_DIR:-/tmp}/voxcmd"
-mkdir -p -m 700 "$target_dir"
-jq -c --argjson captured_at "$(date +%s)" '{captured_at: $captured_at, window: .}' <<<"$active" >"$target_dir/click-target.$$"
-mv -f "$target_dir/click-target.$$" "$target_dir/click-target"
+if [ "$explain" = 0 ]; then
+  target_dir="${XDG_RUNTIME_DIR:-/tmp}/voxcmd"
+  mkdir -p -m 700 "$target_dir"
+  jq -c --argjson captured_at "$(date +%s)" '{captured_at: $captured_at, window: .}' <<<"$active" >"$target_dir/click-target.$$"
+  mv -f "$target_dir/click-target.$$" "$target_dir/click-target"
+fi
 
 overlap=$(((overlap_px * image_w + window_w / 2) / window_w))
 strips=1
@@ -118,6 +155,7 @@ ocr_strip() {
   fi
 }
 
+ocr_started=$EPOCHREALTIME
 # A single strip may use every core; several run one thread each.
 [ "$strips" = 1 ] || export OMP_THREAD_LIMIT=1
 # A strip that fails must fail the whole run: its missing words would read as "not on screen", or leave one of two
@@ -141,6 +179,14 @@ for ((i = 0; i < strips; i++)); do
   }
 done
 
+ocr_ms=$(((${EPOCHREALTIME/./} - ${ocr_started/./}) / 1000))
+
+if [ "$explain" = 1 ]; then
+  awk -v class="$window_class" -v mode="$capture_mode" -v iw="$image_w" -v ih="$image_h" -v gw="$window_w" -v gh="$window_h" \
+    -v inverted="$invert" -v strips="$strips" -v ms="$ocr_ms" 'BEGIN {
+    printf "#info\tclass=%s\tmode=%s\tsize=%sx%s\timage=%sx%s\tscale_x=%.3f\tscale_y=%.3f\tinverted=%s\tstrips=%s\tocr_ms=%s\n",
+      class, mode, gw, gh, iw, ih, iw / gw, ih / gh, inverted, strips, ms }'
+fi
 printf '#window %s %s %s %s %s %s\n' "$window_x" "$window_y" "$window_w" "$window_h" "$image_w" "$image_h"
 for ((i = 0; i < strips; i++)); do
   own_top=$((i * own_h))

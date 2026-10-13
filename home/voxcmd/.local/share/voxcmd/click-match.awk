@@ -23,6 +23,12 @@
 # a spoken word by look-alike key or is a piece of the spoken letters. White text on a coloured button reads at 50-60.
 # Such a word takes part only in an equality match or an exact joined span, never in a one-edit-away match, and it is
 # left out of match_text when it is not part of the match, so it cannot turn a match into a weak one.
+# With -v explain=1 the trace goes to stderr, one tab-separated line each, and stdout is unchanged:
+#   ~pass <whole|spans>
+#   ~drop <conf> <text> <x> <y> <reason>      a word the confidence floor dropped that resembles a spoken word
+#   ~run <id> <words with conf> <outcome>     a run holding a word that is, resembles or nearly equals a spoken word
+#   ~cand <run id> <x> <y> <kind> <match_text>  a candidate stored from that run; kind is word, joined or span
+# voxcmd's click-explain renders them beside word_match's verdicts, so a trace and a real click read the same matcher.
 # POSIX awk only.
 
 function lowered_alnum(text,   t) {
@@ -98,7 +104,7 @@ function is_filler(w) {
 # Splits text into alphanumeric words appended to the run; a token with no alphanumerics ("|", "-") is OCR noise and
 # is dropped. Filler words are skipped when matching, as in word_match,
 # but stay in the run so the matched span can cover them ("sign in").
-function add_token(text, left, top, width, height, low,   t, parts, n, i, raw) {
+function add_token(text, left, top, width, height, low, conf,   t, parts, n, i, raw) {
   t = lowered_alnum(text)
   gsub(/[^a-z0-9]+/, " ", t)
   n = split(t, parts, " ")
@@ -110,6 +116,7 @@ function add_token(text, left, top, width, height, low,   t, parts, n, i, raw) {
     run_n++
     run_skip[run_n] = is_filler(normal_word(raw))
     run_low[run_n] = low
+    run_conf[run_n] = conf
     run_raw[run_n] = raw
     run_key[run_n] = compare_key(normal_word(raw))
     run_norm[run_n] = normal_word(raw)
@@ -176,7 +183,7 @@ function absorb_spoken_fillers() {
 }
 
 # Stores the run words first..last as a candidate with the given match_text: its click point, box and label.
-function store_candidate(match_text,   i, left, right, top, bottom, x, y, text) {
+function store_candidate(match_text, kind,   i, left, right, top, bottom, x, y, text) {
   left = right = top = bottom = ""
   for (i = first; i <= last; i++) {
     left = (left == "" || run_left[i] < left) ? run_left[i] : left
@@ -199,6 +206,8 @@ function store_candidate(match_text,   i, left, right, top, bottom, x, y, text) 
     text = substr(text, 1, 45) "..."
   found_label[found_n] = text
   found_hint[found_n] = hint_of(x, y)
+  if (explain)
+    printf "~cand\t%d\t%d\t%d\t%s\t%s\n", run_seq, x, y, kind, match_text > "/dev/stderr"
 }
 
 # Stores each stretch of the run whose non-filler words, in order, equal the spoken words by look-alike key. The
@@ -221,14 +230,53 @@ function add_subspans(   start, i, j, finish) {
     first = start
     last = finish
     absorb_spoken_fillers()
-    store_candidate(spoken_words)
+    store_candidate(spoken_words, "span")
     start = last
   }
 }
 
+# Whether a word, as a look-alike key, is a spoken word, one edit from one, a piece of one or of the spoken letters.
+function word_relevant(key,   j) {
+  for (j = 1; j <= spoken_n; j++) {
+    if (key == spoken_key[j] || same_word(key, spoken_key[j]))
+      return 1
+    if (length(spoken_key[j]) >= 4 && index(key, spoken_key[j]))
+      return 1
+  }
+  return length(key) >= 3 && index(spoken_joined, key) > 0
+}
+
+# Traces the finished run when it holds a relevant word: its words with confidence, and what became of it.
+function explain_run(found_before,   i, relevant, words, j, seen, missing, outcome, k) {
+  for (i = 1; i <= run_n; i++)
+    if (!run_skip[i] && word_relevant(run_key[i]))
+      relevant = 1
+  if (!relevant)
+    return
+  for (i = 1; i <= run_n; i++)
+    words = words (words == "" ? "" : " ") run_raw[i] "(" run_conf[i] ")"
+  if (found_n > found_before) {
+    outcome = (found_n - found_before) " candidate" (found_n - found_before > 1 ? "s" : "")
+  } else {
+    for (j = 1; j <= spoken_n; j++) {
+      seen = 0
+      for (i = 1; i <= run_n; i++)
+        if (!run_skip[i] && (run_key[i] == spoken_key[j] || (!run_low[i] && same_word(run_key[i], spoken_key[j]))))
+          seen = 1
+      if (!seen)
+        missing = missing (missing == "" ? "" : " ") spoken_raw[j]
+    }
+    outcome = missing == "" ? "no candidate: the spoken words are there, but not as " (spans_only ? "the same words in order" : "one match") : "no candidate: missing " missing
+  }
+  printf "~run\t%d\t%s\t%s\n", run_seq, words, outcome > "/dev/stderr"
+}
+
 # Matches the spoken words against the finished run and stores a candidate for every occurrence of them, so a run that
 # says "Settings or Settings" offers both and never lets voxcmd click the first of two identical labels.
-function flush_run(   word_hits, joined_from) {
+function flush_run(   word_hits, joined_from, found_before) {
+  if (run_n > 0)
+    run_seq++
+  found_before = found_n
   if (run_n > 0 && spans_only) {
     add_subspans()
   } else if (run_n > 0) {
@@ -239,6 +287,8 @@ function flush_run(   word_hits, joined_from) {
       for (joined_from = 1; add_whole_run_candidate(joined_from); joined_from = span_last + 1)
         ;
   }
+  if (explain && run_n > 0)
+    explain_run(found_before)
   run_n = 0
   run_text = ""
 }
@@ -288,7 +338,7 @@ function add_whole_run_candidate(joined_from,   j, i, found, match_text, picked_
     else if (!run_skip[i])
       match_text = match_text (match_text == "" ? "" : " ") ((i in picked_raw) ? picked_raw[i] : run_raw[i])
   }
-  store_candidate(match_text)
+  store_candidate(match_text, span_used ? "joined" : "word")
   return 1
 }
 
@@ -301,7 +351,7 @@ function flush_line(   i, gap, limit) {
       if (gap > limit)
         flush_run()
     }
-    add_token(line_text[i], line_left[i], line_top[i], line_width[i], line_height[i], line_low[i])
+    add_token(line_text[i], line_left[i], line_top[i], line_width[i], line_height[i], line_low[i], line_conf[i])
   }
   flush_run()
   line_n = 0
@@ -324,6 +374,8 @@ BEGIN {
   if (low_conf == "")
     low_conf = 40
   spans_only = ENVIRON["CLICK_SPANS"] != ""
+  if (explain)
+    printf "~pass\t%s\n", spans_only ? "spans" : "whole" > "/dev/stderr"
   split("one two three four five six seven eight nine ten", names, " ")
   for (i = 1; i <= 10; i++)
     digit_of[names[i]] = i
@@ -392,12 +444,24 @@ function may_be_spoken(text,   t, parts, n, i, key, j) {
   return 0
 }
 
+# Whether any alphanumeric piece of the OCR text is relevant (see word_relevant).
+function text_relevant(text,   t, parts, n, i) {
+  t = lowered_alnum(text)
+  gsub(/[^a-z0-9]+/, " ", t)
+  n = split(t, parts, " ")
+  for (i = 1; i <= n; i++)
+    if (word_relevant(compare_key(normal_word(parts[i]))))
+      return 1
+  return 0
+}
+
 # Word rows only (level 5), and only confident, non-blank ones; a doubtful one only when it may be a spoken word.
 $1 == 5 {
   text = $12
   gsub(/^[ ]+|[ ]+$/, "", text)
-  if (text == "" || $11 < low_conf || ($11 < min_conf && !may_be_spoken(text)))
+  if (text == "")
     next
+  dropped = $11 < low_conf || ($11 < min_conf && !may_be_spoken(text))
   top = $8 + strip_y0
   line_id = $3 SUBSEP $4 SUBSEP $5
   # Without a line row, as in hand-made input, the word's own centre decides.
@@ -409,6 +473,12 @@ $1 == 5 {
     if (centre < own_top || centre >= own_bottom)
       next
   }
+  if (dropped) {
+    if (explain && !spans_only && text_relevant(text))
+      printf "~drop\t%d\t%s\t%d\t%d\t%s\n", $11, text, round(gx + ($7 + $9 / 2) * gw / iw), round(gy + (top + $10 / 2) * gh / ih),
+        ($11 < low_conf ? "under " low_conf ", below even the low floor" : "under " min_conf " and not a spoken word or piece of one") > "/dev/stderr"
+    next
+  }
   key = strip_y0 SUBSEP line_id
   if (key != last_key) {
     flush_line()
@@ -417,6 +487,7 @@ $1 == 5 {
   line_n++
   line_text[line_n] = text
   line_low[line_n] = $11 < min_conf
+  line_conf[line_n] = $11
   line_left[line_n] = $7
   line_top[line_n] = top
   line_width[line_n] = $9

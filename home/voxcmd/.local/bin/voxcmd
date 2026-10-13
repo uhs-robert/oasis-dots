@@ -13,6 +13,9 @@ Usage:
   voxcmd listen --start-only  the same, but only when voxtype is idle: never stops a recording
   voxcmd --reply <text...>    answer the open voxcmd picker (a choice, an ordinal, or cancel) or confirm card (yes or no)
   voxcmd --dry-run --reply <text...>
+  voxcmd click-explain <text...> [--window <stableId>]
+                              show why "click <text>" would or would not click, from the real capture and matcher,
+                              without clicking or moving the pointer (the focused window, or that client)
   voxcmd end-session          end the open voice session (click mode), if any
   voxcmd list                 list integrations and their verbs
   voxcmd help                 pick from the integrations' example phrases (Tab lists what one can run); one without placeholders runs
@@ -385,10 +388,12 @@ fuzzy_match() {
 # words with nothing left over, or holds all of them plus one more word; weak matches always go through the picker.
 # A target with no words left after the filler and ignored words matches nothing, and prints nothing rather than [], so
 # resolve_match can tell it from a target that matched nothing.
+# With word_match_trace=1 (click-explain) it prints every candidate with its .verdict and whether it was .kept, instead
+# of only the kept ones, from the same expressions the real match uses.
 word_match() {
   local target="$1" candidates_json="$2"
   shift 2
-  jq -c --arg target "$target" --args '
+  jq -c --arg target "$target" --argjson trace "${word_match_trace:-0}" --args '
     {"one": "1", "two": "2", "three": "3", "four": "4", "five": "5", "six": "6", "seven": "7", "eight": "8", "nine": "9", "ten": "10"} as $digits
     | ["the", "a", "an", "my", "this", "that", "please", "to", "of", "on", "in", "for", "it"] as $filler
     | def singular: if length > 3 and endswith("s") and (endswith("ss") | not) then .[:-1] else . end;
@@ -406,11 +411,54 @@ word_match() {
           | (($spoken | unique) == ($named | unique) or ($spoken | join("")) == ($named | join(""))) as $strong
           | (($spoken_matched | length) == ($spoken | length) and ($named_matched | length) * 2 >= ($named | length)) as $covers_half
           | (all($named[]; IN($spoken[])) and ($spoken | length) - ($spoken_matched | length) <= 1) as $holds_all_plus_one
-          | select($strong or $covers_half or $holds_all_plus_one)
-          | $candidate + {weak: ($strong | not), misses: (($named | length) - ($named_matched | length) + ($spoken | length) - ($spoken_matched | length))})
-        | if any(.[]; .weak | not) then map(select(.weak | not)) else sort_by(.misses, (.label | length)) | .[:10] end
-        | map(del(.misses))
+          | ($strong or $covers_half or $holds_all_plus_one) as $kept
+          | $candidate + {weak: ($strong | not), kept: $kept,
+              verdict: (if $strong then "strong: same words"
+                elif $covers_half then "weak: the spoken words cover at least half of its \($named | length) word(s)"
+                elif $holds_all_plus_one then "weak: holds every spoken word plus one more"
+                elif ($spoken_matched | length) == 0 then "near miss only: no spoken word is in it"
+                else "coverage under half: \($named_matched | length) of \($named | length) of its words are spoken" end),
+              misses: (($named | length) - ($named_matched | length) + ($spoken | length) - ($spoken_matched | length))})
+        | (map(select(.kept)) | any(.[]; .weak | not)) as $has_strong
+        | if $trace == 1 then
+            map(if .kept and .weak and $has_strong then .kept = false | .verdict = "dropped: a strong match exists" else . end | del(.misses))
+          else
+            map(select(.kept)) | if $has_strong then map(select(.weak | not)) else sort_by(.misses, (.label | length)) | .[:10] end
+            | map(del(.misses, .kept, .verdict))
+          end
       end' "$@" <<<"$candidates_json"
+}
+
+# Prints why "click <text>" would or would not click, by running click.sh's candidates() with tracing on. Read-only: it
+# never routes, so nothing is clicked, moved, notified or logged, and the screen text only reaches this terminal.
+click_explain() {
+  local window_id="" file
+  local -a words=()
+  while [ $# -gt 0 ]; do
+    case "$1" in
+    --window)
+      window_id="${2:-}"
+      [ -n "$window_id" ] || {
+        usage >&2
+        exit 2
+      }
+      shift 2
+      ;;
+    *)
+      words+=("$1")
+      shift
+      ;;
+    esac
+  done
+  file="$config_dir/integrations.d/click.sh"
+  if [ "${#words[@]}" = 0 ] || [ ! -f "$file" ]; then
+    usage >&2
+    exit 2
+  fi
+  (
+    load_integration "$file"
+    explain_click "${words[*]}" "$window_id"
+  )
 }
 
 # ---- LLM hook (stub) -------------------------------------------------------------------------------------------
@@ -1424,6 +1472,10 @@ listen) listen "${2:-}" ;;
 help) voice_help ;;
 errors) print_errors "${2:-}" ;;
 end-session) session_end "ended by request" ;;
+click-explain)
+  shift
+  click_explain "$@"
+  ;;
 _settle) wait_until_ui_settled ;;
 _watch) watch_recording "$2" ;;
 _cancel_owned_recording) cancel_owned_recording "$2" ;;
