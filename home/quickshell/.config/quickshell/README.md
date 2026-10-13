@@ -121,19 +121,32 @@ Every section ends with a block that describes the selected (or hovered) setting
 
 ### Calendar
 
-The clock shows your Google Calendar from a cache that `calendar-sync` writes to `$XDG_CACHE_HOME/calendar/events.json` (default `~/.cache/calendar/`); the shell never talks to Google. With no cache file nothing changes: no chip, no dots, no timer, and the popup keeps its old keys. The service (`services/CalendarState.qml`) reloads when the file changes, and `qs-ipc call calendar refresh` rereads it at once (the first time the file appears, the shell only notices through that call or a restart). Cancelled events are ignored. If `error.json` sits beside the cache, the events are the last good copy and the agenda header says so.
+The clock shows your Google Calendar from a cache that `calendar-sync` writes to `$XDG_CACHE_HOME/calendar/events.json` (default `~/.cache/calendar/`); the shell never talks to Google. With no cache file nothing changes: no chip, no dots, no timer, and the popup has no dots or agenda. The service (`services/CalendarState.qml`) reloads when the file changes, and `qs-ipc call calendar refresh` rereads it at once (a file that did not exist when the shell started is only noticed through that call or a restart). Cancelled events are ignored, and so are timed events over 12 hours for the chip and dot (out-of-office and conference blocks). The `join_url` field of an event holds a Google Meet or Microsoft Teams link. If `error.json` sits beside the cache, the events are the last good copy and the agenda header says so.
 
-- Bar clock: within 15 minutes of the next meeting's start, a chip such as `Design review 12m` follows the date (just `12m` on compact bars); while a meeting is in progress a dot shows. Hovering shows the current or next event and its time. All-day events never count as meetings.
+- Bar clock: within 15 minutes of the next meeting's start (even across midnight), a chip such as `Design review 12m` follows the date (just `12m` on compact bars); while a meeting is in progress a dot shows. Hovering shows the current or next event and its time. All-day events never count as meetings.
 - Clock popup: a dot under each day with events, and below the grid an agenda for the selected day (today by default). Times are in the local zone, whatever zone the popup is cycled to.
 
-| Key | Action |
+The popup has two levels, both fully keyboard driven. At the grid level the cursor day's agenda is a read-only preview.
+
+| Grid level | |
 | --- | --- |
-| `Left` / `Right`, `Up` / `Down` | Selected day, back or forward one day or one week (the month follows) |
-| `h` / `l`, `j` / `k` | Month and year, as before; the selection keeps its day of the month |
-| `,` / `.` | Previous or next event in the agenda |
-| `Enter` | Open the event's Meet link, else its Calendar page, else that day in Calendar |
-| `n` | New event on the selected day in Google Calendar (9:00 to 10:00, or the next hour for today) |
+| `h` / `l`, `Left` / `Right` | Cursor day, back or forward one day (the shown month follows past its edge) |
+| `j` / `k`, `Down` / `Up` | Cursor day, forward or back one week |
+| `H` / `L`, `J` / `K` (Shift) | Month, then year; the cursor keeps its day of the month |
+| `Enter` | Open day level for the cursor day (with a cache; an empty day shows "No events") |
+| `n` | New event on the cursor day |
 | `t` / `gg` | Back to today |
+| `Tab`, `[` `]` | Time zone |
+
+| Day level | |
+| --- | --- |
+| `j` / `k`, `Down` / `Up` | Move between the day's events; the highlighted one is detailed below the list (time or "All day", title, location, organizer, guest count, "Tentative", and what Enter does) |
+| `Enter` | Join the event's `join_url` (Google Meet or Teams), else open its Calendar page, else that day in Calendar |
+| `Esc`, `h`, `Left` | Back to the grid, same day |
+| `n` | New event on that day: Google's form, in UTC, 9:00 to 10:00, or for today the next whole hour (9:00 tomorrow after 22:00) |
+| `q` | Close |
+
+Moving the cursor works without a calendar cache; the dots, the agenda and day level need one. Clicking a day equals moving to it and pressing Enter, and clicking an event highlights it, but nothing needs the mouse. `calendar open_day <date>` opens the popup at grid level on that date. The agenda area keeps one height across both levels and every day (the list shows eight rows at grid level and three beside the details at day level), so the popup never resizes.
 
 Links open with `firefox --new-tab`, or `xdg-open` when Firefox is not installed. Clicking a day selects it.
 
@@ -202,7 +215,7 @@ Every popup uses the same keys. `?` shows the full list for the popup you're in.
 | `?`              | Key help                                 |
 | `q` / `Esc`      | Close                                    |
 
-A popup with only one level of views answers both `Tab` and `[`/`]`. In the clock popup, `Tab` and `[`/`]` cycle the time zones. With a calendar cache present, the arrow keys move the selected day, `,` and `.` move between its events, `Enter` opens one and `n` starts a new event (see Calendar).
+A popup with only one level of views answers both `Tab` and `[`/`]`. In the clock popup, `Tab` and `[`/`]` cycle the time zones. `h`/`l` and `j`/`k` move the cursor by a day and a week, `Shift` + `h`/`l`/`j`/`k` by a month and a year; `Enter` opens the cursor day's events and `n` starts a new event (see Calendar).
 
 Console styles draw controller buttons in place of keys in the footers and help. Each console is one entry in `components/KeyHints.js` (`controllers`): the path of its button component and the key to button map. A button component is an `Item` with `button` (a name from the map), `size` and, for the Game Boy shades, `shades`.
 

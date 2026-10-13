@@ -3,15 +3,18 @@ pragma Singleton
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import "../theme"
 
 // Reads the calendar cache that calendar-sync writes; the bar never talks to the network. With no cache file
 // nothing is configured: no events, no timer, and every surface that reads this draws nothing.
 Singleton {
     id: root
 
-    readonly property string path: (Quickshell.env("XDG_CACHE_HOME") || (Quickshell.env("HOME") + "/.cache")) + "/calendar/events.json"
+    readonly property string path: Paths.xdg("XDG_CACHE_HOME", "/.cache") + "/calendar/events.json"
     // The chip shows this many minutes before a meeting starts.
     readonly property int chip_window_minutes: 15
+    // Timed events longer than this are out-of-office or conference blocks, not meetings to join.
+    readonly property double max_meeting_ms: 12 * 3600000
 
     // True once a cache file has been read, even an empty one.
     property bool configured: false
@@ -28,8 +31,10 @@ Singleton {
 
     property double now_ms: Date.now()
 
+    // Reloads both files by hand too: a FileView cannot watch a file whose folder did not exist when it started.
     function refresh() {
         file.reload();
+        error_file.reload();
     }
 
     function day_key(date) {
@@ -67,7 +72,9 @@ Singleton {
                 end_ms: end_ms,
                 all_day: all_day,
                 location: e.location || "",
-                meet_url: e.meet_url || "",
+                organizer: e.organizer || "",
+                guests: Array.isArray(e.attendees) ? e.attendees.length : 0,
+                join_url: e.join_url || "",
                 event_url: e.event_url || "",
                 status: e.status || "confirmed"
             });
@@ -100,21 +107,32 @@ Singleton {
         return root.events_on(date).length > 0;
     }
 
-    function is_live(e) {
-        return !e.all_day && e.start_ms <= root.now_ms && root.now_ms < e.end_ms;
+    function is_meeting(e) {
+        return !e.all_day && e.end_ms - e.start_ms <= root.max_meeting_ms;
     }
 
-    // All-day events never count as meetings, so they neither fill the chip nor light the dot.
+    function is_live(e) {
+        return root.is_meeting(e) && e.start_ms <= root.now_ms && root.now_ms < e.end_ms;
+    }
+
+    // All-day events and day-long blocks never count as meetings, so they neither fill the chip nor light the dot.
     readonly property var current_event: root.events.find(e => root.is_live(e)) || null
     readonly property bool in_meeting: root.current_event !== null
 
     readonly property var next_event_today: {
         const midnight = new Date(root.now_ms);
         midnight.setHours(24, 0, 0, 0);
-        return root.events.find(e => !e.all_day && e.start_ms > root.now_ms && e.start_ms < midnight.getTime()) || null;
+        return root.events.find(e => root.is_meeting(e) && e.start_ms > root.now_ms && e.start_ms < midnight.getTime()) || null;
     }
 
-    readonly property int minutes_until_next: root.next_event_today ? Math.ceil((root.next_event_today.start_ms - root.now_ms) / 60000) : -1
+    readonly property int minutes_until_next: root.next_event_today ? root.minutes_to(root.next_event_today) : -1
+
+    function minutes_to(e) {
+        return Math.ceil((e.start_ms - root.now_ms) / 60000);
+    }
+
+    // The chip looks a fixed time ahead, so it carries across midnight where next_event_today stops.
+    readonly property var chip_event: root.events.find(e => root.is_meeting(e) && e.start_ms > root.now_ms && e.start_ms <= root.now_ms + root.chip_window_minutes * 60000) || null
 
     FileView {
         id: file
@@ -144,6 +162,7 @@ Singleton {
     }
 
     FileView {
+        id: error_file
         path: root.path.replace(/events\.json$/, "error.json")
         printErrors: false
         blockLoading: true

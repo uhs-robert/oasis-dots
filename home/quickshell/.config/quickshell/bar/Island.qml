@@ -41,6 +41,8 @@ Item {
     default property alias content: layout.children
 
     readonly property alias body_item: body
+    // Width the clock's meeting chip adds, which the clock popup leaves out when it sizes from this island.
+    property real popup_trim: 0
     // Lualine: side islands end in arrows, the center one leans; content brings its own padding.
     readonly property bool lualine: Style.bar_lualine
     // Fill for the right cap when the content's last segment runs into it.

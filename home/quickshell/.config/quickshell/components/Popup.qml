@@ -237,7 +237,8 @@ PanelWindow {
     readonly property var island: held_anchor ? held_anchor.parent : null
     // Capsule islands measure by the capsule they draw, not the body between their caps.
     readonly property bool island_capsule: !!island && island.capsule === true
-    readonly property real island_width: root.island && root.island_capsule ? root.island.capsule_width : held_anchor ? held_anchor.width : 0
+    readonly property real island_trim: root.popup_name === "clock" && root.island && root.island.popup_trim !== undefined ? root.island.popup_trim : 0
+    readonly property real island_width: Math.max(0, (root.island && root.island_capsule ? root.island.capsule_width : held_anchor ? held_anchor.width : 0) - root.island_trim)
     readonly property bool island_cap_left: !!island && island.cap_left === true
     readonly property bool island_cap_right: !!island && island.cap_right === true
     // cap_right-only = a left island, flush with the screen's left edge; cap_left-only = a right island.

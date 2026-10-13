@@ -17,14 +17,16 @@ Popup {
     popup_name: "clock"
     title: root.nes ? root.day_title : Qt.formatDate(new Date(root.view_year, root.view_month, 1), "MMM yyyy").toUpperCase()
     preferred_width: 320
-    footer_hint: root.agenda_on ? "h/l month · j/k year · arrows day · ,/. event · Enter open · n new · t/gg today · Tab zone · q close" : "h/l month · j/k year · t/gg today · Tab/[ ] zone · q close"
+    footer_hint: root.day_level ? "j/k event · Enter join · h/Esc back · n new · q close" : root.agenda_on ? "h/l day · j/k week · H/L month · J/K year · Enter day · n new · t/gg today · Tab/[ ] zone · q close" : "h/l day · j/k week · H/L month · J/K year · n new · t/gg today · Tab/[ ] zone · q close"
+    // The ? view describes both levels, whichever one is showing.
+    key_help: root.agenda_on ? "h/l day · j/k week · H/L month · J/K year · Enter open the day · n new · t/gg today · Tab/[ ] zone · q close · j/k event (in a day) · Enter join (in a day) · h/Esc back to the grid" : "h/l day · j/k week · H/L month · J/K year · n new · t/gg today · Tab/[ ] zone · q close"
     body_height: content.implicitHeight + 24
 
     property date today: new Date()
     property int view_year: today.getFullYear()
     property int view_month: today.getMonth()
     jumps_enabled: true
-    cursor_state: [root.view_year, root.view_month, Timezones.index, root.selected.getTime(), root.event_index]
+    cursor_state: [root.view_year, root.view_month, Timezones.index, root.selected.getTime(), root.event_index, root.day_level]
 
     readonly property bool bios: root.st.console_views === "ps1"
     readonly property bool is_open: Popups.open_name === "clock"
@@ -55,10 +57,20 @@ Popup {
     readonly property bool agenda_on: CalendarState.configured
     property date selected: today
     property int event_index: 0
+    property string chosen_key: ""
     readonly property var day_events: CalendarState.events_on(root.selected)
-    readonly property int agenda_rows: 5
-    // The agenda scrolls to keep the chosen event in view.
-    readonly property int agenda_first: Math.max(0, Math.min(root.event_index - root.agenda_rows + 1, root.day_events.length - root.agenda_rows))
+    // Two levels: the grid previews the cursor day's agenda; Enter opens that day, where an event is highlighted and detailed.
+    property bool day_level: false
+    // The grid lists more events; at day level the details panel takes the rows below the list.
+    readonly property int grid_rows: 8
+    readonly property int day_rows: 3
+    readonly property int details_lines: 5
+    readonly property int agenda_rows: root.day_level ? root.day_rows : root.grid_rows
+    // The region holds the header, the list and its "more" line, and at day level the details, in whichever level is showing, so the popup never changes height.
+    readonly property int agenda_lines: Math.max(root.grid_rows + 2, root.day_rows + 2 + root.details_lines)
+    // The day-level list scrolls to keep the chosen event in view.
+    readonly property int agenda_first: root.day_level ? Math.max(0, Math.min(root.event_index - root.agenda_rows + 1, root.day_events.length - root.agenda_rows)) : 0
+    readonly property var chosen_event: root.day_level ? root.day_events[root.event_index] || null : null
     readonly property var agenda_events: root.day_events.slice(root.agenda_first, root.agenda_first + root.agenda_rows)
 
     Connections {
@@ -71,14 +83,43 @@ Popup {
     function take_requested_day() {
         const d = CalendarState.parse_day(CalendarState.requested_day);
         CalendarState.requested_day = "";
-        if (d) select_day(d);
+        if (d) {
+            root.day_level = false;
+            select_day(d);
+        }
     }
 
-    // Lands on the event under way or the next one to start, so Enter joins what matters; a past day starts at its top.
+    function enter_day() {
+        root.day_level = true;
+        event_index = first_open_event(selected);
+        remember_choice();
+    }
+
+    function leave_day() {
+        root.day_level = false;
+    }
+
+    function pick_event(index) {
+        root.day_level = true;
+        event_index = index;
+        remember_choice();
+    }
+
+    // What Enter does with an event, in the details panel's words.
+    function join_label(e) {
+        const host = /^https:\/\/([^\/]+)/.exec(e.join_url || "");
+        if (!host) return "Opens in Google Calendar";
+        const name = host[1].toLowerCase();
+        if (name === "meet.google.com") return "Google Meet";
+        if (name === "teams.microsoft.com" || name === "teams.live.com") return "Microsoft Teams";
+        return "Joins " + name;
+    }
+
+    // Lands on the meeting under way or the next to start, so Enter joins what matters; other days start at their top.
     function first_open_event(date) {
         const list = CalendarState.events_on(date);
         const now = Date.now();
-        const i = list.findIndex(e => !e.all_day && e.end_ms > now);
+        const i = list.findIndex(e => CalendarState.is_meeting(e) && e.end_ms > now);
         return i < 0 ? 0 : i;
     }
 
@@ -87,6 +128,7 @@ Popup {
         view_year = date.getFullYear();
         view_month = date.getMonth();
         event_index = first_open_event(date);
+        remember_choice();
     }
 
     function move_day(days) {
@@ -103,32 +145,57 @@ Popup {
 
     function step_event(step) {
         event_index = Math.max(0, Math.min(event_index + step, day_events.length - 1));
+        remember_choice();
     }
 
-    function open_url(url) {
-        if (!/^https:\/\//.test(url)) return;
-        Quickshell.execDetached(["sh", "-c", "if command -v firefox >/dev/null; then exec firefox --new-tab \"$1\"; else exec xdg-open \"$1\"; fi", "sh", url]);
-        Popups.close();
+    function event_key(e) {
+        return e ? e.uid + "@" + e.start_ms : "";
     }
 
-    // Joins the Meet link, else the event page, else that day in Google Calendar.
+    function remember_choice() {
+        chosen_key = event_key(day_events[event_index]);
+    }
+
+    // A reload can reorder or drop events; the cursor follows the one it was on, else stays in range.
+    onDay_eventsChanged: {
+        const i = day_events.findIndex(e => event_key(e) === chosen_key);
+        event_index = i >= 0 ? i : Math.max(0, Math.min(event_index, day_events.length - 1));
+        remember_choice();
+    }
+
+    // Opens the first candidate that is an https link, once the popup has let go of the keyboard.
+    function open_first_link(candidates) {
+        const url = candidates.find(u => /^https:\/\//.test(u));
+        if (!url) return;
+        Popups.after_close(() => Quickshell.execDetached(["sh", "-c", "if command -v firefox >/dev/null; then exec firefox --new-tab \"$1\"; else exec xdg-open \"$1\"; fi", "sh", url]));
+    }
+
+    // Joins the meeting link, else the event page, else that day in Google Calendar.
     function open_event() {
         const e = day_events[event_index];
         const day_url = "https://calendar.google.com/calendar/r/day/" + selected.getFullYear() + "/" + (selected.getMonth() + 1) + "/" + selected.getDate();
-        open_url(e ? (e.meet_url || e.event_url || day_url) : day_url);
+        open_first_link(e ? [e.join_url, e.event_url, day_url] : [day_url]);
     }
 
-    // Google's prefilled new-event form: 9:00 to 10:00 on the selected day, or the next hour for today.
+    // Google's prefilled new-event form, in UTC. On the selected day it starts at 9:00; for today at the next whole hour
+    // (but not before 9:00), and once that is past 22:00 at 9:00 tomorrow, so the start is never in the past.
     function new_event() {
-        const start = new Date(selected);
         const now = new Date();
-        start.setHours(is_same_day(selected, now) && now.getHours() >= 8 ? Math.min(now.getHours() + 1, 22) : 9, 0, 0, 0);
+        const start = new Date(selected);
+        if (is_same_day(selected, now)) {
+            const next_hour = now.getHours() + 1;
+            if (next_hour > 22) start.setDate(start.getDate() + 1);
+            start.setHours(next_hour > 22 ? 9 : Math.max(next_hour, 9), 0, 0, 0);
+        } else {
+            start.setHours(9, 0, 0, 0);
+        }
         const end = new Date(start.getTime() + 3600000);
-        const stamp = d => Qt.formatDateTime(d, "yyyyMMdd'T'HHmmss");
-        open_url("https://calendar.google.com/calendar/render?action=TEMPLATE&dates=" + stamp(start) + "/" + stamp(end));
+        const stamp = d => d.toISOString().replace(/[-:]/g, "").replace(/\.\d+/, "");
+        open_first_link(["https://calendar.google.com/calendar/render?action=TEMPLATE&dates=" + stamp(start) + "/" + stamp(end)]);
     }
 
     function go_today() {
+        root.day_level = false;
         const d = new Date();
         today = d;
         select_day(d);
@@ -238,63 +305,55 @@ Popup {
 
         Keys.onPressed: event => {
             const before = root.cursor_key();
-            if (event.key === Qt.Key_H) {
-                root.prev_month();
-                root.play_if_moved(before);
+            const shifted = (event.modifiers & Qt.ShiftModifier) !== 0;
+            const key = event.key;
+            const accept_only = () => {
                 event.accepted = true;
-            } else if (event.key === Qt.Key_L) {
-                root.next_month();
-                root.play_if_moved(before);
-                event.accepted = true;
-            } else if (event.key === Qt.Key_J) {
-                root.change_year(1);
-                root.play_if_moved(before);
-                event.accepted = true;
-            } else if (event.key === Qt.Key_K) {
-                root.change_year(-1);
-                root.play_if_moved(before);
-                event.accepted = true;
-            } else if (event.key === Qt.Key_BracketRight || event.key === Qt.Key_Tab) {
-                Timezones.cycle(1);
-                root.play_if_moved(before);
-                event.accepted = true;
-            } else if (event.key === Qt.Key_BracketLeft || event.key === Qt.Key_Backtab) {
-                Timezones.cycle(-1);
-                root.play_if_moved(before);
-                event.accepted = true;
-            } else if (event.key === Qt.Key_T) {
-                root.go_today();
-                root.play_if_moved(before);
-                event.accepted = true;
-            } else if (root.agenda_on && event.key === Qt.Key_Left) {
-                root.move_day(-1);
-                root.play_if_moved(before);
-                event.accepted = true;
-            } else if (root.agenda_on && event.key === Qt.Key_Right) {
-                root.move_day(1);
-                root.play_if_moved(before);
-                event.accepted = true;
-            } else if (root.agenda_on && event.key === Qt.Key_Up) {
-                root.move_day(-7);
-                root.play_if_moved(before);
-                event.accepted = true;
-            } else if (root.agenda_on && event.key === Qt.Key_Down) {
-                root.move_day(7);
-                root.play_if_moved(before);
-                event.accepted = true;
-            } else if (root.agenda_on && (event.key === Qt.Key_Comma || event.key === Qt.Key_Period)) {
-                root.step_event(event.key === Qt.Key_Period ? 1 : -1);
-                root.play_if_moved(before);
-                event.accepted = true;
-            } else if (root.agenda_on && (event.key === Qt.Key_Return || event.key === Qt.Key_Enter)) {
-                ThemeAudio.play("confirm");
-                root.open_event();
-                event.accepted = true;
-            } else if (root.agenda_on && event.key === Qt.Key_N) {
+            };
+            if (key === Qt.Key_N) {
                 ThemeAudio.play("confirm");
                 root.new_event();
-                event.accepted = true;
+                return accept_only();
             }
+            if (key === Qt.Key_Return || key === Qt.Key_Enter) {
+                if (!root.agenda_on) return;
+                ThemeAudio.play("confirm");
+                if (root.day_level) root.open_event();
+                else root.enter_day();
+                return accept_only();
+            }
+            if (key === Qt.Key_BracketRight || key === Qt.Key_Tab) {
+                Timezones.cycle(1);
+            } else if (key === Qt.Key_BracketLeft || key === Qt.Key_Backtab) {
+                Timezones.cycle(-1);
+            } else if (root.day_level) {
+                if (key === Qt.Key_J || key === Qt.Key_Down) root.step_event(1);
+                else if (key === Qt.Key_K || key === Qt.Key_Up) root.step_event(-1);
+                else if (key === Qt.Key_Escape || key === Qt.Key_Left || (key === Qt.Key_H && !shifted)) root.leave_day();
+                else return;
+            } else if (key === Qt.Key_H && shifted) {
+                root.prev_month();
+            } else if (key === Qt.Key_L && shifted) {
+                root.next_month();
+            } else if (key === Qt.Key_J && shifted) {
+                root.change_year(1);
+            } else if (key === Qt.Key_K && shifted) {
+                root.change_year(-1);
+            } else if (key === Qt.Key_H || key === Qt.Key_Left) {
+                root.move_day(-1);
+            } else if (key === Qt.Key_L || key === Qt.Key_Right) {
+                root.move_day(1);
+            } else if (key === Qt.Key_J || key === Qt.Key_Down) {
+                root.move_day(7);
+            } else if (key === Qt.Key_K || key === Qt.Key_Up) {
+                root.move_day(-7);
+            } else if (key === Qt.Key_T) {
+                root.go_today();
+            } else {
+                return;
+            }
+            root.play_if_moved(before);
+            event.accepted = true;
         }
 
         // SNES: the zones and calendar sit in their own RPG window.
@@ -422,11 +481,13 @@ Popup {
                         id: cell
                         required property var modelData
                         readonly property bool marked: modelData.kind === "day" && modelData.is_today === true && root.st.marker_fill
-                        readonly property bool chosen: root.agenda_on && modelData.kind === "day" && root.is_same_day(modelData.date, root.selected)
+                        readonly property bool is_day: modelData.kind === "day"
+                        readonly property bool chosen: is_day && root.is_same_day(modelData.date, root.selected)
 
                         Layout.fillWidth: true
                         Layout.preferredWidth: 0
-                        implicitHeight: cell_text.implicitHeight + (root.agenda_on ? 5 : 0)
+                        // Day cells pad around the digits so the selection outline has room, and below them for the event dot.
+                        implicitHeight: cell_text.implicitHeight + (is_day ? (root.agenda_on ? 8 : 6) : 0)
 
                         Rectangle {
                             visible: cell.marked && !root.bios
@@ -445,6 +506,7 @@ Popup {
 
                         Text {
                             id: cell_text
+                            y: cell.is_day ? 3 : 0
                             width: parent.width
                             horizontalAlignment: Text.AlignHCenter
                             elide: Text.ElideNone
@@ -469,6 +531,7 @@ Popup {
                             visible: root.agenda_on && cell.modelData.has_events === true
                             anchors.horizontalCenter: parent.horizontalCenter
                             anchors.bottom: parent.bottom
+                            anchors.bottomMargin: 2
                             width: 4
                             height: 4
                             radius: 2
@@ -476,10 +539,11 @@ Popup {
                         }
 
                         MouseArea {
-                            enabled: root.agenda_on && cell.modelData.kind === "day"
+                            enabled: cell.is_day
                             anchors.fill: parent
                             onClicked: {
                                 root.select_day(cell.modelData.date);
+                                if (root.agenda_on) root.enter_day();
                                 ThemeAudio.play("cursor");
                             }
                         }
@@ -487,78 +551,125 @@ Popup {
                 }
             }
 
-            ColumnLayout {
-                id: agenda
+            Item {
+                id: agenda_region
                 visible: root.agenda_on
                 Layout.fillWidth: true
-                spacing: 2
+                Layout.preferredHeight: root.agenda_lines * time_floor.height + (root.agenda_lines - 1) * 2
 
-                Text {
-                    Layout.fillWidth: true
-                    text: Qt.formatDate(root.selected, "ddd MMM d") + (CalendarState.error !== "" ? " (sync error, may be stale)" : "")
-                    color: root.st.text_accent
-                    font.family: root.st.font_family
-                    font.pixelSize: root.st.fs(-1)
-                    font.bold: true
-                    elide: Text.ElideRight
-                }
+                ColumnLayout {
+                    id: agenda
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    anchors.top: parent.top
+                    spacing: 2
 
-                Text {
-                    visible: root.day_events.length === 0
-                    text: "No events"
-                    color: root.st.text_muted
-                    font.family: root.st.font_family
-                    font.pixelSize: root.st.fs(-1)
-                }
-
-                Repeater {
-                    model: root.agenda_events
-
-                    RowLayout {
-                        id: agenda_row
-                        required property var modelData
-                        required property int index
-
-                        readonly property bool chosen: root.agenda_first + index === root.event_index
-                        readonly property bool live: CalendarState.is_live(modelData)
-
+                    Text {
                         Layout.fillWidth: true
-                        spacing: 6
+                        text: Qt.formatDate(root.selected, "ddd MMM d") + (CalendarState.error !== "" ? " (sync error, may be stale)" : "")
+                        color: root.st.text_accent
+                        font.family: root.st.font_family
+                        font.pixelSize: root.st.fs(-1)
+                        font.bold: true
+                        elide: Text.ElideRight
+                    }
 
-                        Text {
-                            Layout.preferredWidth: 8
-                            text: agenda_row.chosen ? ">" : ""
-                            color: root.st.text_accent
-                            font.family: root.st.font_family
-                            font.pixelSize: root.st.fs(-1)
-                        }
+                    Text {
+                        visible: root.day_events.length === 0
+                        text: "No events"
+                        color: root.st.text_muted
+                        font.family: root.st.font_family
+                        font.pixelSize: root.st.fs(-1)
+                    }
 
-                        Text {
-                            Layout.preferredWidth: Math.ceil(time_floor.advanceWidth)
-                            text: agenda_row.modelData.all_day ? "all day" : TimeFormat.format(new Date(agenda_row.modelData.start_ms))
-                            color: agenda_row.live ? Style.pal.today : root.st.text_dim
-                            font.family: root.st.font_family
-                            font.pixelSize: root.st.fs(-1)
-                        }
+                    Repeater {
+                        model: root.agenda_events
 
-                        Text {
+                        RowLayout {
+                            id: agenda_row
+                            required property var modelData
+                            required property int index
+
+                            readonly property bool chosen: root.day_level && root.agenda_first + index === root.event_index
+                            readonly property bool live: CalendarState.is_live(modelData)
+
                             Layout.fillWidth: true
-                            text: agenda_row.modelData.title
-                            color: agenda_row.chosen ? root.st.text_fg : root.st.text_dim
-                            font.family: root.st.font_family
-                            font.pixelSize: root.st.fs(-1)
-                            font.bold: agenda_row.chosen
-                            elide: Text.ElideRight
+                            spacing: 6
+
+                            Text {
+                                Layout.preferredWidth: 8
+                                text: agenda_row.chosen ? ">" : ""
+                                color: root.st.text_accent
+                                font.family: root.st.font_family
+                                font.pixelSize: root.st.fs(-1)
+                            }
+
+                            Text {
+                                Layout.preferredWidth: Math.ceil(time_floor.advanceWidth)
+                                text: agenda_row.modelData.all_day ? "all day" : TimeFormat.format(new Date(agenda_row.modelData.start_ms))
+                                color: agenda_row.live ? Style.pal.today : root.st.text_dim
+                                font.family: root.st.font_family
+                                font.pixelSize: root.st.fs(-1)
+                            }
+
+                            Text {
+                                Layout.fillWidth: true
+                                text: agenda_row.modelData.title
+                                color: agenda_row.chosen ? root.st.text_fg : root.st.text_dim
+                                font.family: root.st.font_family
+                                font.pixelSize: root.st.fs(-1)
+                                font.bold: agenda_row.chosen
+                                elide: Text.ElideRight
+                            }
+
+                            MouseArea {
+                                anchors.fill: parent
+                                onClicked: {
+                                    root.pick_event(root.agenda_first + agenda_row.index);
+                                    ThemeAudio.play("cursor");
+                                }
+                            }
                         }
+                    }
+
+                    Text {
+                        visible: root.day_events.length > root.agenda_first + root.agenda_rows
+                        text: "+" + (root.day_events.length - root.agenda_first - root.agenda_rows) + " more"
+                        color: root.st.text_muted
+                        font.family: root.st.font_family
+                        font.pixelSize: root.st.fs(-2)
                     }
                 }
 
-                Text {
-                    visible: root.day_events.length > root.agenda_first + root.agenda_rows
-                    text: "+" + (root.day_events.length - root.agenda_first - root.agenda_rows) + " more"
-                    color: root.st.text_muted
-                    font.family: root.st.font_family
-                    font.pixelSize: root.st.fs(-2)
+                // Pinned below the day-level list's rows, so it does not move as the list shortens.
+                ColumnLayout {
+                    id: details
+                    visible: root.chosen_event !== null
+                    y: (root.day_rows + 2) * (time_floor.height + 2)
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    spacing: 2
+
+                    Repeater {
+                        model: root.chosen_event ? [
+                            { text: (root.chosen_event.all_day ? "All day" : TimeFormat.format(new Date(root.chosen_event.start_ms)) + " - " + TimeFormat.format(new Date(root.chosen_event.end_ms))) + (root.chosen_event.status === "tentative" ? " · Tentative" : ""), bold: false },
+                            { text: root.chosen_event.title, bold: true },
+                            { text: root.chosen_event.location, bold: false },
+                            { text: [root.chosen_event.organizer, root.chosen_event.guests > 0 ? root.chosen_event.guests + (root.chosen_event.guests === 1 ? " guest" : " guests") : ""].filter(t => t !== "").join(" · "), bold: false },
+                            { text: root.join_label(root.chosen_event), bold: false }
+                        ].filter(l => l.text !== "") : []
+
+                        Text {
+                            required property var modelData
+                            Layout.fillWidth: true
+                            text: modelData.text
+                            color: modelData.bold ? root.st.text_fg : root.st.text_dim
+                            font.family: root.st.font_family
+                            font.pixelSize: root.st.fs(-1)
+                            font.bold: modelData.bold
+                            elide: Text.ElideRight
+                        }
+                    }
                 }
 
                 TextMetrics {
