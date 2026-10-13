@@ -1,5 +1,5 @@
 # shellcheck shell=bash
-# Spoken clock times and the bar's clock format, shared by integrations that source it from "$voxcmd_share_dir".
+# Spoken clock times, durations and days, and the bar's clock format, shared by integrations that source it from "$voxcmd_share_dir".
 # Integrations sit in integrations.d/, where every file is loaded as one, so this lives beside voxcmd instead.
 #
 # Transcripts arrive normalized: lowercase, no punctuation, so "1.5 hours" is "1 5 hours" and "3:30 p.m." is
@@ -70,19 +70,54 @@ read_amount() {
   fi
 }
 
+# Prints the seconds a whole phrase names: "5 minutes", "90 seconds", "an hour and a half", "1 hour 30",
+# "two and a half minutes", "half an hour", "1 5 hours". Fails on anything left over.
+parse_duration() {
+  local -a parse_words
+  read -ra parse_words <<<"$1"
+  local parse_at=0 amount_milli total_milli=0 last_unit="" unit
+  [ "${#parse_words[@]}" -gt 0 ] || return 1
+  while [ "$parse_at" -lt "${#parse_words[@]}" ]; do
+    if [ "${parse_words[parse_at]}" = and ] && [ -n "$last_unit" ]; then
+      parse_at=$((parse_at + 1))
+      # "an hour and a half": half of the unit just named
+      if [ "${parse_words[parse_at]-}" = a ] && [ "${parse_words[parse_at + 1]-}" = half ] && [ -z "${parse_words[parse_at + 2]-}" ]; then
+        total_milli=$((total_milli + last_unit * 500))
+        parse_at=$((parse_at + 2))
+        continue
+      fi
+    fi
+    read_amount || return 1
+    if unit=$(unit_seconds "${parse_words[parse_at]-}"); then
+      parse_at=$((parse_at + 1))
+    elif [ -n "$last_unit" ] && [ "$last_unit" -gt 1 ] && [ -z "${parse_words[parse_at]-}" ]; then
+      # A bare number after a unit counts in the next one down: "1 hour 30", "2 minutes 15".
+      unit=$((last_unit / 60))
+    else
+      return 1
+    fi
+    total_milli=$((total_milli + amount_milli * unit))
+    last_unit="$unit"
+  done
+  echo $(((total_milli + 500) / 1000))
+}
+
 # Prints the epoch a clock time names: "3 pm", "3 30 p m", "15 30", "three thirty pm", "noon", "9 am tomorrow",
-# "tomorrow at 7", read in $TZ (the local zone when unset). By default it is the next time the clock reads that:
-# today, or tomorrow once the time has passed. With "today" as the second argument a time already past today stays
-# today, for converting a time rather than scheduling one. With no am or pm, whichever of the two comes next.
+# "tomorrow at 7", "friday at 9 am", read in $TZ (the local zone when unset). By default it is the next time the
+# clock reads that: today, or tomorrow once the time has passed. A weekday name ("friday", "next friday") is that
+# day's next occurrence, a week out when it is today and the time has passed. With "today" as the second argument
+# a time already past today stays today, for converting a time rather than scheduling one. With no am or pm,
+# whichever of the two comes next.
 parse_clock() {
   local -a parse_words=() clock_words=()
-  local word day="" meridiem="" anchor="${2:-next}"
+  local word day="" weekday="" meridiem="" anchor="${2:-next}"
   read -ra parse_words <<<"$1"
   for word in "${parse_words[@]}"; do
     case "$word" in
-    at | o | oh | oclock | clock | the | this) ;;
+    at | o | oh | oclock | clock | the | this | on | next) ;;
     today) day=today ;;
     tomorrow) day=tomorrow ;;
+    monday | tuesday | wednesday | thursday | friday | saturday | sunday) weekday="$word" ;;
     tonight) meridiem=pm ;;
     am | pm) meridiem="$word" ;;
     a | p) meridiem="${word}m" ;;
@@ -123,12 +158,18 @@ parse_clock() {
     [ "$meridiem" = am ] || hour=$((hour + 12))
     ;;
   esac
-  local now base candidate first="" hours=("$hour")
+  local now base candidate first="" hours=("$hour") bases=(today tomorrow)
   now=$(date +%s)
-  [ "$anchor" = next ] || [ -n "$day" ] || day=today
+  if [ -n "$weekday" ]; then
+    [ -z "$day" ] || return 1
+    base=$(date -d "$weekday" +%F)
+    bases=("$base" "$(date -d "$base +7 days" +%F)")
+  else
+    [ "$anchor" = next ] || [ -n "$day" ] || day=today
+  fi
   # No am or pm on a 1 to 12 hour: the sooner of the morning and evening time.
   [ -n "$meridiem" ] || [ "$hour" -lt 1 ] || [ "$hour" -gt 12 ] || hours=("$((hour % 12))" "$((hour % 12 + 12))")
-  for base in today tomorrow; do
+  for base in "${bases[@]}"; do
     [ -z "$day" ] || [ "$day" = "$base" ] || continue
     for hour in "${hours[@]}"; do
       candidate=$(date -d "$base $hour:$minute" +%s) || return 1
@@ -152,4 +193,52 @@ clock_time_format() {
   else
     echo '%H:%M'
   fi
+}
+
+# Prints the date ("2026-10-13") a day word names: "today", "tomorrow", "friday", "next friday". Fails on anything else.
+parse_day() {
+  case "$1" in
+  today | tomorrow) date -d "$1" +%F ;;
+  monday | tuesday | wednesday | thursday | friday | saturday | sunday) date -d "$1" +%F ;;
+  next\ monday | next\ tuesday | next\ wednesday | next\ thursday | next\ friday | next\ saturday | next\ sunday)
+    date -d "${1#next }" +%F
+    ;;
+  *) return 1 ;;
+  esac
+}
+
+format_length() {
+  local seconds="$1" parts=() hours minutes
+  hours=$((seconds / 3600)) minutes=$((seconds % 3600 / 60)) seconds=$((seconds % 60))
+  [ "$hours" = 0 ] || parts+=("$hours hour$([ "$hours" = 1 ] || echo s)")
+  [ "$minutes" = 0 ] || parts+=("$minutes minute$([ "$minutes" = 1 ] || echo s)")
+  [ "$seconds" = 0 ] || parts+=("$seconds second$([ "$seconds" = 1 ] || echo s)")
+  echo "${parts[*]}"
+}
+
+# "3:47pm", "tomorrow 9:00am", "Thu 9:00am" within the week, else "Oct 20 9:00am", in the bar's Settings > Clock
+# time format.
+format_due() {
+  local due="$1" format day=""
+  format=$(clock_time_format)
+  local due_day today
+  due_day=$(date -d "@$due" +%F) today=$(date +%F)
+  if [ "$due_day" = "$today" ]; then
+    day=""
+  elif [ "$due_day" = "$(date -d "$today +1 day" +%F)" ]; then
+    day="tomorrow "
+  elif [[ "$due_day" < "$(date -d "$today +7 days" +%F)" ]]; then
+    day="$(date -d "@$due" +%a) "
+  else
+    day="$(date -d "@$due" '+%b %-d') "
+  fi
+  echo "$day$(date -d "@$due" "+$format")"
+}
+
+# "at 3:47pm" today, "tomorrow 9:00am" otherwise: a day reads wrong after "at".
+format_at() {
+  local when
+  when=$(format_due "$1")
+  [[ "$when" == [0-9]* ]] && when="at $when"
+  echo "$when"
 }

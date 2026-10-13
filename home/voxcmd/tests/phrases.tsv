@@ -121,3 +121,15 @@ click the	picker	filler words are no target: the Cursor binds keep it
 double click it	none	filler words are no target: same as without the Click integration
 triple click settings	Click/triple_click	the stand-alone Settings beats the Open Settings run
 triple click it	none	filler words are no target: same as without the Click integration
+join my meeting	Calendar/open_meeting
+open my meeting	Calendar/open_meeting
+what's my next meeting	Calendar/next
+what's next on my calendar	Calendar/next
+what's on my calendar today	Calendar/day
+what's on my calendar tomorrow	Calendar/day
+what's on my calendar	Calendar/day_today
+what's on my calendar banana	none	only a day word is a day
+new meeting tomorrow at 3 pm for an hour called Design review with alice@example.com	Calendar/new
+new meeting	Calendar/new_blank
+open my calendar	Calendar/calendar
+go to my calendar	Calendar/calendar
