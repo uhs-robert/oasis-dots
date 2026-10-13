@@ -60,6 +60,12 @@ open_in_firefox() {
   setsid -f firefox --new-tab "$1" >/dev/null 2>&1 </dev/null
 }
 
+# Notification bodies are rendered as rich text by the bar, and anyone can send an invite with markup in its title.
+# & goes first, so the entities added after it are not escaped again.
+escape_markup() {
+  sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g' <<<"$1"
+}
+
 # ---- Events ----------------------------------------------------------------------------------------------------
 
 # Prints the cache's timed, uncancelled events as a JSON array with start_epoch and end_epoch added. All-day events
@@ -106,7 +112,7 @@ open_meeting() {
     echo "No more meetings today"
     return
   fi
-  title=$(jq -r '.title // "Untitled"' <<<"$event")
+  title=$(escape_markup "$(jq -r '.title // "Untitled"' <<<"$event")")
   link=$(jq -r '.join_url // .event_url // empty' <<<"$event")
   if [ -z "$link" ]; then
     echo "$title has no meeting link"
@@ -133,7 +139,7 @@ next_meeting() {
     echo "No upcoming meetings"
     return
   fi
-  title=$(jq -r '.title // "Untitled"' <<<"$event")
+  title=$(escape_markup "$(jq -r '.title // "Untitled"' <<<"$event")")
   start_epoch=$(jq -r .start_epoch <<<"$event")
   message="$title $(format_at "$start_epoch")"
   if [ "$(date -d "@$start_epoch" +%F)" = "$(date +%F)" ]; then
