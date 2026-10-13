@@ -35,14 +35,14 @@ calendar-sync --ics feed.ics       # read a file instead of rbw and the network
 ```json
 { "updated": "ISO8601", "source": "ical", "events": [
   { "uid": "...", "title": "...", "start": "ISO8601", "end": "ISO8601", "all_day": false,
-    "location": "...", "meet_url": "https://meet.google.com/...|null",
+    "location": "...", "join_url": "https://meet.google.com/...|https://teams.microsoft.com/...|null",
     "event_url": "https://calendar.google.com/...", "status": "confirmed|tentative|cancelled",
     "organizer": "...", "attendees": ["..."] } ] }
 ```
 
 - Times carry the local UTC offset. An all-day event runs from local midnight of its first day to local midnight after its last (exclusive end).
 - `uid` is the feed's UID; an occurrence of a recurring event adds `#<original start>` so every entry is unique.
-- `meet_url` comes from `X-GOOGLE-CONFERENCE`, else a Meet link in the location, description or URL.
+- `join_url` is the link that joins the call, https only. A Google Meet link wins: `X-GOOGLE-CONFERENCE`, else a Meet link in the location, description or URL. Otherwise a Microsoft Teams link: `X-MICROSOFT-SKYPETEAMSMEETINGURL`, else a `teams.microsoft.com/l/meetup-join/` link in the description or location.
 - `event_url` is Google's event page when it can be derived from the feed's UID and calendar id, and otherwise the calendar's day view for the event's date.
 
 ## Tests
