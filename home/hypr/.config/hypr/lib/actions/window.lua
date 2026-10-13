@@ -112,9 +112,11 @@ end
 
 _G._hv_cycle_float = function(dir) Window.cycle_float(dir)() end
 
---- Focus Quickshell's notification toasts, or cycle floats when none is showing.
+--- Focus a notification toast, else an open bar popup, else cycle floats.
 --- @param dir "next"|"prev"
 --- @return fun()
-Window.focus_toast_or_float = function(dir) return Hypr.exec(require("lib.scripts").focus_toast_or_float .. " " .. dir) end
+Window.focus_toast_popup_or_float = function(dir)
+  return Hypr.exec(require("lib.scripts").focus_toast_popup_or_float .. " " .. dir)
+end
 
 return Window

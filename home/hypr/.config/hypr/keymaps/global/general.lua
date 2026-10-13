@@ -25,8 +25,8 @@ Bind.keys(Direction.binds(focus_actions, "Focus",       Bind.leader,  { submap_u
 Bind.keys(Direction.binds(move_actions,  "Move Window", shift_leader, { submap_universal = true }))
 
 -- Float Cycle (notification toasts first)
-Bind.leader_key("BRACKETLEFT",  Window.focus_toast_or_float("prev"), "Prev Toast/Float")
-Bind.leader_key("BRACKETRIGHT", Window.focus_toast_or_float("next"), "Next Toast/Float")
+Bind.leader_key("BRACKETLEFT",  Window.focus_toast_popup_or_float("prev"), "Prev Toast/Popup/Float")
+Bind.leader_key("BRACKETRIGHT", Window.focus_toast_popup_or_float("next"), "Next Toast/Popup/Float")
 
 -- Window Special
 Bind.leader_key("S",         Window.toggle_special("scratchpad"),  OPTS.universal("Toggle Scratchpad"))
