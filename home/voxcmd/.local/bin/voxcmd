@@ -421,7 +421,16 @@ word_match() {
               misses: (($named | length) - ($named_matched | length) + ($spoken | length) - ($spoken_matched | length))})
         | (map(select(.kept)) | any(.[]; .weak | not)) as $has_strong
         | if $trace == 1 then
-            map(if .kept and .weak and $has_strong then .kept = false | .verdict = "dropped: a strong match exists" else . end | del(.misses))
+            # The same ranking and cap as below, so the trace never calls a match kept that the real pick drops.
+            (to_entries | map(select(.value.kept)) | sort_by(.value.misses, (.value.label | length)) | .[10:] | map(.key))
+              as $past_cap
+            | to_entries
+            | map(.key as $index | .value
+              | if .kept and .weak and $has_strong then .kept = false | .verdict = "dropped: a strong match exists"
+                elif ($has_strong | not) and ($index | IN($past_cap[])) then
+                  .kept = false | .verdict = "dropped: past the ten best weak matches"
+                else . end
+              | del(.misses))
           else
             map(select(.kept)) | if $has_strong then map(select(.weak | not)) else sort_by(.misses, (.label | length)) | .[:10] end
             | map(del(.misses, .kept, .verdict))
