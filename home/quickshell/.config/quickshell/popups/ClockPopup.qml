@@ -172,7 +172,8 @@ Popup {
 
     // Opens the first candidate that is an https link, once the popup has let go of the keyboard. Joining and creating both
     // come through here. Firefox handed a URL from a process without an activation token is not raised by the compositor,
-    // so after the launch the script focuses a Firefox window itself, as soon as one exists.
+    // so after the launch the script focuses a Firefox window itself, as soon as one exists. The class is "firefox" on
+    // Arch's build and "org.mozilla.firefox" on others, so it matches either.
     function open_first_link(candidates) {
         const url = candidates.find(u => /^https:\/\//.test(u));
         if (!url) return;
@@ -185,7 +186,7 @@ Popup {
 if command -v firefox >/dev/null; then firefox --new-tab "$1" & else exec xdg-open "$1"; fi
 command -v hyprctl >/dev/null && command -v jq >/dev/null || exit 0
 for _ in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20; do
-  addr=$(hyprctl -j clients | jq -r '[.[] | select(.class == "org.mozilla.firefox")] | sort_by(.focusHistoryID) | .[0].address // empty')
+  addr=$(hyprctl -j clients | jq -r '[.[] | select(.class | test("firefox"; "i"))] | sort_by(.focusHistoryID) | .[0].address // empty')
   [ -n "$addr" ] && break
   sleep 0.25
 done
