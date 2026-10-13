@@ -18,7 +18,7 @@ cd "$repo_dir" || exit 1
 
 # Every step, longest first. The voxcmd steps are timing-sensitive, so they run one after another in a slot
 # of their own, ahead of the rest.
-voxcmd_steps='voxcmd-phrases voxcmd-click voxcmd-calendar'
+voxcmd_steps='voxcmd-phrases voxcmd-click voxcmd-calendar voxcmd-firefox'
 other_steps='check-scope qmllint shellcheck calendar-sync owner-test-bar ship-batch merge-prs shfmt stylua luacheck lock-skins style-exports time-format calendar-sync-syntax agent-hooks stale-shells-hook notification-markup packages symlinks git-diff-check whitespace conflicts'
 
 # Shell files by the group they are linted in. Symlinks are skipped (their target is linted itself).
@@ -70,6 +70,7 @@ step_body() {
   voxcmd-phrases) bash ./home/voxcmd/tests/run-phrases.sh ;;
   voxcmd-click) bash ./home/voxcmd/tests/run.sh ;;
   voxcmd-calendar) bash ./home/voxcmd/tests/run-calendar.sh ;;
+  voxcmd-firefox) bash ./home/voxcmd/tests/run-firefox-extension.sh ;;
   # py_compile would drop a __pycache__ into the stow package, so this parses instead.
   calendar-sync-syntax) python3 -c 'import ast, sys; ast.parse(open(sys.argv[1]).read())' ./home/calendar/.local/bin/calendar-sync ;;
   calendar-sync) bash ./home/calendar/tests/run.sh ;;
@@ -160,7 +161,7 @@ scope_changed_files() {
     lib/check-qml.sh | lib/check-lock-skins.sh | lib/check-style-exports.sh | lib/check-time-format.sh | system/etc/greetd/quickshell/*) scope_qml=1 ;;
     home/quickshell/tests/*) scope_node=1 ;;
     home/quickshell/*) scope_qml=1 scope_node=1 ;;
-    home/voxcmd/*) scope_voxcmd=1 ;;
+    home/voxcmd/* | extras/voxcmd-firefox/*) scope_voxcmd=1 ;;
     home/calendar/*) scope_calendar=1 ;;
     home/claude/.claude/hooks/* | .claude/hooks/*) scope_hooks=1 ;;
     .claude/skills/owner-test-bar/*) scope_bar=1 ;;

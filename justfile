@@ -92,6 +92,14 @@ lint:
 check:
     sh ./lib/check.sh
 
+# Register voxcmd's Firefox native-messaging host (needs the voxcmd package stowed); load extras/voxcmd-firefox in Firefox afterwards
+firefox-host:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    source lib/output.sh
+    source lib/services.sh
+    register_firefox_host
+
 # Opt in to an SSH server reachable only over Tailscale, key login only (needs sudo)
 ssh-server:
     #!/usr/bin/env bash

@@ -195,8 +195,18 @@ case_check_scope_for_own_test() {
   expect_skipped voxcmd-click qmllint
 }
 
+case_firefox_extension() {
+  start_case 'Firefox extension script'
+  local script
+  script=$(first_tracked 'extras/voxcmd-firefox/*.js') || return 0
+  echo '// x' >>"$script"
+  plan
+  expect_ran voxcmd-firefox
+  expect_skipped qmllint luacheck shellcheck
+}
+
 for case_fn in case_readme case_home_qml case_greeter_lua case_voxcmd_runner case_deleted_sourced_helper \
-  case_unmapped_path case_check_sh case_full_override case_check_scope_for_check_script case_check_scope_for_own_test; do
+  case_unmapped_path case_check_sh case_full_override case_check_scope_for_check_script case_check_scope_for_own_test case_firefox_extension; do
   report "$case_fn"
 done
 

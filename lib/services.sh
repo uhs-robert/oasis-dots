@@ -355,6 +355,30 @@ offer_calendar_setup() {
   fi
 }
 
+# Registers voxcmd's Firefox host with Firefox. The manifest needs the host's absolute path, so it cannot be a stowed
+# file. Without the stowed voxcmd package there is no host to register: silent from the installer, a warning from `just`.
+register_firefox_host() {
+  local host="$HOME/.local/share/voxcmd/firefox-host"
+  local manifest="$HOME/.mozilla/native-messaging-hosts/voxcmd_firefox.json"
+  if [[ ! -x "$host" ]]; then
+    [[ "${1:-}" == --quiet ]] || warn "voxcmd's Firefox host is not stowed ($host), run: just stow voxcmd"
+    return 0
+  fi
+  if [[ "$host" == *[\"\\]* ]]; then
+    warn "Not registering the Firefox host: its path has a quote or backslash"
+    return 1
+  fi
+  local wanted
+  wanted=$(printf '{\n  "name": "voxcmd_firefox",\n  "description": "voxcmd tab control",\n  "path": "%s",\n  "type": "stdio",\n  "allowed_extensions": ["voxcmd@oasis-dots"]\n}\n' "$host")
+  if [[ "$(cat "$manifest" 2>/dev/null)" == "$wanted" ]]; then
+    info "Firefox host already registered"
+    return 0
+  fi
+  mkdir -p "$(dirname "$manifest")"
+  printf '%s\n' "$wanted" >"$manifest"
+  success "Firefox host registered: load extras/voxcmd-firefox in Firefox (see its README)"
+}
+
 # Checks for the Lua-config Hyprland runtime, then says how to start the session the installer set up.
 print_next_steps() {
   if ! command -v start-hyprland &>/dev/null; then
