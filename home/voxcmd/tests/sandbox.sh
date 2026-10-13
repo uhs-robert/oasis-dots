@@ -51,7 +51,8 @@
 #                                     then reads the turn from $SANDBOX_DIR/voxtype-turn: SILENCE is its no-speech
 #                                     exit (3) after half a second, any other turn waits on `$SANDBOX_AUTOSTOP_SLEEP 30`
 #                                     (default sleep; a copy under another name lets a test end leftovers by name).
-#                                     It logs its VOXCMD_AUTOSTOP_NO_SPEECH_SECS as "autostop no_speech_secs=<n>"
+#                                     It logs its VOXCMD_AUTOSTOP_NO_SPEECH_SECS as "autostop no_speech_secs=<n>",
+#                                     then "autostop min_speech_secs=<n> silence_secs=<n>" from the matching variables
 #
 # Hyprland's dispatch, eval and keyword are logged and never sent.
 #
@@ -216,6 +217,7 @@ voxcmd-autostop)
   fi
   [ -e "$SANDBOX_DIR/voxtype-turn" ] || exit 1
   log "no_speech_secs=${VOXCMD_AUTOSTOP_NO_SPEECH_SECS:-default}"
+  log "min_speech_secs=${VOXCMD_AUTOSTOP_MIN_SPEECH_SECS:-default} silence_secs=${VOXCMD_AUTOSTOP_SILENCE_SECS:-default}"
   if [ "$(cat "$SANDBOX_DIR/voxtype-turn")" = SILENCE ]; then
     sleep 0.5
     exit 3
