@@ -14,7 +14,7 @@ The owner tests every Quickshell change on their real bar before merging; this s
 .claude/skills/owner-test-bar/owner-test-bar.sh restore                  # back to the stowed bar on main
 .claude/skills/owner-test-bar/owner-test-bar.sh rebuild <name>           # pick up new commits: restore if running, remove, up with the same branches
 .claude/skills/owner-test-bar/owner-test-bar.sh remove <name>
-.claude/skills/owner-test-bar/owner-test-bar.sh status                   # running qs, test bar HEAD vs its branch tips, hypr and voxcmd swapped or not
+.claude/skills/owner-test-bar/owner-test-bar.sh status                   # running qs, test bar HEAD vs its branch tips (or deleted branches), owner, hypr and voxcmd
 .claude/skills/owner-test-bar/owner-test-bar.sh probe "zoom start" ...   # IPC calls, then new log WARN/ERROR and quickshell layers
 .claude/skills/owner-test-bar/capture.sh <namespace> [--pad N] [--reveal] [--screen NAME] [--out PATH]
 ```
@@ -25,6 +25,8 @@ When the branches touch `home/voxcmd`, `swap` also points every `~/.local/bin` s
 
 Test bars live in `~/.cache/dotfiles/test-bars/<name>`. Rules:
 
+- One session owns the live test bar. `up`, `swap` and `rebuild` record the caller in `test-bars/.owner` (its `uds:` messaging address, session id, bar, branches and time; never a token), and `up`, `swap`, `rebuild` and `restore` refuse while another session's claim is live (its socket exists), naming the address to SendMessage. A claim whose socket is gone is reported as stale and taken over. Pass `--take` only when the owner approved taking the bar over. `restore`, and `remove` of the owned bar, clear the claim; `status` shows the owner and whether it is live.
+
 - To add a fix to a test bar, push or commit it to the branch and run `rebuild <name>` (restores the stowed bar if needed, removes, then `up` with the recorded branches). Do not merge into a running test bar's worktree while another process rebases the branch; that raced once and left conflict markers on the live bar.
 - Do not rely on hot-reload after merging into the test worktree; it kept stale code twice. `swap` again instead.
 - After `up`, run `probe` with the feature's IPC entry and read its output before telling the owner it is ready. `probe` exits 1 on a new ERROR, a WARN repeated more than 5 times, or a load failure such as `X is not a type` (also checked by `verify`). It acts on the owner's live bar, so use it for that load check and for a test bar the owner is already using, not to explore the feature.
@@ -32,3 +34,4 @@ Test bars live in `~/.cache/dotfiles/test-bars/<name>`. Rules:
 - Agents' own visual checks, IPC driving, key presses and screenshots never go through the live bar. Use the `shadow` skill (`shadow.sh up <name> <branch>` runs a branch in an invisible nested Hyprland), `shadow/smoke.sh` for the one-pass sheet of popup, OSD, which-key and region selector per style, and `lock-preview` for lock skins. No `qs ipc`, `wtype`, `grim` or `hyprctl` dispatch against the owner's session unless the owner asks for it.
 - Tell the owner exactly what to try, then wait for their verdict.
 - When done: `restore`, then `remove`.
+- After changing `owner-test-bar.sh`, run `tests/run.sh` (the ownership claim and branch status, against a temp cache dir).
