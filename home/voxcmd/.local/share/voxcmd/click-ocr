@@ -165,20 +165,27 @@ ocr_started=$EPOCHREALTIME
 # it went on running after the run ended. The groups are remembered from launch rather than read back from `jobs -p`:
 # under load that listing missed live strips, which then slept on after the run ended.
 set -m
-strip_pgids=()
+declare -A live_strip_pgids=()
 for ((i = 0; i < strips; i++)); do
   ocr_strip "$i" &
-  strip_pgids+=("$!")
+  live_strip_pgids[$!]=1
 done
 set +m
 # The first strip to fail ends the run: the others are killed, children included, rather than left to finish.
+# A strip that succeeded leaves the set, since its PID may already lead an unrelated process group.
 for ((i = 0; i < strips; i++)); do
-  wait -n || {
+  if wait -n -p finished_pid; then
+    unset "live_strip_pgids[$finished_pid]"
+  else
+    live_groups=()
+    for pgid in "${!live_strip_pgids[@]}"; do
+      live_groups+=("-$pgid")
+    done
     # Fails when every group is already gone, which set -e would turn into an exit without the message below.
-    kill -- "${strip_pgids[@]/#/-}" 2>/dev/null || true
+    kill -- "${live_groups[@]}" 2>/dev/null || true
     echo "ocr failed" >&2
     exit 1
-  }
+  fi
 done
 
 ocr_ms=$(((${EPOCHREALTIME/./} - ${ocr_started/./}) / 1000))
