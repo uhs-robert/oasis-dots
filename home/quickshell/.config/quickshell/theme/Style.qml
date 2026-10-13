@@ -5,8 +5,8 @@ import Quickshell
 import Quickshell.Io
 import "Watch.js" as Watch
 import "styles/index.js" as Styles
-import "../components/bar_icons/IconSets.js" as IconSets
-import "../components/clock_marker/MarkerTokens.js" as MarkerTokens
+import "icon_sets/IconSets.js" as IconSets
+import "MarkerTokens.js" as MarkerTokens
 
 Singleton {
     id: root

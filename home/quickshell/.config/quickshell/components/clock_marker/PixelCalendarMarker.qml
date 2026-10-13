@@ -2,7 +2,7 @@
 import QtQuick
 import ".."
 import "../../theme"
-import "../bar_icons/GameboySprites.js" as GameboySprites
+import "../../theme/icon_sets/GameboySprites.js" as GameboySprites
 
 // gameboy: a pixel calendar and 12M before a meeting; the same calendar beside MTG during one.
 MarkerBase {

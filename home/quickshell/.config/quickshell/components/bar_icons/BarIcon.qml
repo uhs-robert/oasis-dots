@@ -2,7 +2,7 @@
 import QtQuick
 import "../../theme"
 import ".."
-import "IconSets.js" as IconSets
+import "../../theme/icon_sets/IconSets.js" as IconSets
 
 // A bar module's icon: the pixel sprite Style.bar_icon_set draws for `name` and `variant`, else the module's Nerd Font `glyph`.
 Item {
