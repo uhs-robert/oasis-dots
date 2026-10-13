@@ -592,7 +592,8 @@ Popup {
                     Repeater {
                         model: root.agenda_events
 
-                        RowLayout {
+                        // The click area overlays the row as a sibling: anchors do not apply to layout-managed children.
+                        Item {
                             id: agenda_row
                             required property var modelData
                             required property int index
@@ -602,41 +603,45 @@ Popup {
 
                             Layout.fillWidth: true
                             Layout.preferredHeight: line_probe.implicitHeight
-                            spacing: 6
-
-                            Text {
-                                Layout.preferredWidth: 8
-                                text: agenda_row.chosen ? ">" : ""
-                                color: root.st.text_accent
-                                font.family: root.st.font_family
-                                font.pixelSize: root.st.fs(-1)
-                            }
-
-                            Text {
-                                Layout.preferredWidth: Math.ceil(time_floor.advanceWidth)
-                                text: agenda_row.modelData.all_day ? "all day" : TimeFormat.format(new Date(agenda_row.modelData.start_ms))
-                                color: agenda_row.live ? Style.pal.today : root.st.text_dim
-                                font.family: root.st.font_family
-                                font.pixelSize: root.st.fs(-1)
-                            }
-
-                            Text {
-                                Layout.fillWidth: true
-                                text: agenda_row.modelData.title
-                                textFormat: Text.PlainText
-                                maximumLineCount: 1
-                                color: agenda_row.chosen ? root.st.text_fg : root.st.text_dim
-                                font.family: root.st.font_family
-                                font.pixelSize: root.st.fs(-1)
-                                font.bold: agenda_row.chosen
-                                elide: Text.ElideRight
-                            }
 
                             MouseArea {
                                 anchors.fill: parent
                                 onClicked: {
                                     root.pick_event(root.agenda_first + agenda_row.index);
                                     ThemeAudio.play("cursor");
+                                }
+                            }
+
+                            RowLayout {
+                                anchors.fill: parent
+                                spacing: 6
+
+                                Text {
+                                    Layout.preferredWidth: 8
+                                    text: agenda_row.chosen ? ">" : ""
+                                    color: root.st.text_accent
+                                    font.family: root.st.font_family
+                                    font.pixelSize: root.st.fs(-1)
+                                }
+
+                                Text {
+                                    Layout.preferredWidth: Math.ceil(time_floor.advanceWidth)
+                                    text: agenda_row.modelData.all_day ? "all day" : TimeFormat.format(new Date(agenda_row.modelData.start_ms))
+                                    color: agenda_row.live ? Style.pal.today : root.st.text_dim
+                                    font.family: root.st.font_family
+                                    font.pixelSize: root.st.fs(-1)
+                                }
+
+                                Text {
+                                    Layout.fillWidth: true
+                                    text: agenda_row.modelData.title
+                                    textFormat: Text.PlainText
+                                    maximumLineCount: 1
+                                    color: agenda_row.chosen ? root.st.text_fg : root.st.text_dim
+                                    font.family: root.st.font_family
+                                    font.pixelSize: root.st.fs(-1)
+                                    font.bold: agenda_row.chosen
+                                    elide: Text.ElideRight
                                 }
                             }
                         }

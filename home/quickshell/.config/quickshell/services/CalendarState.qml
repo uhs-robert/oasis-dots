@@ -18,8 +18,11 @@ Singleton {
 
     // True once a cache file has been read, even an empty one.
     property bool configured: false
-    // Set while calendar-sync's error.json exists; the events are then the last good copy and may be stale.
-    property string error: ""
+    // calendar-sync's error.json: the events are then the last good copy and may be stale. An error older than the
+    // cache's `updated` is left over from before a good sync, so it is ignored.
+    property string error_message: ""
+    property double error_at_ms: 0
+    readonly property string error: root.error_message !== "" && (!root.configured || root.error_at_ms >= root.updated_ms) ? root.error_message : ""
     property double updated_ms: 0
     // Sorted by start; each has start_ms, end_ms and a day_keys list.
     property var events: []
@@ -175,12 +178,17 @@ Singleton {
         onFileChanged: reload()
         onLoaded: {
             let message = "";
+            let at_ms = NaN;
             try {
-                message = String(JSON.parse(text()).error || "");
+                const data = JSON.parse(text());
+                message = String(data.error || "");
+                at_ms = Date.parse(data.at);
             } catch (e) {}
-            root.error = message || "sync failed";
+            // Without a readable time the error counts as current.
+            root.error_at_ms = isNaN(at_ms) ? Number.MAX_VALUE : at_ms;
+            root.error_message = message || "sync failed";
         }
-        onLoadFailed: root.error = ""
+        onLoadFailed: root.error_message = ""
     }
 
     SystemClock {
