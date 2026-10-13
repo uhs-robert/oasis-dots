@@ -10,7 +10,7 @@ Personal Arch Linux dotfiles deployed with GNU Stow. Two deployment targets, eac
 - `system/` — files rsynced into `/` (`/etc`, `/opt`, `/usr/local/bin`). Not stowed; copied.
 - `extras/` — configs imported by hand into other apps (browser extensions). Never stowed or copied; keep anything Stow-shaped in `home/`.
 
-`.stowrc` pins `--dir=home --target=~`, so a bare `stow <package>` from the repo root works.
+`.stowrc` pins `--dir=home --target=~`, so a bare `stow <package>` from the repo root works, except for the packages in `NO_FOLD_PACKAGES` (`lib/stow.sh`: `systemd`, `calendar`). systemd ignores drop-in and `.wants` directories that are symlinks, and stow folds a directory missing from `~` into one, so those packages are stowed with `--no-folding` by `do_stow` and the `just` stow recipes; use `just stow`/`restow`, not a bare `stow`, for them. Any new package shipping `~/.config/systemd/user` units or drop-ins goes in that list. `just migrate-systemd [--dry-run]` (`lib/migrate.sh`, idempotent) repairs a machine stowed before this: it unfolds the tree, moves generated files out of the repo into `~`, and enables voxtype; the installer runs its unfold step before stowing.
 
 ## Commands
 
@@ -39,7 +39,7 @@ Formatting scope is deliberately narrow — whitespace and stylua checks only co
 
 ## Installer architecture
 
-`install.sh` is a thin orchestrator: parse flags, then call functions sourced from `lib/`. Each lib file owns one concern — `packages.sh` (manifest reading + pacman/pipx/luarocks), `arch.sh` (paru/AUR), `rust.sh`, `fonts.sh`, `stow.sh` (stowing + tmuxifier/neovim/root-symlink bootstrap), `repos.sh` (external repos in `repos/`), `services.sh` (greetd, keyd, Steam, Nvidia, voxtype, the calendar sync timer and its `calendar-sync setup` offer when the optional `calendar` package is stowed, dev runtimes), `distro.sh`, `output.sh` (`info`/`warn`/`success`/`die`).
+`install.sh` is a thin orchestrator: parse flags, then call functions sourced from `lib/`. Each lib file owns one concern — `packages.sh` (manifest reading + pacman/pipx/luarocks), `arch.sh` (paru/AUR), `rust.sh`, `fonts.sh`, `stow.sh` (stowing, `NO_FOLD_PACKAGES`, tmuxifier/neovim/root-symlink bootstrap), `repos.sh` (external repos in `repos/`), `services.sh` (greetd, keyd, Steam, Nvidia, voxtype, the calendar sync timer and its `calendar-sync setup` offer when the optional `calendar` package is stowed, dev runtimes), `migrate.sh` (one-time layout migrations), `distro.sh`, `output.sh` (`info`/`warn`/`success`/`die`).
 
 New install behavior belongs in the matching lib function, not inline in `install.sh`.
 

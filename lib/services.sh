@@ -314,6 +314,13 @@ setup_voxtype() {
   else
     warn "User systemd not available, run after login: voxtype setup systemd"
   fi
+  # `voxtype setup systemd` exits 0 even when its systemctl calls fail.
+  if systemctl --user show-environment &>/dev/null; then
+    local state
+    for state in is-enabled is-active; do
+      systemctl --user "$state" --quiet voxtype || warn "voxtype is not ${state#is-} after setup, check: systemctl --user status voxtype"
+    done
+  fi
   success "voxtype configured"
 }
 
