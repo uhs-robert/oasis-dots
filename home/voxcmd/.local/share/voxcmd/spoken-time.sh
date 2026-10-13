@@ -110,11 +110,17 @@ parse_duration() {
 # whichever of the two comes next.
 parse_clock() {
   local -a parse_words=() clock_words=()
-  local word day="" weekday="" meridiem="" anchor="${2:-next}"
+  local word day="" weekday="" weekday_prefix="" meridiem="" anchor="${2:-next}" word_at
   read -ra parse_words <<<"$1"
-  for word in "${parse_words[@]}"; do
+  for word_at in "${!parse_words[@]}"; do
+    word="${parse_words[word_at]}"
     case "$word" in
-    at | o | oh | oclock | clock | the | this | on | next) ;;
+    at | o | oh | oclock | clock | the | this) ;;
+    # Only before a weekday, so "9 am next in tokyo" keeps reading as it did.
+    on | next)
+      is_weekday "${parse_words[word_at + 1]-}" || clock_words+=("$word")
+      [ "$word" != next ] || ! is_weekday "${parse_words[word_at + 1]-}" || weekday_prefix=next
+      ;;
     today) day=today ;;
     tomorrow) day=tomorrow ;;
     monday | tuesday | wednesday | thursday | friday | saturday | sunday) weekday="$word" ;;
@@ -162,7 +168,7 @@ parse_clock() {
   now=$(date +%s)
   if [ -n "$weekday" ]; then
     [ -z "$day" ] || return 1
-    base=$(date -d "$weekday" +%F)
+    base=$(date -d "${weekday_prefix:+$weekday_prefix }$weekday" +%F)
     bases=("$base" "$(date -d "$base +7 days" +%F)")
   else
     [ "$anchor" = next ] || [ -n "$day" ] || day=today
@@ -195,15 +201,20 @@ clock_time_format() {
   fi
 }
 
-# Prints the date ("2026-10-13") a day word names: "today", "tomorrow", "friday", "next friday". Fails on anything else.
+is_weekday() {
+  case "$1" in
+  monday | tuesday | wednesday | thursday | friday | saturday | sunday) ;;
+  *) return 1 ;;
+  esac
+}
+
+# Prints the date ("2026-10-13") a day word names: "today", "tomorrow", "friday", "next friday". A bare weekday
+# may be today; "next friday" never is. Fails on anything else.
 parse_day() {
+  local weekday="${1#next }"
   case "$1" in
   today | tomorrow) date -d "$1" +%F ;;
-  monday | tuesday | wednesday | thursday | friday | saturday | sunday) date -d "$1" +%F ;;
-  next\ monday | next\ tuesday | next\ wednesday | next\ thursday | next\ friday | next\ saturday | next\ sunday)
-    date -d "${1#next }" +%F
-    ;;
-  *) return 1 ;;
+  *) is_weekday "$weekday" && date -d "$1" +%F ;;
   esac
 }
 

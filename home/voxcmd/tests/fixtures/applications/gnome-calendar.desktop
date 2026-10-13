@@ -1,0 +1,5 @@
+[Desktop Entry]
+Type=Application
+Name=Calendar
+Exec=gnome-calendar
+StartupWMClass=gnome-calendar

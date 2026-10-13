@@ -133,3 +133,5 @@ new meeting tomorrow at 3 pm for an hour called Design review with alice@example
 new meeting	Calendar/new_blank
 open my calendar	Calendar/calendar
 go to my calendar	Calendar/calendar
+launch the calendar	Calendar/calendar	an installed Calendar app must not open a picker
+open calendar	Apps/open	the bare word still means the installed app

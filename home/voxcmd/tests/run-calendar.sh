@@ -8,6 +8,9 @@ set -euo pipefail
 
 tests_dir=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
 if [ -z "${SANDBOX_DIR:-}" ]; then
+  unset VOXCMD_EXTRA_INTEGRATIONS
+  # Installed apps come from the fixture alone: an installed Calendar app must not turn "open my calendar" into a picker.
+  export XDG_DATA_HOME="$tests_dir/fixtures" XDG_DATA_DIRS="$tests_dir/fixtures"
   exec "$tests_dir/sandbox.sh" "$0" "$@"
 fi
 
@@ -75,6 +78,21 @@ expect "in-progress meeting with a Meet link" "firefox --new-tab https://meet.ex
 expect_absent "cancelled meeting" "cancelled"
 expect "says which meeting" "Joining Standup"
 
+# Focus (9:00-12:00, no Meet) overlapping Standup (10:00-10:15, Meet) at 10:05; every event has an event_url, as
+# calendar-sync writes them.
+write_cache \
+  "$(event i "Focus" -3900 6900 null https://calendar.example.com/focus)" \
+  "$(event j "Standup" -300 600 https://meet.example.com/standup https://calendar.example.com/standup)"
+say "join my meeting"
+expect "overlap joins the Meet meeting" "firefox --new-tab https://meet.example.com/standup"
+expect_absent "overlap skips the long event" "calendar.example.com/focus"
+
+write_cache \
+  "$(event k "Focus" -3900 6900 null https://calendar.example.com/focus)" \
+  "$(event l "Planning" 240 1800 https://meet.example.com/planning https://calendar.example.com/planning)"
+say "join my meeting"
+expect "Meet meeting starting within 5 minutes beats one without Meet" "firefox --new-tab https://meet.example.com/planning"
+
 write_cache "$(event c "Review" -600 600 null https://calendar.example.com/review)"
 say "open my meeting"
 expect "event page when there is no Meet link" "firefox --new-tab https://calendar.example.com/review"
@@ -127,6 +145,20 @@ expect "new meeting" "firefox --new-tab https://calendar.google.com/calendar/ren
 say "new meeting tomorrow at 3 pm for 30 minutes called Lunch with Bob"
 expect "title keeps 'with' and its casing" "&text=Lunch%20with%20Bob&dates=${tomorrow}T150000/${tomorrow}T153000&ctz=UTC"
 expect_absent "no guests" "&add="
+say "new meeting tomorrow at 3 pm for an hour called Design review with alice@example.com and bob@example.com"
+expect "two guests, title cut at the first with" "&text=Design%20review&dates=${tomorrow}T150000/${tomorrow}T160000&ctz=UTC&add=alice%40example.com%2Cbob%40example.com"
+say "new meeting friday at 3 called Sync"
+expect "bare 3 is the afternoon" "&text=Sync&dates=$(date -d friday +%Y%m%d)T150000/$(date -d friday +%Y%m%d)T160000"
+say "new meeting tomorrow at 9 called Sync"
+expect "bare 9 is the morning" "&dates=${tomorrow}T090000/${tomorrow}T100000"
+say "new meeting tomorrow at 12 called Sync"
+expect "bare 12 is noon" "&dates=${tomorrow}T120000/${tomorrow}T130000"
+say "new meeting tomorrow at 9 am for 2 hours long called Sync"
+expect "for N hours long" "&dates=${tomorrow}T090000/${tomorrow}T110000"
+say "new meeting tomorrow at 9 am 2 hours long called Sync"
+expect "N hours long" "&dates=${tomorrow}T090000/${tomorrow}T110000"
+say "new meeting for 3 pm tomorrow called Sync"
+expect "for before a clock time" "&dates=${tomorrow}T150000/${tomorrow}T160000"
 say "new meeting tomorrow at 3 pm"
 expect "no title" "render?action=TEMPLATE&dates=${tomorrow}T150000/${tomorrow}T160000&ctz=UTC"
 say "new meeting friday called Offsite"
@@ -152,11 +184,11 @@ expect_value() {
 }
 
 expect_value "parse_day weekday" "$(date -d friday +%F)" "$(parse_day friday)"
-expect_value "parse_day next weekday" "$(date -d friday +%F)" "$(parse_day "next friday")"
+expect_value "parse_day next weekday" "$(date -d "next friday" +%F)" "$(parse_day "next friday")"
 expect_value "parse_day tomorrow" "$(date -d tomorrow +%F)" "$(parse_day tomorrow)"
 expect_value "parse_day rejects words" "fail" "$(parse_day banana || echo fail)"
 expect_value "parse_clock weekday" "$(date -d "friday 09:00" +%s)" "$(parse_clock "friday at 9 am")"
-expect_value "parse_clock next weekday" "$(date -d "friday 15:00" +%s)" "$(parse_clock "next friday at 3 pm")"
+expect_value "parse_clock next weekday" "$(date -d "next friday 15:00" +%s)" "$(parse_clock "next friday at 3 pm")"
 # The same weekday is a week out once its time has passed, and today before it.
 today_name=$(date +%A)
 today_name=${today_name,,}
@@ -165,6 +197,10 @@ if [ "$(date +%F)" = "$(date -d '-1 hour' +%F)" ]; then
   expect_value "parse_clock same weekday, time passed" "$(date -d "$today_name +7 days $(date -d '-1 hour' +%H:%M)" +%s)" \
     "$(parse_clock "$today_name $past")"
 fi
+# "next <today's weekday>" is a week out, whichever weekday the test runs on.
+expect_value "next today's weekday" "$(date -d "$today_name +7 days" +%F)" "$(parse_day "next $today_name")"
+expect_value "parse_clock next today's weekday" "$(date -d "$today_name +7 days 15:00" +%s)" "$(parse_clock "next $today_name 3 pm")"
+expect_value "next elsewhere is not a day word" "fail" "$(parse_clock "9 am next in tokyo" || echo fail)"
 expect_value "parse_clock rejects day clash" "fail" "$(parse_clock "tomorrow friday at 3" || echo fail)"
 expect_value "parse_duration" "5400" "$(parse_duration "an hour and a half")"
 
