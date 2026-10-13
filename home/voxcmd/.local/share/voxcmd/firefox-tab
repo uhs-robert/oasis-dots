@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Firefox tabs, sites and link hints for voxcmd's firefox.sh, read from the default profile without writing to it.
+"""Firefox tabs and sites for voxcmd's firefox.sh, read from the default profile without writing to it.
 
   firefox-tab tabs                     every tab as JSON: window, tab, title, url, selected, last_accessed, address
   firefox-tab places <word>...         bookmarks, history and origins whose title or url holds every word, as JSON
@@ -10,13 +10,10 @@
                                        exit 3 without doing anything when no Firefox window is open
   firefox-tab open [--here] <url>      open the url in a new tab, or the url or text in the focused tab
   firefox-tab search <text>            search the text with the default engine in a new tab
-  firefox-tab hints [number]           numbered link hints (Tridactyl's <A-F12>, bound in tridactylrc), following that
-                                       number when given (typed as a count before the key)
-  firefox-tab dismiss-hints            press Escape in the focused Firefox window, leaving hint mode
   firefox-tab new-tab | close-tab      press Ctrl+T or Ctrl+W in Firefox
   firefox-tab tridactyl                print how Tridactyl is loaded: store, temporary or none
 
-Tab selection and hints are typed with wtype, and only into a Firefox window that has focus. VOXCMD_FIREFOX_TRIDACTYL=on|off overrides the detection.
+Keys are typed with wtype, and only into a Firefox window that has focus. VOXCMD_FIREFOX_TRIDACTYL=on|off overrides the detection.
 """
 import configparser
 import json
@@ -31,10 +28,8 @@ import tempfile
 import time
 
 PROFILE_ROOTS = ("~/.config/mozilla/firefox", "~/.mozilla/firefox")
-# Seconds between typed steps: Tridactyl's escape hatch, command line and hint mode change state asynchronously.
+# Seconds between typed steps: Tridactyl's escape hatch and command line change state asynchronously.
 KEY_PAUSE = 0.25
-# The rc key that shows numbered link hints, as Tridactyl writes it; the wtype step in hints() sends the same key.
-HINTS_KEY = "<A-F12>"
 
 
 def fail(message):
@@ -517,52 +512,6 @@ def query_places(connection, words):
     return rows
 
 
-# ---- hints -----------------------------------------------------------------------------------------------------
-
-
-def rc_files():
-    """The rc file Tridactyl reads, the first that exists in its own order; none when there is no rc."""
-    config_home = os.environ.get("XDG_CONFIG_HOME") or "~/.config"
-    candidates = (f"{config_home}/tridactyl/tridactylrc", "~/.config/tridactyl/tridactylrc", "~/.tridactylrc", "~/_tridactylrc")
-    return [path for path in map(os.path.expanduser, candidates) if os.path.isfile(path)][:1]
-
-
-def rc_binds(key):
-    """Whether Tridactyl's rc binds the key. Whether Firefox has loaded the rc cannot be read from the profile, so
-    this catches the usual miss, an rc without the bind. A setup with no rc file is not judged."""
-    for path in rc_files():
-        try:
-            with open(path) as file:
-                return any(re.match(rf"\s*bind!?\s+{re.escape(key)}\s", line) for line in file)
-        except OSError:
-            return True
-    return True
-
-
-def hints(number):
-    """Shows numbered link hints with Tridactyl's HINTS_KEY, which the rc binds (home/tridactyl's tridactylrc). The escape
-    hatch comes first to take focus back from the address bar or a page field, then Escape to leave hint, insert or
-    command mode. A number is typed as a count before the key, which follows that
-    hint, so no command line opens; the bind refuses a number with no hint."""
-    if number and not re.fullmatch(r"[1-9][0-9]{0,3}", number):
-        fail(f"not a link number: {number}")
-    if tridactyl(profile_dir()) == "none":
-        fail("link hints need Tridactyl")
-    if not rc_binds(HINTS_KEY):
-        fail(f"link hints need {HINTS_KEY} bound in Tridactyl's tridactylrc")
-    focused_firefox(focus_recent=True)
-    steps = [["-M", "alt", ",", "-m", "alt"], ["-k", "Escape"]]
-    if number:
-        steps.append(["--", number])
-    keys(*steps, ["-M", "alt", "-k", "F12", "-m", "alt"])
-
-
-def dismiss_hints():
-    """Leaves hint mode with Escape, in the Firefox window that has focus, and nowhere else."""
-    focused_firefox(focus_recent=False)
-    keys(["-k", "Escape"])
-
-
 # ---- main ------------------------------------------------------------------------------------------------------
 
 
@@ -585,10 +534,6 @@ def main(args):
         open_url(rest[-1], here)
     elif command == "search" and rest:
         search(" ".join(rest))
-    elif command == "hints" and len(rest) <= 1:
-        hints(rest[0] if rest else "")
-    elif command == "dismiss-hints":
-        dismiss_hints()
     elif command == "new-tab":
         focused_firefox(focus_recent=True)
         keys(["-M", "ctrl", "t", "-m", "ctrl"])

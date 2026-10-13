@@ -169,12 +169,6 @@ open code hub	Firefox/open_site	no app is called that: the site fallback
 open tubesite	Firefox/open_site	no app is called that: the site fallback
 open zebra crossing	none	no app, keybind or site
 open firefox	Apps/open	an app wins over sites
-show links	Firefox/show_links
-link hints	Firefox/show_links
-follow link 3	Firefox/follow_link
-follow link three	Firefox/follow_link
-hide links	Firefox/hide_links
-close the links	Firefox/hide_links
 click link 3	Click/no_text	click keeps its verb
 new tab	Firefox/new_tab
 open a new tab	Firefox/new_tab

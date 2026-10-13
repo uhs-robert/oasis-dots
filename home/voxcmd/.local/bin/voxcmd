@@ -206,7 +206,7 @@ compile_pattern() {
 # Callers source each integration in its own subshell so their variables and functions never collide.
 # A `declare` in a file sourced from a function is local to that function, so the arrays are copied out to globals.
 load_integration() {
-  unset -f candidates help_choices pick_box session_rewrite session_ended
+  unset -f candidates help_choices pick_box session_rewrite
   name="" confirm=0 fallback=0 silent=0 target_match=fuzzy help_action="" action_labels=1 pick_command="" private_labels=0
   session_exit_phrases=""
   local -a verbs=() examples=() confirm_labels=() match_ignore_words=() silent_actions=() force_prefixes=() session_miss_actions=()
@@ -1096,13 +1096,11 @@ session_set_owner() {
     --argjson owner "$1" --arg owner_start "$(process_start_time "$1")"
 }
 
-# session_begin <kind> <integration file> <label> [reply]: opens a session owned by this process and listens for its first
-# turn. With reply, its turns are listened for like a picker's reply: a short answer ("3") is a turn, and silence ends
-# the listen after auto-stop's own allowance rather than the session's.
+# session_begin <kind> <integration file> <label>: opens a session owned by this process and listens for its first turn.
 # A second call while one is open only keeps it going, so saying the entry phrase again changes nothing. Auto-stop's
 # silence timeout is the only way an idle session ends, so without it there is none.
 session_begin() {
-  local kind="$1" file="$2" label="$3" style="${4:-}" why
+  local kind="$1" file="$2" label="$3" why
   session_state >/dev/null && return 0
   if [ ! -x "$voxcmd_autostop" ]; then
     why="voxcmd-autostop is missing"
@@ -1113,17 +1111,17 @@ session_begin() {
     notify info "voxcmd: $label needs auto-stop" "$why"
     return 0
   fi
-  session_locked session_create "$kind" "$file" "$label" "$style" || return 0
+  session_locked session_create "$kind" "$file" "$label" || return 0
   debug "session: $kind begins"
   session_listen
 }
 session_create() {
-  local kind="$1" file="$2" label="$3" style="$4"
+  local kind="$1" file="$2" label="$3"
   ! session_state_locked >/dev/null || return 1
-  jq -n -c --arg kind "$kind" --arg integration "$file" --arg label "$label" --arg style "$style" --argjson started "$(date +%s)" \
+  jq -n -c --arg kind "$kind" --arg integration "$file" --arg label "$label" --argjson started "$(date +%s)" \
     --argjson owner $$ --arg owner_start "$(process_start_time $$)" \
     '{kind: $kind, integration: $integration, label: $label, started: $started, owner: $owner, owner_start: $owner_start,
-      unclear: 0, turns: 0, reply: ($style == "reply")}' >"$session_file.$$"
+      unclear: 0, turns: 0}' >"$session_file.$$"
   mv -f "$session_file.$$" "$session_file"
 }
 
@@ -1137,19 +1135,8 @@ session_end_locked() {
   owner=$(jq -r .owner <<<"$state")
   [ "$owner" = $$ ] || touch "$(discard_flag_of "$owner")"
   debug "session ended: $reason"
-  # A bar that hangs must not keep the ended hook from running.
+  # A bar that hangs must not fail the session's end under errexit.
   [ -z "$reason" ] || notify info "voxcmd: $label ended" "$reason" || true
-  session_run_ended_hook "$(jq -r .integration <<<"$state")"
-}
-
-# An integration's session_ended, if it has one, tidies what the session left on screen (Firefox's link hints). In the
-# background and without the lock: it may type for a second, and nothing in the session waits on it.
-session_run_ended_hook() {
-  (
-    load_integration "$1"
-    declare -F session_ended >/dev/null || exit 0
-    session_ended
-  ) 9>&- >/dev/null 2>&1 &
 }
 
 # session_end_if_mine <reason>: ends the session this process owns, as a watcher whose turn heard nothing, or that dies
@@ -1367,17 +1354,11 @@ autostop_recording() {
   [ -x "$voxcmd_autostop" ] || return 0
   # An overlay or confirm asked during a session turn is a reply, not the session's own listen.
   case "$transcript_handler" in
-  session_turn)
-    if session_state | jq -e '.reply' >/dev/null 2>&1; then
-      detector_env=("VOXCMD_AUTOSTOP_MIN_SPEECH_SECS=$reply_min_speech_secs")
-    else
-      detector_env=(
-        "VOXCMD_AUTOSTOP_NO_SPEECH_SECS=$session_no_speech_secs"
-        "VOXCMD_AUTOSTOP_MIN_SPEECH_SECS=$session_min_speech_secs"
-        "VOXCMD_AUTOSTOP_SILENCE_SECS=$session_silence_secs"
-      )
-    fi
-    ;;
+  session_turn) detector_env=(
+    "VOXCMD_AUTOSTOP_NO_SPEECH_SECS=$session_no_speech_secs"
+    "VOXCMD_AUTOSTOP_MIN_SPEECH_SECS=$session_min_speech_secs"
+    "VOXCMD_AUTOSTOP_SILENCE_SECS=$session_silence_secs"
+  ) ;;
   reply) detector_env=("VOXCMD_AUTOSTOP_MIN_SPEECH_SECS=$reply_min_speech_secs") ;;
   esac
   env "${detector_env[@]}" "$voxcmd_autostop" &

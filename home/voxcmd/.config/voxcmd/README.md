@@ -506,28 +506,19 @@ The overlay writes the number into the pick's FIFO, a voice reply the displayed 
 
 ### Firefox
 
-`firefox.sh` and `firefox-sites.sh` (with the helper `~/.local/share/voxcmd/firefox-tab`) reach the browser itself. Tabs and sites are read, never written: the session store (`sessionstore-backups/recovery.jsonlz4`) for tabs, a copy of `places.sqlite` and its write-ahead log for bookmarks and history, from the profile `installs.ini` names. Windows are matched to the store by their title. Tabs, link hints and the address bar are driven by typing into the focused Firefox window with `wtype`, through Tridactyl's command line (`:tab <title>`), its `<A-F12>` bind (link hints) or Firefox's own keys, so nothing needs installing in Firefox beyond Tridactyl.
+`firefox.sh` and `firefox-sites.sh` (with the helper `~/.local/share/voxcmd/firefox-tab`) reach the browser itself. Tabs and sites are read, never written: the session store (`sessionstore-backups/recovery.jsonlz4`) for tabs, a copy of `places.sqlite` and its write-ahead log for bookmarks and history, from the profile `installs.ini` names. Windows are matched to the store by their title. Tabs and the address bar are driven by typing into the focused Firefox window with `wtype`, through Tridactyl's command line (`:tab <title>`) or Firefox's own keys, so nothing needs installing in Firefox beyond Tridactyl.
 
 | Say | Does |
 | --- | --- |
 | "go to weekly notes", "find the weekly notes tab", "go to example.com" | Focuses the window and tab whose title or site matches; several matches ask with numbers. A domain with no tab open is opened in a new tab. "go to firefox" is still the window |
 | "open code hub in firefox", "open website code hub", "open example.com" | Opens a bookmark, a visited site or a domain in a new tab; nothing found is searched when Firefox was named. A bare "open X" reaches this only when no app, keybind or other integration has it |
 | "open code hub here" | The same, in the focused tab |
-| "show links", then "3" or "follow link 3" | Numbered link hints, then the microphone opens again for the number; "follow link 3" without showing them first works too. "hide links", "cancel", "stop", "exit", "quit" or silence takes them down. Needs Tridactyl and its [`<A-F12>` bind](#link-hints-in-firefox) |
 | "new tab", "close tab" | Ctrl+T and Ctrl+W in the focused Firefox window |
 
 - Tridactyl as the store add-on is read from `extensions.json`; one loaded temporarily from a folder is recognised when its storage changed since Firefox started (`firefox-tab tridactyl` prints `store`, `temporary` or `none`; `VOXCMD_FIREFOX_TRIDACTYL=on|off` overrides). With `none`, "go to" only focuses the window.
-- Hints are numbered for that one run only, in the page's memory; the saved Tridactyl settings are untouched.
-- A number with no hint leaves hint mode and follows nothing, never another link.
 - The store lags a tab switch by up to 15 seconds, so a window is also found by any of its tabs' titles. Private windows are in no store and are found by the title they show.
 - While `firefox.sh` is installed, `apps.sh` stops matching Firefox windows by their title, so a tab is offered once.
 - `tests/run.sh` (section "firefox") and the Firefox rows of `tests/phrases.tsv` run on a made-up profile built by `tests/firefox-profile`.
-
-#### Link hints in Firefox
-
-The hint code is too long to type, so `home/tridactyl/.config/tridactyl/tridactylrc` binds it to `<A-F12>` and `firefox-tab` only presses keys, each through the focus check. "Show links" is the escape hatch (Alt+`,`, which takes focus back from the address bar or a page field), Escape (to leave hint, insert or command mode) then Alt+F12: numbered hints without autoselect, no command line. "Follow link 12" is the escape hatch, Escape, `12`, Alt+F12: Tridactyl reads the digits as a count, and the bind shows the hints and follows hint 12 (so it works with no hints showing, and the same hints get the same numbers). Typing the digits into hint mode instead would follow a different link for a number with no hint, because Tridactyl drops a digit that matches nothing and Enter then selects the focused hint; the bind checks the number against the hints on screen, and a number with none leaves hint mode. The rc is read through Tridactyl's native messenger (`~/.mozilla/native-messaging-hosts/tridactyl.json`, `:nativeinstall`), at Firefox start or on `:source`; it is stowed to `~/.config/tridactyl/tridactylrc` with the `tridactyl` package. Without the bind Alt+F12 does nothing: Firefox cannot be asked whether it loaded it, so `firefox-tab` only refuses when the rc file it finds lacks it (`link hints need <A-F12> bound in Tridactyl's tridactylrc`). After changing the rc, `:source` it or restart Firefox.
-
-After "show links" voxcmd opens a [voice session](#voice-sessions) of kind `links` that listens like a [picker's reply](#answering-by-voice): "3", "three", "link 3" and "follow link 3" all follow link 3, which ends the session. Hearing nothing (auto-stop's own deadline), three turns that name no number, "cancel", "never mind", "hide links" or "done" end it and press Escape in the focused Firefox window, through the same focus check as every typed key, so the hints do not stay up. `firefox.sh`'s `session_ended` is what presses it.
 
 ## Voice Help
 
@@ -594,7 +585,7 @@ While it waits, `voxcmd-confirm` keeps the same `pending-pick.json` as the picke
 
 ## Voice sessions
 
-A session keeps the microphone re-opening after each spoken turn, so related commands need no repeated verb. [Click mode](#click-mode) and the Firefox [link hints](#link-hints-in-firefox) are the sessions so far; an integration opens one from an action with `session_begin <kind> "$file" "<label>" [reply]` and supplies `session_rewrite`, which prints the phrase to route for what was said (nothing when it names nothing usable). `session_exit_phrases` (optional) is a regex of further phrases that end the session, besides "done", "I'm done" and "that's all", matched whole before `session_rewrite`. `session_miss_actions=(action ...)` lists actions that mean the turn found nothing to act on, and `session_ended` (optional) runs in the background whenever the session ends, to tidy what it left on screen. With `reply`, a turn is listened for like a picker's reply (0.1 s of speech, auto-stop's own pause and deadline) instead of with the session settings below, so one short word is a turn.
+A session keeps the microphone re-opening after each spoken turn, so related commands need no repeated verb. [Click mode](#click-mode) is the only session so far; an integration opens one from an action with `session_begin <kind> "$file" "<label>"` and supplies `session_rewrite`, which prints the phrase to route for what was said (nothing when it names nothing usable). `session_exit_phrases` (optional) is a regex of further phrases that end the session, besides "done", "I'm done" and "that's all", matched whole before `session_rewrite`. `session_miss_actions=(action ...)` lists actions that mean the turn found nothing to act on.
 
 - **State:** `$XDG_RUNTIME_DIR/voxcmd/session.json`, `{kind, integration, label, started, owner, owner_start, unclear, turns}`. `owner` is the PID of the listener that hears the next turn and `owner_start` its start time (field 22 of `/proc/<pid>/stat`), so a reused PID is not mistaken for it; each new listen takes it over. A session whose owner has died is stale: it is deleted the first time anything looks, and never keeps the microphone open. Every change holds `flock` on `session.lock` beside it.
 - **Routing:** while a session is open, `voxcmd listen` sends the transcript to the session instead of [routing](#how-a-phrase-is-routed) it, unless a picker or card is waiting for a reply, which keeps priority. Exit words end it before anything is routed. Pressing the Voice Command key while a turn is still being handled starts the next turn at once, and the turn's own listener leaves the session to it.
@@ -609,7 +600,7 @@ A session keeps the microphone re-opening after each spoken turn, so related com
 
 `SUPER + SHIFT + COMMA` (Leader, `SHIFT + COMMA`) runs `voxcmd stop`, the key for a voice session or overlay that will not end and a recording you no longer want. It does three things, each only when there is something to do:
 
-- Ends the open [voice session](#voice-sessions), reported by its usual "ended: stopped" toast, which also takes down Firefox's link hints. This comes first, so the session's listener cannot open the microphone again, even when it is mid-turn: its turn is discarded and the session is gone when it looks. An action that turn is already running still finishes, but nothing it opens (a picker or confirm card) listens for a reply.
+- Ends the open [voice session](#voice-sessions), reported by its usual "ended: stopped" toast. This comes first, so the session's listener cannot open the microphone again, even when it is mid-turn: its turn is discarded and the session is gone when it looks. An action that turn is already running still finishes, but nothing it opens (a picker or confirm card) listens for a reply.
 - Cancels the open picker, confirm card or the numbered overlay, as Esc does.
 - Cancels a voxtype recording under way, or being transcribed, whichever key started it: Voice Command, a reply recording or Speech to Text. Nothing said is routed or typed, and Speech to Text resumes its paused media as it does when any recording ends.
 
