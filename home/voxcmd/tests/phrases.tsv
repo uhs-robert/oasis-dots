@@ -119,3 +119,5 @@ click middle	none	side words are no target: same as without the Click integratio
 click on	picker	filler words are no target: the Cursor binds keep it
 click the	picker	filler words are no target: the Cursor binds keep it
 double click it	none	filler words are no target: same as without the Click integration
+triple click settings	Click/triple_click	the stand-alone Settings beats the Open Settings run
+triple click it	none	filler words are no target: same as without the Click integration

@@ -59,7 +59,7 @@ page=$(
   word 4 1 1 100 400 140 24 90 Open
   word 4 1 2 250 400 100 24 90 Settings
   word 5 1 1 100 500 80 24 92 Cancel
-  word 6 1 1 800 100 70 24 40 Ghost
+  word 6 1 1 800 100 70 24 30 Ghost
   word 7 1 1 800 200 70 24 95 Cancei
   word 8 1 1 700 500 60 24 93 Logln
   word 9 1 1 600 560 80 24 93 Item
@@ -195,6 +195,77 @@ check "a noise token is dropped from the label" "[[ \$(field \"\$out\" 4) == '2 
 check "and from the match text" "[[ \$(field \"\$out\" 3) == '2 tasks' ]]"
 out=$(match "$joined" "tasks")
 check "a lone noise token does not hide a neighbouring word" "[[ \$(wc -l <<<\"\$out\") == 1 && \$(field \"\$out\" 3) == '2 tasks' ]]"
+
+echo "== doubtful words"
+# White text on a blue button reads at 45-55. A word that equals a spoken one is safe at that confidence, because a near
+# miss no longer stands in for the spoken word; any other use of it keeps the floor of 60.
+doubtful=$(
+  window 0 0 1000 600 1000 600
+  strip 0 0 0 600
+  header
+  word 1 1 1 100 100 80 24 55 Newtask
+  word 2 1 1 100 200 80 24 45 Newtaxk
+  word 3 1 1 100 300 80 24 30 Cancel
+  word 4 1 1 100 400 60 24 45 Read
+  word 4 1 2 166 400 30 24 45 me
+  word 5 1 1 100 500 60 24 45 lone
+  word 5 1 2 166 500 60 24 90 Clone
+)
+out=$(match "$doubtful" "new task")
+check "conf 55 'Newtask' matches 'new task' as the spoken words" "[[ \$(wc -l <<<\"\$out\") == 1 && \$(field \"\$out\" 3) == 'new task' ]]"
+out=$(match "$doubtful" "new taxk")
+check "a conf 45 word that equals a spoken word is taken" "[[ \$(field \"\$out\" 2) == 212 ]]"
+near_miss=$(
+  window 0 0 1000 600 1000 600
+  strip 0 0 0 600
+  header
+  word 1 1 1 100 100 80 24 45 Newtaxk
+)
+out=$(match "$near_miss" "new task")
+check "a conf 45 word that is only a near miss does not match" "[[ -z \$out ]]"
+out=$(match "$doubtful" "cancel")
+check "conf 30 never matches" "[[ -z \$out ]]"
+out=$(match "$doubtful" "readme")
+check "doubtful words joined to the spoken letters match" "[[ \$(field \"\$out\" 3) == readme ]]"
+out=$(match "$doubtful" "close")
+check "a doubtful word does not join a match it is not part of" "[[ \$(field \"\$out\" 3) == clone ]]"
+check "a doubtful word beside a match is left out of its text" "[[ \$(field \"\$out\" 3) == clone ]]"
+
+echo "== sub-spans"
+# Tesseract reads a sentence as one run, so a link inside it is only part of the run. CLICK_SPANS=1 searches the runs for
+# stretches that equal the spoken words.
+spans() { CLICK_SPANS=1 CLICK_TARGET="$2" awk -f "$matcher" <<<"$1"; }
+sentence=$(
+  window 0 0 1000 600 1000 600
+  strip 0 0 0 600
+  header
+  word 1 1 1 100 100 20 20 95 2
+  word 1 1 2 125 100 60 20 95 tasks
+  word 1 1 3 190 100 40 20 95 are
+  word 1 1 4 235 100 80 20 95 flagged
+  word 1 1 5 320 100 70 20 95 TODO.
+  word 2 1 1 100 300 60 20 95 Kindly
+  word 2 1 2 165 300 40 20 95 sign
+  word 2 1 3 210 300 20 20 95 in
+  word 2 1 4 235 300 60 20 95 here.
+  word 3 1 1 100 400 60 20 95 Never
+  word 3 1 2 165 400 40 20 95 sign
+  word 3 1 3 210 400 20 20 95 in
+  word 3 1 4 235 400 60 20 95 again
+  word 3 1 5 300 400 20 20 95 or
+  word 3 1 6 325 400 50 20 95 sign
+  word 3 1 7 380 400 20 20 95 in
+)
+out=$(spans "$sentence" "2 tasks")
+check "'2 tasks' in its sentence is one sub-span of the spoken words" "[[ \$(wc -l <<<\"\$out\") == 1 && \$(field \"\$out\" 3) == '2 tasks' ]]"
+check "its point and box are the sub-span's, not the sentence's" "[[ \$(field \"\$out\" 1),\$(field \"\$out\" 2) == 143,110 && \$(field \"\$out\" 5),\$(field \"\$out\" 7) == 100,85 ]]"
+check "its label is still the sentence, for the picker" "[[ \$(field \"\$out\" 4) == '2 tasks are flagged TODO. - top left' ]]"
+out=$(spans "$sentence" "sign in")
+check "each occurrence of the words is a sub-span, in any run" "[[ \$(wc -l <<<\"\$out\") == 3 ]]"
+out=$(spans "$sentence" "tasks 2")
+check "words in another order are not a sub-span" "[[ -z \$out ]]"
+out=$(spans "$sentence" "tasks flagged")
+check "words with others between them are not a sub-span" "[[ -z \$out ]]"
 
 echo "== candidate box"
 out=$(match "$page" "sign in")
@@ -451,6 +522,57 @@ SANDBOX_TESSERACT_TSV=$({
 out=$(route "click new task")
 check "'new task' runs the single OCR word Newtask as a strong match" "grep -q '^result:      run' <<<\"\$out\""
 
+SANDBOX_TESSERACT_TSV=$({
+  header
+  word 1 1 1 80 40 80 24 55 Newtask
+})
+out=$(route "click new task")
+check "a conf 55 'Newtask' still runs as a strong match" "grep -q '^result:      run' <<<\"\$out\""
+
+# A link inside a sentence: the whole-run candidates are all dropped, so the sub-span is the match.
+SANDBOX_TESSERACT_TSV=$({
+  header
+  word 1 1 1 80 40 12 24 95 2
+  word 1 1 2 96 40 40 24 95 tasks
+  word 1 1 3 140 40 30 24 95 are
+  word 1 1 4 174 40 60 24 95 flagged
+  word 1 1 5 238 40 40 24 95 TODO.
+})
+out=$(route "click 2 tasks")
+check "'2 tasks' in a sentence runs and clicks the sub-span's centre" "grep -q '^result:      run' <<<\"\$out\" && grep -q \"id='168,82,left,\" <<<\"\$out\""
+SANDBOX_TESSERACT_TSV=$({
+  header
+  word 1 1 1 80 40 60 24 95 Tasks
+  word 2 1 1 80 80 12 24 95 2
+  word 2 1 2 96 80 40 24 95 tasks
+  word 2 1 3 140 80 30 24 95 are
+  word 2 1 4 174 80 60 24 95 flagged
+})
+out=$(route "click tasks")
+check "a heading that matches whole beats a sentence holding the word" "grep -q '^result:      run' <<<\"\$out\" && grep -q \"id='[0-9]*,82,left\" <<<\"\$out\""
+SANDBOX_TESSERACT_TSV=$({
+  header
+  word 1 1 1 80 40 40 24 95 Kindly
+  word 1 1 2 124 40 30 24 95 sign
+  word 1 1 3 158 40 20 24 95 in
+  word 1 1 4 182 40 40 24 95 today
+  word 2 1 1 80 100 40 24 95 Never
+  word 2 1 2 124 100 30 24 95 sign
+  word 2 1 3 158 100 20 24 95 in
+  word 2 1 4 182 100 40 24 95 again
+})
+out=$(route "click sign in")
+check "the same words in two sentences are two candidates, so the picker asks" "grep -q 'ask with the picker (2 options' <<<\"\$out\""
+
+SANDBOX_TESSERACT_TSV=$({
+  header
+  word 1 1 1 160 120 96 24 95 Settings
+})
+out=$(route "triple click on settings")
+check "triple click, with the filler 'on'" "grep -q \"action=triple_click .*,triple$box'\" <<<\"\$out\" && grep -q 'silent: true' <<<\"\$out\""
+out=$(route "triple click")
+check "bare 'triple click' needs a target and is not the Click integration's" "! grep -q 'Click (click.sh)' <<<\"\$out\""
+
 # The words one edit away route in phrases.tsv; the joined spans need a screen of their own.
 while IFS=: read -r spoken shown; do
   SANDBOX_TESSERACT_TSV=$({
@@ -577,6 +699,9 @@ check "a click moves the pointer, then clicks the button" "grep -q 'hyprctl disp
 : >"$log"
 run_click_at "175,82,double,1,2,3,4"
 check "a double click is two left clicks" "[[ \$(grep -c '^wlrctl pointer click left\$' '$log') == 2 ]]"
+: >"$log"
+run_click_at "175,82,triple,1,2,3,4"
+check "a triple click is three left clicks" "[[ \$(grep -c '^wlrctl pointer click left\$' '$log') == 3 ]]"
 mkdir -p "$root/nowlrctl"
 printf '#!/bin/sh\necho "wlrctl: no seat" >&2\nexit 1\n' >"$root/nowlrctl/wlrctl"
 chmod +x "$root/nowlrctl/wlrctl"

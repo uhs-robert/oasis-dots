@@ -1,6 +1,9 @@
 # Finds the on-screen text a spoken click target names and maps it to global pointer coordinates.
 # Run by click.sh over click-ocr's output: CLICK_TARGET="sign in" awk -f click-match.awk (the target comes from the
-# environment so backslashes in it are kept as spoken, which -v would turn into escapes)
+# environment so backslashes in it are kept as spoken, which -v would turn into escapes). With CLICK_SPANS=1 the
+# whole-run matching is skipped and every run is searched for contiguous sub-spans of its words that equal the spoken
+# words instead, for a target that is only part of a sentence ("2 tasks" in "2 tasks are flagged TODO."): click.sh asks
+# for these only when no run matches whole.
 #
 # Input lines:
 #   #window <gx> <gy> <gw> <gh> <iw> <ih>   window origin and size in logical coordinates, and the captured image's pixels
@@ -16,6 +19,10 @@
 # as a misread one, so voxcmd's word matching must call it weak or drop it, never click it.
 # A span whose letters joined equal the spoken letters joined under the same look-alike comparison ("Newtask" for
 # "new task", "Read me" for "readme") is written as the spoken words, which voxcmd's word matching treats as strong.
+# A word under min_conf (60) is dropped, except that one down to low_conf (40) is kept when it may be spoken: it equals
+# a spoken word by look-alike key or is a piece of the spoken letters. White text on a coloured button reads at 50-60.
+# Such a word takes part only in an equality match or an exact joined span, never in a one-edit-away match, and it is
+# left out of match_text when it is not part of the match, so it cannot turn a match into a weak one.
 # POSIX awk only.
 
 function lowered_alnum(text,   t) {
@@ -91,7 +98,7 @@ function is_filler(w) {
 # Splits text into alphanumeric words appended to the run; a token with no alphanumerics ("|", "-") is OCR noise and
 # is dropped. Filler words are skipped when matching, as in word_match,
 # but stay in the run so the matched span can cover them ("sign in").
-function add_token(text, left, top, width, height,   t, parts, n, i, raw) {
+function add_token(text, left, top, width, height, low,   t, parts, n, i, raw) {
   t = lowered_alnum(text)
   gsub(/[^a-z0-9]+/, " ", t)
   n = split(t, parts, " ")
@@ -102,6 +109,7 @@ function add_token(text, left, top, width, height,   t, parts, n, i, raw) {
     raw = parts[i]
     run_n++
     run_skip[run_n] = is_filler(normal_word(raw))
+    run_low[run_n] = low
     run_raw[run_n] = raw
     run_key[run_n] = compare_key(normal_word(raw))
     run_norm[run_n] = normal_word(raw)
@@ -126,11 +134,13 @@ function hint_of(x, y,   column, row) {
 # direction of split: one OCR word for several spoken words, or several OCR words for one spoken word. Sets
 # span_first, span_last and span_exact (equal under look-alike comparison, not merely one edit away); a span that is
 # equal wins over an earlier one that is only close. Fillers count here: "sign in" is the letters "signin".
-function joined_span(   a, b, joined, close_first, close_last) {
+function joined_span(   a, b, joined, close_first, close_last, has_low) {
   for (a = 1; a <= run_n; a++) {
     joined = ""
+    has_low = 0
     for (b = a; b <= run_n; b++) {
       joined = joined run_norm[b]
+      has_low = has_low || run_low[b]
       if (length(joined) > length(spoken_joined) + 1)
         break
       if (b == a && spoken_all_n == 1)
@@ -141,7 +151,7 @@ function joined_span(   a, b, joined, close_first, close_last) {
         span_exact = 1
         return 1
       }
-      if (close_first == "" && same_word(compare_key(joined), spoken_joined)) {
+      if (close_first == "" && !has_low && same_word(compare_key(joined), spoken_joined)) {
         close_first = a
         close_last = b
       }
@@ -165,9 +175,62 @@ function absorb_spoken_fillers() {
     last++
 }
 
+# Stores the run words first..last as a candidate with the given match_text: its click point, box and label.
+function store_candidate(match_text,   i, left, right, top, bottom, x, y, text) {
+  left = right = top = bottom = ""
+  for (i = first; i <= last; i++) {
+    left = (left == "" || run_left[i] < left) ? run_left[i] : left
+    right = (right == "" || run_right[i] > right) ? run_right[i] : right
+    top = (top == "" || run_top[i] < top) ? run_top[i] : top
+    bottom = (bottom == "" || run_bottom[i] > bottom) ? run_bottom[i] : bottom
+  }
+  x = round(gx + (left + right) / 2 * gw / iw)
+  y = round(gy + (top + bottom) / 2 * gh / ih)
+  found_n++
+  found_x[found_n] = x
+  found_y[found_n] = y
+  found_left[found_n] = round(gx + left * gw / iw)
+  found_top[found_n] = round(gy + top * gh / ih)
+  found_width[found_n] = round(gx + right * gw / iw) - found_left[found_n]
+  found_height[found_n] = round(gy + bottom * gh / ih) - found_top[found_n]
+  found_text[found_n] = match_text
+  text = run_text
+  if (length(text) > 48)
+    text = substr(text, 1, 45) "..."
+  found_label[found_n] = text
+  found_hint[found_n] = hint_of(x, y)
+}
+
+# Stores each stretch of the run whose non-filler words, in order, equal the spoken words by look-alike key. The
+# candidate's match_text is the spoken words, so voxcmd's word matching sees an exact match whatever else the run says.
+function add_subspans(   start, i, j, finish) {
+  for (start = 1; start <= run_n; start++) {
+    if (run_skip[start])
+      continue
+    i = start
+    for (j = 1; j <= spoken_n; j++) {
+      while (i <= run_n && run_skip[i])
+        i++
+      if (i > run_n || run_key[i] != spoken_key[j])
+        break
+      finish = i
+      i++
+    }
+    if (j <= spoken_n)
+      continue
+    first = start
+    last = finish
+    absorb_spoken_fillers()
+    store_candidate(spoken_words)
+    start = last
+  }
+}
+
 # Matches the spoken words against the finished run; a hit is stored as a candidate.
-function flush_run(   j, i, found, used, text, left, right, top, bottom, x, y, match_text, picked_raw, matched) {
-  if (run_n > 0) {
+function flush_run(   j, i, found, used, match_text, picked_raw, matched) {
+  if (run_n > 0 && spans_only) {
+    add_subspans()
+  } else if (run_n > 0) {
     first = last = ""
     span_used = 0
     delete used
@@ -179,7 +242,7 @@ function flush_run(   j, i, found, used, text, left, right, top, bottom, x, y, m
       if (found)
         picked_raw[found] = spoken_raw[j]
       for (i = 1; i <= run_n && !found; i++)
-        if (!run_skip[i] && !(i in used) && same_word(run_key[i], spoken_key[j])) found = i
+        if (!run_skip[i] && !run_low[i] && !(i in used) && same_word(run_key[i], spoken_key[j])) found = i
       if (!found)
         break
       used[found] = 1
@@ -197,15 +260,10 @@ function flush_run(   j, i, found, used, text, left, right, top, bottom, x, y, m
       absorb_spoken_fillers()
     }
     if (matched) {
-      left = right = top = bottom = ""
       match_text = ""
       for (i = 1; i <= run_n; i++) {
-        if (i >= first && i <= last) {
-          left = (left == "" || run_left[i] < left) ? run_left[i] : left
-          right = (right == "" || run_right[i] > right) ? run_right[i] : right
-          top = (top == "" || run_top[i] < top) ? run_top[i] : top
-          bottom = (bottom == "" || run_bottom[i] > bottom) ? run_bottom[i] : bottom
-        }
+        if (run_low[i] && (span_used ? (i < first || i > last) : !(i in used)))
+          continue
         if (span_used && i == span_first)
           match_text = match_text (match_text == "" ? "" : " ") spoken_words
         else if (span_used && i > span_first && i <= span_last)
@@ -213,21 +271,7 @@ function flush_run(   j, i, found, used, text, left, right, top, bottom, x, y, m
         else if (!run_skip[i])
           match_text = match_text (match_text == "" ? "" : " ") ((i in picked_raw) ? picked_raw[i] : run_raw[i])
       }
-      x = round(gx + (left + right) / 2 * gw / iw)
-      y = round(gy + (top + bottom) / 2 * gh / ih)
-      found_n++
-      found_x[found_n] = x
-      found_y[found_n] = y
-      found_left[found_n] = round(gx + left * gw / iw)
-      found_top[found_n] = round(gy + top * gh / ih)
-      found_width[found_n] = round(gx + right * gw / iw) - found_left[found_n]
-      found_height[found_n] = round(gy + bottom * gh / ih) - found_top[found_n]
-      found_text[found_n] = match_text
-      text = run_text
-      if (length(text) > 48)
-        text = substr(text, 1, 45) "..."
-      found_label[found_n] = text
-      found_hint[found_n] = hint_of(x, y)
+      store_candidate(match_text)
     }
   }
   run_n = 0
@@ -243,7 +287,7 @@ function flush_line(   i, gap, limit) {
       if (gap > limit)
         flush_run()
     }
-    add_token(line_text[i], line_left[i], line_top[i], line_width[i], line_height[i])
+    add_token(line_text[i], line_left[i], line_top[i], line_width[i], line_height[i], line_low[i])
   }
   flush_run()
   line_n = 0
@@ -263,6 +307,9 @@ BEGIN {
   FS = "\t"
   if (min_conf == "")
     min_conf = 60
+  if (low_conf == "")
+    low_conf = 40
+  spans_only = ENVIRON["CLICK_SPANS"] != ""
   split("one two three four five six seven eight nine ten", names, " ")
   for (i = 1; i <= 10; i++)
     digit_of[names[i]] = i
@@ -314,11 +361,28 @@ $1 == 4 {
   next
 }
 
-# Word rows only (level 5), and only confident, non-blank ones.
+# Whether a word under min_conf may still be the spoken one: it equals a spoken word by look-alike key, or is a piece
+# of the spoken letters joined (one OCR word of several, or one of several for a spoken word).
+function may_be_spoken(text,   t, parts, n, i, key, j) {
+  t = lowered_alnum(text)
+  gsub(/[^a-z0-9]+/, " ", t)
+  n = split(t, parts, " ")
+  for (i = 1; i <= n; i++) {
+    key = compare_key(normal_word(parts[i]))
+    if (length(key) >= 2 && index(spoken_joined, key))
+      return 1
+    for (j = 1; j <= spoken_n; j++)
+      if (key == spoken_key[j])
+        return 1
+  }
+  return 0
+}
+
+# Word rows only (level 5), and only confident, non-blank ones; a doubtful one only when it may be a spoken word.
 $1 == 5 {
   text = $12
   gsub(/^[ ]+|[ ]+$/, "", text)
-  if (text == "" || $11 < min_conf)
+  if (text == "" || $11 < low_conf || ($11 < min_conf && !may_be_spoken(text)))
     next
   top = $8 + strip_y0
   line_id = $3 SUBSEP $4 SUBSEP $5
@@ -338,6 +402,7 @@ $1 == 5 {
   }
   line_n++
   line_text[line_n] = text
+  line_low[line_n] = $11 < min_conf
   line_left[line_n] = $7
   line_top[line_n] = top
   line_width[line_n] = $9
