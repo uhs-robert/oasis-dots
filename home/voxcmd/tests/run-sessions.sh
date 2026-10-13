@@ -754,7 +754,8 @@ check "type mode types each chunk, holding back its closing mark until the next 
 sess_start HOLD
 owner_is_listening
 check "type mode's session file names it and its hint" "[[ \$(jq -c '[.kind, .label, .exit_hint, .stack]' '$session_json') == '[\"type\",\"Type mode\",\"say jarvis stop typing\",[]]' ]]"
-check "type mode listens for a chunk: a 2.5s pause ends it, 25s cuts it, 30s of silence is a quiet listen" "grep -q 'no_speech_secs=30\$' '$log' && grep -q 'autostop min_speech_secs=0.4 silence_secs=2.5\$' '$log' && grep -q 'autostop max_secs=25\$' '$log'"
+# The listen's detector logs its settings once it starts, which under load can come after the owner is listening.
+check "type mode listens for a chunk: a 2.5s pause ends it, 25s cuts it, 30s of silence is a quiet listen" "log_has_soon 'no_speech_secs=30\$' && log_has_soon 'autostop min_speech_secs=0.4 silence_secs=2.5\$' && log_has_soon 'autostop max_secs=25\$'"
 sess_voxcmd_env end-session
 sess_wait
 sess_run "Alpha and then beta." "jarvis stop typing"
