@@ -9,6 +9,7 @@ Listens to the default source through pw-record (16 kHz mono s16) and exits with
 
 Settings: ~/.config/voxcmd/autostop.conf, overridden by VOXCMD_AUTOSTOP_* environment variables (voxcmd README).
 --pcm FILE (or -) reads raw PCM instead of the microphone, and --verbose logs the levels, for tuning and tests.
+With voxcmd's debug log on, a summary of what it heard (room, threshold, speech runs, verdict) is appended there.
 --check exits 0 when a recording would be listened to, else 1 and prints why (voxcmd's sessions need auto-stop).
 """
 
@@ -21,6 +22,7 @@ import os
 import select
 import shutil
 import signal
+import statistics
 import subprocess
 import sys
 import time
@@ -29,6 +31,11 @@ VERDICT_SILENCE = 0
 VERDICT_NO_SPEECH = 3
 VERDICT_NOTHING_TO_DO = 4
 VERDICT_ERROR = 1
+VERDICT_NAMES = {
+    VERDICT_SILENCE: "speech then quiet",
+    VERDICT_NO_SPEECH: "no speech",
+    VERDICT_NOTHING_TO_DO: "ended elsewhere",
+}
 
 SAMPLE_RATE = 16000
 FRAME_SECS = 0.03
@@ -37,6 +44,7 @@ FRAME_BYTES = int(SAMPLE_RATE * FRAME_SECS) * 2
 DEFAULT_SETTINGS = {
     "enabled": "true",
     "silence_secs": "1.0",
+    "min_speech_secs": "0.25",
     "no_speech_secs": "6",
     "threshold_db": "auto",
     "margin_db": "12",
@@ -54,8 +62,9 @@ MIN_AUTO_THRESHOLD_DB = -45.0
 DIGITAL_SILENCE_DB = -90.0
 # Loud frames count as speech only in runs this long: a syllable lasts longer than a key click or a tap on the desk.
 MIN_SPEECH_RUN_FRAMES = 3
-# Speech must add up to this before a pause can end the recording.
-MIN_SPEECH_SECS = 0.25
+# Speech short of min_speech_secs that still adds up to this is a short word, not nothing: at no_speech_secs it is
+# transcribed rather than cancelled.
+SHORT_WORD_SECS = 0.25
 STATE_POLL_SECS = 0.2
 # How long voxtype gets to report the recording it was asked to start.
 RECORDING_START_GRACE_SECS = 3.0
@@ -103,35 +112,62 @@ def frame_level_db(frame):
     return 20 * math.log10(max(rms, 1.0) / 32768)
 
 
+class SpeechRun:
+    """Loud frames long enough to count as speech, kept for the debug trace."""
+
+    def __init__(self, start_secs, levels, threshold_db):
+        self.start_secs = start_secs
+        self.levels = list(levels)
+        self.threshold_db = threshold_db
+
+    def describe(self):
+        return (
+            f"speech run {self.start_secs:.2f}s +{len(self.levels) * FRAME_SECS:.2f}s:"
+            f" mean {statistics.fmean(self.levels):.1f} peak {max(self.levels):.1f}"
+            f" threshold {self.threshold_db:.1f} dBFS"
+        )
+
+
 class SpeechThenSilence:
     """Fed 30ms frames; reports a verdict once one is reached. Time is counted in audio, not on the clock."""
 
-    def __init__(self, settings, log):
+    def __init__(self, settings, log, trace):
         self.silence_secs = float(settings["silence_secs"])
+        self.min_speech_secs = float(settings["min_speech_secs"])
         self.no_speech_secs = float(settings["no_speech_secs"])
         self.fixed_threshold_db = None if settings["threshold_db"] == "auto" else float(settings["threshold_db"])
         self.margin_db = float(settings["margin_db"])
         self.log = log
+        self.trace = trace
         self.elapsed_secs = 0.0
         self.room_levels = collections.deque(maxlen=round(ROOM_WINDOW_SECS / FRAME_SECS))
+        # Every level heard, rescored against each new threshold until speech is heard, and again before a pause
+        # ends the recording. A recording is at most voxtype's max_duration_secs.
+        self.levels = []
+        self.calibrated = False
+        self.clear_speech()
+
+    def clear_speech(self):
         self.speech_secs = 0.0
         self.loud_run_frames = 0
         self.quiet_secs = 0.0
-        # Every level until speech is heard, rescored against each new threshold; dropped once speech is heard.
-        self.levels_before_speech = []
+        self.speech_runs = []
+
+    def room_db(self):
+        return sorted(self.room_levels)[int(len(self.room_levels) * ROOM_PERCENTILE)]
 
     def threshold_db(self):
         if self.fixed_threshold_db is not None:
             return self.fixed_threshold_db
         if not self.room_levels:
             return MIN_AUTO_THRESHOLD_DB
-        room_db = sorted(self.room_levels)[int(len(self.room_levels) * ROOM_PERCENTILE)]
-        return max(room_db + self.margin_db, MIN_AUTO_THRESHOLD_DB)
+        return max(self.room_db() + self.margin_db, MIN_AUTO_THRESHOLD_DB)
 
     def speech_heard(self):
-        return self.speech_secs >= MIN_SPEECH_SECS
+        return self.speech_secs >= self.min_speech_secs
 
-    def count_frame(self, loud):
+    def count_frame(self, frame_index, threshold_db):
+        loud = self.levels[frame_index] >= threshold_db
         if loud:
             self.loud_run_frames += 1
         else:
@@ -139,47 +175,103 @@ class SpeechThenSilence:
         # A run counts from its first frame once it is long enough.
         if self.loud_run_frames == MIN_SPEECH_RUN_FRAMES:
             self.speech_secs += MIN_SPEECH_RUN_FRAMES * FRAME_SECS
+            run_start = frame_index - MIN_SPEECH_RUN_FRAMES + 1
+            self.speech_runs.append(
+                SpeechRun(run_start * FRAME_SECS, self.levels[run_start : frame_index + 1], threshold_db)
+            )
         elif self.loud_run_frames > MIN_SPEECH_RUN_FRAMES:
             self.speech_secs += FRAME_SECS
+            self.speech_runs[-1].levels.append(self.levels[frame_index])
         if self.loud_run_frames >= MIN_SPEECH_RUN_FRAMES:
             self.quiet_secs = 0.0
         else:
             self.quiet_secs += FRAME_SECS
 
-    def rescore_before_speech(self, threshold_db):
-        """A word said as the recording starts is first taken for the room, which puts the threshold above it. Once
-        quieter frames show the real room, scoring every frame again counts that word, so a lone "yes" is not lost."""
-        self.speech_secs = 0.0
-        self.loud_run_frames = 0
-        self.quiet_secs = 0.0
-        for level_db in self.levels_before_speech:
-            self.count_frame(level_db >= threshold_db)
-        if self.speech_heard():
-            self.levels_before_speech = []
+    def rescore(self, threshold_db):
+        """Scores every frame again against the room as it is now known. A word said as the recording starts is first
+        taken for the room, which puts the threshold above it; once quieter frames show the real room, this counts
+        that word, so a lone "yes" is not lost. The other way round, a microphone's first fraction of a second is
+        often quieter than the room, so a steady fan counts as speech until that start leaves the room window and the
+        same fan reads as a pause; scored again, the fan is no speech at all."""
+        self.clear_speech()
+        for frame_index in range(len(self.levels)):
+            self.count_frame(frame_index, threshold_db)
+
+    def pause_follows_speech(self, threshold_db):
+        """Checks a pause against the room as it is now known before it ends the recording."""
+        counted_runs, counted_secs = self.speech_runs, self.speech_secs
+        self.rescore(threshold_db)
+        if self.speech_heard() and self.quiet_secs >= self.silence_secs:
+            return True
+        for run in counted_runs:
+            self.trace(run.describe())
+        self.trace(
+            f"{counted_secs:.2f}s of speech is {self.speech_secs:.2f}s against the room now"
+            f" (threshold {threshold_db:.1f} dBFS): noise, listening on"
+        )
+        return False
+
+    def trace_runs(self):
+        for run in self.speech_runs:
+            self.trace(run.describe())
+
+    def trace_summary(self, verdict):
+        self.trace_runs()
+        room = f"room {self.room_db():.1f}, " if self.room_levels else ""
+        self.trace(
+            f"verdict {VERDICT_NAMES[verdict]} at {self.elapsed_secs:.2f}s: {room}threshold {self.threshold_db():.1f} dBFS,"
+            f" speech {self.speech_secs:.2f}s"
+        )
 
     def feed(self, frame):
         level_db = frame_level_db(frame)
+        self.levels.append(level_db)
         self.elapsed_secs += FRAME_SECS
         if level_db > DIGITAL_SILENCE_DB:
             self.room_levels.append(level_db)
-        if not self.speech_heard():
-            self.levels_before_speech.append(level_db)
         if self.fixed_threshold_db is None and self.elapsed_secs < CALIBRATION_SECS:
             return None
         threshold_db = self.threshold_db()
+        if not self.calibrated:
+            self.calibrated = True
+            room = f"room {self.room_db():.1f} dBFS, " if self.room_levels else ""
+            self.trace(f"calibrated: {room}threshold {threshold_db:.1f} dBFS")
         if self.speech_heard():
-            self.count_frame(level_db >= threshold_db)
+            self.count_frame(len(self.levels) - 1, threshold_db)
         else:
-            self.rescore_before_speech(threshold_db)
+            self.rescore(threshold_db)
         self.log(
             f"{self.elapsed_secs:6.2f}s level {level_db:6.1f} threshold {threshold_db:6.1f} dBFS"
             f" speech {self.speech_secs:.2f}s quiet {self.quiet_secs:.2f}s"
         )
-        if self.speech_heard() and self.quiet_secs >= self.silence_secs:
+        if self.speech_heard() and self.quiet_secs >= self.silence_secs and self.pause_follows_speech(threshold_db):
             return VERDICT_SILENCE
         if not self.speech_heard() and self.elapsed_secs >= self.no_speech_secs:
-            return VERDICT_NO_SPEECH
+            if self.speech_secs < SHORT_WORD_SECS:
+                return VERDICT_NO_SPEECH
+            self.trace(f"{self.speech_secs:.2f}s of speech, short of {self.min_speech_secs}s: a short word, stopping")
+            return VERDICT_SILENCE
         return None
+
+
+class DebugTrace:
+    """Appends to voxcmd's debug log while it is on (VOXCMD_DEBUG, or the file exists), in voxcmd's line format."""
+
+    def __init__(self):
+        self.path = os.path.join(os.environ.get("XDG_RUNTIME_DIR") or "/tmp", "voxcmd", "debug.log")
+        self.enabled = bool(os.environ.get("VOXCMD_DEBUG")) or os.path.exists(self.path)
+
+    def __call__(self, message):
+        if not self.enabled:
+            return
+        now = time.time()
+        stamp = time.strftime("%H:%M:%S", time.localtime(now)) + f".{int(now % 1 * 1000):03d}"
+        try:
+            os.makedirs(os.path.dirname(self.path), exist_ok=True)
+            with open(self.path, "a") as log_file:
+                log_file.write(f"{stamp} voxcmd-autostop[{os.getpid()}] {message}\n")
+        except OSError:
+            self.enabled = False
 
 
 class RecordingState:
@@ -263,7 +355,8 @@ def main():
                 print("auto-stop is turned off (enabled = false)")
                 return VERDICT_ERROR
             return VERDICT_NOTHING_TO_DO
-        detector = SpeechThenSilence(settings, log)
+        trace = DebugTrace()
+        detector = SpeechThenSilence(settings, log, trace)
     except ValueError as error:
         print(f"voxcmd-autostop: {error}", file=sys.stdout if args.check else sys.stderr)
         return VERDICT_ERROR
@@ -285,8 +378,15 @@ def main():
     for signal_number in (signal.SIGTERM, signal.SIGHUP, signal.SIGINT):
         signal.signal(signal_number, exit_on_signal)
 
+    trace(
+        f"listening: {settings['silence_secs']}s pause after {settings['min_speech_secs']}s of speech,"
+        f" nothing by {settings['no_speech_secs']}s cancels; threshold {settings['threshold_db']},"
+        f" margin {settings['margin_db']} dB"
+    )
     pw_record = None
     audio_file = None
+    # Kept when a signal ends it before a verdict, for the trace.
+    verdict = VERDICT_NOTHING_TO_DO
     try:
         if args.pcm is None:
             try:
@@ -304,6 +404,7 @@ def main():
         log(f"verdict {verdict}")
         return verdict
     finally:
+        detector.trace_summary(verdict)
         if audio_file:
             audio_file.close()
         if pw_record:

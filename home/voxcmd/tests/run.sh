@@ -1258,6 +1258,56 @@ check "or when pw-record is missing" "[[ \$(autostop_check '$root/no-pw-bin') ==
 echo "bogus = 1" >"$root/autostop-config/autostop.conf"
 check "or when its config is wrong" "[[ \$(autostop_check '$root/pw-bin') == *'unknown setting: bogus'* ]]"
 
+# The detector itself, on synthetic audio: pcm <file> <kind>:<secs>:<dBFS>..., where noise is a steady hiss (a fan)
+# and voice is a syllable-paced tone over the last noise. Nothing here is recorded.
+pcm() {
+  python3 - "$@" <<'PY'
+import math, random, struct, sys
+rate, rng, samples, room_db = 16000, random.Random(7), [], -90.0
+for segment in sys.argv[2:]:
+    kind, secs, db = segment.split(":")
+    count, amplitude = int(float(secs) * rate), 32768 * 10 ** (float(db) / 20)
+    if kind == "noise":
+        room_db = float(db)
+        samples += [rng.gauss(0, amplitude) for _ in range(count)]
+    else:
+        room_amplitude = 32768 * 10 ** (room_db / 20)
+        samples += [rng.gauss(0, room_amplitude) + amplitude * math.sqrt(2) * abs(math.sin(math.pi * 4 * i / rate))
+                    * math.sin(2 * math.pi * 180 * i / rate) for i in range(count)]
+with open(sys.argv[1], "wb") as out:
+    out.write(b"".join(struct.pack("<h", max(-32768, min(32767, int(sample)))) for sample in samples))
+PY
+}
+# detect <file> [VAR=value...]: runs the detector on it with voxcmd's debug log on, printing its exit code; the trace
+# is left in $detector_trace.
+detector_trace=$root/detector-run/voxcmd/debug.log
+mkdir -p "$root/detector-config" "$(dirname "$detector_trace")"
+detect() {
+  local status=0
+  : >"$detector_trace"
+  env XDG_RUNTIME_DIR="$root/detector-run" VOXCMD_CONFIG_DIR="$root/detector-config" "${@:2}" \
+    python3 "$package/.local/bin/voxcmd-autostop" --pcm "$1" 2>/dev/null || status=$?
+  echo "$status"
+}
+session_detector=(VOXCMD_AUTOSTOP_MIN_SPEECH_SECS=0.6 VOXCMD_AUTOSTOP_SILENCE_SECS=1.5 VOXCMD_AUTOSTOP_NO_SPEECH_SECS=5)
+echo "== auto-stop detector"
+# A microphone's first fraction of a second, quieter than the fan the rest of the recording hears.
+pcm "$root/fan-after-quiet-start.pcm" noise:0.3:-75 noise:7.7:-42
+check "a steady fan after a quiet start is not speech then a pause" "[[ \$(detect '$root/fan-after-quiet-start.pcm') == 3 ]]"
+check "the trace says why the fan was set aside" "grep -q '1.80s of speech is 0.00s against the room now' '$detector_trace' && grep -q 'verdict no speech' '$detector_trace'"
+check "and in a session" "[[ \$(detect '$root/fan-after-quiet-start.pcm' \"\${session_detector[@]}\") == 3 ]]"
+pcm "$root/word-over-fan.pcm" noise:0.3:-75 noise:2.7:-42 voice:0.9:-18 noise:4:-42
+check "a word over the same fan still stops it" "[[ \$(detect '$root/word-over-fan.pcm') == 0 ]]"
+check "the trace has the room, the threshold, each speech run and the verdict" "grep -q 'calibrated: room -7[0-9.]* dBFS, threshold -45.0 dBFS' '$detector_trace' && grep -q 'speech run [0-9.]*s +[0-9.]*s: mean -[0-9.]* peak -[0-9.]* threshold -[0-9.]* dBFS' '$detector_trace' && grep -q 'verdict speech then quiet at [0-9.]*s: room -4[0-9.]*, threshold -3[0-9.]* dBFS, speech [0-9.]*s' '$detector_trace'"
+check "a session stops on it too" "[[ \$(detect '$root/word-over-fan.pcm' \"\${session_detector[@]}\") == 0 ]]"
+# Two knocks on the desk: enough for a command, not for a session turn.
+pcm "$root/knocks.pcm" noise:1:-55 voice:0.15:-25 noise:0.35:-55 voice:0.15:-25 noise:5:-55
+check "two knocks then quiet stop a command" "[[ \$(detect '$root/knocks.pcm') == 0 ]] && grep -q 'verdict speech then quiet at [12]\.' '$detector_trace'"
+check "a session does not stop on them, only takes them as a short word at its no-speech deadline" "[[ \$(detect '$root/knocks.pcm' \"\${session_detector[@]}\") == 0 ]] && grep -q 'a short word, stopping' '$detector_trace' && grep -q 'verdict speech then quiet at 5\.' '$detector_trace'"
+pcm "$root/quiet-room.pcm" noise:6:-60
+check "a quiet room is no speech" "[[ \$(detect '$root/quiet-room.pcm') == 3 ]]"
+check "without the debug log there is no trace" "env -u VOXCMD_DEBUG XDG_RUNTIME_DIR='$root/no-trace' python3 '$package/.local/bin/voxcmd-autostop' --pcm '$root/quiet-room.pcm'; [[ ! -e '$root/no-trace/voxcmd/debug.log' ]]"
+
 # A start that fails ends the session rather than leaving it open with no microphone.
 sess_run alpha FAIL
 check "a failed record start ends the session" "session_gone && [[ \$(taps) == 1 ]] && ended_because 'the microphone could not be opened'"
