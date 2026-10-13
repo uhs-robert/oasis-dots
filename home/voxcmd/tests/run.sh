@@ -823,6 +823,12 @@ out=$(explain "sign in" --window 99999)
 check "an unknown --window says so" "grep -q 'no such window' <<<\"\$out\""
 check "--window never read the focused window's buffer" "! grep -q '^grim .*-T 18000004' '$log'"
 SANDBOX_CLIENTS_JSON='[]'
+# The trace must cap weak matches at ten the way the real pick does, or explain would call the eleventh kept.
+word_match_source=$(sed -n '/^word_match() {/,/^}/p' "$package/.local/bin/voxcmd")
+twelve_weak=$(jq -nc '[range(12) | {id: "i\(.)", label: "Open Settings"}]')
+traced=$(bash -c "$word_match_source"'
+word_match_trace=1 word_match settings "$1"' _ "$twelve_weak")
+check "the trace keeps only the ten weak matches the real pick keeps" "[[ \$(jq '[.[] | select(.kept)] | length' <<<\"\$traced\") == 10 && \$(jq '[.[] | select(.verdict == \"dropped: past the ten best weak matches\")] | length' <<<\"\$traced\") == 2 ]]"
 check "explain never clicked or moved across all of the above" "! grep -q 'wlrctl\|hyprctl dispatch\|hyprctl eval\|notify-send' '$log'"
 
 section "failures and toasts"
