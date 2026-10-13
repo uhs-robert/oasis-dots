@@ -49,6 +49,7 @@ BarModule {
         BarIcon {
             Layout.alignment: Qt.AlignVCenter
             name: "volume"
+            fixed_slot: true
             variant: root.level_variant
             glyph: root.glyph
             tint: Theme.theme_primary

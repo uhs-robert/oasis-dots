@@ -76,6 +76,7 @@ BarModule {
         BarIcon {
             Layout.alignment: Qt.AlignVCenter
             name: "network"
+            fixed_slot: true
             variant: root.net_variant
             glyph: root.net_glyph
             tint: root.net_connected ? Theme.theme_primary : Theme.fg_dim

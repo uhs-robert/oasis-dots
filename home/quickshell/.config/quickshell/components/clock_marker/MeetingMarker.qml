@@ -28,7 +28,7 @@ MarkerBase {
     Component { id: pill_badge_marker; PillBadgeMarker {} }
     Component { id: encounter_sprite_marker; EncounterSpriteMarker {} }
     Component { id: reserve_box_marker; ReserveBoxMarker {} }
-    Component { id: pixel_bell_marker; PixelBellMarker {} }
+    Component { id: pixel_calendar_marker; PixelCalendarMarker {} }
     Component { id: memory_card_marker; MemoryCardMarker {} }
     Component { id: atb_gauge_marker; AtbGaugeMarker {} }
     Component { id: energy_tanks_marker; EnergyTanksMarker {} }
@@ -47,7 +47,7 @@ MarkerBase {
         "pill_badge": pill_badge_marker,
         "encounter_sprite": encounter_sprite_marker,
         "reserve_box": reserve_box_marker,
-        "pixel_bell": pixel_bell_marker,
+        "pixel_calendar": pixel_calendar_marker,
         "memory_card": memory_card_marker,
         "atb_gauge": atb_gauge_marker,
         "energy_tanks": energy_tanks_marker,
