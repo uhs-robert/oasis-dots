@@ -229,7 +229,8 @@ class HostUnavailable(HostError):
 
 
 def trusted_socket():
-    """Whether the socket and its directory are this user's and private, so nobody else can have planted them."""
+    """Whether the socket and its directory are this user's and nobody else can write there, so nobody else can have
+    planted them. Read access does not matter: the socket itself is 0600 and XDG_RUNTIME_DIR is private."""
     if not HOST_SOCKET:
         return "XDG_RUNTIME_DIR is not set"
     try:
@@ -237,8 +238,8 @@ def trusted_socket():
         sock = os.lstat(HOST_SOCKET)
     except OSError as error:
         return str(error)
-    if not stat.S_ISDIR(directory.st_mode) or directory.st_uid != os.getuid() or directory.st_mode & 0o077:
-        return "the socket's directory is not a private directory of this user"
+    if not stat.S_ISDIR(directory.st_mode) or directory.st_uid != os.getuid() or directory.st_mode & 0o022:
+        return "the socket's directory is not this user's, or others can write to it"
     if not stat.S_ISSOCK(sock.st_mode) or sock.st_uid != os.getuid():
         return "the socket is not this user's"
     return ""

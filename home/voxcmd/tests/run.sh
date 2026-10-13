@@ -1424,10 +1424,13 @@ out=$("$firefox_tab" tabs)
 check "a malformed tab list falls back to the session store" "jq -e 'all(.[]; .tab_id == null) and length > 0' <<<\"\$out\" >/dev/null"
 
 start_fake_host
-chmod 755 "$XDG_RUNTIME_DIR/voxcmd"
+chmod 775 "$XDG_RUNTIME_DIR/voxcmd"
 : >"$debug_log"
 out=$("$firefox_tab" tabs)
-check "a socket in a directory others can enter is not used" "jq -e 'all(.[]; .tab_id == null)' <<<\"\$out\" >/dev/null && grep -q 'private directory' '$debug_log'"
+check "a socket in a directory others can write to is not used" "jq -e 'all(.[]; .tab_id == null)' <<<\"\$out\" >/dev/null && grep -q 'others can write' '$debug_log'"
+chmod 755 "$XDG_RUNTIME_DIR/voxcmd"
+out=$("$firefox_tab" tabs)
+check "one others can only read, as voxcmd creates it, is used" "jq -e 'any(.[]; .tab_id == 22)' <<<\"\$out\" >/dev/null"
 chmod 700 "$XDG_RUNTIME_DIR/voxcmd"
 out=$(env -u XDG_RUNTIME_DIR "$firefox_tab" tabs)
 check "without XDG_RUNTIME_DIR nothing is looked for in /tmp" "jq -e 'all(.[]; .tab_id == null)' <<<\"\$out\" >/dev/null"
