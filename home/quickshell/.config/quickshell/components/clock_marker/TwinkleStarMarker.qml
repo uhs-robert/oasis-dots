@@ -66,7 +66,7 @@ MarkerBase {
     Star {
         id: twinkle
         visible: root.in_meeting
-        anchors.centerIn: parent
+        anchors.verticalCenter: parent.verticalCenter
 
         SequentialAnimation {
             running: root.in_meeting && root.visible

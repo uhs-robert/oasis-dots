@@ -48,7 +48,7 @@ MarkerBase {
     PixelSprite {
         id: star
         visible: root.in_meeting
-        anchors.centerIn: parent
+        anchors.verticalCenter: parent.verticalCenter
         pixel: 2
         colors: [root.star_color, root.line_color]
         rows: ["....0....", "...000...", "...000...", "000000000", ".0000000.", "..00000..", "..00000..", ".000.000.", ".00...00."]
