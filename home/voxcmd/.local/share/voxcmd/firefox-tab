@@ -29,6 +29,8 @@ import time
 PROFILE_ROOTS = ("~/.config/mozilla/firefox", "~/.mozilla/firefox")
 # Seconds between typed steps: the address bar opens and lists its results asynchronously.
 KEY_PAUSE = 0.25
+# Seconds for the address bar's open-tab results to load after typing, before one is picked.
+RESULTS_PAUSE = float(os.environ.get("VOXCMD_FIREFOX_RESULTS_PAUSE", "0.5"))
 
 
 # voxcmd's debug trace: written only while the file exists (voxcmd debug on), so a normal run touches nothing.
@@ -342,11 +344,21 @@ def focus_tab(address, title):
     if title not in open_titles:
         fail(f"no open tab is titled {title!r}, so nothing was typed")
     debug(f"switching to the tab titled {title!r}")
-    keys(["-M", "ctrl", "l", "-m", "ctrl"], ["--", "% " + title], ["-k", "Return"])
-    if os.path.exists(DEBUG_LOG):
-        # Firefox renames the window once the tab switch lands, a moment after Return.
-        time.sleep(0.6)
-        debug(f"0.6 s later the window title is {hyprctl_json('activewindow', {}).get('title', '')!r}")
+    # "% " turns the bar into its Tabs search mode, which selects no result, so Return alone does nothing: Down picks the
+    # first open tab once the results have come in.
+    keys(["-M", "ctrl", "l", "-m", "ctrl"], ["--", "% " + title])
+    time.sleep(RESULTS_PAUSE)
+    keys(["-k", "Down"], ["-k", "Return"])
+    deadline = time.monotonic() + 1.5
+    while time.monotonic() < deadline:
+        now = printable(page_title(hyprctl_json("activewindow", {}).get("title", "")))
+        if now == title:
+            debug("switched")
+            return
+        time.sleep(0.1)
+    debug(f"the window title stayed {now!r}")
+    keys(["-k", "Escape"])
+    fail(f"Firefox did not switch to {title!r}")
 
 
 def goto(url, running_only):
