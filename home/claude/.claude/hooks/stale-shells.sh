@@ -15,7 +15,10 @@ claude_pid() {
   local pid=$$ comm
   while ((pid > 1)); do
     comm=$(ps -o comm= -p "$pid" 2>/dev/null) || return 1
-    [[ $comm == claude ]] && { echo "$pid"; return 0; }
+    [[ $comm == claude ]] && {
+      echo "$pid"
+      return 0
+    }
     pid=$(ps -o ppid= -p "$pid" | tr -d ' ')
   done
   return 1
