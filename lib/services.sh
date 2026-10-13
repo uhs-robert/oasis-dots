@@ -324,6 +324,20 @@ setup_calendar_timer() {
   else
     warn "User systemd not available, enable the calendar timer after login: systemctl --user enable --now calendar-sync.timer"
   fi
+  offer_calendar_setup
+}
+
+# The timer is silent until configured, so it is enabled either way; this only decides whether to ask now.
+offer_calendar_setup() {
+  local calendar_sync="$HOME/.local/bin/calendar-sync"
+  [[ -x "$calendar_sync" ]] || return 0
+  if "$calendar_sync" setup --check &>/dev/null; then
+    info "Calendar already connected"
+  elif [[ "${OPT_YES:-0}" -eq 0 && -t 0 && -t 1 ]] && confirm "Connect your Google Calendar now?"; then
+    "$calendar_sync" setup || warn "Calendar setup did not finish; run calendar-sync setup to try again"
+  else
+    info "Run calendar-sync setup to connect your calendar later"
+  fi
 }
 
 # Checks for the Lua-config Hyprland runtime, then says how to start the session the installer set up.

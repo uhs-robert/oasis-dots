@@ -330,7 +330,7 @@ Plugin management with `ya pkg` and a root Yazi that stays in sync with your key
 
 ## 📅 Calendar
 
-The optional `calendar` package ships `calendar-sync`, which copies your Google Calendar into a local cache every 5 minutes through a systemd user timer, from the calendar's private iCal address, which a password manager command prints (rbw by default), for the bar and voice commands to read. See [home/calendar/README.md](home/calendar/README.md).
+The optional `calendar` package ships `calendar-sync`, which copies your Google Calendar into a local cache every 5 minutes through a systemd user timer, from the calendar's private iCal address, which a password manager command prints (rbw by default), for the bar and voice commands to read. Connect it with `calendar-sync setup`; the installer offers to. See [home/calendar/README.md](home/calendar/README.md).
 
 ## 🛠️ Justfile
 
