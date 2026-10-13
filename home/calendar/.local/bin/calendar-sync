@@ -70,9 +70,15 @@ def cache_dir():
     return Path(base) / "calendar"
 
 
+def is_git_marker(git_path):
+    """A .git file (a worktree's pointer) or a .git directory holding HEAD, as git itself counts them. An empty .git
+    directory is not one: sandboxes such as Codex's create it in /tmp as a mount point."""
+    return git_path.is_file() or (git_path / "HEAD").is_file()
+
+
 def inside_git_work_tree(path):
     path = path.resolve()
-    return any((candidate / ".git").exists() for candidate in [path, *path.parents])
+    return any(is_git_marker(candidate / ".git") for candidate in [path, *path.parents])
 
 
 def write_json_atomically(path, payload):

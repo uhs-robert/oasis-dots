@@ -685,6 +685,20 @@ else
 fi
 check "nothing is written in the work tree" test ! -e "$work/repo/cache"
 
+# A git worktree marks itself with a .git file, which counts too.
+mkdir -p "$work/linked"
+printf 'gitdir: %s\n' "$work/repo/.git" >"$work/linked/.git"
+if XDG_CACHE_HOME="$work/linked/cache" "$sync_bin" --ics "$fixture" >/dev/null 2>&1; then
+  echo "FAIL: a cache in a linked worktree should be refused"
+  failures=$((failures + 1))
+else
+  echo "ok: a cache in a linked worktree is refused"
+fi
+
+# An empty .git directory is no repository: Codex's sandbox leaves one in /tmp.
+mkdir -p "$work/stray/.git"
+check "an empty .git directory does not count as a work tree" env XDG_CACHE_HOME="$work/stray/cache" "$sync_bin" --ics "$fixture"
+
 if [ "$failures" -ne 0 ]; then
   echo "$failures calendar-sync test(s) failed"
   exit 1
