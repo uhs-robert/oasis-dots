@@ -16,7 +16,8 @@ private_labels=1
 # The ways out of click mode, as a command and as a turn inside it. Each names the mode, since a bare "stop", "exit" or
 # "close" is a button label and stays a target.
 click_exit_object='(the )?(clicking|click mode|clicking mode)'
-click_exit_phrase="((okay|ok|alright|please) )*((stop|exit|quit|end|leave|finish|close|turn off|switch off) $click_exit_object|$click_exit_object off)( please| now)?"
+click_exit_filler='(okay|ok|alright|please|now)'
+click_exit_phrase="($click_exit_filler )*((stop|exit|quit|end|leave|finish|close|turn off|switch off) $click_exit_object|$click_exit_object off)( $click_exit_filler)*"
 session_exit_phrases="done clicking|im done clicking|done with $click_exit_object|$click_exit_phrase"
 
 # Every click verb needs a target, so a bare "click" or "right click" still reaches the Cursor submap's binds in
