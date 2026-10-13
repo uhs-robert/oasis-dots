@@ -53,6 +53,7 @@ excluded_descriptions=(
   "voice command"
   "voice help"
   "rapid mode"
+  "wake word"
   "speech to text"
   "voxtype"
   "password"

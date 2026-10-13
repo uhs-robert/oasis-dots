@@ -9,7 +9,7 @@ local TERM = Config.app.term
 --- @return nil
 local function run()
   os.execute(
-    "dbus-update-activation-environment --systemd WAYLAND_DISPLAY XDG_CURRENT_DESKTOP XDG_SESSION_TYPE XDG_SESSION_DESKTOP DESKTOP_SESSION GTK_THEME PATH"
+    "dbus-update-activation-environment --systemd WAYLAND_DISPLAY HYPRLAND_INSTANCE_SIGNATURE XDG_CURRENT_DESKTOP XDG_SESSION_TYPE XDG_SESSION_DESKTOP DESKTOP_SESSION GTK_THEME PATH"
   )
   os.execute("systemctl --user start hyprland-session.target")
   os.execute("systemctl --user start gnome-keyring-daemon.socket")

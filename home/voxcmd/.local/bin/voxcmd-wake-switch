@@ -1,0 +1,54 @@
+#!/usr/bin/env bash
+# voxcmd wake on|off|toggle|status: start or stop the wake word listener (voxcmd-wake.service) for this login.
+# The unit is never enabled, so it is off after a login until switched on; the microphone is held only while it runs.
+set -euo pipefail
+
+unit=voxcmd-wake.service
+
+toast() {
+  command -v notify-send >/dev/null || return 0
+  notify-send -a voxcmd --transient "$1" "$2" || true
+}
+
+# activating covers the first start, which downloads the models before the listener runs.
+is_on() {
+  case "$(systemctl --user is-active "$unit" 2>/dev/null || true)" in
+  active | activating | reloading) return 0 ;;
+  *) return 1 ;;
+  esac
+}
+
+switch_on() {
+  if is_on; then
+    toast "Wake word" "Already on"
+    return 0
+  fi
+  # --no-block: the first start waits on the model download.
+  if ! systemctl --user start --no-block "$unit"; then
+    toast "Wake word" "Could not start $unit"
+    return 1
+  fi
+  toast "Wake word on" "Say \"hey jarvis\""
+}
+
+# Says the microphone is released only once the unit has stopped: a failed stop leaves the listener holding it.
+switch_off() {
+  if ! systemctl --user stop "$unit" || is_on; then
+    toast "Wake word" "Could not stop $unit; the microphone may still be in use"
+    return 1
+  fi
+  toast "Wake word off" "Microphone released"
+}
+
+case "${1:-}" in
+on) switch_on ;;
+off) switch_off ;;
+toggle) if is_on; then switch_off; else switch_on; fi ;;
+status)
+  if is_on; then echo on; else echo off && exit 1; fi
+  ;;
+*)
+  echo "Usage: voxcmd wake on|off|toggle|status" >&2
+  exit 2
+  ;;
+esac

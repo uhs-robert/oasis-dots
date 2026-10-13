@@ -1,0 +1,559 @@
+#!/usr/bin/env python3
+"""voxcmd-wake: listen for "hey jarvis" and start a voice command, with no key.
+
+Run by voxcmd-wake.service (`voxcmd wake on`). Reads the default source through pw-record (16 kHz mono s16) into
+openWakeWord's pretrained hey_jarvis model; a trigger runs `voxcmd listen --start-only`, as the voice key does.
+The audio stays in memory. The only log is scores and timestamps, in voxcmd's debug log while it is on.
+
+  voxcmd-wake                run the listener
+  voxcmd-wake --fetch-models download the models on first use (the unit's ExecStartPre)
+  voxcmd-wake --check        exit 0 when the packages and models are in place, else 1 and say what is missing
+
+Settings (environment, voxcmd README "Wake word"):
+  VOXCMD_WAKE_THRESHOLD       score a frame needs to count (0.8)
+  VOXCMD_WAKE_FRAMES          consecutive 80 ms frames at or above it before a trigger is pending (3)
+  VOXCMD_WAKE_COOLDOWN_SECS   quiet time after a trigger (3)
+  VOXCMD_WAKE_MODEL_DIR       where the models live (~/.local/share/voxcmd/wake-models)
+"""
+
+import os
+
+# Set before onnxruntime loads: one thread is plenty for an 80 ms frame and keeps the idle cost low.
+os.environ.setdefault("OMP_NUM_THREADS", "1")
+
+import hashlib
+import json
+import select
+import signal
+import subprocess
+import sys
+import time
+import urllib.request
+
+EXIT_OK = 0
+EXIT_ERROR = 1
+# systemd.exec: sysexits EX_CONFIG. The unit lists it in RestartPreventExitStatus, since restarting cannot install a package.
+EXIT_MISSING_SETUP = 78
+
+SAMPLE_RATE = 16000
+# openWakeWord scores audio in multiples of 80 ms.
+FRAME_SAMPLES = 1280
+FRAME_BYTES = FRAME_SAMPLES * 2
+
+DEFAULT_THRESHOLD = 0.8
+DEFAULT_FRAMES = 3
+DEFAULT_COOLDOWN_SECS = 3.0
+
+# After a trigger, how long voxtype gets to report that it is recording before the "ready" cue is given up, and how
+# often its state is looked at meanwhile.
+READY_WAIT_SECS = 5.0
+READY_POLL_SECS = 0.1
+
+# How often media and voxtype are looked at, and how long the loop sleeps while paused.
+PAUSE_CHECK_SECS = 0.5
+MEDIA_CHECK_SECS = 1.0
+PAUSED_SLEEP_SECS = 0.5
+READ_TIMEOUT_SECS = 0.5
+
+# pw-record that dies is restarted after a wait that doubles up to the cap, and resets after a run this long.
+BACKOFF_FIRST_SECS = 1.0
+BACKOFF_CAP_SECS = 30.0
+STABLE_STREAM_SECS = 10.0
+
+# Scores below this are not worth a debug line at 12 a second.
+LOG_SCORE_FLOOR = 0.2
+
+MODEL_RELEASE_URL = "https://github.com/dscripka/openWakeWord/releases/download/v0.5.1/"
+WAKE_MODEL = "hey_jarvis_v0.1.onnx"
+# Pinned to the v0.5.1 release files: a download that differs is refused, and a file already in place is checked too.
+MODEL_SHA256 = {
+    WAKE_MODEL: "94a13cfe60075b132f6a472e7e462e8123ee70861bc3fb58434a73712ee0d2cb",
+    "melspectrogram.onnx": "ba2b0e0f8b7b875369a2c89cb13360ff53bac436f2895cced9f479fa65eb176f",
+    "embedding_model.onnx": "70d164290c1d095d1d4ee149bc5e00543250a7316b59f31d056cff7bd3075c1f",
+}
+MODEL_FILES = tuple(MODEL_SHA256)
+
+
+class ModelHashMismatch(Exception):
+    """A model file is not the pinned release file."""
+
+
+class SourceEnded(Exception):
+    """The audio source closed: pw-record died or was killed."""
+
+
+def runtime_dir():
+    return os.path.join(os.environ.get("XDG_RUNTIME_DIR") or "/tmp", "voxcmd")
+
+
+def default_model_dir():
+    data_home = os.environ.get("XDG_DATA_HOME") or os.path.expanduser("~/.local/share")
+    return os.path.join(data_home, "voxcmd", "wake-models")
+
+
+class Settings:
+    def __init__(self, environ=None):
+        env = os.environ if environ is None else environ
+        self.threshold = float(env.get("VOXCMD_WAKE_THRESHOLD") or DEFAULT_THRESHOLD)
+        self.frames = int(env.get("VOXCMD_WAKE_FRAMES") or DEFAULT_FRAMES)
+        self.cooldown_secs = float(env.get("VOXCMD_WAKE_COOLDOWN_SECS") or DEFAULT_COOLDOWN_SECS)
+        self.model_dir = env.get("VOXCMD_WAKE_MODEL_DIR") or default_model_dir()
+        if not 0 < self.threshold <= 1 or self.frames < 1 or self.cooldown_secs < 0:
+            raise ValueError("VOXCMD_WAKE_THRESHOLD must be in (0, 1], _FRAMES at least 1, _COOLDOWN_SECS not negative")
+
+
+class TriggerDecider:
+    """Turns a stream of frame scores into triggers: held high for enough frames, then a cooldown.
+
+    It triggers on the frame that completes the hold, not after the phrase ends: the recording then starts while
+    "jarvis" is still being said, and voxcmd strips what of the phrase reaches the transcript."""
+
+    def __init__(self, threshold, frames, cooldown_secs):
+        self.threshold = threshold
+        self.frames = frames
+        self.cooldown_secs = cooldown_secs
+        self.run = 0
+        self.cooldown_until = 0.0
+
+    def reset(self):
+        """Forgets a phrase under way (the stream closed); the cooldown stays."""
+        self.run = 0
+
+    def update(self, score, now):
+        """True once, on the frame that completes the hold."""
+        if now < self.cooldown_until:
+            return False
+        self.run = self.run + 1 if score >= self.threshold else 0
+        if self.run < self.frames:
+            return False
+        self.reset()
+        self.cooldown_until = now + self.cooldown_secs
+        return True
+
+
+class PauseGate:
+    """Whether the microphone should be left alone: voxtype is recording, a voice session is open, or media plays."""
+
+    def __init__(self, clock, voxtype_state_file, run_playerctl, session_file=None, proc_dir="/proc"):
+        self.clock = clock
+        self.voxtype_state_file = voxtype_state_file
+        self.run_playerctl = run_playerctl
+        self.session_file = session_file
+        self.proc_dir = proc_dir
+        self.media_playing = False
+        self.next_media_check = 0.0
+
+    def voxtype_recording(self):
+        try:
+            with open(self.voxtype_state_file) as state_file:
+                return state_file.read().strip() == "recording"
+        except OSError:
+            return False
+
+    def process_start_time(self, pid):
+        """Field 22 of /proc/<pid>/stat, counted after the last ")" as voxcmd's process_start_time does."""
+        try:
+            with open(os.path.join(self.proc_dir, str(pid), "stat")) as stat_file:
+                fields = stat_file.read().rpartition(")")[2].split()
+            return fields[19]
+        except (OSError, IndexError):
+            return None
+
+    def session_open(self):
+        """A session is open while its file names an owner that is alive: the same pid and start time voxcmd checks."""
+        if not self.session_file:
+            return False
+        try:
+            with open(self.session_file) as session_file:
+                state = json.load(session_file)
+            owner, owner_start = state["owner"], str(state["owner_start"])
+        except (OSError, ValueError, KeyError, TypeError):
+            return False
+        return bool(owner_start) and self.process_start_time(owner) == owner_start
+
+    def paused(self):
+        if self.voxtype_recording() or self.session_open():
+            return True
+        now = self.clock()
+        if now >= self.next_media_check:
+            self.media_playing = self.run_playerctl()
+            self.next_media_check = now + MEDIA_CHECK_SECS
+        return self.media_playing
+
+
+def playerctl_playing():
+    try:
+        result = subprocess.run(
+            ["playerctl", "status"], capture_output=True, text=True, timeout=3, stdin=subprocess.DEVNULL
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return False
+    return result.stdout.strip() == "Playing"
+
+
+class Listener:
+    """One loop step at a time, so the decisions can be driven with fake audio and time."""
+
+    def __init__(self, settings, scorer, open_source, gate, run_listen, publish_state, clock, sleep, log):
+        self.settings = settings
+        self.scorer = scorer
+        self.open_source = open_source
+        self.gate = gate
+        self.run_listen = run_listen
+        self.publish_state = publish_state
+        self.clock = clock
+        self.sleep = sleep
+        self.log = log
+        self.decider = TriggerDecider(settings.threshold, settings.frames, settings.cooldown_secs)
+        self.source = None
+        self.opened_at = 0.0
+        self.backoff_secs = BACKOFF_FIRST_SECS
+        self.retry_at = 0.0
+        self.stopping = False
+        # Set at a trigger until the recording it started has ended: the bar is told "ready" while voxtype records.
+        self.ready_deadline = None
+        self.ready_seen = False
+
+    def close_stream(self):
+        if self.source is not None:
+            self.source.close()
+            self.source = None
+        self.decider.reset()
+        self.scorer.reset()
+
+    def fail_stream(self, reason):
+        self.close_stream()
+        self.log(f"stream: {reason}, retry in {self.backoff_secs:g}s")
+        self.retry_at = self.clock() + self.backoff_secs
+        self.backoff_secs = min(self.backoff_secs * 2, BACKOFF_CAP_SECS)
+        self.publish_state("paused")
+
+    def paused_state(self):
+        """"ready" while the recording a wake trigger started is under way, else "paused"."""
+        if self.ready_deadline is None:
+            return "paused"
+        if self.gate.voxtype_recording():
+            self.ready_seen = True
+            return "ready"
+        if self.ready_seen or self.clock() >= self.ready_deadline:
+            self.ready_deadline = None
+            self.ready_seen = False
+        return "paused"
+
+    def step(self):
+        if self.gate.paused():
+            if self.source is not None:
+                self.log("paused")
+                self.close_stream()
+            self.publish_state(self.paused_state())
+            self.sleep(READY_POLL_SECS if self.ready_deadline is not None else PAUSED_SLEEP_SECS)
+            return
+        if self.ready_deadline is not None and (self.ready_seen or self.clock() >= self.ready_deadline):
+            self.ready_deadline = None
+            self.ready_seen = False
+        if self.source is None:
+            wait = self.retry_at - self.clock()
+            if wait > 0:
+                self.sleep(min(wait, PAUSED_SLEEP_SECS))
+                return
+            try:
+                self.source = self.open_source()
+            except OSError as error:
+                self.fail_stream(f"cannot start pw-record ({error})")
+                return
+            self.opened_at = self.clock()
+            self.log("armed")
+            self.publish_state("armed")
+        try:
+            frame = self.source.read_frame(READ_TIMEOUT_SECS)
+        except SourceEnded:
+            self.fail_stream("pw-record ended")
+            return
+        if frame is None:
+            return
+        now = self.clock()
+        if now - self.opened_at >= STABLE_STREAM_SECS:
+            self.backoff_secs = BACKOFF_FIRST_SECS
+        score = self.scorer.score(frame)
+        if score >= LOG_SCORE_FLOOR:
+            self.log(f"score {score:.2f}")
+        if self.decider.update(score, now):
+            self.log(f"trigger score {score:.2f}")
+            self.ready_deadline = now + READY_WAIT_SECS
+            self.ready_seen = False
+            self.run_listen()
+
+    def run(self):
+        while not self.stopping:
+            self.step()
+        self.close_stream()
+
+
+class PwRecordSource:
+    """pw-record's raw output cut into 80 ms frames."""
+
+    def __init__(self):
+        self.pending = b""
+        self.process = subprocess.Popen(
+            ["pw-record", "--rate", str(SAMPLE_RATE), "--channels", "1", "--format", "s16", "--raw", "-"],
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+            preexec_fn=die_with_parent,
+        )
+        self.fd = self.process.stdout.fileno()
+
+    def read_frame(self, timeout):
+        """A full frame, or None when none is ready within the timeout. Raises SourceEnded at the end of the audio."""
+        while len(self.pending) < FRAME_BYTES:
+            ready, _, _ = select.select([self.fd], [], [], timeout)
+            if not ready:
+                return None
+            chunk = os.read(self.fd, 65536)
+            if not chunk:
+                raise SourceEnded()
+            self.pending += chunk
+        frame, self.pending = self.pending[:FRAME_BYTES], self.pending[FRAME_BYTES:]
+        return frame
+
+    def close(self):
+        self.process.terminate()
+        try:
+            self.process.wait(timeout=2)
+        except subprocess.TimeoutExpired:
+            self.process.kill()
+            self.process.wait()
+        self.process.stdout.close()
+
+
+def die_with_parent():
+    # PR_SET_PDEATHSIG: pw-record goes too if this process is killed without running its cleanup.
+    import ctypes
+
+    try:
+        ctypes.CDLL(None, use_errno=True).prctl(1, signal.SIGKILL)
+    except (OSError, AttributeError):
+        pass
+
+
+class ModelScorer:
+    """openWakeWord's hey_jarvis model on onnxruntime."""
+
+    def __init__(self, model_dir):
+        import numpy
+        from openwakeword.model import Model
+
+        self.numpy = numpy
+        self.model = Model(
+            wakeword_models=[os.path.join(model_dir, WAKE_MODEL)],
+            inference_framework="onnx",
+            melspec_model_path=os.path.join(model_dir, "melspectrogram.onnx"),
+            embedding_model_path=os.path.join(model_dir, "embedding_model.onnx"),
+        )
+
+    def score(self, frame):
+        scores = self.model.predict(self.numpy.frombuffer(frame, dtype=self.numpy.int16))
+        return float(max(scores.values()))
+
+    def reset(self):
+        self.model.reset()
+
+
+def load_scorer(settings):
+    return ModelScorer(settings.model_dir)
+
+
+def missing_setup(settings):
+    """What stops the listener from starting, as a sentence, or None."""
+    try:
+        import numpy  # noqa: F401
+        import openwakeword  # noqa: F401
+    except ImportError as error:
+        return f"python-openwakeword is not installed ({error})"
+    for name in MODEL_FILES:
+        path = os.path.join(settings.model_dir, name)
+        if not os.path.exists(path):
+            return f"{name} is not in {settings.model_dir}"
+        if file_sha256(path) != MODEL_SHA256[name]:
+            return f"{name} in {settings.model_dir} is not the pinned release file"
+    return None
+
+
+def file_sha256(path):
+    digest = hashlib.sha256()
+    with open(path, "rb") as model_file:
+        for block in iter(lambda: model_file.read(1 << 20), b""):
+            digest.update(block)
+    return digest.hexdigest()
+
+
+def fetch_models(settings, notify):
+    """Makes every model file present and pinned. A file in place that differs is deleted and fetched again; a download
+    that differs is deleted and raises ModelHashMismatch."""
+    os.makedirs(settings.model_dir, exist_ok=True)
+    for name in MODEL_FILES:
+        target = os.path.join(settings.model_dir, name)
+        if os.path.exists(target):
+            if file_sha256(target) == MODEL_SHA256[name]:
+                continue
+            notify("Wake word", f"{name} does not match the release, fetching it again")
+            os.unlink(target)
+        notify("Wake word", f"Downloading {name}")
+        partial = target + ".part"
+        digest = hashlib.sha256()
+        with urllib.request.urlopen(MODEL_RELEASE_URL + name, timeout=60) as response, open(partial, "wb") as out:
+            while True:
+                block = response.read(1 << 16)
+                if not block:
+                    break
+                digest.update(block)
+                out.write(block)
+        if digest.hexdigest() != MODEL_SHA256[name]:
+            os.unlink(partial)
+            raise ModelHashMismatch(f"{name} downloaded with sha256 {digest.hexdigest()}, expected {MODEL_SHA256[name]}")
+        os.replace(partial, target)
+
+
+def notify_error(summary, body):
+    try:
+        subprocess.run(["notify-send", "-a", "voxcmd", summary, body], timeout=5, stdin=subprocess.DEVNULL)
+    except (OSError, subprocess.TimeoutExpired):
+        pass
+
+
+def notify_info(summary, body):
+    try:
+        subprocess.run(
+            ["notify-send", "-a", "voxcmd", "--transient", summary, body], timeout=5, stdin=subprocess.DEVNULL
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        pass
+
+
+def make_logger():
+    path = os.path.join(runtime_dir(), "debug.log")
+    enabled = bool(os.environ.get("VOXCMD_DEBUG")) or os.path.exists(path)
+
+    def log(message):
+        if not enabled:
+            return
+        try:
+            os.makedirs(runtime_dir(), exist_ok=True)
+            stamp = time.strftime("%H:%M:%S") + f".{int(time.time() * 1000) % 1000:03d}"
+            with open(path, "a") as log_file:
+                log_file.write(f"{stamp} voxcmd-wake[{os.getpid()}] {message}\n")
+        except OSError:
+            pass
+
+    return log
+
+
+class StateFile:
+    """wake.json under voxcmd's runtime dir, which the bar watches: {"state": "armed" | "ready" | "paused"}.
+
+    ready is the recording a trigger started, the cue to speak."""
+
+    def __init__(self):
+        self.path = os.path.join(runtime_dir(), "wake.json")
+        self.last = None
+
+    def publish(self, state):
+        if state == self.last:
+            return
+        self.last = state
+        os.makedirs(runtime_dir(), exist_ok=True)
+        partial = self.path + ".tmp"
+        with open(partial, "w") as state_file:
+            json.dump({"state": state, "pid": os.getpid()}, state_file)
+        os.replace(partial, self.path)
+
+    def remove(self):
+        try:
+            os.unlink(self.path)
+        except OSError:
+            pass
+
+
+def voxcmd_command():
+    override = os.environ.get("VOXCMD_WAKE_VOXCMD")
+    return override or os.path.join(os.path.dirname(os.path.realpath(__file__)), "voxcmd")
+
+
+def make_run_listen(log):
+    def run_listen():
+        try:
+            result = subprocess.run(
+                [voxcmd_command(), "listen", "--start-only"],
+                timeout=15,
+                stdin=subprocess.DEVNULL,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+            log(f"listen exit {result.returncode}")
+        except (OSError, subprocess.TimeoutExpired) as error:
+            log(f"listen failed ({error})")
+
+    return run_listen
+
+
+def main(argv):
+    try:
+        settings = Settings()
+    except ValueError as error:
+        print(f"voxcmd-wake: {error}", file=sys.stderr)
+        return EXIT_MISSING_SETUP
+    if argv[:1] == ["--fetch-models"]:
+        try:
+            fetch_models(settings, notify_info)
+        except (OSError, ModelHashMismatch) as error:
+            notify_error("Wake word", "Could not fetch the models")
+            print(f"voxcmd-wake: model download failed: {error}", file=sys.stderr)
+            return EXIT_ERROR
+        return EXIT_OK
+    if argv[:1] == ["--check"]:
+        problem = missing_setup(settings)
+        if problem:
+            print(problem)
+        return EXIT_ERROR if problem else EXIT_OK
+    if argv:
+        print(__doc__, file=sys.stderr)
+        return EXIT_ERROR
+
+    problem = missing_setup(settings)
+    if problem:
+        notify_error("Wake word", problem)
+        print(f"voxcmd-wake: {problem}", file=sys.stderr)
+        return EXIT_MISSING_SETUP
+    state_file = StateFile()
+    log = make_logger()
+    listener = Listener(
+        settings,
+        load_scorer(settings),
+        PwRecordSource,
+        PauseGate(
+            time.monotonic,
+            os.path.join(os.environ.get("XDG_RUNTIME_DIR") or "/tmp", "voxtype", "state"),
+            playerctl_playing,
+            os.path.join(runtime_dir(), "session.json"),
+        ),
+        make_run_listen(log),
+        state_file.publish,
+        time.monotonic,
+        time.sleep,
+        log,
+    )
+
+    def stop(*_):
+        listener.stopping = True
+
+    signal.signal(signal.SIGTERM, stop)
+    signal.signal(signal.SIGINT, stop)
+    try:
+        listener.run()
+    finally:
+        state_file.remove()
+    return EXIT_OK
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))

@@ -16,6 +16,7 @@ Bind.leader_cmd("PERIOD",        Scripts.voxtype,       "Speech to Text")
 Bind.leader_cmd("COMMA",         Scripts.voxcmd_listen, "Voice Command")
 Bind.leader_cmd("SHIFT + COMMA", Scripts.voxcmd_stop,   "Stop Voice")
 Bind.leader_cmd("CTRL + COMMA",  Scripts.voxcmd_rapid,  "Rapid Mode")
+Bind.leader_cmd("CTRL + PERIOD", Scripts.voxcmd_wake,   "Wake Word")
 
 -- Clipboard History
 Bind.leader_fn("CTRL + V",         Menu.clipboard(),        "Clipboard History")
