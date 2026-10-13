@@ -60,6 +60,38 @@ check "deletes the local branch" "! git -C '$root/main' show-ref -q --verify ref
 check "pulls main" "grep -q '^pulled ' <<<\"\$out\""
 check "main has A, P once and C" "[[ \$(git -C '$root/main' log --format=%s main) == \$'C\nP (rebased)\nA' ]]"
 
+echo "== already-merged PR alone: cleanup still runs"
+setup
+sed -i 's/^state=OPEN/state=MERGED/' "$GH_STATE"
+out=$(PATH="$here:$PATH" "$script" 7 2>&1)
+code=$?
+show "$out"
+check "exits 0" "[[ $code == 0 ]]"
+check "says it is already merged" "grep -q '^#7 already merged' <<<\"\$out\""
+check "does not merge again" "! grep -q '^7 merged' <<<\"\$out\""
+check "deletes the local branch" "! git -C '$root/main' show-ref -q --verify refs/heads/child"
+
+echo "== already-merged PR first in the list: the rest still merges"
+setup
+printf 'head=gone-branch\nbase=main\nstate=MERGED\n' >"$GH_STATE.7"
+mv "$GH_STATE" "$GH_STATE.8"
+out=$(PATH="$here:$PATH" "$script" 7 8 2>&1)
+code=$?
+show "$out"
+check "exits 0" "[[ $code == 0 ]]"
+check "says #7 is already merged" "grep -q '^#7 already merged' <<<\"\$out\""
+check "merges #8" "grep -q '^8 merged (rebase)' <<<\"\$out\""
+check "deletes the local branch" "! git -C '$root/main' show-ref -q --verify refs/heads/child"
+
+echo "== closed PR is still refused"
+setup
+sed -i 's/^state=OPEN/state=CLOSED/' "$GH_STATE"
+out=$(PATH="$here:$PATH" "$script" 7 2>&1)
+code=$?
+show "$out"
+check "stops with an error" "[[ $code != 0 ]]"
+check "names the state" "grep -q 'PR 7 is CLOSED' <<<\"\$out\""
+
 echo "== main held by another worktree"
 setup
 g worktree add -q "$root/elsewhere" main
