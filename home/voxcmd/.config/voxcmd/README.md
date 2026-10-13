@@ -57,7 +57,7 @@ To tune it, `voxcmd-autostop --verbose` prints each frame's level and the thresh
 3. A phrase that starts with an integration's [force prefix](#force-prefixes) skips every other integration and the LLM hook: the rest of the phrase is matched against that integration's verbs alone, whatever its tier, then goes through steps 5, 6 and 8. Nothing matching there is a "no match", with no other integration tried.
 4. Each integration's verbs are tried in order against the whole phrase; the first match per integration counts.
 5. A verb with a target whose integration lists candidates for that action matches the target against them: fuzzy (`fzf --filter`, an exact label winning outright) or, for an integration with `target_match=words`, [word matching](#word-matching).
-6. A target that matches none of the candidates runs the action the integration names for that case in `no_match_actions`, if any.
+6. A target that matches none of the candidates runs the action the integration names for that case in `no_match_actions`, if any. A [word matching](#word-matching) target with no words left after the filler and `match_ignore_words` are dropped names nothing, so it runs no such action and the phrase can fall through to the fallbacks.
 7. If nothing so far can run, the [LLM hook](#llm-hook) gets a turn, then the [fallback integrations](#fallback-integrations) go through steps 4 to 6.
 8. One option runs (after a [confirm card](#confirm) if the integration sets `confirm=1` or the option's label matches its `confirm_labels`). Several, or a single weak word match, open a picker, the Quickshell one when the bar is running and `rofi -dmenu` otherwise, which can also be [answered by voice](#answering-by-voice); cancelling does nothing. None sends a "no match" notification with a Voice Help button.
 
@@ -408,6 +408,30 @@ Switching takes any `{focus}` or `{open}` [intent](#intents) form before the ses
 - Starting and stopping are [silent](#silent-actions), since the recording chip shows a start (screenshot.sh notifies when no bar shows one) and screenshot.sh sends "Recording Saved!" when it stops; starting while a recording runs says "Already recording" with its file instead, and stopping with none running says "Not recording".
 - Any `wf-recorder` counts as the recording, as on the bar's chip, so the demo recorder's takes are stopped too, without a "Recording Saved!", which only screenshot.sh's own recordings get.
 - Plain "stop" stays with Media, and "cancel the recording" matches nothing: "cancel" means discard to voxcmd, and stopping keeps the file.
+
+### Click
+
+`click.sh` clicks text it reads off the focused window. It captures the window's own buffer with `grim`, reads it with `tesseract`, and moves the pointer there with Hyprland before clicking with `wlrctl`.
+
+| Say                                                    | Does                                                                  |
+| ------------------------------------------------------ | --------------------------------------------------------------------- |
+| `click <text>`, `left click <text>`, `click on <text>` | Left-clicks the text                                                  |
+| `right click <text>`                                   | Right-clicks it                                                       |
+| `double click <text>`                                  | Double-clicks it (two left clicks)                                    |
+| `show hints`, `show click hints`, `hint mode`          | Opens `wl-kbptr`'s floating hint mode, as the Cursor submap does; answer with keys |
+
+- Only the focused window is read, since unfocused windows are dimmed and lose words to OCR. With no focused window the command fails with "no focused window".
+- A click verb always needs a target, so a bare "click" and "right click" still go to the Cursor submap's binds in Keybinds. So do "click left", "click it", "click here", "click and drag" and the like: a target of only filler words and `left`, `right`, `middle`, `here`, `and`, `drag` and `hold` is no target, and the screen is not even read. A real target found nowhere says `No "<text>" on screen` and does not fall through to Keybinds.
+- Matching is [word matching](#word-matching) against each run of words OCR read on one line (a wide gap starts a new run). One strong match clicks; the text on its own as a button beats the same words inside a longer run. Several matches, or any weak one ("settings" for an "Open Settings" link), open the [picker](#picker), whose labels give the text and where it is ("Next - top right"), and which is [answered by voice](#answering-by-voice) like any other. A stray phrase never clicks: a word OCR read one edit away from the spoken one ("Clone" for "close", "Summit" for "submit") is another word as often as a misread one, so it is never taken for the spoken word.
+- Look-alike letters are forgiven: `l`, `I`, `1` and `|` compare equal, `0` and `O` too, so "sign ln" is "sign in". Any other misread letter is not: the OCR word stays what it is, and voxcmd's word matching calls it weak or drops it.
+- Text the window holds but the screen covers is not clicked: the capture is the window's own buffer, so candidates under a floating window above the focused one, a pinned window, or the monitor's reserved edges (the bar) are dropped. When every candidate is covered, a toast says `"<text>" is covered by another window`.
+- A failure toast says only `Click failed: <reason>`, never the OCR text, since the bar keeps error toasts in its history.
+- A click is [silent](#silent-actions); the pointer landing on the text is the feedback.
+- The screenshot and its text live only in a private directory under `$XDG_RUNTIME_DIR`, deleted when the command ends.
+
+The pipeline is `click-ocr` (capture, gray, invert when the window is dark, tesseract; a window taller than 1000 px is cut into 4 to 6 overlapping strips read in parallel, each owning the lines whose box is centred in its rows) feeding `click-match.awk` (matching and the mapping to global coordinates), both in `~/.local/share/voxcmd/`. Typical time from speech end to click is under a second. The capture is by toplevel (`grim -T`, from the window's `stableId`), so translucent windows are read without the wallpaper behind them; it falls back to the window's screen region when that fails. The mapping takes the x and y scales from the captured image, not the monitor, and grim returns upright images on rotated monitors. A capture whose two scales differ by more than 2% is retaken as a screen region, and fails if that differs too. A word is matched against the spoken words one by one, or by letters joined ("Newtask" for "new task", "Read me" for "readme"); the spoken words replace OCR text only for look-alike equality.
+
+Needs `grim`, `tesseract` and `tesseract-data-eng`, `imagemagick`, `wlrctl` and `wl-kbptr` (all in `packages/`). Tests: `home/voxcmd/tests/run.sh` (a step of `just check`) runs in the test sandbox, where `grim`, `magick`, `tesseract`, `wlrctl` and `hyprctl` are stubs fed by fixtures, and runs voxcmd with `--dry-run` only.
 
 ## Voice Help
 
