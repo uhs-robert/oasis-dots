@@ -843,8 +843,9 @@ run_click_at() { (
 # A route reads the window, which records it for click_at.
 route "click sign in" >/dev/null
 : >"$log"
-run_click_at "error:no focused window"
-check "a failed capture is a generic error toast" "grep -q '^notify-send --app-name=voxcmd voxcmd failed Click failed: no focused window\$' '$log'"
+capture_status=0
+capture_reason=$(run_click_at "error:no focused window") || capture_status=$?
+check "a failed capture fails with only the reason" "[[ $capture_status == 1 && '$capture_reason' == 'no focused window' ]]"
 : >"$log"
 run_click_at "covered:"
 check "a covered target is a transient toast naming the spoken target" "grep -q '^notify-send --transient --app-name=voxcmd \"sign in\" is covered by another window\$' '$log'"
@@ -861,9 +862,26 @@ mkdir -p "$root/nowlrctl"
 printf '#!/bin/sh\necho "wlrctl: no seat" >&2\nexit 1\n' >"$root/nowlrctl/wlrctl"
 chmod +x "$root/nowlrctl/wlrctl"
 : >"$log"
-PATH="$root/nowlrctl:$PATH" run_click_at "175,82,left,1,2,3,4"
-check "a failed click is a generic error toast with the tool's reason" "grep -q '^notify-send --app-name=voxcmd voxcmd failed Click failed: wlrctl: no seat\$' '$log'"
-check "no toast ever holds the screen text" "! grep -q -i 'sign' '$log'"
+click_status=0
+failed_click=$(PATH="$root/nowlrctl:$PATH" run_click_at "175,82,left,1,2,3,4") || click_status=$?
+check "a failed click fails with the tool's reason" "[[ $click_status == 1 && '$failed_click' == 'wlrctl: no seat' ]]"
+check "click itself sends no toast for a failure" "! grep -q 'voxcmd failed' '$log'"
+
+# The whole path: a failed click reaches the engine as a failure and its error toast leaves the screen text out.
+: >"$log"
+real_status=0
+PATH="$root/nowlrctl:$PATH" "$voxcmd" "click sign in" >/dev/null 2>&1 || real_status=$?
+check "the engine sees a failed click as a failure" "[[ $real_status != 0 ]]"
+check "the failed click is one error toast with the reason" "[[ \$(grep -c '^notify-send .*voxcmd failed' '$log') == 1 ]] && grep -q '^notify-send -a voxcmd voxcmd failed Click: click: wlrctl: no seat\$' '$log'"
+check "no toast holds the screen text" "! grep -q -i 'sign' '$log'"
+
+# An integration that does not declare private labels keeps its label in the failure toast.
+public_config=$root/config-public
+mkdir -p "$public_config/integrations.d" "$public_config/replacements.d"
+printf 'name="Plain"\nverbs=("break {target}")\ndeclare -A actions=([break]=%s)\n' "'false'" >"$public_config/integrations.d/plain.sh"
+: >"$log"
+VOXCMD_CONFIG_DIR=$public_config "$voxcmd" "break widget" >/dev/null 2>&1
+check "an ordinary integration's failure toast names its label" "grep -q '^notify-send -a voxcmd voxcmd failed Plain: break widget\$' '$log'"
 
 section "the window changed before the click"
 target_file=$XDG_RUNTIME_DIR/voxcmd/click-target

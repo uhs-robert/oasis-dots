@@ -205,7 +205,7 @@ compile_pattern() {
 # A `declare` in a file sourced from a function is local to that function, so the arrays are copied out to globals.
 load_integration() {
   unset -f candidates help_choices pick_box session_rewrite
-  name="" confirm=0 fallback=0 silent=0 target_match=fuzzy help_action="" action_labels=1 pick_command=""
+  name="" confirm=0 fallback=0 silent=0 target_match=fuzzy help_action="" action_labels=1 pick_command="" private_labels=0
   local -a verbs=() examples=() confirm_labels=() match_ignore_words=() silent_actions=() force_prefixes=() session_miss_actions=()
   local -A actions=() no_match_actions=()
   # shellcheck disable=SC1090
@@ -358,10 +358,10 @@ runnable_options() {
     | from_entries' -- "${action_triples[@]}")
   jq -c --argjson match "$match" --arg action "$action" --argjson commands "$commands" --arg confirm "$confirm" \
     --argjson label_omits_action "$({ [ "${#integration_actions[@]}" = 1 ] || [ "$action_labels" = 0 ]; } && echo true || echo false)" \
-    --argjson candidates "$candidate_count" --args \
+    --argjson candidates "$candidate_count" --argjson private_labels "$([ "$private_labels" = 1 ] && echo true || echo false)" --args \
     '($ARGS.positional) as $confirm_labels | .[] | (.action // $action) as $action
       | $match + {action: $action, label_omits_action: $label_omits_action, id, label, command: ($commands[$action].command // ""),
-          weak: (.weak // false), silent: ($commands[$action].silent // false),
+          weak: (.weak // false), silent: ($commands[$action].silent // false), private_labels: $private_labels,
           confirm: ($confirm == "1" or (.label as $label | any($confirm_labels[]; . as $re | $label | test($re; "i")))),
           candidates: $candidates}' "${integration_confirm_labels[@]}"
 }
@@ -518,9 +518,12 @@ run_option() {
   id=$(jq -r .id <<<"$option")
   target=$(jq -r .target <<<"$option")
   label=$(option_label "$option")
+  # Error toasts stay in the bar's history, and a private option's label (screen text) must not reach it, nor the debug log.
+  local toast_label="$label"
+  [ "$(jq -r .private_labels <<<"$option")" != true ] || toast_label=$(option_label "$(jq -c '.label = ""' <<<"$option")")
   last_run_action=$(jq -r .action <<<"$option")
   if [ -z "$command" ]; then
-    notify error "voxcmd error" "$label has no command"
+    notify error "voxcmd error" "$toast_label has no command"
     return 1
   fi
   if [ "$(jq -r .confirm <<<"$option")" = true ]; then
@@ -530,10 +533,10 @@ run_option() {
     [ "$came_by_voice" = 0 ] || confirm_flags+=(--listen)
     debug "confirm asks: $question (${confirm_flags[*]})"
     if ! "$voxcmd_confirm" "${confirm_flags[@]}" "$question"; then
-      debug "confirm answered no: $label not run"
+      debug "confirm answered no: $toast_label not run"
       return 0
     fi
-    debug "confirm answered yes: running $label"
+    debug "confirm answered yes: running $toast_label"
   fi
   if output=$(
     load_integration "$file"
@@ -543,7 +546,7 @@ run_option() {
     # A silent action's own effect (a bar popup it opens) is the feedback, which a toast would only cover.
     [ "$(jq -r .silent <<<"$option")" = true ] || notify info "voxcmd" "$label${output:+: $(tail -n 1 <<<"$output")}"
   else
-    notify error "voxcmd failed" "$label${output:+: $(tail -n 3 <<<"$output")}"
+    notify error "voxcmd failed" "$toast_label${output:+: $(tail -n 3 <<<"$output")}"
     return 1
   fi
 }

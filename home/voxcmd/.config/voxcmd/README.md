@@ -188,6 +188,12 @@ silent=1                  # every action of this integration
 silent_actions=(weather)  # only these actions
 ```
 
+An integration whose option labels hold private text, such as the screen text `click.sh` reads, sets `private_labels=1`. The error toast, which the bar keeps in its history, then names only the integration and action ("Click: click: wlrctl: no seat") and the debug log leaves the label out too; the command's own failure reason still follows.
+
+```bash
+private_labels=1          # error toasts leave out the option's label
+```
+
 `keybinds.sh` is silent: a bind has a visible effect of its own, and many open bar popups. So are `media.sh`'s volume and mute actions, since the bar's volume OSD shows the change; play, pause, next and previous still notify. Opening Voice Help sends nothing either.
 
 ### Force prefixes
@@ -446,7 +452,7 @@ Switching takes any `{focus}` or `{open}` [intent](#intents) form before the ses
 - Look-alike letters are forgiven: `l`, `I`, `1` and `|` compare equal, `0` and `O` too, so "sign ln" is "sign in". Any other misread letter is not: the OCR word stays what it is, and voxcmd's word matching calls it weak or drops it.
 - Text the window holds but the screen covers is not clicked: the capture is the window's own buffer, so candidates under a floating window above the focused one, a pinned window, or the monitor's reserved edges (the bar) are dropped. When every candidate is covered, a toast says `"<text>" is covered by another window`.
 - A click goes only to the window that was read, where it was: when another window has focus by the time of the click (a picker answered seconds later), or the window moved or changed size, nothing is clicked and a toast says `The window changed; say it again`. The same holds when the read is more than 60 s old.
-- A failure toast says only `Click failed: <reason>`, never the OCR text, since the bar keeps error toasts in its history.
+- A failed click is a failed turn: its error toast says only `Click: click: <reason>`, never the OCR text, since the bar keeps error toasts in its history (`private_labels=1`). In [click mode](#click-mode) it counts as a turn that did nothing, like a target found nowhere.
 - A click is [silent](#silent-actions); the pointer landing on the text is the feedback.
 - **Why didn't it click?** `voxcmd click-explain <text> [--window <stableId>]` runs the same capture, OCR, matcher, word matching and covering check on the focused window (or that client, as `grim -T` takes it) and prints the window, capture mode, image size and scales, inversion, strips and OCR time, then each OCR run holding a word that is, resembles or nearly equals a spoken one, with its words' confidences and the rule that decided it (kept strong, kept weak, sub-span, dropped for the confidence floor, coverage under half, near miss only, or covered by another window or a reserved edge), and last what voxcmd would do: click at a point, overlay with N, not on screen, covered. The matcher writes those reasons itself (`click-match.awk -v explain=1`), so they cannot disagree with a real click. It never clicks, moves the pointer or notifies; the screen text appears only on the terminal and the capture is deleted.
 - The screenshot and its text live only in a private directory under `$XDG_RUNTIME_DIR`, deleted when the command ends.
@@ -459,7 +465,7 @@ Needs `grim`, `tesseract` and `tesseract-data-eng`, `imagemagick`, `wlrctl` and 
 
 "Click mode" opens a [voice session](#voice-sessions) in which what you say is a click target: "sign in" is "click sign in", "continue" is "click continue". "right click settings" and "double click readme" work as spoken. After each click voxcmd listens again, once the screen has settled. A bare "click" names no target and counts as not understood.
 
-- **Ending it:** say `done`, `done clicking`, `I'm done`, `stop clicking`, `exit click mode` or `that's all`; stay silent for about 10 s (`VOXCMD_SESSION_NO_SPEECH_SECS`), a fan or room noise included, since a turn needs [more speech](#voice-sessions) than a command and Whisper's stock guesses at noise ("Thank you.", "The End") are not turns; or give three turns in a row that did nothing (not understood, a target found nowhere, or an overlay cancelled). `cancel`, `exit`, `stop` and `never mind` are button labels, so in click mode they are clicked like any other target. It also ends after 5 minutes or 40 turns.
+- **Ending it:** say `done`, `done clicking`, `I'm done`, `stop clicking`, `exit click mode` or `that's all`; stay silent for about 10 s (`VOXCMD_SESSION_NO_SPEECH_SECS`), a fan or room noise included, since a turn needs [more speech](#voice-sessions) than a command and Whisper's stock guesses at noise ("Thank you.", "The End") are not turns; or give three turns in a row that did nothing (not understood, a target found nowhere, a failed click, or an overlay cancelled). `cancel`, `exit`, `stop` and `never mind` are button labels, so in click mode they are clicked like any other target. It also ends after 5 minutes or 40 turns.
 - **Needs auto-stop:** silence is the only thing that ends an idle session, so with [auto-stop](#auto-stop) off or unable to listen, "click mode" says "Click mode needs auto-stop" and does not start.
 - **Ambiguous targets:** the [numbered overlay](#click-hints) shows and listens as usual, with auto-stop's own silence allowance; after the pick and the click the session carries on.
 - **Indicator:** while it is open the Voxtype bar module says "Click mode" beside its glyph and the voxtype OSD's title carries it too, so an open microphone is never invisible. Both read `$XDG_RUNTIME_DIR/voxcmd/session.json` and, while it is there, check every few seconds that `/proc/<owner>` still exists, so a listener killed outright does not leave the indicator up.
