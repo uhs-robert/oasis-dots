@@ -284,7 +284,7 @@ Item {
                     maximumLineCount: 3
                     wrapMode: Text.Wrap
                     elide: Text.ElideRight
-                    // StyledText (unlike RichText) elides correctly and still renders <b>/<i>/etc.
+                    // StyledText (unlike RichText) elides correctly; clean_body leaves it only b, i, u, a and br.
                     textFormat: Text.StyledText
                     Layout.leftMargin: root.dialogue ? 12 : 0
                     text: root.notification ? NotificationState.clean_body(root.notification.body) : ""

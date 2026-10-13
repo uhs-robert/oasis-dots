@@ -97,6 +97,12 @@ if command -v jq >/dev/null 2>&1; then
 else
   echo 'skip: agent hook and owner-test-bar tests need jq'
 fi
+# The notification body sanitizer is plain JS, run under node.
+if command -v node >/dev/null 2>&1; then
+  step notification-markup node ./home/quickshell/tests/notification_markup.js
+else
+  echo 'skip: notification markup tests need node'
+fi
 step packages sh ./lib/check-packages.sh
 step symlinks sh ./lib/check-symlinks.sh
 step git-diff-check git diff --check HEAD

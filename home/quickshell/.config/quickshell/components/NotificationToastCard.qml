@@ -437,6 +437,8 @@ Rectangle {
                 Layout.fillWidth: true
                 Layout.minimumWidth: 0
                 elide: Text.ElideRight
+                // Text defaults to AutoText, which would render a summary like "<img ...>" as rich text.
+                textFormat: Text.PlainText
                 text: root.typed < 1 ? root.summary.slice(0, Math.ceil(root.typed * root.summary.length)) : root.summary
                 color: Style.pal.fg
                 font.bold: Style.title_font_family === Style.font_family
@@ -453,7 +455,7 @@ Rectangle {
                 maximumLineCount: 4
                 wrapMode: Text.Wrap
                 elide: Text.ElideRight
-                // StyledText (unlike RichText) elides correctly and still renders <b>/<i>/etc.
+                // StyledText (unlike RichText) elides correctly; clean_body leaves it only b, i, u, a and br.
                 textFormat: Text.StyledText
                 text: root.notification ? NotificationState.clean_body(root.notification.body) : ""
                 color: Style.text_muted

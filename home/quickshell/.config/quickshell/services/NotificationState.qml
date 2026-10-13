@@ -4,6 +4,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import Quickshell.Services.Notifications
+import "NotificationMarkup.js" as NotificationMarkup
 
 // One shared notification server for every bar/popup/toast. Entries wrap a tracked
 // Notification with the time it arrived; history and toasts are newest-first arrays.
@@ -364,10 +365,12 @@ Singleton {
         root.save_entries();
     }
 
+    // StyledText for a notification body: only b, i, u, links and line breaks survive, and nothing is ever fetched.
     // Meeting invites open with a ~:~:~ rule; lines made only of punctuation carry nothing.
     function clean_body(text) {
         if (!text) return "";
-        return text.split(/<br\s*\/?>|\n/).filter(l => !/^[\s\-~:_=*#.·|]{6,}$/.test(l)).join("<br>").replace(/^(\s|<br>)+|(\s|<br>)+$/g, "");
+        const lines = text.split(/<br\s*\/?>|\n/).filter(l => !/^[\s\-~:_=*#.·|]{6,}$/.test(l));
+        return NotificationMarkup.sanitize(lines.join("\n")).replace(/^(\s|<br>)+|(\s|<br>)+$/g, "");
     }
 
     readonly property string state_dir: Quickshell.stateDir
