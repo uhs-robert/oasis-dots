@@ -137,3 +137,30 @@ launch the calendar	Calendar/calendar	an installed Calendar app must not open a 
 open calendar	Apps/open	the bare word still means the installed app
 join my current meeting	Calendar/open_current
 join my next meeting	Calendar/open_next
+go to weekly sync notes	Firefox/focus_tab	a tab's title
+find the weekly sync notes tab	Firefox/focus_tab
+switch to the example docs tab	Firefox/focus_tab	a tab's site name
+go to tubesite	picker	two tabs on the site: the picker asks which
+go to tubesite.example	Firefox/focus_tab	a domain said alone focuses a tab there or opens it
+go to example dot com	Firefox/focus_tab	a spoken domain
+go to example docs getting started	Firefox/focus_tab	the selected tab's title, which Apps no longer matches on the Firefox window
+go to firefox	Apps/focus	the browser itself stays the window
+take me to the browser	none	the browser is no tab, and no window is named so
+open code hub in firefox	Firefox/open_site	a site's title; Apps leaves the firefox in it alone
+open website daily planet	Firefox/open_site	a bookmark's title
+open the team wiki website	Firefox/open_site	a bookmark only in places.sqlite-wal
+open zebra crossing in firefox	Firefox/search_site	nothing found: searched
+open code hub here	Firefox/open_here
+open code hub	Firefox/open_site	no app is called that: the site fallback
+open tubesite	Firefox/open_site	no app is called that: the site fallback
+open zebra crossing	none	no app, keybind or site
+open firefox	Apps/open	an app wins over sites
+show links	Firefox/show_links
+link hints	Firefox/show_links
+follow link 3	Firefox/follow_link
+follow link three	Firefox/follow_link
+click link 3	Click/no_text	click keeps its verb
+new tab	Firefox/new_tab
+open a new tab	Firefox/new_tab
+close tab	Firefox/close_tab
+close this tab	Firefox/close_tab

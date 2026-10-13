@@ -15,6 +15,8 @@ if [ -z "${SANDBOX_DIR:-}" ]; then
 fi
 
 export TZ=UTC
+# No Firefox window is open unless a test opens one: the pages then go to xdg-open.
+export SANDBOX_CLIENTS_JSON='[]'
 cache_file="$XDG_CACHE_HOME/calendar/events.json"
 share_dir="$(dirname "$tests_dir")/.local/share/voxcmd"
 failures=0
@@ -211,6 +213,23 @@ expect "blank form" "xdg-open https://calendar.google.com/calendar/render?action
 say "open my calendar"
 expect "calendar" "xdg-open https://calendar.google.com"
 expect_absent "calendar is silent" "notify-send"
+
+# ---- With Firefox open --------------------------------------------------------------------------------------------
+
+# Window 0x3001 shows the first tab of the made-up profile's first window, where Tridactyl is a store add-on.
+"$tests_dir/firefox-profile" "$HOME/.config/mozilla/firefox" store
+export SANDBOX_CLIENTS_JSON='[{"address": "0x3001", "mapped": true, "class": "firefox", "title": "Example Docs - Getting started — Mozilla Firefox", "focusHistoryID": 1, "workspace": {"id": 1}}]'
+export SANDBOX_ACTIVEWINDOW_JSON='{"address": "0x3001", "class": "firefox"}'
+write_cache "$(event w "Weekly sync" -600 600 https://notes.example.org/weekly null)"
+say "join my meeting"
+expect "a meeting link open in a tab focuses that tab" "-- tab Weekly sync notes"
+expect_absent "and opens nothing" "xdg-open"
+expect "says which meeting" "Joining Weekly sync"
+say "open my calendar"
+expect "a page no tab shows opens in a new tab of Firefox" "firefox --new-tab https://calendar.google.com"
+expect_absent "not through xdg-open" "xdg-open"
+say "new meeting"
+expect "a new-event form is always opened fresh" "xdg-open https://calendar.google.com/calendar/render?action=TEMPLATE"
 
 # ---- spoken-time.sh day words ----------------------------------------------------------------------------------
 

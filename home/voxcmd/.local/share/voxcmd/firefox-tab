@@ -1,0 +1,579 @@
+#!/usr/bin/env python3
+"""Firefox tabs, sites and link hints for voxcmd's firefox.sh, read from the default profile without writing to it.
+
+  firefox-tab tabs                     every tab as JSON: window, tab, title, url, selected, last_accessed, address
+  firefox-tab places <word>...         bookmarks, history and origins whose title or url holds every word, as JSON
+  firefox-tab candidates tabs|sites <target> [--raw <transcript>]
+                                       voxcmd candidates ({id, label, match_text}) for a spoken target
+  firefox-tab focus <address> [title]  focus the window, then the tab titled so (with Tridactyl)
+  firefox-tab goto [--running] <url>   focus a tab on the url's site, else open the url in a new tab; with --running,
+                                       exit 3 without doing anything when no Firefox window is open
+  firefox-tab open [--here] <url>      open the url in a new tab, or the url or text in the focused tab
+  firefox-tab search <text>            search the text with the default engine in a new tab
+  firefox-tab hints [number]           numbered link hints (Tridactyl), following that number when given
+  firefox-tab new-tab | close-tab      press Ctrl+T or Ctrl+W in Firefox
+  firefox-tab tridactyl                print how Tridactyl is loaded: store, temporary or none
+
+Tridactyl takes typed commands only, so tab selection and hints are typed with wtype, and only into a Firefox window
+that has focus. VOXCMD_FIREFOX_TRIDACTYL=on|off overrides the detection.
+"""
+import configparser
+import json
+import os
+import re
+import shutil
+import sqlite3
+import struct
+import subprocess
+import sys
+import tempfile
+import time
+
+PROFILE_ROOTS = ("~/.config/mozilla/firefox", "~/.mozilla/firefox")
+# Seconds between typed steps: Tridactyl's escape hatch and command line open asynchronously.
+KEY_PAUSE = 0.25
+
+
+def fail(message):
+    print(message)
+    sys.exit(1)
+
+
+# ---- profile ---------------------------------------------------------------------------------------------------
+
+
+def profile_dir():
+    """The profile Firefox opens by default: installs.ini's Default=, else profiles.ini's Default=1 entry."""
+    for root in map(os.path.expanduser, PROFILE_ROOTS):
+        installs = configparser.ConfigParser(interpolation=None)
+        installs.read(os.path.join(root, "installs.ini"))
+        profiles = configparser.ConfigParser(interpolation=None)
+        profiles.read(os.path.join(root, "profiles.ini"))
+        paths = [section["Default"] for section in installs.values() if "Default" in section]
+        paths += [section["Path"] for section in profiles.values() if section.get("Default") == "1" and "Path" in section]
+        for path in paths:
+            path = os.path.join(root, path)
+            if os.path.isdir(path):
+                return path
+    fail("no Firefox profile")
+
+
+def mozlz4(path):
+    """Decodes a mozLz4 file: an 8-byte magic, the decoded size, then one raw LZ4 block."""
+    with open(path, "rb") as file:
+        data = file.read()
+    if data[:8] != b"mozLz40\0":
+        raise ValueError(f"{path} is not mozLz4")
+    src, dst, at = data[12:], bytearray(), 0
+    while at < len(src):
+        token = src[at]
+        at += 1
+        literals = token >> 4
+        if literals == 15:
+            while True:
+                extra = src[at]
+                at += 1
+                literals += extra
+                if extra != 255:
+                    break
+        dst += src[at : at + literals]
+        at += literals
+        if at >= len(src):
+            break
+        offset = src[at] | src[at + 1] << 8
+        at += 2
+        length = token & 15
+        if length == 15:
+            while True:
+                extra = src[at]
+                at += 1
+                length += extra
+                if extra != 255:
+                    break
+        length += 4
+        start = len(dst) - offset
+        if length <= offset:
+            dst += dst[start : start + length]
+        else:
+            # An overlapping match repeats the bytes it is still writing.
+            for index in range(length):
+                dst.append(dst[start + index])
+    if len(dst) != struct.unpack("<I", data[8:12])[0]:
+        raise ValueError(f"{path} decoded to the wrong size")
+    return json.loads(dst)
+
+
+def read_json(path, default):
+    try:
+        with open(path) as file:
+            return json.load(file)
+    except (OSError, ValueError):
+        return default
+
+
+def user_prefs(profile):
+    prefs = {}
+    try:
+        with open(os.path.join(profile, "prefs.js")) as file:
+            for line in file:
+                match = re.match(r'user_pref\("([^"]+)", (.*)\);$', line.strip())
+                if match:
+                    try:
+                        prefs[match[1]] = json.loads(match[2])
+                    except ValueError:
+                        pass
+    except OSError:
+        pass
+    return prefs
+
+
+def firefox_started(profile):
+    """When the running Firefox started: its profile lock is a symlink made at startup. None when it is not running."""
+    try:
+        return os.lstat(os.path.join(profile, "lock")).st_mtime
+    except OSError:
+        return None
+
+
+def tridactyl(profile):
+    """How Tridactyl is loaded: "store" (an enabled add-on), "temporary" (loaded from a folder) or "none".
+
+    A temporary add-on is in neither extensions.json nor any other file, and the folder prefs.js remembers outlives a
+    restart that dropped it. So the folder's add-on counts only when its storage changed since Firefox started: it
+    writes its settings on every start, when it reads the rc file.
+    """
+    forced = os.environ.get("VOXCMD_FIREFOX_TRIDACTYL", "")
+    if forced in ("on", "off"):
+        return "store" if forced == "on" else "none"
+    addons = read_json(os.path.join(profile, "extensions.json"), {}).get("addons", [])
+    if any(addon.get("id", "").startswith("tridactyl") and addon.get("active") for addon in addons):
+        return "store"
+    prefs = user_prefs(profile)
+    folder = prefs.get("devtools.aboutdebugging.tmpExtDirPath")
+    started = firefox_started(profile)
+    if not isinstance(folder, str) or started is None:
+        return "none"
+    manifest = read_json(os.path.join(folder, "manifest.json"), {})
+    gecko = (manifest.get("browser_specific_settings") or manifest.get("applications") or {}).get("gecko") or {}
+    addon_id = gecko.get("id", "")
+    if not addon_id.startswith("tridactyl"):
+        return "none"
+    uuid = read_json_string(prefs.get("extensions.webextensions.uuids", "{}")).get(addon_id)
+    storage = os.path.join(profile, "storage", "default")
+    if uuid and os.path.isdir(storage):
+        for entry in os.listdir(storage):
+            if entry.startswith(f"moz-extension+++{uuid}") and newest_change(os.path.join(storage, entry)) > started:
+                return "temporary"
+    return "none"
+
+
+def read_json_string(text):
+    try:
+        value = json.loads(text)
+    except (TypeError, ValueError):
+        return {}
+    return value if isinstance(value, dict) else {}
+
+
+def newest_change(folder):
+    newest = 0
+    for parent, _, files in os.walk(folder):
+        for name in files:
+            try:
+                newest = max(newest, os.stat(os.path.join(parent, name)).st_mtime)
+            except OSError:
+                pass
+    return newest
+
+
+# ---- Hyprland --------------------------------------------------------------------------------------------------
+
+
+def hyprctl_json(what, default):
+    try:
+        return json.loads(subprocess.run(["hyprctl", what, "-j"], capture_output=True, text=True, check=True).stdout)
+    except (OSError, subprocess.CalledProcessError, ValueError):
+        return default
+
+
+def is_firefox(client):
+    return "firefox" in (client.get("class") or client.get("initialClass") or "").lower()
+
+
+def firefox_clients():
+    clients = [client for client in hyprctl_json("clients", []) if client.get("mapped", True) and is_firefox(client)]
+    # Most recently focused first; a window never focused has a negative ID and goes last.
+    return sorted(clients, key=lambda client: client.get("focusHistoryID", -1) if client.get("focusHistoryID", -1) >= 0 else float("inf"))
+
+
+def page_title(client_title):
+    """The tab title in a window title, which is "<tab title> — <brand>", or the brand alone for an untitled tab."""
+    title, separator, _ = client_title.rpartition(" — ")
+    return title if separator else ""
+
+
+def dispatch(expression):
+    output = subprocess.run(["hyprctl", "dispatch", expression], capture_output=True, text=True).stdout.strip()
+    if output not in ("ok", ""):
+        fail(output)
+
+
+def focus_window(address, timeout=1.0):
+    """Focuses the window and waits until it has focus, since keys typed before then would reach another window."""
+    if not re.fullmatch(r"0x[0-9a-f]+", address):
+        fail(f"not a window: {address}")
+    dispatch(f"hl.dsp.focus({{ window = 'address:{address}' }})")
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        if hyprctl_json("activewindow", {}).get("address") == address:
+            return
+        time.sleep(0.05)
+    fail("the Firefox window did not take focus")
+
+
+def focused_firefox(focus_recent):
+    """The focused Firefox window's address. With focus_recent, a Firefox window that is not focused is focused first."""
+    active = hyprctl_json("activewindow", {})
+    if is_firefox(active):
+        return active["address"]
+    clients = firefox_clients()
+    if not focus_recent or not clients:
+        fail("Firefox is not focused" if clients else "Firefox is not open")
+    focus_window(clients[0]["address"])
+    return clients[0]["address"]
+
+
+def keys(*steps):
+    for step in steps:
+        subprocess.run(["wtype", *step], check=True)
+        time.sleep(KEY_PAUSE)
+
+
+def tridactyl_command(command):
+    """Types a Tridactyl ex command into the focused window: the escape hatch takes focus back from the address bar
+    or a page field, Escape leaves hint, insert or command mode, and ":" opens the command line."""
+    keys(["-M", "alt", ",", "-m", "alt"], ["-k", "Escape"], [":"], ["--", command], ["-k", "Return"])
+
+
+# ---- tabs ------------------------------------------------------------------------------------------------------
+
+
+def session_windows(profile):
+    # Firefox renames a finished write over the old file, so a read never sees half of one. sessionstore.jsonlz4 is
+    # the store of a Firefox that is not running.
+    for name in ("sessionstore-backups/recovery.jsonlz4", "sessionstore.jsonlz4"):
+        path = os.path.join(profile, name)
+        if os.path.exists(path):
+            return mozlz4(path).get("windows", [])
+    return []
+
+
+def store_tabs(windows):
+    tabs = []
+    for window_index, window in enumerate(windows):
+        for tab_index, tab in enumerate(window.get("tabs", [])):
+            entries = tab.get("entries") or [{}]
+            entry = entries[max(0, min(tab.get("index", len(entries)), len(entries)) - 1)]
+            if tab.get("hidden"):
+                continue
+            tabs.append(
+                {
+                    "window": window_index,
+                    "tab": tab_index,
+                    "title": entry.get("title") or entry.get("url", ""),
+                    "url": entry.get("url", ""),
+                    "selected": tab_index + 1 == window.get("selected"),
+                    "last_accessed": tab.get("lastAccessed", 0),
+                    "address": None,
+                }
+            )
+    return tabs
+
+
+def match_windows(tabs, clients):
+    """Gives each store window the Hyprland window showing it: the one titled with its selected tab, else with any of
+    its tabs (the store lags a tab switch by up to 15 s). Windows the store lacks (private ones, or new since its
+    last write) are listed by their title alone. A store window matching no title stays without a window rather than
+    being paired by elimination, which would pair a private window with a closed one."""
+    unmatched = {client["address"]: page_title(client.get("title", "")) for client in clients}
+    by_window = {}
+    for tab in tabs:
+        by_window.setdefault(tab["window"], []).append(tab)
+    assigned = {}
+
+    def assign(window, address):
+        assigned[window] = address
+        del unmatched[address]
+
+    for rule in (lambda tab: tab["selected"], lambda tab: True):
+        for window, window_tabs in by_window.items():
+            if window in assigned:
+                continue
+            titles = [tab["title"] for tab in window_tabs if rule(tab)]
+            address = next((address for address, title in unmatched.items() if title in titles), None)
+            if address:
+                assign(window, address)
+    for tab in tabs:
+        tab["address"] = assigned.get(tab["window"])
+    for address, title in unmatched.items():
+        tabs.append({"window": None, "tab": None, "title": title, "url": "", "selected": True, "last_accessed": 0, "address": address})
+    return tabs
+
+
+def all_tabs():
+    """Every tab, or with no profile or store to read only the windows, so focusing by window title still works."""
+    try:
+        windows = session_windows(profile_dir())
+    except (SystemExit, OSError, ValueError):
+        windows = []
+    return match_windows(store_tabs(windows), firefox_clients())
+
+
+def site_of(url):
+    match = re.match(r"[a-z]+://(?:www\.)?([^/:?#]+)", url.lower())
+    return match[1] if match else ""
+
+
+def site_words(site):
+    """A site as it is spoken: its name without the top-level domain, "news.example.com" as "news example"."""
+    labels = site.split(".")
+    return " ".join(labels[:-1] if len(labels) > 1 else labels)
+
+
+def spoken_url(target, transcript):
+    """The url a target names when it is a domain and nothing else: "example.com" in the transcript, or spoken as
+    "example dot com". A target with other words ("node.js docs") names no url."""
+    spoken = re.sub(r" dot ", ".", f" {target} ").strip()
+    candidates = [spoken] + re.findall(r"(?<![\w@.-])((?:[a-z0-9-]+\.)+[a-z]{2,}(?:/[^\s]*)?)", transcript.lower())
+    words = [word for word in target.split() if word != "dot"]
+    for candidate in candidates:
+        if re.fullmatch(r"(?:[a-z0-9-]+\.)+[a-z]{2,}(?:/[^\s]*)?", candidate) and re.split(r"[^a-z0-9]+", candidate.strip("/")) == words:
+            return "https://" + candidate
+    return ""
+
+
+def tab_candidates(target, transcript):
+    """Each tab for voxcmd's word matching, by its title and by its site's name, most recently used first; a target
+    that is a domain is also a candidate of its own, which focuses a tab on that site or opens it."""
+    candidates = []
+    url = spoken_url(target, transcript)
+    if url:
+        candidates.append({"id": f"goto {url}", "label": url.split("://")[1], "match_text": target})
+    for tab in sorted((tab for tab in all_tabs() if tab["address"]), key=lambda tab: -tab["last_accessed"]):
+        title = " ".join(tab["title"].split())
+        site = site_of(tab["url"])
+        label = f"{title} ({site})" if site else title
+        candidates.append({"id": f"{tab['address']} {title}", "label": label, "match_text": title})
+        if site:
+            candidates.append({"id": f"{tab['address']} {title}", "label": label, "match_text": site_words(site)})
+    return candidates
+
+
+def site_candidates(target, transcript):
+    """Bookmarks, history and sites for the target's words, by title, and a site by its name; a domain named alone
+    comes first. The best frecency wins among candidates that read the same."""
+    candidates = []
+    url = spoken_url(target, transcript)
+    if url:
+        candidates.append({"id": url, "label": url.split("://")[1], "match_text": target})
+    seen = set()
+    for place in places(target.replace(" dot ", " ").split()):
+        site = site_of(place["url"])
+        title = " ".join(place["title"].split())
+        label = f"{title} ({site})" if title and place["kind"] != "origin" else site
+        match_text = site_words(site) if place["kind"] == "origin" else title
+        if match_text and match_text.lower() not in seen:
+            seen.add(match_text.lower())
+            candidates.append({"id": place["url"], "label": label, "match_text": match_text})
+    return candidates
+
+
+def focus_tab(address, title):
+    focus_window(address)
+    if title and tridactyl(profile_dir()) != "none":
+        # :tab searches the focused window's tabs, by exact title first; several matches open its own prompt.
+        tridactyl_command("tab " + " ".join(title.split()))
+
+
+def goto(url, running_only):
+    if running_only and not firefox_clients():
+        sys.exit(3)
+    site = site_of(url)
+    path = re.sub(r"^[a-z]+://[^/]*", "", url.lower()).rstrip("/")
+    tabs = [
+        tab
+        for tab in all_tabs()
+        if tab["address"] and site and site_of(tab["url"]) == site and re.sub(r"^[a-z]+://[^/]*", "", tab["url"].lower()).startswith(path)
+    ]
+    if tabs:
+        best = max(tabs, key=lambda tab: tab["last_accessed"])
+        focus_tab(best["address"], best["title"])
+    else:
+        open_url(url, here=False)
+
+
+# ---- opening ---------------------------------------------------------------------------------------------------
+
+
+def open_url(url, here):
+    """Opens a url in a new tab. With here, the url, or text to search, goes to the focused tab's address bar."""
+    if here:
+        if "\n" in url:
+            fail("not a url")
+        focused_firefox(focus_recent=False)
+        # Ctrl+L belongs to Firefox and no page or add-on takes it, so this works with Tridactyl or without.
+        keys(["-M", "ctrl", "l", "-m", "ctrl"], ["--", url], ["-k", "Return"])
+        return
+    if not re.match(r"https?://", url):
+        fail(f"not a url: {url}")
+    # The new tab opens in Firefox's most recent window, so that window is brought forward first.
+    clients = firefox_clients()
+    if clients:
+        dispatch(f"hl.dsp.focus({{ window = 'address:{clients[0]['address']}' }})")
+    subprocess.run(["setsid", "-f", "firefox", "--new-tab", url], stdin=subprocess.DEVNULL, check=True)
+
+
+def search(text):
+    clients = firefox_clients()
+    if clients:
+        dispatch(f"hl.dsp.focus({{ window = 'address:{clients[0]['address']}' }})")
+    subprocess.run(["setsid", "-f", "firefox", "--search", text], stdin=subprocess.DEVNULL, check=True)
+
+
+# ---- places ----------------------------------------------------------------------------------------------------
+
+
+def places(words):
+    """Bookmarks, history and origins (sites) holding every word in their title or url: the sites, then the best 25
+    pages, each by frecency. The live database is locked by Firefox, so a copy with its write-ahead log is read."""
+    words = [word for word in (re.sub(r"[^a-z0-9]", "", word.lower()) for word in words) if word]
+    if not words:
+        return []
+    source = os.path.join(profile_dir(), "places.sqlite")
+    if not os.path.exists(source):
+        return []
+    with tempfile.TemporaryDirectory(dir=os.environ.get("XDG_RUNTIME_DIR")) as work:
+        copy = os.path.join(work, "places.sqlite")
+        shutil.copyfile(source, copy)
+        if os.path.exists(source + "-wal"):
+            shutil.copyfile(source + "-wal", copy + "-wal")
+        connection = sqlite3.connect(copy)
+        try:
+            rows = query_places(connection, words)
+        finally:
+            connection.close()
+    found = {}
+    for url, title, frecency, kind in rows:
+        known = found.get(url)
+        if not known or kind == "bookmark" or (known["kind"] != "bookmark" and (frecency or 0) > known["frecency"]):
+            found[url] = {"url": url, "title": title or "", "frecency": frecency or 0, "kind": kind}
+    ranked = sorted(found.values(), key=lambda place: -place["frecency"])
+    # Sites are kept whatever their rank: "github" is the site more often than any one of its pages.
+    return [place for place in ranked if place["kind"] == "origin"] + [place for place in ranked if place["kind"] != "origin"][:25]
+
+
+def query_places(connection, words):
+    def every_word(*columns):
+        clause = " AND ".join("(" + " OR ".join(f"lower(coalesce({column}, '')) LIKE ?" for column in columns) + ")" for _ in words)
+        return clause, [f"%{word}%" for word in words for _ in columns]
+
+    web = "(url LIKE 'https://%' OR url LIKE 'http://%')"
+    rows = []
+    clause, values = every_word("b.title", "p.title", "p.url")
+    rows += connection.execute(
+        f"""SELECT p.url, coalesce(nullif(b.title, ''), p.title), p.frecency, 'bookmark'
+            FROM moz_bookmarks b JOIN moz_places p ON p.id = b.fk
+            WHERE b.type = 1 AND {web.replace('url', 'p.url')} AND {clause}""",
+        values,
+    ).fetchall()
+    clause, values = every_word("title", "url")
+    rows += connection.execute(
+        f"""SELECT url, title, frecency, 'history' FROM moz_places
+            WHERE hidden = 0 AND frecency > 0 AND {web} AND {clause} ORDER BY frecency DESC LIMIT 40""",
+        values,
+    ).fetchall()
+    clause, values = every_word("host")
+    rows += connection.execute(
+        f"""SELECT prefix || host || '/', host, frecency, 'origin' FROM moz_origins
+            WHERE frecency > 0 AND prefix IN ('https://', 'http://') AND {clause} ORDER BY frecency DESC LIMIT 10""",
+        values,
+    ).fetchall()
+    return rows
+
+
+# ---- hints -----------------------------------------------------------------------------------------------------
+
+
+def hints_script(number):
+    """A Tridactyl :js line that shows numbered hints without autoselect for this one hint run, then puts the
+    keyboard's settings back. It changes Tridactyl's settings in this page's memory only, never saving them, so
+    keyboard hints elsewhere keep their own names. With a number, it follows that hint, or leaves hint mode when
+    there is none by that number, so a missing hint never follows another."""
+    follow = ""
+    if number:
+        follow = (
+            "const keys=tri.hinting_content.getHintCommands();"
+            "for(let i=0;i<40;i++){await new Promise(done=>setTimeout(done,50));"
+            'const names=[...document.querySelectorAll(".TridactylHint")].map(hint=>hint.textContent);'
+            "if(!names.length)continue;"
+            f'if(!names.includes("{number}"))return keys.reset();'
+            f'for(const key of "{number}")keys.pushKey(key);'
+            "return keys.selectFocusedHint()}"
+        )
+    return (
+        "js (async()=>{const config=tri.config.USERCONFIG;"
+        'const saved=["hintnames","hintautoselect"].map(key=>[key,key in config,config[key]]);'
+        'config.hintnames="numeric";config.hintautoselect="false";'
+        "const restore=()=>saved.forEach(([key,had,value])=>had?config[key]=value:delete config[key]);"
+        f"tri.excmds.hint().then(restore,restore);{follow}}})()"
+    )
+
+
+def hints(number):
+    if number and not re.fullmatch(r"[1-9][0-9]{0,3}", number):
+        fail(f"not a link number: {number}")
+    if tridactyl(profile_dir()) == "none":
+        fail("link hints need Tridactyl")
+    focused_firefox(focus_recent=True)
+    tridactyl_command(hints_script(number))
+
+
+# ---- main ------------------------------------------------------------------------------------------------------
+
+
+def main(args):
+    command, rest = (args[0], args[1:]) if args else ("", [])
+    if command == "tabs":
+        json.dump(all_tabs(), sys.stdout)
+    elif command == "places":
+        json.dump(places(" ".join(rest).split()), sys.stdout)
+    elif command == "candidates" and len(rest) in (2, 4) and rest[0] in ("tabs", "sites") and rest[2:3] in ([], ["--raw"]):
+        transcript = rest[3] if len(rest) == 4 else rest[1]
+        build = tab_candidates if rest[0] == "tabs" else site_candidates
+        json.dump(build(rest[1], transcript), sys.stdout)
+    elif command == "focus" and rest:
+        focus_tab(rest[0], " ".join(rest[1:]))
+    elif command == "goto" and rest[-1:] and rest[:-1] in ([], ["--running"]):
+        goto(rest[-1], bool(rest[:-1]))
+    elif command == "open" and rest:
+        here = rest[0] == "--here"
+        open_url(rest[-1], here)
+    elif command == "search" and rest:
+        search(" ".join(rest))
+    elif command == "hints" and len(rest) <= 1:
+        hints(rest[0] if rest else "")
+    elif command == "new-tab":
+        focused_firefox(focus_recent=True)
+        keys(["-M", "ctrl", "t", "-m", "ctrl"])
+    elif command == "close-tab":
+        focused_firefox(focus_recent=False)
+        keys(["-M", "ctrl", "w", "-m", "ctrl"])
+    elif command == "tridactyl":
+        print(tridactyl(profile_dir()))
+    else:
+        print(__doc__.strip(), file=sys.stderr)
+        sys.exit(2)
+
+
+if __name__ == "__main__":
+    main(sys.argv[1:])

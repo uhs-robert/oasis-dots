@@ -1,0 +1,149 @@
+#!/usr/bin/env python3
+"""Builds a made-up Firefox profile for the voxcmd tests, as firefox-tab finds one:
+
+  tests/firefox-profile <root> [store|temporary|stale|none]
+
+<root> stands for ~/.config/mozilla/firefox. installs.ini names the profile, while profiles.ini marks another one
+Default=1, so the tests see installs.ini win. The session store is fixtures/firefox/sessionstore.json compressed as
+mozLz4, and places.sqlite is built from places.sql with places-wal.sql's rows left in its write-ahead log.
+
+The second argument is how Tridactyl is loaded (default none): "store" as an enabled add-on; "temporary" as a folder
+loaded for this run, whose storage changed after Firefox started; "stale" as that folder remembered from a run before.
+"""
+import json
+import os
+import shutil
+import sqlite3
+import struct
+import sys
+import tempfile
+import time
+
+fixtures = os.path.join(os.path.dirname(os.path.abspath(__file__)), "fixtures", "firefox")
+
+
+def length_bytes(value):
+    """An LZ4 length past the token's 15: 255s, then the rest."""
+    out = bytearray()
+    while value >= 255:
+        out.append(255)
+        value -= 255
+    out.append(value)
+    return out
+
+
+def lz4_block(data):
+    """A greedy LZ4 block compressor, so the decoder meets real matches, overlapping ones included. LZ4 wants the
+    last 5 bytes as literals and no match starting in the last 12."""
+    out, table, anchor, at = bytearray(), {}, 0, 0
+
+    def sequence(literals, offset=0, length=0):
+        token_literals, token_match = min(len(literals), 15), min(length - 4, 15) if offset else 0
+        out.append(token_literals << 4 | token_match)
+        if len(literals) >= 15:
+            out.extend(length_bytes(len(literals) - 15))
+        out.extend(literals)
+        if offset:
+            out.extend(struct.pack("<H", offset))
+            if length - 4 >= 15:
+                out.extend(length_bytes(length - 4 - 15))
+
+    while at + 12 <= len(data):
+        key = data[at : at + 4]
+        candidate = table.get(key)
+        table[key] = at
+        if candidate is None or at - candidate > 65535:
+            at += 1
+            continue
+        length = 4
+        while at + length < len(data) - 5 and data[candidate + length] == data[at + length]:
+            length += 1
+        sequence(data[anchor:at], at - candidate, length)
+        at += length
+        anchor = at
+    sequence(data[anchor:])
+    return bytes(out)
+
+
+def mozlz4(path, value):
+    data = json.dumps(value).encode()
+    with open(path, "wb") as file:
+        file.write(b"mozLz40\0" + struct.pack("<I", len(data)) + lz4_block(data))
+
+
+def write(path, text):
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, "w") as file:
+        file.write(text)
+
+
+def places(profile):
+    """places.sqlite with places-wal.sql's rows only in its -wal file: both are copied while the connection that
+    wrote them is still open, before sqlite checkpoints the log into the database on close."""
+    with tempfile.TemporaryDirectory() as work:
+        database = os.path.join(work, "places.sqlite")
+        connection = sqlite3.connect(database)
+        with open(os.path.join(fixtures, "places.sql")) as file:
+            connection.executescript(file.read())
+        connection.execute("PRAGMA journal_mode=WAL")
+        connection.execute("PRAGMA wal_autocheckpoint=0")
+        with open(os.path.join(fixtures, "places-wal.sql")) as file:
+            connection.executescript(file.read())
+        connection.commit()
+        shutil.copyfile(database, os.path.join(profile, "places.sqlite"))
+        shutil.copyfile(database + "-wal", os.path.join(profile, "places.sqlite-wal"))
+        connection.close()
+
+
+def tridactyl(root, profile, mode):
+    addons = [{"id": "other@example.org", "active": True}]
+    if mode == "store":
+        addons.append({"id": "tridactyl.vim@cmcaine.co.uk", "active": True})
+    else:
+        addons.append({"id": "tridactyl.vim.betas@cmcaine.co.uk", "active": False, "userDisabled": True})
+    write(os.path.join(profile, "extensions.json"), json.dumps({"addons": addons}))
+    build = os.path.join(root, "tridactyl-build")
+    uuid = "00000000-0000-4000-8000-000000000001"
+    write(
+        os.path.join(build, "manifest.json"),
+        json.dumps({"name": "Tridactyl", "applications": {"gecko": {"id": "tridactyl.vim.betas@cmcaine.co.uk"}}}),
+    )
+    prefs = [("browser.startup.page", 3)]
+    if mode in ("temporary", "stale"):
+        prefs.append(("devtools.aboutdebugging.tmpExtDirPath", build))
+    prefs.append(("extensions.webextensions.uuids", json.dumps({"tridactyl.vim.betas@cmcaine.co.uk": uuid})))
+    write(
+        os.path.join(profile, "prefs.js"),
+        "// Mozilla User Preferences\n" + "".join(f"user_pref({json.dumps(key)}, {json.dumps(value)});\n" for key, value in prefs),
+    )
+    # Firefox started 100 s ago; the add-on's storage changed 10 s ago, or an hour ago for a stale folder.
+    now = time.time()
+    lock = os.path.join(profile, "lock")
+    os.symlink("127.0.0.1:+4242", lock)
+    os.utime(lock, (now - 100, now - 100), follow_symlinks=False)
+    storage = os.path.join(profile, "storage", "default", f"moz-extension+++{uuid}^userContextId=4294967295", "idb")
+    write(os.path.join(storage, "data.sqlite"), "")
+    changed = now - 10 if mode == "temporary" else now - 3600
+    os.utime(os.path.join(storage, "data.sqlite"), (changed, changed))
+
+
+def main(root, mode="none"):
+    profile = os.path.join(root, "abcd1234.default-release")
+    os.makedirs(os.path.join(profile, "sessionstore-backups"), exist_ok=True)
+    os.makedirs(os.path.join(root, "zzzz9999.default"), exist_ok=True)
+    write(os.path.join(root, "installs.ini"), "[4F96D1932A9F858E]\nDefault=abcd1234.default-release\nLocked=1\n")
+    write(
+        os.path.join(root, "profiles.ini"),
+        "[Profile1]\nName=default\nIsRelative=1\nPath=zzzz9999.default\nDefault=1\n\n"
+        "[Profile0]\nName=default-release\nIsRelative=1\nPath=abcd1234.default-release\n",
+    )
+    with open(os.path.join(fixtures, "sessionstore.json")) as file:
+        mozlz4(os.path.join(profile, "sessionstore-backups", "recovery.jsonlz4"), json.load(file))
+    places(profile)
+    tridactyl(root, profile, mode)
+
+
+if __name__ == "__main__":
+    if len(sys.argv) not in (2, 3) or sys.argv[2:] not in ([], ["store"], ["temporary"], ["stale"], ["none"]):
+        sys.exit(__doc__)
+    main(*sys.argv[1:])

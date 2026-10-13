@@ -13,6 +13,9 @@ target_match=words
 ignored_words=(window app application program)
 match_ignore_words=("${ignored_words[@]}")
 
+# Found beside this file; while it is installed, Firefox windows are not focused by the title of the tab they show.
+firefox_integration="$(dirname "${BASH_SOURCE[0]}")/firefox.sh"
+
 # Moving has no shared intent; its words are kept here for the keybind check in candidates() as well.
 move_verbs="move|send|put"
 
@@ -81,7 +84,8 @@ candidates() {
     ;;
   esac
   if spoken_as_keybind "$action" "$target" || names_session_or_agent "$target" || launches_keybind "$action" "$target" ||
-    { [[ "$action" =~ ^(open|open_new|focus)$ ]] && [[ "$target" =~ ^(my|the)\ calendar$ ]]; }; then
+    { [[ "$action" =~ ^(open|open_new|focus)$ ]] && [[ "$target" =~ ^(my|the)\ calendar$ ]]; } ||
+    opens_in_browser "$action" "$target"; then
     echo '[]'
     return
   fi
@@ -135,6 +139,11 @@ spoken_as_keybind() {
 # name X happens to match would otherwise share a picker with it, or take the phrase when X matches no session.
 names_session_or_agent() {
   [[ " $1 " =~ \ (session|sessions|agent|agents)\  ]]
+}
+
+# "open example in firefox" opens a site, which firefox.sh does; the "firefox" in it is not this app.
+opens_in_browser() {
+  [[ "$1" == open && -f "$firefox_integration" && "$2" =~ \ (in|on|with)\ (firefox|the\ browser|a\ new\ tab|new\ tab)$ ]]
 }
 
 # True for "open files" or "open the browser" when a keybind is described by the target alone ("Files", "Browser")
@@ -287,18 +296,24 @@ windows() {
     | map(select(.mapped and .class != ""))
     | sort_by(.focusHistoryID | if . < 0 then infinite else . end)
     | map({address, app: ($app_names[.class | ascii_downcase] // (.class | split(".") | last)),
-        title: (if (.title | length) > 60 then .title[:57] + "..." else .title end)})' <<<"$clients" 2>/dev/null || echo '[]'
+        title: (if (.title | length) > 60 then .title[:57] + "..." else .title end),
+        firefox: (.class | ascii_downcase | contains("firefox"))})' <<<"$clients" 2>/dev/null || echo '[]'
 }
 
 # A window matches by its app name ("focus firefox") and by its title ("focus tmux config"); several matching
-# windows open the picker, where the label shows each title.
+# windows open the picker, where the label shows each title. A Firefox window's title is its selected tab's, and
+# firefox.sh focuses any tab by its title, so with it installed "go to <tab>" is left to it: matching the window here
+# too would offer the same tab twice, and only the one selected. "go to firefox" still focuses the window.
 window_candidates() {
-  windows | jq -c --arg action "$1" '
+  local tabs_elsewhere=false
+  [ "$1" != focus ] || [ ! -f "$firefox_integration" ] || tabs_elsewhere=true
+  windows | jq -c --arg action "$1" --argjson tabs_elsewhere "$tabs_elsewhere" '
     def plain: ascii_downcase | [splits("[^a-z0-9]+") | select(. != "")] | join(" ");
     map((if $action == "close" then "\(.app) window" else .app end) as $app_part
       | (if .title == "" then $app_part else "\($app_part): \(.title)" end) as $label
       | {id: .address, label: $label, match_text: .app},
-        (select(.title != "" and (.title | plain) != (.app | plain)) | {id: .address, label: $label, match_text: .title}))'
+        (select(.title != "" and (.title | plain) != (.app | plain) and ($tabs_elsewhere and .firefox | not))
+          | {id: .address, label: $label, match_text: .title}))'
 }
 
 # For "move firefox to workspace 3" every window is offered as "<app> to workspace 3" (and by title), so word

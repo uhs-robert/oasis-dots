@@ -1,0 +1,28 @@
+{
+  "version": ["sessionrestore", 1],
+  "windows": [
+    {
+      "selected": 1,
+      "tabs": [
+        {"index": 2, "lastAccessed": 1000300, "entries": [
+          {"url": "https://docs.example.com/", "title": "Example Docs"},
+          {"url": "https://docs.example.com/start", "title": "Example Docs - Getting started"}]},
+        {"index": 1, "lastAccessed": 1000200, "entries": [{"url": "https://notes.example.org/weekly", "title": "Weekly sync notes"}]},
+        {"index": 1, "lastAccessed": 1000100, "entries": [{"url": "https://tubesite.example/watch?v=1", "title": "Funny cat video - TubeSite"}]},
+        {"index": 1, "lastAccessed": 1000400, "entries": [{"url": "https://tubesite.example/watch?v=2", "title": "Another cat video - TubeSite"}]},
+        {"index": 1, "lastAccessed": 1000000, "hidden": true, "entries": [{"url": "https://hidden.example/", "title": "Hidden tab ------------------------------------------------ end"}]}
+      ]
+    },
+    {
+      "selected": 2,
+      "tabs": [
+        {"index": 1, "lastAccessed": 1000050, "entries": [{"url": "https://mail.example.net/inbox", "title": "Inbox - Mailbox"}]},
+        {"index": 1, "lastAccessed": 1000060, "entries": [{"url": "https://shop.example.net/cart", "title": "Cart - Example Shop"}]}
+      ]
+    },
+    {
+      "selected": 1,
+      "tabs": [{"index": 1, "lastAccessed": 1000010, "entries": [{"url": "https://closed.example/", "title": "A window no longer open"}]}]
+    }
+  ]
+}
