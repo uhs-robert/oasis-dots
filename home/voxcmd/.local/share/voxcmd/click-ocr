@@ -122,15 +122,19 @@ ocr_strip() {
 [ "$strips" = 1 ] || export OMP_THREAD_LIMIT=1
 # A strip that fails must fail the whole run: its missing words would read as "not on screen", or leave one of two
 # matches to be clicked without asking.
+# Each strip runs in a process group of its own (set -m), so killing the group also reaches a tesseract the strip
+# forks a moment after the kill. Killing a strip's children by parent pid misses that one, and on a loaded machine
+# it went on running after the run ended.
+set -m
 for ((i = 0; i < strips; i++)); do
   ocr_strip "$i" &
 done
+set +m
 # The first strip to fail ends the run: the others are killed, children included, rather than left to finish.
 for ((i = 0; i < strips; i++)); do
   wait -n || {
     for job in $(jobs -p); do
-      pkill -P "$job" 2>/dev/null
-      kill "$job" 2>/dev/null
+      kill -- -"$job" 2>/dev/null
     done
     echo "ocr failed" >&2
     exit 1

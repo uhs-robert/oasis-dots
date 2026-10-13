@@ -29,17 +29,20 @@ if [ -z "${SANDBOX_DIR:-}" ]; then
   exec "$tests_dir/sandbox.sh" "$0" "$@"
 fi
 
-# Prints where a phrase goes, read from the dry run's result line and its first option.
+# Prints where a phrase goes, read from the dry run's result line and its first option. awk reads to the end rather
+# than exiting at the answer: a dry run still printing would die of SIGPIPE, and under pipefail that fails the job,
+# which `wait -n` below turns into the whole script exiting.
 route_of() {
   voxcmd --dry-run "$1" 2>/dev/null | awk '
-    /^result: +built-in/ { print "builtin"; exit }
-    /^result: +no match/ { print "none"; exit }
-    /^result: +ask with the picker/ { print "picker"; exit }
+    found { next }
+    /^result: +built-in/ { print "builtin"; found = 1 }
+    /^result: +no match/ { print "none"; found = 1 }
+    /^result: +ask with the picker/ { print "picker"; found = 1 }
     /^option 1: / {
       name = $0; sub(/^option 1: +/, "", name); sub(/ \(.*/, "", name)
       match($0, / action=[^ ]+/)
       print name "/" substr($0, RSTART + 8, RLENGTH - 8)
-      exit
+      found = 1
     }'
 }
 

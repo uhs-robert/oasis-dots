@@ -448,11 +448,26 @@ mkdir -p "$root/failing"
 printf '#!/bin/sh\nexit 1\n' >"$root/failing/tesseract"
 chmod +x "$root/failing/tesseract"
 check "a failed strip fails the whole OCR" "! SANDBOX_GRIM_SCALE=1 PATH='$root/failing':\$PATH '$share_dir/click-ocr' >/dev/null 2>&1"
-# One strip fails at once; the rest would sleep for a minute, and the run must not wait for them.
-printf '#!/bin/sh\n[ ! -e "%s/slow_started" ] && : >"%s/slow_started" && exit 1\nexec sleep 60\n' "$root" "$root" >"$root/failing/tesseract"
+# One strip fails at once; the rest would sleep for a minute, and the run must not wait for them. Each stub logs its
+# pid (kept across exec) so the check looks at this run's stubs only, not at any process that happens to sleep.
+printf '#!/bin/sh\necho $$ >>"%s/strip_pids"\n[ ! -e "%s/slow_started" ] && : >"%s/slow_started" && exit 1\nexec sleep 60\n' \
+  "$root" "$root" "$root" >"$root/failing/tesseract"
 started=$SECONDS
 SANDBOX_GRIM_SCALE=1 PATH="$root/failing:$PATH" "$share_dir/click-ocr" >/dev/null 2>&1
-check "a failed strip ends the others instead of waiting for them" "[[ \$((SECONDS - started)) -lt 10 && -z \$(pgrep -f 'sleep 60') ]]"
+# A killed stub is gone once its signal is delivered and it is reaped, which a loaded machine can take a moment to do,
+# so it gets a generous while; a stub that was missed sleeps on for the whole minute.
+strip_running() { [[ -e /proc/$1 && $(awk '{print $3}' "/proc/$1/stat" 2>/dev/null) != Z ]]; }
+strips_left_running() {
+  local deadline=$((SECONDS + 10)) pid running
+  while ((SECONDS < deadline)); do
+    running=0
+    while read -r pid; do strip_running "$pid" && running=1; done <"$root/strip_pids"
+    ((running)) || return 1
+    sleep 0.1
+  done
+  return 0
+}
+check "a failed strip ends the others instead of waiting for them" "[[ \$((SECONDS - started)) -lt 10 ]] && ! strips_left_running"
 SANDBOX_ACTIVEWINDOW_JSON='{}'
 check "no focused window is an error" "! out=\$('$share_dir/click-ocr' 2>&1) && grep -q 'no focused window' <<<\"\$out\""
 SANDBOX_ACTIVEWINDOW_JSON=$default_window
