@@ -531,7 +531,8 @@ run_option() {
     question=$(confirm_question "$option" "$label")
     local -a confirm_flags=(--verb "$(normalize "${question%% *}")")
     [ "$came_by_voice" = 0 ] || confirm_flags+=(--listen)
-    debug "confirm asks: $(confirm_question "$option" "$toast_label") (${confirm_flags[*]})"
+    # Not the flags: --verb is the question's first word, which for a private label is screen text.
+    debug "confirm asks: $(confirm_question "$option" "$toast_label")$([ "$came_by_voice" = 0 ] || echo ' (by voice)')"
     if ! "$voxcmd_confirm" "${confirm_flags[@]}" "$question"; then
       debug "confirm answered no: $toast_label not run"
       return 0
