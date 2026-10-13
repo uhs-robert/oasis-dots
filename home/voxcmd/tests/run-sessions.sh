@@ -147,21 +147,31 @@ sess_run alpha beta "done"
 check "targets are tapped in turn" "[[ \$(grep '^tap ' '$log' | paste -sd,) == 'tap alpha,tap beta' ]]"
 check "it listens once more after each turn, and not after 'done'" "[[ \$(record_starts) == 3 ]]"
 check "an exit word clears the session and leaves the microphone idle" "session_gone && [[ \$(cat '$XDG_RUNTIME_DIR/voxtype/state') == idle ]]"
-check "session listens allow 10s of silence" "[[ \$(grep -c 'autostop no_speech_secs=10\$' '$log') == 3 ]]"
+
+# every_detector_logged <setting> <line>: each session listen's detector logged its <setting> as <line>, and at least one
+# did. A turn of speech can end before its listen's detector starts, which then never runs (nor logs), so the run ends
+# on a turn of silence: that recording lasts until its detector's verdict, so its line is always there.
+every_detector_logged() {
+  local lines
+  lines=$(grep "^voxcmd-autostop $1" "$log" | sed 's/^voxcmd-autostop //')
+  [[ -n $lines ]] && ! grep -qvx "$2" <<<"$lines"
+}
+sess_run alpha SILENCE
+check "session listens allow 10s of silence" "every_detector_logged no_speech_secs= no_speech_secs=10"
 check "no session listen asks for the default" "! grep -q 'no_speech_secs=default' '$log'"
 
 sess_env=(VOXCMD_AUTOSTOP_NO_SPEECH_SECS=4)
-sess_run alpha "done"
-check "the session's allowance wins over a user's auto-stop setting" "[[ \$(grep -c 'autostop no_speech_secs=10\$' '$log') == 2 ]]"
+sess_run alpha SILENCE
+check "the session's allowance wins over a user's auto-stop setting" "every_detector_logged no_speech_secs= no_speech_secs=10"
 sess_env=(VOXCMD_SESSION_NO_SPEECH_SECS=7)
-sess_run alpha "done"
-check "VOXCMD_SESSION_NO_SPEECH_SECS sets it" "[[ \$(grep -c 'autostop no_speech_secs=7\$' '$log') == 2 ]]"
+sess_run alpha SILENCE
+check "VOXCMD_SESSION_NO_SPEECH_SECS sets it" "every_detector_logged no_speech_secs= no_speech_secs=7"
 sess_env=(VOXCMD_AUTOSTOP_MIN_SPEECH_SECS=0.1 VOXCMD_AUTOSTOP_SILENCE_SECS=0.5)
-sess_run alpha "done"
-check "session listens want 0.4s of speech and a 1.5s pause, whatever auto-stop's settings" "[[ \$(grep -c 'autostop min_speech_secs=0.4 silence_secs=1.5\$' '$log') == 2 ]]"
+sess_run alpha SILENCE
+check "session listens want 0.4s of speech and a 1.5s pause, whatever auto-stop's settings" "every_detector_logged min_speech_secs= 'min_speech_secs=0.4 silence_secs=1.5'"
 sess_env=(VOXCMD_SESSION_MIN_SPEECH_SECS=0.8 VOXCMD_SESSION_SILENCE_SECS=2)
-sess_run alpha "done"
-check "VOXCMD_SESSION_MIN_SPEECH_SECS and VOXCMD_SESSION_SILENCE_SECS set them" "[[ \$(grep -c 'autostop min_speech_secs=0.8 silence_secs=2\$' '$log') == 2 ]]"
+sess_run alpha SILENCE
+check "VOXCMD_SESSION_MIN_SPEECH_SECS and VOXCMD_SESSION_SILENCE_SECS set them" "every_detector_logged min_speech_secs= 'min_speech_secs=0.8 silence_secs=2'"
 sess_env=()
 
 # While it is open, the session file names its kind and a live owner.
