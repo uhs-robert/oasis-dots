@@ -1272,6 +1272,22 @@ status=0
 out=$("$firefox_tab" focus 0x3002 "Inbox - Mailbox") || status=$?
 check "nothing is typed when the window does not take focus" "[[ \$status != 0 && -z \$(typed) ]]"
 check "and it says so" "[[ \$out == 'the Firefox window did not take focus' ]]"
+make_profile temporary
+: >"$log"
+status=0
+out=$(SANDBOX_ACTIVEWINDOW_JSON=$(firefox_window 0x3002) SANDBOX_ACTIVEWINDOW_AFTER_WTYPE_JSON=$(firefox_window 0x1003) \
+  "$firefox_tab" focus 0x3002 "Inbox - Mailbox") || status=$?
+check "typing stops when focus leaves Firefox after the first step" "[[ \$status != 0 && \$(typed | wc -l) == 1 ]]"
+check "so the title and Return are never typed" "! typed | grep -q 'Inbox\\|Return' && [[ \$out == 'focus left Firefox, so the rest was not typed' ]]"
+: >"$log"
+status=0
+out=$(SANDBOX_ACTIVEWINDOW_JSON=$(firefox_window 0x3002) SANDBOX_ACTIVEWINDOW_AFTER_WTYPE_JSON=$(firefox_window 0x3001) \
+  "$firefox_tab" open --here https://example.com/) || status=$?
+check "typing also stops when another Firefox window takes focus" "[[ \$status != 0 && \$(typed | wc -l) == 1 ]]"
+: >"$log"
+out=$(SANDBOX_ACTIVEWINDOW_JSON=$(firefox_window 0x3002) "$firefox_tab" focus 0x3002 $'Inbox\nrm -rf ~\x1b[31m - Mailbox')
+check "a title's newline and control characters are typed as spaces" "[[ \"\$(typed | paste -sd'|')\" == '-M alt , -m alt|-k Escape|:|-- tab Inbox rm -rf ~ [31m - Mailbox|-k Return' ]]"
+
 make_profile stale
 : >"$log"
 out=$(SANDBOX_ACTIVEWINDOW_JSON=$(firefox_window 0x3002) "$firefox_tab" focus 0x3002 "Inbox - Mailbox")

@@ -243,8 +243,22 @@ def focused_firefox(focus_recent):
     return clients[0]["address"]
 
 
+def printable(text):
+    """The text with control characters, newlines among them, as single spaces: wtype types a newline as Return."""
+    return " ".join(re.sub(r"[\x00-\x1f\x7f-\x9f]", " ", text).split())
+
+
 def keys(*steps):
+    """Types the steps in the window that has focus now, which must be Firefox. Focus can move between steps (a click,
+    a notification, a new window), and the rest would reach whatever has it then, a terminal included, so every step
+    first checks that the same Firefox window still has focus and none is typed when it does not."""
+    window = hyprctl_json("activewindow", {})
+    if not is_firefox(window):
+        fail("Firefox is not focused")
     for step in steps:
+        active = hyprctl_json("activewindow", {})
+        if active.get("address") != window["address"] or not is_firefox(active):
+            fail("focus left Firefox, so the rest was not typed")
         subprocess.run(["wtype", *step], check=True)
         time.sleep(KEY_PAUSE)
 
@@ -392,7 +406,7 @@ def focus_tab(address, title):
     focus_window(address)
     if title and tridactyl(profile_dir()) != "none":
         # :tab searches the focused window's tabs, by exact title first; several matches open its own prompt.
-        tridactyl_command("tab " + " ".join(title.split()))
+        tridactyl_command("tab " + printable(title))
 
 
 def goto(url, running_only):
@@ -418,8 +432,7 @@ def goto(url, running_only):
 def open_url(url, here):
     """Opens a url in a new tab. With here, the url, or text to search, goes to the focused tab's address bar."""
     if here:
-        if "\n" in url:
-            fail("not a url")
+        url = printable(url)
         focused_firefox(focus_recent=False)
         # Ctrl+L belongs to Firefox and no page or add-on takes it, so this works with Tridactyl or without.
         keys(["-M", "ctrl", "l", "-m", "ctrl"], ["--", url], ["-k", "Return"])
