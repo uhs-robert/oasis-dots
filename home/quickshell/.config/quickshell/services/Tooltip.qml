@@ -9,6 +9,8 @@ Singleton {
     property var anchor_item: null
     property string title: ""
     property string text: ""
+    // For text a stranger can write (calendar invites): shown as is, never parsed as rich text.
+    property bool plain: false
     property bool visible: false
     // The island body the shelf drops from; its color and screen are latched with it.
     property var island: null
@@ -18,14 +20,16 @@ Singleton {
     property var pending_item: null
     property string pending_text: ""
     property string pending_title: ""
+    property bool pending_plain: false
 
     // While the shelf is up, hovering another module swaps it at once instead of waiting out the delay.
-    function show(item, t, name) {
+    function show(item, t, name, plain) {
         if (!item || Popups.open_name !== "") return;
         hide_timer.stop();
         root.pending_item = item;
         root.pending_text = t || "";
         root.pending_title = (name || "").toUpperCase();
+        root.pending_plain = !!plain;
         if (root.visible) root.commit();
         else delay_timer.restart();
     }
@@ -73,6 +77,7 @@ Singleton {
         root.island = body;
         root.title = root.pending_title;
         root.text = root.pending_text;
+        root.plain = root.pending_plain;
         root.visible = true;
     }
 

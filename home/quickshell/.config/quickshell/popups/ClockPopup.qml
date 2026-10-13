@@ -17,7 +17,7 @@ Popup {
     popup_name: "clock"
     title: root.nes ? root.day_title : Qt.formatDate(new Date(root.view_year, root.view_month, 1), "MMM yyyy").toUpperCase()
     preferred_width: 320
-    footer_hint: root.day_level ? "j/k event · Enter join · h/Esc back · n new · q close" : root.agenda_on ? "h/l day · j/k week · H/L month · J/K year · Enter day · n new · t/gg today · Tab/[ ] zone · q close" : "h/l day · j/k week · H/L month · J/K year · n new · t/gg today · Tab/[ ] zone · q close"
+    footer_hint: root.day_level ? "j/k event · Enter join · h/Esc back · t/gg today · n new · Tab/[ ] zone · q close" : root.agenda_on ? "h/l day · j/k week · H/L month · J/K year · Enter day · n new · t/gg today · Tab/[ ] zone · q close" : "h/l day · j/k week · H/L month · J/K year · n new · t/gg today · Tab/[ ] zone · q close"
     // The ? view describes both levels, whichever one is showing.
     key_help: root.agenda_on ? "h/l day · j/k week · H/L month · J/K year · Enter open the day · n new · t/gg today · Tab/[ ] zone · q close · j/k event (in a day) · Enter join (in a day) · h/Esc back to the grid" : "h/l day · j/k week · H/L month · J/K year · n new · t/gg today · Tab/[ ] zone · q close"
     body_height: content.implicitHeight + 24
@@ -89,6 +89,8 @@ Popup {
         }
     }
 
+    onAgenda_onChanged: if (!root.agenda_on) root.day_level = false
+
     function enter_day() {
         root.day_level = true;
         event_index = first_open_event(selected);
@@ -115,7 +117,7 @@ Popup {
         return "Joins " + name;
     }
 
-    // Lands on the meeting under way or the next to start, so Enter joins what matters; other days start at their top.
+    // Lands on the first timed meeting that has not ended (on today, the one under way or next; on other days, the day's first), else the day's first event.
     function first_open_event(date) {
         const list = CalendarState.events_on(date);
         const now = Date.now();
@@ -310,6 +312,9 @@ Popup {
             const accept_only = () => {
                 event.accepted = true;
             };
+            // Open and create launch a browser tab, so a held key or a second press while the popup closes must not repeat them.
+            const launching = key === Qt.Key_N || key === Qt.Key_Return || key === Qt.Key_Enter;
+            if (launching && (event.isAutoRepeat || !root.is_open)) return accept_only();
             if (key === Qt.Key_N) {
                 ThemeAudio.play("confirm");
                 root.new_event();
@@ -330,6 +335,7 @@ Popup {
                 if (key === Qt.Key_J || key === Qt.Key_Down) root.step_event(1);
                 else if (key === Qt.Key_K || key === Qt.Key_Up) root.step_event(-1);
                 else if (key === Qt.Key_Escape || key === Qt.Key_Left || (key === Qt.Key_H && !shifted)) root.leave_day();
+                else if (key === Qt.Key_T) root.go_today();
                 else return;
             } else if (key === Qt.Key_H && shifted) {
                 root.prev_month();
@@ -554,8 +560,9 @@ Popup {
             Item {
                 id: agenda_region
                 visible: root.agenda_on
+                clip: true
                 Layout.fillWidth: true
-                Layout.preferredHeight: root.agenda_lines * time_floor.height + (root.agenda_lines - 1) * 2
+                Layout.preferredHeight: root.agenda_lines * line_probe.implicitHeight + (root.agenda_lines - 1) * 2 + 6
 
                 ColumnLayout {
                     id: agenda
@@ -594,6 +601,7 @@ Popup {
                             readonly property bool live: CalendarState.is_live(modelData)
 
                             Layout.fillWidth: true
+                            Layout.preferredHeight: line_probe.implicitHeight
                             spacing: 6
 
                             Text {
@@ -615,6 +623,8 @@ Popup {
                             Text {
                                 Layout.fillWidth: true
                                 text: agenda_row.modelData.title
+                                textFormat: Text.PlainText
+                                maximumLineCount: 1
                                 color: agenda_row.chosen ? root.st.text_fg : root.st.text_dim
                                 font.family: root.st.font_family
                                 font.pixelSize: root.st.fs(-1)
@@ -645,7 +655,7 @@ Popup {
                 ColumnLayout {
                     id: details
                     visible: root.chosen_event !== null
-                    y: (root.day_rows + 2) * (time_floor.height + 2)
+                    y: (root.day_rows + 2) * (line_probe.implicitHeight + 2)
                     anchors.left: parent.left
                     anchors.right: parent.right
                     spacing: 2
@@ -663,6 +673,8 @@ Popup {
                             required property var modelData
                             Layout.fillWidth: true
                             text: modelData.text
+                            textFormat: Text.PlainText
+                            maximumLineCount: 1
                             color: modelData.bold ? root.st.text_fg : root.st.text_dim
                             font.family: root.st.font_family
                             font.pixelSize: root.st.fs(-1)
@@ -675,6 +687,15 @@ Popup {
                 TextMetrics {
                     id: time_floor
                     text: TimeFormat.h24 ? "00:00" : "00:00pm"
+                    font.family: root.st.font_family
+                    font.pixelSize: root.st.fs(-1)
+                }
+
+                // A drawn Text's height, which can differ from TextMetrics for fonts with odd line spacing.
+                Text {
+                    id: line_probe
+                    visible: false
+                    text: "Ag"
                     font.family: root.st.font_family
                     font.pixelSize: root.st.fs(-1)
                 }
