@@ -17,10 +17,80 @@ voxcmd_config_link="$HOME/.config/voxcmd"
 # The private integrations dirs, which a private dotfiles repo links into per file.
 voxcmd_private_dirs=(integrations.d replacements.d)
 voxcmd_bar="$bars/.voxcmd_bar"
+# Which agent session put the live test bar up, so a second session does not swap it out from under the owner.
+owner_file="$bars/.owner"
 
 die() {
   echo "owner-test-bar: $*" >&2
   exit 1
+}
+
+caller_address() {
+  [[ -z ${CLAUDE_CODE_MESSAGING_SOCKET:-} ]] || echo "uds:$CLAUDE_CODE_MESSAGING_SOCKET"
+}
+
+owner_field() {
+  jq -r --arg k "$1" '.[$k] // "" | if type == "array" then join(" ") else . end' "$owner_file" 2>/dev/null
+}
+
+# A claim is live while its session's messaging socket exists; a claim without a socket cannot be reached, so it is
+# treated as stale.
+owner_live() {
+  local address
+  address=$(owner_field address)
+  [[ $address == uds:* && -e ${address#uds:} ]]
+}
+
+# Same session by id when both sides have one, else by socket. Two callers with neither are the owner by hand.
+owned_by_caller() {
+  local session address
+  session=$(owner_field session)
+  address=$(owner_field address)
+  if [[ -n $session && -n ${CLAUDE_CODE_SESSION_ID:-} ]]; then
+    [[ $session == "$CLAUDE_CODE_SESSION_ID" ]]
+  elif [[ -n $address || -n $(caller_address) ]]; then
+    [[ $address == "$(caller_address)" ]]
+  else
+    [[ -z $session && -z ${CLAUDE_CODE_SESSION_ID:-} ]]
+  fi
+}
+
+# Refuses when another live session owns the test bar; a stale claim is reported and overridden.
+guard_owner() {
+  local take=$1 address
+  [[ -f $owner_file ]] || return 0
+  owned_by_caller && return 0
+  if ((take)); then
+    echo "owner-test-bar: taking test bar '$(owner_field bar)' over from $(owner_field address) (--take)"
+  elif owner_live; then
+    die "test bar '$(owner_field bar)' ($(owner_field branches)) is owned by another session since $(owner_field since); SendMessage to $(owner_field address) to coordinate, or pass --take if the owner approved"
+  else
+    address=$(owner_field address)
+    echo "owner-test-bar: the claim on test bar '$(owner_field bar)' by ${address:-a session with no address} since $(owner_field since) is stale (its socket is gone); proceeding"
+  fi
+}
+
+# Records the caller as the owner. Only the address and session id: never the messaging token.
+record_owner() {
+  local name=$1
+  shift
+  mkdir -p "$bars"
+  jq -n --arg address "$(caller_address)" --arg session "${CLAUDE_CODE_SESSION_ID:-}" --arg bar "$name" \
+    --arg since "$(date -Iseconds)" '{address: $address, session: $session, bar: $bar, branches: $ARGS.positional, since: $since}' \
+    --args "$@" >"$owner_file.new"
+  mv "$owner_file.new" "$owner_file"
+}
+
+owner_status() {
+  if [[ ! -f $owner_file ]]; then
+    echo "owner: none"
+    return 0
+  fi
+  local liveness=stale session address
+  owner_live && liveness=live
+  session=$(owner_field session)
+  address=$(owner_field address)
+  echo "owner: session ${session:-unknown} at ${address:-no address}, test bar '$(owner_field bar)' since $(owner_field since), $liveness"
 }
 
 require_unlocked() {
@@ -262,8 +332,32 @@ voxcmd_status() {
   fi
 }
 
+# How the test bar at $1 compares with the branches it was built from.
+branches_state() {
+  local dir=$1 branch
+  local -a notes=()
+  if [[ ! -f $dir.branches ]]; then
+    echo "unknown (no branch record)"
+    return 0
+  fi
+  while read -r branch; do
+    if ! git -C "$dir" rev-parse -q --verify "$branch^{commit}" >/dev/null; then
+      notes+=("branch $branch deleted")
+    elif ! git -C "$dir" merge-base --is-ancestor "$branch" HEAD; then
+      notes+=("stale ($branch has new commits)")
+    fi
+  done <"$dir.branches"
+  if ((${#notes[@]})); then
+    local joined
+    printf -v joined ', %s' "${notes[@]}"
+    echo "${joined:2}"
+  else
+    echo current
+  fi
+}
+
 status() {
-  local line path name dir branch head state=current
+  local line path name dir head
   line=$(pgrep -af '^qs ' || true)
   echo "qs: ${line:-not running}"
   path=$(sed -n 's/.* -p \([^ ]*\).*/\1/p' <<<"$line" | head -1)
@@ -274,18 +368,12 @@ status() {
     echo "bar: test bar '$name'"
     if [[ -d $dir ]]; then
       head=$(git -C "$dir" rev-parse --short HEAD)
-      if [[ -f $dir.branches ]]; then
-        while read -r branch; do
-          git -C "$dir" merge-base --is-ancestor "$branch" HEAD 2>/dev/null || state="stale ($branch has new commits)"
-        done <"$dir.branches"
-      else
-        state="unknown (no branch record)"
-      fi
-      echo "head: $head, branches $state"
+      echo "head: $head, branches $(branches_state "$dir")"
     fi
   elif [[ -n $line ]]; then
     echo "bar: stowed"
   fi
+  owner_status
   if [[ -f $hypr_orig ]]; then
     echo "hypr: swapped to test bar '$(<"$hypr_bar")' (original $(<"$hypr_orig"))"
   else
@@ -358,9 +446,14 @@ build() {
 
 main() {
   replace=0
+  take=0
   args=()
   for arg in "$@"; do
-    if [[ $arg == --replace ]]; then replace=1; else args+=("$arg"); fi
+    case $arg in
+    --replace) replace=1 ;;
+    --take) take=1 ;;
+    *) args+=("$arg") ;;
+    esac
   done
   set -- "${args[@]}"
 
@@ -372,7 +465,10 @@ main() {
   swap)
     dir="$bars/${2:?usage: owner-test-bar.sh swap <name>}"
     [[ -d $dir ]] || die "no test bar at $dir"
+    guard_owner "$take"
     guard_live_bar "$2" "$replace"
+    mapfile -t branches < <(cat "$dir.branches" 2>/dev/null)
+    record_owner "$2" "${branches[@]}"
     require_unlocked
     hypr_swap "${2}" "$dir"
     voxcmd_swap "$2" "$dir"
@@ -382,18 +478,22 @@ main() {
   up)
     name=${2:?usage: owner-test-bar.sh up <name> <branch>...}
     shift 2
+    guard_owner "$take"
     guard_live_bar "$name" "$replace"
+    record_owner "$name" "$@"
     build "$name" "$@"
     swap_args=("$name")
     ((replace)) && swap_args+=(--replace)
     "$0" swap "${swap_args[@]}"
     ;;
   restore)
+    guard_owner "$take"
     require_unlocked
     hypr_restore
     voxcmd_restore
     launch "qs -n"
     verify "qs log"
+    rm -f "$owner_file"
     ;;
   remove)
     dir="$bars/${2:?usage: owner-test-bar.sh remove <name>}"
@@ -409,6 +509,7 @@ main() {
     git -C "$repo" worktree remove --force "$dir"
     git -C "$repo" worktree prune
     rm -f "$dir.branches"
+    if [[ -f $owner_file && $(owner_field bar) == "$2" ]]; then rm -f "$owner_file"; fi
     echo "owner-test-bar: removed $dir"
     ;;
   rebuild)
@@ -416,6 +517,9 @@ main() {
     dir="$bars/$name"
     [[ -f $dir.branches ]] || die "no test bar '$name' to rebuild"
     mapfile -t branches <"$dir.branches"
+    guard_owner "$take"
+    # Recorded before the nested restore and remove clear the claim, so they see this session as the owner.
+    record_owner "$name" "${branches[@]}"
     # Checked before removal: once up refuses over another live bar, this bar and its branch record are already gone.
     guard_live_bar "$name" "$replace"
     # Removing a running bar's worktree would pull its files out from under qs, so the stowed bar takes over first.
@@ -433,7 +537,7 @@ main() {
     probe "$@"
     ;;
   *)
-    die "usage: owner-test-bar.sh {up <name> <branch>... [--replace]|build <name> <branch>...|swap <name> [--replace]|restore|rebuild <name>|remove <name>|status|probe <ipc call>...}"
+    die "usage: owner-test-bar.sh {up <name> <branch>... [--replace] [--take]|build <name> <branch>...|swap <name> [--replace] [--take]|restore [--take]|rebuild <name> [--take]|remove <name>|status|probe <ipc call>...}"
     ;;
   esac
 }

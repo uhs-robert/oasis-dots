@@ -89,11 +89,12 @@ if python3 -c 'import icalendar, recurring_ical_events' >/dev/null 2>&1; then
 else
   echo 'skip: calendar-sync tests need python-icalendar and python-recurring-ical-events'
 fi
-# The hooks read their input with jq.
+# The hooks read their input with jq, and owner-test-bar keeps its claim in JSON.
 if command -v jq >/dev/null 2>&1; then
   step agent-hooks bash ./home/claude/.claude/hooks/tests/guard-masked-checks.sh
+  step owner-test-bar bash ./.claude/skills/owner-test-bar/tests/run.sh
 else
-  echo 'skip: agent hook tests need jq'
+  echo 'skip: agent hook and owner-test-bar tests need jq'
 fi
 step packages sh ./lib/check-packages.sh
 step symlinks sh ./lib/check-symlinks.sh
