@@ -30,14 +30,9 @@ Row {
         onTapped: Popups.toggle("clock", root.island, root.island_color, root.screen_name)
     }
 
-    // The next meeting is worth the bar's room only just before it starts; a meeting under way shows as a dot.
+    // Just before a meeting the bar shows a hollow dot and the minutes left; under way, a solid dot. The title is on hover.
     readonly property bool chip_shown: CalendarState.chip_event !== null
-    // The title is cut, not the minutes, so the countdown always shows.
-    readonly property string chip_text: {
-        const next = CalendarState.chip_event;
-        if (!next) return "";
-        return (root.compact ? "" : (next.title.length > 18 ? next.title.slice(0, 17) + "\u2026" : next.title) + " ") + CalendarState.minutes_to(next) + "m";
-    }
+    readonly property string chip_text: root.chip_shown ? CalendarState.minutes_to(CalendarState.chip_event) + "m" : ""
     readonly property string agenda_tip: {
         const span = e => TimeFormat.format(new Date(e.start_ms)) + " - " + TimeFormat.format(new Date(e.end_ms));
         if (CalendarState.in_meeting) return "Now: " + CalendarState.current_event.title + "\n" + span(CalendarState.current_event);
@@ -218,12 +213,14 @@ Row {
 
     Rectangle {
         id: meeting_dot
-        visible: CalendarState.in_meeting
+        visible: CalendarState.in_meeting || root.chip_shown
         anchors.verticalCenter: parent.verticalCenter
         width: 6
         height: 6
         radius: 3
-        color: root.on_accent ? root.ink : Theme.theme_primary
+        color: CalendarState.in_meeting ? border.color : "transparent"
+        border.width: 1
+        border.color: root.on_accent ? root.ink : Theme.theme_primary
     }
 
     Text {
