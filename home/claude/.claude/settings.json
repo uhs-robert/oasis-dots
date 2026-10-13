@@ -171,6 +171,17 @@
           }
         ]
       }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/stale-shells.sh",
+            "timeout": 10
+          }
+        ]
+      }
     ]
   },
   "statusLine": {
