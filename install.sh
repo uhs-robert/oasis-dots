@@ -9,6 +9,7 @@ source "$DOTFILES_DIR/lib/packages.sh"
 source "$DOTFILES_DIR/lib/arch.sh"
 source "$DOTFILES_DIR/lib/rust.sh"
 source "$DOTFILES_DIR/lib/stow.sh"
+source "$DOTFILES_DIR/lib/migrate.sh"
 source "$DOTFILES_DIR/lib/services.sh"
 source "$DOTFILES_DIR/lib/tailnet-ssh.sh"
 source "$DOTFILES_DIR/lib/greeter.sh"
@@ -100,6 +101,7 @@ main() {
   if [[ $OPT_SERVER -eq 1 ]]; then stow_section=SERVER; fi
   info "Stowing ${stow_section,,} packages..."
   mapfile -t core < <(read_ini_section stow.ini "$stow_section")
+  migrate_unfold_systemd
   do_stow "${core[@]}"
   seed_generated_defaults "${core[@]}"
 

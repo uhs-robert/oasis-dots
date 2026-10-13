@@ -1,6 +1,23 @@
 #!/usr/bin/env bash
 # Stows dotfile packages and bootstraps shell/editor tooling.
 
+# systemd ignores drop-in (.d) and .wants directories that are symlinks, and `systemctl enable` writes into them.
+# Stow folds a directory missing from ~ into one symlink, so these packages are stowed with --no-folding.
+NO_FOLD_PACKAGES=(systemd calendar)
+
+# Runs `stow <mode>` (-S, -D or -R) on each package, unfolding the NO_FOLD_PACKAGES.
+stow_packages() {
+  local mode="$1" pkg status=0
+  local -a args
+  shift
+  for pkg in "$@"; do
+    args=(-d "$DOTFILES_DIR/home" -t "$HOME" "$mode")
+    [[ " ${NO_FOLD_PACKAGES[*]} " == *" $pkg "* ]] && args+=(--no-folding)
+    stow "${args[@]}" "$pkg" || status=1
+  done
+  return $status
+}
+
 # Symlinks one or more packages from home/ into ~; warns on conflicts.
 do_stow() {
   cd "$DOTFILES_DIR" || return 1
@@ -9,7 +26,7 @@ do_stow() {
       warn "Package '$pkg' not found, skipping"
       continue
     fi
-    if stow "$pkg"; then
+    if stow_packages -S "$pkg"; then
       success "Stowed $pkg"
     else
       warn "Could not stow $pkg: move the conflicting files aside, then re-run 'just stow $pkg'"

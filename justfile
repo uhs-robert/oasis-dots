@@ -17,16 +17,16 @@ system-apply:
 
 # Symlink one package from home/ into ~
 stow name:
-    stow -d home -t ~ {{name}}
+    @just _stow S {{name}}
     @just _seed {{name}}
 
 # Remove symlinks for one package from ~
 unstow name:
-    stow -d home -t ~ -D {{name}}
+    @just _stow D {{name}}
 
 # Re-stow one package (fix stale/broken links)
 restow name:
-    stow -d home -t ~ -R {{name}}
+    @just _stow R {{name}}
     @just _seed {{name}}
 
 # Symlink the CORE and OPTIONAL packages from packages/stow.ini
@@ -34,17 +34,33 @@ stow-all: stow-core stow-optional
 
 # Remove symlinks for every package in home/
 unstow-all:
-    stow -d home -t ~ -D $(ls home)
+    @just _stow D $(ls home)
 
 # Symlink just the CORE packages from packages/stow.ini
 stow-core:
-    stow -d home -t ~ $(awk '/^\[CORE\]/{f=1;next} /^\[/{f=0} f && /^[^#[:space:]]/' packages/stow.ini)
+    @just _stow S $(awk '/^\[CORE\]/{f=1;next} /^\[/{f=0} f && /^[^#[:space:]]/' packages/stow.ini)
     @just _seed $(awk '/^\[CORE\]/{f=1;next} /^\[/{f=0} f && /^[^#[:space:]]/' packages/stow.ini)
 
 # Symlink just the OPTIONAL packages from packages/stow.ini
 stow-optional:
-    stow -d home -t ~ $(awk '/^\[OPTIONAL\]/{f=1;next} /^\[/{f=0} f && /^[^#[:space:]]/' packages/stow.ini)
+    @just _stow S $(awk '/^\[OPTIONAL\]/{f=1;next} /^\[/{f=0} f && /^[^#[:space:]]/' packages/stow.ini)
     @just _seed $(awk '/^\[OPTIONAL\]/{f=1;next} /^\[/{f=0} f && /^[^#[:space:]]/' packages/stow.ini)
+
+# Stow one letter mode (S, D or R) on packages, unfolding those that must not fold (see lib/stow.sh)
+_stow mode *pkgs:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    DOTFILES_DIR="$PWD"
+    source lib/stow.sh
+    stow_packages "-{{mode}}" {{pkgs}}
+
+# One-time fix for a systemd tree folded into the repo (before #812's follow-up); idempotent, pass --dry-run to only report
+migrate-systemd *ARGS:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    DOTFILES_DIR="$PWD"
+    for lib in output stow migrate; do source "lib/$lib.sh"; done
+    migrate_systemd {{ARGS}}
 
 # Copy *.template.* defaults of the given packages into place when missing
 _seed *pkgs:
