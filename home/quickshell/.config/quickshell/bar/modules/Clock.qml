@@ -227,6 +227,14 @@ Row {
         font.features: { "tnum": 1 }
     }
 
+    Text {
+        visible: root.dq && !root.compact
+        anchors.verticalCenter: parent.verticalCenter
+        text: "  " + Qt.formatDateTime(root.shifted, "MMM d").toUpperCase()
+        color: Theme.theme_secondary
+        font: time_label.font
+    }
+
     Marker.MeetingMarker {
         id: meeting_marker
         visible: CalendarState.in_meeting || root.chip_shown
@@ -244,14 +252,6 @@ Row {
         anchors.verticalCenter: parent.verticalCenter
         text: "]"
         color: Style.bar_clock_brackets
-        font: time_label.font
-    }
-
-    Text {
-        visible: root.dq && !root.compact
-        anchors.verticalCenter: parent.verticalCenter
-        text: "  " + Qt.formatDateTime(root.shifted, "MMM d").toUpperCase()
-        color: Theme.theme_secondary
         font: time_label.font
     }
 

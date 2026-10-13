@@ -47,7 +47,7 @@ MarkerBase {
 
     Item {
         visible: root.in_meeting
-        anchors.centerIn: parent
+        anchors.verticalCenter: parent.verticalCenter
         width: swing_bell.implicitWidth
         height: swing_bell.implicitHeight
 

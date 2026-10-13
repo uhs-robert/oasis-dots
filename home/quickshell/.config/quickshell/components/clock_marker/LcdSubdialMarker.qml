@@ -3,17 +3,9 @@ import QtQuick
 import "../../theme"
 import "../../theme/Watch.js" as W
 
-// goldeneye: a small LCD window like a watch complication, holding the minutes in segment digits before a meeting and a blinking ALM during one.
-Item {
+// goldeneye: a small LCD window like a watch complication, holding the minutes in segment digits before a meeting and a blinking AL during one.
+MarkerBase {
     id: root
-
-    // Shared marker inputs; see MeetingMarker.
-    property int minutes: 0
-    property bool in_meeting: false
-    property real progress: 0
-    property bool on_accent: false
-    property color ink: "black"
-    property font text_font
 
     readonly property real digit_size: Style.bar_font_size + 1
     readonly property color lit: root.on_accent ? root.ink : Theme.theme_primary_light
@@ -26,14 +18,15 @@ Item {
         id: upcoming_width
         font.family: W.digit_font
         font.pixelSize: root.digit_size
-        text: "[00]"
+        text: "00"
     }
 
     TextMetrics {
         id: alarm_width
         font.family: W.digit_font
         font.pixelSize: root.digit_size
-        text: "ALM"
+        // AL, not ALM: DSEG7 has no M and draws it like an n.
+        text: "AL"
     }
 
     Rectangle {
@@ -48,7 +41,7 @@ Item {
         id: readout
         anchors.centerIn: parent
         anchors.verticalCenterOffset: 1
-        text: root.in_meeting ? "ALM" : "[" + String(Math.min(99, root.minutes)).padStart(2, "0") + "]"
+        text: root.in_meeting ? "AL" : String(Math.min(99, root.minutes)).padStart(2, "0")
         textFormat: Text.PlainText
         color: root.in_meeting && !root.on_accent ? Style.meter_hot : root.lit
         font.family: W.digit_font

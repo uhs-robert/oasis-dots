@@ -3,16 +3,8 @@ import QtQuick
 import "../../theme"
 
 // metroid: energy tanks that empty as the meeting nears, beside a two-digit ENERGY readout; in a meeting the tanks are empty, the readout reads 00 and flashes like low energy.
-Row {
+MarkerBase {
     id: root
-
-    // Shared marker inputs; see MeetingMarker.
-    property int minutes: 0
-    property bool in_meeting: false
-    property real progress: 0
-    property bool on_accent: false
-    property color ink: "black"
-    property font text_font
 
     readonly property int tank_count: 4
     readonly property int full_tanks: root.in_meeting ? 0 : Math.ceil((1 - root.progress) * root.tank_count - 0.001)
@@ -22,8 +14,10 @@ Row {
     // 0 to 1; how strongly the low-energy alarm is lit.
     property real alarm: 0
 
-    spacing: 5
+    implicitWidth: layout.implicitWidth
+    implicitHeight: layout.implicitHeight
 
+    // Sized from two digits, so the minutes ticking down do not resize the clock.
     TextMetrics {
         id: number_width
         font: root.text_font
@@ -31,34 +25,40 @@ Row {
     }
 
     Row {
+        id: layout
         anchors.verticalCenter: parent.verticalCenter
-        spacing: 2
+        spacing: 5
 
-        Repeater {
-            model: root.tank_count
+        Row {
+            anchors.verticalCenter: parent.verticalCenter
+            spacing: 2
 
-            Rectangle {
-                required property int index
-                readonly property bool full: index < root.full_tanks
-                width: 6
-                height: 8
-                radius: 1
-                color: full ? root.tank_color : "transparent"
-                border.width: 1
-                border.color: full ? root.tank_color : Qt.tint(Qt.alpha(root.tank_color, 0.55), Qt.alpha(root.alarm_color, root.alarm))
+            Repeater {
+                model: root.tank_count
+
+                Rectangle {
+                    required property int index
+                    readonly property bool full: index < root.full_tanks
+                    width: 6
+                    height: 8
+                    radius: 1
+                    color: full ? root.tank_color : "transparent"
+                    border.width: 1
+                    border.color: full ? root.tank_color : Qt.tint(Qt.alpha(root.tank_color, 0.55), Qt.alpha(root.alarm_color, root.alarm))
+                }
             }
         }
-    }
 
-    Text {
-        anchors.verticalCenter: parent.verticalCenter
-        width: Math.ceil(number_width.advanceWidth)
-        text: root.in_meeting ? "00" : String(Math.min(99, root.minutes)).padStart(2, "0")
-        textFormat: Text.PlainText
-        color: Qt.tint(root.on_accent ? root.ink : Style.bar_fg, Qt.alpha(root.alarm_color, root.alarm))
-        font: root.text_font
-        style: Style.bar_text_style
-        styleColor: Style.bar_glow_color
+        Text {
+            anchors.verticalCenter: parent.verticalCenter
+            width: Math.ceil(number_width.advanceWidth)
+            text: root.in_meeting ? "00" : String(Math.min(99, root.minutes)).padStart(2, "0")
+            textFormat: Text.PlainText
+            color: Qt.tint(root.on_accent ? root.ink : Style.bar_fg, Qt.alpha(root.alarm_color, root.alarm))
+            font: root.text_font
+            style: Style.bar_text_style
+            styleColor: Style.bar_glow_color
+        }
     }
 
     SequentialAnimation on alarm {

@@ -47,7 +47,7 @@ MarkerBase {
     PixelSprite {
         id: alert
         visible: root.in_meeting
-        anchors.centerIn: parent
+        anchors.verticalCenter: parent.verticalCenter
         pixel: 2
         colors: [root.frame_color, root.sand_color]
         rows: ["000", "000", "000", "000", "000", "...", "111", "111"]
