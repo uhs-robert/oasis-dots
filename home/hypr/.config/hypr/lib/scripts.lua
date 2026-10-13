@@ -10,6 +10,7 @@ local Scripts = {
   voxtype               = HYPR    .. "voxtype-with-media-pause.sh",
   voxcmd_listen         = BIN     .. "voxcmd listen",
   voxcmd_stop           = BIN     .. "voxcmd stop",
+  voxcmd_rapid          = BIN     .. "voxcmd rapid",
   voxcmd_help           = BIN     .. "voxcmd help",
   focus_media_player    = HYPR    .. "focus-media-player.sh",
   focus_toast_popup_or_float = HYPR    .. "focus-toast-popup-or-float.sh",

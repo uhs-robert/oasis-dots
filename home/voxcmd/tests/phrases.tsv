@@ -174,3 +174,24 @@ new tab	Firefox/new_tab
 open a new tab	Firefox/new_tab
 close tab	Firefox/close_tab
 close this tab	Firefox/close_tab
+rapid mode	Rapid/rapid_mode	Rapid's own verb
+start rapid mode	Rapid/rapid_mode	Rapid's own verb
+enter rapid fire mode	Rapid/rapid_mode	Rapid's own verb
+stop rapid mode	Rapid/stop_rapid	the exit forms are Rapid's own, ahead of Media and System
+quit rapid mode	Rapid/stop_rapid	the exit forms are Rapid's own, ahead of Media and System
+turn off rapid mode	Rapid/stop_rapid	the exit forms are Rapid's own, ahead of Media and System
+type mode	Type/type_mode	Type's own verb
+typing mode	Type/type_mode	Type's own verb
+dictation mode	Type/type_mode	Type's own verb
+start typing mode	Type/type_mode	Type's own verb
+enter typing mode	Type/type_mode	Type's own verb
+start typing	none	stays a search placeholder: type mode needs the word mode
+stop typing	Type/stop_typing	the exit forms are Type's own, ahead of Media and System
+done typing	Type/stop_typing	the exit forms are Type's own, ahead of Media and System
+leave typing mode	Type/stop_typing	the exit forms are Type's own, ahead of Media and System
+click type mode	Click/no_text	a click on the text, not type mode
+done	none	no owner outside a session
+jarvis open firefox	Apps/open	the wake word is stripped outside a session
+Jarvis, play pause	Media/toggle	the wake word is stripped outside a session
+jarvis rapid mode	Rapid/rapid_mode	the wake word is stripped outside a session
+Charvis, open firefox	Apps/open	the default wake word's common mishearing is an alias

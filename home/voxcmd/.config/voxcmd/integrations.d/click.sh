@@ -15,10 +15,16 @@ private_labels=1
 
 # The ways out of click mode, as a command and as a turn inside it. Each names the mode, since a bare "stop", "exit" or
 # "close" is a button label and stays a target.
+# shellcheck source-path=SCRIPTDIR/../../../.local/share/voxcmd source=mode-phrases.sh
+source "$voxcmd_share_dir/mode-phrases.sh"
 click_exit_object='(the )?(clicking|click mode|clicking mode)'
-click_exit_filler='(okay|ok|alright|please|now)'
-click_exit_phrase="($click_exit_filler )*((stop|exit|quit|end|leave|finish|close|turn off|switch off) $click_exit_object|$click_exit_object off)( $click_exit_filler)*"
+click_exit_phrase=$(mode_exit_phrase "$click_exit_object")
 session_exit_phrases="done clicking|im done clicking|done with $click_exit_object|$click_exit_phrase"
+session_exit_hint="say done to stop"
+session_allows_switches=1
+# The entries and exits another mode may run while click mode is open: the whole utterance is matched, never rewritten
+# into a click.
+mode_actions=(click_mode stop_clicking)
 
 # Every click verb needs a target, so a bare "click" or "right click" still reaches the Cursor submap's binds in
 # Keybinds. The optional "on" is a filler word, so "click on settings" and "click settings" mean the same.
@@ -68,7 +74,7 @@ declare -A actions=(
   [triple_click]='click_at "$id"'
   [show_hints]='show_hints'
   [click_mode]='session_begin click "$file" "Click mode"'
-  [stop_clicking]='session_end "done"'
+  [stop_clicking]='session_leave click done || true'
   [no_text]='no_text'
 )
 

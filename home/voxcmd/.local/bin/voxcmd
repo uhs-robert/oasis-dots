@@ -16,7 +16,8 @@ Usage:
   voxcmd click-explain <text...> [--window <stableId>]
                               show why "click <text>" would or would not click, from the real capture and matcher,
                               without clicking or moving the pointer (the focused window, or that client)
-  voxcmd end-session          end the open voice session (click mode), if any
+  voxcmd rapid                open rapid mode: a voice session where every turn is a command
+  voxcmd end-session          end the open voice session and every mode in it, if any
   voxcmd stop                 stop all voice activity: end the open session, cancel the open picker, card or hints, and
                               cancel a recording under way, discarding what was said; silent when none is open
   voxcmd list                 list integrations and their verbs
@@ -32,8 +33,9 @@ voxtype_state_file="${XDG_RUNTIME_DIR:-/tmp}/voxtype/state"
 # {kind: "confirm", listen_again} from voxcmd-confirm and {kind: "hints", listen_again} from voxcmd-hints.
 pending_pick_file="$runtime_dir/pending-pick.json"
 transcript_file="$runtime_dir/transcript.txt"
-# Present while a voice session is open: {kind, integration, label, started, owner, unclear}. owner is the PID of the
-# watcher that will hear the next turn; a session whose owner is gone is stale and never read as open.
+# Present while a voice session is open: the current mode {kind, integration, label, exit_hint, ...} with the session's
+# {started, owner, owner_start, turns} and the modes underneath it as stack. owner is the PID of the watcher that will hear
+# the next turn; a session whose owner is gone is stale and never read as open.
 session_file="$runtime_dir/session.json"
 qs_ipc="${XDG_CONFIG_HOME:-$HOME/.config}/hypr/scripts/qs-ipc"
 voxcmd_self="$(readlink -f "$0")"
@@ -44,6 +46,8 @@ voxcmd_autostop="$(dirname "$voxcmd_self")/voxcmd-autostop"
 # checked-out voxcmd reads its own copy. Not in integrations.d/, where every file is loaded as an integration.
 voxcmd_share_dir="$(dirname "$voxcmd_self")/../share/voxcmd"
 dry_run=0
+# 1 while a voice session's turn is being handled.
+in_session_turn=0
 # 1 while routing a transcript from `voxcmd listen`, so a confirmation or a one-choice picker listens for its answer
 # too.
 came_by_voice=0
@@ -206,10 +210,16 @@ compile_pattern() {
 # Callers source each integration in its own subshell so their variables and functions never collide.
 # A `declare` in a file sourced from a function is local to that function, so the arrays are copied out to globals.
 load_integration() {
-  unset -f candidates help_choices pick_box session_rewrite
+  unset -f candidates help_choices pick_box session_rewrite session_ended session_handle_turn session_control
   name="" confirm=0 fallback=0 silent=0 target_match=fuzzy help_action="" action_labels=1 pick_command="" private_labels=0
-  session_exit_phrases=""
-  local -a verbs=() examples=() confirm_labels=() match_ignore_words=() silent_actions=() force_prefixes=() session_miss_actions=()
+  # The mode settings load_mode_settings reads back, which shellcheck cannot see through ${!value}.
+  # shellcheck disable=SC2034
+  session_exit_phrases="" session_default_exits=1 session_allows_switches=0 session_exit_hint="" session_control_phrases=""
+  # shellcheck disable=SC2034
+  session_wake_at_end=0 session_private=0 session_open_ended=0 session_mode_idle_secs="" session_mode_max_secs=""
+  # shellcheck disable=SC2034
+  session_listen_silence_secs="" session_listen_max_secs="" session_listen_no_speech_secs=""
+  local -a verbs=() examples=() confirm_labels=() match_ignore_words=() silent_actions=() force_prefixes=() session_miss_actions=() mode_actions=()
   local -A actions=() no_match_actions=()
   # shellcheck disable=SC1090
   source "$1"
@@ -221,6 +231,7 @@ load_integration() {
   integration_silent_actions=("${silent_actions[@]}")
   integration_force_prefixes=("${force_prefixes[@]}")
   integration_session_miss_actions=("${session_miss_actions[@]}")
+  integration_mode_actions=("${mode_actions[@]}")
   declare -gA integration_actions=() integration_no_match_actions=()
   local key
   for key in "${!actions[@]}"; do
@@ -620,6 +631,51 @@ help_phrases='^(what can i say|voice help|show voice commands)$'
 # sees them here: listen sends a recording made while it waits to reply, where "cancel" closes the picker.
 discard_phrases='^(never ?mind|cancel|forget it|nothing)$'
 
+# The wake word starts a command to the mode a voice session is in; outside a session it is only stripped, so "jarvis
+# open firefox" is "open firefox". VOXCMD_WAKE_WORD is the one spelling voxtype's vocabulary teaches Whisper;
+# VOXCMD_WAKE_ALIASES ("jarvas|jervis") adds the spellings it still produces. Whisper hears the default's "J" as "Ch"
+# often enough that "charvis" is its alias unless the aliases are set.
+wake_word="${VOXCMD_WAKE_WORD:-jarvis}"
+if [ "$wake_word" = jarvis ]; then wake_aliases="${VOXCMD_WAKE_ALIASES-charvis}"; else wake_aliases="${VOXCMD_WAKE_ALIASES:-}"; fi
+wake_regex=""
+init_wake_regex() {
+  [ -z "$wake_regex" ] || return 0
+  local form
+  while IFS= read -r form; do
+    form=$(normalize "$form")
+    [ -z "$form" ] || wake_regex+="${wake_regex:+|}$form"
+  done < <(tr '|,' '\n' <<<"$wake_word|$wake_aliases")
+  # A wake word that normalizes to nothing would match every transcript.
+  [ -n "$wake_regex" ] || wake_regex="jarvis"
+}
+
+# split_leading_wake <normalized text>: succeeds when the text starts with the wake word, leaving the rest in wake_rest.
+wake_rest=""
+split_leading_wake() {
+  init_wake_regex
+  [[ "$1" =~ ^($wake_regex)( (.*))?$ ]] || return 1
+  wake_rest="${BASH_REMATCH[3]}"
+}
+
+# split_trailing_wake <raw transcript>: succeeds when the transcript holds the wake word after something else, leaving
+# what came before it as spoken in wake_before and what follows, normalized, in wake_rest. It takes the last one.
+wake_before=""
+split_trailing_wake() {
+  init_wake_regex
+  local transcript="$1" matched=1
+  shopt -s nocasematch
+  if [[ "$transcript" =~ ^(.*[^[:alnum:]])($wake_regex)[^[:alnum:]]+(.*)$ ]]; then
+    wake_before="${BASH_REMATCH[1]}"
+    wake_rest="${BASH_REMATCH[3]}"
+    matched=0
+  fi
+  shopt -u nocasematch
+  [ "$matched" = 0 ] || return 1
+  wake_rest=$(normalize "$wake_rest")
+  wake_before="${wake_before%"${wake_before##*[![:space:]]}"}"
+  [ -n "$wake_before" ]
+}
+
 # A phrase starting with an integration's force prefix goes to that integration alone. Otherwise normal integrations
 # go first, then the LLM hook, then fallback integrations, each only when the ones before it left nothing to run, so a
 # catch-all fallback never competes with a real verb.
@@ -629,6 +685,13 @@ route() {
   # shellcheck disable=SC2034 # read by integrations
   raw_transcript="$transcript"
   text=$(apply_replacements "$(normalize "$transcript")")
+  if split_leading_wake "$text"; then
+    text="$wake_rest"
+    if [ -z "$text" ]; then
+      [ "$dry_run" = 1 ] || notify info "voxcmd" "Say a command after \"$wake_word\""
+      return 0
+    fi
+  fi
   if [[ "$text" =~ $help_phrases ]]; then
     if [ "$dry_run" = 1 ]; then
       printf 'transcript:  %s\nnormalized:  %s\nresult:      built-in, opens Voice Help\n' "$transcript" "$text"
@@ -676,7 +739,8 @@ route() {
       pick_label="Which one?"
       ! reply_listen_wanted || pick_flags+=(--listen)
     else
-      [ "$count" != 1 ] || ! reply_listen_wanted || pick_flags+=(--listen)
+      # A turn of a voice session is answered by voice whatever the number of options, since nobody is at the keyboard.
+      { [ "$count" != 1 ] && [ "$in_session_turn" != 1 ]; } || ! reply_listen_wanted || pick_flags+=(--listen)
     fi
     picked=$("$pick_command_path" "${pick_flags[@]}" "$pick_label" "$choices") || return 0
     run_option "$(jq -c --argjson i "$picked" '.[$i]' <<<"$options")"
@@ -998,18 +1062,21 @@ reply_confirm() {
 
 # ---- Voice sessions ---------------------------------------------------------------------------------------------
 # A session keeps the microphone re-opening for one more spoken turn after each one, so a run of related commands
-# (click mode's targets) needs no repeated verb. The integration that opens it supplies session_rewrite, which turns a
-# turn's words into the phrase to route. Every way out clears the state the bar's indicator reads: an exit word, a
-# listen that hears nothing, a few unusable turns in a row, the turn and time caps, a failed listen, and a watcher that
-# dies mid-session.
+# (click mode's targets, rapid mode's commands, type mode's dictation) needs no repeated verb. The session is a stack of
+# modes: the integration that opens one supplies session_rewrite, which turns a turn's words into the phrase to route (or
+# session_handle_turn, which takes the words itself), and a mode opened inside another returns to it when it ends. Every
+# way out clears the state the bar's indicator reads: an exit word, a listen that hears nothing, a few unusable turns in a
+# row, the turn and time caps, a failed listen, and a watcher that dies mid-session.
 #
 # The watcher hearing a turn, a voice key pressed meanwhile and `end-session` all change the state, so every change
 # holds session_lock_file. The owner is the watcher that hears the next turn; a listen started by the voice key during a
 # turn takes it over, and the turn's watcher then leaves the session to it.
 
 # Only phrases nobody would click: "cancel", "exit", "stop" and "never mind" are button labels, so they are targets. The
-# open session's integration adds its own as session_exit_phrases.
+# open mode's integration adds its own as session_exit_phrases.
 session_exit_words='^(done|im done|thats all)$'
+# After the wake word, "stop" ends the whole session as the Stop Voice key does.
+session_stop_words='^(stop|stop listening|stop everything|end session|end the session)$'
 # A turn is a whole thought and the user is reading the screen first, so longer than a command's default.
 session_no_speech_secs="${VOXCMD_SESSION_NO_SPEECH_SECS:-10}"
 # A session listens unprompted, mostly to the room, so it wants more speech and a longer pause than a command before it
@@ -1021,7 +1088,8 @@ session_silence_secs="${VOXCMD_SESSION_SILENCE_SECS:-1.5}"
 reply_min_speech_secs="${VOXCMD_REPLY_MIN_SPEECH_SECS:-0.1}"
 # Whisper's stock output for silence and noise, normalized (before replacements). A session turn that hears only one of these heard nothing,
 # so it listens again without counting toward the unclear cap; the turn and time caps still bound it.
-session_noise_transcripts='^(|you|bye|the end|thank you|thank you for watching|thanks for watching|blank audio)$'
+# voxtype-daemon puts "Voice commands start with <wake word>." in Whisper's prompt, and Whisper can echo it on silence.
+session_noise_transcripts="^(|you|bye|the end|thank you|thank you for watching|thanks for watching|blank audio|$(normalize "Voice commands start with $wake_word"))\$"
 session_unclear_cap=3
 # Turns that keep doing something never trip the unclear cap, so a session also ends after this long or this many.
 session_max_secs="${VOXCMD_SESSION_MAX_SECS:-300}"
@@ -1032,6 +1100,9 @@ ui_settle_poll_secs=$(scaled_secs 0.1)
 session_lock_file="$runtime_dir/session.lock"
 # Set by run_option, so a session can tell what its turn ran.
 last_run_action=""
+# What the watcher's recording was heard in (session_mode_token) and whether that mode keeps its words private.
+heard_mode=""
+heard_private=0
 
 # session_locked <command...>: runs it holding the session lock, in a subshell, so its variable changes do not survive.
 # Inside, a nested call runs directly: flock on a second descriptor of the same file would wait for itself. Anything
@@ -1086,7 +1157,12 @@ session_update_locked() {
   local filter="$1" tmp="$session_file.$$"
   shift
   [ -e "$session_file" ] || return 0
-  if jq -c "$@" "$filter" "$session_file" >"$tmp" 2>/dev/null; then mv -f "$tmp" "$session_file"; else rm -f "$tmp"; fi
+  if jq -c "$@" "$filter" "$session_file" >"$tmp" 2>/dev/null; then
+    mv -f "$tmp" "$session_file"
+  else
+    debug "session: could not update the state"
+    rm -f "$tmp"
+  fi
 }
 
 # session_set_owner <pid>: the watcher with this PID hears the next turn.
@@ -1096,12 +1172,62 @@ session_set_owner() {
     --argjson owner "$1" --arg owner_start "$(process_start_time "$1")"
 }
 
-# session_begin <kind> <integration file> <label>: opens a session owned by this process and listens for its first turn.
-# A second call while one is open only keeps it going, so saying the entry phrase again changes nothing. Auto-stop's
-# silence timeout is the only way an idle session ends, so without it there is none.
+# The settings of the mode whose integration file is $1, in mode_setting: the session_* variables load_integration
+# resets, without their session_ prefix, and has_handler.
+declare -A mode_setting=()
+load_mode_settings() {
+  local key value
+  mode_setting=()
+  [ -f "${1:-}" ] || return 0
+  while IFS='=' read -r key value; do
+    mode_setting[$key]="$value"
+  done < <(
+    load_integration "$1"
+    for key in default_exits allows_switches exit_hint exit_phrases control_phrases wake_at_end private open_ended \
+      mode_idle_secs mode_max_secs listen_silence_secs listen_max_secs listen_no_speech_secs; do
+      value="session_$key"
+      printf '%s=%s\n' "$key" "${!value}"
+    done
+    if declare -F session_handle_turn >/dev/null; then echo has_handler=1; else echo has_handler=0; fi
+  )
+}
+
+# The modes of a session, bottom first, each {kind, integration, label, exit_hint, unclear, mode_started,
+# open_ended, frame_id, active_secs, resumes}: frame_id names the mode for as long as it is open, mode_started is when
+# its current stretch as the current mode began, active_secs the stretches before that and resumes how many times it has
+# become the current mode again; the session's current mode is the top-level fields beside .stack, which holds the ones underneath. An
+# open-ended mode (type mode) lasts by its own bounds, so the time spent in it is not counted against the session's.
+# shellcheck disable=SC2016 # jq
+session_frames_jq='def frame: {kind, integration, label, exit_hint, unclear, mode_started, open_ended, frame_id, active_secs, resumes};
+  def frames: (.stack // []) + [frame];'
+
+session_new_frame_id() { printf '%s-%s%s' "$EPOCHSECONDS" "$RANDOM" "$RANDOM"; }
+
+# Prints what a recording is heard in: how many modes are open and the one on top. A transcript that arrives under
+# another is not for the mode the session is in by then.
+session_mode_token() { jq -r '"\((.stack // []) | length + 1):\(.kind):\(.frame_id // "")"' <<<"$1"; }
+
+# session_frame_index <state> <kind>: prints the position (from the bottom, 0 first) of the topmost mode of that kind.
+session_frame_index() {
+  jq -r --arg kind "$2" '[(.stack // [])[].kind, .kind] | to_entries | map(select(.value == $kind) | .key) | last // empty' <<<"$1"
+}
+
+# session_begin <kind> <integration file> <label>: opens a mode and, when no session is open, the session, which
+# listens for its first turn.
+# Called from the turn of the open session, it enters the mode on top of the current one (or returns to it when it is
+# already open underneath, and does nothing when it is the current one); the turn's own continue listens. Anything else
+# (a terminal, a key) leaves an open session as it is. Auto-stop's silence timeout is the only way an idle mode ends, so
+# without it there is none.
 session_begin() {
-  local kind="$1" file="$2" label="$3" why
-  session_state >/dev/null && return 0
+  local kind="$1" file="$2" label="$3" why state
+  if state=$(session_state); then
+    if session_is_mine "$state"; then
+      session_locked session_enter_locked "$kind" "$file" "$label"
+    else
+      notify info "voxcmd: $label" "A voice session is already open"
+    fi
+    return 0
+  fi
   if [ ! -x "$voxcmd_autostop" ]; then
     why="voxcmd-autostop is missing"
   elif why=$("$voxcmd_autostop" --check 2>&1); then
@@ -1116,36 +1242,155 @@ session_begin() {
   session_listen
 }
 session_create() {
-  local kind="$1" file="$2" label="$3"
+  local kind="$1" file="$2" label="$3" hint open_ended=false
   ! session_state_locked >/dev/null || return 1
-  jq -n -c --arg kind "$kind" --arg integration "$file" --arg label "$label" --argjson started "$(date +%s)" \
-    --argjson owner $$ --arg owner_start "$(process_start_time $$)" \
-    '{kind: $kind, integration: $integration, label: $label, started: $started, owner: $owner, owner_start: $owner_start,
-      unclear: 0, turns: 0}' >"$session_file.$$"
+  load_mode_settings "$file"
+  hint="${mode_setting[exit_hint]:-say done to stop}"
+  [ "${mode_setting[open_ended]:-0}" != 1 ] || open_ended=true
+  jq -n -c --arg kind "$kind" --arg integration "$file" --arg label "$label" --arg hint "$hint" \
+    --argjson open_ended "$open_ended" --arg frame_id "$(session_new_frame_id)" --argjson started "$EPOCHSECONDS" --argjson owner $$ --arg owner_start "$(process_start_time $$)" \
+    '{kind: $kind, integration: $integration, label: $label, exit_hint: $hint, started: $started, owner: $owner,
+      owner_start: $owner_start, unclear: 0, turns: 0, mode_started: $started, last_heard: $started,
+      frame_id: $frame_id, active_secs: 0, resumes: 0, open_ended: $open_ended, stack: []}' >"$session_file.$$"
   mv -f "$session_file.$$" "$session_file"
 }
 
-# Ends the session if one is open, saying why; the watcher whose recording is still open stops hearing for it.
-session_end() { session_locked session_end_locked "$@"; }
-session_end_locked() {
-  local reason="${1:-}" state label owner
-  state=$(session_state_locked) || return 0
-  rm -f "$session_file"
-  label=$(jq -r '.label // "Voice session"' <<<"$state")
-  owner=$(jq -r .owner <<<"$state")
-  [ "$owner" = $$ ] || touch "$(discard_flag_of "$owner")"
-  debug "session ended: $reason"
-  # A bar that hangs must not fail the session's end under errexit.
-  [ -z "$reason" ] || notify info "voxcmd: $label ended" "$reason" || true
+session_enter_locked() {
+  local kind="$1" file="$2" label="$3" state index count
+  state=$(session_state_locked) && session_is_mine "$state" || return 0
+  index=$(session_frame_index "$state" "$kind")
+  count=$(jq -r '(.stack // []) | length + 1' <<<"$state")
+  if [ -z "$index" ]; then
+    session_push_locked "$kind" "$file" "$label"
+  elif [ "$index" -lt $((count - 1)) ]; then
+    debug "session: back to $kind"
+    session_truncate_locked $((index + 1))
+  fi
 }
 
-# session_end_if_mine <reason>: ends the session this process owns, as a watcher whose turn heard nothing, or that dies
-# without handing over, leaves it. A session another listen took over is left to that one.
+# Opens a mode over the current one; the unclear count starts again. An open-ended mode underneath has its time so far
+# credited to the session's start now, since it is not counted against the session's cap; it is not counted twice when
+# it is the current mode again (session_truncate_locked restarts its clock).
+session_push_locked() {
+  local kind="$1" file="$2" label="$3" hint open_ended=false
+  load_mode_settings "$file"
+  hint="${mode_setting[exit_hint]:-say done to stop}"
+  [ "${mode_setting[open_ended]:-0}" != 1 ] || open_ended=true
+  debug "session: $kind opens over the current mode"
+  # shellcheck disable=SC2016 # a jq filter
+  session_update_locked "$session_frames_jq"'
+    frame as $under
+    | {kind: $kind, integration: $integration, label: $label, exit_hint: ($hint + " (back to " + $under.label + ")"),
+        unclear: 0, mode_started: $now, open_ended: $open_ended, last_heard: $now,
+        frame_id: $frame_id, active_secs: 0, resumes: 0,
+        owner, owner_start, turns,
+        stack: ((.stack // []) + [$under + {active_secs: (($under.active_secs // 0) + $now - ($under.mode_started // $now))}]),
+        started: (.started + (if $under.open_ended == true then $now - ($under.mode_started // $now) else 0 end))}' \
+    --arg kind "$kind" --arg integration "$file" --arg label "$label" --arg hint "$hint" \
+    --arg frame_id "$(session_new_frame_id)" --argjson open_ended "$open_ended" --argjson now "$EPOCHSECONDS"
+}
+
+# session_truncate_locked <modes to keep> [reason]: keeps that many modes from the bottom, popping the rest and running
+# each one's ended hook; none ends the session. A reason is shown in a toast named for the lowest mode popped.
+session_truncate_locked() {
+  local keep="$1" reason="${2:-}" state popped label owner file frame_id
+  state=$(session_state_locked) || return 1
+  popped=$(jq -c --argjson keep "$keep" "$session_frames_jq"' frames[$keep:] | reverse' <<<"$state")
+  label=$(jq -r --argjson keep "$keep" "$session_frames_jq"' frames[$keep].label // "Voice session"' <<<"$state")
+  if [ "$keep" -le 0 ]; then
+    rm -f "$session_file"
+    owner=$(jq -r .owner <<<"$state")
+    [ "$owner" = $$ ] || touch "$(discard_flag_of "$owner")"
+    debug "session ended: $reason"
+  else
+    # shellcheck disable=SC2016 # a jq filter
+    session_update_locked "$session_frames_jq"'
+      frames as $all | $all[:$keep] as $kept
+      | $kept[-1] + {owner, owner_start, turns, last_heard: $now,
+          started: (.started + (if $all[-1].open_ended == true then $now - ($all[-1].mode_started // $now) else 0 end)),
+          stack: $kept[:-1]}
+      | .mode_started = $now | .resumes = ((.resumes // 0) + 1)' --argjson keep "$keep" --argjson now "$EPOCHSECONDS"
+    debug "session: left $(jq -r 'map(.kind) | join(", ")' <<<"$popped")${reason:+ ($reason)}"
+  fi
+  # A bar that hangs must not keep the ended hooks from running.
+  [ -z "$reason" ] || notify info "voxcmd: $label ended" "$reason" || true
+  while IFS=$'\t' read -r file frame_id; do
+    session_run_ended_hook "$file" "$reason" "$frame_id" "$([ "$keep" -gt 0 ] && echo 1 || echo 0)"
+  done < <(jq -r '.[] | [.integration, .frame_id // ""] | @tsv' <<<"$popped")
+}
+
+# session_leave <kind> [reason]: leaves that mode and every mode opened over it, back to the one underneath; leaving the
+# bottom one ends the session. Fails when the kind is not open.
+session_leave() { session_locked session_leave_locked "$@"; }
+session_leave_locked() {
+  local kind="$1" reason="${2:-}" state index
+  state=$(session_state_locked) || return 1
+  index=$(session_frame_index "$state" "$kind")
+  [ -n "$index" ] || return 1
+  session_truncate_locked "$index" "$reason"
+}
+
+# Leaves the current mode.
+session_end() { session_locked session_end_top_locked "$@"; }
+session_end_top_locked() {
+  local state
+  state=$(session_state_locked) || return 0
+  session_leave_locked "$(jq -r .kind <<<"$state")" "$@"
+}
+
+# Ends the session, every mode in it, saying why; the watcher whose recording is still open stops hearing for it.
+session_end_all() { session_locked session_end_all_locked "$@"; }
+session_end_all_locked() { session_truncate_locked 0 "$@" || return 0; }
+
+# An integration's session_ended, if it has one, tidies what the mode left behind (type mode's held mark). In the
+# background and without the lock: it may type for a second, and nothing in the session waits on it. It gets the reason,
+# "done" when the owner left the mode on purpose. Its second argument is the popped mode's frame_id, its third 1 when
+# the session goes on in the mode underneath (so a Stop that lands later is told apart from the session never having
+# ended).
+session_run_ended_hook() {
+  (
+    # fd 9 is closed here, so the lock the caller holds is not this subshell's to assume.
+    session_lock_held=0
+    load_integration "$1"
+    declare -F session_ended >/dev/null || exit 0
+    session_ended "$2" "${3:-}" "${4:-0}"
+  ) 9>&- >/dev/null 2>&1 &
+}
+
+# session_end_if_mine <reason>: ends the session this process owns, as a watcher that dies without handing over leaves it.
+# A session another listen took over is left to that one.
 session_end_if_mine() { session_locked session_end_if_mine_locked "$@"; }
 session_end_if_mine_locked() {
   local state
   state=$(session_state_locked) && session_is_mine "$state" || return 0
-  session_end_locked "$1"
+  session_end_all_locked "$1"
+}
+
+# A listen that heard no speech. A mode with its own bounds (type mode) listens again until they are reached; any other
+# ends, back to the mode under it, which listens on.
+session_silence() { session_locked session_silence_locked; }
+session_silence_locked() {
+  local state reason=""
+  state=$(session_state_locked) && session_is_mine "$state" || return 0
+  if [ "$(jq -r '.open_ended // false' <<<"$state")" = true ]; then
+    reason=$(session_mode_limit_reason "$state")
+    [ -z "$reason" ] || session_leave_locked "$(jq -r .kind <<<"$state")" "$reason"
+  else
+    session_leave_locked "$(jq -r .kind <<<"$state")" "nothing was said"
+  fi
+  session_listen_locked
+}
+
+# Prints why an open-ended mode is over: its hard cap, or too long without speech. Nothing while it may go on.
+session_mode_limit_reason() {
+  local state="$1" mode_active_secs last_heard now="$EPOCHSECONDS"
+  load_mode_settings "$(jq -r .integration <<<"$state")"
+  read -r mode_active_secs last_heard < <(jq -r --argjson now "$now" '"\((.active_secs // 0) + $now - (.mode_started // $now)) \(.last_heard // $now)"' <<<"$state")
+  if [ -n "${mode_setting[mode_max_secs]:-}" ] && [ "$mode_active_secs" -ge "${mode_setting[mode_max_secs]}" ]; then
+    echo "it reached its time limit ($(duration_words "${mode_setting[mode_max_secs]}"))"
+  elif [ -n "${mode_setting[mode_idle_secs]:-}" ] && [ $((now - last_heard)) -ge "${mode_setting[mode_idle_secs]}" ]; then
+    echo "nothing was said for $(duration_words "${mode_setting[mode_idle_secs]}")"
+  fi
 }
 
 # Opens the microphone for the next turn, unless the session ended or another listen took it over. Holding the lock
@@ -1158,7 +1403,7 @@ session_listen_locked() {
     debug "session: another listen took over"
     return 0
   fi
-  listen --start-only || session_end_locked "the microphone could not be opened"
+  listen --start-only || session_end_all_locked "the microphone could not be opened"
 }
 
 epoch_micros() {
@@ -1193,10 +1438,15 @@ ui_is_busy() {
 }
 
 # session_continue <outcome>: after a turn that did something (ran), did nothing (missed) or heard nothing (unheard),
-# counts it, ends the session when a cap is reached, else waits for the screen to settle and listens again.
+# counts it, ends the session when a cap is reached, else waits for the screen to settle and listens again. An open-ended
+# mode (type mode) listens again at once, as nothing it does needs the screen to settle.
 session_continue() {
+  local state
   session_locked session_count_turn "$1" || return 0
-  wait_until_ui_settled || debug "session: the screen had not settled after ${ui_settle_max_secs}s"
+  state=$(session_state) || return 0
+  if [ "$(jq -r '.open_ended // false' <<<"$state")" != true ]; then
+    wait_until_ui_settled || debug "session: the screen had not settled after ${ui_settle_max_secs}s"
+  fi
   session_listen
 }
 
@@ -1208,6 +1458,12 @@ session_count_turn() {
     debug "session: another listen took over"
     return 1
   fi
+  # An open-ended mode counts no turns: it is bounded by its own limits instead.
+  if [ "$(jq -r '.open_ended // false' <<<"$state")" = true ]; then
+    why=$(session_mode_limit_reason "$state")
+    [ -z "$why" ] || session_leave_locked "$(jq -r .kind <<<"$state")" "$why"
+    return 0
+  fi
   read -r unclear turns started < <(jq -r '"\(.unclear) \(.turns) \(.started)"' <<<"$state")
   case "$outcome" in
   missed) unclear=$((unclear + 1)) ;;
@@ -1218,11 +1474,11 @@ session_count_turn() {
     why="nothing understood $session_unclear_cap times in a row"
   elif [ "$turns" -ge "$session_max_turns" ]; then
     why="it reached $session_max_turns turns"
-  elif [ $(($(date +%s) - started)) -ge "$session_max_secs" ]; then
+  elif [ $((EPOCHSECONDS - started)) -ge "$session_max_secs" ]; then
     why="it reached its time limit ($(duration_words "$session_max_secs"))"
   fi
   if [ -n "$why" ]; then
-    session_end_locked "$why"
+    session_end_all_locked "$why"
     return 1
   fi
   # shellcheck disable=SC2016 # a jq filter
@@ -1245,43 +1501,191 @@ turn_was_a_miss() {
   )
 }
 
-# The transcript handler while a session is open. A session that ended while the recording ran hands it to route.
+# Whether the normalized text is a way out of the mode loaded in mode_setting: the exit words, or its own phrases.
+session_text_is_exit() {
+  [[ "$1" =~ $session_exit_words ]] && return 0
+  [ -n "${mode_setting[exit_phrases]:-}" ] && [[ "$1" =~ ^(${mode_setting[exit_phrases]})$ ]]
+}
+
+# match_mode_action <text> <integration file>: prints the match when the whole text is one of the integration's
+# mode_actions (its entries and exits), nothing otherwise.
+match_mode_action() {
+  local text="$1" file="$2" entry action allowed
+  (
+    load_integration "$file"
+    [ "${#integration_mode_actions[@]}" != 0 ] || exit 0
+    local -a kept=()
+    for entry in "${integration_verbs[@]}"; do
+      read -r action _ <<<"$entry"
+      for allowed in "${integration_mode_actions[@]}"; do
+        [ "$action" != "$allowed" ] || kept+=("$entry")
+      done
+    done
+    # shellcheck disable=SC2030 # match_loaded_verbs reads it in this subshell
+    integration_verbs=("${kept[@]}")
+    match_loaded_verbs "$text" "$file"
+  )
+}
+
+# Prints the runnable options (a JSON array) that the whole text asks of the modes: entering one or leaving one.
+session_mode_options() {
+  local matches
+  matches=$(integration_files | for_each_line_in_parallel match_mode_action "$1")
+  if [ -z "$matches" ]; then
+    echo '[]'
+    return
+  fi
+  resolve_matches "$matches"
+}
+
+# session_classify_wake_command <command>: what a command after the wake word is, in wake_kind: exit (leave the mode),
+# control (the mode's own, like scratch that), stop (end the session), switch (enter or leave another mode, its option
+# in wake_options) or none. Uses the mode loaded in mode_setting.
+wake_kind=none
+wake_options='[]'
+session_classify_wake_command() {
+  local command="$1"
+  wake_kind=none wake_options='[]'
+  if session_text_is_exit "$command"; then
+    wake_kind='exit'
+  elif [ -n "${mode_setting[control_phrases]:-}" ] && [[ "$command" =~ ^(${mode_setting[control_phrases]})$ ]]; then
+    wake_kind=control
+  elif [[ "$command" =~ $session_stop_words ]]; then
+    wake_kind=stop
+  else
+    wake_options=$(session_mode_options "$command")
+    [ "$(jq length <<<"$wake_options")" != 1 ] || wake_kind=switch
+  fi
+}
+
+# Runs the command classified in wake_kind and sets turn_outcome. Unknown commands are told so and nothing else happens.
+turn_outcome=ran
+session_run_wake_command() {
+  local state="$1" command="$2"
+  turn_outcome=ran
+  case "$wake_kind" in
+  exit) session_leave "$(jq -r .kind <<<"$state")" "done" || true ;;
+  control)
+    (
+      load_integration "$(jq -r .integration <<<"$state")"
+      session_control "$command"
+    ) || true
+    ;;
+  stop) session_end_all "stopped" ;;
+  switch)
+    last_run_action=""
+    run_option "$(jq -c '.[0]' <<<"$wake_options")" || turn_outcome=missed
+    ;;
+  *)
+    if [ "${mode_setting[private]:-0}" = 1 ]; then
+      # Dictated words are never routed: a stray one could run a command.
+      notify info "voxcmd: $wake_word" "Not a mode command"
+      turn_outcome=unheard
+    else
+      last_run_action=""
+      if ! route "$command" || [ -z "$last_run_action" ] || turn_was_a_miss "$(jq -r .integration <<<"$state")"; then
+        turn_outcome=missed
+      fi
+    fi
+    ;;
+  esac
+}
+
+# The transcript handler while a session is open. A session that ended while the recording ran hands it to route, unless
+# a mode that keeps its words private heard it: those are never routed.
 session_turn() {
-  local transcript="$*" state text file rewritten outcome=ran
+  local transcript="$*" state text norm file kind rewritten chunk control="" options outcome=ran
+  in_session_turn=1
   # Stop landed after the watcher's own check: nothing from this turn may run or open the microphone.
   if [ -e "$(discard_flag_of $$)" ]; then
-    debug "session: turn \"$transcript\" discarded, stop was pressed"
+    if [ "$heard_private" = 1 ]; then debug "session: a turn was discarded, stop was pressed"; else debug "session: turn \"$transcript\" discarded, stop was pressed"; fi
     return 0
   fi
   if ! state=$(session_state); then
+    if [ "$heard_private" = 1 ]; then
+      debug "session: a turn heard in a private mode outlived its session, discarded"
+      return 0
+    fi
     route "$transcript"
     return
   fi
-  if [[ "$(normalize "$transcript")" =~ $session_noise_transcripts ]]; then
-    debug "session: \"$transcript\" is the transcriber's guess at noise, listening again"
+  file=$(jq -r .integration <<<"$state")
+  kind=$(jq -r .kind <<<"$state")
+  load_mode_settings "$file"
+  if [ -n "$heard_mode" ] && [ "$heard_mode" != "$(session_mode_token "$state")" ]; then
+    debug "session: heard in $heard_mode but the session is in $(session_mode_token "$state"), not routed"
+    notify info "voxcmd" "The mode changed, say it again"
     session_continue unheard
     return
   fi
-  text=$(apply_replacements "$(normalize "$transcript")")
-  file=$(jq -r .integration <<<"$state")
-  if [[ "$text" =~ $session_exit_words ]] || (
-    load_integration "$file"
-    [ -n "$session_exit_phrases" ] && [[ "$text" =~ ^($session_exit_phrases)$ ]]
-  ); then
-    session_end "done"
-    return 0
+  norm=$(normalize "$transcript")
+  if [[ "$norm" =~ $session_noise_transcripts ]]; then
+    debug "session: the transcriber's guess at noise, listening again"
+    session_continue unheard
+    return
   fi
-  rewritten=$(
-    load_integration "$file"
-    if declare -F session_rewrite >/dev/null; then session_rewrite "$text"; else printf '%s' "$text"; fi
-  )
+  text=$(apply_replacements "$norm")
+  # shellcheck disable=SC2016 # a jq filter
+  session_update '.last_heard = $now' --argjson now "$EPOCHSECONDS"
+  if split_leading_wake "$norm"; then
+    text=$(apply_replacements "$wake_rest")
+    if [ -z "$text" ]; then
+      notify info "voxcmd" "Say a command after \"$wake_word\""
+      turn_outcome=unheard
+    else
+      session_classify_wake_command "$text"
+      session_run_wake_command "$state" "$text"
+    fi
+    session_continue "$turn_outcome"
+    return
+  fi
+  chunk="$transcript"
+  if [ "${mode_setting[wake_at_end]:-0}" = 1 ] && split_trailing_wake "$transcript"; then
+    # A wake word that opens no command ("...ask Jarvis about it") stays part of the chunk.
+    control=$(apply_replacements "$wake_rest")
+    session_classify_wake_command "$control"
+    if [ "$wake_kind" = none ]; then control=""; else chunk="$wake_before"; fi
+  fi
+  if [ -z "$control" ]; then
+    if [ "${mode_setting[default_exits]:-1}" = 1 ] && session_text_is_exit "$text"; then
+      session_leave "$kind" "done" || true
+      session_continue ran
+      return 0
+    fi
+    if [ "${mode_setting[allows_switches]:-0}" = 1 ]; then
+      options=$(session_mode_options "$text")
+      if [ "$(jq length <<<"$options")" = 1 ]; then
+        last_run_action=""
+        run_option "$(jq -c '.[0]' <<<"$options")" || outcome=missed
+        session_continue "$outcome"
+        return
+      fi
+    fi
+  fi
   last_run_action=""
-  if [ -z "$rewritten" ]; then
-    notify info "voxcmd" "Not understood: \"$transcript\""
-    outcome=missed
-  # Nothing ran when a picker or overlay was cancelled or timed out, though route succeeds.
-  elif ! route "$rewritten" || [ -z "$last_run_action" ] || turn_was_a_miss "$file"; then
-    outcome=missed
+  if [ "${mode_setting[has_handler]:-0}" = 1 ]; then
+    # The mode takes the words itself (type mode types them), and its own bounds replace the unusable-turn count.
+    (
+      load_integration "$file"
+      session_handle_turn "$chunk"
+    ) || true
+    outcome=typed
+  else
+    rewritten=$(
+      load_integration "$file"
+      if declare -F session_rewrite >/dev/null; then session_rewrite "$text"; else printf '%s' "$text"; fi
+    )
+    if [ -z "$rewritten" ]; then
+      notify info "voxcmd" "Not understood: \"$transcript\""
+      outcome=missed
+    # Nothing ran when a picker or overlay was cancelled or timed out, though route succeeds.
+    elif ! route "$rewritten" || [ -z "$last_run_action" ] || turn_was_a_miss "$file"; then
+      outcome=missed
+    fi
+  fi
+  if [ -n "$control" ]; then
+    session_run_wake_command "$state" "$control"
+    outcome="$turn_outcome"
   fi
   session_continue "$outcome"
 }
@@ -1308,7 +1712,7 @@ recording_ended_unseen() {
 # Under the session lock, so a voice key pressed during a session turn and that turn's own next listen never both start.
 listen() { session_locked listen_locked "$@"; }
 listen_locked() {
-  local transcript_handler=route state start_only=0
+  local transcript_handler=route state start_only=0 session_json mode_token=- mode_private=0
   [ "${1:-}" != --start-only ] || start_only=1
   state=$(voxtype_state)
   debug "listen: voxtype $state${recording_owner_file:+, for a reply}$([ "$start_only" = 0 ] || echo ', start only')"
@@ -1327,17 +1731,26 @@ listen_locked() {
     ;;
   esac
   mkdir -p "$runtime_dir"
-  if pending_pick >/dev/null; then
+  if session_json=$(session_state); then
+    load_mode_settings "$(jq -r .integration <<<"$session_json")"
+    # A mode that takes the words itself or keeps them private (type mode) never has its dictation read as a reply to a
+    # picker, which would log the words and could answer a card with them.
+    if pending_pick >/dev/null && [ "${mode_setting[private]:-0}" != 1 ] && [ "${mode_setting[has_handler]:-0}" != 1 ]; then
+      transcript_handler=reply
+    else
+      transcript_handler=session_turn
+      mode_token=$(session_mode_token "$session_json")
+      mode_private="${mode_setting[private]:-0}"
+    fi
+  elif pending_pick >/dev/null; then
     transcript_handler=reply
-  elif session_state >/dev/null; then
-    transcript_handler=session_turn
   fi
   rm -f "$transcript_file"
   if ! voxtype record start --file="$transcript_file" 9>&-; then
     notify error "voxcmd error" "voxtype record start failed"
     return 1
   fi
-  setsid "$0" _watch "$transcript_handler" </dev/null >/dev/null 2>&1 9>&- &
+  setsid "$0" _watch "$transcript_handler" "$mode_token" "$mode_private" </dev/null >/dev/null 2>&1 9>&- &
   debug "listen: recording started, watcher $! will $transcript_handler"
   [ "$transcript_handler" != session_turn ] || session_set_owner "$!"
 }
@@ -1349,16 +1762,22 @@ autostop_verdict_no_speech=3
 # Ends the recording once voxcmd-autostop hears speech and then a pause, or cancels it when nothing was said. The
 # detector exits by itself when the recording ends some other way; the TERM trap covers the watcher ending first.
 autostop_recording() {
-  local discard_flag="$1" transcript_handler="$2" detector_pid verdict=0
+  local discard_flag="$1" transcript_handler="$2" detector_pid verdict=0 session_json=""
   local -a detector_env=()
   [ -x "$voxcmd_autostop" ] || return 0
   # An overlay or confirm asked during a session turn is a reply, not the session's own listen.
   case "$transcript_handler" in
-  session_turn) detector_env=(
-    "VOXCMD_AUTOSTOP_NO_SPEECH_SECS=$session_no_speech_secs"
-    "VOXCMD_AUTOSTOP_MIN_SPEECH_SECS=$session_min_speech_secs"
-    "VOXCMD_AUTOSTOP_SILENCE_SECS=$session_silence_secs"
-  ) ;;
+  session_turn)
+    session_json=$(session_state) || session_json="{}"
+    load_mode_settings "$(jq -r '.integration // empty' <<<"$session_json")"
+    detector_env=(
+      "VOXCMD_AUTOSTOP_NO_SPEECH_SECS=${mode_setting[listen_no_speech_secs]:-$session_no_speech_secs}"
+      "VOXCMD_AUTOSTOP_MIN_SPEECH_SECS=$session_min_speech_secs"
+      "VOXCMD_AUTOSTOP_SILENCE_SECS=${mode_setting[listen_silence_secs]:-$session_silence_secs}"
+    )
+    # A mode that records in chunks cuts a long speech into them.
+    [ -z "${mode_setting[listen_max_secs]:-}" ] || detector_env+=("VOXCMD_AUTOSTOP_MAX_SECS=${mode_setting[listen_max_secs]}")
+    ;;
   reply) detector_env=("VOXCMD_AUTOSTOP_MIN_SPEECH_SECS=$reply_min_speech_secs") ;;
   esac
   env "${detector_env[@]}" "$voxcmd_autostop" &
@@ -1392,7 +1811,7 @@ discard_flag_of() { printf '%s/discard.%s' "$runtime_dir" "$1"; }
 
 watch_recording() {
   local transcript_handler="$1" recording_seen=0 polls=0 state last_state="" autostop_pid discard_flag
-  local write_marker last_write_marker="" cancel_sent=0
+  local write_marker last_write_marker="" cancel_sent=0 transcript
   # A voxtype that ignores the cancel could still write a transcript.
   discard_flag=$(discard_flag_of $$)
   autostop_recording "$discard_flag" "$transcript_handler" &
@@ -1439,8 +1858,8 @@ watch_recording() {
   kill "$autostop_pid" 2>/dev/null || true
   if [ -e "$discard_flag" ]; then
     debug "watch: recording discarded"
-    # Autostop's no-speech cancel: a session that heard nothing is over.
-    [ "$transcript_handler" != session_turn ] || session_end_if_mine "nothing was said"
+    # Autostop's no-speech cancel: the mode that heard nothing is over, unless it has bounds of its own.
+    [ "$transcript_handler" != session_turn ] || session_silence
     exit 0
   fi
   # voxtype may write the file a moment after it reports idle.
@@ -1455,8 +1874,15 @@ watch_recording() {
     exit 0
   fi
   came_by_voice=1
-  debug "watch: transcript \"$(cat "$transcript_file")\" goes to $transcript_handler"
-  "$transcript_handler" "$(cat "$transcript_file")"
+  transcript=$(cat "$transcript_file")
+  # Dictation must not outlive its turn on disk; the next listen starts from a fresh file anyway.
+  rm -f "$transcript_file"
+  if [ "$heard_private" = 1 ]; then
+    debug "watch: a transcript of ${#transcript} characters goes to $transcript_handler"
+  else
+    debug "watch: transcript \"$transcript\" goes to $transcript_handler"
+  fi
+  "$transcript_handler" "$transcript"
 }
 
 # Once voxtype is idle the recording is over, and anything it does next belongs to someone else.
@@ -1484,7 +1910,7 @@ cancel_owned_recording() {
 # started, and the cancel at the end covers every other recording, a plain command or Speech to Text.
 stop_voice() {
   local picker
-  session_end "stopped" || true
+  session_end_all "stopped" || true
   if picker=$(pending_pick); then
     write_pick_answer "" "$(jq -r .fifo <<<"$picker")" || true
   fi
@@ -1535,20 +1961,25 @@ case "${1:-}" in
 listen) listen "${2:-}" ;;
 help) voice_help ;;
 errors) print_errors "${2:-}" ;;
-end-session) session_end "ended by request" ;;
+rapid) route "rapid mode" ;;
+end-session) session_end_all "ended by request" ;;
 stop) stop_voice ;;
 click-explain)
   shift
   click_explain "$@"
   ;;
 _settle) wait_until_ui_settled ;;
-_watch) watch_recording "$2" ;;
+_watch)
+  heard_mode="${3:-}" heard_private="${4:-0}"
+  watch_recording "$2"
+  ;;
 _cancel_owned_recording) cancel_owned_recording "$2" ;;
 list)
   while IFS= read -r file; do
     (
       load_integration "$file"
       printf '%s (%s)%s\n' "$name" "$file" "$([ "$fallback" != 1 ] || echo ' [fallback]')"
+      # shellcheck disable=SC2031 # set by load_integration in this subshell
       printf '  %s\n' "${integration_verbs[@]}"
     )
   done < <(integration_files)

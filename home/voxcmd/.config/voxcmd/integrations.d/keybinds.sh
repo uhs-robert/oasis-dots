@@ -52,6 +52,7 @@ help_action=run
 excluded_descriptions=(
   "voice command"
   "voice help"
+  "rapid mode"
   "speech to text"
   "voxtype"
   "password"

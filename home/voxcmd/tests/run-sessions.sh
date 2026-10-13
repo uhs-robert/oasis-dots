@@ -75,6 +75,7 @@ declare -A actions=(
   [tap]='echo "tap \$id" >> "$log"'
   [none]='echo "tap nothing" >> "$log"'
 )
+session_ended() { echo "ended-hook" >> "$log"; }
 session_rewrite() {
   [ "\$1" != noise ] || return 0
   printf 'tap %s' "\$1"
@@ -97,8 +98,10 @@ sess_start() {
   [ -z "$sess_overlay" ] || echo "$sess_overlay" >"$hints_state"
   mkdir -p "$XDG_RUNTIME_DIR/voxtype" "$XDG_RUNTIME_DIR/voxcmd"
   echo idle >"$XDG_RUNTIME_DIR/voxtype/state"
-  sess_voxcmd_env start testing
+  # shellcheck disable=SC2086 # the phrase is words
+  sess_voxcmd_env ${sess_phrase:-start testing}
 }
+sess_phrase=""
 # The stub call log and voxcmd's debug log, emptied before a run so sess_wait reads only its watchers.
 fresh_logs() { mkdir -p "$(dirname "$debug_log")" && : >"$log" && : >"$debug_log"; }
 # Waits for every watcher of the run to finish; fails when one is alive after 30s, which would be a microphone that never
@@ -191,6 +194,13 @@ check "recordings that transcribe to nothing listen again without counting as un
 sess_run "Thank you." "The End" "you" "..." "Thanks for watching!" "[BLANK_AUDIO]" alpha "done"
 check "the transcriber's guesses at noise are not turns that missed" "session_gone && [[ \$(grep '^tap ' '$log') == 'tap alpha' && \$(record_starts) == 8 ]] && ended_because done"
 check "and are not reported as not understood" "! grep -q 'Not understood' '$log'"
+# Whisper can echo the wake-word sentence voxtype-daemon puts in its prompt.
+sess_run "Voice commands start with Jarvis." alpha "done"
+check "an echo of the transcriber's prompt is noise" "session_gone && [[ \$(grep '^tap ' '$log') == 'tap alpha' && \$(record_starts) == 3 ]] && ! grep -q 'no match' '$log'"
+sess_env=(VOXCMD_WAKE_WORD=computer)
+sess_run "Voice commands start with Computer." alpha "done"
+check "and it follows the configured wake word" "session_gone && [[ \$(grep '^tap ' '$log') == 'tap alpha' && \$(record_starts) == 3 ]] && ! grep -q 'no match' '$log'"
+sess_env=()
 sess_env=(VOXCMD_SESSION_MAX_TURNS=3)
 sess_run "Thank you." "The End" "Thank you." "Thank you." alpha
 check "the turn cap still ends a session that only hears noise" "session_gone && [[ \$(taps) == 0 && \$(record_starts) == 3 ]] && ended_because 'it reached 3 turns'"
@@ -288,6 +298,10 @@ check "a short word is transcribed at the no-speech deadline, not cancelled" "[[
 check "a reply's lower minimum stops on the pause after it" "[[ \$(detect '$root/short-word.pcm' \"\${reply_detector[@]}\") == 0 ]] && grep -q 'verdict speech then quiet at 3\.' '$detector_trace'"
 pcm "$root/word-at-deadline.pcm" noise:5.8:-48 voice:0.5:-28 noise:3:-48
 check "speech under way at the deadline still waits for its pause" "[[ \$(detect '$root/word-at-deadline.pcm') == 0 ]] && grep -q 'verdict speech then quiet at 7\.' '$detector_trace'"
+# A long speech is cut at max_secs, as type mode chunks it; without the limit it runs on to its pause.
+pcm "$root/long-speech.pcm" noise:0.3:-60 voice:9:-18 noise:3:-60
+check "max_secs cuts a long speech into chunks" "[[ \$(detect '$root/long-speech.pcm' VOXCMD_AUTOSTOP_MAX_SECS=4) == 0 ]] && grep -q 'recording with speech in it, cutting here' '$detector_trace' && grep -q 'verdict speech then quiet at 4\.' '$detector_trace'"
+check "and with none the speech runs to its pause" "[[ \$(detect '$root/long-speech.pcm') == 0 ]] && grep -q 'verdict speech then quiet at 1[0-9]\.' '$detector_trace'"
 pcm "$root/quiet-room.pcm" noise:6:-60
 check "a quiet room is no speech" "[[ \$(detect '$root/quiet-room.pcm') == 3 ]]"
 check "for a reply too" "[[ \$(detect '$root/quiet-room.pcm' \"\${reply_detector[@]}\") == 3 && \$(detect '$root/fan-after-quiet-start.pcm' \"\${reply_detector[@]}\") == 3 ]]"
@@ -397,7 +411,7 @@ sess_voxcmd_env stop
 sess_env=()
 wait "$stop_reader_pid"
 sess_wait
-check "stop with a failing notification still ends the session and cancels picker and recording" "session_gone && [[ \$(cat '$root/stop-answer-2') == '' ]] && grep -q '^voxtype record cancel' '$log'"
+check "stop with a failing notification still ends the session, runs its ended hook and cancels picker and recording" "session_gone && log_has_soon '^ended-hook' && [[ \$(cat '$root/stop-answer-2') == '' ]] && grep -q '^voxtype record cancel' '$log'"
 rm -f "$XDG_RUNTIME_DIR/voxcmd/pending-pick.json"
 kill "$stop_waiter_pid" 2>/dev/null
 wait "$stop_waiter_pid" 2>/dev/null
@@ -539,5 +553,420 @@ rm -f "$XDG_RUNTIME_DIR/voxcmd/pending-pick.json"
 kill "$owner_pid" "$waiter_pid" 2>/dev/null
 wait "$owner_pid" "$waiter_pid" 2>/dev/null
 rm -f "$XDG_RUNTIME_DIR/voxcmd/session.json" "$XDG_RUNTIME_DIR/voxtype/state"
+
+# ---- modes: rapid, type, and the stack they share ----------------------------------------------------------------------
+# rapid.sh, typing.sh and click.sh for real beside the test mode, Media (a routed "stop") and two
+# integrations that ask: a yes/no card and a picker of two. The card and the picker are logging stubs.
+section "modes"
+modes_config=$root/config-modes
+mkdir -p "$modes_config/integrations.d" "$modes_config/replacements.d"
+cp "$root/config-sess/integrations.d/sess.sh" "$modes_config/integrations.d/"
+for integration in rapid typing click media; do
+  cp "$package/.config/voxcmd/integrations.d/$integration.sh" "$modes_config/integrations.d/"
+done
+cat >"$modes_config/integrations.d/ask.sh" <<STUB
+name="Ask"
+confirm=1
+verbs=("ask_it ask me" "both_of_them pick {target}")
+candidates() {
+  case "\$1" in
+  both_of_them) echo '[{"id": "one", "label": "number one"}, {"id": "two", "label": "number two"}]' ;;
+  esac
+}
+declare -A actions=([ask_it]='echo "asked" >> "$log"' [both_of_them]='echo "picked \$id" >> "$log"')
+STUB
+for asking in voxcmd-confirm voxcmd-pick; do
+  printf '#!/bin/sh\necho "%s $*" >> "%s"\n[ "%s" = voxcmd-confirm ] || echo 0\n' "$asking" "$log" "$asking" >"$sess_pkg/.local/bin/$asking"
+  chmod +x "$sess_pkg/.local/bin/$asking"
+done
+sess_config=$modes_config
+focused_window='{"address":"0x1","class":"kitty","size":[800,600]}'
+session_json=$XDG_RUNTIME_DIR/voxcmd/session.json
+mode_is() { [[ $(jq -r '[.kind, (.stack | map(.kind) | join("/"))] | join(" ")' "$session_json" 2>/dev/null) == "$1" ]]; }
+toast_has() { grep -q "^notify-send .*$1" "$log"; }
+no_clicks() { ! grep -qE '^(wlrctl|grim|tesseract)' "$log"; }
+# hold_in <mode> <recordings>: waits until the session is in that mode ("<kind> <stack kinds>") and has started that many
+# recordings, the last one a HOLD, whose watcher has seen it.
+hold_in() {
+  local deadline=$((SECONDS + 20))
+  until mode_is "$1" && [[ $(record_starts) == "$2" ]] && owner_is_listening; do
+    ((SECONDS < deadline)) || return 1
+    sleep 0.02
+  done
+}
+
+# Rapid mode: every turn is a command.
+sess_phrase="rapid mode"
+sess_run "tap alpha" "tap beta" "done"
+check "rapid mode routes each turn as a command until 'done'" "session_gone && [[ \$(grep '^tap ' '$log' | paste -sd,) == 'tap alpha,tap beta' && \$(record_starts) == 3 ]]"
+sess_start HOLD
+owner_is_listening
+check "rapid mode's session names the mode, its exit hint and an empty stack" "[[ \$(jq -c '[.kind, .label, .exit_hint, .stack]' '$session_json') == '[\"rapid\",\"Rapid mode\",\"say done to stop\",[]]' ]]"
+sess_voxcmd_env end-session
+sess_wait
+for word in "done" "Done." "that's all" "I'm done" "stop rapid mode" "Okay, quit rapid mode." "done with rapid mode" "rapid mode off" "turn off rapid fire mode"; do
+  sess_run "tap alpha" "$word" "tap gamma"
+  check "'$word' ends rapid mode" "session_gone && [[ \$(taps) == 1 && \$(record_starts) == 2 ]]"
+done
+for word in "jarvis done" "Jarvis, I'm done." "Jarvis, stop rapid mode." "jarvis stop"; do
+  sess_run "tap alpha" "$word" "tap gamma"
+  check "'$word' ends rapid mode" "session_gone && [[ \$(taps) == 1 && \$(record_starts) == 2 ]]"
+done
+sess_run "stop" "cancel" "done"
+check "'stop' is a command (pause) and 'cancel' a discarded one, neither an exit" "session_gone && grep -q '^playerctl pause' '$log' && [[ \$(record_starts) == 3 ]]"
+sess_run "jarvis tap alpha" "tap beta" "done"
+check "a 'jarvis ...' that is no mode command is routed as a command, and the mode goes on" "session_gone && ! toast_has 'Not a mode command' && [[ \$(grep '^tap ' '$log' | paste -sd,) == 'tap alpha,tap beta' && \$(record_starts) == 3 ]]"
+sess_run "jarvis tap" "tap beta" "done"
+check "and one that matches nothing is a missed turn with the usual toast" "session_gone && toast_has 'no match' && [[ \$(grep '^tap ' '$log') == 'tap beta' && \$(record_starts) == 3 ]]"
+sess_run "tap alpha"
+check "rapid mode ends when nothing is said" "session_gone && toast_has 'Rapid mode ended nothing was said'"
+sess_env=(VOXCMD_SESSION_MAX_TURNS=3)
+sess_run "tap alpha" "tap alpha" "tap alpha" "tap alpha"
+check "rapid mode is capped by turns like any session" "session_gone && [[ \$(taps) == 3 ]] && toast_has 'Rapid mode ended it reached 3 turns'"
+sess_env=()
+sess_env=(VOXCMD_WAKE_WORD=computer VOXCMD_WAKE_ALIASES="komputer|kompooter")
+sess_run "jarvis done" "Komputer, done" "tap alpha"
+check "the wake word and its spellings are settings, and the old word is then no command" "session_gone && grep -q 'voxcmd: no match' '$log' && [[ \$(taps) == 0 && \$(record_starts) == 2 ]]"
+sess_env=()
+sess_phrase="jarvis rapid mode"
+sess_run "done"
+check "the wake word before an entry phrase is stripped" "session_gone && [[ \$(record_starts) == 1 ]]"
+sess_phrase="rapid mode"
+
+# A card and a picker asked in a rapid turn listen for the spoken answer.
+sess_run "ask me" "pick number" "done"
+check "a confirm card in rapid mode listens for yes or no" "grep -q '^voxcmd-confirm .*--listen' '$log' && [[ \$(grep -c '^asked' '$log') == 1 ]]"
+check "and so does a picker of several options" "grep -q '^voxcmd-pick --listen' '$log' && grep -q '^picked one' '$log'"
+
+# Modes nest: the one opened inside returns to the one it was opened from.
+sess_run "start testing" "alpha" "done" "tap beta" "done"
+check "a mode opened in rapid mode returns to it: test mode's targets, then rapid mode's commands" "session_gone && [[ \$(grep '^tap ' '$log' | paste -sd,) == 'tap alpha,tap beta' && \$(record_starts) == 5 ]]"
+check "and runs its ended hook once" "log_has_soon '^ended-hook' && [[ \$(grep -c '^ended-hook' '$log') == 1 ]]"
+sess_start "start testing" HOLD
+hold_in 'test rapid' 2
+check "the session file names the mode on top and the one underneath" "mode_is 'test rapid' && [[ \$(jq -r '[.exit_hint, .stack[0].label] | join(\"|\")' '$session_json') == 'say done to stop (back to Rapid mode)|Rapid mode' ]]"
+sess_voxcmd_env end-session
+sess_wait
+check "ending the session ends every mode in it, running each one's hook" "session_gone && log_has_soon '^ended-hook' && toast_has 'Rapid mode ended ended by request'"
+sess_start "rapid mode" HOLD
+hold_in 'rapid ' 2
+check "saying the mode that is open again changes nothing" "mode_is 'rapid '"
+sess_voxcmd_env end-session
+sess_wait
+sess_start "tap alpha" HOLD
+hold_in 'rapid ' 2
+sess_voxcmd_env rapid
+check "a key or terminal command during a session does not open another mode" "mode_is 'rapid ' && toast_has 'A voice session is already open'"
+sess_voxcmd_env end-session
+sess_wait
+
+# Click mode over rapid mode: switch phrases are never clicked, and a mode already underneath is returned to.
+sess_run "click mode" "rapid mode" "done"
+check "'rapid mode' in click mode goes back to rapid mode, clicking nothing" "session_gone && no_clicks && [[ \$(record_starts) == 3 ]]"
+sess_start "click mode" "type mode" HOLD
+hold_in 'type rapid/click' 3
+check "'type mode' in click mode opens type mode over it, clicking nothing" "mode_is 'type rapid/click' && no_clicks"
+sess_voxcmd_env end-session
+sess_wait
+sess_start "click mode" "done" HOLD
+hold_in 'rapid ' 3
+check "click mode's own 'done' returns to rapid mode" "mode_is 'rapid '"
+sess_voxcmd_env end-session
+sess_wait
+sess_run "click mode" "stop rapid mode" "tap alpha"
+check "'stop rapid mode' in click mode leaves both" "session_gone && no_clicks && [[ \$(taps) == 0 && \$(record_starts) == 2 ]]"
+sess_phrase="click mode"
+sess_run "jarvis tap alpha" "done"
+check "a 'jarvis ...' that is no mode command is routed as a command in click mode too" "session_gone && ! toast_has 'Not a mode command' && [[ \$(grep '^tap ' '$log') == 'tap alpha' ]] && no_clicks"
+sess_start "rapid mode" HOLD
+hold_in 'rapid click' 2
+check "'rapid mode' in click mode opens rapid mode over it, clicking nothing" "mode_is 'rapid click' && no_clicks"
+sess_voxcmd_env end-session
+sess_wait
+sess_phrase="rapid mode"
+
+# Silence leaves one mode at a time.
+sess_phrase="rapid mode"
+sess_run "click mode" SILENCE "tap beta" "done"
+check "silence in click mode returns to rapid mode, which goes on" "session_gone && [[ \$(taps) == 1 && \$(record_starts) == 4 ]] && toast_has 'Click mode ended nothing was said'"
+
+# Caps end every mode and run every popped hook.
+sess_env=(VOXCMD_SESSION_MAX_TURNS=3)
+sess_run "start testing" "alpha" "alpha" "alpha"
+check "a cap ends rapid mode and the mode over it" "session_gone && log_has_soon '^ended-hook' && [[ \$(taps) == 2 ]] && toast_has 'Rapid mode ended it reached 3 turns'"
+sess_env=()
+
+# Type mode.
+sess_env=(SANDBOX_ACTIVEWINDOW_JSON="$focused_window")
+sess_phrase="type mode"
+wtype_is() { [[ $(grep '^wtype ' "$log") == "$(printf '%s\n' "$@")" ]]; }
+# A mode's ended hook runs in the background, in a copy of the watcher that may outlive it: waits until no voxcmd is left.
+hooks_done() {
+  local deadline=$((SECONDS + 20))
+  while pgrep -f -- "$sess_voxcmd( |\$)" >/dev/null; do
+    ((SECONDS < deadline)) || return 1
+    sleep 0.02
+  done
+}
+other_window='{"address":"0x2","class":"foot","size":[800,600]}'
+type_flushed() { log_has_soon "^wtype -- [.!?]\$"; }
+sess_run "Hello world." "This is a test." "jarvis stop typing"
+type_flushed
+check "type mode types each chunk, holding back its closing mark until the next says whether the sentence ends" "session_gone && wtype_is 'wtype -- Hello world' 'wtype -- . This is a test' 'wtype -- .' && [[ \$(record_starts) == 3 ]]"
+sess_start HOLD
+owner_is_listening
+check "type mode's session file names it and its hint" "[[ \$(jq -c '[.kind, .label, .exit_hint, .stack]' '$session_json') == '[\"type\",\"Type mode\",\"say jarvis stop typing\",[]]' ]]"
+check "type mode listens for a chunk: a 2.5s pause ends it, 25s cuts it, 30s of silence is a quiet listen" "grep -q 'no_speech_secs=30\$' '$log' && grep -q 'autostop min_speech_secs=0.4 silence_secs=2.5\$' '$log' && grep -q 'autostop max_secs=25\$' '$log'"
+sess_voxcmd_env end-session
+sess_wait
+sess_run "Hello world." "and more text" "jarvis stop typing"
+type_flushed
+check "a chunk that continues the sentence drops the held mark and types a space" "wtype_is 'wtype -- Hello world' 'wtype --  and more text'"
+sess_run "Hello there," "The next part" "I think so" "London is big" "jarvis stop typing"
+hooks_done
+check "without a held mark a chunk's capital is lowercased when it is a common word, and kept for a name or I" "wtype_is 'wtype -- Hello there,' 'wtype --  the next part' 'wtype --  I think so' 'wtype --  London is big'"
+sess_run $'Tab\there' $'Esc\e[31m' "-x marks the spot" "jarvis stop typing"
+hooks_done
+check "control characters become spaces and a leading dash is typed" "wtype_is 'wtype -- Tab here' 'wtype --  Esc [31m' 'wtype --  -x marks the spot'"
+sess_run "done" "stop typing" "click mode" "I'm done" "Jarvis, stop typing."
+hooks_done
+check "without the wake word 'done', 'stop typing' and 'click mode' are text" "session_gone && wtype_is 'wtype -- done' 'wtype --  stop typing' 'wtype --  click mode' 'wtype --  I'\\''m done' && [[ \$(record_starts) == 5 ]]"
+sess_run "Please send the plan. Jarvis, stop typing."
+type_flushed
+check "a command at the end of a chunk types the chunk, then runs" "session_gone && wtype_is 'wtype -- Please send the plan' 'wtype -- .'"
+sess_run "I asked Jarvis what time it is." "jarvis stop typing"
+hooks_done
+check "the wake word in the middle of a sentence is just text" "wtype_is 'wtype -- I asked Jarvis what time it is' 'wtype -- .'"
+sess_run "Jarvis, what is the weather" "Hello." "jarvis stop typing"
+hooks_done
+check "an unknown command from the wake word is told so without its text, and typed nowhere" "toast_has 'Not a mode command\$' && ! grep -q weather '$log' && wtype_is 'wtype -- Hello' 'wtype -- .'"
+sess_run "Hello world." "Next bit here." "jarvis scratch that" "jarvis scratch that" "jarvis stop typing"
+hooks_done
+check "scratch that deletes the last chunk with one BackSpace per character and restores the held mark" "session_gone && [[ \$(grep '^wtype -k' '$log' | head -n1 | grep -o BackSpace | wc -l) == 15 ]] && [[ \$(grep -c '^wtype -k' '$log') == 1 ]] && toast_has 'Nothing to scratch' && grep -q '^wtype -- \.\$' '$log'"
+sess_run "Hello world." "jarvis new line" "Second line." "jarvis new paragraph" "Third." "jarvis stop typing"
+hooks_done
+check "new line and new paragraph press Return once and twice, after closing the held mark" "wtype_is 'wtype -- Hello world' 'wtype -- .' 'wtype -k Return' 'wtype -- Second line' 'wtype -- .' 'wtype -k Return -k Return' 'wtype -- Third' 'wtype -- .'"
+sess_run SILENCE SILENCE "Hello" "jarvis stop typing"
+hooks_done
+check "silence never leaves type mode" "session_gone && [[ \$(record_starts) == 4 ]] && wtype_is 'wtype -- Hello' && ! toast_has 'ended nothing was said'"
+sess_env=(SANDBOX_ACTIVEWINDOW_JSON="$focused_window" VOXCMD_TYPE_IDLE_SECS=1)
+sess_run SILENCE SILENCE SILENCE SILENCE SILENCE SILENCE SILENCE SILENCE SILENCE SILENCE SILENCE SILENCE SILENCE SILENCE SILENCE SILENCE
+check "the idle bound ends type mode" "session_gone && toast_has 'Type mode ended nothing was said for 1 s' && [[ \$(record_starts) -lt 16 ]]"
+sess_run "Held mark." SILENCE SILENCE SILENCE SILENCE SILENCE SILENCE SILENCE SILENCE SILENCE SILENCE SILENCE SILENCE SILENCE SILENCE SILENCE
+hooks_done
+check "an end the owner did not ask for types nothing, not even the held mark" "session_gone && wtype_is 'wtype -- Held mark'"
+sess_env=(SANDBOX_ACTIVEWINDOW_JSON="$focused_window" VOXCMD_TYPE_MAX_SECS=1)
+sess_run word word word word word word word word word word word word word word word word word word word word word word word word
+check "the hard cap ends type mode while it is being used" "session_gone && toast_has 'Type mode ended it reached its time limit (1 s)'"
+
+# Type mode inside rapid mode returns to it, and its chunks are not turns or time of the session's.
+sess_env=(SANDBOX_ACTIVEWINDOW_JSON="$focused_window")
+sess_phrase="rapid mode"
+sess_run "type mode" "Hello there" "jarvis stop typing" "tap beta" "done"
+check "type mode opened in rapid mode returns to it" "session_gone && wtype_is 'wtype -- Hello there' && [[ \$(taps) == 1 && \$(record_starts) == 5 ]]"
+sess_start "type mode" HOLD
+hold_in 'type rapid' 2
+check "and its hint says where it returns to" "mode_is 'type rapid' && [[ \$(jq -r .exit_hint '$session_json') == 'say jarvis stop typing (back to Rapid mode)' ]]"
+sess_voxcmd_env end-session
+sess_wait
+sess_env=(SANDBOX_ACTIVEWINDOW_JSON="$focused_window" VOXCMD_SESSION_MAX_TURNS=2)
+sess_run "type mode" one two three four five six "jarvis stop typing" "tap beta" "tap gamma"
+check "typed chunks are not turns of the session's cap" "session_gone && [[ \$(grep -c '^wtype -- ' '$log') == 6 && \$(taps) == 1 ]] && toast_has 'Rapid mode ended it reached 2 turns'"
+sess_env=(SANDBOX_ACTIVEWINDOW_JSON="$focused_window" VOXCMD_SESSION_MAX_SECS=3 SANDBOX_VOXTYPE_SPEAK_SECS=0.4)
+sess_run "type mode" one two three four five six seven eight nine ten "jarvis stop typing" "tap beta" "done"
+check "and the time spent in type mode is not counted against the session's time" "session_gone && [[ \$(taps) == 1 ]] && ! toast_has 'time limit'"
+
+# Time spent in type mode is credited when click mode opens over it, not when it is popped, so the new mode's cap does
+# not count the typing. The ~8 s of typing is well over the 6 s cap, and the turns after the push stay well under it
+# even on a loaded machine.
+sess_env=(SANDBOX_ACTIVEWINDOW_JSON="$focused_window" VOXCMD_SESSION_MAX_SECS=6 SANDBOX_VOXTYPE_SPEAK_SECS=0.4)
+sess_run "type mode" one two three four five six seven eight nine ten one two three four five six seven eight nine ten "jarvis click mode" "done" "jarvis stop typing" "tap beta" "done"
+check "a mode opened over type mode does not count the time spent typing against its cap" "session_gone && [[ \$(taps) == 1 ]] && ! toast_has 'time limit'"
+
+# A detour through another mode keeps the held mark and the spacing, but not what "scratch that" would delete: a click
+# may have moved the cursor.
+sess_env=(SANDBOX_ACTIVEWINDOW_JSON="$focused_window")
+sess_phrase="type mode"
+sess_run "Hello world." "jarvis click mode" "done" "jarvis scratch that" "Next part" "jarvis stop typing"
+check "after a detour scratch that types nothing and the held mark is typed with the next chunk" "session_gone && wtype_is 'wtype -- Hello world' 'wtype -- . Next part' && toast_has 'Nothing to scratch'"
+
+# Time away from type mode does not restart its hard cap.
+sess_env=(SANDBOX_ACTIVEWINDOW_JSON="$focused_window" VOXCMD_TYPE_MAX_SECS=4 SANDBOX_VOXTYPE_SPEAK_SECS=0.4)
+sess_run one two three four "jarvis click mode" "done" five six seven eight "jarvis click mode" "done" nine ten eleven twelve "jarvis stop typing"
+check "repeated detours still reach the type-mode time limit" "session_gone && toast_has 'Type mode ended it reached its time limit (4 s)'"
+sess_phrase="rapid mode"
+
+# A chunk handled while type mode is left (here: popped to the mode under it) is not typed.
+sess_env=(SANDBOX_ACTIVEWINDOW_JSON="$focused_window" SANDBOX_CLICKHINTS_STATE_BLOCK="$root/state-block")
+rm -f "$root/state-block.entered" "$root/state-block.release"
+sess_start "type mode" "Stale chunk" HOLD
+until [[ -e $root/state-block.entered ]]; do sleep 0.02; done
+jq -c '.stack[-1] + {owner, owner_start, turns, started, last_heard, stack: .stack[:-1]}' "$session_json" >"$session_json.new"
+mv "$session_json.new" "$session_json"
+: >"$root/state-block.release"
+hold_in 'rapid ' 3
+sess_voxcmd_env end-session
+sess_wait
+check "a chunk whose type mode was popped while it was handled is not typed" "! grep -q '^wtype' '$log' && grep -q 'type: not typed' '$debug_log'"
+
+# State a killed listener left behind belongs to no mode of a new session.
+sess_env=(SANDBOX_ACTIVEWINDOW_JSON="$focused_window")
+sess_phrase="type mode"
+mkdir -p "$XDG_RUNTIME_DIR/voxcmd"
+echo '{"frame":"1:1","held":".","prev_held":"-","last_len":9,"typed":true}' >"$XDG_RUNTIME_DIR/voxcmd/type-state"
+sess_run "jarvis scratch that" "jarvis stop typing"
+check "a new type mode ignores the held mark and length of an earlier one" "session_gone && toast_has 'Nothing to scratch' && ! grep -q '^wtype' '$log'"
+
+# Refusals: nothing is typed, and the toast has no text.
+sess_env=()
+sess_phrase="type mode"
+sess_run "Secret words" "jarvis stop typing"
+check "without a focused window nothing is typed" "session_gone && toast_has 'voxcmd: not typed no window has focus' && ! grep -q '^wtype' '$log' && ! grep -rq 'Secret' '$log' '$debug_log'"
+sess_env=(SANDBOX_ACTIVEWINDOW_JSON="$focused_window" SANDBOX_VOXTYPE_SPEAK_SECS=1)
+cp /bin/sleep "$root/voxcmd-hints"
+"$root/voxcmd-hints" 60 &
+waiter_pid=$!
+mkfifo "$root/modes-fifo"
+sess_start "Secret words" HOLD
+owner_is_listening
+jq -n -c --argjson pid "$waiter_pid" --arg fifo "$root/modes-fifo" \
+  '{pid: $pid, fifo: $fifo, label: "Which one?", kind: "hints", expansions: {}, choices: [{id: "a", label: "1. A"}]}' >"$XDG_RUNTIME_DIR/voxcmd/pending-pick.json"
+log_has_soon 'voxcmd: not typed'
+rm -f "$XDG_RUNTIME_DIR/voxcmd/pending-pick.json"
+sess_voxcmd_env end-session
+sess_wait
+check "with a picker or card waiting nothing is typed either" "toast_has 'voxcmd: not typed a voxcmd picker or card is open' && ! grep -q '^wtype' '$log'"
+kill "$waiter_pid" 2>/dev/null
+wait "$waiter_pid" 2>/dev/null
+
+# Dictation stays out of the logs and the session file.
+sess_env=(SANDBOX_ACTIVEWINDOW_JSON="$focused_window")
+sess_run "Hello private words." "jarvis stop typing"
+hooks_done
+check "type mode logs lengths, never the text" "! grep -q 'private' '$debug_log' && grep -q 'a transcript of 20 characters goes to session_turn' '$debug_log' && grep -q 'typed a chunk of 19 characters' '$debug_log'"
+check "and the last chunk is not left on disk" "[[ ! -e '$XDG_RUNTIME_DIR/voxcmd/transcript.txt' ]]"
+
+# Dictation never goes to a picker that is waiting when type mode listens.
+sess_env=(SANDBOX_ACTIVEWINDOW_JSON="$focused_window")
+cp /bin/sleep "$root/voxcmd-hints"
+"$root/voxcmd-hints" 60 &
+waiter_pid=$!
+rm -f "$root/modes-fifo"
+mkfifo "$root/modes-fifo"
+jq -n -c --argjson pid "$waiter_pid" --arg fifo "$root/modes-fifo" \
+  '{pid: $pid, fifo: $fifo, label: "Which one?", kind: "hints", expansions: {}, choices: [{id: "a", label: "1. A"}]}' >"$XDG_RUNTIME_DIR/voxcmd/pending-pick.json"
+sess_run "Secret words" "jarvis stop typing"
+hooks_done
+rm -f "$XDG_RUNTIME_DIR/voxcmd/pending-pick.json"
+check "a pending picker does not take dictation: it stays with type mode, which refuses it" "session_gone && toast_has 'voxcmd: not typed a voxcmd picker or card is open' && ! grep -q 'goes to reply' '$debug_log' && grep -q 'a transcript of 12 characters goes to session_turn' '$debug_log' && ! grep -q '^wtype' '$log'"
+check "and no dictated text is logged" "! grep -rq 'Secret' '$log' '$debug_log'"
+kill "$waiter_pid" 2>/dev/null
+wait "$waiter_pid" 2>/dev/null
+
+# A mode re-created at the same depth is not the one a chunk was heard in.
+sess_env=(SANDBOX_ACTIVEWINDOW_JSON="$focused_window" SANDBOX_CLICKHINTS_STATE_BLOCK="$root/frame-block")
+rm -f "$root/frame-block.entered" "$root/frame-block.release"
+sess_start "Stale chunk" HOLD
+until [[ -e $root/frame-block.entered ]]; do sleep 0.02; done
+jq -c '.frame_id = "recreated"' "$session_json" >"$session_json.new"
+mv "$session_json.new" "$session_json"
+: >"$root/frame-block.release"
+hold_in 'type ' 2
+sess_voxcmd_env end-session
+sess_wait
+hooks_done
+check "a chunk heard in a type mode that was re-created at the same depth is not typed" "! grep -q '^wtype' '$log' && grep -q 'type: not typed' '$debug_log'"
+
+# Focus that moved to another window since the last chunk: nothing is deleted, held or spaced into it.
+sess_env=(SANDBOX_ACTIVEWINDOW_JSON="$focused_window" SANDBOX_ACTIVEWINDOW_AFTER_WTYPE_JSON="$other_window")
+sess_run "Hello world." "jarvis scratch that" "jarvis stop typing"
+hooks_done
+check "scratch that after the focus moved deletes nothing" "session_gone && toast_has 'Nothing to scratch' && ! grep -q '^wtype -k' '$log'"
+check "and the mode's end does not type the held mark into the other window" "wtype_is 'wtype -- Hello world'"
+sess_run "Hello." "World again." "jarvis stop typing"
+hooks_done
+check "a chunk in another window drops the held mark and starts without a space" "wtype_is 'wtype -- Hello' 'wtype -- World again' 'wtype -- .'"
+
+# The ended hook runs after the mode is left, in the background.
+sess_phrase="rapid mode"
+sess_env=(SANDBOX_ACTIVEWINDOW_JSON="$focused_window" SANDBOX_ACTIVEWINDOW_BLOCK_AFTER_WTYPE="$root/hook-block")
+rm -f "$root/hook-block.entered" "$root/hook-block.release"
+sess_start "type mode" "Hello." "jarvis stop typing" HOLD
+until [[ -e $root/hook-block.entered ]]; do sleep 0.02; done
+hold_in 'rapid ' 4
+sess_voxcmd_env stop
+sess_wait
+: >"$root/hook-block.release"
+hooks_done
+check "Stop after leaving type mode keeps the held mark from being typed" "session_gone && wtype_is 'wtype -- Hello'"
+
+rm -f "$root/hook-block.entered" "$root/hook-block.release"
+sess_start "type mode" "Hello." "jarvis stop typing" HOLD
+until [[ -e $root/hook-block.entered ]]; do sleep 0.02; done
+hold_in 'rapid ' 4
+flock_file=$XDG_RUNTIME_DIR/voxcmd/session.lock
+rm -f "$root/lock-held" "$root/lock-release"
+flock "$flock_file" sh -c ": >'$root/lock-held'; until [ -e '$root/lock-release' ]; do sleep 0.02; done" &
+lock_holder=$!
+until [[ -e $root/lock-held ]]; do sleep 0.02; done
+: >"$root/hook-block.release"
+# A negative: the hook, not holding the lock, must wait for the one held here. No event says that it has not typed.
+sleep 0.3
+check "the ended hook takes the session lock instead of assuming the caller's" "! grep -q '^wtype -- \.\$' '$log'"
+: >"$root/lock-release"
+wait "$lock_holder"
+type_flushed
+sess_voxcmd_env end-session
+sess_wait
+hooks_done
+
+rm -f "$root/hook-block.entered" "$root/hook-block.release"
+sess_start "type mode" "Hello." "jarvis stop typing" "type mode" "World." HOLD
+until [[ -e $root/hook-block.entered ]]; do sleep 0.02; done
+hold_in 'type rapid' 6
+: >"$root/hook-block.release"
+hooks_done
+check "an ended hook leaves the state of a type mode opened since" "[[ \$(jq -r .frame '$XDG_RUNTIME_DIR/voxcmd/type-state') == \$(jq -r .frame_id '$session_json') ]]"
+sess_voxcmd_env end-session
+sess_wait
+hooks_done
+sess_phrase="type mode"
+
+# A turn heard in a mode that changed, or after the session went, is never acted on.
+sess_env=(SANDBOX_VOXTYPE_SPEAK_SECS=0.8)
+sess_phrase="rapid mode"
+sess_start "start testing" "tap alpha" "done"
+wait_for_line 'voxtype record start' "$log"
+until [[ $(record_starts) == 2 ]]; do sleep 0.02; done
+sess_voxcmd_env "stop testing"
+sess_wait
+check "a transcript heard before the mode changed is told so and never run" "session_gone && ! grep -q '^tap alpha' '$log' && toast_has 'The mode changed, say it again'"
+sess_start "tap alpha" "done"
+until [[ $(record_starts) == 1 ]]; do sleep 0.02; done
+rm -f "$session_json"
+sess_wait
+check "a turn whose session is gone is routed when it was heard in rapid mode" "grep -q '^tap alpha' '$log'"
+sess_env=(SANDBOX_ACTIVEWINDOW_JSON="$focused_window" SANDBOX_VOXTYPE_SPEAK_SECS=0.8)
+sess_phrase="type mode"
+sess_start "tap alpha" "done"
+until [[ $(record_starts) == 1 ]]; do sleep 0.02; done
+rm -f "$session_json"
+sess_wait
+check "and discarded when it was heard in type mode" "! grep -q '^tap alpha' '$log' && ! grep -q '^wtype' '$log'"
+
+# Stop Voice while a type-mode turn is transcribing types nothing.
+sess_env=(SANDBOX_ACTIVEWINDOW_JSON="$focused_window")
+sess_start HOLD
+owner_is_listening
+stopped_owner=$(jq -r .owner "$session_json")
+echo transcribing >"$XDG_RUNTIME_DIR/voxtype/state"
+kill -STOP "$stopped_owner"
+sess_voxcmd_env stop
+kill -CONT "$stopped_owner"
+sess_wait
+check "Stop Voice during a type-mode turn types nothing and ends the session" "session_gone && ! grep -q '^wtype' '$log' && toast_has 'Type mode ended stopped'"
+sess_env=()
+sess_phrase=""
+sess_config=$root/config-sess
 
 finish

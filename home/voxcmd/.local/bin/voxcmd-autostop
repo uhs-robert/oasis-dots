@@ -2,7 +2,7 @@
 """voxcmd-autostop: tell voxcmd when a voice command recording has heard speech and then a pause.
 
 Listens to the default source through pw-record (16 kHz mono s16) and exits with a verdict:
-  0  speech, then silence_secs of quiet: stop the recording
+  0  speech, then silence_secs of quiet, or max_secs of recording with speech in it: stop the recording
   3  no speech at all within no_speech_secs: cancel it
   4  nothing to do: the recording ended some other way, the audio ended, or auto-stop is off
   1  error (pw-record missing, a bad setting)
@@ -48,6 +48,8 @@ DEFAULT_SETTINGS = {
     "no_speech_secs": "6",
     "threshold_db": "auto",
     "margin_db": "12",
+    # 0 is no limit. Type mode sets it so a long speech is cut into chunks inside the transcriber's window.
+    "max_secs": "0",
 }
 
 # With threshold_db = auto, speech is margin_db above the room: a low percentile of the last ROOM_WINDOW_SECS, first
@@ -132,6 +134,7 @@ class SpeechThenSilence:
         self.silence_secs = float(settings["silence_secs"])
         self.min_speech_secs = float(settings["min_speech_secs"])
         self.no_speech_secs = float(settings["no_speech_secs"])
+        self.max_secs = float(settings["max_secs"])
         self.fixed_threshold_db = None if settings["threshold_db"] == "auto" else float(settings["threshold_db"])
         self.margin_db = float(settings["margin_db"])
         self.log = log
@@ -248,6 +251,9 @@ class SpeechThenSilence:
         if self.speech_heard() and self.quiet_secs >= self.silence_secs and self.pause_follows_speech(threshold_db):
             if self.speech_secs < self.min_speech_secs:
                 self.trace(f"{self.speech_secs:.2f}s of speech, short of {self.min_speech_secs}s: a short word, stopping")
+            return VERDICT_SILENCE
+        if self.max_secs > 0 and self.elapsed_secs >= self.max_secs and self.speech_secs > 0:
+            self.trace(f"{self.elapsed_secs:.2f}s of recording with speech in it, cutting here")
             return VERDICT_SILENCE
         if not self.speech_heard() and self.elapsed_secs >= self.no_speech_secs:
             return VERDICT_NO_SPEECH
