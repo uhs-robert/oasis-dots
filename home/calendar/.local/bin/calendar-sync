@@ -33,7 +33,19 @@ EMAIL_PATTERN = re.compile(r"^[^@/\s]+@[^@/\s]+$")
 
 
 class SyncError(Exception):
-    """A failure whose message is safe to write to disk."""
+    """A failure whose message is safe to write to disk.
+
+    A transient one (network, HTTP) is recorded but exits 0, so a laptop that
+    goes offline does not leave the timer's unit in `systemctl --failed`.
+    """
+
+    def __init__(self, message, transient=False):
+        super().__init__(message)
+        self.transient = transient
+
+
+class NotConfigured(Exception):
+    """Nothing to sync yet; the timer stays silent, like a locked vault."""
 
 
 def cache_dir():
@@ -84,13 +96,16 @@ def read_feed_url():
             timeout=15,
         )
     except (OSError, subprocess.TimeoutExpired):
-        raise SyncError("rbw entry could not be read")
+        raise NotConfigured("rbw entry could not be read")
     url = result.stdout.strip()
     if result.returncode != 0 or not url:
-        raise SyncError("rbw entry could not be read")
+        raise NotConfigured("rbw entry is missing or empty")
     if url.startswith("webcal://"):
         url = "https://" + url[len("webcal://") :]
-    if urllib.parse.urlsplit(url).scheme not in ("https", "file"):
+    allowed_schemes = {"https"}
+    if os.environ.get("CALENDAR_SYNC_ALLOW_FILE_URL") == "1":
+        allowed_schemes.add("file")  # tests serve the fixture without a network
+    if urllib.parse.urlsplit(url).scheme not in allowed_schemes:
         raise SyncError("rbw entry is not an https address")
     return url
 
@@ -100,9 +115,9 @@ def fetch_feed(url):
         with urllib.request.urlopen(url, timeout=FETCH_TIMEOUT_SECONDS) as response:
             body = response.read(MAX_FEED_BYTES + 1)
     except urllib.error.HTTPError as err:
-        raise SyncError(f"fetch failed with HTTP {err.code}") from None
+        raise SyncError(f"fetch failed with HTTP {err.code}", transient=True) from None
     except Exception:
-        raise SyncError("fetch failed") from None
+        raise SyncError("fetch failed", transient=True) from None
     if len(body) > MAX_FEED_BYTES:
         raise SyncError("feed is too large")
     return body
@@ -212,7 +227,6 @@ def normalize_event(component, recurring_uids, calendar_id):
 
 
 def expand_events(feed, window_start, window_end, feed_url):
-    # Imported here so --help and the lock check work without the libraries.
     import icalendar
     import recurring_ical_events
 
@@ -228,7 +242,8 @@ def expand_events(feed, window_start, window_end, feed_url):
         events = [normalize_event(item, recurring_uids, calendar_id) for item in components]
     except Exception:
         raise SyncError("feed could not be parsed") from None
-    events.sort(key=lambda event: (event["start"], event["title"]))
+    # ISO strings with different offsets do not sort chronologically across a DST change.
+    events.sort(key=lambda event: (dt.datetime.fromisoformat(event["start"]), event["title"]))
     return events
 
 
@@ -253,16 +268,34 @@ def parse_args(argv):
     return parser.parse_args(argv)
 
 
+def libraries_available():
+    try:
+        import icalendar  # noqa: F401
+        import recurring_ical_events  # noqa: F401
+    except ImportError:
+        return False
+    return True
+
+
+def quiet_skip(args, reason):
+    if args.now:
+        print(f"calendar-sync: {reason}", file=sys.stderr)
+    return 0
+
+
 def sync(args, directory):
     feed_url = None
+    if not libraries_available():
+        return quiet_skip(args, "install python-icalendar and python-recurring-ical-events")
     if args.ics:
         feed = Path(args.ics).read_bytes()
     else:
         if not rbw_is_unlocked():
-            if args.now:
-                print("rbw is locked; unlock it and run again", file=sys.stderr)
-            return 0
-        feed_url = read_feed_url()
+            return quiet_skip(args, "rbw is locked; unlock it and run again")
+        try:
+            feed_url = read_feed_url()
+        except NotConfigured:
+            return quiet_skip(args, "no rbw entry for the calendar address; see home/calendar/README.md")
         feed = fetch_feed(feed_url)
 
     now = dt.datetime.fromisoformat(args.at) if args.at else dt.datetime.now()
@@ -292,14 +325,16 @@ def main(argv):
         return sync(args, directory)
     except SyncError as err:
         message = str(err)
+        exit_code = 0 if err.transient else 1
     except Exception as err:
         message = f"unexpected {type(err).__name__}"
+        exit_code = 1
     write_json_atomically(
         directory / "error.json",
         {"error": message, "at": dt.datetime.now().astimezone().isoformat(timespec="seconds")},
     )
     print(f"calendar-sync: {message}", file=sys.stderr)
-    return 1
+    return exit_code
 
 
 if __name__ == "__main__":
