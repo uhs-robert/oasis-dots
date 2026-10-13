@@ -4,13 +4,25 @@
 
 ## Setup
 
-1. In Google Calendar, open Settings, pick the calendar, and copy "Secret address in iCal format".
-2. Store it in a password manager. By default `calendar-sync` runs `rbw get google-calendar-ical`, so with rbw: `rbw add google-calendar-ical`, then paste the address as the password, and unlock rbw.
-3. The package is optional: the installer enables the timer only when you chose `calendar` (or ran `just stow calendar` before it). To enable it by hand: `systemctl --user enable --now calendar-sync.timer`.
+```bash
+calendar-sync setup
+```
 
-### Another password manager
+The guide walks you through it in a terminal:
 
-Create `${XDG_CONFIG_HOME:-~/.config}/calendar-sync/config` with a command that prints the address on stdout. Blank lines and lines starting with `#` are ignored. The file holds a command only, never the address, and is not part of the stow package.
+1. It points you to Google Calendar > Settings > your calendar > Integrate calendar > "Secret address in iCal format" (the secret one, not the public one) and offers to open the settings page.
+2. You paste the address with hidden input. It converts `webcal://`, requires https, then fetches and parses it and prints "Found N events in the next 60 days", or a clear error without the address, so you can retry.
+3. You choose where to keep it. Only backends that work on your machine are listed; Enter picks Auto, the first of: rbw (installed and unlocked), the system keyring (`secret-tool` with a running Secret Service), or a private file at `${XDG_DATA_HOME:-~/.local/share}/calendar-sync/ical-url` (mode 0600 in a 0700 directory, refused inside a git work tree).
+4. It writes `${XDG_CONFIG_HOME:-~/.config}/calendar-sync/config` with the matching `url_command` (none is needed for the default rbw entry `google-calendar-ical`), asking before it replaces an existing one, and reads the address back through it to prove the round trip.
+5. It enables the timer and runs the first sync.
+
+Nothing is half-written if you press Ctrl-C: the address is stored first, then the config, then the timer. The installer offers to run it when you chose the `calendar` package.
+
+The package is optional: the installer enables the timer only when you chose `calendar` (or ran `just stow calendar` before it). To enable it by hand: `systemctl --user enable --now calendar-sync.timer`.
+
+## Advanced: url_command
+
+`setup` writes this for you; to do it by hand, create `${XDG_CONFIG_HOME:-~/.config}/calendar-sync/config` with a command that prints the address on stdout. Blank lines and lines starting with `#` are ignored. The file holds a command only, never the address, and is not part of the stow package.
 
 ```ini
 # pick one
@@ -68,4 +80,6 @@ calendar-sync --ics feed.ics       # read a file instead of rbw and the network
 home/calendar/tests/run.sh
 ```
 
-It runs `calendar-sync` on `tests/fixtures/sample.ics` (placeholder data only) with stub `rbw` and `qs-ipc` on `PATH`, so it never reaches a real vault, feed or bar. `just check` runs it when `python-icalendar` and `python-recurring-ical-events` are installed.
+It runs `calendar-sync` on `tests/fixtures/sample.ics` (placeholder data only) with stub `rbw`, `secret-tool`, `systemctl`, `xdg-open` and `qs-ipc` on `PATH`, so it never reaches a real vault, feed or bar. `just check` runs it when `python-icalendar` and `python-recurring-ical-events` are installed.
+
+`calendar-sync setup` is driven in tests through `CALENDAR_SYNC_SETUP_ANSWERS`, a file with one answer per line that replaces the terminal. It is for tests only; prompts are still printed and answers never are.

@@ -2,6 +2,7 @@
 """Fetch a private iCal feed and write normalized events to the calendar cache.
 
 Usage: calendar-sync [--now] [--ics FILE] [--at ISO8601]
+       calendar-sync setup [--at ISO8601]   guided connection of your calendar
 
 The feed address is a credential. A password-manager command (rbw by default)
 prints it into memory, and it never reaches argv, output, the cache or an error
@@ -11,10 +12,12 @@ message.
 import argparse
 import base64
 import datetime as dt
+import getpass
 import json
 import os
 import re
 import shlex
+import shutil
 import signal
 import subprocess
 import sys
@@ -140,19 +143,23 @@ def run_url_command(command):
     return output.strip()
 
 
-def read_feed_url(command):
-    try:
-        url = run_url_command(command)
-    except OSError:
-        raise NotConfigured("url_command could not run")
+def normalize_feed_url(url):
     if url.startswith("webcal://"):
         url = "https://" + url[len("webcal://") :]
     allowed_schemes = {"https"}
     if os.environ.get("CALENDAR_SYNC_ALLOW_FILE_URL") == "1":
         allowed_schemes.add("file")  # tests serve the fixture without a network
     if urllib.parse.urlsplit(url).scheme not in allowed_schemes:
-        raise SyncError("address from url_command is not an https address")
+        raise SyncError("the address is not an https address")
     return url
+
+
+def read_feed_url(command):
+    try:
+        url = run_url_command(command)
+    except OSError:
+        raise NotConfigured("url_command could not run")
+    return normalize_feed_url(url)
 
 
 def fetch_feed(url):
@@ -322,10 +329,17 @@ def poke_bar():
 
 def parse_args(argv):
     parser = argparse.ArgumentParser(description="Sync the iCal feed into the calendar cache.")
+    parser.add_argument("command", nargs="?", choices=["setup"], help="setup: connect your calendar interactively")
+    parser.add_argument("--check", action="store_true", help=argparse.SUPPRESS)  # setup: exit 0 if already connected
     parser.add_argument("--now", action="store_true", help="manual run: report the outcome instead of staying silent")
     parser.add_argument("--ics", metavar="FILE", help="read this iCal file instead of fetching the feed")
     parser.add_argument("--at", metavar="ISO8601", help="treat this as the current time (tests)")
     return parser.parse_args(argv)
+
+
+def current_time(args):
+    now = dt.datetime.fromisoformat(args.at) if args.at else dt.datetime.now()
+    return now.astimezone()
 
 
 def libraries_available():
@@ -359,8 +373,7 @@ def sync(args, directory):
             return quiet_skip(args, f"{err}; see home/calendar/README.md")
         feed = fetch_feed(feed_url)
 
-    now = dt.datetime.fromisoformat(args.at) if args.at else dt.datetime.now()
-    now = now.astimezone()
+    now = current_time(args)
     events = expand_events(
         feed, now - dt.timedelta(days=DAYS_BEHIND), now + dt.timedelta(days=DAYS_AHEAD), feed_url
     )
@@ -375,8 +388,294 @@ def sync(args, directory):
     return 0
 
 
+# --- guided setup ---------------------------------------------------------------
+
+GOOGLE_SETTINGS_URL = "https://calendar.google.com/calendar/r/settings"
+KEYRING_COMMAND = "secret-tool lookup service calendar-sync key ical-url"
+KEYRING_ATTRIBUTES = ["service", "calendar-sync", "key", "ical-url"]
+
+
+class SetupAborted(Exception):
+    """The user declined or cancelled; nothing further is written."""
+
+
+class Prompter:
+    """Questions for `setup`.
+
+    CALENDAR_SYNC_SETUP_ANSWERS names a file with one answer per line, which
+    replaces the terminal. It exists only so tests can drive setup; prompts are
+    still printed, answers never are.
+    """
+
+    def __init__(self):
+        scripted_path = os.environ.get("CALENDAR_SYNC_SETUP_ANSWERS")
+        self.scripted = Path(scripted_path).read_text().splitlines() if scripted_path else None
+
+    def is_interactive(self):
+        return self.scripted is not None or (sys.stdin.isatty() and sys.stdout.isatty())
+
+    def ask(self, question, secret=False):
+        if self.scripted is not None:
+            print(question)
+            if not self.scripted:
+                raise SetupAborted("no more scripted answers")
+            return self.scripted.pop(0).strip()
+        try:
+            return (getpass.getpass(question) if secret else input(question)).strip()
+        except EOFError:
+            raise SetupAborted("input closed") from None
+
+    def confirm(self, question, default=False):
+        answer = self.ask(f"{question} [{'Y/n' if default else 'y/N'}] ").lower()
+        return default if not answer else answer.startswith("y")
+
+
+def run_quietly(command, stdin_text=None, timeout=15):
+    """Runs a helper without showing its output; the address goes in on stdin, never argv."""
+    try:
+        return subprocess.run(
+            command,
+            input=stdin_text,
+            text=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            stdin=None if stdin_text is not None else subprocess.DEVNULL,
+            timeout=timeout,
+        ).returncode
+    except (OSError, subprocess.TimeoutExpired):
+        return 127
+
+
+def rbw_available():
+    return shutil.which("rbw") is not None and rbw_is_unlocked()
+
+
+def keyring_available():
+    """A Secret Service answers when the lookup exits silently; a missing service complains on stderr."""
+    if shutil.which("secret-tool") is None:
+        return False
+    try:
+        probe = subprocess.run(
+            ["secret-tool", "lookup", "service", "calendar-sync", "key", "availability-probe"],
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.PIPE,
+            text=True,
+            timeout=10,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return False
+    return probe.returncode == 0 or not probe.stderr.strip()
+
+
+def private_file_path():
+    base = os.environ.get("XDG_DATA_HOME") or os.path.expanduser("~/.local/share")
+    return Path(base) / "calendar-sync" / "ical-url"
+
+
+def config_file_path():
+    return config_dir() / "config"
+
+
+def store_in_private_file(address):
+    path = private_file_path()
+    path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+    fd, tmp_name = tempfile.mkstemp(dir=path.parent, prefix="ical-url.")
+    try:
+        with os.fdopen(fd, "w") as handle:
+            handle.write(address + "\n")
+        os.chmod(tmp_name, 0o600)
+        os.replace(tmp_name, path)
+    except BaseException:
+        Path(tmp_name).unlink(missing_ok=True)
+        raise
+    return f"cat {shlex.quote(str(path))}", f"a private file ({path})"
+
+
+def store_in_keyring(address):
+    command = ["secret-tool", "store", "--label=calendar-sync iCal address", *KEYRING_ATTRIBUTES]
+    if run_quietly(command, stdin_text=address + "\n") != 0:
+        raise SetupAborted("the keyring refused the address")
+    return KEYRING_COMMAND, "the system keyring"
+
+
+def store_in_rbw(address, entry, replace_existing):
+    if replace_existing:
+        run_quietly(["rbw", "remove", entry])
+    if run_quietly(["rbw", "add", entry], stdin_text=address + "\n", timeout=60) != 0:
+        raise SetupAborted("rbw could not save the entry")
+    command = None if entry == DEFAULT_RBW_ENTRY else f"rbw get {shlex.quote(entry)}"
+    return command, f"rbw (entry {entry})"
+
+
+def choose_backend(prompter):
+    available = {"file": "a private file"}
+    if keyring_available():
+        available = {"keyring": "the system keyring (secret-tool)", **available}
+    if rbw_available():
+        available = {"rbw": "rbw", **available}
+    automatic = next(iter(available))
+    options = [("auto", f"Auto (recommended): {available[automatic]}")] + list(available.items())
+    print("Where should the address be stored?")
+    for number, (_, label) in enumerate(options, 1):
+        print(f"  {number}) {label}")
+    while True:
+        answer = prompter.ask("Choice [1]: ").lower()
+        for number, (key, _) in enumerate(options, 1):
+            if answer in (str(number), key) or (not answer and number == 1):
+                return automatic if key == "auto" else key
+        print("Pick one of the listed numbers or names.")
+
+
+def check_not_in_work_tree(path, what):
+    if inside_git_work_tree(path.parent):
+        raise SetupAborted(f"{what} would be inside a git work tree; set XDG_DATA_HOME or XDG_CONFIG_HOME elsewhere")
+
+
+def validate_address(address, now):
+    """Fetches and parses the feed the way a sync does; returns the upcoming event count."""
+    feed = fetch_feed(address)
+    events = expand_events(feed, now, now + dt.timedelta(days=DAYS_AHEAD), address)
+    return sum(1 for event in events if event["status"] != "cancelled")
+
+
+def read_valid_address(prompter, now):
+    while True:
+        try:
+            address = normalize_feed_url(prompter.ask("Secret iCal address (input hidden): ", secret=True))
+            count = validate_address(address, now)
+        except SyncError as err:
+            print(f"That did not work: {err}.")
+            if not prompter.confirm("Try again?", default=True):
+                raise SetupAborted("stopped before saving anything") from None
+            continue
+        print(f"Found {count} events in the next {DAYS_AHEAD} days.")
+        return address
+
+
+def explain_where_the_address_lives(prompter):
+    print(
+        "In Google Calendar open Settings, pick your calendar, then Integrate calendar,\n"
+        'and copy "Secret address in iCal format" (not the public address).'
+    )
+    if prompter.confirm("Open Google Calendar settings in your browser?"):
+        try:
+            subprocess.Popen(
+                ["xdg-open", GOOGLE_SETTINGS_URL],
+                stdin=subprocess.DEVNULL,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                start_new_session=True,
+            )
+        except OSError:
+            print(f"Could not open a browser; go to {GOOGLE_SETTINGS_URL}")
+
+
+def write_config(command):
+    path = config_file_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fd, tmp_name = tempfile.mkstemp(dir=path.parent, prefix="config.")
+    try:
+        with os.fdopen(fd, "w") as handle:
+            handle.write(f"# Written by calendar-sync setup. The command prints the address; it is not stored here.\nurl_command = {command}\n")
+        os.replace(tmp_name, path)
+    except BaseException:
+        Path(tmp_name).unlink(missing_ok=True)
+        raise
+
+
+def enable_timer():
+    unit = Path(os.path.expanduser("~/.config/systemd/user/calendar-sync.timer"))
+    if not unit.exists():
+        print("The timer is not installed. Run `just stow calendar` in your dotfiles checkout,")
+        print("then: systemctl --user enable --now calendar-sync.timer")
+        return
+    run_quietly(["systemctl", "--user", "daemon-reload"])
+    if run_quietly(["systemctl", "--user", "enable", "--now", "calendar-sync.timer"]) == 0:
+        print("Timer enabled: the calendar syncs every 5 minutes.")
+    else:
+        print("Could not enable the timer; run: systemctl --user enable --now calendar-sync.timer")
+
+
+def connection_works():
+    command = url_command()
+    if needs_unlocked_rbw(command) and not rbw_is_unlocked():
+        return False
+    try:
+        read_feed_url(command)
+    except (NotConfigured, SyncError):
+        return False
+    return True
+
+
+def plan_storage(prompter, backend):
+    """Asks and checks everything that could stop setup before any secret is written."""
+    check_not_in_work_tree(config_file_path(), "the config file")
+    if backend == "file":
+        check_not_in_work_tree(private_file_path(), "the private file")
+    existing = configured_url_command()
+    if existing:
+        print(f"A config already exists with: url_command = {existing}")
+        if not prompter.confirm("Replace it?"):
+            raise SetupAborted("kept the existing config")
+    entry, replace_existing = DEFAULT_RBW_ENTRY, False
+    if backend == "rbw":
+        entry = prompter.ask(f"rbw entry name [{DEFAULT_RBW_ENTRY}]: ") or DEFAULT_RBW_ENTRY
+        if run_quietly(["rbw", "get", entry]) == 0:
+            if not prompter.confirm(f"rbw already has an entry named {entry}. Replace it?"):
+                raise SetupAborted("left the existing rbw entry alone")
+            replace_existing = True
+    return entry, replace_existing
+
+
+def run_setup(args):
+    prompter = Prompter()
+    if args.check:
+        return 0 if connection_works() else 1
+    if not prompter.is_interactive():
+        print("calendar-sync setup needs a terminal; run it from a shell.", file=sys.stderr)
+        return 2
+    if not libraries_available():
+        print("Install python-icalendar and python-recurring-ical-events first.", file=sys.stderr)
+        return 1
+    now = current_time(args)
+    try:
+        explain_where_the_address_lives(prompter)
+        address = read_valid_address(prompter, now)
+        backend = choose_backend(prompter)
+        entry, replace_existing = plan_storage(prompter, backend)
+        if backend == "rbw":
+            command, where = store_in_rbw(address, entry, replace_existing)
+        elif backend == "keyring":
+            command, where = store_in_keyring(address)
+        else:
+            command, where = store_in_private_file(address)
+        print(f"Stored the address in {where}.")
+        if command:
+            write_config(command)
+        else:
+            config_file_path().unlink(missing_ok=True)
+        try:
+            round_trip_ok = read_feed_url(url_command()) == address
+        except (NotConfigured, SyncError):
+            round_trip_ok = False
+        if not round_trip_ok:
+            raise SetupAborted("the address could not be read back; check the stored entry")
+        print("Read the address back through the stored command: ok.")
+    except SetupAborted as err:
+        print(f"Setup stopped: {err}.", file=sys.stderr)
+        return 1
+    except KeyboardInterrupt:
+        print("\nSetup cancelled.", file=sys.stderr)
+        return 130
+    enable_timer()
+    return main(["--now", *(["--at", args.at] if args.at else [])])
+
+
 def main(argv):
     args = parse_args(argv)
+    if args.command == "setup":
+        return run_setup(args)
     directory = cache_dir()
     if inside_git_work_tree(directory):
         print("calendar-sync: cache directory is inside a git work tree, refusing to run", file=sys.stderr)
