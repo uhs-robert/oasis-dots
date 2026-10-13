@@ -315,8 +315,9 @@ setup_voxtype() {
   success "voxtype configured"
 }
 
-# The units are stowed by the systemd package; the timer only enables them.
+# The calendar package is optional and ships the units, so this does nothing, silently, unless it was stowed.
 setup_calendar_timer() {
+  [[ -e "$HOME/.config/systemd/user/calendar-sync.timer" ]] || return 0
   if systemctl --user show-environment &>/dev/null; then
     systemctl --user daemon-reload
     systemctl --user is-enabled calendar-sync.timer &>/dev/null || systemctl --user enable --now calendar-sync.timer
