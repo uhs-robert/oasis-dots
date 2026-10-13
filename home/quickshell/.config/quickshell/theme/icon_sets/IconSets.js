@@ -31,10 +31,10 @@ function sprite(set, name, variant) {
     return Array.isArray(rows) && rows.length > 0 ? rows : null;
 }
 
-// The vector entry, or null when the set has no vector for this icon and variant.
+// The vector entry, or null when the set has no vector for this icon and variant. An entry may be all accent (every segment lit), with an empty body.
 function vector(set, name, variant) {
     const drawn = entry(set, name, variant);
-    return drawn && !Array.isArray(drawn) && drawn.body ? drawn : null;
+    return drawn && !Array.isArray(drawn) && (drawn.body || drawn.accent) ? drawn : null;
 }
 
 // The widest and tallest sprite among all of an icon's variants, in sprite pixels, or null when the set does not draw it.
@@ -62,7 +62,7 @@ function vector_extent(set, name) {
     let height = 0;
     for (const variant in icon) {
         const drawn = icon[variant];
-        if (!drawn || Array.isArray(drawn) || !drawn.body) continue;
+        if (!drawn || Array.isArray(drawn) || !(drawn.body || drawn.accent)) continue;
         width = Math.max(width, drawn.w);
         height = Math.max(height, drawn.h);
     }
