@@ -356,6 +356,18 @@ merge_pr() {
   info=$(gh pr view "$pr" --json headRefName,headRefOid,baseRefName,state,isCrossRepository \
     --jq '[.headRefName, .headRefOid, .baseRefName, .state, .isCrossRepository] | @tsv') || die "cannot read PR $pr"
   IFS=$'\t' read -r head head_oid base state cross <<<"$info"
+  if [[ $state == MERGED ]]; then
+    # An interrupted earlier run already merged it; finish what that run's tail would have done.
+    echo "#$pr already merged"
+    fetch
+    if [[ $cross == true ]]; then
+      echo "PR #$pr is from a fork; skipped local cleanup"
+    elif ! $keep_branch; then
+      known_heads+=("$head_oid")
+      clean_local "$pr" "$head" "$head_oid"
+    fi
+    return 0
+  fi
   [[ $state == OPEN ]] || die "PR $pr is $state"
   head_oid=${pushed_heads[$head]:-$head_oid}
   if [[ $cross != true ]]; then

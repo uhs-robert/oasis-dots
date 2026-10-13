@@ -4,6 +4,8 @@ set -euo pipefail
 
 repo=$(git -C "$(dirname "$0")" worktree list --porcelain | awk '/^worktree /{print substr($0, 10); exit}')
 ipc="$HOME/.config/hypr/scripts/qs-ipc"
+# shellcheck source=base.sh
+source "$(dirname "$0")/base.sh"
 
 die() {
   echo "ship-batch: $*" >&2
@@ -11,24 +13,35 @@ die() {
 }
 
 [[ $(git -C "$repo" branch --show-current) == main ]] || die "the main checkout is not on main; switch it back first"
-before=$(git -C "$repo" rev-parse HEAD)
+before=$(select_base "$repo")
 # The owner already said to merge, so a Codex review still running is waited out rather than failing the batch.
 (($# == 0)) || (cd "$repo" && "$HOME/.claude/skills/merge-prs/merge-prs.sh" --wait-review "$@") || die "merge-prs failed; nothing after the merge ran"
 git -C "$repo" pull -q --ff-only
 after=$(git -C "$repo" rev-parse HEAD)
+# A recorded base that main no longer descends from (rewritten history, pruned commit) vouches for nothing: check
+# everything, and treat every file as changed so no reload or restart is skipped.
+base_ok=true
+if ! base_is_ancestor "$repo" "$before" "$after"; then
+  base_ok=false
+  echo "ship-batch: ${before:0:12} is not an ancestor of main; running the full check"
+  before=$(git -C "$repo" hash-object -t tree /dev/null)
+fi
 # Inductive, like the Stop hook's last_ok: a full pass of `before` plus a scoped pass over everything changed since
 # vouches for `after`. A `before` not recorded as passed (check-passed.sh also ignores a worktree's no-repos pass,
 # which skipped this checkout's repos/ symlinks) or CHECK_FULL=1 falls back to the full check.
 if [[ $before != "$after" ]]; then
-  if [[ -z ${CHECK_FULL:-} ]] && (cd "$repo" && lib/check-passed.sh is-passed "$before") &&
-    git -C "$repo" merge-base --is-ancestor "$before" "$after"; then
+  if $base_ok && [[ -z ${CHECK_FULL:-} ]] && (cd "$repo" && lib/check-passed.sh is-passed "$before"); then
     (cd "$repo" && lib/check.sh --changed "$before") || die "the check fails on main after the merge; fix it before anything else"
   else
     (cd "$repo" && just check) || die "just check fails on main after the merge; fix it before anything else"
   fi
+  # Kept on failure or interruption so a rerun checks everything merged since.
+  finish_base "$repo"
   # With uncommitted changes in the main checkout the pass was of its working tree, not `after`'s, and the helper
   # refuses to record it; that must not stop the reloads and restarts below.
   (cd "$repo" && lib/check-passed.sh record) || true
+else
+  finish_base "$repo"
 fi
 
 qs_dir=home/quickshell/.config/quickshell
