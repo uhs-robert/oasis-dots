@@ -1,6 +1,6 @@
 # voxcmd Firefox extension
 
-Lets voxcmd list and switch Firefox tabs by the tab itself, instantly, unloaded tabs included. It holds one native-messaging port to `~/.local/share/voxcmd/firefox-host` and answers two requests: `tabs` (every tab of every window) and `activate` (select a tab and focus its window). It opens no URLs, runs no scripts in pages and asks only for the `tabs` and `nativeMessaging` permissions. Without it voxcmd keeps switching through the address bar.
+Lets voxcmd list and switch Firefox tabs by the tab itself, instantly, unloaded tabs included. It holds one native-messaging port to `~/.local/share/voxcmd/firefox-host` and answers three requests: `tabs` (every tab of every window), `activate` (select a tab, focus its window and put the caller's nonce in front of that window's title with `titlePreface`, so the compositor can tell the window from others showing the same title) and `clear_preface` (take the nonce back; the extension also does it after 10 s if the caller never does). `titlePreface` is part of `windows.update` and needed no permission beyond `tabs` in the Firefox versions I know; if yours refuses it, `activate` still switches the tab and voxcmd falls back to whichever Firefox window has focus. It opens no URLs, runs no scripts in pages and asks only for the `tabs` and `nativeMessaging` permissions. Without it voxcmd keeps switching through the address bar.
 
 Private windows are invisible to it, as to any extension that is not allowed in them.
 
