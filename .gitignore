@@ -172,6 +172,8 @@ home/hypr/.config/hypr/theme/.current_theme
 
 # voxtype GPU drop-in, written per machine by setup_voxtype
 home/systemd/.config/systemd/user/voxtype.service.d/gpu.conf
+# voxtype's own unit, written by `voxtype setup systemd`, which lands here when stow has folded the directory
+home/systemd/.config/systemd/user/voxtype.service
 
 # Stow folds ~/.config/systemd into the repo, so systemctl --user enable writes here
 home/systemd/.config/systemd/user/*.wants/*

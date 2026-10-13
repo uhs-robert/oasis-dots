@@ -30,7 +30,6 @@ local function run()
   if Config.wallpaper_enabled then
     hl.exec_cmd("lua ~/.config/hypr/extensions/wallpaper/init.lua" .. (Config.wallpaper_location and " --location" or ""))
   end
-  hl.exec_cmd("voxtype setup systemd")
 end
 
 -- footclient needs a server; switching to foot in Settings only reloads the config, so check on reload too.

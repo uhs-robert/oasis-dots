@@ -308,11 +308,11 @@ setup_voxtype() {
   fi
   # Small, and config.toml enables VAD with it.
   voxtype setup vad >/dev/null || warn "VAD model download failed, run later: voxtype setup vad"
+  # voxtype writes its own unit and enables and starts it; the stowed voxtype.service.d/prompt.conf adjusts it.
   if systemctl --user show-environment &>/dev/null; then
-    systemctl --user daemon-reload
-    systemctl --user is-enabled voxtype &>/dev/null || systemctl --user enable --now voxtype
+    voxtype setup systemd || warn "voxtype setup systemd failed, run it after login"
   else
-    warn "User systemd not available, enable voxtype after login: systemctl --user enable --now voxtype"
+    warn "User systemd not available, run after login: voxtype setup systemd"
   fi
   success "voxtype configured"
 }
