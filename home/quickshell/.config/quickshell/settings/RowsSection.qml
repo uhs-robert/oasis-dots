@@ -112,6 +112,8 @@ SettingsPane {
         else if (event.key === Qt.Key_K) root.cursor = root.wrap_index(root.cursor, -1, root.rows.length);
         // Plain h is left for the popup, which goes back to the sidebar.
         else if (event.key === Qt.Key_H && (event.modifiers & Qt.ShiftModifier)) root.step(root.cursor, -1);
+        // A row that does not step (cycle: false) goes in on plain l, as Enter does, per the Settings contract.
+        else if (event.key === Qt.Key_L && !(event.modifiers & Qt.ShiftModifier) && root.rows[root.cursor] && root.rows[root.cursor].cycle === false) root.activate(root.cursor, 1);
         else if (event.key === Qt.Key_L || event.key === Qt.Key_Space) root.step(root.cursor, 1);
         else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) root.activate(root.cursor, 1);
         else {
