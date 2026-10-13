@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
-# Replays the stale-stack, real-conflict and review-gate cases against merge-prs.sh with a local origin and the fake gh.
+# Replays the stale-stack, real-conflict and review-gate cases against merge-prs.sh with a local origin and the fake gh,
+# then restacks a local stack with restack.sh.
 set -uo pipefail
 here=$(cd "$(dirname "$0")" && pwd)
 script=${1:-$here/../merge-prs.sh}
+restack=$here/../restack.sh
 pass=0 fail=0
 check() { if eval "$2"; then
   echo "ok   $1"
@@ -255,6 +257,87 @@ check "exits 0" "[[ $code == 0 ]]"
 check "rebases the child" "grep -q '^8 rebased onto main' <<<\"\$out\""
 check "merges the child" "grep -q '^8 merged (rebase)' <<<\"\$out\""
 check "main has A, P and C" "[[ \$(git -C '$ORIGIN' log --format=%s main) == \$'C\nP\nA' ]]"
+
+# Stack a <- b <- c on main, all pushed, b in its own worktree and c in none; the main checkout is left on a.
+stack_setup() {
+  root=$(mktemp -d)
+  ORIGIN=$root/origin.git
+  git init -q --bare -b main "$ORIGIN"
+  g clone -q "$ORIGIN" "$root/main" 2>/dev/null
+  cd "$root/main" || exit 1
+  echo m >m
+  g add m
+  g commit -qm A
+  g push -q origin main
+  local branch
+  for branch in a b c; do
+    g switch -qc "$branch"
+    echo "$branch" >"f$branch"
+    g add "f$branch"
+    g commit -qm "${branch}1"
+    g push -q origin "$branch"
+  done
+  g switch -q a
+  g worktree add -q "$root/wt-b" b
+}
+subjects() { git -C "$root/main" log --format=%s "$1" | paste -sd ' '; }
+
+echo "== restack: the bottom gets a new commit"
+stack_setup
+echo more >fa2
+g add fa2
+g commit -qm a2
+out=$("$restack" a b c 2>&1)
+code=$?
+show "$out"
+check "exits 0" "[[ $code == 0 ]]"
+check "uses origin/a as a's old tip" "grep -q '(origin/a)' <<<\"\$out\""
+check "c carries the whole stack once" "[[ \$(subjects c) == 'c1 b1 a2 a1 A' ]]"
+check "b's worktree follows its branch" "[[ \$(git -C '$root/wt-b' rev-parse HEAD) == \$(git rev-parse b) ]]"
+check "pushes b and c" "[[ \$(git -C '$ORIGIN' rev-parse b c) == \$(git rev-parse b c) ]]"
+check "removes the temporary worktree for c" "[[ \$(git worktree list | wc -l) == 2 ]]"
+
+echo "== restack: the bottom was amended and pushed"
+stack_setup
+g commit -q --amend -m "a1 amended"
+g push -q -f origin a
+out=$("$restack" --no-push a b c 2>&1)
+code=$?
+show "$out"
+check "exits 0" "[[ $code == 0 ]]"
+check "uses the reflog as a's old tip" "grep -q '(a@{1})' <<<\"\$out\""
+check "drops the replaced a1" "[[ \$(subjects c) == 'c1 b1 a1 amended A' ]]"
+check "--no-push leaves origin alone" "[[ \$(git -C '$ORIGIN' rev-parse c) != \$(git rev-parse c) ]]"
+
+echo "== restack: conflict"
+stack_setup
+echo clash >fb
+g add fb
+g commit -qm "a2 clash"
+before_b=$(git rev-parse b)
+before_c=$(git rev-parse c)
+out=$("$restack" a b c 2>&1)
+code=$?
+show "$out"
+check "stops with an error" "[[ $code != 0 ]]"
+check "names the file" "grep -q 'conflicts rebasing onto a in fb' <<<\"\$out\""
+check "prints how to finish" "grep -q 'git add fb && git rebase --continue' <<<\"\$out\" && grep -q 'restack.sh b c' <<<\"\$out\""
+check "leaves origin/b and c alone" "[[ \$(git -C '$ORIGIN' rev-parse b) == '$before_b' && \$(git rev-parse c) == '$before_c' ]]"
+
+echo "== restack: check fails"
+stack_setup
+echo more >fa2
+g add fa2
+g commit -qm a2
+before_c=$(git rev-parse c)
+out=$("$restack" --check 'echo checking; echo boom >&2; exit 3' a b c 2>&1)
+code=$?
+show "$out"
+check "stops with an error" "[[ $code != 0 ]]"
+check "shows the check's output" "grep -q '^boom' <<<\"\$out\""
+check "names the branch" "grep -q 'check failed on b' <<<\"\$out\""
+check "does not push b" "[[ \$(git -C '$ORIGIN' rev-parse b) != \$(git rev-parse b) ]]"
+check "does not touch c" "[[ \$(git rev-parse c) == '$before_c' ]]"
 
 echo "$pass passed, $fail failed"
 ((fail == 0))

@@ -25,4 +25,14 @@ It stops at the first failure with the reason. On a stacked-PR rebase conflict i
 
 As the final step, and whenever the owner asks what is left, run `~/.claude/skills/merge-prs/status.sh` from anywhere in the repo: a read-only summary of your open PRs, other worktrees, unmerged local branches, untracked files and the main checkout. It also runs the repo's executable `.claude/status.d/*.sh` scripts and prints each one's output under its name.
 
-After changing `merge-prs.sh`, run `tests/run.sh`: it replays a stale stack and a real conflict against a local origin and a fake `gh`.
+## Restacking before a merge
+
+When a branch low in a stack changes (a fix commit, or a rebase onto main), carry the branches above it along with:
+
+```bash
+~/.claude/skills/merge-prs/restack.sh [--check "<cmd>"] [--no-push] <bottom> <next>... <top>
+```
+
+The first branch is the one already updated. Each next branch is rebased in its own worktree (or a temporary one) onto its parent with `--onto`, so commits the parent rewrote are dropped rather than replayed; `--check` runs in that worktree before the force-push with a lease. It stops on a conflict, a committed conflict marker or a failed check, printing the files and the commands to finish by hand and restack the rest. The bottom branch itself is not pushed. Run it before pushing the bottom, or right after its update, since it reads the bottom's old tip from `origin/<bottom>` or `<bottom>@{1}`.
+
+After changing `merge-prs.sh` or `restack.sh`, run `tests/run.sh`: it replays a stale stack, a real conflict and stack restacks against a local origin and a fake `gh`.
