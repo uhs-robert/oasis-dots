@@ -478,7 +478,7 @@ The overlay writes the number into the pick's FIFO, a voice reply the displayed 
 
 | Say | Does |
 | --- | --- |
-| "join my meeting", "open my meeting" | Opens the meeting in progress, else the next one starting today: its Meet link, or its event page when it has none. With none left it says "No more meetings today" |
+| "join my meeting", "open my meeting" | Opens the meeting in progress, else the next one starting today: its join link (Google Meet or Microsoft Teams, the cache's `join_url`), or its event page when it has none. With none left it says "No more meetings today" |
 | "what's my next meeting", "what's next on my calendar" | Says it in a notification: "Standup at 3:00pm, in 12 minutes", or "Standup tomorrow 9:00am" on a later day |
 | "what's on my calendar", "what's on my calendar tomorrow", "show my calendar for friday" | Opens the bar's clock popup on that day (`qs-ipc call calendar open_day <date>`) |
 | "new meeting tomorrow at 3 pm for an hour called Design review with alice@example.com" | Opens Google Calendar's new-event form in a new Firefox tab, prefilled; you add anyone else and save there |
@@ -486,7 +486,7 @@ The overlay writes the number into the pick's FIFO, a voice reply the displayed 
 | "open my calendar", "go to my calendar" | Opens calendar.google.com |
 
 - Cancelled and all-day events never count as a meeting to join or as the next one.
-- "Join my meeting" prefers the meeting in progress that has a Meet link (the latest start when several do); an in-progress meeting without one gives way to a Meet meeting starting within five minutes. It does not rank by `event_url`, which every event has.
+- "Join my meeting" prefers the meeting in progress that has a join link (the latest start when several do); an in-progress meeting without one gives way to a meeting with one starting within five minutes. It does not rank by `event_url`, which every event has.
 - A new meeting reads its time and length before "called" ("tomorrow at 3 pm for an hour", "friday at 9 am for 30 minutes", "tomorrow at 9 am 2 hours long"; an hour is the default). A bare hour reads as a working-hours time: 1 to 7 is pm, 8 to 11 am, 12 noon ("friday at 3" is 15:00), unlike timers, which take the sooner of the two. The title is what follows "called", "named" or "titled", taken from the raw transcript so its casing survives; it ends at the first "with", "inviting" or "invite" that is followed by an address, and every address in the transcript becomes a guest. A day with no time ("new meeting friday called Offsite") makes an all-day event. Dates are in the local time zone, which the form gets as `ctz`.
 - Not supported: a title before the time ("new meeting called Sync tomorrow at 3"), and guests without an "@" in the transcript (a transcriber that writes "alice at example dot com" adds none).
 - Days are "today", "tomorrow" and weekday names; "next friday" is never today.
