@@ -533,9 +533,11 @@ run_option() {
     local question
     question=$(confirm_question "$option" "$label")
     local -a confirm_flags=(--verb "$(normalize "${question%% *}")")
-    [ "$came_by_voice" = 0 ] || confirm_flags+=(--listen)
+    local listens=0
+    ! reply_listen_wanted || listens=1
+    [ "$listens" = 0 ] || confirm_flags+=(--listen)
     # Not the flags: --verb is the question's first word, which for a private label is screen text.
-    debug "confirm asks: $(confirm_question "$option" "$toast_label")$([ "$came_by_voice" = 0 ] || echo ' (by voice)')"
+    debug "confirm asks: $(confirm_question "$option" "$toast_label")$([ "$listens" = 0 ] || echo ' (by voice)')"
     if ! "$voxcmd_confirm" "${confirm_flags[@]}" "$question"; then
       debug "confirm answered no: $toast_label not run"
       return 0
@@ -672,9 +674,9 @@ route() {
       pick_command_path="${hook%%$'\n'*}"
       choices="${hook#*$'\n'}"
       pick_label="Which one?"
-      [ "$came_by_voice" = 0 ] || pick_flags+=(--listen)
+      ! reply_listen_wanted || pick_flags+=(--listen)
     else
-      [ "$came_by_voice" = 0 ] || [ "$count" != 1 ] || pick_flags+=(--listen)
+      [ "$count" != 1 ] || ! reply_listen_wanted || pick_flags+=(--listen)
     fi
     picked=$("$pick_command_path" "${pick_flags[@]}" "$pick_label" "$choices") || return 0
     run_option "$(jq -c --argjson i "$picked" '.[$i]' <<<"$options")"
@@ -758,6 +760,12 @@ help_runnables() {
 
 # Prints the pending pick's state while its voxcmd-pick, voxcmd-confirm or voxcmd-hints still waits on its FIFO. A stale file is
 # left alone: a new pick may be about to replace it.
+# Whether a picker or card opened now should record the user's reply: the command was spoken, and Stop has not
+# discarded this watcher's turn since (an action already routing still finishes, but nothing it opens listens).
+reply_listen_wanted() {
+  [ "$came_by_voice" = 1 ] && [ ! -e "$(discard_flag_of $$)" ]
+}
+
 pending_pick() {
   local state pid fifo
   state=$(cat "$pending_pick_file" 2>/dev/null) || return 1
@@ -765,6 +773,13 @@ pending_pick() {
   fifo=$(jq -r '.fifo // empty' <<<"$state" 2>/dev/null) || return 1
   [ -n "$pid" ] && [ -p "$fifo" ] && grep -qsE 'voxcmd-(pick|confirm|hints)' "/proc/$pid/cmdline" || return 1
   printf '%s' "$state"
+}
+
+# Whether the pick in $1 (a pending_pick's state) is still the one waiting: Stop may have cancelled it since.
+pick_still_pending() {
+  local now
+  now=$(pending_pick) || return 1
+  [ "$(jq -r '[.pid, .fifo] | @tsv' <<<"$now")" = "$(jq -r '[.pid, .fifo] | @tsv' <<<"$1")" ]
 }
 
 # Prints the 1-based position an ordinal reply names ("two", "the second one", "number 3", "last"), else nothing.
@@ -930,7 +945,7 @@ reply() {
     listen_again=$(jq -r '.listen_again // empty' <<<"$state")
     if [ -n "$listen_again" ] && rm "$listen_again" 2>/dev/null; then
       notify info "voxcmd: which one?" "\"$transcript\": ${verdict#*$'\t'}. Listening again."
-      listen --start-only
+      pick_still_pending "$state" && listen --start-only
     else
       notify info "voxcmd: which one?" "\"$transcript\": ${verdict#*$'\t'}. Say a choice, a number, or cancel."
     fi
@@ -965,7 +980,7 @@ reply_confirm() {
     # Only one rm of the file succeeds, so only one unclear reply gets the extra listen.
     if [ -n "$listen_again" ] && rm "$listen_again" 2>/dev/null; then
       notify info "voxcmd: yes or no?" "\"$transcript\": listening again"
-      listen --start-only
+      pick_still_pending "$state" && listen --start-only
     else
       notify info "voxcmd: yes or no?" "\"$transcript\": say yes or no, or press y or n."
     fi
@@ -1122,7 +1137,8 @@ session_end_locked() {
   owner=$(jq -r .owner <<<"$state")
   [ "$owner" = $$ ] || touch "$(discard_flag_of "$owner")"
   debug "session ended: $reason"
-  [ -z "$reason" ] || notify info "voxcmd: $label ended" "$reason"
+  # A bar that hangs must not keep the ended hook from running.
+  [ -z "$reason" ] || notify info "voxcmd: $label ended" "$reason" || true
   session_run_ended_hook "$(jq -r .integration <<<"$state")"
 }
 
@@ -1245,6 +1261,11 @@ turn_was_a_miss() {
 # The transcript handler while a session is open. A session that ended while the recording ran hands it to route.
 session_turn() {
   local transcript="$*" state text file rewritten outcome=ran
+  # Stop landed after the watcher's own check: nothing from this turn may run or open the microphone.
+  if [ -e "$(discard_flag_of $$)" ]; then
+    debug "session: turn \"$transcript\" discarded, stop was pressed"
+    return 0
+  fi
   if ! state=$(session_state); then
     route "$transcript"
     return
@@ -1477,11 +1498,12 @@ cancel_owned_recording() {
 
 # The one key for any voice activity that will not end by itself. The session goes first, so its watcher cannot open
 # the microphone again: ending it flags the watcher's recording as discarded, whatever the watcher is doing (hearing,
-# transcribing or routing), and its next listen finds no session. The picker's own exit cancels the reply recording it
+# transcribing or routing), and its next listen finds no session. A turn already routing still finishes its action,
+# but a picker or card it opens does not listen (reply_listen_wanted). The picker's own exit cancels the reply recording it
 # started, and the cancel at the end covers every other recording, a plain command or Speech to Text.
 stop_voice() {
   local picker
-  session_end "stopped"
+  session_end "stopped" || true
   if picker=$(pending_pick); then
     write_pick_answer "" "$(jq -r .fifo <<<"$picker")" || true
   fi

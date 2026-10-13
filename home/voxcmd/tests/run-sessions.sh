@@ -36,6 +36,7 @@ export STUB_PICKS=$root/picks
 cat >"$sess_stubs/sess-hints" <<STUB
 #!/bin/sh
 echo "pick no_speech_secs=\${VOXCMD_AUTOSTOP_NO_SPEECH_SECS:-default}" >> "$log"
+echo "pick-args \$*" >> "$log"
 echo "pick min_speech_secs=\${VOXCMD_AUTOSTOP_MIN_SPEECH_SECS:-default} silence_secs=\${VOXCMD_AUTOSTOP_SILENCE_SECS:-default}" >> "$log"
 answer=\$(head -n 1 "\$STUB_PICKS"); sed -i 1d "\$STUB_PICKS"
 [ "\$answer" != CANCEL ] || exit 1
@@ -57,6 +58,12 @@ candidates() {
   case "\$2" in
   missing) echo '[{"id": "zz", "label": "zz"}]' ;;
   both) echo '[{"id": "both left", "label": "both left"}, {"id": "both right", "label": "both right"}]' ;;
+  slow)
+    # A route that is still working when the test presses Stop.
+    touch "$root/routing"
+    while [ ! -e "$root/route-release" ]; do sleep 0.02; done
+    echo '[{"id": "slow left", "label": "slow left"}, {"id": "slow right", "label": "slow right"}]'
+    ;;
   *) jq -n -c --arg t "\$2" '[{id: \$t, label: \$t}]' ;;
   esac
 }
@@ -68,6 +75,7 @@ declare -A actions=(
   [tap]='echo "tap \$id" >> "$log"'
   [none]='echo "tap nothing" >> "$log"'
 )
+session_ended() { echo "ended-hook" >> "$log"; }
 session_rewrite() {
   [ "\$1" != noise ] || return 0
   printf 'tap %s' "\$1"
@@ -325,13 +333,29 @@ sess_voxcmd_env stop
 sess_wait
 check "stop during a session ends it, cancels its recording and closes the microphone" "session_gone && grep -q '^voxtype record cancel' '$log' && [[ \$(cat '$XDG_RUNTIME_DIR/voxtype/state') == idle && \$(record_starts) == 1 ]] && ended_because 'stopped'"
 
-# Stopped while the turn is already transcribing: the watcher is past the microphone, and must not listen again.
-sess_start alpha
+# Stopped while the turn is already transcribing: the watcher is past the microphone, and must not listen again. The
+# watcher is frozen while stop runs, so it is stop that finds the recording and cancels it.
+sess_start HOLD
+owner_is_listening
+stopped_owner=$(jq -r .owner "$XDG_RUNTIME_DIR/voxcmd/session.json")
 echo transcribing >"$XDG_RUNTIME_DIR/voxtype/state"
+kill -STOP "$stopped_owner"
 sess_voxcmd_env stop
-echo idle >"$XDG_RUNTIME_DIR/voxtype/state"
+kill -CONT "$stopped_owner"
 sess_wait
 check "stop while a turn transcribes ends the session and opens no further microphone" "session_gone && [[ \$(record_starts) == 1 && \$(taps) == 0 ]] && ended_because 'stopped'"
+check "and stop itself cancels the transcribing" "grep -q 'stop: cancelling the transcribing voxtype' '$debug_log' && grep -q '^voxtype record cancel' '$log'"
+
+# Stopped while the turn's action is already routing: it finishes, but the picker it opens does not listen for a reply.
+rm -f "$root/routing" "$root/route-release"
+echo CANCEL >"$STUB_PICKS"
+sess_start slow
+while [ ! -e "$root/routing" ]; do sleep 0.02; done
+sess_voxcmd_env stop
+touch "$root/route-release"
+sess_wait
+check "stop while a turn routes: the picker it opens does not listen and no microphone opens" "session_gone && grep -q '^pick-args ' '$log' && ! grep -q '^pick-args .*--listen' '$log' && [[ \$(record_starts) == 1 ]] && ended_because 'stopped'"
+rm -f "$root/routing" "$root/route-release"
 
 # A recording nobody here watches (Speech to Text, or a command's) is cancelled, so nothing said is typed or routed.
 fresh_logs
@@ -353,6 +377,31 @@ stop_reader_pid=$!
 sess_voxcmd_env stop
 wait "$stop_reader_pid"
 check "stop cancels a waiting picker with an empty answer" "[[ \$(cat '$root/stop-answer') == '' && \$(wc -l <'$root/stop-answer') == 1 ]] && ! grep -q '^voxtype record' '$log'"
+rm -f "$XDG_RUNTIME_DIR/voxcmd/pending-pick.json"
+kill "$stop_waiter_pid" 2>/dev/null
+wait "$stop_waiter_pid" 2>/dev/null
+
+# A bar that hangs fails notify-send, which must not keep stop from taking down the session's leftovers, the picker or
+# the recording.
+mkdir -p "$root/failing-bin"
+printf '#!/bin/sh\nexit 1\n' >"$root/failing-bin/notify-send"
+chmod +x "$root/failing-bin/notify-send"
+sess_start HOLD
+owner_is_listening
+cp /bin/sleep "$root/voxcmd-hints"
+"$root/voxcmd-hints" 60 &
+stop_waiter_pid=$!
+mkfifo "$root/stop-fifo-2"
+jq -n -c --argjson pid "$stop_waiter_pid" --arg fifo "$root/stop-fifo-2" \
+  '{pid: $pid, fifo: $fifo, label: "Which one?", kind: "hints", expansions: {}, choices: [{id: "a", label: "1. A"}]}' >"$XDG_RUNTIME_DIR/voxcmd/pending-pick.json"
+timeout 10 head -n1 "$root/stop-fifo-2" >"$root/stop-answer-2" &
+stop_reader_pid=$!
+sess_env=(PATH="$root/failing-bin:$PATH")
+sess_voxcmd_env stop
+sess_env=()
+wait "$stop_reader_pid"
+sess_wait
+check "stop with a failing notification still ends the session, runs its ended hook and cancels picker and recording" "session_gone && log_has_soon '^ended-hook' && [[ \$(cat '$root/stop-answer-2') == '' ]] && grep -q '^voxtype record cancel' '$log'"
 rm -f "$XDG_RUNTIME_DIR/voxcmd/pending-pick.json"
 kill "$stop_waiter_pid" 2>/dev/null
 wait "$stop_waiter_pid" 2>/dev/null
