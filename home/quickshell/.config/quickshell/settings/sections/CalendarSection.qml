@@ -84,7 +84,7 @@ RowsSection {
         })
 
     function sync_now() {
-        Quickshell.execDetached(["calendar-sync", "--now"]);
+        if (!sync_proc.running) sync_proc.running = true;
     }
 
     // The terminal stays open after setup so its last message can be read.
@@ -119,6 +119,17 @@ RowsSection {
     Component.onCompleted: root.run_check()
     // The pane outlives a closed popup, so reopening it (say after Connect) must check again.
     onLiveChanged: if (root.live) root.run_check()
+
+    // calendar-sync pokes the bar only after a good sync; after a failed one its error.json is new and unwatched, so
+    // the pane rereads the cache and the connection itself once the sync ends.
+    Process {
+        id: sync_proc
+        command: ["calendar-sync", "--now"]
+        onExited: {
+            CalendarState.refresh();
+            root.run_check();
+        }
+    }
 
     Process {
         id: check_proc
