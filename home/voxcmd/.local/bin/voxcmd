@@ -317,7 +317,8 @@ resolve_match() {
       else
         options=$(fuzzy_match "$target" "$candidates_json")
       fi
-      if [ -n "$target" ] && [ "$(jq length <<<"$options")" = 0 ] && [ -n "${integration_no_match_actions[$action]-}" ]; then
+      # word_match prints nothing for a target of filler words only, which names nothing to report missing.
+      if [ -n "$target" ] && [ -n "$options" ] && [ "$(jq length <<<"$options")" = 0 ] && [ -n "${integration_no_match_actions[$action]-}" ]; then
         action="${integration_no_match_actions[$action]}"
         options=$(jq -c -n --arg target "$target" '[{id: "", label: $target}]')
       fi
@@ -369,6 +370,8 @@ fuzzy_match() {
 # target with the same words as a candidate (in any order, or the same letters run together, "full screen" for
 # "fullscreen") is a strong match. Otherwise a target is a weak match when it covers at least half of a candidate's
 # words with nothing left over, or holds all of them plus one more word; weak matches always go through the picker.
+# A target with no words left after the filler and ignored words matches nothing, and prints nothing rather than [], so
+# resolve_match can tell it from a target that matched nothing.
 word_match() {
   local target="$1" candidates_json="$2"
   shift 2
@@ -382,7 +385,7 @@ word_match() {
       # A spoken word names a candidate word when it is that word, or a long enough piece of a compound ("screen").
       def names($candidate_word): . as $spoken_word | $spoken_word == $candidate_word or ($spoken_word | length) >= 4 and ($candidate_word | contains($spoken_word));
       ($target | words) as $spoken
-    | if $spoken == [] then [] else
+    | if $spoken == [] then empty else
         map(. as $candidate | ($candidate.match_text // $candidate.label | words) as $named
           | select($named != [])
           | ($spoken | map(select(. as $s | any($named[]; . as $n | $s | names($n))))) as $spoken_matched

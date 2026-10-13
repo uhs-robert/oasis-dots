@@ -74,9 +74,10 @@ step qmllint sh ./lib/check-qml.sh
 step lock-skins sh ./lib/check-lock-skins.sh
 step style-exports sh ./lib/check-style-exports.sh
 step time-format sh ./lib/check-time-format.sh
-# voxcmd routes with jq and fzf, so without them every phrase would read as no match.
+# voxcmd routes with jq and fzf, so without them every phrase would read as no match; the click tests route too.
 if command -v jq >/dev/null 2>&1 && command -v fzf >/dev/null 2>&1; then
   step voxcmd-phrases bash ./home/voxcmd/tests/run-phrases.sh
+  step voxcmd-click bash ./home/voxcmd/tests/run.sh
 else
   echo 'skip: voxcmd phrases need jq and fzf'
 fi

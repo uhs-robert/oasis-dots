@@ -93,3 +93,29 @@ flibbertigibbet	none	nonsense
 asdf qwerty	none	nonsense
 my cat likes tuna	none	nonsense
 why is the sky blue	none	nonsense
+click sign in	Click/click	one strong match on the fixture screen
+click on sign in	Click/click	the filler on is not part of the target
+left click settings	Click/click	the stand-alone Settings beats the Open Settings run
+right click settings	Click/right_click
+double click settings	Click/double_click
+click open settings	Click/click
+click close	Click/no_text	Clone is one edit away and must not be clicked for close
+click submit	Click/no_text	Summit is one edit away and must not be clicked for submit
+click left	Keybinds/run	filler and side words are no target: the Cursor bind keeps it
+click right	Keybinds/run	filler and side words are no target: the Cursor bind keeps it
+click it	picker	filler and side words are no target: the Cursor binds keep it
+click here	none	not a click target; same as without the Click integration
+click and drag	none	not a click target; same as without the Click integration
+left click and hold	none	not a click target; same as without the Click integration
+click mode	Click/no_text	no text "mode" on the fixture screen; nothing else handles it yet
+show hints	Click/show_hints
+start clicking	none	nothing handles it yet
+click clear	Click/no_text	Clean is one edit away and must not be clicked for clear
+click enable	Click/no_text	Unable is one edit away and must not be clicked for enable
+click export	Click/no_text	Expert is one edit away and must not be clicked for export
+click delete	picker	Deleted is a weak match, never run directly
+click cause	Click/no_text	Pause is one edit away and must not be clicked for cause
+click middle	none	side words are no target: same as without the Click integration
+click on	picker	filler words are no target: the Cursor binds keep it
+click the	picker	filler words are no target: the Cursor binds keep it
+double click it	none	filler words are no target: same as without the Click integration

@@ -1,0 +1,139 @@
+#!/usr/bin/env bash
+# OCR the focused window and print its word boxes for click-match.awk (the input format is described there).
+# The screenshot and the text it holds only ever live in a private directory under $XDG_RUNTIME_DIR, removed on exit.
+set -euo pipefail
+
+# A tall window is OCRed in horizontal strips in parallel: tesseract takes ~1.3 s on a full 1440 px window but ~0.7 s as
+# four to six single-threaded strips. Each strip owns the lines centred in its own rows and is cropped overlap beyond
+# them on both sides, so a line straddling a cut is whole in the strip that owns it. The overlap is overlap_px at
+# scale 1, at least 2.5 times a typical line, and grows with the capture's scale.
+tall_px=1000
+strip_target_px=350
+strips_min=4
+strips_max=6
+overlap_px=80
+dark_below=0.5
+# The x and y scales of a capture agree to within this fraction, or its pixels cannot be mapped to the screen.
+scale_tolerance=0.02
+
+window=$(hyprctl activewindow -j 2>/dev/null | jq -r 'if .at then "\(.at[0]) \(.at[1]) \(.size[0]) \(.size[1]) \(.stableId // "")" else empty end')
+if [ -z "$window" ]; then
+  echo "no focused window" >&2
+  exit 2
+fi
+read -r window_x window_y window_w window_h stable_id <<<"$window"
+if [ "$window_w" -le 0 ] || [ "$window_h" -le 0 ]; then
+  echo "focused window has no size" >&2
+  exit 2
+fi
+
+work=$(mktemp -d "${XDG_RUNTIME_DIR:-/tmp}/voxcmd-click.XXXXXX")
+trap 'rm -rf "$work"' EXIT
+
+# Native scale, no -s: a downscaled capture of a scaled monitor loses words. The real scale comes from the image size
+# below.
+# Capturing the toplevel (-T, by Hyprland's stableId) reads the window's own buffer. A screen region (-g) would
+# composite it over the wallpaper, which shows through translucent windows and costs OCR words.
+capture_toplevel() {
+  [ -n "$stable_id" ] && grim -t ppm -T "$stable_id" "$work/shot.ppm" 2>/dev/null
+}
+capture_region() {
+  grim -t ppm -g "$window_x,$window_y ${window_w}x${window_h}" "$work/shot.ppm"
+}
+
+# Sets image_w and image_h from the PPM header, "P6\n<w> <h>\n255\n", which is followed by raw pixels.
+read_image_size() {
+  read -r _ image_w image_h _ < <(
+    LC_ALL=C head -c 32 "$work/shot.ppm" | LC_ALL=C tr '\n\0' '  '
+    echo
+  )
+}
+
+# Whether the image's horizontal and vertical scales against the window agree.
+scale_is_uniform() {
+  awk -v iw="$image_w" -v ih="$image_h" -v gw="$window_w" -v gh="$window_h" -v tolerance="$scale_tolerance" \
+    'BEGIN { x = iw / gw; y = ih / gh; d = x > y ? x - y : y - x; exit !(d <= tolerance * (x > y ? x : y)) }'
+}
+
+if capture_toplevel; then
+  read_image_size
+  scale_is_uniform || {
+    # A window buffer whose shape is not the window's (a client drawing at its own size) cannot be mapped to the screen.
+    capture_region
+    read_image_size
+  }
+else
+  capture_region
+  read_image_size
+fi
+scale_is_uniform || {
+  echo "capture does not match the window's shape" >&2
+  exit 1
+}
+
+overlap=$(((overlap_px * image_w + window_w / 2) / window_w))
+strips=1
+if [ "$image_h" -gt "$tall_px" ]; then
+  strips=$(((image_h + strip_target_px - 1) / strip_target_px))
+  ((strips >= strips_min)) || strips=$strips_min
+  ((strips <= strips_max)) || strips=$strips_max
+fi
+own_h=$(((image_h + strips - 1) / strips))
+
+# One magick run grays and cuts the strips and measures the mean luminance of the whole image, scaled down first so
+# the mean is cheap.
+magick_args=("$work/shot.ppm" -colorspace Gray -depth 8)
+# crop_top_of is where strip i's image starts, which its tesseract coordinates are relative to.
+crop_top_of=()
+for ((i = 0; i < strips; i++)); do
+  top=$((i * own_h - overlap))
+  ((top >= 0)) || top=0
+  bottom=$(((i + 1) * own_h + overlap))
+  ((bottom <= image_h)) || bottom=$image_h
+  crop_top_of[i]=$top
+  magick_args+=(\( +clone -crop "${image_w}x$((bottom - top))+0+$top" +repage -write "$work/strip$i.pgm" +delete \))
+done
+magick_args+=(\( +clone -filter box -resize 1x1! -format '%[fx:mean]' -write info:- +delete \) null:)
+mean=$(magick "${magick_args[@]}")
+rm -f "$work/shot.ppm"
+
+# Light text on a dark background reads best inverted before tesseract; its own inversion is slower, so it stays off.
+invert=0
+[ "$(awk -v mean="$mean" -v below="$dark_below" 'BEGIN { print (mean < below) }')" = 1 ] && invert=1
+
+ocr_strip() {
+  local file="$work/strip$1.pgm"
+  if [ "$invert" = 1 ]; then
+    magick "$file" -negate pgm:- | tesseract - - --psm 11 --oem 1 -c tessedit_do_invert=0 tsv 2>/dev/null >"$work/strip$1.tsv"
+  else
+    tesseract "$file" - --psm 11 --oem 1 -c tessedit_do_invert=0 tsv 2>/dev/null >"$work/strip$1.tsv"
+  fi
+}
+
+# A single strip may use every core; several run one thread each.
+[ "$strips" = 1 ] || export OMP_THREAD_LIMIT=1
+# A strip that fails must fail the whole run: its missing words would read as "not on screen", or leave one of two
+# matches to be clicked without asking.
+for ((i = 0; i < strips; i++)); do
+  ocr_strip "$i" &
+done
+# The first strip to fail ends the run: the others are killed, children included, rather than left to finish.
+for ((i = 0; i < strips; i++)); do
+  wait -n || {
+    for job in $(jobs -p); do
+      pkill -P "$job" 2>/dev/null
+      kill "$job" 2>/dev/null
+    done
+    echo "ocr failed" >&2
+    exit 1
+  }
+done
+
+printf '#window %s %s %s %s %s %s\n' "$window_x" "$window_y" "$window_w" "$window_h" "$image_w" "$image_h"
+for ((i = 0; i < strips; i++)); do
+  own_top=$((i * own_h))
+  own_bottom=$((own_top + own_h))
+  ((own_bottom <= image_h)) || own_bottom=$image_h
+  printf '#strip %s %s %s %s\n' "$i" "${crop_top_of[i]}" "$own_top" "$own_bottom"
+  cat "$work/strip$i.tsv"
+done
