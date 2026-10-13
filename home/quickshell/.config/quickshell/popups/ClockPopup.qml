@@ -17,9 +17,9 @@ Popup {
     popup_name: "clock"
     title: root.nes ? root.day_title : Qt.formatDate(new Date(root.view_year, root.view_month, 1), "MMM yyyy").toUpperCase()
     preferred_width: 320
-    footer_hint: root.day_level ? "j/k event · n/N event day · Enter join · h/Esc back · c create · t/gg today · Tab/[ ] zone · q close" : root.agenda_on ? "h/l day · j/k week · H/L month · J/K year · n/N event day · Enter day · c create · t/gg today · Tab/[ ] zone · q close" : "h/l day · j/k week · H/L month · J/K year · c create · t/gg today · Tab/[ ] zone · q close"
+    footer_hint: root.day_level ? "j/k event · n/N event day · Enter join · o view · e edit · h/Esc back · c create · t/gg today · Tab/[ ] zone · q close" : root.agenda_on ? "h/l day · j/k week · H/L month · J/K year · n/N event day · Enter day · o day view · c create · t/gg today · Tab/[ ] zone · q close" : "h/l day · j/k week · H/L month · J/K year · o day view · c create · t/gg today · Tab/[ ] zone · q close"
     // The ? view describes both levels, whichever one is showing.
-    key_help: root.agenda_on ? "h/l day · j/k week · H/L month · J/K year · n/N next or previous day with events · Enter open the day · c create · t/gg today · Tab/[ ] zone · q close · j/k event (in a day) · Enter join (in a day) · h/Esc back to the grid" : "h/l day · j/k week · H/L month · J/K year · c create · t/gg today · Tab/[ ] zone · q close"
+    key_help: root.agenda_on ? "h/l day · j/k week · H/L month · J/K year · n/N event day · Enter open the day · o day view · c create · t/gg today · Tab/[ ] zone · q close · j/k event (in a day) · Enter join (in a day) · o view event (in a day) · e edit event (in a day) · h/Esc back to the grid" : "h/l day · j/k week · H/L month · J/K year · o day view · c create · t/gg today · Tab/[ ] zone · q close"
     body_height: content.implicitHeight + 24
 
     property date today: new Date()
@@ -193,11 +193,28 @@ done
 exit 0
 `
 
+    function day_url() {
+        return "https://calendar.google.com/calendar/r/day/" + selected.getFullYear() + "/" + (selected.getMonth() + 1) + "/" + selected.getDate();
+    }
+
+    // Opens the highlighted event in Google Calendar to view it, else that day.
+    function view_in_calendar() {
+        const e = day_level ? day_events[event_index] : null;
+        open_first_link(e ? [e.event_url, day_url()] : [day_url()]);
+    }
+
+    // Opens the highlighted event for editing; an event page without an `eid`, or no event, falls back to viewing.
+    function edit_in_calendar() {
+        const e = day_events[event_index];
+        const eid = e ? /[?&]eid=([^&#]+)/.exec(e.event_url) : null;
+        if (!eid) return view_in_calendar();
+        open_first_link(["https://calendar.google.com/calendar/r/eventedit/" + eid[1], day_url()]);
+    }
+
     // Joins the meeting link, else the event page, else that day in Google Calendar.
     function open_event() {
         const e = day_events[event_index];
-        const day_url = "https://calendar.google.com/calendar/r/day/" + selected.getFullYear() + "/" + (selected.getMonth() + 1) + "/" + selected.getDate();
-        open_first_link(e ? [e.join_url, e.event_url, day_url] : [day_url]);
+        open_first_link(e ? [e.join_url, e.event_url, day_url()] : [day_url()]);
     }
 
     // Google's prefilled new-event form, in UTC. On the selected day it starts at 9:00; for today at the next whole hour
@@ -303,7 +320,8 @@ exit 0
                     in_month: day.getMonth() === view_month,
                     is_today: is_same_day(day, today),
                     date: day,
-                    has_events: CalendarState.has_events(day)
+                    has_events: CalendarState.has_events(day),
+                    synced: CalendarState.is_synced(day)
                 });
             }
         }
@@ -334,8 +352,14 @@ exit 0
                 event.accepted = true;
             };
             // Open and create launch a browser tab, so a held key or a second press while the popup closes must not repeat them.
-            const launching = key === Qt.Key_C || key === Qt.Key_Return || key === Qt.Key_Enter;
+            const launching = key === Qt.Key_C || key === Qt.Key_O || key === Qt.Key_E || key === Qt.Key_Return || key === Qt.Key_Enter;
             if (launching && (event.isAutoRepeat || !root.is_open)) return accept_only();
+            if (key === Qt.Key_O || (key === Qt.Key_E && root.day_level)) {
+                ThemeAudio.play("confirm");
+                if (key === Qt.Key_O) root.view_in_calendar();
+                else root.edit_in_calendar();
+                return accept_only();
+            }
             if (key === Qt.Key_C) {
                 ThemeAudio.play("confirm");
                 root.new_event();
@@ -517,6 +541,9 @@ exit 0
                         readonly property bool is_day: modelData.kind === "day"
                         readonly property bool chosen: is_day && root.is_same_day(modelData.date, root.selected)
 
+                        // Days outside the synced window fade, so they read differently from an empty day.
+                        opacity: is_day && !modelData.synced ? 0.35 : 1
+
                         Layout.fillWidth: true
                         Layout.preferredWidth: 0
                         // Day cells pad around the digits so the selection outline has room, and below them for the event dot.
@@ -610,7 +637,7 @@ exit 0
 
                     Text {
                         visible: root.day_events.length === 0
-                        text: "No events"
+                        text: CalendarState.is_synced(root.selected) ? "No events" : "Not synced"
                         color: root.st.text_muted
                         font.family: root.st.font_family
                         font.pixelSize: root.st.fs(-1)
