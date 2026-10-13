@@ -28,6 +28,7 @@ MAX_FEED_BYTES = 32 * 1024 * 1024
 FETCH_TIMEOUT_SECONDS = 30
 
 MEET_URL_PATTERN = re.compile(r"https://meet\.google\.com/[\w/-]+(?:\?[\w=&%.-]+)?")
+TEAMS_URL_PATTERN = re.compile(r"https://teams\.microsoft\.com/l/meetup-join/[^\s<>\"')\]]+")
 GOOGLE_EVENT_ID_PATTERN = re.compile(r"^[a-z0-9_]+$")
 EMAIL_PATTERN = re.compile(r"^[^@/\s]+@[^@/\s]+$")
 
@@ -167,14 +168,29 @@ def google_event_url(uid, suffix, calendar_id):
     return "https://calendar.google.com/calendar/event?eid=" + eid
 
 
-def find_meet_url(component):
-    conference = component.get("X-GOOGLE-CONFERENCE")
-    if conference:
-        return str(conference)
-    for field in ("LOCATION", "DESCRIPTION", "URL"):
-        match = MEET_URL_PATTERN.search(str(component.get(field, "")))
+def https_url(value):
+    text = str(value).strip()
+    return text if text.startswith("https://") else None
+
+
+def first_match(pattern, component, fields):
+    for field in fields:
+        match = pattern.search(str(component.get(field, "")))
         if match:
             return match.group(0)
+    return None
+
+
+def find_join_url(component):
+    """Google Meet first, then Microsoft Teams. The dedicated property wins over
+    text because a real feed carries both and only the property is exact."""
+    for property_name, pattern, fields in (
+        ("X-GOOGLE-CONFERENCE", MEET_URL_PATTERN, ("LOCATION", "DESCRIPTION", "URL")),
+        ("X-MICROSOFT-SKYPETEAMSMEETINGURL", TEAMS_URL_PATTERN, ("DESCRIPTION", "LOCATION")),
+    ):
+        url = https_url(component.get(property_name, "")) or first_match(pattern, component, fields)
+        if url:
+            return url
     return None
 
 
@@ -218,7 +234,7 @@ def normalize_event(component, recurring_uids, calendar_id):
         "end": end.isoformat(),
         "all_day": all_day,
         "location": str(component.get("LOCATION", "")),
-        "meet_url": find_meet_url(component),
+        "join_url": find_join_url(component),
         "event_url": google_event_url(uid, suffix, calendar_id) or day_view_url(start),
         "status": status,
         "organizer": mailto_address(organizer) if organizer else "",

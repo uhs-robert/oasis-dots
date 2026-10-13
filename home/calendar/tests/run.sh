@@ -66,7 +66,7 @@ by_title = {}
 for event in events:
     by_title.setdefault(event["title"], []).append(event)
 
-expected_keys = {"uid", "title", "start", "end", "all_day", "location", "meet_url",
+expected_keys = {"uid", "title", "start", "end", "all_day", "location", "join_url",
                  "event_url", "status", "organizer", "attendees"}
 assert all(set(event) == expected_keys for event in events)
 
@@ -84,29 +84,37 @@ assert review["start"].startswith("2026-10-13T14:00:00"), review["start"]
 assert review["end"].startswith("2026-10-13T15:00:00")
 assert not review["all_day"]
 assert review["location"] == "Room 4, second floor"
-assert review["meet_url"] == "https://meet.google.com/abc-defg-hij"
+assert review["join_url"] == "https://meet.google.com/abc-defg-hij"
 assert review["organizer"] == "alice@example.com"
 assert review["attendees"] == ["alice@example.com", "bob@example.com"]
 assert eid(review["event_url"]) == "review1 alice@example.com"
 
+teams = by_title["Vendor sync"][0]
+assert teams["join_url"] == "https://teams.microsoft.com/l/meetup-join/19%3ameeting_EXAMPLE%40thread.v2/0?context=%7b%22Tid%22%3a%22example%22%7d", teams["join_url"]
+
+assert by_title["Description only"][0]["join_url"] == "https://teams.microsoft.com/l/meetup-join/example2/0"
+
+insecure = by_title["Insecure link"][0]
+assert insecure["join_url"] is None, "http links are not accepted"
+
 offsite = by_title["Team offsite"][0]
 assert offsite["all_day"] and offsite["start"].startswith("2026-10-14T00:00:00")
 assert offsite["end"].startswith("2026-10-15T00:00:00")
-assert offsite["meet_url"] is None
+assert offsite["join_url"] is None
 
 old_sync = by_title["Old sync"][0]
 assert old_sync["status"] == "cancelled"
 
 planning = by_title["Planning"][0]
 assert planning["status"] == "tentative"
-assert planning["meet_url"] == "https://meet.google.com/lmn-opqr-stu"
+assert planning["join_url"] == "https://meet.google.com/lmn-opqr-stu"
 assert planning["event_url"] == "https://calendar.google.com/calendar/r/day/2026/10/16", "day view fallback"
 
 standups = by_title["Standup"]
 standup_days = [e["start"][:10] for e in standups]
 assert standup_days == ["2026-10-07", "2026-10-28", "2026-11-04", "2026-11-11"], standup_days
 assert "2026-10-14" not in standup_days, "EXDATE"
-assert all(e["meet_url"] == "https://meet.google.com/xyz-wxyz-uvw" for e in standups)
+assert all(e["join_url"] == "https://meet.google.com/xyz-wxyz-uvw" for e in standups)
 assert len({e["uid"] for e in events}) == len(events), "uids unique"
 assert eid(standups[1]["event_url"]) == "standup1_20261028T093000Z alice@example.com"
 
