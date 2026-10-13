@@ -2,7 +2,8 @@
 # Routes every phrase in phrases.tsv with `voxcmd --dry-run` inside the sandbox and fails when one lands somewhere
 # other than its expected column: "Integration/action" for a single option that runs, "picker", "none" or "builtin".
 # The fixtures stand in for the windows (Firefox, Slack and kitty), binds, audio devices, apps, agents, timers, tmux
-# sessions and the text OCR reads in the focused window, so the result does not depend on what is open; no private integration is loaded.
+# sessions, the text OCR reads in the focused window and a Firefox profile's tabs and history, so the result does not
+# depend on what is open; no private integration is loaded.
 #
 #   home/voxcmd/tests/run-phrases.sh
 set -euo pipefail
@@ -45,6 +46,9 @@ route_of() {
       found = 1
     }'
 }
+
+# Firefox's tabs and places, in the sandbox's own HOME.
+"$tests_dir/firefox-profile" "$HOME/.config/mozilla/firefox"
 
 phrases=() expected=()
 while IFS=$'\t' read -r phrase expected_route _; do

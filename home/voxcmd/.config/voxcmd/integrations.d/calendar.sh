@@ -44,7 +44,7 @@ declare -A actions=(
   [day_today]='show_day today'
   [new]='new_event "$target" "$raw_transcript"'
   [new_blank]='open_url "$(create_url)"'
-  [calendar]='open_url https://calendar.google.com'
+  [calendar]='open_page https://calendar.google.com'
 )
 # The browser tab and the bar popup are the answer; a toast would cover them. Joining a meeting still says which.
 silent_actions=(day day_today new new_blank calendar)
@@ -62,6 +62,14 @@ candidates() {
 # browser off voxcmd's output pipe, which would otherwise hold the notification until it exits.
 open_url() {
   setsid -f xdg-open "$1" >/dev/null 2>&1 </dev/null
+}
+
+# A page that may already be open: with Firefox running, its tab is focused (firefox-tab goto, the same as "go to
+# <site>"), else the page opens as open_url does. A new-event form is always opened fresh, so it never uses this.
+open_page() {
+  local status=0
+  "$voxcmd_share_dir/firefox-tab" goto --running "$1" >/dev/null 2>&1 || status=$?
+  [ "$status" != 3 ] || open_url "$1"
 }
 
 # Notification bodies are rendered as rich text by the bar, and anyone can send an invite with markup in its title.
@@ -125,7 +133,7 @@ open_meeting() {
     echo "$title has no meeting link"
     return
   fi
-  open_url "$link"
+  open_page "$link"
   if [ -n "$(jq -r '.join_url // empty' <<<"$event")" ]; then
     echo "Joining $title"
   else

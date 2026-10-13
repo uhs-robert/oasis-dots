@@ -1211,4 +1211,121 @@ check "a bare target becomes a click" "[[ \$(session_rewrite_of 'sign in') == 'c
 check "a click phrase is routed as spoken" "[[ \$(session_rewrite_of 'right click settings') == 'right click settings' && \$(session_rewrite_of 'double click on readme') == 'double click on readme' ]]"
 check "a bare click names no target" "[[ -z \$(session_rewrite_of 'right click') && -z \$(session_rewrite_of click) ]]"
 check "the entry phrases are not read as targets" "[[ \$(session_rewrite_of 'clicking mode') == 'clicking mode' && \$(session_rewrite_of 'click mode') == 'click mode' ]]"
+# ---- Firefox: firefox-tab and firefox.sh, on a made-up profile -----------------------------------------------------
+
+section "firefox"
+firefox_tab=$share_dir/firefox-tab
+firefox_root=$HOME/.config/mozilla/firefox
+# A fresh profile, with Tridactyl loaded as $1 says (store, temporary, stale or none).
+make_profile() { rm -rf -- "${firefox_root:?}" && "$here/firefox-profile" "$firefox_root" "$1"; }
+# Window 0's selected tab titles 0x3001; window 1 shows a tab the store has not recorded as selected yet; the private
+# window is in no store; window 2 of the store is open nowhere.
+export SANDBOX_CLIENTS_JSON='[
+  {"address": "0x3001", "mapped": true, "class": "firefox", "title": "Example Docs - Getting started — Mozilla Firefox", "focusHistoryID": 1, "workspace": {"id": 1}},
+  {"address": "0x3002", "mapped": true, "class": "firefox", "title": "Inbox - Mailbox — Mozilla Firefox", "focusHistoryID": 2, "workspace": {"id": 1}},
+  {"address": "0x3003", "mapped": true, "class": "firefox", "title": "Private notes — Mozilla Firefox Private Browsing", "focusHistoryID": 3, "workspace": {"id": 1}},
+  {"address": "0x1003", "mapped": true, "class": "kitty", "title": "zsh", "focusHistoryID": 0, "workspace": {"id": 1}}]'
+firefox_window() { jq -c --arg address "$1" '.[] | select(.address == $address)' <<<"$SANDBOX_CLIENTS_JSON"; }
+SANDBOX_ACTIVEWINDOW_JSON=$(firefox_window 0x1003)
+export SANDBOX_ACTIVEWINDOW_JSON
+typed() { grep '^wtype ' "$log" | sed 's/^wtype //'; }
+
+make_profile none
+out=$("$firefox_tab" tabs)
+check "the profile installs.ini names is read, not profiles.ini's Default=1" "[[ \$(jq length <<<\"\$out\") -gt 0 ]]"
+check "the store decodes, matches and all, and hidden tabs are left out" "[[ \$(jq '[.[] | select(.window == 0)] | length' <<<\"\$out\") == 4 ]]"
+check "a tab's title is its current history entry's" "jq -e 'any(.[]; .title == \"Example Docs - Getting started\" and .selected)' <<<\"\$out\" >/dev/null"
+check "a window is found by its selected tab's title" "[[ \$(jq -r '[.[] | select(.window == 0) | .address] | unique | join(\" \")' <<<\"\$out\") == 0x3001 ]]"
+check "or by any of its tabs while the store lags" "[[ \$(jq -r '[.[] | select(.window == 1) | .address] | unique | join(\" \")' <<<\"\$out\") == 0x3002 ]]"
+check "a store window open nowhere has no address" "[[ \$(jq -r '[.[] | select(.window == 2) | .address] | unique | join(\" \")' <<<\"\$out\") == '' ]]"
+check "a window the store lacks is listed by its title" "jq -e 'any(.[]; .window == null and .address == \"0x3003\" and .title == \"Private notes\")' <<<\"\$out\" >/dev/null"
+
+out=$("$firefox_tab" places team)
+check "places reads rows still in the write-ahead log" "[[ \$(jq -r '.[0] | \"\(.kind) \(.title)\"' <<<\"\$out\") == 'bookmark Team Wiki' ]]"
+out=$("$firefox_tab" places code hub)
+check "every word must be in the title or url, and hidden or place: rows are not" "[[ \$(jq -r 'map(.url) | join(\" \")' <<<\"\$out\") == https://code.example.org/ ]]"
+out=$("$firefox_tab" places example)
+check "sites come before pages" "[[ \$(jq -r '.[0].kind' <<<\"\$out\") == origin ]]"
+check "a folder is no bookmark" "! grep -q folder <<<\"\$out\""
+out=$("$firefox_tab" candidates sites "example com" --raw "Open example.com in Firefox.")
+check "a domain said alone is a site of its own" "[[ \$(jq -r '.[0].id' <<<\"\$out\") == https://example.com ]]"
+out=$("$firefox_tab" candidates sites "node js docs" --raw "open node.js docs")
+check "a domain inside other words is not" "! grep -q 'https://node.js' <<<\"\$out\""
+out=$("$firefox_tab" candidates tabs "tubesite" --raw "go to tubesite")
+check "tabs are offered by their site's name, most recent first" "[[ \$(jq -r '[.[] | select(.match_text == \"tubesite\") | .label] | join(\"|\")' <<<\"\$out\") == 'Another cat video - TubeSite (tubesite.example)|Funny cat video - TubeSite (tubesite.example)' ]]"
+
+for mode in store temporary stale none; do
+  make_profile "$mode"
+  expected=$mode
+  [[ $mode != stale ]] || expected=none
+  check "Tridactyl loaded as $mode reads as $expected" "[[ \$(\"\$firefox_tab\" tridactyl) == $expected ]]"
+done
+check "VOXCMD_FIREFOX_TRIDACTYL overrides it" "[[ \$(VOXCMD_FIREFOX_TRIDACTYL=on \"\$firefox_tab\" tridactyl) == store ]]"
+
+make_profile temporary
+: >"$log"
+out=$(SANDBOX_ACTIVEWINDOW_JSON=$(firefox_window 0x3002) "$firefox_tab" focus 0x3002 "Inbox - Mailbox")
+check "focus focuses the window" "grep -q \"^hyprctl dispatch hl.dsp.focus({ window = 'address:0x3002' })\" '$log'"
+check "then types :tab with the title through Tridactyl's escape hatch" "[[ \"\$(typed | paste -sd'|')\" == '-M alt , -m alt|-k Escape|:|-- tab Inbox - Mailbox|-k Return' ]]"
+: >"$log"
+status=0
+out=$("$firefox_tab" focus 0x3002 "Inbox - Mailbox") || status=$?
+check "nothing is typed when the window does not take focus" "[[ \$status != 0 && -z \$(typed) ]]"
+check "and it says so" "[[ \$out == 'the Firefox window did not take focus' ]]"
+make_profile stale
+: >"$log"
+out=$(SANDBOX_ACTIVEWINDOW_JSON=$(firefox_window 0x3002) "$firefox_tab" focus 0x3002 "Inbox - Mailbox")
+check "without Tridactyl only the window is focused" "grep -q 'hyprctl dispatch' '$log' && [[ -z \$(typed) ]]"
+
+: >"$log"
+status=0
+SANDBOX_CLIENTS_JSON='[]' "$firefox_tab" goto --running https://tubesite.example >/dev/null || status=$?
+check "goto --running leaves a closed Firefox to the caller" "[[ \$status == 3 ]] && ! grep -q 'dispatch\\|firefox' '$log'"
+
+make_profile store
+: >"$log"
+out=$(SANDBOX_ACTIVEWINDOW_JSON=$(firefox_window 0x3001) "$firefox_tab" goto https://tubesite.example)
+check "goto focuses the most recent tab on the site" "[[ \"\$(typed | grep '^-- ')\" == '-- tab Another cat video - TubeSite' ]]"
+: >"$log"
+out=$("$firefox_tab" goto https://unopened.example/page)
+check "and opens a site no tab shows" "grep -q '^setsid owner= -f firefox --new-tab https://unopened.example/page' '$log'"
+: >"$log"
+status=0
+out=$("$firefox_tab" open "javascript:alert(1)") || status=$?
+check "open takes web urls only" "[[ \$status != 0 ]] && ! grep -q firefox '$log'"
+: >"$log"
+out=$("$firefox_tab" open --here https://example.com/)
+check "open --here needs Firefox focused" "[[ \$out == 'Firefox is not focused' && -z \$(typed) ]]"
+: >"$log"
+out=$(SANDBOX_ACTIVEWINDOW_JSON=$(firefox_window 0x3001) "$firefox_tab" open --here https://example.com/)
+check "and types into the address bar" "[[ \"\$(typed | paste -sd'|')\" == '-M ctrl l -m ctrl|-- https://example.com/|-k Return' ]]"
+: >"$log"
+out=$("$firefox_tab" close-tab)
+check "close-tab never closes a tab in a window not focused" "[[ \$out == 'Firefox is not focused' && -z \$(typed) ]]"
+
+: >"$log"
+out=$(SANDBOX_ACTIVEWINDOW_JSON=$(firefox_window 0x3001) "$firefox_tab" hints 12)
+script=$(typed | grep '^-- js ' || true)
+check "hints are numbered for this run only, in the page's memory" "grep -q 'config.hintnames=\"numeric\";config.hintautoselect=\"false\"' <<<\"\$script\" && ! grep -q 'config.set' <<<\"\$script\""
+check "and the settings go back once the hint run ends" "grep -q 'tri.excmds.hint().then(restore,restore)' <<<\"\$script\""
+check "a number follows that hint, and no other when it is missing" "grep -q 'names.includes(\"12\"))return keys.reset()' <<<\"\$script\""
+: >"$log"
+out=$(SANDBOX_ACTIVEWINDOW_JSON=$(firefox_window 0x3001) "$firefox_tab" hints '1");alert(1);("')
+check "a link number is digits only" "[[ \$out == not\\ a\\ link\\ number:* && -z \$(typed) ]]"
+make_profile none
+: >"$log"
+out=$(SANDBOX_ACTIVEWINDOW_JSON=$(firefox_window 0x3001) "$firefox_tab" hints)
+check "hints need Tridactyl" "[[ \$out == 'link hints need Tridactyl' && -z \$(typed) ]]"
+
+firefox_config=$root/firefox-config
+mkdir -p "$firefox_config/integrations.d" "$firefox_config/replacements.d"
+cp "$package"/.config/voxcmd/integrations.d/{apps,firefox,firefox-sites,keybinds}.sh "$firefox_config/integrations.d/"
+out=$(VOXCMD_CONFIG_DIR=$firefox_config "$voxcmd" --dry-run "go to inbox mailbox" 2>&1)
+check "a tab shown in a second window is one tab, not also that window" "[[ \$(grep -c '^option' <<<\"\$out\") == 1 ]] && grep -q 'action=focus_tab' <<<\"\$out\""
+out=$(VOXCMD_CONFIG_DIR=$firefox_config "$voxcmd" --dry-run "go to private notes" 2>&1)
+check "a private window is found by its title" "grep -q \"action=focus_tab .* id='0x3003 Private notes'\" <<<\"\$out\""
+rm -f "$firefox_config/integrations.d/firefox.sh"
+out=$(VOXCMD_CONFIG_DIR=$firefox_config "$voxcmd" --dry-run "go to inbox mailbox" 2>&1)
+check "without firefox.sh, Apps still focuses the window by its title" "grep -q 'Apps (apps.sh) action=focus' <<<\"\$out\""
+
 finish

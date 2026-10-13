@@ -301,7 +301,7 @@ chmod +x "$stub_dir/.stub"
 stubbed_commands=(
   hyprctl pw-dump keeptabs-pick systemctl tmux
   systemd-run notify-send pamixer wpctl bluetoothctl playerctl brightnessctl powerprofilesctl
-  grim tesseract magick wlrctl wl-kbptr wtype wl-copy voxtype wf-recorder xdg-open setsid rofi qs-ipc
+  grim tesseract magick wlrctl wl-kbptr wtype wl-copy voxtype wf-recorder xdg-open setsid rofi qs-ipc firefox
   voxcmd-pick voxcmd-autostop
 )
 read -ra extra_stubs <<<"${SANDBOX_EXTRA_STUBS:-}"

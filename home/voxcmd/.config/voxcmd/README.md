@@ -480,7 +480,7 @@ Needs `grim`, `tesseract` and `tesseract-data-eng`, `imagemagick`, `wlrctl` and 
 The overlay writes the number into the pick's FIFO, a voice reply the displayed label; either maps to the choice's id. While it waits, `voxcmd-hints` keeps the same `pending-pick.json` as `voxcmd-pick`, with `kind: "hints"`, `listen_again` and numbered labels. Without the bar, with more than ten choices, or when a choice has no box, it hands the pick to `voxcmd-pick`.
 ### Calendar
 
-`calendar.sh` works with Google Calendar. It reads the events cache `calendar-sync` keeps at `$XDG_CACHE_HOME/calendar/events.json` (default `~/.cache/calendar/events.json`) and opens pages with `xdg-open`, so in the default browser; without the cache it says the calendar isn't set up.
+`calendar.sh` works with Google Calendar. It reads the events cache `calendar-sync` keeps at `$XDG_CACHE_HOME/calendar/events.json` (default `~/.cache/calendar/events.json`) and opens pages with `xdg-open`, so in the default browser, or focuses the Firefox tab that already shows one; without the cache it says the calendar isn't set up.
 
 | Say | Does |
 | --- | --- |
@@ -499,8 +499,26 @@ The overlay writes the number into the pick's FIFO, a voice reply the displayed 
 - Days are "today", "tomorrow" and weekday names; "next friday" is never today.
 - "my calendar" and "the calendar" always mean Google Calendar here; `apps.sh` leaves them alone, so an installed Calendar app does not turn "open my calendar" into a picker. "open calendar" still opens the app.
 - Joining says which meeting; the day view, a new meeting and the calendar stay [silent](#silent-actions), since the popup or the tab is the feedback.
-- Every page opens through `open_url` in `calendar.sh`.
+- A meeting link and "open my calendar" go through `open_page` in `calendar.sh`: with Firefox open, a tab already showing the page is focused (`firefox-tab goto`, as in [Firefox](#firefox)), else `xdg-open` as everywhere. The new-event form always opens fresh through `open_url`.
 - `tests/run-calendar.sh` runs these phrases against a placeholder cache in `tests/sandbox.sh` and checks the URLs and calls.
+
+### Firefox
+
+`firefox.sh` and `firefox-sites.sh` (with the helper `~/.local/share/voxcmd/firefox-tab`) reach the browser itself. Tabs and sites are read, never written: the session store (`sessionstore-backups/recovery.jsonlz4`) for tabs, a copy of `places.sqlite` and its write-ahead log for bookmarks and history, from the profile `installs.ini` names. Windows are matched to the store by their title. Tabs, link hints and the address bar are driven by typing into the focused Firefox window with `wtype`, through Tridactyl's command line (`:tab <title>`, `:js` for hints) or Firefox's own keys, so nothing needs installing in Firefox beyond Tridactyl.
+
+| Say | Does |
+| --- | --- |
+| "go to weekly notes", "find the weekly notes tab", "go to example.com" | Focuses the window and tab whose title or site matches; several matches ask with numbers. A domain with no tab open is opened in a new tab. "go to firefox" is still the window |
+| "open code hub in firefox", "open website code hub", "open example.com" | Opens a bookmark, a visited site or a domain in a new tab; nothing found is searched when Firefox was named. A bare "open X" reaches this only when no app, keybind or other integration has it |
+| "open code hub here" | The same, in the focused tab |
+| "show links", "follow link 3" | Numbered link hints; follows that number. Needs Tridactyl |
+| "new tab", "close tab" | Ctrl+T and Ctrl+W in the focused Firefox window |
+
+- Tridactyl as the store add-on is read from `extensions.json`; one loaded temporarily from a folder is recognised when its storage changed since Firefox started (`firefox-tab tridactyl` prints `store`, `temporary` or `none`; `VOXCMD_FIREFOX_TRIDACTYL=on|off` overrides). With `none`, "go to" only focuses the window.
+- Hints are numbered for that one run only, in the page's memory; the saved Tridactyl settings are untouched.
+- The store lags a tab switch by up to 15 seconds, so a window is also found by any of its tabs' titles. Private windows are in no store and are found by the title they show.
+- While `firefox.sh` is installed, `apps.sh` stops matching Firefox windows by their title, so a tab is offered once.
+- `tests/run.sh` (section "firefox") and the Firefox rows of `tests/phrases.tsv` run on a made-up profile built by `tests/firefox-profile`.
 
 ## Voice Help
 
