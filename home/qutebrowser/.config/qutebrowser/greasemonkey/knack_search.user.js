@@ -1561,10 +1561,18 @@ const getIdPrefix = (str) => {
 
 const openInBuilder = (key) => {
   const type = getIdPrefix(key);
-  if (!type) return console.error(`[knack.open] Unknown ID prefix for: ${key}. Expected scene_N, view_N, object_N, or field_N`);
+  if (!type)
+    return console.error(
+      `[knack.open] Unknown ID prefix for: ${key}. Expected scene_N, view_N, object_N, or field_N`,
+    );
 
-  const matches = filterKnackModels(type, [{ property: "key", operator: "is", value: key }], false);
-  if (!matches?.length) return console.error(`[knack.open] No ${type} found with key: ${key}`);
+  const matches = filterKnackModels(
+    type,
+    [{ property: "key", operator: "is", value: key }],
+    false,
+  );
+  if (!matches?.length)
+    return console.error(`[knack.open] No ${type} found with key: ${key}`);
 
   const attr = matches[0];
   let path;
@@ -1593,23 +1601,23 @@ const openInBuilder = (key) => {
 // Serialize openInBuilder and its dependencies into the page world via an injected <script>.
 (function exportApiToPageWorld() {
   const operatorsSrc =
-    '{\n' +
+    "{\n" +
     Object.entries(operators)
       .map(([k, fn]) => `  ${JSON.stringify(k)}: ${fn.toString()}`)
-      .join(',\n') +
-    '\n}';
+      .join(",\n") +
+    "\n}";
 
   const fns = [
-    ['getIdPrefix', getIdPrefix],
-    ['getBuilderBaseUrl', getBuilderBaseUrl],
-    ['getBuilderPath', getBuilderPath],
-    ['filterKnackModels', filterKnackModels],
-    ['openInBuilder', openInBuilder],
+    ["getIdPrefix", getIdPrefix],
+    ["getBuilderBaseUrl", getBuilderBaseUrl],
+    ["getBuilderPath", getBuilderPath],
+    ["filterKnackModels", filterKnackModels],
+    ["openInBuilder", openInBuilder],
   ];
 
   const fnSrc = fns
     .map(([name, fn]) => `const ${name} = ${fn.toString()};`)
-    .join('\n  ');
+    .join("\n  ");
 
   const src = `(function(){
   window.knack_search = window.knack_search || {};
@@ -1618,7 +1626,7 @@ const openInBuilder = (key) => {
   window.knack_search.open = openInBuilder;
 })();`;
 
-  const s = document.createElement('script');
+  const s = document.createElement("script");
   s.textContent = src;
   (document.head || document.documentElement).appendChild(s);
   s.remove();
