@@ -241,7 +241,7 @@ The main binds that open things (the leader is `SUPER`):
 | `SUPER + CTRL + E`                    | Emoji picker                                       |
 | `ALT + TAB`, `SUPER + TAB`            | Workspace overview (also the top-left hot corner)  |
 | `Print`, `SUPER + I`                  | Screenshot and recording tool                      |
-| `SUPER + [` / `]`                     | Previous / next notification toast, or floating window when no toast shows |
+| `SUPER + [` / `]`                     | Previous / next notification toast, else take the keyboard back for the open popup, else floating window |
 | `ALT + GRAVE`                         | Tmux overview                                      |
 | `SUPER + Z`                           | Zoom                                               |
 | `SUPER + P`                           | Color picker                                       |
@@ -268,7 +268,7 @@ qs-ipc show        # list every target and function
 
 | Target          | Functions                                                             |
 | --------------- | --------------------------------------------------------------------- |
-| `popup`         | `open <name>`, `toggle <name>`, `close`                               |
+| `popup`         | `open <name>`, `toggle <name>`, `close`, `focus`, `state`             |
 | `picker`        | `open <name>`, `open_with <name> <mode>`, `toggle <name>`, `close`    |
 | `settings`      | `open <section>`, `toggle`                                            |
 | `style`         | `set`, `cycle`, `get`, `set_lock`, `set_lock_tint`, `set_lock_backdrop`, `toggle_cava_line` and their getters |

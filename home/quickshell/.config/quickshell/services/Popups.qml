@@ -21,9 +21,8 @@ Singleton {
     // While set, the open popup and the scrim take no keyboard focus and no pointer input, so IPC can show one on a screen the owner is not using.
     // Cleared by every open() that does not ask for it, and by close().
     property bool hands_off: false
-    // The popup whose window has keyboard focus, reported by each Popup; "" when none does.
-    property string keyboard_held_name: ""
     // Asks the open popup for the keyboard; it holds it Exclusive until the window is active, then lets go.
+    // The popup clears it straight away when its window already has the keyboard.
     property bool grab_keyboard: false
     // Popup name to reopen on Backspace, e.g. "start" for popups opened from the Start menu.
     property string back_name: ""
@@ -157,6 +156,7 @@ Singleton {
         load_name = name;
         open_name = name;
         back_name = "";
+        grab_keyboard = false;
         root.hands_off = !!hands_off;
         return true;
     }
@@ -165,9 +165,9 @@ Singleton {
     function focus_open() {
         const focused = Hyprland.focusedMonitor ? Hyprland.focusedMonitor.name : "";
         if (settled_name === "" || settled_name !== open_name || hands_off) return false;
-        if (open_screen_name !== focused || keyboard_held_name === open_name) return false;
+        if (open_screen_name !== focused) return false;
         grab_keyboard = true;
-        return true;
+        return grab_keyboard;
     }
 
     function mark_settled(name, settled) {

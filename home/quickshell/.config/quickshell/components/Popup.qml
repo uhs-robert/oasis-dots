@@ -331,15 +331,18 @@ PanelWindow {
         }
     }
 
-    // Drops the temporary grab once the window has the keyboard, so a click on another window still takes it.
+    // Whether this popup's window holds the keyboard; gaining it ends a grab, so a click on another window still takes it.
     readonly property bool keyboard_active: content_scope.Window.active
     onKeyboard_activeChanged: {
-        if (root.passive) return;
-        if (root.keyboard_active) Popups.keyboard_held_name = root.popup_name;
-        else if (Popups.keyboard_held_name === root.popup_name) Popups.keyboard_held_name = "";
-        if (root.keyboard_active && root.wanted) {
-            Popups.grab_keyboard = false;
-            root.focus_active_view();
+        if (root.passive || !root.wanted || !root.keyboard_active) return;
+        Popups.grab_keyboard = false;
+        root.focus_active_view();
+    }
+    // A grab asked for while the window already has the keyboard is refused at once, so focus_open reports nothing to do.
+    Connections {
+        target: Popups
+        function onGrab_keyboardChanged() {
+            if (Popups.grab_keyboard && root.wanted && root.keyboard_active) Popups.grab_keyboard = false;
         }
     }
 
