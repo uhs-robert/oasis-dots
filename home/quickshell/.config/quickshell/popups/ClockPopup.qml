@@ -17,9 +17,9 @@ Popup {
     popup_name: "clock"
     title: root.nes ? root.day_title : Qt.formatDate(new Date(root.view_year, root.view_month, 1), "MMM yyyy").toUpperCase()
     preferred_width: 320
-    footer_hint: root.day_level ? "j/k event · Enter join · h/Esc back · t/gg today · n new · Tab/[ ] zone · q close" : root.agenda_on ? "h/l day · j/k week · H/L month · J/K year · Enter day · n new · t/gg today · Tab/[ ] zone · q close" : "h/l day · j/k week · H/L month · J/K year · n new · t/gg today · Tab/[ ] zone · q close"
+    footer_hint: root.day_level ? "j/k event · n/N event day · Enter join · h/Esc back · c create · t/gg today · Tab/[ ] zone · q close" : root.agenda_on ? "h/l day · j/k week · H/L month · J/K year · n/N event day · Enter day · c create · t/gg today · Tab/[ ] zone · q close" : "h/l day · j/k week · H/L month · J/K year · c create · t/gg today · Tab/[ ] zone · q close"
     // The ? view describes both levels, whichever one is showing.
-    key_help: root.agenda_on ? "h/l day · j/k week · H/L month · J/K year · Enter open the day · n new · t/gg today · Tab/[ ] zone · q close · j/k event (in a day) · Enter join (in a day) · h/Esc back to the grid" : "h/l day · j/k week · H/L month · J/K year · n new · t/gg today · Tab/[ ] zone · q close"
+    key_help: root.agenda_on ? "h/l day · j/k week · H/L month · J/K year · n/N next or previous day with events · Enter open the day · c create · t/gg today · Tab/[ ] zone · q close · j/k event (in a day) · Enter join (in a day) · h/Esc back to the grid" : "h/l day · j/k week · H/L month · J/K year · c create · t/gg today · Tab/[ ] zone · q close"
     body_height: content.implicitHeight + 24
 
     property date today: new Date()
@@ -90,6 +90,11 @@ Popup {
     }
 
     onAgenda_onChanged: if (!root.agenda_on) root.day_level = false
+
+    function jump_event_day(step) {
+        const date = CalendarState.adjacent_event_day(selected, step);
+        if (date) select_day(date);
+    }
 
     function enter_day() {
         root.day_level = true;
@@ -165,12 +170,28 @@ Popup {
         remember_choice();
     }
 
-    // Opens the first candidate that is an https link, once the popup has let go of the keyboard.
+    // Opens the first candidate that is an https link, once the popup has let go of the keyboard. Joining and creating both
+    // come through here. Firefox handed a URL from a process without an activation token is not raised by the compositor,
+    // so after the launch the script focuses a Firefox window itself, as soon as one exists.
     function open_first_link(candidates) {
         const url = candidates.find(u => /^https:\/\//.test(u));
         if (!url) return;
-        Popups.after_close(() => Quickshell.execDetached(["sh", "-c", "if command -v firefox >/dev/null; then exec firefox --new-tab \"$1\"; else exec xdg-open \"$1\"; fi", "sh", url]));
+        // Read before the popup closes: the LazyLoader destroys the popup, and `root` is null by the time the callback runs.
+        const script = root.open_and_focus_script;
+        Popups.after_close(() => Quickshell.execDetached(["sh", "-c", script, "sh", url]));
     }
+
+    readonly property string open_and_focus_script: `
+if command -v firefox >/dev/null; then firefox --new-tab "$1" & else exec xdg-open "$1"; fi
+command -v hyprctl >/dev/null && command -v jq >/dev/null || exit 0
+for _ in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20; do
+  addr=$(hyprctl -j clients | jq -r '[.[] | select(.class == "org.mozilla.firefox")] | sort_by(.focusHistoryID) | .[0].address // empty')
+  [ -n "$addr" ] && break
+  sleep 0.25
+done
+[ -n "$addr" ] && hyprctl dispatch "hl.dsp.focus({ window = 'address:$addr' })"
+exit 0
+`
 
     // Joins the meeting link, else the event page, else that day in Google Calendar.
     function open_event() {
@@ -313,11 +334,17 @@ Popup {
                 event.accepted = true;
             };
             // Open and create launch a browser tab, so a held key or a second press while the popup closes must not repeat them.
-            const launching = key === Qt.Key_N || key === Qt.Key_Return || key === Qt.Key_Enter;
+            const launching = key === Qt.Key_C || key === Qt.Key_Return || key === Qt.Key_Enter;
             if (launching && (event.isAutoRepeat || !root.is_open)) return accept_only();
-            if (key === Qt.Key_N) {
+            if (key === Qt.Key_C) {
                 ThemeAudio.play("confirm");
                 root.new_event();
+                return accept_only();
+            }
+            // Like vim's search: n is the next day with events, Shift+n the previous; the level stays as it is.
+            if (key === Qt.Key_N) {
+                if (root.agenda_on) root.jump_event_day(shifted ? -1 : 1);
+                root.play_if_moved(before);
                 return accept_only();
             }
             if (key === Qt.Key_Return || key === Qt.Key_Enter) {

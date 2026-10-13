@@ -107,6 +107,16 @@ Singleton {
         return index;
     }
 
+    // Days that have events, oldest first.
+    readonly property var event_days: Object.keys(root.day_index).sort()
+
+    // The nearest day with events after (step 1) or before (step -1) `date`, searching the whole cache; null when there is none.
+    function adjacent_event_day(date, step) {
+        const here = root.day_key(date);
+        const key = step > 0 ? root.event_days.find(k => k > here) : root.event_days.slice().reverse().find(k => k < here);
+        return key ? root.parse_day(key) : null;
+    }
+
     function events_on(date) {
         return root.day_index[root.day_key(date)] || [];
     }

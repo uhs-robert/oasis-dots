@@ -134,7 +134,8 @@ The popup has two levels, both fully keyboard driven. At the grid level the curs
 | `j` / `k`, `Down` / `Up` | Cursor day, forward or back one week |
 | `H` / `L`, `J` / `K` (Shift) | Month, then year; the cursor keeps its day of the month |
 | `Enter` | Open day level for the cursor day (with a cache; an empty day shows "No events") |
-| `n` | New event on the cursor day |
+| `n` / `N` | Jump the cursor to the next / previous day that has events, anywhere in the cache (does nothing past the last one) |
+| `c` | Create an event on the cursor day |
 | `t` / `gg` | Back to today |
 | `Tab`, `[` `]` | Time zone |
 
@@ -143,12 +144,13 @@ The popup has two levels, both fully keyboard driven. At the grid level the curs
 | `j` / `k`, `Down` / `Up` | Move between the day's events; the highlighted one is detailed below the list (time or "All day", title, location, organizer, guest count, "Tentative", and what Enter does) |
 | `Enter` | Join the event's `join_url` (Google Meet or Teams), else open its Calendar page, else that day in Calendar |
 | `Esc`, `h`, `Left` | Back to the grid, same day |
-| `n` | New event on that day: Google's form, in UTC, 9:00 to 10:00, or for today the next whole hour (9:00 tomorrow after 22:00) |
+| `n` / `N` | Next / previous day with events; stays at day level and highlights that day's first open meeting |
+| `c` | Create an event on that day: Google's form, in UTC, 9:00 to 10:00, or for today the next whole hour (9:00 tomorrow after 22:00) |
 | `q` | Close |
 
 Moving the cursor works without a calendar cache; the dots, the agenda and day level need one. Clicking a day equals moving to it and pressing Enter, and clicking an event highlights it, but nothing needs the mouse. `calendar open_day <date>` opens the popup at grid level on that date. The agenda area keeps one height across both levels and every day (the list shows eight rows at grid level and three beside the details at day level), so the popup never resizes.
 
-Links open with `firefox --new-tab`, or `xdg-open` when Firefox is not installed. Clicking a day selects it.
+Links open with `firefox --new-tab`, or `xdg-open` when Firefox is not installed, and the script then focuses the Firefox window itself through `hyprctl`, since a launch without an activation token is not raised by Hyprland. Joining and creating share this path. Clicking a day selects it.
 
 Settings > Clock sets the time format and the calendar's first day of week. Time format is the locale's convention (the default), 12-hour or 24-hour, and every clock follows it: the bar clock in each style, the clock popup, weather hours and the Updates, Keeptabs and notification times. Lock-screen skins with a fixed game-style clock keep their own format. First day of week follows the locale (the default), or is Monday or Sunday. An old `time_format` in `weather.local.json` is carried over once and then removed. It saves to `clock.json` in the Quickshell state folder (`$XDG_STATE_HOME/quickshell/`, or `~/.local/state/quickshell/`).
 
@@ -215,7 +217,7 @@ Every popup uses the same keys. `?` shows the full list for the popup you're in.
 | `?`              | Key help                                 |
 | `q` / `Esc`      | Close                                    |
 
-A popup with only one level of views answers both `Tab` and `[`/`]`. In the clock popup, `Tab` and `[`/`]` cycle the time zones. `h`/`l` and `j`/`k` move the cursor by a day and a week, `Shift` + `h`/`l`/`j`/`k` by a month and a year; `Enter` opens the cursor day's events and `n` starts a new event (see Calendar).
+A popup with only one level of views answers both `Tab` and `[`/`]`. In the clock popup, `Tab` and `[`/`]` cycle the time zones. `h`/`l` and `j`/`k` move the cursor by a day and a week, `Shift` + `h`/`l`/`j`/`k` by a month and a year; `Enter` opens the cursor day's events, `n`/`N` jump between days with events and `c` creates an event (see Calendar).
 
 Console styles draw controller buttons in place of keys in the footers and help. Each console is one entry in `components/KeyHints.js` (`controllers`): the path of its button component and the key to button map. A button component is an `Item` with `button` (a name from the map), `size` and, for the Game Boy shades, `shades`.
 
