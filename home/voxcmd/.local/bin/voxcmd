@@ -758,14 +758,14 @@ help_runnables() {
 
 # ---- Voice replies to an open picker ----------------------------------------------------------------------------
 
-# Prints the pending pick's state while its voxcmd-pick, voxcmd-confirm or voxcmd-hints still waits on its FIFO. A stale file is
-# left alone: a new pick may be about to replace it.
 # Whether a picker or card opened now should record the user's reply: the command was spoken, and Stop has not
 # discarded this watcher's turn since (an action already routing still finishes, but nothing it opens listens).
 reply_listen_wanted() {
   [ "$came_by_voice" = 1 ] && [ ! -e "$(discard_flag_of $$)" ]
 }
 
+# Prints the pending pick's state while its voxcmd-pick, voxcmd-confirm or voxcmd-hints still waits on its FIFO. A stale file is
+# left alone: a new pick may be about to replace it.
 pending_pick() {
   local state pid fifo
   state=$(cat "$pending_pick_file" 2>/dev/null) || return 1
@@ -945,7 +945,7 @@ reply() {
     listen_again=$(jq -r '.listen_again // empty' <<<"$state")
     if [ -n "$listen_again" ] && rm "$listen_again" 2>/dev/null; then
       notify info "voxcmd: which one?" "\"$transcript\": ${verdict#*$'\t'}. Listening again."
-      pick_still_pending "$state" && listen --start-only
+      ! pick_still_pending "$state" || listen --start-only
     else
       notify info "voxcmd: which one?" "\"$transcript\": ${verdict#*$'\t'}. Say a choice, a number, or cancel."
     fi
@@ -980,7 +980,7 @@ reply_confirm() {
     # Only one rm of the file succeeds, so only one unclear reply gets the extra listen.
     if [ -n "$listen_again" ] && rm "$listen_again" 2>/dev/null; then
       notify info "voxcmd: yes or no?" "\"$transcript\": listening again"
-      pick_still_pending "$state" && listen --start-only
+      ! pick_still_pending "$state" || listen --start-only
     else
       notify info "voxcmd: yes or no?" "\"$transcript\": say yes or no, or press y or n."
     fi
