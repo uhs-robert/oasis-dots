@@ -68,6 +68,16 @@ Hyprland runs this Lua config, so drive it with the Lua API: `hyprctl keyword` f
 
 User overrides live in two gitignored places, and tracked files must stay generic: `Config` values (hardware, default apps) in `config/machines/<hostname>.lua`, and everything built on the loaded library (binds, rules, launcher sessions) in `custom/`, whose `custom/init.lua` `hyprland.lua` requires last if present. Never auto-load other files in `custom/` from the Hyprland config. The one exception is the wallpaper rotator, a separate process that `custom/init.lua` cannot reach: it reads `custom/wallpaper.lua` and `custom/hyprpaper.conf` itself when present. Register binds through `lib/key/bind.lua` (`Bind.key`, `Bind.submap`), never raw `hl.bind` or `hl.define_submap`, so `Bind.unbind` can remove a key from one submap (hyprwm/Hyprland#15040). `Bind.unbind` and `Bind.submap` are public API for `custom/`; keep their signatures stable.
 
+## Interaction conventions
+
+How the owner expects anything interactive to behave, in Quickshell, voxcmd or a script. Agree a new surface's keys, look and first run with the owner before building it.
+
+- Keyboard first. Every action has a key; the mouse is a shortcut, never the only way.
+- vim semantics: `hjkl` move, Shift+`HJKL` the bigger step (month, year), `n`/`N` next and previous match, `gg`/`t` the start or today, `c` create, `o` open, `e` edit, `x` remove, Enter the main action, Esc or `h` back one level, `q` close.
+- Bar markers stay small (a dot, a count, a few characters); the detail goes in the tooltip or the popup.
+- A link opens in the default browser (`xdg-open`, Settings > Default apps) and the browser window is focused, not left behind.
+- Public features work for anyone: never assume the owner's tools (rbw, Firefox, a particular terminal). Offer a guided setup for the common case and a config key for the rest.
+
 ## Quickshell key conventions
 
 Keep keys consistent across surfaces; new popups, pickers and skins follow these:
@@ -89,7 +99,7 @@ Test voxcmd actions through `home/voxcmd/tests/sandbox.sh`, never against the li
 
 ## Agent tooling
 
-Claude Code hooks live in `.claude/settings.json` and `.claude/hooks/`. `.claude/check-commands` adds this repo's check scripts to the ones the global `guard-masked-checks.sh` hook refuses to see piped into `tail`, `head` or `grep` ahead of `&&` or `||`. Repo skills: `shadow` (runs the bar in an invisible nested Hyprland: IPC, keys, screenshots, and `smoke.sh`, a per-style contact sheet; the way agents look at or drive a Quickshell surface or branch), `lock-preview` (lock skins, built on `shadow`), `owner-test-bar` (put branches on the owner's live bar for the owner to try, swap the Hyprland config and voxcmd when they touch them, `status`, `probe` IPC calls and `capture.sh` layer screenshots of a test bar the owner is using, then restore) and `ship-batch` (merge through the global `merge-prs` skill, then check `main` and restart what changed). In this repo the owner's hands-on testing is `owner-test-bar`, and the external review is requested when a branch goes up on it (`up` does it). Agents never self-test on the owner's live bar. Worktrees have no `repos/`, so run `just check` in the real checkout before merging.
+Claude Code hooks live in `.claude/settings.json` and `.claude/hooks/`; the global ones in `home/claude/.claude/hooks/` (with tests in its `tests/`), such as `stale-shells.sh`, which stops an agent from finishing while one of the session's shells is stuck waiting for input. `.claude/check-commands` adds this repo's check scripts to the ones the global `guard-masked-checks.sh` hook refuses to see piped into `tail`, `head` or `grep` ahead of `&&` or `||`. Repo skills: `shadow` (runs the bar in an invisible nested Hyprland: IPC, keys, screenshots, and `smoke.sh`, a per-style contact sheet; the way agents look at or drive a Quickshell surface or branch), `lock-preview` (lock skins, built on `shadow`), `owner-test-bar` (put branches on the owner's live bar for the owner to try, swap the Hyprland config and voxcmd when they touch them, `status`, `probe` IPC calls and `capture.sh` layer screenshots of a test bar the owner is using, then restore) and `ship-batch` (merge through the global `merge-prs` skill, then check `main` and restart what changed). In this repo the owner's hands-on testing is `owner-test-bar`, and the external review is requested when a branch goes up on it (`up` does it). Agents never self-test on the owner's live bar. Worktrees have no `repos/`, so run `just check` in the real checkout before merging.
 
 ## Betterbird / tbkeys
 
