@@ -4,6 +4,7 @@ import QtQuick.Layouts
 import "../../theme"
 import "../../services"
 import "../../components"
+import "../../components/bar_icons"
 
 BarModule {
     id: root
@@ -38,15 +39,13 @@ BarModule {
         id: row
         spacing: 6
 
-        Text {
+        BarIcon {
             Layout.alignment: Qt.AlignVCenter
-            text: "\u{f001}"
-            color: Theme.theme_primary
+            name: "media"
+            variant: "normal"
+            glyph: "\u{f001}"
+            tint: Theme.theme_primary
             opacity: root.player && root.player.isPlaying ? 1 : 0.5
-            font.family: Style.bar_font_family
-            style: Style.bar_text_style
-            styleColor: Style.bar_glow_color
-            font.pixelSize: Style.bar_glyph_size
         }
 
         Text {

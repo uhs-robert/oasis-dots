@@ -6,6 +6,7 @@ import Quickshell.Services.Pipewire
 import "../../theme"
 import "../../services"
 import "../../components"
+import "../../components/bar_icons"
 
 BarModule {
     id: root
@@ -33,6 +34,8 @@ BarModule {
         return "";
     }
 
+    readonly property string level_variant: root.muted ? "muted" : root.volume <= 0.33 ? "low" : root.volume <= 0.66 ? "mid" : "high"
+
     tooltip_text: {
         if (!root.sink) return "No output device";
         const label = root.sink.description || root.sink.name;
@@ -43,15 +46,13 @@ BarModule {
         id: row
         spacing: 6
 
-        Text {
+        BarIcon {
             Layout.alignment: Qt.AlignVCenter
-            text: root.glyph
-            color: Theme.theme_primary
+            name: "volume"
+            variant: root.level_variant
+            glyph: root.glyph
+            tint: Theme.theme_primary
             opacity: root.muted ? 0.5 : 1
-            font.family: Style.bar_font_family
-            style: Style.bar_text_style
-            styleColor: Style.bar_glow_color
-            font.pixelSize: Style.bar_glyph_size
         }
 
         Text {

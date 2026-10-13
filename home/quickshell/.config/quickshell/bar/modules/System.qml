@@ -3,6 +3,7 @@ import QtQuick
 import QtQuick.Layouts
 import "../../theme"
 import "../../services"
+import "../../components/bar_icons"
 
 BarModule {
     id: root
@@ -39,14 +40,12 @@ BarModule {
         id: row
         spacing: 4
 
-        Text {
+        BarIcon {
             Layout.alignment: Qt.AlignVCenter
-            text: root.glyph
-            color: root.show_temp ? root.value_color : Theme.theme_primary
-            font.family: Style.bar_font_family
-            style: Style.bar_text_style
-            styleColor: Style.bar_glow_color
-            font.pixelSize: Style.bar_glyph_size
+            name: "system"
+            variant: root.show_temp ? "temp" : root.show_mem ? "mem" : "cpu"
+            glyph: root.glyph
+            tint: root.show_temp ? root.value_color : Theme.theme_primary
         }
 
         Text {

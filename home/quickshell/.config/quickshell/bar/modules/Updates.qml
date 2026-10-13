@@ -31,6 +31,8 @@ BarModule {
         BadgedGlyph {
             Layout.alignment: Qt.AlignVCenter
             visible: root.official_count > 0
+            icon_name: "updates"
+            icon_variant: "official"
             glyph: "󰮯"
             count: String(root.official_count)
         }
@@ -38,6 +40,8 @@ BarModule {
         BadgedGlyph {
             Layout.alignment: Qt.AlignVCenter
             visible: root.aur_count > 0
+            icon_name: "updates"
+            icon_variant: "aur"
             glyph: "󰏗"
             count: String(root.aur_count)
         }
@@ -46,6 +50,8 @@ BarModule {
         BadgedGlyph {
             Layout.alignment: Qt.AlignVCenter
             visible: root.official_count === 0 && root.aur_count === 0 && UpdatesState.error !== ""
+            icon_name: "updates"
+            icon_variant: "official"
             glyph: "󰮯"
             count: "!"
             tint: Theme.warning
