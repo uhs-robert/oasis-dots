@@ -1,0 +1,6 @@
+[
+  {"tab_id": 11, "window_id": 1, "title": "Example Docs - Getting started", "url": "https://docs.example.com/start", "active": true, "discarded": false, "last_accessed": 500, "incognito": false, "pinned": false},
+  {"tab_id": 12, "window_id": 1, "title": "Unloaded Wiki Page", "url": "https://wiki.example.net/page", "active": false, "discarded": true, "last_accessed": 100, "incognito": false, "pinned": false},
+  {"tab_id": 21, "window_id": 2, "title": "Inbox - Mailbox", "url": "https://mail.example.org/inbox", "active": true, "discarded": false, "last_accessed": 400, "incognito": false, "pinned": true},
+  {"tab_id": 22, "window_id": 2, "title": "Cart - Example Shop", "url": "https://shop.example.com/cart", "active": false, "discarded": false, "last_accessed": 300, "incognito": false, "pinned": false}
+]

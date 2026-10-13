@@ -1350,6 +1350,75 @@ check "and types into the address bar" "[[ \"\$(typed | paste -sd'|')\" == '-M c
 out=$("$firefox_tab" close-tab)
 check "close-tab never closes a tab in a window not focused" "[[ \$out == 'Firefox is not focused' && -z \$(typed) ]]"
 
+# ---- Firefox with the extension's host answering: tabs listed live and switched by id -----------------------------
+
+section "firefox live"
+live_requests=$root/live-requests.log
+fake_host_pid=""
+start_fake_host() {
+  stop_fake_host
+  : >"$live_requests"
+  "$here/firefox-fake-host" "$here/fixtures/firefox/live-tabs.json" "$live_requests" "$@" &
+  fake_host_pid=$!
+  until [[ -S $XDG_RUNTIME_DIR/voxcmd/firefox.sock ]]; do sleep 0.02; done
+}
+stop_fake_host() {
+  [[ -z $fake_host_pid ]] || kill "$fake_host_pid" 2>/dev/null
+  fake_host_pid=""
+  rm -f "$XDG_RUNTIME_DIR/voxcmd/firefox.sock"
+}
+mkdir -p "$XDG_RUNTIME_DIR/voxcmd"
+: >"$debug_log"
+make_profile
+retitled_clients=$(jq -c 'map(if .address == "0x3002" then .title = "Cart - Example Shop — Mozilla Firefox" else . end)' <<<"$SANDBOX_CLIENTS_JSON")
+cart_window=$(jq -c '.[] | select(.address == "0x3002")' <<<"$retitled_clients")
+
+start_fake_host
+out=$("$firefox_tab" tabs)
+check "tabs come from the extension, an unloaded tab among them" "jq -e 'any(.[]; .tab_id == 12 and .title == \"Unloaded Wiki Page\")' <<<\"\$out\" >/dev/null"
+check "each live tab is matched to its window as the store's are" "[[ \$(jq -r '[.[] | select(.tab_id == 21) | .address] | join(\" \")' <<<\"\$out\") == 0x3002 ]]"
+check "a window the extension does not list is still listed by its title" "jq -e 'any(.[]; .tab_id == null and .address == \"0x3003\")' <<<\"\$out\" >/dev/null"
+out=$("$firefox_tab" candidates tabs "wiki" --raw "go to wiki")
+check "a candidate carries the tab id and its title" "[[ \$(jq -r '[.[] | select(.match_text == \"Unloaded Wiki Page\") | .id] | join(\"|\")' <<<\"\$out\") == 'tab:12 Unloaded Wiki Page' ]]"
+check "candidates are listed by site name too" "jq -e 'any(.[]; .match_text == \"wiki example\" and .id == \"tab:12 Unloaded Wiki Page\")' <<<\"\$out\" >/dev/null"
+check "a window with no live tab is a candidate under the old id" "jq -e 'any(.[]; .id == \"0x3003 Private notes\")' <<<\"\$out\" >/dev/null"
+
+: >"$log"
+: >"$live_requests"
+out=$(SANDBOX_CLIENTS_JSON=$retitled_clients SANDBOX_ACTIVEWINDOW_JSON=$cart_window "$firefox_tab" focus tab:22 "Cart - Example Shop")
+check "focus tab:<id> activates the tab through the extension" "[[ \$(jq -c '[.cmd, .tab_id]' <<<\"\$(tail -n 1 '$live_requests')\") == '[\"activate\",22]' ]]"
+check "then focuses the window whose title became the tab's" "grep -q \"^hyprctl dispatch hl.dsp.focus({ window = 'address:0x3002' })\" '$log'"
+check "and types nothing" "[[ -z \$(typed) ]]"
+: >"$log"
+out=$(SANDBOX_CLIENTS_JSON=$retitled_clients SANDBOX_ACTIVEWINDOW_JSON=$cart_window "$firefox_tab" goto https://shop.example.com/)
+check "goto activates the most recent live tab on the site" "[[ \$(tail -n 1 '$live_requests') == *'\"tab_id\": 22'* ]] && [[ -z \$(typed) ]]"
+: >"$log"
+status=0
+out=$("$firefox_tab" focus tab:22 "Cart - Example Shop") || status=$?
+check "a window that never shows the activated tab is an error" "[[ \$status != 0 && \$out == 'no window shows the activated tab'* ]]"
+
+start_fake_host error
+: >"$log"
+: >"$debug_log"
+out=$(SANDBOX_ACTIVEWINDOW_JSON=$inbox_window SANDBOX_SWITCHED_TITLE="Cart - Example Shop" "$firefox_tab" focus tab:22 "Cart - Example Shop")
+check "an extension error falls back to the address bar" "[[ \"\$(typed | paste -sd'|')\" == '-M ctrl l -m ctrl|-- % Cart - Example Shop|-k Down|-k Return' ]]"
+check "the reason is in the debug trace" "grep -q 'answered with an error: refused' '$debug_log'"
+out=$("$firefox_tab" tabs)
+check "and tabs come from the session store" "jq -e 'all(.[]; .tab_id == null) and any(.[]; .title == \"Cart - Example Shop\")' <<<\"\$out\" >/dev/null"
+
+stop_fake_host
+: >"$log"
+: >"$debug_log"
+out=$(SANDBOX_ACTIVEWINDOW_JSON=$inbox_window SANDBOX_SWITCHED_TITLE="Cart - Example Shop" "$firefox_tab" focus tab:22 "Cart - Example Shop")
+check "with no socket a tab id is looked up by title and switched through the address bar" "[[ \"\$(typed | paste -sd'|')\" == '-M ctrl l -m ctrl|-- % Cart - Example Shop|-k Down|-k Return' ]]"
+check "saying why in the debug trace" "grep -q 'unreachable' '$debug_log'"
+python3 -c 'import socket,sys; s=socket.socket(socket.AF_UNIX); s.bind(sys.argv[1])' "$XDG_RUNTIME_DIR/voxcmd/firefox.sock"
+out=$("$firefox_tab" tabs)
+check "a stale socket nobody listens on is no extension either" "jq -e 'all(.[]; .tab_id == null) and length > 0' <<<\"\$out\" >/dev/null"
+out=$("$firefox_tab" candidates tabs "cart" --raw "go to cart")
+check "and candidates keep the old id form" "[[ \$(jq -r '[.[] | select(.match_text == \"Cart - Example Shop\") | .id] | join(\"|\")' <<<\"\$out\") == '0x3002 Cart - Example Shop' ]]"
+rm -f "$XDG_RUNTIME_DIR/voxcmd/firefox.sock" "$debug_log"
+
 firefox_config=$root/firefox-config
 mkdir -p "$firefox_config/integrations.d" "$firefox_config/replacements.d"
 cp "$package"/.config/voxcmd/integrations.d/{apps,firefox,firefox-sites,keybinds}.sh "$firefox_config/integrations.d/"
