@@ -137,6 +137,7 @@ main() {
     install_nvidia
     setup_voxtype
     setup_calendar_timer
+    register_firefox_host --quiet
     setup_tailnet_ssh
   fi
 
