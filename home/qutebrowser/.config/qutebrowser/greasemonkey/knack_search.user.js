@@ -478,7 +478,8 @@ const createSearchElements = (handleSearchFunction, width = "15em") => {
   csvExportOption.onclick = () => {
     // TODO(nextgen): validate Knack.renderModal exists on NextGen.
     Knack.renderModal(htmlExport);
-    $("#kn-submit-export").on("click", function (e) {
+    $("#kn-submit-export").on("click", async function (e) {
+      await loadKnackSchema();
       $("#kn-filters-form .filters-type .type select").val();
       const selection = $("#kn-export-form select").val();
       getKnackDataCsv({ type: selection, autoDownload: true });
@@ -869,7 +870,8 @@ const createSearchElements = (handleSearchFunction, width = "15em") => {
     });
 
     // Conduct Search
-    $("#kn-submit-filters").on("click", function (e) {
+    $("#kn-submit-filters").on("click", async function (e) {
+      await loadKnackSchema();
       const searchType = $("#kn-filters-form .filters-type .type select").val();
       const filters = [];
       // Extract the property, operator, and value from each filter group and item
@@ -1025,8 +1027,14 @@ const addSearchBar = (elQuery) => {
               : null;
     window.open(builderUrl, "_blank");
   };
-  const searchKnack = () => {
+  const searchKnack = async () => {
     const defaultButtonText = disableSearchButton(searchButton);
+    try {
+      await loadKnackSchema();
+    } catch (error) {
+      resetSearchButton(defaultButtonText);
+      return alert(`Could not load the Knack schema: ${error.message}`);
+    }
     const searchTerm = searchInput.value.trim().toLowerCase();
     const searchById = getIdPrefix(searchTerm);
     const searchType = searchById ? searchById : searchInput.dataset.type;
@@ -1096,12 +1104,12 @@ const addSearchBar = (elQuery) => {
   // make $ available if you reference it everywhere
   window.$ = $;
 
-  try {
-    await loadKnackSchema();
-  } catch (error) {
-    return console.error("[knack_search] Failed to load Knack schema", error);
-  }
+  // The header can render while the schema is still loading, so the search bar
+  // goes in right away and each search waits for the schema instead.
   init();
+  loadKnackSchema().catch((error) =>
+    console.error("[knack_search] Failed to load Knack schema", error),
+  );
 })();
 
 function init() {
