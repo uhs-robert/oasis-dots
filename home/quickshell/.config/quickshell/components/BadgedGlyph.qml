@@ -21,7 +21,8 @@ Item {
 
     readonly property real badge_size: Style.bar_badge_size
     readonly property real badge_rise: 3
-    readonly property real badge_overlap: 1
+    // A font glyph's side bearing leaves room for the badge to tuck 1px in; a pixel sprite fills its box to the edge, so the badge steps a sprite pixel clear of it.
+    readonly property real badge_overlap: glyph_icon.rows ? -glyph_icon.pixel : 1
 
     implicitWidth: glyph_icon.implicitWidth + (count_text.visible ? count_text.implicitWidth - root.badge_overlap : 0)
     // Height is the glyph alone so layouts center the glyph; the badge overhangs the top.
