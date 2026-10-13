@@ -1,2 +1,2 @@
-[{"id": 0, "name": "DP-1", "width": 1920, "height": 1080, "scale": 1, "transform": 0, "x": 0, "y": 0, "focused": true,
+[{"id": 0, "name": "DP-1", "width": 1920, "height": 1080, "scale": 1, "transform": 0, "x": 0, "y": 0, "focused": true, "reserved": [0, 34, 0, 0],
   "activeWorkspace": {"id": 1, "name": "1"}}]

@@ -10,7 +10,13 @@
 # hyprctl dispatch's "ok"). Read-only queries still reach the real tool unless a fixture replaces them:
 #
 #   hyprctl binds|clients|monitors|activewindow|activeworkspace|version -j
-#                                     SANDBOX_BINDS_JSON, SANDBOX_CLIENTS_JSON, ... (the JSON itself)
+#                                     SANDBOX_BINDS_JSON, SANDBOX_CLIENTS_JSON, ... (the JSON itself); activewindow
+#                                     is {} (no focused window) without its fixture, never the live window
+#   tesseract                         SANDBOX_TESSERACT_TSV (the tsv itself; no words without it)
+#   grim, magick                      never real: grim writes a blank image the size of the activewindow fixture
+#                                     times SANDBOX_GRIM_SCALE (default 1), or SANDBOX_GRIM_SIZE ("W H"), and fails
+#                                     -T when SANDBOX_GRIM_NO_TOPLEVEL is set; magick cuts empty strips and reports
+#                                     a light image (SANDBOX_IMAGE_MEAN, default 1)
 #   pw-dump                           SANDBOX_PW_DUMP_JSON
 #   keeptabs-pick --json              SANDBOX_AGENTS_JSON
 #   systemctl list-timers|list-units  SANDBOX_TIMERS_JSON
@@ -67,12 +73,43 @@ pass_through() {
 case "$name" in
 hyprctl)
   case "${1-}" in
-  binds | clients | monitors | activewindow | activeworkspace | version)
+  activewindow) printenv SANDBOX_ACTIVEWINDOW_JSON || echo '{}' ;;
+  binds | clients | monitors | activeworkspace | version)
     printenv "SANDBOX_$(printf '%s' "$1" | tr '[:lower:]' '[:upper:]')_JSON" || pass_through "$@"
     ;;
   dispatch | eval | keyword) log "$@" && echo ok ;;
   *) log "$@" ;;
   esac
+  ;;
+grim)
+  log "$@"
+  for out; do :; done
+  # SANDBOX_GRIM_NO_TOPLEVEL fails the per-window capture (-T), as on a compositor without it.
+  for arg; do [ "$arg" != -T ] || [ -z "${SANDBOX_GRIM_NO_TOPLEVEL-}" ] || exit 1; done
+  scale=${SANDBOX_GRIM_SCALE:-1}
+  size=${SANDBOX_GRIM_SIZE-}
+  [ -n "$size" ] || size=$(printenv SANDBOX_ACTIVEWINDOW_JSON | jq -r --argjson scale "$scale" 'if .size then "\(.size[0] * $scale | round) \(.size[1] * $scale | round)" else empty end') || exit 1
+  [ -n "$size" ] || exit 1
+  set -- $size
+  { printf 'P6\n%s %s\n255\n' "$1" "$2"; head -c $(($1 * $2 * 3)) /dev/zero; } >"$out"
+  ;;
+tesseract)
+  # An image piped in is drained, so the inverting magick upstream never sees a broken pipe.
+  [ "${1-}" != - ] || cat >/dev/null
+  printenv SANDBOX_TESSERACT_TSV || :
+  ;;
+magick)
+  # The strips are named by -write; the one -write to info:- is the mean luminance.
+  previous=
+  for arg; do
+    if [ "$previous" = -write ]; then
+      case "$arg" in
+      info:-) echo "${SANDBOX_IMAGE_MEAN:-1}" ;;
+      *) : >"$arg" ;;
+      esac
+    fi
+    previous=$arg
+  done
   ;;
 pw-dump) printenv SANDBOX_PW_DUMP_JSON || pass_through "$@" ;;
 keeptabs-pick)
@@ -132,11 +169,12 @@ esac
 EOF
 chmod +x "$stub_dir/.stub"
 
-# Called by name from PATH. hyprctl, pw-dump, keeptabs-pick, systemctl and tmux also answer read-only queries.
+# Called by name from PATH. hyprctl, pw-dump, keeptabs-pick, systemctl and tmux also answer read-only queries; grim,
+# tesseract and magick answer from the fixtures above and never touch the screen.
 stubbed_commands=(
   hyprctl pw-dump keeptabs-pick systemctl tmux
   systemd-run notify-send pamixer wpctl bluetoothctl playerctl brightnessctl powerprofilesctl
-  wlrctl wtype wl-copy voxtype wf-recorder xdg-open setsid rofi qs-ipc
+  grim tesseract magick wlrctl wl-kbptr wtype wl-copy voxtype wf-recorder xdg-open setsid rofi qs-ipc
 )
 read -ra extra_stubs <<<"${SANDBOX_EXTRA_STUBS:-}"
 for command_name in "${stubbed_commands[@]}" "${extra_stubs[@]}"; do ln -s .stub "$stub_dir/$command_name"; done
