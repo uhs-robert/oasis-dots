@@ -20,6 +20,8 @@ Usage:
   voxcmd end-session          end the open voice session and every mode in it, if any
   voxcmd stop                 stop all voice activity: end the open session, cancel the open picker, card or hints, and
                               cancel a recording under way, discarding what was said; silent when none is open
+  voxcmd wake on|off|toggle|status
+                              start or stop the "hey jarvis" listener, which holds the microphone while it runs
   voxcmd list                 list integrations and their verbs
   voxcmd help                 pick from the integrations' example phrases (Tab lists what one can run); one without placeholders runs
   voxcmd errors [N]           print the last N (default 10) voxcmd notifications the bar kept: its errors, as info is transient
@@ -682,11 +684,13 @@ init_wake_regex() {
 }
 
 # split_leading_wake <normalized text>: succeeds when the text starts with the wake word, leaving the rest in wake_rest.
+# An optional "hey" is dropped too: the wake listener starts a recording on "hey jarvis", and the phrase can reach the
+# transcript when the recording opens before it ends.
 wake_rest=""
 split_leading_wake() {
   init_wake_regex
-  [[ "$1" =~ ^($wake_regex)( (.*))?$ ]] || return 1
-  wake_rest="${BASH_REMATCH[3]}"
+  [[ "$1" =~ ^(hey )?($wake_regex)( (.*))?$ ]] || return 1
+  wake_rest="${BASH_REMATCH[4]}"
 }
 
 # split_trailing_wake <raw transcript>: succeeds when the transcript holds the wake word after something else, leaving
@@ -2400,6 +2404,7 @@ errors) print_errors "${2:-}" ;;
 rapid) route "rapid mode" ;;
 end-session) session_end_all "ended by request" ;;
 stop) stop_voice ;;
+wake) exec "$(dirname "$voxcmd_self")/voxcmd-wake-switch" "${@:2}" ;;
 click-explain)
   shift
   click_explain "$@"

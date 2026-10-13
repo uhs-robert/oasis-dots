@@ -11,6 +11,7 @@ local Scripts = {
   voxcmd_listen         = BIN     .. "voxcmd listen",
   voxcmd_stop           = BIN     .. "voxcmd stop",
   voxcmd_rapid          = BIN     .. "voxcmd rapid",
+  voxcmd_wake           = BIN     .. "voxcmd wake toggle",
   voxcmd_help           = BIN     .. "voxcmd help",
   focus_media_player    = HYPR    .. "focus-media-player.sh",
   focus_toast_popup_or_float = HYPR    .. "focus-toast-popup-or-float.sh",

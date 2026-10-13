@@ -194,6 +194,11 @@ done	none	no owner outside a session
 jarvis open firefox	Apps/open	the wake word is stripped outside a session
 Jarvis, play pause	Media/toggle	the wake word is stripped outside a session
 jarvis rapid mode	Rapid/rapid_mode	the wake word is stripped outside a session
+hey jarvis open firefox	Apps/open	the wake listener phrase is stripped like the bare wake word
+Hey, Jarvis, play pause	Media/toggle	the wake listener phrase is stripped like the bare wake word
+hey charvis open firefox	Apps/open	the wake alias takes the hey too
+jarvis set a timer for five minutes	Timers/timer	the tail of the wake phrase left in a recording started mid-phrase
+hey jarvis, set a timer for five minutes	Timers/timer	the whole wake phrase left in the recording
 Charvis, open firefox	Apps/open	the default wake word's common mishearing is an alias
 open firefox and then go to youtube	Apps/open > none	two steps; the second matches nothing in the sandbox
 open firefox and then open kitty	Apps/open > Apps/open	two steps

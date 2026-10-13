@@ -18,7 +18,7 @@ cd "$repo_dir" || exit 1
 
 # Every step, longest first. The voxcmd steps are timing-sensitive, so they run one after another in a slot
 # of their own, ahead of the rest.
-voxcmd_steps='voxcmd-phrases voxcmd-click voxcmd-calendar voxcmd-firefox'
+voxcmd_steps='voxcmd-phrases voxcmd-click voxcmd-calendar voxcmd-wake voxcmd-firefox'
 other_steps='check-scope firefox-policy qmllint shellcheck calendar-sync owner-test-bar ship-batch merge-prs shfmt stylua luacheck lock-skins style-exports time-format calendar-sync-syntax agent-hooks stale-shells-hook notification-markup packages symlinks git-diff-check whitespace conflicts'
 
 # Shell files by the group they are linted in. Symlinks are skipped (their target is linted itself).
@@ -71,6 +71,7 @@ step_body() {
   voxcmd-phrases) bash ./home/voxcmd/tests/run-phrases.sh ;;
   voxcmd-click) bash ./home/voxcmd/tests/run.sh ;;
   voxcmd-calendar) bash ./home/voxcmd/tests/run-calendar.sh ;;
+  voxcmd-wake) bash ./home/voxcmd/tests/run-wake.sh ;;
   voxcmd-firefox) bash ./home/voxcmd/tests/run-firefox-extension.sh ;;
   # py_compile would drop a __pycache__ into the stow package, so this parses instead.
   calendar-sync-syntax) python3 -c 'import ast, sys; ast.parse(open(sys.argv[1]).read())' ./home/calendar/.local/bin/calendar-sync ;;

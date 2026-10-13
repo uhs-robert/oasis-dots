@@ -137,7 +137,7 @@ case_voxcmd_runner() {
   runner=$(first_tracked 'home/voxcmd/tests/*.sh' '/lib\.sh$') || return 0
   echo '# x' >>"$runner"
   plan
-  expect_ran voxcmd-phrases voxcmd-click voxcmd-calendar shellcheck shfmt
+  expect_ran voxcmd-phrases voxcmd-click voxcmd-calendar voxcmd-wake shellcheck shfmt
   expect_skipped luacheck qmllint
   expect_list_has plain "$runner"
   expect_list_has plain "$lib"

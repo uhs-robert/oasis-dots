@@ -8,6 +8,7 @@ Voice commands on top of [voxtype](https://github.com/peteonrails/voxtype). Spea
 | `SUPER + PERIOD`, Leader, `PERIOD` | Speech to Text: dictate until a voice key is pressed again, then type it |
 | `SUPER + SHIFT + COMMA`, Leader, `SHIFT + COMMA` | [Stop Voice](#stop-voice): end the session, picker and recording, running nothing |
 | `SUPER + CTRL + COMMA`, Leader, `CTRL + COMMA` | [Rapid mode](#rapid-mode): every turn is a command, until you say done |
+| `SUPER + CTRL + PERIOD`, Leader, `CTRL + PERIOD` | [Wake word listener](#hey-jarvis-wake-listener): switch "hey jarvis" on or off |
 | Leader, `CTRL + SLASH`             | [Voice Help](#voice-help): pick from example phrases                     |
 
 `SUPER` is `Config.leader`, and Leader is the leader menu (`SUPER + SPACE`).
@@ -27,6 +28,7 @@ voxcmd --dry-run --reply "two"    # show which choice a reply would pick
 voxcmd rapid                      # open rapid mode (the same as saying "rapid mode"); from a terminal or a key
 voxcmd end-session                # end the open voice session and every mode in it, if any
 voxcmd stop                       # stop all voice activity: session, picker or card, and any recording (see Stop Voice)
+voxcmd wake toggle                # switch the "hey jarvis" listener on or off (on, off, toggle, status)
 voxcmd list                       # integrations and their verbs
 voxcmd help                       # pick from the integrations' example phrases
 voxcmd errors 5                   # the last 5 voxcmd notifications the bar kept, newest first (default 10)
@@ -539,8 +541,31 @@ The overlay writes the number into the pick's FIFO, a voice reply the displayed 
 The wake word (default `jarvis`; `VOXCMD_WAKE_WORD`, plus other spellings Whisper produces in `VOXCMD_WAKE_ALIASES`, e.g. `jarvas|jervis`; for the default it is `charvis` unless set) starts a command to the mode a session is in. `voxtype-daemon` appends it to the initial prompt (like `prompt.d`'s words) so Whisper spells it one way; restart the daemon after changing it. Set both in the user manager's environment (`systemctl --user set-environment`), where voxcmd and the daemon read them.
 
 - **In a session**, at the start of a turn (in type mode also at the end of a chunk), `jarvis <command>` is a control command and never typed, clicked or routed as content: `done` leaves the current mode, `stop` ends the session, the current mode's own exit ("stop typing", "stop rapid mode") and commands, and entering or leaving another mode ("rapid mode", "type mode", "click mode"). Anything else is routed as a command with the wake word stripped, as outside a session, except in type mode, where it is told so by a toast and typed nowhere.
-- **Outside a session** the word is only stripped: "jarvis open firefox" is "open firefox".
+- **Outside a session** the word is only stripped, with a leading "hey" ([the wake listener](#hey-jarvis-wake-listener)'s phrase): "jarvis open firefox" and "hey jarvis open firefox" are "open firefox".
 - Matching is on the transcript normalized as for any phrase: case and punctuation do not matter ("Jarvis, stop typing.").
+
+### Hey jarvis wake listener
+
+Saying "hey jarvis" starts a voice command, with no key: the same as `SUPER + COMMA`. It is off by default, because it keeps the microphone open while it listens. "Hey" is part of the phrase because the detector's pretrained model is trained on it; a bare "jarvis" stays the [control word](#wake-word) inside a session and is not heard by the detector.
+
+- **Install:** `python-openwakeword` (AUR) and `onnxruntime-cpu` are in `packages/arch-aur.ini` and `packages/arch.ini`, so the installer has them. The unit ships in the `systemd` package (`voxcmd-wake.service`), stowed with the rest.
+- **Models:** `hey_jarvis_v0.1.onnx`, `melspectrogram.onnx` and `embedding_model.onnx` are not packaged. The first `voxcmd wake on` downloads them from the [openWakeWord v0.5.1 release](https://github.com/dscripka/openWakeWord/releases/tag/v0.5.1) into `~/.local/share/voxcmd/wake-models/` (`VOXCMD_WAKE_MODEL_DIR`), a folder outside the repo, and shows a toast for each file. Each file is checked against the release's sha256 (pinned in `voxcmd-wake`) after download and again before every start: a download that differs is deleted and refused, and a file already there that differs is deleted and fetched again.
+- **Switching it:** `voxcmd wake on|off|toggle|status`, or `SUPER + CTRL + PERIOD` (Leader, `CTRL + PERIOD`) to toggle, with a toast. `on` starts `voxcmd-wake.service` for this login only; nothing enables it, so it is off again after the next login. To keep it on, run `systemctl --user enable voxcmd-wake` (and `disable` to undo; `off` still stops it). Off releases the microphone completely.
+- **Bar:** the Voxtype icon in the bar carries a small dot while the detector holds the microphone. It goes while the detector is paused or off. When voxtype starts recording after a trigger, the dot turns brighter and blinks briefly: speak then. It clears when the recording ends.
+- **Paused, microphone released,** while `playerctl status` says Playing while voxtype records (`$XDG_RUNTIME_DIR/voxtype/state`) and while a [voice session](#voice-sessions) is open (`session.json` with a live owner, checked by pid and start time as voxcmd does, since a session's microphone is already its own between turns); it re-opens a second or so after all three end. So a voice command, dictation or a session turn is never heard twice, and music cannot say the phrase.
+- **What a trigger does:** it needs a score of at least 0.8 held for three frames in a row (80 ms each), and on the third it runs `voxcmd listen --start-only` at once, which never stops a recording already under way. It does not wait for the phrase to end, since the words spoken between the end of the phrase and the recording starting would be lost; so the recording starts during "hey jarvis", and the part of it that reaches the transcript is stripped like the wake word (also "hey, jarvis" and the aliases). A trigger is followed by 3 s in which nothing counts.
+- **Tuning:** the setting is deliberately strict (a miss costs one more try, a false start opens the microphone). Set these in the user manager's environment (`systemctl --user set-environment`) and restart the unit, or in a drop-in:
+
+  | Variable                    | Default | Meaning                                                   |
+  | --------------------------- | ------- | --------------------------------------------------------- |
+  | `VOXCMD_WAKE_THRESHOLD`     | `0.8`   | score a frame needs, 0 to 1 (lower hears more, and more false starts) |
+  | `VOXCMD_WAKE_FRAMES`        | `3`     | consecutive 80 ms frames at or above the threshold        |
+  | `VOXCMD_WAKE_COOLDOWN_SECS` | `3`     | seconds after a trigger in which nothing counts           |
+  | `VOXCMD_WAKE_MODEL_DIR`     | `~/.local/share/voxcmd/wake-models` | where the models are kept |
+
+  To see the scores, turn on the [debug log](#debug-log) and read lines from `voxcmd-wake` (a score line for every frame at 0.2 or more, and each trigger).
+- **Privacy:** audio is read into memory 80 ms at a time and dropped after it is scored; it is never written to disk and nothing leaves the machine except the one-time model download. The log holds scores and times only, and only while the debug log is on.
+- **Failures:** if `pw-record` dies it is restarted after 1 s, then 2, 4 and so on up to 30 s. Missing `python-openwakeword` or a failed or mismatched download gives an error toast; the unit does not retry a missing package. `systemctl --user status voxcmd-wake` has the rest. The unit runs `voxcmd listen`, which needs `WAYLAND_DISPLAY` (wtype, wlrctl, grim), `HYPRLAND_INSTANCE_SIGNATURE` (hyprctl, `qs-ipc`) and `PATH` in the systemd user manager's environment; `XDG_RUNTIME_DIR` and the session bus are the manager's own. Hyprland's autostart imports them with `dbus-update-activation-environment --systemd`; check with `systemctl --user show-environment | grep -E 'WAYLAND_DISPLAY|HYPRLAND_INSTANCE_SIGNATURE'`. After updating the config, log in again (or run the import by hand) so the manager has the signature, and restart the unit.
 
 ### Calendar
 
