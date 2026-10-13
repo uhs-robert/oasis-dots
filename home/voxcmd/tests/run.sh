@@ -1321,8 +1321,16 @@ check "a session stops on it too" "[[ \$(detect '$root/word-over-fan.pcm' \"\${s
 pcm "$root/knocks.pcm" noise:1:-55 voice:0.15:-25 noise:0.35:-55 voice:0.15:-25 noise:5:-55
 check "two knocks then quiet stop a command" "[[ \$(detect '$root/knocks.pcm') == 0 ]] && grep -q 'verdict speech then quiet at [12]\.' '$detector_trace'"
 check "a session does not stop on them, only takes them as a short word at its no-speech deadline" "[[ \$(detect '$root/knocks.pcm' \"\${session_detector[@]}\") == 0 ]] && grep -q 'a short word, stopping' '$detector_trace' && grep -q 'verdict speech then quiet at 5\.' '$detector_trace'"
+# A spoken "cancel" heard as 0.15s of speech: short of a command's min_speech_secs, but still an answer.
+reply_detector=(VOXCMD_AUTOSTOP_MIN_SPEECH_SECS=0.1)
+pcm "$root/short-word.pcm" noise:2:-48 voice:0.15:-28 noise:6:-48
+check "a short word is transcribed at the no-speech deadline, not cancelled" "[[ \$(detect '$root/short-word.pcm') == 0 ]] && grep -q 'a short word, stopping' '$detector_trace' && grep -q 'verdict speech then quiet at 6\.' '$detector_trace'"
+check "a reply's lower minimum stops on the pause after it" "[[ \$(detect '$root/short-word.pcm' \"\${reply_detector[@]}\") == 0 ]] && grep -q 'verdict speech then quiet at 3\.' '$detector_trace'"
+pcm "$root/word-at-deadline.pcm" noise:5.8:-48 voice:0.5:-28 noise:3:-48
+check "speech under way at the deadline still waits for its pause" "[[ \$(detect '$root/word-at-deadline.pcm') == 0 ]] && grep -q 'verdict speech then quiet at 7\.' '$detector_trace'"
 pcm "$root/quiet-room.pcm" noise:6:-60
 check "a quiet room is no speech" "[[ \$(detect '$root/quiet-room.pcm') == 3 ]]"
+check "for a reply too" "[[ \$(detect '$root/quiet-room.pcm' \"\${reply_detector[@]}\") == 3 && \$(detect '$root/fan-after-quiet-start.pcm' \"\${reply_detector[@]}\") == 3 ]]"
 check "without the debug log there is no trace" "env -u VOXCMD_DEBUG XDG_RUNTIME_DIR='$root/no-trace' python3 '$package/.local/bin/voxcmd-autostop' --pcm '$root/quiet-room.pcm'; [[ ! -e '$root/no-trace/voxcmd/debug.log' ]]"
 
 # A start that fails ends the session rather than leaving it open with no microphone.
@@ -1457,6 +1465,29 @@ echo idle >"$XDG_RUNTIME_DIR/voxtype/state"
 "$pkg_voxcmd" listen >/dev/null 2>&1
 log_has_soon 'setsid '
 check "with nothing pending, a live session's listen goes to the session" "grep -q 'setsid .*_watch session_turn' '$log'"
+# The detector each listen starts: a reply's lower speech minimum, the session's settings, nothing for a command.
+sess_env=(VOXCMD_AUTOSTOP_MIN_SPEECH_SECS=0.5)
+detector_settings_of() {
+  printf '%s\n' SILENCE >"$sess_turns"
+  : >"$log"
+  echo idle >"$XDG_RUNTIME_DIR/voxtype/state"
+  sess_voxcmd_env listen
+  sess_wait
+  grep '^voxcmd-autostop ' "$log" | sed 's/^voxcmd-autostop //' | paste -sd' '
+}
+jq -n -c --argjson owner "$owner_pid" --arg owner_start "$(start_time_of "$owner_pid")" \
+  '{kind: "test", integration: "x", label: "Test mode", started: 0, owner: $owner, owner_start: $owner_start, unclear: 0, turns: 0}' \
+  >"$XDG_RUNTIME_DIR/voxcmd/session.json"
+check "a session turn's listen keeps the session's settings" "[[ \$(detector_settings_of) == 'no_speech_secs=10 min_speech_secs=0.4 silence_secs=1.5' ]]"
+rm -f "$XDG_RUNTIME_DIR/voxcmd/session.json"
+check "a command's listen keeps auto-stop's own" "[[ \$(detector_settings_of) == 'no_speech_secs=default min_speech_secs=0.5 silence_secs=default' ]]"
+jq -n -c --argjson pid "$waiter_pid" --arg fifo "$root/pending-fifo" \
+  '{pid: $pid, fifo: $fifo, label: "Which one?", kind: "hints", expansions: {}, choices: [{id: "a", label: "1. A"}]}' >"$XDG_RUNTIME_DIR/voxcmd/pending-pick.json"
+check "a reply's listen wants only 0.1s of speech, with auto-stop's own pause and deadline" "[[ \$(detector_settings_of) == 'no_speech_secs=default min_speech_secs=0.1 silence_secs=default' ]]"
+sess_env=(VOXCMD_REPLY_MIN_SPEECH_SECS=0.2)
+check "VOXCMD_REPLY_MIN_SPEECH_SECS sets it" "[[ \$(detector_settings_of) == 'no_speech_secs=default min_speech_secs=0.2 silence_secs=default' ]]"
+sess_env=()
+rm -f "$XDG_RUNTIME_DIR/voxcmd/pending-pick.json"
 kill "$owner_pid" "$waiter_pid" 2>/dev/null
 wait "$owner_pid" "$waiter_pid" 2>/dev/null
 rm -f "$XDG_RUNTIME_DIR/voxcmd/session.json" "$XDG_RUNTIME_DIR/voxtype/state"

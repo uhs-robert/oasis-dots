@@ -925,6 +925,9 @@ session_no_speech_secs="${VOXCMD_SESSION_NO_SPEECH_SECS:-10}"
 # stops: a few knocks or a breath otherwise end a turn whose noise the transcriber then turns into words.
 session_min_speech_secs="${VOXCMD_SESSION_MIN_SPEECH_SECS:-0.4}"
 session_silence_secs="${VOXCMD_SESSION_SILENCE_SECS:-1.5}"
+# A reply to a picker or confirm card is often one short word ("yes", "two", "cancel"), and the user is looking at the
+# question, so a little speech then the usual pause is an answer.
+reply_min_speech_secs="${VOXCMD_REPLY_MIN_SPEECH_SECS:-0.1}"
 # Whisper's stock output for silence and noise, normalized (before replacements). A session turn that hears only one of these heard nothing,
 # so it listens again without counting toward the unclear cap; the turn and time caps still bound it.
 session_noise_transcripts='^(|you|bye|the end|thank you|thank you for watching|thanks for watching|blank audio)$'
@@ -1249,12 +1252,15 @@ autostop_recording() {
   local discard_flag="$1" transcript_handler="$2" detector_pid verdict=0
   local -a detector_env=()
   [ -x "$voxcmd_autostop" ] || return 0
-  # Only the session's own listen: an overlay or confirm asked during a turn keeps auto-stop's usual settings.
-  [ "$transcript_handler" != session_turn ] || detector_env=(
+  # An overlay or confirm asked during a session turn is a reply, not the session's own listen.
+  case "$transcript_handler" in
+  session_turn) detector_env=(
     "VOXCMD_AUTOSTOP_NO_SPEECH_SECS=$session_no_speech_secs"
     "VOXCMD_AUTOSTOP_MIN_SPEECH_SECS=$session_min_speech_secs"
     "VOXCMD_AUTOSTOP_SILENCE_SECS=$session_silence_secs"
-  )
+  ) ;;
+  reply) detector_env=("VOXCMD_AUTOSTOP_MIN_SPEECH_SECS=$reply_min_speech_secs") ;;
+  esac
   env "${detector_env[@]}" "$voxcmd_autostop" &
   detector_pid=$!
   trap 'kill "$detector_pid" 2>/dev/null; exit 0' TERM
