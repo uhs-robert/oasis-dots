@@ -38,6 +38,7 @@ BarModule {
 
     readonly property string level_variant: {
         if (power_state === UPowerDeviceState.FullyCharged) return "full";
+        if (charging) return "charging";
         if (percent <= 20) return "level_0";
         if (percent <= 40) return "level_1";
         if (percent <= 60) return "level_2";
@@ -66,6 +67,7 @@ BarModule {
         BarIcon {
             Layout.alignment: Qt.AlignVCenter
             name: "battery"
+            fixed_slot: true
             variant: root.level_variant
             glyph: root.glyph
             tint: root.glyph_color

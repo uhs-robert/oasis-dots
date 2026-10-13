@@ -12,7 +12,7 @@ var labels = {
     "pill_badge": "Pill badge",
     "encounter_sprite": "Encounter sprite",
     "reserve_box": "Reserve box",
-    "pixel_bell": "Pixel bell",
+    "pixel_calendar": "Pixel calendar",
     "memory_card": "Memory card",
     "atb_gauge": "ATB gauge",
     "energy_tanks": "Energy tanks",

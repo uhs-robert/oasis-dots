@@ -1,21 +1,22 @@
-// home/quickshell/.config/quickshell/components/clock_marker/PixelBellMarker.qml
+// home/quickshell/.config/quickshell/components/clock_marker/PixelCalendarMarker.qml
 import QtQuick
 import ".."
 import "../../theme"
+import "../bar_icons/GameboySprites.js" as GameboySprites
 
-// gameboy: a pixel bell and 12M before a meeting; the same bell beside MTG during one.
+// gameboy: a pixel calendar and 12M before a meeting; the same calendar beside MTG during one.
 MarkerBase {
     id: root
 
     readonly property int gap: 6
-    // The Original has no second hue, so the bell takes the shade below the date's; the Color model takes the theme secondary.
+    // The Original has no second hue, so the calendar takes the shade below the date's; the Color model takes the theme secondary.
     readonly property bool original: Style.device_model === "dmg"
     readonly property color body_color: root.on_accent ? root.ink : root.original ? Style.pixel_shades[2] : Theme.theme_secondary
     readonly property color shine_color: root.on_accent ? root.ink : Style.pixel_shades[3]
-    readonly property var bell_rows: ["....0....", "...000...", "..01100..", ".0110000.", ".0110000.", "000000000", ".........", "...000..."]
+    readonly property var calendar_rows: GameboySprites.sprites.meeting.normal
 
-    implicitWidth: Math.ceil(bell.implicitWidth + root.gap + Math.max(digits_width.advanceWidth, mtg_width.advanceWidth))
-    implicitHeight: Math.max(bell.implicitHeight, label.implicitHeight)
+    implicitWidth: Math.ceil(calendar.implicitWidth + root.gap + Math.max(digits_width.advanceWidth, mtg_width.advanceWidth))
+    implicitHeight: Math.max(calendar.implicitHeight, label.implicitHeight)
 
     // Sized from the widest of both states, so the minutes ticking down and a meeting starting never resize the clock.
     TextMetrics {
@@ -35,11 +36,11 @@ MarkerBase {
         anchors.verticalCenter: parent.verticalCenter
 
         PixelSprite {
-            id: bell
+            id: calendar
             anchors.verticalCenter: parent.verticalCenter
             pixel: 2
             colors: [root.body_color, root.shine_color]
-            rows: root.bell_rows
+            rows: root.calendar_rows
         }
 
         Text {
