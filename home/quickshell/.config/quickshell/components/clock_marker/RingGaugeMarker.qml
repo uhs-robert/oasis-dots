@@ -2,7 +2,7 @@
 import QtQuick
 import "../../theme"
 
-// reticle: a hairline ring that closes as the meeting nears, beside T-minus in thin caps; in a meeting the ring is solid, with LIVE and a slow pulse.
+// reticle: a hairline ring that closes as the meeting nears, beside T-minus in thin caps; in a meeting the ring is solid, with MTG.
 MarkerBase {
     id: root
 
@@ -11,7 +11,7 @@ MarkerBase {
 
     readonly property color tone: root.on_accent ? root.ink : Theme.theme_primary_light
 
-    // Sized from the widest label, so neither the minutes nor LIVE resize the clock.
+    // Sized from the widest label, so neither the minutes nor MTG resize the clock.
     TextMetrics {
         id: upcoming_width
         font: root.text_font
@@ -19,9 +19,9 @@ MarkerBase {
     }
 
     TextMetrics {
-        id: live_width
+        id: mtg_width
         font: root.text_font
-        text: "LIVE"
+        text: "MTG"
     }
 
     Row {
@@ -71,20 +71,12 @@ MarkerBase {
                 radius: 2
                 color: root.tone
             }
-
-            SequentialAnimation on opacity {
-                running: root.in_meeting && root.visible
-                loops: Animation.Infinite
-                NumberAnimation { to: 0.5; duration: 500; easing.type: Easing.InOutSine }
-                NumberAnimation { to: 1; duration: 500; easing.type: Easing.InOutSine }
-                onRunningChanged: if (!running) ring.opacity = 1
-            }
         }
 
         Text {
             anchors.verticalCenter: parent.verticalCenter
-            width: Math.ceil(Math.max(upcoming_width.advanceWidth, live_width.advanceWidth))
-            text: root.in_meeting ? "LIVE" : "T−" + root.minutes
+            width: Math.ceil(Math.max(upcoming_width.advanceWidth, mtg_width.advanceWidth))
+            text: root.in_meeting ? "MTG" : "T−" + root.minutes
             textFormat: Text.PlainText
             color: root.on_accent ? root.ink : Style.bar_fg
             font: root.text_font

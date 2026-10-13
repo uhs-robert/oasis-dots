@@ -2,7 +2,7 @@
 import QtQuick
 import "../../theme"
 
-// oasis: a small four-point star and 12m in sand before a meeting; the star twinkling during one.
+// oasis: a small four-point star and 12m in sand before a meeting; the same star beside MTG during one.
 MarkerBase {
     id: root
 
@@ -10,14 +10,20 @@ MarkerBase {
     readonly property real star_size: 12
     readonly property color sand: root.on_accent ? root.ink : Theme.theme_secondary
 
-    implicitWidth: Math.ceil(root.star_size + root.gap + digits_width.advanceWidth)
+    implicitWidth: Math.ceil(root.star_size + root.gap + Math.max(digits_width.advanceWidth, mtg_width.advanceWidth))
     implicitHeight: Math.max(root.star_size, label.implicitHeight)
 
-    // Sized from the widest countdown, so the minutes ticking down do not resize the clock.
+    // Sized from the widest of both states, so the minutes ticking down and a meeting starting never resize the clock.
     TextMetrics {
         id: digits_width
         font: root.text_font
         text: "00m"
+    }
+
+    TextMetrics {
+        id: mtg_width
+        font: root.text_font
+        text: "MTG"
     }
 
     component Star: Canvas {
@@ -47,7 +53,6 @@ MarkerBase {
     }
 
     Row {
-        visible: !root.in_meeting
         spacing: root.gap
         anchors.verticalCenter: parent.verticalCenter
 
@@ -56,30 +61,11 @@ MarkerBase {
         Text {
             id: label
             anchors.verticalCenter: parent.verticalCenter
-            text: root.minutes + "m"
+            width: Math.ceil(Math.max(digits_width.advanceWidth, mtg_width.advanceWidth))
+            text: root.in_meeting ? "MTG" : root.minutes + "m"
             textFormat: Text.PlainText
             color: root.sand
             font: root.text_font
-        }
-    }
-
-    Star {
-        id: twinkle
-        visible: root.in_meeting
-        anchors.verticalCenter: parent.verticalCenter
-
-        SequentialAnimation {
-            running: root.in_meeting && root.visible
-            loops: Animation.Infinite
-            ParallelAnimation {
-                NumberAnimation { target: twinkle; property: "scale"; to: 1.35; duration: 500; easing.type: Easing.InOutSine }
-                NumberAnimation { target: twinkle; property: "opacity"; to: 1; duration: 500; easing.type: Easing.InOutSine }
-            }
-            ParallelAnimation {
-                NumberAnimation { target: twinkle; property: "scale"; to: 0.7; duration: 500; easing.type: Easing.InOutSine }
-                NumberAnimation { target: twinkle; property: "opacity"; to: 0.4; duration: 500; easing.type: Easing.InOutSine }
-            }
-            onRunningChanged: if (!running) { twinkle.scale = 1; twinkle.opacity = 1; }
         }
     }
 }

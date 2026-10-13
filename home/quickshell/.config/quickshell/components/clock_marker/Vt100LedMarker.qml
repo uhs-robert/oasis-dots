@@ -2,14 +2,12 @@
 import QtQuick
 import "../../theme"
 
-// crt: a VT100 keyboard lamp and "L1 12M" before a meeting; the lamp lit and blinking beside "L1 MTG" during one.
+// crt: a VT100 keyboard lamp and "L1 12M" before a meeting; the lamp lit beside "L1 MTG" during one.
 MarkerBase {
     id: root
 
     readonly property color phosphor: root.on_accent ? root.ink : Theme.theme_primary
     readonly property color lit_color: root.on_accent ? root.ink : Theme.theme_primary_light
-    // Brightness of the lamp: dim while counting down, flipping between lit and dim during a meeting.
-    property bool lit: root.in_meeting
 
     implicitWidth: row.implicitWidth
     implicitHeight: row.implicitHeight
@@ -22,7 +20,7 @@ MarkerBase {
     }
 
     TextMetrics {
-        id: live_width
+        id: mtg_width
         font: root.text_font
         text: "L1 MTG"
     }
@@ -37,7 +35,7 @@ MarkerBase {
             height: lamp.height
 
             Rectangle {
-                visible: root.lit
+                visible: root.in_meeting
                 anchors.fill: lamp
                 anchors.margins: -3
                 radius: 3
@@ -49,14 +47,14 @@ MarkerBase {
                 width: Math.round(root.text_font.pixelSize * 0.6)
                 height: Math.round(root.text_font.pixelSize * 0.4)
                 radius: 1
-                color: root.lit ? root.lit_color : Qt.alpha(root.phosphor, 0.3)
+                color: root.in_meeting ? root.lit_color : Qt.alpha(root.phosphor, 0.3)
                 border.width: 1
-                border.color: root.lit ? root.lit_color : Qt.alpha(root.phosphor, 0.9)
+                border.color: root.in_meeting ? root.lit_color : Qt.alpha(root.phosphor, 0.9)
             }
         }
 
         Text {
-            width: Math.ceil(Math.max(upcoming_width.advanceWidth, live_width.advanceWidth))
+            width: Math.ceil(Math.max(upcoming_width.advanceWidth, mtg_width.advanceWidth))
             anchors.verticalCenter: parent.verticalCenter
             text: root.in_meeting ? "L1 MTG" : "L1 " + root.minutes + "M"
             textFormat: Text.PlainText
@@ -69,15 +67,5 @@ MarkerBase {
             style: Text.Outline
             styleColor: Qt.alpha(root.phosphor, 0.35)
         }
-    }
-
-    SequentialAnimation on lit {
-        running: root.in_meeting && root.visible
-        loops: Animation.Infinite
-        PropertyAction { value: true }
-        PauseAnimation { duration: 500 }
-        PropertyAction { value: false }
-        PauseAnimation { duration: 500 }
-        onRunningChanged: if (!running) root.lit = root.in_meeting
     }
 }
