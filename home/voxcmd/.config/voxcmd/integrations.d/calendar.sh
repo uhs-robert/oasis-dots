@@ -119,7 +119,7 @@ open_meeting() {
     [ "$scope" = current ] && echo "No meeting in progress" || echo "No more meetings today"
     return
   fi
-  title=$(escape_markup "$(jq -r '.title // "Untitled"' <<<"$event")")
+  title=$(escape_markup "$(jq -r 'if (.title // "") == "" then "Untitled" else .title end' <<<"$event")")
   link=$(jq -r '.join_url // .event_url // empty' <<<"$event")
   if [ -z "$link" ]; then
     echo "$title has no meeting link"
@@ -146,7 +146,7 @@ next_meeting() {
     echo "No upcoming meetings"
     return
   fi
-  title=$(escape_markup "$(jq -r '.title // "Untitled"' <<<"$event")")
+  title=$(escape_markup "$(jq -r 'if (.title // "") == "" then "Untitled" else .title end' <<<"$event")")
   start_epoch=$(jq -r .start_epoch <<<"$event")
   message="$title $(format_at "$start_epoch")"
   if [ "$(date -d "@$start_epoch" +%F)" = "$(date +%F)" ]; then
