@@ -164,6 +164,7 @@ scope_changed_files() {
 if [ -n "$changed_base" ] && [ -z "${CHECK_FULL:-}" ] && git rev-parse --verify -q "$changed_base^{commit}" >/dev/null &&
   { git diff --name-only --no-renames "$changed_base" -- && git ls-files -o --exclude-standard; } >"$logs/changed.raw" 2>/dev/null; then
   sort -u "$logs/changed.raw" >"$logs/changed"
+  git diff --name-only --no-renames --diff-filter=D "$changed_base" -- >"$logs/deleted" 2>/dev/null
   scope_changed_files <"$logs/changed"
   scope_label="scoped to $(wc -l <"$logs/changed" | tr -d ' ') files changed since $changed_base"
 else
@@ -191,8 +192,9 @@ else
   grep -Fxf "$logs/changed" "$logs/sourcing.all" >"$logs/sourcing.fmt.list"
   grep -Fxf "$logs/changed" "$logs/agent.all" >"$logs/agent.fmt.list"
   cp "$logs/plain.list" "$logs/plain.fmt.list"
-  if [ -s "$logs/sourcing.fmt.list" ]; then cp "$logs/sourcing.all" "$logs/sourcing.list"; else : >"$logs/sourcing.list"; fi
-  if [ -s "$logs/agent.fmt.list" ]; then cp "$logs/agent.all" "$logs/agent.list"; else : >"$logs/agent.list"; fi
+  # A deleted file is in no list any more, yet a member that sourced it now fails, so any deletion lints both groups.
+  if [ -s "$logs/sourcing.fmt.list" ] || [ -s "$logs/deleted" ]; then cp "$logs/sourcing.all" "$logs/sourcing.list"; else : >"$logs/sourcing.list"; fi
+  if [ -s "$logs/agent.fmt.list" ] || [ -s "$logs/deleted" ]; then cp "$logs/agent.all" "$logs/agent.list"; else : >"$logs/agent.list"; fi
 fi
 
 # Optional tooling: a step whose tool is missing says so and does not run, so validation stays dependency-light.
