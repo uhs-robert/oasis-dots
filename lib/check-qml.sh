@@ -173,8 +173,8 @@ copy_sources "$greeter_dir" "$stage/greeter"
 copy_sources "$qs_dir/lock/skins" "$stage/greeter/lock/skins"
 cp "$qs_dir/lock/Tints.js" "$stage/greeter/lock/"
 mkdir -p "$stage/greeter/theme"
-cp "$qs_dir/theme/Theme.qml" "$qs_dir/theme/Style.qml" "$qs_dir/theme/StyleSchema.js" "$qs_dir/theme/Paths.qml" "$qs_dir/theme/Watch.js" "$stage/greeter/theme/"
-cp -r "$qs_dir/theme/styles" "$stage/greeter/theme/"
+cp "$qs_dir/theme/Theme.qml" "$qs_dir/theme/Style.qml" "$qs_dir/theme/StyleSchema.js" "$qs_dir/theme/Paths.qml" "$qs_dir/theme/Watch.js" "$qs_dir/theme/MarkerTokens.js" "$stage/greeter/theme/"
+cp -r "$qs_dir/theme/styles" "$qs_dir/theme/icon_sets" "$stage/greeter/theme/"
 
 # Quickshell 0.3.2 gives each module one-line opaque stubs (no members) for types another module defines, and qmllint
 # resolves a name to whichever stub it meets first, so every member of QuickshellScreenInfo, ObjectModel or Anchors reads
