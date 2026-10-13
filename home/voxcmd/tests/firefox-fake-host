@@ -1,0 +1,40 @@
+#!/usr/bin/env python3
+"""Stands in for firefox-host in the voxcmd tests: answers `tabs` and `activate` on $XDG_RUNTIME_DIR/voxcmd/firefox.sock.
+
+  firefox-fake-host <tabs.json> <requests.log> [error]
+
+Every request line is appended to <requests.log>. `tabs` returns the fixture; `activate` returns the title and window
+of the tab with that id, or an error for an unknown one. With "error" every request is answered with an error.
+"""
+import json
+import os
+import socket
+import sys
+
+tabs_path, requests_log = sys.argv[1:3]
+always_error = sys.argv[3:4] == ["error"]
+tabs = json.load(open(tabs_path))
+path = os.path.join(os.environ["XDG_RUNTIME_DIR"], "voxcmd", "firefox.sock")
+os.makedirs(os.path.dirname(path), exist_ok=True)
+if os.path.exists(path):
+    os.unlink(path)
+listener = socket.socket(socket.AF_UNIX)
+listener.bind(path)
+listener.listen(4)
+while True:
+    connection, _ = listener.accept()
+    with connection:
+        line = connection.makefile().readline()
+        with open(requests_log, "a") as log:
+            log.write(line)
+        request = json.loads(line)
+        tab = next((tab for tab in tabs if tab["tab_id"] == request.get("tab_id")), None)
+        if always_error:
+            reply = {"ok": False, "error": "refused"}
+        elif request["cmd"] == "tabs":
+            reply = {"ok": True, "result": tabs}
+        elif request["cmd"] == "activate" and tab:
+            reply = {"ok": True, "result": {"title": tab["title"], "window_id": tab["window_id"]}}
+        else:
+            reply = {"ok": False, "error": "No tab with that id"}
+        connection.sendall(json.dumps(reply).encode() + b"\n")

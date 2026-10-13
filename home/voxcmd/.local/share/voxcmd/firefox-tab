@@ -1,11 +1,15 @@
 #!/usr/bin/env python3
 """Firefox tabs and sites for voxcmd's firefox.sh, read from the default profile without writing to it.
 
-  firefox-tab tabs                     every tab as JSON: window, tab, title, url, selected, last_accessed, address
+  firefox-tab tabs                     every tab as JSON: window, tab, tab_id, title, url, selected, last_accessed, address
   firefox-tab places <word>...         bookmarks, history and origins whose title or url holds every word, as JSON
   firefox-tab candidates tabs|sites <target> [--raw <transcript>]
                                        voxcmd candidates ({id, label, match_text}) for a spoken target
   firefox-tab focus <address> [title]  focus the window, then the tab titled so (Firefox's tab search)
+  firefox-tab focus tab:<id> [title]   activate the tab by id through the extension, then focus its window
+
+With the extension's host running (firefox-host), tabs are listed live and switched by id. Otherwise, or when the host
+fails, tabs come from the session store and switch through the address bar.
   firefox-tab goto [--running] <url>   focus a tab on the url's site, else open the url in a new tab; with --running,
                                        exit 3 without doing anything when no Firefox window is open
   firefox-tab open [--here] <url>      open the url in a new tab, or the url or text in the focused tab
@@ -19,6 +23,7 @@ import json
 import os
 import re
 import shutil
+import socket
 import sqlite3
 import struct
 import subprocess
@@ -41,6 +46,11 @@ def debug(message):
     if os.path.exists(DEBUG_LOG):
         with open(DEBUG_LOG, "a") as log:
             log.write(f"{time.strftime('%H:%M:%S')}.{int(time.time() * 1000) % 1000:03d} firefox-tab[{os.getpid()}] {message}\n")
+
+
+HOST_SOCKET = os.path.join(os.environ.get("XDG_RUNTIME_DIR", "/tmp"), "voxcmd", "firefox.sock")
+# Seconds to wait for a Hyprland window to show the title of the tab the extension activated.
+ACTIVATE_TITLE_WAIT = 1.5
 
 
 def fail(message):
@@ -192,6 +202,80 @@ def keys(*steps):
     debug(f"typed; the window title is now {hyprctl_json('activewindow', {}).get('title', '')!r}")
 
 
+# ---- extension ------------------------------------------------------------------------------------------------
+
+
+class HostError(Exception):
+    """The extension's host is absent, unreachable or answered with an error: the caller falls back."""
+
+
+def host_request(request):
+    """One request to firefox-host over its socket: a JSON line out, a JSON line back. Returns the reply's result."""
+    connection = socket.socket(socket.AF_UNIX)
+    connection.settimeout(3.0)
+    try:
+        connection.connect(HOST_SOCKET)
+        connection.sendall(json.dumps(request).encode() + b"\n")
+        data = b""
+        while not data.endswith(b"\n"):
+            chunk = connection.recv(65536)
+            if not chunk:
+                break
+            data += chunk
+        reply = json.loads(data)
+    except (OSError, ValueError) as error:
+        raise HostError(f"the Firefox host is unreachable: {error}")
+    finally:
+        connection.close()
+    if not isinstance(reply, dict) or not reply.get("ok"):
+        error = reply.get("error") if isinstance(reply, dict) else reply
+        raise HostError(f"the Firefox host answered with an error: {error}")
+    return reply.get("result")
+
+
+def live_tabs():
+    """Every tab the extension reports, in the shape of store_tabs plus tab_id; None when the extension cannot say."""
+    try:
+        listed = host_request({"cmd": "tabs"})
+    except HostError as error:
+        debug(f"{error}, so the session store is read")
+        return None
+    return [
+        {
+            "window": tab["window_id"],
+            "tab": None,
+            "tab_id": tab["tab_id"],
+            "title": tab.get("title") or tab.get("url", ""),
+            "url": tab.get("url", ""),
+            "selected": bool(tab.get("active")),
+            "last_accessed": tab.get("last_accessed", 0),
+            "address": None,
+        }
+        for tab in listed
+    ]
+
+
+def activate_tab(tab_id, title):
+    """Switches to the tab by its id, then focuses the Hyprland window that shows it, since Hyprland does not always
+    follow the extension's own window focus. Returns False, having done nothing, when the extension cannot."""
+    try:
+        result = host_request({"cmd": "activate", "tab_id": tab_id})
+    except HostError as error:
+        debug(f"{error}, so the address bar switches tabs")
+        return False
+    shown = printable(result.get("title") or title)
+    deadline = time.monotonic() + ACTIVATE_TITLE_WAIT
+    while True:
+        windows = [client for client in firefox_clients() if printable(page_title(client.get("title", ""))) == shown]
+        if windows:
+            focus_window(windows[0]["address"])
+            debug(f"activated tab {tab_id}, window {windows[0]['address']}")
+            return True
+        if time.monotonic() >= deadline:
+            fail(f"no window shows the activated tab {shown!r}")
+        time.sleep(0.05)
+
+
 # ---- tabs ------------------------------------------------------------------------------------------------------
 
 
@@ -217,6 +301,7 @@ def store_tabs(windows):
                 {
                     "window": window_index,
                     "tab": tab_index,
+                    "tab_id": None,
                     "title": entry.get("title") or entry.get("url", ""),
                     "url": entry.get("url", ""),
                     "selected": tab_index + 1 == window.get("selected"),
@@ -253,17 +338,28 @@ def match_windows(tabs, clients):
     for tab in tabs:
         tab["address"] = assigned.get(tab["window"])
     for address, title in unmatched.items():
-        tabs.append({"window": None, "tab": None, "title": title, "url": "", "selected": True, "last_accessed": 0, "address": address})
+        tabs.append({"window": None, "tab": None, "tab_id": None, "title": title, "url": "", "selected": True, "last_accessed": 0, "address": address})
     return tabs
 
 
 def all_tabs():
-    """Every tab, or with no profile or store to read only the windows, so focusing by window title still works."""
+    """Every tab, live from the extension when it answers, else from the session store, or with no profile or store
+    to read only the windows, so focusing by window title still works."""
+    tabs = live_tabs()
+    return match_windows(session_tabs() if tabs is None else tabs, firefox_clients())
+
+
+def session_tabs():
     try:
         windows = session_windows(profile_dir())
     except (SystemExit, OSError, ValueError):
         windows = []
-    return match_windows(store_tabs(windows), firefox_clients())
+    return store_tabs(windows)
+
+
+def switchable(tab):
+    """A tab can be switched to by its id, or through the window that shows it."""
+    return tab["tab_id"] is not None or bool(tab["address"])
 
 
 def site_of(url):
@@ -296,13 +392,15 @@ def tab_candidates(target, transcript):
     url = spoken_url(target, transcript)
     if url:
         candidates.append({"id": f"goto {url}", "label": url.split("://")[1], "match_text": target})
-    for tab in sorted((tab for tab in all_tabs() if tab["address"]), key=lambda tab: -tab["last_accessed"]):
+    for tab in sorted((tab for tab in all_tabs() if switchable(tab)), key=lambda tab: -tab["last_accessed"]):
         title = " ".join(tab["title"].split())
         site = site_of(tab["url"])
         label = f"{title} ({site})" if site else title
-        candidates.append({"id": f"{tab['address']} {title}", "label": label, "match_text": title})
+        # "tab:<id> <title>" names the tab to the extension; the title lets the address bar find it when that fails.
+        candidate_id = f"tab:{tab['tab_id']} {title}" if tab["tab_id"] is not None else f"{tab['address']} {title}"
+        candidates.append({"id": candidate_id, "label": label, "match_text": title})
         if site:
-            candidates.append({"id": f"{tab['address']} {title}", "label": label, "match_text": site_words(site)})
+            candidates.append({"id": candidate_id, "label": label, "match_text": site_words(site)})
     return candidates
 
 
@@ -323,6 +421,18 @@ def site_candidates(target, transcript):
             seen.add(match_text.lower())
             candidates.append({"id": place["url"], "label": label, "match_text": match_text})
     return candidates
+
+
+def focus_tab_by_id(tab_id, title):
+    """Activates the tab through the extension. When it cannot, the tab is found again by its title in the session
+    store, which has the window to switch it in."""
+    if activate_tab(tab_id, title):
+        return
+    shown = printable(title)
+    found = [tab for tab in match_windows(session_tabs(), firefox_clients()) if tab["address"] and printable(tab["title"]) == shown]
+    if not found:
+        fail(f"no open tab is titled {shown!r}, so nothing was typed")
+    focus_tab(max(found, key=lambda tab: tab["last_accessed"])["address"], title)
 
 
 def focus_tab(address, title):
@@ -369,11 +479,14 @@ def goto(url, running_only):
     tabs = [
         tab
         for tab in all_tabs()
-        if tab["address"] and site and site_of(tab["url"]) == site and re.sub(r"^[a-z]+://[^/]*", "", tab["url"].lower()).startswith(path)
+        if switchable(tab) and site and site_of(tab["url"]) == site and re.sub(r"^[a-z]+://[^/]*", "", tab["url"].lower()).startswith(path)
     ]
     if tabs:
         best = max(tabs, key=lambda tab: tab["last_accessed"])
-        focus_tab(best["address"], best["title"])
+        if best["tab_id"] is not None:
+            focus_tab_by_id(best["tab_id"], best["title"])
+        else:
+            focus_tab(best["address"], best["title"])
     else:
         open_url(url, here=False)
 
@@ -480,7 +593,11 @@ def main(args):
         build = tab_candidates if rest[0] == "tabs" else site_candidates
         json.dump(build(rest[1], transcript), sys.stdout)
     elif command == "focus" and rest:
-        focus_tab(rest[0], " ".join(rest[1:]))
+        title = " ".join(rest[1:])
+        if re.fullmatch(r"tab:\d+", rest[0]):
+            focus_tab_by_id(int(rest[0][4:]), title)
+        else:
+            focus_tab(rest[0], title)
     elif command == "goto" and rest[-1:] and rest[:-1] in ([], ["--running"]):
         goto(rest[-1], bool(rest[:-1]))
     elif command == "open" and rest:

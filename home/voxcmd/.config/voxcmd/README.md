@@ -508,6 +508,12 @@ The overlay writes the number into the pick's FIFO, a voice reply the displayed 
 
 `firefox.sh` and `firefox-sites.sh` (with the helper `~/.local/share/voxcmd/firefox-tab`) reach the browser itself. Tabs and sites are read, never written: the session store (`sessionstore-backups/recovery.jsonlz4`) for tabs, a copy of `places.sqlite` and its write-ahead log for bookmarks and history, from the profile `installs.ini` names. Windows are matched to the store by their title. Tabs and the address bar are driven by typing into the focused Firefox window with `wtype`, through Firefox's own keys, so nothing needs installing in Firefox.
 
+#### Companion extension (optional, instant switching)
+
+With the extension in `extras/voxcmd-firefox/` loaded, tabs are listed live and switched by the tab itself: with no typing, instead of about 1.9 s, unloaded tabs and identically titled ones included. Firefox starts the native host `~/.local/share/voxcmd/firefox-host` for the extension, and it serves `$XDG_RUNTIME_DIR/voxcmd/firefox.sock` (mode 0600): one JSON line request (`{"cmd": "tabs"}` or `{"cmd": "activate", "tab_id": 7}`), one JSON line reply (`{"ok": true, "result": ...}` or `{"ok": false, "error": ...}`). Tab candidates then carry the id `tab:<tab_id> <title>`. The extension has only the `tabs` and `nativeMessaging` permissions and opens nothing.
+
+One-time setup: stow `voxcmd`, run `just firefox-host` (the installer does too), then load the extension (temporarily from `about:debugging`, or signed; see its README). Without the socket, or when the host answers with an error, everything above works as before through the session store and the address bar, and `voxcmd debug on` logs why. Private windows are invisible to the extension and are listed by window title as before. When several windows show a tab with the same title, the most recently focused of them takes the focus.
+
 | Say | Does |
 | --- | --- |
 | "go to weekly notes", "find the weekly notes tab", "go to example.com" | Focuses the window and tab whose title or site matches; several matches ask with numbers. A domain with no tab open is opened in a new tab. "go to firefox" is still the window |
@@ -519,7 +525,7 @@ The overlay writes the number into the pick's FIFO, a voice reply the displayed 
 - Firefox ranks the open tabs, and the title's words may match anywhere in another tab's title or address, so a longer title that contains this one can come first. The same title in two windows is not told apart: the focused window's tab is preferred when both have the same address, and otherwise Firefox's ranking decides. The first result is not confirmed before Return.
 - The store lags a tab switch by up to 15 seconds, so a window is also found by any of its tabs' titles. Private windows are in no store and are found by the title they show.
 - While `firefox.sh` is installed, `apps.sh` stops matching Firefox windows by their title, so a tab is offered once.
-- `tests/run.sh` (section "firefox") and the Firefox rows of `tests/phrases.tsv` run on a made-up profile built by `tests/firefox-profile`.
+- `tests/run.sh` (section "firefox") and the Firefox rows of `tests/phrases.tsv` run on a made-up profile built by `tests/firefox-profile`; section "firefox live" runs against `tests/firefox-fake-host`, and `tests/run-firefox-extension.sh` tests the host (`firefox-host-test`) and the extension's background script.
 
 ## Voice Help
 
