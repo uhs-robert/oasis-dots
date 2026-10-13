@@ -20,10 +20,10 @@ Item {
     readonly property alias count_item: count_text
 
     readonly property real badge_size: Style.bar_badge_size
-    // Sprites are drawn to the full glyph height, so a badge raised as far as a font glyph's would sit on a framed island's top border (NES).
-    readonly property real badge_rise: glyph_icon.rows ? 2 : 3
-    // A font glyph's side bearing leaves room for the badge to tuck 1px in; a pixel sprite fills its box to the edge, so the badge steps a sprite pixel clear of it.
-    readonly property real badge_overlap: glyph_icon.rows ? -glyph_icon.pixel : 1
+    // Drawn icons (sprites, vectors) fill the glyph's full height, so a badge raised as far as a font glyph's would sit on a framed island's top border (NES).
+    readonly property real badge_rise: glyph_icon.drawn ? 2 : 3
+    // A font glyph's side bearing leaves room for the badge to tuck 1px in; a drawn icon fills its box to the edge, so the badge steps clear of it by the icon's clearance.
+    readonly property real badge_overlap: glyph_icon.drawn ? -glyph_icon.clearance : 1
 
     implicitWidth: glyph_icon.implicitWidth + (count_text.visible ? count_text.implicitWidth - root.badge_overlap : 0)
     // Height is the glyph alone so layouts center the glyph; the badge overhangs the top.
