@@ -108,23 +108,75 @@ read_review() {
     --jq "$review_jq" || die "cannot read the review state of #$1"
 }
 
-# Why the commits after Codex's review need a review of their own; prints nothing when they only fix what it covered.
+# Path prefixes a repo lists in .claude/generated-paths (build output a hook commits), one per line, # for comments.
+generated_prefixes() {
+  local top line
+  top=$(git rev-parse --show-toplevel 2>/dev/null) || return 0
+  [[ -f $top/.claude/generated-paths ]] || return 0
+  while IFS= read -r line || [[ -n $line ]]; do
+    line=${line#"${line%%[![:space:]]*}"}
+    line=${line%"${line##*[![:space:]]}"}
+    [[ -z $line || $line == '#'* ]] || printf '%s\n' "$line"
+  done <"$top/.claude/generated-paths"
+}
+
+# Whether the file sits under any of the prefixes given after it.
+under_prefix() {
+  local file=$1 prefix
+  shift
+  for prefix in "$@"; do
+    [[ $file == "$prefix"* ]] && return 0
+  done
+  return 1
+}
+
+# Sets rereview_why to the reason the commits after Codex's review need a review of their own; empty when they only fix
+# what it covered. Sets generated_skipped when a commit was ignored for touching only generated paths.
 # Compares each side against the default branch, so commits picked up by a rebase after the review are not counted.
+# Not run in a subshell, so the two variables reach the caller.
 rereview_reason() {
-  local reviewed=$1 head=$2 reviewed_subjects head_subjects covered changed new_work new_file
+  local reviewed=$1 head=$2 reviewed_subjects head_commits covered changed new_file sha subject file sha_files_text only_generated
+  local -a prefixes sha_files
+  rereview_why=""
+  generated_skipped=false
+  mapfile -t prefixes < <(generated_prefixes)
   reviewed_subjects=$(gh api "repos/$slug/compare/$default...$reviewed" --jq '.commits[].commit.message | split("\n")[0]') ||
     die "cannot compare $reviewed with $default"
-  head_subjects=$(gh api "repos/$slug/compare/$default...$head" --jq '.commits[].commit.message | split("\n")[0]') ||
+  head_commits=$(gh api "repos/$slug/compare/$default...$head" --jq '.commits[] | [.sha, (.commit.message | split("\n")[0])] | @tsv') ||
     die "cannot compare $head with $default"
-  new_work=$(grep -vxFf <(printf '%s\n' "$reviewed_subjects") <<<"$head_subjects" | grep -Ev '^(fix|test)(\([^)]*\))?!?: ' | head -n 1 || true)
-  if [[ -n $new_work ]]; then
-    echo "\"$new_work\" is not a fix or test"
-    return
-  fi
+  while IFS=$'\t' read -r sha subject; do
+    [[ -n $sha ]] || continue
+    ! grep -qxF -- "$subject" <<<"$reviewed_subjects" || continue
+    # A commit of only generated files is the hook's rebuild, not work to review. Files are fetched per post-review commit.
+    if ((${#prefixes[@]})); then
+      sha_files_text=$(gh api "repos/$slug/commits/$sha" --jq '.files[].filename') || die "cannot read the files of $sha"
+      mapfile -t sha_files <<<"$sha_files_text"
+      [[ -n $sha_files_text ]] || sha_files=()
+      only_generated=${#sha_files[@]}
+      for file in "${sha_files[@]}"; do
+        under_prefix "$file" "${prefixes[@]}" || only_generated=0
+      done
+      if ((only_generated)); then
+        generated_skipped=true
+        continue
+      fi
+    fi
+    if ! grep -Eq '^(fix|test)(\([^)]*\))?!?: ' <<<"$subject"; then
+      rereview_why="\"$subject\" is not a fix or test"
+      return
+    fi
+  done <<<"$head_commits"
   covered=$(gh api "repos/$slug/compare/$default...$reviewed" --jq '.files[].filename')
   changed=$(gh api "repos/$slug/compare/$default...$head" --jq '.files[].filename')
-  new_file=$(grep -vxFf <(printf '%s\n' "$covered") <<<"$changed" | head -n 1 || true)
-  [[ -z $new_file ]] || echo "$new_file was not in the reviewed changes"
+  new_file=""
+  while IFS= read -r file; do
+    [[ -n $file ]] || continue
+    ! grep -qxF -- "$file" <<<"$covered" || continue
+    ((${#prefixes[@]})) && under_prefix "$file" "${prefixes[@]}" && continue
+    new_file=$file
+    break
+  done <<<"$changed"
+  [[ -z $new_file ]] || rereview_why="$new_file was not in the reviewed changes"
 }
 
 # Polls until the Codex review stops running and, given "head", until it covers the PR's head commit.
@@ -144,7 +196,7 @@ poll_review() {
 
 # Checks every PR before merging any, so a run never stops halfway through a stack over a review it could have seen up front.
 check_reviews() {
-  local pr number info open status reviewed head waited reason
+  local pr number info open status reviewed head waited reason rereview_why generated_skipped
   local -a problems=()
   for pr in "${prs[@]}"; do
     number=${pr#\#}
@@ -157,9 +209,14 @@ check_reviews() {
     fi
     # A fix that does what the review asked does not need another round; new work or new files after it do.
     if [[ $status == Completed && $head != "$reviewed"* ]]; then
-      reason=$(rereview_reason "$reviewed" "$head")
+      rereview_reason "$reviewed" "$head"
+      reason=$rereview_why
       if [[ -z $reason ]]; then
-        echo "note: #$number's Codex review covers $reviewed, not the head ${head:0:7}; the later commits only fix files it reviewed"
+        if $generated_skipped; then
+          echo "note: #$number's Codex review covers $reviewed, not the head ${head:0:7}; the later commits only fix files it reviewed or touch generated paths"
+        else
+          echo "note: #$number's Codex review covers $reviewed, not the head ${head:0:7}; the later commits only fix files it reviewed"
+        fi
       elif $wait_review && ! $check_only; then
         echo "merge-prs: #$number changed since Codex reviewed $reviewed ($reason); requesting a review and waiting up to ${review_wait_s}s" >&2
         gh pr comment "$number" --body "@codex review" >/dev/null || die "cannot request a Codex review on #$number"
