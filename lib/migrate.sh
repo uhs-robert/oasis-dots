@@ -25,12 +25,13 @@ _folded_systemd_links() {
   )
 }
 
-# Untracked files (ignored included) under the packages' systemd trees: what systemctl and voxtype wrote into the repo while it was folded.
+# Ignored files under the packages' systemd trees: what systemctl and voxtype wrote into the repo while it was folded.
+# Only ignored ones, so a unit being written but not yet committed stays in the checkout.
 _generated_systemd_files() {
   local pkg
   for pkg in "${NO_FOLD_PACKAGES[@]}"; do
     [[ -d "$DOTFILES_DIR/home/$pkg/.config/systemd" ]] || continue
-    git -C "$DOTFILES_DIR" ls-files -o -- "home/$pkg/.config/systemd"
+    git -C "$DOTFILES_DIR" ls-files -o -i --exclude-standard -- "home/$pkg/.config/systemd"
   done
 }
 
