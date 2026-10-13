@@ -277,7 +277,7 @@ write_window_config "days_ahead = 3650"
 window_run
 check "the maximum is accepted" test "$window_status" -eq 0
 
-for bad in "days_ahead = abc" "days_ahead = -1" "days_ahead = 3651" "days_back = 1.5" "days_back = 1e3"; do
+for bad in "days_ahead = abc" "days_ahead = -1" "days_ahead = 3651" "days_back = 1.5" "days_back = 1e3" "days_ahead =" "days_back =   "; do
   write_window_config "$bad"
   window_run
   check "bad value '$bad' exits 1" test "$window_status" -eq 1

@@ -110,7 +110,10 @@ def require_trustworthy_config(config_path):
 
 
 def read_config_values():
-    """The `key = value` lines of the config; the first of a repeated key wins, blank and `#` lines are skipped."""
+    """The `key = value` lines of the config; the first of a repeated key wins, blank and `#` lines are skipped.
+
+    A key with an empty value is kept, so `days_ahead =` is rejected rather than quietly using the default.
+    """
     path = config_dir() / "config"
     if not os.path.lexists(path):
         return {}
@@ -122,14 +125,14 @@ def read_config_values():
     values = {}
     for line in lines:
         key, separator, value = line.partition("=")
-        if separator and value.strip() and not key.strip().startswith("#"):
+        if separator and not key.strip().startswith("#"):
             values.setdefault(key.strip(), value.strip())
     return values
 
 
 def configured_url_command():
     """The command, which prints the address and never holds it."""
-    return read_config_values().get("url_command")
+    return read_config_values().get("url_command") or None
 
 
 def window_days(values, key, default):
