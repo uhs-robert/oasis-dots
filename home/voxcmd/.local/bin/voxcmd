@@ -921,6 +921,13 @@ reply_confirm() {
 session_exit_words='^(done|done clicking|im done|stop clicking|exit click mode|thats all)$'
 # A turn is a whole thought and the user is reading the screen first, so longer than a command's default.
 session_no_speech_secs="${VOXCMD_SESSION_NO_SPEECH_SECS:-10}"
+# A session listens unprompted, mostly to the room, so it wants more speech and a longer pause than a command before it
+# stops: a few knocks or a breath otherwise end a turn whose noise the transcriber then turns into words.
+session_min_speech_secs="${VOXCMD_SESSION_MIN_SPEECH_SECS:-0.4}"
+session_silence_secs="${VOXCMD_SESSION_SILENCE_SECS:-1.5}"
+# Whisper's stock output for silence and noise, normalized (before replacements). A session turn that hears only one of these heard nothing,
+# so it listens again without counting toward the unclear cap; the turn and time caps still bound it.
+session_noise_transcripts='^(|you|bye|the end|thank you|thank you for watching|thanks for watching|blank audio)$'
 session_unclear_cap=3
 # Turns that keep doing something never trip the unclear cap, so a session also ends after this long or this many.
 session_max_secs="${VOXCMD_SESSION_MAX_SECS:-300}"
@@ -1090,24 +1097,27 @@ ui_is_busy() {
   [ "$overlay" = open ] || [[ "$popup" =~ ^(opening|open|closing)( |$) ]]
 }
 
-# After a turn: counts it, ends the session when a cap is reached, else waits for the screen to settle and listens
-# again.
+# session_continue <outcome>: after a turn that did something (ran), did nothing (missed) or heard nothing (unheard),
+# counts it, ends the session when a cap is reached, else waits for the screen to settle and listens again.
 session_continue() {
   session_locked session_count_turn "$1" || return 0
   wait_until_ui_settled || debug "session: the screen had not settled after ${ui_settle_max_secs}s"
   session_listen
 }
 
-# session_count_turn <missed>: records the turn; fails when the session is over or another listen took it over.
+# session_count_turn <outcome>: records the turn; fails when the session is over or another listen took it over.
 session_count_turn() {
-  local missed="$1" state unclear turns started why=""
+  local outcome="$1" state unclear turns started why=""
   state=$(session_state_locked) || return 1
   if ! session_is_mine "$state"; then
     debug "session: another listen took over"
     return 1
   fi
   read -r unclear turns started < <(jq -r '"\(.unclear) \(.turns) \(.started)"' <<<"$state")
-  if [ "$missed" = 1 ]; then unclear=$((unclear + 1)); else unclear=0; fi
+  case "$outcome" in
+  missed) unclear=$((unclear + 1)) ;;
+  ran) unclear=0 ;;
+  esac
   turns=$((turns + 1))
   if [ "$unclear" -ge "$session_unclear_cap" ]; then
     why="nothing understood $session_unclear_cap times in a row"
@@ -1142,9 +1152,14 @@ turn_was_a_miss() {
 
 # The transcript handler while a session is open. A session that ended while the recording ran hands it to route.
 session_turn() {
-  local transcript="$*" state text file rewritten missed=0
+  local transcript="$*" state text file rewritten outcome=ran
   if ! state=$(session_state); then
     route "$transcript"
+    return
+  fi
+  if [[ "$(normalize "$transcript")" =~ $session_noise_transcripts ]]; then
+    debug "session: \"$transcript\" is the transcriber's guess at noise, listening again"
+    session_continue unheard
     return
   fi
   text=$(apply_replacements "$(normalize "$transcript")")
@@ -1160,12 +1175,12 @@ session_turn() {
   last_run_action=""
   if [ -z "$rewritten" ]; then
     notify info "voxcmd" "Not understood: \"$transcript\""
-    missed=1
+    outcome=missed
   # Nothing ran when a picker or overlay was cancelled or timed out, though route succeeds.
   elif ! route "$rewritten" || [ -z "$last_run_action" ] || turn_was_a_miss "$file"; then
-    missed=1
+    outcome=missed
   fi
-  session_continue "$missed"
+  session_continue "$outcome"
 }
 # ----------------------------------------------------------------------------------------------------------------
 
@@ -1234,8 +1249,12 @@ autostop_recording() {
   local discard_flag="$1" transcript_handler="$2" detector_pid verdict=0
   local -a detector_env=()
   [ -x "$voxcmd_autostop" ] || return 0
-  # Only the session's own listen: an overlay or confirm asked during a turn keeps auto-stop's usual allowance.
-  [ "$transcript_handler" != session_turn ] || detector_env=("VOXCMD_AUTOSTOP_NO_SPEECH_SECS=$session_no_speech_secs")
+  # Only the session's own listen: an overlay or confirm asked during a turn keeps auto-stop's usual settings.
+  [ "$transcript_handler" != session_turn ] || detector_env=(
+    "VOXCMD_AUTOSTOP_NO_SPEECH_SECS=$session_no_speech_secs"
+    "VOXCMD_AUTOSTOP_MIN_SPEECH_SECS=$session_min_speech_secs"
+    "VOXCMD_AUTOSTOP_SILENCE_SECS=$session_silence_secs"
+  )
   env "${detector_env[@]}" "$voxcmd_autostop" &
   detector_pid=$!
   trap 'kill "$detector_pid" 2>/dev/null; exit 0' TERM
@@ -1326,7 +1345,7 @@ watch_recording() {
   # Checked again: a key can answer the confirm this reply was for while voxtype finishes writing it.
   if [ ! -s "$transcript_file" ] || [ -e "$discard_flag" ]; then
     debug "watch: no transcript"
-    if [ "$transcript_handler" = session_turn ]; then session_continue 1; fi
+    if [ "$transcript_handler" = session_turn ]; then session_continue unheard; fi
     exit 0
   fi
   came_by_voice=1

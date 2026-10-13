@@ -1081,6 +1081,7 @@ export STUB_PICKS=$root/picks
 cat >"$sess_stubs/sess-hints" <<STUB
 #!/bin/sh
 echo "pick no_speech_secs=\${VOXCMD_AUTOSTOP_NO_SPEECH_SECS:-default}" >> "$log"
+echo "pick min_speech_secs=\${VOXCMD_AUTOSTOP_MIN_SPEECH_SECS:-default} silence_secs=\${VOXCMD_AUTOSTOP_SILENCE_SECS:-default}" >> "$log"
 answer=\$(head -n 1 "\$STUB_PICKS"); sed -i 1d "\$STUB_PICKS"
 [ "\$answer" != CANCEL ] || exit 1
 echo "\$answer"
@@ -1192,6 +1193,12 @@ check "the session's allowance wins over a user's auto-stop setting" "[[ \$(grep
 sess_env=(VOXCMD_SESSION_NO_SPEECH_SECS=7)
 sess_run alpha "done"
 check "VOXCMD_SESSION_NO_SPEECH_SECS sets it" "[[ \$(grep -c 'autostop no_speech_secs=7\$' '$log') == 2 ]]"
+sess_env=(VOXCMD_AUTOSTOP_MIN_SPEECH_SECS=0.1 VOXCMD_AUTOSTOP_SILENCE_SECS=0.5)
+sess_run alpha "done"
+check "session listens want 0.4s of speech and a 1.5s pause, whatever auto-stop's settings" "[[ \$(grep -c 'autostop min_speech_secs=0.4 silence_secs=1.5\$' '$log') == 2 ]]"
+sess_env=(VOXCMD_SESSION_MIN_SPEECH_SECS=0.8 VOXCMD_SESSION_SILENCE_SECS=2)
+sess_run alpha "done"
+check "VOXCMD_SESSION_MIN_SPEECH_SECS and VOXCMD_SESSION_SILENCE_SECS set them" "[[ \$(grep -c 'autostop min_speech_secs=0.8 silence_secs=2\$' '$log') == 2 ]]"
 sess_env=()
 
 # While it is open, the session file names its kind and a live owner.
@@ -1218,8 +1225,16 @@ sess_run noise noise noise alpha
 check "three unusable turns in a row end it" "session_gone && [[ \$(taps) == 0 && \$(record_starts) == 3 ]] && ended_because 'nothing understood'"
 sess_run missing missing missing alpha
 check "three targets found nowhere end it" "session_gone && [[ \$(grep -c '^tap nothing' '$log') == 3 && \$(taps) == 3 ]]"
-sess_run EMPTY EMPTY EMPTY alpha
-check "so do three recordings that transcribe to nothing" "session_gone && [[ \$(taps) == 0 && \$(record_starts) == 3 ]]"
+sess_run EMPTY EMPTY EMPTY alpha "done"
+check "recordings that transcribe to nothing listen again without counting as unusable" "session_gone && [[ \$(taps) == 1 && \$(record_starts) == 5 ]] && ended_because done"
+# Whisper's stock guesses at noise, as voxtype writes them.
+sess_run "Thank you." "The End" "you" "..." "Thanks for watching!" "[BLANK_AUDIO]" alpha "done"
+check "the transcriber's guesses at noise are not turns that missed" "session_gone && [[ \$(grep '^tap ' '$log') == 'tap alpha' && \$(record_starts) == 8 ]] && ended_because done"
+check "and are not reported as not understood" "! grep -q 'Not understood' '$log'"
+sess_env=(VOXCMD_SESSION_MAX_TURNS=3)
+sess_run "Thank you." "The End" "Thank you." "Thank you." alpha
+check "the turn cap still ends a session that only hears noise" "session_gone && [[ \$(taps) == 0 && \$(record_starts) == 3 ]] && ended_because 'it reached 3 turns'"
+sess_env=()
 sess_run noise noise alpha noise noise "done"
 check "a usable turn resets the count" "session_gone && [[ \$(grep -c '^tap alpha' '$log') == 1 && \$(record_starts) == 6 ]]"
 
@@ -1228,7 +1243,7 @@ printf '%s\n' 0 CANCEL CANCEL CANCEL >"$STUB_PICKS"
 sess_run both both both both alpha
 check "an overlay pick clicks and the session carries on" "[[ \$(grep '^tap ' '$log') == 'tap both left' ]]"
 check "three cancelled overlays in a row end it" "session_gone && [[ \$(record_starts) == 4 ]] && ended_because 'nothing understood'"
-check "the overlay's own listen keeps auto-stop's usual allowance" "[[ \$(grep -c '^pick no_speech_secs=default\$' '$log') == 4 ]]"
+check "the overlay's own listen keeps auto-stop's usual allowance" "[[ \$(grep -c '^pick no_speech_secs=default\$' '$log') == 4 && \$(grep -c '^pick min_speech_secs=default silence_secs=default\$' '$log') == 4 ]]"
 printf '%s\n' CANCEL CANCEL 1 >"$STUB_PICKS"
 sess_run both both both noise noise "done"
 check "a pick resets the count of cancelled overlays" "[[ \$(grep '^tap ' '$log') == 'tap both right' && \$(record_starts) == 6 ]] && ended_because done"
@@ -1289,7 +1304,7 @@ detect() {
     python3 "$package/.local/bin/voxcmd-autostop" --pcm "$1" 2>/dev/null || status=$?
   echo "$status"
 }
-session_detector=(VOXCMD_AUTOSTOP_MIN_SPEECH_SECS=0.6 VOXCMD_AUTOSTOP_SILENCE_SECS=1.5 VOXCMD_AUTOSTOP_NO_SPEECH_SECS=5)
+session_detector=(VOXCMD_AUTOSTOP_MIN_SPEECH_SECS=0.4 VOXCMD_AUTOSTOP_SILENCE_SECS=1.5 VOXCMD_AUTOSTOP_NO_SPEECH_SECS=5)
 echo "== auto-stop detector"
 # A microphone's first fraction of a second, quieter than the fan the rest of the recording hears.
 pcm "$root/fan-after-quiet-start.pcm" noise:0.3:-75 noise:7.7:-42
@@ -1379,7 +1394,7 @@ stale_listen() {
 }
 stale_listen 999999 1
 check "a stale session is dropped and the command routes normally" "session_gone && [[ \$(grep '^tap ' '$log') == 'tap hello' && \$(record_starts) == 1 ]]"
-check "a normal listen keeps the default silence allowance" "grep -q 'no_speech_secs=default' '$log'"
+check "a normal listen keeps the default silence allowance" "grep -q 'no_speech_secs=default' '$log' && grep -q 'min_speech_secs=default silence_secs=default' '$log'"
 # A live process under the owner's PID is not the owner unless it started when the owner did.
 "$stub_sleep" 60 &
 reused_pid=$!
@@ -1387,6 +1402,14 @@ stale_listen "$reused_pid" 1
 check "a reused owner PID does not keep the session" "session_gone && [[ \$(grep '^tap ' '$log') == 'tap hello' ]]"
 kill "$reused_pid" 2>/dev/null
 wait "$reused_pid" 2>/dev/null
+# Outside a session the same words are a command like any other.
+rm -f "$XDG_RUNTIME_DIR/voxcmd/session.json"
+printf '%s\n' "thank you" >"$sess_turns"
+: >"$XDG_RUNTIME_DIR/voxcmd/debug.log"
+sess_voxcmd_env listen
+sess_wait
+check "outside a session a stock noise transcript is routed" "grep -q 'transcript \"thank you\" goes to route' '$XDG_RUNTIME_DIR/voxcmd/debug.log' && ! grep -q 'guess at noise' '$XDG_RUNTIME_DIR/voxcmd/debug.log'"
+rm -f "$XDG_RUNTIME_DIR/voxcmd/debug.log"
 
 # The watcher dying mid-session takes the session with it.
 sess_start alpha alpha alpha
