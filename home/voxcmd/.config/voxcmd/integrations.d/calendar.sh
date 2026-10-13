@@ -14,7 +14,9 @@ calendar_noun='(meeting|call)'
 calendar_new='(new|create|schedule|add|make|set up)( me)?( a| an)?( new)?'
 
 verbs=(
-  "open_meeting  (open|join|launch|start) (my|the)( current| next)? ${calendar_noun}( now)?"
+  "open_current  (open|join|launch|start) (my|the) current ${calendar_noun}( now)?"
+  "open_next     (open|join|launch|start) (my|the) next ${calendar_noun}( now)?"
+  "open_meeting  (open|join|launch|start) (my|the) ${calendar_noun}( now)?"
   "next          (whats|what is|when is) (my )?next ${calendar_noun}"
   "next          (whats|what is) next on (my|the) calendar"
   "day           (whats|what is)( going)? on (my|the) calendar( for| on)? {target}"
@@ -34,7 +36,9 @@ examples=(
 )
 
 declare -A actions=(
-  [open_meeting]='open_meeting'
+  [open_meeting]='open_meeting any'
+  [open_current]='open_meeting current'
+  [open_next]='open_meeting next'
   [next]='next_meeting'
   [day]='show_day "$target"'
   [day_today]='show_day today'
@@ -93,23 +97,26 @@ calendar_events() {
 # Join links (Meet or Teams) decide which meeting to join, not event_url: calendar-sync fills that for every event.
 # The in-progress event with a join link and the latest start wins; an in-progress event without one gives way to a
 # joinable meeting starting within five minutes. Failing both, the next event that starts today.
+# "current" only ever takes an event in progress and "next" only one that has not started, today.
 open_meeting() {
-  local events now end_of_day event link title
+  local scope="$1" events now end_of_day event link title
   events=$(calendar_events) || {
     echo "$events"
     return 1
   }
   now=$(date +%s)
   end_of_day=$(date -d 'tomorrow 00:00' +%s)
-  event=$(jq -c --argjson now "$now" --argjson end_of_day "$end_of_day" '
+  event=$(jq -c --arg scope "$scope" --argjson now "$now" --argjson end_of_day "$end_of_day" '
     def has_join_link: (.join_url // "") != "";
     (map(select(.start_epoch <= $now and .end_epoch > $now)) | sort_by([(has_join_link | not), -.start_epoch])) as $current
     | (map(select(.start_epoch > $now and .start_epoch <= $now + 300 and has_join_link)) | sort_by(.start_epoch)) as $starting_soon
-    | (if ($current | first | . != null and has_join_link) then $current[0] else ($starting_soon[0] // $current[0]) end)
-    // (map(select(.start_epoch > $now and .start_epoch < $end_of_day)) | sort_by(.start_epoch) | first)
-    // empty' <<<"$events")
+    | (map(select(.start_epoch > $now and .start_epoch < $end_of_day)) | sort_by(.start_epoch) | first) as $upcoming
+    | if $scope == "current" then $current[0]
+      elif $scope == "next" then $upcoming
+      else (if ($current | first | . != null and has_join_link) then $current[0] else ($starting_soon[0] // $current[0]) end) // $upcoming
+      end // empty' <<<"$events")
   if [ -z "$event" ]; then
-    echo "No more meetings today"
+    [ "$scope" = current ] && echo "No meeting in progress" || echo "No more meetings today"
     return
   fi
   title=$(escape_markup "$(jq -r '.title // "Untitled"' <<<"$event")")
