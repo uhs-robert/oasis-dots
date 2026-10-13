@@ -82,6 +82,7 @@ function overrides(t, ctx) {
         range_line: true,
         weather_icon_tint: t.theme_primary_light,
         bar_font_family: "Jura",
+        bar_meeting_marker: "ring_gauge",
         bar_font_size: t.font_size + 1,
         bar_letter_spacing: 1.5,
         bar_side_bg: Qt.alpha(t.bg_core, 0.85),

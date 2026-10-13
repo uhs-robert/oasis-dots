@@ -66,6 +66,7 @@ function overrides(t, ctx) {
         toggle_on: t.theme_primary,
         toggle_off: Qt.tint(t.fg_dim, Qt.alpha(t.theme_primary_light, 0.4)),
         bar_font_family: "Share Tech Mono",
+        bar_meeting_marker: "energy_tanks",
         bar_font_size: 16,
         bar_side_bg: Qt.alpha(t.bg_crust, 0.95),
         bar_center_bg: Qt.alpha(t.bg_crust, 0.95),
