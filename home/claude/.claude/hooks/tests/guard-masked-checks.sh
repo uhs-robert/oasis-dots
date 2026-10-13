@@ -74,6 +74,10 @@ expect deny "run-phrases.sh | tail" "$checks_repo" $'cd x\n./home/voxcmd/tests/r
 expect deny "just lint | tail" "$checks_repo" 'just lint | tail -2 && echo ok'
 expect deny "scripts/verify-fast.sh | grep" "$checks_repo" 'bash scripts/verify-fast.sh | grep -v ok && echo ok'
 expect allow "" "$checks_repo" 'sh lib/checker.sh | head -20 && echo done'
+expect deny "just check | tail" "$root" '(set -o pipefail); just check | tail -3 && git push'
+expect deny "just check | tail" "$root" '(set -o pipefail; echo hi) && just check | tail -3 && git push'
+expect allow "" "$root" '(set -o pipefail; just check | tail -3 && git push)'
+expect allow "" "$root" 'set -o pipefail; (echo hi); just check | tail -3 && git push'
 expect allow "" "$root" 'just check | tail -3'
 expect allow "" "$root" 'just check | tail -3; echo done'
 expect allow "" "$root" 'set -o pipefail; just check 2>&1 | tail -3 && git push'
@@ -113,6 +117,27 @@ g checkout -q a
 printf 'x\n%s branch\n' "$theirs" >"$repo/new"
 expect deny "$staged new" "$root" "cd $repo && git add -A && git commit -m all"
 expect allow "" "$repo" 'git commit -am tracked-only'
+
+echo "== commit <pathspec> and commit -a read the worktree"
+fresh_repo
+echo b >"$repo/b"
+g add b
+g commit -qm B
+printf '%s HEAD\n' "$ours" >"$repo/a"
+expect deny "$staged a" "$repo" 'git commit -m fix a'
+expect deny "$staged a" "$repo" 'git commit -o a -m fix'
+expect deny "$staged a" "$repo" 'git commit -m "fix a thing" -- a'
+expect deny "$staged a" "$root" "cd $repo && git commit -m fix a"
+expect deny "$staged a" "$repo" 'git commit -a -m fix'
+expect allow "" "$repo" 'git commit -m "touch a" b'
+expect allow "" "$repo" 'git commit -m fix -- b'
+mkdir "$repo/sub"
+echo s >"$repo/sub/s"
+g add sub/s
+g commit -qm S
+printf '%s HEAD\n' "$ours" >"$repo/sub/s"
+expect deny "$staged sub/s" "$repo/sub" 'git commit -m fix s'
+expect allow "" "$repo/sub" 'git commit -m fix ../b'
 
 echo "$pass passed, $fail failed"
 ((fail == 0))

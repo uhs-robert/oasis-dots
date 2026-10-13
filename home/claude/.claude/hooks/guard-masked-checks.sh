@@ -57,7 +57,11 @@ if [[ $flat =~ $masked ]]; then
   check=${BASH_REMATCH[2]}
   [[ ${BASH_REMATCH[0]} =~ \|[[:space:]]*(tail|head|grep) ]]
   filter=${BASH_REMATCH[1]}
-  [[ $flat =~ $pipefail ]] ||
+  # Only a pipefail set in the pipeline's own shell counts: drop the ( ... ) groups that closed before it, since
+  # their settings die with the subshell.
+  before=${flat%%"${BASH_REMATCH[0]}"*}
+  while [[ $before =~ \([^\(\)]*\) ]]; do before=${before/"${BASH_REMATCH[0]}"/ }; done
+  [[ $before =~ $pipefail ]] ||
     deny "$check | $filter hides its exit code from &&: write it to a log and tail the log, or set -o pipefail"
 fi
 
@@ -73,12 +77,18 @@ resolve() {
 
 # Files in the repo at $1 that would carry conflict markers into the commit. Scope "index" is what is staged now;
 # "tracked" adds unstaged changes to tracked files (commit -a); "worktree" also adds untracked files, for a `git add`
-# earlier in the command, whose pathspecs are not worth parsing.
+# earlier in the command, whose pathspecs are not worth parsing; "paths" is the worktree content of the pathspecs
+# after the scope (commit <pathspec>), relative to $dir, the directory the command runs in.
 marked_files() {
   local top=$1 scope=$2 files
+  shift 2
   files=$({
-    git -C "$top" diff --cached --name-only --diff-filter=d
-    [[ $scope == index ]] || git -C "$top" diff --name-only --diff-filter=d
+    if [[ $scope == paths ]]; then
+      git -C "$dir" ls-files --full-name -- "$@"
+    else
+      git -C "$top" diff --cached --name-only --diff-filter=d
+    fi
+    [[ $scope == index || $scope == paths ]] || git -C "$top" diff --name-only --diff-filter=d
     [[ $scope != worktree ]] || git -C "$top" ls-files --others --exclude-standard
   } | sort -u)
   [[ -n $files ]] || return 0
@@ -148,7 +158,33 @@ while IFS= read -r segment; do
   [[ $staged_tops == *" $top "* ]] && scope=worktree
   # commit -a stages every tracked change.
   [[ $scope == index && $sub == commit && $args =~ [[:space:]](-[b-zA-Z]*a[a-zA-Z]*|--all)[[:space:]] ]] && scope=tracked
-  files=$(marked_files "$top" "$scope")
+  pathspecs=()
+  with_index=""
+  if [[ $scope == index && $sub == commit ]]; then
+    # Quoted words (messages) are dropped, then option values; what is left is the pathspecs.
+    read -ra cargs <<<"$(sed -E "s/\"[^\"]*\"|'[^']*'//g" <<<"${words[*]:i+1}")"
+    skip_next=false
+    only_dashes=false
+    for word_ in "${cargs[@]}"; do
+      if $skip_next; then
+        skip_next=false
+      elif $only_dashes; then
+        pathspecs+=("${word_//[\'\"]/}")
+      else
+        case $word_ in
+        --) only_dashes=true ;;
+        -m | -F | -C | -c | -t | --message | --file | --author | --date | --cleanup | --template | --reuse-message | --reedit-message | --fixup | --squash | --trailer) skip_next=true ;;
+        -i | --include) with_index=1 ;;
+        -*) ;;
+        *) pathspecs+=("${word_//[\'\"]/}") ;;
+        esac
+      fi
+    done
+    ((${#pathspecs[@]})) && scope=paths
+  fi
+  files=$(marked_files "$top" "$scope" "${pathspecs[@]}")
+  # commit -i also takes what is already staged.
+  [[ -z $with_index ]] || files=$(printf '%s\n' "$files" "$(marked_files "$top" index)" | sed '/^$/d')
   [[ -z $files ]] || deny "conflict markers staged in $(paste -sd ' ' <<<"$files"): resolve them, git add, then continue"
 done < <(tr -s '&|;' '\n' <<<"$flat")
 exit 0

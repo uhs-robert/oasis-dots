@@ -93,6 +93,9 @@ for ((i = 1; i < ${#branches[@]}; i++)); do
     git worktree add -q "$tmp_root/wt" "$child" || die "cannot create a worktree for $child"
     wt=$tmp_root/wt
   fi
+  # The lease names the remote tip seen before the rebase, not the remote-tracking ref, which a later fetch could
+  # move past a push by someone else. An empty expectation makes the push require that the branch is absent.
+  remote_tip=$(git rev-parse --verify --quiet "refs/remotes/origin/$child" || true)
   if ! git -C "$wt" rebase -q --onto "$parent" "$old_base" >/dev/null 2>&1; then
     files=$(git -C "$wt" diff --name-only --diff-filter=U | paste -sd ' ')
     # A temporary worktree is kept, since the half-done rebase lives in it.
@@ -122,7 +125,7 @@ or give up with: git -C $wt rebase --abort"
     echo "$child: check passed"
   fi
   if $push; then
-    git -C "$wt" push -q --force-with-lease origin "refs/heads/$child:refs/heads/$child" || die "cannot push $child"
+    git -C "$wt" push -q "--force-with-lease=refs/heads/$child:$remote_tip" origin "refs/heads/$child:refs/heads/$child" || die "cannot push $child"
     echo "$child: pushed"
   fi
   remove_tmp
