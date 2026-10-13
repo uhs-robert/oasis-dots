@@ -79,13 +79,15 @@ case "$args" in
     awk -F'\t' -v OFS='\t' '{ if ($1 == "") $1 = 0; if ($2 == "") $2 = "none"; if ($3 == "") $3 = "-"; print }'
   ;;
 "pr view"*"headRefName,headRefOid,baseRefName,state,isCrossRepository"*)
-  printf '%s\t%s\t%s\t%s\tfalse\n' "$(get head)" "$(reported_oid)" "$(get base)" "$(get state)"
+  printf '%s\t%s\t%s\t%s\t%s\n' "$(get head)" "$(reported_oid)" "$(get base)" "$(get state)" "$(get cross || true)" |
+    awk -F'\t' -v OFS='\t' '{ if ($5 == "") $5 = "false"; print }'
   ;;
 "pr view"*"headRefOid,mergeable"*)
   oid=$(reported_oid)
   if [[ $oid == "$(get conflicting_oid)" ]]; then m=CONFLICTING; else m=MERGEABLE; fi
   printf '%s\t%s\n' "$oid" "$m"
   ;;
+"pr view"*"--json headRefOid --jq"*) reported_oid ;;
 "pr view"*"--json state"*) get state ;;
 "pr merge"*)
   [[ $args == *"--match-head-commit $(head_oid)"* ]] || {

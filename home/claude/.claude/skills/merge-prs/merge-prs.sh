@@ -453,6 +453,45 @@ merge_pr_already_merged() {
   )
 }
 
+# Runs the repo's .claude/pre-merge on a detached checkout of the PR head, so build output it commits lands in the PR and
+# is merged with it. Sets head_oid to the head to merge: the script's commit, pushed and seen by GitHub, if it made one.
+# The gate has already run by now, so a commit made here is never held to it. Not run by --check.
+run_pre_merge() {
+  local pr=$1 head=$2 base=$3 cross=$4 hook new_oid pre_merge_oid=$head_oid
+  hook=$main_dir/.claude/pre-merge
+  [[ -x $hook ]] || return 0
+  if [[ $cross == true ]]; then
+    echo "warning: #$pr is from a fork, so the pre-merge step was skipped; its commits could not be pushed"
+    return 0
+  fi
+  tmp_root=$(mktemp -d "${TMPDIR:-/tmp}/merge-prs.XXXXXX")
+  git worktree add -q --detach "$tmp_root/wt" "$head_oid" || die "cannot create a worktree for $head"
+  echo "merge-prs: pre-merge #$pr"
+  if ! (cd "$tmp_root/wt" && MERGE_PRS_PR=$pr MERGE_PRS_BRANCH=$head MERGE_PRS_BASE=$base MERGE_PRS_REPO_ROOT=$main_dir "$hook"); then
+    remove_tmp
+    die "the pre-merge step failed on #$pr; fix it and rerun for #$pr and the PRs after it"
+  fi
+  if [[ -n $(git -C "$tmp_root/wt" status --porcelain) ]]; then
+    echo "warning: the pre-merge step left uncommitted changes on #$pr; they are not merged"
+  fi
+  new_oid=$(git -C "$tmp_root/wt" rev-parse HEAD)
+  if [[ $new_oid != "$head_oid" ]]; then
+    git -C "$tmp_root/wt" push -q origin "HEAD:refs/heads/$head" || {
+      remove_tmp
+      die "cannot push the pre-merge commits to $head"
+    }
+    pushed_heads[$head]=$new_oid
+    known_heads+=("$new_oid")
+    head_oid=$new_oid
+    echo "#$pr pre-merge committed ${new_oid:0:7}"
+  fi
+  remove_tmp
+  [[ $new_oid != "$pre_merge_oid" ]] || return 0
+  # GitHub reports the old head, and an unknown mergeable state, for a moment after a push.
+  [[ $(await_mergeable "$pr" "$head_oid") == @(MERGEABLE|CONFLICTING) ]] ||
+    die "GitHub has not caught up with the pre-merge commit $head_oid on #$pr; rerun for #$pr and the PRs after it"
+}
+
 merge_pr() {
   local pr=$1 info head base state cross head_oid children_info="" line number child_head child_oid child_cross
   local -a lines=()
@@ -488,6 +527,8 @@ merge_pr() {
     known_heads+=("$head_oid")
     await_mergeable "$pr" "$head_oid" >/dev/null
   fi
+
+  run_pre_merge "$pr" "$head" "$base" "$cross"
 
   local merge_args=("--$method" --repo "$slug" --match-head-commit "$head_oid")
   $keep_branch || merge_args+=(--delete-branch)

@@ -333,6 +333,127 @@ show "$out"
 check "fails" "[[ $code != 0 ]]"
 check "stops at the limit even with a zero poll interval" "[[ $code != 124 ]] && grep -q 'still running after 1s' <<<\"\$out\""
 
+# Installs .claude/pre-merge in the main checkout from the given body; each run logs its environment to $root/env.
+# shellcheck disable=SC2016 # The single-quoted text is the hook script's own source.
+pre_merge_hook() {
+  mkdir -p .claude
+  {
+    printf '#!/usr/bin/env bash\nset -e\n'
+    printf 'echo "$MERGE_PRS_PR $MERGE_PRS_BRANCH $MERGE_PRS_BASE $MERGE_PRS_REPO_ROOT $PWD" >>"%s/env"\n' "$root"
+    printf 'echo hook ran\n%s\n' "$1"
+  } >.claude/pre-merge
+  chmod +x .claude/pre-merge
+}
+# shellcheck disable=SC2016
+commit_build='echo built >"built-$MERGE_PRS_BRANCH"; git add .; git -c user.name=t -c user.email=t@t commit -qm "build: $MERGE_PRS_BRANCH"'
+
+echo "== pre-merge: no script"
+setup
+out=$(PATH="$here:$PATH" "$script" 7 2>&1)
+code=$?
+show "$out"
+check "exits 0" "[[ $code == 0 ]]"
+check "does not mention pre-merge" "! grep -q pre-merge <<<\"\$out\""
+
+echo "== pre-merge: script that commits"
+setup
+pre_merge_hook "$commit_build"
+out=$(PATH="$here:$PATH" "$script" 7 2>&1)
+code=$?
+show "$out"
+check "exits 0" "[[ $code == 0 ]]"
+check "announces the step and streams the output" "grep -q '^merge-prs: pre-merge #7' <<<\"\$out\" && grep -q '^hook ran' <<<\"\$out\""
+check "gives the script its environment" "[[ \$(cut -d' ' -f1-4 '$root/env') == '7 child main $root/main' ]] && [[ \$(cut -d' ' -f5 '$root/env') != '$root/main' ]]"
+check "merges" "grep -q '^7 merged (rebase)' <<<\"\$out\""
+check "merged the pre-merge commit" "[[ \$(git -C '$ORIGIN' log --format=%s main | head -n 1) == 'build: child' ]]"
+check "removes the temporary worktree" "[[ \$(git worktree list | wc -l) == 1 ]]"
+
+echo "== pre-merge: script that changes nothing"
+setup
+pre_merge_hook "true"
+before=$(git -C "$ORIGIN" rev-parse child)
+out=$(PATH="$here:$PATH" "$script" 7 2>&1)
+code=$?
+show "$out"
+check "exits 0" "[[ $code == 0 ]]"
+check "runs the script" "grep -q '^hook ran' <<<\"\$out\""
+check "merges" "grep -q '^7 merged (rebase)' <<<\"\$out\""
+check "adds no commit" "! grep -q 'pre-merge committed' <<<\"\$out\" && [[ \$(git -C '$ORIGIN' log --format=%s main | head -n 1) == C ]]"
+
+echo "== pre-merge: script that fails"
+setup
+pre_merge_hook "echo boom; exit 3"
+out=$(PATH="$here:$PATH" "$script" 7 2>&1)
+code=$?
+show "$out"
+check "stops with an error" "[[ $code != 0 ]]"
+check "names the PR" "grep -q 'pre-merge step failed on #7' <<<\"\$out\""
+check "shows the output" "grep -q '^boom' <<<\"\$out\""
+check "does not merge" "grep -q '^state=OPEN' '$GH_STATE'"
+check "removes the temporary worktree" "[[ \$(git worktree list | wc -l) == 1 ]]"
+
+echo "== pre-merge: fork PR is skipped"
+setup
+# The fake merge cherry-picks the branch, so give the fork a branch that does not repeat what setup landed on main.
+g switch -q main
+g switch -qc fork-head
+echo f >f
+g add f
+g commit -qm F
+g push -q origin fork-head
+pre_merge_hook "$commit_build"
+printf 'head=fork-head\nbase=main\nstate=OPEN\ncross=true\n' >"$GH_STATE"
+out=$(PATH="$here:$PATH" "$script" 7 2>&1)
+code=$?
+show "$out"
+check "exits 0" "[[ $code == 0 ]]"
+check "warns" "grep -q 'warning: #7 is from a fork, so the pre-merge step was skipped' <<<\"\$out\""
+check "does not run the script" "[[ ! -e '$root/env' ]]"
+check "merges" "grep -q '^7 merged (rebase)' <<<\"\$out\""
+
+echo "== pre-merge: --check never runs it"
+setup
+pre_merge_hook "$commit_build"
+out=$(PATH="$here:$PATH" "$script" --check 7 2>&1)
+code=$?
+show "$out"
+check "passes" "[[ $code == 0 ]]"
+check "does not run the script" "[[ ! -e '$root/env' ]]"
+
+echo "== pre-merge: stack where both PRs get a commit"
+root=$(mktemp -d)
+export ORIGIN=$root/origin.git GH_STATE=$root/state
+git init -q --bare -b main "$ORIGIN"
+g clone -q "$ORIGIN" "$root/main" 2>/dev/null
+cd "$root/main" || exit 1
+echo a >a
+g add a
+g commit -qm A
+g push -q origin main
+g switch -qc parent
+echo p >p
+g add p
+g commit -qm P
+g push -q origin parent
+g switch -qc child
+echo c >c
+g add c
+g commit -qm C
+g push -q origin child
+g switch -q main
+: >"$GH_STATE"
+printf 'head=parent\nbase=main\nstate=OPEN\n' >"$GH_STATE.7"
+printf 'head=child\nbase=parent\nstate=OPEN\n' >"$GH_STATE.8"
+pre_merge_hook "$commit_build"
+out=$(PATH="$here:$PATH" "$script" 7 8 2>&1)
+code=$?
+show "$out"
+check "exits 0" "[[ $code == 0 ]]"
+check "runs the script for both" "[[ \$(cut -d' ' -f1-3 '$root/env' | tr '\n' ',') == '7 parent main,8 child main,' ]]"
+check "rebases the child past the parent's pre-merge commit" "grep -q '^8 rebased onto main' <<<\"\$out\""
+check "merges both" "grep -q '^7 merged (rebase)' <<<\"\$out\" && grep -q '^8 merged (rebase)' <<<\"\$out\""
+check "main has each commit once, the child built on the merged parent" "[[ \$(git -C '$ORIGIN' log --format=%s main) == \$'build: child\nC\nbuild: parent\nP\nA' ]]"
+
 echo "== --check: refuses merge options"
 setup
 out=$(PATH="$here:$PATH" "$script" --check --keep-branch 7 2>&1)
