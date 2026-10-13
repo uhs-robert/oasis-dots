@@ -1,8 +1,9 @@
 // home/quickshell/.config/quickshell/components/clock_marker/LcdSubdialMarker.qml
 import QtQuick
 import "../../theme"
+import "../../theme/Watch.js" as W
 
-// Placeholder for goldeneye until its own marker is drawn.
+// goldeneye: a small LCD window like a watch complication, holding the minutes in segment digits before a meeting and a blinking ALM during one.
 Item {
     id: root
 
@@ -14,16 +15,53 @@ Item {
     property color ink: "black"
     property font text_font
 
-    implicitWidth: fallback.implicitWidth
-    implicitHeight: fallback.implicitHeight
+    readonly property real digit_size: Style.bar_font_size + 1
+    readonly property color lit: root.on_accent ? root.ink : Theme.theme_primary_light
 
-    DefaultMarker {
-        id: fallback
-        minutes: root.minutes
-        in_meeting: root.in_meeting
-        progress: root.progress
-        on_accent: root.on_accent
-        ink: root.ink
-        text_font: root.text_font
+    implicitWidth: Math.ceil(Math.max(upcoming_width.advanceWidth, alarm_width.advanceWidth)) + 12
+    implicitHeight: Math.ceil(root.digit_size) + 8
+
+    // Sized from the widest reading, so the minutes ticking down do not resize the window.
+    TextMetrics {
+        id: upcoming_width
+        font.family: W.digit_font
+        font.pixelSize: root.digit_size
+        text: "[00]"
+    }
+
+    TextMetrics {
+        id: alarm_width
+        font.family: W.digit_font
+        font.pixelSize: root.digit_size
+        text: "ALM"
+    }
+
+    Rectangle {
+        anchors.fill: parent
+        radius: 2
+        color: root.on_accent ? "transparent" : Qt.tint(Theme.bg_crust, Qt.alpha(Theme.theme_primary, 0.1))
+        border.width: 1
+        border.color: root.on_accent ? root.ink : Qt.alpha(Theme.theme_primary, 0.5)
+    }
+
+    Text {
+        id: readout
+        anchors.centerIn: parent
+        anchors.verticalCenterOffset: 1
+        text: root.in_meeting ? "ALM" : "[" + String(Math.min(99, root.minutes)).padStart(2, "0") + "]"
+        textFormat: Text.PlainText
+        color: root.in_meeting && !root.on_accent ? Style.meter_hot : root.lit
+        font.family: W.digit_font
+        font.pixelSize: root.digit_size
+
+        SequentialAnimation on opacity {
+            running: root.in_meeting && root.visible
+            loops: Animation.Infinite
+            NumberAnimation { to: 0.1; duration: 1; }
+            PauseAnimation { duration: 499 }
+            NumberAnimation { to: 1; duration: 1 }
+            PauseAnimation { duration: 499 }
+            onRunningChanged: if (!running) readout.opacity = 1
+        }
     }
 }
