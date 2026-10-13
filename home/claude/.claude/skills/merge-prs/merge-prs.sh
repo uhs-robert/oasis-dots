@@ -135,11 +135,12 @@ under_prefix() {
 # Compares each side against the default branch, so commits picked up by a rebase after the review are not counted.
 # Not run in a subshell, so the two variables reach the caller.
 rereview_reason() {
-  local reviewed=$1 head=$2 reviewed_subjects head_commits covered changed new_file sha subject file sha_files_text only_generated
-  local -a prefixes sha_files
+  local reviewed=$1 head=$2 cross=$3 reviewed_subjects head_commits covered changed new_file sha subject file sha_files_text only_generated
+  local -a prefixes=() sha_files=()
   rereview_why=""
   generated_skipped=false
-  mapfile -t prefixes < <(generated_prefixes)
+  # A fork PR is never rebuilt by the pre-merge step, so its generated paths are not known to be output.
+  [[ $cross == true ]] || mapfile -t prefixes < <(generated_prefixes)
   reviewed_subjects=$(gh api "repos/$slug/compare/$default...$reviewed" --jq '.commits[].commit.message | split("\n")[0]') ||
     die "cannot compare $reviewed with $default"
   head_commits=$(gh api "repos/$slug/compare/$default...$head" --jq '.commits[] | [.sha, (.commit.message | split("\n")[0])] | @tsv') ||
@@ -196,7 +197,7 @@ poll_review() {
 
 # Checks every PR before merging any, so a run never stops halfway through a stack over a review it could have seen up front.
 check_reviews() {
-  local pr number info open status reviewed head waited reason rereview_why generated_skipped
+  local pr number info open status reviewed head waited reason cross rereview_why generated_skipped
   local -a problems=()
   for pr in "${prs[@]}"; do
     number=${pr#\#}
@@ -209,7 +210,8 @@ check_reviews() {
     fi
     # A fix that does what the review asked does not need another round; new work or new files after it do.
     if [[ $status == Completed && $head != "$reviewed"* ]]; then
-      rereview_reason "$reviewed" "$head"
+      cross=$(gh pr view "$number" --json isCrossRepository --jq .isCrossRepository) || die "cannot read #$number"
+      rereview_reason "$reviewed" "$head" "$cross"
       reason=$rereview_why
       if [[ -z $reason ]]; then
         if $generated_skipped; then
@@ -357,8 +359,10 @@ rebase_child() {
 }
 
 # GitHub recomputes mergeability lazily after a push; merging before it settles fails with "Head branch was modified".
+# Prints UNKNOWN unless GitHub reports the expected head with a settled state, since it can report the old head's state.
+mergeable_wait_s=${MERGE_PRS_MERGEABLE_WAIT:-60}
 await_mergeable() {
-  local pr=$1 oid=$2 info="" deadline=$((SECONDS + 60))
+  local pr=$1 oid=$2 info="" deadline=$((SECONDS + mergeable_wait_s))
   while :; do
     info=$(gh pr view "$pr" --json headRefOid,mergeable --jq '[.headRefOid, .mergeable] | @tsv') ||
       die "cannot read the mergeability of $pr"
@@ -366,24 +370,53 @@ await_mergeable() {
     ((SECONDS < deadline)) || break
     sleep 2
   done
+  [[ $info == "$oid"$'\t'@(MERGEABLE|CONFLICTING) ]] || info="$oid"$'\t'UNKNOWN
   printf '%s\n' "${info#*$'\t'}"
 }
 
-# A PR stacked on a parent that was rebase- or squash-merged outside this run still carries the parent's old commits,
-# so GitHub reports it as conflicting. Rebasing onto the base drops them, because git skips commits whose changes are
-# already there; a rebase that drops nothing means a real conflict, which stays with the owner.
-rebase_stale_head() {
-  local pr=$1 head=$2 old=$3 base=$4 before after
+# Rebases the detached worktree's HEAD (at $old) onto origin/$base. With a pre-merge step, commits touching only generated
+# paths are dropped first, since the step rebuilds that output and the old build would only conflict with the base's.
+rebase_dropping_generated() {
+  local old=$1 base=$2 commit file generated
+  local -a prefixes=() skip=() files=()
+  [[ -x $main_dir/.claude/pre-merge ]] && mapfile -t prefixes < <(generated_prefixes)
+  for commit in $(git rev-list --reverse --no-merges "origin/$base..$old"); do
+    ((${#prefixes[@]})) || break
+    mapfile -t files < <(git diff-tree --root --no-commit-id --name-only -r "$commit")
+    generated=${#files[@]}
+    for file in "${files[@]}"; do
+      under_prefix "$file" "${prefixes[@]}" || generated=0
+    done
+    ((generated == 0)) || skip+=("$commit")
+  done
+  generated_dropped=${#skip[@]}
+  if ((${#skip[@]} == 0)); then
+    git -C "$tmp_root/wt" rebase -q "origin/$base" >/dev/null 2>&1
+  elif ((${#skip[@]} == $(git rev-list --count --no-merges "origin/$base..$old"))); then
+    git -C "$tmp_root/wt" checkout -q --detach "origin/$base"
+  else
+    # Full ids in the todo list, so the filter cannot match a shorter abbreviation of another commit.
+    GIT_SEQUENCE_EDITOR="sed -i -E '/^(pick|p) ($(IFS='|' && echo "${skip[*]}")) /d'" \
+      git -c core.abbrev=40 -C "$tmp_root/wt" rebase -q -i "origin/$base" >/dev/null 2>&1
+  fi
+}
+
+# Rebases a PR head onto origin/$base and force-pushes it, recording the new head in rebased_oid. A PR stacked on a parent
+# that was rebase- or squash-merged outside this run still carries the parent's old commits, so GitHub reports it as
+# conflicting; rebasing drops them, because git skips commits whose changes are already there. With require_drop, a rebase
+# that drops nothing means a real conflict, which stays with the owner.
+rebase_head() {
+  local pr=$1 head=$2 old=$3 base=$4 require_drop=$5 before after generated_dropped=0 msg
   tmp_root=$(mktemp -d "${TMPDIR:-/tmp}/merge-prs.XXXXXX")
   git worktree add -q --detach "$tmp_root/wt" "$old" || die "cannot create a worktree for $head"
   before=$(git rev-list --count "origin/$base..$old")
-  if ! git -C "$tmp_root/wt" rebase -q "origin/$base" >/dev/null 2>&1; then
-    git -C "$tmp_root/wt" rebase --abort || true
+  if ! rebase_dropping_generated "$old" "$base"; then
+    git -C "$tmp_root/wt" rebase --abort >/dev/null 2>&1 || true
     remove_tmp
     die "#$pr conflicts with $base; rebase $head onto origin/$base by hand, then rerun for the remaining PRs"
   fi
   after=$(git -C "$tmp_root/wt" rev-list --count "origin/$base..HEAD")
-  if ((after >= before)); then
+  if $require_drop && ((after >= before)); then
     remove_tmp
     die "#$pr conflicts with $base and carries no commits already merged there; resolve it by hand, then rerun for the remaining PRs"
   fi
@@ -391,8 +424,16 @@ rebase_stale_head() {
   git -C "$tmp_root/wt" push -q --force-with-lease="$head:$old" origin "HEAD:refs/heads/$head" ||
     die "cannot push the rebased $head"
   pushed_heads[$head]=$rebased_oid
+  known_heads+=("$rebased_oid")
   remove_tmp
-  echo "#$pr rebased onto $base, dropping $((before - after)) commit(s) already merged there"
+  msg="#$pr rebased onto $base"
+  if ((before - after - generated_dropped)); then
+    msg+=", dropping $((before - after - generated_dropped)) commit(s) already merged there"
+    ((generated_dropped == 0)) || msg+=" and $generated_dropped generated-only commit(s) the pre-merge step rebuilds"
+  elif ((generated_dropped)); then
+    msg+=", dropping $generated_dropped generated-only commit(s) the pre-merge step rebuilds"
+  fi
+  echo "$msg"
 }
 
 pr_state() {
@@ -464,6 +505,15 @@ run_pre_merge() {
     echo "warning: #$pr is from a fork, so the pre-merge step was skipped; its commits could not be pushed"
     return 0
   fi
+  # Output built on a head that is behind its base would conflict with what the base already built. A merge commit keeps
+  # the head as it is, so it is left alone.
+  if [[ $method != merge ]] && ! git merge-base --is-ancestor "origin/$base" "$head_oid"; then
+    rebase_head "$pr" "$head" "$head_oid" "$base" false
+    head_oid=$rebased_oid
+    pre_merge_oid=$head_oid
+    [[ $(await_mergeable "$pr" "$head_oid") != UNKNOWN ]] ||
+      die "GitHub has not caught up with the rebased $head on #$pr; rerun for #$pr and the PRs after it"
+  fi
   tmp_root=$(mktemp -d "${TMPDIR:-/tmp}/merge-prs.XXXXXX")
   git worktree add -q --detach "$tmp_root/wt" "$head_oid" || die "cannot create a worktree for $head"
   echo "merge-prs: pre-merge #$pr"
@@ -488,8 +538,11 @@ run_pre_merge() {
   remove_tmp
   [[ $new_oid != "$pre_merge_oid" ]] || return 0
   # GitHub reports the old head, and an unknown mergeable state, for a moment after a push.
-  [[ $(await_mergeable "$pr" "$head_oid") == @(MERGEABLE|CONFLICTING) ]] ||
-    die "GitHub has not caught up with the pre-merge commit $head_oid on #$pr; rerun for #$pr and the PRs after it"
+  case $(await_mergeable "$pr" "$head_oid") in
+  MERGEABLE) ;;
+  CONFLICTING) die "the pre-merge commit ${head_oid:0:7} on #$pr conflicts with $base; rebase $head onto origin/$base by hand, rerun its pre-merge step, then rerun for #$pr and the PRs after it" ;;
+  *) die "GitHub has not caught up with the pre-merge commit $head_oid on #$pr; rerun for #$pr and the PRs after it" ;;
+  esac
 }
 
 merge_pr() {
@@ -515,20 +568,21 @@ merge_pr() {
     git cat-file -e "$head_oid^{commit}" 2>/dev/null || die "PR $pr head $head_oid is not on origin/$head"
   fi
 
-  for line in "${lines[@]}"; do
-    IFS=$'\t' read -r number _ <<<"$line"
-    gh pr edit "$number" --base "$base" >/dev/null || die "cannot retarget $number to $base"
-    echo "$number retargeted to $base"
-  done
-
   if [[ $(await_mergeable "$pr" "$head_oid") == CONFLICTING && $cross != true ]]; then
-    rebase_stale_head "$pr" "$head" "$head_oid" "$base"
+    rebase_head "$pr" "$head" "$head_oid" "$base" true
     head_oid=$rebased_oid
     known_heads+=("$head_oid")
     await_mergeable "$pr" "$head_oid" >/dev/null
   fi
 
   run_pre_merge "$pr" "$head" "$base" "$cross"
+
+  # Only now that nothing can stop the merge short of GitHub itself, so a failed step leaves the children where they were.
+  for line in "${lines[@]}"; do
+    IFS=$'\t' read -r number _ <<<"$line"
+    gh pr edit "$number" --base "$base" >/dev/null || die "cannot retarget $number to $base"
+    echo "$number retargeted to $base"
+  done
 
   local merge_args=("--$method" --repo "$slug" --match-head-commit "$head_oid")
   $keep_branch || merge_args+=(--delete-branch)

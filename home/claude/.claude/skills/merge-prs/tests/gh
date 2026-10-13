@@ -84,9 +84,15 @@ case "$args" in
   ;;
 "pr view"*"headRefOid,mergeable"*)
   oid=$(reported_oid)
-  if [[ $oid == "$(get conflicting_oid)" ]]; then m=CONFLICTING; else m=MERGEABLE; fi
+  m=MERGEABLE
+  [[ $oid != "$(get conflicting_oid)" ]] || m=CONFLICTING
+  # real_merge=1 reports the conflicts a merge into the base branch would really have.
+  if [[ $(get real_merge) == 1 ]] && ! git -C "$ORIGIN" merge-tree --write-tree "refs/heads/$(get base)" "$oid" >/dev/null 2>&1; then
+    m=CONFLICTING
+  fi
   printf '%s\t%s\n' "$oid" "$m"
   ;;
+"pr view"*"--json isCrossRepository --jq"*) get cross || echo false ;;
 "pr view"*"--json headRefOid --jq"*) reported_oid ;;
 "pr view"*"--json state"*) get state ;;
 "pr merge"*)
