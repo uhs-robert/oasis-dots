@@ -74,7 +74,7 @@ write_cache \
   "$(event b "Standup" -600 600 https://meet.example.com/standup https://calendar.example.com/standup)" \
   "$(event c "Review" -600 600 null https://calendar.example.com/review)"
 say "join my meeting"
-expect "in-progress meeting with a join link" "firefox --new-tab https://meet.example.com/standup"
+expect "in-progress meeting with a join link" "xdg-open https://meet.example.com/standup"
 expect_absent "cancelled meeting" "cancelled"
 expect "says which meeting" "Joining Standup"
 
@@ -84,21 +84,21 @@ if same_day_in_20_minutes; then
     "$(event q "Running" -300 600 https://meet.example.com/running null)" \
     "$(event r "Upcoming" 900 1800 https://meet.example.com/upcoming null)"
   say "join my current meeting"
-  expect "current joins the one in progress" "firefox --new-tab https://meet.example.com/running"
+  expect "current joins the one in progress" "xdg-open https://meet.example.com/running"
   say "join my next meeting"
-  expect "next joins the upcoming one" "firefox --new-tab https://meet.example.com/upcoming"
+  expect "next joins the upcoming one" "xdg-open https://meet.example.com/upcoming"
   expect_absent "next skips the one in progress" "meet.example.com/running"
   say "join my meeting"
-  expect "no qualifier keeps the ranking" "firefox --new-tab https://meet.example.com/running"
+  expect "no qualifier keeps the ranking" "xdg-open https://meet.example.com/running"
 
   write_cache "$(event s "Running" -300 600 https://meet.example.com/running null)"
   say "join my next meeting"
   expect "next with none" "No more meetings today"
-  expect_absent "next never falls back to the one in progress" "firefox"
+  expect_absent "next never falls back to the one in progress" "xdg-open"
   write_cache "$(event t2 "Upcoming" 900 1800 https://meet.example.com/upcoming null)"
   say "join my current meeting"
   expect "current with none" "No meeting in progress"
-  expect_absent "current never falls back to a future one" "firefox"
+  expect_absent "current never falls back to a future one" "xdg-open"
 fi
 
 # Focus (9:00-12:00, no Meet) overlapping Standup (10:00-10:15, Meet) at 10:05; every event has an event_url, as
@@ -107,18 +107,18 @@ write_cache \
   "$(event i "Focus" -3900 6900 null https://calendar.example.com/focus)" \
   "$(event j "Standup" -300 600 https://meet.example.com/standup https://calendar.example.com/standup)"
 say "join my meeting"
-expect "overlap joins the meeting with a join link" "firefox --new-tab https://meet.example.com/standup"
+expect "overlap joins the meeting with a join link" "xdg-open https://meet.example.com/standup"
 expect_absent "overlap skips the long event" "calendar.example.com/focus"
 
 write_cache \
   "$(event k "Focus" -3900 6900 null https://calendar.example.com/focus)" \
   "$(event l "Planning" 240 1800 https://meet.example.com/planning https://calendar.example.com/planning)"
 say "join my meeting"
-expect "join-link meeting starting within 5 minutes beats one without" "firefox --new-tab https://meet.example.com/planning"
+expect "join-link meeting starting within 5 minutes beats one without" "xdg-open https://meet.example.com/planning"
 
 write_cache "$(event t "Teams sync" -300 600 https://teams.microsoft.com/l/meetup-join/placeholder https://calendar.example.com/teams)"
 say "join my meeting"
-expect "Teams join link" "firefox --new-tab https://teams.microsoft.com/l/meetup-join/placeholder"
+expect "Teams join link" "xdg-open https://teams.microsoft.com/l/meetup-join/placeholder"
 expect "Teams says joining" "Joining Teams sync"
 
 write_cache "$(event m 'Sync <img src="https://example.com/x.png"> & plan' -300 600 https://meet.example.com/markup null)"
@@ -134,24 +134,24 @@ expect "no-link message is escaped" "Sync &lt;b&gt;x&lt;/b&gt; has no meeting li
 
 write_cache "$(event c "Review" -600 600 null https://calendar.example.com/review)"
 say "open my meeting"
-expect "event page when there is no Meet link" "firefox --new-tab https://calendar.example.com/review"
+expect "event page when there is no Meet link" "xdg-open https://calendar.example.com/review"
 
 write_cache "$(event d "Old" -7200 -3600 https://meet.example.com/old null)" \
   "$(event e "Cancelled" 300 900 https://meet.example.com/cancelled null cancelled)"
 say "join my meeting"
 expect "nothing left today" "No more meetings today"
-expect_absent "nothing left today" "firefox"
+expect_absent "nothing left today" "xdg-open"
 
 if same_day_in_20_minutes; then
   write_cache "$(event f "Planning" 600 1800 https://meet.example.com/planning null)"
   say "open my meeting"
-  expect "next meeting today" "firefox --new-tab https://meet.example.com/planning"
+  expect "next meeting today" "xdg-open https://meet.example.com/planning"
 fi
 
 rm -f "$cache_file"
 say "join my meeting"
 expect "no cache" "isn't set up"
-expect_absent "no cache" "firefox"
+expect_absent "no cache" "xdg-open"
 
 # ---- What is next ----------------------------------------------------------------------------------------------
 
@@ -180,7 +180,7 @@ expect "weekday" "qs-ipc call calendar open_day $(date -d friday +%F)"
 
 tomorrow=$(date -d tomorrow +%Y%m%d)
 say "new meeting tomorrow at 3 pm for an hour called Design review with alice@example.com"
-expect "new meeting" "firefox --new-tab https://calendar.google.com/calendar/render?action=TEMPLATE&text=Design%20review&dates=${tomorrow}T150000/${tomorrow}T160000&ctz=UTC&add=alice%40example.com"
+expect "new meeting" "xdg-open https://calendar.google.com/calendar/render?action=TEMPLATE&text=Design%20review&dates=${tomorrow}T150000/${tomorrow}T160000&ctz=UTC&add=alice%40example.com"
 say "new meeting tomorrow at 3 pm for 30 minutes called Lunch with Bob"
 expect "title keeps 'with' and its casing" "&text=Lunch%20with%20Bob&dates=${tomorrow}T150000/${tomorrow}T153000&ctz=UTC"
 expect_absent "no guests" "&add="
@@ -203,9 +203,9 @@ expect "no title" "render?action=TEMPLATE&dates=${tomorrow}T150000/${tomorrow}T1
 say "new meeting friday called Offsite"
 expect "day only is all day" "&text=Offsite&dates=$(date -d friday +%Y%m%d)/$(date -d 'friday +1 day' +%Y%m%d)"
 say "new meeting"
-expect "blank form" "firefox --new-tab https://calendar.google.com/calendar/render?action=TEMPLATE"
+expect "blank form" "xdg-open https://calendar.google.com/calendar/render?action=TEMPLATE"
 say "open my calendar"
-expect "calendar" "firefox --new-tab https://calendar.google.com"
+expect "calendar" "xdg-open https://calendar.google.com"
 expect_absent "calendar is silent" "notify-send"
 
 # ---- spoken-time.sh day words ----------------------------------------------------------------------------------

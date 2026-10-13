@@ -43,8 +43,8 @@ declare -A actions=(
   [day]='show_day "$target"'
   [day_today]='show_day today'
   [new]='new_event "$target" "$raw_transcript"'
-  [new_blank]='open_in_firefox "$(create_url)"'
-  [calendar]='open_in_firefox https://calendar.google.com'
+  [new_blank]='open_url "$(create_url)"'
+  [calendar]='open_url https://calendar.google.com'
 )
 # The browser tab and the bar popup are the answer; a toast would cover them. Joining a meeting still says which.
 silent_actions=(day day_today new new_blank calendar)
@@ -58,10 +58,10 @@ candidates() {
 
 # ---- Browser ---------------------------------------------------------------------------------------------------
 
-# The one place that opens a page. setsid keeps Firefox off voxcmd's output pipe, which would otherwise hold the
-# notification until Firefox exits.
-open_in_firefox() {
-  setsid -f firefox --new-tab "$1" >/dev/null 2>&1 </dev/null
+# The one place that opens a page. xdg-open follows the browser chosen in Settings > Default apps. setsid keeps the
+# browser off voxcmd's output pipe, which would otherwise hold the notification until it exits.
+open_url() {
+  setsid -f xdg-open "$1" >/dev/null 2>&1 </dev/null
 }
 
 # Notification bodies are rendered as rich text by the bar, and anyone can send an invite with markup in its title.
@@ -125,7 +125,7 @@ open_meeting() {
     echo "$title has no meeting link"
     return
   fi
-  open_in_firefox "$link"
+  open_url "$link"
   if [ -n "$(jq -r '.join_url // empty' <<<"$event")" ]; then
     echo "Joining $title"
   else
@@ -293,5 +293,5 @@ new_event() {
       return 1
     fi
   fi
-  open_in_firefox "$(create_url "$title" "$start_time" "$end_time" "$emails")"
+  open_url "$(create_url "$title" "$start_time" "$end_time" "$emails")"
 }

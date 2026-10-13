@@ -474,14 +474,14 @@ Needs `grim`, `tesseract` and `tesseract-data-eng`, `imagemagick`, `wlrctl` and 
 The overlay writes the number into the pick's FIFO, a voice reply the displayed label; either maps to the choice's id. While it waits, `voxcmd-hints` keeps the same `pending-pick.json` as `voxcmd-pick`, with `kind: "hints"`, `listen_again` and numbered labels. Without the bar, with more than ten choices, or when a choice has no box, it hands the pick to `voxcmd-pick`.
 ### Calendar
 
-`calendar.sh` works with Google Calendar. It reads the events cache `calendar-sync` keeps at `$XDG_CACHE_HOME/calendar/events.json` (default `~/.cache/calendar/events.json`) and opens pages in Firefox; without the cache it says the calendar isn't set up.
+`calendar.sh` works with Google Calendar. It reads the events cache `calendar-sync` keeps at `$XDG_CACHE_HOME/calendar/events.json` (default `~/.cache/calendar/events.json`) and opens pages with `xdg-open`, so in the default browser; without the cache it says the calendar isn't set up.
 
 | Say | Does |
 | --- | --- |
 | "join my meeting", "open my meeting" | Opens the meeting in progress, else the next one starting today: its join link (Google Meet or Microsoft Teams, the cache's `join_url`), or its event page when it has none. With none left it says "No more meetings today" |
 | "what's my next meeting", "what's next on my calendar" | Says it in a notification: "Standup at 3:00pm, in 12 minutes", or "Standup tomorrow 9:00am" on a later day |
 | "what's on my calendar", "what's on my calendar tomorrow", "show my calendar for friday" | Opens the bar's clock popup on that day (`qs-ipc call calendar open_day <date>`) |
-| "new meeting tomorrow at 3 pm for an hour called Design review with alice@example.com" | Opens Google Calendar's new-event form in a new Firefox tab, prefilled; you add anyone else and save there |
+| "new meeting tomorrow at 3 pm for an hour called Design review with alice@example.com" | Opens Google Calendar's new-event form in the browser, prefilled; you add anyone else and save there |
 | "new meeting" | Opens the blank form |
 | "open my calendar", "go to my calendar" | Opens calendar.google.com |
 
@@ -493,7 +493,7 @@ The overlay writes the number into the pick's FIFO, a voice reply the displayed 
 - Days are "today", "tomorrow" and weekday names; "next friday" is never today.
 - "my calendar" and "the calendar" always mean Google Calendar here; `apps.sh` leaves them alone, so an installed Calendar app does not turn "open my calendar" into a picker. "open calendar" still opens the app.
 - Joining says which meeting; the day view, a new meeting and the calendar stay [silent](#silent-actions), since the popup or the tab is the feedback.
-- Every page opens through `open_in_firefox` in `calendar.sh`, a new tab for now.
+- Every page opens through `open_url` in `calendar.sh`.
 - `tests/run-calendar.sh` runs these phrases against a placeholder cache in `tests/sandbox.sh` and checks the URLs and calls.
 
 ## Voice Help
