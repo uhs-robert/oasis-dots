@@ -13,6 +13,7 @@
 #                                     SANDBOX_BINDS_JSON, SANDBOX_CLIENTS_JSON, ... (the JSON itself); activewindow
 #                                     is {} (no focused window) without its fixture, never the live window;
 #                                     SANDBOX_ACTIVEWINDOW_AFTER_WTYPE_JSON replaces it once wtype has been called
+#                                     SANDBOX_SWITCHED_TITLE retitles it once Return has been typed
 #   tesseract                         SANDBOX_TESSERACT_TSV (the tsv itself; no words without it)
 #   grim, magick                      never real: grim writes a blank image the size of the activewindow fixture
 #                                     times SANDBOX_GRIM_SCALE (default 1), or SANDBOX_GRIM_SIZE ("W H"), and fails
@@ -130,8 +131,11 @@ hyprctl)
   case "${1-}" in
   activewindow)
     # SANDBOX_ACTIVEWINDOW_AFTER_WTYPE_JSON: the window that has focus once anything has been typed.
+    # SANDBOX_SWITCHED_TITLE: the tab title Firefox's window shows once Return has been typed, as after a tab switch.
     if [ -n "${SANDBOX_ACTIVEWINDOW_AFTER_WTYPE_JSON:-}" ] && grep -q '^wtype ' "$SANDBOX_DIR/calls.log" 2>/dev/null; then
       printenv SANDBOX_ACTIVEWINDOW_AFTER_WTYPE_JSON
+    elif [ -n "${SANDBOX_SWITCHED_TITLE:-}" ] && grep -q '^wtype -k Return' "$SANDBOX_DIR/calls.log" 2>/dev/null; then
+      jq -c --arg title "$SANDBOX_SWITCHED_TITLE — Mozilla Firefox" '.title = $title' <<<"${SANDBOX_ACTIVEWINDOW_JSON:-{\}}"
     else
       printenv SANDBOX_ACTIVEWINDOW_JSON || echo '{}'
     fi
