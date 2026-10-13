@@ -330,7 +330,7 @@ Plugin management with `ya pkg` and a root Yazi that stays in sync with your key
 
 ## 🎙️ Voice Commands
 
-`voxcmd` turns a voxtype recording into a command: `SUPER + COMMA` starts listening and runs what you said, like "next track" or "volume to 40", once you pause. `SUPER + PERIOD` is plain Speech to Text, and either key stops whichever recording is running; `SUPER + SHIFT + COMMA` cancels all voice activity. Commands come from drop-in shell integrations, with media and volume shipped as the example. See [home/voxcmd/.config/voxcmd/README.md](home/voxcmd/.config/voxcmd/README.md).
+`voxcmd` turns a voxtype recording into a command: `SUPER + COMMA` starts listening and runs what you said, like "next track" or "volume to 40", once you pause. `SUPER + PERIOD` is plain Speech to Text, and either key stops whichever recording is running; `SUPER + SHIFT + COMMA` cancels all voice activity. Commands come from drop-in shell integrations, with media and volume shipped as the example. See [home/voxcmd/.config/voxcmd/README.md](home/voxcmd/.config/voxcmd/README.md). Firefox tabs need the companion extension: `just firefox-extension` (see [extras/voxcmd-firefox/README.md](extras/voxcmd-firefox/README.md)).
 
 ## 📅 Calendar
 

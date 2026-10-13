@@ -19,7 +19,7 @@ cd "$repo_dir" || exit 1
 # Every step, longest first. The voxcmd steps are timing-sensitive, so they run one after another in a slot
 # of their own, ahead of the rest.
 voxcmd_steps='voxcmd-phrases voxcmd-click voxcmd-calendar voxcmd-firefox'
-other_steps='check-scope qmllint shellcheck calendar-sync owner-test-bar ship-batch merge-prs shfmt stylua luacheck lock-skins style-exports time-format calendar-sync-syntax agent-hooks stale-shells-hook notification-markup packages symlinks git-diff-check whitespace conflicts'
+other_steps='check-scope firefox-policy qmllint shellcheck calendar-sync owner-test-bar ship-batch merge-prs shfmt stylua luacheck lock-skins style-exports time-format calendar-sync-syntax agent-hooks stale-shells-hook notification-markup packages symlinks git-diff-check whitespace conflicts'
 
 # Shell files by the group they are linted in. Symlinks are skipped (their target is linted itself).
 # worktrees/ holds other agents' scratch copies and skills/synced/ is vendored.
@@ -61,6 +61,7 @@ step_body() {
     return $status
     ;;
   check-scope) bash ./lib/tests/check-scope.sh ;;
+  firefox-policy) bash ./lib/tests/firefox-policy.sh ;;
   stylua) stylua --respect-ignores --check home/hypr/.config/hypr ;;
   luacheck) sh ./lib/check-lua.sh ;;
   qmllint) sh ./lib/check-qml.sh ;;
@@ -147,7 +148,7 @@ jobs=${CHECK_JOBS:-$(($(nproc 2>/dev/null || echo 2) / 2))}
 
 # What a changed path can affect. A step is dropped only when every changed path is claimed by some rule
 # here and none of them reaches it, so a path nobody claimed runs everything.
-scope_all=0 scope_lua=0 scope_qml=0 scope_node=0 scope_voxcmd=0 scope_calendar=0 scope_hooks=0 scope_bar=0 scope_ship=0 scope_checkscope=0
+scope_all=0 scope_lua=0 scope_qml=0 scope_node=0 scope_voxcmd=0 scope_calendar=0 scope_hooks=0 scope_bar=0 scope_ship=0 scope_checkscope=0 scope_policy=0
 scope_changed_files() {
   while IFS= read -r path; do
     case $path in
@@ -162,6 +163,8 @@ scope_changed_files() {
     home/quickshell/tests/*) scope_node=1 ;;
     home/quickshell/*) scope_qml=1 scope_node=1 ;;
     home/voxcmd/* | extras/voxcmd-firefox/*) scope_voxcmd=1 ;;
+    # The installer and the justfile call it, but those already run everything.
+    lib/firefox-policy.sh | lib/tests/firefox-policy.sh) scope_policy=1 ;;
     home/calendar/*) scope_calendar=1 ;;
     home/claude/.claude/hooks/* | .claude/hooks/*) scope_hooks=1 ;;
     .claude/skills/owner-test-bar/*) scope_bar=1 ;;
@@ -218,6 +221,7 @@ have() { command -v "$1" >/dev/null 2>&1; }
 tool_missing() {
   case $1 in
   shellcheck | shfmt | stylua) have "$1" || echo "skip: $1 not installed" ;;
+  firefox-policy) have jq || echo 'skip: the firefox policy test needs jq' ;;
   voxcmd-*) { have jq && have fzf; } || echo 'skip: voxcmd phrases need jq and fzf' ;;
   calendar-sync) python3 -c 'import icalendar, recurring_ical_events' >/dev/null 2>&1 || echo 'skip: calendar-sync tests need python-icalendar and python-recurring-ical-events' ;;
   agent-hooks | stale-shells-hook | owner-test-bar) have jq || echo 'skip: agent hook and owner-test-bar tests need jq' ;;
@@ -230,6 +234,7 @@ in_scope() {
   case $1 in
   packages | symlinks | git-diff-check | whitespace | conflicts) true ;;
   check-scope) [ "$scope_checkscope" = 1 ] ;;
+  firefox-policy) [ "$scope_policy" = 1 ] ;;
   shellcheck) [ -s "$logs/plain.list" ] || [ -s "$logs/sourcing.list" ] || [ -s "$logs/agent.list" ] ;;
   shfmt) [ -s "$logs/plain.fmt.list" ] || [ -s "$logs/sourcing.fmt.list" ] || [ -s "$logs/agent.fmt.list" ] ;;
   stylua | luacheck) [ "$scope_lua" = 1 ] ;;

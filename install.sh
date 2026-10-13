@@ -13,6 +13,7 @@ source "$DOTFILES_DIR/lib/migrate.sh"
 source "$DOTFILES_DIR/lib/services.sh"
 source "$DOTFILES_DIR/lib/tailnet-ssh.sh"
 source "$DOTFILES_DIR/lib/greeter.sh"
+source "$DOTFILES_DIR/lib/firefox-policy.sh"
 source "$DOTFILES_DIR/lib/repos.sh"
 source "$DOTFILES_DIR/lib/fonts.sh"
 
@@ -138,6 +139,7 @@ main() {
     setup_voxtype
     setup_calendar_timer
     register_firefox_host --quiet
+    install_firefox_extension_policy --quiet || warn "The Firefox extension policy was not installed; run: just firefox-extension"
     setup_tailnet_ssh
   fi
 
