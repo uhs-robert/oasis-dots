@@ -30,6 +30,7 @@ The target may be an issue or PR URL/number, repository URL/name, or omitted.
    - If the current directory is already a linked worktree for this task (or the existing PR's branch), use it.
    - Otherwise create a dedicated worktree and branch before any changes, and keep the main checkout untouched.
    - Pass the worktree path to every implementer and reviewer, and confirm edits land there.
+   - When the owner will try a change by hand before merging, build it on one branch until they have, and split it into PRs only after their verdict, so a fix never has to be rebased up a stack.
 
 3. Investigate the issue or PR and repository.
    - Read issue or PR context (including review comments), relevant code, repository instructions, tests, and analogous implementations.
@@ -42,6 +43,8 @@ The target may be an issue or PR URL/number, repository URL/name, or omitted.
    - substantial, multi-file, ambiguous, architectural, or high-risk → Sonnet
    - if Haiku discovers unexpected complexity, escalate to Sonnet
    - if Sonnet fails after a corrected retry, or the task needs deep debugging or subtle correctness reasoning (concurrency, security, data integrity), escalate to Opus
+   - Give exploratory agents (research, investigating an intermittent failure, a throwaway measurement) a time limit, 20 minutes by default, after which they report what they have.
+   - When work spans layers (e.g. a UI and a backend), agree the hand-off format first (an id format, an API call, a JSON shape), then run one implementer per layer in parallel.
 
 5. Give the implementer the worktree path, issue or PR, plan, constraints, relevant context, and validation requirements.
    Require a report of:
@@ -56,6 +59,8 @@ The target may be an issue or PR URL/number, repository URL/name, or omitted.
 7. Get an external review of the actual issue and diff for bugs, regressions, missed requirements, unnecessary complexity, and weak tests. Codex first; an Opus subagent when Codex is unavailable.
    - From the worktree, run `~/.claude/skills/orchestrator/codex-review.sh <base> <scratch dir outside the worktree>` as one background Bash call. It handles stall detection, timeouts, and retries, and gives up at once on a usage limit.
    - Commit first: it exits 3 on uncommitted changes, since Codex reviews commits only.
+   - Request it the moment the work is handed to the owner for hands-on testing, so the two overlap; with no hands-on testing, as soon as the branch is committed.
+   - While waiting on the owner or a review, start read-only research for the next planned piece of work.
    - Exit 0 → read the review path it prints.
    - Exit 2 → spawn a read-only `general-purpose` agent with `model: opus` as the external reviewer. Give it the worktree path, the issue, how to get the diff (`git diff <base>...HEAD`), the root cause and design, and the same review dimensions. Name the risky areas to probe (ordering and races, lifecycle and reload paths, behavior the change silently dropped). Tell it not to edit, commit, push or comment, and require findings ranked by severity, each with file:line, a concrete failure scenario, confidence (confirmed/plausible) and a suggested fix. In the final report, name which reviewer ran and quote the line Codex printed after `codex unavailable:`.
 
