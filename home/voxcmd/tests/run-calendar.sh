@@ -78,6 +78,29 @@ expect "in-progress meeting with a join link" "firefox --new-tab https://meet.ex
 expect_absent "cancelled meeting" "cancelled"
 expect "says which meeting" "Joining Standup"
 
+# An in-progress and an upcoming meeting: "current" and "next" each take only their own.
+if same_day_in_20_minutes; then
+  write_cache \
+    "$(event q "Running" -300 600 https://meet.example.com/running null)" \
+    "$(event r "Upcoming" 900 1800 https://meet.example.com/upcoming null)"
+  say "join my current meeting"
+  expect "current joins the one in progress" "firefox --new-tab https://meet.example.com/running"
+  say "join my next meeting"
+  expect "next joins the upcoming one" "firefox --new-tab https://meet.example.com/upcoming"
+  expect_absent "next skips the one in progress" "meet.example.com/running"
+  say "join my meeting"
+  expect "no qualifier keeps the ranking" "firefox --new-tab https://meet.example.com/running"
+
+  write_cache "$(event s "Running" -300 600 https://meet.example.com/running null)"
+  say "join my next meeting"
+  expect "next with none" "No more meetings today"
+  expect_absent "next never falls back to the one in progress" "firefox"
+  write_cache "$(event t2 "Upcoming" 900 1800 https://meet.example.com/upcoming null)"
+  say "join my current meeting"
+  expect "current with none" "No meeting in progress"
+  expect_absent "current never falls back to a future one" "firefox"
+fi
+
 # Focus (9:00-12:00, no Meet) overlapping Standup (10:00-10:15, Meet) at 10:05; every event has an event_url, as
 # calendar-sync writes them.
 write_cache \
