@@ -50,6 +50,19 @@ function make_api() {
   assert.deepStrictEqual(api.calls[3], ["windows.update", 3, { titlePreface: "" }]);
   reply = await handle_request(api, { id: 7, cmd: "clear_preface", window_id: 3 });
   assert.deepStrictEqual(reply, { id: 7, ok: true, result: { cleared: true } });
+  // An older activation's timer, or its late clear, leaves a newer nonce on the same window alone.
+  api = make_api();
+  const later_timers = [];
+  await handle_request(api, { id: 10, cmd: "activate", tab_id: 8, preface: "vxold" }, (fn, ms) => later_timers.push(fn));
+  await handle_request(api, { id: 11, cmd: "activate", tab_id: 8, preface: "vxnew" }, (fn, ms) => later_timers.push(fn));
+  const updates_before = api.calls.length;
+  await later_timers[0]();
+  reply = await handle_request(api, { id: 12, cmd: "clear_preface", window_id: 3, preface: "vxold" });
+  assert.deepStrictEqual(reply.result, { cleared: false });
+  assert.strictEqual(api.calls.length, updates_before);
+  reply = await handle_request(api, { id: 13, cmd: "clear_preface", window_id: 3, preface: "vxnew" });
+  assert.deepStrictEqual(reply.result, { cleared: true });
+  assert.deepStrictEqual(api.calls[api.calls.length - 1], ["windows.update", 3, { titlePreface: "" }]);
   reply = await handle_request(make_api(), { id: 8, cmd: "activate", tab_id: 8, preface: "not ok!" });
   assert.strictEqual(reply.ok, false);
 

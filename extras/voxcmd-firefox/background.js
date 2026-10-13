@@ -5,6 +5,8 @@ const FIRST_RETRY_MS = 1000;
 const LAST_RETRY_MS = 30000;
 // The preface marking a window is cleared by the client; this is for a client that died before it did.
 const PREFACE_LIFETIME_MS = 10000;
+// The nonce each window shows now, so a late clear from an older activation leaves a newer one alone.
+const current_prefaces = new Map();
 
 function describe_tab(tab) {
   return {
@@ -48,8 +50,9 @@ async function activate_tab(api, request, schedule) {
   if (preface !== undefined) {
     try {
       await api.windows.update(tab.windowId, { titlePreface: `${preface} ` });
+      current_prefaces.set(tab.windowId, preface);
       result.preface_set = true;
-      schedule(() => clear_preface(api, tab.windowId).catch(() => {}), PREFACE_LIFETIME_MS);
+      schedule(() => clear_preface(api, tab.windowId, preface).catch(() => {}), PREFACE_LIFETIME_MS);
     } catch (error) {
       result.preface_error = String((error && error.message) || error);
     }
@@ -57,10 +60,14 @@ async function activate_tab(api, request, schedule) {
   return result;
 }
 
-async function clear_preface(api, window_id) {
+async function clear_preface(api, window_id, preface) {
   if (!Number.isInteger(window_id)) {
     throw new Error("clear_preface needs an integer window_id");
   }
+  if (preface !== undefined && current_prefaces.get(window_id) !== preface) {
+    return { cleared: false };
+  }
+  current_prefaces.delete(window_id);
   await api.windows.update(window_id, { titlePreface: "" });
   return { cleared: true };
 }
@@ -74,7 +81,7 @@ async function handle_request(api, request, schedule = setTimeout) {
     } else if (cmd === "activate") {
       result = await activate_tab(api, request, schedule);
     } else if (cmd === "clear_preface") {
-      result = await clear_preface(api, request.window_id);
+      result = await clear_preface(api, request.window_id, request.preface);
     } else {
       throw new Error(`unknown command: ${cmd}`);
     }

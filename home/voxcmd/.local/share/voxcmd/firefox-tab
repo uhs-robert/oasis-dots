@@ -39,12 +39,13 @@ KEY_PAUSE = 0.25
 RESULTS_PAUSE = float(os.environ.get("VOXCMD_FIREFOX_RESULTS_PAUSE", "0.5"))
 
 
-# voxcmd's debug trace: written only while the file exists (voxcmd debug on), so a normal run touches nothing.
-DEBUG_LOG = os.path.join(os.environ.get("XDG_RUNTIME_DIR", "/tmp"), "voxcmd", "debug.log")
+# voxcmd's debug trace: written only while the file exists (voxcmd debug on), so a normal run touches nothing. Without
+# XDG_RUNTIME_DIR there is no private place for it, and a shared /tmp path could be another user's symlink.
+DEBUG_LOG = os.path.join(os.environ["XDG_RUNTIME_DIR"], "voxcmd", "debug.log") if os.environ.get("XDG_RUNTIME_DIR") else None
 
 
 def debug(message):
-    if os.path.exists(DEBUG_LOG):
+    if DEBUG_LOG and os.path.exists(DEBUG_LOG):
         with open(DEBUG_LOG, "a") as log:
             log.write(f"{time.strftime('%H:%M:%S')}.{int(time.time() * 1000) % 1000:03d} firefox-tab[{os.getpid()}] {message}\n")
 
@@ -327,7 +328,7 @@ def activate_tab(tab_id, title):
         confirmed = result.get("preface_set") is True and focus_marked_window(nonce)
     finally:
         try:
-            host_request({"cmd": "clear_preface", "window_id": result["window_id"]})
+            host_request({"cmd": "clear_preface", "window_id": result["window_id"], "preface": nonce})
         except HostError as error:
             debug(f"the title preface was not cleared now: {error}")
     if confirmed:
