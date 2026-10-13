@@ -6,6 +6,7 @@ Voice commands on top of [voxtype](https://github.com/peteonrails/voxtype). Spea
 | ---------------------------------- | ------------------------------------------------------------------------ |
 | `SUPER + COMMA`, Leader, `COMMA`   | Voice Command: listen, stop [after a pause](#auto-stop), run the command |
 | `SUPER + PERIOD`, Leader, `PERIOD` | Speech to Text: dictate until a voice key is pressed again, then type it |
+| `SUPER + SHIFT + COMMA`, Leader, `SHIFT + COMMA` | [Stop Voice](#stop-voice): end the session, picker and recording, running nothing |
 | Leader, `CTRL + SLASH`             | [Voice Help](#voice-help): pick from example phrases                     |
 
 `SUPER` is `Config.leader`, and Leader is the leader menu (`SUPER + SPACE`).
@@ -23,6 +24,7 @@ voxcmd --dry-run "volume to 40"   # show the match, candidates and command witho
 voxcmd --reply "the second one"   # answer the open voxcmd picker or confirm card, as a spoken reply would
 voxcmd --dry-run --reply "two"    # show which choice a reply would pick
 voxcmd end-session                # end the open voice session (click mode), if any
+voxcmd stop                       # stop all voice activity: session, picker or card, and any recording (see Stop Voice)
 voxcmd list                       # integrations and their verbs
 voxcmd help                       # pick from the integrations' example phrases
 voxcmd errors 5                   # the last 5 voxcmd notifications the bar kept, newest first (default 10)
@@ -601,7 +603,17 @@ A session keeps the microphone re-opening after each spoken turn, so related com
 - **Noise transcripts:** Whisper turns silence and noise into stock phrases. A turn whose whole transcript, normalized, is empty or one of `you`, `bye`, `the end`, `thank you`, `thank you for watching`, `thanks for watching` or `blank audio` (whisper.cpp's `[BLANK_AUDIO]`) heard nothing: it listens again without counting toward the unusable turns below, though it counts toward the turn and time caps. Outside a session these are routed like any command. The list is `session_noise_transcripts` in `voxcmd`.
 - **Never a loop:** three unusable turns in a row end it, a turn that ran nothing (a picker cancelled or timed out) counting as unusable; so do `VOXCMD_SESSION_MAX_TURNS` turns (40) or `VOXCMD_SESSION_MAX_SECS` (300) open, whichever comes first; a listen that cannot start ends it; a listener that dies mid-session ends it. Each says why in a transient notification.
 - **Settling:** after a turn voxcmd waits, for at most 2 s, until neither the click overlay (`qs-ipc call clickhints state`) nor a popup (`popup state`) is open or animating, then 0.3 s for the clicked app to draw, before listening again (`VOXCMD_UI_SETTLE_MAX_SECS`, `VOXCMD_APP_SETTLE_SECS`). A bar that does not answer counts as settled.
-- `voxcmd end-session` ends it by hand.
+- `voxcmd end-session` ends it by hand, and [Stop Voice](#stop-voice) ends it along with any picker or recording.
+
+## Stop Voice
+
+`SUPER + SHIFT + COMMA` (Leader, `SHIFT + COMMA`) runs `voxcmd stop`, the key for a voice session or overlay that will not end and a recording you no longer want. It does three things, each only when there is something to do:
+
+- Ends the open [voice session](#voice-sessions), reported as "stopped", which also takes down Firefox's link hints. This comes first, so the session's listener cannot open the microphone again, even when it is mid-turn: its turn is discarded and the session is gone when it looks.
+- Cancels the open picker, confirm card or link hints, as Esc does.
+- Cancels a voxtype recording under way, or being transcribed, whichever key started it: Voice Command, a reply recording or Speech to Text. Nothing said is routed or typed, and Speech to Text resumes its paused media as it does when any recording ends.
+
+With nothing going on it does nothing and says nothing. `voxcmd end-session` still ends only the session.
 
 ## Debug log
 

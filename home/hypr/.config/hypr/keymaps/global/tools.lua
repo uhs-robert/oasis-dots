@@ -11,8 +11,10 @@ Bind.leader_cmd("P", screenshot("pixel"),  "Color Picker")
 Bind.leader_cmd("Z", Scripts.qs_ipc .. " call zoom toggle", "Zoom")
 
 -- Voice: while voxtype records, either key stops it and the recording's own mode handles the result.
-Bind.leader_cmd("PERIOD", Scripts.voxtype,       "Speech to Text")
-Bind.leader_cmd("COMMA",  Scripts.voxcmd_listen, "Voice Command")
+-- Stop Voice ends everything instead: the session, a waiting picker and any recording, discarding what was said.
+Bind.leader_cmd("PERIOD",        Scripts.voxtype,       "Speech to Text")
+Bind.leader_cmd("COMMA",         Scripts.voxcmd_listen, "Voice Command")
+Bind.leader_cmd("SHIFT + COMMA", Scripts.voxcmd_stop,   "Stop Voice")
 
 -- Clipboard History
 Bind.leader_fn("CTRL + V",         Menu.clipboard(),        "Clipboard History")
