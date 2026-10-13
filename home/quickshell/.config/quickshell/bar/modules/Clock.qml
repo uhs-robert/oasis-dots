@@ -30,6 +30,29 @@ Row {
         onTapped: Popups.toggle("clock", root.island, root.island_color, root.screen_name)
     }
 
+    // The next meeting is worth the bar's room only just before it starts; a meeting under way shows as a dot.
+    readonly property bool chip_shown: CalendarState.minutes_until_next > 0 && CalendarState.minutes_until_next <= CalendarState.chip_window_minutes
+    // The title is cut, not the minutes, so the countdown always shows.
+    readonly property string chip_text: {
+        const title = CalendarState.next_event_today ? CalendarState.next_event_today.title : "";
+        return (root.compact ? "" : (title.length > 18 ? title.slice(0, 17) + "\u2026" : title) + " ") + CalendarState.minutes_until_next + "m";
+    }
+    readonly property string agenda_tip: {
+        const span = e => TimeFormat.format(new Date(e.start_ms)) + " - " + TimeFormat.format(new Date(e.end_ms));
+        if (CalendarState.in_meeting) return "Now: " + CalendarState.current_event.title + "\n" + span(CalendarState.current_event);
+        const next = CalendarState.next_event_today;
+        return next ? "Next: " + next.title + "\n" + span(next) + " (in " + CalendarState.minutes_until_next + " min)" : "";
+    }
+    onAgenda_tipChanged: if (hover.hovered && root.agenda_tip !== "") Tooltip.show(root, root.agenda_tip, "calendar")
+
+    HoverHandler {
+        id: hover
+        onHoveredChanged: {
+            if (hovered && root.agenda_tip !== "") Tooltip.show(root, root.agenda_tip, "calendar");
+            else Tooltip.hide(root);
+        }
+    }
+
     SystemClock {
         id: clock
         precision: root.show_seconds ? SystemClock.Seconds : SystemClock.Minutes
@@ -206,5 +229,27 @@ Row {
         text: "  " + Qt.formatDateTime(root.shifted, "MMM d").toUpperCase()
         color: Theme.theme_secondary
         font: time_label.font
+    }
+
+    Rectangle {
+        visible: CalendarState.in_meeting
+        anchors.verticalCenter: parent.verticalCenter
+        width: 6
+        height: 6
+        radius: 3
+        color: root.on_accent ? root.ink : Theme.theme_primary
+    }
+
+    Text {
+        visible: root.chip_shown
+        anchors.verticalCenter: parent.verticalCenter
+        text: root.chip_text
+        color: root.on_accent ? root.ink : Theme.theme_primary
+        font.family: Style.bar_font_family
+        style: Style.bar_text_style
+        styleColor: Style.bar_glow_color
+        font.pixelSize: Style.bar_font_size
+        font.capitalization: Style.bar_capitalization
+        font.letterSpacing: Style.bar_letter_spacing
     }
 }
