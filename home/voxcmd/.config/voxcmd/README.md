@@ -148,7 +148,7 @@ confirm_labels=('\bclose\b' '^lock\b')   # regexes (case-insensitive, jq syntax)
 
 Patterns are bash ERE, so there are no non-capturing groups; voxcmd finds the target's group by counting the `(` before the placeholder (an escaped `\(` does not count), which is why only one placeholder is allowed. Intents are expanded before that count, so they can sit anywhere in a pattern. Order verbs from specific to general, as `media.sh` does with `play` before `play {target}`. Integration files are plain shell, so helper functions defined in the file are available to its commands. voxcmd sources the file inside a function, though, so a `declare` at its top level is gone by the time a command runs: declare an array a helper reads with `declare -g`, as `spoken-time.sh` does for its number words.
 
-Helpers several integrations share live in `~/.local/share/voxcmd/`, since every file in `integrations.d/` is loaded as an integration; an integration sources one from `$voxcmd_share_dir`, which voxcmd resolves from its own real path. `spoken-time.sh` holds the spoken clock-time parser (`parse_clock`: "3 pm", "three thirty pm", "noon", "9 am tomorrow") and the bar's clock format (`clock_time_format`), used by `timers.sh` and `answers.sh`.
+Helpers several integrations share live in `~/.local/share/voxcmd/`, since every file in `integrations.d/` is loaded as an integration; an integration sources one from `$voxcmd_share_dir`, which voxcmd resolves from its own real path. `spoken-time.sh` holds the spoken clock-time parser (`parse_clock`: "3 pm", "three thirty pm", "noon", "9 am tomorrow", "friday at 9"), the duration and day parsers (`parse_duration`, `parse_day`), the formatters for the times it prints (`format_at`, `format_length`) and the bar's clock format (`clock_time_format`), used by `timers.sh`, `answers.sh` and `calendar.sh`.
 
 The tracked `integrations.d/` and `replacements.d/` ignore everything except what ships, so private integrations dropped into the stowed folders stay out of git.
 
@@ -472,6 +472,25 @@ Needs `grim`, `tesseract` and `tesseract-data-eng`, `imagemagick`, `wlrctl` and 
 - voice, as with any [picker](#answering-by-voice): "two", "the second one", a label's words, "cancel". With `--listen` (a spoken command) the reply recording starts just before the numbers appear, and an unclear reply listens once more. The overlay shows Listening or Transcribing, and its 10 s timeout waits while voxtype records.
 
 The overlay writes the number into the pick's FIFO, a voice reply the displayed label; either maps to the choice's id. While it waits, `voxcmd-hints` keeps the same `pending-pick.json` as `voxcmd-pick`, with `kind: "hints"`, `listen_again` and numbered labels. Without the bar, with more than ten choices, or when a choice has no box, it hands the pick to `voxcmd-pick`.
+### Calendar
+
+`calendar.sh` works with Google Calendar. It reads the events cache `calendar-sync` keeps at `$XDG_CACHE_HOME/calendar/events.json` (default `~/.cache/calendar/events.json`) and opens pages in Firefox; without the cache it says the calendar isn't set up.
+
+| Say | Does |
+| --- | --- |
+| "join my meeting", "open my meeting" | Opens the meeting in progress, else the next one starting today: its Meet link, or its event page when it has none. With none left it says "No more meetings today" |
+| "what's my next meeting", "what's next on my calendar" | Says it in a notification: "Standup at 3:00pm, in 12 minutes", or "Standup tomorrow 9:00am" on a later day |
+| "what's on my calendar", "what's on my calendar tomorrow", "show my calendar for friday" | Opens the bar's clock popup on that day (`qs-ipc call calendar open_day <date>`) |
+| "new meeting tomorrow at 3 pm for an hour called Design review with alice@example.com" | Opens Google Calendar's new-event form in a new Firefox tab, prefilled; you add anyone else and save there |
+| "new meeting" | Opens the blank form |
+| "open my calendar", "go to my calendar" | Opens calendar.google.com |
+
+- Cancelled and all-day events never count as a meeting to join or as the next one.
+- A new meeting reads its time and length before "called" ("tomorrow at 3 pm for an hour", "friday at 9 am for 30 minutes"; an hour is the default), takes the title after "called", "named" or "titled" from the raw transcript so its casing survives, and adds every address it holds as a guest. Addresses are read from the raw transcript, so they need the "@": a transcriber that writes "alice at example dot com" adds none. A day with no time ("new meeting friday called Offsite") makes an all-day event. Dates are in the local time zone, which the form gets as `ctz`.
+- Days are "today", "tomorrow" and weekday names, optionally with "next".
+- Joining says which meeting; the day view, a new meeting and the calendar stay [silent](#silent-actions), since the popup or the tab is the feedback.
+- Every page opens through `open_in_firefox` in `calendar.sh`, a new tab for now.
+- `tests/run-calendar.sh` runs these phrases against a placeholder cache in `tests/sandbox.sh` and checks the URLs and calls.
 
 ## Voice Help
 

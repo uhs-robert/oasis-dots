@@ -242,39 +242,7 @@ cancel_all_timers() {
 }
 
 # ---- Parsing ---------------------------------------------------------------------------------------------------
-# Clock times and number words come from spoken-time.sh, sourced at the top.
-
-# Prints the seconds a whole phrase names: "5 minutes", "90 seconds", "an hour and a half", "1 hour 30",
-# "two and a half minutes", "half an hour", "1 5 hours". Fails on anything left over.
-parse_duration() {
-  local -a parse_words
-  read -ra parse_words <<<"$1"
-  local parse_at=0 amount_milli total_milli=0 last_unit="" unit
-  [ "${#parse_words[@]}" -gt 0 ] || return 1
-  while [ "$parse_at" -lt "${#parse_words[@]}" ]; do
-    if [ "${parse_words[parse_at]}" = and ] && [ -n "$last_unit" ]; then
-      parse_at=$((parse_at + 1))
-      # "an hour and a half": half of the unit just named
-      if [ "${parse_words[parse_at]-}" = a ] && [ "${parse_words[parse_at + 1]-}" = half ] && [ -z "${parse_words[parse_at + 2]-}" ]; then
-        total_milli=$((total_milli + last_unit * 500))
-        parse_at=$((parse_at + 2))
-        continue
-      fi
-    fi
-    read_amount || return 1
-    if unit=$(unit_seconds "${parse_words[parse_at]-}"); then
-      parse_at=$((parse_at + 1))
-    elif [ -n "$last_unit" ] && [ "$last_unit" -gt 1 ] && [ -z "${parse_words[parse_at]-}" ]; then
-      # A bare number after a unit counts in the next one down: "1 hour 30", "2 minutes 15".
-      unit=$((last_unit / 60))
-    else
-      return 1
-    fi
-    total_milli=$((total_milli + amount_milli * unit))
-    last_unit="$unit"
-  done
-  echo $(((total_milli + 500) / 1000))
-}
+# Clock times, durations (parse_duration) and number words come from spoken-time.sh, sourced at the top.
 
 # Prints the epoch "in 20 minutes", "at 3 pm", "for 3 pm", "tomorrow at 9" or a bare "20 minutes" names.
 parse_when() {
@@ -293,42 +261,7 @@ parse_when() {
 }
 
 # ---- Formatting ------------------------------------------------------------------------------------------------
-
-format_length() {
-  local seconds="$1" parts=() hours minutes
-  hours=$((seconds / 3600)) minutes=$((seconds % 3600 / 60)) seconds=$((seconds % 60))
-  [ "$hours" = 0 ] || parts+=("$hours hour$([ "$hours" = 1 ] || echo s)")
-  [ "$minutes" = 0 ] || parts+=("$minutes minute$([ "$minutes" = 1 ] || echo s)")
-  [ "$seconds" = 0 ] || parts+=("$seconds second$([ "$seconds" = 1 ] || echo s)")
-  echo "${parts[*]}"
-}
-
-# "3:47pm", "tomorrow 9:00am", "Thu 9:00am" within the week, else "Oct 20 9:00am", in the bar's Settings > Clock
-# time format.
-format_due() {
-  local due="$1" format day=""
-  format=$(clock_time_format)
-  local due_day today
-  due_day=$(date -d "@$due" +%F) today=$(date +%F)
-  if [ "$due_day" = "$today" ]; then
-    day=""
-  elif [ "$due_day" = "$(date -d "$today +1 day" +%F)" ]; then
-    day="tomorrow "
-  elif [[ "$due_day" < "$(date -d "$today +7 days" +%F)" ]]; then
-    day="$(date -d "@$due" +%a) "
-  else
-    day="$(date -d "@$due" '+%b %-d') "
-  fi
-  echo "$day$(date -d "@$due" "+$format")"
-}
-
-# "at 3:47pm" today, "tomorrow 9:00am" otherwise: a day reads wrong after "at".
-format_at() {
-  local when
-  when=$(format_due "$1")
-  [[ "$when" == [0-9]* ]] && when="at $when"
-  echo "$when"
-}
+# format_length, format_due and format_at come from spoken-time.sh.
 
 # "5 minutes left" for a timer due at the epoch $1, to the minute once there is more than one.
 format_left() {

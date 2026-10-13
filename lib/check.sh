@@ -78,6 +78,7 @@ step time-format sh ./lib/check-time-format.sh
 if command -v jq >/dev/null 2>&1 && command -v fzf >/dev/null 2>&1; then
   step voxcmd-phrases bash ./home/voxcmd/tests/run-phrases.sh
   step voxcmd-click bash ./home/voxcmd/tests/run.sh
+  step voxcmd-calendar bash ./home/voxcmd/tests/run-calendar.sh
 else
   echo 'skip: voxcmd phrases need jq and fzf'
 fi
