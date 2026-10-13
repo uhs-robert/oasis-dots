@@ -5,11 +5,21 @@
   "description": "Lists and switches tabs for voxcmd's voice commands, through a local native-messaging host.",
   "browser_specific_settings": {
     "gecko": {
-      "id": "voxcmd@oasis-dots"
+      "id": "voxcmd@oasis-dots",
+      "data_collection_permissions": {
+        "required": [
+          "none"
+        ]
+      }
     }
   },
-  "permissions": ["tabs", "nativeMessaging"],
+  "permissions": [
+    "tabs",
+    "nativeMessaging"
+  ],
   "background": {
-    "scripts": ["background.js"]
+    "scripts": [
+      "background.js"
+    ]
   }
 }
