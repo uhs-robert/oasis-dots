@@ -99,6 +99,7 @@ function overrides(t, ctx) {
         marker_fill: false,
         bar_font_family: "Inter",
         bar_font_size: 16,
+        bar_icon_set: "oasis",
         bar_meeting_marker: "twinkle_star",
         whichkey_size: 16,
         footer_size: 16,

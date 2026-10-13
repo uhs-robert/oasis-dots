@@ -28,8 +28,8 @@ Item {
     readonly property int pixel: Math.max(1, Math.round(root.glyph_size / 9))
     // Pixels per viewBox unit, from constants only: a Shape overwrites its own implicit size with its path bounds, so reading it back loops.
     readonly property real unit: root.glyph_size * root.vector_fill / 24
-    // The vector's 24-unit height covers this share of glyph_size, matching a Nerd Font glyph's inked height.
-    readonly property real vector_fill: 1
+    // The vector's 24-unit height covers this share of glyph_size. Above 1 because a vector's thin strokes carry less ink than a font glyph of the same height.
+    readonly property real vector_fill: 1.1
     // How far a count badge stays clear of a drawn icon's edge: one sprite pixel, or the same distance for a vector.
     readonly property real clearance: root.vector ? root.glyph_size / 9 : root.pixel
 
