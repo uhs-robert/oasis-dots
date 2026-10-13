@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Checks the test bar ownership claim and the branch status against a temp cache dir; touches no bar, link or qs.
+# Checks the test bar ownership claim, the branch status and the Codex review requests (with the fake gh) against a
+# temp cache dir; touches no bar, link or qs.
 set -uo pipefail
 here=$(cd "$(dirname "$0")" && pwd)
 root=$(mktemp -d)
@@ -81,6 +82,31 @@ g branch -q -D gone
 out=$(as "" "" branches_state "$root/bar")
 show "$out"
 check "names the moved and deleted branches" "[[ \$out == 'stale (moved has new commits), branch gone deleted' ]]"
+
+echo "== codex review requests"
+export FAKE_GH=$root/gh
+mkdir "$FAKE_GH"
+echo 7 >"$FAKE_GH/pr-feat-unreviewed"
+echo 8 >"$FAKE_GH/pr-feat-reviewed"
+echo 9 >"$FAKE_GH/pr-feat-asked"
+commits='"commits": [{"committedDate": "2026-10-01T10:00:00Z"}]'
+# shellcheck disable=SC2016 # Codex's comment, backticks and all
+summary='<!-- codex-pull-request-review-summary --> **Completed** | `abc1234` |'
+printf '{"headRefOid": "def5678", %s, "comments": [{"body": "%s", "createdAt": "2026-10-01T11:00:00Z"}]}' \
+  "$commits" "$summary" >"$FAKE_GH/view-7.json"
+printf '{"headRefOid": "abc1234ff", %s, "comments": [{"body": "%s", "createdAt": "2026-10-01T11:00:00Z"}]}' \
+  "$commits" "$summary" >"$FAKE_GH/view-8.json"
+printf '{"headRefOid": "aaa", %s, "comments": [{"body": "@codex review", "createdAt": "2026-10-01T11:00:00Z"}]}' \
+  "$commits" >"$FAKE_GH/view-9.json"
+out=$(PATH="$here:$PATH" as "" "" request_codex_reviews origin/feat-unreviewed feat-reviewed feat-asked feat-no-pr)
+code=$?
+show "$out"
+check "exits 0" "[[ $code == 0 ]]"
+check "requests a review only of the head nobody reviewed or asked about" "[[ \$(cat '$FAKE_GH/commented') == '7 @codex review' ]]"
+check "says what it requested" "[[ \$out == 'codex: requested a review of #7 (feat-unreviewed)' ]]"
+out=$(FAKE_GH_DOWN=1 PATH="$here:$PATH" as "" "" request_codex_reviews feat-unreviewed)
+code=$?
+check "is silent when gh fails" "[[ $code == 0 && -z \$out ]]"
 
 echo "$pass passed, $fail failed"
 ((fail == 0))
