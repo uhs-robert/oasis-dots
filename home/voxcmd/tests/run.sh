@@ -1319,15 +1319,63 @@ check "and types into the address bar" "[[ \"\$(typed | paste -sd'|')\" == '-M c
 out=$("$firefox_tab" close-tab)
 check "close-tab never closes a tab in a window not focused" "[[ \$out == 'Firefox is not focused' && -z \$(typed) ]]"
 
+# Link hints are two commands of Tridactyl's rc, so firefox-tab types their short names; the rc is the repo's own.
+repo_rc=$package/../tridactyl/.config/tridactyl/tridactylrc
+mkdir -p "$XDG_CONFIG_HOME/tridactyl"
+cp "$repo_rc" "$XDG_CONFIG_HOME/tridactyl/tridactylrc"
+: >"$log"
+out=$(SANDBOX_ACTIVEWINDOW_JSON=$(firefox_window 0x3001) "$firefox_tab" hints)
+check "show links types only :voxhints" "[[ \"\$(typed | paste -sd'|')\" == '-M alt , -m alt|-k Escape|:|-- voxhints|-k Return' ]]"
 : >"$log"
 out=$(SANDBOX_ACTIVEWINDOW_JSON=$(firefox_window 0x3001) "$firefox_tab" hints 12)
-script=$(typed | grep '^-- js ' || true)
-check "hints are numbered for this run only, in the page's memory" "grep -q 'config.hintnames=\"numeric\";config.hintautoselect=\"false\"' <<<\"\$script\" && ! grep -q 'config.set' <<<\"\$script\""
-check "and the settings go back once the hint run ends" "grep -q 'tri.excmds.hint().then(restore,restore)' <<<\"\$script\""
-check "a number follows that hint, and no other when it is missing" "grep -q 'names.includes(\"12\"))return keys.reset()' <<<\"\$script\""
+check "a link number types only :voxfollow with it" "[[ \"\$(typed | paste -sd'|')\" == '-M alt , -m alt|-k Escape|:|-- voxfollow 12|-k Return' ]]"
 : >"$log"
 out=$(SANDBOX_ACTIVEWINDOW_JSON=$(firefox_window 0x3001) "$firefox_tab" hints '1");alert(1);("')
 check "a link number is digits only" "[[ \$out == not\\ a\\ link\\ number:* && -z \$(typed) ]]"
+check "the rc defines both commands" "grep -q '^command voxfollow js -p ' '$repo_rc' && grep -q '^command voxhints voxfollow 0\$' '$repo_rc'"
+rc_js=$(sed -n 's/^command voxfollow js -p //p' "$repo_rc")
+check "the rc's hints are numbered for one run, in the page's memory" "grep -q 'config.hintnames=\"numeric\";config.hintautoselect=\"false\"' <<<\"\$rc_js\" && ! grep -q 'config.set' <<<\"\$rc_js\""
+check "and the settings go back once the hint run ends" "grep -q 'tri.excmds.hint().then(restore,restore)' <<<\"\$rc_js\""
+if command -v node >/dev/null; then
+  # The rc's code, run against a stand-in for Tridactyl and the page: what each number does with the hints on screen.
+  cat >"$root/rc-js.js" <<'NODE'
+const body = process.argv[2]
+async function follow(JS_ARG, names) {
+  const calls = []
+  const tri = {
+    config: { USERCONFIG: { hintnames: "own" } },
+    excmds: { hint: () => new Promise(() => {}) },
+    hinting_content: { getHintCommands: () => ({ reset: () => calls.push("reset"), pushKey: (key) => calls.push("key" + key), selectFocusedHint: () => calls.push("select") }) },
+  }
+  const document = { querySelectorAll: () => names.map((textContent) => ({ textContent })) }
+  await eval(body)
+  return calls.join(",") + ":" + tri.config.USERCONFIG.hintnames
+}
+;(async () => {
+  const hints = ["1", "2", "12"]
+  console.log([await follow("0", hints), await follow("2", hints), await follow("12", hints), await follow("9", hints), await follow('1");x("', hints)].join(" "))
+})()
+NODE
+  out=$(node "$root/rc-js.js" "$rc_js")
+  check "voxhints only shows hints, with the numbering set" "[[ \"\${out%% *}\" == ':numeric' ]]"
+  check "voxfollow follows the hint with that number, digit by digit" "[[ \"\$out\" == *' key2,select:numeric key1,key2,select:numeric '* ]]"
+  check "a number with no hint leaves hint mode and follows nothing" "[[ \"\$out\" == *' reset:numeric reset:numeric' ]]"
+fi
+: >"$log"
+printf 'command voxhints voxfollow 0\n' >"$XDG_CONFIG_HOME/tridactyl/tridactylrc"
+out=$(SANDBOX_ACTIVEWINDOW_JSON=$(firefox_window 0x3001) "$firefox_tab" hints 3) || status=$?
+check "an rc without :voxfollow says so and types nothing" "[[ \$out == \"link hints need the voxfollow command in Tridactyl's tridactylrc\" && -z \$(typed) ]]"
+rm "$XDG_CONFIG_HOME/tridactyl/tridactylrc"
+: >"$log"
+out=$(SANDBOX_ACTIVEWINDOW_JSON=$(firefox_window 0x3001) "$firefox_tab" hints)
+check "with no rc file nothing is judged, and :voxhints is typed" "[[ \"\$(typed | grep '^-- ')\" == '-- voxhints' ]]"
+cp "$repo_rc" "$XDG_CONFIG_HOME/tridactyl/tridactylrc"
+: >"$log"
+out=$(SANDBOX_ACTIVEWINDOW_JSON=$(firefox_window 0x3001) "$firefox_tab" dismiss-hints)
+check "dismissing hints types Escape in the focused Firefox window" "[[ \"\$(typed)\" == '-k Escape' ]]"
+: >"$log"
+out=$("$firefox_tab" dismiss-hints) || status=$?
+check "and never into another window" "[[ \$out == 'Firefox is not focused' && -z \$(typed) ]]"
 make_profile none
 : >"$log"
 out=$(SANDBOX_ACTIVEWINDOW_JSON=$(firefox_window 0x3001) "$firefox_tab" hints)
