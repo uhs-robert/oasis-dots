@@ -9,6 +9,8 @@
 // @author      Robert Hill
 // @description 2/22/2024, 4:50:53 PM
 // ==/UserScript==
+// TODO(nextgen): validate that the kn-* / modal-card-* markup and classes in
+// these templates render and are styled on NextGen.
 const htmlFilterGroup = `
 <header class="modal-card-head">
   <h1 class="modal-card-title">Add Filters</h1>
@@ -195,6 +197,61 @@ const operators = {
       : prop === null || prop === undefined || prop === "",
 };
 
+// TODO(nextgen): validate that Knack.application_id exists on NextGen apps; if
+// not, derive the app ID from another global or the page URL.
+const getKnackAppId = () => Knack.application_id;
+
+let knackSchema = null;
+let knackSchemaPromise = null;
+
+const getKnackSchema = () => knackSchema;
+
+// The endpoint's views carry no back-reference to their scene, which the
+// builder URLs and the scene filters need.
+const normalizeKnackSchema = ({ application }) => {
+  const scenes = application.scenes || [];
+  const objects = application.objects || [];
+  scenes.forEach((scene) => {
+    const { key, slug, name } = scene;
+    (scene.views || []).forEach((view) => {
+      view.scene = { key, slug, name };
+    });
+  });
+  return {
+    app: application,
+    scene: scenes,
+    view: scenes.flatMap((scene) => scene.views || []),
+    object: objects,
+    field: objects.flatMap((object) => object.fields || []),
+  };
+};
+
+const loadKnackSchema = () => {
+  if (!knackSchemaPromise) {
+    knackSchemaPromise = fetch(
+      `https://api.knack.com/v1/applications/${getKnackAppId()}`,
+    )
+      .then((response) => {
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        return response.json();
+      })
+      .then((json) => {
+        knackSchema = normalizeKnackSchema(json);
+        // Lets the page-world copy of the API (knack_search.open) reuse it.
+        window.knack_search = window.knack_search || {};
+        window.knack_search.schema = knackSchema;
+        return knackSchema;
+      })
+      .catch((error) => {
+        knackSchemaPromise = null;
+        throw error;
+      });
+  }
+  return knackSchemaPromise;
+};
+
+const getSchemaItems = (type) => getKnackSchema()?.[type] || [];
+
 const filterKnackModels = (type = "view", filters = [], getKeyOnly = true) => {
   /*
 	const filters = [
@@ -226,27 +283,16 @@ const filterKnackModels = (type = "view", filters = [], getKeyOnly = true) => {
 
   // Determine models based on type
   type = type.toLowerCase();
-  let models =
-    type === "scene"
-      ? Knack.scenes.models
-      : type === "view"
-        ? Knack.scenes.models.flatMap((scene) => scene.views.models)
-        : type === "object"
-          ? Knack.objects.models
-          : type === "field"
-            ? Knack.objects.models.flatMap((object) => object.fields.models)
-            : [];
+  const models = getSchemaItems(type);
 
   // Return all models' keys if no filters are provided
   if (!filters || filters.length === 0) {
-    return models.map((item) =>
-      getKeyOnly ? item.key : item.attributes || item,
-    );
+    return models.map((item) => (getKeyOnly ? item.key : item));
   }
 
   // Filter application
   return models.flatMap((item) => {
-    const target = item.attributes || item;
+    const target = item;
     const meetsCriteria = filters.every((group) => {
       if (!group.match || group.match === "and") {
         const rules = group.rules || [group];
@@ -430,6 +476,7 @@ const createSearchElements = (handleSearchFunction, width = "15em") => {
     onClick: false,
   });
   csvExportOption.onclick = () => {
+    // TODO(nextgen): validate Knack.renderModal exists on NextGen.
     Knack.renderModal(htmlExport);
     $("#kn-submit-export").on("click", function (e) {
       $("#kn-filters-form .filters-type .type select").val();
@@ -493,6 +540,7 @@ const createSearchElements = (handleSearchFunction, width = "15em") => {
 
   filterOption.onclick = () => {
     popupMenu.style.display = "none";
+    // TODO(nextgen): validate Knack.renderModal exists on NextGen.
     Knack.renderModal(htmlFilterGroup);
     // Initialize filterOptions with default values
     let filterOptions = [];
@@ -959,7 +1007,7 @@ const addSearchBar = (elQuery) => {
     const getSubdomainAndPathName = () => {
       const subdomain = window.location.hostname.split(".")[0];
       const appname =
-        Knack?.app?.attributes?.slug || window.location.pathname.split("/")[2];
+        getKnackSchema()?.app.slug || window.location.pathname.split("/")[2];
       return { subdomain, appname };
     };
     const knackApp = getSubdomainAndPathName();
@@ -1039,17 +1087,26 @@ const addSearchBar = (elQuery) => {
   container.appendChild(searchContainer);
 };
 
-(function bootstrap() {
+(async function bootstrap() {
+  // TODO(nextgen): NextGen may not expose window.Knack or jQuery the same way;
+  // validate what to wait on.
   const $ = window.jQuery || window.$;
   if (!window.Knack || !$) return setTimeout(bootstrap, 200);
 
   // make $ available if you reference it everywhere
   window.$ = $;
 
+  try {
+    await loadKnackSchema();
+  } catch (error) {
+    return console.error("[knack_search] Failed to load Knack schema", error);
+  }
   init();
 })();
 
 function init() {
+  // TODO(nextgen): validate the header selector and the MutationObserver
+  // targets (#knack-body header, #pages-nav .title) on NextGen.
   const observer = new MutationObserver((mutationsList, observer) => {
     for (let mutation of mutationsList) {
       if (mutation.type === "childList") {
@@ -1103,14 +1160,18 @@ const findNestedProperties = (obj, path) => {
 
 // Get views using filters on all scenes or current scene
 const getViewsByFilter = ({ filters, inThisScene = false, getKey = true }) => {
-  const { models, viewsIgnore = [] } = inThisScene
+  // TODO(nextgen): validate Knack.router.scene_view (current scene and
+  // views_ignore) on NextGen.
+  const { scenes, viewsIgnore = [] } = inThisScene
     ? {
-        models: [Knack.router.scene_view.model],
+        scenes: getSchemaItems("scene").filter(
+          (scene) => scene.key === Knack.router.scene_view.model.attributes.key,
+        ),
         viewsIgnore: Knack.router.scene_view.views_ignore,
       }
-    : { models: Knack.scenes.models };
+    : { scenes: getSchemaItems("scene") };
 
-  return models.reduce((filteredKeys, { attributes: { views } }) => {
+  return scenes.reduce((filteredKeys, { views }) => {
     views.forEach((view) => {
       if (viewsIgnore.includes(view.key)) return;
       const matches = filters.every((filterGroup) =>
@@ -1272,15 +1333,14 @@ getKnackDataCsv = ({ type, autoDownload }) => {
     return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}`;
   };
   const dateStamp = getFormattedDate();
-  const appSlug = Knack.app.attributes.slug;
+  const appSlug = getKnackSchema().app.slug;
   const fileName = `${appSlug}_${type}s_${dateStamp}.csv`;
   downloadCSV(csv, fileName);
 };
 
 const extractScenes = (builderUrl = getBuilderBaseUrl()) => {
-  const scenes = Knack.scenes.models;
-  const getData = (scene) => {
-    const attributes = scene.attributes;
+  const scenes = getSchemaItems("scene");
+  const getData = (attributes) => {
     const path = {
       sceneKey: attributes.key,
       objectKey: attributes.source?.object,
@@ -1322,9 +1382,8 @@ const extractScenes = (builderUrl = getBuilderBaseUrl()) => {
 };
 
 const extractViews = (builderUrl = getBuilderBaseUrl()) => {
-  const scenes = Knack.scenes.models;
-  const getData = (view) => {
-    const attributes = view.attributes;
+  const scenes = getSchemaItems("scene");
+  const getData = (attributes) => {
     const path = {
       sceneKey: attributes.scene.key,
       viewKey: attributes.key,
@@ -1414,15 +1473,14 @@ const extractViews = (builderUrl = getBuilderBaseUrl()) => {
     ];
   };
   const results = scenes.flatMap((scene) =>
-    scene.views.models.flatMap((view) => getData(view)),
+    scene.views.flatMap((view) => getData(view)),
   );
   return results;
 };
 
 const extractObjects = (builderUrl = getBuilderBaseUrl()) => {
-  const objects = Knack.objects.models;
-  const getData = (object) => {
-    const attributes = object.attributes;
+  const objects = getSchemaItems("object");
+  const getData = (attributes) => {
     const path = { objectKey: attributes.key };
     const url = getBuilderPath({ path, type: "object", builderUrl });
 
@@ -1470,9 +1528,8 @@ const extractObjects = (builderUrl = getBuilderBaseUrl()) => {
 };
 
 const extractFields = (builderUrl = getBuilderBaseUrl()) => {
-  const objects = Knack.objects.models;
-  const getData = (field) => {
-    const attributes = field.attributes;
+  const objects = getSchemaItems("object");
+  const getData = (attributes) => {
     const path = { objectKey: attributes.object_key, fieldKey: attributes.key };
     const url = getBuilderPath({ path, type: "field", builderUrl });
 
@@ -1498,15 +1555,14 @@ const extractFields = (builderUrl = getBuilderBaseUrl()) => {
   };
 
   const results = objects.flatMap((object) =>
-    object.fields.models.flatMap((field) => getData(field)),
+    object.fields.flatMap((field) => getData(field)),
   );
   return results;
 };
 
 const extractEmails = (builderUrl = getBuilderBaseUrl()) => {
-  const scenes = Knack.scenes.models;
-  const getData = (view) => {
-    const attributes = view.attributes;
+  const scenes = getSchemaItems("scene");
+  const getData = (attributes) => {
     const path = {
       sceneKey: attributes.scene.key,
       viewKey: attributes.key,
@@ -1544,7 +1600,7 @@ const extractEmails = (builderUrl = getBuilderBaseUrl()) => {
     );
   };
   const results = scenes.flatMap((scene) =>
-    scene.views.models.flatMap((view) => getData(view)),
+    scene.views.flatMap((view) => getData(view)),
   );
   return results;
 };
@@ -1610,6 +1666,7 @@ const openInBuilder = (key) => {
   const fns = [
     ["getIdPrefix", getIdPrefix],
     ["getBuilderBaseUrl", getBuilderBaseUrl],
+    ["getSchemaItems", getSchemaItems],
     ["getBuilderPath", getBuilderPath],
     ["filterKnackModels", filterKnackModels],
     ["openInBuilder", openInBuilder],
@@ -1622,6 +1679,7 @@ const openInBuilder = (key) => {
   const src = `(function(){
   window.knack_search = window.knack_search || {};
   const operators = ${operatorsSrc};
+  const getKnackSchema = () => window.knack_search.schema;
   ${fnSrc}
   window.knack_search.open = openInBuilder;
 })();`;
@@ -1633,9 +1691,8 @@ const openInBuilder = (key) => {
 })();
 
 const extractRecordRules = (builderUrl = getBuilderBaseUrl()) => {
-  const scenes = Knack.scenes.models;
-  const getData = (view) => {
-    const attributes = view.attributes;
+  const scenes = getSchemaItems("scene");
+  const getData = (attributes) => {
     const path = {
       sceneKey: attributes.scene.key,
       viewKey: attributes.key,
@@ -1680,7 +1737,7 @@ const extractRecordRules = (builderUrl = getBuilderBaseUrl()) => {
     );
   };
   const results = scenes.flatMap((scene) =>
-    scene.views.models.flatMap((view) => getData(view)),
+    scene.views.flatMap((view) => getData(view)),
   );
   return results;
 };
