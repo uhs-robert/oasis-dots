@@ -64,7 +64,7 @@ Delete the state file to go back to the tracked layout.
 
 ### Command status
 
-The `cmdstatus` module shows a small pill per command you declare in `custom/command-status.json` (gitignored, see `custom/README.md`), so a machine-local tool can put its state on the bar without living in this repo. It sits after `keeptabs` in the default layout and draws nothing until the file has an entry. A monitor with its own layout in Settings > Bar modules needs it added there.
+The `cmdstatus` module shows a small pill per command you declare in `custom/command-status.json` (gitignored, see `custom/README.md`), so a machine-local tool can put its state on the bar without living in this repo. It sits after `workspaces` in the left island of the default layout and draws nothing until the file has an entry. A monitor with its own layout in Settings > Bar modules needs it added there.
 
 ```json
 [
