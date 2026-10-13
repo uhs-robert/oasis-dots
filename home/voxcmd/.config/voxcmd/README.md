@@ -506,7 +506,7 @@ The overlay writes the number into the pick's FIFO, a voice reply the displayed 
 
 ### Firefox
 
-`firefox.sh` and `firefox-sites.sh` (with the helper `~/.local/share/voxcmd/firefox-tab`) reach the browser itself. Tabs and sites are read, never written: the session store (`sessionstore-backups/recovery.jsonlz4`) for tabs, a copy of `places.sqlite` and its write-ahead log for bookmarks and history, from the profile `installs.ini` names. Windows are matched to the store by their title. Tabs and the address bar are driven by typing into the focused Firefox window with `wtype`, through Tridactyl's command line (`:tab <title>`) or Firefox's own keys, so nothing needs installing in Firefox beyond Tridactyl.
+`firefox.sh` and `firefox-sites.sh` (with the helper `~/.local/share/voxcmd/firefox-tab`) reach the browser itself. Tabs and sites are read, never written: the session store (`sessionstore-backups/recovery.jsonlz4`) for tabs, a copy of `places.sqlite` and its write-ahead log for bookmarks and history, from the profile `installs.ini` names. Windows are matched to the store by their title. Tabs and the address bar are driven by typing into the focused Firefox window with `wtype`, through Firefox's own keys, so nothing needs installing in Firefox.
 
 | Say | Does |
 | --- | --- |
@@ -515,7 +515,8 @@ The overlay writes the number into the pick's FIFO, a voice reply the displayed 
 | "open code hub here" | The same, in the focused tab |
 | "new tab", "close tab" | Ctrl+T and Ctrl+W in the focused Firefox window |
 
-- Tridactyl as the store add-on is read from `extensions.json`; one loaded temporarily from a folder is recognised when its storage changed since Firefox started (`firefox-tab tridactyl` prints `store`, `temporary` or `none`; `VOXCMD_FIREFOX_TRIDACTYL=on|off` overrides). With `none`, "go to" only focuses the window.
+- "Go to" focuses the window, then types Ctrl+L, `% <title>` (`%` limits the address bar to open tabs) and Return. Nothing is typed when the session store, read again just before, has no tab with exactly that title, because Return on a miss would search the web in the current tab; the tab the window already shows is not typed for either, as the address bar leaves it out of its results.
+- Firefox ranks the open tabs, and the title's words may match anywhere in another tab's title or address, so a longer title that contains this one can come first. The same title in two windows is not told apart: the focused window's tab is preferred when both have the same address, and otherwise Firefox's ranking decides. The first result is not confirmed before Return.
 - The store lags a tab switch by up to 15 seconds, so a window is also found by any of its tabs' titles. Private windows are in no store and are found by the title they show.
 - While `firefox.sh` is installed, `apps.sh` stops matching Firefox windows by their title, so a tab is offered once.
 - `tests/run.sh` (section "firefox") and the Firefox rows of `tests/phrases.tsv` run on a made-up profile built by `tests/firefox-profile`.

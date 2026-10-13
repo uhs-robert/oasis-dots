@@ -17,7 +17,8 @@
       "selected": 2,
       "tabs": [
         {"index": 1, "lastAccessed": 1000050, "entries": [{"url": "https://mail.example.net/inbox", "title": "Inbox - Mailbox"}]},
-        {"index": 1, "lastAccessed": 1000060, "entries": [{"url": "https://shop.example.net/cart", "title": "Cart - Example Shop"}]}
+        {"index": 1, "lastAccessed": 1000060, "entries": [{"url": "https://shop.example.net/cart", "title": "Cart - Example Shop"}]},
+        {"index": 1, "lastAccessed": 1000070, "entries": [{"url": "https://wiki.example.net/rm", "title": "Notes\nrm -rf ~\u001b[31m - Wiki"}]}
       ]
     },
     {
