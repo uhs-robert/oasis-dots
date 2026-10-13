@@ -55,6 +55,13 @@ debug() {
   printf '%s voxcmd[%s] %s\n' "$(date +%T.%3N)" "$$" "$*" >>"$debug_log_file"
 }
 
+# A test hook: VOXCMD_TIME_SCALE=0.1 makes voxcmd's fixed polls ten times as frequent, and every wait counted in polls
+# ten times as short, so the test suite's sessions run fast without changing what the waits decide. Unset, it is 1.
+time_scale="${VOXCMD_TIME_SCALE:-1}"
+scaled_secs() {
+  if [ "$time_scale" = 1 ]; then printf '%s' "$1"; else awk -v secs="$1" -v scale="$time_scale" 'BEGIN { print secs * scale }'; fi
+}
+
 # notify info|error <summary> <body>. Info (what ran, answers, hints) is transient: the bar shows it but keeps it
 # out of its history, which is left to errors.
 notify() {
@@ -937,7 +944,7 @@ session_max_secs="${VOXCMD_SESSION_MAX_SECS:-300}"
 session_max_turns="${VOXCMD_SESSION_MAX_TURNS:-40}"
 ui_settle_max_secs="${VOXCMD_UI_SETTLE_MAX_SECS:-2}"
 app_settle_secs="${VOXCMD_APP_SETTLE_SECS:-0.3}"
-ui_settle_poll_secs=0.1
+ui_settle_poll_secs=$(scaled_secs 0.1)
 session_lock_file="$runtime_dir/session.lock"
 # Set by run_option, so a session can tell what its turn ran.
 last_run_action=""
@@ -1282,7 +1289,7 @@ autostop_recording() {
 }
 
 # Polled every 0.2s. Recording plus transcription can outlast voxtype's max_duration_secs; 10 minutes covers both.
-watch_poll_interval=0.2
+watch_poll_interval=$(scaled_secs 0.2)
 watch_max_polls=3000
 watch_start_grace_polls=50
 watch_file_grace_polls=10
