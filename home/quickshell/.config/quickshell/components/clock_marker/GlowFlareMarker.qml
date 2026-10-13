@@ -3,24 +3,16 @@ import QtQuick
 import "../../theme"
 
 // crt: phosphor text with a halo stronger than the bar's own glow, 12M before a meeting and a pulsing REC during one.
-Item {
+MarkerBase {
     id: root
-
-    // Shared marker inputs; see MeetingMarker.
-    property int minutes: 0
-    property bool in_meeting: false
-    property real progress: 0
-    property bool on_accent: false
-    property color ink: "black"
-    property font text_font
 
     // 0..1; the halo rests at 0.45 and swells to 1 while recording.
     property real flare: 0.45
 
-    implicitWidth: Math.ceil(root.in_meeting ? rec_width.advanceWidth : upcoming_width.advanceWidth)
+    implicitWidth: Math.ceil(Math.max(upcoming_width.advanceWidth, rec_width.advanceWidth))
     implicitHeight: label.implicitHeight
 
-    // Sized from the widest countdown, so the minutes ticking down do not resize the clock.
+    // Sized from the widest of both states, so the minutes ticking down and a meeting starting never resize the clock.
     TextMetrics {
         id: upcoming_width
         font: root.text_font

@@ -3,21 +3,13 @@ import QtQuick
 import "../../theme"
 
 // terminal: a bracketed tag, [-12m] before a meeting and a blinking [live] during one.
-Item {
+MarkerBase {
     id: root
 
-    // Shared marker inputs; see MeetingMarker.
-    property int minutes: 0
-    property bool in_meeting: false
-    property real progress: 0
-    property bool on_accent: false
-    property color ink: "black"
-    property font text_font
-
-    implicitWidth: Math.ceil(root.in_meeting ? live_width.advanceWidth : upcoming_width.advanceWidth)
+    implicitWidth: Math.ceil(Math.max(upcoming_width.advanceWidth, live_width.advanceWidth))
     implicitHeight: label.implicitHeight
 
-    // Sized from the widest countdown, so the minutes ticking down do not resize the clock.
+    // Sized from the widest of both states, so the minutes ticking down and a meeting starting never resize the clock.
     TextMetrics {
         id: upcoming_width
         font: root.text_font
