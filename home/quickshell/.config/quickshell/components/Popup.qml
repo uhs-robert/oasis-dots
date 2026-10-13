@@ -260,7 +260,7 @@ PanelWindow {
     visible: false
     WlrLayershell.namespace: "quickshell-popup"
     WlrLayershell.layer: WlrLayer.Overlay
-    WlrLayershell.keyboardFocus: root.passive || root.held_hands_off ? WlrKeyboardFocus.None : root.hold_keyboard ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.OnDemand
+    WlrLayershell.keyboardFocus: root.passive || root.held_hands_off ? WlrKeyboardFocus.None : root.hold_keyboard || (root.wanted && Popups.grab_keyboard) ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.OnDemand
     mask: root.passive || root.held_hands_off ? no_input : root.reserving || root.shadow_room > 0 ? panel_input : null
     // The soft shadow's room under the frame; it passes clicks through to the scrim like the reserve does.
     readonly property real shadow_room: !root.dock_bottom && root.st.frame_shadow.a > 0 ? root.st.frame_drop : 0
@@ -328,6 +328,18 @@ PanelWindow {
         enabled: root.passive
         function onIslandChanged() {
             if (root.wanted) root.latch_tooltip();
+        }
+    }
+
+    // Drops the temporary grab once the window has the keyboard, so a click on another window still takes it.
+    readonly property bool keyboard_active: content_scope.Window.active
+    onKeyboard_activeChanged: {
+        if (root.passive) return;
+        if (root.keyboard_active) Popups.keyboard_held_name = root.popup_name;
+        else if (Popups.keyboard_held_name === root.popup_name) Popups.keyboard_held_name = "";
+        if (root.keyboard_active && root.wanted) {
+            Popups.grab_keyboard = false;
+            root.focus_active_view();
         }
     }
 

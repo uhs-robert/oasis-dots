@@ -21,6 +21,10 @@ Singleton {
     // While set, the open popup and the scrim take no keyboard focus and no pointer input, so IPC can show one on a screen the owner is not using.
     // Cleared by every open() that does not ask for it, and by close().
     property bool hands_off: false
+    // The popup whose window has keyboard focus, reported by each Popup; "" when none does.
+    property string keyboard_held_name: ""
+    // Asks the open popup for the keyboard; it holds it Exclusive until the window is active, then lets go.
+    property bool grab_keyboard: false
     // Popup name to reopen on Backspace, e.g. "start" for popups opened from the Start menu.
     property string back_name: ""
     // The Power action the "power" popup asks to confirm.
@@ -127,6 +131,7 @@ Singleton {
         load_name = name;
         open_name = name;
         back_name = back;
+        grab_keyboard = false;
         // After open_name moves, so a hands-off popup being replaced keeps its latched flag through its close animation.
         root.hands_off = !!hands_off;
     }
@@ -156,6 +161,15 @@ Singleton {
         return true;
     }
 
+    // Takes the keyboard back for the open popup on the focused monitor when it has lost it; false when there is nothing to do.
+    function focus_open() {
+        const focused = Hyprland.focusedMonitor ? Hyprland.focusedMonitor.name : "";
+        if (settled_name === "" || settled_name !== open_name || hands_off) return false;
+        if (open_screen_name !== focused || keyboard_held_name === open_name) return false;
+        grab_keyboard = true;
+        return true;
+    }
+
     function mark_settled(name, settled) {
         if (settled) settled_name = name;
         else if (settled_name === name) settled_name = "";
@@ -174,6 +188,7 @@ Singleton {
         back_name = "";
         // After open_name clears, so the closing popup keeps ignoring input through its close animation.
         hands_off = false;
+        grab_keyboard = false;
     }
 
     // Closes the popup, then runs `fn` once Hyprland has unmapped its layer. Anything that opens a window from a popup

@@ -16,6 +16,11 @@ IpcHandler {
         Popups.toggle(name, undefined);
     }
 
+    // "popup" when the open popup on the focused monitor took the keyboard back, else "none".
+    function focus(): string {
+        return Popups.focus_open() ? "popup" : "none";
+    }
+
     // "opening <name>" while it animates in, "open <name>" once it is fully drawn, "closing <name>" while it animates
     // out, then "closed" once no popup layer is mapped.
     function state(): string {
