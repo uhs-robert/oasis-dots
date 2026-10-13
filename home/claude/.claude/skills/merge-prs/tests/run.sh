@@ -92,20 +92,37 @@ check "deletes the local branch" "! git -C '$root/main' show-ref -q --verify ref
 check "keeps the branch whose head is unavailable" "git -C '$root/main' show-ref -q --verify refs/heads/gone-branch"
 check "says why it kept it" "grep -q 'kept gone-branch: the head of #7' <<<\"\$out\""
 
-echo "== already-merged parent: its child is retargeted and rebased"
+echo "== already-merged parent: its child is reported, not rebased"
 setup
 parent_oid=$(git rev-parse child~1)
 g push -q origin "$parent_oid:refs/heads/parent"
 printf 'head=parent\nbase=main\nstate=MERGED\n' >"$GH_STATE.7"
 mv "$GH_STATE" "$GH_STATE.8"
-printf 'head=child\nbase=parent\nstate=OPEN\n' >"$GH_STATE.8"
+printf 'head=child\nbase=main\nstate=OPEN\n' >"$GH_STATE.8"
+child_before=$(git -C "$ORIGIN" rev-parse child)
 out=$(PATH="$here:$PATH" "$script" 7 2>&1)
 code=$?
 show "$out"
 check "exits 0" "[[ $code == 0 ]]"
-check "retargets the child" "grep -q '^8 retargeted to main' <<<\"\$out\""
-check "rebases the child" "grep -q '^8 rebased onto main' <<<\"\$out\""
-check "the child no longer carries the parent commit" "[[ \$(git -C '$ORIGIN' log --format=%s main..child) == C ]]"
+check "warns about the child carrying the parent commit" "grep -q 'warning: #8 (child) is stacked on the merged #7' <<<\"\$out\""
+check "prints the manual rebase" "grep -q 'git rebase --onto origin/main $parent_oid $child_before' <<<\"\$out\""
+check "pushes nothing" "[[ \$(git -C '$ORIGIN' rev-parse child) == '$child_before' ]]"
+
+echo "== already-merged PR: an unrelated open PR is not reported"
+setup
+printf 'head=gone-branch\nbase=main\nstate=MERGED\n' >"$GH_STATE.7"
+mv "$GH_STATE" "$GH_STATE.8"
+g branch -q gone-branch main
+g push -q origin gone-branch
+g switch -q -c unrelated main
+echo u >u
+g add u
+g commit -qm U
+g push -q origin unrelated
+printf 'head=unrelated\nbase=main\nstate=OPEN\n' >"$GH_STATE.9"
+out=$(PATH="$here:$PATH" "$script" 7 2>&1)
+show "$out"
+check "no warning" "! grep -q warning <<<\"\$out\""
 
 echo "== closed PR is still refused"
 setup
