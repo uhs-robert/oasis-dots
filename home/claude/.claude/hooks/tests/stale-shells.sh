@@ -7,7 +7,10 @@ failures=0
 check() {
   local name=$1
   shift
-  if "$@"; then echo "ok   $name"; else echo "FAIL $name"; failures=$((failures + 1)); fi
+  if "$@"; then echo "ok   $name"; else
+    echo "FAIL $name"
+    failures=$((failures + 1))
+  fi
 }
 
 run_hook() {
