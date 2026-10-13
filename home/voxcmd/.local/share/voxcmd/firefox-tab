@@ -25,6 +25,7 @@ import re
 import shutil
 import socket
 import sqlite3
+import stat
 import struct
 import subprocess
 import sys
@@ -48,9 +49,13 @@ def debug(message):
             log.write(f"{time.strftime('%H:%M:%S')}.{int(time.time() * 1000) % 1000:03d} firefox-tab[{os.getpid()}] {message}\n")
 
 
-HOST_SOCKET = os.path.join(os.environ.get("XDG_RUNTIME_DIR", "/tmp"), "voxcmd", "firefox.sock")
-# Seconds to wait for a Hyprland window to show the title of the tab the extension activated.
-ACTIVATE_TITLE_WAIT = 1.5
+# Not under /tmp without XDG_RUNTIME_DIR: another user could plant a socket there and feed this fake titles.
+RUNTIME_DIR = os.environ.get("XDG_RUNTIME_DIR")
+HOST_SOCKET = os.path.join(RUNTIME_DIR, "voxcmd", "firefox.sock") if RUNTIME_DIR else None
+# Seconds a host request may take; the host itself gives the extension 2.
+HOST_TIMEOUT = float(os.environ.get("VOXCMD_FIREFOX_HOST_TIMEOUT", "3"))
+# Seconds to wait for the window the extension marked with the nonce to show it in its title.
+PREFACE_WAIT = float(os.environ.get("VOXCMD_FIREFOX_PREFACE_WAIT", "1.0"))
 
 
 def fail(message):
@@ -149,22 +154,31 @@ def page_title(client_title):
     return title if separator else ""
 
 
-def dispatch(expression):
+def dispatch(expression, fatal=True):
     output = subprocess.run(["hyprctl", "dispatch", expression], capture_output=True, text=True).stdout.strip()
     if output not in ("ok", ""):
+        if not fatal:
+            return False
         fail(output)
+    return True
 
 
-def focus_window(address, timeout=1.0):
-    """Focuses the window and waits until it has focus, since keys typed before then would reach another window."""
+def focus_window(address, timeout=1.0, fatal=True):
+    """Focuses the window and waits until it has focus, since keys typed before then would reach another window.
+    Without fatal, returns whether it took focus instead of failing."""
     if not re.fullmatch(r"0x[0-9a-f]+", address):
+        if not fatal:
+            return False
         fail(f"not a window: {address}")
-    dispatch(f"hl.dsp.focus({{ window = 'address:{address}' }})")
+    if not dispatch(f"hl.dsp.focus({{ window = 'address:{address}' }})", fatal):
+        return False
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
         if hyprctl_json("activewindow", {}).get("address") == address:
-            return
+            return True
         time.sleep(0.05)
+    if not fatal:
+        return False
     fail("the Firefox window did not take focus")
 
 
@@ -206,16 +220,45 @@ def keys(*steps):
 
 
 class HostError(Exception):
-    """The extension's host is absent, unreachable or answered with an error: the caller falls back."""
+    """The extension's host answered badly, or not in time, after the request was sent."""
+
+
+class HostUnavailable(HostError):
+    """The request never reached the host (no socket, an untrusted one, no connection): nothing was done, so the caller
+    may fall back to another way."""
+
+
+def trusted_socket():
+    """Whether the socket and its directory are this user's and private, so nobody else can have planted them."""
+    if not HOST_SOCKET:
+        return "XDG_RUNTIME_DIR is not set"
+    try:
+        directory = os.lstat(os.path.dirname(HOST_SOCKET))
+        sock = os.lstat(HOST_SOCKET)
+    except OSError as error:
+        return str(error)
+    if not stat.S_ISDIR(directory.st_mode) or directory.st_uid != os.getuid() or directory.st_mode & 0o077:
+        return "the socket's directory is not a private directory of this user"
+    if not stat.S_ISSOCK(sock.st_mode) or sock.st_uid != os.getuid():
+        return "the socket is not this user's"
+    return ""
 
 
 def host_request(request):
-    """One request to firefox-host over its socket: a JSON line out, a JSON line back. Returns the reply's result."""
+    """One request to firefox-host over its socket: a JSON line out, a JSON line back. Returns the reply's result.
+    HostUnavailable means nothing was sent; any other HostError means the request may have been acted on."""
+    untrusted = trusted_socket()
+    if untrusted:
+        raise HostUnavailable(f"the Firefox host is not usable: {untrusted}")
     connection = socket.socket(socket.AF_UNIX)
-    connection.settimeout(3.0)
+    connection.settimeout(HOST_TIMEOUT)
     try:
         connection.connect(HOST_SOCKET)
         connection.sendall(json.dumps(request).encode() + b"\n")
+    except OSError as error:
+        connection.close()
+        raise HostUnavailable(f"the Firefox host is unreachable: {error}")
+    try:
         data = b""
         while not data.endswith(b"\n"):
             chunk = connection.recv(65536)
@@ -224,55 +267,87 @@ def host_request(request):
             data += chunk
         reply = json.loads(data)
     except (OSError, ValueError) as error:
-        raise HostError(f"the Firefox host is unreachable: {error}")
+        raise HostError(f"the Firefox host did not answer: {error}")
     finally:
         connection.close()
-    if not isinstance(reply, dict) or not reply.get("ok"):
+    if not isinstance(reply, dict) or reply.get("ok") is not True:
         error = reply.get("error") if isinstance(reply, dict) else reply
         raise HostError(f"the Firefox host answered with an error: {error}")
     return reply.get("result")
 
 
-def live_tabs():
-    """Every tab the extension reports, in the shape of store_tabs plus tab_id; None when the extension cannot say."""
+def live_tab(tab):
+    """A tab from the extension in the shape of store_tabs plus tab_id; raises HostError for a malformed one."""
     try:
-        listed = host_request({"cmd": "tabs"})
-    except HostError as error:
-        debug(f"{error}, so the session store is read")
-        return None
-    return [
-        {
+        if not (isinstance(tab["tab_id"], int) and isinstance(tab["window_id"], int) and isinstance(tab.get("title", ""), str) and isinstance(tab.get("url", ""), str)):
+            raise TypeError("wrong types")
+        return {
             "window": tab["window_id"],
             "tab": None,
             "tab_id": tab["tab_id"],
             "title": tab.get("title") or tab.get("url", ""),
             "url": tab.get("url", ""),
             "selected": bool(tab.get("active")),
-            "last_accessed": tab.get("last_accessed", 0),
+            "last_accessed": tab.get("last_accessed") if isinstance(tab.get("last_accessed"), (int, float)) else 0,
             "address": None,
         }
-        for tab in listed
-    ]
+    except (KeyError, TypeError, AttributeError) as error:
+        raise HostError(f"the Firefox host listed a malformed tab: {error}")
+
+
+def live_tabs():
+    """Every visible tab the extension reports; None when it cannot say, whatever the reason: listing changes nothing."""
+    try:
+        listed = host_request({"cmd": "tabs"})
+        if not isinstance(listed, list) or not all(isinstance(tab, dict) for tab in listed):
+            raise HostError("the Firefox host listed no tabs")
+        return [live_tab(tab) for tab in listed if not tab.get("hidden")]
+    except HostError as error:
+        debug(f"{error}, so the session store is read")
+        return None
 
 
 def activate_tab(tab_id, title):
-    """Switches to the tab by its id, then focuses the Hyprland window that shows it, since Hyprland does not always
-    follow the extension's own window focus. Returns False, having done nothing, when the extension cannot."""
+    """Switches to the tab by its id, then focuses the Hyprland window showing it. Returns False, with nothing done,
+    only when the request never reached the extension; once it was sent a failure is reported and not retried, as the
+    tab may already have switched. The window is found by a nonce the extension puts in front of its title, since
+    titles are not unique and change while a tab loads. A window not found is not an error: the tab did switch."""
+    nonce = os.environ.get("VOXCMD_FIREFOX_NONCE") or "vx" + os.urandom(6).hex()
     try:
-        result = host_request({"cmd": "activate", "tab_id": tab_id})
-    except HostError as error:
+        result = host_request({"cmd": "activate", "tab_id": tab_id, "preface": nonce})
+        if not isinstance(result, dict) or result.get("activated") is not True or not isinstance(result.get("window_id"), int):
+            raise HostError("the Firefox host's activation answer is malformed")
+    except HostUnavailable as error:
         debug(f"{error}, so the address bar switches tabs")
         return False
-    shown = printable(result.get("title") or title)
-    deadline = time.monotonic() + ACTIVATE_TITLE_WAIT
+    except HostError as error:
+        fail(f"{error}; the tab may have switched, so the address bar was not tried")
+    try:
+        confirmed = result.get("preface_set") is True and focus_marked_window(nonce)
+    finally:
+        try:
+            host_request({"cmd": "clear_preface", "window_id": result["window_id"]})
+        except HostError as error:
+            debug(f"the title preface was not cleared now: {error}")
+    if confirmed:
+        debug(f"activated tab {tab_id}")
+    elif is_firefox(hyprctl_json("activewindow", {})):
+        debug(f"activated tab {tab_id}; its window was not found, but a Firefox window has focus")
+    else:
+        debug(f"activated tab {tab_id}; focus on its window is not confirmed")
+        print("the tab switched, but its window could not be focused", file=sys.stderr)
+    return True
+
+
+def focus_marked_window(nonce):
+    """Focuses the window whose title starts with the nonce, waiting briefly for the title to change."""
+    deadline = time.monotonic() + PREFACE_WAIT
     while True:
-        windows = [client for client in firefox_clients() if printable(page_title(client.get("title", ""))) == shown]
-        if windows:
-            focus_window(windows[0]["address"])
-            debug(f"activated tab {tab_id}, window {windows[0]['address']}")
-            return True
+        marked = [client for client in firefox_clients() if client.get("title", "").startswith(nonce + " ")]
+        if marked:
+            return focus_window(marked[0]["address"], fatal=False)
         if time.monotonic() >= deadline:
-            fail(f"no window shows the activated tab {shown!r}")
+            return False
         time.sleep(0.05)
 
 
