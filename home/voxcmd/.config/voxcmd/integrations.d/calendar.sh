@@ -84,9 +84,9 @@ calendar_events() {
   }
 }
 
-# Meet links decide which meeting to join, not event_url: calendar-sync fills that for every event. The in-progress
-# event with a Meet link and the latest start wins; an in-progress event without one gives way to a Meet meeting
-# starting within five minutes. Failing both, the next event that starts today.
+# Join links (Meet or Teams) decide which meeting to join, not event_url: calendar-sync fills that for every event.
+# The in-progress event with a join link and the latest start wins; an in-progress event without one gives way to a
+# joinable meeting starting within five minutes. Failing both, the next event that starts today.
 open_meeting() {
   local events now end_of_day event link title
   events=$(calendar_events) || {
@@ -96,10 +96,10 @@ open_meeting() {
   now=$(date +%s)
   end_of_day=$(date -d 'tomorrow 00:00' +%s)
   event=$(jq -c --argjson now "$now" --argjson end_of_day "$end_of_day" '
-    def has_meet: (.meet_url // "") != "";
-    (map(select(.start_epoch <= $now and .end_epoch > $now)) | sort_by([(has_meet | not), -.start_epoch])) as $current
-    | (map(select(.start_epoch > $now and .start_epoch <= $now + 300 and has_meet)) | sort_by(.start_epoch)) as $starting_soon
-    | (if ($current | first | . != null and has_meet) then $current[0] else ($starting_soon[0] // $current[0]) end)
+    def has_join_link: (.join_url // "") != "";
+    (map(select(.start_epoch <= $now and .end_epoch > $now)) | sort_by([(has_join_link | not), -.start_epoch])) as $current
+    | (map(select(.start_epoch > $now and .start_epoch <= $now + 300 and has_join_link)) | sort_by(.start_epoch)) as $starting_soon
+    | (if ($current | first | . != null and has_join_link) then $current[0] else ($starting_soon[0] // $current[0]) end)
     // (map(select(.start_epoch > $now and .start_epoch < $end_of_day)) | sort_by(.start_epoch) | first)
     // empty' <<<"$events")
   if [ -z "$event" ]; then
@@ -107,13 +107,13 @@ open_meeting() {
     return
   fi
   title=$(jq -r '.title // "Untitled"' <<<"$event")
-  link=$(jq -r '.meet_url // .event_url // empty' <<<"$event")
+  link=$(jq -r '.join_url // .event_url // empty' <<<"$event")
   if [ -z "$link" ]; then
     echo "$title has no meeting link"
     return
   fi
   open_in_firefox "$link"
-  if [ -n "$(jq -r '.meet_url // empty' <<<"$event")" ]; then
+  if [ -n "$(jq -r '.join_url // empty' <<<"$event")" ]; then
     echo "Joining $title"
   else
     echo "Opening $title"

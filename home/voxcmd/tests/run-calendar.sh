@@ -23,14 +23,14 @@ total=0
 # A non-UTC offset, as the sync writes them.
 iso() { TZ=America/New_York date -d "@$1" +%Y-%m-%dT%H:%M:%S%:z; }
 
-# event <uid> <title> <start offset secs> <end offset secs> <meet_url|null> <event_url|null> [status]
+# event <uid> <title> <start offset secs> <end offset secs> <join_url|null> <event_url|null> [status]
 event() {
   local now
   now=$(date +%s)
   jq -n -c --arg uid "$1" --arg title "$2" --arg start "$(iso $((now + $3)))" --arg end "$(iso $((now + $4)))" \
     --arg meet "$5" --arg url "$6" --arg status "${7:-confirmed}" \
     '{uid: $uid, title: $title, start: $start, end: $end, all_day: false,
-      meet_url: (if $meet == "null" then null else $meet end), event_url: (if $url == "null" then null else $url end),
+      join_url: (if $meet == "null" then null else $meet end), event_url: (if $url == "null" then null else $url end),
       status: $status, organizer: "", attendees: [], location: ""}'
 }
 
@@ -74,7 +74,7 @@ write_cache \
   "$(event b "Standup" -600 600 https://meet.example.com/standup https://calendar.example.com/standup)" \
   "$(event c "Review" -600 600 null https://calendar.example.com/review)"
 say "join my meeting"
-expect "in-progress meeting with a Meet link" "firefox --new-tab https://meet.example.com/standup"
+expect "in-progress meeting with a join link" "firefox --new-tab https://meet.example.com/standup"
 expect_absent "cancelled meeting" "cancelled"
 expect "says which meeting" "Joining Standup"
 
@@ -84,14 +84,19 @@ write_cache \
   "$(event i "Focus" -3900 6900 null https://calendar.example.com/focus)" \
   "$(event j "Standup" -300 600 https://meet.example.com/standup https://calendar.example.com/standup)"
 say "join my meeting"
-expect "overlap joins the Meet meeting" "firefox --new-tab https://meet.example.com/standup"
+expect "overlap joins the meeting with a join link" "firefox --new-tab https://meet.example.com/standup"
 expect_absent "overlap skips the long event" "calendar.example.com/focus"
 
 write_cache \
   "$(event k "Focus" -3900 6900 null https://calendar.example.com/focus)" \
   "$(event l "Planning" 240 1800 https://meet.example.com/planning https://calendar.example.com/planning)"
 say "join my meeting"
-expect "Meet meeting starting within 5 minutes beats one without Meet" "firefox --new-tab https://meet.example.com/planning"
+expect "join-link meeting starting within 5 minutes beats one without" "firefox --new-tab https://meet.example.com/planning"
+
+write_cache "$(event t "Teams sync" -300 600 https://teams.microsoft.com/l/meetup-join/placeholder https://calendar.example.com/teams)"
+say "join my meeting"
+expect "Teams join link" "firefox --new-tab https://teams.microsoft.com/l/meetup-join/placeholder"
+expect "Teams says joining" "Joining Teams sync"
 
 write_cache "$(event c "Review" -600 600 null https://calendar.example.com/review)"
 say "open my meeting"
