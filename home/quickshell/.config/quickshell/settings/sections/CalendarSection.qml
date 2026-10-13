@@ -117,6 +117,8 @@ RowsSection {
     footer_hint: "Enter actions · h/Esc sections · q close"
 
     Component.onCompleted: root.run_check()
+    // The pane outlives a closed popup, so reopening it (say after Connect) must check again.
+    onLiveChanged: if (root.live) root.run_check()
 
     Process {
         id: check_proc
