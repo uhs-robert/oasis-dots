@@ -10,6 +10,8 @@ target_match=words
 silent_actions=(click right_click double_click triple_click show_hints no_text click_mode stop_clicking)
 # A target found nowhere is a turn that did nothing, which counts toward ending click mode.
 session_miss_actions=(no_text)
+# Labels are text read off the screen, so voxcmd's error toast, which the bar keeps in its history, leaves them out.
+private_labels=1
 
 # Every click verb needs a target, so a bare "click" or "right click" still reaches the Cursor submap's binds in
 # Keybinds. The optional "on" is a filler word, so "click on settings" and "click settings" mean the same.
@@ -231,10 +233,10 @@ candidates() {
   printf '%s\n' "$visible"
 }
 
-# Tells the user a click failed, without the screen text: the label voxcmd would put in its own error toast is OCR text,
-# and the bar keeps error toasts in its history. Nothing is returned as a failure, so voxcmd adds no toast of its own.
+# Reports why a click failed to voxcmd's error toast, as the reason only: the reason comes from a tool, never the screen.
 click_failed() {
-  notify-send --app-name=voxcmd "voxcmd failed" "Click failed: $1"
+  echo "$1"
+  return 1
 }
 
 # Whether the focused window is still the one click-ocr captured, at the same place and size, recently. Anything else
@@ -264,7 +266,7 @@ click_at() {
   case "$1" in
   error:*)
     click_failed "${1#error:}"
-    return 0
+    return
     ;;
   covered:*)
     notify-send --transient --app-name=voxcmd "\"$target\" is covered by another window"
@@ -279,7 +281,7 @@ click_at() {
   moved=$(hyprctl dispatch "hl.dsp.cursor.move({x=$x,y=$y})") || moved="hyprctl failed"
   if [ "$moved" != ok ]; then
     click_failed "$(tail -n 1 <<<"$moved")"
-    return 0
+    return
   fi
   case "$button" in
   # wlrctl has no double or triple click.
@@ -287,7 +289,6 @@ click_at() {
   triple) clicked=$(repeat_left_click 3) ;;
   *) clicked=$(wlrctl pointer click "$button" 2>&1) ;;
   esac || click_failed "$(tail -n 1 <<<"$clicked")"
-  return 0
 }
 
 # ---- click-explain ---------------------------------------------------------------------------------------------------
@@ -327,7 +328,7 @@ explain_outcome() {
   first_id=$(jq -r '.[0].id // ""' <<<"$visible")
   case "$first_id" in
   error:*)
-    echo "capture or OCR failed (${first_id#error:}); a toast says \"Click failed\""
+    echo "capture or OCR failed (${first_id#error:}); a toast says the click failed"
     return
     ;;
   covered:*)
