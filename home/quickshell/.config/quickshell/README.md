@@ -11,7 +11,7 @@ Hyprland starts it with `qs -n` (see `home/hypr/.config/hypr/config/autostart/`)
 | Path          | Purpose                                                                                    |
 | ------------- | ------------------------------------------------------------------------------------------ |
 | `shell.qml`   | Entry point: a bar per monitor, then every popup, picker provider, IPC handler and overlay |
-| `bar/`        | The bar, its islands, the submap tab, the hot corner, and one file per module in `modules/` |
+| `bar/`        | The bar, its islands, the submap and voice-mode tabs, the hot corner, and one file per module in `modules/` |
 | `popups/`     | One popup per bar module (clock, volume, network, weather...), plus Start, Power and the screenshot tool |
 | `picker/`     | The fuzzy picker, its providers (apps, clipboard, dirs, emoji, keybinds) and the HyprVim `:` prompt |
 | `services/`   | Singletons that hold state (media, network, weather, notifications...) and the IPC handlers |
@@ -45,7 +45,9 @@ Weather alerts come from the US National Weather Service (api.weather.gov), so t
 | `bar` | `false` shows no bar on matching monitors |
 | `left`, `center`, `right` | Module names, in draw order. Repeats within one list are dropped (a module in both `left` and `right` draws twice), unknown names are skipped with a warning. Lualine styles draw `center` inside the right island and re-sort it with `right` into their x/y/z sections, so the listed order only holds within a section |
 
-Modules (the registry is `services/BarModules.js`): `start` (Start button), `workspaces`, `clock` (calendar popup), `tray`, `volume`, `battery`, `bluetooth`, `network`, `weather`, `keeptabs` (optional: needs the keeptabs tools in `~/.local/bin` and, for its usage tab, the `claude` CLI; shows AI agent sessions busy, done or waiting and jumps to one; hidden while none run or when keeptabs is not installed, and removable from `bars.json`), `cmdstatus` (status pills from your own commands, see Command status below; hidden without any), `updates` (pending package updates), `voxtype` (dictation status, plus the name of an open voxcmd voice session such as "Click mode", read from `$XDG_RUNTIME_DIR/voxcmd/session.json`), `recording` (screen recording chip), `notifications` (center and Do Not Disturb), `media` (now playing, not in the default layout) and `system`. `system` takes an argument, `system:cpu`, `system:memory` or `system:temperature`, and can be listed more than once with different arguments; bare `system` starts on `cpu`.
+Modules (the registry is `services/BarModules.js`): `start` (Start button), `workspaces`, `clock` (calendar popup), `tray`, `volume`, `battery`, `bluetooth`, `network`, `weather`, `keeptabs` (optional: needs the keeptabs tools in `~/.local/bin` and, for its usage tab, the `claude` CLI; shows AI agent sessions busy, done or waiting and jumps to one; hidden while none run or when keeptabs is not installed, and removable from `bars.json`), `cmdstatus` (status pills from your own commands, see Command status below; hidden without any), `updates` (pending package updates), `voxtype` (dictation status; its tooltip gives the exit hint while a voxcmd voice session is open), `recording` (screen recording chip), `notifications` (center and Do Not Disturb), `media` (now playing, not in the default layout) and `system`. `system` takes an argument, `system:cpu`, `system:memory` or `system:temperature`, and can be listed more than once with different arguments; bare `system` starts on `cpu`.
+
+While a voxcmd voice session is open (`$XDG_RUNTIME_DIR/voxcmd/session.json`, ignored once its owner process is gone), the current mode (rapid, click, type...) hangs from the center island as a tab beside the Hyprland submap tab, tinted per mode `kind` from the theme's submap palette (`services/VoxSession.qml`). Its text is the file's `label`; the `voxtype` tooltip shows its `exit_hint`.
 
 ```json
 [

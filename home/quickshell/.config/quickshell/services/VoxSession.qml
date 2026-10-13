@@ -3,14 +3,28 @@ pragma Singleton
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import "../theme"
 
-// The voice session voxcmd keeps open (click mode), read from the file it writes while one is open and removes when
-// it ends. While `active`, the microphone re-opens after every turn, so the bar says so.
+// The voice session voxcmd keeps open (rapid, click, type...), read from the file it writes while one is
+// open and removes when it ends. The top level describes the current mode; `stack` holds the modes underneath, last
+// being the one returned to. While `active`, the microphone re-opens after every turn, so the bar says so.
 Singleton {
     id: root
 
     readonly property bool active: session_open && owner_alive
+    property string kind: ""
     property string label: ""
+    property string exit_hint: ""
+    property var stack: []
+
+    // Colored per mode kind from the submap palette, as SubmapState does per submap. Kinds from other integrations
+    // fall back to the theme's secondary color.
+    readonly property var color_map: ({
+        "rapid": Theme.syntax_builtin_func,
+        "click": Theme.syntax_macro,
+        "type": Theme.syntax_string,
+    })
+    readonly property color mode_color: color_map[kind] || Theme.theme_secondary
 
     readonly property string voxcmd_dir: (Quickshell.env("XDG_RUNTIME_DIR") || "/tmp") + "/voxcmd"
     property bool session_open: false
@@ -29,7 +43,10 @@ Singleton {
         onLoaded: {
             try {
                 const data = JSON.parse(text());
+                root.kind = String(data.kind || "");
                 root.label = String(data.label || "Voice session");
+                root.exit_hint = String(data.exit_hint || "");
+                root.stack = Array.isArray(data.stack) ? data.stack : [];
                 root.owner_start = String(data.owner_start || "");
                 root.owner = Number(data.owner) || 0;
                 root.session_open = true;

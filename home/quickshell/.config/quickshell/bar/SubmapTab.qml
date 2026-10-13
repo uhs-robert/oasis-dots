@@ -14,13 +14,19 @@ PanelWindow {
     property bool bar_present: true
     // The bar on this screen shows the submap in a lualine mode chip instead.
     property bool chip_shown: false
-    property string shown_name: ""
-    property color shown_color: Theme.theme_secondary
+    property string submap_name: ""
+    property color submap_color: Theme.theme_secondary
     // Only the focused monitor shows the tab, so a submap opens one window instead of one per bar.
     property string screen_name: ""
     readonly property bool focused: !!Hyprland.focusedMonitor && Hyprland.focusedMonitor.name === root.screen_name
+    property string voice_name: ""
+    property color voice_color: Theme.theme_secondary
+    readonly property bool want_submap: SubmapState.active && !root.chip_shown && root.focused
+    readonly property bool want_voice: VoxSession.active && root.focused
     property real line_progress: 0
-    property real tab_progress: 0
+    // Tabs drop once the line has drawn and lift before it retracts.
+    property real submap_progress: root.want_submap && root.line_progress >= 1 ? 1 : 0
+    property real voice_progress: root.want_voice && root.line_progress >= 1 ? 1 : 0
 
     visible: false
     color: "transparent"
@@ -28,19 +34,33 @@ PanelWindow {
     WlrLayershell.layer: WlrLayer.Overlay
     WlrLayershell.namespace: "quickshell-submap"
     anchors.top: true
-    implicitWidth: Math.max(line_width, tab.width)
-    implicitHeight: line.height + tab.height
+    implicitWidth: Math.max(line_width, tabs.width)
+    implicitHeight: line.height + tabs.height
     mask: Region {}
 
-    onChip_shownChanged: root.sync()
-    onFocusedChanged: root.sync()
+    onWant_submapChanged: root.sync()
+    onWant_voiceChanged: root.sync()
 
-    // Keeps the last name and color on screen while the hide animation plays.
+    Behavior on submap_progress {
+        NumberAnimation { duration: 120; easing.type: Easing.OutCubic }
+    }
+
+    Behavior on voice_progress {
+        NumberAnimation { duration: 120; easing.type: Easing.OutCubic }
+    }
+
+    // Keeps the last names and colors on screen while the hide animation plays.
     function sync() {
         if (!root.bar_present) return;
-        if (SubmapState.active && !root.chip_shown && root.focused) {
-            root.shown_name = SubmapState.submap_name;
-            root.shown_color = SubmapState.bar_color;
+        if (root.want_submap) {
+            root.submap_name = SubmapState.submap_name;
+            root.submap_color = SubmapState.bar_color;
+        }
+        if (root.want_voice) {
+            root.voice_name = VoxSession.label;
+            root.voice_color = VoxSession.mode_color;
+        }
+        if (root.want_submap || root.want_voice) {
             hide_anim.stop();
             if (!root.visible || root.line_progress < 1) {
                 root.visible = true;
@@ -60,15 +80,24 @@ PanelWindow {
         }
     }
 
-    SequentialAnimation {
-        id: show_anim
-        NumberAnimation { target: root; property: "line_progress"; to: 1; duration: 140; easing.type: Easing.OutCubic }
-        NumberAnimation { target: root; property: "tab_progress"; to: 1; duration: 140; easing.type: Easing.OutCubic }
+    Connections {
+        target: VoxSession
+
+        function onLabelChanged() {
+            root.sync();
+        }
+
+        function onKindChanged() {
+            root.sync();
+        }
     }
 
+    NumberAnimation { id: show_anim; target: root; property: "line_progress"; to: 1; duration: 140; easing.type: Easing.OutCubic }
+
+    // The pause lets the tabs lift first.
     SequentialAnimation {
         id: hide_anim
-        NumberAnimation { target: root; property: "tab_progress"; to: 0; duration: 90; easing.type: Easing.InCubic }
+        PauseAnimation { duration: 90 }
         NumberAnimation { target: root; property: "line_progress"; to: 0; duration: 90; easing.type: Easing.InCubic }
         ScriptAction { script: root.visible = false }
     }
@@ -78,64 +107,27 @@ PanelWindow {
         anchors.horizontalCenter: parent.horizontalCenter
         width: root.line_width * root.line_progress
         height: 3
-        color: root.shown_color
+        // The submap owns the line while both tabs show.
+        color: root.submap_progress > 0 || root.want_submap ? root.submap_color : root.voice_color
     }
 
-    Item {
+    // The voice mode sits beside the submap tab, so both stay readable when a submap is open during a session.
+    Row {
+        id: tabs
         anchors.top: line.bottom
         anchors.horizontalCenter: parent.horizontalCenter
-        width: tab.width
-        height: tab.height
-        clip: true
+        spacing: 6
 
-        Rectangle {
-            id: tab
-            // Styles with a clear title show the submap color on the text instead of the fill.
-            readonly property bool filled: !Style.show_title || Style.title_bg.a > 0
+        ModeTab {
+            name: root.submap_name
+            tint: root.submap_color
+            progress: root.submap_progress
+        }
 
-            y: -height * (1 - root.tab_progress)
-            width: label.implicitWidth + 20 + Style.inset_pad * 2
-            height: label.implicitHeight + (Style.show_title ? 4 : 2) + Style.inset_pad * 2
-            bottomLeftRadius: Style.radius(6)
-            bottomRightRadius: Style.radius(6)
-            color: tab.filled ? root.shown_color : Style.frame_color
-            border.width: Style.show_title ? Style.frame_border_width : 0
-            border.color: Style.frame_border_color
-
-            Text {
-                id: label
-                anchors.centerIn: parent
-                text: Style.show_title ? Style.title_prefix + root.shown_name.toUpperCase() + Style.title_suffix : root.shown_name
-                color: tab.filled ? Theme.bg_core : root.shown_color
-                font.family: Style.font_family
-                font.pixelSize: Style.show_title ? Style.font_size - 2 : Style.bar_font_size
-                font.bold: true
-                font.letterSpacing: Style.show_title ? Style.title_spacing : 0
-                style: Style.glow ? Text.Outline : Text.Normal
-                styleColor: Qt.alpha(root.shown_color, 0.35)
-            }
-
-            // Static scanlines; nothing animates them.
-            Scanlines {
-                visible: Style.scanlines
-                anchors.fill: parent
-                color: Qt.alpha(root.shown_color, 0.08)
-                period: Style.scanline_period
-            }
-
-            // Under a capsule the tab's top border gives way so its fill meets the line.
-            Rectangle {
-                visible: Style.bar_capsule > 0 && tab.border.width > 0
-                x: tab.border.width
-                width: tab.width - tab.border.width * 2
-                height: tab.border.width
-                color: tab.color
-            }
-
-            FrameInset {
-                edge: tab.border.width
-                bottom_radius: tab.bottomLeftRadius
-            }
+        ModeTab {
+            name: root.voice_name
+            tint: root.voice_color
+            progress: root.voice_progress
         }
     }
 }
