@@ -64,6 +64,10 @@ declare -A actions=(
 )
 # The popup is the answer; a success toast would cover it.
 silent_actions=(weather)
+# A sequence's next step waits for the popup to be drawn.
+declare -A step_waits=(
+  [weather]='popup_is_open weather'
+)
 
 # Follows the bar's Settings > Clock time format, where "locale" means the locale's own 12 or 24 hour choice.
 answers_time_format() {

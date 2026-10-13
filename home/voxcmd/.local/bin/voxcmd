@@ -6,7 +6,7 @@ set -euo pipefail
 usage() {
   cat <<'EOF'
 Usage:
-  voxcmd <text...>            route text as a spoken command
+  voxcmd <text...>            route text as a spoken command; "and then" joins up to 5 steps, run in order
   voxcmd --dry-run <text...>  show what would run, without running it
   voxcmd listen               start a voxtype recording that stops itself after speech and a pause, then route the
                               transcript (as a reply when a voxcmd picker is open); while voxtype records, stop it
@@ -54,6 +54,28 @@ came_by_voice=0
 # Set by voxcmd-confirm, voxcmd-pick and voxcmd-hints for the recording they start: the watcher keeps its PID there while voxtype
 # records or transcribes it, so a card or picker answered by key cancels only its own recording.
 recording_owner_file="${VOXCMD_RECORDING_OWNER_FILE:-}"
+# A phrase of several steps joined by "and then" is a sequence: its steps are routed one after another, each only once
+# the one before has finished. in_sequence holds back the steps' own no-match and failure toasts, so the sequence
+# can send one for the step it stopped at.
+sequence_max_steps=5
+step_timeout_secs="${VOXCMD_STEP_TIMEOUT_SECS:-15}"
+# One file per running sequence, {pid, start}, so Stop Voice reaches all of them when Voice Command starts a second
+# while the first still waits.
+sequence_dir="$runtime_dir/sequences"
+in_sequence=0
+# The options route_step found in a dry run.
+dry_run_options="[]"
+# How the step just routed ended: ran, no_match, cancelled (a picker closed), declined (a confirm answered no), failed,
+# timed_out or discarded. Set by route_step and run_option.
+step_outcome=ran
+# What a failed step reports: its label (blank for private labels) and the tail of its output.
+step_label="" step_detail=""
+# The option run_option last ran, for the wait that follows it, and the window that was active before the step, which
+# a step_waits condition reads.
+# shellcheck disable=SC2034
+last_step_option="" active_before=""
+# 1 in a watcher, whose discard flag is its recording's as well as a sequence's.
+in_watcher=0
 # Debug trace of listening, routing and replies, shared with voxcmd-confirm: VOXCMD_DEBUG=1, or
 # create the file, turns it on.
 debug_log_file="$runtime_dir/debug.log"
@@ -219,8 +241,8 @@ load_integration() {
   session_wake_at_end=0 session_private=0 session_open_ended=0 session_mode_idle_secs="" session_mode_max_secs=""
   # shellcheck disable=SC2034
   session_listen_silence_secs="" session_listen_max_secs="" session_listen_no_speech_secs=""
-  local -a verbs=() examples=() confirm_labels=() match_ignore_words=() silent_actions=() force_prefixes=() session_miss_actions=() mode_actions=()
-  local -A actions=() no_match_actions=()
+  local -a verbs=() examples=() confirm_labels=() match_ignore_words=() silent_actions=() force_prefixes=() session_miss_actions=() mode_actions=() free_text_actions=()
+  local -A actions=() no_match_actions=() step_waits=()
   # shellcheck disable=SC1090
   source "$1"
   name="${name:-$(basename "$1" .sh)}"
@@ -231,14 +253,18 @@ load_integration() {
   integration_silent_actions=("${silent_actions[@]}")
   integration_force_prefixes=("${force_prefixes[@]}")
   integration_session_miss_actions=("${session_miss_actions[@]}")
-  integration_mode_actions=("${mode_actions[@]}")
-  declare -gA integration_actions=() integration_no_match_actions=()
+  # shellcheck disable=SC2034 # both read through a nameref in match_listed_actions
+  integration_mode_actions=("${mode_actions[@]}") integration_free_text_actions=("${free_text_actions[@]}")
+  declare -gA integration_actions=() integration_no_match_actions=() integration_step_waits=()
   local key
   for key in "${!actions[@]}"; do
     integration_actions[$key]="${actions[$key]}"
   done
   for key in "${!no_match_actions[@]}"; do
     integration_no_match_actions[$key]="${no_match_actions[$key]}"
+  done
+  for key in "${!step_waits[@]}"; do
+    integration_step_waits[$key]="${step_waits[$key]}"
   done
 }
 
@@ -535,9 +561,10 @@ run_option() {
   # Error toasts stay in the bar's history, and a private option's label (screen text) must not reach it, nor the debug log.
   local toast_label="$label"
   [ "$(jq -r .private_labels <<<"$option")" != true ] || toast_label=$(option_label "$(jq -c '.label = ""' <<<"$option")")
-  last_run_action=$(jq -r .action <<<"$option")
+  step_label="$toast_label" step_detail=""
   if [ -z "$command" ]; then
-    notify error "voxcmd error" "$toast_label has no command"
+    step_outcome=failed step_detail="has no command"
+    [ "$in_sequence" = 1 ] || notify error "voxcmd error" "$toast_label has no command"
     return 1
   fi
   if [ "$(jq -r .confirm <<<"$option")" = true ]; then
@@ -551,6 +578,7 @@ run_option() {
     debug "confirm asks: $(confirm_question "$option" "$toast_label")$([ "$listens" = 0 ] || echo ' (by voice)')"
     if ! "$voxcmd_confirm" "${confirm_flags[@]}" "$question"; then
       debug "confirm answered no: $toast_label not run"
+      step_outcome=declined
       return 0
     fi
     debug "confirm answered yes: running $toast_label"
@@ -560,10 +588,14 @@ run_option() {
     set +eu
     eval "$command" 2>&1
   ); then
+    last_run_action=$(jq -r .action <<<"$option")
+    last_step_option="$option"
+    step_outcome=ran
     # A silent action's own effect (a bar popup it opens) is the feedback, which a toast would only cover.
     [ "$(jq -r .silent <<<"$option")" = true ] || notify info "voxcmd" "$label${output:+: $(tail -n 1 <<<"$output")}"
   else
-    notify error "voxcmd failed" "$toast_label${output:+: $(tail -n 3 <<<"$output")}"
+    step_outcome=failed step_detail=$(tail -n 3 <<<"$output")
+    [ "$in_sequence" = 1 ] || notify error "voxcmd failed" "$toast_label${output:+: $step_detail}"
     return 1
   fi
 }
@@ -679,8 +711,11 @@ split_trailing_wake() {
 # A phrase starting with an integration's force prefix goes to that integration alone. Otherwise normal integrations
 # go first, then the LLM hook, then fallback integrations, each only when the ones before it left nothing to run, so a
 # catch-all fallback never competes with a real verb.
-route() {
+# Sets step_outcome. In a sequence it sends no no-match toast and does not open Voice Help: the sequence reports the
+# step it stopped at.
+route_step() {
   local transcript="$*" text options count choices picked forcing="" forced_file=""
+  step_outcome=no_match
   # Global, not local: the integration contract promises it to candidates() and to every action.
   # shellcheck disable=SC2034 # read by integrations
   raw_transcript="$transcript"
@@ -688,14 +723,26 @@ route() {
   if split_leading_wake "$text"; then
     text="$wake_rest"
     if [ -z "$text" ]; then
-      [ "$dry_run" = 1 ] || notify info "voxcmd" "Say a command after \"$wake_word\""
+      if [ "$in_sequence" = 1 ]; then
+        [ "$dry_run" != 1 ] || printf 'transcript:  %s\nnormalized:  %s\nresult:      no match, only the wake word\n' "$transcript" "$text"
+      elif [ "$dry_run" != 1 ]; then
+        notify info "voxcmd" "Say a command after \"$wake_word\""
+      fi
       return 0
     fi
   fi
   if [[ "$text" =~ $help_phrases ]]; then
     if [ "$dry_run" = 1 ]; then
-      printf 'transcript:  %s\nnormalized:  %s\nresult:      built-in, opens Voice Help\n' "$transcript" "$text"
+      if [ "$in_sequence" = 1 ]; then
+        printf 'transcript:  %s\nnormalized:  %s\nresult:      no match, Voice Help is not opened inside a sequence\n' "$transcript" "$text"
+      else
+        printf 'transcript:  %s\nnormalized:  %s\nresult:      built-in, opens Voice Help\n' "$transcript" "$text"
+        step_outcome=ran
+      fi
+    elif [ "$in_sequence" = 1 ]; then
+      return 1
     else
+      step_outcome=cancelled
       voice_help
     fi
     return
@@ -704,6 +751,7 @@ route() {
     if [ "$dry_run" = 1 ]; then
       printf 'transcript:  %s\nnormalized:  %s\nresult:      built-in, discarded\n' "$transcript" "$text"
     fi
+    step_outcome=discarded
     return 0
   fi
   if forcing=$(forcing_integration "$text"); then
@@ -717,11 +765,13 @@ route() {
   count=$(jq length <<<"$options")
 
   if [ "$dry_run" = 1 ]; then
+    dry_run_options="$options"
     print_dry_run "$transcript" "$text" "$options" "$forced_file"
+    [ "$count" = 0 ] || step_outcome=ran
     return 0
   fi
   if [ "$count" = 0 ]; then
-    notify_no_match "voxcmd: no match" "\"$transcript\""
+    [ "$in_sequence" = 1 ] || notify_no_match "voxcmd: no match" "\"$transcript\""
     return 1
   elif ! needs_pick "$options"; then
     run_option "$(jq -c '.[0]' <<<"$options")"
@@ -742,10 +792,356 @@ route() {
       # A turn of a voice session is answered by voice whatever the number of options, since nobody is at the keyboard.
       { [ "$count" != 1 ] && [ "$in_session_turn" != 1 ]; } || ! reply_listen_wanted || pick_flags+=(--listen)
     fi
-    picked=$("$pick_command_path" "${pick_flags[@]}" "$pick_label" "$choices") || return 0
+    picked=$("$pick_command_path" "${pick_flags[@]}" "$pick_label" "$choices") || {
+      step_outcome=cancelled
+      return 0
+    }
     run_option "$(jq -c --argjson i "$picked" '.[$i]' <<<"$options")"
   fi
 }
+
+# ---- Sequences: several steps in one phrase ---------------------------------------------------------------------
+
+# "and then", or a comma before "then" (never a bare "then": "then" alone is ordinary speech). Matched in the raw
+# transcript, where the comma still is. The edges are one non-word character or the string's end.
+split_regex='((^|[^[:alnum:]])and[[:space:]]+then|,[[:space:]]*then)([^[:alnum:]]|$)'
+
+# Whether the text holds a separator, in any case ("And then" opens a sentence), leaving it in BASH_REMATCH[0] as spoken.
+has_split_separator() {
+  local found=1
+  shopt -s nocasematch
+  if [[ "$1" =~ $split_regex ]]; then found=0; fi
+  shopt -u nocasematch
+  return "$found"
+}
+
+# Prints the text without the whitespace and the , ; . around it that the split leaves.
+trim_step() {
+  local text="$1"
+  text="${text#"${text%%[![:space:],;.]*}"}"
+  printf '%s' "${text%"${text##*[![:space:],;.]}"}"
+}
+
+# Prints the raw transcript without its leading wake word, else it unchanged.
+strip_leading_wake_raw() {
+  init_wake_regex
+  local transcript="$1" stripped=""
+  shopt -s nocasematch
+  if [[ "$transcript" =~ ^[^[:alnum:]]*($wake_regex)([^[:alnum:]].*)?$ ]]; then
+    stripped=$(trim_step "${BASH_REMATCH[2]}")
+  fi
+  shopt -u nocasematch
+  printf '%s' "${stripped:-$transcript}"
+}
+
+# match_listed_actions <mode|free_text> <text> <integration file>: prints the match when the whole text is one of the
+# integration's mode_actions or free_text_actions (verb only), nothing otherwise.
+match_listed_actions() {
+  local kind="$1" text="$2" file="$3" entry action allowed
+  (
+    load_integration "$file"
+    local -n listed="integration_${kind}_actions"
+    [ "${#listed[@]}" != 0 ] || exit 0
+    local -a kept=()
+    for entry in "${integration_verbs[@]}"; do
+      read -r action _ <<<"$entry"
+      for allowed in "${listed[@]}"; do
+        [ "$action" != "$allowed" ] || kept+=("$entry")
+      done
+    done
+    # shellcheck disable=SC2030 # match_loaded_verbs reads it in this subshell
+    integration_verbs=("${kept[@]}")
+    match_loaded_verbs "$text" "$file"
+  )
+}
+
+# match_mode_action <text> <integration file>: prints the match when the whole text is one of the integration's
+# mode_actions (its entries and exits), nothing otherwise.
+match_mode_action() { match_listed_actions mode "$1" "$2"; }
+
+match_free_text_action() { match_listed_actions free_text "$1" "$2"; }
+
+# The normalized, replaced text of a step, without a leading wake word.
+step_text() {
+  local text
+  text=$(apply_replacements "$(normalize "$1")")
+  if split_leading_wake "$text"; then text="$wake_rest"; fi
+  printf '%s' "$text"
+}
+
+# Whether the raw phrase is, from its start, an action that takes free text to the end (a timer's "remind me to ...",
+# a calendar event's title), whose words may hold "and then".
+phrase_starts_free_text_action() {
+  [ -n "$(integration_files | for_each_line_in_parallel match_free_text_action "$(step_text "$1")")" ]
+}
+
+# split_phrase <raw transcript>: sets phrase_steps to the raw text of each step, phrase_free_text_step to the 1-based
+# step that took the rest of the phrase as free text (0 when none). Reading stops one step past sequence_max_steps,
+# which is enough to refuse the phrase. A phrase with no "and then" is one step, unchanged.
+phrase_steps=() phrase_free_text_step=0
+split_phrase() {
+  local transcript="$1" rest step after separator
+  phrase_steps=() phrase_free_text_step=0
+  has_split_separator "$transcript" || {
+    phrase_steps=("$transcript")
+    return
+  }
+  rest=$(strip_leading_wake_raw "$transcript")
+  while :; do
+    [ "${#phrase_steps[@]}" -le "$sequence_max_steps" ] || break
+    if ! has_split_separator "$rest"; then
+      rest=$(trim_step "$rest")
+      [ -z "$rest" ] || phrase_steps+=("$rest")
+      break
+    fi
+    separator="${BASH_REMATCH[0]}"
+    step=$(trim_step "${rest%%"$separator"*}")
+    after="${rest#*"$separator"}"
+    if [ -z "$(trim_step "$after")" ]; then
+      [ -z "$step" ] || phrase_steps+=("$step")
+      break
+    fi
+    if [ -n "$step" ] && phrase_starts_free_text_action "$rest"; then
+      phrase_steps+=("$(trim_step "$rest")")
+      phrase_free_text_step="${#phrase_steps[@]}"
+      break
+    fi
+    [ -z "$step" ] || phrase_steps+=("$step")
+    rest="$after"
+  done
+  [ "${#phrase_steps[@]}" != 0 ] || phrase_steps=("$transcript")
+}
+
+# Prints why the steps (as they will be routed) cannot run, nothing when they can. Checked before any runs.
+sequence_refusal() {
+  local total=$# index=0 step
+  if [ "$total" -gt "$sequence_max_steps" ]; then
+    echo "a phrase can have at most $sequence_max_steps steps"
+    return
+  fi
+  for step; do
+    index=$((index + 1))
+    [ "$index" -lt "$total" ] || break
+    if [ -n "$(integration_files | for_each_line_in_parallel match_mode_action "$(step_text "$step")")" ]; then
+      echo "a mode switch can only be the last step (step $index of $total)"
+      return
+    fi
+  done
+}
+
+active_window_address() {
+  hyprctl activewindow -j 2>/dev/null | jq -r '.address // empty' || true
+}
+
+# The overlay's and the popup's states in overlay_state and popup_state. A bar that does not answer reads as closed.
+ui_read_state() {
+  overlay_state=$(timeout 2 "$qs_ipc" call clickhints state 2>/dev/null) || overlay_state=closed
+  popup_state=$(timeout 2 "$qs_ipc" call popup state 2>/dev/null) || popup_state=closed
+}
+
+# Nothing animates and no overlay waits on the user. A popup that stays open is not busy, unlike ui_is_busy.
+ui_settled() {
+  ui_read_state
+  [ "$overlay_state" != open ] && ! [[ "$popup_state" =~ ^(opening|closing)( |$) ]]
+}
+
+# The named popup is fully drawn. No bar to ask counts as done: there is nothing to wait for.
+popup_is_open() {
+  local state
+  state=$(timeout 2 "$qs_ipc" call popup state 2>/dev/null) || return 0
+  [ "$state" = "open $1" ]
+}
+
+# Whether Stop Voice has flagged the running sequence.
+sequence_stopped() {
+  [ "$in_sequence" = 1 ] && [ -e "$(discard_flag_of $$)" ]
+}
+
+# The start time of a process, from /proc/<pid>/stat's 22nd field (past the command name, which may hold spaces).
+process_start_time() {
+  sed -e 's/^.*) //' "/proc/$1/stat" 2>/dev/null | cut -d' ' -f20
+}
+
+# Prints the PID of each sequence running now. A file whose process is gone, or is another one with a recycled PID (its
+# start time differs), is stale and removed.
+running_sequence_pids() {
+  local file pid start
+  for file in "$sequence_dir"/*.json; do
+    [ -e "$file" ] || continue
+    read -r pid start < <(jq -r '"\(.pid // "") \(.start // "")"' "$file" 2>/dev/null) || true
+    if [ -n "${pid:-}" ] && [ "$(process_start_time "$pid")" = "${start:-}" ]; then
+      printf '%s\n' "$pid"
+    else
+      rm -f "$file"
+    fi
+  done
+}
+
+# Waits for the step just run: the condition its action declares in step_waits, else the bar settling and a moment for
+# the app. Fails with 1 on timeout and 2 when Stop Voice flagged the sequence.
+wait_for_step() {
+  [ -n "$last_step_option" ] || return 0
+  local option="$last_step_option" status=0
+  (
+    load_integration "$(jq -r .file <<<"$option")"
+    # shellcheck disable=SC2034 # read by the wait condition
+    id=$(jq -r .id <<<"$option") target=$(jq -r .target <<<"$option")
+    condition="${integration_step_waits[$(jq -r .action <<<"$option")]-}"
+    if [ -n "$condition" ]; then
+      set +eu
+      poll_until "$step_timeout_secs" eval "$condition"
+    else
+      poll_until "$step_timeout_secs" ui_settled && sleep "$app_settle_secs"
+    fi
+  ) || status=$?
+  return "$status"
+}
+
+# What the wait after the option would be, for the dry run.
+describe_wait() {
+  local option="$1" condition
+  (
+    load_integration "$(jq -r .file <<<"$option")"
+    condition="${integration_step_waits[$(jq -r .action <<<"$option")]-}"
+    if [ -n "$condition" ]; then
+      printf '%s' "$condition"
+    else
+      printf 'no popup opening or closing and no click overlay, then %ss' "$app_settle_secs"
+    fi
+  )
+}
+
+# Tells why the sequence stopped at step <index> of <total>. Silent after Stop Voice, which is its own answer.
+report_sequence_stop() {
+  local index="$1" total="$2" step="$3" left=$(($2 - $1)) more=""
+  local summary="voxcmd: stopped at step $index of $total"
+  [ "$left" = 0 ] || more=$'\n'"$left more step$([ "$left" = 1 ] || echo s) not run"
+  if sequence_stopped || [ "$step_outcome" = discarded ]; then
+    debug "sequence: ended without a toast at step $index of $total (stop or discard)"
+    return
+  fi
+  debug "sequence: step $index of $total $step_outcome"
+  case "$step_outcome" in
+  no_match)
+    if [ "$phrase_free_text_step" = "$index" ]; then
+      notify_no_match "$summary" "no match$more"
+    else
+      notify_no_match "$summary" "no match for \"$step\"$more"
+    fi
+    ;;
+  declined) notify info "voxcmd" "Stopped at step $index of $total: not confirmed$more" ;;
+  cancelled) notify info "voxcmd" "Stopped at step $index of $total: cancelled$more" ;;
+  timed_out) notify error "$summary" "${step_label:-step $index}: timed out after ${step_timeout_secs}s$more" ;;
+  *) notify error "$summary" "${step_label:-step $index}${step_detail:+: $step_detail}$more" ;;
+  esac
+}
+
+# Runs the steps in order, each routed only after the one before finished and what it started has settled. The first
+# step that does not run stops the rest. Fails when no step ran.
+run_sequence() {
+  local total=$# index=0 step ran=0 wait_status
+  in_sequence=1
+  local own_file="$sequence_dir/$$.json"
+  mkdir -p "$sequence_dir"
+  jq -n -c --argjson pid "$$" --arg start "$(process_start_time $$)" '{pid: $pid, start: $start}' >"$own_file"
+  # A watcher has an exit trap of its own, which runs this function to its end anyway.
+  [ -n "$(trap -p EXIT)" ] || trap 'rm -f "$own_file"' EXIT
+  for step; do
+    index=$((index + 1))
+    if sequence_stopped; then
+      step_outcome=discarded
+      break
+    fi
+    debug "sequence: step $index of $total"
+    # shellcheck disable=SC2034 # read by step_waits conditions
+    active_before=$(active_window_address)
+    last_step_option="" step_label="" step_detail=""
+    route_step "$step" || true
+    [ "$step_outcome" = ran ] || break
+    ran=$((ran + 1))
+    if [ "$index" -lt "$total" ]; then
+      wait_status=0
+      wait_for_step || wait_status=$?
+      if [ "$wait_status" = 1 ]; then
+        step_outcome=timed_out
+        break
+      elif [ "$wait_status" != 0 ]; then
+        step_outcome=discarded
+        break
+      fi
+    fi
+  done
+  if [ "$step_outcome" != ran ]; then report_sequence_stop "$index" "$total" "$step"; fi
+  in_sequence=0
+  rm -f "$own_file"
+  # A watcher's flag also discards its recording, and its exit removes it.
+  [ "$in_watcher" = 1 ] || rm -f "$(discard_flag_of $$)"
+  [ "$ran" -gt 0 ]
+}
+
+# The dry run of a sequence: each step's route, what it would wait for, and where a free-text action took the rest.
+dry_run_sequence() {
+  local total=$# index=0 step
+  printf 'sequence:    %s steps\n' "$total"
+  # As in a real run, so a Voice Help step and a wake word alone are no match.
+  in_sequence=1
+  for step; do
+    index=$((index + 1))
+    printf 'step %s of %s\n' "$index" "$total"
+    dry_run_options="[]"
+    route_step "$step"
+    if [ "$phrase_free_text_step" = "$index" ]; then
+      printf 'note:        a free-text action takes the rest of the phrase\n'
+    fi
+    [ "$step_outcome" = ran ] || break
+    if [ "$index" = "$total" ]; then
+      printf 'waits for:   nothing, it is the last step\n'
+    elif [ "$(jq length <<<"$dry_run_options")" = 0 ]; then
+      printf 'waits for:   nothing, the step does not match\n'
+    elif needs_pick "$dry_run_options"; then
+      printf 'waits for:   whatever the picked option waits for\n'
+    else
+      printf 'waits for:   %s\n' "$(describe_wait "$(jq -c '.[0]' <<<"$dry_run_options")")"
+    fi
+  done
+  in_sequence=0
+}
+
+# route_steps <phrase...>: routes each as a step of one sequence, in order. The steps are raw phrases, or what a
+# mode's session_rewrite made of them.
+route_steps() {
+  local refusal count="$#"
+  refusal=$(sequence_refusal "$@")
+  if [ -n "$refusal" ]; then
+    [ "$count" -le "$sequence_max_steps" ] || count="more than $sequence_max_steps"
+    if [ "$dry_run" = 1 ]; then
+      printf 'sequence:    %s steps\nresult:      refused, %s\n' "$count" "$refusal"
+    else
+      notify info "voxcmd" "Nothing ran: $refusal"
+    fi
+    step_outcome=no_match
+    [ "$dry_run" != 1 ] || return 0
+    return 1
+  fi
+  if [ "$dry_run" = 1 ]; then
+    dry_run_sequence "$@"
+  else
+    run_sequence "$@"
+  fi
+}
+
+# One spoken phrase: one command, or several steps joined by "and then" (or a comma and "then") run in order. Every
+# caller routes through here; route_step takes one step.
+route() {
+  split_phrase "$*"
+  if [ "${#phrase_steps[@]}" = 1 ]; then
+    route_step "${phrase_steps[0]}"
+  else
+    route_steps "${phrase_steps[@]}"
+  fi
+}
+
+# ----------------------------------------------------------------------------------------------------------------
 
 # The replacements are quoted because bash 5.2 reads an unquoted & there as the matched text.
 markup_escape() {
@@ -1411,31 +1807,37 @@ epoch_micros() {
   printf '%s' "${now//[.,]/}"
 }
 
+# poll_until <max_secs> <command...>: runs the command every ui_settle_poll_secs until it succeeds. Fails with 1 after
+# max_secs and with 2 when Stop Voice has flagged the running sequence.
+poll_until() {
+  local max_secs="$1" deadline_micros
+  shift
+  deadline_micros=$(($(epoch_micros) + $(awk -v secs="$max_secs" 'BEGIN { printf "%d", secs * 1000000 }')))
+  until "$@"; do
+    if sequence_stopped; then return 2; fi
+    if [ "$(epoch_micros)" -ge "$deadline_micros" ]; then return 1; fi
+    sleep "$ui_settle_poll_secs"
+  done
+}
+
 # Waits, up to ui_settle_max_secs, until neither the click overlay nor a popup is open or animating, then gives the app
 # the user acted on a moment to draw its result, so the next turn's screen read sees it. A bar that does not answer
 # counts as settled.
 wait_until_ui_settled() {
-  local deadline_micros timed_out=0
-  deadline_micros=$(($(epoch_micros) + $(awk -v secs="$ui_settle_max_secs" 'BEGIN { printf "%d", secs * 1000000 }')))
+  local timed_out=0
   if [ -x "$qs_ipc" ]; then
-    while ui_is_busy; do
-      if [ "$(epoch_micros)" -ge "$deadline_micros" ]; then
-        timed_out=1
-        break
-      fi
-      sleep "$ui_settle_poll_secs"
-    done
+    poll_until "$ui_settle_max_secs" ui_is_idle || timed_out=1
   fi
   sleep "$app_settle_secs"
   [ "$timed_out" = 0 ]
 }
 
 ui_is_busy() {
-  local overlay popup
-  overlay=$(timeout 2 "$qs_ipc" call clickhints state 2>/dev/null) || overlay=closed
-  popup=$(timeout 2 "$qs_ipc" call popup state 2>/dev/null) || popup=closed
-  [ "$overlay" = open ] || [[ "$popup" =~ ^(opening|open|closing)( |$) ]]
+  ui_read_state
+  [ "$overlay_state" = open ] || [[ "$popup_state" =~ ^(opening|open|closing)( |$) ]]
 }
+
+ui_is_idle() { ! ui_is_busy; }
 
 # session_continue <outcome>: after a turn that did something (ran), did nothing (missed) or heard nothing (unheard),
 # counts it, ends the session when a cap is reached, else waits for the screen to settle and listens again. An open-ended
@@ -1507,26 +1909,6 @@ session_text_is_exit() {
   [ -n "${mode_setting[exit_phrases]:-}" ] && [[ "$1" =~ ^(${mode_setting[exit_phrases]})$ ]]
 }
 
-# match_mode_action <text> <integration file>: prints the match when the whole text is one of the integration's
-# mode_actions (its entries and exits), nothing otherwise.
-match_mode_action() {
-  local text="$1" file="$2" entry action allowed
-  (
-    load_integration "$file"
-    [ "${#integration_mode_actions[@]}" != 0 ] || exit 0
-    local -a kept=()
-    for entry in "${integration_verbs[@]}"; do
-      read -r action _ <<<"$entry"
-      for allowed in "${integration_mode_actions[@]}"; do
-        [ "$action" != "$allowed" ] || kept+=("$entry")
-      done
-    done
-    # shellcheck disable=SC2030 # match_loaded_verbs reads it in this subshell
-    integration_verbs=("${kept[@]}")
-    match_loaded_verbs "$text" "$file"
-  )
-}
-
 # Prints the runnable options (a JSON array) that the whole text asks of the modes: entering one or leaving one.
 session_mode_options() {
   local matches
@@ -1575,6 +1957,7 @@ session_run_wake_command() {
   switch)
     last_run_action=""
     run_option "$(jq -c '.[0]' <<<"$wake_options")" || turn_outcome=missed
+    [ "$step_outcome" = ran ] || turn_outcome=missed
     ;;
   *)
     if [ "${mode_setting[private]:-0}" = 1 ]; then
@@ -1589,6 +1972,33 @@ session_run_wake_command() {
     fi
     ;;
   esac
+}
+
+# Sets session_steps to what each step of phrase_steps routes as in the mode on top (integration <file>): the step
+# rewritten by the mode's session_rewrite, or unchanged when it has none. A step that is exactly a mode switch the
+# mode allows is left as spoken, as a whole turn would be. Fails when a step names nothing to route.
+session_steps=()
+session_sequence_steps() {
+  local file="$1" allows_switches="${mode_setting[allows_switches]:-0}" step
+  session_steps=()
+  while IFS= read -r step; do
+    [ -n "$step" ] || return 1
+    session_steps+=("$step")
+  done < <(
+    load_integration "$file"
+    for step in "${phrase_steps[@]}"; do
+      step="${step//$'\n'/ }"
+      text=$(apply_replacements "$(normalize "$step")")
+      if ! declare -F session_rewrite >/dev/null; then
+        printf '%s\n' "$step"
+      elif [ "$allows_switches" = 1 ] && [ -n "$(integration_files | for_each_line_in_parallel match_mode_action "$text")" ]; then
+        printf '%s\n' "$text"
+      else
+        printf '%s\n' "$(session_rewrite "$text")"
+      fi
+    done
+  )
+  [ "${#session_steps[@]}" = "${#phrase_steps[@]}" ]
 }
 
 # The transcript handler while a session is open. A session that ended while the recording ran hands it to route, unless
@@ -1657,6 +2067,7 @@ session_turn() {
       if [ "$(jq length <<<"$options")" = 1 ]; then
         last_run_action=""
         run_option "$(jq -c '.[0]' <<<"$options")" || outcome=missed
+        [ "$step_outcome" = ran ] || outcome=missed
         session_continue "$outcome"
         return
       fi
@@ -1671,17 +2082,36 @@ session_turn() {
     ) || true
     outcome=typed
   else
-    rewritten=$(
-      load_integration "$file"
-      if declare -F session_rewrite >/dev/null; then session_rewrite "$text"; else printf '%s' "$text"; fi
-    )
-    if [ -z "$rewritten" ]; then
-      notify info "voxcmd" "Not understood: \"$transcript\""
-      outcome=missed
-    # Nothing ran when a picker or overlay was cancelled or timed out, though route succeeds.
-    elif ! route "$rewritten" || [ -z "$last_run_action" ] || turn_was_a_miss "$file"; then
-      outcome=missed
+    split_phrase "$transcript"
+    # A last step that is the mode's exit phrase leaves the mode after the steps before it, not a word to act on.
+    leave_after=0
+    if [ "${#phrase_steps[@]}" -gt 1 ] && [ "${mode_setting[default_exits]:-1}" = 1 ] &&
+      session_text_is_exit "$(apply_replacements "$(normalize "${phrase_steps[-1]}")")"; then
+      unset 'phrase_steps[-1]'
+      leave_after=1
     fi
+    if [ "${#phrase_steps[@]}" -gt 1 ]; then
+      if ! session_sequence_steps "$file"; then
+        notify info "voxcmd" "Not understood: \"$transcript\""
+        outcome=missed
+      elif ! route_steps "${session_steps[@]}" || [ -z "$last_run_action" ] || turn_was_a_miss "$file"; then
+        outcome=missed
+      fi
+    else
+      text=$(apply_replacements "$(normalize "${phrase_steps[0]}")")
+      rewritten=$(
+        load_integration "$file"
+        if declare -F session_rewrite >/dev/null; then session_rewrite "$text"; else printf '%s' "$text"; fi
+      )
+      if [ -z "$rewritten" ]; then
+        notify info "voxcmd" "Not understood: \"$transcript\""
+        outcome=missed
+      # Nothing ran when a picker or overlay was cancelled or timed out, though route succeeds.
+      elif ! route_step "$rewritten" || [ -z "$last_run_action" ] || turn_was_a_miss "$file"; then
+        outcome=missed
+      fi
+    fi
+    if [ "$leave_after" = 1 ] && [ "$step_outcome" = ran ]; then session_leave "$kind" "done" || true; fi
   fi
   if [ -n "$control" ]; then
     session_run_wake_command "$state" "$control"
@@ -1909,8 +2339,10 @@ cancel_owned_recording() {
 # but a picker or card it opens does not listen (reply_listen_wanted). The picker's own exit cancels the reply recording it
 # started, and the cancel at the end covers every other recording, a plain command or Speech to Text.
 stop_voice() {
-  local picker
+  local picker sequence_pid
   session_end_all "stopped" || true
+  # Before the picker is cancelled, so the sequence it was asking for reads that answer as Stop Voice's.
+  while IFS= read -r sequence_pid; do touch "$(discard_flag_of "$sequence_pid")"; done < <(running_sequence_pids)
   if picker=$(pending_pick); then
     write_pick_answer "" "$(jq -r .fifo <<<"$picker")" || true
   fi
@@ -1970,7 +2402,7 @@ click-explain)
   ;;
 _settle) wait_until_ui_settled ;;
 _watch)
-  heard_mode="${3:-}" heard_private="${4:-0}"
+  heard_mode="${3:-}" heard_private="${4:-0}" in_watcher=1
   watch_recording "$2"
   ;;
 _cancel_owned_recording) cancel_owned_recording "$2" ;;

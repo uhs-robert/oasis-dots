@@ -585,10 +585,12 @@ candidates() {
 }
 declare -A actions=([ask_it]='echo "asked" >> "$log"' [both_of_them]='echo "picked \$id" >> "$log"')
 STUB
+# The card answers yes unless $root/confirm-no exists.
 for asking in voxcmd-confirm voxcmd-pick; do
   printf '#!/bin/sh\necho "%s $*" >> "%s"\n[ "%s" = voxcmd-confirm ] || echo 0\n' "$asking" "$log" "$asking" >"$sess_pkg/.local/bin/$asking"
   chmod +x "$sess_pkg/.local/bin/$asking"
 done
+printf '[ ! -e "%s" ]\n' "$root/confirm-no" >>"$sess_pkg/.local/bin/voxcmd-confirm"
 sess_config=$modes_config
 focused_window='{"address":"0x1","class":"kitty","size":[800,600]}'
 session_json=$XDG_RUNTIME_DIR/voxcmd/session.json
@@ -648,7 +650,33 @@ sess_run "ask me" "pick number" "done"
 check "a confirm card in rapid mode listens for yes or no" "grep -q '^voxcmd-confirm .*--listen' '$log' && [[ \$(grep -c '^asked' '$log') == 1 ]]"
 check "and so does a picker of several options" "grep -q '^voxcmd-pick --listen' '$log' && grep -q '^picked one' '$log'"
 
+# A phrase of steps joined by "and then" is one turn, and each step may ask.
+sess_run "tap alpha and then tap beta" "done"
+check "a sequence in rapid mode runs its steps in order, as one turn" "session_gone && [[ \$(grep '^tap ' '$log' | paste -sd,) == 'tap alpha,tap beta' && \$(record_starts) == 2 ]]"
+sess_env=(VOXCMD_SESSION_MAX_TURNS=2)
+sess_run "tap alpha and then tap beta" "tap gamma" "tap delta"
+check "and counts once against the turn cap" "session_gone && [[ \$(taps) == 3 ]] && toast_has 'Rapid mode ended it reached 2 turns'"
+sess_env=()
+sess_run "tap alpha and then tap" "tap beta and then tap" "tap gamma and then tap" "tap delta" "done"
+check "a sequence in which a step ran is not a missed turn, though a later step matched nothing" "session_gone && [[ \$(taps) == 4 ]] && ! toast_has 'nothing understood'"
+sess_run "tap and then tap" "tap and then tap" "tap and then tap" "tap delta"
+check "one in which no step ran is a missed turn" "session_gone && [[ \$(taps) == 0 ]] && toast_has 'nothing understood 3 times'"
+sess_run "tap alpha and then ask me" "done"
+check "a card asked in a later step listens for yes or no when it was spoken" "grep -q '^voxcmd-confirm .*--listen' '$log' && [[ \$(taps) == 1 && \$(grep -c '^asked' '$log') == 1 ]]"
+: >"$root/confirm-no"
+sess_run "ask me" "ask me" "ask me" "tap delta"
+check "a declined confirm card is a missed turn, not one that ran" "session_gone && [[ \$(taps) == 0 && \$(grep -c '^asked' '$log') == 0 ]] && toast_has 'nothing understood 3 times'"
+sess_run "tap alpha and then ask me and then tap beta" "done"
+check "a declined card in a sequence stops the rest with one toast" "[[ \$(taps) == 1 && \$(grep -c 'Stopped at step 2 of 3' '$log') == 1 ]] && toast_has 'Stopped at step 2 of 3: not confirmed' && grep -q '^1 more step not run' '$log'"
+rm -f "$root/confirm-no"
+
 # Modes nest: the one opened inside returns to the one it was opened from.
+sess_run "start testing" "alpha and then beta" "done"
+check "a mode that rewrites its turns rewrites each step of a sequence" "session_gone && [[ \$(grep '^tap ' '$log' | paste -sd,) == 'tap alpha,tap beta' ]]"
+sess_run "start testing" "alpha and then done" "tap beta" "done"
+check "a last step that is the mode's exit phrase runs the steps before it, then leaves the mode" "session_gone && [[ \$(grep '^tap ' '$log' | paste -sd,) == 'tap alpha,tap beta' && \$(record_starts) == 4 ]]"
+sess_run "tap alpha and then done" "tap beta"
+check "and in rapid mode it ends the mode" "session_gone && [[ \$(taps) == 1 && \$(record_starts) == 1 ]]"
 sess_run "start testing" "alpha" "done" "tap beta" "done"
 check "a mode opened in rapid mode returns to it: test mode's targets, then rapid mode's commands" "session_gone && [[ \$(grep '^tap ' '$log' | paste -sd,) == 'tap alpha,tap beta' && \$(record_starts) == 5 ]]"
 check "and runs its ended hook once" "log_has_soon '^ended-hook' && [[ \$(grep -c '^ended-hook' '$log') == 1 ]]"
@@ -729,6 +757,9 @@ check "type mode's session file names it and its hint" "[[ \$(jq -c '[.kind, .la
 check "type mode listens for a chunk: a 2.5s pause ends it, 25s cuts it, 30s of silence is a quiet listen" "grep -q 'no_speech_secs=30\$' '$log' && grep -q 'autostop min_speech_secs=0.4 silence_secs=2.5\$' '$log' && grep -q 'autostop max_secs=25\$' '$log'"
 sess_voxcmd_env end-session
 sess_wait
+sess_run "Alpha and then beta." "jarvis stop typing"
+type_flushed
+check "type mode types a chunk holding 'and then' whole, never split into steps" "wtype_is 'wtype -- Alpha and then beta' 'wtype -- .' && ! toast_has 'stopped at step'"
 sess_run "Hello world." "and more text" "jarvis stop typing"
 type_flushed
 check "a chunk that continues the sentence drops the held mark and types a space" "wtype_is 'wtype -- Hello world' 'wtype --  and more text'"

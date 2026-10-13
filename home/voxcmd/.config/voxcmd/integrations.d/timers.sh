@@ -31,6 +31,10 @@ examples=(
   "cancel the <name> timer"
 )
 
+# A reminder's text is free text that may say "and then", so a sequence hands it the rest of the phrase. A timer's
+# target is a duration, so "set a timer for 5 minutes and then ..." is two steps.
+free_text_actions=(remind)
+
 declare -A actions=(
   [timer]='start_timer "$target"'
   [remind]='start_reminder "$target"'

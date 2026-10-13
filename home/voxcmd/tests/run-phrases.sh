@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Routes every phrase in phrases.tsv with `voxcmd --dry-run` inside the sandbox and fails when one lands somewhere
-# other than its expected column: "Integration/action" for a single option that runs, "picker", "none" or "builtin".
+# other than its expected column: "Integration/action" for a single option that runs, "picker", "none" or "builtin";
+# for a phrase of several steps, those per step joined by " > ", or "refused".
 # The fixtures stand in for the windows (Firefox, Slack and kitty), binds, audio devices, apps, agents, timers, tmux
 # sessions, the text OCR reads in the focused window and a Firefox profile's tabs and history, so the result does not
 # depend on what is open; no private integration is loaded.
@@ -30,21 +31,25 @@ if [ -z "${SANDBOX_DIR:-}" ]; then
   exec "$tests_dir/sandbox.sh" "$0" "$@"
 fi
 
-# Prints where a phrase goes, read from the dry run's result line and its first option. awk reads to the end rather
-# than exiting at the answer: a dry run still printing would die of SIGPIPE, and under pipefail that fails the job,
-# which `wait -n` below turns into the whole script exiting.
+# Prints where a phrase goes, read from the dry run's result line and its first option; a sequence's steps are joined
+# by " > ", and a refused one is "refused". awk reads to the end rather than exiting at the answer: a dry run still
+# printing would die of SIGPIPE, and under pipefail that fails the job, which `wait -n` below turns into the whole
+# script exiting.
 route_of() {
   voxcmd --dry-run "$1" 2>/dev/null | awk '
+    function add(route) { routes = routes (routes == "" ? "" : " > ") route; found = 1 }
+    /^step [0-9]+ of [0-9]+$/ { found = 0; next }
+    /^result: +refused/ { refused = 1 }
     found { next }
-    /^result: +built-in/ { print "builtin"; found = 1 }
-    /^result: +no match/ { print "none"; found = 1 }
-    /^result: +ask with the picker/ { print "picker"; found = 1 }
+    /^result: +built-in/ { add("builtin") }
+    /^result: +no match/ { add("none") }
+    /^result: +ask with the picker/ { add("picker") }
     /^option 1: / {
       name = $0; sub(/^option 1: +/, "", name); sub(/ \(.*/, "", name)
       match($0, / action=[^ ]+/)
-      print name "/" substr($0, RSTART + 8, RLENGTH - 8)
-      found = 1
-    }'
+      add(name "/" substr($0, RSTART + 8, RLENGTH - 8))
+    }
+    END { if (refused) print "refused"; else if (routes != "") print routes }'
 }
 
 # Firefox's tabs and places, in the sandbox's own HOME.

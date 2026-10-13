@@ -48,6 +48,13 @@ declare -A actions=(
 )
 # The browser tab and the bar popup are the answer; a toast would cover them. Joining a meeting still says which.
 silent_actions=(day day_today new new_blank calendar)
+# A new event's title is free text that may say "and then", so a sequence hands it the rest of the phrase.
+free_text_actions=(new)
+# A sequence's next step waits for the day view to be drawn.
+declare -A step_waits=(
+  [day]='popup_is_open clock'
+  [day_today]='popup_is_open clock'
+)
 
 # A day other than today or tomorrow or a weekday prints [], leaving the phrase to the other integrations.
 candidates() {
