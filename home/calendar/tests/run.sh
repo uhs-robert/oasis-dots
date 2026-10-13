@@ -34,6 +34,7 @@ export STUB_LOG="$work/stub.log"
 export FEED_URL_FILE="$work/feed_url"
 export RBW_STATE=unlocked
 export CALENDAR_SYNC_ALLOW_FILE_URL=1
+export XDG_CONFIG_HOME="$work/config"
 export TZ=UTC
 : >"$STUB_LOG"
 
@@ -226,6 +227,59 @@ check "the address stays out of the error" test "$(grep -rc "$secret" "$XDG_CACH
 printf 'file://%s/%s/feed.ics\n' "$work" "$secret" >"$FEED_URL_FILE"
 "$sync_bin" >/dev/null 2>&1
 check "a good sync clears error.json" test ! -e "$XDG_CACHE_HOME/calendar/error.json"
+
+# --- url_command from the config -----------------------------------------------
+mkdir -p "$XDG_CONFIG_HOME/calendar-sync"
+cat >"$work/print_url" <<STUB
+#!/bin/sh
+echo "print_url \$*" >>"$STUB_LOG"
+cat "$FEED_URL_FILE"
+STUB
+cat >"$work/fail_url" <<'STUB'
+#!/bin/sh
+cat "$FEED_URL_FILE"
+cat "$FEED_URL_FILE" >&2
+exit 3
+STUB
+cat >"$work/hang_url" <<'STUB'
+#!/bin/sh
+sleep 30
+STUB
+chmod +x "$work/print_url" "$work/fail_url" "$work/hang_url"
+printf 'file://%s/%s/feed.ics\n' "$work" "$secret" >"$FEED_URL_FILE"
+write_config() { printf '# comment\n\nurl_command = %s\n' "$1" >"$XDG_CONFIG_HOME/calendar-sync/config"; }
+
+export XDG_CACHE_HOME="$work/cache_command"
+: >"$STUB_LOG"
+write_config "$work/print_url one"
+RBW_STATE=locked "$sync_bin" --now >"$work/command.out" 2>&1
+check "url_command from the config syncs" test -s "$XDG_CACHE_HOME/calendar/events.json"
+check "url_command receives its arguments" grep -qx 'print_url one' "$STUB_LOG"
+check "a non-rbw command skips the rbw lock check" test "$(grep -c '^rbw' "$STUB_LOG")" -eq 0
+check "url_command output stays out of the cache" test "$(grep -rc "$secret" "$XDG_CACHE_HOME" | grep -vc ':0$')" -eq 0
+check "url_command output stays out of stdout and stderr" test "$(grep -c "$secret" "$work/command.out")" -eq 0
+
+export XDG_CACHE_HOME="$work/cache_failing"
+write_config "$work/fail_url"
+status=0
+"$sync_bin" >"$work/failing_quiet.out" 2>&1 || status=$?
+check "a failing url_command exits 0" test "$status" -eq 0
+check "a failing url_command is silent" test ! -s "$work/failing_quiet.out"
+"$sync_bin" --now >"$work/failing.out" 2>&1
+check "a failing url_command hints under --now" test -s "$work/failing.out"
+check "a failing command's output stays out of the hint" test "$(grep -c "$secret" "$work/failing.out")" -eq 0
+check "a failing url_command writes nothing" test ! -e "$XDG_CACHE_HOME/calendar/error.json" -a ! -e "$XDG_CACHE_HOME/calendar/events.json"
+
+export XDG_CACHE_HOME="$work/cache_hanging"
+write_config "$work/hang_url"
+started=$SECONDS
+status=0
+CALENDAR_SYNC_COMMAND_TIMEOUT=1 "$sync_bin" >"$work/hanging.out" 2>&1 || status=$?
+check "a hanging url_command exits 0 silently" test "$status" -eq 0 -a ! -s "$work/hanging.out"
+check "a hanging url_command is cut off by the timeout" test $((SECONDS - started)) -lt 10
+check "a hanging url_command writes nothing" test ! -e "$XDG_CACHE_HOME/calendar/error.json"
+
+rm "$XDG_CONFIG_HOME/calendar-sync/config"
 
 # --- a feed that does not parse is a real failure ------------------------------
 printf 'this is not a calendar\n' >"$work/garbage.ics"

@@ -3,8 +3,9 @@
 
 Usage: calendar-sync [--now] [--ics FILE] [--at ISO8601]
 
-The feed address is a credential, so it is read from rbw into memory and never
-reaches argv, output, the cache or an error message.
+The feed address is a credential. A password-manager command (rbw by default)
+prints it into memory, and it never reaches argv, output, the cache or an error
+message.
 """
 
 import argparse
@@ -13,6 +14,8 @@ import datetime as dt
 import json
 import os
 import re
+import shlex
+import signal
 import subprocess
 import sys
 import tempfile
@@ -22,6 +25,7 @@ import urllib.request
 from pathlib import Path
 
 DEFAULT_RBW_ENTRY = "google-calendar-ical"
+URL_COMMAND_TIMEOUT_SECONDS = 20
 DAYS_BEHIND = 7
 DAYS_AHEAD = 60
 MAX_FEED_BYTES = 32 * 1024 * 1024
@@ -71,6 +75,33 @@ def write_json_atomically(path, payload):
         raise
 
 
+def config_dir():
+    base = os.environ.get("XDG_CONFIG_HOME") or os.path.expanduser("~/.config")
+    return Path(base) / "calendar-sync"
+
+
+def configured_url_command():
+    """The `url_command = ...` line of the config, which holds a command and never the address."""
+    try:
+        lines = (config_dir() / "config").read_text().splitlines()
+    except OSError:
+        return None
+    for line in lines:
+        key, separator, value = line.partition("=")
+        if separator and key.strip() == "url_command" and value.strip():
+            return value.strip()
+    return None
+
+
+def url_command():
+    entry = os.environ.get("CALENDAR_SYNC_RBW_ENTRY") or DEFAULT_RBW_ENTRY
+    return configured_url_command() or f"rbw get {shlex.quote(entry)}"
+
+
+def needs_unlocked_rbw(command):
+    return command.startswith("rbw ")
+
+
 def rbw_is_unlocked():
     try:
         result = subprocess.run(
@@ -85,29 +116,42 @@ def rbw_is_unlocked():
     return result.returncode == 0
 
 
-def read_feed_url():
-    entry = os.environ.get("CALENDAR_SYNC_RBW_ENTRY") or DEFAULT_RBW_ENTRY
+def run_url_command(command):
+    """Its output is the credential, so it is only ever returned, never printed."""
+    timeout = float(os.environ.get("CALENDAR_SYNC_COMMAND_TIMEOUT") or URL_COMMAND_TIMEOUT_SECONDS)
+    # A new session detaches it from any terminal, so a password prompt cannot
+    # grab one; killing the whole group stops a hung child that holds the pipe.
+    process = subprocess.Popen(
+        ["sh", "-c", command],
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.DEVNULL,
+        text=True,
+        start_new_session=True,
+    )
     try:
-        result = subprocess.run(
-            ["rbw", "get", entry],
-            stdin=subprocess.DEVNULL,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.DEVNULL,
-            text=True,
-            timeout=15,
-        )
-    except (OSError, subprocess.TimeoutExpired):
-        raise NotConfigured("rbw entry could not be read")
-    url = result.stdout.strip()
-    if result.returncode != 0 or not url:
-        raise NotConfigured("rbw entry is missing or empty")
+        output, _ = process.communicate(timeout=timeout)
+    except subprocess.TimeoutExpired:
+        os.killpg(process.pid, signal.SIGKILL)
+        process.communicate()
+        raise NotConfigured("url_command timed out")
+    if process.returncode != 0 or not output.strip():
+        raise NotConfigured("url_command failed or printed nothing")
+    return output.strip()
+
+
+def read_feed_url(command):
+    try:
+        url = run_url_command(command)
+    except OSError:
+        raise NotConfigured("url_command could not run")
     if url.startswith("webcal://"):
         url = "https://" + url[len("webcal://") :]
     allowed_schemes = {"https"}
     if os.environ.get("CALENDAR_SYNC_ALLOW_FILE_URL") == "1":
         allowed_schemes.add("file")  # tests serve the fixture without a network
     if urllib.parse.urlsplit(url).scheme not in allowed_schemes:
-        raise SyncError("rbw entry is not an https address")
+        raise SyncError("address from url_command is not an https address")
     return url
 
 
@@ -306,12 +350,13 @@ def sync(args, directory):
     if args.ics:
         feed = Path(args.ics).read_bytes()
     else:
-        if not rbw_is_unlocked():
+        command = url_command()
+        if needs_unlocked_rbw(command) and not rbw_is_unlocked():
             return quiet_skip(args, "rbw is locked; unlock it and run again")
         try:
-            feed_url = read_feed_url()
-        except NotConfigured:
-            return quiet_skip(args, "no rbw entry for the calendar address; see home/calendar/README.md")
+            feed_url = read_feed_url(command)
+        except NotConfigured as err:
+            return quiet_skip(args, f"{err}; see home/calendar/README.md")
         feed = fetch_feed(feed_url)
 
     now = dt.datetime.fromisoformat(args.at) if args.at else dt.datetime.now()
