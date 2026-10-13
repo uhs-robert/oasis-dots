@@ -3,6 +3,7 @@ import QtQuick
 import QtQuick.Layouts
 import "../../theme"
 import "../../services"
+import "../../components/bar_icons"
 
 BarModule {
     id: root
@@ -26,15 +27,13 @@ BarModule {
         anchors.verticalCenter: parent.verticalCenter
         spacing: 6
 
-        Text {
+        BarIcon {
             id: dot
             Layout.alignment: Qt.AlignVCenter
-            text: root.scrolling ? "\u{f0a6d}" : root.counting ? "\u{f051b}" : "\u{f044a}"
-            color: root.counting ? Theme.warning : Theme.theme_label
-            font.family: Style.bar_font_family
-            style: Style.bar_text_style
-            styleColor: Style.bar_glow_color
-            font.pixelSize: Style.bar_glyph_size
+            name: "recording"
+            variant: root.scrolling ? "scrolling" : root.counting ? "counting" : "default"
+            glyph: root.scrolling ? "\u{f0a6d}" : root.counting ? "\u{f051b}" : "\u{f044a}"
+            tint: root.counting ? Theme.warning : Theme.theme_label
 
             SequentialAnimation {
                 running: root.shown && Power.on_ac

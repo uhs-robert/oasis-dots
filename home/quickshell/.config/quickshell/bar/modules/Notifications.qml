@@ -29,6 +29,8 @@ BarModule {
 
         BadgedGlyph {
             Layout.alignment: Qt.AlignVCenter
+            icon_name: "notifications"
+            icon_variant: NotificationState.dnd ? "dnd" : "normal"
             glyph: NotificationState.dnd ? "\u{f009b}" : "\u{f009a}"
             count: root.unread > 99 ? "99+" : root.unread > 0 ? String(root.unread) : ""
             tint: root.on_accent ? Theme.bg_crust : NotificationState.dnd ? Theme.fg_dim : Theme.theme_primary

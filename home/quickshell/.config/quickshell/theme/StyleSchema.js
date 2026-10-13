@@ -190,6 +190,7 @@ var tokens = [
     tok("bar_workspace_diamond", "bool", false, "", {via: "bar"}),
     tok("bar_clock_brackets", "color", "transparent", "Brackets around the bar clock's time.", {via: "bar"}),
     tok("bar_meeting_marker", "string", "", "How the bar clock draws the upcoming-meeting countdown and the in-meeting marker; \"\" is a dot with the minutes. The values are the files in components/clock_marker.", {via: "bar"}),
+    tok("bar_icon_set", "string", "", "Which pixel icon set the bar modules draw; \"\" keeps the Nerd Font glyphs. The values are the sets in components/bar_icons/IconSets.js.", {via: "bar"}),
     tok("bar_meeting_separator", "bool", false, "Draws the bar separator between the date and the meeting marker.", {via: "bar"}),
     tok("bar_separator", "string", "", '"tick" draws the white watch bar between bar items in place of "|".', {via: "bar"}),
     tok("bar_tick_color", "color", null, "The watch tick and separator colour: white on a dark center island, the foreground on a light one.", {expr: "root.bar.bar_center_bg.hslLightness > 0.6 ? Theme.fg_core : Watch.white"}),

@@ -145,7 +145,7 @@ BarModule {
                     return {
                         x: row.x + group.x + cx,
                         y: row.y + group.y + cy,
-                        color: glyph_text.color,
+                        color: badge.tint,
                         left: cx + pad_left,
                         right: group.implicitWidth - cx + pad_right,
                         glyph_half: glyph_text.width / 2,

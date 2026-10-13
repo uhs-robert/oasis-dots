@@ -5,6 +5,8 @@ import Quickshell
 import Quickshell.Io
 import "Watch.js" as Watch
 import "styles/index.js" as Styles
+import "../components/bar_icons/IconSets.js" as IconSets
+import "../components/clock_marker/MarkerTokens.js" as MarkerTokens
 
 Singleton {
     id: root
@@ -45,6 +47,10 @@ Singleton {
     readonly property var wait_anims: ["bubble", "cursor", "pressanykey", "advance", "hand", "alert", "rumble", "transmission", "scan", "comms", "ping", "hev_alert", "exclaim", "atb", "mirage"]
     // Toast arrivals any style can borrow (Theme options); "" is the plain fade-in.
     readonly property var toast_enters: ["", "type", "mode7", "wobble", "bloom"]
+    // Pixel icon sets any style can borrow (Theme options); "" is the Nerd Font glyphs.
+    readonly property var bar_icon_sets: [""].concat(IconSets.names)
+    // Meeting markers any style can borrow (Theme options); "" is the dot.
+    readonly property var bar_meeting_markers: MarkerTokens.tokens
     // What each borrowable choice draws, by row then value; the first value of each row is the plain look. Labels add the styles that draw it natively.
     readonly property var borrow_names: ({
             picker_skin: { "": "Crosshair", goldeneye: "Sniper Scope", nvimfloat: "Floating Window", scanvisor: "Scan Visor", pokemon: "Party Menu", scope: "MGS1 Scope", duckhunt: "Duck Hunt", materia: "Materia", tmux: "Tmux Panes", tvosd: "TV OSD", jrpg: "JRPG Menu", tiecomp: "Targeting Computer", scopeitem: "MGS2 Scope" },
@@ -55,6 +61,8 @@ Singleton {
             keeptabs_layout: { "": "Plain", battle: "Party", mode7: "Battle", pokedex: "Party", status: "Menu", memcard: "Memory Card", towers: "Browser", watch: "Mission Status", scan: "Logbook", hev: "Weapon Select", scope: "Targeting", ring: "Roster", oasis: "Caravan", wttr: "htop", lsp: "Trouble", weatherstar: "Observations", hero: "Live Activities" },
             done_anim: { hearts: "Hearts", pixel: "Pixel", lcd: "LCD", hev_pickup: "Health Pickup", levelup: "Level Up", fanfare: "Victory Fanfare", item: "Item Acquired", lock: "Target Lock", ring: "Ring Lock", shooting_star: "Shooting Star" },
             wait_anim: { bubble: "Bubble", cursor: "Blinking Cursor", pressanykey: "Press Any Key", advance: "Text Advance", hand: "Pointing Hand", alert: "Alert", rumble: "Rumble", transmission: "Transmission", scan: "Scan", comms: "Comms", ping: "Radar Ping", hev_alert: "HEV Alert", exclaim: "Exclamation", atb: "ATB Gauge", mirage: "Mirage" },
+            bar_icon_set: { "": "Nerd Font", gameboy: "Game Boy" },
+            bar_meeting_marker: MarkerTokens.labels,
             toast_enter: { "": "Fade", type: "Typewriter", mode7: "Mode 7", wobble: "Wobble", bloom: "Bloom" }
         })
     readonly property var labels: ({ crt: "CRT", nes: "NES", snes: "SNES", gameboy: "Gameboy", goldeneye: "Goldeneye", ps1: "PSX", ff7: "FFVII", ps2: "PS2", halflife: "Half Life", tie: "Tie Fighter", modern: "Modern" })
@@ -342,6 +350,7 @@ Singleton {
     readonly property bool bar_workspace_diamond: root.bar.bar_workspace_diamond
     readonly property color bar_clock_brackets: root.bar.bar_clock_brackets
     readonly property string bar_meeting_marker: root.bar.bar_meeting_marker
+    readonly property string bar_icon_set: root.bar.bar_icon_set
     readonly property bool bar_meeting_separator: root.bar.bar_meeting_separator
     readonly property string bar_separator: root.bar.bar_separator
     readonly property color bar_tick_color: root.bar.bar_center_bg.hslLightness > 0.6 ? Theme.fg_core : Watch.white
@@ -553,6 +562,8 @@ Singleton {
         out.push({ key: "wait_anim", label: "Waiting animation", type: "choice", default: b.wait_anim || "bubble", choices: root.wait_anims, labels: root.borrow_labels("wait_anim", root.wait_anims) });
         out.push({ key: "toast_enter", label: "Toast arrival", type: "choice", default: b.toast_enter || "", choices: root.toast_enters, labels: root.borrow_labels("toast_enter", root.toast_enters) });
         out.push({ key: "workspace_art", label: "Workspaces", type: "choice", default: b.workspace_art || "", choices: root.workspace_arts, labels: root.borrow_labels("workspace_art", root.workspace_arts) });
+        out.push({ key: "bar_icon_set", label: "Icons", type: "choice", default: b.bar_icon_set || "", choices: root.bar_icon_sets, labels: root.borrow_labels("bar_icon_set", root.bar_icon_sets) });
+        out.push({ key: "bar_meeting_marker", label: "Meeting marker", type: "choice", default: b.bar_meeting_marker || "", choices: root.bar_meeting_markers, labels: root.borrow_labels("bar_meeting_marker", root.bar_meeting_markers) });
         out.push({ key: "font_family", label: "Font", type: "choice", default: b.font_family, choices: root.font_choices });
         out.push({ key: "bar_font_family", label: "Bar font", type: "choice", default: b.bar_font_family, choices: root.font_choices });
         out.push({ key: "font_size", label: "Text size", type: "number", default: b.font_size, min: 8, max: 32, step: 1 });

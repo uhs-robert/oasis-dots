@@ -5,6 +5,7 @@ import Quickshell
 import Quickshell.Networking
 import "../../theme"
 import "../../services"
+import "../../components/bar_icons"
 
 BarModule {
     id: root
@@ -45,6 +46,15 @@ BarModule {
         return "󰤭";
     }
 
+    readonly property string net_variant: {
+        if (root.wired_connected) return "wired";
+        if (root.wifi_connected && root.active_wifi_network) {
+            const s = root.active_wifi_network.signalStrength;
+            return "wifi_" + (s <= 0.2 ? 0 : s <= 0.4 ? 1 : s <= 0.6 ? 2 : s <= 0.8 ? 3 : 4);
+        }
+        return "offline";
+    }
+
     readonly property bool net_connected: root.wired_connected || root.wifi_connected
 
     tooltip_text: {
@@ -63,14 +73,12 @@ BarModule {
         id: net_row
         spacing: 4
 
-        Text {
+        BarIcon {
             Layout.alignment: Qt.AlignVCenter
-            text: root.net_glyph
-            color: root.net_connected ? Theme.theme_primary : Theme.fg_dim
-            font.family: Style.bar_font_family
-            style: Style.bar_text_style
-            styleColor: Style.bar_glow_color
-            font.pixelSize: Style.bar_glyph_size
+            name: "network"
+            variant: root.net_variant
+            glyph: root.net_glyph
+            tint: root.net_connected ? Theme.theme_primary : Theme.fg_dim
         }
     }
 

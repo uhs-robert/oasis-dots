@@ -5,6 +5,7 @@ import Quickshell.Services.UPower
 import "../../theme"
 import "../../services"
 import "../../components"
+import "../../components/bar_icons"
 
 BarModule {
     id: root
@@ -35,6 +36,15 @@ BarModule {
         return level_glyphs[4];
     }
 
+    readonly property string level_variant: {
+        if (power_state === UPowerDeviceState.FullyCharged) return "full";
+        if (percent <= 20) return "level_0";
+        if (percent <= 40) return "level_1";
+        if (percent <= 60) return "level_2";
+        if (percent <= 80) return "level_3";
+        return "level_4";
+    }
+
     readonly property color glyph_color: {
         if (charging || power_state === UPowerDeviceState.FullyCharged) return Theme.theme_primary;
         if (percent <= 20) return Theme.theme_label;
@@ -53,14 +63,12 @@ BarModule {
         id: row
         spacing: 6
 
-        Text {
+        BarIcon {
             Layout.alignment: Qt.AlignVCenter
-            text: root.glyph
-            color: root.glyph_color
-            font.family: Style.bar_font_family
-            style: Style.bar_text_style
-            styleColor: Style.bar_glow_color
-            font.pixelSize: Style.bar_glyph_size
+            name: "battery"
+            variant: root.level_variant
+            glyph: root.glyph
+            tint: root.glyph_color
         }
 
         Text {

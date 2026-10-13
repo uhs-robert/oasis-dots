@@ -4,6 +4,7 @@ import QtQuick.Shapes
 import Quickshell
 import "../../theme"
 import "../../services"
+import "../../components/bar_icons"
 
 BarModule {
     id: root
@@ -18,15 +19,13 @@ BarModule {
     implicitWidth: shown ? glyph.implicitWidth + (session_label.visible ? session_label.implicitWidth + Style.px(6) : 0) : 0
     implicitHeight: glyph.implicitHeight
 
-    Text {
+    BarIcon {
         id: glyph
         anchors.verticalCenter: parent.verticalCenter
-        text: VoxtypeState.state === "stopped" ? root.glyphs.stopped : root.glyphs.idle
-        color: root.glyph_color
-        font.family: Style.bar_font_family
-        style: Style.bar_text_style
-        styleColor: Style.bar_glow_color
-        font.pixelSize: Style.bar_glyph_size
+        name: "voxtype"
+        variant: VoxtypeState.state === "stopped" ? "stopped" : "idle"
+        glyph: VoxtypeState.state === "stopped" ? root.glyphs.stopped : root.glyphs.idle
+        tint: root.glyph_color
 
         SequentialAnimation {
             id: pulse_animation

@@ -40,6 +40,8 @@ RowsSection {
             wait_anim: "The keeptabs cue when a session waits on you, from any style.",
             toast_enter: "How notification toasts arrive, from any style.",
             workspace_art: "The bar's workspace indicator, from any style, drawn in your palette.",
+            bar_icon_set: "The bar's icons, from any style: pixel art where the set has drawn one, Nerd Font glyphs elsewhere.",
+            bar_meeting_marker: "How the bar clock shows an upcoming or running meeting, from any style.",
             font_family: "Font for popups and most text. Each style has its own default.",
             bar_font_family: "Font for the bar. Each style has its own default.",
             font_size: "Base text size in pixels; other sizes scale from it."
