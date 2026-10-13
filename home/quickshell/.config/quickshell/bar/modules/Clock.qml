@@ -23,7 +23,8 @@ Row {
     readonly property date date: clock.date
     spacing: 6
     leftPadding: root.horizon ? 24 : 0
-    rightPadding: root.horizon ? 22 : 0
+    // The right room balances the palm around the time; a meeting marker already fills that side.
+    rightPadding: root.horizon ? (meeting_marker.visible ? 8 : 22) : 0
     transform: Translate { y: root.horizon ? -4 : 0 }
 
     TapHandler {
