@@ -119,6 +119,8 @@ import base64, datetime, json, sys
 
 data = json.load(open(sys.argv[1]))
 assert data["source"] == "ical" and data["updated"].startswith("2026-10-12T09:00:00")
+assert data["window_start"] == "2026-09-12T00:00:00+00:00", data["window_start"]
+assert data["window_end"] == "2027-10-13T00:00:00+00:00", data["window_end"]
 events = data["events"]
 by_title = {}
 for event in events:
@@ -130,6 +132,7 @@ assert all(set(event) == expected_keys for event in events)
 
 titles = [event["title"] for event in events]
 assert "Too old" not in titles and "Too far ahead" not in titles, "window"
+assert "Recent past" in titles and "Far ahead" in titles, "default window is 30 days back, 365 ahead"
 starts = [datetime.datetime.fromisoformat(e["start"]) for e in events]
 assert starts == sorted(starts), "sorted by instant"
 
@@ -228,6 +231,60 @@ assert order.index("Early bird") < order.index("Late bird"), order
 PY
 }
 check "times are written in the local zone" assert_local_offset
+
+# --- the window: defaults, configured, and bad values -------------------------
+window_run() {
+  export XDG_CACHE_HOME="$work/cache_window"
+  rm -rf "$XDG_CACHE_HOME"
+  window_status=0
+  "$sync_bin" --ics "$fixture" --at "$fixed_now" >"$work/window.out" 2>&1 || window_status=$?
+}
+write_window_config() {
+  rm -rf "$work/window_config"
+  mkdir -p "$work/window_config/calendar-sync"
+  printf '%s\n' "$@" >"$work/window_config/calendar-sync/config"
+  export XDG_CONFIG_HOME="$work/window_config"
+}
+
+assert_window() {
+  python3 -I - "$XDG_CACHE_HOME/calendar/events.json" "$@" <<'PY'
+import json, sys
+
+path, start, end, present, absent = sys.argv[1:6]
+data = json.load(open(path))
+titles = {event["title"] for event in data["events"]}
+assert data["window_start"] == start and data["window_end"] == end, (data["window_start"], data["window_end"])
+for title in present.split(",") if present else []:
+    assert title in titles, title
+for title in absent.split(",") if absent else []:
+    assert title not in titles, title
+PY
+}
+
+write_window_config "# only the url_command is set" "url_command = echo unused"
+window_run
+check "no window keys means 30 back, 365 ahead" assert_window "2026-09-12T00:00:00+00:00" "2027-10-13T00:00:00+00:00" "Recent past,Far ahead" "Too old,Too far ahead"
+
+write_window_config "days_back = 7" "days_ahead = 60"
+window_run
+check "a configured window narrows expansion" assert_window "2026-10-05T00:00:00+00:00" "2026-12-12T00:00:00+00:00" "Standup,Design review" "Recent past,Far ahead,Too old"
+
+write_window_config "days_back = 0" "days_ahead = 0"
+window_run
+check "a zero window is today only" assert_window "2026-10-12T00:00:00+00:00" "2026-10-13T00:00:00+00:00" "" "Standup,Design review,Recent past"
+
+write_window_config "days_ahead = 3650"
+window_run
+check "the maximum is accepted" test "$window_status" -eq 0
+
+for bad in "days_ahead = abc" "days_ahead = -1" "days_ahead = 3651" "days_back = 1.5" "days_back = 1e3"; do
+  write_window_config "$bad"
+  window_run
+  check "bad value '$bad' exits 1" test "$window_status" -eq 1
+  check "bad value '$bad' gives a fixed message" grep -q 'whole numbers from 0 to 3650' "$XDG_CACHE_HOME/calendar/error.json"
+  check "bad value '$bad' writes no events" test ! -e "$XDG_CACHE_HOME/calendar/events.json"
+done
+export XDG_CONFIG_HOME="$work/config"
 
 # --- vault path: locked, then unlocked ---------------------------------------
 export XDG_CACHE_HOME="$work/cache_rbw"
@@ -418,7 +475,7 @@ run_setup n "$feed_address" "" ""
 check "auto picks rbw when unlocked" test -s "$RBW_STORE_DIR/google-calendar-ical"
 check "rbw setup writes an explicit config" grep -qx 'url_command = rbw get -- google-calendar-ical' "$XDG_CONFIG_HOME/calendar-sync/config"
 check "config directory is mode 700" test "$(stat -c %a "$XDG_CONFIG_HOME/calendar-sync")" = 700
-check "setup validates and reports the count" grep -q '^Found [0-9]* events in the next 60 days' "$setup_out"
+check "setup validates and reports the count" grep -q '^Found [0-9]* events in the next 365 days' "$setup_out"
 check "setup enables the timer" grep -qx 'systemctl --user enable --now calendar-sync.timer' "$STUB_LOG"
 check "setup runs the first sync" test -s "$XDG_CACHE_HOME/calendar/events.json"
 check "setup exits 0" test "$setup_status" -eq 0
@@ -509,6 +566,13 @@ check "declining keeps the old config" grep -qx 'url_command = echo old' "$XDG_C
 check "declining writes no secret" test ! -e "$XDG_DATA_HOME/calendar-sync/ical-url"
 run_setup n "$feed_address" file y
 check "accepting replaces the config" grep -q 'cat ' "$XDG_CONFIG_HOME/calendar-sync/config"
+
+fresh_setup_env
+mkdir -p "$XDG_CONFIG_HOME/calendar-sync"
+printf 'url_command = echo old\ndays_ahead = 90\n' >"$XDG_CONFIG_HOME/calendar-sync/config"
+run_setup n "$feed_address" file y
+check "replacing the command keeps the window settings" grep -qx 'days_ahead = 90' "$XDG_CONFIG_HOME/calendar-sync/config"
+check "setup validates against the configured window" grep -q '^Found [0-9]* events in the next 90 days' "$setup_out"
 
 # Moving the address to another backend reports, and can delete, the old private file.
 fresh_setup_env
