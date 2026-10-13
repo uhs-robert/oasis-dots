@@ -84,7 +84,9 @@ calendar_events() {
   }
 }
 
-# The event in progress (one with a link first), else the next one that starts today.
+# Meet links decide which meeting to join, not event_url: calendar-sync fills that for every event. The in-progress
+# event with a Meet link and the latest start wins; an in-progress event without one gives way to a Meet meeting
+# starting within five minutes. Failing both, the next event that starts today.
 open_meeting() {
   local events now end_of_day event link title
   events=$(calendar_events) || {
@@ -94,8 +96,10 @@ open_meeting() {
   now=$(date +%s)
   end_of_day=$(date -d 'tomorrow 00:00' +%s)
   event=$(jq -c --argjson now "$now" --argjson end_of_day "$end_of_day" '
-    def by_link_then_start: sort_by([((.meet_url // .event_url) == null), .start_epoch]);
-    (map(select(.start_epoch <= $now and .end_epoch > $now)) | by_link_then_start | first)
+    def has_meet: (.meet_url // "") != "";
+    (map(select(.start_epoch <= $now and .end_epoch > $now)) | sort_by([(has_meet | not), -.start_epoch])) as $current
+    | (map(select(.start_epoch > $now and .start_epoch <= $now + 300 and has_meet)) | sort_by(.start_epoch)) as $starting_soon
+    | (if ($current | first | . != null and has_meet) then $current[0] else ($starting_soon[0] // $current[0]) end)
     // (map(select(.start_epoch > $now and .start_epoch < $end_of_day)) | sort_by(.start_epoch) | first)
     // empty' <<<"$events")
   if [ -z "$event" ]; then
@@ -182,6 +186,44 @@ create_url() {
   echo "$url"
 }
 
+# A bare hour with no am or pm, read as a meeting time: 1 to 7 is the afternoon, 8 to 11 the morning, 12 noon.
+# Prints the meridiem to add; fails when the time says its own or is not a plain hour. Timers keep parse_clock's
+# "sooner of the two" reading, which suits a reminder but not a booking.
+working_hours_meridiem() {
+  local -a parse_words kept=()
+  local word parse_at=0 amount_milli
+  read -ra parse_words <<<"$1"
+  for word in "${parse_words[@]}"; do
+    case "$word" in
+    today | tomorrow | monday | tuesday | wednesday | thursday | friday | saturday | sunday | next | on | at | the | this | o | oh | oclock | clock) ;;
+    am | pm | a | p | m | noon | midday | midnight | morning | afternoon | evening | tonight | *[0-9]am | *[0-9]pm) return 1 ;;
+    *) kept+=("$word") ;;
+    esac
+  done
+  parse_words=("${kept[@]}")
+  read_amount && [ $((amount_milli % 1000)) = 0 ] || return 1
+  case $((amount_milli / 1000)) in
+  [1-7] | 12) echo pm ;;
+  8 | 9 | 10 | 11) echo am ;;
+  *) return 1 ;;
+  esac
+}
+
+# The title ends where the guest list starts: the first "with", "inviting" or "invite" that is followed by an
+# address, so "Lunch with Bob with alice@example.com" keeps "Lunch with Bob".
+title_before_guests() {
+  local -a words
+  local at
+  read -ra words <<<"$1"
+  for ((at = 0; at < ${#words[@]} - 1; at++)); do
+    if [[ "${words[at]}" =~ ^(with|inviting|invite)$ && "${words[at + 1]}" == *@* ]]; then
+      echo "${words[*]:0:at}"
+      return
+    fi
+  done
+  echo "$1"
+}
+
 # "tomorrow at 3 pm for an hour called Design review with alice@example.com". The words before "called" give the
 # time and length from the normalized target; the title and addresses come from the raw transcript, which still
 # has its casing and "@".
@@ -194,42 +236,49 @@ new_event() {
   schedule="${schedule%% titled *}"
   schedule="${schedule%% with *}"
   schedule="${schedule# }"
-  schedule="${schedule#for }"
+  # "2 hours long" and "for 2 hours long": the length may follow its time with or without "for".
+  local had_long=0 split start duration day
+  [[ "$schedule" != *\ long ]] || had_long=1
+  schedule="${schedule% long}"
   read -ra words <<<"$schedule"
-  local split duration day
   for ((split = 0; split < ${#words[@]}; split++)); do
-    [ "${words[split]}" = for ] || continue
-    duration=$(parse_duration "${words[*]:split+1}") || continue
+    start="$split"
+    if [ "${words[split]}" = for ]; then
+      start=$((split + 1))
+    elif [ "$had_long" = 0 ]; then
+      continue
+    fi
+    duration=$(parse_duration "${words[*]:start}") || continue
     seconds="$duration" when="${words[*]:0:split}"
     break
   done
-  [ -n "$when" ] || when="$schedule"
-  when="${when% long}"
+  [ -n "$when" ] || [ "${duration:-}" ] || when="$schedule"
+  when=" $when "
+  when="${when// for / }"
+  when="${when# }"
+  when="${when% }"
 
   shopt -s nocasematch
   if [[ "$raw" =~ (^|[[:space:]])(called|named|titled)[[:space:]]+(.+)$ ]]; then
-    title="${BASH_REMATCH[3]}"
-    # Strip the guest list only when it holds an address, so "Lunch with Bob" keeps its title.
-    if [[ "$title" =~ ^(.*[^[:space:]])[[:space:]]+(with|and|inviting|invite)[[:space:]]+[^[:space:]]+@ ]]; then
-      title="${BASH_REMATCH[1]}"
-    fi
+    title=$(title_before_guests "${BASH_REMATCH[3]}")
     title=$(sed -E 's/[[:space:].!?,]+$//' <<<"$title")
   fi
   shopt -u nocasematch
   emails=$(grep -oE '[[:alnum:]._%+-]+@[[:alnum:].-]*[[:alnum:]]\.[[:alpha:]]+' <<<"$raw" | paste -sd ',')
 
-  local start="" end="" start_epoch
+  local start_time="" end_time="" start_epoch meridiem
   if [ -n "$when" ]; then
+    meridiem=$(working_hours_meridiem "$when") && when="$when $meridiem"
     if start_epoch=$(parse_clock "$when"); then
-      start=$(date -d "@$start_epoch" +%Y%m%dT%H%M%S)
-      end=$(date -d "@$((start_epoch + seconds))" +%Y%m%dT%H%M%S)
+      start_time=$(date -d "@$start_epoch" +%Y%m%dT%H%M%S)
+      end_time=$(date -d "@$((start_epoch + seconds))" +%Y%m%dT%H%M%S)
     elif day=$(parse_day "$when"); then
-      start=$(date -d "$day" +%Y%m%d)
-      end=$(date -d "$day +1 day" +%Y%m%d)
+      start_time=$(date -d "$day" +%Y%m%d)
+      end_time=$(date -d "$day +1 day" +%Y%m%d)
     else
       echo "no day or time in \"$when\""
       return 1
     fi
   fi
-  open_in_firefox "$(create_url "$title" "$start" "$end" "$emails")"
+  open_in_firefox "$(create_url "$title" "$start_time" "$end_time" "$emails")"
 }
