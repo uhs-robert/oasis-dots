@@ -89,8 +89,10 @@ sess_start() {
   [ -z "$sess_overlay" ] || echo "$sess_overlay" >"$hints_state"
   mkdir -p "$XDG_RUNTIME_DIR/voxtype" "$XDG_RUNTIME_DIR/voxcmd"
   echo idle >"$XDG_RUNTIME_DIR/voxtype/state"
-  sess_voxcmd_env start testing
+  # shellcheck disable=SC2086 # the phrase is words
+  sess_voxcmd_env ${sess_phrase:-start testing}
 }
+sess_phrase=""
 # The stub call log and voxcmd's debug log, emptied before a run so sess_wait reads only its watchers.
 fresh_logs() { mkdir -p "$(dirname "$debug_log")" && : >"$log" && : >"$debug_log"; }
 # Waits for every watcher of the run to finish; fails when one is alive after 30s, which would be a microphone that never
@@ -446,5 +448,69 @@ rm -f "$XDG_RUNTIME_DIR/voxcmd/pending-pick.json"
 kill "$owner_pid" "$waiter_pid" 2>/dev/null
 wait "$owner_pid" "$waiter_pid" 2>/dev/null
 rm -f "$XDG_RUNTIME_DIR/voxcmd/session.json" "$XDG_RUNTIME_DIR/voxtype/state"
+
+# ---- link hints: "show links" listens for the number, then follows it or takes the hints down -----------------------
+# firefox.sh for real, with a firefox-tab that logs what it is asked to type (and fails while $links_fail exists).
+section "link hints"
+cat >"$sess_pkg/.local/share/voxcmd/firefox-tab" <<STUB
+#!/bin/sh
+echo "firefox-tab \$*" >> "$log"
+[ ! -e "$root/links-fail" ]
+STUB
+chmod +x "$sess_pkg/.local/share/voxcmd/firefox-tab"
+links_config=$root/config-links
+mkdir -p "$links_config/integrations.d" "$links_config/replacements.d"
+cp "$package/.config/voxcmd/integrations.d/firefox.sh" "$links_config/integrations.d/"
+sess_config=$links_config
+sess_phrase="show links"
+tab_calls() { grep '^firefox-tab ' "$log" | sed 's/^firefox-tab //' | paste -sd,; }
+# The hints come down on their own, in the background after the session ends.
+dismissed_soon() { log_has_soon '^firefox-tab dismiss-hints$'; }
+rm -f "$root/links-fail" "$XDG_RUNTIME_DIR/voxcmd/links-shown"
+
+sess_run 3
+check "'show links' shows the hints, listens, and a bare number follows that link" "[[ \$(tab_calls) == 'hints,hints 3' ]]"
+check "the follow ends the session and the microphone, with the hints left to Firefox" "session_gone && [[ \$(record_starts) == 1 ]]"
+sleep 0.5
+check "and Escape is not typed after a followed link" "! grep -q dismiss-hints '$log'"
+check "the listen is a reply's: 0.1s of speech and auto-stop's own deadline" "[[ \$(grep '^voxcmd-autostop ' '$log' | sed 's/^voxcmd-autostop //' | paste -sd' ') == 'no_speech_secs=default min_speech_secs=0.1 silence_secs=default' ]]"
+sess_run "Follow link 3."
+check "'follow link 3' works too" "[[ \$(tab_calls) == 'hints,hints 3' ]]"
+sess_run "three"
+check "a number word is a number" "[[ \$(tab_calls) == 'hints,hints 3' ]]"
+sess_run "Twenty one."
+check "so is a longer one" "[[ \$(tab_calls) == 'hints,hints 21' ]]"
+sess_run "open link number 7"
+check "and 'open link number 7'" "[[ \$(tab_calls) == 'hints,hints 7' ]]"
+
+sess_run
+check "nothing said: the session ends, and the hints are taken down" "session_gone && [[ \$(record_starts) == 1 ]] && grep -q '^notify-send .*Link hints ended nothing was said' '$log'"
+dismissed_soon
+check "with one Escape, after the hints were typed" "[[ \$(tab_calls) == 'hints,dismiss-hints' ]]"
+sess_run banana "the weather" "ten past"
+check "words that are no number follow nothing and, three times, end it" "session_gone && [[ \$(record_starts) == 3 ]] && ! grep -q '^firefox-tab hints [a-z0-9]' '$log'"
+dismissed_soon
+check "and take the hints down" "[[ \$(tab_calls) == 'hints,dismiss-hints' ]]"
+sess_run banana 5
+check "an unclear turn is no reason to give up: the next one follows" "[[ \$(tab_calls) == 'hints,hints 5' ]]"
+sess_run cancel
+dismissed_soon
+check "'cancel' takes the hints down and follows nothing" "session_gone && [[ \$(tab_calls) == 'hints,dismiss-hints' && \$(record_starts) == 1 ]]"
+sess_run "never mind"
+dismissed_soon
+check "'never mind' does too" "[[ \$(tab_calls) == 'hints,dismiss-hints' ]]"
+sess_run "done"
+dismissed_soon
+check "and so does the session's own 'done'" "[[ \$(tab_calls) == 'hints,dismiss-hints' ]]"
+
+: >"$root/links-fail"
+sess_run 3
+check "hints that could not be shown open no listen" "session_gone && [[ \$(tab_calls) == hints && \$(record_starts) == 0 ]]"
+rm -f "$root/links-fail"
+sess_phrase="follow link 4"
+sess_run
+check "'follow link 4' alone opens no session" "session_gone && [[ \$(tab_calls) == 'hints 4' && \$(record_starts) == 0 ]]"
+sess_phrase=""
+sess_config=$root/config-sess
 
 finish

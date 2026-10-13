@@ -10,7 +10,9 @@
                                        exit 3 without doing anything when no Firefox window is open
   firefox-tab open [--here] <url>      open the url in a new tab, or the url or text in the focused tab
   firefox-tab search <text>            search the text with the default engine in a new tab
-  firefox-tab hints [number]           numbered link hints (Tridactyl), following that number when given
+  firefox-tab hints [number]           numbered link hints (Tridactyl's :voxhints), following that number when given
+                                       (:voxfollow <number>); both are defined in tridactylrc
+  firefox-tab dismiss-hints            press Escape in the focused Firefox window, leaving hint mode
   firefox-tab new-tab | close-tab      press Ctrl+T or Ctrl+W in Firefox
   firefox-tab tridactyl                print how Tridactyl is loaded: store, temporary or none
 
@@ -517,38 +519,43 @@ def query_places(connection, words):
 # ---- hints -----------------------------------------------------------------------------------------------------
 
 
-def hints_script(number):
-    """A Tridactyl :js line that shows numbered hints without autoselect for this one hint run, then puts the
-    keyboard's settings back. It changes Tridactyl's settings in this page's memory only, never saving them, so
-    keyboard hints elsewhere keep their own names. With a number, it follows that hint, or leaves hint mode when
-    there is none by that number, so a missing hint never follows another."""
-    follow = ""
-    if number:
-        follow = (
-            "const keys=tri.hinting_content.getHintCommands();"
-            "for(let i=0;i<40;i++){await new Promise(done=>setTimeout(done,50));"
-            'const names=[...document.querySelectorAll(".TridactylHint")].map(hint=>hint.textContent);'
-            "if(!names.length)continue;"
-            f'if(!names.includes("{number}"))return keys.reset();'
-            f'for(const key of "{number}")keys.pushKey(key);'
-            "return keys.selectFocusedHint()}"
-        )
-    return (
-        "js (async()=>{const config=tri.config.USERCONFIG;"
-        'const saved=["hintnames","hintautoselect"].map(key=>[key,key in config,config[key]]);'
-        'config.hintnames="numeric";config.hintautoselect="false";'
-        "const restore=()=>saved.forEach(([key,had,value])=>had?config[key]=value:delete config[key]);"
-        f"tri.excmds.hint().then(restore,restore);{follow}}})()"
-    )
+def rc_files():
+    """The rc file Tridactyl reads, the first that exists in its own order; none when there is no rc."""
+    config_home = os.environ.get("XDG_CONFIG_HOME") or "~/.config"
+    candidates = (f"{config_home}/tridactyl/tridactylrc", "~/.config/tridactyl/tridactylrc", "~/.tridactylrc", "~/_tridactylrc")
+    return [path for path in map(os.path.expanduser, candidates) if os.path.isfile(path)][:1]
+
+
+def rc_defines(command):
+    """Whether Tridactyl's rc defines the command. Whether Firefox has loaded it cannot be read from the profile, so
+    this catches the usual miss, an rc without the command. A setup with no rc file is not judged."""
+    for path in rc_files():
+        try:
+            with open(path) as file:
+                return any(re.match(rf"\s*command!?\s+{command}\s", line) for line in file)
+        except OSError:
+            return True
+    return True
 
 
 def hints(number):
+    """Types Tridactyl's :voxhints, or :voxfollow <number>, which the rc defines (home/tridactyl's tridactylrc): a
+    command line of the real JavaScript would be long to type, and Tridactyl cannot be asked whether a command exists."""
     if number and not re.fullmatch(r"[1-9][0-9]{0,3}", number):
         fail(f"not a link number: {number}")
     if tridactyl(profile_dir()) == "none":
         fail("link hints need Tridactyl")
+    command = "voxfollow" if number else "voxhints"
+    if not rc_defines(command):
+        fail(f"link hints need the {command} command in Tridactyl's tridactylrc")
     focused_firefox(focus_recent=True)
-    tridactyl_command(hints_script(number))
+    tridactyl_command(f"{command} {number}".strip())
+
+
+def dismiss_hints():
+    """Leaves hint mode with Escape, in the Firefox window that has focus, and nowhere else."""
+    focused_firefox(focus_recent=False)
+    keys(["-k", "Escape"])
 
 
 # ---- main ------------------------------------------------------------------------------------------------------
@@ -575,6 +582,8 @@ def main(args):
         search(" ".join(rest))
     elif command == "hints" and len(rest) <= 1:
         hints(rest[0] if rest else "")
+    elif command == "dismiss-hints":
+        dismiss_hints()
     elif command == "new-tab":
         focused_firefox(focus_recent=True)
         keys(["-M", "ctrl", "t", "-m", "ctrl"])
