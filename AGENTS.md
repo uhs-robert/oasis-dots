@@ -38,7 +38,7 @@ Formatting scope is deliberately narrow — whitespace and stylua checks only co
 
 ## Installer architecture
 
-`install.sh` is a thin orchestrator: parse flags, then call functions sourced from `lib/`. Each lib file owns one concern — `packages.sh` (manifest reading + pacman/pipx/luarocks), `arch.sh` (paru/AUR), `rust.sh`, `fonts.sh`, `stow.sh` (stowing + tmuxifier/neovim/root-symlink bootstrap), `repos.sh` (external repos in `repos/`), `services.sh` (greetd, keyd, Steam, Nvidia, voxtype, the calendar sync timer, dev runtimes), `distro.sh`, `output.sh` (`info`/`warn`/`success`/`die`).
+`install.sh` is a thin orchestrator: parse flags, then call functions sourced from `lib/`. Each lib file owns one concern — `packages.sh` (manifest reading + pacman/pipx/luarocks), `arch.sh` (paru/AUR), `rust.sh`, `fonts.sh`, `stow.sh` (stowing + tmuxifier/neovim/root-symlink bootstrap), `repos.sh` (external repos in `repos/`), `services.sh` (greetd, keyd, Steam, Nvidia, voxtype, the calendar sync timer when the optional `calendar` package is stowed, dev runtimes), `distro.sh`, `output.sh` (`info`/`warn`/`success`/`die`).
 
 New install behavior belongs in the matching lib function, not inline in `install.sh`.
 

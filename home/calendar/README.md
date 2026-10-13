@@ -6,7 +6,7 @@
 
 1. In Google Calendar, open Settings, pick the calendar, and copy "Secret address in iCal format".
 2. Save it in rbw as an entry named `google-calendar-ical`: `rbw add google-calendar-ical`, then paste the address as the password.
-3. Unlock rbw. The timer was enabled by the installer; to enable it by hand: `systemctl --user enable --now calendar-sync.timer`.
+3. Unlock rbw. The package is optional: the installer enables the timer only when you chose `calendar` (or ran `just stow calendar` before it). To enable it by hand: `systemctl --user enable --now calendar-sync.timer`.
 
 The address is a credential: anyone holding it can read the whole calendar. It goes from rbw into memory only. It is never in a command line, a log, the cache or an error message. If it leaks, reset it in Google Calendar settings.
 
