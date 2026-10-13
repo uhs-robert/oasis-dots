@@ -51,6 +51,7 @@ cat >"$sess_config/integrations.d/sess.sh" <<STUB
 name="Sess"
 verbs=("begin_it start testing" "stop_it stop testing" "tap tap {target}")
 session_miss_actions=(none)
+session_exit_phrases="(okay )?stop testing|done testing"
 pick_command=$sess_stubs/sess-hints
 candidates() {
   case "\$2" in
@@ -160,12 +161,12 @@ sess_start alpha "done"
 check "an open session records its kind, label and a live owner" "[[ \$(jq -r '[.kind, .label, (.owner | tostring | test(\"^[0-9]+\$\"))] | join(\",\")' '$XDG_RUNTIME_DIR/voxcmd/session.json') == 'test,Test mode,true' ]]"
 sess_wait
 
-for word in "done" "Done." "stop clicking" "exit click mode" "that's all" "I'm done" "done clicking"; do
+for word in "done" "Done." "that's all" "I'm done" "stop testing" "Okay, stop testing." "done testing"; do
   sess_run alpha "$word" gamma
   check "'$word' ends the session and the microphone with it" "session_gone && [[ \$(taps) == 1 && \$(record_starts) == 2 ]]"
 done
 # Button labels: these are what the user wants clicked.
-for word in "cancel" "exit" "stop" "never mind"; do
+for word in "cancel" "exit" "stop" "never mind" "stop clicking" "stop testing now"; do
   sess_run "$word" "done"
   check "'$word' is a target, not an exit" "[[ \$(grep '^tap ' '$log') == 'tap $word' && \$(record_starts) == 2 ]]"
 done

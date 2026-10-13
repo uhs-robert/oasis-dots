@@ -108,6 +108,20 @@ click here	none	not a click target; same as without the Click integration
 click and drag	none	not a click target; same as without the Click integration
 left click and hold	none	not a click target; same as without the Click integration
 click mode	Click/click_mode	Click's own verb, ahead of clicking on the text "mode"
+stop clicking	Click/stop_clicking	the exit forms are Click's own, ahead of Media and System
+exit click mode	Click/stop_clicking	the exit forms are Click's own, ahead of Media and System
+quit click mode	Click/stop_clicking	the exit forms are Click's own, ahead of Media and System
+stop click mode	Click/stop_clicking	the exit forms are Click's own, ahead of Media and System
+exit clicking mode	Click/stop_clicking	the exit forms are Click's own, ahead of Media and System
+leave the click mode	Click/stop_clicking	the exit forms are Click's own, ahead of Media and System
+end clicking	Click/stop_clicking	the exit forms are Click's own, ahead of Media and System
+finish clicking	Click/stop_clicking	the exit forms are Click's own, ahead of Media and System
+close click mode	Click/stop_clicking	the exit forms are Click's own, ahead of Media and System
+turn off click mode	Click/stop_clicking	the exit forms are Click's own, ahead of Media and System
+switch off clicking mode	Click/stop_clicking	the exit forms are Click's own, ahead of Media and System
+click mode off	Click/stop_clicking	the exit forms are Click's own, ahead of Media and System
+okay exit click mode	Click/stop_clicking	the exit forms are Click's own, ahead of Media and System
+exit click mode please	Click/stop_clicking	the exit forms are Click's own, ahead of Media and System
 show hints	Click/show_hints
 start clicking	Click/click_mode	Click's own verb
 click clear	Click/no_text	Clean is one edit away and must not be clicked for clear
