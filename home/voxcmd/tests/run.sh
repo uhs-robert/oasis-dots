@@ -1263,7 +1263,9 @@ export SANDBOX_AUTOSTOP_OFF="auto-stop is turned off (enabled = false)"
 sess_run alpha
 check "no session opens while auto-stop is off" "session_gone && [[ \$(record_starts) == 0 ]] && grep -q '^notify-send .*--transient voxcmd: Test mode needs auto-stop auto-stop is turned off' '$log'"
 unset SANDBOX_AUTOSTOP_OFF
-autostop_check() { env -i PATH="$1" VOXCMD_CONFIG_DIR="$root/autostop-config" "${@:2}" "$(command -v python3)" "$package/.local/bin/voxcmd-autostop" --check; }
+# The interpreter itself, not `command -v python3`: a pyenv shim is a bash script, which the bare PATH below cannot run.
+python3_binary=$(python3 -c 'import sys; print(sys.executable)')
+autostop_check() { env -i PATH="$1" VOXCMD_CONFIG_DIR="$root/autostop-config" "${@:2}" "$python3_binary" "$package/.local/bin/voxcmd-autostop" --check; }
 mkdir -p "$root/autostop-config" "$root/pw-bin" "$root/no-pw-bin"
 printf '#!/bin/sh\n' >"$root/pw-bin/pw-record"
 chmod +x "$root/pw-bin/pw-record"
