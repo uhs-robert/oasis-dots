@@ -3,7 +3,7 @@
 
 Listens to the default source through pw-record (16 kHz mono s16) and exits with a verdict:
   0  speech, then silence_secs of quiet: stop the recording
-  3  no speech within no_speech_secs: cancel it
+  3  no speech at all within no_speech_secs: cancel it
   4  nothing to do: the recording ended some other way, the audio ended, or auto-stop is off
   1  error (pw-record missing, a bad setting)
 
@@ -62,9 +62,6 @@ MIN_AUTO_THRESHOLD_DB = -45.0
 DIGITAL_SILENCE_DB = -90.0
 # Loud frames count as speech only in runs this long: a syllable lasts longer than a key click or a tap on the desk.
 MIN_SPEECH_RUN_FRAMES = 3
-# Speech short of min_speech_secs that still adds up to this is a short word, not nothing: at no_speech_secs it is
-# transcribed rather than cancelled.
-SHORT_WORD_SECS = 0.25
 STATE_POLL_SECS = 0.2
 # How long voxtype gets to report the recording it was asked to start.
 RECORDING_START_GRACE_SECS = 3.0
@@ -164,6 +161,10 @@ class SpeechThenSilence:
         return max(self.room_db() + self.margin_db, MIN_AUTO_THRESHOLD_DB)
 
     def speech_heard(self):
+        """Past no_speech_secs any speech run will do: a short word ("yes", "cancel") is still an answer, and voxtype's
+        own voice detection drops a recording that held no speech before the transcriber can make words of it."""
+        if self.elapsed_secs >= self.no_speech_secs:
+            return self.speech_secs > 0
         return self.speech_secs >= self.min_speech_secs
 
     def count_frame(self, frame_index, threshold_db):
@@ -245,12 +246,11 @@ class SpeechThenSilence:
             f" speech {self.speech_secs:.2f}s quiet {self.quiet_secs:.2f}s"
         )
         if self.speech_heard() and self.quiet_secs >= self.silence_secs and self.pause_follows_speech(threshold_db):
+            if self.speech_secs < self.min_speech_secs:
+                self.trace(f"{self.speech_secs:.2f}s of speech, short of {self.min_speech_secs}s: a short word, stopping")
             return VERDICT_SILENCE
         if not self.speech_heard() and self.elapsed_secs >= self.no_speech_secs:
-            if self.speech_secs < SHORT_WORD_SECS:
-                return VERDICT_NO_SPEECH
-            self.trace(f"{self.speech_secs:.2f}s of speech, short of {self.min_speech_secs}s: a short word, stopping")
-            return VERDICT_SILENCE
+            return VERDICT_NO_SPEECH
         return None
 
 
