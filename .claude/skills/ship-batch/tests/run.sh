@@ -51,5 +51,11 @@ g -C "$repo" commit -q --allow-empty -m unrelated
 check "a commit main does not descend from is refused" "! base_is_ancestor '$repo' '$first' other"
 check "a missing commit is refused" "! base_is_ancestor '$repo' 0000000000000000000000000000000000000001 main"
 
+echo "== one batch at a time"
+check "the first run takes the lock" "take_lock '$repo'"
+check "a second run is refused" "! (take_lock '$repo')"
+exec 9>&-
+check "the lock is free once the first run exits" "(take_lock '$repo')"
+
 echo "$pass passed, $fail failed"
 ((fail == 0))
