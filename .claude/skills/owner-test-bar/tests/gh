@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+# Fake gh for tests/run.sh: PR numbers in $FAKE_GH/pr-<branch>, PR views in $FAKE_GH/view-<number>.json, and
+# comments appended to $FAKE_GH/commented. FAKE_GH_DOWN=1 fails every call, like gh without auth or network.
+set -euo pipefail
+[[ -z ${FAKE_GH_DOWN:-} ]] || exit 1
+arg() {
+  local flag=$1
+  shift
+  while (($#)); do
+    if [[ $1 == "$flag" ]]; then
+      echo "$2"
+      return
+    fi
+    shift
+  done
+}
+case "$1 $2" in
+"pr list")
+  branch=$(arg --head "$@")
+  [[ ! -f $FAKE_GH/pr-$branch ]] || jq -r "$(arg --jq "$@")" <<<"[{\"number\": $(<"$FAKE_GH/pr-$branch")}]"
+  ;;
+"pr view") jq -r "$(arg --jq "$@")" "$FAKE_GH/view-$3.json" ;;
+"pr comment") echo "$3 $(arg --body "$@")" >>"$FAKE_GH/commented" ;;
+*) exit 1 ;;
+esac

@@ -417,6 +417,30 @@ probe() {
   fi
 }
 
+# Whether a PR still needs a Codex review: its latest Codex summary does not cover the head and is not running, and no
+# "@codex review" was asked for since the head commit.
+# shellcheck disable=SC2016 # jq variables, not shell ones.
+codex_needed_jq='(.commits | last | .committedDate) as $head_date
+  | ([.comments[] | select(.body | contains("codex-pull-request-review-summary"))] | last | .body // "") as $summary
+  | ($summary | capture("\\| `(?<c>[0-9a-f]{7,40})` \\|").c // "") as $reviewed
+  | (($reviewed != "" and (.headRefOid | startswith($reviewed))) or ($summary | test("\\*\\*Running\\*\\*"))
+     or any(.comments[]; (.body | startswith("@codex review")) and .createdAt > $head_date)) | not'
+
+# Asks Codex to review each branch's open PR while the owner tests it, so the review is done by the time they are.
+# Quiet without gh or a PR: the test bar matters more than the request.
+request_codex_reviews() {
+  command -v gh >/dev/null || return 0
+  local branch number
+  for branch in "$@"; do
+    branch=${branch#origin/}
+    number=$(cd "$repo" && gh pr list --head "$branch" --state open --json number --jq '.[0].number // empty' 2>/dev/null) || continue
+    [[ -n $number ]] || continue
+    [[ $(cd "$repo" && gh pr view "$number" --json headRefOid,commits,comments --jq "$codex_needed_jq" 2>/dev/null) == true ]] || continue
+    (cd "$repo" && gh pr comment "$number" --body "@codex review" >/dev/null 2>&1) || continue
+    echo "codex: requested a review of #$number ($branch)"
+  done
+}
+
 copy_assets() {
   local dest=$1 path
   while read -r path; do
@@ -485,6 +509,7 @@ main() {
     swap_args=("$name")
     ((replace)) && swap_args+=(--replace)
     "$0" swap "${swap_args[@]}"
+    request_codex_reviews "$@"
     ;;
   restore)
     guard_owner "$take"
