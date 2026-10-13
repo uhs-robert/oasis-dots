@@ -31,7 +31,18 @@ PROFILE_ROOTS = ("~/.config/mozilla/firefox", "~/.mozilla/firefox")
 KEY_PAUSE = 0.25
 
 
+# voxcmd's debug trace: written only while the file exists (voxcmd debug on), so a normal run touches nothing.
+DEBUG_LOG = os.path.join(os.environ.get("XDG_RUNTIME_DIR", "/tmp"), "voxcmd", "debug.log")
+
+
+def debug(message):
+    if os.path.exists(DEBUG_LOG):
+        with open(DEBUG_LOG, "a") as log:
+            log.write(f"{time.strftime('%H:%M:%S')}.{int(time.time() * 1000) % 1000:03d} firefox-tab[{os.getpid()}] {message}\n")
+
+
 def fail(message):
+    debug(f"failed: {message}")
     print(message)
     sys.exit(1)
 
@@ -173,8 +184,10 @@ def keys(*steps):
         active = hyprctl_json("activewindow", {})
         if active.get("address") != window["address"] or not is_firefox(active):
             fail("focus left Firefox, so the rest was not typed")
+        debug(f"wtype {step!r} into {active.get('title', '')!r}")
         subprocess.run(["wtype", *step], check=True)
         time.sleep(KEY_PAUSE)
+    debug(f"typed; the window title is now {hyprctl_json('activewindow', {}).get('title', '')!r}")
 
 
 # ---- tabs ------------------------------------------------------------------------------------------------------
@@ -328,7 +341,12 @@ def focus_tab(address, title):
         open_titles = set()
     if title not in open_titles:
         fail(f"no open tab is titled {title!r}, so nothing was typed")
+    debug(f"switching to the tab titled {title!r}")
     keys(["-M", "ctrl", "l", "-m", "ctrl"], ["--", "% " + title], ["-k", "Return"])
+    if os.path.exists(DEBUG_LOG):
+        # Firefox renames the window once the tab switch lands, a moment after Return.
+        time.sleep(0.6)
+        debug(f"0.6 s later the window title is {hyprctl_json('activewindow', {}).get('title', '')!r}")
 
 
 def goto(url, running_only):
@@ -439,6 +457,7 @@ def query_places(connection, words):
 
 
 def main(args):
+    debug(f"called with {args!r}")
     command, rest = (args[0], args[1:]) if args else ("", [])
     if command == "tabs":
         json.dump(all_tabs(), sys.stdout)
