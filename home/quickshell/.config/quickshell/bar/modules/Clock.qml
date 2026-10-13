@@ -34,12 +34,17 @@ Row {
     readonly property bool chip_shown: CalendarState.chip_event !== null
     readonly property string chip_text: root.chip_shown ? CalendarState.minutes_to(CalendarState.chip_event) + "m" : ""
     readonly property string agenda_tip: {
-        const span = e => TimeFormat.format(new Date(e.start_ms)) + " - " + TimeFormat.format(new Date(e.end_ms));
+        // Times follow the zone the clock shows, as its digits do.
+        const span = e => TimeFormat.format(Timezones.shift(new Date(e.start_ms))) + " - " + TimeFormat.format(Timezones.shift(new Date(e.end_ms)));
         if (CalendarState.in_meeting) return "Now: " + CalendarState.current_event.title + "\n" + span(CalendarState.current_event);
         const next = CalendarState.chip_event || CalendarState.next_event_today;
         return next ? "Next: " + next.title + "\n" + span(next) + " (in " + CalendarState.minutes_to(next) + " min)" : "";
     }
-    onAgenda_tipChanged: if (hover.hovered && root.agenda_tip !== "") Tooltip.show(root, root.agenda_tip, "calendar", true)
+    onAgenda_tipChanged: {
+        if (!hover.hovered) return;
+        if (root.agenda_tip !== "") Tooltip.show(root, root.agenda_tip, "calendar", true);
+        else Tooltip.hide(root);
+    }
 
     HoverHandler {
         id: hover
