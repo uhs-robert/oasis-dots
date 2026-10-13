@@ -318,6 +318,51 @@ sess_voxcmd_env end-session
 sess_wait
 check "end-session while recording cancels it and closes the microphone" "session_gone && grep -q '^voxtype record cancel' '$log' && [[ \$(cat '$XDG_RUNTIME_DIR/voxtype/state') == idle && \$(record_starts) == 1 ]] && ended_because 'ended by request'"
 
+# stop is the one key for any voice activity: the session, a picker waiting for an answer, a recording.
+sess_start HOLD
+owner_is_listening
+sess_voxcmd_env stop
+sess_wait
+check "stop during a session ends it, cancels its recording and closes the microphone" "session_gone && grep -q '^voxtype record cancel' '$log' && [[ \$(cat '$XDG_RUNTIME_DIR/voxtype/state') == idle && \$(record_starts) == 1 ]] && ended_because 'stopped'"
+
+# Stopped while the turn is already transcribing: the watcher is past the microphone, and must not listen again.
+sess_start alpha
+echo transcribing >"$XDG_RUNTIME_DIR/voxtype/state"
+sess_voxcmd_env stop
+echo idle >"$XDG_RUNTIME_DIR/voxtype/state"
+sess_wait
+check "stop while a turn transcribes ends the session and opens no further microphone" "session_gone && [[ \$(record_starts) == 1 && \$(taps) == 0 ]] && ended_because 'stopped'"
+
+# A recording nobody here watches (Speech to Text, or a command's) is cancelled, so nothing said is typed or routed.
+fresh_logs
+echo recording >"$XDG_RUNTIME_DIR/voxtype/state"
+sess_voxcmd_env stop
+check "stop cancels a dictation and says nothing" "grep -q '^voxtype record cancel' '$log' && ! grep -q '^notify-send' '$log'"
+
+# A waiting picker is answered with an empty line, as a cancel.
+fresh_logs
+echo idle >"$XDG_RUNTIME_DIR/voxtype/state"
+cp /bin/sleep "$root/voxcmd-hints"
+"$root/voxcmd-hints" 60 &
+stop_waiter_pid=$!
+mkfifo "$root/stop-fifo"
+jq -n -c --argjson pid "$stop_waiter_pid" --arg fifo "$root/stop-fifo" \
+  '{pid: $pid, fifo: $fifo, label: "Which one?", kind: "hints", expansions: {}, choices: [{id: "a", label: "1. A"}]}' >"$XDG_RUNTIME_DIR/voxcmd/pending-pick.json"
+timeout 10 head -n1 "$root/stop-fifo" >"$root/stop-answer" &
+stop_reader_pid=$!
+sess_voxcmd_env stop
+wait "$stop_reader_pid"
+check "stop cancels a waiting picker with an empty answer" "[[ \$(cat '$root/stop-answer') == '' && \$(wc -l <'$root/stop-answer') == 1 ]] && ! grep -q '^voxtype record' '$log'"
+rm -f "$XDG_RUNTIME_DIR/voxcmd/pending-pick.json"
+kill "$stop_waiter_pid" 2>/dev/null
+wait "$stop_waiter_pid" 2>/dev/null
+
+# With nothing open it is silent.
+fresh_logs
+rm -f "$XDG_RUNTIME_DIR/voxcmd/session.json"
+echo idle >"$XDG_RUNTIME_DIR/voxtype/state"
+check "stop with nothing open exits 0 and does nothing" "env SANDBOX_SETSID_RUN=1 VOXCMD_CONFIG_DIR='$sess_config' '$sess_voxcmd' stop >/dev/null 2>&1 && ! grep -qE '^(voxtype record|notify-send)' '$log'"
+
 # Settling: the next listen waits for the overlay and popups. The stub bar reports what the files hold. Bounds are
 # loose, since a loaded machine stretches every sleep; they only tell a short wait from the long one.
 settle_ms() {

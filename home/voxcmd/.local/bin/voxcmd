@@ -17,6 +17,8 @@ Usage:
                               show why "click <text>" would or would not click, from the real capture and matcher,
                               without clicking or moving the pointer (the focused window, or that client)
   voxcmd end-session          end the open voice session (click mode), if any
+  voxcmd stop                 stop all voice activity: end the open session, cancel the open picker, card or hints, and
+                              cancel a recording under way, discarding what was said; silent when none is open
   voxcmd list                 list integrations and their verbs
   voxcmd help                 pick from the integrations' example phrases (Tab lists what one can run); one without placeholders runs
   voxcmd errors [N]           print the last N (default 10) voxcmd notifications the bar kept: its errors, as info is transient
@@ -935,11 +937,16 @@ reply() {
     return 1
     ;;
   esac
-  # An empty line reads as a cancel, like Esc. The timeout covers a voxcmd-pick that exits between check and write.
   local answer=""
   [ "$verdict" = cancel ] || answer="${shown_list_key:+$shown_list_key$'\t'}${verdict#*$'\t'}"
+  write_pick_answer "$answer" "$(jq -r .fifo <<<"$state")"
+}
+
+# An empty answer reads as a cancel, like Esc. The timeout covers a voxcmd-pick, -confirm or -hints that exits between
+# the check for it and this write.
+write_pick_answer() {
   # shellcheck disable=SC2016 # expanded by the inner sh
-  timeout 2 sh -c 'printf "%s\n" "$1" >"$2"' sh "$answer" "$(jq -r .fifo <<<"$state")"
+  timeout 2 sh -c 'printf "%s\n" "$1" >"$2"' sh "$1" "$2"
 }
 
 # An unclear reply leaves the card open and, while voxcmd-confirm left a listen_again file, listens once more.
@@ -966,8 +973,7 @@ reply_confirm() {
     ;;
   esac
   # voxcmd-confirm reads anything but "yes" as a no.
-  # shellcheck disable=SC2016 # expanded by the inner sh
-  if timeout 2 sh -c 'printf "%s\n" "$1" >"$2"' sh "$verdict" "$(jq -r .fifo <<<"$state")"; then
+  if write_pick_answer "$verdict" "$(jq -r .fifo <<<"$state")"; then
     debug "confirm reply written: $verdict"
   else
     debug "confirm reply not written: nobody read the FIFO"
@@ -1469,6 +1475,24 @@ cancel_owned_recording() {
   touch "$(discard_flag_of "$watcher_pid")"
 }
 
+# The one key for any voice activity that will not end by itself. The session goes first, so its watcher cannot open
+# the microphone again: ending it flags the watcher's recording as discarded, whatever the watcher is doing (hearing,
+# transcribing or routing), and its next listen finds no session. The picker's own exit cancels the reply recording it
+# started, and the cancel at the end covers every other recording, a plain command or Speech to Text.
+stop_voice() {
+  local picker
+  session_end "stopped"
+  if picker=$(pending_pick); then
+    write_pick_answer "" "$(jq -r .fifo <<<"$picker")" || true
+  fi
+  case "$(voxtype_state)" in
+  recording | transcribing)
+    debug "stop: cancelling the $(voxtype_state) voxtype"
+    voxtype record cancel || true
+    ;;
+  esac
+}
+
 # The bar keeps only voxcmd's errors in its history (see notify), so this lists the failures behind recent commands.
 print_errors() {
   local count="${1:-10}" json
@@ -1509,6 +1533,7 @@ listen) listen "${2:-}" ;;
 help) voice_help ;;
 errors) print_errors "${2:-}" ;;
 end-session) session_end "ended by request" ;;
+stop) stop_voice ;;
 click-explain)
   shift
   click_explain "$@"
