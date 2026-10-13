@@ -14,6 +14,8 @@
 #                                     is {} (no focused window) without its fixture, never the live window;
 #                                     SANDBOX_ACTIVEWINDOW_AFTER_WTYPE_JSON replaces it once wtype has been called
 #                                     SANDBOX_SWITCHED_TITLE retitles it once Return has been typed
+#                                     SANDBOX_ACTIVEWINDOW_BLOCK_AFTER_WTYPE=<path> makes the first query after wtype
+#                                     create <path>.entered and wait for <path>.release
 #   tesseract                         SANDBOX_TESSERACT_TSV (the tsv itself; no words without it)
 #   grim, magick                      never real: grim writes a blank image the size of the activewindow fixture
 #                                     times SANDBOX_GRIM_SCALE (default 1), or SANDBOX_GRIM_SIZE ("W H"), and fails
@@ -38,6 +40,7 @@
 #                                                                  waiting on the user does
 #                                       SANDBOX_CLICKHINTS_BLOCK=<path>  open blocks before answering: it creates
 #                                                                  <path>.entered, then waits for <path>.release
+#                                       SANDBOX_CLICKHINTS_STATE_BLOCK=<path>  state blocks the same way
 #   voxcmd-pick, voxcmd-autostop      voxcmd finds these beside itself, not on PATH, so a test copies the package and
 #                                     symlinks its two onto $SANDBOX_DIR/bin's. voxcmd-pick logs and "picks" the first
 #                                     choice's id. voxcmd-autostop gives no verdict (exit 1) unless a voxtype turn is
@@ -56,7 +59,8 @@
 #                                     exit (3) after half a second, any other turn waits on `$SANDBOX_AUTOSTOP_SLEEP 30`
 #                                     (default sleep; a copy under another name lets a test end leftovers by name).
 #                                     It logs its VOXCMD_AUTOSTOP_NO_SPEECH_SECS as "autostop no_speech_secs=<n>",
-#                                     then "autostop min_speech_secs=<n> silence_secs=<n>" from the matching variables.
+#                                     then "autostop min_speech_secs=<n> silence_secs=<n>" from the matching variables,
+#                                     and "max_secs=<n>" when VOXCMD_AUTOSTOP_MAX_SECS is set.
 #                                     With VOXCMD_DEBUG set, speech and SILENCE first wait for the watcher to log that it
 #                                     sees the recording, and SILENCE then exits at once.
 #
@@ -130,6 +134,11 @@ case "$name" in
 hyprctl)
   case "${1-}" in
   activewindow)
+    if [ -n "${SANDBOX_ACTIVEWINDOW_BLOCK_AFTER_WTYPE:-}" ] && [ ! -e "$SANDBOX_ACTIVEWINDOW_BLOCK_AFTER_WTYPE.entered" ] &&
+      grep -q '^wtype ' "$SANDBOX_DIR/calls.log" 2>/dev/null; then
+      : >"$SANDBOX_ACTIVEWINDOW_BLOCK_AFTER_WTYPE.entered"
+      until [ -e "$SANDBOX_ACTIVEWINDOW_BLOCK_AFTER_WTYPE.release" ]; do sleep 0.02; done
+    fi
     # SANDBOX_ACTIVEWINDOW_AFTER_WTYPE_JSON: the window that has focus once anything has been typed.
     # SANDBOX_SWITCHED_TITLE: the tab title Firefox's window shows once Return has been typed, as after a tab switch.
     if [ -n "${SANDBOX_ACTIVEWINDOW_AFTER_WTYPE_JSON:-}" ] && grep -q '^wtype ' "$SANDBOX_DIR/calls.log" 2>/dev/null; then
@@ -223,7 +232,12 @@ qs-ipc)
     echo ok
     ;;
   *"call clickhints dismiss"*) echo closed >"$SANDBOX_DIR/clickhints-state" ;;
-  *"call clickhints state"*) cat "$SANDBOX_DIR/clickhints-state" 2>/dev/null || echo closed ;;
+  *"call clickhints state"*)
+    if [ -n "${SANDBOX_CLICKHINTS_STATE_BLOCK-}" ]; then
+      : >"$SANDBOX_CLICKHINTS_STATE_BLOCK.entered"
+      until [ -e "$SANDBOX_CLICKHINTS_STATE_BLOCK.release" ]; do sleep 0.02; done
+    fi
+    cat "$SANDBOX_DIR/clickhints-state" 2>/dev/null || echo closed ;;
   *"call popup state"*) cat "$SANDBOX_DIR/popup-state" 2>/dev/null || echo closed ;;
   *"confirm ask"* | *"sound play"*) echo ok ;;
   esac
@@ -256,6 +270,7 @@ voxcmd-autostop)
   [ -e "$SANDBOX_DIR/voxtype-turn" ] || exit 1
   log "no_speech_secs=${VOXCMD_AUTOSTOP_NO_SPEECH_SECS:-default}"
   log "min_speech_secs=${VOXCMD_AUTOSTOP_MIN_SPEECH_SECS:-default} silence_secs=${VOXCMD_AUTOSTOP_SILENCE_SECS:-default}"
+  [ -z "${VOXCMD_AUTOSTOP_MAX_SECS-}" ] || log "max_secs=$VOXCMD_AUTOSTOP_MAX_SECS"
   if [ "$(cat "$SANDBOX_DIR/voxtype-turn")" = SILENCE ]; then
     wait_for_watcher_to_see_recording 0.5
     exit 3
