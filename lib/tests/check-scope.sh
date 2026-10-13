@@ -1,7 +1,9 @@
 #!/bin/bash
-# Tests which steps `lib/check.sh --changed` picks for a change, through CHECK_PLAN_ONLY=1 so no linter runs.
+# Tests which steps `lib/check.sh --changed` picks for a change, through `check.sh --plan`, so no linter runs.
 # Each case edits a scratch clone of this checkout (with the working tree's lib/check*.sh on top) and reads the plan.
 set -u
+# A hook or an outer check can leave these pointing at another repository.
+unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE
 
 repo_dir=$(CDPATH='' cd -- "$(dirname -- "$0")/../.." && pwd)
 scratch=$(mktemp -d) || exit 1
@@ -16,6 +18,19 @@ mkdir -p lib/tests
 cp "$repo_dir"/lib/tests/check-scope.sh lib/tests/
 git add -A
 git commit -q --allow-empty -m 'scratch base' || exit 1
+
+# Paths are looked up in the clone so renaming a file does not leave a case pointing at nothing; a case
+# whose file is missing fails and names what it looked for.
+first_tracked() {
+  local found
+  found=$(git ls-files -- "$1" | grep -v -e "${2:-^$}" | head -n 1)
+  [ -n "$found" ] || {
+    printf 'FAIL %s: no tracked file matching %s\n' "$case_name" "$1" >&2
+    failures=$((failures + 1))
+    return 1
+  }
+  printf '%s\n' "$found"
+}
 
 failures=0
 case_name=''
@@ -33,7 +48,8 @@ start_case() {
 # Runs the plan for the scratch change made so far.
 plan() {
   local output
-  output=$(CHECK_PLAN_ONLY=1 sh lib/check.sh --changed HEAD 2>&1)
+  # CHECK_FULL is cleared because an outer `CHECK_FULL=1 just check` would otherwise make every plan full.
+  output=$(env -u CHECK_FULL "$@" sh lib/check.sh --plan --changed HEAD 2>&1)
   plan_line=$(printf '%s\n' "$output" | grep '^check:')
   plan_lists=$(printf '%s\n' "$output" | grep '^shellcheck ')
   ran=${plan_line#*; ran:}
@@ -96,7 +112,9 @@ case_readme() {
 
 case_home_qml() {
   start_case 'QML under home/quickshell'
-  echo '// x' >>home/quickshell/.config/quickshell/shell.qml
+  local qml
+  qml=$(first_tracked 'home/quickshell/*.qml') || return 0
+  echo '// x' >>"$qml"
   plan
   expect_ran qmllint notification-markup
   expect_skipped voxcmd-phrases voxcmd-click voxcmd-calendar luacheck stylua shellcheck check-scope
@@ -104,28 +122,40 @@ case_home_qml() {
 
 case_greeter_lua() {
   start_case 'Lua under system/etc/greetd/quickshell'
-  echo '-- x' >>system/etc/greetd/quickshell/safe-hyprland.lua
+  local lua
+  lua=$(first_tracked 'system/etc/greetd/quickshell/*.lua') || return 0
+  echo '-- x' >>"$lua"
   plan
   expect_ran luacheck stylua qmllint
   expect_skipped voxcmd-click shellcheck
 }
 
 case_voxcmd_runner() {
-  start_case 'voxcmd tests/run.sh only'
-  echo '# x' >>home/voxcmd/tests/run.sh
+  start_case 'voxcmd test runner only'
+  local runner lib
+  lib=$(first_tracked 'home/voxcmd/tests/lib.sh') || return 0
+  runner=$(first_tracked 'home/voxcmd/tests/*.sh' '/lib\.sh$') || return 0
+  echo '# x' >>"$runner"
   plan
   expect_ran voxcmd-phrases voxcmd-click voxcmd-calendar shellcheck shfmt
   expect_skipped luacheck qmllint
-  expect_list_has plain home/voxcmd/tests/run.sh
-  expect_list_has plain home/voxcmd/tests/lib.sh
+  expect_list_has plain "$runner"
+  expect_list_has plain "$lib"
 }
 
 case_deleted_sourced_helper() {
   start_case 'deleted helper another script sources'
-  git rm -q home/quickshell/.config/quickshell/scripts/lib/audio-loop.sh
+  local helper sourcing
+  helper=$(first_tracked 'home/quickshell/*/scripts/lib/*.sh') || return 0
+  sourcing=$(git grep -l -F "${helper##*/}" -- 'home/quickshell/*/scripts/*' ":!$helper" | head -n 1)
+  [ -n "$sourcing" ] || {
+    fail "a tracked script under home/quickshell scripts that sources ${helper##*/}"
+    return 0
+  }
+  git rm -q "$helper"
   plan
   expect_ran shellcheck
-  expect_list_has sourcing home/quickshell/.config/quickshell/scripts/ff7-audio
+  expect_list_has sourcing "$sourcing"
 }
 
 case_unmapped_path() {
@@ -146,15 +176,18 @@ case_check_sh() {
 case_full_override() {
   start_case 'CHECK_FULL=1 with --changed'
   echo >>README.md
-  CHECK_FULL=1 plan
+  plan CHECK_FULL=1
   expect_everything
 }
 
-case_check_scope_in_scope() {
-  start_case 'check-scope runs for a check script or its own test'
+case_check_scope_for_check_script() {
+  start_case 'check-scope runs for a lib/check-*.sh change'
   echo '# x' >>lib/check-qml.sh
   plan
   expect_ran check-scope
+}
+
+case_check_scope_for_own_test() {
   start_case 'check-scope runs for its own test'
   echo '# x' >>lib/tests/check-scope.sh
   plan
@@ -163,7 +196,7 @@ case_check_scope_in_scope() {
 }
 
 for case_fn in case_readme case_home_qml case_greeter_lua case_voxcmd_runner case_deleted_sourced_helper \
-  case_unmapped_path case_check_sh case_full_override case_check_scope_in_scope; do
+  case_unmapped_path case_check_sh case_full_override case_check_scope_for_check_script case_check_scope_for_own_test; do
   report "$case_fn"
 done
 
