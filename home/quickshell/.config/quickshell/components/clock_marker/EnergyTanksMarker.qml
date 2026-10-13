@@ -2,7 +2,7 @@
 import QtQuick
 import "../../theme"
 
-// metroid: energy tanks that empty as the meeting nears, beside a two-digit ENERGY readout; in a meeting the tanks are empty, the readout reads 00 and flashes like low energy.
+// metroid: energy tanks that empty as the meeting nears, beside a two-digit ENERGY readout; in a meeting the tanks are empty and the readout reads MTG in the warning colour.
 MarkerBase {
     id: root
 
@@ -10,18 +10,23 @@ MarkerBase {
     readonly property int full_tanks: root.in_meeting ? 0 : Math.ceil((1 - root.progress) * root.tank_count - 0.001)
     readonly property color tank_color: root.on_accent ? root.ink : Theme.theme_secondary
     readonly property color alarm_color: root.on_accent ? root.ink : Theme.warning
-
-    // 0 to 1; how strongly the low-energy alarm is lit.
-    property real alarm: 0
+    // Low-energy tint, held for the whole meeting.
+    readonly property real warn_mix: root.in_meeting ? 1 : 0
 
     implicitWidth: layout.implicitWidth
     implicitHeight: layout.implicitHeight
 
-    // Sized from two digits, so the minutes ticking down do not resize the clock.
+    // Sized from the wider of two digits and MTG, so the minutes ticking down and a meeting starting never resize the clock.
     TextMetrics {
-        id: number_width
+        id: digits_width
         font: root.text_font
         text: "00"
+    }
+
+    TextMetrics {
+        id: mtg_width
+        font: root.text_font
+        text: "MTG"
     }
 
     Row {
@@ -44,28 +49,20 @@ MarkerBase {
                     radius: 1
                     color: full ? root.tank_color : "transparent"
                     border.width: 1
-                    border.color: full ? root.tank_color : Qt.tint(Qt.alpha(root.tank_color, 0.55), Qt.alpha(root.alarm_color, root.alarm))
+                    border.color: full ? root.tank_color : Qt.tint(Qt.alpha(root.tank_color, 0.55), Qt.alpha(root.alarm_color, root.warn_mix))
                 }
             }
         }
 
         Text {
             anchors.verticalCenter: parent.verticalCenter
-            width: Math.ceil(number_width.advanceWidth)
-            text: root.in_meeting ? "00" : String(Math.min(99, root.minutes)).padStart(2, "0")
+            width: Math.ceil(Math.max(digits_width.advanceWidth, mtg_width.advanceWidth))
+            text: root.in_meeting ? "MTG" : String(Math.min(99, root.minutes)).padStart(2, "0")
             textFormat: Text.PlainText
-            color: Qt.tint(root.on_accent ? root.ink : Style.bar_fg, Qt.alpha(root.alarm_color, root.alarm))
+            color: Qt.tint(root.on_accent ? root.ink : Style.bar_fg, Qt.alpha(root.alarm_color, root.warn_mix))
             font: root.text_font
             style: Style.bar_text_style
             styleColor: Style.bar_glow_color
         }
-    }
-
-    SequentialAnimation on alarm {
-        running: root.in_meeting && root.visible
-        loops: Animation.Infinite
-        NumberAnimation { to: 1; duration: 500; easing.type: Easing.InOutSine }
-        NumberAnimation { to: 0; duration: 500; easing.type: Easing.InOutSine }
-        onRunningChanged: if (!running) root.alarm = 0
     }
 }

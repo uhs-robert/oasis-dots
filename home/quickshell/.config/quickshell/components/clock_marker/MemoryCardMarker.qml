@@ -7,15 +7,13 @@ import "../"
 MarkerBase {
     id: root
 
-    // 0..1 breathing of the lit slot.
-    property real glow: 1
     readonly property real pad: 6
     readonly property color accent: root.on_accent ? root.ink : Theme.theme_primary_light
 
-    implicitWidth: Math.ceil(Math.max(upcoming_width.advanceWidth, live_width.advanceWidth)) + root.pad * 2
+    implicitWidth: Math.ceil(Math.max(upcoming_width.advanceWidth, mtg_width.advanceWidth)) + root.pad * 2
     implicitHeight: label.implicitHeight + 4
 
-    // Sized from the widest countdown, so the minutes ticking down do not resize the clock.
+    // Sized from the widest of both states, so the minutes ticking down do not resize the clock.
     TextMetrics {
         id: upcoming_width
         font: root.text_font
@@ -23,7 +21,7 @@ MarkerBase {
     }
 
     TextMetrics {
-        id: live_width
+        id: mtg_width
         font: root.text_font
         text: "MTG"
     }
@@ -32,7 +30,7 @@ MarkerBase {
         id: slot
         anchors.fill: parent
         radius: 3
-        color: root.in_meeting ? Qt.alpha(root.accent, 0.3 + 0.2 * root.glow) : Style.frame_color
+        color: root.in_meeting ? Qt.alpha(root.accent, 0.5) : Style.frame_color
         border.width: 2
         border.color: root.in_meeting ? root.accent : Style.frame_border_color
     }
@@ -61,13 +59,5 @@ MarkerBase {
         font: root.text_font
         style: Style.bar_text_style
         styleColor: Style.bar_glow_color
-    }
-
-    SequentialAnimation on glow {
-        running: root.in_meeting && root.visible
-        loops: Animation.Infinite
-        NumberAnimation { to: 0; duration: 500; easing.type: Easing.InOutSine }
-        NumberAnimation { to: 1; duration: 500; easing.type: Easing.InOutSine }
-        onRunningChanged: if (!running) root.glow = 1
     }
 }
