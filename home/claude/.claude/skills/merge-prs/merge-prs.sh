@@ -357,8 +357,9 @@ not_merged() {
   die "$msg"
 }
 
-# An interrupted earlier run already merged it; finish what that run's tail would have done. Everything here needs the
-# PR's head commit locally: without it the branch cannot be shown to hold nothing the PR lacks, so it is kept.
+# An interrupted earlier run already merged it; finish its local cleanup. Everything here needs the PR's head commit
+# locally: without it the branch cannot be shown to hold nothing the PR lacks, so it is kept. Nothing is pushed:
+# the interrupted run may have retargeted the children already, so the stack is only reported, for the owner to rebase.
 merge_pr_already_merged() {
   local pr=$1 head=$2 head_oid=$3 base=$4 cross=$5 line number child_head child_oid child_cross
   echo "#$pr already merged"
@@ -372,25 +373,27 @@ merge_pr_already_merged() {
     return 0
   fi
   known_heads+=("$head_oid")
-  # Children still based on the head are the ones the interrupted run never retargeted and rebased.
-  local -a lines=()
-  local children_info
-  children_info=$(list_children "$head") || exit 1
-  [[ -z $children_info ]] || mapfile -t lines <<<"$children_info"
-  for line in "${lines[@]}"; do
-    IFS=$'\t' read -r number _ <<<"$line"
-    gh pr edit "$number" --base "$base" >/dev/null || die "cannot retarget $number to $base"
-    echo "$number retargeted to $base"
-  done
   $keep_branch || clean_local "$pr" "$head" "$head_oid"
-  for line in "${lines[@]}"; do
-    IFS=$'\t' read -r number child_head child_oid child_cross <<<"$line"
+  # Open children: still based on the head, or retargeted to the base but still carrying the merged head's commits.
+  while IFS=$'\t' read -r number child_head child_oid child_cross; do
+    [[ -n $number ]] || continue
+    echo "warning: #$number ($child_head) is stacked on the merged #$pr and was not rebased; rebase it by hand:"
     if [[ $child_cross == true ]]; then
-      echo "child #$number is from a fork; rebase it onto $base by hand"
+      echo "  it is from a fork; ask its author to rebase it onto $base"
     else
-      rebase_child "$number" "$child_head" "$child_oid" "origin/$base" "$base" "$head_oid"
+      echo "  git fetch origin && git rebase --onto origin/$base $head_oid $child_oid"
+      echo "  git push --force-with-lease=$child_head:$child_oid origin HEAD:$child_head"
+      echo "  gh pr edit $number --base $base"
     fi
-  done
+  done < <(
+    list_children "$head"
+    # A head already in the base (merge commit) leaves nothing to rebase, and every later PR would match.
+    ! git merge-base --is-ancestor "$head_oid" "origin/$base" || exit 0
+    list_children "$base" | while IFS=$'\t' read -r number child_head child_oid child_cross; do
+      git merge-base --is-ancestor "$head_oid" "$child_oid" 2>/dev/null &&
+        printf '%s\t%s\t%s\t%s\n' "$number" "$child_head" "$child_oid" "$child_cross"
+    done
+  )
 }
 
 merge_pr() {
