@@ -190,6 +190,8 @@ Singleton {
             root.configured = false;
             root.events = [];
             root.day_index = {};
+            root.window_start_ms = 0;
+            root.window_end_ms = 0;
         }
     }
 
