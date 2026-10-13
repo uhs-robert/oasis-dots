@@ -1223,7 +1223,7 @@ click_mode_exits() (
 )
 for phrase in "stop clicking" "exit click mode" "done clicking" "im done clicking" "done with click mode" "okay exit click mode" \
   "quit click mode" "stop click mode" "exit clicking mode" "leave the click mode" "end clicking" "close click mode" "turn off click mode" \
-  "click mode off" "exit click mode please" "alright please finish clicking now"; do
+  "click mode off" "exit click mode please" "alright please finish clicking now" "now exit click mode" "stop clicking okay"; do
   check "'$phrase' ends click mode" "click_mode_exits '$phrase'"
 done
 for phrase in stop exit quit close cancel "exit settings" "stop recording" "turn off" "click mode"; do
