@@ -59,6 +59,7 @@ The target may be an issue or PR URL/number, repository URL/name, or omitted.
 7. Get an external review of the actual issue and diff for bugs, regressions, missed requirements, unnecessary complexity, and weak tests. Codex first; an Opus subagent when Codex is unavailable.
    - From the worktree, run `~/.claude/skills/orchestrator/codex-review.sh <base> <scratch dir outside the worktree>` as one background Bash call. It handles stall detection, timeouts, and retries, and gives up at once on a usage limit.
    - Commit first: it exits 3 on uncommitted changes, since Codex reviews commits only.
+   - At the same first commit, push the branch and open a draft PR (written with the `pr-descriptions` skill), so a GitHub-side review bot reviews alongside the local pass instead of after the PR opens; fixes push to the same PR.
    - Request it the moment the work is handed to the owner for hands-on testing, so the two overlap; with no hands-on testing, as soon as the branch is committed.
    - While waiting on the owner or a review, start read-only research for the next planned piece of work.
    - Exit 0 → read the review path it prints.
@@ -82,7 +83,7 @@ The target may be an issue or PR URL/number, repository URL/name, or omitted.
     - all work is in the worktree
     - branch/commit state is appropriate
 
-11. Create a PR against the appropriate base branch, or push to the existing PR's branch when working on one.
+11. Mark the draft PR from step 7 ready (`gh pr ready`) and update its description to the final change, or push to the existing PR's branch when working on one.
     Reference and close the issue, if one exists.
 
 12. Report:
