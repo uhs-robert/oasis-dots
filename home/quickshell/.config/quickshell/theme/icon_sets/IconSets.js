@@ -4,6 +4,7 @@
 .import "SnesSprites.js" as Snes
 .import "Ps1Sprites.js" as Ps1
 .import "OasisVectors.js" as Oasis
+.import "GoldeneyeVectors.js" as Goldeneye
 
 // Icon sets a bar style can draw in place of the Nerd Font glyphs: set name -> icon name -> variant -> sprite rows or vector.
 var sets = {
@@ -11,7 +12,8 @@ var sets = {
     "nes": Nes.sprites,
     "snes": Snes.sprites,
     "ps1": Ps1.sprites,
-    "oasis": Oasis.vectors
+    "oasis": Oasis.vectors,
+    "goldeneye": Goldeneye.vectors
 };
 
 var names = Object.keys(sets);
