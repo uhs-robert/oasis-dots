@@ -1,0 +1,2 @@
+# Commits the settings without the update-check state nless rewrites on every run (filter in home/git/.config/git/config).
+home/nless/.config/nless/config.json filter=nless-update-state
