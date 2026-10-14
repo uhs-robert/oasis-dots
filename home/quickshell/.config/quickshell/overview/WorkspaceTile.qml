@@ -22,6 +22,9 @@ Item {
     property var marks: ({})
     property string swap_address: ""
     property bool drop_target: false
+    // Voice numbers: address -> number, drawn on every window while show_numbers is on.
+    property var numbers: ({})
+    property bool show_numbers: false
     // Addresses kept bright by the filter; null while nothing is typed.
     property var matches: null
     // Windows capture continuously; otherwise each shows one frame taken as it appears.
@@ -97,6 +100,7 @@ Item {
                 readonly property bool is_selected: root.selected && win.modelData.address === root.selected_address
                 readonly property bool is_picked: !!root.picked[win.modelData.address]
                 readonly property int mark: root.marks[win.modelData.address] || 0
+                readonly property int voice_n: root.numbers[win.modelData.address] || 0
                 readonly property bool is_swap: win.modelData.address === root.swap_address
                 readonly property bool dimmed: root.matches !== null && !root.matches[win.modelData.address]
 
@@ -151,6 +155,29 @@ Item {
                         anchors.centerIn: parent
                         text: "SWAP"
                         color: Theme.bg_crust
+                        font.family: Style.font_family
+                        font.pixelSize: root.label_px
+                        font.bold: true
+                    }
+                }
+
+                Rectangle {
+                    visible: root.show_numbers && win.voice_n > 0 && win.height >= 12
+                    anchors.left: parent.left
+                    anchors.top: parent.top
+                    anchors.margins: 3
+                    width: Math.max(height, number_text.implicitWidth + 8)
+                    height: number_text.implicitHeight + 2
+                    radius: Style.radius(3)
+                    color: Theme.bg_crust
+                    border.width: 1
+                    border.color: Style.text_accent
+
+                    Text {
+                        id: number_text
+                        anchors.centerIn: parent
+                        text: String(win.voice_n)
+                        color: Style.text_accent
                         font.family: Style.font_family
                         font.pixelSize: root.label_px
                         font.bold: true
