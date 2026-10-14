@@ -25,14 +25,20 @@ cd "$root" || exit 0
 unquoted=$(sed -E "s/\"[^\"]*\"//g; s/'[^']*'//g" <<<"$after_commit")
 all_re='(^|[[:space:]])(--all|-[a-zA-Z]*a[a-zA-Z]*)([[:space:]]|$)'
 add_re='git[[:space:]]+([^;&|]*[[:space:]])?add([[:space:]]|$)'
-if [[ $unquoted =~ $all_re ]]; then
+# A commit that names paths (`--only`, `--include`, `-- <path>`) can take working-tree files the index does not have yet,
+# so it is linted like -a; bare paths without `--` are not detected.
+pathspec_re='(^|[[:space:]])(--only|--include|-[oi]|--)([[:space:]]|$)'
+diff_check_target=--cached
+if [[ $unquoted =~ $all_re || $unquoted =~ $pathspec_re ]]; then
   paths=$(git diff --name-only --no-renames HEAD 2>/dev/null)
+  diff_check_target=HEAD
 elif [[ $cmd =~ $add_re ]]; then
   # `git add ... && git commit` has staged nothing yet, so the staged list would be empty: take everything that could go in.
   paths=$(
     git diff --name-only --no-renames HEAD 2>/dev/null
     git ls-files -o --exclude-standard
   )
+  diff_check_target=HEAD
 else
   paths=$(git diff --cached --name-only --no-renames)
 fi
@@ -42,6 +48,14 @@ deny() {
   jq -n --arg r "$1" '{hookSpecificOutput: {hookEventName: "PreToolUse", permissionDecision: "deny", permissionDecisionReason: $r}}'
   exit 0
 }
+
+# The linters read the working tree, so a staged file with further unstaged edits would be linted as something other
+# than what is committed.
+if [[ $diff_check_target == --cached ]]; then
+  partly_staged=$(comm -12 <(git diff --cached --name-only | sort) <(git diff --name-only | sort))
+  [[ -z $partly_staged ]] || deny "These files have staged and unstaged changes, so the lint cannot check what the commit takes. Stage or stash the rest, then commit:
+$partly_staged"
+fi
 
 # Well under the hook's 150s limit. A check that cannot finish lets the commit through; the PR hook still checks.
 check_limit=120
@@ -59,7 +73,13 @@ if ((status != 0)); then
   deny "The lint of the files in this commit fails, so it was not made. Fix what it reports, stage the fixes and commit again. Output:
 $summary"
 fi
-if [[ $unquoted =~ $all_re ]]; then diff_check=$(git diff --check HEAD 2>&1); else diff_check=$(git diff --cached --check 2>&1); fi
+diff_check=$(git diff --check "$diff_check_target" 2>&1)
+# `git add ... && git commit` may also take new files, which no diff against HEAD shows yet.
+if [[ $cmd =~ $add_re ]]; then
+  while IFS= read -r new_file; do
+    diff_check+=$(git diff --no-index --check /dev/null "$new_file" 2>&1)
+  done < <(git ls-files -o --exclude-standard)
+fi
 [[ -z $diff_check ]] || deny "git diff --check fails on this commit's changes, so it was not made. Output:
 $diff_check"
 exit 0
