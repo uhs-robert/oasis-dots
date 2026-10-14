@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # PreToolUse(Bash): a `git commit` runs only once `lib/check.sh` passes on exactly the files that commit takes, so lint
-# fails at the commit, not at the PR. The voxcmd suites are left to the PR and the merge, and the machine-wide check
-# lock is not taken: this check is cheap and must never wait behind a long one.
+# fails at the commit, not at the PR. The voxcmd suites are left to the PR and the merge, and CHECK_NO_LOCK keeps any
+# heavy step from waiting for a slot: this check is cheap and must never wait behind a long one.
 set -u
 input=$(cat)
 cmd=$(jq -r '.tool_input.command // empty' <<<"$input")
