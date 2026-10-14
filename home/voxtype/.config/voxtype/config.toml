@@ -288,6 +288,7 @@ tridectal = "Tridactyl"
 "witch key" = "Which Key"
 Cowindly = "Calendly"
 Yahtzee = "Yazi"
+dunn = "done"
 
 [meeting]
 enabled = false
