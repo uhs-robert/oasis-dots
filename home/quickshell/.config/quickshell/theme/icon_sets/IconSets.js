@@ -5,6 +5,7 @@
 .import "Ps1Sprites.js" as Ps1
 .import "OasisVectors.js" as Oasis
 .import "GoldeneyeVectors.js" as Goldeneye
+.import "GoldeneyeGadgetVectors.js" as GoldeneyeGadgets
 .import "MetroidVectors.js" as Metroid
 
 // Icon sets a bar style can draw in place of the Nerd Font glyphs: set name -> icon name -> variant -> sprite rows or vector.
@@ -15,6 +16,7 @@ var sets = {
     "ps1": Ps1.sprites,
     "oasis": Oasis.vectors,
     "goldeneye": Goldeneye.vectors,
+    "goldeneye_gadgets": GoldeneyeGadgets.vectors,
     "metroid": Metroid.vectors
 };
 

@@ -46,7 +46,7 @@ function overrides(t, ctx) {
         chip_brackets: false,
         marker_fill: false,
         bar_font_family: "Michroma",
-        bar_icon_set: "goldeneye",
+        bar_icon_set: "goldeneye_gadgets",
         bar_meeting_marker: "lcd_subdial",
         bar_font_size: t.font_size - 1,
         bar_caps: true,
