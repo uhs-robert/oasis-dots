@@ -119,9 +119,11 @@ ran() { grep '^ran ' "$log" | sed 's/^ran //' | paste -sd,; }
 # toasts <pattern>: how many notifications hold it, a multi-line body counting once for its first line.
 toasts() { grep -c "^notify-send .*$1" "$log"; }
 # "no match" toasts go through setsid, which the sandbox only logs. voxcmd starts it in the background, so the line can
-# land after voxcmd has exited: a toast that should be there is waited for, one that should not is only looked for.
+# land after voxcmd has exited: a toast that should be there is waited for, and one that should not is looked for only
+# once nothing the run started is left to log it.
 detached_toast_has() { wait_for_line "^setsid .*$1" "$log"; }
-detached_toast_logged() { grep -q "^setsid .*$1" "$log"; }
+no_detached_toast() { wait_until run_finished && ! grep -q "^setsid .*$1" "$log"; }
+run_finished() { ! pgrep -f -- "$seq_bin( |\$)" >/dev/null && stub_calls_done; }
 polls_reach() { wait_for_count "$1" "$log" "$2"; }
 sequence_dir=$XDG_RUNTIME_DIR/voxcmd/sequences
 sequence_files() { ls "$sequence_dir"/*.json 2>/dev/null; }
@@ -186,7 +188,7 @@ polls_reach '^poll' 3
 seq_voxcmd stop
 wait "$seq_pid"
 check "Stop Voice during a wait ends the sequence without running the rest" "[[ \$(ran) == gate ]]"
-check "and without a toast" "[[ \$(toasts 'stopped at step') == 0 ]] && ! detached_toast_logged 'stopped at step'"
+check "and without a toast" "[[ \$(toasts 'stopped at step') == 0 ]] && no_detached_toast 'stopped at step'"
 check "leaving no state behind" "[[ -z \$(sequence_files) ]] && ! ls '$XDG_RUNTIME_DIR'/voxcmd/discard.* >/dev/null 2>&1"
 
 fresh
@@ -212,7 +214,7 @@ check "with one error toast holding its output, and not the step's own" "[[ \$(t
 fresh
 seq_voxcmd "one and then bogus words and then two"
 check "a step that matches nothing stops the rest" "[[ \$(ran) == one ]]"
-check "with one toast quoting its words, carrying the Voice Help button, and no no-match toast of its own" "detached_toast_has 'stopped at step 2 of 3' && detached_toast_has 'no match for \"bogus words\"' && ! detached_toast_logged 'voxcmd: no match'"
+check "with one toast quoting its words, carrying the Voice Help button, and no no-match toast of its own" "detached_toast_has 'stopped at step 2 of 3' && detached_toast_has 'no match for \"bogus words\"' && no_detached_toast 'voxcmd: no match'"
 fresh
 echo CANCEL >"$root/pick-answer"
 seq_voxcmd "one and then pick side and then two"

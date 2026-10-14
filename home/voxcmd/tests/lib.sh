@@ -61,6 +61,9 @@ logged_processes_gone() {
     process_gone "$pid" || return 1
   done < <(sed -n "s/$1/\\1/p" "$debug_log")
 }
+# Stubs run as "/bin/sh $SANDBOX_DIR/bin/<name>", so once none is running no stub call is still to be logged: what a
+# check that a call was never made waits for.
+stub_calls_done() { ! pgrep -f -- "^/bin/sh $SANDBOX_DIR/bin/" >/dev/null; }
 watchers_gone() { logged_processes_gone '.* listen: recording started, watcher \([0-9]*\) .*'; }
 ended_hooks_gone() { logged_processes_gone '.* session: ended hook \([0-9]*\) runs$'; }
 
