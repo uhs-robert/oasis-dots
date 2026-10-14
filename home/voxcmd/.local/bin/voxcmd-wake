@@ -53,6 +53,11 @@ DEFAULT_COOLDOWN_SECS = 3.0
 DEFAULT_PAUSE_FOR_MEDIA = False
 DEFAULT_PAUSE_FOR_MIC = True
 
+# Every recording voxcmd makes of its own (this listener's, voxcmd-autostop's) carries this stream property, so the mic
+# check can tell it from another app's. The value names the recorder.
+VOICE_STREAM_TAG = "voxcmd.tag"
+WAKE_STREAM_TAG_VALUE = "wake"
+
 # After a trigger, how long voxtype gets to report that it is recording before the "ready" cue is given up, and how
 # often its state is looked at meanwhile.
 READY_WAIT_SECS = 5.0
@@ -184,10 +189,16 @@ class TriggerDecider:
         return True
 
 
+PAUSE = "pause"
+LISTEN = "listen"
+
+
 class PauseGate:
-    """Whether the microphone should be left alone: voxtype is recording, a voice session is open, or, when asked to,
-    media plays or another app records from a microphone. Media and microphone are looked at once a second; a check
-    that is switched off is never run."""
+    """Whether the microphone should be left alone, decided by an ordered list of checks. A check returns PAUSE, LISTEN
+    or None (no opinion); the first that has one decides, and with none the listener listens. Today's checks are
+    voxtype recording, a voice session open, then, when asked to, media playing and another app recording. A rule
+    that must win over the rest goes earlier in `checks`; `reason` names the check that last paused. Media and
+    microphone are looked at once a second, and a check that is switched off is not in the list, so never runs."""
 
     def __init__(
         self,
@@ -201,14 +212,30 @@ class PauseGate:
     ):
         self.clock = clock
         self.voxtype_state_file = voxtype_state_file
-        self.run_playerctl = run_playerctl
         self.session_file = session_file
         self.proc_dir = proc_dir
-        self.pause_for_media = pause_for_media
-        self.other_app_recording = other_app_recording
-        self.media_playing = False
-        self.mic_in_use = False
-        self.next_slow_check = 0.0
+        self.reason = None
+        self.checks = [
+            ("voxtype_recording", lambda: PAUSE if self.voxtype_recording() else None),
+            ("session_open", lambda: PAUSE if self.session_open() else None),
+        ]
+        if pause_for_media:
+            self.checks.append(("media_playing", self.once_a_second(lambda: PAUSE if run_playerctl() else None)))
+        if other_app_recording is not None:
+            self.checks.append(("mic_in_use", self.once_a_second(lambda: PAUSE if other_app_recording() else None)))
+
+    def once_a_second(self, check):
+        """The check's last verdict, asked again only when MEDIA_CHECK_SECS have passed."""
+        state = {"verdict": None, "next_at": 0.0}
+
+        def cached():
+            now = self.clock()
+            if now >= state["next_at"]:
+                state["verdict"] = check()
+                state["next_at"] = now + MEDIA_CHECK_SECS
+            return state["verdict"]
+
+        return cached
 
     def voxtype_recording(self):
         try:
@@ -239,14 +266,13 @@ class PauseGate:
         return bool(owner_start) and self.process_start_time(owner) == owner_start
 
     def paused(self):
-        if self.voxtype_recording() or self.session_open():
-            return True
-        now = self.clock()
-        if now >= self.next_slow_check:
-            self.media_playing = self.pause_for_media and self.run_playerctl()
-            self.mic_in_use = self.other_app_recording is not None and self.other_app_recording()
-            self.next_slow_check = now + MEDIA_CHECK_SECS
-        return self.media_playing or self.mic_in_use
+        for name, check in self.checks:
+            verdict = check()
+            if verdict is not None:
+                self.reason = name if verdict == PAUSE else None
+                return verdict == PAUSE
+        self.reason = None
+        return False
 
 
 def pactl_json(*args):
@@ -267,17 +293,13 @@ def pactl_json(*args):
 
 class MicActivity:
     """Whether some other app holds a capture stream on a real microphone (a call, a recorder), through PipeWire's Pulse
-    interface. A stream does not count when it is this listener's own pw-record, voxtype's recording, a monitor of an
-    output, or corked (paused, so nothing is captured). A call muted in its app keeps its stream and counts. Anything
-    that cannot be read means not active, silently.
-
-    The listener's stream is told by pid, not by name, so another program that uses pw-record still counts: pw-record is
-    a PipeWire client of its own, whose client properties carry application.process.id. pactl serves streams of
-    pipewire-pulse clients under that daemon's pid, so those never match the listener's."""
+    interface. A stream does not count when it carries voxcmd's own tag (VOICE_STREAM_TAG, set on the listener's and
+    voxcmd-autostop's pw-record, so another program using pw-record still counts), is voxtype's recording, is on a
+    monitor of an output, or is corked (paused, so nothing is captured). A call muted in its app keeps its stream and
+    counts. Anything that cannot be read means not active, silently."""
 
     def __init__(self, run_pactl=pactl_json):
         self.run_pactl = run_pactl
-        self.own_pid = None
 
     def other_app_recording(self):
         try:
@@ -293,7 +315,7 @@ class MicActivity:
         monitors = {source["index"] for source in self.run_pactl("list", "sources") or [] if self.is_monitor(source)}
         for stream in streams:
             properties = {**clients.get(str(stream.get("client")), {}), **(stream.get("properties") or {})}
-            if stream.get("source") in monitors or self.is_voxtype(properties) or self.is_own(properties):
+            if stream.get("source") in monitors or self.is_voxtype(properties) or VOICE_STREAM_TAG in properties:
                 continue
             return True
         return False
@@ -306,9 +328,6 @@ class MicActivity:
     def is_voxtype(properties):
         names = (properties.get("application.process.binary"), properties.get("application.name"))
         return any("voxtype" in (name or "").lower() for name in names)
-
-    def is_own(self, properties):
-        return self.own_pid is not None and properties.get("application.process.id") == str(self.own_pid)
 
 
 def playerctl_playing():
@@ -431,7 +450,19 @@ class PwRecordSource:
     def __init__(self):
         self.pending = b""
         self.process = subprocess.Popen(
-            ["pw-record", "--rate", str(SAMPLE_RATE), "--channels", "1", "--format", "s16", "--raw", "-"],
+            [
+                "pw-record",
+                "-P",
+                f'{{ {VOICE_STREAM_TAG} = "{WAKE_STREAM_TAG_VALUE}" }}',
+                "--rate",
+                str(SAMPLE_RATE),
+                "--channels",
+                "1",
+                "--format",
+                "s16",
+                "--raw",
+                "-",
+            ],
             stdin=subprocess.DEVNULL,
             stdout=subprocess.PIPE,
             stderr=subprocess.DEVNULL,
@@ -662,17 +693,11 @@ def main(argv):
         return EXIT_MISSING_SETUP
     state_file = StateFile()
     mic_activity = MicActivity()
-
-    def open_source():
-        source = PwRecordSource()
-        mic_activity.own_pid = source.process.pid
-        return source
-
     log = make_logger()
     listener = Listener(
         settings,
         load_scorer(settings),
-        open_source,
+        PwRecordSource,
         PauseGate(
             time.monotonic,
             os.path.join(os.environ.get("XDG_RUNTIME_DIR") or "/tmp", "voxtype", "state"),

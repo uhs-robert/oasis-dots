@@ -433,14 +433,16 @@ class MicActivityTest(unittest.TestCase):
         client(14, "pw-cat", pid=777),
     ]
 
-    def check(self, outputs, own_pid=4242, sources=None, clients=None):
+    def check(self, outputs, sources=None, clients=None):
         answers = {"source-outputs": outputs, "clients": self.CLIENTS if clients is None else clients, "sources": self.SOURCES if sources is None else sources}
         mic = wake.MicActivity(lambda *args: answers[args[1]])
-        mic.own_pid = own_pid
         return mic.other_app_recording()
 
-    def test_only_the_listeners_own_stream_is_not_active(self):
-        self.assertFalse(self.check([source_output(1, 10, self.MIC, {"application.name": "pw-record"})]))
+    def test_the_listeners_own_tagged_stream_is_not_active(self):
+        self.assertFalse(self.check([source_output(1, 10, self.MIC, {"application.name": "pw-record", "voxcmd.tag": "wake"})]))
+
+    def test_autostops_tagged_stream_is_not_active(self):
+        self.assertFalse(self.check([source_output(1, 10, self.MIC, {"application.name": "pw-record", "voxcmd.tag": "autostop"})]))
 
     def test_no_streams_is_not_active(self):
         self.assertFalse(self.check([]))
@@ -449,11 +451,13 @@ class MicActivityTest(unittest.TestCase):
         self.assertTrue(self.check([source_output(1, 11, self.MIC)]))
         self.assertTrue(self.check([source_output(1, 12, self.MIC)]))
 
-    def test_another_pw_record_user_counts_though_the_listener_does_not(self):
-        outputs = [source_output(1, 10, self.MIC), source_output(2, 14, self.MIC)]
-        self.assertTrue(self.check(outputs))
-        self.assertFalse(self.check(outputs[:1]))
-        self.assertTrue(self.check(outputs[:1], own_pid=None))
+    def test_an_untagged_pw_record_user_counts(self):
+        self.assertTrue(self.check([source_output(1, 14, self.MIC, {"application.name": "pw-record"})]))
+
+    def test_the_tag_is_on_the_command_lines_of_both_recorders(self):
+        with open(wake.__file__) as wake_source, open(os.path.join(os.path.dirname(wake.__file__), "voxcmd-autostop")) as autostop_source:
+            self.assertIn("VOICE_STREAM_TAG", wake_source.read())
+            self.assertIn('voxcmd.tag = "autostop"', autostop_source.read())
 
     def test_voxtypes_recording_is_excluded_by_client_or_by_stream(self):
         self.assertFalse(self.check([source_output(1, 13, self.MIC)]))
@@ -467,7 +471,7 @@ class MicActivityTest(unittest.TestCase):
         self.assertFalse(self.check([source_output(1, 11, self.MIC, corked=True)]))
 
     def test_one_counting_stream_among_excluded_ones_is_enough(self):
-        outputs = [source_output(1, 10, self.MIC), source_output(2, 13, self.MIC), source_output(3, 11, self.MIC)]
+        outputs = [source_output(1, 10, self.MIC, {"voxcmd.tag": "wake"}), source_output(2, 13, self.MIC), source_output(3, 11, self.MIC)]
         self.assertTrue(self.check(outputs))
 
     def test_a_missing_or_failing_pactl_is_not_active(self):
@@ -489,6 +493,50 @@ class MicActivityTest(unittest.TestCase):
                 self.assertEqual(wake.pactl_json("list", "source-outputs"), [])
             finally:
                 os.environ["PATH"] = old_path
+
+
+class PauseChecksTest(unittest.TestCase):
+    def gate(self, **kwargs):
+        return wake.PauseGate(Clock(), "/nonexistent", lambda: False, **kwargs)
+
+    def test_the_checks_run_in_the_documented_order(self):
+        gate = self.gate(other_app_recording=lambda: False)
+        self.assertEqual([name for name, _ in gate.checks], ["voxtype_recording", "session_open", "media_playing", "mic_in_use"])
+
+    def test_a_disabled_check_is_not_in_the_list(self):
+        gate = self.gate(pause_for_media=False)
+        self.assertEqual([name for name, _ in gate.checks], ["voxtype_recording", "session_open"])
+
+    def test_a_disabled_check_never_runs_its_probe(self):
+        asked = []
+        gate = wake.PauseGate(Clock(), "/nonexistent", lambda: asked.append("media") or True, pause_for_media=False)
+        self.assertFalse(gate.paused())
+        self.assertEqual(asked, [])
+
+    def test_the_reason_names_the_first_check_that_paused(self):
+        gate = wake.PauseGate(Clock(), "/nonexistent", lambda: True, other_app_recording=lambda: True)
+        self.assertTrue(gate.paused())
+        self.assertEqual(gate.reason, "media_playing")
+        gate.checks = [c for c in gate.checks if c[0] == "mic_in_use"]
+        self.assertTrue(gate.paused())
+        self.assertEqual(gate.reason, "mic_in_use")
+
+    def test_nothing_pausing_listens_with_no_reason(self):
+        gate = self.gate(other_app_recording=lambda: False)
+        self.assertFalse(gate.paused())
+        self.assertIsNone(gate.reason)
+
+    def test_a_check_ahead_of_the_rest_can_force_listening(self):
+        gate = wake.PauseGate(Clock(), "/nonexistent", lambda: True, other_app_recording=lambda: True)
+        gate.checks.insert(0, ("always_listen", lambda: wake.LISTEN))
+        self.assertFalse(gate.paused())
+        self.assertIsNone(gate.reason)
+
+    def test_a_check_after_a_pause_is_not_asked(self):
+        asked = []
+        gate = wake.PauseGate(Clock(), "/nonexistent", lambda: True, other_app_recording=lambda: asked.append(1) or True)
+        gate.paused()
+        self.assertEqual(asked, [])
 
 
 class PauseGateTest(unittest.TestCase):
@@ -617,7 +665,7 @@ class StubbedCommandsTest(unittest.TestCase):
     def test_reads_80ms_frames_from_pw_record_and_runs_listen_once(self):
         states = self.run_listener([0.9, 0.95, 0.97, 0.1, 0.0, 0.0], 6)
         calls = self.recorded()
-        self.assertIn("pw-record --rate 16000 --channels 1 --format s16 --raw -", calls)
+        self.assertIn('pw-record -P { voxcmd.tag = "wake" } --rate 16000 --channels 1 --format s16 --raw -', calls)
         self.assertEqual(calls.count("voxcmd listen --start-only"), 1)
         self.assertEqual(states[0], "armed")
 
