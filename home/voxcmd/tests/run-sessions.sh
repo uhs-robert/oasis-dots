@@ -223,10 +223,6 @@ check "and are not reported as not understood" "! grep -q 'Not understood' '$log
 # Whisper can echo the wake-word sentence voxtype-daemon puts in its prompt.
 sess_run "Voice commands start with Cortana." alpha "done"
 check "an echo of the transcriber's prompt is noise" "session_gone && [[ \$(grep '^tap ' '$log') == 'tap alpha' && \$(record_starts) == 3 ]] && ! grep -q 'no match' '$log'"
-sess_env=(VOXCMD_WAKE_WORD=computer)
-sess_run "Voice commands start with Computer." alpha "done"
-check "and it follows the configured wake word" "session_gone && [[ \$(grep '^tap ' '$log') == 'tap alpha' && \$(record_starts) == 3 ]] && ! grep -q 'no match' '$log'"
-sess_env=()
 sess_env=(VOXCMD_SESSION_MAX_TURNS=3)
 sess_run "Thank you." "The End" "Thank you." "Thank you." alpha
 check "the turn cap still ends a session that only hears noise" "session_gone && [[ \$(taps) == 0 && \$(record_starts) == 3 ]] && ended_because 'it reached 3 turns'"
@@ -674,9 +670,9 @@ sess_env=(VOXCMD_SESSION_MAX_TURNS=3)
 sess_run "tap alpha" "tap alpha" "tap alpha" "tap alpha"
 check "rapid mode is capped by turns like any session" "session_gone && [[ \$(taps) == 3 ]] && toast_has 'Rapid mode ended it reached 3 turns'"
 sess_env=()
-sess_env=(VOXCMD_WAKE_WORD=computer VOXCMD_WAKE_ALIASES="komputer|kompooter")
-sess_run "cortana done" "Komputer, done" "tap alpha"
-check "the wake word and its spellings are settings, and the old word is then no command" "session_gone && grep -q 'voxcmd: no match' '$log' && [[ \$(taps) == 0 && \$(record_starts) == 2 ]]"
+sess_env=(VOXCMD_WAKE_ALIASES="komputer|kompooter")
+sess_run "kortana done" "Komputer, done" "tap alpha"
+check "the wake word's spellings are a setting, and the built-in ones are then no command" "session_gone && grep -q 'voxcmd: no match' '$log' && [[ \$(taps) == 0 && \$(record_starts) == 2 ]]"
 sess_env=()
 sess_phrase="cortana rapid mode"
 sess_run "done"
