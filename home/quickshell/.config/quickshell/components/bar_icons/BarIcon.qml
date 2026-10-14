@@ -75,7 +75,7 @@ Item {
             strokeColor: "transparent"
             fillRule: root.vector && root.vector.fill_rule === "evenodd" ? ShapePath.OddEvenFill : ShapePath.WindingFill
             scale: Qt.size(root.unit, root.unit)
-            PathSvg { path: root.vector ? root.vector.body : "" }
+            PathSvg { path: root.vector && root.vector.body ? root.vector.body : "" }
         }
 
         ShapePath {
