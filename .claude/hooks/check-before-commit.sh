@@ -44,7 +44,7 @@ deny() {
 }
 
 # Well under the hook's 150s limit. A check that cannot finish lets the commit through; the PR hook still checks.
-check_limit=${T:-120}
+check_limit=120
 voxcmd_steps='voxcmd-phrases voxcmd-click voxcmd-calendar voxcmd-wake voxcmd-firefox'
 # git-diff-check compares the whole working tree to HEAD, which is more than this commit; the commit's own diff is checked below.
 out=$(printf '%s\n' "$paths" | CHECK_NO_LOCK=1 CHECK_JOBS=2 CHECK_SKIP_STEPS="$voxcmd_steps git-diff-check" timeout "$check_limit" lib/check.sh --paths-from - 2>&1)
