@@ -111,11 +111,18 @@ cat >"$transcribe_dir/voxtype" <<'STUB'
 if [ "$1 $2" = "config get" ]; then echo "stub base prompt."; exit 0; fi
 [ "$1" = -q ] || exit 64
 shift
-prompt=""
-if [ "$1" = --initial-prompt ]; then prompt="$2"; shift 2; fi
+model="" prompt=""
+while :; do
+  case "$1" in
+  --model) model="$2"; shift 2 ;;
+  --initial-prompt) prompt="$2"; shift 2 ;;
+  *) break ;;
+  esac
+done
 [ "$1" = transcribe ] || exit 64
 printf 'voxtype transcribe %s riff=%s\n' "$2" "$(head -c 4 "$2")" >>"$SANDBOX_DIR/calls.log"
 printf 'voxtype prompt: %s\n' "$prompt" >>"$SANDBOX_DIR/calls.log"
+printf 'voxtype model: %s\n' "$model" >>"$SANDBOX_DIR/calls.log"
 case "${FAKE_TRANSCRIBE:-}" in
 fail) echo "Error: no model" >&2; exit 1 ;;
 hang) exec sleep 30 ;;
@@ -142,6 +149,23 @@ reset_calls
 check "the wake word alone is the wake word" "0 wake" "$(confirm "Cortana.")"
 check "the stdin path reaches voxtype, and it reads the WAV" 1 "$(calls | grep -c '^voxtype transcribe /dev/stdin riff=RIFF$')"
 check "the daemon's prompt is passed to voxtype transcribe" 1 "$(calls | grep -c '^voxtype prompt: stub base prompt. Voice commands start with Cortana.$')"
+# The confirmation's model is base.en when its file is in the data dir, and the daemon's model (no --model) when not.
+model_data="$SANDBOX_DIR/model-data"
+mkdir -p "$model_data/voxtype/models"
+: >"$model_data/voxtype/models/ggml-base.en.bin"
+: >"$model_data/voxtype/models/ggml-tiny.en.bin"
+reset_calls
+check "the confirmation transcribes with base.en when its model is downloaded" "0 wake" "$(XDG_DATA_HOME="$model_data" confirm "Cortana.")"
+check "and passes it to voxtype" 1 "$(calls | grep -c '^voxtype model: base.en$')"
+check "VOXCMD_WAKE_CONFIRM_MODEL names another downloaded model" "0 wake" "$(XDG_DATA_HOME="$model_data" VOXCMD_WAKE_CONFIRM_MODEL=tiny.en confirm "Cortana.")"
+check "and passes that one" 1 "$(calls | grep -c '^voxtype model: tiny.en$')"
+reset_calls
+check "without the model file the daemon's model answers, and the listener still wakes" "0 wake" "$(XDG_DATA_HOME="$SANDBOX_DIR/no-models" confirm "Cortana.")"
+check "and no --model is passed" 1 "$(calls | grep -c '^voxtype model: $')"
+check "the fallback is logged" 1 "$(
+  XDG_DATA_HOME="$SANDBOX_DIR/no-models" VOXCMD_DEBUG=1 confirm "Cortana." >/dev/null
+  grep -c 'ggml-base.en.bin is missing' "$XDG_RUNTIME_DIR/voxcmd/debug.log"
+)"
 check "what follows the wake word is said" "0 wake stop" "$(confirm "Cortana, stop.")"
 check "an alias Whisper writes counts" "0 wake" "$(confirm "Kortana")"
 check "a leading hey still counts" "0 wake" "$(confirm "Hey Cortana!")"
@@ -178,8 +202,8 @@ check "without voxtype-prompt it still transcribes, without a prompt" "wake" "$(
 check "and passes none" 1 "$(calls | grep -c '^voxtype prompt: $')"
 debug_log="$XDG_RUNTIME_DIR/voxcmd/debug.log"
 rm -f "$debug_log"
-VOXCMD_DEBUG=1 confirm "Cortana, my secret plans." >/dev/null
-VOXCMD_DEBUG=1 confirm "another secret sentence" >/dev/null
+VOXCMD_DEBUG=1 XDG_DATA_HOME="$model_data" confirm "Cortana, my secret plans." >/dev/null
+VOXCMD_DEBUG=1 XDG_DATA_HOME="$model_data" confirm "another secret sentence" >/dev/null
 check "the debug log has the verdicts" 2 "$(grep -c 'wake confirm: ' "$debug_log")"
 check "but never what was heard" 0 "$(grep -c -i 'secret' "$debug_log")"
 

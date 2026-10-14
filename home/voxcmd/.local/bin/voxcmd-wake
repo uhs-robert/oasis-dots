@@ -91,9 +91,10 @@ LOG_SCORE_FLOOR = 0.2
 
 # The audio a confirmation transcribes: CONFIRM_AUDIO_SECS ending CONFIRM_TAIL_FRAMES after the trigger. The trigger
 # fires near the end of the word, and a lenient level triggers earlier still, so the tail keeps the word's end in the clip.
+# Short on purpose: the listener waits for every tail frame before the verdict can start, so the tail is latency.
 CONFIRM_AUDIO_SECS = 2.0
 CONFIRM_AUDIO_FRAMES = round(CONFIRM_AUDIO_SECS * SAMPLE_RATE / FRAME_SAMPLES)
-CONFIRM_TAIL_FRAMES = 5
+CONFIRM_TAIL_FRAMES = 2
 # A verdict older than this when it is collected is dropped: what it heard is no longer happening.
 CONFIRM_MAX_AGE_SECS = 4.0
 # How long `voxtype transcribe` may take (passed to voxcmd, which enforces it), and how much longer voxcmd-wake waits

@@ -358,7 +358,7 @@ class ListenerTest(unittest.TestCase):
         self.build([frames], [0.0] * (trigger_index - 2) + [0.9] * 3 + [0.0] * (count - trigger_index - 1))
         self.steps(count)
         self.assertEqual(wake.CONFIRM_AUDIO_FRAMES, 25)
-        self.assertEqual(TAIL, 5)
+        self.assertEqual(TAIL, 2)
         rate, channels, width, audio = wav_frames(self.confirmed_audio[0])
         self.assertEqual((rate, channels, width), (16000, 1, 2))
         end = trigger_index + 1 + TAIL
@@ -433,9 +433,15 @@ class ListenerTest(unittest.TestCase):
         self.assertEqual(self.listens, 1)
 
     def test_a_trigger_during_the_tail_is_skipped_and_a_close_forgets_the_tail(self):
-        self.build([[b"f"] * 20, [b"f"] * 20], [0.9] * 7 + [0.0] * 30, VOXCMD_WAKE_COOLDOWN_SECS="0")
-        self.steps(7)
-        self.assertEqual(self.listener.tail_frames_left, TAIL - 4)
+        # A one-frame hold triggers on every frame, so the second trigger lands inside a tail of TAIL frames.
+        self.build(
+            [[b"f"] * 20, [b"f"] * 20],
+            [0.9] * 7 + [0.0] * 30,
+            VOXCMD_WAKE_COOLDOWN_SECS="0",
+            VOXCMD_WAKE_FRAMES="1",
+        )
+        self.steps(2)
+        self.assertEqual(self.listener.tail_frames_left, TAIL - 1)
         self.assertTrue(any("skipped, still confirming" in line for line in self.logs))
         self.listener.close_stream()
         self.assertIsNone(self.listener.tail_frames_left)
