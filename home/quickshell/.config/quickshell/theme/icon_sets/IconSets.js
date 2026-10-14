@@ -39,27 +39,31 @@ var sets = {
 var names = Object.keys(sets);
 
 // An entry is sprite rows (an array of strings), a vector { w, h, body, accent?, fill_rule? } drawn on a viewBox w wide and h (24) tall, or text { text, font? } such as an emoji.
-function entry(set, name, variant) {
+function entry(set, name, variant, fallback) {
     const table = sets[set];
     const icon = table ? table[name] : undefined;
-    return icon ? icon[variant] : undefined;
+    if (!icon) return undefined;
+    const drawn = icon[variant];
+    const has_drawn = drawn && !(Array.isArray(drawn) && drawn.length === 0);
+    // A set that never drew `variant` shows its `fallback` variant instead of dropping to the Nerd Font glyph, so a state the other sets tell apart need not exist in every set.
+    return has_drawn || !fallback ? drawn : icon[fallback];
 }
 
 // The sprite rows, or null when the module should draw its glyph: no set, an icon or variant the set lacks, one not drawn yet (an empty array), a vector or text.
-function sprite(set, name, variant) {
-    const rows = entry(set, name, variant);
+function sprite(set, name, variant, fallback) {
+    const rows = entry(set, name, variant, fallback);
     return Array.isArray(rows) && rows.length > 0 ? rows : null;
 }
 
 // The vector entry, or null when the set has no vector for this icon and variant. An entry may be all accent (every segment lit), with an empty body.
-function vector(set, name, variant) {
-    const drawn = entry(set, name, variant);
+function vector(set, name, variant, fallback) {
+    const drawn = entry(set, name, variant, fallback);
     return drawn && !Array.isArray(drawn) && (drawn.body || drawn.accent) ? drawn : null;
 }
 
 // The text entry { text, font? }, or null when the set has no text for this icon and variant.
-function text(set, name, variant) {
-    const drawn = entry(set, name, variant);
+function text(set, name, variant, fallback) {
+    const drawn = entry(set, name, variant, fallback);
     return drawn && !Array.isArray(drawn) && drawn.text ? drawn : null;
 }
 
