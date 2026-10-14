@@ -154,7 +154,7 @@ fresh
 seq_voxcmd "one then two"
 check "a bare then does not split" "[[ -z \$(ran) ]] && detached_toast_has 'one then two'"
 fresh
-seq_voxcmd "Jarvis, one and then two"
+seq_voxcmd "Cortana, one and then two"
 check "a leading wake word is stripped from the whole phrase" "[[ \$(ran) == one,two ]]"
 fresh
 seq_voxcmd "one and then"

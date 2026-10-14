@@ -8,7 +8,7 @@ prompt_files=("${XDG_CONFIG_HOME:-$HOME/.config}/voxtype/prompt.d/"*.txt)
 
 base_prompt="$(voxtype config get whisper.initial_prompt)"
 # The wake word is in the prompt so Whisper spells it one way, which is the one voxcmd listens for (VOXCMD_WAKE_WORD).
-wake_word="${VOXCMD_WAKE_WORD:-jarvis}"
+wake_word="${VOXCMD_WAKE_WORD:-cortana}"
 local_vocabulary="Voice commands start with ${wake_word^}."
 if ((${#prompt_files[@]})); then
   # awk 1 ends every file with a newline, so a file without one cannot glue its last word to the next file's first.
