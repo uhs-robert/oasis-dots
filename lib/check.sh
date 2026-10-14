@@ -10,11 +10,18 @@ set -u
 #                                 repository root, instead of `git diff <base>`: a commit's staged paths, say
 #   lib/check.sh --plan [--changed <base>|--paths-from <file|->] prints the plan (the summary line, then each shellcheck list) and exits 0, running nothing
 #
-# CHECK_FULL=1 makes --changed run everything anyway. CHECK_JOBS sets how many steps run at once (default min(cores/2, 4)); 1 runs them
-# one after another with live output. CHECK_SKIP_STEPS="step ..." drops those steps whatever the scope says (the summary line lists
-# them). Everything runs at nice 19 in the idle IO class, and the voxcmd suites each hold one of CHECK_HEAVY_SLOTS
-# machine-wide slots (lib/check-lock.sh), waiting at most CHECK_LOCK_WAIT_SECS (default 1200) for one; CHECK_NO_LOCK=1 runs
-# them without a slot, for a check that must never wait (the commit hook).
+# A step that passes is recorded (lib/check-passed.sh) under a key hashing the content of the files it reads, the same
+# files whose change makes --changed pick it (step_scope); a later run skips a step whose key already passed, uncommitted and
+# untracked content included. A run that leaves the tree clean also records the tree: when every step passed for its
+# content, or for --changed <base> on top of a base recorded as passed; and a --changed run records that it passed
+# against <base>, which is what the PR hook looks up.
+#
+# CHECK_FULL=1 makes --changed run everything, and runs every step whatever passed before. CHECK_JOBS sets how many steps
+# run at once (default min(cores/2, 4)); 1 runs them one after another with live output. CHECK_SKIP_STEPS="step ..." drops
+# those steps whatever the scope says (the summary line lists them). Everything runs at nice 19 in the idle IO class, and
+# the voxcmd suites each hold one of CHECK_HEAVY_SLOTS machine-wide slots (lib/check-lock.sh), waiting at most
+# CHECK_LOCK_WAIT_SECS (default 1200) for one; CHECK_NO_LOCK=1 runs them without a slot, for a check that must never
+# wait (the commit hook).
 script_dir=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
 repo_dir=$(dirname -- "$script_dir")
 self=$script_dir/check.sh
@@ -24,7 +31,7 @@ cd "$repo_dir" || exit 1
 # Every step, longest first. The voxcmd steps are timing-sensitive, so they run one after another in a slot
 # of their own, ahead of the rest.
 voxcmd_steps='voxcmd-phrases voxcmd-click voxcmd-calendar voxcmd-wake voxcmd-firefox'
-other_steps='check-scope firefox-policy qmllint shellcheck calendar-sync owner-test-bar ship-batch merge-prs shfmt stylua luacheck lock-skins style-exports time-format calendar-sync-syntax agent-hooks stale-shells-hook notification-markup packages symlinks git-diff-check whitespace conflicts'
+other_steps='check-scope check-cache firefox-policy qmllint shellcheck calendar-sync owner-test-bar ship-batch merge-prs shfmt stylua luacheck lock-skins style-exports time-format calendar-sync-syntax agent-hooks stale-shells-hook notification-markup packages symlinks git-diff-check whitespace conflicts'
 
 # Shell files by the group they are linted in. Symlinks are skipped (their target is linted itself).
 # worktrees/ holds other agents' scratch copies and skills/synced/ is vendored.
@@ -66,6 +73,7 @@ step_body() {
     return $status
     ;;
   check-scope) bash ./lib/tests/check-scope.sh ;;
+  check-cache) bash ./lib/tests/check-cache.sh && bash ./lib/tests/check-lock.sh ;;
   firefox-policy) bash ./lib/tests/firefox-policy.sh ;;
   stylua) stylua --respect-ignores --check home/hypr/.config/hypr ;;
   luacheck) sh ./lib/check-lua.sh ;;
@@ -164,35 +172,65 @@ jobs=${CHECK_JOBS:-$(($(nproc 2>/dev/null || echo 2) / 2))}
 [ "$jobs" -le 4 ] || jobs=4
 [ "$jobs" -ge 1 ] || jobs=1
 
-# What a changed path can affect. A step is dropped only when every changed path is claimed by some rule
-# here and none of them reaches it, so a path nobody claimed runs everything.
-scope_all=0 scope_lua=0 scope_qml=0 scope_node=0 scope_voxcmd=0 scope_calendar=0 scope_hooks=0 scope_bar=0 scope_ship=0 scope_checkscope=0 scope_policy=0
+# What a path can affect: path_scopes leaves the scopes it reaches in $scopes. A step is dropped only when every changed
+# path is claimed by some rule here and none of them reaches it, so a path nobody claimed ("all") runs everything. The same
+# rules decide what a step's pass record covers: the files of its scope (step_scope) and every "all" file.
+path_scopes() {
+  scopes=''
+  case $1 in
+  lib/check-*.sh | lib/tests/check-*.sh) scopes=checkscope ;;
+  esac
+  case $1 in
+  lib/check.sh | lib/check-lock.sh | lib/check-passed.sh | justfile | .claude/check-commands) scopes="$scopes all" ;;
+  lib/check-lua.sh | .luacheckrc | home/hypr/*) scopes="$scopes lua" ;;
+  # Ahead of the greeter's QML arm, since case takes only the first match.
+  system/etc/greetd/*.lua) scopes="$scopes lua qml" ;;
+  lib/check-qml.sh | lib/check-lock-skins.sh | lib/check-style-exports.sh | lib/check-time-format.sh | system/etc/greetd/quickshell/*) scopes="$scopes qml" ;;
+  home/quickshell/tests/*) scopes="$scopes node" ;;
+  home/quickshell/*) scopes="$scopes qml node" ;;
+  home/voxcmd/* | extras/voxcmd-firefox/*) scopes="$scopes voxcmd" ;;
+  # The installer and the justfile call it, but those already run everything.
+  lib/firefox-policy.sh | lib/tests/firefox-policy.sh) scopes="$scopes policy" ;;
+  home/calendar/*) scopes="$scopes calendar" ;;
+  home/claude/.claude/hooks/* | .claude/hooks/*) scopes="$scopes hooks" ;;
+  .claude/skills/owner-test-bar/*) scopes="$scopes bar" ;;
+  .claude/skills/ship-batch/* | home/claude/.claude/skills/merge-prs/*) scopes="$scopes ship" ;;
+  system/etc/greetd/*) scopes="$scopes lua" ;;
+  # Only the steps that always run (whitespace, conflicts, symlinks, packages, git diff) look at these,
+  # plus the shell linters for the shell files among them.
+  lib/* | install.sh | uninstall.sh | demo/* | packages/* | docs/* | extras/* | system/* | home/* | .claude/* | *.md | LICENSE) ;;
+  *) scopes="$scopes all" ;;
+  esac
+}
+
+# The scope each step reads, which decides both when a change reaches it and what its pass record covers. "tree": the
+# cheap steps that scan the whole checkout, always run. "shell": the files in the shell lists below.
+step_scope() {
+  case $1 in
+  packages | symlinks | git-diff-check | whitespace | conflicts) step_scope=tree ;;
+  check-scope | check-cache) step_scope=checkscope ;;
+  firefox-policy) step_scope=policy ;;
+  shellcheck | shfmt) step_scope=shell ;;
+  stylua | luacheck) step_scope=lua ;;
+  qmllint | lock-skins | style-exports | time-format) step_scope=qml ;;
+  voxcmd-*) step_scope=voxcmd ;;
+  calendar-sync | calendar-sync-syntax) step_scope=calendar ;;
+  agent-hooks | stale-shells-hook) step_scope=hooks ;;
+  owner-test-bar) step_scope=bar ;;
+  ship-batch | merge-prs) step_scope=ship ;;
+  notification-markup) step_scope=node ;;
+  esac
+}
+
+reached=' '
+reaches() {
+  case $reached in *" $1 "*) return 0 ;; esac
+  return 1
+}
 scope_changed_files() {
   while IFS= read -r path; do
-    case $path in
-    lib/check-*.sh | lib/tests/check-scope.sh) scope_checkscope=1 ;;
-    esac
-    case $path in
-    lib/check.sh | lib/check-lock.sh | lib/check-passed.sh | justfile | .claude/check-commands) scope_all=1 ;;
-    lib/check-lua.sh | .luacheckrc | home/hypr/*) scope_lua=1 ;;
-    # Ahead of the greeter's QML arm, since case takes only the first match.
-    system/etc/greetd/*.lua) scope_lua=1 scope_qml=1 ;;
-    lib/check-qml.sh | lib/check-lock-skins.sh | lib/check-style-exports.sh | lib/check-time-format.sh | system/etc/greetd/quickshell/*) scope_qml=1 ;;
-    home/quickshell/tests/*) scope_node=1 ;;
-    home/quickshell/*) scope_qml=1 scope_node=1 ;;
-    home/voxcmd/* | extras/voxcmd-firefox/*) scope_voxcmd=1 ;;
-    # The installer and the justfile call it, but those already run everything.
-    lib/firefox-policy.sh | lib/tests/firefox-policy.sh) scope_policy=1 ;;
-    home/calendar/*) scope_calendar=1 ;;
-    home/claude/.claude/hooks/* | .claude/hooks/*) scope_hooks=1 ;;
-    .claude/skills/owner-test-bar/*) scope_bar=1 ;;
-    .claude/skills/ship-batch/* | home/claude/.claude/skills/merge-prs/*) scope_ship=1 ;;
-    system/etc/greetd/*) scope_lua=1 ;;
-    # Only the steps that always run (whitespace, conflicts, symlinks, packages, git diff) look at these,
-    # plus the shell linters for the shell files among them.
-    lib/* | install.sh | uninstall.sh | demo/* | packages/* | docs/* | extras/* | system/* | home/* | .claude/* | *.md | LICENSE) ;;
-    *) scope_all=1 ;;
-    esac
+    path_scopes "$path"
+    for scope in $scopes; do reaches "$scope" || reached="$reached$scope "; done
   done
 }
 
@@ -211,7 +249,7 @@ elif [ -n "$changed_base" ] && [ -z "${CHECK_FULL:-}" ] && git rev-parse --verif
   scope_label="scoped to $(wc -l <"$logs/changed" | tr -d ' ') files changed since $changed_base"
 else
   [ -z "$changed_base" ] || [ -n "${CHECK_FULL:-}" ] || echo "check: cannot diff against $changed_base, running everything" >&2
-  scope_all=1
+  reached=' all '
   : >"$logs/changed"
   scope_label=full
 fi
@@ -222,7 +260,7 @@ plain_shell_files >"$logs/plain.all"
 sourcing_shell_files >"$logs/sourcing.all"
 agent_shell_files >"$logs/agent.all"
 cat "$logs/plain.all" "$logs/sourcing.all" >"$logs/fmt.all"
-if [ "$scope_all" = 1 ]; then
+if reaches all; then
   cp "$logs/plain.all" "$logs/plain.list"
   cp "$logs/sourcing.all" "$logs/sourcing.list"
   cp "$logs/agent.all" "$logs/agent.list"
@@ -255,25 +293,73 @@ tool_missing() {
 }
 # Whether a step is in scope: the cheap always-run steps, or one a changed path reaches.
 in_scope() {
-  [ "$scope_all" = 1 ] && return 0
-  case $1 in
-  packages | symlinks | git-diff-check | whitespace | conflicts) true ;;
-  check-scope) [ "$scope_checkscope" = 1 ] ;;
-  firefox-policy) [ "$scope_policy" = 1 ] ;;
-  shellcheck) [ -s "$logs/plain.list" ] || [ -s "$logs/sourcing.list" ] || [ -s "$logs/agent.list" ] ;;
-  shfmt) [ -s "$logs/plain.fmt.list" ] || [ -s "$logs/sourcing.fmt.list" ] || [ -s "$logs/agent.fmt.list" ] ;;
-  stylua | luacheck) [ "$scope_lua" = 1 ] ;;
-  qmllint | lock-skins | style-exports | time-format) [ "$scope_qml" = 1 ] ;;
-  voxcmd-*) [ "$scope_voxcmd" = 1 ] ;;
-  calendar-sync | calendar-sync-syntax) [ "$scope_calendar" = 1 ] ;;
-  agent-hooks | stale-shells-hook) [ "$scope_hooks" = 1 ] ;;
-  owner-test-bar) [ "$scope_bar" = 1 ] ;;
-  ship-batch | merge-prs) [ "$scope_ship" = 1 ] ;;
-  notification-markup) [ "$scope_node" = 1 ] ;;
+  reaches all && return 0
+  step_scope "$1"
+  case $step_scope in
+  tree) true ;;
+  shell)
+    case $1 in
+    shellcheck) [ -s "$logs/plain.list" ] || [ -s "$logs/sourcing.list" ] || [ -s "$logs/agent.list" ] ;;
+    shfmt) [ -s "$logs/plain.fmt.list" ] || [ -s "$logs/sourcing.fmt.list" ] || [ -s "$logs/agent.fmt.list" ] ;;
+    esac
+    ;;
+  *) reaches "$step_scope" ;;
   esac
 }
 
-ran='' skipped_by_scope='' skipped_by_request='' voxcmd_run='' other_run=''
+# The content the steps read: the tracked and untracked (not ignored) files as they are in the working tree, written as a
+# tree through a scratch index, so neither the real index nor HEAD moves. Prints the tree.
+snapshot_tree() {
+  [ -e "$logs/snapshot.index" ] || cp "$(git rev-parse --git-path index)" "$logs/snapshot.index" 2>/dev/null
+  GIT_INDEX_FILE=$logs/snapshot.index git add -A . >/dev/null 2>&1 && GIT_INDEX_FILE=$logs/snapshot.index git write-tree
+}
+
+# Writes the files of tree $1 to $2, one "<scopes>\t<mode> <type> <object>\t<path>" line each, for step_key.
+tab=$(printf '\t')
+classify_tree() {
+  git -c core.quotePath=false ls-tree -r --full-tree "$1" | while IFS= read -r line; do
+    path_scopes "${line#*"$tab"}"
+    printf ' %s \t%s\n' "$scopes" "$line"
+  done >"$2"
+}
+
+# Prints the key a step's pass is recorded under: a hash of its name and of every file it reads, from the classified tree
+# $2 of tree $3. $1 is the step; $4 is "run" for the shell lists this run lints or "full" for the whole lists. Fails when
+# a file the step reads is not in the tree (an ignored file in a shell list), since its content would go unkeyed.
+step_key() {
+  step_scope "$1"
+  (
+    echo "check-step-key 1 $1"
+    case $step_scope in
+    tree)
+      # symlinks skips the links into a repos/ that is not set up, and git-diff-check compares with HEAD.
+      echo "$3 $coverage"
+      [ "$1" != git-diff-check ] || git rev-parse 'HEAD^{tree}'
+      ;;
+    shell)
+      for group in plain sourcing agent; do
+        if [ "$4" = full ]; then list=$logs/$group.all; elif [ "$1" = shfmt ]; then list=$logs/$group.fmt.list; else list=$logs/$group.list; fi
+        echo "group $group"
+        awk -F '\t' 'FILENAME == ARGV[1] { if ($0 != "") want[$0] = 1; next } $3 in want { print; delete want[$3] }
+          END { for (path in want) exit 3 }' "$list" "$2" || exit 1
+      done
+      awk -F '\t' 'index($1, " all ")' "$2"
+      ;;
+    *) awk -F '\t' -v scope=" $step_scope " 'index($1, scope) || index($1, " all ")' "$2" ;;
+    esac
+  ) >"$logs/key.input" || return 1
+  git hash-object "$logs/key.input"
+}
+
+# Each step's key is computed before the run and again after it; a pass is recorded only when they agree, so a file
+# edited while the step ran never gets a pass recorded for content the step did not see.
+cache_tree='' coverage=no-repos
+[ -z "$(find repos -mindepth 1 -maxdepth 1 2>/dev/null | head -n 1)" ] || coverage=with-repos
+if [ -z "$plan_only" ]; then
+  cache_tree=$(snapshot_tree) && classify_tree "$cache_tree" "$logs/tree.before" || cache_tree=''
+fi
+
+ran='' passed_before='' skipped_by_scope='' skipped_by_request='' voxcmd_run='' other_run=''
 for name in $voxcmd_steps $other_steps; do
   case " ${CHECK_SKIP_STEPS:-} " in
   *" $name "*)
@@ -292,6 +378,14 @@ for name in $voxcmd_steps $other_steps; do
     echo "$missing" >>"$logs/skips"
     continue
   fi
+  if [ -n "$cache_tree" ] && step_key "$name" "$logs/tree.before" "$cache_tree" run >"$logs/$name.key"; then
+    if [ -z "${CHECK_FULL:-}" ] && lib/check-passed.sh step-is-passed "$name" "$(cat "$logs/$name.key")"; then
+      passed_before="$passed_before $name"
+      continue
+    fi
+  else
+    rm -f "$logs/$name.key"
+  fi
   ran="$ran $name"
   case " $voxcmd_steps " in
   *" $name "*) voxcmd_run="$voxcmd_run $name" ;;
@@ -299,7 +393,9 @@ for name in $voxcmd_steps $other_steps; do
   esac
 done
 [ ! -s "$logs/skips" ] || sort -u "$logs/skips"
-echo "check: $scope_label; ran:$ran; skipped by scope:${skipped_by_scope:- none}${skipped_by_request:+; skipped by request:$skipped_by_request}"
+echo "check: $scope_label; ran:$ran;${passed_before:+ skipped (passed for these inputs):$passed_before;} skipped by scope:${skipped_by_scope:- none}${skipped_by_request:+; skipped by request:$skipped_by_request}"
+
+for name in $passed_before; do printf '== %s skipped (passed for these inputs)\n' "$name"; done
 
 if [ -n "$plan_only" ]; then
   for group in plain sourcing agent; do sed "s|^|shellcheck $group: |" "$logs/$group.list"; done
@@ -332,7 +428,35 @@ if [ -n "$failed" ]; then
     printf '\n== %s (last 25 lines)\n' "$name" >&2
     tail -n 25 "$logs/$name.log" >&2
   done
-  exit 1
+fi
+
+# Records what passed. A step counts only when its inputs are what they were when it started.
+if [ -n "$cache_tree" ] && after_tree=$(snapshot_tree) && classify_tree "$after_tree" "$logs/tree.after"; then
+  for name in $ran; do
+    [ ! -e "$logs/$name.failed" ] && [ -s "$logs/$name.key" ] || continue
+    key=$(step_key "$name" "$logs/tree.after" "$after_tree" run) || continue
+    [ "$key" != "$(cat "$logs/$name.key")" ] || lib/check-passed.sh step-record "$name" "$key"
+  done
+else
+  after_tree=''
+fi
+[ -z "$failed" ] || exit 1
+
+# A whole-tree record means HEAD's tree, so it needs a working tree with nothing uncommitted or untracked that was not
+# edited during the run. --paths-from checks a list someone chose, which vouches for no tree.
+every_step_passed() {
+  for name in $voxcmd_steps $other_steps; do
+    [ -z "$(tool_missing "$name")" ] || continue
+    key=$(step_key "$name" "$logs/tree.after" "$after_tree" full) && lib/check-passed.sh step-is-passed "$name" "$key" || return 1
+  done
+}
+if [ -z "$paths_from" ] && [ -n "$after_tree" ] && [ "$after_tree" = "$cache_tree" ] &&
+  [ "$after_tree" = "$(git rev-parse 'HEAD^{tree}')" ]; then
+  [ -z "$changed_base" ] || lib/check-passed.sh record-changed "$changed_base" || true
+  # Inductive: a base whose every step passed, plus a scoped pass over everything changed since, vouches for the tree.
+  if every_step_passed || { [ -n "$changed_base" ] && lib/check-passed.sh passed-somewhere "$changed_base"; }; then
+    lib/check-passed.sh record || true
+  fi
 fi
 
 echo 'All checks passed'
