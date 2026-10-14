@@ -14,6 +14,7 @@
 .import "TieVectors.js" as Tie
 .import "ReticleVectors.js" as Reticle
 .import "ModernVectors.js" as Modern
+.import "TerminalEmoji.js" as Terminal
 
 // Icon sets a bar style can draw in place of the Nerd Font glyphs: set name -> icon name -> variant -> sprite rows or vector.
 var sets = {
@@ -31,7 +32,8 @@ var sets = {
     "halflife": Halflife.vectors,
     "tie": Tie.vectors,
     "reticle": Reticle.vectors,
-    "modern": Modern.vectors
+    "modern": Modern.vectors,
+    "terminal": Terminal.icons
 };
 
 var names = Object.keys(sets);
