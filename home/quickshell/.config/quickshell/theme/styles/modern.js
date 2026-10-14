@@ -116,6 +116,7 @@ function overrides(t, ctx) {
         bar_pill_pad: 3,
         bar_workspace_gap: 10,
         bar_clock_layout: "capsule",
+        bar_icon_set: "modern",
         bar_meeting_marker: "pill_badge",
         bar_start_well: well,
         workspace_art: "dots",
