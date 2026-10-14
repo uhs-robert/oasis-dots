@@ -35,6 +35,11 @@
             "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/check-before-pr.sh",
             "timeout": 900,
             "statusMessage": "Checking the branch before opening the PR"
+          },
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/check-in-background.sh",
+            "timeout": 10
           }
         ]
       }
