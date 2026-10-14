@@ -152,23 +152,13 @@ while [ $# -gt 0 ]; do
 done
 
 # One check at a time on this machine, waiting for any already running: several sessions checking at once overload
-# the CPU until the bar freezes, and the timing-sensitive voxcmd steps then fail for no reason. A check that a step
-# starts itself (CHECK_LOCK_HELD inherited) is already covered. Steps run with fd 7 closed, so a daemon a test leaves
-# behind cannot hold the lock after this run. The wait is capped so a stuck holder cannot hang its callers for good.
-if [ -z "$plan_only" ] && [ -z "${CHECK_LOCK_HELD:-}" ] && [ -z "${CHECK_NO_LOCK:-}" ] && command -v flock >/dev/null; then
-  lock_file=${XDG_RUNTIME_DIR:-/tmp}/dotfiles-check.lock
-  lock_wait=${CHECK_LOCK_WAIT_SECS:-1200}
-  exec 7>>"$lock_file"
-  if ! flock -n 7; then
-    holder=$(cat "$lock_file.owner" 2>/dev/null || echo 'owner unknown')
-    echo "check: waiting up to ${lock_wait}s for the check already running ($holder)" >&2
-    flock -w "$lock_wait" 7 || {
-      echo "check: gave up after ${lock_wait}s; the lock is still held by the check running ($holder)" >&2
-      exit 1
-    }
-  fi
-  printf 'pid %s in %s\n' "$$" "$repo_dir" >"$lock_file.owner"
-  export CHECK_LOCK_HELD=1
+# the CPU until the bar freezes, and the timing-sensitive voxcmd steps then fail for no reason. The lock is shared with
+# the voxcmd suites (lib/check-lock.sh). Steps run with fd 7 closed, so a daemon a test leaves behind cannot hold the
+# lock after this run.
+if [ -z "$plan_only" ]; then
+  # shellcheck source-path=SCRIPTDIR source=check-lock.sh
+  . "$script_dir/check-lock.sh"
+  check_lock_take "$repo_dir" || exit 1
 fi
 
 logs=$(mktemp -d) || exit 1
@@ -188,7 +178,7 @@ scope_changed_files() {
     lib/check-*.sh | lib/tests/check-scope.sh) scope_checkscope=1 ;;
     esac
     case $path in
-    lib/check.sh | lib/check-passed.sh | justfile | .claude/check-commands) scope_all=1 ;;
+    lib/check.sh | lib/check-lock.sh | lib/check-passed.sh | justfile | .claude/check-commands) scope_all=1 ;;
     lib/check-lua.sh | .luacheckrc | home/hypr/*) scope_lua=1 ;;
     # Ahead of the greeter's QML arm, since case takes only the first match.
     system/etc/greetd/*.lua) scope_lua=1 scope_qml=1 ;;
