@@ -589,10 +589,7 @@ OverviewBase {
         } else if (k === Qt.Key_R && root.share_mode) {
             ThemeAudio.play("confirm");
             root.share_monitor(true);
-        } else if (k === Qt.Key_W && root.ws_mode === "monitor") {
-            ThemeAudio.play("confirm");
-            root.screen_confirm(false);
-        } else if (k === Qt.Key_Escape || k === Qt.Key_S) {
+        } else if (k === Qt.Key_Escape || k === Qt.Key_S || (k === Qt.Key_W && root.ws_mode === "monitor")) {
             ThemeAudio.play("cancel");
             root.screen_pick = false;
         } else if (dir) {
@@ -824,13 +821,14 @@ OverviewBase {
     // Selection keys pass through to the shared handling; anything that would act on windows or switch modes is swallowed.
     function handle_swap_key(event) {
         const k = event.key;
-        if (k === Qt.Key_Return || k === Qt.Key_Enter || k === Qt.Key_W) {
+        const shifted_w = k === Qt.Key_W && (event.modifiers & Qt.ShiftModifier);
+        if (k === Qt.Key_Return || k === Qt.Key_Enter || shifted_w) {
             ThemeAudio.play("confirm");
             root.confirm_ws_mode();
         } else if (k === Qt.Key_Escape) {
             ThemeAudio.play("cancel");
             root.end_ws_mode();
-        } else if (k === Qt.Key_M || k === Qt.Key_X || k === Qt.Key_V || k === Qt.Key_Space || k === Qt.Key_S || k === Qt.Key_Tab || k === Qt.Key_Backtab || k === Qt.Key_Slash || event.text === "/") {
+        } else if (k === Qt.Key_M || k === Qt.Key_X || k === Qt.Key_V || k === Qt.Key_Space || k === Qt.Key_S || k === Qt.Key_W || k === Qt.Key_Tab || k === Qt.Key_Backtab || k === Qt.Key_Slash || event.text === "/") {
             return true;
         } else {
             return false;
@@ -851,7 +849,8 @@ OverviewBase {
         const args = text.split(" ").filter(a => a !== "");
         // These verbs lead with a workspace (or, for send, a monitor) before any window addresses.
         const verbs_with_ref = ["move", "send", "workspace", "workspace_to_monitor", "swap_workspaces"];
-        const ref = verbs_with_ref.indexOf(verb) >= 0 ? args.shift() : "";
+        // References arrive percent-encoded (voxcmd): a special workspace's name may hold the spaces this split uses.
+        const ref = verbs_with_ref.indexOf(verb) >= 0 ? decodeURIComponent(args.shift() || "") : "";
         const monitor = verb === "send" || verb === "workspace_to_monitor" ? (verb === "send" ? ref : args.shift()) : "";
         const explicit = root.shown_windows(args);
         if (!explicit && ["mark", "unmark", "move", "send", "close", "focus"].indexOf(verb) >= 0) return "error: unknown window";
@@ -893,7 +892,7 @@ OverviewBase {
             if (!/^\d+$/.test(ref || "") || !Hyprland.monitors.values.some(x => x.name === monitor)) return "error: unknown workspace or monitor";
             root.move_workspace_to_monitor(ref, monitor);
         } else if (verb === "swap_workspaces") {
-            const other = args[0];
+            const other = decodeURIComponent(args[0] || "");
             if (!/^(\d+|sp:.+)$/.test(ref || "") || !/^(\d+|sp:.+)$/.test(other || "")) return "error: unknown workspace";
             root.swap_workspaces(ref, other);
         } else if (verb === "close_overview") {
