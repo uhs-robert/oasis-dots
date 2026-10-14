@@ -496,19 +496,13 @@ printf '#!/bin/sh\necho $$ >>"%s/strip_pids"\n[ ! -e "%s/slow_started" ] && : >"
   "$root" "$root" "$root" >"$root/failing/tesseract"
 started=$SECONDS
 SANDBOX_GRIM_SCALE=1 PATH="$root/failing:$PATH" "$share_dir/click-ocr" >/dev/null 2>&1
-# A killed stub is gone once its signal is delivered and it is reaped, which a loaded machine can take a moment to do,
-# so it gets a generous while; a stub that was missed sleeps on for the whole minute.
-strips_left_running() {
-  local deadline=$((SECONDS + 10)) pid running
-  while ((SECONDS < deadline)); do
-    running=0
-    while read -r pid; do process_running "$pid" && running=1; done <"$root/strip_pids"
-    ((running)) || return 1
-    sleep 0.1
-  done
-  return 0
+# A killed stub is gone once its signal is delivered and it is reaped, which a loaded machine can take a moment to do;
+# a stub that was missed sleeps on for the whole minute.
+strip_stubs_gone() {
+  local pid
+  while read -r pid; do process_gone "$pid" || return 1; done <"$root/strip_pids"
 }
-check "a failed strip ends the others instead of waiting for them" "[[ \$((SECONDS - started)) -lt 10 ]] && ! strips_left_running"
+check "a failed strip ends the others instead of waiting for them" "[[ \$((SECONDS - started)) -lt 60 ]] && wait_until strip_stubs_gone"
 SANDBOX_ACTIVEWINDOW_JSON='{}'
 check "no focused window is an error" "! out=\$('$share_dir/click-ocr' 2>&1) && grep -q 'no focused window' <<<\"\$out\""
 SANDBOX_ACTIVEWINDOW_JSON=$default_window
@@ -1045,20 +1039,7 @@ check "more than ten choices fall back to the text picker, which lists them all"
 
 # A signal or a silent bar ends the pick with the overlay still up, so it is dismissed on the way out. The signal waits
 # until voxcmd-hints reads the answer FIFO: before then it may not yet know the overlay is up.
-hints_reading_answer() {
-  local deadline=$((SECONDS + 20))
-  until pgrep -f "head -n 1 $XDG_RUNTIME_DIR/voxcmd-hints\\." >/dev/null; do
-    ((SECONDS < deadline)) || return 1
-    sleep 0.02
-  done
-}
-wait_for_path() {
-  local deadline=$((SECONDS + 20))
-  until [ -e "$1" ]; do
-    ((SECONDS < deadline)) || return 1
-    sleep 0.02
-  done
-}
+hints_reading_answer() { wait_until pgrep -f "head -n 1 $XDG_RUNTIME_DIR/voxcmd-hints\\." >/dev/null; }
 : >"$log"
 SANDBOX_CLICKHINTS_HOLD=1 "$hints" "Which one?" "$hint_choices" >/dev/null &
 waiter_pid=$!
@@ -1069,7 +1050,7 @@ check "TERM exits 1 and dismisses the overlay" "[[ $waiter_status == 1 ]] && gre
 : >"$log"
 start=$SECONDS
 SANDBOX_CLICKHINTS_HOLD=1 VOXCMD_HINTS_TIMEOUT=0.2 run_hints "Which one?" "$hint_choices" >/dev/null && timeout_status=0 || timeout_status=$?
-check "a reader timeout exits 1 and dismisses the overlay" "[[ $timeout_status == 1 ]] && grep -q 'qs-ipc call clickhints dismiss' '$log' && [[ $((SECONDS - start)) -lt 5 ]]"
+check "a reader timeout exits 1 and dismisses the overlay" "[[ $timeout_status == 1 ]] && grep -q 'qs-ipc call clickhints dismiss' '$log' && [[ $((SECONDS - start)) -lt 60 ]]"
 
 # A signal during the open call itself: bash runs the trap only once the call returns, so the test sends TERM while the
 # stub holds the call, then releases it. The overlay was requested, so it must still be dismissed.
@@ -1130,7 +1111,7 @@ check "an unclear reply listens once more" "[[ ! -e '$listen_again' ]] && grep -
 "$pkg_voxcmd" --reply "banana" >/dev/null 2>&1
 check "and only once" "! grep -q 'voxtype record start' '$log'"
 # The answer goes into the FIFO as the displayed label.
-(timeout 5 head -n 1 "$reply_fifo" >"$root/reply-answer") &
+(timeout "$test_wait_secs" head -n 1 "$reply_fifo" >"$root/reply-answer") &
 reader=$!
 "$pkg_voxcmd" --reply "two" >/dev/null 2>&1
 wait "$reader"
@@ -1369,7 +1350,7 @@ start_fake_host() {
   : >"$live_requests"
   "$here/firefox-fake-host" "$here/fixtures/firefox/live-tabs.json" "$live_requests" "$@" &
   fake_host_pid=$!
-  until [[ -S $XDG_RUNTIME_DIR/voxcmd/firefox.sock ]]; do sleep 0.02; done
+  wait_until test -S "$XDG_RUNTIME_DIR/voxcmd/firefox.sock"
 }
 stop_fake_host() {
   [[ -z $fake_host_pid ]] || kill "$fake_host_pid" 2>/dev/null

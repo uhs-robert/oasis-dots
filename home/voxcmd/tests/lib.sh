@@ -1,5 +1,5 @@
-# Shared by run.sh and run-sessions.sh, sourced inside the sandbox: check and section, waits for what background
-# processes log, a private runtime dir under $root, and the summary.
+# Shared by run.sh, run-sessions.sh, run-sequences.sh and run-overview.sh, sourced inside the sandbox: check and
+# section, waits for events, a private runtime dir under $root, and the summary.
 # shellcheck shell=bash
 # shellcheck disable=SC2034 # read by the suites that source this
 pass=0 fail=0 failed_checks=()
@@ -26,17 +26,43 @@ check() {
   check_started=$EPOCHREALTIME
 }
 
-# wait_for_line <pattern> <file> [secs]: for what a background process logs. The bound only matters when the line never
-# comes, so it is generous.
-wait_for_line() {
-  local deadline=$((SECONDS + ${3:-20}))
-  until grep -q -- "$1" "$2" 2>/dev/null; do
+# The tests wait for events (a line logged, a file written, a process gone), never for a stretch of time, so they pass
+# the same however loaded the machine is. A wait returns as soon as its event happens; its bound only ends one for an
+# event that never comes, so it is far beyond what any load stretches a step to.
+test_wait_secs=${VOXCMD_TEST_WAIT_SECS:-120}
+# wait_until <command...>: runs the command until it succeeds, failing after test_wait_secs.
+wait_until() {
+  local deadline=$((SECONDS + test_wait_secs))
+  until "$@"; do
     ((SECONDS < deadline)) || return 1
     sleep 0.02
   done
 }
+# wait_for_line <pattern> <file>: for what a background process logs.
+wait_for_line() { wait_until grep -qs -- "$1" "$2"; }
+# wait_for_count <pattern> <file> <count>: until the file holds that many matching lines.
+wait_for_count() { wait_until line_count_reaches "$@"; }
+line_count_reaches() {
+  local count
+  count=$(grep -cs -- "$1" "$2")
+  ((${count:-0} >= $3))
+}
+wait_for_path() { wait_until test -e "$1"; }
 # Running, not a zombie waiting to be reaped.
 process_running() { [[ -e /proc/$1 && $(awk '{print $3}' "/proc/$1/stat" 2>/dev/null) != Z ]]; }
+process_gone() { ! process_running "$1"; }
+wait_until_gone() { wait_until process_gone "$1"; }
+# logged_processes_gone <sed pattern>: every process whose PID voxcmd's debug log names in the pattern's \1 is gone.
+# voxcmd logs each watcher it starts and each ended hook it runs before it exits, so once the logged watchers are gone
+# no line naming another is still to come.
+logged_processes_gone() {
+  local pid
+  while read -r pid; do
+    process_gone "$pid" || return 1
+  done < <(sed -n "s/$1/\\1/p" "$debug_log")
+}
+watchers_gone() { logged_processes_gone '.* listen: recording started, watcher \([0-9]*\) .*'; }
+ended_hooks_gone() { logged_processes_gone '.* session: ended hook \([0-9]*\) runs$'; }
 
 root=$(mktemp -d)
 trap 'rm -rf "$root"' EXIT
