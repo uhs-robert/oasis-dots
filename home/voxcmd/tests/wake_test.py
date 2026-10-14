@@ -151,6 +151,40 @@ class TriggerDeciderTest(unittest.TestCase):
 
 
 class SettingsTest(unittest.TestCase):
+    def settings_with_file(self, content, env=None):
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, "voice.env")
+            if content is not None:
+                with open(path, "w") as f:
+                    f.write(content)
+            return wake.Settings({"VOXCMD_VOICE_ENV_FILE": path, **(env or {})})
+
+    def test_file_values_apply_when_the_environment_has_none(self):
+        s = self.settings_with_file("VOXCMD_WAKE_THRESHOLD=0.7\nVOXCMD_WAKE_FRAMES=2\n")
+        self.assertEqual((s.threshold, s.frames), (0.7, 2))
+
+    def test_environment_beats_the_file_per_key(self):
+        s = self.settings_with_file("VOXCMD_WAKE_THRESHOLD=0.7\nVOXCMD_WAKE_FRAMES=2\n", {"VOXCMD_WAKE_THRESHOLD": "0.6"})
+        self.assertEqual((s.threshold, s.frames), (0.6, 2))
+
+    def test_a_missing_file_and_absent_keys_are_the_defaults(self):
+        self.assertEqual(self.settings_with_file(None).threshold, 0.8)
+        self.assertEqual(self.settings_with_file("VOXCMD_TYPE_CHUNK_PAUSE_SECS=2\n").frames, 3)
+
+    def test_bad_file_values_fall_back_to_the_defaults(self):
+        for content in (
+            "VOXCMD_WAKE_THRESHOLD=0\nVOXCMD_WAKE_FRAMES=0\n",
+            "VOXCMD_WAKE_THRESHOLD=1.5\nVOXCMD_WAKE_FRAMES=-2\n",
+            "VOXCMD_WAKE_THRESHOLD=loud\nVOXCMD_WAKE_FRAMES=2.5\n",
+            "VOXCMD_WAKE_THRESHOLD=\n$(touch x)\nexport VOXCMD_WAKE_FRAMES=2\n",
+        ):
+            s = self.settings_with_file(content)
+            self.assertEqual((s.threshold, s.frames), (0.8, 3), msg=content)
+
+    def test_the_last_valid_line_wins_and_junk_lines_are_ignored(self):
+        s = self.settings_with_file("VOXCMD_WAKE_FRAMES=2\nnonsense\nVOXCMD_WAKE_FRAMES=junk\nVOXCMD_WAKE_FRAMES=4\n")
+        self.assertEqual(s.frames, 4)
+
     def test_defaults_are_the_strict_setting(self):
         s = wake.Settings({})
         self.assertEqual((s.threshold, s.frames, s.cooldown_secs), (0.8, 3, 3.0))

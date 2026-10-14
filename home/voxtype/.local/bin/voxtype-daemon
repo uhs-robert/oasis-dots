@@ -19,4 +19,16 @@ log_flags=(-q)
 if [[ "${VOXCMD_LOG_TRANSCRIPTS:-}" == 1 ]]; then
   log_flags=()
 fi
-exec voxtype --initial-prompt "$base_prompt ${local_vocabulary% }" "${log_flags[@]}" daemon "$@"
+
+# Music ducking while recording comes from Settings > Voice (environment first, else its voice.env). Without a value
+# config.toml's own duck_media_volume applies. The loader belongs to the voxcmd package, which may not be stowed.
+voxtype_flags=()
+voice_env_loader="${XDG_DATA_HOME:-$HOME/.local/share}/voxcmd/voice-env.sh"
+if [ -r "$voice_env_loader" ]; then
+  # shellcheck source=/dev/null
+  source "$voice_env_loader"
+  if duck_percent="$(voice_env_value VOXCMD_DUCK_MEDIA_VOLUME)"; then
+    voxtype_flags+=(--duck-media-volume "$duck_percent")
+  fi
+fi
+exec voxtype "${voxtype_flags[@]}" --initial-prompt "$base_prompt ${local_vocabulary% }" "${log_flags[@]}" daemon "$@"

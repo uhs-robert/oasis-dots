@@ -1,0 +1,24 @@
+# shellcheck shell=bash
+# Voice settings saved by Quickshell's Settings > Voice, read by voxcmd and voxtype-daemon.
+#
+# The file sits outside the stow-folded ~/.config/voxcmd, which links into the public repo. It is read as data, never sourced:
+# only lines of the shape KEY=NUMBER with a VOXCMD_ key count, so a stray line cannot run anything.
+
+voice_env_file() {
+  printf '%s\n' "${VOXCMD_VOICE_ENV_FILE:-${XDG_STATE_HOME:-$HOME/.local/state}/voxcmd/voice.env}"
+}
+
+# voice_env_value KEY: prints the environment's value, else the file's last valid line for KEY. Fails, printing nothing,
+# when neither has one, so the caller's default applies.
+voice_env_value() {
+  local key="$1" line file
+  if [ -n "${!key:-}" ]; then
+    printf '%s\n' "${!key}"
+    return 0
+  fi
+  file="$(voice_env_file)"
+  [ -r "$file" ] || return 1
+  line="$(grep -E "^${key}=[0-9]+(\.[0-9]+)?\$" "$file" 2>/dev/null | tail -n 1)" || return 1
+  [ -n "$line" ] || return 1
+  printf '%s\n' "${line#*=}"
+}
