@@ -31,7 +31,7 @@ ov_turns=$root/turns
 mkdir -p "$ov_pkg" "$ov_config/integrations.d" "$ov_config/replacements.d" "$XDG_RUNTIME_DIR/voxcmd" "$XDG_RUNTIME_DIR/voxtype"
 cp -r "$package/.local" "$ov_pkg/.local"
 ln -sf "$SANDBOX_DIR/bin/voxcmd-autostop" "$ov_pkg/.local/bin/voxcmd-autostop"
-for integration in apps keybinds overview; do
+for integration in apps keybinds overview rapid; do
   cp "$package/.config/voxcmd/integrations.d/$integration.sh" "$ov_config/integrations.d/"
 done
 # The confirm card answers yes unless $root/confirm-no exists.
@@ -190,5 +190,26 @@ ov_wait
 wait "$closer"
 check "closing the overview by key ends the session" "session_gone && [[ \$(acts | paste -sd,) == 'mark aaa2,mark aaa4' ]] && grep -q 'its screen closed' '$log'"
 check "and leaves the closed overview alone" "! grep -q '^qs-ipc call overview close' '$log'"
+
+# The overview closes while a turn is recorded and that turn opens another mode: the new mode listens once, itself.
+printf '%s\n' "rapid mode" HOLD >"$ov_turns"
+: >"$log"
+: >"$debug_log"
+rm -f "$session_json"
+cp "$fixtures_dir/overview.json" "$overview_json"
+echo open >"$overview_state"
+(
+  wait_for_line '^voxtype record start' "$log" 20 && echo closed >"$overview_state"
+) &
+closer=$!
+env SANDBOX_SETSID_RUN=1 SANDBOX_VOXTYPE_TURNS="$ov_turns" SANDBOX_AUTOSTOP_SLEEP="$stub_sleep" VOXCMD_CONFIG_DIR="$ov_config" \
+  VOXCMD_APP_SETTLE_SECS=0 VOXCMD_DEBUG=1 SANDBOX_VOXTYPE_SPEAK_SECS=0.8 "$ov_voxcmd" two >/dev/null 2>&1
+wait "$closer"
+wait_for_line 'session: rapid begins' "$debug_log" 10
+sleep 0.5
+check "the mode the turn opened is the open session" "[[ \$(jq -r .kind '$session_json') == rapid ]]"
+check "with one listen of its own, not a second one on top, and no second listen attempt" "! grep -q 'another listen took over' '$debug_log' && [[ \$(grep -c '^voxtype record start' '$log') == 2 ]] && ! grep -q 'microphone could not be opened' '$log'"
+env VOXCMD_CONFIG_DIR="$ov_config" "$ov_voxcmd" end-session >/dev/null 2>&1
+ov_wait
 
 finish
