@@ -61,7 +61,7 @@ Singleton {
             keeptabs_layout: { "": "Plain", battle: "Party", mode7: "Battle", pokedex: "Party", status: "Menu", memcard: "Memory Card", towers: "Browser", watch: "Mission Status", scan: "Logbook", hev: "Weapon Select", scope: "Targeting", ring: "Roster", oasis: "Caravan", wttr: "htop", lsp: "Trouble", weatherstar: "Observations", hero: "Live Activities" },
             done_anim: { hearts: "Hearts", pixel: "Pixel", lcd: "LCD", hev_pickup: "Health Pickup", levelup: "Level Up", fanfare: "Victory Fanfare", item: "Item Acquired", lock: "Target Lock", ring: "Ring Lock", shooting_star: "Shooting Star" },
             wait_anim: { bubble: "Bubble", cursor: "Blinking Cursor", pressanykey: "Press Any Key", advance: "Text Advance", hand: "Pointing Hand", alert: "Alert", rumble: "Rumble", transmission: "Transmission", scan: "Scan", comms: "Comms", ping: "Radar Ping", hev_alert: "HEV Alert", exclaim: "Exclamation", atb: "ATB Gauge", mirage: "Mirage" },
-            bar_icon_set: { "": "Nerd Font", gameboy: "Game Boy", nes: "NES", snes: "SNES", ps1: "PS1", oasis: "Oasis", goldeneye: "GoldenEye LCD", goldeneye_gadgets: "GoldenEye Gadgets", metroid: "Metroid", ff7: "FF7", crt: "CRT", ps2: "PS2", halflife: "Half-Life", tie: "TIE", reticle: "Reticle" },
+            bar_icon_set: { "": "Nerd Font", gameboy: "Game Boy", nes: "NES", snes: "SNES", ps1: "PS1", oasis: "Oasis", goldeneye: "GoldenEye LCD", goldeneye_gadgets: "GoldenEye Gadgets", metroid: "Metroid", ff7: "FF7", crt: "CRT", ps2: "PS2", halflife: "Half-Life", tie: "TIE", reticle: "Reticle", modern: "Modern" },
             bar_meeting_marker: MarkerTokens.labels,
             toast_enter: { "": "Fade", type: "Typewriter", mode7: "Mode 7", wobble: "Wobble", bloom: "Bloom" }
         })
