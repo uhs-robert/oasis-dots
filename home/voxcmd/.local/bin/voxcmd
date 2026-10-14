@@ -21,7 +21,7 @@ Usage:
   voxcmd stop                 stop all voice activity: end the open session, cancel the open picker, card or hints, and
                               cancel a recording under way, discarding what was said; silent when none is open
   voxcmd wake on|off|toggle|status
-                              start or stop the "hey cortana" listener, which holds the microphone while it runs
+                              start or stop the "Cortana" listener, which holds the microphone while it runs
   voxcmd list                 list integrations and their verbs
   voxcmd help                 pick from the integrations' example phrases (Tab lists what one can run); one without placeholders runs
   voxcmd errors [N]           print the last N (default 10) voxcmd notifications the bar kept: its errors, as info is transient
@@ -701,8 +701,7 @@ init_wake_regex() {
 }
 
 # split_leading_wake <normalized text>: succeeds when the text starts with the wake word, leaving the rest in wake_rest.
-# An optional "hey" is dropped too: the wake listener starts a recording on "hey cortana", and the phrase can reach the
-# transcript when the recording opens before it ends.
+# An optional "hey" is dropped too, for those who say "hey cortana".
 wake_rest=""
 split_leading_wake() {
   init_wake_regex
@@ -813,6 +812,44 @@ retry_after_correction() {
     fi
   done < <(correction_tails "$body")
   options="$kept_options" forced_file="$kept_forced"
+}
+
+# heard_wake_word <transcript>: succeeds when the wake word or an alias is one of the transcript's words, normalized and
+# replaced as a phrase is, leaving the normalized words after the first one in wake_rest.
+heard_wake_word() {
+  init_wake_regex
+  local text
+  text=$(apply_replacements "$(normalize "$1")")
+  [[ " $text " =~ " "($wake_regex)" "(.*)$ ]] || return 1
+  wake_rest="${BASH_REMATCH[2]% }"
+}
+
+# voxcmd _wake-confirm <wav>: whether a short recording (16 kHz mono WAV) holds the wake word, from `voxtype transcribe`.
+# Prints "wake <words after it>" and exits 0, "not_wake" and exits 1, or "failed" and exits 2 when voxtype fails or
+# outlasts VOXCMD_WAKE_CONFIRM_TIMEOUT_SECS. voxcmd-wake asks it before a trigger starts a command, with the audio on
+# stdin as /dev/stdin; nothing it heard is logged.
+wake_confirm() {
+  local wav="$1" output transcript
+  if [ -z "$wav" ]; then
+    echo failed
+    exit 2
+  fi
+  if ! output=$(timeout -k 1 "${VOXCMD_WAKE_CONFIRM_TIMEOUT_SECS:-6}" voxtype transcribe "$wav" 2>/dev/null); then
+    debug "wake confirm: voxtype transcribe failed or timed out"
+    echo failed
+    exit 2
+  fi
+  # voxtype prints progress first ("Loading audio file: <path>", the format, VAD), then a blank line and the transcript.
+  # Without the blank line it heard no speech.
+  transcript=$(awk 'after_blank; /^$/ { after_blank = 1 }' <<<"$output")
+  if heard_wake_word "$transcript"; then
+    debug "wake confirm: the wake word"
+    printf 'wake%s\n' "${wake_rest:+ $wake_rest}"
+    exit 0
+  fi
+  debug "wake confirm: not the wake word"
+  echo not_wake
+  exit 1
 }
 
 # A phrase starting with an integration's force prefix goes to that integration alone. Otherwise normal integrations
@@ -2551,6 +2588,7 @@ _watch)
   watch_recording "$2"
   ;;
 _cancel_owned_recording) cancel_owned_recording "$2" ;;
+_wake-confirm) wake_confirm "${2:-}" ;;
 list)
   while IFS= read -r file; do
     (

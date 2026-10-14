@@ -16,7 +16,7 @@ var list = [
     { id: "sessions", group: "System", label: "Sessions", glyph: "󰆍", keywords: "session launcher layout windows workspace save restore picker", source: "sections/SessionsSection.qml" },
     { id: "input", group: "Input", label: "Typing", glyph: "󰌌", keywords: "vim insert normal mode typing search picker start remember query which key delay", source: "sections/InputSection.qml" },
     { id: "keyboard", group: "Input", label: "Keyboard", glyph: "󰥻", keywords: "layout variant xkb caps lock escape repeat rate delay", source: "sections/KeyboardSection.qml" },
-    { id: "voice", group: "Input", label: "Voice", glyph: "󰍬", keywords: "voice jarvis wake word hey listener mic call media pause microphone voxcmd voxtype duck music dictation type mode sensitivity speech", source: "sections/VoiceSection.qml" },
+    { id: "voice", group: "Input", label: "Voice", glyph: "󰍬", keywords: "voice cortana wake word hey whisper listener mic call media pause microphone voxcmd voxtype duck music dictation type mode sensitivity speech", source: "sections/VoiceSection.qml" },
     { id: "mouse", group: "Input", label: "Mouse & touchpad", glyph: "󰍽", keywords: "pointer sensitivity speed natural scroll tap click disable while typing focus follows mouse", source: "sections/MouseSection.qml" },
     { id: "audio", group: "Sound", label: "Theme audio", glyph: "󰕾", keywords: "sound music chiptune notification cursor confirm cancel volume music effects pack", source: "sections/AudioSection.qml" },
     { id: "lock", group: "Lock & Login", label: "Lock screen", glyph: "󰌾", keywords: "skin tint backdrop music", source: "sections/LockSection.qml" },

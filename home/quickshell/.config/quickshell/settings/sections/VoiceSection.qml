@@ -63,7 +63,7 @@ RowsSection {
 
     rows: [{
             label: "Listener",
-            desc: "Hears \"hey jarvis\" and starts a voice command, holding the microphone while on. " + (root.listener_state === "setup" ? "Needs python-openwakeword and its models; see the voxcmd README." : "The first start downloads its models."),
+            desc: "Hears \"Cortana\" and, once Whisper confirms the word, starts a voice command; wait for the bar's listening cue to speak. Holds the microphone while on. " + (root.listener_state === "setup" ? "Needs python-openwakeword and its models; see the voxcmd README." : "The first start downloads its feature models."),
             values: () => ["on", "off"],
             text: v => v === (root.listener_state === "on" || root.listener_state === "starting" ? "on" : "off") ? root.listener_texts[root.listener_state] : (v === "on" ? "On" : "Off"),
             value: () => root.listener_state === "on" || root.listener_state === "starting" ? "on" : "off",
@@ -79,14 +79,14 @@ RowsSection {
             pick: false
         }, {
             label: "Sensitivity",
-            desc: "Strict starts by mistake least; Relaxed hears you most easily. A change restarts the listener if it runs. An environment variable shows as Custom.",
+            desc: "Strict wakes Whisper by mistake least; Relaxed hears you most easily. A change restarts the listener if it runs. An environment variable shows as Custom.",
             values: () => VoiceSettings.sensitivity === "custom" ? VoiceSettings.level_ids.concat(["custom"]) : VoiceSettings.level_ids,
             text: v => root.sensitivity_names[v] || String(v),
             value: () => VoiceSettings.sensitivity,
             set: v => VoiceSettings.set("sensitivity", v)
         }, {
             label: "While media plays",
-            desc: "Keep listening lets a song or video say \"hey jarvis\" and start a command. Pause stops the listener while a player plays. A change restarts the listener if it runs.",
+            desc: "Keep listening lets a song or video say \"Cortana\" and start a command. Pause stops the listener while a player plays. A change restarts the listener if it runs.",
             values: () => [0, 1],
             text: v => v === 1 ? "Pause" : "Keep listening",
             value: () => VoiceSettings.pause_for_media,
