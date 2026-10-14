@@ -13,6 +13,7 @@ import sys
 import tempfile
 import types
 import unittest
+import unittest.mock
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 WAKE_PATH = os.path.join(os.path.dirname(HERE), ".local", "bin", "voxcmd-wake")
@@ -86,6 +87,7 @@ class FakeGate:
     def __init__(self):
         self.paused_now = False
         self.recording = False
+        self.reason = None
 
     def voxtype_recording(self):
         return self.recording
@@ -221,6 +223,7 @@ class ListenerTest(unittest.TestCase):
         self.gate = gate or FakeGate()
         self.listens = 0
         self.states = []
+        self.reasons = []
         self.logs = []
         self.scorer = ScriptedScorer(scores)
         self.sources = []
@@ -242,11 +245,15 @@ class ListenerTest(unittest.TestCase):
             open_source,
             self.gate,
             run_listen,
-            self.states.append,
+            self.record_state,
             self.clock,
             self.clock.sleep,
             self.logs.append,
         )
+
+    def record_state(self, state, reason):
+        self.states.append(state)
+        self.reasons.append(reason)
 
     def steps(self, count):
         for _ in range(count):
@@ -322,6 +329,23 @@ class ListenerTest(unittest.TestCase):
         self.steps(1)
         self.assertIsNone(self.listener.ready_deadline)
 
+    def test_the_pause_reason_is_published_with_paused_and_cleared_on_resume(self):
+        self.build([[b"f"] * 5, [b"f"] * 5], [0.0] * 10)
+        self.steps(1)
+        self.gate.paused_now = True
+        self.gate.reason = "media_playing"
+        self.steps(1)
+        self.assertEqual((self.states[-1], self.reasons[-1]), ("paused", "media_playing"))
+        self.gate.paused_now = False
+        self.gate.reason = None
+        self.steps(1)
+        self.assertEqual((self.states[-1], self.reasons[-1]), ("armed", None))
+
+    def test_a_stream_failure_is_paused_without_a_reason(self):
+        self.build([], [])
+        self.steps(1)
+        self.assertEqual((self.states[-1], self.reasons[-1]), ("paused", None))
+
     def test_a_recording_the_voice_key_started_is_paused_not_ready(self):
         self.build([[b"f"] * 3], [0.0] * 3)
         self.steps(1)
@@ -360,6 +384,36 @@ class ListenerTest(unittest.TestCase):
         self.steps(6)
         self.assertFalse(any("secret" in line for line in self.logs))
         self.assertTrue(any(line.startswith("trigger score") for line in self.logs))
+
+
+class StateFileTest(unittest.TestCase):
+    def setUp(self):
+        runtime = tempfile.TemporaryDirectory()
+        self.addCleanup(runtime.cleanup)
+        patcher = unittest.mock.patch.dict(os.environ, {"XDG_RUNTIME_DIR": runtime.name})
+        patcher.start()
+        self.addCleanup(patcher.stop)
+        self.state_file = wake.StateFile()
+
+    def written(self):
+        with open(self.state_file.path) as handle:
+            return json.load(handle)
+
+    def test_a_paused_state_carries_its_reason_and_resuming_drops_it(self):
+        self.state_file.publish("paused", "mic_in_use")
+        self.assertEqual(self.written()["reason"], "mic_in_use")
+        self.state_file.publish("armed")
+        self.assertEqual(self.written()["state"], "armed")
+        self.assertNotIn("reason", self.written())
+
+    def test_the_file_is_rewritten_only_when_state_or_reason_changes(self):
+        self.state_file.publish("paused", "media_playing")
+        first = os.stat(self.state_file.path).st_ino
+        self.state_file.publish("paused", "media_playing")
+        self.assertEqual(os.stat(self.state_file.path).st_ino, first)
+        self.state_file.publish("paused", "mic_in_use")
+        self.assertEqual(self.written()["reason"], "mic_in_use")
+        self.assertNotEqual(os.stat(self.state_file.path).st_ino, first)
 
 
 class PauseFlagsTest(unittest.TestCase):
@@ -602,7 +656,7 @@ class SessionPauseTest(unittest.TestCase):
         clock = Clock()
         listener = wake.Listener(
             settings(), ScriptedScorer([0.0] * 5), lambda: FakeSource(clock, [b"f"] * 5), gate, lambda: None,
-            lambda state: None, clock, clock.sleep, lambda message: None,
+            lambda state, reason: None, clock, clock.sleep, lambda message: None,
         )
         listener.step()
         source = listener.source
@@ -652,7 +706,7 @@ class StubbedCommandsTest(unittest.TestCase):
             wake.PwRecordSource,
             wake.PauseGate(clock, os.path.join(self.tmp.name, "voxtype-state"), wake.playerctl_playing),
             wake.make_run_listen(lambda message: None),
-            states.append,
+            lambda state, reason: states.append(state),
             clock,
             clock.sleep,
             lambda message: None,

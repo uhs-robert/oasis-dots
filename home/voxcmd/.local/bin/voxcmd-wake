@@ -381,7 +381,7 @@ class Listener:
         self.log(f"stream: {reason}, retry in {self.backoff_secs:g}s")
         self.retry_at = self.clock() + self.backoff_secs
         self.backoff_secs = min(self.backoff_secs * 2, BACKOFF_CAP_SECS)
-        self.publish_state("paused")
+        self.publish_state("paused", None)
 
     def paused_state(self):
         """"ready" while the recording a wake trigger started is under way, else "paused"."""
@@ -400,7 +400,8 @@ class Listener:
             if self.source is not None:
                 self.log("paused")
                 self.close_stream()
-            self.publish_state(self.paused_state())
+            state = self.paused_state()
+            self.publish_state(state, self.gate.reason if state == "paused" else None)
             self.sleep(READY_POLL_SECS if self.ready_deadline is not None else PAUSED_SLEEP_SECS)
             return
         if self.ready_deadline is not None and (self.ready_seen or self.clock() >= self.ready_deadline):
@@ -418,7 +419,7 @@ class Listener:
                 return
             self.opened_at = self.clock()
             self.log("armed")
-            self.publish_state("armed")
+            self.publish_state("armed", None)
         try:
             frame = self.source.read_frame(READ_TIMEOUT_SECS)
         except SourceEnded:
@@ -618,20 +619,22 @@ def make_logger():
 class StateFile:
     """wake.json under voxcmd's runtime dir, which the bar watches: {"state": "armed" | "ready" | "paused"}.
 
-    ready is the recording a trigger started, the cue to speak."""
+    ready is the recording a trigger started, the cue to speak. A paused state also carries "reason", the name of the
+    PauseGate check that paused (absent when the stream failed rather than a check paused). The file is rewritten only
+    when the state or reason changes."""
 
     def __init__(self):
         self.path = os.path.join(runtime_dir(), "wake.json")
         self.last = None
 
-    def publish(self, state):
-        if state == self.last:
+    def publish(self, state, reason=None):
+        if (state, reason) == self.last:
             return
-        self.last = state
+        self.last = (state, reason)
         os.makedirs(runtime_dir(), exist_ok=True)
         partial = self.path + ".tmp"
         with open(partial, "w") as state_file:
-            json.dump({"state": state, "pid": os.getpid()}, state_file)
+            json.dump({"state": state, "pid": os.getpid(), **({"reason": reason} if reason else {})}, state_file)
         os.replace(partial, self.path)
 
     def remove(self):

@@ -12,14 +12,16 @@ BarModule {
     has_popup: false
     // The detector holding the microphone is told apart from a recording by a dot, not by the icon's colour or pulse.
     readonly property bool wake_listening: VoxWake.armed && VoxtypeState.state === "idle"
+    // A paused listener keeps a dimmed dot, so it does not read as the setting being off.
+    readonly property bool wake_paused: VoxWake.paused && VoxtypeState.state === "idle"
     readonly property bool wake_ready: VoxWake.ready && VoxtypeState.recording
-    tooltip_text: VoxSession.active && VoxSession.exit_hint !== "" ? VoxSession.exit_hint : root.wake_listening ? "Listening for \"hey jarvis\"" : VoxtypeState.tooltip
+    tooltip_text: VoxSession.active && VoxSession.exit_hint !== "" ? VoxSession.exit_hint : root.wake_listening ? "Listening for \"hey jarvis\"" : root.wake_paused ? VoxWake.paused_text : VoxtypeState.tooltip
 
     readonly property var glyphs: ({ idle: "", stopped: "" })
     readonly property color glyph_color: VoxtypeState.recording ? Theme.theme_label : VoxtypeState.transcribing ? Theme.warning : VoxtypeState.state === "stopped" ? Theme.fg_dim : Theme.theme_primary
 
     shown: VoxtypeState.installed
-    implicitWidth: shown ? glyph.implicitWidth + (root.wake_listening || root.wake_ready ? wake_dot.dot + 2 : 0) : 0
+    implicitWidth: shown ? glyph.implicitWidth + (root.wake_listening || root.wake_paused || root.wake_ready ? wake_dot.dot + 2 : 0) : 0
     implicitHeight: glyph.implicitHeight
 
     BarIcon {
@@ -45,19 +47,19 @@ BarModule {
     Rectangle {
         id: wake_dot
         readonly property real dot: Math.max(4, Math.round(Style.bar_badge_size / 2.5))
-        visible: root.wake_listening || root.wake_ready
+        visible: root.wake_listening || root.wake_paused || root.wake_ready
         x: glyph.x + glyph.width + 2
         y: glyph.y + Math.round((glyph.height - dot) / 2)
         width: dot
         height: dot
         radius: dot / 2
         color: root.wake_ready ? Theme.ok : Theme.theme_secondary
-        opacity: 0.85
+        opacity: root.wake_paused ? 0.5 : 0.85
 
         SequentialAnimation {
             running: root.wake_ready
             loops: 3
-            onRunningChanged: if (!running) wake_dot.opacity = 0.85
+            onRunningChanged: if (!running) wake_dot.opacity = Qt.binding(() => root.wake_paused ? 0.5 : 0.85)
             NumberAnimation { target: wake_dot; property: "opacity"; from: 1; to: 0.15; duration: 180 }
             NumberAnimation { target: wake_dot; property: "opacity"; from: 0.15; to: 1; duration: 180 }
         }
