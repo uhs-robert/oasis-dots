@@ -11,6 +11,7 @@
 .import "CrtVectors.js" as Crt
 .import "Ps2Vectors.js" as Ps2
 .import "HalflifeVectors.js" as Halflife
+.import "TieVectors.js" as Tie
 
 // Icon sets a bar style can draw in place of the Nerd Font glyphs: set name -> icon name -> variant -> sprite rows or vector.
 var sets = {
@@ -25,7 +26,8 @@ var sets = {
     "ff7": Ff7.vectors,
     "crt": Crt.vectors,
     "ps2": Ps2.vectors,
-    "halflife": Halflife.vectors
+    "halflife": Halflife.vectors,
+    "tie": Tie.vectors
 };
 
 var names = Object.keys(sets);

@@ -91,6 +91,7 @@ function overrides(t, ctx) {
         bar_pill_square: true,
         bar_clock_brackets: lock,
         bar_meeting_marker: "bracket_readout",
+        bar_icon_set: "tie",
         bar_hover_bg: Qt.alpha(vec, 0.15),
         small: {
             frame_octagon: 0,
