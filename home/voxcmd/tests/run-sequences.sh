@@ -141,6 +141,10 @@ check "steps run in order" "[[ \$(ran) == one,two,three ]]"
 check "each step that succeeds keeps its own toast" "[[ \$(toasts 'Seq: one') == 1 && \$(toasts 'Seq: two') == 1 && \$(toasts 'Seq: three') == 1 ]]"
 check "the sequence leaves no state behind" "[[ -z \$(sequence_files) ]] && ! ls '$XDG_RUNTIME_DIR'/voxcmd/discard.* >/dev/null 2>&1"
 fresh
+seq_status=0
+seq_stderr=$(env VOXCMD_CONFIG_DIR="$seq_config" VOXCMD_APP_SETTLE_SECS=0 "$seq_bin" "one and then two" 2>&1 >/dev/null) || seq_status=$?
+check "run from a terminal, a sequence that ran exits 0 and its cleanup trap raises no error" "[[ $seq_status == 0 && \$(ran) == one,two ]] && ! grep -q 'unbound variable' <<<\"\$seq_stderr\""
+fresh
 seq_voxcmd "One, then two."
 check "a comma before then splits, whatever the case and the full stop" "[[ \$(ran) == one,two ]]"
 fresh
