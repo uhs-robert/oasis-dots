@@ -85,6 +85,20 @@ RowsSection {
             value: () => VoiceSettings.sensitivity,
             set: v => VoiceSettings.set("sensitivity", v)
         }, {
+            label: "While media plays",
+            desc: "Keep listening lets a song or video say \"hey jarvis\" and start a command. Pause stops the listener while a player plays. A change restarts the listener if it runs.",
+            values: () => [0, 1],
+            text: v => v === 1 ? "Pause" : "Keep listening",
+            value: () => VoiceSettings.pause_for_media,
+            set: v => VoiceSettings.set("pause_media", v)
+        }, {
+            label: "While in a meeting",
+            desc: "Pause stops the listener during a calendar meeting, as the bar's meeting dot reads it. Keep listening does not. A change restarts the listener if it runs.",
+            values: () => [0, 1],
+            text: v => v === 1 ? "Pause" : "Keep listening",
+            value: () => VoiceSettings.pause_for_meetings,
+            set: v => VoiceSettings.set("pause_meetings", v)
+        }, {
             label: "Music while recording",
             desc: "The share of its volume music keeps while recording. A change restarts voxtype, which cuts off a recording in progress.",
             values: () => Choices.with_current(VoiceSettings.duck_steps, VoiceSettings.duck),
