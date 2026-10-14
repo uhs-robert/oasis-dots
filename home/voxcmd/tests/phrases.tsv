@@ -90,6 +90,22 @@ scrolling screenshot	Screenshot/scroll_image
 take a scrolling screenshot	Screenshot/scroll_image
 scroll text	Screenshot/scroll_text
 read text from a scrolling capture	Screenshot/scroll_text
+screenshot the window	Screenshot/pick_window
+screenshot the current window	Screenshot/focused
+scroll image	Screenshot/scroll_image
+capture the screen	Screenshot/screen
+capture a region	Screenshot/region
+capture the region	Screenshot/region
+capture the window	Screenshot/pick_window
+region screenshot	Screenshot/region
+window screenshot	Screenshot/pick_window
+screen screenshot	Screenshot/screen
+full screenshot	Screenshot/screen
+full screen screenshot	Screenshot/screen
+freeze screenshot	Screenshot/frozen
+take a screen shot of the region	Screenshot/region
+screen shot this window	Screenshot/focused
+ocr	Screenshot/text
 screenshot	Keybinds/run	no verb here; the Print bind opens the menu
 toggle fullscreen	Keybinds/run
 close window	Keybinds/run

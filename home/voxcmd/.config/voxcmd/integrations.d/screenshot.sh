@@ -10,21 +10,21 @@ silent_actions=(region frozen screen pick_window focused text pixel scroll_text 
 screenshot_tool="${XDG_CONFIG_HOME:-$HOME/.config}/hypr/scripts/screenshot.sh"
 
 # "screenshot" alone is not a verb here: it stays with the Keybinds fallback, which opens the menu.
-shot="((take|grab|capture|make) )?(an? |the |my )?screenshot( of)?"
+shot="(((take|grab|make) )?(an? |the |my )?(screen ?shot|capture)( of)?|capture)"
 area="(region|area|selection|part of the screen)"
-current="(this|the|my|current|focused|active)( current| focused| active)?"
+current="((this|my|current|focused|active)( current| focused| active)?|the (current|focused|active))"
 
 # Scroll and text first: "text from a scrolling capture" must not read as a plain region.
 verbs=(
   "scroll_text   scroll(ing)? (text|ocr)|(grab|get|read|copy) (the )?text from (a )?scroll(ing)?( capture| screenshot)?"
-  "scroll_image  scroll(ing)? (screenshot|capture)|(take|grab|make) (a )?scroll(ing)? (screenshot|capture)|${shot} (a )?scroll(ing)?( ${area}| page)?"
+  "scroll_image  scroll(ing)? (screenshot|capture)|(take|grab|make) (a )?scroll(ing)? (screenshot|capture)|scroll image|${shot} (a )?scroll(ing)?( ${area}| page)?"
   "pixel         pick (a |the )?(pixel )?colou?r|(pick|get|grab) (a |the )?pixel( colou?r)?|colou?r picker|eyedropper"
-  "text          (grab|get|read|copy|extract) (the )?text (from|of) (a |the )?${area}|ocr (a |the )?${area}|text from (a |the )?${area}"
-  "frozen        ${shot} (a |the )?(frozen|still) ${area}|((take|grab|capture|make) )?(an? )?(frozen|still) screenshot( of (a |the )?${area})?"
+  "text          (grab|get|read|copy|extract) (the )?text (from|of) (a |the )?${area}|ocr( (a |the )?${area})?|text from (a |the )?${area}"
+  "frozen        ${shot} (a |the )?(frozen|still) ${area}|((take|grab|capture|make) )?(an? )?(frozen|still|freeze) screen ?shot( of (a |the )?${area})?"
   "focused       ${shot} ${current} window"
-  "pick_window   ${shot} (a |any )?window"
-  "screen        ${shot} (the |my |this )?((whole|entire|full) )?(screen|display|monitor)"
-  "region        ${shot} (a |an |the )?${area}"
+  "pick_window   ${shot} (a |any |the )?window|window screen ?shot"
+  "screen        ${shot} (the |my |this )?((whole|entire|full) )?(screen|display|monitor)|((full|whole|entire) )?(screen|display|monitor) screen ?shot|(full|whole|entire) screen ?shot"
+  "region        ${shot} (a |an |the )?${area}|${area} screen ?shot"
 )
 
 examples=(
