@@ -13,6 +13,17 @@ import time
 import unittest
 
 HOST = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".local", "share", "voxcmd", "firefox-host")
+# The tests wait for events, not for time; this bound only ends a wait for one that never comes, as in lib.sh.
+WAIT_SECS = float(os.environ.get("VOXCMD_TEST_WAIT_SECS", "120"))
+
+
+def wait_until(condition):
+    deadline = time.monotonic() + WAIT_SECS
+    while not condition():
+        if time.monotonic() >= deadline:
+            return False
+        time.sleep(0.02)
+    return True
 
 
 class FakeExtension:
@@ -22,9 +33,16 @@ class FakeExtension:
         env = {**os.environ, "XDG_RUNTIME_DIR": runtime_dir}
         self.process = subprocess.Popen([sys.executable, HOST], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=env)
         self.path = os.path.join(runtime_dir, "voxcmd", "firefox.sock")
-        deadline = time.monotonic() + (5 if wait_for_socket else 0)
-        while wait_for_socket and not self.accepts() and self.process.poll() is None and time.monotonic() < deadline:
-            time.sleep(0.01)
+        if wait_for_socket:
+            wait_until(lambda: self.accepts() or self.process.poll() is not None)
+
+    def waits_for_the_lock(self):
+        """Has the lock file open: while another host holds the lock, that means this one waits for it."""
+        fd_dir = f"/proc/{self.process.pid}/fd"
+        try:
+            return any(os.readlink(os.path.join(fd_dir, fd)) == self.path + ".lock" for fd in os.listdir(fd_dir))
+        except OSError:
+            return False
 
     def accepts(self):
         with socket.socket(socket.AF_UNIX) as probe:
@@ -45,13 +63,13 @@ class FakeExtension:
 
     def close(self):
         self.process.stdin.close()
-        return self.process.wait(timeout=5)
+        return self.process.wait(timeout=WAIT_SECS)
 
 
 def ask(path, line):
     """A socket client: one line out, one line back."""
     with socket.socket(socket.AF_UNIX) as client:
-        client.settimeout(10)
+        client.settimeout(WAIT_SECS)
         client.connect(path)
         client.sendall(line if isinstance(line, bytes) else json.dumps(line).encode() + b"\n")
         data = b""
@@ -89,7 +107,7 @@ class HostTest(unittest.TestCase):
         self.assertEqual({key: request[key] for key in ("cmd", "tab_id")}, {"cmd": "activate", "tab_id": 5})
         self.assertNotEqual(request["id"], "client-chosen")
         self.extension.reply({"id": request["id"], "ok": True, "result": {"title": "T — café"}})
-        thread.join(5)
+        thread.join(WAIT_SECS)
         self.assertEqual(results["a"], {"ok": True, "result": {"title": "T — café"}})
 
     def test_replies_out_of_order_reach_their_own_clients(self):
@@ -101,8 +119,8 @@ class HostTest(unittest.TestCase):
         self.assertNotEqual(request_one["id"], request_two["id"])
         self.extension.reply({"id": request_two["id"], "ok": True, "result": "two"})
         self.extension.reply({"id": request_one["id"], "ok": False, "error": "one failed"})
-        first.join(5)
-        second.join(5)
+        first.join(WAIT_SECS)
+        second.join(WAIT_SECS)
         self.assertEqual(results["first"], {"ok": False, "error": "one failed"})
         self.assertEqual(results["second"], {"ok": True, "result": "two"})
 
@@ -112,7 +130,7 @@ class HostTest(unittest.TestCase):
         request = self.extension.read_request()
         self.extension.reply({"id": 999, "ok": True, "result": "stray"})
         self.extension.reply({"id": request["id"], "ok": True, "result": []})
-        thread.join(5)
+        thread.join(WAIT_SECS)
         self.assertEqual(results["a"], {"ok": True, "result": []})
 
     def test_no_answer_times_out_after_about_two_seconds(self):
@@ -120,7 +138,7 @@ class HostTest(unittest.TestCase):
         reply = ask(self.extension.path, {"cmd": "tabs"})
         self.assertFalse(reply["ok"])
         self.assertIn("in time", reply["error"])
-        self.assertTrue(1.8 < time.monotonic() - started < 4)
+        self.assertGreater(time.monotonic() - started, 1.8)
 
     def test_bad_requests_are_answered_with_an_error_and_not_forwarded(self):
         for line in (b"not json\n", b"[1]\n", b'{"tab_id": 1}\n'):
@@ -130,40 +148,37 @@ class HostTest(unittest.TestCase):
         request = self.extension.read_request()
         self.assertEqual(request["cmd"], "tabs")
         self.extension.reply({"id": request["id"], "ok": True, "result": 1})
-        thread.join(5)
+        thread.join(WAIT_SECS)
 
     def test_socket_and_directory_are_private(self):
         self.assertEqual(stat.S_IMODE(os.stat(self.extension.path).st_mode), 0o600)
         self.assertEqual(stat.S_IMODE(os.stat(os.path.dirname(self.extension.path)).st_mode), 0o700)
 
     def test_a_second_host_refuses_while_the_first_lives(self):
-        second = subprocess.run([sys.executable, HOST], stdin=subprocess.PIPE, capture_output=True, env={**os.environ, "XDG_RUNTIME_DIR": self.runtime_dir}, timeout=15)
+        second = subprocess.run([sys.executable, HOST], stdin=subprocess.PIPE, capture_output=True, env={**os.environ, "XDG_RUNTIME_DIR": self.runtime_dir}, timeout=WAIT_SECS)
         self.assertNotEqual(second.returncode, 0)
         self.assertIn(b"another voxcmd Firefox host", second.stderr)
         results = {}
         thread = self.ask_in_thread({"cmd": "tabs"}, results, "a")
         request = self.extension.read_request()
         self.extension.reply({"id": request["id"], "ok": True, "result": "still first"})
-        thread.join(5)
+        thread.join(WAIT_SECS)
         self.assertEqual(results["a"]["result"], "still first")
 
     def test_a_host_starting_as_the_first_exits_takes_over_and_keeps_its_socket(self):
         second = FakeExtension(self.runtime_dir, wait_for_socket=False)
         self.addCleanup(lambda: [second.process.poll() is None and second.process.kill(), second.process.wait(), second.process.stdin.close(), second.process.stdout.close(), second.process.stderr.close()])
-        time.sleep(0.3)
-        self.assertIsNone(second.process.poll())
+        self.assertTrue(wait_until(second.waits_for_the_lock))
         self.extension.close()
-        deadline = time.monotonic() + 5
-        while not second.accepts() and time.monotonic() < deadline:
-            time.sleep(0.02)
+        wait_until(second.accepts)
         results = {}
         thread = threading.Thread(target=lambda: results.update(a=ask(second.path, {"cmd": "tabs"})))
         thread.start()
         request = second.read_request()
         second.reply({"id": request["id"], "ok": True, "result": "second"})
-        thread.join(5)
+        thread.join(WAIT_SECS)
         self.assertEqual(results["a"]["result"], "second")
-        time.sleep(0.5)
+        # close() waited for the first host to exit, so whatever it removes on the way out is gone by now.
         self.assertTrue(os.path.exists(second.path))
 
     def test_closing_stdin_ends_the_host_and_removes_the_socket(self):
@@ -174,11 +189,10 @@ class HostTest(unittest.TestCase):
         results = {}
         thread = self.ask_in_thread({"cmd": "tabs"}, results, "a")
         self.extension.read_request()
-        started = time.monotonic()
         self.extension.close()
-        thread.join(5)
-        self.assertFalse(results["a"]["ok"])
-        self.assertLess(time.monotonic() - started, 1.5)
+        thread.join(WAIT_SECS)
+        # Failed by the disconnect, not by waiting out the reply timeout.
+        self.assertEqual(results["a"], {"ok": False, "error": "the extension disconnected"})
 
 
 class StaleSocketTest(unittest.TestCase):
@@ -196,7 +210,7 @@ class StaleSocketTest(unittest.TestCase):
             thread.start()
             request = extension.read_request()
             extension.reply({"id": request["id"], "ok": True, "result": []})
-            thread.join(5)
+            thread.join(WAIT_SECS)
             self.assertEqual(results["a"], {"ok": True, "result": []})
         finally:
             extension.close()

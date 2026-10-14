@@ -118,24 +118,14 @@ fresh() {
 ran() { grep '^ran ' "$log" | sed 's/^ran //' | paste -sd,; }
 # toasts <pattern>: how many notifications hold it, a multi-line body counting once for its first line.
 toasts() { grep -c "^notify-send .*$1" "$log"; }
-# "no match" toasts go through setsid, which the sandbox only logs.
-detached_toast_has() { grep -q "^setsid .*$1" "$log"; }
-wait_for_count() {
-  local deadline=$((SECONDS + 20))
-  until (($(grep -c -- "$1" "$log") >= $2)); do
-    ((SECONDS < deadline)) || return 1
-    sleep 0.02
-  done
-}
-wait_until_gone() {
-  local deadline=$((SECONDS + 20))
-  while process_running "$1"; do
-    ((SECONDS < deadline)) || return 1
-    sleep 0.02
-  done
-}
+# "no match" toasts go through setsid, which the sandbox only logs. voxcmd starts it in the background, so the line can
+# land after voxcmd has exited: a toast that should be there is waited for, one that should not is only looked for.
+detached_toast_has() { wait_for_line "^setsid .*$1" "$log"; }
+detached_toast_logged() { grep -q "^setsid .*$1" "$log"; }
+polls_reach() { wait_for_count "$1" "$log" "$2"; }
 sequence_dir=$XDG_RUNTIME_DIR/voxcmd/sequences
 sequence_files() { ls "$sequence_dir"/*.json 2>/dev/null; }
+sequences_running() { [[ $(sequence_files | wc -l) == "$1" ]]; }
 
 section "order"
 fresh
@@ -175,7 +165,7 @@ section "waiting"
 fresh
 seq_voxcmd "gate and then two" &
 seq_pid=$!
-wait_for_count '^poll' 3
+polls_reach '^poll' 3
 check "the next step does not run while the wait's condition fails" "[[ \$(ran) == gate ]]"
 check "the sequence names itself for Stop Voice" "[[ \$(sequence_files | wc -l) == 1 ]] && process_running \$(jq -r .pid \$(sequence_files))"
 touch "$gate"
@@ -192,11 +182,11 @@ check "with one error toast naming the step, the timeout and the steps not run" 
 fresh
 seq_voxcmd "gate and then two" &
 seq_pid=$!
-wait_for_count '^poll' 3
+polls_reach '^poll' 3
 seq_voxcmd stop
 wait "$seq_pid"
 check "Stop Voice during a wait ends the sequence without running the rest" "[[ \$(ran) == gate ]]"
-check "and without a toast" "[[ \$(toasts 'stopped at step') == 0 ]] && ! detached_toast_has 'stopped at step'"
+check "and without a toast" "[[ \$(toasts 'stopped at step') == 0 ]] && ! detached_toast_logged 'stopped at step'"
 check "leaving no state behind" "[[ -z \$(sequence_files) ]] && ! ls '$XDG_RUNTIME_DIR'/voxcmd/discard.* >/dev/null 2>&1"
 
 fresh
@@ -204,8 +194,8 @@ seq_voxcmd "gate and then two" &
 first_pid=$!
 seq_voxcmd "gate and then three" &
 second_pid=$!
-until [[ $(sequence_files | wc -l) == 2 ]]; do sleep 0.02; done
-wait_for_count '^poll' 6
+wait_until sequences_running 2
+polls_reach '^poll' 6
 seq_voxcmd stop
 wait "$first_pid" "$second_pid"
 check "Stop Voice ends every running sequence, not only the newest" "[[ \$(ran) == gate,gate ]] && [[ -z \$(sequence_files) ]]"
@@ -222,7 +212,7 @@ check "with one error toast holding its output, and not the step's own" "[[ \$(t
 fresh
 seq_voxcmd "one and then bogus words and then two"
 check "a step that matches nothing stops the rest" "[[ \$(ran) == one ]]"
-check "with one toast quoting its words, carrying the Voice Help button, and no no-match toast of its own" "detached_toast_has 'stopped at step 2 of 3' && detached_toast_has 'no match for \"bogus words\"' && ! detached_toast_has 'voxcmd: no match'"
+check "with one toast quoting its words, carrying the Voice Help button, and no no-match toast of its own" "detached_toast_has 'stopped at step 2 of 3' && detached_toast_has 'no match for \"bogus words\"' && ! detached_toast_logged 'voxcmd: no match'"
 fresh
 echo CANCEL >"$root/pick-answer"
 seq_voxcmd "one and then pick side and then two"
@@ -261,7 +251,7 @@ other_class_window='{"address":"0x1005","class":"org.example.Other","title":"new
 gated_run() {
   seq_voxcmd "$1" &
   seq_pid=$!
-  wait_for_count 'activewindow gated' 3
+  polls_reach 'activewindow gated' 3
   before_gate=$(ran)
   touch "$gate"
   wait "$seq_pid"

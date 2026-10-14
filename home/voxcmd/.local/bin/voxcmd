@@ -1913,6 +1913,9 @@ session_run_ended_hook() {
     declare -F session_ended >/dev/null || exit 0
     session_ended "$2" "${3:-}" "${4:-0}"
   ) 9>&- >/dev/null 2>&1 &
+  # For the tests, which wait for the hook by this PID: its last command may replace the subshell, so its command line
+  # stops naming voxcmd before it is done.
+  debug "session: ended hook $! runs"
 }
 
 # session_end_if_mine <reason>: ends the session this process owns, as a watcher that dies without handing over leaves it.

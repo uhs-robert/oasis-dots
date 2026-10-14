@@ -82,6 +82,8 @@
 #   VOXCMD_EXTRA_INTEGRATIONS  colon-separated integration files to load too, e.g. a private one
 #   SANDBOX_EXTRA_STUBS        space-separated commands to stub as well, such as the ones an extra integration calls
 #   SANDBOX_SHOW_CALLS=1       print the stub call log to stderr when the command ends
+#   SANDBOX_STUB_DELAY=<secs>  every stub call first sleeps that long: a slow machine, the same on every run, for
+#                              checking that a suite waits on events rather than on time
 #   SANDBOX_DIR                set for the command: the sandbox root, with the call log at $SANDBOX_DIR/calls.log
 #
 # HOME, XDG_STATE_HOME and XDG_CACHE_HOME are empty dirs in the sandbox, so the caller's tmuxifier layouts, timers
@@ -118,21 +120,30 @@ fi
 cat >"$stub_dir/.stub" <<'EOF'
 #!/bin/sh
 name=${0##*/}
+[ -z "${SANDBOX_STUB_DELAY-}" ] || sleep "$SANDBOX_STUB_DELAY"
 log() { printf '%s\n' "$name $*" >>"$SANDBOX_DIR/calls.log"; }
-# With VOXCMD_DEBUG on, waits (10s at most) until a watcher has logged that it sees the recording the last voxtype
-# record start began, so a turn never ends before its watcher's first poll: that watcher would take it for a recording
-# that never started and wait out its start grace. Without the debug log there is no telling, so it waits $1 seconds.
+# With VOXCMD_DEBUG on, waits until a watcher has logged that it sees the recording the last voxtype record start began,
+# so a turn never ends before its watcher's first poll: that watcher would take it for a recording that never started
+# and wait out its start grace. It stops waiting once another record start has replaced the recording, whose turn is
+# then never heard: a turn left waiting would otherwise speak into a later test's recording. The bound is the suites'
+# outer one (VOXCMD_TEST_WAIT_SECS, as in lib.sh), only reached when no watcher comes. Without the debug log there is no
+# telling, so it waits $1 seconds.
 wait_for_watcher_to_see_recording() {
   if [ -z "${VOXCMD_DEBUG-}" ]; then
     sleep "$1"
     return
   fi
-  waited=0
-  while [ "$(recordings_watchers_saw)" -le "$(cat "$SANDBOX_DIR/recording-mark" 2>/dev/null || echo 0)" ] && [ "$waited" -lt 500 ]; do
+  waited=0 max_polls=$((${VOXCMD_TEST_WAIT_SECS:-120} * 50))
+  while [ -d "$SANDBOX_DIR" ] && recording_is_current && [ "$(recordings_watchers_saw)" -le "${recording_mark#* }" ] &&
+    [ "$waited" -lt "$max_polls" ]; do
     sleep 0.02
     waited=$((waited + 1))
   done
 }
+# The recording-mark file holds "<start id> <recordings watchers had seen before it>" for the last record start, and
+# $recording_mark the one this stub runs for.
+last_recording_mark() { cat "$SANDBOX_DIR/recording-mark" 2>/dev/null || echo "none 0"; }
+recording_is_current() { [ "$(last_recording_mark)" = "$recording_mark" ]; }
 recordings_watchers_saw() {
   count=$(grep -c 'watch: voxtype recording$' "$XDG_RUNTIME_DIR/voxcmd/debug.log" 2>/dev/null)
   echo "${count:-0}"
@@ -314,6 +325,7 @@ voxcmd-autostop)
   log "min_speech_secs=${VOXCMD_AUTOSTOP_MIN_SPEECH_SECS:-default} silence_secs=${VOXCMD_AUTOSTOP_SILENCE_SECS:-default}"
   [ -z "${VOXCMD_AUTOSTOP_MAX_SECS-}" ] || log "max_secs=$VOXCMD_AUTOSTOP_MAX_SECS"
   if [ "$(cat "$SANDBOX_DIR/voxtype-turn")" = SILENCE ]; then
+    recording_mark=$(last_recording_mark)
     wait_for_watcher_to_see_recording 0.5
     exit 3
   fi
@@ -337,11 +349,13 @@ voxtype)
     [ -n "$turn" ] || turn=SILENCE
     [ "$turn" != FAIL ] || exit 1
     echo "$turn" >"$SANDBOX_DIR/voxtype-turn"
-    recordings_watchers_saw >"$SANDBOX_DIR/recording-mark"
+    recording_mark="$(date +%s%N) $(recordings_watchers_saw)"
+    echo "$recording_mark" >"$SANDBOX_DIR/recording-mark"
     echo recording >"$state_file"
     if [ "$turn" != SILENCE ] && [ "$turn" != HOLD ]; then
       (
         wait_for_watcher_to_see_recording 0
+        recording_is_current || exit 0
         if [ "${turn#GATED }" != "$turn" ]; then
           turn=${turn#GATED }
           # A recording cancelled (or a sandbox removed) before the release would never be written anyway; stop waiting.
@@ -351,7 +365,7 @@ voxtype)
           done
         fi
         sleep "${SANDBOX_VOXTYPE_SPEAK_SECS:-0.4}"
-        if [ "$(cat "$state_file")" = recording ]; then
+        if [ "$(cat "$state_file")" = recording ] && recording_is_current; then
           [ "$turn" = EMPTY ] || printf '%s' "$turn" >"$file"
           echo idle >"$state_file"
         fi

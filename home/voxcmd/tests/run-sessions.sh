@@ -109,21 +109,21 @@ sess_start() {
 sess_phrase=""
 # The stub call log and voxcmd's debug log, emptied before a run so sess_wait reads only its watchers.
 fresh_logs() { mkdir -p "$(dirname "$debug_log")" && : >"$log" && : >"$debug_log"; }
-# Waits for every watcher of the run to finish. Fails when 60s pass without a new watcher while one is alive, which
-# would be a microphone that never closes, and when the run has listened 20 times more than it has turns queued, which
-# would be one that keeps re-opening. The time bound restarts with each watcher, not once per run: a loaded machine can
-# take seconds a turn, so a long run outlasts any fixed total, and the listen count is the ceiling that does not depend
-# on load. listen logs each watcher's PID as it starts it, before the listen (or the watcher handing over) exits, so a
+# Waits for every watcher of the run to finish. Fails when test_wait_secs pass without a new watcher while one is alive,
+# which would be a microphone that never closes, and when the run has listened 20 times more than it has turns queued,
+# which would be one that keeps re-opening. The time bound restarts with each watcher, not once per run: a loaded
+# machine can take seconds a turn, so a long run outlasts any fixed total, and the listen count is the ceiling that does
+# not depend on load. listen logs each watcher's PID as it starts it, before the listen (or the watcher handing over) exits, so a
 # watcher still to come always has a live parent or a logged PID.
 sess_wait() {
-  local deadline=$((SECONDS + 60)) max_listens=$((sess_queued_turns + 20)) pid running watchers seen=0
+  local deadline=$((SECONDS + test_wait_secs)) max_listens=$((sess_queued_turns + 20)) pid running watchers seen=0
   while ((SECONDS < deadline)); do
     running=0
     watchers=$(sed -n 's/.* listen: recording started, watcher \([0-9]*\) .*/\1/p' "$debug_log")
     while read -r pid; do [ -n "$pid" ] && process_running "$pid" && running=1 && break; done <<<"$watchers"
     ((running)) || return 0
     if (($(wc -l <<<"$watchers") > seen)); then
-      seen=$(wc -l <<<"$watchers") deadline=$((SECONDS + 60))
+      seen=$(wc -l <<<"$watchers") deadline=$((SECONDS + test_wait_secs))
     fi
     if ((seen > max_listens)); then
       echo "   the microphone kept re-opening: $seen listens for $sess_queued_turns queued turns"
@@ -131,32 +131,27 @@ sess_wait() {
     fi
     sleep 0.02
   done
-  echo "   a watcher still running 60s after the last one started"
+  echo "   a watcher still running ${test_wait_secs}s after the last one started"
   return 1
 }
 sess_run() {
   sess_start "$@"
   sess_wait
 }
-# log_has_soon <pattern> [secs]: the watcher starts in the background, so its log lines can land after listen has
+# log_has_soon <pattern>: the watcher starts in the background, so its log lines can land after listen has
 # returned.
-log_has_soon() { wait_for_line "$1" "$log" "${2:-20}"; }
+log_has_soon() { wait_for_line "$1" "$log"; }
 taps() { grep -c '^tap ' "$log"; }
 record_starts() { grep -c '^voxtype record start' "$log"; }
 session_gone() { [[ ! -e $XDG_RUNTIME_DIR/voxcmd/session.json ]]; }
 ended_because() { grep -q "^notify-send .*Test mode ended $1" "$log"; }
 start_time_of() { sed 's/.*) //' "/proc/$1/stat" | awk '{print $20}'; }
 # Waits until the session's owner is a watcher that has seen its recording start, so its traps are set.
-owner_is_listening() {
-  local deadline=$((SECONDS + 20)) owner
-  while ((SECONDS < deadline)); do
-    owner=$(jq -r .owner "$XDG_RUNTIME_DIR/voxcmd/session.json" 2>/dev/null)
-    if [ -n "$owner" ] && grep -q "voxcmd\[$owner\] watch: voxtype recording\$" "$debug_log"; then
-      return 0
-    fi
-    sleep 0.02
-  done
-  return 1
+owner_is_listening() { wait_until owner_saw_recording; }
+owner_saw_recording() {
+  local owner
+  owner=$(jq -r .owner "$XDG_RUNTIME_DIR/voxcmd/session.json" 2>/dev/null)
+  [ -n "$owner" ] && grep -q "voxcmd\[$owner\] watch: voxtype recording\$" "$debug_log"
 }
 
 sess_run alpha beta "done"
@@ -383,7 +378,7 @@ check "and stop itself cancels the transcribing" "grep -q 'stop: cancelling the 
 rm -f "$root/routing" "$root/route-release"
 echo CANCEL >"$STUB_PICKS"
 sess_start slow
-while [ ! -e "$root/routing" ]; do sleep 0.02; done
+wait_for_path "$root/routing"
 sess_voxcmd_env stop
 touch "$root/route-release"
 sess_wait
@@ -405,7 +400,7 @@ stop_waiter_pid=$!
 mkfifo "$root/stop-fifo"
 jq -n -c --argjson pid "$stop_waiter_pid" --arg fifo "$root/stop-fifo" \
   '{pid: $pid, fifo: $fifo, label: "Which one?", kind: "hints", expansions: {}, choices: [{id: "a", label: "1. A"}]}' >"$XDG_RUNTIME_DIR/voxcmd/pending-pick.json"
-timeout 10 head -n1 "$root/stop-fifo" >"$root/stop-answer" &
+timeout "$test_wait_secs" head -n1 "$root/stop-fifo" >"$root/stop-answer" &
 stop_reader_pid=$!
 sess_voxcmd_env stop
 wait "$stop_reader_pid"
@@ -426,7 +421,7 @@ stop_waiter_pid=$!
 mkfifo "$root/stop-fifo-2"
 jq -n -c --argjson pid "$stop_waiter_pid" --arg fifo "$root/stop-fifo-2" \
   '{pid: $pid, fifo: $fifo, label: "Which one?", kind: "hints", expansions: {}, choices: [{id: "a", label: "1. A"}]}' >"$XDG_RUNTIME_DIR/voxcmd/pending-pick.json"
-timeout 10 head -n1 "$root/stop-fifo-2" >"$root/stop-answer-2" &
+timeout "$test_wait_secs" head -n1 "$root/stop-fifo-2" >"$root/stop-answer-2" &
 stop_reader_pid=$!
 sess_env=(PATH="$root/failing-bin:$PATH")
 sess_voxcmd_env stop
@@ -444,28 +439,38 @@ rm -f "$XDG_RUNTIME_DIR/voxcmd/session.json"
 echo idle >"$XDG_RUNTIME_DIR/voxtype/state"
 check "stop with nothing open exits 0 and does nothing" "env SANDBOX_SETSID_RUN=1 VOXCMD_CONFIG_DIR='$sess_config' '$sess_voxcmd' stop >/dev/null 2>&1 && ! grep -qE '^(voxtype record|notify-send)' '$log'"
 
-# Settling: the next listen waits for the overlay and popups. The stub bar reports what the files hold. Bounds are
-# loose, since a loaded machine stretches every sleep; they only tell a short wait from the long one.
+# Settling: the next listen waits for the overlay and popups. The stub bar reports what the files hold. A wait is told
+# from none by how often the bar is asked, and only the lower bounds are times, which load can only stretch.
 settle_ms() {
   local started
   started=$(date +%s%N)
-  env "$@" "$sess_voxcmd" _settle >/dev/null 2>&1
+  timeout "$test_wait_secs" env "$@" "$sess_voxcmd" _settle >/dev/null 2>&1
   echo $((($(date +%s%N) - started) / 1000000))
 }
+bar_asks() { grep -c '^qs-ipc call clickhints state' "$log"; }
+# settle_waits_out <state file> <state>: with the overlay or popup in that state, _settle has asked the bar twice and
+# is still waiting, then settles once it closes.
+settle_waits_out() {
+  local settle_pid
+  echo "$2" >"$1"
+  : >"$log"
+  env VOXCMD_APP_SETTLE_SECS=0 VOXCMD_UI_SETTLE_MAX_SECS="$test_wait_secs" "$sess_voxcmd" _settle >/dev/null 2>&1 &
+  settle_pid=$!
+  wait_until asked_twice_or_gone "$settle_pid"
+  process_running "$settle_pid" || return 1
+  echo closed >"$1"
+  wait "$settle_pid"
+}
+asked_twice_or_gone() { (($(bar_asks) >= 2)) || process_gone "$1"; }
 rm -f "$hints_state" "$popup_state_file"
-check "a settled screen waits only the app's moment" "[[ \$(settle_ms VOXCMD_APP_SETTLE_SECS=0.1 VOXCMD_UI_SETTLE_MAX_SECS=20) -ge 100 && \$(settle_ms VOXCMD_APP_SETTLE_SECS=0.1 VOXCMD_UI_SETTLE_MAX_SECS=20) -lt 10000 ]]"
-echo open >"$hints_state"
-(sleep 0.2 && echo closed >"$hints_state") &
-check "an open overlay is waited out" "[[ \$(settle_ms VOXCMD_APP_SETTLE_SECS=0) -ge 150 ]]"
-wait
+: >"$log"
+check "a settled screen waits only the app's moment" "[[ \$(settle_ms VOXCMD_APP_SETTLE_SECS=0.1 VOXCMD_UI_SETTLE_MAX_SECS=20) -ge 100 && \$(bar_asks) == 1 ]]"
+check "an open overlay is waited out" "settle_waits_out '$hints_state' open"
 for popup_state in "opening weather" "open weather" "closing weather"; do
-  echo "$popup_state" >"$popup_state_file"
-  (sleep 0.2 && echo closed >"$popup_state_file") &
-  check "a popup that is '$popup_state' is waited out" "[[ \$(settle_ms VOXCMD_APP_SETTLE_SECS=0) -ge 150 ]]"
-  wait
+  check "a popup that is '$popup_state' is waited out" "settle_waits_out '$popup_state_file' '$popup_state'"
 done
 echo open >"$hints_state"
-check "a screen that never settles is waited on for a bounded time" "[[ \$(settle_ms VOXCMD_APP_SETTLE_SECS=0 VOXCMD_UI_SETTLE_MAX_SECS=0.3) -ge 300 && \$(settle_ms VOXCMD_APP_SETTLE_SECS=0 VOXCMD_UI_SETTLE_MAX_SECS=0.3) -lt 10000 ]] && ! env VOXCMD_APP_SETTLE_SECS=0 VOXCMD_UI_SETTLE_MAX_SECS=0.1 '$sess_voxcmd' _settle"
+check "a screen that never settles is waited on for a bounded time" "[[ \$(settle_ms VOXCMD_APP_SETTLE_SECS=0 VOXCMD_UI_SETTLE_MAX_SECS=0.3) -ge 300 ]] && { timeout '$test_wait_secs' env VOXCMD_APP_SETTLE_SECS=0 VOXCMD_UI_SETTLE_MAX_SECS=0.1 '$sess_voxcmd' _settle; [[ \$? == 1 ]]; }"
 rm -f "$hints_state"
 check "no bar to ask counts as settled" "env XDG_CONFIG_HOME='$root/no-bar' VOXCMD_APP_SETTLE_SECS=0 '$sess_voxcmd' _settle"
 
@@ -473,6 +478,16 @@ check "no bar to ask counts as settled" "env XDG_CONFIG_HOME='$root/no-bar' VOXC
 sess_run alpha "done"
 check "the screen is checked between a turn's action and the next listen" "[[ \$(awk '/^tap alpha/{a=NR} /qs-ipc call clickhints state/{if (a && !q) q=NR} /voxtype record start/{n++; if (n==2) r=NR} END{print (a && a < q && q < r) ? \"ok\" : \"no\"}' '$log') == ok ]]"
 
+# The settings the detector of one listen logs. The listen hears silence: a turn of speech can end before its detector
+# starts, which then never logs.
+detector_settings_of() {
+  printf '%s\n' SILENCE >"$sess_turns"
+  fresh_logs
+  echo idle >"$XDG_RUNTIME_DIR/voxtype/state"
+  sess_voxcmd_env listen
+  sess_wait
+  grep '^voxcmd-autostop ' "$log" | sed 's/^voxcmd-autostop //' | paste -sd' '
+}
 # A stale session: its owner is gone, so the next listen routes normally and clears it.
 stale_listen() {
   printf '%s\n' "tap hello" >"$sess_turns"
@@ -486,7 +501,7 @@ stale_listen() {
 }
 stale_listen 999999 1
 check "a stale session is dropped and the command routes normally" "session_gone && [[ \$(grep '^tap ' '$log') == 'tap hello' && \$(record_starts) == 1 ]]"
-check "a normal listen keeps the default silence allowance" "grep -q 'no_speech_secs=default' '$log' && grep -q 'min_speech_secs=default silence_secs=default' '$log'"
+check "a normal listen keeps the default silence allowance" "[[ \$(detector_settings_of) == 'no_speech_secs=default min_speech_secs=default silence_secs=default' ]]"
 # A live process under the owner's PID is not the owner unless it started when the owner did.
 "$stub_sleep" 60 &
 reused_pid=$!
@@ -551,14 +566,6 @@ log_has_soon 'setsid '
 check "with nothing pending, a live session's listen goes to the session" "grep -q 'setsid .*_watch session_turn' '$log'"
 # The detector each listen starts: a reply's lower speech minimum, the session's settings, nothing for a command.
 sess_env=(VOXCMD_AUTOSTOP_MIN_SPEECH_SECS=0.5)
-detector_settings_of() {
-  printf '%s\n' SILENCE >"$sess_turns"
-  fresh_logs
-  echo idle >"$XDG_RUNTIME_DIR/voxtype/state"
-  sess_voxcmd_env listen
-  sess_wait
-  grep '^voxcmd-autostop ' "$log" | sed 's/^voxcmd-autostop //' | paste -sd' '
-}
 jq -n -c --argjson owner "$owner_pid" --arg owner_start "$(start_time_of "$owner_pid")" \
   '{kind: "test", integration: "x", label: "Test mode", started: 0, owner: $owner, owner_start: $owner_start, unclear: 0, turns: 0}' \
   >"$XDG_RUNTIME_DIR/voxcmd/session.json"
@@ -633,13 +640,8 @@ toast_has() { grep -q "^notify-send .*$1" "$log"; }
 no_clicks() { ! grep -qE '^(wlrctl|grim|tesseract)' "$log"; }
 # hold_in <mode> <recordings>: waits until the session is in that mode ("<kind> <stack kinds>") and has started that many
 # recordings, the last one a HOLD, whose watcher has seen it.
-hold_in() {
-  local deadline=$((SECONDS + 20))
-  until mode_is "$1" && [[ $(record_starts) == "$2" ]] && owner_is_listening; do
-    ((SECONDS < deadline)) || return 1
-    sleep 0.02
-  done
-}
+hold_in() { wait_until holding_in "$@"; }
+holding_in() { mode_is "$1" && [[ $(record_starts) == "$2" ]] && owner_saw_recording; }
 
 # Rapid mode: every turn is a command.
 sess_phrase="rapid mode"
@@ -780,14 +782,8 @@ sess_env=()
 sess_env=(SANDBOX_ACTIVEWINDOW_JSON="$focused_window")
 sess_phrase="type mode"
 wtype_is() { [[ $(grep '^wtype ' "$log") == "$(printf '%s\n' "$@")" ]]; }
-# A mode's ended hook runs in the background, in a copy of the watcher that may outlive it: waits until no voxcmd is left.
-hooks_done() {
-  local deadline=$((SECONDS + 20))
-  while pgrep -f -- "$sess_voxcmd( |\$)" >/dev/null; do
-    ((SECONDS < deadline)) || return 1
-    sleep 0.02
-  done
-}
+# A mode's ended hook runs in the background and may outlive its watcher.
+hooks_done() { wait_until ended_hooks_gone; }
 other_window='{"address":"0x2","class":"foot","size":[800,600]}'
 type_flushed() { log_has_soon "^wtype -- [.!?]\$"; }
 sess_run "Hello world." "This is a test." "cortana stop typing"
@@ -804,7 +800,7 @@ sess_run "Alpha and then beta." "cortana stop typing"
 type_flushed
 check "type mode types a chunk holding 'and then' whole, never split into steps" "wtype_is 'wtype -- Alpha and then beta' 'wtype -- .' && ! toast_has 'stopped at step'"
 sess_run "Hello world." "and more text" "cortana stop typing"
-type_flushed
+hooks_done
 check "a chunk that continues the sentence drops the held mark and types a space" "wtype_is 'wtype -- Hello world' 'wtype --  and more text'"
 sess_run "Hello there," "The next part" "I think so" "London is big" "cortana stop typing"
 hooks_done
@@ -856,16 +852,24 @@ sess_wait
 sess_env=(SANDBOX_ACTIVEWINDOW_JSON="$focused_window" VOXCMD_SESSION_MAX_TURNS=2)
 sess_run "type mode" one two three four five six "cortana stop typing" "tap beta" "tap gamma"
 check "typed chunks are not turns of the session's cap" "session_gone && [[ \$(grep -c '^wtype -- ' '$log') == 6 && \$(taps) == 1 ]] && toast_has 'Rapid mode ended it reached 2 turns'"
-# The time caps below hold one type-mode listen open until the session is past its cap, so the typing outlasts the cap
-# however slowly the turns run. The caps are well over what the few turns outside type mode take on a loaded machine,
-# where a turn can take seconds.
-session_cap_secs=15
-# Ends the held listen of type mode, opened in rapid mode, once more than the cap has passed since the session started.
+# The time caps below hold one type-mode listen open while the session is aged past its cap, so the typing outlasts the
+# cap without the test waiting it out. The cap is far over what the few turns outside type mode take on a loaded machine.
+session_cap_secs=600
+# age_session <secs>: as if that long had passed, every time the session recorded moves that far into the past. Under
+# the session lock, so no turn rewrites the file meanwhile.
+age_session() {
+  (
+    flock 9
+    jq -c --argjson secs "$1" '
+      def aged: with_entries(if .key == "started" or .key == "mode_started" or .key == "last_heard" then .value -= $secs else . end);
+      aged | if .stack then .stack |= map(aged) else . end' "$session_json" >"$session_json.aged" &&
+      mv "$session_json.aged" "$session_json"
+  ) 9>"$XDG_RUNTIME_DIR/voxcmd/session.lock"
+}
+# Ends the held listen of type mode, opened in rapid mode, once the session is past its cap.
 type_past_session_cap() {
-  local session_started
   hold_in 'type rapid' 2 || return 1
-  session_started=$(jq -r .started "$session_json")
-  until ((EPOCHSECONDS > session_started + session_cap_secs)); do sleep 0.1; done
+  age_session $((session_cap_secs + 1))
   SANDBOX_VOXTYPE_TURNS="$sess_turns" voxtype record stop
 }
 sess_env=(SANDBOX_ACTIVEWINDOW_JSON="$focused_window" "VOXCMD_SESSION_MAX_SECS=$session_cap_secs")
@@ -898,7 +902,7 @@ sess_phrase="rapid mode"
 sess_env=(SANDBOX_ACTIVEWINDOW_JSON="$focused_window" SANDBOX_CLICKHINTS_STATE_BLOCK="$root/state-block")
 rm -f "$root/state-block.entered" "$root/state-block.release"
 sess_start "type mode" "Stale chunk" HOLD
-until [[ -e $root/state-block.entered ]]; do sleep 0.02; done
+wait_for_path "$root/state-block.entered"
 jq -c '.stack[-1] + {owner, owner_start, turns, started, last_heard, stack: .stack[:-1]}' "$session_json" >"$session_json.new"
 mv "$session_json.new" "$session_json"
 : >"$root/state-block.release"
@@ -965,7 +969,7 @@ wait "$waiter_pid" 2>/dev/null
 sess_env=(SANDBOX_ACTIVEWINDOW_JSON="$focused_window" SANDBOX_CLICKHINTS_STATE_BLOCK="$root/frame-block")
 rm -f "$root/frame-block.entered" "$root/frame-block.release"
 sess_start "Stale chunk" HOLD
-until [[ -e $root/frame-block.entered ]]; do sleep 0.02; done
+wait_for_path "$root/frame-block.entered"
 jq -c '.frame_id = "recreated"' "$session_json" >"$session_json.new"
 mv "$session_json.new" "$session_json"
 : >"$root/frame-block.release"
@@ -990,7 +994,7 @@ sess_phrase="rapid mode"
 sess_env=(SANDBOX_ACTIVEWINDOW_JSON="$focused_window" SANDBOX_ACTIVEWINDOW_BLOCK_AFTER_WTYPE="$root/hook-block")
 rm -f "$root/hook-block.entered" "$root/hook-block.release"
 sess_start "type mode" "Hello." "cortana stop typing" HOLD
-until [[ -e $root/hook-block.entered ]]; do sleep 0.02; done
+wait_for_path "$root/hook-block.entered"
 hold_in 'rapid ' 4
 sess_voxcmd_env stop
 sess_wait
@@ -1000,16 +1004,17 @@ check "Stop after leaving type mode keeps the held mark from being typed" "sessi
 
 rm -f "$root/hook-block.entered" "$root/hook-block.release"
 sess_start "type mode" "Hello." "cortana stop typing" HOLD
-until [[ -e $root/hook-block.entered ]]; do sleep 0.02; done
+wait_for_path "$root/hook-block.entered"
 hold_in 'rapid ' 4
 flock_file=$XDG_RUNTIME_DIR/voxcmd/session.lock
 rm -f "$root/lock-held" "$root/lock-release"
 flock "$flock_file" sh -c ": >'$root/lock-held'; until [ -e '$root/lock-release' ]; do sleep 0.02; done" &
 lock_holder=$!
-until [[ -e $root/lock-held ]]; do sleep 0.02; done
+wait_for_path "$root/lock-held"
 : >"$root/hook-block.release"
-# A negative: the hook, not holding the lock, must wait for the one held here. No event says that it has not typed.
-sleep 0.3
+# A negative: the hook, not holding the lock, must wait for the one held here. Once a flock of voxcmd's waits on it, the
+# hook has reached the lock without typing.
+wait_until pgrep -fx 'flock 9' >/dev/null
 check "the ended hook takes the session lock instead of assuming the caller's" "! grep -q '^wtype -- \.\$' '$log'"
 : >"$root/lock-release"
 wait "$lock_holder"
@@ -1020,7 +1025,7 @@ hooks_done
 
 rm -f "$root/hook-block.entered" "$root/hook-block.release"
 sess_start "type mode" "Hello." "cortana stop typing" "type mode" "World." HOLD
-until [[ -e $root/hook-block.entered ]]; do sleep 0.02; done
+wait_for_path "$root/hook-block.entered"
 hold_in 'type rapid' 6
 : >"$root/hook-block.release"
 hooks_done
@@ -1034,13 +1039,8 @@ sess_phrase="type mode"
 # test has changed what it was heard in.
 voxtype_release=$SANDBOX_DIR/voxtype-release
 # Waits until the run has started this many recordings.
-record_starts_reach() {
-  local deadline=$((SECONDS + 20))
-  until [[ $(record_starts) == "$1" ]]; do
-    ((SECONDS < deadline)) || return 1
-    sleep 0.02
-  done
-}
+record_starts_reach() { wait_until record_starts_are "$1"; }
+record_starts_are() { [[ $(record_starts) == "$1" ]]; }
 sess_env=()
 sess_phrase="rapid mode"
 rm -f "$voxtype_release"

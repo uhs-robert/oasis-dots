@@ -49,18 +49,10 @@ overview_json=$XDG_RUNTIME_DIR/voxcmd/overview.json
 overview_state=$SANDBOX_DIR/overview-state
 session_json=$XDG_RUNTIME_DIR/voxcmd/session.json
 
-# The attach after an action starts a session whose watcher listens; every run ends when no watcher is left.
-ov_wait() {
-  local deadline=$((SECONDS + 30)) pid running
-  while ((SECONDS < deadline)); do
-    running=0
-    while read -r pid; do process_running "$pid" && running=1 && break; done < <(sed -n 's/.* listen: recording started, watcher \([0-9]*\) .*/\1/p' "$debug_log")
-    ((running)) || return 0
-    sleep 0.02
-  done
-  echo "   watchers still running after 30s"
-  return 1
-}
+# The attach after an action starts a session whose watcher listens, and a mode's ended hook (closing the overview) runs
+# in the background after it: every run ends when both are gone, so nothing of one lands in the next.
+ov_wait() { wait_until watchers_and_hooks_gone || echo "   voxcmd still running after ${test_wait_secs}s"; }
+watchers_and_hooks_gone() { watchers_gone && ended_hooks_gone; }
 # ov_run <turn>... -- <phrase>: the overview is open on the fixture, the turns are what a session hears, the phrase is said.
 ov_state=open
 ov_run() {
@@ -80,8 +72,11 @@ ov_run() {
   echo idle >"$XDG_RUNTIME_DIR/voxtype/state"
   if [ -n "${ov_late_file:-}" ]; then
     rm -f "$overview_json"
-    # As the bar writes it: a moment after the overview is open.
-    (wait_for_line '^qs-ipc call overview open' "$log" 20 && sleep 0.4 && cp "$fixtures_dir/overview.json" "$overview_json") &
+    # As the bar writes it: late, here only once the session's first listen has started without it. A GATED turn is
+    # spoken only after that, so the turn always finds the snapshot.
+    rm -f "$SANDBOX_DIR/voxtype-release"
+    (wait_for_line 'listen: recording started' "$debug_log" && cp "$fixtures_dir/overview.json" "$overview_json" &&
+      : >"$SANDBOX_DIR/voxtype-release") &
   else
     cp "${ov_fixture:-$fixtures_dir/overview.json}" "$overview_json"
   fi
@@ -176,7 +171,7 @@ ov_state=closed
 ov_run "done" -- "show workspaces"
 check "show workspaces opens the overview" "grep -q '^qs-ipc call overview open' '$log'"
 check "and the session is the overview's, until done" "session_gone && grep -q 'session: overview begins' '$debug_log'"
-check "done closes the overview too" "wait_for_line '^qs-ipc call overview close' '$log' 5"
+check "done closes the overview too" "wait_for_line '^qs-ipc call overview close' '$log'"
 ov_state=closed
 ov_run -- "open overview"
 check "open overview does too" "grep -q '^qs-ipc call overview open' '$log'"
@@ -203,7 +198,7 @@ ov_fixture=
 # The bar writes overview.json after the overview is open, so the first listen sees a stale or missing snapshot.
 ov_state=closed
 ov_late_file=1
-ov_run "done" -- "show workspaces"
+ov_run "GATED done" -- "show workspaces"
 ov_late_file=
 check "the session survives its first listen while the snapshot is still being written" "! grep -q 'screen is gone\|its screen closed' '$debug_log' '$log' && grep -q '^qs-ipc call overview close' '$log'"
 check "and its first turn was heard by the overview session" "grep -q 'listen: recording started' '$debug_log' && grep -q 'Overview ended done' '$log'"
@@ -213,9 +208,9 @@ ov_state=open
 ov_run four "close overview" -- "two"
 check "a phrase spoken while the overview is open attaches the session" "grep -q 'session: overview begins' '$debug_log'"
 check "its turns go to the overview" "[[ \$(acts | paste -sd,) == 'mark aaa2,mark aaa4' ]]"
-check "close overview ends the session and closes the overview" "session_gone && wait_for_line '^qs-ipc call overview close' '$log' 5"
+check "close overview ends the session and closes the overview" "session_gone && wait_for_line '^qs-ipc call overview close' '$log'"
 ov_run "exit, exit overview" -- "two"
-check "a turn that repeats itself runs its last attempt: exit, exit overview leaves" "session_gone && wait_for_line '^qs-ipc call overview close' '$log' 5"
+check "a turn that repeats itself runs its last attempt: exit, exit overview leaves" "session_gone && wait_for_line '^qs-ipc call overview close' '$log'"
 ov_run "mark four, no wait, mark five" -- "two"
 check "a spoken correction in a turn marks the corrected window only" "[[ \$(acts | paste -sd,) == 'mark aaa2,mark aaa5' ]]"
 ov_run four five -- "two"
@@ -235,7 +230,7 @@ rm -f "$session_json"
 cp "$fixtures_dir/overview.json" "$overview_json"
 echo open >"$overview_state"
 (
-  wait_for_line 'overview act mark aaa4' "$log" 20 && echo closed >"$overview_state"
+  wait_for_line 'overview act mark aaa4' "$log" && echo closed >"$overview_state"
 ) &
 closer=$!
 env SANDBOX_SETSID_RUN=1 SANDBOX_VOXTYPE_TURNS="$ov_turns" SANDBOX_AUTOSTOP_SLEEP="$stub_sleep" VOXCMD_CONFIG_DIR="$ov_config" \
@@ -246,21 +241,23 @@ check "closing the overview by key ends the session" "session_gone && [[ \$(acts
 check "and leaves the closed overview alone" "! grep -q '^qs-ipc call overview close' '$log'"
 
 # The overview closes while a turn is recorded and that turn opens another mode: the new mode listens once, itself.
-printf '%s\n' "rapid mode" HOLD >"$ov_turns"
+printf '%s\n' "GATED rapid mode" HOLD >"$ov_turns"
 : >"$log"
 : >"$debug_log"
-rm -f "$session_json"
+rm -f "$session_json" "$SANDBOX_DIR/voxtype-release"
 cp "$fixtures_dir/overview.json" "$overview_json"
 echo open >"$overview_state"
 (
-  wait_for_line '^voxtype record start' "$log" 20 && echo closed >"$overview_state"
+  wait_for_line '^voxtype record start' "$log" && echo closed >"$overview_state" && : >"$SANDBOX_DIR/voxtype-release"
 ) &
 closer=$!
 env SANDBOX_SETSID_RUN=1 SANDBOX_VOXTYPE_TURNS="$ov_turns" SANDBOX_AUTOSTOP_SLEEP="$stub_sleep" VOXCMD_CONFIG_DIR="$ov_config" \
-  VOXCMD_APP_SETTLE_SECS=0 VOXCMD_DEBUG=1 SANDBOX_VOXTYPE_SPEAK_SECS=0.8 "$ov_voxcmd" two >/dev/null 2>&1
+  VOXCMD_APP_SETTLE_SECS=0 VOXCMD_DEBUG=1 SANDBOX_VOXTYPE_SPEAK_SECS=0 "$ov_voxcmd" two >/dev/null 2>&1
 wait "$closer"
-wait_for_line 'session: rapid begins' "$debug_log" 10
-sleep 0.5
+wait_for_line 'session: rapid begins' "$debug_log"
+# A second listen would come from the watcher that heard "rapid mode", so once it is gone there can be none.
+wait_until_gone "$(sed -n 's/.* listen: recording started, watcher \([0-9]*\) .*/\1/p' "$debug_log" | head -n 1)"
+rm -f "$SANDBOX_DIR/voxtype-release"
 check "the mode the turn opened is the open session" "[[ \$(jq -r .kind '$session_json') == rapid ]]"
 check "with one listen of its own, not a second one on top, and no second listen attempt" "! grep -q 'another listen took over' '$debug_log' && [[ \$(grep -c '^voxtype record start' '$log') == 2 ]] && ! grep -q 'microphone could not be opened' '$log'"
 env VOXCMD_CONFIG_DIR="$ov_config" "$ov_voxcmd" end-session >/dev/null 2>&1
