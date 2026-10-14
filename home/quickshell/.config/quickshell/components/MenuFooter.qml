@@ -93,16 +93,44 @@ Item {
     Flow {
         id: hint
         opacity: root.searching ? 0 : 1
-        x: root.centered ? Math.max(0, (root.width - childrenRect.width) / 2) : 0
+        x: root.centered && !root.wrap_centered ? Math.max(0, (root.width - childrenRect.width) / 2) : 0
         y: root.rule_gap
         width: root.wrap && (!root.centered || root.wrap_centered) ? parent.width : 100000
         spacing: root.wrap_centered ? 0 : root.hint_gap
 
+        // Per hint, in order: how far to slide it so its wrapped line is centered, and whether it ends its line (then
+        // its separator is hidden, kept in the layout so hiding it never lets the next hint pull back up a line).
+        readonly property var line_info: {
+            const out = [];
+            const items = [];
+            for (let i = 0; i < hint_repeater.count; i++) {
+                const it = hint_repeater.itemAt(i);
+                if (!it) return out;
+                items.push(it);
+            }
+            let start = 0;
+            for (let i = 0; i < items.length; i++) {
+                const last = i === items.length - 1 || items[i + 1].y !== items[i].y;
+                if (!last) continue;
+                const left = items[start].x;
+                const right = items[i].x + items[i].width - items[i].rightPadding - items[i].separator_room;
+                for (let k = start; k <= i; k++) out[k] = { shift: (root.width - (right - left)) / 2 - left, ends: k === i };
+                start = i + 1;
+            }
+            return out;
+        }
+
         Repeater {
+            id: hint_repeater
             model: root.groups
 
             Row {
                 id: group
+                readonly property var line: hint.line_info[group.index]
+                readonly property real separator_room: separator_text.visible ? separator_text.implicitWidth + group.spacing : 0
+                transform: Translate {
+                    x: root.wrap_centered && group.line ? group.line.shift : 0
+                }
                 required property var modelData
                 required property int index
                 readonly property bool pad: root.st.controller !== "" && KeyHints.controller_parts(root.st.controller, group.modelData.key, group.modelData.desc, root.st.controller_glyphs).length > 0
@@ -164,11 +192,25 @@ Item {
                 Text {
                     id: desc_text
                     anchors.verticalCenter: parent.verticalCenter
-                    text: KeyHints.with_glyphs(parent.modelData.desc) + (parent.index < root.groups.length - 1 ? root.st.footer_separator : "")
+                    text: KeyHints.with_glyphs(parent.modelData.desc) + (!root.wrap_centered && parent.index < root.groups.length - 1 ? root.st.footer_separator : "")
                     color: root.st.footer_fg
                     font.family: root.st.font_family
                     font.pixelSize: root.text_px
                     font.italic: root.st.footer_italic
+                    font.capitalization: root.st.label_caps ? Font.AllUppercase : Font.MixedCase
+                    font.letterSpacing: root.st.label_spacing
+                }
+
+                // A wrapping line's separator is its own item so a line's last one can be hidden.
+                Text {
+                    id: separator_text
+                    visible: root.wrap_centered && root.st.footer_separator !== "" && group.index < root.groups.length - 1
+                    opacity: group.line && group.line.ends ? 0 : 1
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: root.st.footer_separator.replace(/^\s+/, "")
+                    color: root.st.footer_fg
+                    font.family: root.st.font_family
+                    font.pixelSize: root.text_px
                     font.capitalization: root.st.label_caps ? Font.AllUppercase : Font.MixedCase
                     font.letterSpacing: root.st.label_spacing
                 }
