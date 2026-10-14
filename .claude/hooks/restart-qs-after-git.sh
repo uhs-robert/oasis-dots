@@ -1,7 +1,12 @@
 #!/usr/bin/env bash
 # PostToolUse(Bash): after a git command moves the live checkout, restart the stowed Quickshell if its files changed.
+# PreToolUse(Bash) runs it with `snapshot`, recording the live checkout's Quickshell files before the command, so the
+# PostToolUse run compares that checkout alone: a commit or rebase in a worktree shares the repository but never
+# touches the files the stowed bar loads.
 set -u
-cmd=$(jq -r '.tool_input.command // empty')
+mode=${1:-compare}
+input=$(cat)
+cmd=$(jq -r '.tool_input.command // empty' <<<"$input")
 [[ $cmd == *git* || $cmd == *merge-prs* ]] || exit 0
 
 # Commit messages, PR bodies and heredocs often say "merge" or "switch"; only command words count. Drop quoted
@@ -46,17 +51,39 @@ merge_prs="(^|[;&|(\`])[[:space:]]*([^[:space:]]*/)?merge-prs\.sh([[:space:]]|$)
 
 live=$(readlink -f "$HOME/.config/quickshell" 2>/dev/null) || exit 0
 repo=$(git -C "$live" rev-parse --show-toplevel 2>/dev/null) || exit 0
-# When HEAD moved here (the reflog entry), not the commit's own date: a PR merged on GitHub
-# an hour ago and pulled now must still count.
-moved_at=$(git -C "$repo" log -g -1 --date=unix --format=%gd HEAD 2>/dev/null) || exit 0
-moved_at=${moved_at//[^0-9]/}
-[[ -n $moved_at ]] && ((moved_at >= $(date +%s) - 120)) || exit 0
-git -C "$repo" diff --quiet 'HEAD@{1}' HEAD -- home/quickshell 2>/dev/null && exit 0
-# Any git command in any session lands here within those 120 s, worktree commands included, so the same move of the
-# live checkout would restart the bar once per command. Each HEAD is handled once, by whichever command sees it first.
-handled_file=$(git -C "$repo" rev-parse --git-path claude-qs-restarted-head 2>/dev/null) || exit 0
-head=$(git -C "$repo" rev-parse HEAD 2>/dev/null) || exit 0
-[[ $(cat "$handled_file" 2>/dev/null) == "$head" ]] && exit 0
+
+# The Quickshell files the bar loads, without hashing every one: the staged blobs, the unstaged changes on top of them,
+# and the untracked names. Read from the index rather than HEAD, so a commit in the live checkout, which leaves the
+# files as they were, does not count as a change.
+live_quickshell_state() {
+  git -C "$repo" ls-files -s -- home/quickshell | sha1sum
+  git -C "$repo" diff --no-ext-diff --binary -- home/quickshell | sha1sum
+  git -C "$repo" ls-files -o --exclude-standard -- home/quickshell
+}
+
+# Commands that overlap one move of the live checkout (a pull in one session while another rebases a worktree) all see
+# it change, so the state the bar was restarted for is recorded and not restarted for again. A snapshot that finds the
+# files elsewhere forgets it, so moving back to that state later (stashing a hand edit) still restarts.
+handled_file=$(git -C "$repo" rev-parse --path-format=absolute --git-path claude-qs-restarted-state 2>/dev/null) || exit 0
+
+# Keyed by the tool call, so concurrent sessions and calls never read each other's snapshot.
+snapshots=${XDG_RUNTIME_DIR:-/tmp}/claude-restart-qs
+key=$(jq -r '.tool_use_id // ((.session_id // "") + .tool_input.command)' <<<"$input" | sha1sum | cut -c1-40)
+if [[ $mode == snapshot ]]; then
+  mkdir -p "$snapshots" || exit 0
+  # Calls that never reach PostToolUse (denied, interrupted) leave their snapshot behind.
+  find "$snapshots" -type f -mmin +1440 -delete 2>/dev/null
+  live_quickshell_state >"$snapshots/$key" 2>/dev/null
+  [[ $(cat "$handled_file" 2>/dev/null) == "$(<"$snapshots/$key")" ]] || rm -f "$handled_file"
+  exit 0
+fi
+# No snapshot means the command was not seen starting; restarting the owner's bar on a guess is worse than missing one.
+[[ -f $snapshots/$key ]] || exit 0
+before=$(<"$snapshots/$key")
+rm -f "$snapshots/$key"
+after=$(live_quickshell_state 2>/dev/null)
+[[ $before != "$after" ]] || exit 0
+[[ $(cat "$handled_file" 2>/dev/null) != "$after" ]] || exit 0
 
 say() { jq -n --arg c "$1" '{systemMessage: $c, hookSpecificOutput: {hookEventName: "PostToolUse", additionalContext: $c}}'; }
 
@@ -70,7 +97,8 @@ if [[ $state != unlocked ]] && pgrep -x qs >/dev/null; then
   exit 0
 fi
 
-printf '%s\n' "$head" >"$handled_file"
+# Recorded only now, so a restart withheld above is not marked as done.
+printf '%s\n' "$after" >"$handled_file"
 pkill -x qs
 for _ in 1 2 3 4 5 6 7 8 9 10; do
   pgrep -x qs >/dev/null || break
