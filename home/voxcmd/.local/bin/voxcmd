@@ -2071,8 +2071,14 @@ session_turn() {
     # What was said was heard for a mode whose screen has closed: it goes where it would without the mode.
     debug "session: $kind's screen is gone"
     session_leave "$kind" "its screen closed" || true
-    route "$transcript" || true
-    session_continue unheard
+    if session_state >/dev/null; then
+      # A mode underneath goes on: a mode the phrase opens on top of it is entered without listening, the turn's continue does.
+      route "$transcript" || true
+      session_continue unheard
+    else
+      # No session is left, so a mode the phrase opens creates its own session and listens itself.
+      route "$transcript" || true
+    fi
     return
   fi
   if [ -n "$heard_mode" ] && [ "$heard_mode" != "$(session_mode_token "$state")" ]; then
