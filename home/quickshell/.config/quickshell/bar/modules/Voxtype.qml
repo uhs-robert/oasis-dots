@@ -15,7 +15,7 @@ BarModule {
     // A paused listener keeps a dimmed dot, so it does not read as the setting being off.
     readonly property bool wake_paused: VoxWake.paused && VoxtypeState.state === "idle"
     readonly property bool wake_ready: VoxWake.ready && VoxtypeState.recording
-    tooltip_text: VoxSession.active && VoxSession.exit_hint !== "" ? VoxSession.exit_hint : root.wake_listening ? "Listening for \"hey jarvis\"" : root.wake_paused ? VoxWake.paused_text : VoxtypeState.tooltip
+    tooltip_text: VoxSession.active && VoxSession.exit_hint !== "" ? VoxSession.exit_hint : root.wake_listening ? "Listening for \"hey cortana\"" : root.wake_paused ? VoxWake.paused_text : VoxtypeState.tooltip
 
     readonly property var glyphs: ({ idle: "", stopped: "" })
     readonly property color glyph_color: VoxtypeState.recording ? Theme.theme_label : VoxtypeState.transcribing ? Theme.warning : VoxtypeState.state === "stopped" ? Theme.fg_dim : Theme.theme_primary

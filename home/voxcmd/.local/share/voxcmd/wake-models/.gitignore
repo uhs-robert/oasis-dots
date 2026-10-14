@@ -1,0 +1,3 @@
+# Models downloaded by voxcmd wake on; only cortana.onnx is tracked.
+*.onnx
+!cortana.onnx

@@ -21,7 +21,7 @@ Usage:
   voxcmd stop                 stop all voice activity: end the open session, cancel the open picker, card or hints, and
                               cancel a recording under way, discarding what was said; silent when none is open
   voxcmd wake on|off|toggle|status
-                              start or stop the "hey jarvis" listener, which holds the microphone while it runs
+                              start or stop the "hey cortana" listener, which holds the microphone while it runs
   voxcmd list                 list integrations and their verbs
   voxcmd help                 pick from the integrations' example phrases (Tab lists what one can run); one without placeholders runs
   voxcmd errors [N]           print the last N (default 10) voxcmd notifications the bar kept: its errors, as info is transient
@@ -682,12 +682,12 @@ help_phrases='^(what can i say|voice help|show voice commands)$'
 # sees them here: listen sends a recording made while it waits to reply, where "cancel" closes the picker.
 discard_phrases='^(never ?mind|cancel|forget it|nothing)$'
 
-# The wake word starts a command to the mode a voice session is in; outside a session it is only stripped, so "jarvis
+# The wake word starts a command to the mode a voice session is in; outside a session it is only stripped, so "cortana
 # open firefox" is "open firefox". VOXCMD_WAKE_WORD is the one spelling voxtype's vocabulary teaches Whisper;
-# VOXCMD_WAKE_ALIASES ("jarvas|jervis") adds the spellings it still produces. Whisper hears the default's "J" as "Ch"
-# often enough that "charvis" is its alias unless the aliases are set.
-wake_word="${VOXCMD_WAKE_WORD:-jarvis}"
-if [ "$wake_word" = jarvis ]; then wake_aliases="${VOXCMD_WAKE_ALIASES-charvis}"; else wake_aliases="${VOXCMD_WAKE_ALIASES:-}"; fi
+# VOXCMD_WAKE_ALIASES ("kortana|cortona") adds the spellings it still produces; the default word's common ones are
+# built in unless the aliases are set.
+wake_word="${VOXCMD_WAKE_WORD:-cortana}"
+if [ "$wake_word" = cortana ]; then wake_aliases="${VOXCMD_WAKE_ALIASES-kortana|cortona}"; else wake_aliases="${VOXCMD_WAKE_ALIASES:-}"; fi
 wake_regex=""
 init_wake_regex() {
   [ -z "$wake_regex" ] || return 0
@@ -697,11 +697,11 @@ init_wake_regex() {
     [ -z "$form" ] || wake_regex+="${wake_regex:+|}$form"
   done < <(tr '|,' '\n' <<<"$wake_word|$wake_aliases")
   # A wake word that normalizes to nothing would match every transcript.
-  [ -n "$wake_regex" ] || wake_regex="jarvis"
+  [ -n "$wake_regex" ] || wake_regex="cortana"
 }
 
 # split_leading_wake <normalized text>: succeeds when the text starts with the wake word, leaving the rest in wake_rest.
-# An optional "hey" is dropped too: the wake listener starts a recording on "hey jarvis", and the phrase can reach the
+# An optional "hey" is dropped too: the wake listener starts a recording on "hey cortana", and the phrase can reach the
 # transcript when the recording opens before it ends.
 wake_rest=""
 split_leading_wake() {
@@ -2190,7 +2190,7 @@ session_turn() {
   fi
   chunk="$transcript"
   if [ "${mode_setting[wake_at_end]:-0}" = 1 ] && split_trailing_wake "$transcript"; then
-    # A wake word that opens no command ("...ask Jarvis about it") stays part of the chunk.
+    # A wake word that opens no command ("...ask Cortana about it") stays part of the chunk.
     control=$(apply_replacements "$wake_rest")
     session_classify_wake_command "$control"
     if [ "$wake_kind" = none ]; then control=""; else chunk="$wake_before"; fi

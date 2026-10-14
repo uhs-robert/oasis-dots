@@ -191,22 +191,22 @@ done typing	Type/stop_typing	the exit forms are Type's own, ahead of Media and S
 leave typing mode	Type/stop_typing	the exit forms are Type's own, ahead of Media and System
 click type mode	Click/no_text	a click on the text, not type mode
 done	none	no owner outside a session
-jarvis open firefox	Apps/open	the wake word is stripped outside a session
-Jarvis, play pause	Media/toggle	the wake word is stripped outside a session
-jarvis rapid mode	Rapid/rapid_mode	the wake word is stripped outside a session
-hey jarvis open firefox	Apps/open	the wake listener phrase is stripped like the bare wake word
-Hey, Jarvis, play pause	Media/toggle	the wake listener phrase is stripped like the bare wake word
-hey charvis open firefox	Apps/open	the wake alias takes the hey too
-jarvis set a timer for five minutes	Timers/timer	the tail of the wake phrase left in a recording started mid-phrase
-hey jarvis, set a timer for five minutes	Timers/timer	the whole wake phrase left in the recording
-Charvis, open firefox	Apps/open	the default wake word's common mishearing is an alias
+cortana open firefox	Apps/open	the wake word is stripped outside a session
+Cortana, play pause	Media/toggle	the wake word is stripped outside a session
+cortana rapid mode	Rapid/rapid_mode	the wake word is stripped outside a session
+hey cortana open firefox	Apps/open	the wake listener phrase is stripped like the bare wake word
+Hey, Cortana, play pause	Media/toggle	the wake listener phrase is stripped like the bare wake word
+hey kortana open firefox	Apps/open	the wake alias takes the hey too
+Cortona, open firefox	Apps/open	the default wake word's common mishearing is an alias
+cortana set a timer for five minutes	Timers/timer	the tail of the wake phrase left in a recording started mid-phrase
+hey cortana, set a timer for five minutes	Timers/timer	the whole wake phrase left in the recording
 open firefox and then go to youtube	Apps/open > none	two steps; the second matches nothing in the sandbox
 open firefox and then open kitty	Apps/open > Apps/open	two steps
 Open Firefox, then list my timers	Apps/open > Timers/list	a comma before then splits
 open firefox then list my timers	none	a bare then never splits
 open firefox. Then list my timers	none	a bare then after a full stop never splits either
 open a new kitty and then list my timers and then set a timer for 5 minutes	Apps/open_new > Timers/list > Timers/timer	three steps
-Jarvis, open kitty and then list my timers	Apps/open > Timers/list	the wake word is stripped from the whole phrase first
+Cortana, open kitty and then list my timers	Apps/open > Timers/list	the wake word is stripped from the whole phrase first
 new meeting tomorrow at 3 pm called Design review and then lunch	Calendar/new	the event title takes the rest of the phrase
 remind me in 5 minutes to call mom and then email bob	Timers/remind	the reminder takes the rest of the phrase
 open kitty and then remind me to call mom and then email bob	Apps/open > Timers/remind	the free-text step takes the rest
@@ -221,7 +221,7 @@ open firefox, And then list my timers	Apps/open > Timers/list	also after a comma
 OPEN FIREFOX AND THEN LIST MY TIMERS	Apps/open > Timers/list	whatever the case
 set a timer for 5 minutes and then list my timers	Timers/timer > Timers/list	a timer's duration is not free text
 open firefox and then what can i say and then list my timers	Apps/open > none	a Voice Help step is a no match and stops the rest
-open firefox and then jarvis and then list my timers	Apps/open > none	the wake word alone is a no match and stops the rest
+open firefox and then cortana and then list my timers	Apps/open > none	the wake word alone is a no match and stops the rest
 open firefox and then bogus words and then list my timers	Apps/open > none	a step that matches nothing stops the rest
 show workspaces	Overview/overview_open
 open overview	Overview/overview_open

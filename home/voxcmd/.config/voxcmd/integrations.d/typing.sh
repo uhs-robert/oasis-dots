@@ -19,7 +19,7 @@ verbs=(
 
 examples=(
   "type mode"
-  "jarvis stop typing"
+  "cortana stop typing"
 )
 
 declare -A actions=(
@@ -32,9 +32,9 @@ mode_actions=(type_mode stop_typing)
 # What is said is text: only the wake word gives a command, so "done" or "stop typing" are typed.
 session_default_exits=0
 session_exit_phrases="$type_exit_phrase|(im )?done typing|done with $type_exit_object"
-session_exit_hint="say jarvis stop typing"
+session_exit_hint="say cortana stop typing"
 session_control_phrases='scratch that|new line|new paragraph'
-# A chunk may end with a command ("...the plan. Jarvis, stop typing.").
+# A chunk may end with a command ("...the plan. Cortana, stop typing.").
 session_wake_at_end=1
 # Dictation is private: no text in the debug log, a toast or the session file.
 session_private=1

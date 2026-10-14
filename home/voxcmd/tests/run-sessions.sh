@@ -221,7 +221,7 @@ sess_run "Thank you." "The End" "you" "..." "Thanks for watching!" "[BLANK_AUDIO
 check "the transcriber's guesses at noise are not turns that missed" "session_gone && [[ \$(grep '^tap ' '$log') == 'tap alpha' && \$(record_starts) == 8 ]] && ended_because done"
 check "and are not reported as not understood" "! grep -q 'Not understood' '$log'"
 # Whisper can echo the wake-word sentence voxtype-daemon puts in its prompt.
-sess_run "Voice commands start with Jarvis." alpha "done"
+sess_run "Voice commands start with Cortana." alpha "done"
 check "an echo of the transcriber's prompt is noise" "session_gone && [[ \$(grep '^tap ' '$log') == 'tap alpha' && \$(record_starts) == 3 ]] && ! grep -q 'no match' '$log'"
 sess_env=(VOXCMD_WAKE_WORD=computer)
 sess_run "Voice commands start with Computer." alpha "done"
@@ -658,15 +658,15 @@ for word in "done" "Done." "that's all" "I'm done" "stop rapid mode" "Okay, quit
   sess_run "tap alpha" "$word" "tap gamma"
   check "'$word' ends rapid mode" "session_gone && [[ \$(taps) == 1 && \$(record_starts) == 2 ]]"
 done
-for word in "jarvis done" "Jarvis, I'm done." "Jarvis, stop rapid mode." "jarvis stop"; do
+for word in "cortana done" "Cortana, I'm done." "Cortana, stop rapid mode." "cortana stop"; do
   sess_run "tap alpha" "$word" "tap gamma"
   check "'$word' ends rapid mode" "session_gone && [[ \$(taps) == 1 && \$(record_starts) == 2 ]]"
 done
 sess_run "stop" "cancel" "done"
 check "'stop' is a command (pause) and 'cancel' a discarded one, neither an exit" "session_gone && grep -q '^playerctl pause' '$log' && [[ \$(record_starts) == 3 ]]"
-sess_run "jarvis tap alpha" "tap beta" "done"
-check "a 'jarvis ...' that is no mode command is routed as a command, and the mode goes on" "session_gone && ! toast_has 'Not a mode command' && [[ \$(grep '^tap ' '$log' | paste -sd,) == 'tap alpha,tap beta' && \$(record_starts) == 3 ]]"
-sess_run "jarvis tap" "tap beta" "done"
+sess_run "cortana tap alpha" "tap beta" "done"
+check "a 'cortana ...' that is no mode command is routed as a command, and the mode goes on" "session_gone && ! toast_has 'Not a mode command' && [[ \$(grep '^tap ' '$log' | paste -sd,) == 'tap alpha,tap beta' && \$(record_starts) == 3 ]]"
+sess_run "cortana tap" "tap beta" "done"
 check "and one that matches nothing is a missed turn with the usual toast" "session_gone && toast_has 'no match' && [[ \$(grep '^tap ' '$log') == 'tap beta' && \$(record_starts) == 3 ]]"
 sess_run "tap alpha"
 check "rapid mode ends when nothing is said" "session_gone && toast_has 'Rapid mode ended nothing was said'"
@@ -675,10 +675,10 @@ sess_run "tap alpha" "tap alpha" "tap alpha" "tap alpha"
 check "rapid mode is capped by turns like any session" "session_gone && [[ \$(taps) == 3 ]] && toast_has 'Rapid mode ended it reached 3 turns'"
 sess_env=()
 sess_env=(VOXCMD_WAKE_WORD=computer VOXCMD_WAKE_ALIASES="komputer|kompooter")
-sess_run "jarvis done" "Komputer, done" "tap alpha"
+sess_run "cortana done" "Komputer, done" "tap alpha"
 check "the wake word and its spellings are settings, and the old word is then no command" "session_gone && grep -q 'voxcmd: no match' '$log' && [[ \$(taps) == 0 && \$(record_starts) == 2 ]]"
 sess_env=()
-sess_phrase="jarvis rapid mode"
+sess_phrase="cortana rapid mode"
 sess_run "done"
 check "the wake word before an entry phrase is stripped" "session_gone && [[ \$(record_starts) == 1 ]]"
 sess_phrase="rapid mode"
@@ -752,8 +752,8 @@ sess_wait
 sess_run "click mode" "stop rapid mode" "tap alpha"
 check "'stop rapid mode' in click mode leaves both" "session_gone && no_clicks && [[ \$(taps) == 0 && \$(record_starts) == 2 ]]"
 sess_phrase="click mode"
-sess_run "jarvis tap alpha" "done"
-check "a 'jarvis ...' that is no mode command is routed as a command in click mode too" "session_gone && ! toast_has 'Not a mode command' && [[ \$(grep '^tap ' '$log') == 'tap alpha' ]] && no_clicks"
+sess_run "cortana tap alpha" "done"
+check "a 'cortana ...' that is no mode command is routed as a command in click mode too" "session_gone && ! toast_has 'Not a mode command' && [[ \$(grep '^tap ' '$log') == 'tap alpha' ]] && no_clicks"
 sess_start "rapid mode" HOLD
 hold_in 'rapid click' 2
 check "'rapid mode' in click mode opens rapid mode over it, clicking nothing" "mode_is 'rapid click' && no_clicks"
@@ -786,47 +786,47 @@ hooks_done() {
 }
 other_window='{"address":"0x2","class":"foot","size":[800,600]}'
 type_flushed() { log_has_soon "^wtype -- [.!?]\$"; }
-sess_run "Hello world." "This is a test." "jarvis stop typing"
+sess_run "Hello world." "This is a test." "cortana stop typing"
 type_flushed
 check "type mode types each chunk, holding back its closing mark until the next says whether the sentence ends" "session_gone && wtype_is 'wtype -- Hello world' 'wtype -- . This is a test' 'wtype -- .' && [[ \$(record_starts) == 3 ]]"
 sess_start HOLD
 owner_is_listening
-check "type mode's session file names it and its hint" "[[ \$(jq -c '[.kind, .label, .exit_hint, .stack]' '$session_json') == '[\"type\",\"Type mode\",\"say jarvis stop typing\",[]]' ]]"
+check "type mode's session file names it and its hint" "[[ \$(jq -c '[.kind, .label, .exit_hint, .stack]' '$session_json') == '[\"type\",\"Type mode\",\"say cortana stop typing\",[]]' ]]"
 # The listen's detector logs its settings once it starts, which under load can come after the owner is listening.
 check "type mode listens for a chunk: a 2.5s pause ends it, 25s cuts it, 30s of silence is a quiet listen" "log_has_soon 'no_speech_secs=30\$' && log_has_soon 'autostop min_speech_secs=0.4 silence_secs=2.5\$' && log_has_soon 'autostop max_secs=25\$'"
 sess_voxcmd_env end-session
 sess_wait
-sess_run "Alpha and then beta." "jarvis stop typing"
+sess_run "Alpha and then beta." "cortana stop typing"
 type_flushed
 check "type mode types a chunk holding 'and then' whole, never split into steps" "wtype_is 'wtype -- Alpha and then beta' 'wtype -- .' && ! toast_has 'stopped at step'"
-sess_run "Hello world." "and more text" "jarvis stop typing"
+sess_run "Hello world." "and more text" "cortana stop typing"
 type_flushed
 check "a chunk that continues the sentence drops the held mark and types a space" "wtype_is 'wtype -- Hello world' 'wtype --  and more text'"
-sess_run "Hello there," "The next part" "I think so" "London is big" "jarvis stop typing"
+sess_run "Hello there," "The next part" "I think so" "London is big" "cortana stop typing"
 hooks_done
 check "without a held mark a chunk's capital is lowercased when it is a common word, and kept for a name or I" "wtype_is 'wtype -- Hello there,' 'wtype --  the next part' 'wtype --  I think so' 'wtype --  London is big'"
-sess_run $'Tab\there' $'Esc\e[31m' "-x marks the spot" "jarvis stop typing"
+sess_run $'Tab\there' $'Esc\e[31m' "-x marks the spot" "cortana stop typing"
 hooks_done
 check "control characters become spaces and a leading dash is typed" "wtype_is 'wtype -- Tab here' 'wtype --  Esc [31m' 'wtype --  -x marks the spot'"
-sess_run "done" "stop typing" "click mode" "I'm done" "Jarvis, stop typing."
+sess_run "done" "stop typing" "click mode" "I'm done" "Cortana, stop typing."
 hooks_done
 check "without the wake word 'done', 'stop typing' and 'click mode' are text" "session_gone && wtype_is 'wtype -- done' 'wtype --  stop typing' 'wtype --  click mode' 'wtype --  I'\\''m done' && [[ \$(record_starts) == 5 ]]"
-sess_run "Please send the plan. Jarvis, stop typing."
+sess_run "Please send the plan. Cortana, stop typing."
 type_flushed
 check "a command at the end of a chunk types the chunk, then runs" "session_gone && wtype_is 'wtype -- Please send the plan' 'wtype -- .'"
-sess_run "I asked Jarvis what time it is." "jarvis stop typing"
+sess_run "I asked Cortana what time it is." "cortana stop typing"
 hooks_done
-check "the wake word in the middle of a sentence is just text" "wtype_is 'wtype -- I asked Jarvis what time it is' 'wtype -- .'"
-sess_run "Jarvis, what is the weather" "Hello." "jarvis stop typing"
+check "the wake word in the middle of a sentence is just text" "wtype_is 'wtype -- I asked Cortana what time it is' 'wtype -- .'"
+sess_run "Cortana, what is the weather" "Hello." "cortana stop typing"
 hooks_done
 check "an unknown command from the wake word is told so without its text, and typed nowhere" "toast_has 'Not a mode command\$' && ! grep -q weather '$log' && wtype_is 'wtype -- Hello' 'wtype -- .'"
-sess_run "Hello world." "Next bit here." "jarvis scratch that" "jarvis scratch that" "jarvis stop typing"
+sess_run "Hello world." "Next bit here." "cortana scratch that" "cortana scratch that" "cortana stop typing"
 hooks_done
 check "scratch that deletes the last chunk with one BackSpace per character and restores the held mark" "session_gone && [[ \$(grep '^wtype -k' '$log' | head -n1 | grep -o BackSpace | wc -l) == 15 ]] && [[ \$(grep -c '^wtype -k' '$log') == 1 ]] && toast_has 'Nothing to scratch' && grep -q '^wtype -- \.\$' '$log'"
-sess_run "Hello world." "jarvis new line" "Second line." "jarvis new paragraph" "Third." "jarvis stop typing"
+sess_run "Hello world." "cortana new line" "Second line." "cortana new paragraph" "Third." "cortana stop typing"
 hooks_done
 check "new line and new paragraph press Return once and twice, after closing the held mark" "wtype_is 'wtype -- Hello world' 'wtype -- .' 'wtype -k Return' 'wtype -- Second line' 'wtype -- .' 'wtype -k Return -k Return' 'wtype -- Third' 'wtype -- .'"
-sess_run SILENCE SILENCE "Hello" "jarvis stop typing"
+sess_run SILENCE SILENCE "Hello" "cortana stop typing"
 hooks_done
 check "silence never leaves type mode" "session_gone && [[ \$(record_starts) == 4 ]] && wtype_is 'wtype -- Hello' && ! toast_has 'ended nothing was said'"
 sess_env=(SANDBOX_ACTIVEWINDOW_JSON="$focused_window" VOXCMD_TYPE_IDLE_SECS=1)
@@ -842,15 +842,15 @@ check "the hard cap ends type mode while it is being used" "session_gone && toas
 # Type mode inside rapid mode returns to it, and its chunks are not turns or time of the session's.
 sess_env=(SANDBOX_ACTIVEWINDOW_JSON="$focused_window")
 sess_phrase="rapid mode"
-sess_run "type mode" "Hello there" "jarvis stop typing" "tap beta" "done"
+sess_run "type mode" "Hello there" "cortana stop typing" "tap beta" "done"
 check "type mode opened in rapid mode returns to it" "session_gone && wtype_is 'wtype -- Hello there' && [[ \$(taps) == 1 && \$(record_starts) == 5 ]]"
 sess_start "type mode" HOLD
 hold_in 'type rapid' 2
-check "and its hint says where it returns to" "mode_is 'type rapid' && [[ \$(jq -r .exit_hint '$session_json') == 'say jarvis stop typing (back to Rapid mode)' ]]"
+check "and its hint says where it returns to" "mode_is 'type rapid' && [[ \$(jq -r .exit_hint '$session_json') == 'say cortana stop typing (back to Rapid mode)' ]]"
 sess_voxcmd_env end-session
 sess_wait
 sess_env=(SANDBOX_ACTIVEWINDOW_JSON="$focused_window" VOXCMD_SESSION_MAX_TURNS=2)
-sess_run "type mode" one two three four five six "jarvis stop typing" "tap beta" "tap gamma"
+sess_run "type mode" one two three four five six "cortana stop typing" "tap beta" "tap gamma"
 check "typed chunks are not turns of the session's cap" "session_gone && [[ \$(grep -c '^wtype -- ' '$log') == 6 && \$(taps) == 1 ]] && toast_has 'Rapid mode ended it reached 2 turns'"
 # The time caps below hold one type-mode listen open until the session is past its cap, so the typing outlasts the cap
 # however slowly the turns run. The caps are well over what the few turns outside type mode take on a loaded machine,
@@ -865,14 +865,14 @@ type_past_session_cap() {
   SANDBOX_VOXTYPE_TURNS="$sess_turns" voxtype record stop
 }
 sess_env=(SANDBOX_ACTIVEWINDOW_JSON="$focused_window" "VOXCMD_SESSION_MAX_SECS=$session_cap_secs")
-sess_start "type mode" HOLD "jarvis stop typing" "tap beta" "done"
+sess_start "type mode" HOLD "cortana stop typing" "tap beta" "done"
 type_past_session_cap
 sess_wait
 check "and the time spent in type mode is not counted against the session's time" "session_gone && [[ \$(taps) == 1 ]] && ! toast_has 'time limit'"
 
 # Time spent in type mode is credited when click mode opens over it, not when it is popped, so the new mode's cap does
 # not count the typing.
-sess_start "type mode" HOLD "jarvis click mode" "done" "jarvis stop typing" "tap beta" "done"
+sess_start "type mode" HOLD "cortana click mode" "done" "cortana stop typing" "tap beta" "done"
 type_past_session_cap
 sess_wait
 check "a mode opened over type mode does not count the time spent typing against its cap" "session_gone && [[ \$(taps) == 1 ]] && ! toast_has 'time limit'"
@@ -881,12 +881,12 @@ check "a mode opened over type mode does not count the time spent typing against
 # may have moved the cursor.
 sess_env=(SANDBOX_ACTIVEWINDOW_JSON="$focused_window")
 sess_phrase="type mode"
-sess_run "Hello world." "jarvis click mode" "done" "jarvis scratch that" "Next part" "jarvis stop typing"
+sess_run "Hello world." "cortana click mode" "done" "cortana scratch that" "Next part" "cortana stop typing"
 check "after a detour scratch that types nothing and the held mark is typed with the next chunk" "session_gone && wtype_is 'wtype -- Hello world' 'wtype -- . Next part' && toast_has 'Nothing to scratch'"
 
 # Time away from type mode does not restart its hard cap.
 sess_env=(SANDBOX_ACTIVEWINDOW_JSON="$focused_window" VOXCMD_TYPE_MAX_SECS=4 SANDBOX_VOXTYPE_SPEAK_SECS=0.4)
-sess_run one two three four "jarvis click mode" "done" five six seven eight "jarvis click mode" "done" nine ten eleven twelve "jarvis stop typing"
+sess_run one two three four "cortana click mode" "done" five six seven eight "cortana click mode" "done" nine ten eleven twelve "cortana stop typing"
 check "repeated detours still reach the type-mode time limit" "session_gone && toast_has 'Type mode ended it reached its time limit (4 s)'"
 sess_phrase="rapid mode"
 
@@ -908,13 +908,13 @@ sess_env=(SANDBOX_ACTIVEWINDOW_JSON="$focused_window")
 sess_phrase="type mode"
 mkdir -p "$XDG_RUNTIME_DIR/voxcmd"
 echo '{"frame":"1:1","held":".","prev_held":"-","last_len":9,"typed":true}' >"$XDG_RUNTIME_DIR/voxcmd/type-state"
-sess_run "jarvis scratch that" "jarvis stop typing"
+sess_run "cortana scratch that" "cortana stop typing"
 check "a new type mode ignores the held mark and length of an earlier one" "session_gone && toast_has 'Nothing to scratch' && ! grep -q '^wtype' '$log'"
 
 # Refusals: nothing is typed, and the toast has no text.
 sess_env=()
 sess_phrase="type mode"
-sess_run "Secret words" "jarvis stop typing"
+sess_run "Secret words" "cortana stop typing"
 check "without a focused window nothing is typed" "session_gone && toast_has 'voxcmd: not typed no window has focus' && ! grep -q '^wtype' '$log' && ! grep -rq 'Secret' '$log' '$debug_log'"
 sess_env=(SANDBOX_ACTIVEWINDOW_JSON="$focused_window" SANDBOX_VOXTYPE_SPEAK_SECS=1)
 cp /bin/sleep "$root/voxcmd-hints"
@@ -935,7 +935,7 @@ wait "$waiter_pid" 2>/dev/null
 
 # Dictation stays out of the logs and the session file.
 sess_env=(SANDBOX_ACTIVEWINDOW_JSON="$focused_window")
-sess_run "Hello private words." "jarvis stop typing"
+sess_run "Hello private words." "cortana stop typing"
 hooks_done
 check "type mode logs lengths, never the text" "! grep -q 'private' '$debug_log' && grep -q 'a transcript of 20 characters goes to session_turn' '$debug_log' && grep -q 'typed a chunk of 19 characters' '$debug_log'"
 check "and the last chunk is not left on disk" "[[ ! -e '$XDG_RUNTIME_DIR/voxcmd/transcript.txt' ]]"
@@ -949,7 +949,7 @@ rm -f "$root/modes-fifo"
 mkfifo "$root/modes-fifo"
 jq -n -c --argjson pid "$waiter_pid" --arg fifo "$root/modes-fifo" \
   '{pid: $pid, fifo: $fifo, label: "Which one?", kind: "hints", expansions: {}, choices: [{id: "a", label: "1. A"}]}' >"$XDG_RUNTIME_DIR/voxcmd/pending-pick.json"
-sess_run "Secret words" "jarvis stop typing"
+sess_run "Secret words" "cortana stop typing"
 hooks_done
 rm -f "$XDG_RUNTIME_DIR/voxcmd/pending-pick.json"
 check "a pending picker does not take dictation: it stays with type mode, which refuses it" "session_gone && toast_has 'voxcmd: not typed a voxcmd picker or card is open' && ! grep -q 'goes to reply' '$debug_log' && grep -q 'a transcript of 12 characters goes to session_turn' '$debug_log' && ! grep -q '^wtype' '$log'"
@@ -973,11 +973,11 @@ check "a chunk heard in a type mode that was re-created at the same depth is not
 
 # Focus that moved to another window since the last chunk: nothing is deleted, held or spaced into it.
 sess_env=(SANDBOX_ACTIVEWINDOW_JSON="$focused_window" SANDBOX_ACTIVEWINDOW_AFTER_WTYPE_JSON="$other_window")
-sess_run "Hello world." "jarvis scratch that" "jarvis stop typing"
+sess_run "Hello world." "cortana scratch that" "cortana stop typing"
 hooks_done
 check "scratch that after the focus moved deletes nothing" "session_gone && toast_has 'Nothing to scratch' && ! grep -q '^wtype -k' '$log'"
 check "and the mode's end does not type the held mark into the other window" "wtype_is 'wtype -- Hello world'"
-sess_run "Hello." "World again." "jarvis stop typing"
+sess_run "Hello." "World again." "cortana stop typing"
 hooks_done
 check "a chunk in another window drops the held mark and starts without a space" "wtype_is 'wtype -- Hello' 'wtype -- World again' 'wtype -- .'"
 
@@ -985,7 +985,7 @@ check "a chunk in another window drops the held mark and starts without a space"
 sess_phrase="rapid mode"
 sess_env=(SANDBOX_ACTIVEWINDOW_JSON="$focused_window" SANDBOX_ACTIVEWINDOW_BLOCK_AFTER_WTYPE="$root/hook-block")
 rm -f "$root/hook-block.entered" "$root/hook-block.release"
-sess_start "type mode" "Hello." "jarvis stop typing" HOLD
+sess_start "type mode" "Hello." "cortana stop typing" HOLD
 until [[ -e $root/hook-block.entered ]]; do sleep 0.02; done
 hold_in 'rapid ' 4
 sess_voxcmd_env stop
@@ -995,7 +995,7 @@ hooks_done
 check "Stop after leaving type mode keeps the held mark from being typed" "session_gone && wtype_is 'wtype -- Hello'"
 
 rm -f "$root/hook-block.entered" "$root/hook-block.release"
-sess_start "type mode" "Hello." "jarvis stop typing" HOLD
+sess_start "type mode" "Hello." "cortana stop typing" HOLD
 until [[ -e $root/hook-block.entered ]]; do sleep 0.02; done
 hold_in 'rapid ' 4
 flock_file=$XDG_RUNTIME_DIR/voxcmd/session.lock
@@ -1015,7 +1015,7 @@ sess_wait
 hooks_done
 
 rm -f "$root/hook-block.entered" "$root/hook-block.release"
-sess_start "type mode" "Hello." "jarvis stop typing" "type mode" "World." HOLD
+sess_start "type mode" "Hello." "cortana stop typing" "type mode" "World." HOLD
 until [[ -e $root/hook-block.entered ]]; do sleep 0.02; done
 hold_in 'type rapid' 6
 : >"$root/hook-block.release"
