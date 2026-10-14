@@ -6,14 +6,17 @@
 import hashlib
 import importlib.machinery
 import importlib.util
+import io
 import json
 import os
 import stat
 import sys
 import tempfile
+import time
 import types
 import unittest
 import unittest.mock
+import wave
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 WAKE_PATH = os.path.join(os.path.dirname(HERE), ".local", "bin", "voxcmd-wake")
@@ -81,6 +84,30 @@ class ScriptedScorer:
 
     def reset(self):
         self.resets += 1
+
+
+def run_now(work):
+    work()
+
+
+class HeldWork:
+    """A spawn that keeps the confirmation's work until release(), so a test can act while it runs."""
+
+    def __init__(self):
+        self.pending = []
+
+    def __call__(self, work):
+        self.pending.append(work)
+
+    def release(self):
+        while self.pending:
+            self.pending.pop(0)()
+
+
+def wav_frames(content):
+    """(rate, channels, sample width, frames) of a WAV file's content."""
+    with wave.open(io.BytesIO(content)) as wav:
+        return wav.getframerate(), wav.getnchannels(), wav.getsampwidth(), wav.readframes(wav.getnframes())
 
 
 class FakeGate:
@@ -162,15 +189,15 @@ class SettingsTest(unittest.TestCase):
             return wake.Settings({"VOXCMD_VOICE_ENV_FILE": path, **(env or {})})
 
     def test_each_saved_level_maps_to_its_threshold_and_frames(self):
-        for level, expected in (("strict", (0.8, 3)), ("balanced", (0.7, 2)), ("relaxed", (0.6, 2))):
+        for level, expected in (("strict", (0.8, 3)), ("balanced", (0.7, 3)), ("relaxed", (0.6, 3))):
             s = self.settings_with_file(f"VOXCMD_WAKE_SENSITIVITY={level}\n")
             self.assertEqual((s.threshold, s.frames), expected, level)
 
     def test_environment_level_beats_the_file_and_raw_values_beat_the_level(self):
         s = self.settings_with_file("VOXCMD_WAKE_SENSITIVITY=relaxed\n", {"VOXCMD_WAKE_SENSITIVITY": "balanced"})
-        self.assertEqual((s.threshold, s.frames), (0.7, 2))
+        self.assertEqual((s.threshold, s.frames), (0.7, 3))
         s = self.settings_with_file("VOXCMD_WAKE_SENSITIVITY=relaxed\n", {"VOXCMD_WAKE_THRESHOLD": "0.9"})
-        self.assertEqual((s.threshold, s.frames), (0.9, 2))
+        self.assertEqual((s.threshold, s.frames), (0.9, 3))
         s = self.settings_with_file("VOXCMD_WAKE_SENSITIVITY=relaxed\n", {"VOXCMD_WAKE_FRAMES": "5"})
         self.assertEqual((s.threshold, s.frames), (0.6, 5))
 
@@ -193,7 +220,18 @@ class SettingsTest(unittest.TestCase):
 
     def test_the_last_valid_line_wins_and_junk_lines_are_ignored(self):
         s = self.settings_with_file("VOXCMD_WAKE_SENSITIVITY=relaxed\nnonsense\n$(touch x)\nVOXCMD_WAKE_SENSITIVITY=balanced\n")
-        self.assertEqual((s.threshold, s.frames), (0.7, 2))
+        self.assertEqual((s.threshold, s.frames), (0.7, 3))
+
+    def test_the_levels_are_the_cortana_models_alone(self):
+        self.assertEqual(wake.WAKE_MODEL, "cortana.onnx")
+        self.assertEqual(list(wake.SENSITIVITY_LEVELS), ["cortana.onnx"])
+        self.assertEqual(sorted(wake.SENSITIVITY_LEVELS["cortana.onnx"]), ["balanced", "relaxed", "strict"])
+
+    def test_the_default_model_dir_is_outside_the_stowed_share_folder(self):
+        saved = os.environ.get("XDG_DATA_HOME")
+        self.addCleanup(lambda: os.environ.pop("XDG_DATA_HOME") if saved is None else os.environ.__setitem__("XDG_DATA_HOME", saved))
+        os.environ["XDG_DATA_HOME"] = "/data"
+        self.assertEqual(wake.Settings({}).model_dir, "/data/voxcmd-wake/models")
 
     def test_defaults_are_the_strict_setting(self):
         s = wake.Settings({})
@@ -218,10 +256,12 @@ class SettingsTest(unittest.TestCase):
 
 
 class ListenerTest(unittest.TestCase):
-    def build(self, sources, scores, gate=None):
+    def build(self, sources, scores, gate=None, verdict=wake.CONFIRMED, spawn=run_now, **env):
         self.clock = Clock()
         self.gate = gate or FakeGate()
         self.listens = 0
+        self.verdict = verdict
+        self.confirmed_audio = []
         self.states = []
         self.reasons = []
         self.logs = []
@@ -239,12 +279,19 @@ class ListenerTest(unittest.TestCase):
         def run_listen():
             self.listens += 1
 
+        def confirm(wav):
+            self.confirmed_audio.append(wav)
+            if isinstance(self.verdict, Exception):
+                raise self.verdict
+            return self.verdict
+
         self.listener = wake.Listener(
-            settings(),
+            settings(**env),
             self.scorer,
             open_source,
             self.gate,
             run_listen,
+            wake.Confirmation(confirm, spawn),
             self.record_state,
             self.clock,
             self.clock.sleep,
@@ -259,16 +306,84 @@ class ListenerTest(unittest.TestCase):
         for _ in range(count):
             self.listener.step()
 
-    def test_listen_runs_on_the_frame_that_completes_the_hold(self):
+    def test_the_hold_starts_a_confirmation_and_a_confirmed_one_runs_listen(self):
         scores = [0.0, 0.9, 0.95, 0.97, 0.9, 0.3, 0.1, 0.0]
         self.build([[b"f"] * len(scores)], scores)
         self.steps(3)
+        self.assertEqual(self.confirmed_audio, [])
+        self.steps(1)
+        self.assertEqual(len(self.confirmed_audio), 1)
         self.assertEqual(self.listens, 0)
         self.steps(1)
         self.assertEqual(self.listens, 1)
+        self.assertIn("confirmed", self.logs)
         self.assertEqual(self.states[0], "armed")
-        self.steps(len(scores) - 4)
+        self.steps(len(scores) - 5)
         self.assertEqual(self.listens, 1)
+
+    def test_a_rejected_trigger_does_nothing_visible(self):
+        scores = [0.9, 0.95, 0.97, 0.0, 0.0]
+        self.build([[b"f"] * len(scores)], scores, verdict=wake.REJECTED)
+        self.steps(len(scores))
+        self.assertEqual(len(self.confirmed_audio), 1)
+        self.assertEqual(self.listens, 0)
+        self.assertIn("rejected", self.logs)
+        self.assertEqual(self.states, ["armed"])
+        self.assertIsNone(self.listener.ready_deadline)
+
+    def test_a_failed_confirmation_does_not_listen(self):
+        for verdict in (wake.CONFIRM_FAILED, RuntimeError("voxcmd broke")):
+            scores = [0.9, 0.95, 0.97, 0.0, 0.0]
+            self.build([[b"f"] * len(scores)], scores, verdict=verdict)
+            self.steps(len(scores))
+            self.assertEqual(self.listens, 0, verdict)
+            self.assertIn("confirm failed, not listening", self.logs)
+            self.assertFalse(self.listener.confirmation.busy())
+
+    def test_the_confirmation_gets_the_last_two_seconds_read_as_a_wav(self):
+        count = wake.CONFIRM_AUDIO_FRAMES + 5
+        frames = [bytes([index]) * wake.FRAME_BYTES for index in range(count)]
+        self.build([frames], [0.0] * (count - 3) + [0.9] * 3)
+        self.steps(count)
+        self.assertEqual(wake.CONFIRM_AUDIO_FRAMES, 25)
+        rate, channels, width, audio = wav_frames(self.confirmed_audio[0])
+        self.assertEqual((rate, channels, width), (16000, 1, 2))
+        self.assertEqual(audio, b"".join(frames[-wake.CONFIRM_AUDIO_FRAMES:]))
+
+    def test_a_reopened_stream_starts_its_buffer_afresh(self):
+        before = [b"\x01\x00" * wake.FRAME_SAMPLES] * 10
+        after = [b"\x02\x00" * wake.FRAME_SAMPLES] * 3
+        self.build([before, after], [0.0] * 10 + [0.9] * 3)
+        self.steps(40)
+        self.assertEqual(len(self.sources), 2)
+        self.assertEqual(wav_frames(self.confirmed_audio[0])[3], b"".join(after))
+
+    def test_frames_keep_being_read_while_a_confirmation_runs_and_its_triggers_are_skipped(self):
+        held = HeldWork()
+        phrase = [0.9, 0.9, 0.9, 0.0]
+        scores = phrase + [0.0] * 3 + phrase
+        self.build([[b"f"] * (len(scores) + 2)], scores + [0.0, 0.0], spawn=held, VOXCMD_WAKE_COOLDOWN_SECS="0")
+        self.steps(len(scores))
+        self.assertEqual(self.scorer.scores, [0.0, 0.0])
+        self.assertEqual(len(held.pending), 1)
+        self.assertTrue(any("skipped, still confirming" in line for line in self.logs))
+        held.release()
+        self.steps(1)
+        self.assertEqual(self.listens, 1)
+        self.assertEqual(len(self.confirmed_audio), 1)
+
+    def test_a_verdict_that_arrives_while_paused_is_dropped(self):
+        held = HeldWork()
+        self.build([[b"f"] * 5, [b"f"] * 5], [0.9, 0.95, 0.97] + [0.0] * 7, spawn=held)
+        self.steps(3)
+        self.gate.paused_now = True
+        self.steps(1)
+        held.release()
+        self.steps(1)
+        self.gate.paused_now = False
+        self.steps(2)
+        self.assertEqual(self.listens, 0)
+        self.assertIn("confirmed while paused, dropped", self.logs)
 
     def test_two_phrases_inside_the_cooldown_run_listen_once(self):
         phrase = [0.9, 0.95, 0.97, 0.1]
@@ -276,6 +391,7 @@ class ListenerTest(unittest.TestCase):
         self.build([[b"f"] * len(scores)], scores)
         self.steps(len(scores))
         self.assertEqual(self.listens, 1)
+        self.assertEqual(len(self.confirmed_audio), 1)
 
     def test_media_playing_closes_the_stream_and_ignores_the_wake_phrase(self):
         self.build([[b"f"] * 5, [b"f"] * 5], [0.0] * 10)
@@ -304,7 +420,7 @@ class ListenerTest(unittest.TestCase):
 
     def test_ready_is_published_while_the_recording_it_started_is_under_way(self):
         self.build([[b"f"] * 5], [0.9, 0.95, 0.97, 0.0, 0.0])
-        self.steps(3)
+        self.steps(4)
         self.assertEqual(self.listens, 1)
         self.assertEqual(self.states, ["armed"])
         self.gate.paused_now = True
@@ -321,7 +437,8 @@ class ListenerTest(unittest.TestCase):
 
     def test_a_recording_that_never_starts_gives_up_the_ready_cue(self):
         self.build([[b"f"] * 3, [b"f"] * 5], [0.9, 0.95, 0.97, 0.0, 0.0, 0.0, 0.0, 0.0])
-        self.steps(3)
+        self.steps(4)
+        self.assertEqual(self.listens, 1)
         self.gate.paused_now = True
         self.steps(1)
         self.assertEqual(self.states[-1], "paused")
@@ -384,6 +501,7 @@ class ListenerTest(unittest.TestCase):
         self.steps(6)
         self.assertFalse(any("secret" in line for line in self.logs))
         self.assertTrue(any(line.startswith("trigger score") for line in self.logs))
+        self.assertIn("confirmed", self.logs)
 
 
 class StateFileTest(unittest.TestCase):
@@ -656,7 +774,7 @@ class SessionPauseTest(unittest.TestCase):
         clock = Clock()
         listener = wake.Listener(
             settings(), ScriptedScorer([0.0] * 5), lambda: FakeSource(clock, [b"f"] * 5), gate, lambda: None,
-            lambda state, reason: None, clock, clock.sleep, lambda message: None,
+            wake.Confirmation(lambda wav: wake.REJECTED, run_now), lambda state, reason: None, clock, clock.sleep, lambda message: None,
         )
         listener.step()
         source = listener.source
@@ -685,8 +803,18 @@ class StubbedCommandsTest(unittest.TestCase):
             pcm.write(b"\x01\x00" * wake.FRAME_SAMPLES * 6 + b"\x01")
         write_stub(os.path.join(self.bin, "pw-record"), f'echo "pw-record $*" >>"{self.calls}"\n/bin/cat "{self.pcm}"\n')
         write_stub(os.path.join(self.bin, "playerctl"), f'echo "playerctl $*" >>"{self.calls}"\nprintf "%b\\n" "$PLAYERCTL_ANSWER"\n')
-        write_stub(os.path.join(self.bin, "voxcmd"), f'echo "voxcmd $*" >>"{self.calls}"\n')
-        saved = {k: os.environ.get(k) for k in ("PATH", "VOXCMD_WAKE_VOXCMD", "PLAYERCTL_ANSWER", "XDG_RUNTIME_DIR")}
+        # _wake-confirm keeps a copy of the audio it got, notes where its stdin points, and exits $CONFIRM_EXIT.
+        self.heard = os.path.join(self.tmp.name, "heard.wav")
+        write_stub(
+            os.path.join(self.bin, "voxcmd"),
+            f'echo "voxcmd $*" >>"{self.calls}"\n'
+            '[ "$1" = _wake-confirm ] || exit 0\n'
+            f'echo "stdin $(/usr/bin/readlink /proc/$$/fd/0) timeout=$VOXCMD_WAKE_CONFIRM_TIMEOUT_SECS" >>"{self.calls}"\n'
+            f'/bin/cat "$2" >"{self.heard}"\n'
+            '[ -z "$CONFIRM_SLEEP" ] || /bin/sleep "$CONFIRM_SLEEP"\n'
+            'exit "${CONFIRM_EXIT:-0}"\n',
+        )
+        saved = {k: os.environ.get(k) for k in ("PATH", "VOXCMD_WAKE_VOXCMD", "PLAYERCTL_ANSWER", "XDG_RUNTIME_DIR", "CONFIRM_EXIT", "CONFIRM_SLEEP")}
         self.addCleanup(lambda: [os.environ.pop(k, None) if v is None else os.environ.__setitem__(k, v) for k, v in saved.items()])
         os.environ["PATH"] = self.bin
         os.environ["VOXCMD_WAKE_VOXCMD"] = os.path.join(self.bin, "voxcmd")
@@ -700,12 +828,14 @@ class StubbedCommandsTest(unittest.TestCase):
     def run_listener(self, scores, stop_after):
         clock = Clock()
         states = []
+        self.logs = []
         listener = wake.Listener(
             settings(),
             ScriptedScorer(scores),
             wake.PwRecordSource,
             wake.PauseGate(clock, os.path.join(self.tmp.name, "voxtype-state"), wake.playerctl_playing),
             wake.make_run_listen(lambda message: None),
+            wake.Confirmation(wake.make_run_confirm(self.logs.append), run_now),
             lambda state, reason: states.append(state),
             clock,
             clock.sleep,
@@ -720,8 +850,61 @@ class StubbedCommandsTest(unittest.TestCase):
         states = self.run_listener([0.9, 0.95, 0.97, 0.1, 0.0, 0.0], 6)
         calls = self.recorded()
         self.assertIn('pw-record -P { voxcmd.tag = "wake" } --rate 16000 --channels 1 --format s16 --raw -', calls)
+        self.assertEqual(calls.count("voxcmd _wake-confirm /dev/stdin"), 1)
         self.assertEqual(calls.count("voxcmd listen --start-only"), 1)
+        self.assertLess(calls.index("voxcmd _wake-confirm /dev/stdin"), calls.index("voxcmd listen --start-only"))
         self.assertEqual(states[0], "armed")
+
+    def test_the_confirmation_reads_the_audio_from_an_anonymous_memfd(self):
+        self.run_listener([0.9, 0.95, 0.97, 0.0], 4)
+        stdin_lines = [call for call in self.recorded() if call.startswith("stdin ")]
+        self.assertEqual(len(stdin_lines), 1)
+        self.assertTrue(stdin_lines[0].startswith("stdin /memfd:voxcmd-wake-audio"), stdin_lines[0])
+        self.assertTrue(stdin_lines[0].endswith(f"timeout={wake.CONFIRM_TIMEOUT_SECS}"))
+        with open(self.heard, "rb") as heard:
+            rate, channels, width, audio = wav_frames(heard.read())
+        self.assertEqual((rate, channels, width), (16000, 1, 2))
+        self.assertEqual(audio, b"\x01\x00" * wake.FRAME_SAMPLES * 3)
+
+    def test_a_rejected_confirmation_never_runs_listen(self):
+        os.environ["CONFIRM_EXIT"] = "1"
+        self.run_listener([0.9, 0.95, 0.97, 0.0, 0.0, 0.0], 6)
+        self.assertEqual(self.recorded().count("voxcmd _wake-confirm /dev/stdin"), 1)
+        self.assertNotIn("voxcmd listen --start-only", self.recorded())
+
+    def test_a_failing_confirmation_is_logged_and_never_runs_listen(self):
+        os.environ["CONFIRM_EXIT"] = "2"
+        self.run_listener([0.9, 0.95, 0.97, 0.0, 0.0, 0.0], 6)
+        self.assertNotIn("voxcmd listen --start-only", self.recorded())
+        self.assertIn("confirm exit 2", self.logs)
+
+    def test_a_confirmation_that_outlasts_its_cap_is_killed_as_a_failure(self):
+        for attribute, value in (("CONFIRM_TIMEOUT_SECS", 0.2), ("CONFIRM_KILL_GRACE_SECS", 0.3)):
+            self.addCleanup(setattr, wake, attribute, getattr(wake, attribute))
+            setattr(wake, attribute, value)
+        os.environ["CONFIRM_SLEEP"] = "20"
+        logs = []
+        started = time.monotonic()
+        self.assertEqual(wake.make_run_confirm(logs.append)(wake.wav_bytes([b"\0\0"])), wake.CONFIRM_FAILED)
+        self.assertLess(time.monotonic() - started, 5)
+        self.assertEqual(logs, ["confirm timed out"])
+
+    def test_a_missing_voxcmd_is_a_failure(self):
+        os.environ["VOXCMD_WAKE_VOXCMD"] = os.path.join(self.tmp.name, "nonexistent")
+        logs = []
+        self.assertEqual(wake.make_run_confirm(logs.append)(wake.wav_bytes([b"\0\0"])), wake.CONFIRM_FAILED)
+        self.assertTrue(logs[0].startswith("confirm could not run"))
+
+    def test_the_real_worker_thread_hands_back_a_verdict(self):
+        confirmation = wake.Confirmation(lambda wav: wake.REJECTED)
+        confirmation.start(b"")
+        deadline = time.monotonic() + 5
+        verdict = None
+        while verdict is None and time.monotonic() < deadline:
+            verdict = confirmation.take_verdict()
+            time.sleep(0.01)
+        self.assertEqual(verdict, wake.REJECTED)
+        self.assertFalse(confirmation.busy())
 
     def test_playing_media_never_starts_pw_record(self):
         os.environ["PLAYERCTL_ANSWER"] = "Playing"
@@ -772,7 +955,7 @@ class FetchModelsTest(unittest.TestCase):
         for name in wake.MODEL_FILES:
             with open(self.target(name), "rb") as f:
                 self.assertEqual(f.read(), name.encode())
-        self.assertEqual(len(self.notices), 2)
+        self.assertEqual(len(self.notices), 1)
         self.assertEqual([n for n in os.listdir(self.target_dir) if n.endswith(".part")], [])
 
     def test_a_download_with_the_wrong_hash_is_deleted_and_refused(self):
@@ -783,11 +966,11 @@ class FetchModelsTest(unittest.TestCase):
         self.assertEqual(os.listdir(self.target_dir), [wake.MODEL_FILES[0]])
 
     def test_a_present_file_with_the_wrong_hash_is_fetched_again(self):
-        with open(self.target(wake.MODEL_FILES[2]), "wb") as f:
+        with open(self.target(wake.MODEL_FILES[1]), "wb") as f:
             f.write(b"corrupt")
         self.fetch()
-        with open(self.target(wake.MODEL_FILES[2]), "rb") as f:
-            self.assertEqual(f.read(), wake.MODEL_FILES[2].encode())
+        with open(self.target(wake.MODEL_FILES[1]), "rb") as f:
+            self.assertEqual(f.read(), wake.MODEL_FILES[1].encode())
 
     def test_a_present_file_with_the_wrong_hash_is_not_used_to_start(self):
         self.fetch()
@@ -799,6 +982,32 @@ class FetchModelsTest(unittest.TestCase):
         with open(self.target(wake.MODEL_FILES[0]), "wb") as f:
             f.write(b"corrupt")
         self.assertIn("pinned release file", wake.missing_setup(self.settings))
+
+    def test_only_the_feature_models_are_fetched(self):
+        self.assertEqual(wake.MODEL_FILES, ("melspectrogram.onnx", "embedding_model.onnx"))
+        self.fetch()
+        self.assertEqual(sorted(os.listdir(self.target_dir)), sorted(wake.MODEL_FILES))
+
+    def fake_packages(self):
+        for module in ("numpy", "openwakeword"):
+            self.addCleanup(sys.modules.pop, module, None)
+            sys.modules[module] = types.ModuleType(module)
+
+    def test_the_tracked_wake_model_is_the_pinned_one_and_is_checked_before_a_start(self):
+        self.assertEqual(wake.file_sha256(wake.wake_model_path()), wake.WAKE_MODEL_SHA256)
+        self.fetch()
+        self.fake_packages()
+        self.assertIsNone(wake.missing_setup(self.settings))
+        self.addCleanup(setattr, wake, "WAKE_MODEL_SHA256", wake.WAKE_MODEL_SHA256)
+        wake.WAKE_MODEL_SHA256 = "0" * 64
+        self.assertIn("not the tracked model", wake.missing_setup(self.settings))
+
+    def test_a_missing_wake_model_stops_a_start(self):
+        self.fetch()
+        self.fake_packages()
+        self.addCleanup(setattr, wake, "SHARE_DIR", wake.SHARE_DIR)
+        wake.SHARE_DIR = self.tmp.name
+        self.assertIn("cortana.onnx is not in", wake.missing_setup(self.settings))
 
     def test_main_fetch_exits_non_zero_on_a_mismatch(self):
         with open(os.path.join(self.source_dir, wake.MODEL_FILES[0]), "wb") as f:

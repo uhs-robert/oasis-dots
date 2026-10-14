@@ -1,5 +1,5 @@
 [Unit]
-Description=voxcmd wake word listener ("hey jarvis")
+Description=voxcmd wake word listener ("Cortana")
 Documentation=https://github.com/uhs-robert/oasis-dots/issues/845
 PartOf=graphical-session.target
 # Not After=graphical-session.target: the target wants this unit once enabled, and a target orders itself after the
@@ -19,7 +19,7 @@ ExecStart=/usr/bin/python3 -I %h/.local/bin/voxcmd-wake
 ExecStopPost=/usr/bin/rm -f %t/voxcmd/wake.json
 Restart=on-failure
 RestartSec=5
-# 78: openwakeword is not installed or the models are missing, which a restart cannot fix.
+# 78: openwakeword is not installed or a model is missing, which a restart cannot fix.
 RestartPreventExitStatus=78
 TimeoutStartSec=5min
 

@@ -28,7 +28,7 @@ switch_on() {
     toast "Wake word" "Could not start $unit"
     return 1
   fi
-  toast "Wake word on" "Say \"hey cortana\""
+  toast "Wake word on" "Say \"Cortana\""
 }
 
 # Says the microphone is released only once the unit has stopped: a failed stop leaves the listener holding it.

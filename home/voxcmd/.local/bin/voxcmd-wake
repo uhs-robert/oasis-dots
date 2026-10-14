@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
-"""voxcmd-wake: listen for "hey jarvis" and start a voice command, with no key.
+"""voxcmd-wake: listen for "Cortana" and start a voice command, with no key.
 
 Run by voxcmd-wake.service (`voxcmd wake on`). Reads the default source through pw-record (16 kHz mono s16) into
-openWakeWord's pretrained hey_jarvis model; a trigger runs `voxcmd listen --start-only`, as the voice key does.
-The audio stays in memory. The only log is scores and timestamps, in voxcmd's debug log while it is on.
+openWakeWord with the cortana model kept in voxcmd's share folder. A trigger is only a candidate: the last 2 s of
+audio go to `voxcmd _wake-confirm`, which has Whisper transcribe them, and only when that hears the wake word does it
+run `voxcmd listen --start-only`, as the voice key does. The audio stays in memory (an anonymous memfd for the
+confirmation). The only log is scores, verdicts and timestamps, in voxcmd's debug log while it is on.
 
   voxcmd-wake                run the listener
   voxcmd-wake --fetch-models download the models on first use (the unit's ExecStartPre)
@@ -16,7 +18,7 @@ Settings (environment, else the file Settings > Voice writes; voxcmd README "Wak
   VOXCMD_WAKE_PAUSE_FOR_MEDIA 1 pauses while a player plays; 0 keeps listening, so a song can say the phrase (0)
   VOXCMD_WAKE_PAUSE_FOR_MIC   1 pauses while another app records from a microphone; 0 keeps listening (1)
   VOXCMD_WAKE_COOLDOWN_SECS   quiet time after a trigger (3)
-  VOXCMD_WAKE_MODEL_DIR       where the models live (~/.local/share/voxcmd/wake-models)
+  VOXCMD_WAKE_MODEL_DIR       where the downloaded feature models live (~/.local/share/voxcmd-wake/models)
 """
 
 import os
@@ -25,14 +27,19 @@ import re
 # Set before onnxruntime loads: one thread is plenty for an 80 ms frame and keeps the idle cost low.
 os.environ.setdefault("OMP_NUM_THREADS", "1")
 
+import collections
 import hashlib
+import io
 import json
 import select
 import signal
 import subprocess
 import sys
+import tempfile
+import threading
 import time
 import urllib.request
+import wave
 
 EXIT_OK = 0
 EXIT_ERROR = 1
@@ -45,8 +52,11 @@ FRAME_SAMPLES = 1280
 FRAME_BYTES = FRAME_SAMPLES * 2
 
 # Named sensitivity per wake model: level -> (threshold, frames). A model added later gets a row of its own here.
+# cortana's are from 20 recorded takes at 3 frames: all 20 trigger from 0.5 to 0.75, 19 at 0.8, 18 at 0.9.
+# Whisper confirms every trigger, so a false one costs a transcription rather than a command, and strict keeps those
+# down (74 in 3.2 h of everyday audio at 0.8); balanced and relaxed sit inside the band where every take triggered.
 SENSITIVITY_LEVELS = {
-    "hey_jarvis_v0.1.onnx": {"strict": (0.8, 3), "balanced": (0.7, 2), "relaxed": (0.6, 2)},
+    "cortana.onnx": {"strict": (0.8, 3), "balanced": (0.7, 3), "relaxed": (0.6, 3)},
 }
 DEFAULT_SENSITIVITY = "strict"
 DEFAULT_COOLDOWN_SECS = 3.0
@@ -77,11 +87,27 @@ STABLE_STREAM_SECS = 10.0
 # Scores below this are not worth a debug line at 12 a second.
 LOG_SCORE_FLOOR = 0.2
 
+# The audio a confirmation transcribes: the frames read up to the trigger, which fires near the end of the word.
+CONFIRM_AUDIO_SECS = 2.0
+CONFIRM_AUDIO_FRAMES = round(CONFIRM_AUDIO_SECS * SAMPLE_RATE / FRAME_SAMPLES)
+# How long `voxtype transcribe` may take (passed to voxcmd, which enforces it), and how much longer voxcmd-wake waits
+# before it kills the whole confirmation.
+CONFIRM_TIMEOUT_SECS = 6
+CONFIRM_KILL_GRACE_SECS = 2
+CONFIRMED = "confirmed"
+REJECTED = "rejected"
+CONFIRM_FAILED = "failed"
+
+# The wake model is trained for this repo on openWakeWord v0.5.1's features and tracked in voxcmd's share folder,
+# found through this file's real path so a stowed and a checked-out voxcmd-wake each read their own copy.
+WAKE_MODEL = "cortana.onnx"
+WAKE_MODEL_SHA256 = "4c8ef56a302ed1b2863dabeaf5c84bb473dcdaf3a9ae65191608bf17ac8b1fe9"
+SHARE_DIR = os.path.normpath(os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "share", "voxcmd"))
+
+# The feature models every openWakeWord model runs on, not packaged and fetched on first use. Pinned to the v0.5.1
+# release files: a download that differs is refused, and a file already in place is checked too.
 MODEL_RELEASE_URL = "https://github.com/dscripka/openWakeWord/releases/download/v0.5.1/"
-WAKE_MODEL = "hey_jarvis_v0.1.onnx"
-# Pinned to the v0.5.1 release files: a download that differs is refused, and a file already in place is checked too.
 MODEL_SHA256 = {
-    WAKE_MODEL: "94a13cfe60075b132f6a472e7e462e8123ee70861bc3fb58434a73712ee0d2cb",
     "melspectrogram.onnx": "ba2b0e0f8b7b875369a2c89cb13360ff53bac436f2895cced9f479fa65eb176f",
     "embedding_model.onnx": "70d164290c1d095d1d4ee149bc5e00543250a7316b59f31d056cff7bd3075c1f",
 }
@@ -100,9 +126,14 @@ def runtime_dir():
     return os.path.join(os.environ.get("XDG_RUNTIME_DIR") or "/tmp", "voxcmd")
 
 
+def wake_model_path():
+    return os.path.join(SHARE_DIR, WAKE_MODEL)
+
+
 def default_model_dir():
+    # Not ~/.local/share/voxcmd, which stow folds into the repo.
     data_home = os.environ.get("XDG_DATA_HOME") or os.path.expanduser("~/.local/share")
-    return os.path.join(data_home, "voxcmd", "wake-models")
+    return os.path.join(data_home, "voxcmd-wake", "models")
 
 
 # Settings > Voice's file, outside the stow-folded ~/.config/voxcmd. Read as data: only KEY=NUMBER lines count.
@@ -163,8 +194,8 @@ class Settings:
 class TriggerDecider:
     """Turns a stream of frame scores into triggers: held high for enough frames, then a cooldown.
 
-    It triggers on the frame that completes the hold, not after the phrase ends: the recording then starts while
-    "jarvis" is still being said, and voxcmd strips what of the phrase reaches the transcript."""
+    It triggers on the frame that completes the hold, which the cortana model reaches near the end of the word; the
+    Listener then has the trigger confirmed before anything starts."""
 
     def __init__(self, threshold, frames, cooldown_secs):
         self.threshold = threshold
@@ -346,20 +377,73 @@ def playerctl_playing():
     return "Playing" in (line.strip() for line in result.stdout.splitlines())
 
 
+def wav_bytes(frames):
+    """The frames as a 16 kHz mono s16 WAV file's content."""
+    out = io.BytesIO()
+    with wave.open(out, "wb") as wav:
+        wav.setnchannels(1)
+        wav.setsampwidth(2)
+        wav.setframerate(SAMPLE_RATE)
+        wav.writeframes(b"".join(frames))
+    return out.getvalue()
+
+
+def start_daemon_thread(work):
+    threading.Thread(target=work, daemon=True).start()
+
+
+class Confirmation:
+    """Runs confirm(wav) -> CONFIRMED, REJECTED or CONFIRM_FAILED off the audio loop, one at a time, so frames keep being
+    read while Whisper works. The loop collects the verdict with take_verdict; busy holds until it has."""
+
+    def __init__(self, confirm, spawn=start_daemon_thread):
+        self.confirm = confirm
+        self.spawn = spawn
+        self.lock = threading.Lock()
+        self.running = False
+        self.verdict = None
+
+    def busy(self):
+        with self.lock:
+            return self.running or self.verdict is not None
+
+    def start(self, wav):
+        with self.lock:
+            self.running = True
+        self.spawn(lambda: self.finish(wav))
+
+    def finish(self, wav):
+        try:
+            verdict = self.confirm(wav)
+        except Exception:  # a worker that raised must still free the next trigger
+            verdict = CONFIRM_FAILED
+        with self.lock:
+            self.verdict = verdict
+            self.running = False
+
+    def take_verdict(self):
+        with self.lock:
+            verdict, self.verdict = self.verdict, None
+            return verdict
+
+
 class Listener:
     """One loop step at a time, so the decisions can be driven with fake audio and time."""
 
-    def __init__(self, settings, scorer, open_source, gate, run_listen, publish_state, clock, sleep, log):
+    def __init__(self, settings, scorer, open_source, gate, run_listen, confirmation, publish_state, clock, sleep, log):
         self.settings = settings
         self.scorer = scorer
         self.open_source = open_source
         self.gate = gate
         self.run_listen = run_listen
+        self.confirmation = confirmation
         self.publish_state = publish_state
         self.clock = clock
         self.sleep = sleep
         self.log = log
         self.decider = TriggerDecider(settings.threshold, settings.frames, settings.cooldown_secs)
+        # The frames read since the stream opened, up to CONFIRM_AUDIO_SECS: the audio a trigger sends to be confirmed.
+        self.recent_frames = collections.deque(maxlen=CONFIRM_AUDIO_FRAMES)
         self.source = None
         self.opened_at = 0.0
         self.backoff_secs = BACKOFF_FIRST_SECS
@@ -375,6 +459,7 @@ class Listener:
             self.source = None
         self.decider.reset()
         self.scorer.reset()
+        self.recent_frames.clear()
 
     def fail_stream(self, reason):
         self.close_stream()
@@ -395,8 +480,23 @@ class Listener:
             self.ready_seen = False
         return "paused"
 
+    def act_on_verdict(self, verdict):
+        if verdict == CONFIRMED:
+            self.log("confirmed")
+            self.ready_deadline = self.clock() + READY_WAIT_SECS
+            self.ready_seen = False
+            self.run_listen()
+        elif verdict == REJECTED:
+            self.log("rejected")
+        else:
+            self.log("confirm failed, not listening")
+
     def step(self):
+        verdict = self.confirmation.take_verdict()
         if self.gate.paused():
+            if verdict is not None:
+                # What paused it (the voice key, a session, a call) has the microphone now.
+                self.log(f"{verdict} while paused, dropped")
             if self.source is not None:
                 self.log("paused")
                 self.close_stream()
@@ -404,6 +504,8 @@ class Listener:
             self.publish_state(state, self.gate.reason if state == "paused" else None)
             self.sleep(READY_POLL_SECS if self.ready_deadline is not None else PAUSED_SLEEP_SECS)
             return
+        if verdict is not None:
+            self.act_on_verdict(verdict)
         if self.ready_deadline is not None and (self.ready_seen or self.clock() >= self.ready_deadline):
             self.ready_deadline = None
             self.ready_seen = False
@@ -427,6 +529,7 @@ class Listener:
             return
         if frame is None:
             return
+        self.recent_frames.append(frame)
         now = self.clock()
         if now - self.opened_at >= STABLE_STREAM_SECS:
             self.backoff_secs = BACKOFF_FIRST_SECS
@@ -434,10 +537,11 @@ class Listener:
         if score >= LOG_SCORE_FLOOR:
             self.log(f"score {score:.2f}")
         if self.decider.update(score, now):
-            self.log(f"trigger score {score:.2f}")
-            self.ready_deadline = now + READY_WAIT_SECS
-            self.ready_seen = False
-            self.run_listen()
+            if self.confirmation.busy():
+                self.log(f"trigger score {score:.2f} skipped, still confirming")
+                return
+            self.log(f"trigger score {score:.2f}, confirming")
+            self.confirmation.start(wav_bytes(self.recent_frames))
 
     def run(self):
         while not self.stopping:
@@ -505,7 +609,7 @@ def die_with_parent():
 
 
 class ModelScorer:
-    """openWakeWord's hey_jarvis model on onnxruntime."""
+    """The cortana model on openWakeWord's onnxruntime pipeline."""
 
     def __init__(self, model_dir):
         import numpy
@@ -513,7 +617,7 @@ class ModelScorer:
 
         self.numpy = numpy
         self.model = Model(
-            wakeword_models=[os.path.join(model_dir, WAKE_MODEL)],
+            wakeword_models=[wake_model_path()],
             inference_framework="onnx",
             melspec_model_path=os.path.join(model_dir, "melspectrogram.onnx"),
             embedding_model_path=os.path.join(model_dir, "embedding_model.onnx"),
@@ -538,6 +642,10 @@ def missing_setup(settings):
         import openwakeword  # noqa: F401
     except ImportError as error:
         return f"python-openwakeword is not installed ({error})"
+    if not os.path.exists(wake_model_path()):
+        return f"{WAKE_MODEL} is not in {SHARE_DIR}"
+    if file_sha256(wake_model_path()) != WAKE_MODEL_SHA256:
+        return f"{WAKE_MODEL} in {SHARE_DIR} is not the tracked model"
     for name in MODEL_FILES:
         path = os.path.join(settings.model_dir, name)
         if not os.path.exists(path):
@@ -666,6 +774,56 @@ def make_run_listen(log):
     return run_listen
 
 
+def private_audio_file(content):
+    """content in an anonymous memfd (a file in an unlinked tmpfs inode where that is missing), read from the start.
+    It has no path another process can open and is gone when closed."""
+    try:
+        audio = os.fdopen(os.memfd_create("voxcmd-wake-audio"), "w+b")
+    except (AttributeError, OSError):
+        audio = tempfile.TemporaryFile(dir=os.environ.get("XDG_RUNTIME_DIR") or None)
+    audio.write(content)
+    audio.seek(0)
+    return audio
+
+
+def make_run_confirm(log):
+    """The real confirm: `voxcmd _wake-confirm /dev/stdin` with the WAV as its stdin, so the wake word and its spellings
+    are matched where voxcmd keeps them. Exit 0 is the wake word, 1 is not; anything else, a timeout included, is a
+    failure. Its output, which holds what was heard, is never read."""
+
+    def run_confirm(wav):
+        try:
+            with private_audio_file(wav) as audio:
+                process = subprocess.Popen(
+                    [voxcmd_command(), "_wake-confirm", "/dev/stdin"],
+                    stdin=audio,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    env={**os.environ, "VOXCMD_WAKE_CONFIRM_TIMEOUT_SECS": str(CONFIRM_TIMEOUT_SECS)},
+                    # Its own process group, so a hung voxtype under voxcmd goes with it.
+                    start_new_session=True,
+                )
+                try:
+                    code = process.wait(timeout=CONFIRM_TIMEOUT_SECS + CONFIRM_KILL_GRACE_SECS)
+                except subprocess.TimeoutExpired:
+                    try:
+                        os.killpg(process.pid, signal.SIGKILL)
+                    except ProcessLookupError:
+                        pass
+                    process.wait()
+                    log("confirm timed out")
+                    return CONFIRM_FAILED
+        except OSError as error:
+            log(f"confirm could not run ({error})")
+            return CONFIRM_FAILED
+        if code in (0, 1):
+            return CONFIRMED if code == 0 else REJECTED
+        log(f"confirm exit {code}")
+        return CONFIRM_FAILED
+
+    return run_confirm
+
+
 def main(argv):
     try:
         settings = Settings()
@@ -710,6 +868,7 @@ def main(argv):
             other_app_recording=mic_activity.other_app_recording if settings.pause_for_mic else None,
         ),
         make_run_listen(log),
+        Confirmation(make_run_confirm(log)),
         state_file.publish,
         time.monotonic,
         time.sleep,

@@ -96,6 +96,65 @@ status=0
 voxcmd wake sideways 2>/dev/null || status=$?
 check "an unknown argument is a usage error" 2 "$status"
 
+# ---- voxcmd _wake-confirm: a trigger's audio, transcribed by a fake `voxtype transcribe` -------------------------------
+# It prints what the real one does: progress lines naming the file, then a blank line and the transcript
+# ($FAKE_TRANSCRIPT); FAKE_TRANSCRIBE=nospeech, fail or hang act out VAD finding nothing, an error and a stuck GPU.
+transcribe_dir="$SANDBOX_DIR/transcribe-bin"
+mkdir -p "$transcribe_dir"
+cat >"$transcribe_dir/voxtype" <<'STUB'
+#!/bin/sh
+[ "$1" = transcribe ] || exit 64
+printf 'voxtype transcribe %s riff=%s\n' "$2" "$(head -c 4 "$2")" >>"$SANDBOX_DIR/calls.log"
+case "${FAKE_TRANSCRIBE:-}" in
+fail) echo "Error: no model" >&2; exit 1 ;;
+hang) exec sleep 30 ;;
+esac
+printf 'Loading audio file: "%s"\nAudio format: 16000 Hz, 1 channel(s), Int\nProcessing 32000 samples (2.00s)...\n' "$2"
+if [ "${FAKE_TRANSCRIBE:-}" = nospeech ]; then echo "No speech detected, skipping transcription."; exit 0; fi
+printf '\n%s\n' "$FAKE_TRANSCRIPT"
+STUB
+chmod +x "$transcribe_dir/voxtype"
+wav="$SANDBOX_DIR/trigger.wav"
+python3 -I -c 'import sys, wave
+with wave.open(sys.argv[1], "wb") as w:
+    w.setnchannels(1); w.setsampwidth(2); w.setframerate(16000); w.writeframes(bytes(64000))' "$wav"
+# confirm <transcript> [voxcmd args...]: "<exit> <output>" of `voxcmd _wake-confirm` on the WAV, as stdin like voxcmd-wake
+# passes it.
+confirm() {
+  local transcript="$1" output code=0
+  shift
+  output=$(PATH="$transcribe_dir:$PATH" FAKE_TRANSCRIPT="$transcript" voxcmd _wake-confirm "${@:-/dev/stdin}" <"$wav") || code=$?
+  printf '%s %s' "$code" "$output"
+}
+
+reset_calls
+check "the wake word alone is the wake word" "0 wake" "$(confirm "Cortana.")"
+check "the stdin path reaches voxtype, and it reads the WAV" 1 "$(calls | grep -c '^voxtype transcribe /dev/stdin riff=RIFF$')"
+check "what follows the wake word is said" "0 wake stop" "$(confirm "Cortana, stop.")"
+check "an alias Whisper writes counts" "0 wake" "$(confirm "Kortana")"
+check "a leading hey still counts" "0 wake" "$(confirm "Hey Cortana!")"
+check "the wake word after other words counts" "0 wake open firefox" "$(confirm "So, Cortana, open Firefox.")"
+check "another word is not the wake word" "1 not_wake" "$(confirm "Cortina")"
+check "the wake word inside a longer word is not" "1 not_wake" "$(confirm "Cortanas")"
+check "ordinary speech is not" "1 not_wake" "$(confirm "I was talking to Donna about it.")"
+check "no speech is not" "1 not_wake" "$(FAKE_TRANSCRIBE=nospeech confirm "")"
+check "the file name in voxtype's progress is not heard" "1 not_wake" "$(cp "$wav" "$SANDBOX_DIR/cortana.wav" && confirm "hello" "$SANDBOX_DIR/cortana.wav")"
+check "a failed transcription is a failure" "2 failed" "$(FAKE_TRANSCRIBE=fail confirm "")"
+status=0
+PATH="$transcribe_dir:$PATH" voxcmd _wake-confirm </dev/null >/dev/null || status=$?
+check "no file is a failure" 2 "$status"
+started=$(date +%s)
+check "a stuck transcription times out as a failure" "2 failed" "$(VOXCMD_WAKE_CONFIRM_TIMEOUT_SECS=1 FAKE_TRANSCRIBE=hang confirm "")"
+check "and is not waited out" 1 "$([ $(($(date +%s) - started)) -lt 5 ] && echo 1 || echo 0)"
+check "a custom wake word replaces the default" "0 wake" "$(VOXCMD_WAKE_WORD=jarvis confirm "Jarvis.")"
+check "and the default no longer counts" "1 not_wake" "$(VOXCMD_WAKE_WORD=jarvis confirm "Cortana.")"
+debug_log="$XDG_RUNTIME_DIR/voxcmd/debug.log"
+rm -f "$debug_log"
+VOXCMD_DEBUG=1 confirm "Cortana, my secret plans." >/dev/null
+VOXCMD_DEBUG=1 confirm "another secret sentence" >/dev/null
+check "the debug log has the verdicts" 2 "$(grep -c 'wake confirm: ' "$debug_log")"
+check "but never what was heard" 0 "$(grep -c -i 'secret' "$debug_log")"
+
 # ---- voice.env: the saved settings voxcmd and voxtype-daemon read when the environment has none -----------------------
 package_dir="$(cd "$tests_dir/.." && pwd)"
 share_dir="$package_dir/.local/share/voxcmd"
