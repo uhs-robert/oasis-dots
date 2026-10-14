@@ -3,7 +3,7 @@
 set -euo pipefail
 
 usage="usage: merge-prs.sh [--method rebase|squash|merge] [--keep-branch] [--skip-review-gate] [--wait-review] <pr>...
-       merge-prs.sh --check [--wait-review] <pr>..."
+       merge-prs.sh --check [--wait-review [--request-review]] <pr>..."
 
 die() {
   echo "merge-prs: $*" >&2
@@ -14,6 +14,7 @@ method=""
 keep_branch=false
 review_gate=true
 wait_review=false
+request_review=false
 check_only=false
 prs=()
 while (($#)); do
@@ -43,6 +44,10 @@ while (($#)); do
     wait_review=true
     shift
     ;;
+  --request-review)
+    request_review=true
+    shift
+    ;;
   -h | --help)
     echo "$usage"
     exit 0
@@ -56,7 +61,8 @@ while (($#)); do
 done
 ((${#prs[@]})) || die "$usage"
 [[ -z $method || $method =~ ^(rebase|squash|merge)$ ]] || die "$usage"
-# --check only reads; options that steer a merge are refused rather than silently ignored.
+# --check only reads, unless --request-review lets it ask for a review of a changed head (a caller waiting for reviews
+# before it merges); options that steer a merge are refused rather than silently ignored.
 ! $check_only || [[ -z $method && $keep_branch == false && $review_gate == true ]] ||
   die "--check cannot be combined with --method, --keep-branch or --skip-review-gate"
 
@@ -219,7 +225,7 @@ check_reviews() {
         else
           echo "note: #$number's Codex review covers $reviewed, not the head ${head:0:7}; the later commits only fix files it reviewed"
         fi
-      elif $wait_review && ! $check_only; then
+      elif $wait_review && { ! $check_only || $request_review; }; then
         echo "merge-prs: #$number changed since Codex reviewed $reviewed ($reason); requesting a review and waiting up to ${review_wait_s}s" >&2
         gh pr comment "$number" --body "@codex review" >/dev/null || die "cannot request a Codex review on #$number"
         poll_review "$number" head

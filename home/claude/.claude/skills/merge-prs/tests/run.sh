@@ -278,6 +278,16 @@ check "exits 0" "[[ $code == 0 ]]"
 check "requests a review" "grep -q '^commented=1' '$GH_STATE'"
 check "merges" "grep -q '^7 merged (rebase)' <<<\"\$out\""
 
+echo "== --check --wait-review --request-review: new work gets a review requested, nothing merged"
+setup
+printf 'codex=Completed\ncodex_commit=abc1234\nreviewed_subjects=feat: add x\nhead_subjects=feat: add x;feat: add z\nreviewed_files=a\nhead_files=a\n' >>"$GH_STATE"
+out=$(PATH="$here:$PATH" MERGE_PRS_REVIEW_POLL=0 timeout 30 "$script" --check --wait-review --request-review 7 2>&1)
+code=$?
+show "$out"
+check "exits 0" "[[ $code == 0 ]]"
+check "requests a review" "grep -q '^commented=1' '$GH_STATE'"
+check "does not merge" "! grep -q 'merged' <<<\"\$out\""
+
 echo "== review gate: skipped by the owner"
 setup
 echo "open_threads=1" >>"$GH_STATE"
