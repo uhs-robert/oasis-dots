@@ -42,8 +42,8 @@ finish_base() {
 # Prints the stow packages under home/ that gained, lost or renamed a file between two commits and are installed here.
 # Pulling updates the files behind existing links, but a new file in a folder stow did not fold has no link until the
 # package is restowed (a merged unit or script then silently does not exist), and a deleted one leaves a dead link.
-# A package counts as installed when one of its files at <after> is reached through its link in $HOME; a package
-# never stowed here is left alone.
+# A package counts as installed when one of its files, before or after the merge, is reached through its link in $HOME
+# (a link to a file the merge removed still resolves to that path); a package never stowed here is left alone.
 packages_to_restow() {
   local repo=$1 before=$2 after=$3 package relative
   while IFS= read -r package; do
@@ -52,6 +52,9 @@ packages_to_restow() {
         echo "$package"
         break
       fi
-    done < <(git -C "$repo" ls-tree -r --name-only "$after" -- "home/$package/" | sed "s|^home/$package/||")
+    done < <(
+      for commit in "$before" "$after"; do git -C "$repo" ls-tree -r --name-only "$commit" -- "home/$package/"; done |
+        sed "s|^home/$package/||" | sort -u
+    )
   done < <(git -C "$repo" diff --name-only --diff-filter=ADR "$before" "$after" -- home/ | awk -F/ 'NF > 2 { print $2 }' | sort -u)
 }

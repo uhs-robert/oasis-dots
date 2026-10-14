@@ -87,6 +87,16 @@ check "an edit alone needs no restow" "[[ -z \$(restow '$stow_added' '$stow_edit
 g -C "$stow_repo" rm -q "$stow_repo/home/tools/.local/bin/new"
 g -C "$stow_repo" commit -q -m remove
 check "a removed file restows its package" "[[ \$(restow '$stow_edited' HEAD) == tools ]]"
+mkdir -p "$stow_repo/home/units/.config/units"
+echo a >"$stow_repo/home/units/.config/units/only"
+g -C "$stow_repo" add -A
+g -C "$stow_repo" commit -q -m units
+stow_units=$(git -C "$stow_repo" rev-parse HEAD)
+mkdir -p "$fake_home/.config/units"
+ln -s "$stow_repo/home/units/.config/units/only" "$fake_home/.config/units/only"
+g -C "$stow_repo" mv "$stow_repo/home/units/.config/units/only" "$stow_repo/home/units/.config/units/renamed"
+g -C "$stow_repo" commit -q -m rename
+check "renaming a package's only linked file restows it, though its link now dangles" "[[ \$(restow '$stow_units' HEAD) == units ]]"
 
 echo "$pass passed, $fail failed"
 ((fail == 0))
