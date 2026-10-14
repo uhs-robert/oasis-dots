@@ -20,5 +20,17 @@ voice_env_value() {
   [ -r "$file" ] || return 1
   line="$(grep -E "^${key}=[0-9]+(\.[0-9]+)?\$" "$file" 2>/dev/null | tail -n 1)" || return 1
   [ -n "$line" ] || return 1
+  voice_env_acceptable "$key" "${line#*=}" || return 1
   printf '%s\n' "${line#*=}"
+}
+
+# The same limits Settings > Voice enforces, so a hand-edited value out of range falls back to the default.
+# Environment values are not checked here: as before, they are the user's explicit choice.
+voice_env_acceptable() {
+  local key="$1" value="$2"
+  case "$key" in
+    VOXCMD_DUCK_MEDIA_VOLUME) [[ "$value" =~ ^[0-9]+$ ]] && ((10#$value <= 100)) ;;
+    VOXCMD_TYPE_CHUNK_PAUSE_SECS) awk -v v="$value" 'BEGIN { exit !(v > 0 && v <= 30) }' ;;
+    *) return 0 ;;
+  esac
 }
