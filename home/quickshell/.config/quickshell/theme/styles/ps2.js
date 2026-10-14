@@ -56,6 +56,7 @@ function overrides(t, ctx) {
         bar_border_color: "transparent",
         bar_rounded: true,
         bar_meeting_marker: "lit_pill",
+        bar_icon_set: "ps2",
         bar_workspace_idle: Qt.alpha(t.theme_primary, 0.12),
         bar_hover_bg: Qt.alpha(t.theme_primary, 0.2),
         frame_shade: Qt.tint(t.bg_mantle, Qt.alpha(t.theme_primary, 0.14)),
