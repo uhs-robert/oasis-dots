@@ -2,9 +2,13 @@
 
 // The Terminal icon set: colour emoji, drawn in Noto Color Emoji, keyed by icon name, then by variant like OasisVectors.js. Each entry is { "text": "..." }.
 // Emoji cannot show a signal level, so every wifi level but wifi_0 shares one glyph.
-// There is no emoji for Bluetooth, and the tray chevron has to rotate, so neither is here: they keep their Nerd Font glyphs. The clock keeps its bracket_tag meeting marker, so there is no meeting icon.
+// There is no Bluetooth emoji, so headphones stand in for it. The tray chevron has to rotate, so it is not here and keeps its Nerd Font glyph. The clock keeps its bracket_tag meeting marker, so there is no meeting icon.
 // Every emoji is a single code point (plus VS16 where the base is text-presented), never a ZWJ sequence, so each draws as one glyph.
 var icons = {
+    "bluetooth": {
+        "on": {"text": "🎧"},
+        "blocked": {"text": "📴"}
+    },
     "notifications": {
         "normal": {"text": "🔔"},
         "dnd": {"text": "🔕"}
