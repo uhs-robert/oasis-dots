@@ -258,7 +258,16 @@ The main binds that open things (the leader is `SUPER`):
 
 All binds live in `home/hypr/.config/hypr/keymaps/`.
 
-In the workspace overview, `[`/`]` cycle windows, `Tab`/`Shift + Tab` toggle the special workspaces, `s` picks a whole screen and `f` toggles the view. Save mode (from Settings > Sessions) is the same overview with every window marked and no moving or closing. The share picker is the same overview with only shareable windows; there `r` opens the region selector, and Esc in it comes back.
+In the workspace overview, `[`/`]` cycle windows, `Tab`/`Shift + Tab` toggle the special workspaces, `s` picks a whole screen, `w` sends the selected workspace to a monitor (pick it like `s`, `Enter` confirms) and `W` swaps its windows with another workspace's (move to it, `Enter` confirms), and `f` toggles the view. Save mode (from Settings > Sessions) is the same overview with every window marked and no moving or closing. The share picker is the same overview with only shareable windows; there `r` opens the region selector, and Esc in it comes back.
+
+## Workspace overview and voice
+
+Voice drives the open overview through two things only: a snapshot file it publishes and one IPC entry, so voice and keys run the same functions. The voxcmd side is the Overview integration (`home/voxcmd/.config/voxcmd/README.md`).
+
+- `$XDG_RUNTIME_DIR/voxcmd/overview.json`, rewritten (60 ms debounce) whenever the model, the marks or the mode change, and `{"version":1,"open":false}` while closed: `{version, open, special, marks: [address], monitors: [{id, slot, horizontal, vertical, focused}], items: [...]}`. A window item is `{n, kind: "window", id: address, label, workspace, monitor, marked}`, a workspace item `{n, kind: "workspace", id, label, workspace, monitor, marked: false, windows, shown}` (`id` and `workspace` are the id as a string, or `sp:<name>`). `n` for windows counts from 1 by monitor slot, workspace order and reading order; for workspaces it is the id (the position in hjkl order in the special view). `horizontal` (`left`, `middle`, `right`) and `vertical` (`top`, `middle`, `bottom`) come from the monitors' geometry (`overview/Voice.js`) and are empty while every monitor shares that axis; `slot` is the `SUPER + CTRL + n` slot, 0 when unknown.
+- `qs ipc call overview act <verb> "<args>"` returns `ok` or `error: <why>`. Window arguments are addresses; with none, `mark`, `unmark`, `move`, `send` and `close` take the marks, as the keys do. `mark`/`unmark <addr...>`, `clear`, `close [addr...]`, `focus <addr>` (closes the overview), `move <workspace> [addr...]`, `send <monitor> [addr...]` (to its visible workspace), `workspace <ref>` (focus, closes the overview), `workspace_to_monitor <id> <monitor>`, `swap_workspaces <ref> <ref>` (every window of one trades places with every window of the other) and `close_overview`.
+- While voxcmd has a voice session of kind `overview` open (`VoxSession`), every window shows its `n` in a bordered badge at its top left; the marks keep their check badge at the top right.
+- `w` and `W` call the same `move_workspace_to_monitor` and `swap_workspaces` the `act` verbs do.
 
 ## IPC
 
@@ -280,7 +289,7 @@ qs-ipc show        # list every target and function
 | `settings`      | `open <section>`, `toggle`                                            |
 | `style`         | `set`, `cycle`, `get`, `set_lock`, `set_lock_tint`, `set_lock_backdrop`, `toggle_cava_line` and their getters |
 | `sound`         | `play <kind>`: a Theme audio sound if its category is on; `play alarm` always rings |
-| `overview`      | `open`, `close`, `toggle`, `search`, `move_follow`, `move_silent`, `save_session <name>`                         |
+| `overview`      | `open`, `close`, `toggle`, `search`, `move_follow`, `move_silent`, `save_session <name>`, `state` (`open` or `closed`), `act <verb> <args>` (see Workspace overview and voice) |
 | `tmux-overview` | `open`, `close`, `toggle`, `search`                                   |
 | `notifications` | `open`, `close`, `toggle_dnd`, `get_dnd`, `get_last` (the newest history entry as JSON), `history <count> <app>` (see below), `clear_all`, `dismiss_latest`, `dismiss_all`, `focus_toast`, `has_toast` |
 | `screenshot`    | `open`, `close`, `toggle`, `select`, `pick`, `share`, `stop_recording` and the recording callbacks |
