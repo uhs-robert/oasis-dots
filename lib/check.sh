@@ -89,7 +89,7 @@ step_body() {
   # py_compile would drop a __pycache__ into the stow package, so this parses instead.
   calendar-sync-syntax) python3 -c 'import ast, sys; ast.parse(open(sys.argv[1]).read())' ./home/calendar/.local/bin/calendar-sync ;;
   calendar-sync) bash ./home/calendar/tests/run.sh ;;
-  agent-hooks) bash ./home/claude/.claude/hooks/tests/guard-masked-checks.sh ;;
+  agent-hooks) bash ./home/claude/.claude/hooks/tests/guard-masked-checks.sh && bash ./.claude/hooks/tests/check-before-pr.sh ;;
   stale-shells-hook) bash ./home/claude/.claude/hooks/tests/stale-shells.sh ;;
   owner-test-bar) bash ./.claude/skills/owner-test-bar/tests/run.sh ;;
   ship-batch) bash ./.claude/skills/ship-batch/tests/run.sh ;;
