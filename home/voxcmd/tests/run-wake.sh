@@ -98,21 +98,31 @@ voxcmd wake sideways 2>/dev/null || status=$?
 check "an unknown argument is a usage error" 2 "$status"
 
 # ---- voxcmd _wake-confirm: a trigger's audio, transcribed by a fake `voxtype transcribe` -------------------------------
-# It prints what the real one does: progress lines naming the file, then a blank line and the transcript
-# ($FAKE_TRANSCRIPT); FAKE_TRANSCRIBE=nospeech, fail or hang act out VAD finding nothing, an error and a stuck GPU.
+# It prints what the real `voxtype -q transcribe` does (captured on a recorded take): progress lines on stdout naming
+# the file, then a blank line and the transcript ($FAKE_TRANSCRIPT); FAKE_TRANSCRIBE=nospeech, fail or hang act out VAD
+# finding nothing, an error and a stuck GPU. Without -q the real one would also log INFO lines, so the stub refuses to
+# transcribe without it. `config get` answers voxtype-prompt, which builds the prompt both the daemon and the
+# confirmation pass.
 transcribe_dir="$SANDBOX_DIR/transcribe-bin"
+voxtype_package_bin="$tests_dir/../../voxtype/.local/bin"
 mkdir -p "$transcribe_dir"
 cat >"$transcribe_dir/voxtype" <<'STUB'
 #!/bin/sh
+if [ "$1 $2" = "config get" ]; then echo "stub base prompt."; exit 0; fi
+[ "$1" = -q ] || exit 64
+shift
+prompt=""
+if [ "$1" = --initial-prompt ]; then prompt="$2"; shift 2; fi
 [ "$1" = transcribe ] || exit 64
 printf 'voxtype transcribe %s riff=%s\n' "$2" "$(head -c 4 "$2")" >>"$SANDBOX_DIR/calls.log"
+printf 'voxtype prompt: %s\n' "$prompt" >>"$SANDBOX_DIR/calls.log"
 case "${FAKE_TRANSCRIBE:-}" in
 fail) echo "Error: no model" >&2; exit 1 ;;
 hang) exec sleep 30 ;;
 esac
-printf 'Loading audio file: "%s"\nAudio format: 16000 Hz, 1 channel(s), Int\nProcessing 32000 samples (2.00s)...\n' "$2"
+printf 'Loading audio file: "%s"\nAudio format: 16000 Hz, 1 channel(s), Int\nProcessing 63461 samples (3.97s)...\n' "$2"
 if [ "${FAKE_TRANSCRIBE:-}" = nospeech ]; then echo "No speech detected, skipping transcription."; exit 0; fi
-printf '\n%s\n' "$FAKE_TRANSCRIPT"
+printf 'VAD: 0.54s speech (13.6%% of audio)\n\n%s\n' "$FAKE_TRANSCRIPT"
 STUB
 chmod +x "$transcribe_dir/voxtype"
 wav="$SANDBOX_DIR/trigger.wav"
@@ -124,13 +134,14 @@ with wave.open(sys.argv[1], "wb") as w:
 confirm() {
   local transcript="$1" output code=0
   shift
-  output=$(PATH="$transcribe_dir:$PATH" FAKE_TRANSCRIPT="$transcript" voxcmd _wake-confirm "${@:-/dev/stdin}" <"$wav") || code=$?
+  output=$(PATH="$transcribe_dir:$voxtype_package_bin:$PATH" FAKE_TRANSCRIPT="$transcript" voxcmd _wake-confirm "${@:-/dev/stdin}" <"$wav") || code=$?
   printf '%s %s' "$code" "$output"
 }
 
 reset_calls
 check "the wake word alone is the wake word" "0 wake" "$(confirm "Cortana.")"
 check "the stdin path reaches voxtype, and it reads the WAV" 1 "$(calls | grep -c '^voxtype transcribe /dev/stdin riff=RIFF$')"
+check "the daemon's prompt is passed to voxtype transcribe" 1 "$(calls | grep -c '^voxtype prompt: stub base prompt. Voice commands start with Cortana.$')"
 check "what follows the wake word is said" "0 wake stop" "$(confirm "Cortana, stop.")"
 check "an alias Whisper writes counts" "0 wake" "$(confirm "Kortana")"
 check "a leading hey still counts" "0 wake" "$(confirm "Hey Cortana!")"
@@ -142,13 +153,28 @@ check "no speech is not" "1 not_wake" "$(FAKE_TRANSCRIBE=nospeech confirm "")"
 check "the file name in voxtype's progress is not heard" "1 not_wake" "$(cp "$wav" "$SANDBOX_DIR/cortana.wav" && confirm "hello" "$SANDBOX_DIR/cortana.wav")"
 check "a failed transcription is a failure" "2 failed" "$(FAKE_TRANSCRIBE=fail confirm "")"
 status=0
-PATH="$transcribe_dir:$PATH" voxcmd _wake-confirm </dev/null >/dev/null || status=$?
+PATH="$transcribe_dir:$voxtype_package_bin:$PATH" voxcmd _wake-confirm </dev/null >/dev/null || status=$?
 check "no file is a failure" 2 "$status"
 started=$(date +%s)
 check "a stuck transcription times out as a failure" "2 failed" "$(VOXCMD_WAKE_CONFIRM_TIMEOUT_SECS=1 FAKE_TRANSCRIBE=hang confirm "")"
 check "and is not waited out" 1 "$([ $(($(date +%s) - started)) -lt 5 ] && echo 1 || echo 0)"
-check "a custom wake word replaces the default" "0 wake" "$(VOXCMD_WAKE_WORD=jarvis confirm "Jarvis.")"
-check "and the default no longer counts" "1 not_wake" "$(VOXCMD_WAKE_WORD=jarvis confirm "Cortana.")"
+check "the aliases setting replaces the built-in spellings" "1 not_wake" "$(VOXCMD_WAKE_ALIASES=jarvis confirm "Kortana.")"
+check "and adds its own" "0 wake" "$(VOXCMD_WAKE_ALIASES=jarvis confirm "Jarvis.")"
+check "while the wake word itself always counts" "0 wake" "$(VOXCMD_WAKE_ALIASES=jarvis confirm "Cortana.")"
+check "no setting changes the word" "1 not_wake" "$(VOXCMD_WAKE_WORD=jarvis confirm "Jarvis.")"
+failing_awk_dir="$SANDBOX_DIR/failing-awk-bin"
+mkdir -p "$failing_awk_dir"
+printf '#!/bin/sh\nexit 1\n' >"$failing_awk_dir/awk"
+chmod +x "$failing_awk_dir/awk"
+check "an error in voxcmd itself is a failure, not a verdict" "2" "$(
+  code=0
+  PATH="$failing_awk_dir:$transcribe_dir:$voxtype_package_bin:$PATH" FAKE_TRANSCRIPT="Cortana" voxcmd _wake-confirm /dev/stdin <"$wav" >/dev/null || code=$?
+  echo "$code"
+)"
+reset_calls
+no_prompt_path=$(printf '%s' "$PATH" | tr ':' '\n' | grep -v -x -F "$voxtype_package_bin" | paste -sd:)
+check "without voxtype-prompt it still transcribes, without a prompt" "wake" "$(PATH="$transcribe_dir:$no_prompt_path" FAKE_TRANSCRIPT=Cortana voxcmd _wake-confirm /dev/stdin <"$wav")"
+check "and passes none" 1 "$(calls | grep -c '^voxtype prompt: $')"
 debug_log="$XDG_RUNTIME_DIR/voxcmd/debug.log"
 rm -f "$debug_log"
 VOXCMD_DEBUG=1 confirm "Cortana, my secret plans." >/dev/null
@@ -214,6 +240,7 @@ chmod +x "$voxtype_dir/voxtype"
 daemon_args() { PATH="$voxtype_dir:$PATH" XDG_DATA_HOME="$package_dir/.local/share" XDG_CONFIG_HOME="$SANDBOX_DIR/no-config" "$tests_dir/../../voxtype/.local/bin/voxtype-daemon"; }
 
 printf 'VOXCMD_DUCK_MEDIA_VOLUME=20\n' >"$voice_env"
+check "daemon passes the same prompt the confirmation got" 1 "$(daemon_args | grep -c -e '--initial-prompt base Voice commands start with Cortana.')"
 check "daemon passes the saved ducking" 1 "$(daemon_args | grep -c '^--duck-media-volume 20 --initial-prompt ')"
 check "daemon prefers the environment" 1 "$(VOXCMD_DUCK_MEDIA_VOLUME=0 daemon_args | grep -c '^--duck-media-volume 0 ')"
 rm -f "$voice_env"

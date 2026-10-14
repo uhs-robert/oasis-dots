@@ -683,11 +683,11 @@ help_phrases='^(what can i say|voice help|show voice commands)$'
 discard_phrases='^(never ?mind|cancel|forget it|nothing)$'
 
 # The wake word starts a command to the mode a voice session is in; outside a session it is only stripped, so "cortana
-# open firefox" is "open firefox". VOXCMD_WAKE_WORD is the one spelling voxtype's vocabulary teaches Whisper;
-# VOXCMD_WAKE_ALIASES ("kortana|cortona") adds the spellings it still produces; the default word's common ones are
-# built in unless the aliases are set.
-wake_word="${VOXCMD_WAKE_WORD:-cortana}"
-if [ "$wake_word" = cortana ]; then wake_aliases="${VOXCMD_WAKE_ALIASES-kortana|cortona}"; else wake_aliases="${VOXCMD_WAKE_ALIASES:-}"; fi
+# open firefox" is "open firefox". The word is fixed, because the wake listener's acoustic model only knows it; it is
+# the one spelling voxtype-prompt teaches Whisper. VOXCMD_WAKE_ALIASES ("kortana|cortona") lists the spellings Whisper
+# still produces; set, it replaces the built-in ones.
+wake_word="cortana"
+wake_aliases="${VOXCMD_WAKE_ALIASES-kortana|cortona}"
 wake_regex=""
 init_wake_regex() {
   [ -z "$wake_regex" ] || return 0
@@ -825,22 +825,35 @@ heard_wake_word() {
 }
 
 # voxcmd _wake-confirm <wav>: whether a short recording (16 kHz mono WAV) holds the wake word, from `voxtype transcribe`.
-# Prints "wake <words after it>" and exits 0, "not_wake" and exits 1, or "failed" and exits 2 when voxtype fails or
-# outlasts VOXCMD_WAKE_CONFIRM_TIMEOUT_SECS. voxcmd-wake asks it before a trigger starts a command, with the audio on
-# stdin as /dev/stdin; nothing it heard is logged.
+# Prints "wake <words after it>" and exits 0, "not_wake" and exits 1, or "failed" and exits 2 when voxtype fails,
+# outlasts VOXCMD_WAKE_CONFIRM_TIMEOUT_SECS, or voxcmd itself errors. voxcmd-wake asks it before a trigger starts a
+# command, with the audio on stdin as /dev/stdin; nothing it heard is logged.
+# Whisper gets the daemon's initial prompt (voxtype-prompt, in the voxtype package), so it hears the wake word the way a
+# dictation does. Without that script the audio is still transcribed, just without the prompt.
 wake_confirm() {
-  local wav="$1" output transcript
+  # Exit 1 means "not the wake word" to the caller, which set -e would also give an unexpected error.
+  set -E
+  trap 'exit 2' ERR
+  local wav="$1" output transcript prompt_script prompt
+  local -a prompt_flags=()
   if [ -z "$wav" ]; then
     echo failed
     exit 2
   fi
-  if ! output=$(timeout -k 1 "${VOXCMD_WAKE_CONFIRM_TIMEOUT_SECS:-6}" voxtype transcribe "$wav" 2>/dev/null); then
+  prompt_script=$(command -v voxtype-prompt || true)
+  if [ -n "$prompt_script" ] && prompt=$(timeout -k 1 3 "$prompt_script" 2>/dev/null) && [ -n "$prompt" ]; then
+    prompt_flags=(--initial-prompt "$prompt")
+  else
+    debug "wake confirm: no initial prompt, transcribing without it"
+  fi
+  # -q keeps voxtype's INFO lines (which hold the transcript) out of the output; the progress lines stay on stdout.
+  if ! output=$(timeout -k 1 "${VOXCMD_WAKE_CONFIRM_TIMEOUT_SECS:-6}" voxtype -q "${prompt_flags[@]}" transcribe "$wav" 2>/dev/null); then
     debug "wake confirm: voxtype transcribe failed or timed out"
     echo failed
     exit 2
   fi
-  # voxtype prints progress first ("Loading audio file: <path>", the format, VAD), then a blank line and the transcript.
-  # Without the blank line it heard no speech.
+  # voxtype prints progress first ("Loading audio file: <path>", the format, samples, VAD), then a blank line and the
+  # transcript, also with -q. Without the blank line it heard no speech.
   transcript=$(awk 'after_blank; /^$/ { after_blank = 1 }' <<<"$output")
   if heard_wake_word "$transcript"; then
     debug "wake confirm: the wake word"

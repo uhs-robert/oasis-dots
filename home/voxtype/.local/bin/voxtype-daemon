@@ -1,19 +1,9 @@
 #!/usr/bin/env bash
 # voxtype/.local/bin/voxtype-daemon
-# Starts the voxtype daemon with config.toml's initial prompt plus voxcmd's wake word and every prompt.d/*.txt appended.
-# prompt.d holds machine-local vocabulary (client names and the like) that must stay out of the public config.
-# Whisper keeps only the last ~224 prompt tokens, so appended words survive and the base prompt is trimmed from the front.
-shopt -s nullglob
-prompt_files=("${XDG_CONFIG_HOME:-$HOME/.config}/voxtype/prompt.d/"*.txt)
-
-base_prompt="$(voxtype config get whisper.initial_prompt)"
-# The wake word is in the prompt so Whisper spells it one way, which is the one voxcmd listens for (VOXCMD_WAKE_WORD).
-wake_word="${VOXCMD_WAKE_WORD:-cortana}"
-local_vocabulary="Voice commands start with ${wake_word^}."
-if ((${#prompt_files[@]})); then
-  # awk 1 ends every file with a newline, so a file without one cannot glue its last word to the next file's first.
-  local_vocabulary+=" $(awk 1 "${prompt_files[@]}" | tr -s '[:space:]' ' ')"
-fi
+# Starts the voxtype daemon with the initial prompt voxtype-prompt builds (shared with `voxcmd _wake-confirm`).
+# The prompt script is found beside this one's real path, so it resolves inside the voxtype package even when this file is stowed as a symlink.
+prompt_script="$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/voxtype-prompt"
+initial_prompt="$("$prompt_script")"
 # voxtype logs every transcript at INFO, and the journal keeps it, so -q (errors only) is the default.
 log_flags=(-q)
 if [[ "${VOXCMD_LOG_TRANSCRIPTS:-}" == 1 ]]; then
@@ -31,4 +21,4 @@ if [ -r "$voice_env_loader" ]; then
     voxtype_flags+=(--duck-media-volume "$duck_percent")
   fi
 fi
-exec voxtype "${voxtype_flags[@]}" --initial-prompt "$base_prompt ${local_vocabulary% }" "${log_flags[@]}" daemon "$@"
+exec voxtype "${voxtype_flags[@]}" --initial-prompt "$initial_prompt" "${log_flags[@]}" daemon "$@"
