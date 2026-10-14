@@ -15,11 +15,17 @@ Item {
     property string text: ""
     property bool wrap: root.st.footer_wrap
     property bool centered: false
+    // A centered line wraps at the footer's width instead of running on, for a hint line that can outgrow its frame.
+    property bool wrap_centered: false
     // Off for a hint line inside a pane, which has its own rule and keeps showing while the popup searches.
     property bool ruled: true
     property bool follows_search: true
     readonly property int text_px: root.st.footer_size > 0 ? root.st.footer_size : root.st.fs(-4)
     readonly property int small_px: root.st.footer_size > 0 ? root.st.footer_size : root.st.fs(-5)
+    // Between hints: the Flow's own spacing, except in a wrapping centered line, where each hint carries its right gap
+    // so the Flow's spacing can't also push the wrapped lines apart.
+    readonly property int hint_gap: root.st.footer_separator === "" ? (root.st.footer_size > 0 ? Math.round(root.text_px * 1.8) : 10) : 0
+    readonly property int line_gap: root.wrap_centered ? Math.max(2, Math.round(root.text_px * 0.3)) : 0
     readonly property bool arrows: root.st.footer_arrow !== ""
     // Tabs that show their number already teach "1-N select".
     readonly property string filtered_text: root.st.tab_keys ? root.text.split(" · ").filter(g => !/^1-\d select$/.test(g)).join(" · ") : root.text
@@ -89,8 +95,8 @@ Item {
         opacity: root.searching ? 0 : 1
         x: root.centered ? Math.max(0, (root.width - childrenRect.width) / 2) : 0
         y: root.rule_gap
-        width: root.wrap && !root.centered ? parent.width : 100000
-        spacing: root.st.footer_separator === "" ? (root.st.footer_size > 0 ? Math.round(root.text_px * 1.8) : 10) : 0
+        width: root.wrap && (!root.centered || root.wrap_centered) ? parent.width : 100000
+        spacing: root.wrap_centered ? 0 : root.hint_gap
 
         Repeater {
             model: root.groups
@@ -100,6 +106,8 @@ Item {
                 required property var modelData
                 required property int index
                 readonly property bool pad: root.st.controller !== "" && KeyHints.controller_parts(root.st.controller, group.modelData.key, group.modelData.desc, root.st.controller_glyphs).length > 0
+                rightPadding: root.wrap_centered ? root.hint_gap : 0
+                bottomPadding: root.line_gap
                 spacing: root.st.footer_size > 0 && !root.arrows ? Math.round(root.text_px * 0.75) : 4
 
                 Loader {

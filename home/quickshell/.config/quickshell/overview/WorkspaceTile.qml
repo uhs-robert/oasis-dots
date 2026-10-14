@@ -49,6 +49,9 @@ Item {
     }
     readonly property int text_style: Style.glow ? Text.Outline : Style.text_shadow.a > 0 ? Text.Raised : Text.Normal
     readonly property color text_glow: Style.glow ? Qt.alpha(Theme.theme_primary, 0.3) : Style.text_shadow
+    // Game Boy's caret and crust are the same shade, so its selected chip takes the inverse selection pair instead.
+    readonly property color chip_fill: Qt.colorEqual(Style.caret_color, Theme.bg_crust) ? Style.selection_bg : Style.caret_color
+    readonly property color chip_text: Qt.colorEqual(Style.caret_color, Theme.bg_crust) ? Style.selection_fg : Theme.bg_crust
     readonly property real label_px: Math.max(9, Math.min(Style.fs(-3), root.height * 0.16))
 
     signal window_clicked(string address)
@@ -224,13 +227,13 @@ Item {
         height: label_text.implicitHeight + 2
         radius: Style.radius(3)
         visible: root.height >= 28
-        color: root.selected ? Style.caret_color : Qt.alpha(Theme.bg_crust, 0.85)
+        color: root.selected ? root.chip_fill : Qt.alpha(Theme.bg_crust, 0.85)
 
         Text {
             id: label_text
             anchors.centerIn: parent
             text: root.is_new ? "+ " + (root.entry ? root.entry.name : "") : root.entry ? root.entry.name : ""
-            color: root.selected ? Theme.bg_crust : root.entry && root.entry.focused ? Style.text_accent : root.entry && root.entry.shown_on_monitor ? Style.text_primary : Style.text_muted
+            color: root.selected ? root.chip_text : root.entry && root.entry.focused ? Style.text_accent : root.entry && root.entry.shown_on_monitor ? Style.text_primary : Style.text_muted
             font.family: Style.font_family
             font.pixelSize: root.label_px
             font.bold: true

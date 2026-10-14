@@ -197,6 +197,7 @@ Rectangle {
         anchors.rightMargin: root.pad_x + Style.inset_pad
         anchors.bottomMargin: Style.px(8) + Style.inset_pad + Style.slant_room
         centered: true
+        wrap_centered: true
         text: root.footer
     }
 }
