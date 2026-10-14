@@ -3,6 +3,7 @@ pragma Singleton
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import "../theme"
 
 // Voice choices saved in voice.env under the voxcmd state dir, for voxcmd-wake, voxcmd and voxtype-daemon to read.
 // The file is KEY=VALUE lines (numbers, and the sensitivity level's name), one per setting the user has chosen; an absent key means the reader's own default.
@@ -11,10 +12,7 @@ import Quickshell.Io
 Singleton {
     id: root
 
-    readonly property string state_dir: {
-        const xdg = Quickshell.env("XDG_STATE_HOME");
-        return (xdg && xdg !== "" ? xdg : Quickshell.env("HOME") + "/.local/state") + "/voxcmd";
-    }
+    readonly property string state_dir: Paths.voxcmd_state_dir
     readonly property string file_path: root.state_dir + "/voice.env"
 
     // The named sensitivity levels; voxcmd-wake maps each to its detector's threshold and frames.
@@ -47,16 +45,37 @@ Singleton {
     // The units a pending write must try-restart once it lands.
     property var restart_units: ({})
 
-    // What the readers will use: their environment, else the file, else the default. Only the Quickshell process's
-    // own environment is visible here, which is the best the bar can know about the systemd user manager's.
+    // The environment voxcmd-wake and voxtype actually run with: the user manager's (`set-environment`) overlaid by
+    // each unit's own Environment= (drop-ins), read from systemd because the bar's own environment never sees either.
+    // Until the first read lands, the bar's environment stands in. EnvironmentFile= is not followed.
+    property var service_env: null
+
+    function env_value(name) {
+        return root.service_env !== null ? (root.service_env[name] || "") : (Quickshell.env(name) || "");
+    }
+
+    function parse_service_env(text) {
+        const found = {};
+        for (const line of text.split("\n")) {
+            // `show-environment` prints KEY=VALUE lines; `show -p Environment` prints one Environment= line per unit.
+            const pairs = line.startsWith("Environment=") ? line.slice("Environment=".length).split(/\s+/) : [line];
+            for (const pair of pairs) {
+                const match = /^"?([A-Za-z_][A-Za-z0-9_]*)=(.*?)"?$/.exec(pair);
+                if (match) found[match[1]] = match[2];
+            }
+        }
+        return found;
+    }
+
+    // What the readers will use: their environment, else the file, else the default.
     function effective(key, fallback) {
-        const from_env = root.readers[key](Quickshell.env(root.keys[key]) || "");
+        const from_env = root.readers[key](root.env_value(root.keys[key]));
         if (from_env !== undefined) return from_env;
         return root.saved[key] !== undefined ? root.saved[key] : fallback;
     }
 
     // Raw threshold or frames in the environment override any level, so the level shown would not be what runs.
-    readonly property bool env_overrides_level: !!Quickshell.env("VOXCMD_WAKE_THRESHOLD") || !!Quickshell.env("VOXCMD_WAKE_FRAMES")
+    readonly property bool env_overrides_level: !!root.env_value("VOXCMD_WAKE_THRESHOLD") || !!root.env_value("VOXCMD_WAKE_FRAMES")
     readonly property string sensitivity: root.env_overrides_level ? "custom" : root.effective("sensitivity", root.default_level)
     readonly property int duck: root.effective("duck", root.default_duck)
     readonly property int pause_for_media: root.effective("pause_media", root.default_pause_for_media)
@@ -95,6 +114,15 @@ Singleton {
 
     function reload() {
         voice_file.reload();
+        if (!env_proc.running) env_proc.running = true;
+    }
+
+    Process {
+        id: env_proc
+        command: ["sh", "-c", "systemctl --user show-environment; systemctl --user show -p Environment voxcmd-wake.service voxtype.service"]
+        stdout: StdioCollector {
+            onStreamFinished: root.service_env = root.parse_service_env(text)
+        }
     }
 
     // try-restart leaves a stopped unit stopped, so a listener or voxtype the user has off is not started by a setting.
