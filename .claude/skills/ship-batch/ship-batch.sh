@@ -53,9 +53,9 @@ fi
 # Inductive: a full pass of `before` plus a scoped pass over everything changed since
 # vouches for `after`. A `before` not recorded as passed (check-passed.sh also ignores a worktree's no-repos pass,
 # which skipped this checkout's repos/ symlinks) or CHECK_FULL=1 falls back to the full check.
-# The skips vouch for main's commit, not its working tree, so local edits in the main checkout rule them out.
+# The skips vouch for main's commit, not its working tree, so local edits or untracked files in the main checkout rule them out.
 main_clean=false
-[[ -z $(git -C "$repo" status --porcelain --untracked-files=no) ]] && main_clean=true
+[[ -z $(git -C "$repo" status --porcelain) ]] && main_clean=true
 if [[ $before != "$after" ]]; then
   if $main_clean && [[ -z ${CHECK_FULL:-} ]] && (cd "$repo" && lib/check-passed.sh is-passed "$after"); then
     echo "ship-batch: main's tree already passed the check; not checking it again"
