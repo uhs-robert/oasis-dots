@@ -470,6 +470,26 @@ Switching takes any `{focus}` or `{open}` [intent](#intents) form before the ses
 - Any `wf-recorder` counts as the recording, as on the bar's chip, so the demo recorder's takes are stopped too, without a "Recording Saved!", which only screenshot.sh's own recordings get.
 - Plain "stop" stays with Media, and "cancel the recording" matches nothing: "cancel" means discard to voxcmd, and stopping keeps the file.
 
+### Screenshot
+
+`screenshot.sh` runs the rows of the bar's screenshot menu by voice, through the screenshot tool's own flags (`~/.config/hypr/scripts/screenshot.sh`, the `Print` key), so a capture opens the same selector and lands in the same place. Recording stays in [Recording](#recording):
+
+| Say                                                                  | Does                                                      |
+| -------------------------------------------------------------------- | --------------------------------------------------------- |
+| "screenshot region", "take a screenshot of the area"                 | opens the region selector (`--region`)                    |
+| "take a frozen screenshot of the region"                             | the same on a frozen screen (`--freeze`)                  |
+| "screenshot the screen", "screenshot the whole display"              | picks a screen (`--screen`)                               |
+| "screenshot a window"                                                | picks a window (`--window`)                               |
+| "screenshot this window", "screenshot the focused window"            | the focused window at once (`--focused`)                  |
+| "grab text from a region", "ocr the area"                            | copies the text of a region (`--text`)                    |
+| "pick a color", "color picker"                                       | copies the colour of a pixel (`--pixel`)                  |
+| "scrolling screenshot", "take a scroll capture"                      | scroll capture as an image (`--scroll-image`)             |
+| "scroll text", "read text from a scrolling capture"                  | scroll capture read to text (`--scroll-text`)             |
+
+- The actions are [silent](#silent-actions) and detached, since the selector or the capture's own notification is the feedback.
+- A bare "screenshot" has no verb here and still reaches the Print bind in Keybinds, which opens the bar's menu.
+- The two scroll flags exist only for this: scroll capture runs in the bar's overlay, so without a bar screenshot.sh says "needs the bar" instead of falling back to rofi.
+
 ### Click
 
 `click.sh` clicks text it reads off the focused window. It captures the window's own buffer with `grim`, reads it with `tesseract`, and moves the pointer there with Hyprland before clicking with `wlrctl`.

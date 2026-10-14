@@ -71,6 +71,26 @@ start recording	Recording/record_screen
 record this window	Recording/record_window
 is it recording	Recording/status
 stop recording	Recording/stop
+record a region	Recording/record_region
+record a window	Recording/pick_window
+screenshot region	Screenshot/region
+take a screenshot of the region	Screenshot/region
+screenshot an area	Screenshot/region
+take a frozen screenshot of the region	Screenshot/frozen
+screenshot the screen	Screenshot/screen
+take a screenshot of the whole screen	Screenshot/screen
+screenshot a window	Screenshot/pick_window
+screenshot this window	Screenshot/focused
+take a screenshot of the focused window	Screenshot/focused
+grab text from a region	Screenshot/text
+ocr the region	Screenshot/text
+pick a color	Screenshot/pixel
+color picker	Screenshot/pixel
+scrolling screenshot	Screenshot/scroll_image
+take a scrolling screenshot	Screenshot/scroll_image
+scroll text	Screenshot/scroll_text
+read text from a scrolling capture	Screenshot/scroll_text
+screenshot	Keybinds/run	no verb here; the Print bind opens the menu
 toggle fullscreen	Keybinds/run
 close window	Keybinds/run
 go to workspace 2	Keybinds/run
