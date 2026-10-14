@@ -354,6 +354,113 @@ class ListenerTest(unittest.TestCase):
         self.assertTrue(any(line.startswith("trigger score") for line in self.logs))
 
 
+class PauseFlagsTest(unittest.TestCase):
+    def test_defaults_keep_listening_for_media_and_pause_for_meetings(self):
+        s = wake.Settings({})
+        self.assertEqual((s.pause_for_media, s.pause_for_meetings), (False, True))
+
+    def test_file_flips_both(self):
+        s = SettingsTest().settings_with_file("VOXCMD_WAKE_PAUSE_FOR_MEDIA=1\nVOXCMD_WAKE_PAUSE_FOR_MEETINGS=0\n")
+        self.assertEqual((s.pause_for_media, s.pause_for_meetings), (True, False))
+
+    def test_environment_beats_the_file(self):
+        s = SettingsTest().settings_with_file("VOXCMD_WAKE_PAUSE_FOR_MEDIA=1\n", {"VOXCMD_WAKE_PAUSE_FOR_MEDIA": "0"})
+        self.assertFalse(s.pause_for_media)
+
+    def test_a_file_value_other_than_0_or_1_is_the_default(self):
+        s = SettingsTest().settings_with_file("VOXCMD_WAKE_PAUSE_FOR_MEDIA=2\nVOXCMD_WAKE_PAUSE_FOR_MEETINGS=0.5\n")
+        self.assertEqual((s.pause_for_media, s.pause_for_meetings), (False, True))
+
+    def test_an_environment_value_other_than_0_or_1_is_refused(self):
+        with self.assertRaises(ValueError):
+            wake.Settings({"VOXCMD_WAKE_PAUSE_FOR_MEETINGS": "yes"})
+
+    def test_media_is_never_asked_when_not_paused_for(self):
+        calls = []
+        clock = Clock()
+        gate = wake.PauseGate(clock, "/nonexistent", lambda: calls.append(1) or True, pause_for_media=False)
+        for _ in range(5):
+            self.assertFalse(gate.paused())
+            clock.now += 2.0
+        self.assertEqual(calls, [])
+
+    def test_a_meeting_pauses_on_the_same_cadence(self):
+        calls = []
+        clock = Clock()
+        gate = wake.PauseGate(clock, "/nonexistent", lambda: False, pause_for_media=False, in_meeting=lambda: calls.append(1) or True)
+        for _ in range(5):
+            self.assertTrue(gate.paused())
+            clock.now += 0.1
+        self.assertEqual(len(calls), 1)
+
+
+class MeetingCalendarTest(unittest.TestCase):
+    NOW = 1_800_000_000.0
+
+    def iso(self, offset_secs):
+        moment = wake.datetime.datetime.fromtimestamp(self.NOW + offset_secs, wake.datetime.timezone.utc)
+        return moment.isoformat()
+
+    def event(self, start, end, **extra):
+        return {"title": "x", "start": self.iso(start), "end": self.iso(end), "all_day": False, **extra}
+
+    def in_meeting(self, events, now_offset=0):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = os.path.join(tmp, "events.json")
+            with open(path, "w") as f:
+                json.dump({"events": events}, f)
+            return wake.MeetingCalendar(path, lambda: self.NOW + now_offset).in_meeting()
+
+    def test_a_timed_event_spanning_now_is_a_meeting(self):
+        self.assertTrue(self.in_meeting([self.event(-600, 600)]))
+
+    def test_the_start_counts_and_the_end_does_not(self):
+        self.assertTrue(self.in_meeting([self.event(0, 600)]))
+        self.assertFalse(self.in_meeting([self.event(-600, 0)]))
+
+    def test_ended_and_future_events_are_not(self):
+        self.assertFalse(self.in_meeting([self.event(-7200, -3600), self.event(3600, 7200)]))
+
+    def test_all_day_cancelled_and_day_long_blocks_are_not(self):
+        self.assertFalse(self.in_meeting([self.event(-600, 600, all_day=True)]))
+        self.assertFalse(self.in_meeting([self.event(-600, 600, status="cancelled")]))
+        self.assertFalse(self.in_meeting([self.event(-600, 13 * 3600)]))
+        self.assertTrue(self.in_meeting([self.event(-600, 12 * 3600 - 600)]))
+
+    def test_a_zero_length_event_is_never_live(self):
+        self.assertFalse(self.in_meeting([self.event(0, 0)]))
+
+    def test_any_one_of_several_events_is_enough(self):
+        self.assertTrue(self.in_meeting([self.event(-7200, -3600), self.event(-60, 60)]))
+
+    def test_a_missing_or_bad_cache_is_no_meeting(self):
+        self.assertFalse(wake.MeetingCalendar("/nonexistent/events.json", lambda: self.NOW).in_meeting())
+        with tempfile.TemporaryDirectory() as tmp:
+            path = os.path.join(tmp, "events.json")
+            for content in ("{", "[]", '{"events": 3}', '{"events": [null, 4, {"start": "no", "end": "no"}]}'):
+                with open(path, "w") as f:
+                    f.write(content)
+                self.assertFalse(wake.MeetingCalendar(path, lambda: self.NOW).in_meeting(), content)
+
+    def test_the_file_is_read_again_only_when_it_changes(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = os.path.join(tmp, "events.json")
+            with open(path, "w") as f:
+                json.dump({"events": []}, f)
+            calendar = wake.MeetingCalendar(path, lambda: self.NOW)
+            self.assertFalse(calendar.in_meeting())
+            with open(path, "w") as f:
+                json.dump({"events": [self.event(-60, 60)]}, f)
+            os.utime(path, ns=(1, 2_000_000_000))
+            self.assertTrue(calendar.in_meeting())
+            os.unlink(path)
+            self.assertFalse(calendar.in_meeting())
+
+    def test_the_cache_path_follows_xdg_cache_home(self):
+        self.assertEqual(wake.calendar_events_path({"XDG_CACHE_HOME": "/c"}), "/c/calendar/events.json")
+        self.assertEqual(wake.calendar_events_path({"HOME": "/h"}), "/h/.cache/calendar/events.json")
+
+
 class PauseGateTest(unittest.TestCase):
     def test_voxtype_recording_pauses_and_other_states_do_not(self):
         with tempfile.TemporaryDirectory() as tmp:

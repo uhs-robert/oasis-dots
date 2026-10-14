@@ -29,12 +29,25 @@ Singleton {
     readonly property var duck_steps: [0, 10, 20, 30, 50, 70]
     readonly property var chunk_pause_steps: [1.5, 2, 2.5, 3, 4]
 
-    readonly property var keys: ({ threshold: "VOXCMD_WAKE_THRESHOLD", frames: "VOXCMD_WAKE_FRAMES", duck: "VOXCMD_DUCK_MEDIA_VOLUME", chunk: "VOXCMD_TYPE_CHUNK_PAUSE_SECS" })
+    // The listener keeps hearing while music plays (a song can then say the phrase) and stops in a calendar meeting.
+    readonly property int default_pause_for_media: 0
+    readonly property int default_pause_for_meetings: 1
+
+    readonly property var keys: ({
+            threshold: "VOXCMD_WAKE_THRESHOLD",
+            frames: "VOXCMD_WAKE_FRAMES",
+            duck: "VOXCMD_DUCK_MEDIA_VOLUME",
+            chunk: "VOXCMD_TYPE_CHUNK_PAUSE_SECS",
+            pause_media: "VOXCMD_WAKE_PAUSE_FOR_MEDIA",
+            pause_meetings: "VOXCMD_WAKE_PAUSE_FOR_MEETINGS"
+        })
     readonly property var limits: ({
             threshold: v => v > 0 && v <= 1,
             frames: v => Number.isInteger(v) && v >= 1,
             duck: v => Number.isInteger(v) && v >= 0 && v <= 100,
-            chunk: v => v > 0 && v <= 30
+            chunk: v => v > 0 && v <= 30,
+            pause_media: v => v === 0 || v === 1,
+            pause_meetings: v => v === 0 || v === 1
         })
 
     // The user's saved numbers; a setting never chosen is absent, not defaulted.
@@ -65,6 +78,9 @@ Singleton {
     readonly property int duck: root.effective("duck", root.default_duck)
     readonly property real chunk_pause: root.effective("chunk", root.default_chunk_pause)
 
+    readonly property int pause_for_media: root.effective("pause_media", root.default_pause_for_media)
+    readonly property int pause_for_meetings: root.effective("pause_meetings", root.default_pause_for_meetings)
+
     function set(key, value) {
         const next = Object.assign({}, root.saved);
         const units = Object.assign({}, root.restart_units);
@@ -72,6 +88,11 @@ Singleton {
             if (!root.levels[value]) return;
             next.threshold = root.levels[value].threshold;
             next.frames = root.levels[value].frames;
+            units["voxcmd-wake.service"] = true;
+        } else if (key === "pause_media" || key === "pause_meetings") {
+            if (!root.limits[key](value)) return;
+            next[key] = value;
+            // Read once when the listener starts, like its sensitivity.
             units["voxcmd-wake.service"] = true;
         } else if (key === "duck" || key === "chunk") {
             if (!root.limits[key](value)) return;

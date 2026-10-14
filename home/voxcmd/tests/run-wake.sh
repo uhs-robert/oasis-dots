@@ -137,6 +137,14 @@ printf 'VOXCMD_DUCK_MEDIA_VOLUME=30.5\nVOXCMD_TYPE_CHUNK_PAUSE_SECS=45\n' >"$voi
 check "fractional ducking is not a value" none "$(value_of VOXCMD_DUCK_MEDIA_VOLUME)"
 check "a chunk pause past Whisper's window is not a value" 2.5 "$(chunk_pause_of)"
 
+printf 'VOXCMD_WAKE_PAUSE_FOR_MEDIA=1\nVOXCMD_WAKE_PAUSE_FOR_MEETINGS=0\n' >"$voice_env"
+check "a flag of 1 is read" 1 "$(value_of VOXCMD_WAKE_PAUSE_FOR_MEDIA)"
+check "a flag of 0 is read" 0 "$(value_of VOXCMD_WAKE_PAUSE_FOR_MEETINGS)"
+printf 'VOXCMD_WAKE_PAUSE_FOR_MEDIA=2\nVOXCMD_WAKE_PAUSE_FOR_MEETINGS=0.5\n' >"$voice_env"
+check "a flag of 2 is ignored" none "$(value_of VOXCMD_WAKE_PAUSE_FOR_MEDIA)"
+check "a fractional flag is ignored" none "$(value_of VOXCMD_WAKE_PAUSE_FOR_MEETINGS)"
+rm -f "$voice_env"
+
 # voxtype-daemon with a voxtype that prints its arguments.
 voxtype_dir="$SANDBOX_DIR/voxtype-bin"
 mkdir -p "$voxtype_dir"

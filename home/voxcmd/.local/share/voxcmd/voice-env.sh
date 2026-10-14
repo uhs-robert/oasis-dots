@@ -30,6 +30,7 @@ voice_env_acceptable() {
   local key="$1" value="$2"
   case "$key" in
     VOXCMD_DUCK_MEDIA_VOLUME) [[ "$value" =~ ^[0-9]+$ ]] && ((10#$value <= 100)) ;;
+    VOXCMD_WAKE_PAUSE_FOR_MEDIA | VOXCMD_WAKE_PAUSE_FOR_MEETINGS) [[ "$value" == 0 || "$value" == 1 ]] ;;
     VOXCMD_TYPE_CHUNK_PAUSE_SECS) awk -v v="$value" 'BEGIN { exit !(v > 0 && v <= 30) }' ;;
     *) return 0 ;;
   esac
