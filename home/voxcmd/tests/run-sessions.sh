@@ -91,8 +91,10 @@ sess_voxcmd_env() {
 # what the overlay reports from the start.
 sess_env=()
 sess_overlay=""
+sess_queued_turns=0
 sess_start() {
   printf '%s\n' "$@" >"$sess_turns"
+  sess_queued_turns=$#
   fresh_logs
   rm -f "$XDG_RUNTIME_DIR/voxcmd/session.json" "$hints_state" "$popup_state_file"
   [ -z "$sess_overlay" ] || echo "$sess_overlay" >"$hints_state"
@@ -104,13 +106,14 @@ sess_start() {
 sess_phrase=""
 # The stub call log and voxcmd's debug log, emptied before a run so sess_wait reads only its watchers.
 fresh_logs() { mkdir -p "$(dirname "$debug_log")" && : >"$log" && : >"$debug_log"; }
-# Waits for every watcher of the run to finish; fails when 60s pass without a new watcher while one is alive, which
-# would be a microphone that never closes. The bound restarts with each watcher, not once per run: a loaded machine
-# can take seconds a turn, so a long run outlasts any fixed total, and the bound is generous for the same reason. listen logs each watcher's PID as it starts it,
-# before the listen (or the watcher handing over) exits, so a watcher still to come always has a live parent or a
-# logged PID.
+# Waits for every watcher of the run to finish. Fails when 60s pass without a new watcher while one is alive, which
+# would be a microphone that never closes, and when the run has listened 20 times more than it has turns queued, which
+# would be one that keeps re-opening. The time bound restarts with each watcher, not once per run: a loaded machine can
+# take seconds a turn, so a long run outlasts any fixed total, and the listen count is the ceiling that does not depend
+# on load. listen logs each watcher's PID as it starts it, before the listen (or the watcher handing over) exits, so a
+# watcher still to come always has a live parent or a logged PID.
 sess_wait() {
-  local deadline=$((SECONDS + 60)) pid running watchers seen=0
+  local deadline=$((SECONDS + 60)) max_listens=$((sess_queued_turns + 20)) pid running watchers seen=0
   while ((SECONDS < deadline)); do
     running=0
     watchers=$(sed -n 's/.* listen: recording started, watcher \([0-9]*\) .*/\1/p' "$debug_log")
@@ -118,6 +121,10 @@ sess_wait() {
     ((running)) || return 0
     if (($(wc -l <<<"$watchers") > seen)); then
       seen=$(wc -l <<<"$watchers") deadline=$((SECONDS + 60))
+    fi
+    if ((seen > max_listens)); then
+      echo "   the microphone kept re-opening: $seen listens for $sess_queued_turns queued turns"
+      return 1
     fi
     sleep 0.02
   done
@@ -997,18 +1004,26 @@ sess_phrase="type mode"
 # A turn heard in a mode that changed, or after the session went, is never acted on. Each turn is spoken only once the
 # test has changed what it was heard in.
 voxtype_release=$SANDBOX_DIR/voxtype-release
+# Waits until the run has started this many recordings.
+record_starts_reach() {
+  local deadline=$((SECONDS + 20))
+  until [[ $(record_starts) == "$1" ]]; do
+    ((SECONDS < deadline)) || return 1
+    sleep 0.02
+  done
+}
 sess_env=()
 sess_phrase="rapid mode"
 rm -f "$voxtype_release"
 sess_start "start testing" "GATED tap alpha" "done"
-until [[ $(record_starts) == 2 ]]; do sleep 0.02; done
+record_starts_reach 2
 sess_voxcmd_env "stop testing"
 : >"$voxtype_release"
 sess_wait
 check "a transcript heard before the mode changed is told so and never run" "session_gone && ! grep -q '^tap alpha' '$log' && toast_has 'The mode changed, say it again'"
 rm -f "$voxtype_release"
 sess_start "GATED tap alpha" "done"
-until [[ $(record_starts) == 1 ]]; do sleep 0.02; done
+record_starts_reach 1
 rm -f "$session_json"
 : >"$voxtype_release"
 sess_wait
@@ -1017,11 +1032,12 @@ sess_env=(SANDBOX_ACTIVEWINDOW_JSON="$focused_window")
 sess_phrase="type mode"
 rm -f "$voxtype_release"
 sess_start "GATED tap alpha" "done"
-until [[ $(record_starts) == 1 ]]; do sleep 0.02; done
+record_starts_reach 1
 rm -f "$session_json"
 : >"$voxtype_release"
 sess_wait
 check "and discarded when it was heard in type mode" "! grep -q '^tap alpha' '$log' && ! grep -q '^wtype' '$log'"
+rm -f "$voxtype_release"
 
 # Stop Voice while a type-mode turn is transcribing types nothing.
 sess_env=(SANDBOX_ACTIVEWINDOW_JSON="$focused_window")
