@@ -2,8 +2,9 @@
 # Tests which steps `lib/check.sh --changed` picks for a change, through `check.sh --plan`, so no linter runs.
 # Each case edits a scratch clone of this checkout (with the working tree's lib/check*.sh on top) and reads the plan.
 set -u
-# A hook or an outer check can leave these pointing at another repository.
-unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE
+# A hook or an outer check can leave these pointing at another repository, or skipping steps (the commit hook skips the
+# voxcmd ones).
+unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE CHECK_SKIP_STEPS
 
 repo_dir=$(CDPATH='' cd -- "$(dirname -- "$0")/../.." && pwd)
 scratch=$(mktemp -d) || exit 1
