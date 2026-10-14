@@ -243,7 +243,7 @@ load_integration() {
   session_wake_at_end=0 session_private=0 session_open_ended=0 session_mode_idle_secs="" session_mode_max_secs=""
   # shellcheck disable=SC2034
   session_listen_silence_secs="" session_listen_max_secs="" session_listen_no_speech_secs=""
-  local -a verbs=() examples=() confirm_labels=() match_ignore_words=() silent_actions=() force_prefixes=() session_miss_actions=() mode_actions=() free_text_actions=()
+  local -a verbs=() examples=() confirm_labels=() match_ignore_words=() silent_actions=() force_prefixes=() session_miss_actions=() mode_actions=() mode_entry_actions=() free_text_actions=()
   local -A actions=() no_match_actions=() step_waits=()
   # shellcheck disable=SC1090
   source "$1"
@@ -255,8 +255,9 @@ load_integration() {
   integration_silent_actions=("${silent_actions[@]}")
   integration_force_prefixes=("${force_prefixes[@]}")
   integration_session_miss_actions=("${session_miss_actions[@]}")
-  # shellcheck disable=SC2034 # both read through a nameref in match_listed_actions
+  # shellcheck disable=SC2034 # all read through a nameref in match_listed_actions
   integration_mode_actions=("${mode_actions[@]}") integration_free_text_actions=("${free_text_actions[@]}")
+  integration_mode_switch_actions=("${mode_actions[@]}" "${mode_entry_actions[@]}")
   declare -gA integration_actions=() integration_no_match_actions=() integration_step_waits=()
   local key
   for key in "${!actions[@]}"; do
@@ -985,8 +986,9 @@ strip_leading_wake_raw() {
   printf '%s' "${stripped:-$transcript}"
 }
 
-# match_listed_actions <mode|free_text> <text> <integration file>: prints the match when the whole text is one of the
-# integration's mode_actions or free_text_actions (verb only), nothing otherwise.
+# match_listed_actions <mode|mode_switch|free_text> <text> <integration file>: prints the match when the whole text is one of the
+# integration's mode_actions, mode_switch_actions (mode_actions plus mode_entry_actions) or free_text_actions (verb
+# only), nothing otherwise.
 match_listed_actions() {
   local kind="$1" text="$2" file="$3" entry action allowed
   (
@@ -1009,6 +1011,10 @@ match_listed_actions() {
 # match_mode_action <text> <integration file>: prints the match when the whole text is one of the integration's
 # mode_actions (its entries and exits), nothing otherwise.
 match_mode_action() { match_listed_actions mode "$1" "$2"; }
+
+# match_mode_switch_action <text> <integration file>: like match_mode_action, plus the actions that enter a mode without
+# being in mode_actions ("start typing"). A sequence may only end with one of these.
+match_mode_switch_action() { match_listed_actions mode_switch "$1" "$2"; }
 
 match_free_text_action() { match_listed_actions free_text "$1" "$2"; }
 
@@ -1073,7 +1079,7 @@ sequence_refusal() {
   for step; do
     index=$((index + 1))
     [ "$index" -lt "$total" ] || break
-    if [ -n "$(integration_files | for_each_line_in_parallel match_mode_action "$(step_text "$step")")" ]; then
+    if [ -n "$(integration_files | for_each_line_in_parallel match_mode_switch_action "$(step_text "$step")")" ]; then
       echo "a mode switch can only be the last step (step $index of $total)"
       return
     fi
