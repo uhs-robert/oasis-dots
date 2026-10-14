@@ -12,7 +12,8 @@ source "$voxcmd_share_dir/mode-phrases.sh"
 type_exit_object='(the )?(typing|typing mode|type mode|dictation|dictation mode)'
 type_exit_phrase=$(mode_exit_phrase "$type_exit_object")
 # "start typing" is not in mode_actions: inside click mode it stays a click target (a search box may be labelled
-# "Start typing"), and only "cortana start typing" switches from there.
+# "Start typing"), and only "cortana start typing" switches from there. It still enters a mode, so it is listed in
+# mode_entry_actions and a sequence may only end with it.
 verbs=(
   "type_mode   ((start|enter|begin) )?(type|typing|dictation) mode"
   "type_start  (start|begin) typing"
@@ -32,6 +33,7 @@ declare -A actions=(
 
 # Session settings voxcmd reads for this mode (load_mode_settings).
 mode_actions=(type_mode stop_typing)
+mode_entry_actions=(type_start)
 # What is said is text: only the wake word gives a command, so "done" or "stop typing" are typed.
 session_default_exits=0
 session_exit_phrases="$type_exit_phrase|(im )?done typing|done with $type_exit_object"

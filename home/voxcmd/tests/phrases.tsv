@@ -214,6 +214,8 @@ remind me in 5 minutes to call mom and then email bob	Timers/remind	the reminder
 open kitty and then remind me to call mom and then email bob	Apps/open > Timers/remind	the free-text step takes the rest
 type mode and then open firefox	refused	a mode switch is only allowed as the last step
 open firefox and then type mode	Apps/open > Type/type_mode	a mode switch as the last step
+start typing and then open firefox	refused	start typing enters a mode, so it must be the last step
+open firefox and then start typing	Apps/open > Type/type_start	start typing as the last step
 one and then two and then three and then four and then five and then six	refused	more than 5 steps
 open firefox and then list my timers and then	Apps/open > Timers/list	a trailing and then is dropped
 open firefox and then	Apps/open	a trailing and then leaves one step
