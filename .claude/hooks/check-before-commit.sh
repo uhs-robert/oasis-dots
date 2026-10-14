@@ -25,12 +25,20 @@ cd "$root" || exit 0
 unquoted=$(sed -E "s/\"[^\"]*\"//g; s/'[^']*'//g" <<<"$after_commit")
 all_re='(^|[[:space:]])(--all|-[a-zA-Z]*a[a-zA-Z]*)([[:space:]]|$)'
 add_re='git[[:space:]]+([^;&|]*[[:space:]])?add([[:space:]]|$)'
-# A commit that names paths (`--only`, `--include`, `-- <path>`) can take working-tree files the index does not have yet,
-# so it is linted like -a; bare paths without `--` are not detected.
-pathspec_re='(^|[[:space:]])(--only|--include|-[oi]|--)([[:space:]]|$)'
-diff_check_target=--cached
-if [[ $unquoted =~ $all_re || $unquoted =~ $pathspec_re ]]; then
+# A commit that takes working-tree content itself (`--only`, `-- <path>`, `--pathspec-from-file`, `-p`, `--interactive`)
+# can commit files the index does not have yet, so it is linted like -a; bare paths without `--` are not detected.
+worktree_re='(^|[[:space:]])(--only|-o|--|--pathspec-from-file(=[^[:space:]]*)?|-p|--patch|--interactive)([[:space:]]|$)'
+# `--include` commits what is staged plus the named working-tree files.
+include_re='(^|[[:space:]])(--include|-i)([[:space:]]|$)'
+diff_check_target=--cached check_partial=1
+if [[ $unquoted =~ $all_re || $unquoted =~ $worktree_re ]]; then
   paths=$(git diff --name-only --no-renames HEAD 2>/dev/null)
+  diff_check_target=HEAD check_partial=''
+elif [[ $unquoted =~ $include_re ]]; then
+  paths=$(
+    git diff --cached --name-only --no-renames
+    git diff --name-only --no-renames
+  )
   diff_check_target=HEAD
 elif [[ $cmd =~ $add_re ]]; then
   # `git add ... && git commit` has staged nothing yet, so the staged list would be empty: take everything that could go in.
@@ -38,7 +46,7 @@ elif [[ $cmd =~ $add_re ]]; then
     git diff --name-only --no-renames HEAD 2>/dev/null
     git ls-files -o --exclude-standard
   )
-  diff_check_target=HEAD
+  diff_check_target=HEAD check_partial=''
 else
   paths=$(git diff --cached --name-only --no-renames)
 fi
@@ -51,7 +59,7 @@ deny() {
 
 # The linters read the working tree, so a staged file with further unstaged edits would be linted as something other
 # than what is committed.
-if [[ $diff_check_target == --cached ]]; then
+if [[ -n $check_partial ]]; then
   partly_staged=$(comm -12 <(git diff --cached --name-only | sort) <(git diff --name-only | sort))
   [[ -z $partly_staged ]] || deny "These files have staged and unstaged changes, so the lint cannot check what the commit takes. Stage or stash the rest, then commit:
 $partly_staged"
