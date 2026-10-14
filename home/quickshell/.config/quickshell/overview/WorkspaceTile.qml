@@ -49,6 +49,14 @@ Item {
     }
     readonly property int text_style: Style.glow ? Text.Outline : Style.text_shadow.a > 0 ? Text.Raised : Text.Normal
     readonly property color text_glow: Style.glow ? Qt.alpha(Theme.theme_primary, 0.3) : Style.text_shadow
+    // nf-fa-window_maximize, in the Nerd Font symbols face the bar already uses for glyphs.
+    readonly property string window_glyph: "\uf2d0"
+    // Voice mode reads a workspace as "WS 3"; special workspaces keep their name.
+    readonly property string label: {
+        const name = root.entry ? root.entry.name : "";
+        if (root.is_new) return "+ " + name;
+        return root.show_numbers && /^\d+$/.test(name) ? "WS " + name : name;
+    }
     // Game Boy's caret and crust are the same shade, so its selected chip takes the inverse selection pair instead.
     readonly property color chip_fill: Qt.colorEqual(Style.caret_color, Theme.bg_crust) ? Style.selection_bg : Style.caret_color
     readonly property color chip_text: Qt.colorEqual(Style.caret_color, Theme.bg_crust) ? Style.selection_fg : Theme.bg_crust
@@ -167,29 +175,45 @@ Item {
                 // Bottom left: the workspace label chip sits at the tile's top left and the mark check at the window's top right.
                 // The text shrinks with the window so a small window or a two-digit number is never cut off at its edges.
                 Rectangle {
-                    readonly property real number_px: Math.max(7, Math.min(root.label_px, win.height * 0.28, (win.width - 10) / (0.75 * number_text.text.length)))
+                    // Glyph and digits are laid out as one run of characters, the glyph counted as one wide character.
+                    readonly property real number_px: Math.max(7, Math.min(root.label_px, win.height * 0.28, (win.width - 10) / (0.75 * (number_text.text.length + 1.5))))
                     visible: root.show_numbers && win.voice_n > 0 && win.height >= 10 && win.width >= 12
                     anchors.left: parent.left
                     anchors.bottom: parent.bottom
                     anchors.margins: 3
-                    width: Math.max(height, number_text.implicitWidth + 6)
-                    height: number_text.implicitHeight + 2
+                    width: Math.max(height, number_row.implicitWidth + 6)
+                    height: number_row.implicitHeight + 2
                     radius: Style.radius(3)
                     color: Theme.bg_crust
                     border.width: 1
                     border.color: Style.text_accent
 
-                    Text {
-                        id: number_text
+                    Row {
+                        id: number_row
                         anchors.centerIn: parent
-                        text: String(win.voice_n)
-                        color: Style.text_accent
-                        font.family: Style.font_family
-                        font.pixelSize: parent.number_px
-                        font.bold: true
+                        spacing: 2
+
+                        Text {
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: root.window_glyph
+                            color: Style.text_accent
+                            font.family: "Symbols Nerd Font"
+                            font.pixelSize: parent.parent.number_px
+                        }
+
+                        Text {
+                            id: number_text
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: String(win.voice_n)
+                            color: Style.text_accent
+                            font.family: Style.font_family
+                            font.pixelSize: parent.parent.number_px
+                            font.bold: true
+                        }
                     }
                 }
 
+                // While voice numbers show, the check stands alone: the mark order would be a second number on the window.
                 Rectangle {
                     visible: win.mark > 0 && win.height >= 16
                     anchors.right: parent.right
@@ -203,7 +227,7 @@ Item {
                     Text {
                         id: mark_text
                         anchors.centerIn: parent
-                        text: "\u2713" + win.mark
+                        text: "\u2713" + (root.show_numbers ? "" : win.mark)
                         color: Theme.bg_crust
                         font.family: Style.font_family
                         font.pixelSize: Math.min(root.label_px, win.height * 0.28)
@@ -232,7 +256,7 @@ Item {
         Text {
             id: label_text
             anchors.centerIn: parent
-            text: root.is_new ? "+ " + (root.entry ? root.entry.name : "") : root.entry ? root.entry.name : ""
+            text: root.label
             color: root.selected ? root.chip_text : root.entry && root.entry.focused ? Style.text_accent : root.entry && root.entry.shown_on_monitor ? Style.text_primary : Style.text_muted
             font.family: Style.font_family
             font.pixelSize: root.label_px
