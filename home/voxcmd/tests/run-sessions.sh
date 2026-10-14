@@ -165,8 +165,8 @@ check "it listens once more after each turn, and not after 'done'" "[[ \$(record
 check "an exit word clears the session and leaves the microphone idle" "session_gone && [[ \$(cat '$XDG_RUNTIME_DIR/voxtype/state') == idle ]]"
 
 # every_detector_logged <setting> <line>: each session listen's detector logged its <setting> as <line>, and at least one
-# did. A turn of speech can end before its listen's detector starts, which then never runs (nor logs), so the run ends
-# on a turn of silence: that recording lasts until its detector's verdict, so its line is always there.
+# did. A turn of speech can end before its listen's detector has started, which then never runs (nor logs), so the run
+# ends on a turn of silence: that recording lasts until its detector's verdict, so its line is always there.
 every_detector_logged() {
   local lines
   lines=$(grep "^voxcmd-autostop $1" "$log" | sed 's/^voxcmd-autostop //')
@@ -567,6 +567,28 @@ jq -n -c --argjson owner "$owner_pid" --arg owner_start "$(start_time_of "$owner
   '{kind: "test", integration: "x", label: "Test mode", started: 0, owner: $owner, owner_start: $owner_start, unclear: 0, turns: 0}' \
   >"$XDG_RUNTIME_DIR/voxcmd/session.json"
 check "a session turn's listen keeps the session's settings" "[[ \$(detector_settings_of) == 'no_speech_secs=10 min_speech_secs=0.4 silence_secs=1.5' ]]"
+# The watcher takes the detector's settings from the listen that started it. With the session lock held elsewhere, one
+# that read the session again would wait for it and its detector would not start.
+detector_starts_without_session_lock() {
+  local holder watcher status=1
+  printf '%s\n' SILENCE >"$sess_turns"
+  fresh_logs
+  echo recording >"$XDG_RUNTIME_DIR/voxtype/state"
+  (flock 9 && sleep 30) 9>"$XDG_RUNTIME_DIR/voxcmd/session.lock" &
+  holder=$!
+  sleep 0.2
+  env SANDBOX_VOXTYPE_TURNS="$sess_turns" SANDBOX_AUTOSTOP_SLEEP="$stub_sleep" VOXCMD_CONFIG_DIR="$sess_config" \
+    VOXCMD_DEBUG=1 "$sess_voxcmd" _watch session_turn - 0 VOXCMD_AUTOSTOP_NO_SPEECH_SECS=7 >/dev/null 2>&1 &
+  watcher=$!
+  log_has_soon 'no_speech_secs=7$' 5 && status=0
+  pkill -P "$holder" 2>/dev/null
+  kill "$holder" "$watcher" 2>/dev/null
+  wait "$holder" "$watcher" 2>/dev/null
+  pkill -f "$stub_sleep" 2>/dev/null
+  echo idle >"$XDG_RUNTIME_DIR/voxtype/state"
+  return $status
+}
+check "a session listen's detector starts without the session lock, from the listen's settings" "detector_starts_without_session_lock"
 rm -f "$XDG_RUNTIME_DIR/voxcmd/session.json"
 check "a command's listen keeps auto-stop's own" "[[ \$(detector_settings_of) == 'no_speech_secs=default min_speech_secs=0.5 silence_secs=default' ]]"
 jq -n -c --argjson pid "$waiter_pid" --arg fifo "$root/pending-fifo" \
