@@ -104,18 +104,24 @@ sess_start() {
 sess_phrase=""
 # The stub call log and voxcmd's debug log, emptied before a run so sess_wait reads only its watchers.
 fresh_logs() { mkdir -p "$(dirname "$debug_log")" && : >"$log" && : >"$debug_log"; }
-# Waits for every watcher of the run to finish; fails when one is alive after 30s, which would be a microphone that never
-# closes. listen logs each watcher's PID as it starts it, before the listen (or the watcher handing over) exits, so a
-# watcher still to come always has a live parent or a logged PID.
+# Waits for every watcher of the run to finish; fails when 60s pass without a new watcher while one is alive, which
+# would be a microphone that never closes. The bound restarts with each watcher, not once per run: a loaded machine
+# can take seconds a turn, so a long run outlasts any fixed total, and the bound is generous for the same reason. listen logs each watcher's PID as it starts it,
+# before the listen (or the watcher handing over) exits, so a watcher still to come always has a live parent or a
+# logged PID.
 sess_wait() {
-  local deadline=$((SECONDS + 30)) pid running
+  local deadline=$((SECONDS + 60)) pid running watchers seen=0
   while ((SECONDS < deadline)); do
     running=0
-    while read -r pid; do process_running "$pid" && running=1 && break; done < <(sed -n 's/.* listen: recording started, watcher \([0-9]*\) .*/\1/p' "$debug_log")
+    watchers=$(sed -n 's/.* listen: recording started, watcher \([0-9]*\) .*/\1/p' "$debug_log")
+    while read -r pid; do [ -n "$pid" ] && process_running "$pid" && running=1 && break; done <<<"$watchers"
     ((running)) || return 0
+    if (($(wc -l <<<"$watchers") > seen)); then
+      seen=$(wc -l <<<"$watchers") deadline=$((SECONDS + 60))
+    fi
     sleep 0.02
   done
-  echo "   watchers still running after 30s"
+  echo "   a watcher still running 60s after the last one started"
   return 1
 }
 sess_run() {
@@ -814,15 +820,29 @@ sess_wait
 sess_env=(SANDBOX_ACTIVEWINDOW_JSON="$focused_window" VOXCMD_SESSION_MAX_TURNS=2)
 sess_run "type mode" one two three four five six "jarvis stop typing" "tap beta" "tap gamma"
 check "typed chunks are not turns of the session's cap" "session_gone && [[ \$(grep -c '^wtype -- ' '$log') == 6 && \$(taps) == 1 ]] && toast_has 'Rapid mode ended it reached 2 turns'"
-sess_env=(SANDBOX_ACTIVEWINDOW_JSON="$focused_window" VOXCMD_SESSION_MAX_SECS=3 SANDBOX_VOXTYPE_SPEAK_SECS=0.4)
-sess_run "type mode" one two three four five six seven eight nine ten "jarvis stop typing" "tap beta" "done"
+# The time caps below hold one type-mode listen open until the session is past its cap, so the typing outlasts the cap
+# however slowly the turns run. The caps are well over what the few turns outside type mode take on a loaded machine,
+# where a turn can take seconds.
+session_cap_secs=15
+# Ends the held listen of type mode, opened in rapid mode, once more than the cap has passed since the session started.
+type_past_session_cap() {
+  local session_started
+  hold_in 'type rapid' 2 || return 1
+  session_started=$(jq -r .started "$session_json")
+  until ((EPOCHSECONDS > session_started + session_cap_secs)); do sleep 0.1; done
+  SANDBOX_VOXTYPE_TURNS="$sess_turns" voxtype record stop
+}
+sess_env=(SANDBOX_ACTIVEWINDOW_JSON="$focused_window" "VOXCMD_SESSION_MAX_SECS=$session_cap_secs")
+sess_start "type mode" HOLD "jarvis stop typing" "tap beta" "done"
+type_past_session_cap
+sess_wait
 check "and the time spent in type mode is not counted against the session's time" "session_gone && [[ \$(taps) == 1 ]] && ! toast_has 'time limit'"
 
 # Time spent in type mode is credited when click mode opens over it, not when it is popped, so the new mode's cap does
-# not count the typing. The ~8 s of typing is well over the 6 s cap, and the turns after the push stay well under it
-# even on a loaded machine.
-sess_env=(SANDBOX_ACTIVEWINDOW_JSON="$focused_window" VOXCMD_SESSION_MAX_SECS=6 SANDBOX_VOXTYPE_SPEAK_SECS=0.4)
-sess_run "type mode" one two three four five six seven eight nine ten one two three four five six seven eight nine ten "jarvis click mode" "done" "jarvis stop typing" "tap beta" "done"
+# not count the typing.
+sess_start "type mode" HOLD "jarvis click mode" "done" "jarvis stop typing" "tap beta" "done"
+type_past_session_cap
+sess_wait
 check "a mode opened over type mode does not count the time spent typing against its cap" "session_gone && [[ \$(taps) == 1 ]] && ! toast_has 'time limit'"
 
 # A detour through another mode keeps the held mark and the spacing, but not what "scratch that" would delete: a click
@@ -974,25 +994,32 @@ sess_wait
 hooks_done
 sess_phrase="type mode"
 
-# A turn heard in a mode that changed, or after the session went, is never acted on.
-sess_env=(SANDBOX_VOXTYPE_SPEAK_SECS=0.8)
+# A turn heard in a mode that changed, or after the session went, is never acted on. Each turn is spoken only once the
+# test has changed what it was heard in.
+voxtype_release=$SANDBOX_DIR/voxtype-release
+sess_env=()
 sess_phrase="rapid mode"
-sess_start "start testing" "tap alpha" "done"
-wait_for_line 'voxtype record start' "$log"
+rm -f "$voxtype_release"
+sess_start "start testing" "GATED tap alpha" "done"
 until [[ $(record_starts) == 2 ]]; do sleep 0.02; done
 sess_voxcmd_env "stop testing"
+: >"$voxtype_release"
 sess_wait
 check "a transcript heard before the mode changed is told so and never run" "session_gone && ! grep -q '^tap alpha' '$log' && toast_has 'The mode changed, say it again'"
-sess_start "tap alpha" "done"
+rm -f "$voxtype_release"
+sess_start "GATED tap alpha" "done"
 until [[ $(record_starts) == 1 ]]; do sleep 0.02; done
 rm -f "$session_json"
+: >"$voxtype_release"
 sess_wait
 check "a turn whose session is gone is routed when it was heard in rapid mode" "grep -q '^tap alpha' '$log'"
-sess_env=(SANDBOX_ACTIVEWINDOW_JSON="$focused_window" SANDBOX_VOXTYPE_SPEAK_SECS=0.8)
+sess_env=(SANDBOX_ACTIVEWINDOW_JSON="$focused_window")
 sess_phrase="type mode"
-sess_start "tap alpha" "done"
+rm -f "$voxtype_release"
+sess_start "GATED tap alpha" "done"
 until [[ $(record_starts) == 1 ]]; do sleep 0.02; done
 rm -f "$session_json"
+: >"$voxtype_release"
 sess_wait
 check "and discarded when it was heard in type mode" "! grep -q '^tap alpha' '$log' && ! grep -q '^wtype' '$log'"
 

@@ -60,7 +60,9 @@
 #                                     $XDG_RUNTIME_DIR/voxtype to recording, and a turn that is speech writes itself
 #                                     to the --file after SANDBOX_VOXTYPE_SPEAK_SECS (0.4) and goes idle. SILENCE (and
 #                                     an empty queue) is no speech, EMPTY is speech that transcribes to nothing, HOLD
-#                                     records until stopped or cancelled, FAIL is a start that fails. voxcmd-autostop
+#                                     records until stopped or cancelled, FAIL is a start that fails, and
+#                                     "GATED <speech>" is spoken only once $SANDBOX_DIR/voxtype-release exists, for a
+#                                     test to act while it is heard. voxcmd-autostop
 #                                     then reads the turn from $SANDBOX_DIR/voxtype-turn: SILENCE is its no-speech
 #                                     exit (3) after half a second, any other turn waits on `$SANDBOX_AUTOSTOP_SLEEP 30`
 #                                     (default sleep; a copy under another name lets a test end leftovers by name).
@@ -325,6 +327,10 @@ voxtype)
     if [ "$turn" != SILENCE ] && [ "$turn" != HOLD ]; then
       (
         wait_for_watcher_to_see_recording 0
+        if [ "${turn#GATED }" != "$turn" ]; then
+          turn=${turn#GATED }
+          until [ -e "$SANDBOX_DIR/voxtype-release" ]; do sleep 0.02; done
+        fi
         sleep "${SANDBOX_VOXTYPE_SPEAK_SECS:-0.4}"
         if [ "$(cat "$state_file")" = recording ]; then
           [ "$turn" = EMPTY ] || printf '%s' "$turn" >"$file"
