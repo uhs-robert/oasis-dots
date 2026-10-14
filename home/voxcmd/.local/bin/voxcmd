@@ -929,8 +929,9 @@ sequence_refusal() {
   done
 }
 
+# Bounded, because step waits poll it and poll_until cannot interrupt a condition that hangs on a stalled compositor.
 active_window_address() {
-  hyprctl activewindow -j 2>/dev/null | jq -r '.address // empty' || true
+  timeout 2 hyprctl activewindow -j 2>/dev/null | jq -r '.address // empty' || true
 }
 
 # The overlay's and the popup's states in overlay_state and popup_state. A bar that does not answer reads as closed.
@@ -1044,8 +1045,10 @@ run_sequence() {
   local own_file="$sequence_dir/$$.json"
   mkdir -p "$sequence_dir"
   jq -n -c --argjson pid "$$" --arg start "$(process_start_time $$)" '{pid: $pid, start: $start}' >"$own_file"
-  # A watcher has an exit trap of its own, which runs this function to its end anyway.
-  [ -n "$(trap -p EXIT)" ] || trap 'rm -f "$own_file"' EXIT
+  # A watcher has an exit trap of its own, which runs this function to its end anyway. The path is expanded now: the
+  # trap runs after this function has returned, when own_file is out of scope and unbound under set -u.
+  # shellcheck disable=SC2064
+  [ -n "$(trap -p EXIT)" ] || trap "rm -f '$own_file'" EXIT
   for step; do
     index=$((index + 1))
     if sequence_stopped; then
@@ -1808,7 +1811,8 @@ epoch_micros() {
 }
 
 # poll_until <max_secs> <command...>: runs the command every ui_settle_poll_secs until it succeeds. Fails with 1 after
-# max_secs and with 2 when Stop Voice has flagged the running sequence.
+# max_secs and with 2 when Stop Voice has flagged the running sequence. Both are checked only between runs, so a
+# command must bound its own calls (timeout on hyprctl) to keep the cap and Stop working.
 poll_until() {
   local max_secs="$1" deadline_micros
   shift

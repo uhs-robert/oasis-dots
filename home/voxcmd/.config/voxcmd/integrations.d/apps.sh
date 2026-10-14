@@ -253,7 +253,7 @@ desktop_entry() {
 # the last part of its id, ignoring case. A window outside the focus history has a negative ID and ranks last.
 app_window() {
   local clients
-  clients=$(hyprctl clients -j 2>/dev/null) || return 0
+  clients=$(timeout 2 hyprctl clients -j 2>/dev/null) || return 0
   jq -r --argjson app "$1" '
     ($app.id | sub("\\.desktop$"; "")) as $id
     | ([$app.wm_class, $id, ($id | split(".") | last)] | map(select(. != "") | ascii_downcase)) as $classes
@@ -269,8 +269,9 @@ app_window_focused() {
   [ -n "$address" ] && [ "$address" = "$(active_window_address)" ]
 }
 
+# Bounded like voxcmd's active_window_address, since the close step's wait polls it.
 window_exists() {
-  hyprctl clients -j 2>/dev/null | jq -e --arg address "$1" 'any(.[]; .address == $address)' >/dev/null
+  timeout 2 hyprctl clients -j 2>/dev/null | jq -e --arg address "$1" 'any(.[]; .address == $address)' >/dev/null
 }
 
 # Started like the Quickshell apps picker starts them: the Exec line with its field codes dropped, in Path when set,
