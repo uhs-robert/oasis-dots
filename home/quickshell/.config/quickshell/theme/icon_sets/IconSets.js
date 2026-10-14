@@ -8,6 +8,7 @@
 .import "GoldeneyeGadgetVectors.js" as GoldeneyeGadgets
 .import "MetroidVectors.js" as Metroid
 .import "Ff7Vectors.js" as Ff7
+.import "CrtVectors.js" as Crt
 
 // Icon sets a bar style can draw in place of the Nerd Font glyphs: set name -> icon name -> variant -> sprite rows or vector.
 var sets = {
@@ -19,7 +20,8 @@ var sets = {
     "goldeneye": Goldeneye.vectors,
     "goldeneye_gadgets": GoldeneyeGadgets.vectors,
     "metroid": Metroid.vectors,
-    "ff7": Ff7.vectors
+    "ff7": Ff7.vectors,
+    "crt": Crt.vectors
 };
 
 var names = Object.keys(sets);
