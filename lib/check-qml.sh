@@ -1,6 +1,11 @@
 #!/bin/sh
 # Lints the Quickshell config and the greeter with Qt 6 qmllint, failing only on findings that are real errors.
 # Stages qmldirs only for the folders Quickshell registers (reached by imports from shell.qml) and flags uses of unregistered types.
+# Fails on syntax errors, unknown types or imports, unknown or misspelled properties and names, type-incompatible
+# assignments, writes to read-only properties, and duplicate or cyclic declarations; not on style warnings, members read
+# through untyped `parent`/`Loader.item`, or known gaps in Quickshell's type info. A file loaded by URL from a folder
+# nothing reached from shell.qml imports fails when it instantiates, declares a property of, or reads a singleton among
+# its siblings' types (#531). Needs jq.
 set -u
 
 script_dir=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)

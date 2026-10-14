@@ -1,4 +1,5 @@
 // Runs NotificationMarkup.js under node. The file is a QML `.pragma library`, so it is loaded as a script.
+// Checks the notification body sanitizer: only b, i, u, http/https/mailto links and line breaks survive.
 "use strict";
 const fs = require("fs");
 const path = require("path");
