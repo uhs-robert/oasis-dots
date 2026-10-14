@@ -5,8 +5,8 @@
 // Shapes are chunky with squared-off corners; accent is the lit HUD element. Lit network bars and battery cells are solid accent while unlit ones are thin body outlines. Holes are wound against their outlines, so every entry fills nonzero. A missing icon or variant falls back to the module's Nerd Font glyph. The clock keeps its HEV "MTG" readout, so there is no meeting icon.
 var vectors = {
     "notifications": {
-        "normal": {"w": 24, "h": 24, "body": "M24 12 A12 12 0 1 1 0 12 A12 12 0 1 1 24 12ZM21.7 12 A9.7 9.7 0 1 0 2.3 12 A9.7 9.7 0 1 0 21.7 12Z", "accent": "M6.4 5.4 L11 5.4 A0 0 0 0 1 11 5.4 L11 8.2 A0 0 0 0 1 11 8.2 L6.4 8.2 A0 0 0 0 1 6.4 8.2 L6.4 5.4 A0 0 0 0 1 6.4 5.4ZM10.73 5.98 L19.33 17.78 L17.07 19.42 L8.47 7.62ZM14.26 13.52 L9.06 19.52 L6.94 17.68 L12.14 11.68Z"},
-        "dnd": {"w": 24, "h": 24, "body": "M24 12 A12 12 0 1 1 0 12 A12 12 0 1 1 24 12ZM21.7 12 A9.7 9.7 0 1 0 2.3 12 A9.7 9.7 0 1 0 21.7 12ZM6.4 5.4 L11 5.4 A0 0 0 0 1 11 5.4 L11 8.2 A0 0 0 0 1 11 8.2 L6.4 8.2 A0 0 0 0 1 6.4 8.2 L6.4 5.4 A0 0 0 0 1 6.4 5.4ZM10.73 5.98 L19.33 17.78 L17.07 19.42 L8.47 7.62ZM14.26 13.52 L9.06 19.52 L6.94 17.68 L12.14 11.68Z"}
+        "normal": {"w": 22, "h": 24, "accent": "M0 0 L7.82 0 A0 0 0 0 1 7.82 0 L7.82 4.76 A0 0 0 0 1 7.82 4.76 L0 4.76 A0 0 0 0 1 0 4.76 L0 0 A0 0 0 0 1 0 0ZM7.36 0.98 L21.98 21.03 L18.13 23.84 L3.52 3.78ZM13.36 13.8 L4.52 23.99 L0.92 20.88 L9.76 10.68Z"},
+        "dnd": {"w": 22, "h": 24, "body": "M0 0 L7.82 0 A0 0 0 0 1 7.82 0 L7.82 4.76 A0 0 0 0 1 7.82 4.76 L0 4.76 A0 0 0 0 1 0 4.76 L0 0 A0 0 0 0 1 0 0ZM7.36 0.98 L21.98 21.03 L18.13 23.84 L3.52 3.78ZM13.36 13.8 L4.52 23.99 L0.92 20.88 L9.76 10.68Z"}
     },
     "volume": {
         "muted": {"w": 22, "h": 24, "body": "M0.8 9.4 L0.8 9.4 Q0.8 8.8 1.4 8.8 L4.2 8.8 Q4.8 8.8 5.25 8.4 L9.55 4.6 Q10 4.2 10 4.8 L10 19.2 Q10 19.8 9.55 19.4 L5.25 15.6 Q4.8 15.2 4.2 15.2 L1.4 15.2 Q0.8 15.2 0.8 14.6ZM13.38 8.02 L19.78 14.42 L18.22 15.98 L11.82 9.58ZM11.82 14.42 L18.22 8.02 L19.78 9.58 L13.38 15.98Z"},
