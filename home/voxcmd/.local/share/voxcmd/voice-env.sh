@@ -34,7 +34,6 @@ voice_env_acceptable() {
     VOXCMD_DUCK_MEDIA_VOLUME) [[ "$value" =~ ^[0-9]+$ ]] && ((10#$value <= 100)) ;;
     VOXCMD_WAKE_SENSITIVITY) [[ "$value" == strict || "$value" == balanced || "$value" == relaxed ]] ;;
     VOXCMD_WAKE_PAUSE_FOR_MEDIA | VOXCMD_WAKE_PAUSE_FOR_MIC) [[ "$value" == 0 || "$value" == 1 ]] ;;
-    VOXCMD_TYPE_CHUNK_PAUSE_SECS) awk -v v="$value" 'BEGIN { exit !(v > 0 && v <= 30) }' ;;
     *) return 0 ;;
   esac
 }

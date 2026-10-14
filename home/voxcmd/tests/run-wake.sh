@@ -105,37 +105,25 @@ export VOXCMD_VOICE_ENV_FILE="$voice_env"
 source "$share_dir/voice-env.sh"
 
 value_of() { voice_env_value "$1" 2>/dev/null || echo none; }
-chunk_pause_of() {
-  # shellcheck disable=SC2034 # read by the integration
-  voxcmd_share_dir="$share_dir"
-  # shellcheck source=/dev/null disable=SC2154
-  (source "$package_dir/.config/voxcmd/integrations.d/typing.sh" && echo "$session_listen_silence_secs")
-}
 
 rm -f "$voice_env"
 check "no file, no value" none "$(value_of VOXCMD_DUCK_MEDIA_VOLUME)"
-check "no file, chunk pause default" 2.5 "$(chunk_pause_of)"
 
-printf 'VOXCMD_DUCK_MEDIA_VOLUME=20\nVOXCMD_TYPE_CHUNK_PAUSE_SECS=3.5\n' >"$voice_env"
+printf 'VOXCMD_DUCK_MEDIA_VOLUME=20\n' >"$voice_env"
 check "file value" 20 "$(value_of VOXCMD_DUCK_MEDIA_VOLUME)"
-check "chunk pause from the file" 3.5 "$(chunk_pause_of)"
 check "environment beats the file" 40 "$(VOXCMD_DUCK_MEDIA_VOLUME=40 value_of VOXCMD_DUCK_MEDIA_VOLUME)"
-check "environment beats the file for chunk pause" 4 "$(VOXCMD_TYPE_CHUNK_PAUSE_SECS=4 chunk_pause_of)"
 
 # The file is data: a line that is not KEY=NUMBER is ignored, never run.
 # shellcheck disable=SC2016 # the command substitution must reach the file unexpanded
-printf 'VOXCMD_DUCK_MEDIA_VOLUME=$(touch %s/ran)\nVOXCMD_TYPE_CHUNK_PAUSE_SECS=fast\nexport VOXCMD_DUCK_MEDIA_VOLUME=9\n' "$SANDBOX_DIR" >"$voice_env"
+printf 'VOXCMD_DUCK_MEDIA_VOLUME=$(touch %s/ran)\nexport VOXCMD_DUCK_MEDIA_VOLUME=9\n' "$SANDBOX_DIR" >"$voice_env"
 check "a command substitution is not a value" none "$(value_of VOXCMD_DUCK_MEDIA_VOLUME)"
-check "a word is not a value" 2.5 "$(chunk_pause_of)"
 check "nothing in the file ran" 0 "$([ -e "$SANDBOX_DIR/ran" ] && echo 1 || echo 0)"
 
 # A number outside Settings' limits falls back to the default, as a bad word does.
-printf 'VOXCMD_DUCK_MEDIA_VOLUME=150\nVOXCMD_TYPE_CHUNK_PAUSE_SECS=0\n' >"$voice_env"
+printf 'VOXCMD_DUCK_MEDIA_VOLUME=150\n' >"$voice_env"
 check "ducking above 100 is not a value" none "$(value_of VOXCMD_DUCK_MEDIA_VOLUME)"
-check "a zero chunk pause is not a value" 2.5 "$(chunk_pause_of)"
-printf 'VOXCMD_DUCK_MEDIA_VOLUME=30.5\nVOXCMD_TYPE_CHUNK_PAUSE_SECS=45\n' >"$voice_env"
+printf 'VOXCMD_DUCK_MEDIA_VOLUME=30.5\n' >"$voice_env"
 check "fractional ducking is not a value" none "$(value_of VOXCMD_DUCK_MEDIA_VOLUME)"
-check "a chunk pause past Whisper's window is not a value" 2.5 "$(chunk_pause_of)"
 
 printf 'VOXCMD_WAKE_PAUSE_FOR_MEDIA=1\nVOXCMD_WAKE_PAUSE_FOR_MIC=0\n' >"$voice_env"
 check "a flag of 1 is read" 1 "$(value_of VOXCMD_WAKE_PAUSE_FOR_MEDIA)"

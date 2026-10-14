@@ -22,9 +22,7 @@ Singleton {
     readonly property string default_level: "strict"
     // Percent of its volume ducked music keeps while voxtype records; 30 is config.toml's own value.
     readonly property int default_duck: 30
-    readonly property real default_chunk_pause: 2.5
     readonly property var duck_steps: [0, 10, 20, 30, 50, 70]
-    readonly property var chunk_pause_steps: [1.5, 2, 2.5, 3, 4]
     // The listener keeps hearing while music plays (a song can then say the phrase) and stops while another app records.
     readonly property int default_pause_for_media: 0
     readonly property int default_pause_for_mic: 1
@@ -32,7 +30,6 @@ Singleton {
     readonly property var keys: ({
             sensitivity: "VOXCMD_WAKE_SENSITIVITY",
             duck: "VOXCMD_DUCK_MEDIA_VOLUME",
-            chunk: "VOXCMD_TYPE_CHUNK_PAUSE_SECS",
             pause_media: "VOXCMD_WAKE_PAUSE_FOR_MEDIA",
             pause_mic: "VOXCMD_WAKE_PAUSE_FOR_MIC"
         })
@@ -41,7 +38,6 @@ Singleton {
     readonly property var readers: ({
             sensitivity: text => root.level_ids.indexOf(text) >= 0 ? text : undefined,
             duck: text => /^[0-9]+$/.test(text) && Number(text) <= 100 ? Number(text) : undefined,
-            chunk: text => /^[0-9]+(\.[0-9]+)?$/.test(text) && Number(text) > 0 && Number(text) <= 30 ? Number(text) : undefined,
             pause_media: text => text === "0" || text === "1" ? Number(text) : undefined,
             pause_mic: text => text === "0" || text === "1" ? Number(text) : undefined
         })
@@ -63,7 +59,6 @@ Singleton {
     readonly property bool env_overrides_level: !!Quickshell.env("VOXCMD_WAKE_THRESHOLD") || !!Quickshell.env("VOXCMD_WAKE_FRAMES")
     readonly property string sensitivity: root.env_overrides_level ? "custom" : root.effective("sensitivity", root.default_level)
     readonly property int duck: root.effective("duck", root.default_duck)
-    readonly property real chunk_pause: root.effective("chunk", root.default_chunk_pause)
     readonly property int pause_for_media: root.effective("pause_media", root.default_pause_for_media)
     readonly property int pause_for_mic: root.effective("pause_mic", root.default_pause_for_mic)
 
@@ -72,10 +67,9 @@ Singleton {
         const next = Object.assign({}, root.saved);
         const units = Object.assign({}, root.restart_units);
         next[key] = value;
-        // The chunk pause is read afresh by each type-mode session. Ducking is read by voxtype once, at start; the
-        // listener's sensitivity and pause switches the same, at its own.
+        // Ducking is read by voxtype once, at start; the listener's sensitivity and pause switches the same, at its own.
         if (key === "duck") units["voxtype.service"] = true;
-        else if (key !== "chunk") units["voxcmd-wake.service"] = true;
+        else units["voxcmd-wake.service"] = true;
         root.saved = next;
         root.restart_units = units;
         save_timer.restart();

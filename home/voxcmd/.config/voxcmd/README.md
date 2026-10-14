@@ -576,12 +576,11 @@ Settings > Input > Voice saves its choices to `${XDG_STATE_HOME:-~/.local/state}
 | Key                            | Default      | Read by                       | Meaning                                                              |
 | ------------------------------ | ------------ | ----------------------------- | -------------------------------------------------------------------- |
 | `VOXCMD_WAKE_SENSITIVITY`      | `strict`     | `voxcmd-wake`                 | `strict`, `balanced` or `relaxed`; `VOXCMD_WAKE_THRESHOLD` and `_FRAMES` in the environment override its numbers (the file never holds them) |
-| `VOXCMD_TYPE_CHUNK_PAUSE_SECS` | `2.5`        | `voxcmd` (type mode)          | pause that ends a chunk; read at the start of each type-mode session |
 | `VOXCMD_WAKE_PAUSE_FOR_MEDIA`  | `0`          | `voxcmd-wake`                 | 1 pauses the listener while a player plays; 0 keeps it listening     |
 | `VOXCMD_WAKE_PAUSE_FOR_MIC`    | `1`          | `voxcmd-wake`                 | 1 pauses it while another app records from a microphone; 0 keeps it listening |
 | `VOXCMD_DUCK_MEDIA_VOLUME`     | config.toml  | `voxtype-daemon`              | percent of its volume ducked media keeps while voxtype records (0 to 100); passed as `voxtype --duck-media-volume`, otherwise `duck_media_volume_percent` in voxtype's `config.toml` (30) applies |
 
-The shell side is `voice-env.sh` in voxcmd's share folder (`voice_env_value KEY`), sourced by `typing.sh` and, when the voxcmd package is stowed, by `voxtype-daemon`; `voxcmd-wake` has its own Python reader. `VOXCMD_VOICE_ENV_FILE` points all of them at another file (for tests). Wake sensitivity, the pause switches (exactly 0 or 1) and ducking are read once when their service starts, so Settings runs `systemctl --user try-restart` on the unit after a change; a voxtype restart cuts off a recording in progress.
+The shell side is `voice-env.sh` in voxcmd's share folder (`voice_env_value KEY`), sourced, when the voxcmd package is stowed, by `voxtype-daemon`; `voxcmd-wake` has its own Python reader. `VOXCMD_VOICE_ENV_FILE` points all of them at another file (for tests). Wake sensitivity, the pause switches (exactly 0 or 1) and ducking are read once when their service starts, so Settings runs `systemctl --user try-restart` on the unit after a change; a voxtype restart cuts off a recording in progress.
 
 ### Calendar
 

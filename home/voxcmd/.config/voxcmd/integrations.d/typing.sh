@@ -9,8 +9,6 @@ silent_actions=(type_mode stop_typing)
 
 # shellcheck source-path=SCRIPTDIR/../../../.local/share/voxcmd source=mode-phrases.sh
 source "$voxcmd_share_dir/mode-phrases.sh"
-# shellcheck source-path=SCRIPTDIR/../../../.local/share/voxcmd source=voice-env.sh
-source "$voxcmd_share_dir/voice-env.sh"
 type_exit_object='(the )?(typing|typing mode|type mode|dictation|dictation mode)'
 type_exit_phrase=$(mode_exit_phrase "$type_exit_object")
 # "start typing" is a search placeholder somewhere, so entering needs the word "mode".
@@ -46,7 +44,7 @@ session_mode_idle_secs="${VOXCMD_TYPE_IDLE_SECS:-120}"
 session_mode_max_secs="${VOXCMD_TYPE_MAX_SECS:-1800}"
 # A pause this long ends a chunk, and speech this long is cut into one (inside Whisper's 30 s window). The silent listen
 # is shorter than the idle bound only so the recording is never open for the whole of it.
-session_listen_silence_secs="$(voice_env_value VOXCMD_TYPE_CHUNK_PAUSE_SECS || echo 2.5)"
+session_listen_silence_secs="${VOXCMD_TYPE_CHUNK_PAUSE_SECS:-2.5}"
 session_listen_max_secs="${VOXCMD_TYPE_CHUNK_MAX_SECS:-25}"
 session_listen_no_speech_secs=30
 
