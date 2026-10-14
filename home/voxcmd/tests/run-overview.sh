@@ -128,6 +128,8 @@ close these|close
 close it|close
 close the selected|close
 close the selected window|close
+mark two, no wait, mark four|mark aaa4
+um, okay so mark two|mark aaa2
 close two|close aaa2
 focus two|focus aaa2
 go to four|focus aaa4
@@ -212,6 +214,10 @@ ov_run four "close overview" -- "two"
 check "a phrase spoken while the overview is open attaches the session" "grep -q 'session: overview begins' '$debug_log'"
 check "its turns go to the overview" "[[ \$(acts | paste -sd,) == 'mark aaa2,mark aaa4' ]]"
 check "close overview ends the session and closes the overview" "session_gone && wait_for_line '^qs-ipc call overview close' '$log' 5"
+ov_run "exit, exit overview" -- "two"
+check "a turn that repeats itself runs its last attempt: exit, exit overview leaves" "session_gone && wait_for_line '^qs-ipc call overview close' '$log' 5"
+ov_run "mark four, no wait, mark five" -- "two"
+check "a spoken correction in a turn marks the corrected window only" "[[ \$(acts | paste -sd,) == 'mark aaa2,mark aaa5' ]]"
 ov_run four five -- "two"
 check "a turn that names no overview thing is not understood, not run as something else" "[[ \$(acts | paste -sd,) == 'mark aaa2,mark aaa4,mark aaa5' ]]"
 ov_run "open firefox" four -- "two"
