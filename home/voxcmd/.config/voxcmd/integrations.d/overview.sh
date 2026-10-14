@@ -73,7 +73,18 @@ overview_is_open() {
 # voxcmd asks every integration with a surface_open whether its surface is up, before any verb is matched, and gives the
 # phrase to that integration first. session_alive ends a mode whose surface closed.
 surface_open() { overview_is_open; }
-session_alive() { overview_is_open; }
+
+# The bar's own answer decides while it gives one: its file is rewritten a moment after the overview opens, so right after
+# "open overview" it still says closed. The file is believed only when the bar cannot be asked.
+session_alive() {
+  local answer=""
+  [ ! -x "$qs_ipc" ] || answer=$(timeout 2 "$qs_ipc" call overview state 2>/dev/null) || answer=""
+  case "$answer" in
+  open) return 0 ;;
+  closed) return 1 ;;
+  *) grep -q '"open":true' "$overview_file" 2>/dev/null ;;
+  esac
+}
 
 # A turn of the session is a phrase for the overview alone.
 session_rewrite() {
@@ -94,7 +105,17 @@ overview_open() {
     echo "the bar did not open the overview"
     return 1
   }
+  overview_wait_for_snapshot
   overview_attach
+}
+
+# Gives the bar a moment to write the snapshot the numbers and later phrases are read from; the session does not depend on it.
+overview_wait_for_snapshot() {
+  local polls
+  for ((polls = 0; polls < 20; polls++)); do
+    grep -q '"open":true' "$overview_file" 2>/dev/null && return 0
+    sleep "$(scaled_secs 0.05)"
+  done
 }
 
 overview_close() {
