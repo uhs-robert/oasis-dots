@@ -48,3 +48,7 @@
 
 [credential "https://github.com"]
 	helper = !gh auth git-credential
+[filter "nless-update-state"]
+	# nless rewrites its config with its update-check state on every run; commit the settings without it.
+	clean = jq --indent 4 'del(.last_update_check, .latest_pypi_version)'
+	smudge = cat
