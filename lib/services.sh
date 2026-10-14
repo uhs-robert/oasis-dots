@@ -306,6 +306,9 @@ setup_voxtype() {
   else
     warn "Skipped model download, run later: voxtype setup model"
   fi
+  # The Cortana listener confirms triggers with base.en (VOXCMD_WAKE_CONFIRM_MODEL), a 141 MB download that the
+  # interactive picker above does not offer. Without --activate it changes no daemon setting.
+  voxtype setup --download --model base.en --no-post-install || warn "base.en download failed, the Cortana listener falls back to the daemon's model; run later: voxtype setup --download --model base.en"
   # Small, and config.toml enables VAD with it.
   voxtype setup vad >/dev/null || warn "VAD model download failed, run later: voxtype setup vad"
   # voxtype writes its own unit and enables and starts it; the stowed voxtype.service.d/prompt.conf adjusts it.

@@ -835,8 +835,8 @@ wake_confirm() {
   # Exit 1 means "not the wake word" to the caller, which set -e would also give an unexpected error.
   set -E
   trap 'exit 2' ERR
-  local wav="$1" output transcript prompt_script prompt
-  local -a prompt_flags=()
+  local wav="$1" output transcript prompt_script prompt model model_file
+  local -a prompt_flags=() model_flags=()
   if [ -z "$wav" ]; then
     echo failed
     exit 2
@@ -847,8 +847,17 @@ wake_confirm() {
   else
     debug "wake confirm: no initial prompt, transcribing without it"
   fi
+  # base.en, not the daemon's model: with the prompt the larger model heard the wake word in 20 of 300 clips that were not.
+  # Without the model file voxtype fails, so the daemon's model answers instead.
+  model="${VOXCMD_WAKE_CONFIRM_MODEL:-base.en}"
+  model_file="${XDG_DATA_HOME:-$HOME/.local/share}/voxtype/models/ggml-$model.bin"
+  if [ -f "$model_file" ]; then
+    model_flags=(--model "$model")
+  else
+    debug "wake confirm: $model_file is missing, transcribing with the daemon's model"
+  fi
   # -q keeps voxtype's INFO lines (which hold the transcript) out of the output; the progress lines stay on stdout.
-  if ! output=$(timeout -k 1 "${VOXCMD_WAKE_CONFIRM_TIMEOUT_SECS:-6}" voxtype -q "${prompt_flags[@]}" transcribe "$wav" 2>/dev/null); then
+  if ! output=$(timeout -k 1 "${VOXCMD_WAKE_CONFIRM_TIMEOUT_SECS:-6}" voxtype -q "${model_flags[@]}" "${prompt_flags[@]}" transcribe "$wav" 2>/dev/null); then
     debug "wake confirm: voxtype transcribe failed or timed out"
     echo failed
     exit 2
