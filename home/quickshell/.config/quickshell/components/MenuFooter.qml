@@ -114,7 +114,7 @@ Item {
                 if (!last) continue;
                 const left = items[start].x;
                 const right = items[i].x + items[i].width - items[i].rightPadding - items[i].separator_room;
-                for (let k = start; k <= i; k++) out[k] = { shift: (root.width - (right - left)) / 2 - left, ends: k === i };
+                for (let k = start; k <= i; k++) out[k] = { shift: Math.max(-left, (root.width - (right - left)) / 2 - left), ends: k === i };
                 start = i + 1;
             }
             return out;
