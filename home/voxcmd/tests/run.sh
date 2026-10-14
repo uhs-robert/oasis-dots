@@ -1505,15 +1505,8 @@ check "a capture flag leaves a running recording alone and takes its shot" "kill
 PATH=$recorder_work/bin:$PATH "$recorder_work/screenshot.sh" --scroll-image >/dev/null 2>&1
 check "so does a scroll capture" "kill -0 $fake_recorder && grep -q 'qs-ipc call screenshot select false scroll_image' '$log'"
 PATH=$recorder_work/bin:$PATH "$recorder_work/screenshot.sh" >/dev/null 2>&1
-# The sleep is this shell's child, so a stopped one stays a zombie until reaped.
-wait_for_exit() {
-  for _ in $(seq 50); do
-    [[ $(ps -o stat= -p "$1" 2>/dev/null) == Z* || -z $(ps -o stat= -p "$1" 2>/dev/null) ]] && return 0
-    sleep 0.1
-  done
-  return 1
-}
-check "the menu key still stops it" "wait_for_exit $fake_recorder"
+# The sleep is this shell's child, so a stopped one stays a zombie until reaped, which wait_until_gone counts as gone.
+check "the menu key still stops it" "wait_until_gone $fake_recorder"
 kill "$fake_recorder" 2>/dev/null
 
 finish

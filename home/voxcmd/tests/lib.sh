@@ -51,7 +51,8 @@ wait_for_path() { wait_until test -e "$1"; }
 # Running, not a zombie waiting to be reaped.
 process_running() { [[ -e /proc/$1 && $(awk '{print $3}' "/proc/$1/stat" 2>/dev/null) != Z ]]; }
 process_gone() { ! process_running "$1"; }
-wait_until_gone() { wait_until process_gone "$1"; }
+# An empty PID, a lookup that found nothing, fails at once rather than waiting out the bound.
+wait_until_gone() { [ -n "$1" ] && wait_until process_gone "$1"; }
 # logged_processes_gone <sed pattern>: every process whose PID voxcmd's debug log names in the pattern's \1 is gone.
 # voxcmd logs each watcher it starts and each ended hook it runs before it exits, so once the logged watchers are gone
 # no line naming another is still to come.
