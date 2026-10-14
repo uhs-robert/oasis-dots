@@ -86,5 +86,7 @@ check_branch_here() {
   local base
   base=$(git merge-base HEAD origin/main) || return 1
   lib/check.sh --changed "$base" || return 1
+  # check.sh counts untracked files and check-passed.sh's record does not, so a pass that saw any vouches for no tree.
+  [[ -z $(git status --porcelain) ]] || return 0
   if lib/check-passed.sh passed-somewhere "$base"; then lib/check-passed.sh record || true; fi
 }
